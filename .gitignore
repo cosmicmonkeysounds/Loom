@@ -1,0 +1,35 @@
+# macOS
+.DS_Store
+
+# Node (pnpm workspace: core, bank, play, editor)
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Vite / Vitest / Playwright output
+.vite/
+test-results/
+playwright-report/
+
+# Rust build output
+target/
+
+# Python (stagehand, simulator)
+__pycache__/
+*.py[cod]
+.venv/
+
+# Godot editor cache
+engines/godot/.godot/
+
+# Event-server local state (journals, guest saves)
+.loom-state/
+
+# Local environment + per-user tool state
+.env
+.env.local
+.claude/settings.local.json
+
+# Logs
+*.log

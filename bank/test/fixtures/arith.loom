@@ -1,0 +1,79 @@
+== arith
+
+  case0 {1 + 2}
+
+  case1 {7 / 2}
+
+  case2 {1 / 0}
+
+  case3 {-1 / 0}
+
+  case4 {0 / 0}
+
+  case5 {-7 % 3}
+
+  case6 {7 % -3}
+
+  case7 {7.5 % 2}
+
+  case8 {2 * 3 + 1}
+
+  case9 {2 + 3 * 4}
+
+  case10 {-(2 + 3)}
+
+  case11 {!0}
+
+  case12 {!1}
+
+  case13 {"a" + 1}
+
+  case14 {1 + "a"}
+
+  case15 {1 == 1}
+
+  case16 {1 == true}
+
+  case17 {"x" == "x"}
+
+  case18 {null == null}
+
+  case19 {1 != 2}
+
+  case20 {2 > 1}
+
+  case21 {1 >= 1}
+
+  case22 {missing + 5}
+
+  case23 {(0 / 0) or 1}
+
+  case24 {(0 / 0) and 1}
+
+  case25 {5 and 7}
+
+  case26 {0 or 7}
+
+  case27 {mystery(1)}
+
+  case28 {count([n for n in [1, 2, 3] where n > 1])}
+
+  case29 {0.1 + 0.2}
+
+  case30 {1 / 3}
+
+  case31 {10000000000000000000 * 10}
+
+  case32 {1 / 10000000}
+
+  case33 {9007199254740991 + 0}
+
+  case34 {123456789012345680 + 0}
+
+  case35 {-0.0 + 0}
+
+  case36 {1000000000000000000000 + 0}
+
+  case37 {0.000001 + 0}
+
+  case38 {1e-7 + 0}

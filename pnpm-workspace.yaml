@@ -1,0 +1,11 @@
+# Loom's JavaScript/TypeScript packages share one install + lockfile.
+# Run `pnpm install` from the repo root to set up the engine (core),
+# the bank compiler (bank), the participant app (play), and the editor
+# at once. pnpm resolves the nearest pnpm-workspace.yaml when walking
+# up from any package, so running an install from `core/`, `play/`, or
+# `editor/` also uses this workspace.
+packages:
+  - core
+  - bank
+  - play
+  - editor

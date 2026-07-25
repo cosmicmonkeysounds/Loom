@@ -1,0 +1,54 @@
+entry: opening
+
+LOCATION Lighthouse
+  label: The Lighthouse
+
+LOCATION LampRoom
+  label: The Lamp Room
+
+CHARACTER Wren
+  faction: Keepers
+  trust: 0 to 100 = 20
+
+  on lamp_lit guest
+    <set: self.trust += 5>
+    -> self.reassure
+
+  beat reassure(guest)
+    SELF
+      The lamp holds.
+
+== opening
+  cast: Wren
+  setting: Lighthouse
+
+The stair smells of paraffin and salt.
+
+WREN
+  (guarded)
+  You're late. The lamp's been dark for hours.
+  <if: Wren.trust > 50>
+    But I'm glad it's you.
+  <else>
+    Don't touch anything.
+
+<let: gale = Weather.wind > 40>
+<if: gale>
+  Wind hunts along the stair.
+
+* Climb to the lamp room.
+  <set: Wren.trust += 10>
+  <fire: lamp_lit>
+  -> lamp_room
+* [Wren watches you go.] Leave her to it.
+  <sfx: door_close, gain: -6>
+  -> END
+
+== lamp_room
+  setting: LampRoom
+
+<each visit>
+  first
+    The lamp room is colder than you expected.
+  then
+    You've been here before. The glass is still warm.

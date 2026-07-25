@@ -1,0 +1,9 @@
+# Godot's import cache and derived resources.
+.godot/
+*.import
+
+# Banks and scenarios copied in by `test/conformance.sh`, and the demo's
+# bank — all regenerated from `bank` fixtures.
+test/*.loombank
+test/*.script
+demo/*.loombank

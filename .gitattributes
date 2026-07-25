@@ -1,0 +1,23 @@
+# Normalize line endings. The Godot conformance harness diffs golden
+# traces byte-for-byte, so all text files check out LF on every platform.
+* text=auto eol=lf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.loombank binary
+
+# Godot text resources are position-sensitive; keep them LF everywhere
+*.tscn text eol=lf
+*.tres text eol=lf
+*.gd text eol=lf
+
+# Keep GitHub language stats focused on the source, not the spec pages
+docs/*.html linguist-documentation
+docs/help/** linguist-documentation
+pnpm-lock.yaml linguist-generated

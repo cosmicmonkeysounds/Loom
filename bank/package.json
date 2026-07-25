@@ -1,0 +1,33 @@
+{
+  "name": "@loom/bank",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Compiles a Loom project into engine-agnostic banks (.loombank) and hosts the normative reference interpreter every per-engine runtime is conformance-tested against.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./ir": "./src/ir.ts",
+    "./compile": "./src/compile.ts",
+    "./interp": "./src/interp.ts",
+    "./trace": "./src/trace.ts"
+  },
+  "bin": {
+    "loom-bank": "./bin/loom-bank.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "bank": "tsx bin/loom-bank.ts"
+  },
+  "dependencies": {
+    "@loom/core": "workspace:*",
+    "tsx": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "~6.0.2",
+    "vitest": "^2.1.0"
+  }
+}

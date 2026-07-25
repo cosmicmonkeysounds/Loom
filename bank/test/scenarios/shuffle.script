@@ -1,0 +1,15 @@
+# <shuffle:> conformance: the spec'd xorshift64* stream must pick the
+# same variants in every runtime, advance across replays, and survive a
+# save/load round trip (the digest lines cover the persisted states).
+start pier
+run
+save
+load
+start pier      # replay: streams continue, picks differ deterministically
+run
+start pier
+run
+save
+load
+start pier
+run

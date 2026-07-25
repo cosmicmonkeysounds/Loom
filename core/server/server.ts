@@ -1,0 +1,371 @@
+//! Loom event server — the multi-tenant backbone that hosts live `Sim`
+//! events and serves the role-based web client.
+//!
+//! Transport: Server-Sent Events for server→client push (state
+//! snapshots, broadcasts, choice prompts) + JSON `fetch` POST for
+//! client→server actions. No WebSocket dependency, so it works on any
+//! phone browser on the wifi.
+//!
+//! Each live event is an `EventRuntime` (see `event-runtime.ts`). This file
+//! owns the process: static app serving, the QR endpoint, restart-recovery,
+//! and routing each request to the right runtime. During this first slice a
+//! single default event is hosted at the root paths (identical to the old
+//! single-event server); the `EventRegistry` + `/e/:eventId` namespacing land
+//! next.
+//!
+//! Run: `pnpm --filter @loom/core serve` (or `npx tsx server/server.ts`).
+//! Env: LOOM_PORT, LOOM_HOST, LOOM_EVENT_PASS, LOOM_MOD_PASS,
+//! LOOM_PRIME_PASS (any passcode left unset is auto-generated and printed
+//! at boot), LOOM_STATE_DIR (where restart-recovery state is kept),
+//! LOOM_APP_DIST.
+
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { readFileSync } from "node:fs";
+import { networkInterfaces } from "node:os";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import QRCode from "qrcode";
+
+import { toNodeHandler } from "better-auth/node";
+
+import { resolvePasscodes } from "./auth.ts";
+import { Store } from "./store.ts";
+import { scenarioSource } from "../examples/load.ts";
+import { EventRuntime } from "./event-runtime.ts";
+import { EventRegistry } from "./registry.ts";
+import { ipOf, readBody, sendJson, str, PayloadTooLarge } from "./http-util.ts";
+import { RateLimiter } from "./rate-limit.ts";
+import { auth, authUser, migrateAuth } from "./auth-server.ts";
+import { dbReady, initSchema } from "./db/index.ts";
+import { eventOwnerId, liveEvents } from "./db/queries.ts";
+import { BASE_URL, DATABASE_URL, HAS_SECURE_SECRET, IS_LOCAL_BASE, TRUSTED_ORIGINS } from "./config.ts";
+import { handleProjects } from "./projects.ts";
+import { handleEvent, specFromRow } from "./events-api.ts";
+
+const PORT = Number(process.env.LOOM_PORT ?? 7000);
+const HOST = process.env.LOOM_HOST ?? "0.0.0.0";
+
+// Restart-recovery state lives here; override with LOOM_STATE_DIR.
+const STATE_DIR = process.env.LOOM_STATE_DIR ?? fileURLToPath(new URL("./.loom-state/", import.meta.url));
+const store = new Store(STATE_DIR);
+
+// Passcodes: env override → persisted (stable across restarts) → fresh.
+const PASS = resolvePasscodes(process.env, store.loadCodes());
+store.saveCodes(PASS);
+
+// The default scenario is a multi-file project under `examples/`; the loader
+// concatenates `main.loom` + the rest into one source (identical to bundling
+// the files separately) so the journal-replay store keeps a single string.
+const DEFAULT_SCENARIO = scenarioSource("escape-the-internet");
+
+// The built participant app (`loom-play`). Defaults to the sibling
+// package's `dist/`; override with LOOM_APP_DIST (absolute path).
+const APP_DIST = process.env.LOOM_APP_DIST
+  ? pathToFileURL(process.env.LOOM_APP_DIST.replace(/\/?$/, "/"))
+  : new URL("../../play/dist/", import.meta.url);
+
+const CONTENT_TYPES: Record<string, string> = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".json": "application/json",
+  ".ico": "image/x-icon",
+  ".png": "image/png",
+  ".woff2": "font/woff2",
+};
+
+/** Content-Security-Policy for served HTML. The Vite build is external
+ *  scripts + hashed assets, all same-origin; inline styles are React's. */
+const HTML_CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "connect-src 'self'",
+  "font-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "frame-ancestors 'none'",
+].join("; ");
+
+/** Serve a file from the built app dir; returns false if it isn't there. */
+function serveAppFile(pathname: string, res: ServerResponse): boolean {
+  const rel = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
+  if (rel.includes("..")) return false;
+  try {
+    const buf = readFileSync(new URL(rel, APP_DIST));
+    const ext = rel.slice(rel.lastIndexOf("."));
+    const headers: Record<string, string> = { "content-type": CONTENT_TYPES[ext] ?? "application/octet-stream" };
+    if (ext === ".html") headers["content-security-policy"] = HTML_CSP;
+    res.writeHead(200, headers);
+    res.end(buf);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Best LAN-reachable base URL for guest join QRs. A QR built from the
+ * console's `location.origin` is `http://localhost:…` when the operator
+ * opened the console locally — useless to a phone (localhost is the phone
+ * itself). The server knows its real LAN IP, so it hands one out.
+ */
+function joinBase(): string {
+  const urls = lanUrls(PORT);
+  return urls.find((u) => !u.includes("localhost")) ?? urls[0]!;
+}
+
+// The multi-tenant registry: one `EventRuntime` per live event, keyed by id.
+const registry = new EventRegistry(STATE_DIR, joinBase);
+
+// The default event journals to the state-dir root (not a sub-directory) so
+// an existing single-event deployment recovers its `.loom-state/` in place.
+// It's reachable both at the root paths (back-compat: the operator console +
+// the current participant app) and at `/e/default`.
+const defaultEvent = registry.register(
+  new EventRuntime({
+    eventId: "default",
+    store,
+    codes: PASS,
+    scenarioName: "escape-the-internet",
+    scenarioSource: DEFAULT_SCENARIO,
+    joinBase,
+  }),
+);
+
+// ---------------------------------------------------------------------
+// Control plane (author accounts + projects + events) — needs a database.
+// The event plane above runs without one; if the DB is unreachable the
+// control plane stays disabled and its routes answer 503, so a LAN-only
+// deployment is unaffected.
+// ---------------------------------------------------------------------
+
+const authHandler = toNodeHandler(auth);
+let controlPlane = false;
+
+async function initControlPlane(): Promise<void> {
+  // Author sessions are signed with AUTH_SECRET. Booting real accounts on
+  // the well-known dev secret would let anyone forge a session, so outside
+  // a localhost dev setup the control plane refuses to start without one.
+  if (!HAS_SECURE_SECRET && (!IS_LOCAL_BASE || process.env.NODE_ENV === "production")) {
+    process.stderr.write(
+      `  🛑 control plane disabled — refusing to run author accounts with the default dev auth secret.\n` +
+        `     Set BETTER_AUTH_SECRET (e.g. \`openssl rand -base64 32\`) and restart. The event plane still runs.\n`,
+    );
+    return;
+  }
+  if (!(await dbReady())) {
+    process.stderr.write(`  ⚠️  control plane disabled — database unreachable at ${DATABASE_URL}\n`);
+    return;
+  }
+  if (!HAS_SECURE_SECRET) {
+    process.stderr.write(`  ⚠️  using the default dev auth secret — set BETTER_AUTH_SECRET before deploying\n`);
+  }
+  await migrateAuth();
+  await initSchema();
+  controlPlane = true;
+  // Rehydrate every event that was live before this process started: replay
+  // its journal and (for open ones) restart its clock — the multi-event
+  // generalization of the default event's `restore()`.
+  let rehydrated = 0;
+  for (const row of await liveEvents()) {
+    registry.ensure(specFromRow(row));
+    rehydrated++;
+  }
+  if (rehydrated > 0) process.stdout.write(`  ↻ Rehydrated ${rehydrated} live event(s) from the database\n`);
+}
+
+// ---------------------------------------------------------------------
+// Routing
+// ---------------------------------------------------------------------
+
+const server = createServer((req, res) => {
+  void route(req, res).catch((err) => {
+    if (err instanceof PayloadTooLarge) {
+      if (!res.headersSent) sendJson(res, 413, { error: "request body too large" });
+      return;
+    }
+    // Log the real error server-side; never echo internals to the client.
+    console.error("request failed:", err);
+    if (!res.headersSent) sendJson(res, 500, { error: "internal error" });
+  });
+});
+
+// Cross-origin callers must be on the trusted list (Vite dev servers +
+// LOOM_TRUSTED_ORIGINS). Same-origin traffic — the served play app, QR join
+// links, a reverse-proxied deployment — sends no Origin or its own, and
+// needs no CORS at all.
+const TRUSTED = new Set(TRUSTED_ORIGINS);
+
+// Route-level throttles (per client IP): `/api/resolve-code` is a code
+// oracle (any valid code → its event), `/api/qr` renders attacker-chosen
+// content. Both are cheap to call and deserve a ceiling.
+const resolveLimiter = new RateLimiter(30, 60_000);
+const qrLimiter = new RateLimiter(60, 60_000);
+
+async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+  const path = url.pathname;
+  const method = req.method ?? "GET";
+
+  // Baseline security headers on every response.
+  res.setHeader("x-content-type-options", "nosniff");
+  res.setHeader("x-frame-options", "DENY");
+  res.setHeader("referrer-policy", "no-referrer");
+  if (BASE_URL.startsWith("https://")) {
+    res.setHeader("strict-transport-security", "max-age=31536000");
+  }
+  const origin = req.headers.origin;
+  if (origin !== undefined && TRUSTED.has(origin)) {
+    res.setHeader("access-control-allow-origin", origin);
+    res.setHeader("vary", "origin");
+  }
+
+  if (method === "OPTIONS") {
+    res.writeHead(204, {
+      "access-control-allow-headers": "content-type, x-loom-token",
+      "access-control-allow-methods": "GET, POST, OPTIONS",
+    });
+    res.end();
+    return;
+  }
+
+  // --- author auth plane (BetterAuth owns everything under /api/auth) ---
+  if (path.startsWith("/api/auth")) {
+    if (!controlPlane) return void sendJson(res, 503, { error: "authoring is offline (no database)" });
+    await authHandler(req, res);
+    return;
+  }
+
+  // --- author control plane: projects + files + events (authors only) ---
+  if (path === "/api/projects" || path.startsWith("/api/projects/")) {
+    if (!controlPlane) return void sendJson(res, 503, { error: "authoring is offline (no database)" });
+    const user = await authUser(req);
+    if (user === null) return void sendJson(res, 401, { error: "sign in" });
+    const segs = path.split("/").filter(Boolean); // ["api","projects",id,"event",action?]
+    if (segs.length >= 4 && segs[3] === "event") {
+      if (await handleEvent(req, res, method, segs, user, { registry, joinBase })) return;
+      return void sendJson(res, 404, { error: "not found" });
+    }
+    if (await handleProjects(req, res, method, path, user)) return;
+    return void sendJson(res, 404, { error: "not found" });
+  }
+
+  // --- the built participant app (loom-play) at `/` + its static assets ---
+  // Moderation now lives in the Loom editor's Run panel, not a standalone
+  // console; guests + performers use this app.
+  if (
+    method === "GET" &&
+    (path === "/" || path === "/index.html" || path.startsWith("/assets/") || path === "/favicon.ico")
+  ) {
+    if (serveAppFile(path, res)) return;
+    // Not built yet — a plain hint rather than a blank page.
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8", "content-security-policy": HTML_CSP });
+    res.end(
+      `<!doctype html><meta charset=utf-8><title>Loom</title>` +
+        `<body style="font:16px system-ui;background:#0b0d12;color:#e7ecf3;padding:2rem">` +
+        `<h1>Loom event server</h1><p>The participant app isn't built yet. Run ` +
+        `<code>pnpm --filter loom-play build</code> (or <code>cd ../play && pnpm dev</code> for live dev on :5174).</p>`,
+    );
+    return;
+  }
+
+  // --- QR code for a join URL / guest pass ---
+  if (method === "GET" && path === "/api/qr") {
+    if (!qrLimiter.take(ipOf(req))) return void sendJson(res, 429, { error: "slow down" });
+    const text = (url.searchParams.get("text") ?? "").slice(0, 300);
+    const svg = await QRCode.toString(text || " ", { type: "svg", margin: 1, width: 240 });
+    res.writeHead(200, { "content-type": "image/svg+xml", "cache-control": "no-store" });
+    res.end(svg);
+    return;
+  }
+
+  // --- public bootstrap: a short passcode → which event + role it grants ---
+  // A guest/performer/moderator knows only their code; this tells the client
+  // which `/e/:eventId` to talk to before it registers or signs in.
+  // Throttled: this is the one endpoint that confirms a code is valid.
+  if (method === "POST" && path === "/api/resolve-code") {
+    if (!resolveLimiter.take(ipOf(req))) return void sendJson(res, 429, { error: "too many attempts — slow down" });
+    const body = await readBody(req);
+    const hit = registry.resolveCode(str(body, "code"));
+    if (hit === null) return void sendJson(res, 404, { error: "no event with that code" });
+    return void sendJson(res, 200, hit);
+  }
+
+  // --- event-scoped routes under /e/:eventId ---
+  if (path.startsWith("/e/")) {
+    const rest = path.slice(3);
+    const slash = rest.indexOf("/");
+    const eventId = slash === -1 ? rest : rest.slice(0, slash);
+    const subPath = slash === -1 ? "/" : rest.slice(slash);
+    const runtime = registry.get(eventId);
+    if (runtime === undefined) return void sendJson(res, 404, { error: "unknown event" });
+    // The owning author moderates via their session — no mod code needed.
+    // That covers the mod POST routes AND the gated mod reads (the SSE
+    // stream, /api/state, /api/history), so the editor's Run/Deploy modes
+    // work on the session cookie alone.
+    let moderator = false;
+    const wantsModRead =
+      (subPath === "/events" || subPath === "/api/state" || subPath === "/api/history") &&
+      (url.searchParams.get("role") ?? "mod") === "mod";
+    if (controlPlane && (subPath.startsWith("/api/mod/") || wantsModRead)) {
+      const user = await authUser(req);
+      if (user !== null) moderator = (await eventOwnerId(eventId)) === user.id;
+    }
+    if (await runtime.handle(req, res, method, subPath, url, { moderator })) return;
+    return void sendJson(res, 404, { error: "not found" });
+  }
+
+  // --- back-compat: bare event routes target the default event ---
+  if (await defaultEvent.handle(req, res, method, path, url)) return;
+
+  sendJson(res, 404, { error: "not found" });
+}
+
+// ---------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------
+
+const restored = defaultEvent.restore();
+void initControlPlane();
+
+server.listen(PORT, HOST, () => {
+  const urls = lanUrls(PORT);
+  let appBuilt = true;
+  try {
+    readFileSync(new URL("index.html", APP_DIST));
+  } catch {
+    appBuilt = false;
+  }
+  process.stdout.write(`\n  Loom event server — "${defaultEvent.scenario}"  (phase: ${defaultEvent.currentPhase})\n\n`);
+  process.stdout.write(`  Passcodes — share with the room:\n`);
+  process.stdout.write(`    🎟️  Guest event code  : ${PASS.event}\n`);
+  process.stdout.write(`    🎭  Performer passcode: ${PASS.prime}\n`);
+  process.stdout.write(`    🛡️  Moderator passcode: ${PASS.mod}\n`);
+  process.stdout.write(`    (moderate from the Loom editor's Run panel; also saved to ${STATE_DIR}/codes.json)\n\n`);
+  if (restored) {
+    process.stdout.write(
+      `  ↻ Restored ${restored.guests} guest(s), ${restored.events} event(s), ${restored.sessions} live session(s) from ${STATE_DIR}\n\n`,
+    );
+  }
+  for (const u of urls) process.stdout.write(`  → ${u}  (participant app)\n`);
+  process.stdout.write(`\n`);
+  if (appBuilt) {
+    process.stdout.write(`  Guests + performers use the app at /. Authors moderate from the editor's Run panel (⌘3).\n\n`);
+  } else {
+    process.stdout.write(`  ⚠️  participant app not built — run \`pnpm --filter loom-play build\`\n`);
+    process.stdout.write(`     (or for live dev: \`cd ../play && pnpm dev\` and use :5174).\n\n`);
+  }
+});
+
+function lanUrls(port: number): string[] {
+  const out = [`http://localhost:${port}`];
+  const ifaces = networkInterfaces();
+  for (const list of Object.values(ifaces)) {
+    for (const net of list ?? []) {
+      if (net.family === "IPv4" && !net.internal) out.push(`http://${net.address}:${port}`);
+    }
+  }
+  return out;
+}

@@ -1,0 +1,41 @@
+[package]
+name = "loom-runtime"
+version = "0.1.0"
+edition = "2021"
+license.workspace = true
+description = "Runtime for Loom v3 — bundle, resolver, playhead, ledger, reactive graph, scheduler, directive registry, and Luau bridge. See docs/loom-v3.html."
+
+[lib]
+name = "loom_runtime"
+path = "src/lib.rs"
+
+[[bin]]
+name = "loom-play"
+path = "src/bin/loom_play.rs"
+
+# Golden-fixture dump tool for the TypeScript `@loom/core` port. Emits
+# parser / edit / play goldens the vitest parity harness checks against.
+# Build with `--no-default-features` so play transcripts run in the same
+# lenient (no-Luau) mode the browser engine uses.
+[[bin]]
+name = "loom-golden"
+path = "src/bin/loom_golden.rs"
+
+[features]
+# Luau bridge ships by default on native. Web builds (`loom-wasm`)
+# disable it via `default-features = false` because mluau requires
+# `wasm32-unknown-emscripten`, which is incompatible with the
+# wasm-bindgen pipeline. See `docs/loom-web-shipping.md` §7 for
+# the deferred lua-on-web plan.
+default = ["luau"]
+luau = ["dep:mlua"]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+postcard = { workspace = true }
+indexmap = { workspace = true }
+thiserror = { workspace = true }
+mlua = { workspace = true, optional = true }
+rand = { workspace = true }
+loom-parser = { path = "../parser" }

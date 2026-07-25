@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="LoomStyle" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://addons/loom/loom_style.gd" id="1_style"]
+[ext_resource type="Script" path="res://addons/loom/loom_speaker_style.gd" id="2_speaker"]
+
+[sub_resource type="StyleBoxFlat" id="panel"]
+bg_color = Color(0.09, 0.08, 0.06, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.45, 0.38, 0.24, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="Resource" id="wren"]
+script = ExtResource("2_speaker")
+speaker = "WREN"
+display_name = "Wren"
+color = Color(0.55, 0.78, 1, 1)
+
+[resource]
+script = ExtResource("1_style")
+panel = SubResource("panel")
+speaker_color = Color(0.95, 0.82, 0.55, 1)
+speakers = [SubResource("wren")]

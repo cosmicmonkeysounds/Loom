@@ -1,0 +1,19 @@
+# Locale banks: `loadbank` registers the sidecar, `locale` swaps the
+# active override map with no code reload, untranslated keys fall back,
+# and `locale ""` returns to the source language. Digests pin the loaded
+# bank list + active locale through a save/load round trip.
+loadbank locale.fr.loombank
+set Time.hour 6
+start greet
+run             # source language
+locale fr
+start greet
+run             # French: literals swap, {Time.hour} still evaluates
+choose 0
+run
+locale
+start greet
+run             # back to the source (bare `locale` = source language)
+save
+load
+run

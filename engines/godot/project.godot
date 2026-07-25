@@ -1,0 +1,17 @@
+; Godot project for the Loom bank runtime: the addon under test, a demo
+; scene, and the headless conformance runner.
+;
+;   godot --headless --path . --script res://test/run.gd -- \
+;         --bank <bank.loombank> --scenario <script> --out <trace.jsonl>
+
+config_version=5
+
+[application]
+
+config/name="Loom Godot Runtime"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+run/main_scene="res://demo/demo.tscn"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"

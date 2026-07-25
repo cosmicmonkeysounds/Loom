@@ -1,0 +1,40 @@
+# Loom's Rust workspace — the original Rust implementation of the
+# language (the TypeScript engine under `core/` is the maintained,
+# feature-complete implementation; see CLAUDE.md "Status").
+#
+# `server/` (loom-relayd, the legacy multi-user relay) is excluded from
+# this workspace: it depends on `prism-core` from the Prism monorepo
+# and only builds inside that checkout. Everything else builds from a
+# fresh clone: `cargo build`, `cargo test`.
+[workspace]
+resolver = "2"
+members = ["parser", "runtime", "lsp", "syntax"]
+exclude = ["server"]
+
+[workspace.package]
+license = "MIT"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+anyhow = "1"
+postcard = { version = "1", features = ["alloc"] }
+indexmap = { version = "2", features = ["serde"] }
+rand = "0.8"
+lsp-server = "0.7"
+lsp-types = "0.95"
+# Luau bridge for loom-runtime's directive registry. Native builds
+# only — web/wasm consumers build loom-runtime with
+# `--no-default-features` to drop it.
+mlua = { package = "mluau", git = "https://github.com/mluau/mluau", rev = "ec9ddc0d27cd4ac3b3a5b7cb6f2da7310905ae01", features = ["luau", "vendored", "serialize"] }
+
+# Dependencies build optimized even in dev. This is not just a speed
+# tweak: the vendored Luau C++ inside `mluau` fails Lua-state init when
+# compiled at opt-level 0 ("attempt to load a text chunk (mode is 'b')"
+# from Lua::new), so dep optimization is required for the `luau`
+# feature to work in debug builds.
+[profile.dev.package."*"]
+opt-level = 2
+debug = false
+codegen-units = 256

@@ -1,0 +1,9 @@
+# The reference scenario: play the entry beat, take the first option,
+# then verify a save/load round trip is invisible.
+start opening
+run
+choose 0
+run
+save
+load
+run

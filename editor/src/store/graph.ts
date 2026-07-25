@@ -1,0 +1,246 @@
+// State for the story-graph node editor (Writing mode's canvas pane).
+//
+// View stack (project ⇄ beat drill-in), node selection, overlay toggles,
+// per-project manual layout overrides (persisted), and the runtime
+// overlay contract that Run mode feeds (from either source) —
+// all owned here so the canvas, the Story Bin, the dock strip, and the
+// Properties tray stay in lockstep.
+
+import { create } from 'zustand'
+import { useMode } from '@/store/mode'
+
+/** What the canvas is showing: the whole project, or inside one beat. */
+export type GraphView = { kind: 'project' } | { kind: 'beat'; beatKey: string }
+
+export type GraphOverlays = {
+  /** Character→beat hook routing (`on scan guest` → beat). */
+  hooks: boolean
+  /** Entity nodes + cast / setting / member / is / owns / contains edges. */
+  entities: boolean
+  /** Edge labels (choice text, conditions). */
+  labels: boolean
+}
+
+/** Manual node-position overrides, keyed by node id. */
+export type LayoutOverrides = Record<string, { x: number; y: number }>
+
+/**
+ * Live-run overlay: beat keys → visit counts, the most recently
+ * entered beat (pulsed on the canvas), and best-effort edge traversal
+ * counts (`from→to` between consecutively entered beats). Fed by the
+ * operate store's mod feed (Run mode, Live source) and by the local
+ * simulator (`store/sim.ts`, Sim source) — the identical contract.
+ */
+export type RuntimeOverlay = {
+  visits: Record<string, number>
+  current: string | null
+  /** `${from}→${to}` → times the runtime moved between those beats. */
+  traversed: Record<string, number>
+  /** Each participant's live story position: person id → { beat, label }.
+   *  Renders as occupant chips on the beat's card, so the map shows who
+   *  is standing where in the story right now. */
+  positions: Record<string, { beat: string; label: string }>
+}
+
+/** The traversal key an edge decoration looks up. */
+export const traversalKey = (from: string, to: string): string => `${from}→${to}`
+
+const EMPTY_RUNTIME: RuntimeOverlay = { visits: {}, current: null, traversed: {}, positions: {} }
+
+type GraphState = {
+  view: GraphView
+  /** Selected canvas node id (beat key / entity id / `file:` group). */
+  selected: string | null
+  /** Selected edge id (mutually exclusive with `selected`). */
+  selectedEdge: string | null
+  /**
+   * A pending "bring this node into view" command (from the Story Bin,
+   * the tray's link lists, search…). The canvas consumes it — retrying
+   * across relayouts until the node exists — then clears it. `gentle`
+   * requests (cursor-follow) keep the current zoom and never force
+   * overlays / expand collapsed files — a miss just clears.
+   */
+  centerRequest: { id: string; token: number; gentle?: boolean } | null
+  /** Drill-in node currently inline-editing its source slice. */
+  editingNode: string | null
+  /** Project-view word block currently inline-editing its source slice. */
+  editingBlock: { beatKey: string; index: number } | null
+  /**
+   * Beat keys whose project-view card is expanded to show every word
+   * block of its body (the card stretches to fit; collapse restores
+   * the compact preview). Session-local — layout, not document, state.
+   */
+  expanded: Record<string, true>
+  /**
+   * File containers collapsed to a compact header-only node (keyed by
+   * path). Their beats/entities hide and edges re-route to the file
+   * node. Session-local — layout, not document, state.
+   */
+  collapsedFiles: Record<string, true>
+  overlays: GraphOverlays
+  /** Per-project manual position overrides (projectKey → overrides). */
+  layouts: Record<string, LayoutOverrides>
+  runtime: RuntimeOverlay
+  search: string
+  /** Writing-mode QoL: the canvas selects + centers the beat/entity the
+   *  text cursor sits in (session-local, toolbar-toggled). */
+  followCursor: boolean
+
+  openProject(): void
+  openBeat(beatKey: string): void
+  select(id: string | null): void
+  selectEdge(id: string | null): void
+  /** Select + ask the canvas to center/zoom on `id`. */
+  reveal(id: string): void
+  /** Follow-cursor reveal: select + center without zooming or forcing
+   *  hidden targets visible. */
+  revealGentle(id: string): void
+  setFollowCursor(on: boolean): void
+  clearCenter(token: number): void
+  setEditing(id: string | null): void
+  setEditingBlock(v: { beatKey: string; index: number } | null): void
+  /** Expand / collapse one beat card's word blocks. */
+  toggleExpanded(beatKey: string): void
+  /** Expand (`true`) or collapse (`false`) every beat card at once. */
+  setAllExpanded(keys: string[], on: boolean): void
+  /** Collapse / expand one file container. */
+  toggleFileCollapsed(path: string): void
+  setOverlay(key: keyof GraphOverlays, on: boolean): void
+  setSearch(q: string): void
+  moveNode(projectKey: string, id: string, pos: { x: number; y: number }): void
+  resetLayout(projectKey: string): void
+  runtimeEnter(beatKey: string, subject?: string | null, label?: string | null): void
+  runtimeReset(): void
+}
+
+const LS_KEY = 'loom.graph.layouts'
+
+function loadLayouts(): Record<string, LayoutOverrides> {
+  try {
+    const raw = localStorage.getItem(LS_KEY)
+    return raw ? (JSON.parse(raw) as Record<string, LayoutOverrides>) : {}
+  } catch {
+    return {}
+  }
+}
+
+function persist(layouts: Record<string, LayoutOverrides>): void {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(layouts))
+  } catch {
+    // quota / private mode — layout stays session-local
+  }
+}
+
+export const useGraph = create<GraphState>((set) => ({
+  view: { kind: 'project' },
+  selected: null,
+  selectedEdge: null,
+  centerRequest: null,
+  editingNode: null,
+  editingBlock: null,
+  expanded: {},
+  collapsedFiles: {},
+  overlays: { hooks: true, entities: false, labels: true },
+  layouts: loadLayouts(),
+  runtime: EMPTY_RUNTIME,
+  search: '',
+  followCursor: true,
+
+  openProject: () => set({ view: { kind: 'project' }, editingNode: null, editingBlock: null }),
+  openBeat: (beatKey) =>
+    set({
+      view: { kind: 'beat', beatKey },
+      selected: beatKey,
+      selectedEdge: null,
+      editingNode: null,
+      editingBlock: null,
+    }),
+  select: (id) => set({ selected: id, selectedEdge: null }),
+  selectEdge: (id) => set({ selectedEdge: id, selected: null }),
+  reveal: (id) => {
+    // An explicit reveal insists on being seen — re-open a ⌘\-hidden
+    // Writing graph pane before asking the canvas to center.
+    const m = useMode.getState()
+    if (m.mode === 'writing' && !m.ui.writing.graphOpen) {
+      m.setUi('writing', { graphOpen: true })
+    }
+    set((s) => ({
+      selected: id,
+      selectedEdge: null,
+      centerRequest: { id, token: (s.centerRequest?.token ?? 0) + 1 },
+    }))
+  },
+  revealGentle: (id) =>
+    set((s) => ({
+      selected: id,
+      selectedEdge: null,
+      centerRequest: { id, token: (s.centerRequest?.token ?? 0) + 1, gentle: true },
+    })),
+  setFollowCursor: (on) => set({ followCursor: on }),
+  clearCenter: (token) =>
+    set((s) => (s.centerRequest?.token === token ? { centerRequest: null } : {})),
+  setEditing: (id) => set({ editingNode: id }),
+  setEditingBlock: (v) => set({ editingBlock: v }),
+  toggleExpanded: (beatKey) =>
+    set((s) => {
+      const expanded = { ...s.expanded }
+      if (expanded[beatKey]) delete expanded[beatKey]
+      else expanded[beatKey] = true
+      return { expanded }
+    }),
+  setAllExpanded: (keys, on) =>
+    set(() => {
+      const expanded: Record<string, true> = {}
+      if (on) for (const k of keys) expanded[k] = true
+      return { expanded }
+    }),
+  toggleFileCollapsed: (path) =>
+    set((s) => {
+      const collapsedFiles = { ...s.collapsedFiles }
+      if (collapsedFiles[path]) delete collapsedFiles[path]
+      else collapsedFiles[path] = true
+      return { collapsedFiles }
+    }),
+  setOverlay: (key, on) => set((s) => ({ overlays: { ...s.overlays, [key]: on } })),
+  setSearch: (q) => set({ search: q }),
+  moveNode: (projectKey, id, pos) =>
+    set((s) => {
+      const forProject = { ...(s.layouts[projectKey] ?? {}), [id]: pos }
+      const layouts = { ...s.layouts, [projectKey]: forProject }
+      persist(layouts)
+      return { layouts }
+    }),
+  resetLayout: (projectKey) =>
+    set((s) => {
+      const layouts = { ...s.layouts }
+      delete layouts[projectKey]
+      persist(layouts)
+      return { layouts }
+    }),
+  runtimeEnter: (beatKey, subject, label) =>
+    set((s) => {
+      // Best-effort traversal: mark the hop from the previous beat. A hook
+      // may interleave unrelated beats, so this is a heat overlay, not an
+      // exact trace — good enough to light the routes a run actually took.
+      const traversed = { ...s.runtime.traversed }
+      if (s.runtime.current !== null && s.runtime.current !== beatKey) {
+        const k = traversalKey(s.runtime.current, beatKey)
+        traversed[k] = (traversed[k] ?? 0) + 1
+      }
+      // A subject-bound entry moves that person's position chip here.
+      const positions =
+        subject != null
+          ? { ...s.runtime.positions, [subject]: { beat: beatKey, label: label ?? subject } }
+          : s.runtime.positions
+      return {
+        runtime: {
+          visits: { ...s.runtime.visits, [beatKey]: (s.runtime.visits[beatKey] ?? 0) + 1 },
+          current: beatKey,
+          traversed,
+          positions,
+        },
+      }
+    }),
+  runtimeReset: () => set({ runtime: EMPTY_RUNTIME }),
+}))

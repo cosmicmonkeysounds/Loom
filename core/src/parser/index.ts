@@ -1,0 +1,36 @@
+//! Public surface of the Loom parser — lexer, AST, diagnostics, and the
+//! `parse` entry point.
+
+export * from "./source.ts";
+export * from "./diagnostics.ts";
+export * from "./ast.ts";
+export * from "./keywords.ts";
+export { parse, parseDivertTarget } from "./parser.ts";
+export { scan, scannedLineSpan, type LineKind, type ScannedLine } from "./lexer.ts";
+export { strip as stripComments } from "./comments.ts";
+export { lower as lowerDeclaration, parseMixinRef, type MixinRef } from "./decl-body.ts";
+export {
+  type Anchor,
+  EditError,
+  type EditErrorCode,
+  type TextEdit,
+  appendBodyLines,
+  appendChoice,
+  appendDeclaration,
+  appendDivert,
+  applyBeatProperty,
+  applyEdits,
+  applyInsertBeat,
+  applyMoveBeat,
+  applyRemoveBeat,
+  insertBeat,
+  insertBodyLines,
+  moveBeat,
+  moveBodyItem,
+  removeBeat,
+  removeBodyItem,
+  renameBeatDecl,
+  replaceExact,
+  retargetDivert,
+  setBeatProperty,
+} from "./edit.ts";

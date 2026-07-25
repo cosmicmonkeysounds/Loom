@@ -1,0 +1,11 @@
+# Cast — unaligned
+#
+# Props and figures that belong to no faction: the Recycle Bin that wipes your
+# record, the Search Oracle that autocompletes your fate, the Profile Mirror
+# that shows you to yourself, and the Banned — a ghost nobody could log out.
+# No badge, so they use the bare `Scanner(beat)` router straight.
+
+CHARACTER Recycle_Bin is Scanner(clear_history)
+CHARACTER Search_Oracle is Scanner(ask_oracle)
+CHARACTER Profile_Mirror is Scanner(check_profile)
+CHARACTER The_Banned is Scanner(banned_ghost)

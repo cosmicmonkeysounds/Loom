@@ -1,0 +1,21 @@
+{"cmd":"start opening","digest":"sha256:146dcea6ed67382847b03f3dfc8011ceb9fe9b7134ab8054278ef0205971556a"}
+{"i":0,"name":"opening","program":"f904a6cfcdb92317","setting":"00821c811b1ab459","step":"beat","subject":""}
+{"i":1,"setting":"00821c811b1ab459","speaker":0,"step":"line","text":"The stair smells of paraffin and salt."}
+{"display":"WREN","i":2,"note":"(guarded)","setting":"00821c811b1ab459","speaker":"f91bd7026ce67d1f","step":"line","text":"You're late. The lamp's been dark for hours."}
+{"display":"WREN","i":3,"setting":"00821c811b1ab459","speaker":"f91bd7026ce67d1f","step":"line","text":"Don't touch anything."}
+{"i":4,"menu":"f904a6cfcdb92317:0","options":[{"i":0,"tag":"opening/body/4/opt0","text":"Climb to the lamp room."},{"i":1,"tag":"opening/body/4/opt1","text":"Leave her to it."}],"step":"choice"}
+{"cmd":"run","digest":"sha256:7ef8caf7c52e22d987bdfaa9d70198b438dcf462ebb8632cfcfb2a7c0ae5acca"}
+{"cmd":"choose 0","digest":"sha256:8d6bde4ea6ea0191cf5133f4bcee82de1f4431c9004640f96dd89c51134f1bab"}
+{"i":5,"path":"Wren.trust","step":"varset","value":{"t":"num","v":30}}
+{"i":6,"step":"signal","subject":"","verb":"d3af4498fd6c376d"}
+{"i":7,"name":"lamp_room","program":"8d59a6f1aca81ab7","setting":"918b209269167cdc","step":"beat","subject":""}
+{"i":8,"setting":"918b209269167cdc","speaker":0,"step":"line","text":"The lamp room is colder than you expected."}
+{"i":9,"path":"Wren.trust","step":"varset","value":{"t":"num","v":35}}
+{"i":10,"name":"Wren.reassure","program":"060d34dba06cbc4b","setting":"","step":"beat","subject":"Wren"}
+{"display":"WREN","i":11,"speaker":"f91bd7026ce67d1f","step":"line","text":"The lamp holds."}
+{"i":12,"step":"done"}
+{"cmd":"run","digest":"sha256:1ab795fac4237ffa204f9365b24300d9d9c9bda115f1362771d0d602e88945b6"}
+{"cmd":"save","digest":"sha256:1ab795fac4237ffa204f9365b24300d9d9c9bda115f1362771d0d602e88945b6"}
+{"cmd":"load","digest":"sha256:1ab795fac4237ffa204f9365b24300d9d9c9bda115f1362771d0d602e88945b6"}
+{"i":13,"step":"done"}
+{"cmd":"run","digest":"sha256:1ab795fac4237ffa204f9365b24300d9d9c9bda115f1362771d0d602e88945b6"}

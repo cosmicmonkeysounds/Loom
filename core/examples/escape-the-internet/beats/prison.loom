@@ -1,0 +1,31 @@
+# Beats — inside the Internet (the cells + the way out)
+#
+# These play to a captured guest. Hacker_Zero arms; The_Banned warns. Each
+# gates on `guest.captured` so it reads differently to the free. The Sysadmin
+# interrogation and the Firewall now live *on their props* as owned beats
+# (see `cast/algorithm.loom`), reached by `-> self.interrogation` /
+# `-> self.firewall` — the scene sits beside the scan that triggers it.
+
+# Hacker_Zero arms a captive instead of saving them. `SELF` resolves to
+# whichever prop routed here (Hacker_Zero), so the booth needn't restate it.
+== hacker_tool(guest)
+  cast: Hacker_Zero, guest
+  SELF
+    The Glitchers don't break you out. We hand you the tools and you walk yourself out.
+    Take this — a one-time heat-sink. Burns your trail clean.
+  * Take the heat-sink
+    <set: guest.heat = 0>
+    <broadcast: cloaked to participant(guest)>
+  * Ask about the firewall
+    The Oracle knows where it's thin. Stay cold, and run when the lights go out.
+    <set: guest.karma += 5>
+
+# The Banned — a ghost nobody could log out.
+== banned_ghost(guest)
+  cast: The_Banned, guest
+  SELF
+    <after: guest.captured>
+      I've been in here since the old forums. Permabanned. No appeal, no escape.
+      Don't end up like me. The Glitchers are real. Find the static.
+    <otherwise>
+      A flickering figure mouths something at you through the glass. You can't quite read it.

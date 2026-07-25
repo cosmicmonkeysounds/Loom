@@ -1,0 +1,10 @@
+{
+  "name": "loom",
+  "private": true,
+  "license": "MIT",
+  "description": "Loom — a scripting language for interactive stories, from branching game dialogue to live immersive events.",
+  "scripts": {
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

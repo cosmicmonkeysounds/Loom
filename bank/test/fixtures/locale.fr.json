@@ -1,0 +1,7 @@
+{
+  "greet/body/0": "Bienvenue sur le quai. L'horloge indique {0}.",
+  "greet/body/1/said/0": "Attention au ferry de {0} heures.",
+  "greet/body/2/opt0": "Demander pour la brume.",
+  "greet/body/2/opt0/0": "La brume arrive dans {0} heures.",
+  "greet/body/2/opt1": "Partir."
+}

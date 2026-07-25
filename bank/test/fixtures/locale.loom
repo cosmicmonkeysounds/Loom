@@ -1,0 +1,21 @@
+entry: greet
+
+LOCATION Quay
+  label: The Quay
+
+CHARACTER Keeper
+  home: Quay
+
+== greet
+  cast: Keeper
+  setting: Quay
+
+Welcome to the quay.
+The clock reads {Time.hour}.
+KEEPER
+  Mind the {Time.hour} o'clock ferry.
+* Ask about the fog.
+  Fog rolls in {Time.hour} hours.
+  -> END
+* Leave.
+  -> END
