@@ -30,6 +30,7 @@
       "@loom/core/chat": ["../core/server/chat.ts"],
       "@loom/core/views": ["../core/server/views.ts"],
       "@loom/core": ["../core/src/index.ts"],
+      "@loom/bank": ["../bank/src/index.ts"],
       "@/*": ["./src/*"]
     }
   },

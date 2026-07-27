@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/store/auth'
 import { useProjects } from '@/store/projects'
 import { useWorkspace } from '@/store/workspace'
+import { isFsAccessSupported, pickDirectory } from '@/lib/fs'
+import { confirmAction } from '@/store/dialog'
 
 const TEMPLATES = [
   { id: 'escape-the-internet', label: 'Escape the Internet (example)' },
@@ -47,10 +49,9 @@ export function ProjectsLaunchpad() {
   }
 
   const openLocalFolder = async () => {
-    const picker = (window as unknown as { showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker
-    if (!picker) return
+    if (!isFsAccessSupported()) return
     try {
-      await openRoot(await picker())
+      await openRoot(await pickDirectory())
     } catch {
       /* cancelled */
     }
@@ -135,7 +136,15 @@ export function ProjectsLaunchpad() {
               </button>
               <button
                 onClick={() => {
-                  if (window.confirm(`Delete “${p.name}”? This cannot be undone.`)) void remove(p.id)
+                  void (async () => {
+                    const ok = await confirmAction({
+                      title: `Delete “${p.name}”?`,
+                      body: 'This cannot be undone.',
+                      confirmLabel: 'Delete',
+                      danger: true,
+                    })
+                    if (ok) await remove(p.id)
+                  })()
                 }}
                 className="ml-3 rounded-lg px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-800 hover:text-red-400"
               >

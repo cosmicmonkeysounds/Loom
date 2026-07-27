@@ -25,6 +25,7 @@ import { docText, pathForUri } from '@/lib/lsp-client'
 import { findFileEntryByPath } from '@/lib/lsp-nav'
 import { rewireGraphEdge, useStoryGraph, writePathContents } from '@/lib/story-graph'
 import { useGraph } from '@/store/graph'
+import { promptText } from '@/store/dialog'
 import {
   bodyBreakdown,
   declKindLabel,
@@ -62,6 +63,14 @@ export function PropertiesTray({ mode }: { mode: Mode }) {
       <RunCockpit>
         <CockpitInspector />
       </RunCockpit>
+    )
+  }
+  // Integrations has no selection to inspect — the stage is self-contained.
+  if (mode === 'integrations') {
+    return (
+      <div className="h-full w-full p-3 text-xs text-zinc-500">
+        Integrations has no inspector — engine targets are configured on the stage.
+      </div>
     )
   }
   if (mode === 'deploy') {
@@ -732,10 +741,21 @@ function AddField({ onAdd }: { onAdd: (key: string, value: string) => void }) {
     <button
       type="button"
       onClick={() => {
-        const key = window.prompt('New property name (e.g. setting)')?.trim()
-        if (!key) return
-        const value = window.prompt(`Value for ${key}`)?.trim() ?? ''
-        onAdd(key, value)
+        void (async () => {
+          const key = await promptText({
+            title: 'New property',
+            placeholder: 'setting',
+            confirmLabel: 'Next',
+          })
+          if (!key) return
+          const value = await promptText({
+            title: `Value for ${key}`,
+            confirmLabel: 'Add',
+            allowEmpty: true,
+          })
+          if (value === null) return
+          onAdd(key, value)
+        })()
       }}
       className="mx-3 my-1 px-2 py-0.5 text-[11px] text-zinc-400 border border-dashed border-white/15 rounded hover:text-zinc-200 hover:border-white/30"
     >

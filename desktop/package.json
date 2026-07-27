@@ -1,0 +1,17 @@
+{
+  "name": "loom-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "The Loom desktop app — the author IDE in a Tauri shell, plus Wwise-style game-engine integration (install the Godot runtime addon + build banks straight into a linked Godot project).",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "tauri": "tauri",
+    "icons": "node scripts/gen-icons.mjs"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}

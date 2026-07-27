@@ -1,6 +1,7 @@
 import { useWorkspace } from '@/store/workspace'
 import { isFsAccessSupported, pickDirectory } from '@/lib/fs'
 import { FileTree } from '@/components/files/FileTree'
+import { notify, promptText } from '@/store/dialog'
 
 export function Sidebar() {
   const root = useWorkspace((s) => s.root)
@@ -12,7 +13,10 @@ export function Sidebar() {
 
   const openFolder = async () => {
     if (!isFsAccessSupported()) {
-      alert('The File System Access API is not supported in this browser. Use Chrome or Edge.')
+      await notify({
+        title: 'Opening a local folder isn’t supported here',
+        body: 'This browser has no File System Access API. Use Chrome or Edge, or the Loom desktop app.',
+      })
       return
     }
     try {
@@ -32,8 +36,15 @@ export function Sidebar() {
             <button
               type="button"
               onClick={() => {
-                const name = window.prompt('New file name (in workspace root):')
-                if (name) void createNewFile(name)
+                void (async () => {
+                  const name = await promptText({
+                    title: 'New file',
+                    body: 'Created in the workspace root.',
+                    placeholder: 'scene.loom',
+                    confirmLabel: 'Create',
+                  })
+                  if (name) await createNewFile(name)
+                })()
               }}
               className="text-xs text-zinc-300 hover:text-white px-2 py-0.5 border border-white/10 rounded hover:bg-white/5"
               title="New file in workspace root"

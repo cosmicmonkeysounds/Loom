@@ -15,9 +15,12 @@ import {
   type FsEntry,
 } from '@/lib/fs'
 import { idbDel, idbGet, idbSet } from '@/lib/idb'
+import { isDesktop } from '@/lib/desktop'
+import { rehydrateDesktopHandle } from '@/lib/desktop-fs'
 import { useSettings } from '@/store/settings'
 import { projectsApi, type ProjectFile } from '@/lib/api'
 import { resetIndexCache, dropIndexedPath } from '@/lib/lsp-index'
+import { confirmAction, notify } from '@/store/dialog'
 
 function applyFormat(text: string): string {
   // Trim trailing whitespace on every line, and ensure exactly one final newline.
@@ -70,9 +73,11 @@ type WorkspaceState = {
   closeRoot: () => Promise<void>
   refreshTree: () => Promise<void>
   openFile: (entry: FsEntry) => Promise<void>
-  closeFile: (path: string) => void
-  closeOthers: (path: string) => void
-  closeAll: () => void
+  // Async because a dirty tab asks for confirmation through the in-app
+  // dialog host (the desktop webview has no `window.confirm`).
+  closeFile: (path: string) => Promise<void>
+  closeOthers: (path: string) => Promise<void>
+  closeAll: () => Promise<void>
   reopenClosed: () => Promise<void>
   setActive: (path: string) => void
   cycleTab: (delta: number) => void
@@ -300,7 +305,17 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     },
 
     restoreRoot: async () => {
-      const handle = await idbGet<FileSystemDirectoryHandle>(ROOT_HANDLE_KEY)
+      let handle = await idbGet<FileSystemDirectoryHandle>(ROOT_HANDLE_KEY)
+      if (handle && isDesktop()) {
+        // Desktop shim handles come back from IndexedDB as plain data
+        // (prototype dropped by structured clone) — revive them.
+        const revived = await rehydrateDesktopHandle(handle)
+        if (!revived) {
+          await idbDel(ROOT_HANDLE_KEY)
+          return
+        }
+        handle = revived as unknown as FileSystemDirectoryHandle
+      }
       if (!handle) return
       const perm = await queryHandlePermission(handle)
       if (perm === 'granted') {
@@ -385,14 +400,18 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       })
     },
 
-    closeFile: (path) =>
+    closeFile: async (path) => {
+      const open = get().openFiles[path]
+      if (!open) return
+      if (open.dirty && !(await confirmAction({
+        title: 'Discard unsaved changes?',
+        body: path,
+        confirmLabel: 'Discard',
+        danger: true,
+      }))) return
       set((s) => {
         const file = s.openFiles[path]
         if (!file) return {}
-        if (file.dirty) {
-          const ok = window.confirm(`Discard unsaved changes to ${path}?`)
-          if (!ok) return {}
-        }
         const { [path]: _gone, ...rest } = s.openFiles
         const order = s.tabOrder.filter((p) => p !== path)
         let nextActive = s.activePath
@@ -402,17 +421,21 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         }
         const closed = [{ path, handle: file.handle }, ...s.recentlyClosed.filter((c) => c.path !== path)].slice(0, 20)
         return { openFiles: rest, tabOrder: order, activePath: nextActive, recentlyClosed: closed }
-      }),
+      })
+    },
 
-    closeOthers: (path) =>
+    closeOthers: async (path) => {
+      if (!get().openFiles[path]) return
+      const dirtyOthers = Object.values(get().openFiles).filter((f) => f.path !== path && f.dirty)
+      if (dirtyOthers.length > 0 && !(await confirmAction({
+        title: `Discard unsaved changes in ${dirtyOthers.length} other tab(s)?`,
+        body: dirtyOthers.map((f) => f.path).join('\n'),
+        confirmLabel: 'Discard',
+        danger: true,
+      }))) return
       set((s) => {
         const keep = s.openFiles[path]
         if (!keep) return {}
-        const dirtyOthers = Object.values(s.openFiles).filter((f) => f.path !== path && f.dirty)
-        if (dirtyOthers.length > 0) {
-          const ok = window.confirm(`Discard unsaved changes in ${dirtyOthers.length} other tab(s)?`)
-          if (!ok) return {}
-        }
         const closedExtras = s.tabOrder
           .filter((p) => p !== path)
           .map((p) => ({ path: p, handle: s.openFiles[p].handle }))
@@ -422,15 +445,18 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
           activePath: path,
           recentlyClosed: [...closedExtras, ...s.recentlyClosed].slice(0, 20),
         }
-      }),
+      })
+    },
 
-    closeAll: () =>
+    closeAll: async () => {
+      const dirty = Object.values(get().openFiles).filter((f) => f.dirty)
+      if (dirty.length > 0 && !(await confirmAction({
+        title: `Discard unsaved changes in ${dirty.length} tab(s)?`,
+        body: dirty.map((f) => f.path).join('\n'),
+        confirmLabel: 'Discard',
+        danger: true,
+      }))) return
       set((s) => {
-        const dirty = Object.values(s.openFiles).filter((f) => f.dirty)
-        if (dirty.length > 0) {
-          const ok = window.confirm(`Discard unsaved changes in ${dirty.length} tab(s)?`)
-          if (!ok) return {}
-        }
         const closed = s.tabOrder.map((p) => ({ path: p, handle: s.openFiles[p].handle }))
         return {
           openFiles: {},
@@ -438,7 +464,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
           activePath: null,
           recentlyClosed: [...closed, ...s.recentlyClosed].slice(0, 20),
         }
-      }),
+      })
+    },
 
     reopenClosed: async () => {
       const { recentlyClosed } = get()
@@ -553,11 +580,11 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     createNewFile: async (name) => {
       const { root, refreshTree } = get()
       if (!root) {
-        alert('Open a folder first.')
+        await notify({ title: 'Open a folder first.' })
         return
       }
       if (get().projectId) {
-        alert('Adding files to a server project isn’t supported yet.')
+        await notify({ title: 'Adding files to a server project isn’t supported yet.' })
         return
       }
       const handle = await createFile(root.handle as FileSystemDirectoryHandle, name)
@@ -578,7 +605,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     createFileIn: async (dir, name) => {
       if (dir.kind !== 'directory') return
       if (get().projectId) {
-        alert('Adding files to a server project isn’t supported yet.')
+        await notify({ title: 'Adding files to a server project isn’t supported yet.' })
         return
       }
       const trimmed = name.trim()
@@ -609,7 +636,12 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     deleteEntry: async (parent, entry) => {
       if (parent.kind !== 'directory' || get().projectId) return
       const label = entry.kind === 'directory' ? `folder “${entry.name}” and all its contents` : `file “${entry.name}”`
-      if (!window.confirm(`Delete ${label}? This cannot be undone.`)) return
+      if (!(await confirmAction({
+        title: `Delete ${label}?`,
+        body: 'This cannot be undone.',
+        confirmLabel: 'Delete',
+        danger: true,
+      }))) return
       await removeEntry(parent.handle as FileSystemDirectoryHandle, entry.name, entry.kind === 'directory')
       // Drop the removed file(s) from the LSP index immediately (the gated
       // reindex only prunes when whole-project indexing is on).
@@ -641,7 +673,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       if (!trimmed || trimmed === entry.name) return
       const ok = await renameHandle(entry.handle as FileSystemFileHandle | FileSystemDirectoryHandle, trimmed)
       if (!ok) {
-        alert('Rename is not supported in this browser version.')
+        await notify({ title: 'Rename is not supported in this browser version.' })
         return
       }
       const oldPath = entry.path

@@ -18,7 +18,14 @@ folder with no account.
   event's roster/feed, backed by `store/operate.ts` over the per-event
   mod SSE + `/e/:eventId/api/mod/*` (authorized by the author's session
   — the author *is* the operator). `store/run.ts` owns the switch.
-- **Deploy events from the editor**: **Deploy** mode (`⌘3`) is where the
+- **Ship into a game engine**: **Integrations** mode (`⌘3`,
+  `components/integrations/`) is where the story leaves Loom for another
+  runtime — today the Wwise-style Godot pipeline (link a project, install
+  the runtime addon, build `.loombank` + `LoomIDs.gd`), moved out of
+  Deploy so *live events* and *engine builds* are separate destinations.
+  Desktop-only in practice (linking writes into the game project); the
+  browser build says so and lists the unwritten Unity / Unreal targets.
+- **Deploy events from the editor**: **Deploy** mode (`⌘4`) is where the
   live event's unique admin controls live — **start a shared rehearsal**
   (a private `preview` event every co-writer on the project directs
   together from Run mode, playing `/api/mod/persona` test guests while
@@ -78,16 +85,18 @@ src/
 
 ## Shell (v3 modal topology)
 
-The IDE is one app with three **modes** — **Writing** / **Run** /
-**Deploy** — switched from a bottom **Mode Bar** (`⌘1` … `⌘3`),
-DaVinci-Resolve-style. Writing is the whole authoring surface: its
+The IDE is one app with four **modes** — **Writing** / **Run** /
+**Integrations** / **Deploy** — switched from a bottom **Mode Bar**
+(`⌘1` … `⌘4`), DaVinci-Resolve-style. Writing is the whole authoring surface: its
 center stage is a resizable **editor ⇄ story-graph split** (either pane
 snaps closed), so text and structure are visible at the same time. Run
 (`components/run/RunStage.tsx`) is the whole rehearsal/moderation
 cockpit — a **Sim ⇄ Live source switch** picks between the local
 in-browser simulator and the launched event; see **The cockpit** below.
-Deploy (`components/deploy/`) owns the live event's existence: launch,
-codes/QR, lifecycle, guest lookup. Each mode is a fixed, resizable
+Integrations (`components/integrations/`) owns the engine targets — the
+Godot link / addon install / bank build. Deploy (`components/deploy/`)
+owns the live event's existence: launch, codes/QR, lifecycle, guest
+lookup. Each mode is a fixed, resizable
 `allotment` layout (left rail · center stage · right properties tray ·
 optional bottom Timeline dock) that composes the leaf panels;
 `store/mode.ts` owns the active mode + per-mode region sizes, including
@@ -372,7 +381,30 @@ active buffer) via `lib/story-graph.ts`'s `useStoryGraph()`
 - Path alias `@/*` → `src/*`.
 - Keep components small; put logic in `lib/` or `store/`.
 - Two persistence backends: the SaaS API (server projects) and FS handles (local folders). New persistence goes through `store/workspace.ts`'s backend-aware paths, not a third mechanism.
-- Browser support: Chromium-based (File System Access API).
+- Browser support: Chromium-based (File System Access API) — or the
+  Tauri desktop app (`desktop/`), where the same local-folder backend
+  runs on FSA-shaped handle shims (see **Desktop shell** below).
+
+## Desktop shell (Tauri)
+
+The app also ships as `loom-desktop` (`../desktop`). Desktop-only code
+is gated on `lib/desktop.ts`'s `isDesktop()` and inert in the browser:
+
+- `lib/desktop.ts` — detection + typed bindings for the shell's
+  commands (`desktopFs`, `desktopGodot`).
+- `lib/desktop-fs.ts` — `DesktopDirectoryHandle` / `DesktopFileHandle`,
+  FSA-shaped shims over the native fs commands. `lib/fs.ts`'s
+  `pickDirectory()` hands them out on desktop, so `store/workspace.ts`
+  and the LSP indexer work unchanged; persisted roots rehydrate by
+  path in `restoreRoot` (no permission dance — always `'granted'`).
+  No `FileSystemObserver` on desktop: external edits need the sidebar
+  refresh.
+- `store/godot.ts` + `components/integrations/GodotPanel.tsx` — the
+  Wwise-style Godot integration (Integrations mode, desktop only): link a
+  Godot project, install/update the runtime addon, and build the
+  indexed workspace into `.loombank` + `LoomIDs.gd` via `@loom/bank`
+  (aliased to `../bank/src` like `@loom/core`) — compile in the
+  webview, write through the host.
 
 ### Editor QoL — context menu, rename, shell keys
 
@@ -388,7 +420,7 @@ active buffer) via `lib/story-graph.ts`'s `useStoryGraph()`
 - `ContextMenuHost` supports right-aligned keybinding `hint`s and
   `{ separator: true }` divider rows (`store/context-menu.ts`'s
   `ContextMenuEntry`).
-- **Shell keys** (`StudioShell`): ⌘1..⌘3 modes, **⌘B** toggle left
+- **Shell keys** (`StudioShell`): ⌘1..⌘4 modes, **⌘B** toggle left
   rail, **⌘⌥B** toggle properties tray, **⌘\** toggle the Writing
   story-graph pane (`ModeUi.graphOpen`; an explicit `reveal` re-opens
   it). All three also live in the command palette. Tab keys stay
@@ -418,14 +450,29 @@ active buffer) via `lib/story-graph.ts`'s `useStoryGraph()`
   drops the stale entry instead of clobbering. Outcomes surface on the
   graph toolbar status line; the journal clears on project switch.
   Unit-tested in `edit-journal.test.ts`.
+- **In-app dialogs, never `window.prompt`** (`store/dialog.ts` +
+  `components/shell/DialogHost.tsx`, mounted at the App root above every
+  branch): promise-based `promptText` / `confirmAction` / `notify`,
+  callable from stores and context-menu handlers. **This is load-bearing
+  on desktop**: wry's `WKUIDelegate` implements only the file-open panel,
+  so in WKWebView `prompt()` returns null and `confirm()` returns false
+  with no UI — every "New file…" / "+ beat" / rename button silently did
+  nothing in the Tauri app. One host means one behaviour in both runtimes
+  (and it's themable + testable). Requests queue by id; the host keys its
+  view on that id so each dialog seeds its input at mount. Unit-tested in
+  `store/dialog.test.ts`; e2e-guarded in `studio.spec.ts` (a test asserts
+  no native dialog ever fires). `closeFile`/`closeOthers`/`closeAll` are
+  async for the same reason.
 - **Cockpit context menus** (`cockpit/tabs.tsx`): right-click a chat
   message → Copy text / **Reply in thread** (Slack-style — the
   composer grows a reply chip and `say` passes `parentSeq`, rooted at
   the thread parent) / Show beat on story map / Inspect sender / View
   as sender / Hide-Show message; right-click a roster row or cast pill
   → Inspect / View as / Capture-Release.
-- Playwright e2e: `e2e/studio.spec.ts` (mode bar, pane toggles — panes
-  clip to width 0, so assert with `toBeInViewport`), `e2e/qol.spec.ts`
+- Playwright e2e: `e2e/studio.spec.ts` (mode bar incl. Integrations,
+  pane toggles — panes clip to width 0, so assert with `toBeInViewport`
+  — plus the dialog-driven beat creation regression; `answerDialog` /
+  `cancelDialog` in `e2e/helpers.ts`), `e2e/qol.spec.ts`
   (drill-in text sync, follow-cursor, editor context menu, ⌘Z journal
   roundtrip, chat message menus), `e2e/graph.spec.ts` (canvas),
   `e2e/sim.spec.ts` (Run/Sim source).
@@ -531,10 +578,10 @@ CRDT went with the wasm cutover), and **live events run in the sibling
 packages**: `core/` (the TS engine + SSE/REST event
 server) and `play/` (the participant app). The editor does
 not render the guest chat; instead Run mode's **Live** source
-*moderates* events on that server and **Deploy** mode (`⌘3`) *hosts*
+*moderates* events on that server and **Deploy** mode (`⌘4`) *hosts*
 them (launch, codes/QR, lifecycle) — the participant view stays in the
-`play` app. The Mode Bar is three modes — **Writing** (`⌘1`), **Run**
-(`⌘2`), **Deploy** (`⌘3`).
+`play` app. The Mode Bar is four modes — **Writing** (`⌘1`), **Run**
+(`⌘2`), **Integrations** (`⌘3`), **Deploy** (`⌘4`).
 
 ## Hosting
 

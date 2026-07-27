@@ -1,0 +1,37 @@
+[gd_scene load_steps=3 format=3 uid="uid://cguardpatrol01"]
+
+[ext_resource type="Script" path="res://addons/loom/loom_story.gd" id="1_story"]
+[ext_resource type="Script" path="res://addons/loom/loom_dialogue_box.gd" id="2_box"]
+
+[node name="GuardPatrol" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.07, 0.09, 0.12, 1)
+
+[node name="Story" type="Node" parent="."]
+script = ExtResource("1_story")
+bank_path = "res://loom/main.loombank"
+
+[node name="DialogueBox" type="Control" parent="." node_paths=PackedStringArray("story")]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -240.0
+offset_right = -24.0
+offset_bottom = -24.0
+grow_horizontal = 2
+grow_vertical = 0
+script = ExtResource("2_box")
+story = NodePath("../Story")
+auto_start = true

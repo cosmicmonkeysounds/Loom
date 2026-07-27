@@ -12,9 +12,10 @@ event server, …) without dragging the rest along. Repo license is MIT
 | [`lsp`](./lsp)         | Stdio JSON-RPC server backed by `loom-parser` + a workspace-wide name index |
 | [`syntax`](./syntax)   | TextMate grammar generator (driven by `loom-parser::keywords`) + Zed / VSCode extension shells |
 | [`server`](./server)   | Multi-user backbone — `loom-relayd` axum server hosting per-workspace Loro CRDTs over `prism-core::network::relay`. **Builds only inside the Prism monorepo** (depends on `prism-core`, stays GPL); excluded from this repo's Cargo workspace. See [`docs/loom-multiuser.md`](./docs/loom-multiuser.md). |
-| [`editor`](./editor)   | React/Vite/CodeMirror web IDE — the author front end: a BetterAuth sign-in gate → projects launchpad → Studio shell with **three modes**: **Writing** (`⌘1`, text editor + story-graph node editor side by side), **Run** (`⌘2`, one cockpit with a **Sim ⇄ Live** source switch — rehearse on a local in-browser `@loom/core` `Sim` with personas + choices + named events + live story-map overlay, or moderate the launched event), and **Deploy** (`⌘3`, the live event's lifecycle + admin: launch, codes/QR, pause/end, guest lookup). **Server-backed projects** or a local folder. |
+| [`editor`](./editor)   | React/Vite/CodeMirror web IDE — the author front end: a BetterAuth sign-in gate → projects launchpad → Studio shell with **four modes**: **Writing** (`⌘1`, text editor + story-graph node editor side by side), **Run** (`⌘2`, one cockpit with a **Sim ⇄ Live** source switch — rehearse on a local in-browser `@loom/core` `Sim` with personas + choices + named events + live story-map overlay, or moderate the launched event), **Integrations** (`⌘3`, engine targets — the Wwise-style Godot link / addon install / bank build), and **Deploy** (`⌘4`, the live event's lifecycle + admin: launch, codes/QR, pause/end, guest lookup). **Server-backed projects** or a local folder. |
 | [`core`](./core)       | Native **TypeScript** port of Loom (no WASM, no Prism): parser (incl. authored **`SPACE`/`CHANNEL`** chatroom declarations) + a first-principles social-ecosystem `runtime/sim` + a parser-only **`lsp`** language surface (`@loom/core/lsp` — `Workspace` with completion / hover / definition / documentSymbols / references / diagnostics, the in-process replacement for the wasm `LspWorkspace`) + an SSE/REST **event server** (`pnpm serve`) that hosts a live `Sim` for LAN events, composing its `SimEvent` stream into server-authoritative, channel-routed chat (`server/chat.ts`) with spaces + Slack-style threads (`parentSeq`), **access control** (open / private-invite / faction / group / dm channel membership, journaled `inviteToChannel`/`leaveChannel`, guest↔guest invites) + a **pluggable channel-type registry** (`runtime/sim/channel-types.ts` — per-type post policy / threadability / broadcast routing / slow-mode / ephemeral, e.g. a read-only `announcement` feed), a scoped invite roster (`rosterFor`), history + moderation, and a journaled `say` command so participant-typed chat replays deterministically. Now a **multi-tenant SaaS backend**: BetterAuth author accounts + Postgres (`server/db/`, `server/auth-server.ts`), projects + files CRUD (`server/projects.ts`), event launch/lifecycle (`server/events-api.ts`, one live event per project), and a per-event `EventRuntime` + `EventRegistry` routed under `/e/:eventId` with a `resolve-code` bootstrap — the old single-event root paths still serve a default event. vitest-tested. |
 | [`play`](./play)       | The **participant React app** (Vite, name `loom-play`) guests + performers use at a live event — an **AOL-chatroom-skinned** client with Discord-style **spaces** (sidebar sections, incl. authored `SPACE`s), Slack-style **message threads** + consecutive-sender banner grouping, **hybrid typed chat** (a composer wired to `/api/*/say`), and **access-controlled rooms** (open/private/faction/group/dm with invite + leave) layered over the story-injected lobby + faction + DM channels (decisions docked per-thread, re-login history) on the `core` server's SSE/REST. Multi-event aware: a short code resolves via `/api/resolve-code` to its event, then every call is scoped to `/e/:eventId`. `pnpm dev` (:5174, proxies to the server on :7000) / `pnpm build` (served by the event server at `/`). |
+| [`desktop`](./desktop) | The **Tauri 2 desktop app** — the `editor` React app in a native shell (own Cargo workspace at `desktop/src-tauri`, excluded from the root workspace to keep it lean; zero Prism deps). Adds what the browser can't: a path-based **fs bridge** (`fs_bridge.rs`) that the editor's local-folder backend runs on via FSA-shaped handle shims (`editor/src/lib/desktop-fs.ts` — WKWebView has no File System Access API), and **Wwise-style Godot integration** (`godot.rs` + the editor's Integrations mode, `⌘3`): link a Godot 4 project, install the embedded `addons/loom` runtime (`include_dir!` of `engines/godot/addons/loom`) + enable the plugin in `project.godot`, and build the open workspace into `<name>.loombank` + `LoomIDs.gd` inside the game project (banks compile in the webview via `@loom/bank`; the host only writes files). `pnpm --filter loom-desktop dev\|build`; `cargo test` in `src-tauri/` covers the integration logic. Reference output: [`examples/guard-patrol/godot`](./examples/guard-patrol/godot). Design: [`docs/loom-desktop.md`](./docs/loom-desktop.md). |
 | [`bank`](./bank)       | **TypeScript** bank compiler + the **normative reference interpreter**. Lowers a project into `.loombank` — engine-agnostic 4×i32 instruction streams, RPN expressions, pre-split interpolation, pre-parsed directive args — plus generated `LoomIDs.{gd,cs,h}`. `<shuffle:>` runs on the spec'd xorshift64* PRNG (`src/prng.ts`, per-site streams persisted in the save), and **locale banks** are emitted (`loom-bank strings` template → `build --locale <tag>=<file>` → `<name>.<tag>.loombank` sidecar; `set_locale` swaps literals at render time, expressions stay live, per-key fallback). Hosts the scenario driver / golden-trace harness (incl. `loadbank` for locale sidecars) every per-engine runtime is conformance-tested against. See [`docs/loom-banks.md`](./docs/loom-banks.md). |
 | [`engines/godot`](./engines/godot) | **GDScript** Loom runtime for Godot 4 — pure script, no GDExtension, no build step. `LoomRuntime` (pull-model `advance() -> Step`, plus signals), `LoomBank` + a `.loombank` import plugin, save/load that round-trips a suspended choice, and a headless conformance runner diffing the reference's goldens byte for byte. On top, a Wwise-integration-style **scene layer**: `LoomStory` (bank host node — autoplay, timer auto-tick, optional auto-advance pump with hold/release gating, save-file helpers), `LoomHook` (story→game: filterable directive/beat/line/varset/fire listener as an editor-connectable signal), `LoomTrigger` (game→story: fire an `on <verb>` hook or start a beat on ready/Area overlap/manual), `LoomTypewriter` (per-character RichTextLabel reveal, punctuation pacing, skip, story hold — **raw signals only**; effects are separate interpreter nodes: `LoomBlip` pooled pitch-randomised voice blips, `LoomTalkAnimator` talk/idle animation), `LoomDialogueBox` (complete drop-in player — speaker/portrait/pooled choice buttons/continue-indicator/two-tap input/auto mode/`resume()` — skinned by a `LoomStyle` resource with per-character `LoomSpeakerStyle` overrides; `demo/styled_demo.tscn` plays a story with zero scripts), `LoomHistory` (backlog), `LoomSaveSlots` (named slots with query-API metadata headers), a host-side state-query API (`current_beat`/`current_setting`/`pending_options`/`is_finished`/`has_played`/`world_snapshot`/`beat_names` + `save_to_file`/`load_from_file`), plus a `LoomBank` inspector preview (beats/hooks with copy-name) — covered by `test/addon.sh` (96 headless checks) alongside `test/conformance.sh` (4 scenarios incl. shuffle PRNG + locale switching). |
 | [`examples`](./examples) | Reference `.loom` projects used by `loom-runtime` integration tests and as authoring tutorials |
@@ -54,20 +55,21 @@ original implementation and **lags the TS engine** (none of the
 2026-06/07 trait/derived-beat slices or the story graph are ported);
 the TS `core/` is the maintained implementation.
 
-## JS/TS workspace (core · bank · play · editor)
+## JS/TS workspace (core · bank · play · editor · desktop)
 
-The four JavaScript packages share the repo-root **pnpm workspace**
+The JavaScript packages share the repo-root **pnpm workspace**
 ([`pnpm-workspace.yaml`](./pnpm-workspace.yaml)). One install covers
-all four; run scripts with `pnpm --filter <name>` (or `pnpm -r test`
+them all; run scripts with `pnpm --filter <name>` (or `pnpm -r test`
 from the root):
 
 ```bash
-pnpm install            # core + bank + play + editor
+pnpm install            # core + bank + play + editor + desktop
 pnpm --filter @loom/core test               # the TS engine suites
 pnpm --filter @loom/bank test               # bank compiler + reference VM
 pnpm --filter @loom/core serve              # the LAN event server (:7000)
 pnpm --filter loom-play dev                 # participant app, HMR (:5174)
 pnpm --filter loom-app  dev                 # the editor, HMR (:5173)
+pnpm --filter loom-desktop dev              # the Tauri desktop app (drives :5173)
 ```
 
 Each package has its own README: [`core`](./core/README.md) (engine +
@@ -585,10 +587,35 @@ the artifact, a small native runtime per engine behind one contract.
   `engines/unreal` are unwritten — the spec and harness are what make them
   cheap.
 
+**The desktop app became usable + an Integrations mode landed 2026-07-25**
+(`editor` only):
+
+- **Every create/rename/delete flow was dead in the desktop app.** They
+  all called `window.prompt` / `window.confirm`, and wry's `WKUIDelegate`
+  (`wry-0.55.1/src/wkwebview/class/wry_web_view_ui_delegate.rs`)
+  implements only the file-open panel, media-capture permission, and
+  new-window methods — none of WebKit's JS dialog panels. With no
+  delegate method, WKWebView makes `prompt()` return null and
+  `confirm()` return false *with no UI*, so "New file…", "+ beat",
+  "Create the first beat", rename and delete looked like broken buttons
+  in the Tauri shell (and were silently unreliable in the browser).
+  Every call site now goes through one promise-based in-app dialog host
+  (`store/dialog.ts` + `components/shell/DialogHost.tsx`, mounted at the
+  App root so the launchpad + auth gate get it too): `promptText` /
+  `confirmAction` / `notify`, callable from stores and context-menu
+  handlers. `closeFile`/`closeOthers`/`closeAll` went async to await the
+  discard confirmation.
+- **Integrations is its own mode** (`⌘3`, before Deploy — Deploy moved to
+  `⌘4`): the Godot panel moved out of Deploy's collapsed `<details>` into
+  `components/integrations/`, so *shipping into a game engine* and
+  *hosting a live event* are separate destinations. The browser build
+  explains the desktop requirement and names the unwritten Unity/Unreal
+  targets.
+
 Everything in the TS engine is done and green (367 vitest tests in `core`,
-+90 in the editor incl. the graph-pipeline corpus, word-blocks, rooms-lens,
-flow-collapse, navigation, filter, follow, edit-journal, sim-store, and
-mode-store suites). The only
++97 in the editor incl. the graph-pipeline corpus, word-blocks, rooms-lens,
+flow-collapse, navigation, filter, follow, edit-journal, sim-store,
+dialog, and mode-store suites; 25 Playwright e2e). The only
 remaining work is the **Rust mirror**
 (parser + runtime crates), which is not yet updated for ANY of Slices
 1/2/A/3/B/C, these gaps, or the story graph — the TS and Rust engines

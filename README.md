@@ -52,6 +52,7 @@ This repo is a toolbox, not a framework — each piece works on its own.
 |---|---|---|
 | **Play Loom stories in my Godot game** | [`engines/godot`](./engines/godot) — copy `addons/loom/` into your project | Godot 4. Pure GDScript, no build step. Node.js only to compile banks |
 | **Write and rehearse a story in a real IDE** | [`editor`](./editor) — Writing / Run / Deploy studio in the browser | Node.js + pnpm |
+| **The IDE as a desktop app, wired into my game** | [`desktop`](./desktop) — the editor in a Tauri shell; links a Godot project Wwise-style (installs the addon, builds banks into it) | Node.js + pnpm + Rust |
 | **Run a live event** (guests join by passcode on their phones) | [`core`](./core)'s event server + the [`play`](./play) participant app | Node.js; Postgres only for multi-author accounts |
 | **Embed the engine in my own JS/TS app** | [`@loom/core`](./core) — parser, sim runtime, LSP surface, all TypeScript | Any TS toolchain (consumed as source) |
 | **Compile stories for any game engine** | [`@loom/bank`](./bank) — `.loombank` instruction streams + generated ID headers (`.gd`/`.cs`/`.h`) | Node.js |
@@ -143,6 +144,7 @@ inside the parent Prism monorepo and is excluded from this workspace.
 | `core/` | **TypeScript engine + event server** — parser, social-ecosystem sim, LSP surface, SSE/REST live-event backend with chat, access control, and a SaaS control plane |
 | `bank/` | Bank compiler + **normative reference interpreter** — the conformance target for every engine runtime |
 | `editor/` | React IDE (Writing / Run / Deploy) |
+| `desktop/` | Tauri desktop shell for the IDE + Wwise-style Godot integration |
 | `play/` | Participant app guests use at events |
 | `engines/godot/` | Godot 4 runtime addon + scene layer + conformance harness |
 | `stagehand/` | Python show-control bridge (OSC / MQTT) |

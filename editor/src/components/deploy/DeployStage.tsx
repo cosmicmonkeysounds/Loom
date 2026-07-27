@@ -1,7 +1,8 @@
 //! Deploy mode — center stage: where the live event's unique admin
 //! controls live. Launch preview/live, pause/resume/reset/end, the join
 //! codes + QR, and guest lookup — everything about *hosting* the event.
-//! Rehearsing and moderating live in Run mode (⌘2); this mode owns the
+//! Rehearsing and moderating live in Run mode (⌘2); shipping the story
+//! into a game engine lives in Integrations (⌘3). This mode owns the
 //! event's existence. Owns the mod-stream lifecycle while open, so the
 //! status cards and the Inspector tray stay live.
 
@@ -29,7 +30,8 @@ export function DeployStage() {
       <div className="grid h-full w-full place-items-center bg-zinc-950 p-8 text-center text-sm text-zinc-500">
         Open a server project from the launchpad to deploy events.
         <br />
-        (Local folders can be authored and rehearsed in Run mode's Sim source; live events run on server projects.)
+        (Local folders can be authored and rehearsed in Run mode's Sim source; live events run on server projects.
+        Game-engine builds live in Integrations, ⌘3.)
       </div>
     )
   }

@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { useOperate } from '@/store/operate'
+import { confirmAction } from '@/store/dialog'
 import { SelectionKind } from '@/store/cockpit'
 import { useInspect } from '@/components/cockpit/inspect'
 import { FactionPill } from '@/components/cockpit/ui'
@@ -308,9 +309,17 @@ export function EventPanel() {
                     </button>
                   )}
                   <button
-                    onClick={() =>
-                      window.confirm('Reset the event? The story restarts from the top and all chat is cleared.') && void reset()
-                    }
+                    onClick={() => {
+                      void (async () => {
+                        const ok = await confirmAction({
+                          title: 'Reset the event?',
+                          body: 'The story restarts from the top and all chat is cleared.',
+                          confirmLabel: 'Reset',
+                          danger: true,
+                        })
+                        if (ok) await reset()
+                      })()
+                    }}
                     disabled={busy}
                     className="flex-1 rounded-lg border border-zinc-800 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
                   >
@@ -318,7 +327,17 @@ export function EventPanel() {
                   </button>
                 </div>
                 <button
-                  onClick={() => window.confirm('End this event? Guests will be disconnected.') && void end()}
+                  onClick={() => {
+                    void (async () => {
+                      const ok = await confirmAction({
+                        title: 'End this event?',
+                        body: 'Guests will be disconnected.',
+                        confirmLabel: 'End event',
+                        danger: true,
+                      })
+                      if (ok) await end()
+                    })()
+                  }}
                   disabled={busy}
                   className="rounded-lg border border-red-900 px-3 py-2 text-sm text-red-300 hover:bg-red-950 disabled:opacity-50"
                 >

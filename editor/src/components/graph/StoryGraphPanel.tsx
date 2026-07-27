@@ -60,6 +60,7 @@ import { useWorkspace } from '@/store/workspace'
 import { useCockpit } from '@/store/cockpit'
 import { openContextMenu, type ContextMenuItem } from '@/store/context-menu'
 import { useEditJournal } from '@/store/edit-journal'
+import { confirmAction, promptText } from '@/store/dialog'
 import { buildBeatFlow } from './beat-flow'
 import { FloatingEdge } from './FloatingEdge'
 import { blockEditRange, toWordBlocks, type WordBlock } from './word-blocks'
@@ -1575,7 +1576,9 @@ async function createBeat(
   presetName?: string,
   presetPath?: string,
 ): Promise<void> {
-  const name = presetName ?? window.prompt('New beat name:')
+  const name =
+    presetName ??
+    (await promptText({ title: 'New beat', placeholder: 'beat_name', confirmLabel: 'Create' }))
   if (name === null || name.trim().length === 0) return
   const clean = name.trim()
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(clean)) {
@@ -1606,7 +1609,11 @@ async function createBeat(
 
 /** Rename via the workspace-wide rename (declaration + references + entry). */
 async function renameBeat(beat: GraphBeat, say: (m: string) => void): Promise<void> {
-  const next = window.prompt(`Rename \`${beat.key}\` to:`, beat.name)
+  const next = await promptText({
+    title: `Rename \`${beat.key}\``,
+    defaultValue: beat.name,
+    confirmLabel: 'Rename',
+  })
   if (next === null || next.trim().length === 0 || next.trim() === beat.name) return
   try {
     const edits = lspWorkspaceSync().renameBeat(beat.key, next.trim())
@@ -1622,7 +1629,12 @@ async function renameBeat(beat: GraphBeat, say: (m: string) => void): Promise<vo
 /** Delete a top-level beat (its whole block). */
 async function deleteBeat(beat: GraphBeat, say: (m: string) => void): Promise<void> {
   if (beat.uri === null) return
-  const ok = window.confirm(`Delete beat \`${beat.key}\` and its contents?`)
+  const ok = await confirmAction({
+    title: `Delete beat \`${beat.key}\`?`,
+    body: 'The whole block, including its contents, is removed.',
+    confirmLabel: 'Delete',
+    danger: true,
+  })
   if (!ok) return
   const text = docText(beat.uri)
   if (text === null) return
@@ -1643,7 +1655,7 @@ async function deleteBeat(beat: GraphBeat, say: (m: string) => void): Promise<vo
 /** Prompt for a raw line and insert it before top-level item `index`. */
 async function insertLineAt(beat: GraphBeat, index: number, say: (m: string) => void): Promise<void> {
   if (beat.structural !== 'file' || beat.uri === null) return
-  const line = window.prompt('Line to insert:')
+  const line = await promptText({ title: 'Insert line', confirmLabel: 'Insert' })
   if (line === null || line.trim().length === 0) return
   const text = docText(beat.uri)
   if (text === null) return
@@ -1671,7 +1683,7 @@ async function deleteBodyItemAt(beat: GraphBeat, index: number, say: (m: string)
 /** Prompt for a raw line and append it to the beat's body. */
 async function addBodyLine(beat: GraphBeat, say: (m: string) => void): Promise<void> {
   if (beat.structural !== 'file' || beat.uri === null) return
-  const line = window.prompt('Line to add:')
+  const line = await promptText({ title: 'Add line', confirmLabel: 'Add' })
   if (line === null || line.trim().length === 0) return
   const text = docText(beat.uri)
   if (text === null) return
@@ -1686,7 +1698,7 @@ async function addBodyLine(beat: GraphBeat, say: (m: string) => void): Promise<v
 /** Prompt for choice text and append a `* text` option. */
 async function addChoice(beat: GraphBeat, say: (m: string) => void): Promise<void> {
   if (beat.structural !== 'file' || beat.uri === null) return
-  const choice = window.prompt('Choice text:')
+  const choice = await promptText({ title: 'Add choice', placeholder: 'Choice text', confirmLabel: 'Add' })
   if (choice === null || choice.trim().length === 0) return
   const text = docText(beat.uri)
   if (text === null) return
@@ -1710,7 +1722,7 @@ async function createDeclaration(
     return
   }
   const label = kind.toLowerCase()
-  const name = window.prompt(`New ${label} name:`)
+  const name = await promptText({ title: `New ${label}`, placeholder: 'Name', confirmLabel: 'Create' })
   if (name === null || name.trim().length === 0) return
   const clean = name.trim()
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(clean)) {

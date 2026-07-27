@@ -1,0 +1,21 @@
+; Engine configuration file.
+; Guard Patrol — a minimal external Godot 4 game integrated with Loom the
+; Wwise way: the runtime addon installed under addons/loom, and the story
+; compiled into loom/main.loombank (+ LoomIDs.gd) by the Loom desktop
+; app's Godot panel (equivalently: `loom-bank build ..`).
+
+config_version=5
+
+[application]
+
+config/name="Guard Patrol"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+run/main_scene="res://guard_patrol.tscn"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/loom/plugin.cfg")
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"

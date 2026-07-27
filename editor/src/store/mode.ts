@@ -6,27 +6,29 @@
 
 import { create } from 'zustand'
 
-// Three modes (v3 consolidation): Writing is the whole authoring
-// surface — text editor AND the story-graph node editor side by side;
-// Run is the whole rehearsal/moderation cockpit — the local simulator
-// and the live event behind one source switch; Deploy is the live
+// Four modes: Writing is the whole authoring surface — text editor AND
+// the story-graph node editor side by side; Run is the whole
+// rehearsal/moderation cockpit — the local simulator and the live event
+// behind one source switch; Integrations ships the story into another
+// runtime (the Godot/game-engine bank pipeline); Deploy is the live
 // event's lifecycle + admin controls (launch, codes/QR, pause/end).
-export type Mode = 'writing' | 'run' | 'deploy'
+export type Mode = 'writing' | 'run' | 'integrations' | 'deploy'
 
 export type ModeDescriptor = {
   id: Mode
   label: string
-  /** Keybinding hint shown on the Mode Bar (⌘1..⌘3). */
+  /** Keybinding hint shown on the Mode Bar (⌘1..⌘4). */
   hint: string
   /** Whether the bottom Timeline dock is present in this mode. */
   hasTimeline: boolean
 }
 
-/** Ordered left→right as they appear on the Mode Bar; index ↔ ⌘1..⌘3. */
+/** Ordered left→right as they appear on the Mode Bar; index ↔ ⌘1..⌘4. */
 export const MODES: ModeDescriptor[] = [
   { id: 'writing', label: 'Writing', hint: '⌘1', hasTimeline: true },
   { id: 'run', label: 'Run', hint: '⌘2', hasTimeline: false },
-  { id: 'deploy', label: 'Deploy', hint: '⌘3', hasTimeline: false },
+  { id: 'integrations', label: 'Integrations', hint: '⌘3', hasTimeline: false },
+  { id: 'deploy', label: 'Deploy', hint: '⌘4', hasTimeline: false },
 ]
 
 /** The pre-v3 mode ids still sitting in persisted storage. */
@@ -64,6 +66,16 @@ function defaultUi(): Record<Mode, ModeUi> {
     },
     // Run: rooms rail · sim/live cockpit · inspector tray.
     run: { cols: [300, 820, 340], rows: [620, 200], split: [520, 620], graphOpen: true, trayOpen: true, railOpen: true },
+    // Integrations: engine targets — a wide single-column stage, no
+    // rail and no tray (nothing here follows a selection).
+    integrations: {
+      cols: [240, 1000, 320],
+      rows: [620, 200],
+      split: [520, 620],
+      graphOpen: true,
+      trayOpen: false,
+      railOpen: false,
+    },
     // Deploy: launch/lifecycle/admin stage · inspector tray (no rail).
     deploy: { cols: [260, 900, 340], rows: [620, 200], split: [520, 620], graphOpen: true, trayOpen: true, railOpen: false },
   }

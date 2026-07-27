@@ -4,7 +4,7 @@
 // journal, and cockpit messages have real context menus.
 
 import { test, expect } from '@playwright/test'
-import { openProject, switchMode } from './helpers'
+import { answerDialog, openProject, switchMode } from './helpers'
 
 const mod = process.platform === 'darwin' ? 'Meta' : 'Control'
 
@@ -76,7 +76,6 @@ test.describe('writing QoL', () => {
   })
 
   test('⌘Z outside the text editor undoes a canvas edit (and ⌘⇧Z redoes)', async ({ page }) => {
-    page.on('dialog', (d) => void d.accept('Jump out the window'))
     const source = () =>
       page.evaluate(async () => {
         const ws = await import('/src/store/workspace.ts')
@@ -85,6 +84,7 @@ test.describe('writing QoL', () => {
 
     await page.getByTestId('graph-beat-opening').click({ button: 'right' })
     await page.getByTestId('graph-menu-add-choice').click()
+    await answerDialog(page, 'Jump out the window')
     await expect.poll(async () => (await source()).includes('Jump out the window')).toBe(true)
 
     // Keyboard on the canvas — ⌘Z routes to the story edit journal.

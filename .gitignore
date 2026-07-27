@@ -22,6 +22,11 @@ __pycache__/
 
 # Godot editor cache
 engines/godot/.godot/
+examples/guard-patrol/godot/.godot/
+
+# Tauri desktop shell
+desktop/src-tauri/target/
+desktop/src-tauri/gen/schemas/
 
 # Event-server local state (journals, guest saves)
 .loom-state/

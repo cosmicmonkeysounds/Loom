@@ -1,0 +1,38 @@
+# The Loom desktop shell. Deliberately its OWN Cargo workspace (like
+# `server/`, this is excluded from the repo-root workspace) so `cargo
+# build` / `cargo test` from a fresh clone stay lean — the Tauri stack
+# (wry, tao, webkit bindings) is a heavy dependency tree that only the
+# desktop app needs. Build it via `pnpm --filter loom-desktop dev|build`
+# (the Tauri CLI drives cargo underneath) or `cargo build` from this
+# directory.
+[workspace]
+
+[package]
+name = "loom-desktop"
+version = "0.1.0"
+description = "Loom desktop — the author IDE in a Tauri shell with Wwise-style Godot integration"
+edition = "2021"
+license = "MIT"
+
+[lib]
+name = "loom_desktop"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# The Godot runtime addon (engines/godot/addons/loom) is embedded into
+# the binary at compile time so "install into a Godot project" works
+# identically in dev and in a bundled .app with no resource-path games.
+include_dir = "0.7"
+
+[profile.release]
+codegen-units = 1
+lto = true
+strip = true

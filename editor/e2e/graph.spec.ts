@@ -3,7 +3,7 @@
 // dragging (moves stick across re-renders), and the beat drill-in.
 
 import { test, expect } from '@playwright/test'
-import { openProject, switchMode } from './helpers'
+import { answerDialog, openProject, switchMode } from './helpers'
 
 test.describe('story-graph canvas', () => {
   test.beforeEach(async ({ page }) => {
@@ -126,9 +126,9 @@ test.describe('story-graph canvas', () => {
   })
 
   test('Add choice… appends a `* text` option through the card menu', async ({ page }) => {
-    page.on('dialog', (d) => void d.accept('Jump out the window'))
     await page.getByTestId('graph-beat-opening').click({ button: 'right' })
     await page.getByTestId('graph-menu-add-choice').click()
+    await answerDialog(page, 'Jump out the window')
     await page.waitForTimeout(900)
     await page.getByTestId('graph-beat-expand-opening').click()
     await page.waitForTimeout(900)

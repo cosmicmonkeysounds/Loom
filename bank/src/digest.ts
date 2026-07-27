@@ -4,11 +4,11 @@
 //! key order, whitespace, and absent-vs-null all have to be pinned or the
 //! diff is noise rather than signal.
 
-import { createHash } from "node:crypto";
+import { sha256HexOfUtf8 } from "./sha256.ts";
 import { formatNumber } from "./value.ts";
 
 export function sha256Hex(text: string): string {
-  return `sha256:${createHash("sha256").update(text, "utf8").digest("hex")}`;
+  return `sha256:${sha256HexOfUtf8(text)}`;
 }
 
 /**

@@ -4,6 +4,8 @@
 import { useState } from 'react'
 import { useAuth } from '@/store/auth'
 import { useWorkspace } from '@/store/workspace'
+import { isFsAccessSupported, pickDirectory } from '@/lib/fs'
+import { notify } from '@/store/dialog'
 
 export function AuthGate() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
@@ -30,13 +32,15 @@ export function AuthGate() {
   }
 
   const openLocalFolder = async () => {
-    const picker = (window as unknown as { showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker
-    if (!picker) {
-      alert('This browser does not support opening a local folder. Use a Chromium browser, or sign in to use server projects.')
+    if (!isFsAccessSupported()) {
+      await notify({
+        title: 'Opening a local folder isn’t supported here',
+        body: 'Use a Chromium browser or the Loom desktop app, or sign in to use server projects.',
+      })
       return
     }
     try {
-      const handle = await picker()
+      const handle = await pickDirectory()
       await openRoot(handle)
     } catch {
       /* user cancelled */

@@ -36,10 +36,10 @@ async function freshMode() {
 }
 
 describe('mode store (v3 topology)', () => {
-  it('exposes exactly Writing / Run / Deploy on ⌘1..⌘3', async () => {
+  it('exposes exactly Writing / Run / Integrations / Deploy on ⌘1..⌘4', async () => {
     const { MODES } = await freshMode()
-    expect(MODES.map((m) => m.id)).toEqual(['writing', 'run', 'deploy'])
-    expect(MODES.map((m) => m.hint)).toEqual(['⌘1', '⌘2', '⌘3'])
+    expect(MODES.map((m) => m.id)).toEqual(['writing', 'run', 'integrations', 'deploy'])
+    expect(MODES.map((m) => m.hint)).toEqual(['⌘1', '⌘2', '⌘3', '⌘4'])
     // The BeatStrip timeline dock rides the merged Writing mode.
     expect(MODES.find((m) => m.id === 'writing')?.hasTimeline).toBe(true)
   })

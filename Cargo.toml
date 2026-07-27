@@ -6,10 +6,14 @@
 # this workspace: it depends on `prism-core` from the Prism monorepo
 # and only builds inside that checkout. Everything else builds from a
 # fresh clone: `cargo build`, `cargo test`.
+# `desktop/src-tauri` (the Tauri desktop shell) is also excluded, but for
+# a different reason: it builds fine from a fresh clone, it just drags in
+# the whole Tauri/wry GUI stack — its own workspace keeps `cargo build` /
+# `cargo test` here lean. Build it via `pnpm --filter loom-desktop dev`.
 [workspace]
 resolver = "2"
 members = ["parser", "runtime", "lsp", "syntax"]
-exclude = ["server"]
+exclude = ["server", "desktop/src-tauri"]
 
 [workspace.package]
 license = "MIT"

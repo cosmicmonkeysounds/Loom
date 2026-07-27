@@ -8,6 +8,7 @@
 import { useState, type ReactNode } from 'react'
 import { CockpitTab, SelectionKind, useCockpit } from '@/store/cockpit'
 import { useGraph } from '@/store/graph'
+import { promptText } from '@/store/dialog'
 import { FactionPill } from './ui'
 import { entityVars, GUEST_STANDARD_FIELDS } from './world'
 import { VarTable } from './VarTable'
@@ -151,8 +152,14 @@ function GuestInspector({ id }: { id: string }) {
   }
 
   const dm = () => {
-    const text = window.prompt(`Message to ${row.name} (as Operator):`)?.trim()
-    if (text) void say(`guest:${id}`, text)
+    void (async () => {
+      const text = await promptText({
+        title: `Message ${row.name}`,
+        body: 'Sent as Operator.',
+        confirmLabel: 'Send',
+      })
+      if (text) await say(`guest:${id}`, text)
+    })()
   }
 
   return (

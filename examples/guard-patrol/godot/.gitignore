@@ -1,0 +1,3 @@
+# Godot's per-machine import cache.
+.godot/
+*.import

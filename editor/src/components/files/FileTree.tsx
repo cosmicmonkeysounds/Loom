@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import clsx from 'clsx'
 import type { FsEntry } from '@/lib/fs'
 import { useWorkspace } from '@/store/workspace'
+import { promptText } from '@/store/dialog'
 
 type MenuState = {
   x: number
@@ -150,15 +151,28 @@ export function FileTree({ root }: { root: FsEntry }) {
       items.push({
         label: 'New File…',
         run: () => {
-          const name = window.prompt('New file name:')
-          if (name) void createFileIn(m.entry, name)
+          void (async () => {
+            const name = await promptText({
+              title: 'New file',
+              body: `In ${m.entry.path}`,
+              placeholder: 'scene.loom',
+              confirmLabel: 'Create',
+            })
+            if (name) await createFileIn(m.entry, name)
+          })()
         },
       })
       items.push({
         label: 'New Folder…',
         run: () => {
-          const name = window.prompt('New folder name:')
-          if (name) void createDirectoryIn(m.entry, name)
+          void (async () => {
+            const name = await promptText({
+              title: 'New folder',
+              body: `In ${m.entry.path}`,
+              confirmLabel: 'Create',
+            })
+            if (name) await createDirectoryIn(m.entry, name)
+          })()
         },
       })
     }

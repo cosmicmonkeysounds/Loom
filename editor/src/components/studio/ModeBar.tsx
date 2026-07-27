@@ -1,8 +1,9 @@
 // The bottom Mode Bar — the primary navigation of the IDE, DaVinci
-// Resolve-style. Three modes: Writing (text + story graph), Run
-// (rehearse on the local sim / moderate the live event), Deploy (the
-// live event's lifecycle + admin controls). Also hosts the left-rail /
-// properties-tray collapse toggles for the active mode.
+// Resolve-style. Four modes: Writing (text + story graph), Run (rehearse
+// on the local sim / moderate the live event), Integrations (ship the
+// story into a game engine), Deploy (the live event's lifecycle + admin
+// controls). Also hosts the left-rail / properties-tray collapse toggles
+// for the active mode.
 
 import clsx from 'clsx'
 import { useMode, MODES, type Mode } from '@/store/mode'
@@ -124,6 +125,13 @@ function ModeGlyph({ id }: { id: Mode }) {
         <svg {...common} aria-hidden>
           <circle cx="12" cy="12" r="9" />
           <path d="M10 8.5l6 3.5-6 3.5Z" />
+        </svg>
+      )
+    case 'integrations':
+      // Puzzle piece — plugging the story into another runtime.
+      return (
+        <svg {...common} aria-hidden>
+          <path d="M10 4.5a1.8 1.8 0 0 1 3.6 0V6h2.9a.9.9 0 0 1 .9.9v2.9h1.5a1.8 1.8 0 0 1 0 3.6H17.4v2.9a.9.9 0 0 1-.9.9h-2.9v-1.5a1.8 1.8 0 0 0-3.6 0V19H7.1a.9.9 0 0 1-.9-.9v-2.9H4.7a1.8 1.8 0 0 1 0-3.6h1.5V6.9A.9.9 0 0 1 7.1 6H10Z" />
         </svg>
       )
     case 'deploy':

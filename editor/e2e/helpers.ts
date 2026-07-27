@@ -66,10 +66,25 @@ export async function openProject(
   await page.waitForTimeout(600)
 }
 
-/** Switch modes via the Mode Bar (v3: Writing / Run / Deploy). */
+/** Switch modes via the Mode Bar (Writing / Run / Integrations / Deploy). */
 export async function switchMode(
   page: Page,
-  mode: 'writing' | 'run' | 'deploy',
+  mode: 'writing' | 'run' | 'integrations' | 'deploy',
 ): Promise<void> {
   await page.getByTestId(`mode-${mode}`).click()
+}
+
+/** Answer the in-app dialog (the app no longer uses native prompt/confirm —
+ *  see `src/store/dialog.ts`: the desktop webview has no `window.prompt`). */
+export async function answerDialog(page: Page, value?: string): Promise<void> {
+  await expect(page.getByTestId('dialog-host')).toBeVisible()
+  if (value !== undefined) await page.getByTestId('dialog-input').fill(value)
+  await page.getByTestId('dialog-confirm').click()
+  await expect(page.getByTestId('dialog-host')).toHaveCount(0)
+}
+
+/** Dismiss the in-app dialog without acting. */
+export async function cancelDialog(page: Page): Promise<void> {
+  await page.getByTestId('dialog-cancel').click()
+  await expect(page.getByTestId('dialog-host')).toHaveCount(0)
 }

@@ -2,6 +2,16 @@
 
 entry: opening
 
+LOCATION Harbor
+  label: The Night Harbor
+
+LOCATION Warehouse
+  label: Warehouse Nine
+
+CHARACTER Marlow
+  faction: Watch
+  suspicion: 0 to 100 = 10
+
 SCENE patrol(character)
   loop
     wait until character.spotted_intruder
@@ -26,5 +36,53 @@ GENERATOR HarborChorus
     yield bark from Quiet night. | Stars are out. | Tide's calm.
 
 == opening
+  cast: Marlow
+  setting: Harbor
 
 The lighthouse hums.
+
+Fog rolls off the water. Marlow's lantern swings a slow arc across the pier.
+
+MARLOW
+  (squinting into the dark)
+  Harbor's closed after the ninth bell. State your business.
+
+* Show the courier's writ.
+  <set: Marlow.suspicion -= 5>
+  -> warehouse_row
+* Slip toward the warehouses without a word.
+  <set: Marlow.suspicion += 20>
+  -> warehouse_row
+
+== warehouse_row
+  cast: Marlow
+  setting: Warehouse
+
+<each visit>
+  first
+    Stacked crates make a canyon of the row. Somewhere ahead, a door stands ajar.
+  then
+    The crates again. The ajar door has not moved.
+
+<if: Marlow.suspicion > 25>
+  MARLOW
+    Hold it. I know that walk — you were told to stay off the row.
+  -> confronted
+<else>
+  MARLOW
+    Warehouse Nine, end of the row. Don't make me regret the writ.
+
+* Step through the ajar door.
+  -> END
+* Double back to the pier.
+  -> opening
+
+== confronted
+  cast: Marlow
+  setting: Warehouse
+
+MARLOW
+  (hand on the bell-rope)
+  One pull and every guard on the quay comes running. Walk back the way you came.
+
+-> END

@@ -1,4 +1,4 @@
-// Per-mode region contents (Loom IDE redesign v3 — three modes).
+// Per-mode region contents (Loom IDE redesign v3 — four modes).
 //
 // Each region (left rail / center stage / timeline dock) is a thin
 // switch over the active `Mode` that composes the EXISTING leaf panels.
@@ -21,6 +21,7 @@ import { CockpitRail } from '@/components/cockpit/Rail'
 import { RunCockpit } from '@/components/cockpit/providers'
 import { RunStage } from '@/components/run/RunStage'
 import { DeployStage } from '@/components/deploy/DeployStage'
+import { IntegrationsStage } from '@/components/integrations/IntegrationsStage'
 
 /** Fills an allotment pane and clips overflow so leaf panels scroll. */
 export function Region({ children }: { children: ReactNode }) {
@@ -89,8 +90,9 @@ export function LeftRail({ mode }: { mode: Mode }) {
           <CockpitRail />
         </RunCockpit>
       )
+    case 'integrations':
     case 'deploy':
-      // Deploy has no working rail — file browsing for reference only.
+      // Neither has a working rail — file browsing for reference only.
       return <Sidebar />
   }
 }
@@ -111,6 +113,10 @@ export function CenterStage({
       // One cockpit — the local simulator or the live event, per the
       // stage's Sim ⇄ Live source switch.
       return <RunStage />
+    case 'integrations':
+      // Engine targets: link a Godot project, install the runtime addon,
+      // build banks. Live events are Deploy's job.
+      return <IntegrationsStage />
     case 'deploy':
       return <DeployStage />
   }

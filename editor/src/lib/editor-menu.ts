@@ -20,6 +20,7 @@ import { applyEditMap } from '@/lib/story-graph'
 import { nodeAtLine } from '@/components/graph/follow'
 import { openContextMenu, type ContextMenuEntry } from '@/store/context-menu'
 import { useGraph } from '@/store/graph'
+import { notify, promptText } from '@/store/dialog'
 
 /** The current project graph, with this buffer synced in first. */
 function freshGraph(view: EditorView, path: string): StoryGraph {
@@ -66,16 +67,23 @@ export async function renameBeatAtCursor(view: EditorView, path: string): Promis
   const beat = lspWorkspaceSync().storyGraph().beats.get(key)
   if (beat === undefined) return false
   if (beat.structural === 'derived') {
-    window.alert('Derived beats are template instances — rename the trait’s beat.')
+    await notify({
+      title: 'That beat is derived',
+      body: 'Derived beats are template instances — rename the trait’s beat instead.',
+    })
     return true
   }
-  const next = window.prompt(`Rename \`${key}\` to:`, beat.name)
+  const next = await promptText({
+    title: `Rename \`${key}\``,
+    defaultValue: beat.name,
+    confirmLabel: 'Rename',
+  })
   if (next === null || next.trim().length === 0 || next.trim() === beat.name) return true
   try {
     const edits = lspWorkspaceSync().renameBeat(key, next.trim())
     await applyEditMap(edits, `Rename ${key} → ${next.trim()}`)
   } catch (e) {
-    window.alert(e instanceof EditError ? e.message : 'Rename failed.')
+    await notify({ title: 'Rename failed', body: e instanceof EditError ? e.message : undefined })
   }
   return true
 }

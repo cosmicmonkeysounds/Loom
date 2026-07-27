@@ -6,6 +6,7 @@ import { CommandPalette } from '@/components/shell/CommandPalette'
 import { SettingsPanel } from '@/components/shell/SettingsPanel'
 import { DetailOverlay } from '@/components/detail/DetailOverlay'
 import { ContextMenuHost } from '@/components/shell/ContextMenu'
+import { DialogHost } from '@/components/shell/DialogHost'
 import { HelpOverlay } from '@/components/help/HelpOverlay'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { ProjectsLaunchpad } from '@/components/projects/ProjectsLaunchpad'
@@ -28,8 +29,19 @@ export default function App() {
     document.documentElement.dataset.theme = theme
   }, [theme])
 
+  return (
+    <>
+      {body(root !== null, authStatus)}
+      {/* Mounted outside every branch: the launchpad and the auth gate
+          raise dialogs too (delete project, unsupported browser). */}
+      <DialogHost />
+    </>
+  )
+}
+
+function body(hasRoot: boolean, authStatus: string) {
   // A workspace (local folder or server project) is open → the Studio shell.
-  if (root) {
+  if (hasRoot) {
     return (
       <div className="h-full w-full flex flex-col">
         <TopBar />

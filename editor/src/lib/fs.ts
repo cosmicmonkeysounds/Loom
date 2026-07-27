@@ -1,7 +1,14 @@
 /**
  * Thin wrapper over the File System Access API.
  * Spec: https://wicg.github.io/file-system-access/
+ *
+ * In the Tauri desktop app the same surface is served by handle shims
+ * over native fs commands (`lib/desktop-fs.ts`) — `pickDirectory` hands
+ * one out and everything below works on either kind of handle.
  */
+
+import { isDesktop } from './desktop'
+import { pickDesktopDirectory } from './desktop-fs'
 
 export type FsEntry = {
   name: string
@@ -17,10 +24,22 @@ export type FsEntry = {
 }
 
 export function isFsAccessSupported(): boolean {
+  if (isDesktop()) return true
   return typeof window !== 'undefined' && 'showDirectoryPicker' in window
 }
 
+/**
+ * Native/browser folder picker. On desktop this routes through the Tauri
+ * dialog and returns a shim handle implementing the same surface.
+ * Rejects with an AbortError-shaped DOMException on cancel, matching the
+ * File System Access API.
+ */
 export async function pickDirectory(): Promise<FileSystemDirectoryHandle> {
+  if (isDesktop()) {
+    const dir = await pickDesktopDirectory()
+    if (!dir) throw new DOMException('The user aborted a request.', 'AbortError')
+    return dir as unknown as FileSystemDirectoryHandle
+  }
   return await (window as unknown as {
     showDirectoryPicker: (opts: { mode: 'read' | 'readwrite' }) => Promise<FileSystemDirectoryHandle>
   }).showDirectoryPicker({ mode: 'readwrite' })
