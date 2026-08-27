@@ -165,6 +165,14 @@ DATABASE_URL=postgres://…/loom pnpm --filter @loom/core migrate
 
 ## 5. Deploying
 
+### Docker (recommended for a VPS)
+
+The repo root ships a `Dockerfile` + `docker-compose.yml` that stand up
+the whole stack — Postgres, the event server (play app baked in), and
+Caddy fronting it (editor served at `/edit/`, automatic HTTPS with a
+domain). Step-by-step VPS walkthrough:
+[`loom-docker-deploy.md`](./loom-docker-deploy.md).
+
 ### LAN-only event (no accounts, no database)
 
 The zero-config path — one laptop on the venue wifi:

@@ -31,6 +31,16 @@ per-engine runtime), and the dev design docs (multiuser, deployment,
 show-control, conversation model, IDE redesign, …). Per-crate `lib.rs` docstrings carry the module
 roadmap and the spec section each module implements.
 
+**Docker deployment** (2026-08-26): the repo root ships a multi-stage
+`Dockerfile` (targets: `server` — the `@loom/core` event server under
+`tsx` with `play/dist` baked in; `proxy` — Caddy serving the editor SPA
+at `/edit/`, built with `--base=/edit/`, and reverse-proxying `/`,
+`/api`, `/e` to the server) plus `docker-compose.yml` (Postgres +
+server + Caddy, named volumes for pgdata / `LOOM_STATE_DIR` / certs,
+migration run idempotently by `deploy/docker-entrypoint.sh`) and
+`.env.example`. VPS walkthrough:
+[`docs/loom-docker-deploy.md`](./docs/loom-docker-deploy.md).
+
 **In-app help** ships from [`docs/help/`](./docs/help): markdown
 articles (frontmatter: `title` / `section` / `order` / `keywords` /
 optional `role`) in two collections — `authoring/` (the editor's

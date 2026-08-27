@@ -1,0 +1,19 @@
+# The public front door. SITE_ADDRESS comes from .env:
+#   - unset / ":80"        → plain HTTP (join by IP, no domain needed)
+#   - "loom.example.com"   → automatic HTTPS via Let's Encrypt
+{$SITE_ADDRESS::80} {
+	encode gzip zstd
+
+	# The author editor — a static SPA built with --base=/edit/.
+	handle /edit* {
+		root * /srv
+		try_files {path} /edit/index.html
+		file_server
+	}
+
+	# Everything else — the play app at /, /api/*, /e/:eventId/* —
+	# goes to the event server. SSE streams pass through untouched.
+	handle {
+		reverse_proxy loom:7000
+	}
+}

@@ -1,0 +1,10 @@
+# Keep the build context small + never bake local state into images.
+.git
+.claude
+**/node_modules
+**/dist
+**/target
+core/server/.loom-state
+desktop/src-tauri/target
+stagehand/.venv
+.env
