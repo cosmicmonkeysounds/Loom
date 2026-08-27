@@ -1,10 +1,15 @@
 //! Root: the role chooser that mounts the guest or performer app. Each app
 //! lives in its own module and composes the shared chat primitives.
+//!
+//! Branding is per-event: the title comes from `/api/resolve-code` (a `?code=`
+//! link resolves before joining; a stored session keeps the title it joined
+//! with) — nothing story-specific is baked into the client.
 
 import { useState } from "react";
 import { GuestApp } from "./guest.tsx";
 import { HelpSheet } from "./help.tsx";
 import { PerformerApp } from "./performer.tsx";
+import { useDocumentTitle, useUrlEventTitle } from "./session.ts";
 
 type Role = "none" | "guest" | "prime";
 
@@ -15,6 +20,8 @@ export function App() {
     return "none";
   });
   const [help, setHelp] = useState(false);
+  const urlTitle = useUrlEventTitle();
+  useDocumentTitle(urlTitle);
 
   if (role === "guest") return <GuestApp onLeave={() => setRole("none")} />;
   if (role === "prime") return <PerformerApp onLeave={() => setRole("none")} />;
@@ -22,7 +29,7 @@ export function App() {
   return (
     <div className="hero">
       <div className="glyph">🌐</div>
-      <h1>Escape the Internet</h1>
+      <h1>{urlTitle ?? "Loom"}</h1>
       <p className="sub">Who are you tonight?</p>
       <button className="choice primary" onClick={() => setRole("guest")}>
         🎟️ I'm a Guest

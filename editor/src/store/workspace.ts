@@ -18,8 +18,17 @@ import { idbDel, idbGet, idbSet } from '@/lib/idb'
 import { isDesktop } from '@/lib/desktop'
 import { rehydrateDesktopHandle } from '@/lib/desktop-fs'
 import { useSettings } from '@/store/settings'
+import { useAuth } from '@/store/auth'
 import { projectsApi, type ProjectFile } from '@/lib/api'
-import { resetIndexCache, dropIndexedPath } from '@/lib/lsp-index'
+import { resetIndexCache, dropIndexedPath, syncBuffer } from '@/lib/lsp-index'
+import {
+  collabTextFor,
+  collabWrite,
+  dropCollabDoc,
+  openCollabDoc,
+  startCollab,
+  stopCollab,
+} from '@/lib/collab'
 import { confirmAction, notify } from '@/store/dialog'
 
 function applyFormat(text: string): string {
@@ -64,6 +73,10 @@ type WorkspaceState = {
 
   nodes: Node[]
   edges: Edge[]
+
+  /** Bumped when a file's live co-editing doc becomes (un)available, so the
+   *  editor re-derives its CodeMirror collab binding. */
+  collabGen: number
 
   openRoot: (handle: FileSystemDirectoryHandle) => Promise<void>
   /** Open a server-backed project: load its files into an editable tree. */
@@ -118,24 +131,60 @@ function buildNodeForPath(path: string, index: number): Node {
   }
 }
 
+/** Get-or-create the directory node for a server-relative dir path. */
+function ensureServerDir(root: FsEntry, dirPath: string): FsEntry {
+  if (dirPath === '' || dirPath === root.path) return root
+  const parts = dirPath.split('/')
+  let dir = root
+  for (let i = 0; i < parts.length; i++) {
+    const segPath = parts.slice(0, i + 1).join('/')
+    let child = dir.children!.find((c) => c.kind === 'directory' && c.path === segPath)
+    if (!child) {
+      child = { name: parts[i], path: segPath, kind: 'directory', backend: 'server', children: [] }
+      dir.children!.push(child)
+    }
+    dir = child
+  }
+  return dir
+}
+
 /** Build a synthetic file tree (no handles) for a server-backed project. */
 function buildServerTree(name: string, files: ProjectFile[]): FsEntry {
   const root: FsEntry = { name, path: name, kind: 'directory', backend: 'server', children: [] }
   for (const f of [...files].sort((a, b) => (a.path < b.path ? -1 : 1))) {
     const parts = f.path.split('/')
-    let dir = root
-    for (let i = 0; i < parts.length - 1; i++) {
-      const segPath = parts.slice(0, i + 1).join('/')
-      let child = dir.children!.find((c) => c.kind === 'directory' && c.path === segPath)
-      if (!child) {
-        child = { name: parts[i], path: segPath, kind: 'directory', backend: 'server', children: [] }
-        dir.children!.push(child)
-      }
-      dir = child
-    }
+    const dir = ensureServerDir(root, parts.slice(0, -1).join('/'))
     dir.children!.push({ name: parts[parts.length - 1], path: f.path, kind: 'file', backend: 'server', content: f.content })
   }
   return root
+}
+
+/** Every file path in a (sub)tree. */
+function collectFilePaths(entry: FsEntry, out: string[] = []): string[] {
+  if (entry.kind === 'file') out.push(entry.path)
+  for (const c of entry.children ?? []) collectFilePaths(c, out)
+  return out
+}
+
+/** Every directory node in a tree, by path (root excluded). */
+function collectDirs(entry: FsEntry, out: Map<string, FsEntry> = new Map(), isRoot = true): Map<string, FsEntry> {
+  if (entry.kind === 'directory' && !isRoot) out.set(entry.path, entry)
+  for (const c of entry.children ?? []) collectDirs(c, out, false)
+  return out
+}
+
+/** Remove the node at `path` from a mutable tree (used pre-reconcile). */
+function pruneEntry(root: FsEntry, path: string): void {
+  const walk = (dir: FsEntry): boolean => {
+    if (!dir.children) return false
+    const idx = dir.children.findIndex((c) => c.path === path)
+    if (idx >= 0) {
+      dir.children.splice(idx, 1)
+      return true
+    }
+    return dir.children.some(walk)
+  }
+  walk(root)
 }
 
 /** Find the first file entry with an exact relative path, depth-first. */
@@ -158,10 +207,14 @@ function firstFileEntry(entry: FsEntry): FsEntry | null {
   return null
 }
 
-/** Persist one open file to its backend (server API or the local disk handle). */
+/** Persist one open file to its backend. Server files go through the live
+ *  co-editing doc when one exists (the server persists the merged text);
+ *  the plain files API stays as the fallback (older server, sync failure). */
 async function writeOpenFile(file: OpenFile, formatted: string): Promise<void> {
   if (file.backend === 'server') {
-    await projectsApi.putFile(file.projectId!, file.path, formatted)
+    if (!collabWrite(file.path, formatted)) {
+      await projectsApi.putFile(file.projectId!, file.path, formatted)
+    }
   } else {
     await writeFileText(file.handle!, formatted)
   }
@@ -259,6 +312,101 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     await startObserver(tree)
   }
 
+  // -- live co-editing (server projects) -----------------------------------
+
+  /** A collab doc's text changed (local or remote): follow it in the open
+   *  tab (server files are live-synced, never dirty), the synthetic tree,
+   *  and the LSP index — so lint + the story graph track co-writers live. */
+  const reflectCollabText = (path: string, text: string) => {
+    const { root } = get()
+    if (root) {
+      const entry = findFileEntry(root, path)
+      if (entry) entry.content = text
+    }
+    const file = get().openFiles[path]
+    if (file && file.contents !== text) {
+      set((s) => {
+        const f = s.openFiles[path]
+        if (!f || f.contents === text) return {}
+        return { openFiles: { ...s.openFiles, [path]: { ...f, contents: text, dirty: false } } }
+      })
+    }
+    syncBuffer(path, text)
+  }
+
+  /** Refetch the server project's file list and rebuild the tree: live
+   *  collab text overlays the stored rows, empty (not-yet-persisted) folders
+   *  survive, vanished files close their tabs + leave the LSP index. */
+  const reconcileServerTree = async () => {
+    const pid = get().projectId
+    if (!pid) return
+    let files: ProjectFile[]
+    try {
+      files = (await projectsApi.get(pid)).files
+    } catch {
+      return // transient — the next files event retries
+    }
+    const prev = get().root
+    if (get().projectId !== pid) return // project switched mid-fetch
+    const fresh = buildServerTree(get().projectName ?? 'project', files)
+    for (const p of collectFilePaths(fresh)) {
+      const live = collabTextFor(p)
+      if (live !== null) {
+        const entry = findFileEntry(fresh, p)
+        if (entry) entry.content = live
+      }
+    }
+    if (prev) {
+      const freshDirs = collectDirs(fresh)
+      for (const [dirPath] of collectDirs(prev)) {
+        if (!freshDirs.has(dirPath)) ensureServerDir(fresh, dirPath)
+      }
+    }
+    set({ root: fresh })
+    // Close tabs (and drop index docs) for files that no longer exist.
+    const present = new Set(collectFilePaths(fresh))
+    for (const [p, f] of Object.entries(get().openFiles)) {
+      if (f.backend !== 'server' || present.has(p)) continue
+      dropIndexedPath(p)
+      set((s) => {
+        const { [p]: _gone, ...rest } = s.openFiles
+        const order = s.tabOrder.filter((tp) => tp !== p)
+        let nextActive = s.activePath
+        if (s.activePath === p) {
+          const idx = s.tabOrder.indexOf(p)
+          nextActive = order[Math.min(idx, order.length - 1)] ?? null
+        }
+        return { openFiles: rest, tabOrder: order, activePath: nextActive }
+      })
+    }
+  }
+
+  let pendingReconcile: ReturnType<typeof setTimeout> | null = null
+  const scheduleServerReconcile = () => {
+    if (pendingReconcile) return
+    pendingReconcile = setTimeout(() => {
+      pendingReconcile = null
+      void reconcileServerTree()
+    }, 300)
+  }
+
+  /** The API path a new child of `dir` gets (tree paths are project-relative;
+   *  only the root node carries the project name). */
+  const serverPathFor = (dir: FsEntry, name: string): string => {
+    const root = get().root
+    return root && dir.path === root.path ? name : `${dir.path}/${name}`
+  }
+
+  /** Create + open an empty server file (the tree refresh makes it real). */
+  const createServerFile = async (path: string) => {
+    const pid = get().projectId
+    if (!pid) return
+    await projectsApi.putFile(pid, path, '')
+    await reconcileServerTree()
+    const entry = get().root ? findFileEntry(get().root!, path) : null
+    if (entry) await get().openFile(entry)
+  }
+
   return {
     root: null,
     rootStatus: 'idle',
@@ -272,10 +420,12 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     pendingCursor: null,
     nodes: [],
     edges: [],
+    collabGen: 0,
 
     openRoot: async (handle) => {
       // Fresh workspace: drop previous tabs/canvas state (and any server project).
       stopObserver()
+      stopCollab()
       resetIndexCache() // clear the previous project's LSP docs + caches
       set({ projectId: null, projectName: null, openFiles: {}, tabOrder: [], activePath: null, recentlyClosed: [], nodes: [], edges: [] })
       await idbSet(ROOT_HANDLE_KEY, handle)
@@ -285,6 +435,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     openServerProject: async (project, files) => {
       // Server projects don't use the on-disk observer or handles.
       stopObserver()
+      stopCollab()
       resetIndexCache() // clear the previous project's LSP docs + caches
       await idbDel(ROOT_HANDLE_KEY)
       const root = buildServerTree(project.name, files)
@@ -299,6 +450,12 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         recentlyClosed: [],
         nodes: [],
         edges: [],
+      })
+      // Live co-editing: every open file becomes a shared CRDT doc; the
+      // stream also delivers co-writers' file creations/deletions.
+      startCollab(project.id, { name: useAuth.getState().user?.name ?? 'Author' }, {
+        onText: reflectCollabText,
+        onFiles: scheduleServerReconcile,
       })
       const main = findFileEntry(root, 'main.loom') ?? firstFileEntry(root)
       if (main) await get().openFile(main)
@@ -354,6 +511,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
 
     closeRoot: async () => {
       stopObserver()
+      stopCollab()
       resetIndexCache() // drop the LSP workspace + index caches
       await idbDel(ROOT_HANDLE_KEY)
       set({
@@ -373,7 +531,11 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
 
     refreshTree: async () => {
       const { root, projectId } = get()
-      if (!root || projectId) return // server projects have no on-disk tree to refresh
+      if (!root) return
+      if (projectId) {
+        await reconcileServerTree() // server projects refresh from the API
+        return
+      }
       const fresh = await readDirectoryTree(root.handle as FileSystemDirectoryHandle)
       set({ root: fresh })
     },
@@ -385,10 +547,24 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         set({ activePath: entry.path })
         return
       }
-      const open: OpenFile =
-        entry.backend === 'server'
-          ? { path: entry.path, backend: 'server', projectId: get().projectId ?? undefined, contents: entry.content ?? '', dirty: false }
-          : { path: entry.path, backend: 'local', handle: entry.handle as FileSystemFileHandle, contents: await readFileText(entry.handle as FileSystemFileHandle), dirty: false }
+      let open: OpenFile
+      if (entry.backend === 'server') {
+        // Join the file's live co-editing doc first: the tab opens on the
+        // authoritative merged text and the CodeMirror binding is ready
+        // before the first render. Falls back to the loaded snapshot when
+        // collab is unavailable.
+        const live = await openCollabDoc(entry.path)
+        open = {
+          path: entry.path,
+          backend: 'server',
+          projectId: get().projectId ?? undefined,
+          contents: live?.text ?? entry.content ?? '',
+          dirty: false,
+        }
+        set((s) => ({ collabGen: s.collabGen + 1 }))
+      } else {
+        open = { path: entry.path, backend: 'local', handle: entry.handle as FileSystemFileHandle, contents: await readFileText(entry.handle as FileSystemFileHandle), dirty: false }
+      }
       set((s) => {
         const hasNode = s.nodes.some((n) => n.id === entry.path)
         return {
@@ -533,17 +709,31 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       }))
     },
 
-    updateContents: (path, contents) =>
+    updateContents: (path, contents) => {
+      const file = get().openFiles[path]
+      if (!file) return
+      // Server files under live co-editing: fold the new text into the
+      // shared doc (a no-op for CodeMirror-originated edits — the binding
+      // already applied them) and stay clean — the server persists.
+      if (file.backend === 'server' && collabWrite(path, contents)) {
+        set((s) => {
+          const f = s.openFiles[path]
+          if (!f || f.contents === contents) return {}
+          return { openFiles: { ...s.openFiles, [path]: { ...f, contents, dirty: false } } }
+        })
+        return
+      }
       set((s) => {
-        const file = s.openFiles[path]
-        if (!file) return {}
+        const f = s.openFiles[path]
+        if (!f) return {}
         return {
           openFiles: {
             ...s.openFiles,
-            [path]: { ...file, contents, dirty: contents !== file.contents || file.dirty },
+            [path]: { ...f, contents, dirty: contents !== f.contents || f.dirty },
           },
         }
-      }),
+      })
+    },
 
     saveActive: async () => {
       const { activePath, openFiles } = get()
@@ -583,8 +773,10 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         await notify({ title: 'Open a folder first.' })
         return
       }
+      const trimmedName = name.trim()
+      if (!trimmedName) return
       if (get().projectId) {
-        await notify({ title: 'Adding files to a server project isn’t supported yet.' })
+        await createServerFile(trimmedName)
         return
       }
       const handle = await createFile(root.handle as FileSystemDirectoryHandle, name)
@@ -604,12 +796,12 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
 
     createFileIn: async (dir, name) => {
       if (dir.kind !== 'directory') return
-      if (get().projectId) {
-        await notify({ title: 'Adding files to a server project isn’t supported yet.' })
-        return
-      }
       const trimmed = name.trim()
       if (!trimmed) return
+      if (get().projectId) {
+        await createServerFile(serverPathFor(dir, trimmed))
+        return
+      }
       const handle = await createFile(dir.handle as FileSystemDirectoryHandle, trimmed)
       await writeFileText(handle, '')
       await get().refreshTree()
@@ -626,15 +818,23 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
 
     createDirectoryIn: async (dir, name) => {
       if (dir.kind !== 'directory') return
-      if (get().projectId) return
       const trimmed = name.trim()
       if (!trimmed) return
+      if (get().projectId) {
+        // Server storage is path-keyed — a folder becomes real when its
+        // first file lands. Show it locally so files can be created inside.
+        const root = get().root
+        if (!root) return
+        ensureServerDir(root, serverPathFor(dir, trimmed))
+        set({ root: { ...root } })
+        return
+      }
       await createDirectory(dir.handle as FileSystemDirectoryHandle, trimmed)
       await get().refreshTree()
     },
 
     deleteEntry: async (parent, entry) => {
-      if (parent.kind !== 'directory' || get().projectId) return
+      if (parent.kind !== 'directory') return
       const label = entry.kind === 'directory' ? `folder “${entry.name}” and all its contents` : `file “${entry.name}”`
       if (!(await confirmAction({
         title: `Delete ${label}?`,
@@ -642,7 +842,23 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         confirmLabel: 'Delete',
         danger: true,
       }))) return
-      await removeEntry(parent.handle as FileSystemDirectoryHandle, entry.name, entry.kind === 'directory')
+      const pid = get().projectId
+      if (pid) {
+        // Server storage is per-file: delete every file under the entry.
+        for (const p of collectFilePaths(entry)) {
+          await projectsApi.deleteFile(pid, p)
+          dropCollabDoc(p)
+        }
+        // Prune locally too (an empty deleted folder isn't server-known and
+        // would otherwise be preserved by the reconcile's empty-dir carry).
+        const root = get().root
+        if (root) {
+          pruneEntry(root, entry.path)
+          set({ root: { ...root } })
+        }
+      } else {
+        await removeEntry(parent.handle as FileSystemDirectoryHandle, entry.name, entry.kind === 'directory')
+      }
       // Drop the removed file(s) from the LSP index immediately (the gated
       // reindex only prunes when whole-project indexing is on).
       for (const p of Object.keys(get().openFiles)) {
@@ -668,16 +884,36 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     },
 
     renameEntry: async (parent, entry, newName) => {
-      if (get().projectId) return
       const trimmed = newName.trim()
       if (!trimmed || trimmed === entry.name) return
-      const ok = await renameHandle(entry.handle as FileSystemFileHandle | FileSystemDirectoryHandle, trimmed)
-      if (!ok) {
-        await notify({ title: 'Rename is not supported in this browser version.' })
-        return
-      }
+      const pid = get().projectId
       const oldPath = entry.path
-      const newPath = `${parent.path}/${trimmed}`
+      const newPath = pid ? serverPathFor(parent, trimmed) : `${parent.path}/${trimmed}`
+      if (pid) {
+        // Server rename = copy + delete per file (live text wins over the
+        // stored row, so an in-flight co-edit isn't lost).
+        for (const from of collectFilePaths(entry)) {
+          const to = `${newPath}${from.slice(oldPath.length)}`
+          const content =
+            collabTextFor(from) ??
+            get().openFiles[from]?.contents ??
+            (get().root ? (findFileEntry(get().root!, from)?.content ?? '') : '')
+          await projectsApi.putFile(pid, to, content)
+          await projectsApi.deleteFile(pid, from)
+          dropCollabDoc(from)
+        }
+        const root = get().root
+        if (root) {
+          pruneEntry(root, oldPath)
+          set({ root: { ...root } })
+        }
+      } else {
+        const ok = await renameHandle(entry.handle as FileSystemFileHandle | FileSystemDirectoryHandle, trimmed)
+        if (!ok) {
+          await notify({ title: 'Rename is not supported in this browser version.' })
+          return
+        }
+      }
       // Drop old URIs from the LSP index; the reindex re-adds under the new
       // path (and the active-buffer sync covers a renamed open file).
       for (const p of Object.keys(get().openFiles)) {
@@ -709,6 +945,15 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         return { openFiles: next, tabOrder: order, activePath }
       })
       await get().refreshTree()
+      if (pid) {
+        // Rejoin the live docs under the new paths for still-open tabs.
+        for (const [p, f] of Object.entries(get().openFiles)) {
+          if (f.backend !== 'server') continue
+          if (p === newPath || p.startsWith(`${newPath}/`)) {
+            void openCollabDoc(p).then(() => set((s) => ({ collabGen: s.collabGen + 1 })))
+          }
+        }
+      }
     },
 
     setNodes: (updater) =>

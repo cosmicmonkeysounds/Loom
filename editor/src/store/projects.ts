@@ -2,7 +2,7 @@
 //! loads its `.loom` files into the workspace store as an editable tree.
 
 import { create } from 'zustand'
-import { projectsApi, type ProjectSummary } from '@/lib/api'
+import { membersApi, projectsApi, type ProjectSummary } from '@/lib/api'
 import { useWorkspace } from '@/store/workspace'
 
 type ProjectsState = {
@@ -16,6 +16,8 @@ type ProjectsState = {
   open: (id: string) => Promise<void>
   close: () => Promise<void>
   remove: (id: string) => Promise<void>
+  /** Leave a project that was shared with you (self-removal). */
+  leave: (id: string) => Promise<void>
 }
 
 export const useProjects = create<ProjectsState>((set, get) => ({
@@ -53,6 +55,12 @@ export const useProjects = create<ProjectsState>((set, get) => ({
 
   remove: async (id) => {
     await projectsApi.remove(id)
+    set((s) => ({ projects: s.projects.filter((p) => p.id !== id) }))
+    if (get().currentId === id) await get().close()
+  },
+
+  leave: async (id) => {
+    await membersApi.remove(id)
     set((s) => ({ projects: s.projects.filter((p) => p.id !== id) }))
     if (get().currentId === id) await get().close()
   },

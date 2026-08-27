@@ -7,6 +7,8 @@ import { useProjects } from '@/store/projects'
 import { useWorkspace } from '@/store/workspace'
 import { isFsAccessSupported, pickDirectory } from '@/lib/fs'
 import { confirmAction } from '@/store/dialog'
+import type { ProjectSummary } from '@/lib/api'
+import { ShareDialog } from './ShareDialog'
 
 const TEMPLATES = [
   { id: 'escape-the-internet', label: 'Escape the Internet (example)' },
@@ -16,12 +18,17 @@ const TEMPLATES = [
 export function ProjectsLaunchpad() {
   const user = useAuth((s) => s.user)
   const signOut = useAuth((s) => s.signOut)
-  const { projects, status, error, load, create, open, remove } = useProjects()
+  const { projects, status, error, load, create, open, remove, leave } = useProjects()
   const openRoot = useWorkspace((s) => s.openRoot)
 
   const [newName, setNewName] = useState('')
   const [template, setTemplate] = useState(TEMPLATES[0].id)
   const [busy, setBusy] = useState<string | null>(null)
+  const [sharing, setSharing] = useState<ProjectSummary | null>(null)
+
+  // A summary from an older server has no role — treat it as owned.
+  const owned = projects.filter((p) => (p.role ?? 'owner') === 'owner')
+  const shared = projects.filter((p) => (p.role ?? 'owner') !== 'owner')
 
   useEffect(() => {
     void load()
@@ -112,27 +119,13 @@ export function ProjectsLaunchpad() {
         )}
 
         <ul className="flex flex-col gap-2">
-          {projects.map((p) => (
-            <li
-              key={p.id}
-              className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 hover:border-zinc-700"
-            >
-              <button className="flex-1 text-left" onClick={() => void doOpen(p.id)} disabled={busy === p.id}>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{p.name}</span>
-                  {p.activeEvent && (
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide ${
-                        p.activeEvent.status === 'open' ? 'bg-emerald-900 text-emerald-300' : 'bg-amber-900 text-amber-300'
-                      }`}
-                    >
-                      {p.activeEvent.mode} · {p.activeEvent.status}
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs text-zinc-500">
-                  {busy === p.id ? 'Opening…' : `updated ${new Date(p.updatedAt).toLocaleString()}`}
-                </div>
+          {owned.map((p) => (
+            <ProjectRow key={p.id} project={p} busy={busy === p.id} onOpen={() => void doOpen(p.id)}>
+              <button
+                onClick={() => setSharing(p)}
+                className="ml-3 rounded-lg px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+              >
+                Share
               </button>
               <button
                 onClick={() => {
@@ -146,14 +139,82 @@ export function ProjectsLaunchpad() {
                     if (ok) await remove(p.id)
                   })()
                 }}
-                className="ml-3 rounded-lg px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-800 hover:text-red-400"
+                className="ml-1 rounded-lg px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-800 hover:text-red-400"
               >
                 Delete
               </button>
-            </li>
+            </ProjectRow>
           ))}
         </ul>
+
+        {shared.length > 0 && (
+          <>
+            <h2 className="mt-8 mb-2 text-sm font-semibold tracking-tight text-zinc-300">Shared with you</h2>
+            <ul className="flex flex-col gap-2">
+              {shared.map((p) => (
+                <ProjectRow key={p.id} project={p} busy={busy === p.id} onOpen={() => void doOpen(p.id)}>
+                  <button
+                    onClick={() => {
+                      void (async () => {
+                        const ok = await confirmAction({
+                          title: `Leave “${p.name}”?`,
+                          body: 'You lose access until the owner invites you again.',
+                          confirmLabel: 'Leave',
+                          danger: true,
+                        })
+                        if (ok) await leave(p.id)
+                      })()
+                    }}
+                    className="ml-3 rounded-lg px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-800 hover:text-red-400"
+                  >
+                    Leave
+                  </button>
+                </ProjectRow>
+              ))}
+            </ul>
+          </>
+        )}
+
+        {sharing && <ShareDialog projectId={sharing.id} projectName={sharing.name} onClose={() => setSharing(null)} />}
       </div>
     </div>
+  )
+}
+
+/** One launchpad row: name + event badge + owner line, plus row actions. */
+function ProjectRow({
+  project: p,
+  busy,
+  onOpen,
+  children,
+}: {
+  project: ProjectSummary
+  busy: boolean
+  onOpen: () => void
+  children?: React.ReactNode
+}) {
+  const ownerLabel = p.owner ? (p.owner.name ?? p.owner.email ?? 'another author') : null
+  return (
+    <li className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 hover:border-zinc-700">
+      <button className="flex-1 text-left" onClick={onOpen} disabled={busy}>
+        <div className="flex items-center gap-2">
+          <span className="font-medium">{p.name}</span>
+          {p.activeEvent && (
+            <span
+              className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+                p.activeEvent.status === 'open' ? 'bg-emerald-900 text-emerald-300' : 'bg-amber-900 text-amber-300'
+              }`}
+            >
+              {p.activeEvent.mode} · {p.activeEvent.status}
+            </span>
+          )}
+        </div>
+        <div className="text-xs text-zinc-500">
+          {busy ? 'Opening…' : `updated ${new Date(p.updatedAt).toLocaleString()}`}
+          {ownerLabel && <span className="ml-2 text-zinc-600">· by {ownerLabel}</span>}
+        </div>
+      </button>
+      {children}
+    </li>
   )
 }

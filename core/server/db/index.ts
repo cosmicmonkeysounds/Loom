@@ -4,9 +4,10 @@
 //! are owned + migrated by BetterAuth itself. This module owns the *domain*
 //! tables that hang off an author account:
 //!
-//!   project        one `.loom` app an author develops
-//!   project_file   a single `.loom` file inside a project
-//!   event          a launched run of a project (live or preview)
+//!   project         one `.loom` app an author develops
+//!   project_file    a single `.loom` file inside a project
+//!   project_member  another author invited to collaborate on a project
+//!   event           a launched run of a project (live or preview)
 //!
 //! `owner_id` references a BetterAuth user id but is deliberately *not* a hard
 //! foreign key, so the two migration sources stay decoupled and order-free.
@@ -47,6 +48,18 @@ create table if not exists project_file (
   unique (project_id, path)
 );
 create index if not exists project_file_project_idx on project_file (project_id);
+
+-- Collaboration: extra author accounts invited onto a project. The owner is
+-- NOT duplicated here — ownership stays the project row's owner_id. Like
+-- owner_id, user_id references a BetterAuth user without a hard FK.
+create table if not exists project_member (
+  project_id  text not null references project (id) on delete cascade,
+  user_id     text not null,
+  role        text not null default 'editor' check (role in ('editor')),
+  created_at  timestamptz not null default now(),
+  primary key (project_id, user_id)
+);
+create index if not exists project_member_user_idx on project_member (user_id);
 
 create table if not exists event (
   id               text primary key,

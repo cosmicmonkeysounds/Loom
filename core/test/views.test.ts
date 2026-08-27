@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Sim } from "../src/runtime/sim/index.ts";
-import { guestView, modView, primeView } from "../server/views.ts";
+import { guestView, modView, primeView, titleOf } from "../server/views.ts";
 import { scenarioSource } from "../examples/load.ts";
 
 const SCENARIO = scenarioSource("escape-the-internet");
@@ -75,5 +75,36 @@ describe("server views", () => {
     expect(v.channels).toEqual([]);
     expect(v.beats).toEqual([]);
     expect(primeView(null, "X").guests).toEqual([]);
+  });
+
+  it("lists only public factions as the guest's joinable sides", () => {
+    const sim = Sim.fromSources(SCENARIO);
+    sim.createPerson("g1", "Alice");
+    const v = guestView(sim, "g1");
+    // The two public sides — never the hidden TheAlgorithm / Glitchers.
+    expect(v.factions).toEqual(["Mods", "Chatters"]);
+  });
+});
+
+describe("titleOf — the authored display title", () => {
+  it("reads the first `# Title` heading", () => {
+    expect(titleOf("# Trapped in the Internet\n#\n# prose comment\n\nentry: start\n")).toBe("Trapped in the Internet");
+  });
+
+  it("skips the `# ── path ──` separators multi-file concatenation inserts", () => {
+    const src = `# ── main.loom ${"─".repeat(46)}\n# Escape the Internet\n\n== start\n`;
+    expect(titleOf(src)).toBe("Escape the Internet");
+    // The real concatenated example resolves to its authored heading too.
+    expect(titleOf(SCENARIO)).toBe("Escape the Internet");
+  });
+
+  it("falls back to a `title:` header property", () => {
+    expect(titleOf("entry: start\ntitle: The Masquerade\n\n== start\n")).toBe("The Masquerade");
+    expect(titleOf("TITLE: The Masquerade\n")).toBe("The Masquerade");
+  });
+
+  it("is null when the source names nothing", () => {
+    expect(titleOf("== start\nHello.\n")).toBeNull();
+    expect(titleOf("")).toBeNull();
   });
 });

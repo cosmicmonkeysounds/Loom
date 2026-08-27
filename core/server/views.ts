@@ -6,6 +6,32 @@ import type { Sim } from "../src/runtime/sim/index.ts";
 
 export type RuntimePhase = "idle" | "open" | "paused";
 
+/**
+ * Best display title authored in a `.loom` source: the first `# Title`
+ * heading — skipping the `# ── path ──` file-separator comments that
+ * multi-file concatenation inserts (`projectSource` / `examples/load.ts`) —
+ * else the first `title:` header property. Null when the source names
+ * nothing; callers fall back to the project/scenario name.
+ */
+export function titleOf(source: string): string | null {
+  for (const raw of source.split("\n")) {
+    const line = raw.trim();
+    if (line === "") continue;
+    if (line.startsWith("#")) {
+      const rest = line.slice(1).trim();
+      if (rest === "" || rest.startsWith("#") || rest.startsWith("─")) continue;
+      return rest;
+    }
+    const m = /^([A-Za-z][A-Za-z0-9_ -]*):\s*(.*)$/.exec(line);
+    if (m !== null) {
+      if (m[1]!.trim().toLowerCase() === "title" && m[2]!.trim() !== "") return m[2]!.trim();
+      continue; // another header property (entry:, …) — keep scanning
+    }
+    break; // first real content line — the header is over
+  }
+  return null;
+}
+
 /** An authored channel a participant can see, for the sidebar. */
 export interface ChannelSnapshot {
   id: string;
@@ -46,6 +72,9 @@ export interface GuestView {
   spaces: SpaceSnapshot[];
   /** Other participants (id + name) — the invite picker's source. */
   roster: Array<{ id: string; name: string }>;
+  /** The public (non-hidden) factions a guest may join — the side chooser's
+   *  source. Empty when the story declares none (no chooser shown). */
+  factions: string[];
 }
 
 export function guestView(sim: Sim, id: string, decisionChannel: string | null = null): GuestView {
@@ -64,6 +93,7 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     channels: sim.visibleChannelsFor(id),
     spaces: sim.spaceList(),
     roster: sim.rosterFor(id),
+    factions: [...sim.model.factions.values()].filter((f) => !f.hidden).map((f) => f.id),
   };
 }
 

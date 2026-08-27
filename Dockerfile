@@ -19,6 +19,7 @@ COPY bank/package.json bank/
 COPY play/package.json play/
 COPY editor/package.json editor/
 COPY desktop/package.json desktop/
+COPY invite/package.json invite/
 RUN pnpm install --frozen-lockfile --filter '!loom-desktop'
 
 # docs/ is bundled into both apps at build time (the in-app Help).
@@ -27,8 +28,10 @@ COPY core core
 COPY bank bank
 COPY play play
 COPY editor editor
+COPY invite invite
 
 RUN pnpm --filter loom-play build
+RUN pnpm --filter loom-invite build
 # The editor ships under /edit/ behind the proxy. Its API calls are
 # root-absolute (/api, /e), so they stay same-origin through Caddy —
 # which is what lets the BetterAuth session cookie flow.
@@ -46,6 +49,7 @@ COPY bank/package.json bank/
 COPY play/package.json play/
 COPY editor/package.json editor/
 COPY desktop/package.json desktop/
+COPY invite/package.json invite/
 RUN pnpm install --frozen-lockfile --prod --filter @loom/core
 
 COPY core core
@@ -62,7 +66,8 @@ VOLUME /data
 EXPOSE 7000
 ENTRYPOINT ["loom-entrypoint"]
 
-# ---- proxy: Caddy with the editor SPA baked in ----
+# ---- proxy: Caddy with the editor + invite SPAs baked in ----
 FROM caddy:2 AS proxy
 COPY deploy/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /repo/editor/dist /srv/edit
+COPY --from=build /repo/invite/dist /srv/invite

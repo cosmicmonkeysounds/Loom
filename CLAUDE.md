@@ -38,8 +38,12 @@ at `/edit/`, built with `--base=/edit/`, and reverse-proxying `/`,
 `/api`, `/e` to the server) plus `docker-compose.yml` (Postgres +
 server + Caddy, named volumes for pgdata / `LOOM_STATE_DIR` / certs,
 migration run idempotently by `deploy/docker-entrypoint.sh`) and
-`.env.example`. VPS walkthrough:
-[`docs/loom-docker-deploy.md`](./docs/loom-docker-deploy.md).
+`.env.example`. The `proxy` target also hosts [`invite/`](./invite)
+(`loom-invite`, in the pnpm workspace) — the cryptic party-invitation
+one-pager served on its own Caddy site address (`INVITE_ADDRESS`, the
+apex domain, e.g. `mapsandducks.com`) while the app lives on a
+subdomain (`SITE_ADDRESS`). VPS walkthrough incl. domain
+transfer/DNS: [`docs/loom-docker-deploy.md`](./docs/loom-docker-deploy.md).
 
 **In-app help** ships from [`docs/help/`](./docs/help): markdown
 articles (frontmatter: `title` / `section` / `order` / `keywords` /
@@ -98,9 +102,48 @@ project launches its own **event** (live, or a private server-hosted
 
 - **Control plane** (needs Postgres via `DATABASE_URL`): `/api/auth/*`
   (BetterAuth), `/api/projects/*` (+ `…/:id/event` launch/pause/resume/end),
-  ownership-scoped. `pnpm --filter @loom/core migrate` builds the tables. If
+  access-scoped. `pnpm --filter @loom/core migrate` builds the tables. If
   the DB is unreachable the control plane stays disabled and the event plane
   still runs, so a LAN-only deployment needs no database.
+- **Collaboration** (2026-08-27): a `project_member` table +
+  `/api/projects/:id/members` (GET/POST/DELETE) let an owner invite other
+  signed-up authors by email onto a project. Members see it under
+  "Shared with you" in the launchpad (`ShareDialog.tsx` manages the roster,
+  owner-only), can read/write its files, and can launch + moderate its
+  events (`canModerateEvent` covers the whole writing team — run == admin);
+  rename / delete / member management stay owner-only. Access resolution is
+  `getProjectFor` / `listProjectsFor` in `db/queries.ts` — a project you
+  can't access reads as 404. DB-gated tests in `core/test/db.test.ts`.
+- **Real-time co-editing on the SaaS path** (2026-08-27): server-project
+  files are live CRDT documents (**Yjs** — pure TS, no wasm). The server
+  side is `core/server/collab.ts` (`CollabHub`: one authoritative `Y.Doc`
+  per open file, seeded from `project_file`, merged text persisted back on
+  a debounce + flushed before event launch) behind
+  `/api/projects/:id/collab/{stream,sync,update,awareness}`
+  (`collab-api.ts`, same owner-or-member access as the files API) — JSON
+  POSTs of base64 Yjs updates fanned out over one SSE stream per project,
+  no WebSocket, matching the event plane's transport. The editor side is
+  `editor/src/lib/collab.ts` (singleton per open project) + a
+  `y-codemirror.next` binding in `Editor.tsx` (remote cursors with author
+  names; undo via `Y.UndoManager` so ⌘Z never swallows a co-writer's edit);
+  non-editor write paths (story-graph ops, format-on-save) fold through a
+  minimal-splice diff (`replaceIntoYText`), and remote text reflects into
+  the LSP index so lint + the story graph track co-writers live. Server
+  files are live-synced (never "dirty"); a plain `PUT /files` is adopted
+  into the live doc, and everything degrades to the old files API if the
+  stream is unavailable. **Server projects also gained full file CRUD** in
+  the editor (create file/folder, delete, rename — previously "not
+  supported yet"), with `files` SSE events reconciling every co-writer's
+  tree. Tested in `core/test/collab.test.ts` (hub merge/fan-out/persist,
+  no DB needed).
+- **Per-event branding** (2026-08-27): nothing story-specific is baked into
+  the `play` client anymore. `/api/resolve-code` (and `ResolvedCode`) carry
+  the event's display `title` — `EventRuntime.title` = the authored `# Title`
+  heading in the source (`titleOf` in `server/views.ts`, file-separator-aware)
+  falling back to the project name — and the join screens/`document.title`
+  render it (a `?code=` QR link resolves it pre-join). `GuestView.factions`
+  lists the public factions so the side-chooser / defect buttons are driven
+  by the story's declarations, not a hardcoded Mods/Chatters pair.
 - **Event plane**: one `EventRuntime` per live event under `/e/:eventId` (the
   extracted single-event server), an `EventRegistry` that rehydrates every
   non-ended event on boot, and `POST /api/resolve-code {code}` so a

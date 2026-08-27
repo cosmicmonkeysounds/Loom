@@ -19,13 +19,13 @@ afterAll(() => {
   for (const d of dirs) rmSync(d, { recursive: true, force: true });
 });
 
-function runtime(eventId: string, codes: Passcodes): EventRuntime {
+function runtime(eventId: string, codes: Passcodes, source = ""): EventRuntime {
   return new EventRuntime({
     eventId,
     store: freshStore(),
     codes,
     scenarioName: "demo",
-    scenarioSource: "",
+    scenarioSource: source,
     joinBase: () => "http://localhost",
   });
 }
@@ -33,20 +33,20 @@ function runtime(eventId: string, codes: Passcodes): EventRuntime {
 describe("EventRegistry — code resolution", () => {
   const reg = new EventRegistry(tmpdir(), () => "http://localhost");
   reg.register(runtime("evt-a", { event: "AAAA11", prime: "AAAA22", mod: "AAAA33" }));
-  reg.register(runtime("evt-b", { event: "BBBB11", prime: "BBBB22", mod: "BBBB33" }));
+  reg.register(runtime("evt-b", { event: "BBBB11", prime: "BBBB22", mod: "BBBB33" }, "# Trapped in the Internet\n\n== start\n"));
 
   it("maps an event code to that event as a guest", () => {
-    expect(reg.resolveCode("AAAA11")).toEqual({ eventId: "evt-a", role: "guest" });
-    expect(reg.resolveCode("BBBB11")).toEqual({ eventId: "evt-b", role: "guest" });
+    expect(reg.resolveCode("AAAA11")).toEqual({ eventId: "evt-a", role: "guest", title: "demo" });
+    expect(reg.resolveCode("BBBB11")).toEqual({ eventId: "evt-b", role: "guest", title: "Trapped in the Internet" });
   });
 
   it("maps prime / mod codes to the performer / moderator roles", () => {
-    expect(reg.resolveCode("AAAA22")).toEqual({ eventId: "evt-a", role: "prime" });
-    expect(reg.resolveCode("BBBB33")).toEqual({ eventId: "evt-b", role: "mod" });
+    expect(reg.resolveCode("AAAA22")).toEqual({ eventId: "evt-a", role: "prime", title: "demo" });
+    expect(reg.resolveCode("BBBB33")).toEqual({ eventId: "evt-b", role: "mod", title: "Trapped in the Internet" });
   });
 
   it("is trimmed + case-insensitive (matching passOk)", () => {
-    expect(reg.resolveCode("  aaaa11 ")).toEqual({ eventId: "evt-a", role: "guest" });
+    expect(reg.resolveCode("  aaaa11 ")).toEqual({ eventId: "evt-a", role: "guest", title: "demo" });
   });
 
   it("returns null for an unknown or empty code", () => {

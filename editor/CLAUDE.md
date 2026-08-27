@@ -563,7 +563,7 @@ rebuild.
   both deleted) — see **The story-graph node editor** above for the
   `components/graph/` surface it feeds.
 
-## Local play is Run mode's Sim source — collaboration stays external
+## Local play is Run mode's Sim source; server projects co-edit live
 
 The editor is an authoring tool with a **local rehearsal runtime**:
 open a folder, edit, highlight, lint, full **in-buffer LSP** (hover /
@@ -573,9 +573,24 @@ on ⇧F12 / occurrence highlight / project diagnostics, plus the Outline
 story-graph node editor beside the text, and Run mode's **Sim** source
 (`⌘2`) — the `@loom/core` TS `Sim` running in-browser (no wasm; the
 old wasm `LoomSession` stayed dead — this is the native-TS successor).
-The editor still does **not** co-edit over a relay (`LoomDoc` / Loro
-CRDT went with the wasm cutover), and **live events run in the sibling
-packages**: `core/` (the TS engine + SSE/REST event
+
+**Server projects co-edit in real time** (2026-08-27, `lib/collab.ts` —
+the native-TS successor to the removed Loro relay path): every
+server-backed file is a shared **Yjs** doc synced through the `@loom/core`
+server's `/api/projects/:id/collab/*` routes (base64 updates over JSON
+POST + one SSE stream per project — same transport idiom as the event
+plane). CodeMirror binds via `y-codemirror.next` (co-writers' cursors +
+names inline; undo via `Y.UndoManager`, CM history off for live files);
+graph edits and format-on-save fold in through `collabWrite`'s
+minimal-splice diff; remote text reflects into the store + LSP index
+(`reflectCollabText` in `store/workspace.ts`), so lint and the story
+graph follow co-writers keystroke-by-keystroke. Server files are
+live-synced — never "dirty" — and everything falls back to the plain
+files API when the stream is unavailable. Server projects also have
+full file CRUD (create/rename/delete files + folders) with `files` SSE
+events reconciling every co-writer's tree (`reconcileServerTree`).
+A local **folder** stays single-author (no relay), and **live events
+run in the sibling packages**: `core/` (the TS engine + SSE/REST event
 server) and `play/` (the participant app). The editor does
 not render the guest chat; instead Run mode's **Live** source
 *moderates* events on that server and **Deploy** mode (`⌘4`) *hosts*

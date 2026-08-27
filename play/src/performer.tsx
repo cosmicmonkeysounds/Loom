@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ActionRow, ChannelView, ConnDot, FactionPill, InviteSheet, MessageThread, SpaceList } from "./chat.tsx";
 import { HelpSheet } from "./help.tsx";
-import { usePrimeSession, type PrimeSession } from "./session.ts";
+import { useDocumentTitle, usePrimeSession, type PrimeSession } from "./session.ts";
 import type { Action, Channel } from "./types.ts";
 
 function PrimeLogin({ session }: { session: PrimeSession }) {
@@ -189,6 +189,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   const s = usePrimeSession();
   const [sheet, setSheet] = useState(false);
   const [help, setHelp] = useState(false);
+  useDocumentTitle(s.auth?.title);
   if (!s.auth) return <PrimeLogin session={s} />;
   const admin = s.auth.admin;
   const t = s.threads;

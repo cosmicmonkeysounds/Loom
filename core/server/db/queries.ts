@@ -70,17 +70,50 @@ export async function createProject(ownerId: string, name: string): Promise<Proj
   return rows[0]!;
 }
 
-export async function listProjects(ownerId: string): Promise<ProjectRow[]> {
-  const { rows } = await pool().query<ProjectRow>(
-    "select * from project where owner_id = $1 order by updated_at desc",
-    [ownerId],
+/** The caller's standing on a project: owns it, or was invited onto it. */
+export type ProjectRole = "owner" | "editor";
+
+export interface ProjectAccessRow extends ProjectRow {
+  role: ProjectRole;
+  /** The owning author (null owner fields when the row is the caller's own). */
+  owner_name: string | null;
+  owner_email: string | null;
+}
+
+/** Every project `userId` can open: their own plus ones shared with them. */
+export async function listProjectsFor(userId: string): Promise<ProjectAccessRow[]> {
+  const { rows } = await pool().query<ProjectAccessRow>(
+    `select p.*, 'owner' as role, null as owner_name, null as owner_email
+       from project p where p.owner_id = $1
+     union all
+     select p.*, m.role as role, u.name as owner_name, u.email as owner_email
+       from project_member m
+       join project p on p.id = m.project_id
+       left join "user" u on u.id = p.owner_id
+      where m.user_id = $1
+     order by updated_at desc`,
+    [userId],
   );
   return rows;
 }
 
-/** A project by id, only if `ownerId` owns it (else null — no leak). */
-export async function getProject(ownerId: string, id: string): Promise<ProjectRow | null> {
-  const { rows } = await pool().query<ProjectRow>("select * from project where id = $1 and owner_id = $2", [id, ownerId]);
+/**
+ * A project by id, only if `userId` owns it or is a member (else null — a
+ * project you can't access reads as 404, never a leak). The returned `role`
+ * is what handlers gate owner-only actions (delete, rename, sharing) on.
+ */
+export async function getProjectFor(userId: string, id: string): Promise<ProjectAccessRow | null> {
+  const { rows } = await pool().query<ProjectAccessRow>(
+    `select p.*,
+            case when p.owner_id = $2 then 'owner' else m.role end as role,
+            case when p.owner_id = $2 then null else u.name end as owner_name,
+            case when p.owner_id = $2 then null else u.email end as owner_email
+       from project p
+       left join project_member m on m.project_id = p.id and m.user_id = $2
+       left join "user" u on u.id = p.owner_id
+      where p.id = $1 and (p.owner_id = $2 or m.user_id is not null)`,
+    [id, userId],
+  );
   return rows[0] ?? null;
 }
 
@@ -101,11 +134,65 @@ export async function touchProject(id: string): Promise<void> {
   await pool().query("update project set updated_at = now() where id = $1", [id]);
 }
 
+// --- members (collaboration) --------------------------------------------
+
+export interface MemberRow {
+  user_id: string;
+  role: string;
+  created_at: string;
+  /** From the BetterAuth `user` table (null if the account vanished). */
+  name: string | null;
+  email: string | null;
+}
+
+export async function listMembers(projectId: string): Promise<MemberRow[]> {
+  const { rows } = await pool().query<MemberRow>(
+    `select m.user_id, m.role, m.created_at, u.name, u.email
+       from project_member m
+       left join "user" u on u.id = m.user_id
+      where m.project_id = $1
+      order by m.created_at`,
+    [projectId],
+  );
+  return rows;
+}
+
+/** Add (idempotently) a collaborator to a project. */
+export async function addMember(projectId: string, userId: string): Promise<void> {
+  await pool().query(
+    `insert into project_member (project_id, user_id) values ($1, $2)
+     on conflict (project_id, user_id) do nothing`,
+    [projectId, userId],
+  );
+}
+
+export async function removeMember(projectId: string, userId: string): Promise<boolean> {
+  const res = await pool().query("delete from project_member where project_id = $1 and user_id = $2", [projectId, userId]);
+  return (res.rowCount ?? 0) > 0;
+}
+
+/** Look up a signed-up author account by email (the invite handle). */
+export async function findUserByEmail(email: string): Promise<{ id: string; name: string | null; email: string } | null> {
+  const { rows } = await pool().query<{ id: string; name: string | null; email: string }>(
+    `select id, name, email from "user" where lower(email) = lower($1)`,
+    [email.trim()],
+  );
+  return rows[0] ?? null;
+}
+
 // --- files --------------------------------------------------------------
 
 export async function listFiles(projectId: string): Promise<FileRow[]> {
   const { rows } = await pool().query<FileRow>("select * from project_file where project_id = $1 order by path", [projectId]);
   return rows;
+}
+
+export async function getFile(projectId: string, path: string): Promise<FileRow | null> {
+  const { rows } = await pool().query<FileRow>(
+    "select * from project_file where project_id = $1 and path = $2",
+    [projectId, path],
+  );
+  return rows[0] ?? null;
 }
 
 export async function upsertFile(projectId: string, path: string, content: string): Promise<FileRow> {
@@ -194,14 +281,19 @@ export async function liveEvents(): Promise<EventRow[]> {
 }
 
 /**
- * The author id that owns the project behind an event, or null. Lets the
- * event's moderator routes accept the owning author's session — the author
- * *is* the operator, so they moderate without typing a mod code.
+ * May this signed-in author moderate the event? True for the owning author
+ * AND every invited collaborator on the project behind it — run == admin for
+ * the whole writing team, so co-writers moderate from the editor's Run/Deploy
+ * modes without typing a mod code.
  */
-export async function eventOwnerId(eventId: string): Promise<string | null> {
-  const { rows } = await pool().query<{ owner_id: string }>(
-    "select p.owner_id from event e join project p on p.id = e.project_id where e.id = $1",
-    [eventId],
+export async function canModerateEvent(eventId: string, userId: string): Promise<boolean> {
+  const { rows } = await pool().query(
+    `select 1
+       from event e
+       join project p on p.id = e.project_id
+       left join project_member m on m.project_id = p.id and m.user_id = $2
+      where e.id = $1 and (p.owner_id = $2 or m.user_id is not null)`,
+    [eventId, userId],
   );
-  return rows[0]?.owner_id ?? null;
+  return rows.length > 0;
 }

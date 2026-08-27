@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef } from 'react'
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { EditorView, keymap } from '@codemirror/view'
-import { EditorState, EditorSelection, type Extension } from '@codemirror/state'
+import { EditorState, EditorSelection, Prec, type Extension } from '@codemirror/state'
+import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next'
+import { collabEntryFor } from '@/lib/collab'
 import { indentUnit } from '@codemirror/language'
 import { indentWithTab } from '@codemirror/commands'
 import { indentationMarkers } from '@replit/codemirror-indentation-markers'
@@ -49,10 +51,25 @@ export function Editor() {
   // reconfigure CodeMirror — tearing down the stateful LSP ViewPlugins —
   // on each edit. The path only changes when the active tab does.
   const filePath = file?.path ?? null
+  const collabGen = useWorkspace((s) => s.collabGen)
+
+  // Live co-editing binding for server-project files: the CM doc syncs with
+  // the shared Y.Text and remote co-writers' cursors render inline. `live`
+  // is stable per (path, collabGen) — docs are joined before the tab opens.
+  // collabGen is an external-store invalidation signal (collabEntryFor
+  // reads module state and isn't reactive on its own).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const live = useMemo(() => (filePath ? collabEntryFor(filePath) : null), [filePath, collabGen])
 
   const extensions = useMemo(() => {
     if (!filePath) return []
     const ext: Extension[] = [...extensionForPath(filePath)]
+    if (live) {
+      ext.push(yCollab(live.ytext, live.awareness, { undoManager: live.undoManager }))
+      // Undo through the Y.UndoManager (own edits only — never a
+      // co-writer's); CM's own history is off for live files below.
+      ext.push(Prec.high(keymap.of(yUndoManagerKeymap)))
+    }
     // Right-click menu everywhere; the `.loom` variant adds the LSP
     // actions (goto / references / rename / reveal-on-canvas) + F2.
     ext.push(editorContextMenu(filePath, { lsp: languageForPath(filePath) === 'loom' }))
@@ -102,6 +119,7 @@ export function Editor() {
     return ext
   }, [
     filePath,
+    live,
     settings.tabSize,
     settings.indentWithTabs,
     settings.wordWrap,
@@ -188,7 +206,9 @@ export function Editor() {
         drawSelection: true,
         rectangularSelection: true,
         crosshairCursor: true,
-        history: true,
+        // Live files undo through the Y.UndoManager (yCollab) instead, so
+        // ⌘Z never swallows a co-writer's edits.
+        history: !live,
         tabSize: settings.tabSize,
       }}
       height="100%"

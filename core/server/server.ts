@@ -36,10 +36,11 @@ import { ipOf, readBody, sendJson, str, PayloadTooLarge } from "./http-util.ts";
 import { RateLimiter } from "./rate-limit.ts";
 import { auth, authUser, migrateAuth } from "./auth-server.ts";
 import { dbReady, initSchema } from "./db/index.ts";
-import { eventOwnerId, liveEvents } from "./db/queries.ts";
+import { canModerateEvent, liveEvents } from "./db/queries.ts";
 import { BASE_URL, DATABASE_URL, HAS_SECURE_SECRET, IS_LOCAL_BASE, TRUSTED_ORIGINS } from "./config.ts";
 import { handleProjects } from "./projects.ts";
 import { handleEvent, specFromRow } from "./events-api.ts";
+import { handleCollab } from "./collab-api.ts";
 
 const PORT = Number(process.env.LOOM_PORT ?? 7000);
 const HOST = process.env.LOOM_HOST ?? "0.0.0.0";
@@ -243,9 +244,13 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (!controlPlane) return void sendJson(res, 503, { error: "authoring is offline (no database)" });
     const user = await authUser(req);
     if (user === null) return void sendJson(res, 401, { error: "sign in" });
-    const segs = path.split("/").filter(Boolean); // ["api","projects",id,"event",action?]
+    const segs = path.split("/").filter(Boolean); // ["api","projects",id,"event"|"collab",action?]
     if (segs.length >= 4 && segs[3] === "event") {
       if (await handleEvent(req, res, method, segs, user, { registry, joinBase })) return;
+      return void sendJson(res, 404, { error: "not found" });
+    }
+    if (segs.length === 5 && segs[3] === "collab") {
+      if (await handleCollab(req, res, method, segs, url, user)) return;
       return void sendJson(res, 404, { error: "not found" });
     }
     if (await handleProjects(req, res, method, path, user)) return;
@@ -301,7 +306,8 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const subPath = slash === -1 ? "/" : rest.slice(slash);
     const runtime = registry.get(eventId);
     if (runtime === undefined) return void sendJson(res, 404, { error: "unknown event" });
-    // The owning author moderates via their session — no mod code needed.
+    // The writing team moderates via their sessions — no mod code needed:
+    // the owning author AND every collaborator invited onto the project.
     // That covers the mod POST routes AND the gated mod reads (the SSE
     // stream, /api/state, /api/history), so the editor's Run/Deploy modes
     // work on the session cookie alone.
@@ -311,7 +317,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
       (url.searchParams.get("role") ?? "mod") === "mod";
     if (controlPlane && (subPath.startsWith("/api/mod/") || wantsModRead)) {
       const user = await authUser(req);
-      if (user !== null) moderator = (await eventOwnerId(eventId)) === user.id;
+      if (user !== null) moderator = await canModerateEvent(eventId, user.id);
     }
     if (await runtime.handle(req, res, method, subPath, url, { moderator })) return;
     return void sendJson(res, 404, { error: "not found" });

@@ -51,7 +51,20 @@ export interface ProjectSummary {
   name: string
   slug: string
   updatedAt: string
+  /** The caller's standing: 'owner', or 'editor' on a project shared with them.
+   *  (Optional so summaries from older servers read as owned.) */
+  role?: 'owner' | 'editor'
+  /** Who owns it — set only on projects shared with the caller. */
+  owner?: { name: string | null; email: string | null } | null
   activeEvent: { id: string; mode: string; status: string } | null
+}
+
+/** One collaborator on a project (an invited author account). */
+export interface ProjectMember {
+  userId: string
+  role: string
+  name: string | null
+  email: string | null
 }
 
 export interface ProjectFile {
@@ -81,6 +94,23 @@ export const projectsApi = {
   },
   async deleteFile(id: string, path: string): Promise<void> {
     await req('DELETE', `/api/projects/${id}/files`, { path })
+  },
+}
+
+// --- collaboration (project members) ------------------------------------
+// Owner-managed: invite another signed-up author by email; they then see the
+// project under "Shared with you" and can edit files + run its events.
+
+export const membersApi = {
+  async list(projectId: string): Promise<ProjectMember[]> {
+    return (await req<{ members: ProjectMember[] }>('GET', `/api/projects/${projectId}/members`)).members
+  },
+  async add(projectId: string, email: string): Promise<ProjectMember[]> {
+    return (await req<{ members: ProjectMember[] }>('POST', `/api/projects/${projectId}/members`, { email })).members
+  },
+  /** Owner removes a collaborator; omit `userId` to leave a shared project. */
+  async remove(projectId: string, userId?: string): Promise<void> {
+    await req('DELETE', `/api/projects/${projectId}/members`, userId !== undefined ? { userId } : {})
   },
 }
 

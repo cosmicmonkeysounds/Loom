@@ -4,7 +4,7 @@
 //! threads (`useThreads`). The guest and performer both build on the same
 //! plumbing — only their channel-shaping + actions differ.
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, useChatStream } from "./client.ts";
 import { channelHead, groupByChannel, useThreads, type Threads } from "./threads.ts";
 import type { Channel, ChatMessage, Decision, GuestView, PrimeView } from "./types.ts";
@@ -19,6 +19,8 @@ interface GuestId {
   token: string;
   /** Which event this guest joined — every call is scoped to `/e/:eventId`. */
   eventId: string;
+  /** The event's display title (from `/api/resolve-code`). */
+  title?: string;
 }
 interface PrimeAuth {
   token: string;
@@ -26,6 +28,59 @@ interface PrimeAuth {
   admin: boolean;
   /** Which event this performer signed into. */
   eventId: string;
+  /** The event's display title (from `/api/resolve-code`). */
+  title?: string;
+}
+
+/** What `/api/resolve-code` answers for any valid passcode. */
+interface ResolvedCode {
+  eventId: string;
+  role: string;
+  title?: string;
+}
+
+/** Resolve a passcode to its event's display title (null if unknown/invalid).
+ *  Used by the join screens to show what a scanned QR leads into. */
+export async function resolveEventTitle(code: string): Promise<string | null> {
+  try {
+    const r = await api<ResolvedCode>("/api/resolve-code", { code });
+    return r.title ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** The event code can ride in on a `?code=` link (e.g. a scanned QR). */
+export function codeFromUrl(): string {
+  try {
+    return new URLSearchParams(window.location.search).get("code") ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/** The event title for a `?code=` join link, once resolved (else null). */
+export function useUrlEventTitle(): string | null {
+  const [title, setTitle] = useState<string | null>(null);
+  useEffect(() => {
+    const code = codeFromUrl();
+    if (code === "") return;
+    let alive = true;
+    void resolveEventTitle(code).then((t) => {
+      if (alive && t !== null) setTitle(t);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return title;
+}
+
+/** Keep the browser tab named after the event once we know its title. */
+export function useDocumentTitle(title: string | null | undefined): void {
+  useEffect(() => {
+    if (title) document.title = title;
+  }, [title]);
 }
 const load = <T,>(k: string): T | null => {
   try {
@@ -56,15 +111,19 @@ function requiredDecision(
       },
     };
   }
-  if (!status.faction && !status.captured) {
+  // The side chooser is driven by the story's declared public factions —
+  // nothing is shown for a story that has none.
+  const factions = status.factions ?? [];
+  if (!status.faction && !status.captured && factions.length > 0) {
     return {
       channel: "lobby",
       decision: {
         title: "Choose your side",
-        options: [
-          { label: "🛡️ Side with the Mods", onClick: () => acts.join("Mods") },
-          { label: "💬 Side with the Chatters", onClick: () => acts.join("Chatters"), tone: "ghost" },
-        ],
+        options: factions.map((f, i) => ({
+          label: `Side with the ${f}`,
+          onClick: () => acts.join(f),
+          tone: i === 0 ? undefined : ("ghost" as const),
+        })),
       },
     };
   }
@@ -72,7 +131,7 @@ function requiredDecision(
     return {
       channel: "lobby",
       decision: {
-        title: "You're trapped in the Internet",
+        title: "You've been captured",
         options: [{ label: "🏃 Make a break for it", onClick: () => acts.escape(), tone: "danger" }],
       },
     };
@@ -186,12 +245,12 @@ export function useGuestSession(): GuestSession {
   );
   const register = useCallback(async (name: string, code: string) => {
     // Resolve the short event code to its event, then register there.
-    const { eventId } = await api<{ eventId: string; role: string }>("/api/resolve-code", { code });
+    const { eventId, title } = await api<ResolvedCode>("/api/resolve-code", { code });
     const r = await api<{ id: string; name: string; token: string }>(
       `/e/${encodeURIComponent(eventId)}/api/guest/register`,
       { name, passcode: code },
     );
-    const m = { id: r.id, name: r.name, token: r.token, eventId };
+    const m: GuestId = { id: r.id, name: r.name, token: r.token, eventId, title };
     save(GK, m);
     setMe(m);
   }, []);
@@ -329,12 +388,12 @@ export function usePrimeSession(): PrimeSession {
 
   const login = useCallback(async (character: string, passcode: string) => {
     // Resolve the performer/mod code to its event, then sign in there.
-    const { eventId } = await api<{ eventId: string; role: string }>("/api/resolve-code", { code: passcode });
+    const { eventId, title } = await api<ResolvedCode>("/api/resolve-code", { code: passcode });
     const r = await api<{ token: string; character: string; admin: boolean }>(
       `/e/${encodeURIComponent(eventId)}/api/prime/login`,
       { character, passcode },
     );
-    const a = { token: r.token, character: r.character, admin: !!r.admin, eventId };
+    const a: PrimeAuth = { token: r.token, character: r.character, admin: !!r.admin, eventId, title };
     save(PK, a);
     setAuth(a);
   }, []);
@@ -355,7 +414,7 @@ export function usePrimeSession(): PrimeSession {
   const becomeAdmin = useCallback(
     async (passcode: string) => {
       const r = await api<{ token: string }>(`${base}/api/mod/login`, { passcode }, auth!.token);
-      const a = { token: r.token, character: auth!.character, admin: true, eventId: auth!.eventId };
+      const a: PrimeAuth = { ...auth!, token: r.token, admin: true };
       save(PK, a);
       setAuth(a);
     },

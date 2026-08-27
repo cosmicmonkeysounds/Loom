@@ -62,6 +62,7 @@ services:
       - "443:443"
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+      INVITE_ADDRESS: ${INVITE_ADDRESS:-:8081}
     volumes:
       - caddy-data:/data
       - caddy-config:/config

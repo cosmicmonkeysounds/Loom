@@ -5,13 +5,16 @@ Ubuntu VPS (written against OVHcloud, but any Ubuntu box works). No
 prior server experience assumed — the only prerequisite is that you can
 SSH into the machine.
 
-What you end up with, all on one box behind one address:
+What you end up with, all on one box (domain layout shown; before you
+have a domain everything under the app address is reachable by plain
+`http://YOUR_VPS_IP/…`):
 
 | URL | What it serves |
 |-----|----------------|
-| `http://your-server/` | The **play** app — guests/performers join here |
-| `http://your-server/edit/` | The **editor** — sign up, write, run + deploy events |
-| `/api/*`, `/e/*` | The event server's API (used by both apps) |
+| `https://mapsandducks.com/` | The **invitation** — a cryptic static one-pager (`invite/`) |
+| `https://app.mapsandducks.com/` | The **play** app — guests/performers join here |
+| `https://app.mapsandducks.com/edit/` | The **editor** — sign up, write, run + deploy events |
+| `…/api/*`, `…/e/*` | The event server's API (used by both apps) |
 
 Under the hood it's three containers, defined in the repo-root
 [`docker-compose.yml`](../docker-compose.yml):
@@ -20,7 +23,8 @@ Under the hood it's three containers, defined in the repo-root
   [`Dockerfile`](../Dockerfile), which also builds `play/dist` and
   `editor/dist` inside the image build, so you never run `pnpm` on the
   VPS).
-- **caddy** — the front door: serves the editor at `/edit/`, proxies
+- **caddy** — the front door: serves the invitation site on the apex
+  domain and the editor at `/edit/` on the app address, proxies
   everything else to the event server, and (once you have a domain)
   handles HTTPS certificates automatically.
 - **db** — Postgres, for author accounts + server-stored projects.
@@ -171,26 +175,133 @@ editor get their own codes in the Deploy panel.
 
 ---
 
-## 5. Add a domain + HTTPS (recommended before a real event)
+## 5. The domain: transfer, DNS, HTTPS
 
-Author logins and event traffic should really be encrypted. You need a
-domain (a cheap one is fine — you can buy it at OVH too):
+### 5a. Transferring a domain you were given (the EPP code)
 
-1. In your DNS provider, add an **A record**: `loom.example.com` →
-   `YOUR_VPS_IP`. Wait until `ping loom.example.com` resolves.
-2. On the VPS, edit `.env`:
-   ```
-   LOOM_BASE_URL=https://loom.example.com
-   SITE_ADDRESS=loom.example.com
-   ```
-3. Apply:
-   ```bash
-   docker compose up -d
-   ```
+If someone handed you a domain, "transferring" it means moving it into
+a registrar account **you** control. Since the VPS is at OVHcloud, the
+simplest home for it is your OVH account:
 
-Caddy fetches and renews the Let's Encrypt certificate automatically
-(that's why port 443 is open). `https://loom.example.com/` now serves
-the play app; `/edit/` the editor. HTTP redirects to HTTPS.
+1. The **losing side** must have the domain *unlocked* (transfer lock
+   off) and give you the **EPP / authorization code** — you have this.
+2. In the OVH control panel: **Web Cloud → Domain names → Transfer a
+   domain** (or ovh.com → Domains → Transfer). Enter the domain, pay
+   the transfer fee (it normally includes a 1-year renewal), and paste
+   the EPP code when asked.
+3. Approve the confirmation email(s). The transfer then sits with the
+   losing registrar for **up to 5 days** (many release it sooner if the
+   previous owner clicks "approve transfer" on their side).
+4. Things that block transfers, if it gets stuck: the domain was
+   registered or changed owners **less than 60 days ago** (ICANN lock —
+   you just have to wait), the transfer lock is still on, or the EPP
+   code is stale (have the previous owner regenerate it).
+
+**Don't want to wait?** You don't strictly need the transfer to finish
+before going live: whoever currently controls the domain's DNS can add
+the A records below and everything works today; the transfer just
+moves ownership to you and can complete in the background.
+
+### 5b. DNS records
+
+In the domain's DNS zone (OVH panel → the domain → **DNS zone** once
+the transfer lands), add two **A records** pointing at the VPS:
+
+| Type | Name (host) | Target |
+|------|------------|--------|
+| A | `@` (the apex, `mapsandducks.com`) | `YOUR_VPS_IP` |
+| A | `app` (→ `app.mapsandducks.com`) | `YOUR_VPS_IP` |
+
+(`app` is just a suggestion — any subdomain works; use the same name in
+`.env` below. Optionally add `www` → `YOUR_VPS_IP` too and a Caddy
+redirect, see 5d.)
+
+Wait until both resolve from your machine:
+`ping mapsandducks.com`, `ping app.mapsandducks.com`.
+
+### 5c. Point the stack at the domain
+
+On the VPS, edit `.env`:
+
+```
+LOOM_BASE_URL=https://app.mapsandducks.com
+SITE_ADDRESS=app.mapsandducks.com
+INVITE_ADDRESS=mapsandducks.com
+```
+
+Apply:
+
+```bash
+docker compose up -d --build
+```
+
+Caddy fetches and renews both Let's Encrypt certificates automatically
+(that's why port 443 is open; HTTP redirects to HTTPS). Now:
+
+- `https://mapsandducks.com/` → the cryptic invitation.
+- `https://app.mapsandducks.com/` → the play app (QR codes and join
+  links from Deploy mode use this origin, via `LOOM_BASE_URL`).
+- `https://app.mapsandducks.com/edit/` → the editor.
+
+### 5d. Optional: `www.`
+
+If you want `www.mapsandducks.com` to work too, add an A record for
+`www` and this block at the bottom of `deploy/Caddyfile`, then
+`docker compose up -d --build`:
+
+```
+www.mapsandducks.com {
+	redir https://mapsandducks.com{uri} permanent
+}
+```
+
+## 5½. The invitation page (the puzzle)
+
+The apex-domain site lives in [`invite/`](../invite): a fake
+GeoCities-era homepage ("THE WEBMASTER'S HOME PAGE" — a man who has
+been mapping the internet since 1997 and can't log off) in full
+clip-art chaos — animated water background, fire borders, a Win95-style
+MIDI player that genuinely plays (WebAudio, on click), spinning skulls,
+flying toast, and a "SITES I HAVE MAPPED" list of **real, working
+links** to surviving web-1.0 sites (info.cern.ch, zombo.com, the 1996
+Space Jam page, arngren.net, cameronsworld.net, wiby.me) acting as
+decoys. Under the noise hides a real cipher puzzle. Solving it is
+deliberately **not persisted** — the reveal shows once, and the next
+page load starts back at the homepage. **Spoilers, for the host
+only:**
+
+1. The guestbook entry signed **"B. de V. — 1586"** is a Vigenère
+   cipher (Blaise de Vigenère published it in 1586 — that's the
+   googleable hook).
+2. The key is the acrostic of the **THINGS I ♥** list ("first things
+   first"): **M**odems, **O**regon Trail, **D**oom II, **E**ncarta 95,
+   **M**IDI files → `MODEM`. A classic view-source HTML comment nudges
+   both steps.
+3. Decrypting yields *"THE MEMBERS DOOR OPENS TO THE WORD DIALTONE"* —
+   typing `DIALTONE` (any casing/spacing) into the MEMBERS ONLY box
+   reveals the actual invite: the party name, and the link to
+   `app.mapsandducks.com`.
+
+The invite content is **AES-encrypted inside the bundle** (the typed
+word is the decryption key), so reading the page's JavaScript doesn't
+skip the puzzle — the party name and app URL literally are not in the
+shipped files. To change the party details, the passphrase, or the
+cipher text, edit `invite/scripts/payload.json` (and the constants at
+the top of `invite/scripts/seal.mjs`), then:
+
+```bash
+node invite/scripts/seal.mjs DIALTONE invite/scripts/payload.json
+```
+
+It rewrites `invite/src/sealed.ts`, prints the matching guestbook
+ciphertext (paste into `App.tsx` if you changed the plaintext/key),
+and warns if the two halves of the puzzle ever drift apart.
+
+Preview locally with `pnpm --filter loom-invite dev`, then ship like
+any other update (rsync + `docker compose up -d --build`). One
+constraint: the decrypt uses the browser's Web Crypto API, which only
+exists on **https or localhost** — another reason the domain + TLS
+setup above matters.
 
 ---
 

@@ -57,6 +57,8 @@ export interface GuestView {
   pendingChoice: string[] | null;
   /** Channel the pending decision docks under. */
   decisionChannel: string | null;
+  /** Public (joinable) factions — the side chooser's source; may be empty. */
+  factions?: string[];
   channels: ChannelSnapshot[];
   spaces: SpaceSnapshot[];
   /** Other participants (id + name), for the invite picker. */

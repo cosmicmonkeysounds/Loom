@@ -19,6 +19,9 @@ export type CodeRole = "guest" | "prime" | "mod";
 export interface ResolvedCode {
   eventId: string;
   role: CodeRole;
+  /** The event's display title (authored `# Title`, else scenario name) —
+   *  what the participant app shows instead of a baked-in brand. */
+  title: string;
 }
 
 /** How to build a runtime the registry hasn't seen yet (for `ensure`). */
@@ -100,9 +103,9 @@ export class EventRegistry {
     const trimmed = code.trim();
     if (trimmed === "") return null;
     for (const rt of this.byId.values()) {
-      if (passOk(trimmed, rt.codes.event)) return { eventId: rt.eventId, role: "guest" };
-      if (passOk(trimmed, rt.codes.prime)) return { eventId: rt.eventId, role: "prime" };
-      if (passOk(trimmed, rt.codes.mod)) return { eventId: rt.eventId, role: "mod" };
+      if (passOk(trimmed, rt.codes.event)) return { eventId: rt.eventId, role: "guest", title: rt.title };
+      if (passOk(trimmed, rt.codes.prime)) return { eventId: rt.eventId, role: "prime", title: rt.title };
+      if (passOk(trimmed, rt.codes.mod)) return { eventId: rt.eventId, role: "mod", title: rt.title };
     }
     return null;
   }

@@ -6,22 +6,14 @@
 import { useState } from "react";
 import { ActionRow, ChannelView, ConnDot, FactionPill, InviteSheet, MessageThread, SpaceList } from "./chat.tsx";
 import { HelpSheet } from "./help.tsx";
-import { useGuestSession, type GuestSession } from "./session.ts";
+import { codeFromUrl, useDocumentTitle, useGuestSession, useUrlEventTitle, type GuestSession } from "./session.ts";
 import type { Action } from "./types.ts";
-
-/** The event code can ride in on a `?code=` link (e.g. a scanned QR). */
-function codeFromUrl(): string {
-  try {
-    return new URLSearchParams(window.location.search).get("code") ?? "";
-  } catch {
-    return "";
-  }
-}
 
 function GuestRegister({ session }: { session: GuestSession }) {
   const [name, setName] = useState("");
   const [code, setCode] = useState(codeFromUrl);
   const [err, setErr] = useState("");
+  const eventTitle = useUrlEventTitle();
   const go = async () => {
     try {
       await session.register(name.trim() || "Guest", code.trim());
@@ -32,8 +24,8 @@ function GuestRegister({ session }: { session: GuestSession }) {
   return (
     <div className="hero">
       <div className="glyph">🌐</div>
-      <h1>Escape the Internet</h1>
-      <p className="sub">Log on. Choose a side. Try not to get captured.</p>
+      <h1>{eventTitle ?? "Loom"}</h1>
+      <p className="sub">Log on and join the event.</p>
       <input
         placeholder="What do they call you?"
         value={name}
@@ -50,7 +42,7 @@ function GuestRegister({ session }: { session: GuestSession }) {
         onKeyDown={(e) => e.key === "Enter" && go()}
       />
       <button className="choice primary" onClick={go}>
-        Enter the internet →
+        Join →
       </button>
       {err && <div className="err">{err}</div>}
     </div>
@@ -60,7 +52,9 @@ function GuestRegister({ session }: { session: GuestSession }) {
 /** Out-of-band actions: show your pass, defect, or leave. */
 function ProfileSheet({ session, onClose, onLeave }: { session: GuestSession; onClose: () => void; onLeave: () => void }) {
   const faction = session.status?.faction ?? null;
-  const other = faction === "Mods" ? "Chatters" : "Mods";
+  // One defect button per rival public faction — driven by the story's
+  // declared factions, not a baked-in pair.
+  const others = (session.status?.factions ?? []).filter((f) => f !== faction);
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
@@ -72,11 +66,12 @@ function ProfileSheet({ session, onClose, onLeave }: { session: GuestSession; on
             <div className="muted">Show this to a performer to be scanned.</div>
           </div>
         )}
-        {faction && (
-          <button className="choice ghost" onClick={() => void session.defect(other)}>
-            Betray the {faction} → defect to {other}
-          </button>
-        )}
+        {faction &&
+          others.map((other) => (
+            <button key={other} className="choice ghost" onClick={() => void session.defect(other)}>
+              Betray the {faction} → defect to {other}
+            </button>
+          ))}
         <button
           className="choice danger"
           onClick={() => {
@@ -99,6 +94,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const [profile, setProfile] = useState(false);
   const [help, setHelp] = useState(false);
   const [inviting, setInviting] = useState(false);
+  useDocumentTitle(s.me?.title);
   if (!s.me) return <GuestRegister session={s} />;
 
   const st = s.status;

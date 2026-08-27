@@ -1,6 +1,10 @@
-# The public front door. SITE_ADDRESS comes from .env:
-#   - unset / ":80"        → plain HTTP (join by IP, no domain needed)
-#   - "loom.example.com"   → automatic HTTPS via Let's Encrypt
+# The public front door. Both addresses come from .env:
+#   SITE_ADDRESS   — the Loom app (play at /, editor at /edit/)
+#     ":80" (default)          → plain HTTP, join by IP, no domain needed
+#     "app.mapsandducks.com"   → automatic HTTPS via Let's Encrypt
+#   INVITE_ADDRESS — the party-invitation one-pager (apex domain)
+#     ":8081" (default)        → parked on an unmapped port, effectively off
+#     "mapsandducks.com"       → automatic HTTPS via Let's Encrypt
 {$SITE_ADDRESS::80} {
 	encode gzip zstd
 
@@ -16,4 +20,12 @@
 	handle {
 		reverse_proxy loom:7000
 	}
+}
+
+# The invitation — a static SPA, no API, nothing to proxy.
+{$INVITE_ADDRESS::8081} {
+	encode gzip zstd
+	root * /srv/invite
+	try_files {path} /index.html
+	file_server
 }

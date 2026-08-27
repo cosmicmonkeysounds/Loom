@@ -15,7 +15,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
 
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
-import { guestView, modView, primeView, rosterRow, type ModPresence, type RuntimePhase } from "./views.ts";
+import { guestView, modView, primeView, rosterRow, titleOf, type ModPresence, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
@@ -108,6 +108,12 @@ export class EventRuntime {
   /** Human label of the loaded scenario. */
   get scenario(): string {
     return this.scenarioName;
+  }
+
+  /** Display title participants see: the authored `# Title` heading in the
+   *  source, else the scenario name (the project's name for DB events). */
+  get title(): string {
+    return titleOf(this.scenarioSource) ?? this.scenarioName;
   }
 
   /** How many participants exist in this event's world right now. */

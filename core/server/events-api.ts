@@ -13,13 +13,14 @@ import { randomUUID } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { makePass, type Passcodes } from "./auth.ts";
+import { collabHub } from "./collab.ts";
 import { readBody, sendJson, str } from "./http-util.ts";
 import type { EventRegistry, EventSpec } from "./registry.ts";
 import type { AuthUser } from "./projects.ts";
 import {
   activeEvent,
   createEvent,
-  getProject,
+  getProjectFor,
   projectSource,
   setEventStatus,
   type EventRow,
@@ -74,7 +75,9 @@ export async function handleEvent(
   const action = segs[4]; // undefined | "pause" | "resume" | "end"
   const { registry, joinBase } = ctx;
 
-  const project = await getProject(user.id, projectId);
+  // Owner or invited collaborator — the whole writing team can launch and
+  // control a project's event (a shared rehearsal is the point of a preview).
+  const project = await getProjectFor(user.id, projectId);
   if (project === null) {
     sendJson(res, 404, { error: "no such project" });
     return true;
@@ -99,6 +102,9 @@ export async function handleEvent(
       sendJson(res, 409, { error: "an event is already active for this project", event: eventView(existing, joinBase) });
       return true;
     }
+    // Live co-editing persists on a debounce — flush so the launch snapshot
+    // is the text the authors are looking at right now.
+    await collabHub().flush(projectId);
     const src = await projectSource(projectId);
     if (src === null) {
       sendJson(res, 400, { error: "project has no files to run" });
