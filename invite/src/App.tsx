@@ -26,22 +26,24 @@ import { IV_B64, SALT_B64, SEALED_B64 } from "./sealed.ts";
 
 const CIPHER_GROUPS = "FVHQQ YPHVE PCRVA BSQWF AHKII AFGHU MZWSZ Q";
 
+// NOTE: the bold names are load-bearing — their first letters spell the
+// Vigenère key (MODEM). Grease the descriptions, never the names.
 const HEARTS = [
-  ["Modems", "the song they sing before the world connects"],
-  ["Oregon Trail", "i have died of dysentery 61 times"],
-  ["Doom II", "i know where all the secret walls are"],
-  ["Encarta 95", "every article. even the flags."],
-  ["MIDI files", "turn your sound ON ☝"],
+  ["Modems", "that sweet handshake song 'fore the world hooks up. real gone."],
+  ["Oregon Trail", "i cashed in from dysentery 61 times, daddy-o"],
+  ["Doom II", "i know every secret wall in the joint"],
+  ["Encarta 95", "every article. even the flags. read 'em all twice."],
+  ["MIDI files", "crank your speakers, cat ☝"],
 ] as const;
 
 // Real, still-breathing corners of the old internet — the map works.
 const MAPPED_SITES = [
-  { label: "the FIRST website ever made (i started my map here)", href: "http://info.cern.ch" },
-  { label: "zombo com (you can do anything there. anything at all.)", href: "https://zombo.com" },
-  { label: "space jam (1996) (still up. nothing ever dies in here.)", href: "https://www.spacejam.com/1996/" },
-  { label: "arngren dot net (the most beautiful map i have found)", href: "https://www.arngren.net" },
+  { label: "the FIRST website ever made (this is where i parked first)", href: "http://info.cern.ch" },
+  { label: "zombo com (you can do anything there. anything at all, cat.)", href: "https://zombo.com" },
+  { label: "space jam (1996) (still up. nothin' ever dies in here.)", href: "https://www.spacejam.com/1996/" },
+  { label: "arngren dot net (prettiest map these optics ever saw)", href: "https://www.arngren.net" },
   { label: "cameron's world (a map of the old country)", href: "https://www.cameronsworld.net" },
-  { label: "wiby (a search engine for pages like mine)", href: "https://wiby.me" },
+  { label: "wiby (a search engine for cool pages like mine, dig it)", href: "https://wiby.me" },
   { label: "the end of the internet", href: null },
   { label: "my cousin's page about lighthouses", href: null },
 ] as const;
@@ -49,7 +51,7 @@ const MAPPED_SITES = [
 const GUESTBOOK = [
   { who: "coolguy82", when: "04/12/1998", what: "AWESOME page!!! u should add frames. visit my page about trucks" },
   { who: "B. de V.", when: "1586", what: CIPHER_GROUPS },
-  { who: "the webmaster", when: "yesterday", what: "i cannot read the entry above. i also cannot leave. these facts feel related." },
+  { who: "the webmaster", when: "yesterday", what: "i can't read the entry above. i also can't leave this joint. these two facts feel related, daddy-o." },
 ] as const;
 
 interface Invite {
@@ -160,7 +162,7 @@ function MidiPlayer(): JSX.Element {
         <button type="button" onClick={playing ? stop : play}>
           {playing ? "■" : "►"}
         </button>
-        <span className="midi-note">{playing ? "♫ ♪ ♫" : "sound is OFF. he told you to turn it ON."}</span>
+        <span className="midi-note">{playing ? "♫ ♪ ♫ now we're cookin'" : "sound's OFF, cat. he told ya to crank it."}</span>
       </div>
     </div>
   );
@@ -182,7 +184,7 @@ function Decor(): JSX.Element {
       <div className="skullbox">
         <span className="skull s1">💀</span>
         <span className="skull s2">💀</span>
-        <div className="skull-caption">Skulls everywhere</div>
+        <div className="skull-caption">Skulls everywhere, daddy-o</div>
       </div>
       <div className="dancer">🕺</div>
       <div className="globebox">
@@ -215,7 +217,7 @@ function Counter(): JSX.Element {
           <span key={i}>{d}</span>
         ))}
       </span>{" "}
-      visiter to come here!!! <small>(counting down. do not worry about it.)</small>
+      visiter to cruise thru here!!! <small>(countin' down. don't sweat it, cat.)</small>
     </p>
   );
 }
@@ -249,14 +251,14 @@ function Home({ onUnlock }: { onUnlock: (invite: Invite) => void }): JSX.Element
                 <span className="cooltitle-2">Home Page</span>
               </h1>
               <p className="subtitle">
-                ☆ i am making a map of the internet ☆ <span className="newburst">NEW!</span>
+                ☆ i'm drawin' a map of the whole internet ☆ <span className="newburst">NEW!</span>
               </p>
 
               <div className="marquee">
                 <span>
-                  WELCOME, TRAVELLER ··· i have been mapping the internet since 1997 ··· today is day
-                  10,592 ··· the modem never hangs up ··· do not trust the counter ··· nothing on this
-                  page is decoration ···&nbsp;
+                  WELCOME, DADDY-O ··· i been cruisin' this information superhighway since 1997 ···
+                  today is day 10,592 ··· the modem never hangs up ··· don't trust the counter, it's a
+                  square ··· nothin' on this page is decoration ···&nbsp;
                 </span>
               </div>
 
@@ -270,9 +272,9 @@ function Home({ onUnlock }: { onUnlock: (invite: Invite) => void }): JSX.Element
 
               <h2>ABOUT ME</h2>
               <p>
-                hi. i am the webmaster. in 1997 i set out to draw a complete map of the internet, every
-                page, every link. i am still drawing. i have not found the edge. i have not found the
-                exit. <span className="blink">i am fine.</span>
+                hey there, cat. i'm the webmaster. back in '97 i set out to draw a complete map of the
+                internet — every page, every link, every last backstreet. i'm still drawin'. i ain't
+                found the edge. i ain't found the exit. <span className="blink">i'm cool. real cool.</span>
               </p>
 
               <h2>
@@ -305,9 +307,9 @@ function Home({ onUnlock }: { onUnlock: (invite: Invite) => void }): JSX.Element
               <p>
                 <span className="spin">✉️</span>{" "}
                 <a href="mailto:webmaster@mapsandducks.com?subject=RE:%20the%20map">
-                  email the webmaster
+                  drop the webmaster a line
                 </a>{" "}
-                <small>(i answer within 3-5 business years)</small>
+                <small>(i write back within 3-5 business years)</small>
               </p>
 
               <div className="rainbow-bar" aria-hidden="true" />
@@ -335,14 +337,14 @@ function Home({ onUnlock }: { onUnlock: (invite: Invite) => void }): JSX.Element
                 </a>{" "}
                 🌈{" "}
                 <a href="#guestbook">View Guestbook</a>{" "}
-                <small>(the pen stopped working in 1999)</small>
+                <small>(the pen quit on me back in '99)</small>
               </p>
 
               <div className="rainbow-bar" aria-hidden="true" />
 
               <div className="members">
                 <h2>*** MEMBERS ONLY ***</h2>
-                <p>if you know the word, the map will show you the way off of it.</p>
+                <p>you got the word, cat? then the map'll show ya the way off of it.</p>
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -361,9 +363,9 @@ function Home({ onUnlock }: { onUnlock: (invite: Invite) => void }): JSX.Element
                   />{" "}
                   <button type="submit">[ ENTER ]</button>
                 </form>
-                {status === "denied" && <p className="denied blink">ACCESS DENIED.</p>}
-                {status === "checking" && <p className="checking">consulting the map…</p>}
-                {!("subtle" in crypto) && <p className="denied">this door only opens over https.</p>}
+                {status === "denied" && <p className="denied blink">NO DICE, DADDY-O.</p>}
+                {status === "checking" && <p className="checking">checkin' the map…</p>}
+                {!("subtle" in crypto) && <p className="denied">this door only swings open over https, cat.</p>}
               </div>
 
               <div className="rainbow-bar" aria-hidden="true" />
@@ -378,7 +380,7 @@ function Home({ onUnlock }: { onUnlock: (invite: Invite) => void }): JSX.Element
               <Counter />
 
               <p className="fineprint">
-                this page is hand-made in notepad. view source and weep.
+                hand-made in notepad, cat. view source and weep.
                 <br />
                 best viewed in Netscape Navigator 4.0 · © 1997 · last updated: tomorrow
               </p>
@@ -393,8 +395,8 @@ function Home({ onUnlock }: { onUnlock: (invite: Invite) => void }): JSX.Element
 function Revealed({ invite }: { invite: Invite }): JSX.Element {
   return (
     <div className="terminal">
-      <p className="term-dim">CARRIER DETECTED · 56000 bps · WELCOME, MEMBER</p>
-      <p className="term-line">congratulations, traveller. the map ends here.</p>
+      <p className="term-dim">CARRIER DETECTED · 56000 bps · WELCOME, DADDY-O</p>
+      <p className="term-line">well ain't you a cool cat. the map ends right here.</p>
       <h1 className="term-title">{invite.name}</h1>
       {invite.lines.map((line) => (
         <p key={line} className="term-line">
