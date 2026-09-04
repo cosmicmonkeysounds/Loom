@@ -14,6 +14,7 @@ import { extensionForPath, languageForPath } from '@/lib/language'
 import { loomLspExtensions } from '@/lib/loom-lsp'
 import { loomLint, loomLintProject } from '@/lib/loom-lint'
 import { editorContextMenu } from '@/lib/editor-menu'
+import { editorViewKey } from '@/lib/editor-binding'
 
 export function Editor() {
   const activePath = useWorkspace((s) => s.activePath)
@@ -60,6 +61,12 @@ export function Editor() {
   // reads module state and isn't reactive on its own).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const live = useMemo(() => (filePath ? collabEntryFor(filePath) : null), [filePath, collabGen])
+
+  // One EditorView per bound document — NEVER rebind one in place. `yCollab`'s
+  // ViewPlugins capture their Y.Text at construction and survive a
+  // reconfigure, so an in-place rebind writes the new file's keystrokes into
+  // the OLD file's doc; see `lib/editor-binding.ts` for the full failure.
+  const viewKey = editorViewKey(filePath, live?.ytext)
 
   const extensions = useMemo(() => {
     if (!filePath) return []
@@ -187,6 +194,7 @@ export function Editor() {
 
   return (
     <CodeMirror
+      key={viewKey}
       ref={cmRef}
       value={file.contents}
       theme={settings.theme === 'dark' ? oneDark : 'light'}

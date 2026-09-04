@@ -580,8 +580,15 @@ server-backed file is a shared **Yjs** doc synced through the `@loom/core`
 server's `/api/projects/:id/collab/*` routes (base64 updates over JSON
 POST + one SSE stream per project — same transport idiom as the event
 plane). CodeMirror binds via `y-codemirror.next` (co-writers' cursors +
-names inline; undo via `Y.UndoManager`, CM history off for live files);
-graph edits and format-on-save fold in through `collabWrite`'s
+names inline; undo via `Y.UndoManager`, CM history off for live files).
+**The view is keyed per bound document** (`lib/editor-binding.ts`'s
+`editorViewKey`, unit-tested) so switching tabs *remounts* CodeMirror:
+`yCollab`'s ViewPlugins capture their `Y.Text` at construction and
+survive a `reconfigure`, so rebinding one in place made every keystroke
+land in the *previously* open file's doc — which round-tripped through
+`reflectCollabText` and overwrote that file (and its server copy) with
+the on-screen text, leaving a switch back showing the wrong file. Never
+drop that key. Graph edits and format-on-save fold in through `collabWrite`'s
 minimal-splice diff; remote text reflects into the store + LSP index
 (`reflectCollabText` in `store/workspace.ts`), so lint and the story
 graph follow co-writers keystroke-by-keystroke. Server files are
