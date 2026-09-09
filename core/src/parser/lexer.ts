@@ -8,6 +8,8 @@ import { declarationKindFromKeyword } from "./ast.ts";
 import { strip } from "./comments.ts";
 import { Code, errorDiagnostic, type Diagnostic } from "./diagnostics.ts";
 import { pos, span, type Span } from "./source.ts";
+import { parseSpeakerHead } from "./names.ts";
+import { statementToDirective } from "./statements.ts";
 import {
   allChars,
   isAsciiAlphanumeric,
@@ -27,10 +29,18 @@ export type LineKind =
   | { kind: "choice"; sticky: boolean; text: string }
   | { kind: "divertLine"; text: string }
   | { kind: "tunnelReturn" }
-  | { kind: "speaker"; text: string }
+  /**
+   * A speaker cue. `text` is the head as written (`WREN`, `Ivo`,
+   * `Ivo | Mara`); `inline` carries the one-line speech of the Loom 4
+   * `Ivo: You came back.` form (null for a block cue); `parenthetical` a
+   * head-attached `(quietly)`.
+   */
+  | { kind: "speaker"; text: string; inline: string | null; parenthetical: string | null }
   | { kind: "parenthetical"; text: string }
   | { kind: "fence"; tail: string; inlineClose: boolean }
   | { kind: "directive"; text: string }
+  /** `when <event>:` — a story rule at file level (Loom 4 §9.3); prose inside a beat. */
+  | { kind: "rule"; event: string; text: string }
   | { kind: "prose"; text: string };
 
 /** One classified non-blank source line. */
@@ -173,6 +183,12 @@ function classify(
   startByte: number,
   diagnostics: Diagnostic[],
 ): LineKind {
+  // `\` forces prose — for a line that would otherwise read as a cue or
+  // a statement (Loom 4 §4).
+  if (text.startsWith("\\")) {
+    return { kind: "prose", text: text.slice(1) };
+  }
+
   // Header heading: `# Title` (not `##`).
   {
     const rest = stripPrefix(text, "#");
@@ -227,7 +243,7 @@ function classify(
       return { kind: "divertLine", text: rest.trim() };
     }
   }
-  if (text === "<-") {
+  if (text === "<-" || text === "return") {
     return { kind: "tunnelReturn" };
   }
   // Tunnel call — `(name) ->` / `(name with k: v) ->` (spec §7.2). The
@@ -318,11 +334,50 @@ function classify(
     }
   }
 
+  // `when <event>:` — a story-level rule when it stands at file level; the
+  // parser turns it back into prose inside a beat (Loom 4 §9.3).
+  {
+    const m = /^when\s+(.+?)\s*:$/u.exec(text);
+    if (m !== null) {
+      return { kind: "rule", event: m[1]!.trim(), text };
+    }
+  }
+
+  // Keyword statement — `set x = 5`, `if x > 5:`, `cue lx14` … (Loom 4
+  // §6). Lowered to the same directive text a `<…>` line produces.
+  {
+    const directive = statementToDirective(text);
+    if (directive !== null) {
+      return { kind: "directive", text: directive };
+    }
+  }
+
   // Parenthetical line — the whole line is wrapped in `(…)`.
   {
     const inner = stripParens(text);
     if (inner !== null) {
       return { kind: "parenthetical", text: inner };
+    }
+  }
+
+  // Speaker cue with a colon — `Ivo:` (block) / `Ivo: line` /
+  // `Ivo (quietly): line` (Loom 4 §4). The head must be name-shaped
+  // (capitalised words), so a lowercase `key: value` stays a property.
+  {
+    const colon = text.indexOf(":");
+    // Whitespace (or EOL) must follow the colon — rejects URL-shaped lines
+    // (`See https://…`), the same rule a property key follows.
+    if (colon > 0 && (colon + 1 === text.length || /\s/u.test(text[colon + 1]!))) {
+      const head = parseSpeakerHead(text.slice(0, colon));
+      if (head !== null) {
+        const inline = text.slice(colon + 1).trim();
+        return {
+          kind: "speaker",
+          text: head.speakers.join(" | "),
+          inline: inline.length > 0 ? inline : null,
+          parenthetical: head.parenthetical,
+        };
+      }
     }
   }
 
@@ -336,7 +391,7 @@ function classify(
 
   // Speaker cue — pure ALL CAPS.
   if (isSpeakerLine(text)) {
-    return { kind: "speaker", text };
+    return { kind: "speaker", text, inline: null, parenthetical: null };
   }
 
   return { kind: "prose", text };

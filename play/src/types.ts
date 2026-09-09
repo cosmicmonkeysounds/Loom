@@ -46,9 +46,20 @@ export interface SpaceSnapshot {
   title: string;
 }
 
+/** A declared `INTERACTION` the app offers as a button (mirror of server views.ts). */
+export interface Interaction {
+  id: string;
+  label: string;
+  who: "performer" | "guest" | "admin";
+  description: string | null;
+}
+
 export interface GuestView {
   id: string;
   name: string;
+  /** The story's title + theme — every piece of chrome comes from the story. */
+  title?: string;
+  theme?: string;
   role: string | null;
   faction: string | null;
   score: number;
@@ -59,6 +70,10 @@ export interface GuestView {
   decisionChannel: string | null;
   /** Public (joinable) factions — the side chooser's source; may be empty. */
   factions?: string[];
+  /** Every (public) group this guest belongs to. */
+  groups?: string[];
+  /** `who: guest` interactions the guest may fire for themselves. */
+  interactions?: Interaction[];
   channels: ChannelSnapshot[];
   spaces: SpaceSnapshot[];
   /** Other participants (id + name), for the invite picker. */
@@ -74,13 +89,17 @@ export interface PrimeGuest {
 
 export interface PrimeView {
   character: string;
+  title?: string;
+  theme?: string;
   faction: string | null;
   guests: PrimeGuest[];
   channels: ChannelSnapshot[];
   spaces: SpaceSnapshot[];
+  /** Performer (and admin) interactions to offer on a guest thread. */
+  interactions?: Interaction[];
+  /** The story uses the v3 prison mechanic — keep capture / release in the booth. */
+  legacyCapture?: boolean;
 }
-
-export type Faction = "Mods" | "Chatters" | "TheAlgorithm";
 
 // --- client-side view models (composed by the chat store) -------------------
 

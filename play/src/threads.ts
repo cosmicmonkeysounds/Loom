@@ -17,7 +17,7 @@ export function prettyName(raw: string): string {
 
 /** Title + kind for a channel id, used for threads with no messages yet. */
 export function channelHead(id: string): { kind: ChannelKind; title: string } {
-  if (id === "lobby") return { kind: "lobby", title: "The Internet" };
+  if (id === "lobby") return { kind: "lobby", title: "Lobby" };
   if (id.startsWith("faction:")) return { kind: "faction", title: `#${id.slice(8).toLowerCase()}` };
   if (id.startsWith("dm:")) return { kind: "dm", title: prettyName(id.slice(3)) };
   if (id.startsWith("loc:")) return { kind: "location", title: prettyName(id.slice(4)) };
@@ -26,12 +26,13 @@ export function channelHead(id: string): { kind: ChannelKind; title: string } {
 
 // --- spaces (the Discord-style sidebar sections) ----------------------------
 
-/** Sidebar space metadata. `internet` holds the room; the booth groups the
- *  performer's tools + per-guest threads. (Authoring adds more later.) */
-// Built-in sections. Authored spaces (any other id) sort between `internet`
-// and the booth, titled from the channel's `spaceTitle`.
+/** Sidebar space metadata. `story` holds the story's own rooms (titled after
+ *  the story — nothing is baked in); the booth groups the performer's tools +
+ *  per-guest threads. Authored spaces (any other id) sort between them,
+ *  titled from the channel's `spaceTitle`. */
+export const STORY_SPACE = "story";
 export const SPACES: Record<string, { title: string; order: number }> = {
-  internet: { title: "The Internet", order: 0 },
+  [STORY_SPACE]: { title: "Story", order: 0 },
   booth: { title: "Booth", order: 10 },
   guests: { title: "Guests", order: 11 },
 };
@@ -39,7 +40,7 @@ export function spaceTitle(id: string): string {
   return SPACES[id]?.title ?? id;
 }
 function spaceOrder(id: string): number {
-  return SPACES[id]?.order ?? 1; // authored spaces: after internet, before booth
+  return SPACES[id]?.order ?? 1; // authored spaces: after the story, before the booth
 }
 
 export interface SpaceGroup {

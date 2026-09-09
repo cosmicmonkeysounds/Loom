@@ -13,7 +13,7 @@ describe("channel descriptors + spaces", () => {
   it("describes the lobby with a stable kind, title, and order", () => {
     const d = describeChannel("lobby");
     expect(d.channelKind).toBe("lobby");
-    expect(d.title).toBe("The Internet");
+    expect(d.title).toBe("Lobby"); // the story title is stamped in by `composeGuestMessages`
     expect(d.order).toBe(0);
     expect(d.members).toBe("all");
   });

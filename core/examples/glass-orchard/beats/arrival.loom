@@ -1,0 +1,65 @@
+// The opening of the evening and the table scenes.
+
+== The Front Gate
+  setting: Orchard Gate
+
+The gate is open. It should not be. Someone has hung paper lanterns on the
+apple trees and one of them is already on fire.
+
+Narrator: Show your invitation to the Gatekeeper. Pick a side at the table.
+  Do not go into the glasshouse.
+
+-> The Long Table
+
+== The Long Table
+  setting: The Long Table
+  cast: Ivo Marsh
+
+Ivo Marsh: Sit anywhere. Not there. Anywhere but there.
+
+each visit:
+  first:
+    A place is laid at the head of the table. Nobody sits in it.
+  then:
+    The place at the head of the table has been cleared away.
+  finally:
+    Narrator: Nobody mentions the head of the table any more.
+
+* Ask a Gardener about the rosemary.
+  Narrator: They tell you it keeps the moths off. They are lying.
+  -> Choose A Side
+* Ask a Collector about the keys.
+  Narrator: They show you a ring of nine. One is missing.
+  -> Choose A Side
++ Say nothing and eat.
+  set Ivo_Marsh.trusts.Player += 2
+
+== Choose A Side
+  setting: The Long Table
+
+Narrator: Rosemary, or a key?
+
+* Rosemary.
+  add guest to The Gardeners
+* The key.
+  add guest to The Collectors
+
+-> The Long Table
+
+== Ask About Mara
+  setting: The Long Table
+  cast: Ivo Marsh
+
+Self: She's resting. She's abroad. She's — look, pick one, I'll agree with it.
+
+match guest.group:
+  The Gardeners:
+    Self: You people and your questions. Go and prune something.
+  The Collectors:
+    Self: You'd like her keys, I expect. Everyone would.
+
+after Ivo_Marsh.trusts.guest > 60:
+  Self (quietly): Cellar. Third door. Don't make me say it twice.
+  set guest.suspicion += 30
+otherwise:
+  Self: I'm going to find another drink.

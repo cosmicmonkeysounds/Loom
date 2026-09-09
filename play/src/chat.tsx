@@ -60,9 +60,15 @@ function useTypewriter(text: string, enabled: boolean): { shown: string; typing:
   return { shown: text.slice(0, count), typing: count < text.length };
 }
 
-export function FactionPill({ faction }: { faction: string | null }) {
-  const f = faction ?? "none";
-  return <span className={`pill ${f}`}>{faction ?? "unaligned"}</span>;
+/** A participant's (public) group, as a small tag. Colour comes from the
+ *  group's name — nothing is keyed to any particular story's sides. */
+export function GroupPill({ group }: { group: string | null }) {
+  if (group === null) return <span className="pill none">unaligned</span>;
+  return (
+    <span className="pill group" style={{ color: colorFor(group) }}>
+      {group}
+    </span>
+  );
 }
 
 export function ConnDot({ connected, label }: { connected: boolean; label: string }) {

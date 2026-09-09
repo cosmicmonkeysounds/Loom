@@ -1,0 +1,52 @@
+// The props, and the place you were told not to go.
+
+== The Sundial Speaks
+  setting: Orchard Gate
+
+Narrator: The gnomon is bent to point at the glasshouse. Somebody bent it
+  on purpose.
+set guest.suspicion += 10
+
+== The Letterbox
+  setting: Orchard Gate
+
+Narrator: Nine invitations, unsent, all in Mara's hand. Yours is not among them.
+* Take one.
+  set guest.suspicion += 15
+  reply You slip an invitation into your pocket. It is addressed to nobody.
++ Leave them.
+  set guest.favour += 3
+
+== The Wine Rack
+  setting: The Long Table
+
+Narrator: Every bottle is the same year. Every label has been scratched off.
+cycle One bottle is warm. | One bottle is missing. | One bottle is full of earth.
+
+== The Cold Frame
+  setting: The Glasshouse
+
+Narrator: Seedlings, labelled in two hands. The second hand is shaking.
+set guest.suspicion += 10
+
+== The Glasshouse at Night
+  setting: The Glasshouse
+  cast: Dr Sable Quill
+
+Self: You shouldn't be in here. Nobody should. Look at the roots.
+
+if guest.group == The_Collectors:
+  Self: You're one of the key people. Then you already know where the door is.
+  set guest.suspicion += 20
+else if guest.group == The_Gardeners:
+  Self: Rosemary. Good. Then help me. She's under the orchard, and I can't dig.
+  set guest.suspicion += 10
+else:
+  Self: No side yet? Choose one before the toast, or the choice gets made for you.
+
+* Look at the roots.
+  Narrator: They run in one direction, all of them. Down.
+  set guest.suspicion += 25
+* Back away.
+  set guest.favour += 5
+  -> The Long Table

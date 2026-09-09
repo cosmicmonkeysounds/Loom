@@ -34,6 +34,8 @@ import {
   type GoalDecl,
   type InitDecl,
   type InitParam,
+  type InteractionBody,
+  emptyInteractionBody,
   type ItemBody,
   type KnowledgeField,
   type LocationBody,
@@ -137,6 +139,9 @@ export function lower(decl: Declaration, diagnostics: Diagnostic[]): void {
       break;
     case "channel":
       decl.channel = lowerChannel(decl.name, decl.body, decl.span);
+      break;
+    case "interaction":
+      decl.interaction = lowerInteraction(decl.body);
       break;
   }
 }
@@ -389,6 +394,24 @@ function lowerCohort(
   return out;
 }
 
+/** `INTERACTION name` body: `label:`, `who: performer | guest | admin`, `description:`. */
+function lowerInteraction(body: RawLine[]): InteractionBody {
+  const out = emptyInteractionBody();
+  for (const line of body) {
+    const kv = splitProperty(line.text.trim());
+    if (kv === null) continue;
+    const [key, value] = kv;
+    if (key === "label") out.label = value;
+    else if (key === "description") out.description = value;
+    else if (key === "who") {
+      const w = value.trim().toLowerCase();
+      if (w === "performer" || w === "guest" || w === "admin") out.who = w;
+    }
+    out.properties.set(key, { value, span: line.span });
+  }
+  return out;
+}
+
 function lowerLocation(body: RawLine[]): LocationBody {
   const out = emptyLocationBody();
   for (const line of body) {
@@ -612,9 +635,11 @@ function lowerCharacter(body: RawLine[], diagnostics: Diagnostic[]): CharacterBo
       }
     }
 
-    // `on <event>` hook (with `: none` suppression, spec §9.5).
+    // `when <event>:` / `on <event>` hook (with `: none` suppression, spec
+    // §9.5). Loom 4 (§9) opens a hook with `when` and lets a timer stand
+    // bare (`every 60s:` / `after 2m:`); the trailing colon is optional.
     {
-      const rest0 = stripPrefix(text, "on ");
+      const rest0 = hookOpener(text);
       if (rest0 !== null) {
         let rest = rest0.trim();
         // Inline opener divert: `on scan guest -> beat` (spec §2.6). Split a
@@ -628,6 +653,7 @@ function lowerCharacter(body: RawLine[], diagnostics: Diagnostic[]): CharacterBo
             if (target.length > 0) inlineDivert = target;
           }
         }
+        if (rest.endsWith(":")) rest = rest.slice(0, rest.length - 1).trim();
         const stripped = stripSuppression(rest);
         const eventText = stripped !== null ? stripped : rest;
         const suppressed = stripped !== null;
@@ -989,6 +1015,19 @@ function topLevelColonIndex(text: string): number {
 
 
 /** Detect the `: none` suppression suffix on a hook event clause. */
+/**
+ * The event phrase of a hook opener line, or null: `on X`, `when X`, or a
+ * bare timer `every 30s` / `after 2m` (Loom 4 §9.1).
+ */
+function hookOpener(text: string): string | null {
+  const on = stripPrefix(text, "on ");
+  if (on !== null) return on;
+  const when = stripPrefix(text, "when ");
+  if (when !== null) return when;
+  if (/^(every|after)\s+\d/u.test(text)) return text;
+  return null;
+}
+
 function stripSuppression(text: string): string | null {
   const trimmed = text.replace(/\s+$/u, "");
   const stripped = stripSuffix(trimmed, "none");

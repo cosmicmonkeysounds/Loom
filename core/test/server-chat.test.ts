@@ -33,7 +33,7 @@ describe("chat composition — channel routing", () => {
     expect(msgs).toHaveLength(1);
     const dm = msgs[0]!;
     expect(dm.channelKind).toBe("dm");
-    expect(dm.channel).toBe("dm:RECRUITER");
+    expect(dm.channel).toBe("dm:Recruiter");
     expect(dm.kind).toBe("line");
     expect(dm.audience).toEqual(["g1"]);
   });
@@ -86,7 +86,7 @@ describe("chat composition — channel routing", () => {
     const sim = Sim.fromSources(SCENARIO);
     sim.createPerson("g1", "Alice");
     const events = sim.scan("Recruiter", "g1");
-    expect(decisionChannelFor(events, "g1")).toBe("dm:RECRUITER");
+    expect(decisionChannelFor(events, "g1")).toBe("dm:Recruiter");
     // No preceding dialogue → falls back to the lobby.
     expect(decisionChannelFor([{ type: "choicePrompted", person: "g1", promptId: "g1", options: [] }], "g1")).toBe(
       "lobby",
@@ -100,10 +100,10 @@ describe("ChatStore — history, visibility, moderation", () => {
     const g1 = store.historyFor("g1", false);
     const g2 = store.historyFor("g2", false);
     // g1 got: their join (lobby/system), the Recruiter DM, and the ambient bark.
-    expect(g1.some((m) => m.channel === "dm:RECRUITER")).toBe(true);
+    expect(g1.some((m) => m.channel === "dm:Recruiter")).toBe(true);
     expect(g1.some((m) => m.kind === "narration")).toBe(true);
     // g2 never joined or got scanned — but still sees the global ambient bark.
-    expect(g2.some((m) => m.channel === "dm:RECRUITER")).toBe(false);
+    expect(g2.some((m) => m.channel === "dm:Recruiter")).toBe(false);
     expect(g2.some((m) => m.audience === "all")).toBe(true);
     expect(g2.every((m) => m.audience === "all")).toBe(true);
   });
@@ -115,7 +115,7 @@ describe("ChatStore — history, visibility, moderation", () => {
 
   it("withholds hidden messages from guests but flags them for admins", () => {
     const { store } = play();
-    const dm = store.all().find((m) => m.channel === "dm:RECRUITER")!;
+    const dm = store.all().find((m) => m.channel === "dm:Recruiter")!;
     store.setHidden(dm.seq, true);
 
     const guest = store.historyFor("g1", false);
@@ -132,7 +132,7 @@ describe("ChatStore — history, visibility, moderation", () => {
 
   it("re-applies persisted moderation after a deterministic rebuild", () => {
     const live = play();
-    const dm = live.store.all().find((m) => m.channel === "dm:RECRUITER")!;
+    const dm = live.store.all().find((m) => m.channel === "dm:Recruiter")!;
     live.store.setHidden(dm.seq, true);
     const persistedHidden = live.store.hiddenSeqs();
 
@@ -182,8 +182,8 @@ describe("typed chat — the journaled `say` command", () => {
   it("derives a guest's DM audience as themselves", () => {
     const sim = Sim.fromSources(SCENARIO);
     sim.createPerson("g1", "Alice");
-    const msgs = composeGuestMessages(sim, sim.say("g1", "dm:RECRUITER", "are you there?"));
-    expect(msgs[0]!.channel).toBe("dm:RECRUITER");
+    const msgs = composeGuestMessages(sim, sim.say("g1", "dm:Recruiter", "are you there?"));
+    expect(msgs[0]!.channel).toBe("dm:Recruiter");
     expect(msgs[0]!.audience).toEqual(["g1"]);
   });
 
@@ -232,7 +232,7 @@ describe("visibleTo", () => {
     seq: 0,
     channel: "lobby",
     channelKind: "lobby",
-    title: "The Internet",
+    title: "Lobby",
     from: "",
     kind: "narration",
     text: "hi",

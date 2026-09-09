@@ -60,7 +60,17 @@ CHARACTER Wren is Keeper
 
 Read the numbers with a dot path — `Wren.strength`, `Wren.damage`,
 `Wren.health`, `Wren.health.max`, `Wren.level` — and change them with
-`set`.
+`set`:
+
+```loom
+set Wren.health -= 12
+if Wren.health < 20:
+  Wren: Not like this. Not on the stairs.
+```
+
+A watcher turns a number into story with no extra wiring —
+`when self.health < 20:` inside the character fires the moment it
+happens (see [Characters](characters.md)).
 
 ## Skill trees
 
@@ -68,7 +78,7 @@ A `TREE` is a set of unlockable nodes, each of which can require others
 first:
 
 ```loom
-TREE WarriorPath
+TREE Warrior Path
   node armsman_1
     cost: 1
     effect: stat(damage) += 5

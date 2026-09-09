@@ -1,0 +1,74 @@
+// The people who run the evening.
+
+TRAIT Prop(beat)
+  // A scannable object: whoever scans it is sent to one beat.
+  when scanned by guest:
+    -> self.beat
+
+TRAIT Keeper
+  // Members of the Society, whoever else they pretend to be.
+  society: true
+
+CHARACTER Ivo Marsh is Keeper
+  trusts Guest: 30 of 100
+  calm: 0 to 100 = 60
+
+  when scanned by a guest:
+    set Ivo_Marsh.trusts.guest += 5
+    -> self.Receive
+
+  when self.calm < 20:
+    fire the_toast
+
+  when the_toast:
+    Ivo Marsh: A toast. To my sister, wherever she has got to.
+    set self.calm = 60
+
+  beat Receive(guest)
+    Self: {guest.name}. You came. She'd have been glad.
+    if guest.suspicion > 40:
+      Self (quietly): You've been in the glasshouse. I can smell it on you.
+      set self.calm -= 25
+    * "Where is she, Ivo?"
+      set guest.suspicion += 20
+      set self.calm -= 15
+      -> Ask About Mara
+    + Admire the orchard.
+      set guest.favour += 5
+      Self: It's the light. Everything looks forgiven in this light.
+
+CHARACTER The Gatekeeper is Keeper
+  patience: 0 to 10 = 3
+
+  when scanned by guest:
+    -> self.Check
+
+  when whisper for guest:
+    Self (quietly): Not here. After the toast, by the cold frame.
+    set guest.suspicion += 10
+
+  when guest leaves The Cellar:
+    set self.patience -= 1
+
+  when self.patience <= 0:
+    fire lock_the_cellar
+
+  beat Check(guest)
+    if guest.below:
+      Self: You again. Down is easier than up. Remember that.
+    else:
+      Self: Invitation. Thank you. Straight through, the table's on the left.
+
+CHARACTER Dr Sable Quill
+  trusts Guest: 50 of 100
+
+  when scanned by guest:
+    -> The Glasshouse at Night
+
+  when lock_the_cellar:
+    Dr Sable Quill: Someone has locked the cellar. From the inside.
+
+CHARACTER Mara Vell
+  // Never scanned. Speaks only from below.
+  when unlocked for guest:
+    Mara Vell: {guest.name}? Is that you? Bring the key.

@@ -68,7 +68,7 @@ export type DraftMessage = Omit<ChatMessage, "seq" | "hidden">;
 const CUES: Record<string, string> = {
   doomed: "📡 The Algorithm has marked you.",
   freedom: "✨ Freedom! You're back in the game.",
-  welcome: "👋 Welcome to the internet.",
+  welcome: "👋 Welcome.",
   peer_ping: "📲 Someone scanned your pass.",
   lockdown_siren: "🚨 Lockdown — the Algorithm tightens its grip.",
   jailed: "🔒 The door of the Internet slams shut behind you.",
@@ -90,16 +90,30 @@ const CUES: Record<string, string> = {
   unmasked: "🎭 The masks come off — the Algorithm stands exposed.",
 };
 
-/** In-world copy for a broadcast cue (falls back to a generic megaphone). */
+/**
+ * In-world copy for a broadcast cue. A cue written as prose (a quoted
+ * string, or words with spaces — `broadcast "The lights go down." to …`) is
+ * its own copy; a bare cue name looks up the legacy table, else a megaphone.
+ */
 export function cueText(cue: string): string {
-  return CUES[cue] ?? `📣 ${cue}`;
+  const t = cue.trim();
+  const quoted = /^"(.*)"$/su.exec(t);
+  if (quoted !== null) return quoted[1]!;
+  if (/\s/u.test(t)) return t;
+  return CUES[t] ?? `📣 ${t}`;
 }
 
 // --- channel descriptors ----------------------------------------------------
 
 type ChannelHead = Pick<ChatMessage, "channel" | "channelKind" | "title">;
 
-export const LOBBY: ChannelHead = { channel: "lobby", channelKind: "lobby", title: "The Internet" };
+/** The lobby's model-free head. Its *title* is the story's (`sim.lobbyTitle()`);
+ *  `lobbyHead` stamps it in when a sim is at hand. */
+export const LOBBY: ChannelHead = { channel: "lobby", channelKind: "lobby", title: "Lobby" };
+
+function lobbyHead(sim: Sim): ChannelHead {
+  return { ...LOBBY, title: sim.lobbyTitle() };
+}
 
 function factionChannel(faction: string): ChannelHead {
   return { channel: `faction:${faction}`, channelKind: "faction", title: `#${faction.toLowerCase()}` };
@@ -122,9 +136,9 @@ export interface Space {
   channelIds: string[];
 }
 
-export const DEFAULT_SPACE: Space = { id: "internet", title: "The Internet", channelIds: [] };
+export const DEFAULT_SPACE: Space = { id: "story", title: "Story", channelIds: [] };
 
-/** A channel's owning space. Slice 1: everything derived lives in `internet`. */
+/** A channel's owning space. Everything derived lives in the story's space. */
 export function spaceOf(_channelId: string): string {
   return DEFAULT_SPACE.id;
 }
@@ -175,7 +189,7 @@ function factionsInScope(scope: string): string[] {
 /** A scope addressed to the whole room (vs. a participant / faction slice). */
 function globalScope(scope: string): boolean {
   const s = scope.trim().toLowerCase();
-  return s === "" || ["everyone", "all", "internet", "world", "room", "party"].includes(s);
+  return s === "" || ["everyone", "all", "story", "internet", "world", "room", "party"].includes(s);
 }
 
 /**
@@ -189,7 +203,7 @@ function storyChannel(sim: Sim, setting: string | null | undefined): ChannelHead
       return { channel: head.channel, channelKind: "location", title: head.title };
     }
   }
-  return LOBBY;
+  return lobbyHead(sim);
 }
 
 // --- composition ------------------------------------------------------------
@@ -202,8 +216,9 @@ function storyChannel(sim: Sim, setting: string | null | undefined): ChannelHead
 export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): DraftMessage[] {
   const out: DraftMessage[] = [];
   const ts = sim.elapsed();
+  const lobby = lobbyHead(sim);
   const sys = (text: string, audience: Audience): DraftMessage =>
-    ({ ...LOBBY, from: "", kind: "system", text, ts, audience, parentSeq: null });
+    ({ ...lobby, from: "", kind: "system", text, ts, audience, parentSeq: null });
 
   for (const e of events) {
     switch (e.type) {
@@ -226,7 +241,7 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
       case "respond":
         // A device readout (`<respond:>`): a personal narration line in the
         // lobby feed of whoever scanned (visible to the booth via SSE too).
-        out.push({ ...LOBBY, from: "", kind: "narration", text: e.text, ts, audience: e.to === "" ? "all" : [e.to], parentSeq: null });
+        out.push({ ...lobby, from: "", kind: "narration", text: e.text, ts, audience: e.to === "" ? "all" : [e.to], parentSeq: null });
         break;
       case "chat": {
         // A participant typed into a channel. The sim baked the audience +
@@ -298,10 +313,10 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
         out.push({ ...LOBBY, from: "", kind: "narration", text: e.text, ts, audience: "all", parentSeq: null });
         break;
       case "captured":
-        out.push(sys("⛓️ You've been dragged into the Internet.", [e.person]));
+        out.push(sys(`⛓️ You've been taken to ${sim.model.locations.get(e.location)?.label ?? e.location}.`, [e.person]));
         break;
       case "escaped":
-        out.push(sys("🏃 You broke free and slipped back to the party.", [e.person]));
+        out.push(sys("🏃 You broke free.", [e.person]));
         break;
       case "released":
         out.push(sys("🔓 The door swings open — you're released.", [e.person]));

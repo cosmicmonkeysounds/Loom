@@ -14,10 +14,16 @@ story — interrogations, blessings, capture, secret missions. When
 someone in costume asks to scan you: let them. That's the game finding
 you.
 
-## Your faction
+## The story's buttons
 
-Once you've joined a side, it shows next to your name, and its private
-room appears in your inbox. Feeling treacherous? Your pass has a
+Some stories give you things to do from your pass — ring a bell, knock,
+raise a hand. If there are any, they're listed right under your QR code.
+
+## Your group
+
+Once you've joined one of the story's groups — a side, a house, a
+society — it shows next to your name, and its private room appears in
+your inbox. Feeling treacherous? Your pass has a
 **defect** button. Switching sides is dramatic, remembered, and not
 free — the story tracks heat on people who do.
 

@@ -6,10 +6,12 @@
 //! editor surface (TextMate grammar, CodeMirror StreamLanguage).
 
 import {
+  DECLARATION_ALIASES,
   declarationKindFromKeyword,
   declarationsWithKind,
   type DeclarationKind,
 } from "./ast.ts";
+import { BLOCK_STATEMENTS, STATEMENT_VERBS } from "./statements.ts";
 
 /** `KEYWORD Name [is …]` declaration openers (spec §6, §10, §11). */
 export const DECLARATIONS: readonly string[] = [
@@ -28,7 +30,29 @@ export const DECLARATIONS: readonly string[] = [
   "ROSTER",
   "SPACE",
   "CHANNEL",
+  "INTERACTION",
 ];
+
+/** Every keyword that opens a declaration, aliases included (`GROUP`). */
+export const DECLARATION_WORDS: readonly string[] = [
+  ...DECLARATIONS,
+  ...DECLARATION_ALIASES.map(([w]) => w),
+];
+
+/**
+ * Loom 4 keyword statements — lowercase verbs that open an instruction
+ * line without brackets (`set x = 5`, `if x > 5:`, `cue lx14`). Longest
+ * first. `BLOCK_STATEMENT_VERBS` is the subset that opens an indented
+ * block (and ends with a colon).
+ */
+export const STATEMENT_KEYWORDS: readonly string[] = STATEMENT_VERBS;
+export const BLOCK_STATEMENT_VERBS: readonly string[] = BLOCK_STATEMENTS;
+
+/**
+ * Words that open a reactive hook inside a declaration body: `when` (Loom
+ * 4), `on` (v3), and the bare timer openers.
+ */
+export const HOOK_OPENERS: readonly string[] = ["when", "on", "every", "after"];
 
 /** Directive verbs whose shape is part of the grammar (spec §14.2). */
 export const SYNTACTIC_DIRECTIVES: readonly string[] = [

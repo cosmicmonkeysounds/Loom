@@ -35,7 +35,20 @@ export interface PropertyValue {
 export type Item =
   | { kind: "declaration"; value: Declaration }
   | { kind: "letBinding"; value: LetBinding }
-  | { kind: "beat"; value: Beat };
+  | { kind: "beat"; value: Beat }
+  | { kind: "rule"; value: StoryRule };
+
+/**
+ * A top-level `when <event>:` block (Loom 4 §9.3) — a story-wide rule
+ * with no owner: the same hook shape a CHARACTER carries, run with no
+ * `self` bound. Bodies stay raw (like hook bodies) and are lowered by
+ * the runtime's `lowerRawBody`.
+ */
+export interface StoryRule {
+  event: string;
+  body: RawLine[];
+  span: Span;
+}
 
 // ---------------------------------------------------------------------
 // Declarations
@@ -61,6 +74,7 @@ export interface Declaration {
   roster: RosterBody | null;
   space: SpaceBody | null;
   channel: ChannelBody | null;
+  interaction: InteractionBody | null;
   span: Span;
 }
 
@@ -90,6 +104,7 @@ export function emptyDeclaration(
     roster: null,
     space: null,
     channel: null,
+    interaction: null,
     span,
   };
 }
@@ -109,7 +124,8 @@ export type DeclarationKind =
   | "person"
   | "roster"
   | "space"
-  | "channel";
+  | "channel"
+  | "interaction";
 
 const DECLARATION_KEYWORDS: ReadonlyArray<[string, DeclarationKind]> = [
   ["CHARACTER", "character"],
@@ -127,9 +143,20 @@ const DECLARATION_KEYWORDS: ReadonlyArray<[string, DeclarationKind]> = [
   ["ROSTER", "roster"],
   ["SPACE", "space"],
   ["CHANNEL", "channel"],
+  ["INTERACTION", "interaction"],
 ];
 
-const KEYWORD_TO_KIND = new Map<string, DeclarationKind>(DECLARATION_KEYWORDS);
+/**
+ * Alternate spellings of a declaration keyword (Loom 4 §8): `GROUP` is
+ * what v3 called `FACTION`. Aliases parse to the canonical kind; the
+ * canonical keyword is what `declarationKeyword` emits.
+ */
+export const DECLARATION_ALIASES: ReadonlyArray<[string, DeclarationKind]> = [["GROUP", "faction"]];
+
+const KEYWORD_TO_KIND = new Map<string, DeclarationKind>([
+  ...DECLARATION_KEYWORDS,
+  ...DECLARATION_ALIASES,
+]);
 const KIND_TO_KEYWORD = new Map<DeclarationKind, string>(
   DECLARATION_KEYWORDS.map(([word, kind]) => [kind, word]),
 );
@@ -402,6 +429,27 @@ export interface SpaceBody {
 
 export function emptySpaceBody(): SpaceBody {
   return { label: null, channels: [], properties: new Map() };
+}
+
+// ---------------------------------------------------------------------
+// INTERACTION — a physical/app action the participant client offers
+// (Loom 4 §10 / §11). Firing one raises the named event `<name>` with the
+// acting participant as subject, exactly like `fire <name> for guest`.
+// ---------------------------------------------------------------------
+
+export type InteractionWho = "performer" | "guest" | "admin";
+
+export interface InteractionBody {
+  /** Button text; defaults to the declaration name. */
+  label: string | null;
+  /** Whose console offers it: a performer (per guest), a guest (for themselves), admins only. */
+  who: InteractionWho;
+  description: string | null;
+  properties: Map<string, PropertyValue>;
+}
+
+export function emptyInteractionBody(): InteractionBody {
+  return { label: null, who: "performer", description: null, properties: new Map() };
 }
 
 // ---------------------------------------------------------------------

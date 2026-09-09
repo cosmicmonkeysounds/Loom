@@ -28,7 +28,7 @@ import type {
   LoomFile,
   RawLine,
 } from "../parser/ast.ts";
-import { isRoleLike, parseMixinRef } from "../parser/index.ts";
+import { FoldedIndex, isRoleLike, parseMixinRef } from "../parser/index.ts";
 import type { Span } from "../parser/source.ts";
 import { lowerRawBody } from "../runtime/sim/effects.ts";
 import type { Hook, SimModel } from "../runtime/sim/model.ts";
@@ -841,7 +841,27 @@ class GraphBuilder {
       }
     }
     if (beats.has(t.name)) return { key: t.name, dynamic };
+    // Loose spelling (Loom 4 §3) — the same fallback the sim applies.
+    const folded = this.foldedBeats();
+    for (const raw of t.qualifier !== null ? [t.name, `${t.qualifier}.${t.name}`] : [t.name]) {
+      const key = folded.get(raw);
+      if (key !== null && beats.has(key)) return { key, dynamic };
+    }
     return { key: null, dynamic };
+  }
+
+  private foldedBeatIndex: FoldedIndex | null = null;
+  private foldedBeatCount = -1;
+
+  /** Folded index over the beats registered so far (rebuilt on growth). */
+  private foldedBeats(): FoldedIndex {
+    if (this.foldedBeatIndex === null || this.foldedBeatCount !== this.out.beats.size) {
+      const idx = new FoldedIndex();
+      for (const key of this.out.beats.keys()) idx.add(key);
+      this.foldedBeatIndex = idx;
+      this.foldedBeatCount = this.out.beats.size;
+    }
+    return this.foldedBeatIndex;
   }
 
   private edge(

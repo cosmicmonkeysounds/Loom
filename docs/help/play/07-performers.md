@@ -12,7 +12,7 @@ booth: every guest is a conversation, and your character is the mask.
 ## Signing in
 
 Pick **I'm a Performer**, enter your **character's name** (exactly as
-cast — e.g. `Moderator_Prime`) and the **performer passcode** from the
+cast — e.g. `The Gatekeeper`) and the **performer passcode** from the
 host. You now speak *as* that character everywhere.
 
 ## Scanning guests
@@ -33,6 +33,10 @@ Each guest is a thread. What you type there lands as your character's
 DM to them. The **broadcast feed** thread posts to the main room —
 everyone hears it.
 
+Under each guest thread you'll also find the **story's own buttons** —
+whatever the writers declared for performers (a whisper, a blessing, a
+search…). Pressing one acts *as your character*, on that guest.
+
 ## Rooms
 
 Authored channels work like the guest app: post as your character,
@@ -43,7 +47,8 @@ invite guests into gated rooms, leave when the scene's done.
 If the host gave you the **moderator passcode**, open **☰ → Become an
 admin**. Admins additionally can:
 
-- **🔒 Capture / 🔓 Release** any guest from their thread.
+- **🔒 Capture / 🔓 Release** any guest from their thread (for stories
+  that use it).
 - **Hide/show** any message in any thread (moderation).
 
 Use it like stage management, not like power — the story's operator can

@@ -209,7 +209,9 @@ describe("renameBeatEdits (workspace layer)", () => {
 
   it("refuses an invalid identifier", () => {
     const w = ws();
-    expect(() => w.renameBeat("waiting", "not a name")).toThrowError(EditError);
+    // Loom 4: spaces are fine in a name; qualifier glyphs and divert tails are not.
+    expect(() => w.renameBeat("waiting", "bad.name")).toThrowError(EditError);
+    expect(() => w.renameBeat("waiting", "go with it")).toThrowError(EditError);
   });
 });
 

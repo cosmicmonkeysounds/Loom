@@ -4,7 +4,7 @@
 //! the inbox header, and a profile sheet for out-of-band actions.
 
 import { useState } from "react";
-import { ActionRow, ChannelView, ConnDot, FactionPill, InviteSheet, MessageThread, SpaceList } from "./chat.tsx";
+import { ActionRow, ChannelView, ConnDot, GroupPill, InviteSheet, MessageThread, SpaceList } from "./chat.tsx";
 import { HelpSheet } from "./help.tsx";
 import { codeFromUrl, useDocumentTitle, useGuestSession, useUrlEventTitle, type GuestSession } from "./session.ts";
 import type { Action } from "./types.ts";
@@ -23,9 +23,9 @@ function GuestRegister({ session }: { session: GuestSession }) {
   };
   return (
     <div className="hero">
-      <div className="glyph">🌐</div>
+      <div className="glyph">🎟️</div>
       <h1>{eventTitle ?? "Loom"}</h1>
-      <p className="sub">Log on and join the event.</p>
+      <p className="sub">Enter your name and the code from your host.</p>
       <input
         placeholder="What do they call you?"
         value={name}
@@ -49,12 +49,15 @@ function GuestRegister({ session }: { session: GuestSession }) {
   );
 }
 
-/** Out-of-band actions: show your pass, defect, or leave. */
+/** Out-of-band actions: show your pass, the story's own interactions, switch
+ *  sides, or leave. */
 function ProfileSheet({ session, onClose, onLeave }: { session: GuestSession; onClose: () => void; onLeave: () => void }) {
   const faction = session.status?.faction ?? null;
-  // One defect button per rival public faction — driven by the story's
-  // declared factions, not a baked-in pair.
+  // One switch-sides button per other public group — driven by the story's
+  // declared groups, not a baked-in pair.
   const others = (session.status?.factions ?? []).filter((f) => f !== faction);
+  // The story's `who: guest` INTERACTIONs — buttons the story itself declares.
+  const interactions = session.status?.interactions ?? [];
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
@@ -66,10 +69,15 @@ function ProfileSheet({ session, onClose, onLeave }: { session: GuestSession; on
             <div className="muted">Show this to a performer to be scanned.</div>
           </div>
         )}
+        {interactions.map((i) => (
+          <button key={i.id} className="choice" title={i.description ?? undefined} onClick={() => void session.act(i.id)}>
+            {i.label}
+          </button>
+        ))}
         {faction &&
           others.map((other) => (
             <button key={other} className="choice ghost" onClick={() => void session.defect(other)}>
-              Betray the {faction} → defect to {other}
+              Leave the {faction} for the {other}
             </button>
           ))}
         <button
@@ -144,11 +152,11 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const header = (
     <header className={`inbox-head ${captured ? "trapped" : ""}`}>
       <div className="who">
-        <strong>{s.me.name}</strong> <FactionPill faction={st?.faction ?? null} />
+        <strong>{s.me.name}</strong> <GroupPill group={st?.faction ?? null} />
       </div>
       <div className="hud">
         <span>⭐ {st?.score ?? 0}</span>
-        <span>{captured ? "🔒 captured" : `📍 ${st?.location ?? "the party"}`}</span>
+        <span>{captured ? "🔒 captured" : st?.location ? `📍 ${st.location}` : ""}</span>
         <ConnDot connected={s.connected} label="live" />
         <button className="icon-btn" title="Help" onClick={() => setHelp(true)}>
           ?
@@ -162,7 +170,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
 
   return (
     <div className={captured ? "trapped-bg" : ""}>
-      <SpaceList spaces={t.spaces} onOpen={t.open} header={header} empty="The internet is quiet… for now." />
+      <SpaceList spaces={t.spaces} onOpen={t.open} header={header} empty="Quiet… for now." />
       {profile && <ProfileSheet session={s} onClose={() => setProfile(false)} onLeave={onLeave} />}
       {help && <HelpSheet role="guest" onClose={() => setHelp(false)} />}
     </div>

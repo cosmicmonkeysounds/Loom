@@ -1,0 +1,31 @@
+// Chat rooms — the sidebar sections and rooms the participant app shows.
+// Every LOCATION is already a room; these are the extras.
+
+SPACE The Party
+  label: The Party
+
+  CHANNEL announcements
+    kind: open
+    type: announcement
+    label: # announcements
+
+  CHANNEL the lawn
+    kind: open
+    label: # the-lawn
+
+  CHANNEL potting shed
+    kind: private
+    label: # potting-shed
+    invite: members
+
+CHANNEL gardeners
+  space: The Party
+  kind: faction
+  faction: The Gardeners
+  label: # gardeners
+
+CHANNEL collectors
+  space: The Party
+  kind: faction
+  faction: The Collectors
+  label: # collectors

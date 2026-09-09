@@ -15,7 +15,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
 
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
-import { guestView, modView, primeView, rosterRow, titleOf, type ModPresence, type RuntimePhase } from "./views.ts";
+import { guestView, modView, primeView, rosterRow, themeOf, titleOf, type ModPresence, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
@@ -114,6 +114,11 @@ export class EventRuntime {
    *  source, else the scenario name (the project's name for DB events). */
   get title(): string {
     return titleOf(this.scenarioSource) ?? this.scenarioName;
+  }
+
+  /** The participant client's skin: the header `theme:` (default `plain`). */
+  get theme(): string {
+    return themeOf(this.scenarioSource) ?? "plain";
   }
 
   /** How many participants exist in this event's world right now. */
@@ -644,6 +649,25 @@ export class EventRuntime {
         sendJson(res, 200, { ok: true });
         return true;
       }
+      case "/api/guest/act": {
+        // A guest fires one of the story's `who: guest` INTERACTIONs for
+        // themselves — a named event with the guest as subject (Loom 4 §10).
+        const id = this.requireGuest(req, body, res);
+        if (id === null) return true;
+        if (!open) {
+          sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        const name = str(body, "name");
+        const def = this.sim!.model.interactions.get(name);
+        if (def === undefined || def.who !== "guest") {
+          sendJson(res, 404, { error: "no such interaction for guests" });
+          return true;
+        }
+        this.fanout(this.commit("signal", name, id));
+        sendJson(res, 200, { ok: true });
+        return true;
+      }
       case "/api/guest/say": {
         const id = this.requireGuest(req, body, res);
         if (id === null) return true;
@@ -778,6 +802,36 @@ export class EventRuntime {
       }
 
       // --- performer types into a channel (hybrid chat) ---
+      case "/api/prime/act": {
+        // A performer fires a `who: performer` INTERACTION on a guest, as
+        // their character: only that character's hooks hear it (plus role
+        // hooks and story rules). `who: admin` needs moderator powers.
+        const token = tokenOf(req, body);
+        if (!this.sessions.canScan(token)) {
+          sendJson(res, 403, { error: "no performer capability — sign in" });
+          return true;
+        }
+        if (!open) {
+          sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        const name = str(body, "name");
+        const guest = str(body, "guest");
+        const def = this.sim!.model.interactions.get(name);
+        const admin = this.sessions.canModerate(token);
+        if (def === undefined || def.who === "guest" || (def.who === "admin" && !admin)) {
+          sendJson(res, 404, { error: "no such interaction for performers" });
+          return true;
+        }
+        if (!this.sim!.persons.has(guest)) {
+          sendJson(res, 404, { error: "unknown guest" });
+          return true;
+        }
+        const character = this.sessions.characterOf(token);
+        this.fanout(this.commit("signal", name, guest, null, character));
+        sendJson(res, 200, { ok: true, guest: rosterRow(this.sim!, guest) });
+        return true;
+      }
       case "/api/prime/say": {
         const token = tokenOf(req, body);
         const character = this.sessions.characterOf(token);
@@ -948,7 +1002,11 @@ export class EventRuntime {
           return true;
         }
         const subject = str(body, "subject");
-        this.fanout(this.commit("signal", str(body, "name"), subject === "" ? undefined : subject));
+        // Optional JSON arguments (`{ level: 3 }`) bind by name in listening
+        // bodies, like `fire name with level: 3` (Loom 4 §9.2).
+        const rawArgs = body["args"];
+        const args = rawArgs !== null && typeof rawArgs === "object" && !Array.isArray(rawArgs) ? rawArgs : null;
+        this.fanout(this.commit("signal", str(body, "name"), subject === "" ? undefined : subject, args));
         sendJson(res, 200, { ok: true });
         return true;
       }

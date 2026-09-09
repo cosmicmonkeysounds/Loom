@@ -2,7 +2,7 @@
 title: Choices & branching
 section: Language
 order: 11
-keywords: choice, sticky, once, star, plus, divert, arrow, goto, END, entry, branch, nesting, hidden text, tunnel
+keywords: choice, sticky, once, star, plus, divert, arrow, goto, END, entry, branch, nesting, hidden text, tunnel, start, return, parameters, with
 ---
 
 ## A choice
@@ -10,9 +10,7 @@ keywords: choice, sticky, once, star, plus, divert, arrow, goto, END, entry, bra
 Put a `*` at the start of a line to offer the audience a choice:
 
 ```loom
-WREN
-  (quietly)
-  It hasn't rung in three days.
+Wren (quietly): It hasn't rung in three days.
 
 * Ring the bell.
 * Leave quietly.
@@ -32,40 +30,41 @@ Whatever is indented **under** a choice happens when they pick it:
 A **divert**, written `->` ("go to"), moves between beats:
 
 ```loom
-== opening
+== The Bell Tower
 
-WREN
-  It hasn't rung in three days.
+Wren: It hasn't rung in three days.
 
 * Ring the bell.
-  -> ringing
+  -> Ringing
 * Leave quietly.
   -> END
 
-== ringing
+== Ringing
 
 The sound carries across the rocks.
 
 -> END
 ```
 
-- `-> ringing` jumps to the beat named `ringing`.
+- `-> Ringing` jumps to the beat named `Ringing`.
 - `-> END` ends the story.
 
 Beats can be in any order, in any file — a divert finds its target by
-name, project-wide.
+name, project-wide. Matching is forgiving: `-> the bell tower` reaches
+`== The Bell Tower`.
 
-## The entry point
+## The starting beat
 
 When a project has several beats, name the starting one at the top with
-`entry:`:
+`start:`:
 
 ```loom
 # The Lighthouse
-entry: opening
+start: The Bell Tower
 ```
 
-If you don't write `entry:`, the first beat in the file is the start.
+If you don't write `start:`, the first beat in the file is the start.
+(`entry:` is the Loom 3 spelling and still works.)
 
 ## Once vs. sticky choices
 
@@ -74,7 +73,7 @@ If you don't write `entry:`, the first beat in the file is the start.
 
 ```loom
 + Ask about the bell.
-  -> ask_bell
+  -> Ask About The Bell
 * Storm out.
   -> END
 ```
@@ -104,12 +103,11 @@ diverts — as deep as you like:
 
 ```loom
 * Confront her.
-  WREN
-    You shouldn't have come.
+  Wren: You shouldn't have come.
   * Apologise.
-    -> makeup
+    -> Making Up
   * Hold your ground.
-    -> standoff
+    -> The Standoff
 * Say nothing.
   -> END
 ```
@@ -117,21 +115,33 @@ diverts — as deep as you like:
 ## Tunnels — go and come back
 
 A **tunnel** visits a beat and returns to where it left off. Call it
-with parentheses, and end the tunnelled beat with `<-`:
+with parentheses, and end the tunnelled beat with `return`:
 
 ```loom
-(inspect_the_rope) ->
+(Inspect The Rope) ->
 
-WREN
-  Done looking?
+Wren: Done looking?
 
-== inspect_the_rope
+== Inspect The Rope
 
 The rope is frayed near the top.
 
-<-
+return
 ```
 
-`<-` pops back to the line after the call. Use tunnels for reusable
-asides — examining objects, side conversations — that shouldn't lose the
-audience's place.
+`return` pops back to the line after the call (`<-` means the same
+thing). Use tunnels for reusable asides — examining objects, side
+conversations — that shouldn't lose the audience's place.
+
+## Passing something along
+
+A beat can take parameters — `== Ask About(topic)` — and a divert can
+fill them with `with`:
+
+```loom
+-> Ask About with topic: the bell
+```
+
+Inside the beat, `{topic}` reads *the bell*. See
+[Owned beats](owned-beats.md) for handing whole blocks of content into
+a beat.

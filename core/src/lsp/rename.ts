@@ -14,6 +14,7 @@
 import type { LoomFile } from "../parser/ast.ts";
 import { EditError, type TextEdit } from "../parser/edit.ts";
 import { parseDivertTarget } from "../parser/parser.ts";
+import { foldName } from "../parser/names.ts";
 import type { StoryGraph } from "./graph.ts";
 
 /** The document surface `renameBeatEdits` reads (a `Workspace` slice). */
@@ -22,8 +23,8 @@ export interface RenameHost {
   storyGraph(): StoryGraph;
 }
 
-/** A valid Loom beat identifier. */
-const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/u;
+/** A valid Loom beat name (Loom 4 §3): words — no `.` `/` `#` `(` or divert tails. */
+const IDENT = /^[A-Za-z_][A-Za-z0-9_'\-]*(?: [A-Za-z0-9_'\-]+)*$/u;
 
 /**
  * Compute the per-document edits that rename beat `key` (a graph key —
@@ -36,7 +37,7 @@ export function renameBeatEdits(
   key: string,
   newName: string,
 ): Map<string, TextEdit[]> {
-  if (!IDENT.test(newName)) {
+  if (!IDENT.test(newName) || /\s(with|as)\s/u.test(newName)) {
     throw new EditError("notRenameable", `\`${newName}\` is not a valid beat name`);
   }
   const graph = host.storyGraph();
@@ -97,17 +98,18 @@ export function renameBeatEdits(
     push(uri, { start, end, replacement: rewritten });
   }
 
-  // 3. The `entry:` header property, when it names this beat.
+  // 3. The `start:` / `entry:` header property, when it names this beat
+  //    (loosely spelled counts — Loom 4 §3).
   if (graph.entry === key) {
     for (const [uri, doc] of host.docs) {
-      const prop = doc.file.header.properties.get("entry");
-      if (prop === undefined || prop.value !== key) continue;
+      const prop = doc.file.header.properties.get("start") ?? doc.file.header.properties.get("entry");
+      if (prop === undefined || foldName(prop.value) !== foldName(key)) continue;
       const [ls, le] = lineBoundsIn(doc.text, prop.span.start.offset);
       const line = doc.text.slice(ls, le);
-      const at = tokenIndex(line, key);
+      const at = tokenIndex(line, prop.value);
       if (at < 0 || seen.has(`${uri}@${ls + at}`)) continue;
       seen.add(`${uri}@${ls + at}`);
-      push(uri, { start: ls + at, end: ls + at + key.length, replacement: newName });
+      push(uri, { start: ls + at, end: ls + at + prop.value.length, replacement: newName });
     }
   }
 
@@ -125,7 +127,8 @@ export function rewriteTargetName(
   newName: string,
 ): string | null {
   const t = parseDivertTarget(written);
-  if (t.name !== oldName) return null;
+  // A loosely spelled reference (`-> the front gate`) still names the beat.
+  if (t.name !== oldName && foldName(t.name) !== foldName(oldName)) return null;
   let head: string;
   if (t.qualifier === null) {
     head = newName;

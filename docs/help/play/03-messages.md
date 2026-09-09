@@ -26,7 +26,7 @@ the main room.
 - **Names in bold** — guests and characters speaking.
 - **The Narrator** — the story itself, setting the scene.
 - **Dim system notices** — the machinery of the event (joins, moves,
-  captures).
+  and the like).
 
 Messages from the same sender in a row group under one banner, just
 like your usual chat app.

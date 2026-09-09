@@ -66,7 +66,7 @@ describe("choose() preserves frame context", () => {
     expect(dialogue(after)).toEqual([
       {
         type: "dialogue",
-        speaker: "WREN",
+        speaker: "Wren",
         text: "I keep it lit. Usually.",
         audience: [],
         setting: "Lighthouse",
@@ -81,7 +81,7 @@ describe("choose() preserves frame context", () => {
     sim.fireBeat("opening");
     const after = sim.choose("__global", 1);
     expect(dialogue(after).map((e) => [e.speaker, e.text])).toEqual([
-      ["WREN", "Suit yourself."],
+      ["Wren", "Suit yourself."],
     ]);
   });
 

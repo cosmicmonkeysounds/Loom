@@ -8,7 +8,7 @@ function msg(seq: number, parentSeq: number | null): ChatMessage {
     seq,
     channel: "lobby",
     channelKind: "lobby",
-    title: "The Internet",
+    title: "Lobby",
     from: "Alice",
     kind: "line",
     text: `m${seq}`,

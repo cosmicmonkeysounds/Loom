@@ -5,7 +5,7 @@
 //! scan readouts.
 
 import { useEffect, useRef, useState } from "react";
-import { ActionRow, ChannelView, ConnDot, FactionPill, InviteSheet, MessageThread, SpaceList } from "./chat.tsx";
+import { ActionRow, ChannelView, ConnDot, GroupPill, InviteSheet, MessageThread, SpaceList } from "./chat.tsx";
 import { HelpSheet } from "./help.tsx";
 import { useDocumentTitle, usePrimeSession, type PrimeSession } from "./session.ts";
 import type { Action, Channel } from "./types.ts";
@@ -26,7 +26,7 @@ function PrimeLogin({ session }: { session: PrimeSession }) {
       <div className="glyph">🎭</div>
       <h1>Performer station</h1>
       <p className="sub">Sign in as your character to scan guests and deliver the story.</p>
-      <input placeholder="Character (e.g. Moderator_Prime)" value={character} onChange={(e) => setCharacter(e.target.value)} />
+      <input placeholder="Character (as declared in the story)" value={character} onChange={(e) => setCharacter(e.target.value)} />
       <input type="password" placeholder="Performer passcode (from the host)" value={passcode} onChange={(e) => setPasscode(e.target.value)} />
       <button className="choice primary" onClick={go}>
         Sign in
@@ -167,7 +167,7 @@ function PerformerSheet({ session, onClose, onLeave }: { session: PrimeSession; 
             {err && <div className="err">{err}</div>}
           </>
         )}
-        {session.auth?.admin && <div className="muted">You hold moderator powers — hide/show messages and capture/release from any guest thread.</div>}
+        {session.auth?.admin && <div className="muted">You hold moderator powers — hide/show messages, and every admin-only interaction the story declares.</div>}
         <button
           className="choice danger"
           onClick={() => {
@@ -232,8 +232,8 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   const header = (
     <header className="inbox-head">
       <div className="who">
-        🎭 <strong>{s.auth.character}</strong> {admin && <span className="pill Mods">admin</span>}{" "}
-        <FactionPill faction={s.view?.faction ?? null} />
+        🎭 <strong>{s.auth.character}</strong> {admin && <span className="pill admin">admin</span>}{" "}
+        <GroupPill group={s.view?.faction ?? null} />
       </div>
       <div className="hud">
         <ConnDot connected={s.connected} label="live" />
@@ -297,7 +297,8 @@ function RoomThread({
   );
 }
 
-/** One guest's thread, with scan + (admin) capture/release + moderation. */
+/** One guest's thread: scan, the story's declared interactions, moderation —
+ *  and capture/release only for stories still using the v3 prison mechanic. */
 function GuestThread({
   session,
   channel,
@@ -314,7 +315,11 @@ function GuestThread({
   const gid = channel.id.slice("guest:".length);
   const guest = session.view?.guests.find((g) => g.id === gid);
   const actions: Action[] = [{ label: "📡 Scan this guest", onClick: () => void session.scan(gid), tone: "primary" }];
-  if (admin) {
+  for (const i of session.view?.interactions ?? []) {
+    if (i.who === "admin" && !admin) continue;
+    actions.push({ label: i.label, onClick: () => void session.act(i.id, gid) });
+  }
+  if (admin && session.view?.legacyCapture) {
     actions.push(
       guest?.captured
         ? { label: "🔓 Release", onClick: () => void session.moderate(gid, "release") }

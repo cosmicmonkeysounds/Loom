@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, useChatStream } from "./client.ts";
-import { channelHead, groupByChannel, useThreads, type Threads } from "./threads.ts";
+import { STORY_SPACE, channelHead, groupByChannel, useThreads, type Threads } from "./threads.ts";
 import type { Channel, ChatMessage, Decision, GuestView, PrimeView } from "./types.ts";
 
 // --- persistence ------------------------------------------------------------
@@ -82,6 +82,19 @@ export function useDocumentTitle(title: string | null | undefined): void {
     if (title) document.title = title;
   }, [title]);
 }
+
+/**
+ * The story's `theme:` becomes `data-theme` on the root element — the
+ * stylesheet's neutral skin is the default; `aol97` is the 1997 chat-room
+ * look one particular party shipped with (see `styles.css`).
+ */
+export function useTheme(theme: string | null | undefined): void {
+  useEffect(() => {
+    const el = document.documentElement;
+    if (theme && theme !== "plain") el.dataset["theme"] = theme;
+    else delete el.dataset["theme"];
+  }, [theme]);
+}
 const load = <T,>(k: string): T | null => {
   try {
     return JSON.parse(localStorage.getItem(k) ?? "null") as T | null;
@@ -153,6 +166,7 @@ function buildGuestChannels(
   const spaceTitles = new Map((view?.spaces ?? []).map((s) => [s.id, s.title]));
   const snap = new Map((view?.channels ?? []).map((c) => [c.id, c]));
   for (const id of snap.keys()) if (!groups.has(id)) groups.set(id, []); // empty authored rooms
+  const storyTitle = view?.title ?? spaceTitles.get(STORY_SPACE);
   return [...groups.entries()].map(([id, msgs]) => {
     const lastTs = msgs.length ? msgs[msgs.length - 1]!.ts : 0;
     const decision = dock && dock.channel === id ? dock.decision : null;
@@ -174,13 +188,15 @@ function buildGuestChannels(
         lastTs,
       };
     }
-    // A derived channel — read title/kind from the id (`dm:RECRUITER` → "Recruiter").
+    // A derived channel — read title/kind from the id (`dm:Recruiter` → "Recruiter").
+    // The lobby is named after the story; derived rooms live in the story's space.
     const head = channelHead(id);
     return {
       id,
       kind: head.kind,
-      title: head.title,
-      spaceId: "internet",
+      title: head.kind === "lobby" && storyTitle ? storyTitle : head.title,
+      spaceId: STORY_SPACE,
+      spaceTitle: storyTitle,
       order: head.kind === "lobby" ? 0 : head.kind === "faction" ? 1 : 2,
       messages: msgs,
       unread: 0,
@@ -200,6 +216,8 @@ export interface GuestSession {
   defect: (to: string) => Promise<unknown>;
   choose: (index: number) => Promise<unknown>;
   escape: () => Promise<unknown>;
+  /** Fire one of the story's `who: guest` interactions for yourself. */
+  act: (name: string) => Promise<unknown>;
   /** Hybrid chat: type into a channel (a reply carries the root's seq). */
   say: (channel: string, text: string, parentSeq?: number) => Promise<unknown>;
   /** Access control: pull another participant into a membership-gated channel. */
@@ -239,6 +257,7 @@ export function useGuestSession(): GuestSession {
   const defect = useCallback((to: string) => post("/api/guest/defect", { to }), [post]);
   const choose = useCallback((index: number) => post("/api/guest/choose", { index }), [post]);
   const escape = useCallback(() => post("/api/guest/escape", {}), [post]);
+  const act = useCallback((name: string) => post("/api/guest/act", { name }), [post]);
   const say = useCallback(
     (channel: string, text: string, parentSeq?: number) => post("/api/guest/say", { channel, text, parentSeq }),
     [post],
@@ -268,8 +287,9 @@ export function useGuestSession(): GuestSession {
 
   const dock = requiredDecision(status, { choose: (i) => void choose(i), join: (f) => void join(f), escape: () => void escape() });
   const threads = useThreads(buildGuestChannels(messages, dock, status));
+  useTheme(status?.theme);
 
-  return { me, status, connected, threads, register, join, defect, choose, escape, say, inviteToChannel, leaveChannel, leave };
+  return { me, status, connected, threads, register, join, defect, choose, escape, act, say, inviteToChannel, leaveChannel, leave };
 }
 
 // --- performer (character) --------------------------------------------------
@@ -294,9 +314,10 @@ function buildPrimeChannels(messages: Map<number, ChatMessage>, view: PrimeView 
   const feed: Channel = {
     id: "__feed",
     kind: "lobby",
-    title: "The Internet",
+    title: view?.title ?? "Lobby",
     subtitle: "everyone · broadcast feed",
-    spaceId: "internet",
+    spaceId: STORY_SPACE,
+    spaceTitle: view?.title,
     order: 0,
     messages: feedMsgs,
     unread: 0,
@@ -357,6 +378,8 @@ export interface PrimeSession {
   /** Leave a membership-gated channel. */
   leaveChannel: (channel: string) => Promise<unknown>;
   becomeAdmin: (passcode: string) => Promise<void>;
+  /** Fire a performer / admin interaction on a guest, as this character. */
+  act: (name: string, guest: string) => Promise<unknown>;
   moderate: (id: string, action: string, name?: string) => Promise<unknown>;
   setHidden: (seq: number, hidden: boolean) => Promise<unknown>;
   leave: () => void;
@@ -420,6 +443,10 @@ export function usePrimeSession(): PrimeSession {
     },
     [base, auth],
   );
+  const act = useCallback(
+    (name: string, guest: string) => post("/api/prime/act", { name, guest }, auth!.token),
+    [post, auth],
+  );
   const moderate = useCallback(
     (id: string, action: string, name?: string) => post("/api/mod/act", { id, action, name }, auth!.token),
     [post, auth],
@@ -436,5 +463,6 @@ export function usePrimeSession(): PrimeSession {
   }, []);
 
   const threads = useThreads(buildPrimeChannels(messages, view));
-  return { auth, view, responses, connected, threads, login, scan, say, inviteToChannel, leaveChannel, becomeAdmin, moderate, setHidden, leave };
+  useTheme(view?.theme);
+  return { auth, view, responses, connected, threads, login, scan, say, inviteToChannel, leaveChannel, becomeAdmin, act, moderate, setHidden, leave };
 }

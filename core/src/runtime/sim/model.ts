@@ -15,6 +15,7 @@ import type {
   SpaceBody,
 } from "../../parser/index.ts";
 import { stripPrefix } from "../../parser/rust.ts";
+import { FoldedIndex, foldName } from "../../parser/names.ts";
 import type { Bundle } from "../bundle.ts";
 import { vBool, vNumber, vString, type Value } from "../expr.ts";
 import { lowerRawBody } from "./effects.ts";
@@ -30,8 +31,9 @@ export interface TimerSpec {
 
 /** A reactive rule attached to a character or role. */
 export interface Hook {
+  /** Owning entity id; `""` for a story-level rule. */
   ownerId: string;
-  ownerKind: "character" | "role";
+  ownerKind: "character" | "role" | "story";
   /** Trigger verb — `scan`, `captured`, `join`, a signal name, … */
   verb: string;
   /** Subject bound from the event, e.g. `guest` in `on scan guest`. */
@@ -40,6 +42,11 @@ export interface Hook {
   filter: string | null;
   /** A time trigger when this is `on every …` / `on after …`, else null. */
   timer: TimerSpec | null;
+  /**
+   * A **watcher** (Loom 4 §9.1): `when <condition>:` — the expression that
+   * must *become* true for the body to run. `verb` is `""` for a watcher.
+   */
+  condition: string | null;
   /** Structured effect body (shared executor with beats). */
   body: BodyItem[];
   /** Raw `on …` clause, kept for diagnostics. */
@@ -86,7 +93,7 @@ export interface CharDef {
 }
 
 /** The default space authored channels fall into when none is named. */
-export const DEFAULT_SPACE_ID = "internet";
+export const DEFAULT_SPACE_ID = "story";
 
 export interface SpaceDef {
   id: string;
@@ -117,7 +124,23 @@ export function channelId(name: string): string {
   return `room:${name.trim()}`;
 }
 
+/** An `INTERACTION` the participant client offers as a button. */
+export interface InteractionDef {
+  id: string;
+  label: string;
+  who: "performer" | "guest" | "admin";
+  description: string | null;
+}
+
 export interface SimModel {
+  /** The story's `# Title` (first file that has one), for the app's chrome. */
+  title: string | null;
+  /** The header `theme:` for the participant client (`plain` when unset). */
+  theme: string | null;
+  /** Story-level `when …:` rules (Loom 4 §9.3) — hooks with no owner. */
+  rules: Hook[];
+  /** Declared `INTERACTION`s, in source order. */
+  interactions: Map<string, InteractionDef>;
   factions: Map<string, FactionDef>;
   locations: Map<string, LocationDef>;
   roles: Map<string, RoleDef>;
@@ -131,8 +154,14 @@ export interface SimModel {
   entityKind: Map<string, EntityKind>;
   /** The role a fresh Person is cast into (first `ROLE` declared). */
   defaultRole: string | null;
-  /** `entry:` beat from a file header, if any. */
+  /** `start:` / `entry:` beat from a file header, if any. */
   entry: string | null;
+  /**
+   * Folded-name lookups (Loom 4 §3) — the exact key a loosely-spelled
+   * beat / entity name resolves to when the exact lookup misses.
+   */
+  beatIndex: FoldedIndex;
+  entityIndex: FoldedIndex;
   /** Character-owned time-driven hooks, fired by `Sim.tick`. */
   timerHooks: Hook[];
   /** Ambient generators (top-level + character-bound), fired by `tick`. */
@@ -142,6 +171,10 @@ export interface SimModel {
 /** Compile every loaded file in `bundle` into one `SimModel`. */
 export function compileModel(bundle: Bundle): SimModel {
   const model: SimModel = {
+    title: null,
+    theme: null,
+    rules: [],
+    interactions: new Map(),
     factions: new Map(),
     locations: new Map(),
     roles: new Map(),
@@ -152,6 +185,8 @@ export function compileModel(bundle: Bundle): SimModel {
     entityKind: new Map(),
     defaultRole: null,
     entry: null,
+    beatIndex: new FoldedIndex(),
+    entityIndex: new FoldedIndex(),
     timerHooks: [],
     gens: [],
   };
@@ -162,12 +197,20 @@ export function compileModel(bundle: Bundle): SimModel {
   bundle.rebuildSimulacra();
 
   for (const entry of bundle.files) {
-    const entryProp = entry.file.header.properties.get("entry");
+    const entryProp =
+      entry.file.header.properties.get("start") ?? entry.file.header.properties.get("entry");
     if (model.entry === null && entryProp !== undefined) model.entry = entryProp.value;
+    if (model.title === null && entry.file.header.title !== null) model.title = entry.file.header.title;
+    const themeProp = entry.file.header.properties.get("theme");
+    if (model.theme === null && themeProp !== undefined) model.theme = themeProp.value.trim();
 
     for (const item of entry.file.items) {
       if (item.kind === "beat") {
         model.beats.set(item.value.name, item.value);
+        continue;
+      }
+      if (item.kind === "rule") {
+        model.rules.push(ruleHook(item.value.event, item.value.body));
         continue;
       }
       if (item.kind !== "declaration") continue;
@@ -246,6 +289,16 @@ export function compileModel(bundle: Bundle): SimModel {
         case "channel":
           if (decl.channel) registerChannel(model, decl.channel, decl.channel.space);
           break;
+        case "interaction":
+          if (decl.interaction) {
+            model.interactions.set(decl.name, {
+              id: decl.name,
+              label: decl.interaction.label ?? decl.name,
+              who: decl.interaction.who,
+              description: decl.interaction.description,
+            });
+          }
+          break;
         default:
           break;
       }
@@ -255,6 +308,14 @@ export function compileModel(bundle: Bundle): SimModel {
   // Character-owned time hooks drive the autonomous clock.
   for (const char of model.characters.values()) {
     for (const hook of char.hooks) if (hook.timer !== null) model.timerHooks.push(hook);
+  }
+  for (const rule of model.rules) if (rule.timer !== null) model.timerHooks.push(rule);
+  // Folded-name indexes: every beat key and every declared entity id, so a
+  // divert / speaker / verb argument spelled loosely still resolves.
+  for (const key of model.beats.keys()) model.beatIndex.add(key);
+  for (const id of model.entityKind.keys()) model.entityIndex.add(id);
+  if (model.entry !== null && !model.beats.has(model.entry)) {
+    model.entry = model.beatIndex.get(model.entry) ?? model.entry;
   }
   // Every channel's space must exist; synthesise one for `space:`-referenced
   // or default-space channels, and keep `channelIds` consistent + ordered.
@@ -424,21 +485,30 @@ function charDef(id: string, body: CharacterBody): CharDef {
 }
 
 function hooksOf(ownerId: string, ownerKind: "character" | "role", body: CharacterBody): Hook[] {
-  return body.hooks
-    .filter((h) => !h.suppressed)
-    .map((h) => {
-      const { verb, param, filter } = parseTrigger(h.event);
-      return {
-        ownerId,
-        ownerKind,
-        verb,
-        param,
-        filter,
-        timer: parseTimer(h.event),
-        body: lowerRawBody(h.body),
-        event: h.event,
-      };
-    });
+  return body.hooks.filter((h) => !h.suppressed).map((h) => hookOf(ownerId, ownerKind, h.event, h.body));
+}
+
+/** A story-level rule is a hook with no owner. */
+function ruleHook(event: string, body: RawLine[]): Hook {
+  return hookOf("", "story", event, body);
+}
+
+function hookOf(ownerId: string, ownerKind: Hook["ownerKind"], event: string, body: RawLine[]): Hook {
+  const timer = parseTimer(event);
+  const condition = timer === null && isConditionTrigger(event) ? event.trim() : null;
+  const { verb, param, filter } =
+    condition === null ? parseTrigger(event) : { verb: "", param: null, filter: null };
+  return {
+    ownerId,
+    ownerKind,
+    verb,
+    param,
+    filter,
+    timer,
+    condition,
+    body: lowerRawBody(body),
+    event,
+  };
 }
 
 /** Parse `every 30s` / `after 2m` into a timer spec, else null. */
@@ -523,34 +593,155 @@ export function isBuiltinVerb(verb: string): verb is BuiltinVerb {
  * offers, so firing named events is a closed choice, not a free string.
  */
 export function namedEvents(model: SimModel): string[] {
-  const out = new Set<string>();
+  // Keyed by folded name so `ring the bell` / `ring_the_bell` list once,
+  // under the first spelling seen (a declared INTERACTION's wins).
+  const out = new Map<string, string>();
+  const add = (name: string): void => {
+    const k = foldName(name);
+    if (!out.has(k)) out.set(k, name);
+  };
+  for (const i of model.interactions.keys()) add(i);
   const collect = (hooks: Hook[]): void => {
     for (const h of hooks) {
-      if (h.timer !== null) continue;
+      if (h.timer !== null || h.condition !== null) continue;
       if (h.verb.length === 0 || isBuiltinVerb(h.verb)) continue;
-      out.add(h.verb);
+      add(h.verb);
     }
   };
   for (const c of model.characters.values()) collect(c.hooks);
   for (const r of model.roles.values()) collect(r.hooks);
-  return [...out].sort();
+  collect(model.rules);
+  return [...out.values()].sort();
 }
 
-/** Parse an `on …` clause into a structured trigger. */
+/**
+ * Filler words an event phrase may carry and the trigger ignores (Loom 4
+ * §9.1): `when scanned by a guest` ≡ `when scanned guest` ≡ `on scan guest`.
+ */
+const TRIGGER_FILLERS = new Set([
+  "a", "an", "the", "is", "are", "has", "have", "been", "gets", "get",
+  "by", "at", "in", "on", "to", "for", "from", "with", "into", "of", "onto",
+]);
+
+/**
+ * Human spellings of the built-in verbs → the engine's trigger verb. The
+ * v3 verb itself always maps to itself.
+ */
+const VERB_SYNONYMS: ReadonlyMap<string, string> = new Map([
+  ["scan", "scan"], ["scans", "scan"], ["scanned", "scan"],
+  ["enters", "enters"], ["enter", "enters"], ["entered", "enters"],
+  ["arrives", "enters"], ["arrive", "enters"], ["arrived", "enters"],
+  ["exits", "exits"], ["exit", "exits"], ["leaves", "exits"], ["leave", "exits"], ["left", "exits"],
+  ["join", "join"], ["joins", "join"], ["joined", "join"],
+  ["defect", "defect"], ["defects", "defect"], ["defected", "defect"],
+  ["betray", "betray"], ["betrays", "betray"], ["betrayed", "betray"],
+  ["captured", "captured"], ["capture", "captured"],
+  ["released", "released"], ["release", "released"],
+  ["escape", "escape"], ["escapes", "escape"], ["escaped", "escape"],
+  ["revealed", "revealed"], ["reveal", "revealed"],
+  ["removed", "removed"], ["remove", "removed"],
+  ["arrive_anywhere", "arrive"],
+]);
+
+/**
+ * Parse an `on …` / `when …` event phrase into a structured trigger. The
+ * first word that names a built-in verb is the **verb** (`scanned` → `scan`,
+ * `arrives` → `enters`); with none, the first non-filler lowercase word is a
+ * **named event**. Remaining lowercase words bind the subject (`guest`);
+ * a Capitalised word is a **filter** (`Cellar`, `Mods`). `someone joins` /
+ * `participant joins` is the account-creation event.
+ */
 export function parseTrigger(event: string): {
   verb: string;
   param: string | null;
   filter: string | null;
 } {
-  const words = event.trim().split(/\s+/u).filter((w) => w.length > 0);
-  const verb = words[0] ?? "";
+  const raw = event.trim().split(/\s+/u).filter((w) => w.length > 0);
+  if (raw.length >= 2 && (raw[0] === "someone" || raw[0] === "participant" || raw[0] === "anyone")) {
+    const w = raw[1]!.toLowerCase();
+    if (w === "joins" || w === "arrives" || w === "signs" || w === "logs") {
+      return { verb: BuiltinVerb.AccountCreated, param: null, filter: null };
+    }
+  }
+  // v3 spelling: the verb is the first word, verbatim (`on rally guest`).
+  const words = raw.filter((w) => !TRIGGER_FILLERS.has(w)); // case-sensitive: `The` is a name
+  let verb: string | null = null;
+  let verbIdx = -1;
+  for (let i = 0; i < words.length; i++) {
+    const syn = VERB_SYNONYMS.get(words[i]!.toLowerCase());
+    if (syn !== undefined) {
+      verb = syn;
+      verbIdx = i;
+      break;
+    }
+  }
+  if (verb === null) {
+    // A **named event**. Loom 4 names are words, so the event may be several
+    // of them: everything before a `for` binding keyword (`when ring the
+    // bell for guest:`), or — with no binding — the whole phrase when it
+    // reads as one (it carries a filler word, `ring the bell`). Otherwise
+    // the v3 shape holds: first word = event, next lowercase word = binding
+    // (`on rally guest`). Matching folds, so `fire ring_the_bell` reaches it.
+    const forAt = raw.indexOf("for");
+    if (forAt > 0) {
+      const event = raw.slice(0, forAt).join(" ");
+      const tail = raw.slice(forAt + 1).filter((w) => !TRIGGER_FILLERS.has(w));
+      let p: string | null = null;
+      let f: string | null = null;
+      const frun: string[] = [];
+      for (const w of tail) {
+        if (/^[A-Z]/u.test(w)) frun.push(w);
+        else if (p === null && /^[a-z_][A-Za-z0-9_]*$/u.test(w)) p = w;
+      }
+      if (frun.length > 0) f = frun.join(" ");
+      return { verb: event, param: p, filter: f };
+    }
+    const hasFiller = raw.some((w) => TRIGGER_FILLERS.has(w));
+    const lower = words.filter((w) => /^[a-z_]/u.test(w));
+    if (hasFiller && lower.length >= 2 && lower.length === words.length) {
+      return { verb: raw.join(" "), param: null, filter: null };
+    }
+    verbIdx = words.findIndex((w) => /^[a-z_]/u.test(w));
+    if (verbIdx < 0) verbIdx = 0;
+    verb = words[verbIdx] ?? "";
+  }
   let param: string | null = null;
   let filter: string | null = null;
-  for (const w of words.slice(1)) {
-    if (/^[A-Z]/u.test(w)) filter = w;
-    else if (/^[a-z_][A-Za-z0-9_]*$/u.test(w) && param === null) param = w;
+  // A run of Capitalised words is one filter (`at The Cellar` → `The Cellar`).
+  let run: string[] = [];
+  const flush = (): void => {
+    if (run.length > 0) filter = run.join(" ");
+    run = [];
+  };
+  for (let i = 0; i < words.length; i++) {
+    if (i === verbIdx) {
+      flush();
+      continue;
+    }
+    const w = words[i]!;
+    if (/^[A-Z]/u.test(w)) {
+      run.push(w);
+    } else {
+      flush();
+      if (/^[a-z_][A-Za-z0-9_]*$/u.test(w) && param === null) param = w;
+    }
   }
+  flush();
   return { verb, param, filter };
+}
+
+/**
+ * Is this `when …` phrase a **condition** (a watcher) rather than an event?
+ * A comparison / boolean operator, a call, or a leading dotted path
+ * (`self.heat`) makes it an expression over the world.
+ */
+export function isConditionTrigger(event: string): boolean {
+  const t = event.trim();
+  if (/(==|!=|>=|<=|[<>])/u.test(t)) return true;
+  if (/\b(and|or|not)\b/u.test(t)) return true;
+  if (/\w\(/u.test(t)) return true;
+  const head = t.split(/\s+/u)[0] ?? "";
+  return head.includes(".") && !/^[A-Z]/u.test(head) ? true : /^[A-Za-z_][\w]*\.[\w.]+$/u.test(t);
 }
 
 /** The default first/last typed-slot value (`default ?? rawType`). */

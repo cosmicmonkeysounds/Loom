@@ -281,7 +281,7 @@ export interface EntityEntry {
 
 export interface HookEntry {
   owner: number;
-  ownerKind: "character" | "role";
+  ownerKind: "character" | "role" | "story";
   verb: number;
   param: number;
   filter: number;

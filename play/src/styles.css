@@ -1,54 +1,60 @@
 /* ════════════════════════════════════════════════════════════════════════
-   Escape the Internet — styled like an old-school AOL chat room, circa 1997.
-   Teal Win95 desktop · silver beveled windows · navy title bars · a sunken
-   white chat panel of Times-New-Roman line messages with colored screen
-   names · chunky 3D buttons · a "People Here" buddy list.
-   The markup is unchanged from the Discord-era build; only the skin moved.
+   The Loom participant client — a chat-room over a live story.
+
+   Nothing story-specific is baked in. The *neutral* skin below is the
+   default: quiet paper, one accent, system type. A story picks another
+   skin with a `theme:` header line (Loom 4 §11); the client stamps it on
+   `<html data-theme="…">` and the matching block at the bottom of this
+   file re-points the same custom properties. `aol97` — the beveled 1997
+   chat-room look one particular party shipped with — lives there.
+   The markup never changes between themes; only these variables do.
    ════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  --desktop: #008080;        /* the iconic Win95 teal wallpaper             */
-  --face: #c0c0c0;           /* silver window face                          */
-  --face-hi: #dfdfdf;
+  --desktop: #eee9df;        /* the page behind the window                   */
+  --face: #fbf9f4;           /* window / panel surface                       */
+  --face-hi: #ffffff;
   --white: #ffffff;
-  --black: #000000;
-  --ink: #000000;
-  --muted-ink: #404040;
-  --navy: #000080;           /* active title bar                           */
-  --navy-2: #1084d0;         /* title-bar gradient tail                     */
-  --maroon: #7a1020;         /* "alert" title bar when captured            */
-  --maroon-2: #c0392b;
-  --link: #0000ee;
-  --good: #008000;
-  --bad: #c00000;
-  --bevel-d: #0a0a0a;        /* deep shadow                                 */
-  --bevel-s: #808080;        /* mid shadow                                  */
+  --black: #1b1a17;
+  --ink: #1b1a17;
+  --muted-ink: #6b665c;
+  --line: #d9d2c4;           /* hairlines in place of bevels                 */
+  --navy: #3b3a5c;           /* title bar                                     */
+  --navy-2: #3b3a5c;         /* title-bar gradient tail (flat by default)     */
+  --maroon: #7a2e2e;         /* "alert" title bar when captured               */
+  --maroon-2: #7a2e2e;
+  --on-bar: #e9e7f2;         /* secondary text on a title bar                 */
+  --link: #3b3a5c;
+  --good: #2f7a4f;
+  --bad: #b03a2e;
+  --live: #4cc37a;           /* the connection dot when live                  */
+  --highlight: #f0d77a;      /* badges, the selection caret                   */
+  --system: #3b3a5c;         /* room events                                   */
+  --signal: #6d3a7a;         /* broadcast cues                                */
+  --avatar-guest: #8a5a1e;
+  --code-bg: #f1ede4;
+  --radius: 8px;
   --max: 760px;
 
-  /* Reusable 3D edges (Win95 / 98.css recipe). */
-  --raised: inset -1px -1px var(--bevel-d), inset 1px 1px var(--white),
-            inset -2px -2px var(--bevel-s), inset 2px 2px var(--face-hi);
-  --pressed: inset -1px -1px var(--white), inset 1px 1px var(--bevel-d),
-             inset -2px -2px var(--face-hi), inset 2px 2px var(--bevel-s);
-  --sunken: inset -1px -1px var(--white), inset 1px 1px var(--bevel-s),
-            inset -2px -2px var(--face-hi), inset 2px 2px var(--bevel-d);
+  /* Edges: flat hairlines by default; a themed skin may make them 3D. */
+  --raised: 0 0 0 1px var(--line);
+  --pressed: inset 0 0 0 1px var(--line);
+  --sunken: inset 0 0 0 1px var(--line);
 
-  --ui-font: "Tahoma", "MS Sans Serif", "Geneva", "Segoe UI", sans-serif;
-  --chat-font: "Times New Roman", "Times", "Georgia", serif;
+  --ui-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --chat-font: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  --smoothing: antialiased;
+  --grid: none;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body, #root { height: 100%; }
 body {
   margin: 0;
-  font: 13px/1.45 var(--ui-font);
-  /* teal desktop with the faint grid you half-remember from the wallpaper */
-  background:
-    repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 24px),
-    repeating-linear-gradient(90deg, rgba(0,0,0,0.04) 0 1px, transparent 1px 24px),
-    var(--desktop);
+  font: 14px/1.45 var(--ui-font);
+  background: var(--grid), var(--desktop);
   color: var(--ink);
-  -webkit-font-smoothing: none;
+  -webkit-font-smoothing: var(--smoothing);
   text-rendering: optimizeLegibility;
 }
 
@@ -62,6 +68,11 @@ body {
   padding: 3px;
 }
 .trapped-bg { height: 100%; }
+/* rounded corners on the neutral skin; a themed skin can zero --radius */
+.choice, .dlg-choice, .avatar, .badge, .icon-btn, .back, .tray, .sheet, .card, .readout,
+.composer .composer-input, .sheet input, .card input, .hero input, .help-sheet input,
+.help-body, .chlist, .thread, .screen, .space-title, .mod-toggle, .replies.has,
+.msg-channel, .decision-dot, .dlg-key, .bigid { border-radius: var(--radius); }
 
 .muted { color: var(--muted-ink); }
 .err { color: var(--bad); font-weight: 700; margin-top: 8px; }
@@ -90,7 +101,7 @@ body {
 .who strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hud {
   display: flex; align-items: center; gap: 10px;
-  font-size: 11px; font-weight: 700; color: #dfe7ff; white-space: nowrap;
+  font-size: 11px; font-weight: 700; color: var(--on-bar); white-space: nowrap;
 }
 /* the window-control box on the title bar (the ☰ menu button) */
 .icon-btn {
@@ -102,10 +113,10 @@ body {
 }
 .icon-btn:active { box-shadow: var(--pressed); padding: 1px 0 0 1px; }
 
-.conn { display: inline-flex; align-items: center; gap: 5px; color: #dfe7ff; font-size: 11px; }
+.conn { display: inline-flex; align-items: center; gap: 5px; color: var(--on-bar); font-size: 11px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bad);
-  display: inline-block; box-shadow: var(--sunken); }
-.dot.on { background: #00ff66; }
+  display: inline-block; }
+.dot.on { background: var(--live); }
 
 /* the AOL caption "back" arrow doubles as a folder-up control */
 .back {
@@ -142,7 +153,7 @@ body {
 }
 .decision-dot {
   font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px;
-  color: var(--bad); background: #ffff00; box-shadow: var(--raised);
+  color: var(--bad); background: var(--highlight); box-shadow: var(--raised);
   padding: 0 5px;
 }
 
@@ -156,13 +167,13 @@ body {
 .avatar.lobby { color: var(--navy); }
 .avatar.faction { color: var(--maroon-2); }
 .avatar.dm { color: var(--good); }
-.avatar.guest { color: #b06000; }
+.avatar.guest { color: var(--avatar-guest); }
 .avatar.scanner { color: var(--ink); }
 
 /* unread count — a yellow "You've Got Mail" chip */
 .badge {
   min-width: 18px; height: 16px; padding: 0 4px;
-  background: #ffff00; color: var(--bad); box-shadow: var(--raised);
+  background: var(--highlight); color: var(--bad); box-shadow: var(--raised);
   font-size: 11px; font-weight: 800;
   display: inline-flex; align-items: center; justify-content: center;
 }
@@ -171,7 +182,7 @@ body {
 .thread-head { max-width: var(--max); margin: 0 auto; width: 100%; }
 .thread-id { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
 .thread-id strong { font-size: 13px; }
-.thread-id .muted { font-size: 11px; color: #cdd6ee; font-style: italic; }
+.thread-id .muted { font-size: 11px; color: var(--on-bar); font-style: italic; }
 .thread {
   flex: 1; overflow-y: auto; margin: 4px; padding: 6px 8px;
   background: var(--white); box-shadow: var(--sunken);
@@ -186,7 +197,7 @@ body {
 .msg-channel {
   display: inline-block; font-family: var(--ui-font);
   font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px;
-  color: var(--white); background: var(--bevel-s); box-shadow: var(--raised);
+  color: var(--white); background: var(--muted-ink); box-shadow: var(--raised);
   padding: 0 4px; margin-right: 4px;
 }
 .speaker {
@@ -197,8 +208,8 @@ body {
 
 /* room events (joins, broadcasts, narration) read like "OnlineHost:" lines */
 .bubble.plain { font-style: italic; color: var(--muted-ink); }
-.msg.system .bubble.plain { color: #000080; font-weight: 700; font-style: normal; }
-.msg.signal .bubble.plain { color: #800080; font-weight: 700; }
+.msg.system .bubble.plain { color: var(--system); font-weight: 700; font-style: normal; }
+.msg.signal .bubble.plain { color: var(--signal); font-weight: 700; }
 .msg.narration { color: var(--muted-ink); font-style: italic; }
 
 .msg.hidden { opacity: 0.6; }
@@ -232,7 +243,7 @@ body {
 .thread-divider {
   font: 700 11px var(--ui-font); color: var(--muted-ink); text-transform: uppercase;
   letter-spacing: 0.5px; text-align: center; margin: 8px 0 4px;
-  border-bottom: 1px solid var(--bevel-s);
+  border-bottom: 1px solid var(--line);
 }
 
 /* ── composer (hybrid typed chat) ──────────────────────────────────────────
@@ -264,7 +275,7 @@ body {
 
 /* ── footer: decision tray / composer / action row ──────────────────────── */
 footer {
-  border-top: 1px solid var(--white);
+  border-top: 1px solid var(--line);
   padding: 6px 8px calc(8px + env(safe-area-inset-bottom));
   background: var(--face);
   margin: 0 auto; width: 100%; max-width: var(--max);
@@ -310,8 +321,8 @@ footer {
   background: var(--navy); color: var(--white); box-shadow: var(--raised);
 }
 .dlg-choice.on .dlg-label { color: var(--white); }
-.dlg-choice.on .dlg-caret { opacity: 1; transform: none; color: #ffff00; }
-.dlg-choice.on .dlg-key { color: var(--bad); background: #ffff00; }
+.dlg-choice.on .dlg-caret { opacity: 1; transform: none; color: var(--highlight); }
+.dlg-choice.on .dlg-key { color: var(--bad); background: var(--highlight); }
 .dlg-choice.danger.on { background: var(--maroon); }
 .dlg-choice:active { box-shadow: var(--pressed); }
 .dlg-hint {
@@ -396,24 +407,24 @@ footer {
   background: var(--white); box-shadow: var(--sunken); padding: 8px 10px;
   margin: 8px; font-family: var(--chat-font); font-size: 15px;
 }
-.cam { width: calc(100% - 16px); margin: 8px; background: #000; box-shadow: var(--sunken); }
+.cam { width: calc(100% - 16px); margin: 8px; background: var(--black); box-shadow: var(--sunken); }
 
 /* ── pass / QR ──────────────────────────────────────────────────────────── */
 .pass { text-align: center; margin: 4px 8px 12px; }
-.pass img { width: 168px; background: #fff; box-shadow: var(--sunken); padding: 8px; }
+.pass img { width: 168px; background: var(--white); box-shadow: var(--sunken); padding: 8px; border-radius: var(--radius); }
 .bigid {
   font: 800 20px var(--ui-font); letter-spacing: 2px; margin-top: 8px;
   background: var(--white); box-shadow: var(--sunken); display: inline-block; padding: 4px 12px;
 }
 
-/* ── faction pills — little beveled tags ────────────────────────────────── */
+/* ── group pills — small tags. A group's colour comes from its name (see
+   `colorFor` in chat.tsx); nothing here knows any particular story's sides. */
 .pill {
   display: inline-block; padding: 1px 8px; font-size: 11px; font-weight: 700;
   box-shadow: var(--raised); background: var(--face); color: var(--ink);
+  border-radius: var(--radius);
 }
-.pill.Mods { color: var(--navy); }
-.pill.Chatters { color: var(--maroon-2); }
-.pill.TheAlgorithm { color: #800080; }
+.pill.admin { color: var(--navy); }
 .pill.none { color: var(--muted-ink); font-style: italic; }
 
 /* ── the sign-on screen (register / login / role chooser) ───────────────
@@ -432,7 +443,6 @@ footer {
 }
 .hero .glyph {
   font-size: 44px; line-height: 1;
-  filter: drop-shadow(1px 1px 0 rgba(0,0,0,0.35));
 }
 .hero h1 {
   font: 800 24px var(--ui-font); margin: 8px 0 4px; color: var(--navy);
@@ -462,15 +472,15 @@ footer {
 .help-topic {
   display: block; width: 100%; text-align: left; background: none; border: none;
   font: 13px var(--ui-font); color: var(--ink); padding: 6px 4px; cursor: pointer;
-  border-bottom: 1px dotted rgba(0,0,0,0.18);
+  border-bottom: 1px dotted var(--line);
 }
-.help-topic:hover { background: var(--navy); color: var(--white); }
+.help-topic:hover { background: var(--navy); color: var(--white); border-radius: var(--radius); }
 .help-topic:hover .muted, .help-topic:hover strong { color: var(--white); }
 .help-topic strong { display: block; color: var(--navy); font-size: 13px; }
 .help-topic .muted { display: block; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .help-h {
   font: 700 13px var(--ui-font); color: var(--navy);
-  margin: 12px 0 4px; border-bottom: 1px solid rgba(0,0,128,0.25); padding-bottom: 2px;
+  margin: 12px 0 4px; border-bottom: 1px solid var(--line); padding-bottom: 2px;
 }
 .help-h:first-child { margin-top: 0; }
 .help-p { font: 13px/1.5 var(--ui-font); margin: 0 0 8px; }
@@ -481,15 +491,65 @@ footer {
 .help-list { font: 13px/1.5 var(--ui-font); margin: 0 0 8px; padding-left: 20px; }
 .help-list li { margin-bottom: 3px; }
 .help-code {
-  font: 12px/1.45 "Courier New", monospace; background: #f4f4f4;
+  font: 12px/1.45 ui-monospace, "Courier New", monospace; background: var(--code-bg);
   box-shadow: var(--sunken); padding: 8px 10px; margin: 0 0 8px;
   overflow-x: auto; white-space: pre;
 }
 .help-table { border-collapse: collapse; font: 12px var(--ui-font); margin: 0 0 8px; width: 100%; }
-.help-table th, .help-table td { border: 1px solid #999; padding: 3px 6px; text-align: left; vertical-align: top; }
+.help-table th, .help-table td { border: 1px solid var(--line); padding: 3px 6px; text-align: left; vertical-align: top; }
 .help-table th { background: var(--face); font-weight: 700; }
-.help-rule { border: none; border-top: 1px solid #999; margin: 10px 0; }
+.help-rule { border: none; border-top: 1px solid var(--line); margin: 10px 0; }
 .help-body code {
-  font: 12px "Courier New", monospace; background: #eee; padding: 0 3px;
-  border: 1px solid #ccc;
+  font: 12px ui-monospace, "Courier New", monospace; background: var(--code-bg); padding: 0 3px;
+  border: 1px solid var(--line);
 }
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   theme: aol97 — an old-school chat room, circa 1997. Teal Win95 desktop,
+   silver beveled windows, navy title bars, a sunken white transcript of
+   Times-New-Roman lines, chunky 3D buttons, a "People Here" buddy list.
+   Selected by a story's `theme: aol97` header line.
+   ════════════════════════════════════════════════════════════════════════ */
+:root[data-theme="aol97"] {
+  --desktop: #008080;
+  --face: #c0c0c0;
+  --face-hi: #dfdfdf;
+  --white: #ffffff;
+  --black: #000000;
+  --ink: #000000;
+  --muted-ink: #404040;
+  --line: #808080;
+  --navy: #000080;
+  --navy-2: #1084d0;
+  --maroon: #7a1020;
+  --maroon-2: #c0392b;
+  --on-bar: #dfe7ff;
+  --link: #0000ee;
+  --good: #008000;
+  --bad: #c00000;
+  --live: #00ff66;
+  --highlight: #ffff00;
+  --system: #000080;
+  --signal: #800080;
+  --avatar-guest: #b06000;
+  --code-bg: #f4f4f4;
+  --radius: 0;
+  --bevel-d: #0a0a0a;
+  --bevel-s: #808080;
+  --raised: inset -1px -1px var(--bevel-d), inset 1px 1px var(--white),
+            inset -2px -2px var(--bevel-s), inset 2px 2px var(--face-hi);
+  --pressed: inset -1px -1px var(--white), inset 1px 1px var(--bevel-d),
+             inset -2px -2px var(--face-hi), inset 2px 2px var(--bevel-s);
+  --sunken: inset -1px -1px var(--white), inset 1px 1px var(--bevel-s),
+            inset -2px -2px var(--face-hi), inset 2px 2px var(--bevel-d);
+  --ui-font: "Tahoma", "MS Sans Serif", "Geneva", "Segoe UI", sans-serif;
+  --chat-font: "Times New Roman", "Times", "Georgia", serif;
+  --smoothing: none;
+  /* the faint grid you half-remember from the wallpaper */
+  --grid: repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 24px),
+          repeating-linear-gradient(90deg, rgba(0,0,0,0.04) 0 1px, transparent 1px 24px);
+}
+:root[data-theme="aol97"] body { font-size: 13px; }
+:root[data-theme="aol97"] .hero .glyph { filter: drop-shadow(1px 1px 0 rgba(0,0,0,0.35)); }
+:root[data-theme="aol97"] .dot { box-shadow: var(--sunken); }

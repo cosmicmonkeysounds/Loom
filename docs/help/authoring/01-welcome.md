@@ -2,7 +2,7 @@
 title: Welcome to Loom
 section: Start Here
 order: 1
-keywords: welcome, introduction, overview, getting started, what is loom, tutorial
+keywords: welcome, introduction, overview, getting started, what is loom, tutorial, loom 4
 ---
 
 **You do not need to know how to program.** If you can write a
@@ -37,20 +37,18 @@ concept — try searching for `sticky`, `divert`, or `broadcast`.
 
 ```loom
 # The Lighthouse
-entry: opening
+start: The Bell Tower
 
-== opening
+== The Bell Tower
 
-WREN
-  (quietly)
-  It hasn't rung in three days.
+Wren (quietly): It hasn't rung in three days.
 
 * Ring the bell.
-  -> ringing
+  -> Ringing
 * Leave quietly.
   -> END
 
-== ringing
+== Ringing
 
 The sound carries across the rocks.
 
@@ -58,11 +56,22 @@ The sound carries across the rocks.
 ```
 
 - `# The Lighthouse` — the title.
-- `entry: opening` — which beat starts the story.
-- `== opening` — a **beat**: a chunk of story.
-- `WREN` + indented line — a speaker and their dialogue.
+- `start: The Bell Tower` — which beat starts the story.
+- `== The Bell Tower` — a **beat**: a chunk of story. Any words make a
+  name.
+- `Wren (quietly): …` — a speaker, a hint to the performer, and the line.
 - `* …` — a choice; what's indented under it happens if it's picked.
-- `-> name` — go to another beat; `-> END` ends the story.
+- `-> Ringing` — go to another beat; `-> END` ends the story.
+
+Three habits carry you through the rest: **names are for humans** (any
+words, capitals optional — `-> the bell tower` finds `== The Bell
+Tower`), **instructions are plain verbs** at the start of a line
+(`set coins = 10`, `if coins > 5:`, `cue lx_dawn` — no brackets), and
+**everything that reacts is a `when`** (`when scanned by guest:`).
+
+> Coming from Loom 3? Old files still play — `entry:`, ALL-CAPS cues,
+> `<set:>` and friends all parse. Each article notes the old spelling
+> once, where you might meet it.
 
 Write a little, press Run (`⌘2`), add one idea. That loop — not this
 guide — is how you'll actually learn Loom.

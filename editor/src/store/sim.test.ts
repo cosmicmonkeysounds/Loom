@@ -68,7 +68,8 @@ describe('sim store', () => {
     expect(s.choices[GLOBAL_CHOICE_KEY]).toEqual(['Take the stairs', 'Take the lift'])
     // Un-addressed entry dialogue is stage voice: it lands in the lobby
     // (`opening` has no setting), not a phantom nobody-can-see-it DM.
-    const greet = s.messages.find((m) => m.from === 'GREETER')
+    // Speakers canonicalise to the declared character (Loom 4 §4).
+    const greet = s.messages.find((m) => m.from === 'Greeter')
     expect(greet).toMatchObject({ channel: 'lobby', audience: 'all' })
     // The speakerless prose is the Narrator's narration — visible in chat.
     const narration = s.messages.find((m) => m.kind === 'narration')

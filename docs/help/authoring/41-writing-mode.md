@@ -15,17 +15,34 @@ either pane snaps closed at the divider.
 - **Diagnostics** — parse errors and project-wide problems (unfilled
   slots, unresolved trait args, beat conflicts) underline as you type.
 - **Completion** — divert targets after `->` (including `self.` and
-  `Owner.` owned beats), directive names inside `<…>`, traits after
-  `is`.
+  `Owner.` owned beats), directive names inside `<…>` (the long form
+  for mid-line effects and custom verbs), traits after `is`.
 - **Hover** — directive signatures, character summaries, a beat's cast
   and setting, trait params.
 - **Go to definition** — `⌘Click` or `F12` on any divert, speaker, or
   cue jumps to its declaration, cross-file.
 - **Find references** — `⇧F12` lists every use in the References panel.
 - **Rename** — `F2` renames the beat at the cursor *everywhere*:
-  declaration, every divert, `entry:` — across all files.
+  declaration, every divert, `start:` — across all files. Beat names
+  are plain words (`== The Front Gate`), so the rename keeps their
+  spelling consistent even though `-> the front gate` would still
+  resolve.
 - **Right-click** — definition / references / rename / reveal in story
   graph, plus clipboard basics. `⇧Right-click` keeps the browser menu.
+
+The highlighter and the index understand the whole surface — a
+one-liner `Ivo: You came back.` is dialogue just like an ALL-CAPS cue,
+and a lowercase verb at the start of a line is an instruction:
+
+```loom
+== The Front Gate
+  setting: Orchard Gate
+
+Ivo: You came back.
+* "Where is she?"
+  set Ivo.trusts.Player += 5
+  -> Ask About Mara
+```
 
 ## The two panes track each other
 

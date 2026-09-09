@@ -1,0 +1,107 @@
+# The Glass Orchard
+start: The Front Gate
+theme: plain
+
+// A garden-party mystery for about thirty guests. Mara Vell, who owns the
+// orchard, has not been seen since the invitations went out. Her brother
+// Ivo is hosting in her place and would rather nobody asked why.
+//
+// This is the spine of the project. The people live under `cast/`, the
+// scenes under `beats/`, and the chat rooms in `rooms.loom`. It is written
+// in the Loom 4 surface: names are words, instructions are plain verbs,
+// and every reaction is a `when`.
+
+// ── Groups ──────────────────────────────────────────────────────────
+// Two sides a guest can take, and one they are not supposed to know about.
+
+GROUP The Gardeners
+  ethos: tend
+  rival: The Collectors
+
+GROUP The Collectors
+  ethos: take
+  rival: The Gardeners
+
+GROUP The Society
+  ethos: keep the orchard
+  hidden: true
+
+// ── Places ──────────────────────────────────────────────────────────
+
+LOCATION Orchard Gate
+  label: The Front Gate
+  capacity: 40
+
+LOCATION The Long Table
+  label: The Long Table
+  ambient: cutlery-and-crickets
+  capacity: 40
+
+LOCATION The Glasshouse
+  label: The Glasshouse
+  ambient: humid-hum
+  capacity: 12
+
+LOCATION The Cellar
+  label: Under the Orchard
+  ambient: drip
+  capacity: 8
+
+// ── Every guest ─────────────────────────────────────────────────────
+// The per-person state, plus the rules that apply to everyone.
+
+ROLE Guest
+  group: any of GROUP
+  suspicion: 0 to 100 = 0
+  favour: 0 to 100 = 10
+  invited: bool = true
+  below: bool = false
+
+  // The one rule that can send a guest below: too much snooping, and the
+  // Society quietly takes them down to the cellar.
+  when self.suspicion >= 70:
+    set self.below = true
+    set self.suspicion = 0
+    move self to The Cellar
+    reply Someone takes your elbow. "This way. Mind the step."
+
+  when arrives at The Cellar:
+    broadcast lantern_low to participant(self)
+    -> Under The Orchard
+
+  when arrives at The Glasshouse:
+    set self.suspicion += 5
+
+  when joins The Gardeners:
+    reply A sprig of rosemary is pinned to your lapel.
+
+  when joins The Collectors:
+    reply A small brass key is pressed into your palm.
+
+  when someone joins:
+    reply Welcome to the orchard. Keep your invitation where it can be scanned.
+
+// ── What the app can do ─────────────────────────────────────────────
+// Buttons the participant client offers, beyond scanning a pass. Each
+// one is a named event: `when whisper for guest:` on a character hears
+// the performer playing that character press it.
+
+INTERACTION whisper
+  label: Whisper to them
+  who: performer
+  description: A quiet word, in character, to one guest.
+
+INTERACTION ring the bell
+  label: Ring the bell
+  who: guest
+  description: The brass bell by the gate. Everyone hears it.
+
+// ── House rules ─────────────────────────────────────────────────────
+// Story-level `when`s — they belong to nobody in particular.
+
+when ring the bell for guest:
+  broadcast "The bell by the gate rings. {guest.name} is standing under it." to location(Orchard Gate)
+  set guest.suspicion += 5
+
+when Tension > 80:
+  fire the_toast

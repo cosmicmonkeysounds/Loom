@@ -142,17 +142,17 @@ ROLE Guest is Pinged
 });
 
 describe("Slice 1 — SELF speaker", () => {
-  it("attributes a SELF block to the scanning prop, upper-cased", () => {
+  it("attributes a SELF block to the scanning prop, by its declared name", () => {
     const sim = Sim.fromSources(SRC);
     sim.createPerson("g1", "Ada");
     const events = sim.scan("Crawler", "g1");
     const lines = dialogue(events);
     expect(lines).toHaveLength(1);
-    expect(lines[0]!.speaker).toBe("CRAWLER");
+    expect(lines[0]!.speaker).toBe("Crawler");
     expect(lines[0]!.text).toBe("Indexing. Flag raised.");
   });
 
-  it("upper-cases an underscored id to match explicit speaker casing", () => {
+  it("keeps an underscored id as declared (no upper-casing)", () => {
     const sim = Sim.fromSources(`FACTION F
   ethos: x
 
@@ -174,7 +174,7 @@ CHARACTER Cookie_Banner
 `);
     sim.createPerson("g1", "Ada");
     const lines = dialogue(sim.scan("Cookie_Banner", "g1"));
-    expect(lines[0]!.speaker).toBe("COOKIE_BANNER");
+    expect(lines[0]!.speaker).toBe("Cookie_Banner");
   });
 });
 
@@ -249,7 +249,7 @@ describe("Slice 2 — parameterized traits", () => {
     const ev = sim.scan("Crawler", "g1");
     expect(sim.world.get("g1.heat")).toEqual({ kind: "number", value: 40 });
     const line = dialogue(ev)[0]!;
-    expect(line.speaker).toBe("CRAWLER");
+    expect(line.speaker).toBe("Crawler");
     expect(line.text).toBe("Indexing.");
   });
 
@@ -414,8 +414,8 @@ describe("Slice A — owned beats", () => {
     const b = sim.scan("Beta", "g2");
     expect(sim.world.get("g1.heat")).toEqual({ kind: "number", value: 1 });
     expect(sim.world.get("g2.heat")).toEqual({ kind: "number", value: 100 });
-    expect(dialogue(a)[0]).toMatchObject({ speaker: "ALPHA", text: "Alpha here." });
-    expect(dialogue(b)[0]).toMatchObject({ speaker: "BETA", text: "Beta here." });
+    expect(dialogue(a)[0]).toMatchObject({ speaker: "Alpha", text: "Alpha here." });
+    expect(dialogue(b)[0]).toMatchObject({ speaker: "Beta", text: "Beta here." });
   });
 
   it("routes `-> self.beat` to the owner's inline beat", () => {
@@ -429,8 +429,8 @@ describe("Slice A — owned beats", () => {
     const sim = Sim.fromSources(OWNED_SRC);
     sim.createPerson("g3", "Cy");
     const ev = sim.scan("Caller", "g3");
-    // Caller diverts to Alpha.report — it runs and speaks as ALPHA, not CALLER.
-    expect(dialogue(ev)[0]).toMatchObject({ speaker: "ALPHA", text: "Alpha here." });
+    // Caller diverts to Alpha.report — it runs and speaks as Alpha, not Caller.
+    expect(dialogue(ev)[0]).toMatchObject({ speaker: "Alpha", text: "Alpha here." });
     expect(sim.world.get("g3.heat")).toEqual({ kind: "number", value: 1 });
   });
 
@@ -586,7 +586,7 @@ CHARACTER Guard is Watcher(prophecy)
     // The trait param `prophecy` names Guard's OWN beat, so `-> self.target`
     // resolves to Guard.prophecy — not a (nonexistent) global `prophecy`.
     expect(sim.world.get("g1.heat")).toEqual({ kind: "number", value: 5 });
-    expect((ev.find((e) => e.type === "dialogue") as { speaker: string }).speaker).toBe("GUARD");
+    expect((ev.find((e) => e.type === "dialogue") as { speaker: string }).speaker).toBe("Guard");
   });
 
   it("fills positional args after a named one in order (bug #3)", () => {
@@ -641,7 +641,7 @@ CHARACTER Beta is Greeter
     sim.createPerson("g1", "A");
     const ev = sim.scan("Alpha", "g1");
     expect(sim.world.get("g1.heat")).toEqual({ kind: "number", value: 7 });
-    expect((ev.find((e) => e.type === "dialogue") as { speaker: string }).speaker).toBe("ALPHA");
+    expect((ev.find((e) => e.type === "dialogue") as { speaker: string }).speaker).toBe("Alpha");
   });
 });
 
@@ -971,7 +971,7 @@ ROLE Guest
       speaker: string;
       text: string;
     };
-    expect(line.speaker).toBe("HERALD");
+    expect(line.speaker).toBe("Herald");
     expect(line.text).toBe("Hear ye.");
   });
 });

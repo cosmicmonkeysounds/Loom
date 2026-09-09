@@ -2,6 +2,7 @@
 //! client renders. Kept dependency-free and side-effect-free so they're
 //! unit-testable without standing up the HTTP/SSE server.
 
+import { DEFAULT_SPACE_ID } from "../src/runtime/sim/model.ts";
 import type { Sim } from "../src/runtime/sim/index.ts";
 
 export type RuntimePhase = "idle" | "open" | "paused";
@@ -13,6 +14,26 @@ export type RuntimePhase = "idle" | "open" | "paused";
  * else the first `title:` header property. Null when the source names
  * nothing; callers fall back to the project/scenario name.
  */
+/** The header `theme:` property of a `.loom` source, if any (Loom 4 §11). */
+export function themeOf(source: string): string | null {
+  const m = /^theme:\s*(\S.*)$/mu.exec(source);
+  return m !== null ? m[1]!.trim() : null;
+}
+
+/** A declared INTERACTION as the client sees it. */
+export interface InteractionSummary {
+  id: string;
+  label: string;
+  who: "performer" | "guest" | "admin";
+  description: string | null;
+}
+
+function interactionsFor(sim: Sim, who: Array<InteractionSummary["who"]> | null): InteractionSummary[] {
+  return [...sim.model.interactions.values()]
+    .filter((i) => who === null || who.includes(i.who))
+    .map((i) => ({ id: i.id, label: i.label, who: i.who, description: i.description }));
+}
+
 export function titleOf(source: string): string | null {
   for (const raw of source.split("\n")) {
     const line = raw.trim();
@@ -56,6 +77,9 @@ export interface SpaceSnapshot {
 export interface GuestView {
   id: string;
   name: string;
+  /** The story's title + theme — the client's chrome comes from the story. */
+  title: string;
+  theme: string;
   role: string | null;
   /** App-facing faction — hidden factions read `null` until revealed. */
   faction: string | null;
@@ -75,6 +99,10 @@ export interface GuestView {
   /** The public (non-hidden) factions a guest may join — the side chooser's
    *  source. Empty when the story declares none (no chooser shown). */
   factions: string[];
+  /** Every group this guest belongs to (public ones only — hidden until revealed). */
+  groups: string[];
+  /** `INTERACTION`s a guest may fire for themselves (`who: guest`). */
+  interactions: InteractionSummary[];
 }
 
 export function guestView(sim: Sim, id: string, decisionChannel: string | null = null): GuestView {
@@ -83,6 +111,8 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
   return {
     id,
     name: p?.name ?? id,
+    title: sim.lobbyTitle(),
+    theme: sim.model.theme ?? "plain",
     role: p?.role ?? null,
     faction: sim.publicFactionOf(id),
     score: sim.scoreOf(id),
@@ -94,6 +124,11 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     spaces: sim.spaceList(),
     roster: sim.rosterFor(id),
     factions: [...sim.model.factions.values()].filter((f) => !f.hidden).map((f) => f.id),
+    groups: sim.groupsOf(id).filter((g) => {
+      const def = sim.model.factions.get(g);
+      return def === undefined || !def.hidden || sim.factionRevealed(g);
+    }),
+    interactions: interactionsFor(sim, ["guest"]),
   };
 }
 
@@ -179,6 +214,11 @@ export interface ModPresence {
 
 /** The operator's full god-view of the world. */
 export interface ModView {
+  /** The story's title + theme (what participants see). */
+  title?: string;
+  theme?: string;
+  /** Every declared INTERACTION (the director may fire any of them). */
+  interactions?: InteractionSummary[];
   phase: RuntimePhase;
   scenario: string | null;
   roster: RosterRow[];
@@ -211,13 +251,14 @@ export interface ModView {
  * as messages land); the operator addresses a guest DM via a `guest:<id>` say.
  */
 function operatorChannels(sim: Sim): ChannelSummary[] {
-  const out: ChannelSummary[] = [{ id: "lobby", kind: "lobby", title: "The Internet", spaceId: "internet" }];
+  const space = DEFAULT_SPACE_ID;
+  const out: ChannelSummary[] = [{ id: "lobby", kind: "lobby", title: sim.lobbyTitle(), spaceId: space }];
   for (const f of sim.model.factions.values()) {
-    out.push({ id: `faction:${f.id}`, kind: "faction", title: `#${f.id.toLowerCase()}`, spaceId: "internet" });
+    out.push({ id: `faction:${f.id}`, kind: "faction", title: `#${f.id.toLowerCase()}`, spaceId: space });
   }
   // Every location's derived room — where a beat's setting routes its story.
   for (const l of sim.model.locations.values()) {
-    out.push({ id: `loc:${l.id}`, kind: "location", title: l.label ?? l.id, spaceId: "internet" });
+    out.push({ id: `loc:${l.id}`, kind: "location", title: l.label ?? l.id, spaceId: space });
   }
   for (const id of sim.model.channels.keys()) {
     const h = sim.channelHead(id);
@@ -266,6 +307,9 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
     phase,
     scenario,
     roster,
+    title: sim.lobbyTitle(),
+    theme: sim.model.theme ?? "plain",
+    interactions: interactionsFor(sim, null),
     factions,
     locations,
     characters: [...sim.model.characters.keys()],
@@ -294,15 +338,24 @@ export interface PrimeGuest {
 /** What an actor playing a character sees: their part + scannable guests. */
 export interface PrimeView {
   character: string;
+  title: string;
+  theme: string;
   faction: string | null;
   guests: PrimeGuest[];
   /** Every authored channel — performers run every room. */
   channels: ChannelSnapshot[];
   spaces: SpaceSnapshot[];
+  /** `INTERACTION`s a performer (and, with `who: admin`, a moderator) may fire on a guest. */
+  interactions: InteractionSummary[];
+  /** True when the story uses the v3 prison mechanic (a `prison: true` location),
+   *  so the booth still offers capture / release. */
+  legacyCapture: boolean;
 }
 
 export function primeView(sim: Sim | null, character: string): PrimeView {
-  if (sim === null) return { character, faction: null, guests: [], channels: [], spaces: [] };
+  if (sim === null) {
+    return { character, title: "Loom", theme: "plain", faction: null, guests: [], channels: [], spaces: [], interactions: [], legacyCapture: false };
+  }
   const c = sim.model.characters.get(character);
   const guests: PrimeGuest[] = [...sim.persons.values()].map((p) => ({
     id: p.id,
@@ -312,9 +365,13 @@ export function primeView(sim: Sim | null, character: string): PrimeView {
   }));
   return {
     character,
+    title: sim.lobbyTitle(),
+    theme: sim.model.theme ?? "plain",
     faction: c?.faction ?? null,
     guests,
     channels: sim.allChannelsFor(character),
     spaces: sim.spaceList(),
+    interactions: interactionsFor(sim, ["performer", "admin"]),
+    legacyCapture: [...sim.model.locations.values()].some((l) => l.prison),
   };
 }

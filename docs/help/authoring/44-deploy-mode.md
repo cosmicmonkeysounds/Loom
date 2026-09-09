@@ -20,8 +20,9 @@ Two ways to go:
   code.
 
 One live event per project at a time. Launching fires the story's
-`entry` beat through the journal, so the event opens exactly like a
-rehearsal did.
+`start:` beat through the journal, so the event opens exactly like a
+rehearsal did. The `# Title` heading (say, `# The Glass Orchard`) is
+the event's name on the join screen.
 
 ## Getting people in
 
@@ -29,8 +30,8 @@ rehearsal did.
   — no accounts, no installs, just the code (or a scanned
   `?code=` link).
 - Performers sign in to the play app's performer station with their
-  **character name + the performer passcode**; moderators elevate with
-  the **moderator passcode**.
+  **character name** (as declared — `The Gatekeeper`) **+ the performer
+  passcode**; moderators elevate with the **moderator passcode**.
 
 ## Lifecycle
 
@@ -45,7 +46,7 @@ non-ended event rehydrates and continues.
 
 ## The guest list
 
-A live roster with online-presence dots, faction / location / score,
+A live roster with online-presence dots, group / location / score,
 ⏳ pending-decision and 🔒 captured badges. Click a guest to open their
 Inspector; use **guest lookup** to find whoever's pass a performer just
 scanned. Moderation itself lives in [Run mode](run-mode.md) — Deploy is

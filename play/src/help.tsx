@@ -1,4 +1,4 @@
-//! The in-app Help window — an AOL-skinned manual for guests (and the
+//! The in-app Help window — the manual for guests (and the
 //! performer station). Content lives in `docs/help/play/*.md`,
 //! shared with the repo docs and bundled at build time; the shared engine in
 //! `docs/help/helpdoc.ts` parses + searches it, this file only renders.

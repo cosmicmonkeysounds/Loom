@@ -14,13 +14,16 @@ drawn as one map. Everything you do on it writes real `.loom` source.
 - **Beats** are cards, grouped inside **file containers** (collapse a
   file with its header chevron — edges re-route to the folded node).
 - **Edges** are diverts (solid), choices (labelled with their button
-  text), tunnels, and `on <event>` hook routings from character pills.
-- **▶** marks the entry beat; **END** is the terminal; a red **ghost
+  text), tunnels, and `when <event>:` hook routings from character
+  pills (The Gatekeeper's `when scanned by guest:` → `self.Confront`).
+- **▶** marks the start beat (`start:`); **END** is the terminal; a red **ghost
   node** is a divert whose target doesn't exist yet — double-click it to
-  create the missing beat.
+  create the missing beat. Beat names are plain words, so a ghost for
+  `-> The Cellar` becomes `== The Cellar`.
 - Toggle the **entity overlay** to see cast/setting/membership
   relationships too.
-- Guard context (`<if:>` arms, match arms) rides the edge labels.
+- Guard context (`if:` / `else:` arms, `match:` arms) rides the edge
+  labels.
 
 ## Drilling into a beat
 
@@ -39,7 +42,8 @@ editable source:
   (Enter commits, `⇧Enter` newline, Esc cancels).
 - **Right-click a block** — insert a line above/below, delete it.
 - **Card menu** — add lines or choices; **file/pane menu** — create
-  beats and CHARACTER/LOCATION/FACTION declarations.
+  beats and CHARACTER / LOCATION / group declarations (`GROUP`, or the
+  older `FACTION` spelling — both read).
 
 ## Authoring by wiring
 

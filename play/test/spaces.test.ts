@@ -17,26 +17,26 @@ function ch(id: string, spaceId: string, lastTs: number, decision = false): Chan
 }
 
 describe("groupBySpace — Discord sidebar sections", () => {
-  it("orders sections internet → booth → guests", () => {
-    const groups = groupBySpace([ch("g", "guests", 1), ch("s", "booth", 1), ch("l", "internet", 1)]);
-    expect(groups.map((g) => g.id)).toEqual(["internet", "booth", "guests"]);
+  it("orders sections story → booth → guests", () => {
+    const groups = groupBySpace([ch("g", "guests", 1), ch("s", "booth", 1), ch("l", "story", 1)]);
+    expect(groups.map((g) => g.id)).toEqual(["story", "booth", "guests"]);
   });
 
   it("titles each section from the space table", () => {
-    const groups = groupBySpace([ch("l", "internet", 1), ch("s", "booth", 1)]);
-    expect(groups.find((g) => g.id === "internet")!.title).toBe("The Internet");
+    const groups = groupBySpace([ch("l", "story", 1), ch("s", "booth", 1)]);
+    expect(groups.find((g) => g.id === "story")!.title).toBe("Story");
     expect(groups.find((g) => g.id === "booth")!.title).toBe("Booth");
   });
 
   it("preserves the incoming within-space order (decisions-first / recency stay)", () => {
     // Caller already sorted; groupBySpace must not reshuffle inside a space.
-    const sorted = [ch("a", "internet", 9), ch("b", "internet", 5), ch("c", "internet", 2)];
-    const internet = groupBySpace(sorted).find((g) => g.id === "internet")!;
-    expect(internet.channels.map((c) => c.id)).toEqual(["a", "b", "c"]);
+    const sorted = [ch("a", "story", 9), ch("b", "story", 5), ch("c", "story", 2)];
+    const story = groupBySpace(sorted).find((g) => g.id === "story")!;
+    expect(story.channels.map((c) => c.id)).toEqual(["a", "b", "c"]);
   });
 
   it("separates booth tools from the room feed", () => {
-    const groups = groupBySpace([ch("__scanner", "booth", 1), ch("__feed", "internet", 1), ch("guest:1", "guests", 1)]);
+    const groups = groupBySpace([ch("__scanner", "booth", 1), ch("__feed", "story", 1), ch("guest:1", "guests", 1)]);
     expect(groups.map((g) => g.channels.map((c) => c.id))).toEqual([["__feed"], ["__scanner"], ["guest:1"]]);
   });
 });

@@ -176,6 +176,54 @@ backbone; the SaaS lives entirely in the TS stack.
 
 ## Status
 
+**Loom 4 — the human-first surface landed 2026-09-09** (TS `core/` +
+`editor`; design: [`docs/loom-4.md`](./docs/loom-4.md), writer's guide
+[`docs/writing-in-loom.md`](./docs/writing-in-loom.md), reference project
+`core/examples/glass-orchard/`). Additive at the parser — every v3 form
+still parses — and it changes how `.loom` is *written*:
+**names are words** (`== The Bell Tower at Dawn`, `CHARACTER Ivo Marsh`,
+`-> the bell tower at dawn`; matching folds case/`_`/`-`/spaces via
+`parser/names.ts`; in an expression a multi-word name is written
+`Ivo_Marsh.…` and the `World` folds path heads); **`Name:` dialogue**
+(`Ivo: line`, `Ivo (quietly): line`, `Ivo:` block; ALL CAPS still a cue;
+`Narrator:` is narration; speakers canonicalise to the declared
+character, so `Wren` — not `WREN` — is the ledger speaker now);
+**keyword statements** with no angle brackets (`set x = 5`, `if c:` /
+`else:`, `match v:`, `each visit:`, `after c:`, `cue`, `sound`, `fire`,
+`broadcast`, `reply`, `move`, `add`, `remove`, `reveal`, `do verb args`,
+`return` — `parser/statements.ts` lowers each onto the existing
+directive AST, so the sim, bank, and story graph are untouched; `<…>`
+stays as the long form); **`when` as the one hook form** (`when scanned
+by guest:`, `when guest arrives at The Cellar:`, `when lockdown:`,
+`every 60s:` — filler words ignored, verb synonyms; `on …` still opens
+a hook) plus **watchers** (`when self.heat >= 75:` — evaluated to a
+fixpoint after every drain, edge-triggered, per participant on a ROLE);
+`GROUP` = `FACTION`; `start:` = `entry:`; role hooks bind the role's
+own name (`guest`); `fire x for subject`; the sim now plays
+`each visit` and whole-line `cycle`/`shuffle`. The CodeMirror
+highlighter follows. The v3 game verbs (`capture`/`escape`/`betray`/…)
+are conveniences, not language — see spec §9.2 / §12. The help
+collection and writer's guide are rewritten to the new surface.
+**Slices 2–3 landed the same day:** story-level `when …:` rules (an
+`Item` of kind `rule`, `model.rules`, ownerless hooks), event arguments
+(`fire x for who with k: v`; `Sim.signal(name, subject, args, actor)`;
+`/api/mod/signal` `args`), multi-word named events matched by folding,
+additive group membership (`add` keeps others; `who.groups`), loose
+rename, the `L1201 UnknownSpeaker` / `L1202 AmbiguousName` workspace
+lints, and the **participant-app decoupling**: `INTERACTION name`
+(`label:` / `who: performer|guest|admin`) is a declaration kind the
+`play` client renders as buttons (`/api/prime/act` fires as the
+performer's character only, via `Trigger.actor`; `/api/guest/act`),
+every view carries the story's `title` + `theme`, the default space is
+`story` and the lobby is titled after the story, `theme: plain` (new
+neutral default) / `theme: aol97` (the old skin) select the client's
+CSS variable set, and the client's `Faction` type / `internet` ids /
+`.pill.Mods` rules are gone. The bank compiler diagnoses watchers and
+story rules (`watcherIgnored` / `storyRulesIgnored`) rather than
+dropping them.
+
+---
+
 Phase 4 in progress: parser stitches headers / declarations
 (structured CHARACTER / TRAIT / STATS / TREE bodies + raw fallback for
 every other kind) / beats / dialogue / choices / diverts / fences /
@@ -677,10 +725,12 @@ the artifact, a small native runtime per engine behind one contract.
   explains the desktop requirement and names the unwritten Unity/Unreal
   targets.
 
-Everything in the TS engine is done and green (367 vitest tests in `core`,
-+97 in the editor incl. the graph-pipeline corpus, word-blocks, rooms-lens,
-flow-collapse, navigation, filter, follow, edit-journal, sim-store,
-dialog, and mode-store suites; 25 Playwright e2e). The only
+Everything in the TS engine is done and green (474 vitest tests in `core`
+incl. the Loom 4 / Slice 2 / interaction-route / Glass Orchard suites,
++122 in the editor incl. the
+graph-pipeline corpus, word-blocks, rooms-lens, flow-collapse,
+navigation, filter, follow, edit-journal, sim-store, dialog, and
+mode-store suites; 25 Playwright e2e). The only
 remaining work is the **Rust mirror**
 (parser + runtime crates), which is not yet updated for ANY of Slices
 1/2/A/3/B/C, these gaps, or the story graph — the TS and Rust engines

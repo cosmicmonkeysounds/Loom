@@ -9,7 +9,7 @@ function msg(from: string, kind: MessageKind, ts: number): ChatMessage {
     seq: seq++,
     channel: "lobby",
     channelKind: "lobby",
-    title: "The Internet",
+    title: "Lobby",
     from,
     kind,
     text: `${from}@${ts}`,

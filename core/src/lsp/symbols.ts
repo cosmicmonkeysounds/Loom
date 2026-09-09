@@ -22,6 +22,7 @@ const DECLARATION_SYMBOL_KIND: Record<DeclarationKind, SymbolKind> = {
   roster: SymbolKind.Package,
   space: SymbolKind.Namespace,
   channel: SymbolKind.Interface,
+  interaction: SymbolKind.Event,
 };
 
 export function documentSymbols(ws: Workspace, uri: string): DocumentSymbolResponse | null {
@@ -43,6 +44,11 @@ export function documentSymbols(ws: Workspace, uri: string): DocumentSymbolRespo
       case "letBinding": {
         const range = spanToRange(item.value.span);
         out.push(symbol(item.value.name, SymbolKind.Variable, range));
+        break;
+      }
+      case "rule": {
+        const range = spanToRange(item.value.span);
+        out.push(symbol(`when ${item.value.event}`, SymbolKind.Event, range));
         break;
       }
     }

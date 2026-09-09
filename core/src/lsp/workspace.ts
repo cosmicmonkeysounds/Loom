@@ -39,6 +39,8 @@ import type {
   Range,
 } from "./types.ts";
 import { DiagnosticSeverity } from "./types.ts";
+import { foldName } from "../parser/names.ts";
+import { Code } from "../parser/diagnostics.ts";
 import { stripPrefix, trimEndMatches, trimStartMatches } from "../parser/rust.ts";
 import { findTokenSpans, lines, nameRangeInText, spanToRange, toLspDiagnostic } from "./util.ts";
 import { completionAt } from "./completion.ts";
@@ -177,6 +179,120 @@ export class Workspace {
       this.indexFile(uri, doc.file, doc.text);
     }
     this.rebuildProjectDiagnostics();
+    this.addNameLints();
+  }
+
+  /**
+   * Loom 4 §13 lints, layered onto the project diagnostics:
+   *
+   * - `L1201 UnknownSpeaker` — a `Name:` cue (not an ALL-CAPS screenplay
+   *   cue, not `Self`/`Narrator`/`Player`) that folds to no declared
+   *   CHARACTER / ROLE / PERSON, once the project declares at least one.
+   * - `L1202 AmbiguousName` — two declarations, or two beats, whose names
+   *   fold to the same key (`Ivo Marsh` vs `ivo_marsh`).
+   */
+  private addNameLints(): void {
+    const pushLint = (uri: string, d: LspDiagnostic): void => {
+      const list = this.projectDiagnostics.get(uri);
+      if (list) list.push(d);
+      else this.projectDiagnostics.set(uri, [d]);
+    };
+
+    // Declared names (folded) + ambiguity across declarations / beats.
+    const declared = new Set<string>();
+    const declSeen = new Map<string, string>();
+    const beatSeen = new Map<string, string>();
+    for (const [uri, doc] of this.docs) {
+      for (const item of doc.file.items) {
+        if (item.kind === "declaration") {
+          const d = item.value;
+          if (d.kind === "character" || d.kind === "role" || d.kind === "person") declared.add(foldName(d.name));
+          const key = `${d.kind}:${foldName(d.name)}`;
+          const prior = declSeen.get(key);
+          if (prior !== undefined && prior !== d.name) {
+            pushLint(uri, {
+              range: nameRangeInText(doc.text, d.span, d.name),
+              severity: DiagnosticSeverity.Warning,
+              code: Code.L1202AmbiguousName,
+              source: "loom",
+              message: `\`${d.name}\` reads as the same name as \`${prior}\` — names match ignoring case, spaces, \`_\` and \`-\``,
+            });
+          } else if (prior === undefined) {
+            declSeen.set(key, d.name);
+          }
+        } else if (item.kind === "beat") {
+          const b = item.value;
+          const key = foldName(b.name);
+          const prior = beatSeen.get(key);
+          if (prior !== undefined && prior !== b.name) {
+            pushLint(uri, {
+              range: nameRangeInText(doc.text, b.span, b.name),
+              severity: DiagnosticSeverity.Warning,
+              code: Code.L1202AmbiguousName,
+              source: "loom",
+              message: `beat \`${b.name}\` reads as the same name as \`${prior}\` — a divert to either reaches whichever is defined last`,
+            });
+          } else if (prior === undefined) {
+            beatSeen.set(key, b.name);
+          }
+        }
+      }
+    }
+    if (declared.size === 0) return;
+
+    const reserved = new Set(["self", "me", "narrator", "player"]);
+    const isCapsCue = (s: string): boolean => !/[a-z]/u.test(s);
+    const walk = (uri: string, items: BodyItem[]): void => {
+      for (const item of items) {
+        switch (item.kind) {
+          case "dialogue": {
+            for (const sp of item.value.speakers) {
+              const f = foldName(sp);
+              if (reserved.has(f) || isCapsCue(sp) || declared.has(f)) continue;
+              const start = item.value.span.start;
+              pushLint(uri, {
+                range: {
+                  start: { line: start.line, character: start.column },
+                  end: { line: start.line, character: start.column + sp.length },
+                },
+                severity: DiagnosticSeverity.Warning,
+                code: Code.L1201UnknownSpeaker,
+                source: "loom",
+                message: `\`${sp}\` is not a declared character — its lines will route as an undeclared speaker (start the line with \`\\\` if it is narration)`,
+              });
+            }
+            walk(uri, item.value.body);
+            break;
+          }
+          case "choice":
+          case "directiveBlock":
+            walk(uri, item.value.body);
+            break;
+          case "conditional":
+            for (const arm of item.value.arms) walk(uri, arm.body);
+            break;
+          case "match":
+            for (const arm of item.value.arms) walk(uri, arm.body);
+            break;
+          case "eachVisit":
+            walk(uri, item.value.first);
+            walk(uri, item.value.then);
+            walk(uri, item.value.finally);
+            break;
+          case "afterMorph":
+            walk(uri, item.value.after);
+            walk(uri, item.value.otherwise);
+            break;
+          default:
+            break;
+        }
+      }
+    };
+    for (const [uri, doc] of this.docs) {
+      for (const item of doc.file.items) {
+        if (item.kind === "beat") walk(uri, item.value.body);
+      }
+    }
   }
 
   /**

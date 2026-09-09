@@ -140,9 +140,9 @@ describe("Escape the Internet — functional redesign (traits / owned beats / SE
     expect(sim.model.beats.has("Firewall_Terminal.firewall")).toBe(true);
     expect(sim.model.beats.has("firewall")).toBe(false); // no longer global
     const ev = sim.scan("Firewall_Terminal", "g1");
-    // Free guest: the wall hums, spoken as FIREWALL_TERMINAL (SELF).
+    // Free guest: the wall hums, spoken as Firewall_Terminal (SELF, declared name).
     const line = ev.find((e) => e.type === "dialogue") as { speaker: string; text: string };
-    expect(line.speaker).toBe("FIREWALL_TERMINAL");
+    expect(line.speaker).toBe("Firewall_Terminal");
     expect(line.text).toContain("The firewall hums");
     // The `<else>` branch raised heat and funnelled to the still-global lockdown.
     expect(sim.world.get("g1.heat")).toEqual({ kind: "number", value: 15 });
@@ -751,7 +751,7 @@ CHARACTER Host
     sim.playBeat("mood", new Map([["self", "Host"], ["guest", "g"]]));
     const said = sim.log.since(from).filter((e) => e.type === "dialogue") as Array<{ speaker: string; text: string }>;
     expect(said.map((e) => e.text).join(" ")).toContain("Hello, newcomer.");
-    expect(said[0]!.speaker).toBe("HOST"); // spoken line (speaker cue), not narration
+    expect(said[0]!.speaker).toBe("Host"); // spoken line (speaker cue), canonical to the declared name
   });
 });
 

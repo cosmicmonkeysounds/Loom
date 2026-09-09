@@ -2,7 +2,7 @@
 title: Traits — write less by reusing shapes
 section: Language
 order: 16
-keywords: TRAIT, is, inheritance, mixin, parameter, self, reuse, template, composition
+keywords: TRAIT, is, inheritance, mixin, parameter, self, reuse, template, composition, when, none, super
 ---
 
 Once you have a dozen characters, you'll notice they share behaviour. A
@@ -11,12 +11,12 @@ the single biggest lever for keeping a large story manageable.
 
 ## A trait is a reusable bundle
 
-Write `TRAIT` exactly like `CHARACTER`, but describe a *role* rather
-than a specific person:
+Write `TRAIT` exactly like `CHARACTER`, but describe a *kind of person*
+rather than a specific one:
 
 ```loom
 TRAIT Keeper
-  home: Lighthouse
+  home: The Lighthouse
   voice: solemn
 
 TRAIT Combatant
@@ -36,8 +36,8 @@ Wren now has everything from `Keeper` and `Combatant`. When a trait and
 the character set the same property, **the character wins** — Wren's
 `hp: 80` overrides `Combatant`'s `hp: 100`.
 
-`is` also expresses *"is a kind of"*: `CHARACTER GoblinKing is Goblin`
-starts from everything a goblin is.
+`is` also expresses *"is a kind of"*: `CHARACTER The Goblin King is
+Goblin` starts from everything a goblin is.
 
 > Keep the whole `is` clause on one line. A trailing comma or an
 > unclosed `(` raises an *unterminated mixin clause* error.
@@ -48,20 +48,22 @@ Put a parameter in parentheses after the trait's name and refer to it
 inside as `self.<parameter>`:
 
 ```loom
-TRAIT Scanner(beat)
-  on scan guest
+TRAIT Prop(beat)
+  when scanned by guest:
     -> self.beat
 ```
 
-`Scanner` says: "when someone scans me, jump to *the beat I was told
-about*." Each character fills in the blank when they wear it:
+`Prop` says: "when someone scans me, jump to *the beat I was told
+about*." Each character fills in the blank when they wear it — a whole
+table of scannable objects becomes one honest line each:
 
 ```loom
-CHARACTER Crawler is Scanner(crawler_report)
-CHARACTER Paywall is Scanner(paywall)
+CHARACTER The Sundial   is Prop(The Sundial Speaks)
+CHARACTER The Letterbox is Prop(The Letterbox)
+CHARACTER The Wine Rack is Prop(The Wine Rack)
 ```
 
-Named arguments work too: `is CellWatch(loc: Internet, signal: lockdown)`.
+Named arguments work too: `is Watcher(place: The Cellar, signal: lock_the_cellar)`.
 
 `self` always means *"this character"* — the one wearing the trait right
 now. A parameter you never supply raises a *required param unfilled*
@@ -73,18 +75,17 @@ real beat raises *unresolved trait arg*.
 Traits can wear other traits, forwarding their parameters down:
 
 ```loom
-TRAIT Algo
-  faction: TheAlgorithm
+TRAIT Keeper
+  society: true
 
-TRAIT AlgoScanner(beat) is Scanner(beat), Algo
+TRAIT Keeper Prop(beat) is Prop(beat), Keeper
 ```
 
-A whole cast of villain props then collapses to one honest line each:
+Now a prop that also belongs to the Society is still a one-liner:
 
 ```loom
-CHARACTER Crawler is AlgoScanner(crawler_report)
-CHARACTER Captcha is AlgoScanner(captcha_gate)
-CHARACTER Paywall is AlgoScanner(paywall)
+CHARACTER The Cold Frame is Keeper Prop(The Cold Frame)
+CHARACTER The Gnomon    is Keeper Prop(The Sundial Speaks)
 ```
 
 ## Extending and silencing inherited hooks
@@ -92,16 +93,18 @@ CHARACTER Paywall is AlgoScanner(paywall)
 Keep the inherited behaviour and add to it with a bare `super` line:
 
 ```loom
-CHARACTER ChattyGuard is Guard
-  on meeting Player
+CHARACTER The Chatty Gatekeeper is Gatekeeper
+  when scanned by guest:
     super
-    GUARD
-      And try not to drip on the flagstones.
+    Self: And try not to drip on the flagstones.
 ```
 
 Remove an inherited hook entirely with `: none`:
 
 ```loom
-CHARACTER SilentGuard is Guard
-  on meeting Player: none
+CHARACTER The Silent Gatekeeper is Gatekeeper
+  when scanned by guest: none
 ```
+
+(Loom 3 spelled these hooks `on scan guest`; the old opener still
+parses inside a trait.)

@@ -27,6 +27,11 @@ older Rust `loom-runtime` integration tests load them directly.
   PERSON / ROSTER declarations, `<load_roster:>` / `<cast:>` /
   `<recast:>` directives.
 
-The flagship multi-file scenario, `escape-the-internet`, lives with the
-TS engine at [`core/examples/`](../core/examples/) alongside its
-project loader.
+Two multi-file scenarios live with the TS engine at
+[`core/examples/`](../core/examples/) alongside its project loader:
+**`glass-orchard`** — the **Loom 4 reference project** (a garden-party
+mystery: `Name:` dialogue, keyword statements, `when` hooks + watchers,
+`GROUP`s, spaced names; see [`docs/loom-4.md`](../docs/loom-4.md)) —
+and `escape-the-internet`, the v3-surface party scenario that the
+server/chat suites still exercise. The projects in this directory are
+written in the v3 surface, which Loom 4 keeps parsing.

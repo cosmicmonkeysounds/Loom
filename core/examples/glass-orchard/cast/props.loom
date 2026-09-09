@@ -1,0 +1,6 @@
+// Scannable objects around the party — one line each.
+
+CHARACTER The Sundial   is Prop(The Sundial Speaks)
+CHARACTER The Letterbox is Prop(The Letterbox)
+CHARACTER The Wine Rack is Prop(The Wine Rack)
+CHARACTER The Cold Frame is Prop(The Cold Frame)

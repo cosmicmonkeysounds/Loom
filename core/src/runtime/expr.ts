@@ -6,6 +6,8 @@
 //! `[value for var in source where filter]` list comprehensions. The
 //! runtime evaluates everything natively against a `World` scope.
 
+import { foldName } from "../parser/names.ts";
+
 // ---------------------------------------------------------------------
 // Values
 // ---------------------------------------------------------------------
@@ -104,25 +106,49 @@ export function valuesEqual(a: Value, b: Value): boolean {
 export class World {
   private values = new Map<string, Value>();
   private collections = new Map<string, Value>();
+  /**
+   * Folded head-segment aliases (Loom 4 §3): an entity declared as
+   * `Ivo Marsh` is addressed in an expression as `Ivo_Marsh` (an
+   * expression identifier can't hold a space), so `Ivo_Marsh.trusts.g1`
+   * reads and writes `Ivo Marsh.trusts.g1`.
+   */
+  private aliases = new Map<string, string>();
+
+  /** Register an entity id so its folded spellings resolve to it. */
+  addAlias(exact: string): void {
+    this.aliases.set(foldName(exact), exact);
+  }
+
+  /** The canonical key for `key`, resolving the head segment's alias. */
+  canonical(key: string): string {
+    if (this.values.has(key) || this.collections.has(key)) return key;
+    const dot = key.indexOf(".");
+    const head = dot >= 0 ? key.slice(0, dot) : key;
+    const exact = this.aliases.get(foldName(head));
+    if (exact === undefined || exact === head) return key;
+    return dot >= 0 ? exact + key.slice(dot) : exact;
+  }
 
   get(key: string): Value {
-    return this.values.get(key) ?? this.collections.get(key) ?? VNULL;
+    const k = this.canonical(key);
+    return this.values.get(k) ?? this.collections.get(k) ?? VNULL;
   }
 
   set(key: string, value: Value): void {
-    this.values.set(key, value);
+    this.values.set(this.canonical(key), value);
   }
 
   /** Remove a key; returns the prior value, if any. */
   unset(key: string): Value | null {
-    const prior = this.values.get(key) ?? null;
-    this.values.delete(key);
+    const k = this.canonical(key);
+    const prior = this.values.get(k) ?? null;
+    this.values.delete(k);
     return prior;
   }
 
   /** Borrow the current value without the `Null` fallback. */
   peek(key: string): Value | null {
-    return this.values.get(key) ?? null;
+    return this.values.get(this.canonical(key)) ?? null;
   }
 
   /** Entries in sorted-key order, matching the Rust `BTreeMap`. */

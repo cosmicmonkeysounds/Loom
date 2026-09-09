@@ -70,9 +70,11 @@ describe("story → room routing", () => {
   it("routes un-addressed dialogue (the entry NARRATOR) to the setting room, not a phantom DM", () => {
     const sim = Sim.fromSources(STAGE);
     const msgs = play(sim, "doors_open");
-    const line = msgs.find((m) => m.from === "NARRATOR");
-    expect(line).toMatchObject({ channel: "loc:Party", kind: "line", audience: "all" });
-    expect(msgs.some((m) => m.channel === "dm:NARRATOR")).toBe(false);
+    // Loom 4: a `NARRATOR` / `Narrator:` cue is the stage voice — its lines
+    // are narration in the setting's room, never a character DM.
+    const line = msgs.find((m) => m.from === "Narrator");
+    expect(line).toMatchObject({ channel: "loc:Party", kind: "narration", audience: "all" });
+    expect(msgs.some((m) => m.channel === "dm:NARRATOR" || m.channel === "dm:Narrator")).toBe(false);
   });
 
   it("a setting-less sub-beat inherits the caller's room through a divert", () => {

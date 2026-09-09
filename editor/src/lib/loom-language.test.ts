@@ -235,6 +235,69 @@ describe('loom-language tokenizer', () => {
     expect(line.some((t) => t.text.includes('Score') && t.style === null)).toBe(true)
   })
 
+  it('Loom 4: highlights keyword statements, and leaves prose-shaped verbs alone', () => {
+    const doc = [
+      '== The Front Gate',
+      'set coins = 10',
+      'if coins > 5:',
+      '  Ivo: Keep them.',
+      'else:',
+      '  Ivo (quietly): Broke, then.',
+      'cue lx_dawn',
+      'fire lockdown',
+      'move guest to The Cellar',
+      'move slowly through the dark.',
+      'set the table for two.',
+      'return',
+    ].join('\n')
+    const lines = tokenize(doc)
+    expect(styleOf(lines[0], 'The Front Gate')).toBe('label') // spaced knot name
+    expect(styleOf(lines[1], 'set')).toBe('fn')
+    expect(styleOf(lines[1], '10')).toBe('num')
+    expect(styleOf(lines[2], 'if')).toBe('kw') // block statement → violet
+    expect(styleOf(lines[2], '5')).toBe('num')
+    expect(styleOf(lines[3], 'Ivo')).toBe('speaker')
+    expect(styleOf(lines[4], 'else')).toBe('kw')
+    expect(lines[5][0].style).toBe('speaker') // `Ivo (quietly):` is one cue token
+    expect(styleOf(lines[6], 'cue')).toBe('fn')
+    expect(styleOf(lines[7], 'fire')).toBe('fn')
+    expect(styleOf(lines[8], 'move')).toBe('fn')
+    expect(styleOf(lines[8], 'to')).toBe('kw')
+    expect(lines[9].every((t) => t.style === null), 'prose move').toBe(true)
+    expect(lines[10].every((t) => t.style === null), 'prose set').toBe(true)
+    expect(styleOf(lines[11], 'return')).toBe('kw')
+  })
+
+  it('Loom 4: `when` hooks, watchers, and spaced divert targets', () => {
+    const doc = [
+      'CHARACTER Ivo Marsh',
+      '  when scanned by guest:',
+      '    -> The Glasshouse at Night',
+      '  when self.calm < 20:',
+      '    fire the_toast',
+      'GROUP The Society',
+    ].join('\n')
+    const lines = tokenize(doc)
+    expect(styleOf(lines[1], 'when')).toBe('kw')
+    expect(styleOf(lines[1], 'scanned')).toBe('kw')
+    expect(styleOf(lines[1], 'guest')).toBe('label')
+    expect(styleOf(lines[2], 'The Glasshouse at Night')).toBe('label')
+    expect(styleOf(lines[3], 'when')).toBe('kw')
+    expect(styleOf(lines[3], '20')).toBe('num')
+    expect(styleOf(lines[5], 'GROUP')).toBe('kw')
+  })
+
+  it('Loom 4: a story-level `when …:` rule highlights at file level, INTERACTION declares', () => {
+    const lines = tokenize(['when lockdown:', '  fire alarm', 'INTERACTION knock'].join('\n'))
+    expect(styleOf(lines[0], 'when')).toBe('kw')
+    expect(styleOf(lines[0], 'lockdown')).toBe('label')
+    expect(styleOf(lines[2], 'INTERACTION')).toBe('kw')
+    expect(styleOf(lines[2], 'knock')).toBe('type')
+    // Prose in a beat that happens to start with `when` stays prose.
+    const beat = tokenize(['== x', 'when the bell rang, nobody moved.'].join('\n'))
+    expect(beat[1].every((t) => t.style === null)).toBe(true)
+  })
+
   it('highlights STATS body openers (stat/attribute/axis/pool)', () => {
     const lines = tokenize(
       ['STATS Combat', '  attribute strength = 10, range 1 to 30', '  axis level', '  stat max_health = 50 + strength * 5'].join(

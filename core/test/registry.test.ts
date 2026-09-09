@@ -36,17 +36,17 @@ describe("EventRegistry — code resolution", () => {
   reg.register(runtime("evt-b", { event: "BBBB11", prime: "BBBB22", mod: "BBBB33" }, "# Trapped in the Internet\n\n== start\n"));
 
   it("maps an event code to that event as a guest", () => {
-    expect(reg.resolveCode("AAAA11")).toEqual({ eventId: "evt-a", role: "guest", title: "demo" });
-    expect(reg.resolveCode("BBBB11")).toEqual({ eventId: "evt-b", role: "guest", title: "Trapped in the Internet" });
+    expect(reg.resolveCode("AAAA11")).toEqual({ eventId: "evt-a", role: "guest", title: "demo", theme: "plain" });
+    expect(reg.resolveCode("BBBB11")).toEqual({ eventId: "evt-b", role: "guest", title: "Trapped in the Internet", theme: "plain" });
   });
 
   it("maps prime / mod codes to the performer / moderator roles", () => {
-    expect(reg.resolveCode("AAAA22")).toEqual({ eventId: "evt-a", role: "prime", title: "demo" });
-    expect(reg.resolveCode("BBBB33")).toEqual({ eventId: "evt-b", role: "mod", title: "Trapped in the Internet" });
+    expect(reg.resolveCode("AAAA22")).toEqual({ eventId: "evt-a", role: "prime", title: "demo", theme: "plain" });
+    expect(reg.resolveCode("BBBB33")).toEqual({ eventId: "evt-b", role: "mod", title: "Trapped in the Internet", theme: "plain" });
   });
 
   it("is trimmed + case-insensitive (matching passOk)", () => {
-    expect(reg.resolveCode("  aaaa11 ")).toEqual({ eventId: "evt-a", role: "guest", title: "demo" });
+    expect(reg.resolveCode("  aaaa11 ")).toEqual({ eventId: "evt-a", role: "guest", title: "demo", theme: "plain" });
   });
 
   it("returns null for an unknown or empty code", () => {

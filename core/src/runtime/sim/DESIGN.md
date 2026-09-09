@@ -66,6 +66,42 @@ dialogue, `<set:>`, and `-> beat` diverts all work identically in hooks and beat
 - Read views: `publicFactionOf` (hidden factions read null until revealed),
   `trueFactionOf`, `factionRevealed`, `pendingChoiceFor`
 
+## Loom 4 (2026-09-09) — what changed in this runtime
+
+The surface described in [`docs/loom-4.md`](../../../../docs/loom-4.md)
+lowers onto the *same* `BodyItem` AST (a keyword statement is the
+directive it replaces), so the executor is unchanged. What the sim
+gained:
+
+- **Watchers.** A hook whose event is a condition (`Hook.condition`,
+  `when self.heat >= 75:`) is evaluated after the trigger queue empties,
+  fires on a false→true edge, and re-arms when false; role watchers run
+  per participant. `drain()` loops trigger-queue → watchers to a fixpoint.
+- **The trigger grammar** (`parseTrigger`) understands human phrasings
+  with filler words and verb synonyms (`scanned by guest`, `guest arrives
+  at The Cellar`, `someone joins`); a run of Capitalised words is one
+  filter; filters compare by folded name.
+- **Generic verbs.** `move who to Place` (plain movement), `add`/`remove`
+  (group membership; `.group` mirrors `.faction`), `reply` (= respond),
+  `fire event for subject`; `group(G)` scope. `capture` / `escape` /
+  `betray` / … remain as macros over these.
+- **Names.** Every beat / entity lookup falls back to a folded index
+  (`model.beatIndex` / `entityIndex`); the `World` folds the head segment
+  of a path (`Ivo_Marsh.trusts.g1` ↔ `Ivo Marsh.trusts.g1`); speakers
+  canonicalise to the declared entity id (`WREN` → `Wren`); `Narrator:`
+  is narration; role hooks bind the role's own name (`guest`).
+- `each visit` (first / then / finally) and whole-line `cycle` /
+  `shuffle` now play here, not only in banks.
+- **Story rules** (`model.rules`, `ownerKind: "story"`): matched after
+  character reactions with no `self`; watched and timed like any hook.
+- **Event arguments**: `Trigger.args` (values, aliased through per-fire
+  `event#N.k` world keys) + `Trigger.argIds` (entities, bound as ids);
+  `Trigger.actor` scopes a named event to one character's hooks (a
+  performer's INTERACTION). Named events match by folded name.
+- **Groups are additive**: `addToGroup` / `removeFromGroup` /
+  `syncGroups` (`who.groups`); `setFaction` (v3 `join` / `defect`) still
+  switches the primary.
+
 ## Effect (directive) vocabulary
 
 `<set: path OP rhs>` (bareword RHS = enum string) · `<join: p to F>` ·

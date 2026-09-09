@@ -22,6 +22,8 @@ export interface ResolvedCode {
   /** The event's display title (authored `# Title`, else scenario name) —
    *  what the participant app shows instead of a baked-in brand. */
   title: string;
+  /** The story's `theme:` for the participant client (`plain` when unset). */
+  theme: string;
 }
 
 /** How to build a runtime the registry hasn't seen yet (for `ensure`). */
@@ -103,9 +105,9 @@ export class EventRegistry {
     const trimmed = code.trim();
     if (trimmed === "") return null;
     for (const rt of this.byId.values()) {
-      if (passOk(trimmed, rt.codes.event)) return { eventId: rt.eventId, role: "guest", title: rt.title };
-      if (passOk(trimmed, rt.codes.prime)) return { eventId: rt.eventId, role: "prime", title: rt.title };
-      if (passOk(trimmed, rt.codes.mod)) return { eventId: rt.eventId, role: "mod", title: rt.title };
+      if (passOk(trimmed, rt.codes.event)) return { eventId: rt.eventId, role: "guest", title: rt.title, theme: rt.theme };
+      if (passOk(trimmed, rt.codes.prime)) return { eventId: rt.eventId, role: "prime", title: rt.title, theme: rt.theme };
+      if (passOk(trimmed, rt.codes.mod)) return { eventId: rt.eventId, role: "mod", title: rt.title, theme: rt.theme };
     }
     return null;
   }

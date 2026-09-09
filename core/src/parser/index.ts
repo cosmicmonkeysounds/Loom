@@ -7,6 +7,8 @@ export * from "./ast.ts";
 export * from "./keywords.ts";
 export { parse, parseDivertTarget } from "./parser.ts";
 export { scan, scannedLineSpan, type LineKind, type ScannedLine } from "./lexer.ts";
+export { FoldedIndex, foldKey, foldName, isNameShaped, parseSpeakerHead } from "./names.ts";
+export { statementToDirective } from "./statements.ts";
 export { strip as stripComments } from "./comments.ts";
 export { lower as lowerDeclaration, parseMixinRef, type MixinRef } from "./decl-body.ts";
 export {

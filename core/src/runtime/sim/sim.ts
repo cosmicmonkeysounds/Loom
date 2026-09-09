@@ -25,11 +25,13 @@ import {
   type Value,
 } from "../expr.ts";
 import { SimLog, type SimEvent } from "./event.ts";
-import { compileModel, type ChannelDef, type Hook, type SimModel } from "./model.ts";
+import { DEFAULT_SPACE_ID, compileModel, type ChannelDef, type Hook, type SimModel } from "./model.ts";
 import { routesCue } from "./channel-types.ts";
 import { parseSet, splitDirective, splitKeyword } from "./effects.ts";
 import { Bundle, type LoomFileEntry } from "../bundle.ts";
 import { parse } from "../../parser/index.ts";
+import { foldName } from "../../parser/names.ts";
+import { splitTopLevelCommas, stripPrefix } from "../../parser/rust.ts";
 
 export interface Person {
   id: string;
@@ -56,8 +58,20 @@ interface Trigger {
   subject: string;
   /** The scanner for `scan` triggers (only its hooks fire). */
   scanner: string | null;
+  /**
+   * The character that performed a named event (a performer's declared
+   * INTERACTION): only *that* character's hooks fire; role hooks and story
+   * rules fire as usual.
+   */
+  actor?: string;
   /** Entity filter the event carries (joined faction, …). */
   filter: string | null;
+  /** Named arguments (`fire alarm with level: 3`), bound in hook bodies. */
+  args?: Map<string, Value>;
+  /** Arguments that name an entity (`who: guest`) — bound as ids, like a param. */
+  argIds?: Map<string, string>;
+  /** Assigned at `fire()` — scopes the world keys the arguments live under. */
+  seq?: number;
 }
 
 /** One frame of the explicit executor stack — a body + cursor + scope. */
@@ -156,6 +170,12 @@ export class Sim {
   private genCursor = new Map<string, number>();
   private timerState = new Map<Hook, number>();
   private timerFired = new Set<Hook>();
+  /** Last observed truth of each watcher, per subject (edge detection). */
+  private watcherState = new Map<string, boolean>();
+  /** `cycle` cursors per site + subject. */
+  private varietyState = new Map<string, number>();
+  /** Per-fire counter scoping event-argument world keys. */
+  private fireSeq = 0;
 
   constructor(model: SimModel) {
     this.model = model;
@@ -163,6 +183,7 @@ export class Sim {
     // naturally in expressions (`guest.faction == Chatters`).
     for (const id of model.entityKind.keys()) {
       this.world.set(id, vString(id));
+      this.world.addAlias(id);
     }
     for (const [id, def] of model.factions) {
       this.membership.set(id, new Set());
@@ -218,6 +239,7 @@ export class Sim {
     const roleId = role ?? this.model.defaultRole ?? "Guest";
     this.persons.set(id, { id, name, role: roleId });
     this.world.set(id, vString(id));
+    this.world.addAlias(id);
     this.world.set(`${id}.name`, vString(name));
     this.world.set(`${id}.role`, vString(roleId));
     this.model.entityKind.set(id, "person");
@@ -276,11 +298,39 @@ export class Sim {
     return this.log.since(from);
   }
 
-  /** A generic external signal fires `on <name>` hooks. */
-  signal(name: string, subject?: string): SimEvent[] {
+  /**
+   * A generic external signal fires every `when <name>` hook. `args`
+   * (JSON scalars — the journal replays them) bind by name in hook bodies,
+   * exactly like `fire name with k: v` (Loom 4 §9.2).
+   */
+  signal(
+    name: string,
+    subject?: string,
+    args?: Record<string, string | number | boolean> | null,
+    actor?: string | null,
+  ): SimEvent[] {
     const from = this.log.len();
     this.record({ type: "signal", name, subject: subject ?? null });
-    this.fire({ verb: name, subject: subject ?? "", scanner: null, filter: null });
+    let values: Map<string, Value> | undefined;
+    let argIds: Map<string, string> | undefined;
+    if (args && typeof args === "object") {
+      values = new Map();
+      argIds = new Map();
+      for (const [k, v] of Object.entries(args)) {
+        // A string naming a participant / entity binds as that id.
+        if (typeof v === "string" && (this.persons.has(v) || this.model.entityKind.has(v))) argIds.set(k, v);
+        else values.set(k, typeof v === "number" ? vNumber(v) : typeof v === "boolean" ? vBool(v) : vString(String(v)));
+      }
+    }
+    this.fire({
+      verb: name,
+      subject: subject ?? "",
+      scanner: null,
+      filter: null,
+      args: values,
+      argIds,
+      actor: actor ? actor : undefined,
+    });
     this.drain();
     return this.log.since(from);
   }
@@ -429,12 +479,12 @@ export class Sim {
         let guard = 0;
         while (this.elapsedMs >= last + t.ms && guard++ < 1000) {
           last += t.ms;
-          this.exec([{ items: hook.body, index: 0, bindings: new Map([["self", hook.ownerId]]) }]);
+          this.exec([{ items: hook.body, index: 0, bindings: timerBindings(hook) }]);
         }
         this.timerState.set(hook, last);
       } else if (!this.timerFired.has(hook) && this.elapsedMs >= t.ms) {
         this.timerFired.add(hook);
-        this.exec([{ items: hook.body, index: 0, bindings: new Map([["self", hook.ownerId]]) }]);
+        this.exec([{ items: hook.body, index: 0, bindings: timerBindings(hook) }]);
       }
     }
 
@@ -579,19 +629,19 @@ export class Sim {
     }
     if (id.startsWith("faction:")) {
       const f = id.slice("faction:".length);
-      return { channel: id, channelKind: "faction", title: `#${f.toLowerCase()}`, spaceId: "internet" };
+      return { channel: id, channelKind: "faction", title: `#${f.toLowerCase()}`, spaceId: DEFAULT_SPACE_ID };
     }
     if (id.startsWith("dm:")) {
-      return { channel: id, channelKind: "dm", title: id.slice("dm:".length), spaceId: "internet" };
+      return { channel: id, channelKind: "dm", title: id.slice("dm:".length), spaceId: DEFAULT_SPACE_ID };
     }
     if (id.startsWith("loc:")) {
       const l = id.slice("loc:".length);
       const def = this.model.locations.get(l);
       if (def !== undefined) {
-        return { channel: id, channelKind: "location", title: def.label ?? l, spaceId: "internet" };
+        return { channel: id, channelKind: "location", title: def.label ?? l, spaceId: DEFAULT_SPACE_ID };
       }
     }
-    return { channel: id, channelKind: "lobby", title: "The Internet", spaceId: "internet" };
+    return { channel: id, channelKind: "lobby", title: this.lobbyTitle(), spaceId: DEFAULT_SPACE_ID };
   }
 
   /** The derived room id for a location (`loc:<Location>`). */
@@ -680,7 +730,7 @@ export class Sim {
         id: Sim.locationChannel(l.id),
         kind: "location",
         title: l.label ?? l.id,
-        spaceId: "internet",
+        spaceId: DEFAULT_SPACE_ID,
         member: present,
         canPost: operator || present,
         threadable: true,
@@ -711,6 +761,11 @@ export class Sim {
   /** The authored spaces (for the client to title sidebar sections). */
   spaceList(): Array<{ id: string; title: string }> {
     return [...this.model.spaces.values()].map((s) => ({ id: s.id, title: s.title }));
+  }
+
+  /** The lobby is named after the story (Loom 4 §11) — never a baked-in brand. */
+  lobbyTitle(): string {
+    return this.model.title ?? "Lobby";
   }
 
   /**
@@ -844,21 +899,115 @@ export class Sim {
   // -------------------------------------------------------------------
 
   private fire(trigger: Trigger): void {
+    if (trigger.args !== undefined && trigger.args.size > 0) {
+      // Event arguments (Loom 4 §9.2): each lives under a per-fire world key
+      // that the hook's bindings alias, so `{level}` / `level > 2` / `set`
+      // all reach it. Kept for the life of the sim (a choice inside the
+      // hook may resume later); hidden from `worldEntries()`.
+      trigger.seq = this.fireSeq++;
+      for (const [k, v] of trigger.args) this.world.set(`event#${trigger.seq}.${k}`, v);
+    }
     this.pending.push(trigger);
+  }
+
+  /** Bindings for a hook run, plus the trigger's argument aliases. */
+  private withArgs(bindings: Bindings, t: Trigger): Bindings {
+    if (t.args === undefined && t.argIds === undefined) return bindings;
+    const b = new Map(bindings);
+    if (t.argIds !== undefined) for (const [k, id] of t.argIds) if (!b.has(k)) b.set(k, id);
+    if (t.args !== undefined && t.seq !== undefined) {
+      for (const k of t.args.keys()) if (!b.has(k)) b.set(k, `event#${t.seq}.${k}`);
+    }
+    return b;
+  }
+
+  /**
+   * Parse `k: expr, k2: expr` (a `fire … with …` tail). An expression that
+   * is a bound name or a declared entity binds as an id (`who: guest` →
+   * `who.name` works); anything else is evaluated to a value.
+   */
+  private parseEventArgs(
+    text: string,
+    bindings: Bindings,
+  ): { args: Map<string, Value>; argIds: Map<string, string> } {
+    const args = new Map<string, Value>();
+    const argIds = new Map<string, string>();
+    for (const chunk of splitTopLevelCommas(text)) {
+      const kv = splitOnceColon(chunk.trim());
+      if (kv === null) continue;
+      const [k, expr] = kv;
+      const e = expr.trim();
+      const bound = bindings.get(e);
+      if (bound !== undefined) argIds.set(k, bound);
+      else if (this.model.entityKind.has(e)) argIds.set(k, e);
+      else if (this.model.entityIndex.get(e) !== null && !/[\s()<>=!+\-*/]/u.test(e)) {
+        argIds.set(k, this.model.entityIndex.get(e)!);
+      } else args.set(k, this.evalValue(e, bindings));
+    }
+    return { args, argIds };
   }
 
   private drain(): void {
     let guard = 0;
-    while (this.pending.length > 0) {
-      if (guard++ > 10000) {
-        this.record({ type: "diagnostic", message: "drain exceeded 10000 cycles (hook loop?)" });
-        break; // runaway-cycle backstop
+    for (;;) {
+      while (this.pending.length > 0) {
+        if (guard++ > 10000) {
+          this.record({ type: "diagnostic", message: "drain exceeded 10000 cycles (hook loop?)" });
+          return; // runaway-cycle backstop
+        }
+        const trigger = this.pending.shift()!;
+        for (const [hook, bindings] of this.matchHooks(trigger)) {
+          this.exec([{ items: hook.body, index: 0, bindings: this.withArgs(bindings, trigger) }]);
+        }
       }
-      const trigger = this.pending.shift()!;
-      for (const [hook, bindings] of this.matchHooks(trigger)) {
+      // Watchers (Loom 4 §9.1): once every event has settled, evaluate each
+      // `when <condition>:` hook and run the ones whose condition has just
+      // become true. Their bodies may raise events — loop to a fixpoint.
+      if (!this.runWatchers() || guard++ > 10000) break;
+    }
+  }
+
+  /**
+   * Evaluate every condition hook against the world; run each one whose
+   * condition is true now and was not on its previous evaluation. A
+   * character watcher runs once (`self` = the character); a role watcher
+   * runs per participant cast into that role (`self` = the participant).
+   * Returns true when at least one body ran.
+   */
+  private runWatchers(): boolean {
+    let fired = false;
+    const check = (hook: Hook, self: string): void => {
+      const key = `${hook.ownerId}::${hook.event}::${self}`;
+      const bindings: Bindings =
+        hook.ownerKind === "role"
+          ? this.roleBindings(hook.ownerId, self)
+          : hook.ownerKind === "story"
+            ? new Map()
+            : new Map([["self", self]]);
+      const now = this.evalCond(hook.condition!, bindings);
+      const before = this.watcherState.get(key) ?? false;
+      this.watcherState.set(key, now);
+      if (now && !before) {
+        fired = true;
         this.exec([{ items: hook.body, index: 0, bindings }]);
       }
+    };
+    for (const char of this.model.characters.values()) {
+      for (const hook of char.hooks) {
+        if (hook.condition !== null) check(hook, char.id);
+      }
     }
+    for (const person of this.persons.values()) {
+      const role = this.model.roles.get(person.role);
+      if (role === undefined) continue;
+      for (const hook of role.hooks) {
+        if (hook.condition !== null) check(hook, person.id);
+      }
+    }
+    for (const rule of this.model.rules) {
+      if (rule.condition !== null) check(rule, "");
+    }
+    return fired;
   }
 
   private *matchHooks(t: Trigger): Generator<[Hook, Bindings]> {
@@ -888,9 +1037,9 @@ export class Sim {
       const role = this.model.roles.get(person.role);
       if (role !== undefined) {
         for (const hook of role.hooks) {
-          if (hook.timer !== null) continue;
-          if (hook.verb !== "scan" && hook.verb === t.verb && this.filterOk(hook, t)) {
-            const bindings: Bindings = new Map([["self", t.subject]]);
+          if (hook.timer !== null || hook.condition !== null) continue;
+          if (hook.verb !== "scan" && verbMatches(hook.verb, t.verb) && this.filterOk(hook, t)) {
+            const bindings = this.roleBindings(role.id, t.subject);
             if (hook.param !== null) bindings.set(hook.param, t.subject);
             yield [hook, bindings];
           }
@@ -900,9 +1049,10 @@ export class Sim {
     // Character reactions. A `param` binds the subject (`on captured
     // guest`); no param is a global cue (`on lockdown`), `self`-only.
     for (const char of this.model.characters.values()) {
+      if (t.actor !== undefined && char.id !== t.actor) continue;
       for (const hook of char.hooks) {
-        if (hook.timer !== null) continue;
-        if (hook.verb !== t.verb || !this.filterOk(hook, t)) continue;
+        if (hook.timer !== null || hook.condition !== null) continue;
+        if (!verbMatches(hook.verb, t.verb) || !this.filterOk(hook, t)) continue;
         if (hook.param !== null) {
           yield [hook, new Map([["self", char.id], [hook.param, t.subject]])];
         } else {
@@ -910,10 +1060,33 @@ export class Sim {
         }
       }
     }
+    // Story-level rules (Loom 4 §9.3): no owner, no `self`.
+    for (const rule of this.model.rules) {
+      if (rule.timer !== null || rule.condition !== null) continue;
+      if (!verbMatches(rule.verb, t.verb) || !this.filterOk(rule, t)) continue;
+      const b: Bindings = new Map();
+      if (rule.param !== null && t.subject.length > 0) b.set(rule.param, t.subject);
+      yield [rule, b];
+    }
+  }
+
+  /**
+   * The bindings a ROLE-owned hook runs with: `self` = the participant,
+   * plus the role's own name in lowercase (`guest` for `ROLE Guest`), so a
+   * beat reached from a role hook reads `guest.x` the same way a beat
+   * reached from a scan does.
+   */
+  private roleBindings(roleId: string, person: string): Bindings {
+    const b: Bindings = new Map([["self", person]]);
+    const alias = roleId.toLowerCase().replace(/\s+/gu, "_");
+    if (alias !== "self") b.set(alias, person);
+    return b;
   }
 
   private filterOk(hook: Hook, t: Trigger): boolean {
-    return hook.filter === null || hook.filter === t.filter;
+    if (hook.filter === null || hook.filter === t.filter) return true;
+    // Loose spelling (Loom 4 §3): `at the cellar` matches `LOCATION The Cellar`.
+    return t.filter !== null && foldName(hook.filter) === foldName(t.filter);
   }
 
   private bindScan(scanner: string, hook: Hook, person: string): Bindings {
@@ -976,24 +1149,40 @@ export class Sim {
         case "metadata":
         case "slotPlaceholder":
           break;
-        case "dialogue":
+        case "dialogue": {
           // Enter the speaker's block — its body is plain BodyItems, run by
           // this same loop with the speaker in scope. `SELF`/`ME` resolve to
           // whoever `self` is bound to on this frame (the prop whose hook
-          // routed here), so a beat needn't restate its owner.
+          // routed here), so a beat needn't restate its owner. `Narrator:`
+          // is the stage voice (Loom 4 §4): its lines are narration, so they
+          // land in the room like an action line, never in a DM thread.
+          const speaker = this.resolveSelfSpeaker(item.value.speaker, b, cs);
           stack.push({
             items: item.value.body,
             index: 0,
             bindings: b,
-            speaker: this.resolveSelfSpeaker(item.value.speaker, b, cs),
+            speaker: foldName(speaker) === "narrator" ? undefined : speaker,
             cast: cs,
             setting: st,
             beat: bt,
           });
           break;
-        case "directive":
-          this.runDirective(item.value.raw, b);
+        }
+        case "directive": {
+          const variant = this.varietyLine(item.value.raw, b);
+          if (variant !== null) {
+            // `cycle a | b | c` / `shuffle a | b | c` as a whole line: emit the
+            // pick as a spoken line (under a speaker) or narration.
+            if (sp !== undefined) {
+              this.record({ type: "dialogue", speaker: sp, text: variant, audience: this.subjectAudience(b), setting: st ?? null, beat: bt ?? null });
+            } else {
+              this.record({ type: "action", text: variant, setting: st ?? null, beat: bt ?? null });
+            }
+          } else {
+            this.runDirective(item.value.raw, b);
+          }
           break;
+        }
         case "directiveBlock":
           this.runDirective(item.value.directive.raw, b);
           stack.push({ items: item.value.body, index: 0, bindings: b, speaker: sp, cast: cs, setting: st, beat: bt });
@@ -1027,9 +1216,16 @@ export class Sim {
           }
           break;
         }
-        case "eachVisit":
-          stack.push({ items: item.value.first, index: 0, bindings: b, speaker: sp, cast: cs, setting: st, beat: bt });
+        case "eachVisit": {
+          // 1 → first, 2 → then, 3+ → finally (falling back to `then`, then
+          // `first`, when a later arm is empty).
+          const n = bt !== undefined ? this.beatVisits.get(this.visitKey(bt, b)) ?? 1 : 1;
+          const ev = item.value;
+          const arm =
+            n <= 1 ? ev.first : n === 2 || ev.finally.length === 0 ? (ev.then.length > 0 ? ev.then : ev.first) : ev.finally;
+          stack.push({ items: arm, index: 0, bindings: b, speaker: sp, cast: cs, setting: st, beat: bt });
           break;
+        }
         case "inlineLet":
           this.world.set(item.value.name, this.evalValue(item.value.expression, b));
           break;
@@ -1093,8 +1289,14 @@ export class Sim {
 
   /** Play a scripted beat in the given binding scope. */
   playBeat(name: string, bindings: Bindings): void {
-    const beat = this.model.beats.get(name);
-    if (beat === undefined) return;
+    let beat = this.model.beats.get(name);
+    if (beat === undefined) {
+      const key = this.model.beatIndex.get(name);
+      if (key === null) return;
+      beat = this.model.beats.get(key);
+      if (beat === undefined) return;
+      name = key;
+    }
     const key = this.visitKey(name, bindings);
     this.beatVisits.set(key, (this.beatVisits.get(key) ?? 0) + 1);
     const setting = beatSetting(beat);
@@ -1132,7 +1334,10 @@ export class Sim {
    * (faction members, occupants) under their canonical paths.
    */
   worldEntries(): Array<{ path: string; value: string }> {
-    return this.world.entries().map(([path, v]) => ({ path, value: display(v) }));
+    return this.world
+      .entries()
+      .filter(([path]) => !path.startsWith("event#"))
+      .map(([path, v]) => ({ path, value: display(v) }));
   }
 
   /** Per-person visit key so `visits(beat)` is scoped to the participant. */
@@ -1151,13 +1356,35 @@ export class Sim {
    * token is kept — a later slice lints that and falls back to `cast[0]`.
    */
   private resolveSelfSpeaker(speaker: string, bindings: Bindings, cast?: string): string {
-    if (speaker !== "SELF" && speaker !== "ME") return speaker;
+    const head = speaker.trim();
+    if (head.toUpperCase() !== "SELF" && head.toUpperCase() !== "ME") {
+      return this.canonicalSpeaker(speaker);
+    }
     const self = bindings.get("self");
-    if (self !== undefined && self.length > 0) return self.toUpperCase();
+    if (self !== undefined && self.length > 0) return this.canonicalSpeaker(self);
     // No `self` bound (a beat played with no router) — fall back to the beat's
     // first `cast:` member; if there is none, keep the literal token.
-    if (cast !== undefined && cast.length > 0) return cast.toUpperCase();
+    if (cast !== undefined && cast.length > 0) return this.canonicalSpeaker(cast);
     return speaker;
+  }
+
+  /**
+   * A speaker as the world knows it (Loom 4 §4): a cue that folds to a
+   * declared character / role / participant canonicalises to that entity's
+   * id — `IVO`, `Ivo:` and `ivo marsh:` all speak as `Ivo Marsh`, so a
+   * character never splits across spellings in the ledger or in chat
+   * routing. Multi-speaker cues canonicalise each head. An undeclared
+   * speaker (`NARRATOR`, `HOST`) is kept as written.
+   */
+  private canonicalSpeaker(speaker: string): string {
+    return speaker
+      .split("|")
+      .map((s) => {
+        const t = s.trim();
+        if (this.model.entityKind.has(t)) return t;
+        return this.model.entityIndex.get(t) ?? t;
+      })
+      .join(" | ");
   }
 
   /**
@@ -1185,6 +1412,20 @@ export class Sim {
     }
     const flat = this.model.beats.get(t.name);
     if (flat !== undefined) return [t.name, flat, b];
+    // Loose spelling (Loom 4 §3): `-> the bell tower` reaches `== The Bell
+    // Tower`; a qualifier-shaped miss (`-> Mr. Marsh`) retries the whole text.
+    for (const raw of t.qualifier !== null ? [t.name, `${t.qualifier}.${t.name}`] : [t.name]) {
+      const key = this.model.beatIndex.get(raw);
+      if (key !== null) {
+        const hit = this.model.beats.get(key);
+        if (hit !== undefined) {
+          const dot = key.indexOf(".");
+          const owner = dot > 0 ? key.slice(0, dot) : null;
+          const bound = owner !== null && owner !== b.get("self") ? new Map(b).set("self", owner) : b;
+          return [key, hit, bound];
+        }
+      }
+    }
     if (t.qualifier !== null) {
       this.record({
         type: "diagnostic",
@@ -1212,6 +1453,10 @@ export class Sim {
     }
     if (self !== undefined && this.model.beats.has(`${self}.${rawName}`)) {
       return `${self}.${rawName}`;
+    }
+    if (!this.model.beats.has(rawName)) {
+      const folded = this.model.beatIndex.get(rawName);
+      if (folded !== null) return folded;
     }
     return rawName;
   }
@@ -1261,6 +1506,49 @@ export class Sim {
         }
         break;
       }
+      case "add": {
+        // Loom 4 `add who to Group` — *additive* membership (Loom 4 §8): a
+        // participant may belong to several groups; `who.group` is the
+        // primary (first joined, or the one `join`/`defect` switched to) and
+        // `who.groups` lists them all. v3 `join` keeps its switching meaning.
+        const kw = splitKeyword(rest, "to");
+        if (kw !== null) {
+          const p = this.resolveId(kw[0], bindings);
+          const g = this.resolveId(kw[1], bindings);
+          this.addToGroup(p, g);
+          this.record({ type: "joined", person: p, faction: g });
+          this.fire({ verb: "join", subject: p, scanner: null, filter: g });
+        }
+        break;
+      }
+      case "remove": {
+        // Loom 4 `remove who from Group`.
+        const kw = splitKeyword(rest, "from");
+        if (kw !== null) {
+          const p = this.resolveId(kw[0], bindings);
+          const g = this.resolveId(kw[1], bindings);
+          this.removeFromGroup(p, g);
+          this.record({ type: "directive", verb, args: `${p} from ${g}` });
+          this.fire({ verb: "removed", subject: p, scanner: null, filter: g });
+        }
+        break;
+      }
+      case "move": {
+        // Loom 4 `move who to Place` — plain movement; `arrives` / `leaves`
+        // hooks fire, nothing about capture is implied.
+        const kw = splitKeyword(rest, "to");
+        if (kw !== null) {
+          const p = this.resolveId(kw[0], bindings);
+          const l = this.resolveId(kw[1], bindings);
+          if (this.persons.has(p)) {
+            const prior = this.locationOf(p);
+            this.setLocation(p, l);
+            this.record({ type: "arrived", person: p, location: l, from: prior });
+            this.fire({ verb: "arrive", subject: p, scanner: null, filter: l });
+          }
+        }
+        break;
+      }
       case "broadcast":
         this.runBroadcast(rest, bindings);
         break;
@@ -1287,20 +1575,63 @@ export class Sim {
         this.doReveal(this.resolveId(rest, bindings));
         break;
       case "respond": {
-        const to = bindings.get("self") ?? "";
+        // To `self`'s device (a scanner prop → its performer; a role → the
+        // participant); in a story rule, to the acting participant.
+        const to = bindings.get("self") ?? this.subjectAudience(bindings)[0] ?? "";
         this.record({ type: "respond", to, text: this.interpolate(rest, bindings) });
         break;
       }
       case "fire": {
-        const name = this.resolveId(rest.split(",")[0]?.trim() ?? rest, bindings);
+        // `fire name` / `fire name for subject` / `fire name with k: v`
+        // (arguments are Slice 2 — accepted, not yet bound).
+        let head = rest.trim();
+        let subject = "";
+        let args: Map<string, Value> | undefined;
+        let argIds: Map<string, string> | undefined;
+        const withIdx = head.indexOf(" with ");
+        if (withIdx >= 0) {
+          const parsed = this.parseEventArgs(head.slice(withIdx + 6), bindings);
+          args = parsed.args;
+          argIds = parsed.argIds;
+          head = head.slice(0, withIdx).trim();
+        }
+        const forKw = splitKeyword(head, "for");
+        if (forKw !== null) {
+          head = forKw[0];
+          subject = this.resolveId(forKw[1], bindings);
+        }
+        const name = this.resolveId(head, bindings);
         this.record({ type: "directive", verb, args: rest });
-        this.fire({ verb: name, subject: "", scanner: null, filter: null });
+        this.fire({ verb: name, subject, scanner: null, filter: null, args, argIds });
         break;
       }
       default:
         this.record({ type: "directive", verb, args: this.interpolate(rest, bindings) });
         break;
     }
+  }
+
+  /**
+   * A `cycle: a | b | c` / `shuffle: a | b | c` directive's pick, or null
+   * for any other directive. Cycles advance per site + subject; shuffles
+   * pick by a deterministic hash of the ledger length so replays agree.
+   */
+  private varietyLine(raw: string, bindings: Bindings): string | null {
+    const { verb, rest } = splitDirective(raw);
+    if (verb !== "cycle" && verb !== "shuffle") return null;
+    const variants = rest.split("|").map((v) => v.trim()).filter((v) => v.length > 0);
+    if (variants.length === 0) return null;
+    const subj = bindings.get("guest") ?? bindings.get("self") ?? "__global";
+    const key = `${verb}:${rest}::${subj}`;
+    let idx: number;
+    if (verb === "cycle") {
+      const n = this.varietyState.get(key) ?? 0;
+      this.varietyState.set(key, n + 1);
+      idx = n % variants.length;
+    } else {
+      idx = (this.log.len() * 7919 + rest.length) % variants.length;
+    }
+    return this.interpolate(variants[idx]!, bindings);
   }
 
   private runSet(rest: string, bindings: Bindings): void {
@@ -1391,11 +1722,17 @@ export class Sim {
   }
 
   private runBroadcast(rest: string, bindings: Bindings): void {
+    // `cue to scope`, the block form `to scope` (no cue), or the v3
+    // scope-only block `<broadcast: location(X)>`.
     const kw = splitKeyword(rest, "to");
-    const cue = kw !== null ? kw[0].trim() : rest.trim();
-    const scopeText = kw !== null ? kw[1].trim() : "";
+    const toOnly = stripPrefix(rest.trim(), "to ");
+    const cue = toOnly !== null ? "" : kw !== null ? kw[0].trim() : rest.trim();
+    const scopeText = toOnly !== null ? toOnly.trim() : kw !== null ? kw[1].trim() : "";
     const audience = this.resolveScope(scopeText, bindings);
-    this.record({ type: "broadcast", cue, audience, scope: scopeText });
+    // A cue written as prose (`broadcast "The bell rings." to …`) is its own
+    // copy — interpolate it like a line; a bare cue name stays a name.
+    const text = /^".*"$/su.test(cue) || /\s/u.test(cue) ? this.interpolate(cue, bindings) : cue;
+    this.record({ type: "broadcast", cue: text, audience, scope: scopeText });
   }
 
   /** Resolve a broadcast scope into a list of person ids. */
@@ -1406,12 +1743,21 @@ export class Sim {
       const m = /^(\w+)\((.*)\)$/u.exec(t);
       if (m === null) continue;
       const kind = m[1]!;
-      // Evaluate the inner arg so `faction(guest.faction)` resolves to
-      // the triggering guest's concrete faction id.
-      const arg = display(this.evalValue(m[2]!.trim(), bindings));
+      // A literal entity name (incl. a multi-word one, `location(The Long
+      // Table)`) is taken as-is; anything else is evaluated so
+      // `faction(guest.faction)` resolves to the guest's concrete group id.
+      const raw = m[2]!.trim();
+      let arg: string;
+      const bound = bindings.get(raw);
+      if (bound !== undefined) arg = bound;
+      else if (this.model.entityKind.has(raw)) arg = raw;
+      else {
+        const v = this.evalValue(raw, bindings);
+        arg = v.kind === "null" ? (this.model.entityIndex.get(raw) ?? "") : display(v);
+      }
       if (kind === "participant") {
         if (this.persons.has(arg)) out.add(arg);
-      } else if (kind === "faction") {
+      } else if (kind === "faction" || kind === "group") {
         for (const p of this.membership.get(arg) ?? []) out.add(p);
       } else if (kind === "location") {
         for (const p of this.occupants.get(arg) ?? []) out.add(p);
@@ -1430,7 +1776,7 @@ export class Sim {
       this.membership.get(prior)?.delete(person);
       this.syncFaction(prior);
     }
-    this.world.set(`${person}.faction`, vString(faction));
+    this.setPrimaryGroup(person, faction);
     let set = this.membership.get(faction);
     if (set === undefined) {
       set = new Set();
@@ -1438,6 +1784,58 @@ export class Sim {
     }
     set.add(person);
     this.syncFaction(faction);
+    this.syncGroups(person);
+  }
+
+  /** The displayed group: `who.faction` (v3) and `who.group` (Loom 4). */
+  private setPrimaryGroup(person: string, group: string | null): void {
+    const v = group === null ? VNULL : vString(group);
+    this.world.set(`${person}.faction`, v);
+    this.world.set(`${person}.group`, v);
+  }
+
+  /** Additive membership — the primary group is only set when there was none. */
+  private addToGroup(person: string, group: string): void {
+    let set = this.membership.get(group);
+    if (set === undefined) {
+      set = new Set();
+      this.membership.set(group, set);
+    }
+    set.add(person);
+    if (this.factionOf(person) === null) this.setPrimaryGroup(person, group);
+    this.syncFaction(group);
+    this.syncGroups(person);
+  }
+
+  private removeFromGroup(person: string, group: string): void {
+    this.membership.get(group)?.delete(person);
+    this.syncFaction(group);
+    if (this.factionOf(person) === group) {
+      // The primary moves to the next remaining membership, if any.
+      let next: string | null = null;
+      for (const [g, members] of this.membership) {
+        if (members.has(person)) {
+          next = g;
+          break;
+        }
+      }
+      this.setPrimaryGroup(person, next);
+    }
+    this.syncGroups(person);
+  }
+
+  /** `who.groups` — every group the participant belongs to. */
+  private syncGroups(person: string): void {
+    const ids: string[] = [];
+    for (const [g, members] of this.membership) if (members.has(person)) ids.push(g);
+    this.world.set(`${person}.groups`, vList(ids.map(vString)));
+  }
+
+  /** Every group `person` belongs to (Loom 4 multi-membership). */
+  groupsOf(person: string): string[] {
+    const out: string[] = [];
+    for (const [g, members] of this.membership) if (members.has(person)) out.push(g);
+    return out;
   }
 
   private setLocation(person: string, location: string): void {
@@ -1514,7 +1912,10 @@ export class Sim {
 
   private resolveId(text: string, bindings: Bindings): string {
     const t = text.trim();
-    return bindings.get(t) ?? t;
+    const bound = bindings.get(t);
+    if (bound !== undefined) return bound;
+    if (this.model.entityKind.has(t)) return t;
+    return this.model.entityIndex.get(t) ?? t;
   }
 
   private evalValue(src: string, bindings: Bindings): Value {
@@ -1570,6 +1971,23 @@ export class Sim {
     }
     return this.log.push(event);
   }
+}
+
+/** Event names are names (Loom 4 §3): `ring the bell` ≡ `ring_the_bell`. */
+function verbMatches(hookVerb: string, triggerVerb: string): boolean {
+  return hookVerb === triggerVerb || foldName(hookVerb) === foldName(triggerVerb);
+}
+
+/** A timer hook's bindings: `self` = the owner, nothing for a story rule. */
+function timerBindings(hook: Hook): Bindings {
+  return hook.ownerKind === "story" ? new Map() : new Map([["self", hook.ownerId]]);
+}
+
+/** `k: expr` → `[k, expr]` at the first colon, or null. */
+function splitOnceColon(text: string): [string, string] | null {
+  const i = text.indexOf(":");
+  if (i <= 0) return null;
+  return [text.slice(0, i).trim(), text.slice(i + 1).trim()];
 }
 
 // Re-exported convenience: a fresh model from a single source.

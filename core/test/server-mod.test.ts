@@ -339,7 +339,7 @@ describe("openDoors plays the entry beat", () => {
     // lands in the Party location room, addressed to everyone.
     const h1 = await get(rt, `/api/history?id=${id}`);
     const opening = (h1.json.messages as Array<{ channel: string; from: string; text: string }>).filter(
-      (m) => m.channel === "loc:Party" && m.from === "NARRATOR",
+      (m) => m.channel === "loc:Party" && m.from === "Narrator",
     );
     expect(opening.length).toBeGreaterThan(0);
     expect(opening[0]!.text).toContain("doors hiss open");

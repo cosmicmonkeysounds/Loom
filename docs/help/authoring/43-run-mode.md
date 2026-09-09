@@ -26,8 +26,10 @@ accent colour always tells you **which world your actions land in**.
   more from the rail ("new persona…"). Answer their choices on the
   persona card, in the Inspector, or in the room's decision tray.
 - **Named events** — the Director page's fire picker lists exactly the
-  events your hooks declare (`on lockdown` → `lockdown`); quick-fire in
-  the header works on both sources.
+  events your `when <event>:` hooks declare (a `when lockdown:` hook
+  anywhere in the project puts `lockdown` on the list, and firing it
+  does what `fire lockdown` would); quick-fire in the header works on
+  both sources.
 - **The Log page** is the raw ledger — every engine event as it
   happens.
 
@@ -36,7 +38,7 @@ accent colour always tells you **which world your actions land in**.
 | Page | Shows |
 |---|---|
 | **Chat** | every room the current lens can see, with the composer |
-| **Roster** | all guests — faction, location, score, presence, badges |
+| **Roster** | all guests — group, location, score, presence, badges |
 | **Stage** | the floor plan: one card per location with its occupants as chips — **drag a chip between cards to move the guest** (hooks fire) |
 | **World** | the live state browser — a searchable variables table; **double-click any value to edit it live** |
 | **Story** | the story map, lit by the run ([story graph](story-graph.md)) |
@@ -62,7 +64,10 @@ tap, in Sim and Live alike.
 
 ## Moderating Live
 
-Everything above, plus: capture/release from roster context menus,
-`set` a guest's score/faction/location, fire beats and signals, scan on
-a character's behalf, reveal a hidden faction, and reply in threads.
-Every action is journaled on the event, so the story replays exactly.
+Everything above, plus: move a guest between places (or capture /
+release them, for stories that use those verbs) from roster context
+menus, `set` a guest's score / group / location, fire beats and named
+events, scan on a character's behalf (running their `when scanned by
+guest:` hook), reveal a hidden group such as The Society, and reply in
+threads. Every action is journaled on the event, so the story replays
+exactly.

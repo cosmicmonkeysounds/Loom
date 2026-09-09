@@ -2,13 +2,15 @@ import { StreamLanguage, LanguageSupport, type StreamParser } from '@codemirror/
 import type { StringStream } from '@codemirror/language'
 import { tags as t } from '@lezer/highlight'
 import {
-  DECLARATIONS,
+  DECLARATION_WORDS,
+  BLOCK_STATEMENT_VERBS,
   SYNTACTIC_DIRECTIVES,
   CONTRACT_KEYS,
   RESERVED_INLINE,
   LIVE_KEYWORDS,
   SIMULACRA_KEYWORDS,
   MERIDIAN_KEYWORDS,
+  statementToDirective,
 } from '@loom/core/parser'
 
 /**
@@ -56,7 +58,14 @@ const tokenTable = {
 }
 
 // ── keyword tables (imported from @loom/core) ────────────────────────
-const DECLARATION_RE = new RegExp(`^(${[...DECLARATIONS].join('|')})(?=\\s|$)`)
+const DECLARATION_RE = new RegExp(`^(${[...DECLARATION_WORDS].join('|')})(?=\\s|$)`)
+const BLOCK_VERBS = new Set<string>(BLOCK_STATEMENT_VERBS)
+/** Loom 4 `Name:` / `Name (paren): line` / `A | B:` speaker heads — one to
+ *  three words, the first Capitalised (lowercase heads are property keys). */
+const NAME_HEAD = "[A-Z][A-Za-z0-9'_-]*(?:\\s+[A-Za-z][A-Za-z0-9'_-]*){0,2}"
+const SPEAKER_COLON_RE = new RegExp(
+  `^(${NAME_HEAD}(?:\\s*\\|\\s*${NAME_HEAD})*)(\\s*\\([^()]*\\))?:(?=\\s|$)`,
+)
 const CONTRACT_SET = new Set<string>(CONTRACT_KEYS)
 
 /** Slot-type structural words highlighted inside a property *value*
@@ -64,10 +73,12 @@ const CONTRACT_SET = new Set<string>(CONTRACT_KEYS)
  *  mis-highlights a stray `to` / `of`. Reserved words are excluded. */
 const SLOT_WORDS = ['list', 'map', 'range', 'any', 'of', 'to', 'bool', 'int', 'float', 'text']
 
-/** Live / hook keywords that lead or punctuate an `on …` hook trigger. */
+/** Live / hook keywords that lead or punctuate a `when …` / `on …` trigger. */
 const HOOK_WORDS = new Set<string>([
   'enters', 'exits', 'joins', 'passes', 'drops', 'below', 'reaches',
   'every', 'at', 'when', 'complete', 'fail', 'boot', 'none',
+  // Loom 4 event phrases (§9.1)
+  'scanned', 'arrives', 'leaves', 'someone', 'by', 'in', 'to', 'for', 'from', 'with',
 ])
 
 /** Keywords that open a body line (no colon) inside a STATS / TREE / SCENE
@@ -297,12 +308,42 @@ function lineStart(stream: StringStream, state: LoomState): string | null {
     return 'kw'
   }
 
-  // -> divert  /  <- tunnel return
+  // `\` forces prose (Loom 4 §4) — the rest of the line is plain text.
+  if (stream.match(/^\\/)) {
+    state.mode = 'prose'
+    return 'meta'
+  }
+
+  // -> divert  /  <- tunnel return  /  `return`
   if (stream.match(/^->/)) {
     state.mode = 'divert'
     return 'kw'
   }
   if (stream.match(/^<-\s*$/)) return 'kw'
+  if (stream.match(/^return\s*$/)) return 'kw'
+
+  // Loom 4 keyword statement — `set x = 5`, `if x > 5:`, `cue lx14` … The
+  // parser's own shape test decides (a verb that fails its shape is prose),
+  // so "run before they catch you" never lights up.
+  {
+    const lowered = statementToDirective(rest)
+    if (lowered !== null) {
+      const verb = lowered.includes(':') ? lowered.slice(0, lowered.indexOf(':')) : lowered
+      const isBlock = BLOCK_VERBS.has(verb)
+      // Consume the verb as written (`sound` → `sfx` renames; `do haze` → `haze`).
+      const m = /^(else if|each visit|[a-z]+)/.exec(rest)
+      stream.match(m ? m[0] : verb)
+      state.mode = 'expr'
+      return isBlock ? 'kw' : 'fn'
+    }
+  }
+
+  // Loom 4 `Name:` speaker cue (block or one-liner) — before property keys,
+  // which are lowercase and never match the Capitalised head.
+  if (stream.match(SPEAKER_COLON_RE)) {
+    state.mode = 'prose'
+    return 'speaker'
+  }
 
   // * / + choice marker (requires trailing space).
   if (stream.match(/^[*+](?=\s)/)) {
@@ -327,9 +368,13 @@ function lineStart(stream: StringStream, state: LoomState): string | null {
     return 'kw'
   }
 
-  // `on <event>` hook line — ONLY inside a declaration body. In a beat's
-  // dialogue a lowercase-leading "on the table…" is plain prose.
-  if (state.block === 'decl' && stream.match(/^on(?=\s)/)) {
+  // `when <event>:` / `on <event>` hook line — inside a declaration body,
+  // or a story-level `when …:` rule at file level (Loom 4 §9.3). In a
+  // beat's dialogue a lowercase-leading "on the table…" is prose.
+  if (
+    (state.block === 'decl' && stream.match(/^(when|on)(?=\s)/)) ||
+    (state.block === 'top' && /^when\s.*:\s*$/.test(rest) && stream.match(/^when(?=\s)/))
+  ) {
     state.mode = 'hook'
     return 'kw'
   }
@@ -477,9 +522,9 @@ function declToken(stream: StringStream, state: LoomState): string | null {
   return null
 }
 
-/** Knot line after `==`: name is a jump label. */
+/** Knot line after `==`: the name (any words, up to a `(`) is a jump label. */
 function knotToken(stream: StringStream, state: LoomState): string | null {
-  if (!state.headSeen && stream.match(IDENT_RE)) {
+  if (!state.headSeen && stream.match(/^[^(\s][^(]*?(?=\s*\(|\s*$)/)) {
     state.headSeen = true
     return 'label'
   }
@@ -498,7 +543,8 @@ function divertToken(stream: StringStream, state: LoomState): string | null {
       state.mode = 'expr'
       return 'kw'
     }
-    if (stream.match(/^[A-Za-z_][A-Za-z0-9_/#.]*/)) {
+    // The target is any words up to a ` with ` / ` as ` tail (Loom 4 §3).
+    if (stream.match(/^[A-Za-z_(][^\n]*?(?=\s+(?:with|as)\s|\s*$)/)) {
       state.headSeen = true
       state.mode = 'expr'
       return 'label'
@@ -517,6 +563,11 @@ function hookToken(stream: StringStream, state: LoomState): string | null {
   }
   if (stream.match(NUMBER_RE)) return 'num'
   if (stream.match(/^[:]/)) return 'op'
+  // A watcher (`when self.heat >= 75:`) is an expression.
+  if (stream.match(/^(?:==|!=|>=|<=|[<>])/)) {
+    state.mode = 'expr'
+    return 'op'
+  }
   const word = stream.match(IDENT_RE) as RegExpMatchArray | null
   if (word) {
     return HOOK_WORDS.has(word[0]) ? 'kw' : 'label'

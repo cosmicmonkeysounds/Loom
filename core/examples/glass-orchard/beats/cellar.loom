@@ -1,0 +1,33 @@
+// Under the orchard.
+
+== Under The Orchard
+  setting: The Cellar
+  cast: Mara Vell
+
+Narrator: A lantern, a chair, and a table set for one. The chair is warm.
+
+Mara Vell: You found me. Everyone finds me eventually. The trick is getting
+  out again.
+
+if guest.group == The_Collectors:
+  Mara Vell: You have a key. It is not for the door. It is for the letterbox.
+  * Give her the key.
+    fire unlocked for guest
+    remove guest from The Collectors
+    add guest to The Society
+    reveal The Society
+    -> The Orchard Keeps
+  * Keep the key.
+    set guest.favour -= 10
+    -> The Long Table
+else:
+  Mara Vell: No key. Then sit. We have all night, and the moths keep the time.
+  -> The Long Table
+
+== The Orchard Keeps
+  setting: The Cellar
+
+Narrator: The lantern goes out, and it does not matter, because you know the
+  way now.
+
+-> END

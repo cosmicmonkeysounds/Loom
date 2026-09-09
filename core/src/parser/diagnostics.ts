@@ -65,6 +65,10 @@ export const Code = {
   L1131GeneratorMissingBody: "L1131",
   /** A `wait …` line did not match `wait until <expr>` or `wait <dur>`. */
   L1132WaitExpectsUntilOrDuration: "L1132",
+  /** A `Name:` cue names no declared character (workspace lint, Loom 4 §13). */
+  L1201UnknownSpeaker: "L1201",
+  /** Two declarations (or two beats) fold to the same name (Loom 4 §13). */
+  L1202AmbiguousName: "L1202",
 } as const;
 
 export type Code = (typeof Code)[keyof typeof Code];

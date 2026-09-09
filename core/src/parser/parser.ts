@@ -1,6 +1,8 @@
 //! Stitch scanned lines into a `LoomFile` AST.
 
 import type {
+  StoryRule,
+  RawLine,
   AdvanceSignal,
   AfterMorph,
   Beat,
@@ -68,6 +70,9 @@ class Parser {
         case "knotMarker":
           items.push({ kind: "beat", value: this.parseBeat() });
           break;
+        case "rule":
+          items.push({ kind: "rule", value: this.parseRule() });
+          break;
         default:
           this.cursor += 1;
           break;
@@ -75,6 +80,25 @@ class Parser {
       line = this.peek();
     }
     return { header, items };
+  }
+
+  /** A top-level `when <event>:` rule — its indented body stays raw. */
+  parseRule(): StoryRule {
+    const opener = this.lines[this.cursor]!;
+    if (opener.kind.kind !== "rule") throw new Error("unreachable");
+    this.cursor += 1;
+    const body: RawLine[] = [];
+    let end = scannedLineSpan(opener).end;
+    let line = this.peek();
+    while (line !== undefined) {
+      if (line.indent <= opener.indent) break;
+      const sp = scannedLineSpan(line);
+      body.push({ indent: line.indent, text: line.text, span: sp });
+      end = sp.end;
+      this.cursor += 1;
+      line = this.peek();
+    }
+    return { event: opener.kind.event, body, span: span(scannedLineSpan(opener).start, end) };
   }
 
   parseHeader(): Header {
@@ -201,7 +225,10 @@ class Parser {
         return { kind: "sceneHeading", value: { value: k.text, span: scannedLineSpan(line) } };
       }
       case "speaker":
-        return { kind: "dialogue", value: this.parseDialogueBlock(k.text, line) };
+        return {
+          kind: "dialogue",
+          value: this.parseDialogueBlock(k.text, line, k.inline, k.parenthetical),
+        };
       case "choice":
         return { kind: "choice", value: this.parseChoice(k.sticky, k.text, line, beatIndent) };
       case "divertLine": {
@@ -250,6 +277,11 @@ class Parser {
         const [value, sp] = this.collectAction(line, k.text);
         return { kind: "action", value: { value, span: sp } };
       }
+      case "rule": {
+        // Inside a beat a `when …:` line is prose (rules live at file level).
+        const [value, sp] = this.collectAction(line, k.text);
+        return { kind: "action", value: { value, span: sp } };
+      }
       case "parenthetical": {
         this.cursor += 1;
         return {
@@ -268,7 +300,15 @@ class Parser {
         this.cursor += 1;
         return null;
       }
-      case "letBinding":
+      case "letBinding": {
+        // `let x = expr` inside a beat is a beat-local binding — the same
+        // node a v3 `<let: x = expr>` produced (Loom 4 §6).
+        this.cursor += 1;
+        return {
+          kind: "inlineLet",
+          value: { name: k.name, expression: k.expression, span: scannedLineSpan(line) },
+        };
+      }
       case "heading":
       case "declarationOpener":
       case "knotMarker":
@@ -276,10 +316,15 @@ class Parser {
     }
   }
 
-  parseDialogueBlock(speaker: string, opener: ScannedLine): DialogueBlock {
+  parseDialogueBlock(
+    speaker: string,
+    opener: ScannedLine,
+    inline: string | null = null,
+    headParenthetical: string | null = null,
+  ): DialogueBlock {
     this.cursor += 1;
     const bodyIndentFloor = opener.indent + 1;
-    let parenthetical: string | null = null;
+    let parenthetical: string | null = headParenthetical;
     let improv: ImprovDirective | null = null;
 
     // Leading parenthetical / improv attach to the block (spec §13.3), not
@@ -305,6 +350,34 @@ class Parser {
     // line lands as `action`; the runtime emits it as the speaker's line.
     const body: BodyItem[] = [];
     let end = scannedLineSpan(opener).end;
+    // The one-line form `Ivo: You came back.` — the speech on the cue line
+    // is the block's first spoken line; indented lines beneath continue it.
+    if (inline !== null) {
+      // Wrapped continuation lines (indented, consecutive prose) join the
+      // speech, exactly as wrapped prose coalesces under a block cue.
+      let text = inline;
+      let end2 = scannedLineSpan(opener).end;
+      let lastLine = opener.line;
+      let next = this.peek();
+      while (
+        next !== undefined &&
+        next.indent >= bodyIndentFloor &&
+        next.kind.kind === "prose" &&
+        next.line === lastLine + 1
+      ) {
+        text += " " + next.kind.text;
+        end2 = scannedLineSpan(next).end;
+        lastLine = next.line;
+        this.cursor += 1;
+        next = this.peek();
+      }
+      line = next;
+      end = end2;
+      body.push({
+        kind: "action",
+        value: { value: text, span: span(scannedLineSpan(opener).start, end2) },
+      });
+    }
     while (line !== undefined) {
       if (line.indent < bodyIndentFloor) break;
       const item = this.parseBodyItem(bodyIndentFloor);
@@ -487,7 +560,7 @@ class Parser {
       const k = line.kind;
       let pattern: string;
       if (k.kind === "prose" || k.kind === "sceneHeading") {
-        pattern = k.text;
+        pattern = stripArmColon(k.text);
       } else if (k.kind === "speaker") {
         pattern = k.text;
       } else if (k.kind === "property") {
@@ -537,9 +610,11 @@ class Parser {
       const k = line.kind;
       let label: string;
       if (k.kind === "prose" || k.kind === "sceneHeading") {
-        label = k.text.trim();
+        label = stripArmColon(k.text.trim());
       } else if (k.kind === "speaker") {
         label = k.text.trim();
+      } else if (k.kind === "property" && k.value.length === 0) {
+        label = k.key; // Loom 4: `first:` / `then:` / `finally:`
       } else {
         break;
       }
@@ -695,6 +770,12 @@ function bodyItemEnd(item: BodyItem): Position | null {
     case "slotPlaceholder":
       return item.value.span.end;
   }
+}
+
+/** `heavy rain:` → `heavy rain` — Loom 4 arm labels end with a colon. */
+function stripArmColon(text: string): string {
+  const t = text.trim();
+  return t.endsWith(":") ? t.slice(0, t.length - 1).trim() : t;
 }
 
 function splitChoiceSuppression(raw: string): [string, string | null] {

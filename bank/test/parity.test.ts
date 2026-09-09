@@ -26,10 +26,19 @@ type Entry =
   | { kind: "narrate"; text: string }
   | { kind: "menu"; options: string[] };
 
+/**
+ * The bank displays a speaker in the upper-cased ID form its stable engine
+ * IDs are hashed from; the live engine (Loom 4 §4) emits the declared name
+ * (`Wren`). Both name the same character — compare them in the bank's form.
+ */
+function bankSpeaker(name: string): string {
+  return name.toUpperCase();
+}
+
 function fromSim(events: SimEvent[]): Entry[] {
   const out: Entry[] = [];
   for (const e of events) {
-    if (e.type === "dialogue") out.push({ kind: "say", speaker: e.speaker, text: e.text });
+    if (e.type === "dialogue") out.push({ kind: "say", speaker: bankSpeaker(e.speaker), text: e.text });
     else if (e.type === "action") out.push({ kind: "narrate", text: e.text });
     else if (e.type === "choicePrompted") out.push({ kind: "menu", options: e.options });
   }
