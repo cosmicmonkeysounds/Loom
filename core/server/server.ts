@@ -38,9 +38,10 @@ import { auth, authUser, migrateAuth } from "./auth-server.ts";
 import { dbReady, initSchema } from "./db/index.ts";
 import { canModerateEvent, liveEvents } from "./db/queries.ts";
 import { BASE_URL, DATABASE_URL, HAS_SECURE_SECRET, IS_LOCAL_BASE, TRUSTED_ORIGINS } from "./config.ts";
-import { handleProjects } from "./projects.ts";
+import { handleInvites, handleProjects } from "./projects.ts";
 import { handleEvent, specFromRow } from "./events-api.ts";
 import { handleCollab } from "./collab-api.ts";
+import { mailer } from "./mail.ts";
 
 const PORT = Number(process.env.LOOM_PORT ?? 7000);
 const HOST = process.env.LOOM_HOST ?? "0.0.0.0";
@@ -166,6 +167,12 @@ async function initControlPlane(): Promise<void> {
   await migrateAuth();
   await initSchema();
   controlPlane = true;
+  const mail = mailer().kind;
+  process.stdout.write(
+    mail === "none"
+      ? `  ✉️  no mail transport (set LOOM_SMTP_URL or LOOM_RESEND_API_KEY) — share invites are logged, not emailed\n`
+      : `  ✉️  mail via ${mail}\n`,
+  );
   // Rehydrate every event that was live before this process started: replay
   // its journal and (for open ones) restart its clock — the multi-event
   // generalization of the default event's `restore()`.
@@ -226,7 +233,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (method === "OPTIONS") {
     res.writeHead(204, {
       "access-control-allow-headers": "content-type, x-loom-token",
-      "access-control-allow-methods": "GET, POST, OPTIONS",
+      "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
     });
     res.end();
     return;
@@ -237,6 +244,13 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (!controlPlane) return void sendJson(res, 503, { error: "authoring is offline (no database)" });
     await authHandler(req, res);
     return;
+  }
+
+  // --- collaboration invite links (landing data is readable signed-out) ---
+  if (path.startsWith("/api/invites/")) {
+    if (!controlPlane) return void sendJson(res, 503, { error: "authoring is offline (no database)" });
+    if (await handleInvites(res, method, path, await authUser(req))) return;
+    return void sendJson(res, 404, { error: "not found" });
   }
 
   // --- author control plane: projects + files + events (authors only) ---
@@ -358,7 +372,7 @@ server.listen(PORT, HOST, () => {
   for (const u of urls) process.stdout.write(`  → ${u}  (participant app)\n`);
   process.stdout.write(`\n`);
   if (appBuilt) {
-    process.stdout.write(`  Guests + performers use the app at /. Authors moderate from the editor's Run panel (⌘3).\n\n`);
+    process.stdout.write(`  Guests + performers use the app at /. Authors moderate from the editor's Run panel (⌘2).\n\n`);
   } else {
     process.stdout.write(`  ⚠️  participant app not built — run \`pnpm --filter loom-play build\`\n`);
     process.stdout.write(`     (or for live dev: \`cd ../play && pnpm dev\` and use :5174).\n\n`);

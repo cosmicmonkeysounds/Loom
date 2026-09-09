@@ -27,6 +27,8 @@ export default defineConfig({
       '@loom/core/parser': path.resolve(__dirname, '../core/src/parser/index.ts'),
       '@loom/core/lsp': path.resolve(__dirname, '../core/src/lsp/index.ts'),
       '@loom/core/sim': path.resolve(__dirname, '../core/src/runtime/sim/index.ts'),
+      // Not imported by the editor itself — `@loom/bank` (aliased to source
+      // below) resolves its value/expression helpers through it.
       '@loom/core/runtime': path.resolve(__dirname, '../core/src/runtime/index.ts'),
       '@loom/core/chat': path.resolve(__dirname, '../core/server/chat.ts'),
       '@loom/core/views': path.resolve(__dirname, '../core/server/views.ts'),

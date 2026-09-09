@@ -1,11 +1,12 @@
 # loom-app (the Loom editor)
 
 The user-facing **web IDE** for authoring `.loom` projects — a local-first
-editor with a three-mode "Studio" shell: **Writing** (`⌘1`, screenplay text
+editor with a four-mode "Studio" shell: **Writing** (`⌘1`, screenplay text
 editor + story-graph node editor side by side), **Run** (`⌘2`, one
-rehearsal/moderation cockpit with a **Sim ⇄ Live** source switch), and
-**Deploy** (`⌘3`, the live event's lifecycle, join codes/QR, and guest
-lookup).
+rehearsal/moderation cockpit with a **Sim ⇄ Live** source switch),
+**Integrations** (`⌘3`, game-engine targets — the Godot link, addon
+install, and bank build), and **Deploy** (`⌘4`, the live event's
+lifecycle, join codes/QR, and guest lookup).
 
 This is the **authoring** surface. It is distinct from the participant
 app ([`loom-play`](../play)), which is what guests and performers use
@@ -38,8 +39,9 @@ pnpm --filter loom-app dev        # Vite + HMR at http://localhost:5173
 ```
 
 Play works out of the box with **no server and no account** — open a local
-`.loom` folder (File System Access API) or use the bundled tutorial, hit
-`⌘2` (Run) with the **Sim** source, and Start. For live events (accounts,
+`.loom` folder (File System Access API) — the
+[`examples/`](../examples) projects are a good start — hit `⌘2` (Run)
+with the **Sim** source, and Start. For live events (accounts,
 projects, launched events), run the TS event server alongside the editor:
 
 ```bash

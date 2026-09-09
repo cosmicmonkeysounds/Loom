@@ -35,6 +35,10 @@ services:
       LOOM_BASE_URL: ${LOOM_BASE_URL:?set LOOM_BASE_URL in .env, e.g. http://YOUR_VPS_IP or https://loom.example.com}
       # Caddy is the only route in, so rate-limit on the real client IP.
       LOOM_TRUST_PROXY: "1"
+      # Share-invite email (either transport; both blank = links only).
+      LOOM_SMTP_URL: ${LOOM_SMTP_URL:-}
+      LOOM_RESEND_API_KEY: ${LOOM_RESEND_API_KEY:-}
+      LOOM_MAIL_FROM: ${LOOM_MAIL_FROM:-}
       # Optional: pin the default event's passcodes (otherwise auto-generated
       # and printed in the logs + saved under the state volume):
       # LOOM_EVENT_PASS: ...

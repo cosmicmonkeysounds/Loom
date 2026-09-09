@@ -1,14 +1,17 @@
 //! The signed-out gate: log in or create an author account. Also offers the
 //! "keep local" escape hatch — open a folder on disk with no account.
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/store/auth'
 import { useWorkspace } from '@/store/workspace'
 import { isFsAccessSupported, pickDirectory } from '@/lib/fs'
+import { invitesApi, type InvitePeek } from '@/lib/api'
+import { clearLinkIntent, peekLinkIntent } from '@/lib/invite-link'
 import { notify } from '@/store/dialog'
 
 export function AuthGate() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
+  const [invite, setInvite] = useState<InvitePeek | null>(null)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -17,6 +20,29 @@ export function AuthGate() {
   const signIn = useAuth((s) => s.signIn)
   const signUp = useAuth((s) => s.signUp)
   const openRoot = useWorkspace((s) => s.openRoot)
+
+  // Arrived via a share email? Say who invited you to what, prefill the
+  // address it was sent to, and default to the right form.
+  useEffect(() => {
+    const intent = peekLinkIntent()
+    if (intent?.kind !== 'invite') return
+    let alive = true
+    invitesApi
+      .peek(intent.token)
+      .then((inv) => {
+        if (!alive) return
+        setInvite(inv)
+        setEmail((e) => e || inv.email)
+        setMode(inv.accountExists ? 'signin' : 'signup')
+      })
+      .catch(() => {
+        // Dead link (revoked / already used): drop it and show the plain gate.
+        clearLinkIntent()
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -56,6 +82,19 @@ export function AuthGate() {
             {mode === 'signin' ? 'Sign in to your events' : 'Create your author account'}
           </div>
         </div>
+
+        {invite && (
+          <div
+            className="mb-5 rounded-lg border border-indigo-900/60 bg-indigo-950/40 px-3 py-2 text-sm text-indigo-100"
+            data-testid="invite-card"
+          >
+            <span className="font-medium">{invite.inviter}</span> invited you to collaborate on{' '}
+            <span className="font-medium">“{invite.projectName}”</span>.
+            <div className="mt-1 text-xs text-indigo-300/80">
+              {invite.accountExists ? 'Sign in to accept.' : 'Create your account to accept — any email works, the link is yours.'}
+            </div>
+          </div>
+        )}
 
         <form onSubmit={submit} className="flex flex-col gap-3">
           {mode === 'signup' && (

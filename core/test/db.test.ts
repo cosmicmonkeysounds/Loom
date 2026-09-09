@@ -11,12 +11,18 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { dbReady, initSchema, pool } from '../server/db/index.ts'
 import {
+  acceptInvite,
   addMember,
   canModerateEvent,
+  claimInvitesForEmail,
   createEvent,
+  createInvite,
   createProject,
+  deleteInvite,
   findUserByEmail,
+  getInviteByToken,
   getProjectFor,
+  listInvites,
   listMembers,
   listProjectsFor,
   projectSource,
@@ -177,5 +183,64 @@ describe('project membership (collaboration)', () => {
     if (!hasDb) return ctx.skip()
     expect((await findUserByEmail(FRIEND_EMAIL.toUpperCase()))?.id).toBe(FRIEND)
     expect(await findUserByEmail('nobody@nowhere.test')).toBeNull()
+  })
+})
+
+describe('project invites (sharing with an address that has no account yet)', () => {
+  it('creates a pending invite, re-inviting refreshes the token', async (ctx) => {
+    if (!hasDb) return ctx.skip()
+    const p = await createProject(OWNER, 'Invite Pending')
+    const first = await createInvite(p.id, '  New.Person@Example.TEST ', OWNER)
+    expect(first.email).toBe('new.person@example.test') // normalised
+    expect(first.accepted_at).toBeNull()
+    const again = await createInvite(p.id, 'new.person@example.test', OWNER)
+    expect(again.id).toBe(first.id)
+    expect(again.token).not.toBe(first.token)
+    expect(await getInviteByToken(first.token)).toBeNull() // old link is dead
+    expect((await getInviteByToken(again.token))?.project_name).toBe('Invite Pending')
+    expect((await listInvites(p.id)).map((i) => i.id)).toEqual([again.id])
+  })
+
+  it('accepting by token grants membership once; the link then reads as used', async (ctx) => {
+    if (!hasDb) return ctx.skip()
+    const p = await createProject(OWNER, 'Invite Accept')
+    const inv = await createInvite(p.id, 'someone@example.test', OWNER)
+    // The link is the credential: FRIEND (a different address) can accept it.
+    expect(await acceptInvite(inv.token, FRIEND)).toEqual({ project_id: p.id })
+    expect((await getProjectFor(FRIEND, p.id))?.role).toBe('editor')
+    expect(await listInvites(p.id)).toEqual([]) // no longer pending
+    expect((await getInviteByToken(inv.token))?.accepted_at).not.toBeNull()
+    expect(await acceptInvite(inv.token, FRIEND)).toBeNull() // second use → null
+  })
+
+  it('the owner accepting their own invite does not become a member of their project', async (ctx) => {
+    if (!hasDb) return ctx.skip()
+    const p = await createProject(OWNER, 'Invite Self')
+    const inv = await createInvite(p.id, 'owner-alias@example.test', OWNER)
+    expect(await acceptInvite(inv.token, OWNER)).toEqual({ project_id: p.id })
+    expect((await listMembers(p.id)).some((m) => m.user_id === OWNER)).toBe(false)
+    expect((await getProjectFor(OWNER, p.id))?.role).toBe('owner')
+  })
+
+  it('signing up with the invited address claims every pending invite for it', async (ctx) => {
+    if (!hasDb) return ctx.skip()
+    const a = await createProject(OWNER, 'Claim A')
+    const b = await createProject(OWNER, 'Claim B')
+    await createInvite(a.id, FRIEND_EMAIL.toUpperCase(), OWNER)
+    await createInvite(b.id, FRIEND_EMAIL, OWNER)
+    const joined = await claimInvitesForEmail(FRIEND, FRIEND_EMAIL)
+    expect(new Set(joined)).toEqual(new Set([a.id, b.id]))
+    expect((await listProjectsFor(FRIEND)).filter((x) => x.id === a.id || x.id === b.id)).toHaveLength(2)
+    expect(await claimInvitesForEmail(FRIEND, FRIEND_EMAIL)).toEqual([]) // idempotent
+  })
+
+  it('revoking a pending invite kills the link', async (ctx) => {
+    if (!hasDb) return ctx.skip()
+    const p = await createProject(OWNER, 'Invite Revoke')
+    const inv = await createInvite(p.id, 'gone@example.test', OWNER)
+    expect(await deleteInvite(p.id, inv.id)).toBe(true)
+    expect(await getInviteByToken(inv.token)).toBeNull()
+    expect(await acceptInvite(inv.token, FRIEND)).toBeNull()
+    expect(await deleteInvite(p.id, inv.id)).toBe(false)
   })
 })

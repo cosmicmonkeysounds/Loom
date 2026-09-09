@@ -97,20 +97,67 @@ export const projectsApi = {
   },
 }
 
-// --- collaboration (project members) ------------------------------------
-// Owner-managed: invite another signed-up author by email; they then see the
-// project under "Shared with you" and can edit files + run its events.
+// --- collaboration (project members + pending invites) ------------------
+// Owner-managed: share with an email. An existing author is added on the
+// spot; anyone else gets a pending invite (emailed link, or auto-claimed
+// when they sign up with that address). Members see the project under
+// "Shared with you" and can edit files + run its events.
+
+/** A share sent to an address with no account yet. `url` is the invite link. */
+export interface PendingInvite {
+  id: string
+  email: string
+  createdAt: string
+  url: string
+}
+
+export interface ProjectRoster {
+  members: ProjectMember[]
+  invites: PendingInvite[]
+}
+
+/** How a share went out: emailed (`smtp` / `resend`) or only logged (`none`). */
+export type MailDelivery = 'smtp' | 'resend' | 'none'
+
+export interface ShareResult extends ProjectRoster {
+  notified: { to: string; hasAccount: boolean; url: string; delivery: MailDelivery }
+}
 
 export const membersApi = {
-  async list(projectId: string): Promise<ProjectMember[]> {
-    return (await req<{ members: ProjectMember[] }>('GET', `/api/projects/${projectId}/members`)).members
+  async list(projectId: string): Promise<ProjectRoster> {
+    return req('GET', `/api/projects/${projectId}/members`)
   },
-  async add(projectId: string, email: string): Promise<ProjectMember[]> {
-    return (await req<{ members: ProjectMember[] }>('POST', `/api/projects/${projectId}/members`, { email })).members
+  async add(projectId: string, email: string): Promise<ShareResult> {
+    return req('POST', `/api/projects/${projectId}/members`, { email })
   },
   /** Owner removes a collaborator; omit `userId` to leave a shared project. */
   async remove(projectId: string, userId?: string): Promise<void> {
     await req('DELETE', `/api/projects/${projectId}/members`, userId !== undefined ? { userId } : {})
+  },
+  /** Owner revokes a pending invite — its link stops working. */
+  async revokeInvite(projectId: string, inviteId: string): Promise<void> {
+    await req('DELETE', `/api/projects/${projectId}/members`, { inviteId })
+  },
+}
+
+/** What an invite link points at (readable signed-out, for the landing card). */
+export interface InvitePeek {
+  projectId: string
+  projectName: string
+  email: string
+  inviter: string
+  accepted: boolean
+  /** Whether an author account already exists for `email`. */
+  accountExists: boolean
+}
+
+export const invitesApi = {
+  async peek(token: string): Promise<InvitePeek> {
+    return (await req<{ invite: InvitePeek }>('GET', `/api/invites/${encodeURIComponent(token)}`)).invite
+  },
+  /** Join the project (signed-in). Resolves to the project, now openable. */
+  async accept(token: string): Promise<ProjectSummary | null> {
+    return (await req<{ project: ProjectSummary | null }>('POST', `/api/invites/${encodeURIComponent(token)}/accept`)).project
   },
 }
 

@@ -130,7 +130,7 @@ export async function deleteProject(ownerId: string, id: string): Promise<boolea
   return (res.rowCount ?? 0) > 0;
 }
 
-export async function touchProject(id: string): Promise<void> {
+async function touchProject(id: string): Promise<void> {
   await pool().query("update project set updated_at = now() where id = $1", [id]);
 }
 
@@ -178,6 +178,128 @@ export async function findUserByEmail(email: string): Promise<{ id: string; name
     [email.trim()],
   );
   return rows[0] ?? null;
+}
+
+// --- invites (a share to an address with no account yet) -----------------
+
+export interface InviteRow {
+  id: string;
+  project_id: string;
+  email: string;
+  token: string;
+  invited_by: string;
+  created_at: string;
+  accepted_at: string | null;
+  accepted_by: string | null;
+}
+
+/** Normalise an invite address: trimmed, lower-cased (matches `findUserByEmail`). */
+export function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+/**
+ * Create (or refresh) the pending invite for `email` on a project. A
+ * re-invite mints a fresh token + timestamp so a lost email can be resent
+ * and the old link stops working.
+ */
+export async function createInvite(projectId: string, email: string, invitedBy: string): Promise<InviteRow> {
+  const { rows } = await pool().query<InviteRow>(
+    `insert into project_invite (id, project_id, email, token, invited_by)
+       values ($1, $2, $3, $4, $5)
+     on conflict (project_id, email) do update
+       set token = excluded.token, invited_by = excluded.invited_by,
+           created_at = now(), accepted_at = null, accepted_by = null
+     returning *`,
+    [randomUUID(), projectId, normalizeEmail(email), randomUUID().replace(/-/g, "") + randomUUID().replace(/-/g, ""), invitedBy],
+  );
+  return rows[0]!;
+}
+
+/** Pending (unaccepted) invites on a project, oldest first. */
+export async function listInvites(projectId: string): Promise<InviteRow[]> {
+  const { rows } = await pool().query<InviteRow>(
+    "select * from project_invite where project_id = $1 and accepted_at is null order by created_at",
+    [projectId],
+  );
+  return rows;
+}
+
+/** Revoke a pending invite by id (scoped to the project). */
+export async function deleteInvite(projectId: string, inviteId: string): Promise<boolean> {
+  const res = await pool().query("delete from project_invite where project_id = $1 and id = $2", [projectId, inviteId]);
+  return (res.rowCount ?? 0) > 0;
+}
+
+/** An invite by its link token, joined to the project + inviter for the landing card. */
+export async function getInviteByToken(
+  token: string,
+): Promise<(InviteRow & { project_name: string; inviter_name: string | null; inviter_email: string | null }) | null> {
+  const { rows } = await pool().query<InviteRow & { project_name: string; inviter_name: string | null; inviter_email: string | null }>(
+    `select i.*, p.name as project_name, u.name as inviter_name, u.email as inviter_email
+       from project_invite i
+       join project p on p.id = i.project_id
+       left join "user" u on u.id = i.invited_by
+      where i.token = $1`,
+    [token],
+  );
+  return rows[0] ?? null;
+}
+
+/**
+ * Accept an invite by token for `userId`: adds the membership and stamps
+ * the row. The link is the credential — whoever the owner sent it to can
+ * accept it from any account (an invite already accepted, or revoked,
+ * returns null). The project owner accepting their own invite is a no-op.
+ */
+export async function acceptInvite(token: string, userId: string): Promise<{ project_id: string } | null> {
+  const client = await pool().connect();
+  try {
+    await client.query("begin");
+    const { rows } = await client.query<InviteRow & { owner_id: string }>(
+      `select i.*, p.owner_id from project_invite i join project p on p.id = i.project_id
+        where i.token = $1 and i.accepted_at is null for update of i`,
+      [token],
+    );
+    const inv = rows[0];
+    if (inv === undefined) {
+      await client.query("rollback");
+      return null;
+    }
+    if (inv.owner_id !== userId) {
+      await client.query(
+        `insert into project_member (project_id, user_id) values ($1, $2) on conflict (project_id, user_id) do nothing`,
+        [inv.project_id, userId],
+      );
+    }
+    await client.query("update project_invite set accepted_at = now(), accepted_by = $2 where id = $1", [inv.id, userId]);
+    await client.query("commit");
+    return { project_id: inv.project_id };
+  } catch (err) {
+    await client.query("rollback").catch(() => undefined);
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Turn every pending invite addressed to `email` into a membership for
+ * `userId` — run when an author lists their projects, so signing up with
+ * the invited address is enough (no link needed). Returns the project ids
+ * newly joined.
+ */
+export async function claimInvitesForEmail(userId: string, email: string): Promise<string[]> {
+  const { rows } = await pool().query<InviteRow>(
+    "select * from project_invite where email = $1 and accepted_at is null",
+    [normalizeEmail(email)],
+  );
+  const joined: string[] = [];
+  for (const inv of rows) {
+    const r = await acceptInvite(inv.token, userId);
+    if (r !== null) joined.push(r.project_id);
+  }
+  return joined;
 }
 
 // --- files --------------------------------------------------------------
@@ -262,11 +384,6 @@ export async function createEvent(row: Omit<EventRow, "created_at" | "ended_at">
     ],
   );
   return rows[0]!;
-}
-
-export async function getEvent(id: string): Promise<EventRow | null> {
-  const { rows } = await pool().query<EventRow>("select * from event where id = $1", [id]);
-  return rows[0] ?? null;
 }
 
 export async function setEventStatus(id: string, status: EventStatus): Promise<void> {

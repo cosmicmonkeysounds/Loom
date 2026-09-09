@@ -12,8 +12,7 @@ import { lspToOffset } from '@/lib/lsp-nav'
  * to CodeMirror offsets.
  *
  * The parser reports offsets as JS string (UTF-16) offsets — exactly
- * CodeMirror's document indexing — so no byte↔char conversion is needed
- * (the old wasm path returned UTF-8 byte offsets and had to remap).
+ * CodeMirror's document indexing — so no byte↔char conversion is needed.
  *
  * This parser-only variant is the fallback; `loomLintProject` (below) is
  * the richer, cross-file-aware default.

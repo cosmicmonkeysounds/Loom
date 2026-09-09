@@ -1,6 +1,5 @@
-// Author-time AST access for the Properties tray + static story views.
-// Backed by the native TypeScript Loom parser (`@loom/core`) — no wasm,
-// fully synchronous.
+// Author-time AST access for the Properties tray + static story views,
+// backed by the TypeScript Loom parser (`@loom/core`); fully synchronous.
 //
 // The parser hands us real TypeScript objects: top-level items are
 // tagged unions (`{ kind: 'beat', value }`), and the header contract /
@@ -124,8 +123,8 @@ export function summarize(ast: LoomFileAst): FileSummaryData {
 }
 
 // ---------------------------------------------------------------------------
-// Parser + structural-edit access — synchronous now (no wasm load).
-// The hook shape is retained so callers don't change.
+// Parser + structural-edit access. Synchronous; the hook shape lets
+// callers subscribe to reparses.
 // ---------------------------------------------------------------------------
 
 type ParseFn = (source: string) => LoomParseResult

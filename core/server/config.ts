@@ -38,3 +38,24 @@ export const TRUSTED_ORIGINS: readonly string[] = [
   BASE_URL,
   ...(process.env.LOOM_TRUSTED_ORIGINS?.split(",").map((s) => s.trim()).filter(Boolean) ?? []),
 ];
+
+/**
+ * Where the author editor lives, for links in outbound email (invites).
+ * Behind the Docker proxy the editor is served at `/edit/` on the app
+ * origin; in dev it's the Vite server. Override with `LOOM_EDITOR_URL`.
+ */
+export const EDITOR_URL = (
+  process.env.LOOM_EDITOR_URL ?? (IS_LOCAL_BASE ? "http://localhost:5173/" : `${BASE_URL}/edit/`)
+).replace(/\/?$/, "/");
+
+// --- outbound email (collaboration invites) -------------------------------
+// Exactly one transport is picked at boot, in this order: SMTP
+// (`LOOM_SMTP_URL`, e.g. `smtps://user:pass@smtp.example.com:465`), the
+// Resend HTTP API (`LOOM_RESEND_API_KEY`), else a console fallback that logs
+// each message instead of sending it — so invites still produce a shareable
+// link in dev / on a LAN box with no mail provider.
+
+/** `From:` header for every outbound message. */
+export const MAIL_FROM = process.env.LOOM_MAIL_FROM ?? "Loom <no-reply@localhost>";
+export const SMTP_URL = process.env.LOOM_SMTP_URL ?? "";
+export const RESEND_API_KEY = process.env.LOOM_RESEND_API_KEY ?? "";

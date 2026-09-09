@@ -11,21 +11,31 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { scenarioFiles } from "../examples/load.ts";
 import { collabHub } from "./collab.ts";
+import { EDITOR_URL } from "./config.ts";
 import { readBody, sendJson, str } from "./http-util.ts";
+import { inviteEmail, sendQuietly, type Delivery } from "./mail.ts";
 import {
+  acceptInvite,
   activeEvent,
   addMember,
+  claimInvitesForEmail,
+  createInvite,
   createProject,
   deleteFile,
+  deleteInvite,
   deleteProject,
   findUserByEmail,
+  getInviteByToken,
   getProjectFor,
   listFiles,
+  listInvites,
   listMembers,
   listProjectsFor,
+  normalizeEmail,
   removeMember,
   renameProject,
   upsertFile,
+  type InviteRow,
   type ProjectAccessRow,
 } from "./db/queries.ts";
 
@@ -75,6 +85,66 @@ function memberView(m: { user_id: string; role: string; name: string | null; ema
   return { userId: m.user_id, role: m.role, name: m.name, email: m.email };
 }
 
+/** The wire shape of one pending invite (the token stays server-side; the
+ *  owner gets the full link instead, via `inviteUrl`). */
+function inviteView(i: InviteRow) {
+  return { id: i.id, email: i.email, createdAt: i.created_at, url: inviteUrl(i.token) };
+}
+
+/** The emailed deep link: the editor accepts the invite once signed in. */
+export function inviteUrl(token: string): string {
+  return `${EDITOR_URL}?invite=${encodeURIComponent(token)}`;
+}
+
+/** Deep link straight to a project the recipient can already open. */
+export function projectUrl(projectId: string): string {
+  return `${EDITOR_URL}?project=${encodeURIComponent(projectId)}`;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** The roster as the owner sees it: current members + pending invites. */
+async function roster(projectId: string) {
+  const [members, invites] = await Promise.all([listMembers(projectId), listInvites(projectId)]);
+  return { members: members.map(memberView), invites: invites.map(inviteView) };
+}
+
+/**
+ * Share a project with an email address. An existing author account is
+ * added as a member on the spot; anyone else gets a pending invite that
+ * turns into membership when they sign up with that address or open the
+ * link. Either way the recipient is emailed (when a transport is
+ * configured — see `mail.ts`); the owner gets told how it went out plus
+ * the link, so they can pass it along by hand if email is off.
+ */
+export async function shareProject(
+  project: ProjectAccessRow,
+  inviter: AuthUser,
+  rawEmail: string,
+): Promise<{ hasAccount: boolean; url: string; delivery: Delivery; to: string } | { error: string; status: number }> {
+  const email = normalizeEmail(rawEmail);
+  if (!EMAIL_RE.test(email)) return { error: "enter a valid email address", status: 400 };
+  const invitee = await findUserByEmail(email);
+  if (invitee !== null && invitee.id === project.owner_id) return { error: "that's the project owner", status: 400 };
+  let url: string;
+  if (invitee !== null) {
+    await addMember(project.id, invitee.id);
+    url = projectUrl(project.id);
+  } else {
+    url = inviteUrl((await createInvite(project.id, email, inviter.id)).token);
+  }
+  const delivery = await sendQuietly(
+    inviteEmail({
+      to: email,
+      inviterName: inviter.name.trim() || inviter.email,
+      projectName: project.name,
+      url,
+      hasAccount: invitee !== null,
+    }),
+  );
+  return { hasAccount: invitee !== null, url, delivery, to: email };
+}
+
 /** `/api/projects/:id/members` — list / invite / remove collaborators. */
 async function handleMembers(
   req: IncomingMessage,
@@ -84,8 +154,7 @@ async function handleMembers(
   user: AuthUser,
 ): Promise<boolean> {
   if (method === "GET") {
-    const members = await listMembers(project.id);
-    sendJson(res, 200, { members: members.map(memberView) });
+    sendJson(res, 200, await roster(project.id));
     return true;
   }
   if (method === "POST") {
@@ -94,27 +163,27 @@ async function handleMembers(
       return true;
     }
     const body = await readBody(req);
-    const email = str(body, "email").trim();
-    if (email === "") {
-      sendJson(res, 400, { error: "email required" });
+    const result = await shareProject(project, user, str(body, "email"));
+    if ("error" in result) {
+      sendJson(res, result.status, { error: result.error });
       return true;
     }
-    const invitee = await findUserByEmail(email);
-    if (invitee === null) {
-      sendJson(res, 404, { error: "no account with that email — they need to sign up first" });
-      return true;
-    }
-    if (invitee.id === project.owner_id) {
-      sendJson(res, 400, { error: "that's the project owner" });
-      return true;
-    }
-    await addMember(project.id, invitee.id);
-    const members = await listMembers(project.id);
-    sendJson(res, 200, { members: members.map(memberView) });
+    sendJson(res, 200, { ...(await roster(project.id)), notified: result });
     return true;
   }
   if (method === "DELETE") {
     const body = await readBody(req);
+    const inviteId = str(body, "inviteId").trim();
+    if (inviteId !== "") {
+      // Revoke a pending invite (owner-only; the link stops working).
+      if (project.role !== "owner") {
+        sendJson(res, 403, { error: "only the project owner can revoke invites" });
+        return true;
+      }
+      const ok = await deleteInvite(project.id, inviteId);
+      sendJson(res, ok ? 200 : 404, ok ? { ok: true } : { error: "no such invite" });
+      return true;
+    }
     const target = str(body, "userId").trim() || user.id; // no body → leave
     // The owner can remove anyone; a member can only remove themself (leave).
     if (project.role !== "owner" && target !== user.id) {
@@ -123,6 +192,65 @@ async function handleMembers(
     }
     const ok = await removeMember(project.id, target);
     sendJson(res, ok ? 200 : 404, ok ? { ok: true } : { error: "not a member" });
+    return true;
+  }
+  return false;
+}
+
+/**
+ * `/api/invites/:token` — the emailed link's landing data (GET, works
+ * signed-out so the sign-up screen can say who invited you to what) and
+ * `POST /api/invites/:token/accept` (signed-in) to join. Returns true when
+ * the path matched.
+ */
+export async function handleInvites(
+  res: ServerResponse,
+  method: string,
+  path: string,
+  user: AuthUser | null,
+): Promise<boolean> {
+  const segs = path.split("/").filter(Boolean); // ["api","invites", token, "accept"?]
+  if (segs.length < 3 || segs[2] === undefined) return false;
+  const token = segs[2];
+  if (segs.length === 3 && method === "GET") {
+    const inv = await getInviteByToken(token);
+    if (inv === null) {
+      sendJson(res, 404, { error: "this invite link is no longer valid" });
+      return true;
+    }
+    sendJson(res, 200, {
+      invite: {
+        projectId: inv.project_id,
+        projectName: inv.project_name,
+        email: inv.email,
+        inviter: inv.inviter_name ?? inv.inviter_email ?? "another author",
+        accepted: inv.accepted_at !== null,
+        // Lets the landing screen default to sign-in vs. sign-up.
+        accountExists: (await findUserByEmail(inv.email)) !== null,
+      },
+    });
+    return true;
+  }
+  if (segs.length === 4 && segs[3] === "accept" && method === "POST") {
+    if (user === null) {
+      sendJson(res, 401, { error: "sign in" });
+      return true;
+    }
+    const joined = await acceptInvite(token, user.id);
+    if (joined === null) {
+      // Already used (maybe by this very account via the email auto-claim):
+      // if they can open the project anyway, treat it as success.
+      const inv = await getInviteByToken(token);
+      const project = inv === null ? null : await getProjectFor(user.id, inv.project_id);
+      if (project === null) {
+        sendJson(res, 404, { error: "this invite link is no longer valid" });
+        return true;
+      }
+      sendJson(res, 200, { project: projectView(project, await activeEvent(project.id)) });
+      return true;
+    }
+    const project = await getProjectFor(user.id, joined.project_id);
+    sendJson(res, 200, { project: project === null ? null : projectView(project, await activeEvent(project.id)) });
     return true;
   }
   return false;
@@ -144,6 +272,9 @@ export async function handleProjects(
   // /api/projects
   if (segs.length === 2) {
     if (method === "GET") {
+      // Signing up with an invited address is enough to join — pending
+      // invites addressed to this account are claimed on every listing.
+      await claimInvitesForEmail(user.id, user.email);
       const projects = await listProjectsFor(user.id);
       const withActive = await Promise.all(
         projects.map(async (p) => projectView(p, await activeEvent(p.id))),

@@ -105,15 +105,27 @@ project launches its own **event** (live, or a private server-hosted
   access-scoped. `pnpm --filter @loom/core migrate` builds the tables. If
   the DB is unreachable the control plane stays disabled and the event plane
   still runs, so a LAN-only deployment needs no database.
-- **Collaboration** (2026-08-27): a `project_member` table +
-  `/api/projects/:id/members` (GET/POST/DELETE) let an owner invite other
-  signed-up authors by email onto a project. Members see it under
-  "Shared with you" in the launchpad (`ShareDialog.tsx` manages the roster,
+- **Collaboration** (2026-08-27, invites 2026-09-09): a `project_member`
+  table + `/api/projects/:id/members` (GET/POST/DELETE) let an owner share
+  a project with another author **by email**. An existing account is added
+  on the spot; any other address gets a **pending invite**
+  (`project_invite` row + a tokened link, `?invite=<token>` into the
+  editor) that becomes membership when they open the link or simply sign
+  up with that address (claimed on every `/api/projects` listing). Either
+  way the recipient is **emailed** via `core/server/mail.ts` — SMTP
+  (`LOOM_SMTP_URL`) or Resend (`LOOM_RESEND_API_KEY`), else a console
+  fallback — and the API reports `delivery` so `ShareDialog.tsx` can show
+  the owner "emailed" or hand them the link to pass along. Members see the
+  project under "Shared with you" in the launchpad (`ShareDialog.tsx`
+  manages members + pending invites: resend / copy link / revoke,
   owner-only), can read/write its files, and can launch + moderate its
   events (`canModerateEvent` covers the whole writing team — run == admin);
   rename / delete / member management stay owner-only. Access resolution is
   `getProjectFor` / `listProjectsFor` in `db/queries.ts` — a project you
-  can't access reads as 404. DB-gated tests in `core/test/db.test.ts`.
+  can't access reads as 404. `/api/invites/:token` (GET, signed-out) feeds
+  the sign-up screen's "X invited you to Y" card; `…/accept` (POST) joins.
+  DB-gated tests in `core/test/db.test.ts`, mail in `core/test/mail.test.ts`,
+  link parsing in `editor/src/lib/invite-link.test.ts`.
 - **Real-time co-editing on the SaaS path** (2026-08-27): server-project
   files are live CRDT documents (**Yjs** — pure TS, no wasm). The server
   side is `core/server/collab.ts` (`CollabHub`: one authoritative `Y.Doc`

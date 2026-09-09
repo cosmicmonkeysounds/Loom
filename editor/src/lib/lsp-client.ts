@@ -1,8 +1,7 @@
 // Browser-side LSP client. One long-lived `Workspace` from `@loom/core`
-// is kept in sync with the editor's open-file map. The Loom engine is
-// now pure TypeScript (no wasm), so this is fully synchronous — but the
-// public functions stay async so existing callers (the References
-// panel) need no change.
+// is kept in sync with the editor's open-file map. The engine is pure
+// TypeScript, so every call is synchronous underneath — the public
+// functions stay async so callers (the References panel) needn't care.
 
 import { Workspace } from '@loom/core/lsp'
 

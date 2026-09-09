@@ -91,11 +91,6 @@ export function writtenTargetFor(beat: GraphBeat): string | null {
   return beat.key
 }
 
-/** Convenience: the graph beat's document path (for reveal / editing). */
-export function beatPath(beat: GraphBeat): string | null {
-  return beat.uri === null ? null : pathForUri(beat.uri)
-}
-
 /**
  * Rewire a narrative edge onto a new target beat by rewriting the
  * divert's target text at its exact source range. Returns null on

@@ -1,7 +1,5 @@
-// The global top bar (Loom IDE redesign v2 §17.5). Authoring-only: the
-// app label, the open-folder name, and a per-mode layout reset. The
-// play transport, relay status, and presence strip were removed with
-// the runtime (play lives in the `core` server + `play` app).
+// The global top bar (Loom IDE redesign v2 §17.5): the app label, the
+// open-folder name, and a per-mode layout reset.
 
 import { useWorkspace } from '@/store/workspace'
 import { useMode } from '@/store/mode'

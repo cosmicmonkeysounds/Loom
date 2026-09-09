@@ -304,11 +304,6 @@ async function resyncAll(): Promise<void> {
   }
 }
 
-/** Is live co-editing up for the open project? */
-export function isCollabActive(): boolean {
-  return projectId !== null
-}
-
 /** Start co-editing for a server project (idempotent per project). */
 export function startCollab(pid: string, user: { name: string }, h: CollabHandlers): void {
   if (projectId === pid) {

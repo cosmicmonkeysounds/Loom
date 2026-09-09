@@ -4,7 +4,6 @@ import { TopBar } from '@/components/studio/TopBar'
 import { StatusBar } from '@/components/shell/StatusBar'
 import { CommandPalette } from '@/components/shell/CommandPalette'
 import { SettingsPanel } from '@/components/shell/SettingsPanel'
-import { DetailOverlay } from '@/components/detail/DetailOverlay'
 import { ContextMenuHost } from '@/components/shell/ContextMenu'
 import { DialogHost } from '@/components/shell/DialogHost'
 import { HelpOverlay } from '@/components/help/HelpOverlay'
@@ -13,6 +12,8 @@ import { ProjectsLaunchpad } from '@/components/projects/ProjectsLaunchpad'
 import { useWorkspace } from '@/store/workspace'
 import { useSettings } from '@/store/settings'
 import { useAuth } from '@/store/auth'
+import { useProjects } from '@/store/projects'
+import { captureLinkFromLocation } from '@/lib/invite-link'
 
 export default function App() {
   const restoreRoot = useWorkspace((s) => s.restoreRoot)
@@ -21,10 +22,19 @@ export default function App() {
   const authStatus = useAuth((s) => s.status)
   const refreshAuth = useAuth((s) => s.refresh)
 
+  const consumePendingLink = useProjects((s) => s.consumePendingLink)
+
   useEffect(() => {
+    // A share-email link (`?invite=` / `?project=`) is parked before the
+    // sign-in round-trip and acted on below once there's a session.
+    const linked = captureLinkFromLocation() !== null
     void refreshAuth()
-    void restoreRoot()
+    // A link takes precedence over re-opening last session's workspace.
+    if (!linked) void restoreRoot()
   }, [refreshAuth, restoreRoot])
+  useEffect(() => {
+    if (authStatus === 'signed-in' && root === null) void consumePendingLink()
+  }, [authStatus, root, consumePendingLink])
   useEffect(() => {
     document.documentElement.dataset.theme = theme
   }, [theme])
@@ -51,7 +61,6 @@ function body(hasRoot: boolean, authStatus: string) {
         <StatusBar />
         <CommandPalette />
         <SettingsPanel />
-        <DetailOverlay />
         <ContextMenuHost />
         <HelpOverlay />
       </div>

@@ -145,6 +145,26 @@ The four values:
 Keep `.env` on the VPS only — it's in `.gitignore`/`.dockerignore` and
 excluded from the rsync above.
 
+### Email for share invites
+
+When you **Share** a project with a co-writer, the server emails them a
+join link. That needs a mail provider; the three `LOOM_*MAIL*` lines in
+`.env` set it up. Pick one:
+
+- **Resend** (easiest): sign up at resend.com, add + verify your domain
+  (two DNS records), create an API key → `LOOM_RESEND_API_KEY=re_…` and
+  `LOOM_MAIL_FROM=Loom <no-reply@YOUR_DOMAIN>`.
+- **Any SMTP mailbox** (Fastmail, a Gmail app password, Mailgun,
+  Postmark, …): `LOOM_SMTP_URL=smtps://USER:PASSWORD@smtp.host:465`
+  (URL-encode special characters in the password) and `LOOM_MAIL_FROM`
+  set to that mailbox.
+
+Leave both blank and sharing still works — the Share dialog shows the
+owner the invite link to send by hand, and the server logs the email
+it would have sent (`docker compose logs loom`). After changing `.env`,
+`docker compose up -d` restarts the server with the new values; the
+boot log prints `✉️  mail via smtp` / `resend` when a transport is on.
+
 ---
 
 ## 4. Launch
@@ -351,6 +371,10 @@ Copy those files off the VPS (`scp ubuntu@YOUR_VPS_IP:~/loom/loom-db-*.sql .`).
 
 ## 7. Troubleshooting
 
+- **Share invites aren't arriving** — check `docker compose logs loom`
+  for `mail: failed to send`; the boot line `✉️  no mail transport` means
+  neither `LOOM_SMTP_URL` nor `LOOM_RESEND_API_KEY` is set. Until it is,
+  the Share dialog shows the link to send yourself.
 - **`docker compose` says a variable is required** — `.env` is missing
   or has an empty value; every line in `.env.example` must be filled.
 - **Editor loads but signing up fails** — check

@@ -7,6 +7,7 @@
 //!   project         one `.loom` app an author develops
 //!   project_file    a single `.loom` file inside a project
 //!   project_member  another author invited to collaborate on a project
+//!   project_invite  a pending share to an email with no account yet
 //!   event           a launched run of a project (live or preview)
 //!
 //! `owner_id` references a BetterAuth user id but is deliberately *not* a hard
@@ -60,6 +61,23 @@ create table if not exists project_member (
   primary key (project_id, user_id)
 );
 create index if not exists project_member_user_idx on project_member (user_id);
+
+-- A share sent to an email address that has no author account yet. The
+-- token is the secret in the emailed link; accepting (or signing up with the
+-- same email) turns it into a project_member row and stamps accepted_at.
+-- One pending invite per (project, email) — re-inviting refreshes the token.
+create table if not exists project_invite (
+  id           text primary key,
+  project_id   text not null references project (id) on delete cascade,
+  email        text not null,
+  token        text not null unique,
+  invited_by   text not null,
+  created_at   timestamptz not null default now(),
+  accepted_at  timestamptz,
+  accepted_by  text,
+  unique (project_id, email)
+);
+create index if not exists project_invite_email_idx on project_invite (email) where accepted_at is null;
 
 create table if not exists event (
   id               text primary key,

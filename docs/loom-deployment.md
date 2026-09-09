@@ -71,6 +71,19 @@ Read once at boot (`core/server/config.ts`, `core/server/server.ts`).
 | `LOOM_TRUSTED_ORIGINS` | *(none)* | Extra CORS/auth origins, comma-separated |
 | `LOOM_TRUST_PROXY` | *(off)* | Set `1` to key rate limits on `X-Forwarded-For` (**only** behind a proxy you control) |
 | `LOOM_EVENT_PASS` / `LOOM_MOD_PASS` / `LOOM_PRIME_PASS` | auto-generated | Pin the passcodes instead of generating them |
+| `LOOM_EDITOR_URL` | `$LOOM_BASE_URL/edit/` (dev: `http://localhost:5173/`) | Where share-invite links point |
+| `LOOM_SMTP_URL` | *(none)* | Outbound mail via SMTP, e.g. `smtps://user:pass@smtp.example.com:465` |
+| `LOOM_RESEND_API_KEY` | *(none)* | Outbound mail via the Resend HTTP API (used when no SMTP URL) |
+| `LOOM_MAIL_FROM` | `Loom <no-reply@localhost>` | `From:` on outbound mail — an address your provider lets you send as |
+
+**Share invites.** Sharing a project from the launchpad emails the
+collaborator a link (`core/server/mail.ts`): an existing author is added on
+the spot and pointed at the project; anyone else gets a pending invite
+that becomes membership when they open the link or sign up with that
+address. With neither mail transport configured the server logs each
+message instead and the Share dialog hands the owner the link to pass
+along by hand, so the flow still works on a LAN box — but production
+should set one of the two.
 
 **Secret enforcement.** Author accounts are signed with
 `BETTER_AUTH_SECRET`. Booting real accounts on the well-known dev

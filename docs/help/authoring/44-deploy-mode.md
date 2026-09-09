@@ -5,7 +5,7 @@ order: 44
 keywords: deploy, launch, event, live, preview, rehearsal, code, QR, pause, resume, reset, end, guest list, lookup, passcode
 ---
 
-Deploy (`⌘3`) is the live event's own home. It needs a **server
+Deploy (`⌘4`) is the live event's own home. It needs a **server
 project** (events are hosted; a local folder has no event plane).
 
 ## Launching
