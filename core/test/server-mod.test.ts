@@ -380,3 +380,81 @@ describe("mod choice answering", () => {
     expect((await post(rt, "/api/mod/choose", { index: 0 })).status).toBe(400);
   });
 });
+
+// -- collaborative lifecycle: reset / reload / end reach every open console --
+
+function modStream(rt: EventRuntime, name?: string) {
+  const chunks: string[] = [];
+  const stream = {
+    writeHead() {
+      return stream;
+    },
+    write(s: unknown) {
+      chunks.push(String(s));
+      return true;
+    },
+    end() {
+      return stream;
+    },
+  } as unknown as ServerResponse;
+  const open = rt.handle(fakeReq(null), stream, "GET", "/events", new URL("http://x/events?role=mod"), {
+    moderator: true,
+    moderatorName: name,
+  });
+  /** Parsed SSE events of one type, in arrival order. */
+  const events = (type: string): unknown[] =>
+    chunks
+      .join("")
+      .split("\n\n")
+      .filter((f) => f.startsWith(`event: ${type}\n`))
+      .map((f) => JSON.parse(f.slice(f.indexOf("data: ") + 6)));
+  return { open, events };
+}
+
+describe("lifecycle fan-out to co-directors", () => {
+  it("reset re-sends a fresh history + a lifecycle notice to every director, and keeps the doors open", async () => {
+    const rt = freshRuntime();
+    rt.openDoors();
+    const a = modStream(rt, "Ada");
+    const b = modStream(rt, "Bo");
+    await Promise.all([a.open, b.open]);
+    await post(rt, "/api/mod/say", { channel: "lobby", text: "before reset" });
+    expect((a.events("message") as Array<{ text: string }>).some((m) => m.text === "before reset")).toBe(true);
+
+    expect((await post(rt, "/api/mod/reset", {})).status).toBe(200);
+    expect(rt.currentPhase).toBe("open");
+    for (const s of [a, b]) {
+      const histories = s.events("history") as Array<Array<{ text: string }>>;
+      expect(histories.length).toBe(2); // connect + reset
+      expect(histories[1]!.some((m) => m.text === "before reset")).toBe(false);
+      expect(s.events("lifecycle")).toContainEqual({ kind: "reset", phase: "open" });
+    }
+  });
+
+  it("restart on new source swaps the running story and reports `reload`", async () => {
+    const rt = freshRuntime();
+    rt.openDoors();
+    const a = modStream(rt);
+    await a.open;
+    const next = `# Rewritten\n\nentry: opening\n\n== opening\n\nNarrator: A different story.\n`;
+    rt.restart(next, "rewritten");
+    expect(rt.source).toBe(next);
+    expect(rt.scenario).toBe("rewritten");
+    expect(a.events("lifecycle")).toContainEqual({ kind: "reload", phase: "open" });
+    expect(rt.liveSim!.log.all().some((e) => e.type === "action" && e.text === "A different story.")).toBe(true);
+  });
+
+  it("every director is named in the mod snapshot, and dispose announces the end", async () => {
+    const rt = freshRuntime();
+    rt.openDoors();
+    const a = modStream(rt, "Ada");
+    const b = modStream(rt);
+    await Promise.all([a.open, b.open]);
+    const snaps = b.events("snapshot") as Array<{ modsOnline: number; directors: string[] }>;
+    const last = snaps[snaps.length - 1]!;
+    expect(last.modsOnline).toBe(2);
+    expect(last.directors.sort()).toEqual(["Ada", "Director"]);
+    rt.dispose();
+    expect(a.events("lifecycle")).toContainEqual({ kind: "ended" });
+  });
+});

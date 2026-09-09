@@ -391,6 +391,11 @@ export async function setEventStatus(id: string, status: EventStatus): Promise<v
   await pool().query(`update event set status = $2, ended_at = ${ended ? "now()" : "ended_at"} where id = $1`, [id, status]);
 }
 
+/** Swap the story source a live event runs on (the editor's "push draft"). */
+export async function setEventSource(id: string, source: string): Promise<void> {
+  await pool().query("update event set scenario_source = $2 where id = $1", [id, source]);
+}
+
 /** Every non-ended event across all projects (for boot rehydration). */
 export async function liveEvents(): Promise<EventRow[]> {
   const { rows } = await pool().query<EventRow>("select * from event where status <> 'ended'");

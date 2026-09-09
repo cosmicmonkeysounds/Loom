@@ -11,6 +11,7 @@ import { confirmAction } from '@/store/dialog'
 import { SelectionKind } from '@/store/cockpit'
 import { useInspect } from '@/components/cockpit/inspect'
 import { FactionPill } from '@/components/cockpit/ui'
+import { DraftSync } from '@/components/run/LiveSetupTab'
 
 // The Barcode Detection API isn't in the TS DOM lib; narrow shim (no `any`).
 interface BarcodeDetectorLike {
@@ -290,6 +291,7 @@ export function EventPanel() {
             {/* controls */}
             <Card title="Controls">
               <div className="flex flex-col gap-2">
+                <DraftSync compact />
                 <div className="flex gap-2">
                   {phase === 'open' ? (
                     <button

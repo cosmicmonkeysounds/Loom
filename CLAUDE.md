@@ -222,6 +222,32 @@ CSS variable set, and the client's `Faction` type / `internet` ids /
 story rules (`watcherIgnored` / `storyRulesIgnored`) rather than
 dropping them.
 
+**Live co-directing hardened 2026-09-09** (TS `core/` + `editor`):
+the Run → Live cockpit is now a real shared control room. Server:
+`EventRuntime.restart(source?)` backs `/api/mod/reset`, `/api/mod/load`,
+and the new control-plane `POST /api/projects/:id/event/reload` (flush
+collab → re-read the project → restart the running event on the current
+text; the row's `scenario_source` follows) — each announces a
+`lifecycle` SSE notice (`reset` / `reload`; `dispose` sends `ended`)
+*before* the replay and re-sends every client a fresh `history` after
+it, so no console (or guest) keeps a stale, seq-scrambled feed; a
+restart keeps the doors open and replays the `entry:` beat.
+`GET /api/projects/:id/event` carries `stale` (project text ≠ running
+snapshot). Directors are named: the author session's name rides the mod
+SSE client → `ModPresence.directors` / `ModView.directors`.
+`EventRuntime.liveSim` is a read-only accessor for tests/tooling.
+Editor: `store/operate.ts` is ref-counted across Run + Deploy, polls
+event status every 10 s (a co-author's launch/end shows up unprompted),
+handles `lifecycle`, and retains the `sim` feed as the cockpit `log`; a
+Live **Setup** page (pause / resume / restart / **push current draft**
+with a draft-changed banner / end, directing-now, your personas), the
+**Log** page on both sources with **Export run** (`loom-run/1` JSON),
+named-event **arguments** on the Director page, and Sim `choices` for
+every person. Covered by `core/test/server-mod.test.ts` (lifecycle
+fan-out), editor unit tests, and a live-stack Playwright check
+(`editor/e2e-live/`, `pnpm --filter loom-app test:e2e:live` against a
+running server + `loom_dev`).
+
 ---
 
 Phase 4 in progress: parser stitches headers / declarations

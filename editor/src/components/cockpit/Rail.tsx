@@ -196,6 +196,7 @@ export function CockpitRail() {
   const ledgerLen = useCockpit((s) => s.ledgerLen)
   const choices = useCockpit((s) => s.choices)
   const modsOnline = useCockpit((s) => s.modsOnline)
+  const directors = useCockpit((s) => s.directors)
   const activeTab = useCockpit((s) => s.activeTab)
   const activeChannel = useCockpit((s) => s.activeChannel)
   const setTab = useCockpit((s) => s.setTab)
@@ -261,11 +262,13 @@ export function CockpitRail() {
             tone={pendingCount > 0 ? 'text-indigo-300' : 'text-zinc-400'}
           />
           {modsOnline !== null && (
-            <Stat
-              value={modsOnline}
-              label={modsOnline === 1 ? 'director' : 'directors'}
-              tone={modsOnline > 1 ? 'text-amber-300' : 'text-zinc-400'}
-            />
+            <span title={directors.length > 0 ? `Directing now: ${directors.join(', ')}` : undefined} data-testid="rail-directors">
+              <Stat
+                value={modsOnline}
+                label={modsOnline === 1 ? 'director' : 'directors'}
+                tone={modsOnline > 1 ? 'text-amber-300' : 'text-zinc-400'}
+              />
+            </span>
           )}
         </div>
         {live && !connected && <div className="mt-1 text-[10px] text-amber-400">○ reconnecting…</div>}

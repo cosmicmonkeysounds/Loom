@@ -210,6 +210,8 @@ export interface ModPresence {
   primes: Set<string>;
   /** Connected mod/director consoles (the editor's Run mode, each co-writer). */
   mods: number;
+  /** Their display names (one entry per open console; "Director" when anonymous). */
+  directors: string[];
 }
 
 /** The operator's full god-view of the world. */
@@ -242,6 +244,8 @@ export interface ModView {
   world: Array<{ path: string; value: string }>;
   /** Connected director consoles (co-writers moderating this event). */
   modsOnline?: number;
+  /** Who those directors are (display names, one per console). */
+  directors?: string[];
 }
 
 /**
@@ -325,6 +329,7 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
     ledgerLen: sim.log.len(),
     world: sim.worldEntries(),
     modsOnline: presence?.mods,
+    directors: presence?.directors,
   };
 }
 

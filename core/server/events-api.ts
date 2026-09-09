@@ -19,6 +19,7 @@ import type { EventRegistry, EventSpec } from "./registry.ts";
 import type { AuthUser } from "./projects.ts";
 import {
   activeEvent,
+  setEventSource,
   createEvent,
   getProjectFor,
   projectSource,
@@ -42,7 +43,7 @@ export function specFromRow(row: EventRow): EventSpec {
 }
 
 /** The dashboard-facing view of an event, including its live phase + codes. */
-function eventView(row: EventRow, joinBase: () => string, phase?: string) {
+function eventView(row: EventRow, joinBase: () => string, phase?: string, stale?: boolean) {
   return {
     id: row.id,
     projectId: row.project_id,
@@ -51,7 +52,17 @@ function eventView(row: EventRow, joinBase: () => string, phase?: string) {
     codes: { event: row.event_code, prime: row.prime_code, mod: row.mod_code },
     joinUrl: `${joinBase()}/?code=${row.event_code}`,
     createdAt: row.created_at,
+    /** The project's files have moved on since the running snapshot was
+     *  taken — "Push current draft" would change what guests play. */
+    ...(stale !== undefined ? { stale } : {}),
   };
+}
+
+/** Is the project's current text different from what the event runs on? */
+async function sourceIsStale(projectId: string, running: string): Promise<boolean> {
+  await collabHub().flush(projectId);
+  const src = await projectSource(projectId);
+  return src !== null && src.source !== running;
 }
 
 /** Mint three fresh passcodes for a new event. */
@@ -72,7 +83,7 @@ export async function handleEvent(
   ctx: EventContext,
 ): Promise<boolean> {
   const projectId = segs[2]!;
-  const action = segs[4]; // undefined | "pause" | "resume" | "end"
+  const action = segs[4]; // undefined | "pause" | "resume" | "end" | "reload"
   const { registry, joinBase } = ctx;
 
   // Owner or invited collaborator — the whole writing team can launch and
@@ -90,8 +101,9 @@ export async function handleEvent(
       sendJson(res, 200, { event: null });
       return true;
     }
-    const phase = registry.get(active.id)?.currentPhase;
-    sendJson(res, 200, { event: eventView(active, joinBase, phase) });
+    const runtime = registry.get(active.id);
+    const running = runtime?.source ?? active.scenario_source;
+    sendJson(res, 200, { event: eventView(active, joinBase, runtime?.currentPhase, await sourceIsStale(projectId, running)) });
     return true;
   }
 
@@ -165,6 +177,22 @@ export async function handleEvent(
       registry.stop(active.id);
       await setEventStatus(active.id, "ended");
       sendJson(res, 200, { ok: true });
+      return true;
+    }
+    if (action === "reload") {
+      // Push the project's current text into the running event: the story
+      // starts over on the new draft (journal + chat cleared, entry beat
+      // replayed if the doors are open). Guests keep their codes.
+      await collabHub().flush(projectId);
+      const src = await projectSource(projectId);
+      if (src === null) {
+        sendJson(res, 400, { error: "project has no files to run" });
+        return true;
+      }
+      const runtime = registry.ensure(specFromRow(active));
+      runtime.restart(src.source, project.name);
+      await setEventSource(active.id, src.source);
+      sendJson(res, 200, { event: eventView({ ...active, scenario_source: src.source }, joinBase, runtime.currentPhase, false) });
       return true;
     }
   }

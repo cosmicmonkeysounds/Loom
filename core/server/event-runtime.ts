@@ -29,7 +29,9 @@ const EMPTY_SIM = Sim.fromSources("");
 /** One SSE subscriber attached to a specific event. */
 interface Client {
   role: "guest" | "prime" | "mod";
-  id: string; // person id (guest), character (prime), or "" (mod)
+  id: string;
+  /** Display name of a session-authorized director (for co-moderator presence). */
+  name?: string; // person id (guest), character (prime), or "" (mod)
   res: ServerResponse;
 }
 
@@ -131,6 +133,11 @@ export class EventRuntime {
     return this.phase === "open" && this.sim !== null;
   }
 
+  /** The live sim, or null before the doors open / after the event ends. */
+  get liveSim(): Sim | null {
+    return this.sim;
+  }
+
   /** A sim that's never null for guest views (returns an empty live sim). */
   private reqSim(): Sim {
     return this.sim ?? EMPTY_SIM;
@@ -144,12 +151,16 @@ export class EventRuntime {
     const guests = new Set<string>();
     const primes = new Set<string>();
     let mods = 0;
+    const directors: string[] = [];
     for (const c of this.clients) {
       if (c.role === "guest") guests.add(c.id);
       else if (c.role === "prime") primes.add(c.id);
-      else mods += 1;
+      else {
+        mods += 1;
+        directors.push(c.name ?? "Director");
+      }
     }
-    return { guests, primes, mods };
+    return { guests, primes, mods, directors };
   }
 
   private snapshotFor(client: Client): unknown {
@@ -166,6 +177,27 @@ export class EventRuntime {
   /** Someone came or went — refresh every mod console's presence view. */
   private pushPresence(): void {
     for (const c of this.clients) if (c.role === "mod") sseSend(c.res, "snapshot", this.snapshotFor(c));
+  }
+
+  /** Re-send every client its full thread history — after a reset / reload
+   *  the chat timeline restarts (seqs from 0 again), so a client that kept
+   *  the old feed would interleave stale rows with new ones. */
+  private pushHistory(): void {
+    for (const c of this.clients) sseSend(c.res, "history", this.historyFor(c));
+  }
+
+  private historyFor(c: Client): ChatMessage[] {
+    return c.role === "guest"
+      ? this.chat.historyFor(c.id, false)
+      : c.role === "mod"
+        ? [...this.chat.all()]
+        : this.chat.all().filter((m) => !m.hidden);
+  }
+
+  /** A lifecycle transition every connected client should react to
+   *  (`reset` / `reload` → drop local state; `ended` → the event is gone). */
+  private pushLifecycle(kind: "reset" | "reload" | "ended", extra: Record<string, unknown> = {}): void {
+    for (const c of this.clients) sseSend(c.res, "lifecycle", { kind, ...extra });
   }
 
   private toPrime(character: string, event: string, data: unknown): void {
@@ -361,9 +393,45 @@ export class EventRuntime {
     this.pushSnapshots();
   }
 
+  /**
+   * Start the story over — optionally on new source (the editor's "push
+   * current draft into the running event"). Clears the journal + chat,
+   * replays nothing, and re-opens the doors if they were open (so the
+   * `entry:` beat fires again). Every connected client gets a fresh
+   * `history` + a `lifecycle` notice so no console keeps a dead feed.
+   */
+  restart(source: string = this.scenarioSource, name: string = this.scenarioName): void {
+    const kind = source === this.scenarioSource ? "reset" : "reload";
+    const wasOpen = this.phase === "open";
+    // Announce first, so a console drops its old ledger/overlay *before*
+    // the replayed entry beat streams in.
+    this.pushLifecycle(kind, { phase: wasOpen ? "open" : "paused" });
+    this.stopTicker();
+    this.sim = null;
+    this.scenarioSource = source;
+    this.scenarioName = name;
+    if (wasOpen) {
+      this.openDoors(); // fresh → loads, clears journal + chat, fires entry
+    } else {
+      this.loadScenario(source, name);
+      this.store.clearJournal();
+      this.resetChat();
+      this.pendingTickMs = 0;
+      this.persistMeta();
+      this.pushSnapshots();
+    }
+    this.pushHistory();
+  }
+
+  /** The source the running event was built from (the launch/reload snapshot). */
+  get source(): string {
+    return this.scenarioSource;
+  }
+
   /** Tear the runtime down (stop the clock, drop SSE clients). */
   dispose(): void {
     this.stopTicker();
+    this.pushLifecycle("ended");
     for (const c of this.clients) {
       try {
         c.res.end();
@@ -433,7 +501,7 @@ export class EventRuntime {
     method: string,
     path: string,
     url: URL,
-    opts: { moderator?: boolean } = {},
+    opts: { moderator?: boolean; moderatorName?: string } = {},
   ): Promise<boolean> {
     // --- SSE stream ---
     // Every projection is capability-gated: the mod feed (full god view,
@@ -473,19 +541,12 @@ export class EventRuntime {
       });
       res.write(":ok\n\n");
       const client: Client = { role, id, res };
+      if (role === "mod") client.name = opts.moderatorName ?? "Director";
       this.clients.add(client);
       sseSend(res, "snapshot", this.snapshotFor(client));
       // A moderator sees the full feed *including* hidden messages (greyed in
       // the UI) so they can un-hide; performers see the public feed only.
-      sseSend(
-        res,
-        "history",
-        role === "guest"
-          ? this.chat.historyFor(id, false)
-          : role === "mod"
-            ? [...this.chat.all()]
-            : this.chat.all().filter((m) => !m.hidden),
-      );
+      sseSend(res, "history", this.historyFor(client));
       this.pushPresence();
       const ping = setInterval(() => res.write(":ping\n\n"), 25000);
       req.on("close", () => {
@@ -928,14 +989,8 @@ export class EventRuntime {
     switch (path) {
       case "/api/mod/load": {
         const source = str(body, "source") || this.scenarioSource;
-        const name = str(body, "name") || "custom";
-        this.stopTicker();
-        this.loadScenario(source, name);
-        this.store.clearJournal();
-        this.resetChat();
-        this.pendingTickMs = 0;
-        this.persistMeta();
-        this.pushSnapshots();
+        const name = str(body, "name") || this.scenarioName;
+        this.restart(source, name);
         sendJson(res, 200, { ok: true, phase: this.phase });
         return true;
       }
@@ -950,13 +1005,7 @@ export class EventRuntime {
         return true;
       }
       case "/api/mod/reset": {
-        this.stopTicker();
-        this.loadScenario(this.scenarioSource, this.scenarioName);
-        this.store.clearJournal();
-        this.resetChat();
-        this.pendingTickMs = 0;
-        this.persistMeta();
-        this.pushSnapshots();
+        this.restart();
         sendJson(res, 200, { ok: true, phase: this.phase });
         return true;
       }

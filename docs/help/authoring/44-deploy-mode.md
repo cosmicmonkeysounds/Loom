@@ -38,7 +38,8 @@ the event's name on the join screen.
 | Control | Does |
 |---|---|
 | **Pause / Resume** | freeze and continue the event clock |
-| **Reset** | rewind the event to its start (journal replay) |
+| **Reset** | restart the story from the top — every connected console follows; chat is cleared |
+| **Push current draft** | swap the running story for the project's current text (the controls card flags **draft changed** when your files moved past the launch snapshot); codes are kept |
 | **End** | close the event for good |
 
 The event's journal lives on the server — if the server restarts, every

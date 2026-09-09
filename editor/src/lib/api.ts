@@ -171,6 +171,9 @@ export interface EventInfo {
   codes: { event: string; prime: string; mod: string }
   joinUrl: string
   createdAt: string
+  /** The project's files have moved on since this event's story snapshot
+   *  was taken — "Push current draft" would change what guests play. */
+  stale?: boolean
 }
 
 export const eventsApi = {
@@ -189,7 +192,15 @@ export const eventsApi = {
   async end(projectId: string): Promise<void> {
     await req('POST', `/api/projects/${projectId}/event/end`)
   },
+  /** Push the project's current text into the running event: the story
+   *  restarts on the new draft (journal + chat cleared), codes are kept. */
+  async reload(projectId: string): Promise<EventInfo> {
+    return (await req<{ event: EventInfo }>('POST', `/api/projects/${projectId}/event/reload`)).event
+  },
 }
+
+/** Named arguments a fired signal binds in listening bodies (`fire x with k: v`). */
+export type SignalArgs = Record<string, string | number | boolean>
 
 // --- live moderation (per-event; authorized by the owning author's session) ---
 // These hit the SAME `/e/:eventId/api/mod/*` routes the operator console uses,
@@ -221,8 +232,8 @@ export const modApi = {
     await req('POST', `/e/${eventId}/api/mod/beat`, { name, subject })
   },
   /** Fire a generic `on <name>` signal, globally or on one subject. */
-  async fireSignal(eventId: string, name: string, subject?: string): Promise<void> {
-    await req('POST', `/e/${eventId}/api/mod/signal`, { name, subject })
+  async fireSignal(eventId: string, name: string, subject?: string, args?: SignalArgs | null): Promise<void> {
+    await req('POST', `/e/${eventId}/api/mod/signal`, { name, subject, args: args ?? undefined })
   },
   /** Scan a guest as a character — fires that character's scan reaction. */
   async scanAs(eventId: string, as: string, target: string): Promise<void> {

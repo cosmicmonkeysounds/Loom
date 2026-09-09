@@ -1,14 +1,18 @@
-//! Run mode (Sim source) — the Log page: the raw sim ledger, one row per `SimEvent`,
-//! newest at the bottom. This is the writer's x-ray: every action line,
-//! dialogue, world write, hook firing, and diagnostic the engine
-//! produced, exactly as the server would journal them. Formatting is
-//! driven off the `SimEventType` enum so a new event kind fails the
-//! exhaustiveness check here instead of rendering blank.
+//! Run mode — the Log page: the raw ledger, one row per `SimEvent`,
+//! newest at the bottom, on either source (the local sim's whole run, or
+//! the live event's `sim` feed since this console connected). This is
+//! the writer's x-ray: every action line, dialogue, world write, hook
+//! firing, and diagnostic the engine produced, exactly as the server
+//! journals them. Formatting is driven off the `SimEventType` enum so a
+//! new event kind fails the exhaustiveness check here instead of
+//! rendering blank. The header exports the whole run (ledger + every
+//! room's transcript + world state) as JSON for bug reports / post-mortems.
 
-import { useEffect, useRef } from 'react'
+import { useContext, useEffect, useRef } from 'react'
 import clsx from 'clsx'
 import { SimEventType, type SimEvent } from '@loom/core/sim'
-import { useSim, type SimLogEntry } from '@/store/sim'
+import { CockpitContext, useCockpit, type LedgerEntry } from '@/store/cockpit'
+import { downloadRunExport } from '@/lib/run-export'
 
 /** Tone class per event type (grouped by family). */
 function toneOf(type: SimEventType): string {
@@ -105,7 +109,7 @@ function clock(ts: number): string {
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 }
 
-function Row({ entry }: { entry: SimLogEntry }) {
+function Row({ entry }: { entry: LedgerEntry }) {
   return (
     <div className="flex gap-2 border-b border-white/5 px-3 py-1 font-mono text-[11px] leading-[16px]">
       <span className="w-10 shrink-0 text-right text-zinc-600">{entry.seq}</span>
@@ -118,21 +122,44 @@ function Row({ entry }: { entry: SimLogEntry }) {
   )
 }
 
-export function SimLogTab() {
-  const log = useSim((s) => s.log)
+export function LogTab() {
+  const log = useCockpit((s) => s.log)
+  const live = useCockpit((s) => s.live)
+  const ledgerLen = useCockpit((s) => s.ledgerLen)
+  const store = useContext(CockpitContext)
   const endRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' })
   }, [log.length])
+  const missed = log.length > 0 ? Math.max(0, ledgerLen - log.length) : 0
   return (
-    <div className="h-full overflow-auto" data-testid="sim-log">
-      {log.length === 0 && (
-        <div className="p-4 text-sm text-zinc-600">The ledger is empty — start a simulation.</div>
-      )}
-      {log.map((entry) => (
-        <Row key={entry.seq} entry={entry} />
-      ))}
-      <div ref={endRef} />
+    <div className="flex h-full flex-col" data-testid="sim-log">
+      <div className="flex items-center justify-between gap-2 border-b border-zinc-800 px-3 py-1 text-[11px] text-zinc-500">
+        <span>
+          {log.length} of {ledgerLen} events
+          {missed > 0 && <span className="ml-1 text-zinc-600">(earlier events predate this console)</span>}
+        </span>
+        <button
+          onClick={() => downloadRunExport(store.getState())}
+          disabled={!live}
+          className="rounded border border-zinc-800 px-2 py-0.5 text-zinc-300 hover:bg-zinc-800 disabled:opacity-40"
+          title="Download the ledger, every room's transcript, and the world state as JSON"
+          data-testid="run-export"
+        >
+          ⤓ Export run
+        </button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto">
+        {log.length === 0 && (
+          <div className="p-4 text-sm text-zinc-600">
+            {live ? 'No events yet on this console.' : 'The ledger is empty — start a simulation.'}
+          </div>
+        )}
+        {log.map((entry) => (
+          <Row key={entry.seq} entry={entry} />
+        ))}
+        <div ref={endRef} />
+      </div>
     </div>
   )
 }

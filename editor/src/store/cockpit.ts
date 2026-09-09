@@ -13,14 +13,16 @@
 
 import { createContext, useContext } from 'react'
 import { create, useStore } from 'zustand'
-import type { StatField } from '@/lib/api'
+import type { SignalArgs, StatField } from '@/lib/api'
+import type { SimEvent } from '@loom/core/sim'
 
 // ---------------------------------------------------------------------------
 // Enums
 // ---------------------------------------------------------------------------
 
-/** The cockpit's center pages. `Sim`/`Log` exist only on the local-sim
- *  source; the live event's lifecycle page lives in Deploy mode. */
+/** The cockpit's center pages. `Sim` is the Setup page on both sources
+ *  (the local sim's lifecycle + personas; the live event's lifecycle,
+ *  draft sync, co-directors + personas); `Log` is the raw ledger. */
 export const CockpitTab = {
   Sim: 'sim',
   Chat: 'chat',
@@ -139,6 +141,15 @@ export interface SpaceSummary {
   title: string
 }
 
+/** One raw ledger row (the Log page) — the engine's `SimEvent` as it
+ *  landed, with its position and the story clock. */
+export interface LedgerEntry {
+  seq: number
+  /** Story-clock ms when the event landed. */
+  ts: number
+  event: SimEvent
+}
+
 // ---------------------------------------------------------------------------
 // The contract
 // ---------------------------------------------------------------------------
@@ -167,6 +178,12 @@ export interface CockpitState {
   world: WorldEntry[]
   /** Connected director consoles (co-writers on this event); null = untracked. */
   modsOnline: number | null
+  /** Those directors by display name (empty when untracked). */
+  directors: string[]
+  /** The raw event ledger — every `SimEvent` the engine emitted, in order
+   *  (the local sim's whole run; a live event's feed since this console
+   *  connected, capped). */
+  log: LedgerEntry[]
   /** Guest ids THIS editor puppets — sim personas locally, or the
    *  personas this director spawned on the shared event ("yours"). */
   personas: string[]
@@ -196,7 +213,7 @@ export interface CockpitState {
   broadcast(scope: string, cue: string): Promise<void>
   setStat(id: string, field: StatField, value: string | number | boolean): Promise<void>
   fireBeat(name: string, subject?: string): Promise<void>
-  fireSignal(name: string, subject?: string): Promise<void>
+  fireSignal(name: string, subject?: string, args?: SignalArgs | null): Promise<void>
   scanAs(as: string, target: string): Promise<void>
   reveal(faction: string): Promise<void>
   /** Answer a pending choice — Sim resumes the local engine's saved
@@ -253,6 +270,8 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   error: null,
   world: [],
   modsOnline: null,
+  directors: [],
+  log: [],
   personas: [],
   activeTab: CockpitTab.Chat,
   activeChannel: 'lobby',

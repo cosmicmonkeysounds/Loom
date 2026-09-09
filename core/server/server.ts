@@ -326,14 +326,18 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     // stream, /api/state, /api/history), so the editor's Run/Deploy modes
     // work on the session cookie alone.
     let moderator = false;
+    let moderatorName: string | undefined;
     const wantsModRead =
       (subPath === "/events" || subPath === "/api/state" || subPath === "/api/history") &&
       (url.searchParams.get("role") ?? "mod") === "mod";
     if (controlPlane && (subPath.startsWith("/api/mod/") || wantsModRead)) {
       const user = await authUser(req);
-      if (user !== null) moderator = await canModerateEvent(eventId, user.id);
+      if (user !== null) {
+        moderator = await canModerateEvent(eventId, user.id);
+        if (moderator) moderatorName = user.name || user.email;
+      }
     }
-    if (await runtime.handle(req, res, method, subPath, url, { moderator })) return;
+    if (await runtime.handle(req, res, method, subPath, url, { moderator, moderatorName })) return;
     return void sendJson(res, 404, { error: "not found" });
   }
 

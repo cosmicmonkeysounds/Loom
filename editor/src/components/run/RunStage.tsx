@@ -24,7 +24,8 @@ import { ChatTab, DirectorTab, RosterTab, WorldTab } from '@/components/cockpit/
 import { StageTab } from '@/components/cockpit/StageTab'
 import { RunCockpit } from '@/components/cockpit/providers'
 import { SimSetupTab } from '@/components/sim/SimSetupTab'
-import { SimLogTab } from '@/components/sim/SimLogTab'
+import { LogTab } from '@/components/cockpit/LogTab'
+import { LiveSetupTab } from '@/components/run/LiveSetupTab'
 
 interface TabSpec {
   id: CockpitTab
@@ -51,7 +52,11 @@ const SIM_TABS: TabSpec[] = [
   { id: CockpitTab.Log, label: 'Log', hint: 'The raw simulator ledger, event by event' },
 ]
 
-const LIVE_TABS: TabSpec[] = PAGE_TABS
+const LIVE_TABS: TabSpec[] = [
+  { id: CockpitTab.Sim, label: 'Setup', hint: 'Pause / restart / push the current draft, who is directing, your personas' },
+  ...PAGE_TABS,
+  { id: CockpitTab.Log, label: 'Log', hint: 'The live event’s raw ledger, event by event — export the run' },
+]
 
 /** The Sim ⇄ Live segmented switch. Live needs a server project; the
  *  green dot marks a launched event waiting to be moderated. */
@@ -232,7 +237,7 @@ function SimPane() {
       {tab === CockpitTab.World && <WorldTab />}
       {tab === CockpitTab.Story && <StoryGraphPanel variant="run" />}
       {tab === CockpitTab.Director && <DirectorTab />}
-      {tab === CockpitTab.Log && <SimLogTab />}
+      {tab === CockpitTab.Log && <LogTab />}
     </StageChrome>
   )
 }
@@ -243,11 +248,10 @@ function LivePane() {
   const tab = useOperate((s) => s.activeTab)
   const setMode = useMode((s) => s.setMode)
   const preview = event?.mode === 'preview'
+  const stale = event?.stale === true ? ' · draft changed' : ''
   const statusText = event
     ? connected
-      ? preview
-        ? '◉ shared rehearsal'
-        : '● live event'
+      ? (preview ? '◉ shared rehearsal' : '● live event') + stale
       : '○ reconnecting…'
     : 'no active event'
 
@@ -268,12 +272,14 @@ function LivePane() {
         </div>
       ) : (
         <>
+          {tab === CockpitTab.Sim && <LiveSetupTab />}
           {tab === CockpitTab.Stage && <StageTab />}
           {tab === CockpitTab.Chat && <ChatTab />}
           {tab === CockpitTab.Roster && <RosterTab />}
           {tab === CockpitTab.World && <WorldTab />}
           {tab === CockpitTab.Story && <StoryGraphPanel variant="run" />}
           {tab === CockpitTab.Director && <DirectorTab />}
+          {tab === CockpitTab.Log && <LogTab />}
         </>
       )}
     </StageChrome>

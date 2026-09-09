@@ -151,7 +151,7 @@ describe("/api/guest/act", () => {
     const r = await post(rt, "/api/guest/act", { token: g.token, name: "knock" });
     expect(r.status).toBe(200);
     // The role's `when knock for guest:` replied to the guest.
-    expect(rt.sim!.log.all().some((e) => e.type === "respond" && e.to === g.id && e.text === "Nobody answers.")).toBe(true);
+    expect(rt.liveSim!.log.all().some((e) => e.type === "respond" && e.to === g.id && e.text === "Nobody answers.")).toBe(true);
   });
 
   it("refuses interactions that are not for guests", async () => {
@@ -173,8 +173,8 @@ describe("/api/prime/act", () => {
     const r = await post(rt, "/api/prime/act", { token, name: "whisper", guest: g.id });
     expect(r.status).toBe(200);
     // Only the Gatekeeper's hook ran (+5), not Ivo Marsh's (+100).
-    expect(rt.sim!.world.get(`${g.id}.favour`)).toEqual({ kind: "number", value: 5 });
-    expect(rt.sim!.log.all().some((e) => e.type === "dialogue" && e.speaker === "The Gatekeeper")).toBe(true);
+    expect(rt.liveSim!.world.get(`${g.id}.favour`)).toEqual({ kind: "number", value: 5 });
+    expect(rt.liveSim!.log.all().some((e) => e.type === "dialogue" && e.speaker === "The Gatekeeper")).toBe(true);
   });
 
   it("gates `who: admin` interactions behind moderator powers and validates the guest", async () => {
@@ -196,6 +196,6 @@ describe("/api/mod/signal with arguments", () => {
     await guest(rt);
     const r = await post(rt, "/api/mod/signal", { name: "alarm", args: { level: 4 } }, true);
     expect(r.status).toBe(200);
-    expect(rt.sim!.log.all().some((e) => e.type === "dialogue" && e.text === "Level 4.")).toBe(true);
+    expect(rt.liveSim!.log.all().some((e) => e.type === "dialogue" && e.text === "Level 4.")).toBe(true);
   });
 });

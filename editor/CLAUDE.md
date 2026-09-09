@@ -138,6 +138,26 @@ reconnects, and the Live segment shows a green dot while an event is
 up. Live is disabled for local folders (no event plane); with no
 active event it offers a jump to Deploy.
 
+**`store/operate.ts` is shared by Run and Deploy and is ref-counted**
+(2026-09-09): `init` takes a hold, `teardown` releases one and only
+closes the stream once nobody holds it (deferred a tick, so a Run ⇄
+Deploy mode switch never drops the feed). While held it **polls the
+control plane every 10 s** (`refresh`) — the only way a co-author's
+launch / end / reload reaches this editor — and on an SSE error it asks
+the control plane whether the event is gone rather than retrying
+forever. Server `lifecycle` SSE notices (`reset` / `reload` / `ended`)
+drop the local ledger + overlay (and clear the event on `ended`); a
+reset/reload is followed by a fresh `history`, so the feed never
+interleaves stale seqs. The raw `sim` feed is retained as the
+cockpit's `log` (capped at 5000), so the **Log** page works on Live
+too. `pushDraft` → `POST /api/projects/:id/event/reload` (the server
+flushes collab, re-reads the project, `EventRuntime.restart(source)`);
+`EventInfo.stale` (server-computed) drives the **draft changed** banner
+(`DraftSync` in `components/run/LiveSetupTab.tsx`, also mounted on the
+Deploy controls card). The mod snapshot's `directors` names every open
+console (`ModPresence.directors`, from the author session), shown on
+the Live **Setup** page and the rail's director-count tooltip.
+
 **The stage chrome is color-keyed to the run tone** (`RunTone`) so what
 world your actions land in is unmistakable: **violet** = the local
 in-browser simulator, **amber** = a server-hosted **shared rehearsal**
@@ -231,8 +251,17 @@ plus Replay entry) and **personas** — local guests the writer acts as
 (`Sim.createPerson`; one is auto-created on start, and the entry beat
 auto-fires). Pending choices surface on the persona card, in the guest
 Inspector, and as a global card when a menu suspends unbound; answering
-one resumes the engine's saved continuation. The **Log** tab is the raw
-sim ledger (every `SimEvent`, formatted per `SimEventType`). The
+one resumes the engine's saved continuation. The **Log** tab
+(`components/cockpit/LogTab.tsx`, both sources) is the raw ledger
+(every `SimEvent`, formatted per `SimEventType`) with an **Export run**
+button (`lib/run-export.ts` — ledger + transcripts + roster + world as
+`loom-run/1` JSON). The Live source has its own **Setup** page
+(`components/run/LiveSetupTab.tsx`: pause / resume / restart / push
+draft / end, co-directors, your personas + pending choices). The
+Director page's named-event fire takes `key: value` **arguments**
+(`lib/signal-args.ts`, → `Sim.signal` args / `/api/mod/signal` `args`).
+Sim `choices` now come from `Sim.allPendingChoices()` (every person,
+not just personas), matching the live `ModView.choices`. The
 **Story** tab mounts the story-graph canvas (`variant="run"`), lit by
 the same `RuntimeOverlay` contract the Live source uses; a
 **quick-fire** control in the header fires any named event from

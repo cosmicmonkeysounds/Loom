@@ -24,6 +24,7 @@ import {
   CockpitTab,
   OPERATOR_LENS,
   type CockpitState,
+  type LedgerEntry,
   type Selection,
 } from '@/store/cockpit'
 
@@ -49,13 +50,8 @@ const PHASE_FOR: Record<SimStatus, CockpitPhase> = {
 /** The key unbound (no-participant) choice menus queue under. */
 export const GLOBAL_CHOICE_KEY = '__global'
 
-/** One ledger row for the Log tab. */
-export interface SimLogEntry {
-  seq: number
-  /** Story-clock ms when the event landed. */
-  ts: number
-  event: SimEvent
-}
+/** One ledger row for the Log tab (the shared cockpit shape). */
+export type SimLogEntry = LedgerEntry
 
 // ---------------------------------------------------------------------------
 // Store
@@ -92,11 +88,9 @@ export const useSim = create<SimState>((set, get) => {
   const snapshot = (): void => {
     if (sim === null || chat === null) return
     const view = modView(sim, PHASE_FOR[get().status], get().scenario)
-    const choices: Record<string, string[]> = {}
-    for (const id of [...get().personas, GLOBAL_CHOICE_KEY]) {
-      const pending = sim.pendingChoiceFor(id)
-      if (pending !== null) choices[id] = pending
-    }
+    // Every pending choice — personas, story-created guests, and the
+    // unbound global menu — exactly what the live `ModView.choices` carries.
+    const choices = sim.allPendingChoices()
     set({
       roster: view.roster,
       factions: view.factions,
@@ -184,6 +178,7 @@ export const useSim = create<SimState>((set, get) => {
     error: null,
     world: [],
     modsOnline: null,
+    directors: [],
     activeTab: CockpitTab.Sim,
     activeChannel: 'lobby',
     selection: null,
@@ -255,7 +250,7 @@ export const useSim = create<SimState>((set, get) => {
     },
     setVar: async (path, value) => run((s) => void s.setVar(path, value)),
     fireBeat: async (name, subject) => run((s) => void s.fireBeat(name, subject)),
-    fireSignal: async (name, subject) => run((s) => void s.signal(name, subject)),
+    fireSignal: async (name, subject, args) => run((s) => void s.signal(name, subject, args ?? null)),
     scanAs: async (as, target) => run((s) => void s.scan(as, target)),
     reveal: async (faction) => run((s) => void s.reveal(faction)),
     choose: async (person, index) => run((s) => void s.choose(person, index)),

@@ -5,6 +5,7 @@
 
 import { useMemo, useState } from 'react'
 import clsx from 'clsx'
+import { parseSignalArgs } from '@/lib/signal-args'
 import {
   CockpitTab,
   SelectionKind,
@@ -660,6 +661,7 @@ export function SubjectSelect({ value, onChange }: { value: string; onChange: (v
 /** Sentinel `<option>` that reveals the free-text signal input. */
 const CUSTOM_EVENT = '__custom'
 
+
 export function DirectorTab() {
   const beats = useCockpit((s) => s.beats)
   const events = useCockpit((s) => s.events)
@@ -670,12 +672,15 @@ export function DirectorTab() {
   const [signal, setSignal] = useState('')
   const [custom, setCustom] = useState('')
   const [signalSubject, setSignalSubject] = useState('')
+  const [signalArgs, setSignalArgs] = useState('')
   const [beat, setBeat] = useState('')
   const [beatSubject, setBeatSubject] = useState('')
   const [cue, setCue] = useState('')
   const [scope, setScope] = useState('all')
 
   const chosenSignal = signal === CUSTOM_EVENT ? custom.trim() : signal
+  const parsedArgs = parseSignalArgs(signalArgs)
+  const argsBad = parsedArgs === undefined
 
   return (
     <div className="h-full overflow-auto p-3">
@@ -711,12 +716,22 @@ export function DirectorTab() {
             )}
             <SubjectSelect value={signalSubject} onChange={setSignalSubject} />
             <button
-              onClick={() => chosenSignal && void fireSignal(chosenSignal, signalSubject || undefined)}
-              disabled={!chosenSignal}
+              onClick={() => chosenSignal && !argsBad && void fireSignal(chosenSignal, signalSubject || undefined, parsedArgs)}
+              disabled={!chosenSignal || argsBad}
               className="rounded bg-indigo-600 px-3 py-1.5 text-sm text-white hover:bg-indigo-500 disabled:opacity-40"
             >
               Fire
             </button>
+            <input
+              value={signalArgs}
+              onChange={(e) => setSignalArgs(e.target.value)}
+              placeholder="arguments — level: 3, who: Ivo  (binds like `fire x with level: 3`)"
+              className={clsx(
+                'w-full rounded border bg-zinc-950 px-2 py-1.5 font-mono text-xs outline-none focus:border-indigo-500',
+                argsBad ? 'border-red-800' : 'border-zinc-700',
+              )}
+              data-testid="director-event-args"
+            />
           </div>
         </section>
 
