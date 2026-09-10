@@ -1,14 +1,20 @@
 //! The shared cockpit center pages — Chat / Roster / World / Director —
-//! rendered identically on Run mode's Sim (local simulator) and Live
-//! (event) sources. Everything reads through `useCockpit`, so the enclosing
-//! provider decides which backend the page drives.
+//! rendered identically on both run backends (the in-browser engine and
+//! the shared server event). Everything reads through `useCockpit`, so the
+//! enclosing provider decides which backend the page drives. All four
+//! follow the identity lens: under a guest or performer lens, Chat becomes
+//! that participant's own inbox (their rooms, their choices, their
+//! interactions, the performer's scanner), the Roster hides god-view
+//! secrets, and World / Director are closed ("switch to Operator to edit").
 
 import { useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { parseSignalArgs } from '@/lib/signal-args'
 import {
   CockpitTab,
+  GLOBAL_CHOICE_KEY,
   SelectionKind,
+  isPersonaId,
   useCockpit,
   type CockpitMessage,
   type RosterRow,
@@ -16,11 +22,37 @@ import {
 } from '@/store/cockpit'
 import { useGraph } from '@/store/graph'
 import { openContextMenu, type ContextMenuEntry } from '@/store/context-menu'
+import { confirmAction } from '@/store/dialog'
 import { FactionPill } from './ui'
-import { LensKind, lensKindOf, messageInLens, useRooms } from './rooms'
+import { publicFaction } from './format'
+import { LensKind, lensKindOf, roomMessages, useRooms } from './rooms'
 import { useInspect } from './inspect'
 import { groupWorld, type WorldGroup } from './world'
 import { VarTable } from './VarTable'
+
+/** A page the current identity may not use — you are a participant, not
+ *  the director, until you switch back to the Operator. */
+export function LensGate({ what }: { what: string }) {
+  const perspective = useCockpit((s) => s.perspective)
+  const roster = useCockpit((s) => s.roster)
+  const setPerspective = useCockpit((s) => s.setPerspective)
+  const name = roster.find((r) => r.id === perspective)?.name ?? perspective
+  return (
+    <div className="grid h-full place-items-center p-8 text-center text-sm text-zinc-500" data-testid="lens-gate">
+      <div>
+        <p>
+          You are <span className="text-indigo-200">{name}</span> right now — only the Operator can {what}.
+        </p>
+        <button
+          onClick={() => setPerspective('operator')}
+          className="mt-3 rounded border border-indigo-900 px-3 py-1.5 text-xs text-indigo-300 hover:bg-indigo-950"
+        >
+          👁 Switch to Operator
+        </button>
+      </div>
+    </div>
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Chat — the selected room's thread + an act-as-anyone composer (rooms live in
@@ -94,9 +126,19 @@ function MessageRow({
     )
   }
   // A spoken `line` — the sender banner appears once per consecutive run.
+  // A director speaking *as* a participant is attributed here (mods only).
   return (
     <li onContextMenu={onMenu} className={clsx('group flex flex-col rounded px-2', banner ? 'pt-1.5' : 'pt-0', 'pb-0.5', m.hidden && 'opacity-40', threadIndent)}>
-      {banner && <span className="text-xs font-semibold text-zinc-300">{m.from || '·'}</span>}
+      {banner && (
+        <span className="text-xs font-semibold text-zinc-300">
+          {m.from || '·'}
+          {m.via && (
+            <span className="ml-1.5 rounded bg-violet-500/15 px-1 text-[9px] font-normal uppercase tracking-wide text-violet-300" title={`typed by ${m.via}, as ${m.from}`}>
+              via {m.via}
+            </span>
+          )}
+        </span>
+      )}
       <span className="flex items-start gap-2">
         <span className="min-w-0 flex-1 break-words text-sm text-zinc-200">{m.text}</span>
         {m.beat ? <BeatLink beat={m.beat} /> : null}
@@ -120,11 +162,37 @@ function DecisionTray({ person, options }: { person: string; options: string[] }
             key={`${i}-${opt}`}
             onClick={() => void choose(person, i)}
             className="rounded border border-indigo-500/50 bg-indigo-600/20 px-2.5 py-1 text-sm text-indigo-100 hover:bg-indigo-600/40"
+            data-testid={`choice-${person}-${i}`}
           >
             {opt}
           </button>
         ))}
       </div>
+    </div>
+  )
+}
+
+/** Speaking as a real (play-app) guest is a serious act: confirm once per
+ *  session per guest before the first message goes out under their name. */
+const confirmedHumans = new Set<string>()
+
+/** A `who: guest` / performer interaction as a button row above the composer. */
+function InteractionRow({ items, onFire, hint }: { items: Array<{ id: string; label: string; description: string | null }>; onFire: (id: string) => void; hint: string }) {
+  if (items.length === 0) return null
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 border-t border-zinc-800 px-3 py-1.5" data-testid="chat-interactions">
+      <span className="text-[10px] uppercase tracking-widest text-zinc-600">{hint}</span>
+      {items.map((i) => (
+        <button
+          key={i.id}
+          onClick={() => onFire(i.id)}
+          title={i.description ?? i.id}
+          className="rounded border border-zinc-700 px-2 py-0.5 text-xs text-zinc-200 hover:bg-zinc-800"
+          data-testid={`chat-interaction-${i.id}`}
+        >
+          {i.label}
+        </button>
+      ))}
     </div>
   )
 }
@@ -135,10 +203,14 @@ export function ChatTab() {
   const roster = useCockpit((s) => s.roster)
   const locations = useCockpit((s) => s.locations)
   const choices = useCockpit((s) => s.choices)
+  const personas = useCockpit((s) => s.personas)
+  const interactions = useCockpit((s) => s.interactions)
   const active = useCockpit((s) => s.activeChannel)
   const perspective = useCockpit((s) => s.perspective)
   const hideMessage = useCockpit((s) => s.hideMessage)
   const say = useCockpit((s) => s.say)
+  const fireSignal = useCockpit((s) => s.fireSignal)
+  const scanAs = useCockpit((s) => s.scanAs)
   const setPerspective = useCockpit((s) => s.setPerspective)
   const setTab = useCockpit((s) => s.setTab)
   const inspect = useInspect()
@@ -149,39 +221,52 @@ export function ChatTab() {
   /** The message a composed reply threads under (root of its thread). */
   const [replyTo, setReplyTo] = useState<CockpitMessage | null>(null)
   const [replyRoom, setReplyRoom] = useState(active)
-  // A reply targets a message in THIS room — leaving the room drops it
-  // (the adjust-state-during-render pattern, not an effect).
+  /** A performer's scan readouts in the open guest thread. */
+  const [readouts, setReadouts] = useState<string[]>([])
+  /** The identity the "post as" pick was made under — a new identity drops it. */
+  const [asFor, setAsFor] = useState(perspective)
+  // A reply (and a scan readout) targets THIS room — leaving the room drops
+  // it (the adjust-state-during-render pattern, not an effect).
   if (active !== replyRoom) {
     setReplyRoom(active)
     setReplyTo(null)
+    setReadouts([])
+  }
+  // A "post as" pick never outlives the identity it was made under: being
+  // someone else must not send as the previous pick (a real guest, say).
+  if (asFor !== perspective) {
+    setAsFor(perspective)
+    setAsWho('')
   }
 
   const lens = lensKindOf(perspective, roster, cast)
   const activeRoom = rooms.find((r) => r.key === active)
-  const thread = useMemo(() => {
-    const ch = activeRoom?.channel ?? active
-    const g = activeRoom?.dmGuest ?? null
-    return messages
-      .filter((m) => (g ? m.channel === ch && Array.isArray(m.audience) && m.audience.includes(g) : m.channel === ch))
-      .filter((m) => messageInLens(m, perspective, lens))
-      .sort((a, b) => a.seq - b.seq)
-  }, [messages, activeRoom, active, perspective, lens])
+  const thread = useMemo(
+    () => roomMessages(activeRoom, active, messages, perspective, lens),
+    [messages, activeRoom, active, perspective, lens],
+  )
 
-  // Postable: any non-DM room, and any per-guest DM room (scoped safely via the
-  // `guest:<id>` path). An aggregate DM room stays read-only.
+  const isGuestThread = activeRoom?.kind === 'guest'
+  // Postable: any non-DM room, any per-guest DM room (scoped safely via the
+  // `guest:<id>` path), a performer's guest thread. An aggregate DM room
+  // stays read-only; so does a room the lens identity may not post in.
   const canCompose = activeRoom ? (activeRoom.kind === 'dm' ? !!activeRoom.dmGuest : true) : !active.startsWith('dm:')
+  const policyBlocked = activeRoom?.canPost === false && lens !== LensKind.Operator
 
-  // The default voice: the lens persona when one is active, the DM room's
-  // character in a guest thread, else the Operator.
+  // The default voice: the character under a performer lens; under a
+  // guest lens the persona itself — or the Operator when the guest is a
+  // real person (speaking as a human is an explicit choice, never the
+  // default); the DM room's character in a guest thread; else the Operator.
   const defaultSpeaker =
-    lens === LensKind.Guest || lens === LensKind.Performer
-      ? perspective
-      : activeRoom?.dmGuest && activeRoom.character
-        ? activeRoom.character
-        : 'Operator'
-  const speaker = asWho || defaultSpeaker
+    lens === LensKind.Performer ? perspective
+    : lens === LensKind.Guest ? (isPersonaId(perspective) ? perspective : 'Operator')
+    : activeRoom?.dmGuest && activeRoom.character ? activeRoom.character
+    : 'Operator'
+  // A performer lens can never send as anyone but the character.
+  const speaker = lens === LensKind.Performer ? perspective : asWho || defaultSpeaker
   const speakerIsGuest = roster.some((r) => r.id === speaker)
   const speakerName = speakerIsGuest ? (roster.find((r) => r.id === speaker)?.name ?? speaker) : speaker
+  const lensName = roster.find((r) => r.id === perspective)?.name ?? perspective
 
   // A guest can only speak in a location room they're standing in (the
   // engine's canPost rule); Operator/Narrator/cast voices are stage crew.
@@ -190,14 +275,28 @@ export function ChatTab() {
       ? !(locations.find((l) => `loc:${l.id}` === activeRoom.channel)?.occupants.includes(speaker) ?? false)
       : false
 
-  const send = () => {
+  const send = async () => {
     const t = text.trim()
-    if (!t || !canCompose || notPresent) return
+    if (!t || !canCompose || notPresent || policyBlocked) return
+    if (speakerIsGuest && !isPersonaId(speaker) && !confirmedHumans.has(speaker)) {
+      const ok = await confirmAction({
+        title: `Speak as ${speakerName}?`,
+        body: `${speakerName} is a real guest. The room will see this as their words; the director feed records that you typed it.`,
+        confirmLabel: `Speak as ${speakerName}`,
+        danger: true,
+      })
+      if (!ok) return
+      confirmedHumans.add(speaker)
+    }
     // Slack-style: replies root at the thread parent, not the reply itself.
     const parent = replyTo !== null ? (replyTo.parentSeq ?? replyTo.seq) : null
     if (activeRoom?.dmGuest && speaker !== activeRoom.dmGuest) {
-      // Speaking to the guest in their thread, as the character/Operator.
-      void say(`guest:${activeRoom.dmGuest}`, t, asWho || activeRoom.character || undefined, parent)
+      // Speaking to the guest in their thread — as the voice the composer
+      // shows: the character under the Operator lens (the DM's owner), the
+      // Operator when viewing as a real guest, the character under a
+      // performer lens.
+      const voice = lens === LensKind.Operator ? asWho || activeRoom.character || undefined : speaker === 'Operator' ? undefined : speaker
+      void say(`guest:${activeRoom.dmGuest}`, t, voice, parent)
     } else {
       // Speaking in the room as whoever the lens/picker says — a guest voice
       // goes through the same journaled say path the play app uses.
@@ -243,35 +342,51 @@ export function ChatTab() {
       items.push(
         { separator: true },
         { label: `Inspect ${m.from}`, testid: 'chat-menu-inspect', onSelect: () => inspect(sender) },
-        { label: `View as ${m.from}`, onSelect: () => setPerspective(sender.id) },
+        { label: `Be ${m.from}`, onSelect: () => setPerspective(sender.id) },
       )
     }
-    items.push(
-      { separator: true },
-      {
-        label: m.hidden ? 'Show message' : 'Hide message',
-        testid: 'chat-menu-hide',
-        onSelect: () => void hideMessage(m.seq, !m.hidden),
-      },
-    )
+    if (lens === LensKind.Operator) {
+      items.push(
+        { separator: true },
+        {
+          label: m.hidden ? 'Show message' : 'Hide message',
+          testid: 'chat-menu-hide',
+          onSelect: () => void hideMessage(m.seq, !m.hidden),
+        },
+      )
+    }
     openContextMenu(items, { x: e.clientX, y: e.clientY })
   }
 
-  // The lens persona's pending decision docks here; the operator lens also
-  // surfaces unbound (global) story menus.
-  const decisionPerson =
-    lens === LensKind.Guest && choices[perspective] ? perspective
-    : lens === LensKind.Operator && choices['__global'] ? '__global'
-    : null
+  // Decisions dock in the room: under a guest lens, theirs; under the
+  // Operator, the unbound story menu plus every persona of yours that is
+  // waiting on one.
+  const decisions: string[] =
+    lens === LensKind.Guest ? (choices[perspective] ? [perspective] : [])
+    : lens === LensKind.Operator ? [GLOBAL_CHOICE_KEY, ...personas].filter((p) => (choices[p]?.length ?? 0) > 0)
+    : []
+
+  // The story's own buttons: a guest's `who: guest` interactions; a
+  // performer's interactions on the guest whose thread is open.
+  const guestActions = lens === LensKind.Guest ? interactions.filter((i) => i.who === 'guest') : []
+  const performerActions = lens === LensKind.Performer && isGuestThread ? interactions.filter((i) => i.who !== 'guest') : []
+  const threadGuest = isGuestThread ? activeRoom?.dmGuest ?? null : null
+
+  const scan = async () => {
+    if (threadGuest === null) return
+    const out = await scanAs(perspective, threadGuest)
+    setReadouts((r) => [...out, ...r])
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-3 py-1.5">
         <span className="text-sm font-medium text-zinc-300">{activeRoom?.title ?? active}</span>
-        {activeRoom && <span className="text-[10px] uppercase tracking-wide text-zinc-600">{activeRoom.kind}</span>}
+        {activeRoom && <span className="text-[10px] uppercase tracking-wide text-zinc-600">{activeRoom.kind === 'guest' ? 'guest thread' : activeRoom.kind}</span>}
+        {activeRoom?.member === true && <span className="text-[10px] text-zinc-600" title="an explicit member of this room">member</span>}
         {lens !== LensKind.Operator && (
-          <span className="ml-auto rounded-full bg-indigo-950 px-2 py-0.5 text-[10px] text-indigo-300">
-            viewing as {roster.find((r) => r.id === perspective)?.name ?? perspective}
+          <span className="ml-auto rounded-full bg-indigo-950 px-2 py-0.5 text-[10px] text-indigo-300" data-testid="chat-viewing-as">
+            {lens === LensKind.Performer ? 'being' : 'viewing as'} {lensName}
           </span>
         )}
       </div>
@@ -291,16 +406,56 @@ export function ChatTab() {
               />
             )
           })}
+          {readouts.map((r, i) => (
+            <li key={`readout-${i}`} className="flex items-start gap-2 rounded bg-emerald-950/30 px-3 py-1.5" data-testid="chat-readout">
+              <span className="shrink-0 pt-px text-[10px] uppercase tracking-widest text-emerald-400/80">readout</span>
+              <span className="min-w-0 flex-1 break-words text-sm italic text-emerald-100">{r}</span>
+            </li>
+          ))}
         </ul>
       </div>
-      {decisionPerson && choices[decisionPerson] ? (
-        <DecisionTray person={decisionPerson} options={choices[decisionPerson]!} />
-      ) : null}
+      {decisions.map((person) =>
+        choices[person] ? <DecisionTray key={person} person={person} options={choices[person]!} /> : null,
+      )}
+      <InteractionRow items={guestActions} onFire={(id) => void fireSignal(id, perspective)} hint="you can" />
+      {lens === LensKind.Performer && threadGuest !== null && (
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-zinc-800 px-3 py-1.5" data-testid="chat-booth">
+          <span className="text-[10px] uppercase tracking-widest text-zinc-600">booth</span>
+          <button
+            onClick={() => void scan()}
+            className="rounded border border-emerald-800/70 px-2 py-0.5 text-xs text-emerald-200 hover:bg-emerald-950/40"
+            data-testid="chat-scan-guest"
+          >
+            📡 Scan {roster.find((r) => r.id === threadGuest)?.name ?? threadGuest}
+          </button>
+          {performerActions.map((i) => (
+            <button
+              key={i.id}
+              onClick={() => void fireSignal(i.id, threadGuest, null, perspective)}
+              title={i.description ?? i.id}
+              className="rounded border border-zinc-700 px-2 py-0.5 text-xs text-zinc-200 hover:bg-zinc-800"
+              data-testid={`chat-interaction-${i.id}`}
+            >
+              {i.label}
+            </button>
+          ))}
+        </div>
+      )}
       {canCompose ? (
         <div className="flex flex-col border-t border-zinc-800">
-          {notPresent && (
+          {policyBlocked && (
+            <div className="px-3 pt-1.5 text-[10px] text-amber-400/80" data-testid="chat-policy-blocked">
+              {lensName} can't post here — {activeRoom?.kind === 'location' ? "they're not in this room" : 'this room is read-only for them'}.
+            </div>
+          )}
+          {!policyBlocked && notPresent && (
             <div className="px-3 pt-1.5 text-[10px] text-amber-400/80">
               {speakerName} isn't in this room — move them here first, or speak as the Operator.
+            </div>
+          )}
+          {lens === LensKind.Guest && !isPersonaId(perspective) && asWho === '' && (
+            <div className="px-3 pt-1.5 text-[10px] text-zinc-500">
+              Speaking as the Operator while viewing as {lensName} — pick their name to speak as them.
             </div>
           )}
           {replyTo !== null && (
@@ -318,47 +473,54 @@ export function ChatTab() {
             </div>
           )}
           <div className="flex items-center gap-2 p-2">
-            <select
-              value={asWho}
-              onChange={(e) => setAsWho(e.target.value)}
-              className="w-32 shrink-0 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-200 outline-none focus:border-indigo-500"
-              title="Post as"
-              data-testid="chat-post-as"
-            >
-              <option value="">{speakerIsGuest && asWho === '' ? speakerName : defaultSpeaker}</option>
-              <optgroup label="Story">
-                <option value="Operator">Operator</option>
-                <option value="Narrator">Narrator</option>
-              </optgroup>
-              {roster.length > 0 && (
-                <optgroup label="Guests">
-                  {roster.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                    </option>
-                  ))}
+            {lens === LensKind.Operator || lens === LensKind.Guest ? (
+              <select
+                value={asWho}
+                onChange={(e) => setAsWho(e.target.value)}
+                className="w-32 shrink-0 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-200 outline-none focus:border-indigo-500"
+                title="Post as"
+                data-testid="chat-post-as"
+              >
+                <option value="">{speakerIsGuest && asWho === '' ? speakerName : defaultSpeaker}</option>
+                <optgroup label="Story">
+                  <option value="Operator">Operator</option>
+                  <option value="Narrator">Narrator</option>
                 </optgroup>
-              )}
-              {cast.length > 0 && (
-                <optgroup label="Cast">
-                  {cast.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.id}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
+                {roster.length > 0 && (
+                  <optgroup label="Guests">
+                    {(lens === LensKind.Guest ? roster.filter((r) => r.id === perspective) : roster).map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {lens === LensKind.Operator && cast.length > 0 && (
+                  <optgroup label="Cast">
+                    {cast.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.id}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            ) : (
+              <span className="w-32 shrink-0 truncate rounded border border-indigo-900 bg-zinc-950 px-2 py-1 text-xs text-indigo-200" data-testid="chat-post-as">
+                {perspective}
+              </span>
+            )}
             <input
-              className="flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-sm outline-none focus:border-indigo-500"
+              className="flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-sm outline-none focus:border-indigo-500 disabled:opacity-50"
               placeholder={`Message ${activeRoom?.title ?? active} as ${speakerName}…`}
               value={text}
+              disabled={policyBlocked}
               onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && send()}
+              onKeyDown={(e) => e.key === 'Enter' && void send()}
             />
             <button
-              onClick={send}
-              disabled={notPresent}
+              onClick={() => void send()}
+              disabled={notPresent || policyBlocked}
               className="rounded bg-indigo-600 px-3 py-1 text-sm text-white hover:bg-indigo-500 disabled:opacity-40"
             >
               Send
@@ -381,10 +543,14 @@ export function ChatTab() {
 export function RosterTab() {
   const roster = useCockpit((s) => s.roster)
   const cast = useCockpit((s) => s.cast)
+  const factions = useCockpit((s) => s.factions)
+  const me = useCockpit((s) => s.me)
   const selection = useCockpit((s) => s.selection)
   const capture = useCockpit((s) => s.capture)
   const release = useCockpit((s) => s.release)
   const setPerspective = useCockpit((s) => s.setPerspective)
+  // Under a lens: no god-view secrets (true factions), no moderation.
+  const locked = useCockpit((s) => s.lens !== null)
   const inspect = useInspect()
 
   const guestMenu = (r: RosterRow, e: React.MouseEvent) => {
@@ -392,11 +558,15 @@ export function RosterTab() {
     openContextMenu(
       [
         { label: `Inspect ${r.name}`, onSelect: () => inspect({ kind: SelectionKind.Guest, id: r.id }) },
-        { label: `View as ${r.name}`, onSelect: () => setPerspective(r.id) },
-        { separator: true },
-        r.captured
-          ? { label: 'Release', onSelect: () => void release(r.id) }
-          : { label: 'Capture', kind: 'danger' as const, onSelect: () => void capture(r.id) },
+        { label: `Be ${r.name}`, onSelect: () => setPerspective(r.id) },
+        ...(locked
+          ? []
+          : [
+              { separator: true as const },
+              r.captured
+                ? { label: 'Release', onSelect: () => void release(r.id) }
+                : { label: 'Capture', kind: 'danger' as const, onSelect: () => void capture(r.id) },
+            ]),
       ],
       { x: e.clientX, y: e.clientY },
     )
@@ -407,7 +577,7 @@ export function RosterTab() {
     openContextMenu(
       [
         { label: `Inspect ${id}`, onSelect: () => inspect({ kind: SelectionKind.Character, id }) },
-        { label: `View as ${id}`, onSelect: () => setPerspective(id) },
+        { label: `Be ${id}`, onSelect: () => setPerspective(id) },
       ],
       { x: e.clientX, y: e.clientY },
     )
@@ -445,15 +615,23 @@ export function RosterTab() {
             >
               <td className="px-3 py-2">
                 {r.name} {r.captured && <span className="ml-1 text-xs text-red-400">🔒</span>}
+                {r.owner && (
+                  <span
+                    className={clsx('ml-1.5 rounded px-1 text-[9px] uppercase tracking-wide', r.owner === me ? 'bg-violet-500/20 text-violet-300' : 'bg-zinc-800 text-zinc-400')}
+                    title={r.owner === me ? 'your persona' : `${r.owner}'s persona`}
+                  >
+                    {r.owner === me ? 'you' : r.owner}
+                  </span>
+                )}
                 <div className="text-[10px] text-zinc-600">{r.id}</div>
               </td>
               <td className="px-3 py-2">
-                <FactionPill faction={r.trueFaction ?? r.faction} />
+                <FactionPill faction={locked ? r.faction : (r.trueFaction ?? r.faction)} />
               </td>
               <td className="px-3 py-2 text-zinc-400">{r.location ?? '—'}</td>
               <td className="px-3 py-2 text-zinc-300">{r.score}</td>
               <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
-                {r.captured ? (
+                {locked ? null : r.captured ? (
                   <button onClick={() => void release(r.id)} className="rounded px-2 py-1 text-xs text-emerald-400 hover:bg-zinc-800">
                     release
                   </button>
@@ -484,7 +662,7 @@ export function RosterTab() {
             )}
           >
             <span className="text-zinc-200">{c.id}</span>
-            <FactionPill faction={c.faction} />
+            <FactionPill faction={publicFaction(c.faction, factions, locked)} />
           </button>
         ))}
       </div>
@@ -522,13 +700,18 @@ function VarGroup({ group, forceOpen, defaultOpen }: { group: WorldGroup; forceO
 }
 
 export function WorldTab() {
+  const locked = useCockpit((s) => s.lens !== null)
+  if (locked) return <LensGate what="browse and edit the world" />
+  return <WorldBrowser />
+}
+
+function WorldBrowser() {
   const factions = useCockpit((s) => s.factions)
   const roster = useCockpit((s) => s.roster)
   const cast = useCockpit((s) => s.cast)
   const locations = useCockpit((s) => s.locations)
   const world = useCockpit((s) => s.world)
   const phase = useCockpit((s) => s.phase)
-  const scenario = useCockpit((s) => s.scenario)
   const ledgerLen = useCockpit((s) => s.ledgerLen)
   const rosterLen = useCockpit((s) => s.roster.length)
   const selection = useCockpit((s) => s.selection)
@@ -536,6 +719,7 @@ export function WorldTab() {
 
   const [open, setOpen] = useState<Set<string>>(new Set())
   const [query, setQuery] = useState('')
+  const scenario = useCockpit((s) => s.run?.scenario ?? null)
   const toggle = (k: string) =>
     setOpen((prev) => {
       const n = new Set(prev)
@@ -616,7 +800,7 @@ export function WorldTab() {
         />
       </div>
       {world.length === 0 ? (
-        <p className="pt-2 text-xs text-zinc-600">The world state appears once a session is running.</p>
+        <p className="pt-2 text-xs text-zinc-600">The world state appears once a rehearsal is running.</p>
       ) : (
         <div className="flex flex-col gap-1 pt-2">
           {grouped.globals && <VarGroup group={grouped.globals} forceOpen={searching} defaultOpen />}
@@ -663,6 +847,12 @@ const CUSTOM_EVENT = '__custom'
 
 
 export function DirectorTab() {
+  const locked = useCockpit((s) => s.lens !== null)
+  if (locked) return <LensGate what="fire events, beats, and broadcasts" />
+  return <DirectorControls />
+}
+
+function DirectorControls() {
   const beats = useCockpit((s) => s.beats)
   const events = useCockpit((s) => s.events)
   const fireSignal = useCockpit((s) => s.fireSignal)

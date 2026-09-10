@@ -27,6 +27,8 @@ import {
   listProjectsFor,
   projectSource,
   removeMember,
+  setEventMode,
+  activeEvent,
   upsertFile,
 } from '../server/db/queries.ts'
 import { migrateAuth } from '../server/auth-server.ts'
@@ -102,6 +104,34 @@ describe('control-plane data layer (Postgres)', () => {
     await createEvent({ id: randomUUID(), ...base, ...codeFields('AAA') })
     // A second active event for the same project violates the partial unique index.
     await expect(createEvent({ id: randomUUID(), ...base, ...codeFields('BBB') })).rejects.toThrow()
+  })
+
+  it('go-live flips a rehearsal to live in place, keeping id + codes, and records who launched it', async (ctx) => {
+    if (!hasDb) return ctx.skip()
+    const p = await createProject(OWNER, 'Go Live')
+    const id = randomUUID()
+    const row = await createEvent({
+      id,
+      project_id: p.id,
+      mode: 'preview',
+      status: 'open',
+      scenario_name: 'x',
+      scenario_source: 'TITLE: x\n',
+      created_by_name: 'Ada',
+      ...codeFields('GOL'),
+    })
+    expect(row.created_by_name).toBe('Ada')
+    await setEventMode(id, 'live')
+    const live = await activeEvent(p.id)
+    expect(live?.id).toBe(id)
+    expect(live?.mode).toBe('live')
+    expect(live?.event_code).toBe(row.event_code)
+    expect(live?.prime_code).toBe(row.prime_code)
+    expect(live?.mod_code).toBe(row.mod_code)
+    // Still the one active event — the partial unique index is untouched.
+    await expect(
+      createEvent({ id: randomUUID(), project_id: p.id, mode: 'live', status: 'open', scenario_name: 'x', scenario_source: 'y', ...codeFields('GOM') }),
+    ).rejects.toThrow()
   })
 
   it('rejects a duplicate event code across live events', async (ctx) => {

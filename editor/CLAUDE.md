@@ -10,31 +10,27 @@ folder with no account.
   local folder via the File System Access API (no account). The workspace
   store is backend-aware (`OpenFile.backend`, `openServerProject`); saves
   route to the API or the on-disk handle accordingly.
-- **Rehearse and moderate in one cockpit**: **Run** mode (`⌘2`) has a
-  **Sim ⇄ Live source switch**. Sim runs the story on an in-browser
-  `@loom/core` `Sim` — no server, no event, no account: act as personas
-  making choices, fire model-enumerated named events, and watch the
-  runtime graph light up (`store/sim.ts`). Live moderates the launched
-  event's roster/feed, backed by `store/operate.ts` over the per-event
-  mod SSE + `/e/:eventId/api/mod/*` (authorized by the author's session
-  — the author *is* the operator). `store/run.ts` owns the switch.
+- **One Run** (`⌘2`, 2026-09-10): the control room for the project's
+  **single run**. "▶ Start rehearsal" is one action everywhere — on a
+  **server project** it launches the project's shared `preview` event
+  (every co-writer lands in the same run), on a **local folder** it
+  compiles the in-browser `@loom/core` `Sim`. The backend is resolved
+  from the workspace kind (`store/run.ts`), never picked by the user;
+  both stores (`store/operate.ts`, `store/sim.ts`) implement the whole
+  `CockpitState` contract, lifecycle included. The header carries the
+  lifecycle (pause / restart / push draft / **go live** in place / end),
+  the **identity control** (be the Operator, a persona, a real guest, or
+  a character — an *exact* lens over the server's own `GuestView` /
+  `PrimeView`), quick-fire, and pending decisions; the Run page is front
+  of house (join codes + QR, directors, guest lookup). The former Deploy
+  mode is folded in.
 - **Ship into a game engine**: **Integrations** mode (`⌘3`,
   `components/integrations/`) is where the story leaves Loom for another
   runtime — today the Wwise-style Godot pipeline (link a project, install
-  the runtime addon, build `.loombank` + `LoomIDs.gd`), moved out of
-  Deploy so *live events* and *engine builds* are separate destinations.
+  the runtime addon, build `.loombank` + `LoomIDs.gd`), kept apart from
+  Run so *live events* and *engine builds* are separate destinations.
   Desktop-only in practice (linking writes into the game project); the
   browser build says so and lists the unwritten Unity / Unreal targets.
-- **Deploy events from the editor**: **Deploy** mode (`⌘4`) is where the
-  live event's unique admin controls live — **start a shared rehearsal**
-  (a private `preview` event every co-writer on the project directs
-  together from Run mode, playing `/api/mod/persona` test guests while
-  talking over a call) or **go live**, share the join code + QR,
-  pause/resume/reset/end, a **live guest list** (online-presence dots
-  off the mod snapshot's `RosterRow.online`, faction/location/score,
-  ⏳ pending-decision badges, click → Inspector) plus online/decision
-  stats, and guest lookup by QR scan (`components/deploy/`, same
-  `store/operate.ts` backend).
 - **See structure visually** alongside code: Writing mode's center is a
   resizable split — the text editor AND the project-wide story-graph
   node editor, live over the same source at the same time.
@@ -71,202 +67,197 @@ src/
               #   loom-lint / lsp-client / loom-ast / story-graph (@loom/core)
   store/      # zustand stores: workspace (files), focus (projection bus),
               #   mode (modal shell), graph (node-editor state), settings,
-              #   cockpit (shared cockpit contract + context),
-              #   run (Sim ⇄ Live source switch),
-              #   sim (local simulator), operate (live event)
+              #   cockpit (the cockpit contract + context, incl. the
+              #   run lifecycle), run (backend resolver + the scratch
+              #   lane), sim (the local backend), operate (the server
+              #   backend)
   components/ # studio/ (StudioShell + ModeBar + per-mode regions),
               #   graph/ (the story-graph node editor), files, editor,
-              #   cockpit/ (shared cockpit surfaces), sim/ (Sim-source
-              #   pages), run/ (the merged Run stage), deploy/ (event
-              #   lifecycle + admin), runner (Outline/References),
+              #   cockpit/ (shared cockpit surfaces + the identity
+              #   control), run/ (RunStage header + RunPage front of
+              #   house + lifecycle controls), runner (Outline/References),
               #   detail, shell
   App.tsx     # top bar + StudioShell + status bar + overlays
 ```
 
 ## Shell (v3 modal topology)
 
-The IDE is one app with four **modes** — **Writing** / **Run** /
-**Integrations** / **Deploy** — switched from a bottom **Mode Bar**
-(`⌘1` … `⌘4`), DaVinci-Resolve-style. Writing is the whole authoring surface: its
+The IDE is one app with three **modes** — **Writing** / **Run** /
+**Integrations** — switched from a bottom **Mode Bar** (`⌘1` … `⌘3`),
+DaVinci-Resolve-style. Writing is the whole authoring surface: its
 center stage is a resizable **editor ⇄ story-graph split** (either pane
 snaps closed), so text and structure are visible at the same time. Run
-(`components/run/RunStage.tsx`) is the whole rehearsal/moderation
-cockpit — a **Sim ⇄ Live source switch** picks between the local
-in-browser simulator and the launched event; see **The cockpit** below.
-Integrations (`components/integrations/`) owns the engine targets — the
-Godot link / addon install / bank build. Deploy (`components/deploy/`)
-owns the live event's existence: launch, codes/QR, lifecycle, guest
-lookup. Each mode is a fixed, resizable
-`allotment` layout (left rail · center stage · right properties tray ·
-optional bottom Timeline dock) that composes the leaf panels;
-`store/mode.ts` owns the active mode + per-mode region sizes, including
-Writing's center `split` (persisted to `localStorage["loom.studio"]`;
-legacy `editing`/`sim`/`operate` mode ids migrate on load). The right
+(`components/run/RunStage.tsx`) is the control room for the project's
+one run; see **The cockpit** below. Integrations
+(`components/integrations/`) owns the engine targets — the Godot link /
+addon install / bank build. Each mode is a fixed, resizable `allotment`
+layout (left rail · center stage · right properties tray · optional
+bottom Timeline dock) that composes the leaf panels; `store/mode.ts`
+owns the active mode + per-mode region sizes, including Writing's center
+`split` (persisted to `localStorage["loom.studio"]`; retired
+`editing`/`sim`/`operate`/`deploy` mode ids migrate on load). The right
 **Properties tray** (`components/studio/PropertiesTray.tsx`) is tabbed:
 in Writing it follows the **canvas selection** (beat/entity/connection/
 file inspector with editable contract + In/Out link lists), falling
 back to the editor cursor (active-file AST via `lib/loom-ast.ts`); plus
-a workspace References panel; in Run/Deploy it is the cockpit
-Inspector. This replaced the old `dockview` activity-bar + free-docking
-model (and the v2 four-mode Writing/Editing/Sim/Run bar). Original
-design: [`docs/loom-ide-redesign.md` Part II](../docs/loom-ide-redesign.md).
+a workspace References panel; in Run it is the cockpit Inspector. The
+Mode Bar dots the Run tab while a run exists (amber rehearsal / emerald
+live), from any mode. This replaced the old `dockview` activity-bar +
+free-docking model, the v2 four-mode Writing/Editing/Sim/Run bar, and
+the 2026-07 four-mode bar with a separate Deploy mode. Original design:
+[`docs/loom-ide-redesign.md` Part II](../docs/loom-ide-redesign.md).
 
-### The cockpit — Run's two sources share one surface
+### The cockpit — one Run, two backends, one contract
 
 `store/cockpit.ts` defines the **cockpit contract** (`CockpitState`):
-the state + action surface behind both run backends (roster,
-factions/locations, channels + messages, beats, **named events**,
-selection, and the whole mod-command vocabulary — say / capture /
-setStat / fireBeat / fireSignal / scanAs / reveal / broadcast /
-choose). Shared components read it through `useCockpit(selector)`,
-resolved from a React context (`CockpitContext`) whose value is
-whichever store the enclosing provider supplies
-(`components/cockpit/providers.tsx` — `RunCockpit` follows
-`store/run.ts`'s Sim ⇄ Live switch; Deploy mounts `OperateCockpit`):
+the state + action surface behind both run backends — roster, factions/
+locations, channels + messages, beats, named events, **interactions**,
+selection, the whole mod-command vocabulary (say / capture / setStat /
+fireBeat / fireSignal(…, `actor`) / scanAs → readouts / reveal /
+broadcast / choose / addPersona / setVar), **and the run lifecycle**:
+`run: RunInfo | null` (`backend` local|server, `mode` rehearsal|live,
+`scratch`, `scenario`, `stale`, `codes`, `joinUrl`, `eventId`,
+`startedAt`, `startedBy`), `busy`, `me` (this console's director name),
+`startRun(mode)` / `pause` / `resume` / `restart` (same snapshot) /
+`pushDraft` (the project's current text) / `goLive` / `end`, plus
+`lastRun` (the run that just ended, for Export + the empty state),
+`notice` (a dismissable header banner) and the identity **`lens`**
+(below). Shared components read it through `useCockpit(selector)`,
+resolved from `CockpitContext`; `components/cockpit/providers.tsx`'s
+`RunCockpit` picks the store from the workspace kind (`store/run.ts`
+`useRunBackend`: `projectId !== null` → server, else local) — or the
+local store while a **scratch run** is active. An ESLint
+`no-restricted-imports` rule forbids importing `@/store/operate` /
+`@/store/sim` anywhere else (allowlist: providers, `store/run.ts`,
+`App.tsx`, tests), so the Sim/Live fork cannot creep back into
+components.
 
-- **Live** → `store/operate.ts` — the mod SSE + `/e/:eventId/api/mod/*`.
-- **Sim** → `store/sim.ts` — a real `@loom/core` `Sim` compiled from
-  the indexed project and driven entirely in the browser. Message
-  composition + snapshots reuse the event server's pure modules
-  (`@loom/core/chat`'s `composeGuestMessages`/`ChatStore`,
-  `@loom/core/views`' `modView`) so a simulated run reads exactly like
-  the live event. A 1 s ticker drives `Sim.tick` while running.
+- **Server backend** → `store/operate.ts` — the mod SSE +
+  `/e/:eventId/api/mod/*` + the control plane. **Attached for the life
+  of the open server project** (an effect in `App.tsx` on
+  `useWorkspace.projectId` calls `attach` / `detach`), never per mode:
+  a Writing ⇄ Run hop keeps the feed, ledger, selection, personas. A
+  co-writer's launch / go-live / end / push reaches this console within
+  a second through the project's collab stream (`lib/collab.ts`
+  `onCollabEvent` ← the server's `CollabHub.notifyEvent` `event`
+  frames); a 30 s status poll is the fallback. `startRun(Rehearsal)` =
+  `launch('preview')` (a 409 "already active" **adopts** that run with
+  an info notice) → `addPersona(me)` → Chat/lobby; `goLive` →
+  `POST …/event/golive` (promotion in place: codes kept, story
+  restarted fresh, rehearsal guests/personas/performer sign-ins cut).
+  `lifecycle` SSE notices (`reset` / `reload` / `golive` / `ended`, with
+  `by` + `at`) drop the ledger + overlay, re-spawn your persona on a
+  rehearsal restart, show a **banner naming who did it** when it wasn't
+  you, and on `ended` move the run into `lastRun` instead of zeroing it.
+  `personas` is server truth: roster rows whose `owner === me`
+  (`RosterRow.owner` from the runtime's persona-owner map, persisted in
+  the event meta — so "yours" survives an editor refresh and a server
+  restart; every `restart()`, push-draft `reload` and go-live included,
+  clears them and re-spawns your persona only if you had one). `stale` is
+  real state: the server's flag OR the Workspace generation moving past
+  `compiledAt` (`useLspIndexGen` is only the trigger); a co-writer's
+  `reload` re-bases `compiledAt` so every console's "draft changed"
+  clears. Requests are fenced on `projectId` (a slow status reply from a
+  project you left is dropped).
+- **Local backend** → `store/sim.ts` — a real `@loom/core` `Sim`
+  compiled from the indexed project and driven entirely in the
+  browser. Message composition + snapshots reuse the event server's pure
+  modules (`@loom/core/chat`, `@loom/core/views`) so a local run reads
+  exactly like the shared one. `restart()` rebuilds from the sources
+  captured at `startRun` (`compiledAt` unchanged); `pushDraft()`
+  re-reads the index; `stale` flips the moment `useLspIndexGen` moves.
+  `startRun(Live)` / `goLive` set `error` — a live event needs a server
+  project. `me` is `'Writer'`. A 1 s ticker drives `Sim.tick` while open.
+- **Scratch runs** (`store/run.ts` `useScratch`): on a server project
+  whose shared run is **live** or has **other directors**
+  (`scratchAllowed`), the header offers "⚗ Test draft privately" — the
+  local backend in the same cockpit (violet chrome, `scratch · this
+  browser`), with one "← Back to the shared run" exit; also offered by
+  the empty state when the control plane is unreachable. Session-only,
+  never auto-selected.
 
-The Run stage owns the mod-stream lifecycle (init/teardown by
-`projectId`) at the *stage* level, so flipping Sim ⇄ Live never
-reconnects, and the Live segment shows a green dot while an event is
-up. Live is disabled for local folders (no event plane); with no
-active event it offers a jump to Deploy.
+**The Run stage** (`components/run/RunStage.tsx`): a header on every
+page — the **run pill** (`run-chrome.ts` `runStatusText`: `no active
+event` · `local · in-browser` · `scratch · this browser` · `shared
+rehearsal` · `live event`, tone-coloured violet / amber / emerald),
+`LifecycleControls.tsx` (Pause/Resume · a **↺ Restart ▾** menu with
+*restart this draft* / *⇪ push current draft* (surfaced as an amber
+button when `stale`) / *go live…* / *■ end* · the scratch enter/leave
+buttons; live-run destructive actions need the event code typed via
+`promptText`), the page tabs (Run · Stage · Chat · Story · Roster ·
+World · Director · Log — only Run + Story usable with no run; World +
+Director closed under a lens), the **identity control**
+(`cockpit/Identity.tsx`), quick-fire, and a ⏳ decisions pill;
+`LifecycleBanner.tsx` below it shows `notice`. **`RunPage.tsx`** is
+front of house only: the empty state ("Rehearse <project>" · ▶ Start
+rehearsal · *Go live with real guests →* on a server project · the last
+run's Export line · the scratch offer on a control-plane error) and,
+while running, **Join** (three codes with copy, join URL, QR, a
+performer sign-in row per character with presence), **Directing now**
+(names, `(you)`, started-by + age), **Look up a guest** (camera QR /
+manual id → Inspector); a local run gets one explainer card. A source
+test pins that `RunPage.tsx` renders none of the lifecycle testids.
 
-**`store/operate.ts` is shared by Run and Deploy and is ref-counted**
-(2026-09-09): `init` takes a hold, `teardown` releases one and only
-closes the stream once nobody holds it (deferred a tick, so a Run ⇄
-Deploy mode switch never drops the feed). While held it **polls the
-control plane every 10 s** (`refresh`) — the only way a co-author's
-launch / end / reload reaches this editor — and on an SSE error it asks
-the control plane whether the event is gone rather than retrying
-forever. Server `lifecycle` SSE notices (`reset` / `reload` / `ended`)
-drop the local ledger + overlay (and clear the event on `ended`); a
-reset/reload is followed by a fresh `history`, so the feed never
-interleaves stale seqs. The raw `sim` feed is retained as the
-cockpit's `log` (capped at 5000), so the **Log** page works on Live
-too. `pushDraft` → `POST /api/projects/:id/event/reload` (the server
-flushes collab, re-reads the project, `EventRuntime.restart(source)`);
-`EventInfo.stale` (server-computed) drives the **draft changed** banner
-(`DraftSync` in `components/run/LiveSetupTab.tsx`, also mounted on the
-Deploy controls card). The mod snapshot's `directors` names every open
-console (`ModPresence.directors`, from the author session), shown on
-the Live **Setup** page and the rail's director-count tooltip.
+**Being anyone — the identity lens.** `perspective` is `OPERATOR_LENS`
+(god view) or a guest/persona/character id; `setPerspective` resolves
+**`lens`** = that participant's own projection — `guestView` /
+`primeView` computed locally, or fetched from
+`GET /e/:id/api/state?role=guest|prime&as=<id>` (mod-authorized) and
+refreshed on every snapshot. `cockpit/rooms.ts` `buildRooms` then lists
+**exactly** the lens's channels (real `member` / `canPost` /
+`threadable`), the lobby, their faction room, their folded DM threads —
+or, for a character, the performer's booth (one `guest:<gid>` thread per
+guest, kind `guest`, `roomMessages` = everything addressed to them). A
+guest lens never sees a hidden message (`messageInLens`). Chat's
+composer defaults to the persona (`isPersonaId`, a `p…` id) or the
+character; speaking as a **real** guest defaults to the Operator, needs
+an explicit pick + a once-per-session `confirmAction`, obeys the
+server's `canPost` for that person, and shows a **`via <director>`**
+badge (`CockpitMessage.via`, stripped for guest clients). Under a guest
+lens Chat shows their `who: guest` interactions as buttons; under a
+performer lens the open guest thread gets **📡 Scan** (`scanAs` →
+inline readouts) and the performer/admin interactions fired **as** the
+character (`fireSignal(id, gid, null, character)`). The Roster hides
+`trueFaction`, the Stage disables dragging, World/Director render a
+`LensGate`, and the Inspector's editors (`VarTable` included) are
+disabled under any non-Operator lens. `Esc` outside a text field returns
+to the Operator.
 
-**The stage chrome is color-keyed to the run tone** (`RunTone`) so what
-world your actions land in is unmistakable: **violet** = the local
-in-browser simulator, **amber** = a server-hosted **shared rehearsal**
-(a `preview` event the whole writing team directs together), **emerald**
-= the real live event. Accents ride the source segment, active-tab
-underline, header border, and status text ("▶ rehearsal running" / "◉
-shared rehearsal" / "● live event"). The Sim source's first page is
-labelled **Setup** (never "Sim" — the source switch already says Sim)
-and every page tab carries a what-it-does tooltip.
+**The super-admin's peek** (`cockpit/Inspector.tsx`): a guest shows
+**Their view** (side / where / score / deciding / rooms / can — exact
+when they are the lens), **Their feed** (the last 60 messages
+`visibleTo` them, hidden greyed), story position + trail, variables, and
+a **👁 Be <name>** button; a character shows **Their feed** (lines they
+spoke + `dm:` threads) plus their **scan readouts** (`respond` ledger
+events), variables, owned beats. The **Log** page
+(`cockpit/LogTab.tsx`) filters to one participant (`log-filter.ts`
+`eventMentions`, generic over every string field of a `SimEvent`) and
+exports a run that just ended (`lib/run-export.ts` reads `run ??
+lastRun`; `source: local|server`, `mode`, `startedBy`, `endedBy`).
 
-**The director's read on the event** is built from live engine
-projections (`ModView.world`, `RosterRow.beat`/`visited`/`online`,
-`CastSummary.online`, `ModView.modsOnline` — identical shapes from the
-local `Sim` via `@loom/core/views` and the mod SSE):
+**The rail** (`cockpit/Rail.tsx`): the world badge (`format.ts`
+`worldBadge`: ◦ Local run · ⚗ Scratch run · ◉ Shared rehearsal · ● Live
+event, `run-backend` testid), phase, stats (guests / online / events /
+decisions / directors), the **Guests** section with owner chips ("you"
+/ "Ana") + presence + ⏳/🔒 + an inline persona spawner + the guest
+context menu (`guest-menu.ts`: Inspect / Be / Open DM / Capture-Release
+— the last only for the Operator), and the **Rooms** navigator (🔇 on a
+room the lens identity can't post in).
 
-- **Stage** (`cockpit/StageTab.tsx`) — the floor plan: one card per
-  LOCATION with the guests standing in it as chips (presence dot ·
-  **story position** `⤷ beat` linking to the map · ⏳ decision · 🔒
-  captured · faction), an **Elsewhere** card for the unplaced, and a
-  **cast strip** marking which characters have a performer signed in.
-  **Chips drag between location cards** — a drop is the same journaled
-  `arrive` as walking there, so `on enters`/`exits` hooks fire.
-- **World** (`tabs.tsx`) — the live state browser: vitals, factions,
-  and a **searchable variables table** of the whole world state grouped
-  into Globals / Story clock / per-guest / cast / faction-location
-  internals (pure `groupWorld` in `cockpit/world.ts`, unit-tested).
-  **Double-click any value to edit it live** (`cockpit/VarTable.tsx` →
-  the cockpit `setVar` action → `Sim.setVar` locally / journaled
-  `/api/mod/var` on an event; person-standard fields route through the
-  real mutators so bookkeeping + hooks stay correct).
-- **Story** — beat nodes now carry **occupant chips**
-  (`RuntimeOverlay.positions`, fed per-person by `beatEntered.subject`),
-  so you watch guests move across the map, not just beats pulse.
-- **Inspector** — a guest gains a **Story position** card (current beat
-  → map) + their visited-beat trail, and a live **Variables** table
-  (`entityVars`); characters show their variables too.
-
-Shared cockpit components (`components/cockpit/`): `tabs.tsx` (Chat /
-Roster / World / Director pages), `StageTab.tsx`, `world.ts`,
-`guest-menu.ts` (the shared guest context menu), `Rail.tsx` — the
-admin's at-a-glance event overview: a tone-keyed identity header
-(SIM / SHARED / LIVE badge + phase + reconnect notice), live stats
-(guests, **online presence**, ledger events, pending decisions, and
-**N directors** when co-writers share the event), the **perspective
-lens picker**, a collapsible **Guests** section (presence dots off
-`RosterRow.online`, ⏳ decision + 🔒 captured badges, click →
-Inspector, right-click → Inspect / View as / Open DM thread /
-Capture-Release, plus an inline **"new persona…"** spawner — local on
-Sim, journaled `/api/mod/persona` on Live; personas this editor spawned
-are tracked in `CockpitState.personas` and badge **"you"** once the
-roster holds anyone else, so co-writers can tell their puppets apart),
-and the collapsible **Rooms** navigator — so the rail serves every
-page, not just Chat.
-`Inspector.tsx` (guest
-/ character / faction / location inspectors + the `PendingChoice` card
-+ **View/act-as** buttons), `rooms.ts` (the pure, perspective-aware
-`buildRooms` room model — unit-tested in `rooms.test.ts`),
-`inspect.ts`, `ui.tsx`, `format.ts`. Everything is **enum-driven**
-(const-object enums — `erasableSyntaxOnly` forbids TS `enum`):
-`CockpitTab`, `SelectionKind`, `CockpitPhase`, `SimStatus`, `LensKind`,
-plus the core-side `SimEventType` / `BuiltinVerb`. The Director's
-"fire named event" picker is a **closed list enumerated from the
-compiled model** (`namedEvents(model)` — authored hook verbs,
-builtins/timers excluded), with a custom… escape hatch.
-
-**The conversation surface** (design:
-[`docs/loom-conversation-model.md`](../docs/loom-conversation-model.md)):
-the rooms rail lists the lobby, faction channels, **location rooms**
-(`loc:<Id>` — where a beat's `setting:` routes its narration), authored
-SPACE/CHANNEL rooms, and per-(character × guest) DM threads. The
-cockpit's `perspective` lens (`OPERATOR_LENS` god view / a guest id /
-a character id, set from the rail picker or an Inspector's "View + act
-as") filters rooms + feed to what that identity can see and becomes
-the composer's default voice. The Chat composer's "post as" picker is
-grouped **Story (Operator · Narrator) · Guests · Cast**; guest speech
-goes through the same journaled `say` path the play app uses and is
-presence-gated in location rooms (the engine's `canPost` rule).
-Messages render by `kind` — Narrator `narration` blocks, dim `system`
-notices, amber `signal`s, sender-run-grouped `line`s — and every
-scripted line carries a `⤷ beat` link that reveals its node on the
-Story tab's map. The lens persona's pending choice docks as a
-**decision tray** above the composer; answering it hits the local
-engine in Sim and the journaled `/api/mod/choose` in Run (the mod
-snapshot carries `ModView.choices`), so both modes can resolve a
-stuck guest identically.
-
-**Sim source specifics** (`components/sim/`): the **Sim** tab owns
-lifecycle (Start / Pause / Reset — Reset recompiles from the current
-sources, with a stale-sources hint keyed off the LSP index generation —
-plus Replay entry) and **personas** — local guests the writer acts as
-(`Sim.createPerson`; one is auto-created on start, and the entry beat
-auto-fires). Pending choices surface on the persona card, in the guest
-Inspector, and as a global card when a menu suspends unbound; answering
-one resumes the engine's saved continuation. The **Log** tab
-(`components/cockpit/LogTab.tsx`, both sources) is the raw ledger
-(every `SimEvent`, formatted per `SimEventType`) with an **Export run**
-button (`lib/run-export.ts` — ledger + transcripts + roster + world as
-`loom-run/1` JSON). The Live source has its own **Setup** page
-(`components/run/LiveSetupTab.tsx`: pause / resume / restart / push
-draft / end, co-directors, your personas + pending choices). The
-Director page's named-event fire takes `key: value` **arguments**
-(`lib/signal-args.ts`, → `Sim.signal` args / `/api/mod/signal` `args`).
-Sim `choices` now come from `Sim.allPendingChoices()` (every person,
-not just personas), matching the live `ModView.choices`. The
-**Story** tab mounts the story-graph canvas (`variant="run"`), lit by
-the same `RuntimeOverlay` contract the Live source uses; a
-**quick-fire** control in the header fires any named event from
-anywhere (on either source). Speaking *as a character* is the Chat
-composer's "post as" picker.
+Everything is **enum-driven** (const-object enums — `erasableSyntaxOnly`
+forbids TS `enum`): `CockpitTab`, `RunBackend`, `RunMode`,
+`SelectionKind`, `CockpitPhase`, `LensKind`, plus the core-side
+`SimEventType` / `BuiltinVerb`. Tests: `store/sim.test.ts`,
+`store/run.test.ts`, `store/lifecycle-contract.test.ts`
+(`describe.each` over both stores against a mocked control plane),
+`cockpit/rooms.test.ts` (exact lens rooms, hidden rule, performer
+threads), `cockpit/log-filter.test.ts`, `components/run/run-chrome.test.ts`,
+`lib/run-export.test.ts`; Playwright `e2e/sim.spec.ts` (local backend:
+start / choices / quick-fire / scan / identity lens / log filter / end)
++ `e2e/studio.spec.ts` (three modes, the server empty state under a
+stubbed status route) + the opt-in `e2e-live/live-collab.spec.ts`
+(co-writer launch / restart banner / push draft / go live in place /
+end against the real stack).
 
 ### The story-graph node editor (`components/graph/`)
 
@@ -342,9 +333,9 @@ active buffer) via `lib/story-graph.ts`'s `useStoryGraph()`
   (`variant="run"`, read-only, on both sources) and lights up from
   `store/graph.ts`'s `RuntimeOverlay` — visit badges, current-beat
   pulse, and amber **traversal heat** on the edges a run actually took
-  (`traversed`, best-effort beat→beat hops). The Live source feeds it
-  from the mod SSE `sim` feed; the Sim source from the local simulator
-  — the identical contract. In a run canvas, right-clicking a beat offers
+  (`traversed`, best-effort beat→beat hops). The server backend feeds it
+  from the mod SSE `sim` feed; the local backend from the in-browser
+  engine — the identical contract. In a run canvas, right-clicking a beat offers
   **Fire beat ▶** straight into the hosting cockpit.
 - **Ergonomics** (all in `StoryGraphPanel` + `store/graph.ts`):
   - **Hover tooltips** on every node + edge (beat preview + `file:line`,
@@ -449,7 +440,7 @@ is gated on `lib/desktop.ts`'s `isDesktop()` and inert in the browser:
 - `ContextMenuHost` supports right-aligned keybinding `hint`s and
   `{ separator: true }` divider rows (`store/context-menu.ts`'s
   `ContextMenuEntry`).
-- **Shell keys** (`StudioShell`): ⌘1..⌘4 modes, **⌘B** toggle left
+- **Shell keys** (`StudioShell`): ⌘1..⌘3 modes, **⌘B** toggle left
   rail, **⌘⌥B** toggle properties tray, **⌘\** toggle the Writing
   story-graph pane (`ModeUi.graphOpen`; an explicit `reveal` re-opens
   it). All three also live in the command palette. Tab keys stay
@@ -504,7 +495,7 @@ is gated on `lib/desktop.ts`'s `isDesktop()` and inert in the browser:
   `cancelDialog` in `e2e/helpers.ts`), `e2e/qol.spec.ts`
   (drill-in text sync, follow-cursor, editor context menu, ⌘Z journal
   roundtrip, chat message menus), `e2e/graph.spec.ts` (canvas),
-  `e2e/sim.spec.ts` (Run/Sim source).
+  `e2e/sim.spec.ts` (Run mode on a local workspace).
 
 ## Loom integration
 
@@ -512,7 +503,7 @@ is gated on `lib/desktop.ts`'s `isDesktop()` and inert in the browser:
 **native TypeScript** from `@loom/core` — **no wasm**. (`@loom/core` is
 wired in via path aliases in `vite.config.ts` + `tsconfig.app.json`:
 `@loom/core/parser`, `@loom/core/lsp`, `@loom/core/sim` (the ecosystem
-runtime behind Run mode's Sim source), and the server's pure projection modules
+runtime behind Run mode on a folder), and the server's pure projection modules
 `@loom/core/chat` + `@loom/core/views`, all resolving straight to `.ts`
 source.) Everything here is synchronous; there is no bundle to load or
 rebuild.
@@ -592,16 +583,16 @@ rebuild.
   both deleted) — see **The story-graph node editor** above for the
   `components/graph/` surface it feeds.
 
-## Local play is Run mode's Sim source; server projects co-edit live
+## Local play is Run mode on a folder; server projects co-edit live
 
 The editor is an authoring tool with a **local rehearsal runtime**:
 open a folder, edit, highlight, lint, full **in-buffer LSP** (hover /
 go-to-definition on ⌘/Ctrl-Click + F12 / completion / find-references
 on ⇧F12 / occurrence highlight / project diagnostics, plus the Outline
 / References panels and go-to-symbol), structural beat edits, the
-story-graph node editor beside the text, and Run mode's **Sim** source
-(`⌘2`) — the `@loom/core` TS `Sim` running in-browser (no wasm; the
-old wasm `LoomSession` stayed dead — this is the native-TS successor).
+story-graph node editor beside the text, and Run mode (`⌘2`) — on a
+folder, the `@loom/core` TS `Sim` running in-browser (no wasm; the old
+wasm `LoomSession` stayed dead — this is the native-TS successor).
 
 **Server projects co-edit in real time** (2026-08-27, `lib/collab.ts` —
 the native-TS successor to the removed Loro relay path): every
@@ -627,12 +618,12 @@ full file CRUD (create/rename/delete files + folders) with `files` SSE
 events reconciling every co-writer's tree (`reconcileServerTree`).
 A local **folder** stays single-author (no relay), and **live events
 run in the sibling packages**: `core/` (the TS engine + SSE/REST event
-server) and `play/` (the participant app). The editor does
-not render the guest chat; instead Run mode's **Live** source
-*moderates* events on that server and **Deploy** mode (`⌘4`) *hosts*
-them (launch, codes/QR, lifecycle) — the participant view stays in the
-`play` app. The Mode Bar is four modes — **Writing** (`⌘1`), **Run**
-(`⌘2`), **Integrations** (`⌘3`), **Deploy** (`⌘4`).
+server) and `play/` (the participant app). The editor does not render
+the guest chat; Run mode on a server project *hosts and moderates* the
+project's run on that server (launch, go live, codes/QR, lifecycle,
+being anyone) — the participant view stays in the `play` app. The Mode
+Bar is three modes — **Writing** (`⌘1`), **Run** (`⌘2`),
+**Integrations** (`⌘3`).
 
 ## Hosting
 

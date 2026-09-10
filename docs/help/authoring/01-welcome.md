@@ -24,8 +24,8 @@ them (or a server project you edit right here).
   order. Start at [Your first scene](first-scene.md) and read forward.
 - **Live Shows** — everything for running a story with a real audience:
   rosters, locations, broadcasts, chat rooms, game verbs.
-- **The Editor** — this app: Writing, Run, and Deploy modes, the story
-  graph, rehearsing, and going live.
+- **The Editor** — this app: Writing, Run, and Integrations modes, the
+  story graph, rehearsing, and going live.
 - **Reference** — the [cheat sheet](cheat-sheet.md) (every symbol on one
   page), [keyboard shortcuts](shortcuts.md), and
   [common mistakes](common-mistakes.md).

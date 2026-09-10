@@ -5,6 +5,8 @@
 //! event — person-standard fields route through the real mutators, so
 //! editing `<guest>.location` genuinely moves them and fires hooks).
 //! Shared by the World tab's groups and the Inspector's Variables card.
+//! Under a non-Operator lens the table is read-only — you are a
+//! participant right now, not the director.
 
 import { useState } from 'react'
 import { useCockpit } from '@/store/cockpit'
@@ -12,14 +14,15 @@ import type { VarRow } from './world'
 
 function ValueCell({ row }: { row: VarRow }) {
   const setVar = useCockpit((s) => s.setVar)
+  const locked = useCockpit((s) => s.lens !== null)
   const [draft, setDraft] = useState<string | null>(null)
 
   if (draft === null) {
     return (
       <td
-        onDoubleClick={() => setDraft(row.value)}
-        title={`${row.path} — double-click to edit`}
-        className="cursor-text px-2 py-1 text-right font-mono text-emerald-200/90"
+        onDoubleClick={() => !locked && setDraft(row.value)}
+        title={locked ? `${row.path} — switch to Operator to edit` : `${row.path} — double-click to edit`}
+        className={locked ? 'px-2 py-1 text-right font-mono text-emerald-200/90' : 'cursor-text px-2 py-1 text-right font-mono text-emerald-200/90'}
         data-testid={`var-value-${row.path}`}
       >
         {row.value}

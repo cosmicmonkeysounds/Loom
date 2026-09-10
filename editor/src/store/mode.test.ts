@@ -1,6 +1,6 @@
-// The v3 modal topology: three modes (Writing / Run / Deploy), the
-// Writing center split persisted per mode, and migration of the
-// pre-v3 persisted mode ids (editing→writing, sim/operate→run).
+// The modal topology: three modes (Writing / Run / Integrations), the
+// Writing center split persisted per mode, and migration of retired
+// persisted mode ids (editing→writing, sim/operate/deploy→run).
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -36,10 +36,10 @@ async function freshMode() {
 }
 
 describe('mode store (v3 topology)', () => {
-  it('exposes exactly Writing / Run / Integrations / Deploy on ⌘1..⌘4', async () => {
+  it('exposes exactly Writing / Run / Integrations on ⌘1..⌘3', async () => {
     const { MODES } = await freshMode()
-    expect(MODES.map((m) => m.id)).toEqual(['writing', 'run', 'integrations', 'deploy'])
-    expect(MODES.map((m) => m.hint)).toEqual(['⌘1', '⌘2', '⌘3', '⌘4'])
+    expect(MODES.map((m) => m.id)).toEqual(['writing', 'run', 'integrations'])
+    expect(MODES.map((m) => m.hint)).toEqual(['⌘1', '⌘2', '⌘3'])
     // The BeatStrip timeline dock rides the merged Writing mode.
     expect(MODES.find((m) => m.id === 'writing')?.hasTimeline).toBe(true)
   })
@@ -56,10 +56,22 @@ describe('mode store (v3 topology)', () => {
     ['editing', 'writing'],
     ['sim', 'run'],
     ['operate', 'run'],
+    ['deploy', 'run'],
   ])('migrates persisted legacy mode %s → %s', async (legacy, expected) => {
     storage.setItem('loom.studio', JSON.stringify({ mode: legacy }))
     const { useMode } = await freshMode()
     expect(useMode.getState().mode).toBe(expected)
+  })
+
+  it('drops a stale ui.deploy blob silently (the Deploy mode folded into Run)', async () => {
+    storage.setItem(
+      'loom.studio',
+      JSON.stringify({ mode: 'deploy', ui: { deploy: { cols: [260, 900, 340], railOpen: false } } }),
+    )
+    const { useMode } = await freshMode()
+    expect(useMode.getState().mode).toBe('run')
+    expect('deploy' in useMode.getState().ui).toBe(false)
+    expect(useMode.getState().ui.run.railOpen).toBe(true)
   })
 
   it('drops unknown persisted modes back to writing', async () => {

@@ -99,6 +99,8 @@ create unique index if not exists event_prime_code_uq on event (prime_code) wher
 create unique index if not exists event_mod_code_uq on event (mod_code) where status <> 'ended';
 -- At most one active (non-ended) event per project.
 create unique index if not exists event_one_active_per_project on event (project_id) where status <> 'ended';
+-- Who launched it (display name), so a co-writer landing in the run knows whose it is.
+alter table event add column if not exists created_by_name text;
 `;
 
 /** Create the domain tables if they don't exist. Throws if the DB is down. */

@@ -49,11 +49,15 @@ CHARACTER Greeter
   -> END
 `
 
-/** Open the app and inject `files` as an in-memory server project. */
+/** Open the app and inject `files` as an in-memory SERVER project. There
+ *  is no server behind it, so the run store's status poll is answered with
+ *  "no event" here — Run mode shows its empty state, never a 500. Use
+ *  `openLocalProject` for anything that actually runs the story. */
 export async function openProject(
   page: Page,
   files: Array<{ path: string; content: string }> = [{ path: 'main.loom', content: MAIN_LOOM }],
 ): Promise<void> {
+  await page.route('**/api/projects/e2e/event*', (r) => r.fulfill({ json: { event: null } }))
   await page.goto('/')
   await page.waitForLoadState('networkidle')
   await page.evaluate(async (fs) => {
@@ -66,12 +70,34 @@ export async function openProject(
   await page.waitForTimeout(600)
 }
 
-/** Switch modes via the Mode Bar (Writing / Run / Integrations / Deploy). */
-export async function switchMode(
+/** Open the app and inject `files` as an in-memory LOCAL workspace (no
+ *  project id) — Run mode resolves to the in-browser engine, exactly like
+ *  a folder opened with the picker. */
+export async function openLocalProject(
   page: Page,
-  mode: 'writing' | 'run' | 'integrations' | 'deploy',
+  files: Array<{ path: string; content: string }> = [{ path: 'main.loom', content: MAIN_LOOM }],
 ): Promise<void> {
+  await page.goto('/')
+  await page.waitForLoadState('networkidle')
+  await page.evaluate(async (fs) => {
+    const ws = await import('/src/store/workspace.ts')
+    await ws.useWorkspace.getState().openLocalFiles('e2e-project', fs)
+  }, files)
+  await expect(page.getByTestId('mode-bar')).toBeVisible()
+  await page.waitForTimeout(600)
+}
+
+/** Switch modes via the Mode Bar (Writing / Run / Integrations). */
+export async function switchMode(page: Page, mode: 'writing' | 'run' | 'integrations'): Promise<void> {
   await page.getByTestId(`mode-${mode}`).click()
+}
+
+/** Start a rehearsal on the open workspace and wait for the cockpit to land. */
+export async function startRehearsal(page: Page): Promise<void> {
+  await switchMode(page, 'run')
+  await page.getByTestId('run-start').click()
+  await expect(page.getByTestId('rail-guest-p1')).toBeVisible()
+  await page.waitForTimeout(300)
 }
 
 /** Answer the in-app dialog (the app no longer uses native prompt/confirm —

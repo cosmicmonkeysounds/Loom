@@ -12,6 +12,7 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
+import { guestView, primeView } from "../server/views.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { scenarioSource } from "../examples/load.ts";
 
@@ -421,13 +422,14 @@ describe("lifecycle fan-out to co-directors", () => {
     await post(rt, "/api/mod/say", { channel: "lobby", text: "before reset" });
     expect((a.events("message") as Array<{ text: string }>).some((m) => m.text === "before reset")).toBe(true);
 
-    expect((await post(rt, "/api/mod/reset", {})).status).toBe(200);
+    expect((await postAs(rt, "/api/mod/reset", {}, "Ada")).status).toBe(200);
     expect(rt.currentPhase).toBe("open");
     for (const s of [a, b]) {
       const histories = s.events("history") as Array<Array<{ text: string }>>;
       expect(histories.length).toBe(2); // connect + reset
       expect(histories[1]!.some((m) => m.text === "before reset")).toBe(false);
-      expect(s.events("lifecycle")).toContainEqual({ kind: "reset", phase: "open" });
+      // Every console learns who did it — including Ada's own.
+      expect(s.events("lifecycle")).toContainEqual(expect.objectContaining({ kind: "reset", phase: "open", by: "Ada", at: expect.any(Number) }));
     }
   });
 
@@ -440,7 +442,7 @@ describe("lifecycle fan-out to co-directors", () => {
     rt.restart(next, "rewritten");
     expect(rt.source).toBe(next);
     expect(rt.scenario).toBe("rewritten");
-    expect(a.events("lifecycle")).toContainEqual({ kind: "reload", phase: "open" });
+    expect(a.events("lifecycle")).toContainEqual(expect.objectContaining({ kind: "reload", phase: "open" }));
     expect(rt.liveSim!.log.all().some((e) => e.type === "action" && e.text === "A different story.")).toBe(true);
   });
 
@@ -454,7 +456,236 @@ describe("lifecycle fan-out to co-directors", () => {
     const last = snaps[snaps.length - 1]!;
     expect(last.modsOnline).toBe(2);
     expect(last.directors.sort()).toEqual(["Ada", "Director"]);
-    rt.dispose();
-    expect(a.events("lifecycle")).toContainEqual({ kind: "ended" });
+    rt.dispose("Ada");
+    expect(a.events("lifecycle")).toContainEqual(expect.objectContaining({ kind: "ended", by: "Ada" }));
+  });
+});
+
+// -- the super-admin surface: attribution, being anyone, the go-live cut ----
+
+/** A guest's SSE stream (token in the URL), recording every frame. */
+function guestStream(rt: EventRuntime, token: string) {
+  const chunks: string[] = [];
+  let ended = false;
+  const stream = {
+    writeHead() {
+      return stream;
+    },
+    write(s: unknown) {
+      chunks.push(String(s));
+      return true;
+    },
+    end() {
+      ended = true;
+      return stream;
+    },
+  } as unknown as ServerResponse;
+  const open = rt.handle(
+    fakeReq(null),
+    stream,
+    "GET",
+    "/events",
+    new URL(`http://x/events?role=guest&token=${encodeURIComponent(token)}`),
+    {},
+  );
+  const events = (type: string): unknown[] =>
+    chunks
+      .join("")
+      .split("\n\n")
+      .filter((f) => f.startsWith(`event: ${type}\n`))
+      .map((f) => JSON.parse(f.slice(f.indexOf("data: ") + 6)));
+  return { open, events, isEnded: () => ended };
+}
+
+async function postAs(rt: EventRuntime, path: string, body: unknown, moderatorName: string) {
+  const res = fakeRes();
+  const url = new URL(`http://x${path}`);
+  await rt.handle(fakeReq(body), res, "POST", path, url, { moderator: true, moderatorName });
+  return { status: res.statusCode, json: JSON.parse(res.body || "{}") };
+}
+
+async function tokenPost(rt: EventRuntime, path: string, body: Record<string, unknown>, token: string) {
+  const res = fakeRes();
+  const url = new URL(`http://x${path}`);
+  await rt.handle(fakeReq({ ...body, token }), res, "POST", path, url, {});
+  return { status: res.statusCode, json: JSON.parse(res.body || "{}") };
+}
+
+describe("mod act", () => {
+  it("/api/mod/act no longer has a signal branch (signals go through /api/mod/signal, with an optional actor)", async () => {
+    const rt = freshRuntime();
+    const id = await withGuest(rt);
+    expect((await post(rt, "/api/mod/act", { id, action: "signal", name: "lockdown" })).status).toBe(400);
+    expect((await post(rt, "/api/mod/act", { id, action: "capture" })).status).toBe(200);
+    expect((await post(rt, "/api/mod/signal", { name: "lockdown", actor: "NotACharacter" })).status).toBe(404);
+    expect((await post(rt, "/api/mod/signal", { name: "lockdown" })).status).toBe(200);
+  });
+});
+
+describe("speaking as a participant", () => {
+  it("obeys their post policy, carries `via` for mods, and hides it from guests", async () => {
+    const rt = freshRuntime();
+    const gid = await withGuest(rt);
+    const persona = await postAs(rt, "/api/mod/persona", { name: "Puppet" }, "Ada");
+    const pid = persona.json.guest.id as string;
+    expect(persona.json.guest.owner).toBe("Ada");
+
+    // A read-only feed (`#announcements`, post: none) refuses the puppet…
+    const denied = await postAs(rt, "/api/mod/say", { channel: "room:announcements", text: "hi", as: pid }, "Ada");
+    expect(denied.status).toBe(403);
+    // …but the Operator may still post there.
+    expect((await postAs(rt, "/api/mod/say", { channel: "room:announcements", text: "notice", as: "" }, "Ada")).status).toBe(200);
+    // A persona can't DM a guest as themselves.
+    expect((await postAs(rt, "/api/mod/say", { channel: `guest:${gid}`, text: "psst", as: pid }, "Ada")).status).toBe(403);
+    // An unknown speaker is a typo, not a voice.
+    expect((await postAs(rt, "/api/mod/say", { channel: "lobby", text: "?", as: "Nobody" }, "Ada")).status).toBe(404);
+
+    // A character's voice posts anywhere and is never attributed.
+    expect((await postAs(rt, "/api/mod/say", { channel: "room:announcements", text: "in character", as: "Recruiter" }, "Ada")).status).toBe(200);
+    const inCharacter = (await get(rt, `/api/history?id=${gid}`)).json.messages.find((m: { text: string }) => m.text === "in character");
+    expect(inCharacter.from).toBe("Recruiter");
+    expect(inCharacter.via).toBeUndefined();
+
+    // In the lobby the puppet speaks under its own name, attributed to Ada for mods only.
+    expect((await postAs(rt, "/api/mod/say", { channel: "lobby", text: "hello room", as: pid }, "Ada")).status).toBe(200);
+    const modHistory = await get(rt, `/api/history?id=${gid}`);
+    const line = modHistory.json.messages.find((m: { text: string }) => m.text === "hello room");
+    expect(line.from).toBe("Puppet");
+    expect(line.via).toBe("Ada");
+    // A guest reading the same thread never sees `via`.
+    const res = fakeRes();
+    const guestToken = ((await post(rt, "/api/guest/register", { name: "Bob", passcode: CODES.event }, false)).json as { token: string }).token;
+    await rt.handle(fakeReq({}), res, "GET", "/api/history", new URL(`http://x/api/history?token=${guestToken}`), {});
+    const seen = JSON.parse(res.body).messages.find((m: { text: string }) => m.text === "hello room");
+    expect(seen).toBeDefined();
+    expect("via" in seen).toBe(false);
+
+    // Hiding then un-hiding re-delivers the line to guests — still without `via`.
+    const g = guestStream(rt, guestToken);
+    await g.open;
+    expect((await post(rt, "/api/mod/message", { seq: line.seq, hidden: true })).status).toBe(200);
+    expect((await post(rt, "/api/mod/message", { seq: line.seq, hidden: false })).status).toBe(200);
+    const redelivered = (g.events("message") as Array<{ seq: number; via?: string }>).filter((m) => m.seq === line.seq);
+    expect(redelivered.length).toBe(1);
+    expect("via" in redelivered[0]!).toBe(false);
+  });
+
+  it("`via` and persona ownership survive a server restart", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-mod-"));
+    dirs.push(d);
+    const mk = () =>
+      new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "x", scenarioSource: SCENARIO, joinBase: () => "http://localhost" });
+    const rt1 = mk();
+    rt1.openDoors();
+    const persona = await postAs(rt1, "/api/mod/persona", { name: "Puppet" }, "Ada");
+    const pid = persona.json.guest.id as string;
+    await postAs(rt1, "/api/mod/say", { channel: "lobby", text: "puppet line", as: pid }, "Ada");
+    rt1.pause();
+
+    const rt2 = mk();
+    expect(rt2.restore()).not.toBeNull();
+    const history = await get(rt2, `/api/history?id=${pid}`);
+    const line = history.json.messages.find((m: { text: string }) => m.text === "puppet line");
+    expect(line.via).toBe("Ada");
+    // Ownership rides presence: read it through a mod stream's snapshot.
+    const m = modStream(rt2, "Bo");
+    await m.open;
+    const snaps = m.events("snapshot") as Array<{ roster: Array<{ id: string; owner?: string | null }> }>;
+    expect(snaps[snaps.length - 1]!.roster.find((r) => r.id === pid)?.owner).toBe("Ada");
+  });
+
+  it("journals every mod mutation with who did it", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-mod-"));
+    dirs.push(d);
+    const store = new Store(d);
+    const rt = new EventRuntime({ eventId: "evt", store, codes: CODES, scenarioName: "x", scenarioSource: SCENARIO, joinBase: () => "http://localhost" });
+    const id = await withGuest(rt);
+    await postAs(rt, "/api/mod/set", { id, field: "score", value: 7 }, "Ada");
+    const lines = store.readJournal();
+    const setScore = lines.find((l) => l.m === "setScore");
+    expect(setScore?.by).toBe("Ada");
+    // Guest mutations carry no attribution.
+    expect(lines.find((l) => l.m === "createPerson")?.by).toBeUndefined();
+  });
+});
+
+describe("being anyone — the mod reads a participant's own projection", () => {
+  it("/api/state?role=guest&as= and ?role=prime&as= return the play app's views verbatim", async () => {
+    const rt = freshRuntime();
+    const id = await withGuest(rt);
+    await post(rt, "/api/mod/scan", { as: "Recruiter", target: id }); // gives the guest a pending choice
+    const asGuest = await get(rt, `/api/state?role=guest&as=${id}`);
+    expect(asGuest.status).toBe(200);
+    expect(asGuest.json.pendingChoice).toEqual(["Join the Chatters", "Stay loyal"]);
+    // Byte-for-byte the play app's own projection (the scan docked the
+    // decision under the Recruiter's DM).
+    expect(asGuest.json).toEqual(JSON.parse(JSON.stringify(guestView(rt.liveSim!, id, "dm:Recruiter"))));
+    const asPrime = await get(rt, "/api/state?role=prime&as=Recruiter");
+    expect(asPrime.status).toBe(200);
+    expect(asPrime.json).toEqual(JSON.parse(JSON.stringify(primeView(rt.liveSim!, "Recruiter"))));
+    expect((await get(rt, "/api/state?role=guest&as=nobody")).status).toBe(404);
+    expect((await get(rt, "/api/state?role=prime&as=Nobody")).status).toBe(404);
+    expect((await get(rt, `/api/state?role=guest&as=${id}`, false)).status).toBe(403);
+  });
+
+  it("/api/mod/scan hands back the character's readouts", async () => {
+    const rt = freshRuntime();
+    const id = await withGuest(rt);
+    const r = await post(rt, "/api/mod/scan", { as: "Recruiter", target: id });
+    expect(Array.isArray(r.json.responses)).toBe(true);
+  });
+
+  it("persona ownership rides the mod snapshot as RosterRow.owner", async () => {
+    const rt = freshRuntime();
+    rt.openDoors();
+    const a = modStream(rt, "Ada");
+    await a.open;
+    const created = await postAs(rt, "/api/mod/persona", { name: "Ivo" }, "Ada");
+    const pid = created.json.guest.id as string;
+    const snaps = a.events("snapshot") as Array<{ roster: Array<{ id: string; owner?: string | null }> }>;
+    const row = snaps[snaps.length - 1]!.roster.find((r) => r.id === pid);
+    expect(row?.owner).toBe("Ada");
+  });
+});
+
+describe("the go-live cut", () => {
+  it("announces `golive` with `by`, signs every guest and performer out, and keeps admin sessions", async () => {
+    const rt = freshRuntime();
+    rt.openDoors();
+    const reg = await post(rt, "/api/guest/register", { name: "Alice", passcode: CODES.event }, false);
+    const guestToken = reg.json.token as string;
+    const prime = await post(rt, "/api/prime/login", { character: "Recruiter", passcode: CODES.prime }, false);
+    const primeToken = prime.json.token as string;
+    const mod = await post(rt, "/api/mod/login", { passcode: CODES.mod }, false);
+    const modToken = mod.json.token as string;
+    const g = guestStream(rt, guestToken);
+    const m = modStream(rt, "Ada");
+    await Promise.all([g.open, m.open]);
+
+    rt.restart(undefined, undefined, { kind: "golive", by: "Ada" });
+
+    expect(m.events("lifecycle")).toContainEqual(expect.objectContaining({ kind: "golive", by: "Ada", at: expect.any(Number) }));
+    expect(g.events("lifecycle")).toContainEqual(expect.objectContaining({ kind: "golive" }));
+    expect(g.isEnded()).toBe(true);
+    // The rehearsal guest's token is dead: they must re-register.
+    expect((await tokenPost(rt, "/api/guest/say", { channel: "lobby", text: "still here?" }, guestToken)).status).toBe(401);
+    // The performer lost their character; the code-holding admin keeps moderating.
+    const primeState = fakeRes();
+    await rt.handle(fakeReq({}), primeState, "GET", "/api/state", new URL(`http://x/api/state?role=prime&token=${primeToken}`), {});
+    expect(primeState.statusCode).toBe(403);
+    expect((await tokenPost(rt, "/api/mod/say", { channel: "lobby", text: "admin lives" }, modToken)).status).toBe(200);
+    expect(rt.currentPhase).toBe("open");
+  });
+
+  it("a plain reset also cuts guests but keeps performers signed in", async () => {
+    const rt = freshRuntime();
+    rt.openDoors();
+    const reg = await post(rt, "/api/guest/register", { name: "Alice", passcode: CODES.event }, false);
+    const prime = await post(rt, "/api/prime/login", { character: "Recruiter", passcode: CODES.prime }, false);
+    rt.restart();
+    expect((await tokenPost(rt, "/api/guest/say", { channel: "lobby", text: "?" }, reg.json.token as string)).status).toBe(401);
+    const primeState = fakeRes();
+    await rt.handle(fakeReq({}), primeState, "GET", "/api/state", new URL(`http://x/api/state?role=prime&token=${prime.json.token}`), {});
+    expect(primeState.statusCode).toBe(200);
   });
 });

@@ -1,5 +1,5 @@
 //! Integrations mode (⌘3) — center stage: where the story leaves Loom
-//! for another runtime. Deploy (⌘4) hosts *live events*; this mode hosts
+//! for another runtime. Run (⌘2) hosts *live events*; this mode hosts
 //! every other target the project ships into.
 //!
 //! Today that is the Wwise-style game-engine integration: link a Godot 4

@@ -83,6 +83,15 @@ export function replaceIntoYText(ytext: Y.Text, next: string, origin?: unknown):
   }, origin);
 }
 
+/** What `notifyEvent` fans out on the project's collab stream. */
+export interface EventNotice {
+  kind: "launched" | "golive" | "ended" | "reload" | "paused" | "resumed";
+  /** Display name of the author who did it. */
+  by: string;
+  eventId: string;
+  mode: "live" | "preview";
+}
+
 export class CollabHub {
   private readonly projects = new Map<string, ProjectCollab>();
 
@@ -161,6 +170,19 @@ export class CollabHub {
     const p = this.projects.get(projectId);
     if (p === undefined) return;
     for (const c of p.clients) sseSend(c.res, "files", { op, path });
+  }
+
+  /**
+   * A run transition on this project's event (launch / go live / end / pause /
+   * resume / push draft): tell every open editor at once, so a co-writer's
+   * console follows within a second instead of on its next status poll.
+   * (`/api/mod/reset` is announced by the runtime's own `lifecycle` stream —
+   * it doesn't know its project — so `reset` is deliberately absent here.)
+   */
+  notifyEvent(projectId: string, payload: EventNotice): void {
+    const p = this.projects.get(projectId);
+    if (p === undefined) return;
+    for (const c of p.clients) sseSend(c.res, "event", payload);
   }
 
   /** A plain `PUT /files` landed while a live doc exists: fold the new text

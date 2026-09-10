@@ -138,6 +138,19 @@ describe("CollabHub — CRDT co-editing", () => {
     expect(files.get("p1/main.loom")).toBe("# t\none\nmiddle\ntwo\n");
   });
 
+  it("notifyEvent fans a run transition to every open editor of the project", async () => {
+    const { storage } = memoryStorage({ "main.loom": "x\n" });
+    const hub = new CollabHub(storage, 10);
+    const a = await joinEditor(hub, "main.loom", "a");
+    const b = await joinEditor(hub, "main.loom", "b");
+    hub.notifyEvent("p1", { kind: "launched", by: "Ada", eventId: "evt-1", mode: "preview" });
+    hub.notifyEvent("p2", { kind: "ended", by: "Bo", eventId: "evt-2", mode: "live" }); // another project — silent here
+    for (const c of [a, b]) {
+      const frames = c.events.filter((e) => e.event === "event").map((e) => e.data);
+      expect(frames).toEqual([{ kind: "launched", by: "Ada", eventId: "evt-1", mode: "preview" }]);
+    }
+  });
+
   it("drops a deleted file's doc without persisting it back", async () => {
     const { storage, files } = memoryStorage({ "gone.loom": "bye\n" });
     const hub = new CollabHub(storage, 10);

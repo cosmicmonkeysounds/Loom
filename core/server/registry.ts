@@ -86,11 +86,12 @@ export class EventRegistry {
     return this.register(runtime);
   }
 
-  /** Stop hosting an event: dispose its runtime and drop it. */
-  stop(eventId: string): void {
+  /** Stop hosting an event: dispose its runtime and drop it. `by` names the
+   *  director who ended it (rides the `lifecycle` notice). */
+  stop(eventId: string, by?: string): void {
     const runtime = this.byId.get(eventId);
     if (runtime) {
-      runtime.dispose();
+      runtime.dispose(by);
       this.byId.delete(eventId);
     }
   }

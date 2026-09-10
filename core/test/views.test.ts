@@ -44,6 +44,24 @@ describe("server views", () => {
     expect(v.characters).toContain("Moderator_Prime");
   });
 
+  it("marks mod-spawned personas with their puppeteer from presence", () => {
+    const sim = Sim.fromSources(SCENARIO);
+    sim.createPerson("p-1", "Ivo");
+    sim.createPerson("g-1", "Alice");
+    const v = modView(sim, "open", "x", {
+      guests: new Set(["g-1"]),
+      primes: new Set(),
+      mods: 1,
+      directors: ["Ada"],
+      owners: new Map([["p-1", "Ada"]]),
+    });
+    expect(v.roster.find((r) => r.id === "p-1")!.owner).toBe("Ada");
+    expect(v.roster.find((r) => r.id === "g-1")!.owner).toBeNull();
+    expect(v.roster.find((r) => r.id === "g-1")!.online).toBe(true);
+    // Without presence (the local sim) the field is simply absent.
+    expect("owner" in modView(sim, "open", "x").roster[0]!).toBe(false);
+  });
+
   it("gives a performer their part and the scannable guests", () => {
     const sim = Sim.fromSources(SCENARIO);
     sim.createPerson("g1", "Alice");

@@ -55,6 +55,9 @@ export interface ChatMessage {
   parentSeq: number | null;
   /** Hidden by a moderator. Withheld from guests, greyed for admins. */
   hidden: boolean;
+  /** The director who posted this *as* a participant (a mod `say` whose
+   *  `as` names a person). Stripped for guest clients — never shown to them. */
+  via?: string;
   /** The beat a scripted line was spoken in, when known — lets a client link
    *  a message back to its node on the story map. Absent for typed chat. */
   beat?: string | null;

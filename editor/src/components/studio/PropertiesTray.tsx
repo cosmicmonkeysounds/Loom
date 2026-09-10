@@ -4,9 +4,8 @@
 // - Writing follows the story-graph canvas selection first (beat /
 //   entity / connection / file inspector), falling back to the editor
 //   cursor's beat / declaration sourced from the parsed AST.
-// - Run and Deploy mount the cockpit Inspector against the mode's
-//   backend (Run follows the Sim ⇄ Live source switch; Deploy is
-//   always the live event).
+// - Run mounts the cockpit Inspector against the run's backend (resolved
+//   from the workspace kind by `RunCockpit`).
 //
 // Editable fields write back to `.loom` source via the
 // `@loom/core/parser` edit ops.
@@ -20,7 +19,7 @@ import { useWorkspace } from '@/store/workspace'
 import { useFocus, type FocusRef } from '@/store/focus'
 import { ReferencesPanel } from '@/components/runner/References'
 import { CockpitInspector } from '@/components/cockpit/Inspector'
-import { OperateCockpit, RunCockpit } from '@/components/cockpit/providers'
+import { RunCockpit } from '@/components/cockpit/providers'
 import { docText, pathForUri } from '@/lib/lsp-client'
 import { findFileEntryByPath } from '@/lib/lsp-nav'
 import { rewireGraphEdge, useStoryGraph, writePathContents } from '@/lib/story-graph'
@@ -55,9 +54,7 @@ function tabsFor(): Tab[] {
 }
 
 export function PropertiesTray({ mode }: { mode: Mode }) {
-  // Run/Deploy trays are the live participant Inspector, not author
-  // props — Run against whichever backend the source switch picked,
-  // Deploy always against the live event.
+  // Run's tray is the live participant Inspector, not author props.
   if (mode === 'run') {
     return (
       <RunCockpit>
@@ -71,13 +68,6 @@ export function PropertiesTray({ mode }: { mode: Mode }) {
       <div className="h-full w-full p-3 text-xs text-zinc-500">
         Integrations has no inspector — engine targets are configured on the stage.
       </div>
-    )
-  }
-  if (mode === 'deploy') {
-    return (
-      <OperateCockpit>
-        <CockpitInspector />
-      </OperateCockpit>
     )
   }
   return <AuthorTray />

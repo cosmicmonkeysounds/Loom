@@ -76,8 +76,8 @@ the repo root):
 `pnpm serve` hosts a single live `Sim` and serves the participant app to
 clients on the local network. Transport is Server-Sent Events (push) +
 `fetch` POST (actions) — no WebSocket dependency, so it works on any
-phone browser on the wifi. Moderation happens in the editor's Run/Deploy
-modes over the `/api/mod/*` routes.
+phone browser on the wifi. Moderation happens in the editor's Run mode
+over the `/api/mod/*` routes.
 
 ```
 http://<lan-ip>:7000           → the participant app (built loom-play)
@@ -99,13 +99,13 @@ Three independent passcodes gate the three roles:
 |---------------|---------------------|------------------------------------------|
 | 🎟️ Guest      | **event code**      | required to register / join the event    |
 | 🎭 Performer  | **performer code**  | sign in as a character (scan guests)     |
-| 🛡️ Moderator  | **moderator code**  | mod access — open/close doors, moderate (via the editor's Run/Deploy modes) |
+| 🛡️ Moderator  | **moderator code**  | mod access — open/close doors, moderate (via the editor's Run mode) |
 
 Each is taken from `LOOM_EVENT_PASS` / `LOOM_PRIME_PASS` / `LOOM_MOD_PASS`
 if set; **otherwise a short, speakable code is generated** (six chars, no
 `0/O/1/I/L`) and **persisted**, so it stays stable across restarts. All
 three are printed in the boot banner — that terminal is the trusted
-channel the operator reads them from. The editor's Deploy mode also
+channel the operator reads them from. The editor's Run page also
 shows the event + performer codes (with a join-QR) to hand out to
 the room. Guests can also arrive via a `?code=<event-code>` link (what the
 QR encodes), which pre-fills the field. Matching is trimmed + case-insensitive.
@@ -128,10 +128,11 @@ Scanning is one capability-dispatched endpoint, **`POST /api/scan`**: a
 moderation. An admin may also pass **`as: <character>`** to scan *as* any
 character (firing that character's story beat) — the editor's Run cockpit
 exposes a "scan as…" control whose default, **Silent**, is moderation-only.
-Admins then act via **`POST /api/mod/act`** (`capture` / `release` /
-`signal`), which reuses the sim's own primitives — so the moderation
-toolset grows by adding a case, not an endpoint. The editor's Run/Deploy
-modes (headless admin) and the performer `play` app (as an upgrade) both
+Admins then act via **`POST /api/mod/act`** (`capture` / `release`) and
+**`POST /api/mod/signal`** (a named event, optionally *as* a character via
+`actor`), which reuse the sim's own primitives — so the moderation
+toolset grows by adding a case, not an endpoint. The editor's Run mode
+(headless admin) and the performer `play` app (as an upgrade) both
 expose the scanner + moderation actions.
 
 ### Chat & channels (the threaded model)
@@ -159,8 +160,8 @@ into channel-routed messages — the single source of truth the
   per roster guest, `online` per cast member (a performer streaming as
   that character), and `modsOnline` (connected director sessions) — and
   a fresh snapshot is pushed to every mod client whenever anyone
-  connects or drops, so the editor's Run rail + Deploy guest list show
-  who's actually in the room.
+  connects or drops, so the editor's Run rail shows who's actually in
+  the room.
 - **The director's read:** each roster row also carries the guest's
   story position (`beat`, from `beatEntered.subject` bookkeeping) and
   their visited-beat trail (`visited`), and the snapshot includes the
@@ -277,7 +278,7 @@ pnpm --filter @loom/core serve
 # → moderate from the Loom editor's Run panel (⌘2), or with the mod code
 ```
 
-Moderation lives in the editor's Run/Deploy modes (the standalone
+Moderation lives in the editor's Run mode (the standalone
 `/console` was removed); guests + performers use the served `play` app.
 
 ## Security model
@@ -322,8 +323,8 @@ Two planes:
   `LOOM_STATE_DIR/<eventId>` and its own `/e/:eventId/*` route namespace.
 
 The owning author's BetterAuth session is accepted on `/e/:eventId/api/mod/*`
-and the gated mod reads, so authors moderate from the editor's Run/Deploy
-modes without a mod code (a co-moderator's mod code still works too).
+and the gated mod reads, so authors moderate from the editor's Run mode
+without a mod code (a co-moderator's mod code still works too).
 
 ```bash
 DATABASE_URL=postgres://127.0.0.1:5432/loom_dev pnpm migrate   # once

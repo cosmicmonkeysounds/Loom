@@ -29,6 +29,15 @@ A pre-token session (from before this change) is dropped so the guest
 re-registers cleanly. Deployment + the full security model live in
 [`docs/loom-deployment.md`](../docs/loom-deployment.md).
 
+**Lifecycle.** The server announces run transitions on the SSE stream
+(`lifecycle` — `reset` / `reload` / `golive` / `ended`, with who did it).
+Every restart clears guest tokens server-side, so a guest's session is
+dropped and the join screen explains why ("The story restarted — join
+again with your code"); a performer's sign-in survives a restart but not
+`golive` (the show starting signs every booth out) or `ended`. A guest
+POST answered 401 / "unknown guest" is treated the same way. Policy in
+`src/lifecycle.ts` (unit-tested in `test/lifecycle.test.ts`).
+
 Messages are **composed server-side** (see `core/server/chat.ts`) and
 routed to channels, so the client just renders. That gives three things
 for free: full **history on re-login** (the server replays every thread

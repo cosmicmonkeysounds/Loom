@@ -28,8 +28,8 @@ export type LayoutOverrides = Record<string, { x: number; y: number }>
  * Live-run overlay: beat keys → visit counts, the most recently
  * entered beat (pulsed on the canvas), and best-effort edge traversal
  * counts (`from→to` between consecutively entered beats). Fed by the
- * operate store's mod feed (Run mode, Live source) and by the local
- * simulator (`store/sim.ts`, Sim source) — the identical contract.
+ * server backend's mod feed (`store/operate.ts`) and by the local
+ * backend (`store/sim.ts`) — the identical contract.
  */
 export type RuntimeOverlay = {
   visits: Record<string, number>

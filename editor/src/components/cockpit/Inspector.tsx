@@ -1,17 +1,45 @@
 //! The cockpit's right tray: the Inspector. Bound to the Roster/World
-//! selection, it's where the operator (or the writer, on the Sim source)
-//! changes a guest's stats on the fly (score / faction / location /
-//! captured), fires narrative at one person, answers a persona's
-//! pending choice (Sim), or — for a cast member — fires that
-//! character's owned beats.
+//! selection, it's where the director changes a guest's stats on the fly
+//! (score / faction / location / captured), fires narrative at one
+//! person, answers a pending choice, or — for a cast member — fires that
+//! character's owned beats. It is also the super-admin's peek: **Their
+//! view** (what that participant's own screen says right now) and **Their
+//! feed** (every message they have seen — hidden ones greyed — or, for a
+//! character, every line they spoke and every scan readout they got), with
+//! one button to *be* them. Under a non-Operator lens the editors are
+//! closed: you are a participant right now, not the director.
 
-import { useState, type ReactNode } from 'react'
-import { CockpitTab, SelectionKind, useCockpit } from '@/store/cockpit'
+import { useMemo, useState, type ReactNode } from 'react'
+import { CockpitTab, SelectionKind, useCockpit, type CockpitMessage } from '@/store/cockpit'
 import { useGraph } from '@/store/graph'
 import { promptText } from '@/store/dialog'
 import { FactionPill } from './ui'
 import { entityVars, GUEST_STANDARD_FIELDS } from './world'
 import { VarTable } from './VarTable'
+
+/** How many recent messages "Their feed" shows. */
+const FEED_LIMIT = 60
+
+function Note({ children }: { children: ReactNode }) {
+  return <p className="px-3 pb-1 text-[10px] text-zinc-600">{children}</p>
+}
+
+/** A compact, read-only message list (a participant's feed). */
+function FeedList({ rows, roomOf }: { rows: CockpitMessage[]; roomOf: (m: CockpitMessage) => string }) {
+  if (rows.length === 0) return <Note>Nothing yet.</Note>
+  return (
+    <ul className="mx-3 mb-1 flex max-h-72 flex-col gap-0.5 overflow-auto rounded border border-zinc-800 p-1 text-xs" data-testid="inspector-feed">
+      {rows.map((m) => (
+        <li key={m.seq} className={m.hidden ? 'opacity-40' : ''} title={m.hidden ? 'hidden by a moderator' : undefined}>
+          <span className="text-[9px] uppercase tracking-wide text-zinc-600">{roomOf(m)}</span>{' '}
+          {m.kind === 'line' && <span className="font-semibold text-zinc-300">{m.from}: </span>}
+          <span className={m.kind === 'narration' ? 'italic text-zinc-400' : m.kind === 'line' ? 'text-zinc-200' : 'text-zinc-500'}>{m.text}</span>
+          {m.via && <span className="ml-1 text-[9px] text-violet-400">via {m.via}</span>}
+        </li>
+      ))}
+    </ul>
+  )
+}
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -26,7 +54,7 @@ const inputCls =
   'min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-sm text-zinc-100 outline-none focus:border-indigo-500'
 
 // ---------------------------------------------------------------------------
-// Pending choice (Sim source — the writer acts as the persona)
+// Pending choice (answer on a participant's behalf — identical on both backends)
 // ---------------------------------------------------------------------------
 
 export function PendingChoice({ person }: { person: string }) {
@@ -115,12 +143,73 @@ function VarsSection({ id }: { id: string }) {
   )
 }
 
+/** What the guest's own screen says right now — from the lens projection
+ *  when they ARE the lens, else the roster's public-facing summary. */
+function TheirView({ id }: { id: string }) {
+  const lens = useCockpit((s) => s.lens)
+  const row = useCockpit((s) => s.roster.find((r) => r.id === id))
+  const choice = useCockpit((s) => s.choices[id])
+  const exact = lens !== null && lens.kind === 'guest' && lens.id === id ? lens.view : null
+  const faction = exact ? exact.faction : (row?.faction ?? null)
+  const location = exact ? exact.location : (row?.location ?? null)
+  const score = exact ? exact.score : (row?.score ?? 0)
+  const pending = exact ? exact.pendingChoice : (choice ?? null)
+  const rooms = exact ? exact.channels.length : null
+  return (
+    <div data-testid="inspector-their-view">
+      <div className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-zinc-500">
+        Their view {exact ? <span className="text-indigo-400/80">· exact</span> : null}
+      </div>
+      <div className="mx-3 mb-1 grid grid-cols-2 gap-x-3 gap-y-0.5 rounded border border-zinc-800 px-2 py-1.5 text-xs">
+        <span className="text-zinc-500">side</span>
+        <span className="text-zinc-200">{faction ?? 'none yet'}</span>
+        <span className="text-zinc-500">where</span>
+        <span className="text-zinc-200">{location ?? '—'}</span>
+        <span className="text-zinc-500">score</span>
+        <span className="text-zinc-200">{score}</span>
+        <span className="text-zinc-500">deciding</span>
+        <span className="text-zinc-200">{pending ? pending.join(' / ') : '—'}</span>
+        {rooms !== null && (
+          <>
+            <span className="text-zinc-500">rooms</span>
+            <span className="text-zinc-200">{rooms} authored</span>
+          </>
+        )}
+        {exact && exact.interactions.length > 0 && (
+          <>
+            <span className="text-zinc-500">can</span>
+            <span className="text-zinc-200">{exact.interactions.map((i) => i.label).join(', ')}</span>
+          </>
+        )}
+      </div>
+      <Note>A hidden allegiance reads as “none yet” here, exactly as on their phone.</Note>
+    </div>
+  )
+}
+
+/** Every message this guest has seen, newest last, hidden ones greyed. */
+function GuestFeed({ id }: { id: string }) {
+  const messages = useCockpit((s) => s.messages)
+  const rows = useMemo(
+    () => messages.filter((m) => m.audience === 'all' || (Array.isArray(m.audience) && m.audience.includes(id))).slice(-FEED_LIMIT),
+    [messages, id],
+  )
+  return (
+    <div>
+      <div className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-zinc-500">Their feed · last {Math.min(rows.length, FEED_LIMIT)}</div>
+      <FeedList rows={rows} roomOf={(m) => m.title ?? m.channel} />
+    </div>
+  )
+}
+
 function GuestInspector({ id }: { id: string }) {
   const row = useCockpit((s) => s.roster.find((r) => r.id === id))
   const factions = useCockpit((s) => s.factions)
   const locations = useCockpit((s) => s.locations)
   const cast = useCockpit((s) => s.cast)
   const events = useCockpit((s) => s.events)
+  const me = useCockpit((s) => s.me)
+  const locked = useCockpit((s) => s.lens !== null)
   const setStat = useCockpit((s) => s.setStat)
   const fireSignal = useCockpit((s) => s.fireSignal)
   const scanAs = useCockpit((s) => s.scanAs)
@@ -165,10 +254,23 @@ function GuestInspector({ id }: { id: string }) {
   return (
     <div className="h-full overflow-auto">
       <div className="border-b border-zinc-800 px-3 py-2">
-        <div className="text-[10px] uppercase tracking-widest text-zinc-500">Guest</div>
+        <div className="text-[10px] uppercase tracking-widest text-zinc-500">
+          {row.owner ? (row.owner === me ? 'Your persona' : `${row.owner}'s persona`) : 'Guest'}
+        </div>
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-zinc-100">{row.name}</span>
           {row.captured && <span className="text-xs text-red-400">🔒 captured</span>}
+          <button
+            onClick={() => {
+              setPerspective(id)
+              setTab(CockpitTab.Chat)
+            }}
+            className="ml-auto rounded border border-indigo-900 px-2 py-0.5 text-[10px] text-indigo-300 hover:bg-indigo-950"
+            title={`See and act exactly as ${row.name}`}
+            data-testid={`inspector-view-as-${id}`}
+          >
+            👁 Be {row.name}
+          </button>
         </div>
         <div className="text-[10px] text-zinc-600">{row.id}</div>
       </div>
@@ -177,10 +279,17 @@ function GuestInspector({ id }: { id: string }) {
         <PendingChoice person={id} />
       </div>
 
+      <TheirView id={id} />
       <StoryTrail beat={row.beat} visited={row.visited} />
+      <GuestFeed id={id} />
       <VarsSection id={id} />
 
-      <div className="py-1">
+      {locked && (
+        <div className="mx-3 mt-3 rounded border border-indigo-900/60 bg-indigo-950/30 px-2 py-1.5 text-[10px] text-indigo-200" data-testid="inspector-locked">
+          Switch to Operator to edit.
+        </div>
+      )}
+      <fieldset disabled={locked} className="py-1 disabled:opacity-50">
         <Field label="Score">
           <input
             className={inputCls}
@@ -248,8 +357,9 @@ function GuestInspector({ id }: { id: string }) {
             {row.captured ? 'Release' : 'Capture'}
           </button>
         </Field>
-      </div>
+      </fieldset>
 
+      <fieldset disabled={locked} className="disabled:opacity-50">
       <div className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-zinc-500">Fire on this guest</div>
       <div className="flex items-center gap-2 px-3 pb-2">
         <select className={inputCls} value={signal} onChange={(e) => setSignal(e.target.value)}>
@@ -291,17 +401,8 @@ function GuestInspector({ id }: { id: string }) {
         <button onClick={dm} className="w-full rounded border border-zinc-800 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800">
           ✉️ Direct message
         </button>
-        <button
-          onClick={() => {
-            setPerspective(id)
-            setTab(CockpitTab.Chat)
-          }}
-          className="w-full rounded border border-indigo-900 px-3 py-1.5 text-xs text-indigo-300 hover:bg-indigo-950"
-          data-testid={`inspector-view-as-${id}`}
-        >
-          👁 View + act as {row.name}
-        </button>
       </div>
+      </fieldset>
     </div>
   )
 }
@@ -310,9 +411,43 @@ function GuestInspector({ id }: { id: string }) {
 // Character (cast) inspector
 // ---------------------------------------------------------------------------
 
+/** Every line this character spoke (any room / DM) plus every scan
+ *  readout the booth received — the performer's own history. */
+function CharacterFeed({ id }: { id: string }) {
+  const messages = useCockpit((s) => s.messages)
+  const log = useCockpit((s) => s.log)
+  const rows = useMemo(
+    () => messages.filter((m) => m.from === id || m.channel === `dm:${id}`).slice(-FEED_LIMIT),
+    [messages, id],
+  )
+  const readouts = useMemo(
+    () => log.filter((e) => e.event.type === 'respond' && e.event.to === id).slice(-20),
+    [log, id],
+  )
+  return (
+    <div>
+      <div className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-zinc-500">Their feed · last {Math.min(rows.length, FEED_LIMIT)}</div>
+      <FeedList rows={rows} roomOf={(m) => (m.channel.startsWith('dm:') ? 'dm' : (m.title ?? m.channel))} />
+      {readouts.length > 0 && (
+        <>
+          <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest text-zinc-500">Scan readouts</div>
+          <ul className="mx-3 mb-1 flex flex-col gap-0.5 rounded border border-emerald-900/50 p-1 text-xs">
+            {readouts.map((e) => (
+              <li key={e.seq} className="italic text-emerald-100/90">
+                {e.event.type === 'respond' ? e.event.text : ''}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  )
+}
+
 function CharacterInspector({ id }: { id: string }) {
   const member = useCockpit((s) => s.cast.find((c) => c.id === id))
   const beats = useCockpit((s) => s.beats)
+  const locked = useCockpit((s) => s.lens !== null)
   const fireBeat = useCockpit((s) => s.fireBeat)
   const setPerspective = useCockpit((s) => s.setPerspective)
   const setTab = useCockpit((s) => s.setTab)
@@ -333,13 +468,16 @@ function CharacterInspector({ id }: { id: string }) {
               setTab(CockpitTab.Chat)
             }}
             className="ml-auto rounded border border-indigo-900 px-2 py-0.5 text-[10px] text-indigo-300 hover:bg-indigo-950"
-            title={`Speak as ${id} in every room`}
+            title={`Be ${id}: their booth, their rooms, their voice`}
+            data-testid={`inspector-view-as-${id}`}
           >
-            👁 act as
+            👁 Be {id}
           </button>
         </div>
       </div>
 
+      {member?.online === true && <Note>A performer is signed in as {id} right now.</Note>}
+      <CharacterFeed id={id} />
       <VarsSection id={id} />
 
       <div className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-zinc-500">Owned beats</div>
@@ -349,11 +487,13 @@ function CharacterInspector({ id }: { id: string }) {
         </p>
       ) : (
         <div className="flex flex-col gap-1 px-3 pb-4">
+          {locked && <Note>Switch to Operator to fire beats.</Note>}
           {owned.map((b) => (
             <button
               key={b}
+              disabled={locked}
               onClick={() => void fireBeat(b)}
-              className="flex items-center justify-between rounded-lg border border-zinc-800 px-3 py-1.5 text-left text-sm hover:bg-zinc-800"
+              className="flex items-center justify-between rounded-lg border border-zinc-800 px-3 py-1.5 text-left text-sm hover:bg-zinc-800 disabled:opacity-50"
             >
               <span className="truncate text-zinc-200">{b.slice(id.length + 1)}</span>
               <span className="shrink-0 text-xs text-indigo-400">fire →</span>
@@ -372,12 +512,14 @@ function CharacterInspector({ id }: { id: string }) {
 function FactionInspector({ id }: { id: string }) {
   const faction = useCockpit((s) => s.factions.find((f) => f.id === id))
   const roster = useCockpit((s) => s.roster)
+  const locked = useCockpit((s) => s.lens !== null)
   const reveal = useCockpit((s) => s.reveal)
   const broadcast = useCockpit((s) => s.broadcast)
   const select = useCockpit((s) => s.select)
   const [cue, setCue] = useState('')
 
   if (!faction) return <Empty msg="This faction is no longer in the world." />
+  if (locked && faction.hidden && !faction.revealed) return <Empty msg="Switch to Operator to inspect a hidden group." />
   const nameOf = (gid: string) => roster.find((r) => r.id === gid)?.name ?? gid
 
   return (
@@ -414,7 +556,8 @@ function FactionInspector({ id }: { id: string }) {
         <div className="px-3 pb-2">
           <button
             onClick={() => void reveal(faction.id)}
-            className="w-full rounded bg-red-900/50 px-3 py-1.5 text-xs text-red-200 hover:bg-red-900/70"
+            disabled={locked}
+            className="w-full rounded bg-red-900/50 px-3 py-1.5 text-xs text-red-200 hover:bg-red-900/70 disabled:opacity-50"
           >
             ⚠️ Expose this faction
           </button>
@@ -422,7 +565,8 @@ function FactionInspector({ id }: { id: string }) {
       )}
 
       <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest text-zinc-500">Broadcast to faction</div>
-      <div className="flex items-center gap-2 px-3 pb-2">
+      {locked && <Note>Switch to Operator to broadcast.</Note>}
+      <div className={locked ? 'pointer-events-none flex items-center gap-2 px-3 pb-2 opacity-50' : 'flex items-center gap-2 px-3 pb-2'}>
         <input
           className={inputCls}
           value={cue}
@@ -462,6 +606,7 @@ function FactionInspector({ id }: { id: string }) {
 function LocationInspector({ id }: { id: string }) {
   const location = useCockpit((s) => s.locations.find((l) => l.id === id))
   const roster = useCockpit((s) => s.roster)
+  const locked = useCockpit((s) => s.lens !== null)
   const broadcast = useCockpit((s) => s.broadcast)
   const select = useCockpit((s) => s.select)
   const [cue, setCue] = useState('')
@@ -483,7 +628,8 @@ function LocationInspector({ id }: { id: string }) {
       <div className="px-3 py-1 text-xs text-zinc-500">{location.occupants.length} here</div>
 
       <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest text-zinc-500">Broadcast to location</div>
-      <div className="flex items-center gap-2 px-3 pb-2">
+      {locked && <Note>Switch to Operator to broadcast.</Note>}
+      <div className={locked ? 'pointer-events-none flex items-center gap-2 px-3 pb-2 opacity-50' : 'flex items-center gap-2 px-3 pb-2'}>
         <input
           className={inputCls}
           value={cue}

@@ -25,6 +25,7 @@ function GuestRegister({ session }: { session: GuestSession }) {
     <div className="hero">
       <div className="glyph">🎟️</div>
       <h1>{eventTitle ?? "Loom"}</h1>
+      {session.notice && <p className="notice">{session.notice}</p>}
       <p className="sub">Enter your name and the code from your host.</p>
       <input
         placeholder="What do they call you?"

@@ -35,6 +35,29 @@ export default defineConfig([
           caughtErrorsIgnorePattern: '^_',
         },
       ],
+      // The cockpit is ONE surface over two backends. Components read it
+      // through `useCockpit` (resolved by `RunCockpit`); reaching for a
+      // concrete store re-creates the Sim/Live fork this rule exists to
+      // prevent. The allowlist below is the seam.
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            { name: '@/store/operate', message: 'Read the cockpit through useCockpit; only the provider / resolver / App may import the server-run store.' },
+            { name: '@/store/sim', message: 'Read the cockpit through useCockpit; only the provider / resolver / App may import the local-run store.' },
+          ],
+        },
+      ],
     },
+  },
+  {
+    files: [
+      'src/components/cockpit/providers.tsx',
+      'src/store/run.ts',
+      'src/App.tsx',
+      'src/**/*.test.ts',
+      'src/**/*.test.tsx',
+    ],
+    rules: { 'no-restricted-imports': 'off' },
   },
 ])

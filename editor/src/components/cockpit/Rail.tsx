@@ -1,65 +1,21 @@
-//! The cockpit's left rail — the admin's at-a-glance read on the event.
-//! Top: which backend this cockpit is driving (SIM rehearsal vs LIVE
-//! event — color-coded so the two are unmistakable), phase, connection,
-//! and live stats (guests + online presence, ledger, pending decisions).
-//! Below: the perspective lens, a live **Guests** list (presence dots,
-//! location, decision badges, right-click moderation), and the **Rooms**
-//! navigator — both collapsible, so the rail serves every page, not just
-//! Chat. Shared by Run mode's Sim (local simulator) and Live sources.
+//! The cockpit's left rail — the director's at-a-glance read on the run.
+//! Top: which world this cockpit is driving (a local run · a scratch run
+//! · the shared rehearsal · the LIVE event — colour-coded so they are
+//! unmistakable), phase, connection, and live stats (guests + online
+//! presence, ledger, pending decisions, co-directors). Below: a live
+//! **Guests** list (presence dots, owner chips — "you" / "Ana's persona",
+//! location, decision badges, right-click actions, an inline persona
+//! spawner) and the **Rooms** navigator — both collapsible, so the rail
+//! serves every page, not just Chat. Identical on both backends; the
+//! identity control ("who am I right now") lives in the stage header.
 
 import { useState } from 'react'
 import clsx from 'clsx'
-import {
-  CockpitPhase,
-  CockpitTab,
-  OPERATOR_LENS,
-  SelectionKind,
-  useCockpit,
-  type RosterRow,
-} from '@/store/cockpit'
-import { useLiveRun } from '@/store/run'
-import { useOperate } from '@/store/operate'
+import { CockpitPhase, CockpitTab, SelectionKind, useCockpit, type RosterRow } from '@/store/cockpit'
 import { useRooms, useRoomCounts } from './rooms'
-import { channelGlyph } from './format'
+import { channelGlyph, worldBadge } from './format'
 import { useInspect } from './inspect'
 import { useGuestMenu } from './guest-menu'
-
-/** The "viewing as" lens picker: Operator · every guest · every character. */
-function PerspectiveSelect() {
-  const roster = useCockpit((s) => s.roster)
-  const cast = useCockpit((s) => s.cast)
-  const perspective = useCockpit((s) => s.perspective)
-  const setPerspective = useCockpit((s) => s.setPerspective)
-  return (
-    <select
-      value={perspective}
-      onChange={(e) => setPerspective(e.target.value)}
-      className="mt-2 w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-200 outline-none focus:border-indigo-500"
-      title="Viewing as"
-      data-testid="cockpit-perspective"
-    >
-      <option value={OPERATOR_LENS}>👁 Operator (everything)</option>
-      {roster.length > 0 && (
-        <optgroup label="Guests">
-          {roster.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name} ({r.id})
-            </option>
-          ))}
-        </optgroup>
-      )}
-      {cast.length > 0 && (
-        <optgroup label="Cast">
-          {cast.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.id}
-            </option>
-          ))}
-        </optgroup>
-      )}
-    </select>
-  )
-}
 
 /** One numeric readout in the header strip. */
 function Stat({ value, label, tone }: { value: string | number; label: string; tone?: string }) {
@@ -99,9 +55,8 @@ function Section({
   )
 }
 
-/** Inline "spawn a persona" row — the shared-rehearsal entry point: on
- *  the Sim source it's a local puppet, on a preview/live event it's a
- *  journaled `/api/mod/persona` guest each co-writer can play. */
+/** Inline "spawn a persona" row — a guest you puppet: local on a folder,
+ *  a journaled `/api/mod/persona` guest (owned by you) on the server. */
 function AddPersonaRow() {
   const addPersona = useCockpit((s) => s.addPersona)
   const [name, setName] = useState('')
@@ -121,7 +76,7 @@ function AddPersonaRow() {
       />
       <button
         onClick={add}
-        title="Spawn a persona you can act as (choices, chat, scans)"
+        title="Spawn a persona you can be (choices, chat, scans)"
         className="shrink-0 rounded bg-zinc-800 px-2 py-0.5 text-xs text-zinc-200 hover:bg-zinc-700"
         data-testid="rail-persona-add"
       >
@@ -132,7 +87,7 @@ function AddPersonaRow() {
 }
 
 /** Presence dot: green = streaming now, hollow = registered but away.
- *  The local sim doesn't track presence — no dot at all there. */
+ *  The local run doesn't track presence — no dot at all there. */
 function PresenceDot({ online }: { online: boolean | undefined }) {
   if (online === undefined) return null
   return (
@@ -146,33 +101,48 @@ function PresenceDot({ online }: { online: boolean | undefined }) {
   )
 }
 
+/** Whose persona this is — "you", a co-writer's name, or nothing for a real guest. */
+function OwnerChip({ owner, me }: { owner: string | null | undefined; me: string }) {
+  if (!owner) return null
+  const mine = owner === me
+  return (
+    <span
+      title={mine ? 'your persona' : `${owner}'s persona`}
+      className={clsx(
+        'shrink-0 rounded px-1 text-[9px] uppercase tracking-wide',
+        mine ? 'bg-violet-500/20 text-violet-300' : 'bg-zinc-800 text-zinc-400',
+      )}
+    >
+      {mine ? 'you' : owner}
+    </span>
+  )
+}
+
 function GuestRow({ r, hasChoice }: { r: RosterRow; hasChoice: boolean }) {
   const selection = useCockpit((s) => s.selection)
-  // "yours" only means something once the roster holds people you DON'T
-  // puppet (other writers' personas, real guests) — solo sims skip it.
-  const mine = useCockpit((s) => s.personas.includes(r.id) && s.personas.length < s.roster.length)
+  const me = useCockpit((s) => s.me)
+  const perspective = useCockpit((s) => s.perspective)
+  const locked = useCockpit((s) => s.lens !== null)
   const inspect = useInspect()
   const menu = useGuestMenu()
   const selected = selection?.kind === SelectionKind.Guest && selection.id === r.id
+  const being = perspective === r.id
 
   return (
     <button
       onClick={() => inspect({ kind: SelectionKind.Guest, id: r.id })}
       onContextMenu={(e) => menu(r, e)}
-      title={`${r.name} — ${r.location ?? 'no location'} · ${r.score} pts${mine ? ' · your persona' : ''}`}
+      title={`${r.name} — ${r.location ?? 'no location'} · ${r.score} pts${r.owner ? (r.owner === me ? ' · your persona' : ` · ${r.owner}'s persona`) : ''}`}
       className={clsx(
         'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm',
         selected ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-300 hover:bg-zinc-900/60',
+        being && 'border-l-2 border-indigo-400',
       )}
       data-testid={`rail-guest-${r.id}`}
     >
       <PresenceDot online={r.online} />
       <span className="min-w-0 flex-1 truncate">{r.name}</span>
-      {mine && (
-        <span title="your persona" className="shrink-0 rounded bg-violet-500/20 px-1 text-[9px] uppercase tracking-wide text-violet-300">
-          you
-        </span>
-      )}
+      <OwnerChip owner={r.owner} me={me} />
       {hasChoice && (
         <span title="waiting on a decision" className="shrink-0 text-[10px] text-indigo-300">
           ⏳
@@ -183,7 +153,7 @@ function GuestRow({ r, hasChoice }: { r: RosterRow; hasChoice: boolean }) {
           🔒
         </span>
       )}
-      <span className="shrink-0 truncate text-[10px] text-zinc-600">{r.location ?? ''}</span>
+      <span className="shrink-0 truncate text-[10px] text-zinc-600">{locked ? '' : (r.location ?? '')}</span>
     </button>
   )
 }
@@ -191,7 +161,7 @@ function GuestRow({ r, hasChoice }: { r: RosterRow; hasChoice: boolean }) {
 export function CockpitRail() {
   const phase = useCockpit((s) => s.phase)
   const connected = useCockpit((s) => s.connected)
-  const live = useCockpit((s) => s.live)
+  const run = useCockpit((s) => s.run)
   const roster = useCockpit((s) => s.roster)
   const ledgerLen = useCockpit((s) => s.ledgerLen)
   const choices = useCockpit((s) => s.choices)
@@ -201,8 +171,6 @@ export function CockpitRail() {
   const activeChannel = useCockpit((s) => s.activeChannel)
   const setTab = useCockpit((s) => s.setTab)
   const selectChannel = useCockpit((s) => s.selectChannel)
-  const isLiveSource = useLiveRun()
-  const preview = useOperate((s) => s.event?.mode === 'preview')
   const rooms = useRooms()
   const counts = useRoomCounts()
 
@@ -219,6 +187,8 @@ export function CockpitRail() {
   const onlineCount = roster.filter((r) => r.online === true).length
   const tracksPresence = roster.some((r) => r.online !== undefined)
   const pendingCount = Object.keys(choices).length
+  const world = worldBadge(run)
+  const running = run !== null
 
   const openRoom = (key: string) => {
     selectChannel(key)
@@ -227,26 +197,14 @@ export function CockpitRail() {
 
   return (
     <div className="flex h-full w-full flex-col bg-zinc-950 text-zinc-100">
-      {/* Identity + vitals — which backend, what state, who's here. */}
-      <div
-        className={clsx(
-          'border-b p-3',
-          isLiveSource ? (preview ? 'border-amber-900/60' : 'border-emerald-900/60') : 'border-violet-900/60',
-        )}
-        data-testid="rail-identity"
-      >
+      {/* Identity + vitals — which world, what state, who's here. */}
+      <div className={clsx('border-b p-3', world.border)} data-testid="rail-identity">
         <div className="flex items-center justify-between gap-2">
           <span
-            className={clsx(
-              'rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest',
-              isLiveSource
-                ? preview
-                  ? 'bg-amber-950 text-amber-300'
-                  : 'bg-emerald-950 text-emerald-300'
-                : 'bg-violet-950 text-violet-300',
-            )}
+            className={clsx('rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest', world.badge)}
+            data-testid="run-backend"
           >
-            {isLiveSource ? (preview ? '◉ Shared rehearsal' : '● Live event') : '◦ Sim rehearsal'}
+            {world.label}
           </span>
           <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide ${phaseTone}`}>{phase}</span>
         </div>
@@ -271,8 +229,7 @@ export function CockpitRail() {
             </span>
           )}
         </div>
-        {live && !connected && <div className="mt-1 text-[10px] text-amber-400">○ reconnecting…</div>}
-        {live && <PerspectiveSelect />}
+        {running && !connected && <div className="mt-1 text-[10px] text-amber-400">○ reconnecting…</div>}
       </div>
 
       {/* Guests — the live who's-here list, on every page. */}
@@ -286,13 +243,13 @@ export function CockpitRail() {
       >
         {roster.length === 0 && (
           <div className="px-3 py-1 text-xs text-zinc-600">
-            {live ? 'No guests yet — share the join code from Deploy.' : 'Guests appear once a session is live.'}
+            {running ? 'No guests yet — share the join code from the Run page.' : 'Guests appear once a rehearsal starts.'}
           </div>
         )}
         {roster.map((r) => (
           <GuestRow key={r.id} r={r} hasChoice={(choices[r.id]?.length ?? 0) > 0} />
         ))}
-        {live && <AddPersonaRow />}
+        {running && <AddPersonaRow />}
       </Section>
 
       {/* Rooms — one click into any thread, from any page. */}
@@ -302,7 +259,7 @@ export function CockpitRail() {
         open={roomsOpen}
         onToggle={() => setRoomsOpen((v) => !v)}
       >
-        {rooms.length === 0 && <div className="px-3 py-1 text-xs text-zinc-600">Rooms appear once a session is live.</div>}
+        {rooms.length === 0 && <div className="px-3 py-1 text-xs text-zinc-600">Rooms appear once a rehearsal starts.</div>}
         {rooms.map((r) => {
           const active = activeTab === CockpitTab.Chat && r.key === activeChannel
           return (
@@ -313,9 +270,11 @@ export function CockpitRail() {
                 'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm',
                 active ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400 hover:bg-zinc-900/60',
               )}
+              data-testid={`rail-room-${r.key}`}
             >
-              <span className="shrink-0 text-xs">{channelGlyph(r.kind)}</span>
+              <span className="shrink-0 text-xs">{r.kind === 'guest' ? '🎟️' : channelGlyph(r.kind)}</span>
               <span className="min-w-0 flex-1 truncate">{r.title}</span>
+              {r.canPost === false && <span className="shrink-0 text-[9px] text-zinc-600" title="read-only for you here">🔇</span>}
               {counts.get(r.key) ? <span className="shrink-0 text-[10px] text-zinc-600">{counts.get(r.key)}</span> : null}
             </button>
           )

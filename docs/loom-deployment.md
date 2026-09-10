@@ -51,7 +51,7 @@ headers — in the `?token=` query param for SSE/state reads.
 owning author moderates with their BetterAuth **session cookie** — no
 mod passcode. This works for both the mod write routes (`/api/mod/*`)
 and the gated mod reads (the SSE stream, `/api/state`, `/api/history`),
-so Run/Deploy mode in the editor needs no code typed.
+so Run mode in the editor needs no code typed.
 
 ---
 

@@ -6,36 +6,37 @@
 
 import { create } from 'zustand'
 
-// Four modes: Writing is the whole authoring surface — text editor AND
-// the story-graph node editor side by side; Run is the whole
-// rehearsal/moderation cockpit — the local simulator and the live event
-// behind one source switch; Integrations ships the story into another
-// runtime (the Godot/game-engine bank pipeline); Deploy is the live
-// event's lifecycle + admin controls (launch, codes/QR, pause/end).
-export type Mode = 'writing' | 'run' | 'integrations' | 'deploy'
+// Three modes: Writing is the whole authoring surface — text editor AND
+// the story-graph node editor side by side; Run is the whole control
+// room for the project's one run — start a rehearsal / go live, the
+// lifecycle, join codes + QR, moderation, and "being" any participant
+// (the former Deploy mode folded into it, 2026-09-10); Integrations
+// ships the story into another runtime (the Godot/game-engine bank
+// pipeline).
+export type Mode = 'writing' | 'run' | 'integrations'
 
 export type ModeDescriptor = {
   id: Mode
   label: string
-  /** Keybinding hint shown on the Mode Bar (⌘1..⌘4). */
+  /** Keybinding hint shown on the Mode Bar (⌘1..⌘3). */
   hint: string
   /** Whether the bottom Timeline dock is present in this mode. */
   hasTimeline: boolean
 }
 
-/** Ordered left→right as they appear on the Mode Bar; index ↔ ⌘1..⌘4. */
+/** Ordered left→right as they appear on the Mode Bar; index ↔ ⌘1..⌘3. */
 export const MODES: ModeDescriptor[] = [
   { id: 'writing', label: 'Writing', hint: '⌘1', hasTimeline: true },
   { id: 'run', label: 'Run', hint: '⌘2', hasTimeline: false },
   { id: 'integrations', label: 'Integrations', hint: '⌘3', hasTimeline: false },
-  { id: 'deploy', label: 'Deploy', hint: '⌘4', hasTimeline: false },
 ]
 
-/** The pre-v3 mode ids still sitting in persisted storage. */
+/** Retired mode ids still sitting in persisted storage. */
 const LEGACY_MODES: Record<string, Mode> = {
   editing: 'writing',
   sim: 'run',
   operate: 'run',
+  deploy: 'run',
 }
 
 export type ModeUi = {
@@ -64,7 +65,7 @@ function defaultUi(): Record<Mode, ModeUi> {
       trayOpen: true,
       railOpen: true,
     },
-    // Run: rooms rail · sim/live cockpit · inspector tray.
+    // Run: cockpit rail · the run's stage · inspector tray.
     run: { cols: [300, 820, 340], rows: [620, 200], split: [520, 620], graphOpen: true, trayOpen: true, railOpen: true },
     // Integrations: engine targets — a wide single-column stage, no
     // rail and no tray (nothing here follows a selection).
@@ -76,8 +77,6 @@ function defaultUi(): Record<Mode, ModeUi> {
       trayOpen: false,
       railOpen: false,
     },
-    // Deploy: launch/lifecycle/admin stage · inspector tray (no rail).
-    deploy: { cols: [260, 900, 340], rows: [620, 200], split: [520, 620], graphOpen: true, trayOpen: true, railOpen: false },
   }
 }
 

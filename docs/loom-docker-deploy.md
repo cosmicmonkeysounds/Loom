@@ -186,12 +186,12 @@ Then check in a browser:
 
 - `http://YOUR_VPS_IP/` → the play app's join screen.
 - `http://YOUR_VPS_IP/edit/` → the editor's sign-in gate. Create your
-  author account, make a project, write, hit Deploy (`⌘4`) to launch an
+  author account, make a project, write, open Run (`⌘2`) to launch an
   event — guests join at the root URL with the event's code.
 
 The default (code-less) event's three passcodes are printed in the
 `loom` logs and saved in the state volume; events you launch from the
-editor get their own codes in the Deploy panel.
+editor get their own codes on the Run page.
 
 ---
 
@@ -260,7 +260,7 @@ Caddy fetches and renews both Let's Encrypt certificates automatically
 
 - `https://mapsandducks.com/` → the cryptic invitation.
 - `https://app.mapsandducks.com/` → the play app (QR codes and join
-  links from Deploy mode use this origin, via `LOOM_BASE_URL`).
+  links on the Run page use this origin, via `LOOM_BASE_URL`).
 - `https://app.mapsandducks.com/edit/` → the editor.
 
 ### 5d. Optional: `www.`
@@ -387,7 +387,7 @@ Copy those files off the VPS (`scp ubuntu@YOUR_VPS_IP:~/loom/loom-db-*.sql .`).
   and port 80 must be reachable from the internet (Let's Encrypt
   validates over it).
 - **Guests can't reach it from phones** — they must use the public URL
-  (`LOOM_BASE_URL`), not a LAN address; QR codes in Deploy encode the
+  (`LOOM_BASE_URL`), not a LAN address; QR codes on the Run page encode the
   public URL automatically.
 
 For the underlying server's security model, env-var reference, and

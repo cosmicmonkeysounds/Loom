@@ -129,6 +129,11 @@ describe('the bundled authoring collection', () => {
     expect(helpSearch('shortcut')[0]?.article.slug).toBe('shortcuts')
     expect(helpSearch('capture').map((h) => h.article.slug)).toContain('live-verbs')
     expect(helpSearch('slot fill').map((h) => h.article.slug)).toContain('owned-beats')
+    // Front of house merged into Run mode (the Deploy article is gone).
+    expect(helpSearch('join code')[0]?.article.slug).toBe('run-mode')
+    expect(helpSearch('QR')[0]?.article.slug).toBe('run-mode')
+    expect(helpSearch('go live')[0]?.article.slug).toBe('run-mode')
+    expect(helpArticle('deploy-mode')).toBeUndefined()
   })
 
   it('helpArticle(null) is the welcome page; unknown slugs are undefined', () => {

@@ -5,7 +5,8 @@
 //! plumbing — only their channel-shaping + actions differ.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, useChatStream } from "./client.ts";
+import { ApiError, api, useChatStream } from "./client.ts";
+import { SessionRole, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "./lifecycle.ts";
 import { STORY_SPACE, channelHead, groupByChannel, useThreads, type Threads } from "./threads.ts";
 import type { Channel, ChatMessage, Decision, GuestView, PrimeView } from "./types.ts";
 
@@ -210,6 +211,9 @@ export interface GuestSession {
   me: GuestId | null;
   status: GuestView | null;
   connected: boolean;
+  /** Why the last session ended under us (the run restarted / went live /
+   *  ended) — shown on the join screen until the guest registers again. */
+  notice: string | null;
   threads: Threads;
   register: (name: string, code: string) => Promise<void>;
   join: (faction: string) => Promise<unknown>;
@@ -240,17 +244,45 @@ export function useGuestSession(): GuestSession {
     return stored;
   });
   const [status, setStatus] = useState<GuestView | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const base = me ? `/e/${encodeURIComponent(me.eventId)}` : "";
   // EventSource can't set headers, so the capability token rides the URL.
   const url = me ? `${base}/events?role=guest&token=${encodeURIComponent(me.token)}` : null;
-  const { messages, connected } = useChatStream(url, { onSnapshot: (v) => setStatus(v as GuestView) });
+  /** The run restarted / went live / ended: this session is dead server-side
+   *  (every restart clears guest tokens), so drop it and say why. */
+  const dropSession = useCallback((why: string | null) => {
+    drop(GK);
+    setMe(null);
+    setStatus(null);
+    setNotice(why);
+  }, []);
+  const { messages, connected } = useChatStream(url, {
+    onSnapshot: (v) => setStatus(v as GuestView),
+    onLifecycle: (n) => {
+      if (lifecycleDropsSession(n.kind, SessionRole.Guest)) dropSession(lifecycleNotice(n.kind, SessionRole.Guest));
+    },
+    // The stream was refused: this token died in a restart we slept through.
+    onDead: () => dropSession(lifecycleNotice("reset", SessionRole.Guest)),
+  });
 
   // Every action is scoped to the event the guest joined (`/e/:eventId/...`)
   // and carries the guest's capability token — the server derives who is
-  // acting from the token, never from a client-supplied id.
+  // acting from the token, never from a client-supplied id. A 401 / "unknown
+  // guest" 404 means the run restarted while this phone wasn't listening.
   const post = useCallback(
-    <T,>(path: string, body?: unknown) => api<T>(`${base}${path}`, body, me?.token),
-    [base, me],
+    async <T,>(path: string, body?: unknown): Promise<T> => {
+      try {
+        return await api<T>(`${base}${path}`, body, me?.token);
+      } catch (e) {
+        // Only explain a session we are dropping right now — never overwrite
+        // the notice of one a `lifecycle` frame already dropped.
+        if (e instanceof ApiError && guestSessionDead(e.status, e.message) && me !== null) {
+          dropSession(lifecycleNotice("reset", SessionRole.Guest));
+        }
+        throw e;
+      }
+    },
+    [base, me, dropSession],
   );
 
   const join = useCallback((faction: string) => post("/api/guest/join", { faction }), [post]);
@@ -272,11 +304,13 @@ export function useGuestSession(): GuestSession {
     const m: GuestId = { id: r.id, name: r.name, token: r.token, eventId, title };
     save(GK, m);
     setMe(m);
+    setNotice(null);
   }, []);
   const leave = useCallback(() => {
     drop(GK);
     setMe(null);
     setStatus(null);
+    setNotice(null);
   }, []);
 
   const inviteToChannel = useCallback(
@@ -289,7 +323,7 @@ export function useGuestSession(): GuestSession {
   const threads = useThreads(buildGuestChannels(messages, dock, status));
   useTheme(status?.theme);
 
-  return { me, status, connected, threads, register, join, defect, choose, escape, act, say, inviteToChannel, leaveChannel, leave };
+  return { me, status, connected, notice, threads, register, join, defect, choose, escape, act, say, inviteToChannel, leaveChannel, leave };
 }
 
 // --- performer (character) --------------------------------------------------
@@ -368,6 +402,9 @@ export interface PrimeSession {
   view: PrimeView | null;
   responses: Array<{ id: number; text: string }>;
   connected: boolean;
+  /** Why the last sign-in ended under us (the show went live / the run
+   *  ended) — shown on the sign-in screen until the performer signs in again. */
+  notice: string | null;
   threads: Threads;
   login: (character: string, passcode: string) => Promise<void>;
   scan: (target: string) => Promise<unknown>;
@@ -393,20 +430,48 @@ export function usePrimeSession(): PrimeSession {
   });
   const [view, setView] = useState<PrimeView | null>(null);
   const [responses, setResponses] = useState<Array<{ id: number; text: string }>>([]);
+  const [notice, setNotice] = useState<string | null>(null);
   const rid = useRef(0);
   const base = auth ? `/e/${encodeURIComponent(auth.eventId)}` : "";
   // The stream's character identity comes from the token server-side; the
   // token rides the URL because EventSource can't set headers.
   const url = auth ? `${base}/events?role=prime&token=${encodeURIComponent(auth.token)}` : null;
+  /** The booth's sign-in is gone (the show went live / the run ended). */
+  const dropBooth = useCallback((why: string | null) => {
+    drop(PK);
+    setAuth(null);
+    setView(null);
+    setResponses([]);
+    setNotice(why);
+  }, []);
   const { messages, connected } = useChatStream(url, {
     onSnapshot: (v) => setView(v as PrimeView),
     onResponse: (text) => setResponses((r) => [{ id: rid.current++, text }, ...r]),
+    // Going live signs every performer out (rehearsal booths must not carry
+    // into the show); a reset / reload keeps the character — the server just
+    // re-sends the snapshot + history.
+    onLifecycle: (n) => {
+      if (lifecycleDropsSession(n.kind, SessionRole.Performer)) dropBooth(lifecycleNotice(n.kind, SessionRole.Performer));
+    },
+    // The stream was refused: this booth's token died while the phone slept.
+    onDead: () => dropBooth(lifecycleNotice("golive", SessionRole.Performer)),
   });
 
-  // Every action is scoped to the event this performer signed into.
+  // Every action is scoped to the event this performer signed into. A 403
+  // "sign in" answer means the token lost its character (go-live happened
+  // while this phone wasn't listening) — drop the booth and say so.
   const post = useCallback(
-    <T,>(path: string, body?: unknown, token?: string) => api<T>(`${base}${path}`, body, token),
-    [base],
+    async <T,>(path: string, body?: unknown, token?: string): Promise<T> => {
+      try {
+        return await api<T>(`${base}${path}`, body, token);
+      } catch (e) {
+        if (e instanceof ApiError && performerSessionDead(e.status, e.message) && auth !== null) {
+          dropBooth(lifecycleNotice("golive", SessionRole.Performer));
+        }
+        throw e;
+      }
+    },
+    [base, auth, dropBooth],
   );
 
   const login = useCallback(async (character: string, passcode: string) => {
@@ -419,6 +484,7 @@ export function usePrimeSession(): PrimeSession {
     const a: PrimeAuth = { token: r.token, character: r.character, admin: !!r.admin, eventId, title };
     save(PK, a);
     setAuth(a);
+    setNotice(null);
   }, []);
   const scan = useCallback((target: string) => post("/api/scan", { target }, auth!.token), [post, auth]);
   const say = useCallback(
@@ -460,9 +526,10 @@ export function usePrimeSession(): PrimeSession {
     setAuth(null);
     setView(null);
     setResponses([]);
+    setNotice(null);
   }, []);
 
   const threads = useThreads(buildPrimeChannels(messages, view));
   useTheme(view?.theme);
-  return { auth, view, responses, connected, threads, login, scan, say, inviteToChannel, leaveChannel, becomeAdmin, act, moderate, setHidden, leave };
+  return { auth, view, responses, connected, notice, threads, login, scan, say, inviteToChannel, leaveChannel, becomeAdmin, act, moderate, setHidden, leave };
 }

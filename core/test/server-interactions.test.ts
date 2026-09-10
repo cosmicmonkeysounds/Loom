@@ -189,6 +189,27 @@ describe("/api/prime/act", () => {
   });
 });
 
+describe("/api/mod/signal as a character (`actor`)", () => {
+  it("fires only that character's hooks — the director's performer-lens path", async () => {
+    const rt = freshRuntime();
+    rt.openDoors();
+    const g = await guest(rt);
+    const r = await post(rt, "/api/mod/signal", { name: "whisper", subject: g.id, actor: "The Gatekeeper" }, true);
+    expect(r.status).toBe(200);
+    // Only the Gatekeeper's hook ran (+5), not Ivo Marsh's (+100) — exactly like /api/prime/act.
+    expect(rt.liveSim!.world.get(`${g.id}.favour`)).toEqual({ kind: "number", value: 5 });
+    expect((await post(rt, "/api/mod/signal", { name: "whisper", subject: g.id, actor: "Nobody" }, true)).status).toBe(404);
+  });
+
+  it("without an actor every listener hears it", async () => {
+    const rt = freshRuntime();
+    rt.openDoors();
+    const g = await guest(rt);
+    expect((await post(rt, "/api/mod/signal", { name: "whisper", subject: g.id }, true)).status).toBe(200);
+    expect(rt.liveSim!.world.get(`${g.id}.favour`)).toEqual({ kind: "number", value: 105 });
+  });
+});
+
 describe("/api/mod/signal with arguments", () => {
   it("binds JSON args in the listening body", async () => {
     const rt = freshRuntime();

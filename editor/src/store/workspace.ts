@@ -81,6 +81,10 @@ type WorkspaceState = {
   openRoot: (handle: FileSystemDirectoryHandle) => Promise<void>
   /** Open a server-backed project: load its files into an editable tree. */
   openServerProject: (project: { id: string; name: string }, files: ProjectFile[]) => Promise<void>
+  /** An in-memory LOCAL workspace with no server and no folder handle —
+   *  `projectId` stays null, so Run mode resolves to the in-browser sim and
+   *  nothing calls the projects API. The e2e / demo harness path. */
+  openLocalFiles: (name: string, files: ProjectFile[]) => Promise<void>
   restoreRoot: () => Promise<void>
   requestPermission: () => Promise<void>
   closeRoot: () => Promise<void>
@@ -430,6 +434,31 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       set({ projectId: null, projectName: null, openFiles: {}, tabOrder: [], activePath: null, recentlyClosed: [], nodes: [], edges: [] })
       await idbSet(ROOT_HANDLE_KEY, handle)
       await adoptRoot(handle)
+    },
+
+    openLocalFiles: async (name, files) => {
+      // Same synthetic tree as a server project (entries carry their text
+      // inline, so the LSP indexer reads them for free) but no project id:
+      // saves stay in memory, no collab stream, no event plane.
+      stopObserver()
+      stopCollab()
+      resetIndexCache()
+      await idbDel(ROOT_HANDLE_KEY)
+      const root = buildServerTree(name, files)
+      set({
+        root,
+        rootStatus: 'connected',
+        projectId: null,
+        projectName: name,
+        openFiles: {},
+        tabOrder: [],
+        activePath: null,
+        recentlyClosed: [],
+        nodes: [],
+        edges: [],
+      })
+      const main = findFileEntry(root, 'main.loom') ?? firstFileEntry(root)
+      if (main) await get().openFile(main)
     },
 
     openServerProject: async (project, files) => {

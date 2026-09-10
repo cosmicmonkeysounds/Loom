@@ -2,17 +2,18 @@
 title: Editor basics — projects & modes
 section: The Editor
 order: 40
-keywords: editor, project, account, sign in, local folder, modes, mode bar, writing, run, integrations, deploy, save, launchpad, files, share, collaborate, invite, co-writer
+keywords: editor, project, account, sign in, local folder, modes, mode bar, writing, run, integrations, save, launchpad, files, share, collaborate, invite, co-writer
 ---
 
 ## Two ways to keep a project
 
 - **Server projects** — sign in (email/password) and your `.loom` files
   live on the Loom server. This unlocks the whole live-event pipeline:
-  launching events, join codes, moderating from Run mode.
+  shared rehearsals, going live, join codes, moderating — all in Run mode.
 - **A local folder** — no account needed. Open any folder of `.loom`
-  files with the folder picker (Chromium-based browsers). Everything in
-  Writing and Run's Sim source works; Live/Deploy need a server project.
+  files with the folder picker (Chromium-based browsers). Writing works
+  in full and Run rehearses in the browser; going live needs a server
+  project.
 
 The **Projects launchpad** (what you see after signing in) creates and
 opens server projects, and is where you share them.
@@ -35,16 +36,15 @@ roster stay with the owner; a collaborator can **Leave** from their
 launchpad. If your server has no email provider configured, the dialog
 shows you the invite link to pass along yourself.
 
-## The four modes
+## The three modes
 
-The bottom **Mode Bar** switches the whole studio between four modes:
+The bottom **Mode Bar** switches the whole studio between three modes:
 
 | Mode | Key | Is |
 |---|---|---|
 | **Writing** | `⌘1` | the authoring surface — text editor ⇄ story graph, side by side |
-| **Run** | `⌘2` | one cockpit with a **Sim ⇄ Live** switch — rehearse locally, or moderate the launched event |
+| **Run** | `⌘2` | the control room for the project's one run — rehearse, go live, join codes, moderate, be anyone |
 | **Integrations** | `⌘3` | game-engine targets — link a Godot project, install the addon, build banks |
-| **Deploy** | `⌘4` | the live event's home — launch, join codes/QR, lifecycle, guest list |
 
 Each mode remembers its own layout (rail/tray sizes, panes). The `⤢`
 button in the top bar resets the current mode's layout.

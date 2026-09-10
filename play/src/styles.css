@@ -76,6 +76,8 @@ body {
 
 .muted { color: var(--muted-ink); }
 .err { color: var(--bad); font-weight: 700; margin-top: 8px; }
+/* A lifecycle notice on the join / sign-in screens ("the story restarted — join again"). */
+.notice { color: var(--ink); background: var(--panel, rgba(0,0,0,0.06)); border-radius: 8px; padding: 8px 12px; margin: 0 0 12px; font-weight: 600; }
 .empty {
   color: var(--muted-ink); text-align: center; padding: 40px 24px;
   font-style: italic;

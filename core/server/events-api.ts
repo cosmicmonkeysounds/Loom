@@ -23,6 +23,7 @@ import {
   createEvent,
   getProjectFor,
   projectSource,
+  setEventMode,
   setEventStatus,
   type EventRow,
 } from "./db/queries.ts";
@@ -52,15 +53,32 @@ function eventView(row: EventRow, joinBase: () => string, phase?: string, stale?
     codes: { event: row.event_code, prime: row.prime_code, mod: row.mod_code },
     joinUrl: `${joinBase()}/?code=${row.event_code}`,
     createdAt: row.created_at,
+    /** Display name of the author who launched it. */
+    startedBy: row.created_by_name ?? null,
     /** The project's files have moved on since the running snapshot was
      *  taken — "Push current draft" would change what guests play. */
     ...(stale !== undefined ? { stale } : {}),
   };
 }
 
+/** Display name for attribution (`by` on lifecycle notices + journal lines). */
+function nameOf(user: AuthUser): string {
+  return user.name || user.email;
+}
+
+// Every open editor polls the status route; flushing the collab docs on each
+// poll would persist every project every few seconds for nothing. Flush at
+// most once per FLUSH_EVERY_MS per project when computing `stale`.
+const FLUSH_EVERY_MS = 5_000;
+const lastFlush = new Map<string, number>();
+
 /** Is the project's current text different from what the event runs on? */
 async function sourceIsStale(projectId: string, running: string): Promise<boolean> {
-  await collabHub().flush(projectId);
+  const now = Date.now();
+  if (now - (lastFlush.get(projectId) ?? 0) >= FLUSH_EVERY_MS) {
+    lastFlush.set(projectId, now);
+    await collabHub().flush(projectId);
+  }
   const src = await projectSource(projectId);
   return src !== null && src.source !== running;
 }
@@ -83,8 +101,9 @@ export async function handleEvent(
   ctx: EventContext,
 ): Promise<boolean> {
   const projectId = segs[2]!;
-  const action = segs[4]; // undefined | "pause" | "resume" | "end" | "reload"
+  const action = segs[4]; // undefined | "pause" | "resume" | "end" | "reload" | "golive"
   const { registry, joinBase } = ctx;
+  const by = nameOf(user);
 
   // Owner or invited collaborator — the whole writing team can launch and
   // control a project's event (a shared rehearsal is the point of a preview).
@@ -140,6 +159,7 @@ export async function handleEvent(
           mod_code: codes.mod,
           scenario_name: project.name,
           scenario_source: src.source,
+          created_by_name: by,
         });
         break;
       } catch (err) {
@@ -149,6 +169,7 @@ export async function handleEvent(
 
     const runtime = registry.ensure(specFromRow(row!));
     runtime.openDoors();
+    collabHub().notifyEvent(projectId, { kind: "launched", by, eventId: row!.id, mode });
     sendJson(res, 200, { event: eventView(row!, joinBase, runtime.currentPhase) });
     return true;
   }
@@ -160,9 +181,12 @@ export async function handleEvent(
       sendJson(res, 404, { error: "no active event" });
       return true;
     }
+    const notify = (kind: "golive" | "ended" | "reload" | "paused" | "resumed", mode = active.mode) =>
+      collabHub().notifyEvent(projectId, { kind, by, eventId: active.id, mode });
     if (action === "pause") {
       registry.get(active.id)?.pause();
       await setEventStatus(active.id, "paused");
+      notify("paused");
       sendJson(res, 200, { event: eventView(active, joinBase, "paused") });
       return true;
     }
@@ -170,13 +194,35 @@ export async function handleEvent(
       const runtime = registry.ensure(specFromRow(active));
       runtime.openDoors();
       await setEventStatus(active.id, "open");
+      notify("resumed");
       sendJson(res, 200, { event: eventView(active, joinBase, runtime.currentPhase) });
       return true;
     }
     if (action === "end") {
-      registry.stop(active.id);
+      registry.stop(active.id, by);
       await setEventStatus(active.id, "ended");
+      notify("ended");
       sendJson(res, 200, { ok: true });
+      return true;
+    }
+    if (action === "golive") {
+      // Promote the rehearsal in place: same id, codes, and QR (posters
+      // printed during the rehearsal keep working); the story restarts fresh
+      // and every rehearsal guest / persona / performer sign-in is cut.
+      if (active.mode !== "preview") {
+        sendJson(res, 409, { error: "already live", event: eventView(active, joinBase) });
+        return true;
+      }
+      // The DB write first: it can fail harmlessly; the restart below is the
+      // irreversible cut (tokens cleared, booths signed out).
+      await setEventMode(active.id, "live");
+      const runtime = registry.ensure(specFromRow(active));
+      runtime.restart(undefined, undefined, { kind: "golive", by });
+      notify("golive", "live");
+      const promoted: EventRow = { ...active, mode: "live" };
+      sendJson(res, 200, {
+        event: eventView(promoted, joinBase, runtime.currentPhase, await sourceIsStale(projectId, runtime.source)),
+      });
       return true;
     }
     if (action === "reload") {
@@ -190,8 +236,9 @@ export async function handleEvent(
         return true;
       }
       const runtime = registry.ensure(specFromRow(active));
-      runtime.restart(src.source, project.name);
+      runtime.restart(src.source, project.name, { kind: "reload", by });
       await setEventSource(active.id, src.source);
+      notify("reload");
       sendJson(res, 200, { event: eventView({ ...active, scenario_source: src.source }, joinBase, runtime.currentPhase, false) });
       return true;
     }

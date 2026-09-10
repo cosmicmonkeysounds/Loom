@@ -1,12 +1,12 @@
 # loom-app (the Loom editor)
 
 The user-facing **web IDE** for authoring `.loom` projects — a local-first
-editor with a four-mode "Studio" shell: **Writing** (`⌘1`, screenplay text
-editor + story-graph node editor side by side), **Run** (`⌘2`, one
-rehearsal/moderation cockpit with a **Sim ⇄ Live** source switch),
-**Integrations** (`⌘3`, game-engine targets — the Godot link, addon
-install, and bank build), and **Deploy** (`⌘4`, the live event's
-lifecycle, join codes/QR, and guest lookup).
+editor with a three-mode "Studio" shell: **Writing** (`⌘1`, screenplay
+text editor + story-graph node editor side by side), **Run** (`⌘2`, the
+control room for the project's one run — start a rehearsal or go live,
+join codes/QR, moderate, and *be* any participant), and **Integrations**
+(`⌘3`, game-engine targets — the Godot link, addon install, and bank
+build).
 
 This is the **authoring** surface. It is distinct from the participant
 app ([`loom-play`](../play)), which is what guests and performers use

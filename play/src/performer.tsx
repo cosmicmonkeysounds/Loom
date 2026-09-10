@@ -25,6 +25,7 @@ function PrimeLogin({ session }: { session: PrimeSession }) {
     <div className="hero">
       <div className="glyph">🎭</div>
       <h1>Performer station</h1>
+      {session.notice && <p className="notice">{session.notice}</p>}
       <p className="sub">Sign in as your character to scan guests and deliver the story.</p>
       <input placeholder="Character (as declared in the story)" value={character} onChange={(e) => setCharacter(e.target.value)} />
       <input type="password" placeholder="Performer passcode (from the host)" value={passcode} onChange={(e) => setPasscode(e.target.value)} />

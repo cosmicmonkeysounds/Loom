@@ -44,10 +44,13 @@ export type Mutation =
   | "leaveChannel"
   | "tick";
 
-/** One replayable line of the journal: a method name + its arguments. */
+/** One replayable line of the journal: a method name + its arguments, and
+ *  — for moderator mutations — who did it (`by`, a display name; replay
+ *  ignores it, the Log / audit reads it). */
 export interface JournalEntry {
   m: Mutation;
   a: unknown[];
+  by?: string;
 }
 
 export interface Meta {
@@ -55,6 +58,8 @@ export interface Meta {
   scenarioName: string;
   scenarioSource: string;
   phase: RuntimePhase;
+  /** persona id → the director who spawned it (mod-spawned personas only). */
+  owners?: Array<[string, string]>;
 }
 
 /** A persisted session: a token paired with the capabilities it carries. */
@@ -106,9 +111,10 @@ export class Store {
 
   // --- command journal ----------------------------------------------------
 
-  /** Append one mutation. Synchronous so it lands before we respond. */
-  appendCommand(m: Mutation, a: unknown[]): void {
-    appendFileSync(this.path(JOURNAL), JSON.stringify({ m, a }) + "\n");
+  /** Append one mutation. Synchronous so it lands before we respond.
+   *  `by` attributes a moderator mutation to a director (display name). */
+  appendCommand(m: Mutation, a: unknown[], by?: string): void {
+    appendFileSync(this.path(JOURNAL), JSON.stringify(by !== undefined ? { m, a, by } : { m, a }) + "\n");
   }
 
   /** Every journaled mutation in order. Skips any unparseable line. */

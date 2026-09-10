@@ -84,24 +84,35 @@ listed in every view (operator, guest, performer), `member`/`canPost` = "is
 the viewer currently there" (operator surfaces bypass, as they already do for
 authored rooms). Sidebar order: lobby, factions, locations, authored, DMs.
 
-## The cockpit (Sim ⌘3 / Run ⌘4)
+## The cockpit (Run ⌘2)
 
-- **Perspective selector** in the rail: Operator (god view, default), any
-  guest/persona, any character. A non-operator perspective filters the room
-  list to what that identity can see and the feed to `visibleTo(m, id)`;
-  the composer defaults to speaking as them.
-- **Act as anyone.** The composer's "post as" picker is grouped: Story
-  (Operator, Narrator) · Guests (roster) · Cast (characters). Guest speech
-  goes through the same journaled `say` path as the play app, so a rehearsal
-  transcript replays deterministically.
+- **The identity control** in the Run header: Operator (god view, default),
+  any guest/persona, any character. A non-operator identity is *exact*: the
+  cockpit fetches that participant's own server projection (`GuestView` /
+  `PrimeView` via `GET /api/state?role=…&as=…`, the literal data the play app
+  renders), so the room list carries the real `member` / `canPost` rules,
+  the feed is `visibleTo(m, id)` minus hidden messages, their pending choice
+  docks in the room, their interactions become buttons, and a character
+  gets the performer's booth (per-guest threads, scan, interactions fired as
+  the character). The composer defaults to speaking as a persona; speaking
+  as a real guest is an explicit pick, confirmed once, and attributed
+  (`ChatMessage.via`) to directors only. World / Director / Inspector
+  editors close under a lens.
+- **Act as anyone.** Under the Operator lens the composer's "post as"
+  picker is grouped: Story (Operator, Narrator) · Guests (roster) · Cast
+  (characters); under a guest lens it offers only Operator / Narrator /
+  that guest, and under a performer lens the character is the only voice.
+  Guest speech goes through the same journaled `say` path as the play app,
+  so a rehearsal transcript replays deterministically.
 - **Kind-aware rendering.** `narration` renders as an italic stage block,
   `system` as a dim notice, `signal` with an accent; `line`s group
   consecutive-sender runs like the play app.
-- **Decisions in the room.** When the active perspective has a pending choice,
-  the choice docks as a tray above the composer. Sim answers it against the
-  local engine; Run answers it through the journaled `/api/mod/choose`
-  (the mod snapshot carries `ModView.choices`), indistinguishable from the
-  guest's own tap on replay.
+- **Decisions in the room.** When the active identity has a pending choice,
+  the choice docks as a tray above the composer (the Operator also gets the
+  unbound story menu and each of their personas' choices). The local backend
+  answers it against the in-browser engine; the server backend through the
+  journaled `/api/mod/choose` (the mod snapshot carries `ModView.choices`),
+  indistinguishable from the guest's own tap on replay.
 
 ## Non-goals / later
 

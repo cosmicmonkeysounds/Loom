@@ -35,6 +35,17 @@ interface Client {
   res: ServerResponse;
 }
 
+/** The run transitions announced on the `lifecycle` SSE event. */
+export type LifecycleKind = "reset" | "reload" | "golive" | "ended";
+
+/** A message as a guest client may see it: never the director attribution
+ *  a mod `say`-as-a-participant carries. */
+function forGuest(m: ChatMessage): ChatMessage {
+  if (m.via === undefined) return m;
+  const { via: _via, ...rest } = m;
+  return rest;
+}
+
 /** What a restart-recovery brought back for one event, for the boot banner. */
 export interface Restored {
   guests: number;
@@ -85,6 +96,13 @@ export class EventRuntime {
   private readonly chat = new ChatStore();
   // Where each guest's pending decision docks (channel id). Ephemeral.
   private readonly decisionChannels = new Map<string, string>();
+  // persona id → the director (display name) who spawned it via
+  // `/api/mod/persona`. Persisted in meta, cleared by every restart (the
+  // personas die with the journal), surfaced as `RosterRow.owner`.
+  private readonly personaOwners = new Map<string, string>();
+  // The director currently inside `handleMod` (display name) — stamped onto
+  // every journal line that mutation writes (`by`) for attribution.
+  private actingBy: string | undefined;
   // This event's SSE subscribers.
   private readonly clients = new Set<Client>();
   // Ephemeral messages already announced as expired (so we notify once).
@@ -160,7 +178,7 @@ export class EventRuntime {
         directors.push(c.name ?? "Director");
       }
     }
-    return { guests, primes, mods, directors };
+    return { guests, primes, mods, directors, owners: this.personaOwners };
   }
 
   private snapshotFor(client: Client): unknown {
@@ -188,7 +206,7 @@ export class EventRuntime {
 
   private historyFor(c: Client): ChatMessage[] {
     return c.role === "guest"
-      ? this.chat.historyFor(c.id, false)
+      ? this.chat.historyFor(c.id, false).map(forGuest)
       : c.role === "mod"
         ? [...this.chat.all()]
         : this.chat.all().filter((m) => !m.hidden);
@@ -196,8 +214,22 @@ export class EventRuntime {
 
   /** A lifecycle transition every connected client should react to
    *  (`reset` / `reload` → drop local state; `ended` → the event is gone). */
-  private pushLifecycle(kind: "reset" | "reload" | "ended", extra: Record<string, unknown> = {}): void {
-    for (const c of this.clients) sseSend(c.res, "lifecycle", { kind, ...extra });
+  private pushLifecycle(kind: LifecycleKind, extra: Record<string, unknown> = {}): void {
+    for (const c of this.clients) sseSend(c.res, "lifecycle", { kind, at: Date.now(), ...extra });
+  }
+
+  /** Close every stream of one role (after a cut they announce) and forget
+   *  the clients, so presence stops counting them. */
+  private endClients(role: Client["role"]): void {
+    for (const c of [...this.clients]) {
+      if (c.role !== role) continue;
+      this.clients.delete(c);
+      try {
+        c.res.end();
+      } catch {
+        /* client already gone */
+      }
+    }
   }
 
   private toPrime(character: string, event: string, data: unknown): void {
@@ -212,7 +244,7 @@ export class EventRuntime {
   private deliverMessage(m: ChatMessage): void {
     for (const c of this.clients) {
       if (c.role === "guest") {
-        if (!m.hidden && visibleTo(m, c.id)) sseSend(c.res, "message", m);
+        if (!m.hidden && visibleTo(m, c.id)) sseSend(c.res, "message", forGuest(m));
       } else {
         sseSend(c.res, "message", m);
       }
@@ -244,7 +276,7 @@ export class EventRuntime {
    * straight to the booth; everything guest-facing is composed into channel
    * messages, appended to the chat store, and delivered.
    */
-  private fanout(events: SimEvent[]): void {
+  private fanout(events: SimEvent[], via?: string): void {
     for (const e of events) {
       if (e.type === "respond") this.toPrime(e.to, "response", { text: e.text });
       if (e.type === "choicePrompted" && e.person !== null) {
@@ -255,7 +287,11 @@ export class EventRuntime {
       // in-editor simulator can mirror the whole run.
       for (const c of this.clients) if (c.role === "mod") sseSend(c.res, "sim", e);
     }
-    for (const m of this.chat.append(composeGuestMessages(this.sim ?? EMPTY_SIM, events))) this.deliverMessage(m);
+    const drafts = composeGuestMessages(this.sim ?? EMPTY_SIM, events);
+    // A director speaking *as* a participant: the room sees the participant's
+    // name, the mod feed additionally sees who really typed it.
+    if (via !== undefined) for (const d of drafts) if (d.kind === "line") d.via = via;
+    for (const m of this.chat.append(drafts)) this.deliverMessage(m);
     for (const id of [...this.decisionChannels.keys()]) {
       if (this.sim?.pendingChoiceFor(id) == null) this.decisionChannels.delete(id);
     }
@@ -271,10 +307,11 @@ export class EventRuntime {
     }
   }
 
-  /** Apply a sim mutation *and* journal it, so it survives a restart. */
+  /** Apply a sim mutation *and* journal it, so it survives a restart. Inside
+   *  a mod route the journal line also carries who did it (`by`). */
   private commit(m: Mutation, ...args: unknown[]): SimEvent[] {
     this.flushTick();
-    this.store.appendCommand(m, args);
+    this.store.appendCommand(m, args, this.actingBy);
     return (this.sim![m] as (...a: unknown[]) => SimEvent[])(...args);
   }
 
@@ -324,6 +361,7 @@ export class EventRuntime {
       scenarioName: this.scenarioName,
       scenarioSource: this.scenarioSource,
       phase: this.phase,
+      owners: [...this.personaOwners.entries()],
     });
   }
 
@@ -400,12 +438,34 @@ export class EventRuntime {
    * `entry:` beat fires again). Every connected client gets a fresh
    * `history` + a `lifecycle` notice so no console keeps a dead feed.
    */
-  restart(source: string = this.scenarioSource, name: string = this.scenarioName): void {
-    const kind = source === this.scenarioSource ? "reset" : "reload";
+  restart(
+    source: string = this.scenarioSource,
+    name: string = this.scenarioName,
+    opts: { kind?: LifecycleKind; by?: string } = {},
+  ): void {
+    const kind: LifecycleKind = opts.kind ?? (source === this.scenarioSource ? "reset" : "reload");
     const wasOpen = this.phase === "open";
     // Announce first, so a console drops its old ledger/overlay *before*
     // the replayed entry beat streams in.
-    this.pushLifecycle(kind, { phase: wasOpen ? "open" : "paused" });
+    this.pushLifecycle(kind, { phase: wasOpen ? "open" : "paused", ...(opts.by !== undefined ? { by: opts.by } : {}) });
+    // Every restart is a real cut for participants: the persons they were
+    // die with the journal, so their capability tokens die too (a guest
+    // re-registers into the fresh story instead of streaming as a ghost).
+    // Going live additionally signs every performer out of their character
+    // — rehearsal booths must not carry into the show.
+    this.guestTokens.clear();
+    this.persistGuests();
+    this.personaOwners.clear();
+    this.endClients("guest");
+    if (kind === "golive") {
+      for (const [token, session] of this.sessions.entries()) {
+        if (session.character === null) continue;
+        if (session.admin) this.sessions.set(token, { character: null, admin: true });
+        else this.sessions.delete(token);
+      }
+      this.persistSessions();
+      this.endClients("prime");
+    }
     this.stopTicker();
     this.sim = null;
     this.scenarioSource = source;
@@ -429,9 +489,9 @@ export class EventRuntime {
   }
 
   /** Tear the runtime down (stop the clock, drop SSE clients). */
-  dispose(): void {
+  dispose(by?: string): void {
     this.stopTicker();
-    this.pushLifecycle("ended");
+    this.pushLifecycle("ended", by !== undefined ? { by } : {});
     for (const c of this.clients) {
       try {
         c.res.end();
@@ -466,7 +526,13 @@ export class EventRuntime {
                 this.decisionChannels.set(ev.person, decisionChannelFor(batch, ev.person));
               }
             }
-            this.chat.append(composeGuestMessages(this.sim!, batch));
+            const drafts = composeGuestMessages(this.sim!, batch);
+            // A director's speech *as* a participant keeps its attribution
+            // across a restart — the same rule `fanout` applies live.
+            if (e.m === "say" && e.by !== undefined && this.sim!.persons.has(String(e.a[0]))) {
+              for (const d of drafts) if (d.kind === "line") d.via = e.by;
+            }
+            this.chat.append(drafts);
           }
         } catch {
           /* tolerate a single bad/torn entry rather than abort recovery */
@@ -479,6 +545,7 @@ export class EventRuntime {
       if (this.sim?.pendingChoiceFor(id) == null) this.decisionChannels.delete(id);
     }
     this.phase = meta.phase;
+    for (const [id, owner] of meta.owners ?? []) this.personaOwners.set(id, owner);
     const entries = this.store.loadSessions();
     this.sessions.load(entries);
     for (const [token, id] of this.store.loadGuests()) this.guestTokens.set(token, id);
@@ -561,6 +628,33 @@ export class EventRuntime {
     if (method === "GET" && path === "/api/state") {
       const role = url.searchParams.get("role") ?? "mod";
       const token = queryTokenOf(req, url);
+      // A moderator may read any participant's projection verbatim
+      // (`?as=<guest id>` / `?as=<character>`) — the editor's identity lens:
+      // what the runner sees while "being" someone is exactly the play app's
+      // own `GuestView` / `PrimeView`, not a filtered god view.
+      const as = url.searchParams.get("as");
+      if (as !== null && role !== "mod") {
+        if (opts.moderator !== true && !this.sessions.canModerate(token)) {
+          sendJson(res, 403, { error: "moderators only" });
+          return true;
+        }
+        if (role === "guest") {
+          if (!this.reqSim().persons.has(as)) {
+            sendJson(res, 404, { error: "unknown guest" });
+            return true;
+          }
+          sendJson(res, 200, guestView(this.reqSim(), as, this.decisionChannels.get(as) ?? null));
+          return true;
+        }
+        if (role === "prime") {
+          if (!this.reqSim().model.characters.has(as)) {
+            sendJson(res, 404, { error: "unknown character" });
+            return true;
+          }
+          sendJson(res, 200, primeView(this.sim, as));
+          return true;
+        }
+      }
       if (role === "guest") {
         const gid = this.guestOf(token);
         if (gid === null) {
@@ -605,7 +699,8 @@ export class EventRuntime {
         }
         id = gid;
       }
-      sendJson(res, 200, { messages: this.chat.historyFor(id, admin).filter((m) => !this.isExpired(m)) });
+      const messages = this.chat.historyFor(id, admin).filter((m) => !this.isExpired(m));
+      sendJson(res, 200, { messages: admin ? messages : messages.map(forGuest) });
       return true;
     }
 
@@ -624,7 +719,7 @@ export class EventRuntime {
         sendJson(res, 403, { error: "moderators only" });
         return true;
       }
-      return this.handleMod(res, path, body);
+      return this.handleMod(res, path, body, opts.moderatorName ?? "Director");
     }
 
     return false;
@@ -984,13 +1079,23 @@ export class EventRuntime {
     }
   }
 
-  /** Admin-only routes (caller already proven to hold the mod capability). */
-  private handleMod(res: ServerResponse, path: string, body: Record<string, unknown>): boolean {
+  /** Admin-only routes (caller already proven to hold the mod capability).
+   *  `by` is the director's display name — every mutation below journals it. */
+  private handleMod(res: ServerResponse, path: string, body: Record<string, unknown>, by: string): boolean {
+    this.actingBy = by;
+    try {
+      return this.handleModInner(res, path, body, by);
+    } finally {
+      this.actingBy = undefined;
+    }
+  }
+
+  private handleModInner(res: ServerResponse, path: string, body: Record<string, unknown>, by: string): boolean {
     switch (path) {
       case "/api/mod/load": {
         const source = str(body, "source") || this.scenarioSource;
         const name = str(body, "name") || this.scenarioName;
-        this.restart(source, name);
+        this.restart(source, name, { by });
         sendJson(res, 200, { ok: true, phase: this.phase });
         return true;
       }
@@ -1005,7 +1110,7 @@ export class EventRuntime {
         return true;
       }
       case "/api/mod/reset": {
-        this.restart();
+        this.restart(undefined, undefined, { by });
         sendJson(res, 200, { ok: true, phase: this.phase });
         return true;
       }
@@ -1035,9 +1140,6 @@ export class EventRuntime {
           case "release":
             this.fanout(this.commit("escape", id));
             break;
-          case "signal":
-            this.fanout(this.commit("signal", str(body, "name"), id));
-            break;
           default:
             sendJson(res, 400, { error: "unknown action" });
             return true;
@@ -1055,7 +1157,14 @@ export class EventRuntime {
         // bodies, like `fire name with level: 3` (Loom 4 §9.2).
         const rawArgs = body["args"];
         const args = rawArgs !== null && typeof rawArgs === "object" && !Array.isArray(rawArgs) ? rawArgs : null;
-        this.fanout(this.commit("signal", str(body, "name"), subject === "" ? undefined : subject, args));
+        // Fired *as* a character (the performer-lens interaction path, like
+        // `/api/prime/act`): only that character's hooks hear it.
+        const actor = str(body, "actor");
+        if (actor !== "" && !this.sim.model.characters.has(actor)) {
+          sendJson(res, 404, { error: "unknown character" });
+          return true;
+        }
+        this.fanout(this.commit("signal", str(body, "name"), subject === "" ? undefined : subject, args, actor === "" ? null : actor));
         sendJson(res, 200, { ok: true });
         return true;
       }
@@ -1086,7 +1195,7 @@ export class EventRuntime {
           if (c.role === "guest") {
             if (!visibleTo(m, c.id)) continue;
             if (m.hidden) sseSend(c.res, "messageModerated", { seq: m.seq, hidden: true });
-            else sseSend(c.res, "message", m);
+            else sseSend(c.res, "message", forGuest(m));
           } else {
             sseSend(c.res, "messageModerated", m);
           }
@@ -1109,6 +1218,14 @@ export class EventRuntime {
         }
         const as = str(body, "as");
         const speaker = as !== "" ? as : "Operator";
+        // Who may speak: the stage voices, any character, or a participant.
+        // Anything else is a typo, not a new voice.
+        const isPerson = this.sim.persons.has(speaker);
+        const isCharacter = this.sim.model.characters.has(speaker);
+        if (!isPerson && !isCharacter && speaker !== "Operator" && speaker !== "Narrator") {
+          sendJson(res, 404, { error: "unknown speaker" });
+          return true;
+        }
         let channel = str(body, "channel") || "lobby";
         let audience: "all" | string[] | undefined;
         // Address one guest's DM thread: `channel: "guest:<id>"`.
@@ -1118,11 +1235,25 @@ export class EventRuntime {
             sendJson(res, 404, { error: "unknown guest" });
             return true;
           }
+          if (isPerson) {
+            // Participants speak in rooms; characters and the Operator DM.
+            sendJson(res, 403, { error: `${this.sim.persons.get(speaker)!.name} can't DM a guest — speak in a room` });
+            return true;
+          }
           channel = `dm:${speaker}`;
           audience = [gid];
         }
+        // Speaking *as* a participant obeys their post policy exactly like
+        // their own `/api/guest/say` would (presence in a location room,
+        // read-only feeds, membership) — a director can't route around it by
+        // borrowing a real guest's name. (Slow mode is not applied: a puppet
+        // is the director's own voice.)
+        if (isPerson && !this.sim.canPost(speaker, channel)) {
+          sendJson(res, 403, { error: `you can't post here as ${this.sim.persons.get(speaker)!.name}` });
+          return true;
+        }
         const parentSeq = this.sim.threadableOf(channel) && body["parentSeq"] != null ? Number(body["parentSeq"]) : null;
-        this.fanout(this.commit("say", speaker, channel, text, parentSeq, audience));
+        this.fanout(this.commit("say", speaker, channel, text, parentSeq, audience), isPerson ? by : undefined);
         sendJson(res, 200, { ok: true });
         return true;
       }
@@ -1208,8 +1339,12 @@ export class EventRuntime {
           sendJson(res, 404, { error: "unknown guest" });
           return true;
         }
-        this.fanout(this.commit("scan", as, target));
-        sendJson(res, 200, { ok: true, guest: rosterRow(this.sim, target) });
+        const scanEvents = this.commit("scan", as, target);
+        const responses = scanEvents
+          .filter((e): e is Extract<SimEvent, { type: "respond" }> => e.type === "respond" && e.to === as)
+          .map((e) => e.text);
+        this.fanout(scanEvents);
+        sendJson(res, 200, { ok: true, guest: rosterRow(this.sim, target), responses });
         return true;
       }
       case "/api/mod/reveal": {
@@ -1257,8 +1392,13 @@ export class EventRuntime {
         }
         const name = str(body, "name") || "Persona";
         const id = `p-${randomUUID().slice(0, 6)}`;
+        // Ownership is runtime state, not a sim fact: it names which director
+        // puppets this persona (the rail's "you" / "Ana's persona" chips) and
+        // survives a reload of their editor.
+        this.personaOwners.set(id, by);
+        this.persistMeta();
         this.fanout(this.commit("createPerson", id, name));
-        sendJson(res, 200, { ok: true, guest: rosterRow(this.sim, id) });
+        sendJson(res, 200, { ok: true, guest: { ...rosterRow(this.sim, id)!, owner: by } });
         return true;
       }
       case "/api/mod/choose": {

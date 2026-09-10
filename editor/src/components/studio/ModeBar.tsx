@@ -1,12 +1,27 @@
 // The bottom Mode Bar — the primary navigation of the IDE, DaVinci
-// Resolve-style. Four modes: Writing (text + story graph), Run (rehearse
-// on the local sim / moderate the live event), Integrations (ship the
-// story into a game engine), Deploy (the live event's lifecycle + admin
-// controls). Also hosts the left-rail / properties-tray collapse toggles
-// for the active mode.
+// Resolve-style. Three modes: Writing (text + story graph), Run (the
+// project's one run: rehearse, go live, moderate, be anyone), Integrations
+// (ship the story into a game engine). The Run label carries a dot while
+// a run exists (amber rehearsal / emerald live) — visible from any mode.
+// Also hosts the left-rail / properties-tray collapse toggles.
 
 import clsx from 'clsx'
 import { useMode, MODES, type Mode } from '@/store/mode'
+import { RunMode, useCockpit } from '@/store/cockpit'
+import { RunCockpit } from '@/components/cockpit/providers'
+
+/** A dot on the Run tab while a run exists (from any mode). */
+function RunDot() {
+  const mode = useCockpit((s) => s.run?.mode ?? null)
+  if (mode === null) return null
+  return (
+    <span
+      className={clsx('h-1.5 w-1.5 rounded-full', mode === RunMode.Live ? 'bg-emerald-400' : 'bg-amber-400')}
+      title={mode === RunMode.Live ? 'live event running' : 'rehearsal running'}
+      data-testid="mode-run-dot"
+    />
+  )
+}
 
 export function ModeBar() {
   const mode = useMode((s) => s.mode)
@@ -44,6 +59,11 @@ export function ModeBar() {
             >
               <ModeGlyph id={m.id} />
               <span className="font-medium">{m.label}</span>
+              {m.id === 'run' && (
+                <RunCockpit shared>
+                  <RunDot />
+                </RunCockpit>
+              )}
               <kbd
                 className={clsx(
                   'text-[10px] font-mono',
@@ -132,15 +152,6 @@ function ModeGlyph({ id }: { id: Mode }) {
       return (
         <svg {...common} aria-hidden>
           <path d="M10 4.5a1.8 1.8 0 0 1 3.6 0V6h2.9a.9.9 0 0 1 .9.9v2.9h1.5a1.8 1.8 0 0 1 0 3.6H17.4v2.9a.9.9 0 0 1-.9.9h-2.9v-1.5a1.8 1.8 0 0 0-3.6 0V19H7.1a.9.9 0 0 1-.9-.9v-2.9H4.7a1.8 1.8 0 0 1 0-3.6h1.5V6.9A.9.9 0 0 1 7.1 6H10Z" />
-        </svg>
-      )
-    case 'deploy':
-      // Broadcast tower — launching + administering the live event.
-      return (
-        <svg {...common} aria-hidden>
-          <circle cx="12" cy="12" r="2" />
-          <path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 16.24a6 6 0 0 1 0-8.49" />
-          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14" />
         </svg>
       )
   }

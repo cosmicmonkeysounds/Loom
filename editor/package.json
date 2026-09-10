@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "type": "module",
-  "description": "The Loom author IDE \u2014 Writing (text + story-graph), Run (Sim \u21c4 Live cockpit), and Deploy modes for authoring and operating live narrative events.",
+  "description": "The Loom author IDE \u2014 Writing (text + story-graph), Run (rehearse, go live, moderate, be anyone), and Integrations modes for authoring and operating live narrative events.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

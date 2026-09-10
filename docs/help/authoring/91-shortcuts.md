@@ -11,7 +11,8 @@ On Windows/Linux, read `⌘` as `Ctrl`.
 
 | Key | Does |
 |---|---|
-| `⌘1` / `⌘2` / `⌘3` / `⌘4` | Writing / Run / Integrations / Deploy mode |
+| `⌘1` / `⌘2` / `⌘3` | Writing / Run / Integrations mode |
+| `Esc` | in Run, while being someone: back to the Operator |
 | `⌘B` | toggle the left rail |
 | `⌘⌥B` | toggle the properties tray |
 | `⌘\` | toggle the story-graph pane (Writing) |

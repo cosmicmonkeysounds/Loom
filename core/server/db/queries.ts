@@ -38,6 +38,8 @@ export interface EventRow {
   scenario_source: string;
   created_at: string;
   ended_at: string | null;
+  /** Display name of the author who launched it (null on rows from before 2026-09-10). */
+  created_by_name: string | null;
 }
 
 // --- projects -----------------------------------------------------------
@@ -365,11 +367,11 @@ export async function activeEvent(projectId: string): Promise<EventRow | null> {
   return rows[0] ?? null;
 }
 
-export async function createEvent(row: Omit<EventRow, "created_at" | "ended_at">): Promise<EventRow> {
+export async function createEvent(row: Omit<EventRow, "created_at" | "ended_at" | "created_by_name"> & { created_by_name?: string | null }): Promise<EventRow> {
   const { rows } = await pool().query<EventRow>(
     `insert into event
-       (id, project_id, mode, status, event_code, prime_code, mod_code, scenario_name, scenario_source)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       (id, project_id, mode, status, event_code, prime_code, mod_code, scenario_name, scenario_source, created_by_name)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      returning *`,
     [
       row.id,
@@ -381,9 +383,16 @@ export async function createEvent(row: Omit<EventRow, "created_at" | "ended_at">
       row.mod_code,
       row.scenario_name,
       row.scenario_source,
+      row.created_by_name ?? null,
     ],
   );
   return rows[0]!;
+}
+
+/** Promote (or demote) an event in place — `golive` flips a rehearsal to
+ *  `live` while keeping its id, codes, and QR. */
+export async function setEventMode(id: string, mode: EventMode): Promise<void> {
+  await pool().query("update event set mode = $2 where id = $1", [id, mode]);
 }
 
 export async function setEventStatus(id: string, status: EventStatus): Promise<void> {

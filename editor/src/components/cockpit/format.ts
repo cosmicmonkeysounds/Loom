@@ -1,6 +1,8 @@
-//! Pure formatting helpers for the Run (Operate) cockpit. Kept out of the
-//! `.tsx` component module so Fast Refresh stays happy (a component file should
+//! Pure formatting helpers for the Run cockpit. Kept out of the `.tsx`
+//! component modules so Fast Refresh stays happy (a component file should
 //! export only components).
+
+import { RunBackend, RunMode, type RunInfo } from '@/store/cockpit'
 
 /** Tailwind tone classes for a faction pill (falls back to a neutral grey). */
 export function factionTone(faction: string | null | undefined): string {
@@ -36,3 +38,27 @@ export function channelGlyph(kind: string | undefined): string {
       return '#'
   }
 }
+
+/** The world badge — what this cockpit is driving right now. */
+export function worldBadge(run: RunInfo | null): { label: string; badge: string; border: string } {
+  if (run === null) return { label: 'no run', badge: 'bg-zinc-800 text-zinc-400', border: 'border-zinc-800' }
+  if (run.backend === RunBackend.Local) {
+    return run.scratch
+      ? { label: '⚗ Scratch run', badge: 'bg-violet-950 text-violet-300', border: 'border-violet-900/60' }
+      : { label: '◦ Local run', badge: 'bg-violet-950 text-violet-300', border: 'border-violet-900/60' }
+  }
+  return run.mode === RunMode.Live
+    ? { label: '● Live event', badge: 'bg-emerald-950 text-emerald-300', border: 'border-emerald-900/60' }
+    : { label: '◉ Shared rehearsal', badge: 'bg-amber-950 text-amber-300', border: 'border-amber-900/60' }
+}
+
+
+/** A character's declared faction as a participant may see it: under a
+ *  lens a hidden, unrevealed allegiance reads as none — the phone never
+ *  shows it either. */
+export function publicFaction(faction: string | null, factions: Array<{ id: string; hidden: boolean; revealed: boolean }>, locked: boolean): string | null {
+  if (!locked || faction === null) return faction
+  const f = factions.find((x) => x.id === faction)
+  return f !== undefined && f.hidden && !f.revealed ? null : faction
+}
+

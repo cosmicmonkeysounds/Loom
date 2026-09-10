@@ -13,11 +13,13 @@ import { useWorkspace } from '@/store/workspace'
 import { useSettings } from '@/store/settings'
 import { useAuth } from '@/store/auth'
 import { useProjects } from '@/store/projects'
+import { useOperate } from '@/store/operate'
 import { captureLinkFromLocation } from '@/lib/invite-link'
 
 export default function App() {
   const restoreRoot = useWorkspace((s) => s.restoreRoot)
   const root = useWorkspace((s) => s.root)
+  const projectId = useWorkspace((s) => s.projectId)
   const theme = useSettings((s) => s.theme)
   const authStatus = useAuth((s) => s.status)
   const refreshAuth = useAuth((s) => s.refresh)
@@ -38,6 +40,15 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme
   }, [theme])
+  // The server-run store lives as long as the server project is open — not
+  // as long as Run mode is on screen — so a Writing ⇄ Run hop never drops
+  // the feed, personas, or ledger, and a co-writer's launch is noticed from
+  // any mode (the Mode Bar dots the Run tab).
+  useEffect(() => {
+    if (projectId === null) return
+    useOperate.getState().attach(projectId)
+    return () => useOperate.getState().detach()
+  }, [projectId])
 
   return (
     <>

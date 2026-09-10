@@ -6,7 +6,23 @@
 //! carry the session cookie (`credentials: "include"`); in dev the Vite proxy
 //! makes these same-origin so the cookie flows.
 
+import type { GuestView, PrimeView } from '@loom/core/views'
+
 const BASE = import.meta.env.VITE_LOOM_API ?? ''
+
+/** A non-2xx response. Carries the status + parsed body so a caller can
+ *  act on a specific outcome (e.g. a 409 "already active" launch that
+ *  hands back the existing event) instead of just showing the message. */
+export class ApiError extends Error {
+  readonly status: number
+  readonly data: Record<string, unknown>
+  constructor(status: number, data: Record<string, unknown>) {
+    super((data['error'] as string) || (data['message'] as string) || `HTTP ${status}`)
+    this.name = 'ApiError'
+    this.status = status
+    this.data = data
+  }
+}
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -16,7 +32,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
     credentials: 'include',
   })
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>
-  if (!res.ok) throw new Error((data['error'] as string) || (data['message'] as string) || `HTTP ${res.status}`)
+  if (!res.ok) throw new ApiError(res.status, data)
   return data as T
 }
 
@@ -174,6 +190,8 @@ export interface EventInfo {
   /** The project's files have moved on since this event's story snapshot
    *  was taken — "Push current draft" would change what guests play. */
   stale?: boolean
+  /** Display name of the author who launched it (null for older rows). */
+  startedBy?: string | null
 }
 
 export const eventsApi = {
@@ -197,6 +215,12 @@ export const eventsApi = {
   async reload(projectId: string): Promise<EventInfo> {
     return (await req<{ event: EventInfo }>('POST', `/api/projects/${projectId}/event/reload`)).event
   },
+  /** Promote the running rehearsal (`preview`) to a live event in place:
+   *  the story restarts fresh, rehearsal guests/personas are removed, the
+   *  codes + QR stay the same. 409 unless the active event is a rehearsal. */
+  async goLive(projectId: string): Promise<EventInfo> {
+    return (await req<{ event: EventInfo }>('POST', `/api/projects/${projectId}/event/golive`)).event
+  },
 }
 
 /** Named arguments a fired signal binds in listening bodies (`fire x with k: v`). */
@@ -210,8 +234,8 @@ export type SignalArgs = Record<string, string | number | boolean>
 export type StatField = 'score' | 'faction' | 'location' | 'captured'
 
 export const modApi = {
-  async act(eventId: string, id: string, action: 'capture' | 'release' | 'signal', name?: string): Promise<void> {
-    await req('POST', `/e/${eventId}/api/mod/act`, { id, action, name })
+  async act(eventId: string, id: string, action: 'capture' | 'release'): Promise<void> {
+    await req('POST', `/e/${eventId}/api/mod/act`, { id, action })
   },
   async hideMessage(eventId: string, seq: number, hidden: boolean): Promise<void> {
     await req('POST', `/e/${eventId}/api/mod/message`, { seq, hidden })
@@ -231,13 +255,37 @@ export const modApi = {
   async fireBeat(eventId: string, name: string, subject?: string): Promise<void> {
     await req('POST', `/e/${eventId}/api/mod/beat`, { name, subject })
   },
-  /** Fire a generic `on <name>` signal, globally or on one subject. */
-  async fireSignal(eventId: string, name: string, subject?: string, args?: SignalArgs | null): Promise<void> {
-    await req('POST', `/e/${eventId}/api/mod/signal`, { name, subject, args: args ?? undefined })
+  /** Fire a generic `on <name>` signal, globally or on one subject —
+   *  optionally *as* a character (`actor`), so only that character's hooks
+   *  hear it (the performer-lens interaction path, like `/api/prime/act`). */
+  async fireSignal(
+    eventId: string,
+    name: string,
+    subject?: string,
+    args?: SignalArgs | null,
+    actor?: string | null,
+  ): Promise<void> {
+    await req('POST', `/e/${eventId}/api/mod/signal`, {
+      name,
+      subject,
+      args: args ?? undefined,
+      actor: actor ?? undefined,
+    })
   },
-  /** Scan a guest as a character — fires that character's scan reaction. */
-  async scanAs(eventId: string, as: string, target: string): Promise<void> {
-    await req('POST', `/e/${eventId}/api/mod/scan`, { as, target })
+  /** Scan a guest as a character — fires that character's scan reaction.
+   *  Resolves to the character's `respond` readouts (the booth's responses). */
+  async scanAs(eventId: string, as: string, target: string): Promise<string[]> {
+    const r = await req<{ responses?: string[] }>('POST', `/e/${eventId}/api/mod/scan`, { as, target })
+    return r.responses ?? []
+  },
+  /** The server's own projection of one participant — exactly what the play
+   *  app renders for them (`GuestView` for a guest/persona id, `PrimeView`
+   *  for a character). Mod-authorized read of `/api/state?role=…&as=…`. */
+  async lens(eventId: string, kind: 'guest' | 'prime', id: string): Promise<GuestView | PrimeView> {
+    return await req<GuestView | PrimeView>(
+      'GET',
+      `/e/${eventId}/api/state?role=${kind}&as=${encodeURIComponent(id)}`,
+    )
   },
   /** Expose a hidden faction (the secret-villain reveal). */
   async reveal(eventId: string, faction: string): Promise<void> {
@@ -251,8 +299,12 @@ export const modApi = {
   /** Spawn a test persona (a director-puppeted guest) on the event — the
    *  shared-rehearsal path: each co-writer adds and plays their own.
    *  Returns the created guest so the editor can claim it as "yours". */
-  async persona(eventId: string, name?: string): Promise<{ id: string } | null> {
-    const r = await req<{ guest: { id: string } | null }>('POST', `/e/${eventId}/api/mod/persona`, { name })
+  async persona(eventId: string, name?: string): Promise<{ id: string; owner?: string | null } | null> {
+    const r = await req<{ guest: { id: string; owner?: string | null } | null }>(
+      'POST',
+      `/e/${eventId}/api/mod/persona`,
+      { name },
+    )
     return r.guest ?? null
   },
   /** Write any world variable (the World browser's inline editing). */

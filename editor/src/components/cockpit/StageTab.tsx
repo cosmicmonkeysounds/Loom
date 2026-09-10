@@ -11,6 +11,7 @@ import { CockpitTab, SelectionKind, useCockpit, type RosterRow } from '@/store/c
 import { useGraph } from '@/store/graph'
 import { openContextMenu } from '@/store/context-menu'
 import { FactionPill } from './ui'
+import { publicFaction } from './format'
 import { useInspect } from './inspect'
 import { useGuestMenu } from './guest-menu'
 
@@ -21,6 +22,8 @@ const DRAG_GUEST = 'application/x-loom-guest'
 function GuestChip({ r }: { r: RosterRow }) {
   const choices = useCockpit((s) => s.choices)
   const setTab = useCockpit((s) => s.setTab)
+  // Under a lens you are a participant: no god-view secrets, no moving people.
+  const locked = useCockpit((s) => s.lens !== null)
   const inspect = useInspect()
   const menu = useGuestMenu()
   const hasChoice = (choices[r.id]?.length ?? 0) > 0
@@ -36,14 +39,18 @@ function GuestChip({ r }: { r: RosterRow }) {
     <button
       onClick={() => inspect({ kind: SelectionKind.Guest, id: r.id })}
       onContextMenu={(e) => menu(r, e)}
-      draggable
+      draggable={!locked}
       onDragStart={(e) => {
+        if (locked) return
         e.dataTransfer.setData(DRAG_GUEST, r.id)
         e.dataTransfer.effectAllowed = 'move'
       }}
-      className="flex w-full cursor-grab items-center gap-2 rounded-lg border border-zinc-800 px-2 py-1.5 text-left hover:border-zinc-600 hover:bg-zinc-900/60 active:cursor-grabbing"
+      className={clsx(
+        'flex w-full items-center gap-2 rounded-lg border border-zinc-800 px-2 py-1.5 text-left hover:border-zinc-600 hover:bg-zinc-900/60',
+        locked ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
+      )}
       data-testid={`stage-guest-${r.id}`}
-      title={`${r.name} · ${r.score} pts${r.beat ? ` · in ${r.beat}` : ''} — drag onto a location to move them`}
+      title={`${r.name} · ${r.score} pts${r.beat ? ` · in ${r.beat}` : ''}${locked ? '' : ' — drag onto a location to move them'}`}
     >
       {r.online !== undefined && (
         <span
@@ -75,7 +82,7 @@ function GuestChip({ r }: { r: RosterRow }) {
           🔒
         </span>
       )}
-      <FactionPill faction={r.trueFaction ?? r.faction} />
+      <FactionPill faction={locked ? r.faction : (r.trueFaction ?? r.faction)} />
     </button>
   )
 }
@@ -143,6 +150,8 @@ function LocationCard({
 /** The cast strip: every character, performer presence marked. */
 function CastStrip() {
   const cast = useCockpit((s) => s.cast)
+  const factions = useCockpit((s) => s.factions)
+  const locked = useCockpit((s) => s.lens !== null)
   const setPerspective = useCockpit((s) => s.setPerspective)
   const inspect = useInspect()
   if (cast.length === 0) return null
@@ -171,7 +180,7 @@ function CastStrip() {
               openContextMenu(
                 [
                   { label: `Inspect ${c.id}`, onSelect: () => inspect({ kind: SelectionKind.Character, id: c.id }) },
-                  { label: `Act as ${c.id}`, onSelect: () => setPerspective(c.id) },
+                  { label: `Be ${c.id}`, onSelect: () => setPerspective(c.id) },
                 ],
                 { x: e.clientX, y: e.clientY },
               )
@@ -187,7 +196,7 @@ function CastStrip() {
               <span className={clsx('h-1.5 w-1.5 rounded-full', c.online ? 'bg-emerald-400' : 'border border-zinc-600')} />
             )}
             <span className="text-zinc-200">{c.id}</span>
-            <FactionPill faction={c.faction} />
+            <FactionPill faction={publicFaction(c.faction, factions, locked)} />
           </button>
         ))}
       </div>
@@ -198,12 +207,12 @@ function CastStrip() {
 export function StageTab() {
   const roster = useCockpit((s) => s.roster)
   const locations = useCockpit((s) => s.locations)
-  const live = useCockpit((s) => s.live)
+  const running = useCockpit((s) => s.run !== null)
 
-  if (!live) {
+  if (!running) {
     return (
       <div className="grid h-full place-items-center p-8 text-center text-sm text-zinc-600">
-        The stage lights up once a session is running — start a rehearsal or launch an event.
+        The stage lights up once a rehearsal starts.
       </div>
     )
   }

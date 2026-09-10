@@ -1,9 +1,24 @@
-//! Thin transport layer: a JSON `fetch` POST helper and the SSE message
-//! reducer that turns the server's `history` / `message` / `messageModerated`
-//! stream into a live, ordered, de-duplicated message map.
+//! Thin transport layer: a JSON `fetch` POST helper (errors carry the HTTP
+//! status as `ApiError`) and the SSE reducer that turns the server's
+//! `history` / `message` / `messageModerated` stream into a live, ordered,
+//! de-duplicated message map — plus pass-through hooks for the role
+//! snapshot, performer scan readouts, and the run's `lifecycle` notices.
 
 import { useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "./types.ts";
+
+/** A non-2xx reply — the server's `error` text plus the HTTP status, so a
+ *  session can tell "you can't post here" (403) from "this session is dead"
+ *  (401 / 404 after the run restarted). */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
 
 /** POST JSON to the server, attaching a capability token when present. */
 export async function api<T = Record<string, unknown>>(path: string, body?: unknown, token?: string): Promise<T> {
@@ -13,7 +28,7 @@ export async function api<T = Record<string, unknown>>(path: string, body?: unkn
     body: JSON.stringify(body ?? {}),
   });
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (!res.ok) throw new Error((data["error"] as string) || `HTTP ${res.status}`);
+  if (!res.ok) throw new ApiError((data["error"] as string) || `HTTP ${res.status}`, res.status);
   return data as T;
 }
 
@@ -25,15 +40,33 @@ export interface ChatStream {
   connected: boolean;
 }
 
+/** What the server announces on a run transition (`lifecycle` SSE event):
+ *  `reset` / `reload` (the story restarted), `golive` (a rehearsal was
+ *  promoted to the live event), `ended`. `by` names the director, `at` is
+ *  the server's clock. */
+export interface LifecycleNotice {
+  kind: string;
+  by?: string;
+  at?: number;
+}
+
 /**
  * Subscribe to an SSE endpoint and maintain the message map. `onSnapshot`
  * receives role-specific snapshots (`snapshot` event); `onResponse` receives
- * performer scan readouts (`response`). Both are optional so guests and
- * performers share this one wiring.
+ * performer scan readouts (`response`); `onLifecycle` receives run
+ * transitions (`lifecycle`). All are optional so guests and performers share
+ * this one wiring.
  */
 export function useChatStream(
   url: string | null,
-  handlers: { onSnapshot?: (v: unknown) => void; onResponse?: (text: string) => void },
+  handlers: {
+    onSnapshot?: (v: unknown) => void;
+    onResponse?: (text: string) => void;
+    onLifecycle?: (n: LifecycleNotice) => void;
+    /** The server refused the stream for good (a token the run no longer
+     *  knows — e.g. the phone slept through a restart): the session is dead. */
+    onDead?: () => void;
+  },
 ): ChatStream {
   const [messages, setMessages] = useState<Map<number, ChatMessage>>(new Map());
   const [connected, setConnected] = useState(false);
@@ -46,7 +79,12 @@ export function useChatStream(
     setMessages(new Map());
     const es = new EventSource(url);
     es.onopen = () => setConnected(true);
-    es.onerror = () => setConnected(false);
+    es.onerror = () => {
+      setConnected(false);
+      // A non-200 answer (401 / 403 on a dead token) closes the source for
+      // good — no retry will ever succeed, so say so rather than sit dark.
+      if (es.readyState === EventSource.CLOSED) h.current.onDead?.();
+    };
 
     const upsert = (m: ChatMessage) =>
       setMessages((prev) => {
@@ -57,6 +95,7 @@ export function useChatStream(
 
     es.addEventListener("snapshot", (e) => h.current.onSnapshot?.(json(e)));
     es.addEventListener("response", (e) => h.current.onResponse?.(String((json(e) as Record<string, unknown>)["text"])));
+    es.addEventListener("lifecycle", (e) => h.current.onLifecycle?.(json(e) as LifecycleNotice));
     es.addEventListener("history", (e) =>
       setMessages(() => {
         const m = new Map<number, ChatMessage>();

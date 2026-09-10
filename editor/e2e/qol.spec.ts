@@ -4,7 +4,7 @@
 // journal, and cockpit messages have real context menus.
 
 import { test, expect } from '@playwright/test'
-import { answerDialog, openProject, switchMode } from './helpers'
+import { answerDialog, openLocalProject, openProject, startRehearsal, switchMode } from './helpers'
 
 const mod = process.platform === 'darwin' ? 'Meta' : 'Control'
 
@@ -99,10 +99,8 @@ test.describe('writing QoL', () => {
 
 test.describe('cockpit chat QoL', () => {
   test.beforeEach(async ({ page }) => {
-    await openProject(page)
-    await switchMode(page, 'run')
-    await page.getByTestId('sim-start').click()
-    await page.waitForTimeout(500)
+    await openLocalProject(page)
+    await startRehearsal(page)
     await page.getByRole('tab', { name: 'Chat' }).click()
   })
 

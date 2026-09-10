@@ -149,6 +149,9 @@ export interface RosterRow {
   /** Live presence: this guest has an SSE stream open right now. Absent
    *  where no connection tracking exists (local sim, journal replay). */
   online?: boolean;
+  /** The director who spawned this persona (`/api/mod/persona`), by display
+   *  name; null for a real guest. Set only by `modView` from presence. */
+  owner?: string | null;
 }
 
 /** The operator's god-view of one guest. Null if the QR is unknown. */
@@ -212,6 +215,8 @@ export interface ModPresence {
   mods: number;
   /** Their display names (one entry per open console; "Director" when anonymous). */
   directors: string[];
+  /** persona id → puppeteer display name (mod-spawned personas only). */
+  owners?: Map<string, string>;
 }
 
 /** The operator's full god-view of the world. */
@@ -291,7 +296,9 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
     };
   }
   const roster: RosterRow[] = [...sim.persons.keys()].map((id) =>
-    presence !== undefined ? { ...rosterRow(sim, id)!, online: presence.guests.has(id) } : rosterRow(sim, id)!,
+    presence !== undefined
+      ? { ...rosterRow(sim, id)!, online: presence.guests.has(id), owner: presence.owners?.get(id) ?? null }
+      : rosterRow(sim, id)!,
   );
   const factions: FactionSummary[] = [...sim.model.factions.values()].map((f) => ({
     id: f.id,

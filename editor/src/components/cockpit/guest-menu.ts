@@ -1,6 +1,8 @@
-//! The shared guest context menu — Inspect / View as / Open DM thread /
+//! The shared guest context menu — Inspect / Be them / Open DM thread /
 //! Capture-Release — used anywhere a guest renders as a chip or row
 //! (the rail's Guests section, the Stage floor plan, roster surfaces).
+//! Under a non-Operator lens the world-changing entries are absent:
+//! you are someone else right now, not the director.
 
 import { CockpitTab, SelectionKind, useCockpit, type RosterRow } from '@/store/cockpit'
 import { openContextMenu } from '@/store/context-menu'
@@ -13,6 +15,7 @@ export function useGuestMenu(): (r: RosterRow, e: React.MouseEvent) => void {
   const setTab = useCockpit((s) => s.setTab)
   const capture = useCockpit((s) => s.capture)
   const release = useCockpit((s) => s.release)
+  const locked = useCockpit((s) => s.lens !== null)
   const inspect = useInspect()
   const rooms = useRooms()
 
@@ -22,7 +25,7 @@ export function useGuestMenu(): (r: RosterRow, e: React.MouseEvent) => void {
     openContextMenu(
       [
         { label: `Inspect ${r.name}`, onSelect: () => inspect({ kind: SelectionKind.Guest, id: r.id }) },
-        { label: `View as ${r.name}`, onSelect: () => setPerspective(r.id) },
+        { label: `Be ${r.name}`, onSelect: () => setPerspective(r.id) },
         ...(dm
           ? [
               {
@@ -34,10 +37,14 @@ export function useGuestMenu(): (r: RosterRow, e: React.MouseEvent) => void {
               },
             ]
           : []),
-        { separator: true as const },
-        r.captured
-          ? { label: 'Release', onSelect: () => void release(r.id) }
-          : { label: 'Capture', kind: 'danger' as const, onSelect: () => void capture(r.id) },
+        ...(locked
+          ? []
+          : [
+              { separator: true as const },
+              r.captured
+                ? { label: 'Release', onSelect: () => void release(r.id) }
+                : { label: 'Capture', kind: 'danger' as const, onSelect: () => void capture(r.id) },
+            ]),
       ],
       { x: e.clientX, y: e.clientY },
     )

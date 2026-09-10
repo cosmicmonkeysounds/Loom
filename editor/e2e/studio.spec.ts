@@ -1,6 +1,6 @@
-// The Studio shell: the four-mode Mode Bar (Writing / Run /
-// Integrations / Deploy), ⌘1..⌘4 switching, the Writing editor ⇄
-// story-graph split, and the ⌘\ graph-pane toggle.
+// The Studio shell: the three-mode Mode Bar (Writing / Run /
+// Integrations), ⌘1..⌘3 switching, the Writing editor ⇄ story-graph
+// split, and the ⌘\ graph-pane toggle.
 
 import { test, expect } from '@playwright/test'
 import { answerDialog, cancelDialog, openProject, switchMode } from './helpers'
@@ -12,14 +12,14 @@ test.describe('studio shell', () => {
     await openProject(page)
   })
 
-  test('mode bar shows all four modes with keybinding hints', async ({ page }) => {
-    for (const id of ['writing', 'run', 'integrations', 'deploy'] as const) {
+  test('mode bar shows exactly the three modes with keybinding hints', async ({ page }) => {
+    for (const id of ['writing', 'run', 'integrations'] as const) {
       await expect(page.getByTestId(`mode-${id}`)).toBeVisible()
     }
     await expect(page.getByTestId('mode-writing')).toContainText('Writing')
     await expect(page.getByTestId('mode-run')).toContainText('Run')
     await expect(page.getByTestId('mode-integrations')).toContainText('Integrations')
-    await expect(page.getByTestId('mode-deploy')).toContainText('Deploy')
+    await expect(page.getByTestId('mode-deploy')).toHaveCount(0)
   })
 
   test('writing mode shows the text editor AND the story graph together', async ({ page }) => {
@@ -29,25 +29,31 @@ test.describe('studio shell', () => {
     await expect(page.getByTestId('graph-beat-opening')).toBeVisible()
   })
 
-  test('modes switch by click and by ⌘1..⌘4', async ({ page }) => {
+  test('modes switch by click and by ⌘1..⌘3', async ({ page }) => {
     await page.keyboard.press(`${mod}+2`)
     await expect(page.getByTestId('mode-run')).toHaveAttribute('aria-pressed', 'true')
-    await expect(page.getByTestId('sim-start')).toBeVisible() // Sim source is the default
+    await expect(page.getByTestId('run-start')).toBeVisible() // the Run page's empty state
 
     await page.keyboard.press(`${mod}+3`)
     await expect(page.getByTestId('mode-integrations')).toHaveAttribute('aria-pressed', 'true')
 
-    await page.keyboard.press(`${mod}+4`)
-    await expect(page.getByTestId('mode-deploy')).toHaveAttribute('aria-pressed', 'true')
+    await page.keyboard.press(`${mod}+4`) // no fourth mode any more
+    await expect(page.getByTestId('mode-integrations')).toHaveAttribute('aria-pressed', 'true')
 
     await page.keyboard.press(`${mod}+1`)
     await expect(page.getByTestId('mode-writing')).toHaveAttribute('aria-pressed', 'true')
   })
 
-  test('run mode has the Sim ⇄ Live source switch', async ({ page }) => {
+  test('run mode on a server project with no run: one start button, no source switch, no active event', async ({ page }) => {
     await switchMode(page, 'run')
-    await expect(page.getByTestId('run-source-sim')).toHaveAttribute('aria-pressed', 'true')
-    await expect(page.getByTestId('run-source-live')).toBeVisible()
+    await expect(page.getByTestId('run-stage-status')).toHaveText('no active event')
+    await expect(page.getByTestId('run-backend')).toHaveText(/no run/)
+    await expect(page.getByTestId('run-start')).toBeVisible()
+    await expect(page.getByTestId('run-go-live')).toBeVisible() // server projects can go live
+    await expect(page.getByTestId('run-source-sim')).toHaveCount(0)
+    // Pages that need a run are closed until one starts; the story map is not.
+    await expect(page.getByTestId('run-tab-chat')).toBeDisabled()
+    await expect(page.getByTestId('run-tab-story')).toBeEnabled()
   })
 
   test('⌘\\ hides and re-shows the story-graph pane', async ({ page }) => {

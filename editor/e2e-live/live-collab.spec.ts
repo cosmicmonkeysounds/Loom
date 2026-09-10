@@ -1,7 +1,8 @@
 // Live-stack check: editor dev (:5173, proxying to :7000) + the real
 // event server on the local loom_dev database. One editor tab plays
 // Author A; a raw API client plays co-author B doing things from "their"
-// editor. Asserts A's Live cockpit follows launch / restart / push-draft / end.
+// editor. Asserts A's Run cockpit follows launch / restart / push-draft /
+// go-live / end — with the co-writer banner naming who did what.
 import { test, expect, request as pwRequest } from '@playwright/test'
 
 const BASE = 'http://localhost:5173'
@@ -56,18 +57,20 @@ test('live cockpit follows a co-author', async ({ browser }) => {
   await page.goto(`${BASE}/?project=${pid}`)
   await expect(page.getByTestId('mode-bar')).toBeVisible({ timeout: 30_000 })
   await page.getByTestId('mode-run').click()
-  await page.getByTestId('run-source-live').click()
   await expect(page.getByTestId('run-stage-status')).toHaveText(/no active event/)
+  await expect(page.getByTestId('run-start')).toBeVisible()
 
   // Co-author B launches a shared rehearsal from their editor.
   r = await api.post(`/api/projects/${pid}/event`, { data: { mode: 'preview' } })
   expect(r.ok(), await r.text()).toBeTruthy()
-  const event = (await r.json()).event as { id: string }
+  const event = (await r.json()).event as { id: string; codes: Record<string, string> }
   await expect(page.getByTestId('run-stage-status')).toHaveText(/shared rehearsal/, { timeout: 20_000 })
+  await expect(page.getByTestId('run-backend')).toHaveText(/Shared rehearsal/)
   // A's console shows it's directing (named), and the entry beat landed.
-  await page.getByRole('tab', { name: 'Setup' }).click()
-  await expect(page.getByText('Ada Smoke')).toBeVisible({ timeout: 10_000 })
-  await expect(page.getByTestId('live-draft-sync')).toHaveAttribute('data-stale', 'false')
+  await page.getByRole('tab', { name: 'Run' }).click()
+  await expect(page.getByTestId('run-directors')).toContainText('Ada Smoke', { timeout: 10_000 })
+  await expect(page.getByTestId('run-join-code-event')).toHaveText(event.codes.event)
+  await expect(page.getByTestId('run-push-draft')).toHaveAttribute('data-stale', 'false')
   await page.getByRole('tab', { name: 'Chat' }).click()
   await expect(page.getByText('Welcome to draft one.')).toBeVisible({ timeout: 10_000 })
 
@@ -79,16 +82,18 @@ test('live cockpit follows a co-author', async ({ browser }) => {
   expect(r.ok()).toBeTruthy()
   await expect(page.getByText('hello from B')).toHaveCount(0, { timeout: 10_000 })
   await expect(page.getByText('Welcome to draft one.')).toBeVisible()
+  // A is told who restarted it (B's raw mod call is anonymous → "A co-writer").
+  await expect(page.getByTestId('run-notice')).toContainText(/restarted/i)
+  await page.getByTestId('run-notice-dismiss').click()
 
-  // B edits the draft; A's console flags it stale within a poll.
+  // B edits the draft; A's console flags it stale.
   r = await api.put(`/api/projects/${pid}/files`, { data: { path: 'main.loom', content: MAIN.replace('draft one', 'draft two') } })
   expect(r.ok()).toBeTruthy()
-  await page.getByRole('tab', { name: 'Setup' }).click()
-  await expect(page.getByTestId('live-draft-sync')).toHaveAttribute('data-stale', 'true', { timeout: 20_000 })
-  // A pushes the draft from the cockpit.
-  await page.getByTestId('live-push-draft').click()
+  await expect(page.getByTestId('run-push-draft')).toHaveAttribute('data-stale', 'true', { timeout: 40_000 })
+  // A pushes the draft from the header.
+  await page.getByTestId('run-push-draft').click()
   await page.getByTestId('dialog-confirm').click()
-  await expect(page.getByTestId('live-draft-sync')).toHaveAttribute('data-stale', 'false', { timeout: 20_000 })
+  await expect(page.getByTestId('run-push-draft')).toHaveAttribute('data-stale', 'false', { timeout: 20_000 })
   await page.getByRole('tab', { name: 'Chat' }).click()
   await expect(page.getByText('Welcome to draft two.')).toBeVisible({ timeout: 10_000 })
   await expect(page.getByText('Welcome to draft one.')).toHaveCount(0)
@@ -98,17 +103,29 @@ test('live cockpit follows a co-author', async ({ browser }) => {
   await expect(page.getByText('beatEntered')).toBeVisible()
   await expect(page.getByTestId('run-export')).toBeEnabled()
 
-  // Mode switch Run → Deploy → Run keeps the feed (no reconnect wipe).
-  await page.getByTestId('mode-deploy').click()
-  await expect(page.getByTestId('deploy-status')).toHaveText(/live/)
+  // Mode switch Run → Writing → Run keeps the feed (the store is attached
+  // for the project's lifetime, not the mode's).
+  await page.getByTestId('mode-writing').click()
+  await expect(page.getByTestId('mode-run-dot')).toBeVisible()
   await page.getByTestId('mode-run').click()
   await page.getByRole('tab', { name: 'Chat' }).click()
   await expect(page.getByText('Welcome to draft two.')).toBeVisible()
 
-  // B ends it → A's console returns to "no active event".
+  // A goes live in place: same codes, the story restarts, LIVE chrome.
+  await page.getByTestId('run-restart').click()
+  await page.getByTestId('run-go-live').click()
+  await page.getByTestId('dialog-confirm').click()
+  await expect(page.getByTestId('run-stage-status')).toHaveText(/live event/, { timeout: 20_000 })
+  r = await api.get(`/api/projects/${pid}/event`)
+  const promoted = (await r.json()).event as { mode: string; codes: Record<string, string> }
+  expect(promoted.mode).toBe('live')
+  expect(promoted.codes).toEqual(event.codes)
+
+  // B ends it → A's console returns to "no active event", keeps the run for export.
   r = await api.post(`/api/projects/${pid}/event/end`)
   expect(r.ok()).toBeTruthy()
   await expect(page.getByTestId('run-stage-status')).toHaveText(/no active event/, { timeout: 20_000 })
+  await expect(page.getByTestId('run-last-run')).toBeVisible()
   expect(errors).toEqual([])
   await ctx.close()
 })

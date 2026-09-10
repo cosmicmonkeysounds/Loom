@@ -52,6 +52,32 @@ interface DocEntry {
 
 const BASE = import.meta.env.VITE_LOOM_API ?? ''
 
+// -- run transitions on the project's event ---------------------------------
+//
+// The collab stream also carries `event` frames — a co-writer launched / went
+// live / ended / pushed a draft on this project's run. The run store
+// (`store/operate.ts`) subscribes here so its status follows within a second
+// instead of on its next fallback poll. Kept as a plain listener set so this
+// module never imports a store (no cycle).
+
+/** What the server announces on the collab stream's `event` frame. */
+export interface CollabEventNotice {
+  kind: 'launched' | 'golive' | 'ended' | 'reload' | 'paused' | 'resumed'
+  by: string
+  eventId: string
+  mode: 'live' | 'preview'
+}
+
+const eventListeners = new Set<(n: CollabEventNotice) => void>()
+
+/** Subscribe to run transitions on the open project. Returns the unsubscribe. */
+export function onCollabEvent(fn: (n: CollabEventNotice) => void): () => void {
+  eventListeners.add(fn)
+  return () => {
+    eventListeners.delete(fn)
+  }
+}
+
 // -- module state ----------------------------------------------------------
 
 let projectId: string | null = null
@@ -347,6 +373,10 @@ export function startCollab(pid: string, user: { name: string }, h: CollabHandle
     const { op, path } = JSON.parse((ev as MessageEvent).data) as { op: 'put' | 'delete'; path: string }
     if (op === 'delete') dropCollabDoc(path)
     handlers?.onFiles(op, path)
+  })
+  es.addEventListener('event', (ev) => {
+    const n = JSON.parse((ev as MessageEvent).data) as CollabEventNotice
+    for (const fn of eventListeners) fn(n)
   })
 }
 

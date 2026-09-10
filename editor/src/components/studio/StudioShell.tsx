@@ -1,6 +1,6 @@
-// The Studio shell (Loom IDE redesign v3): four fixed, resizable region
-// layouts — Writing / Run / Integrations / Deploy — switched from the
-// bottom Mode Bar. ⌘1..⌘4 jump between modes.
+// The Studio shell (Loom IDE redesign v3): three fixed, resizable region
+// layouts — Writing / Run / Integrations — switched from the bottom Mode
+// Bar. ⌘1..⌘3 jump between modes.
 //
 // The shell is generic: a horizontal Allotment [left | center | tray]
 // with an optional vertical [stage / timeline] split in the center.
@@ -26,7 +26,7 @@ export function StudioShell() {
   const setUi = useMode((s) => s.setUi)
   const hasTimeline = MODES.find((m) => m.id === mode)?.hasTimeline ?? false
 
-  // Shell keys: ⌘1..⌘4 switch modes; ⌘B / ⌘⌥B collapse the left rail /
+  // Shell keys: ⌘1..⌘3 switch modes; ⌘B / ⌘⌥B collapse the left rail /
   // properties tray; ⌘\ hides the Writing story-graph pane for
   // full-width text; ⌘Z / ⌘⇧Z drive the story edit journal whenever
   // the keyboard is NOT in a text field (the text editor keeps
@@ -64,7 +64,7 @@ export function StudioShell() {
         st.setUi('writing', { graphOpen: !st.ui.writing.graphOpen })
         return
       }
-      const idx = ['1', '2', '3', '4'].indexOf(e.key)
+      const idx = ['1', '2', '3'].indexOf(e.key)
       if (idx < 0 || idx >= MODES.length) return
       e.preventDefault()
       setMode(MODES[idx].id)

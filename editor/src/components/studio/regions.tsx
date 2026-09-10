@@ -1,4 +1,4 @@
-// Per-mode region contents (Loom IDE redesign v3 — four modes).
+// Per-mode region contents (Loom IDE redesign v3 — three modes).
 //
 // Each region (left rail / center stage / timeline dock) is a thin
 // switch over the active `Mode` that composes the EXISTING leaf panels.
@@ -20,7 +20,6 @@ import { StoryGraphPanel } from '@/components/graph/StoryGraphPanel'
 import { CockpitRail } from '@/components/cockpit/Rail'
 import { RunCockpit } from '@/components/cockpit/providers'
 import { RunStage } from '@/components/run/RunStage'
-import { DeployStage } from '@/components/deploy/DeployStage'
 import { IntegrationsStage } from '@/components/integrations/IntegrationsStage'
 
 /** Fills an allotment pane and clips overflow so leaf panels scroll. */
@@ -91,8 +90,7 @@ export function LeftRail({ mode }: { mode: Mode }) {
         </RunCockpit>
       )
     case 'integrations':
-    case 'deploy':
-      // Neither has a working rail — file browsing for reference only.
+      // No working rail — file browsing for reference only.
       return <Sidebar />
   }
 }
@@ -110,15 +108,14 @@ export function CenterStage({
     case 'writing':
       return <WritingStage split={split} onSplit={onSplit} />
     case 'run':
-      // One cockpit — the local simulator or the live event, per the
-      // stage's Sim ⇄ Live source switch.
+      // One cockpit for the project's one run — the backend follows the
+      // workspace kind (server project → the shared event; folder → the
+      // in-browser engine).
       return <RunStage />
     case 'integrations':
       // Engine targets: link a Godot project, install the runtime addon,
-      // build banks. Live events are Deploy's job.
+      // build banks. Live events are Run's job.
       return <IntegrationsStage />
-    case 'deploy':
-      return <DeployStage />
   }
 }
 

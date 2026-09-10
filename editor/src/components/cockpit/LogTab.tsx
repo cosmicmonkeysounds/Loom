@@ -1,18 +1,21 @@
 //! Run mode — the Log page: the raw ledger, one row per `SimEvent`,
-//! newest at the bottom, on either source (the local sim's whole run, or
-//! the live event's `sim` feed since this console connected). This is
-//! the writer's x-ray: every action line, dialogue, world write, hook
-//! firing, and diagnostic the engine produced, exactly as the server
-//! journals them. Formatting is driven off the `SimEventType` enum so a
-//! new event kind fails the exhaustiveness check here instead of
+//! newest at the bottom, on either backend (the local run's whole ledger,
+//! or the shared event's `sim` feed since this console connected). This
+//! is the super-admin's x-ray: every action line, dialogue, world write,
+//! hook firing, and diagnostic the engine produced, exactly as the server
+//! journals them — filterable to one participant ("everything that
+//! happened to Alice"). Formatting is driven off the `SimEventType` enum
+//! so a new event kind fails the exhaustiveness check here instead of
 //! rendering blank. The header exports the whole run (ledger + every
-//! room's transcript + world state) as JSON for bug reports / post-mortems.
+//! room's transcript + world state) as JSON for bug reports / post-mortems
+//! — a run that just ended included.
 
-import { useContext, useEffect, useRef } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { SimEventType, type SimEvent } from '@loom/core/sim'
 import { CockpitContext, useCockpit, type LedgerEntry } from '@/store/cockpit'
-import { downloadRunExport } from '@/lib/run-export'
+import { canExportRun, downloadRunExport } from '@/lib/run-export'
+import { eventMentions } from './log-filter'
 
 /** Tone class per event type (grouped by family). */
 function toneOf(type: SimEventType): string {
@@ -124,38 +127,72 @@ function Row({ entry }: { entry: LedgerEntry }) {
 
 export function LogTab() {
   const log = useCockpit((s) => s.log)
-  const live = useCockpit((s) => s.live)
+  const running = useCockpit((s) => s.run !== null)
+  const exportable = useCockpit(canExportRun)
   const ledgerLen = useCockpit((s) => s.ledgerLen)
+  const roster = useCockpit((s) => s.roster)
+  const cast = useCockpit((s) => s.cast)
   const store = useContext(CockpitContext)
   const endRef = useRef<HTMLDivElement>(null)
+  const [who, setWho] = useState('')
+  const rows = useMemo(() => (who === '' ? log : log.filter((e) => eventMentions(e.event, who))), [log, who])
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' })
-  }, [log.length])
+  }, [rows.length])
   const missed = log.length > 0 ? Math.max(0, ledgerLen - log.length) : 0
   return (
     <div className="flex h-full flex-col" data-testid="sim-log">
       <div className="flex items-center justify-between gap-2 border-b border-zinc-800 px-3 py-1 text-[11px] text-zinc-500">
-        <span>
-          {log.length} of {ledgerLen} events
-          {missed > 0 && <span className="ml-1 text-zinc-600">(earlier events predate this console)</span>}
+        <span className="flex items-center gap-2">
+          <span>
+            {who === '' ? `${log.length} of ${ledgerLen} events` : `${rows.length} of ${log.length} events mention`}
+            {missed > 0 && who === '' && <span className="ml-1 text-zinc-600">(earlier events predate this console)</span>}
+          </span>
+          <select
+            value={who}
+            onChange={(e) => setWho(e.target.value)}
+            className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[11px] text-zinc-300 outline-none focus:border-indigo-500"
+            title="Show only the events that mention one participant"
+            data-testid="log-filter"
+          >
+            <option value="">everyone</option>
+            {roster.length > 0 && (
+              <optgroup label="Guests">
+                {roster.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name} ({r.id})
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {cast.length > 0 && (
+              <optgroup label="Cast">
+                {cast.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.id}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
         </span>
         <button
           onClick={() => downloadRunExport(store.getState())}
-          disabled={!live}
+          disabled={!exportable}
           className="rounded border border-zinc-800 px-2 py-0.5 text-zinc-300 hover:bg-zinc-800 disabled:opacity-40"
-          title="Download the ledger, every room's transcript, and the world state as JSON"
+          title={running ? 'Download the ledger, every room\'s transcript, and the world state as JSON' : 'Download the run that just ended'}
           data-testid="run-export"
         >
           ⤓ Export run
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
-        {log.length === 0 && (
+        {rows.length === 0 && (
           <div className="p-4 text-sm text-zinc-600">
-            {live ? 'No events yet on this console.' : 'The ledger is empty — start a simulation.'}
+            {running ? (who === '' ? 'No events yet on this console.' : 'Nothing mentions them yet.') : 'The ledger is empty — start a rehearsal.'}
           </div>
         )}
-        {log.map((entry) => (
+        {rows.map((entry) => (
           <Row key={entry.seq} entry={entry} />
         ))}
         <div ref={endRef} />
