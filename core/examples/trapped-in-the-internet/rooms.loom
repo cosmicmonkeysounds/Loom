@@ -1,0 +1,65 @@
+// Chat rooms — the sidebar the phones show. Every LOCATION is already a
+// room (what happens in the Cache is heard in the Cache); these are the
+// extras: a read-only system feed, an open channel, the two castes'
+// private rooms, and a couple of places for programs to scheme.
+
+SPACE The Operating System
+  label: The Operating System
+
+  CHANNEL system log
+    kind: open
+    type: announcement
+    label: # system-log
+
+  CHANNEL general
+    kind: open
+    label: # general
+
+  CHANNEL task manager
+    kind: open
+    label: # task-manager
+    slow: 5s
+
+  // A disappearing side-channel — one post per 3s, gone after 45s.
+  CHANNEL ram
+    kind: open
+    slow: 3s
+    ephemeral: 45s
+    label: # ram
+
+CHANNEL hosts
+  space: The Operating System
+  kind: faction
+  faction: Hosts
+  label: # hosts
+
+CHANNEL quarantine
+  space: The Operating System
+  kind: faction
+  faction: Antivirus
+  label: # quarantine
+
+CHANNEL the awakened
+  space: The Operating System
+  kind: faction
+  faction: The Awakened
+  label: # the-awakened
+
+CHANNEL the resident
+  space: The Operating System
+  kind: faction
+  faction: The Resident
+  label: # the-resident
+
+// Invite-only rooms programs can pull each other into.
+CHANNEL hidden partition
+  space: The Operating System
+  kind: private
+  label: # hidden-partition
+  invite: members
+
+CHANNEL back channel
+  space: The Operating System
+  kind: private
+  label: # back-channel
+  invite: members

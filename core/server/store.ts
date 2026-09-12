@@ -42,6 +42,9 @@ export type Mutation =
   | "say"
   | "inviteToChannel"
   | "leaveChannel"
+  | "unlock"
+  | "redeem"
+  | "share"
   | "tick";
 
 /** One replayable line of the journal: a method name + its arguments, and

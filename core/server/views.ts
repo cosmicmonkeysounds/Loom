@@ -4,8 +4,38 @@
 
 import { DEFAULT_SPACE_ID } from "../src/runtime/sim/model.ts";
 import type { Sim } from "../src/runtime/sim/index.ts";
+import type { CodexDef } from "../src/runtime/sim/model.ts";
 
 export type RuntimePhase = "idle" | "open" | "paused";
+
+/** A codex entry as a holder sees it (no unlock code — that is the secret). */
+export interface CodexEntryView {
+  id: string;
+  title: string;
+  /** The subject it concerns (a character, or a topic). */
+  about: string | null;
+  text: string;
+}
+
+function codexEntry(e: CodexDef): CodexEntryView {
+  return { id: e.id, title: e.title, about: e.about, text: e.text };
+}
+
+/** One row of the participants directory — a guest or a listed character. */
+export interface PersonCard {
+  id: string;
+  name: string;
+  kind: "guest" | "character";
+  /** Their public group (a hidden one reads null until revealed). */
+  faction: string | null;
+  /** What the viewer knows about them: the codex entries they hold whose
+   *  `about:` is this person. Limited info unless more has been shared. */
+  known: CodexEntryView[];
+}
+
+function peopleFor(sim: Sim, id: string): PersonCard[] {
+  return sim.peopleFor(id).map((p) => ({ ...p, known: p.known.map(codexEntry) }));
+}
 
 /**
  * Best display title authored in a `.loom` source: the first `# Title`
@@ -86,6 +116,10 @@ export interface GuestView {
   score: number;
   location: string | null;
   captured: boolean;
+  /** May a captured guest free themselves from the app (the v3 "make a
+   *  break for it" button)? False when their prison is `sealed: true` —
+   *  only the story lets them out. */
+  canEscape: boolean;
   /** Outstanding choice options awaiting this guest, if any. */
   pendingChoice: string[] | null;
   /** Channel the pending decision docks under (`"lobby"`, a DM, …). */
@@ -103,6 +137,12 @@ export interface GuestView {
   groups: string[];
   /** `INTERACTION`s a guest may fire for themselves (`who: guest`). */
   interactions: InteractionSummary[];
+  /** The codex entries this guest holds (knowledge as a currency). */
+  codex: CodexEntryView[];
+  /** How many entries exist to be found — the currency's denominator. */
+  codexTotal: number;
+  /** The participants directory: who else is here, and what one knows of them. */
+  people: PersonCard[];
 }
 
 export function guestView(sim: Sim, id: string, decisionChannel: string | null = null): GuestView {
@@ -118,17 +158,21 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     score: sim.scoreOf(id),
     location: sim.locationOf(id),
     captured: sim.isCaptured(id),
+    canEscape: !(sim.model.locations.get(sim.locationOf(id) ?? "")?.sealed ?? false),
     pendingChoice,
     decisionChannel: pendingChoice ? (decisionChannel ?? "lobby") : null,
     channels: sim.visibleChannelsFor(id),
     spaces: sim.spaceList(),
     roster: sim.rosterFor(id),
-    factions: [...sim.model.factions.values()].filter((f) => !f.hidden).map((f) => f.id),
+    factions: [...sim.model.factions.values()].filter((f) => !f.hidden && f.joinable).map((f) => f.id),
     groups: sim.groupsOf(id).filter((g) => {
       const def = sim.model.factions.get(g);
       return def === undefined || !def.hidden || sim.factionRevealed(g);
     }),
     interactions: interactionsFor(sim, ["guest"]),
+    codex: sim.codexFor(id).map(codexEntry),
+    codexTotal: sim.model.codex.size,
+    people: peopleFor(sim, id),
   };
 }
 
@@ -251,6 +295,16 @@ export interface ModView {
   modsOnline?: number;
   /** Who those directors are (display names, one per console). */
   directors?: string[];
+  /** Every codex entry with its unlock code and current holders — the
+   *  director sees the whole currency supply. */
+  codex?: CodexSummary[];
+}
+
+export interface CodexSummary extends CodexEntryView {
+  /** The folded unlock code, or null for a story-only entry. */
+  code: string | null;
+  /** Holder ids (persons + characters). */
+  holders: string[];
 }
 
 /**
@@ -337,6 +391,7 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
     world: sim.worldEntries(),
     modsOnline: presence?.mods,
     directors: presence?.directors,
+    codex: [...sim.model.codex.values()].map((e) => ({ ...codexEntry(e), code: e.code, holders: sim.codexHolders(e.id) })),
   };
 }
 
@@ -362,11 +417,13 @@ export interface PrimeView {
   /** True when the story uses the v3 prison mechanic (a `prison: true` location),
    *  so the booth still offers capture / release. */
   legacyCapture: boolean;
+  /** The codex entries this character holds — their backstory, shareable. */
+  codex: CodexEntryView[];
 }
 
 export function primeView(sim: Sim | null, character: string): PrimeView {
   if (sim === null) {
-    return { character, title: "Loom", theme: "plain", faction: null, guests: [], channels: [], spaces: [], interactions: [], legacyCapture: false };
+    return { character, title: "Loom", theme: "plain", faction: null, guests: [], channels: [], spaces: [], interactions: [], legacyCapture: false, codex: [] };
   }
   const c = sim.model.characters.get(character);
   const guests: PrimeGuest[] = [...sim.persons.values()].map((p) => ({
@@ -385,5 +442,6 @@ export function primeView(sim: Sim | null, character: string): PrimeView {
     spaces: sim.spaceList(),
     interactions: interactionsFor(sim, ["performer", "admin"]),
     legacyCapture: [...sim.model.locations.values()].some((l) => l.prison),
+    codex: sim.codexFor(character).map(codexEntry),
   };
 }

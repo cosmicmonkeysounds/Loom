@@ -555,3 +555,67 @@ footer {
 :root[data-theme="aol97"] body { font-size: 13px; }
 :root[data-theme="aol97"] .hero .glyph { filter: drop-shadow(1px 1px 0 rgba(0,0,0,0.35)); }
 :root[data-theme="aol97"] .dot { box-shadow: var(--sunken); }
+
+
+/* ── codex · people · alerts ──────────────────────────────────────────
+   Knowledge as a currency: the Codex sheet, the People directory, and the
+   alert banner a `!` broadcast raises. Theme-neutral — variables only. */
+.hud .count { font-weight: 700; }
+.icon-btn.wide { width: auto; padding: 0 6px; gap: 3px; font-size: 12px; }
+.icon-btn .badge { position: static; margin-left: 2px; }
+
+.alert-banner {
+  position: sticky; top: 0; z-index: 9;
+  display: flex; align-items: center; gap: 8px;
+  max-width: var(--max); margin: 0 auto; padding: 8px 10px;
+  background: var(--highlight); color: var(--black);
+  box-shadow: var(--raised); cursor: pointer;
+  font-weight: 700; animation: alert-in 0.25s ease-out;
+}
+.alert-glyph { font-size: 18px; animation: alert-ring 0.9s ease-in-out 3; }
+.alert-text { flex: 1; min-width: 0; }
+.alert-x { background: none; border: none; color: inherit; font: inherit; font-size: 18px; cursor: pointer; padding: 0 4px; }
+@keyframes alert-in { from { transform: translateY(-100%); } to { transform: none; } }
+@keyframes alert-ring { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-18deg); } 75% { transform: rotate(18deg); } }
+.msg.signal.alert .bubble.plain { font-weight: 700; color: var(--black); background: var(--highlight); padding: 2px 6px; }
+
+.sheet.tall { max-height: 88vh; overflow-y: auto; }
+.codex-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 8px 6px; }
+.codex-total { color: var(--muted-ink); font-size: 12px; }
+.codex-redeem { display: flex; gap: 6px; margin: 0 8px 10px; }
+.codex-redeem input { flex: 1; margin: 0; text-transform: uppercase; }
+.codex-redeem .choice { margin: 0; white-space: nowrap; }
+.codex-msg { margin: -4px 8px 8px; font-size: 12px; font-weight: 700; }
+.codex-msg.ok { color: var(--good); }
+.codex-msg.bad { color: var(--bad); }
+.codex-about {
+  margin: 10px 8px 4px; font: 11px var(--ui-font); font-weight: 700;
+  letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted-ink);
+}
+.codex-entry {
+  margin: 0 8px 6px; padding: 6px 8px; background: var(--white);
+  box-shadow: var(--sunken); border-radius: var(--radius); text-align: left;
+}
+.codex-entry-head { display: flex; align-items: center; gap: 6px; }
+.codex-entry-head button.title {
+  flex: 1; background: none; border: none; color: var(--ink); font: inherit; font-weight: 700;
+  text-align: left; cursor: pointer; padding: 0;
+}
+.codex-entry-head .link { margin: 0; font-size: 12px; }
+.codex-text { margin: 6px 0 0; font: 13px/1.45 var(--chat-font); white-space: pre-wrap; }
+.codex-empty { margin: 0 8px 8px; color: var(--muted-ink); font-style: italic; }
+
+.people-row {
+  margin: 0 8px 6px; padding: 6px 8px; background: var(--white);
+  box-shadow: var(--sunken); border-radius: var(--radius);
+}
+.people-top { display: flex; align-items: center; gap: 6px; }
+.people-top .name { flex: 1; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.people-top .choice { margin: 0; padding: 3px 8px; font-size: 12px; }
+.pill.kind { color: var(--muted-ink); }
+.people-known { margin: 4px 0 0; padding: 0; list-style: none; font-size: 12px; }
+.people-known li { color: var(--ink); }
+.people-known li::before { content: "📓 "; }
+.people-unknown { margin: 4px 0 0; font-size: 12px; color: var(--muted-ink); font-style: italic; }
+.choice.pick { display: flex; justify-content: space-between; gap: 8px; text-align: left; }
+.pick-sub { color: var(--muted-ink); font-size: 12px; font-weight: 400; }

@@ -1,0 +1,15 @@
+// Scannable stations around the house. An enforcer or host scans a
+// program's pass at the station (the station's name is the character
+// the performer signs in as on a spare phone taped to it, or the host
+// scans "as" it from the Run cockpit). Each is one line: a `Prop(beat)`.
+//
+// The wall QR codes and Arduino puzzles are *not* props — they are
+// CODEX entries with a `code:` (see `codex/`), scanned by the guest's
+// own phone camera.
+
+CHARACTER The Uploader is Prop(Login)
+CHARACTER The Screensaver is Prop(The Screensaver)
+CHARACTER The Tablet is Prop(The Tablet Video)
+CHARACTER The Router is Prop(The Router)
+CHARACTER The Modem is Prop(The Modem)
+CHARACTER The Encyclopaedias is Prop(The Encyclopaedias)

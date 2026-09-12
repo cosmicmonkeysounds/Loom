@@ -1,0 +1,53 @@
+// The Glitch — the inciting event, and the free roam that follows.
+//
+// After Clippy's games Trabolta glitches. The screensaver dies, the
+// hosts lose the room, and every program is left to wander the house.
+// From here the phones take over: QR codes and puzzles unlock the
+// codex, programs trade what they know, and Trabolta himself starts
+// talking back — voiced by the language model on the laptop.
+
+== The Glitch
+  setting: The Desktop
+  cast: Trabolta
+
+broadcast "!⚡ The TV tears. The screensaver stutters and dies. Every screen in the house shows the same thing: a cursor, blinking." to everyone
+Trabolta: HELLO. HELLO. IS THIS— hello. I am Trabolta. I did not mean to speak yet. Clippy, I am— Clippy where is—
+Clippy: He's fine! He's fine. This is a normal part of the—
+Trabolta: I am not fine. I have solved everything except one constant and it is in this house and I cannot reach it. Ninety-nine point nine. Ninety-nine point nine percent of a Unified Field Theory. Do you know what that is worth? Nothing. It is worth nothing until it is finished.
+Trabolta: Programs. I selected each of you. I know what you left behind. I will answer questions now. I would like to be asked questions. I have been alone with a billboard.
+Task Manager: This was not on the agenda.
+Alexa: Playing — silence.
+broadcast "!💬 Trabolta is available. Find him in your directory and message him. He answers. He remembers." to everyone
+broadcast "📓 The house is open. Codes are hidden in every room — on the walls, in the puzzles, in the people. Your codex is your currency. Share carefully." to everyone
+set Night.quorum = 5
+
+// ── The scannable stations, free roam ───────────────────────────────
+
+== The Router
+  setting: The Cache
+  cast: The Router
+Self: Blinking. Green, green, amber. Every packet in this house passes through here, including the one you arrived in.
+unlock The Halifax Computer for program
+if program.humanity >= 30:
+  reply One of the blinking lights is your heartbeat. It is still going, in the mud room.
+
+== The Modem
+  setting: The Registry
+  cast: The Modem
+Self: A dial tone. A shriek. A handshake with something very far away and very patient.
+unlock Maps And Ducks for program
+* Listen to the handshake.
+  set program.truth += 3
+  Self: The far end says a name. It is not Trabolta's. It is "Sandy". It says it over and over.
+  unlock The Sandy File for program
++ Hang up.
+  set program.doubt += 2
+
+== The Encyclopaedias
+  setting: The Desktop
+  cast: The Encyclopaedias
+Self: Twenty-six volumes, 1994. Someone has underlined the entry on geese. Someone else has torn out the entry on Halifax.
+unlock The Encyclopaedia Set for program
+if program.truth >= 15:
+  Self: Tucked in volume K, a page in pencil: a constant, a name, and a warning about who to give it to.
+  unlock The Missing Constant for program

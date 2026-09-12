@@ -1,0 +1,17 @@
+// Atmosphere — the autonomous hum of a dying computer. Pure mood, no
+// consequences; the threat in this house is reactive, not ambient.
+
+GENERATOR ScreensaverHum
+  tier: ambient
+  every 4m
+  yield bark from The screensaver changes. Pipes now. | A fan spins up somewhere in the walls. | An LED that was green is amber. Nobody saw it change. | The encyclopaedias smell like a basement in 1994.
+
+GENERATOR DialUp
+  tier: ambient
+  every 7m
+  yield bark from From the Registry: a dial tone, then the shriek. | A modem handshakes with something very patient. | The far end of the line says a name you can't quite hear.
+
+GENERATOR SystemTray
+  tier: ambient
+  every 9m
+  yield bark from 3 programs have viewed your profile. | You have (1) unread message from a program you have not met. | Memory usage: 97%. Consider closing some memories. | Your protection has expired.

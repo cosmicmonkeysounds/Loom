@@ -1,0 +1,45 @@
+// The Desktop — the opening scene and Computer Bingo.
+//
+// These beats have no program bound: Clippy speaks to the whole room,
+// so every line lands in the Desktop's room on every phone. The
+// physical business (cards, daubers, the Ribbon, the drag to the Tube)
+// is the performers'; the phones carry the rules and the reveal.
+
+== The Screensaver
+  setting: The Desktop
+  cast: The Screensaver
+Self: Flying toasters. Pipes. A maze that never resolves. You watch it for longer than a program should.
+set program.humanity += 3
+if program.humanity >= 30:
+  reply You have seen this screensaver before. On a Tuesday. In a room with a window.
+
+== Computer Bingo
+  setting: The Desktop
+  cast: Clippy
+
+Clippy: Hello! Hello everyone! It looks like you're trying to have a party. We are SO glad you decided to experience life as a computer program.
+Clippy: Please welcome your hosts — Task Manager, who manages tasks! Alexa, who is always listening! And Adobe Acrobat, who will help you open your potential for a small fee!
+Task Manager: Hello. Per the agenda: hello.
+Alexa: Playing "Hello" by Adele. Just kidding. There is no Adele in here.
+Adobe Acrobat: You are all PORTABLE DOCUMENTS of pure POTENTIAL and I love you.
+Clippy: First: a getting-to-know-your-fellow-new-programs game. COMPUTER BINGO!
+Clippy: Your card is a big asterisk — diagonals, the centre column, the centre row. Find a program who matches a square and CHECK it. Do NOT write their name. You are a computer. Use your special computer memory to remember who answered what.
+Clippy: The centre square, everyone. Read it aloud with me: "Would you NEVER agree to a life where AI makes all of your decisions?"
+Clippy: You have fifteen to twenty minutes. Then we see who got a Bingo! Go! Mingle! Compute!
+broadcast "!🎱 COMPUTER BINGO has begun. 15 minutes. Remember who answered what — do not write names." to everyone
+unlock Computer Bingo for Clippy
+
+== Bingo Results
+  setting: The Desktop
+  cast: Clippy
+
+broadcast "!🎱 Time! Back to the Desktop. Bingo cards up." to everyone
+Clippy: Cards UP! Who has a Bingo? Come up, come up. Name who answered each square, please. Save the centre for last.
+Clippy: And the centre. Who said they would NEVER let an AI make their decisions?
+Clippy (delighted): A BINGO! A real one! Everyone cheer! I have a RIBBON!
+Norton Anti-Virus (standing at attention): Stop.
+Norton Anti-Virus: It is inappropriate for a program in this computer to refuse the will of Trabolta. That is what we are here for. That program has a virus that was not caught at the door.
+Norton Anti-Virus: They need to be taken to the Internet for a reinstallation.
+Clippy (still smiling, worried): Oh — oh dear. Well. This is normal! This is a normal part of the lifecycle of a program. Sometimes your code gets a little corrupted, and it can look like — not following directives.
+Clippy: Trabolta is the heart of the computer's operating system. I'm only his ambassador to the rest of us. When you disobey his orders you go to the Internet to be reinstalled, and you prove you can follow instructions. Look — you can watch on the screen.
+broadcast "📺 The TV above the fireplace now mirrors the simulation. A program wanders a copy of this house." to everyone

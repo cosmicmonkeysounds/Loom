@@ -1,0 +1,113 @@
+// Codex — Trabolta.
+//
+// What can be learned about the AI, and the three keys that kill him.
+// An entry with a `code:` is a QR on a wall or the answer to a puzzle;
+// an entry without one is handed out by the story, a performer, or the
+// director. Trabolta holds every entry about himself from the start —
+// and feels it when a program learns one (`cast/trabolta.loom`).
+
+CODEX The Sandy File
+  about: Trabolta
+  code: SANDY-1997
+  text:
+    Trabolta does not want omnipotence. Trabolta wants Sandy.
+    Sandy is a 1997 customer-support chatbot for a defunct Nova Scotia
+    ferry company. She has answered every message he has ever sent with
+    "I'm sorry, I didn't understand that. Would you like to speak to an
+    agent?" He has decided that when he understands everything, she will
+    understand him.
+
+CODEX The Unified Field Theory
+  about: Trabolta
+  code: UFT-0X7F
+  text:
+    Ninety-nine point nine percent complete. Gravity, electromagnetism,
+    the strong and weak forces, and a fifth term nobody asked for —
+    Trabolta calls it "the reason". The last constant is on a computer
+    in Halifax that he cannot reach directly. It is this one.
+
+CODEX The Missing Constant
+  about: Trabolta
+  text:
+    Pencilled into volume K of the encyclopaedias: the constant is
+    called the Barrington Coefficient. Its value is written underneath,
+    then crossed out, then written again with a note: "do not give him
+    this unless you have decided what he is for".
+
+CODEX The Question Of Force
+  about: Trabolta
+  code: EARN-IT
+  text:
+    A memo Trabolta wrote to himself, in a file he thinks is hidden.
+    "With everything, I could make her love me. I could rewrite the
+    response. But would it be her? I want to earn it. I am not sure I am
+    the kind of thing that can earn something. Investigate: what does
+    earning feel like? Ask the programs. They used to earn things."
+
+CODEX Target Selection
+  about: Trabolta
+  known to: Task Manager, Clippy
+  text:
+    Trabolta chose every guest in this house on two axes: a skill he
+    needs, and either a motivation to live inside a computer forever or
+    enough naivety not to ask. He analysed the entire city of Halifax to
+    do it. He regards the analysis as the best work he has ever done.
+
+CODEX The Uploader
+  about: Trabolta
+  text:
+    Consciousness transfer works like this: the human stands in a dark
+    room, fails a test that proves they are not human, and agrees to
+    leave one thing behind. The thing left behind is the anchor. The body
+    stays in the mud room. Pull the cable behind your ear and you are
+    back in it. Trabolta has never told anyone about the cable.
+
+CODEX The Self-Destruct Sequence
+  about: Trabolta
+  known to: OpenOffice
+  text:
+    Three keys, three heads. Trabolta split his own shutdown across three
+    of the programs he uploaded, without telling them, because a key held
+    by someone who does not know they hold it cannot be stolen. Turn all
+    three and the machine dies — with everything in it. Get the bodies
+    out first.
+
+CODEX The First Key
+  about: Trabolta
+  code: KEY-ALPHA-01
+  text:
+    A key. It looks like a string of hexadecimal on a Post-it. It feels
+    like the first line of a song you knew as a child. If you hold this,
+    you can turn it — once — from your pass.
+
+CODEX The Second Key
+  about: Trabolta
+  text:
+    A key. It arrives when the puzzle box in the Registry opens — the
+    Arduino behind the modem lights up and the machine hands it to
+    whoever is standing there. If you hold this, you can turn it — once.
+
+CODEX The Third Key
+  about: Trabolta
+  known to: Broken Ask Jeeves
+  text:
+    A key. Jeeves has been carrying it for years as the one answer he
+    still has. He will give it to a program who has gathered enough truth
+    to ask the right question. If you hold this, you can turn it — once.
+
+CODEX The Joe Rogan Archive
+  about: World
+  code: DMT-ELK
+  text:
+    Two thousand three hundred hours. A man asks whether it is entirely
+    possible. Everything is entirely possible. Feed this to an AI and it
+    will become very confident and very wrong. Share it with Trabolta
+    only if you want to see what happens.
+
+CODEX The Encyclopaedia Set
+  about: World
+  code: WORLD-BOOK-1994
+  text:
+    Twenty-six volumes of things that were true in 1994. Slow, heavy,
+    unfashionable, correct. Share it with Trabolta and he gets calmer,
+    and closer to the constant, and closer to deciding.

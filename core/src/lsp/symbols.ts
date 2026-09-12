@@ -23,6 +23,7 @@ const DECLARATION_SYMBOL_KIND: Record<DeclarationKind, SymbolKind> = {
   space: SymbolKind.Namespace,
   channel: SymbolKind.Interface,
   interaction: SymbolKind.Event,
+  codex: SymbolKind.Object,
 };
 
 export function documentSymbols(ws: Workspace, uri: string): DocumentSymbolResponse | null {

@@ -19,6 +19,7 @@ event server, …) without dragging the rest along. Repo license is MIT
 | [`bank`](./bank)       | **TypeScript** bank compiler + the **normative reference interpreter**. Lowers a project into `.loombank` — engine-agnostic 4×i32 instruction streams, RPN expressions, pre-split interpolation, pre-parsed directive args — plus generated `LoomIDs.{gd,cs,h}`. `<shuffle:>` runs on the spec'd xorshift64* PRNG (`src/prng.ts`, per-site streams persisted in the save), and **locale banks** are emitted (`loom-bank strings` template → `build --locale <tag>=<file>` → `<name>.<tag>.loombank` sidecar; `set_locale` swaps literals at render time, expressions stay live, per-key fallback). Hosts the scenario driver / golden-trace harness (incl. `loadbank` for locale sidecars) every per-engine runtime is conformance-tested against. See [`docs/loom-banks.md`](./docs/loom-banks.md). |
 | [`engines/godot`](./engines/godot) | **GDScript** Loom runtime for Godot 4 — pure script, no GDExtension, no build step. `LoomRuntime` (pull-model `advance() -> Step`, plus signals), `LoomBank` + a `.loombank` import plugin, save/load that round-trips a suspended choice, and a headless conformance runner diffing the reference's goldens byte for byte. On top, a Wwise-integration-style **scene layer**: `LoomStory` (bank host node — autoplay, timer auto-tick, optional auto-advance pump with hold/release gating, save-file helpers), `LoomHook` (story→game: filterable directive/beat/line/varset/fire listener as an editor-connectable signal), `LoomTrigger` (game→story: fire an `on <verb>` hook or start a beat on ready/Area overlap/manual), `LoomTypewriter` (per-character RichTextLabel reveal, punctuation pacing, skip, story hold — **raw signals only**; effects are separate interpreter nodes: `LoomBlip` pooled pitch-randomised voice blips, `LoomTalkAnimator` talk/idle animation), `LoomDialogueBox` (complete drop-in player — speaker/portrait/pooled choice buttons/continue-indicator/two-tap input/auto mode/`resume()` — skinned by a `LoomStyle` resource with per-character `LoomSpeakerStyle` overrides; `demo/styled_demo.tscn` plays a story with zero scripts), `LoomHistory` (backlog), `LoomSaveSlots` (named slots with query-API metadata headers), a host-side state-query API (`current_beat`/`current_setting`/`pending_options`/`is_finished`/`has_played`/`world_snapshot`/`beat_names` + `save_to_file`/`load_from_file`), plus a `LoomBank` inspector preview (beats/hooks with copy-name) — covered by `test/addon.sh` (96 headless checks) alongside `test/conformance.sh` (4 scenarios incl. shuffle PRNG + locale switching). |
 | [`examples`](./examples) | Reference `.loom` projects used by `loom-runtime` integration tests and as authoring tutorials |
+| [`mind`](./mind)       | **TypeScript** (`@loom/mind`, in the pnpm workspace). Gives a `CHARACTER` a mind: a bridge that signs into a live event as a moderator, reads every guest DM to the character off the mod SSE feed, answers **in character** through a local OpenAI-compatible model (Ollama by default — `trabolta.persona.md` is the system prompt + frontmatter knobs), and nudges the character's declared variables through `POST /api/mod/var` (clamped per reply). The story's `when` watchers decide what the numbers mean; the model never decides the plot. Reads history for context, never answers the past; `--dry-run`, `--say <guest>`. vitest-tested against a fake server + fake model. |
 | [`stagehand`](./stagehand) | **Python** (uv-managed, not in the pnpm workspace) show-control bridge for live events: joins an event's mod SSE feed and translates story events (unhandled directives like `<cue:>`/`<prop:>`/`<vibe:>`, `beatEntered`, `signal`) into OSC cues (TouchDesigner, with an NTP `t_exec` simultaneity contract) + MQTT prop commands via a declarative `show.yaml` cue map; in reverse, MQTT sensor topics (named captures, safe `when:` conditions, per-identity debounce) inject journaled story mutations through the mod API (`signal`/`beat`/`arrive`). Stateless — retained MQTT + the journal carry recovery. `uv run pytest` (70 tests) / `uv run stagehand check\|run --config show.yaml`. Design: [`docs/loom-show-control.md`](./docs/loom-show-control.md). |
 
 **All Loom documentation lives in [`docs/`](./docs)** (moved from the
@@ -175,6 +176,49 @@ The Rust `server` crate (see below) is the older, separate multi-workspace
 backbone; the SaaS lives entirely in the TS stack.
 
 ## Status
+
+**Trapped in the Internet + the codex economy landed 2026-09-10** (TS
+`core/` + `play` + new `mind/`; story: `core/examples/trapped-in-the-internet/`
+— now the server's default scenario; its `README.md` is the runbook +
+integration contract). The show as designed: Trabolta (a rogue AI voiced by
+a local LLM) uploads guests as programs; Clippy runs Computer Bingo and the
+Truth Scavenger Hunt; the Antivirus drag the corrupted through the Tube to
+"the Internet" (a `prison: true` + `sealed: true` location; the VR station
+releases them via `mod/signal {name: "the simulation completed", subject}`);
+the glitch opens free roam; five endings (three keys → self-destruct →
+Long Dark / Unplugged by quorum; Rogue at `Trabolta.untruth ≥ 80`; Trapdoor
+at `truth ≥ 90 ∧ stance ≤ −60`; Unknown when spared). Language + engine:
+**`CODEX name`** declaration (`about:` / `code:` / `known to:` / `text:`
+block) — knowledge as a currency: holders (persons *and* characters), the
+`unlock X for guest` statement, `Sim.unlock/redeem/share` (journaled
+mutations), built-in triggers `learn` (`when guest learns X:`, `when learns
+for guest:`) + `share` (`from` bound) + the named event `wrong code`, world
+mirrors `who.codex` (count) / `who.codex.<slug>` (bool), `codexUnlocked` /
+`codexMissed` events. Characters learn too (`when who learns X: if who ==
+self:`) — feeding lore to Trabolta moves his stance. Routes:
+`/api/guest/codex/{redeem,share}`, `/api/prime/codex/share`, `/api/mod/codex`
+(hardware unlock), `/api/mod/codes` → `codex[]` with printable
+`?code=&unlock=` QR links. **Directory + private threads:** `listed: true`
+characters + `directory: everyone` (header) → `GuestView.people` (name +
+exactly the entries about them the viewer holds); guest↔guest `pm:<a>:<b>`
+threads (`Sim.pmChannel`); performer consoles now see **only their own
+character's** `dm:` threads and no `pm:` (admins/mods see all —
+`visibleToPrime`). **Alerts:** a broadcast cue starting with `!` sets
+`ChatMessage.alert` → the play app chimes (synth), vibrates, banners.
+`GROUP … joinable: false` (off the side chooser), `LOCATION … sealed: true`
+(→ `GuestView.canEscape` false, no self-escape button). Play app: 📓 Codex
+sheet (redeem box, entries by subject, Share… picker, `?unlock=` deep link),
+👥 People sheet (💬 Message → pm/dm), performer "📓 Share lore…" + "what
+your character knows". Engine fixes found by the show: `broadcast "…to…" to
+scope` no longer splits inside the quoted cue; `capture/release X into/from
+<Multi Word Place>` lower correctly; a ROLE's own alias (`program`) is
+recognised as a beat's subject everywhere `guest` was. Gotchas recorded in
+the example: event names must not start with a built-in verb word
+(`release …` → `released`) or contain ` is ` (parsed as a mixin clause), and a
+filler + one word (`the glitch`) collapses to the word — use two words.
+Tests: core `codex` (20) + `trapped-in-the-internet` (20); play `codex`;
+mind (14); help articles `play/08-codex.md`, `authoring/35-codex.md`; docs
+`loom-4.md` §10.1, `writing-in-loom.md` §11.13.
 
 **Run mode overhauled 2026-09-10** (TS `core/` + `editor` + `play`;
 help: `docs/help/authoring/43-run-mode.md`): the Sim ⇄ Live source

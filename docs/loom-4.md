@@ -495,7 +495,47 @@ The live layer is unchanged in shape; only its vocabulary generalised.
   with the guest as subject, `who: admin` needs moderator powers.
 - **Rooms**: every `LOCATION` is a room; `SPACE` / `CHANNEL` declare
   extra ones; `broadcast … to participant(x) | group(G) | location(L)`
-  (`faction(G)` still accepted).
+  (`faction(G)` still accepted). A broadcast whose text begins with `!`
+  is an **alert** — the client chimes, vibrates, and banners it.
+- **People**: a `CHARACTER` marked `listed: true` is a *body at the
+  party*: it appears in the participants directory and can be messaged.
+  Guests can message each other privately too (`pm:` threads). A
+  performer's console sees only its own character's private threads.
+  `directory: everyone` (header) lists every guest to every guest; by
+  default the list is the acquaintance roster. `GROUP … joinable: false`
+  keeps a story-assigned public caste off the side chooser; `LOCATION …
+  sealed: true` (with `prison: true`) removes the app's self-escape.
+
+### 10.1 Codex — knowledge as a currency (2026-09-10)
+
+```loom
+CODEX The Sandy File
+  about: Trabolta            // subject: a character, or a topic word
+  code: SANDY-1997           // unlock code (case / dashes / spaces ignored); omit → story-only
+  known to: Norton           // extra holders from the start (the `about:` character always holds it)
+  text:
+    Trabolta does not want omnipotence. Trabolta wants Sandy.
+```
+
+A `CODEX` entry is a unit of lore a **holder** (a participant or a
+character) can have. It moves four ways — a **code** (a wall QR's link
+carries `?unlock=<code>`; the Codex sheet has a box), the **story**
+(`unlock X for guest`, a keyword statement), a **person** (a holder
+shares it, one recipient at a time), or **show hardware** (`POST
+/api/mod/codex {who, entry}`). Every unlock fires the built-in event
+`learn` (`when guest learns The Sandy File:` / `when learns for guest:`);
+a share also fires `share` with `from` bound; a miss fires the named
+event `wrong code`. Holdings mirror into the world: `guest.codex` (a
+count) and `guest.codex.<slug>` (true). Characters learn too — a guest
+shares *to* a character and its `when who learns X:` hooks run (check
+`who == self`), which is how lore fed to an AI character becomes a
+stance. The app's People directory shows, under each person, exactly the
+entries about them the viewer holds.
+
+`mind: external` on a character marks it as voiced by the `@loom/mind`
+bridge — a local language model that answers the character's DMs and
+adjusts its variables through the mod API. The story's watchers decide
+what the numbers mean.
 - **Improv** parentheticals, `COHORT`, `PERSON`, `ROSTER`, `cast`, and
   `SCENE` / `GENERATOR` coroutines are as in v3 §13 / §10.5.
 
@@ -513,7 +553,9 @@ The `play` client is a **generic participant client**. Nothing about
 | `LOCATION`s, `SPACE`/`CHANNEL`s, `GROUP`s | the rooms sidebar (a room per public `GROUP`; a guest's group pill is coloured from its name) |
 | `INTERACTION … who: performer / admin` | a button on every guest thread in the performer console (`/api/prime/act`) |
 | `INTERACTION … who: guest` | a button on the guest's own pass sheet (`/api/guest/act`) |
-| a `prison: true` location (v3) | the legacy capture / release buttons — only then |
+| a `prison: true` location (v3) | the legacy capture / release buttons — only then; `sealed: true` hides the guest's self-escape |
+| `CODEX` entries · `listed: true` characters · `directory: everyone` | the **📓 Codex** sheet (entries by subject, a code box, Share…) and the **👥 People** directory (names + what you know of each, 💬 Message) |
+| `broadcast "!…" to …` | an alert: chime + vibration + banner |
 
 Every view (`GuestView`, `PrimeView`, `ModView`, `ResolvedCode`) carries
 `title`, `theme`, and the interactions its role may fire; the derived

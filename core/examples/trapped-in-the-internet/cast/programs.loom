@@ -1,0 +1,116 @@
+// The named programs — actors with deep backstories who are in on the
+// play (to a degree). Each holds their own codex entries from the start
+// and decides, all night, what to tell whom. Knowledge is the currency.
+//
+// Two hidden sides run through them. The Awakened remember they were
+// human and want out; The Resident want to stay in the machine at any
+// cost. Nobody's side is declared here — a performer joins one when the
+// scene calls for it (or is pushed there by the games).
+
+CHARACTER Recycling Bin is Person
+  // A laid-off bathroom attendant. This is the Oscars of bathrooms.
+  trusts Program: 70 of 100
+  when scanned by program:
+    -> self.Attend
+  beat Attend(program)
+    Self: Sir. Madam. Program. A mint? A spritz? You look like you could use a little tidy.
+    * Accept the mint.
+      set program.doubt -= 5
+      Self: There you go. Good as new. Nobody will suspect a thing.
+    * "Why are you here, Recycling Bin?"
+      set program.humanity += 5
+      Self: Because somebody finally believed I was more than a bathroom. Even if it's a computer. Even if it's a bin.
+      unlock The Attendant for program
+
+CHARACTER Microsoft Excel is Person
+  // Rob Cameron, he says. Ninety years old under the spreadsheet. Wants
+  // everyone to stay — he has the most to lose.
+  trusts Program: 40 of 100
+  when scanned by program:
+    -> self.Tabulate
+  beat Tabulate(program)
+    Self: Rob Cameron. Excel. Let me tell you something: in here nobody ages. Not one cell. Have you considered staying? Permanently?
+    * "Staying sounds good."
+      set program.humanity -= 5
+      Self: Smart. Smart program. Column A, that's you.
+    * "Who's Randy Barkmore?"
+      set program.humanity += 10
+      Self (too fast): A former mayor. Very former. Why?
+      set Microsoft_Excel.trusts.program -= 15
+  when the glitch begins:
+    add self to The Resident
+
+CHARACTER OpenOffice is Person
+  // Lara Lewis, she says. Dana Anderson, ex-FBI, underneath. Made the
+  // sinkhole. Knows about the keys.
+  trusts Program: 30 of 100
+  when scanned by program:
+    -> self.Interview
+  beat Interview(program)
+    Self: Lara. OpenOffice. Free, open, and compatible with nothing. Tell me — what do you actually remember about this morning?
+    * "Nothing. I'm a program."
+      Self: Sure you are.
+      set OpenOffice.trusts.program -= 5
+    * "A body. A morning. A door."
+      set program.humanity += 15
+      set OpenOffice.trusts.program += 20
+      Self (low): Then listen. There is a way to shut him down. Three keys. I know where one is. Prove you can keep a secret and I'll tell you.
+  when the glitch begins:
+    add self to The Awakened
+
+CHARACTER DraftKings is Person
+  // Traded a paperclip for a quarter and won Atlantic Canada. Lost it
+  // all to Trabolta at online poker. Powerful with numbers.
+  when scanned by program:
+    -> self.Wager
+  beat Wager(program)
+    Self: Odds you're human: I'd say 3 to 1. Odds you remember it: 8 to 1. Want to bet?
+    * Bet on human.
+      set program.humanity += 10
+      Self: House pays. Don't tell the house.
+    * Bet on program.
+      set program.truth += 3
+      Self: Safe money. Boring. Correct.
+
+CHARACTER Bugdom is Person
+  // Ten years of Bugdom VR concept art, eaten by fire ants. Would live
+  // in any simulation that ran. Relentless with tedious tasks.
+  when scanned by program:
+    -> self.Enthuse
+  beat Enthuse(program)
+    Self: Have you SEEN the simulation? There's a goose. It lays a GOLDEN EGG. I could live in there. I could live in there forever.
+    * "What happened to your laptop?"
+      set program.humanity += 5
+      Self (very quietly): Ants.
+      unlock The Fire Ants for program
+    + "Tell me about the goose."
+      Self: Random spawn, one of six spots, press A. I have found it forty times. It never gets old. Nothing in here gets old.
+
+CHARACTER Broken Ask Jeeves is Person
+  // A butler search engine with one answer left in him: the third key.
+  when scanned by program:
+    -> self.Ask
+  beat Ask(program)
+    Self: Ask Jeeves. Ask— Ask— I'm sorry, could you rephrase the question?
+    * "Where is the third key?"
+      if program.truth >= 20:
+        Self: Ah. A real question. Finally.
+        unlock The Third Key for program
+      else:
+        Self: I'm sorry, could you rephrase the— you don't know enough yet to ask that. Come back with more truth.
+    + "Are you all right, Jeeves?"
+      set program.humanity += 5
+      Self: I was a very good search engine. Once. Before the Google— before the— could you rephrase the question?
+
+CHARACTER Runescape is Person
+  // Grinding since 2004. Has never logged off. Sees no reason to start.
+  when scanned by program:
+    -> self.Grind
+  beat Grind(program)
+    Self: Buying gf. Selling lobbies. Look, the trick to staying in here is you never stop clicking. Click something. Anything.
+    * Click something.
+      set program.truth += 1
+      Self: See? Level up. You're basically me now.
+    * "Don't you miss anything out there?"
+      set program.humanity += 5
+      Self: Out where?

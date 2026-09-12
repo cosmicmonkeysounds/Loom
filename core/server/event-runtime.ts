@@ -32,7 +32,23 @@ interface Client {
   id: string;
   /** Display name of a session-authorized director (for co-moderator presence). */
   name?: string; // person id (guest), character (prime), or "" (mod)
+  /** A performer who also holds the mod capability sees the whole feed. */
+  admin?: boolean;
   res: ServerResponse;
+}
+
+/**
+ * What a performer's console may see. Public story + every room is theirs
+ * to run — but a **private thread** (a guest's DM with a character, or two
+ * guests' `pm:`) is private to its parties: only the character's own
+ * performer (or an admin) sees a `dm:<character>` thread, and nobody but a
+ * mod sees a `pm:`. Knowledge is a currency; the booth can't skim it.
+ */
+function visibleToPrime(m: ChatMessage, c: Client): boolean {
+  if (c.admin === true) return true;
+  if (m.channel.startsWith("pm:")) return false;
+  if (m.channel.startsWith("dm:")) return m.channel === `dm:${c.id}` || m.audience === "all";
+  return true;
 }
 
 /** The run transitions announced on the `lifecycle` SSE event. */
@@ -209,7 +225,7 @@ export class EventRuntime {
       ? this.chat.historyFor(c.id, false).map(forGuest)
       : c.role === "mod"
         ? [...this.chat.all()]
-        : this.chat.all().filter((m) => !m.hidden);
+        : this.chat.all().filter((m) => !m.hidden && visibleToPrime(m, c));
   }
 
   /** A lifecycle transition every connected client should react to
@@ -245,6 +261,8 @@ export class EventRuntime {
     for (const c of this.clients) {
       if (c.role === "guest") {
         if (!m.hidden && visibleTo(m, c.id)) sseSend(c.res, "message", forGuest(m));
+      } else if (c.role === "prime") {
+        if (visibleToPrime(m, c)) sseSend(c.res, "message", m);
       } else {
         sseSend(c.res, "message", m);
       }
@@ -609,6 +627,7 @@ export class EventRuntime {
       res.write(":ok\n\n");
       const client: Client = { role, id, res };
       if (role === "mod") client.name = opts.moderatorName ?? "Director";
+      if (role === "prime") client.admin = this.sessions.canModerate(token);
       this.clients.add(client);
       sseSend(res, "snapshot", this.snapshotFor(client));
       // A moderator sees the full feed *including* hidden messages (greyed in
@@ -886,6 +905,76 @@ export class EventRuntime {
         return true;
       }
 
+      case "/api/guest/codex/redeem": {
+        // A guest types (or scans) an unlock code — a QR on the wall, a
+        // puzzle's answer. Journaled; a miss is a story event too.
+        const id = this.requireGuest(req, body, res);
+        if (id === null) return true;
+        if (!open) {
+          sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        const code = str(body, "code").trim();
+        if (code === "") {
+          sendJson(res, 400, { error: "empty code" });
+          return true;
+        }
+        const events = this.commit("redeem", id, code);
+        this.fanout(events);
+        const hit = events.find((e): e is Extract<SimEvent, { type: "codexUnlocked" }> => e.type === "codexUnlocked" && e.person === id);
+        sendJson(res, 200, { ok: true, unlocked: hit !== undefined ? hit.entry : null, codex: guestView(this.sim!, id).codex });
+        return true;
+      }
+      case "/api/guest/codex/share": {
+        // Knowledge changes hands: a guest shares an entry they hold with
+        // another participant or a listed character.
+        const id = this.requireGuest(req, body, res);
+        if (id === null) return true;
+        if (!open) {
+          sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        const entry = str(body, "entry");
+        const to = str(body, "to");
+        if (!this.sim!.holdsCodex(id, entry)) {
+          sendJson(res, 404, { error: "you don't hold that entry" });
+          return true;
+        }
+        if (!this.sim!.persons.has(to) && !this.sim!.model.characters.has(to)) {
+          sendJson(res, 404, { error: "unknown recipient" });
+          return true;
+        }
+        this.fanout(this.commit("share", id, to, entry));
+        sendJson(res, 200, { ok: true });
+        return true;
+      }
+      case "/api/prime/codex/share": {
+        // A performer shares one of their character's entries with a guest.
+        const token = tokenOf(req, body);
+        const character = this.sessions.characterOf(token);
+        if (!character) {
+          sendJson(res, 403, { error: "no character — sign in" });
+          return true;
+        }
+        if (!open) {
+          sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        const entry = str(body, "entry");
+        const to = str(body, "to");
+        if (!this.sim!.holdsCodex(character, entry)) {
+          sendJson(res, 404, { error: "your character doesn't hold that entry" });
+          return true;
+        }
+        if (!this.sim!.persons.has(to) && !this.sim!.model.characters.has(to)) {
+          sendJson(res, 404, { error: "unknown recipient" });
+          return true;
+        }
+        this.fanout(this.commit("share", character, to, entry));
+        sendJson(res, 200, { ok: true });
+        return true;
+      }
+
       // --- performer (prime) login: grants the `character` capability ---
       case "/api/prime/login": {
         if (this.throttled(req, res)) return true;
@@ -1115,12 +1204,46 @@ export class EventRuntime {
         return true;
       }
       case "/api/mod/codes": {
+        // Every codex entry with a code also gets its printable join link —
+        // the QR a guest scans on the wall: `?code=<event>&unlock=<code>`.
+        const base = this.joinBase();
+        const codex = [...(this.sim?.model.codex.values() ?? [])]
+          .filter((e) => e.code !== null)
+          .map((e) => ({
+            id: e.id,
+            title: e.title,
+            about: e.about,
+            code: e.code,
+            url: `${base}/?code=${encodeURIComponent(this.codes.event)}&unlock=${encodeURIComponent(e.code!)}`,
+          }));
         sendJson(res, 200, {
           eventPass: this.codes.event,
           primePass: this.codes.prime,
           modPass: this.codes.mod,
-          joinUrl: this.joinBase(),
+          joinUrl: base,
+          codex,
         });
+        return true;
+      }
+      case "/api/mod/codex": {
+        // A director (or show hardware through the mod API — an Arduino
+        // puzzle solved, a VR goose caught) hands an entry to a holder.
+        if (this.sim === null) {
+          sendJson(res, 409, { error: "no scenario loaded" });
+          return true;
+        }
+        const who = str(body, "who");
+        const entry = str(body, "entry");
+        if (!this.sim.persons.has(who) && !this.sim.model.characters.has(who)) {
+          sendJson(res, 404, { error: "unknown holder" });
+          return true;
+        }
+        if (!this.sim.model.codex.has(entry) && this.sim.model.codexIndex.get(entry) === null) {
+          sendJson(res, 404, { error: "unknown codex entry" });
+          return true;
+        }
+        this.fanout(this.commit("unlock", who, entry));
+        sendJson(res, 200, { ok: true, holders: this.sim.codexHolders(entry) });
         return true;
       }
       case "/api/mod/act": {
@@ -1196,7 +1319,7 @@ export class EventRuntime {
             if (!visibleTo(m, c.id)) continue;
             if (m.hidden) sseSend(c.res, "messageModerated", { seq: m.seq, hidden: true });
             else sseSend(c.res, "message", forGuest(m));
-          } else {
+          } else if (c.role === "mod" || visibleToPrime(m, c)) {
             sseSend(c.res, "messageModerated", m);
           }
         }

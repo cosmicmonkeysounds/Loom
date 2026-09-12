@@ -28,7 +28,8 @@ const CALL = /^[A-Za-z_][A-Za-z0-9_.]*(\(.*\))?$/u;
 const WAIT = /^(until\s+\S|\d)/u;
 const FLASH = /^[A-Za-z_]+(\s*,\s*\d+[a-z]*)?$/u;
 const GOAL = /^[A-Za-z_][A-Za-z0-9_./]*\s+[a-z]+$/u;
-const INTO = /^[A-Za-z_][A-Za-z0-9_.]*(\s+(into|from)\s+\S+)?$/u;
+/** `capture guest into The Internet` — the place may be several words. */
+const INTO = /^[A-Za-z_][A-Za-z0-9_.]*(\s+(into|from)\s+\S.*)?$/u;
 const ENROLL = /^\S+\s+(to|→|->|into)\s+\S+/u;
 const ASSIGN = /^[A-Za-z_][A-Za-z0-9_.]*\s*([+\-*/]?=)(?!=)/u;
 const SINGLE_NAME = /^[A-Za-z_][A-Za-z0-9_.\-]*(\s+with\s+.+)?$/u;
@@ -37,6 +38,8 @@ const EVENT = /^[A-Za-z_][A-Za-z0-9_.\-]*(\s+(for|with)\s+.+)?$/u;
 /** A name of one word, or several words each Capitalised (`The Society`). */
 const NAME_WORDS = /^[A-Za-z_][A-Za-z0-9_.'\-]*(\s+[A-Z][A-Za-z0-9_.'\-]*)*$/u;
 const HAS_BAR = /\|/u;
+/** `unlock The Sandy File for guest` — a codex entry for a holder. */
+const UNLOCK = /^.+\s+for\s+\S+$/u;
 
 /**
  * Every statement verb with the shape that tells it from prose. Multi-word
@@ -73,6 +76,7 @@ export const STATEMENTS: ReadonlyArray<[verb: string, shape: Shape]> = [
   ["add", { kind: "args", test: TO }],
   ["remove", { kind: "args", test: FROM }],
   ["reveal", { kind: "args", test: NAME_WORDS }],
+  ["unlock", { kind: "args", test: UNLOCK }],
   ["cast", { kind: "args", test: AS }],
   ["promote", { kind: "args", test: TO }],
   ["demote", { kind: "args", test: NAME_WORDS }],

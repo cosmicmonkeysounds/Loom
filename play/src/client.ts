@@ -63,6 +63,8 @@ export function useChatStream(
     onSnapshot?: (v: unknown) => void;
     onResponse?: (text: string) => void;
     onLifecycle?: (n: LifecycleNotice) => void;
+    /** The full thread history just (re)loaded — the baseline for "new". */
+    onHistory?: (messages: ChatMessage[]) => void;
     /** The server refused the stream for good (a token the run no longer
      *  knows — e.g. the phone slept through a restart): the session is dead. */
     onDead?: () => void;
@@ -96,13 +98,15 @@ export function useChatStream(
     es.addEventListener("snapshot", (e) => h.current.onSnapshot?.(json(e)));
     es.addEventListener("response", (e) => h.current.onResponse?.(String((json(e) as Record<string, unknown>)["text"])));
     es.addEventListener("lifecycle", (e) => h.current.onLifecycle?.(json(e) as LifecycleNotice));
-    es.addEventListener("history", (e) =>
+    es.addEventListener("history", (e) => {
+      const list = json(e) as ChatMessage[];
+      h.current.onHistory?.(list);
       setMessages(() => {
         const m = new Map<number, ChatMessage>();
-        for (const msg of json(e) as ChatMessage[]) m.set(msg.seq, msg);
+        for (const msg of list) m.set(msg.seq, msg);
         return m;
-      }),
-    );
+      });
+    });
     es.addEventListener("message", (e) => upsert(json(e) as ChatMessage));
     // An ephemeral message aged out — drop it from the view.
     es.addEventListener("messageExpired", (e) => {

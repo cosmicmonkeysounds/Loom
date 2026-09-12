@@ -57,7 +57,7 @@ store.saveCodes(PASS);
 // The default scenario is a multi-file project under `examples/`; the loader
 // concatenates `main.loom` + the rest into one source (identical to bundling
 // the files separately) so the journal-replay store keeps a single string.
-const DEFAULT_SCENARIO = scenarioSource("escape-the-internet");
+const DEFAULT_SCENARIO = scenarioSource("trapped-in-the-internet");
 
 // The built participant app (`loom-play`). Defaults to the sibling
 // package's `dist/`; override with LOOM_APP_DIST (absolute path).
@@ -130,7 +130,7 @@ const defaultEvent = registry.register(
     eventId: "default",
     store,
     codes: PASS,
-    scenarioName: "escape-the-internet",
+    scenarioName: "trapped-in-the-internet",
     scenarioSource: DEFAULT_SCENARIO,
     joinBase,
   }),

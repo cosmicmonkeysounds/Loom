@@ -61,6 +61,9 @@ export interface ChatMessage {
   /** The beat a scripted line was spoken in, when known — lets a client link
    *  a message back to its node on the story map. Absent for typed chat. */
   beat?: string | null;
+  /** An **alert**: a broadcast whose cue text began with `!` — the client
+   *  chimes, vibrates, and banners it ("!Come to the Desktop."). */
+  alert?: boolean;
 }
 
 /** A message before the store assigns it a `seq` + resolves `hidden`. */
@@ -162,6 +165,8 @@ function headOf(id: string): ChannelHead {
   if (id.startsWith("dm:")) return dmChannel(id.slice("dm:".length));
   // Model-free fallback — `sim.channelHead` resolves the location's label.
   if (id.startsWith("loc:")) return { channel: id, channelKind: "location", title: id.slice("loc:".length) };
+  // A private thread between two participants — `sim.channelHead` names them.
+  if (id.startsWith("pm:")) return { channel: id, channelKind: "dm", title: id.slice("pm:".length).replace(":", " & ") };
   return { channel: id, channelKind: "dm", title: id };
 }
 
@@ -182,6 +187,17 @@ export function describeChannel(id: string): ChannelDescriptor {
     order: orderOf(head.channelKind),
     members: head.channelKind === "lobby" ? "all" : [],
   };
+}
+
+/**
+ * Split an alert marker off a broadcast cue: a leading `!` — outside or
+ * just inside the quotes of a prose cue — makes the message an alert.
+ */
+export function splitAlert(rawCue: string): { cue: string; alert: boolean } {
+  const t = rawCue.trim();
+  if (t.startsWith("!")) return { cue: t.slice(1).trim(), alert: true };
+  if (t.startsWith('"!')) return { cue: `"${t.slice(2)}`, alert: true };
+  return { cue: t, alert: false };
 }
 
 /** Faction names referenced by a broadcast scope like `faction(Mods) | …`. */
@@ -283,21 +299,25 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
         break;
       }
       case "broadcast": {
-        const text = cueText(e.cue);
+        // A cue that begins with `!` (`broadcast "!Come to the Desktop." to
+        // everyone`) is an alert: same message, plus the client's chime.
+        const { cue, alert } = splitAlert(e.cue);
+        const text = cueText(cue);
+        const flag = alert ? { alert: true } : {};
         const factions = factionsInScope(e.scope);
         const base: Audience = globalScope(e.scope) ? "all" : [...e.audience];
         if (factions.length > 0) {
           // Mirror into each targeted faction channel (members only).
           for (const f of factions) {
-            out.push({ ...factionChannel(f), from: "", kind: "signal", text, ts, audience: sim.factionMembers(f), parentSeq: null });
+            out.push({ ...factionChannel(f), from: "", kind: "signal", text, ts, audience: sim.factionMembers(f), parentSeq: null, ...flag });
           }
         } else {
-          out.push({ ...LOBBY, from: "", kind: "signal", text, ts, audience: base, parentSeq: null });
+          out.push({ ...LOBBY, from: "", kind: "signal", text, ts, audience: base, parentSeq: null, ...flag });
         }
         // Channel-type routing: any authored channel subscribed to this cue
         // (`routes: *` / `routes: <cue>`) also receives it — e.g. #announcements —
         // scoped to those who can see both the broadcast and the channel.
-        for (const r of sim.routedChannelsFor(e.cue)) {
+        for (const r of sim.routedChannelsFor(cue)) {
           out.push({
             channel: r.channel,
             channelKind: r.channelKind as ChannelKind,
@@ -308,10 +328,23 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
             ts,
             audience: intersectAudience(base, r.audience),
             parentSeq: null,
+            ...flag,
           });
         }
         break;
       }
+      case "codexUnlocked": {
+        // Knowledge landed in a participant's hands — tell them (a character
+        // holder has no phone thread; the booth sees it in the snapshot).
+        if (!sim.persons.has(e.person)) break;
+        const title = sim.model.codex.get(e.entry)?.title ?? e.entry;
+        const by = e.via === "share" && e.from !== null ? ` — shared by ${sim.persons.get(e.from)?.name ?? e.from}` : "";
+        out.push(sys(`📓 New codex entry: “${title}”${by}.`, [e.person]));
+        break;
+      }
+      case "codexMissed":
+        out.push(sys(`⛔ “${e.code}” unlocks nothing.`, [e.person]));
+        break;
       case "ambient":
         out.push({ ...LOBBY, from: "", kind: "narration", text: e.text, ts, audience: "all", parentSeq: null });
         break;

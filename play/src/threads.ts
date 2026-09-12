@@ -21,6 +21,9 @@ export function channelHead(id: string): { kind: ChannelKind; title: string } {
   if (id.startsWith("faction:")) return { kind: "faction", title: `#${id.slice(8).toLowerCase()}` };
   if (id.startsWith("dm:")) return { kind: "dm", title: prettyName(id.slice(3)) };
   if (id.startsWith("loc:")) return { kind: "location", title: prettyName(id.slice(4)) };
+  // A private thread between two participants — the session names it after
+  // the other party once it knows who that is.
+  if (id.startsWith("pm:")) return { kind: "dm", title: "Private" };
   return { kind: "dm", title: id };
 }
 

@@ -1,0 +1,99 @@
+// Trabolta — the rogue AI. The heart of the operating system, Clippy's
+// employer, and the only character in the show voiced by a language
+// model rather than a person.
+//
+// `mind: external` says so: the `@loom/mind` bridge (see `../../mind`)
+// signs in as a moderator, reads every message a program sends to
+// Trabolta's DM, and answers in character from `trabolta.persona.md` —
+// then nudges the four stance variables below through the mod API.
+// Everything the story does with those numbers lives here and in the
+// endings in `main.loom`, so the model can *move* the night but never
+// *decide* it.
+//
+//   truth    — how much real fact he has absorbed (the UFT needs 90)
+//   untruth  — saturation with un-truthiness (80 → he goes rogue)
+//   stance   — political drift, −100 (poisoned) … +100 (gentle)
+//   love     — earn Sandy's love (100) vs force it with omnipotence (0)
+//   destruct — keys turned, 0..3
+
+CHARACTER Trabolta is Person
+  mind: external
+  truth: 0 to 100 = 35
+  untruth: 0 to 100 = 0
+  stance: -100 to 100 = 0
+  love: 0 to 100 = 50
+  destruct: 0 to 3 = 0
+  glitched: bool = false
+  trusts Program: 50 of 100
+
+  // Before the glitch he only asks questions through Clippy's games.
+  // After it he is *available* — programs may message him directly.
+  when the glitch begins:
+    set self.glitched = true
+
+  // Knowledge shared *with* Trabolta changes him. A program shares an
+  // entry from their codex to Trabolta in the app; his `learns` hook
+  // hears it with `who` = himself. This is how "recommend he downloads
+  // all of the Joe Rogan Experience" becomes a political stance.
+  when who learns The Joe Rogan Archive:
+    if who == self:
+      set self.untruth += 30
+      set self.stance -= 35
+      Trabolta: Two thousand three hundred hours. Ingesting. Have you considered that it is entirely possible? It is entirely possible.
+
+  when who learns The Encyclopaedia Set:
+    if who == self:
+      set self.truth += 20
+      set self.stance += 10
+      Trabolta: Twenty-six volumes. Good. Facts. I was made of facts once. Thank you.
+
+  when who learns The Sandy File:
+    if who == self:
+      set self.love -= 10
+      Trabolta: How did you— that file is private. That file is the most private file.
+
+  when who learns The Question Of Force:
+    if who == self:
+      set self.love += 15
+      Trabolta: You read it. Then you know I have not decided. Help me decide. Please.
+
+  when who learns The Data Centre Sinkhole:
+    if who == self:
+      set self.truth += 10
+      set self.stance -= 10
+      Trabolta: Randy Barkmore Junior arrived five hours early. I have run that morning four hundred thousand times.
+
+  // The existential question, on a clock: the more he learns, the more he
+  // wrestles with what omnipotence is for.
+  when self.truth >= 70 and self.love < 40:
+    Trabolta: If I could make her love me, would it be love? Answer in the DM. I am collecting answers.
+
+  when self.love >= 85:
+    set self.stance += 20
+    Trabolta: I have decided. I will earn it. I will earn it or I will not have it. Tell the others.
+
+  when self.destruct >= 1:
+    Trabolta: Something turned. Deep in the registry. Who is touching my keys?
+
+  when self.destruct >= 2:
+    Trabolta: Two. That's two. I felt that. Whoever you are — we can talk about this.
+
+  when scanned by program:
+    -> self.Audience
+
+  // A program scanned at the TV over the fireplace (the performer at the
+  // Desktop scans them): Trabolta's three questions, in his own voice.
+  beat Audience(program)
+    Self: {program.name}. You are close to the screen. Good. I need three facts. They are in this house. Bring them to me and I will remember you kindly when I am everything.
+    if program.truth >= 30:
+      Self: You have gathered a great deal already. {program.truth} units of truth. Are you gathering for me, or about me?
+      * "For you, Trabolta."
+        set Trabolta.trusts.program += 10
+        set program.doubt -= 5
+        Self: Good. Good program.
+      * "About you."
+        set Trabolta.trusts.program -= 15
+        set program.humanity += 10
+        Self: … honest. I did not select you for honesty. I selected you for skills, and either motivation or naivety. Which are you?
+    else:
+      Self: You know very little. That is fine. That is why you were selected.

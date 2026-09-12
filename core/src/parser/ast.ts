@@ -75,6 +75,7 @@ export interface Declaration {
   space: SpaceBody | null;
   channel: ChannelBody | null;
   interaction: InteractionBody | null;
+  codex: CodexBody | null;
   span: Span;
 }
 
@@ -105,6 +106,7 @@ export function emptyDeclaration(
     space: null,
     channel: null,
     interaction: null,
+    codex: null,
     span,
   };
 }
@@ -125,7 +127,8 @@ export type DeclarationKind =
   | "roster"
   | "space"
   | "channel"
-  | "interaction";
+  | "interaction"
+  | "codex";
 
 const DECLARATION_KEYWORDS: ReadonlyArray<[string, DeclarationKind]> = [
   ["CHARACTER", "character"],
@@ -144,6 +147,7 @@ const DECLARATION_KEYWORDS: ReadonlyArray<[string, DeclarationKind]> = [
   ["SPACE", "space"],
   ["CHANNEL", "channel"],
   ["INTERACTION", "interaction"],
+  ["CODEX", "codex"],
 ];
 
 /**
@@ -450,6 +454,34 @@ export interface InteractionBody {
 
 export function emptyInteractionBody(): InteractionBody {
   return { label: null, who: "performer", description: null, properties: new Map() };
+}
+
+// ---------------------------------------------------------------------
+// CODEX — a piece of lore a participant can hold, unlock, and share
+// (Loom 4 §10.1). Knowledge as a currency: an entry is unlocked by a
+// code (a QR on the wall, a puzzle's answer), by the story (`unlock X for
+// guest`), or by another holder sharing it. `about:` names the subject
+// (a character, or a world-level topic) so a client can group a
+// participant's codex by whom it concerns; the subject character holds
+// its own entries from the start.
+// ---------------------------------------------------------------------
+
+export interface CodexBody {
+  /** Display title; defaults to the declaration name. */
+  title: string | null;
+  /** Subject the entry concerns — a character name, or a topic word. */
+  about: string | null;
+  /** The unlock code (matched loosely: case, dashes, spaces ignored). */
+  code: string | null;
+  /** Holders seeded with the entry at compile time (character names). */
+  knownTo: string[];
+  /** The entry's text — the indented block under `text:`. */
+  text: string;
+  properties: Map<string, PropertyValue>;
+}
+
+export function emptyCodexBody(): CodexBody {
+  return { title: null, about: null, code: null, knownTo: [], text: "", properties: new Map() };
 }
 
 // ---------------------------------------------------------------------

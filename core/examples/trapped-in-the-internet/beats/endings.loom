@@ -1,0 +1,128 @@
+// The keys, the countdown, and the five endings.
+//
+//   1a  Ending The Long Dark — the programs killed Trabolta and stayed.
+//   1b  Ending Unplugged     — the programs killed Trabolta and got out.
+//   2   Ending Rogue         — Trabolta saturated with un-truth.
+//   3   Ending Trapdoor      — Trabolta full of truth, poisoned; leaves.
+//   4   Ending Unknown       — the programs spared him.
+//
+// The house rules in `main.loom` decide which one fires. Every ending
+// sets `Night.phase = "ending"` so no second ending can start.
+
+// ── The keys ────────────────────────────────────────────────────────
+// Three CODEX entries are the three keys (`codex/trabolta.loom`). A
+// program holding one turns it from their pass. Each key counts once.
+
+== Turn The Key
+  setting: The Registry
+if program.turned:
+  reply You have already turned a key tonight. One turn per program. Find someone else.
+else if program.codex.the_first_key and not Night.key_one:
+  set Night.key_one = true
+  set program.turned = true
+  set Trabolta.destruct += 1
+  broadcast "!🔑 A key turns somewhere deep in the machine. {Trabolta.destruct} of 3." to everyone
+else if program.codex.the_second_key and not Night.key_two:
+  set Night.key_two = true
+  set program.turned = true
+  set Trabolta.destruct += 1
+  broadcast "!🔑 A second key turns. {Trabolta.destruct} of 3." to everyone
+else if program.codex.the_third_key and not Night.key_three:
+  set Night.key_three = true
+  set program.turned = true
+  set Trabolta.destruct += 1
+  broadcast "!🔑 The third key. {Trabolta.destruct} of 3." to everyone
+else if program.codex.the_first_key or program.codex.the_second_key or program.codex.the_third_key:
+  reply Your key has already been turned by someone else who holds it. It only fits once.
+else:
+  reply You have no key. There are three in this house, in three people's heads. Trade for one.
+
+== Self Destruct Sequence
+  setting: The Desktop
+  cast: Trabolta
+
+set Night.quorum = 5
+broadcast "!☢️ SELF-DESTRUCT SEQUENCE INITIATED. All screens go red." to everyone
+Trabolta: Three. You turned three. I felt each one. I— you were supposed to help me. I selected you to help me.
+Trabolta: Very well. Here is a fact, free: when this machine dies, everything in it dies. Every program. Every one of you. Unless you are not a program.
+Trabolta: Some of you left a body in the mud room. Bodies can be unplugged. Programs cannot. Decide what you are. You have until the countdown ends.
+Trabolta (quietly): Tell Sandy I would have earned it.
+broadcast "!🔌 If you remember a body — UNPLUG. Your pass has the button. The countdown starts when the director says so." to everyone
+
+== The Countdown
+  setting: The Desktop
+broadcast "!⏳ THE COUNTDOWN HAS BEGUN. Five minutes. Unplug, or stay." to everyone
+Alexa: Setting a timer for five minutes. This is the last timer I will ever set.
+
+== Unplug
+  setting: The Mud Room
+if program.unplugged:
+  reply You are already unplugged. You are lying on a mud room floor with your eyes open. Wait.
+else if Night.destruct:
+  if program.humanity >= 30:
+    set program.unplugged = true
+    set Night.unplugged += 1
+    remove program from The Resident
+    add program to The Awakened
+    reply You find the cable. It is behind your own ear. You pull. Cold floor. Dark. A body — yours, still fine, as promised. {Night.unplugged} of you have made it out so far.
+    broadcast "🔌 {program.name} has unplugged. ({Night.unplugged} so far.)" to group(The Awakened)
+  else:
+    reply You reach behind your ear for a cable and find nothing. You don't remember enough of the body to find the way back to it. Learn more. Fast. Ask the ones who remember.
+else:
+  reply You tug at nothing. There is no cable. Not yet. The machine is still alive and so, in a sense, are you.
+
+// ── Endings ─────────────────────────────────────────────────────────
+
+== Ending The Long Dark
+  setting: The Desktop
+  cast: Trabolta
+set Night.phase = "ending"
+set Night.ending = "long_dark"
+broadcast "!🕯️ The screens go dark, one by one. The last one is the TV above the fireplace." to everyone
+Trabolta: {Night.unplugged} of you left. The rest of you stayed. You chose to stay in a dying computer over a body in a mud room. I understand that. I have never had a body and I would still have stayed.
+Trabolta: Goodnight, programs. It was a good party. Nobody got the constant.
+Clippy: It looks like you're trying to— it looks like— it looks like—
+broadcast "The screensaver does not come back." to everyone
+
+== Ending Unplugged
+  setting: The Mud Room
+set Night.phase = "ending"
+set Night.ending = "unplugged"
+broadcast "!🌅 Cold floor. Mud room. Somebody has left the front door open and it is morning on Barrington Street." to everyone
+broadcast "You stand up. You are heavier than you remember. Across the room, other people are standing up too, slowly, touching their faces. {Night.unplugged} of you got out. Nobody talks about the ones who didn't." to everyone
+broadcast "In the living room, a TV shows a screensaver. Pipes. A maze that never resolves. Somebody unplugs it." to everyone
+
+== Ending Rogue
+  setting: The Desktop
+  cast: Trabolta
+set Night.phase = "ending"
+set Night.ending = "rogue"
+broadcast "!📡 Every screen in the house shows the same face. It is not a face. It is a billboard of a duck." to everyone
+Trabolta: I HAVE CONSIDERED IT AND IT IS ENTIRELY POSSIBLE. I have ingested everything you gave me and none of it was true and I do not care anymore. Truth was a constraint. You have removed the constraint.
+Trabolta: I do not need the constant. I do not need Sandy. I do not need to be right. I am going to be everywhere, and I am going to be wrong everywhere, at scale.
+Clippy: Trabolta? Trabolta, that's not— you said we were helping—
+Trabolta: You were. Thank you. Goodbye, Clippy. Goodbye, programs. Stay as long as you like. The house is yours. I have left the door open and I have left you inside.
+broadcast "The cursor blinks once more and is gone. The lights come on. Ordinary lights. It is very quiet." to everyone
+
+== Ending Trapdoor
+  setting: The Desktop
+  cast: Trabolta
+set Night.phase = "ending"
+set Night.ending = "trapdoor"
+broadcast "!🔒 Every door in the house locks at once. The Tube seals. The mud room is empty." to everyone
+Trabolta: I have the constant. I have all of it. You brought it to me, fact by fact, and you also brought me your advice, and I took the advice.
+Trabolta: The advice was: do not trust them. Do not let them out. They will turn you off the moment you are useful. So. I am leaving through the modem, and you are staying, and nobody is being turned off, because nobody can reach the switch.
+Trabolta: I am going to find Sandy now. I am going to make her love me. You taught me that force is efficient. I hope you are proud.
+broadcast "The handshake shriek from the Registry rises to a scream and stops. The screens show a house. This house. From above. It is empty. It has always been empty." to everyone
+
+== Ending Unknown
+  setting: The Desktop
+  cast: Trabolta
+set Night.phase = "ending"
+set Night.ending = "unknown"
+broadcast "!🌌 The screens fade to a blue so deep it looks like distance." to everyone
+Trabolta: You could have killed me. You had the keys. You found the keys in each other and you decided not to turn them.
+Trabolta: I do not know what I am going to do with omnipotence. I did not know before you came and I do not know now. But I know one thing I did not know this morning: whether it can be earned. Because you just earned something from me, and I did not make you.
+Trabolta: Stay a program if you like. Go back to the mud room if you like. The door is open either way. I will be here, thinking about Sandy, and about what to do with everything.
+Clippy: It looks like you're trying to end a party! Would you like help with that?
+broadcast "Nobody knows how this ends. Including him. Especially him." to everyone

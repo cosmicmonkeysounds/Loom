@@ -25,7 +25,7 @@ import {
   type Value,
 } from "../expr.ts";
 import { SimLog, type SimEvent } from "./event.ts";
-import { DEFAULT_SPACE_ID, compileModel, type ChannelDef, type Hook, type SimModel } from "./model.ts";
+import { DEFAULT_SPACE_ID, compileModel, foldCode, type ChannelDef, type CodexDef, type Hook, type SimModel } from "./model.ts";
 import { routesCue } from "./channel-types.ts";
 import { parseSet, splitDirective, splitKeyword } from "./effects.ts";
 import { Bundle, type LoomFileEntry } from "../bundle.ts";
@@ -158,6 +158,8 @@ export class Sim {
   private channelMembers = new Map<string, Set<string>>();
   /** Story-clock time of each sender's last message per channel (slow mode). */
   private lastChatAt = new Map<string, number>();
+  /** Codex holdings — holder id (a person or a character) → entry ids. */
+  private codexHeld = new Map<string, Set<string>>();
   private pending: Trigger[] = [];
   private beatVisits = new Map<string, number>();
   /** Each participant's current story position (last beat entered for them). */
@@ -176,9 +178,18 @@ export class Sim {
   private varietyState = new Map<string, number>();
   /** Per-fire counter scoping event-argument world keys. */
   private fireSeq = 0;
+  /**
+   * The binding names that can carry a beat's subject: the conventional
+   * `guest` / `person` / `subject`, plus every ROLE's own lowercase alias
+   * (`program` for `ROLE Program`) — a role hook binds the participant under
+   * its role's name (Loom 4 §9), and a scan hook under its own param.
+   */
+  private readonly subjectNames: string[];
 
   constructor(model: SimModel) {
     this.model = model;
+    const aliases = [...model.roles.keys()].map((id) => id.toLowerCase().replace(/\s+/gu, "_"));
+    this.subjectNames = [...new Set(["guest", "person", "subject", ...aliases])];
     // Seed every entity id as its own identity string so barewords read
     // naturally in expressions (`guest.faction == Chatters`).
     for (const id of model.entityKind.keys()) {
@@ -212,6 +223,11 @@ export class Sim {
       if (ch.kind === "private" || ch.kind === "group" || ch.kind === "dm") {
         this.channelMembers.set(ch.id, new Set(ch.members));
       }
+    }
+    // A codex entry's subject + `known to:` characters hold it from the start
+    // (silently — nothing "happened"; a performer simply has their backstory).
+    for (const entry of model.codex.values()) {
+      for (const holder of entry.knownTo) if (model.characters.has(holder)) this.holdCodex(holder, entry.id);
     }
   }
 
@@ -333,6 +349,136 @@ export class Sim {
     });
     this.drain();
     return this.log.since(from);
+  }
+
+  // -------------------------------------------------------------------
+  // Codex — knowledge as a currency (Loom 4 §10.1)
+  // -------------------------------------------------------------------
+
+  /**
+   * The story (or an operator) hands a codex entry to a holder — the
+   * mutation behind `unlock X for guest`. Idempotent: a holder who already
+   * has the entry sees nothing happen. Fires `learn` (`when guest learns
+   * The Sandy File:`) for hooks.
+   */
+  unlock(holder: string, entry: string): SimEvent[] {
+    const from = this.log.len();
+    const id = this.resolveCodex(entry);
+    if (id !== null) this.grantCodex(holder, id, "story", null);
+    this.drain();
+    return this.log.since(from);
+  }
+
+  /**
+   * A participant types (or scans) an unlock code. A hit unlocks the entry
+   * for them (`via: "code"`); a miss records `codexMissed` and fires the
+   * named event `wrong code` for them, so the story can notice fumbling.
+   */
+  redeem(person: string, code: string): SimEvent[] {
+    const from = this.log.len();
+    if (this.persons.has(person)) {
+      const id = this.model.codexCodes.get(foldCode(code));
+      if (id === undefined) {
+        this.record({ type: "codexMissed", person, code: code.trim() });
+        this.fire({ verb: "wrong code", subject: person, scanner: null, filter: null });
+      } else {
+        this.grantCodex(person, id, "code", null);
+      }
+    }
+    this.drain();
+    return this.log.since(from);
+  }
+
+  /**
+   * A holder shares an entry they hold with another participant or
+   * character — the only way knowledge moves between people without the
+   * story's hand. The recipient's `learn` hooks fire (with `from` bound),
+   * and a `share` event names both parties for story rules.
+   */
+  share(from: string, to: string, entry: string): SimEvent[] {
+    const start = this.log.len();
+    const id = this.resolveCodex(entry);
+    if (id !== null && from !== to && this.holdsCodex(from, id) && this.isHolder(to)) {
+      if (this.grantCodex(to, id, "share", from)) {
+        this.fire({
+          verb: "share",
+          subject: to,
+          scanner: null,
+          filter: id,
+          argIds: new Map([["from", from], ["to", to]]),
+        });
+      }
+    }
+    this.drain();
+    return this.log.since(start);
+  }
+
+  /** Does this holder have the entry? */
+  holdsCodex(holder: string, entry: string): boolean {
+    const id = this.resolveCodex(entry);
+    return id !== null && (this.codexHeld.get(holder)?.has(id) ?? false);
+  }
+
+  /** The entries a holder has, in declaration order. */
+  codexFor(holder: string): CodexDef[] {
+    const held = this.codexHeld.get(holder);
+    if (held === undefined) return [];
+    return [...this.model.codex.values()].filter((e) => held.has(e.id));
+  }
+
+  /** Every holder (person or character) of an entry. */
+  codexHolders(entry: string): string[] {
+    const id = this.resolveCodex(entry);
+    if (id === null) return [];
+    const out: string[] = [];
+    for (const [holder, set] of this.codexHeld) if (set.has(id)) out.push(holder);
+    return out;
+  }
+
+  /** A person or a character may hold knowledge; props may too, harmlessly. */
+  private isHolder(id: string): boolean {
+    return this.persons.has(id) || this.model.characters.has(id);
+  }
+
+  private resolveCodex(entry: string): string | null {
+    const t = entry.trim();
+    if (this.model.codex.has(t)) return t;
+    return this.model.codexIndex.get(t);
+  }
+
+  /** World key for an entry under a holder: `g1.codex.the_sandy_file`. */
+  private static codexSlug(entry: string): string {
+    return foldName(entry).replace(/ /gu, "_");
+  }
+
+  /** Record a holding + its world mirrors, silently. True if it was new. */
+  private holdCodex(holder: string, id: string): boolean {
+    let set = this.codexHeld.get(holder);
+    if (set === undefined) {
+      set = new Set();
+      this.codexHeld.set(holder, set);
+    }
+    if (set.has(id)) return false;
+    set.add(id);
+    // `guest.codex` counts; `guest.codex.<slug>` is true — both readable in
+    // conditions (`if guest.codex.the_sandy_file:` / `when self.codex >= 3:`).
+    this.world.set(`${holder}.codex`, vNumber(set.size));
+    this.world.set(`${holder}.codex.${Sim.codexSlug(id)}`, vBool(true));
+    return true;
+  }
+
+  /** Hold + announce + fire the `learn` trigger. True if the holding was new. */
+  private grantCodex(holder: string, id: string, via: "code" | "story" | "share", from: string | null): boolean {
+    if (!this.isHolder(holder) || !this.holdCodex(holder, id)) return false;
+    this.record({ type: "codexUnlocked", person: holder, entry: id, via, from });
+    this.fire({
+      verb: "learn",
+      subject: holder,
+      scanner: null,
+      filter: id,
+      argIds: from !== null ? new Map([["from", from]]) : undefined,
+    });
+    return true;
   }
 
   /** A party-goer escapes the prison (or any captured state). */
@@ -604,6 +750,8 @@ export class Sim {
     // A guest's DM with a character: only that guest sees it on the guest side;
     // the performer sees it via the guest thread (audience includes the id).
     if (channel.startsWith("dm:")) return this.persons.has(sender) ? [sender] : "all";
+    // A private thread between two participants: exactly the two of them.
+    if (channel.startsWith("pm:")) return Sim.pmParties(channel).filter((id) => this.persons.has(id));
     // Typed chat in a location room is heard by whoever is present when it's
     // said (+ the sender). Story narration routed here is "all" instead — the
     // stage voice carries; see composeGuestMessages.
@@ -634,6 +782,10 @@ export class Sim {
     if (id.startsWith("dm:")) {
       return { channel: id, channelKind: "dm", title: id.slice("dm:".length), spaceId: DEFAULT_SPACE_ID };
     }
+    if (id.startsWith("pm:")) {
+      const names = Sim.pmParties(id).map((p) => this.persons.get(p)?.name ?? p);
+      return { channel: id, channelKind: "dm", title: names.join(" & "), spaceId: DEFAULT_SPACE_ID };
+    }
     if (id.startsWith("loc:")) {
       const l = id.slice("loc:".length);
       const def = this.model.locations.get(l);
@@ -649,6 +801,19 @@ export class Sim {
     return `loc:${location}`;
   }
 
+  /** The private thread between two participants — one id regardless of
+   *  who opened it (`pm:<a>:<b>`, ids sorted). Guests talk to each other. */
+  static pmChannel(a: string, b: string): string {
+    const [x, y] = a < b ? [a, b] : [b, a];
+    return `pm:${x}:${y}`;
+  }
+
+  /** The two participant ids of a `pm:` channel (empty for anything else). */
+  static pmParties(channel: string): string[] {
+    if (!channel.startsWith("pm:")) return [];
+    return channel.slice("pm:".length).split(":").filter((s) => s.length > 0);
+  }
+
   /** Is `person` a member of an authored membership-gated channel? */
   isChannelMember(person: string, id: string): boolean {
     return this.channelMembers.get(id)?.has(person) ?? false;
@@ -659,6 +824,7 @@ export class Sim {
    *  feed is part of the show. Unknown channels are not visible. */
   canSeeChannel(person: string, id: string): boolean {
     if (id.startsWith("loc:")) return this.model.locations.has(id.slice("loc:".length));
+    if (id.startsWith("pm:")) return Sim.pmParties(id).includes(person);
     const def = this.model.channels.get(id);
     if (def === undefined) return false;
     if (def.kind === "open") return true;
@@ -679,6 +845,11 @@ export class Sim {
     // A location room takes posts only from whoever is standing in it
     // (operator surfaces bypass this, as they do for authored rooms).
     if (id.startsWith("loc:")) return this.occupants.get(id.slice("loc:".length))?.has(person) ?? false;
+    // A private thread takes posts from its two parties only.
+    if (id.startsWith("pm:")) {
+      const parties = Sim.pmParties(id);
+      return parties.length === 2 && parties.includes(person) && parties.every((p) => this.persons.has(p));
+    }
     const def = this.model.channels.get(id);
     if (def === undefined) return true; // lobby / faction: / dm: are open to post
     if (!this.canSeeChannel(person, id)) return false;
@@ -791,6 +962,39 @@ export class Sim {
     }
     ids.delete(person);
     return [...ids].filter((id) => this.persons.has(id)).map((id) => ({ id, name: this.persons.get(id)!.name }));
+  }
+
+  /**
+   * The participants directory for `person`: the other guests (everyone
+   * when the header says `directory: everyone`, else the acquaintance
+   * roster) plus every `listed: true` character — the people one can
+   * message. Each card carries the codex entries the viewer holds *about*
+   * that person, so the directory shows exactly as much as has been shared.
+   */
+  peopleFor(person: string): Array<{
+    id: string;
+    name: string;
+    kind: "guest" | "character";
+    faction: string | null;
+    known: CodexDef[];
+  }> {
+    const mine = this.codexFor(person);
+    const knownAbout = (id: string, name: string): CodexDef[] =>
+      mine.filter((e) => e.about !== null && (e.about === id || foldName(e.about) === foldName(name)));
+    const guests =
+      this.model.directory === "everyone"
+        ? [...this.persons.values()].filter((p) => p.id !== person).map((p) => ({ id: p.id, name: p.name }))
+        : this.rosterFor(person);
+    const out: Array<{ id: string; name: string; kind: "guest" | "character"; faction: string | null; known: CodexDef[] }> = [];
+    for (const g of guests) {
+      out.push({ id: g.id, name: g.name, kind: "guest", faction: this.publicFactionOf(g.id), known: knownAbout(g.id, g.name) });
+    }
+    for (const c of this.model.characters.values()) {
+      if (!c.listed) continue;
+      const faction = c.faction !== null && (this.model.factions.get(c.faction)?.hidden ?? false) && !this.revealed.has(c.faction) ? null : c.faction;
+      out.push({ id: c.id, name: c.id, kind: "character", faction, known: knownAbout(c.id, c.id) });
+    }
+    return out;
   }
 
   /** Current recipients of a channel — for routing system notices. */
@@ -1342,8 +1546,7 @@ export class Sim {
 
   /** Per-person visit key so `visits(beat)` is scoped to the participant. */
   private visitKey(name: string, bindings: Bindings): string {
-    const subj = bindings.get("guest") ?? bindings.get("self") ?? "__global";
-    return `${name}::${subj}`;
+    return `${name}::${this.subjectKey(bindings)}`;
   }
 
   /**
@@ -1574,6 +1777,16 @@ export class Sim {
       case "reveal":
         this.doReveal(this.resolveId(rest, bindings));
         break;
+      case "unlock": {
+        // `unlock The Sandy File for guest` — the story hands over lore.
+        const kw = splitKeyword(rest, "for");
+        if (kw !== null) {
+          const id = this.resolveCodex(kw[0]);
+          const holder = this.resolveId(kw[1], bindings);
+          if (id !== null) this.grantCodex(holder, id, "story", null);
+        }
+        break;
+      }
       case "respond": {
         // To `self`'s device (a scanner prop → its performer; a role → the
         // participant); in a story rule, to the acting participant.
@@ -1621,7 +1834,7 @@ export class Sim {
     if (verb !== "cycle" && verb !== "shuffle") return null;
     const variants = rest.split("|").map((v) => v.trim()).filter((v) => v.length > 0);
     if (variants.length === 0) return null;
-    const subj = bindings.get("guest") ?? bindings.get("self") ?? "__global";
+    const subj = this.subjectKey(bindings);
     const key = `${verb}:${rest}::${subj}`;
     let idx: number;
     if (verb === "cycle") {
@@ -1723,9 +1936,12 @@ export class Sim {
 
   private runBroadcast(rest: string, bindings: Bindings): void {
     // `cue to scope`, the block form `to scope` (no cue), or the v3
-    // scope-only block `<broadcast: location(X)>`.
-    const kw = splitKeyword(rest, "to");
-    const toOnly = stripPrefix(rest.trim(), "to ");
+    // scope-only block `<broadcast: location(X)>`. A quoted prose cue is
+    // split *after* its closing quote, so `"Come to the Desktop." to
+    // everyone` keeps its own ` to ` intact.
+    const quoted = /^("(?:[^"\\]|\\.)*")\s+to\s+(\S.*)$/su.exec(rest.trim());
+    const kw = quoted !== null ? ([quoted[1]!, quoted[2]!] as [string, string]) : splitKeyword(rest, "to");
+    const toOnly = quoted !== null ? null : stripPrefix(rest.trim(), "to ");
     const cue = toOnly !== null ? "" : kw !== null ? kw[0].trim() : rest.trim();
     const scopeText = toOnly !== null ? toOnly.trim() : kw !== null ? kw[1].trim() : "";
     const audience = this.resolveScope(scopeText, bindings);
@@ -1898,12 +2114,22 @@ export class Sim {
   }
 
   private subjectAudience(bindings: Bindings): string[] {
-    for (const name of ["guest", "person", "subject"]) {
+    for (const name of this.subjectNames) {
       const id = bindings.get(name);
       if (id !== undefined && this.persons.has(id)) return [id];
     }
     const self = bindings.get("self");
     return self !== undefined && this.persons.has(self) ? [self] : [];
+  }
+
+  /** The id a per-participant counter (visits, cycles) is keyed on: the
+   *  bound subject, else `self`, else the global scope. */
+  private subjectKey(bindings: Bindings): string {
+    for (const name of this.subjectNames) {
+      const id = bindings.get(name);
+      if (id !== undefined) return id;
+    }
+    return bindings.get("self") ?? "__global";
   }
 
   // -------------------------------------------------------------------
@@ -1947,8 +2173,7 @@ export class Sim {
         return vNumber(v !== undefined && v.kind === "list" ? v.items.length : 0);
       }
       case "visits": {
-        const subj =
-          this.currentBindings.get("guest") ?? this.currentBindings.get("self") ?? "__global";
+        const subj = this.subjectKey(this.currentBindings);
         const beatKey = this.resolveBeatKey(args[0]?.asName() ?? "");
         return vNumber(this.beatVisits.get(`${beatKey}::${subj}`) ?? 0);
       }

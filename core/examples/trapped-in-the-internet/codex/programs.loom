@@ -1,0 +1,167 @@
+// Codex — the programs. Every named performer holds their own entries
+// from the start (the entry's `about:` is the holder). The first entry
+// about each is what they'd tell a stranger; the second is what has to
+// be forced out of them as the games escalate. Performers share from
+// their booth; the app shows the recipient exactly and only what was
+// shared.
+
+// ── Hosts ───────────────────────────────────────────────────────────
+
+CODEX The Clinic
+  about: Clippy
+  text:
+    Clippy spent five years after veterinary school at a desperately
+    underfunded nonprofit veterinary clinic, helping animals all day.
+
+CODEX Saline
+  about: Clippy
+  text:
+    The clinic was unlicensed. It was not a nonprofit. It was not a
+    veterinary clinic. It was a front for everything possible, and for
+    five years Clippy injected animals with saline and believed. The fake
+    vet promised to pay off her student debt and disappeared. Trabolta's
+    letter promised fun philanthropy party games that would help end all
+    the world's problems, and that debt would no longer be relevant.
+
+CODEX Middle Management
+  about: Task Manager
+  text:
+    Task Manager was a middle manager in IT at Urban Outfitters. He has no
+    idiosyncrasies. He manages tasks. He has never drawn attention.
+
+CODEX Replaced By Clippy
+  about: Task Manager
+  text:
+    Senior management let Task Manager go when they realised he could be
+    replaced by an AI Clippy. Aimless, he was Trabolta's perfect pick: a
+    program with no political motivation at all, who will follow
+    instructions and manage tasks and never, ever cause controversy.
+
+CODEX Sheryl Terrio
+  about: Adobe Acrobat
+  text:
+    Adobe Acrobat was Sheryl Terrio, the world's most successful
+    motivational speaker. She built a fortune on online self-mastery
+    courses. She is here to be the paid bottleneck to your creativity.
+
+CODEX The Pirated Masterclass
+  about: Adobe Acrobat
+  text:
+    Sheryl was so motivational that anyone who saw a single clip was
+    instantly motivated to reach their full potential — and never needed
+    to pay her again. When the Masterclass was pirated her income went to
+    zero. She is still seeking a place to prove she is a master and be
+    paid for it. Trabolta offered her one. She has not been paid.
+
+// ── The named programs ──────────────────────────────────────────────
+
+CODEX The Attendant
+  about: Recycling Bin
+  text:
+    Recycling Bin was a bathroom attendant, laid off in COVID and never
+    rehired. He had great potential for skilled work and never believed
+    he could rise above encouraging men to groom themselves better.
+
+CODEX The Oscars Of Bathrooms
+  about: Recycling Bin
+  text:
+    Trabolta offered him the role of pretending to be a Recycling Bin at
+    a computer-themed resort. To a bathroom attendant this is the Oscars.
+    He knows about Bathroom Mode. He is proud of Bathroom Mode.
+
+CODEX Rob Cameron
+  about: Microsoft Excel
+  text:
+    Microsoft Excel introduces himself as Rob Cameron. He is very keen
+    that everyone should stay in the computer, permanently, and points out
+    that nobody ages in here. Not one cell.
+
+CODEX Randy Barkmore Sr
+  about: Microsoft Excel
+  text:
+    Excel is Randy Barkmore Sr., the ninety-year-old former Mayor of
+    Halifax. His son Randy Jr. died in the sinkhole at the Data Centre
+    opening, at 4 a.m., five hours early. Randy Sr. needs more time on
+    this earth to run for Mayor once more and save the family legacy.
+    Trabolta promised him everlasting life in the Cloud. He is here to
+    persuade every other program to remain.
+
+CODEX Lara Lewis
+  about: OpenOffice
+  text:
+    OpenOffice says she is Lara Lewis. She asks a lot of questions and
+    answers almost none. She has incredible fact-finding skills.
+
+CODEX Dana Anderson
+  about: OpenOffice
+  text:
+    OpenOffice is Dana Anderson: ex-FBI, turned hacker, who regretted a
+    sting on a Halifax landlord nine years ago and decided all information
+    should be free. She opposed the Data Centre like everyone in Halifax
+    did — and used old FBI tactics to sabotage the site, scheduled for the
+    early morning before the opening. Randy Barkmore Jr. arrived at 4 a.m.
+    The sabotage ran on time. She lives with it. Trabolta wants her
+    investigative skills, and thinks she wants a new life.
+
+CODEX The Paperclip Trade
+  about: DraftKings
+  text:
+    DraftKings traded a paperclip for a quarter, put the quarter in a
+    slot machine, got a dollar, and played progressive blackjack until
+    they literally won Casino Nova Scotia, then gambled it against other
+    casinos and won most of Atlantic Canada.
+
+CODEX The Boardwalk Bet
+  about: DraftKings
+  text:
+    Obsessed with Monopoly, DraftKings bet their entire casino chain on a
+    block of downtown Halifax property — the Boardwalk — in a game of
+    online poker. They lost. Their opponent was Trabolta, who had already
+    taken the Maps And Ducks building and needed someone powerful with
+    numbers on its side.
+
+CODEX Bugdom VR
+  about: Bugdom
+  text:
+    Bugdom worked an unhappy pet-store job and spent every night for ten
+    years designing concept assets for an extremely expansive VR version
+    of the old game Bugdom. They would love to live in a VR world.
+
+CODEX The Fire Ants
+  about: Bugdom
+  text:
+    Fire ants got loose in Bugdom's work lunchbox and crawled into the
+    laptop that held the only copy of ten years of Bugdom VR. Everything
+    was lost. In a catatonic panic Bugdom began writing down everything
+    they had done, to rebuild it. Trabolta saw this happening and offered
+    unlimited Bugdom immediately. What he wants is their relentless
+    pursuit of tedious tasks.
+
+CODEX Jeeves Is Broken
+  about: Broken Ask Jeeves
+  text:
+    Broken Ask Jeeves was a very good search engine, once. He has one
+    answer left in him and he is saving it for a program who asks the
+    right question.
+
+CODEX Never Logged Off
+  about: Runescape
+  text:
+    Runescape has been grinding since 2004 and has never logged off. He
+    sees no reason to start. He is the most content program in the house
+    and the least curious about the mud room.
+
+// ── The Antivirus ───────────────────────────────────────────────────
+
+CODEX Norton's Oath
+  about: Norton Anti-Virus
+  text:
+    Norton believes, sincerely, that a program's purpose is to follow
+    Trabolta's directives, and that refusing is a virus not caught at the
+    door. He stands at attention because someone should.
+
+CODEX Password Manager Knows Everything
+  about: Password Manager
+  text:
+    Password Manager holds every code in the house and notices every
+    wrong guess. If you must guess, guess out of her sight.

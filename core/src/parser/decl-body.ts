@@ -36,6 +36,8 @@ import {
   type InitParam,
   type InteractionBody,
   emptyInteractionBody,
+  type CodexBody,
+  emptyCodexBody,
   type ItemBody,
   type KnowledgeField,
   type LocationBody,
@@ -142,6 +144,9 @@ export function lower(decl: Declaration, diagnostics: Diagnostic[]): void {
       break;
     case "interaction":
       decl.interaction = lowerInteraction(decl.body);
+      break;
+    case "codex":
+      decl.codex = lowerCodex(decl.body);
       break;
   }
 }
@@ -409,6 +414,45 @@ function lowerInteraction(body: RawLine[]): InteractionBody {
     }
     out.properties.set(key, { value, span: line.span });
   }
+  return out;
+}
+
+/**
+ * `CODEX name` body: `title:`, `about:`, `code:`, `known to:` (a list of
+ * holders), and a `text:` block — the indented lines under it, re-flowed
+ * with their relative indentation dropped, one paragraph per line.
+ */
+function lowerCodex(body: RawLine[]): CodexBody {
+  const out = emptyCodexBody();
+  const text: string[] = [];
+  let textIndent: number | null = null;
+  for (const line of body) {
+    if (textIndent !== null && line.indent > textIndent) {
+      text.push(line.text.trim());
+      continue;
+    }
+    textIndent = null;
+    // Keys here may be two words (`known to:`), so split on the first
+    // colon ourselves rather than through the one-word `splitProperty`.
+    const t = line.text.trim();
+    const colon = t.indexOf(":");
+    if (colon <= 0) continue;
+    const rawKey = t.slice(0, colon).trim();
+    if (!/^[A-Za-z][A-Za-z0-9 _-]*$/u.test(rawKey)) continue;
+    const value = t.slice(colon + 1).trim();
+    const key = rawKey.toLowerCase().replace(/[-_\s]+/gu, " ");
+    if (key === "title" || key === "label") out.title = value;
+    else if (key === "about") out.about = value;
+    else if (key === "code") out.code = value;
+    else if (key === "known to" || key === "held by" || key === "holders") {
+      out.knownTo = value.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
+    } else if (key === "text") {
+      if (value.length > 0) text.push(value);
+      textIndent = line.indent;
+    }
+    out.properties.set(rawKey, { value, span: line.span });
+  }
+  out.text = text.join("\n");
   return out;
 }
 

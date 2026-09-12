@@ -1,0 +1,42 @@
+// The Truth Scavenger Hunt, and Truth or Dare when it fails.
+//
+// Trabolta needs three facts. They are obscure, un-googleable, and
+// pasted somewhere on the walls of this house. Each answer is ALSO the
+// unlock code of a codex entry (`codex/world.loom`), so a program who
+// finds one can prove it on their phone — and hold it, and trade it.
+
+== The Truth Scavenger Hunt
+  setting: The Desktop
+  cast: Clippy
+
+Clippy: Our computer relies completely on Trabolta. So it's important we all participate in regular TRAINING, so he has every fact he needs to keep improving!
+Clippy: There are files scattered around the computer that Trabolta needs our help to interpret. Three questions. Fifteen minutes. The answers are in this house.
+Clippy: Question one. In what YEAR was the Halifax Explosion Memorial Pet Cemetery consecrated?
+Clippy: Question two. What was the NAME of the duck on the Maps And Ducks billboard on Barrington Street?
+Clippy: Question three. Trabolta's Unified Field Theory is complete except for one CONSTANT. What is it CALLED?
+Clippy: Go! Find! Interpret! If you find a code, put it in your phone — Trabolta will know you found it.
+Task Manager: I will be tracking completion.
+broadcast "!🔎 TRUTH SCAVENGER HUNT: 15 minutes. Three facts are on these walls. Found a code? Enter it in your Codex." to everyone
+
+== Hunt Results
+  setting: The Desktop
+  cast: Clippy
+
+broadcast "!🔎 Time! Every program back to the Desktop. The Antivirus is sweeping." to everyone
+Clippy: Who has answers? Confidence, please. Trabolta values confidence. A confident answer is a correct answer, more or less.
+Clippy: If you present an answer with STRONG confidence, it is accepted. If you present a correct answer, it is accepted. If you present a guess — a mumble — a shrug —
+Norton Anti-Virus: — the Internet.
+Clippy: The Internet, yes. Thank you Norton.
+
+== Truth Or Dare
+  setting: The Desktop
+  cast: Clippy
+
+Clippy: Not all three? That's okay! That's okay. We have a backup. It's called Truth Or Dare, and I have a hat.
+Clippy: The hat holds possible answers. Some are true. Some are not. Someone is chosen. They choose Truth or Dare.
+Clippy: If you choose DARE — you have chosen not to choose Truth, and that is a directive problem. The Internet.
+Clippy: If you choose TRUTH, draw a fact, and tell us with confidence that it IS the truth — accepted.
+Clippy: If you say it is true, without confidence, and it is untrue — the Internet. If you say it is true, without confidence, and it IS true — accepted, barely.
+Clippy: If you say it is FALSE and you are right — the next program. Until Trabolta has enough confident answers.
+Adobe Acrobat: Confidence is a muscle! Flex it! Or be reinstalled!
+broadcast "🎩 Truth or Dare. Choose Truth. Be confident. Or else." to everyone

@@ -1,0 +1,61 @@
+// Arrival — the Mud Room. Exclusively through the front door, alone,
+// in the dark. The CAPTCHA you must fail. The thing you leave behind.
+// This is the moment a human uploads and chooses what kind of program
+// to be. It plays to each program on their own phone the moment they
+// register (ROLE Program: `when someone joins`).
+
+== Login
+  setting: The Mud Room
+  cast: The Uploader
+
+The Uploader: Welcome to the computer. It is dark because you have no eyes yet. Stand still.
+The Uploader: SECURITY CHECK. Select every square that contains a traffic light.
+* I am a human.
+  The Uploader: INCORRECT. Humans are not permitted in the computer. You are not a human. Try again.
+  set program.humanity += 10
+  The Uploader: SECURITY CHECK. Select every square that contains a traffic light.
+  * I am not a human. I am a program.
+    The Uploader: CORRECT.
+* I am not a human. I am a program.
+  The Uploader: CORRECT. Suspiciously quick. Noted.
+  set program.doubt += 5
+
+The Uploader: To complete the upload you must leave one thing behind. Choose.
+* My name.
+  set program.left_behind = "name"
+  set program.humanity += 5
+  The Uploader: Deposited. From now on you are {program.name}. That is all you are.
+* My face.
+  set program.left_behind = "face"
+  set program.humanity += 10
+  The Uploader: Deposited. Nobody in here will recognise you, which is the point.
+* A Tuesday in 2009.
+  set program.left_behind = "tuesday"
+  set program.humanity += 15
+  The Uploader: Deposited. It was a good Tuesday. You will not miss it because you will not remember missing it.
+* My body.
+  set program.left_behind = "body"
+  set program.humanity += 20
+  The Uploader: Deposited. It is in the mud room. It will be fine. It is not your concern.
+
+unlock The Mud Room for program
+The Uploader: Upload complete. Antivirus, confirm.
+Norton Anti-Virus: Scanned. {program.name} is free of viruses and ready to explore the entire computer. There will be a game soon in the Desktop. Alexa will tell you when. Go through the Tube.
+move program to The Desktop
+reply The Tube opens onto the Desktop — a blacked-out mess of LEDs, loose wire, encyclopaedias, screens. A classic screensaver drifts across the TV above the fireplace. Everyone here is a program. Mill about.
+
+// A program scanned at the Mud Room station a second time (a re-upload).
+== Re-upload
+  setting: The Mud Room
+The Uploader: You have already been uploaded. Leaving again would require a body, and yours is being looked after.
+
+// ── The Awakening ───────────────────────────────────────────────────
+// Enough remembered humanity (60) and a program knows what it is. It is
+// quietly added to The Awakened. Private — `reply` goes to them alone.
+
+== The Awakening
+  setting: The Desktop
+
+reply Something comes back. Not a memory — a weight. Feet. A mouth that is not a text field. You had a body this morning. You left it in a mud room.
+reply You are not a program. You are a person in a program, and some of the others are too. The ones who know each other's real names are called The Awakened. Find them. Do not tell the Antivirus.
+The Uploader (glitching): — deposit intact — deposit intact — the body is fine — the body is —

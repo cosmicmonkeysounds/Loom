@@ -208,6 +208,72 @@ export function InviteSheet({
   );
 }
 
+/** One choosable row of a `PickerSheet`. */
+export interface PickItem {
+  id: string;
+  label: string;
+  /** A small second line (a group, a kind, a count). */
+  sub?: string;
+}
+
+/**
+ * A modal list to pick one thing from — a person to share with, an entry
+ * to share, a thread to open. The generic cousin of `InviteSheet`.
+ */
+export function PickerSheet({
+  title,
+  items,
+  onPick,
+  onClose,
+  empty,
+}: {
+  title: string;
+  items: PickItem[];
+  onPick: (id: string) => void;
+  onClose: () => void;
+  empty?: string;
+}) {
+  return (
+    <div className="sheet-backdrop" onClick={onClose}>
+      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+        <h2>{title}</h2>
+        {items.length === 0 && <div className="muted">{empty ?? "Nothing to pick."}</div>}
+        {items.map((it) => (
+          <button
+            key={it.id}
+            className="choice ghost pick"
+            onClick={() => {
+              onPick(it.id);
+              onClose();
+            }}
+          >
+            <span className="pick-label">{it.label}</span>
+            {it.sub && <span className="pick-sub">{it.sub}</span>}
+          </button>
+        ))}
+        <button className="link" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** The alert banner — a broadcast the story wants you to *act* on. */
+export function AlertBanner({ text, onDismiss }: { text: string; onDismiss: () => void }) {
+  return (
+    <div className="alert-banner" role="alert" onClick={onDismiss}>
+      <span className="alert-glyph" aria-hidden>
+        🔔
+      </span>
+      <span className="alert-text">{text}</span>
+      <button className="alert-x" aria-label="Dismiss" onClick={onDismiss}>
+        ×
+      </button>
+    </div>
+  );
+}
+
 /** A row of inline action buttons (used in composers / profile sheets). */
 export function ActionRow({ actions }: { actions: Action[] }) {
   return (
@@ -298,7 +364,7 @@ export function MessageBubble({
   /** The freshest line in the room — reveal it with the typewriter crawl. */
   live?: boolean;
 }) {
-  const cls = msg.kind === "line" ? "line" : msg.kind === "system" ? "system" : msg.kind === "signal" ? "signal" : "narration";
+  const cls = msg.kind === "line" ? "line" : msg.kind === "system" ? "system" : msg.kind === "signal" ? (msg.alert ? "signal alert" : "signal") : "narration";
   // Only crawl spoken/narrated story text — system + signal notices pop in.
   const crawlable = msg.kind === "line" || msg.kind === "narration";
   const { shown, typing } = useTypewriter(msg.text, !!live && crawlable);

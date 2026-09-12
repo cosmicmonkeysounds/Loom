@@ -24,6 +24,8 @@ export interface ChatMessage {
   hidden: boolean;
   /** Beat a scripted line was spoken in, when known (mirror of server chat). */
   beat?: string | null;
+  /** An alert broadcast (`!` cue) — chime, vibrate, banner. */
+  alert?: boolean;
 }
 
 // --- per-role snapshots (mirror of server/views.ts) -------------------------
@@ -54,6 +56,25 @@ export interface Interaction {
   description: string | null;
 }
 
+/** A codex entry the viewer holds (mirror of server views.ts `CodexEntryView`). */
+export interface CodexEntry {
+  id: string;
+  title: string;
+  /** The subject it concerns — a character, or a topic. */
+  about: string | null;
+  text: string;
+}
+
+/** A row of the participants directory (mirror of server views.ts `PersonCard`). */
+export interface PersonCard {
+  id: string;
+  name: string;
+  kind: "guest" | "character";
+  faction: string | null;
+  /** The entries the viewer holds *about* this person — what one knows of them. */
+  known: CodexEntry[];
+}
+
 export interface GuestView {
   id: string;
   name: string;
@@ -65,6 +86,8 @@ export interface GuestView {
   score: number;
   location: string | null;
   captured: boolean;
+  /** May a captive free themselves from the app? False in a `sealed` prison. */
+  canEscape?: boolean;
   pendingChoice: string[] | null;
   /** Channel the pending decision docks under. */
   decisionChannel: string | null;
@@ -78,6 +101,11 @@ export interface GuestView {
   spaces: SpaceSnapshot[];
   /** Other participants (id + name), for the invite picker. */
   roster: Array<{ id: string; name: string }>;
+  /** Knowledge as a currency: the entries this guest holds, out of how many exist. */
+  codex?: CodexEntry[];
+  codexTotal?: number;
+  /** Everyone here (guests + listed characters), and what one knows of each. */
+  people?: PersonCard[];
 }
 
 export interface PrimeGuest {
@@ -99,6 +127,8 @@ export interface PrimeView {
   interactions?: Interaction[];
   /** The story uses the v3 prison mechanic — keep capture / release in the booth. */
   legacyCapture?: boolean;
+  /** The entries this character holds — their backstory, shareable one guest at a time. */
+  codex?: CodexEntry[];
 }
 
 // --- client-side view models (composed by the chat store) -------------------

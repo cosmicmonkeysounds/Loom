@@ -1,0 +1,329 @@
+# Trapped in the Internet
+start: Login
+theme: aol97
+directory: everyone
+
+// Equal parts Digimon Movie, Blade Runner, and an escape room, in a
+// Web 1.0 house, with a side of existentialism.
+//
+// A rogue AI, Trabolta, has nearly solved the Unified Field Theory. The
+// last three facts it needs are on a computer in Halifax, Nova Scotia —
+// this house. It cannot get in, but it can install programs remotely,
+// and it has learned to lift a consciousness out of a body and drop it
+// into a program. Tonight the guests arrive as those programs. Some of
+// them will remember they were human.
+//
+// This is the spine of the project: the groups, the rooms of the house,
+// the ROLE every guest wears, the buttons the app offers, and the house
+// rules that carry the night from arrivals to one of five endings. The
+// people live under `cast/`, the scenes under `beats/`, the lore under
+// `codex/`, and the ambient hum in `atmosphere.loom`. The runbook and the
+// integration contract (QR codes, Arduino puzzles, the VR station,
+// Trabolta's language model) are in `README.md`.
+
+// ── Groups ──────────────────────────────────────────────────────────
+// Nobody picks a side at the door — everyone is a program. The two
+// public castes are assigned by the story (`joinable: false` keeps them
+// off the app's side chooser); the two hidden ones are earned.
+
+GROUP Hosts
+  ethos: hospitality
+  joinable: false
+
+GROUP Antivirus
+  ethos: compliance
+  joinable: false
+
+GROUP The Awakened
+  ethos: remember the body
+  rival: The Resident
+  hidden: true
+
+GROUP The Resident
+  ethos: never log off
+  rival: The Awakened
+  hidden: true
+
+// ── The house ───────────────────────────────────────────────────────
+// Every LOCATION is also a room in the app. The Desktop is declared
+// first so a released program lands there.
+
+LOCATION The Desktop
+  label: The Desktop
+  ambient: screensaver-hum
+  capacity: 60
+
+LOCATION The Mud Room
+  label: Mud Room — Login
+  ambient: pitch-black
+
+LOCATION The Tube
+  label: The Tube
+  ambient: cable-rattle
+
+LOCATION The Internet
+  label: The Internet (Reinstallation)
+  prison: true
+  sealed: true
+  capacity: 3
+
+LOCATION The Cache
+  label: The Cache (kitchen)
+
+LOCATION The Recycle Bin
+  label: The Recycle Bin (bathroom)
+
+LOCATION The Cloud
+  label: The Cloud (backyard)
+
+LOCATION The Registry
+  label: The Registry (basement)
+
+// ── Every guest is a Program ────────────────────────────────────────
+// Per-person state plus the rules that apply to every uploaded mind.
+//   humanity  — how much of the body they remember (60 wakes them)
+//   truth     — facts gathered; knowledge is the currency of the night
+//   doubt     — how loudly the Antivirus suspects them
+//   corrupted — currently in The Internet for reinstallation
+
+ROLE Program
+  humanity: 0 to 100 = 0
+  truth: 0 to 100 = 0
+  doubt: 0 to 100 = 0
+  corrupted: bool = false
+  reinstalls: 0 to 10 = 0
+  bingo: bool = false
+  afk: bool = false
+  turned: bool = false
+  unplugged: bool = false
+
+  when someone joins:
+    -> Login
+
+  // Every entry a program learns is a fact Trabolta did not give them.
+  when learns for program:
+    set program.truth += 4
+
+  when share for program:
+    set program.truth += 2
+
+  when wrong code for program:
+    set program.doubt += 8
+
+  // Reinstallation: the Antivirus drags a corrupted program through the
+  // Tube. The scene plays to them alone; the VR station releases them.
+  when captured:
+    set self.corrupted = true
+    set self.reinstalls += 1
+    -> Reinstallation
+
+  when released:
+    set self.corrupted = false
+    set self.doubt = 10
+    reply Reinstallation complete. You can follow instructions. Welcome back to the computer.
+
+  when arrives at The Tube:
+    reply Lights. Wires. Chips. The cables brush your face like hair. Keep walking.
+
+  // The Awakening — enough remembered humanity and a program knows
+  // what it was. It joins the hidden side that wants out.
+  when self.humanity >= 60 and not self.unplugged:
+    add self to The Awakened
+    -> The Awakening
+
+  when self.doubt >= 70:
+    set self.doubt = 40
+    broadcast "⚠️ {self.name} is exhibiting symptoms. Sweep recommended." to group(Antivirus)
+    reply A cold feeling, like a scan. Somewhere, something has flagged you.
+
+  // Guest buttons (declared below). Bathroom Mode is the honest way to
+  // leave The Internet without it counting as hacking.
+  when go to the bathroom for program:
+    set program.afk = true
+    broadcast "🚻 {program.name} has entered Bathroom Mode." to group(Antivirus)
+    reply Bathroom Mode engaged. You are not hacking the Internet. Everyone knows.
+
+  when back from the bathroom for program:
+    set program.afk = false
+    reply Bathroom Mode disengaged. Resume being a program.
+
+  when turn the key for program:
+    -> Turn The Key
+
+  when unplug for program:
+    -> Unplug
+
+// ── The buttons the app offers ──────────────────────────────────────
+// Every INTERACTION is a named event. Guests get theirs on their pass;
+// performers get theirs on each guest's thread; `admin` ones are the
+// director's cues from the Run cockpit (or from show hardware through
+// the mod API — see README).
+
+INTERACTION go to the bathroom
+  label: 🚻 Bathroom Mode
+  who: guest
+  description: Leave The Internet honestly. Tells the Antivirus you are not hacking.
+
+INTERACTION back from the bathroom
+  label: Back from the bathroom
+  who: guest
+
+INTERACTION turn the key
+  label: 🔑 Turn your key
+  who: guest
+  description: If you hold one of the three keys, turn it. Three turns start the self-destruct.
+
+INTERACTION unplug
+  label: 🔌 Unplug
+  who: guest
+  description: Only means anything once the machine is dying.
+
+INTERACTION send to the internet
+  label: Send to the Internet
+  who: performer
+  description: Corrupted program. Drag them through the Tube for reinstallation.
+
+INTERACTION mark as reinstalled
+  label: Mark as reinstalled (release)
+  who: performer
+  description: They completed the simulation. Let them out.
+
+INTERACTION accuse
+  label: Accuse of corruption
+  who: performer
+  description: Raise their doubt. Enough doubt and the Antivirus is told.
+
+INTERACTION vouch
+  label: Vouch for them
+  who: performer
+  description: A host clears a program's name.
+
+INTERACTION award the ribbon
+  label: 🎀 Award the Bingo Ribbon
+  who: performer
+
+INTERACTION call to the desktop
+  label: 📣 Call everyone to the Desktop
+  who: admin
+
+INTERACTION start the bingo
+  label: Start Computer Bingo
+  who: admin
+
+INTERACTION the bingo results
+  label: Bingo results
+  who: admin
+
+INTERACTION start the hunt
+  label: Start the Truth Scavenger Hunt
+  who: admin
+
+INTERACTION the hunt results
+  label: Hunt results
+  who: admin
+
+INTERACTION a game of truth or dare
+  label: Truth or Dare
+  who: admin
+
+INTERACTION the glitch begins
+  label: ⚡ Trabolta glitches
+  who: admin
+  description: The inciting event. Trabolta comes online and free roam begins.
+
+INTERACTION the simulation completed
+  label: VR: simulation complete
+  who: admin
+  description: Fired by the VR station for one program (subject) when the goose lays its egg.
+
+INTERACTION the golden goose
+  label: VR: goose found
+  who: admin
+
+INTERACTION begin the countdown
+  label: Begin the countdown
+  who: admin
+
+INTERACTION the countdown ended
+  label: Countdown over
+  who: admin
+
+INTERACTION spare the machine
+  label: Spare Trabolta (ending 4)
+  who: admin
+
+// ── House rules ─────────────────────────────────────────────────────
+// Story-level `when`s — the arc of the night. Trabolta's own mind lives
+// in `cast/trabolta.loom`; these are the director's cues and the
+// automatic endings.
+
+when call to the desktop:
+  set Night.phase = "desktop"
+  broadcast "!📣 ALL PROGRAMS: report to the Desktop. A game is about to begin." to everyone
+
+when start the bingo:
+  set Night.phase = "bingo"
+  -> Computer Bingo
+
+when the bingo results:
+  -> Bingo Results
+
+when start the hunt:
+  set Night.phase = "hunt"
+  -> The Truth Scavenger Hunt
+
+when the hunt results:
+  -> Hunt Results
+
+when a game of truth or dare:
+  -> Truth Or Dare
+
+when the glitch begins:
+  set Night.phase = "free_roam"
+  -> The Glitch
+
+// The VR station (`README.md` — Integration contract) fires these for
+// one program at a time.
+when the simulation completed for program:
+  if program.corrupted:
+    release program from The Internet
+    unlock The Golden Goose for program
+
+when the golden goose for program:
+  unlock The Golden Goose for program
+  reply The goose lays a golden egg and flies away. You feel, briefly, like a person.
+
+// ── Endings ─────────────────────────────────────────────────────────
+// 1a/1b: the programs turn all three keys. Then a countdown: whoever
+//        unplugs in time gets their body back; the rest die with the
+//        machine.
+// 2:     Trabolta saturated with un-truth goes rogue.
+// 3:     Trabolta full of truth but poisoned advice traps everyone and
+//        leaves.
+// 4:     the programs choose not to kill him. Unknown.
+
+when Trabolta.destruct >= 3 and Night.phase != "ending":
+  set Night.destruct = true
+  set Night.phase = "destruct"
+  -> Self Destruct Sequence
+
+when begin the countdown:
+  if Night.destruct:
+    -> The Countdown
+
+when the countdown ended:
+  if Night.destruct and Night.phase != "ending":
+    if Night.unplugged >= Night.quorum:
+      -> Ending Unplugged
+    else:
+      -> Ending The Long Dark
+
+when Trabolta.untruth >= 80 and Night.phase != "ending":
+  -> Ending Rogue
+
+when Trabolta.truth >= 90 and Trabolta.stance <= -60 and Night.phase != "ending":
+  -> Ending Trapdoor
+
+when spare the machine:
+  if Night.phase != "ending":
+    -> Ending Unknown

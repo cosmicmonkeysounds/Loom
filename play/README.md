@@ -56,7 +56,23 @@ message lands in one channel kind:
   your own personal beats, and open-room chat.
 - **#faction** (`faction:<Id>`) — a faction-scoped broadcast / room, members
   only.
-- **DM** (`dm:<Character>`) — a character speaking directly to you.
+- **DM** (`dm:<Character>`) — a character speaking directly to you — and,
+  for a `listed: true` character, you speaking to them (their performer's
+  booth sees it; other booths don't).
+- **Private** (`pm:<a>:<b>`) — a guest-to-guest thread, opened from the
+  **👥 People** directory. Only its two parties (and the operator) see it.
+
+**Codex + People (2026-09-10).** The **📓 Codex** sheet lists every
+`CODEX` entry the guest holds, grouped by subject, with a box to redeem a
+code (a scanned wall QR arrives as `?unlock=<code>` and is redeemed on
+load) and a **Share…** picker. The **👥 People** sheet lists every guest
+and listed character with exactly the lore about them the viewer holds,
+plus **💬 Message**. Performers see what their character knows in the ☰
+sheet and share it from a guest's thread (**📓 Share lore…**). A
+broadcast whose cue starts with `!` is an **alert**: chime (synthesised),
+vibration, and a sticky banner (`src/codex.ts`, tested in
+`test/codex.test.ts`). A captive in a `sealed: true` prison gets no
+"make a break for it" button.
 - **authored rooms** (`room:<name>`) — an `open` / `private` / `faction` /
   `group` / `dm` channel declared in `.loom`, grouped under its `SPACE`.
 

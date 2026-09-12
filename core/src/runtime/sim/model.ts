@@ -8,6 +8,7 @@ import type {
   ChannelBody,
   ChannelKindWord,
   CharacterBody,
+  CodexBody,
   FactionBody,
   LocationBody,
   Property,
@@ -65,12 +66,19 @@ export interface FactionDef {
   ethos: string | null;
   hidden: boolean;
   rival: string | null;
+  /** May a guest pick this group from the app's side chooser? A public
+   *  group that is *assigned* by the story (an enforcer caste) says
+   *  `joinable: false` and is never offered. */
+  joinable: boolean;
 }
 
 export interface LocationDef {
   id: string;
   label: string | null;
   prison: boolean;
+  /** A `prison: true` place a captive cannot leave on their own — the app
+   *  hides its "make a break for it" button; only the story releases. */
+  sealed: boolean;
   capacity: number | null;
   contains: string[];
 }
@@ -90,6 +98,22 @@ export interface CharDef {
   disposition: CharacterBody["disposition"];
   /** Typed-slot defaults (`captures: 0 to 100 = 0`) seeded as `id.slot`. */
   defaults: Map<string, Value>;
+  /** `listed: true` — a character that is a *person at the party*: shown in
+   *  the participants directory and messageable. Scanner props are not. */
+  listed: boolean;
+}
+
+/** A compiled `CODEX` entry — a unit of shareable lore (Loom 4 §10.1). */
+export interface CodexDef {
+  id: string;
+  title: string;
+  /** The subject it concerns (a character id when it folds to one). */
+  about: string | null;
+  /** Folded unlock code, or null for story-only entries. */
+  code: string | null;
+  /** Characters that hold the entry from the start (plus its subject). */
+  knownTo: string[];
+  text: string;
 }
 
 /** The default space authored channels fall into when none is named. */
@@ -141,6 +165,15 @@ export interface SimModel {
   rules: Hook[];
   /** Declared `INTERACTION`s, in source order. */
   interactions: Map<string, InteractionDef>;
+  /** Declared `CODEX` entries, in source order. */
+  codex: Map<string, CodexDef>;
+  /** Folded-name lookup for codex entries. */
+  codexIndex: FoldedIndex;
+  /** Folded unlock code → entry id. */
+  codexCodes: Map<string, string>;
+  /** Header `directory:` — `everyone` lists every participant to every
+   *  guest; unset keeps the acquaintance-only roster. */
+  directory: string | null;
   factions: Map<string, FactionDef>;
   locations: Map<string, LocationDef>;
   roles: Map<string, RoleDef>;
@@ -175,6 +208,10 @@ export function compileModel(bundle: Bundle): SimModel {
     theme: null,
     rules: [],
     interactions: new Map(),
+    codex: new Map(),
+    codexIndex: new FoldedIndex(),
+    codexCodes: new Map(),
+    directory: null,
     factions: new Map(),
     locations: new Map(),
     roles: new Map(),
@@ -203,6 +240,8 @@ export function compileModel(bundle: Bundle): SimModel {
     if (model.title === null && entry.file.header.title !== null) model.title = entry.file.header.title;
     const themeProp = entry.file.header.properties.get("theme");
     if (model.theme === null && themeProp !== undefined) model.theme = themeProp.value.trim();
+    const dirProp = entry.file.header.properties.get("directory");
+    if (model.directory === null && dirProp !== undefined) model.directory = dirProp.value.trim().toLowerCase();
 
     for (const item of entry.file.items) {
       if (item.kind === "beat") {
@@ -299,6 +338,9 @@ export function compileModel(bundle: Bundle): SimModel {
             });
           }
           break;
+        case "codex":
+          if (decl.codex) model.codex.set(decl.name, codexDef(decl.name, decl.codex));
+          break;
         default:
           break;
       }
@@ -314,6 +356,18 @@ export function compileModel(bundle: Bundle): SimModel {
   // divert / speaker / verb argument spelled loosely still resolves.
   for (const key of model.beats.keys()) model.beatIndex.add(key);
   for (const id of model.entityKind.keys()) model.entityIndex.add(id);
+  // Codex entries: a loosely-spelled `about:` / `known to:` resolves to the
+  // declared character; the subject holds its own entries from the start;
+  // unlock codes index by their folded form (so `sandy-1997` ≡ `SANDY 1997`).
+  for (const entry of model.codex.values()) {
+    if (entry.about !== null) entry.about = model.entityIndex.get(entry.about) ?? entry.about;
+    entry.knownTo = entry.knownTo.map((k) => model.entityIndex.get(k) ?? k);
+    if (entry.about !== null && model.characters.has(entry.about) && !entry.knownTo.includes(entry.about)) {
+      entry.knownTo.unshift(entry.about);
+    }
+    model.codexIndex.add(entry.id);
+    if (entry.code !== null) model.codexCodes.set(entry.code, entry.id);
+  }
   if (model.entry !== null && !model.beats.has(model.entry)) {
     model.entry = model.beatIndex.get(model.entry) ?? model.entry;
   }
@@ -377,6 +431,23 @@ function factionDef(id: string, body: FactionBody): FactionDef {
     ethos: scalarProp(body.properties, "ethos"),
     hidden: scalarProp(body.properties, "hidden") === "true",
     rival: scalarProp(body.properties, "rival"),
+    joinable: scalarProp(body.properties, "joinable") !== "false",
+  };
+}
+
+/** Fold an unlock code: case, dashes, underscores and spaces are noise. */
+export function foldCode(code: string): string {
+  return code.trim().toLowerCase().replace(/[\s_\-]+/gu, "");
+}
+
+function codexDef(id: string, body: CodexBody): CodexDef {
+  return {
+    id,
+    title: body.title ?? id,
+    about: body.about,
+    code: body.code !== null && foldCode(body.code).length > 0 ? foldCode(body.code) : null,
+    knownTo: [...body.knownTo],
+    text: body.text,
   };
 }
 
@@ -385,6 +456,7 @@ function locationDef(id: string, body: LocationBody): LocationDef {
     id,
     label: body.label,
     prison: body.properties.get("prison")?.value === "true",
+    sealed: body.properties.get("sealed")?.value === "true",
     capacity: body.capacity,
     contains: body.contains,
   };
@@ -481,6 +553,7 @@ function charDef(id: string, body: CharacterBody): CharDef {
     hooks: hooksOf(id, "character", body),
     disposition: body.disposition,
     defaults,
+    listed: body.properties.get("listed")?.value.trim() === "true",
   };
 }
 
@@ -575,6 +648,11 @@ export const BuiltinVerb = {
   Released: "released",
   Escape: "escape",
   Revealed: "revealed",
+  /** A codex entry landed in someone's hands (Loom 4 §10.1):
+   *  `when guest learns The Sandy File:`. */
+  Learn: "learn",
+  /** A holder passed a codex entry to someone. */
+  Share: "share",
 } as const;
 
 export type BuiltinVerb = (typeof BuiltinVerb)[keyof typeof BuiltinVerb];
@@ -641,6 +719,8 @@ const VERB_SYNONYMS: ReadonlyMap<string, string> = new Map([
   ["revealed", "revealed"], ["reveal", "revealed"],
   ["removed", "removed"], ["remove", "removed"],
   ["arrive_anywhere", "arrive"],
+  ["learn", "learn"], ["learns", "learn"], ["learned", "learn"], ["learnt", "learn"],
+  ["share", "share"], ["shares", "share"], ["shared", "share"],
 ]);
 
 /**

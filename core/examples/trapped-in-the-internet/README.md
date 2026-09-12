@@ -1,0 +1,146 @@
+# Trapped in the Internet
+
+*Equal parts Digimon Movie, Blade Runner, and an escape room, influenced
+by late-90s Web 1.0 aesthetics and existentialism.*
+
+A rogue AI, **Trabolta**, has very nearly solved the Unified Field
+Theory. The last constant is on a computer in Halifax — this house. It
+cannot get in, but it can install programs remotely, and it has learned
+to lift a consciousness out of a body and drop it into a program. You
+show up to a party as one of those programs. Some of you will remember
+you were human.
+
+This directory is the whole show as a Loom project: the world, the cast,
+the games, the lore, the endings, and the contract every piece of show
+hardware talks to. It is the default scenario the event server hosts
+(`pnpm --filter @loom/core serve`).
+
+```
+main.loom            title · groups · the house · ROLE Program · the app's
+                     buttons (INTERACTIONs) · house rules + the five endings
+rooms.loom           the chat sidebar (system log, castes, scheming rooms)
+atmosphere.loom      the ambient hum of a dying computer
+cast/kit.loom        the shapes: Prop(beat) · Person · Host · Enforcer
+cast/hosts.loom      Clippy · Task Manager · Alexa · Adobe Acrobat
+cast/programs.loom   Recycling Bin · Microsoft Excel · OpenOffice · DraftKings
+                     · Bugdom · Broken Ask Jeeves · Runescape
+cast/antivirus.loom  Norton Anti-Virus · Password Manager · MalwareBytes · McAfee
+cast/trabolta.loom   the AI — his stance variables and how knowledge moves them
+cast/props.loom      scannable stations (the Tablet, the Router, the Modem …)
+beats/login.loom     the Mud Room: fail the CAPTCHA, leave something behind
+beats/desktop.loom   the opening scene · Computer Bingo · the first reinstallation
+beats/hunt.loom      the Truth Scavenger Hunt · Truth or Dare
+beats/internet.loom  inside the Internet (the tablet video, the VR contract)
+beats/glitch.loom    the inciting event → free roam · the stations
+beats/endings.loom   the keys · the countdown · five endings
+codex/*.loom         every piece of lore a program can hold, unlock, and trade
+trabolta.persona.md  the system prompt for Trabolta's language model
+```
+
+## The night, in order
+
+| Phase | Director fires (Run cockpit → Events) | What happens |
+|---|---|---|
+| **Arrivals** | — | Each guest registers in the app as their program (that *is* their name tonight). The `Login` beat plays on their phone: the CAPTCHA they must fail, the thing they leave behind, Norton's clearance. Rolling arrivals until the inciting event. |
+| **Call** | `call to the desktop` | An **alert** (`!` broadcast — every phone chimes and vibrates) + Alexa + Clippy send everyone to the Desktop. |
+| **Bingo** | `start the bingo` → `the bingo results` | Clippy explains Computer Bingo (the phones carry the rules and the planted centre question). A performer presses **Award the Bingo Ribbon** on the winner; Norton interrupts; an Antivirus presses **Send to the Internet** on the failed player. |
+| **Reinstallation** | *(automatic)* | The captured program's phone plays `Reinstallation` (the tablet video). The VR station fires `the simulation completed` for them when the goose lays its egg → they're released, and learn *The Golden Goose*. |
+| **Hunt** | `start the hunt` → `the hunt results` → `a game of truth or dare` | Three obscure facts on the walls. Each answer is also the unlock **code** of a codex entry, so finders can prove it on their phone — and hold it. |
+| **The Glitch** | `the glitch begins` | Trabolta comes online. Excel joins The Resident, OpenOffice The Awakened. Free roam: QR codes, puzzles, trading, and Trabolta answering DMs. |
+| **Endings** | `begin the countdown` · `the countdown ended` · `spare the machine` | See below. Two endings fire automatically from Trabolta's numbers. |
+
+### Endings
+
+| # | Ending | How it fires |
+|---|---|---|
+| 1a | **The Long Dark** — the programs killed Trabolta and stayed | Three keys turned → `Self Destruct Sequence`. Director fires `begin the countdown`, then `the countdown ended` with fewer than `Night.quorum` (5) programs unplugged. |
+| 1b | **Unplugged** — the programs killed Trabolta and got out | As above, with ≥ 5 unplugged. A program can only **Unplug** if `humanity ≥ 30` — the ones who remember a body. |
+| 2 | **Rogue** | `Trabolta.untruth ≥ 80` — too much un-truth fed to him (the Joe Rogan Archive, and whatever the language model absorbs). |
+| 3 | **Trapdoor** — he traps everyone and leaves | `Trabolta.truth ≥ 90 and Trabolta.stance ≤ −60` — full of facts, poisoned by advice. |
+| 4 | **Unknown** | Director fires `spare the machine`. |
+
+## Knowledge is the currency — the Codex
+
+Every `CODEX` entry (`codex/`) is a piece of lore a participant can
+**hold**. It reaches them one of four ways:
+
+1. **A code.** `code: SANDY-1997` — printed as a QR on a wall (`/api/mod/codes`
+   lists every entry's join link: `?code=<event>&unlock=<code>`; scanning
+   it with the phone camera opens the app and redeems it) or typed into
+   the Codex sheet. Codes match loosely: case, dashes and spaces are
+   ignored. A wrong code fires `wrong code` for them — Password Manager
+   notices, and `doubt` rises.
+2. **The story.** `unlock The Third Key for program` in any beat or hook.
+3. **A person.** Every named character holds the entries *about them*
+   (plus any `known to:`) from the start and shares them from the booth,
+   one recipient at a time. Guests share theirs the same way from the
+   Codex sheet. Sharing fires `learn` for the recipient (with `from`
+   bound) and `share` for the story.
+4. **Show hardware** — an Arduino puzzle, the VR goose — through the mod
+   API: `POST /e/:id/api/mod/codex {who, entry}`.
+
+The **directory** (`directory: everyone` in the header) shows every
+guest and every `listed: true` character by name only — plus exactly the
+entries *about* them that you hold. Share to be known.
+
+**Trabolta learns too.** Share an entry *to* Trabolta and his own `learns`
+hooks fire (`cast/trabolta.loom`): the Joe Rogan Archive drives `untruth`
+up and `stance` down; the Encyclopaedia Set drives `truth` up. That is how
+"recommend he downloads all of the Joe Rogan Experience" becomes a
+political stance and, eventually, an ending.
+
+## Integration contract
+
+Everything outside the phones is a client of the event server's mod API,
+authorised by the moderator passcode (`POST /e/:id/api/mod/login
+{passcode}` → `token`, then `x-loom-token` on every call). The
+[stagehand](../../../stagehand) bridge already does this for OSC/MQTT;
+the pieces below are its siblings.
+
+| Piece | Direction | Call |
+|---|---|---|
+| **Wall QR codes** | guest phone → app | Print the `url` from `POST /api/mod/codes` → `codex[]`. Scanning opens the app with `?code=&unlock=`; a signed-in guest redeems on load. |
+| **Codex sheet** | guest phone → server | `POST /api/guest/codex/redeem {code}` · `POST /api/guest/codex/share {entry, to}` |
+| **Performer booth** | performer phone → server | `POST /api/prime/codex/share {entry, to}`; the booth's `PrimeView.codex` lists what their character holds. |
+| **Arduino puzzles** | puzzle → story | Either show the guest a code to type, or (via stagehand / any MQTT→HTTP hop) `POST /api/mod/codex {who: "<guest id>", entry: "The Second Key"}`. Guest ids come from the pass QR the puzzle scans, or from `/api/state?role=mod` → `roster`. |
+| **VR station** | headset → story | `POST /api/mod/signal {name: "the simulation completed", subject: "<guest id>"}` when the goose lays its egg (releases them); `{name: "the golden goose", subject}` for the flavour + entry. Bathroom Mode from the in-game app: `POST /api/guest/act {name: "go to the bathroom"}` with the guest's token, or `mod/signal {name, subject}`. |
+| **TV mirror** | story → screens | Watch the mod SSE feed (`GET /e/:id/events?role=mod`) for `captured` / `released` sim events and `broadcast`s with `alert: true`. |
+| **Trabolta** | laptop ⇄ server | The [`@loom/mind`](../../../mind) bridge: `pnpm --filter @loom/mind start -- --server https://<host> --event <id> --mod-code <code> --persona core/examples/trapped-in-the-internet/trabolta.persona.md`. It reads every guest DM to Trabolta off the mod feed, answers in character through a local OpenAI-compatible model (Ollama by default), and nudges `Trabolta.truth/untruth/stance/love` through `POST /api/mod/var`. The story's watchers do the rest. |
+
+Everything a bridge can send is an ordinary journaled mutation, so a
+rehearsal in the editor's Run mode and the live night replay identically.
+
+## Casting
+
+| Program | Body | Notes |
+|---|---|---|
+| Clippy | Brooke | MC; Trabolta's ambassador; believes every word |
+| Task Manager | John | host; the drone bee |
+| Alexa | — | host; the voice in every room (or an actual speaker + the operator) |
+| Adobe Acrobat | Stephanie | host; Sheryl Terrio |
+| Recycling Bin | Jesse | bathroom attendant; the Oscars of bathrooms |
+| Microsoft Excel | Rob Cameron | secretly Randy Barkmore Sr.; wants everyone to stay |
+| OpenOffice | Lara Lewis | secretly Dana Anderson; knows about the keys |
+| DraftKings | Hannah | numbers |
+| Bugdom | Veronica | would live in the simulation |
+| Broken Ask Jeeves | Kai | carries the third key |
+| Runescape | Laurel | has never logged off |
+| Norton Anti-Virus | Julie | the one who interrupts the Bingo |
+| Password Manager | Francine | notices every wrong code |
+| MalwareBytes / McAfee | assignable | |
+| Trabolta | *a language model on the host's laptop* | see `trabolta.persona.md` |
+
+Assignable programs for other RSVPs (Calculator, MS Paint, VLC, Ring
+Doorbell, Winzip, GarageBand, Limewire, MSN, Pinball, Trash, Roller
+Coaster Tycoon, Zoo Tycoon, Minesweeper, CTRL ALT DEL, Start Bar) are
+simply the names guests register with — no declaration needed. Give a
+named one a backstory by adding a `CHARACTER … is Person` and a couple of
+`CODEX … about:` entries.
+
+## Rehearsing
+
+Open the project in the editor and use **Run** (⌘2) on a local folder, or
+launch a server preview. Spawn a persona, watch `Login` play, fire the
+director events from the Events list, redeem a code with
+`/api/guest/codex/redeem`, and step through to an ending. The full arc is
+also exercised by `core/test/trapped-in-the-internet.test.ts`.

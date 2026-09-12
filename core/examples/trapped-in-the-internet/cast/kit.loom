@@ -1,0 +1,37 @@
+// Cast kit — the shapes the cast is built from.
+//
+// `Prop(beat)` is a scannable object: an Antivirus or a host scans a
+// program's pass at it and the program is routed to one beat.
+// `Person` marks a character who is a real body at the party — listed
+// in the app's directory, messageable, able to share their codex.
+
+TRAIT Prop(beat)
+  when scanned by program:
+    -> self.beat
+
+TRAIT Person
+  listed: true
+
+TRAIT Host is Person
+  faction: Hosts
+  // A host may clear a program's name.
+  when vouch for program:
+    set program.doubt = 0
+    Self: {program.name} is a perfectly good program. I vouch for them. Move along.
+
+TRAIT Enforcer is Person
+  faction: Antivirus
+
+  when send to the internet for program:
+    set program.doubt += 20
+    Self: {program.name}. Corruption detected. You are going to the Internet for reinstallation. Do not resist the Tube.
+    capture program into The Internet
+
+  when mark as reinstalled for program:
+    if program.corrupted:
+      Self: {program.name} has demonstrated compliance. Reinstallation successful.
+      release program from The Internet
+
+  when accuse for program:
+    set program.doubt += 25
+    Self: I am watching you, {program.name}. Your behaviour has been logged.

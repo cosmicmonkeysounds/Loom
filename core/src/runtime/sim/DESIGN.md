@@ -110,7 +110,10 @@ gained:
 `<broadcast: cue to participant(p)|faction(F)|location(L)>` (scope args are
 expressions, so `faction(guest.faction)` works) · `<respond: text>` (addressed
 back to the scanning device) · `<cast: p as Role>` · `<promote: p to Role>` ·
-`<cue:>`/`<sfx:>` (logged) · `-> beat`
+`<cue:>`/`<sfx:>` (logged) · `-> beat` · `unlock X for who` (a CODEX entry
+lands in a holder's hands — fires `learn`; `Sim.redeem` / `Sim.share` are the
+participant-driven twins, and `who.codex` / `who.codex.<slug>` mirror
+holdings into the world)
 
 ## Trigger forms
 

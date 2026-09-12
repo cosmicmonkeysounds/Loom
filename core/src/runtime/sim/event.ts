@@ -37,6 +37,8 @@ export const SimEventType = {
   ChoicePrompted: "choicePrompted",
   Respond: "respond",
   Signal: "signal",
+  CodexUnlocked: "codexUnlocked",
+  CodexMissed: "codexMissed",
   Ambient: "ambient",
   Tick: "tick",
   Diagnostic: "diagnostic",
@@ -85,6 +87,12 @@ export type SimEvent =
   | { type: "choicePrompted"; person: string | null; promptId: string; options: string[] }
   | { type: "respond"; to: string; text: string }
   | { type: "signal"; name: string; subject: string | null }
+  // A codex entry landed in a holder's hands (a person or a character):
+  // redeemed from a code, handed over by the story / an operator, or shared
+  // by another holder (`from`). Knowledge as a currency (Loom 4 §10.1).
+  | { type: "codexUnlocked"; person: string; entry: string; via: "code" | "story" | "share"; from: string | null }
+  // A participant typed a code that unlocks nothing.
+  | { type: "codexMissed"; person: string; code: string }
   | { type: "ambient"; source: string; text: string }
   | { type: "tick"; elapsedMs: number }
   | { type: "diagnostic"; message: string };

@@ -1380,6 +1380,39 @@ is a beveled 1997 chat-room look — the one an earlier party was built
 around. Whatever you pick, the lobby is named after the story, and a
 guest's group tag takes its colour from the group's name.
 
+### 11.13 Knowledge as a currency: the Codex
+
+Some shows run on what the guests *know*. Declare a piece of lore with
+`CODEX`; guests hold it, unlock it, and trade it:
+
+```loom
+CODEX The Sandy File
+  about: Trabolta
+  code: SANDY-1997
+  text:
+    Trabolta does not want omnipotence. Trabolta wants Sandy.
+```
+
+`about:` says who or what it concerns; `code:` is the unlock code
+(printed as a QR, or the answer to a puzzle — capitals, dashes and spaces
+don't matter); `known to:` names characters who hold it from the start.
+The story hands lore out with `unlock The Sandy File for guest`, and
+hears it move:
+
+```loom
+ROLE Guest
+  when guest learns The Sandy File:
+    set guest.suspicion += 10
+  when wrong code for guest:
+    reply Nothing happens.
+```
+
+A guest can share an entry with anyone — including a character, whose
+own `when who learns X:` hook then runs (check `who == self`). Mark a
+character `listed: true` so guests can find and message them; write
+`directory: everyone` in the header to list every guest to every guest.
+A broadcast that starts with `!` is an **alert** — every phone chimes.
+
 **That's the whole language.** Write a little, press Run, add one idea.
 That loop — not this guide — is how you'll actually learn Loom.
 
@@ -1493,6 +1526,11 @@ That loop — not this guide — is how you'll actually learn Loom.
 | `(improv duration: 45s, advance on: any […])` | an improvised beat |
 | `SPACE` / `CHANNEL` | chat sections / rooms |
 | `INTERACTION name` + `label:` `who:` | a button in the participant app (fires a named event) |
+| `CODEX name` + `about:` `code:` `known to:` `text:` | a piece of lore guests hold, unlock, and share |
+| `unlock X for who` · `when who learns X:` · `when wrong code for who:` · `when share for who:` | lore moving |
+| `listed: true` (character) · `directory: everyone` (header) | the People directory + private messages |
+| `broadcast "!…" to …` | an alert (chime + banner) |
+| `joinable: false` (group) · `sealed: true` (prison) | no side chooser · no self-escape |
 | `theme: plain` / `theme: aol97` | the participant app's skin (header) |
 | `GENERATOR` / `SCENE` , `every` / `yield` / `wait until` | background life |
 

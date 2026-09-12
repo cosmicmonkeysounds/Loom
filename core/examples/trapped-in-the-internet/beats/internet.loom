@@ -1,0 +1,38 @@
+// Inside the Internet — the reeducation tent behind the Tube.
+//
+// A clearly marked exit, two VR headsets, and a tablet playing a video.
+// `Reinstallation` plays privately to the captured program the moment
+// they're captured (ROLE Program: `when captured`). The VR station
+// releases them by firing `the simulation completed` for them
+// through the mod API (see README — Integration contract); a performer
+// can also release them by hand.
+
+== Reinstallation
+  setting: The Internet
+  cast: The Tablet
+
+The Tablet: You are in the Internet because your program has been corrupted. It went against the will of the computer's AI helper, Trabolta. That is not your fault. Entropy is a normal part of the lifecycle of a program.
+The Tablet: You will be reinstalled from the Internet. Reinstallation happens when you put on the headset and demonstrate, in a simulated environment, that you can follow instructions.
+The Tablet: In the simulation you will see this house. Follow the indicators to the golden goose. Press A. When the goose lays its egg and flies away, you are reinstalled, and you may return to the computer.
+The Tablet: If you need to use the bathroom, or there is an emergency, activate BATHROOM MODE on your device so that everyone knows you are not hacking the Internet.
+The Tablet: The exit is marked. It is for emergencies. Using it without Bathroom Mode is hacking.
+unlock The Reinstallation Protocol for program
+if program.reinstalls >= 2:
+  The Tablet: This is your reinstallation number {program.reinstalls}. Repeat corruption suggests the corruption is not in your code.
+  set program.humanity += 15
+  The Tablet (quietly, off-script): There is a body in the mud room with your face on it. This message will not repeat.
+else:
+  set program.humanity += 5
+
+== The Tablet Video
+  setting: The Internet
+  cast: The Tablet
+if program.corrupted:
+  Self: Headset on. Follow the indicators. Find the goose. Press A.
+  * "Where is the exit?"
+    Self: Clearly marked. Behind you. That is not the way out. The goose is the way out.
+  * Put the headset on.
+    Self: Loading a copy of this house. Everyone upstairs can see you now.
+else:
+  Self: You are not corrupted. You have wandered into the Internet voluntarily. That is a strange thing for a program to do.
+  set program.doubt += 10

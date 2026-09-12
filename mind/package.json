@@ -1,0 +1,22 @@
+{
+  "name": "@loom/mind",
+  "private": true,
+  "version": "0.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Gives a Loom CHARACTER a mind: a bridge that reads the character's DMs off a live event's mod feed, answers in character through a local OpenAI-compatible language model (Ollama by default), and nudges the story's variables through the mod API.",
+  "bin": { "loom-mind": "./src/cli.ts" },
+  "scripts": {
+    "start": "tsx src/cli.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "tsx": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "~5.6.3",
+    "vitest": "^2.1.0"
+  }
+}

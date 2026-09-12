@@ -5,7 +5,7 @@
 //! scan readouts.
 
 import { useEffect, useRef, useState } from "react";
-import { ActionRow, ChannelView, ConnDot, GroupPill, InviteSheet, MessageThread, SpaceList } from "./chat.tsx";
+import { ActionRow, ChannelView, ConnDot, GroupPill, InviteSheet, MessageThread, PickerSheet, SpaceList } from "./chat.tsx";
 import { HelpSheet } from "./help.tsx";
 import { useDocumentTitle, usePrimeSession, type PrimeSession } from "./session.ts";
 import type { Action, Channel } from "./types.ts";
@@ -169,6 +169,20 @@ function PerformerSheet({ session, onClose, onLeave }: { session: PrimeSession; 
           </>
         )}
         {session.auth?.admin && <div className="muted">You hold moderator powers — hide/show messages, and every admin-only interaction the story declares.</div>}
+        {(session.view?.codex?.length ?? 0) > 0 && (
+          <>
+            <h2>📓 What {session.auth?.character} knows</h2>
+            <div className="muted">Share any of these from a guest's thread — one guest at a time. Knowledge is the currency.</div>
+            {session.view!.codex!.map((e) => (
+              <div key={e.id} className="codex-entry">
+                <div className="codex-entry-head">
+                  <span className="title">{e.title}</span>
+                </div>
+                <p className="codex-text">{e.text}</p>
+              </div>
+            ))}
+          </>
+        )}
         <button
           className="choice danger"
           onClick={() => {
@@ -315,7 +329,10 @@ function GuestThread({
 }) {
   const gid = channel.id.slice("guest:".length);
   const guest = session.view?.guests.find((g) => g.id === gid);
+  const [sharing, setSharing] = useState(false);
+  const lore = session.view?.codex ?? [];
   const actions: Action[] = [{ label: "📡 Scan this guest", onClick: () => void session.scan(gid), tone: "primary" }];
+  if (lore.length > 0) actions.push({ label: "📓 Share lore…", onClick: () => setSharing(true) });
   for (const i of session.view?.interactions ?? []) {
     if (i.who === "admin" && !admin) continue;
     actions.push({ label: i.label, onClick: () => void session.act(i.id, gid) });
@@ -328,14 +345,24 @@ function GuestThread({
     );
   }
   return (
-    <ChannelView
-      channel={channel}
-      onBack={onBack}
-      showChannel
-      moderate={admin ? { setHidden: (seq, hidden) => void session.setHidden(seq, hidden) } : undefined}
-      footer={<ActionRow actions={actions} />}
-      onOpenThread={onOpenThread}
-      onSend={(text) => void session.say(channel.id, text)}
-    />
+    <>
+      <ChannelView
+        channel={channel}
+        onBack={onBack}
+        showChannel
+        moderate={admin ? { setHidden: (seq, hidden) => void session.setHidden(seq, hidden) } : undefined}
+        footer={<ActionRow actions={actions} />}
+        onOpenThread={onOpenThread}
+        onSend={(text) => void session.say(channel.id, text)}
+      />
+      {sharing && (
+        <PickerSheet
+          title={`Share with ${guest?.name ?? "this guest"}…`}
+          items={lore.map((e) => ({ id: e.id, label: e.title, sub: e.about ?? undefined }))}
+          onPick={(id) => void session.shareCodex(id, gid)}
+          onClose={() => setSharing(false)}
+        />
+      )}
+    </>
   );
 }

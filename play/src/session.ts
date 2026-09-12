@@ -6,8 +6,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api, useChatStream } from "./client.ts";
+import { maxSeqOf, pickAlerts, playChime, pmChannelId, pmOtherParty, unlockFromSearch, vibrate, withoutUnlock } from "./codex.ts";
 import { SessionRole, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "./lifecycle.ts";
-import { STORY_SPACE, channelHead, groupByChannel, useThreads, type Threads } from "./threads.ts";
+import { STORY_SPACE, channelHead, groupByChannel, prettyName, useThreads, type Threads } from "./threads.ts";
 import type { Channel, ChatMessage, Decision, GuestView, PrimeView } from "./types.ts";
 
 // --- persistence ------------------------------------------------------------
@@ -141,7 +142,9 @@ function requiredDecision(
       },
     };
   }
-  if (status.captured) {
+  // A captive may break out from the app — unless their prison is sealed
+  // (the story lets them out: a performer, a puzzle, a VR goose).
+  if (status.captured && status.canEscape !== false) {
     return {
       channel: "lobby",
       decision: {
@@ -153,6 +156,12 @@ function requiredDecision(
   return null;
 }
 
+/** An alert broadcast that just landed — chime, buzz, banner. */
+export interface Alert {
+  seq: number;
+  text: string;
+}
+
 /** Group the guest's messages into threads, docking the pending decision, and
  *  merge in authored channels (SPACE/CHANNEL) the guest can see — including
  *  empty rooms — from the server snapshot. */
@@ -160,10 +169,14 @@ function buildGuestChannels(
   messages: Map<number, ChatMessage>,
   dock: { channel: string; decision: Decision } | null,
   view: GuestView | null,
+  opened: ReadonlySet<string> = new Set(),
 ): Channel[] {
   const groups = groupByChannel(messages);
   if (!groups.has("lobby")) groups.set("lobby", []); // the lobby is always present
   if (dock && !groups.has(dock.channel)) groups.set(dock.channel, []);
+  // Threads the guest opened from the People list (a private message to a
+  // guest, a DM to a character) exist before anyone has said anything.
+  for (const id of opened) if (!groups.has(id)) groups.set(id, []);
   const spaceTitles = new Map((view?.spaces ?? []).map((s) => [s.id, s.title]));
   const snap = new Map((view?.channels ?? []).map((c) => [c.id, c]));
   for (const id of snap.keys()) if (!groups.has(id)) groups.set(id, []); // empty authored rooms
@@ -191,11 +204,18 @@ function buildGuestChannels(
     }
     // A derived channel — read title/kind from the id (`dm:Recruiter` → "Recruiter").
     // The lobby is named after the story; derived rooms live in the story's space.
+    // A private thread is named after the other party.
     const head = channelHead(id);
+    const other = view ? pmOtherParty(id, view.id) : null;
+    const otherName =
+      other !== null
+        ? (view?.people?.find((p) => p.id === other)?.name ?? view?.roster.find((p) => p.id === other)?.name ?? prettyName(other))
+        : null;
     return {
       id,
       kind: head.kind,
-      title: head.kind === "lobby" && storyTitle ? storyTitle : head.title,
+      title: otherName ?? (head.kind === "lobby" && storyTitle ? storyTitle : head.title),
+      subtitle: otherName !== null ? "private" : undefined,
       spaceId: STORY_SPACE,
       spaceTitle: storyTitle,
       order: head.kind === "lobby" ? 0 : head.kind === "faction" ? 1 : 2,
@@ -228,6 +248,15 @@ export interface GuestSession {
   inviteToChannel: (person: string, channel: string) => Promise<unknown>;
   /** Leave a membership-gated channel. */
   leaveChannel: (channel: string) => Promise<unknown>;
+  /** Codex: type (or scan) an unlock code. Resolves to the entry unlocked, if any. */
+  redeem: (code: string) => Promise<string | null>;
+  /** Codex: hand an entry you hold to another participant or a listed character. */
+  shareCodex: (entry: string, to: string) => Promise<unknown>;
+  /** Open (creating if needed) a private thread with a guest, or a DM with a character. */
+  message: (person: { id: string; kind: "guest" | "character" }) => void;
+  /** The alert broadcast that just landed, until dismissed. */
+  alert: Alert | null;
+  dismissAlert: () => void;
   leave: () => void;
 }
 
@@ -256,14 +285,35 @@ export function useGuestSession(): GuestSession {
     setStatus(null);
     setNotice(why);
   }, []);
+  // Alerts chime only when they arrive live: the history load sets the
+  // baseline so a re-login doesn't replay every alarm of the night.
+  const alertMark = useRef(-1);
+  const [alert, setAlert] = useState<Alert | null>(null);
   const { messages, connected } = useChatStream(url, {
     onSnapshot: (v) => setStatus(v as GuestView),
+    onHistory: (list) => {
+      alertMark.current = Math.max(alertMark.current, maxSeqOf(list));
+    },
     onLifecycle: (n) => {
       if (lifecycleDropsSession(n.kind, SessionRole.Guest)) dropSession(lifecycleNotice(n.kind, SessionRole.Guest));
     },
     // The stream was refused: this token died in a restart we slept through.
     onDead: () => dropSession(lifecycleNotice("reset", SessionRole.Guest)),
   });
+  useEffect(() => {
+    const fresh = pickAlerts(messages.values(), alertMark.current);
+    if (fresh.length === 0) return;
+    const last = fresh[fresh.length - 1]!;
+    alertMark.current = last.seq;
+    setAlert({ seq: last.seq, text: last.text });
+    playChime();
+    vibrate();
+  }, [messages]);
+  useEffect(() => {
+    if (alert === null) return;
+    const t = window.setTimeout(() => setAlert(null), 12_000);
+    return () => window.clearTimeout(t);
+  }, [alert]);
 
   // Every action is scoped to the event the guest joined (`/e/:eventId/...`)
   // and carries the guest's capability token — the server derives who is
@@ -319,11 +369,68 @@ export function useGuestSession(): GuestSession {
   );
   const leaveChannel = useCallback((channel: string) => post("/api/guest/channel/leave", { channel }), [post]);
 
+  // --- codex + people ---
+  const redeem = useCallback(
+    async (code: string): Promise<string | null> => {
+      const r = await post<{ unlocked: string | null }>("/api/guest/codex/redeem", { code });
+      return r.unlocked;
+    },
+    [post],
+  );
+  const shareCodex = useCallback((entry: string, to: string) => post("/api/guest/codex/share", { entry, to }), [post]);
+  // A wall QR's link carries `?unlock=<code>`: redeem it once we're signed
+  // in and the doors are open, then drop it from the URL so a reload
+  // doesn't try again.
+  const pendingUnlock = useRef<string | null>(unlockFromSearch(window.location.search));
+  useEffect(() => {
+    const code = pendingUnlock.current;
+    if (code === null || me === null || status === null) return;
+    pendingUnlock.current = null;
+    try {
+      window.history.replaceState(null, "", `${window.location.pathname}${withoutUnlock(window.location.search)}`);
+    } catch {
+      /* fine */
+    }
+    void redeem(code).catch(() => {});
+  }, [me, status, redeem]);
+
+  const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
   const dock = requiredDecision(status, { choose: (i) => void choose(i), join: (f) => void join(f), escape: () => void escape() });
-  const threads = useThreads(buildGuestChannels(messages, dock, status));
+  const threads = useThreads(buildGuestChannels(messages, dock, status, opened));
+  const message = useCallback(
+    (person: { id: string; kind: "guest" | "character" }) => {
+      if (me === null) return;
+      const id = person.kind === "character" ? `dm:${person.id}` : pmChannelId(me.id, person.id);
+      setOpened((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
+      threads.open(id);
+    },
+    [me, threads],
+  );
+  const dismissAlert = useCallback(() => setAlert(null), []);
   useTheme(status?.theme);
 
-  return { me, status, connected, notice, threads, register, join, defect, choose, escape, act, say, inviteToChannel, leaveChannel, leave };
+  return {
+    me,
+    status,
+    connected,
+    notice,
+    threads,
+    register,
+    join,
+    defect,
+    choose,
+    escape,
+    act,
+    say,
+    inviteToChannel,
+    leaveChannel,
+    redeem,
+    shareCodex,
+    message,
+    alert,
+    dismissAlert,
+    leave,
+  };
 }
 
 // --- performer (character) --------------------------------------------------
@@ -417,6 +524,8 @@ export interface PrimeSession {
   becomeAdmin: (passcode: string) => Promise<void>;
   /** Fire a performer / admin interaction on a guest, as this character. */
   act: (name: string, guest: string) => Promise<unknown>;
+  /** Codex: hand one of the character's entries to a guest. */
+  shareCodex: (entry: string, to: string) => Promise<unknown>;
   moderate: (id: string, action: string, name?: string) => Promise<unknown>;
   setHidden: (seq: number, hidden: boolean) => Promise<unknown>;
   leave: () => void;
@@ -513,6 +622,10 @@ export function usePrimeSession(): PrimeSession {
     (name: string, guest: string) => post("/api/prime/act", { name, guest }, auth!.token),
     [post, auth],
   );
+  const shareCodex = useCallback(
+    (entry: string, to: string) => post("/api/prime/codex/share", { entry, to }, auth!.token),
+    [post, auth],
+  );
   const moderate = useCallback(
     (id: string, action: string, name?: string) => post("/api/mod/act", { id, action, name }, auth!.token),
     [post, auth],
@@ -531,5 +644,5 @@ export function usePrimeSession(): PrimeSession {
 
   const threads = useThreads(buildPrimeChannels(messages, view));
   useTheme(view?.theme);
-  return { auth, view, responses, connected, notice, threads, login, scan, say, inviteToChannel, leaveChannel, becomeAdmin, act, moderate, setHidden, leave };
+  return { auth, view, responses, connected, notice, threads, login, scan, say, inviteToChannel, leaveChannel, becomeAdmin, act, shareCodex, moderate, setHidden, leave };
 }

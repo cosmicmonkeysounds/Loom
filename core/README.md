@@ -32,7 +32,14 @@ server/
   store.ts       # durable event-sourced journal + persisted moderation
 examples/
   load.ts                    # multi-file project loader (main.loom first)
-  escape-the-internet/       # the reference scenario, authored across ~18 files
+  trapped-in-the-internet/   # THE SHOW — the server's default scenario (Loom 4 surface):
+                             #   a rogue AI, a house that is a computer, Computer Bingo,
+                             #   reinstallation in "the Internet", a CODEX economy
+                             #   (42 entries, wall QR codes + puzzles + performers), an
+                             #   LLM-voiced Trabolta, and five endings. Runbook +
+                             #   integration contract (VR / Arduino / mind): its README
+  glass-orchard/             # the Loom 4 reference project (a garden-party mystery)
+  escape-the-internet/       # the v3-era scenario, authored across ~18 files
     main.loom                #   world spine: factions, locations, ROLE Guest
     cast/                    #   actors + scannable props, grouped by faction
                              #     (mods / chatters / algorithm / glitchers /

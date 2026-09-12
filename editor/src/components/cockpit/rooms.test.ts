@@ -117,6 +117,7 @@ describe('buildRooms with the identity projection (exact)', () => {
     score: 0,
     location: null,
     captured: false,
+    canEscape: true,
     pendingChoice: null,
     decisionChannel: null,
     channels: [],
@@ -125,6 +126,9 @@ describe('buildRooms with the identity projection (exact)', () => {
     factions: [],
     groups: [],
     interactions: [],
+    codex: [],
+    codexTotal: 0,
+    people: [],
     ...over,
   })
 

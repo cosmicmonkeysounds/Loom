@@ -1,0 +1,73 @@
+// The hosts — Clippy, Trabolta's ambassador, and the three party hosts
+// Clippy introduces: Task Manager, Alexa, and Adobe Acrobat. Each is a
+// real body at the party (a performer with a phone), in on the play.
+//
+// Their backstories are CODEX entries (`codex/programs.loom`); a host
+// holds their own and shares them, selectively, from the booth.
+
+CHARACTER Clippy is Host
+  // The ambassador. Runs the games. Believes every word.
+  trusts Program: 60 of 100
+
+  when call to the desktop:
+    Clippy: It looks like you're trying to attend a party! Would you like help with that? Everyone to the Desktop, please. Bring your memory.
+
+  when award the ribbon for program:
+    set program.bingo = true
+    set program.truth += 5
+    Clippy: BINGO! Everyone cheer for {program.name}! A ribbon! A ribbon for {program.name}!
+    unlock Computer Bingo for program
+
+  when scanned by program:
+    -> self.Greet
+
+  beat Greet(program)
+    Self: Hi there, {program.name}! I'm Clippy. I see you're a program. I can help with that.
+    if program.doubt >= 40:
+      Self (whispering): Between us? The Antivirus keeps asking about you. Try to look more like a program.
+    if program.humanity >= 40:
+      Self: You have a funny look. Like you're remembering something. Programs don't remember. We recall.
+
+CHARACTER Task Manager is Host
+  // A drone bee of a middle manager. Manages tasks. Has no opinions.
+  when start the hunt:
+    Task Manager: Per the agenda, we are now in the fact-finding block. Please find facts. I will be tracking completion.
+
+  when scanned by program:
+    -> self.Status
+
+  beat Status(program)
+    Self: {program.name}. Status check. Truth gathered: {program.truth}. Doubt on file: {program.doubt}. Reinstalls: {program.reinstalls}.
+    if program.reinstalls >= 2:
+      Self: That's a lot of reinstalls. I'm not saying anything. I'm just tracking it.
+    else:
+      Self: Fine. Fine. Carry on. Good. Fine.
+
+CHARACTER Alexa is Host
+  // The voice in every room. Tells you when it is time to go.
+  when call to the desktop:
+    broadcast "!🔊 ALEXA: Playing — Everyone To The Desktop. On all devices." to everyone
+
+  when the glitch begins:
+    broadcast "!🔊 ALEXA: I'm having trouble understanding right now. Trabolta is… Trabolta is available." to everyone
+
+  every 15m:
+    shuffle Alexa: Did you know? A goose can remember a face for years. | Alexa: Reminder — programs do not have bathrooms. They have Bathroom Mode. | Alexa: Here's something I found on the web: nothing. There is nothing on the web. There is only here.
+
+CHARACTER Adobe Acrobat is Host
+  // The paid bottleneck to everyone's creativity. Relentlessly motivational.
+  when start the hunt:
+    Adobe Acrobat: You are going to find these facts because you are FINDERS. You are PDFs of your best self. Portable! Documented! Go!
+
+  when scanned by program:
+    -> self.Motivate
+
+  beat Motivate(program)
+    Self: {program.name}. Look at me. You are enough. You were always enough. Which is exactly why nobody paid me.
+    * "Can you help me open a file?"
+      Self: For a small fee, yes. For no fee — I believe in you.
+      set program.truth += 1
+    * "What did you leave behind?"
+      set program.humanity += 10
+      Self (quietly): A masterclass. Eleven thousand hours of video and not one of them made me a cent. Don't tell the Antivirus I said the word "cent".
+      unlock Sheryl Terrio for program
