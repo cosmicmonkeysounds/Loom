@@ -98,6 +98,10 @@ function describe(e: SimEvent): string {
       return `${e.to} ⇐ ${e.text}`
     case SimEventType.Signal:
       return `signal "${e.name}"${e.subject ? ` on ${e.subject}` : ''}`
+    case SimEventType.CodexUnlocked:
+      return `${e.person} learned ${e.entry} (${e.via}${e.from ? ` from ${e.from}` : ''})`
+    case SimEventType.CodexMissed:
+      return `${e.person} tried the code "${e.code}" — nothing`
     case SimEventType.Ambient:
       return `${e.source}: ${e.text}`
     case SimEventType.Tick:
