@@ -1,6 +1,12 @@
 /* ════════════════════════════════════════════════════════════════════════
    The Loom participant client — a chat-room over a live story.
 
+   The shape is the one every chat app trained people on: a sidebar of
+   rooms on the left (the room you're standing in first, who's in each),
+   the open conversation on the right with an avatar + name per message,
+   and the story's cards (a decision, a CAPTCHA) docked in the flow. Wide
+   screens show both panes; a phone drills in.
+
    Nothing story-specific is baked in. The *neutral* skin below is the
    default: quiet paper, one accent, system type. A story picks another
    skin with a `theme:` header line (Loom 4 §11); the client stamps it on
@@ -35,6 +41,7 @@
   --code-bg: #f1ede4;
   --radius: 8px;
   --max: 760px;
+  --side: 300px;             /* sidebar width on a wide screen               */
 
   /* Edges: flat hairlines by default; a themed skin may make them 3D. */
   --raised: 0 0 0 1px var(--line);
@@ -57,12 +64,13 @@ body {
   -webkit-font-smoothing: var(--smoothing);
   text-rendering: optimizeLegibility;
 }
+.root { height: 100%; display: flex; flex-direction: column; }
 
 /* ── the window ──────────────────────────────────────────────────────────
-   Every full surface is a maximized AOL window: silver face, raised bevel,
-   teal showing in the gutters on wide screens. */
+   Every full surface is a maximized window: silver face, raised bevel,
+   the desktop showing in the gutters on wide screens. */
 .screen {
-  display: flex; flex-direction: column; height: 100%;
+  display: flex; flex-direction: column; height: 100%; min-height: 0;
   max-width: var(--max); margin: 0 auto; width: 100%;
   background: var(--face); box-shadow: var(--raised);
   padding: 3px;
@@ -72,15 +80,33 @@ body {
 .choice, .dlg-choice, .avatar, .badge, .icon-btn, .back, .tray, .sheet, .card, .readout,
 .composer .composer-input, .sheet input, .card input, .hero input, .help-sheet input,
 .help-body, .chlist, .thread, .screen, .space-title, .mod-toggle, .replies.has,
-.msg-channel, .decision-dot, .dlg-key, .bigid { border-radius: var(--radius); }
+.msg-channel, .decision-dot, .dlg-key, .bigid, .pavatar, .widget, .captcha-tile,
+.presence, .here-tag, .stage-empty { border-radius: var(--radius); }
 
 .muted { color: var(--muted-ink); }
+.pad { padding: 4px 8px 8px; }
 .err { color: var(--bad); font-weight: 700; margin-top: 8px; }
 /* A lifecycle notice on the join / sign-in screens ("the story restarted — join again"). */
 .notice { color: var(--ink); background: var(--panel, rgba(0,0,0,0.06)); border-radius: 8px; padding: 8px 12px; margin: 0 0 12px; font-weight: 600; }
-.empty {
+.empty, .thread-empty {
   color: var(--muted-ink); text-align: center; padding: 40px 24px;
-  font-style: italic;
+  font-style: italic; font: italic 14px var(--ui-font);
+}
+
+/* ── the two-pane shell ─────────────────────────────────────────────────
+   Sidebar + stage side by side from 820px up. Both panes are their own
+   windows; the stage stretches to the width the room has. */
+.app.wide {
+  flex: 1; min-height: 0; display: grid; grid-template-columns: var(--side) 1fr;
+  gap: 6px; padding: 6px; max-width: 1280px; margin: 0 auto; width: 100%;
+}
+.app.wide .side-pane, .app.wide .stage-pane { min-height: 0; min-width: 0; height: 100%; }
+.app.wide .screen { max-width: none; height: 100%; }
+.app.wide .inbox-head, .app.wide .thread-head, .app.wide footer, .app.wide .chlist, .app.wide .alert-banner { max-width: none; }
+.stage-empty {
+  height: 100%; display: flex; align-items: center; justify-content: center;
+  background: var(--face); box-shadow: var(--raised); color: var(--muted-ink);
+  font-style: italic; padding: 24px; text-align: center;
 }
 
 /* ── title bars ──────────────────────────────────────────────────────────
@@ -88,21 +114,28 @@ body {
    a beveled control box on the right. */
 .inbox-head, .thread-head {
   display: flex; align-items: center; gap: 8px;
-  padding: 3px 4px 3px 6px;
+  padding: 4px 4px 4px 6px;
   background: linear-gradient(90deg, var(--navy), var(--navy-2));
   color: var(--white);
   position: sticky; top: 0; z-index: 5;
   margin: 0 auto; width: 100%; max-width: var(--max);
 }
-.inbox-head { justify-content: space-between; }
+.inbox-head { justify-content: space-between; align-items: flex-start; }
 .inbox-head.trapped,
 .trapped-bg .inbox-head {
   background: linear-gradient(90deg, var(--maroon), var(--maroon-2));
 }
+/* the identity card: avatar, name + group, where you are, the live dot */
+.me { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.me-body { min-width: 0; flex: 1; }
 .who { display: flex; align-items: center; gap: 6px; min-width: 0; font-weight: 700; }
 .who strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.me-sub {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  font-size: 11px; font-weight: 700; color: var(--on-bar); margin-top: 1px;
+}
 .hud {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 6px;
   font-size: 11px; font-weight: 700; color: var(--on-bar); white-space: nowrap;
 }
 /* the window-control box on the title bar (the ☰ menu button) */
@@ -110,29 +143,43 @@ body {
   background: var(--face); color: var(--ink);
   border: none; box-shadow: var(--raised);
   font-size: 13px; cursor: pointer; line-height: 1;
-  width: 22px; height: 20px; display: inline-flex;
+  min-width: 24px; height: 22px; display: inline-flex;
   align-items: center; justify-content: center; padding: 0;
 }
 .icon-btn:active { box-shadow: var(--pressed); padding: 1px 0 0 1px; }
+.icon-btn.wide { width: auto; padding: 0 7px; gap: 3px; font-size: 12px; font-weight: 700; }
+.hud .count { font-weight: 700; }
 
 .conn { display: inline-flex; align-items: center; gap: 5px; color: var(--on-bar); font-size: 11px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bad);
   display: inline-block; }
 .dot.on { background: var(--live); }
 
-/* the AOL caption "back" arrow doubles as a folder-up control */
+/* the caption "back" arrow doubles as a folder-up control */
 .back {
   background: var(--face); color: var(--ink);
   border: none; box-shadow: var(--raised);
   font-size: 15px; line-height: 1; cursor: pointer;
-  width: 24px; height: 20px; margin: 0; padding: 0 0 2px 0;
-  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 22px; margin: 0; padding: 0 0 2px 0;
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 .back:active { box-shadow: var(--pressed); }
 
-/* ── "People Here" — the buddy/channel list ─────────────────────────────
-   A sunken white list-box; each row a buddy with a small icon, hover gives
-   the classic navy selection bar. */
+/* ── people ─────────────────────────────────────────────────────────────
+   A person is an avatar tile coloured from their name (their screen-name
+   colour), with their initials. */
+.pavatar {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 30px; height: 30px; color: #fff; font: 800 12px var(--ui-font);
+  letter-spacing: 0.3px; text-shadow: 0 1px 0 rgba(0,0,0,0.25);
+  box-shadow: var(--raised);
+}
+.pavatar.sm { width: 22px; height: 22px; font-size: 10px; }
+.pavatar.character { border-radius: 50%; }
+
+/* ── the rooms list (the sidebar) ───────────────────────────────────────
+   A sunken white list-box; each row a room with an icon, who's in it, and
+   the last thing said; the open room gets the navy selection bar. */
 .chlist {
   flex: 1; overflow-y: auto; margin: 4px auto; width: calc(100% - 6px);
   max-width: var(--max);
@@ -140,34 +187,46 @@ body {
 }
 .chrow {
   display: flex; align-items: center; gap: 8px; width: 100%;
-  padding: 4px 6px; border: 1px solid transparent;
+  padding: 5px 6px; border: 1px solid transparent;
   background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer;
 }
-.chrow:hover { background: var(--navy); color: var(--white); border-color: var(--navy); }
-.chrow:hover .chrow-sub, .chrow:hover .chrow-title { color: var(--white); }
+.chrow:hover { background: color-mix(in srgb, var(--navy) 10%, var(--white)); border-color: transparent; }
+.chrow.active, .chrow.active:hover { background: var(--navy); color: var(--white); border-color: var(--navy); }
+.chrow.active .chrow-sub, .chrow.active .chrow-title, .chrow.active .chrow-occ { color: var(--white); }
 .chrow:active { background: var(--navy-2); }
+.chrow.quiet { opacity: 0.55; }
+.chrow.quiet:hover, .chrow.quiet.active { opacity: 1; }
 .chrow-body { flex: 1; min-width: 0; }
-.chrow-top { display: flex; align-items: center; gap: 6px; }
+.chrow-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .chrow-title { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chrow-sub {
   color: var(--muted-ink); font-size: 11px; font-style: italic;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.chrow-occ { font-style: normal; font-weight: 700; color: var(--good); }
+.chrow.here .chrow-occ { color: var(--good); }
 .decision-dot {
   font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px;
   color: var(--bad); background: var(--highlight); box-shadow: var(--raised);
-  padding: 0 5px;
+  padding: 0 5px; flex-shrink: 0;
 }
+/* "you are here" — the one room the story has you standing in */
+.here-tag {
+  font: 800 9px var(--ui-font); text-transform: uppercase; letter-spacing: 0.4px;
+  color: var(--white); background: var(--good); padding: 1px 5px; margin-left: 6px;
+  flex-shrink: 0; vertical-align: middle;
+}
+.chrow.here { border-left: 3px solid var(--good); }
 
-/* the little buddy icon (a beveled tile, not a gradient blob) */
+/* the little room icon (a beveled tile, not a gradient blob) */
 .avatar {
-  width: 24px; height: 24px; flex-shrink: 0;
+  width: 30px; height: 30px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 800; color: var(--ink);
+  font-size: 14px; font-weight: 800; color: var(--ink);
   background: var(--face); box-shadow: var(--raised);
 }
 .avatar.lobby { color: var(--navy); }
-.avatar.faction { color: var(--maroon-2); }
+.avatar.faction, .avatar.open, .avatar.group { color: var(--maroon-2); }
 .avatar.dm { color: var(--good); }
 .avatar.guest { color: var(--avatar-guest); }
 .avatar.scanner { color: var(--ink); }
@@ -177,24 +236,57 @@ body {
   min-width: 18px; height: 16px; padding: 0 4px;
   background: var(--highlight); color: var(--bad); box-shadow: var(--raised);
   font-size: 11px; font-weight: 800;
-  display: inline-flex; align-items: center; justify-content: center;
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 
-/* ── the open room: a sunken white transcript of line messages ──────────── */
+/* ── space sections (the sidebar categories) ───────────────────────────── */
+.space-section { margin-bottom: 4px; }
+.space-title {
+  font: 700 11px var(--ui-font); text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--muted-ink); background: var(--face); box-shadow: var(--raised);
+  padding: 2px 8px; margin: 2px 0; position: sticky; top: 0; z-index: 1;
+}
+
+/* ── the open room ──────────────────────────────────────────────────────── */
 .thread-head { max-width: var(--max); margin: 0 auto; width: 100%; }
-.thread-id { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
-.thread-id strong { font-size: 13px; }
+.thread-id { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; flex: 1; }
+.thread-id strong { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .thread-id .muted { font-size: 11px; color: var(--on-bar); font-style: italic; }
+.head-right { display: flex; align-items: center; gap: 6px; margin-left: auto; flex-shrink: 0; }
+/* who's here: a stack of avatar tiles + a count, tap for the list */
+.presence {
+  display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 6px 0 3px;
+  background: var(--face); color: var(--ink); border: none; box-shadow: var(--raised);
+  font: 700 11px var(--ui-font); cursor: pointer;
+}
+.presence-stack { display: inline-flex; }
+.presence-stack .pavatar { margin-right: -6px; box-shadow: 0 0 0 1.5px var(--face); }
+.presence-stack .pavatar:last-child { margin-right: 0; }
+.presence-n { white-space: nowrap; }
+
 .thread {
-  flex: 1; overflow-y: auto; margin: 4px; padding: 6px 8px;
+  flex: 1; overflow-y: auto; margin: 4px; padding: 8px 10px;
   background: var(--white); box-shadow: var(--sunken);
   display: flex; flex-direction: column; gap: 2px;
   font-family: var(--chat-font); font-size: 16px; line-height: 1.35; color: var(--ink);
 }
 
-/* a message is just a line of text — name, colon, then what they said */
+/* a message: an avatar tile, the name, then what they said (Discord grouping) */
 .msg { max-width: 100%; }
-.msg.line { align-self: stretch; }
+.msg.line { display: flex; gap: 10px; align-items: flex-start; }
+.msg.line.tuck { padding-left: 40px; }
+.msg-avatar { background: none; border: none; padding: 0; margin: 2px 0 0; cursor: default; flex-shrink: 0; }
+.msg-avatar[tabindex="0"] { cursor: pointer; }
+.msg-body { min-width: 0; flex: 1; }
+.msg-head { display: flex; align-items: baseline; gap: 6px; }
+.speaker {
+  font-family: var(--chat-font); font-weight: 700; font-size: 15px;
+  background: none; border: none; padding: 0; cursor: default;
+}
+.speaker[tabindex="0"] { cursor: pointer; }
+.speaker[tabindex="0"]:hover { text-decoration: underline; }
+.via { font: 11px var(--ui-font); color: var(--muted-ink); font-style: italic; }
+.bubble { font-family: var(--chat-font); font-size: 16px; color: var(--ink); overflow-wrap: anywhere; }
 .msg.narration, .msg.system, .msg.signal { align-self: stretch; }
 .msg-channel {
   display: inline-block; font-family: var(--ui-font);
@@ -202,17 +294,18 @@ body {
   color: var(--white); background: var(--muted-ink); box-shadow: var(--raised);
   padding: 0 4px; margin-right: 4px;
 }
-.speaker {
-  font-family: var(--chat-font); font-weight: 700; font-size: 16px;
-}
-.speaker::after { content: ":\00a0"; color: var(--ink); font-weight: 700; }
-.bubble { font-family: var(--chat-font); font-size: 16px; color: var(--ink); }
 
-/* room events (joins, broadcasts, narration) read like "OnlineHost:" lines */
+/* room events (joins, broadcasts, narration) */
 .bubble.plain { font-style: italic; color: var(--muted-ink); }
-.msg.system .bubble.plain { color: var(--system); font-weight: 700; font-style: normal; }
-.msg.signal .bubble.plain { color: var(--signal); font-weight: 700; }
-.msg.narration { color: var(--muted-ink); font-style: italic; }
+.msg.narration {
+  color: var(--muted-ink); font-style: italic; margin: 4px 0;
+  padding: 2px 10px; border-left: 3px solid var(--line);
+}
+.narrator-tag { font: 700 10px var(--ui-font); text-transform: uppercase; letter-spacing: 0.4px; margin-right: 6px; font-style: normal; }
+.msg.system { text-align: center; margin: 3px 0; }
+.msg.system .bubble.plain { color: var(--system); font-weight: 700; font-style: normal; font-family: var(--ui-font); font-size: 12px; }
+.msg.signal { margin: 4px 0; }
+.msg.signal .bubble.plain { color: var(--signal); font-weight: 700; font-style: normal; }
 
 .msg.hidden { opacity: 0.6; }
 .msg.hidden .bubble { text-decoration: line-through; }
@@ -223,13 +316,9 @@ body {
 }
 .mod-toggle:active { box-shadow: var(--pressed); }
 
-/* ── sender runs + thread affordance (Slack/Discord grouping) ──────────── */
-.run { align-self: stretch; margin: 3px 0; }
+/* ── sender runs + thread affordance ────────────────────────────────────── */
+.run { align-self: stretch; margin: 5px 0; }
 .run .msg.line { margin: 0; }
-/* a same-sender continuation: drop the name banner, indent under it */
-.msg.line.tuck { padding-left: 18px; }
-/* a subtle 💬 icon by default (declutters the mobile room); a beveled count
-   pill once a thread exists. */
 .replies {
   display: inline-flex; align-items: center; margin-left: 6px; line-height: 1;
   font: 700 11px var(--ui-font); color: var(--navy);
@@ -247,6 +336,37 @@ body {
   letter-spacing: 0.5px; text-align: center; margin: 8px 0 4px;
   border-bottom: 1px solid var(--line);
 }
+
+/* ── widgets — the story's cards (a CAPTCHA, a picture, a poll) ────────── */
+.msg.widget-msg { align-self: stretch; margin: 6px 0; }
+.widget {
+  background: var(--face); box-shadow: var(--raised); padding: 10px 12px 12px;
+  font-family: var(--ui-font); max-width: 420px;
+}
+.widget-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+.widget-glyph { font-size: 22px; line-height: 1; }
+.widget-title { font: 800 13px var(--ui-font); color: var(--navy); text-transform: uppercase; letter-spacing: 0.4px; }
+.widget-sub { font: 14px/1.35 var(--ui-font); color: var(--ink); margin-top: 2px; }
+.widget-foot { display: flex; align-items: center; justify-content: flex-end; margin-top: 8px; gap: 8px; }
+.widget-state { font: 700 12px var(--ui-font); color: var(--muted-ink); }
+.widget-go { width: auto; margin: 0; padding: 7px 22px; }
+.widget.done { opacity: 0.85; }
+.widget.unknown .widget-title { text-transform: none; }
+/* the CAPTCHA grid: nine squares, pick the ones that match, VERIFY */
+.captcha-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.captcha-tile {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  font-size: 34px; line-height: 1; background: var(--white); box-shadow: var(--sunken);
+  border: 2px solid transparent; cursor: pointer; padding: 0;
+}
+.captcha-tile:disabled { cursor: default; }
+.captcha-tile.on { border-color: var(--navy); background: color-mix(in srgb, var(--navy) 14%, var(--white)); }
+.captcha-tile.on::after { content: "✔"; position: relative; top: -14px; left: 12px; font-size: 14px; color: var(--white); background: var(--navy); border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; }
+.widget.image { padding: 4px; }
+.widget.image img { display: block; max-width: 100%; height: auto; border-radius: calc(var(--radius) - 2px); }
+.widget.image figcaption { font: italic 12px var(--ui-font); color: var(--muted-ink); padding: 6px 6px 2px; }
+.poll-options { display: flex; flex-direction: column; gap: 4px; }
+.poll-options .choice { margin: 0; text-align: left; }
 
 /* ── composer (hybrid typed chat) ──────────────────────────────────────────
    A roomy sunken text box that grows with what you type (JS caps the height),
@@ -266,14 +386,7 @@ body {
 .composer .composer-send {
   flex: 0 0 auto; width: auto; margin-top: 0; padding: 0 18px; height: 44px;
 }
-
-/* ── space sections (the Discord-style sidebar categories) ─────────────── */
-.space-section { margin-bottom: 4px; }
-.space-title {
-  font: 700 11px var(--ui-font); text-transform: uppercase; letter-spacing: 0.5px;
-  color: var(--muted-ink); background: var(--face); box-shadow: var(--raised);
-  padding: 2px 8px; margin: 2px 0;
-}
+.cant-post { font: italic 12px var(--ui-font); color: var(--muted-ink); text-align: center; padding: 8px 0 2px; }
 
 /* ── footer: decision tray / composer / action row ──────────────────────── */
 footer {
@@ -318,7 +431,7 @@ footer {
 }
 .dlg-label { flex: 1; min-width: 0; }
 .dlg-choice.danger { color: var(--bad); }
-/* the highlighted option: navy selection bar, yellow caret + key (AOL accent) */
+/* the highlighted option: navy selection bar, yellow caret + key */
 .dlg-choice.on {
   background: var(--navy); color: var(--white); box-shadow: var(--raised);
 }
@@ -352,8 +465,9 @@ footer {
   padding: 7px 14px; margin-top: 7px; cursor: pointer; text-align: center;
 }
 .choice:active { box-shadow: var(--pressed); padding: 8px 13px 6px 15px; }
+.choice:disabled { opacity: 0.6; cursor: default; }
 .choice:focus-visible { outline: 1px dotted var(--ink); outline-offset: -4px; }
-/* the default/affirmative button gets the heavy Win95 focus ring */
+/* the default/affirmative button gets the heavy focus ring */
 .choice.primary { box-shadow: var(--raised), inset 0 0 0 2px var(--black); font-weight: 800; }
 .choice.primary:active { box-shadow: var(--pressed), inset 0 0 0 2px var(--black); }
 .choice.danger { color: var(--bad); }
@@ -366,30 +480,47 @@ footer {
 }
 .link.console { display: inline-block; margin-top: 18px; }
 
-/* ── dialog box (profile / settings) ────────────────────────────────────
-   The bottom sheet becomes a centered AOL modal: a little window with its
-   own navy caption bar. */
+/* ── dialog box (profile / settings / cards) ────────────────────────────
+   A centered modal: a little window with its own navy caption bar and a
+   close box. */
 .sheet-backdrop {
   position: fixed; inset: 0; background: rgba(0,0,0,0.35);
   display: flex; align-items: center; justify-content: center; z-index: 20;
   padding: 16px;
 }
 .sheet {
-  width: 100%; max-width: 420px;
+  width: 100%; max-width: 440px;
   background: var(--face); box-shadow: var(--raised);
   padding: 4px 4px 12px;
 }
+.sheet.tall { max-height: 88vh; overflow-y: auto; }
 .sheet h2 {
-  margin: 0 -0 10px; font-size: 12px; font-weight: 700; color: var(--white);
+  margin: 0 0 10px; font-size: 12px; font-weight: 700; color: var(--white);
   background: linear-gradient(90deg, var(--navy), var(--navy-2));
-  padding: 3px 6px; text-transform: none; letter-spacing: 0;
+  padding: 3px 4px 3px 6px; text-transform: none; letter-spacing: 0;
+  display: flex; align-items: center; gap: 6px; position: sticky; top: 0; z-index: 2;
 }
+.sheet h2 > span { flex: 1; display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.sheet-x {
+  background: var(--face); color: var(--ink); border: none; box-shadow: var(--raised);
+  width: 22px; height: 18px; font: 800 13px/1 var(--ui-font); cursor: pointer; padding: 0 0 2px;
+}
+.sheet-x:active { box-shadow: var(--pressed); }
 .sheet > *:not(h2) { margin-left: 8px; margin-right: 8px; }
+.sheet-h {
+  font: 700 11px var(--ui-font); text-transform: uppercase; letter-spacing: 0.4px;
+  color: var(--muted-ink); margin: 12px 8px 4px;
+}
 .sheet input {
   font: 13px var(--ui-font); color: var(--ink); background: var(--white);
   box-shadow: var(--sunken); border: none; padding: 6px 8px;
   width: calc(100% - 16px); margin: 0 8px 8px;
 }
+.card-facts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 4px; }
+.card-actions .actionrow { flex-direction: column; }
+.card-actions .actionrow .choice { min-width: 0; }
+.cast-pick { text-align: left; margin-top: 4px; }
+.cast-pick .sheet-h { margin-left: 0; }
 
 /* ── performer station bits ─────────────────────────────────────────────── */
 .station { flex: 1; overflow-y: auto; padding: 8px; }
@@ -424,13 +555,14 @@ footer {
 .pill {
   display: inline-block; padding: 1px 8px; font-size: 11px; font-weight: 700;
   box-shadow: var(--raised); background: var(--face); color: var(--ink);
-  border-radius: var(--radius);
+  border-radius: var(--radius); white-space: nowrap;
 }
 .pill.admin { color: var(--navy); }
 .pill.none { color: var(--muted-ink); font-style: italic; }
+.pill.kind { color: var(--muted-ink); }
 
 /* ── the sign-on screen (register / login / role chooser) ───────────────
-   A centered AOL "Welcome / Sign On" window floating on the teal desktop. */
+   A centered "Welcome / Sign On" window floating on the desktop. */
 .hero {
   max-width: 400px; margin: auto; min-height: 100%;
   display: flex; flex-direction: column; justify-content: center;
@@ -459,7 +591,7 @@ footer {
 
 /* ── the Help window ────────────────────────────────────────────────────
    A taller sheet: searchable topic list ⇄ scrollable article reader,
-   styled like a Win95 help viewer (navy caption bar, sunken white page). */
+   styled like a help viewer (navy caption bar, sunken white page). */
 .help-sheet { max-width: 560px; display: flex; flex-direction: column; max-height: 84vh; }
 .help-sheet input {
   font: 13px var(--ui-font); color: var(--ink); background: var(--white);
@@ -505,6 +637,65 @@ footer {
   font: 12px ui-monospace, "Courier New", monospace; background: var(--code-bg); padding: 0 3px;
   border: 1px solid var(--line);
 }
+
+/* ── codex · people · alerts ──────────────────────────────────────────
+   Knowledge as a currency: the Codex sheet, the People directory, and the
+   alert banner a `!` broadcast raises. Theme-neutral — variables only. */
+.alert-banner {
+  position: sticky; top: 0; z-index: 9;
+  display: flex; align-items: center; gap: 8px;
+  max-width: var(--max); margin: 0 auto; padding: 8px 10px; width: 100%;
+  background: var(--highlight); color: var(--black);
+  box-shadow: var(--raised); cursor: pointer;
+  font-weight: 700; animation: alert-in 0.25s ease-out;
+}
+.alert-glyph { font-size: 18px; animation: alert-ring 0.9s ease-in-out 3; }
+.alert-text { flex: 1; min-width: 0; }
+.alert-x { background: none; border: none; color: inherit; font: inherit; font-size: 18px; cursor: pointer; padding: 0 4px; }
+@keyframes alert-in { from { transform: translateY(-100%); } to { transform: none; } }
+@keyframes alert-ring { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-18deg); } 75% { transform: rotate(18deg); } }
+.msg.signal.alert .bubble.plain { font-weight: 700; color: var(--black); background: var(--highlight); padding: 2px 6px; }
+
+.codex-total { color: var(--on-bar); font-size: 11px; font-weight: 400; margin-left: 4px; }
+.codex-redeem { display: flex; gap: 6px; margin: 0 8px 10px; }
+.codex-redeem input { flex: 1; margin: 0; text-transform: uppercase; }
+.codex-redeem .choice { margin: 0; white-space: nowrap; width: auto; }
+.codex-msg { margin: -4px 8px 8px; font-size: 12px; font-weight: 700; }
+.codex-msg.ok { color: var(--good); }
+.codex-msg.bad { color: var(--bad); }
+.codex-about {
+  margin: 10px 8px 4px; font: 11px var(--ui-font); font-weight: 700;
+  letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted-ink);
+}
+.codex-entry {
+  margin: 0 8px 6px; padding: 6px 8px; background: var(--white);
+  box-shadow: var(--sunken); border-radius: var(--radius); text-align: left;
+}
+.codex-entry-head { display: flex; align-items: center; gap: 6px; }
+.codex-entry-head button.title {
+  flex: 1; background: none; border: none; color: var(--ink); font: inherit; font-weight: 700;
+  text-align: left; cursor: pointer; padding: 0;
+}
+.codex-entry-head .link { margin: 0; font-size: 12px; width: auto; }
+.codex-text { margin: 6px 0 0; font: 13px/1.45 var(--chat-font); white-space: pre-wrap; }
+.codex-empty { margin: 0 8px 8px; color: var(--muted-ink); font-style: italic; }
+
+.people-row {
+  margin: 0 8px 6px; padding: 6px 8px; background: var(--white);
+  box-shadow: var(--sunken); border-radius: var(--radius);
+}
+.people-top { display: flex; align-items: center; gap: 6px; }
+.people-top .name { flex: 1; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.people-top .choice { margin: 0; padding: 3px 8px; font-size: 12px; width: auto; }
+.people-where { font-size: 12px; color: var(--muted-ink); margin-top: 3px; }
+.people-known { margin: 4px 0 0; padding: 0; list-style: none; font-size: 12px; }
+.people-known li { color: var(--ink); }
+.people-known li::before { content: "📓 "; }
+.people-known .link { display: inline; width: auto; padding: 0; }
+.people-unknown { margin: 4px 0 0; font-size: 12px; color: var(--muted-ink); font-style: italic; }
+.choice.pick { display: flex; align-items: center; gap: 8px; text-align: left; }
+.pick-label { flex: 1; min-width: 0; }
+.pick-sub { color: var(--muted-ink); font-size: 12px; font-weight: 400; }
 
 
 /* ════════════════════════════════════════════════════════════════════════
@@ -555,67 +746,14 @@ footer {
 :root[data-theme="aol97"] body { font-size: 13px; }
 :root[data-theme="aol97"] .hero .glyph { filter: drop-shadow(1px 1px 0 rgba(0,0,0,0.35)); }
 :root[data-theme="aol97"] .dot { box-shadow: var(--sunken); }
+:root[data-theme="aol97"] .chrow:hover { background: var(--navy); color: var(--white); }
+:root[data-theme="aol97"] .chrow:hover .chrow-sub, :root[data-theme="aol97"] .chrow:hover .chrow-title,
+:root[data-theme="aol97"] .chrow:hover .chrow-occ { color: var(--white); }
+:root[data-theme="aol97"] .pavatar { box-shadow: var(--raised); text-shadow: none; }
+:root[data-theme="aol97"] .captcha-tile.on { background: #e0e0ff; }
 
-
-/* ── codex · people · alerts ──────────────────────────────────────────
-   Knowledge as a currency: the Codex sheet, the People directory, and the
-   alert banner a `!` broadcast raises. Theme-neutral — variables only. */
-.hud .count { font-weight: 700; }
-.icon-btn.wide { width: auto; padding: 0 6px; gap: 3px; font-size: 12px; }
-.icon-btn .badge { position: static; margin-left: 2px; }
-
-.alert-banner {
-  position: sticky; top: 0; z-index: 9;
-  display: flex; align-items: center; gap: 8px;
-  max-width: var(--max); margin: 0 auto; padding: 8px 10px;
-  background: var(--highlight); color: var(--black);
-  box-shadow: var(--raised); cursor: pointer;
-  font-weight: 700; animation: alert-in 0.25s ease-out;
-}
-.alert-glyph { font-size: 18px; animation: alert-ring 0.9s ease-in-out 3; }
-.alert-text { flex: 1; min-width: 0; }
-.alert-x { background: none; border: none; color: inherit; font: inherit; font-size: 18px; cursor: pointer; padding: 0 4px; }
-@keyframes alert-in { from { transform: translateY(-100%); } to { transform: none; } }
-@keyframes alert-ring { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-18deg); } 75% { transform: rotate(18deg); } }
-.msg.signal.alert .bubble.plain { font-weight: 700; color: var(--black); background: var(--highlight); padding: 2px 6px; }
-
-.sheet.tall { max-height: 88vh; overflow-y: auto; }
-.codex-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 8px 6px; }
-.codex-total { color: var(--muted-ink); font-size: 12px; }
-.codex-redeem { display: flex; gap: 6px; margin: 0 8px 10px; }
-.codex-redeem input { flex: 1; margin: 0; text-transform: uppercase; }
-.codex-redeem .choice { margin: 0; white-space: nowrap; }
-.codex-msg { margin: -4px 8px 8px; font-size: 12px; font-weight: 700; }
-.codex-msg.ok { color: var(--good); }
-.codex-msg.bad { color: var(--bad); }
-.codex-about {
-  margin: 10px 8px 4px; font: 11px var(--ui-font); font-weight: 700;
-  letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted-ink);
-}
-.codex-entry {
-  margin: 0 8px 6px; padding: 6px 8px; background: var(--white);
-  box-shadow: var(--sunken); border-radius: var(--radius); text-align: left;
-}
-.codex-entry-head { display: flex; align-items: center; gap: 6px; }
-.codex-entry-head button.title {
-  flex: 1; background: none; border: none; color: var(--ink); font: inherit; font-weight: 700;
-  text-align: left; cursor: pointer; padding: 0;
-}
-.codex-entry-head .link { margin: 0; font-size: 12px; }
-.codex-text { margin: 6px 0 0; font: 13px/1.45 var(--chat-font); white-space: pre-wrap; }
-.codex-empty { margin: 0 8px 8px; color: var(--muted-ink); font-style: italic; }
-
-.people-row {
-  margin: 0 8px 6px; padding: 6px 8px; background: var(--white);
-  box-shadow: var(--sunken); border-radius: var(--radius);
-}
-.people-top { display: flex; align-items: center; gap: 6px; }
-.people-top .name { flex: 1; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.people-top .choice { margin: 0; padding: 3px 8px; font-size: 12px; }
-.pill.kind { color: var(--muted-ink); }
-.people-known { margin: 4px 0 0; padding: 0; list-style: none; font-size: 12px; }
-.people-known li { color: var(--ink); }
-.people-known li::before { content: "📓 "; }
-.people-unknown { margin: 4px 0 0; font-size: 12px; color: var(--muted-ink); font-style: italic; }
-.choice.pick { display: flex; justify-content: space-between; gap: 8px; text-align: left; }
-.pick-sub { color: var(--muted-ink); font-size: 12px; font-weight: 400; }
+/* "Trabolta is typing…" — an agent-voiced character composing a reply. */
+.typing-note { padding: 4px 14px 6px; font-size: 12px; font-style: italic; color: var(--muted-ink); }
+.typing-note .dots::after { content: "…"; display: inline-block; animation: typing-dots 1.2s steps(4, end) infinite; overflow: hidden; vertical-align: bottom; width: 0; }
+@keyframes typing-dots { to { width: 1.1em; } }
+@media (prefers-reduced-motion: reduce) { .typing-note .dots::after { animation: none; width: auto; } }

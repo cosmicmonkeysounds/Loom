@@ -108,9 +108,11 @@ broadcast "!📣 ALL PROGRAMS: report to the Desktop." to everyone
 
 ## A character with a mind
 
-Mark a character `mind: external` and run the `@loom/mind` bridge with a
-persona file: it reads every guest DM to that character off the mod
-feed, answers in character through a local language model, and nudges
-the character's variables (`set`-style, via the mod API). Your `when`
-rules decide what the numbers mean — the model never decides the plot.
-See the `mind/` package and the *Trapped in the Internet* example.
+Mark a character `mind: external` and run stagehand's `agents` module
+with a persona file. Every message to that character (a guest's DM, or
+a performer's private Cast thread) is sent to the agent, which answers
+in character through a local language model and nudges the character's
+variables. Guests see "… is typing" while it thinks, and "away" when no
+agent is running. Your `when` rules decide what the numbers mean; the
+model never decides the plot. See `stagehand/README.md` and the
+*Trapped in the Internet* example.

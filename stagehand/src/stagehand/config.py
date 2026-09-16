@@ -1,16 +1,12 @@
-"""show.yaml loading + validation.
-
-Shape (see show.example.yaml for a commented copy):
+"""stagehand.yaml loading: the shared `server:` link + one section per module.
 
     server:  { url, event?, mod_token? | mod_passcode? }
-    mqtt:    { host, port?, username?, password?, client_id? }   # optional
-    osc:     { targets: { name: { host, port } } }               # optional
-    cues:    [ CueRule… ]
-    sensors: [ SensorRule… ]
+    show:    { … }     # stagehand.show   — see show.example.yaml
+    agents:  { … }     # stagehand.agents — see agents.example.yaml
 
-Cross-checks happen here so a bad map fails at boot, not mid-show:
-sensor rules need the broker, MQTT cues need the broker, OSC cues need
-targets, and an `osc.to:` name must exist.
+A top-level key that isn't `server` or a registered module is an error
+(a typo'd section would otherwise silently switch a job off). A config
+with no module sections is an error too — there'd be nothing to run.
 """
 
 from __future__ import annotations
@@ -21,52 +17,16 @@ from typing import Any
 
 import yaml
 
-from .cuemap import CueRule, parse_cue_rule
-from .sensormap import SensorRule, parse_sensor_rule
+from .module import REGISTRY, ConfigError, Module, ServerConfig
+
+__all__ = ["ConfigError", "ServerConfig", "StagehandConfig", "load_config", "parse_config"]
 
 
-class ConfigError(ValueError):
-    pass
-
-
-@dataclass(frozen=True)
-class ServerConfig:
-    url: str
-    event: str = "default"
-    mod_token: str | None = None
-    mod_passcode: str | None = None
-
-
-@dataclass(frozen=True)
-class MqttConfig:
-    host: str
-    port: int = 1883
-    username: str | None = None
-    password: str | None = None
-    client_id: str = "stagehand"
-
-
-@dataclass(frozen=True)
+@dataclass
 class StagehandConfig:
     server: ServerConfig
-    mqtt: MqttConfig | None
-    osc_targets: dict[str, tuple[str, int]] = field(default_factory=dict)
-    cues: list[CueRule] = field(default_factory=list)
-    sensors: list[SensorRule] = field(default_factory=list)
-
-    @property
-    def mqtt_filters(self) -> list[str]:
-        seen: dict[str, None] = {}
-        for rule in self.sensors:
-            seen.setdefault(rule.topic.filter)
-        return list(seen)
-
-
-def _require_str(raw: dict, key: str, where: str) -> str:
-    value = raw.get(key)
-    if not isinstance(value, str) or value == "":
-        raise ConfigError(f"{where}: missing '{key}'")
-    return value
+    #: Enabled modules, in file order.
+    modules: dict[str, Module] = field(default_factory=dict)
 
 
 def _opt_str(raw: dict, key: str) -> str | None:
@@ -74,72 +34,54 @@ def _opt_str(raw: dict, key: str) -> str | None:
     return value if isinstance(value, str) and value != "" else None
 
 
-def parse_config(doc: Any) -> StagehandConfig:
-    if not isinstance(doc, dict):
-        raise ConfigError("config must be a YAML mapping")
-
-    raw_server = doc.get("server")
-    if not isinstance(raw_server, dict):
+def parse_server(raw: Any) -> ServerConfig:
+    if not isinstance(raw, dict):
         raise ConfigError("missing 'server:' section")
+    url = raw.get("url")
+    if not isinstance(url, str) or url == "":
+        raise ConfigError("server: missing 'url'")
     server = ServerConfig(
-        url=_require_str(raw_server, "url", "server"),
-        event=raw_server.get("event") or "default",
-        mod_token=_opt_str(raw_server, "mod_token"),
-        mod_passcode=_opt_str(raw_server, "mod_passcode"),
+        url=url,
+        event=str(raw.get("event") or "default"),
+        mod_token=_opt_str(raw, "mod_token"),
+        mod_passcode=_opt_str(raw, "mod_passcode"),
     )
     if server.mod_token is None and server.mod_passcode is None:
-        raise ConfigError("server: needs 'mod_token' or 'mod_passcode' (sensor injection is a mod capability)")
-
-    mqtt: MqttConfig | None = None
-    if (raw_mqtt := doc.get("mqtt")) is not None:
-        if not isinstance(raw_mqtt, dict):
-            raise ConfigError("'mqtt:' must be a mapping")
-        mqtt = MqttConfig(
-            host=_require_str(raw_mqtt, "host", "mqtt"),
-            port=int(raw_mqtt.get("port", 1883)),
-            username=_opt_str(raw_mqtt, "username"),
-            password=_opt_str(raw_mqtt, "password"),
-            client_id=raw_mqtt.get("client_id") or "stagehand",
-        )
-
-    osc_targets: dict[str, tuple[str, int]] = {}
-    if (raw_osc := doc.get("osc")) is not None:
-        if not isinstance(raw_osc, dict) or not isinstance(raw_osc.get("targets"), dict):
-            raise ConfigError("'osc:' must be a mapping with 'targets:'")
-        for name, spec in raw_osc["targets"].items():
-            if not isinstance(spec, dict):
-                raise ConfigError(f"osc.targets.{name}: must be a mapping")
-            osc_targets[str(name)] = (
-                _require_str(spec, "host", f"osc.targets.{name}"),
-                int(spec.get("port", 9000)),
-            )
-
-    cues = [parse_cue_rule(raw, i) for i, raw in enumerate(doc.get("cues") or [])]
-    sensors = [parse_sensor_rule(raw, i) for i, raw in enumerate(doc.get("sensors") or [])]
-
-    # Cross-checks — fail at boot, not mid-show.
-    for rule in cues:
-        if rule.osc is not None:
-            if not osc_targets:
-                raise ConfigError(f"cues[{rule.id}] has an 'osc:' output but no 'osc.targets' are configured")
-            for name in rule.osc.to or ():
-                if name not in osc_targets:
-                    raise ConfigError(f"cues[{rule.id}]: unknown OSC target {name!r}")
-        if rule.mqtt is not None and mqtt is None:
-            raise ConfigError(f"cues[{rule.id}] has an 'mqtt:' output but no 'mqtt:' broker is configured")
-    if sensors and mqtt is None:
-        raise ConfigError("'sensors:' rules need an 'mqtt:' broker")
-
-    return StagehandConfig(server=server, mqtt=mqtt, osc_targets=osc_targets, cues=cues, sensors=sensors)
+        raise ConfigError("server: needs 'mod_token' or 'mod_passcode' (every module acts through the mod API)")
+    return server
 
 
-def load_config(path: str | Path) -> StagehandConfig:
+def parse_config(doc: Any, base_dir: str = ".", only: list[str] | None = None) -> StagehandConfig:
+    if not isinstance(doc, dict):
+        raise ConfigError("config must be a YAML mapping")
+    server = parse_server(doc.get("server"))
+    unknown = [k for k in doc if k != "server" and k not in REGISTRY]
+    if unknown:
+        raise ConfigError(f"unknown section(s) {', '.join(map(repr, unknown))} — modules: {', '.join(REGISTRY)}")
+    if only is not None:
+        for name in only:
+            if name not in REGISTRY:
+                raise ConfigError(f"--only: no module named {name!r}")
+            if name not in doc:
+                raise ConfigError(f"--only {name}: the config has no '{name}:' section")
+    modules: dict[str, Module] = {}
+    for name in doc:
+        if name == "server" or (only is not None and name not in only):
+            continue
+        modules[name] = REGISTRY[name].build(doc[name], base_dir)
+    if not modules:
+        raise ConfigError(f"nothing to run — add a module section ({', '.join(REGISTRY)})")
+    return StagehandConfig(server=server, modules=modules)
+
+
+def load_config(path: str | Path, only: list[str] | None = None) -> StagehandConfig:
+    p = Path(path)
     try:
-        text = Path(path).read_text(encoding="utf-8")
+        text = p.read_text(encoding="utf-8")
     except OSError as err:
         raise ConfigError(f"cannot read {path}: {err}") from err
     try:
         doc = yaml.safe_load(text)
     except yaml.YAMLError as err:
         raise ConfigError(f"bad YAML in {path}: {err}") from err
-    return parse_config(doc)
+    return parse_config(doc, base_dir=str(p.resolve().parent), only=only)

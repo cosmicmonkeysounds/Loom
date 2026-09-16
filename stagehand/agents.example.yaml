@@ -1,0 +1,28 @@
+# loom-stagehand — the agents machine (the laptop running Ollama). Copy to
+# laptop.yaml and edit. This machine runs the `agents` module: it voices
+# every CHARACTER marked `mind: external` that has a persona below.
+#
+#   ollama pull gpt-oss:20b          # once
+#   uv run stagehand ask   --config laptop.yaml            # tune the persona, no server
+#   uv run stagehand check --config laptop.yaml
+#   uv run stagehand run   --config laptop.yaml
+#
+# The laptop only dials out (SSE + POST to the server); nothing dials in.
+
+server:
+  url: http://127.0.0.1:7000   # the live server, e.g. https://party.example.com
+  event: default               # the event id (Run page / URL), or "default"
+  mod_passcode: "CHANGE-ME"    # the event's moderator code
+
+agents:
+  name: laptop                 # how directors see this worker
+  concurrency: 1               # one generation at a time on a laptop GPU
+  llm:
+    endpoint: http://localhost:11434/v1
+    model: gpt-oss:20b
+    reasoning_effort: low      # gpt-oss: low ≈ a few seconds per reply
+    temperature: 0.9
+    max_tokens: 800            # reasoning tokens count against this
+    timeout_s: 90
+  characters:
+    - ../core/examples/trapped-in-the-internet/trabolta.persona.md

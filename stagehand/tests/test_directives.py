@@ -1,4 +1,4 @@
-from stagehand.directives import directive_context, parse_directive, split_top_level
+from stagehand.show.directives import directive_context, parse_directive, split_top_level
 
 
 def test_target_and_kwargs():

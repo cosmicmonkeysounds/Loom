@@ -26,6 +26,15 @@ ROLE Guest
   favour: 0 to 100 = 0
   when knock for guest:
     reply Nobody answers.
+  when riddle for guest:
+    The Gatekeeper: Prove you are not a bot.
+    show captcha "Pick every gate" to guest with target: "gate"
+  when captcha answered for guest:
+    if passed:
+      set guest.favour += 1
+      reply A human. How dull.
+    else:
+      reply Welcome, machine.
 
 CHARACTER The Gatekeeper
   when whisper for guest:
@@ -42,6 +51,10 @@ CHARACTER Warden
 
 INTERACTION knock
   label: Knock
+  who: guest
+
+INTERACTION riddle
+  label: Riddle
   who: guest
 
 INTERACTION whisper
@@ -119,7 +132,7 @@ describe("views carry the story's title, theme, and interactions", () => {
     const g = guestView(sim, "g1");
     expect(g.title).toBe("The Glass Orchard");
     expect(g.theme).toBe("aol97");
-    expect(g.interactions.map((i) => i.id)).toEqual(["knock"]);
+    expect(g.interactions.map((i) => i.id)).toEqual(["knock", "riddle"]);
     expect(g.groups).toEqual([]);
     const p = primeView(sim, "The Gatekeeper");
     expect(p.title).toBe("The Glass Orchard");
@@ -130,7 +143,7 @@ describe("views carry the story's title, theme, and interactions", () => {
     expect(p.legacyCapture).toBe(false);
     const m = modView(sim, "open", "orchard");
     expect(m.title).toBe("The Glass Orchard");
-    expect(m.interactions!.map((i) => i.id)).toEqual(["knock", "whisper", "eject"]);
+    expect(m.interactions!.map((i) => i.id)).toEqual(["knock", "riddle", "whisper", "eject"]);
     // The lobby is named after the story; derived rooms live in the story space.
     expect(sim.channelHead("lobby")).toMatchObject({ title: "The Glass Orchard", spaceId: "story" });
   });
@@ -160,6 +173,46 @@ describe("/api/guest/act", () => {
     const g = await guest(rt);
     expect((await post(rt, "/api/guest/act", { token: g.token, name: "whisper" })).status).toBe(404);
     expect((await post(rt, "/api/guest/act", { token: g.token, name: "nope" })).status).toBe(404);
+  });
+});
+
+describe("/api/guest/widget", () => {
+  async function shown(rt: EventRuntime, token: string, id: string): Promise<number> {
+    expect((await post(rt, "/api/guest/act", { token, name: "riddle" })).status).toBe(200);
+    const card = rt.chatHistoryFor(id).find((m) => m.kind === "widget");
+    expect(card?.widget).toEqual({ kind: "captcha", text: "Pick every gate", params: { target: "gate" } });
+    expect(card?.channel).toBe("dm:The Gatekeeper"); // docked under the character who just spoke
+    expect(card?.audience).toEqual([id]);
+    return card!.seq;
+  }
+
+  it("answers a widget as the `<kind> answered` event with the result as arguments", async () => {
+    const rt = freshRuntime();
+    rt.openDoors();
+    const g = await guest(rt);
+    const seq = await shown(rt, g.token, g.id);
+    const r = await post(rt, "/api/guest/widget", { token: g.token, seq, result: { passed: true, picked: 3 } });
+    expect(r.status).toBe(200);
+    const log = rt.liveSim!.log.all();
+    expect(log.some((e) => e.type === "signal" && e.name === "captcha answered" && e.subject === g.id)).toBe(true);
+    expect(log.some((e) => e.type === "respond" && e.to === g.id && e.text === "A human. How dull.")).toBe(true);
+    // One answer per card per guest.
+    expect((await post(rt, "/api/guest/widget", { token: g.token, seq, result: { passed: false } })).status).toBe(409);
+  });
+
+  it("refuses a card that isn't yours, a bad seq, and a result that names someone", async () => {
+    const rt = freshRuntime();
+    rt.openDoors();
+    const a = await guest(rt, "Ada");
+    const b = await guest(rt, "Bob");
+    const seq = await shown(rt, a.token, a.id);
+    expect((await post(rt, "/api/guest/widget", { token: b.token, seq, result: {} })).status).toBe(404);
+    expect((await post(rt, "/api/guest/widget", { token: a.token, seq: 9999, result: {} })).status).toBe(404);
+    expect((await post(rt, "/api/guest/widget", { token: a.token, seq, result: { who: b.id } })).status).toBe(400);
+    expect((await post(rt, "/api/guest/widget", { token: a.token, seq, result: [1] })).status).toBe(400);
+    // Still unanswered after the refusals.
+    expect((await post(rt, "/api/guest/widget", { token: a.token, seq, result: { passed: false } })).status).toBe(200);
+    expect(rt.liveSim!.log.all().some((e) => e.type === "respond" && e.to === a.id && e.text === "Welcome, machine.")).toBe(true);
   });
 });
 

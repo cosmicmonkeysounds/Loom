@@ -188,6 +188,7 @@ describe('buildRooms with the identity projection (exact)', () => {
       interactions: [],
       legacyCapture: false,
       codex: [],
+      agents: [],
     }
     const rooms = buildRooms({ ...INPUT, perspective: 'Greeter', lens: { kind: 'performer', id: 'Greeter', view } })
     const keys = rooms.map((r) => r.key)

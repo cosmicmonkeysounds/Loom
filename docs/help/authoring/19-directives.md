@@ -2,7 +2,7 @@
 title: Instructions — verbs, cues, and the long form
 section: Language
 order: 19
-keywords: directive, sfx, cue, pause, flash, anchor, fire, set, goal, spawn, run, broadcast, angle brackets, luau, extension, instruction, verb, sound, reply, move, add, remove, reveal, do, long form
+keywords: directive, sfx, cue, pause, flash, anchor, fire, set, goal, spawn, run, broadcast, angle brackets, luau, extension, instruction, verb, sound, reply, move, add, remove, reveal, do, long form, show, widget, captcha
 ---
 
 An **instruction** is a plain lowercase verb at the start of a line —
@@ -38,6 +38,7 @@ set storm = true
 | `fire rally for guest` | …carrying who it's about |
 | `fire alarm with level: 3` | …carrying details (`{level}` in the listening body) |
 | `reply You slip the key into your pocket.` | a private line back to whoever acted |
+| `show captcha "Pick the traffic lights" to guest` | put a card in the conversation — a CAPTCHA, a picture, a poll ([Cards & widgets](widgets.md)) |
 | `move guest to The Cellar` | put a participant somewhere |
 | `add guest to The Gardeners` / `remove guest from The Gardeners` | group membership |
 | `reveal The Society` | make a hidden group public |

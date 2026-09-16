@@ -25,6 +25,35 @@ function play(): { sim: Sim; store: ChatStore } {
   return { sim, store };
 }
 
+describe("chat composition — widgets", () => {
+  const SRC = `# W
+start: Boot
+LOCATION Hall
+  label: The Hall
+ROLE Guest
+  when someone joins:
+    -> Greet
+CHARACTER Host
+== Greet
+  setting: Hall
+Host: Hello.
+show poll "Ready?" to guest
+== Boot
+  setting: Hall
+show image "https://x/poster.png" to everyone with caption: "Tonight"
+`;
+  it("a global widget lands in the setting's room for all; an addressed one docks under the speaker", () => {
+    const sim = Sim.fromSources(SRC);
+    const boot = composeGuestMessages(sim, sim.fireBeat("Boot"));
+    expect(boot).toHaveLength(1);
+    expect(boot[0]).toMatchObject({ kind: "widget", channel: "loc:Hall", audience: "all", text: "https://x/poster.png" });
+    expect(boot[0]!.widget).toEqual({ kind: "image", text: "https://x/poster.png", params: { caption: "Tonight" } });
+    const join = composeGuestMessages(sim, sim.createPerson("g1", "Ada"));
+    const card = join.find((m) => m.kind === "widget");
+    expect(card).toMatchObject({ channel: "dm:Host", audience: ["g1"], text: "Ready?" });
+  });
+});
+
 describe("chat composition — channel routing", () => {
   it("routes a character's line into that character's DM channel", () => {
     const sim = Sim.fromSources(SCENARIO);

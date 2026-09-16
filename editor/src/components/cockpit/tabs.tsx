@@ -99,6 +99,24 @@ function MessageRow({
   )
   const threadIndent = m.parentSeq != null && 'ml-5 border-l border-zinc-800 pl-2'
 
+  if (m.kind === 'widget') {
+    // A `show …` card (a CAPTCHA, a picture, a poll). The cockpit shows what
+    // was dealt, not the playable card — answering is the participant's act.
+    const params = Object.entries(m.widget?.params ?? {})
+      .map(([k, v]) => `${k}: ${v}`)
+      .join(' · ')
+    return (
+      <li onContextMenu={onMenu} className={clsx('group flex items-start gap-2 rounded border border-dashed border-sky-800/60 bg-sky-950/30 px-3 py-1.5', m.hidden && 'opacity-40', threadIndent)}>
+        <span className="shrink-0 pt-px text-[10px] uppercase tracking-widest text-sky-400/90">🧩 {m.widget?.kind ?? 'widget'}</span>
+        <span className="min-w-0 flex-1 break-words text-sm text-zinc-300">
+          {m.text || <span className="italic text-zinc-500">(no text)</span>}
+          {params && <span className="ml-2 text-xs text-zinc-500">{params}</span>}
+        </span>
+        {m.beat ? <BeatLink beat={m.beat} /> : null}
+        {hideBtn}
+      </li>
+    )
+  }
   if (m.kind === 'narration') {
     return (
       <li onContextMenu={onMenu} className={clsx('group flex items-start gap-2 rounded bg-zinc-900/50 px-3 py-1.5', m.hidden && 'opacity-40', threadIndent)}>

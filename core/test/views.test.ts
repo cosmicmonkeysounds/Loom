@@ -69,6 +69,7 @@ describe("server views", () => {
     expect(v.character).toBe("Moderator_Prime");
     expect(v.faction).toBe("Mods");
     expect(v.guests.map((g) => g.id)).toEqual(["g1"]);
+    expect(v.guests[0]).toHaveProperty("location");
   });
 
   it("enumerates operator rooms, the cast, and the beat picker", () => {

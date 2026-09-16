@@ -4,6 +4,7 @@
 //! Discord / Telegram inbox (badges, decision-pulls, last-seen marks).
 
 import { useEffect, useRef, useState } from "react";
+import { roomOrder } from "./presence.ts";
 import type { Channel, ChannelKind, ChatMessage, MessageKind } from "./types.ts";
 
 /** `MODERATOR_PRIME` / `Recruiter` → a friendly contact name. */
@@ -35,15 +36,16 @@ export function channelHead(id: string): { kind: ChannelKind; title: string } {
  *  titled from the channel's `spaceTitle`. */
 export const STORY_SPACE = "story";
 export const SPACES: Record<string, { title: string; order: number }> = {
+  booth: { title: "Booth", order: -1 }, // the performer's tools, pinned on top
   [STORY_SPACE]: { title: "Story", order: 0 },
-  booth: { title: "Booth", order: 10 },
-  guests: { title: "Guests", order: 11 },
+  cast: { title: "Cast", order: 0.5 }, // agent-voiced characters a performer can message
+  guests: { title: "Guests", order: 1 }, // a performer's guests, right under the rooms
 };
 export function spaceTitle(id: string): string {
   return SPACES[id]?.title ?? id;
 }
 function spaceOrder(id: string): number {
-  return SPACES[id]?.order ?? 1; // authored spaces: after the story, before the booth
+  return SPACES[id]?.order ?? 5; // authored spaces: after the story, guests, and cast
 }
 
 export interface SpaceGroup {
@@ -154,8 +156,9 @@ export interface Threads {
 /**
  * Layer unread counts + open/close navigation over a freshly-built channel
  * set. A thread is "unread" when it has messages past the last-seen mark or
- * a pending decision; pending decisions also pin it to the top so an
- * unanswered choice always pulls focus.
+ * a pending decision; the list is ordered by `roomOrder` (where you stand,
+ * decisions, unread, populated rooms, recency) so an unanswered choice
+ * always pulls focus and an empty room never crowds the top.
  */
 export function useThreads(channels: Channel[]): Threads {
   const [readMarks, setReadMarks] = useState<Map<string, number>>(new Map());
@@ -183,10 +186,7 @@ export function useThreads(channels: Channel[]): Threads {
       const fresh = c.messages.filter((m) => m.seq > seen).length;
       return { ...c, unread: c.decision ? Math.max(1, fresh) : fresh };
     })
-    .sort((a, b) => {
-      if (!!a.decision !== !!b.decision) return a.decision ? -1 : 1;
-      return b.lastTs - a.lastTs;
-    });
+    .sort(roomOrder);
 
   return {
     list,

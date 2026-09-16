@@ -1,5 +1,5 @@
 # Trapped in the Internet
-start: Login
+start: Power On
 theme: aol97
 directory: everyone
 
@@ -48,6 +48,14 @@ GROUP The Resident
 // Every LOCATION is also a room in the app. The Desktop is declared
 // first so a released program lands there.
 
+// The story's opening beat: what the house says to nobody in particular
+// when the doors open. Everything personal (the Mud Room) plays per
+// program on arrival, never here — a `start:` beat is heard by every
+// phone and every performer.
+== Power On
+  setting: The Desktop
+The house boots. A screensaver drifts across the TV above the fireplace. Somewhere a modem is waiting to be asked.
+
 LOCATION The Desktop
   label: The Desktop
   ambient: screensaver-hum
@@ -92,6 +100,7 @@ ROLE Program
   doubt: 0 to 100 = 0
   corrupted: bool = false
   reinstalls: 0 to 10 = 0
+  captchas: 0 to 10 = 0
   bingo: bool = false
   afk: bool = false
   turned: bool = false
@@ -99,6 +108,15 @@ ROLE Program
 
   when someone joins:
     -> Login
+
+  // The Mud Room CAPTCHA (`show captcha` in beats/login.loom). Passing it
+  // proves you are human — INCORRECT, once. Anything after that is CORRECT.
+  when captcha answered for program:
+    set program.captchas += 1
+    if passed and program.captchas == 1:
+      -> Login Incorrect
+    else:
+      -> Upload
 
   // Every entry a program learns is a fact Trabolta did not give them.
   when learns for program:

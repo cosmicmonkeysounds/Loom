@@ -24,6 +24,9 @@ export interface ResolvedCode {
   title: string;
   /** The story's `theme:` for the participant client (`plain` when unset). */
   theme: string;
+  /** For a performer / moderator code: the characters a performer may sign
+   *  in as, so the booth offers a picker instead of a blank to spell. */
+  characters?: string[];
 }
 
 /** How to build a runtime the registry hasn't seen yet (for `ensure`). */
@@ -107,8 +110,8 @@ export class EventRegistry {
     if (trimmed === "") return null;
     for (const rt of this.byId.values()) {
       if (passOk(trimmed, rt.codes.event)) return { eventId: rt.eventId, role: "guest", title: rt.title, theme: rt.theme };
-      if (passOk(trimmed, rt.codes.prime)) return { eventId: rt.eventId, role: "prime", title: rt.title, theme: rt.theme };
-      if (passOk(trimmed, rt.codes.mod)) return { eventId: rt.eventId, role: "mod", title: rt.title, theme: rt.theme };
+      if (passOk(trimmed, rt.codes.prime)) return { eventId: rt.eventId, role: "prime", title: rt.title, theme: rt.theme, characters: rt.characterNames };
+      if (passOk(trimmed, rt.codes.mod)) return { eventId: rt.eventId, role: "mod", title: rt.title, theme: rt.theme, characters: rt.characterNames };
     }
     return null;
   }

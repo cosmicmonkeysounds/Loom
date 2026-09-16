@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .directives import directive_context, parse_directive
-from .templating import coerce_scalar, render_text, render_value
+from ..templating import coerce_scalar, render_text, render_value
 
 log = logging.getLogger("stagehand.cuemap")
 

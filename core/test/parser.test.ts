@@ -20,6 +20,13 @@ function divertOf(item: BodyItem): Divert {
 }
 
 describe("parser::parse", () => {
+  it("skips a `# ── file ──` separator heading when picking the title", () => {
+    const [file, diags] = parse("# ── main.loom ──────────\n# Trapped in the Internet\nstart: Login\n");
+    expect(diags).toHaveLength(0);
+    expect(file.header.title).toBe("Trapped in the Internet");
+    expect(file.header.properties.get("start")?.value).toBe("Login");
+  });
+
   it("collects header title and properties", () => {
     const [file, diags] = parse("# Saltmere\nentry: opening\n");
     expect(diags).toHaveLength(0);

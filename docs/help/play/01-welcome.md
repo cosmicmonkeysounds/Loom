@@ -22,12 +22,16 @@ open it again — you'll come back as yourself, history intact.
 
 ## What you're looking at
 
-Your home screen is an inbox of **conversations** — rooms and direct
-messages, grouped into sections. New messages bubble the conversation
-up and mark it unread. The header shows your name, your **group**
-(the side you've joined, once you have one — the story names its own),
-your ⭐ score, and 📍
-where the story thinks you are.
+Your home screen is a list of **rooms** — places, chatrooms, and direct
+messages, grouped into sections, like any chat app. The room you're
+**standing in** sits at the top with a green *you are here* tag; each
+place says who's in it ("just you", "3 here", "empty"). Anything
+waiting on you (a decision, a security check) jumps to the top with a
+yellow tag. On a wide screen the list stays on the left and the open
+room fills the right; on a phone you tap in and use ‹ to come back.
+Your card at the top shows your name, your **group** (the side you've
+joined, once you have one — the story names its own), your ⭐ score, and
+📍 where the story thinks you are.
 
 The green dot means you're **live** — connected to the event. If it
 goes hollow, you've dropped; the app reconnects by itself.

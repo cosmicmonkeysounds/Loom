@@ -5,11 +5,15 @@
 //! plumbing — only their channel-shaping + actions differ.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { crawl } from "./chat.tsx";
 import { ApiError, api, useChatStream } from "./client.ts";
 import { maxSeqOf, pickAlerts, playChime, pmChannelId, pmOtherParty, unlockFromSearch, vibrate, withoutUnlock } from "./codex.ts";
 import { SessionRole, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "./lifecycle.ts";
+import { locationOfRoom, occupantsByLocation, type Presence } from "./presence.ts";
 import { STORY_SPACE, channelHead, groupByChannel, prettyName, useThreads, type Threads } from "./threads.ts";
+import { useTyping } from "./typing.ts";
 import type { Channel, ChatMessage, Decision, GuestView, PrimeView } from "./types.ts";
+import { WIDGETS, type WidgetResult } from "./widgets.tsx";
 
 // --- persistence ------------------------------------------------------------
 
@@ -35,20 +39,41 @@ interface PrimeAuth {
 }
 
 /** What `/api/resolve-code` answers for any valid passcode. */
-interface ResolvedCode {
+export interface ResolvedCode {
   eventId: string;
   role: string;
   title?: string;
+  /** A performer / mod code lists the characters one may sign in as. */
+  characters?: string[];
 }
 
-/** Resolve a passcode to its event's display title (null if unknown/invalid).
- *  Used by the join screens to show what a scanned QR leads into. */
-export async function resolveEventTitle(code: string): Promise<string | null> {
+/** Resolve a passcode (null if unknown/invalid). The join screens use it to
+ *  show what a scanned QR leads into and, for a performer, whom they can be. */
+export async function resolveCode(code: string): Promise<ResolvedCode | null> {
   try {
-    const r = await api<ResolvedCode>("/api/resolve-code", { code });
-    return r.title ?? null;
+    return await api<ResolvedCode>("/api/resolve-code", { code });
   } catch {
     return null;
+  }
+}
+
+/** Resolve a passcode to its event's display title (null if unknown/invalid). */
+export async function resolveEventTitle(code: string): Promise<string | null> {
+  return (await resolveCode(code))?.title ?? null;
+}
+
+/**
+ * Is this token still good? Asked before dropping a session over a closed
+ * stream — a closed `EventSource` is also what a flaky network, a sleeping
+ * phone, or a mid-restart server produces, and none of those should log a
+ * guest out. Only a definite 401 / 403 from the server means dead.
+ */
+async function tokenDead(base: string, role: "guest" | "prime", token: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${base}/api/state?role=${role}`, { headers: { "x-loom-token": token } });
+    return res.status === 401 || res.status === 403;
+  } catch {
+    return false; // no answer at all: the server is away, not the session
   }
 }
 
@@ -165,13 +190,36 @@ export interface Alert {
 /** Group the guest's messages into threads, docking the pending decision, and
  *  merge in authored channels (SPACE/CHANNEL) the guest can see — including
  *  empty rooms — from the server snapshot. */
-function buildGuestChannels(
+export function buildGuestChannels(
   messages: Map<number, ChatMessage>,
   dock: { channel: string; decision: Decision } | null,
   view: GuestView | null,
   opened: ReadonlySet<string> = new Set(),
+  answered: ReadonlySet<number> = new Set(),
 ): Channel[] {
   const groups = groupByChannel(messages);
+  // Who stands where — the sidebar's "3 here" and the room header's strip.
+  const occupants = occupantsByLocation(
+    view?.people ?? [],
+    view ? { id: view.id, name: view.name, group: view.faction, location: view.location } : null,
+  );
+  const everyone: Presence[] = view
+    ? [
+        { id: view.id, name: view.name, kind: "guest", group: view.faction },
+        ...(view.people ?? []).filter((p) => p.kind === "guest").map((p) => ({ id: p.id, name: p.name, kind: "guest" as const, group: p.faction })),
+      ]
+    : [];
+  const presenceOf = (id: string): { here?: boolean; people?: Presence[] } => {
+    const loc = locationOfRoom(id);
+    if (loc !== null) return { here: view?.location === loc, people: occupants.get(loc) ?? [] };
+    if (id.startsWith("dm:")) return { people: [{ id: id.slice(3), name: id.slice(3), kind: "character", group: null }] };
+    if (id === "lobby") return { people: everyone };
+    return {};
+  };
+  // A card still waiting on this guest (an answerable widget with no answer
+  // in this session) pulls its room to the top, like a decision does.
+  const needsYou = (msgs: ChatMessage[]): boolean =>
+    msgs.some((m) => m.kind === "widget" && m.widget !== undefined && (WIDGETS[m.widget.kind]?.answerable ?? false) && !answered.has(m.seq));
   if (!groups.has("lobby")) groups.set("lobby", []); // the lobby is always present
   if (dock && !groups.has(dock.channel)) groups.set(dock.channel, []);
   // Threads the guest opened from the People list (a private message to a
@@ -180,7 +228,10 @@ function buildGuestChannels(
   const spaceTitles = new Map((view?.spaces ?? []).map((s) => [s.id, s.title]));
   const snap = new Map((view?.channels ?? []).map((c) => [c.id, c]));
   for (const id of snap.keys()) if (!groups.has(id)) groups.set(id, []); // empty authored rooms
+  // The story's own section is named after the story, whichever channel
+  // (derived or authored) happens to lead it.
   const storyTitle = view?.title ?? spaceTitles.get(STORY_SPACE);
+  const titleOfSpace = (spaceId: string) => (spaceId === STORY_SPACE ? storyTitle : spaceTitles.get(spaceId));
   return [...groups.entries()].map(([id, msgs]) => {
     const lastTs = msgs.length ? msgs[msgs.length - 1]!.ts : 0;
     const decision = dock && dock.channel === id ? dock.decision : null;
@@ -192,10 +243,12 @@ function buildGuestChannels(
         kind: s.kind as Channel["kind"],
         title: s.title,
         spaceId: s.spaceId,
-        spaceTitle: spaceTitles.get(s.spaceId),
+        spaceTitle: titleOfSpace(s.spaceId),
+        needsYou: needsYou(msgs),
         member: s.member,
         canPost: s.canPost,
         threadable: s.threadable,
+        ...presenceOf(id),
         messages: msgs,
         unread: 0,
         decision,
@@ -218,7 +271,9 @@ function buildGuestChannels(
       subtitle: otherName !== null ? "private" : undefined,
       spaceId: STORY_SPACE,
       spaceTitle: storyTitle,
+      needsYou: needsYou(msgs),
       order: head.kind === "lobby" ? 0 : head.kind === "faction" ? 1 : 2,
+      ...(otherName !== null && other !== null ? { people: [{ id: other, name: otherName, kind: "guest" as const, group: null }] } : presenceOf(id)),
       messages: msgs,
       unread: 0,
       decision,
@@ -231,6 +286,8 @@ export interface GuestSession {
   me: GuestId | null;
   status: GuestView | null;
   connected: boolean;
+  /** The backlog has loaded — the rooms list is real, not a placeholder. */
+  ready: boolean;
   /** Why the last session ended under us (the run restarted / went live /
    *  ended) — shown on the join screen until the guest registers again. */
   notice: string | null;
@@ -257,6 +314,10 @@ export interface GuestSession {
   /** The alert broadcast that just landed, until dismissed. */
   alert: Alert | null;
   dismissAlert: () => void;
+  /** Answer a widget card (a CAPTCHA, a poll) the story showed you. */
+  answerWidget: (seq: number, result: WidgetResult) => Promise<void>;
+  /** Answers given this session, by card seq (the card renders resolved). */
+  widgetAnswers: ReadonlyMap<number, WidgetResult>;
   leave: () => void;
 }
 
@@ -273,6 +334,7 @@ export function useGuestSession(): GuestSession {
     return stored;
   });
   const [status, setStatus] = useState<GuestView | null>(null);
+  const [ready, setReady] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const base = me ? `/e/${encodeURIComponent(me.eventId)}` : "";
   // EventSource can't set headers, so the capability token rides the URL.
@@ -283,22 +345,33 @@ export function useGuestSession(): GuestSession {
     drop(GK);
     setMe(null);
     setStatus(null);
+    setReady(false);
     setNotice(why);
   }, []);
   // Alerts chime only when they arrive live: the history load sets the
   // baseline so a re-login doesn't replay every alarm of the night.
   const alertMark = useRef(-1);
   const [alert, setAlert] = useState<Alert | null>(null);
+  const { typing, onTyping } = useTyping(me !== null ? { role: "guest" } : null);
   const { messages, connected } = useChatStream(url, {
     onSnapshot: (v) => setStatus(v as GuestView),
+    onTyping,
     onHistory: (list) => {
       alertMark.current = Math.max(alertMark.current, maxSeqOf(list));
+      crawl.loaded(maxSeqOf(list)); // the backlog never crawls; only what lands from now on
+      setReady(true);
     },
     onLifecycle: (n) => {
       if (lifecycleDropsSession(n.kind, SessionRole.Guest)) dropSession(lifecycleNotice(n.kind, SessionRole.Guest));
     },
-    // The stream was refused: this token died in a restart we slept through.
-    onDead: () => dropSession(lifecycleNotice("reset", SessionRole.Guest)),
+    // The stream closed for good: if the server really no longer knows this
+    // token (a restart we slept through), drop the session and say why.
+    onDead: () => {
+      if (me === null) return;
+      void tokenDead(base, "guest", me.token).then((dead) => {
+        if (dead) dropSession(lifecycleNotice("reset", SessionRole.Guest));
+      });
+    },
   });
   useEffect(() => {
     const fresh = pickAlerts(messages.values(), alertMark.current);
@@ -352,6 +425,7 @@ export function useGuestSession(): GuestSession {
       { name, passcode: code },
     );
     const m: GuestId = { id: r.id, name: r.name, token: r.token, eventId, title };
+    crawl.reset();
     save(GK, m);
     setMe(m);
     setNotice(null);
@@ -360,6 +434,7 @@ export function useGuestSession(): GuestSession {
     drop(GK);
     setMe(null);
     setStatus(null);
+    setReady(false);
     setNotice(null);
   }, []);
 
@@ -394,9 +469,31 @@ export function useGuestSession(): GuestSession {
     void redeem(code).catch(() => {});
   }, [me, status, redeem]);
 
+  // Widgets: one answer per card. The server refuses a second (409); a
+  // reload shows the card fresh, and the server's memory settles it.
+  const [widgetAnswers, setWidgetAnswers] = useState<ReadonlyMap<number, WidgetResult>>(() => new Map());
+  const answerWidget = useCallback(
+    async (seq: number, result: WidgetResult) => {
+      setWidgetAnswers((prev) => new Map(prev).set(seq, result));
+      try {
+        await post("/api/guest/widget", { seq, result });
+      } catch (e) {
+        if (!(e instanceof ApiError && e.status === 409)) {
+          setWidgetAnswers((prev) => {
+            const next = new Map(prev);
+            next.delete(seq);
+            return next;
+          });
+        }
+        throw e;
+      }
+    },
+    [post],
+  );
+
   const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
   const dock = requiredDecision(status, { choose: (i) => void choose(i), join: (f) => void join(f), escape: () => void escape() });
-  const threads = useThreads(buildGuestChannels(messages, dock, status, opened));
+  const threads = useThreads(withAgents(buildGuestChannels(messages, dock, status, opened, new Set(widgetAnswers.keys())), status, typing));
   const message = useCallback(
     (person: { id: string; kind: "guest" | "character" }) => {
       if (me === null) return;
@@ -413,6 +510,7 @@ export function useGuestSession(): GuestSession {
     me,
     status,
     connected,
+    ready,
     notice,
     threads,
     register,
@@ -429,6 +527,8 @@ export function useGuestSession(): GuestSession {
     message,
     alert,
     dismissAlert,
+    answerWidget,
+    widgetAnswers,
     leave,
   };
 }
@@ -437,8 +537,13 @@ export function useGuestSession(): GuestSession {
 
 /** Build the performer's surfaces: a scanner, the broadcast feed, one
  *  conversation per guest (targeted messages, for moderation). */
-function buildPrimeChannels(messages: Map<number, ChatMessage>, view: PrimeView | null): Channel[] {
+export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: PrimeView | null): Channel[] {
   const all = [...messages.values()];
+  const occupants = occupantsByLocation(view?.guests ?? [], null);
+  const locationLabel = (loc: string | null): string | null => {
+    if (loc === null) return null;
+    return view?.channels.find((c) => c.id === `loc:${loc}`)?.title ?? loc;
+  };
   const scanner: Channel = {
     id: "__scanner",
     kind: "scanner",
@@ -452,6 +557,7 @@ function buildPrimeChannels(messages: Map<number, ChatMessage>, view: PrimeView 
     lastTs: Number.MAX_SAFE_INTEGER, // pinned to the top
   };
   const feedMsgs = all.filter((m) => m.audience === "all").sort((a, b) => a.seq - b.seq);
+  const everyone: Presence[] = (view?.guests ?? []).map((g) => ({ id: g.id, name: g.name, kind: "guest" as const, group: g.faction }));
   const feed: Channel = {
     id: "__feed",
     kind: "lobby",
@@ -460,6 +566,7 @@ function buildPrimeChannels(messages: Map<number, ChatMessage>, view: PrimeView 
     spaceId: STORY_SPACE,
     spaceTitle: view?.title,
     order: 0,
+    people: everyone,
     messages: feedMsgs,
     unread: 0,
     decision: null,
@@ -469,13 +576,15 @@ function buildPrimeChannels(messages: Map<number, ChatMessage>, view: PrimeView 
     const msgs = all
       .filter((m) => Array.isArray(m.audience) && m.audience.includes(g.id))
       .sort((a, b) => a.seq - b.seq);
+    const where = locationLabel(g.location);
     return {
       id: `guest:${g.id}`,
       kind: "guest" as const,
       title: g.name,
-      subtitle: `${g.faction ?? "unaligned"}${g.captured ? " · 🔒 captured" : ""}`,
+      subtitle: `${g.faction ?? "unaligned"}${where ? ` · 📍 ${where}` : ""}${g.captured ? " · 🔒 captured" : ""}`,
       spaceId: "guests", // one section of per-guest conversations
       order: 0,
+      people: [{ id: g.id, name: g.name, kind: "guest" as const, group: g.faction }],
       messages: msgs,
       unread: 0,
       decision: null,
@@ -491,17 +600,59 @@ function buildPrimeChannels(messages: Map<number, ChatMessage>, view: PrimeView 
       kind: c.kind as Channel["kind"],
       title: c.title,
       spaceId: c.spaceId,
-      spaceTitle: spaceTitles.get(c.spaceId),
+      spaceTitle: c.spaceId === STORY_SPACE ? (view?.title ?? spaceTitles.get(c.spaceId)) : spaceTitles.get(c.spaceId),
       member: c.member,
       canPost: c.canPost,
       threadable: c.threadable,
+      ...(locationOfRoom(c.id) !== null ? { people: occupants.get(locationOfRoom(c.id)!) ?? [] } : {}),
       messages: msgs,
       unread: 0,
       decision: null,
       lastTs: msgs.length ? msgs[msgs.length - 1]!.ts : 0,
     };
   });
-  return [scanner, feed, ...rooms, ...guests];
+  // Agent-voiced characters (`mind: external`) the performer can talk to
+  // privately: the agent's `dm:` channel, narrowed to this performer
+  // (audience `@<me>`). The server maps a post to `cast:<id>` onto it.
+  const me = view?.character ?? "";
+  const cast: Channel[] = (view?.agents ?? []).map((a) => {
+    const msgs = all
+      .filter((m) => m.channel === `dm:${a.id}` && Array.isArray(m.audience) && m.audience.includes(`@${me}`))
+      .sort((x, y) => x.seq - y.seq);
+    return {
+      id: `cast:${a.id}`,
+      kind: "dm" as const,
+      title: a.id,
+      subtitle: a.online ? "online" : "away — answers when their agent is back",
+      spaceId: "cast",
+      spaceTitle: "Cast",
+      order: 0,
+      people: [{ id: a.id, name: a.id, kind: "character" as const, group: null }],
+      messages: msgs,
+      unread: 0,
+      decision: null,
+      lastTs: msgs.length ? msgs[msgs.length - 1]!.ts : 0,
+    };
+  });
+  return [scanner, feed, ...rooms, ...cast, ...guests];
+}
+
+/**
+ * Guest-side agent chrome: a DM with an agent-voiced character says whether
+ * anyone is answering, and shows "… is typing" while a reply is composed.
+ */
+export function withAgents(channels: Channel[], view: GuestView | null, typing: ReadonlyMap<string, string>): Channel[] {
+  const agents = new Map((view?.people ?? []).filter((p) => p.agent !== undefined).map((p) => [`dm:${p.id}`, p.agent!]));
+  return channels.map((c) => {
+    const agent = agents.get(c.id);
+    const who = typing.get(c.id);
+    if (agent === undefined && who === undefined) return c;
+    return {
+      ...c,
+      ...(agent !== undefined && c.subtitle === undefined ? { subtitle: agent.online ? "online" : "away — they'll answer when they're back" } : {}),
+      ...(who !== undefined ? { typing: who } : {}),
+    };
+  });
 }
 
 export interface PrimeSession {
@@ -509,6 +660,8 @@ export interface PrimeSession {
   view: PrimeView | null;
   responses: Array<{ id: number; text: string }>;
   connected: boolean;
+  /** The backlog has loaded — the rooms list is real, not a placeholder. */
+  ready: boolean;
   /** Why the last sign-in ended under us (the show went live / the run
    *  ended) — shown on the sign-in screen until the performer signs in again. */
   notice: string | null;
@@ -539,6 +692,7 @@ export function usePrimeSession(): PrimeSession {
   });
   const [view, setView] = useState<PrimeView | null>(null);
   const [responses, setResponses] = useState<Array<{ id: number; text: string }>>([]);
+  const [ready, setReady] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const rid = useRef(0);
   const base = auth ? `/e/${encodeURIComponent(auth.eventId)}` : "";
@@ -551,10 +705,17 @@ export function usePrimeSession(): PrimeSession {
     setAuth(null);
     setView(null);
     setResponses([]);
+    setReady(false);
     setNotice(why);
   }, []);
+  const { typing, onTyping } = useTyping(auth !== null ? { role: "performer", character: auth.character } : null);
   const { messages, connected } = useChatStream(url, {
     onSnapshot: (v) => setView(v as PrimeView),
+    onTyping,
+    onHistory: (list) => {
+      crawl.loaded(maxSeqOf(list));
+      setReady(true);
+    },
     onResponse: (text) => setResponses((r) => [{ id: rid.current++, text }, ...r]),
     // Going live signs every performer out (rehearsal booths must not carry
     // into the show); a reset / reload keeps the character — the server just
@@ -562,8 +723,14 @@ export function usePrimeSession(): PrimeSession {
     onLifecycle: (n) => {
       if (lifecycleDropsSession(n.kind, SessionRole.Performer)) dropBooth(lifecycleNotice(n.kind, SessionRole.Performer));
     },
-    // The stream was refused: this booth's token died while the phone slept.
-    onDead: () => dropBooth(lifecycleNotice("golive", SessionRole.Performer)),
+    // The stream closed for good: confirm the booth's token is really gone
+    // (the show went live while the phone slept) before signing out.
+    onDead: () => {
+      if (auth === null) return;
+      void tokenDead(base, "prime", auth.token).then((dead) => {
+        if (dead) dropBooth(lifecycleNotice("golive", SessionRole.Performer));
+      });
+    },
   });
 
   // Every action is scoped to the event this performer signed into. A 403
@@ -591,6 +758,7 @@ export function usePrimeSession(): PrimeSession {
       { character, passcode },
     );
     const a: PrimeAuth = { token: r.token, character: r.character, admin: !!r.admin, eventId, title };
+    crawl.reset();
     save(PK, a);
     setAuth(a);
     setNotice(null);
@@ -639,10 +807,11 @@ export function usePrimeSession(): PrimeSession {
     setAuth(null);
     setView(null);
     setResponses([]);
+    setReady(false);
     setNotice(null);
   }, []);
 
-  const threads = useThreads(buildPrimeChannels(messages, view));
+  const threads = useThreads(buildPrimeChannels(messages, view).map((c) => (typing.has(c.id) ? { ...c, typing: typing.get(c.id) } : c)));
   useTheme(view?.theme);
-  return { auth, view, responses, connected, notice, threads, login, scan, say, inviteToChannel, leaveChannel, becomeAdmin, act, shareCodex, moderate, setHidden, leave };
+  return { auth, view, responses, connected, ready, notice, threads, login, scan, say, inviteToChannel, leaveChannel, becomeAdmin, act, shareCodex, moderate, setHidden, leave };
 }

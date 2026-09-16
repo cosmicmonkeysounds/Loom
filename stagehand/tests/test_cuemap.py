@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from stagehand.cuemap import (
+from stagehand.show.cuemap import (
     CueMapError,
     MqttCue,
     OscCue,

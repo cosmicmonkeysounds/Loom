@@ -101,6 +101,14 @@ export interface CharDef {
   /** `listed: true` — a character that is a *person at the party*: shown in
    *  the participants directory and messageable. Scanner props are not. */
   listed: boolean;
+  /** `mind: external` — the character is voiced by an outside agent (a
+   *  stagehand agents worker driving a language model). A message to its
+   *  `dm:` thread becomes an agent request instead of waiting for a
+   *  performer. Null when a human (or nobody) voices it. */
+  mind: string | null;
+  /** Declared numeric ranges (`truth: 0 to 100 = 35`) — the bounds an
+   *  agent's variable adjustments are clamped to. */
+  ranges: Map<string, [number, number]>;
 }
 
 /** A compiled `CODEX` entry — a unit of shareable lore (Loom 4 §10.1). */
@@ -543,10 +551,13 @@ function roleDef(id: string, body: CharacterBody): RoleDef {
 
 function charDef(id: string, body: CharacterBody): CharDef {
   const defaults = new Map<string, Value>();
+  const ranges = new Map<string, [number, number]>();
   for (const prop of body.typedProperties) {
     const v = defaultValueOf(prop);
     if (v !== null) defaults.set(prop.name, v);
+    if (prop.slotType?.kind === "range") ranges.set(prop.name, [prop.slotType.lo, prop.slotType.hi]);
   }
+  const mind = body.properties.get("mind")?.value.trim() ?? "";
   return {
     id,
     faction: body.properties.get("faction")?.value ?? null,
@@ -554,6 +565,8 @@ function charDef(id: string, body: CharacterBody): CharDef {
     disposition: body.disposition,
     defaults,
     listed: body.properties.get("listed")?.value.trim() === "true",
+    mind: mind === "" ? null : mind,
+    ranges,
   };
 }
 

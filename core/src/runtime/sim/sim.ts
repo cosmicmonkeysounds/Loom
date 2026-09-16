@@ -75,6 +75,15 @@ interface Trigger {
 }
 
 /** One frame of the explicit executor stack — a body + cursor + scope. */
+/** The room context a statement runs in (the enclosing beat's setting + name). */
+interface RoomContext {
+  setting: string | null;
+  beat: string | null;
+}
+const NO_ROOM: RoomContext = { setting: null, beat: null };
+/** Scope words that mean "the whole room" (mirrors `chat.ts` `globalScope`). */
+const GLOBAL_SCOPES = new Set(["everyone", "all", "story", "internet", "world", "room", "party"]);
+
 interface Frame {
   items: BodyItem[];
   index: number;
@@ -1383,12 +1392,12 @@ export class Sim {
               this.record({ type: "action", text: variant, setting: st ?? null, beat: bt ?? null });
             }
           } else {
-            this.runDirective(item.value.raw, b);
+            this.runDirective(item.value.raw, b, { setting: st ?? null, beat: bt ?? null });
           }
           break;
         }
         case "directiveBlock":
-          this.runDirective(item.value.directive.raw, b);
+          this.runDirective(item.value.directive.raw, b, { setting: st ?? null, beat: bt ?? null });
           stack.push({ items: item.value.body, index: 0, bindings: b, speaker: sp, cast: cs, setting: st, beat: bt });
           break;
         case "conditional":
@@ -1668,9 +1677,12 @@ export class Sim {
   // Directive vocabulary (the effect language)
   // -------------------------------------------------------------------
 
-  private runDirective(raw: string, bindings: Bindings): void {
+  private runDirective(raw: string, bindings: Bindings, ctx: RoomContext = NO_ROOM): void {
     const { verb, rest } = splitDirective(raw);
     switch (verb) {
+      case "show":
+        this.runShow(rest, bindings, ctx);
+        break;
       case "set":
         this.runSet(rest, bindings);
         break;
@@ -1949,6 +1961,42 @@ export class Sim {
     // copy — interpolate it like a line; a bare cue name stays a name.
     const text = /^".*"$/su.test(cue) || /\s/u.test(cue) ? this.interpolate(cue, bindings) : cue;
     this.record({ type: "broadcast", cue: text, audience, scope: scopeText });
+  }
+
+  /**
+   * `show <kind> ["text"] [to scope] [with k: v, …]` (Loom 4 §6): a widget —
+   * a CAPTCHA, a picture, a poll — the participant app renders inline.
+   * Without `to`, it goes to whoever the surrounding text goes to (the
+   * bound subject, else `self`), exactly like `reply`. `to everyone` (any
+   * global scope word) reaches the whole room; a `broadcast`-style scope
+   * (`group(X)`, `location(X)`, `participant(X)`) or a bare bound name /
+   * participant id narrows it.
+   */
+  private runShow(rest: string, bindings: Bindings, ctx: RoomContext): void {
+    let head = rest.trim();
+    const params: Record<string, string> = {};
+    const withIdx = head.indexOf(" with ");
+    if (withIdx >= 0) {
+      const { args, argIds } = this.parseEventArgs(head.slice(withIdx + 6), bindings);
+      for (const [k, v] of args) params[k] = display(v);
+      for (const [k, v] of argIds) params[k] = v;
+      head = head.slice(0, withIdx).trim();
+    }
+    // Split `to scope` after a quoted text (which may itself contain " to ").
+    const quoted = /^(\S+)(?:\s+("(?:[^"\\]|\\.)*"))?(?:\s+to\s+(\S.*))?$/su.exec(head);
+    const kind = quoted?.[1] ?? head.split(/\s+/u)[0] ?? "";
+    const rawText = quoted?.[2] ?? "";
+    const scopeText = quoted?.[3]?.trim() ?? "";
+    const text = rawText === "" ? "" : this.interpolate(rawText.slice(1, -1), bindings);
+    let audience: string[];
+    if (scopeText === "") audience = this.subjectAudience(bindings);
+    else if (GLOBAL_SCOPES.has(scopeText.toLowerCase())) audience = [];
+    else if (/\w+\(.*\)/u.test(scopeText)) audience = this.resolveScope(scopeText, bindings);
+    else {
+      const id = this.resolveId(scopeText, bindings);
+      audience = this.persons.has(id) ? [id] : [];
+    }
+    this.record({ type: "widget", widget: kind, text, params, audience, scope: scopeText, setting: ctx.setting, beat: ctx.beat });
   }
 
   /** Resolve a broadcast scope into a list of person ids. */

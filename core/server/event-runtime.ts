@@ -22,6 +22,7 @@ import { Store, type Mutation } from "./store.ts";
 import { ChatStore, composeGuestMessages, decisionChannelFor, visibleTo, type ChatMessage } from "./chat.ts";
 import { ipOf, queryTokenOf, readBody, sendJson, sseSend, str, tokenOf } from "./http-util.ts";
 import { RateLimiter } from "./rate-limit.ts";
+import { AgentHub, type AgentLine, type AgentRequest, type AgentThread } from "./agents.ts";
 
 /** A guest view is never rendered against a null sim — this stands in. */
 const EMPTY_SIM = Sim.fromSources("");
@@ -44,11 +45,51 @@ interface Client {
  * performer (or an admin) sees a `dm:<character>` thread, and nobody but a
  * mod sees a `pm:`. Knowledge is a currency; the booth can't skim it.
  */
+/**
+ * Sanitise a widget's client-supplied result into event arguments: a flat
+ * bag of short scalars under plain keys. A string that happens to name a
+ * participant or an entity is refused — `Sim.signal` would bind it as that
+ * id, and a phone must not be able to aim a story rule at someone else.
+ */
+export function widgetResultArgs(raw: unknown, sim: Sim): Record<string, string | number | boolean> | null {
+  if (raw === undefined || raw === null) return {};
+  if (typeof raw !== "object" || Array.isArray(raw)) return null;
+  const out: Record<string, string | number | boolean> = {};
+  let n = 0;
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (++n > 16 || !/^[A-Za-z_][A-Za-z0-9_]{0,31}$/u.test(k)) return null;
+    if (typeof v === "boolean" || (typeof v === "number" && Number.isFinite(v))) out[k] = v;
+    else if (typeof v === "string") {
+      if (v.length > 200 || sim.persons.has(v) || sim.model.entityKind.has(v)) return null;
+      out[k] = v;
+    } else return null;
+  }
+  return out;
+}
+
 function visibleToPrime(m: ChatMessage, c: Client): boolean {
   if (c.admin === true) return true;
   if (m.channel.startsWith("pm:")) return false;
-  if (m.channel.startsWith("dm:")) return m.channel === `dm:${c.id}` || m.audience === "all";
+  if (m.channel.startsWith("dm:")) {
+    // Their own character's threads, public lines, and the performer's own
+    // conversation with an agent-voiced character (audience `@<Character>`).
+    return m.channel === `dm:${c.id}` || m.audience === "all" || m.audience.includes(`@${c.id}`);
+  }
   return true;
+}
+
+/** How many thread lines an agent request carries. */
+const AGENT_HISTORY = 30;
+
+/** Parse an agent's variable adjustments: `{name: signed delta}`, numbers only. */
+function agentAdjustments(raw: unknown): Array<[string, number]> {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return [];
+  const out: Array<[string, number]> = [];
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
+    if (Number.isFinite(n) && n !== 0) out.push([k, n]);
+  }
+  return out;
 }
 
 /** The run transitions announced on the `lifecycle` SSE event. */
@@ -121,11 +162,24 @@ export class EventRuntime {
   private actingBy: string | undefined;
   // This event's SSE subscribers.
   private readonly clients = new Set<Client>();
+  /** `<widget seq>:<guest>` pairs already answered — a card is one answer per guest. */
+  private answeredWidgets = new Set<string>();
   // Ephemeral messages already announced as expired (so we notify once).
   private readonly notifiedExpired = new Set<number>();
   // Elapsed sim time not yet written to the journal (coalesced ticks).
   private pendingTickMs = 0;
   private ticker: ReturnType<typeof setInterval> | null = null;
+  // Agent-voiced characters (`mind: external`): open requests + the
+  // stagehand workers answering them. Ephemeral — a restart drops them.
+  private readonly agentStreams = new Set<ServerResponse>();
+  private readonly agents = new AgentHub({
+    build: (thread, id) => this.buildAgentRequest(thread, id),
+    typing: (thread, on) => this.pushTyping(thread, on),
+    presence: () => {
+      this.pushPresence();
+      for (const c of this.clients) if (c.role !== "mod") sseSend(c.res, "snapshot", this.snapshotFor(c));
+    },
+  });
 
   constructor(init: EventRuntimeInit) {
     this.eventId = init.eventId;
@@ -155,6 +209,17 @@ export class EventRuntime {
   /** The participant client's skin: the header `theme:` (default `plain`). */
   get theme(): string {
     return themeOf(this.scenarioSource) ?? "plain";
+  }
+
+  /** A guest's visible chat history (tests + tooling; the SSE `history` frame). */
+  chatHistoryFor(guestId: string): ChatMessage[] {
+    return this.chat.historyFor(guestId, false);
+  }
+
+  /** The declared characters a performer may sign in as (empty until the
+   *  scenario is loaded — a booth can't sign in before the doors open). */
+  get characterNames(): string[] {
+    return this.sim === null ? [] : [...this.sim.model.characters.keys()];
   }
 
   /** How many participants exist in this event's world right now. */
@@ -194,12 +259,13 @@ export class EventRuntime {
         directors.push(c.name ?? "Director");
       }
     }
-    return { guests, primes, mods, directors, owners: this.personaOwners };
+    return { guests, primes, mods, directors, owners: this.personaOwners, agents: new Set(this.agents.onlineCharacters()) };
   }
 
   private snapshotFor(client: Client): unknown {
-    if (client.role === "guest") return guestView(this.reqSim(), client.id, this.decisionChannels.get(client.id) ?? null);
-    if (client.role === "prime") return primeView(this.sim, client.id);
+    const online = new Set(this.agents.onlineCharacters());
+    if (client.role === "guest") return guestView(this.reqSim(), client.id, this.decisionChannels.get(client.id) ?? null, online);
+    if (client.role === "prime") return primeView(this.sim, client.id, online);
     return modView(this.sim, this.phase, this.scenarioName, this.presence());
   }
 
@@ -316,6 +382,159 @@ export class EventRuntime {
     this.pushSnapshots();
   }
 
+  // -- agent-voiced characters ---------------------------------------------
+
+  /** Is `name` a character voiced by an outside agent (`mind: external`)? */
+  private isAgent(name: string): boolean {
+    return this.sim?.model.characters.get(name)?.mind === "external";
+  }
+
+  /** A line just landed in `channel` for `audience` — if that's an agent's
+   *  thread, the agent owes an answer. */
+  private agentHeard(channel: string, audience: string[]): void {
+    if (!channel.startsWith("dm:") || audience.length !== 1) return;
+    const character = channel.slice("dm:".length);
+    if (!this.isAgent(character)) return;
+    this.agents.line({ character, channel, audience });
+  }
+
+  /** Everything a worker needs to answer one thread, read from the live sim. */
+  private buildAgentRequest(thread: AgentThread, id: string): AgentRequest | null {
+    const sim = this.sim;
+    if (sim === null) return null;
+    const who = thread.audience[0]!;
+    const performer = who.startsWith("@") ? who.slice(1) : null;
+    const lines = this.chat
+      .all()
+      .filter((m) => m.channel === thread.channel && m.kind === "line" && !m.hidden && m.audience !== "all" && m.audience.includes(who));
+    const history: AgentLine[] = lines.slice(-AGENT_HISTORY).map((m) => ({
+      seq: m.seq,
+      mine: m.from === thread.character,
+      from: m.from,
+      text: m.text,
+    }));
+    const last = [...history].reverse().find((l) => !l.mine);
+    if (last === undefined) return null; // nothing said to answer
+    const world = sim.worldEntries();
+    const varsOf = (head: string): Record<string, string> => {
+      const out: Record<string, string> = {};
+      for (const w of world) if (w.path.startsWith(`${head}.`)) out[w.path.slice(head.length + 1)] = w.value;
+      return out;
+    };
+    const globals: Record<string, string> = {};
+    for (const w of world) {
+      const head = w.path.split(".")[0]!;
+      if (!sim.persons.has(head) && !sim.model.characters.has(head)) globals[w.path] = w.value;
+    }
+    const codex = (holder: string) => sim.codexFor(holder).map((e) => ({ id: e.id, title: e.title, about: e.about, text: e.text }));
+    const def = sim.model.characters.get(thread.character);
+    const speakerId = performer ?? who;
+    return {
+      id,
+      character: thread.character,
+      thread,
+      speaker:
+        performer !== null
+          ? { kind: "performer", id: performer, name: performer, faction: sim.model.characters.get(performer)?.faction ?? null }
+          : { kind: "guest", id: who, name: sim.persons.get(who)?.name ?? who, faction: sim.publicFactionOf(who) },
+      text: last.text,
+      history,
+      self: {
+        vars: varsOf(thread.character),
+        ranges: Object.fromEntries(def?.ranges ?? []),
+        codex: codex(thread.character),
+      },
+      them: {
+        vars: varsOf(speakerId),
+        codex: codex(speakerId),
+        location: performer === null ? sim.locationOf(who) : null,
+      },
+      world: globals,
+      at: Date.now(),
+    };
+  }
+
+  /** Show / hide "<Character> is typing…" to whoever is in the thread. */
+  private pushTyping(thread: AgentThread, on: boolean): void {
+    const who = thread.audience[0]!;
+    const data = { channel: thread.channel, from: thread.character, on };
+    for (const c of this.clients) {
+      if (c.role === "guest" ? c.id === who : c.role === "prime" ? `@${c.id}` === who || c.admin === true : true) {
+        sseSend(c.res, "typing", { ...data, audience: thread.audience });
+      }
+    }
+  }
+
+  /** `GET /api/agent/stream?characters=A,B&name=laptop` — one worker. */
+  private openAgentStream(req: IncomingMessage, res: ServerResponse, url: URL): void {
+    const wanted = (url.searchParams.get("characters") ?? "")
+      .split(",")
+      .map((c) => c.trim())
+      .filter((c) => c !== "");
+    const known = this.sim === null ? [] : [...this.sim.model.characters.values()].filter((c) => c.mind === "external").map((c) => c.id);
+    // No list → every agent character; a name the story doesn't mark
+    // `mind: external` is still accepted (the story may load later / be
+    // reloaded) and reported back so the worker can warn.
+    const characters = new Set(wanted.length > 0 ? wanted : known);
+    res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" });
+    res.write(":ok\n\n");
+    const worker = {
+      id: randomUUID(),
+      name: url.searchParams.get("name") ?? "agent",
+      characters,
+      send: (event: string, data: unknown) => sseSend(res, event, data),
+    };
+    sseSend(res, "hello", {
+      worker: worker.id,
+      eventId: this.eventId,
+      characters: [...characters],
+      agents: known,
+      unknown: [...characters].filter((c) => !known.includes(c)),
+    });
+    this.agentStreams.add(res);
+    this.agents.attach(worker);
+    const ping = setInterval(() => res.write(":ping\n\n"), 25000);
+    req.on("close", () => {
+      clearInterval(ping);
+      this.agentStreams.delete(res);
+      this.agents.detach(worker.id);
+    });
+  }
+
+  /** `POST /api/agent/reply {id, say?, adjust?: {var: delta}, worker?}`. */
+  private agentReply(res: ServerResponse, body: Record<string, unknown>): void {
+    const settled = this.agents.settle(str(body, "id"), str(body, "worker") || undefined);
+    if (settled === null) {
+      sendJson(res, 410, { error: "no such open request (answered, timed out, or the run restarted)" });
+      return;
+    }
+    const { req, followUp } = settled;
+    const sim = this.sim;
+    if (sim === null) {
+      sendJson(res, 409, { error: "no scenario loaded" });
+      return;
+    }
+    const text = str(body, "say").trim().slice(0, 2000);
+    if (text !== "") {
+      this.fanout(this.commit("say", req.character, req.thread.channel, text, null, req.thread.audience));
+    }
+    // Adjustments move only the character's own declared numeric ranges,
+    // clamped to them. The story's watchers decide what the numbers mean.
+    const ranges = sim.model.characters.get(req.character)?.ranges ?? new Map<string, [number, number]>();
+    const applied: Record<string, number> = {};
+    for (const [name, delta] of agentAdjustments(body["adjust"])) {
+      const range = ranges.get(name);
+      if (range === undefined) continue;
+      const path = `${req.character}.${name}`;
+      const current = Number(sim.worldEntries().find((w) => w.path === path)?.value ?? range[0]);
+      const next = Math.max(range[0], Math.min(range[1], (Number.isFinite(current) ? current : range[0]) + delta));
+      applied[name] = next;
+      this.fanout(this.commit("setVar", path, String(next)));
+    }
+    if (followUp) this.agents.line(req.thread);
+    sendJson(res, 200, { ok: true, said: text !== "", applied });
+  }
+
   // -- persistence (event-sourced journal) ---------------------------------
 
   private flushTick(): void {
@@ -405,6 +624,7 @@ export class EventRuntime {
           this.flushTick();
         }
         this.sweepEphemeral();
+        this.agents.sweep();
       }
     }, 1000);
   }
@@ -485,6 +705,7 @@ export class EventRuntime {
       this.endClients("prime");
     }
     this.stopTicker();
+    this.agents.reset();
     this.sim = null;
     this.scenarioSource = source;
     this.scenarioName = name;
@@ -518,6 +739,14 @@ export class EventRuntime {
       }
     }
     this.clients.clear();
+    for (const w of [...this.agentStreams]) {
+      try {
+        w.end();
+      } catch {
+        /* worker already gone */
+      }
+    }
+    this.agentStreams.clear();
   }
 
   // -- restart recovery ----------------------------------------------------
@@ -662,7 +891,7 @@ export class EventRuntime {
             sendJson(res, 404, { error: "unknown guest" });
             return true;
           }
-          sendJson(res, 200, guestView(this.reqSim(), as, this.decisionChannels.get(as) ?? null));
+          sendJson(res, 200, guestView(this.reqSim(), as, this.decisionChannels.get(as) ?? null, new Set(this.agents.onlineCharacters())));
           return true;
         }
         if (role === "prime") {
@@ -670,7 +899,7 @@ export class EventRuntime {
             sendJson(res, 404, { error: "unknown character" });
             return true;
           }
-          sendJson(res, 200, primeView(this.sim, as));
+          sendJson(res, 200, primeView(this.sim, as, new Set(this.agents.onlineCharacters())));
           return true;
         }
       }
@@ -680,7 +909,7 @@ export class EventRuntime {
           sendJson(res, 401, { error: "not signed in — register first" });
           return true;
         }
-        sendJson(res, 200, guestView(this.reqSim(), gid, this.decisionChannels.get(gid) ?? null));
+        sendJson(res, 200, guestView(this.reqSim(), gid, this.decisionChannels.get(gid) ?? null, new Set(this.agents.onlineCharacters())));
         return true;
       }
       if (role === "prime") {
@@ -689,7 +918,7 @@ export class EventRuntime {
           sendJson(res, 403, { error: "no character — sign in" });
           return true;
         }
-        sendJson(res, 200, primeView(this.sim, character));
+        sendJson(res, 200, primeView(this.sim, character, new Set(this.agents.onlineCharacters())));
         return true;
       }
       if (opts.moderator !== true && !this.sessions.canModerate(token)) {
@@ -723,9 +952,31 @@ export class EventRuntime {
       return true;
     }
 
+    // --- agent workers (stagehand's agents module) ---
+    // A worker voices `mind: external` characters: it holds this stream,
+    // receives `request`s, and answers with `POST /api/agent/reply`. Same
+    // capability as the mod feed — a worker can do nothing a mod can't.
+    if (method === "GET" && path === "/api/agent/stream") {
+      if (opts.moderator !== true && !this.sessions.canModerate(queryTokenOf(req, url))) {
+        sendJson(res, 403, { error: "moderators only" });
+        return true;
+      }
+      this.openAgentStream(req, res, url);
+      return true;
+    }
+
     if (method !== "POST") return false;
 
     const body = await readBody(req);
+
+    if (path === "/api/agent/reply") {
+      if (opts.moderator !== true && !this.sessions.canModerate(tokenOf(req, body))) {
+        sendJson(res, 403, { error: "moderators only" });
+        return true;
+      }
+      this.agentReply(res, body);
+      return true;
+    }
 
     // --- guest / performer / login actions ---
     if (this.handlePost(req, res, path, body)) return true;
@@ -843,6 +1094,38 @@ export class EventRuntime {
         sendJson(res, 200, { ok: true });
         return true;
       }
+      case "/api/guest/widget": {
+        // A guest answered a widget the story showed them (`show …`): the
+        // answer is the named event `<kind> answered` for that guest, with
+        // the widget's result as arguments — so a story handles a CAPTCHA
+        // exactly like any other event (`when captcha answered for program:`).
+        const id = this.requireGuest(req, body, res);
+        if (id === null) return true;
+        if (!open) {
+          sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        const seq = Number(body["seq"]);
+        const m = Number.isInteger(seq) ? this.chat.get(seq) : undefined;
+        if (m === undefined || m.kind !== "widget" || m.widget === undefined || !visibleTo(m, id)) {
+          sendJson(res, 404, { error: "no such widget for you" });
+          return true;
+        }
+        const key = `${seq}:${id}`;
+        if (this.answeredWidgets.has(key)) {
+          sendJson(res, 409, { error: "already answered" });
+          return true;
+        }
+        const args = widgetResultArgs(body["result"], this.sim!);
+        if (args === null) {
+          sendJson(res, 400, { error: "bad widget result" });
+          return true;
+        }
+        this.answeredWidgets.add(key);
+        this.fanout(this.commit("signal", `${m.widget.kind} answered`, id, args));
+        sendJson(res, 200, { ok: true });
+        return true;
+      }
       case "/api/guest/say": {
         const id = this.requireGuest(req, body, res);
         if (id === null) return true;
@@ -871,6 +1154,7 @@ export class EventRuntime {
         }
         const parentSeq = this.sim!.threadableOf(channel) && body["parentSeq"] != null ? Number(body["parentSeq"]) : null;
         this.fanout(this.commit("say", id, channel, text, parentSeq));
+        this.agentHeard(channel, [id]);
         sendJson(res, 200, { ok: true });
         return true;
       }
@@ -1103,9 +1387,20 @@ export class EventRuntime {
           }
           channel = `dm:${character}`;
           audience = [gid];
+        } else if (channel.startsWith("cast:")) {
+          // A performer's conversation with an agent-voiced character: the
+          // agent's `dm:` channel, narrowed to this performer.
+          const target = channel.slice("cast:".length);
+          if (target === character || !this.isAgent(target)) {
+            sendJson(res, 404, { error: "no one to talk to there" });
+            return true;
+          }
+          channel = `dm:${target}`;
+          audience = [`@${character}`];
         }
         const parentSeq = this.sim!.threadableOf(channel) && body["parentSeq"] != null ? Number(body["parentSeq"]) : null;
         this.fanout(this.commit("say", character, channel, text, parentSeq, audience));
+        if (Array.isArray(audience) && audience[0]!.startsWith("@")) this.agentHeard(channel, audience);
         sendJson(res, 200, { ok: true });
         return true;
       }
@@ -1377,6 +1672,9 @@ export class EventRuntime {
         }
         const parentSeq = this.sim.threadableOf(channel) && body["parentSeq"] != null ? Number(body["parentSeq"]) : null;
         this.fanout(this.commit("say", speaker, channel, text, parentSeq, audience), isPerson ? by : undefined);
+        // A director's persona messaging an agent gets an answer, exactly as
+        // the guest would — that's what makes a rehearsal of the bot real.
+        if (isPerson) this.agentHeard(channel, [speaker]);
         sendJson(res, 200, { ok: true });
         return true;
       }

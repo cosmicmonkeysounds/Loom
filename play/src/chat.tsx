@@ -2,8 +2,16 @@
 //! performer apps assemble into their own surfaces. Nothing here knows about
 //! roles or actions; callers feed in `Channel`s and `Decision`s and supply a
 //! footer / moderation hook, so views compose without duplication.
+//!
+//! The shape is the one every chat app trained people on: a **sidebar** of
+//! rooms (grouped, the room you're standing in first, who's in each), and a
+//! **stage** with the open conversation — its header says who is here, its
+//! messages carry an avatar tile + name like Discord, and a decision or a
+//! widget docks right in the flow. Wide screens show both panes; a phone
+//! drills in.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { occupancyLabel } from "./presence.ts";
 import {
   groupRuns,
   prettyName,
@@ -14,6 +22,7 @@ import {
   type SpaceGroup,
 } from "./threads.ts";
 import type { Action, Channel, ChatMessage, Decision } from "./types.ts";
+import { WidgetHost, widgetLabel, type WidgetResult } from "./widgets.tsx";
 
 // --- small shared atoms -----------------------------------------------------
 
@@ -32,10 +41,60 @@ export function colorFor(name: string): string {
   return SN_COLORS[h % SN_COLORS.length]!;
 }
 
+/** `1 guest` / `3 guests`. */
+export function plural(n: number, one: string, many = `${one}s`): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+/** The initial(s) an avatar tile shows for a name. */
+export function initialsOf(name: string): string {
+  const words = prettyName(name).split(" ").filter(Boolean);
+  if (words.length === 0) return "?";
+  if (words.length === 1) return words[0]!.slice(0, 1).toUpperCase();
+  return (words[0]!.slice(0, 1) + words[words.length - 1]!.slice(0, 1)).toUpperCase();
+}
+
+/** A person's avatar tile — coloured from their name, like their screen name. */
+export function PersonAvatar({ name, size = "md", kind }: { name: string; size?: "sm" | "md"; kind?: "guest" | "character" }) {
+  return (
+    <span className={`pavatar ${size} ${kind ?? ""}`} style={{ background: colorFor(name) }} aria-hidden>
+      {initialsOf(name)}
+    </span>
+  );
+}
+
+// --- typewriter policy --------------------------------------------------------
+
+/**
+ * Which lines crawl in like game dialogue: only a line that *arrives* while
+ * you are watching — never the backlog, and never again once it has crawled
+ * (re-opening a room must not replay it). Sessions set `baseline` from the
+ * history frame; the bubble marks a seq done the moment it starts.
+ */
+export const crawl = {
+  baseline: Number.MAX_SAFE_INTEGER,
+  done: new Set<number>(),
+  /** Reset for a new stream (a fresh sign-in). */
+  reset(): void {
+    this.baseline = Number.MAX_SAFE_INTEGER;
+    this.done.clear();
+  },
+  /** The backlog just loaded: everything at or below `maxSeq` is old news. */
+  loaded(maxSeq: number): void {
+    this.baseline = maxSeq;
+  },
+  /** Should this seq crawl now? Claims it if so (one crawl, ever). */
+  claim(seq: number): boolean {
+    if (seq <= this.baseline || this.done.has(seq)) return false;
+    this.done.add(seq);
+    return true;
+  },
+};
+
 /**
  * Reveal `text` one character at a time — the classic RPG dialogue crawl.
- * Only runs when `enabled` (we type just the newest line, not the backlog);
- * honours `prefers-reduced-motion` by showing the full line at once.
+ * Only runs when `enabled` (a line that just landed); honours
+ * `prefers-reduced-motion` by showing the full line at once.
  */
 function useTypewriter(text: string, enabled: boolean): { shown: string; typing: boolean } {
   const [count, setCount] = useState(enabled ? 0 : text.length);
@@ -60,6 +119,24 @@ function useTypewriter(text: string, enabled: boolean): { shown: string; typing:
   return { shown: text.slice(0, count), typing: count < text.length };
 }
 
+/** `(min-width: …)`-style media query as a boolean, live. */
+export function useMediaQuery(query: string): boolean {
+  const get = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(query).matches;
+  const [on, setOn] = useState(get);
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia(query);
+    const h = () => setOn(mq.matches);
+    h();
+    mq.addEventListener("change", h);
+    return () => mq.removeEventListener("change", h);
+  }, [query]);
+  return on;
+}
+
+/** The two-pane breakpoint: sidebar + stage side by side from here up. */
+export const WIDE = "(min-width: 820px)";
+
 /** A participant's (public) group, as a small tag. Colour comes from the
  *  group's name — nothing is keyed to any particular story's sides. */
 export function GroupPill({ group }: { group: string | null }) {
@@ -73,7 +150,7 @@ export function GroupPill({ group }: { group: string | null }) {
 
 export function ConnDot({ connected, label }: { connected: boolean; label: string }) {
   return (
-    <span className="conn">
+    <span className="conn" title={connected ? "connected" : "reconnecting…"}>
       <span className={`dot ${connected ? "on" : ""}`} /> {label}
     </span>
   );
@@ -87,11 +164,12 @@ const GLYPH: Record<Channel["kind"], string> = {
   guest: "",
   scanner: "📷",
   group: "👥",
-  open: "🔓",
+  open: "#",
   private: "🔒",
 };
 
 export function Avatar({ channel }: { channel: Pick<Channel, "kind" | "title"> }) {
+  if (channel.kind === "dm" || channel.kind === "guest") return <PersonAvatar name={channel.title} kind={channel.kind === "guest" ? "guest" : "character"} />;
   const glyph = GLYPH[channel.kind] || channel.title.replace(/[#\s]/g, "").slice(0, 1).toUpperCase();
   return <div className={`avatar ${channel.kind}`}>{glyph}</div>;
 }
@@ -119,7 +197,7 @@ export function DecisionTray({ decision }: { decision: Decision }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return; // don't hijack the composer
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "BUTTON") return; // don't hijack the composer / a widget
       if (e.key === "ArrowDown" || e.key === "ArrowRight") {
         e.preventDefault();
         setCursor((c) => (c + 1) % n);
@@ -168,6 +246,25 @@ export function DecisionTray({ decision }: { decision: Decision }) {
   );
 }
 
+// --- sheets -------------------------------------------------------------------
+
+/** A modal window: caption bar + body. Click outside (or Close) dismisses. */
+export function Sheet({ title, onClose, children, tall }: { title: ReactNode; onClose: () => void; children: ReactNode; tall?: boolean }) {
+  return (
+    <div className="sheet-backdrop" onClick={onClose}>
+      <div className={`sheet ${tall ? "tall" : ""}`} role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
+        <h2>
+          <span>{title}</span>
+          <button className="sheet-x" aria-label="Close" onClick={onClose}>
+            ×
+          </button>
+        </h2>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 /**
  * A modal picker: choose a participant to pull into a channel. Shared by the
  * guest and performer invite affordances.
@@ -184,27 +281,13 @@ export function InviteSheet({
   onClose: () => void;
 }) {
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <h2>{title}</h2>
-        {people.length === 0 && <div className="muted">No one else here yet.</div>}
-        {people.map((p) => (
-          <button
-            key={p.id}
-            className="choice ghost"
-            onClick={() => {
-              onPick(p.id);
-              onClose();
-            }}
-          >
-            {p.name}
-          </button>
-        ))}
-        <button className="link" onClick={onClose}>
-          Close
-        </button>
-      </div>
-    </div>
+    <PickerSheet
+      title={title}
+      items={people.map((p) => ({ id: p.id, label: p.name }))}
+      onPick={onPick}
+      onClose={onClose}
+      empty="No one else here yet."
+    />
   );
 }
 
@@ -214,6 +297,8 @@ export interface PickItem {
   label: string;
   /** A small second line (a group, a kind, a count). */
   sub?: string;
+  /** Show an avatar tile for this row (a person). */
+  avatar?: boolean;
 }
 
 /**
@@ -234,28 +319,23 @@ export function PickerSheet({
   empty?: string;
 }) {
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <h2>{title}</h2>
-        {items.length === 0 && <div className="muted">{empty ?? "Nothing to pick."}</div>}
-        {items.map((it) => (
-          <button
-            key={it.id}
-            className="choice ghost pick"
-            onClick={() => {
-              onPick(it.id);
-              onClose();
-            }}
-          >
-            <span className="pick-label">{it.label}</span>
-            {it.sub && <span className="pick-sub">{it.sub}</span>}
-          </button>
-        ))}
-        <button className="link" onClick={onClose}>
-          Close
+    <Sheet title={title} onClose={onClose} tall={items.length > 8}>
+      {items.length === 0 && <div className="muted pad">{empty ?? "Nothing to pick."}</div>}
+      {items.map((it) => (
+        <button
+          key={it.id}
+          className="choice ghost pick"
+          onClick={() => {
+            onPick(it.id);
+            onClose();
+          }}
+        >
+          {it.avatar && <PersonAvatar name={it.label} size="sm" />}
+          <span className="pick-label">{it.label}</span>
+          {it.sub && <span className="pick-sub">{it.sub}</span>}
         </button>
-      </div>
-    </div>
+      ))}
+    </Sheet>
   );
 }
 
@@ -287,51 +367,91 @@ export function ActionRow({ actions }: { actions: Action[] }) {
   );
 }
 
-// --- channel list -----------------------------------------------------------
+// --- the sidebar (rooms) ------------------------------------------------------
 
 function lastPreview(c: Channel): string {
   const last = c.messages[c.messages.length - 1];
-  if (c.decision) return c.decision.title;
-  if (!last) return "—";
-  return last.kind === "line" ? `${last.from ? `${last.from}: ` : ""}${last.text}` : last.text;
+  if (c.decision) return `▶ ${c.decision.title}`;
+  if (!last) return "";
+  if (last.kind === "widget" && last.widget) return widgetLabel(last.widget);
+  return last.kind === "line" ? `${last.from ? `${prettyName(last.from)}: ` : ""}${last.text}` : last.text;
 }
 
-export function ChannelRow({ channel, onOpen }: { channel: Channel; onOpen: (id: string) => void }) {
+export function ChannelRow({ channel, active, meId, onOpen }: { channel: Channel; active?: boolean; meId?: string | null; onOpen: (id: string) => void }) {
+  const occupancy = occupancyLabel(channel, meId ?? null);
+  const sub = channel.subtitle ?? lastPreview(channel);
+  const quiet = channel.kind === "location" && (channel.people?.length ?? 0) === 0 && channel.messages.length === 0 && !channel.here;
   return (
-    <button className="chrow" onClick={() => onOpen(channel.id)}>
+    <button className={`chrow ${active ? "active" : ""} ${channel.here ? "here" : ""} ${quiet ? "quiet" : ""}`} onClick={() => onOpen(channel.id)} aria-current={active ? "true" : undefined}>
       <Avatar channel={channel} />
       <div className="chrow-body">
         <div className="chrow-top">
           <span className="chrow-title">{channel.title}</span>
+          {channel.here && <span className="here-tag">you are here</span>}
           {channel.decision && <span className="decision-dot">decision</span>}
+          {!channel.decision && channel.needsYou && <span className="decision-dot">your move</span>}
         </div>
-        <div className="chrow-sub">{channel.subtitle ?? lastPreview(channel)}</div>
+        <div className="chrow-sub">
+          {occupancy && <span className="chrow-occ">{occupancy}</span>}
+          {occupancy && sub && <span className="chrow-dot"> · </span>}
+          {sub}
+        </div>
       </div>
       <Badge count={channel.unread} />
     </button>
   );
 }
 
-export function ChannelList({
-  channels,
+/**
+ * The Discord-style channel sidebar: channels folded into ordered space
+ * sections, each with a header. A thin wrapper over `ChannelRow`.
+ */
+export function SpaceList({
+  spaces,
+  activeId,
+  meId,
   onOpen,
   header,
   empty,
 }: {
-  channels: Channel[];
+  spaces: SpaceGroup[];
+  activeId?: string | null;
+  meId?: string | null;
   onOpen: (id: string) => void;
   header?: ReactNode;
   empty?: ReactNode;
 }) {
+  const total = spaces.reduce((n, s) => n + s.channels.length, 0);
   return (
-    <div className="screen">
+    <div className="screen side">
       {header}
       <div className="chlist">
-        {channels.length === 0 && <div className="empty">{empty ?? "No conversations yet."}</div>}
-        {channels.map((c) => (
-          <ChannelRow key={c.id} channel={c} onOpen={onOpen} />
+        {total === 0 && <div className="empty">{empty ?? "No conversations yet."}</div>}
+        {spaces.map((s) => (
+          <div key={s.id} className="space-section">
+            <div className="space-title">{s.title}</div>
+            {s.channels.map((c) => (
+              <ChannelRow key={c.id} channel={c} active={c.id === activeId} meId={meId} onOpen={onOpen} />
+            ))}
+          </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// --- the two-pane shell -------------------------------------------------------
+
+/**
+ * Sidebar + stage. Wide: both, side by side (the stage shows a placeholder
+ * until a room is open). Narrow: the sidebar, or the open room over it.
+ */
+export function Shell({ side, stage, wide, placeholder }: { side: ReactNode; stage: ReactNode | null; wide: boolean; placeholder?: ReactNode }) {
+  if (!wide) return <>{stage ?? side}</>;
+  return (
+    <div className="app wide">
+      <aside className="side-pane">{side}</aside>
+      <section className="stage-pane">{stage ?? <div className="stage-empty">{placeholder ?? "Pick a room."}</div>}</section>
     </div>
   );
 }
@@ -343,6 +463,14 @@ export interface ModerateHook {
   setHidden: (seq: number, hidden: boolean) => void;
 }
 
+/** How a room answers a widget: post the result for a card (by seq). Absent
+ *  → cards are read-only (a performer watching a guest's card). */
+export interface WidgetHook {
+  answer: (seq: number, result: WidgetResult) => void;
+  /** Answers already given this session, by seq. */
+  answered: ReadonlyMap<number, WidgetResult>;
+}
+
 export function MessageBubble({
   msg,
   showChannel,
@@ -350,67 +478,96 @@ export function MessageBubble({
   tuck,
   replies,
   onOpenThread,
-  live,
+  widgets,
+  onPerson,
 }: {
   msg: ChatMessage;
   /** Tag the bubble with its channel (used in the performer's flat view). */
   showChannel?: boolean;
   moderate?: ModerateHook;
-  /** A same-sender continuation line: hide the screen-name banner. */
+  /** A same-sender continuation line: hide the avatar + name banner. */
   tuck?: boolean;
   /** Reply count, when the caller wants a thread affordance on this line. */
   replies?: number;
   onOpenThread?: (rootSeq: number) => void;
-  /** The freshest line in the room — reveal it with the typewriter crawl. */
-  live?: boolean;
+  widgets?: WidgetHook;
+  /** Tapping a sender's name / avatar (a performer opens the guest's card). */
+  onPerson?: (name: string) => void;
 }) {
-  const cls = msg.kind === "line" ? "line" : msg.kind === "system" ? "system" : msg.kind === "signal" ? (msg.alert ? "signal alert" : "signal") : "narration";
+  const cls = msg.kind === "line" ? "line" : msg.kind === "system" ? "system" : msg.kind === "signal" ? (msg.alert ? "signal alert" : "signal") : msg.kind === "widget" ? "widget" : "narration";
   // Only crawl spoken/narrated story text — system + signal notices pop in.
   const crawlable = msg.kind === "line" || msg.kind === "narration";
-  const { shown, typing } = useTypewriter(msg.text, !!live && crawlable);
-  return (
-    <div className={`msg ${cls} ${tuck ? "tuck" : ""} ${msg.hidden ? "hidden" : ""} ${typing ? "typing" : ""}`}>
-      {showChannel && !tuck && <div className="msg-channel">{msg.title}</div>}
-      {msg.kind === "line" ? (
-        <>
-          {!tuck && (
-            <span className="speaker" style={{ color: colorFor(msg.from) }}>
-              {prettyName(msg.from)}
-            </span>
-          )}
-          <span className="bubble">{shown}</span>
-        </>
-      ) : (
+  const [live] = useState(() => crawlable && crawl.claim(msg.seq));
+  const { shown, typing } = useTypewriter(msg.text, live);
+  const modBtn = moderate && (
+    <button
+      className="mod-toggle"
+      title={msg.hidden ? "Restore for guests" : "Hide from guests"}
+      onClick={() => moderate.setHidden(msg.seq, !msg.hidden)}
+    >
+      {msg.hidden ? "🙈 hidden — restore" : "hide"}
+    </button>
+  );
+  if (msg.kind === "widget" && msg.widget) {
+    const answered = widgets?.answered.get(msg.seq) ?? null;
+    return (
+      <div className={`msg widget-msg ${msg.hidden ? "hidden" : ""}`}>
+        {showChannel && <div className="msg-channel">{msg.title}</div>}
+        <WidgetHost card={msg.widget} seed={msg.seq} answered={answered} onAnswer={widgets && !answered ? (r) => widgets.answer(msg.seq, r) : undefined} />
+        {modBtn}
+      </div>
+    );
+  }
+  if (msg.kind !== "line") {
+    return (
+      <div className={`msg ${cls} ${msg.hidden ? "hidden" : ""} ${typing ? "typing" : ""}`}>
+        {showChannel && <div className="msg-channel">{msg.title}</div>}
+        {msg.kind === "narration" && msg.from && msg.from !== "Narrator" && <span className="narrator-tag">{prettyName(msg.from)}</span>}
         <span className="bubble plain">{crawlable ? shown : msg.text}</span>
-      )}
-      {moderate && (
-        <button
-          className="mod-toggle"
-          title={msg.hidden ? "Restore for guests" : "Hide from guests"}
-          onClick={() => moderate.setHidden(msg.seq, !msg.hidden)}
-        >
-          {msg.hidden ? "🙈 hidden — restore" : "hide"}
+        {modBtn}
+      </div>
+    );
+  }
+  const name = prettyName(msg.from);
+  return (
+    <div className={`msg line ${tuck ? "tuck" : ""} ${msg.hidden ? "hidden" : ""} ${typing ? "typing" : ""}`}>
+      {!tuck && (
+        <button type="button" className="msg-avatar" onClick={onPerson ? () => onPerson(msg.from) : undefined} tabIndex={onPerson ? 0 : -1} aria-label={name}>
+          <PersonAvatar name={msg.from} />
         </button>
       )}
-      {onOpenThread && msg.kind === "line" && (
-        <button
-          className={`replies ${replies ? "has" : ""}`}
-          onClick={() => onOpenThread(msg.seq)}
-          title={replies ? `${replies} ${replies === 1 ? "reply" : "replies"}` : "Reply in thread"}
-          aria-label={replies ? `${replies} replies` : "Reply in thread"}
-        >
-          <span className="reply-ico">💬</span>
-          {replies && replies > 0 ? <span className="reply-n">{replies}</span> : null}
-        </button>
-      )}
+      <div className="msg-body">
+        {!tuck && (
+          <div className="msg-head">
+            {showChannel && <span className="msg-channel">{msg.title}</span>}
+            <button type="button" className="speaker" style={{ color: colorFor(msg.from) }} onClick={onPerson ? () => onPerson(msg.from) : undefined} tabIndex={onPerson ? 0 : -1}>
+              {name}
+            </button>
+            {msg.via && <span className="via">via {msg.via}</span>}
+          </div>
+        )}
+        <span className="bubble">{shown}</span>
+        {modBtn}
+        {onOpenThread && (
+          <button
+            className={`replies ${replies ? "has" : ""}`}
+            onClick={() => onOpenThread(msg.seq)}
+            title={replies ? `${replies} ${replies === 1 ? "reply" : "replies"}` : "Reply in thread"}
+            aria-label={replies ? `${replies} replies` : "Reply in thread"}
+          >
+            <span className="reply-ico">💬</span>
+            {replies && replies > 0 ? <span className="reply-n">{replies}</span> : null}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
 /**
- * One Slack/Discord sender-run: a banner (the colored screen name) shown once,
- * with each subsequent same-sender line tucked under it. Non-`line` runs
- * (narration / system / signal) are single standalone messages.
+ * One Slack/Discord sender-run: an avatar + name shown once, with each
+ * subsequent same-sender line tucked under it. Non-`line` runs (narration /
+ * system / signal / widget) are single standalone messages.
  */
 export function MessageGroup({
   run,
@@ -418,7 +575,8 @@ export function MessageGroup({
   showChannel,
   moderate,
   onOpenThread,
-  liveSeq,
+  widgets,
+  onPerson,
 }: {
   run: MessageRun;
   /** The full channel history, so each root can show its reply count. */
@@ -426,18 +584,11 @@ export function MessageGroup({
   showChannel?: boolean;
   moderate?: ModerateHook;
   onOpenThread?: (rootSeq: number) => void;
-  /** Seq of the freshest line in the room — gets the typewriter crawl. */
-  liveSeq?: number;
+  widgets?: WidgetHook;
+  onPerson?: (name: string) => void;
 }) {
   if (run.kind !== "line") {
-    return (
-      <MessageBubble
-        msg={run.messages[0]!}
-        showChannel={showChannel}
-        moderate={moderate}
-        live={run.messages[0]!.seq === liveSeq}
-      />
-    );
+    return <MessageBubble msg={run.messages[0]!} showChannel={showChannel} moderate={moderate} widgets={widgets} />;
   }
   return (
     <div className="run">
@@ -450,7 +601,7 @@ export function MessageGroup({
           moderate={moderate}
           onOpenThread={onOpenThread}
           replies={onOpenThread ? replyCountFor(allMessages, m.seq) : undefined}
-          live={m.seq === liveSeq}
+          onPerson={onPerson}
         />
       ))}
     </div>
@@ -462,11 +613,17 @@ export function MessageList({
   showChannel,
   moderate,
   onOpenThread,
+  widgets,
+  onPerson,
+  empty,
 }: {
   messages: ChatMessage[];
   showChannel?: boolean;
   moderate?: ModerateHook;
   onOpenThread?: (rootSeq: number) => void;
+  widgets?: WidgetHook;
+  onPerson?: (name: string) => void;
+  empty?: ReactNode;
 }) {
   const end = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -476,10 +633,9 @@ export function MessageList({
   // thread panel. Consecutive same-sender lines coalesce into one banner.
   const roots = rootsOf(messages);
   const runs = groupRuns(roots);
-  // The last root is the freshest line — it crawls in like game dialogue.
-  const liveSeq = roots.length ? roots[roots.length - 1]!.seq : undefined;
   return (
     <div className="thread">
+      {runs.length === 0 && <div className="thread-empty">{empty ?? "Nothing here yet."}</div>}
       {runs.map((run) => (
         <MessageGroup
           key={run.messages[0]!.seq}
@@ -488,7 +644,8 @@ export function MessageList({
           showChannel={showChannel}
           moderate={moderate}
           onOpenThread={onOpenThread}
-          liveSeq={liveSeq}
+          widgets={widgets}
+          onPerson={onPerson}
         />
       ))}
       <div ref={end} />
@@ -497,9 +654,9 @@ export function MessageList({
 }
 
 /**
- * A roomy auto-growing text box + Send button (AOL skin). Used in channels +
- * thread replies. Grows with what you type (up to a cap) so you can always see
- * the whole message — Enter sends, Shift+Enter drops a newline.
+ * A roomy auto-growing text box + Send button. Used in channels + thread
+ * replies. Grows with what you type (up to a cap) so you can always see the
+ * whole message — Enter sends, Shift+Enter drops a newline.
  */
 export function Composer({
   onSend,
@@ -549,9 +706,29 @@ export function Composer({
   );
 }
 
+/** The "who's here" strip in a room header: a few avatar tiles + a count. */
+export function PresenceStrip({ people, meId, onOpen }: { people: Channel["people"]; meId: string | null; onOpen: () => void }) {
+  const list = people ?? [];
+  const shown = list.slice(0, 4);
+  return (
+    <button type="button" className="presence" onClick={onOpen} title="Who's here" aria-label={`${list.length} here`}>
+      <span className="presence-stack">
+        {shown.map((p) => (
+          <PersonAvatar key={p.id} name={p.name} size="sm" kind={p.kind} />
+        ))}
+      </span>
+      <span className="presence-n">
+        👥 {list.length}
+        {list.some((p) => p.id === meId) ? " · you" : ""}
+      </span>
+    </button>
+  );
+}
+
 /**
- * One open conversation: a back-button header, the message stream, and a
- * caller-supplied footer (a decision tray, a scanner, moderation actions…).
+ * One open conversation: a header (back on phones, the room, who's here),
+ * the message stream, and a caller-supplied footer (a decision tray, a
+ * scanner, moderation actions…).
  */
 export function ChannelView({
   channel,
@@ -561,6 +738,12 @@ export function ChannelView({
   showChannel,
   onSend,
   onOpenThread,
+  widgets,
+  meId,
+  onPeople,
+  onPerson,
+  headerActions,
+  wide,
 }: {
   channel: Channel;
   onBack: () => void;
@@ -571,22 +754,51 @@ export function ChannelView({
   onSend?: (text: string, parentSeq?: number) => void;
   /** When present, line messages expose a Slack-style "reply" affordance. */
   onOpenThread?: (rootSeq: number) => void;
+  widgets?: WidgetHook;
+  meId?: string | null;
+  /** Open the room's people list. */
+  onPeople?: () => void;
+  /** Tapping a sender (a performer opens the guest's card). */
+  onPerson?: (name: string) => void;
+  /** Small buttons on the right of the header (scan, invite, …). */
+  headerActions?: ReactNode;
+  /** Wide layout: no back button (the sidebar is beside us). */
+  wide?: boolean;
 }) {
   // Channel-type rules: a read-only channel hides the composer; a
   // non-threadable channel hides the reply affordance. (Derived channels omit
   // both flags → open + threadable.)
   const canPost = channel.canPost !== false;
   const threadable = channel.threadable !== false;
+  const people = channel.people ?? [];
+  const isRoom = channel.kind !== "dm" && channel.kind !== "guest";
+  const emptyCopy =
+    channel.kind === "location"
+      ? channel.here
+        ? "You're here. Nothing has happened in this room yet."
+        : "Nothing has happened here yet. You'd hear it if you were standing here."
+      : channel.kind === "dm"
+        ? `No messages with ${channel.title} yet.`
+        : "Nothing here yet.";
   return (
-    <div className="screen">
+    <div className="screen stage">
       <header className="thread-head">
-        <button className="back" onClick={onBack}>
-          ‹
-        </button>
+        {!wide && (
+          <button className="back" onClick={onBack} aria-label="Back">
+            ‹
+          </button>
+        )}
         <Avatar channel={channel} />
         <div className="thread-id">
-          <strong>{channel.title}</strong>
+          <strong>
+            {channel.title}
+            {channel.here && <span className="here-tag">you are here</span>}
+          </strong>
           {channel.subtitle && <span className="muted">{channel.subtitle}</span>}
+        </div>
+        <div className="head-right">
+          {headerActions}
+          {isRoom && onPeople && <PresenceStrip people={people} meId={meId ?? null} onOpen={onPeople} />}
         </div>
       </header>
       <MessageList
@@ -594,12 +806,25 @@ export function ChannelView({
         showChannel={showChannel}
         moderate={moderate}
         onOpenThread={threadable ? onOpenThread : undefined}
+        widgets={widgets}
+        onPerson={onPerson}
+        empty={emptyCopy}
       />
-      {(footer || channel.decision || (onSend && canPost)) && (
+      {channel.typing && (
+        <div className="typing-note" aria-live="polite">
+          {channel.typing} is typing<span className="dots" />
+        </div>
+      )}
+      {(footer || channel.decision || onSend) && (
         <footer>
           {channel.decision && <DecisionTray decision={channel.decision} />}
           {footer}
           {onSend && canPost && <Composer onSend={(t) => onSend(t)} placeholder={`Message ${channel.title}…`} />}
+          {onSend && !canPost && (
+            <div className="cant-post">
+              {channel.kind === "location" ? "You're not in this room — walk there to talk here." : "This room is read-only."}
+            </div>
+          )}
         </footer>
       )}
     </div>
@@ -630,15 +855,15 @@ export function MessageThread({
     end.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [replies.length]);
   return (
-    <div className="screen">
+    <div className="screen stage">
       <header className="thread-head">
-        <button className="back" onClick={onClose}>
+        <button className="back" onClick={onClose} aria-label="Back to the room">
           ‹
         </button>
         <div className="avatar dm">💬</div>
         <div className="thread-id">
           <strong>Thread</strong>
-          <span className="muted">{channel.title}</span>
+          <span className="muted">in {channel.title}</span>
         </div>
       </header>
       <div className="thread">
@@ -656,40 +881,6 @@ export function MessageThread({
           <Composer onSend={(t) => onSend(t, rootSeq)} placeholder="Reply…" />
         </footer>
       )}
-    </div>
-  );
-}
-
-/**
- * The Discord-style channel sidebar: channels folded into ordered space
- * sections, each with a header. A thin wrapper over `ChannelRow`.
- */
-export function SpaceList({
-  spaces,
-  onOpen,
-  header,
-  empty,
-}: {
-  spaces: SpaceGroup[];
-  onOpen: (id: string) => void;
-  header?: ReactNode;
-  empty?: ReactNode;
-}) {
-  const total = spaces.reduce((n, s) => n + s.channels.length, 0);
-  return (
-    <div className="screen">
-      {header}
-      <div className="chlist">
-        {total === 0 && <div className="empty">{empty ?? "No conversations yet."}</div>}
-        {spaces.map((s) => (
-          <div key={s.id} className="space-section">
-            <div className="space-title">{s.title}</div>
-            {s.channels.map((c) => (
-              <ChannelRow key={c.id} channel={c} onOpen={onOpen} />
-            ))}
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

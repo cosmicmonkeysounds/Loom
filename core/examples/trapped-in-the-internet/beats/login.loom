@@ -2,7 +2,16 @@
 // in the dark. The CAPTCHA you must fail. The thing you leave behind.
 // This is the moment a human uploads and chooses what kind of program
 // to be. It plays to each program on their own phone the moment they
-// register (ROLE Program: `when someone joins`).
+// register (ROLE Program: `when someone joins`) — and to nobody else:
+// the story's `start:` beat is `Power On`, not this.
+//
+// The CAPTCHA is a real one on the phone (`show captcha …`): a grid of
+// squares, pick the traffic lights, VERIFY. Solving it proves you are a
+// human, and humans are not permitted — so the first correct answer is
+// INCORRECT (+10 humanity) and the grid comes back; the second answer,
+// right or wrong, is CORRECT. Failing it straight away is CORRECT too,
+// suspiciously quick, +5 doubt. The routing is `when captcha answered
+// for program:` in main.loom.
 
 == Login
   setting: The Mud Room
@@ -10,15 +19,27 @@
 
 The Uploader: Welcome to the computer. It is dark because you have no eyes yet. Stand still.
 The Uploader: SECURITY CHECK. Select every square that contains a traffic light.
-* I am a human.
-  The Uploader: INCORRECT. Humans are not permitted in the computer. You are not a human. Try again.
-  set program.humanity += 10
-  The Uploader: SECURITY CHECK. Select every square that contains a traffic light.
-  * I am not a human. I am a program.
-    The Uploader: CORRECT.
-* I am not a human. I am a program.
+show captcha "Select every square that contains a traffic light" to program with target: "traffic light"
+
+// The human passed the CAPTCHA. Wrong answer.
+== Login Incorrect
+  setting: The Mud Room
+  cast: The Uploader
+
+The Uploader: INCORRECT. Humans are not permitted in the computer. You are not a human. Try again.
+set program.humanity += 10
+The Uploader: SECURITY CHECK. Select every square that contains a traffic light.
+show captcha "Select every square that contains a traffic light" to program with target: "traffic light"
+
+== Upload
+  setting: The Mud Room
+  cast: The Uploader
+
+if program.captchas == 1:
   The Uploader: CORRECT. Suspiciously quick. Noted.
   set program.doubt += 5
+else:
+  The Uploader: CORRECT.
 
 The Uploader: To complete the upload you must leave one thing behind. Choose.
 * My name.

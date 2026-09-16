@@ -11,7 +11,9 @@ import type { ProjectSummary } from '@/lib/api'
 import { ShareDialog } from './ShareDialog'
 
 const TEMPLATES = [
-  { id: 'escape-the-internet', label: 'Escape the Internet (example)' },
+  { id: 'trapped-in-the-internet', label: 'Trapped in the Internet (example)' },
+  { id: 'glass-orchard', label: 'The Glass Orchard (example)' },
+  { id: 'escape-the-internet', label: 'Escape the Internet (legacy example)' },
   { id: 'blank', label: 'Blank project' },
 ]
 

@@ -1,6 +1,6 @@
 import pytest
 
-from stagehand.topics import TopicError, parse_topic_pattern
+from stagehand.show.topics import TopicError, parse_topic_pattern
 
 
 def test_literal_match():

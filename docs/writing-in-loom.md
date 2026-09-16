@@ -1380,6 +1380,32 @@ is a beveled 1997 chat-room look — the one an earlier party was built
 around. Whatever you pick, the lobby is named after the story, and a
 guest's group tag takes its colour from the group's name.
 
+### 11.12a Cards in the conversation: `show`
+
+Text is not the only thing a phone can hold. `show` deals a **card** —
+a CAPTCHA grid, a picture, a poll — into the conversation, addressed
+exactly like `reply` (to the bound participant) or like `broadcast`
+(`to everyone`, `to group(X)`):
+
+```loom
+The Uploader: SECURITY CHECK. Select every square that contains a traffic light.
+show captcha "Select every square that contains a traffic light" to program with target: "traffic light"
+```
+
+A card that asks something answers as the named event `<kind> answered`
+for that guest, with the result bound as arguments (`passed`, `picked`
+for a CAPTCHA; `choice` for a poll), so the story reacts with an
+ordinary `when`:
+
+```loom
+when captcha answered for program:
+  if passed:
+    The Uploader: INCORRECT. Humans are not permitted in the computer.
+```
+
+The card lands where a choice would: in the thread of the character who
+just spoke to that guest, else the beat's `setting:` room.
+
 ### 11.13 Knowledge as a currency: the Codex
 
 Some shows run on what the guests *know*. Declare a piece of lore with

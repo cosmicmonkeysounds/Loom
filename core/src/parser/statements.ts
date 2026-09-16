@@ -40,6 +40,9 @@ const NAME_WORDS = /^[A-Za-z_][A-Za-z0-9_.'\-]*(\s+[A-Z][A-Za-z0-9_.'\-]*)*$/u;
 const HAS_BAR = /\|/u;
 /** `unlock The Sandy File for guest` — a codex entry for a holder. */
 const UNLOCK = /^.+\s+for\s+\S+$/u;
+/** `show captcha`, `show image "…" to everyone`, `show poll "…" to program with a: 1` —
+ *  a lowercase widget kind, an optional quoted text, `to scope`, `with args`. */
+const SHOW = /^[a-z][a-z0-9_-]*(\s+"(?:[^"\\]|\\.)*")?(\s+to\s+\S.*?)?(\s+with\s+\S.*)?$/u;
 
 /**
  * Every statement verb with the shape that tells it from prose. Multi-word
@@ -71,6 +74,7 @@ export const STATEMENTS: ReadonlyArray<[verb: string, shape: Shape]> = [
   ["broadcast", { kind: "args", test: SCOPED }],
   ["reply", { kind: "args", rename: "respond" }],
   ["respond", { kind: "args" }],
+  ["show", { kind: "args", test: SHOW }],
   // World.
   ["move", { kind: "args", test: TO }],
   ["add", { kind: "args", test: TO }],

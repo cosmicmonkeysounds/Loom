@@ -264,6 +264,7 @@ anchor the_bell_rings
 | `fire name [with k: v]` | raise a named event | `<fire:>` |
 | `broadcast cue to scope` | send a cue to an audience | `<broadcast:>` |
 | `reply text` | private line back to whoever acted | `<respond:>` |
+| `show kind ["text"] [to scope] [with k: v]` | deal a card (CAPTCHA / picture / poll) into the conversation; answered as the named event `<kind> answered` with the result as arguments | — |
 | `move who to Place` | put a participant somewhere | `arrive` / `<capture:>` |
 | `add who to Group` / `remove who from Group` | group membership | `<join:>` `<defect:>` `<enroll:>` |
 | `reveal Group` | make a hidden group public | `<reveal:>` |
@@ -532,10 +533,11 @@ shares *to* a character and its `when who learns X:` hooks run (check
 stance. The app's People directory shows, under each person, exactly the
 entries about them the viewer holds.
 
-`mind: external` on a character marks it as voiced by the `@loom/mind`
-bridge — a local language model that answers the character's DMs and
-adjusts its variables through the mod API. The story's watchers decide
-what the numbers mean.
+`mind: external` on a character marks it as voiced by an agent (stagehand's
+`agents` module running a local language model). The server turns every
+conversation with the character into an agent request, then commits the
+reply and clamps the variable adjustments to their declared ranges. The
+story's watchers decide what the numbers mean.
 - **Improv** parentheticals, `COHORT`, `PERSON`, `ROSTER`, `cast`, and
   `SCENE` / `GENERATOR` coroutines are as in v3 §13 / §10.5.
 
@@ -556,6 +558,8 @@ The `play` client is a **generic participant client**. Nothing about
 | a `prison: true` location (v3) | the legacy capture / release buttons — only then; `sealed: true` hides the guest's self-escape |
 | `CODEX` entries · `listed: true` characters · `directory: everyone` | the **📓 Codex** sheet (entries by subject, a code box, Share…) and the **👥 People** directory (names + what you know of each, 💬 Message) |
 | `broadcast "!…" to …` | an alert: chime + vibration + banner |
+| `show captcha / image / poll …` | a **card** in the conversation (`play/src/widgets.tsx` is the registry); an answer posts `/api/guest/widget {seq, result}` and the story hears `when <kind> answered for guest:` |
+| `LOCATION`s + each guest's location | **presence**: the sidebar puts the room you stand in first ("you are here"), shows who is in every place, and a room header's 👥 opens the people in it (`GuestView.people[].location`, `PrimeView.guests[].location`) |
 
 Every view (`GuestView`, `PrimeView`, `ModView`, `ResolvedCode`) carries
 `title`, `theme`, and the interactions its role may fire; the derived

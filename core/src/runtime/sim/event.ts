@@ -36,6 +36,7 @@ export const SimEventType = {
   BeatEntered: "beatEntered",
   ChoicePrompted: "choicePrompted",
   Respond: "respond",
+  Widget: "widget",
   Signal: "signal",
   CodexUnlocked: "codexUnlocked",
   CodexMissed: "codexMissed",
@@ -86,6 +87,12 @@ export type SimEvent =
   | { type: "beatEntered"; beat: string; setting: string | null; subject: string | null }
   | { type: "choicePrompted"; person: string | null; promptId: string; options: string[] }
   | { type: "respond"; to: string; text: string }
+  // `show <kind> ["text"] [to scope] [with k: v]` — a widget (a game, a
+  // picture, a form) the participant app renders in the conversation.
+  // `audience` + `scope` mirror `broadcast` (empty audience with a global
+  // scope = everyone); `setting` + `beat` mirror `dialogue` so the card
+  // lands in the same room as the lines around it.
+  | { type: "widget"; widget: string; text: string; params: Record<string, string>; audience: string[]; scope: string; setting: string | null; beat: string | null }
   | { type: "signal"; name: string; subject: string | null }
   // A codex entry landed in a holder's hands (a person or a character):
   // redeemed from a code, handed over by the story / an operator, or shared

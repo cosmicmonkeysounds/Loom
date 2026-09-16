@@ -31,10 +31,22 @@ export interface PersonCard {
   /** What the viewer knows about them: the codex entries they hold whose
    *  `about:` is this person. Limited info unless more has been shared. */
   known: CodexEntryView[];
+  /** Where they are standing (a guest's location; null for a character or
+   *  before the story places them) — what lets the app show who's *here*. */
+  location: string | null;
+  /** A character voiced by an agent (`mind: external`); `online` says whether
+   *  one is answering right now. Absent for guests and performed characters. */
+  agent?: { online: boolean };
 }
 
-function peopleFor(sim: Sim, id: string): PersonCard[] {
-  return sim.peopleFor(id).map((p) => ({ ...p, known: p.known.map(codexEntry) }));
+function peopleFor(sim: Sim, id: string, agentsOnline?: ReadonlySet<string>): PersonCard[] {
+  return sim.peopleFor(id).map((p) => {
+    const card: PersonCard = { ...p, known: p.known.map(codexEntry), location: p.kind === "guest" ? sim.locationOf(p.id) : null };
+    if (p.kind === "character" && sim.model.characters.get(p.id)?.mind === "external") {
+      card.agent = { online: agentsOnline?.has(p.id) ?? false };
+    }
+    return card;
+  });
 }
 
 /**
@@ -145,7 +157,7 @@ export interface GuestView {
   people: PersonCard[];
 }
 
-export function guestView(sim: Sim, id: string, decisionChannel: string | null = null): GuestView {
+export function guestView(sim: Sim, id: string, decisionChannel: string | null = null, agentsOnline?: ReadonlySet<string>): GuestView {
   const p = sim.persons.get(id);
   const pendingChoice = sim.pendingChoiceFor(id);
   return {
@@ -172,7 +184,7 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     interactions: interactionsFor(sim, ["guest"]),
     codex: sim.codexFor(id).map(codexEntry),
     codexTotal: sim.model.codex.size,
-    people: peopleFor(sim, id),
+    people: peopleFor(sim, id, agentsOnline),
   };
 }
 
@@ -247,6 +259,9 @@ export interface CastSummary {
   /** A performer is signed in and streaming as this character right now.
    *  Absent where no connection tracking exists (local sim). */
   online?: boolean;
+  /** `mind: external` — voiced by a stagehand agents worker, not a performer
+   *  (`online` then means a worker for it is connected). */
+  agent?: boolean;
 }
 
 /** Who is connected to the event right now, by capability. */
@@ -261,6 +276,8 @@ export interface ModPresence {
   directors: string[];
   /** persona id → puppeteer display name (mod-spawned personas only). */
   owners?: Map<string, string>;
+  /** Agent characters with a stagehand worker connected. */
+  agents?: Set<string>;
 }
 
 /** The operator's full god-view of the world. */
@@ -381,7 +398,10 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
     cast: [...sim.model.characters.values()].map((c) => ({
       id: c.id,
       faction: c.faction ?? null,
-      ...(presence !== undefined ? { online: presence.primes.has(c.id) } : {}),
+      ...(c.mind === "external" ? { agent: true } : {}),
+      ...(presence !== undefined
+        ? { online: c.mind === "external" ? (presence.agents?.has(c.id) ?? false) : presence.primes.has(c.id) }
+        : {}),
     })),
     channels: operatorChannels(sim),
     spaces: sim.spaceList(),
@@ -400,6 +420,8 @@ export interface PrimeGuest {
   name: string;
   faction: string | null;
   captured: boolean;
+  /** Where the story has them standing — the booth's "who's here" view. */
+  location: string | null;
 }
 
 /** What an actor playing a character sees: their part + scannable guests. */
@@ -419,11 +441,27 @@ export interface PrimeView {
   legacyCapture: boolean;
   /** The codex entries this character holds — their backstory, shareable. */
   codex: CodexEntryView[];
+  /** Agent-voiced characters (`mind: external`) this performer can message
+   *  in a `cast:<Character>` thread; `online` = a worker is answering. */
+  agents: AgentContact[];
 }
 
-export function primeView(sim: Sim | null, character: string): PrimeView {
+export interface AgentContact {
+  id: string;
+  online: boolean;
+}
+
+/** The agent-voiced characters, excluding `self`. `online` is whatever the
+ *  caller knows (the runtime's hub; a local sim passes nothing → false). */
+export function agentContacts(sim: Sim, self: string | null, online?: ReadonlySet<string>): AgentContact[] {
+  return [...sim.model.characters.values()]
+    .filter((c) => c.mind === "external" && c.id !== self)
+    .map((c) => ({ id: c.id, online: online?.has(c.id) ?? false }));
+}
+
+export function primeView(sim: Sim | null, character: string, agentsOnline?: ReadonlySet<string>): PrimeView {
   if (sim === null) {
-    return { character, title: "Loom", theme: "plain", faction: null, guests: [], channels: [], spaces: [], interactions: [], legacyCapture: false, codex: [] };
+    return { character, title: "Loom", theme: "plain", faction: null, guests: [], channels: [], spaces: [], interactions: [], legacyCapture: false, codex: [], agents: [] };
   }
   const c = sim.model.characters.get(character);
   const guests: PrimeGuest[] = [...sim.persons.values()].map((p) => ({
@@ -431,6 +469,7 @@ export function primeView(sim: Sim | null, character: string): PrimeView {
     name: p.name,
     faction: sim.publicFactionOf(p.id),
     captured: sim.isCaptured(p.id),
+    location: sim.locationOf(p.id),
   }));
   return {
     character,
@@ -443,5 +482,6 @@ export function primeView(sim: Sim | null, character: string): PrimeView {
     interactions: interactionsFor(sim, ["performer", "admin"]),
     legacyCapture: [...sim.model.locations.values()].some((l) => l.prison),
     codex: sim.codexFor(character).map(codexEntry),
+    agents: agentContacts(sim, character, agentsOnline),
   };
 }

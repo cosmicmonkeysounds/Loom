@@ -1,6 +1,6 @@
 import pytest
 
-from stagehand.sensormap import Debouncer, ModCall, SensorMapError, evaluate_sensors, parse_sensor_rule
+from stagehand.show.sensormap import Debouncer, ModCall, SensorMapError, evaluate_sensors, parse_sensor_rule
 
 
 def rules(*raws):

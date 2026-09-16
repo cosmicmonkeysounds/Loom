@@ -2,10 +2,11 @@
 // employer, and the only character in the show voiced by a language
 // model rather than a person.
 //
-// `mind: external` says so: the `@loom/mind` bridge (see `../../mind`)
-// signs in as a moderator, reads every message a program sends to
-// Trabolta's DM, and answers in character from `trabolta.persona.md` —
-// then nudges the four stance variables below through the mod API.
+// `mind: external` says so: every message to Trabolta (a program's DM,
+// a performer's Cast thread) becomes an agent request that stagehand's
+// `agents` module on the laptop answers in character from
+// `trabolta.persona.md`, nudging the four stance variables below
+// (clamped to their declared ranges by the server).
 // Everything the story does with those numbers lives here and in the
 // endings in `main.loom`, so the model can *move* the night but never
 // *decide* it.

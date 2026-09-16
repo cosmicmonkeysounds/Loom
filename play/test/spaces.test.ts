@@ -17,9 +17,9 @@ function ch(id: string, spaceId: string, lastTs: number, decision = false): Chan
 }
 
 describe("groupBySpace — Discord sidebar sections", () => {
-  it("orders sections story → booth → guests", () => {
+  it("orders sections booth → story → guests (the performer's tools stay on top)", () => {
     const groups = groupBySpace([ch("g", "guests", 1), ch("s", "booth", 1), ch("l", "story", 1)]);
-    expect(groups.map((g) => g.id)).toEqual(["story", "booth", "guests"]);
+    expect(groups.map((g) => g.id)).toEqual(["booth", "story", "guests"]);
   });
 
   it("titles each section from the space table", () => {
@@ -37,6 +37,6 @@ describe("groupBySpace — Discord sidebar sections", () => {
 
   it("separates booth tools from the room feed", () => {
     const groups = groupBySpace([ch("__scanner", "booth", 1), ch("__feed", "story", 1), ch("guest:1", "guests", 1)]);
-    expect(groups.map((g) => g.channels.map((c) => c.id))).toEqual([["__feed"], ["__scanner"], ["guest:1"]]);
+    expect(groups.map((g) => g.channels.map((c) => c.id))).toEqual([["__scanner"], ["__feed"], ["guest:1"]]);
   });
 });

@@ -2,3 +2,6 @@
 __pycache__/
 *.egg-info/
 show.yaml
+desktop.yaml
+laptop.yaml
+stagehand.yaml

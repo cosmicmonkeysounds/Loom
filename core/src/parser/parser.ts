@@ -41,6 +41,11 @@ export function parse(source: string): [LoomFile, Diagnostic[]] {
   return [file, diagnostics];
 }
 
+/** A `# ── file.loom ────` separator heading (multi-file concatenation). */
+export function isSeparatorHeading(title: string): boolean {
+  return /^[─—-]{2,}/u.test(title.trim());
+}
+
 class Parser {
   lines: ScannedLine[];
   cursor: number;
@@ -112,7 +117,10 @@ class Parser {
     while (line !== undefined) {
       const k = line.kind;
       if (k.kind === "heading") {
-        if (title === null) title = k.title;
+        // A `# ── path ──` file separator (what multi-file concatenation
+        // inserts, see `examples/load.ts`) is a heading to the lexer but
+        // never the story's title.
+        if (title === null && !isSeparatorHeading(k.title)) title = k.title;
         end = scannedLineSpan(line).end;
         this.cursor += 1;
       } else if (k.kind === "property") {

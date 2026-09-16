@@ -1,4 +1,4 @@
-"""The cue router — the asyncio wiring between all four wires.
+"""Show control — the cue router between the story and the house.
 
 Two long-lived loops run concurrently:
 
@@ -18,35 +18,55 @@ import asyncio
 import json
 import logging
 import time
+from typing import Any
 
 import httpx
 
-from .config import StagehandConfig
+from ..modapi import ModApiError, ModClient, run_stream
+from ..module import ConfigError, Context
+from ..templating import coerce_scalar
+from .config import ShowConfig, parse_show
 from .cuemap import MqttCue, OscCue, evaluate_cues
-from .modapi import ModApiError, ModClient
 from .mqtt import MqttBridge
 from .osc import OscSender
 from .sensormap import Debouncer, ModCall, evaluate_sensors
-from .sse import SSEParser
-from .templating import coerce_scalar
 
-log = logging.getLogger("stagehand")
+log = logging.getLogger("stagehand.show")
 
 
-class Router:
-    def __init__(self, cfg: StagehandConfig) -> None:
+def build_show(section: Any, base_dir: str) -> "ShowControl":
+    try:
+        return ShowControl(parse_show(section))
+    except ConfigError:
+        raise
+    except ValueError as err:  # cue/sensor/topic/condition parse errors
+        raise ConfigError(f"show: {err}") from err
+
+
+class ShowControl:
+    name = "show"
+
+    def __init__(self, cfg: ShowConfig) -> None:
         self.cfg = cfg
-        self.mod = ModClient(
-            cfg.server.url,
-            event=cfg.server.event,
-            token=cfg.server.mod_token,
-            passcode=cfg.server.mod_passcode,
-        )
         self.osc = OscSender(cfg.osc_targets) if cfg.osc_targets else None
         self.mqtt: MqttBridge | None = None
         self.debouncer = Debouncer()
+        self.mod: ModClient | None = None
 
-    async def run(self) -> None:
+    def describe(self) -> list[str]:
+        cfg = self.cfg
+        lines = [
+            f"mqtt     : {f'{cfg.mqtt.host}:{cfg.mqtt.port}' if cfg.mqtt else '— (no broker)'}",
+            f"osc      : {', '.join(f'{n}={h}:{p}' for n, (h, p) in cfg.osc_targets.items()) or '— (no targets)'}",
+            f"cues     : {len(cfg.cues)} rule(s)",
+            f"sensors  : {len(cfg.sensors)} rule(s)",
+        ]
+        if cfg.mqtt_filters:
+            lines.append(f"subscribe: {', '.join(cfg.mqtt_filters)}")
+        return lines
+
+    async def run(self, ctx: Context) -> None:
+        self.mod = ctx.mod
         loop = asyncio.get_running_loop()
         if self.cfg.mqtt is not None:
             self.mqtt = MqttBridge(
@@ -69,40 +89,20 @@ class Router:
                 t.cancel()
             if self.mqtt is not None:
                 self.mqtt.stop()
-            await self.mod.aclose()
+                self.mqtt = None
 
     # -- story → world -----------------------------------------------------
 
     async def _sse_loop(self) -> None:
-        url = self.mod.sse_url
-        backoff = 1.0
-        while True:
-            try:
-                # The mod feed is capability-gated: authenticate first and
-                # send the token on the stream request itself.
-                await self.mod.ensure_token()
-                headers = {"x-loom-token": self.mod.token or ""}
-                async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, read=None)) as client:
-                    async with client.stream("GET", url, headers=headers) as resp:
-                        resp.raise_for_status()
-                        log.info("sse connected: %s", url)
-                        backoff = 1.0
-                        parser = SSEParser()
-                        async for chunk in resp.aiter_text():
-                            for event, data in parser.feed(chunk):
-                                if event == "sim":
-                                    self._on_sim(json.loads(data))
-            except httpx.HTTPStatusError as err:
-                if err.response.status_code in (401, 403) and self.mod.passcode is not None:
-                    # Session reset server-side — drop the token and re-login.
-                    self.mod.token = None
-                log.warning("sse stream refused (%s) — retrying in %.0fs", err, backoff)
-                await asyncio.sleep(backoff)
-                backoff = min(backoff * 2, 30.0)
-            except (ModApiError, httpx.HTTPError, OSError, json.JSONDecodeError) as err:
-                log.warning("sse stream dropped (%s) — retrying in %.0fs", err, backoff)
-                await asyncio.sleep(backoff)
-                backoff = min(backoff * 2, 30.0)
+        assert self.mod is not None
+
+        def on_frame(event: str, data: str) -> None:
+            if event == "sim":
+                self._on_sim(json.loads(data))
+
+        # The mod feed is capability-gated: `run_stream` authenticates, sends
+        # the token on the stream request, and re-logs-in when it's refused.
+        await run_stream(self.mod, self.mod.sse_url, on_frame, label="show feed")
 
     def _on_sim(self, event: dict) -> None:
         for cue in evaluate_cues(self.cfg.cues, event):
@@ -132,6 +132,7 @@ class Router:
                 await self._mod_call(topic, call)
 
     async def _mod_call(self, topic: str, call: ModCall) -> None:
+        assert self.mod is not None
         try:
             if call.kind == "signal":
                 await self.mod.signal(call.fields["name"], call.fields.get("subject"))

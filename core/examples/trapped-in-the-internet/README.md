@@ -41,7 +41,7 @@ trabolta.persona.md  the system prompt for Trabolta's language model
 
 | Phase | Director fires (Run cockpit → Events) | What happens |
 |---|---|---|
-| **Arrivals** | — | Each guest registers in the app as their program (that *is* their name tonight). The `Login` beat plays on their phone: the CAPTCHA they must fail, the thing they leave behind, Norton's clearance. Rolling arrivals until the inciting event. |
+| **Arrivals** | — | Each guest registers in the app as their program (that *is* their name tonight). The `Login` beat plays on their phone *alone*: a real CAPTCHA grid they must fail (solving it proves they're human — INCORRECT, try again), the thing they leave behind, Norton's clearance. Rolling arrivals until the inciting event. Performers never see the Mud Room lines; the doors-open beat is `Power On` on the Desktop. |
 | **Call** | `call to the desktop` | An **alert** (`!` broadcast — every phone chimes and vibrates) + Alexa + Clippy send everyone to the Desktop. |
 | **Bingo** | `start the bingo` → `the bingo results` | Clippy explains Computer Bingo (the phones carry the rules and the planted centre question). A performer presses **Award the Bingo Ribbon** on the winner; Norton interrupts; an Antivirus presses **Send to the Internet** on the failed player. |
 | **Reinstallation** | *(automatic)* | The captured program's phone plays `Reinstallation` (the tablet video). The VR station fires `the simulation completed` for them when the goose lays its egg → they're released, and learn *The Golden Goose*. |
@@ -99,13 +99,14 @@ the pieces below are its siblings.
 
 | Piece | Direction | Call |
 |---|---|---|
+| **The CAPTCHA** | guest phone → story | `show captcha "…" to program with target: "traffic light"` renders the grid in the app; VERIFY posts `POST /api/guest/widget {seq, result: {passed, picked}}`, which the story hears as `when captcha answered for program:` with `passed` bound. Any `show <kind>` card works the same way (`<kind> answered`). |
 | **Wall QR codes** | guest phone → app | Print the `url` from `POST /api/mod/codes` → `codex[]`. Scanning opens the app with `?code=&unlock=`; a signed-in guest redeems on load. |
 | **Codex sheet** | guest phone → server | `POST /api/guest/codex/redeem {code}` · `POST /api/guest/codex/share {entry, to}` |
 | **Performer booth** | performer phone → server | `POST /api/prime/codex/share {entry, to}`; the booth's `PrimeView.codex` lists what their character holds. |
 | **Arduino puzzles** | puzzle → story | Either show the guest a code to type, or (via stagehand / any MQTT→HTTP hop) `POST /api/mod/codex {who: "<guest id>", entry: "The Second Key"}`. Guest ids come from the pass QR the puzzle scans, or from `/api/state?role=mod` → `roster`. |
 | **VR station** | headset → story | `POST /api/mod/signal {name: "the simulation completed", subject: "<guest id>"}` when the goose lays its egg (releases them); `{name: "the golden goose", subject}` for the flavour + entry. Bathroom Mode from the in-game app: `POST /api/guest/act {name: "go to the bathroom"}` with the guest's token, or `mod/signal {name, subject}`. |
 | **TV mirror** | story → screens | Watch the mod SSE feed (`GET /e/:id/events?role=mod`) for `captured` / `released` sim events and `broadcast`s with `alert: true`. |
-| **Trabolta** | laptop ⇄ server | The [`@loom/mind`](../../../mind) bridge: `pnpm --filter @loom/mind start -- --server https://<host> --event <id> --mod-code <code> --persona core/examples/trapped-in-the-internet/trabolta.persona.md`. It reads every guest DM to Trabolta off the mod feed, answers in character through a local OpenAI-compatible model (Ollama by default), and nudges `Trabolta.truth/untruth/stance/love` through `POST /api/mod/var`. The story's watchers do the rest. |
+| **Trabolta** | laptop ⇄ server | [stagehand](../../../stagehand)'s `agents` module: `cp stagehand/agents.example.yaml stagehand/laptop.yaml` (set `server.url`, `event`, `mod_passcode`), `ollama pull gpt-oss:20b`, then `uv run stagehand run --config laptop.yaml`. The server sends it every message to Trabolta (programs' DMs, performers' Cast threads). It answers in character from `trabolta.persona.md` and nudges `Trabolta.truth/untruth/stance/love`, which the server clamps. Before the glitch the persona's `when:` gate answers programs with a hold message. `stagehand ask --config laptop.yaml` tunes the voice offline. The story's watchers do the rest. |
 
 Everything a bridge can send is an ordinary journaled mutation, so a
 rehearsal in the editor's Run mode and the live night replay identically.

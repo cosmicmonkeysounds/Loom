@@ -14,13 +14,13 @@ event server, …) without dragging the rest along. Repo license is MIT
 | [`server`](./server)   | Multi-user backbone — `loom-relayd` axum server hosting per-workspace Loro CRDTs over `prism-core::network::relay`. **Builds only inside the Prism monorepo** (depends on `prism-core`, stays GPL); excluded from this repo's Cargo workspace. See [`docs/loom-multiuser.md`](./docs/loom-multiuser.md). |
 | [`editor`](./editor)   | React/Vite/CodeMirror web IDE — the author front end: a BetterAuth sign-in gate → projects launchpad → Studio shell with **three modes**: **Writing** (`⌘1`, text editor + story-graph node editor side by side), **Run** (`⌘2`, the control room for the project's **one run** — "Start rehearsal" is the shared server event on a server project / the in-browser `@loom/core` `Sim` on a folder; the header owns the lifecycle incl. **go live in place**; join codes/QR + directors + guest lookup on the Run page; an **identity control** to *be* any persona, guest, or character with the server's exact view of them), and **Integrations** (`⌘3`, engine targets — the Wwise-style Godot link / addon install / bank build). **Server-backed projects** or a local folder. |
 | [`core`](./core)       | Native **TypeScript** port of Loom (no WASM, no Prism): parser (incl. authored **`SPACE`/`CHANNEL`** chatroom declarations) + a first-principles social-ecosystem `runtime/sim` + a parser-only **`lsp`** language surface (`@loom/core/lsp` — `Workspace` with completion / hover / definition / documentSymbols / references / diagnostics, the in-process replacement for the wasm `LspWorkspace`) + an SSE/REST **event server** (`pnpm serve`) that hosts a live `Sim` for LAN events, composing its `SimEvent` stream into server-authoritative, channel-routed chat (`server/chat.ts`) with spaces + Slack-style threads (`parentSeq`), **access control** (open / private-invite / faction / group / dm channel membership, journaled `inviteToChannel`/`leaveChannel`, guest↔guest invites) + a **pluggable channel-type registry** (`runtime/sim/channel-types.ts` — per-type post policy / threadability / broadcast routing / slow-mode / ephemeral, e.g. a read-only `announcement` feed), a scoped invite roster (`rosterFor`), history + moderation, and a journaled `say` command so participant-typed chat replays deterministically. Now a **multi-tenant SaaS backend**: BetterAuth author accounts + Postgres (`server/db/`, `server/auth-server.ts`), projects + files CRUD (`server/projects.ts`), event launch/lifecycle (`server/events-api.ts`, one live event per project), and a per-event `EventRuntime` + `EventRegistry` routed under `/e/:eventId` with a `resolve-code` bootstrap — the old single-event root paths still serve a default event. vitest-tested. |
-| [`play`](./play)       | The **participant React app** (Vite, name `loom-play`) guests + performers use at a live event — an **AOL-chatroom-skinned** client with Discord-style **spaces** (sidebar sections, incl. authored `SPACE`s), Slack-style **message threads** + consecutive-sender banner grouping, **hybrid typed chat** (a composer wired to `/api/*/say`), and **access-controlled rooms** (open/private/faction/group/dm with invite + leave) layered over the story-injected lobby + faction + DM channels (decisions docked per-thread, re-login history) on the `core` server's SSE/REST. Multi-event aware: a short code resolves via `/api/resolve-code` to its event, then every call is scoped to `/e/:eventId`. `pnpm dev` (:5174, proxies to the server on :7000) / `pnpm build` (served by the event server at `/`). |
+| [`play`](./play)       | The **participant React app** (Vite, name `loom-play`) guests + performers use at a live event — a **two-pane MSN/Discord-style chat** (rooms sidebar + open room on wide screens, drill-in on phones; `theme: aol97` skins it as a 1997 chat room) with **presence** (the room you stand in first, who is in every place, a who's-here strip per room), Discord-style **spaces** (sidebar sections, incl. authored `SPACE`s), Slack-style **message threads** + avatar/name sender-run grouping, **hybrid typed chat** (a composer wired to `/api/*/say`), **cards** (`show captcha / image / poll` render from the `widgets.tsx` registry; answers fire `<kind> answered`), and **access-controlled rooms** (open/private/faction/group/dm with invite + leave) layered over the story-injected lobby + faction + DM channels (decisions docked per-thread, re-login history) on the `core` server's SSE/REST. Performers pick their character from the cast at sign-in and act on a guest through their **card**, never a panel under every room. Multi-event aware: a short code resolves via `/api/resolve-code` to its event, then every call is scoped to `/e/:eventId`. `pnpm dev` (:5174, proxies to the server on :7000) / `pnpm build` (served by the event server at `/`). |
 | [`desktop`](./desktop) | The **Tauri 2 desktop app** — the `editor` React app in a native shell (own Cargo workspace at `desktop/src-tauri`, excluded from the root workspace to keep it lean; zero Prism deps). Adds what the browser can't: a path-based **fs bridge** (`fs_bridge.rs`) that the editor's local-folder backend runs on via FSA-shaped handle shims (`editor/src/lib/desktop-fs.ts` — WKWebView has no File System Access API), and **Wwise-style Godot integration** (`godot.rs` + the editor's Integrations mode, `⌘3`): link a Godot 4 project, install the embedded `addons/loom` runtime (`include_dir!` of `engines/godot/addons/loom`) + enable the plugin in `project.godot`, and build the open workspace into `<name>.loombank` + `LoomIDs.gd` inside the game project (banks compile in the webview via `@loom/bank`; the host only writes files). `pnpm --filter loom-desktop dev\|build`; `cargo test` in `src-tauri/` covers the integration logic. Reference output: [`examples/guard-patrol/godot`](./examples/guard-patrol/godot). Design: [`docs/loom-desktop.md`](./docs/loom-desktop.md). |
 | [`bank`](./bank)       | **TypeScript** bank compiler + the **normative reference interpreter**. Lowers a project into `.loombank` — engine-agnostic 4×i32 instruction streams, RPN expressions, pre-split interpolation, pre-parsed directive args — plus generated `LoomIDs.{gd,cs,h}`. `<shuffle:>` runs on the spec'd xorshift64* PRNG (`src/prng.ts`, per-site streams persisted in the save), and **locale banks** are emitted (`loom-bank strings` template → `build --locale <tag>=<file>` → `<name>.<tag>.loombank` sidecar; `set_locale` swaps literals at render time, expressions stay live, per-key fallback). Hosts the scenario driver / golden-trace harness (incl. `loadbank` for locale sidecars) every per-engine runtime is conformance-tested against. See [`docs/loom-banks.md`](./docs/loom-banks.md). |
 | [`engines/godot`](./engines/godot) | **GDScript** Loom runtime for Godot 4 — pure script, no GDExtension, no build step. `LoomRuntime` (pull-model `advance() -> Step`, plus signals), `LoomBank` + a `.loombank` import plugin, save/load that round-trips a suspended choice, and a headless conformance runner diffing the reference's goldens byte for byte. On top, a Wwise-integration-style **scene layer**: `LoomStory` (bank host node — autoplay, timer auto-tick, optional auto-advance pump with hold/release gating, save-file helpers), `LoomHook` (story→game: filterable directive/beat/line/varset/fire listener as an editor-connectable signal), `LoomTrigger` (game→story: fire an `on <verb>` hook or start a beat on ready/Area overlap/manual), `LoomTypewriter` (per-character RichTextLabel reveal, punctuation pacing, skip, story hold — **raw signals only**; effects are separate interpreter nodes: `LoomBlip` pooled pitch-randomised voice blips, `LoomTalkAnimator` talk/idle animation), `LoomDialogueBox` (complete drop-in player — speaker/portrait/pooled choice buttons/continue-indicator/two-tap input/auto mode/`resume()` — skinned by a `LoomStyle` resource with per-character `LoomSpeakerStyle` overrides; `demo/styled_demo.tscn` plays a story with zero scripts), `LoomHistory` (backlog), `LoomSaveSlots` (named slots with query-API metadata headers), a host-side state-query API (`current_beat`/`current_setting`/`pending_options`/`is_finished`/`has_played`/`world_snapshot`/`beat_names` + `save_to_file`/`load_from_file`), plus a `LoomBank` inspector preview (beats/hooks with copy-name) — covered by `test/addon.sh` (96 headless checks) alongside `test/conformance.sh` (4 scenarios incl. shuffle PRNG + locale switching). |
 | [`examples`](./examples) | Reference `.loom` projects used by `loom-runtime` integration tests and as authoring tutorials |
-| [`mind`](./mind)       | **TypeScript** (`@loom/mind`, in the pnpm workspace). Gives a `CHARACTER` a mind: a bridge that signs into a live event as a moderator, reads every guest DM to the character off the mod SSE feed, answers **in character** through a local OpenAI-compatible model (Ollama by default — `trabolta.persona.md` is the system prompt + frontmatter knobs), and nudges the character's declared variables through `POST /api/mod/var` (clamped per reply). The story's `when` watchers decide what the numbers mean; the model never decides the plot. Reads history for context, never answers the past; `--dry-run`, `--say <guest>`. vitest-tested against a fake server + fake model. |
-| [`stagehand`](./stagehand) | **Python** (uv-managed, not in the pnpm workspace) show-control bridge for live events: joins an event's mod SSE feed and translates story events (unhandled directives like `<cue:>`/`<prop:>`/`<vibe:>`, `beatEntered`, `signal`) into OSC cues (TouchDesigner, with an NTP `t_exec` simultaneity contract) + MQTT prop commands via a declarative `show.yaml` cue map; in reverse, MQTT sensor topics (named captures, safe `when:` conditions, per-identity debounce) inject journaled story mutations through the mod API (`signal`/`beat`/`arrive`). Stateless — retained MQTT + the journal carry recovery. `uv run pytest` (70 tests) / `uv run stagehand check\|run --config show.yaml`. Design: [`docs/loom-show-control.md`](./docs/loom-show-control.md). |
+| [`mind`](./mind)       | **Superseded (2026-09-16) by stagehand's `agents` module and awaiting deletion.** The old TS bridge (`@loom/mind`) watched the mod feed for DMs to a character and answered through Ollama. Its replacement works on explicit server requests. |
+| [`stagehand`](./stagehand) | **Python** (uv-managed, not in the pnpm workspace) live-event bridge. It is **modular**: one daemon, one YAML per machine, and each top-level section enables a module (`module.py::REGISTRY`; modules share one authenticated `ModClient` and are supervised and restarted independently). **`show`** (the desktop): joins the mod SSE feed and turns story events (`<cue:>`/`<prop:>`/`<vibe:>`, `beatEntered`, `signal`) into OSC cues (TouchDesigner, with an NTP `t_exec` contract) plus MQTT prop commands. In reverse, MQTT sensor topics inject journaled `signal`/`beat`/`arrive` mutations. **`agents`** (the laptop): voices `mind: external` characters with a local OpenAI-compatible model (Ollama, `gpt-oss:20b`). It holds `GET /api/agent/stream` and answers each server-sent request (thread + speaker + both parties' state + codex) with `POST /api/agent/reply {say, adjust}`, using a persona file (frontmatter knobs incl. a `when:` gate) as the system prompt. `uv run pytest` (108 tests) / `uv run stagehand modules\|check\|run --config <machine>.yaml [--only agents]` / `stagehand ask` (chat with a persona, no server). Examples: `show.example.yaml`, `agents.example.yaml`. Design: [`docs/loom-show-control.md`](./docs/loom-show-control.md). |
 
 **All Loom documentation lives in [`docs/`](./docs)** (moved from the
 repo-root `docs/dev/` 2026-07-20): the canonical design spec
@@ -176,6 +176,72 @@ The Rust `server` crate (see below) is the older, separate multi-workspace
 backbone; the SaaS lives entirely in the TS stack.
 
 ## Status
+
+**The play app became a chat app + `show` cards landed 2026-09-16** (TS
+`core/` + `play` + `editor`; help: `docs/help/play/{01,02,04,07}`,
+`docs/help/authoring/36-widgets.md`; spec `loom-4.md` §6.1 / §11; guide
+§11.12a). Found by playing the live *Trapped in the Internet* preview:
+the lobby was titled `── main.loom ──` (the parser took the file
+separator heading as the story title — `parseHeader` now skips
+`isSeparatorHeading`), the Mud Room played to everyone including
+performers (`start: Login` fired the per-guest beat un-addressed; the
+show now opens on a house-wide `Power On` beat and `Login` only via
+`when someone joins`), performers got a seven-button panel under every
+room (the booth dispatched on id prefixes, so location rooms fell into
+the guest-thread branch), the typewriter replayed on every room open,
+and nothing said who was where. Now: `play` is a **two-pane MSN/Discord
+shell** (`Shell` in `chat.tsx`, sidebar + stage ≥ 820px, drill-in on a
+phone) with **presence** (`presence.ts`: `occupantsByLocation`,
+`roomOrder` — the room you stand in first with a *you are here* tag,
+"3 here / just you / empty" per place, a 👥 strip + people sheet in every
+room header; `PersonCard.location` / `PrimeGuest.location` from
+`views.ts`), Discord-style messages (avatar tile + name per sender run),
+a **crawl-once typewriter** (`crawl` policy: never the backlog, never
+twice), the performer's guest actions moved onto a **guest card** (⚡
+Actions / tap a name / who's-here), a **cast picker** at performer
+sign-in (`ResolvedCode.characters` from `EventRuntime.characterNames`),
+and a dead-token check that confirms with `/api/state` before dropping
+a session. **Widgets:** `show <kind> ["text"] [to scope] [with k: v]`
+(`statements.ts` + `Sim.runShow` → `SimEvent.widget` → `ChatMessage.kind
+"widget"` + `WidgetCard`, routed like a choice: the last speaker's DM,
+else the setting's room) render through the `play/src/widgets.tsx`
+registry (`captcha` — deterministic 3×3 grid per seq, `image`, `poll`);
+an answer posts `POST /api/guest/widget {seq, result}` (one per guest per
+card, result sanitised by `widgetResultArgs`) and fires the named event
+`<kind> answered` with the result as arguments. The Mud Room now shows a
+real CAPTCHA (`beats/login.loom` — solving it proves you're human:
+INCORRECT, +10 humanity, again; any second answer is CORRECT). Tests:
+core `sim-widgets` + `parser` (separator) + `server-chat` / `server-
+interactions` / `registry` / `views` / `trapped-in-the-internet`; play
+`presence` / `widgets` (grid, judge, crawl policy) / `spaces`. Gotcha:
+`grep` skips `core/src/runtime/sim/sim.ts` as binary — use `grep -a`.
+
+**Agent-voiced characters landed 2026-09-16** (TS `core/` + `play` +
+Python `stagehand/`; Trabolta talks). A `CHARACTER … mind: external`
+(`CharDef.mind`, plus `CharDef.ranges` from declared `lo to hi` slots)
+has no performer. The event server's `AgentHub` (`core/server/agents.ts`,
+transport-free) turns each conversation with it into an **agent
+request**: a guest's `dm:<C>` (`/api/guest/say`), a performer's private
+`cast:<C>` thread (`/api/prime/say` stores it as `dm:<C>` with audience
+`@<Performer>`, visible only to that booth; `PrimeView.agents`), or a
+director's persona (`/api/mod/say`). Requests stream to workers on
+`GET /api/agent/stream?characters=&name=` (mod-gated SSE: `hello` /
+`request` / `cancel` / `reset`). A request is self-contained: thread
+history, speaker, both parties' vars and codex, ranges, world globals.
+Workers answer `POST /api/agent/reply {id, worker, say, adjust}`: a
+journaled `say` into the thread, plus `setVar` deltas clamped to the
+declared range (undeclared names are ignored). The hub keeps one open
+request per thread (a burst mid-reply → one follow-up), queues while
+offline (10 min), re-dispatches on worker loss, times out at 2 min (one
+retry), and cancels on restart. It sends `typing {channel, from, on,
+audience}` to exactly the thread's parties. Presence: `CastSummary.agent`
++ `online`, `PersonCard.agent.online`. Play: `typing.ts` ("… is
+typing"), the guest DM subtitle shows online/away, and the performer
+booth has a **Cast** space. Worker = stagehand `agents` (see the table
+row); `trabolta.persona.md` gates programs until `Trabolta.glitched`
+while performers always get through. Tests: core `agents` (20), play
+`agents` (4), stagehand `test_agents`. Verified live against
+`gpt-oss:20b` (2–6 s per reply).
 
 **Trapped in the Internet + the codex economy landed 2026-09-10** (TS
 `core/` + `play` + new `mind/`; story: `core/examples/trapped-in-the-internet/`

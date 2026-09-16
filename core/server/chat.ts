@@ -28,7 +28,16 @@ export type ChannelKind = "lobby" | "faction" | "dm" | "group" | "open" | "priva
 /** Who receives a message: `"all"` guests, or a fixed set of guest ids. */
 export type Audience = "all" | string[];
 
-export type MessageKind = "line" | "narration" | "signal" | "system";
+export type MessageKind = "line" | "narration" | "signal" | "system" | "widget";
+
+/** An inline widget (`show …`): what to render, keyed by `kind`, plus the
+ *  authored text + params the statement carried. The client owns the
+ *  registry of kinds; an unknown kind renders as its text. */
+export interface WidgetCard {
+  kind: string;
+  text: string;
+  params: Record<string, string>;
+}
 
 /** One delivered message, the unit a participant's thread is built from. */
 export interface ChatMessage {
@@ -64,6 +73,8 @@ export interface ChatMessage {
   /** An **alert**: a broadcast whose cue text began with `!` — the client
    *  chimes, vibrates, and banners it ("!Come to the Desktop."). */
   alert?: boolean;
+  /** The card a `widget` message renders (a CAPTCHA, a picture, a poll…). */
+  widget?: WidgetCard;
 }
 
 /** A message before the store assigns it a `seq` + resolves `hidden`. */
@@ -239,11 +250,17 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
   const sys = (text: string, audience: Audience): DraftMessage =>
     ({ ...lobby, from: "", kind: "system", text, ts, audience, parentSeq: null });
 
+  // Who last spoke *to* each person in this batch — a widget shown right
+  // after a character's line docks in that character's thread (the way a
+  // choice does, see `decisionChannelFor`).
+  const lastSpeaker = new Map<string, string>();
+
   for (const e of events) {
     switch (e.type) {
       case "dialogue":
         if (e.audience.length > 0) {
           // A character addressing you → that character's DM thread.
+          for (const p of e.audience) lastSpeaker.set(p, e.speaker);
           out.push({ ...dmChannel(e.speaker), from: e.speaker, kind: "line", text: e.text, ts, audience: [...e.audience], parentSeq: null, beat: e.beat });
         } else {
           // Un-addressed scripted speech (no participant bound — e.g. the
@@ -257,6 +274,28 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
         // room the beat is set in. Previously dropped on the floor.
         out.push({ ...storyChannel(sim, e.setting), from: "Narrator", kind: "narration", text: e.text, ts, audience: "all", parentSeq: null, beat: e.beat });
         break;
+      case "widget": {
+        // `show kind "text" to scope` — a card the app renders inline. A
+        // global one plays in the setting's room (else the lobby) for all;
+        // an addressed one docks under whoever last spoke to each recipient
+        // (their DM thread), else in the room, for those recipients.
+        const widget = { kind: e.widget, text: e.text, params: { ...e.params } };
+        const base = { from: "", kind: "widget" as const, text: e.text, ts, parentSeq: null, beat: e.beat, widget };
+        if (e.audience.length === 0) {
+          if (globalScope(e.scope)) out.push({ ...storyChannel(sim, e.setting), ...base, audience: "all" });
+          break; // a narrowed scope that resolved to nobody: no card
+        }
+        const byChannel = new Map<string, { head: ChannelHead; to: string[] }>();
+        for (const p of e.audience) {
+          const speaker = lastSpeaker.get(p);
+          const head = speaker !== undefined ? dmChannel(speaker) : storyChannel(sim, e.setting);
+          const slot = byChannel.get(head.channel) ?? { head, to: [] };
+          slot.to.push(p);
+          byChannel.set(head.channel, slot);
+        }
+        for (const { head, to } of byChannel.values()) out.push({ ...head, ...base, audience: to });
+        break;
+      }
       case "respond":
         // A device readout (`<respond:>`): a personal narration line in the
         // lobby feed of whoever scanned (visible to the booth via SSE too).

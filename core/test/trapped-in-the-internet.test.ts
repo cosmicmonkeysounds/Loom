@@ -24,10 +24,11 @@ const num = (sim: Sim, path: string) => (sim.world.get(path) as { value: number 
 /** Register a program and walk them through the Mud Room. */
 function upload(sim: Sim, id: string, name: string, leave: 0 | 1 | 2 | 3 = 3): void {
   sim.createPerson(id, name);
-  sim.choose(id, 0); // "I am a human." — the CAPTCHA everyone fails once (+10 humanity)
-  sim.choose(id, 0); // "I am not a human. I am a program."
+  sim.signal("captcha answered", id, { passed: true }); // solved it — a human — INCORRECT (+10 humanity)
+  sim.signal("captcha answered", id, { passed: false }); // the retry: CORRECT
   sim.choose(id, leave); // what they leave behind (body: +20)
 }
+const widgets = (evs: SimEvent[]) => evs.filter((e) => e.type === "widget").map((e) => (e as { widget: string; audience: string[] }));
 
 describe("Trapped in the Internet — compile", () => {
   it("every file parses clean", () => {
@@ -99,15 +100,29 @@ describe("Trapped in the Internet — compile", () => {
 });
 
 describe("Trapped in the Internet — the Mud Room", () => {
+  it("the doors-open beat is heard by the house, not the Mud Room", () => {
+    const sim = fresh();
+    const boot = sim.fireBeat("Power On");
+    expect(boot.some((e) => e.type === "action" && e.setting === "The Desktop")).toBe(true);
+    expect(said(boot)).toEqual([]); // no Uploader for the whole room
+    expect(widgets(boot)).toEqual([]);
+  });
+
   it("plays the login to the new program alone: fail the CAPTCHA, leave something behind", () => {
     const sim = fresh();
     const join = sim.createPerson("g1", "Minesweeper");
     expect(said(join)[0]).toEqual(["The Uploader", "Welcome to the computer. It is dark because you have no eyes yet. Stand still.", ["g1"]]);
-    expect(sim.pendingChoiceFor("g1")).toEqual(["I am a human.", "I am not a human. I am a program."]);
-    const human = sim.choose("g1", 0);
+    // A real CAPTCHA on their phone, theirs alone — no choice menu.
+    expect(widgets(join)).toEqual([expect.objectContaining({ widget: "captcha", audience: ["g1"] })]);
+    expect(sim.pendingChoiceFor("g1")).toBeNull();
+    // Solving it proves you're human: INCORRECT, and the grid comes back.
+    const human = sim.signal("captcha answered", "g1", { passed: true, picked: 3 });
     expect(said(human).map((l) => l[1])).toContain("INCORRECT. Humans are not permitted in the computer. You are not a human. Try again.");
+    expect(widgets(human)).toHaveLength(1);
     expect(num(sim, "g1.humanity")).toBe(10);
-    sim.choose("g1", 0); // now the only option: I am a program
+    const retry = sim.signal("captcha answered", "g1", { passed: true }); // second answer: anything is CORRECT
+    expect(said(retry).map((l) => l[1])).toContain("CORRECT.");
+    expect(num(sim, "g1.doubt")).toBe(0);
     expect(sim.pendingChoiceFor("g1")).toEqual(["My name.", "My face.", "A Tuesday in 2009.", "My body."]);
     const body = sim.choose("g1", 3);
     expect(sim.world.get("g1.left_behind")).toEqual({ kind: "string", value: "body" });
@@ -116,6 +131,18 @@ describe("Trapped in the Internet — the Mud Room", () => {
     expect(said(body).some(([who, text]) => who === "Norton Anti-Virus" && text.startsWith("Scanned. Minesweeper is free of viruses"))).toBe(true);
     expect(sim.locationOf("g1")).toBe("The Desktop");
     expect(num(sim, "g1.truth")).toBe(4); // learning anything is truth
+  });
+});
+
+describe("Trapped in the Internet — the Mud Room, failed straight away", () => {
+  it("a program that fails the CAPTCHA first time is CORRECT, suspiciously quick", () => {
+    const sim = fresh();
+    sim.createPerson("g1", "Minesweeper");
+    const quick = sim.signal("captcha answered", "g1", { passed: false, picked: 0 });
+    expect(said(quick).map((l) => l[1])).toContain("CORRECT. Suspiciously quick. Noted.");
+    expect(num(sim, "g1.doubt")).toBe(5);
+    expect(num(sim, "g1.humanity")).toBe(0);
+    expect(sim.pendingChoiceFor("g1")).toEqual(["My name.", "My face.", "A Tuesday in 2009.", "My body."]);
   });
 });
 

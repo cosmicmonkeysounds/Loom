@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "./types.ts";
+import type { TypingNotice } from "./typing.ts";
 
 /** A non-2xx reply — the server's `error` text plus the HTTP status, so a
  *  session can tell "you can't post here" (403) from "this session is dead"
@@ -63,6 +64,8 @@ export function useChatStream(
     onSnapshot?: (v: unknown) => void;
     onResponse?: (text: string) => void;
     onLifecycle?: (n: LifecycleNotice) => void;
+    /** An agent-voiced character started / stopped composing a reply. */
+    onTyping?: (n: TypingNotice) => void;
     /** The full thread history just (re)loaded — the baseline for "new". */
     onHistory?: (messages: ChatMessage[]) => void;
     /** The server refused the stream for good (a token the run no longer
@@ -81,11 +84,20 @@ export function useChatStream(
     setMessages(new Map());
     const es = new EventSource(url);
     es.onopen = () => setConnected(true);
+    // The page going away (a reload, a navigation, a tab close) closes the
+    // source too — that is not a dead token, and must never log anyone out.
+    let unloading = false;
+    const onHide = () => {
+      unloading = true;
+    };
+    window.addEventListener("pagehide", onHide);
+    window.addEventListener("beforeunload", onHide);
     es.onerror = () => {
       setConnected(false);
       // A non-200 answer (401 / 403 on a dead token) closes the source for
       // good — no retry will ever succeed, so say so rather than sit dark.
-      if (es.readyState === EventSource.CLOSED) h.current.onDead?.();
+      // The session confirms with the server before dropping anything.
+      if (es.readyState === EventSource.CLOSED && !unloading) h.current.onDead?.();
     };
 
     const upsert = (m: ChatMessage) =>
@@ -98,6 +110,7 @@ export function useChatStream(
     es.addEventListener("snapshot", (e) => h.current.onSnapshot?.(json(e)));
     es.addEventListener("response", (e) => h.current.onResponse?.(String((json(e) as Record<string, unknown>)["text"])));
     es.addEventListener("lifecycle", (e) => h.current.onLifecycle?.(json(e) as LifecycleNotice));
+    es.addEventListener("typing", (e) => h.current.onTyping?.(json(e) as TypingNotice));
     es.addEventListener("history", (e) => {
       const list = json(e) as ChatMessage[];
       h.current.onHistory?.(list);
@@ -132,7 +145,11 @@ export function useChatStream(
         });
       }
     });
-    return () => es.close();
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("beforeunload", onHide);
+      es.close();
+    };
   }, [url]);
 
   return { messages, connected };

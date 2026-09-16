@@ -5,7 +5,15 @@
 // --- server-authoritative chat (mirror of server/chat.ts) -------------------
 
 export type ChannelKind = "lobby" | "faction" | "dm" | "group" | "open" | "private" | "location";
-export type MessageKind = "line" | "narration" | "signal" | "system";
+export type MessageKind = "line" | "narration" | "signal" | "system" | "widget";
+
+/** An inline widget (`show …`, mirror of server/chat.ts `WidgetCard`): a
+ *  game, a picture, a form the app renders in the conversation. */
+export interface WidgetCard {
+  kind: string;
+  text: string;
+  params: Record<string, string>;
+}
 
 /** One delivered message — the unit a conversation thread is built from. */
 export interface ChatMessage {
@@ -26,6 +34,11 @@ export interface ChatMessage {
   beat?: string | null;
   /** An alert broadcast (`!` cue) — chime, vibrate, banner. */
   alert?: boolean;
+  /** The card a `widget` message renders. */
+  widget?: WidgetCard;
+  /** The director who posted this *as* a participant (admins only; the
+   *  server strips it for guests). */
+  via?: string;
 }
 
 // --- per-role snapshots (mirror of server/views.ts) -------------------------
@@ -73,6 +86,11 @@ export interface PersonCard {
   faction: string | null;
   /** The entries the viewer holds *about* this person — what one knows of them. */
   known: CodexEntry[];
+  /** Where they stand (guests only; null before the story places them). */
+  location: string | null;
+  /** A character voiced by an agent (`mind: external`, e.g. a language
+   *  model on a stagehand machine); `online` = someone is answering now. */
+  agent?: { online: boolean };
 }
 
 export interface GuestView {
@@ -113,6 +131,8 @@ export interface PrimeGuest {
   name: string;
   faction: string | null;
   captured: boolean;
+  /** Where the story has them standing. */
+  location: string | null;
 }
 
 export interface PrimeView {
@@ -129,6 +149,8 @@ export interface PrimeView {
   legacyCapture?: boolean;
   /** The entries this character holds — their backstory, shareable one guest at a time. */
   codex?: CodexEntry[];
+  /** Agent-voiced characters this performer can message (`cast:<id>` threads). */
+  agents?: Array<{ id: string; online: boolean }>;
 }
 
 // --- client-side view models (composed by the chat store) -------------------
@@ -167,6 +189,13 @@ export interface Channel {
   threadable?: boolean;
   /** Optional one-line subtitle (faction, status …). */
   subtitle?: string;
+  /** A location room the viewer is standing in right now ("you are here"). */
+  here?: boolean;
+  /** A card in here is waiting on the viewer (an unanswered CAPTCHA, poll…). */
+  needsYou?: boolean;
+  /** Who is in this room — occupants of a location, members of a gated
+   *  room, the other party of a private thread. Names, for the header strip. */
+  people?: Array<{ id: string; name: string; kind: "guest" | "character"; group: string | null }>;
   messages: ChatMessage[];
   /** New, unseen, not-mine messages — drives the badge. */
   unread: number;
@@ -174,4 +203,6 @@ export interface Channel {
   decision: Decision | null;
   /** Story-clock time of the last message (for sorting + the row timestamp). */
   lastTs: number;
+  /** "<name> is typing…" — an agent-voiced character composing a reply here. */
+  typing?: string | null;
 }

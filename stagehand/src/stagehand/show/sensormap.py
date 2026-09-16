@@ -17,8 +17,8 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from .conditions import Condition
-from .templating import render_text
+from ..conditions import Condition
+from ..templating import render_text
 from .topics import TopicPattern, parse_topic_pattern
 
 log = logging.getLogger("stagehand.sensormap")

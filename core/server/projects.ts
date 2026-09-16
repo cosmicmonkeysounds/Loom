@@ -50,8 +50,12 @@ const BLANK_STARTER = `# Untitled Event
 #
 # Write your world here. The \`# Title\` heading above is what guests see in
 # the participant app — rename it. A minimal event needs a lobby SPACE and a
-# ROLE for guests; see the "escape-the-internet" template for a full example.
+# ROLE for guests; see the "trapped-in-the-internet" template for a full example.
 `;
+
+/** Example projects under `examples/` a new project may be seeded from. */
+export const EXAMPLE_TEMPLATES = ["trapped-in-the-internet", "glass-orchard", "escape-the-internet"] as const;
+export const DEFAULT_TEMPLATE = EXAMPLE_TEMPLATES[0];
 
 /** Seed a new project's files from a named template. */
 async function seedFiles(projectId: string, template: string): Promise<void> {
@@ -59,8 +63,10 @@ async function seedFiles(projectId: string, template: string): Promise<void> {
     await upsertFile(projectId, "main.loom", BLANK_STARTER);
     return;
   }
-  // Default: copy the on-disk example project verbatim (main.loom + the rest).
-  for (const f of scenarioFiles("escape-the-internet")) {
+  // Copy the on-disk example project verbatim (main.loom + the rest); an
+  // unknown template id falls back to the default example.
+  const name = (EXAMPLE_TEMPLATES as readonly string[]).includes(template) ? template : DEFAULT_TEMPLATE;
+  for (const f of scenarioFiles(name)) {
     await upsertFile(projectId, f.path, f.source);
   }
 }
@@ -285,7 +291,7 @@ export async function handleProjects(
     if (method === "POST") {
       const body = await readBody(req);
       const name = str(body, "name").trim() || "Untitled Project";
-      const template = str(body, "template") || "escape-the-internet";
+      const template = str(body, "template") || DEFAULT_TEMPLATE;
       const project = await createProject(user.id, name);
       await seedFiles(project.id, template);
       sendJson(res, 200, {

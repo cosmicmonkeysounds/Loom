@@ -87,11 +87,14 @@ there is GPU-bound rather than CPU-bound): the `@loom/core` event server,
 Mosquitto, MediaMTX, stagehand, chrony (NTP). A TD machine can then be
 rebooted mid-show without killing the story, the broker, or the ingest.
 
-> **2026-09-10 — a sibling bridge:** [`mind/`](../mind) (`@loom/mind`)
-> speaks the same mod API from the host's laptop to voice a character with
-> a local language model (Trabolta in *Trapped in the Internet*). Same
-> shape as stagehand — SSE in, journaled mutations out — so the model can
-> move the story's variables but never bypass its `when` rules. The show's
+> **2026-09-16 — stagehand is modular.** The router is now the `show`
+> module. A second module, `agents`, runs on the host's laptop and voices
+> `mind: external` characters with a local language model (Trabolta in
+> *Trapped in the Internet*). The server sends it explicit requests over
+> `GET /api/agent/stream`, and it answers with `POST /api/agent/reply`.
+> Each machine runs the same `stagehand` with its own YAML. The model can
+> move the story's variables, but it never bypasses the story's `when`
+> rules. See [`stagehand/README.md`](../stagehand/README.md). The show's
 > QR codes / Arduino puzzles / VR station contract is in
 > [`core/examples/trapped-in-the-internet/README.md`](../core/examples/trapped-in-the-internet/README.md).
 

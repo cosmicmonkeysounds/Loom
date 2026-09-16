@@ -30,3 +30,8 @@ titled sections of your inbox):
 Some rooms are places. When you're standing in a location, you can hear
 (and post to) its room — walk away and the conversation stays behind.
 If you can't post somewhere, you're probably not *there*.
+
+The list tells you where everyone is: the place you're standing in is
+first, tagged **you are here**; every other place says who's in it.
+Empty rooms are dimmed. Inside a room, the 👥 count in the header opens
+the list of who's here — tap a name to message them.
