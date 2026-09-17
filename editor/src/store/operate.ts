@@ -132,6 +132,17 @@ function phaseOf(status: string | undefined): CockpitPhase {
   return status === 'open' ? CockpitPhase.Open : status === 'paused' ? CockpitPhase.Paused : CockpitPhase.Idle
 }
 
+/** Why a Players pane couldn't open, in words a director can act on. An
+ *  event server started before `/api/mod/impersonate` existed answers the
+ *  route as an unknown mod action — it needs a restart, not a retry. */
+export function playerOpenError(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e)
+  if (e instanceof ApiError && e.status === 404 && /unknown mod action/i.test(msg)) {
+    return 'The event server is running older code without play-as sessions — restart it (pnpm --filter @loom/core serve), then ↻ the pane.'
+  }
+  return `Could not open this participant: ${msg}`
+}
+
 /** The director name this console signs as — the same name the server puts
  *  in `directors` (`user.name || user.email`). */
 function myName(): string {
@@ -645,7 +656,7 @@ export const useOperate = create<OperateState>((set, get) => {
           ? { role: 'guest', token: s.token, id: s.id, name: s.name, eventId: s.eventId, title: s.title }
           : { role: 'prime', token: s.token, character: s.id, eventId: s.eventId, title: s.title }
       } catch (e) {
-        set({ error: (e as Error).message })
+        set({ error: playerOpenError(e) })
         return null
       }
     },

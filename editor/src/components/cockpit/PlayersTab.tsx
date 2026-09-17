@@ -65,6 +65,7 @@ function PlayerPane({ slot, width }: { slot: PlayerSlot; width: number }) {
   const [session, setSession] = useState<PlayerSession | null>(null)
   const [state, setState] = useState<PaneState>(PaneState.Opening)
   const [note, setNote] = useState<string | null>(null)
+  const [failure, setFailure] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const live = useRef<PlayerSession | null>(null)
 
@@ -79,6 +80,7 @@ function PlayerPane({ slot, width }: { slot: PlayerSlot; width: number }) {
         return
       }
       if (s === null) {
+        setFailure(cockpit.getState().error)
         setState(PaneState.Failed)
         return
       }
@@ -217,7 +219,7 @@ function PlayerPane({ slot, width }: { slot: PlayerSlot; width: number }) {
                 {view === PaneState.Cut && (note ?? 'Session ended.') + (exists || !isGuest ? ' Reconnecting…' : ' Re-seating…')}
                 {view === PaneState.Left && 'Signed out in the app.'}
                 {view === PaneState.Gone && `${slot.name} is gone from this run.`}
-                {view === PaneState.Failed && 'Could not open this participant.'}
+                {view === PaneState.Failed && (failure ?? 'Could not open this participant.')}
               </p>
               {(view === PaneState.Left || view === PaneState.Failed) && exists && (
                 <button onClick={reopen} className="mt-2 rounded border border-zinc-700 px-2 py-1 text-zinc-300 hover:bg-zinc-800">
