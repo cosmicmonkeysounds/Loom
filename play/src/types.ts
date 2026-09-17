@@ -65,7 +65,7 @@ export interface SpaceSnapshot {
 export interface Interaction {
   id: string;
   label: string;
-  who: "performer" | "guest" | "admin";
+  who: "performer" | "guest" | "admin" | "agent";
   description: string | null;
 }
 

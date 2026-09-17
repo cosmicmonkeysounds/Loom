@@ -15,14 +15,25 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
 
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
-import { guestView, modView, primeView, rosterRow, themeOf, titleOf, type ModPresence, type RuntimePhase } from "./views.ts";
+import { guestView, modView, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type ModPresence, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
 import { ChatStore, composeGuestMessages, decisionChannelFor, visibleTo, type ChatMessage } from "./chat.ts";
 import { ipOf, queryTokenOf, readBody, sendJson, sseSend, str, tokenOf } from "./http-util.ts";
 import { RateLimiter } from "./rate-limit.ts";
-import { AgentHub, type AgentLine, type AgentRequest, type AgentThread } from "./agents.ts";
+import {
+  AgentHub,
+  agentActs,
+  agentMindReport,
+  type AgentAct,
+  type AgentActResult,
+  type AgentFacts,
+  type AgentLine,
+  type AgentPower,
+  type AgentRequest,
+  type AgentThread,
+} from "./agents.ts";
 
 /** A guest view is never rendered against a null sim — this stands in. */
 const EMPTY_SIM = Sim.fromSources("");
@@ -191,6 +202,10 @@ export class EventRuntime {
   // Agent-voiced characters (`mind: external`): open requests + the
   // stagehand workers answering them. Ephemeral — a restart drops them.
   private readonly agentStreams = new Set<ServerResponse>();
+  /** Uses of each `who: agent` power this run (`limit:` enforcement). */
+  private readonly agentPowerUses = new Map<string, number>();
+  /** What each worker last reported about its character's mind. */
+  private readonly agentMinds = new Map<string, AgentMindSummary>();
   private readonly agents = new AgentHub({
     build: (thread, id) => this.buildAgentRequest(thread, id),
     typing: (thread, on) => this.pushTyping(thread, on),
@@ -282,7 +297,15 @@ export class EventRuntime {
         directors.push(c.name ?? "Director");
       }
     }
-    return { guests, primes, mods, directors, owners: this.personaOwners, agents: new Set(this.agents.onlineCharacters()) };
+    return {
+      guests,
+      primes,
+      mods,
+      directors,
+      owners: this.personaOwners,
+      agents: new Set(this.agents.onlineCharacters()),
+      minds: [...this.agentMinds.values()],
+    };
   }
 
   private snapshotFor(client: Client): unknown {
@@ -473,8 +496,137 @@ export class EventRuntime {
         location: performer === null ? sim.locationOf(who) : null,
       },
       world: globals,
+      powers: this.agentPowers(),
       at: Date.now(),
     };
+  }
+
+  /** Every `INTERACTION … who: agent`, with this run's use count. */
+  private agentPowers(): AgentPower[] {
+    if (this.sim === null) return [];
+    return [...this.sim.model.interactions.values()]
+      .filter((i) => i.who === "agent")
+      .map((i) => ({ id: i.id, label: i.label, description: i.description, limit: i.limit, used: this.agentPowerUses.get(i.id) ?? 0 }));
+  }
+
+  /**
+   * The whole session as one lookup document (`GET /api/agent/facts`) —
+   * a worker whose character "has access to everything" reads this and
+   * decides what the character may know. Mod-gated; nothing here is
+   * secret from a director.
+   */
+  private agentFacts(): AgentFacts | null {
+    const sim = this.sim;
+    if (sim === null) return null;
+    const world = sim.worldEntries();
+    const varsOf = (head: string): Record<string, string> => {
+      const out: Record<string, string> = {};
+      for (const w of world) if (w.path.startsWith(`${head}.`)) out[w.path.slice(head.length + 1)] = w.value;
+      return out;
+    };
+    const globals: Record<string, string> = {};
+    for (const w of world) {
+      const head = w.path.split(".")[0]!;
+      if (!sim.persons.has(head) && !sim.model.characters.has(head)) globals[w.path] = w.value;
+    }
+    const online = new Set(this.agents.onlineCharacters());
+    const primes = this.presence().primes;
+    const nameOf = (id: string) => sim.persons.get(id)?.name ?? id;
+    const programs = [...sim.persons.values()].map((p) => ({
+      id: p.id,
+      name: p.name,
+      faction: sim.publicFactionOf(p.id),
+      groups: sim.groupsOf(p.id),
+      location: sim.locationOf(p.id),
+      captured: sim.isCaptured(p.id),
+      vars: varsOf(p.id),
+      codex: sim.codexFor(p.id).map((e) => e.title),
+    }));
+    return {
+      at: Date.now(),
+      world: globals,
+      programs,
+      characters: [...sim.model.characters.values()].map((c) => ({
+        id: c.id,
+        faction: c.faction,
+        listed: c.listed,
+        mind: c.mind,
+        online: c.mind === "external" ? online.has(c.id) : primes.has(c.id),
+        vars: varsOf(c.id),
+        codex: sim.codexFor(c.id).map((e) => e.title),
+      })),
+      locations: [...sim.model.locations.values()].map((l) => ({
+        id: l.id,
+        label: l.label ?? l.id,
+        occupants: programs.filter((p) => p.location === l.id).map((p) => p.name),
+      })),
+      codex: [...sim.model.codex.values()].map((e) => ({
+        id: e.id,
+        title: e.title,
+        about: e.about,
+        text: e.text,
+        holders: sim.codexHolders(e.id).map(nameOf),
+        hasCode: e.code !== null,
+      })),
+      powers: this.agentPowers(),
+    };
+  }
+
+  /**
+   * Carry out a worker's requested acts for a settled request — the
+   * bargains. `share` hands the thread's counterpart (or `to`) an entry the
+   * character holds, exactly like a performer's booth share; `fire` uses a
+   * declared `who: agent` power: the named event fires *as* the character
+   * with the thread's guest as subject, so only the character's own hooks
+   * hear it and the story decides what "cutting the lights" means. A power
+   * over its `limit:` is refused. Anything undeclared is refused, never
+   * improvised.
+   */
+  private applyAgentActs(req: AgentRequest, acts: AgentAct[]): AgentActResult[] {
+    const sim = this.sim!;
+    const who = req.thread.audience[0]!;
+    const counterpart = who.startsWith("@") ? who.slice(1) : who;
+    const out: AgentActResult[] = [];
+    for (const act of acts) {
+      if (act.kind === "share") {
+        const to = act.to ?? counterpart;
+        const entry = sim.model.codexIndex.get(act.entry) ?? (sim.model.codex.has(act.entry) ? act.entry : null);
+        if (entry === null || !sim.holdsCodex(req.character, entry)) {
+          out.push({ kind: "share", ok: false, what: act.entry, error: "the character doesn't hold that entry" });
+          continue;
+        }
+        if (!sim.persons.has(to) && !sim.model.characters.has(to)) {
+          out.push({ kind: "share", ok: false, what: entry, error: "unknown recipient" });
+          continue;
+        }
+        if (sim.holdsCodex(to, entry)) {
+          out.push({ kind: "share", ok: false, what: entry, error: "they already hold it" });
+          continue;
+        }
+        this.fanout(this.commit("share", req.character, to, entry));
+        out.push({ kind: "share", ok: true, what: entry });
+      } else {
+        const def = sim.model.interactions.get(act.name);
+        if (def === undefined || def.who !== "agent") {
+          out.push({ kind: "fire", ok: false, what: act.name, error: "no such power" });
+          continue;
+        }
+        const used = this.agentPowerUses.get(def.id) ?? 0;
+        if (def.limit !== null && used >= def.limit) {
+          out.push({ kind: "fire", ok: false, what: def.id, error: "power exhausted for this run" });
+          continue;
+        }
+        const subject = act.subject ?? (sim.persons.has(counterpart) ? counterpart : undefined);
+        if (subject !== undefined && !sim.persons.has(subject)) {
+          out.push({ kind: "fire", ok: false, what: def.id, error: "unknown subject" });
+          continue;
+        }
+        this.agentPowerUses.set(def.id, used + 1);
+        this.fanout(this.commit("signal", def.id, subject, act.args ?? null, req.character));
+        out.push({ kind: "fire", ok: true, what: def.id });
+      }
+    }
+    return out;
   }
 
   /** Show / hide "<Character> is typing…" to whoever is in the thread. */
@@ -554,8 +706,22 @@ export class EventRuntime {
       applied[name] = next;
       this.fanout(this.commit("setVar", path, String(next)));
     }
+    const acted = this.applyAgentActs(req, agentActs(body["acts"]));
     if (followUp) this.agents.line(req.thread);
-    sendJson(res, 200, { ok: true, said: text !== "", applied });
+    sendJson(res, 200, { ok: true, said: text !== "", applied, acted });
+  }
+
+  /** `POST /api/agent/mind {character, worker, brief, mood, notes, people}` —
+   *  a worker mirrors its character's mind for the director consoles. */
+  private agentMind(res: ServerResponse, body: Record<string, unknown>): void {
+    const report = agentMindReport(body);
+    if (report === null) {
+      sendJson(res, 400, { error: "a mind report names its character" });
+      return;
+    }
+    this.agentMinds.set(report.character, { ...report, at: Date.now() });
+    this.pushPresence();
+    sendJson(res, 200, { ok: true });
   }
 
   // -- persistence (event-sourced journal) ---------------------------------
@@ -768,6 +934,8 @@ export class EventRuntime {
     }
     this.stopTicker();
     this.agents.reset();
+    this.agentPowerUses.clear();
+    this.agentMinds.clear();
     this.sim = null;
     this.scenarioSource = source;
     this.scenarioName = name;
@@ -1032,6 +1200,16 @@ export class EventRuntime {
       this.openAgentStream(req, res, url);
       return true;
     }
+    if (method === "GET" && path === "/api/agent/facts") {
+      if (opts.moderator !== true && !this.sessions.canModerate(queryTokenOf(req, url))) {
+        sendJson(res, 403, { error: "moderators only" });
+        return true;
+      }
+      const facts = this.agentFacts();
+      if (facts === null) sendJson(res, 409, { error: "no scenario loaded" });
+      else sendJson(res, 200, facts);
+      return true;
+    }
 
     if (method !== "POST") return false;
 
@@ -1043,6 +1221,14 @@ export class EventRuntime {
         return true;
       }
       this.agentReply(res, body);
+      return true;
+    }
+    if (path === "/api/agent/mind") {
+      if (opts.moderator !== true && !this.sessions.canModerate(tokenOf(req, body))) {
+        sendJson(res, 403, { error: "moderators only" });
+        return true;
+      }
+      this.agentMind(res, body);
       return true;
     }
 

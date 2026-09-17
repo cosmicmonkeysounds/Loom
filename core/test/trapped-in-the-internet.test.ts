@@ -265,6 +265,55 @@ describe("Trapped in the Internet — the codex economy", () => {
   });
 });
 
+describe("Trapped in the Internet — Trabolta's powers (the bargains)", () => {
+  it("declares the powers as agent-only interactions with limits, never as buttons", () => {
+    const sim = fresh();
+    const powers = [...sim.model.interactions.values()].filter((i) => i.who === "agent");
+    expect(powers.map((p) => [p.id, p.limit])).toEqual([
+      ["cut the lights", 2],
+      ["flicker the screens", 3],
+      ["snoop", 6],
+      ["pardon a program", 1],
+    ]);
+    upload(sim, "g1", "Minesweeper");
+    expect(guestView(sim, "g1").interactions.map((i) => i.id)).not.toContain("snoop");
+  });
+
+  it("cutting the lights is a cue the house hears plus an alert in that room; snooping is felt", () => {
+    const sim = fresh();
+    upload(sim, "g1", "Minesweeper");
+    upload(sim, "g2", "Pinball");
+    sim.arrive("g2", "The Cache");
+    const cut = sim.signal("cut the lights", "g1", { room: "The Cache" }, "Trabolta");
+    const cue = cut.find((e) => e.type === "directive") as { verb: string; args: string } | undefined;
+    expect(cue).toEqual({ type: "directive", verb: "cue", args: "lights, room: The Cache, state: off" });
+    const alert = cut.find((e) => e.type === "broadcast") as { audience: string[]; cue: string };
+    expect(alert.audience).toEqual(["g2"]);
+    expect(alert.cue.startsWith('"!')).toBe(true);
+    const snoop = sim.signal("snoop", "g1", { target: "g2" }, "Trabolta");
+    expect(num(sim, "g2.doubt")).toBe(3);
+    expect((snoop.find((e) => e.type === "broadcast") as { audience: string[] }).audience).toEqual(["g2"]);
+  });
+
+  it("a pardon releases a corrupted program without reinstallation and tells the Antivirus", () => {
+    const sim = fresh();
+    upload(sim, "g1", "Minesweeper");
+    upload(sim, "g2", "Pinball");
+    sim.capture("g2");
+    expect(sim.isCaptured("g2")).toBe(true);
+    const pardon = sim.signal("pardon a program", "g1", { target: "g2" }, "Trabolta");
+    expect(sim.isCaptured("g2")).toBe(false);
+    expect(pardon.some((e) => e.type === "released")).toBe(true);
+    expect((pardon.filter((e) => e.type === "broadcast") as Array<{ scope: string }>).map((b) => b.scope)).toEqual(["group(Antivirus)", "participant(target)"]);
+    // Fired *as* another character (the agent path always names its actor),
+    // Trabolta's hooks stay silent. (A director's un-actored fire reaches
+    // every character, as with any interaction.)
+    sim.capture("g2");
+    sim.signal("pardon a program", "g1", { target: "g2" }, "Clippy");
+    expect(sim.isCaptured("g2")).toBe(true);
+  });
+});
+
 describe("Trapped in the Internet — the glitch and the awakening", () => {
   it("the glitch opens free roam and sorts the two performers onto their sides", () => {
     const sim = fresh();

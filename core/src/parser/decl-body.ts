@@ -410,7 +410,10 @@ function lowerInteraction(body: RawLine[]): InteractionBody {
     else if (key === "description") out.description = value;
     else if (key === "who") {
       const w = value.trim().toLowerCase();
-      if (w === "performer" || w === "guest" || w === "admin") out.who = w;
+      if (w === "performer" || w === "guest" || w === "admin" || w === "agent") out.who = w;
+    } else if (key === "limit") {
+      const n = Number(value.trim());
+      if (Number.isFinite(n) && n >= 0) out.limit = Math.floor(n);
     }
     out.properties.set(key, { value, span: line.span });
   }

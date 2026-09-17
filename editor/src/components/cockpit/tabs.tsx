@@ -387,7 +387,7 @@ export function ChatTab() {
   // The story's own buttons: a guest's `who: guest` interactions; a
   // performer's interactions on the guest whose thread is open.
   const guestActions = lens === LensKind.Guest ? interactions.filter((i) => i.who === 'guest') : []
-  const performerActions = lens === LensKind.Performer && isGuestThread ? interactions.filter((i) => i.who !== 'guest') : []
+  const performerActions = lens === LensKind.Performer && isGuestThread ? interactions.filter((i) => i.who !== 'guest' && i.who !== 'agent') : []
   const threadGuest = isGuestThread ? activeRoom?.dmGuest ?? null : null
 
   const scan = async () => {

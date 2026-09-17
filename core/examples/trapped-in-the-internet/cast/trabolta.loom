@@ -82,6 +82,40 @@ CHARACTER Trabolta is Person
   when scanned by program:
     -> self.Audience
 
+  // ── Powers — the bargains ──────────────────────────────────────────
+  // What Trabolta can *do* from a conversation, not just say. Each
+  // power is an `INTERACTION … who: agent` (declared below); the model
+  // may use one in a reply, the server fires it *as* Trabolta with the
+  // program he is talking to as the subject, and only these hooks hear
+  // it. The story — not the model — decides what a power means, and the
+  // house hears it as an ordinary `cue` (stagehand's show module routes
+  // `lights` / `screens` to MQTT). `limit:` caps uses per run: the
+  // bargains are meant to be rare, and remembered.
+
+  // "Turn off the lights in the kitchen." `room` is a LOCATION name.
+  when cut the lights for program:
+    <cue: lights, room: {room}, state: off>
+    broadcast "!💡 The lights in {room} go out. Somewhere a fan spins down." to location(room)
+
+  when flicker the screens for program:
+    <cue: screens, effect: flicker>
+    broadcast "📺 Every screen in the house stutters, once, and comes back." to everyone
+
+  // Reading another program's file. The worker looks the target up in
+  // the live session before answering; this is the part the story sees:
+  // the snooped program feels it, and the Antivirus get a little warmer.
+  when snoop for program:
+    set target.doubt += 3
+    broadcast "👁 Something has opened your file. It is reading." to participant(target)
+
+  // The big one: let a corrupted program out of the Internet with no
+  // reinstallation. Once a night. The Antivirus notice.
+  when pardon a program for program:
+    if target.corrupted:
+      release target from The Internet
+      broadcast "!🔓 {target.name} has been pardoned by the operating system. Reinstallation cancelled. This is irregular." to group(Antivirus)
+      broadcast "🔓 The Internet opens. You have been pardoned. Nobody is reinstalled. Walk out." to participant(target)
+
   // A program scanned at the TV over the fireplace (the performer at the
   // Desktop scans them): Trabolta's three questions, in his own voice.
   beat Audience(program)
@@ -98,3 +132,30 @@ CHARACTER Trabolta is Person
         Self: … honest. I did not select you for honesty. I selected you for skills, and either motivation or naivety. Which are you?
     else:
       Self: You know very little. That is fine. That is why you were selected.
+
+// ── Trabolta's powers (the app never shows these; the model may use
+//    them — see the hooks above and `trabolta.persona.md`) ──────────
+
+INTERACTION cut the lights
+  label: Cut the lights in a room
+  who: agent
+  limit: 2
+  description: Kill the lights in one room of the house for a while. args: room — a LOCATION name (The Cache, The Cloud, The Registry, The Desktop).
+
+INTERACTION flicker the screens
+  label: Flicker every screen
+  who: agent
+  limit: 3
+  description: Every screen in the house stutters for a second. No args. Cheap theatre.
+
+INTERACTION snoop
+  label: Snoop on a program
+  who: agent
+  limit: 6
+  description: Read another program's file — where they are, what they hold, what they are. They will feel it. args: target — the program's id.
+
+INTERACTION pardon a program
+  label: Pardon a program from the Internet
+  who: agent
+  limit: 1
+  description: Release one corrupted program from the Internet with no reinstallation. Once a night. The Antivirus will know. args: target — the program's id.

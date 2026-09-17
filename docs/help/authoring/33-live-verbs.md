@@ -172,6 +172,37 @@ guest's pass sheet, fired with the guest as subject (catch it with a
 story rule or on the ROLE). `who: admin` needs the moderator passcode.
 Interactions are listed in the Run cockpit's event picker too.
 
+### Powers for a character with a mind: `who: agent`
+
+A character voiced by a language model (`mind: external`, see *Codex →
+A character with a mind*) can be given things it may *do* from a
+conversation, not just say. `who: agent` declares such a **power**; it
+never becomes a button:
+
+```loom
+INTERACTION cut the lights
+  who: agent
+  limit: 2
+  description: Kill the lights in one room. args: room — a LOCATION name.
+
+CHARACTER Trabolta
+  mind: external
+  when cut the lights for program:
+    <cue: lights, room: {room}, state: off>
+    broadcast "!💡 The lights in {room} go out." to location(room)
+```
+
+When the model decides a guest has earned it, the server fires the event
+*as the character* with the guest it is talking to as the subject, so
+only that character's own hooks hear it — the story, not the model,
+decides what "cutting the lights" means (here: a `cue` the show-control
+bridge routes to the house, plus an alert in that room). Arguments the
+model supplies (`room`, `target`) bind by name like `fire … with`.
+`limit:` caps uses per run; every use is journaled and visible to the
+directors. The `description:` is what the model reads, so say what the
+power does and which args it takes. The character may also **share** any
+codex entry it holds, exactly as a performer's booth would.
+
 ## How the phrase is read
 
 Filler words (`a`, `the`, `is`, `by`, `at`, `in`, `to`, `for`, `from`,

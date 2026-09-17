@@ -114,5 +114,18 @@ a performer's private Cast thread) is sent to the agent, which answers
 in character through a local language model and nudges the character's
 variables. Guests see "… is typing" while it thinks, and "away" when no
 agent is running. Your `when` rules decide what the numbers mean; the
-model never decides the plot. See `stagehand/README.md` and the
-*Trapped in the Internet* example.
+model never decides the plot.
+
+The character **grows** over the night. Two models share the work: a
+fast one speaks every line; a slower *orchestrator* runs between turns
+and keeps the character's **mind** — a brief for how to behave right
+now, notes on what it has decided, a dossier on every person it has
+spoken to (promises, favours asked, claims made), a verdict on every
+"fact" fed to it, and a rolling summary of any long thread (so a chat
+is compressed, never reset). The character can also **look up** the
+live session — who is where, who holds what — and, if the story gives
+it powers (`INTERACTION … who: agent`, see *Live verbs*), **bargain**:
+share lore it holds, or fire a declared power the story carries out.
+Directors see the mind in the Run cockpit's state. See
+`stagehand/README.md` and the *Trapped in the Internet* example
+(`trabolta.persona.md` + `trabolta.mind.md`).

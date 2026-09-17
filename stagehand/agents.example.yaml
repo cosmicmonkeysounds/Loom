@@ -2,7 +2,7 @@
 # laptop.yaml and edit. This machine runs the `agents` module: it voices
 # every CHARACTER marked `mind: external` that has a persona below.
 #
-#   ollama pull gpt-oss:20b          # once
+#   ollama pull gpt-oss:20b tobestyledintro/qwen3.8-9b-distill:q8_0   # once
 #   uv run stagehand ask   --config laptop.yaml            # tune the persona, no server
 #   uv run stagehand check --config laptop.yaml
 #   uv run stagehand run   --config laptop.yaml
@@ -17,12 +17,27 @@ server:
 agents:
   name: laptop                 # how directors see this worker
   concurrency: 1               # one generation at a time on a laptop GPU
-  llm:
+  llm:                         # the FAST model — speaks every line (seconds)
     endpoint: http://localhost:11434/v1
     model: gpt-oss:20b
     reasoning_effort: low      # gpt-oss: low ≈ a few seconds per reply
     temperature: 0.9
-    max_tokens: 800            # reasoning tokens count against this
+    max_tokens: 1000           # reasoning tokens count against this (the mind block is long)
     timeout_s: 90
+    api: ollama                # native /api/chat so `keep_alive` is honoured …
+    keep_alive: 60m            # … and the voice stays loaded through a quiet spell
+  orchestrator:                # the SLOW model — grows each character's mind
+    enabled: true              #   between turns; never on the reply path
+    llm:
+      model: tobestyledintro/qwen3.8-9b-distill:q8_0   # ollama pull … (once)
+      temperature: 0.4
+      max_tokens: 1200
+      api: ollama              #   native /api/chat: `think` + `keep_alive` honoured
+      extra: { think: false }  #   reasoning off (the OpenAI shim ignores this)
+      keep_alive: 60m
+    quiet_s: 1.5               #   idle seconds before a reflection may start
+    preempt: true              #   a new request cancels a running reflection
+    survey_every_s: 120        #   look at the whole house this often
+  state_dir: .stagehand-minds  # minds persist here per event + character
   characters:
     - ../core/examples/trapped-in-the-internet/trabolta.persona.md

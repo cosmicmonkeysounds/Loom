@@ -160,8 +160,10 @@ export function channelId(name: string): string {
 export interface InteractionDef {
   id: string;
   label: string;
-  who: "performer" | "guest" | "admin";
+  who: "performer" | "guest" | "admin" | "agent";
   description: string | null;
+  /** `limit: N` uses per run (agent powers); null = unlimited. */
+  limit: number | null;
 }
 
 export interface SimModel {
@@ -343,6 +345,7 @@ export function compileModel(bundle: Bundle): SimModel {
               label: decl.interaction.label ?? decl.name,
               who: decl.interaction.who,
               description: decl.interaction.description,
+              limit: decl.interaction.limit,
             });
           }
           break;

@@ -37,6 +37,17 @@ show:
     - on: { directive: vibe }
       mqtt: { topic: "show/vibe", payload_from_args: true, retain: true }
 
+    # Trabolta's bargains (an agent-voiced character's `who: agent` powers
+    # in cast/trabolta.loom): the story fires an ordinary cue, the house
+    # obeys. <cue: lights, room: The Cache, state: off> → house/lights/The Cache/set
+    - on: { directive: cue }
+      match: { target: lights }
+      mqtt: { topic: "house/lights/{room}/set", payload_from_args: true, retain: true }
+    # <cue: screens, effect: flicker> → every TD machine at once
+    - on: { directive: cue }
+      match: { target: screens }
+      osc: { addr: "/cue/screens", args: ["{effect}"], t_exec: "+200ms" }
+
     # Raw sim events match too — light the board when the lockdown beat fires.
     - on: { event: beatEntered, beat: lockdown }
       osc: { addr: "/cue/scene", args: ["lockdown"], t_exec: "+200ms" }

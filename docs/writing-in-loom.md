@@ -1234,6 +1234,14 @@ usually caught by a house rule (Part 6.4) or the role. `who: admin` needs
 the moderator passcode. Every interaction also appears in the Run
 cockpit's event list.
 
+A fourth value, `who: agent`, is not a button at all: it declares a
+**power** a character voiced by a language model (`mind: external`) may
+exercise from a conversation — cut the lights in a room, pardon a
+prisoner — fired *as* that character with the guest it is talking to as
+subject, capped by `limit: N` uses per run. The story's hooks decide what
+the power does; the model only decides when it has been earned. See the
+help article *Live verbs → Powers for a character with a mind*.
+
 ### 11.4 Places are rooms
 
 Every `LOCATION` is also a chat room in the participant app. A beat

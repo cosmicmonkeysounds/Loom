@@ -12,12 +12,24 @@
     temperature: 0.9                   # optional per-character model overrides:
     max_tokens: 800                    #   model / temperature / max_tokens /
     reasoning_effort: low              #   reasoning_effort
+    mind: trabolta.mind.md             # the orchestrator's prompt (how this
+                                       #   character grows; default built in)
+    orchestrator: { model: … }         # orchestrator model overrides for this one
+    thread_window: 12                  # thread lines the fast model sees
+    summarize_after: 20                # a thread this long gets a rolling summary
+    reflect_after: 1                   # reflect after every N exchanges per thread
+    lookup: true                       # may ask the session about people / rooms / lore
+    lookup_power: snoop                # a power fired (target = that program) whenever a
+                                       #   lookup resolves a program — so being read is *felt*
+    powers: all                        # which `who: agent` powers it may use (or a list, or none)
+    bargain: "…"                       # guidance on when a favour is earned
     ---
     You are TRABOLTA, …
 
-The body is the system prompt verbatim. It should tell the model to reply
-with one JSON object — `{"say": "…", "adjust": {"truth": 5}}` — but a
-model that ignores that still works (the text becomes the line).
+The body is the system prompt verbatim — the character at the doors. The
+worker appends the live state, the character's evolving *mind* (see
+`mind.py`), its powers, and the reply protocol; a model that ignores the
+JSON protocol still works (the text becomes the line).
 """
 
 from __future__ import annotations
@@ -45,6 +57,15 @@ _KNOWN = {
     "temperature",
     "max_tokens",
     "reasoning_effort",
+    "mind",
+    "orchestrator",
+    "thread_window",
+    "summarize_after",
+    "reflect_after",
+    "lookup",
+    "lookup_power",
+    "powers",
+    "bargain",
 }
 
 
@@ -63,6 +84,20 @@ class Persona:
     #: Per-character model overrides (merged over the section's `llm:`).
     llm: dict[str, Any] = field(default_factory=dict)
     source: str = ""
+    #: The orchestrator's system prompt (from `mind:`), or None for the default.
+    mind_prompt: str | None = None
+    #: Orchestrator model overrides for this character.
+    orchestrator: dict[str, Any] = field(default_factory=dict)
+    thread_window: int = 12
+    summarize_after: int = 20
+    reflect_after: int = 1
+    lookup: bool = True
+    #: A power to fire (with `target` = the program) whenever a lookup resolves
+    #: a program: reading someone's file is felt by them. None = silent lookups.
+    lookup_power: str | None = None
+    #: None = every declared power; () = none; else the allowed power ids.
+    powers: tuple[str, ...] | None = None
+    bargain: str = ""
 
 
 def _names(value: Any, where: str) -> tuple[str, ...]:
@@ -104,10 +139,33 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
             raise ConfigError(f"{source}: when: {err}") from err
     them = meta.get("them")
     llm = {k: meta[k] for k in ("model", "endpoint", "temperature", "max_tokens", "reasoning_effort") if k in meta}
-    try:
-        max_step = int(meta.get("max_step", 15))
-    except (TypeError, ValueError) as err:
-        raise ConfigError(f"{source}: max_step must be a number") from err
+    def _int(key: str, default: int) -> int:
+        try:
+            return max(0, int(meta.get(key, default)))
+        except (TypeError, ValueError) as err:
+            raise ConfigError(f"{source}: {key} must be a number") from err
+
+    max_step = _int("max_step", 15)
+    mind_prompt = None
+    if meta.get("mind") not in (None, ""):
+        mind_path = Path(str(meta["mind"]))
+        if not mind_path.is_absolute() and source not in ("<persona>", ""):
+            mind_path = Path(source).parent / mind_path
+        try:
+            mind_prompt = mind_path.read_text(encoding="utf-8").strip() or None
+        except OSError as err:
+            raise ConfigError(f"{source}: cannot read mind file {mind_path}: {err}") from err
+    orchestrator = meta.get("orchestrator")
+    if orchestrator is not None and not isinstance(orchestrator, dict):
+        raise ConfigError(f"{source}: orchestrator: must be a mapping of model overrides")
+    raw_powers = meta.get("powers", "all")
+    powers: tuple[str, ...] | None
+    if raw_powers in (None, "all", True):
+        powers = None
+    elif raw_powers in ("none", False, ""):
+        powers = ()
+    else:
+        powers = _names(raw_powers, f"{source}: powers")
     return Persona(
         character=character.strip(),
         system=body,
@@ -120,6 +178,15 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         fallback=str(meta.get("fallback") or ""),
         llm=llm,
         source=source,
+        mind_prompt=mind_prompt,
+        orchestrator=dict(orchestrator or {}),
+        thread_window=max(2, _int("thread_window", 12)),
+        summarize_after=max(4, _int("summarize_after", 20)),
+        reflect_after=max(1, _int("reflect_after", 1)),
+        lookup=bool(meta.get("lookup", True)),
+        lookup_power=(str(meta["lookup_power"]).strip() or None) if meta.get("lookup_power") not in (None, "") else None,
+        powers=powers,
+        bargain=str(meta.get("bargain") or "").strip(),
     )
 
 

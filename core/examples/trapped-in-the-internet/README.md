@@ -34,7 +34,8 @@ beats/internet.loom  inside the Internet (the tablet video, the VR contract)
 beats/glitch.loom    the inciting event → free roam · the stations
 beats/endings.loom   the keys · the countdown · five endings
 codex/*.loom         every piece of lore a program can hold, unlock, and trade
-trabolta.persona.md  the system prompt for Trabolta's language model
+trabolta.persona.md  the voice: the system prompt for Trabolta's fast model
+trabolta.mind.md     the mind: how the orchestrator model grows him over the night
 ```
 
 ## The night, in order
@@ -106,10 +107,43 @@ the pieces below are its siblings.
 | **Arduino puzzles** | puzzle → story | Either show the guest a code to type, or (via stagehand / any MQTT→HTTP hop) `POST /api/mod/codex {who: "<guest id>", entry: "The Second Key"}`. Guest ids come from the pass QR the puzzle scans, or from `/api/state?role=mod` → `roster`. |
 | **VR station** | headset → story | `POST /api/mod/signal {name: "the simulation completed", subject: "<guest id>"}` when the goose lays its egg (releases them); `{name: "the golden goose", subject}` for the flavour + entry. Bathroom Mode from the in-game app: `POST /api/guest/act {name: "go to the bathroom"}` with the guest's token, or `mod/signal {name, subject}`. |
 | **TV mirror** | story → screens | Watch the mod SSE feed (`GET /e/:id/events?role=mod`) for `captured` / `released` sim events and `broadcast`s with `alert: true`. |
-| **Trabolta** | laptop ⇄ server | [stagehand](../../../stagehand)'s `agents` module: `cp stagehand/agents.example.yaml stagehand/laptop.yaml` (set `server.url`, `event`, `mod_passcode`), `ollama pull gpt-oss:20b`, then `uv run stagehand run --config laptop.yaml`. The server sends it every message to Trabolta (programs' DMs, performers' Cast threads). It answers in character from `trabolta.persona.md` and nudges `Trabolta.truth/untruth/stance/love`, which the server clamps. Before the glitch the persona's `when:` gate answers programs with a hold message. `stagehand ask --config laptop.yaml` tunes the voice offline. The story's watchers do the rest. |
+| **Trabolta** | laptop ⇄ server | [stagehand](../../../stagehand)'s `agents` module: `cp stagehand/agents.example.yaml stagehand/laptop.yaml` (set `server.url`, `event`, `mod_passcode`), `ollama pull gpt-oss:20b tobestyledintro/qwen3.8-9b-distill:q8_0`, then `uv run stagehand run --config laptop.yaml`. The server sends it every message to Trabolta (programs' DMs, performers' Cast threads). The fast model answers in character from `trabolta.persona.md` + his current **mind** and nudges `Trabolta.truth/untruth/stance/love` (clamped by the server); the orchestrator model grows the mind between turns from `trabolta.mind.md`. Before the glitch the persona's `when:` gate answers programs with a hold message. `stagehand ask --config laptop.yaml --reflect` tunes voice + mind offline. See *Trabolta's mind* below. |
 
 Everything a bridge can send is an ordinary journaled mutation, so a
 rehearsal in the editor's Run mode and the live night replay identically.
+
+## Trabolta's mind — how he grows, and what he can do
+
+Trabolta is two models on the host's laptop. The **voice** (gpt-oss)
+answers every line in seconds. The **mind** (the Qwen 3.8 distill) runs
+between turns and keeps dictionaries that fill up as the night goes:
+a *brief* for how to play him right now, *notes* on what he has decided,
+a *dossier* on every program and cast member he has talked to (what
+they claimed, what they asked for, what he promised, trust 0–100), a
+ledger of every "fact" fed to him with a verdict, and a rolling summary
+of any long thread (a chat is compressed, never reset). It persists on
+the laptop per event and is mirrored to the Run cockpit (`ModView.minds`)
+so the director can watch him change. `trabolta.mind.md` is the arc it
+steers: lonely grandeur → appetite → the question of force → the turn.
+
+He can **read the whole session** (`GET /api/agent/facts`: who is where,
+who holds what) — "snoop on Excel for me" costs one extra model call —
+and he has **powers**, declared in `cast/trabolta.loom` as `INTERACTION …
+who: agent` with a `limit:` per run:
+
+| Power | What the story does | Limit |
+|---|---|---|
+| `cut the lights` (args `room`) | `<cue: lights, room, state: off>` → stagehand's show module → MQTT `house/lights/<room>/set`; an alert to everyone in that room | 2 |
+| `flicker the screens` | `<cue: screens, effect: flicker>` → OSC to every TD machine; a house-wide notice | 3 |
+| `snoop` (args `target`) | the target's `doubt` +3 and "👁 Something has opened your file." | 6 |
+| `pardon a program` (args `target`) | releases a corrupted program from the Internet with no reinstallation; the Antivirus are told | 1 |
+
+…plus **sharing** any codex entry he holds, exactly like a performer's
+booth. The model decides *when* a favour has been earned (the persona's
+`bargain:` policy, tightened or loosened by the mind as the night goes —
+"very extreme, but possible"); the story decides *what it does*; every
+use is a journaled `signal` fired *as* Trabolta, so a rehearsal and the
+live night replay identically and the director sees each one.
 
 ## Casting
 

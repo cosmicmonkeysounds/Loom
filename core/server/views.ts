@@ -66,7 +66,7 @@ export function themeOf(source: string): string | null {
 export interface InteractionSummary {
   id: string;
   label: string;
-  who: "performer" | "guest" | "admin";
+  who: "performer" | "guest" | "admin" | "agent";
   description: string | null;
 }
 
@@ -278,6 +278,24 @@ export interface ModPresence {
   owners?: Map<string, string>;
   /** Agent characters with a stagehand worker connected. */
   agents?: Set<string>;
+  /** What each agent worker last reported about its character's evolving
+   *  mind (`POST /api/agent/mind`) — the director's window into it. */
+  minds?: AgentMindSummary[];
+}
+
+/** An agent-voiced character's mind as its worker last mirrored it. */
+export interface AgentMindSummary {
+  character: string;
+  worker: string;
+  /** Server clock when it was reported. */
+  at: number;
+  /** The orchestrator's current voice brief (what the character is up to). */
+  brief: string;
+  mood: string;
+  /** Running self-notes (decisions, obsessions, what it has learned). */
+  notes: string[];
+  /** Per-person dossiers the mind keeps: who, what it thinks of them. */
+  people: Array<{ id: string; name: string; summary: string; trust: number }>;
 }
 
 /** The operator's full god-view of the world. */
@@ -315,6 +333,8 @@ export interface ModView {
   /** Every codex entry with its unlock code and current holders — the
    *  director sees the whole currency supply. */
   codex?: CodexSummary[];
+  /** Agent-voiced characters' minds, as their workers last reported them. */
+  minds?: AgentMindSummary[];
 }
 
 export interface CodexSummary extends CodexEntryView {
@@ -412,6 +432,7 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
     modsOnline: presence?.mods,
     directors: presence?.directors,
     codex: [...sim.model.codex.values()].map((e) => ({ ...codexEntry(e), code: e.code, holders: sim.codexHolders(e.id) })),
+    ...(presence?.minds !== undefined && presence.minds.length > 0 ? { minds: presence.minds } : {}),
   };
 }
 

@@ -441,7 +441,9 @@ export function emptySpaceBody(): SpaceBody {
 // acting participant as subject, exactly like `fire <name> for guest`.
 // ---------------------------------------------------------------------
 
-export type InteractionWho = "performer" | "guest" | "admin";
+/** Whose console offers an INTERACTION — or, for `agent`, a *power* an
+ *  agent-voiced character (`mind: external`) may exercise from its replies. */
+export type InteractionWho = "performer" | "guest" | "admin" | "agent";
 
 export interface InteractionBody {
   /** Button text; defaults to the declaration name. */
@@ -449,11 +451,14 @@ export interface InteractionBody {
   /** Whose console offers it: a performer (per guest), a guest (for themselves), admins only. */
   who: InteractionWho;
   description: string | null;
+  /** `limit: N` — how many times an agent may use this power per run
+   *  (null = unlimited). Enforced on the agent path only. */
+  limit: number | null;
   properties: Map<string, PropertyValue>;
 }
 
 export function emptyInteractionBody(): InteractionBody {
-  return { label: null, who: "performer", description: null, properties: new Map() };
+  return { label: null, who: "performer", description: null, limit: null, properties: new Map() };
 }
 
 // ---------------------------------------------------------------------

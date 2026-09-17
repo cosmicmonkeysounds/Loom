@@ -485,7 +485,7 @@ The live layer is unchanged in shape; only its vocabulary generalised.
   ```loom
   INTERACTION whisper
     label: Whisper to them
-    who: performer          // performer | guest | admin
+    who: performer          // performer | guest | admin | agent (a power for a `mind: external` character)
     description: A quiet word, in character, to one guest.
   ```
 
@@ -493,7 +493,10 @@ The live layer is unchanged in shape; only its vocabulary generalised.
   event `whisper` with the acting participant as subject — a performer's
   press runs **only their own character's** `when whisper for guest:`
   (plus role hooks and story rules), a guest's press (`who: guest`) runs
-  with the guest as subject, `who: admin` needs moderator powers.
+  with the guest as subject, `who: admin` needs moderator powers, and
+  `who: agent` is never a button: it is a **power** an agent-voiced
+  character may exercise from a reply (fired *as* the character, `limit: N`
+  uses per run) — see `docs/help/authoring/33-live-verbs.md`.
 - **Rooms**: every `LOCATION` is a room; `SPACE` / `CHANNEL` declare
   extra ones; `broadcast … to participant(x) | group(G) | location(L)`
   (`faction(G)` still accepted). A broadcast whose text begins with `!`
@@ -554,6 +557,7 @@ The `play` client is a **generic participant client**. Nothing about
 | `theme: aol97` (header) | the skin. Default is `plain` — quiet paper, one accent, system type. `aol97` is the beveled 1997 chat-room look the *Internet* party shipped with; both are variable sets in `play/src/styles.css`, keyed on `<html data-theme>` |
 | `LOCATION`s, `SPACE`/`CHANNEL`s, `GROUP`s | the rooms sidebar (a room per public `GROUP`; a guest's group pill is coloured from its name) |
 | `INTERACTION … who: performer / admin` | a button on every guest thread in the performer console (`/api/prime/act`) |
+| `INTERACTION … who: agent` | a power an agent-voiced character may use from a reply (`/api/agent/reply` `acts`); the story's hooks carry it out |
 | `INTERACTION … who: guest` | a button on the guest's own pass sheet (`/api/guest/act`) |
 | a `prison: true` location (v3) | the legacy capture / release buttons — only then; `sealed: true` hides the guest's self-escape |
 | `CODEX` entries · `listed: true` characters · `directory: everyone` | the **📓 Codex** sheet (entries by subject, a code box, Share…) and the **👥 People** directory (names + what you know of each, 💬 Message) |

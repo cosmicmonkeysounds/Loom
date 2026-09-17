@@ -97,6 +97,22 @@ class ModClient:
             return {}
         return doc if isinstance(doc, dict) else {}
 
+    async def get(self, p: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        """One authenticated GET (`/api/agent/facts`); re-logs in once on 403."""
+        await self.ensure_token()
+        r = await self._client.get(self.path(p), params=params, headers={"x-loom-token": self.token or ""})
+        if r.status_code == 403 and self.passcode is not None:
+            self.forget_token()
+            await self.ensure_token()
+            r = await self._client.get(self.path(p), params=params, headers={"x-loom-token": self.token or ""})
+        if r.status_code != 200:
+            raise ModApiError(f"GET {p} → {r.status_code} {r.text}", r.status_code)
+        try:
+            doc = r.json()
+        except json.JSONDecodeError:
+            return {}
+        return doc if isinstance(doc, dict) else {}
+
     # -- mod mutations -------------------------------------------------------
 
     async def signal(self, name: str, subject: str | None = None) -> None:

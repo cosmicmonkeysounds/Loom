@@ -124,7 +124,7 @@ describe("event arguments (§9.2)", () => {
   it("a declared INTERACTION is a named event the app fires for a participant", () => {
     const sim = Sim.fromSources(RULES);
     expect([...sim.model.interactions.values()]).toEqual([
-      { id: "knock", label: "Knock on the door", who: "guest", description: null },
+      { id: "knock", label: "Knock on the door", who: "guest", description: null, limit: null },
     ]);
     sim.createPerson("g1", "Ada");
     const ev = sim.signal("knock", "g1");

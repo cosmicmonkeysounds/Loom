@@ -35,7 +35,7 @@ def test_example_show_config_loads():
     show = cfg.modules["show"]
     assert isinstance(show, ShowControl)
     assert show.cfg.mqtt is not None
-    assert len(show.cfg.cues) == 4
+    assert len(show.cfg.cues) == 6
     assert len(show.cfg.sensors) == 4
     # one filter per distinct pattern; the two zone rules share one
     assert sorted(show.cfg.mqtt_filters) == sorted(

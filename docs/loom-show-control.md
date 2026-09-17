@@ -97,6 +97,18 @@ rebooted mid-show without killing the story, the broker, or the ingest.
 > rules. See [`stagehand/README.md`](../stagehand/README.md). The show's
 > QR codes / Arduino puzzles / VR station contract is in
 > [`core/examples/trapped-in-the-internet/README.md`](../core/examples/trapped-in-the-internet/README.md).
+>
+> **2026-09-17 — the agent has a mind and hands.** The agents module is
+> two-tier: a fast model speaks, a slower *orchestrator* (the Qwen 3.8
+> distill, on Ollama's native API with thinking off) grows a persisted
+> **mind** between turns and mirrors it to the server (`POST
+> /api/agent/mind` → `ModView.minds`). The character can read the whole
+> session (`GET /api/agent/facts`) and use story-declared **powers**
+> (`INTERACTION … who: agent`, `limit: N`) — each power is a `signal`
+> fired *as* the character, so a bargain like "cut the lights in the
+> kitchen" is an ordinary `cue` this router already maps to MQTT/OSC
+> (`show.example.yaml`: `lights`, `screens`). The model decides *when*
+> a favour is earned; the story decides *what it does*.
 
 ## The seams that already exist
 

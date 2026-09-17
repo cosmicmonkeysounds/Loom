@@ -3,9 +3,12 @@
     stagehand run    --config laptop.yaml [--only agents]   run every enabled module
     stagehand check  --config laptop.yaml [--only agents]   validate + describe, exit
     stagehand modules                                        list the module kinds
-    stagehand ask    --config laptop.yaml [--character Trabolta] [--name Ada] [text…]
+    stagehand ask    --config laptop.yaml [--character Trabolta] [--name Ada] [--reflect] [text…]
                      talk to an agent persona straight through the model — no
-                     server, no story; one line, or an interactive chat
+                     server, no story; one line, or an interactive chat. With
+                     --reflect the orchestrator runs after each exchange and the
+                     evolving brief / dossier is printed, so the mind can be
+                     tuned offline.
 """
 
 from __future__ import annotations
@@ -49,6 +52,8 @@ def main(argv: list[str] | None = None) -> int:
     ask.add_argument("--character", help="which persona (default: the only / first one)")
     ask.add_argument("--name", default="Guest", help="who you are, as the character sees it")
     ask.add_argument("--var", action="append", default=[], metavar="NAME=VALUE", help="a character variable (repeatable)")
+    ask.add_argument("--reflect", action="store_true", help="run the orchestrator after each exchange and print the mind")
+    ask.add_argument("--power", action="append", default=[], metavar="NAME", help="pretend the story declares this power (repeatable)")
     ask.add_argument("text", nargs="*", help="one line to send; omit for an interactive chat")
     args = parser.parse_args(argv)
 
@@ -86,7 +91,9 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _ask(cfg: StagehandConfig, args: argparse.Namespace) -> int:
-    from .agents.module import Agents, answer
+    from .agents.mind import Mind
+    from .agents.module import Agents, answer, thread_key
+    from .agents.orchestrator import parse_update, reflect_messages
 
     agents = cfg.modules["agents"]
     assert isinstance(agents, Agents)
@@ -96,25 +103,32 @@ def _ask(cfg: StagehandConfig, args: argparse.Namespace) -> int:
         print(f"no persona for {name!r} (have: {', '.join(personas)})", file=sys.stderr)
         return 2
     persona, model = personas[name], agents.cfg.models[name]
+    orchestrator_model = agents.cfg.orchestrator_models[name]
     variables = {}
     for pair in args.var:
         key, _, value = pair.partition("=")
         variables[key.strip()] = value.strip()
     history: list[dict] = []
+    mind = Mind(character=name, event="ask")
+    powers = [{"id": p, "label": p, "description": None, "limit": None, "used": 0} for p in args.power]
 
     async def say(text: str) -> None:
-        history.append({"seq": len(history), "mine": False, "from": args.name, "text": text})
+        history.append({"seq": len(history) + 1, "mine": False, "from": args.name, "text": text})
         req = {
             "id": "ask",
             "character": name,
+            "thread": {"character": name, "channel": f"dm:{name}", "audience": ["ask"]},
             "speaker": {"kind": "guest", "id": "ask", "name": args.name, "faction": None},
             "text": text,
             "history": history[-30:],
             "self": {"vars": variables, "ranges": {}, "codex": []},
             "them": {"vars": {}, "codex": [], "location": None},
             "world": {},
+            "powers": powers,
         }
-        reply = await answer(persona, model, req, gate=False)
+        reply = await answer(persona, model, req, gate=False, mind=mind if args.reflect else None)
+        if reply.lookup:
+            print(f"  (wanted to look up: {', '.join(reply.lookup)} — no session here)")
         print(f"{name}: {reply.say or '(silence)'}")
         if reply.adjust:
             print(f"  adjust {json.dumps(reply.adjust)}")
@@ -123,13 +137,39 @@ def _ask(cfg: StagehandConfig, args: argparse.Namespace) -> int:
                     variables[key] = str(float(variables.get(key, 0)) + delta)
                 except ValueError:
                     pass
+        if reply.acts:
+            print(f"  act {json.dumps(list(reply.acts))}")
         if reply.say:
-            history.append({"seq": len(history), "mine": True, "from": name, "text": reply.say})
+            history.append({"seq": len(history) + 1, "mine": True, "from": name, "text": reply.say})
+        if not args.reflect:
+            return
+        mind.saw_exchange("ask", args.name, "guest", thread_key(req), len(history))
+        from .agents.llm import complete
+
+        raw = await complete(reflect_messages(persona, mind, req, reply, None, persona.summarize_after, thread_key(req)), orchestrator_model)
+        update = parse_update(raw)
+        if update is None:
+            print(f"  [mind] unusable orchestrator output: {raw[:200]!r}")
+            return
+        touched = mind.apply(update, speaker_id="ask", thread_key=thread_key(req), upto=len(history))
+        print(f"  [mind] updated {', '.join(touched) or 'nothing'}")
+        if mind.brief:
+            print("  [brief] " + " / ".join(mind.brief.splitlines()))
+        if mind.mood:
+            print(f"  [mood] {mind.mood}")
+        for n in mind.notes[-4:]:
+            print(f"  [note] {n}")
+        d = mind.people.get("ask")
+        if d is not None and (d.summary or d.claims):
+            print(f"  [you] trust {d.trust}: {d.summary}" + (f" | claims: {'; '.join(d.claims[-3:])}" if d.claims else ""))
+        memo = mind.threads.get(thread_key(req))
+        if memo is not None and memo.summary:
+            print(f"  [thread] {memo.summary}")
 
     if args.text:
         asyncio.run(say(" ".join(args.text)))
         return 0
-    print(f"talking to {name} via {model.model} — Ctrl+D to stop")
+    print(f"talking to {name} via {model.model}" + (f"; mind via {orchestrator_model.model}" if args.reflect else "") + " — Ctrl+D to stop")
     try:
         while True:
             line = input(f"{args.name}> ").strip()

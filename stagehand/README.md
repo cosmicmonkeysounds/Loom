@@ -52,11 +52,11 @@ workers. Nobody else answers those threads:
 The request carries everything needed to answer: the thread so far, who
 is talking (guest or performer, their group, location, variables, and
 codex), the character's own variables with their declared ranges and
-its codex, and global world facts. The worker builds a prompt from the
-character's **persona file**, asks the model, and posts
-`{say, adjust}`. The server commits the line as a journaled `say` and
-clamps each adjustment to the story's declared range. The story's own
-`when` watchers decide what the numbers mean.
+its codex, global world facts, and the character's **powers**. The
+worker answers `{say, adjust, acts}`. The server commits the line as a
+journaled `say`, clamps each adjustment to the story's declared range,
+and carries out each act as an ordinary journaled mutation. The story's
+own `when` watchers decide what the numbers mean.
 
 While a reply is being composed, the thread shows "Trabolta is typing…".
 The server keeps **one open request per thread**. If someone sends
@@ -66,10 +66,67 @@ more with the whole burst. Requests queue while no worker is online
 time out after 2 minutes (one retry), and are cancelled by a run
 restart.
 
+### Two models: the voice and the mind
+
+```
+  request ──▶ FAST PATH (gpt-oss:20b, low effort, seconds)
+              persona + MIND + live state + powers → {say, adjust, lookup?, act?}
+              │  "lookup": ["Excel"] → one more call with the session's cards
+              ▼
+            POST /api/agent/reply {say, adjust, acts}
+              │
+              └──▶ (between turns) ORCHESTRATOR (Qwen 3.8 distill, think off,
+                    Ollama native API, ~10–30 s, preempted by any new request)
+                    reflect: rewrite the brief · dossier on the speaker ·
+                             learned claims + verdicts · thread summary
+                    survey:  every 120 s — the whole house, what changed
+                    → mind saved to state_dir → POST /api/agent/mind (directors)
+```
+
+The **fast path** never waits for the orchestrator. A `lookup` (the
+model asking the live session about a program, room, or lore) costs one
+extra fast call — the "snoop" case. An empty or truncated answer is
+retried once with double the token room, so a guest never gets silence
+for a model hiccup.
+
+The **mind** (`agents/mind.py`) is a set of dictionaries the orchestrator
+fills: `brief` (second-person instructions to the actor for *right
+now*, including the current bargain policy), `mood`, `notes` (what the
+character has decided / noticed), `people` (a dossier per person:
+summary, trust 0–100, claims they made, favours they asked, promises
+made to them), `learned` (every claim fed to it with a verdict — the
+director sees the story's whole codex as ground truth; the character
+only knows what it holds), `threads` (a rolling summary once a thread
+passes `summarize_after` lines: the fast model then sees the summary +
+the last `thread_window` lines while the guest still sees everything —
+a long chat is compressed, never reset), and `world` (what it last
+noticed about the house). It persists under
+`state_dir/<event>/<Character>.mind.json`, so a worker restart forgets
+nothing; a run restart (`reset`) empties it. Directors see it as
+`ModView.minds`.
+
+**Pacing:** a guest who has monopolised the character (24+ turns) gets
+shorter answers and an errand — deterministic, not up to the model.
+
+### Powers, lookups, bargains
+
+A story declares what the character may *do* with `INTERACTION … who:
+agent` (+ `limit: N` per run). The request lists them with uses left;
+the model may answer with `"act": {"fire": "cut the lights", "args":
+{"room": "The Cache"}}` or `"act": {"share": "<lore it holds>"}`. The
+worker validates (declared? uses left? held?) and canonicalises args
+against the session (`"the kitchen"` → `The Cache`, a name → a program
+id); the server validates again, then fires the event *as* the
+character (only its hooks hear it) or shares the entry. Everything is
+journaled and shows up in the director's log. The persona's `bargain:`
+text is the policy the fast model reads; the orchestrator tightens or
+loosens it in the brief as the night goes.
+
 ```bash
-ollama pull gpt-oss:20b
+ollama pull gpt-oss:20b tobestyledintro/qwen3.8-9b-distill:q8_0
 uv run stagehand ask --config laptop.yaml                  # chat with the persona, no server
-uv run stagehand ask --config laptop.yaml --var love=80 "Do you love Sandy?"
+uv run stagehand ask --config laptop.yaml --reflect        # …and watch the mind grow after each line
+uv run stagehand ask --config laptop.yaml --reflect --power "cut the lights" --var love=80 "Do you love Sandy?"
 ```
 
 The persona file (`core/examples/trapped-in-the-internet/trabolta.persona.md`)
@@ -86,16 +143,29 @@ is YAML frontmatter + the system prompt:
 | `unavailable` | what it says while the gate is closed (else silence) |
 | `fallback` | what it says when the model fails (else silence) |
 | `model` / `endpoint` / `temperature` / `max_tokens` / `reasoning_effort` | per-character overrides of the section's `llm:` |
+| `mind` | the orchestrator's prompt file (how *this* character grows); a built-in default otherwise |
+| `orchestrator` | orchestrator model overrides for this character |
+| `thread_window` / `summarize_after` / `reflect_after` | 12 / 20 / 1 — window, when to summarise, how often to reflect |
+| `lookup` | may read the live session (default true) |
+| `lookup_power` | a `who: agent` power fired with `target` = each program a lookup resolves (Trabolta: `snoop`) — being read is felt, deterministically |
+| `powers` | `all` (default), `none`, or a list of `who: agent` interaction names |
+| `bargain` | the favour policy the fast model reads (the orchestrator adjusts it in the brief) |
 
-**gpt-oss notes:** `reasoning_effort: low` gives about 2–6 s per reply on
-a laptop. Reasoning tokens count against `max_tokens`, so keep that
-around 800. JSON mode stays off: the reply parser copes with prose, code
-fences, and `<think>` blocks.
+**Model notes:** the orchestrator uses `api: ollama` (Ollama's native
+`/api/chat`): only there is `think: false` honoured — the
+OpenAI-compatible shim ignores it and burns hundreds of hidden tokens
+per call — and `keep_alive` pins both models resident (Ollama's default
+5 minutes evicts the voice during a quiet spell, and the next guest
+waits ~25 s for a reload). Both models fit on a 48 GB laptop (≈ 24 GB
+together). `gpt-oss` reasoning tokens count against `max_tokens`, so
+keep that ≥ 1000 with the mind block in the prompt. JSON mode stays
+off: the reply parser copes with prose, code fences, and `<think>`
+blocks.
 
-Wire: `GET /api/agent/stream?characters=A,B&name=laptop` (SSE:
-`hello`, `request`, `cancel`, `reset`), then `POST /api/agent/reply {id,
-worker, say, adjust}`. Both use the mod capability. Server side:
-`core/server/agents.ts`.
+Wire: `GET /api/agent/stream?characters=A,B&name=laptop` (SSE: `hello`,
+`request`, `cancel`, `reset`), `POST /api/agent/reply {id, worker, say,
+adjust, acts}`, `GET /api/agent/facts`, `POST /api/agent/mind`. All use
+the mod capability. Server side: `core/server/agents.ts`.
 
 ## show — story ⇄ house
 

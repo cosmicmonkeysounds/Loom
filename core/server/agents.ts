@@ -70,8 +70,153 @@ export interface AgentRequest {
   them: { vars: Record<string, string>; codex: AgentCodexEntry[]; location: string | null };
   /** Global world facts (paths whose head is neither a guest nor a character). */
   world: Record<string, string>;
+  /** The powers this character may exercise from a reply: every
+   *  `INTERACTION … who: agent`, with how many uses are left this run. */
+  powers: AgentPower[];
   /** Server wall clock when the request was built. */
   at: number;
+}
+
+/** An `INTERACTION … who: agent` — something the story lets the agent
+ *  *do*, not just say. Using one fires the named event as the character
+ *  (only its own hooks hear it), with the thread's guest as subject. */
+export interface AgentPower {
+  id: string;
+  label: string;
+  description: string | null;
+  /** Uses per run (`limit:`), or null for unlimited. */
+  limit: number | null;
+  /** Uses so far this run. */
+  used: number;
+}
+
+/**
+ * Something a worker asks the server to do alongside a reply — the
+ * bargains. Every act is validated against the story (an entry the
+ * character actually holds; a power actually declared for agents and not
+ * over its limit) and committed as an ordinary journaled mutation, so the
+ * worker can do nothing a director couldn't, and a replay reproduces it.
+ */
+export type AgentAct =
+  /** Share a codex entry the character holds (default: with the thread's counterpart). */
+  | { kind: "share"; entry: string; to?: string }
+  /** Use a declared power: fire the named event as the character. */
+  | { kind: "fire"; name: string; subject?: string; args?: Record<string, string | number | boolean> };
+
+/** The outcome of one requested act, in order. */
+export interface AgentActResult {
+  kind: AgentAct["kind"];
+  ok: boolean;
+  /** `entry` / `name` as resolved by the story. */
+  what: string;
+  error?: string;
+}
+
+/**
+ * Everything knowable about the live session, in one document, for a
+ * worker that wants to *look things up* (`GET /api/agent/facts`): who is
+ * here, where they stand, what they hold, and what the world says. This
+ * is the "all facts present in the current Loom session" surface — it is
+ * mod-gated, and the worker decides what its character may know.
+ */
+export interface AgentFacts {
+  at: number;
+  /** Global world paths (`Night.phase`), as display strings. */
+  world: Record<string, string>;
+  programs: AgentFactsPerson[];
+  characters: AgentFactsCharacter[];
+  locations: Array<{ id: string; label: string; occupants: string[] }>;
+  codex: Array<{ id: string; title: string; about: string | null; text: string; holders: string[]; hasCode: boolean }>;
+  powers: AgentPower[];
+}
+
+export interface AgentFactsPerson {
+  id: string;
+  name: string;
+  /** Public faction (a hidden one reads as null until revealed). */
+  faction: string | null;
+  groups: string[];
+  location: string | null;
+  captured: boolean;
+  vars: Record<string, string>;
+  /** Titles of the entries they hold. */
+  codex: string[];
+}
+
+export interface AgentFactsCharacter {
+  id: string;
+  faction: string | null;
+  listed: boolean;
+  /** `mind: external` etc. */
+  mind: string | null;
+  online: boolean;
+  vars: Record<string, string>;
+  codex: string[];
+}
+
+/** What a worker mirrors back about a character's evolving mind
+ *  (`POST /api/agent/mind`) so directors can watch it grow. */
+export interface AgentMindReport {
+  character: string;
+  worker: string;
+  brief: string;
+  mood: string;
+  notes: string[];
+  people: Array<{ id: string; name: string; summary: string; trust: number }>;
+}
+
+/** Sanitise a worker's mind report: strings only, bounded, no surprises. */
+export function agentMindReport(raw: unknown): AgentMindReport | null {
+  if (raw === null || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const s = (v: unknown, max: number): string => (typeof v === "string" ? v.slice(0, max) : "");
+  const character = s(r["character"], 80).trim();
+  if (character === "") return null;
+  const notes = Array.isArray(r["notes"]) ? r["notes"].filter((n): n is string => typeof n === "string").slice(0, 60).map((n) => n.slice(0, 400)) : [];
+  const people = Array.isArray(r["people"])
+    ? r["people"]
+        .filter((p): p is Record<string, unknown> => p !== null && typeof p === "object")
+        .slice(0, 200)
+        .map((p) => ({
+          id: s(p["id"], 80),
+          name: s(p["name"], 80),
+          summary: s(p["summary"], 600),
+          trust: typeof p["trust"] === "number" && Number.isFinite(p["trust"]) ? Math.round(p["trust"]) : 0,
+        }))
+        .filter((p) => p.id !== "")
+    : [];
+  return { character, worker: s(r["worker"], 80), brief: s(r["brief"], 2000), mood: s(r["mood"], 200), notes, people };
+}
+
+/** Parse a worker's requested acts: unknown shapes are dropped, never guessed. */
+export function agentActs(raw: unknown): AgentAct[] {
+  if (!Array.isArray(raw)) return [];
+  const out: AgentAct[] = [];
+  for (const item of raw.slice(0, 6)) {
+    if (item === null || typeof item !== "object") continue;
+    const a = item as Record<string, unknown>;
+    const kind = a["kind"];
+    if (kind === "share" && typeof a["entry"] === "string" && a["entry"].trim() !== "") {
+      const act: AgentAct = { kind: "share", entry: a["entry"].trim() };
+      if (typeof a["to"] === "string" && a["to"].trim() !== "") act.to = a["to"].trim();
+      out.push(act);
+    } else if (kind === "fire" && typeof a["name"] === "string" && a["name"].trim() !== "") {
+      const act: AgentAct = { kind: "fire", name: a["name"].trim() };
+      if (typeof a["subject"] === "string" && a["subject"].trim() !== "") act.subject = a["subject"].trim();
+      const rawArgs = a["args"];
+      if (rawArgs !== null && typeof rawArgs === "object" && !Array.isArray(rawArgs)) {
+        const args: Record<string, string | number | boolean> = {};
+        for (const [k, v] of Object.entries(rawArgs as Record<string, unknown>).slice(0, 8)) {
+          if (typeof v === "string") args[k] = v.slice(0, 200);
+          else if (typeof v === "number" && Number.isFinite(v)) args[k] = v;
+          else if (typeof v === "boolean") args[k] = v;
+        }
+        act.args = args;
+      }
+      out.push(act);
+    }
+  }
+  return out;
 }
 
 export interface AgentCodexEntry {
