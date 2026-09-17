@@ -12,12 +12,11 @@ import type { TypingNotice } from "./typing.ts";
  *  session can tell "you can't post here" (403) from "this session is dead"
  *  (401 / 404 after the run restarted). */
 export class ApiError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
+  readonly status: number;
+  constructor(message: string, status: number) {
     super(message);
     this.name = "ApiError";
+    this.status = status;
   }
 }
 

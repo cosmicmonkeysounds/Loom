@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { crawl } from "../src/chat.tsx";
+import { createCrawl } from "../src/host.ts";
 import { CAPTCHA_TILES, WIDGETS, captchaGrid, captchaPassed, widgetLabel } from "../src/widgets.tsx";
 
 describe("captcha grid", () => {
@@ -45,6 +45,7 @@ describe("widget registry", () => {
 
 describe("typewriter crawl policy", () => {
   it("never crawls the backlog, crawls a fresh line once, and resets per sign-in", () => {
+    const crawl = createCrawl();
     crawl.reset();
     expect(crawl.claim(5)).toBe(false); // nothing loaded yet: nothing is "new"
     crawl.loaded(10);
@@ -54,5 +55,14 @@ describe("typewriter crawl policy", () => {
     crawl.reset();
     crawl.loaded(-1);
     expect(crawl.claim(0)).toBe(true);
+  });
+
+  it("is per host — one embedded pane crawling a line doesn't spend it for another", () => {
+    const a = createCrawl();
+    const b = createCrawl();
+    a.loaded(3);
+    b.loaded(3);
+    expect(a.claim(4)).toBe(true);
+    expect(b.claim(4)).toBe(true);
   });
 });

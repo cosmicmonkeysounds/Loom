@@ -56,6 +56,7 @@ async def answer(
     except LlmError as err:
         log.warning("%s: model failed (%s)%s", persona.character, err, " — using fallback" if persona.fallback else "")
         return Reply(say=persona.fallback)
+    log.debug("%s raw model output: %r", persona.character, raw)
     reply = parse_reply(raw, persona.variables, persona.max_step)
     if reply.empty:
         log.warning("%s: the model said nothing usable: %r", persona.character, raw[:200])

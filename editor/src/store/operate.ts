@@ -626,12 +626,34 @@ export const useOperate = create<OperateState>((set, get) => {
     // co-writers can tell whose persona is whose.
     addPersona: async (name) => {
       const ev = get().event
-      if (!ev) return
+      if (!ev) return null
       try {
         const guest = await modApi.persona(ev.id, name)
         if (guest !== null) set((s) => ({ personas: s.personas.includes(guest.id) ? s.personas : [...s.personas, guest.id] }))
+        return guest?.id ?? null
       } catch (e) {
         set({ error: (e as Error).message })
+        return null
+      }
+    },
+    openPlayer: async (role, id) => {
+      const ev = get().event
+      if (!ev) return null
+      try {
+        const s = await modApi.impersonate(ev.id, role, id)
+        return s.role === 'guest'
+          ? { role: 'guest', token: s.token, id: s.id, name: s.name, eventId: s.eventId, title: s.title }
+          : { role: 'prime', token: s.token, character: s.id, eventId: s.eventId, title: s.title }
+      } catch (e) {
+        set({ error: (e as Error).message })
+        return null
+      }
+    },
+    closePlayer: async (session) => {
+      try {
+        await modApi.endImpersonation(session.eventId, session.token)
+      } catch {
+        /* the run already ended / restarted — the session died with it */
       }
     },
     setVar: (path, value) => withEvent((ev) => modApi.setVar(ev, path, value)),

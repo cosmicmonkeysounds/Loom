@@ -5,9 +5,9 @@
 //! plumbing — only their channel-shaping + actions differ.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { crawl } from "./chat.tsx";
 import { ApiError, api, useChatStream } from "./client.ts";
 import { maxSeqOf, pickAlerts, playChime, pmChannelId, pmOtherParty, unlockFromSearch, vibrate, withoutUnlock } from "./codex.ts";
+import { usePlayHost } from "./host.ts";
 import { SessionRole, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "./lifecycle.ts";
 import { locationOfRoom, occupantsByLocation, type Presence } from "./presence.ts";
 import { STORY_SPACE, channelHead, groupByChannel, prettyName, useThreads, type Threads } from "./threads.ts";
@@ -88,8 +88,10 @@ export function codeFromUrl(): string {
 
 /** The event title for a `?code=` join link, once resolved (else null). */
 export function useUrlEventTitle(): string | null {
+  const { ownsPage } = usePlayHost();
   const [title, setTitle] = useState<string | null>(null);
   useEffect(() => {
+    if (!ownsPage) return;
     const code = codeFromUrl();
     if (code === "") return;
     let alive = true;
@@ -99,15 +101,16 @@ export function useUrlEventTitle(): string | null {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [ownsPage]);
   return title;
 }
 
 /** Keep the browser tab named after the event once we know its title. */
 export function useDocumentTitle(title: string | null | undefined): void {
+  const { ownsPage } = usePlayHost();
   useEffect(() => {
-    if (title) document.title = title;
-  }, [title]);
+    if (ownsPage && title) document.title = title;
+  }, [ownsPage, title]);
 }
 
 /**
@@ -116,21 +119,14 @@ export function useDocumentTitle(title: string | null | undefined): void {
  * look one particular party shipped with (see `styles.css`).
  */
 export function useTheme(theme: string | null | undefined): void {
+  const host = usePlayHost();
   useEffect(() => {
-    const el = document.documentElement;
+    const el = host.themeRoot();
+    if (el === null) return;
     if (theme && theme !== "plain") el.dataset["theme"] = theme;
     else delete el.dataset["theme"];
-  }, [theme]);
+  }, [host, theme]);
 }
-const load = <T,>(k: string): T | null => {
-  try {
-    return JSON.parse(localStorage.getItem(k) ?? "null") as T | null;
-  } catch {
-    return null;
-  }
-};
-const save = (k: string, v: unknown): void => localStorage.setItem(k, JSON.stringify(v));
-const drop = (k: string): void => localStorage.removeItem(k);
 const GK = "loom.guest";
 const PK = "loom.prime";
 
@@ -322,6 +318,9 @@ export interface GuestSession {
 }
 
 export function useGuestSession(): GuestSession {
+  const host = usePlayHost();
+  const { load, save, drop } = host.storage;
+  const crawl = host.crawl;
   const [me, setMe] = useState<GuestId | null>(() => {
     const stored = load<GuestId>(GK);
     // A pre-token session can't authorize any call — drop it so the guest
@@ -347,7 +346,8 @@ export function useGuestSession(): GuestSession {
     setStatus(null);
     setReady(false);
     setNotice(why);
-  }, []);
+    host.onEnded("guest", why);
+  }, [drop, host]);
   // Alerts chime only when they arrive live: the history load sets the
   // baseline so a re-login doesn't replay every alarm of the night.
   const alertMark = useRef(-1);
@@ -379,9 +379,11 @@ export function useGuestSession(): GuestSession {
     const last = fresh[fresh.length - 1]!;
     alertMark.current = last.seq;
     setAlert({ seq: last.seq, text: last.text });
-    playChime();
-    vibrate();
-  }, [messages]);
+    if (host.sound) {
+      playChime();
+      vibrate();
+    }
+  }, [messages, host.sound]);
   useEffect(() => {
     if (alert === null) return;
     const t = window.setTimeout(() => setAlert(null), 12_000);
@@ -436,7 +438,8 @@ export function useGuestSession(): GuestSession {
     setStatus(null);
     setReady(false);
     setNotice(null);
-  }, []);
+    host.onEnded("guest", null);
+  }, [drop, host]);
 
   const inviteToChannel = useCallback(
     (person: string, channel: string) => post("/api/guest/channel/invite", { person, channel }),
@@ -456,7 +459,7 @@ export function useGuestSession(): GuestSession {
   // A wall QR's link carries `?unlock=<code>`: redeem it once we're signed
   // in and the doors are open, then drop it from the URL so a reload
   // doesn't try again.
-  const pendingUnlock = useRef<string | null>(unlockFromSearch(window.location.search));
+  const pendingUnlock = useRef<string | null>(host.ownsPage ? unlockFromSearch(window.location.search) : null);
   useEffect(() => {
     const code = pendingUnlock.current;
     if (code === null || me === null || status === null) return;
@@ -685,6 +688,9 @@ export interface PrimeSession {
 }
 
 export function usePrimeSession(): PrimeSession {
+  const host = usePlayHost();
+  const { load, save, drop } = host.storage;
+  const crawl = host.crawl;
   const [auth, setAuth] = useState<PrimeAuth | null>(() => {
     const stored = load<PrimeAuth>(PK);
     if (stored && !stored.eventId) stored.eventId = "default"; // migrate pre-multi-event sessions
@@ -707,7 +713,8 @@ export function usePrimeSession(): PrimeSession {
     setResponses([]);
     setReady(false);
     setNotice(why);
-  }, []);
+    host.onEnded("prime", why);
+  }, [drop, host]);
   const { typing, onTyping } = useTyping(auth !== null ? { role: "performer", character: auth.character } : null);
   const { messages, connected } = useChatStream(url, {
     onSnapshot: (v) => setView(v as PrimeView),
@@ -809,7 +816,8 @@ export function usePrimeSession(): PrimeSession {
     setResponses([]);
     setReady(false);
     setNotice(null);
-  }, []);
+    host.onEnded("prime", null);
+  }, [drop, host]);
 
   const threads = useThreads(buildPrimeChannels(messages, view).map((c) => (typing.has(c.id) ? { ...c, typing: typing.get(c.id) } : c)));
   useTheme(view?.theme);

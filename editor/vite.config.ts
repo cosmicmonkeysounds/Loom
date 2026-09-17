@@ -17,6 +17,9 @@ export default defineConfig({
     },
   },
   resolve: {
+    // `@loom/play` sources sit next to their own (older) React install; one
+    // React for the whole page, or the embedded app's hooks break.
+    dedupe: ['react', 'react-dom'],
     alias: {
       // Loom engine as TypeScript source (no wasm). Subpaths first so
       // they win over the bare-package fallback. `sim` is the ecosystem
@@ -36,6 +39,9 @@ export default defineConfig({
       // Bank compiler as TypeScript source — the desktop app compiles
       // .loombank artifacts in the webview and hands bytes to the host.
       '@loom/bank': path.resolve(__dirname, '../bank/src/index.ts'),
+      // The participant app as TypeScript source — Run → Players embeds the
+      // real guest / performer app (one per pane) instead of a look-alike.
+      '@loom/play/embed': path.resolve(__dirname, '../play/src/embed.tsx'),
       '@': path.resolve(__dirname, './src'),
     },
   },

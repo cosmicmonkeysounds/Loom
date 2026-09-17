@@ -177,6 +177,16 @@ backbone; the SaaS lives entirely in the TS stack.
 
 ## Status
 
+**Run → Players landed 2026-09-16** (TS `core/` + `play` + `editor`): admins
+run full rehearsals without leaving the editor — one embedded **real play
+app** per guest/persona/performer, side by side, each on its own
+`/api/mod/impersonate` session (exact, in-memory, journaled `by` the
+director; cut by the same restarts as the real session). The play app gained
+a host seam (`play/src/host.ts`) + `embed.tsx`/`embed-css.ts` so it runs
+standalone or many-times embedded in shadow roots. Supersedes the deferred
+"open the play app as X" design (no URL tokens, no shared localStorage).
+Details: `editor/CLAUDE.md` → *Players*.
+
 **The play app became a chat app + `show` cards landed 2026-09-16** (TS
 `core/` + `play` + `editor`; help: `docs/help/play/{01,02,04,07}`,
 `docs/help/authoring/36-widgets.md`; spec `loom-4.md` §6.1 / §11; guide

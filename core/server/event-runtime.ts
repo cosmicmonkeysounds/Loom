@@ -35,7 +35,23 @@ interface Client {
   name?: string; // person id (guest), character (prime), or "" (mod)
   /** A performer who also holds the mod capability sees the whole feed. */
   admin?: boolean;
+  /** An operator session (`/api/mod/impersonate`): the director playing this
+   *  participant from the editor, and the token it streams on (so revoking
+   *  the session closes the stream). */
+  via?: string;
+  token?: string;
   res: ServerResponse;
+}
+
+/** A director playing a participant from the editor (`/api/mod/impersonate`):
+ *  a guest/persona's own session, or a performer's booth for a character.
+ *  In memory only — never written to `guests.json`/`sessions.json`, never a
+ *  moderator capability, and cut by every restart the real session would be. */
+export interface Impersonation {
+  role: "guest" | "prime";
+  id: string;
+  /** The director (display name) — journaled as `by` on every action. */
+  by: string;
 }
 
 /**
@@ -143,6 +159,9 @@ export class EventRuntime {
   // broadcast in rosters, so it is NOT a credential — this opaque token,
   // minted at registration, is what authorizes acting as that guest.
   private readonly guestTokens = new Map<string, string>();
+  // Operator play-as sessions (token → who is played, by whom), minted by
+  // `/api/mod/impersonate` for the editor's embedded play app.
+  private readonly impersonations = new Map<string, Impersonation>();
   // Failed passcode attempts per client IP (guest register + prime/mod
   // login). The codes are short and speakable, so throttling online
   // guessing is what actually protects them.
@@ -252,6 +271,10 @@ export class EventRuntime {
     let mods = 0;
     const directors: string[] = [];
     for (const c of this.clients) {
+      // A director looking through a real guest's eyes is not that guest
+      // being here. (A persona or a character played from the editor IS the
+      // rehearsal's participant, so those count.)
+      if (c.via !== undefined && c.role === "guest" && !c.id.startsWith("p")) continue;
       if (c.role === "guest") guests.add(c.id);
       else if (c.role === "prime") primes.add(c.id);
       else {
@@ -562,7 +585,43 @@ export class EventRuntime {
 
   /** The guest id a token authorizes, or null. */
   private guestOf(token: string | undefined): string | null {
-    return (token && this.guestTokens.get(token)) || null;
+    if (!token) return null;
+    const imp = this.impersonations.get(token);
+    if (imp !== undefined) return imp.role === "guest" ? imp.id : null;
+    return this.guestTokens.get(token) ?? null;
+  }
+
+  /** The character a token performs as — a performer session, or an
+   *  operator playing that character's booth. */
+  private characterOf(token: string | undefined): string | null {
+    const imp = token ? this.impersonations.get(token) : undefined;
+    if (imp !== undefined) return imp.role === "prime" ? imp.id : null;
+    return this.sessions.characterOf(token);
+  }
+
+  /** May this token scan / act as a performer? (never a moderator when it
+   *  is an operator play-as session — the booth sees exactly a booth) */
+  private canScan(token: string | undefined): boolean {
+    const imp = token ? this.impersonations.get(token) : undefined;
+    if (imp !== undefined) return imp.role === "prime";
+    return this.sessions.canScan(token);
+  }
+
+  /** Drop play-as sessions (all, or one role) and close their streams. */
+  private endImpersonations(pred: (imp: Impersonation, token: string) => boolean): void {
+    for (const [token, imp] of [...this.impersonations]) {
+      if (!pred(imp, token)) continue;
+      this.impersonations.delete(token);
+      for (const c of [...this.clients]) {
+        if (c.token !== token) continue;
+        this.clients.delete(c);
+        try {
+          c.res.end();
+        } catch {
+          /* client already gone */
+        }
+      }
+    }
   }
 
   /**
@@ -694,6 +753,9 @@ export class EventRuntime {
     this.guestTokens.clear();
     this.persistGuests();
     this.personaOwners.clear();
+    // Operator play-as sessions follow the sessions they stand in for: a
+    // guest's dies with every restart, a booth's only when the show goes live.
+    this.endImpersonations((imp) => imp.role === "guest" || kind === "golive");
     this.endClients("guest");
     if (kind === "golive") {
       for (const [token, session] of this.sessions.entries()) {
@@ -834,7 +896,7 @@ export class EventRuntime {
           return true;
         }
       } else if (role === "prime") {
-        const character = this.sessions.characterOf(token);
+        const character = this.characterOf(token);
         if (character === null) {
           sendJson(res, 403, { error: "no character — sign in" });
           return true;
@@ -857,6 +919,12 @@ export class EventRuntime {
       const client: Client = { role, id, res };
       if (role === "mod") client.name = opts.moderatorName ?? "Director";
       if (role === "prime") client.admin = this.sessions.canModerate(token);
+      const imp = token ? this.impersonations.get(token) : undefined;
+      if (imp !== undefined) {
+        client.via = imp.by;
+        client.token = token;
+        client.admin = false;
+      }
       this.clients.add(client);
       sseSend(res, "snapshot", this.snapshotFor(client));
       // A moderator sees the full feed *including* hidden messages (greyed in
@@ -913,7 +981,7 @@ export class EventRuntime {
         return true;
       }
       if (role === "prime") {
-        const character = this.sessions.characterOf(token);
+        const character = this.characterOf(token);
         if (character === null) {
           sendJson(res, 403, { error: "no character — sign in" });
           return true;
@@ -979,7 +1047,15 @@ export class EventRuntime {
     }
 
     // --- guest / performer / login actions ---
-    if (this.handlePost(req, res, path, body)) return true;
+    // An operator play-as session acts exactly as the participant would, but
+    // every journal line it writes names the director who did it.
+    const imp = this.impersonations.get(tokenOf(req, body) ?? "");
+    this.actingBy = imp?.by;
+    try {
+      if (this.handlePost(req, res, path, body)) return true;
+    } finally {
+      this.actingBy = undefined;
+    }
 
     // --- admin-only actions ---
     // Authorized by a per-event mod token OR by the owning author's session
@@ -1153,7 +1229,9 @@ export class EventRuntime {
           return true;
         }
         const parentSeq = this.sim!.threadableOf(channel) && body["parentSeq"] != null ? Number(body["parentSeq"]) : null;
-        this.fanout(this.commit("say", id, channel, text, parentSeq));
+        // A director typing through a play-as pane: the room sees the guest,
+        // the mod feed sees who really typed it — like `/api/mod/say`.
+        this.fanout(this.commit("say", id, channel, text, parentSeq), this.actingBy);
         this.agentHeard(channel, [id]);
         sendJson(res, 200, { ok: true });
         return true;
@@ -1235,7 +1313,7 @@ export class EventRuntime {
       case "/api/prime/codex/share": {
         // A performer shares one of their character's entries with a guest.
         const token = tokenOf(req, body);
-        const character = this.sessions.characterOf(token);
+        const character = this.characterOf(token);
         if (!character) {
           sendJson(res, 403, { error: "no character — sign in" });
           return true;
@@ -1287,7 +1365,7 @@ export class EventRuntime {
       // --- unified scan: capability decides what it does ---
       case "/api/scan": {
         const token = tokenOf(req, body);
-        if (!this.sessions.canScan(token)) {
+        if (!this.canScan(token)) {
           sendJson(res, 403, { error: "no scan capability — sign in" });
           return true;
         }
@@ -1302,7 +1380,7 @@ export class EventRuntime {
         }
         const admin = this.sessions.canModerate(token);
         const chosen = str(body, "as");
-        let scanAs = this.sessions.characterOf(token);
+        let scanAs = this.characterOf(token);
         if (chosen && admin) {
           if (!this.sim!.model.characters.has(chosen)) {
             sendJson(res, 404, { error: "unknown character" });
@@ -1336,7 +1414,7 @@ export class EventRuntime {
         // their character: only that character's hooks hear it (plus role
         // hooks and story rules). `who: admin` needs moderator powers.
         const token = tokenOf(req, body);
-        if (!this.sessions.canScan(token)) {
+        if (!this.canScan(token)) {
           sendJson(res, 403, { error: "no performer capability — sign in" });
           return true;
         }
@@ -1356,14 +1434,14 @@ export class EventRuntime {
           sendJson(res, 404, { error: "unknown guest" });
           return true;
         }
-        const character = this.sessions.characterOf(token);
+        const character = this.characterOf(token);
         this.fanout(this.commit("signal", name, guest, null, character));
         sendJson(res, 200, { ok: true, guest: rosterRow(this.sim!, guest) });
         return true;
       }
       case "/api/prime/say": {
         const token = tokenOf(req, body);
-        const character = this.sessions.characterOf(token);
+        const character = this.characterOf(token);
         if (!character) {
           sendJson(res, 403, { error: "no character — sign in" });
           return true;
@@ -1405,7 +1483,7 @@ export class EventRuntime {
         return true;
       }
       case "/api/prime/channel/invite": {
-        const character = this.sessions.characterOf(tokenOf(req, body));
+        const character = this.characterOf(tokenOf(req, body));
         if (!character) {
           sendJson(res, 403, { error: "no character — sign in" });
           return true;
@@ -1419,7 +1497,7 @@ export class EventRuntime {
         return true;
       }
       case "/api/prime/channel/leave": {
-        const character = this.sessions.characterOf(tokenOf(req, body));
+        const character = this.characterOf(tokenOf(req, body));
         if (!character) {
           sendJson(res, 403, { error: "no character — sign in" });
           return true;
@@ -1451,7 +1529,7 @@ export class EventRuntime {
         this.persistSessions();
         sendJson(res, 200, {
           token,
-          character: this.sessions.characterOf(token),
+          character: this.characterOf(token),
           eventPass: this.codes.event,
           primePass: this.codes.prime,
           modPass: this.codes.mod,
@@ -1797,6 +1875,40 @@ export class EventRuntime {
           return true;
         }
         this.fanout(this.commit("setVar", path, str(body, "value")));
+        sendJson(res, 200, { ok: true });
+        return true;
+      }
+      case "/api/mod/impersonate": {
+        // Play a participant from the editor (Run → Players): mint a session
+        // that IS that person's own — a guest/persona's, or a character's
+        // performer booth — for the editor's embedded play app. Exact (no
+        // moderator powers: a booth sees exactly a booth), in memory only
+        // (never `guests.json` / `sessions.json`), cut by the same restarts
+        // that cut the real thing, and every action it takes journals this
+        // director as `by`. The token goes back to the authorized director
+        // in a response body — never into a URL.
+        if (this.sim === null) {
+          sendJson(res, 409, { error: "no scenario loaded" });
+          return true;
+        }
+        const role = str(body, "role") === "prime" ? "prime" : "guest";
+        const id = str(body, "id");
+        if (role === "guest" ? !this.sim.persons.has(id) : !this.sim.model.characters.has(id)) {
+          sendJson(res, 404, { error: role === "guest" ? "unknown guest" : "unknown character" });
+          return true;
+        }
+        const token = randomUUID();
+        this.impersonations.set(token, { role, id, by });
+        const name = role === "guest" ? (this.sim.persons.get(id)?.name ?? id) : id;
+        sendJson(res, 200, { token, role, id, name, eventId: this.eventId, title: this.title });
+        return true;
+      }
+      case "/api/mod/impersonate/end": {
+        // The editor closed a pane: end that play-as session and its stream.
+        // (`session`, not `token` — that field is the caller's own credential.)
+        const session = str(body, "session");
+        this.endImpersonations((_imp, t) => t === session);
+        this.pushPresence();
         sendJson(res, 200, { ok: true });
         return true;
       }

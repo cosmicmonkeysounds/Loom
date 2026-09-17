@@ -6,7 +6,7 @@
 //! the identity card, and the sheets for out-of-band actions: the pass, the
 //! Codex (knowledge as a currency), and the People directory.
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 import {
   ActionRow,
   AlertBanner,
@@ -18,13 +18,14 @@ import {
   PersonAvatar,
   PickerSheet,
   Sheet,
+  SessionEnded,
   Shell,
   SpaceList,
-  WIDE,
-  useMediaQuery,
+  useWide,
 } from "./chat.tsx";
 import { groupCodex } from "./codex.ts";
 import { HelpSheet } from "./help.tsx";
+import { usePlayHost } from "./host.ts";
 import { codeFromUrl, useDocumentTitle, useGuestSession, useUrlEventTitle, type GuestSession } from "./session.ts";
 import type { Action, Channel, CodexEntry, PersonCard } from "./types.ts";
 
@@ -320,8 +321,9 @@ export function homeChannel(list: Channel[]): string | null {
 }
 
 export function GuestApp({ onLeave }: { onLeave: () => void }) {
+  const host = usePlayHost();
   const s = useGuestSession();
-  const wide = useMediaQuery(WIDE);
+  const wide = useWide();
   const [profile, setProfile] = useState(false);
   const [codex, setCodex] = useState(false);
   const [people, setPeople] = useState<ReadonlySet<string> | "all" | null>(null);
@@ -338,14 +340,14 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     // `t` is rebuilt each render; the ids are what matter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, wide, activeId, home]);
-  if (!s.me) return <GuestRegister session={s} />;
+  if (!s.me) return host.embedded ? <SessionEnded notice={s.notice} /> : <GuestRegister session={s} />;
 
   const st = s.status;
   const captured = st?.captured ?? false;
   const banner = s.alert ? <AlertBanner text={s.alert.text} onDismiss={s.dismissAlert} /> : null;
   const widgets = { answer: (seq: number, r: Parameters<GuestSession["answerWidget"]>[1]) => void s.answerWidget(seq, r).catch(() => {}), answered: s.widgetAnswers };
 
-  let stage: JSX.Element | null = null;
+  let stage: ReactElement | null = null;
   if (t.active) {
     const active = t.active;
     if (t.activeThreadRoot !== null) {

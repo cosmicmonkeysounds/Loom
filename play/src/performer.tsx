@@ -5,7 +5,7 @@
 //! guest's card — never on a permanent panel under every room. A pinned
 //! Scanner thread holds the camera + scan readouts.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
 import {
   ActionRow,
   ChannelView,
@@ -18,11 +18,12 @@ import {
   Sheet,
   Shell,
   SpaceList,
-  WIDE,
+  SessionEnded,
   plural,
-  useMediaQuery,
+  useWide,
 } from "./chat.tsx";
 import { HelpSheet } from "./help.tsx";
+import { usePlayHost } from "./host.ts";
 import { codeFromUrl, resolveCode, useDocumentTitle, usePrimeSession, type PrimeSession } from "./session.ts";
 import type { Action, Channel, PrimeGuest } from "./types.ts";
 
@@ -375,8 +376,9 @@ export function boothHome(list: Channel[]): string | null {
 }
 
 export function PerformerApp({ onLeave }: { onLeave: () => void }) {
+  const host = usePlayHost();
   const s = usePrimeSession();
-  const wide = useMediaQuery(WIDE);
+  const wide = useWide();
   const [sheet, setSheet] = useState(false);
   const [help, setHelp] = useState(false);
   const [card, setCard] = useState<string | null>(null); // a guest id
@@ -391,7 +393,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
     if (signedIn && wide && activeId === null && home !== null) t.open(home);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, wide, activeId, home]);
-  if (!s.auth) return <PrimeLogin session={s} />;
+  if (!s.auth) return host.embedded ? <SessionEnded notice={s.notice} /> : <PrimeLogin session={s} />;
   const admin = s.auth.admin;
   const guests = s.view?.guests ?? [];
   const guestByName = (name: string) => guests.find((g) => g.name === name || g.id === name) ?? null;
@@ -401,7 +403,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
     if (g) setCard(g.id);
   };
 
-  let stage: JSX.Element | null = null;
+  let stage: ReactElement | null = null;
   if (t.active) {
     const active = t.active;
     if (active.kind === "scanner") {

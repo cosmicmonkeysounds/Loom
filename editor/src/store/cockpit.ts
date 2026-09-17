@@ -27,11 +27,13 @@ import type { GuestView, InteractionSummary, PrimeView } from '@loom/core/views'
 // ---------------------------------------------------------------------------
 
 /** The cockpit's center pages. `Run` is the front-of-house page (start /
- *  join codes + QR / directors / guest lookup); `Log` is the raw ledger. */
+ *  join codes + QR / directors / guest lookup); `Players` embeds one real
+ *  play app per participant you're playing; `Log` is the raw ledger. */
 export const CockpitTab = {
   Run: 'run',
   Stage: 'stage',
   Chat: 'chat',
+  Players: 'players',
   Story: 'story',
   Roster: 'roster',
   World: 'world',
@@ -81,6 +83,21 @@ export const CockpitPhase = {
 } as const
 
 export type CockpitPhase = (typeof CockpitPhase)[keyof typeof CockpitPhase]
+
+/** Which play app a Players pane runs: a guest's (for a persona or a real
+ *  guest) or a performer's booth (for a character). Values are the server's
+ *  role names (`/api/mod/impersonate`). */
+export const PlayerRole = {
+  Guest: 'guest',
+  Performer: 'prime',
+} as const
+
+export type PlayerRole = (typeof PlayerRole)[keyof typeof PlayerRole]
+
+/** A live play-as session, shaped for `@loom/play/embed`'s `PlayEmbed`. */
+export type PlayerSession =
+  | { role: 'guest'; token: string; id: string; name: string; eventId: string; title?: string }
+  | { role: 'prime'; token: string; character: string; eventId: string; title?: string }
 
 /** The god-view lens — the cockpit's default `perspective`. Any other value
  *  is a guest/persona id (their room set + feed) or a character id (the
@@ -363,8 +380,16 @@ export interface CockpitState {
    *  the journaled `/api/mod/choose` on a guest's behalf. */
   choose(person: string, index: number): Promise<void>
   /** Spawn a persona to act as (a local guest, or a journaled
-   *  `/api/mod/persona` guest owned by `me` on the server). */
-  addPersona(name?: string): Promise<void>
+   *  `/api/mod/persona` guest owned by `me` on the server). Resolves to the
+   *  new guest id (null when none was created). */
+  addPersona(name?: string): Promise<string | null>
+  /** Players page: open the participant's OWN play-app session — a guest /
+   *  persona's, or a character's performer booth — to embed and drive from
+   *  the editor. Server runs only (the play app talks to an event server);
+   *  the local backend resolves null and says why in `error`. */
+  openPlayer(role: PlayerRole, id: string): Promise<PlayerSession | null>
+  /** End a session `openPlayer` opened (its pane closed). Never throws. */
+  closePlayer(session: PlayerSession): Promise<void>
   /** Write any world variable (the World browser's inline editing). */
   setVar(path: string, value: string): Promise<void>
 }
@@ -446,7 +471,9 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   scanAs: async () => [],
   reveal: noop,
   choose: noop,
-  addPersona: noop,
+  addPersona: async () => null,
+  openPlayer: async () => null,
+  closePlayer: noop,
   setVar: noop,
 }))
 

@@ -1,13 +1,14 @@
-//! The shared guest context menu — Inspect / Be them / Open DM thread /
+//! The shared guest context menu — Inspect / Be them / Play them / Open DM thread /
 //! Capture-Release — used anywhere a guest renders as a chip or row
 //! (the rail's Guests section, the Stage floor plan, roster surfaces).
 //! Under a non-Operator lens the world-changing entries are absent:
 //! you are someone else right now, not the director.
 
-import { CockpitTab, SelectionKind, useCockpit, type RosterRow } from '@/store/cockpit'
+import { CockpitTab, PlayerRole, RunBackend, SelectionKind, useCockpit, type RosterRow } from '@/store/cockpit'
 import { openContextMenu } from '@/store/context-menu'
 import { useRooms } from './rooms'
 import { useInspect } from './inspect'
+import { usePlayAs } from './play-as'
 
 export function useGuestMenu(): (r: RosterRow, e: React.MouseEvent) => void {
   const setPerspective = useCockpit((s) => s.setPerspective)
@@ -18,6 +19,8 @@ export function useGuestMenu(): (r: RosterRow, e: React.MouseEvent) => void {
   const locked = useCockpit((s) => s.lens !== null)
   const inspect = useInspect()
   const rooms = useRooms()
+  const playAs = usePlayAs()
+  const server = useCockpit((s) => s.run?.backend === RunBackend.Server)
 
   return (r, e) => {
     e.preventDefault()
@@ -26,6 +29,7 @@ export function useGuestMenu(): (r: RosterRow, e: React.MouseEvent) => void {
       [
         { label: `Inspect ${r.name}`, onSelect: () => inspect({ kind: SelectionKind.Guest, id: r.id }) },
         { label: `Be ${r.name}`, onSelect: () => setPerspective(r.id) },
+        ...(server ? [{ label: `▶ Play ${r.name} (their app)`, onSelect: () => void playAs(PlayerRole.Guest, r.id, r.name) }] : []),
         ...(dm
           ? [
               {

@@ -27,6 +27,17 @@ def build_messages(persona: Persona, req: dict[str, Any], max_turns: int = MAX_T
         # Answering always follows the speaker's line; keep that shape even
         # if the thread was trimmed oddly.
         out.append({"role": "user", "content": str(req.get("text") or "(they are waiting)")})
+    if persona.variables:
+        # Small models drift from a format stated only at the top of a long
+        # system prompt; restate it right where the answer starts.
+        zeros = ", ".join(f'"{v}": 0' for v in persona.variables)
+        out.append(
+            {
+                "role": "system",
+                "content": f"Answer their last message in character. Reply with one JSON object only: "
+                f'{{"say": "...", "adjust": {{{zeros}}}}} — set each number by how this exchange changed you.',
+            }
+        )
     return out
 
 

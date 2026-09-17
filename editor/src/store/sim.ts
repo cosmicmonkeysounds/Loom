@@ -433,13 +433,20 @@ export const useSim = create<SimState>((set, get) => {
     choose: async (person, index) => void run((s) => void s.choose(person, index)),
 
     addPersona: async (name) => {
-      if (sim === null) return
+      if (sim === null) return null
       personaSeq += 1
       const id = `p${personaSeq}`
       const label = name !== undefined && name.trim() !== '' ? name.trim() : `Guest ${personaSeq}`
       set((s) => ({ personas: [...s.personas, id] }))
       run((s) => void s.createPerson(id, label))
+      return id
     },
+    // The play app talks to an event server; an in-browser run has none.
+    openPlayer: async () => {
+      set({ error: 'Players run the real participant app against an event server — open a server project to use them.' })
+      return null
+    },
+    closePlayer: async () => {},
   }
 })
 

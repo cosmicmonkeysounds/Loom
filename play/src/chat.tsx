@@ -11,6 +11,7 @@
 //! drills in.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { usePlayHost } from "./host.ts";
 import { occupancyLabel } from "./presence.ts";
 import {
   groupRuns,
@@ -64,32 +65,8 @@ export function PersonAvatar({ name, size = "md", kind }: { name: string; size?:
 }
 
 // --- typewriter policy --------------------------------------------------------
-
-/**
- * Which lines crawl in like game dialogue: only a line that *arrives* while
- * you are watching — never the backlog, and never again once it has crawled
- * (re-opening a room must not replay it). Sessions set `baseline` from the
- * history frame; the bubble marks a seq done the moment it starts.
- */
-export const crawl = {
-  baseline: Number.MAX_SAFE_INTEGER,
-  done: new Set<number>(),
-  /** Reset for a new stream (a fresh sign-in). */
-  reset(): void {
-    this.baseline = Number.MAX_SAFE_INTEGER;
-    this.done.clear();
-  },
-  /** The backlog just loaded: everything at or below `maxSeq` is old news. */
-  loaded(maxSeq: number): void {
-    this.baseline = maxSeq;
-  },
-  /** Should this seq crawl now? Claims it if so (one crawl, ever). */
-  claim(seq: number): boolean {
-    if (seq <= this.baseline || this.done.has(seq)) return false;
-    this.done.add(seq);
-    return true;
-  },
-};
+// The crawl-once memory lives on the host (`host.ts` `createCrawl`), so each
+// embedded pane crawls its own lines.
 
 /**
  * Reveal `text` one character at a time — the classic RPG dialogue crawl.
@@ -134,8 +111,27 @@ export function useMediaQuery(query: string): boolean {
   return on;
 }
 
+/** An embedded pane whose session is over (the participant left, or a run
+ *  transition cut it) — the host decides what comes next. */
+export function SessionEnded({ notice }: { notice: string | null }) {
+  return (
+    <div className="hero">
+      <div className="glyph">⏏</div>
+      <p className="sub">{notice ?? "Signed out."}</p>
+    </div>
+  );
+}
+
 /** The two-pane breakpoint: sidebar + stage side by side from here up. */
 export const WIDE = "(min-width: 820px)";
+
+/** The two-pane layout? The viewport decides on a page of its own; an
+ *  embedded pane's host decides from the pane's width. */
+export function useWide(): boolean {
+  const host = usePlayHost();
+  const viewport = useMediaQuery(WIDE);
+  return host.wide ?? viewport;
+}
 
 /** A participant's (public) group, as a small tag. Colour comes from the
  *  group's name — nothing is keyed to any particular story's sides. */
@@ -189,6 +185,7 @@ export function Badge({ count }: { count: number }) {
  * choice.
  */
 export function DecisionTray({ decision }: { decision: Decision }) {
+  const host = usePlayHost();
   const [cursor, setCursor] = useState(0);
   const n = decision.options.length;
   // A fresh prompt resets the caret to the top option.
@@ -215,9 +212,12 @@ export function DecisionTray({ decision }: { decision: Decision }) {
         }
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [cursor, n, decision]);
+    // Page-wide on a phone; scoped to its own pane when embedded, so a key
+    // pressed over one participant never answers for another.
+    const target = host.keyTarget();
+    target?.addEventListener("keydown", onKey as EventListener);
+    return () => target?.removeEventListener("keydown", onKey as EventListener);
+  }, [cursor, n, decision, host]);
   return (
     <div className="tray dialogue" role="menu" aria-label={decision.title}>
       <div className="tray-title">{decision.title}</div>
@@ -497,7 +497,8 @@ export function MessageBubble({
   const cls = msg.kind === "line" ? "line" : msg.kind === "system" ? "system" : msg.kind === "signal" ? (msg.alert ? "signal alert" : "signal") : msg.kind === "widget" ? "widget" : "narration";
   // Only crawl spoken/narrated story text — system + signal notices pop in.
   const crawlable = msg.kind === "line" || msg.kind === "narration";
-  const [live] = useState(() => crawlable && crawl.claim(msg.seq));
+  const host = usePlayHost();
+  const [live] = useState(() => crawlable && host.crawl.claim(msg.seq));
   const { shown, typing } = useTypewriter(msg.text, live);
   const modBtn = moderate && (
     <button

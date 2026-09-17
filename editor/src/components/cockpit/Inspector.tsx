@@ -10,12 +10,13 @@
 //! closed: you are a participant right now, not the director.
 
 import { useMemo, useState, type ReactNode } from 'react'
-import { CockpitTab, SelectionKind, useCockpit, type CockpitMessage } from '@/store/cockpit'
+import { CockpitTab, PlayerRole, RunBackend, SelectionKind, useCockpit, type CockpitMessage } from '@/store/cockpit'
 import { useGraph } from '@/store/graph'
 import { promptText } from '@/store/dialog'
 import { FactionPill } from './ui'
 import { entityVars, GUEST_STANDARD_FIELDS } from './world'
 import { VarTable } from './VarTable'
+import { usePlayAs } from './play-as'
 
 /** How many recent messages "Their feed" shows. */
 const FEED_LIMIT = 60
@@ -204,6 +205,8 @@ function GuestFeed({ id }: { id: string }) {
 
 function GuestInspector({ id }: { id: string }) {
   const row = useCockpit((s) => s.roster.find((r) => r.id === id))
+  const server = useCockpit((s) => s.run?.backend === RunBackend.Server)
+  const playAs = usePlayAs()
   const factions = useCockpit((s) => s.factions)
   const locations = useCockpit((s) => s.locations)
   const cast = useCockpit((s) => s.cast)
@@ -271,6 +274,16 @@ function GuestInspector({ id }: { id: string }) {
           >
             👁 Be {row.name}
           </button>
+          {server && (
+            <button
+              onClick={() => void playAs(PlayerRole.Guest, id, row.name)}
+              className="rounded border border-emerald-900 px-2 py-0.5 text-[10px] text-emerald-300 hover:bg-emerald-950"
+              title={`Open ${row.name}'s own play app on the Players page`}
+              data-testid={`inspector-play-${id}`}
+            >
+              ▶ Play
+            </button>
+          )}
         </div>
         <div className="text-[10px] text-zinc-600">{row.id}</div>
       </div>
@@ -446,6 +459,8 @@ function CharacterFeed({ id }: { id: string }) {
 
 function CharacterInspector({ id }: { id: string }) {
   const member = useCockpit((s) => s.cast.find((c) => c.id === id))
+  const server = useCockpit((s) => s.run?.backend === RunBackend.Server)
+  const playAs = usePlayAs()
   const beats = useCockpit((s) => s.beats)
   const locked = useCockpit((s) => s.lens !== null)
   const fireBeat = useCockpit((s) => s.fireBeat)
@@ -473,6 +488,16 @@ function CharacterInspector({ id }: { id: string }) {
           >
             👁 Be {id}
           </button>
+          {server && (
+            <button
+              onClick={() => void playAs(PlayerRole.Performer, id, id)}
+              className="rounded border border-emerald-900 px-2 py-0.5 text-[10px] text-emerald-300 hover:bg-emerald-950"
+              title={`Open ${id}'s performer booth on the Players page`}
+              data-testid={`inspector-play-${id}`}
+            >
+              ▶ Play
+            </button>
+          )}
         </div>
       </div>
 

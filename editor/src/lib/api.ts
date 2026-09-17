@@ -233,6 +233,16 @@ export type SignalArgs = Record<string, string | number | boolean>
 
 export type StatField = 'score' | 'faction' | 'location' | 'captured'
 
+/** What `/api/mod/impersonate` mints. */
+export interface PlayAsSession {
+  token: string
+  role: 'guest' | 'prime'
+  id: string
+  name: string
+  eventId: string
+  title: string
+}
+
 export const modApi = {
   async act(eventId: string, id: string, action: 'capture' | 'release'): Promise<void> {
     await req('POST', `/e/${eventId}/api/mod/act`, { id, action })
@@ -306,6 +316,17 @@ export const modApi = {
       { name },
     )
     return r.guest ?? null
+  },
+  /** Open a play-as session: the participant's OWN session (a guest /
+   *  persona's, or a character's performer booth) for the Players page's
+   *  embedded play app. Exact capabilities, journaled as this director, in
+   *  server memory only. */
+  async impersonate(eventId: string, role: 'guest' | 'prime', id: string): Promise<PlayAsSession> {
+    return await req<PlayAsSession>('POST', `/e/${eventId}/api/mod/impersonate`, { role, id })
+  },
+  /** End a play-as session (its pane closed). */
+  async endImpersonation(eventId: string, session: string): Promise<void> {
+    await req('POST', `/e/${eventId}/api/mod/impersonate/end`, { session })
   },
   /** Write any world variable (the World browser's inline editing). */
   async setVar(eventId: string, path: string, value: string): Promise<void> {

@@ -98,14 +98,16 @@ def test_the_shipped_trabolta_persona_loads():
 
 def test_messages_are_system_then_the_thread():
     msgs = build_messages(parse_persona(PERSONA), request())
-    assert [m["role"] for m in msgs] == ["system", "user", "assistant", "user"]
-    assert msgs[-1]["content"] == "Who is Sandy?"
+    assert [m["role"] for m in msgs] == ["system", "user", "assistant", "user", "system"]
+    assert msgs[-2]["content"] == "Who is Sandy?"
+    # The reply format is restated last, with every declared variable.
+    assert '"adjust": {"truth": 0, "stance": 0}' in msgs[-1]["content"]
 
 
 def test_a_thread_ending_on_the_character_still_ends_on_the_speaker():
     req = request(history=[{"seq": 1, "mine": True, "from": "Trabolta", "text": "HELLO."}])
     msgs = build_messages(parse_persona(PERSONA), req)
-    assert msgs[-1] == {"role": "user", "content": "Who is Sandy?"}
+    assert msgs[-2] == {"role": "user", "content": "Who is Sandy?"}
 
 
 def test_state_block_shows_only_what_the_persona_asks_for():

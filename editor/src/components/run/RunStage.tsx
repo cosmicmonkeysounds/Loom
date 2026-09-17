@@ -14,6 +14,9 @@ import { CockpitTab, useCockpit } from '@/store/cockpit'
 import { StoryGraphPanel } from '@/components/graph/StoryGraphPanel'
 import { ChatTab, DirectorTab, RosterTab, WorldTab } from '@/components/cockpit/tabs'
 import { StageTab } from '@/components/cockpit/StageTab'
+import { PlayersTab } from '@/components/cockpit/PlayersTab'
+import { usePlayers } from '@/store/players'
+import { useWorkspace } from '@/store/workspace'
 import { LogTab } from '@/components/cockpit/LogTab'
 import { RunCockpit } from '@/components/cockpit/providers'
 import { IdentityControl } from '@/components/cockpit/Identity'
@@ -37,6 +40,7 @@ const TABS: TabSpec[] = [
   { id: CockpitTab.Run, label: 'Run', hint: 'Start a rehearsal or go live; join codes + QR, who is directing, guest lookup', idle: true },
   { id: CockpitTab.Stage, label: 'Stage', hint: 'The floor plan — every location, who is standing in it, and their story position' },
   { id: CockpitTab.Chat, label: 'Chat', hint: 'Every room’s feed — read and speak as anyone' },
+  { id: CockpitTab.Players, label: 'Players', hint: 'Play the show: the real participant app for each guest and performer you seat, side by side' },
   { id: CockpitTab.Story, label: 'Story', hint: 'The story map, lighting up with live positions as beats fire', idle: true },
   { id: CockpitTab.Roster, label: 'Roster', hint: 'All guests and the cast as a sortable table, with moderation actions' },
   { id: CockpitTab.World, label: 'World', hint: 'The world state — factions and every live variable, global and per-person', operatorOnly: true },
@@ -123,6 +127,9 @@ function StageChrome() {
   const locked = useCockpit((s) => s.lens !== null)
   const tone = TONE[runTone(run)]
   const running = run !== null
+  const projectId = useWorkspace((s) => s.projectId)
+  const seated = usePlayers((s) => s.slots.length > 0)
+  useEffect(() => usePlayers.getState().bind(projectId), [projectId])
 
   // A page that just became unavailable (run ended, lens engaged) yields
   // to the Run page rather than rendering a dead surface.
@@ -171,6 +178,13 @@ function StageChrome() {
         {tab === CockpitTab.Run && <RunPage />}
         {tab === CockpitTab.Stage && <StageTab />}
         {tab === CockpitTab.Chat && <ChatTab />}
+        {/* Players stay mounted while anyone is seated, so hopping to Chat or
+            the Story map doesn't tear down every pane's session. */}
+        {running && (tab === CockpitTab.Players || seated) && (
+          <div className={clsx('h-full', tab !== CockpitTab.Players && 'hidden')}>
+            <PlayersTab />
+          </div>
+        )}
         {tab === CockpitTab.Story && <StoryGraphPanel variant="run" />}
         {tab === CockpitTab.Roster && <RosterTab />}
         {tab === CockpitTab.World && <WorldTab />}

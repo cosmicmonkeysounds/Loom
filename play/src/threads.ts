@@ -3,7 +3,7 @@
 //! unread / active-thread bookkeeping that makes the list feel like a
 //! Discord / Telegram inbox (badges, decision-pulls, last-seen marks).
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { roomOrder } from "./presence.ts";
 import type { Channel, ChannelKind, ChatMessage, MessageKind } from "./types.ts";
 

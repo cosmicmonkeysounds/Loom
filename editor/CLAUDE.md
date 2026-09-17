@@ -184,7 +184,7 @@ rehearsal` · `live event`, tone-coloured violet / amber / emerald),
 *restart this draft* / *⇪ push current draft* (surfaced as an amber
 button when `stale`) / *go live…* / *■ end* · the scratch enter/leave
 buttons; live-run destructive actions need the event code typed via
-`promptText`), the page tabs (Run · Stage · Chat · Story · Roster ·
+`promptText`), the page tabs (Run · Stage · Chat · Players · Story · Roster ·
 World · Director · Log — only Run + Story usable with no run; World +
 Director closed under a lens), the **identity control**
 (`cockpit/Identity.tsx`), quick-fire, and a ⏳ decisions pill;
@@ -222,6 +222,36 @@ character (`fireSignal(id, gid, null, character)`). The Roster hides
 `LensGate`, and the Inspector's editors (`VarTable` included) are
 disabled under any non-Operator lens. `Esc` outside a text field returns
 to the Operator.
+
+**Players — a full rehearsal from one screen** (`cockpit/PlayersTab.tsx`,
+2026-09-16). Every pane is the **real participant app** — `@loom/play/embed`
+(`play/src/embed.tsx`, aliased to source; `resolve.dedupe` keeps one React)
+mounts the play app's own `GuestApp` / `PerformerApp` into a **shadow root**
+on that participant's **own session**: `openPlayer(role, id)` →
+`POST /e/:id/api/mod/impersonate` (a token in the response body, never a
+URL; exact capabilities — a booth is never a moderator; in server memory
+only; every action journals the director as `by`, guest `say` carries
+`via`). So CAPTCHAs, codex, DMs/pm, threads, invites, scans and card
+actions all work exactly as on a phone, side by side. The play app runs
+through a **host seam** (`play/src/host.ts` `PlayHost`: per-pane memory
+storage, crawl memory, theme root, key target, `wide` from the pane's own
+width, `onEnded`); `embed-css.ts` re-scopes `styles.css` (`:root`/`body` →
+`.play-root`, `vh` → `cqh`, viewport size `@media` → `@container`). The
+**lineup** (`store/players.ts`, persisted per project) outlives sessions:
+a restart cuts guest sessions → the pane re-seats onto a same-named persona
+(`reseatTarget` — reuses the one the cockpit re-spawned, else
+`addPersona`, rehearsal only); booths survive reset/reload and re-open
+after go-live; a real guest needs a confirmed `usePlayAs` and shows as
+*gone* after a restart. Panes stay mounted (hidden) while anyone is seated,
+so tab hops keep sessions; closing a pane calls `closePlayer` →
+`…/impersonate/end`. Entry points: the toolbar (+ New guest · + Guest… ·
++ Performer… · Seat the cast · phone/tablet/wide), the guest context menu
+(▶ Play), Inspector ▶ Play. **Server runs only** — the local backend's
+`openPlayer` resolves null and the page explains (the Being lens still
+works there). `addPersona` now resolves to the new id. Tests:
+`store/players.test.ts`; server `core/test/server-impersonate.test.ts`;
+play `embed-css.test.ts`. Verified live in Chrome (guest CAPTCHA + chat
+from a pane, Clippy's booth beside it, restart re-seat, wide two-pane).
 
 **The super-admin's peek** (`cockpit/Inspector.tsx`): a guest shows
 **Their view** (side / where / score / deciding / rooms / can — exact
