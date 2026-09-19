@@ -4,6 +4,8 @@
   "license": "MIT",
   "description": "Loom — a scripting language for interactive stories, from branching game dialogue to live immersive events.",
   "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "sync-example": "pnpm --filter @loom/core exec tsx scripts/sync-example.ts",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"
   }

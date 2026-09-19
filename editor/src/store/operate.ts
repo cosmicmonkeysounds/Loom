@@ -17,7 +17,7 @@
 
 import { create } from 'zustand'
 import { namedEvents, type SimEvent } from '@loom/core/sim'
-import type { GuestView, InteractionSummary, PrimeView } from '@loom/core/views'
+import type { AgentMindSummary, AgentThought, GuestView, InteractionSummary, PrimeView } from '@loom/core/views'
 import { ApiError, eventsApi, modApi, type EventInfo } from '@/lib/api'
 import { onCollabEvent, type CollabEventNotice } from '@/lib/collab'
 import { lspWorkspaceSync } from '@/lib/lsp-client'
@@ -69,6 +69,7 @@ interface ModSnapshot {
   modsOnline: number | null
   directors: string[]
   interactions?: InteractionSummary[]
+  minds?: AgentMindSummary[]
 }
 
 /** What the server tells every console on a lifecycle transition. */
@@ -103,6 +104,17 @@ let unsubscribeCollab: (() => void) | null = null
 const POLL_MS = 30_000
 /** Live ledger retention per console (the raw `sim` feed). */
 const LOG_CAP = 5000
+/** Thoughts kept client-side (each carries its whole prompt). */
+const THOUGHT_CAP = 400
+
+/** Merge thoughts by id, oldest first (by server seq), bounded. */
+export function mergeThoughts(have: AgentThought[], more: AgentThought[]): AgentThought[] {
+  if (more.length === 0) return have
+  const byId = new Map<string, AgentThought>()
+  for (const t of have) byId.set(t.id, t)
+  for (const t of more) byId.set(t.id, t)
+  return [...byId.values()].sort((a, b) => a.seq - b.seq).slice(-THOUGHT_CAP)
+}
 /** At most one lens fetch in flight; a snapshot landing meanwhile re-fetches after. */
 let lensInFlight = false
 let lensDirty = false
@@ -126,6 +138,8 @@ const EMPTY_SNAPSHOT = {
   choices: {} as Record<string, string[]>,
   lens: null as Lens,
   perspective: OPERATOR_LENS,
+  minds: [] as AgentMindSummary[],
+  thoughts: [] as AgentThought[],
 }
 
 function phaseOf(status: string | undefined): CockpitPhase {
@@ -326,6 +340,7 @@ export const useOperate = create<OperateState>((set, get) => {
         world: snap.world ?? [],
         modsOnline: snap.modsOnline ?? null,
         directors: snap.directors ?? [],
+        minds: snap.minds ?? [],
         // "Yours" is server truth now: every persona this director spawned.
         personas: roster.filter((r) => r.owner === me).map((r) => r.id),
         // A selection that no longer resolves (after a restart) is dropped;
@@ -336,6 +351,11 @@ export const useOperate = create<OperateState>((set, get) => {
           : sel,
       })
       void refreshLens()
+    })
+    // A worker recorded a model call (the Mind page's live feed).
+    source.addEventListener('agentThought', (e) => {
+      const t = JSON.parse((e as MessageEvent).data) as AgentThought
+      set((s) => ({ thoughts: mergeThoughts(s.thoughts, [t]) }))
     })
     // The story started over (reset / a pushed draft / go live) or the event
     // is gone. Every console gets this — including the co-author who didn't
@@ -658,6 +678,28 @@ export const useOperate = create<OperateState>((set, get) => {
       } catch (e) {
         set({ error: playerOpenError(e) })
         return null
+      }
+    },
+    mindControl: async (control) => {
+      const ev = get().event
+      if (!ev) return { ok: false, error: 'no run' }
+      try {
+        const r = await modApi.agentControl(ev.id, control)
+        return { ok: r.ok }
+      } catch (e) {
+        const error = e instanceof ApiError && typeof e.data['error'] === 'string' ? e.data['error'] : (e as Error).message
+        set({ error })
+        return { ok: false, error }
+      }
+    },
+    loadThoughts: async (character) => {
+      const ev = get().event
+      if (!ev) return
+      try {
+        const page = await modApi.agentTrace(ev.id, { character: character ?? null, limit: 400 })
+        set((s) => ({ thoughts: mergeThoughts(s.thoughts, page.thoughts), minds: page.minds.length > 0 ? page.minds : s.minds }))
+      } catch (e) {
+        set({ error: (e as Error).message })
       }
     },
     closePlayer: async (session) => {

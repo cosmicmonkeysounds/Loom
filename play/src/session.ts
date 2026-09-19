@@ -183,6 +183,31 @@ export interface Alert {
   text: string;
 }
 
+/** A room whose *listing* the server snapshot decides: a location's room or
+ *  an authored channel (derived DM / private / lobby threads are always shown). */
+export function isListedRoom(id: string): boolean {
+  return id.startsWith("loc:") || id.startsWith("room:");
+}
+
+/** Everything said *to* this guest, in order — the on-rails stream a
+ *  cutscene shows: lines addressed to them, their cards, their replies.
+ *  Room-wide story (`audience: "all"`) is not theirs and stays out. */
+export function personalStream(messages: ReadonlyMap<number, ChatMessage>, meId: string): ChatMessage[] {
+  return [...messages.values()]
+    .filter((m) => Array.isArray(m.audience) && m.audience.includes(meId) && m.parentSeq == null)
+    .sort((a, b) => a.seq - b.seq);
+}
+
+/** The newest card of `kind` shown to this guest that nobody has answered. */
+export function pendingWidget(messages: ReadonlyMap<number, ChatMessage>, kind: string, answered: ReadonlySet<number>): ChatMessage | null {
+  let best: ChatMessage | null = null;
+  for (const m of messages.values()) {
+    if (m.kind !== "widget" || m.widget?.kind !== kind || answered.has(m.seq)) continue;
+    if (best === null || m.seq > best.seq) best = m;
+  }
+  return best;
+}
+
 /** Group the guest's messages into threads, docking the pending decision, and
  *  merge in authored channels (SPACE/CHANNEL) the guest can see — including
  *  empty rooms — from the server snapshot. */
@@ -224,6 +249,19 @@ export function buildGuestChannels(
   const spaceTitles = new Map((view?.spaces ?? []).map((s) => [s.id, s.title]));
   const snap = new Map((view?.channels ?? []).map((c) => [c.id, c]));
   for (const id of snap.keys()) if (!groups.has(id)) groups.set(id, []); // empty authored rooms
+  // The snapshot is the authority on which rooms + places are *listed*: a
+  // `hidden: true` room the story hasn't opened for this guest stays off
+  // the sidebar even though its public lines were delivered — they are
+  // kept, and appear with their history the moment the room is revealed.
+  if (view !== null) {
+    for (const id of [...groups.keys()]) if (isListedRoom(id) && !snap.has(id)) groups.delete(id);
+  }
+  // An agent-voiced character in the directory is always reachable: their
+  // DM is on the sidebar before either side has said a word (a performer's
+  // thread only appears once the character speaks to you).
+  for (const p of view?.people ?? []) {
+    if (p.kind === "character" && p.agent !== undefined && !groups.has(`dm:${p.id}`)) groups.set(`dm:${p.id}`, []);
+  }
   // The story's own section is named after the story, whichever channel
   // (derived or authored) happens to lead it.
   const storyTitle = view?.title ?? spaceTitles.get(STORY_SPACE);
@@ -314,6 +352,9 @@ export interface GuestSession {
   answerWidget: (seq: number, result: WidgetResult) => Promise<void>;
   /** Answers given this session, by card seq (the card renders resolved). */
   widgetAnswers: ReadonlyMap<number, WidgetResult>;
+  /** Every message delivered to this guest, by seq (the raw stream the
+   *  threads are built from — a cutscene reads what is addressed to them). */
+  messages: ReadonlyMap<number, ChatMessage>;
   leave: () => void;
 }
 
@@ -472,9 +513,20 @@ export function useGuestSession(): GuestSession {
     void redeem(code).catch(() => {});
   }, [me, status, redeem]);
 
-  // Widgets: one answer per card. The server refuses a second (409); a
-  // reload shows the card fresh, and the server's memory settles it.
+  // Widgets: one answer per card. The server refuses a second (409), and
+  // the snapshot lists the cards already answered so a reload renders them
+  // resolved (the result itself isn't replayed — an empty record marks it).
   const [widgetAnswers, setWidgetAnswers] = useState<ReadonlyMap<number, WidgetResult>>(() => new Map());
+  const answeredList = status?.answered;
+  useEffect(() => {
+    if (answeredList === undefined || answeredList.length === 0) return;
+    setWidgetAnswers((prev) => {
+      if (answeredList.every((seq) => prev.has(seq))) return prev;
+      const next = new Map(prev);
+      for (const seq of answeredList) if (!next.has(seq)) next.set(seq, {});
+      return next;
+    });
+  }, [answeredList]);
   const answerWidget = useCallback(
     async (seq: number, result: WidgetResult) => {
       setWidgetAnswers((prev) => new Map(prev).set(seq, result));
@@ -532,6 +584,7 @@ export function useGuestSession(): GuestSession {
     dismissAlert,
     answerWidget,
     widgetAnswers,
+    messages,
     leave,
   };
 }

@@ -110,6 +110,7 @@ def _ask(cfg: StagehandConfig, args: argparse.Namespace) -> int:
         variables[key.strip()] = value.strip()
     history: list[dict] = []
     mind = Mind(character=name, event="ask")
+    mind.seed(persona.stages, persona.drives)
     powers = [{"id": p, "label": p, "description": None, "limit": None, "used": 0} for p in args.power]
 
     async def say(text: str) -> None:
@@ -146,17 +147,26 @@ def _ask(cfg: StagehandConfig, args: argparse.Namespace) -> int:
         mind.saw_exchange("ask", args.name, "guest", thread_key(req), len(history))
         from .agents.llm import complete
 
-        raw = await complete(reflect_messages(persona, mind, req, reply, None, persona.summarize_after, thread_key(req)), orchestrator_model)
+        completion = await complete(reflect_messages(persona, mind, req, reply, None, persona.summarize_after, thread_key(req)), orchestrator_model)
+        raw = completion.content
+        if completion.thinking:
+            print("  [mind thinking] " + " ".join(completion.thinking.split())[:400])
         update = parse_update(raw)
         if update is None:
             print(f"  [mind] unusable orchestrator output: {raw[:200]!r}")
             return
         touched = mind.apply(update, speaker_id="ask", thread_key=thread_key(req), upto=len(history))
-        print(f"  [mind] updated {', '.join(touched) or 'nothing'}")
+        print(f"  [mind] updated {', '.join(touched) or 'nothing'} ({completion.ms} ms)")
+        if mind.stage:
+            print(f"  [stage] {mind.stage}")
         if mind.brief:
             print("  [brief] " + " / ".join(mind.brief.splitlines()))
         if mind.mood:
             print(f"  [mood] {mind.mood}")
+        if mind.drives:
+            print("  [drives] " + ", ".join(f"{k} {v}" for k, v in mind.drives.items()))
+        if mind.policy.get("favours") != "none":
+            print(f"  [policy] {json.dumps(mind.policy)}")
         for n in mind.notes[-4:]:
             print(f"  [note] {n}")
         d = mind.people.get("ask")

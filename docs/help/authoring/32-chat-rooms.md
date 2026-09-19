@@ -54,7 +54,36 @@ what the sidebar shows.
 | `type: announcement` | read-only feed (story can post; guests can't) |
 | `slow: 3s` | rate-limits posting |
 | `ephemeral: 30s` | messages disappear after 30 s |
+| `hidden: true` | not on a guest's phone until the story `reveal`s it (see below) |
 
+## Rooms that appear as the night opens up
+
+A phone full of rooms is overwhelming on arrival. Declare a room (or a
+`LOCATION`) `hidden: true` and it stays off the sidebar until the story
+opens it:
+
+```loom
+CHANNEL ram
+  kind: open
+  hidden: true
+
+LOCATION The Cellar
+  hidden: true
+
+when the house opens:
+  reveal ram                 // everyone
+  reveal The Cellar          // everyone
+
+when the doors open for guest:
+  reveal The Cellar for guest   // this one person
+```
+
+A hidden **place** also appears for anyone who has stood there (the app
+never hides the room you're in). Opening a room posts a small system
+notice ("📂 The Cellar is open now.") to whoever it opened for; lines
+said in a room before it opened are delivered and appear with it.
+Performers and directors always see every room. A hidden `private` /
+`group` room still needs membership once revealed.
 ## The rooms your story creates on its own
 
 Beyond authored channels, every event automatically has:

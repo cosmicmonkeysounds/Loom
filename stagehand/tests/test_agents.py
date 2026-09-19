@@ -213,8 +213,9 @@ def test_complete_speaks_openai_chat_completions():
         return httpx.Response(200, json={"choices": [{"message": {"content": '{"say": "ok"}', "reasoning": "…"}}]})
 
     cfg = LlmConfig(endpoint="http://m/v1/", model="gpt-oss:20b", reasoning_effort="low", max_tokens=800)
-    text = run(complete([{"role": "user", "content": "hi"}], cfg, transport=httpx.MockTransport(handler)))
-    assert text == '{"say": "ok"}'
+    out = run(complete([{"role": "user", "content": "hi"}], cfg, transport=httpx.MockTransport(handler)))
+    assert out.content == '{"say": "ok"}' and str(out) == '{"say": "ok"}'
+    assert out.thinking == "…"  # gpt-oss's reasoning rides the `reasoning` field
     assert captured["url"] == "http://m/v1/chat/completions"
     assert captured["body"]["reasoning_effort"] == "low"
     assert captured["body"]["max_tokens"] == 800
@@ -302,7 +303,13 @@ def test_worker_answers_a_request_and_replies_with_its_worker_id(tmp_path):
         await asyncio.gather(*agents.tasks.values())
 
     run(go())
-    assert agents.mod.posts == [("/api/agent/reply", {"id": "ar-1", "say": "SANDY.", "adjust": {"truth": 3}, "worker": "w-1"})]
+    replies = [b for p, b in agents.mod.posts if p == "/api/agent/reply"]
+    assert replies == [{"id": "ar-1", "say": "SANDY.", "adjust": {"truth": 3}, "worker": "w-1"}]
+    # `hello` hands the server the mind first; every model call is traced.
+    assert agents.mod.posts[0][0] == "/api/agent/mind"
+    thoughts = [t for p, b in agents.mod.posts if p == "/api/agent/trace" for t in b["thoughts"]]
+    assert [t["kind"] for t in thoughts] == ["voice"] and thoughts[0]["result"]["say"] == "SANDY." and thoughts[0]["request_id"] == "ar-1"
+    assert thoughts[0]["messages"][0]["role"] == "system" and thoughts[0]["model"]["name"] == "gpt-oss:20b"
     assert agents.tasks == {}
 
 
@@ -334,12 +341,15 @@ def test_cancel_and_reset_abort_in_flight_work(tmp_path):
         await asyncio.sleep(0)
         await agents.on_frame("cancel", json.dumps({"id": "a"}))
         assert list(agents.tasks) == ["b"]
-        await agents.on_frame("reset", "{}")
+        await agents.on_frame("control", json.dumps({"action": "reset", "by": "server", "reason": "restart"}))
         assert agents.tasks == {}
         await asyncio.sleep(0)
 
     run(go())
-    assert agents.mod.posts == []
+    assert [p for p, _ in agents.mod.posts if p == "/api/agent/reply"] == []
+    # The reset itself is a marker in the trace, and the mind is re-mirrored.
+    kinds = [t["kind"] for p, b in agents.mod.posts if p == "/api/agent/trace" for t in b["thoughts"]]
+    assert kinds == ["reset"] and "/api/agent/mind" in [p for p, _ in agents.mod.posts]
 
 
 def test_concurrency_serialises_model_calls(tmp_path):
@@ -363,7 +373,7 @@ def test_concurrency_serialises_model_calls(tmp_path):
 
     run(go())
     assert peak == 1
-    assert len(agents.mod.posts) == 3
+    assert len([p for p, _ in agents.mod.posts if p == "/api/agent/reply"]) == 3
 
 
 def test_requests_for_characters_this_worker_does_not_voice_are_ignored(tmp_path):
@@ -514,7 +524,7 @@ def test_the_worker_sends_acts_reflects_and_mirrors_the_mind(tmp_path):
         await agents.on_frame("request", json.dumps(request(powers=POWERS)))
         await asyncio.gather(*agents.tasks.values())
         for _ in range(200):
-            if any(p == "/api/agent/mind" for p, _ in agents.mod.posts):
+            if any(p == "/api/agent/mind" and b["brief"] for p, b in agents.mod.posts):
                 break
             await asyncio.sleep(0.01)
         agents._orchestrator_task.cancel()
@@ -522,18 +532,25 @@ def test_the_worker_sends_acts_reflects_and_mirrors_the_mind(tmp_path):
 
     run(go())
     paths = [p for p, _ in agents.mod.posts]
-    assert paths[0] == "/api/agent/reply"
-    reply_body = agents.mod.posts[0][1]
+    reply_body = next(b for p, b in agents.mod.posts if p == "/api/agent/reply")
     assert reply_body["acts"] == [{"kind": "fire", "name": "cut the lights", "args": {"room": "The Cache"}}] and reply_body["worker"] == "w-1"
     assert "/api/agent/mind" in paths
-    mirror = dict(agents.mod.posts)["/api/agent/mind"]
+    mirror = [b for p, b in agents.mod.posts if p == "/api/agent/mind"][-1]
     assert mirror["character"] == "Trabolta" and mirror["brief"] == "Be kind to Ada." and mirror["people"][0]["trust"] == 70
+    assert mirror["status"]["voice"]["model"] == "gpt-oss:20b" and mirror["status"]["mind"]["model"] == "orch" and mirror["rev"] >= 1
+    assert mirror["revisions"][-1]["by"] == "reflect" and "brief" in mirror["revisions"][-1]["touched"]
+    # The reflection is a traced thought carrying the diff it made.
+    thoughts = [t for p, b in agents.mod.posts if p == "/api/agent/trace" for t in b["thoughts"]]
+    reflect = next(t for t in thoughts if t["kind"] == "reflect")
+    assert reflect["diff"]["brief"] == ["", "Be kind to Ada."] and reflect["diff"]["people"]["g-1"]["trust"] == [50, 70]
+    assert reflect["revision"] == mirror["revisions"][-1]["rev"] and reflect["result"]["brief"] == "Be kind to Ada."
+    assert (tmp_path / "minds" / "evt" / "Trabolta.trace.jsonl").exists()
     mind = agents.minds["Trabolta"]
     assert mind.exchanges == 1 and mind.people["g-1"].turns == 1
     # Persisted per event + character; a reset empties it (and the file).
     saved = tmp_path / "minds" / "evt" / "Trabolta.mind.json"
     assert saved.exists() and json.loads(saved.read_text())["brief"] == "Be kind to Ada."
-    run(agents.on_frame("reset", "{}"))
+    run(agents.on_frame("control", json.dumps({"action": "reset", "by": "server", "reason": "restart"})))
     assert mind.brief == "" and json.loads(saved.read_text())["exchanges"] == 0
     assert calls.count("orch") >= 1  # the survey on hello + the reflection
 
@@ -564,7 +581,7 @@ def test_complete_speaks_ollama_native_when_asked():
 
     cfg = LlmConfig(endpoint="http://localhost:11434/v1", model="qwen", api="ollama", extra={"think": False}, keep_alive="30m", max_tokens=222, temperature=0.4)
     out = run(complete([{"role": "user", "content": "hi"}], cfg, transport=httpx.MockTransport(handler)))
-    assert out == '{"brief": "b"}'
+    assert out.content == '{"brief": "b"}' and out.thinking == ""
     assert seen["url"] == "http://localhost:11434/api/chat"
     assert seen["body"]["think"] is False and seen["body"]["keep_alive"] == "30m" and seen["body"]["stream"] is False
     assert seen["body"]["options"] == {"temperature": 0.4, "num_predict": 222}

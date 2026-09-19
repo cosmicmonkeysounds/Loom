@@ -7,7 +7,10 @@ CHARACTER Norton Anti-Virus is Enforcer
   // Stands at attention. Interrupts parties. Takes it personally.
   trusts Program: 50 of 100
   when scanned by program:
-    -> self.Sweep
+    if not program.cleared:
+      -> self.Clearance
+    else:
+      -> self.Sweep
   beat Sweep(program)
     Self: Scanning. Scanning. {program.name}: {program.doubt} threats detected.
     if program.doubt >= 50:
@@ -26,7 +29,10 @@ CHARACTER Password Manager is Enforcer
     Password Manager: That's not a password I recognise. I recognise all of them. Try to look less like you're guessing.
 
   when scanned by program:
-    -> self.Audit
+    if not program.cleared:
+      -> self.Clearance
+    else:
+      -> self.Audit
   beat Audit(program)
     Self: Codex audit. You are holding {program.codex} entries. {program.truth} truth on file.
     if program.codex >= 6:
@@ -39,13 +45,21 @@ CHARACTER MalwareBytes is Enforcer
   // The one who actually likes dragging people through the Tube.
   when captured program:
     MalwareBytes: Another one. Mind the cables, {program.name}. Or don't. I'm not your bathroom attendant.
+  when scanned by program:
+    if not program.cleared:
+      -> self.Clearance
+    else:
+      Self: {program.name}. Doubt on file: {program.doubt}. Give me a reason. Any reason.
 
 CHARACTER McAfee Anti-Virus is Enforcer
   // Expired. Nobody renewed him. Still pops up.
   every 20m:
     broadcast "🛡️ McAfee: Your protection has expired. Your protection has expired. Renew now." to everyone
   when scanned by program:
-    -> self.Popup
+    if not program.cleared:
+      -> self.Clearance
+    else:
+      -> self.Popup
   beat Popup(program)
     Self: {program.name}! Your protection has expired! Would you like to renew?
     * Renew.

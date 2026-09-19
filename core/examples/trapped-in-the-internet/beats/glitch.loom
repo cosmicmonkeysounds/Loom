@@ -19,6 +19,14 @@ Task Manager: This was not on the agenda.
 Alexa: Playing — silence.
 broadcast "!💬 Trabolta is available. Find him in your directory and message him. He answers. He remembers." to everyone
 broadcast "📓 The house is open. Codes are hidden in every room — on the walls, in the puzzles, in the people. Your codex is your currency. Share carefully." to everyone
+// Free roam: every room of the house appears on every phone, and the
+// side-channel opens.
+reveal The Cache
+reveal The Recycle Bin
+reveal The Cloud
+reveal The Registry
+reveal The Tube
+reveal ram
 set Night.quorum = 5
 
 // ── The scannable stations, free roam ───────────────────────────────

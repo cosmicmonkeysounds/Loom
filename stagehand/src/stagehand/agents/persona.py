@@ -13,7 +13,11 @@
     max_tokens: 800                    #   model / temperature / max_tokens /
     reasoning_effort: low              #   reasoning_effort
     mind: trabolta.mind.md             # the orchestrator's prompt (how this
-                                       #   character grows; default built in)
+                                       #   character grows; default built in).
+                                       #   May open with its own frontmatter:
+                                       #   stages: [a, b, c]   the arc, in order
+                                       #   drives: {hunger: 40, suspicion: 55}
+                                       #   phases: {glitch: "cue text"}  per Night.phase
     orchestrator: { model: … }         # orchestrator model overrides for this one
     thread_window: 12                  # thread lines the fast model sees
     summarize_after: 20                # a thread this long gets a rolling summary
@@ -86,6 +90,13 @@ class Persona:
     source: str = ""
     #: The orchestrator's system prompt (from `mind:`), or None for the default.
     mind_prompt: str | None = None
+    #: The declared arc (mind-file frontmatter `stages:`), in order.
+    stages: tuple[str, ...] = ()
+    #: Declared drives with their opening values (`drives:`).
+    drives: dict[str, int] = field(default_factory=dict)
+    #: A cue per story phase (`phases:`), handed to the orchestrator when the
+    #: house enters that phase.
+    phase_cues: dict[str, str] = field(default_factory=dict)
     #: Orchestrator model overrides for this character.
     orchestrator: dict[str, Any] = field(default_factory=dict)
     thread_window: int = 12
@@ -147,14 +158,18 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
 
     max_step = _int("max_step", 15)
     mind_prompt = None
+    stages: tuple[str, ...] = ()
+    drives: dict[str, int] = {}
+    phase_cues: dict[str, str] = {}
     if meta.get("mind") not in (None, ""):
         mind_path = Path(str(meta["mind"]))
         if not mind_path.is_absolute() and source not in ("<persona>", ""):
             mind_path = Path(source).parent / mind_path
         try:
-            mind_prompt = mind_path.read_text(encoding="utf-8").strip() or None
+            mind_text = mind_path.read_text(encoding="utf-8")
         except OSError as err:
             raise ConfigError(f"{source}: cannot read mind file {mind_path}: {err}") from err
+        mind_prompt, stages, drives, phase_cues = parse_mind_file(mind_text, str(mind_path))
     orchestrator = meta.get("orchestrator")
     if orchestrator is not None and not isinstance(orchestrator, dict):
         raise ConfigError(f"{source}: orchestrator: must be a mapping of model overrides")
@@ -179,6 +194,9 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         llm=llm,
         source=source,
         mind_prompt=mind_prompt,
+        stages=stages,
+        drives=drives,
+        phase_cues=phase_cues,
         orchestrator=dict(orchestrator or {}),
         thread_window=max(2, _int("thread_window", 12)),
         summarize_after=max(4, _int("summarize_after", 20)),
@@ -188,6 +206,53 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         powers=powers,
         bargain=str(meta.get("bargain") or "").strip(),
     )
+
+
+_MIND_KNOWN = {"stages", "drives", "phases"}
+
+
+def parse_mind_file(text: str, source: str = "<mind>") -> tuple[str | None, tuple[str, ...], dict[str, int], dict[str, str]]:
+    """A mind file is the orchestrator's prompt, optionally opening with a
+    frontmatter block that declares the character's arc (`stages:`), its
+    drives with opening values (`drives:`), and a cue per story phase
+    (`phases:`). Returns (prompt, stages, drives, phase_cues)."""
+    body = text
+    stages: tuple[str, ...] = ()
+    drives: dict[str, int] = {}
+    phases: dict[str, str] = {}
+    if text.startswith("---"):
+        end = text.find("\n---", 3)
+        if end < 0:
+            raise ConfigError(f"{source}: unterminated frontmatter (no closing '---')")
+        try:
+            meta = yaml.safe_load(text[3:end]) or {}
+        except yaml.YAMLError as err:
+            raise ConfigError(f"{source}: bad frontmatter YAML: {err}") from err
+        if not isinstance(meta, dict):
+            raise ConfigError(f"{source}: frontmatter must be a mapping")
+        unknown = sorted(set(meta) - _MIND_KNOWN)
+        if unknown:
+            raise ConfigError(f"{source}: unknown frontmatter key(s) {', '.join(unknown)}")
+        stages = _names(meta.get("stages"), f"{source}: stages")
+        raw_drives = meta.get("drives")
+        if isinstance(raw_drives, dict):
+            for name, start in raw_drives.items():
+                try:
+                    drives[str(name).strip()] = max(0, min(100, int(start if start is not None else 50)))
+                except (TypeError, ValueError) as err:
+                    raise ConfigError(f"{source}: drives.{name} must be a number 0–100") from err
+        elif isinstance(raw_drives, (str, list)):
+            drives = {name: 50 for name in _names(raw_drives, f"{source}: drives")}
+        elif raw_drives is not None:
+            raise ConfigError(f"{source}: drives must be a mapping of name → opening value")
+        raw_phases = meta.get("phases")
+        if isinstance(raw_phases, dict):
+            phases = {str(k).strip(): " ".join(str(v).split()) for k, v in raw_phases.items() if v is not None and str(v).strip()}
+        elif raw_phases is not None:
+            raise ConfigError(f"{source}: phases must be a mapping of phase → cue")
+        body = text[end + 4 :]
+    prompt = body.strip() or None
+    return prompt, stages, drives, phases
 
 
 def load_persona(path: str | Path) -> Persona:

@@ -117,9 +117,9 @@ openers end with `:` and indent their body.
 | Form | Meaning |
 |---|---|
 | `PERSON` / `ROSTER` / `cast p as Role` | real people, the night's plan, binding |
-| `GROUP` (`hidden: true`) / `LOCATION` / `COHORT` | a side / a place (and a room) / a grouping |
+| `GROUP` (`hidden: true`) / `LOCATION` (`hidden: true`, `cutscene: true`) / `COHORT` | a side / a place (and a room; hidden until visited or revealed; on rails) / a grouping |
 | `move who to Place` | put a participant somewhere |
-| `add who to Group` / `remove who from Group` / `reveal Group` | membership / unmask a hidden group |
+| `add who to Group` / `remove who from Group` / `reveal X [for who]` | membership / open a hidden group, place, room or character |
 | `broadcast cue to scope` (+ indented lines) | send a cue to a subset |
 | `participant(X)` `group(G)` `location(L)` , `and` / `but` | broadcast scopes |
 | `(improv duration: 45s, advance on: any […])` | an improvised beat |

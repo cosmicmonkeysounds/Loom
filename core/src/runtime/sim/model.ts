@@ -79,6 +79,13 @@ export interface LocationDef {
   /** A `prison: true` place a captive cannot leave on their own — the app
    *  hides its "make a break for it" button; only the story releases. */
   sealed: boolean;
+  /** `hidden: true` — the app lists this place's room only once the viewer
+   *  has stood there, or the story `reveal`s it (to everyone / `for` them). */
+  hidden: boolean;
+  /** `cutscene: true` — while a guest stands here the app goes on rails:
+   *  a full-screen stream of what is said *to them*, no rooms sidebar. The
+   *  Mud Room login of *Trapped in the Internet* is the reference. */
+  cutscene: boolean;
   capacity: number | null;
   contains: string[];
 }
@@ -101,6 +108,9 @@ export interface CharDef {
   /** `listed: true` — a character that is a *person at the party*: shown in
    *  the participants directory and messageable. Scanner props are not. */
   listed: boolean;
+  /** `hidden: true` — kept out of the directory until the story `reveal`s
+   *  them (an agent-voiced character who only comes online mid-show). */
+  hidden: boolean;
   /** `mind: external` — the character is voiced by an outside agent (a
    *  stagehand agents worker driving a language model). A message to its
    *  `dm:` thread becomes an agent request instead of waiting for a
@@ -149,6 +159,9 @@ export interface ChannelDef {
   /** Behaviour bundle resolved from the channel-type registry (post policy,
    *  threadability, broadcast routing, …). */
   rules: ChannelRules;
+  /** `hidden: true` — not listed for a guest until the story `reveal`s it
+   *  (on top of the kind's own access rule). */
+  hidden: boolean;
 }
 
 /** The channel-id namespace for an authored channel name. */
@@ -407,6 +420,7 @@ function channelDef(body: ChannelBody, spaceId: string): ChannelDef {
       slow: body.slow,
       ephemeral: body.ephemeral,
     }),
+    hidden: body.properties.get("hidden")?.value.trim() === "true",
   };
 }
 
@@ -468,6 +482,8 @@ function locationDef(id: string, body: LocationBody): LocationDef {
     label: body.label,
     prison: body.properties.get("prison")?.value === "true",
     sealed: body.properties.get("sealed")?.value === "true",
+    hidden: body.properties.get("hidden")?.value === "true",
+    cutscene: body.properties.get("cutscene")?.value === "true",
     capacity: body.capacity,
     contains: body.contains,
   };
@@ -568,6 +584,7 @@ function charDef(id: string, body: CharacterBody): CharDef {
     disposition: body.disposition,
     defaults,
     listed: body.properties.get("listed")?.value.trim() === "true",
+    hidden: body.properties.get("hidden")?.value.trim() === "true",
     mind: mind === "" ? null : mind,
     ranges,
   };

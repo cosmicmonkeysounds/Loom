@@ -6,7 +6,7 @@
 //! the identity card, and the sheets for out-of-band actions: the pass, the
 //! Codex (knowledge as a currency), and the People directory.
 
-import { useEffect, useState, type ReactElement } from "react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
 import {
   ActionRow,
   AlertBanner,
@@ -24,9 +24,11 @@ import {
   useWide,
 } from "./chat.tsx";
 import { groupCodex } from "./codex.ts";
+import { CutsceneStage } from "./cutscene.tsx";
 import { HelpSheet } from "./help.tsx";
 import { usePlayHost } from "./host.ts";
-import { codeFromUrl, useDocumentTitle, useGuestSession, useUrlEventTitle, type GuestSession } from "./session.ts";
+import { codeFromUrl, pendingWidget, personalStream, useDocumentTitle, useGuestSession, useUrlEventTitle, type GuestSession } from "./session.ts";
+import { Tutorial, tourResult, tutorialSteps } from "./tutorial.tsx";
 import type { Action, Channel, CodexEntry, PersonCard } from "./types.ts";
 
 function GuestRegister({ session }: { session: GuestSession }) {
@@ -115,6 +117,20 @@ function ProfileSheet({ session, onClose, onLeave }: { session: GuestSession; on
       >
         Leave the event
       </button>
+    </Sheet>
+  );
+}
+
+/** Just the pass — the QR a performer scans — for when the app is on rails
+ *  and the rest of the menu is out of reach. */
+function PassSheet({ me, onClose }: { me: { id: string; name: string }; onClose: () => void }) {
+  return (
+    <Sheet title="🎟️ Your pass" onClose={onClose}>
+      <div className="pass">
+        <img alt="QR" src={`/api/qr?text=${encodeURIComponent(me.id)}`} />
+        <div className="bigid">{me.id}</div>
+        <div className="muted">{me.name} · show this to a performer to be scanned.</div>
+      </div>
     </Sheet>
   );
 }
@@ -277,7 +293,7 @@ function IdentityCard({ s, onCodex, onPeople, onHelp, onProfile }: { s: GuestSes
   const where = captured ? "🔒 captured" : st?.location ? `📍 ${st.location}` : "📍 nowhere yet";
   return (
     <header className={`inbox-head ${captured ? "trapped" : ""}`}>
-      <div className="me">
+      <div className="me" data-tour="me">
         <PersonAvatar name={s.me?.name ?? "?"} />
         <div className="me-body">
           <div className="who">
@@ -291,16 +307,16 @@ function IdentityCard({ s, onCodex, onPeople, onHelp, onProfile }: { s: GuestSes
         </div>
       </div>
       <div className="hud">
-        <button className="icon-btn wide" title="Codex — what you know" onClick={onCodex}>
+        <button className="icon-btn wide" title="Codex — what you know" onClick={onCodex} data-tour="codex">
           📓<span className="count">{codexCount}</span>
         </button>
-        <button className="icon-btn" title="People" onClick={onPeople}>
+        <button className="icon-btn" title="People" onClick={onPeople} data-tour="people">
           👥
         </button>
-        <button className="icon-btn" title="Help" onClick={onHelp}>
+        <button className="icon-btn" title="Help" onClick={onHelp} data-tour="help">
           ?
         </button>
-        <button className="icon-btn" title="Your pass & settings" onClick={onProfile}>
+        <button className="icon-btn" title="Your pass & settings" onClick={onProfile} data-tour="pass">
           ☰
         </button>
       </div>
@@ -320,6 +336,25 @@ export function homeChannel(list: Channel[]): string | null {
   );
 }
 
+/**
+ * Is the app on rails? While the story has the guest in a `cutscene`
+ * location, yes. When the story moves them on, the stage stays until they
+ * press Continue (so the last lines aren't cut off mid-crawl) — unless the
+ * page was opened fresh, in which case there is nothing to finish.
+ */
+export function useCutscene(inCutscene: boolean): { showing: boolean; over: boolean; leave: () => void } {
+  const seen = useRef(false);
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    if (inCutscene) {
+      seen.current = true;
+      setDone(false);
+    }
+  }, [inCutscene]);
+  const showing = inCutscene || (seen.current && !done);
+  return { showing, over: showing && !inCutscene, leave: () => setDone(true) };
+}
+
 export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const host = usePlayHost();
   const s = useGuestSession();
@@ -329,8 +364,15 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const [people, setPeople] = useState<ReadonlySet<string> | "all" | null>(null);
   const [help, setHelp] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   useDocumentTitle(s.me?.title);
   const t = s.threads;
+  const st = s.status;
+  const cut = useCutscene(st?.cutscene === true);
+  // The story's guided tour, once dealt and until answered — never over a
+  // cutscene (it waits for the guest to step into the app).
+  const tour = !cut.showing && s.me !== null ? pendingWidget(s.messages, "tutorial", new Set(s.widgetAnswers.keys())) : null;
+  const tourSeq = tour?.seq ?? null;
   // On a wide screen the stage is never blank: open the natural room.
   const signedIn = s.me !== null && s.ready;
   const activeId = t.activeId;
@@ -340,12 +382,55 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     // `t` is rebuilt each render; the ids are what matter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, wide, activeId, home]);
+  // The tour walks the sidebar: on a phone, come back to it first.
+  useEffect(() => {
+    if (tourSeq !== null && !wide && activeId !== null) t.back();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourSeq, wide]);
   if (!s.me) return host.embedded ? <SessionEnded notice={s.notice} /> : <GuestRegister session={s} />;
 
-  const st = s.status;
   const captured = st?.captured ?? false;
   const banner = s.alert ? <AlertBanner text={s.alert.text} onDismiss={s.dismissAlert} /> : null;
-  const widgets = { answer: (seq: number, r: Parameters<GuestSession["answerWidget"]>[1]) => void s.answerWidget(seq, r).catch(() => {}), answered: s.widgetAnswers };
+  const widgets = {
+    answer: (seq: number, r: Parameters<GuestSession["answerWidget"]>[1]) => void s.answerWidget(seq, r).catch(() => {}),
+    answered: s.widgetAnswers,
+    viewer: { id: s.me.id, name: s.me.name },
+  };
+
+  // Until the first snapshot + backlog land, say so rather than flash an
+  // empty shell (a new guest's first sight may be a cutscene).
+  if (!s.ready || st === null) {
+    return (
+      <div className="root">
+        <div className="hero">
+          <div className="glyph">📡</div>
+          <p className="sub">Connecting…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (cut.showing) {
+    const dock = t.list.find((c) => c.decision !== null)?.decision ?? null;
+    const where = st.location !== null ? (t.list.find((c) => c.id === `loc:${st.location}`)?.title ?? st.location) : null;
+    return (
+      <div className="root cut-root">
+        <CutsceneStage
+          messages={personalStream(s.messages, s.me.id)}
+          title={st.title ?? s.me.title}
+          where={cut.over ? null : where}
+          decision={dock}
+          widgets={widgets}
+          over={cut.over}
+          onContinue={cut.leave}
+          onPass={() => setProfile(true)}
+          alert={s.alert}
+          onDismissAlert={s.dismissAlert}
+        />
+        {profile && <PassSheet me={{ id: s.me.id, name: s.me.name }} onClose={() => setProfile(false)} />}
+      </div>
+    );
+  }
 
   let stage: ReactElement | null = null;
   if (t.active) {
@@ -394,10 +479,28 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     />
   );
 
+  const tourSteps = tour
+    ? tutorialSteps({
+        title: st.title ?? s.me.title ?? "the story",
+        hasCodex: (st.codexTotal ?? 0) > 0,
+        hasPeople: (st.people?.length ?? 0) > 0,
+        hasActions: (st.interactions?.length ?? 0) > 0,
+      })
+    : [];
+
   return (
-    <div className={`root ${captured ? "trapped-bg" : ""}`}>
+    <div className={`root ${captured ? "trapped-bg" : ""}`} ref={rootRef}>
       {banner}
       <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room on the left. The one you're standing in is at the top." />
+      {tour && (
+        <Tutorial
+          steps={tourSteps}
+          root={rootRef}
+          guide={tour.widget?.params["guide"] ?? null}
+          onFinish={() => widgets.answer(tour.seq, tourResult(tourSteps, null))}
+          onSkip={(step) => widgets.answer(tour.seq, tourResult(tourSteps, step))}
+        />
+      )}
       {inviting && t.active && (
         <InviteSheet
           title={`Invite to ${t.active.title}`}

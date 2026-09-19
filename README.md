@@ -85,6 +85,20 @@ Drop a `LoomStory` node in a scene, point it at `main.loombank`, and
 connect signals — or use the zero-script `LoomDialogueBox`. Full tour:
 [`engines/godot/README.md`](./engines/godot/README.md).
 
+### The whole dev stack, one command
+
+```bash
+pnpm install
+pnpm dev                          # builds play + terminal, runs the event
+                                  # server (:7000) + the editor (:5173)
+pnpm dev --sync "My Project"      # …and pushes the example story into that
+                                  # server project, reloading its event
+```
+
+`pnpm dev --no-build` skips the app builds, `--play` adds the play app's
+own Vite (:5174, a second origin for a performer phone), `--only server`
+runs just one piece. Ctrl+C stops everything (`scripts/dev.mjs`).
+
 ### The editor (author IDE)
 
 ```bash

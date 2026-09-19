@@ -39,7 +39,7 @@ def fold(name: str) -> str:
 
 
 def strip_think(raw: str) -> str:
-    text = _THINK.sub("", raw or "")
+    text = _THINK.sub("", str(raw) if raw is not None else "")
     return _OPEN_THINK.sub("", text).strip()
 
 

@@ -22,6 +22,8 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import time
 from dataclasses import dataclass, field, replace
 from typing import Any
 
@@ -34,6 +36,38 @@ class LlmError(RuntimeError):
 
 class LlmTruncated(LlmError):
     """The model produced no answer because `max_tokens` ran out (reasoning)."""
+
+
+_THINK_INLINE = re.compile(r"<think>(.*?)</think>", re.DOTALL | re.IGNORECASE)
+
+
+@dataclass(frozen=True)
+class Completion:
+    """One model answer with everything the debugger wants to see next to
+    the text: the model's reasoning (gpt-oss's `reasoning`, Ollama's
+    `thinking`, or an inline `<think>` block), why it stopped, the token
+    counts, and how long it took. `complete_fn` fakes in tests may still
+    return a bare string — `Completion.of` normalises."""
+
+    content: str
+    thinking: str = ""
+    finish: str = ""
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    ms: int = 0
+
+    @classmethod
+    def of(cls, value: "str | Completion | None") -> "Completion":
+        if isinstance(value, Completion):
+            return value
+        text = value or ""
+        blocks = _THINK_INLINE.findall(text)
+        if blocks:
+            return cls(content=text, thinking="\n\n".join(b.strip() for b in blocks if b.strip()))
+        return cls(content=text)
+
+    def __str__(self) -> str:  # a Completion reads as its text
+        return self.content
 
 
 def tool_calls_as_json(message: dict[str, Any]) -> str:
@@ -131,10 +165,11 @@ async def complete(
     messages: list[dict[str, str]],
     cfg: LlmConfig,
     transport: httpx.AsyncBaseTransport | None = None,
-) -> str:
-    """Ask the model; returns the assistant text (may be empty)."""
+) -> Completion:
+    """Ask the model; returns the answer (its text may be empty)."""
     if cfg.api == "ollama":
         return await complete_ollama(messages, cfg, transport)
+    started = time.monotonic()
     body: dict[str, Any] = {
         "model": cfg.model,
         "messages": messages,
@@ -161,26 +196,48 @@ async def complete(
     try:
         data = r.json()
         choice = data["choices"][0]
-        content = choice["message"].get("content")
+        message = choice["message"]
+        content = message.get("content")
     except (ValueError, KeyError, IndexError, TypeError) as err:
         raise LlmError(f"unexpected model response: {r.text[:200]}") from err
+    finish = str(choice.get("finish_reason") or "")
+    usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
+    thinking = _text(message.get("reasoning")) or _text(message.get("reasoning_content"))
+    ms = int((time.monotonic() - started) * 1000)
     if not content:
-        folded = tool_calls_as_json(choice["message"])
+        folded = tool_calls_as_json(message)
         if folded:
-            return folded
-    if not content and choice.get("finish_reason") == "length":
+            return _completion(folded, thinking, finish or "tool_calls", usage.get("prompt_tokens"), usage.get("completion_tokens"), ms)
+    if not content and finish == "length":
         # A reasoning model spent the whole budget thinking: tell the caller
         # so it can retry with room, instead of answering with silence.
         raise LlmTruncated(f"{cfg.model} hit max_tokens={cfg.max_tokens} before answering")
-    return content or ""
+    return _completion(content or "", thinking, finish, usage.get("prompt_tokens"), usage.get("completion_tokens"), ms)
+
+
+def _text(value: Any) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
+def _completion(content: str, thinking: str, finish: str, prompt_tokens: Any, completion_tokens: Any, ms: int) -> Completion:
+    base = Completion.of(content)
+    return Completion(
+        content=base.content,
+        thinking=thinking or base.thinking,
+        finish=finish,
+        prompt_tokens=int(prompt_tokens) if isinstance(prompt_tokens, (int, float)) else None,
+        completion_tokens=int(completion_tokens) if isinstance(completion_tokens, (int, float)) else None,
+        ms=ms,
+    )
 
 
 async def complete_ollama(
     messages: list[dict[str, str]],
     cfg: LlmConfig,
     transport: httpx.AsyncBaseTransport | None = None,
-) -> str:
+) -> Completion:
     """Ollama's native `/api/chat`: `think` and `keep_alive` are honoured here."""
+    started = time.monotonic()
     options: dict[str, Any] = {"temperature": cfg.temperature, "num_predict": cfg.max_tokens}
     body: dict[str, Any] = {"model": cfg.model, "messages": messages, "stream": False, "options": options}
     if cfg.json_mode:
@@ -207,13 +264,17 @@ async def complete_ollama(
         raise LlmError(f"model endpoint → HTTP {r.status_code}: {r.text[:200]}")
     try:
         data = r.json()
-        content = data["message"].get("content")
+        message = data["message"]
+        content = message.get("content")
     except (ValueError, KeyError, TypeError) as err:
         raise LlmError(f"unexpected model response: {r.text[:200]}") from err
+    finish = str(data.get("done_reason") or "")
+    thinking = _text(message.get("thinking"))
+    ms = int((time.monotonic() - started) * 1000)
     if not content:
-        folded = tool_calls_as_json(data["message"])
+        folded = tool_calls_as_json(message)
         if folded:
-            return folded
-    if not content and data.get("done_reason") == "length":
+            return _completion(folded, thinking, finish or "tool_calls", data.get("prompt_eval_count"), data.get("eval_count"), ms)
+    if not content and finish == "length":
         raise LlmTruncated(f"{cfg.model} hit num_predict={cfg.max_tokens} before answering")
-    return content or ""
+    return _completion(content or "", thinking, finish, data.get("prompt_eval_count"), data.get("eval_count"), ms)

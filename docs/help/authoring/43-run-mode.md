@@ -79,6 +79,7 @@ no run yet, the Run page also offers *Go live with real guests* directly.)
 | **Roster** | all guests and the cast — group, location, score, presence, whose persona |
 | **World** | the live state browser — a searchable variables table; **double-click any value to edit it live** |
 | **Director** | named events (with arguments), beats, broadcasts |
+| **Mind** | an agent-voiced character's mind — its arc, drives, brief, the prompts and both models' reasoning, and a control panel ([the mind debugger](44-mind-debugger.md)) |
 | **Log** | the raw ledger, event by event — **filter to one participant**; export the run |
 
 ## Being anyone

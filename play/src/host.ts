@@ -32,15 +32,31 @@ export interface Crawl {
   loaded(maxSeq: number): void;
   /** Should this seq crawl now? Claims it if so (one crawl, ever). */
   claim(seq: number): boolean;
+  /** Lines crawl one at a time, in order, like dialogue: `go` runs once
+   *  every earlier line still crawling has finished. */
+  start(seq: number, go: () => void): void;
+  /** A crawl finished (or its bubble left the screen) — release the next. */
+  finish(seq: number): void;
 }
 
 export function createCrawl(): Crawl {
   let baseline = Number.MAX_SAFE_INTEGER;
   const done = new Set<number>();
+  let active: number | null = null;
+  let queue: Array<{ seq: number; go: () => void }> = [];
+  const pump = () => {
+    if (active !== null || queue.length === 0) return;
+    queue.sort((a, b) => a.seq - b.seq);
+    const next = queue.shift()!;
+    active = next.seq;
+    next.go();
+  };
   return {
     reset() {
       baseline = Number.MAX_SAFE_INTEGER;
       done.clear();
+      active = null;
+      queue = [];
     },
     loaded(maxSeq) {
       baseline = maxSeq;
@@ -49,6 +65,15 @@ export function createCrawl(): Crawl {
       if (seq <= baseline || done.has(seq)) return false;
       done.add(seq);
       return true;
+    },
+    start(seq, go) {
+      queue.push({ seq, go });
+      pump();
+    },
+    finish(seq) {
+      if (active === seq) active = null;
+      else queue = queue.filter((q) => q.seq !== seq);
+      pump();
     },
   };
 }

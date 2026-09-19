@@ -2,7 +2,8 @@
 # Loom — the TS event server (@loom/core) + the built play + editor apps.
 #
 # Targets (both built by docker-compose.yml):
-#   server — the @loom/core event server, serving play/dist at `/`
+#   server — the @loom/core event server, serving play/dist at `/` and
+#            terminal/dist (the wall terminals) at `/terminal/`
 #   proxy  — Caddy: static editor at /edit/, everything else → server
 #
 # See docs/loom-docker-deploy.md for the full deployment walkthrough.
@@ -17,6 +18,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY core/package.json core/
 COPY bank/package.json bank/
 COPY play/package.json play/
+COPY terminal/package.json terminal/
 COPY editor/package.json editor/
 COPY desktop/package.json desktop/
 COPY invite/package.json invite/
@@ -27,10 +29,12 @@ COPY docs docs
 COPY core core
 COPY bank bank
 COPY play play
+COPY terminal terminal
 COPY editor editor
 COPY invite invite
 
 RUN pnpm --filter loom-play build
+RUN pnpm --filter loom-terminal build
 RUN pnpm --filter loom-invite build
 # The editor ships under /edit/ behind the proxy. Its API calls are
 # root-absolute (/api, /e), so they stay same-origin through Caddy —
@@ -47,6 +51,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY core/package.json core/
 COPY bank/package.json bank/
 COPY play/package.json play/
+COPY terminal/package.json terminal/
 COPY editor/package.json editor/
 COPY desktop/package.json desktop/
 COPY invite/package.json invite/
@@ -54,6 +59,7 @@ RUN pnpm install --frozen-lockfile --prod --filter @loom/core
 
 COPY core core
 COPY --from=build /repo/play/dist play/dist
+COPY --from=build /repo/terminal/dist terminal/dist
 COPY deploy/docker-entrypoint.sh /usr/local/bin/loom-entrypoint
 RUN chmod +x /usr/local/bin/loom-entrypoint
 
@@ -61,7 +67,8 @@ ENV NODE_ENV=production \
     LOOM_HOST=0.0.0.0 \
     LOOM_PORT=7000 \
     LOOM_STATE_DIR=/data \
-    LOOM_APP_DIST=/app/play/dist
+    LOOM_APP_DIST=/app/play/dist \
+    LOOM_TERMINAL_DIST=/app/terminal/dist
 VOLUME /data
 EXPOSE 7000
 ENTRYPOINT ["loom-entrypoint"]

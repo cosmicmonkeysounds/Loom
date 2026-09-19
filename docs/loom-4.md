@@ -509,6 +509,13 @@ The live layer is unchanged in shape; only its vocabulary generalised.
   default the list is the acquaintance roster. `GROUP … joinable: false`
   keeps a story-assigned public caste off the side chooser; `LOCATION …
   sealed: true` (with `prison: true`) removes the app's self-escape.
+  **Progressive rooms (2026-09-18):** `LOCATION` / `CHANNEL` /
+  `CHARACTER … hidden: true` stay off a guest's phone until `reveal X`
+  (everyone) or `reveal X for who`; a hidden place also appears once
+  stood in. `LOCATION … cutscene: true` puts the app on rails while a
+  guest stands there (`GuestView.cutscene`). `show tutorial` deals the
+  app's own guided tour; `tutorial answered` carries `completed` /
+  `skipped` + `step`. `GuestView.answered` lists settled cards.
 
 ### 10.1 Codex — knowledge as a currency (2026-09-10)
 

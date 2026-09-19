@@ -3,6 +3,9 @@
 //! unit-testable without standing up the HTTP/SSE server.
 
 import { DEFAULT_SPACE_ID } from "../src/runtime/sim/model.ts";
+import type { AgentMindReport } from "./agents.ts";
+
+export type { AgentControl, AgentControlAction, AgentMindPerson, AgentMindRevision, AgentThought } from "./agents.ts";
 import type { Sim } from "../src/runtime/sim/index.ts";
 import type { CodexDef } from "../src/runtime/sim/model.ts";
 
@@ -136,7 +139,14 @@ export interface GuestView {
   pendingChoice: string[] | null;
   /** Channel the pending decision docks under (`"lobby"`, a DM, …). */
   decisionChannel: string | null;
-  /** Authored channels this guest can see (open + faction + member rooms). */
+  /** Standing in a `cutscene: true` location: the app goes on rails — a
+   *  full-screen stream of what is said to this guest, no rooms sidebar. */
+  cutscene: boolean;
+  /** Widget cards (by message seq) this guest has already answered — the
+   *  runtime fills it so a reload renders them resolved and never re-asks. */
+  answered?: number[];
+  /** Authored channels this guest can see (open + faction + member rooms
+   *  — a `hidden: true` room / place only once revealed or visited). */
   channels: ChannelSnapshot[];
   /** Titles for the authored sidebar sections. */
   spaces: SpaceSnapshot[];
@@ -173,6 +183,7 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     canEscape: !(sim.model.locations.get(sim.locationOf(id) ?? "")?.sealed ?? false),
     pendingChoice,
     decisionChannel: pendingChoice ? (decisionChannel ?? "lobby") : null,
+    cutscene: sim.cutsceneFor(id),
     channels: sim.visibleChannelsFor(id),
     spaces: sim.spaceList(),
     roster: sim.rosterFor(id),
@@ -283,20 +294,13 @@ export interface ModPresence {
   minds?: AgentMindSummary[];
 }
 
-/** An agent-voiced character's mind as its worker last mirrored it. */
-export interface AgentMindSummary {
-  character: string;
-  worker: string;
+/** An agent-voiced character's mind as its worker last mirrored it — the
+ *  whole `AgentMindReport` (arc, drives, policy, questions, dossiers,
+ *  revisions, worker status) plus the server clock when it arrived. */
+export type AgentMindSummary = AgentMindReport & {
   /** Server clock when it was reported. */
   at: number;
-  /** The orchestrator's current voice brief (what the character is up to). */
-  brief: string;
-  mood: string;
-  /** Running self-notes (decisions, obsessions, what it has learned). */
-  notes: string[];
-  /** Per-person dossiers the mind keeps: who, what it thinks of them. */
-  people: Array<{ id: string; name: string; summary: string; trust: number }>;
-}
+};
 
 /** The operator's full god-view of the world. */
 export interface ModView {

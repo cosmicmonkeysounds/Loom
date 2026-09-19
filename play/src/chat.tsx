@@ -71,9 +71,12 @@ export function PersonAvatar({ name, size = "md", kind }: { name: string; size?:
 /**
  * Reveal `text` one character at a time — the classic RPG dialogue crawl.
  * Only runs when `enabled` (a line that just landed); honours
- * `prefers-reduced-motion` by showing the full line at once.
+ * `prefers-reduced-motion` by showing the full line at once. Lines that
+ * land together crawl one after another (the host's crawl queue), so a
+ * burst of dialogue reads as dialogue rather than a wall typing at once.
  */
-function useTypewriter(text: string, enabled: boolean): { shown: string; typing: boolean } {
+function useTypewriter(text: string, enabled: boolean, seq: number): { shown: string; typing: boolean } {
+  const host = usePlayHost();
   const [count, setCount] = useState(enabled ? 0 : text.length);
   useEffect(() => {
     const reduce =
@@ -85,14 +88,28 @@ function useTypewriter(text: string, enabled: boolean): { shown: string; typing:
       return;
     }
     setCount(0);
-    let i = 0;
-    const id = window.setInterval(() => {
-      i += 1;
-      setCount(i);
-      if (i >= text.length) window.clearInterval(id);
-    }, 18);
-    return () => window.clearInterval(id);
-  }, [text, enabled]);
+    let id: number | null = null;
+    const crawl = host.crawl;
+    crawl.start(seq, () => {
+      // Clock-driven, not tick-counted: a background tab throttles timers
+      // to ~1 Hz, and a line must catch up when the tab returns, not
+      // crawl at one character a second.
+      const t0 = performance.now();
+      id = window.setInterval(() => {
+        const i = Math.min(text.length, Math.floor((performance.now() - t0) / 18));
+        setCount(i);
+        if (i >= text.length) {
+          window.clearInterval(id!);
+          id = null;
+          crawl.finish(seq);
+        }
+      }, 18);
+    });
+    return () => {
+      if (id !== null) window.clearInterval(id);
+      crawl.finish(seq);
+    };
+  }, [text, enabled, seq, host]);
   return { shown: text.slice(0, count), typing: count < text.length };
 }
 
@@ -425,7 +442,7 @@ export function SpaceList({
   return (
     <div className="screen side">
       {header}
-      <div className="chlist">
+      <div className="chlist" data-tour="rooms">
         {total === 0 && <div className="empty">{empty ?? "No conversations yet."}</div>}
         {spaces.map((s) => (
           <div key={s.id} className="space-section">
@@ -469,6 +486,8 @@ export interface WidgetHook {
   answer: (seq: number, result: WidgetResult) => void;
   /** Answers already given this session, by seq. */
   answered: ReadonlyMap<number, WidgetResult>;
+  /** The viewer (a guest's own id + name) for cards about them. */
+  viewer?: { id: string; name: string };
 }
 
 export function MessageBubble({
@@ -499,7 +518,9 @@ export function MessageBubble({
   const crawlable = msg.kind === "line" || msg.kind === "narration";
   const host = usePlayHost();
   const [live] = useState(() => crawlable && host.crawl.claim(msg.seq));
-  const { shown, typing } = useTypewriter(msg.text, live);
+  const { shown, typing } = useTypewriter(msg.text, live, msg.seq);
+  // Queued behind an earlier line still crawling: not on screen yet.
+  const pending = typing && shown.length === 0 && msg.text.length > 0;
   const modBtn = moderate && (
     <button
       className="mod-toggle"
@@ -514,14 +535,14 @@ export function MessageBubble({
     return (
       <div className={`msg widget-msg ${msg.hidden ? "hidden" : ""}`}>
         {showChannel && <div className="msg-channel">{msg.title}</div>}
-        <WidgetHost card={msg.widget} seed={msg.seq} answered={answered} onAnswer={widgets && !answered ? (r) => widgets.answer(msg.seq, r) : undefined} />
+        <WidgetHost card={msg.widget} seed={msg.seq} answered={answered} viewer={widgets?.viewer ?? null} onAnswer={widgets && !answered ? (r) => widgets.answer(msg.seq, r) : undefined} />
         {modBtn}
       </div>
     );
   }
   if (msg.kind !== "line") {
     return (
-      <div className={`msg ${cls} ${msg.hidden ? "hidden" : ""} ${typing ? "typing" : ""}`}>
+      <div className={`msg ${cls} ${msg.hidden ? "hidden" : ""} ${typing ? "typing" : ""} ${pending ? "pending" : ""}`}>
         {showChannel && <div className="msg-channel">{msg.title}</div>}
         {msg.kind === "narration" && msg.from && msg.from !== "Narrator" && <span className="narrator-tag">{prettyName(msg.from)}</span>}
         <span className="bubble plain">{crawlable ? shown : msg.text}</span>
@@ -531,7 +552,7 @@ export function MessageBubble({
   }
   const name = prettyName(msg.from);
   return (
-    <div className={`msg line ${tuck ? "tuck" : ""} ${msg.hidden ? "hidden" : ""} ${typing ? "typing" : ""}`}>
+    <div className={`msg line ${tuck ? "tuck" : ""} ${msg.hidden ? "hidden" : ""} ${typing ? "typing" : ""} ${pending ? "pending" : ""}`}>
       {!tuck && (
         <button type="button" className="msg-avatar" onClick={onPerson ? () => onPerson(msg.from) : undefined} tabIndex={onPerson ? 0 : -1} aria-label={name}>
           <PersonAvatar name={msg.from} />

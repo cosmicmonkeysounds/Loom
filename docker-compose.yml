@@ -39,6 +39,12 @@ services:
       LOOM_SMTP_URL: ${LOOM_SMTP_URL:-}
       LOOM_RESEND_API_KEY: ${LOOM_RESEND_API_KEY:-}
       LOOM_MAIL_FROM: ${LOOM_MAIL_FROM:-}
+      # The wall terminals' voice: an OpenAI-compatible speech endpoint
+      # (Kokoro-FastAPI on the show laptop). Blank = the tablets' own voices.
+      LOOM_TTS_URL: ${LOOM_TTS_URL:-}
+      LOOM_TTS_API_KEY: ${LOOM_TTS_API_KEY:-}
+      LOOM_TTS_MODEL: ${LOOM_TTS_MODEL:-kokoro}
+      LOOM_TTS_VOICE: ${LOOM_TTS_VOICE:-am_michael}
       # Optional: pin the default event's passcodes (otherwise auto-generated
       # and printed in the logs + saved under the state volume):
       # LOOM_EVENT_PASS: ...

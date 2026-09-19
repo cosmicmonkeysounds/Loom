@@ -15,17 +15,21 @@ SPACE The Operating System
     kind: open
     label: # general
 
+  // Opens when the hosts call the first game (`when call to the desktop`).
   CHANNEL task manager
     kind: open
     label: # task-manager
     slow: 5s
+    hidden: true
 
-  // A disappearing side-channel — one post per 3s, gone after 45s.
+  // A disappearing side-channel — one post per 3s, gone after 45s. Opens
+  // with the rest of the house at the glitch.
   CHANNEL ram
     kind: open
     slow: 3s
     ephemeral: 45s
     label: # ram
+    hidden: true
 
 CHANNEL hosts
   space: The Operating System

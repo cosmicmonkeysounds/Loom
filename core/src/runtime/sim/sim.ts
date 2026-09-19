@@ -25,7 +25,7 @@ import {
   type Value,
 } from "../expr.ts";
 import { SimLog, type SimEvent } from "./event.ts";
-import { DEFAULT_SPACE_ID, compileModel, foldCode, type ChannelDef, type CodexDef, type Hook, type SimModel } from "./model.ts";
+import { DEFAULT_SPACE_ID, channelId, compileModel, foldCode, type ChannelDef, type CodexDef, type Hook, type SimModel } from "./model.ts";
 import { routesCue } from "./channel-types.ts";
 import { parseSet, splitDirective, splitKeyword } from "./effects.ts";
 import { Bundle, type LoomFileEntry } from "../bundle.ts";
@@ -173,7 +173,14 @@ export class Sim {
   private beatVisits = new Map<string, number>();
   /** Each participant's current story position (last beat entered for them). */
   private lastBeat = new Map<string, string>();
+  /** Exposed hidden things — factions, and (Loom 4 rooms) hidden
+   *  locations / channels / characters revealed to everyone. */
   private revealed = new Set<string>();
+  /** Hidden things revealed to one participant (`reveal X for who`). */
+  private revealedFor = new Map<string, Set<string>>();
+  /** Every location each participant has ever stood in — a `hidden: true`
+   *  place's room stays listed once you have been there. */
+  private visited = new Map<string, Set<string>>();
   private pendingChoices = new Map<string, PendingChoice[]>();
   private currentBindings: Bindings = new Map();
   private elapsedMs = 0;
@@ -593,11 +600,41 @@ export class Sim {
    * scanner-less twin of a `<reveal:>` directive. Idempotent — re-revealing is
    * a no-op — and journaled, so it replays deterministically.
    */
-  reveal(faction: string): SimEvent[] {
+  reveal(target: string, person: string | null = null): SimEvent[] {
     const from = this.log.len();
-    this.doReveal(faction);
+    this.doReveal(target, person);
     this.drain();
     return this.log.since(from);
+  }
+
+  /** Has `person` ever stood in `location`? */
+  hasVisited(person: string, location: string): boolean {
+    return this.visited.get(person)?.has(location) ?? false;
+  }
+
+  /** Is a hidden location / channel / character exposed to `person` — to
+   *  everyone, or to them in particular? */
+  isRevealedTo(target: string, person: string): boolean {
+    return this.revealed.has(target) || (this.revealedFor.get(person)?.has(target) ?? false);
+  }
+
+  /** Is `person` standing in a `cutscene: true` location right now? The
+   *  app goes on rails there (no sidebar, just what is said to them). */
+  cutsceneFor(person: string): boolean {
+    const l = this.locationOf(person);
+    return l !== null && (this.model.locations.get(l)?.cutscene ?? false);
+  }
+
+  /** What kind of hidden thing a `reveal` target names, with its canonical
+   *  id (a room may be written by its bare name: `reveal task manager`). */
+  private revealTarget(target: string): { id: string; kind: "faction" | "location" | "channel" | "character" } | null {
+    if (this.model.factions.has(target)) return { id: target, kind: "faction" };
+    if (this.model.locations.has(target)) return { id: target, kind: "location" };
+    if (this.model.characters.has(target)) return { id: target, kind: "character" };
+    if (this.model.channels.has(target)) return { id: target, kind: "channel" };
+    const room = channelId(target);
+    if (this.model.channels.has(room)) return { id: room, kind: "channel" };
+    return null;
   }
 
   /**
@@ -832,10 +869,18 @@ export class Sim {
    *  private/group/dm → explicit members. Location rooms are open — the stage
    *  feed is part of the show. Unknown channels are not visible. */
   canSeeChannel(person: string, id: string): boolean {
-    if (id.startsWith("loc:")) return this.model.locations.has(id.slice("loc:".length));
+    if (id.startsWith("loc:")) {
+      // A hidden place is listed once you have stood there, or once the
+      // story opened it (to everyone, or to you).
+      const l = id.slice("loc:".length);
+      const loc = this.model.locations.get(l);
+      if (loc === undefined) return false;
+      return !loc.hidden || this.hasVisited(person, l) || this.isRevealedTo(l, person);
+    }
     if (id.startsWith("pm:")) return Sim.pmParties(id).includes(person);
     const def = this.model.channels.get(id);
     if (def === undefined) return false;
+    if (def.hidden && !this.isRevealedTo(id, person)) return false;
     if (def.kind === "open") return true;
     if (def.kind === "faction") return def.faction !== null && this.factionMembers(def.faction).includes(person);
     return this.isChannelMember(person, id);
@@ -926,7 +971,7 @@ export class Sim {
       if (!this.canSeeChannel(person, def.id)) continue;
       out.push(this.snapshot(person, def, this.canPost(person, def.id)));
     }
-    return [...this.locationSnapshots(person, false), ...out];
+    return [...this.locationSnapshots(person, false).filter((s) => this.canSeeChannel(person, s.id)), ...out];
   }
 
   /** Every authored + location channel (operator/performer view — they run
@@ -1000,6 +1045,7 @@ export class Sim {
     }
     for (const c of this.model.characters.values()) {
       if (!c.listed) continue;
+      if (c.hidden && !this.isRevealedTo(c.id, person)) continue; // not in the directory yet
       const faction = c.faction !== null && (this.model.factions.get(c.faction)?.hidden ?? false) && !this.revealed.has(c.faction) ? null : c.faction;
       out.push({ id: c.id, name: c.id, kind: "character", faction, known: knownAbout(c.id, c.id) });
     }
@@ -1786,9 +1832,16 @@ export class Sim {
         if (kw !== null) this.doBetray(this.resolveId(kw[0], bindings), this.resolveId(kw[1], bindings));
         break;
       }
-      case "reveal":
-        this.doReveal(this.resolveId(rest, bindings));
+      case "reveal": {
+        // `reveal X` (to everyone) / `reveal X for who` (to one participant).
+        // A room's exact name wins over name folding, so `reveal task
+        // manager` opens `# task-manager` even beside CHARACTER Task Manager.
+        const kw = splitKeyword(rest, "for");
+        const raw = (kw !== null ? kw[0] : rest).trim();
+        const target = this.model.channels.has(channelId(raw)) ? channelId(raw) : this.resolveId(raw, bindings);
+        this.doReveal(target, kw !== null ? this.resolveId(kw[1], bindings) : null);
         break;
+      }
       case "unlock": {
         // `unlock The Sandy File for guest` — the story hands over lore.
         const kw = splitKeyword(rest, "for");
@@ -1938,12 +1991,33 @@ export class Sim {
     this.fire({ verb: "betray", subject: person, scanner: null, filter: secret });
   }
 
-  private doReveal(faction: string): void {
-    if (this.revealed.has(faction)) return;
-    this.revealed.add(faction);
-    this.world.set(`${faction}.revealed`, vBool(true));
-    this.record({ type: "factionRevealed", faction });
-    this.fire({ verb: "revealed", subject: faction, scanner: null, filter: null });
+  private doReveal(target: string, person: string | null = null): void {
+    const hit = this.revealTarget(target);
+    if (hit === null) return;
+    if (hit.kind === "faction") {
+      // A faction is unmasked for the whole party — never per person.
+      if (this.revealed.has(hit.id)) return;
+      this.revealed.add(hit.id);
+      this.world.set(`${hit.id}.revealed`, vBool(true));
+      this.record({ type: "factionRevealed", faction: hit.id });
+      this.fire({ verb: "revealed", subject: hit.id, scanner: null, filter: null });
+      return;
+    }
+    if (person !== null) {
+      if (!this.persons.has(person) || this.isRevealedTo(hit.id, person)) return;
+      let set = this.revealedFor.get(person);
+      if (set === undefined) {
+        set = new Set();
+        this.revealedFor.set(person, set);
+      }
+      set.add(hit.id);
+    } else {
+      if (this.revealed.has(hit.id)) return;
+      this.revealed.add(hit.id);
+      if (hit.kind !== "channel") this.world.set(`${hit.id}.revealed`, vBool(true));
+    }
+    this.record({ type: "revealed", target: hit.id, kind: hit.kind, person });
+    this.fire({ verb: "revealed", subject: hit.id, scanner: null, filter: null });
   }
 
   private runBroadcast(rest: string, bindings: Bindings): void {
@@ -2110,6 +2184,12 @@ export class Sim {
       this.fire({ verb: "exits", subject: person, scanner: null, filter: prior });
     }
     this.world.set(`${person}.location`, vString(location));
+    let seen = this.visited.get(person);
+    if (seen === undefined) {
+      seen = new Set();
+      this.visited.set(person, seen);
+    }
+    seen.add(location);
     let set = this.occupants.get(location);
     if (set === undefined) {
       set = new Set();

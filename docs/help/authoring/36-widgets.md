@@ -18,8 +18,10 @@ show poll "Ready?" to group(Antivirus) with options: "Yes | No | Never"
 `show <kind> ["text"] [to <who>] [with k: v, …]`:
 
 - **kind** is a lowercase word the app knows: `captcha`, `image`,
-  `poll`. An unknown kind still shows its text — an older app never
-  hides a newer story's card.
+  `poll`, `tutorial`, `pass` (the guest's own QR, for the moment a
+  performer needs to scan them — e.g. inside a `cutscene`, where the
+  menu is out of reach). An unknown kind still shows its text — an
+  older app never hides a newer story's card.
 - **text** (optional, quoted) is the card's caption / question.
   `{…}` interpolation works like a line.
 - **to** is who sees it. Leave it out and it goes to whoever the
@@ -57,6 +59,36 @@ ROLE Program
 | `captcha` | `passed` (did they pick exactly the right squares), `picked` (how many), `target` |
 | `poll` | `choice` (the option's text), `index` |
 | `image` | never answers |
+| `tutorial` | `completed` (they finished) or `skipped` + `step` (where they bailed), and `steps` |
+| `pass` | never answers |
+
+## The guided tour: `show tutorial`
+
+```loom
+== Orientation
+  setting: The Desktop
+  cast: Clippy
+Clippy: It looks like you're new to the computer. Would you like help with that?
+show tutorial "Clippy's orientation" to program with guide: "Clippy"
+```
+
+`tutorial` is the app's own walkthrough of itself — a spotlight over the
+real controls (the rooms list, the guest's card, the Codex, People, their
+pass), one step at a time, with the `guide` named on the callout. It
+covers the whole app until finished or skipped, so deal it once the
+arrival scene is over (after a `cutscene` location lets go — see [Live
+shows](live-shows.md)). Steps the story doesn't use are left out (no
+Codex step without a codex). Either outcome comes back as `tutorial
+answered`, so skipping can mean something:
+
+```loom
+when tutorial answered for program:
+  if skipped:
+    set program.doubt += 10
+    Norton Anti-Virus: {program.name} declined orientation. Logged.
+  else:
+    unlock The Orientation List for program
+```
 
 Each guest answers a card once; the app keeps a submitted card visible
 with what they answered. A bank (a game-engine build) passes `show`

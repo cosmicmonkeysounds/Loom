@@ -70,9 +70,7 @@ Narrator: The gate.
 `;
 
 const dirs: string[] = [];
-function freshRuntime(): EventRuntime {
-  const d = mkdtempSync(join(tmpdir(), "loom-ix-"));
-  dirs.push(d);
+function runtimeIn(d: string): EventRuntime {
   return new EventRuntime({
     eventId: "evt",
     store: new Store(d),
@@ -81,6 +79,11 @@ function freshRuntime(): EventRuntime {
     scenarioSource: SOURCE,
     joinBase: () => "http://localhost",
   });
+}
+function freshRuntime(): EventRuntime {
+  const d = mkdtempSync(join(tmpdir(), "loom-ix-"));
+  dirs.push(d);
+  return runtimeIn(d);
 }
 afterAll(() => {
   for (const d of dirs) rmSync(d, { recursive: true, force: true });
@@ -123,6 +126,12 @@ async function post(rt: EventRuntime, path: string, body: unknown, moderator = f
 async function guest(rt: EventRuntime, name = "Alice"): Promise<{ id: string; token: string }> {
   const r = await post(rt, "/api/guest/register", { name, passcode: CODES.event });
   return { id: r.json.id as string, token: r.json.token as string };
+}
+async function state(rt: EventRuntime, token: string) {
+  const res = fakeRes();
+  const url = new URL(`http://x/api/state?role=guest&token=${encodeURIComponent(token)}`);
+  await rt.handle(fakeReq({}), res, "GET", url.pathname, url, { moderator: false });
+  return { status: res.statusCode, json: JSON.parse(res.body || "{}") as Record<string, unknown> };
 }
 
 describe("views carry the story's title, theme, and interactions", () => {
@@ -198,6 +207,31 @@ describe("/api/guest/widget", () => {
     expect(log.some((e) => e.type === "respond" && e.to === g.id && e.text === "A human. How dull.")).toBe(true);
     // One answer per card per guest.
     expect((await post(rt, "/api/guest/widget", { token: g.token, seq, result: { passed: false } })).status).toBe(409);
+  });
+
+  it("remembers what a guest answered: in their snapshot, and across a restart", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-ix-"));
+    dirs.push(d);
+    const rt = runtimeIn(d);
+    rt.openDoors();
+    const g = await guest(rt);
+    const seq = await shown(rt, g.token, g.id);
+    expect((await state(rt, g.token)).json.answered).toEqual([]);
+    expect((await post(rt, "/api/guest/widget", { token: g.token, seq, result: { passed: true } })).status).toBe(200);
+    expect((await state(rt, g.token)).json.answered).toEqual([seq]);
+    // A second card, unanswered, is not in the list.
+    expect((await post(rt, "/api/guest/act", { token: g.token, name: "riddle" })).status).toBe(200);
+    const seq2 = rt.chatHistoryFor(g.id).filter((m) => m.kind === "widget").at(-1)!.seq;
+    expect(seq2).not.toBe(seq);
+    expect((await state(rt, g.token)).json.answered).toEqual([seq]);
+    // Restart: the journal rebuilds the answered set, so the phone never
+    // re-asks a settled card and a second answer is still refused.
+    const rt2 = runtimeIn(d);
+    expect(rt2.restore()).not.toBeNull();
+    expect((await state(rt2, g.token)).json.answered).toEqual([seq]);
+    expect((await post(rt2, "/api/guest/widget", { token: g.token, seq, result: { passed: false } })).status).toBe(409);
+    expect((await post(rt2, "/api/guest/widget", { token: g.token, seq: seq2, result: { passed: false } })).status).toBe(200);
+    expect((await state(rt2, g.token)).json.answered).toEqual([seq, seq2]);
   });
 
   it("refuses a card that isn't yours, a bad seq, and a result that names someone", async () => {

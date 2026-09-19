@@ -4,7 +4,7 @@
 //! controls, the page tabs, the identity control ("who am I right now"),
 //! quick-fire, and a decisions pill; a banner under it reports what a
 //! co-writer just did. The pages — Run (front of house) / Stage / Chat /
-//! Story / Roster / World / Director / Log — read the cockpit contract
+//! Story / Roster / World / Director / Mind / Log — read the cockpit contract
 //! only, so this stage is identical on both backends. Nothing here owns a
 //! backend lifetime: the server-run store is attached at the app level.
 
@@ -18,6 +18,7 @@ import { PlayersTab } from '@/components/cockpit/PlayersTab'
 import { usePlayers } from '@/store/players'
 import { useWorkspace } from '@/store/workspace'
 import { LogTab } from '@/components/cockpit/LogTab'
+import { MindTab } from '@/components/cockpit/MindTab'
 import { RunCockpit } from '@/components/cockpit/providers'
 import { IdentityControl } from '@/components/cockpit/Identity'
 import { RunPage } from './RunPage'
@@ -45,6 +46,7 @@ const TABS: TabSpec[] = [
   { id: CockpitTab.Roster, label: 'Roster', hint: 'All guests and the cast as a sortable table, with moderation actions' },
   { id: CockpitTab.World, label: 'World', hint: 'The world state — factions and every live variable, global and per-person', operatorOnly: true },
   { id: CockpitTab.Director, label: 'Director', hint: 'Fire named events, beats, and broadcasts', operatorOnly: true },
+  { id: CockpitTab.Mind, label: 'Mind', hint: 'An agent-voiced character’s mind: the prompts, both models’ reasoning, the arc, and a control panel', operatorOnly: true },
   { id: CockpitTab.Log, label: 'Log', hint: 'The raw ledger, event by event — filter to one participant, export the run' },
 ]
 
@@ -189,6 +191,7 @@ function StageChrome() {
         {tab === CockpitTab.Roster && <RosterTab />}
         {tab === CockpitTab.World && <WorldTab />}
         {tab === CockpitTab.Director && <DirectorTab />}
+        {tab === CockpitTab.Mind && <MindTab />}
         {tab === CockpitTab.Log && <LogTab />}
       </div>
     </div>

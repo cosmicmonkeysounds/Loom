@@ -101,6 +101,16 @@ COHORT Early Arrivals
   location is also a chat room: when a beat's `setting:` is a location,
   its dialogue and narration land in that room, heard by whoever is
   standing there (see [Chat spaces & channels](chat-rooms.md)).
+  `hidden: true` keeps the room off a guest's phone until they have
+  **stood there**, or until the story opens it — `reveal The Cellar`
+  (for everyone) or `reveal The Cellar for guest` (for one person).
+  `cutscene: true` puts the app **on rails** while a guest stands there:
+  no rooms list, no buttons — one full-screen stream of what the story
+  says *to them* (their lines, cards, decision), and a *Continue* into
+  the app once the story moves them on. Use it for an arrival scene.
+- A `listed: true` **CHARACTER** can be `hidden: true` too: out of the
+  People directory (and, for an agent-voiced one, off every phone) until
+  `reveal Name` / `reveal self`.
 - A **COHORT** is a plain named grouping with a capacity, for when you
   need to count heads without it being a "side".
 

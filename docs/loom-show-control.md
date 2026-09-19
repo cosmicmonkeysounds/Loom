@@ -109,6 +109,22 @@ rebooted mid-show without killing the story, the broker, or the ingest.
 > kitchen" is an ordinary `cue` this router already maps to MQTT/OSC
 > (`show.example.yaml`: `lights`, `screens`). The model decides *when*
 > a favour is earned; the story decides *what it does*.
+>
+> **2026-09-18 — the mind has a debugger and a control panel.** Every
+> model call the worker makes (voice, lookup, reflect, survey, re-run) is
+> a recorded *thought* — messages as sent, both models' reasoning, raw
+> output, tokens, timing, the parsed result, and the mind diff — streamed
+> to the server (`POST /api/agent/trace` → `agentThought` frames on the
+> mod stream, paged by `GET /api/mod/agent/trace`) and kept beside the
+> mind as `<Character>.trace.jsonl`. The mind itself gained structure the
+> mind file declares (`stages:` / `drives:` / `phases:` frontmatter):
+> an explicit arc stage with a history of moves, 0–100 drives with a
+> per-revision history, a bargain policy, open questions, director
+> whispers, and a numbered revision log. The editor's **Run → Mind** page
+> draws it all, and its control panel drives the worker through
+> `POST /api/mod/agent/control` — `reset` (the same frame the server
+> sends on a story restart), `survey`, `nudge`, `set`, `forget`,
+> `thinking`, `effort`, `pause`, `rerun`. See `stagehand/README.md`.
 
 ## The seams that already exist
 

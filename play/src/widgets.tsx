@@ -16,6 +16,9 @@ export interface WidgetProps {
   card: WidgetCard;
   /** Stable per-card seed (the message seq) so a grid is the same on reload. */
   seed: number;
+  /** Who is looking (a guest's own id + name) — a card about *them* (their
+   *  pass) needs it. Absent on a performer's read-only view. */
+  viewer?: { id: string; name: string } | null;
   /** Absent when the card can't be answered (already answered, or read-only). */
   onAnswer?: (result: WidgetResult) => void;
   /** The answer already given, if any — the card shows its resolved state. */
@@ -27,6 +30,9 @@ export interface WidgetDef {
   label: string;
   /** Does this kind ask the viewer for an answer? */
   answerable: boolean;
+  /** The card is answered through a surface over the whole app (the
+   *  guided tutorial), not inline — the in-thread card is only its receipt. */
+  overlay?: boolean;
   render: (p: WidgetProps) => ReactNode;
 }
 
@@ -145,7 +151,7 @@ function Captcha({ card, seed, onAnswer, answered }: WidgetProps) {
       </div>
       <div className="widget-foot">
         {done ? (
-          <span className="widget-state">{answered["passed"] === true ? "✔ Verified" : "✖ Failed"} · submitted</span>
+          <span className="widget-state">{answered["passed"] === undefined ? "✔ Submitted" : answered["passed"] === true ? "✔ Verified · submitted" : "✖ Failed · submitted"}</span>
         ) : onAnswer ? (
           <button type="button" className="choice primary widget-go" onClick={verify}>
             VERIFY
@@ -200,7 +206,73 @@ function Poll({ card, onAnswer, answered }: WidgetProps) {
           </button>
         ))}
       </div>
-      {done && <div className="widget-foot"><span className="widget-state">you answered “{String(answered["choice"])}”</span></div>}
+      {done && <div className="widget-foot"><span className="widget-state">{answered["choice"] === undefined ? "answered" : `you answered “${String(answered["choice"])}”`}</span></div>}
+    </div>
+  );
+}
+
+// --- tutorial ---------------------------------------------------------------
+
+/**
+ * `show tutorial "Clippy's orientation" to program with guide: "Clippy"` —
+ * the app's own guided tour of itself (`tutorial.tsx`), shown over the whole
+ * app until it is finished or skipped. This card is the receipt in the
+ * thread; the answer is `{completed}` or `{skipped, step}` plus `steps`, so
+ * a story can react to a program that declined orientation.
+ */
+function TutorialCard({ card, answered, onAnswer }: WidgetProps) {
+  const done = answered !== null && answered !== undefined;
+  // After a reload the server only says the card *was* answered, not how.
+  const state = !done ? null : answered["skipped"] === true ? "✖ skipped" : answered["completed"] === true ? "✔ completed" : "✔ answered";
+  return (
+    <div className={`widget tutorial ${done ? "done" : ""}`} role="group" aria-label={card.text || "Orientation"}>
+      <div className="widget-head">
+        <span className="widget-glyph" aria-hidden>
+          📘
+        </span>
+        <div>
+          <div className="widget-title">{card.text || "Orientation"}</div>
+          <div className="widget-sub">{card.params["guide"] ? `A tour of the app, with ${card.params["guide"]}.` : "A tour of the app."}</div>
+        </div>
+      </div>
+      <div className="widget-foot">
+        <span className="widget-state">{state ?? (onAnswer ? "in progress…" : "shown to a guest")}</span>
+      </div>
+    </div>
+  );
+}
+
+// --- pass -------------------------------------------------------------------
+
+/**
+ * `show pass "Hold it up for the Antivirus." to program` — the guest's own
+ * pass, right in the conversation: the QR a performer scans (their id),
+ * big enough to hold up. The story deals it at the moment it asks for it,
+ * so a guest on rails never has to find the ☰ menu. Never answers.
+ */
+export function PassCard({ card, viewer }: WidgetProps) {
+  return (
+    <div className="widget pass-card" role="group" aria-label="Your pass">
+      <div className="widget-head">
+        <span className="widget-glyph" aria-hidden>
+          🎟️
+        </span>
+        <div>
+          <div className="widget-title">Your pass</div>
+          {card.text && <div className="widget-sub">{card.text}</div>}
+        </div>
+      </div>
+      {viewer ? (
+        <div className="pass-body">
+          <img alt="Your QR pass" src={`/api/qr?text=${encodeURIComponent(viewer.id)}`} />
+          <div className="pass-id">{viewer.id}</div>
+          <div className="pass-who">{viewer.name} · show this to a performer to be scanned</div>
+        </div>
+      ) : (
+        <div className="widget-foot">
+          <span className="widget-state">the guest's own pass</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -211,6 +283,8 @@ export const WIDGETS: Record<string, WidgetDef> = {
   captcha: { label: "🛡️ security check", answerable: true, render: (p) => <Captcha {...p} /> },
   image: { label: "🖼️ picture", answerable: false, render: (p) => <Image {...p} /> },
   poll: { label: "📊 poll", answerable: true, render: (p) => <Poll {...p} /> },
+  tutorial: { label: "📘 orientation", answerable: true, overlay: true, render: (p) => <TutorialCard {...p} /> },
+  pass: { label: "🎟️ your pass", answerable: false, render: (p) => <PassCard {...p} /> },
 };
 
 /** A one-line description of a card, for previews and performer feeds. */

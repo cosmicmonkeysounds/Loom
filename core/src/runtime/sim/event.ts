@@ -17,6 +17,7 @@ export const SimEventType = {
   Defected: "defected",
   Betrayed: "betrayed",
   FactionRevealed: "factionRevealed",
+  Revealed: "revealed",
   Scanned: "scanned",
   Captured: "captured",
   Released: "released",
@@ -54,6 +55,9 @@ export type SimEvent =
   | { type: "defected"; person: string; from: string | null; to: string }
   | { type: "betrayed"; person: string; displayed: string | null; secret: string }
   | { type: "factionRevealed"; faction: string }
+  /** A hidden place / room / character was exposed — to everyone (`person`
+   *  null) or to one participant (`reveal X for who`). */
+  | { type: "revealed"; target: string; kind: "location" | "channel" | "character"; person: string | null }
   | { type: "scanned"; scanner: string; person: string }
   | { type: "captured"; person: string; location: string; by: string | null }
   | { type: "released"; person: string; location: string }

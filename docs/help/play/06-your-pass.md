@@ -5,7 +5,10 @@ order: 6
 keywords: pass, qr, scan, profile, score, faction, defect, captured, escape, leave, menu
 ---
 
-Tap **☰** in the header to open your pass.
+Tap **☰** in the header to open your pass. When the story is running
+you on rails (the dark opening screen), it puts your pass on the screen
+itself when someone needs to scan you — and **🎟️ My pass** in the corner
+opens it any time.
 
 ## The QR pass
 

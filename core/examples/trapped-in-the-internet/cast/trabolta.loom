@@ -19,6 +19,8 @@
 
 CHARACTER Trabolta is Person
   mind: external
+  // Out of the directory — and off every phone — until the glitch.
+  hidden: true
   truth: 0 to 100 = 35
   untruth: 0 to 100 = 0
   stance: -100 to 100 = 0
@@ -28,9 +30,11 @@ CHARACTER Trabolta is Person
   trusts Program: 50 of 100
 
   // Before the glitch he only asks questions through Clippy's games.
-  // After it he is *available* — programs may message him directly.
+  // After it he is *available*: `reveal self` lists him in every
+  // program's directory and opens his chat on every phone.
   when the glitch begins:
     set self.glitched = true
+    reveal self
 
   // Knowledge shared *with* Trabolta changes him. A program shares an
   // entry from their codex to Trabolta in the app; his `learns` hook

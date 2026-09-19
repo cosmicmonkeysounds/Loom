@@ -22,6 +22,19 @@ TRAIT Host is Person
 TRAIT Enforcer is Person
   faction: Antivirus
 
+  // The door. Every Antivirus can scan a freshly uploaded program in:
+  // their own `when scanned by program:` routes here first. Until an
+  // enforcer does this the program waits in the Mud Room, on rails.
+  beat Clearance(program)
+    if not program.uploaded:
+      Self: Not yet. Finish your upload. I will be right here.
+    else:
+      set program.cleared = true
+      Self: Scanned. {program.name} is free of viruses and ready to explore the entire computer. There will be a game soon in the Desktop. Alexa will tell you when. Go through the Tube.
+      move program to The Desktop
+      reply The Tube opens onto the Desktop — a blacked-out mess of LEDs, loose wire, encyclopaedias, screens. A classic screensaver drifts across the TV above the fireplace. Everyone here is a program. Mill about.
+      -> Orientation
+
   when send to the internet for program:
     set program.doubt += 20
     Self: {program.name}. Corruption detected. You are going to the Internet for reinstallation. Do not resist the Tube.

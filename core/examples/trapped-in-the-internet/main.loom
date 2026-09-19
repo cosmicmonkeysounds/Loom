@@ -46,7 +46,12 @@ GROUP The Resident
 
 // ── The house ───────────────────────────────────────────────────────
 // Every LOCATION is also a room in the app. The Desktop is declared
-// first so a released program lands there.
+// first so a released program lands there. The rest of the house is
+// `hidden: true` — a program's phone lists a room only once they have
+// stood there, or once the story opens it (`reveal … ` at the glitch:
+// "the house is open"). The Mud Room is a `cutscene`: while a program
+// stands there the app is on rails — the Uploader's voice, the CAPTCHA,
+// the choice, and nothing else to tap.
 
 // The story's opening beat: what the house says to nobody in particular
 // when the doors open. Everything personal (the Mud Room) plays per
@@ -64,28 +69,35 @@ LOCATION The Desktop
 LOCATION The Mud Room
   label: Mud Room — Login
   ambient: pitch-black
+  cutscene: true
 
 LOCATION The Tube
   label: The Tube
   ambient: cable-rattle
+  hidden: true
 
 LOCATION The Internet
   label: The Internet (Reinstallation)
   prison: true
   sealed: true
   capacity: 3
+  hidden: true
 
 LOCATION The Cache
   label: The Cache (kitchen)
+  hidden: true
 
 LOCATION The Recycle Bin
   label: The Recycle Bin (bathroom)
+  hidden: true
 
 LOCATION The Cloud
   label: The Cloud (backyard)
+  hidden: true
 
 LOCATION The Registry
   label: The Registry (basement)
+  hidden: true
 
 // ── Every guest is a Program ────────────────────────────────────────
 // Per-person state plus the rules that apply to every uploaded mind.
@@ -93,6 +105,9 @@ LOCATION The Registry
 //   truth     — facts gathered; knowledge is the currency of the night
 //   doubt     — how loudly the Antivirus suspects them
 //   corrupted — currently in The Internet for reinstallation
+//   uploaded  — through the Mud Room; waiting at the door for the Antivirus
+//   cleared   — scanned in by an Antivirus; on the Desktop
+//   skipped_orientation — declined Clippy's tour of the computer
 
 ROLE Program
   humanity: 0 to 100 = 0
@@ -105,9 +120,31 @@ ROLE Program
   afk: bool = false
   turned: bool = false
   unplugged: bool = false
+  uploaded: bool = false
+  cleared: bool = false
+  skipped_orientation: bool = false
 
+  // A new program stands in the Mud Room (the app goes on rails there)
+  // and the Uploader starts.
   when someone joins:
+    move program to The Mud Room
     -> Login
+
+  // Clippy's orientation (`show tutorial` in beats/login.loom). Finishing
+  // it puts you on Clippy's list of programs that follow instructions —
+  // and the list is lore. Skipping it is noted by the Antivirus, but
+  // skipping a tutorial is also the most human thing a program can do.
+  when tutorial answered for program:
+    if skipped:
+      set program.skipped_orientation = true
+      set program.doubt += 10
+      set program.humanity += 5
+      Clippy: Oh. Okay! No help. That's— that's fine. Programs that don't want help are usually fine.
+      Norton Anti-Virus: {program.name} declined orientation. Logged.
+    else:
+      set program.truth += 2
+      Clippy: Great job! You're ready to compute. I'll be around if you need me — I'm always around.
+      unlock The Orientation List for program
 
   // The Mud Room CAPTCHA (`show captcha` in beats/login.loom). Passing it
   // proves you are human — INCORRECT, once. Anything after that is CORRECT.
@@ -277,6 +314,7 @@ INTERACTION spare the machine
 
 when call to the desktop:
   set Night.phase = "desktop"
+  reveal task manager
   broadcast "!📣 ALL PROGRAMS: report to the Desktop. A game is about to begin." to everyone
 
 when start the bingo:

@@ -23,6 +23,8 @@ CHARACTER Clippy is Host
 
   beat Greet(program)
     Self: Hi there, {program.name}! I'm Clippy. I see you're a program. I can help with that.
+    if program.skipped_orientation:
+      Self: You skipped my orientation. I noticed. I notice everything — it's my whole thing.
     if program.doubt >= 40:
       Self (whispering): Between us? The Antivirus keeps asking about you. Try to look more like a program.
     if program.humanity >= 40:

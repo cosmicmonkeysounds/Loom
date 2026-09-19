@@ -57,6 +57,25 @@ describe("typewriter crawl policy", () => {
     expect(crawl.claim(0)).toBe(true);
   });
 
+  it("crawls lines one after another, in seq order, and releases the next when one leaves the screen", () => {
+    const crawl = createCrawl();
+    const order: number[] = [];
+    crawl.start(12, () => order.push(12));
+    crawl.start(10, () => order.push(10));
+    crawl.start(11, () => order.push(11));
+    expect(order).toEqual([12]); // the first to ask starts at once
+    crawl.finish(12);
+    expect(order).toEqual([12, 10]); // then the earliest waiting line
+    crawl.finish(11); // a waiting bubble unmounted: dropped, not started
+    crawl.finish(10);
+    expect(order).toEqual([12, 10]);
+    crawl.start(13, () => order.push(13));
+    expect(order).toEqual([12, 10, 13]);
+    crawl.reset();
+    crawl.start(14, () => order.push(14));
+    expect(order).toEqual([12, 10, 13, 14]); // a reset forgets the active line
+  });
+
   it("is per host — one embedded pane crawling a line doesn't spend it for another", () => {
     const a = createCrawl();
     const b = createCrawl();

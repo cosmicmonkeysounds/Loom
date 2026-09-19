@@ -21,12 +21,14 @@ const replies = (evs: SimEvent[]) => evs.filter((e) => e.type === "respond").map
 const learned = (evs: SimEvent[]) => evs.filter((e) => e.type === "codexUnlocked").map((e) => (e as { entry: string }).entry);
 const num = (sim: Sim, path: string) => (sim.world.get(path) as { value: number }).value;
 
-/** Register a program and walk them through the Mud Room. */
+/** Register a program and walk them through the Mud Room — and the door:
+ *  an Antivirus scans them in. */
 function upload(sim: Sim, id: string, name: string, leave: 0 | 1 | 2 | 3 = 3): void {
   sim.createPerson(id, name);
   sim.signal("captcha answered", id, { passed: true }); // solved it — a human — INCORRECT (+10 humanity)
   sim.signal("captcha answered", id, { passed: false }); // the retry: CORRECT
   sim.choose(id, leave); // what they leave behind (body: +20)
+  sim.scan("Norton Anti-Virus", id); // the door
 }
 const widgets = (evs: SimEvent[]) => evs.filter((e) => e.type === "widget").map((e) => (e as { widget: string; audience: string[] }));
 
@@ -50,7 +52,7 @@ describe("Trapped in the Internet — compile", () => {
     expect(internet.prison).toBe(true);
     expect(internet.sealed).toBe(true);
     expect(sim.model.defaultRole).toBe("Program");
-    expect(sim.model.codex.size).toBe(42);
+    expect(sim.model.codex.size).toBe(43);
     // The three hunt facts are codes.
     expect(sim.model.codexCodes.get("petcemetery1917")).toBe("The Data Centre Sinkhole");
     expect(sim.model.codexCodes.get("gerald")).toBe("Gerald");
@@ -128,9 +130,91 @@ describe("Trapped in the Internet — the Mud Room", () => {
     expect(sim.world.get("g1.left_behind")).toEqual({ kind: "string", value: "body" });
     expect(num(sim, "g1.humanity")).toBe(30);
     expect(learned(body)).toEqual(["The Mud Room"]);
-    expect(said(body).some(([who, text]) => who === "Norton Anti-Virus" && text.startsWith("Scanned. Minesweeper is free of viruses"))).toBe(true);
-    expect(sim.locationOf("g1")).toBe("The Desktop");
     expect(num(sim, "g1.truth")).toBe(4); // learning anything is truth
+    // Uploaded — but still at the door, on rails, until an Antivirus scans them in.
+    expect(sim.world.get("g1.uploaded")).toEqual({ kind: "bool", value: true });
+    // Their pass is dealt onto the screen — the thing to hold up.
+    expect(widgets(body)).toEqual([expect.objectContaining({ widget: "pass", audience: ["g1"], text: expect.stringContaining("Hold this up.") })]);
+    expect(sim.locationOf("g1")).toBe("The Mud Room");
+    expect(guestView(sim, "g1").cutscene).toBe(true);
+    // A host scanning them at the door just greets them; the door stays shut.
+    sim.scan("Clippy", "g1");
+    expect(sim.locationOf("g1")).toBe("The Mud Room");
+    // The Antivirus scans them in: Norton's clearance, the Tube, Clippy's orientation.
+    const door = sim.scan("Norton Anti-Virus", "g1");
+    expect(said(door).some(([who, text]) => who === "Norton Anti-Virus" && text.startsWith("Scanned. Minesweeper is free of viruses"))).toBe(true);
+    expect(sim.locationOf("g1")).toBe("The Desktop");
+    expect(sim.world.get("g1.cleared")).toEqual({ kind: "bool", value: true });
+    expect(guestView(sim, "g1").cutscene).toBe(false);
+    const tour = widgets(door);
+    expect(tour).toEqual([expect.objectContaining({ widget: "tutorial", audience: ["g1"] })]);
+    const cards = composeGuestMessages(sim, door).filter((m) => m.kind === "widget");
+    expect(cards.map((m) => m.channel)).toEqual(["dm:Clippy"]);
+    // Scanned again later: the ordinary sweep, not the door.
+    expect(said(sim.scan("Norton Anti-Virus", "g1")).some(([, text]) => text.startsWith("Scanning. Scanning."))).toBe(true);
+  });
+
+  it("any Antivirus works the door; scanning a program mid-upload waits", () => {
+    const sim = fresh();
+    sim.createPerson("g1", "Minesweeper");
+    const early = sim.scan("Password Manager", "g1");
+    expect(said(early)).toContainEqual(["Password Manager", "Not yet. Finish your upload. I will be right here.", ["g1"]]);
+    expect(sim.locationOf("g1")).toBe("The Mud Room");
+    sim.signal("captcha answered", "g1", { passed: false });
+    sim.choose("g1", 0);
+    const door = sim.scan("MalwareBytes", "g1");
+    expect(said(door).some(([who, text]) => who === "MalwareBytes" && text.startsWith("Scanned."))).toBe(true);
+    expect(sim.locationOf("g1")).toBe("The Desktop");
+    expect(said(sim.scan("Password Manager", "g1")).some(([, text]) => text.startsWith("Codex audit."))).toBe(true);
+  });
+
+  it("is a cutscene: the app is on rails in the Mud Room, and the house is hidden until you get there", () => {
+    const sim = fresh();
+    sim.createPerson("g1", "Minesweeper");
+    expect(sim.locationOf("g1")).toBe("The Mud Room");
+    const before = guestView(sim, "g1");
+    expect(before.cutscene).toBe(true);
+    // Only the Mud Room (where they stand) and the Desktop are listed; the
+    // rest of the house waits.
+    const rooms = (v: ReturnType<typeof guestView>) => v.channels.filter((c) => c.kind === "location").map((c) => c.id).sort();
+    expect(rooms(before)).toEqual(["loc:The Desktop", "loc:The Mud Room"]);
+    expect(before.channels.map((c) => c.id)).not.toContain("room:task manager");
+    expect(before.channels.map((c) => c.id)).not.toContain("room:ram");
+    expect(before.channels.map((c) => c.id)).toContain("room:general");
+    // Nobody is listed as Trabolta yet — he is hidden until the glitch.
+    expect(before.people.some((p) => p.id === "Trabolta")).toBe(false);
+    sim.signal("captcha answered", "g1", { passed: false });
+    sim.choose("g1", 3);
+    sim.scan("Norton Anti-Virus", "g1");
+    expect(guestView(sim, "g1").cutscene).toBe(false);
+    expect(rooms(guestView(sim, "g1"))).toEqual(["loc:The Desktop", "loc:The Mud Room"]); // been there: still listed
+    // A reinstallation drags them somewhere new: that room appears (they stood there).
+    sim.signal("send to the internet", "g1", null, "Norton Anti-Virus");
+    expect(rooms(guestView(sim, "g1"))).toEqual(["loc:The Desktop", "loc:The Internet", "loc:The Mud Room"]);
+    // The first host cue opens # task-manager for everyone.
+    const call = sim.signal("call to the desktop");
+    expect(guestView(sim, "g1").channels.map((c) => c.id)).toContain("room:task manager");
+    expect(composeGuestMessages(sim, call).some((m) => m.kind === "system" && m.text === "📂 # task-manager is open now." && m.audience === "all")).toBe(true);
+  });
+
+  it("Clippy's orientation: finishing it is compliance, skipping it is human — and noted", () => {
+    const sim = fresh();
+    upload(sim, "g1", "Minesweeper");
+    upload(sim, "g2", "Pinball");
+    const done = sim.signal("tutorial answered", "g1", { completed: true, steps: 7 });
+    expect(num(sim, "g1.truth")).toBe(4 + 2 + 4); // +2 for finishing, +4 for the entry learnt
+    expect(learned(done)).toEqual(["The Orientation List"]);
+    expect(said(done).some(([who, text]) => who === "Clippy" && text.startsWith("Great job!"))).toBe(true);
+    expect(sim.world.get("g1.skipped_orientation")).toEqual({ kind: "bool", value: false });
+    const skipped = sim.signal("tutorial answered", "g2", { skipped: true, step: 2, steps: 7 });
+    expect(sim.world.get("g2.skipped_orientation")).toEqual({ kind: "bool", value: true });
+    expect(num(sim, "g2.doubt")).toBe(10);
+    expect(num(sim, "g2.humanity")).toBe(35); // body 30 + 5: skipping a tutorial is human
+    expect(said(skipped)).toContainEqual(["Norton Anti-Virus", "Pinball declined orientation. Logged.", ["g2"]]);
+    // Clippy remembers.
+    const greet = sim.scan("Clippy", "g2");
+    expect(said(greet).some(([, text]) => text.startsWith("You skipped my orientation."))).toBe(true);
+    expect(said(sim.scan("Clippy", "g1")).some(([, text]) => text.startsWith("You skipped my orientation."))).toBe(false);
   });
 });
 
@@ -221,6 +305,8 @@ describe("Trapped in the Internet — the codex economy", () => {
     upload(sim, "g2", "Pinball");
     sim.redeem("g1", "SANDY-1997");
     sim.share("Broken Ask Jeeves", "g1", "Jeeves Is Broken");
+    expect(sim.peopleFor("g1").some((p) => p.id === "Trabolta")).toBe(false); // hidden until the glitch
+    sim.signal("the glitch begins");
     const people = sim.peopleFor("g1");
     expect(people.find((p) => p.id === "g2")).toMatchObject({ kind: "guest", known: [] });
     expect(people.find((p) => p.id === "Trabolta")!.known.map((e) => e.id)).toEqual(["The Sandy File"]);
@@ -326,6 +412,19 @@ describe("Trapped in the Internet — the glitch and the awakening", () => {
     expect(said(glitch).some(([who, text]) => who === "Trabolta" && text.startsWith("HELLO."))).toBe(true);
     const alerts = composeGuestMessages(sim, glitch).filter((m) => m.alert);
     expect(alerts.length).toBeGreaterThanOrEqual(2);
+    // "The house is open": every room appears on every phone, Trabolta is
+    // in the directory (and so his chat is on every phone), # ram opens.
+    const v = guestView(sim, "g1");
+    const rooms = v.channels.filter((c) => c.kind === "location").map((c) => c.id).sort();
+    expect(rooms).toEqual(["loc:The Cache", "loc:The Cloud", "loc:The Desktop", "loc:The Mud Room", "loc:The Recycle Bin", "loc:The Registry", "loc:The Tube"]);
+    expect(v.channels.map((c) => c.id)).toContain("room:ram");
+    expect(v.people.find((p) => p.id === "Trabolta")).toMatchObject({ kind: "character", agent: { online: false } });
+    const opened = composeGuestMessages(sim, glitch).filter((m) => m.kind === "system" && m.text.endsWith("is open now."));
+    expect(opened.map((m) => m.text)).toContain("📂 The Cache (kitchen) is open now.");
+    expect(opened.some((m) => m.text.includes("Trabolta"))).toBe(false); // a person is announced by the story, not the system
+    // A late arrival after the glitch sees the open house too.
+    sim.createPerson("g9", "Late Program");
+    expect(guestView(sim, "g9").channels.some((c) => c.id === "loc:The Cache")).toBe(true);
   });
 
   it("enough remembered humanity wakes a program into The Awakened, privately", () => {

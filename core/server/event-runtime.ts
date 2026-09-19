@@ -15,17 +15,21 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
 
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
-import { guestView, modView, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type ModPresence, type RuntimePhase } from "./views.ts";
+import { guestView, modView, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
 import { ChatStore, composeGuestMessages, decisionChannelFor, visibleTo, type ChatMessage } from "./chat.ts";
 import { ipOf, queryTokenOf, readBody, sendJson, sseSend, str, tokenOf } from "./http-util.ts";
 import { RateLimiter } from "./rate-limit.ts";
+import { TtsProxy, ttsConfigFromEnv } from "./tts.ts";
 import {
   AgentHub,
+  AgentTraceLog,
   agentActs,
+  agentControl,
   agentMindReport,
+  agentThought,
   type AgentAct,
   type AgentActResult,
   type AgentFacts,
@@ -151,6 +155,15 @@ export interface EventRuntimeInit {
   scenarioSource: string;
   /** Best LAN/base URL for guest-join QRs (for `/api/mod/codes`). */
   joinBase: () => string;
+  /** The wall terminals' voice (`/api/mod/tts`). One proxy — one cache —
+   *  is shared by every event in the process; tests inject their own. */
+  tts?: TtsProxy;
+}
+
+/** The process-wide speech proxy (configured from `LOOM_TTS_*`). */
+let sharedTts: TtsProxy | null = null;
+function defaultTts(): TtsProxy {
+  return (sharedTts ??= new TtsProxy(ttsConfigFromEnv()));
 }
 
 export class EventRuntime {
@@ -158,6 +171,7 @@ export class EventRuntime {
   readonly codes: Passcodes;
   private readonly store: Store;
   private readonly joinBase: () => string;
+  private readonly tts: TtsProxy;
 
   private sim: Sim | null = null;
   private phase: RuntimePhase = "idle";
@@ -206,6 +220,8 @@ export class EventRuntime {
   private readonly agentPowerUses = new Map<string, number>();
   /** What each worker last reported about its character's mind. */
   private readonly agentMinds = new Map<string, AgentMindSummary>();
+  /** Every worker's recorded model calls — the Mind page's debugger feed. */
+  private readonly agentTrace = new AgentTraceLog();
   private readonly agents = new AgentHub({
     build: (thread, id) => this.buildAgentRequest(thread, id),
     typing: (thread, on) => this.pushTyping(thread, on),
@@ -222,6 +238,7 @@ export class EventRuntime {
     this.scenarioName = init.scenarioName;
     this.scenarioSource = init.scenarioSource;
     this.joinBase = init.joinBase;
+    this.tts = init.tts ?? defaultTts();
   }
 
   /** Current lifecycle phase (idle | open | paused). */
@@ -310,9 +327,24 @@ export class EventRuntime {
 
   private snapshotFor(client: Client): unknown {
     const online = new Set(this.agents.onlineCharacters());
-    if (client.role === "guest") return guestView(this.reqSim(), client.id, this.decisionChannels.get(client.id) ?? null, online);
+    if (client.role === "guest") return this.guestViewFor(client.id, online);
     if (client.role === "prime") return primeView(this.sim, client.id, online);
     return modView(this.sim, this.phase, this.scenarioName, this.presence());
+  }
+
+  /** A guest's snapshot, plus the cards they have already answered. */
+  private guestViewFor(id: string, online: ReadonlySet<string>): GuestView {
+    return { ...guestView(this.reqSim(), id, this.decisionChannels.get(id) ?? null, online), answered: this.answeredFor(id) };
+  }
+
+  /** Message seqs of the widget cards `id` has answered. */
+  private answeredFor(id: string): number[] {
+    const out: number[] = [];
+    for (const key of this.answeredWidgets) {
+      const at = key.indexOf(":");
+      if (key.slice(at + 1) === id) out.push(Number(key.slice(0, at)));
+    }
+    return out.sort((a, b) => a - b);
   }
 
   /** Push fresh snapshots to every connected client. */
@@ -724,6 +756,25 @@ export class EventRuntime {
     sendJson(res, 200, { ok: true });
   }
 
+  /** `POST /api/agent/trace {worker, thoughts: [Thought…]}` — a worker
+   *  streams (or, on reconnect, replays) its recorded model calls. Each
+   *  accepted thought is kept in the server's ring and fanned to every
+   *  director console as an `agentThought` frame. */
+  private agentTraceIn(res: ServerResponse, body: Record<string, unknown>): void {
+    const worker = str(body, "worker") || "agent";
+    const raw = Array.isArray(body["thoughts"]) ? body["thoughts"] : [body];
+    let accepted = 0;
+    for (const item of raw.slice(0, 200)) {
+      const t = agentThought(item, worker);
+      if (t === null) continue;
+      const stored = this.agentTrace.add(t);
+      if (stored === null) continue;
+      accepted += 1;
+      for (const c of this.clients) if (c.role === "mod") sseSend(c.res, "agentThought", stored);
+    }
+    sendJson(res, 200, { ok: true, accepted, seq: this.agentTrace.latestSeq });
+  }
+
   // -- persistence (event-sourced journal) ---------------------------------
 
   private flushTick(): void {
@@ -933,7 +984,7 @@ export class EventRuntime {
       this.endClients("prime");
     }
     this.stopTicker();
-    this.agents.reset();
+    this.agents.reset(opts.by ?? "server", kind);
     this.agentPowerUses.clear();
     this.agentMinds.clear();
     this.sim = null;
@@ -996,6 +1047,11 @@ export class EventRuntime {
         try {
           const out = (fn as (...a: unknown[]) => unknown).apply(this.sim, e.a);
           events++;
+          if (e.m === "signal") {
+            // A widget answer — `signal(<kind> answered, guest, {…, card: seq})`.
+            const card = (e.a[2] as { card?: unknown } | null | undefined)?.card;
+            if (typeof e.a[1] === "string" && typeof card === "number") this.answeredWidgets.add(`${card}:${e.a[1]}`);
+          }
           if (Array.isArray(out)) {
             const batch = out as SimEvent[];
             for (const ev of batch) {
@@ -1108,6 +1164,41 @@ export class EventRuntime {
       return true;
     }
 
+    // --- is there a server voice? (a terminal picks its speech engine) ---
+    if (method === "GET" && path === "/api/mod/tts") {
+      if (opts.moderator !== true && !this.sessions.canModerate(queryTokenOf(req, url))) {
+        sendJson(res, 403, { error: "moderators only" });
+        return true;
+      }
+      sendJson(res, 200, this.tts.describe());
+      return true;
+    }
+
+    // --- the mind debugger's trace (directors only) ---
+    if (method === "GET" && path === "/api/mod/agent/trace") {
+      if (opts.moderator !== true && !this.sessions.canModerate(queryTokenOf(req, url))) {
+        sendJson(res, 403, { error: "moderators only" });
+        return true;
+      }
+      const character = url.searchParams.get("character");
+      const after = Number(url.searchParams.get("after") ?? 0);
+      const limit = Math.max(1, Math.min(400, Number(url.searchParams.get("limit") ?? 200)));
+      const id = url.searchParams.get("id");
+      if (id !== null) {
+        const one = this.agentTrace.get(id);
+        if (one === null) sendJson(res, 404, { error: "no such thought" });
+        else sendJson(res, 200, { thought: one });
+        return true;
+      }
+      sendJson(res, 200, {
+        thoughts: this.agentTrace.list(character === null || character === "" ? null : character, Number.isFinite(after) ? after : 0, limit),
+        seq: this.agentTrace.latestSeq,
+        characters: this.agentTrace.characters(),
+        minds: [...this.agentMinds.values()],
+      });
+      return true;
+    }
+
     // --- read-only state snapshot (same capability gates as the stream) ---
     if (method === "GET" && path === "/api/state") {
       const role = url.searchParams.get("role") ?? "mod";
@@ -1127,7 +1218,7 @@ export class EventRuntime {
             sendJson(res, 404, { error: "unknown guest" });
             return true;
           }
-          sendJson(res, 200, guestView(this.reqSim(), as, this.decisionChannels.get(as) ?? null, new Set(this.agents.onlineCharacters())));
+          sendJson(res, 200, this.guestViewFor(as, new Set(this.agents.onlineCharacters())));
           return true;
         }
         if (role === "prime") {
@@ -1145,7 +1236,7 @@ export class EventRuntime {
           sendJson(res, 401, { error: "not signed in — register first" });
           return true;
         }
-        sendJson(res, 200, guestView(this.reqSim(), gid, this.decisionChannels.get(gid) ?? null, new Set(this.agents.onlineCharacters())));
+        sendJson(res, 200, this.guestViewFor(gid, new Set(this.agents.onlineCharacters())));
         return true;
       }
       if (role === "prime") {
@@ -1223,6 +1314,14 @@ export class EventRuntime {
       this.agentReply(res, body);
       return true;
     }
+    if (path === "/api/agent/trace") {
+      if (opts.moderator !== true && !this.sessions.canModerate(tokenOf(req, body))) {
+        sendJson(res, 403, { error: "moderators only" });
+        return true;
+      }
+      this.agentTraceIn(res, body);
+      return true;
+    }
     if (path === "/api/agent/mind") {
       if (opts.moderator !== true && !this.sessions.canModerate(tokenOf(req, body))) {
         sendJson(res, 403, { error: "moderators only" });
@@ -1230,6 +1329,44 @@ export class EventRuntime {
       }
       this.agentMind(res, body);
       return true;
+    }
+
+    // --- the wall terminals' voice ---
+    // A terminal speaks an agent-voiced character's replies out loud. The
+    // synthesis runs on the show laptop behind `LOOM_TTS_URL`; this proxies
+    // (and caches) it so tablets stay same-origin and only moderator
+    // capability — which a terminal holds — can spend the GPU.
+    if (path === "/api/mod/tts") {
+      if (!opts.moderator && !this.sessions.canModerate(tokenOf(req, body))) {
+        sendJson(res, 403, { error: "moderators only" });
+        return true;
+      }
+      const speed = body["speed"];
+      const result = await this.tts.speak({
+        text: str(body, "text"),
+        voice: str(body, "voice") || undefined,
+        speed: typeof speed === "number" ? speed : undefined,
+      });
+      switch (result.kind) {
+        case "audio":
+          res.writeHead(200, {
+            "content-type": result.contentType,
+            "content-length": String(result.bytes.byteLength),
+            "cache-control": "private, max-age=3600",
+            "x-loom-tts-cache": result.cached ? "hit" : "miss",
+          });
+          res.end(Buffer.from(result.bytes.buffer, result.bytes.byteOffset, result.bytes.byteLength));
+          return true;
+        case "disabled":
+          sendJson(res, 503, { error: "no speech endpoint configured (set LOOM_TTS_URL)" });
+          return true;
+        case "bad":
+          sendJson(res, 400, { error: result.error });
+          return true;
+        case "failed":
+          sendJson(res, 502, { error: result.error });
+          return true;
+      }
     }
 
     // --- guest / performer / login actions ---
@@ -1384,7 +1521,9 @@ export class EventRuntime {
           return true;
         }
         this.answeredWidgets.add(key);
-        this.fanout(this.commit("signal", `${m.widget.kind} answered`, id, args));
+        // `card` rides the journaled args so a restart rebuilds the
+        // answered set (`restore`) — the story sees it as one more argument.
+        this.fanout(this.commit("signal", `${m.widget.kind} answered`, id, { ...args, card: seq }));
         sendJson(res, 200, { ok: true });
         return true;
       }
@@ -1762,6 +1901,29 @@ export class EventRuntime {
         sendJson(res, 200, { ok: true, phase: this.phase });
         return true;
       }
+      case "/api/mod/agent/control": {
+        // The mind control panel: reset / survey / nudge / set / forget /
+        // thinking / effort / pause / rerun, forwarded to the worker(s)
+        // voicing the character. The worker applies it, re-mirrors the
+        // mind, and records a `control` thought — nothing changes on the
+        // server itself (the mind lives on the worker).
+        const control = agentControl(body, by);
+        if (typeof control === "string") {
+          sendJson(res, 400, { error: control });
+          return true;
+        }
+        if (control.character !== null && this.sim !== null && !this.sim.model.characters.has(control.character)) {
+          sendJson(res, 404, { error: "unknown character" });
+          return true;
+        }
+        const delivered = this.agents.control(control);
+        if (delivered === 0) {
+          sendJson(res, 409, { error: control.character === null ? "no agent worker is connected" : `nobody is voicing ${control.character} right now` });
+          return true;
+        }
+        sendJson(res, 200, { ok: true, delivered });
+        return true;
+      }
       case "/api/mod/codes": {
         // Every codex entry with a code also gets its printable join link —
         // the QR a guest scans on the wall: `?code=<event>&unlock=<code>`.
@@ -2084,7 +2246,11 @@ export class EventRuntime {
           return true;
         }
         const token = randomUUID();
-        this.impersonations.set(token, { role, id, by });
+        // A wall terminal (mod-token authorized, so `by` is the generic
+        // "Director") names itself — "Terminal · Kitchen" — so the journal
+        // and the mod feed say which screen a program was piloted from.
+        const label = str(body, "label").trim().slice(0, 60);
+        this.impersonations.set(token, { role, id, by: label !== "" ? label : by });
         const name = role === "guest" ? (this.sim.persons.get(id)?.name ?? id) : id;
         sendJson(res, 200, { token, role, id, name, eventId: this.eventId, title: this.title });
         return true;

@@ -108,6 +108,89 @@ nothing; a run restart (`reset`) empties it. Directors see it as
 **Pacing:** a guest who has monopolised the character (24+ turns) gets
 shorter answers and an errand — deterministic, not up to the model.
 
+### The shape of a night: stages, drives, policy, questions
+
+A mind file (`mind: trabolta.mind.md` in the persona) may open with a
+frontmatter block that gives the mind **structure the orchestrator must
+fill** — so the way the character changes is declared, steerable, and
+visible, not buried in prose:
+
+```yaml
+---
+stages: [lonely grandeur, appetite, the question, the turn]   # the arc, in order
+drives: { hunger: 40, suspicion: 55, generosity: 10, resolve: 30 }  # 0–100, opening values
+phases:                                   # an authored cue per Night.phase
+  free_roam: "The glitch. The house is open and he has just revealed himself…"
+  destruct: "Three keys have turned. He feels it…"
+---
+You are the DIRECTOR OF THE MIND of Trabolta…
+```
+
+- **`stage`** — where the character is on its arc. The orchestrator sets
+  it every pass, moves it *forward* on evidence with a `stage_why`, and
+  every move is kept in `stage_history` (the night reads as chapters). A
+  name that isn't a declared stage is refused, never invented.
+- **`drives`** — the mind's own dials, distinct from the story's
+  variables the voice nudges (`truth` / `untruth` / …). Every revision
+  snapshots them, so their path through the night is a sparkline.
+- **`policy`** — the bargain policy as structure: `favours` `none |
+  earned | loose`, `credit` (who has earned something), `wary` (who
+  lied), a note. The voice's prompt states it plainly.
+- **`questions`** — the open questions the character is collecting
+  answers to (its obsessions), each with the answers gathered so far and
+  who gave them.
+- **`phases`** — when the house enters a phase (`Night.phase` in the
+  facts delta), the orchestrator's survey is handed the author's cue for
+  it; a reflection always sees the current phase's cue.
+- **`director`** — whispers from the control panel (a *nudge*): the
+  voice obeys them at once ("THE DIRECTOR WHISPERS"), the next
+  orchestrator pass folds them into the brief and clears them.
+- **`revisions`** — every change to the mind is numbered: who made it
+  (`reflect` / `survey` / a director's name / `reset`), what it touched,
+  the thought that produced it, and the small fields as they then stood.
+
+The whole mind (not a summary) is mirrored to the server after every
+change, with the worker's status (models, reasoning on/off, paused,
+queue) — `POST /api/agent/mind` → `ModView.minds`.
+
+### The trace and the control panel (the Mind page)
+
+Every model call is recorded as a **thought** (`agents/trace.py`): the
+messages exactly as sent, the model's **reasoning** when the API exposes
+it (gpt-oss's `reasoning`, Ollama's `thinking`, an inline `<think>`
+block), the raw output, why it stopped, token counts, wall time, what
+the worker parsed, and — for the orchestrator — the diff it made to the
+mind and the revision number. Kinds: `voice`, `lookup`, `reflect`,
+`survey`, `rerun`, plus `reset` / `control` / `error` markers. Thoughts
+append to `state_dir/<event>/<Character>.trace.jsonl` and stream to the
+server (`POST /api/agent/trace`); on (re)connect the worker replays its
+recent ring so a fresh console starts with the night so far. The
+editor's **Run → Mind** page draws all of it: the arc, the drives'
+sparklines, the brief, policy, questions, dossiers, the revision log,
+and the trace with a per-thought view of input / reasoning / raw output
+/ parsed result / mind diff.
+
+The page's **control panel** sends `control` frames down the worker's
+stream (`POST /e/:id/api/mod/agent/control` → the worker's
+`Agents.control`). The server's own story restart sends the same
+`{action: "reset"}` frame, so a restart and a hand reset are one code
+path:
+
+| action | payload | effect on the worker |
+|---|---|---|
+| `reset` | `reason?` | every mind back at the doors (stage 1, drives at their opening values, nothing learned); queue dropped; a `reset` marker in the trace |
+| `survey` | — | the orchestrator looks at the house now |
+| `nudge` | `text` | a whisper: shown to the voice at once, folded into the brief by the survey this queues, then cleared |
+| `set` | `field` = `brief` / `mood` / `stage` (+`why`) / `drive` (`name`, `value`) / `policy` (object) / `trust` (`person`, `value`) / `note` (`add` / `drop`) / `question` (`add` / `drop`) | a direct edit, applied through the same bounded merge as an orchestrator update, recorded as a revision by the director |
+| `forget` | `person` | drop the file on someone |
+| `thinking` | `on` | the orchestrator model's visible reasoning on/off (Ollama `think`) — the trace then shows Qwen's thinking; off is faster |
+| `effort` | `level` `none` / `low` / `medium` / `high` | the voice model's reasoning effort (gpt-oss) |
+| `pause` | `on` | freeze the mind: replies keep coming, jobs queue, nothing runs |
+| `rerun` | `thought` | send a recorded call's messages to the model again (as configured now); the answer is recorded as a `rerun` thought and never applied |
+
+Every control is acknowledged by a re-mirrored mind and a `control`
+marker in the trace naming who did it.
+
 ### Powers, lookups, bargains
 
 A story declares what the character may *do* with `INTERACTION … who:

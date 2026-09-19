@@ -15,12 +15,13 @@ event server, …) without dragging the rest along. Repo license is MIT
 | [`editor`](./editor)   | React/Vite/CodeMirror web IDE — the author front end: a BetterAuth sign-in gate → projects launchpad → Studio shell with **three modes**: **Writing** (`⌘1`, text editor + story-graph node editor side by side), **Run** (`⌘2`, the control room for the project's **one run** — "Start rehearsal" is the shared server event on a server project / the in-browser `@loom/core` `Sim` on a folder; the header owns the lifecycle incl. **go live in place**; join codes/QR + directors + guest lookup on the Run page; an **identity control** to *be* any persona, guest, or character with the server's exact view of them), and **Integrations** (`⌘3`, engine targets — the Wwise-style Godot link / addon install / bank build). **Server-backed projects** or a local folder. |
 | [`core`](./core)       | Native **TypeScript** port of Loom (no WASM, no Prism): parser (incl. authored **`SPACE`/`CHANNEL`** chatroom declarations) + a first-principles social-ecosystem `runtime/sim` + a parser-only **`lsp`** language surface (`@loom/core/lsp` — `Workspace` with completion / hover / definition / documentSymbols / references / diagnostics, the in-process replacement for the wasm `LspWorkspace`) + an SSE/REST **event server** (`pnpm serve`) that hosts a live `Sim` for LAN events, composing its `SimEvent` stream into server-authoritative, channel-routed chat (`server/chat.ts`) with spaces + Slack-style threads (`parentSeq`), **access control** (open / private-invite / faction / group / dm channel membership, journaled `inviteToChannel`/`leaveChannel`, guest↔guest invites) + a **pluggable channel-type registry** (`runtime/sim/channel-types.ts` — per-type post policy / threadability / broadcast routing / slow-mode / ephemeral, e.g. a read-only `announcement` feed), a scoped invite roster (`rosterFor`), history + moderation, and a journaled `say` command so participant-typed chat replays deterministically. Now a **multi-tenant SaaS backend**: BetterAuth author accounts + Postgres (`server/db/`, `server/auth-server.ts`), projects + files CRUD (`server/projects.ts`), event launch/lifecycle (`server/events-api.ts`, one live event per project), and a per-event `EventRuntime` + `EventRegistry` routed under `/e/:eventId` with a `resolve-code` bootstrap — the old single-event root paths still serve a default event. vitest-tested. |
 | [`play`](./play)       | The **participant React app** (Vite, name `loom-play`) guests + performers use at a live event — a **two-pane MSN/Discord-style chat** (rooms sidebar + open room on wide screens, drill-in on phones; `theme: aol97` skins it as a 1997 chat room) with **presence** (the room you stand in first, who is in every place, a who's-here strip per room), Discord-style **spaces** (sidebar sections, incl. authored `SPACE`s), Slack-style **message threads** + avatar/name sender-run grouping, **hybrid typed chat** (a composer wired to `/api/*/say`), **cards** (`show captcha / image / poll` render from the `widgets.tsx` registry; answers fire `<kind> answered`), and **access-controlled rooms** (open/private/faction/group/dm with invite + leave) layered over the story-injected lobby + faction + DM channels (decisions docked per-thread, re-login history) on the `core` server's SSE/REST. Performers pick their character from the cast at sign-in and act on a guest through their **card**, never a panel under every room. Multi-event aware: a short code resolves via `/api/resolve-code` to its event, then every call is scoped to `/e/:eventId`. `pnpm dev` (:5174, proxies to the server on :7000) / `pnpm build` (served by the event server at `/`). |
+| [`terminal`](./terminal) | The **wall terminal** (Vite React kiosk app, `loom-terminal`, served by the `core` server at `/terminal/`): tablets mounted around the house that are **direct lines to an agent-voiced character** (Trabolta). A trusted device (set up once with the mod passcode → mod token; provision a fleet via `/terminal/?code=&name=&character=`). It **scans a guest's pass** (camera → `BarcodeDetector` / `jsQR`; typed-name fallback when the camera can't run on plain http) and **pilots** that guest through `/api/mod/impersonate` (`label` = the terminal's name → journaled `by` / feed `via`), showing the guest's own `dm:<Character>` thread off their own stream — the same thread as their phone. A **30 s no-input leash** (`idle.ts`, paused while the character is composing / speaking) ends the session. An **SVG animated face** (`face/`: brows, blinking gaze, mouth driven by the live audio level; moods read off the situation + each spoken sentence) and a **synthesised voice** (`speech/`: the server's neural voice via `/api/mod/tts` — `core/server/tts.ts`, a cached proxy to an OpenAI-compatible endpoint, Kokoro-FastAPI recommended, `LOOM_TTS_URL` — with the tablet's `speechSynthesis` as fallback; sentence-split, prefetched, transcript revealed as spoken). `pnpm --filter loom-terminal dev` (:5175) / `build` / `test` (30 tests). |
 | [`desktop`](./desktop) | The **Tauri 2 desktop app** — the `editor` React app in a native shell (own Cargo workspace at `desktop/src-tauri`, excluded from the root workspace to keep it lean; zero Prism deps). Adds what the browser can't: a path-based **fs bridge** (`fs_bridge.rs`) that the editor's local-folder backend runs on via FSA-shaped handle shims (`editor/src/lib/desktop-fs.ts` — WKWebView has no File System Access API), and **Wwise-style Godot integration** (`godot.rs` + the editor's Integrations mode, `⌘3`): link a Godot 4 project, install the embedded `addons/loom` runtime (`include_dir!` of `engines/godot/addons/loom`) + enable the plugin in `project.godot`, and build the open workspace into `<name>.loombank` + `LoomIDs.gd` inside the game project (banks compile in the webview via `@loom/bank`; the host only writes files). `pnpm --filter loom-desktop dev\|build`; `cargo test` in `src-tauri/` covers the integration logic. Reference output: [`examples/guard-patrol/godot`](./examples/guard-patrol/godot). Design: [`docs/loom-desktop.md`](./docs/loom-desktop.md). |
 | [`bank`](./bank)       | **TypeScript** bank compiler + the **normative reference interpreter**. Lowers a project into `.loombank` — engine-agnostic 4×i32 instruction streams, RPN expressions, pre-split interpolation, pre-parsed directive args — plus generated `LoomIDs.{gd,cs,h}`. `<shuffle:>` runs on the spec'd xorshift64* PRNG (`src/prng.ts`, per-site streams persisted in the save), and **locale banks** are emitted (`loom-bank strings` template → `build --locale <tag>=<file>` → `<name>.<tag>.loombank` sidecar; `set_locale` swaps literals at render time, expressions stay live, per-key fallback). Hosts the scenario driver / golden-trace harness (incl. `loadbank` for locale sidecars) every per-engine runtime is conformance-tested against. See [`docs/loom-banks.md`](./docs/loom-banks.md). |
 | [`engines/godot`](./engines/godot) | **GDScript** Loom runtime for Godot 4 — pure script, no GDExtension, no build step. `LoomRuntime` (pull-model `advance() -> Step`, plus signals), `LoomBank` + a `.loombank` import plugin, save/load that round-trips a suspended choice, and a headless conformance runner diffing the reference's goldens byte for byte. On top, a Wwise-integration-style **scene layer**: `LoomStory` (bank host node — autoplay, timer auto-tick, optional auto-advance pump with hold/release gating, save-file helpers), `LoomHook` (story→game: filterable directive/beat/line/varset/fire listener as an editor-connectable signal), `LoomTrigger` (game→story: fire an `on <verb>` hook or start a beat on ready/Area overlap/manual), `LoomTypewriter` (per-character RichTextLabel reveal, punctuation pacing, skip, story hold — **raw signals only**; effects are separate interpreter nodes: `LoomBlip` pooled pitch-randomised voice blips, `LoomTalkAnimator` talk/idle animation), `LoomDialogueBox` (complete drop-in player — speaker/portrait/pooled choice buttons/continue-indicator/two-tap input/auto mode/`resume()` — skinned by a `LoomStyle` resource with per-character `LoomSpeakerStyle` overrides; `demo/styled_demo.tscn` plays a story with zero scripts), `LoomHistory` (backlog), `LoomSaveSlots` (named slots with query-API metadata headers), a host-side state-query API (`current_beat`/`current_setting`/`pending_options`/`is_finished`/`has_played`/`world_snapshot`/`beat_names` + `save_to_file`/`load_from_file`), plus a `LoomBank` inspector preview (beats/hooks with copy-name) — covered by `test/addon.sh` (96 headless checks) alongside `test/conformance.sh` (4 scenarios incl. shuffle PRNG + locale switching). |
 | [`examples`](./examples) | Reference `.loom` projects used by `loom-runtime` integration tests and as authoring tutorials |
 | [`mind`](./mind)       | **Superseded (2026-09-16) by stagehand's `agents` module and awaiting deletion.** The old TS bridge (`@loom/mind`) watched the mod feed for DMs to a character and answered through Ollama. Its replacement works on explicit server requests. |
-| [`stagehand`](./stagehand) | **Python** (uv-managed, not in the pnpm workspace) live-event bridge. It is **modular**: one daemon, one YAML per machine, and each top-level section enables a module (`module.py::REGISTRY`; modules share one authenticated `ModClient` and are supervised and restarted independently). **`show`** (the desktop): joins the mod SSE feed and turns story events (`<cue:>`/`<prop:>`/`<vibe:>`, `beatEntered`, `signal`) into OSC cues (TouchDesigner, with an NTP `t_exec` contract) plus MQTT prop commands. In reverse, MQTT sensor topics inject journaled `signal`/`beat`/`arrive` mutations. **`agents`** (the laptop): voices `mind: external` characters with a local OpenAI-compatible model (Ollama, `gpt-oss:20b`). It holds `GET /api/agent/stream` and answers each server-sent request (thread + speaker + both parties' state + codex) with `POST /api/agent/reply {say, adjust}`, using a persona file (frontmatter knobs incl. a `when:` gate) as the system prompt. `uv run pytest` (108 tests) / `uv run stagehand modules\|check\|run --config <machine>.yaml [--only agents]` / `stagehand ask` (chat with a persona, no server). Examples: `show.example.yaml`, `agents.example.yaml`. Design: [`docs/loom-show-control.md`](./docs/loom-show-control.md). |
+| [`stagehand`](./stagehand) | **Python** (uv-managed, not in the pnpm workspace) live-event bridge. It is **modular**: one daemon, one YAML per machine, and each top-level section enables a module (`module.py::REGISTRY`; modules share one authenticated `ModClient` and are supervised and restarted independently). **`show`** (the desktop): joins the mod SSE feed and turns story events (`<cue:>`/`<prop:>`/`<vibe:>`, `beatEntered`, `signal`) into OSC cues (TouchDesigner, with an NTP `t_exec` contract) plus MQTT prop commands. In reverse, MQTT sensor topics inject journaled `signal`/`beat`/`arrive` mutations. **`agents`** (the laptop): voices `mind: external` characters with a local OpenAI-compatible model (Ollama, `gpt-oss:20b`). It holds `GET /api/agent/stream` and answers each server-sent request (thread + speaker + both parties' state + codex) with `POST /api/agent/reply {say, adjust}`, using a persona file (frontmatter knobs incl. a `when:` gate) as the system prompt. A slower **orchestrator** (the Qwen distill) grows a structured **mind** between turns (arc `stages` / `drives` / `policy` / `questions` declared in the mind file's frontmatter, dossiers, a numbered revision log); every model call is a recorded **thought** (`agents/trace.py`: messages, both models' reasoning, output, mind diff) streamed to the server for the editor's Run → Mind page, and a **control channel** (`control` frames: reset / survey / nudge / set / forget / thinking / effort / pause / rerun) steers it — the server's story restart uses the same `reset`. `uv run pytest` (153 tests) / `uv run stagehand modules\|check\|run --config <machine>.yaml [--only agents]` / `stagehand ask` (chat with a persona, no server). Examples: `show.example.yaml`, `agents.example.yaml`. Design: [`docs/loom-show-control.md`](./docs/loom-show-control.md). |
 
 **All Loom documentation lives in [`docs/`](./docs)** (moved from the
 repo-root `docs/dev/` 2026-07-20): the canonical design spec
@@ -79,6 +80,10 @@ from the root):
 
 ```bash
 pnpm install            # core + bank + play + editor + desktop
+pnpm dev                # the whole dev stack: build play + terminal, event
+                        # server (:7000) + editor (:5173); --sync "<project>"
+                        # pushes the example story into a server project
+                        # (scripts/dev.mjs · core/scripts/sync-example.ts)
 pnpm --filter @loom/core test               # the TS engine suites
 pnpm --filter @loom/bank test               # bank compiler + reference VM
 pnpm --filter @loom/core serve              # the LAN event server (:7000)
@@ -176,6 +181,128 @@ The Rust `server` crate (see below) is the older, separate multi-workspace
 backbone; the SaaS lives entirely in the TS stack.
 
 ## Status
+
+**The mind debugger + control panel landed 2026-09-18** (Python
+`stagehand/` + TS `core/` server + `editor`; help:
+`authoring/44-mind-debugger.md`; `stagehand/README.md` → *The shape of a
+night* / *The trace and the control panel*). Asked for: see how Trabolta's
+prompts and reasoning change over the night, both models, and a control
+panel the server also uses on resets. **Worker:** `llm.complete` returns a
+`Completion` (content + `thinking` — gpt-oss `reasoning`, Ollama
+`thinking`, inline `<think>` — finish, tokens, ms); every call is a
+`Thought` in `agents/trace.py` (`voice` / `lookup` / `reflect` / `survey` /
+`rerun` + `reset` / `control` / `error` markers; exact messages, raw
+output, parsed result, the `Mind.diff` it caused, revision) → ring +
+`<Character>.trace.jsonl` + `POST /api/agent/trace` (replayed on
+reconnect). **The mind has structure** (`mind.py`): `stage` on a declared
+arc (+ `stage_history` with why/by), `drives` 0–100 (+ `drive_starts`),
+`policy {favours none|earned|loose, credit, wary, note}`, `questions` with
+answers, `director` whispers (voice obeys at once; the next orchestrator
+pass consumes them), `revisions` (numbered, by reflect/survey/director/
+reset, thought id, small-field snapshot); `Mind.seed` adopts the mind
+file's frontmatter (`stages:` / `drives:` / `phases:` — `parse_mind_file`
+in `persona.py`; `trabolta.mind.md` now declares Trabolta's four stages,
+four drives, six phase cues); the orchestrator prompt carries the arc /
+drives / policy / questions rules, the phase cue, and the whispers, and
+its schema asks for `stage` / `stage_why` / `drives` / `policy` /
+`questions_add` / `answers_add`. `Agents.control(doc)` handles the
+`control` stream frame (`reset` · `survey` · `nudge` · `set` brief/mood/
+stage/drive/policy/trust/note/question · `forget` · `thinking` (Ollama
+`think` toggle per character) · `effort` (voice `reasoning_effort`) ·
+`pause` · `rerun` (re-execute a recorded call, never applied)); the old
+bare `reset` frame is gone. `Mind.report` mirrors the *whole* mind +
+worker `status`. **Server:** `agents.ts` — full `AgentMindReport`
+sanitiser, `AgentThought` + `agentThought`, `AgentTraceLog` (ring per
+character, byte cap, idempotent replay, `?after=` paging; survives a story
+restart), `agentControl` validation, `AgentHub.control` /
+`reset(by, reason)` (→ `control {action: reset}`); `EventRuntime`: `POST
+/api/agent/trace` (→ `agentThought` SSE to mods), `GET
+/api/mod/agent/trace`, `POST /api/mod/agent/control` (400 / 404 unknown
+character / 409 nobody voicing it); `AgentMindSummary` = the full report.
+**Editor:** `CockpitTab.Mind` (operator-only) → `cockpit/MindTab.tsx` +
+pure `cockpit/mind.ts` (thought summaries, filters, drive sparklines off
+the revisions, arc segments, diff rows); `CockpitState.minds` /
+`thoughts` / `mindControl` / `loadThoughts` on both stores (the local
+backend explains it has no worker); `operate.ts` handles `agentThought`
+frames (`mergeThoughts`, cap 400). Tests: stagehand `test_debugger` (14);
+core `agents` (+8: report / thought / trace log / control validation /
+routes / restart-as-control); editor `cockpit/mind.test.ts`; the opt-in
+live spec `editor/e2e-live/mind.spec.ts` (a real worker on both Ollama
+models, driven to voice → reflect → nudge → restart, screenshots).
+
+**The gentler first minutes landed 2026-09-18** (TS `core/` + `play` +
+the *Trapped in the Internet* show; help: `authoring/30-live-shows`,
+`32-chat-rooms`, `33-live-verbs`, `36-widgets`, `play/01`, `02`). Found
+by watching new guests: the phone listed every room of the house at the
+door, the Mud Room login played inside the full chat shell, and after
+the glitch Trabolta's chat never appeared (a DM row only existed once a
+character *spoke to you*; an agent-voiced character waits to be spoken
+to). Now: **progressive rooms** — `LOCATION` / `CHANNEL` / `CHARACTER …
+hidden: true` (`LocationDef.hidden` / `ChannelDef.hidden` /
+`CharDef.hidden`) stay off a guest's phone until the story opens them:
+`reveal X` (everyone) or `reveal X for who` (one person; `Sim.reveal(target,
+person?)`, `revealed` sim event → a "📂 … is open now." system notice
+for rooms; an exact room name wins over entity folding, so `reveal task
+manager` opens `# task-manager` beside CHARACTER Task Manager), and a
+hidden place also appears once stood in (`Sim.hasVisited`). Visibility
+is `canSeeChannel` / `visibleChannelsFor`; performers + operators see
+everything. The play app lists only rooms the snapshot lists (`isListedRoom`
+in `session.ts`; delivered lines wait and appear with the room) and puts a
+`dm:` row on the sidebar for every agent-voiced person in the directory.
+**Cutscene**: `LOCATION … cutscene: true` → `GuestView.cutscene`; the
+app renders `CutsceneStage` (`play/src/cutscene.tsx`): a dark full-screen
+stream of `personalStream` (what was said *to* the guest — lines, cards,
+decision), no sidebar/HUD, and a *Continue* once the story moves them on
+(`useCutscene` in `guest.tsx` holds the stage until then). **Tutorial**:
+`show tutorial "…" to who with guide: "Name"` → an `overlay` widget
+(`play/src/tutorial.tsx`): a spotlight tour over the live controls
+(`data-tour` anchors: rooms / me / codex / people / pass / help, measured
+against the app root so it works embedded), steps trimmed to what the
+story uses, Skip on every step; answers `{completed, steps}` or
+`{skipped, step, steps}` → `when tutorial answered for who:`. Widget
+answers now survive a restart (`card: seq` rides the journaled args;
+`restore` rebuilds `answeredWidgets`) and ride `GuestView.answered` so a
+reload never re-asks a settled card. The show: the Mud Room is a
+`cutscene` and `when someone joins` moves the program there; the house
+rooms are `hidden` (`# task-manager` opens at `call to the desktop`,
+the rest + `# ram` at the glitch — "the house is open"); Trabolta is
+`hidden: true` until `reveal self` at the glitch; `-> Orientation` after
+the upload has Clippy deal the tour; skipping = +10 doubt, +5 humanity,
+Norton logs it, Clippy remembers (`skipped_orientation`); finishing =
++2 truth + *The Orientation List* (codex, 43 entries now). **The door:**
+after the upload a program waits in the Mud Room (`uploaded`, still on
+rails; `show pass` deals their own QR onto the stage — the `pass` widget
+kind, `WidgetProps.viewer` — and the cutscene header has a *My pass*
+button) until an **Antivirus performer scans them**
+— every Enforcer's `when scanned by program:` routes to the trait's
+shared `beat Clearance` while `cleared` is false (clearance line, `move`
+to the Desktop, `-> Orientation`); a host's scan just greets them. Lines
+crawl **one at a time** (`Crawl.start/finish` queue on the host; a queued
+line is `.pending` = hidden) and the crawl is clock-driven so a
+background tab catches up. Dev: **`pnpm dev`** (root `scripts/dev.mjs`)
+builds play + terminal and runs server + editor with prefixed logs;
+`--sync "<project>"` runs `core/scripts/sync-example.ts` (example folder
+→ `project_file` + `event.scenario_source` + `mod/load`) — the :7000
+server has no watch mode and a server project's event plays a snapshot,
+so this is how an example edit reaches the Run mode. Tests: core
+`sim-reveal` (8), `server-interactions` (restart-safe answers),
+`trapped-in-the-internet` (28); play `onrails` (7), `widgets` (crawl queue).
+
+**The wall terminals landed 2026-09-16** (new `terminal/` + TS `core/`
+server; see the table row + `terminal/README.md`). Server side:
+`core/server/tts.ts` (`TtsProxy` — a moderator-gated, LRU-cached,
+in-flight-deduplicated proxy to any OpenAI-compatible `/audio/speech`
+endpoint; `LOOM_TTS_URL` / `_API_KEY` / `_MODEL` / `_VOICE` / `_FORMAT`),
+`GET|POST /e/:id/api/mod/tts` on `EventRuntime` (503 when unconfigured →
+the terminal falls back to the tablet voice), an optional `label` on
+`/api/mod/impersonate` (a mod-token caller names itself — "Terminal ·
+Kitchen" — as the journal's `by`), and `/terminal/*` static serving in
+`server.ts` (`LOOM_TERMINAL_DIST`; CSP adds `media-src blob:`). Docker:
+the `server` image builds + serves `terminal/dist`; compose / `.env`
+carry the `LOOM_TTS_*` knobs. Tests: core `tts` (10) + `server-impersonate`
+(label); terminal `scan` / `idle` / `split` / `pick-voice` / `mood` /
+`config`. Help: `docs/help/play/09-terminals.md`. The show README's
+integration contract gained a **Terminals** row.
 
 **Run → Players landed 2026-09-16** (TS `core/` + `play` + `editor`): admins
 run full rehearsals without leaving the editor — one embedded **real play

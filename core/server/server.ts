@@ -65,6 +65,12 @@ const APP_DIST = process.env.LOOM_APP_DIST
   ? pathToFileURL(process.env.LOOM_APP_DIST.replace(/\/?$/, "/"))
   : new URL("../../play/dist/", import.meta.url);
 
+// The built wall-terminal app (`loom-terminal`), served under `/terminal/`.
+// Defaults to the sibling package's `dist/`; override with LOOM_TERMINAL_DIST.
+const TERMINAL_DIST = process.env.LOOM_TERMINAL_DIST
+  ? pathToFileURL(process.env.LOOM_TERMINAL_DIST.replace(/\/?$/, "/"))
+  : new URL("../../terminal/dist/", import.meta.url);
+
 const CONTENT_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -74,6 +80,7 @@ const CONTENT_TYPES: Record<string, string> = {
   ".ico": "image/x-icon",
   ".png": "image/png",
   ".woff2": "font/woff2",
+  ".woff": "font/woff",
 };
 
 /** Content-Security-Policy for served HTML. The Vite build is external
@@ -90,15 +97,19 @@ const HTML_CSP = [
   "frame-ancestors 'none'",
 ].join("; ");
 
-/** Serve a file from the built app dir; returns false if it isn't there. */
-function serveAppFile(pathname: string, res: ServerResponse): boolean {
+/** The terminal plays synthesised speech from in-memory blobs and reads
+ *  the tablet's camera; only the media source differs from the play app. */
+const TERMINAL_CSP = `${HTML_CSP}; media-src 'self' blob:`;
+
+/** Serve a file from a built app dir; returns false if it isn't there. */
+function serveAppFile(pathname: string, res: ServerResponse, dist: URL = APP_DIST, csp: string = HTML_CSP): boolean {
   const rel = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
   if (rel.includes("..")) return false;
   try {
-    const buf = readFileSync(new URL(rel, APP_DIST));
+    const buf = readFileSync(new URL(rel, dist));
     const ext = rel.slice(rel.lastIndexOf("."));
     const headers: Record<string, string> = { "content-type": CONTENT_TYPES[ext] ?? "application/octet-stream" };
-    if (ext === ".html") headers["content-security-policy"] = HTML_CSP;
+    if (ext === ".html") headers["content-security-policy"] = csp;
     res.writeHead(200, headers);
     res.end(buf);
     return true;
@@ -286,6 +297,30 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
         `<body style="font:16px system-ui;background:#0b0d12;color:#e7ecf3;padding:2rem">` +
         `<h1>Loom event server</h1><p>The participant app isn't built yet. Run ` +
         `<code>pnpm --filter loom-play build</code> (or <code>cd ../play && pnpm dev</code> for live dev on :5174).</p>`,
+    );
+    return;
+  }
+
+  // --- the built wall-terminal app (loom-terminal) at `/terminal/` ---
+  // Direct lines to an agent-voiced character on tablets mounted around the
+  // house. Same event server, same threads: a terminal pilots a scanned
+  // guest through `/api/mod/impersonate`, so what is said there is the
+  // guest's own DM. Built with `--base=/terminal/`.
+  if (method === "GET" && (path === "/terminal" || path.startsWith("/terminal/"))) {
+    if (path === "/terminal") {
+      res.writeHead(302, { location: `/terminal/${url.search}` });
+      res.end();
+      return;
+    }
+    const rel = path.slice("/terminal".length);
+    const file = rel === "/" || rel === "/index.html" || !rel.includes(".") ? "/index.html" : rel;
+    if (serveAppFile(file, res, TERMINAL_DIST, TERMINAL_CSP)) return;
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8", "content-security-policy": HTML_CSP });
+    res.end(
+      `<!doctype html><meta charset=utf-8><title>Loom terminal</title>` +
+        `<body style="font:16px system-ui;background:#0b0d12;color:#e7ecf3;padding:2rem">` +
+        `<h1>Loom terminal</h1><p>The terminal app isn't built yet. Run ` +
+        `<code>pnpm --filter loom-terminal build</code> (or <code>cd ../terminal && pnpm dev</code> for live dev on :5175).</p>`,
     );
     return;
   }

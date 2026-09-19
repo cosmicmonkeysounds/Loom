@@ -38,6 +38,10 @@ const EVENT = /^[A-Za-z_][A-Za-z0-9_.\-]*(\s+(for|with)\s+.+)?$/u;
 /** A name of one word, or several words each Capitalised (`The Society`). */
 const NAME_WORDS = /^[A-Za-z_][A-Za-z0-9_.'\-]*(\s+[A-Z][A-Za-z0-9_.'\-]*)*$/u;
 const HAS_BAR = /\|/u;
+/** `reveal The Society` / `reveal task manager` / `reveal The Cache for guest`
+ *  — a name of up to four words (a room's name may be lowercase), optionally
+ *  scoped to one participant. Longer prose starting with "reveal" stays prose. */
+const REVEAL = /^[A-Za-z_][A-Za-z0-9_.'\-]*(?:\s+[A-Za-z][A-Za-z0-9_.'\-]*){0,3}(?:\s+for\s+\S+)?$/u;
 /** `unlock The Sandy File for guest` — a codex entry for a holder. */
 const UNLOCK = /^.+\s+for\s+\S+$/u;
 /** `show captcha`, `show image "…" to everyone`, `show poll "…" to program with a: 1` —
@@ -79,7 +83,7 @@ export const STATEMENTS: ReadonlyArray<[verb: string, shape: Shape]> = [
   ["move", { kind: "args", test: TO }],
   ["add", { kind: "args", test: TO }],
   ["remove", { kind: "args", test: FROM }],
-  ["reveal", { kind: "args", test: NAME_WORDS }],
+  ["reveal", { kind: "args", test: REVEAL }],
   ["unlock", { kind: "args", test: UNLOCK }],
   ["cast", { kind: "args", test: AS }],
   ["promote", { kind: "args", test: TO }],

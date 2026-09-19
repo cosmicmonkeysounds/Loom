@@ -94,10 +94,11 @@ def test_report_is_what_the_director_sees():
     m = Mind("Trabolta", "evt")
     m.saw_exchange("g1", "Ada", "guest", "t", 1)
     m.apply({"brief": "b", "mood": "m", "notes_add": ["n"], "person": {"summary": "s", "trust": 60}, "learned_add": [{"claim": "k", "verdict": "bluster"}]}, speaker_id="g1")
-    r = m.report("laptop")
+    r = m.report("laptop", {"paused": False})
     assert r["character"] == "Trabolta" and r["worker"] == "laptop" and r["brief"] == "b" and r["mood"] == "m"
-    assert r["notes"] == ["n", "[learned] k (bluster)"]
-    assert r["people"] == [{"id": "g1", "name": "Ada", "summary": "s", "trust": 60}]
+    assert r["notes"] == ["n"] and r["learned"] == [{"claim": "k", "from": "", "verdict": "bluster"}]
+    assert r["people"][0]["id"] == "g1" and r["people"][0]["trust"] == 60 and r["people"][0]["turns"] == 1
+    assert r["rev"] == 1 and r["revisions"][0]["touched"] == ["brief", "learned", "mood", "notes", "person"] and r["status"] == {"paused": False}
     json.dumps(r)  # serialisable
 
 

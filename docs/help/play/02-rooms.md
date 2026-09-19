@@ -16,6 +16,14 @@ titled sections of your inbox):
 | **Location rooms** | tied to real places at the event — what happens *there* is heard *there* |
 | **Direct messages** | one-on-one threads — characters may slide into your DMs |
 
+## Rooms appear as the night opens up
+
+You won't see every room at once. The story adds rooms to your list as
+it opens them — a place appears once you've been there or the story
+lets you in, and a chatroom when the story says so ("📂 … is open now.").
+Characters who answer for themselves (a machine voice, say) show up as a
+direct message the moment they're around.
+
 ## Room rules
 
 - An **open** room: anyone can read and post.

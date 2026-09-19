@@ -277,7 +277,11 @@ For the participant app's dev/build flow (HMR), see [`../play`](../play).
 ## Running a live event
 
 ```bash
-# build the participant app once, then run the server (one origin)
+# everything at once, from the repo root (see scripts/dev.mjs):
+pnpm dev                           # build play + terminal, serve (:7000), editor (:5173)
+pnpm dev --sync "Untitled Project" # …and push core/examples/trapped-in-the-internet
+                                   # into that server project + reload its event
+# or piece by piece:
 pnpm --filter loom-play build
 pnpm --filter @loom/core serve
 # → the boot banner prints the passcodes + LAN URLs
@@ -340,6 +344,14 @@ DATABASE_URL=postgres://127.0.0.1:5432/loom_dev pnpm migrate   # once
 #   export BETTER_AUTH_SECRET="$(openssl rand -base64 32)"
 DATABASE_URL=postgres://127.0.0.1:5432/loom_dev BETTER_AUTH_SECRET=change-me pnpm serve
 ```
+
+**Dev gotcha — the Run mode plays a snapshot.** A server project's event
+runs `event.scenario_source`, captured at launch, not the example folder
+on disk, and the server has no watch mode. After editing an example (or
+server code), `pnpm sync-example "<project name or id>" [example]`
+(`core/scripts/sync-example.ts`) writes the files into `project_file`,
+updates the event's snapshot, and reloads the running event through its
+own mod code (guests re-join); `pnpm dev --sync …` does it on boot.
 
 ## Status
 

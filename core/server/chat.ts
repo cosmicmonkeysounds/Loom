@@ -405,6 +405,14 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
       case "factionRevealed":
         out.push(sys(`⚠️ The ${e.faction} has been exposed!`, "all"));
         break;
+      case "revealed": {
+        // A hidden place / room opened up — tell whoever it opened for. A
+        // character's reveal is the story's to announce (it is a person).
+        if (e.kind === "character") break;
+        const head = sim.channelHead(e.kind === "location" ? `loc:${e.target}` : e.target);
+        out.push(sys(`📂 ${head.title} is open now.`, e.person === null ? "all" : [e.person]));
+        break;
+      }
       default:
         break;
     }

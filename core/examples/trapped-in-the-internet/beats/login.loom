@@ -2,8 +2,10 @@
 // in the dark. The CAPTCHA you must fail. The thing you leave behind.
 // This is the moment a human uploads and chooses what kind of program
 // to be. It plays to each program on their own phone the moment they
-// register (ROLE Program: `when someone joins`) — and to nobody else:
-// the story's `start:` beat is `Power On`, not this.
+// register (ROLE Program: `when someone joins` moves them into the Mud
+// Room, a `cutscene: true` location — the app shows nothing but this
+// stream until the upload moves them out) — and to nobody else: the
+// story's `start:` beat is `Power On`, not this.
 //
 // The CAPTCHA is a real one on the phone (`show captcha …`): a grid of
 // squares, pick the traffic lights, VERIFY. Solving it proves you are a
@@ -60,10 +62,26 @@ The Uploader: To complete the upload you must leave one thing behind. Choose.
   The Uploader: Deposited. It is in the mud room. It will be fine. It is not your concern.
 
 unlock The Mud Room for program
+set program.uploaded = true
 The Uploader: Upload complete. Antivirus, confirm.
-Norton Anti-Virus: Scanned. {program.name} is free of viruses and ready to explore the entire computer. There will be a game soon in the Desktop. Alexa will tell you when. Go through the Tube.
-move program to The Desktop
-reply The Tube opens onto the Desktop — a blacked-out mess of LEDs, loose wire, encyclopaedias, screens. A classic screensaver drifts across the TV above the fireplace. Everyone here is a program. Mill about.
+show pass "Hold this up. An Antivirus will scan you in. Until then you are nowhere." to program
+
+// The door. A program waits in the Mud Room — still on rails — until an
+// Antivirus performer scans their pass (`Enforcer` in cast/kit.loom:
+// `beat Clearance`). Only then are they moved to the Desktop and handed
+// to Clippy. A host scanning them at the door just greets them.
+
+// The first thing on the Desktop: Clippy, and a tour of the computer
+// (the phone). `show tutorial` puts the app's own guided orientation on
+// the screen; the program can finish it or skip it, and either way the
+// story hears `tutorial answered` (`when tutorial answered for program:`
+// in main.loom) — skipping is noted.
+== Orientation
+  setting: The Desktop
+  cast: Clippy
+
+Clippy: Hi there, {program.name}! It looks like you're new to the computer. Would you like help with that?
+show tutorial "Clippy's orientation" to program with guide: "Clippy"
 
 // A program scanned at the Mud Room station a second time (a re-upload).
 == Re-upload

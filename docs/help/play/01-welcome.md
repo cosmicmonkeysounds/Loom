@@ -20,6 +20,14 @@ room tonight.
 No account, no password. If you close the app or your phone dies, just
 open it again — you'll come back as yourself, history intact.
 
+## The first minutes
+
+Some stories open **on rails**: when you first log on you may see only a
+dark screen with the story speaking to you — no rooms, no buttons —
+until it lets you go (press **Continue**). After that a guide may walk
+you through the app, step by step. You can **skip** the tour, but the
+story may notice.
+
 ## What you're looking at
 
 Your home screen is a list of **rooms** — places, chatrooms, and direct

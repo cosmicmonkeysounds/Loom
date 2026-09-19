@@ -185,8 +185,8 @@ rehearsal` · `live event`, tone-coloured violet / amber / emerald),
 button when `stale`) / *go live…* / *■ end* · the scratch enter/leave
 buttons; live-run destructive actions need the event code typed via
 `promptText`), the page tabs (Run · Stage · Chat · Players · Story · Roster ·
-World · Director · Log — only Run + Story usable with no run; World +
-Director closed under a lens), the **identity control**
+World · Director · Mind · Log — only Run + Story usable with no run; World,
+Director + Mind closed under a lens), the **identity control**
 (`cockpit/Identity.tsx`), quick-fire, and a ⏳ decisions pill;
 `LifecycleBanner.tsx` below it shows `notice`. **`RunPage.tsx`** is
 front of house only: the empty state ("Rehearse <project>" · ▶ Start
@@ -252,6 +252,24 @@ works there). `addPersona` now resolves to the new id. Tests:
 `store/players.test.ts`; server `core/test/server-impersonate.test.ts`;
 play `embed-css.test.ts`. Verified live in Chrome (guest CAPTCHA + chat
 from a pane, Clippy's booth beside it, restart re-seat, wide two-pane).
+
+**Mind — the agent debugger + control panel** (`cockpit/MindTab.tsx`
++ pure `cockpit/mind.ts`, 2026-09-18; operator-only, server runs). Left:
+the mind as the stagehand worker last mirrored it (`CockpitState.minds`
+← `ModView.minds`, the full `AgentMindReport`): the arc stepper (click a
+later stage → `set stage` with a why), brief (Edit), drives as sparklines
+over the revision log with sliders, policy select, questions, notes,
+learned, files on people (set trust / forget), thread summaries, the
+revision log (→ the thought that made it). Right: the trace
+(`CockpitState.thoughts` — `agentThought` SSE frames merged by id + the
+paged `GET /api/mod/agent/trace` on open, `loadThoughts`), filterable by
+kind / person / text; a thought opens to Input / Reasoning / Raw output /
+Parsed / Mind diff + **Re-run**. Header: worker + both model chips, the
+control panel (`mindControl` → `POST /api/mod/agent/control`: nudge,
+survey now, pause/resume, mind reasoning on/off, voice effort, reset with
+confirm). Colours are the reference dark categorical slots in fixed order
+(voice / lookup / reflect / survey / re-run); every badge carries its
+label. Tests: `cockpit/mind.test.ts`; live: `e2e-live/mind.spec.ts`.
 
 **The super-admin's peek** (`cockpit/Inspector.tsx`): a guest shows
 **Their view** (side / where / score / deciding / rooms / can — exact

@@ -447,6 +447,16 @@ export const useSim = create<SimState>((set, get) => {
       return null
     },
     closePlayer: async () => {},
+    // Nothing voices a `mind: external` character in the browser: no minds,
+    // no trace, and a control has nobody to go to.
+    minds: [],
+    thoughts: [],
+    mindControl: async () => {
+      const error = 'Agent minds live on a stagehand worker talking to an event server — open a server project to see and steer them.'
+      set({ error })
+      return { ok: false, error }
+    },
+    loadThoughts: async () => {},
   }
 })
 

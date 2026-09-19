@@ -6,7 +6,7 @@
 //! carry the session cookie (`credentials: "include"`); in dev the Vite proxy
 //! makes these same-origin so the cookie flows.
 
-import type { GuestView, PrimeView } from '@loom/core/views'
+import type { AgentControl, AgentMindSummary, AgentThought, GuestView, PrimeView } from '@loom/core/views'
 
 const BASE = import.meta.env.VITE_LOOM_API ?? ''
 
@@ -335,5 +335,23 @@ export const modApi = {
   /** Reset the event: clear the journal + replay from the loaded scenario. */
   async reset(eventId: string): Promise<void> {
     await req('POST', `/e/${eventId}/api/mod/reset`, {})
+  },
+  /** The mind control panel: forward one control to the worker voicing a
+   *  character. The server validates + forwards; 409 when nobody voices it. */
+  async agentControl(eventId: string, control: Omit<AgentControl, 'by'>): Promise<{ ok: boolean; delivered: number }> {
+    return await req<{ ok: boolean; delivered: number }>('POST', `/e/${eventId}/api/mod/agent/control`, control)
+  },
+  /** A page of the workers' recorded thoughts (the debugger's trace), plus
+   *  the minds as last mirrored. */
+  async agentTrace(
+    eventId: string,
+    o: { character?: string | null; after?: number; limit?: number } = {},
+  ): Promise<{ thoughts: AgentThought[]; seq: number; characters: string[]; minds: AgentMindSummary[] }> {
+    const q = new URLSearchParams()
+    if (o.character) q.set('character', o.character)
+    if (o.after !== undefined) q.set('after', String(o.after))
+    if (o.limit !== undefined) q.set('limit', String(o.limit))
+    const qs = q.toString()
+    return await req('GET', `/e/${eventId}/api/mod/agent/trace${qs ? `?${qs}` : ''}`)
   },
 }

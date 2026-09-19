@@ -108,7 +108,7 @@ beats with `-> self.Beat` ([Owned beats](owned-beats.md)).
 | `set who.field = value` | change any state ([Memory](memory.md)) |
 | `move who to Place` | put a participant somewhere (fires `arrives` / `leaves`) |
 | `add who to Group` / `remove who from Group` | group membership (fires `joins`) |
-| `reveal Group` | make a `hidden: true` group public |
+| `reveal Group` / `reveal Place` / `reveal room` / `reveal Character` | expose something `hidden: true` — a group to the party; a place, a chat room or a character to everyone, or `… for who` to one participant |
 | `reply text` | a private line back to whoever acted (the scanned guest, the mover) |
 | `fire name` / `fire name for who` / `fire name with k: v` | raise a named event every matching `when` hears |
 | `broadcast cue to scope` | send a cue (and indented lines) to an audience ([scopes](broadcast-improv.md)) |

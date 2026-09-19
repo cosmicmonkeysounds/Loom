@@ -139,6 +139,28 @@ describe("operator play-as sessions", () => {
     expect(say?.by).toBe("Ada");
   });
 
+  it("a wall terminal names itself: `label` becomes the journal's `by` and the feed's `via`", async () => {
+    const d = freshDir();
+    const rt = runtimeAt(d);
+    rt.openDoors();
+    const pid = await persona(rt);
+    // A terminal holds a mod token, not an author session — so `by` would
+    // otherwise be the generic "Director".
+    const login = await asToken(rt, "/api/mod/login", { passcode: "MOD111" }, "");
+    const modToken = login.json.token as string;
+    const minted = await asToken(rt, "/api/mod/impersonate", { role: "guest", id: pid, label: "Terminal · Kitchen" }, modToken);
+    expect(minted.status).toBe(200);
+    const token = minted.json.token as string;
+    expect((await asToken(rt, "/api/guest/say", { channel: "dm:Sysadmin", text: "typed at the wall" }, token)).status).toBe(200);
+    const line = (await getWith(rt, `/api/history?id=${pid}`, true)).json.messages.find((m: { text: string }) => m.text === "typed at the wall");
+    expect(line.via).toBe("Terminal · Kitchen");
+    expect(new Store(d).readJournal().find((l) => l.m === "say")?.by).toBe("Terminal · Kitchen");
+    // A director's own session keeps their name when no label is given.
+    const own = await mod(rt, "/api/mod/impersonate", { role: "guest", id: pid });
+    expect((await asToken(rt, "/api/guest/say", { channel: "lobby", text: "from the editor" }, own.json.token as string)).status).toBe(200);
+    expect((await getWith(rt, `/api/history?id=${pid}`, true)).json.messages.find((m: { text: string }) => m.text === "from the editor").via).toBe("Ada");
+  });
+
   it("a booth session performs as the character and is never a moderator", async () => {
     const rt = runtimeAt(freshDir());
     rt.openDoors();

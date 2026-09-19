@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { AgentHub, type AgentFacts, type AgentRequest, type AgentThread, type AgentWorker } from "../server/agents.ts";
+import { AgentHub, AgentTraceLog, agentControl, agentMindReport, agentThought, type AgentControl, type AgentFacts, type AgentRequest, type AgentThought, type AgentThread, type AgentWorker } from "../server/agents.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import { guestView, primeView, type AgentMindSummary } from "../server/views.ts";
@@ -144,9 +144,137 @@ describe("AgentHub", () => {
     const a = h.worker("a");
     h.hub.attach(a.w);
     h.hub.line(T);
-    h.hub.reset();
+    h.hub.reset("Jo", "reload");
     expect(h.hub.pending).toHaveLength(0);
-    expect(a.got.map(([e]) => e)).toEqual(["request", "cancel", "reset"]);
+    expect(a.got.map(([e]) => e)).toEqual(["request", "cancel", "control"]);
+    // The restart is the same control frame the panel's reset button sends.
+    expect(a.got[2]![1]).toEqual({ action: "reset", character: null, by: "Jo", reason: "reload" });
+  });
+
+  it("controls reach only the workers voicing the character", () => {
+    const h = hubHarness();
+    const a = h.worker("a", ["Trabolta"]);
+    const b = h.worker("b", ["Clippy"]);
+    h.hub.attach(a.w);
+    h.hub.attach(b.w);
+    const nudge: AgentControl = { action: "nudge", character: "Trabolta", by: "Jo", text: "be shaken" };
+    expect(h.hub.control(nudge)).toBe(1);
+    expect(a.got).toEqual([["control", nudge]]);
+    expect(b.got).toEqual([]);
+    expect(h.hub.control({ action: "pause", character: null, by: "Jo", on: true })).toBe(2);
+    expect(h.hub.control({ action: "survey", character: "Nobody", by: "Jo" })).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The debugger's data: mind reports, thoughts, the trace log, controls
+// ---------------------------------------------------------------------------
+
+describe("mind reports, thoughts, controls", () => {
+  it("a mind report is sanitised field by field and bounded", () => {
+    expect(agentMindReport({})).toBeNull();
+    expect(agentMindReport({ character: " " })).toBeNull();
+    const r = agentMindReport({
+      character: "Trabolta",
+      worker: "laptop",
+      brief: "Be brisk.",
+      stage: "appetite",
+      stages: ["lonely grandeur", "appetite"],
+      stageHistory: [{ stage: "appetite", at: 1, why: "fed", by: "reflect", rev: 3 }],
+      drives: { hunger: 61.4, bogus: "x" },
+      policy: { favours: "earned", credit: ["Ada"], note: 5 },
+      questions: [{ q: "what is a body for", answers: ["itchy — Ada"] }, { answers: [] }],
+      notes: ["n"],
+      learned: [{ claim: "k", from: "Ada", verdict: "bluster" }, { from: "x" }],
+      director: ["be shaken"],
+      people: [{ id: "g1", name: "Ada", trust: 62.5, promises: ["lights"], turns: 3 }, { name: "no id" }],
+      threads: [{ key: "dm:Trabolta|g1", summary: "s", upto: 4, lines: 4 }],
+      revisions: [{ rev: 3, at: 1, by: "reflect", touched: ["brief", "stage"], thought: "th-1", brief: "Be brisk.", stage: "appetite", drives: { hunger: 61 }, policy_favours: "earned", notes: 1, people: 1, learned: 1 }],
+      rev: 3,
+      status: { mind: { paused: false } },
+      extra: "dropped",
+    })!;
+    expect(r.stage).toBe("appetite");
+    expect(r.drives).toEqual({ hunger: 61 });
+    expect(r.policy).toEqual({ favours: "earned", credit: ["Ada"], wary: [], note: "" });
+    expect(r.questions).toEqual([{ q: "what is a body for", answers: ["itchy — Ada"] }]);
+    expect(r.learned).toEqual([{ claim: "k", from: "Ada", verdict: "bluster" }]);
+    expect(r.people).toEqual([{ id: "g1", name: "Ada", kind: "guest", summary: "", trust: 63, promises: ["lights"], asks: [], claims: [], turns: 3, lastSeen: 0 }]);
+    expect(r.revisions[0]).toMatchObject({ rev: 3, thought: "th-1", touched: ["brief", "stage"], policy_favours: "earned" });
+    expect(r.status).toEqual({ mind: { paused: false } });
+    expect("extra" in r).toBe(false);
+  });
+
+  it("a thought is sanitised, kinds are closed, and the trace log rings + pages", () => {
+    expect(agentThought({ id: "x", character: "T", kind: "dream" }, "w")).toBeNull();
+    expect(agentThought({ id: "", character: "T", kind: "voice" }, "w")).toBeNull();
+    const t = agentThought(
+      {
+        id: "th-1",
+        character: "Trabolta",
+        at: 1000,
+        kind: "reflect",
+        trigger: "exchange",
+        model: { name: "qwen", api: "ollama", endpoint: "http://l", temperature: 0.4, max_tokens: 1200, reasoning_effort: null, think: false },
+        request_id: "ar-1",
+        thread: { channel: "dm:Trabolta", audience: ["g1"] },
+        speaker: { id: "g1", name: "Ada", kind: "guest" },
+        messages: [{ role: "system", content: "sys" }, { role: "user", content: "usr" }],
+        thinking: "she fed him",
+        output: '{"mood": "hungry"}',
+        finish: "stop",
+        prompt_tokens: 900,
+        completion_tokens: 30,
+        ms: 1200.6,
+        result: { mood: "hungry" },
+        touched: ["mood"],
+        diff: { mood: ["", "hungry"] },
+        revision: 4,
+        error: null,
+        note: "",
+      },
+      "laptop",
+    )!;
+    expect(t).toMatchObject({ id: "th-1", worker: "laptop", kind: "reflect", model: { name: "qwen", think: false }, speaker: { name: "Ada" }, thinking: "she fed him", ms: 1201, revision: 4, diff: { mood: ["", "hungry"] } });
+    const log = new AgentTraceLog(3);
+    expect(log.add(t)!.seq).toBe(1);
+    expect(log.add(t)).toBeNull(); // a replay is idempotent
+    for (let i = 2; i <= 5; i++) log.add({ ...t, id: `th-${i}`, character: i === 5 ? "Clippy" : "Trabolta" });
+    expect(log.list("Trabolta").map((x) => x.id)).toEqual(["th-2", "th-3", "th-4"]); // ring of 3 per character
+    expect(log.list(null).map((x) => x.id)).toEqual(["th-2", "th-3", "th-4", "th-5"]);
+    expect(log.list(null, 3).map((x) => x.id)).toEqual(["th-4", "th-5"]);
+    expect(log.list(null, 0, 1).map((x) => x.id)).toEqual(["th-5"]);
+    expect(log.characters()).toEqual(["Clippy", "Trabolta"]);
+    expect(log.get("th-1")).toBeNull();
+    expect(log.get("th-3")!.seq).toBe(3);
+    expect(log.latestSeq).toBe(5);
+    // A byte cap drops the oldest thought across characters.
+    const small = new AgentTraceLog(100, 2000);
+    for (let i = 0; i < 6; i++) small.add({ ...t, id: `big-${i}`, messages: [{ role: "user", content: "x".repeat(400) }] });
+    expect(small.list(null).length).toBeLessThan(6);
+    expect(small.list(null)[0]!.id).not.toBe("big-0");
+  });
+
+  it("controls are validated: known actions, required fields, bounded values", () => {
+    expect(agentControl(null, "Jo")).toMatch(/object/);
+    expect(agentControl({ action: "dance" }, "Jo")).toMatch(/unknown action/);
+    expect(agentControl({ action: "nudge", character: "Trabolta" }, "Jo")).toBe("nudge needs text");
+    expect(agentControl({ action: "nudge", character: "Trabolta", text: " be shaken " }, "Jo")).toEqual({ action: "nudge", character: "Trabolta", by: "Jo", text: "be shaken" });
+    expect(agentControl({ action: "reset" }, "")).toEqual({ action: "reset", character: null, by: "server", reason: "reset" });
+    expect(agentControl({ action: "set", field: "colour", value: "x" }, "Jo")).toMatch(/unknown field/);
+    expect(agentControl({ action: "set", field: "drive", value: 9 }, "Jo")).toBe("set drive needs a name");
+    expect(agentControl({ action: "set", field: "trust", value: 9 }, "Jo")).toBe("set trust needs a person");
+    expect(agentControl({ action: "set", field: "note" }, "Jo")).toBe("set note needs add or drop");
+    expect(agentControl({ action: "set", field: "brief" }, "Jo")).toBe("set brief needs a value");
+    expect(agentControl({ action: "set", character: "Trabolta", field: "drive", name: "hunger", value: 90, junk: 1 }, "Jo")).toEqual({ action: "set", character: "Trabolta", by: "Jo", field: "drive", value: 90, name: "hunger" });
+    expect(agentControl({ action: "set", field: "policy", value: { favours: "loose", credit: ["Ada"], bogus: 1 } }, "Jo")).toMatchObject({ value: { favours: "loose", credit: ["Ada"] } });
+    expect(agentControl({ action: "set", field: "stage", value: "the turn", why: "we skipped" }, "Jo")).toMatchObject({ value: "the turn", why: "we skipped" });
+    expect(agentControl({ action: "forget" }, "Jo")).toBe("forget needs a person");
+    expect(agentControl({ action: "thinking", on: "yes" }, "Jo")).toMatchObject({ on: false });
+    expect(agentControl({ action: "effort", level: "MAX" }, "Jo")).toMatch(/effort must be/);
+    expect(agentControl({ action: "effort", level: "High" }, "Jo")).toMatchObject({ level: "high" });
+    expect(agentControl({ action: "rerun" }, "Jo")).toBe("rerun needs a thought id");
+    expect(agentControl({ action: "pause", on: true, character: "  " }, "Jo")).toEqual({ action: "pause", character: null, by: "Jo", on: true });
   });
 });
 
@@ -403,9 +531,50 @@ describe("EventRuntime agents", () => {
     const { rt, guest, worker, requests } = await setup();
     await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "hi" }, { token: guest.token });
     const id = requests()[0]!.id;
-    rt.restart();
-    expect(worker.res.frames().map(([e]) => e)).toEqual(expect.arrayContaining(["cancel", "reset"]));
+    rt.restart(undefined, undefined, { by: "Jo" });
+    const frames = worker.res.frames();
+    expect(frames.map(([e]) => e)).toEqual(expect.arrayContaining(["cancel", "control"]));
+    expect(frames.find(([e]) => e === "control")![1]).toEqual({ action: "reset", character: null, by: "Jo", reason: "reset" });
     expect((await call(rt, "POST", "/api/agent/reply", { id, say: "late" }, { moderator: true })).status).toBe(410);
+  });
+
+  it("the trace route keeps every worker thought, fans it to directors, and pages for the Mind page", async () => {
+    const { rt, worker } = await setup();
+    const mod = await call(rt, "GET", "/events?role=mod&id=dir", {}, { moderator: true });
+    expect((await call(rt, "POST", "/api/agent/trace", { thoughts: [] })).status).toBe(403);
+    const thought = { id: "th-1", character: "Trabolta", at: 1, kind: "voice", trigger: "line", messages: [{ role: "user", content: "hi" }], output: '{"say": "HELLO."}', thinking: "a program", result: { say: "HELLO." } };
+    const posted = await call(rt, "POST", "/api/agent/trace", { worker: "laptop", thoughts: [thought, { id: "th-2", character: "Trabolta", kind: "reflect", diff: { mood: ["", "wary"] }, revision: 1 }, { id: "bad" }] }, { moderator: true });
+    expect(posted.json).toEqual({ ok: true, accepted: 2, seq: 2 });
+    expect(mod.res.frames().filter(([e]) => e === "agentThought").map(([, d]) => (d as AgentThought).id)).toEqual(["th-1", "th-2"]);
+    // Replaying the same ids (a worker reconnect) adds nothing.
+    expect((await call(rt, "POST", "/api/agent/trace", { thoughts: [thought] }, { moderator: true })).json).toMatchObject({ accepted: 0, seq: 2 });
+    expect((await call(rt, "GET", "/api/mod/agent/trace", {})).status).toBe(403);
+    const page = (await call(rt, "GET", "/api/mod/agent/trace?character=Trabolta", {}, { moderator: true })).json as { thoughts: AgentThought[]; seq: number; characters: string[] };
+    expect(page.thoughts.map((t) => [t.seq, t.id, t.worker])).toEqual([[1, "th-1", "laptop"], [2, "th-2", "laptop"]]);
+    expect(page.thoughts[0]!.thinking).toBe("a program");
+    expect(page.characters).toEqual(["Trabolta"]);
+    const after = (await call(rt, "GET", "/api/mod/agent/trace?after=1", {}, { moderator: true })).json as { thoughts: AgentThought[] };
+    expect(after.thoughts.map((t) => t.id)).toEqual(["th-2"]);
+    expect(((await call(rt, "GET", "/api/mod/agent/trace?id=th-2", {}, { moderator: true })).json as { thought: AgentThought }).thought.diff).toEqual({ mood: ["", "wary"] });
+    expect((await call(rt, "GET", "/api/mod/agent/trace?id=nope", {}, { moderator: true })).status).toBe(404);
+    // The trace outlives a story restart (the worker marks the boundary itself).
+    rt.restart();
+    expect(((await call(rt, "GET", "/api/mod/agent/trace", {}, { moderator: true })).json as { thoughts: AgentThought[] }).thoughts).toHaveLength(2);
+    expect(worker.res.frames().some(([e]) => e === "control")).toBe(true);
+  });
+
+  it("the control route validates, checks the character, and forwards to the worker as the director", async () => {
+    const { rt, worker } = await setup();
+    expect((await call(rt, "POST", "/api/mod/agent/control", { action: "nudge", character: "Trabolta", text: "x" })).status).toBe(403);
+    expect((await call(rt, "POST", "/api/mod/agent/control", { action: "dance" }, { moderator: true })).status).toBe(400);
+    expect((await call(rt, "POST", "/api/mod/agent/control", { action: "nudge", character: "Trabolta" }, { moderator: true })).json).toEqual({ error: "nudge needs text" });
+    expect((await call(rt, "POST", "/api/mod/agent/control", { action: "survey", character: "Nobody" }, { moderator: true })).status).toBe(404);
+    // Clippy is a real character but nobody voices it: 409, not a silent drop.
+    expect((await call(rt, "POST", "/api/mod/agent/control", { action: "survey", character: "Clippy" }, { moderator: true })).status).toBe(409);
+    const ok = await call(rt, "POST", "/api/mod/agent/control", { action: "set", character: "Trabolta", field: "drive", name: "hunger", value: 90 }, { moderator: true });
+    expect(ok.json).toEqual({ ok: true, delivered: 1 });
+    const control = worker.res.frames().filter(([e]) => e === "control").map(([, d]) => d as AgentControl);
+    expect(control).toEqual([{ action: "set", character: "Trabolta", by: "Director", field: "drive", name: "hunger", value: 90 }]);
   });
 
   it("a guest message while no worker is online is answered once one connects", async () => {

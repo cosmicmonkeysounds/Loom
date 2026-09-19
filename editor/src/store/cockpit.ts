@@ -20,7 +20,7 @@ import { createContext, useContext } from 'react'
 import { create, useStore } from 'zustand'
 import type { SignalArgs, StatField } from '@/lib/api'
 import type { SimEvent } from '@loom/core/sim'
-import type { GuestView, InteractionSummary, PrimeView } from '@loom/core/views'
+import type { AgentControl, AgentMindSummary, AgentThought, GuestView, InteractionSummary, PrimeView } from '@loom/core/views'
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -38,6 +38,7 @@ export const CockpitTab = {
   Roster: 'roster',
   World: 'world',
   Director: 'director',
+  Mind: 'mind',
   Log: 'log',
 } as const
 
@@ -392,6 +393,20 @@ export interface CockpitState {
   closePlayer(session: PlayerSession): Promise<void>
   /** Write any world variable (the World browser's inline editing). */
   setVar(path: string, value: string): Promise<void>
+  /** Agent-voiced characters' minds as their stagehand workers last mirrored
+   *  them (`ModView.minds`) — the Mind page's live state. Empty on the local
+   *  backend (nothing voices a `mind: external` character in the browser). */
+  minds: AgentMindSummary[]
+  /** The workers' recorded model calls (`agentThought` frames + the paged
+   *  `/api/mod/agent/trace`), oldest first, bounded. */
+  thoughts: AgentThought[]
+  /** Send a control to the worker voicing a character (reset / survey /
+   *  nudge / set / forget / thinking / effort / pause / rerun). Resolves to
+   *  the server's answer; a refusal lands in `error` too. */
+  mindControl(control: Omit<AgentControl, 'by'>): Promise<{ ok: boolean; error?: string }>
+  /** (Re)load the trace from the server — on opening the page, or to page
+   *  back past what the stream delivered. */
+  loadThoughts(character?: string | null): Promise<void>
 }
 
 /**
@@ -475,6 +490,10 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   openPlayer: async () => null,
   closePlayer: noop,
   setVar: noop,
+  minds: [],
+  thoughts: [],
+  mindControl: async () => ({ ok: false, error: 'no run' }),
+  loadThoughts: noop,
 }))
 
 export const CockpitContext = createContext<CockpitStore>(nullCockpit)

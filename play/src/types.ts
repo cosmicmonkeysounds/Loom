@@ -109,6 +109,11 @@ export interface GuestView {
   pendingChoice: string[] | null;
   /** Channel the pending decision docks under. */
   decisionChannel: string | null;
+  /** Standing in a `cutscene: true` location: the app goes on rails — a
+   *  full-screen stream of what is said to you, no rooms sidebar. */
+  cutscene?: boolean;
+  /** Widget cards (by seq) already answered — rendered resolved, never re-asked. */
+  answered?: number[];
   /** Public (joinable) factions — the side chooser's source; may be empty. */
   factions?: string[];
   /** Every (public) group this guest belongs to. */

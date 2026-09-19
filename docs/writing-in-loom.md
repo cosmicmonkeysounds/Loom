@@ -1565,6 +1565,8 @@ That loop — not this guide — is how you'll actually learn Loom.
 | `listed: true` (character) · `directory: everyone` (header) | the People directory + private messages |
 | `broadcast "!…" to …` | an alert (chime + banner) |
 | `joinable: false` (group) · `sealed: true` (prison) | no side chooser · no self-escape |
+| `hidden: true` (location · channel · character) · `reveal X [for who]` · `cutscene: true` (location) | rooms that appear as the night opens · the app on rails |
+| `show tutorial "…" to who with guide: "Name"` · `when tutorial answered for who:` (`skipped`) | the app's guided tour, and what skipping it means |
 | `theme: plain` / `theme: aol97` | the participant app's skin (header) |
 | `GENERATOR` / `SCENE` , `every` / `yield` / `wait until` | background life |
 
