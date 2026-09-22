@@ -129,6 +129,7 @@ describe('buildRooms with the identity projection (exact)', () => {
     codex: [],
     codexTotal: 0,
     people: [],
+    cutscene: false,
     ...over,
   })
 
@@ -180,8 +181,8 @@ describe('buildRooms with the identity projection (exact)', () => {
       theme: 'plain',
       faction: 'Mods',
       guests: [
-        { id: 'g1', name: 'Ada', faction: 'Mods', captured: false },
-        { id: 'g2', name: 'Bo', faction: null, captured: false },
+        { id: 'g1', name: 'Ada', faction: 'Mods', captured: false, location: null },
+        { id: 'g2', name: 'Bo', faction: null, captured: false, location: null },
       ],
       channels: [{ id: 'room:backroom', kind: 'private', title: '# the-backroom', spaceId: 'internet', member: true, canPost: true, threadable: true }],
       spaces: [],

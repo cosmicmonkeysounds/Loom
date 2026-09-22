@@ -108,6 +108,8 @@ function describe(e: SimEvent): string {
       return `tick +${e.elapsedMs}ms`
     case SimEventType.Diagnostic:
       return e.message
+    default:
+      return e.type
   }
 }
 

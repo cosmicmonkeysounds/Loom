@@ -20,6 +20,7 @@ import { createContext, useContext } from 'react'
 import { create, useStore } from 'zustand'
 import type { SignalArgs, StatField } from '@/lib/api'
 import type { SimEvent } from '@loom/core/sim'
+import type { WidgetCard } from '@loom/core/chat'
 import type { AgentControl, AgentMindSummary, AgentThought, GuestView, InteractionSummary, PrimeView } from '@loom/core/views'
 
 // ---------------------------------------------------------------------------
@@ -158,6 +159,8 @@ export interface CockpitMessage {
   /** The director who posted this *as* a participant (mod `say` with `as`
    *  naming a person). Never shown to guests. */
   via?: string
+  /** The card a `widget` message carries (a CAPTCHA, a picture, a poll…). */
+  widget?: WidgetCard
 }
 
 export interface FactionSummary {

@@ -27,8 +27,6 @@
 //! `send` callbacks, the request body comes from the runtime's `build` —
 //! so it tests without sockets or a sim.
 
-import { randomUUID } from "node:crypto";
-
 /** Who is talking to the character. */
 export interface AgentSpeaker {
   kind: "guest" | "performer";
@@ -646,7 +644,11 @@ export class AgentHub {
   private readonly open = new Map<string, OpenRequest>(); // request id →
   private readonly byThread = new Map<string, string>(); // thread key → request id
 
-  constructor(private readonly o: AgentHubOptions) {}
+  private readonly o: AgentHubOptions;
+
+  constructor(o: AgentHubOptions) {
+    this.o = o;
+  }
 
   private now(): number {
     return (this.o.now ?? Date.now)();
@@ -720,7 +722,7 @@ export class AgentHub {
   }
 
   private create(thread: AgentThread): void {
-    const id = `ar-${randomUUID().slice(0, 8)}`;
+    const id = `ar-${globalThis.crypto.randomUUID().slice(0, 8)}`;
     const req = this.o.build(thread, id);
     if (req === null) return;
     const r: OpenRequest = { req, key: threadKey(thread), worker: null, dispatchedAt: null, attempts: 0, followUp: false };
