@@ -3,7 +3,7 @@
 // mean "the run restarted while this phone wasn't listening".
 
 import { describe, expect, it } from "vitest";
-import { LifecycleKind, SessionRole, guestSessionDead, lifecycleDropsSession, lifecycleNotice } from "../src/lifecycle.ts";
+import { LifecycleKind, SessionRole, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice } from "../src/lifecycle.ts";
 
 describe("lifecycle policy", () => {
   it("every restart drops a guest; only go-live / ended drop a performer", () => {
@@ -32,6 +32,12 @@ describe("lifecycle policy", () => {
     expect(guestSessionDead(404, "unknown guest")).toBe(true);
     expect(guestSessionDead(404, "no such interaction for guests")).toBe(false);
     expect(guestSessionDead(403, "you can't post here")).toBe(false);
+  });
+
+  it("recognises an event the server no longer hosts", () => {
+    expect(eventGone(404, "unknown event")).toBe(true);
+    expect(eventGone(404, "unknown guest")).toBe(false);
+    expect(eventGone(401, "unknown event")).toBe(false);
   });
 });
 

@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api, useChatStream } from "./client.ts";
 import { maxSeqOf, pickAlerts, playChime, pmChannelId, pmOtherParty, unlockFromSearch, vibrate, withoutUnlock } from "./codex.ts";
 import { usePlayHost } from "./host.ts";
-import { SessionRole, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "./lifecycle.ts";
+import { SessionRole, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "./lifecycle.ts";
 import { locationOfRoom, occupantsByLocation, type Presence } from "./presence.ts";
 import { STORY_SPACE, channelHead, groupByChannel, prettyName, useThreads, type Threads } from "./threads.ts";
 import { useTyping } from "./typing.ts";
@@ -66,14 +66,21 @@ export async function resolveEventTitle(code: string): Promise<string | null> {
  * Is this token still good? Asked before dropping a session over a closed
  * stream — a closed `EventSource` is also what a flaky network, a sleeping
  * phone, or a mid-restart server produces, and none of those should log a
- * guest out. Only a definite 401 / 403 from the server means dead.
+ * guest out. Only a definite answer from the server means dead: 401 / 403
+ * (the run forgot this token → `"reset"`) or 404 `unknown event` (the event
+ * itself is gone → `"ended"`). `null` = alive, or no way to tell.
  */
-async function tokenDead(base: string, role: "guest" | "prime", token: string): Promise<boolean> {
+async function tokenDead(base: string, role: "guest" | "prime", token: string): Promise<"reset" | "ended" | null> {
   try {
     const res = await fetch(`${base}/api/state?role=${role}`, { headers: { "x-loom-token": token } });
-    return res.status === 401 || res.status === 403;
+    if (res.status === 401 || res.status === 403) return "reset";
+    if (res.status === 404) {
+      const body = (await res.json().catch(() => ({}))) as { error?: unknown };
+      if (eventGone(404, String(body.error ?? ""))) return "ended";
+    }
+    return null;
   } catch {
-    return false; // no answer at all: the server is away, not the session
+    return null; // no answer at all: the server is away, not the session
   }
 }
 
@@ -406,11 +413,12 @@ export function useGuestSession(): GuestSession {
       if (lifecycleDropsSession(n.kind, SessionRole.Guest)) dropSession(lifecycleNotice(n.kind, SessionRole.Guest));
     },
     // The stream closed for good: if the server really no longer knows this
-    // token (a restart we slept through), drop the session and say why.
+    // token (a restart we slept through) or the event itself is gone, drop
+    // the session and say why.
     onDead: () => {
       if (me === null) return;
       void tokenDead(base, "guest", me.token).then((dead) => {
-        if (dead) dropSession(lifecycleNotice("reset", SessionRole.Guest));
+        if (dead) dropSession(lifecycleNotice(dead, SessionRole.Guest));
       });
     },
   });
@@ -442,8 +450,9 @@ export function useGuestSession(): GuestSession {
       } catch (e) {
         // Only explain a session we are dropping right now — never overwrite
         // the notice of one a `lifecycle` frame already dropped.
-        if (e instanceof ApiError && guestSessionDead(e.status, e.message) && me !== null) {
-          dropSession(lifecycleNotice("reset", SessionRole.Guest));
+        if (e instanceof ApiError && me !== null) {
+          if (eventGone(e.status, e.message)) dropSession(lifecycleNotice("ended", SessionRole.Guest));
+          else if (guestSessionDead(e.status, e.message)) dropSession(lifecycleNotice("reset", SessionRole.Guest));
         }
         throw e;
       }
@@ -788,7 +797,7 @@ export function usePrimeSession(): PrimeSession {
     onDead: () => {
       if (auth === null) return;
       void tokenDead(base, "prime", auth.token).then((dead) => {
-        if (dead) dropBooth(lifecycleNotice("golive", SessionRole.Performer));
+        if (dead) dropBooth(lifecycleNotice(dead === "ended" ? "ended" : "golive", SessionRole.Performer));
       });
     },
   });
@@ -801,8 +810,9 @@ export function usePrimeSession(): PrimeSession {
       try {
         return await api<T>(`${base}${path}`, body, token);
       } catch (e) {
-        if (e instanceof ApiError && performerSessionDead(e.status, e.message) && auth !== null) {
-          dropBooth(lifecycleNotice("golive", SessionRole.Performer));
+        if (e instanceof ApiError && auth !== null) {
+          if (eventGone(e.status, e.message)) dropBooth(lifecycleNotice("ended", SessionRole.Performer));
+          else if (performerSessionDead(e.status, e.message)) dropBooth(lifecycleNotice("golive", SessionRole.Performer));
         }
         throw e;
       }

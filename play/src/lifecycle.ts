@@ -68,6 +68,15 @@ export function guestSessionDead(status: number, message: string): boolean {
 }
 
 /**
+ * A 404 `unknown event` means the event this phone joined no longer exists
+ * on the server (ended, deleted, or replaced by a new launch) — no retry can
+ * ever reconnect, so the session is over for guests and performers alike.
+ */
+export function eventGone(status: number, message: string): boolean {
+  return status === 404 && /unknown event/i.test(message);
+}
+
+/**
  * A performer POST answered 403 "sign in" means the booth's token lost its
  * character — the show went live while this phone was in a pocket. (A 403
  * "you can't post here" is a policy refusal, not a dead session.)
