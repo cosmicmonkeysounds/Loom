@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { groupCodex, maxSeqOf, pickAlerts, pmChannelId, pmOtherParty, unlockFromSearch, withoutUnlock } from "../src/codex.ts";
+import { maxSeqOf, pickAlerts, pmChannelId, pmOtherParty, unlockFromSearch, withoutUnlock } from "../src/codex.ts";
 import type { ChatMessage } from "../src/types.ts";
 
 function msg(seq: number, alert: boolean, hidden = false): ChatMessage {
@@ -38,22 +38,6 @@ describe("unlock deep link", () => {
     expect(unlockFromSearch("?unlock=")).toBeNull();
     expect(withoutUnlock("?code=EVT1&unlock=SANDY-1997")).toBe("?code=EVT1");
     expect(withoutUnlock("?unlock=X")).toBe("");
-  });
-});
-
-describe("codex grouping", () => {
-  it("groups by subject in first-seen order; unattributed lore under ''", () => {
-    const groups = groupCodex([
-      { id: "a", title: "A", about: "Trabolta", text: "" },
-      { id: "b", title: "B", about: "World", text: "" },
-      { id: "c", title: "C", about: "Trabolta", text: "" },
-      { id: "d", title: "D", about: null, text: "" },
-    ]);
-    expect(groups.map((g) => [g.about, g.entries.map((e) => e.id)])).toEqual([
-      ["Trabolta", ["a", "c"]],
-      ["World", ["b"]],
-      ["", ["d"]],
-    ]);
   });
 });
 

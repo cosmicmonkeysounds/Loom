@@ -12,8 +12,10 @@ booth: every guest is a conversation, and your character is the mask.
 ## Signing in
 
 Pick **I'm a Performer** and enter the **performer passcode** from the
-host (a scanned link fills it in). The story's cast appears — tap your
-character. You now speak *as* that character everywhere.
+host (a scanned link fills it in). The story's **parts** appear — every
+character with something to do, with their pictures — tap yours. A part
+is one booth's: a greyed-out name is already taken by another
+performer. You now speak *as* that character everywhere.
 
 ## Scanning guests
 

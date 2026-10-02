@@ -81,6 +81,7 @@ show pass "Hold this up. An Antivirus will scan you in. Until then you are nowhe
   cast: Clippy
 
 Clippy: Hi there, {program.name}! It looks like you're new to the computer. Would you like help with that?
+start quest Orientation for program
 show tutorial "Clippy's orientation" to program with guide: "Clippy"
 
 // A program scanned at the Mud Room station a second time (a re-upload).

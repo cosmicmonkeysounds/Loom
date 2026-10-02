@@ -1446,6 +1446,34 @@ own `when who learns X:` hook then runs (check `who == self`). Mark a
 character `listed: true` so guests can find and message them; write
 `directory: everyone` in the header to list every guest to every guest.
 A broadcast that starts with `!` is an **alert** — every phone chimes.
+Guests keep their codex in a pinned **Codex** room: each entry is a card,
+and the room's message box takes codes.
+
+### 11.13a Things to do: Quests
+
+The codex's sibling. A `QUEST` is something the night asks a guest to
+*do*; each one is a card in their pinned **Quest Log**, and every step
+lands in that card's own thread:
+
+```loom
+QUEST Three Keys
+  title: The Three Keys
+  from: OpenOffice
+  text: Three keys, in three people's heads. Find them.
+
+when the glitch begins:
+  start quest Three Keys for everyone
+
+when guest learns The First Key:
+  update quest Three Keys for guest "You hold the First Key."
+```
+
+`start` hands it out (once), `update` adds a line to an active quest,
+`complete` (or `finish`) and `fail` settle it — each `for` a guest,
+`everyone`, or a scope like `group(The Awakened)`, with an optional
+quoted line. Hear it with `when guest completes quest Three Keys:` (also
+`starts` / `fails`); read it as `guest.quest.three_keys` (`"active"`,
+`"done"`, `"failed"`).
 
 **That's the whole language.** Write a little, press Run, add one idea.
 That loop — not this guide — is how you'll actually learn Loom.
@@ -1563,6 +1591,7 @@ That loop — not this guide — is how you'll actually learn Loom.
 | `CODEX name` + `about:` `code:` `known to:` `text:` | a piece of lore guests hold, unlock, and share |
 | `unlock X for who` · `when who learns X:` · `when wrong code for who:` · `when share for who:` | lore moving |
 | `listed: true` (character) · `directory: everyone` (header) | the People directory + private messages |
+| `CHARACTER Name` with no body · `playable: false` · `avatar: https://…` | a program a guest may sign in as (one each) · nobody signs in as this · its profile picture (else looked up on Wikipedia) |
 | `broadcast "!…" to …` | an alert (chime + banner) |
 | `joinable: false` (group) · `sealed: true` (prison) | no side chooser · no self-escape |
 | `hidden: true` (location · channel · character) · `reveal X [for who]` · `cutscene: true` (location) | rooms that appear as the night opens · the app on rails |

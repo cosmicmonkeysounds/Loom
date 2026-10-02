@@ -17,18 +17,43 @@
 //!                                       broadcasts, and your personal beats.
 //!   - **faction** `"faction:<Id>"`   — a faction broadcast, members only.
 //!   - **dm**      `"dm:<Character>"`  — a character speaking to you.
+//!   - **codex**   `"codex"`           — your Codex: every entry you hold, as a
+//!                                       card, and the box you type codes into.
+//!   - **quests**  `"quests"`          — your Quest Log: one card per quest, its
+//!                                       steps threaded under it.
+//!
+//! The codex and the quest log are *pinned* rooms: one id for everyone,
+//! each person's messages addressed to them alone.
 
 import type { Sim, SimEvent } from "../src/runtime/sim/index.ts";
 
 // `lobby` / `faction` / `dm` / `location` are derived; `group` / `open` /
 // `private` come from authored SPACE/CHANNEL declarations. `location` is the
 // derived room of a `LOCATION` (`loc:<Id>`) — the stage itself is a channel.
-export type ChannelKind = "lobby" | "faction" | "dm" | "group" | "open" | "private" | "location";
+export type ChannelKind = "lobby" | "faction" | "dm" | "group" | "open" | "private" | "location" | "codex" | "quests";
 
 /** Who receives a message: `"all"` guests, or a fixed set of guest ids. */
 export type Audience = "all" | string[];
 
-export type MessageKind = "line" | "narration" | "signal" | "system" | "widget";
+export type MessageKind = "line" | "narration" | "signal" | "system" | "widget" | "codex" | "quest";
+
+/** The entry a `codex` message carries (its `text` is the entry's text). */
+export interface CodexCard {
+  entry: string;
+  title: string;
+  about: string | null;
+  via: "code" | "story" | "share";
+  /** Who shared it (display name), for `via: "share"`. */
+  from: string | null;
+}
+
+/** The quest a `quest` message is a step of. A quest's first message
+ *  (`start`) is the root of its thread; every later step is a reply. */
+export interface QuestCard {
+  quest: string;
+  title: string;
+  action: "start" | "update" | "complete" | "fail";
+}
 
 /** An inline widget (`show …`): what to render, keyed by `kind`, plus the
  *  authored text + params the statement carried. The client owns the
@@ -75,10 +100,16 @@ export interface ChatMessage {
   alert?: boolean;
   /** The card a `widget` message renders (a CAPTCHA, a picture, a poll…). */
   widget?: WidgetCard;
+  /** The entry a `codex` message shows. */
+  codex?: CodexCard;
+  /** The quest a `quest` message is a step of. */
+  quest?: QuestCard;
 }
 
-/** A message before the store assigns it a `seq` + resolves `hidden`. */
-export type DraftMessage = Omit<ChatMessage, "seq" | "hidden">;
+/** A message before the store assigns it a `seq` + resolves `hidden`. A
+ *  draft may open a thread (`threadRoot`) under a key, or reply to the
+ *  thread a key opened earlier — how a quest's steps find its card. */
+export type DraftMessage = Omit<ChatMessage, "seq" | "hidden"> & { threadKey?: string; threadRoot?: boolean };
 
 // --- friendly in-world copy for broadcast cues ------------------------------
 
@@ -132,6 +163,17 @@ function lobbyHead(sim: Sim): ChannelHead {
   return { ...LOBBY, title: sim.lobbyTitle() };
 }
 
+/** The pinned rooms: everyone's own Codex + Quest Log (one id each; every
+ *  message in them is addressed to one person). */
+export const CODEX_ROOM: ChannelHead = { channel: "codex", channelKind: "codex", title: "Codex" };
+export const QUEST_LOG: ChannelHead = { channel: "quests", channelKind: "quests", title: "Quest Log" };
+export const PINNED_SPACE = "pinned";
+
+/** Is this one of the personal pinned rooms (codex / quest log)? */
+export function isPinnedRoom(channel: string): boolean {
+  return channel === CODEX_ROOM.channel || channel === QUEST_LOG.channel;
+}
+
 function factionChannel(faction: string): ChannelHead {
   return { channel: `faction:${faction}`, channelKind: "faction", title: `#${faction.toLowerCase()}` };
 }
@@ -155,9 +197,10 @@ export interface Space {
 
 export const DEFAULT_SPACE: Space = { id: "story", title: "Story", channelIds: [] };
 
-/** A channel's owning space. Everything derived lives in the story's space. */
-export function spaceOf(_channelId: string): string {
-  return DEFAULT_SPACE.id;
+/** A channel's owning space. Everything derived lives in the story's space,
+ *  except the pinned rooms (codex, quest log). */
+export function spaceOf(channelId: string): string {
+  return isPinnedRoom(channelId) ? PINNED_SPACE : DEFAULT_SPACE.id;
 }
 
 export interface ChannelDescriptor {
@@ -172,6 +215,8 @@ export interface ChannelDescriptor {
 
 function headOf(id: string): ChannelHead {
   if (id === LOBBY.channel) return LOBBY;
+  if (id === CODEX_ROOM.channel) return CODEX_ROOM;
+  if (id === QUEST_LOG.channel) return QUEST_LOG;
   if (id.startsWith("faction:")) return factionChannel(id.slice("faction:".length));
   if (id.startsWith("dm:")) return dmChannel(id.slice("dm:".length));
   // Model-free fallback — `sim.channelHead` resolves the location's label.
@@ -182,6 +227,8 @@ function headOf(id: string): ChannelHead {
 }
 
 function orderOf(kind: ChannelKind): number {
+  if (kind === "quests") return -2;
+  if (kind === "codex") return -1;
   return kind === "lobby" ? 0 : kind === "faction" ? 1 : kind === "location" ? 2 : 3;
 }
 
@@ -373,17 +420,44 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
         break;
       }
       case "codexUnlocked": {
-        // Knowledge landed in a participant's hands — tell them (a character
-        // holder has no phone thread; the booth sees it in the snapshot).
-        if (!sim.persons.has(e.person)) break;
-        const title = sim.model.codex.get(e.entry)?.title ?? e.entry;
-        const by = e.via === "share" && e.from !== null ? ` — shared by ${sim.persons.get(e.from)?.name ?? e.from}` : "";
-        out.push(sys(`📓 New codex entry: “${title}”${by}.`, [e.person]));
+        // Knowledge changed hands. The holder's Codex gains the entry as a
+        // card (a character holder has no phone; the booth sees it in the
+        // snapshot), and a guest who shared it sees that in their own.
+        const def = sim.model.codex.get(e.entry);
+        const title = def?.title ?? e.entry;
+        const nameOf = (id: string) => sim.persons.get(id)?.name ?? id;
+        if (sim.persons.has(e.person)) {
+          const codex: CodexCard = { entry: e.entry, title, about: def?.about ?? null, via: e.via, from: e.from !== null ? nameOf(e.from) : null };
+          out.push({ ...CODEX_ROOM, from: "", kind: "codex", text: def?.text ?? "", ts, audience: [e.person], parentSeq: null, codex });
+        }
+        if (e.via === "share" && e.from !== null && sim.persons.has(e.from)) {
+          out.push({ ...CODEX_ROOM, from: "", kind: "system", text: `📤 You shared “${title}” with ${nameOf(e.person)}.`, ts, audience: [e.from], parentSeq: null });
+        }
         break;
       }
       case "codexMissed":
-        out.push(sys(`⛔ “${e.code}” unlocks nothing.`, [e.person]));
+        out.push({ ...CODEX_ROOM, from: "", kind: "system", text: `⛔ “${e.code}” unlocks nothing.`, ts, audience: [e.person], parentSeq: null });
         break;
+      case "quest": {
+        // A quest's first step opens its card in the Quest Log; every later
+        // step is a reply in that card's thread, in the giver's voice.
+        const def = sim.model.quests.get(e.quest);
+        const title = def?.title ?? e.quest;
+        const text = e.text ?? (e.action === "start" ? (def?.text ?? "") : e.action === "complete" ? "✅ Quest complete." : e.action === "fail" ? "✖ Quest failed." : "");
+        out.push({
+          ...QUEST_LOG,
+          from: def?.giver ?? "",
+          kind: "quest",
+          text,
+          ts,
+          audience: [e.person],
+          parentSeq: null,
+          quest: { quest: e.quest, title, action: e.action },
+          threadKey: `${e.person}\u0000${e.quest}`,
+          ...(e.action === "start" ? { threadRoot: true } : {}),
+        });
+        break;
+      }
       case "ambient":
         out.push({ ...LOBBY, from: "", kind: "narration", text: e.text, ts, audience: "all", parentSeq: null });
         break;
@@ -461,12 +535,18 @@ function intersectAudience(a: Audience, b: Audience): Audience {
 export class ChatStore {
   private msgs: ChatMessage[] = [];
   private hidden = new Set<number>();
+  /** Thread key → the seq of the message that opened it (a quest's card). */
+  private roots = new Map<string, number>();
 
   /** Assign seqs and append. Returns the newly-stored messages. */
   append(drafts: DraftMessage[]): ChatMessage[] {
     const added: ChatMessage[] = [];
-    for (const d of drafts) {
+    for (const { threadKey, threadRoot, ...d } of drafts) {
       const seq = this.msgs.length;
+      if (threadKey !== undefined) {
+        if (threadRoot === true) this.roots.set(threadKey, seq);
+        else d.parentSeq = this.roots.get(threadKey) ?? d.parentSeq;
+      }
       const m: ChatMessage = { ...d, seq, hidden: this.hidden.has(seq) };
       this.msgs.push(m);
       added.push(m);
@@ -511,6 +591,7 @@ export class ChatStore {
   clear(): void {
     this.msgs = [];
     this.hidden = new Set();
+    this.roots = new Map();
   }
 
   /**

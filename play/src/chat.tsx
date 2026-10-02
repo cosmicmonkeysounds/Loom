@@ -10,19 +10,21 @@
 //! widget docks right in the flow. Wide screens show both panes; a phone
 //! drills in.
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { useAvatars } from "./avatars.ts";
 import { usePlayHost } from "./host.ts";
 import { occupancyLabel } from "./presence.ts";
 import {
   groupRuns,
   prettyName,
+  questStatusOf,
   repliesFor,
   replyCountFor,
   rootsOf,
   type MessageRun,
   type SpaceGroup,
 } from "./threads.ts";
-import type { Action, Channel, ChatMessage, Decision } from "./types.ts";
+import type { Action, Channel, ChatMessage, Decision, QuestStatus } from "./types.ts";
 import { WidgetHost, widgetLabel, type WidgetResult } from "./widgets.tsx";
 
 // --- small shared atoms -----------------------------------------------------
@@ -55,11 +57,19 @@ export function initialsOf(name: string): string {
   return (words[0]!.slice(0, 1) + words[words.length - 1]!.slice(0, 1)).toUpperCase();
 }
 
-/** A person's avatar tile — coloured from their name, like their screen name. */
-export function PersonAvatar({ name, size = "md", kind }: { name: string; size?: "sm" | "md"; kind?: "guest" | "character" }) {
+/** A person's avatar tile — their profile picture when the event has one
+ *  (a program's Wikipedia image, an authored `avatar:`), else coloured
+ *  from their name, like their screen name. `src` overrides the lookup
+ *  (the sign-in pickers show pictures before there is a session). */
+export function PersonAvatar({ name, size = "md", kind, src }: { name: string; size?: "sm" | "md" | "lg"; kind?: "guest" | "character"; src?: string | null }) {
+  const lookup = useAvatars();
+  const picture = src === undefined ? lookup.srcFor(name) : src;
+  // The initials stay underneath: they show while the picture loads, and
+  // stay if it never does (a broken image removes itself).
   return (
-    <span className={`pavatar ${size} ${kind ?? ""}`} style={{ background: colorFor(name) }} aria-hidden>
+    <span className={`pavatar ${size} ${kind ?? ""} ${picture !== null ? "pic" : ""}`} style={{ background: colorFor(name) }} aria-hidden>
       {initialsOf(name)}
+      {picture !== null && <img src={picture} alt="" loading="lazy" draggable={false} onError={(e) => e.currentTarget.remove()} />}
     </span>
   );
 }
@@ -179,6 +189,8 @@ const GLYPH: Record<Channel["kind"], string> = {
   group: "👥",
   open: "#",
   private: "🔒",
+  codex: "📓",
+  quests: "📜",
 };
 
 export function Avatar({ channel }: { channel: Pick<Channel, "kind" | "title"> }) {
@@ -391,6 +403,8 @@ function lastPreview(c: Channel): string {
   if (c.decision) return `▶ ${c.decision.title}`;
   if (!last) return "";
   if (last.kind === "widget" && last.widget) return widgetLabel(last.widget);
+  if (last.kind === "codex" && last.codex) return `📓 ${last.codex.title}`;
+  if (last.kind === "quest" && last.quest) return `📜 ${last.quest.title}${last.text ? `: ${last.text}` : ""}`;
   return last.kind === "line" ? `${last.from ? `${prettyName(last.from)}: ` : ""}${last.text}` : last.text;
 }
 
@@ -399,7 +413,12 @@ export function ChannelRow({ channel, active, meId, onOpen }: { channel: Channel
   const sub = channel.subtitle ?? lastPreview(channel);
   const quiet = channel.kind === "location" && (channel.people?.length ?? 0) === 0 && channel.messages.length === 0 && !channel.here;
   return (
-    <button className={`chrow ${active ? "active" : ""} ${channel.here ? "here" : ""} ${quiet ? "quiet" : ""}`} onClick={() => onOpen(channel.id)} aria-current={active ? "true" : undefined}>
+    <button
+      className={`chrow ${active ? "active" : ""} ${channel.here ? "here" : ""} ${quiet ? "quiet" : ""}`}
+      onClick={() => onOpen(channel.id)}
+      aria-current={active ? "true" : undefined}
+      data-tour={channel.tour}
+    >
       <Avatar channel={channel} />
       <div className="chrow-body">
         <div className="chrow-top">
@@ -490,6 +509,108 @@ export interface WidgetHook {
   viewer?: { id: string; name: string };
 }
 
+// --- pinned-room cards (the Codex, the Quest Log) ------------------------------
+
+/** What a pinned-room card can do beyond reading — supplied by the app. */
+export interface CardActions {
+  /** Share a codex entry you hold (opens a who-with picker). */
+  shareCodex?: (entry: string, title: string) => void;
+}
+const CardActionsContext = createContext<CardActions>({});
+export const CardActionsProvider = CardActionsContext.Provider;
+
+const VIA: Record<string, string> = { code: "Unlocked with a code", story: "Learned tonight" };
+
+/** One codex entry, as a card in the Codex room. */
+function CodexCardView({ msg, modBtn }: { msg: ChatMessage; modBtn: ReactNode }) {
+  const actions = useContext(CardActionsContext);
+  const c = msg.codex!;
+  return (
+    <div className={`msg codex-card-msg ${msg.hidden ? "hidden" : ""}`}>
+      <div className="codex-card">
+        <div className="codex-card-head">
+          <span className="codex-card-ico" aria-hidden>
+            📓
+          </span>
+          <strong className="codex-card-title">{c.title}</strong>
+          {c.about && <span className="pill kind">about {c.about}</span>}
+        </div>
+        {msg.text && <p className="codex-text">{msg.text}</p>}
+        <div className="codex-card-foot">
+          <span className="muted">{c.via === "share" && c.from ? `Shared by ${c.from}` : (VIA[c.via] ?? "")}</span>
+          {actions.shareCodex && (
+            <button className="link" onClick={() => actions.shareCodex!(c.entry, c.title)}>
+              Share…
+            </button>
+          )}
+        </div>
+      </div>
+      {modBtn}
+    </div>
+  );
+}
+
+const QUEST_STATUS: Record<QuestStatus, string> = { active: "in progress", done: "complete", failed: "failed" };
+const STEP_GLYPH: Record<string, string> = { complete: "✅", fail: "✖", update: "▸", start: "📜" };
+
+/** A quest in the Quest Log: its card (the thread's root), or one step of it. */
+function QuestView({
+  msg,
+  modBtn,
+  status,
+  replies,
+  onOpenThread,
+}: {
+  msg: ChatMessage;
+  modBtn: ReactNode;
+  status?: QuestStatus;
+  replies?: number;
+  onOpenThread?: (rootSeq: number) => void;
+}) {
+  const q = msg.quest!;
+  if (msg.parentSeq != null) {
+    const fallback = q.action === "complete" ? "Quest complete." : q.action === "fail" ? "Quest failed." : "";
+    return (
+      <div className={`msg quest-step ${q.action} ${msg.hidden ? "hidden" : ""}`}>
+        <span className="quest-step-ico" aria-hidden>
+          {STEP_GLYPH[q.action] ?? "▸"}
+        </span>
+        <span className="bubble plain">{msg.text || fallback}</span>
+        {modBtn}
+      </div>
+    );
+  }
+  const st = status ?? "active";
+  const open = onOpenThread ? () => onOpenThread(msg.seq) : undefined;
+  return (
+    <div className={`msg quest-msg ${msg.hidden ? "hidden" : ""}`}>
+      <div
+        className={`quest-card ${st} ${open ? "openable" : ""}`}
+        role={open ? "button" : undefined}
+        tabIndex={open ? 0 : undefined}
+        onClick={open}
+        onKeyDown={open ? (e) => e.key === "Enter" && open() : undefined}
+      >
+        <div className="quest-head">
+          <span className="quest-ico" aria-hidden>
+            📜
+          </span>
+          <strong className="quest-title">{q.title}</strong>
+          <span className={`quest-status ${st}`}>{QUEST_STATUS[st]}</span>
+        </div>
+        {msg.from && (
+          <div className="quest-giver">
+            <PersonAvatar name={msg.from} size="sm" kind="character" /> from {msg.from.replace(/_/g, " ")}
+          </div>
+        )}
+        {msg.text && <p className="quest-text">{msg.text}</p>}
+        {open && <div className="quest-open">{replies ? `${replies} ${replies === 1 ? "update" : "updates"} ›` : "Open ›"}</div>}
+      </div>
+      {modBtn}
+    </div>
+  );
+}
+
 export function MessageBubble({
   msg,
   showChannel,
@@ -499,8 +620,11 @@ export function MessageBubble({
   onOpenThread,
   widgets,
   onPerson,
+  questStatus,
 }: {
   msg: ChatMessage;
+  /** Where a quest card's quest stands (read off its thread). */
+  questStatus?: QuestStatus;
   /** Tag the bubble with its channel (used in the performer's flat view). */
   showChannel?: boolean;
   moderate?: ModerateHook;
@@ -539,6 +663,10 @@ export function MessageBubble({
         {modBtn}
       </div>
     );
+  }
+  if (msg.kind === "codex" && msg.codex) return <CodexCardView msg={msg} modBtn={modBtn} />;
+  if (msg.kind === "quest" && msg.quest) {
+    return <QuestView msg={msg} modBtn={modBtn} status={questStatus} replies={replies} onOpenThread={onOpenThread} />;
   }
   if (msg.kind !== "line") {
     return (
@@ -609,6 +737,19 @@ export function MessageGroup({
   widgets?: WidgetHook;
   onPerson?: (name: string) => void;
 }) {
+  if (run.kind === "quest") {
+    // A quest card opens its own thread — its steps.
+    const m = run.messages[0]!;
+    return (
+      <MessageBubble
+        msg={m}
+        moderate={moderate}
+        onOpenThread={onOpenThread}
+        replies={replyCountFor(allMessages, m.seq)}
+        questStatus={questStatusOf(allMessages, m.seq)}
+      />
+    );
+  }
   if (run.kind !== "line") {
     return <MessageBubble msg={run.messages[0]!} showChannel={showChannel} moderate={moderate} widgets={widgets} />;
   }
@@ -684,10 +825,13 @@ export function Composer({
   onSend,
   placeholder,
   disabled,
+  sendLabel,
 }: {
   onSend: (text: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  /** The button's word ("Send"; the Codex says "Unlock"). */
+  sendLabel?: string;
 }) {
   const [text, setText] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -722,7 +866,7 @@ export function Composer({
         }}
       />
       <button className="choice composer-send" onClick={send} disabled={disabled}>
-        Send
+        {sendLabel ?? "Send"}
       </button>
     </div>
   );
@@ -793,9 +937,13 @@ export function ChannelView({
   const canPost = channel.canPost !== false;
   const threadable = channel.threadable !== false;
   const people = channel.people ?? [];
-  const isRoom = channel.kind !== "dm" && channel.kind !== "guest";
+  const isRoom = channel.kind !== "dm" && channel.kind !== "guest" && channel.kind !== "codex" && channel.kind !== "quests";
   const emptyCopy =
-    channel.kind === "location"
+    channel.kind === "codex"
+      ? "You know nothing yet. Codes are on the walls, in the puzzles, and in people — type one below."
+      : channel.kind === "quests"
+        ? "No quests yet. When the story hands you one, it lands here — each in its own thread."
+        : channel.kind === "location"
       ? channel.here
         ? "You're here. Nothing has happened in this room yet."
         : "Nothing has happened here yet. You'd hear it if you were standing here."
@@ -841,7 +989,13 @@ export function ChannelView({
         <footer>
           {channel.decision && <DecisionTray decision={channel.decision} />}
           {footer}
-          {onSend && canPost && <Composer onSend={(t) => onSend(t)} placeholder={`Message ${channel.title}…`} />}
+          {onSend && canPost && (
+            <Composer
+              onSend={(t) => onSend(t)}
+              placeholder={channel.kind === "codex" ? "Enter a code…" : `Message ${channel.title}…`}
+              sendLabel={channel.kind === "codex" ? "Unlock" : undefined}
+            />
+          )}
           {onSend && !canPost && (
             <div className="cant-post">
               {channel.kind === "location" ? "You're not in this room — walk there to talk here." : "This room is read-only."}
@@ -873,6 +1027,7 @@ export function MessageThread({
   const end = useRef<HTMLDivElement>(null);
   const root = channel.messages.find((m) => m.seq === rootSeq);
   const replies = repliesFor(channel.messages, rootSeq);
+  const quest = root?.quest;
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [replies.length]);
@@ -882,16 +1037,20 @@ export function MessageThread({
         <button className="back" onClick={onClose} aria-label="Back to the room">
           ‹
         </button>
-        <div className="avatar dm">💬</div>
+        <div className="avatar dm">{quest ? "📜" : "💬"}</div>
         <div className="thread-id">
-          <strong>Thread</strong>
+          <strong>{quest ? quest.title : "Thread"}</strong>
           <span className="muted">in {channel.title}</span>
         </div>
       </header>
       <div className="thread">
-        {root && <MessageBubble msg={root} moderate={moderate} />}
+        {root && <MessageBubble msg={root} moderate={moderate} questStatus={quest ? questStatusOf(channel.messages, rootSeq) : undefined} />}
         <div className="thread-divider">
-          {replies.length} {replies.length === 1 ? "reply" : "replies"}
+          {quest
+            ? replies.length === 0
+              ? "No progress yet"
+              : `${replies.length} ${replies.length === 1 ? "update" : "updates"}`
+            : `${replies.length} ${replies.length === 1 ? "reply" : "replies"}`}
         </div>
         {groupRuns(replies).map((run) => (
           <MessageGroup key={run.messages[0]!.seq} run={run} allMessages={channel.messages} moderate={moderate} />

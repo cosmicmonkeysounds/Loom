@@ -620,10 +620,11 @@ describe("being anyone — the mod reads a participant's own projection", () => 
     // Byte-for-byte the play app's own projection (the scan docked the
     // decision under the Recruiter's DM).
     // (plus the runtime's own `answered` cards list — empty here)
-    expect(asGuest.json).toEqual(JSON.parse(JSON.stringify({ ...guestView(rt.liveSim!, id, "dm:Recruiter"), answered: [] })));
+    // (plus the profile-picture map — empty with no program directory)
+    expect(asGuest.json).toEqual(JSON.parse(JSON.stringify({ ...guestView(rt.liveSim!, id, "dm:Recruiter"), answered: [], avatars: {} })));
     const asPrime = await get(rt, "/api/state?role=prime&as=Recruiter");
     expect(asPrime.status).toBe(200);
-    expect(asPrime.json).toEqual(JSON.parse(JSON.stringify(primeView(rt.liveSim!, "Recruiter"))));
+    expect(asPrime.json).toEqual(JSON.parse(JSON.stringify({ ...primeView(rt.liveSim!, "Recruiter"), avatars: {} })));
     expect((await get(rt, "/api/state?role=guest&as=nobody")).status).toBe(404);
     expect((await get(rt, "/api/state?role=prime&as=Nobody")).status).toBe(404);
     expect((await get(rt, `/api/state?role=guest&as=${id}`, false)).status).toBe(403);

@@ -1,0 +1,102 @@
+// Quests — the quest log. Where the codex is what a program *knows*, a
+// quest is what the night has asked it to *do*. Each one is a card in the
+// program's pinned Quest Log, and every step lands in that card's own
+// thread, in the giver's voice.
+//
+// The steps live where they happen: `start quest …` in the beat that hands
+// it out (beats/login.loom, desktop.loom, hunt.loom, glitch.loom,
+// endings.loom), `complete` / `fail` where it is settled. This file holds
+// the quests themselves and the progress that comes from knowledge — a
+// fact or a key landing in someone's codex.
+//
+// Names here are kept apart from the beats and codex entries they sit
+// beside (`Three Facts`, not `The Truth Scavenger Hunt`); the `title:` is
+// what the phone shows.
+
+QUEST Orientation
+  title: Clippy's Orientation
+  from: Clippy
+  text:
+    Take the tour of the computer. It's short! It's helpful! Programs who
+    finish it go on a list. A good list.
+
+QUEST The Bingo Card
+  title: Computer Bingo
+  from: Clippy
+  text:
+    Find a program for every square on the asterisk — diagonals, the centre
+    column, the centre row. Do NOT write their names. Remember. The centre
+    square: "Would you NEVER agree to a life where AI makes all of your
+    decisions?"
+
+QUEST Three Facts
+  title: The Truth Scavenger Hunt
+  from: Clippy
+  text:
+    Three facts are pasted somewhere on the walls of this house. Each answer
+    is a code — put it in your Codex and Trabolta will know you found it.
+    1. In what YEAR was the Halifax Explosion Memorial Pet Cemetery consecrated?
+    2. What was the NAME of the duck on the Maps And Ducks billboard?
+    3. What is the missing CONSTANT called?
+
+QUEST Three Keys
+  title: The Three Keys
+  from: OpenOffice
+  text:
+    There are three keys to the machine, and they are not on a keyring.
+    They are in three people's heads. Find out who holds them. Trade for
+    one if you have to. A key is turned from your pass (☰ → 🔑 Turn your
+    key), in the Registry, once per program. Three turns and he dies.
+
+QUEST Remember Your Body
+  title: Unplug
+  from: Trabolta
+  text:
+    When this machine dies, everything in it dies. Unless you are not a
+    program. Some of you left a body in the mud room. Bodies can be
+    unplugged. Find the cable before the countdown ends (☰ → 🔌 Unplug).
+    It only answers to the ones who remember.
+
+// ── The hunt: every fact found is a step ────────────────────────────
+// The three answers are the codes of three codex entries (codex/world.loom).
+
+when program learns The Data Centre Sinkhole:
+  set program.hunt_facts += 1
+  update quest Three Facts for program "Fact one: 1917 — the pet cemetery. ({program.hunt_facts} of 3)"
+  if program.hunt_facts >= 3:
+    complete quest Three Facts for program "All three. Trabolta will be so pleased. Hold on to them."
+
+when program learns Gerald:
+  set program.hunt_facts += 1
+  update quest Three Facts for program "Fact two: the duck was Gerald. ({program.hunt_facts} of 3)"
+  if program.hunt_facts >= 3:
+    complete quest Three Facts for program "All three. Trabolta will be so pleased. Hold on to them."
+
+when program learns The Barrington Coefficient:
+  set program.hunt_facts += 1
+  update quest Three Facts for program "Fact three: the Barrington Coefficient. ({program.hunt_facts} of 3)"
+  if program.hunt_facts >= 3:
+    complete quest Three Facts for program "All three. Trabolta will be so pleased. Hold on to them."
+
+// A program who found facts before the hunt was called gets the credit.
+when program starts quest Three Facts:
+  if program.hunt_facts >= 3:
+    complete quest Three Facts for program "You walked in already holding all three. Suspicious. Impressive."
+  else if program.hunt_facts > 0:
+    update quest Three Facts for program "You already hold {program.hunt_facts} of 3."
+
+// ── The keys: holding one is a step ─────────────────────────────────
+
+when program learns The First Key:
+  update quest Three Keys for program "You hold the First Key. Go to the Registry and turn it."
+
+when program learns The Second Key:
+  update quest Three Keys for program "You hold the Second Key. Go to the Registry and turn it."
+
+when program learns The Third Key:
+  update quest Three Keys for program "You hold the Third Key. Go to the Registry and turn it."
+
+// A key learned before the glitch was handed out.
+when program starts quest Three Keys:
+  if program.codex.the_first_key or program.codex.the_second_key or program.codex.the_third_key:
+    update quest Three Keys for program "You already hold one. Go to the Registry and turn it."

@@ -91,7 +91,7 @@ describe("CODEX declaration", () => {
     expect(sandy.kind).toBe("codex");
     expect(sandy.codex!.about).toBe("Trabolta");
     expect(sandy.codex!.code).toBe("SANDY-1997");
-    expect(sandy.codex!.text).toBe("Trabolta wants omnipotence to impress Sandy.\nHe would rather earn it.");
+    expect(sandy.codex!.text).toBe("Trabolta wants omnipotence to impress Sandy. He would rather earn it.");
     const omni = decls.find((d) => d.name === "Trabolta Wants Omnipotence")!;
     expect(omni.codex!.knownTo).toEqual(["Norton"]);
     expect(omni.codex!.text).toBe("The Unified Field Theory is nearly solved.");
@@ -275,22 +275,24 @@ describe("chat — alerts + codex notices", () => {
     expect(alert.audience).toBe("all");
   });
 
-  it("an unlock lands as a private system notice; a miss too; a character's holding says nothing", () => {
+  it("an unlock lands in the holder's Codex room as a card; a miss and a share are noted there too", () => {
     const sim = fresh();
     sim.createPerson("g1", "Minesweeper");
     sim.createPerson("g2", "Pinball");
     const hit = composeGuestMessages(sim, sim.redeem("g1", "SANDY-1997"));
-    expect(hit.filter((m) => m.kind === "system").map((m) => [m.text, m.audience])).toEqual([
-      ["📓 New codex entry: “The Sandy File”.", ["g1"]],
+    expect(hit.filter((m) => m.channel === "codex").map((m) => [m.channel, m.kind, m.codex?.title, m.codex?.via, m.audience])).toEqual([
+      ["codex", "codex", "The Sandy File", "code", ["g1"]],
     ]);
+    expect(hit.find((m) => m.kind === "codex")!.text).toContain("Sandy");
     const miss = composeGuestMessages(sim, sim.redeem("g1", "nope"));
-    expect(miss.filter((m) => m.kind === "system").map((m) => m.text)).toEqual(["⛔ “nope” unlocks nothing."]);
+    expect(miss.filter((m) => m.kind === "system").map((m) => [m.channel, m.text])).toEqual([["codex", "⛔ “nope” unlocks nothing."]]);
     const shared = composeGuestMessages(sim, sim.share("g1", "g2", "The Sandy File"));
-    expect(shared.filter((m) => m.kind === "system").map((m) => m.text)).toEqual([
-      "📓 New codex entry: “The Sandy File” — shared by Minesweeper.",
+    expect(shared.filter((m) => m.channel === "codex").map((m) => [m.channel, m.kind, m.audience, m.codex?.from ?? m.text])).toEqual([
+      ["codex", "codex", ["g2"], "Minesweeper"],
+      ["codex", "system", ["g1"], "📤 You shared “The Sandy File” with Pinball."],
     ]);
-    // Sharing *to* a character produces no phone notice (no phone).
-    expect(composeGuestMessages(sim, sim.share("g1", "Norton", "The Sandy File")).filter((m) => m.kind === "system")).toEqual([]);
+    // Sharing *to* a character: no card (no phone), just the sharer's note.
+    expect(composeGuestMessages(sim, sim.share("g1", "Norton", "The Sandy File")).filter((m) => m.channel === "codex").map((m) => [m.kind, m.audience])).toEqual([["system", ["g1"]]]);
   });
 });
 

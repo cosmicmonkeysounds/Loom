@@ -32,6 +32,7 @@ import { Store } from "./store.ts";
 import { scenarioSource } from "../examples/load.ts";
 import { EventRuntime } from "./event-runtime.ts";
 import { EventRegistry } from "./registry.ts";
+import { WikiClient } from "./wiki.ts";
 import { ipOf, readBody, sendJson, str, PayloadTooLarge } from "./http-util.ts";
 import { RateLimiter } from "./rate-limit.ts";
 import { auth, authUser, migrateAuth } from "./auth-server.ts";
@@ -129,8 +130,13 @@ function joinBase(): string {
   return urls.find((u) => !u.includes("localhost")) ?? urls[0]!;
 }
 
+// The program directory: Wikipedia, for the cast's profile pictures and
+// the guests' "be any software" search. `LOOM_WIKI=off` keeps the server
+// off the internet (pictures then come only from authored `avatar:` links).
+const wiki = process.env.LOOM_WIKI === "off" ? null : new WikiClient();
+
 // The multi-tenant registry: one `EventRuntime` per live event, keyed by id.
-const registry = new EventRegistry(STATE_DIR, joinBase);
+const registry = new EventRegistry(STATE_DIR, joinBase, wiki);
 
 // The default event journals to the state-dir root (not a sub-directory) so
 // an existing single-event deployment recovers its `.loom-state/` in place.
@@ -144,6 +150,7 @@ const defaultEvent = registry.register(
     scenarioName: "trapped-in-the-internet",
     scenarioSource: DEFAULT_SCENARIO,
     joinBase,
+    wiki,
   }),
 );
 

@@ -1,10 +1,10 @@
 //! Pure helpers behind the Codex + People surfaces and the alert chime:
 //! private-thread ids between two participants (mirror of the server's
-//! `Sim.pmChannel`), the `?unlock=` deep link a wall QR carries, grouping a
-//! codex by subject, and spotting freshly-arrived alert broadcasts. No
+//! `Sim.pmChannel`), the `?unlock=` deep link a wall QR carries, and
+//! spotting freshly-arrived alert broadcasts. No
 //! React, no storage — unit-tested in `test/codex.test.ts`.
 
-import type { ChatMessage, CodexEntry } from "./types.ts";
+import type { ChatMessage } from "./types.ts";
 
 /** The private thread between two participants — one id whoever opens it. */
 export function pmChannelId(a: string, b: string): string {
@@ -36,27 +36,6 @@ export function withoutUnlock(search: string): string {
   p.delete("unlock");
   const s = p.toString();
   return s === "" ? "" : `?${s}`;
-}
-
-export interface CodexGroup {
-  /** The subject (`about:`), or "" for unattributed lore. */
-  about: string;
-  entries: CodexEntry[];
-}
-
-/** Group entries by their subject, in first-seen order. */
-export function groupCodex(entries: readonly CodexEntry[]): CodexGroup[] {
-  const out: CodexGroup[] = [];
-  for (const e of entries) {
-    const about = e.about ?? "";
-    let g = out.find((x) => x.about === about);
-    if (g === undefined) {
-      g = { about, entries: [] };
-      out.push(g);
-    }
-    g.entries.push(e);
-  }
-  return out;
 }
 
 /** Alert broadcasts newer than `sinceSeq`, oldest first. */

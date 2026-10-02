@@ -12,10 +12,14 @@ room tonight.
 ## Logging on
 
 1. Pick **I'm a Guest**.
-2. Enter a name — that's what everyone will call you tonight.
-3. Enter the **event code** from your host (a QR code you scanned may
+2. Enter the **event code** from your host (a QR code you scanned may
    have filled it in already).
-4. Hit **Join →**.
+3. **Pick who you are tonight.** The story offers its programs — each
+   with a picture, each one person's: a greyed-out name is already
+   taken. Want something else? **Search** for any software you can
+   think of (*NHL 97*, *Winamp*…) and tap it — that's your name now,
+   and its picture is your face. Antivirus software is off limits to
+   guests; the story has its own.
 
 No account, no password. If you close the app or your phone dies, just
 open it again — you'll come back as yourself, history intact.

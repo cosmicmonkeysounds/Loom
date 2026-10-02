@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { passOk, type Passcodes } from "./auth.ts";
 import { Store } from "./store.ts";
 import { EventRuntime } from "./event-runtime.ts";
+import type { WikiClient } from "./wiki.ts";
 
 /** The role a passcode grants when it resolves to an event. */
 export type CodeRole = "guest" | "prime" | "mod";
@@ -44,9 +45,14 @@ export class EventRegistry {
    * @param stateDir base directory; each event journals under `stateDir/<id>`.
    * @param joinBase best base URL for guest-join QRs (per-event codes view).
    */
+  /**
+   * @param wiki the program directory every hosted event looks pictures up
+   *   in (and guests search); null keeps every event offline.
+   */
   constructor(
     private readonly stateDir: string,
     private readonly joinBase: () => string,
+    private readonly wiki: WikiClient | null = null,
   ) {}
 
   /** Attach an already-constructed runtime (e.g. the default event). */
@@ -84,6 +90,7 @@ export class EventRegistry {
       scenarioName: spec.scenarioName,
       scenarioSource: spec.scenarioSource,
       joinBase: this.joinBase,
+      wiki: this.wiki,
     });
     runtime.restore();
     return this.register(runtime);

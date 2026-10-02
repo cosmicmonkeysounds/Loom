@@ -38,6 +38,8 @@ import {
   emptyInteractionBody,
   type CodexBody,
   emptyCodexBody,
+  type QuestBody,
+  emptyQuestBody,
   type ItemBody,
   type KnowledgeField,
   type LocationBody,
@@ -147,6 +149,9 @@ export function lower(decl: Declaration, diagnostics: Diagnostic[]): void {
       break;
     case "codex":
       decl.codex = lowerCodex(decl.body);
+      break;
+    case "quest":
+      decl.quest = lowerQuest(decl.body);
       break;
   }
 }
@@ -421,9 +426,24 @@ function lowerInteraction(body: RawLine[]): InteractionBody {
 }
 
 /**
+ * A `text:` block, re-flowed: authors hard-wrap prose to the editor's
+ * width, so wrapped lines join into one paragraph. A list item (`1.`,
+ * `2)`, `-`, `*`, `•`) starts its own line.
+ */
+export function reflowText(lines: readonly string[]): string {
+  let out = "";
+  for (const line of lines) {
+    if (out === "") out = line;
+    else if (/^(\d+[.)]|[-*•])\s/u.test(line)) out += `\n${line}`;
+    else out += ` ${line}`;
+  }
+  return out;
+}
+
+/**
  * `CODEX name` body: `title:`, `about:`, `code:`, `known to:` (a list of
  * holders), and a `text:` block — the indented lines under it, re-flowed
- * with their relative indentation dropped, one paragraph per line.
+ * into one paragraph (`reflowText`).
  */
 function lowerCodex(body: RawLine[]): CodexBody {
   const out = emptyCodexBody();
@@ -455,7 +475,40 @@ function lowerCodex(body: RawLine[]): CodexBody {
     }
     out.properties.set(rawKey, { value, span: line.span });
   }
-  out.text = text.join("\n");
+  out.text = reflowText(text);
+  return out;
+}
+
+/**
+ * `QUEST name` body: `title:`, `from:` (the giver — also `given by:` /
+ * `giver:`), and a `text:` block (the brief), read like a codex body.
+ */
+function lowerQuest(body: RawLine[]): QuestBody {
+  const out = emptyQuestBody();
+  const text: string[] = [];
+  let textIndent: number | null = null;
+  for (const line of body) {
+    if (textIndent !== null && line.indent > textIndent) {
+      text.push(line.text.trim());
+      continue;
+    }
+    textIndent = null;
+    const t = line.text.trim();
+    const colon = t.indexOf(":");
+    if (colon <= 0) continue;
+    const rawKey = t.slice(0, colon).trim();
+    if (!/^[A-Za-z][A-Za-z0-9 _-]*$/u.test(rawKey)) continue;
+    const value = t.slice(colon + 1).trim();
+    const key = rawKey.toLowerCase().replace(/[-_\s]+/gu, " ");
+    if (key === "title" || key === "label") out.title = value;
+    else if (key === "from" || key === "giver" || key === "given by") out.giver = value.length > 0 ? value : null;
+    else if (key === "text" || key === "brief") {
+      if (value.length > 0) text.push(value);
+      textIndent = line.indent;
+    }
+    out.properties.set(rawKey, { value, span: line.span });
+  }
+  out.text = reflowText(text);
   return out;
 }
 

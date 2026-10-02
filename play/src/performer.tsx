@@ -5,7 +5,7 @@
 //! guest's card — never on a permanent panel under every room. A pinned
 //! Scanner thread holds the camera + scan readouts.
 
-import { useEffect, useRef, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import {
   ActionRow,
   ChannelView,
@@ -24,34 +24,43 @@ import {
 } from "./chat.tsx";
 import { HelpSheet } from "./help.tsx";
 import { usePlayHost } from "./host.ts";
-import { codeFromUrl, resolveCode, useDocumentTitle, usePrimeSession, type PrimeSession } from "./session.ts";
+import { AvatarsContext, avatarLookup, avatarUrl, orderPicker, type IdentityRow } from "./avatars.ts";
+import { codeFromUrl, fetchIdentities, useDocumentTitle, usePrimeSession, type IdentityLookup, type PrimeSession } from "./session.ts";
 import type { Action, Channel, PrimeGuest } from "./types.ts";
 
 function PrimeLogin({ session }: { session: PrimeSession }) {
   const [passcode, setPasscode] = useState(codeFromUrl);
   const [character, setCharacter] = useState("");
-  const [cast, setCast] = useState<string[] | null>(null);
-  const [title, setTitle] = useState<string | null>(null);
+  const [ids, setIds] = useState<IdentityLookup | null | "loading">(null);
+  const [reload, setReload] = useState(0);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-  // A performer code resolves to the story's cast: offer a picker rather
-  // than a blank to spell a name into.
+  // A performer code resolves to the story's *parts* — every character
+  // with something to do, minus the ones other booths already hold — so
+  // the picker shows who is still free, with their pictures.
   useEffect(() => {
     const code = passcode.trim();
     if (code.length < 4) {
-      setCast(null);
+      setIds(null);
       return;
     }
     let alive = true;
-    void resolveCode(code).then((r) => {
-      if (!alive) return;
-      setTitle(r?.title ?? null);
-      setCast(r && (r.role === "prime" || r.role === "mod") ? (r.characters ?? []) : null);
+    setIds("loading");
+    void fetchIdentities(code).then((r) => {
+      if (alive) setIds(r.kind !== "unknown" && r.role !== "prime" ? { kind: "unknown" } : r);
     });
     return () => {
       alive = false;
     };
-  }, [passcode]);
+  }, [passcode, reload]);
+  const resolved = ids !== null && ids !== "loading" && ids.kind === "ok" ? ids : null;
+  const fallback = ids !== null && ids !== "loading" && ids.kind === "unavailable" ? ids : null;
+  // An older server has no picker: offer its plain cast list (no claims, no pictures).
+  const cast: IdentityRow[] =
+    resolved !== null
+      ? orderPicker(resolved.identities)
+      : (fallback?.characters ?? []).map((name) => ({ name, faction: null, avatar: null, claimed: false }));
+  const eventId = resolved?.eventId ?? fallback?.eventId ?? null;
   const go = async (name = character) => {
     const who = name.trim();
     if (who === "" || busy) return;
@@ -61,6 +70,7 @@ function PrimeLogin({ session }: { session: PrimeSession }) {
       await session.login(who, passcode.trim());
     } catch (e) {
       setErr((e as Error).message);
+      setReload((n) => n + 1); // another booth may have just taken the part
     } finally {
       setBusy(false);
     }
@@ -68,7 +78,7 @@ function PrimeLogin({ session }: { session: PrimeSession }) {
   return (
     <div className="hero">
       <div className="glyph">🎭</div>
-      <h1>{title ?? "Performer station"}</h1>
+      <h1>{resolved?.title ?? fallback?.title ?? "Performer station"}</h1>
       {session.notice && <p className="notice">{session.notice}</p>}
       <p className="sub">Sign in as your character. You'll speak as them everywhere.</p>
       <input
@@ -81,15 +91,31 @@ function PrimeLogin({ session }: { session: PrimeSession }) {
         spellCheck={false}
         onChange={(e) => setPasscode(e.target.value)}
       />
-      {cast !== null && cast.length > 0 ? (
+      {ids === "loading" && <p className="pick-hint">Looking up the cast…</p>}
+      {ids !== null && ids !== "loading" && ids.kind === "unknown" && passcode.trim().length >= 4 && <p className="pick-hint">That code doesn't open a performer station. Check it with your host.</p>}
+      {fallback !== null && <p className="pick-hint">The server couldn't send who's still free — {fallback.error}. It may need a restart; the cast below is unfiltered.</p>}
+      {cast.length > 0 ? (
         <div className="cast-pick" role="group" aria-label="Who are you tonight?">
           <div className="sheet-h">Who are you tonight?</div>
-          {cast.map((c) => (
-            <button key={c} className={`choice pick ${character === c ? "primary" : "ghost"}`} disabled={busy} onClick={() => void go(c)}>
-              <PersonAvatar name={c} size="sm" kind="character" />
-              <span className="pick-label">{c}</span>
-            </button>
-          ))}
+          <div className="pick-grid">
+            {cast.map((c) => (
+              <button
+                key={c.name}
+                type="button"
+                className={`choice pick ${character === c.name ? "primary" : "ghost"} ${c.claimed ? "claimed" : ""}`}
+                disabled={busy || c.claimed}
+                title={c.claimed ? `${c.name} is taken by another performer` : `Be ${c.name}`}
+                onClick={() => void go(c.name)}
+              >
+                <PersonAvatar name={c.name} size="lg" kind="character" src={eventId !== null && c.avatar !== null ? avatarUrl(eventId, c.avatar) : null} />
+                <span className="pick-label">
+                  {c.name}
+                  {c.faction !== null && <span className="pick-sub"> · {c.faction}</span>}
+                  {c.claimed && <span className="pick-sub"> · taken</span>}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       ) : (
         <>
@@ -385,6 +411,8 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   const [people, setPeople] = useState<Channel | null>(null);
   const [picking, setPicking] = useState(false);
   useDocumentTitle(s.auth?.title);
+  // Everyone's profile pictures, for every tile in the booth.
+  const avatars = useMemo(() => avatarLookup(s.auth?.eventId ?? null, s.view?.avatars), [s.auth?.eventId, s.view?.avatars]);
   const t = s.threads;
   const signedIn = s.auth !== null && s.ready;
   const activeId = t.activeId;
@@ -490,6 +518,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   const cardGuest = card !== null ? (guests.find((g) => g.id === card) ?? null) : null;
 
   return (
+    <AvatarsContext.Provider value={avatars}>
     <div className="root">
       <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room, or a guest." />
       {picking && t.active && (
@@ -524,5 +553,6 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
       {sheet && <PerformerSheet session={s} onClose={() => setSheet(false)} onLeave={onLeave} />}
       {help && <HelpSheet role="performer" onClose={() => setHelp(false)} />}
     </div>
+    </AvatarsContext.Provider>
   );
 }

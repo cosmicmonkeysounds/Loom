@@ -128,6 +128,8 @@ describe('buildRooms with the identity projection (exact)', () => {
     interactions: [],
     codex: [],
     codexTotal: 0,
+    quests: [],
+    questTotal: 0,
     people: [],
     cutscene: false,
     ...over,
@@ -204,5 +206,24 @@ describe('buildRooms with the identity projection (exact)', () => {
     expect(msgs.map((m) => m.seq)).toEqual([1, 3])
     // Guest threads sort after the rooms.
     expect(keys.indexOf('room:backroom')).toBeLessThan(keys.indexOf('guest:g1'))
+  })
+})
+
+describe('pinned rooms (Codex + Quest Log)', () => {
+  it("each guest's own log is a room of its own, never a DM with a character", () => {
+    const messages = [
+      msg({ seq: 10, channel: 'quests', channelKind: 'quests', title: 'Quest Log', audience: ['g1'], kind: 'quest', from: 'Clippy' }),
+      msg({ seq: 11, channel: 'quests', channelKind: 'quests', title: 'Quest Log', audience: ['g2'], kind: 'quest', from: 'Clippy' }),
+      msg({ seq: 12, channel: 'codex', channelKind: 'codex', title: 'Codex', audience: ['g1'], kind: 'codex' }),
+    ]
+    const input = { ...INPUT, messages }
+    const op = buildRooms(input).filter((r) => r.channel === 'quests' || r.channel === 'codex')
+    expect(op.map((r) => [r.key, r.kind, r.dmGuest, r.character])).toEqual([
+      ['codex#g1', 'codex', 'g1', null],
+      ['quests#g1', 'quests', 'g1', null],
+      ['quests#g2', 'quests', 'g2', null],
+    ])
+    const room = op.find((r) => r.key === 'quests#g2')
+    expect(roomMessages(room, 'quests', messages, 'operator', LensKind.Operator).map((m) => m.seq)).toEqual([11])
   })
 })

@@ -9,6 +9,7 @@ import type {
   ChannelKindWord,
   CharacterBody,
   CodexBody,
+  QuestBody,
   FactionBody,
   LocationBody,
   Property,
@@ -119,6 +120,14 @@ export interface CharDef {
   /** Declared numeric ranges (`truth: 0 to 100 = 35`) — the bounds an
    *  agent's variable adjustments are clamped to. */
   ranges: Map<string, [number, number]>;
+  /** `playable: false` — nobody signs in as this character (a scannable
+   *  prop, a voice in the walls). Default true: a character with a part in
+   *  the story is a performer's; one with no part is a program a guest may
+   *  be (see `server/identity.ts`). */
+  playable: boolean;
+  /** `avatar: https://…` — an authored profile picture for the character's
+   *  tile (the server scrapes one from Wikipedia when this is unset). */
+  avatar: string | null;
 }
 
 /** A compiled `CODEX` entry — a unit of shareable lore (Loom 4 §10.1). */
@@ -131,6 +140,18 @@ export interface CodexDef {
   code: string | null;
   /** Characters that hold the entry from the start (plus its subject). */
   knownTo: string[];
+  text: string;
+}
+
+/** A compiled `QUEST` — a task the story hands a participant, tracked in
+ *  their quest log (one thread per quest). */
+export interface QuestDef {
+  id: string;
+  title: string;
+  /** The character who hands it out (a character id when it folds to
+   *  one) — the voice of the quest's thread. */
+  giver: string | null;
+  /** The brief: the quest's opening line in the log. */
   text: string;
 }
 
@@ -194,6 +215,10 @@ export interface SimModel {
   codexIndex: FoldedIndex;
   /** Folded unlock code → entry id. */
   codexCodes: Map<string, string>;
+  /** Declared `QUEST`s, in source order. */
+  quests: Map<string, QuestDef>;
+  /** Folded-name lookup for quests. */
+  questIndex: FoldedIndex;
   /** Header `directory:` — `everyone` lists every participant to every
    *  guest; unset keeps the acquaintance-only roster. */
   directory: string | null;
@@ -234,6 +259,8 @@ export function compileModel(bundle: Bundle): SimModel {
     codex: new Map(),
     codexIndex: new FoldedIndex(),
     codexCodes: new Map(),
+    quests: new Map(),
+    questIndex: new FoldedIndex(),
     directory: null,
     factions: new Map(),
     locations: new Map(),
@@ -365,6 +392,9 @@ export function compileModel(bundle: Bundle): SimModel {
         case "codex":
           if (decl.codex) model.codex.set(decl.name, codexDef(decl.name, decl.codex));
           break;
+        case "quest":
+          if (decl.quest) model.quests.set(decl.name, questDef(decl.name, decl.quest));
+          break;
         default:
           break;
       }
@@ -391,6 +421,11 @@ export function compileModel(bundle: Bundle): SimModel {
     }
     model.codexIndex.add(entry.id);
     if (entry.code !== null) model.codexCodes.set(entry.code, entry.id);
+  }
+  // Quests: a loosely-spelled giver resolves to the declared character.
+  for (const quest of model.quests.values()) {
+    if (quest.giver !== null) quest.giver = model.entityIndex.get(quest.giver) ?? quest.giver;
+    model.questIndex.add(quest.id);
   }
   if (model.entry !== null && !model.beats.has(model.entry)) {
     model.entry = model.beatIndex.get(model.entry) ?? model.entry;
@@ -474,6 +509,10 @@ function codexDef(id: string, body: CodexBody): CodexDef {
     knownTo: [...body.knownTo],
     text: body.text,
   };
+}
+
+function questDef(id: string, body: QuestBody): QuestDef {
+  return { id, title: body.title ?? id, giver: body.giver, text: body.text };
 }
 
 function locationDef(id: string, body: LocationBody): LocationDef {
@@ -587,7 +626,15 @@ function charDef(id: string, body: CharacterBody): CharDef {
     hidden: body.properties.get("hidden")?.value.trim() === "true",
     mind: mind === "" ? null : mind,
     ranges,
+    playable: body.properties.get("playable")?.value.trim() !== "false",
+    avatar: avatarOf(body.properties.get("avatar")?.value),
   };
+}
+
+/** An authored `avatar:` link — only an absolute http(s) URL counts. */
+function avatarOf(value: string | undefined): string | null {
+  const v = value?.trim() ?? "";
+  return /^https?:\/\/\S+$/u.test(v) ? v : null;
 }
 
 function hooksOf(ownerId: string, ownerKind: "character" | "role", body: CharacterBody): Hook[] {
@@ -686,6 +733,12 @@ export const BuiltinVerb = {
   Learn: "learn",
   /** A holder passed a codex entry to someone. */
   Share: "share",
+  /** A quest landed in someone's log: `when program starts quest The Hunt:`. */
+  QuestStarted: "quest_started",
+  /** `when program completes quest The Three Keys:` (also `finishes`). */
+  QuestCompleted: "quest_completed",
+  /** `when program fails quest The Three Keys:`. */
+  QuestFailed: "quest_failed",
 } as const;
 
 export type BuiltinVerb = (typeof BuiltinVerb)[keyof typeof BuiltinVerb];
@@ -770,6 +823,8 @@ export function parseTrigger(event: string): {
   filter: string | null;
 } {
   const raw = event.trim().split(/\s+/u).filter((w) => w.length > 0);
+  const quest = questTrigger(raw);
+  if (quest !== null) return quest;
   if (raw.length >= 2 && (raw[0] === "someone" || raw[0] === "participant" || raw[0] === "anyone")) {
     const w = raw[1]!.toLowerCase();
     if (w === "joins" || w === "arrives" || w === "signs" || w === "logs") {
@@ -841,6 +896,43 @@ export function parseTrigger(event: string): {
   }
   flush();
   return { verb, param, filter };
+}
+
+/** The verb word before `quest` → the quest trigger it names. */
+const QUEST_VERBS: ReadonlyMap<string, string> = new Map([
+  ["starts", BuiltinVerb.QuestStarted], ["started", BuiltinVerb.QuestStarted], ["start", BuiltinVerb.QuestStarted],
+  ["begins", BuiltinVerb.QuestStarted], ["began", BuiltinVerb.QuestStarted], ["gets", BuiltinVerb.QuestStarted],
+  ["got", BuiltinVerb.QuestStarted], ["given", BuiltinVerb.QuestStarted], ["receives", BuiltinVerb.QuestStarted],
+  ["completes", BuiltinVerb.QuestCompleted], ["completed", BuiltinVerb.QuestCompleted], ["complete", BuiltinVerb.QuestCompleted],
+  ["finishes", BuiltinVerb.QuestCompleted], ["finished", BuiltinVerb.QuestCompleted], ["finish", BuiltinVerb.QuestCompleted],
+  ["fails", BuiltinVerb.QuestFailed], ["failed", BuiltinVerb.QuestFailed], ["fail", BuiltinVerb.QuestFailed],
+]);
+
+/**
+ * A quest trigger needs the word `quest` right after its verb, so the
+ * verbs stay free for named events (`the simulation completed`):
+ * `when program completes quest The Three Keys:` → verb `quest_completed`,
+ * param `program`, filter `The Three Keys` (absent = any quest).
+ */
+function questTrigger(raw: string[]): { verb: string; param: string | null; filter: string | null } | null {
+  // `completes quest X` / `completes the quest X`: the verb may sit behind fillers.
+  let qi = -1;
+  let vi = -1;
+  for (let i = 1; i < raw.length && qi < 0; i++) {
+    if (raw[i]!.toLowerCase() !== "quest") continue;
+    let j = i - 1;
+    while (j > 0 && TRIGGER_FILLERS.has(raw[j]!)) j--;
+    if (QUEST_VERBS.has(raw[j]!.toLowerCase())) {
+      qi = i;
+      vi = j;
+    }
+  }
+  if (qi < 0) return null;
+  const verb = QUEST_VERBS.get(raw[vi]!.toLowerCase())!;
+  const param = raw.slice(0, vi).find((w) => !TRIGGER_FILLERS.has(w) && /^[a-z_][A-Za-z0-9_]*$/u.test(w)) ?? null;
+  const tail = raw.slice(qi + 1);
+  while (tail.length > 0 && TRIGGER_FILLERS.has(tail[0]!)) tail.shift();
+  return { verb, param, filter: tail.length > 0 ? tail.join(" ") : null };
 }
 
 /**

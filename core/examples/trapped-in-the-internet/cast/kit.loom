@@ -4,8 +4,13 @@
 // program's pass at it and the program is routed to one beat.
 // `Person` marks a character who is a real body at the party — listed
 // in the app's directory, messageable, able to share their codex.
+// `playable: false` keeps a prop off the sign-in pickers: nobody *is* the
+// Router. (Every other declared character is either a performer's part —
+// hooks, beats, a body — or, with nothing but a name, a program a guest
+// may be: see `cast/pool.loom`.)
 
 TRAIT Prop(beat)
+  playable: false
   when scanned by program:
     -> self.beat
 

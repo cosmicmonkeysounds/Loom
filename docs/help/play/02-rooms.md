@@ -15,6 +15,7 @@ titled sections of your inbox):
 | **Group rooms** | your side's private channel — one per public group in the story; only members see it |
 | **Location rooms** | tied to real places at the event — what happens *there* is heard *there* |
 | **Direct messages** | one-on-one threads — characters may slide into your DMs |
+| **📜 Quest Log** · **📓 Codex** | pinned at the top: what the story has asked of you, and what you know — yours alone |
 
 ## Rooms appear as the night opens up
 

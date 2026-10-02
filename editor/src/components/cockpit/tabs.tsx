@@ -117,6 +117,19 @@ function MessageRow({
       </li>
     )
   }
+  if ((m.kind === 'codex' && m.codex) || (m.kind === 'quest' && m.quest)) {
+    // A pinned-room card: an entry in a guest's Codex, a step in their Quest Log.
+    const tag = m.codex
+      ? `📓 ${m.codex.title}${m.codex.via === 'share' && m.codex.from ? ` · shared by ${m.codex.from}` : ''}`
+      : `📜 ${m.quest!.title} · ${m.quest!.action}`
+    return (
+      <li onContextMenu={onMenu} className={clsx('group flex items-start gap-2 rounded border border-emerald-900/60 bg-emerald-950/20 px-3 py-1.5', m.hidden && 'opacity-40', threadIndent)}>
+        <span className="shrink-0 pt-px text-[10px] uppercase tracking-widest text-emerald-400/90">{tag}</span>
+        <span className="min-w-0 flex-1 break-words text-sm text-zinc-300">{m.text || <span className="italic text-zinc-500">(no text)</span>}</span>
+        {hideBtn}
+      </li>
+    )
+  }
   if (m.kind === 'narration') {
     return (
       <li onContextMenu={onMenu} className={clsx('group flex items-start gap-2 rounded bg-zinc-900/50 px-3 py-1.5', m.hidden && 'opacity-40', threadIndent)}>
@@ -268,7 +281,12 @@ export function ChatTab() {
   // Postable: any non-DM room, any per-guest DM room (scoped safely via the
   // `guest:<id>` path), a performer's guest thread. An aggregate DM room
   // stays read-only; so does a room the lens identity may not post in.
-  const canCompose = activeRoom ? (activeRoom.kind === 'dm' ? !!activeRoom.dmGuest : true) : !active.startsWith('dm:')
+  // A guest's Codex / Quest Log is their own log — nobody types into it.
+  const canCompose = activeRoom
+    ? activeRoom.kind === 'codex' || activeRoom.kind === 'quests'
+      ? false
+      : activeRoom.kind === 'dm' ? !!activeRoom.dmGuest : true
+    : !active.startsWith('dm:')
   const policyBlocked = activeRoom?.canPost === false && lens !== LensKind.Operator
 
   // The default voice: the character under a performer lens; under a

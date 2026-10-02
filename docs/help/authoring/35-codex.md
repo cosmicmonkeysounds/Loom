@@ -27,7 +27,7 @@ CODEX The Third Key
 
 | Line | Means |
 |---|---|
-| `about:` | who or what it concerns — a character, or a topic word (`World`). The app groups a guest's codex by it, and shows it under that person in the directory. |
+| `about:` | who or what it concerns — a character, or a topic word (`World`). The entry's card names it, and the directory shows it under that person. |
 | `code:` | the unlock code — printed as a QR on a wall, or the answer to a puzzle. Matching ignores case, dashes and spaces. Omit it for story-only lore. |
 | `known to:` | characters who hold it from the start. The `about:` character always does. |
 | `text:` | the entry, as an indented block (or one line). |
@@ -35,8 +35,9 @@ CODEX The Third Key
 ## How lore moves
 
 1. **A code.** A guest scans the QR (its link carries `?unlock=<code>`)
-   or types the code into their Codex. Misses fire the named event
-   `wrong code` for them.
+   or types the code into their **Codex room** — a pinned room whose
+   message box takes codes; every entry they hold is a card in it. Misses
+   fire the named event `wrong code` for them.
 2. **The story:** `unlock The Third Key for guest` in any beat or hook.
 3. **A person:** a guest shares from their Codex; a performer shares
    their character's entries from a guest's thread. One recipient at a
@@ -75,6 +76,9 @@ CHARACTER Trabolta
 
 That is how "recommend he downloads the whole archive" becomes a
 political stance, and eventually an ending.
+
+The codex has a sibling for what guests are *doing*: see *Quests — the
+quest log*.
 
 ## The directory, and messaging people
 

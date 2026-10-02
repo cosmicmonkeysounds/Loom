@@ -70,9 +70,16 @@ export function messageInLens(m: CockpitMessage, perspective: string, lens: Lens
   return m.audience === 'all' || (Array.isArray(m.audience) && m.audience.includes(perspective))
 }
 
-/** The single guest on the far side of a DM message, or null if it isn't a 1:1 DM. */
+/** A guest's own pinned room — their Codex or Quest Log (one id for everyone,
+ *  every message addressed to one guest). */
+export function isPinnedRoom(channel: string): boolean {
+  return channel === 'codex' || channel === 'quests'
+}
+
+/** The single guest on the far side of a DM message (or of their own Codex /
+ *  Quest Log), or null if it isn't one guest's thread. */
 export function dmGuestOf(m: CockpitMessage): string | null {
-  const isDm = m.channelKind === 'dm' || m.channel.startsWith('dm:')
+  const isDm = m.channelKind === 'dm' || m.channel.startsWith('dm:') || isPinnedRoom(m.channel)
   if (isDm && Array.isArray(m.audience) && m.audience.length === 1) return m.audience[0]!
   return null
 }
@@ -155,8 +162,10 @@ function addTrafficRooms(map: Map<string, Room>, input: RoomsInput, lens: LensKi
       // A guest lens folds their own DM threads to just the character name.
       const key = `${m.channel}#${gid}`
       if (!map.has(key)) {
+        // A pinned room is the guest's own log, not a conversation with anyone.
+        const pinned = isPinnedRoom(m.channel)
         const title = lens === LensKind.Guest && gid === perspective ? character : `${character} · ${nameOf(gid)}`
-        map.set(key, { key, channel: m.channel, kind: 'dm', title, dmGuest: gid, character })
+        map.set(key, { key, channel: m.channel, kind: pinned ? (m.channelKind ?? 'dm') : 'dm', title, dmGuest: gid, character: pinned ? null : character })
       }
     } else if (!map.has(m.channel)) {
       const kind = m.channelKind ?? 'dm'

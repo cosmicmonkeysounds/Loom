@@ -44,6 +44,10 @@ const HAS_BAR = /\|/u;
 const REVEAL = /^[A-Za-z_][A-Za-z0-9_.'\-]*(?:\s+[A-Za-z][A-Za-z0-9_.'\-]*){0,3}(?:\s+for\s+\S+)?$/u;
 /** `unlock The Sandy File for guest` — a codex entry for a holder. */
 const UNLOCK = /^.+\s+for\s+\S+$/u;
+/** `start quest The Three Keys for everyone` / `update quest The Hunt for
+ *  program "Two down."` — a quest, ` for ` a holder or scope, and an
+ *  optional quoted line for its thread. */
+const QUEST = /^.+\s+for\s+\S.*$/u;
 /** `show captcha`, `show image "…" to everyone`, `show poll "…" to program with a: 1` —
  *  a lowercase widget kind, an optional quoted text, `to scope`, `with args`. */
 const SHOW = /^[a-z][a-z0-9_-]*(\s+"(?:[^"\\]|\\.)*")?(\s+to\s+\S.*?)?(\s+with\s+\S.*)?$/u;
@@ -85,6 +89,12 @@ export const STATEMENTS: ReadonlyArray<[verb: string, shape: Shape]> = [
   ["remove", { kind: "args", test: FROM }],
   ["reveal", { kind: "args", test: REVEAL }],
   ["unlock", { kind: "args", test: UNLOCK }],
+  // Quests (the quest log): two-word verbs, lowered to one directive each.
+  ["start quest", { kind: "args", test: QUEST, rename: "quest_start" }],
+  ["update quest", { kind: "args", test: QUEST, rename: "quest_update" }],
+  ["complete quest", { kind: "args", test: QUEST, rename: "quest_complete" }],
+  ["finish quest", { kind: "args", test: QUEST, rename: "quest_complete" }],
+  ["fail quest", { kind: "args", test: QUEST, rename: "quest_fail" }],
   ["cast", { kind: "args", test: AS }],
   ["promote", { kind: "args", test: TO }],
   ["demote", { kind: "args", test: NAME_WORDS }],

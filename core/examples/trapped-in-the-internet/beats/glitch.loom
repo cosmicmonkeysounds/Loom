@@ -28,6 +28,7 @@ reveal The Registry
 reveal The Tube
 reveal ram
 set Night.quorum = 5
+start quest Three Keys for everyone
 
 // ── The scannable stations, free roam ───────────────────────────────
 

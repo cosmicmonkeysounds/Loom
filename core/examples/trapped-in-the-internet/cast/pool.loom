@@ -1,0 +1,36 @@
+// The pool — the programs a guest may be tonight.
+//
+// A CHARACTER with nothing but a name (no hooks, no beats, not `listed`)
+// has no part in the story, so the app offers it on the guest sign-in
+// picker instead of the performer one. Each is one guest's for the night:
+// once claimed it is greyed out for everyone else. A guest who wants to be
+// something not on this list searches the program directory (Wikipedia,
+// software only — never antivirus) and gets that article's picture.
+//
+// Profile pictures are looked up by name in the same directory when the
+// doors open; write `avatar: https://…` to choose one yourself.
+
+CHARACTER Calculator
+CHARACTER MS Paint
+CHARACTER VLC
+CHARACTER Ring Doorbell
+CHARACTER WinZip
+CHARACTER GarageBand
+CHARACTER LimeWire
+CHARACTER MSN Messenger
+CHARACTER 3D Pinball
+CHARACTER RollerCoaster Tycoon
+CHARACTER Zoo Tycoon
+CHARACTER Minesweeper
+CHARACTER Ctrl Alt Del
+CHARACTER Start Bar
+CHARACTER Solitaire
+CHARACTER Winamp
+CHARACTER Napster
+CHARACTER Encarta
+CHARACTER Netscape Navigator
+CHARACTER ICQ
+CHARACTER The Sims
+CHARACTER Notepad
+CHARACTER Paint Shop Pro
+CHARACTER RealPlayer

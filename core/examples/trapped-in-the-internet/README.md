@@ -34,6 +34,7 @@ beats/internet.loom  inside the Internet (the tablet video, the VR contract)
 beats/glitch.loom    the inciting event → free roam · the stations
 beats/endings.loom   the keys · the countdown · five endings
 codex/*.loom         every piece of lore a program can hold, unlock, and trade
+quests.loom          the quest log: five quests + the progress lore brings
 trabolta.persona.md  the voice: the system prompt for Trabolta's fast model
 trabolta.mind.md     the mind: how the orchestrator model grows him over the night
 ```
@@ -68,14 +69,14 @@ Every `CODEX` entry (`codex/`) is a piece of lore a participant can
 1. **A code.** `code: SANDY-1997` — printed as a QR on a wall (`/api/mod/codes`
    lists every entry's join link: `?code=<event>&unlock=<code>`; scanning
    it with the phone camera opens the app and redeems it) or typed into
-   the Codex sheet. Codes match loosely: case, dashes and spaces are
+   the Codex room. Codes match loosely: case, dashes and spaces are
    ignored. A wrong code fires `wrong code` for them — Password Manager
    notices, and `doubt` rises.
 2. **The story.** `unlock The Third Key for program` in any beat or hook.
 3. **A person.** Every named character holds the entries *about them*
    (plus any `known to:`) from the start and shares them from the booth,
-   one recipient at a time. Guests share theirs the same way from the
-   Codex sheet. Sharing fires `learn` for the recipient (with `from`
+   one recipient at a time. Guests share theirs the same way from a
+   card in their Codex room. Sharing fires `learn` for the recipient (with `from`
    bound) and `share` for the story.
 4. **Show hardware** — an Arduino puzzle, the VR goose — through the mod
    API: `POST /e/:id/api/mod/codex {who, entry}`.
@@ -90,6 +91,24 @@ up and `stance` down; the Encyclopaedia Set drives `truth` up. That is how
 "recommend he downloads all of the Joe Rogan Experience" becomes a
 political stance and, eventually, an ending.
 
+## Things to do — the Quest Log
+
+Where the codex is what a program *knows*, `quests.loom` is what the
+night asks it to *do*. Each program has a pinned **📜 Quest Log** room
+(above the **📓 Codex** room) with one card per quest; every step lands
+in that card's own thread, in the giver's voice.
+
+| Quest (`title:`) | From | Handed out | Moves on | Settled |
+|---|---|---|---|---|
+| Clippy's Orientation | Clippy | `-> Orientation` (after the door) | — | finishing the tour ✅ / skipping it ✖ |
+| Computer Bingo | Clippy | `start the bingo` (everyone) | — | `the bingo results` ✅ |
+| The Truth Scavenger Hunt | Clippy | `start the hunt` (everyone) | each hunt fact learned (credited if found early) | all three ✅ / `the hunt results` ✖ for the rest |
+| The Three Keys | OpenOffice | `the glitch begins` (everyone) | holding a key; every key turned (everyone) | self-destruct ✅ / Rogue · Trapdoor · Unknown ✖ |
+| Unplug | Trabolta | self-destruct (everyone) | reaching for a cable without the humanity | unplugging ✅ / Long Dark · Unplugged ✖ for the rest |
+
+Show hardware can move a quest too: `POST /api/mod/quest {who, quest,
+action: start|update|complete|fail, text?}`.
+
 ## Integration contract
 
 Everything outside the phones is a client of the event server's mod API,
@@ -102,7 +121,8 @@ the pieces below are its siblings.
 |---|---|---|
 | **The CAPTCHA** | guest phone → story | `show captcha "…" to program with target: "traffic light"` renders the grid in the app; VERIFY posts `POST /api/guest/widget {seq, result: {passed, picked}}`, which the story hears as `when captcha answered for program:` with `passed` bound. Any `show <kind>` card works the same way (`<kind> answered`). |
 | **Wall QR codes** | guest phone → app | Print the `url` from `POST /api/mod/codes` → `codex[]`. Scanning opens the app with `?code=&unlock=`; a signed-in guest redeems on load. |
-| **Codex sheet** | guest phone → server | `POST /api/guest/codex/redeem {code}` · `POST /api/guest/codex/share {entry, to}` |
+| **Codex room** | guest phone → server | `POST /api/guest/codex/redeem {code}` (the Codex room's message box) · `POST /api/guest/codex/share {entry, to}` (a card's Share…) |
+| **Quests** | puzzle / director → story | `POST /api/mod/quest {who, quest, action, text?}` |
 | **Performer booth** | performer phone → server | `POST /api/prime/codex/share {entry, to}`; the booth's `PrimeView.codex` lists what their character holds. |
 | **Arduino puzzles** | puzzle → story | Either show the guest a code to type, or (via stagehand / any MQTT→HTTP hop) `POST /api/mod/codex {who: "<guest id>", entry: "The Second Key"}`. Guest ids come from the pass QR the puzzle scans, or from `/api/state?role=mod` → `roster`. |
 | **VR station** | headset → story | `POST /api/mod/signal {name: "the simulation completed", subject: "<guest id>"}` when the goose lays its egg (releases them); `{name: "the golden goose", subject}` for the flavour + entry. Bathroom Mode from the in-game app: `POST /api/guest/act {name: "go to the bathroom"}` with the guest's token, or `mod/signal {name, subject}`. |
@@ -166,12 +186,19 @@ live night replay identically and the director sees each one.
 | MalwareBytes / McAfee | assignable | |
 | Trabolta | *a language model on the host's laptop* | see `trabolta.persona.md` |
 
-Assignable programs for other RSVPs (Calculator, MS Paint, VLC, Ring
-Doorbell, Winzip, GarageBand, Limewire, MSN, Pinball, Trash, Roller
-Coaster Tycoon, Zoo Tycoon, Minesweeper, CTRL ALT DEL, Start Bar) are
-simply the names guests register with — no declaration needed. Give a
-named one a backstory by adding a `CHARACTER … is Person` and a couple of
-`CODEX … about:` entries.
+Programs for other RSVPs live in [`cast/pool.loom`](./cast/pool.loom)
+(Calculator, MS Paint, VLC, Ring Doorbell, WinZip, GarageBand, LimeWire,
+MSN Messenger, 3D Pinball, RollerCoaster Tycoon, Zoo Tycoon, Minesweeper,
+Ctrl Alt Del, Start Bar, …): a `CHARACTER` with nothing but a name is a
+program a **guest** picks at sign-in — one guest each, greyed out once
+taken — and a guest who wants something else searches the program
+directory (Wikipedia, software only; **never antivirus**) and becomes
+that, picture included. Performers pick from the *parts* (every character
+with hooks / beats / a body: the hosts, the Antivirus, the named
+programs; never a prop, never Trabolta). Profile pictures come from
+Wikipedia by name when the doors open; `avatar: https://…` on a
+CHARACTER overrides. Give a pool program a backstory by adding `is
+Person` and a couple of `CODEX … about:` entries — it then becomes a part.
 
 ## Rehearsing
 

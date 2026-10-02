@@ -3,13 +3,16 @@
 //! each), the open room on the stage, and the story's cards (a decision, a
 //! CAPTCHA) docked right in the conversation. Composed entirely from the
 //! shared chat primitives; this file only supplies the registration screen,
-//! the identity card, and the sheets for out-of-band actions: the pass, the
-//! Codex (knowledge as a currency), and the People directory.
+//! the identity card, and the sheets for out-of-band actions: the pass and
+//! the People directory. The Codex (knowledge as a currency) and the Quest
+//! Log are pinned rooms at the top of the sidebar, not sheets: the Codex's
+//! composer takes codes, and every quest is a card with its own thread.
 
-import { useEffect, useRef, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import {
   ActionRow,
   AlertBanner,
+  CardActionsProvider,
   ChannelView,
   ConnDot,
   GroupPill,
@@ -23,56 +26,163 @@ import {
   SpaceList,
   useWide,
 } from "./chat.tsx";
-import { groupCodex } from "./codex.ts";
 import { CutsceneStage } from "./cutscene.tsx";
 import { HelpSheet } from "./help.tsx";
 import { usePlayHost } from "./host.ts";
-import { codeFromUrl, pendingWidget, personalStream, useDocumentTitle, useGuestSession, useUrlEventTitle, type GuestSession } from "./session.ts";
+import { AvatarsContext, avatarLookup, avatarUrl, hitNote, hitPickable, orderPicker, type ProgramHit } from "./avatars.ts";
+import { codeFromUrl, fetchIdentities, pendingWidget, personalStream, searchPrograms, useDocumentTitle, useGuestSession, useUrlEventTitle, type GuestSession, type IdentityLookup } from "./session.ts";
 import { Tutorial, tourResult, tutorialSteps } from "./tutorial.tsx";
-import type { Action, Channel, CodexEntry, PersonCard } from "./types.ts";
+import type { Action, Channel, PersonCard } from "./types.ts";
 
 function GuestRegister({ session }: { session: GuestSession }) {
-  const [name, setName] = useState("");
   const [code, setCode] = useState(codeFromUrl);
+  const [ids, setIds] = useState<IdentityLookup | null | "loading">(null);
+  const [name, setName] = useState("");
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<ProgramHit[] | null>(null);
+  const [searching, setSearching] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const eventTitle = useUrlEventTitle();
-  const go = async () => {
+  // The code opens the picker: the story's unclaimed programs, with their
+  // pictures, and (when the server has the program directory) a search.
+  const [reload, setReload] = useState(0);
+  useEffect(() => {
+    const c = code.trim();
+    if (c.length < 4) {
+      setIds(null);
+      return;
+    }
+    let alive = true;
+    setIds("loading");
+    void fetchIdentities(c).then((r) => {
+      if (alive) setIds(r);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [code, reload]);
+  const resolved = ids !== null && ids !== "loading" && ids.kind === "ok" ? ids : null;
+  const fallback = ids !== null && ids !== "loading" && ids.kind === "unavailable" ? ids : null;
+  const programs = resolved === null ? [] : orderPicker(resolved.identities);
+  const go = async (name: string, wiki?: string) => {
     if (busy) return;
     setBusy(true);
+    setErr("");
     try {
-      await session.register(name.trim() || "Guest", code.trim());
+      await session.register(name, code.trim(), wiki);
     } catch (e) {
       setErr((e as Error).message);
+      setReload((n) => n + 1); // someone may have just taken it — refresh the list
+      if (hits !== null) setHits(null);
     } finally {
       setBusy(false);
     }
   };
+  const search = async () => {
+    if (resolved === null || searching) return;
+    const query = q.trim();
+    if (query === "") return;
+    setSearching(true);
+    setErr("");
+    try {
+      setHits(await searchPrograms(resolved.eventId, code.trim(), query));
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setSearching(false);
+    }
+  };
+  const picture = (key: string | null) => (resolved !== null && key !== null ? avatarUrl(resolved.eventId, key) : null);
   return (
     <div className="hero">
       <div className="glyph">🎟️</div>
-      <h1>{eventTitle ?? "Loom"}</h1>
+      <h1>{resolved?.title ?? fallback?.title ?? eventTitle ?? "Loom"}</h1>
       {session.notice && <p className="notice">{session.notice}</p>}
-      <p className="sub">Enter your name and the code from your host.</p>
-      <input
-        placeholder="What do they call you?"
-        value={name}
-        autoFocus
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && void go()}
-      />
+      <p className="sub">Enter the code from your host, then pick the program you are tonight.</p>
       <input
         placeholder="Event code (from the host)"
         value={code}
+        autoFocus={code === ""}
         autoCapitalize="characters"
         autoCorrect="off"
         spellCheck={false}
         onChange={(e) => setCode(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && void go()}
       />
-      <button className="choice primary" onClick={() => void go()} disabled={busy}>
-        {busy ? "Joining…" : "Join →"}
-      </button>
+      {ids === "loading" && <p className="pick-hint">Looking up the program list…</p>}
+      {ids !== null && ids !== "loading" && ids.kind === "unknown" && <p className="pick-hint">That code doesn't open anything. Check it with your host.</p>}
+      {fallback !== null && (
+        <>
+          <p className="pick-hint">The code is good, but the server couldn't send the program list — {fallback.error}. It may need a restart. You can still join by name:</p>
+          <input placeholder="What do they call you?" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && void go(name.trim() || "Guest")} />
+          <button className="choice primary" onClick={() => void go(name.trim() || "Guest")} disabled={busy}>
+            {busy ? "Joining…" : "Join →"}
+          </button>
+        </>
+      )}
+      {resolved !== null && (
+        <div className="cast-pick" role="group" aria-label="Which program are you?">
+          <div className="sheet-h">Which program are you?</div>
+          {programs.length === 0 && <p className="pick-hint">{resolved.search ? "Every named program is taken — search for another below." : "No programs left to pick — ask your host."}</p>}
+          <div className="pick-grid">
+            {programs.map((r) => (
+              <button
+                key={r.name}
+                type="button"
+                className={`choice pick ghost ${r.claimed ? "claimed" : ""}`}
+                disabled={busy || r.claimed}
+                title={r.claimed ? `${r.name} is taken tonight` : `Be ${r.name}`}
+                onClick={() => void go(r.name)}
+              >
+                <PersonAvatar name={r.name} size="lg" src={picture(r.avatar)} />
+                <span className="pick-label">
+                  {r.name}
+                  {r.claimed && <span className="pick-sub"> · taken</span>}
+                </span>
+              </button>
+            ))}
+          </div>
+          {resolved.search && (
+            <>
+              <div className="sheet-h">Something else?</div>
+              <div className="pick-search">
+                <input
+                  placeholder="Any software — e.g. NHL 97, Winamp…"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && void search()}
+                  aria-label="Search the program directory"
+                />
+                <button type="button" className="choice ghost" onClick={() => void search()} disabled={searching || q.trim() === ""}>
+                  {searching ? "…" : "Search"}
+                </button>
+              </div>
+              {hits !== null && hits.length === 0 && <p className="pick-hint">Nothing in the directory by that name. Try another spelling.</p>}
+              {hits !== null && hits.length > 0 && (
+                <div className="pick-results" role="list">
+                  {hits.map((h) => (
+                    <button
+                      key={h.name}
+                      type="button"
+                      role="listitem"
+                      className={`choice pick ghost ${hitPickable(h) ? "" : "claimed"}`}
+                      disabled={busy || !hitPickable(h)}
+                      onClick={() => void go(h.name, h.name)}
+                    >
+                      <PersonAvatar name={h.name} size="lg" src={picture(h.avatar)} />
+                      <span className="pick-label">
+                        {h.name}
+                        <span className="pick-desc">{hitNote(h)}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+      {busy && <p className="pick-hint">Uploading…</p>}
       {err && <div className="err">{err}</div>}
     </div>
   );
@@ -132,97 +242,6 @@ function PassSheet({ me, onClose }: { me: { id: string; name: string }; onClose:
         <div className="muted">{me.name} · show this to a performer to be scanned.</div>
       </div>
     </Sheet>
-  );
-}
-
-/** One codex entry: a tap unfolds the text; Share… hands it to someone. */
-function CodexRow({ entry, onShare }: { entry: CodexEntry; onShare: () => void }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="codex-entry">
-      <div className="codex-entry-head">
-        <button className="title" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-          {open ? "▾" : "▸"} {entry.title}
-        </button>
-        <button className="link" onClick={onShare}>
-          Share…
-        </button>
-      </div>
-      {open && <p className="codex-text">{entry.text}</p>}
-    </div>
-  );
-}
-
-/**
- * The Codex — every piece of lore this guest holds, grouped by who or
- * what it is about, plus the box where a code from a wall or a puzzle is
- * redeemed. Knowledge is the currency: share an entry and the recipient
- * holds it too.
- */
-function CodexSheet({ session, onClose }: { session: GuestSession; onClose: () => void }) {
-  const [code, setCode] = useState("");
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [sharing, setSharing] = useState<CodexEntry | null>(null);
-  const entries = session.status?.codex ?? [];
-  const total = session.status?.codexTotal ?? 0;
-  const people = session.status?.people ?? [];
-  const redeem = async () => {
-    const c = code.trim();
-    if (c === "") return;
-    try {
-      const unlocked = await session.redeem(c);
-      setMsg(unlocked ? { ok: true, text: `Unlocked: ${unlocked}` } : { ok: false, text: "That code unlocks nothing." });
-      if (unlocked) setCode("");
-    } catch (e) {
-      setMsg({ ok: false, text: (e as Error).message });
-    }
-  };
-  return (
-    <>
-      <Sheet
-        title={
-          <>
-            📓 Codex <span className="codex-total">{entries.length} of {total}</span>
-          </>
-        }
-        onClose={onClose}
-        tall
-      >
-        <div className="codex-redeem">
-          <input
-            placeholder="Enter a code…"
-            value={code}
-            autoCapitalize="characters"
-            autoCorrect="off"
-            spellCheck={false}
-            onChange={(e) => setCode(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && void redeem()}
-          />
-          <button className="choice primary" onClick={() => void redeem()}>
-            Unlock
-          </button>
-        </div>
-        {msg && <div className={`codex-msg ${msg.ok ? "ok" : "bad"}`}>{msg.text}</div>}
-        {entries.length === 0 && <div className="codex-empty">You know nothing yet. Codes are on the walls, in the puzzles, and in people.</div>}
-        {groupCodex(entries).map((g) => (
-          <div key={g.about}>
-            <div className="codex-about">{g.about === "" ? "Lore" : `About ${g.about}`}</div>
-            {g.entries.map((e) => (
-              <CodexRow key={e.id} entry={e} onShare={() => setSharing(e)} />
-            ))}
-          </div>
-        ))}
-      </Sheet>
-      {sharing && (
-        <PickerSheet
-          title={`Share “${sharing.title}” with…`}
-          items={people.map((p) => ({ id: p.id, label: p.name, sub: p.kind === "character" ? "character" : (p.faction ?? "guest"), avatar: true }))}
-          onPick={(id) => void session.shareCodex(sharing.id, id)}
-          onClose={() => setSharing(null)}
-          empty="Nobody else is here yet."
-        />
-      )}
-    </>
   );
 }
 
@@ -286,10 +305,9 @@ function PeopleSheet({ session, only, onClose }: { session: GuestSession; only?:
 }
 
 /** The identity card at the top of the sidebar: who you are, where you are. */
-function IdentityCard({ s, onCodex, onPeople, onHelp, onProfile }: { s: GuestSession; onCodex: () => void; onPeople: () => void; onHelp: () => void; onProfile: () => void }) {
+function IdentityCard({ s, onPeople, onHelp, onProfile }: { s: GuestSession; onPeople: () => void; onHelp: () => void; onProfile: () => void }) {
   const st = s.status;
   const captured = st?.captured ?? false;
-  const codexCount = st?.codex?.length ?? 0;
   const where = captured ? "🔒 captured" : st?.location ? `📍 ${st.location}` : "📍 nowhere yet";
   return (
     <header className={`inbox-head ${captured ? "trapped" : ""}`}>
@@ -307,9 +325,6 @@ function IdentityCard({ s, onCodex, onPeople, onHelp, onProfile }: { s: GuestSes
         </div>
       </div>
       <div className="hud">
-        <button className="icon-btn wide" title="Codex — what you know" onClick={onCodex} data-tour="codex">
-          📓<span className="count">{codexCount}</span>
-        </button>
         <button className="icon-btn" title="People" onClick={onPeople} data-tour="people">
           👥
         </button>
@@ -360,7 +375,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const s = useGuestSession();
   const wide = useWide();
   const [profile, setProfile] = useState(false);
-  const [codex, setCodex] = useState(false);
+  const [sharing, setSharing] = useState<{ entry: string; title: string } | null>(null);
   const [people, setPeople] = useState<ReadonlySet<string> | "all" | null>(null);
   const [help, setHelp] = useState(false);
   const [inviting, setInviting] = useState(false);
@@ -368,6 +383,9 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   useDocumentTitle(s.me?.title);
   const t = s.threads;
   const st = s.status;
+  // Everyone's profile pictures (a program's Wikipedia image, an authored
+  // `avatar:`), for every tile in the app.
+  const avatars = useMemo(() => avatarLookup(s.me?.eventId ?? null, st?.avatars), [s.me?.eventId, st?.avatars]);
   const cut = useCutscene(st?.cutscene === true);
   // The story's guided tour, once dealt and until answered — never over a
   // cutscene (it waits for the guest to step into the app).
@@ -447,6 +465,14 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     } else {
       // A membership-gated room the guest belongs to can invite + leave.
       const gated = active.kind === "private" || active.kind === "group" || active.kind === "dm";
+      // The Codex's composer takes codes; the Quest Log takes nothing (its
+      // cards open their threads). Everywhere else, you talk.
+      const send =
+        active.kind === "codex"
+          ? (text: string) => void s.redeem(text).catch(() => {})
+          : active.kind === "quests"
+            ? undefined
+            : (text: string) => void s.say(active.id, text);
       const roomActions: Action[] = [];
       if (gated && active.member) {
         roomActions.push({ label: "＋ Invite", onClick: () => setInviting(true), tone: "primary" });
@@ -459,7 +485,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
           meId={s.me.id}
           onBack={t.back}
           onOpenThread={t.openThread}
-          onSend={(text) => void s.say(active.id, text)}
+          onSend={send}
           widgets={widgets}
           onPeople={() => setPeople(new Set((active.people ?? []).map((p) => p.id)))}
           footer={roomActions.length > 0 ? <ActionRow actions={roomActions} /> : undefined}
@@ -474,7 +500,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       activeId={t.activeId}
       meId={s.me.id}
       onOpen={t.open}
-      header={<IdentityCard s={s} onCodex={() => setCodex(true)} onPeople={() => setPeople("all")} onHelp={() => setHelp(true)} onProfile={() => setProfile(true)} />}
+      header={<IdentityCard s={s} onPeople={() => setPeople("all")} onHelp={() => setHelp(true)} onProfile={() => setProfile(true)} />}
       empty="Quiet… for now."
     />
   );
@@ -483,12 +509,15 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     ? tutorialSteps({
         title: st.title ?? s.me.title ?? "the story",
         hasCodex: (st.codexTotal ?? 0) > 0,
+        hasQuests: (st.questTotal ?? 0) > 0,
         hasPeople: (st.people?.length ?? 0) > 0,
         hasActions: (st.interactions?.length ?? 0) > 0,
       })
     : [];
 
   return (
+    <AvatarsContext.Provider value={avatars}>
+    <CardActionsProvider value={{ shareCodex: (entry, title) => setSharing({ entry, title }) }}>
     <div className={`root ${captured ? "trapped-bg" : ""}`} ref={rootRef}>
       {banner}
       <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room on the left. The one you're standing in is at the top." />
@@ -510,9 +539,19 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
         />
       )}
       {profile && <ProfileSheet session={s} onClose={() => setProfile(false)} onLeave={onLeave} />}
-      {codex && <CodexSheet session={s} onClose={() => setCodex(false)} />}
+      {sharing && (
+        <PickerSheet
+          title={`Share “${sharing.title}” with…`}
+          items={(st.people ?? []).map((p) => ({ id: p.id, label: p.name, sub: p.kind === "character" ? "character" : (p.faction ?? "guest"), avatar: true }))}
+          onPick={(id) => void s.shareCodex(sharing.entry, id).catch(() => {})}
+          onClose={() => setSharing(null)}
+          empty="Nobody else is here yet."
+        />
+      )}
       {people !== null && <PeopleSheet session={s} only={people === "all" ? undefined : people} onClose={() => setPeople(null)} />}
       {help && <HelpSheet role="guest" onClose={() => setHelp(false)} />}
     </div>
+    </CardActionsProvider>
+    </AvatarsContext.Provider>
   );
 }

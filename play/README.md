@@ -62,10 +62,20 @@ message lands in one channel kind:
 - **Private** (`pm:<a>:<b>`) — a guest-to-guest thread, opened from the
   **👥 People** directory. Only its two parties (and the operator) see it.
 
-**Codex + People (2026-09-10).** The **📓 Codex** sheet lists every
-`CODEX` entry the guest holds, grouped by subject, with a box to redeem a
-code (a scanned wall QR arrives as `?unlock=<code>` and is redeemed on
-load) and a **Share…** picker. The **👥 People** sheet lists every guest
+**Pinned rooms — the Quest Log + the Codex (2026-10-02).** Two rooms sit
+in a **Pinned** space above everything else (`PINNED_SPACE`; fixed order
+via `roomOrder`). **📜 Quest Log** (`quests`, read-only): every quest the
+story handed the guest is a card (`kind: "quest"`, giver avatar, brief,
+status read off its thread by `questStatusOf`); tapping it opens the
+card's own thread — its steps. **📓 Codex** (`codex`): every entry the
+guest holds is a card (`kind: "codex"`, **Share…** → a person picker via
+`CardActionsProvider`), and the room's composer *redeems* codes
+(**Unlock**); a miss or a share lands there as a note. A scanned wall QR
+arrives as `?unlock=<code>`, is redeemed on load, and opens the Codex.
+Both stay out of a cutscene (`personalStream`). Tested in
+`test/quests.test.ts`.
+
+**People (2026-09-10).** The **👥 People** sheet lists every guest
 and listed character with exactly the lore about them the viewer holds,
 plus **💬 Message**. Performers see what their character knows in the ☰
 sheet and share it from a guest's thread (**📓 Share lore…**). A

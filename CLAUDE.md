@@ -182,6 +182,88 @@ backbone; the SaaS lives entirely in the TS stack.
 
 ## Status
 
+**The quest log landed + the codex became a room 2026-10-02** (TS `core/`
++ `play` + `editor` + the show; help: `authoring/37-quests`,
+`play/10-quests`, `play/08-codex`; guide §11.13a). Asked for: a quest
+log for *Trapped in the Internet*, "similar to the codex", and the codex
+turned from a header button into a chatroom — both **pinned rooms**, each
+quest with its own thread. **Language:** `QUEST name` (`title:` / `from:`
+giver / `text:` brief → `QuestBody` / `model.quests` + `questIndex`);
+statements `start | update | complete (finish) | fail quest X for
+<who|everyone|scope> ["line"]` (two-word verbs in `statements.ts` →
+`quest_start` / `quest_update` / `quest_complete` / `quest_fail`
+directives); triggers `when program starts|completes|fails quest X:`
+(`questTrigger` in `model.ts` — the word `quest` is required so `the
+simulation completed` stays a named event); world mirror
+`who.quest.<slug>` = `active|done|failed`. **Sim:** `questLog`,
+`stepQuest` (start once, update/complete/fail only while active),
+`quest(action, person, quest, text)` mutation (journaled `quest`),
+`questsFor` / `questStatus`, `SimEvent quest`. **Chat:** pinned rooms
+`codex` / `quests` (`CODEX_ROOM` / `QUEST_LOG`, space `pinned`, one id
+for everyone, every message addressed to one person, `canPost` false for
+typed chat); `codexUnlocked` → a `kind: "codex"` card (`CodexCard`) in
+the holder's Codex + a "You shared…" note for the sharer, misses land
+there too (no more lobby notices); a quest step → `kind: "quest"`
+(`QuestCard`) — `start` opens a thread (`DraftMessage.threadKey` /
+`threadRoot`, resolved by `ChatStore.append`), later steps reply to it,
+so restarts rebuild the threads exactly. Performers' booths never get
+pinned-room messages (`visibleToPrime`). `GuestView.quests` /
+`questTotal`; `POST /e/:id/api/mod/quest {who, quest, action, text?}`.
+**Play:** the 📓 header button + Codex sheet are gone; `buildGuestChannels`
+adds the Pinned space (Quest Log, then Codex, fixed by `roomOrder`);
+`chat.tsx` renders codex cards (Share… via `CardActionsProvider`), quest
+cards (status from `questStatusOf`, opens its thread) and quest steps;
+the Codex composer redeems (**Unlock**); a `?unlock=` link opens the
+Codex; the tour gained a Quest Log step and points at the pinned rows
+(`Channel.tour` → `data-tour`). **Editor:** each guest's pinned rooms are
+per-guest cockpit rooms (`Quest Log · Ada`), read-only, with compact
+card rendering. **Show:** `quests.loom` — five quests (Orientation,
+Computer Bingo, the Hunt, the Three Keys, Unplug) with steps wired into
+the beats; ROLE gained `hunt_facts`. Tests: core `quests` (9),
+`trapped-in-the-internet` (+4), `codex` (Codex room); play `quests` (5);
+editor `rooms` (pinned rooms). The Rust engine does not know `QUEST`.
+
+**Sign-in became a cast pick landed 2026-09-22** (TS `core/` + `play` +
+the show; help: `play/01-welcome`, `play/07-performers`,
+`authoring/30-live-shows`). Asked for: replace the guest name box and the
+performer's free cast list with real pickers — guests choose an
+unclaimed *non-special* named character or search the web for any
+software (Wikipedia picture = profile picture, then locked; never
+antivirus), performers choose an unclaimed *special* character (a named
+role / beats), with scraped or authored pictures. **Server:**
+`server/identity.ts` classifies every `CHARACTER` from the model —
+*special* (hooks / owned beats / lines in a beat / `listed` / `mind`)
+is a performer's part, a bare name is a guest's *program*; `playable: false` (new
+`CharDef.playable`, on the show's `Prop` trait) removes it from both,
+`mind: external` from the performer list, a `joinable: false` group
+(the Antivirus) from the guest list. `server/wiki.ts` (`WikiClient`,
+injectable fetch, memoised): CirrusSearch `hastemplate:"Infobox
+software|video game|website"` queries + an unfiltered one for the real
+ranking (title matches first), a title lookup with redirects falling
+back to search then to the name minus its first word, and — for a page
+with no lead image (non-free logos) — the article's own best file
+(`pickFile`); 4 requests in flight at most, failures never memoised;
+`isAntivirusSoftware`. `server/avatars.ts`: `AvatarBook`
+(folded name → URL, opaque sha keys, `avatars.json`) + `ImageCache`
+(process-wide LRU); `GET /e/:id/api/avatar/<key>` serves same-origin
+(CSP untouched, never an open proxy). `EventRuntime`: `POST
+/api/identities {passcode}` → `{role, identities[{name, faction, avatar,
+claimed}], search}`; `POST /api/identities/search {passcode, q}` →
+`results[{…, description, blocked}]`; `guest/register` takes `wiki`
+(the picked title, re-verified server-side), refuses taken / part /
+caste names (409) and antivirus (403), returns `avatar`; `prime/login`
+refuses a part another booth holds (409; the same token may re-sign),
+programs, agents, props; `loadScenario` seeds authored links + looks up
+the rest (`init.wiki` — `null` in tests, `new WikiClient()` in
+`server.ts` unless `LOOM_WIKI=off`); every view carries `avatars`.
+**Play:** `avatars.ts` (`AvatarsContext` / `avatarLookup` / picker
+helpers), `PersonAvatar` renders the picture when there is one (`src`
+override for the pickers), `GuestRegister` = code → program grid +
+directory search (antivirus greyed with the reason, taken greyed,
+409 refreshes the list), `PrimeLogin` = parts grid with taken greyed.
+**Show:** `cast/pool.loom` (24 programs), README casting note. Tests:
+core `identity` (19, fake Wikipedia + fake images), play `avatars` (4). Verified live against real Wikipedia on a scratch :7311 server with Playwright (every part + all 24 pool programs got a picture).
+
 **The mind debugger + control panel landed 2026-09-18** (Python
 `stagehand/` + TS `core/` server + `editor`; help:
 `authoring/44-mind-debugger.md`; `stagehand/README.md` → *The shape of a

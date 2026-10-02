@@ -1,6 +1,6 @@
 //! The guided tour of the app — what a `show tutorial … to guest` card
 //! puts on the screen. A spotlight walks the guest over the real controls
-//! (the rooms list, their card, the Codex, People, their pass) one step at
+//! (the rooms list, their card, the Quest Log, the Codex, People, their pass) one step at
 //! a time, with a callout from the story's guide. Every step can be skipped;
 //! finishing or skipping answers the card, so the story hears which.
 //!
@@ -26,6 +26,8 @@ export interface TourOptions {
   title: string;
   /** The story has a codex (knowledge as a currency). */
   hasCodex: boolean;
+  /** The story declares quests (the Quest Log). */
+  hasQuests?: boolean;
   /** The story has a people directory. */
   hasPeople: boolean;
   /** The guest has story buttons on their pass (`INTERACTION … who: guest`). */
@@ -54,12 +56,20 @@ export function tutorialSteps(o: TourOptions): TourStep[] {
       text: "Who you are tonight, where the story thinks you are, your score, and the green dot that says you're live.",
     },
   ];
+  if (o.hasQuests) {
+    steps.push({
+      id: "quests",
+      target: "quests",
+      title: "The Quest Log",
+      text: "Pinned at the top: what the story has asked of you. Every quest is a card — open it to follow its progress in its own thread.",
+    });
+  }
   if (o.hasCodex) {
     steps.push({
       id: "codex",
       target: "codex",
       title: "The Codex",
-      text: "What you know. Codes on the walls, in the puzzles and in people unlock entries. Knowledge is the currency — share it carefully.",
+      text: "Pinned too: what you know. Type a code from a wall, a puzzle or a person into it to unlock an entry. Knowledge is the currency — share it carefully.",
     });
   }
   if (o.hasPeople) {

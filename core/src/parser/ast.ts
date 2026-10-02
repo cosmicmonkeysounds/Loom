@@ -76,6 +76,7 @@ export interface Declaration {
   channel: ChannelBody | null;
   interaction: InteractionBody | null;
   codex: CodexBody | null;
+  quest: QuestBody | null;
   span: Span;
 }
 
@@ -107,6 +108,7 @@ export function emptyDeclaration(
     channel: null,
     interaction: null,
     codex: null,
+    quest: null,
     span,
   };
 }
@@ -128,7 +130,8 @@ export type DeclarationKind =
   | "space"
   | "channel"
   | "interaction"
-  | "codex";
+  | "codex"
+  | "quest";
 
 const DECLARATION_KEYWORDS: ReadonlyArray<[string, DeclarationKind]> = [
   ["CHARACTER", "character"],
@@ -148,6 +151,7 @@ const DECLARATION_KEYWORDS: ReadonlyArray<[string, DeclarationKind]> = [
   ["CHANNEL", "channel"],
   ["INTERACTION", "interaction"],
   ["CODEX", "codex"],
+  ["QUEST", "quest"],
 ];
 
 /**
@@ -487,6 +491,28 @@ export interface CodexBody {
 
 export function emptyCodexBody(): CodexBody {
   return { title: null, about: null, code: null, knownTo: [], text: "", properties: new Map() };
+}
+
+// ---------------------------------------------------------------------
+// QUEST — a task the story hands a participant, tracked in their quest
+// log. The codex's sibling: where an entry is something you *know*, a
+// quest is something you are *doing*. The story starts, updates,
+// completes, or fails it per participant (`start quest X for guest`);
+// every step lands in that quest's own thread, voiced by `from:`.
+// ---------------------------------------------------------------------
+
+export interface QuestBody {
+  /** Display title; defaults to the declaration name. */
+  title: string | null;
+  /** Who hands it out — a character name; the quest thread's voice. */
+  giver: string | null;
+  /** The brief — the indented block under `text:`. */
+  text: string;
+  properties: Map<string, PropertyValue>;
+}
+
+export function emptyQuestBody(): QuestBody {
+  return { title: null, giver: null, text: "", properties: new Map() };
 }
 
 // ---------------------------------------------------------------------

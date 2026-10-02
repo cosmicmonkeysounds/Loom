@@ -161,6 +161,10 @@ export interface CockpitMessage {
   via?: string
   /** The card a `widget` message carries (a CAPTCHA, a picture, a poll…). */
   widget?: WidgetCard
+  /** A Codex-room entry card (`kind: 'codex'`). */
+  codex?: { entry: string; title: string; via: string; from: string | null }
+  /** A Quest Log step (`kind: 'quest'`): the card is `start`, the rest reply to it. */
+  quest?: { quest: string; title: string; action: string }
 }
 
 export interface FactionSummary {

@@ -27,6 +27,7 @@ Clippy: Your card is a big asterisk — diagonals, the centre column, the centre
 Clippy: The centre square, everyone. Read it aloud with me: "Would you NEVER agree to a life where AI makes all of your decisions?"
 Clippy: You have fifteen to twenty minutes. Then we see who got a Bingo! Go! Mingle! Compute!
 broadcast "!🎱 COMPUTER BINGO has begun. 15 minutes. Remember who answered what — do not write names." to everyone
+start quest The Bingo Card for everyone
 unlock Computer Bingo for Clippy
 
 == Bingo Results
@@ -34,6 +35,7 @@ unlock Computer Bingo for Clippy
   cast: Clippy
 
 broadcast "!🎱 Time! Back to the Desktop. Bingo cards up." to everyone
+complete quest The Bingo Card for everyone "Time. Cards up — and somebody's centre square is about to matter."
 Clippy: Cards UP! Who has a Bingo? Come up, come up. Name who answered each square, please. Save the centre for last.
 Clippy: And the centre. Who said they would NEVER let an AI make their decisions?
 Clippy (delighted): A BINGO! A real one! Everyone cheer! I have a RIBBON!

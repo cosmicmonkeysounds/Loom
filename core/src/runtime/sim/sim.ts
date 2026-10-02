@@ -24,8 +24,8 @@ import {
   type Bindings,
   type Value,
 } from "../expr.ts";
-import { SimLog, type SimEvent } from "./event.ts";
-import { DEFAULT_SPACE_ID, channelId, compileModel, foldCode, type ChannelDef, type CodexDef, type Hook, type SimModel } from "./model.ts";
+import { SimLog, type QuestAction, type QuestStatus, type SimEvent } from "./event.ts";
+import { DEFAULT_SPACE_ID, channelId, compileModel, foldCode, type ChannelDef, type CodexDef, type Hook, type QuestDef, type SimModel } from "./model.ts";
 import { routesCue } from "./channel-types.ts";
 import { parseSet, splitDirective, splitKeyword } from "./effects.ts";
 import { Bundle, type LoomFileEntry } from "../bundle.ts";
@@ -169,6 +169,8 @@ export class Sim {
   private lastChatAt = new Map<string, number>();
   /** Codex holdings — holder id (a person or a character) → entry ids. */
   private codexHeld = new Map<string, Set<string>>();
+  /** Quest logs — person id → quest id → where it stands (start order). */
+  private questLog = new Map<string, Map<string, QuestStatus>>();
   private pending: Trigger[] = [];
   private beatVisits = new Map<string, number>();
   /** Each participant's current story position (last beat entered for them). */
@@ -495,6 +497,108 @@ export class Sim {
       argIds: from !== null ? new Map([["from", from]]) : undefined,
     });
     return true;
+  }
+
+  // -------------------------------------------------------------------
+  // Quests — the quest log (the codex's sibling: things you are doing)
+  // -------------------------------------------------------------------
+
+  /**
+   * An operator (or show hardware) moves one person's quest — the mutation
+   * behind `/api/mod/quest`, and the same step `start quest X for guest`
+   * takes. Unknown quests and steps that don't apply (completing a quest
+   * never started, starting one twice) do nothing.
+   */
+  quest(action: string, person: string, quest: string, text: string | null = null): SimEvent[] {
+    const from = this.log.len();
+    const id = this.resolveQuest(quest);
+    if (id !== null && isQuestAction(action)) this.stepQuest(person, id, action, text);
+    this.drain();
+    return this.log.since(from);
+  }
+
+  /** Every quest in a person's log, in the order they were handed out. */
+  questsFor(person: string): Array<{ def: QuestDef; status: QuestStatus }> {
+    const log = this.questLog.get(person);
+    if (log === undefined) return [];
+    const out: Array<{ def: QuestDef; status: QuestStatus }> = [];
+    for (const [id, status] of log) {
+      const def = this.model.quests.get(id);
+      if (def !== undefined) out.push({ def, status });
+    }
+    return out;
+  }
+
+  /** Where one quest stands for a person (null = not handed out). */
+  questStatus(person: string, quest: string): QuestStatus | null {
+    const id = this.resolveQuest(quest);
+    return id === null ? null : (this.questLog.get(person)?.get(id) ?? null);
+  }
+
+  private resolveQuest(quest: string): string | null {
+    const t = quest.trim();
+    if (this.model.quests.has(t)) return t;
+    return this.model.questIndex.get(t);
+  }
+
+  /**
+   * Apply one step: `start` opens the quest (once — a settled quest never
+   * restarts), `update` adds a line to an active one, `complete` / `fail`
+   * settle it. Records the event, mirrors `who.quest.<slug>` into the
+   * world (`"active"` / `"done"` / `"failed"`), and fires the quest
+   * trigger. True when something happened.
+   */
+  private stepQuest(person: string, id: string, action: QuestAction, text: string | null): boolean {
+    if (!this.persons.has(person)) return false;
+    let log = this.questLog.get(person);
+    const prior = log?.get(id) ?? null;
+    let status: QuestStatus;
+    if (action === "start") {
+      if (prior !== null) return false;
+      status = "active";
+    } else {
+      if (prior !== "active") return false;
+      status = action === "complete" ? "done" : action === "fail" ? "failed" : "active";
+    }
+    if (log === undefined) {
+      log = new Map();
+      this.questLog.set(person, log);
+    }
+    log.set(id, status);
+    this.world.set(`${person}.quest.${Sim.codexSlug(id)}`, vString(status));
+    this.record({ type: "quest", person, quest: id, action, text });
+    const verb = action === "start" ? "quest_started" : action === "complete" ? "quest_completed" : action === "fail" ? "quest_failed" : null;
+    if (verb !== null) this.fire({ verb, subject: person, scanner: null, filter: id });
+    return true;
+  }
+
+  /**
+   * `start quest X for who ["line"]` (and `update` / `complete` / `fail`):
+   * `who` is a bound participant, `everyone`, or a broadcast-style scope
+   * (`group(The Awakened)`); the optional quoted line is what the quest's
+   * thread says (interpolated like any line).
+   */
+  private runQuest(action: QuestAction, rest: string, bindings: Bindings): void {
+    let head = rest.trim();
+    let text: string | null = null;
+    const quoted = /^(.*?)\s+("(?:[^"\\]|\\.)*")\s*$/su.exec(head);
+    if (quoted !== null) {
+      head = quoted[1]!.trim();
+      text = this.interpolate(quoted[2]!.slice(1, -1), bindings);
+    }
+    const at = head.lastIndexOf(" for ");
+    if (at < 0) return;
+    const id = this.resolveQuest(head.slice(0, at));
+    if (id === null) return;
+    const scope = head.slice(at + 5).trim();
+    let who: string[];
+    if (GLOBAL_SCOPES.has(scope.toLowerCase())) who = [...this.persons.keys()];
+    else if (/\w+\(.*\)/u.test(scope)) who = this.resolveScope(scope, bindings);
+    else {
+      const p = this.resolveId(scope, bindings);
+      who = this.persons.has(p) ? [p] : [];
+    }
+    for (const p of who) this.stepQuest(p, id, action, text);
   }
 
   /** A party-goer escapes the prison (or any captured state). */
@@ -896,6 +1000,9 @@ export class Sim {
    *  channels honour their post policy (everyone / members / faction / none /
    *  role). Visibility is a precondition. */
   canPost(person: string, id: string): boolean {
+    // The pinned rooms are personal logs, not conversations: the Codex
+    // takes codes (`redeem`), the Quest Log takes nothing.
+    if (id === "codex" || id === "quests") return false;
     // A location room takes posts only from whoever is standing in it
     // (operator surfaces bypass this, as they do for authored rooms).
     if (id.startsWith("loc:")) return this.occupants.get(id.slice("loc:".length))?.has(person) ?? false;
@@ -1842,6 +1949,18 @@ export class Sim {
         this.doReveal(target, kw !== null ? this.resolveId(kw[1], bindings) : null);
         break;
       }
+      case "quest_start":
+        this.runQuest("start", rest, bindings);
+        break;
+      case "quest_update":
+        this.runQuest("update", rest, bindings);
+        break;
+      case "quest_complete":
+        this.runQuest("complete", rest, bindings);
+        break;
+      case "quest_fail":
+        this.runQuest("fail", rest, bindings);
+        break;
       case "unlock": {
         // `unlock The Sandy File for guest` — the story hands over lore.
         const kw = splitKeyword(rest, "for");
@@ -2324,6 +2443,10 @@ export class Sim {
     }
     return this.log.push(event);
   }
+}
+
+function isQuestAction(a: string): a is QuestAction {
+  return a === "start" || a === "update" || a === "complete" || a === "fail";
 }
 
 /** Event names are names (Loom 4 §3): `ring the bell` ≡ `ring_the_bell`. */

@@ -544,3 +544,90 @@ describe("Trapped in the Internet — the five endings", () => {
     expect(said(end).some(([who]) => who === "Clippy")).toBe(true);
   });
 });
+
+describe("Trapped in the Internet — the quest log", () => {
+  const log = (sim: Sim, id: string) => sim.questsFor(id).map((q) => [q.def.title, q.status]);
+  const steps = (evs: SimEvent[], id: string) =>
+    evs.filter((e): e is Extract<SimEvent, { type: "quest" }> => e.type === "quest" && e.person === id).map((e) => [e.quest, e.action]);
+
+  it("declares five quests, each from someone", () => {
+    const sim = fresh();
+    expect([...sim.model.quests.values()].map((q) => [q.title, q.giver])).toEqual([
+      ["Clippy's Orientation", "Clippy"],
+      ["Computer Bingo", "Clippy"],
+      ["The Truth Scavenger Hunt", "Clippy"],
+      ["The Three Keys", "OpenOffice"],
+      ["Unplug", "Trabolta"],
+    ]);
+  });
+
+  it("orientation, bingo, and the hunt: handed out, moved on by what you find, settled at the results", () => {
+    const sim = fresh();
+    upload(sim, "g1", "Minesweeper");
+    upload(sim, "g2", "Pinball");
+    // The door hands each program to Clippy's tour, which is a quest.
+    expect(sim.questStatus("g1", "Orientation")).toBe("active");
+    sim.signal("tutorial answered", "g1", { completed: true });
+    sim.signal("tutorial answered", "g2", { skipped: true });
+    expect(sim.questStatus("g1", "Orientation")).toBe("done");
+    expect(sim.questStatus("g2", "Orientation")).toBe("failed");
+    // Bingo: everyone gets the card; the results settle it.
+    sim.signal("start the bingo");
+    expect(sim.questStatus("g2", "The Bingo Card")).toBe("active");
+    sim.signal("the bingo results");
+    expect(sim.questStatus("g2", "The Bingo Card")).toBe("done");
+    // A fact found before the hunt is credited when it starts.
+    sim.redeem("g1", "GERALD");
+    const start = sim.signal("start the hunt");
+    expect(steps(start, "g1")).toEqual([["Three Facts", "start"], ["Three Facts", "update"]]);
+    expect(steps(sim.redeem("g1", "PET-CEMETERY-1917"), "g1")).toEqual([["Three Facts", "update"]]);
+    expect(steps(sim.redeem("g1", "barrington coefficient"), "g1")).toEqual([["Three Facts", "update"], ["Three Facts", "complete"]]);
+    // Time: whoever is still hunting failed it; a finished hunt stays finished.
+    sim.signal("the hunt results");
+    expect(log(sim, "g1")).toEqual([
+      ["Clippy's Orientation", "done"],
+      ["Computer Bingo", "done"],
+      ["The Truth Scavenger Hunt", "done"],
+    ]);
+    expect(sim.questStatus("g2", "Three Facts")).toBe("failed");
+  });
+
+  it("the keys and the cable: every turn is a step for everyone; the ending settles what is left", () => {
+    const sim = fresh();
+    upload(sim, "g1", "Minesweeper");
+    upload(sim, "g2", "Pinball", 0); // can't unplug
+    upload(sim, "g3", "Solitaire");
+    sim.signal("the glitch begins");
+    expect(sim.questStatus("g2", "Three Keys")).toBe("active");
+    expect(steps(sim.redeem("g1", "KEY-ALPHA-01"), "g1")).toEqual([["Three Keys", "update"]]);
+    sim.unlock("g2", "The Second Key");
+    sim.share("Broken Ask Jeeves", "g3", "The Third Key");
+    const turned = sim.signal("turn the key", "g1");
+    expect(turned.find((e) => e.type === "quest" && e.person === "g3")).toMatchObject({ action: "update", text: "🔑 Minesweeper turned the First Key. 1 of 3." });
+    sim.signal("turn the key", "g2");
+    const destruct = sim.signal("turn the key", "g3");
+    expect(steps(destruct, "g2")).toEqual([
+      ["Three Keys", "update"],
+      ["Three Keys", "complete"],
+      ["Remember Your Body", "start"],
+    ]);
+    sim.signal("begin the countdown");
+    expect(steps(sim.signal("unplug", "g1"), "g1")).toEqual([["Remember Your Body", "complete"]]);
+    expect(steps(sim.signal("unplug", "g2"), "g2")).toEqual([["Remember Your Body", "update"]]);
+    sim.signal("the countdown ended"); // The Long Dark
+    expect(sim.questStatus("g1", "Remember Your Body")).toBe("done");
+    expect(sim.questStatus("g2", "Remember Your Body")).toBe("failed");
+    expect(sim.questStatus("g3", "Remember Your Body")).toBe("failed");
+  });
+
+  it("each quest is a card in the program's own Quest Log, its steps threaded under it", () => {
+    const sim = fresh();
+    upload(sim, "g1", "Minesweeper");
+    const msgs = composeGuestMessages(sim, sim.signal("start the hunt")).filter((m) => m.channel === "quests");
+    expect(msgs.map((m) => [m.kind, m.from, m.quest?.title, m.audience])).toEqual([["quest", "Clippy", "The Truth Scavenger Hunt", ["g1"]]]);
+    expect(guestView(sim, "g1").quests.map((q) => [q.title, q.status])).toEqual([
+      ["Clippy's Orientation", "active"],
+      ["The Truth Scavenger Hunt", "active"],
+    ]);
+  });
+});

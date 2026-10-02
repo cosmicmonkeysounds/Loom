@@ -332,6 +332,21 @@ Two planes:
   `POST /api/resolve-code {code}` maps a guest/performer/mod code to its
   `{eventId, role}`. Each event has its own on-disk journal under
   `LOOM_STATE_DIR/<eventId>` and its own `/e/:eventId/*` route namespace.
+- **Sign-in identities** (`server/identity.ts`, derived from the story):
+  `POST /e/:id/api/identities {passcode}` lists what that code may sign in
+  as — the event code → the unclaimed *programs* (bare `CHARACTER`s: no
+  hooks / beats / `listed` / mind; never a `joinable: false` caste), the
+  performer or mod code → the unclaimed *parts* (everything else that is
+  `playable`, minus `mind: external`). `POST …/identities/search {passcode,
+  q}` searches the program directory (`server/wiki.ts` — Wikipedia,
+  steered at software via `hastemplate:` filters; antivirus hits flagged
+  `blocked: "antivirus"`). `guest/register {name, wiki?}` and `prime/login`
+  refuse a taken name (409), a part / caste for a guest (409), an
+  antivirus directory pick (403). Profile pictures (`server/avatars.ts`):
+  an authored `avatar:` link or the article's lead image, keyed per event
+  in `avatars.json`, served same-origin at `GET /e/:id/api/avatar/<key>`
+  (a process-wide byte cache), and carried on every view as `avatars`
+  (folded name → key). `LOOM_WIKI=off` keeps the server offline.
 
 The owning author's BetterAuth session is accepted on `/e/:eventId/api/mod/*`
 and the gated mod reads, so authors moderate from the editor's Run mode

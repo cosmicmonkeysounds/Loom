@@ -5,12 +5,13 @@
 //! plumbing — only their channel-shaping + actions differ.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Identities, ProgramHit } from "./avatars.ts";
 import { ApiError, api, useChatStream } from "./client.ts";
 import { maxSeqOf, pickAlerts, playChime, pmChannelId, pmOtherParty, unlockFromSearch, vibrate, withoutUnlock } from "./codex.ts";
 import { usePlayHost } from "./host.ts";
 import { SessionRole, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "./lifecycle.ts";
 import { locationOfRoom, occupantsByLocation, type Presence } from "./presence.ts";
-import { STORY_SPACE, channelHead, groupByChannel, prettyName, useThreads, type Threads } from "./threads.ts";
+import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, channelHead, groupByChannel, prettyName, questSummary, useThreads, type Threads } from "./threads.ts";
 import { useTyping } from "./typing.ts";
 import type { Channel, ChatMessage, Decision, GuestView, PrimeView } from "./types.ts";
 import { WIDGETS, type WidgetResult } from "./widgets.tsx";
@@ -55,6 +56,36 @@ export async function resolveCode(code: string): Promise<ResolvedCode | null> {
   } catch {
     return null;
   }
+}
+
+/** What the sign-in screen learns from a code. */
+export type IdentityLookup =
+  /** The code opens nothing. */
+  | { kind: "unknown" }
+  /** The code is good but the server couldn't give the picker (an older
+   *  server, a hiccup): the screen falls back to a plain sign-in. */
+  | { kind: "unavailable"; eventId: string; title?: string; role: string; characters?: string[]; error: string }
+  | ({ kind: "ok"; eventId: string; title?: string } & Identities);
+
+/** The sign-in picker for a code: a guest's unclaimed programs, or a
+ *  performer's unclaimed parts. */
+export async function fetchIdentities(code: string): Promise<IdentityLookup> {
+  const r = await resolveCode(code);
+  if (r === null) return { kind: "unknown" };
+  try {
+    const ids = await api<Identities>(`/e/${encodeURIComponent(r.eventId)}/api/identities`, { passcode: code });
+    return { kind: "ok", ...ids, eventId: r.eventId, title: r.title };
+  } catch (e) {
+    const err = e as Partial<ApiError>;
+    const status = typeof err.status === "number" ? ` (HTTP ${err.status})` : "";
+    return { kind: "unavailable", eventId: r.eventId, title: r.title, role: r.role, characters: r.characters, error: `${err.message ?? "no answer"}${status}` };
+  }
+}
+
+/** Search the program directory (any software; antivirus flagged). */
+export async function searchPrograms(eventId: string, code: string, q: string): Promise<ProgramHit[]> {
+  const r = await api<{ results: ProgramHit[] }>(`/e/${encodeURIComponent(eventId)}/api/identities/search`, { passcode: code, q });
+  return r.results;
 }
 
 /** Resolve a passcode to its event's display title (null if unknown/invalid). */
@@ -196,12 +227,17 @@ export function isListedRoom(id: string): boolean {
   return id.startsWith("loc:") || id.startsWith("room:");
 }
 
+/** The guest's own pinned rooms — the Codex and the Quest Log. */
+export function isPinnedRoom(id: string): boolean {
+  return id === CODEX_ROOM || id === QUEST_LOG;
+}
+
 /** Everything said *to* this guest, in order — the on-rails stream a
  *  cutscene shows: lines addressed to them, their cards, their replies.
  *  Room-wide story (`audience: "all"`) is not theirs and stays out. */
 export function personalStream(messages: ReadonlyMap<number, ChatMessage>, meId: string): ChatMessage[] {
   return [...messages.values()]
-    .filter((m) => Array.isArray(m.audience) && m.audience.includes(meId) && m.parentSeq == null)
+    .filter((m) => Array.isArray(m.audience) && m.audience.includes(meId) && m.parentSeq == null && !isPinnedRoom(m.channel))
     .sort((a, b) => a.seq - b.seq);
 }
 
@@ -249,6 +285,10 @@ export function buildGuestChannels(
   const needsYou = (msgs: ChatMessage[]): boolean =>
     msgs.some((m) => m.kind === "widget" && m.widget !== undefined && (WIDGETS[m.widget.kind]?.answerable ?? false) && !answered.has(m.seq));
   if (!groups.has("lobby")) groups.set("lobby", []); // the lobby is always present
+  // The pinned rooms are there from the start whenever the story has a
+  // codex / declares quests — the Codex is where codes get typed.
+  if ((view?.codexTotal ?? 0) > 0 && !groups.has(CODEX_ROOM)) groups.set(CODEX_ROOM, []);
+  if ((view?.questTotal ?? 0) > 0 && !groups.has(QUEST_LOG)) groups.set(QUEST_LOG, []);
   if (dock && !groups.has(dock.channel)) groups.set(dock.channel, []);
   // Threads the guest opened from the People list (a private message to a
   // guest, a DM to a character) exist before anyone has said anything.
@@ -296,6 +336,26 @@ export function buildGuestChannels(
         lastTs,
       };
     }
+    if (isPinnedRoom(id)) {
+      // The Codex takes codes (its composer redeems); the Quest Log is a
+      // read-only log whose cards each open their own thread.
+      const codex = id === CODEX_ROOM;
+      return {
+        id,
+        kind: codex ? ("codex" as const) : ("quests" as const),
+        title: codex ? "Codex" : "Quest Log",
+        subtitle: codex ? `${view?.codex?.length ?? 0} of ${view?.codexTotal ?? 0} found` : questSummary(view?.quests ?? []),
+        spaceId: PINNED_SPACE,
+        order: codex ? 1 : 0,
+        canPost: codex,
+        threadable: !codex,
+        tour: codex ? "codex" : "quests",
+        messages: msgs,
+        unread: 0,
+        decision,
+        lastTs,
+      };
+    }
     // A derived channel — read title/kind from the id (`dm:Recruiter` → "Recruiter").
     // The lobby is named after the story; derived rooms live in the story's space.
     // A private thread is named after the other party.
@@ -333,7 +393,8 @@ export interface GuestSession {
    *  ended) — shown on the join screen until the guest registers again. */
   notice: string | null;
   threads: Threads;
-  register: (name: string, code: string) => Promise<void>;
+  /** Join as `name` — a program from the picker, or (`wiki`) a directory title. */
+  register: (name: string, code: string, wiki?: string) => Promise<void>;
   join: (faction: string) => Promise<unknown>;
   defect: (to: string) => Promise<unknown>;
   choose: (index: number) => Promise<unknown>;
@@ -469,12 +530,12 @@ export function useGuestSession(): GuestSession {
     (channel: string, text: string, parentSeq?: number) => post("/api/guest/say", { channel, text, parentSeq }),
     [post],
   );
-  const register = useCallback(async (name: string, code: string) => {
+  const register = useCallback(async (name: string, code: string, wiki?: string) => {
     // Resolve the short event code to its event, then register there.
     const { eventId, title } = await api<ResolvedCode>("/api/resolve-code", { code });
     const r = await api<{ id: string; name: string; token: string }>(
       `/e/${encodeURIComponent(eventId)}/api/guest/register`,
-      { name, passcode: code },
+      { name, passcode: code, ...(wiki !== undefined ? { wiki } : {}) },
     );
     const m: GuestId = { id: r.id, name: r.name, token: r.token, eventId, title };
     crawl.reset();
@@ -509,6 +570,7 @@ export function useGuestSession(): GuestSession {
   // A wall QR's link carries `?unlock=<code>`: redeem it once we're signed
   // in and the doors are open, then drop it from the URL so a reload
   // doesn't try again.
+  const [openCodex, setOpenCodex] = useState(false);
   const pendingUnlock = useRef<string | null>(host.ownsPage ? unlockFromSearch(window.location.search) : null);
   useEffect(() => {
     const code = pendingUnlock.current;
@@ -519,7 +581,9 @@ export function useGuestSession(): GuestSession {
     } catch {
       /* fine */
     }
-    void redeem(code).catch(() => {});
+    void redeem(code)
+      .then(() => setOpenCodex(true))
+      .catch(() => {});
   }, [me, status, redeem]);
 
   // Widgets: one answer per card. The server refuses a second (409), and
@@ -567,6 +631,13 @@ export function useGuestSession(): GuestSession {
     },
     [me, threads],
   );
+  // A wall QR just unlocked something: show it where it landed.
+  useEffect(() => {
+    if (!openCodex) return;
+    setOpenCodex(false);
+    threads.open(CODEX_ROOM);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openCodex]);
   const dismissAlert = useCallback(() => setAlert(null), []);
   useTheme(status?.theme);
 

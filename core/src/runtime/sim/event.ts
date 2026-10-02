@@ -41,10 +41,17 @@ export const SimEventType = {
   Signal: "signal",
   CodexUnlocked: "codexUnlocked",
   CodexMissed: "codexMissed",
+  Quest: "quest",
   Ambient: "ambient",
   Tick: "tick",
   Diagnostic: "diagnostic",
 } as const;
+
+/** What happened to a quest. */
+export type QuestAction = "start" | "update" | "complete" | "fail";
+
+/** Where a quest stands in someone's log. */
+export type QuestStatus = "active" | "done" | "failed";
 
 export type SimEventType = (typeof SimEventType)[keyof typeof SimEventType];
 
@@ -104,6 +111,10 @@ export type SimEvent =
   | { type: "codexUnlocked"; person: string; entry: string; via: "code" | "story" | "share"; from: string | null }
   // A participant typed a code that unlocks nothing.
   | { type: "codexMissed"; person: string; code: string }
+  // A step of a participant's quest: handed out (`start`), moved on
+  // (`update`), or settled (`complete` / `fail`). `text` is the authored
+  // line for the quest's thread (null = the default copy / the brief).
+  | { type: "quest"; person: string; quest: string; action: QuestAction; text: string | null }
   | { type: "ambient"; source: string; text: string }
   | { type: "tick"; elapsedMs: number }
   | { type: "diagnostic"; message: string };

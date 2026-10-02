@@ -45,6 +45,7 @@ export type Mutation =
   | "unlock"
   | "redeem"
   | "share"
+  | "quest"
   | "tick";
 
 /** One replayable line of the journal: a method name + its arguments, and
@@ -74,6 +75,7 @@ const JOURNAL = "journal.ndjson";
 const SESSIONS = "sessions.json";
 const HIDDEN = "hidden.json";
 const GUESTS = "guests.json";
+const AVATARS = "avatars.json";
 
 /** Read + JSON-parse a file, returning `null` on any miss/corruption. */
 function readJson<T>(path: string): T | null {
@@ -171,6 +173,20 @@ export class Store {
   }
   saveGuests(entries: Array<[string, string]>): void {
     writeFileSync(this.path(GUESTS), JSON.stringify(entries));
+  }
+
+  // --- profile pictures ---------------------------------------------------
+  //
+  // Who has which picture (`[subject, url]` — a declared `avatar:` link, a
+  // Wikipedia lead image the server found, a guest's chosen program). Not
+  // journaled: a picture is presentation, not story state.
+
+  loadAvatars(): Array<[string, string]> {
+    const v = readJson<unknown>(this.path(AVATARS));
+    return Array.isArray(v) ? (v as Array<[string, string]>) : [];
+  }
+  saveAvatars(entries: Array<[string, string]>): void {
+    writeFileSync(this.path(AVATARS), JSON.stringify(entries));
   }
 
   // --- moderation (hidden message seqs) -----------------------------------

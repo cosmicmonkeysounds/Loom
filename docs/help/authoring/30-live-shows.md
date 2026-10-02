@@ -111,6 +111,18 @@ COHORT Early Arrivals
 - A `listed: true` **CHARACTER** can be `hidden: true` too: out of the
   People directory (and, for an agent-voiced one, off every phone) until
   `reveal Name` / `reveal self`.
+- **Who signs in as whom** is read off the cast. A character with a
+  *part* — hooks, owned beats, a body (`listed: true`), a mind — is a
+  **performer's**: the performer sign-in lists the parts nobody holds
+  yet, one booth each. A character that is **nothing but a name**
+  (`CHARACTER Calculator`, no body) is a **program a guest may be**: the
+  guest sign-in lists the unclaimed ones, one guest each, and a guest
+  who wants something else searches the program directory (any
+  software on Wikipedia — **never antivirus**) and becomes that. A
+  guest can never take a part, and never a name in a `joinable: false`
+  group. `playable: false` keeps a character off both lists (a scanned
+  prop). Profile pictures are looked up by name in the same directory
+  when the doors open; `avatar: https://…` on a character chooses one.
 - A **COHORT** is a plain named grouping with a capacity, for when you
   need to count heads without it being a "side".
 

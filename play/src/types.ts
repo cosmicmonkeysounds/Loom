@@ -4,8 +4,30 @@
 
 // --- server-authoritative chat (mirror of server/chat.ts) -------------------
 
-export type ChannelKind = "lobby" | "faction" | "dm" | "group" | "open" | "private" | "location";
-export type MessageKind = "line" | "narration" | "signal" | "system" | "widget";
+export type ChannelKind = "lobby" | "faction" | "dm" | "group" | "open" | "private" | "location" | "codex" | "quests";
+export type MessageKind = "line" | "narration" | "signal" | "system" | "widget" | "codex" | "quest";
+
+/** The entry a `codex` message shows (mirror of server/chat.ts `CodexCard`);
+ *  the message's `text` is the entry's text. */
+export interface CodexCard {
+  entry: string;
+  title: string;
+  about: string | null;
+  via: "code" | "story" | "share";
+  /** Who shared it, for `via: "share"`. */
+  from: string | null;
+}
+
+export type QuestAction = "start" | "update" | "complete" | "fail";
+export type QuestStatus = "active" | "done" | "failed";
+
+/** The quest a `quest` message is a step of (mirror of server/chat.ts
+ *  `QuestCard`): the `start` message is the card, later steps reply to it. */
+export interface QuestCard {
+  quest: string;
+  title: string;
+  action: QuestAction;
+}
 
 /** An inline widget (`show …`, mirror of server/chat.ts `WidgetCard`): a
  *  game, a picture, a form the app renders in the conversation. */
@@ -36,6 +58,10 @@ export interface ChatMessage {
   alert?: boolean;
   /** The card a `widget` message renders. */
   widget?: WidgetCard;
+  /** The entry a `codex` message shows. */
+  codex?: CodexCard;
+  /** The quest a `quest` message is a step of. */
+  quest?: QuestCard;
   /** The director who posted this *as* a participant (admins only; the
    *  server strips it for guests). */
   via?: string;
@@ -127,8 +153,14 @@ export interface GuestView {
   /** Knowledge as a currency: the entries this guest holds, out of how many exist. */
   codex?: CodexEntry[];
   codexTotal?: number;
+  /** The quest log, in the order quests were handed out (mirror of server
+   *  views.ts `QuestView`), and how many the story declares. */
+  quests?: Array<{ id: string; title: string; giver: string | null; status: QuestStatus }>;
+  questTotal?: number;
   /** Everyone here (guests + listed characters), and what one knows of each. */
   people?: PersonCard[];
+  /** Profile pictures: folded display name → serving key (`avatars.ts`). */
+  avatars?: Record<string, string>;
 }
 
 export interface PrimeGuest {
@@ -156,6 +188,8 @@ export interface PrimeView {
   codex?: CodexEntry[];
   /** Agent-voiced characters this performer can message (`cast:<id>` threads). */
   agents?: Array<{ id: string; online: boolean }>;
+  /** Profile pictures: folded display name → serving key (`avatars.ts`). */
+  avatars?: Record<string, string>;
 }
 
 // --- client-side view models (composed by the chat store) -------------------
@@ -210,4 +244,6 @@ export interface Channel {
   lastTs: number;
   /** "<name> is typing…" — an agent-voiced character composing a reply here. */
   typing?: string | null;
+  /** The `data-tour` anchor this row carries (the guided tour points at it). */
+  tour?: string;
 }

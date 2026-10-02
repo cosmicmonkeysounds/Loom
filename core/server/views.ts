@@ -24,6 +24,16 @@ function codexEntry(e: CodexDef): CodexEntryView {
   return { id: e.id, title: e.title, about: e.about, text: e.text };
 }
 
+/** A quest in someone's log, where it stands now. Its steps are the
+ *  replies under its card in the `quests` room. */
+export interface QuestView {
+  id: string;
+  title: string;
+  /** Who handed it out (the giver character), if anyone. */
+  giver: string | null;
+  status: "active" | "done" | "failed";
+}
+
 /** One row of the participants directory — a guest or a listed character. */
 export interface PersonCard {
   id: string;
@@ -163,8 +173,15 @@ export interface GuestView {
   codex: CodexEntryView[];
   /** How many entries exist to be found — the currency's denominator. */
   codexTotal: number;
+  /** The guest's quest log, in the order the quests were handed out. */
+  quests: QuestView[];
+  /** How many quests the story declares (0 → no Quest Log room). */
+  questTotal: number;
   /** The participants directory: who else is here, and what one knows of them. */
   people: PersonCard[];
+  /** Profile pictures by (folded) display name → serving key
+   *  (`/e/:id/api/avatar/<key>`). The runtime fills it; a local sim has none. */
+  avatars?: Record<string, string>;
 }
 
 export function guestView(sim: Sim, id: string, decisionChannel: string | null = null, agentsOnline?: ReadonlySet<string>): GuestView {
@@ -195,6 +212,8 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     interactions: interactionsFor(sim, ["guest"]),
     codex: sim.codexFor(id).map(codexEntry),
     codexTotal: sim.model.codex.size,
+    quests: sim.questsFor(id).map(({ def, status }) => ({ id: def.id, title: def.title, giver: def.giver, status })),
+    questTotal: sim.model.quests.size,
     people: peopleFor(sim, id, agentsOnline),
   };
 }
@@ -328,6 +347,8 @@ export interface ModView {
    *  lets the run panel surface + answer a stuck decision. */
   choices: Record<string, string[]>;
   ledgerLen: number;
+  /** Profile pictures by (folded) display name → serving key. */
+  avatars?: Record<string, string>;
   /** The whole world state as display strings (the director's debugger). */
   world: Array<{ path: string; value: string }>;
   /** Connected director consoles (co-writers moderating this event). */
@@ -469,6 +490,8 @@ export interface PrimeView {
   /** Agent-voiced characters (`mind: external`) this performer can message
    *  in a `cast:<Character>` thread; `online` = a worker is answering. */
   agents: AgentContact[];
+  /** Profile pictures by (folded) display name → serving key. */
+  avatars?: Record<string, string>;
 }
 
 export interface AgentContact {

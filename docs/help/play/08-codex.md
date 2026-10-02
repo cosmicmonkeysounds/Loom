@@ -10,15 +10,19 @@ trade.
 
 ## Your Codex
 
-Tap **📓** in the header. Your Codex is every piece of lore you hold,
-grouped by who or what it's about. The count shows how much of the
-night's knowledge you've found.
+Your **📓 Codex** is a room, pinned at the top of your rooms list (just
+under your 📜 Quest Log). Every piece of lore you hold is a card in it —
+what it says, who it's about, and how you got it — and the room's line
+in the list shows how much of the night's knowledge you've found
+("5 of 43 found").
 
 Lore reaches you three ways:
 
 - **A code.** Scan a QR code on a wall with your phone camera — it opens
-  the app and unlocks the entry — or type the code into the box at the
-  top of the Codex. Codes don't care about capitals, dashes or spaces.
+  the app, unlocks the entry, and shows it in your Codex — or type the
+  code into the Codex's message box and press **Unlock**, the way you'd
+  send a message. Codes don't care about capitals, dashes or spaces. A
+  miss says so right there in the room.
   A wrong code is *noticed* by the story, so don't guess in front of
   anyone.
 - **The story.** Answer the right way, be scanned by the right person,
@@ -27,8 +31,9 @@ Lore reaches you three ways:
 
 ## Sharing
 
-Every entry has a **Share…** button. Pick a person and they now hold it
-too — you keep your copy. Sharing is permanent and the story sees it:
+Every entry's card has a **Share…** button. Pick a person and they now
+hold it too — you keep your copy, and your Codex notes who you gave it
+to. Sharing is permanent and the story sees it:
 some characters *change* when they learn things. Share carefully.
 
 ## People

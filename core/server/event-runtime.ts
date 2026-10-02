@@ -15,14 +15,27 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
 
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
-import { guestView, modView, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type RuntimePhase } from "./views.ts";
+import { guestView, modView, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
-import { ChatStore, composeGuestMessages, decisionChannelFor, visibleTo, type ChatMessage } from "./chat.ts";
+import { ChatStore, composeGuestMessages, decisionChannelFor, isPinnedRoom, visibleTo, type ChatMessage } from "./chat.ts";
 import { ipOf, queryTokenOf, readBody, sendJson, sseSend, str, tokenOf } from "./http-util.ts";
 import { RateLimiter } from "./rate-limit.ts";
 import { TtsProxy, ttsConfigFromEnv } from "./tts.ts";
+import { AvatarBook, ImageCache, avatarKey } from "./avatars.ts";
+import { WikiClient, isAntivirusSoftware } from "./wiki.ts";
+import {
+  guestNameRefusal,
+  guestPickable,
+  heldCharacters,
+  identityDefs,
+  performerPickable,
+  performerRefusal,
+  takenNames,
+  type IdentityRow,
+} from "./identity.ts";
+import { foldName } from "../src/parser/names.ts";
 import {
   AgentHub,
   AgentTraceLog,
@@ -100,7 +113,9 @@ export function widgetResultArgs(raw: unknown, sim: Sim): Record<string, string 
 
 function visibleToPrime(m: ChatMessage, c: Client): boolean {
   if (c.admin === true) return true;
-  if (m.channel.startsWith("pm:")) return false;
+  // A guest's Codex + Quest Log are their own (the booth reads what its
+  // character holds from the snapshot).
+  if (m.channel.startsWith("pm:") || isPinnedRoom(m.channel)) return false;
   if (m.channel.startsWith("dm:")) {
     // Their own character's threads, public lines, and the performer's own
     // conversation with an agent-voiced character (audience `@<Character>`).
@@ -155,6 +170,12 @@ export interface EventRuntimeInit {
   scenarioSource: string;
   /** Best LAN/base URL for guest-join QRs (for `/api/mod/codes`). */
   joinBase: () => string;
+  /** The program directory (Wikipedia): profile pictures for the cast and
+   *  the guests' software search. Absent → no scraping, no search (tests,
+   *  an offline LAN); the join screen falls back to the declared pool. */
+  wiki?: WikiClient | null;
+  /** Picture bytes behind `/api/avatar/<key>` — one cache per process. */
+  images?: ImageCache;
   /** The wall terminals' voice (`/api/mod/tts`). One proxy — one cache —
    *  is shared by every event in the process; tests inject their own. */
   tts?: TtsProxy;
@@ -166,12 +187,24 @@ function defaultTts(): TtsProxy {
   return (sharedTts ??= new TtsProxy(ttsConfigFromEnv()));
 }
 
+let sharedImages: ImageCache | null = null;
+function defaultImages(): ImageCache {
+  return (sharedImages ??= new ImageCache());
+}
+
 export class EventRuntime {
   readonly eventId: string;
   readonly codes: Passcodes;
   private readonly store: Store;
   private readonly joinBase: () => string;
   private readonly tts: TtsProxy;
+  // The program directory (null: offline) + the pictures it found.
+  private readonly wiki: WikiClient | null;
+  private readonly images: ImageCache;
+  // Who has which profile picture (display name → URL), served same-origin
+  // at `/api/avatar/<key>`. Persisted, never journaled.
+  private readonly avatars = new AvatarBook();
+  private readonly avatarLookups = new Set<string>();
 
   private sim: Sim | null = null;
   private phase: RuntimePhase = "idle";
@@ -239,6 +272,8 @@ export class EventRuntime {
     this.scenarioSource = init.scenarioSource;
     this.joinBase = init.joinBase;
     this.tts = init.tts ?? defaultTts();
+    this.wiki = init.wiki ?? null;
+    this.images = init.images ?? defaultImages();
   }
 
   /** Current lifecycle phase (idle | open | paused). */
@@ -328,13 +363,27 @@ export class EventRuntime {
   private snapshotFor(client: Client): unknown {
     const online = new Set(this.agents.onlineCharacters());
     if (client.role === "guest") return this.guestViewFor(client.id, online);
-    if (client.role === "prime") return primeView(this.sim, client.id, online);
-    return modView(this.sim, this.phase, this.scenarioName, this.presence());
+    if (client.role === "prime") return this.primeViewFor(client.id, online);
+    return this.modViewNow();
   }
 
   /** A guest's snapshot, plus the cards they have already answered. */
   private guestViewFor(id: string, online: ReadonlySet<string>): GuestView {
-    return { ...guestView(this.reqSim(), id, this.decisionChannels.get(id) ?? null, online), answered: this.answeredFor(id) };
+    return {
+      ...guestView(this.reqSim(), id, this.decisionChannels.get(id) ?? null, online),
+      answered: this.answeredFor(id),
+      avatars: this.avatarMap(),
+    };
+  }
+
+  /** A performer's snapshot, with everyone's profile pictures. */
+  private primeViewFor(character: string, online: ReadonlySet<string>): PrimeView {
+    return { ...primeView(this.sim, character, online), avatars: this.avatarMap() };
+  }
+
+  /** The operator's god view, with everyone's profile pictures. */
+  private modViewNow(): ModView {
+    return { ...modView(this.sim, this.phase, this.scenarioName, this.presence()), avatars: this.avatarMap() };
   }
 
   /** Message seqs of the widget cards `id` has answered. */
@@ -883,6 +932,70 @@ export class EventRuntime {
     this.scenarioSource = source;
     this.scenarioName = name;
     this.phase = "paused";
+    this.seedAvatars();
+  }
+
+  // -- profile pictures ----------------------------------------------------
+
+  /** Authored `avatar:` links go straight into the book; every other
+   *  playable character (a performer's part, a guest's program) gets a
+   *  picture looked up in the program directory, in the background. */
+  private seedAvatars(): void {
+    if (this.sim === null) return;
+    const lookups: string[] = [];
+    for (const d of identityDefs(this.sim.model)) {
+      if (d.avatar !== null) {
+        if (this.avatars.keyFor(d.name) !== avatarKey(d.avatar)) this.avatars.assign(d.name, d.avatar);
+      } else if (guestPickable(d) || performerPickable(d)) {
+        lookups.push(d.name);
+      }
+    }
+    this.persistAvatars();
+    this.lookupAvatars(lookups);
+  }
+
+  /** Find pictures for names that have none yet (fire-and-forget; each
+   *  arrival re-sends snapshots so tiles fill in as they land). */
+  private lookupAvatars(names: string[]): void {
+    if (this.wiki === null) return;
+    for (const name of names) {
+      if (this.avatars.has(name) || this.avatarLookups.has(name)) continue;
+      this.avatarLookups.add(name);
+      void this.wiki.avatarFor(name).then((url) => {
+        this.avatarLookups.delete(name);
+        if (url === null || this.avatars.has(name)) return;
+        this.avatars.assign(name, url);
+        this.persistAvatars();
+        this.pushSnapshots();
+      });
+    }
+  }
+
+  private persistAvatars(): void {
+    this.store.saveAvatars(this.avatars.entries());
+  }
+
+  /** Every profile picture, by folded display name → serving key. */
+  private avatarMap(): Record<string, string> {
+    return this.avatars.keys();
+  }
+
+  /** The names on a join screen's picker: the story's pool of programs
+   *  for a guest, its parts for a performer — each with its picture and
+   *  whether someone already holds it. */
+  identities(role: "guest" | "prime"): IdentityRow[] {
+    if (this.sim === null) return [];
+    const defs = identityDefs(this.sim.model);
+    if (role === "guest") {
+      const taken = takenNames(this.sim.persons.values());
+      return defs
+        .filter(guestPickable)
+        .map((d) => ({ name: d.name, faction: d.faction, avatar: this.avatars.keyFor(d.name), claimed: taken.has(foldName(d.name)) }));
+    }
+    const held = heldCharacters(this.sessions.entries());
+    return defs
+      .filter(performerPickable)
+      .map((d) => ({ name: d.name, faction: d.faction, avatar: this.avatars.keyFor(d.name), claimed: held.has(foldName(d.name)) }));
   }
 
   // -- autonomous clock ----------------------------------------------------
@@ -1039,6 +1152,7 @@ export class EventRuntime {
   restore(): Restored | null {
     const meta = this.store.loadMeta();
     if (meta === null) return null;
+    this.avatars.load(this.store.loadAvatars());
     this.loadScenario(meta.scenarioSource, meta.scenarioName); // sets phase → paused
     let events = 0;
     for (const e of this.store.readJournal()) {
@@ -1199,6 +1313,27 @@ export class EventRuntime {
       return true;
     }
 
+    // --- a profile picture, served same-origin (the app's CSP is img-src 'self') ---
+    // Keys are opaque hashes of URLs *the server* chose (a Wikipedia lead
+    // image, an authored `avatar:` link); anything else is a 404, so this
+    // is never an open proxy. Public: a picker shows pictures before sign-in.
+    if (method === "GET" && path.startsWith("/api/avatar/")) {
+      const key = path.slice("/api/avatar/".length);
+      const target = /^[0-9a-f]{16}$/u.test(key) ? this.avatars.urlFor(key) : null;
+      const img = target === null ? null : await this.images.get(target);
+      if (img === null) {
+        sendJson(res, 404, { error: "no such picture" });
+        return true;
+      }
+      res.writeHead(200, {
+        "content-type": img.contentType,
+        "content-length": String(img.bytes.byteLength),
+        "cache-control": "public, max-age=86400",
+      });
+      res.end(img.bytes);
+      return true;
+    }
+
     // --- read-only state snapshot (same capability gates as the stream) ---
     if (method === "GET" && path === "/api/state") {
       const role = url.searchParams.get("role") ?? "mod";
@@ -1226,7 +1361,7 @@ export class EventRuntime {
             sendJson(res, 404, { error: "unknown character" });
             return true;
           }
-          sendJson(res, 200, primeView(this.sim, as, new Set(this.agents.onlineCharacters())));
+          sendJson(res, 200, this.primeViewFor(as, new Set(this.agents.onlineCharacters())));
           return true;
         }
       }
@@ -1245,14 +1380,14 @@ export class EventRuntime {
           sendJson(res, 403, { error: "no character — sign in" });
           return true;
         }
-        sendJson(res, 200, primeView(this.sim, character, new Set(this.agents.onlineCharacters())));
+        sendJson(res, 200, this.primeViewFor(character, new Set(this.agents.onlineCharacters())));
         return true;
       }
       if (opts.moderator !== true && !this.sessions.canModerate(token)) {
         sendJson(res, 403, { error: "moderators only" });
         return true;
       }
-      sendJson(res, 200, modView(this.sim, this.phase, this.scenarioName, this.presence()));
+      sendJson(res, 200, this.modViewNow());
       return true;
     }
 
@@ -1369,13 +1504,57 @@ export class EventRuntime {
       }
     }
 
+    // --- the join screens' pickers (a passcode, no session yet) ---
+    // Which code you hold decides which list you see: the event code shows
+    // the pool of programs a guest may be; the performer / mod code shows
+    // the parts. Each name says whether someone already holds it.
+    if (path === "/api/identities") {
+      if (this.throttled(req, res)) return true;
+      const passcode = str(body, "passcode");
+      const role = passOk(passcode, this.codes.event) ? "guest" : passOk(passcode, this.codes.prime) || passOk(passcode, this.codes.mod) ? "prime" : null;
+      if (role === null) {
+        this.loginFailures.record(ipOf(req));
+        sendJson(res, 403, { error: "wrong code" });
+        return true;
+      }
+      sendJson(res, 200, { role, identities: this.identities(role), search: role === "guest" && this.wiki !== null });
+      return true;
+    }
+    // A guest's search of the program directory: any software on Wikipedia
+    // — except antivirus, which is flagged so the screen can say why.
+    if (path === "/api/identities/search") {
+      if (this.throttled(req, res)) return true;
+      if (!passOk(str(body, "passcode"), this.codes.event)) {
+        this.loginFailures.record(ipOf(req));
+        sendJson(res, 403, { error: "wrong event code" });
+        return true;
+      }
+      if (this.wiki === null) {
+        sendJson(res, 503, { error: "the program directory is offline — pick from the list" });
+        return true;
+      }
+      const q = str(body, "q").trim().slice(0, 80);
+      const hits = await this.wiki.search(q);
+      const taken = takenNames(this.sim?.persons.values() ?? []);
+      const results = hits.map((h) => ({
+        name: h.title,
+        description: h.description,
+        avatar: h.image === null ? null : this.avatars.assign(h.title, h.image),
+        claimed: taken.has(foldName(h.title)),
+        blocked: isAntivirusSoftware(h.title, h.description) ? "antivirus" : null,
+      }));
+      if (results.some((r) => r.avatar !== null)) this.persistAvatars();
+      sendJson(res, 200, { results });
+      return true;
+    }
+
     // --- guest / performer / login actions ---
     // An operator play-as session acts exactly as the participant would, but
     // every journal line it writes names the director who did it.
     const imp = this.impersonations.get(tokenOf(req, body) ?? "");
     this.actingBy = imp?.by;
     try {
-      if (this.handlePost(req, res, path, body)) return true;
+      if (await this.handlePost(req, res, path, body)) return true;
     } finally {
       this.actingBy = undefined;
     }
@@ -1398,7 +1577,7 @@ export class EventRuntime {
    * Non-admin POST routes (guest actions, performer chat, prime/mod login).
    * Returns true when `path` matched one of them.
    */
-  private handlePost(req: IncomingMessage, res: ServerResponse, path: string, body: Record<string, unknown>): boolean {
+  private async handlePost(req: IncomingMessage, res: ServerResponse, path: string, body: Record<string, unknown>): Promise<boolean> {
     const open = this.open;
     switch (path) {
       // --- guest actions ---
@@ -1420,13 +1599,43 @@ export class EventRuntime {
           sendJson(res, 429, { error: "too many registrations — wait a minute" });
           return true;
         }
-        const name = str(body, "name") || "Guest";
+        // The name is the program they are tonight: one of the story's
+        // pool, or any software from the directory (`wiki` = the article
+        // title they picked). Names are exclusive, a part in the story is
+        // never a guest's, and a program is never antivirus software.
+        let name = str(body, "name").trim().replace(/\s+/gu, " ").slice(0, 48) || "Guest";
+        const wiki = str(body, "wiki").trim();
+        let picture: string | null = null;
+        if (wiki !== "") {
+          const hit = this.wiki === null ? null : await this.wiki.lookup(wiki);
+          if (hit === null) {
+            sendJson(res, 404, { error: "no such program in the directory" });
+            return true;
+          }
+          if (isAntivirusSoftware(hit.title, hit.description)) {
+            sendJson(res, 403, { error: `${hit.title} is antivirus software — programs can't be antivirus` });
+            return true;
+          }
+          name = hit.title;
+          picture = hit.image;
+        }
+        const refusal = guestNameRefusal(this.sim!.model, name, takenNames(this.sim!.persons.values()));
+        if (refusal !== null) {
+          sendJson(res, 409, { error: refusal });
+          return true;
+        }
         const id = `g-${randomUUID().slice(0, 6)}`;
         const token = randomUUID();
         this.guestTokens.set(token, id);
         this.persistGuests();
+        if (picture !== null) {
+          this.avatars.assign(name, picture);
+          this.persistAvatars();
+        } else {
+          this.lookupAvatars([name]);
+        }
         this.fanout(this.commit("createPerson", id, name));
-        sendJson(res, 200, { id, name, token });
+        sendJson(res, 200, { id, name, token, avatar: this.avatars.keyFor(name) });
         return true;
       }
       case "/api/guest/join": {
@@ -1671,11 +1880,17 @@ export class EventRuntime {
           sendJson(res, 403, { error: "bad passcode" });
           return true;
         }
-        if (this.sim !== null && !this.sim.model.characters.has(character)) {
-          sendJson(res, 404, { error: "unknown character" });
-          return true;
-        }
         let token = tokenOf(req, body);
+        if (this.sim !== null) {
+          // A part is one performer's: every *other* session's character is
+          // held; re-signing the same booth into the same part is fine.
+          const others = this.sessions.entries().filter(([t]) => t !== token);
+          const refusal = performerRefusal(this.sim.model, character, heldCharacters(others));
+          if (refusal !== null) {
+            sendJson(res, refusal === "unknown character" ? 404 : 409, { error: refusal });
+            return true;
+          }
+        }
         if (token && this.sessions.grant(token, { character })) {
           /* upgraded in place */
         } else {
@@ -1965,6 +2180,33 @@ export class EventRuntime {
         }
         this.fanout(this.commit("unlock", who, entry));
         sendJson(res, 200, { ok: true, holders: this.sim.codexHolders(entry) });
+        return true;
+      }
+      case "/api/mod/quest": {
+        // A director (or show hardware — a puzzle that finishes a quest)
+        // moves one person's quest: `{who, quest, action, text?}`.
+        if (this.sim === null) {
+          sendJson(res, 409, { error: "no scenario loaded" });
+          return true;
+        }
+        const who = str(body, "who");
+        const quest = str(body, "quest");
+        const action = str(body, "action") || "start";
+        const text = typeof body["text"] === "string" && body["text"].trim() !== "" ? body["text"].trim().slice(0, 500) : null;
+        if (!this.sim.persons.has(who)) {
+          sendJson(res, 404, { error: "unknown guest" });
+          return true;
+        }
+        if (!this.sim.model.quests.has(quest) && this.sim.model.questIndex.get(quest) === null) {
+          sendJson(res, 404, { error: "unknown quest" });
+          return true;
+        }
+        if (!["start", "update", "complete", "fail"].includes(action)) {
+          sendJson(res, 400, { error: "action must be start, update, complete, or fail" });
+          return true;
+        }
+        this.fanout(this.commit("quest", action, who, quest, text));
+        sendJson(res, 200, { ok: true, status: this.sim.questStatus(who, quest) });
         return true;
       }
       case "/api/mod/act": {

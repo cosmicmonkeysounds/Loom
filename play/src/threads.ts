@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { roomOrder } from "./presence.ts";
-import type { Channel, ChannelKind, ChatMessage, MessageKind } from "./types.ts";
+import type { Channel, ChannelKind, ChatMessage, MessageKind, QuestStatus } from "./types.ts";
 
 /** `MODERATOR_PRIME` / `Recruiter` → a friendly contact name. */
 export function prettyName(raw: string): string {
@@ -19,6 +19,8 @@ export function prettyName(raw: string): string {
 /** Title + kind for a channel id, used for threads with no messages yet. */
 export function channelHead(id: string): { kind: ChannelKind; title: string } {
   if (id === "lobby") return { kind: "lobby", title: "Lobby" };
+  if (id === CODEX_ROOM) return { kind: "codex", title: "Codex" };
+  if (id === QUEST_LOG) return { kind: "quests", title: "Quest Log" };
   if (id.startsWith("faction:")) return { kind: "faction", title: `#${id.slice(8).toLowerCase()}` };
   if (id.startsWith("dm:")) return { kind: "dm", title: prettyName(id.slice(3)) };
   if (id.startsWith("loc:")) return { kind: "location", title: prettyName(id.slice(4)) };
@@ -35,7 +37,12 @@ export function channelHead(id: string): { kind: ChannelKind; title: string } {
  *  per-guest threads. Authored spaces (any other id) sort between them,
  *  titled from the channel's `spaceTitle`. */
 export const STORY_SPACE = "story";
+/** The pinned rooms: your Codex + your Quest Log, above everything else. */
+export const PINNED_SPACE = "pinned";
+export const CODEX_ROOM = "codex";
+export const QUEST_LOG = "quests";
 export const SPACES: Record<string, { title: string; order: number }> = {
+  [PINNED_SPACE]: { title: "Pinned", order: -2 },
   booth: { title: "Booth", order: -1 }, // the performer's tools, pinned on top
   [STORY_SPACE]: { title: "Story", order: 0 },
   cast: { title: "Cast", order: 0.5 }, // agent-voiced characters a performer can message
@@ -120,6 +127,30 @@ export function replyCountFor(messages: ChatMessage[], rootSeq: number): number 
   let n = 0;
   for (const m of messages) if (m.parentSeq === rootSeq) n += 1;
   return n;
+}
+
+/**
+ * Where a quest stands, read off its thread: the last `complete` / `fail`
+ * step under the card settles it; otherwise it is active.
+ */
+export function questStatusOf(messages: ChatMessage[], rootSeq: number): QuestStatus {
+  let status: QuestStatus = "active";
+  for (const m of messages) {
+    if (m.parentSeq !== rootSeq || m.quest === undefined) continue;
+    if (m.quest.action === "complete") status = "done";
+    else if (m.quest.action === "fail") status = "failed";
+  }
+  return status;
+}
+
+/** "2 active · 1 done" — the Quest Log's one-line summary. */
+export function questSummary(quests: ReadonlyArray<{ status: QuestStatus }>): string {
+  if (quests.length === 0) return "no quests yet";
+  const n = (s: QuestStatus) => quests.filter((q) => q.status === s).length;
+  const parts = [`${n("active")} active`];
+  if (n("done") > 0) parts.push(`${n("done")} done`);
+  if (n("failed") > 0) parts.push(`${n("failed")} failed`);
+  return parts.join(" · ");
 }
 
 /** Group a message map into per-channel, seq-ordered buckets. */
