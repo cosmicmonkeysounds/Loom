@@ -15,7 +15,9 @@ event server, …) without dragging the rest along. Repo license is MIT
 | [`editor`](./editor)   | React/Vite/CodeMirror web IDE — the author front end: a BetterAuth sign-in gate → projects launchpad → Studio shell with **three modes**: **Writing** (`⌘1`, text editor + story-graph node editor side by side), **Run** (`⌘2`, the control room for the project's **one run** — "Start rehearsal" is the shared server event on a server project / the in-browser `@loom/core` `Sim` on a folder; the header owns the lifecycle incl. **go live in place**; join codes/QR + directors + guest lookup on the Run page; an **identity control** to *be* any persona, guest, or character with the server's exact view of them), and **Integrations** (`⌘3`, engine targets — the Wwise-style Godot link / addon install / bank build). **Server-backed projects** or a local folder. |
 | [`core`](./core)       | Native **TypeScript** port of Loom (no WASM, no Prism): parser (incl. authored **`SPACE`/`CHANNEL`** chatroom declarations) + a first-principles social-ecosystem `runtime/sim` + a parser-only **`lsp`** language surface (`@loom/core/lsp` — `Workspace` with completion / hover / definition / documentSymbols / references / diagnostics, the in-process replacement for the wasm `LspWorkspace`) + an SSE/REST **event server** (`pnpm serve`) that hosts a live `Sim` for LAN events, composing its `SimEvent` stream into server-authoritative, channel-routed chat (`server/chat.ts`) with spaces + Slack-style threads (`parentSeq`), **access control** (open / private-invite / faction / group / dm channel membership, journaled `inviteToChannel`/`leaveChannel`, guest↔guest invites) + a **pluggable channel-type registry** (`runtime/sim/channel-types.ts` — per-type post policy / threadability / broadcast routing / slow-mode / ephemeral, e.g. a read-only `announcement` feed), a scoped invite roster (`rosterFor`), history + moderation, and a journaled `say` command so participant-typed chat replays deterministically. Now a **multi-tenant SaaS backend**: BetterAuth author accounts + Postgres (`server/db/`, `server/auth-server.ts`), projects + files CRUD (`server/projects.ts`), event launch/lifecycle (`server/events-api.ts`, one live event per project), and a per-event `EventRuntime` + `EventRegistry` routed under `/e/:eventId` with a `resolve-code` bootstrap — the old single-event root paths still serve a default event. vitest-tested. |
 | [`play`](./play)       | The **participant React app** (Vite, name `loom-play`) guests + performers use at a live event — a **two-pane MSN/Discord-style chat** (rooms sidebar + open room on wide screens, drill-in on phones; `theme: aol97` skins it as a 1997 chat room) with **presence** (the room you stand in first, who is in every place, a who's-here strip per room), Discord-style **spaces** (sidebar sections, incl. authored `SPACE`s), Slack-style **message threads** + avatar/name sender-run grouping, **hybrid typed chat** (a composer wired to `/api/*/say`), **cards** (`show captcha / image / poll` render from the `widgets.tsx` registry; answers fire `<kind> answered`), and **access-controlled rooms** (open/private/faction/group/dm with invite + leave) layered over the story-injected lobby + faction + DM channels (decisions docked per-thread, re-login history) on the `core` server's SSE/REST. Performers pick their character from the cast at sign-in and act on a guest through their **card**, never a panel under every room. Multi-event aware: a short code resolves via `/api/resolve-code` to its event, then every call is scoped to `/e/:eventId`. `pnpm dev` (:5174, proxies to the server on :7000) / `pnpm build` (served by the event server at `/`). |
-| [`terminal`](./terminal) | The **wall terminal** (Vite React kiosk app, `loom-terminal`, served by the `core` server at `/terminal/`): tablets mounted around the house that are **direct lines to an agent-voiced character** (Trabolta). A trusted device (set up once with the mod passcode → mod token; provision a fleet via `/terminal/?code=&name=&character=`). It **scans a guest's pass** (camera → `BarcodeDetector` / `jsQR`; typed-name fallback when the camera can't run on plain http) and **pilots** that guest through `/api/mod/impersonate` (`label` = the terminal's name → journaled `by` / feed `via`), showing the guest's own `dm:<Character>` thread off their own stream — the same thread as their phone. A **30 s no-input leash** (`idle.ts`, paused while the character is composing / speaking) ends the session. An **SVG animated face** (`face/`: brows, blinking gaze, mouth driven by the live audio level; moods read off the situation + each spoken sentence) and a **synthesised voice** (`speech/`: the server's neural voice via `/api/mod/tts` — `core/server/tts.ts`, a cached proxy to an OpenAI-compatible endpoint, Kokoro-FastAPI recommended, `LOOM_TTS_URL` — with the tablet's `speechSynthesis` as fallback; sentence-split, prefetched, transcript revealed as spoken). `pnpm --filter loom-terminal dev` (:5175) / `build` / `test` (30 tests). |
+| [`terminal`](./terminal) | The **wall terminal** (Vite React kiosk app, `loom-terminal`, served by the `core` server at `/terminal/`): tablets mounted around the house that are **direct lines to an agent-voiced character** (Trabolta). A trusted device (set up once with the mod passcode → mod token; provision a fleet via `/terminal/?code=&name=&character=`). It **scans a guest's pass** (camera → `BarcodeDetector` / `jsQR`; typed-name fallback when the camera can't run on plain http) and **pilots** that guest through `/api/mod/impersonate` (`label` = the terminal's name → journaled `by` / feed `via`), showing the guest's own `dm:<Character>` thread off their own stream — the same thread as their phone. A **30 s no-input leash** (`idle.ts`, paused while the character is composing / speaking) ends the session. An **SVG animated face** (`face/`: brows, blinking gaze, mouth driven by the live audio level; moods read off the situation + each spoken sentence) and a **synthesised voice** (`speech/`: the server's neural voice via `/api/mod/tts` — `core/server/tts.ts`, a cached proxy to an OpenAI-compatible endpoint, Kokoro-FastAPI recommended, `LOOM_TTS_URL` — with the tablet's `speechSynthesis` as fallback; sentence-split, prefetched, transcript revealed as spoken). A **world view** (`world/`, lazy chunk; config `spot` = a `house.json` terminal id + `view: auto\|world\|face\|mirror`): the reinstallation players exploring the virtual house through a window placed where this tablet hangs (pure camera `director.ts` — mount / follow / orbit — over `@loom/house/three`, a mini-map, the found celebration); `view=mirror` is the TV spectator. `pnpm --filter loom-terminal dev` (:5175) / `build` / `test` (71 tests). |
+| [`house`](./house) | **`@loom/house`** — the house map, pure TS, no deps: **one frame** (metres, Y up, `+z` south, yaw 0 = north) shared by both reinstallation games, the event server and the terminals. `house.json` schema v1 + `validateHouse`, the normative §1.2 geometry (`buildWalls` in integer mm, `buildFloors`/`buildRamps`), `locate`/`heightAt`, the visibility-graph `route` (the golden chevrons: doors, stairs, reflex corners, stair holes and solid props grown `PROP_MARGIN`), space transforms, the FNV-1a duck pick, `DUCK_MAX_RISE`, `DEFAULT_SPOT_FOV` / `horizontalFov`. Subpath **`@loom/house/three`**: the three.js scene (Win98-styled walls/floors/ramps/rails/props/terminal screens/room labels), the duck, the chevron trail, ghost avatars, a `PoseBuffer`. Goldens for the Godot port (`pnpm house:sync` = `goldens` + `sync` into `reinstall/vr`). `pnpm --filter @loom/house test` (122; 24 goldens). Contract: [`docs/loom-reinstall.md`](./docs/loom-reinstall.md). |
+| [`reinstall`](./reinstall) | The **reinstallation games** — a corrupted program walks a virtual copy of the house to the **golden duck** to be released. [`web/`](./reinstall/web) (`loom-reinstall`, Vite + React + three.js, served by the `core` server at `/reinstall/`): the tent tablet's Win98 wizard (scan a pass → Play here / Send to a headset), twin touch sticks + keyboard, pose pump (10 Hz latest-only), plus the **house map viewer/editor** at `/reinstall/map` (live players, drag terminals/duck spots/spawn, JSON tab, saves via `POST /api/mod/spatial/house` with a `base` version → 409 on a concurrent save); `pnpm --filter loom-reinstall dev` (:5176) / `test` (120). [`vr/`](./reinstall/vr): the **Godot 4.7 Quest 3** game (OpenXR, thumbsticks only, GDScript ports of `@loom/house` diffed against its goldens, station polling, `--autopilot` for headless end-to-end runs); not in the pnpm workspace or the Docker image — `pnpm test:vr` (225 checks). Overview: [`reinstall/README.md`](./reinstall/README.md); contract: [`docs/loom-reinstall.md`](./docs/loom-reinstall.md). |
 | [`desktop`](./desktop) | The **Tauri 2 desktop app** — the `editor` React app in a native shell (own Cargo workspace at `desktop/src-tauri`, excluded from the root workspace to keep it lean; zero Prism deps). Adds what the browser can't: a path-based **fs bridge** (`fs_bridge.rs`) that the editor's local-folder backend runs on via FSA-shaped handle shims (`editor/src/lib/desktop-fs.ts` — WKWebView has no File System Access API), and **Wwise-style Godot integration** (`godot.rs` + the editor's Integrations mode, `⌘3`): link a Godot 4 project, install the embedded `addons/loom` runtime (`include_dir!` of `engines/godot/addons/loom`) + enable the plugin in `project.godot`, and build the open workspace into `<name>.loombank` + `LoomIDs.gd` inside the game project (banks compile in the webview via `@loom/bank`; the host only writes files). `pnpm --filter loom-desktop dev\|build`; `cargo test` in `src-tauri/` covers the integration logic. Reference output: [`examples/guard-patrol/godot`](./examples/guard-patrol/godot). Design: [`docs/loom-desktop.md`](./docs/loom-desktop.md). |
 | [`bank`](./bank)       | **TypeScript** bank compiler + the **normative reference interpreter**. Lowers a project into `.loombank` — engine-agnostic 4×i32 instruction streams, RPN expressions, pre-split interpolation, pre-parsed directive args — plus generated `LoomIDs.{gd,cs,h}`. `<shuffle:>` runs on the spec'd xorshift64* PRNG (`src/prng.ts`, per-site streams persisted in the save), and **locale banks** are emitted (`loom-bank strings` template → `build --locale <tag>=<file>` → `<name>.<tag>.loombank` sidecar; `set_locale` swaps literals at render time, expressions stay live, per-key fallback). Hosts the scenario driver / golden-trace harness (incl. `loadbank` for locale sidecars) every per-engine runtime is conformance-tested against. See [`docs/loom-banks.md`](./docs/loom-banks.md). |
 | [`engines/godot`](./engines/godot) | **GDScript** Loom runtime for Godot 4 — pure script, no GDExtension, no build step. `LoomRuntime` (pull-model `advance() -> Step`, plus signals), `LoomBank` + a `.loombank` import plugin, save/load that round-trips a suspended choice, and a headless conformance runner diffing the reference's goldens byte for byte. On top, a Wwise-integration-style **scene layer**: `LoomStory` (bank host node — autoplay, timer auto-tick, optional auto-advance pump with hold/release gating, save-file helpers), `LoomHook` (story→game: filterable directive/beat/line/varset/fire listener as an editor-connectable signal), `LoomTrigger` (game→story: fire an `on <verb>` hook or start a beat on ready/Area overlap/manual), `LoomTypewriter` (per-character RichTextLabel reveal, punctuation pacing, skip, story hold — **raw signals only**; effects are separate interpreter nodes: `LoomBlip` pooled pitch-randomised voice blips, `LoomTalkAnimator` talk/idle animation), `LoomDialogueBox` (complete drop-in player — speaker/portrait/pooled choice buttons/continue-indicator/two-tap input/auto mode/`resume()` — skinned by a `LoomStyle` resource with per-character `LoomSpeakerStyle` overrides; `demo/styled_demo.tscn` plays a story with zero scripts), `LoomHistory` (backlog), `LoomSaveSlots` (named slots with query-API metadata headers), a host-side state-query API (`current_beat`/`current_setting`/`pending_options`/`is_finished`/`has_played`/`world_snapshot`/`beat_names` + `save_to_file`/`load_from_file`), plus a `LoomBank` inspector preview (beats/hooks with copy-name) — covered by `test/addon.sh` (96 headless checks) alongside `test/conformance.sh` (4 scenarios incl. shuffle PRNG + locale switching). |
@@ -35,7 +37,9 @@ roadmap and the spec section each module implements.
 
 **Docker deployment** (2026-08-26): the repo root ships a multi-stage
 `Dockerfile` (targets: `server` — the `@loom/core` event server under
-`tsx` with `play/dist` baked in; `proxy` — Caddy serving the editor SPA
+`tsx` (+ `house/` source for `@loom/house`) with `play/dist`,
+`terminal/dist` (`/terminal/`) and `reinstall/web/dist` (`/reinstall/`)
+baked in; `proxy` — Caddy serving the editor SPA
 at `/edit/`, built with `--base=/edit/`, and reverse-proxying `/`,
 `/api`, `/e` to the server) plus `docker-compose.yml` (Postgres +
 server + Caddy, named volumes for pgdata / `LOOM_STATE_DIR` / certs,
@@ -71,7 +75,7 @@ original implementation and **lags the TS engine** (none of the
 2026-06/07 trait/derived-beat slices or the story graph are ported);
 the TS `core/` is the maintained implementation.
 
-## JS/TS workspace (core · bank · play · editor · desktop)
+## JS/TS workspace (core · bank · play · terminal · house · reinstall/web · editor · desktop)
 
 The JavaScript packages share the repo-root **pnpm workspace**
 ([`pnpm-workspace.yaml`](./pnpm-workspace.yaml)). One install covers
@@ -79,11 +83,14 @@ them all; run scripts with `pnpm --filter <name>` (or `pnpm -r test`
 from the root):
 
 ```bash
-pnpm install            # core + bank + play + editor + desktop
-pnpm dev                # the whole dev stack: build play + terminal, event
-                        # server (:7000) + editor (:5173); --sync "<project>"
-                        # pushes the example story into a server project
+pnpm install            # every JS package (core, bank, play, terminal, house, …)
+pnpm dev                # the whole dev stack: build play + terminal + reinstall,
+                        # event server (:7000) + editor (:5173); --sync "<project>"
+                        # pushes the example story into a server project;
+                        # --play / --reinstall add those Vites (:5174 / :5176)
                         # (scripts/dev.mjs · core/scripts/sync-example.ts)
+pnpm house:sync         # house goldens + copy house.json/goldens into reinstall/vr
+pnpm test:vr            # the Godot VR game's headless suite (needs Godot 4.7)
 pnpm --filter @loom/core test               # the TS engine suites
 pnpm --filter @loom/bank test               # bank compiler + reference VM
 pnpm --filter @loom/core serve              # the LAN event server (:7000)
@@ -181,6 +188,115 @@ The Rust `server` crate (see below) is the older, separate multi-workspace
 backbone; the SaaS lives entirely in the TS stack.
 
 ## Status
+
+**The reinstallation games + spatial terminals landed 2026-10-10** (new
+`house/` + `reinstall/web` + `reinstall/vr`, TS `core/` server, `terminal`,
+the show; contract [`docs/loom-reinstall.md`](./docs/loom-reinstall.md),
+overview [`reinstall/README.md`](./reinstall/README.md); help:
+`play/11-reinstallation`, `play/09-terminals`, `authoring/33-live-verbs`).
+Asked for: replace the VR-station goose with a real game. A corrupted
+program walks a **virtual copy of the house** to the **golden duck**, on a
+Quest 3 or a tablet, and every wall terminal shows them doing it. **One
+frame:** `@loom/house` (`house/`, pure TS) owns `house.json` (schema v1,
+`validateHouse` — incl. floor spacing > 0.5 m, walls through a higher
+floor, outside doors on shared walls, overlapping door gaps, stair
+clearance / skipped floors, spot + spawn heights, nothing buried in a solid
+prop, door tolerance against the mm-rounded wall line), the normative §1.2
+geometry (`buildWalls` in integer mm), `locate`/`heightAt`, `route` (a
+**visibility graph** over doors, stair ends, reflex-corner / stair-rect /
+solid-prop waypoints at 0.35 m — props grown `PROP_MARGIN` 0.25 m, rects
+µm-rounded for ports; Dijkstra with index tie-breaks → the chevrons),
+`pickDuckSpot` (FNV-1a 32), `DUCK_MAX_RISE` (1.2 m) and terminal fov
+(`DEFAULT_SPOT_FOV` 70° *vertical*, `horizontalFov` at 16:10).
+`@loom/house/three` is the shared three.js scene, duck, trail, ghosts and
+`PoseBuffer`. 24 goldens (8 maps incl. `props`; `pnpm house:sync` copies
+them + the map into `reinstall/vr`) pin the Godot port. The show's map is
+`core/examples/trapped-in-the-internet/house.json` (a **placeholder** until
+the house is measured: 2 floors, 9 rooms, each a `LOCATION`, spawn in the
+tent). **Server:** `core/server/spatial.ts` `SpatialHub` (transport-free,
+injected clock) owns sessions (secret token, minted by `begin`), stations
+(parked assignments claimed by the first pose, which ends anything else on
+that station), latest-only poses (labelled with `locate`, never journaled,
+unaffected by pause), and `found` (`nearDuck`: ≤ 2.0 m plan and ≤
+`DUCK_MAX_RISE` in y *or* on the same floor; 409 "doors are closed" while
+paused, 409 for an unclaimed parked session), which commits
+`signal("the simulation completed")` then `signal("the golden duck")` `by`
+the device. Its SSE stream carries `hello`/`join`/`poses` (100 ms flush)/
+`found`/`leave`/`house`/`duck`/`reset`. The map: a director's save
+(`spatial-house.json` per event state dir — never `house.json`, which
+`LOOM_HOUSE` may name) else the show file (re-read on mtime change, last
+good map kept); `POST /api/mod/spatial/house {house, base?}` → 409 on a
+stale `base`; `setHouse` carries live sessions over (duck keeps its spot
+id or is re-dealt → a `duck {session, duck}` frame after `house`; the
+session-token `GET /api/spatial/house` carries `duck` too). Routes:
+`GET /api/spatial/{house,stream}`, `POST /api/spatial/{pose,found,end}`
+(pose ≤ 2 KB, `p` = feet), `GET /api/mod/spatial/{station,stations,candidates}`,
+`POST /api/mod/spatial/{house,begin,end}`; `routing.ts` holds the pure
+sub-app / CSP / mod-read decisions. `LOOM_HOUSE` / `LOOM_REINSTALL_DIST`;
+`/reinstall/*` is served like `/terminal/`. **Web** (`reinstall/web`,
+`loom-reinstall`): the tablet wizard, twin sticks + keyboard, circle-vs-wall
+physics on `buildWalls` + `heightAt` (ramps block from below), plays only
+on the dealt map version (refetch on `hello`/`house`), pauses keepalives +
+the idle countdown while hidden, ends on `pagehide`, treats "doors are
+closed" as paused (retry on the backoff), adopts a moved duck; the
+`/reinstall/map` viewer/editor saves with `base` and offers copy / reload on
+a 409. **VR** (`reinstall/vr`, Godot 4.7): GDScript ports of the house code
+(route incl. the prop rule), the XR rig, station polling (404 → lobby →
+re-link to the passcode's current event), a wall-clock grace on headset
+removal, map-version refetch (2 s) + duck adoption, the server's found
+rule, the lobby picker, and `--autopilot` (`game/autopilot.gd`: follows the
+route, doors and stair ends square-on, detours only its own approach legs,
+exits 0 on a find). **Terminals:** `spot` + `view`
+(`auto`/`world`/`face`/`mirror`); the `world/` view with a pure camera
+director (vertical mount fov), a mini-map (horizontal cone), `duck` frames,
+and the found celebration. **Story:** the goose became `INTERACTION the
+golden duck` + `CODEX The Golden Duck`; the tent beat says "walk to the
+duck". **Ops:** `scripts/dev.mjs` builds `loom-reinstall` too
+(`--reinstall` adds its Vite on :5176). The `Dockerfile` builds it and
+ships `house/` + `reinstall/web/dist` (`--filter '@loom/core...'` links
+`@loom/house`); compose/`.env` show a read-only `LOOM_HOUSE` bind mount.
+Tests: house 122, core 689 (`spatial` 36 + `spatial-routing` 8), terminal
+70, reinstall 120, play 59, editor 175, VR 225 headless checks (every
+golden at 1e-3, the link over a fake transport, autopilot reaches every
+show duck spot kinematically and with real collision). **Verified end to
+end** over HTTP against a scratch server: a web-style session walked
+`route()` to the duck (409 far → 200 released → codex → `leave found`
+after 8 s → 410), station park/claim, and the **headless Godot game with
+`--autopilot`** found ducks upstairs and down on the live server (exit 0,
+released). That run caught a real VR bug: `found` waited for an empty pose
+pump, which never happens because the game offers a pose every frame. It
+now flushes the newest pose and claims once that lands (`PosePump.flush`).
+The review round's later fixes (moved ducks, pause, save conflicts, prop
+routing, fov) are unit-tested but not yet re-run against a live server or
+in a browser / headset.
+
+**Hand-picked profile pictures + a picture picker landed 2026-10-02**
+(TS `core/` + `play` + the show; help: `authoring/30-live-shows`,
+`play/01-welcome`). Asked for: every named character pre-picked, and
+guests choosing among a few pictures instead of Wikipedia's lead image
+(often a screenshot, not the famous logo). **Language:** `avatar:` takes
+a URL *or* a Wikipedia / Commons `File:` name, `|`-separated (first =
+default; `CharDef.avatar: string[]`, `avatarsOf`), and `wiki: Article`
+(`CharDef.wiki`) names the article when the name finds the wrong one.
+**Server:** `wiki.ts` `rankFiles` (logo / icon / box art / exact-name
+emblem over the lead screenshot; furniture regex widened, a 48-px floor)
++ `WikiClient.pictures(name)` (one listing + one batched `imageinfo`,
+memoised) — `avatarFor` now takes the best of those; `fileUrl` →
+`Special:FilePath` (no API needed). `avatars.ts`: `AvatarBook.offer`
+(servable, nobody's — search results no longer assign pictures),
+`"chosen"` entries a re-seed keeps, `avatarRefUrl`; `ImageCache({dir})`
+keeps bytes on disk (`server.ts` → `LOOM_STATE_DIR/pictures`, passed
+through `EventRegistry`); `seedAvatars` prefetches every picture when
+the story loads. Routes: `POST /api/identities/pictures`, `picture` on
+`guest/register` (validated against that program's options), `POST
+/api/guest/picture`. **Play:** `picture-pick.tsx` `PictureGrid`; tapping
+a program opens *Your picture as X* (skipped when there's only one);
+**🖼️ Change your picture** on the profile sheet; avatar tiles are
+`object-fit: contain` (wordmarks were cropped). **Show:** all 40
+playable characters + Trabolta carry `avatar: File:…` (Trabolta's
+`HAL9000.svg` is a stand-in). Tests: core `identity` (+6), play
+`avatars` (+1). Verified live against real Wikipedia (scratch :7311 +
+Playwright: pool picker, Winamp options, NHL 97 search → box art first).
 
 **The quest log landed + the codex became a room 2026-10-02** (TS `core/`
 + `play` + `editor` + the show; help: `authoring/37-quests`,
@@ -468,8 +584,9 @@ while performers always get through. Tests: core `agents` (20), play
 integration contract). The show as designed: Trabolta (a rogue AI voiced by
 a local LLM) uploads guests as programs; Clippy runs Computer Bingo and the
 Truth Scavenger Hunt; the Antivirus drag the corrupted through the Tube to
-"the Internet" (a `prison: true` + `sealed: true` location; the VR station
-releases them via `mod/signal {name: "the simulation completed", subject}`);
+"the Internet" (a `prison: true` + `sealed: true` location; the
+reinstallation games release them — finding the golden duck fires
+`the simulation completed` + `the golden duck`, see the 2026-10-10 entry);
 the glitch opens free roam; five endings (three keys → self-destruct →
 Long Dark / Unplugged by quorum; Rogue at `Trabolta.untruth ≥ 80`; Trapdoor
 at `truth ≥ 90 ∧ stance ≤ −60`; Unknown when spared). Language + engine:

@@ -6,6 +6,7 @@
 // holds their own and shares them, selectively, from the booth.
 
 CHARACTER Clippy is Host
+  avatar: File:Windows 11 Clippy paperclip emoji.png | File:Clippy-letter.PNG
   // The ambassador. Runs the games. Believes every word.
   trusts Program: 60 of 100
 
@@ -31,6 +32,8 @@ CHARACTER Clippy is Host
       Self: You have a funny look. Like you're remembering something. Programs don't remember. We recall.
 
 CHARACTER Task Manager is Host
+  avatar: File:Windows 11 TASKMGR.png | File:Windows Task Manager screenshot.png
+  wiki: Task Manager (Windows)
   // A drone bee of a middle manager. Manages tasks. Has no opinions.
   when start the hunt:
     Task Manager: Per the agenda, we are now in the fact-finding block. Please find facts. I will be tracking completion.
@@ -46,6 +49,8 @@ CHARACTER Task Manager is Host
       Self: Fine. Fine. Carry on. Good. Fine.
 
 CHARACTER Alexa is Host
+  avatar: File:Amazon Alexa App Logo.png
+  wiki: Amazon Alexa
   // The voice in every room. Tells you when it is time to go.
   when call to the desktop:
     broadcast "!🔊 ALEXA: Playing — Everyone To The Desktop. On all devices." to everyone
@@ -54,9 +59,10 @@ CHARACTER Alexa is Host
     broadcast "!🔊 ALEXA: I'm having trouble understanding right now. Trabolta is… Trabolta is available." to everyone
 
   every 15m:
-    shuffle Alexa: Did you know? A goose can remember a face for years. | Alexa: Reminder — programs do not have bathrooms. They have Bathroom Mode. | Alexa: Here's something I found on the web: nothing. There is nothing on the web. There is only here.
+    shuffle Alexa: Did you know? A duck's feathers are waterproof. A golden duck's are also very valuable. | Alexa: Reminder — programs do not have bathrooms. They have Bathroom Mode. | Alexa: Here's something I found on the web: nothing. There is nothing on the web. There is only here.
 
 CHARACTER Adobe Acrobat is Host
+  avatar: File:Adobe Acrobat DC logo 2020.svg | File:Adobe Reader XI icon.png
   // The paid bottleneck to everyone's creativity. Relentlessly motivational.
   when start the hunt:
     Adobe Acrobat: You are going to find these facts because you are FINDERS. You are PDFs of your best self. Portable! Documented! Go!

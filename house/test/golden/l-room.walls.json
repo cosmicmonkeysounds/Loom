@@ -1,0 +1,8 @@
+[
+  {"floor":"f","axis":"x","c":0,"lo":0,"hi":4,"bottom":0,"top":3,"kind":"wall"},
+  {"floor":"f","axis":"x","c":2,"lo":2,"hi":4,"bottom":0,"top":3,"kind":"wall"},
+  {"floor":"f","axis":"x","c":4,"lo":0,"hi":2,"bottom":0,"top":3,"kind":"wall"},
+  {"floor":"f","axis":"z","c":0,"lo":0,"hi":4,"bottom":0,"top":3,"kind":"wall"},
+  {"floor":"f","axis":"z","c":2,"lo":2,"hi":4,"bottom":0,"top":3,"kind":"wall"},
+  {"floor":"f","axis":"z","c":4,"lo":0,"hi":2,"bottom":0,"top":3,"kind":"wall"}
+]

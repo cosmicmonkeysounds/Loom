@@ -59,9 +59,10 @@ CODEX The Reinstallation Protocol
   text:
     A corrupted program is taken through the Tube to the Internet — a
     tent with a clearly marked exit, two VR headsets, and a tablet. They
-    watch the video. They put on the headset. They find the golden goose
-    in a copy of this house and press A. The goose lays an egg. They are
-    reinstalled. Everyone upstairs watches them wander on the TV.
+    watch the video. They put on a headset, or take the tablet. They
+    follow the golden chevrons through a copy of this house to the golden
+    duck and walk up to it. The duck lays an egg. They are reinstalled.
+    Every screen on the walls shows them wandering, including the TV.
 
 CODEX Bathroom Mode
   about: World
@@ -72,12 +73,16 @@ CODEX Bathroom Mode
     they are not hacking the Internet. The Recycling Bin will be waiting
     with a mint.
 
-CODEX The Golden Goose
+CODEX The Golden Duck
   about: World
   text:
-    In the simulation, a goose. One of six random spots in the house.
-    Press A and it lays a golden egg and flies away. You are reinstalled.
+    In the simulation, a duck, gilded — the duck off the Maps And Ducks
+    billboard, the one thing Trabolta could not bring himself to leave
+    out of his copy of this house. (If you know the duck's name, you know
+    why it is gold.) It waits in one of several random spots. Walk up to
+    it and it lays a golden egg and flies away. You are reinstalled.
     Bugdom has found it forty times. Bugdom says it never gets old.
+    Bugdom has named the eggs.
 
 CODEX Computer Bingo
   about: World

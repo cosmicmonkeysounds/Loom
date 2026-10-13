@@ -127,6 +127,17 @@ story, by the operator from the editor's Run cockpit (the "fire named
 event" picker lists exactly the events your hooks declare), or by show
 hardware through the show-control bridge.
 
+Games are show hardware too. *Trapped in the Internet*'s **reinstallation
+games** (a VR headset and a tablet, both exploring a virtual copy of the
+house) stream every player's position to the server and on to the wall
+terminals — positions never touch the story. Only the outcome does: when
+a player walks up to the golden duck, the game fires `the simulation
+completed` and `the golden duck` for them, journaled like any other
+event, and your `when … for program:` hooks take it from there. The
+house itself is a map file beside the story (`house.json` — rooms,
+doors, stairs, where each terminal hangs, where the duck may hide),
+edited live at `/reinstall/map`.
+
 **Watchers** are `when` with a condition — `when self.suspicion >= 70:`,
 `when Tension > 60:`. They fire once when the condition *becomes* true
 and re-arm when it goes false again; on a ROLE they run per participant.

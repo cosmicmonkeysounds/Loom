@@ -1,0 +1,11 @@
+[
+  {"floor":"f","axis":"x","c":0,"lo":0,"hi":1.55,"bottom":0,"top":2.5,"kind":"wall"},
+  {"floor":"f","axis":"x","c":0,"lo":1.55,"hi":2.45,"bottom":2.2,"top":2.5,"kind":"lintel"},
+  {"floor":"f","axis":"x","c":0,"lo":2.45,"hi":7,"bottom":0,"top":2.5,"kind":"wall"},
+  {"floor":"f","axis":"x","c":3,"lo":0,"hi":7,"bottom":0,"top":2.5,"kind":"wall"},
+  {"floor":"f","axis":"z","c":0,"lo":0,"hi":3,"bottom":0,"top":2.5,"kind":"wall"},
+  {"floor":"f","axis":"z","c":4,"lo":0,"hi":1,"bottom":0,"top":2.5,"kind":"wall"},
+  {"floor":"f","axis":"z","c":4,"lo":1,"hi":2,"bottom":2,"top":2.5,"kind":"lintel"},
+  {"floor":"f","axis":"z","c":4,"lo":2,"hi":3,"bottom":0,"top":2.5,"kind":"wall"},
+  {"floor":"f","axis":"z","c":7,"lo":0,"hi":3,"bottom":0,"top":2.5,"kind":"wall"}
+]

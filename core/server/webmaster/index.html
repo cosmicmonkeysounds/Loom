@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Webmaster Outbox</title>
+<link rel="stylesheet" href="/webmaster/style.css">
+<script src="/webmaster/app.js" defer></script>
+</head>
+<body>
+<main>
+  <header>
+    <h1>✉️ Webmaster Outbox</h1>
+    <button id="logout" type="button" class="link" hidden>Sign out</button>
+  </header>
+
+  <form id="login" class="card" hidden>
+    <label for="password">Password</label>
+    <input id="password" type="password" autocomplete="current-password" required autofocus>
+    <button type="submit">Sign in</button>
+    <p class="msg" id="login-msg" role="alert"></p>
+  </form>
+
+  <section id="compose-wrap" hidden>
+    <form id="compose" class="card">
+      <div class="row"><span class="label">From</span><span id="from" class="from"></span></div>
+      <label for="to">To <small>(commas or one per line; each person gets their own copy)</small></label>
+      <textarea id="to" rows="2" required placeholder="friend@example.com, another@example.com"></textarea>
+      <label for="replyTo">Reply-to</label>
+      <input id="replyTo" type="email">
+      <label for="subject">Subject</label>
+      <input id="subject" required>
+      <label for="body">Message <small>(plain text; links become clickable)</small></label>
+      <textarea id="body" rows="12" required></textarea>
+      <div class="actions">
+        <span id="count" class="muted"></span>
+        <button type="submit" id="send">Send</button>
+      </div>
+      <p class="msg" id="send-msg" role="status"></p>
+    </form>
+
+    <h2>Sent</h2>
+    <table id="sent">
+      <thead><tr><th>When</th><th>To</th><th>Subject</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p id="sent-empty" class="muted">Nothing sent yet.</p>
+  </section>
+</main>
+</body>
+</html>

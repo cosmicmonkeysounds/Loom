@@ -166,7 +166,9 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 
 /* --- attract ----------------------------------------------------------- */
 
-.attract {
+/* Scoped: the terminal's root also carries the screen name as a class
+   (`terminal attract`), and must not become this column. */
+.line-pane .attract {
   display: grid;
   grid-template-rows: minmax(160px, 1fr) auto;
   align-items: center;
@@ -416,11 +418,146 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
   .setup .row { grid-template-columns: 1fr; }
 }
 
+/* --- the world view (the reinstallation simulation) -------------------- */
+
+.face-pane.showing-world .face,
+.face-pane.showing-world .nameplate,
+.face-pane.showing-world .engine-note { visibility: hidden; }
+.world {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #0b0b2e;
+  color: var(--phosphor);
+}
+.world-canvas { display: block; width: 100%; height: 100%; }
+.world-note {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--pad);
+  text-align: center;
+  letter-spacing: 0.15em;
+  color: var(--phosphor-dim);
+  font-size: 0.8em;
+}
+.world-note.blink { animation: pulse 0.8s steps(2, end) infinite; }
+.world-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: grid;
+  justify-items: start;
+  gap: 0.35em;
+  padding: 0.4em var(--pad) 1.2em;
+  background: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0));
+  pointer-events: none;
+}
+.world-banner {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--amber);
+  letter-spacing: 0.12em;
+  font-size: 0.65em;
+  line-height: 1.15;
+  text-shadow: 0 0 8px rgba(255, 176, 0, 0.5);
+}
+.world-more { color: var(--phosphor-dim); }
+.world-tag {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.1em 0.5em;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--phosphor-faint);
+  font-size: 0.55em;
+  letter-spacing: 0.14em;
+  color: var(--phosphor);
+}
+.world-tag.orbit { color: var(--phosphor-dim); }
+.world-tag .rec {
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: 50%;
+  background: var(--danger);
+  box-shadow: 0 0 6px var(--danger);
+  animation: pulse 1.2s steps(2, end) infinite;
+}
+.minimap {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  margin: 0;
+  width: clamp(110px, 30%, 240px);
+  padding: 4px;
+  background: rgba(2, 8, 6, 0.78);
+  border: 1px solid var(--phosphor-faint);
+  border-radius: 4px;
+}
+.minimap svg { display: block; width: 100%; height: auto; max-height: min(28vh, 170px); }
+.minimap figcaption { font-size: 0.45em; letter-spacing: 0.2em; color: var(--phosphor-dim); text-align: center; }
+.mm-room { fill: rgba(40, 255, 140, 0.06); stroke: var(--phosphor-dim); stroke-width: 0.06; }
+.mm-room.outdoor { fill: none; stroke-dasharray: 0.2 0.15; }
+.mm-room.mine { fill: rgba(40, 255, 140, 0.16); }
+.mm-stair { fill: none; stroke: var(--phosphor-faint); stroke-width: 0.05; }
+.mm-cone { fill: rgba(255, 176, 0, 0.18); stroke: rgba(255, 176, 0, 0.6); stroke-width: 0.04; }
+.mm-terminal { fill: var(--amber); }
+.mm-duck { fill: #ffc83d; stroke: #fff2b0; stroke-width: 0.05; }
+.mm-player circle:not(.mm-ring) { fill: var(--white); }
+.mm-player line { stroke: var(--white); stroke-width: 0.12; stroke-linecap: round; }
+.mm-player.subject circle:not(.mm-ring) { fill: var(--phosphor); }
+.mm-player.subject line { stroke: var(--phosphor); }
+.mm-ring { fill: none; stroke: var(--phosphor); stroke-width: 0.07; animation: pulse 1s steps(2, end) infinite; }
+.world-celebrate {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: max-content; /* else the shrink-to-fit width stops at the pane's half */
+  max-width: 92%;
+  box-sizing: border-box;
+  padding: 0.6em 1.4em;
+  background: rgba(0, 0, 0, 0.82);
+  border: 2px solid #ffc83d;
+  box-shadow: 0 0 30px rgba(255, 200, 61, 0.45);
+  text-align: center;
+  color: #ffc83d;
+  letter-spacing: 0.15em;
+  animation: celebrate 0.6s ease-out;
+}
+.world-celebrate-name { font-size: 1.3em; text-shadow: 0 0 14px rgba(255, 200, 61, 0.7); overflow-wrap: break-word; }
+.world-celebrate-line { font-size: 0.75em; animation: pulse 1s steps(2, end) infinite; }
+
+/* The mirror: a TV-sized spectator — the overlays read from across the room. */
+.terminal.mirror { display: block; }
+.world.full { font-size: clamp(22px, 2.6vw, 44px); }
+.world.full .world-top { padding-right: 3em; }
+.world.full .world-banner { font-size: 0.8em; }
+.world.full .world-tag { font-size: 0.6em; }
+.world.full .minimap { width: clamp(160px, 22%, 360px); right: 18px; bottom: 18px; }
+.world.full .minimap svg { max-height: 40vh; }
+.world.full .world-celebrate { font-size: 1.4em; }
+.mirror-corner {
+  position: absolute;
+  left: var(--pad);
+  bottom: 12px;
+  font-size: 0.6em;
+  letter-spacing: 0.12em;
+  color: var(--phosphor-faint);
+  z-index: 6;
+}
+.mirror-gear { position: absolute; top: 6px; right: 8px; z-index: 6; }
+
 /* --- motion ------------------------------------------------------------- */
 
 @keyframes pulse { 50% { opacity: 0.25; } }
 @keyframes sweep { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
 @keyframes dots { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
+@keyframes celebrate { from { transform: translate(-50%, -50%) scale(0.6); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
-  .scanner.live .reticle::after, .big.blink, .wake-title { animation: none; }
+  .scanner.live .reticle::after, .big.blink, .wake-title, .world-celebrate, .world-celebrate-line, .mm-ring, .world-tag .rec, .world-note.blink { animation: none; }
 }

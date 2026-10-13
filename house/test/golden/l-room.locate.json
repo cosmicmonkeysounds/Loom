@@ -1,0 +1,8 @@
+[
+  {"p":[1,1,1],"floor":"f","room":"l","height":0},
+  {"p":[1,10,1],"floor":"f","room":"l","height":0},
+  {"p":[1,-0.6,1],"floor":"f","room":"l","height":0},
+  {"p":[1,0,3.5],"floor":"f","room":"l","height":0},
+  {"p":[3.5,0,0.5],"floor":"f","room":"l","height":0},
+  {"p":[-100,0,-100],"floor":"f","room":null,"height":null}
+]

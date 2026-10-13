@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "name": "Two rooms, one door",
+  "origin": "fixture: room a's north-west corner",
+  "floors": [{ "id": "f", "label": "Floor", "elevation": 0, "height": 2.5 }],
+  "rooms": [
+    { "id": "a", "label": "Room A", "floor": "f", "poly": [[0, 0], [4, 0], [4, 3], [0, 3]] },
+    { "id": "b", "label": "Room B", "floor": "f", "poly": [[4, 0], [7, 0], [7, 3], [4, 3]] }
+  ],
+  "doors": [
+    { "id": "ab", "a": "a", "b": "b", "at": [4, 1.5], "width": 1 },
+    { "id": "front", "a": "a", "b": null, "at": [2, 0], "width": 0.9, "height": 2.2 }
+  ],
+  "stairs": [],
+  "terminals": [{ "id": "t", "name": "Terminal", "room": "b", "pos": [7, 1.4, 1.5], "yaw": 90 }],
+  "duck": {
+    "spots": [
+      { "id": "in-a", "room": "a", "pos": [1, 0, 1] },
+      { "id": "in-b", "room": "b", "pos": [6, 0, 2] },
+      { "id": "b-corner", "room": "b", "pos": [6.8, 0, 0.2] }
+    ]
+  },
+  "spawn": { "room": "a", "pos": [1, 0, 2], "yaw": 0 },
+  "props": [],
+  "spaces": {}
+}

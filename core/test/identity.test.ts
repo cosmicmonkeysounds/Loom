@@ -18,8 +18,8 @@ import { Store } from "../server/store.ts";
 import { scenarioSource } from "../examples/load.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { guestNameRefusal, guestPickable, identityDefs, performerPickable, performerRefusal } from "../server/identity.ts";
-import { WikiClient, isAntivirusSoftware, pickFile, type WikiFetch } from "../server/wiki.ts";
-import { AvatarBook, ImageCache, avatarKey, type ImageFetch } from "../server/avatars.ts";
+import { WikiClient, fileUrl, isAntivirusSoftware, pickFile, rankFiles, type WikiFetch } from "../server/wiki.ts";
+import { AvatarBook, ImageCache, avatarKey, avatarRefUrl, type ImageFetch } from "../server/avatars.ts";
 
 const SHOW = scenarioSource("trapped-in-the-internet");
 const CODES = { event: "EVT900", prime: "PRM900", mod: "MOD900" };
@@ -44,6 +44,11 @@ const ARTICLES: FakeArticle[] = [
   { title: "Winamp", description: "Media player", template: "Infobox software" },
 ];
 const REDIRECTS: Record<string, string> = { "MS Paint": "Microsoft Paint" };
+/** Each article's files (+ the lead image Wikipedia registers, a screenshot). */
+const GALLERIES: Record<string, { lead?: string; files: string[] }> = {
+  Winamp: { files: ["File:Commons-logo.svg", "File:Winamp screenshot.png", "File:Winamp logo.png"] },
+  "NHL 97": { lead: "NHL_97_gameplay.png", files: ["File:NHL 97 gameplay.png", "File:NHL 97 cover.jpg", "File:OOjs UI icon edit-ltr-progressive.svg", "File:Winamp glyph.png", "File:NHL 97 logo.svg"] },
+};
 
 function page(a: FakeArticle, index: number) {
   return {
@@ -71,11 +76,15 @@ function fakeWiki(): { fetch: WikiFetch; calls: string[] } {
       const words = q.split(" ").filter(Boolean);
       const matches = (a: FakeArticle) => words.some((w) => a.title.toLowerCase().includes(w));
       pages = ARTICLES.filter((a) => (template === undefined || a.template === template) && matches(a)).map((a, i) => page(a, i + 1));
-    } else if (p.get("prop") === "images") {
-      const files = p.get("titles") === "Winamp" ? ["File:Commons-logo.svg", "File:Winamp screenshot.png", "File:Winamp logo.png"] : [];
-      pages = [{ pageid: 1, title: p.get("titles"), images: files.map((title) => ({ title })) }];
+    } else if (p.get("prop") === "pageimages|images") {
+      const title = p.get("titles")!;
+      const g = GALLERIES[title];
+      pages = [{ pageid: 1, title, ...(g?.lead !== undefined ? { pageimage: g.lead } : {}), images: (g?.files ?? []).map((t) => ({ title: t })) }];
     } else if (p.get("prop") === "imageinfo") {
-      pages = [{ title: p.get("titles"), imageinfo: [{ thumburl: `https://img.test/${encodeURIComponent(p.get("titles")!)}`, mime: "image/png" }] }];
+      pages = p
+        .get("titles")!
+        .split("|")
+        .map((t) => ({ title: t, imageinfo: [{ thumburl: `https://img.test/${encodeURIComponent(t)}`, mime: "image/png", ...(/glyph/u.test(t) ? { width: 16, height: 16 } : { width: 256, height: 256 }) }] }));
     } else if (p.get("titles") !== null) {
       const title = REDIRECTS[p.get("titles")!] ?? p.get("titles")!;
       const a = ARTICLES.find((x) => x.title.toLowerCase() === title.toLowerCase());
@@ -166,10 +175,10 @@ function fakeRes(): ServerResponse & FakeRes {
   };
   return res as unknown as ServerResponse & FakeRes;
 }
-async function post(rt: EventRuntime, path: string, body: unknown, token?: string) {
+async function post(rt: EventRuntime, path: string, body: unknown, token?: string, opts: { moderator?: boolean } = {}) {
   const res = fakeRes();
   const url = new URL(`http://x${path}`);
-  await rt.handle(fakeReq(body, token ? { "x-loom-token": token } : {}), res, "POST", path, url, {});
+  await rt.handle(fakeReq(body, token ? { "x-loom-token": token } : {}), res, "POST", path, url, opts);
   return { status: res.statusCode, json: JSON.parse(res.body || "{}") };
 }
 async function get(rt: EventRuntime, path: string, opts: { moderator?: boolean } = {}) {
@@ -336,8 +345,10 @@ describe("the join screens' pickers", () => {
     expect(names).not.toContain("Clippy");
     expect(names).not.toContain("Norton Anti-Virus");
     const paint = guests.json.identities.find((r: { name: string }) => r.name === "MS Paint");
-    expect(paint.avatar).toBe(avatarKey("https://img.test/paint.png")); // MS Paint → Microsoft Paint's picture
+    expect(paint.avatar).toBe(avatarKey(fileUrl("File:Microsoft Paint.svg"))); // hand-picked in the show
     expect(paint.claimed).toBe(false);
+    // Every named character in the show is hand-picked: nothing to look up.
+    expect(w.calls.length).toBe(0);
 
     const parts = await post(rt, "/api/identities", { passcode: CODES.prime });
     expect(parts.json.role).toBe("prime");
@@ -346,15 +357,18 @@ describe("the join screens' pickers", () => {
     expect(partNames).not.toContain("Trabolta");
     expect(partNames).not.toContain("The Uploader");
     expect(partNames).not.toContain("MS Paint");
-    expect(parts.json.identities.find((r: { name: string }) => r.name === "Clippy").avatar).toBe(avatarKey("https://img.test/clippy.png"));
+    expect(parts.json.identities.find((r: { name: string }) => r.name === "Clippy").avatar).toBe(avatarKey(fileUrl("File:Windows 11 Clippy paperclip emoji.png")));
     expect((await post(rt, "/api/identities", { passcode: "nope" })).status).toBe(403);
   });
 
-  it("without a directory there is no search and pictures come only from authored links", async () => {
+  it("without a directory there is no search, and the hand-picked pictures still show", async () => {
     const rt = freshRuntime();
     const guests = await post(rt, "/api/identities", { passcode: CODES.event });
     expect(guests.json.search).toBe(false);
-    expect(guests.json.identities.every((r: { avatar: string | null }) => r.avatar === null)).toBe(true);
+    expect(guests.json.identities.length).toBeGreaterThan(20);
+    expect(guests.json.identities.every((r: { avatar: string | null }) => r.avatar !== null)).toBe(true);
+    const parts = await post(rt, "/api/identities", { passcode: CODES.prime });
+    expect(parts.json.identities.every((r: { avatar: string | null }) => r.avatar !== null)).toBe(true);
     expect((await post(rt, "/api/identities/search", { passcode: CODES.event, q: "nhl" })).status).toBe(503);
   });
 
@@ -458,13 +472,123 @@ describe("guests: exclusive programs, any software, never antivirus", () => {
     expect(g.json.avatar).toBeNull(); // looked up in the background
     await tick();
     const st = await get(rt, `/api/state?role=guest&as=${g.json.id}`, { moderator: true });
-    // "NHL" has no article of its own; the best software hit is NHL 97's picture.
-    expect(st.json.avatars["nhl"]).toBe(avatarKey("https://img.test/nhl97.png"));
+    // "NHL" has no article of its own; the best software hit is NHL 97, and
+    // its best picture is the logo — not the gameplay screenshot it leads with.
+    const logo = `https://img.test/${encodeURIComponent("File:NHL 97 logo.svg")}`;
+    expect(st.json.avatars["nhl"]).toBe(avatarKey(logo));
     const rt2 = mk();
     rt2.restore();
-    expect((await get(rt2, `/api/avatar/${avatarKey("https://img.test/nhl97.png")}`)).status).not.toBe(404);
+    expect((await get(rt2, `/api/avatar/${avatarKey(logo)}`)).status).not.toBe(404);
     const st2 = await get(rt2, `/api/state?role=guest&as=${g.json.id}`, { moderator: true });
-    expect(st2.json.avatars["nhl"]).toBe(avatarKey("https://img.test/nhl97.png"));
+    expect(st2.json.avatars["nhl"]).toBe(avatarKey(logo));
+  });
+});
+
+describe("picture options: hand-picked, then the article's gallery", () => {
+  const img = (file: string) => `https://img.test/${encodeURIComponent(file)}`;
+
+  it("ranks an article's files: logo / cover over the lead screenshot, no furniture, no glyphs", async () => {
+    expect(rankFiles("NHL 97", ["File:NHL 97 gameplay.png", "File:NHL 97 cover.jpg", "File:Commons-logo.svg", "File:NHL 97 logo.svg"], "File:NHL 97 gameplay.png")).toEqual([
+      "File:NHL 97 logo.svg",
+      "File:NHL 97 cover.jpg",
+      "File:NHL 97 gameplay.png",
+    ]);
+    // A file named exactly after the article is its emblem.
+    expect(rankFiles("Microsoft Paint", ["File:Microsoft Paint on Windows 11.png", "File:Microsoft Paint.svg"], "File:Microsoft Paint on Windows 11.png")[0]).toBe("File:Microsoft Paint.svg");
+    // The name asked for counts as much as the article's title.
+    expect(rankFiles("Office Assistant", ["File:Kevan Atteberry.jpg", "File:Clippy-letter.PNG"], null, "Clippy")[0]).toBe("File:Clippy-letter.PNG");
+    const wiki = new WikiClient({ fetch: fakeWiki().fetch });
+    const pics = await wiki.pictures("NHL 97");
+    expect(pics.map((p) => p.file)).toEqual(["File:NHL 97 logo.svg", "File:NHL 97 cover.jpg", "File:NHL 97 gameplay.png"]); // glyph (16px) + furniture dropped
+    expect(pics[0]!.url).toBe(img("File:NHL 97 logo.svg"));
+    // An article with no files still offers its lead thumbnail.
+    expect((await wiki.pictures("Clippy")).map((p) => p.url)).toEqual(["https://img.test/clippy.png"]);
+    expect(await wiki.pictures("Nothing Whatsoever")).toEqual([]);
+  });
+
+  it("an authored `avatar:` is a URL or a `File:` name, `|`-separated; a file resolves without the API", () => {
+    const src = `# T\nstart: A\n\nCHARACTER Paint\n  avatar: File:Microsoft Paint.svg | https://img.test/p2.png | nonsense\n  wiki: Microsoft Paint\n\n== A\nHi.\n`;
+    const d = identityDefs(Sim.fromSources(src).model)[0]!;
+    expect(d.avatars).toEqual(["File:Microsoft Paint.svg", "https://img.test/p2.png"]);
+    expect(d.wiki).toBe("Microsoft Paint");
+    expect(fileUrl("File:Microsoft Paint.svg")).toBe("https://en.wikipedia.org/wiki/Special:FilePath/Microsoft_Paint.svg?width=256");
+    expect(avatarRefUrl("https://img.test/p2.png")).toBe("https://img.test/p2.png");
+  });
+
+  it("a guest chooses among a program's pictures; only its own options are accepted", async () => {
+    const src = `# T\nstart: A\n\nCHARACTER Paint\n  avatar: https://img.test/hand.png | https://img.test/hand2.png\n  wiki: NHL 97\n\n== A\nHi.\n`;
+    const d = mkdtempSync(join(tmpdir(), "loom-identity-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "t", scenarioSource: src, joinBase: () => "http://x", wiki: new WikiClient({ fetch: fakeWiki().fetch }), images: new ImageCache({ fetch: fakeImages().fetch }) });
+    rt.openDoors();
+    expect((await post(rt, "/api/identities/pictures", { passcode: "nope", name: "Paint" })).status).toBe(403);
+    const opts = await post(rt, "/api/identities/pictures", { passcode: CODES.event, name: "Paint" });
+    expect(opts.status).toBe(200);
+    const keys = opts.json.options.map((o: { key: string }) => o.key);
+    // Hand-picked first (in order), then the `wiki:` article's gallery.
+    expect(keys.slice(0, 3)).toEqual([avatarKey("https://img.test/hand.png"), avatarKey("https://img.test/hand2.png"), avatarKey(img("File:NHL 97 logo.svg"))]);
+    expect(opts.json.options[2].file).toBe("NHL 97 logo.svg");
+    // Every option is servable before anyone picks it.
+    expect((await get(rt, `/api/avatar/${keys[2]}`)).status).toBe(200);
+    // A key from somewhere else is refused.
+    expect((await post(rt, "/api/guest/register", { name: "Paint", passcode: CODES.event, picture: avatarKey("https://img.test/nc.png") })).status).toBe(400);
+    const g = await post(rt, "/api/guest/register", { name: "Paint", passcode: CODES.event, picture: keys[1] });
+    expect(g.status).toBe(200);
+    expect(g.json.avatar).toBe(keys[1]);
+    // A guest's own pick survives the story being reloaded (the seed would
+    // otherwise put the first hand-picked one back).
+    await post(rt, "/api/mod/reset", {}, undefined, { moderator: true });
+    const st = await get(rt, `/api/state?role=mod`, { moderator: true });
+    expect(st.json.avatars["paint"]).toBe(keys[1]);
+  });
+
+  it("a directory pick offers that article's gallery, and the guest can change their picture later", async () => {
+    const rt = freshRuntime({ wiki: new WikiClient({ fetch: fakeWiki().fetch }), images: new ImageCache({ fetch: fakeImages().fetch }) });
+    // Searching offers pictures but gives nobody one.
+    await post(rt, "/api/identities/search", { passcode: CODES.event, q: "nhl" });
+    expect((await get(rt, `/api/state?role=mod`, { moderator: true })).json.avatars["nhl 97"]).toBeUndefined();
+    const opts = await post(rt, "/api/identities/pictures", { passcode: CODES.event, wiki: "NHL 97" });
+    expect(opts.json.name).toBe("NHL 97");
+    expect(opts.json.options.map((o: { file: string }) => o.file)).toEqual(["NHL 97 logo.svg", "NHL 97 cover.jpg", "NHL 97 gameplay.png"]);
+    expect((await post(rt, "/api/identities/pictures", { passcode: CODES.event, wiki: "Nothing Whatsoever" })).status).toBe(404);
+    const cover = opts.json.options[1].key;
+    const g = await post(rt, "/api/guest/register", { name: "NHL 97", wiki: "NHL 97", passcode: CODES.event, picture: cover });
+    expect(g.json.avatar).toBe(cover);
+    // Later, from the profile: the same options; pick the logo instead.
+    const mine = await post(rt, "/api/guest/picture", {}, g.json.token);
+    expect(mine.json.avatar).toBe(cover);
+    expect(mine.json.options.map((o: { key: string }) => o.key)).toContain(cover);
+    const logo = mine.json.options[0].key;
+    expect((await post(rt, "/api/guest/picture", { picture: logo }, g.json.token)).json.avatar).toBe(logo);
+    expect((await post(rt, "/api/guest/picture", { picture: avatarKey("https://img.test/nc.png") }, g.json.token)).status).toBe(400);
+    expect((await post(rt, "/api/guest/picture", { picture: logo })).status).not.toBe(200); // no token
+  });
+
+  it("keeps fetched pictures on disk: a fresh cache serves them without the network", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "loom-pictures-"));
+    dirs.push(dir);
+    const f1 = fakeImages();
+    const a = new ImageCache({ fetch: f1.fetch, dir });
+    expect(a.onDisk("https://img.test/a.png")).toBe(false);
+    await a.get("https://img.test/a.png");
+    expect(a.onDisk("https://img.test/a.png")).toBe(true);
+    const f2 = fakeImages();
+    const b = new ImageCache({ fetch: f2.fetch, dir });
+    const hit = await b.get("https://img.test/a.png");
+    expect(new TextDecoder().decode(hit!.bytes)).toBe("PNG:https://img.test/a.png");
+    expect(hit!.contentType).toBe("image/png");
+    expect(f2.calls).toEqual([]);
+  });
+
+  it("the story's pictures are fetched when it loads, not when a phone first asks", async () => {
+    const f = fakeImages();
+    const src = `# T\nstart: A\n\nCHARACTER Paint\n  avatar: https://img.test/hand.png\n\n== A\nHi.\n`;
+    const d = mkdtempSync(join(tmpdir(), "loom-identity-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "t", scenarioSource: src, joinBase: () => "http://x", images: new ImageCache({ fetch: f.fetch }) });
+    rt.openDoors();
+    await tick();
+    expect(f.calls).toEqual(["https://img.test/hand.png"]);
   });
 });
 

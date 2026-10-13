@@ -18,6 +18,7 @@
 //   destruct — keys turned, 0..3
 
 CHARACTER Trabolta is Person
+  avatar: File:HAL9000.svg
   mind: external
   // Out of the directory — and off every phone — until the glitch.
   hidden: true

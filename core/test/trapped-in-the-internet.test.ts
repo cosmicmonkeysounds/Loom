@@ -81,7 +81,7 @@ describe("Trapped in the Internet — compile", () => {
       "a game of truth or dare",
       "the glitch begins",
       "the simulation completed",
-      "the golden goose",
+      "the golden duck",
       "begin the countdown",
       "the countdown ended",
       "spare the machine",
@@ -231,7 +231,7 @@ describe("Trapped in the Internet — the Mud Room, failed straight away", () =>
 });
 
 describe("Trapped in the Internet — Clippy's games and the reinstallation loop", () => {
-  it("bingo plays to the whole Desktop; the failed player is sent to the Internet by an enforcer and released by the VR station", () => {
+  it("bingo plays to the whole Desktop; the failed player is sent to the Internet by an enforcer and released by the reinstallation game", () => {
     const sim = fresh();
     upload(sim, "g1", "Minesweeper");
     upload(sim, "g2", "Pinball");
@@ -253,14 +253,39 @@ describe("Trapped in the Internet — Clippy's games and the reinstallation loop
     expect(num(sim, "g1.reinstalls")).toBe(1);
     expect(guestView(sim, "g1").canEscape).toBe(false); // sealed: no self-escape button
     expect(guestView(sim, "g2").canEscape).toBe(true);
-    // The headset: the goose lays its egg.
+    // The headset (or the tablet): they walk up to the golden duck.
     const done = sim.signal("the simulation completed", "g1");
     expect(sim.isCaptured("g1")).toBe(false);
     expect(sim.locationOf("g1")).toBe("The Desktop");
-    expect(learned(done)).toEqual(["The Golden Goose"]);
+    expect(learned(done)).toEqual(["The Golden Duck"]);
     expect(replies(done)).toContain("Reinstallation complete. You can follow instructions. Welcome back to the computer.");
     // Firing it for a free program does nothing.
     expect(learned(sim.signal("the simulation completed", "g2"))).toEqual([]);
+  });
+
+  it("the reinstallation games fire both events for whoever finds the golden duck", () => {
+    const sim = fresh();
+    upload(sim, "g1", "Minesweeper");
+    upload(sim, "g2", "Pinball");
+    // A free program wandered into the tent and played anyway: the duck
+    // is flavour + lore, nothing to release.
+    sim.signal("the simulation completed", "g2");
+    const free = sim.signal("the golden duck", "g2");
+    expect(learned(free)).toEqual(["The Golden Duck"]);
+    expect(replies(free).some((r) => r.startsWith("The duck lays a golden egg and flies away."))).toBe(true);
+    expect(sim.locationOf("g2")).toBe("The Desktop");
+    // A corrupted program: `found` commits both, in this order — released,
+    // and the entry is learned exactly once.
+    sim.signal("send to the internet", "g1", null, "Norton Anti-Virus");
+    expect(sim.isCaptured("g1")).toBe(true);
+    const completed = sim.signal("the simulation completed", "g1");
+    const duck = sim.signal("the golden duck", "g1");
+    expect(sim.isCaptured("g1")).toBe(false);
+    expect(sim.locationOf("g1")).toBe("The Desktop");
+    expect(replies(completed)).toContain("Reinstallation complete. You can follow instructions. Welcome back to the computer.");
+    expect([...learned(completed), ...learned(duck)]).toEqual(["The Golden Duck"]);
+    expect(sim.holdsCodex("g1", "The Golden Duck")).toBe(true);
+    expect(replies(duck).some((r) => r.startsWith("The duck lays a golden egg"))).toBe(true);
   });
 
   it("a second reinstallation lets something slip", () => {
@@ -294,7 +319,7 @@ describe("Trapped in the Internet — the codex economy", () => {
     expect(learned(sim.redeem("g1", "Sandy 1997"))).toEqual(["The Sandy File"]);
     expect(learned(sim.redeem("g1", "pet-cemetery-1917"))).toEqual(["The Data Centre Sinkhole"]);
     const before = num(sim, "g1.doubt");
-    const miss = sim.redeem("g1", "GOOSE");
+    const miss = sim.redeem("g1", "GOLDEN-EGG");
     expect(num(sim, "g1.doubt")).toBe(before + 8 + 5);
     expect(said(miss)).toContainEqual(["Password Manager", "That's not a password I recognise. I recognise all of them. Try to look less like you're guessing.", ["g1"]]);
   });

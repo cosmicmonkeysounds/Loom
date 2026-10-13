@@ -1,0 +1,41 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="Reinstallation VR"
+config/description="Find the golden duck in a virtual copy of the house."
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.7", "Mobile")
+config/icon="res://icon.svg"
+
+[autoload]
+
+ServerLink="*res://net/server_link.gd"
+
+[physics]
+
+common/physics_ticks_per_second=90
+common/max_physics_steps_per_frame=12
+
+[rendering]
+
+renderer/rendering_method="mobile"
+textures/vram_compression/import_etc2_astc=true
+
+[xr]
+
+openxr/enabled=true
+openxr/reference_space=2
+openxr/foveation_level=3
+openxr/foveation_dynamic=true
+openxr/startup_alert=false
+openxr/extensions/user_presence=true
+shaders/enabled=true

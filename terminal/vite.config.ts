@@ -20,8 +20,9 @@ export default defineConfig({
   },
   resolve: {
     // One React for the page — the play app's transport hooks are imported
-    // as source and must share ours.
-    dedupe: ["react", "react-dom"],
+    // as source and must share ours. One three too: `@loom/house/three`
+    // (workspace source) builds the scene the terminal's renderer draws.
+    dedupe: ["react", "react-dom", "three"],
     alias: {
       // The participant app's transport + shapes, reused verbatim: the SSE
       // reducer (`history` / `message` / `typing` / `lifecycle`), the JSON
@@ -29,6 +30,11 @@ export default defineConfig({
       // same threads a phone does, off the same stream.
       "@loom/play": path.resolve(__dirname, "../play/src"),
     },
+  },
+  build: {
+    // The lazy world-view chunk is mostly three.js (~600 kB, ~160 kB gzip),
+    // loaded only by a terminal that shows the simulation.
+    chunkSizeWarningLimit: 700,
   },
   test: {
     include: ["test/**/*.test.ts"],

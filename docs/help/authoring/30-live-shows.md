@@ -121,8 +121,17 @@ COHORT Early Arrivals
   software on Wikipedia — **never antivirus**) and becomes that. A
   guest can never take a part, and never a name in a `joinable: false`
   group. `playable: false` keeps a character off both lists (a scanned
-  prop). Profile pictures are looked up by name in the same directory
-  when the doors open; `avatar: https://…` on a character chooses one.
+  prop).
+- **Profile pictures** are hand-picked with `avatar:` — a link, or a
+  Wikipedia / Commons file by name (`avatar: File:Winamp Logo.svg`,
+  copied from the file's page). `avatar: File:A.png | File:B.png` offers
+  more than one; the first is the default. A character with no `avatar:`
+  gets the best picture its article has (a logo before a screenshot).
+  `wiki: Microsoft Minesweeper` names the article when the name alone
+  would find the wrong one. Every picture is downloaded when the story
+  loads, so the night never waits on Wikipedia. A guest choosing a
+  program sees its hand-picked pictures first, then the article's own
+  gallery, and picks one (and can switch later from their pass).
 - A **COHORT** is a plain named grouping with a capacity, for when you
   need to count heads without it being a "side".
 

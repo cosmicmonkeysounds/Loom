@@ -32,7 +32,8 @@ new thread model:
 ```bash
 pnpm --filter loom-terminal dev      # :5175, proxies /api + /e to the server on :7000
 pnpm --filter loom-terminal build    # → dist/, served by the event server at /terminal/
-pnpm --filter loom-terminal test     # the pure pieces (scan parsing, the leash, splitting, voice ranking, moods)
+pnpm --filter loom-terminal test     # the pure pieces (scan parsing, the leash, splitting, voice ranking, moods,
+                                     # the world state, the director, the mini-map)
 ```
 
 Open `http://<server>:7000/terminal/` on the tablet. Set it up on the
@@ -40,11 +41,12 @@ screen (moderator passcode, a name, the character, camera, voice), or
 provision a whole fleet by opening one link on each:
 
 ```
-http://<server>/terminal/?code=<mod passcode>&name=Kitchen&character=Trabolta
+http://<server>/terminal/?code=<mod passcode>&name=Kitchen&character=Trabolta&spot=kitchen&view=auto
 ```
 
 (`&camera=environment` for the back camera, `&engine=browser` to skip the
-server voice.) The passcode is scrubbed from the address bar at once.
+server voice; `&spot=` and `&view=` — see *The world view* below.) The
+passcode and the other hints are scrubbed from the address bar at once.
 
 **The camera needs a secure context** — `https://` or `localhost`. On a
 plain `http://192.168.x.x` address every browser refuses `getUserMedia`;
@@ -92,6 +94,77 @@ composing / speaking) and off each sentence as it is said (`mood.ts`:
 shouting is anger, a question is curiosity, an ellipsis is slyness). A
 dropped line glitches.
 
+## The world view
+
+During the *reinstallation* games (`docs/loom-reinstall.md`) a program
+captured into the Internet explores a virtual copy of the house to find the
+golden duck, in VR or on a tablet. Every terminal can watch: `src/world/`
+holds the spatial stream (`GET /api/spatial/stream?token=&name=` — poses at
+10 Hz plus `hello` / `join` / `found` / `leave` / `house` / `duck` / `reset`;
+a `duck` frame moves a player's duck when a map save re-deals it) and the
+event's house map (`GET /api/spatial/house`, refetched when the stream
+announces a new version; the show's own `house.json` is bundled as the
+offline fallback). It renders through `@loom/house/three`, the same scene
+builder the web game uses, so the house looks the same on every screen.
+Players appear as ghosts with name tags (interpolated 120 ms behind), and
+each one's duck lays its egg and flies away when they find it.
+
+One camera, cut by a pure director (`world/director.ts`):
+
+- **mount**: while a player stands in this terminal's room, the camera is the
+  terminal itself, at its spot on the wall and looking along its
+  yaw/pitch/fov (default −8°, and `DEFAULT_SPOT_FOV` = 70° *vertical*; the
+  mini-map's cone is its `horizontalFov` on a 16:10 tablet, ≈ 96.5°). It is a window into the virtual copy of
+  the room you are standing in, tagged **LIVE · THIS ROOM**.
+- **follow**: otherwise the camera rides over the shoulder of the most
+  recently active player (**FOLLOWING ADA**). Whoever just found the duck
+  takes the camera. It holds a player for a few seconds and won't flicker
+  between two. It is pulled in short of any wall (each wall a slab of the
+  map's thickness, so never into or past one) and kept under the ceiling.
+  With their back to a wall it tries a raised chase, then the left
+  shoulder, then looks out of the player's own eyes (their ghost hidden).
+- **orbit**: with nobody playing it circles this terminal's own room slowly.
+
+Overlays: the banner *REINSTALLATION IN PROGRESS · <name> · <room>*, the
+camera's mode tag, a corner **mini-map** of the floor (every player's dot
+and heading, every unfound duck on that floor — whichever floor its player
+is on — this terminal's view cone), and the celebration
+*<NAME> HAS BEEN REINSTALLED* (or *FOUND THE GOLDEN DUCK* for a program
+that was never corrupted). Rendering is capped at 30 fps, at ≤ 1.5×
+pixel ratio, stops while the page is hidden, and frees its GL context when
+the view closes (a new map gets a fresh canvas — a lost context is never
+reused). three.js is a lazy chunk, so a face-only terminal never
+downloads it; any other terminal fetches it at boot, and a chunk that fails
+to load (or a view that crashes) never takes the scanner down — an error
+boundary falls back to the face and retries 30 s later (a mirror reloads
+the page instead, when the page is reachable, at most every 5 minutes).
+
+The stream: a dropped connection keeps the last ghosts for 10 s, then
+clears them (an `auto` terminal gives its face back). A refused stream is
+probed — 401 (access revoked) sends the terminal back to setup without its
+token, 404 (the event ended) back to setup with its settings kept; anything
+else retries with backoff (5 s doubling to 60 s).
+
+Two settings, on the setup screen or in the provisioning link:
+
+| Setting | Values |
+|---|---|
+| `spot` | a `house.terminals[].id` of the event's map: where this screen hangs (the setup screen lists them as *name — room*). Blank = unplaced: it never mounts, only follows / orbits the spawn room. |
+| `view` | `auto` (default): the face pane shows the world view while anyone is in the simulation, the face otherwise. `world`: the world view always. `face`: never. `mirror`: see below. While piloting it is **always the face**, because the face is the voice. |
+
+**The mirror (a TV).** `view=mirror` turns a screen into a full-screen
+spectator, like the TV over the fireplace: there is no scanner, no chat and
+no wake tap (it never speaks). It still needs the moderator passcode,
+because the stream is mod-gated. Open the link on the TV's browser (a smart
+TV, a Fire Stick, or a laptop on HDMI in kiosk mode):
+
+```
+http://<server>/terminal/?code=<mod passcode>&name=Desktop TV&view=mirror&spot=desktop-tv
+```
+
+A `spot` is optional for a mirror; without one it never mounts. The ⚙ in
+the corner reopens setup.
+
 ## Layout
 
 ```
@@ -104,9 +177,14 @@ src/idle.ts            the 30 s leash (paused while the character is answering)
 src/chat.tsx           the thread + composer
 src/speech/            engine.ts (server + browser + queue), split.ts, pick-voice.ts
 src/face/              Face.tsx (SVG + animation), mood.ts
+src/world/             stream.ts (spatial SSE + house map → WorldStore), state.ts (the reducer),
+                       director.ts (mount / follow / orbit), minimap.ts + MiniMap.tsx,
+                       WorldView.tsx (the three.js canvas + overlays, lazy-loaded)
 ```
 
 Server-side pieces live in `core/server`: `tts.ts` (the proxy + cache),
 the `/api/mod/tts` route and the `label` on `/api/mod/impersonate` in
 `event-runtime.ts`, and static serving of `dist/` at `/terminal/` in
-`server.ts`.
+`server.ts`. The spatial plane the world view watches is `spatial.ts`
+(`SpatialHub`) plus the `/api/spatial/*` routes; the house map, its
+geometry and the three.js scene live in `house/` (`@loom/house`).

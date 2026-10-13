@@ -18,8 +18,8 @@ directory: everyone
 // rules that carry the night from arrivals to one of five endings. The
 // people live under `cast/`, the scenes under `beats/`, the lore under
 // `codex/`, and the ambient hum in `atmosphere.loom`. The runbook and the
-// integration contract (QR codes, Arduino puzzles, the VR station,
-// Trabolta's language model) are in `README.md`.
+// integration contract (QR codes, Arduino puzzles, the reinstallation
+// games, Trabolta's language model) are in `README.md`.
 
 // ── Groups ──────────────────────────────────────────────────────────
 // Nobody picks a side at the door — everyone is a program. The two
@@ -169,7 +169,8 @@ ROLE Program
     set program.doubt += 8
 
   // Reinstallation: the Antivirus drags a corrupted program through the
-  // Tube. The scene plays to them alone; the VR station releases them.
+  // Tube. The scene plays to them alone; the reinstallation games
+  // release them.
   when captured:
     set self.corrupted = true
     set self.reinstalls += 1
@@ -290,13 +291,14 @@ INTERACTION the glitch begins
   description: The inciting event. Trabolta comes online and free roam begins.
 
 INTERACTION the simulation completed
-  label: VR: simulation complete
+  label: Sim: simulation complete
   who: admin
-  description: Fired by the VR station for one program (subject) when the goose lays its egg.
+  description: Fired by the reinstallation games (headset or tablet) for one program (subject) when they reach the golden duck. Releases a corrupted program.
 
-INTERACTION the golden goose
-  label: VR: goose found
+INTERACTION the golden duck
+  label: Sim: duck found
   who: admin
+  description: Fired by the reinstallation games right after the simulation completes, for whoever found the duck — corrupted or just curious.
 
 INTERACTION begin the countdown
   label: Begin the countdown
@@ -341,16 +343,19 @@ when the glitch begins:
   set Night.phase = "free_roam"
   -> The Glitch
 
-// The VR station (`README.md` — Integration contract) fires these for
-// one program at a time.
+// The reinstallation games (`README.md` — Integration contract; the VR
+// headsets and the tablet game in the tent, `docs/loom-reinstall.md`)
+// fire both of these, in this order, for whoever walks up to the golden
+// duck. A director can fire either by hand. An entry is only ever learned
+// once, so the double unlock for a corrupted program is harmless.
 when the simulation completed for program:
   if program.corrupted:
     release program from The Internet
-    unlock The Golden Goose for program
+    unlock The Golden Duck for program
 
-when the golden goose for program:
-  unlock The Golden Goose for program
-  reply The goose lays a golden egg and flies away. You feel, briefly, like a person.
+when the golden duck for program:
+  unlock The Golden Duck for program
+  reply The duck lays a golden egg and flies away. It looked a lot like the duck on the billboard downtown. You feel, briefly, like a person.
 
 // ── Endings ─────────────────────────────────────────────────────────
 // 1a/1b: the programs turn all three keys. Then a countdown: whoever

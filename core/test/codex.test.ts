@@ -140,8 +140,8 @@ describe("Sim — unlock / redeem / share", () => {
   it("a wrong code records a miss and fires the `wrong code` named event", () => {
     const sim = fresh();
     sim.createPerson("g1", "Minesweeper");
-    const evs = sim.redeem("g1", "GOOSE");
-    expect(evs.filter((e) => e.type === "codexMissed")).toEqual([{ type: "codexMissed", person: "g1", code: "GOOSE" }]);
+    const evs = sim.redeem("g1", "DUCK");
+    expect(evs.filter((e) => e.type === "codexMissed")).toEqual([{ type: "codexMissed", person: "g1", code: "DUCK" }]);
     expect(replies(evs)).toContain("Nothing happens.");
     expect(sim.codexFor("g1")).toEqual([]);
   });

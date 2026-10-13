@@ -1,0 +1,7 @@
+{
+  "server": "http://192.168.1.10:7000",
+  "code": "CHANGEME",
+  "station": "vr-1",
+  "name": "Headset 1",
+  "smooth_turn": false
+}

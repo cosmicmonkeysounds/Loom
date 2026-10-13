@@ -6,12 +6,19 @@
 //!   connecting — a pass was scanned: minting the guest's session.
 //!   piloting   — the direct line: the thread, the composer, the countdown.
 //!
+//! Beside the scanner, the attract screen's face pane becomes the **world
+//! view** (`world/`) while a program is in the reinstallation simulation —
+//! per the terminal's `view` (auto / world / face); while piloting it is
+//! always the face, which is the voice. `view: mirror` is a different
+//! terminal altogether: a full-screen spectator of the simulation (the TV
+//! over the fireplace) — no scanner, no line, nothing to say.
+//!
 //! A tap on the wake overlay is the one user gesture the browser needs
 //! before the terminal may make a sound unattended.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Composer, Thread } from "./chat.tsx";
-import { baseOf, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, withoutSecrets, type TerminalConfig } from "./config.ts";
+import { baseOf, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, withoutSecrets, type TerminalConfig, type TerminalView } from "./config.ts";
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import { useIdleTimeout } from "./idle.ts";
@@ -21,6 +28,12 @@ import { Scanner, type CameraState, cameraProblem } from "./scanner.tsx";
 import { BrowserEngine, ServerEngine, SpeechQueue, audioUnlocked, unlock, type SpeechEngine } from "./speech/engine.ts";
 import { rankVoices } from "./speech/pick-voice.ts";
 import { revealOffsets, splitSentences } from "./speech/split.ts";
+import { mayReload, retryable } from "./retry.ts";
+import { bundledHouse, fetchHouse, useSpatialStream, useWorld, type Gone, type HouseInfo, type WorldStore } from "./world/stream.ts";
+
+// three.js is most of the weight of the world view — a face-only terminal
+// never loads it. Retryable: `lazy` alone caches a failed load forever.
+const loadWorld = retryable(() => import("./world/WorldView.tsx").then((m) => ({ default: m.WorldView })));
 
 type Screen = { kind: "setup"; notice: string | null } | { kind: "attract" } | { kind: "connecting"; id: string } | { kind: "piloting"; pilot: Pilot };
 
@@ -28,6 +41,13 @@ export function App() {
   const [config, setConfig] = useState<TerminalConfig | null>(() => loadConfig());
   const [screen, setScreen] = useState<Screen>(() => (loadConfig() ? { kind: "attract" } : { kind: "setup", notice: null }));
   const [awake, setAwake] = useState(() => audioUnlocked());
+
+  // Fetch the world view's code at boot, while this page and the server are
+  // known to match — hours later a rebuild may have renamed the chunk.
+  const view = config?.view;
+  useEffect(() => {
+    if (view !== undefined && view !== "face") void loadWorld().catch(() => {});
+  }, [view]);
 
   // Provision from the URL (`?code=…&name=…`) — a fleet is set up by opening one link each.
   useEffect(() => {
@@ -60,6 +80,18 @@ export function App() {
     void unlock().then(() => setAwake(audioUnlocked() || !("AudioContext" in window)));
   }, []);
 
+  // The spatial stream was refused for good: access revoked, or the event over.
+  const onGone = useCallback((g: Gone) => {
+    if (g === "revoked") {
+      dropConfig();
+      setConfig(null);
+      setScreen({ kind: "setup", notice: "This terminal's access was revoked — enter the moderator passcode again." });
+    } else {
+      // Kept, so its name / character / spot carry over to the next event.
+      setScreen({ kind: "setup", notice: "The event this terminal was part of has ended — enter the moderator passcode of the next one." });
+    }
+  }, []);
+
   const finish = useCallback((c: TerminalConfig) => {
     saveConfig(c);
     setConfig(c);
@@ -84,6 +116,8 @@ export function App() {
     );
   }
 
+  if (config.view === "mirror") return <Mirror config={config} onSetup={() => setScreen({ kind: "setup", notice: null })} onGone={onGone} />;
+
   return (
     <>
       <Terminal
@@ -91,6 +125,7 @@ export function App() {
         screen={screen}
         setScreen={setScreen}
         onSetup={() => setScreen({ kind: "setup", notice: null })}
+        onGone={onGone}
       />
       {!awake && (
         <button className="wake" onClick={wake}>
@@ -102,9 +137,106 @@ export function App() {
   );
 }
 
+// --- the world view, guarded -------------------------------------------------
+
+/** After the world view failed to load (or draw), try again this much later (ms). */
+const WORLD_RETRY_MS = 30_000;
+/** A mirror reloads the page at most this often (ms). */
+const RELOAD_GAP_MS = 5 * 60_000;
+const RELOAD_KEY = "loom-terminal:world-reload";
+
+function lastReload(): number | null {
+  try {
+    const v = Number(sessionStorage.getItem(RELOAD_KEY));
+    return Number.isFinite(v) && v > 0 ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function noteReload(at: number): void {
+  try {
+    sessionStorage.setItem(RELOAD_KEY, String(at));
+  } catch {
+    /* no storage: the gap check just can't hold */
+  }
+}
+
+/** Catches a failed world view so the rest of the terminal (scanner, line) keeps running. */
+class WorldBoundary extends Component<{ fallback: ReactNode; onError: () => void; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError(): { failed: boolean } {
+    return { failed: true };
+  }
+  componentDidCatch(): void {
+    this.props.onError();
+  }
+  render(): ReactNode {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
+
+/**
+ * The world view behind an error boundary. A failure falls back (a pane: to
+ * the face underneath; full screen: a notice) and recovers `WORLD_RETRY_MS`
+ * later — `retry` loads the chunk again in place, `reload` (a mirror, which
+ * needs no wake gesture) reloads the page so a stale bundle picks up the new
+ * chunk names, when the page is reachable and it hasn't just done so.
+ */
+function WorldSlot({ store, spotId, size, recover }: { store: WorldStore; spotId: string; size: "pane" | "full"; recover: "retry" | "reload" }) {
+  const [attempt, setAttempt] = useState(0);
+  const [broken, setBroken] = useState(false);
+  // A fresh `lazy` per attempt: React caches each one's settled payload.
+  const View = useMemo(() => lazy(loadWorld), [attempt]);
+  useEffect(() => {
+    if (!broken) return;
+    let alive = true;
+    const t = window.setTimeout(() => {
+      void (async () => {
+        if (recover === "reload") {
+          const reachable = await fetch(window.location.href, { cache: "no-store" }).then(
+            (r) => r.ok,
+            () => false,
+          );
+          if (!alive) return;
+          const now = Date.now();
+          if (mayReload(reachable, lastReload(), now, RELOAD_GAP_MS)) {
+            noteReload(now);
+            window.location.reload();
+            return;
+          }
+        }
+        if (!alive) return;
+        setBroken(false);
+        setAttempt((a) => a + 1);
+      })();
+    }, WORLD_RETRY_MS);
+    return () => {
+      alive = false;
+      window.clearTimeout(t);
+    };
+  }, [broken, recover]);
+  const full = size === "full";
+  return (
+    <WorldBoundary key={attempt} fallback={full ? <div className="world-note blink">SIMULATION UNAVAILABLE — RETRYING…</div> : null} onError={() => setBroken(true)}>
+      <Suspense fallback={full ? <div className="world-note blink">LOADING THE SIMULATION…</div> : null}>
+        <View store={store} spotId={spotId} size={size} />
+      </Suspense>
+    </WorldBoundary>
+  );
+}
+
+/** Report the spatial stream's `gone` (once per value). */
+function useGone(world: WorldStore, onGone: (g: Gone) => void): void {
+  const gone = useWorld(world, (s) => s.gone);
+  useEffect(() => {
+    if (gone !== null) onGone(gone);
+  }, [gone, onGone]);
+}
+
 // --- the running terminal ----------------------------------------------------
 
-function Terminal({ config, screen, setScreen, onSetup }: { config: TerminalConfig; screen: Screen; setScreen: (s: Screen) => void; onSetup: () => void }) {
+function Terminal({ config, screen, setScreen, onSetup, onGone }: { config: TerminalConfig; screen: Screen; setScreen: (s: Screen) => void; onSetup: () => void; onGone: (g: Gone) => void }) {
   const pilot = screen.kind === "piloting" ? screen.pilot : null;
   const session = usePilotSession(config, pilot);
   const [mood, setMood] = useState<Mood>("idle");
@@ -118,6 +250,12 @@ function Terminal({ config, screen, setScreen, onSetup }: { config: TerminalConf
   const face = useRef<FaceHandle | null>(null);
   const offsets = useRef(new Map<number, number[]>());
   const chunkText = useRef(new Map<number, string[]>());
+
+  // --- the reinstallation simulation, beside the scanner ---
+  const world = useSpatialStream(config, config.view !== "face");
+  const inSimulation = useWorld(world, (s) => s.world.players.size > 0);
+  useGone(world, onGone);
+  const showWorld = screen.kind === "attract" && (config.view === "world" || (config.view === "auto" && inSimulation));
 
   // --- the voice ---
   const queue = useMemo(() => {
@@ -303,10 +441,13 @@ function Terminal({ config, screen, setScreen, onSetup }: { config: TerminalConf
       </header>
 
       <main className="stage">
-        <section className="face-pane">
+        <section className={`face-pane${showWorld ? " showing-world" : ""}`}>
+          {/* The face stays mounted under the world view: it holds the speech
+              queue's level handle and its own easing state. */}
           <Face mood={mood} speaking={speaking} handle={face} />
           <div className="nameplate">{config.character.toUpperCase()}</div>
           {engineUsed === "browser" && config.engine !== "browser" && <div className="engine-note">voice: tablet fallback</div>}
+          {showWorld && <WorldSlot store={world} spotId={config.spot} size="pane" recover="retry" />}
         </section>
 
         <section className="line-pane">
@@ -399,6 +540,30 @@ function TypedFallback({ config, onPick, onProblem }: { config: TerminalConfig; 
   );
 }
 
+// --- the mirror ----------------------------------------------------------------
+
+/** `view: mirror` — the simulation full screen, for a TV: nothing to scan,
+ *  nothing to say (so no wake gesture is needed), only the gear. */
+function Mirror({ config, onSetup, onGone }: { config: TerminalConfig; onSetup: () => void; onGone: (g: Gone) => void }) {
+  const world = useSpatialStream(config, true);
+  const connected = useWorld(world, (s) => s.connected);
+  useGone(world, onGone);
+  return (
+    <div className="terminal mirror">
+      <WorldSlot store={world} spotId={config.spot} size="full" recover="reload" />
+      <div className="mirror-corner">
+        <span className="dot" data-on={String(connected)} />
+        {config.title ? `${config.title} · ` : ""}
+        {config.name.toUpperCase()}
+      </div>
+      <button className="link gear mirror-gear" onClick={onSetup} aria-label="Set up this screen">
+        ⚙
+      </button>
+      <div className="scanlines" aria-hidden="true" />
+    </div>
+  );
+}
+
 // --- setup -------------------------------------------------------------------
 
 function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig | null; notice: string | null; onDone: (c: TerminalConfig) => void; onForget: () => void }) {
@@ -410,6 +575,9 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
   const [serverVoice, setServerVoice] = useState(current?.serverVoice ?? "");
   const [browserVoice, setBrowserVoice] = useState(current?.browserVoice ?? "");
   const [speed, setSpeed] = useState(current?.speed ?? 1);
+  const [spot, setSpot] = useState(current?.spot ?? "");
+  const [view, setView] = useState<TerminalView>(current?.view ?? "auto");
+  const [map, setMap] = useState<HouseInfo | null>(() => bundledHouse());
   const [error, setError] = useState<string | null>(notice);
   const [busy, setBusy] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -433,15 +601,36 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
       .catch(() => {});
   }, [current]);
 
+  // Where this screen can hang: the event's house map when this terminal can
+  // read it, else the show's map baked into the build.
+  useEffect(() => {
+    if (current === null) return;
+    let alive = true;
+    void fetchHouse(current)
+      .then((h) => alive && setMap(h))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [current]);
+  const spots = useMemo(
+    () =>
+      (map?.house.terminals ?? []).map((t) => ({
+        id: t.id,
+        label: `${t.name} — ${map?.house.rooms.find((r) => r.id === t.room)?.label ?? t.room}`,
+      })),
+    [map],
+  );
+
   const submit = async () => {
     setBusy(true);
     setError(null);
     try {
       let next: TerminalConfig;
       if (code.trim() !== "") {
-        next = await provision(code.trim(), { name: name.trim() || null, character: character.trim() || null, camera, engine });
+        next = await provision(code.trim(), { name: name.trim() || null, character: character.trim() || null, camera, engine, spot, view });
       } else if (current !== null) {
-        next = { ...current, name: name.trim() || current.name, character: character.trim() || current.character, camera, engine };
+        next = { ...current, name: name.trim() || current.name, character: character.trim() || current.character, camera, engine, spot, view };
       } else {
         throw new Error("Enter the moderator passcode.");
       }
@@ -501,6 +690,30 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
             </select>
           </label>
         </div>
+        <div className="row">
+          <label>
+            where it hangs <span className="muted">(its spot in the house map)</span>
+            <select value={spot} onChange={(e) => setSpot(e.target.value)}>
+              <option value="">unplaced — never a window</option>
+              {spots.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label}
+                </option>
+              ))}
+              {spot !== "" && !spots.some((s) => s.id === spot) && <option value={spot}>{spot} (not in the map)</option>}
+            </select>
+          </label>
+          <label>
+            screen
+            <select value={view} onChange={(e) => setView(e.target.value as TerminalView)}>
+              <option value="auto">face — the simulation while someone plays</option>
+              <option value="world">the simulation, always (face while piloting)</option>
+              <option value="face">face only</option>
+              <option value="mirror">mirror — full-screen simulation, no scanner</option>
+            </select>
+          </label>
+        </div>
+        {map !== null && map.source === "bundled" && current !== null && <div className="muted small">couldn't read the event's house map — listing the show's own spots</div>}
         {serverVoiceInfo && <div className="muted">{serverVoiceInfo}</div>}
         <div className="row">
           <label>
@@ -539,7 +752,7 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
           )}
         </div>
         <p className="muted small">
-          Provision a fleet by opening <code>/terminal/?code=&lt;mod passcode&gt;&amp;name=Kitchen&amp;character=Trabolta</code> on each tablet. The camera needs https:// (or localhost); without it, programs type their name instead.
+          Provision a fleet by opening <code>/terminal/?code=&lt;mod passcode&gt;&amp;name=Kitchen&amp;character=Trabolta&amp;spot=kitchen&amp;view=auto</code> on each tablet. The camera needs https:// (or localhost); without it, programs type their name instead.
         </p>
       </form>
     </div>

@@ -2,7 +2,7 @@
 //! `localStorage`, and bootstrappable from the URL so a fleet is provisioned
 //! by opening one link on each:
 //!
-//!   /terminal/?code=<mod passcode>&name=Kitchen&character=Trabolta
+//!   /terminal/?code=<mod passcode>&name=Kitchen&character=Trabolta&spot=kitchen&view=auto
 //!
 //! The mod passcode resolves (via `/api/resolve-code`) to the event and is
 //! traded for a **moderator token** (`/api/mod/login`) — that is what lets
@@ -32,6 +32,21 @@ export interface TerminalConfig {
   speed: number;
   /** The tablet camera to use for the scanner. */
   camera: "user" | "environment";
+  /** Where this screen hangs: a `house.terminals[].id` of the event's house
+   *  map (`docs/loom-reinstall.md` §4), or "" — unplaced. */
+  spot: string;
+  /** What the attract screen shows: `auto` (the world view while a program
+   *  is in the reinstallation simulation, else the face), `world` (always
+   *  the world view), `face` (never), `mirror` (a full-screen spectator —
+   *  no scanner, no chat). */
+  view: TerminalView;
+}
+
+export type TerminalView = "auto" | "world" | "face" | "mirror";
+export const VIEWS: readonly TerminalView[] = ["auto", "world", "face", "mirror"];
+
+function isView(v: unknown): v is TerminalView {
+  return typeof v === "string" && (VIEWS as readonly string[]).includes(v);
 }
 
 export const CONFIG_KEY = "loom.terminal";
@@ -47,6 +62,8 @@ export function defaultConfig(partial: Partial<TerminalConfig> & Pick<TerminalCo
     browserVoice: "",
     speed: 1,
     camera: "user",
+    spot: "",
+    view: "auto",
     ...partial,
   };
 }
@@ -57,7 +74,9 @@ export function loadConfig(storage: Pick<Storage, "getItem"> = localStorage): Te
     if (raw === null) return null;
     const c = JSON.parse(raw) as Partial<TerminalConfig>;
     if (typeof c.eventId !== "string" || typeof c.token !== "string" || c.eventId === "" || c.token === "") return null;
-    return defaultConfig({ ...c, eventId: c.eventId, token: c.token });
+    const spot = typeof c.spot === "string" ? c.spot : "";
+    const view = isView(c.view) ? c.view : "auto";
+    return defaultConfig({ ...c, eventId: c.eventId, token: c.token, spot, view });
   } catch {
     return null;
   }
@@ -71,25 +90,30 @@ export function dropConfig(storage: Pick<Storage, "removeItem"> = localStorage):
   storage.removeItem(CONFIG_KEY);
 }
 
-/** Provisioning hints riding on the URL (`?code=&name=&character=&camera=&engine=`). */
+/** Provisioning hints riding on the URL (`?code=&name=&character=&camera=&engine=&spot=&view=`). */
 export interface UrlHints {
   code: string;
   name: string | null;
   character: string | null;
   camera: "user" | "environment" | null;
   engine: TerminalConfig["engine"] | null;
+  spot: string | null;
+  view: TerminalView | null;
 }
 
 export function hintsFromSearch(search: string): UrlHints {
   const p = new URLSearchParams(search);
   const camera = p.get("camera");
   const engine = p.get("engine");
+  const view = p.get("view");
   return {
     code: (p.get("code") ?? "").trim(),
     name: p.get("name")?.trim() || null,
     character: p.get("character")?.trim() || null,
     camera: camera === "user" || camera === "environment" ? camera : null,
     engine: engine === "auto" || engine === "server" || engine === "browser" ? engine : null,
+    spot: p.get("spot")?.trim() || null,
+    view: isView(view) ? view : null,
   };
 }
 
@@ -101,6 +125,8 @@ export function withoutSecrets(search: string): string {
   p.delete("character");
   p.delete("camera");
   p.delete("engine");
+  p.delete("spot");
+  p.delete("view");
   const s = p.toString();
   return s === "" ? "" : `?${s}`;
 }
@@ -127,10 +153,12 @@ export async function provision(code: string, hints: Omit<UrlHints, "code">): Pr
     character,
     camera: hints.camera ?? "user",
     engine: hints.engine ?? "auto",
+    spot: hints.spot ?? "",
+    view: hints.view ?? "auto",
   });
 }
 
 /** The event-scoped API base for a configured terminal. */
-export function baseOf(c: TerminalConfig): string {
+export function baseOf(c: Pick<TerminalConfig, "eventId">): string {
   return `/e/${encodeURIComponent(c.eventId)}`;
 }

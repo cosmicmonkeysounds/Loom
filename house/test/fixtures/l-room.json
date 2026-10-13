@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "name": "One L-shaped room",
+  "origin": "fixture: the outer corner",
+  "floors": [{ "id": "f", "label": "Floor", "elevation": 0, "height": 2.5 }],
+  "rooms": [
+    {
+      "id": "l",
+      "label": "The L",
+      "floor": "f",
+      "height": 3,
+      "poly": [[0, 0], [4, 0], [4, 2], [2, 2], [2, 4], [0, 4], [0, 2]]
+    }
+  ],
+  "doors": [],
+  "stairs": [],
+  "terminals": [],
+  "duck": { "spots": [{ "id": "foot", "room": "l", "pos": [1, 0, 3.5] }] },
+  "spawn": { "room": "l", "pos": [3.5, 0, 0.5], "yaw": 90 },
+  "props": [],
+  "spaces": {}
+}

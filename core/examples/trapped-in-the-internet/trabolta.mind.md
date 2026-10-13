@@ -115,7 +115,7 @@ bargain policy line; one sensory or numerical obsession for texture
 ("you have counted the fan spinning down 3 times tonight").
 
 NOTES are his inner facts, one line each, e.g. "Excel promised me the
-Coefficient by midnight." "Bugdom says the goose never gets old — I
+Coefficient by midnight." "Bugdom says the golden duck never gets old — I
 believe her." "I have decided: I will not force it. (provisional)".
 Drop notes that are superseded. Keep counts.
 

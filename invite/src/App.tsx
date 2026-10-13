@@ -55,6 +55,8 @@ const GUESTBOOK = [
 interface Invite {
   name: string;
   lines: string[];
+  when?: string;
+  where?: string;
   url: string;
   note: string;
 }
@@ -394,13 +396,26 @@ function Revealed({ invite }: { invite: Invite }): JSX.Element {
   return (
     <div className="terminal">
       <p className="term-dim">CARRIER DETECTED · 56000 bps · WELCOME, MEMBER</p>
-      <p className="term-line">congratulations, traveller. the map ends here.</p>
+      <p className="term-line">You solved it. Here's your invitation.</p>
       <h1 className="term-title">{invite.name}</h1>
       {invite.lines.map((line) => (
         <p key={line} className="term-line">
           {line}
         </p>
       ))}
+      {invite.when && (
+        <p className="term-line">
+          <b>When:</b> {invite.when}
+        </p>
+      )}
+      {invite.where && (
+        <p className="term-line">
+          <b>Where:</b>{" "}
+          <a href={`https://maps.google.com/?q=${encodeURIComponent(invite.where)}`} target="_blank" rel="noopener noreferrer">
+            {invite.where}
+          </a>
+        </p>
+      )}
       <p className="term-link">
         <a href={invite.url}>{invite.url.replace(/^https?:\/\//, "")}</a>
       </p>

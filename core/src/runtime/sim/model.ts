@@ -125,9 +125,15 @@ export interface CharDef {
    *  the story is a performer's; one with no part is a program a guest may
    *  be (see `server/identity.ts`). */
   playable: boolean;
-  /** `avatar: https://…` — an authored profile picture for the character's
-   *  tile (the server scrapes one from Wikipedia when this is unset). */
-  avatar: string | null;
+  /** `avatar: https://…` or `avatar: File:Clippy-letter.PNG` — the
+   *  hand-picked profile picture(s) for the character's tile, best first
+   *  (`a | b | c` offers a guest several). The first is the default; the
+   *  server scrapes one from Wikipedia when there is none. */
+  avatar: string[];
+  /** `wiki: Microsoft Minesweeper` — the Wikipedia article this character
+   *  *is*, when its name alone would find the wrong one (the naval
+   *  minesweeper). The source of a guest's extra picture options. */
+  wiki: string | null;
 }
 
 /** A compiled `CODEX` entry — a unit of shareable lore (Loom 4 §10.1). */
@@ -627,14 +633,21 @@ function charDef(id: string, body: CharacterBody): CharDef {
     mind: mind === "" ? null : mind,
     ranges,
     playable: body.properties.get("playable")?.value.trim() !== "false",
-    avatar: avatarOf(body.properties.get("avatar")?.value),
+    avatar: avatarsOf(body.properties.get("avatar")?.value),
+    wiki: body.properties.get("wiki")?.value.trim() || null,
   };
 }
 
-/** An authored `avatar:` link — only an absolute http(s) URL counts. */
-function avatarOf(value: string | undefined): string | null {
-  const v = value?.trim() ?? "";
-  return /^https?:\/\/\S+$/u.test(v) ? v : null;
+/**
+ * Authored `avatar:` pictures, `|`-separated: an absolute http(s) URL, or
+ * a Wikipedia / Commons file by name (`File:Winamp Logo.svg`). Anything
+ * else is ignored.
+ */
+export function avatarsOf(value: string | undefined): string[] {
+  return (value ?? "")
+    .split("|")
+    .map((v) => v.trim())
+    .filter((v) => /^https?:\/\/\S+$/u.test(v) || /^File:\S/iu.test(v));
 }
 
 function hooksOf(ownerId: string, ownerKind: "character" | "role", body: CharacterBody): Hook[] {

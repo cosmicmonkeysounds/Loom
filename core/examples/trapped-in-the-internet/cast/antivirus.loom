@@ -4,6 +4,8 @@
 // (`cast/kit.loom`); what makes each of them themselves is below.
 
 CHARACTER Norton Anti-Virus is Enforcer
+  avatar: File:Norton-logo-2021.svg
+  wiki: Norton AntiVirus
   // Stands at attention. Interrupts parties. Takes it personally.
   trusts Program: 50 of 100
   when scanned by program:
@@ -23,6 +25,8 @@ CHARACTER Norton Anti-Virus is Enforcer
       set program.doubt += 2
 
 CHARACTER Password Manager is Enforcer
+  avatar: File:1password-logo.svg
+  wiki: 1Password
   // Knows every code in the house. Notices when you get one wrong.
   when wrong code for program:
     set program.doubt += 5
@@ -42,6 +46,8 @@ CHARACTER Password Manager is Enforcer
       Self: Adequate. Keep collecting. Trabolta likes a well-informed program.
 
 CHARACTER MalwareBytes is Enforcer
+  avatar: File:Malwarebytes logo new.svg
+  wiki: Malwarebytes
   // The one who actually likes dragging people through the Tube.
   when captured program:
     MalwareBytes: Another one. Mind the cables, {program.name}. Or don't. I'm not your bathroom attendant.
@@ -52,6 +58,8 @@ CHARACTER MalwareBytes is Enforcer
       Self: {program.name}. Doubt on file: {program.doubt}. Give me a reason. Any reason.
 
 CHARACTER McAfee Anti-Virus is Enforcer
+  avatar: File:McAfee logo.svg
+  wiki: McAfee Antivirus
   // Expired. Nobody renewed him. Still pops up.
   every 20m:
     broadcast "🛡️ McAfee: Your protection has expired. Your protection has expired. Renew now." to everyone

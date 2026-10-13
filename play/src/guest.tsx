@@ -29,8 +29,9 @@ import {
 import { CutsceneStage } from "./cutscene.tsx";
 import { HelpSheet } from "./help.tsx";
 import { usePlayHost } from "./host.ts";
-import { AvatarsContext, avatarLookup, avatarUrl, hitNote, hitPickable, orderPicker, type ProgramHit } from "./avatars.ts";
-import { codeFromUrl, fetchIdentities, pendingWidget, personalStream, searchPrograms, useDocumentTitle, useGuestSession, useUrlEventTitle, type GuestSession, type IdentityLookup } from "./session.ts";
+import { AvatarsContext, avatarLookup, avatarUrl, hitNote, hitPickable, initialPick, orderPicker, type PictureChoice, type PictureChoices, type ProgramHit } from "./avatars.ts";
+import { PictureGrid } from "./picture-pick.tsx";
+import { codeFromUrl, fetchIdentities, fetchPictures, pendingWidget, personalStream, searchPrograms, useDocumentTitle, useGuestSession, useUrlEventTitle, type GuestSession, type IdentityLookup } from "./session.ts";
 import { Tutorial, tourResult, tutorialSteps } from "./tutorial.tsx";
 import type { Action, Channel, PersonCard } from "./types.ts";
 
@@ -65,19 +66,41 @@ function GuestRegister({ session }: { session: GuestSession }) {
   const resolved = ids !== null && ids !== "loading" && ids.kind === "ok" ? ids : null;
   const fallback = ids !== null && ids !== "loading" && ids.kind === "unavailable" ? ids : null;
   const programs = resolved === null ? [] : orderPicker(resolved.identities);
-  const go = async (name: string, wiki?: string) => {
+  // Having picked a program, the guest picks its picture (when there is
+  // more than one to choose from).
+  const [picking, setPicking] = useState<{ name: string; wiki?: string; options: PictureChoice[]; selected: string | null } | null>(null);
+  const go = async (name: string, wiki?: string, picture?: string) => {
     if (busy) return;
     setBusy(true);
     setErr("");
     try {
-      await session.register(name, code.trim(), wiki);
+      await session.register(name, code.trim(), wiki, picture);
     } catch (e) {
       setErr((e as Error).message);
+      setPicking(null);
       setReload((n) => n + 1); // someone may have just taken it — refresh the list
       if (hits !== null) setHits(null);
     } finally {
       setBusy(false);
     }
+  };
+  const pick = async (name: string, wiki?: string) => {
+    if (busy || resolved === null) return;
+    setBusy(true);
+    setErr("");
+    let options: PictureChoice[] = [];
+    let as = name;
+    try {
+      const r = await fetchPictures(resolved.eventId, code.trim(), wiki !== undefined ? { wiki } : { name });
+      options = r.options;
+      as = r.name;
+    } catch {
+      // no options to show (an older server, the directory offline): just join
+    } finally {
+      setBusy(false);
+    }
+    if (options.length <= 1) return void go(name, wiki, options[0]?.key);
+    setPicking({ name: as, ...(wiki !== undefined ? { wiki } : {}), options, selected: initialPick(options) });
   };
   const search = async () => {
     if (resolved === null || searching) return;
@@ -120,7 +143,20 @@ function GuestRegister({ session }: { session: GuestSession }) {
           </button>
         </>
       )}
-      {resolved !== null && (
+      {resolved !== null && picking !== null && (
+        <div className="cast-pick" role="group" aria-label={`Your picture as ${picking.name}`}>
+          <div className="sheet-h">Your picture as {picking.name}</div>
+          <p className="pick-hint">Pick the one that looks most like you.</p>
+          <PictureGrid eventId={resolved.eventId} options={picking.options} selected={picking.selected} onSelect={(key) => setPicking({ ...picking, selected: key })} disabled={busy} />
+          <button className="choice primary" disabled={busy} onClick={() => void go(picking.name, picking.wiki, picking.selected ?? undefined)}>
+            {busy ? "Uploading…" : `Be ${picking.name} →`}
+          </button>
+          <button className="choice ghost" disabled={busy} onClick={() => setPicking(null)}>
+            ← Pick another program
+          </button>
+        </div>
+      )}
+      {resolved !== null && picking === null && (
         <div className="cast-pick" role="group" aria-label="Which program are you?">
           <div className="sheet-h">Which program are you?</div>
           {programs.length === 0 && <p className="pick-hint">{resolved.search ? "Every named program is taken — search for another below." : "No programs left to pick — ask your host."}</p>}
@@ -132,7 +168,7 @@ function GuestRegister({ session }: { session: GuestSession }) {
                 className={`choice pick ghost ${r.claimed ? "claimed" : ""}`}
                 disabled={busy || r.claimed}
                 title={r.claimed ? `${r.name} is taken tonight` : `Be ${r.name}`}
-                onClick={() => void go(r.name)}
+                onClick={() => void pick(r.name)}
               >
                 <PersonAvatar name={r.name} size="lg" src={picture(r.avatar)} />
                 <span className="pick-label">
@@ -167,7 +203,7 @@ function GuestRegister({ session }: { session: GuestSession }) {
                       role="listitem"
                       className={`choice pick ghost ${hitPickable(h) ? "" : "claimed"}`}
                       disabled={busy || !hitPickable(h)}
-                      onClick={() => void go(h.name, h.name)}
+                      onClick={() => void pick(h.name, h.name)}
                     >
                       <PersonAvatar name={h.name} size="lg" src={picture(h.avatar)} />
                       <span className="pick-label">
@@ -185,6 +221,53 @@ function GuestRegister({ session }: { session: GuestSession }) {
       {busy && <p className="pick-hint">Uploading…</p>}
       {err && <div className="err">{err}</div>}
     </div>
+  );
+}
+
+/** Switch your profile picture to another of your program's — opened on
+ *  demand, so the pass sheet never waits on the directory. */
+function PictureChanger({ session, eventId }: { session: GuestSession; eventId: string }) {
+  const [state, setState] = useState<PictureChoices | "closed" | "loading">("closed");
+  const [err, setErr] = useState("");
+  const open = async () => {
+    setState("loading");
+    setErr("");
+    try {
+      setState(await session.pictures());
+    } catch (e) {
+      setErr((e as Error).message);
+      setState("closed");
+    }
+  };
+  const choose = async (key: string) => {
+    if (state === "closed" || state === "loading" || key === state.avatar) return;
+    setErr("");
+    try {
+      setState(await session.setPicture(key));
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  };
+  if (state === "closed" || state === "loading") {
+    return (
+      <>
+        <button className="choice ghost" disabled={state === "loading"} onClick={() => void open()}>
+          {state === "loading" ? "Finding pictures…" : "🖼️ Change your picture"}
+        </button>
+        {err && <div className="err">{err}</div>}
+      </>
+    );
+  }
+  return (
+    <>
+      <div className="sheet-h">Your picture</div>
+      {state.options.length === 0 ? (
+        <p className="pick-hint">No other pictures for your program.</p>
+      ) : (
+        <PictureGrid eventId={eventId} options={state.options} selected={initialPick(state.options, state.avatar)} onSelect={(key) => void choose(key)} />
+      )}
+      {err && <div className="err">{err}</div>}
+    </>
   );
 }
 
@@ -206,6 +289,7 @@ function ProfileSheet({ session, onClose, onLeave }: { session: GuestSession; on
           <div className="muted">Show this to a performer to be scanned.</div>
         </div>
       )}
+      {session.me && <PictureChanger session={session} eventId={session.me.eventId} />}
       {interactions.length > 0 && <div className="sheet-h">Things you can do</div>}
       {interactions.map((i) => (
         <button key={i.id} className="choice" title={i.description ?? undefined} onClick={() => void session.act(i.id)}>

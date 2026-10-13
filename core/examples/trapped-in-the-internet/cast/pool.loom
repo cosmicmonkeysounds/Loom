@@ -5,32 +5,72 @@
 // picker instead of the performer one. Each is one guest's for the night:
 // once claimed it is greyed out for everyone else. A guest who wants to be
 // something not on this list searches the program directory (Wikipedia,
-// software only — never antivirus) and gets that article's picture.
+// software only — never antivirus) and picks one of that article's pictures.
 //
-// Profile pictures are looked up by name in the same directory when the
-// doors open; write `avatar: https://…` to choose one yourself.
+// Profile pictures are hand-picked: `avatar: File:…` names a Wikipedia /
+// Commons file (the server downloads it when the story loads), and
+// `a | b` offers more than one — the first is the default, and a guest
+// chooses between them plus the article's own gallery at sign-in.
+// `wiki:` names the article when the program's name alone would find the
+// wrong one (Minesweeper the ship). A program with no `avatar:` gets the
+// best picture its article has.
 
 CHARACTER Calculator
+  avatar: File:Windows 11 Windows Calculator.svg
+  wiki: Windows Calculator
 CHARACTER MS Paint
+  avatar: File:Microsoft Paint.svg
+  wiki: Microsoft Paint
 CHARACTER VLC
+  avatar: File:VLC Icon.svg
+  wiki: VLC media player
 CHARACTER Ring Doorbell
+  avatar: File:Ring-Logo.svg
+  wiki: Ring (company)
 CHARACTER WinZip
+  avatar: File:WinZip icon.png
 CHARACTER GarageBand
+  avatar: File:GarageBand App.png
 CHARACTER LimeWire
+  avatar: File:LimeWire.png
 CHARACTER MSN Messenger
+  avatar: File:Windows Live Messenger icon.png | File:MSN Messenger logo.png
 CHARACTER 3D Pinball
+  avatar: File:Full Tilt! Pinball coverart.png
+  wiki: Full Tilt! Pinball
 CHARACTER RollerCoaster Tycoon
+  avatar: File:Rollercoaster Tycoon logo.png
 CHARACTER Zoo Tycoon
+  avatar: File:ZooTycoon logo.png
 CHARACTER Minesweeper
+  avatar: File:MINESWEEPER SMILEY.png | File:Minesweeper in Windows 98 Expert Level.png
+  wiki: Microsoft Minesweeper
 CHARACTER Ctrl Alt Del
+  avatar: File:Win98 Close Program Dialog.PNG | File:Three-finger salute.svg
+  wiki: Control-Alt-Delete
 CHARACTER Start Bar
+  avatar: File:Windows 95 Start menu.png
+  wiki: Start menu
 CHARACTER Solitaire
+  avatar: File:Solitaire Icon (Vista).png
+  wiki: Microsoft Solitaire
 CHARACTER Winamp
+  avatar: File:Winamp media player logomark.png | File:Winamp Logo.svg
 CHARACTER Napster
+  avatar: File:Napster logo.svg
 CHARACTER Encarta
+  avatar: File:Encarta logo.svg
 CHARACTER Netscape Navigator
+  avatar: File:Netscape icon.svg
 CHARACTER ICQ
+  avatar: File:Logo ICQ.svg
 CHARACTER The Sims
+  avatar: File:The Sims series logo.svg
 CHARACTER Notepad
+  avatar: File:Notepad Win11.svg
+  wiki: Windows Notepad
 CHARACTER Paint Shop Pro
+  avatar: File:Corel Paint Shop Pro Photo X2.png
+  wiki: PaintShop Pro
 CHARACTER RealPlayer
+  avatar: File:Realplayer computer icon.png

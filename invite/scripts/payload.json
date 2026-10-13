@@ -1,9 +1,12 @@
 {
   "name": "TRAPPED IN THE INTERNET",
   "lines": [
-    "you followed the map; now you're on it.",
-    "one night only. dress sharp — it's 1997 in here."
+    "You're invited to a house party that's also an immersive theatre event and escape room.",
+    "Come dressed as your favourite computer program.",
+    "Bring your phone, charged; you'll play on it."
   ],
+  "when": "9pm start",
+  "where": "3821 Basinview Dr., North End Halifax",
   "url": "https://app.mapsandducks.com",
-  "note": "bring your phone. the door asks for a word."
+  "note": "When you get to the door, open the link above and ring the doorbell."
 }

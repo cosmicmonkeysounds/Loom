@@ -9,6 +9,8 @@ packages:
   - bank
   - play
   - terminal
+  - house
+  - reinstall/web
   - editor
   - desktop
   - invite

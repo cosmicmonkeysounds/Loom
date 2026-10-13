@@ -1,13 +1,18 @@
 #!/usr/bin/env node
 // The whole Loom dev stack in one command.
 //
-//   pnpm dev                      build play + terminal, then run the event
-//                                 server (:7000) and the editor (:5173)
+//   pnpm dev                      build play + terminal + reinstall, then
+//                                 run the event server (:7000) and the
+//                                 editor (:5173)
 //   pnpm dev --no-build           skip the builds (the server serves the
-//                                 last play/dist + terminal/dist)
+//                                 last play/dist + terminal/dist +
+//                                 reinstall/web/dist)
 //   pnpm dev --play               also run the play app's own Vite (:5174),
 //                                 a second origin for a performer phone
-//   pnpm dev --only server        just the server (or: editor, play)
+//   pnpm dev --reinstall          also run the reinstallation game's own
+//                                 Vite (:5176, HMR; the map at /reinstall/map)
+//   pnpm dev --only server        just the server (or: editor, play,
+//                                 reinstall)
 //   pnpm dev --sync "My Project"  after boot, push the example story into
 //                                 that server project + reload its event
 //                                 (see core/scripts/sync-example.ts)
@@ -32,12 +37,13 @@ const opt = (name) => {
 const build = !flag("--no-build");
 const only = opt("--only");
 const wantPlay = flag("--play") || only === "play";
+const wantReinstall = flag("--reinstall") || only === "reinstall";
 const sync = opt("--sync");
 const example = opt("--example") ?? "trapped-in-the-internet";
 const port = process.env.LOOM_PORT ?? "7000";
 const run = (name) => only === null || only === name;
 
-const COLORS = { build: "36", server: "32", editor: "35", play: "33", sync: "34" };
+const COLORS = { build: "36", server: "32", editor: "35", play: "33", reinstall: "93", sync: "34" };
 const kids = new Set();
 let shuttingDown = false;
 
@@ -98,8 +104,8 @@ async function waitForServer(ms = 60_000) {
 
 async function main() {
   if (build && (run("server") || only === null)) {
-    process.stdout.write("\x1b[36m[build]\x1b[0m play + terminal (the server serves their dist/)\n");
-    const codes = await Promise.all([pnpm("build", ["--filter", "loom-play", "build"]), pnpm("build", ["--filter", "loom-terminal", "build"])]);
+    process.stdout.write("\x1b[36m[build]\x1b[0m play + terminal + reinstall (the server serves their dist/)\n");
+    const codes = await Promise.all(["loom-play", "loom-terminal", "loom-reinstall"].map((name) => pnpm("build", ["--filter", name, "build"])));
     if (codes.some((c) => c !== 0)) {
       process.stderr.write("\x1b[31m[build] failed — not starting the stack\x1b[0m\n");
       process.exit(1);
@@ -108,10 +114,14 @@ async function main() {
 
   const running = [];
   if (run("server")) running.push(pnpm("server", ["--filter", "@loom/core", "serve"]));
-  if (run("editor")) running.push(pnpm("editor", ["--filter", "loom-app", "dev"]));
-  if (wantPlay) running.push(pnpm("play", ["--filter", "loom-play", "dev"]));
+  // The Vite dev servers proxy /api + /e to LOOM_SERVER — point them at
+  // this server, so a LOOM_PORT override carries through.
+  const vite = { env: { LOOM_SERVER: process.env.LOOM_SERVER ?? `http://localhost:${port}` } };
+  if (run("editor")) running.push(pnpm("editor", ["--filter", "loom-app", "dev"], vite));
+  if (wantPlay) running.push(pnpm("play", ["--filter", "loom-play", "dev"], vite));
+  if (wantReinstall) running.push(pnpm("reinstall", ["--filter", "loom-reinstall", "dev"], vite));
   if (running.length === 0) {
-    process.stderr.write("nothing to run (--only takes server | editor | play)\n");
+    process.stderr.write("nothing to run (--only takes server | editor | play | reinstall)\n");
     process.exit(2);
   }
 
@@ -121,9 +131,15 @@ async function main() {
     if (code !== 0) process.stderr.write("\x1b[31m[sync] failed (see above) — the stack keeps running\x1b[0m\n");
   }
 
-  process.stdout.write(
-    `\x1b[2m→ server http://localhost:${port}${run("editor") ? "  ·  editor http://localhost:5173" : ""}${wantPlay ? "  ·  play http://localhost:5174" : ""}  ·  Ctrl+C stops everything\x1b[0m\n`,
-  );
+  const urls = [];
+  if (run("server")) {
+    const base = `http://localhost:${port}`;
+    urls.push(`server ${base}`, `terminal ${base}/terminal/`, `reinstall ${base}/reinstall/ (map: /reinstall/map)`);
+  }
+  if (run("editor")) urls.push("editor http://localhost:5173");
+  if (wantPlay) urls.push("play http://localhost:5174");
+  if (wantReinstall) urls.push("reinstall (HMR) http://localhost:5176/reinstall/ (map: /reinstall/map)");
+  process.stdout.write(`\x1b[2m→ ${urls.join("  ·  ")}  ·  Ctrl+C stops everything\x1b[0m\n`);
   const codes = await Promise.all(running);
   if (!shuttingDown) process.exit(codes.find((c) => c !== 0) ?? 0);
 }

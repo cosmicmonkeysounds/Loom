@@ -1,0 +1,58 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://player/player.gd" id="1_player"]
+[ext_resource type="Shader" path="res://player/vignette.gdshader" id="2_vignette"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.25
+height = 1.5
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_vignette"]
+render_priority = 100
+shader = ExtResource("2_vignette")
+shader_parameter/strength = 0.0
+
+[sub_resource type="QuadMesh" id="QuadMesh_vignette"]
+size = Vector2(2, 2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_hand"]
+size = Vector3(0.05, 0.03, 0.12)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hand"]
+albedo_color = Color(0.239, 0.949, 0.91, 1)
+shading_mode = 2
+
+[node name="Player" type="CharacterBody3D"]
+script = ExtResource("1_player")
+
+[node name="Body" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="XROrigin3D" type="XROrigin3D" parent="."]
+
+[node name="XRCamera3D" type="XRCamera3D" parent="XROrigin3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
+near = 0.05
+far = 120.0
+
+[node name="Vignette" type="MeshInstance3D" parent="XROrigin3D/XRCamera3D"]
+visible = false
+cast_shadow = 0
+extra_cull_margin = 16384.0
+mesh = SubResource("QuadMesh_vignette")
+material_override = SubResource("ShaderMaterial_vignette")
+
+[node name="LeftHand" type="XRController3D" parent="XROrigin3D"]
+tracker = &"left_hand"
+
+[node name="Mesh" type="MeshInstance3D" parent="XROrigin3D/LeftHand"]
+mesh = SubResource("BoxMesh_hand")
+surface_material_override/0 = SubResource("StandardMaterial3D_hand")
+
+[node name="RightHand" type="XRController3D" parent="XROrigin3D"]
+tracker = &"right_hand"
+
+[node name="Mesh" type="MeshInstance3D" parent="XROrigin3D/RightHand"]
+mesh = SubResource("BoxMesh_hand")
+surface_material_override/0 = SubResource("StandardMaterial3D_hand")

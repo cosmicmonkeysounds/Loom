@@ -17,7 +17,11 @@
 //! Env: LOOM_PORT, LOOM_HOST, LOOM_EVENT_PASS, LOOM_MOD_PASS,
 //! LOOM_PRIME_PASS (any passcode left unset is auto-generated and printed
 //! at boot), LOOM_STATE_DIR (where restart-recovery state is kept),
-//! LOOM_APP_DIST.
+//! LOOM_APP_DIST, LOOM_TERMINAL_DIST, LOOM_REINSTALL_DIST (the built web
+//! reinstallation game, served at `/reinstall/`), LOOM_HOUSE (the show's
+//! house map for the reinstallation games; default: the example's
+//! `house.json` — a director's save per event, kept as
+//! `spatial-house.json` in that event's state dir, overrides it).
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFileSync } from "node:fs";
@@ -33,16 +37,31 @@ import { scenarioSource } from "../examples/load.ts";
 import { EventRuntime } from "./event-runtime.ts";
 import { EventRegistry } from "./registry.ts";
 import { WikiClient } from "./wiki.ts";
+import { ImageCache } from "./avatars.ts";
+import { join } from "node:path";
 import { ipOf, readBody, sendJson, str, PayloadTooLarge } from "./http-util.ts";
 import { RateLimiter } from "./rate-limit.ts";
 import { auth, authUser, migrateAuth } from "./auth-server.ts";
 import { dbReady, initSchema } from "./db/index.ts";
 import { canModerateEvent, liveEvents } from "./db/queries.ts";
-import { BASE_URL, DATABASE_URL, HAS_SECURE_SECRET, IS_LOCAL_BASE, TRUSTED_ORIGINS } from "./config.ts";
+import {
+  AUTH_SECRET,
+  BASE_URL,
+  DATABASE_URL,
+  HAS_SECURE_SECRET,
+  IS_LOCAL_BASE,
+  RESEND_API_KEY,
+  TRUSTED_ORIGINS,
+  WEBMASTER_FROM,
+  WEBMASTER_PASSWORD,
+  WEBMASTER_REPLY_TO,
+} from "./config.ts";
 import { handleInvites, handleProjects } from "./projects.ts";
 import { handleEvent, specFromRow } from "./events-api.ts";
 import { handleCollab } from "./collab-api.ts";
 import { mailer } from "./mail.ts";
+import { WebmasterPortal, resendSender } from "./webmaster.ts";
+import { HTML_CSP, REINSTALL_CSP, TERMINAL_CSP, appRelPath, subAppRoute, wantsModRead } from "./routing.ts";
 
 const PORT = Number(process.env.LOOM_PORT ?? 7000);
 const HOST = process.env.LOOM_HOST ?? "0.0.0.0";
@@ -72,6 +91,13 @@ const TERMINAL_DIST = process.env.LOOM_TERMINAL_DIST
   ? pathToFileURL(process.env.LOOM_TERMINAL_DIST.replace(/\/?$/, "/"))
   : new URL("../../terminal/dist/", import.meta.url);
 
+// The built reinstallation web game (`loom-reinstall`), served under
+// `/reinstall/` (and its map page at `/reinstall/map`). Defaults to the
+// sibling package's `dist/`; override with LOOM_REINSTALL_DIST.
+const REINSTALL_DIST = process.env.LOOM_REINSTALL_DIST
+  ? pathToFileURL(process.env.LOOM_REINSTALL_DIST.replace(/\/?$/, "/"))
+  : new URL("../../reinstall/web/dist/", import.meta.url);
+
 const CONTENT_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -82,30 +108,23 @@ const CONTENT_TYPES: Record<string, string> = {
   ".png": "image/png",
   ".woff2": "font/woff2",
   ".woff": "font/woff",
+  ".glb": "model/gltf-binary",
+  ".gltf": "model/gltf+json",
+  ".bin": "application/octet-stream",
+  ".wasm": "application/wasm",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+  ".mp3": "audio/mpeg",
+  ".ogg": "audio/ogg",
+  ".wav": "audio/wav",
+  ".webmanifest": "application/manifest+json",
 };
-
-/** Content-Security-Policy for served HTML. The Vite build is external
- *  scripts + hashed assets, all same-origin; inline styles are React's. */
-const HTML_CSP = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "connect-src 'self'",
-  "font-src 'self'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "frame-ancestors 'none'",
-].join("; ");
-
-/** The terminal plays synthesised speech from in-memory blobs and reads
- *  the tablet's camera; only the media source differs from the play app. */
-const TERMINAL_CSP = `${HTML_CSP}; media-src 'self' blob:`;
 
 /** Serve a file from a built app dir; returns false if it isn't there. */
 function serveAppFile(pathname: string, res: ServerResponse, dist: URL = APP_DIST, csp: string = HTML_CSP): boolean {
-  const rel = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
-  if (rel.includes("..")) return false;
+  const rel = appRelPath(pathname);
+  if (rel === null) return false;
   try {
     const buf = readFileSync(new URL(rel, dist));
     const ext = rel.slice(rel.lastIndexOf("."));
@@ -134,9 +153,27 @@ function joinBase(): string {
 // the guests' "be any software" search. `LOOM_WIKI=off` keeps the server
 // off the internet (pictures then come only from authored `avatar:` links).
 const wiki = process.env.LOOM_WIKI === "off" ? null : new WikiClient();
+// Profile pictures, kept on disk once fetched: the cast's hand-picked
+// pictures download when a story loads and survive restarts + outages.
+const images = new ImageCache({ dir: join(STATE_DIR, "pictures") });
+
+// The webmaster outbox at `/webmaster/` — only with a password + a Resend key.
+const webmaster =
+  WEBMASTER_PASSWORD !== "" && RESEND_API_KEY !== ""
+    ? new WebmasterPortal({
+        password: WEBMASTER_PASSWORD,
+        from: WEBMASTER_FROM,
+        replyTo: WEBMASTER_REPLY_TO,
+        secret: AUTH_SECRET,
+        send: resendSender(RESEND_API_KEY),
+        logPath: join(STATE_DIR, "webmaster-sent.json"),
+        assetsDir: new URL("./webmaster/", import.meta.url),
+        secure: BASE_URL.startsWith("https://"),
+      })
+    : null;
 
 // The multi-tenant registry: one `EventRuntime` per live event, keyed by id.
-const registry = new EventRegistry(STATE_DIR, joinBase, wiki);
+const registry = new EventRegistry(STATE_DIR, joinBase, wiki, images);
 
 // The default event journals to the state-dir root (not a sub-directory) so
 // an existing single-event deployment recovers its `.loom-state/` in place.
@@ -151,6 +188,7 @@ const defaultEvent = registry.register(
     scenarioSource: DEFAULT_SCENARIO,
     joinBase,
     wiki,
+    images,
   }),
 );
 
@@ -190,6 +228,11 @@ async function initControlPlane(): Promise<void> {
     mail === "none"
       ? `  ✉️  no mail transport (set LOOM_SMTP_URL or LOOM_RESEND_API_KEY) — share invites are logged, not emailed\n`
       : `  ✉️  mail via ${mail}\n`,
+  );
+  process.stdout.write(
+    webmaster !== null
+      ? `  📮 webmaster outbox at /webmaster/ (from ${WEBMASTER_FROM})\n`
+      : `  📮 webmaster outbox off (set LOOM_WEBMASTER_PASSWORD + LOOM_RESEND_API_KEY)\n`,
   );
   // Rehydrate every event that was live before this process started: replay
   // its journal and (for open ones) restart its clock — the multi-event
@@ -289,6 +332,9 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     return void sendJson(res, 404, { error: "not found" });
   }
 
+  // --- the webmaster outbox (password-gated; off unless configured) ---
+  if (webmaster !== null && (await webmaster.handle(req, res, method, path, HTML_CSP))) return;
+
   // --- the built participant app (loom-play) at `/` + its static assets ---
   // Moderation now lives in the Loom editor's Run panel, not a standalone
   // console; guests + performers use this app.
@@ -313,21 +359,43 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   // house. Same event server, same threads: a terminal pilots a scanned
   // guest through `/api/mod/impersonate`, so what is said there is the
   // guest's own DM. Built with `--base=/terminal/`.
-  if (method === "GET" && (path === "/terminal" || path.startsWith("/terminal/"))) {
-    if (path === "/terminal") {
-      res.writeHead(302, { location: `/terminal/${url.search}` });
+  const terminalRoute = method === "GET" ? subAppRoute(path, "/terminal", url.search) : null;
+  if (terminalRoute !== null) {
+    if ("redirect" in terminalRoute) {
+      res.writeHead(302, { location: terminalRoute.redirect });
       res.end();
       return;
     }
-    const rel = path.slice("/terminal".length);
-    const file = rel === "/" || rel === "/index.html" || !rel.includes(".") ? "/index.html" : rel;
-    if (serveAppFile(file, res, TERMINAL_DIST, TERMINAL_CSP)) return;
+    if (serveAppFile(terminalRoute.file, res, TERMINAL_DIST, TERMINAL_CSP)) return;
     res.writeHead(200, { "content-type": "text/html; charset=utf-8", "content-security-policy": HTML_CSP });
     res.end(
       `<!doctype html><meta charset=utf-8><title>Loom terminal</title>` +
         `<body style="font:16px system-ui;background:#0b0d12;color:#e7ecf3;padding:2rem">` +
         `<h1>Loom terminal</h1><p>The terminal app isn't built yet. Run ` +
         `<code>pnpm --filter loom-terminal build</code> (or <code>cd ../terminal && pnpm dev</code> for live dev on :5175).</p>`,
+    );
+    return;
+  }
+
+  // --- the built reinstallation web game (loom-reinstall) at `/reinstall/` ---
+  // The tent tablet's game (a virtual copy of the house; find the golden
+  // duck) and the directors' map page (`/reinstall/map`). Talks to the
+  // event's `/api/spatial/*` + `/api/mod/spatial/*`. Built with
+  // `--base=/reinstall/`.
+  const reinstallRoute = method === "GET" ? subAppRoute(path, "/reinstall", url.search) : null;
+  if (reinstallRoute !== null) {
+    if ("redirect" in reinstallRoute) {
+      res.writeHead(302, { location: reinstallRoute.redirect });
+      res.end();
+      return;
+    }
+    if (serveAppFile(reinstallRoute.file, res, REINSTALL_DIST, REINSTALL_CSP)) return;
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8", "content-security-policy": HTML_CSP });
+    res.end(
+      `<!doctype html><meta charset=utf-8><title>Loom reinstallation</title>` +
+        `<body style="font:16px system-ui;background:#0b0d12;color:#e7ecf3;padding:2rem">` +
+        `<h1>Reinstallation</h1><p>The web game isn't built yet. Run ` +
+        `<code>pnpm --filter loom-reinstall build</code>.</p>`,
     );
     return;
   }
@@ -369,10 +437,9 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     // work on the session cookie alone.
     let moderator = false;
     let moderatorName: string | undefined;
-    const wantsModRead =
-      (subPath === "/events" || subPath === "/api/state" || subPath === "/api/history") &&
-      (url.searchParams.get("role") ?? "mod") === "mod";
-    if (controlPlane && (subPath.startsWith("/api/mod/") || wantsModRead)) {
+    // (The spatial map + stream also accept a game's session token; the
+    // author session lets the editor read them too.)
+    if (controlPlane && (subPath.startsWith("/api/mod/") || wantsModRead(subPath, url.searchParams))) {
       const user = await authUser(req);
       if (user !== null) {
         moderator = await canModerateEvent(eventId, user.id);

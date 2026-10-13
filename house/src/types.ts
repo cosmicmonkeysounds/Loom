@@ -1,0 +1,347 @@
+//! The house map schema (version 1) and the spatial wire types — the one
+//! vocabulary the event server, the web game, the terminals and the Godot
+//! port share. Normative: `docs/loom-reinstall.md` §1.1 (schema), §1.2
+//! (geometry), §2 (routes + stream).
+//!
+//! **House frame.** Metres, right-handed, Y up: `+x` = east, `+y` = up,
+//! `+z` = south (north is `−z`). A plan point is `[x, z]`. Yaw is degrees
+//! about `+y`, `0` = facing north, positive = counter-clockwise seen from
+//! above (turning left) — three.js's / Godot's `rotation.y` for a node whose
+//! forward is `−z`.
+
+/** A plan point `[x, z]`. */
+export type Vec2 = [number, number];
+/** A point `[x, y, z]` in house coordinates. */
+export type Vec3 = [number, number, number];
+
+/** A stair's rising direction: the edge of its rect at the upper elevation. */
+export type Compass = "n" | "s" | "e" | "w";
+
+export interface HouseMap {
+  version: 1;
+  /** "Trapped in the Internet — the house". */
+  name: string;
+  /** Human description of the surveyed origin. */
+  origin: string;
+  /** ≥ 1. */
+  floors: Floor[];
+  /** ≥ 1. */
+  rooms: Room[];
+  doors: Door[];
+  stairs: Stair[];
+  terminals: TerminalSpot[];
+  /** ≥ 1 spot. */
+  duck: { spots: DuckSpot[] };
+  spawn: Spawn;
+  props: Prop[];
+  /** House → space transforms ("vr", "web"); a missing one is the identity. */
+  spaces: Record<string, SpaceTransform>;
+  style?: HouseStyle;
+}
+
+export interface HouseStyle {
+  /** Fence height, metres (default 1.0). */
+  fence?: number;
+  /** Rendering-only wall thickness, metres (default 0.1). */
+  wallThickness?: number;
+  /** Default door height, metres (default 2.0). */
+  doorHeight?: number;
+}
+
+export interface Floor {
+  id: string;
+  label: string;
+  /** World y of the floor surface. */
+  elevation: number;
+  /** Default room height. */
+  height: number;
+}
+
+export interface Room {
+  id: string;
+  label: string;
+  floor: string;
+  /** The Loom LOCATION it is in the story ("The Cache"). Not validated here. */
+  location?: string;
+  /** Rectilinear (every edge axis-aligned), ≥ 4 vertices, simple, either winding. */
+  poly: Vec2[];
+  /** Default: its floor's height. */
+  height?: number;
+  /** No ceiling; unshared edges become a fence. */
+  outdoor?: boolean;
+  /** "#rrggbb" — floor tint. */
+  color?: string;
+}
+
+/**
+ * A gap in the wall between rooms `a` and `b` (`b = null`: to the outside),
+ * on `a`'s floor; `at` lies on the shared wall line (± 0.02 m).
+ */
+export interface Door {
+  id: string;
+  a: string;
+  b: string | null;
+  at: Vec2;
+  width: number;
+  height?: number;
+}
+
+/**
+ * `from` = the lower room, `to` = the upper room; `rect` = `[x0, z0, x1, z1]`
+ * (x0 < x1, z0 < z1), inside both rooms' footprints. The ramp rises toward
+ * `up`. The rect is a hole in the upper floor (and the lower room's ceiling).
+ */
+export interface Stair {
+  id: string;
+  from: string;
+  to: string;
+  rect: [number, number, number, number];
+  up: Compass;
+}
+
+/** `pos` = the screen's centre on the real wall; `yaw` = the way it faces (into the room). */
+export interface TerminalSpot {
+  id: string;
+  name: string;
+  room: string;
+  pos: Vec3;
+  /** The way the screen faces (into the room), degrees — §1 yaw convention. */
+  yaw: number;
+  /** The mount camera's pitch, degrees (+ = up). Unset: the terminal's default (a little down). */
+  pitch?: number;
+  /**
+   * The mount camera's **vertical** field of view in degrees, exactly as
+   * three.js's `PerspectiveCamera.fov`. Unset: `DEFAULT_SPOT_FOV` (70).
+   * The horizontal fov depends on the screen's aspect —
+   * `horizontalFov(fov, aspect)`, ≈ 96.5° for 70° on a 16:10 tablet.
+   */
+  fov?: number;
+}
+
+/** `pos` = where the duck sits (its feet). */
+export interface DuckSpot {
+  id: string;
+  room: string;
+  pos: Vec3;
+}
+
+export interface Spawn {
+  room: string;
+  pos: Vec3;
+  yaw: number;
+}
+
+export type PropKind = "box" | "cylinder" | "screen" | "label";
+
+export interface Prop {
+  id: string;
+  room: string;
+  kind: PropKind;
+  /** Centre of the base. */
+  pos: Vec3;
+  /** `[w (x), h (y), d (z)]` before yaw. */
+  size: Vec3;
+  yaw?: number;
+  color?: string;
+  label?: string;
+  /** Collides. Default: true for box / cylinder, false otherwise (`propSolid`). */
+  solid?: boolean;
+}
+
+/** `world = Ry(yaw) · (scale · house) + offset`. */
+export interface SpaceTransform {
+  offset: Vec3;
+  yaw: number;
+  scale: number;
+}
+
+// ── Geometry (§1.2) ──────────────────────────────────────────────────
+
+export type WallKind = "wall" | "fence" | "lintel" | "rail";
+
+export interface WallSegment {
+  floor: string;
+  /** "x": the wall runs along x at z = c; "z": along z at x = c. */
+  axis: "x" | "z";
+  c: number;
+  lo: number;
+  hi: number;
+  /** World y. */
+  bottom: number;
+  top: number;
+  kind: WallKind;
+}
+
+/** One walkable floor (or a ceiling) of one room, holes cut for stairs. */
+export interface FloorPlane {
+  room: string;
+  floor: string;
+  kind: "floor" | "ceiling";
+  /** World y. */
+  y: number;
+  poly: Vec2[];
+  /** Stair rects as 4-point polygons. */
+  holes: Vec2[][];
+  outdoor: boolean;
+  color?: string;
+}
+
+/** A stair's sloped quad. */
+export interface Ramp {
+  stair: string;
+  from: string;
+  to: string;
+  up: Compass;
+  rect: [number, number, number, number];
+  /** `from`'s floor elevation (the foot). */
+  low: number;
+  /** `to`'s floor elevation (the head). */
+  high: number;
+  /** In plan order `[x0,z0] [x1,z0] [x1,z1] [x0,z1]`, each at its ramp height. */
+  corners: [Vec3, Vec3, Vec3, Vec3];
+}
+
+export interface Located {
+  floor: string;
+  room: string | null;
+}
+
+/** A route waypoint (a door, a stair foot / head) — §1.2 "Route". */
+export interface Portal {
+  kind: "door" | "foot" | "head";
+  /** The door or stair id. */
+  id: string;
+  pos: Vec3;
+  rooms: string[];
+}
+
+// ── Validation ───────────────────────────────────────────────────────
+
+export interface Validation {
+  ok: boolean;
+  problems: string[];
+  /** The normalized map, when `ok`. */
+  house?: HouseMap;
+}
+
+// ── Wire types (§2) ──────────────────────────────────────────────────
+
+export type SpatialWorld = "vr" | "web";
+
+/** A pose in house coordinates. */
+export interface PlayerPose {
+  p: Vec3;
+  yaw: number;
+  pitch: number;
+}
+
+/** `POST /api/spatial/pose` body. */
+export interface PoseBody {
+  p: Vec3;
+  yaw: number;
+  pitch?: number;
+  t?: number;
+}
+
+export interface Assignment {
+  /** Session id (public). */
+  session: string;
+  /** Session token (secret) — `x-loom-token` on the game's own calls. */
+  token: string;
+  /** The program. */
+  guest: string;
+  name: string;
+  world: SpatialWorld;
+  device: string;
+  station: string | null;
+  /** Corrupted — finding the duck releases them. */
+  captured: boolean;
+  duck: DuckSpot;
+  spawn: Spawn;
+  houseVersion: string;
+}
+
+export interface PlayerState {
+  session: string;
+  guest: string;
+  name: string;
+  world: SpatialWorld;
+  device: string;
+  p: Vec3;
+  yaw: number;
+  pitch: number;
+  room: string | null;
+  floor: string;
+  duck: DuckSpot;
+  found: boolean;
+  startedAt: number;
+}
+
+export type LeaveReason = "ended" | "found" | "timeout" | "replaced" | "reset";
+
+export interface PoseUpdate {
+  session: string;
+  p: Vec3;
+  yaw: number;
+  pitch: number;
+  room: string | null;
+  floor: string;
+}
+
+/** `GET /api/spatial/stream` frames: event name → data. */
+export interface SpatialFrames {
+  hello: { eventId: string; houseVersion: string; players: PlayerState[] };
+  join: { player: PlayerState };
+  poses: { t: number; players: PoseUpdate[] };
+  found: { session: string; guest: string; name: string; duck: DuckSpot; released: boolean };
+  leave: { session: string; reason: LeaveReason };
+  house: { version: string };
+  /** A map save moved (or re-dealt) a live player's duck. */
+  duck: { session: string; duck: DuckSpot };
+  reset: { kind: string };
+}
+
+export type SpatialFrameName = keyof SpatialFrames;
+
+/** A decoded stream frame, discriminated by `event`. */
+export type SpatialFrame = {
+  [K in SpatialFrameName]: { event: K; data: SpatialFrames[K] };
+}[SpatialFrameName];
+
+/** `GET /api/spatial/house`. */
+export interface HouseResponse {
+  house: HouseMap;
+  version: string;
+  source: "event" | "show";
+}
+
+/** `POST /api/mod/spatial/house` (200). */
+export interface SaveHouseResult {
+  ok: true;
+  version: string;
+  warnings: string[];
+}
+
+/** `GET /api/mod/spatial/stations` rows. */
+export interface StationInfo {
+  id: string;
+  name: string;
+  world: SpatialWorld;
+  online: boolean;
+  busy: { session: string; guest: string; name: string } | null;
+}
+
+/** `GET /api/mod/spatial/candidates` rows. */
+export interface SpatialCandidate {
+  id: string;
+  name: string;
+  captured: boolean;
+  location: string | null;
+}
+
+/** `POST /api/spatial/found` (200). */
+export interface FoundResult {
+  ok: true;
+  released: boolean;
+  already: boolean;
+}

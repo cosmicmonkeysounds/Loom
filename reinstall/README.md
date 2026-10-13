@@ -1,0 +1,60 @@
+# Reinstallation — the golden-duck games
+
+*Trapped in the Internet*: a program the Antivirus dragged into **The
+Internet** (the tent) is *reinstalled* by proving, in a simulation, that it
+can follow instructions. It walks a **virtual copy of the house** along the
+golden chevrons and finds **Gerald, the golden duck**. Walking up to the duck
+is enough: nothing needs a button. The design contract for every piece below
+is [`docs/loom-reinstall.md`](../docs/loom-reinstall.md), and it is normative.
+
+| Piece | Where | What it is |
+|---|---|---|
+| [`web/`](./web) (`loom-reinstall`) | `/reinstall/` on the event server | The **tablet game**: Vite + React + three.js. Its screens are setup → scan a pass → **Play here** or **Send to <headset>** → play → found. You move with the on-screen twin sticks or the keyboard. The same app serves the **house map** viewer and editor at `/reinstall/map`. §3. |
+| [`vr/`](./vr) | Quest 3 headsets in the tent | The **VR game**: a Godot 4.7 OpenXR project, thumbsticks only. A headset is a station that polls for work, or its wearer picks a program with the stick. On a Mac it runs as a desktop game. §5. |
+| [`../house`](../house) (`@loom/house`) | shared | The **house map**: one frame (metres, Y up, `+z` south). It holds the schema, validation, the procedural geometry, `locate` and `route`, and the duck pick. `@loom/house/three` is the three.js scene that the web game and the terminals both render. §1. |
+| [`../core/server/spatial.ts`](../core/server/spatial.ts) | the event server | `SpatialHub` holds sessions, stations, poses, and a found check gated on distance and height (`nearDuck`), refused while the run is paused. Only the outcome ever reaches the journal: `the simulation completed` + `the golden duck`. A map save carries live sessions over and moves their ducks (`duck` frame). §2. |
+| [`../terminal/src/world/`](../terminal/src/world) | the wall tablets | The **world view**: each terminal shows the players exploring, seen from where it hangs on the real wall. `view=mirror` is the TV. §4. |
+
+The show's map is
+[`core/examples/trapped-in-the-internet/house.json`](../core/examples/trapped-in-the-internet/house.json).
+It is a placeholder until the house is measured. A director's save from
+`/reinstall/map` is kept per event in the server's state directory (as
+`spatial-house.json`) and takes precedence over it. A save carries the
+version the editor loaded, so two directors never silently overwrite each
+other (409, then reload). After you edit the show's file, regenerate the Godot
+goldens and the Godot copy of the map:
+
+```bash
+pnpm house:sync          # = @loom/house goldens + sync → vr/house/house.json, vr/test/golden/
+```
+
+## Running and testing
+
+```bash
+pnpm dev                                   # builds play + terminal + reinstall; server :7000
+                                           # → http://localhost:7000/reinstall/  (map: /reinstall/map)
+pnpm dev --reinstall                       # + the game's own Vite with HMR on :5176
+pnpm --filter loom-reinstall test          # web: physics, input, pose pump, HUD, map editor
+pnpm --filter @loom/house test             # the map + the §1.2 goldens
+pnpm test:vr                               # = reinstall/vr/test/run.sh (needs Godot 4.7)
+```
+
+To provision a device, open a link that carries the event's **moderator**
+passcode. The device trades it for a moderator token and does not store the
+passcode:
+
+```
+/reinstall/?code=<mod>&name=Tent tablet
+/terminal/?code=<mod>&name=Kitchen&character=Trabolta&spot=kitchen&view=auto
+```
+
+A headset is configured with `user://station.json` or command-line flags;
+see [`vr/README.md`](./vr/README.md). The Docker image serves `web/` (the
+`/reinstall/` route) but not the Godot project. Headsets are exported and
+installed separately.
+
+**End to end.** `vr/` has an `--autopilot` mode
+(`godot --headless --path reinstall/vr --xr-mode off -- --server … --code
+<mod> --guest g-… --autopilot`). In it the game walks to the duck through
+its real physics against a live event server, then exits with 0 after a
+find.

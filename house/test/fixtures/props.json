@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "name": "Solid props in the way",
+  "origin": "fixture: the parlour's north-west corner",
+  "floors": [{ "id": "f", "label": "Floor", "elevation": 0, "height": 2.5 }],
+  "rooms": [
+    { "id": "parlour", "label": "Parlour", "floor": "f", "poly": [[0, 0], [8, 0], [8, 6], [0, 6]] },
+    { "id": "nook", "label": "Nook", "floor": "f", "poly": [[8, 0], [11, 0], [11, 6], [8, 6]] }
+  ],
+  "doors": [{ "id": "arch", "a": "parlour", "b": "nook", "at": [8, 3], "width": 1 }],
+  "stairs": [],
+  "terminals": [],
+  "duck": {
+    "spots": [
+      { "id": "on-table", "room": "parlour", "pos": [3, 0.75, 3] },
+      { "id": "behind-table", "room": "parlour", "pos": [3, 0, 5.2] },
+      { "id": "behind-pillar", "room": "parlour", "pos": [7.5, 0, 0.4] },
+      { "id": "nook-back", "room": "nook", "pos": [10.5, 0, 3] }
+    ]
+  },
+  "spawn": { "room": "parlour", "pos": [0.5, 0, 1.5], "yaw": -90 },
+  "props": [
+    { "id": "table", "room": "parlour", "kind": "box", "pos": [3, 0, 3], "size": [2, 0.75, 1], "yaw": 30 },
+    { "id": "pillar", "room": "parlour", "kind": "cylinder", "pos": [6, 0, 1.2], "size": [0.6, 2.5, 0.6] },
+    { "id": "crate-a", "room": "parlour", "kind": "box", "pos": [6.2, 0, 4.5], "size": [1, 1, 1] },
+    { "id": "crate-b", "room": "parlour", "kind": "box", "pos": [6.9, 0, 5.3], "size": [0.6, 0.6, 0.6] },
+    { "id": "rug", "room": "parlour", "kind": "box", "pos": [1, 0, 1], "size": [1.5, 0.01, 1], "solid": false },
+    { "id": "lamp", "room": "parlour", "kind": "screen", "pos": [0.2, 1.5, 5.8], "size": [0.3, 0.3, 0.02] },
+    { "id": "stool", "room": "nook", "kind": "box", "pos": [8.9, 0, 3], "size": [0.4, 0.5, 0.4] }
+  ],
+  "spaces": {}
+}

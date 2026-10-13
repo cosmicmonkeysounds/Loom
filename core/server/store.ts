@@ -76,6 +76,9 @@ const SESSIONS = "sessions.json";
 const HIDDEN = "hidden.json";
 const GUESTS = "guests.json";
 const AVATARS = "avatars.json";
+/** Not `house.json`: `LOOM_HOUSE` may well point at `/data/house.json`, and
+ *  the default event's state dir can be that same `/data`. */
+const HOUSE = "spatial-house.json";
 
 /** Read + JSON-parse a file, returning `null` on any miss/corruption. */
 function readJson<T>(path: string): T | null {
@@ -177,16 +180,30 @@ export class Store {
 
   // --- profile pictures ---------------------------------------------------
   //
-  // Who has which picture (`[subject, url]` — a declared `avatar:` link, a
-  // Wikipedia lead image the server found, a guest's chosen program). Not
+  // Who has which picture (`[subject, url, "chosen"?]` — a hand-picked
+  // `avatar:`, a Wikipedia picture the server found, a guest's own pick). Not
   // journaled: a picture is presentation, not story state.
 
-  loadAvatars(): Array<[string, string]> {
+  loadAvatars(): unknown[] {
     const v = readJson<unknown>(this.path(AVATARS));
-    return Array.isArray(v) ? (v as Array<[string, string]>) : [];
+    return Array.isArray(v) ? v : [];
   }
-  saveAvatars(entries: Array<[string, string]>): void {
+  saveAvatars(entries: unknown[]): void {
     writeFileSync(this.path(AVATARS), JSON.stringify(entries));
+  }
+
+  // --- the house map (reinstallation games) -------------------------------
+  //
+  // A director's edit of the house map for this event (`docs/loom-reinstall.md`
+  // §1.3), kept as `spatial-house.json` in the event's state dir. Absent →
+  // the show's own map file (`LOOM_HOUSE`, else the example's `house.json`).
+  // The raw JSON comes back unvalidated; the runtime validates it.
+
+  loadHouse(): unknown {
+    return readJson<unknown>(this.path(HOUSE));
+  }
+  saveHouse(house: unknown): void {
+    writeFileSync(this.path(HOUSE), JSON.stringify(house, null, 2));
   }
 
   // --- moderation (hidden message seqs) -----------------------------------

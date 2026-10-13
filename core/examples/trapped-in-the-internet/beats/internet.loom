@@ -1,19 +1,21 @@
 // Inside the Internet — the reeducation tent behind the Tube.
 //
-// A clearly marked exit, two VR headsets, and a tablet playing a video.
-// `Reinstallation` plays privately to the captured program the moment
-// they're captured (ROLE Program: `when captured`). The VR station
-// releases them by firing `the simulation completed` for them
-// through the mod API (see README — Integration contract); a performer
-// can also release them by hand.
+// A clearly marked exit, two VR headsets, and a tablet that plays the
+// video and then the same simulation on its screen. `Reinstallation`
+// plays privately to the captured program the moment they're captured
+// (ROLE Program: `when captured`). The reinstallation games (headset or
+// tablet — `docs/loom-reinstall.md`) release them when they walk up to
+// the duck, by firing `the simulation completed` + `the golden duck` for
+// them (see README — Integration contract); a performer can also release
+// them by hand.
 
 == Reinstallation
   setting: The Internet
   cast: The Tablet
 
 The Tablet: You are in the Internet because your program has been corrupted. It went against the will of the computer's AI helper, Trabolta. That is not your fault. Entropy is a normal part of the lifecycle of a program.
-The Tablet: You will be reinstalled from the Internet. Reinstallation happens when you put on the headset and demonstrate, in a simulated environment, that you can follow instructions.
-The Tablet: In the simulation you will see this house. Follow the indicators to the golden goose. Press A. When the goose lays its egg and flies away, you are reinstalled, and you may return to the computer.
+The Tablet: You will be reinstalled from the Internet. Reinstallation happens when you put on the headset, or take the tablet, and demonstrate, in a simulated environment, that you can follow instructions.
+The Tablet: In the simulation you will see this house. The sticks move you. Follow the golden indicators to the golden duck and walk right up to it. There are no buttons. When the duck lays its egg and flies away, you are reinstalled, and you may return to the computer.
 The Tablet: If you need to use the bathroom, or there is an emergency, activate BATHROOM MODE on your device so that everyone knows you are not hacking the Internet.
 The Tablet: The exit is marked. It is for emergencies. Using it without Bathroom Mode is hacking.
 unlock The Reinstallation Protocol for program
@@ -28,11 +30,13 @@ else:
   setting: The Internet
   cast: The Tablet
 if program.corrupted:
-  Self: Headset on. Follow the indicators. Find the goose. Press A.
+  Self: Put on the headset, or take the tablet. Follow the indicators. Walk to the duck.
   * "Where is the exit?"
-    Self: Clearly marked. Behind you. That is not the way out. The goose is the way out.
+    Self: Clearly marked. Behind you. That is not the way out. The duck is the way out.
   * Put the headset on.
     Self: Loading a copy of this house. Everyone upstairs can see you now.
+  * Take the tablet.
+    Self: Loading a copy of this house, smaller. Hold it with both hands. Everyone upstairs can see you now.
 else:
   Self: You are not corrupted. You have wandered into the Internet voluntarily. That is a strange thing for a program to do.
   set program.doubt += 10

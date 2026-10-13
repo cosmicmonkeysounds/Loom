@@ -11,7 +11,10 @@
 //! `CHARACTER`s) and may search the program directory (any software on
 //! Wikipedia, antivirus greyed out); a performer sees the unclaimed
 //! *parts*. Both come from `POST /e/:id/api/identities`, resolved from the
-//! code alone — no session yet.
+//! code alone — no session yet. Having picked a program, a guest chooses
+//! its *picture* from a few (`/api/identities/pictures`: the story's
+//! hand-picked ones, then the article's logos / box art / screenshots),
+//! and can switch later from their pass (`/api/guest/picture`).
 
 import { createContext, useContext } from "react";
 
@@ -41,6 +44,33 @@ export interface ProgramHit {
   claimed: boolean;
   /** Why a guest can't be this: `antivirus` (the enforcers' caste). */
   blocked: "antivirus" | null;
+}
+
+/** One picture a guest may choose (mirror of the server's `PictureChoice`). */
+export interface PictureChoice {
+  /** Serving key. */
+  key: string;
+  /** The Wikipedia / Commons file it is ("" for a plain link). */
+  file: string;
+}
+
+/** The pictures on offer for a program, before sign-in. */
+export interface ProgramPictures {
+  /** The name the guest will register as (a directory pick's article title). */
+  name: string;
+  options: PictureChoice[];
+}
+
+/** A signed-in guest's picture options, and which one is theirs now. */
+export interface PictureChoices {
+  options: PictureChoice[];
+  avatar: string | null;
+}
+
+/** Which option starts selected: the one they have now, else the first. */
+export function initialPick(options: readonly PictureChoice[], current: string | null = null): string | null {
+  if (current !== null && options.some((o) => o.key === current)) return current;
+  return options[0]?.key ?? null;
 }
 
 /** Fold a display name the way the story (and the server's book) does. */

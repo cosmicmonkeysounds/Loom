@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { avatarLookup, avatarUrl, foldName, hitNote, hitPickable, orderPicker, type ProgramHit } from "../src/avatars.ts";
+import { avatarLookup, avatarUrl, foldName, hitNote, hitPickable, initialPick, orderPicker, type ProgramHit } from "../src/avatars.ts";
 
 describe("profile pictures", () => {
   it("looks a picture up by any spelling of the name, same-origin", () => {
@@ -41,5 +41,18 @@ describe("the pickers", () => {
     expect(hitPickable(taken)).toBe(false);
     expect(hitNote(free)).toBe("1997 video game");
     expect(hitPickable(free)).toBe(true);
+  });
+});
+
+describe("picture options", () => {
+  const opts = [
+    { key: "a", file: "Winamp media player logomark.png" },
+    { key: "b", file: "Winamp Logo.svg" },
+  ];
+  it("starts on the picture they have now, else the first (the story's pick)", () => {
+    expect(initialPick(opts)).toBe("a");
+    expect(initialPick(opts, "b")).toBe("b");
+    expect(initialPick(opts, "gone")).toBe("a");
+    expect(initialPick([])).toBeNull();
   });
 });

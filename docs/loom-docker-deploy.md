@@ -14,15 +14,18 @@ have a domain everything under the app address is reachable by plain
 | `https://mapsandducks.com/` | The **invitation** — a cryptic static one-pager (`invite/`) |
 | `https://app.mapsandducks.com/` | The **play** app — guests/performers join here |
 | `https://app.mapsandducks.com/edit/` | The **editor** — sign up, write, run + deploy events |
+| `https://app.mapsandducks.com/terminal/` | The **wall terminals** — the kiosk tablets around the house (`terminal/`) |
+| `https://app.mapsandducks.com/reinstall/` | The **web reinstallation game** — the tent tablet's golden-duck hunt (`reinstall/web/`) |
+| `https://app.mapsandducks.com/reinstall/map` | The **house map** viewer + editor for directors |
 | `…/api/*`, `…/e/*` | The event server's API (used by both apps) |
 
 Under the hood it's three containers, defined in the repo-root
 [`docker-compose.yml`](../docker-compose.yml):
 
 - **loom** — the `@loom/core` event server (built by the repo-root
-  [`Dockerfile`](../Dockerfile), which also builds `play/dist` and
-  `editor/dist` inside the image build, so you never run `pnpm` on the
-  VPS).
+  [`Dockerfile`](../Dockerfile), which also builds `play/dist`,
+  `terminal/dist`, `reinstall/web/dist` and `editor/dist` inside the
+  image build, so you never run `pnpm` on the VPS).
 - **caddy** — the front door: serves the invitation site on the apex
   domain and the editor at `/edit/` on the app address, proxies
   everything else to the event server, and (once you have a domain)
@@ -164,6 +167,28 @@ owner the invite link to send by hand, and the server logs the email
 it would have sent (`docker compose logs loom`). After changing `.env`,
 `docker compose up -d` restarts the server with the new values; the
 boot log prints `✉️  mail via smtp` / `resend` when a transport is on.
+
+### The webmaster outbox (`/webmaster/`)
+
+A one-password page on the app domain
+(`https://app.mapsandducks.com/webmaster/`) for sending mail as
+`webmaster@…` through Resend: To (paste a list; each person gets their
+own copy, so nobody sees the guest list), Reply-to, Subject, a
+plain-text message (links become clickable), and a log of what was
+sent. Set in `.env`, then `docker compose up -d`:
+
+```
+LOOM_RESEND_API_KEY=re_…            # the domain must be verified in Resend
+LOOM_WEBMASTER_PASSWORD=<long random string>
+LOOM_WEBMASTER_FROM=Webmaster <webmaster@mapsandducks.com>
+LOOM_WEBMASTER_REPLY_TO=            # blank = replies go to the From address
+```
+
+The boot log prints `📮 webmaster outbox at /webmaster/`. Wrong
+passwords are throttled (10 per 15 min per IP); a sign-in lasts 12 h;
+changing the password signs everyone out. The sent log lives in the
+state volume (`webmaster-sent.json`). Replies land wherever the
+domain's MX points (e.g. ImprovMX → your Gmail) — Resend only sends.
 
 ---
 
@@ -325,6 +350,58 @@ setup above matters.
 
 ---
 
+## 5¾. Show hardware: terminals + the reinstallation games
+
+Nothing to configure — the `loom` image already serves the wall
+terminals at `/terminal/` and the web reinstallation game at
+`/reinstall/` (the house map editor at `/reinstall/map`); the design
+contract is [`loom-reinstall.md`](./loom-reinstall.md). Every device is
+provisioned with the event's **moderator passcode** by a link, e.g.
+
+```
+https://app.mapsandducks.com/reinstall/?code=<mod passcode>&name=Tent tablet
+https://app.mapsandducks.com/terminal/?code=<mod passcode>&name=Kitchen&character=Trabolta&spot=kitchen&view=auto
+```
+
+(the map page offers each terminal's link from its row). The house map
+the games and terminals share is the show's
+`core/examples/trapped-in-the-internet/house.json`, baked into the
+image; a director's save from `/reinstall/map` is stored per event in
+the `loom-state` volume and wins over it — the default event (the one
+the env passcodes open) saves to `/data/spatial-house.json`, every other
+event to `/data/<eventId>/spatial-house.json`. To pin a different
+default map, mount a file read-only **outside the state volume** and set
+`LOOM_HOUSE` on the `loom` service (`docker-compose.yml` has both lines
+commented), e.g.
+
+```yaml
+    volumes:
+      - ./house.json:/config/house.json:ro
+    environment:
+      LOOM_HOUSE: /config/house.json
+```
+
+The server re-reads that file whenever it changes (its mtime): an event
+still running on the show map picks up the edit and the games and
+terminals refetch it; a half-written or invalid file is logged and the
+last good map keeps serving. An event a director has saved a map for
+keeps its own save. Never point `LOOM_HOUSE` at a `spatial-house.json`
+inside `/data` — that is an event's own save file, and the show map and
+that save would become one file.
+
+The **VR game** (`reinstall/vr/`, Godot, Quest 3) is not in any image:
+export it to the headsets from a laptop (`reinstall/vr/README.md`) and
+point each headset's `station.json` at the public URL + the moderator
+passcode. Poses stream at 10 Hz per player, so a headset on a weak
+venue uplink is the first thing to check if ghosts stutter on the
+terminals.
+
+The pass scanners (terminal + tent tablet) need the camera, which
+browsers only grant on **https or localhost** — on a plain-HTTP IP
+address they fall back to typing the guest's name.
+
+---
+
 ## 6. Day-2 operations
 
 **Ship an update** (after editing code locally):
@@ -386,6 +463,14 @@ Copy those files off the VPS (`scp ubuntu@YOUR_VPS_IP:~/loom/loom-db-*.sql .`).
 - **HTTPS won't issue** — the A record must already point at the VPS
   and port 80 must be reachable from the internet (Let's Encrypt
   validates over it).
+- **`/reinstall/` or `/terminal/` answers 404** — the image predates
+  them; rebuild (`docker compose up -d --build`). The image serves them
+  from `LOOM_TERMINAL_DIST` / `LOOM_REINSTALL_DIST` (set in the
+  `Dockerfile`).
+- **A saved house map was refused** — the map editor shows the
+  validator's problems. `docker compose logs loom` shows `⚠️ … house
+  map …` lines for an invalid saved map (the show's map is used instead)
+  and for a room whose `location` names no `LOCATION` in the story.
 - **Guests can't reach it from phones** — they must use the public URL
   (`LOOM_BASE_URL`), not a LAN address; QR codes on the Run page encode the
   public URL automatically.

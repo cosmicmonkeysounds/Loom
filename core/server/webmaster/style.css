@@ -1,0 +1,31 @@
+:root {
+  --bg: #f4f4f5; --card: #fff; --fg: #18181b; --muted: #71717a; --line: #e4e4e7;
+  --accent: #4f46e5; --ok: #15803d; --bad: #b91c1c;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0b0d12; --card: #151821; --fg: #e7ecf3; --muted: #8b93a7; --line: #262b38; --accent: #818cf8; --ok: #4ade80; --bad: #f87171; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+main { max-width: 44rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+header { display: flex; align-items: center; justify-content: space-between; }
+h1 { font-size: 1.4rem; margin: 0 0 1rem; }
+h2 { font-size: 1.1rem; margin: 2rem 0 .5rem; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: .75rem; padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: .35rem; }
+label, .label { font-weight: 600; margin-top: .5rem; }
+small, .muted { color: var(--muted); font-weight: 400; }
+input, textarea { font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: .5rem; padding: .5rem .65rem; width: 100%; }
+textarea { resize: vertical; }
+input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+button { font: inherit; font-weight: 600; background: var(--accent); color: #fff; border: 0; border-radius: .5rem; padding: .55rem 1.2rem; cursor: pointer; }
+button:disabled { opacity: .5; cursor: progress; }
+button.link { background: none; color: var(--accent); padding: 0; }
+.row { display: flex; gap: .75rem; align-items: baseline; }
+.from { font-family: ui-monospace, Menlo, monospace; font-size: .9em; }
+.actions { display: flex; justify-content: space-between; align-items: center; margin-top: .75rem; }
+.msg { margin: .25rem 0 0; min-height: 1.2em; }
+.msg.ok { color: var(--ok); } .msg.bad { color: var(--bad); }
+table { width: 100%; border-collapse: collapse; font-size: .9em; }
+th, td { text-align: left; padding: .4rem .5rem; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
+th { color: var(--muted); font-weight: 600; }
+td.ok { color: var(--ok); } td.bad { color: var(--bad); }

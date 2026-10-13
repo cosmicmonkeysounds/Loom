@@ -1,0 +1,15 @@
+[
+  {"floor":"lower","axis":"x","c":0,"lo":0,"hi":5,"bottom":-3,"top":-0.5,"kind":"wall"},
+  {"floor":"lower","axis":"x","c":4,"lo":0,"hi":5,"bottom":-3,"top":-0.5,"kind":"wall"},
+  {"floor":"lower","axis":"z","c":0,"lo":0,"hi":4,"bottom":-3,"top":-0.5,"kind":"wall"},
+  {"floor":"lower","axis":"z","c":5,"lo":0,"hi":4,"bottom":-3,"top":-0.5,"kind":"wall"},
+  {"floor":"upper","axis":"x","c":0,"lo":0,"hi":5,"bottom":0,"top":2.5,"kind":"wall"},
+  {"floor":"upper","axis":"x","c":1,"lo":1,"hi":4,"bottom":0,"top":1,"kind":"rail"},
+  {"floor":"upper","axis":"x","c":2,"lo":1,"hi":4,"bottom":0,"top":1,"kind":"rail"},
+  {"floor":"upper","axis":"x","c":4,"lo":3,"hi":5,"bottom":0,"top":2.5,"kind":"wall"},
+  {"floor":"upper","axis":"x","c":6,"lo":0,"hi":3,"bottom":0,"top":2.5,"kind":"wall"},
+  {"floor":"upper","axis":"z","c":0,"lo":0,"hi":6,"bottom":0,"top":2.5,"kind":"wall"},
+  {"floor":"upper","axis":"z","c":1,"lo":1,"hi":2,"bottom":0,"top":1,"kind":"rail"},
+  {"floor":"upper","axis":"z","c":3,"lo":4,"hi":6,"bottom":0,"top":2.5,"kind":"wall"},
+  {"floor":"upper","axis":"z","c":5,"lo":0,"hi":4,"bottom":0,"top":2.5,"kind":"wall"}
+]

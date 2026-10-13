@@ -1,0 +1,13 @@
+[
+  {"floor":"g","axis":"x","c":0,"lo":0,"hi":4,"bottom":0,"top":2.4,"kind":"wall"},
+  {"floor":"g","axis":"x","c":3,"lo":0,"hi":1.5,"bottom":0,"top":2.4,"kind":"wall"},
+  {"floor":"g","axis":"x","c":3,"lo":1.5,"hi":2.5,"bottom":2,"top":2.4,"kind":"lintel"},
+  {"floor":"g","axis":"x","c":3,"lo":2.5,"hi":4,"bottom":0,"top":2.4,"kind":"wall"},
+  {"floor":"g","axis":"x","c":3,"lo":4,"hi":6,"bottom":0,"top":1.2,"kind":"fence"},
+  {"floor":"g","axis":"x","c":7,"lo":0,"hi":6,"bottom":0,"top":1.2,"kind":"fence"},
+  {"floor":"g","axis":"z","c":0,"lo":0,"hi":3,"bottom":0,"top":2.4,"kind":"wall"},
+  {"floor":"g","axis":"z","c":0,"lo":3,"hi":7,"bottom":0,"top":1.2,"kind":"fence"},
+  {"floor":"g","axis":"z","c":4,"lo":0,"hi":3,"bottom":0,"top":2.4,"kind":"wall"},
+  {"floor":"g","axis":"z","c":6,"lo":3,"hi":4.4,"bottom":0,"top":1.2,"kind":"fence"},
+  {"floor":"g","axis":"z","c":6,"lo":5.6,"hi":7,"bottom":0,"top":1.2,"kind":"fence"}
+]

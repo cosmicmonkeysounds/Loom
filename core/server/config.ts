@@ -59,3 +59,10 @@ export const EDITOR_URL = (
 export const MAIL_FROM = process.env.LOOM_MAIL_FROM ?? "Loom <no-reply@localhost>";
 export const SMTP_URL = process.env.LOOM_SMTP_URL ?? "";
 export const RESEND_API_KEY = process.env.LOOM_RESEND_API_KEY ?? "";
+
+// The webmaster outbox (`/webmaster/`, see `webmaster.ts`): a one-password
+// page for sending mail as LOOM_WEBMASTER_FROM through Resend. Off (404)
+// unless both the password and LOOM_RESEND_API_KEY are set.
+export const WEBMASTER_PASSWORD = process.env.LOOM_WEBMASTER_PASSWORD ?? "";
+export const WEBMASTER_FROM = process.env.LOOM_WEBMASTER_FROM ?? MAIL_FROM;
+export const WEBMASTER_REPLY_TO = process.env.LOOM_WEBMASTER_REPLY_TO ?? "";

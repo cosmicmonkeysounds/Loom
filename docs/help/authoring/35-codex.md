@@ -43,7 +43,8 @@ CODEX The Third Key
    their character's entries from a guest's thread. One recipient at a
    time.
 4. **Show hardware:** `POST /api/mod/codex {who, entry}` through the mod
-   API (a puzzle box, a VR goose).
+   API (a puzzle box). A game can also fire a named event whose `when`
+   unlocks the entry — the reinstallation games' `the golden duck`.
 
 Every unlock fires `learn`; a share also fires `share` with `from` bound:
 

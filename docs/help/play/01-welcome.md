@@ -17,9 +17,12 @@ room tonight.
 3. **Pick who you are tonight.** The story offers its programs — each
    with a picture, each one person's: a greyed-out name is already
    taken. Want something else? **Search** for any software you can
-   think of (*NHL 97*, *Winamp*…) and tap it — that's your name now,
-   and its picture is your face. Antivirus software is off limits to
-   guests; the story has its own.
+   think of (*NHL 97*, *Winamp*…) and tap it — that's your name now.
+   Antivirus software is off limits to guests; the story has its own.
+4. **Pick your picture.** Most programs have a few — the logo, the box
+   art, a screenshot — so choose the one that looks like *you*, then
+   tap **Be …**. Changed your mind later? **🖼️ Change your picture** is
+   on your pass.
 
 No account, no password. If you close the app or your phone dies, just
 open it again — you'll come back as yourself, history intact.

@@ -1,0 +1,32 @@
+{
+  "name": "loom-reinstall",
+  "private": true,
+  "version": "0.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "The reinstallation game (web): explore a virtual copy of the house and find the golden duck — three.js, on-screen joysticks + keyboard, streams its pose to the event server. Plus the house map viewer/editor at /reinstall/map.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fontsource/vt323": "^5.2.6",
+    "@loom/house": "workspace:*",
+    "jsqr": "^1.4.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/three": "^0.186.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "~5.6.3",
+    "vite": "^5.4.20",
+    "vitest": "^2.1.0"
+  }
+}

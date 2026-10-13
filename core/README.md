@@ -30,6 +30,9 @@ server/
   chat.ts        # server-authoritative chat: SimEvent → channel messages,
                  #   the append-only ChatStore, history + moderation
   store.ts       # durable event-sourced journal + persisted moderation
+  spatial.ts     # the reinstallation games' SpatialHub (sessions, stations,
+                 #   poses, the found check) — never journaled but the outcome
+  routing.ts     # pure routing decisions (CSPs, sub-app paths, mod reads)
 examples/
   load.ts                    # multi-file project loader (main.loom first)
   trapped-in-the-internet/   # THE SHOW — the server's default scenario (Loom 4 surface):
@@ -266,13 +269,55 @@ timeline (clear the journal + chat + moderation).
 
 Environment: `LOOM_PORT` (7000), `LOOM_HOST` (0.0.0.0), `LOOM_EVENT_PASS`,
 `LOOM_PRIME_PASS`, `LOOM_MOD_PASS` (any unset code is auto-generated),
-`LOOM_STATE_DIR`, `LOOM_APP_DIST`, plus the control-plane / hardening vars
+`LOOM_STATE_DIR`, `LOOM_APP_DIST`, `LOOM_TERMINAL_DIST`,
+`LOOM_REINSTALL_DIST`, `LOOM_HOUSE`, plus the control-plane / hardening vars
 (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `LOOM_BASE_URL`,
 `LOOM_TRUSTED_ORIGINS`, `LOOM_TRUST_PROXY`). **For a full production
 deployment + the security model, see
 [`docs/loom-deployment.md`](../docs/loom-deployment.md).**
 
 For the participant app's dev/build flow (HMR), see [`../play`](../play).
+
+### The spatial plane (the reinstallation games)
+
+Every event also hosts the **reinstallation games** — a corrupted program
+walks a virtual copy of the house to the golden duck, on a Quest 3
+(`reinstall/vr`) or a tablet (`reinstall/web`, served at `/reinstall/`),
+and the wall terminals (`/terminal/`) watch. The contract, with every
+route, frame and status code, is
+[`docs/loom-reinstall.md`](../docs/loom-reinstall.md) §2; the house map
+and its geometry are `@loom/house` (`../house`).
+
+- **`SpatialHub`** (`server/spatial.ts`, transport-free, injected clock —
+  the `AgentHub` pattern), one per `EventRuntime`: the map (+ its FNV
+  version and source, `event` | `show`), **sessions** (`begin` mints a
+  secret session token the game uses for its own high-rate calls; a
+  `station` parks the assignment until the headset's first pose claims it,
+  ending anything else on that station), **stations** (headsets polling
+  `GET /api/mod/spatial/station`), latest-only **poses** labelled with
+  `locate` and flushed to the stream every 100 ms, and the **found** check
+  (`nearDuck`: ≤ 2 m plan, and ≤ `DUCK_MAX_RISE` in height or on the same
+  floor). Poses never touch the journal, the chat or `fanout`; only the
+  outcome does — `signal("the simulation completed")` + `signal("the
+  golden duck")`, journaled `by` the game's device, and refused (409
+  "doors are closed") while the event is paused.
+- **The map** is the director's save for this event
+  (`spatial-house.json` in its state dir, `Store.loadHouse/saveHouse`)
+  else the show's file (`LOOM_HOUSE`, default the example's `house.json`,
+  re-read on mtime change, last good map kept). `POST
+  /api/mod/spatial/house {house, base?}` validates, refuses a stale `base`
+  (409), saves, and `setHouse` carries live sessions over: a duck keeps
+  its spot id (or is re-dealt), then the stream gets `house` + a `duck`
+  frame per moved duck.
+- **The stream** (`GET /api/spatial/stream`, SSE, its own subscriber set —
+  never `clients`): `hello` / `join` / `poses` / `found` / `leave` /
+  `house` / `duck` / `reset`. A restart ends every session (`reset`).
+- **Routes**: `GET /api/spatial/{house,stream}`, `POST
+  /api/spatial/{pose,found,end}` (session token; bodies capped at 2 KB
+  before the generic parse), `GET /api/mod/spatial/{station,stations,candidates}`,
+  `POST /api/mod/spatial/{house,begin,end}` — on `/e/:eventId/…` and the
+  bare default event. Tests: `test/spatial.test.ts` (hub + runtime) and
+  `test/spatial-routing.test.ts` (`routing.ts`).
 
 ## Running a live event
 
@@ -343,10 +388,20 @@ Two planes:
   `blocked: "antivirus"`). `guest/register {name, wiki?}` and `prime/login`
   refuse a taken name (409), a part / caste for a guest (409), an
   antivirus directory pick (403). Profile pictures (`server/avatars.ts`):
-  an authored `avatar:` link or the article's lead image, keyed per event
-  in `avatars.json`, served same-origin at `GET /e/:id/api/avatar/<key>`
-  (a process-wide byte cache), and carried on every view as `avatars`
-  (folded name → key). `LOOM_WIKI=off` keeps the server offline.
+  a hand-picked `avatar:` (URL or `File:` name → `Special:FilePath`,
+  `|`-separated options) or the best of the article's gallery
+  (`WikiClient.pictures` / `rankFiles`: logo / icon / box art before the
+  lead screenshot, furniture dropped), keyed per event in `avatars.json`
+  (`"chosen"` marks a guest's own pick, which a re-seed keeps), served
+  same-origin at `GET /e/:id/api/avatar/<key>` from a process-wide byte
+  cache that also keeps every picture on disk (`LOOM_STATE_DIR/pictures`)
+  — the story's pictures are fetched when it loads. `POST
+  /api/identities/pictures {passcode, name | wiki}` → `{name,
+  options[{key, file}]}` (hand-picked first, then the gallery);
+  `guest/register` takes `picture` (one of those keys, else 400);
+  `POST /api/guest/picture {picture?}` lists / switches a signed-in
+  guest's. Views carry `avatars` (folded name → key). `LOOM_WIKI=off`
+  keeps the server offline (hand-picked pictures still work).
 
 The owning author's BetterAuth session is accepted on `/e/:eventId/api/mod/*`
 and the gated mod reads, so authors moderate from the editor's Run mode

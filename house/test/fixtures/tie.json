@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "name": "Two rooms, two equal doors",
+  "origin": "fixture",
+  "floors": [{ "id": "f", "label": "Floor", "elevation": 0, "height": 2.5 }],
+  "rooms": [
+    { "id": "a", "label": "A", "floor": "f", "poly": [[0, 0], [2, 0], [2, 4], [0, 4]] },
+    { "id": "b", "label": "B", "floor": "f", "poly": [[2, 0], [4, 0], [4, 4], [2, 4]] }
+  ],
+  "doors": [
+    { "id": "d1", "a": "a", "b": "b", "at": [2, 1], "width": 0.8 },
+    { "id": "d2", "a": "b", "b": "a", "at": [2, 3], "width": 0.8 }
+  ],
+  "stairs": [],
+  "terminals": [],
+  "duck": { "spots": [{ "id": "x", "room": "b", "pos": [3, 0, 2] }] },
+  "spawn": { "room": "a", "pos": [1, 0, 2], "yaw": 0 },
+  "props": [],
+  "spaces": {}
+}

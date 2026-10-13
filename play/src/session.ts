@@ -5,7 +5,7 @@
 //! plumbing — only their channel-shaping + actions differ.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Identities, ProgramHit } from "./avatars.ts";
+import type { Identities, PictureChoices, ProgramHit, ProgramPictures } from "./avatars.ts";
 import { ApiError, api, useChatStream } from "./client.ts";
 import { maxSeqOf, pickAlerts, playChime, pmChannelId, pmOtherParty, unlockFromSearch, vibrate, withoutUnlock } from "./codex.ts";
 import { usePlayHost } from "./host.ts";
@@ -80,6 +80,12 @@ export async function fetchIdentities(code: string): Promise<IdentityLookup> {
     const status = typeof err.status === "number" ? ` (HTTP ${err.status})` : "";
     return { kind: "unavailable", eventId: r.eventId, title: r.title, role: r.role, characters: r.characters, error: `${err.message ?? "no answer"}${status}` };
   }
+}
+
+/** The pictures a guest may choose for a program before signing in: one of
+ *  the story's (`name`) or a directory pick (`wiki` = its article title). */
+export async function fetchPictures(eventId: string, code: string, pick: { name: string } | { wiki: string }): Promise<ProgramPictures> {
+  return api<ProgramPictures>(`/e/${encodeURIComponent(eventId)}/api/identities/pictures`, { passcode: code, ...pick });
 }
 
 /** Search the program directory (any software; antivirus flagged). */
@@ -202,7 +208,7 @@ function requiredDecision(
     };
   }
   // A captive may break out from the app — unless their prison is sealed
-  // (the story lets them out: a performer, a puzzle, a VR goose).
+  // (the story lets them out: a performer, a puzzle, a VR duck).
   if (status.captured && status.canEscape !== false) {
     return {
       channel: "lobby",
@@ -394,7 +400,11 @@ export interface GuestSession {
   notice: string | null;
   threads: Threads;
   /** Join as `name` — a program from the picker, or (`wiki`) a directory title. */
-  register: (name: string, code: string, wiki?: string) => Promise<void>;
+  register: (name: string, code: string, wiki?: string, picture?: string) => Promise<void>;
+  /** The pictures this guest may switch to (their program's options). */
+  pictures: () => Promise<PictureChoices>;
+  /** Switch to one of those pictures (a serving key). */
+  setPicture: (key: string) => Promise<PictureChoices>;
   join: (faction: string) => Promise<unknown>;
   defect: (to: string) => Promise<unknown>;
   choose: (index: number) => Promise<unknown>;
@@ -530,12 +540,12 @@ export function useGuestSession(): GuestSession {
     (channel: string, text: string, parentSeq?: number) => post("/api/guest/say", { channel, text, parentSeq }),
     [post],
   );
-  const register = useCallback(async (name: string, code: string, wiki?: string) => {
+  const register = useCallback(async (name: string, code: string, wiki?: string, picture?: string) => {
     // Resolve the short event code to its event, then register there.
     const { eventId, title } = await api<ResolvedCode>("/api/resolve-code", { code });
     const r = await api<{ id: string; name: string; token: string }>(
       `/e/${encodeURIComponent(eventId)}/api/guest/register`,
-      { name, passcode: code, ...(wiki !== undefined ? { wiki } : {}) },
+      { name, passcode: code, ...(wiki !== undefined ? { wiki } : {}), ...(picture !== undefined ? { picture } : {}) },
     );
     const m: GuestId = { id: r.id, name: r.name, token: r.token, eventId, title };
     crawl.reset();
@@ -543,6 +553,8 @@ export function useGuestSession(): GuestSession {
     setMe(m);
     setNotice(null);
   }, []);
+  const pictures = useCallback(() => post<PictureChoices>("/api/guest/picture", {}), [post]);
+  const setPicture = useCallback((picture: string) => post<PictureChoices>("/api/guest/picture", { picture }), [post]);
   const leave = useCallback(() => {
     drop(GK);
     setMe(null);
@@ -649,6 +661,8 @@ export function useGuestSession(): GuestSession {
     notice,
     threads,
     register,
+    pictures,
+    setPicture,
     join,
     defect,
     choose,

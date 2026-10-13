@@ -13,6 +13,10 @@
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
+import { readFileSync, statSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+import { validateHouse, type HouseMap } from "@loom/house";
 
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { guestView, modView, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
@@ -23,7 +27,7 @@ import { ChatStore, composeGuestMessages, decisionChannelFor, isPinnedRoom, visi
 import { ipOf, queryTokenOf, readBody, sendJson, sseSend, str, tokenOf } from "./http-util.ts";
 import { RateLimiter } from "./rate-limit.ts";
 import { TtsProxy, ttsConfigFromEnv } from "./tts.ts";
-import { AvatarBook, ImageCache, avatarKey } from "./avatars.ts";
+import { AvatarBook, ImageCache, avatarKey, avatarRefUrl } from "./avatars.ts";
 import { WikiClient, isAntivirusSoftware } from "./wiki.ts";
 import {
   guestNameRefusal,
@@ -34,8 +38,10 @@ import {
   performerRefusal,
   takenNames,
   type IdentityRow,
+  type PictureChoice,
 } from "./identity.ts";
 import { foldName } from "../src/parser/names.ts";
+import { SpatialHub, houseVersion, houseWarnings, isWorld, parsePose, sortCandidates, type SessionRef } from "./spatial.ts";
 import {
   AgentHub,
   AgentTraceLog,
@@ -149,6 +155,51 @@ function forGuest(m: ChatMessage): ChatMessage {
   return rest;
 }
 
+/** A game's own high-rate calls (`/api/spatial/*` POSTs) carry tiny bodies —
+ *  read with this cap, before (never through) the generic 4 MiB parse. */
+const SPATIAL_BODY_LIMIT = 2048;
+
+/** The show's house map file: `LOOM_HOUSE`, else the example's `house.json`. */
+export function defaultHouseFile(): string {
+  return process.env.LOOM_HOUSE ?? fileURLToPath(new URL("../examples/trapped-in-the-internet/house.json", import.meta.url));
+}
+
+/** Show maps by path: the last *good* read, keyed on the file's mtime — a
+ *  hand edit (or a file mounted after boot) is picked up on the next read,
+ *  and a missing / half-saved / invalid file never sticks: the last good
+ *  map keeps serving until the file is valid again. */
+const showHouses = new Map<string, { mtimeMs: number; house: HouseMap }>();
+/** The last problem logged per path (a missing file warns once, not per request). */
+const showHouseWarned = new Map<string, string>();
+function warnShowHouse(path: string, message: string): void {
+  if (showHouseWarned.get(path) === message) return;
+  showHouseWarned.set(path, message);
+  process.stderr.write(message);
+}
+export function showHouse(path: string): HouseMap | null {
+  const cached = showHouses.get(path);
+  let mtimeMs: number;
+  try {
+    mtimeMs = statSync(path).mtimeMs;
+  } catch (err) {
+    warnShowHouse(path, `  ⚠️  no house map at ${path} (${err instanceof Error ? err.message : String(err)})\n`);
+    return cached?.house ?? null;
+  }
+  if (cached !== undefined && cached.mtimeMs === mtimeMs) return cached.house;
+  try {
+    const v = validateHouse(JSON.parse(readFileSync(path, "utf8")));
+    if (v.ok && v.house !== undefined) {
+      showHouses.set(path, { mtimeMs, house: v.house });
+      showHouseWarned.delete(path);
+      return v.house;
+    }
+    warnShowHouse(path, `  ⚠️  house map ${path} is invalid:\n${v.problems.map((p) => `     - ${p}\n`).join("")}`);
+  } catch (err) {
+    warnShowHouse(path, `  ⚠️  house map ${path} is unreadable (${err instanceof Error ? err.message : String(err)})\n`);
+  }
+  return cached?.house ?? null;
+}
+
 /** What a restart-recovery brought back for one event, for the boot banner. */
 export interface Restored {
   guests: number;
@@ -179,6 +230,11 @@ export interface EventRuntimeInit {
   /** The wall terminals' voice (`/api/mod/tts`). One proxy — one cache —
    *  is shared by every event in the process; tests inject their own. */
   tts?: TtsProxy;
+  /** The show's house map (the reinstallation games) — used until a
+   *  director saves one for this event. Default: `defaultHouseFile()`. */
+  houseFile?: string;
+  /** The spatial hub's clock (tests). */
+  now?: () => number;
 }
 
 /** The process-wide speech proxy (configured from `LOOM_TTS_*`). */
@@ -255,6 +311,16 @@ export class EventRuntime {
   private readonly agentMinds = new Map<string, AgentMindSummary>();
   /** Every worker's recorded model calls — the Mind page's debugger feed. */
   private readonly agentTrace = new AgentTraceLog();
+  // The reinstallation games (`docs/loom-reinstall.md` §2): sessions,
+  // stations, poses and the house map. In memory; poses never journal.
+  readonly spatial: SpatialHub;
+  private readonly houseFile: string;
+  // Spatial stream subscribers (terminals, the map page) — never `clients`.
+  private readonly spatialStreams = new Set<ServerResponse>();
+  // Flushes poses every 100 ms (and sweeps every second) while anything is
+  // going on; started lazily, stops itself when idle.
+  private spatialLoop: ReturnType<typeof setInterval> | null = null;
+  private spatialTicks = 0;
   private readonly agents = new AgentHub({
     build: (thread, id) => this.buildAgentRequest(thread, id),
     typing: (thread, on) => this.pushTyping(thread, on),
@@ -274,6 +340,8 @@ export class EventRuntime {
     this.tts = init.tts ?? defaultTts();
     this.wiki = init.wiki ?? null;
     this.images = init.images ?? defaultImages();
+    this.houseFile = init.houseFile ?? defaultHouseFile();
+    this.spatial = new SpatialHub({ eventId: init.eventId, ...(init.now !== undefined ? { now: init.now } : {}) });
   }
 
   /** Current lifecycle phase (idle | open | paused). */
@@ -824,6 +892,237 @@ export class EventRuntime {
     sendJson(res, 200, { ok: true, accepted, seq: this.agentTrace.latestSeq });
   }
 
+  // -- the reinstallation games (docs/loom-reinstall.md §2) ----------------
+
+  /** The event's house map, loaded on first use: the director's save for
+   *  this event when valid, else the show's file. Null: neither exists.
+   *  While the event runs on the show's file, a changed file (a hand edit)
+   *  replaces the map and is announced; a director's save never is. */
+  private spatialHouse(): HouseMap | null {
+    const current = this.spatial.house;
+    if (current !== null) {
+      if (this.spatial.source === "event") return current;
+      const next = showHouse(this.houseFile);
+      if (next !== null && next !== current && houseVersion(next) !== this.spatial.version) {
+        this.spatial.setHouse(next, "show");
+        this.logHouseWarnings(next);
+      }
+      return this.spatial.house;
+    }
+    const saved = this.store.loadHouse();
+    if (saved !== null) {
+      const v = validateHouse(saved);
+      if (v.ok && v.house !== undefined) {
+        this.spatial.setHouse(v.house, "event", false);
+        this.logHouseWarnings(v.house);
+        return v.house;
+      }
+      process.stderr.write(`  ⚠️  event ${this.eventId}: saved house map is invalid — using the show's (${v.problems.join("; ")})\n`);
+    }
+    const show = showHouse(this.houseFile);
+    if (show !== null) {
+      this.spatial.setHouse(show, "show", false);
+      this.logHouseWarnings(show);
+    }
+    return show;
+  }
+
+  /** Rooms naming a LOCATION the loaded story doesn't declare. */
+  private houseWarnings(house: HouseMap): string[] {
+    if (this.sim === null) return [];
+    const names = new Set([...this.sim.model.locations.keys()].map(foldName));
+    return houseWarnings(house, (name) => names.has(foldName(name)));
+  }
+
+  private logHouseWarnings(house: HouseMap): void {
+    for (const w of this.houseWarnings(house)) process.stderr.write(`  ⚠️  event ${this.eventId}: house map ${w}\n`);
+  }
+
+  /** May this caller read the spatial plane (the map, the stream)? A
+   *  moderator (token or author session), or a live game session. */
+  private spatialReader(token: string | undefined, moderator: boolean): boolean {
+    return moderator || this.sessions.canModerate(token) || this.spatial.hasToken(token);
+  }
+
+  private startSpatialLoop(): void {
+    if (this.spatialLoop !== null) return;
+    this.spatialLoop = setInterval(() => {
+      this.spatial.flush();
+      this.spatialTicks += 1;
+      if (this.spatialTicks % 10 === 0) this.spatial.sweep();
+      if (!this.spatial.active) this.stopSpatialLoop();
+    }, 100);
+    this.spatialLoop.unref?.();
+  }
+
+  private stopSpatialLoop(): void {
+    if (this.spatialLoop !== null) {
+      clearInterval(this.spatialLoop);
+      this.spatialLoop = null;
+    }
+  }
+
+  /** `GET /api/spatial/stream?name=Kitchen` — a terminal (or the map page) watching. */
+  private openSpatialStream(req: IncomingMessage, res: ServerResponse, url: URL): void {
+    this.spatialHouse(); // `hello` carries the map's version
+    res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" });
+    res.write(":ok\n\n");
+    const sub = { id: randomUUID(), name: (url.searchParams.get("name") ?? "viewer").slice(0, 60), send: (event: string, data: unknown) => sseSend(res, event, data) };
+    this.spatialStreams.add(res);
+    this.spatial.attach(sub);
+    this.startSpatialLoop();
+    const ping = setInterval(() => res.write(":ping\n\n"), 25000);
+    req.on("close", () => {
+      clearInterval(ping);
+      this.spatialStreams.delete(res);
+      this.spatial.detach(sub.id);
+    });
+  }
+
+  /** The spatial plane's GET routes. True when `path` matched. */
+  private handleSpatialGet(req: IncomingMessage, res: ServerResponse, path: string, url: URL, moderator: boolean): boolean {
+    const token = queryTokenOf(req, url);
+    if (path === "/api/spatial/house" || path === "/api/spatial/stream") {
+      if (!this.spatialReader(token, moderator)) {
+        sendJson(res, 401, { error: "a moderator or game session token is required" });
+        return true;
+      }
+      if (path === "/api/spatial/stream") {
+        this.openSpatialStream(req, res, url);
+        return true;
+      }
+      const house = this.spatialHouse();
+      if (house === null) sendJson(res, 503, { error: "no house map" });
+      else {
+        // A game reading with its session token also learns its duck — a
+        // map edit mid-game may have moved (or re-dealt) it.
+        const duck = this.spatial.duckFor(token);
+        sendJson(res, 200, { house, version: this.spatial.version, source: this.spatial.source, ...(duck !== null ? { duck } : {}) });
+      }
+      return true;
+    }
+    if (!path.startsWith("/api/mod/spatial/")) return false;
+    if (!moderator && !this.sessions.canModerate(token)) {
+      sendJson(res, 403, { error: "moderators only" });
+      return true;
+    }
+    switch (path) {
+      case "/api/mod/spatial/station": {
+        // A headset polls (1 s): seen now, and here is its assignment if any.
+        const id = (url.searchParams.get("id") ?? "").trim().slice(0, 60);
+        const world = url.searchParams.get("world") ?? "vr";
+        if (id === "" || !isWorld(world)) {
+          sendJson(res, 400, { error: "a station needs an id and a world (vr | web)" });
+          return true;
+        }
+        const name = (url.searchParams.get("name") ?? "").trim().slice(0, 60);
+        sendJson(res, 200, { assignment: this.spatial.station(id, name, world) });
+        return true;
+      }
+      case "/api/mod/spatial/stations":
+        sendJson(res, 200, { stations: this.spatial.stationList() });
+        return true;
+      case "/api/mod/spatial/candidates": {
+        // The typed-name fallback when a pass won't scan: every guest and
+        // persona, the corrupted first.
+        const sim = this.sim;
+        if (sim === null) {
+          sendJson(res, 409, { error: "no scenario loaded" });
+          return true;
+        }
+        const players = sortCandidates(
+          [...sim.persons.values()].map((p) => ({ id: p.id, name: p.name, captured: sim.isCaptured(p.id), location: sim.locationOf(p.id) })),
+        );
+        sendJson(res, 200, { players });
+        return true;
+      }
+      default:
+        return false;
+    }
+  }
+
+  /** The game's own calls, authorized by its session token. True when `path` matched. */
+  private handleSpatialPost(req: IncomingMessage, res: ServerResponse, path: string, body: Record<string, unknown>): boolean {
+    const token = tokenOf(req, body);
+    const refuse = (state: "unknown" | "over"): void => {
+      if (state === "over") sendJson(res, 410, { error: "this session is over" });
+      else sendJson(res, 401, { error: "unknown session token" });
+    };
+    switch (path) {
+      case "/api/spatial/pose": {
+        if (!this.spatial.hasToken(token)) {
+          refuse(this.spatial.tokenState(token));
+          return true;
+        }
+        const pose = parsePose(body);
+        if (pose === null) {
+          sendJson(res, 400, { error: "a pose is {p: [x, y, z], yaw, pitch?} with finite numbers" });
+          return true;
+        }
+        const out = this.spatial.pose(token, pose);
+        if (out !== "ok") refuse(out);
+        else {
+          res.writeHead(204);
+          res.end();
+        }
+        return true;
+      }
+      case "/api/spatial/found": {
+        if (!this.open) {
+          // The rule for every participant action: nothing commits while the
+          // doors are closed (paused, or before they open). The session stays
+          // un-found, so the game's retry claims it after resume. A dead
+          // token still hears 401/410 so the game learns its session is over.
+          if (!this.spatial.hasToken(token)) refuse(this.spatial.tokenState(token));
+          else sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        const out = this.spatial.found(token, (s) => this.commitFound(s));
+        switch (out.kind) {
+          case "unknown":
+          case "over":
+            refuse(out.kind);
+            return true;
+          case "parked":
+            sendJson(res, 409, { error: "this session has not started — send a pose first" });
+            return true;
+          case "far":
+            sendJson(res, 409, { error: "not near the duck", distance: Math.round(out.distance * 100) / 100, dy: Math.round(out.dy * 100) / 100 });
+            return true;
+          case "found":
+            sendJson(res, 200, { ok: true, released: out.released, already: out.already });
+            return true;
+        }
+        return true;
+      }
+      case "/api/spatial/end": {
+        const out = this.spatial.endByToken(token);
+        if (out !== "ok") refuse(out);
+        else sendJson(res, 200, { ok: true });
+        return true;
+      }
+      default:
+        return false;
+    }
+  }
+
+  /** Someone reached the duck: the story outcome, journaled `by` the game's
+   *  device — `the simulation completed` (releases a corrupted program), then
+   *  `the golden duck`. Released = they were captured and no longer are. */
+  private commitFound(s: SessionRef): boolean {
+    const sim = this.sim;
+    if (sim === null || !sim.persons.has(s.guest)) return false;
+    const was = sim.isCaptured(s.guest);
+    this.actingBy = s.device;
+    try {
+      this.fanout(this.commit("signal", "the simulation completed", s.guest));
+      this.fanout(this.commit("signal", "the golden duck", s.guest));
+    } finally {
+      this.actingBy = undefined;
+    }
+    return was && !(this.sim?.isCaptured(s.guest) ?? false);
+  }
+
   // -- persistence (event-sourced journal) ---------------------------------
 
   private flushTick(): void {
@@ -937,21 +1236,35 @@ export class EventRuntime {
 
   // -- profile pictures ----------------------------------------------------
 
-  /** Authored `avatar:` links go straight into the book; every other
-   *  playable character (a performer's part, a guest's program) gets a
-   *  picture looked up in the program directory, in the background. */
+  /** Hand-picked `avatar:` pictures go straight into the book (unless a
+   *  guest has since chosen another for that program); every other
+   *  playable character (a performer's part, a guest's program) gets one
+   *  looked up in the program directory, in the background. Every
+   *  picture is then fetched once, ahead of the doors, so the night never
+   *  waits on (or depends on) Wikipedia. */
   private seedAvatars(): void {
     if (this.sim === null) return;
     const lookups: string[] = [];
     for (const d of identityDefs(this.sim.model)) {
-      if (d.avatar !== null) {
-        if (this.avatars.keyFor(d.name) !== avatarKey(d.avatar)) this.avatars.assign(d.name, d.avatar);
+      const [first] = d.avatars;
+      if (first !== undefined) {
+        const url = avatarRefUrl(first);
+        if (!this.avatars.isChosen(d.name) && this.avatars.keyFor(d.name) !== avatarKey(url)) this.avatars.assign(d.name, url);
       } else if (guestPickable(d) || performerPickable(d)) {
         lookups.push(d.name);
       }
     }
     this.persistAvatars();
+    this.prefetchAvatars();
     this.lookupAvatars(lookups);
+  }
+
+  /** Warm the picture cache (and its disk copy) with every picture in the book. */
+  private prefetchAvatars(): void {
+    for (const key of Object.values(this.avatars.keys())) {
+      const url = this.avatars.urlFor(key);
+      if (url !== null && !this.images.onDisk(url)) void this.images.get(url);
+    }
   }
 
   /** Find pictures for names that have none yet (fire-and-forget; each
@@ -961,14 +1274,55 @@ export class EventRuntime {
     for (const name of names) {
       if (this.avatars.has(name) || this.avatarLookups.has(name)) continue;
       this.avatarLookups.add(name);
-      void this.wiki.avatarFor(name).then((url) => {
+      const def = this.sim === null ? undefined : identityDefs(this.sim.model).find((d) => foldName(d.name) === foldName(name));
+      void this.wiki.avatarFor(def?.wiki ?? name).then((url) => {
         this.avatarLookups.delete(name);
         if (url === null || this.avatars.has(name)) return;
         this.avatars.assign(name, url);
+        void this.images.get(url);
         this.persistAvatars();
         this.pushSnapshots();
       });
     }
+  }
+
+  /**
+   * The pictures a guest may choose between for a program, best first:
+   * the story's hand-picked ones (`avatar: a | b`), then the directory's
+   * gallery for the article (`wiki:` or the name) — logos and box art
+   * ahead of screenshots. Each is made servable (`offer`) so the picker
+   * can show it; `name` is what the guest would register as (the
+   * article's title for a directory pick). Null: no such program.
+   */
+  private async pictureOptions(name: string, wiki?: string): Promise<{ name: string; options: PictureChoice[] } | null> {
+    const urls: Array<{ url: string; file: string }> = [];
+    let title = name;
+    if (wiki !== undefined) {
+      const hit = this.wiki === null ? null : await this.wiki.lookup(wiki);
+      if (hit === null) return null;
+      title = hit.title;
+    }
+    const def = this.sim === null ? undefined : identityDefs(this.sim.model).find((d) => foldName(d.name) === foldName(title));
+    for (const ref of def?.avatars ?? []) urls.push({ url: avatarRefUrl(ref), file: /^File:/iu.test(ref) ? ref : "" });
+    if (this.wiki !== null) {
+      for (const p of await this.wiki.pictures(wiki ?? def?.wiki ?? name, 8)) urls.push({ url: p.url, file: p.file });
+    }
+    // The picture they have now stays on offer (a guest changing theirs).
+    const current = this.avatars.keyFor(title);
+    const currentUrl = current === null ? null : this.avatars.urlFor(current);
+    if (currentUrl !== null) urls.push({ url: currentUrl, file: "" });
+    const seenUrl = new Set<string>();
+    const seenFile = new Set<string>();
+    const options: PictureChoice[] = [];
+    for (const u of urls) {
+      const file = u.file.replace(/^File:/iu, "").replace(/_/gu, " ").toLowerCase();
+      if (seenUrl.has(u.url) || (file !== "" && seenFile.has(file))) continue;
+      seenUrl.add(u.url);
+      if (file !== "") seenFile.add(file);
+      options.push({ key: this.avatars.offer(u.url), file: u.file.replace(/^File:/iu, "") });
+      if (options.length >= 9) break;
+    }
+    return { name: title, options };
   }
 
   private persistAvatars(): void {
@@ -1098,6 +1452,7 @@ export class EventRuntime {
     }
     this.stopTicker();
     this.agents.reset(opts.by ?? "server", kind);
+    this.spatial.reset(kind);
     this.agentPowerUses.clear();
     this.agentMinds.clear();
     this.sim = null;
@@ -1141,6 +1496,16 @@ export class EventRuntime {
       }
     }
     this.agentStreams.clear();
+    this.stopSpatialLoop();
+    this.spatial.detachAll();
+    for (const s of [...this.spatialStreams]) {
+      try {
+        s.end();
+      } catch {
+        /* viewer already gone */
+      }
+    }
+    this.spatialStreams.clear();
   }
 
   // -- restart recovery ----------------------------------------------------
@@ -1437,7 +1802,18 @@ export class EventRuntime {
       return true;
     }
 
+    // --- the reinstallation games: the map, the stream, stations ---
+    if (method === "GET" && (path.startsWith("/api/spatial/") || path.startsWith("/api/mod/spatial/"))) {
+      if (this.handleSpatialGet(req, res, path, url, opts.moderator === true)) return true;
+    }
+
     if (method !== "POST") return false;
+
+    // --- a game's own calls (pose at 10 Hz, found, end): tiny bodies, read
+    // under their own cap before the generic parse ---
+    if (path.startsWith("/api/spatial/")) {
+      return this.handleSpatialPost(req, res, path, await readBody(req, SPATIAL_BODY_LIMIT));
+    }
 
     const body = await readBody(req);
 
@@ -1539,12 +1915,30 @@ export class EventRuntime {
       const results = hits.map((h) => ({
         name: h.title,
         description: h.description,
-        avatar: h.image === null ? null : this.avatars.assign(h.title, h.image),
+        avatar: h.image === null ? null : this.avatars.offer(h.image),
         claimed: taken.has(foldName(h.title)),
         blocked: isAntivirusSoftware(h.title, h.description) ? "antivirus" : null,
       }));
-      if (results.some((r) => r.avatar !== null)) this.persistAvatars();
       sendJson(res, 200, { results });
+      return true;
+    }
+    // The pictures a guest may choose between for a program — one of the
+    // story's (`name`), or a directory pick (`wiki` = the article title).
+    if (path === "/api/identities/pictures") {
+      if (this.throttled(req, res)) return true;
+      if (!passOk(str(body, "passcode"), this.codes.event)) {
+        this.loginFailures.record(ipOf(req));
+        sendJson(res, 403, { error: "wrong event code" });
+        return true;
+      }
+      const wiki = str(body, "wiki").trim().slice(0, 120);
+      const name = str(body, "name").trim().slice(0, 120);
+      const out = await this.pictureOptions(wiki !== "" ? wiki : name, wiki !== "" ? wiki : undefined);
+      if (out === null) {
+        sendJson(res, 404, { error: "no such program" });
+        return true;
+      }
+      sendJson(res, 200, out);
       return true;
     }
 
@@ -1605,6 +1999,9 @@ export class EventRuntime {
         // never a guest's, and a program is never antivirus software.
         let name = str(body, "name").trim().replace(/\s+/gu, " ").slice(0, 48) || "Guest";
         const wiki = str(body, "wiki").trim();
+        // A picture the guest chose on the picker (a serving key) — honoured
+        // only if it is one of that program's own options.
+        const chosenKey = str(body, "picture").trim();
         let picture: string | null = null;
         if (wiki !== "") {
           const hit = this.wiki === null ? null : await this.wiki.lookup(wiki);
@@ -1624,11 +2021,23 @@ export class EventRuntime {
           sendJson(res, 409, { error: refusal });
           return true;
         }
+        let chosen: string | null = null;
+        if (chosenKey !== "") {
+          const opts = await this.pictureOptions(wiki !== "" ? wiki : name, wiki !== "" ? wiki : undefined);
+          if (opts === null || !opts.options.some((o) => o.key === chosenKey)) {
+            sendJson(res, 400, { error: "that picture isn't one of this program's" });
+            return true;
+          }
+          chosen = this.avatars.urlFor(chosenKey);
+        }
         const id = `g-${randomUUID().slice(0, 6)}`;
         const token = randomUUID();
         this.guestTokens.set(token, id);
         this.persistGuests();
-        if (picture !== null) {
+        if (chosen !== null) {
+          this.avatars.assign(name, chosen, true);
+          this.persistAvatars();
+        } else if (picture !== null) {
           this.avatars.assign(name, picture);
           this.persistAvatars();
         } else {
@@ -1636,6 +2045,33 @@ export class EventRuntime {
         }
         this.fanout(this.commit("createPerson", id, name));
         sendJson(res, 200, { id, name, token, avatar: this.avatars.keyFor(name) });
+        return true;
+      }
+      // A guest changes their profile picture: the same options the
+      // sign-in picker offered for their program (`GET`-style with no
+      // `picture`; answers the options either way).
+      case "/api/guest/picture": {
+        const id = this.requireGuest(req, body, res);
+        if (id === null) return true;
+        const me = this.sim!.persons.get(id);
+        if (me === undefined) {
+          sendJson(res, 404, { error: "unknown guest" });
+          return true;
+        }
+        const isPool = identityDefs(this.sim!.model).some((d) => foldName(d.name) === foldName(me.name));
+        const opts = await this.pictureOptions(me.name, isPool ? undefined : me.name);
+        const options = opts?.options ?? [];
+        const key = str(body, "picture").trim();
+        if (key !== "") {
+          if (!options.some((o) => o.key === key)) {
+            sendJson(res, 400, { error: "that picture isn't one of your program's" });
+            return true;
+          }
+          this.avatars.assign(me.name, this.avatars.urlFor(key)!, true);
+          this.persistAvatars();
+          this.pushSnapshots();
+        }
+        sendJson(res, 200, { options, avatar: this.avatars.keyFor(me.name) });
         return true;
       }
       case "/api/guest/join": {
@@ -2116,6 +2552,73 @@ export class EventRuntime {
         sendJson(res, 200, { ok: true, phase: this.phase });
         return true;
       }
+      case "/api/mod/spatial/house": {
+        // A director's edit of the house map (the map page's editor):
+        // validated, persisted for this event, announced to every stream.
+        // `base` — the version the editor loaded — guards a lost update: a
+        // map someone else saved since is never silently overwritten (no
+        // `base`, no check).
+        const v = validateHouse(body["house"]);
+        if (!v.ok || v.house === undefined) {
+          sendJson(res, 400, { error: "invalid house map", problems: v.problems });
+          return true;
+        }
+        const base = body["base"];
+        if (base !== undefined && base !== null) {
+          this.spatialHouse(); // the current version (loads it on first use)
+          if (base !== this.spatial.version) {
+            sendJson(res, 409, { error: "the map changed — reload", version: this.spatial.version });
+            return true;
+          }
+        }
+        this.store.saveHouse(v.house);
+        const version = this.spatial.setHouse(v.house, "event");
+        const warnings = this.houseWarnings(v.house);
+        for (const w of warnings) process.stderr.write(`  ⚠️  event ${this.eventId}: house map ${w}\n`);
+        sendJson(res, 200, { ok: true, version, warnings });
+        return true;
+      }
+      case "/api/mod/spatial/begin": {
+        // A scanned program enters the simulation — here (the tablet plays
+        // it) or parked for a headset (`station`) until its first pose.
+        const sim = this.sim;
+        if (sim === null) {
+          sendJson(res, 409, { error: "no scenario loaded" });
+          return true;
+        }
+        const guest = str(body, "guest");
+        const person = sim.persons.get(guest);
+        if (person === undefined) {
+          sendJson(res, 404, { error: "unknown guest" });
+          return true;
+        }
+        const world = body["world"];
+        if (!isWorld(world)) {
+          sendJson(res, 400, { error: "world must be vr or web" });
+          return true;
+        }
+        if (this.spatialHouse() === null) {
+          sendJson(res, 503, { error: "no house map" });
+          return true;
+        }
+        const station = str(body, "station").trim().slice(0, 60);
+        const assignment = this.spatial.begin({
+          guest,
+          name: person.name,
+          world,
+          device: str(body, "device").trim().slice(0, 60) || by,
+          station: station === "" ? null : station,
+          captured: sim.isCaptured(guest),
+        });
+        this.startSpatialLoop();
+        sendJson(res, 200, assignment);
+        return true;
+      }
+      case "/api/mod/spatial/end": {
+        this.spatial.end(str(body, "session"));
+        sendJson(res, 200, { ok: true });
+        return true;
+      }
       case "/api/mod/agent/control": {
         // The mind control panel: reset / survey / nudge / set / forget /
         // thinking / effort / pause / rerun, forwarded to the worker(s)
@@ -2163,7 +2666,7 @@ export class EventRuntime {
       }
       case "/api/mod/codex": {
         // A director (or show hardware through the mod API — an Arduino
-        // puzzle solved, a VR goose caught) hands an entry to a holder.
+        // puzzle solved, a VR duck found) hands an entry to a holder.
         if (this.sim === null) {
           sendJson(res, 409, { error: "no scenario loaded" });
           return true;

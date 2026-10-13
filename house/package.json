@@ -1,0 +1,32 @@
+{
+  "name": "@loom/house",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "The house map: one coordinate frame shared by the reinstallation games (VR + web), the event server and the wall terminals — schema, validation, procedural geometry, locate, routing, and a three.js scene builder (@loom/house/three).",
+  "exports": {
+    ".": "./src/index.ts",
+    "./three": "./src/three/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "goldens": "tsx scripts/goldens.ts",
+    "sync": "tsx scripts/sync.ts"
+  },
+  "peerDependencies": {
+    "three": ">=0.170.0"
+  },
+  "peerDependenciesMeta": {
+    "three": { "optional": true }
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/three": "^0.186.0",
+    "three": "^0.186.1",
+    "tsx": "^4.19.2",
+    "typescript": "~5.6.3",
+    "vitest": "^2.1.0"
+  }
+}

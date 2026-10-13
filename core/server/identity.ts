@@ -39,8 +39,10 @@ export interface IdentityDef {
   agent: boolean;
   /** Their group is one the story assigns (`joinable: false`) — an enforcer caste. */
   caste: boolean;
-  /** An authored `avatar:` link, if any. */
-  avatar: string | null;
+  /** Hand-picked `avatar:` pictures (URLs or `File:` names), best first. */
+  avatars: string[];
+  /** The Wikipedia article this character is (`wiki:`), if named. */
+  wiki: string | null;
 }
 
 /** Does this character have a part in the story? */
@@ -89,7 +91,8 @@ export function identityDefs(model: SimModel): IdentityDef[] {
     playable: c.playable,
     agent: c.mind !== null,
     caste: c.faction !== null && model.factions.get(c.faction)?.joinable === false,
-    avatar: c.avatar,
+    avatars: c.avatar,
+    wiki: c.wiki,
   }));
 }
 
@@ -112,6 +115,15 @@ export interface IdentityRow {
   avatar: string | null;
   /** Someone already holds this name — greyed out, refused on sign-in. */
   claimed: boolean;
+}
+
+/** One picture a guest may choose for their program. */
+export interface PictureChoice {
+  /** Serving key (`/e/:id/api/avatar/<key>`). */
+  key: string;
+  /** The Wikipedia / Commons file it is (no `File:` prefix), or "" for a
+   *  plain link — what an author copies into `avatar: File:…`. */
+  file: string;
 }
 
 /** Why a guest may not register a name, or null when they may. */

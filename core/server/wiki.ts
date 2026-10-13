@@ -64,29 +64,81 @@ function pagesOf(json: unknown): RawPage[] {
 }
 
 /** Files that are furniture on every article, never its picture. */
-const FURNITURE = /commons-logo|oojs|icon|shackle|protection|padlock|symbol|ambox|question_book|question book|wiki_letter|wiki letter|wikidata|disambig|edit-|flag of|increase|decrease|nuvola|crystal|star_|star |wpvg|logo of wikipedia|wikipedia/iu;
+const FURNITURE = /commons-logo|wikibooks-logo|wikiquote-logo|wiktionary-logo|wikinews-logo|wikiversity|wikisource|free and open-source software logo|free_and_open-source_software_logo|octicons|oojs|shackle|protection|padlock|symbol[ _](support|oppose|question|delete|keep|comment)|symbol[ _][a-z]+[ _]class|ambox|question[ _]book|wiki[ _]letter|wikidata|disambig|edit-(clear|ltr|rtl)|flag[ _]of|increase|decrease|nuvola|crystal[ _]clear|^star[ _]|wpvg|wikipedia|wikimedia|unbalanced[ _]scales|text-x-|gnome-|emblem-|portal[-_ ]puzzle|folder[ _]hexagonal|p[ _]vip|office-book|red[ _]pog|blue[ _]pencil|audio[ _]a\.svg|loudspeaker|sound-icon|people[ _]icon|merge-arrow|split-arrow|mergefrom|mergeto/iu;
+
+/** A file that could be a picture at all (a raster or SVG image). */
+const IMAGE_FILE = /\.(png|jpe?g|gif|webp|svg)$/iu;
 
 /**
- * The best picture among an article's files, for a page with no
- * registered lead image (a non-free logo usually): a file named after
- * the article beats one that isn't; a logo / cover / box art beats a
- * screenshot; site furniture never counts. Null when nothing qualifies.
+ * An article's files in the order they make a good profile picture —
+ * the "famous" picture of a piece of software is nearly always its logo
+ * or box art, not the screenshot Wikipedia uses as the lead image. A file
+ * named after the article beats one that isn't; a logo / icon / cover /
+ * box art beats a screenshot; the lead image gets a nudge; site furniture
+ * never counts. `File:` prefixes are kept as given.
  */
-export function pickFile(title: string, files: string[]): string | null {
-  const tokens = title
+export function rankFiles(title: string, files: string[], lead: string | null = null, alias = title): string[] {
+  const tokens = `${title} ${alias}`
     .toLowerCase()
     .split(/[^a-z0-9]+/u)
     .filter((t) => t.length >= 3);
-  const candidates = files.filter((f) => /\.(png|jpe?g|gif|webp|svg)$/iu.test(f) && !FURNITURE.test(f.replace(/^File:/u, "")));
+  const whole = title.toLowerCase().replace(/[_\s-]+/gu, "");
+  const bare = (f: string) => f.replace(/^File:/u, "");
+  const leadName = lead === null ? null : bare(lead).replace(/_/gu, " ");
+  const seen = new Set<string>();
+  const candidates = files.filter((f) => {
+    const name = bare(f);
+    if (!IMAGE_FILE.test(name) || FURNITURE.test(name) || seen.has(name)) return false;
+    seen.add(name);
+    return true;
+  });
   const score = (f: string) => {
-    const name = f.toLowerCase().replace(/[_\s-]+/gu, "");
+    const lower = bare(f).toLowerCase();
+    const squashed = lower.replace(/[_\s-]+/gu, "");
     let n = 0;
-    if (tokens.some((t) => name.includes(t))) n += 2;
-    if (/logo|cover|boxart|icon\b/u.test(f.toLowerCase())) n += 1;
+    if (tokens.some((t) => squashed.includes(t))) n += 3;
+    // Named exactly after the article ("Microsoft Paint.svg"): its emblem.
+    if (squashed.replace(/\.[a-z]+$/u, "") === whole) n += 3;
+    if (/logo|wordmark|logomark/u.test(lower)) n += 4;
+    else if (/cover|box[ _-]?art|boxshot|icon/u.test(lower)) n += 3;
+    if (lower.endsWith(".svg")) n += 1;
+    if (leadName !== null && bare(f).replace(/_/gu, " ") === leadName) n += 2;
+    if (/screenshot|screen[ _-]?shot|interface|headquarters|\bhq\b/u.test(lower)) n -= 1;
     return n;
   };
-  const best = [...candidates].sort((a, b) => score(b) - score(a))[0];
-  return best ?? null;
+  return candidates
+    .map((f, i) => ({ f, i, s: score(f) }))
+    .sort((a, b) => b.s - a.s || a.i - b.i)
+    .map((c) => c.f);
+}
+
+/**
+ * The best picture among an article's files, for a page with no
+ * registered lead image (a non-free logo usually). Null when nothing
+ * qualifies. See `rankFiles`.
+ */
+export function pickFile(title: string, files: string[]): string | null {
+  return rankFiles(title, files)[0] ?? null;
+}
+
+/** One picture a guest may choose for a program. */
+export interface PictureOption {
+  /** The file it came from (`File:Winamp Logo.svg`) — what an author
+   *  writes as `avatar: File:…` to pick it for good. */
+  file: string;
+  /** A thumbnail URL, ready to fetch. */
+  url: string;
+}
+
+/**
+ * The URL of a Wikipedia / Commons file by name, at thumbnail size. An
+ * authored `avatar: File:Clippy-letter.PNG` turns into this; the wiki's
+ * `Special:FilePath` redirects to the real thumbnail, so no API call (and
+ * no directory) is needed to resolve a hand-picked picture.
+ */
+export function fileUrl(file: string, width = 256): string {
+  const name = file.trim().replace(/^File:/iu, "").replace(/ /gu, "_");
+  return `https://en.wikipedia.org/wiki/Special:FilePath/${encodeURIComponent(name)}?width=${width}`;
 }
 
 function hitOf(p: RawPage): SoftwareHit | null {
@@ -114,6 +166,7 @@ export class WikiClient {
   private readonly concurrency: number;
   private readonly searches = new Map<string, Promise<SoftwareHit[]>>();
   private readonly lookups = new Map<string, Promise<SoftwareHit | null>>();
+  private readonly galleries = new Map<string, Promise<PictureOption[]>>();
   private inflight = 0;
   private readonly waiting: Array<() => void> = [];
 
@@ -250,19 +303,72 @@ export class WikiClient {
 
   /** The thumbnail of the best-looking file on an article, or null. */
   private async imageFromFiles(title: string): Promise<string | null> {
-    const listing = await this.query({ titles: title, prop: "images", imlimit: "12" }).catch(() => null);
-    const files = (pagesOf(listing)[0] as { images?: Array<{ title?: string }> } | undefined)?.images ?? [];
-    const file = pickFile(title, files.map((f) => f.title ?? "").filter(Boolean));
-    if (file === null) return null;
-    const info = await this.query({ titles: file, prop: "imageinfo", iiprop: "url|mime", iiurlwidth: String(this.thumbSize) }).catch(() => null);
-    const ii = (pagesOf(info)[0] as { imageinfo?: Array<{ thumburl?: string; url?: string; mime?: string }> } | undefined)?.imageinfo?.[0];
-    if (ii === undefined || !(ii.mime ?? "image/").startsWith("image/")) return null;
-    return ii.thumburl ?? ii.url ?? null;
+    return (await this.gallery(title, 8).catch(() => []))[0]?.url ?? null;
   }
 
-  /** The profile picture for a name: the article's lead image, if any. */
+  /**
+   * A few pictures for a name, best first — the article's logo, box art,
+   * icon, lead image, screenshots (see `rankFiles`) — so a guest can pick
+   * the one that *looks like* the program rather than whatever Wikipedia
+   * leads with. Empty when Wikipedia knows nothing by that name.
+   */
+  async pictures(name: string, limit = 8): Promise<PictureOption[]> {
+    const hit = await this.lookup(name);
+    if (hit === null) return [];
+    const options = await this.gallery(hit.title, limit, name).catch(() => [] as PictureOption[]);
+    // An article with no listable files still offers its lead thumbnail.
+    if (options.length === 0 && hit.image !== null) return [{ file: "", url: hit.image }];
+    return options;
+  }
+
+  /** An article's ranked pictures (memoised per title + limit; a failure is retried). */
+  private gallery(title: string, limit: number, alias = title): Promise<PictureOption[]> {
+    const key = `${title.toLowerCase()}|${alias.toLowerCase()}|${limit}`;
+    const hit = this.galleries.get(key);
+    if (hit !== undefined) return hit;
+    const run = this.runGallery(title, limit, alias).catch((e: unknown) => {
+      this.galleries.delete(key);
+      throw e;
+    });
+    this.galleries.set(key, run);
+    return run;
+  }
+
+  private async runGallery(title: string, limit: number, alias: string): Promise<PictureOption[]> {
+    const listing = await this.query({ titles: title, redirects: "1", prop: "pageimages|images", piprop: "name", pilicense: "any", imlimit: "100" });
+    const page = pagesOf(listing)[0] as { pageimage?: string; images?: Array<{ title?: string }> } | undefined;
+    const files = (page?.images ?? []).map((f) => f.title ?? "").filter(Boolean);
+    const lead = page?.pageimage === undefined ? null : `File:${page.pageimage.replace(/_/gu, " ")}`;
+    if (lead !== null && !files.includes(lead)) files.unshift(lead);
+    // Ask about a few more than wanted: some won't resolve to a usable image.
+    const ranked = rankFiles(title, files, lead, alias).slice(0, limit + 4);
+    if (ranked.length === 0) return [];
+    const info = await this.query({ titles: ranked.join("|"), prop: "imageinfo", iiprop: "url|mime|size", iiurlwidth: String(this.thumbSize) });
+    type Info = { thumburl?: string; url?: string; mime?: string; width?: number; height?: number };
+    const byTitle = new Map<string, Info>();
+    for (const p of pagesOf(info) as Array<{ title?: string; imageinfo?: Info[] }>) {
+      const ii = p.imageinfo?.[0];
+      if (p.title !== undefined && ii !== undefined) byTitle.set(p.title, ii);
+    }
+    const out: PictureOption[] = [];
+    for (const file of ranked) {
+      const ii = byTitle.get(file);
+      if (ii === undefined || !(ii.mime ?? "image/").startsWith("image/")) continue;
+      // A 16-px glyph is never anybody's face.
+      if (ii.width !== undefined && ii.height !== undefined && Math.max(ii.width, ii.height) < 48) continue;
+      const url = ii.thumburl ?? ii.url;
+      if (url === undefined) continue;
+      out.push({ file, url });
+      if (out.length >= limit) break;
+    }
+    return out;
+  }
+
+  /** The profile picture for a name: the best of its pictures (a logo
+   *  over a screenshot), else the article's lead image, if any. */
   async avatarFor(name: string): Promise<string | null> {
-    return (await this.lookup(name))?.image ?? null;
+    const [best] = await this.pictures(name, 1);
+    return best?.url ?? null;
   }
 
   private async query(params: Record<string, string>): Promise<unknown> {

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "name": "Two floors, one stair",
+  "origin": "fixture: the north-west corner, upper floor level",
+  "floors": [
+    { "id": "lower", "label": "Cellar", "elevation": -3, "height": 2.5 },
+    { "id": "upper", "label": "Ground", "elevation": 0, "height": 2.5 }
+  ],
+  "rooms": [
+    { "id": "cellar", "label": "Cellar", "floor": "lower", "poly": [[0, 0], [5, 0], [5, 4], [0, 4]] },
+    { "id": "hall", "label": "Hall", "floor": "upper", "poly": [[0, 0], [5, 0], [5, 4], [0, 4]] }
+  ],
+  "doors": [],
+  "stairs": [{ "id": "s", "from": "cellar", "to": "hall", "rect": [1, 1, 4, 2], "up": "e" }],
+  "terminals": [],
+  "duck": { "spots": [{ "id": "down", "room": "cellar", "pos": [0.5, -3, 3.5] }] },
+  "spawn": { "room": "hall", "pos": [4.5, 0, 3.5], "yaw": 0 },
+  "props": [],
+  "spaces": { "vr": { "offset": [10, 0, -2], "yaw": 90, "scale": 1 } }
+}

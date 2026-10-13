@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "A house and its fenced yard",
+  "origin": "fixture: the house's north-west corner",
+  "floors": [{ "id": "g", "label": "Ground", "elevation": 0, "height": 2.4 }],
+  "rooms": [
+    { "id": "house", "label": "House", "floor": "g", "poly": [[0, 0], [4, 0], [4, 3], [0, 3]] },
+    { "id": "yard", "label": "Yard", "floor": "g", "outdoor": true, "color": "#3a6b35", "poly": [[0, 3], [6, 3], [6, 7], [0, 7]] }
+  ],
+  "doors": [
+    { "id": "back", "a": "house", "b": "yard", "at": [2, 3], "width": 1 },
+    { "id": "gate", "a": "yard", "b": null, "at": [6, 5], "width": 1.2 }
+  ],
+  "stairs": [],
+  "terminals": [],
+  "duck": { "spots": [{ "id": "lawn", "room": "yard", "pos": [5, 0, 6] }] },
+  "spawn": { "room": "house", "pos": [2, 0, 1.5], "yaw": 180 },
+  "props": [{ "id": "tree", "room": "yard", "kind": "cylinder", "pos": [1, 0, 6], "size": [0.4, 3, 0.4] }],
+  "spaces": {},
+  "style": { "fence": 1.2 }
+}

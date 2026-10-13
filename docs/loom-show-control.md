@@ -95,7 +95,7 @@ rebooted mid-show without killing the story, the broker, or the ingest.
 > Each machine runs the same `stagehand` with its own YAML. The model can
 > move the story's variables, but it never bypasses the story's `when`
 > rules. See [`stagehand/README.md`](../stagehand/README.md). The show's
-> QR codes / Arduino puzzles / VR station contract is in
+> QR codes / Arduino puzzles / reinstallation games contract is in
 > [`core/examples/trapped-in-the-internet/README.md`](../core/examples/trapped-in-the-internet/README.md).
 >
 > **2026-09-17 — the agent has a mind and hands.** The agents module is
@@ -322,6 +322,10 @@ Two scans with two jobs:
   (below); v1 doesn't need it.
 
 ### Coordinate contract: `house-map.json`
+
+> **Superseded (2026-10-10):** the shipped house map is `house.json` (Y up,
+> `+z` south, one frame for both reinstallation games, the server and the
+> terminals) — see [`loom-reinstall.md`](./loom-reinstall.md) §1.
 
 One canonical spatial file, consumed by *every* spatial subsystem:
 
