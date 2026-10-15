@@ -3041,6 +3041,13 @@ Uploader / WebMD / Clippy filler lines.
 
 ### 10.2 Decisions taken that need sign-off
 
+> ✅ **Signed off 2026-10-15: all approved** ("Sign-offs: all of these look good"), together with the
+> §10.1 content review (CHECKLIST sign-off #12, SW-STORY-11). These are final for the Oct 31 party
+> ([`OCT31.md`](./OCT31.md)). #6: The Way Out does not escape. #10: Oct 31 runs with `lookup: false`.
+> Related final answers the same day: #33, a DM lie counts only when filed through a "📝 File a fact"
+> card, judged by a human; #28, Sandy is lore only (codex + her line inside the song tracks), with
+> an optional cutscene.
+
 1. **Trust Chart counts confident lies** as accepted truths (OV: "correct truths"). Dramatic
    irony; also keeps per-program lie counts away from the AI.
 2. **A lie is sticky** per question; a question nobody answered also fails the verdict.

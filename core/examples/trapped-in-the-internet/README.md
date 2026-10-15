@@ -3,10 +3,21 @@
 *Equal parts Digimon Movie, Blade Runner, and an escape room, influenced
 by late-90s Web 1.0 aesthetics and existentialism.*
 
+> **🎃 [OCT31.md](./OCT31.md): the active plan. The party is Sat Oct 31,
+> 2026.** It has the day-by-day lanes to the show, the gates (Oct 18 / 22 /
+> 25 / 27, tech 10-28, dress 10-29, freeze 10-30), the buy-today list, the
+> workaround runbook (W-01…W-34), the night-of crew + cheat-sheets, show-day
+> call times, the risk register and the cut order.
+>
 > **📋 [CHECKLIST.md](./CHECKLIST.md): the living tech checklist, covering
 > the software and hardware still to do before the party.** Tick items
 > there in the PR that does the work. This README is the runbook. The
 > checklist is what has to be *true* for the runbook to work.
+>
+> **🗓️ [SCHEDULE.md](./SCHEDULE.md): the order the checklist gets built
+> in**: four agent lanes, the week-1 spikes, gates G0–G5 (all P0 by
+> day 41, show-ready ≈ day 67), the non-software lane and the cut table.
+> Since the Oct 31 date was set, it is the post-party / next-run roadmap.
 
 A rogue AI, **Trabolta**, has very nearly solved the Unified Field
 Theory. The last facts he needs are on a computer in Halifax: this house.
@@ -580,7 +591,8 @@ the Hand Jive weakness, the Runescape / MS Paint / VLC / Pong orders and
 quests, the 21 coded files, the Bingo squares and hat slips, Telephone and
 the piñata, and the fate lines.
 
-Decisions that need sign-off:
+Decisions that need sign-off (**all approved 2026-10-15**, with the
+content list above; see [OCT31.md](./OCT31.md)):
 
 1. The Trust Chart counts confident lies as accepted truths.
 2. A lie is sticky per question, and an unanswered question also fails the
