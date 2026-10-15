@@ -88,7 +88,7 @@ REGISTRY: dict[str, ModuleSpec] = {
         "stagehand.agents.module:build_agents",
     ),
     "alexa": ModuleSpec(
-        "the fake Alexa — MQTT show/announce → chime + the server's voice on a CoreAudio device (`say` fallback)",
+        "the fake Alexa — MQTT show/announce → chime + the Mac's own `say` voice on a CoreAudio device (server voice opt-in)",
         "stagehand.alexa.module:build_alexa",
     ),
 }

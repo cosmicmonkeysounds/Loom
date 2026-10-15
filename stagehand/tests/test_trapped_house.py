@@ -377,10 +377,19 @@ def test_scene_cues_hit_both_zigbee_and_wled(cue):
     assert "zigbee2mqtt/house/set" in topics and "wled/all/api" in topics
 
 
+def test_alexa_speaks_with_the_macs_own_voice():
+    """Decision 2026-10-15: the house speakers use the Mac's `say` voice, so
+    an announcement never waits on (or needs) the VPS."""
+    alexa = load_config(HOUSE).modules["alexa"].cfg
+    assert alexa.engine == "say"
+    assert alexa.say_voice
+    assert (alexa.device, alexa.channels) == ("MOTU", (1, 2, 3, 4))
+
+
 def test_alexa_prewarms_every_scripted_announcement():
-    """Every `do announce "…"` line is cached on the house Mac at boot — a
-    line missing here costs the server round trip on the night (and is
-    silent-to-`say` if the uplink is down)."""
+    """Every `do announce "…"` line is listed for the opt-in server voice
+    (`engine: server` caches them on the house Mac at boot — a line missing
+    here would cost the server round trip on the night)."""
     lines = set(re.findall(r'^\s*do announce "([^"]+)"', _code(_story_text()), re.M))
     alexa = load_config(HOUSE).modules["alexa"].cfg
     assert lines, "the story no longer announces anything — drop the alexa prewarm list"
