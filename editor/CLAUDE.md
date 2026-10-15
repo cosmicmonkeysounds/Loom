@@ -197,6 +197,14 @@ performer sign-in row per character with presence), **Directing now**
 (names, `(you)`, started-by + age), **Look up a guest** (camera QR /
 manual id → Inspector); a local run gets one explainer card. A source
 test pins that `RunPage.tsx` renders none of the lifecycle testids.
+**Director** opens on the **cue sheet** (`cockpit/CueSheet.tsx` + pure
+`cue-sheet.ts`, K-21): the `who: admin` INTERACTIONs in declared order,
+the label's leading code (`C1/V1 · …`) split off, one click fires the
+cue (one in flight at a time), the **LAST** cue amber + the next one
+tagged **NEXT** + ✓ on fired ones — all from `CockpitState.cues`
+(`ModView.cues` = core `cueState(sim)` off the sim log, so every
+director's sheet agrees and survives a reload) — `Night.phase` in the
+header, and a word filter. Desktop only.
 
 **Being anyone — the identity lens.** `perspective` is `OPERATOR_LENS`
 (god view) or a guest/persona/character id; `setPerspective` resolves

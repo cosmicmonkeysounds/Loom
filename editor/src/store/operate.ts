@@ -17,7 +17,7 @@
 
 import { create } from 'zustand'
 import { namedEvents, type SimEvent } from '@loom/core/sim'
-import type { AgentMindSummary, AgentThought, GuestView, InteractionSummary, PrimeView } from '@loom/core/views'
+import type { AgentMindSummary, AgentThought, CueState, GuestView, InteractionSummary, PrimeView } from '@loom/core/views'
 import { ApiError, eventsApi, modApi, type EventInfo } from '@/lib/api'
 import { onCollabEvent, type CollabEventNotice } from '@/lib/collab'
 import { lspWorkspaceSync } from '@/lib/lsp-client'
@@ -28,6 +28,7 @@ import { scratchActive, useScratch } from '@/store/run'
 import {
   CockpitPhase,
   CockpitTab,
+  NO_CUES,
   OPERATOR_LENS,
   RunBackend,
   RunMode,
@@ -70,6 +71,7 @@ interface ModSnapshot {
   directors: string[]
   interactions?: InteractionSummary[]
   minds?: AgentMindSummary[]
+  cues?: CueState
 }
 
 /** What the server tells every console on a lifecycle transition. */
@@ -129,6 +131,7 @@ const EMPTY_SNAPSHOT = {
   spaces: [] as SpaceSummary[],
   beats: [] as string[],
   interactions: [] as InteractionSummary[],
+  cues: NO_CUES,
   ledgerLen: 0,
   world: [] as WorldEntry[],
   modsOnline: null as number | null,
@@ -335,6 +338,7 @@ export const useOperate = create<OperateState>((set, get) => {
         spaces: snap.spaces ?? [],
         beats: snap.beats ?? [],
         interactions: snap.interactions ?? [],
+        cues: snap.cues ?? NO_CUES,
         choices: snap.choices ?? {},
         ledgerLen: snap.ledgerLen ?? 0,
         world: snap.world ?? [],

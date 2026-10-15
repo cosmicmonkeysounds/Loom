@@ -135,3 +135,56 @@ describe("titleOf — the authored display title", () => {
     expect(titleOf("")).toBeNull();
   });
 });
+
+describe("cue sheet state (K-21)", () => {
+  const CUES = `# Cue Test
+
+INTERACTION ring_the_bell
+  label: C1 · 📣 Call everyone
+  who: admin
+
+INTERACTION hunt_time_up
+  label: C2 · ⏰ Hunt over (auto)
+  who: admin
+
+INTERACTION accuse
+  who: performer
+
+when ring_the_bell:
+  set Night.phase = "desktop"
+  fire hunt_time_up
+
+when hunt_time_up:
+  set Night.phase = "truth"
+`;
+
+  it("starts empty and marks the last admin cue, director- or story-fired", async () => {
+    const { cueState } = await import("../server/views.ts");
+    const sim = Sim.fromSources(CUES);
+    expect(cueState(sim)).toEqual({ last: null, lastBy: null, fired: [] });
+    sim.signal("accuse"); // not an admin cue
+    expect(cueState(sim).last).toBeNull();
+    sim.signal("ring the bell"); // folds to `ring_the_bell`
+    const s = cueState(sim);
+    // the hook's own `fire hunt_time_up` lands after the director's signal
+    expect(s.fired).toEqual(["ring_the_bell", "hunt_time_up"]);
+    expect(s.last).toBe("hunt_time_up");
+    expect(s.lastBy).toBe("story");
+    sim.signal("ring_the_bell");
+    expect(cueState(sim).fired).toEqual(["ring_the_bell", "hunt_time_up"]);
+    expect(modView(sim, "open", "x").cues?.last).toBe("hunt_time_up");
+  });
+});
+
+describe("the show's cue sheet (K-21)", () => {
+  it("declares the admin cues in running order, coded C1/V1 → V6", () => {
+    const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
+    const admin = (modView(sim, "open", "x").interactions ?? []).filter((i) => i.who === "admin");
+    const codes = admin.map((i) => i.label.split(" · ")[0]);
+    expect(admin[0]!.id).toBe("call_to_the_desktop");
+    for (const c of ["C1/V1", "V2", "V3", "Clippy 2/X", "V4/V5", "C2", "V6"]) expect(codes).toContain(c);
+    expect(codes.indexOf("V2")).toBeLessThan(codes.indexOf("V6"));
+    sim.signal("call_to_the_desktop");
+    expect(modView(sim, "open", "x").cues?.last).toBe("call_to_the_desktop");
+  });
+});

@@ -3,6 +3,7 @@
 //! unit-testable without standing up the HTTP/SSE server.
 
 import { DEFAULT_SPACE_ID } from "../src/runtime/sim/model.ts";
+import { foldName } from "../src/parser/names.ts";
 import type { AgentMindReport } from "./agents.ts";
 
 export type { AgentControl, AgentControlAction, AgentMindPerson, AgentMindRevision, AgentThought } from "./agents.ts";
@@ -361,6 +362,55 @@ export interface ModView {
   codex?: CodexSummary[];
   /** Agent-voiced characters' minds, as their workers last reported them. */
   minds?: AgentMindSummary[];
+  /** The director cue sheet's state: which `who: admin` cues have fired
+   *  and which was last — read off the sim log, so a director who signs
+   *  in mid-show (or reloads) sees the same sheet as the one who fired. */
+  cues?: CueState;
+}
+
+/** Where the night is on the `who: admin` cue sheet. */
+export interface CueState {
+  /** The most recent admin cue to fire (an INTERACTION id), or null. */
+  last: string | null;
+  /** Who fired it: a director (`signal`) or the story itself (`fire`, the
+   *  "auto at 15 min" cues). */
+  lastBy: "director" | "story" | null;
+  /** Every admin cue that has fired at least once, in first-fire order. */
+  fired: string[];
+}
+
+/**
+ * Scan the log for admin cues. A director's fire is a `signal` event; a
+ * story's own `fire x` (an auto cue) is a `fire` directive. Names fold, so
+ * `the golden duck` matches however it was spelled at the call site.
+ */
+export function cueState(sim: Sim): CueState {
+  const admin = new Map<string, string>();
+  for (const i of sim.model.interactions.values()) if (i.who === "admin") admin.set(foldName(i.id), i.id);
+  const state: CueState = { last: null, lastBy: null, fired: [] };
+  if (admin.size === 0) return state;
+  const seen = new Set<string>();
+  for (const e of sim.log.all()) {
+    let name: string | null = null;
+    let by: CueState["lastBy"] = null;
+    if (e.type === "signal") {
+      name = e.name;
+      by = "director";
+    } else if (e.type === "directive" && e.verb === "fire") {
+      name = e.args.split(/ (?:for|with) /u)[0] ?? "";
+      by = "story";
+    }
+    if (name === null) continue;
+    const id = admin.get(foldName(name));
+    if (id === undefined) continue;
+    state.last = id;
+    state.lastBy = by;
+    if (!seen.has(id)) {
+      seen.add(id);
+      state.fired.push(id);
+    }
+  }
+  return state;
 }
 
 export interface CodexSummary extends CodexEntryView {
@@ -459,6 +509,7 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
     directors: presence?.directors,
     codex: [...sim.model.codex.values()].map((e) => ({ ...codexEntry(e), code: e.code, holders: sim.codexHolders(e.id) })),
     ...(presence?.minds !== undefined && presence.minds.length > 0 ? { minds: presence.minds } : {}),
+    cues: cueState(sim),
   };
 }
 

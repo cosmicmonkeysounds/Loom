@@ -29,6 +29,7 @@ import { LensKind, lensKindOf, roomMessages, useRooms } from './rooms'
 import { useInspect } from './inspect'
 import { groupWorld, type WorldGroup } from './world'
 import { VarTable } from './VarTable'
+import { CueSheet } from './CueSheet'
 
 /** A page the current identity may not use — you are a participant, not
  *  the director, until you switch back to the Operator. */
@@ -910,7 +911,8 @@ function DirectorControls() {
 
   return (
     <div className="h-full overflow-auto p-3">
-      <div className="mx-auto flex max-w-lg flex-col gap-4">
+      <div className="mx-auto flex max-w-2xl flex-col gap-4">
+        <CueSheet />
         <section className="rounded-xl border border-zinc-800 p-3">
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">Fire named event</div>
           <p className="mb-2 text-xs text-zinc-600">
