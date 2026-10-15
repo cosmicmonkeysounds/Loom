@@ -33,10 +33,38 @@ then reload). The **tent ↔ shed switch** is `POST /api/mod/spatial/variant
 {file}` (mid-show too: players keep playing, a duck whose spot is gone is
 re-dealt); **Save to project** (`POST /api/mod/spatial/house/project`)
 writes the event's map back into the project. The map page's
-`map/ProjectBar.tsx` offers both, plus **Download JSON** (built and
-tested, not mounted on the page yet — the map-page rewrite places it)
-(`docs/loom-reinstall.md` §1.3, §2.1). After you edit the show's file,
-regenerate the Godot goldens and the Godot copy of the map:
+`map/ProjectBar.tsx` offers both, plus **Download JSON** (mounted in the editor's toolbar slot)
+(`docs/loom-reinstall.md` §1.3, §2.1).
+
+### The map editor (`/reinstall/map`)
+
+Tick **Edit** to build the house from a survey (the walkthrough is the
+help article `docs/help/authoring/38-house-map.md`; the rules are
+`docs/loom-reinstall.md` §3):
+
+| Tool / control | Does |
+|---|---|
+| floor tabs, **+ Floor** | switch floors; add one above the top; click the current tab to edit / delete it |
+| **▭ Room** (R) | drag a rectangle, or type **W × D** + Add (lands east of the selected room) |
+| **▒ Yard** (Y) | an outdoor rectangle; an indoor room drawn in it (the tent, the shed) is cut out of it — a free-standing one with a flap door (a notice says so), and any part of the yard the cut seals off gets one; a yard in pieces is selected / renamed / deleted whole |
+| **▯ Door** (D) | click a wall: snaps on, 0.9 m, joins the rooms either side (one room = outside) |
+| **▤ Stairs** (S) | drag the rect on the lower floor, pick the rooms + the rising side |
+| **↖ Select** (V, Esc) | click / drag; a selected room by its body (with its doors and contents) or an edge |
+| snap, wheel, Space-drag | 1–50 cm snap with room edges pulled onto neighbours'; zoom; pan |
+| ⌘Z / ⇧⌘Z | undo / redo every edit |
+| **🧊 3D** | the draft as the games build it (`buildHouseScene`, no ceilings; a lazy chunk), this floor or every floor |
+| inspector numbers | commit on Enter / blur (a typed prefix is never applied as a resize); spinner steps at once |
+| problem list | `validateHouse` problems (click selects), warnings: unreachable duck spots, rooms no door leads into, LOCATION mismatches |
+
+The code: `src/map/MapApp.tsx` (state, load / save), `Canvas.tsx` (the
+plan + gestures), `Toolbar.tsx`, `Inspector.tsx`, `Panels.tsx`, and the
+pure ops `edit.ts` / `doors.ts` / `yards.ts` / `structure.ts` /
+`history.ts` / `check.ts` (tested in `test/map*.test.ts`, the yard cut
+fuzzed against `validateHouse`). `MapApp` takes a `toolbarExtras` render
+prop (`MapToolbarContext` in `tools.ts`) — the slot for the project bar.
+
+After you edit the show's file, regenerate the Godot goldens and the Godot
+copy of the map:
 
 ```bash
 pnpm house:sync          # = @loom/house goldens + sync → vr/house/house.json, vr/test/golden/

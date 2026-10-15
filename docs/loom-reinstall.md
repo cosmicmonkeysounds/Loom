@@ -570,9 +570,7 @@ Session lifecycle:
 
 The **map** page (`/reinstall/map`): the house plan (SVG, one floor at a
 time), live players, the duck of each session, terminals with their view
-cones; an **editor** for directors (drag terminals / duck spots / the spawn,
-nudge yaw, add/remove terminals and duck spots, move/resize rectangular
-rooms, edit the JSON with live validation) saving through
+cones; an **editor** for directors, saving through
 `POST /api/mod/spatial/house` with `base` = the version it loaded (none
 for the bundled stand-in, which is read-only anyway). A 409 saves nothing
 and offers **Copy my edits (JSON)** and **Reload the map**; a successful
@@ -587,6 +585,50 @@ while programs are mid-game or a director's save would be dropped), offers
 **Save to project** (`POST …/house/project`, only on an event with a
 project; it sends the file it names in its confirm, `saveTarget`) and **Download JSON** (the shown map as the active variant's file,
 to commit as the show's file).
+
+The editor works **within the §1.1 schema** — it never adds a field —
+and every op is pure (`reinstall/web/src/map/`: `edit.ts`, `doors.ts`,
+`yards.ts`, `structure.ts`), so undo / redo are stacks of map values:
+
+- **Floors**: add (id slugged from the label), edit label / elevation /
+  height (what stands on the floor rides an elevation change), delete with
+  its rooms and everything in them (refused for the last floor or the
+  spawn's).
+- **Rooms** are drawn as rectangles (or typed W × D / x, z — the
+  inspector's number fields commit on Enter / blur, since every value is a
+  real resize that clamps doors and re-cuts yards); polygon rooms
+  from the JSON still move, validate and delete. Delete cascades to the
+  room's doors, stairs, terminals, duck spots and props (refused while the
+  spawn is in it).
+- **Doors** are clicked onto a wall line; `a` / `b` are read off the plan
+  by sampling just either side of the line (one room there: `b: null`).
+  A door slides along its line (re-linking where it lands), "Open the
+  whole edge" spans its run, and doors (and wall-mounted things) follow a
+  moved or resized room edge, re-linked and kept inside their run.
+- **Yards**: an indoor room drawn, moved or resized over an outdoor room
+  cuts it — the yard's area minus every other room on the floor,
+  decomposed on the grid of polygon coordinates and split into as few
+  simple, hole-free pieces as it takes (same label / LOCATION; touching
+  pieces joined by a door spanning their whole shared edge), doors into
+  the yard re-linked, things re-homed, and a flap door added on the room's
+  side facing the most yard when it has none and is free-standing (no
+  indoor room beside it — a house room drawn into the yard gets none).
+  A part of the yard the cut seals off (no opening to the rest, no door,
+  no stair, not the spawn's) gets a flap from the room, and then the room
+  one into the rest unless it has another way in. A yard's pieces are one
+  place: deleted whole, never made indoor or nudged one piece at a time,
+  and its label + LOCATION may not equal another yard's on the floor. A room that stood in the
+  yard (fenced by it on ≥ half its edge) gives its footprint back when it
+  moves away or is deleted; "Fill the yard" re-cuts a yard from its
+  bounding box.
+- **Stairs**: draw the rect on the lower floor; `from` / `to` default to
+  the rooms under its middle on this floor and the next one up.
+- **Checks**, live: `validateHouse`'s problems (each read back to the
+  thing it names, a click selects it), plus two warnings that never block
+  a save — **walkability** (`route()` from the spawn to every duck spot,
+  the VR autopilot's algorithm; and every room no door / stair chain from
+  the spawn's room reaches) and the story's LOCATIONs (from the mod
+  view, `GET /api/state`): a room naming none, a LOCATION no room is.
 
 ## 4. The terminals — world view
 

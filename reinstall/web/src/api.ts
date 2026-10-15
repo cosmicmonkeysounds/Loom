@@ -65,6 +65,25 @@ export async function endSession(config: ReinstallConfig, session: string): Prom
   await api(`${baseOf(config)}/api/mod/spatial/end`, { session }, config.token);
 }
 
+/**
+ * The story's LOCATIONs (the mod view, `GET /api/state` with the mod
+ * token) — the map page's room picker and its "no room for LOCATION X"
+ * check. Null when the server is away or has no story loaded.
+ */
+export async function fetchLocations(config: ReinstallConfig): Promise<{ id: string; label: string | null }[] | null> {
+  try {
+    const r = await getJson<{ locations?: unknown }>(`${baseOf(config)}/api/state?role=mod`, config.token);
+    if (!Array.isArray(r.locations)) return null;
+    return r.locations.flatMap((l: unknown) => {
+      if (typeof l !== "object" || l === null) return [];
+      const { id, label } = l as { id?: unknown; label?: unknown };
+      return typeof id === "string" ? [{ id, label: typeof label === "string" ? label : null }] : [];
+    });
+  } catch {
+    return null;
+  }
+}
+
 export interface LoadedHouse {
   house: HouseMap;
   version: string;

@@ -423,9 +423,28 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 
 /* --- the map page ---------------------------------------------------------------------- */
 
-.map-page { height: 100%; display: grid; grid-template-rows: auto auto 1fr; background: var(--face); }
-.map-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 5px 8px; }
-.map-title { font-weight: bold; margin-right: 0.6em; white-space: nowrap; max-width: 26em; overflow: hidden; text-overflow: ellipsis; }
+.map-page { height: 100%; display: flex; flex-direction: column; background: var(--face); }
+.map-page > .map-main { flex: 1; }
+.map-toolbar { display: flex; flex-direction: column; gap: 4px; padding: 5px 8px; }
+.map-toolbar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.map-toolbar-row.tools { padding-top: 4px; border-top: 1px solid var(--shadow); box-shadow: 0 -1px 0 var(--hi) inset; }
+.map-toolbar .w98-tab.add { font-style: italic; }
+.map-toolbar .w98-button.tool.pressed { background: var(--face-light); box-shadow: inset 1px 1px var(--dark), inset -1px -1px var(--hi), inset 2px 2px var(--shadow); font-weight: bold; }
+.map-toolbar .sized { display: inline-flex; align-items: center; gap: 4px; }
+.map-toolbar .sized input { width: 4.6em; }
+.map-toolbar .snap { display: inline-flex; align-items: center; gap: 4px; font-size: 0.9em; }
+.map-banner.notice { background: #e8f0ff; }
+.map-3d { position: relative; flex: 1; min-height: 0; }
+.map-3d canvas { width: 100%; height: 100%; display: block; }
+.map-3d-all { position: absolute; top: 8px; right: 10px; background: var(--face); padding: 2px 6px; }
+.map-3d-note { position: absolute; top: 8px; left: 10px; margin: 0; padding: 4px 8px; background: #ffffe1; }
+.map-toolbar .w98-button.pressed { background: var(--face-light); box-shadow: inset 1px 1px var(--dark), inset -1px -1px var(--hi); }
+.map-zoom { position: absolute; top: 8px; right: 8px; display: flex; gap: 3px; }
+.map-zoom .w98-button { min-width: 2em; }
+.button-row { display: flex; flex-wrap: wrap; gap: 0.4em; margin: 0.6em 0; }
+.inspect .field { display: flex; flex-direction: column; gap: 0.15em; margin-top: 0.5em; }
+.inspect .checkbox { display: block; margin-top: 0.6em; }
+.map-title { font-weight: bold; margin-right: 0.6em; white-space: nowrap; max-width: 18em; overflow: hidden; text-overflow: ellipsis; }
 .map-toolbar .w98-tabs { padding: 0; }
 .map-toolbar .w98-tab { border-radius: 0; box-shadow: inset -1px -1px var(--dark), inset 1px 1px var(--hi), inset -2px -2px var(--shadow); }
 .map-toolbar .w98-tab.on { transform: none; background: var(--face-light); box-shadow: inset 1px 1px var(--dark), inset -1px -1px var(--hi); }
@@ -454,6 +473,7 @@ svg.plan.editing { cursor: crosshair; }
 .room { stroke: none; opacity: 0.9; }
 .room.outdoor { opacity: 0.55; }
 .room.selected { stroke: var(--navy); stroke-width: 0.06; stroke-dasharray: 0.2 0.1; opacity: 1; }
+.room.selected.yard-piece { stroke-width: 0.03; opacity: 0.8; }
 .compass-mark path { fill: #c00000; }
 .compass-mark text { font-size: 0.32px; text-anchor: middle; font-weight: bold; }
 .stair line { stroke: #5a3a00; stroke-width: 0.06; }
@@ -470,6 +490,20 @@ svg.plan.editing { cursor: crosshair; }
 .wall.rail { stroke: #d4a800; stroke-width: 0.08; stroke-dasharray: 0.1 0.1; }
 .wall.lintel { stroke: #707070; stroke-width: 0.03; stroke-dasharray: 0.04 0.06; }
 .door circle { fill: #c06000; stroke: #fff; stroke-width: 0.025; }
+.door .gap { stroke: #f4f4ec; stroke-width: 0.13; stroke-linecap: butt; pointer-events: none; }
+.door.opening .gap { stroke: rgba(120, 180, 90, 0.9); stroke-dasharray: 0.05 0.05; }
+.door.opening circle { fill: #6a9a40; }
+.door.stray circle { fill: var(--bad); }
+.door.selected circle { stroke: #ff00aa; stroke-width: 0.05; }
+.editing.tool-select .door circle { cursor: ew-resize; }
+.stair.selected rect { stroke: #ff00aa; stroke-width: 0.06; }
+.editing.tool-select .stair { cursor: grab; }
+.plan:not(.tool-select) .stair, .plan:not(.tool-select) .prop, .plan:not(.tool-select) .door circle, .plan:not(.tool-select) .terminal, .plan:not(.tool-select) .duck-spot, .plan:not(.tool-select) .spawn { pointer-events: none; }
+.origin-mark line { stroke: #c00000; stroke-width: 0.03; }
+.draw-preview rect { fill: rgba(0, 0, 128, 0.12); stroke: var(--navy); stroke-width: 0.05; stroke-dasharray: 0.15 0.1; }
+.draw-preview.yard rect { fill: rgba(80, 160, 60, 0.18); stroke: #3a7a20; }
+.draw-preview.stair rect { fill: rgba(128, 96, 32, 0.25); stroke: #5a3a00; }
+.dims text { fill: #ff00aa; font-weight: bold; text-anchor: middle; dominant-baseline: middle; paint-order: stroke; stroke: #fff; stroke-width: 0.06; pointer-events: none; }
 .room-label { pointer-events: none; text-anchor: middle; }
 .room-name { font-size: 0.34px; font-weight: bold; fill: #101040; }
 .room-loc { font-size: 0.26px; fill: #404080; font-style: italic; }
@@ -520,6 +554,10 @@ textarea.json { width: 100%; height: 100%; min-height: 320px; resize: none; font
 .problems ul { margin: 0.3em 0 0; padding-left: 1.2em; }
 .problems .ok { color: var(--good); font-weight: bold; }
 .problems .bad-head { color: var(--bad); font-weight: bold; }
+.problems .warn-head { margin-top: 0.4em; color: #806000; font-weight: bold; }
+.problems ul.warnings { color: #504000; }
+.problems li.pick { cursor: pointer; text-decoration: underline dotted; }
+.problems li.pick:hover { background: #e8e8ff; }
 .problems .conflict-actions { display: flex; flex-wrap: wrap; gap: 0.5em; margin-top: 0.5em; font-weight: normal; }
 .problems .saved { margin-top: 0.4em; color: var(--good); }
 

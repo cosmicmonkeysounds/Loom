@@ -205,3 +205,72 @@ export const ROOM_TINTS = ["#c0c0c0", "#b8d8d8", "#d8d0b0", "#c8c0e0", "#b0d0b0"
 export function playerColor(seed: string): string {
   return `hsl(${fnv1a32(seed) % 360} 75% 62%)`;
 }
+
+// --- view: zoom, pan, snapping ------------------------------------------------
+
+/** The snap steps the toolbar offers, metres. */
+export const SNAP_STEPS = [0.01, 0.05, 0.1, 0.25, 0.5] as const;
+
+/** Zoom a viewBox by `factor` (< 1 = in) about a plan point, which stays put on screen. */
+export function zoomView(vb: readonly [number, number, number, number], at: Vec2, factor: number): [number, number, number, number] {
+  const w = Math.max(1, Math.min(400, vb[2] * factor));
+  const f = w / vb[2];
+  return [at[0] - (at[0] - vb[0]) * f, at[1] - (at[1] - vb[1]) * f, w, vb[3] * f];
+}
+
+/** A viewBox moved by a plan offset. */
+export function panView(vb: readonly [number, number, number, number], dx: number, dz: number): [number, number, number, number] {
+  return [vb[0] + dx, vb[1] + dz, vb[2], vb[3]];
+}
+
+/** Every room-edge coordinate on a floor (x of the north–south edges, z of the
+ *  east–west ones), leaving out `except` — what a dragged edge snaps to. */
+export function edgeCoords(house: HouseMap, floor: string, except: string | null = null): { xs: number[]; zs: number[] } {
+  const xs = new Set<number>();
+  const zs = new Set<number>();
+  for (const r of house.rooms) {
+    if (r.floor !== floor || r.id === except) continue;
+    for (let i = 0; i < r.poly.length; i++) {
+      const p = r.poly[i]!;
+      const q = r.poly[(i + 1) % r.poly.length]!;
+      if (p[0] === q[0]) xs.add(p[0]);
+      if (p[1] === q[1]) zs.add(p[1]);
+    }
+  }
+  return { xs: [...xs], zs: [...zs] };
+}
+
+/** `v` pulled onto the nearest of `targets` within `tol`, else unchanged. */
+export function snapToNearest(v: number, targets: readonly number[], tol: number): number {
+  let best = v;
+  let bestD = tol;
+  for (const t of targets) {
+    const d = Math.abs(t - v);
+    if (d <= bestD) {
+      best = t;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+/**
+ * The offset that lands a moving rect's edges on a neighbour's: per axis,
+ * the smaller pull of its low and high edge onto the nearest edge
+ * coordinate within `tol` (0 when none is near).
+ */
+export function edgePull(rect: readonly [number, number, number, number], coords: { xs: readonly number[]; zs: readonly number[] }, tol: number): Vec2 {
+  const pull = (lo: number, hi: number, targets: readonly number[]): number => {
+    const a = snapToNearest(lo, targets, tol) - lo;
+    const b = snapToNearest(hi, targets, tol) - hi;
+    if (a === 0) return b;
+    if (b === 0) return a;
+    return Math.abs(a) <= Math.abs(b) ? a : b;
+  };
+  return [pull(rect[0], rect[2], coords.xs), pull(rect[1], rect[3], coords.zs)];
+}
+
+/** "3.45 m" — a plan length for labels. */
+export function metres(v: number): string {
+  return `${Number(v.toFixed(2))} m`;
+}
