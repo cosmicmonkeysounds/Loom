@@ -8,7 +8,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { EventRuntime } from "../server/event-runtime.ts";
+import { EventRuntime, widgetResultArgs } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { guestView, modView, primeView } from "../server/views.ts";
@@ -247,6 +247,21 @@ describe("/api/guest/widget", () => {
     // Still unanswered after the refusals.
     expect((await post(rt, "/api/guest/widget", { token: a.token, seq, result: { passed: false } })).status).toBe(200);
     expect(rt.liveSim!.log.all().some((e) => e.type === "respond" && e.to === a.id && e.text === "Welcome, machine.")).toBe(true);
+  });
+});
+
+describe("widgetResultArgs — free-text fields", () => {
+  it("lets a 📝 fact card's answer name anyone, and nothing else", () => {
+    const rt = freshRuntime();
+    rt.openDoors();
+    const sim = rt.liveSim!;
+    // "The Gatekeeper" is an entity: a fine (wrong) answer on a fact card…
+    expect(widgetResultArgs({ question: "H2", answer: "The Gatekeeper", certain: true }, sim, "fact")).toEqual({ question: "H2", answer: "The Gatekeeper", certain: true });
+    // …but still refused in any other field or any other kind.
+    expect(widgetResultArgs({ question: "The Gatekeeper", answer: "x" }, sim, "fact")).toBeNull();
+    expect(widgetResultArgs({ answer: "The Gatekeeper" }, sim, "captcha")).toBeNull();
+    expect(widgetResultArgs({ answer: "The Gatekeeper" }, sim, "constructor")).toBeNull();
+    expect(widgetResultArgs({ answer: "x".repeat(201) }, sim, "fact")).toBeNull();
   });
 });
 

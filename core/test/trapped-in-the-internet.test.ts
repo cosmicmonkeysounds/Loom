@@ -15,6 +15,7 @@ import type { SimEvent } from "../src/runtime/sim/index.ts";
 import { scenarioFiles, scenarioSource } from "../examples/load.ts";
 import { parse } from "../src/parser/index.ts";
 import { guestView } from "../server/views.ts";
+import { composeGuestMessages } from "../server/chat.ts";
 import { identityDefs, guestPickable, performerPickable } from "../server/identity.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
@@ -162,7 +163,7 @@ describe("Trapped in the Internet — compile", () => {
     const by = (w: string) => ints.filter((i) => i.who === w).map((i) => i.id);
     expect(by("guest")).toEqual(["go to the bathroom", "back from the bathroom", "plant_the_virus"]);
     const perf = by("performer");
-    for (const p of ["accurate_q1", "accurate_q2", "accurate_q3", "confident_q1", "confident_q2", "confident_q3", "send to the internet", "mark as reinstalled"]) expect(perf).toContain(p);
+    for (const p of ["accurate_q1", "accurate_q2", "accurate_q3", "confident_q1", "confident_q2", "confident_q3", "fact_accurate", "fact_lie", "send to the internet", "mark as reinstalled"]) expect(perf).toContain(p);
     expect(perf).not.toContain("accurate_truth");
     expect(perf).not.toContain("confident_lie");
     const ev = namedEvents(m);
@@ -1164,12 +1165,17 @@ describe("Trapped in the Internet — the server-room alarm", () => {
 });
 
 /** Judge all eight questions accurately (or one lie, or skip F2), through the bob. */
-function toBobbing(sim: Sim, opts: { lie?: boolean; skipF2?: boolean } = {}) {
+function toBobbing(sim: Sim, opts: { lie?: boolean; skipF2?: boolean; dmLie?: boolean } = {}) {
   toTruth1(sim);
   fire(sim, "accurate_q1", "g1", null, "Clippy");
   fire(sim, "accurate_q2", "g2", null, "Clippy");
   fire(sim, opts.lie ? "confident_q3" : "accurate_q3", "g3", null, "Clippy");
   toHunt2(sim);
+  if (opts.dmLie) {
+    // A 📝 filing in dm:Trabolta during hunt 2, judged a confident lie.
+    fire(sim, "fact answered", "g4", { question: "H5", answer: "Clippy", certain: true, card: 1 });
+    fire(sim, "fact_lie", "g4", null, "Clippy");
+  }
   fireAll(sim, "five_minute_warning", "summons_closed", "truth_pong");
   for (const [g, q] of [["g4", "accurate_q1"], ["g5", "accurate_q2"], ["g6", "accurate_q3"]] as const) {
     fire(sim, "made_the_cup", g, null, "Clippy");
@@ -1234,6 +1240,16 @@ describe("Trapped in the Internet — the verdict", () => {
     expect(beats(pl)).toContain("Pickup Line");
     expect(sim.isCaptured("g5")).toBe(false);
     expect(texts(pl).filter((t) => /\bnull\b/u.test(t))).toEqual([]);
+  });
+
+  it("one DM bluff (a 📝 filing judged a confident lie) fails the verdict for good", { timeout: SLOW }, () => {
+    const sim = boot();
+    toBobbing(sim, { dmLie: true });
+    expect(v(sim, "Kernel.q5")).toBe("lie"); // g5's accurate Q2 in round 2 never clears it
+    expect(v(sim, "Kernel.lies_accepted")).toBe(1);
+    fire(sim, "read_truth_txt");
+    expect(v(sim, "Night.phase")).toBe("grok_prom");
+    expect(v(sim, "Night.ended")).not.toBe(true);
   });
 
   it("Trabolta accepts the line himself in Grok Prom", { timeout: SLOW }, () => {
@@ -1467,6 +1483,94 @@ async function call(rt: EventRuntime, method: string, p: string, body: unknown, 
   }
   return { status: res.statusCode, json, res };
 }
+
+describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05)", () => {
+  const file = (sim: Sim, g: string, question: string, answer: string, certain = true) =>
+    fire(sim, "fact answered", g, { question, answer, certain, card: 1 });
+  const facts = (evs: SimEvent[]) => widgets(evs).filter((w) => w.widget === "fact");
+  const hosts = (sim: Sim, evs: SimEvent[]) => composeGuestMessages(sim, evs).filter((m) => m.channel === "room:hosts").map((m) => m.text);
+  const trabolta = (evs: SimEvent[], g: string) => saidBy(evs, "Trabolta").filter((e) => e.audience.includes(g)).map((e) => e.text);
+
+  it("deals the card in dm:Trabolta when each round's questions open, and on clearance after", { timeout: SLOW }, () => {
+    const sim = boot();
+    const early = fireAll(sim, "call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta");
+    expect(facts(early)).toEqual([]); // no questions yet
+    const hunt = fire(sim, "start_the_hunt");
+    const dealt = facts(hunt);
+    expect(dealt.map((w) => w.audience[0]).sort()).toEqual(PROGRAMS.map(([id]) => id).sort());
+    expect(dealt[0]!.params["thread"]).toBe("Trabolta");
+    expect(dealt[0]!.params["questions"]!.split("|").map((q) => q.trim().split(":")[0])).toEqual(["H1", "H2", "H3"]);
+    const card = composeGuestMessages(sim, hunt).find((m) => m.kind === "widget" && m.widget?.kind === "fact");
+    expect(card?.channel).toBe("dm:Trabolta");
+    expect(trabolta(hunt, "g1").some((t) => t.includes("file it with me"))).toBe(true);
+    // A late program gets the current round's card once an Antivirus clears them.
+    const late = upload(sim, "g9", "Netscape Navigator");
+    expect(facts(late).map((w) => w.audience)).toEqual([["g9"]]);
+    // Round 2 deals a fresh card with H4–H6; round 3 with F1–F2.
+    fireAll(sim, "hunt_time_up", "first_moment_of_truth", "second_hunt_preview");
+    const r2 = facts(fire(sim, "start_the_second_hunt"));
+    expect(r2.length).toBe(PROGRAMS.length + 1);
+    expect(r2[0]!.params["questions"]).toMatch(/^H4: .*\| H5: .*\| H6: /u);
+  });
+
+  it("a filing lands in # hosts; 📝 confident lie is sticky, +50, and reads exactly like 📝 accurate", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    toHunt2(sim);
+    const s0 = v(sim, "g4.score");
+    const filed = file(sim, "g4", "H5", "Clippy"); // an entity's name is a fine lie
+    expect(hosts(sim, filed)).toEqual(["📝 MS Paint filed H5 (round 2 Q2): Clippy"]);
+    expect(facts(filed).map((w) => w.audience)).toEqual([["g4"]]); // re-dealt
+    expect(v(sim, "g4.last_fact_q")).toBe("H5");
+    expect(diags(filed)).toEqual([]);
+    // Judging is open to the hosts outside any Moment of Truth.
+    expect(v(sim, "Night.judging")).not.toBe(true);
+    const lie = fire(sim, "fact_lie", "g4", null, "Clippy");
+    expect(v(sim, "Kernel.q5")).toBe("lie");
+    expect(v(sim, "Kernel.lies_accepted")).toBe(1);
+    expect(v(sim, "g4.score")).toBe(s0 + 50);
+    expect(v(sim, "g4.truths_accepted")).toBe(1);
+    // The same words for an accurate filing (another program, another question).
+    file(sim, "g5", "H4", "Extension 0");
+    const ok = fire(sim, "fact_accurate", "g5", null, "Clippy");
+    expect(v(sim, "Kernel.q4")).toBe("accurate");
+    const norm = (xs: string[], name: string, q: string) => xs.map((t) => t.replace(name, "X").replace(q, "Q"));
+    expect(norm(trabolta(lie, "g4"), "MS Paint", "round 2 Q2")).toEqual(norm(trabolta(ok, "g5"), "Winamp", "round 2 Q1"));
+    expect(norm(hosts(sim, lie), "MS Paint", "H5")).toEqual(norm(hosts(sim, ok), "Winamp", "H4"));
+    // An accurate filing never clears a lie on the same question.
+    file(sim, "g6", "H5", "Smooth Operator");
+    fire(sim, "fact_accurate", "g6", null, "Clippy");
+    expect(v(sim, "Kernel.q5")).toBe("lie");
+    // A second press finds nothing to judge.
+    const again = fire(sim, "fact_lie", "g4", null, "Clippy");
+    expect(hosts(sim, again)).toEqual(["📝 MS Paint has no unjudged filing."]);
+    expect(v(sim, "Kernel.lies_accepted")).toBe(1);
+    // Trabolta's thread never carries the answer or the verdict.
+    for (const t of [...trabolta(filed, "g4"), ...trabolta(lie, "g4")]) {
+      expect(t).not.toContain("Clippy");
+      expect(t).not.toMatch(/\blie\b|accurate/u);
+    }
+  });
+
+  it("refuses an uncertain or unknown filing, a second one while one is unjudged, and a repeat question", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    const unsure = file(sim, "g1", "H2", "Mister Pickles", false);
+    expect(hosts(sim, unsure)).toEqual([]);
+    expect(trabolta(unsure, "g1").some((t) => t.includes("certain of"))).toBe(true);
+    expect(facts(unsure).length).toBe(1); // re-dealt so they can try again
+    expect(hosts(sim, file(sim, "g1", "Q9", "x"))).toEqual([]);
+    file(sim, "g1", "H2", "Mister Pickles");
+    const busy = file(sim, "g1", "H3", "9 am");
+    expect(hosts(sim, busy)).toEqual([]);
+    expect(trabolta(busy, "g1").some((t) => t.includes("still being reviewed"))).toBe(true);
+    fire(sim, "fact_accurate", "g1", null, "Clippy");
+    const repeat = file(sim, "g1", "H2", "Pickles");
+    expect(hosts(sim, repeat)).toEqual([]);
+    expect(trabolta(repeat, "g1").some((t) => t.includes("already filed"))).toBe(true);
+    expect(v(sim, "g1.truths_accepted")).toBe(1);
+  });
+});
 
 describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
   it("agent requests and the facts document never carry Kernel.* (no combo, no verdicts)", { timeout: SLOW }, async () => {

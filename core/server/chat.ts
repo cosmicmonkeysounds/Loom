@@ -263,6 +263,18 @@ function factionsInScope(scope: string): string[] {
   return [...scope.matchAll(/faction\(([^)]+)\)/g)].map((m) => m[1]!.trim());
 }
 
+/** Authored channels a broadcast scope names (`channel(hosts)` → `room:hosts`),
+ *  matched by name folded (case, `#`/`_`/`-`, spaces); unknown names drop. */
+function channelsInScope(sim: Sim, scope: string): string[] {
+  const fold = (s: string) => s.replace(/^room:/u, "").toLowerCase().replace(/[#_-]/g, " ").replace(/\s+/g, " ").trim();
+  const out: string[] = [];
+  for (const m of scope.matchAll(/channel\(([^)]+)\)/g)) {
+    const want = fold(m[1]!);
+    for (const id of sim.model.channels.keys()) if (fold(id) === want && !out.includes(id)) out.push(id);
+  }
+  return out;
+}
+
 /** A scope addressed to the whole room (vs. a participant / faction slice). */
 function globalScope(scope: string): boolean {
   const s = scope.trim().toLowerCase();
@@ -332,9 +344,14 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
           if (globalScope(e.scope)) out.push({ ...storyChannel(sim, e.setting), ...base, audience: "all" });
           break; // a narrowed scope that resolved to nobody: no card
         }
+        // `with thread: <Character>` pins the card to that character's DM
+        // thread, whoever spoke last (a 📝 fact card always lives in
+        // `dm:Trabolta`, even when it is re-dealt with no line before it).
+        const thread = e.params["thread"];
+        const pinned = thread !== undefined && sim.model.characters.has(thread) ? thread : undefined;
         const byChannel = new Map<string, { head: ChannelHead; to: string[] }>();
         for (const p of e.audience) {
-          const speaker = lastSpeaker.get(p);
+          const speaker = pinned ?? lastSpeaker.get(p);
           const head = speaker !== undefined ? dmChannel(speaker) : storyChannel(sim, e.setting);
           const slot = byChannel.get(head.channel) ?? { head, to: [] };
           slot.to.push(p);
@@ -392,6 +409,17 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
         const flag = alert ? { alert: true } : {};
         const factions = factionsInScope(e.scope);
         const base: Audience = globalScope(e.scope) ? "all" : [...e.audience];
+        const rooms = channelsInScope(sim, e.scope);
+        if (rooms.length > 0) {
+          // `broadcast "…" to channel(hosts)`: a notice posted straight into
+          // authored rooms (a staff back-room), to whoever may read them —
+          // never the lobby, never mirrored into routed feeds.
+          for (const id of rooms) {
+            const head = sim.channelHead(id);
+            out.push({ channel: head.channel, channelKind: head.channelKind as ChannelKind, title: head.title, from: "", kind: "signal", text, ts, audience: sim.channelAudience(id), parentSeq: null, ...flag });
+          }
+          break;
+        }
         if (factions.length > 0) {
           // Mirror into each targeted faction channel (members only).
           for (const f of factions) {

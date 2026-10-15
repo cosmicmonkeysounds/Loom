@@ -95,13 +95,22 @@ export interface Impersonation {
  * performer (or an admin) sees a `dm:<character>` thread, and nobody but a
  * mod sees a `pm:`. Knowledge is a currency; the booth can't skim it.
  */
+/** Free-text answer fields, per widget kind, that may name anyone: a 📝 fact
+ *  card's `answer` is whatever the guest typed ("Clippy" is a fine lie), and
+ *  the story only ever quotes it back, never aims a rule with it. */
+export const WIDGET_FREE_TEXT: Readonly<Record<string, ReadonlySet<string>>> = {
+  fact: new Set(["answer"]),
+};
+
 /**
  * Sanitise a widget's client-supplied result into event arguments: a flat
  * bag of short scalars under plain keys. A string that happens to name a
  * participant or an entity is refused — `Sim.signal` would bind it as that
- * id, and a phone must not be able to aim a story rule at someone else.
+ * id, and a phone must not be able to aim a story rule at someone else —
+ * except in the kind's free-text fields (`WIDGET_FREE_TEXT`).
  */
-export function widgetResultArgs(raw: unknown, sim: Sim): Record<string, string | number | boolean> | null {
+export function widgetResultArgs(raw: unknown, sim: Sim, kind = ""): Record<string, string | number | boolean> | null {
+  const free = Object.hasOwn(WIDGET_FREE_TEXT, kind) ? WIDGET_FREE_TEXT[kind] : undefined;
   if (raw === undefined || raw === null) return {};
   if (typeof raw !== "object" || Array.isArray(raw)) return null;
   const out: Record<string, string | number | boolean> = {};
@@ -110,7 +119,8 @@ export function widgetResultArgs(raw: unknown, sim: Sim): Record<string, string 
     if (++n > 16 || !/^[A-Za-z_][A-Za-z0-9_]{0,31}$/u.test(k)) return null;
     if (typeof v === "boolean" || (typeof v === "number" && Number.isFinite(v))) out[k] = v;
     else if (typeof v === "string") {
-      if (v.length > 200 || sim.persons.has(v) || sim.model.entityKind.has(v)) return null;
+      if (v.length > 200) return null;
+      if (free?.has(k) !== true && (sim.persons.has(v) || sim.model.entityKind.has(v))) return null;
       out[k] = v;
     } else return null;
   }
@@ -2160,7 +2170,7 @@ export class EventRuntime {
           sendJson(res, 409, { error: "already answered" });
           return true;
         }
-        const args = widgetResultArgs(body["result"], this.sim!);
+        const args = widgetResultArgs(body["result"], this.sim!, m.widget.kind);
         if (args === null) {
           sendJson(res, 400, { error: "bad widget result" });
           return true;

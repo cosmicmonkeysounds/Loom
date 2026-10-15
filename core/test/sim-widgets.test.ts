@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { statementToDirective } from "../src/parser/statements.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
+import { composeGuestMessages } from "../server/chat.ts";
 
 const SOURCE = `# Widgets
 start: Boot
@@ -96,5 +97,62 @@ describe("show — the sim", () => {
     const passed = sim.signal("captcha answered", "g1", { passed: true });
     expect(passed.some((e) => e.type === "respond" && e.text === "Humans are not permitted.")).toBe(true);
     expect((sim.world.get("g1.humanity") as { value: number }).value).toBe(10);
+  });
+});
+
+describe("show — routing knobs (chat.ts)", () => {
+  const SRC = `# Knobs
+start: Boot
+
+LOCATION Lobby
+  label: The Lobby
+
+GROUP Crew
+  ethos: staff
+
+CHANNEL backstage
+  kind: faction
+  faction: Crew
+  label: # backstage
+
+ROLE Program
+  when someone joins:
+    -> Deal
+
+CHARACTER The Oracle
+  listed: true
+
+CHARACTER The Clerk
+  listed: true
+
+== Boot
+  setting: Lobby
+Nothing yet.
+
+== Deal
+  setting: Lobby
+The Clerk: Take a ticket.
+show fact "File a fact" to program with thread: The Oracle, questions: "H1: One? | H2: Two?"
+broadcast "{program.name} took a card" to channel(backstage)
+`;
+
+  it("`with thread: <Character>` docks a card in that character's DM, whoever spoke last", () => {
+    const sim = Sim.fromSources(SRC);
+    const msgs = composeGuestMessages(sim, sim.createPerson("g1", "Minesweeper"));
+    const card = msgs.find((m) => m.kind === "widget");
+    expect(card?.channel).toBe("dm:The Oracle");
+    expect(card?.audience).toEqual(["g1"]);
+    expect(card?.widget?.params).toEqual({ thread: "The Oracle", questions: "H1: One? | H2: Two?" });
+    expect(msgs.find((m) => m.kind === "line")?.channel).toBe("dm:The Clerk");
+  });
+
+  it("`broadcast … to channel(<name>)` posts only into that authored room, to its readers", () => {
+    const sim = Sim.fromSources(SRC);
+    const evs = sim.createPerson("g1", "Minesweeper");
+    const posts = composeGuestMessages(sim, evs).filter((m) => m.kind === "signal");
+    expect(posts.map((m) => [m.channel, m.text, m.audience])).toEqual([["room:backstage", "Minesweeper took a card", []]]);
+    sim.join("g1", "Crew");
+    const again = composeGuestMessages(sim, sim.fireBeat("Deal", "g1")).filter((m) => m.kind === "signal");
+    expect(again.map((m) => m.audience)).toEqual([["g1"]]);
   });
 });

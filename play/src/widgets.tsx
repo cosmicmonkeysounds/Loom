@@ -1,5 +1,5 @@
 //! Widgets — the cards a `show <kind> …` statement puts in a conversation:
-//! a CAPTCHA to solve, a picture, a poll. The story names a kind and some
+//! a CAPTCHA to solve, a picture, a poll, a 📝 fact to file. The story names a kind and some
 //! text/params; this registry maps the kind to a React card. A widget that
 //! wants an answer calls `onAnswer(result)` once, and the story hears it as
 //! the named event `<kind> answered` with the result bound as arguments.
@@ -277,6 +277,95 @@ export function PassCard({ card, viewer }: WidgetProps) {
   );
 }
 
+// --- fact -------------------------------------------------------------------
+
+/** Longest answer a 📝 fact card files (the server refuses longer). */
+export const FACT_MAX = 200;
+
+/** `questions: "H1: Round 1 Q1. … | H2: …"` → `[{id, label}]` (id before the
+ *  first colon; an entry with no colon is its own id and label). */
+export function factQuestions(param: string | undefined): Array<{ id: string; label: string }> {
+  return (param ?? "")
+    .split("|")
+    .map((q) => q.trim())
+    .filter(Boolean)
+    .map((q) => {
+      const i = q.indexOf(":");
+      return i > 0 ? { id: q.slice(0, i).trim(), label: q.slice(i + 1).trim() } : { id: q, label: q };
+    });
+}
+
+/** The answer a fact card files, or null while it isn't fileable: a question
+ *  picked, a non-empty answer within `FACT_MAX`, and "I'm certain" ticked. */
+export function factResult(question: string, answer: string, certain: boolean): WidgetResult | null {
+  const a = answer.trim();
+  if (question === "" || a === "" || a.length > FACT_MAX || !certain) return null;
+  return { question, answer: a, certain: true };
+}
+
+/**
+ * `show fact "📝 File a fact" to program with thread: Trabolta, questions:
+ * "H1: … | H2: …"` — file an answer to one of tonight's questions with a
+ * character. Certain answers only; the story judges it later (a human),
+ * and its reply is the same whether the answer was right or a lie. The
+ * answer is `{question, answer, certain: true}` → `fact answered`.
+ */
+function FactCard({ card, onAnswer, answered }: WidgetProps) {
+  const questions = factQuestions(card.params["questions"]);
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [certain, setCertain] = useState(false);
+  const done = answered !== null && answered !== undefined;
+  const result = factResult(question, answer, certain);
+  const filedFor = done && typeof answered["question"] === "string" ? questions.find((q) => q.id === answered["question"])?.label ?? String(answered["question"]) : null;
+  return (
+    <div className={`widget fact ${done ? "done" : ""}`} role="group" aria-label={card.text || "File a fact"}>
+      <div className="widget-head">
+        <span className="widget-glyph" aria-hidden>
+          📝
+        </span>
+        <div>
+          <div className="widget-title">{card.text || "File a fact"}</div>
+          <div className="widget-sub">Pick a question, type the answer. Certain answers only: one filing per question.</div>
+        </div>
+      </div>
+      {!done && onAnswer && (
+        <>
+          <div className="poll-options fact-questions">
+            {questions.map((q) => (
+              <button key={q.id} type="button" className={`choice ${question === q.id ? "primary" : "ghost"}`} aria-pressed={question === q.id} onClick={() => setQuestion(q.id)}>
+                {q.label}
+              </button>
+            ))}
+          </div>
+          <textarea
+            className="fact-answer"
+            rows={2}
+            maxLength={FACT_MAX}
+            placeholder="Your answer"
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+          />
+          <label className="fact-certain">
+            <input type="checkbox" checked={certain} onChange={(e) => setCertain(e.target.checked)} /> I'm certain
+          </label>
+        </>
+      )}
+      <div className="widget-foot">
+        {done ? (
+          <span className="widget-state">{filedFor ? `✔ filed: ${filedFor}` : "✔ filed"}</span>
+        ) : onAnswer ? (
+          <button type="button" className="widget-go" disabled={result === null} onClick={() => result && onAnswer(result)}>
+            File it
+          </button>
+        ) : (
+          <span className="widget-state">shown to a guest</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // --- registry ---------------------------------------------------------------
 
 export const WIDGETS: Record<string, WidgetDef> = {
@@ -285,6 +374,7 @@ export const WIDGETS: Record<string, WidgetDef> = {
   poll: { label: "📊 poll", answerable: true, render: (p) => <Poll {...p} /> },
   tutorial: { label: "📘 orientation", answerable: true, overlay: true, render: (p) => <TutorialCard {...p} /> },
   pass: { label: "🎟️ your pass", answerable: false, render: (p) => <PassCard {...p} /> },
+  fact: { label: "📝 file a fact", answerable: true, render: (p) => <FactCard {...p} /> },
 };
 
 /** A one-line description of a card, for previews and performer feeds. */

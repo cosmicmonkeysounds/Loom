@@ -117,7 +117,7 @@ const allHooks: Hook[] = [
 ];
 const listened = new Set(allHooks.filter((h) => h.timer === null && h.condition === null && h.verb !== "").map((h) => foldName(h.verb)));
 const fired = new Map<string, string>(); // folded event → where
-const SHOW_KINDS = new Set(["captcha", "image", "poll", "tutorial", "pass"]);
+const SHOW_KINDS = new Set(["captcha", "image", "poll", "tutorial", "pass", "fact"]);
 const VERB_PROSE = /^(set|fire|cue|sound|sfx|move|add|remove|reveal|unlock|broadcast|show|reply|start quest|update quest|complete quest|finish quest|fail quest|capture|release|do|wait|spawn|run|cancel)\s/;
 
 function checkDirective(raw: string, at: string, ctx: { param: string | null }): void {
