@@ -39,8 +39,10 @@ echo "$CHECK_OUT" | grep -q "^PLACEHOLDER" \
   && bad "event id / mod passcode not filled in — create ${CFG%.yaml}.local.yaml with: server: { event: <id>, mod_passcode: \"<code>\" }" \
   || ok "event id + passcode filled in (outside git)"
 MYIPS=$(ifconfig | awk '/inet /{print $2}')
-echo "$MYIPS" | grep -qx "$HOST" && ok "this Mac owns the broker address $HOST" || bad "mqtt.host $HOST is not this Mac's IP ($(echo $MYIPS | tr '\n' ' ')) — fix the DHCP reservation or the YAML + firmware"
-mosquitto_pub -h "$HOST" -t k05/ping -m x 2>/dev/null && ok "Mosquitto answers on $HOST (LAN listener)" || bad "Mosquitto not reachable on $HOST:1883 (add 'listener 1883' to mosquitto.conf)"
+BROKER=$(awk -F'"' '/^#define SR_BROKER_IP/{print $2}' "$ROOT/hardware/server-room/server_room/config.h")
+echo "$MYIPS" | grep -qx "$BROKER" && ok "this Mac owns the props' broker address $BROKER" || bad "SR_BROKER_IP $BROKER is not this Mac's IP ($(echo $MYIPS | tr '\n' ' ')) — fix the DHCP reservation or config.h"
+mosquitto_pub -h "$HOST" -t k05/ping -m x 2>/dev/null && ok "Mosquitto answers on $HOST (stagehand's listener)" || bad "Mosquitto not reachable on $HOST:1883"
+mosquitto_pub -h "$BROKER" -p 1883 -t k05/ping -m x 2>/dev/null && bad "anonymous publish on $BROKER:1883 accepted — bind it to 127.0.0.1 (scripts/house-mac/alexa.md → Lock down the broker)" || ok "LAN anonymous publish refused"
 ( cd "$SH" && uv run stagehand launchd status ) | sed 's/^/    /'
 ( cd "$SH" && uv run stagehand launchd status ) | grep -q "^show .*running" && ok "show job running" || bad "show job not running"
 ( cd "$SH" && uv run stagehand launchd status ) | grep -q "^agents .*running" && ok "agents job running" || bad "agents job not running"

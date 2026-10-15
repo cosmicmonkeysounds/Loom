@@ -347,7 +347,7 @@ void maintainMqtt(uint32_t now) {
   }
   if (WiFi.status() != WL_CONNECTED || now - lastMqttTry < 2000) return;
   lastMqttTry = now;
-  if (!mqtt.connect(SR_CLIENT_ID, T_HEALTH, 1, true, "lost")) {
+  if (!mqtt.connect(SR_CLIENT_ID, SR_MQTT_USER, SR_MQTT_PASS, T_HEALTH, 1, true, "lost")) {
     Serial.printf("mqtt: connect failed (%d)\n", mqtt.state());
     return;
   }

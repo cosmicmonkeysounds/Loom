@@ -27,6 +27,8 @@ LOCATION Jail
   sealed: true
 LOCATION Login
   cutscene: true
+LOCATION Vault
+  checkin: false
 
 ROLE Guest
   uploaded: bool = false
@@ -120,6 +122,7 @@ describe("checkinTarget / checkinRefusal", () => {
     expect(checkinRefusal(sim, "g1", "The Cache")).toBeNull();
     expect(checkinRefusal(sim, "g1", "Jail")?.status).toBe(403);
     expect(checkinRefusal(sim, "g1", "Login")?.status).toBe(403);
+    expect(checkinRefusal(sim, "g1", "Vault")?.error).toMatch(/check-in point/); // `checkin: false`
     expect(checkinRefusal(sim, "g1", "Attic")?.error).toMatch(/isn't open yet/);
     sim.reveal("Attic", "g1");
     expect(checkinRefusal(sim, "g1", "Attic")).toBeNull();
@@ -210,12 +213,15 @@ describe("Trapped in the Internet's room signs", () => {
     for (const p of points) expect(checkinTarget(sim, p.toLowerCase().replace(/ /gu, "-")), p).toBe(p);
     // The Internet is the prison; the Mud Room is the login cutscene.
     expect(checkinRefusal(sim, "nobody", "The Internet")).not.toBeNull();
+    // The locked Server Room prints no sign (`checkin: false`) and refuses a typed slug.
+    expect(checkinTarget(sim, "the-server-room")).toBe("The Server Room");
     sim.createPerson("g1", "Ada");
     sim.setVar("g1.uploaded", "true");
     sim.arrive("g1", "The Desktop");
     expect(checkinRefusal(sim, "g1", "The Desktop")?.error).toMatch(/Not yet/); // waiting for the Antivirus
     sim.setVar("g1.cleared", "true");
     expect(checkinRefusal(sim, "g1", "The Desktop")).toBeNull();
+    expect(checkinRefusal(sim, "g1", "The Server Room")?.error).toMatch(/check-in point/);
     const signals = sim.signal("checked_in", "g1", { at: checkinTarget(sim, "the-desktop")! });
     expect(sim.locationOf("g1")).toBe("The Desktop");
     expect(signals.some((e) => e.type === "respond" && e.text.startsWith("📍"))).toBe(true);

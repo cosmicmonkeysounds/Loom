@@ -3,12 +3,14 @@
 #pragma once
 
 // ── Network: static addresses, no DHCP dependence (HW-NET-08) ──────────────
-// The broker is the house Mac (Mosquitto). It MUST equal `show.mqtt.host` in
-// stagehand/trapped.house.yaml; stagehand's test_serverroom_firmware.py
-// checks that. The box's own address sits outside the GL-MT3000's DHCP pool
-// (.100–.249 by default).
+// The broker is the house Mac (Mosquitto) at its static IP, on the
+// password-only LAN listener (:1884, user/password in secrets.h — see
+// scripts/house-mac/alexa.md → "Lock down the broker"); the anonymous
+// listener is bound to 127.0.0.1 for stagehand + Zigbee2MQTT on that Mac.
+// scripts/accept/K-05.sh checks the Mac owns this address. The box's own
+// address sits outside the GL-MT3000's DHCP pool (.100–.249 by default).
 #define SR_BROKER_IP "192.168.8.10"
-#define SR_BROKER_PORT 1883
+#define SR_BROKER_PORT 1884
 #define SR_IP "192.168.8.21"
 #define SR_GATEWAY "192.168.8.1"
 #define SR_SUBNET "255.255.255.0"

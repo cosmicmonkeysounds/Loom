@@ -67,7 +67,9 @@ The code is the `alexa` module of stagehand
    `mosquitto_passwd -c /opt/homebrew/etc/mosquitto/passwd props`, then
    `brew services restart mosquitto`, and point each WLED controller
    (Config → Sync Interfaces → MQTT) at the Mac's LAN address, port 1884,
-   user `props`. Check: from another machine,
+   user `props`. The server-room ESP32 dials the same listener (its
+   `secrets.h`: `SR_MQTT_USER` / `SR_MQTT_PASS`); stagehand's `show` and
+   `alexa` sections stay on `127.0.0.1:1883`. Check: from another machine,
    `mosquitto_pub -h <mac> -p 1883 -t show/announce -m hi` must be refused.
    (A separate guest SSID for the props works too.)
 6. **`stagehand check` probes the device.** It exits non-zero when

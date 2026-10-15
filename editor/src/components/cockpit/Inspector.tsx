@@ -9,7 +9,7 @@
 //! one button to *be* them. Under a non-Operator lens the editors are
 //! closed: you are a participant right now, not the director.
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { CockpitTab, PlayerRole, RunBackend, SelectionKind, useCockpit, type CockpitMessage } from '@/store/cockpit'
 import { useGraph } from '@/store/graph'
 import { confirmAction, notify, promptText } from '@/store/dialog'
@@ -17,6 +17,7 @@ import { FactionPill } from './ui'
 import { entityVars, GUEST_STANDARD_FIELDS } from './world'
 import { VarTable } from './VarTable'
 import { usePlayAs } from './play-as'
+import { qrSvg } from '@/lib/print-sheet'
 
 /** How many recent messages "Their feed" shows. */
 const FEED_LIMIT = 60
@@ -58,7 +59,7 @@ function RePair({ id, name }: { id: string; name: string }) {
   return (
     <div className="mt-2 w-full rounded border border-amber-900/70 bg-amber-950/20 p-2 text-center" data-testid={`inspector-repair-qr-${id}`}>
       <p className="mb-1 text-[11px] text-amber-200">Have {name} scan this with their phone's camera.</p>
-      <img src={`/api/qr?text=${encodeURIComponent(link)}`} alt={`Re-pair QR for ${name}`} className="mx-auto block h-40 w-40 rounded bg-white p-1" />
+      <LocalQr text={link} label={`Re-pair QR for ${name}`} />
       <p className="mt-1 text-[10px] text-zinc-500">It signs that phone in as {name} — keep it off the big screen.</p>
       <div className="mt-1 flex justify-center gap-2">
         <button
@@ -809,5 +810,30 @@ export function CockpitInspector() {
         <LocationInspector key={selection.id} id={selection.id} />
       )}
     </div>
+  )
+}
+
+/** A QR drawn in the browser (`qrcode` → SVG) — the re-pair link carries a
+ *  sign-in token, so it never goes to the server's `/api/qr` in a GET (and
+ *  its access log). */
+function LocalQr({ text, label }: { text: string; label: string }) {
+  const [drawn, setDrawn] = useState<{ text: string; svg: string } | null>(null)
+  useEffect(() => {
+    let live = true
+    void qrSvg(text).then((svg) => {
+      if (live) setDrawn({ text, svg })
+    })
+    return () => {
+      live = false
+    }
+  }, [text])
+  const svg = drawn !== null && drawn.text === text ? drawn.svg : null
+  return (
+    <div
+      role="img"
+      aria-label={label}
+      className="mx-auto block h-40 w-40 rounded bg-white p-1 [&>svg]:h-full [&>svg]:w-full"
+      dangerouslySetInnerHTML={{ __html: svg ?? '' }}
+    />
   )
 }

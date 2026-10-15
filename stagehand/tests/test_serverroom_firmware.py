@@ -4,7 +4,8 @@
 Nothing checks this at runtime: a topic typo in either file is a door that
 never alarms or a patch bay nobody hears. So, from the source:
 
-1. the firmware's hard-coded broker is the YAML's `show.mqtt.host`;
+1. the firmware dials the house Mac's static IP on the password-only LAN
+   listener (stagehand itself talks to the same Mosquitto on loopback);
 2. every `show/serverroom/*` topic the YAML publishes is one the firmware
    handles, with the payload words it matches (`locked`/`unlocked`, `on`/`off`,
    `seconds`);
@@ -16,6 +17,7 @@ never alarms or a patch bay nobody hears. So, from the source:
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import re
 from pathlib import Path
@@ -62,9 +64,18 @@ def _fire(topic: str, payload: dict, deb: Debouncer, now: float, retained: bool 
     return [c.fields["name"] for c in evaluate_sensors(rules, topic, payload, deb, now=now, retained=retained)]
 
 
-def test_the_firmware_dials_the_yamls_broker():
+def test_the_firmware_dials_the_house_macs_password_listener():
     cfg = _defines("config.h")
-    assert cfg["SR_BROKER_IP"] == str(_raw()["show"]["mqtt"]["host"])
+    broker = ipaddress.ip_address(cfg["SR_BROKER_IP"])
+    assert broker.version == 4 and broker.is_private and not broker.is_loopback
+    # The anonymous listener is loopback-only (scripts/house-mac/alexa.md →
+    # "Lock down the broker"), so the box uses :1884 with the props login…
+    port = re.search(r"^#define\s+SR_BROKER_PORT\s+(\d+)", (FIRMWARE / "config.h").read_text(encoding="utf-8"), re.M)
+    assert port and port.group(1) == "1884"
+    assert "SR_MQTT_USER, SR_MQTT_PASS" in _sketch()
+    assert {"SR_MQTT_USER", "SR_MQTT_PASS"} <= _defines("secrets.example.h").keys()
+    # …while stagehand, on that same Mac, uses the anonymous loopback one.
+    assert ipaddress.ip_address(str(_raw()["show"]["mqtt"]["host"])).is_loopback
     # Its own address is static too, and on the broker's /24.
     assert cfg["SR_IP"].rsplit(".", 1)[0] == cfg["SR_BROKER_IP"].rsplit(".", 1)[0]
     assert cfg["SR_IP"] != cfg["SR_BROKER_IP"]
@@ -102,7 +113,7 @@ def test_every_sensor_topic_for_the_box_is_one_it_publishes():
     # wrong combo would fire patch_rejected).
     assert re.search(r"publish\(T_DOOR, \w+, true\)", sketch)
     assert re.search(r"publish\(T_PATCH_STATE, \w+, false\)", sketch)
-    assert re.search(r'mqtt\.connect\(SR_CLIENT_ID, T_HEALTH, 1, true, "lost"\)', sketch)
+    assert re.search(r'mqtt\.connect\(SR_CLIENT_ID, SR_MQTT_USER, SR_MQTT_PASS, T_HEALTH, 1, true, "lost"\)', sketch)
     assert re.search(r'publish\(T_HEALTH, "online", true\)', sketch)
 
 

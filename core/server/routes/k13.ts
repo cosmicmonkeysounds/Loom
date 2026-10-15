@@ -11,7 +11,7 @@
 //! Refused (nothing journaled) when the guest is captured, stands in a
 //! prison / sealed room, is on rails (a `cutscene: true` room, or the ROLE
 //! convention `uploaded && !cleared`), or the target is hidden from them,
-//! a prison, or a cutscene; and at most once per `CHECKIN_COOLDOWN_MS`.
+//! a prison, a cutscene, or `checkin: false`; and at most once per `CHECKIN_COOLDOWN_MS`.
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Sim, SimEvent } from "../../src/runtime/sim/index.ts";
@@ -40,7 +40,9 @@ export function checkinRefusal(sim: Sim, guest: string, at: string): { status: n
   const here = sim.model.locations.get(sim.locationOf(guest) ?? "");
   if (here !== undefined && (here.prison || here.sealed)) return { status: 409, error: "You can't check in from here." };
   if (sim.cutsceneFor(guest) || onRails(sim, guest)) return { status: 409, error: "Not yet — finish getting in first." };
-  if (target.prison || target.cutscene) return { status: 403, error: "That room isn't a check-in point." };
+  // `checkin: false` — no sign is printed for it (K-12), and a scanned or
+  // hand-typed slug is refused too (the locked Server Room).
+  if (target.prison || target.cutscene || !target.checkin) return { status: 403, error: "That room isn't a check-in point." };
   if (!sim.canSeeChannel(guest, `loc:${at}`)) return { status: 403, error: "That room isn't open yet." };
   return null;
 }

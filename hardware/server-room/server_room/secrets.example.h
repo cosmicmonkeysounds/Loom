@@ -4,3 +4,6 @@
 #pragma once
 #define WIFI_SSID "CHANGE-ME"
 #define WIFI_PSK "CHANGE-ME"
+// The broker's password-only LAN listener (mosquitto_passwd … props).
+#define SR_MQTT_USER "props"
+#define SR_MQTT_PASS "CHANGE-ME"

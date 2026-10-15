@@ -102,11 +102,13 @@ def test_no_payload_has_the_yaml_on_trap_and_only_the_door_indicator_is_retained
                 assert not isinstance(val, bool) or k == "on", f"cues[{rule.id}]: {k}: {val!r} (quote 'on'/'off')"
 
 
-def test_the_broker_is_the_house_macs_static_ip_and_the_server_is_the_vps():
+def test_the_broker_is_this_macs_loopback_listener_and_the_server_is_the_vps():
     cfg = load_config(HOUSE)
     assert cfg.server.url == "https://app.mapsandducks.com"
+    # stagehand runs on the broker's Mac and uses the anonymous listener,
+    # which is bound to 127.0.0.1; the LAN props use :1884 with a password.
     host = ipaddress.ip_address(cfg.modules["show"].cfg.mqtt.host)  # a literal, never a DHCP name
-    assert host.version == 4 and host.is_private and not host.is_loopback
+    assert host.is_loopback
 
 
 # -- 1. every physical cue the story emits has a rule ------------------------------

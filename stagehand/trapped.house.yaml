@@ -19,11 +19,12 @@
 # THE RIG — one house Mac does it all: Mosquitto + Zigbee2MQTT, this file
 #   (stagehand `show`), the agents worker + Ollama, QLab, the TV over the
 #   long HDMI run and the speakers through the MOTU. It has a STATIC IP (a
-#   DHCP reservation on the router); `mqtt.host` below is that address, and
-#   the server-room ESP32 firmware hard-codes the same one. Mosquitto needs a
-#   LAN listener for the network props (the WLED controllers, the ESP32):
-#   the anonymous listener is bound to 127.0.0.1 (stagehand + Z2M are
-#   local) and the props use a password-only listener on 1884 —
+#   DHCP reservation on the router, 192.168.8.10) that the server-room ESP32
+#   firmware hard-codes (hardware/server-room/server_room/config.h).
+#   Mosquitto runs two listeners: anonymous on 127.0.0.1:1883 for what runs
+#   on this Mac (stagehand — `mqtt.host` below — Zigbee2MQTT, the alexa
+#   player), and password-only on the LAN at :1884 (user `props`) for the
+#   network props (the WLED controllers, the ESP32) —
 #   scripts/house-mac/alexa.md → "Lock down the broker".
 #   The story server is the VPS (https://app.mapsandducks.com); this machine
 #   only dials out. If the house internet dies, fire the cues by hand
@@ -107,7 +108,7 @@ server:
 
 show:
   mqtt:
-    host: 192.168.8.10       # the house Mac's static IP (same as the ESP32 firmware)
+    host: 127.0.0.1          # Mosquitto on this Mac (the props reach it on 192.168.8.10:1884)
     port: 1883
     client_id: stagehand-house
 

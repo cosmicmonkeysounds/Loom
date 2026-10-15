@@ -16,9 +16,13 @@ One ESP32 in the server room (cold storage) that does three jobs for
 
 The box hard-codes the broker, the **house Mac's static IP**
 (`192.168.8.10`), so nothing depends on DHCP (HW-NET-08). The box's own
-address is `192.168.8.21`. Change both in `server_room/config.h`, and keep
-the broker equal to `show.mqtt.host` in `stagehand/trapped.house.yaml`
-(`stagehand/tests/test_serverroom_firmware.py` checks it).
+address is `192.168.8.21`. Change both in `server_room/config.h`. It dials
+Mosquitto's **password-only LAN listener** on `:1884` as user `props`
+(`SR_MQTT_USER` / `SR_MQTT_PASS` in `secrets.h`); the anonymous listener is
+bound to 127.0.0.1 for stagehand + Zigbee2MQTT on the Mac
+(`scripts/house-mac/alexa.md` → *Lock down the broker*;
+`stagehand/tests/test_serverroom_firmware.py` pins the port and login,
+`scripts/accept/K-05.sh` checks the Mac owns the address).
 
 Background and parts list: `core/examples/trapped-in-the-internet/CHECKLIST.md`
 §D (door) and §E (patch bay).
@@ -26,7 +30,7 @@ Background and parts list: `core/examples/trapped-in-the-internet/CHECKLIST.md`
 ## Build and flash
 
 ```bash
-cp server_room/secrets.example.h server_room/secrets.h   # Wi-Fi SSID + PSK (git-ignored)
+cp server_room/secrets.example.h server_room/secrets.h   # Wi-Fi SSID + PSK + the props MQTT password (git-ignored)
 test/run.sh            # host tests of the logic (plain c++, ~1 s)
 test/run.sh compile    # + compile for the ESP32; installs the 3 libraries on first run
 # flash (find the port with: arduino-cli board list)

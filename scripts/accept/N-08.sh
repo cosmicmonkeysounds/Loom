@@ -14,7 +14,8 @@ set -u
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 HW="$ROOT/hardware/server-room"
 CFG="$ROOT/stagehand/trapped.house.yaml"
-HOST=$(awk '/^  mqtt:/{m=1} m&&/host:/{print $2; exit}' "$CFG")
+HOST=$(awk '/^  mqtt:/{m=1} m&&/host:/{print $2; exit}' "$CFG")   # stagehand's listener (127.0.0.1)
+BROKER=$(awk -F'"' '/^#define SR_BROKER_IP/{print $2}' "$HW/server_room/config.h")  # what the box dials (:1884)
 TMP="$(mktemp -d)"
 trap 'kill $(jobs -p) 2>/dev/null; rm -rf "$TMP"' EXIT
 PASS=0; FAIL=0
@@ -30,8 +31,14 @@ watch() { mosquitto_sub -h "$HOST" -t "$1" > "$TMP/$2" 2>/dev/null & }          
 step "0. preflight"
 command -v mosquitto_sub >/dev/null && ok "mosquitto clients" || { bad "brew install mosquitto"; exit 1; }
 "$HW/test/run.sh" >/dev/null 2>&1 && ok "host logic tests green" || bad "hardware/server-room/test/run.sh failing"
-grep -q '"'"$HOST"'"' "$HW/server_room/config.h" && ok "firmware broker = YAML broker ($HOST)" || bad "SR_BROKER_IP in config.h != $HOST"
+ifconfig | awk '/inet /{print $2}' | grep -qx "$BROKER" && ok "this Mac owns the box's broker address $BROKER" || bad "SR_BROKER_IP $BROKER is not this Mac's IP — fix the DHCP reservation or config.h"
 mosquitto_pub -h "$HOST" -t n08/ping -m x 2>/dev/null && ok "Mosquitto answers on $HOST" || bad "Mosquitto not reachable on $HOST:1883"
+if [ -n "${LOOM_MQTT_PASS:-}" ]; then   # the props password (secrets.h SR_MQTT_PASS)
+  mosquitto_pub -h "$BROKER" -p 1884 -u props -P "$LOOM_MQTT_PASS" -t n08/ping -m x 2>/dev/null \
+    && ok "props listener answers on $BROKER:1884" || bad "no props listener on $BROKER:1884 (scripts/house-mac/alexa.md → Lock down the broker)"
+else
+  echo "  · set LOOM_MQTT_PASS=<props password> to also check $BROKER:1884"
+fi
 
 if [ -n "${1:-}" ]; then
   step "0b. flash"
