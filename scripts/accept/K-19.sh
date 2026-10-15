@@ -2,6 +2,12 @@
 # K-19 — Kokoro on the VPS (OCT31.md §5): "50 SSE streams connected and 3
 # concurrent syntheses: every sentence < 2 s."
 #
+# OPT-IN ONLY (2026-10-15): the terminals and the TV speak with the devices'
+# own voices, and the compose stack no longer starts Kokoro. This check only
+# matters if you opted in (COMPOSE_PROFILES=tts + LOOM_TTS_URL=http://kokoro:8880/v1
+# on the VPS, `engine: server` on the terminals). With the server voice off
+# it says so and exits 0 (SKIP) — nothing on the night depends on it.
+#
 #   MOD_CODE=<mod passcode> scripts/accept/K-19.sh            the full check (≈ 30 s)
 #   MOD_CODE=… STREAMS=80 ROUNDS=3 scripts/accept/K-19.sh     heavier
 #   BASE=http://localhost:7000 MOD_CODE=… scripts/accept/K-19.sh
@@ -14,7 +20,7 @@
 # streams show up as directors on the Run page for those seconds.
 #
 # Miss → raise KOKORO_CPUS on the VPS (cores - 1) and re-run; still a miss →
-# N-12 (the TV calls Kokoro on the house Mac) / Chrome's voice on the TV.
+# drop the opt-in: the devices' own voices (the default).
 set -euo pipefail
 
 BASE="${BASE:-https://app.mapsandducks.com}"
@@ -34,7 +40,11 @@ token=$(curl -fsS -X POST "$BASE/e/$event/api/mod/login" -H 'content-type: appli
 
 info=$(curl -fsS -H "x-loom-token: $token" "$BASE/e/$event/api/mod/tts")
 echo "event $event · server voice: $(printf '%s' "$info" | json "'%s (model %s, voice %s)' % ('ON' if d['available'] else 'OFF', d['model'], d['voice'])")"
-[[ "$(printf '%s' "$info" | json "d['available']")" == "True" ]] || { echo "FAIL the server voice is off — LOOM_TTS_URL is 'off' on the VPS (blank it to use the bundled kokoro)"; exit 1; }
+if [[ "$(printf '%s' "$info" | json "d['available']")" != "True" ]]; then
+  echo "SKIP K-19 — the server voice is off (the default): the terminals and the TV use their devices' own voices."
+  echo "     Only to opt in to Kokoro: COMPOSE_PROFILES=tts + LOOM_TTS_URL=http://kokoro:8880/v1 in the VPS .env, then re-run."
+  exit 0
+fi
 
 work=$(mktemp -d)
 pids=()
@@ -100,6 +110,6 @@ echo "streams still open after the syntheses: $still/$STREAMS"
 if [[ "$fail" == 0 ]]; then
   echo "PASS K-19 — $n sentences, slowest ${worst}s (< ${LIMIT} s) with $STREAMS streams open"
 else
-  echo "MISS K-19 — slowest ${worst}s. Raise KOKORO_CPUS in the VPS .env (cores - 1), 'docker compose up -d kokoro', re-run; else N-12."
+  echo "MISS K-19 — slowest ${worst}s. Raise KOKORO_CPUS in the VPS .env (cores - 1), 'docker compose --profile tts up -d kokoro', re-run; else set LOOM_TTS_URL=off (the devices' own voices)."
   exit 1
 fi

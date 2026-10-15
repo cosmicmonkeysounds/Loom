@@ -12,6 +12,11 @@
 //!
 //! One active event per project is enforced both here and by a partial unique
 //! index on `event`.
+//!
+//! The project's house maps (`house.json`, `house.<variant>.json`) are
+//! snapshotted beside the source (`event.house_maps`, SW-MAP-01): a launch
+//! plays the project's current map, a reload refreshes it, and the runtime
+//! gets a `ProjectLink` back so the map page can "Save to project".
 
 import { randomUUID } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -21,15 +26,21 @@ import { collabHub } from "./collab.ts";
 import { readBody, sendJson, str } from "./http-util.ts";
 import type { EventRegistry, EventSpec } from "./registry.ts";
 import type { AuthUser } from "./projects.ts";
+import { asMapFiles, type ProjectLink } from "./house-maps.ts";
 import {
   activeEvent,
   setEventSource,
   createEvent,
   getProjectFor,
   lastEventCodes,
+  lastEventMapVariant,
+  projectMaps,
   projectSource,
+  setEventHouseMaps,
+  setEventMapVariant,
   setEventMode,
   setEventStatus,
+  upsertFile,
   type EventRow,
 } from "./db/queries.ts";
 
@@ -46,6 +57,32 @@ export function specFromRow(row: EventRow): EventSpec {
     scenarioName: row.scenario_name,
     scenarioSource: row.scenario_source,
     mode: row.mode === "preview" ? "preview" : "live",
+    houseMaps: asMapFiles(row.house_maps),
+    mapVariant: row.map_variant ?? null,
+    project: projectLink(row.project_id, row.id),
+  };
+}
+
+/**
+ * An event's way back to its project (`house-maps.ts` `ProjectLink`): a map
+ * file is written like `PUT /api/projects/:id/files` writes one — upserted,
+ * folded into the live co-editing doc when it's open, announced to every
+ * editor's tree — and the event row's snapshot follows.
+ */
+export function projectLink(projectId: string, eventId: string): ProjectLink {
+  return {
+    projectId,
+    async writeFile(path, content) {
+      const file = await upsertFile(projectId, path, content);
+      collabHub().adoptExternalWrite(projectId, path, file.content);
+      collabHub().notifyFileChange(projectId, "put", path);
+    },
+    async saveSnapshot(maps) {
+      await setEventHouseMaps(eventId, maps);
+    },
+    async saveVariant(file) {
+      await setEventMapVariant(eventId, file);
+    },
   };
 }
 
@@ -197,6 +234,7 @@ export async function handleEvent(
       sendJson(res, 400, { error: "project has no files to run" });
       return true;
     }
+    const maps = await projectMaps(projectId);
     const body = await readBody(req);
     const mode = str(body, "mode") === "preview" ? "preview" : "live";
 
@@ -205,6 +243,10 @@ export async function handleEvent(
     // a collision with another project's live event. `rotate` ("staff" /
     // true) is how a leaked code gets replaced.
     const previous = await lastEventCodes(projectId);
+    // The tent ↔ shed choice carries over too: a relaunch on a rain night
+    // stays on the shed (a variant the project no longer has falls back to
+    // house.json in the runtime).
+    const mapVariant = await lastEventMapVariant(projectId);
     const row = await insertWithCodes(
       previous,
       (codes) =>
@@ -219,6 +261,8 @@ export async function handleEvent(
           scenario_name: project.name,
           scenario_source: src.source,
           created_by_name: by,
+          house_maps: maps,
+          map_variant: mapVariant,
         }),
       { rotate: parseRotation(body["rotate"]), warn: (m) => console.warn(`[events] project ${projectId}: ${m}`) },
     );
@@ -284,16 +328,20 @@ export async function handleEvent(
     if (action === "reload") {
       // Push the project's current text into the running event: the story
       // starts over on the new draft (journal + chat cleared, entry beat
-      // replayed if the doors are open). Guests keep their codes.
+      // replayed if the doors are open). Guests keep their codes. The map
+      // snapshot follows the project's files too (the active variant kept).
       await collabHub().flush(projectId);
       const src = await projectSource(projectId);
       if (src === null) {
         sendJson(res, 400, { error: "project has no files to run" });
         return true;
       }
+      const maps = await projectMaps(projectId);
       const runtime = registry.ensure(specFromRow(active));
       runtime.restart(src.source, project.name, { kind: "reload", by });
+      runtime.setProjectMaps(maps);
       await setEventSource(active.id, src.source);
+      await setEventHouseMaps(active.id, maps);
       notify("reload");
       sendJson(res, 200, { event: eventView({ ...active, scenario_source: src.source }, joinBase, runtime.currentPhase, false) });
       return true;

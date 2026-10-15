@@ -4,14 +4,18 @@
       → show module cue  → MQTT show/announce {"text": "Go to the living room."}
       → this module (on the house Mac)
            chime ──────────────► CoreAudio device (Z1 + Z2)
-           voice: disk cache → server `/api/mod/tts` (Kokoro) → `say -o`
+           voice: `say -o` (engine: say, the default — the Mac's own voice)
+                  or disk cache → server `/api/mod/tts` → `say -o` (engine: server)
                  ──────────────► same device + channel map
            last resort: `say -a <device>`
 
-The chime starts the instant the message lands and the voice is fetched
-while it rings, so the line follows within the chime's length when the
-server has it cached (`prewarm:` fetches every scripted line at boot and
-keeps it on disk — the cache also covers the house internet dying).
+The same announcement also rides the event server's screen state, so a
+wall terminal set to `announce` says it too (OCT31 N-09, `terminal/src/announce.ts`).
+
+The chime starts the instant the message lands and the voice is rendered
+(or fetched) while it rings, so the line follows within the chime's
+length. With `engine: server`, `prewarm:` fetches every scripted line at
+boot and keeps it on disk — the cache also covers the house internet dying.
 
 Hand-firing (no story, no server): publish to the topic yourself —
 `mosquitto_pub -t show/announce -m '{"text":"Go to the living room."}'` —
@@ -179,7 +183,10 @@ class Announcer:
             return chime(), 48000
 
     async def voice_bytes(self, text: str, voice: str | None) -> bytes | None:
-        """Disk cache → server TTS (cached on success) → None."""
+        """Disk cache → server TTS (cached on success) → None. Always None
+        with `engine: say` — the Mac's own voice never asks the server."""
+        if self.cfg.engine != "server":
+            return None
         voice = voice or self.cfg.voice
         hit = self.cache.get(text, voice)
         if hit is not None:
@@ -197,7 +204,10 @@ class Announcer:
         return data
 
     async def prewarm(self) -> int:
-        """Fetch + cache every `prewarm:` line not already on disk."""
+        """Fetch + cache every `prewarm:` line not already on disk
+        (`engine: server` only — `say` renders a line in well under a second)."""
+        if self.cfg.engine != "server":
+            return 0
         done = 0
         for text in self.cfg.prewarm:
             if self.cache.get(text, self.cfg.voice) is not None:
@@ -234,8 +244,9 @@ class Announcer:
 
     async def announce(self, a: Announcement) -> str:
         """Play one announcement; returns the path taken (for logs + tests):
-        `device` (server voice), `device-say` (say through the device),
-        `say-device` (`say -a`), `say-default`, or `failed`."""
+        `device-say` (say rendered through the device — the default),
+        `device` (the server voice, `engine: server`), `say-device`
+        (`say -a`), `say-default`, or `failed`."""
         try:
             return await self._announce(a)
         finally:
@@ -246,8 +257,9 @@ class Announcer:
     async def _announce(self, a: Announcement) -> str:
         started = self.last_announce = time.monotonic()
         log.info("announce %r received", a.text)
-        # The voice (server, else `say` rendered to a file) is prepared while
-        # the chime rings, so the line follows the chime with no gap.
+        # The voice (`say` rendered to a file; with `engine: server` the
+        # server's first) is prepared while the chime rings, so the line
+        # follows the chime with no gap.
         fetching = asyncio.ensure_future(self._voice_or_say(a))
         device_ok = True
         if a.chime and self._chime is not None:
@@ -313,12 +325,18 @@ class Alexa:
     def describe(self) -> list[str]:
         cfg = self.cfg
         out = DeviceOutput(cfg.device, cfg.channels, cfg.gain_db)
+        if cfg.engine == "server":
+            voice = [
+                f"voice    : server {cfg.voice or 'default'} → say {cfg.say_voice or 'default'} (after {cfg.tts_timeout:.0f}s)",
+                f"prewarm  : {len(cfg.prewarm)} line(s) → {cfg.cache_dir}",
+            ]
+        else:
+            voice = [f"voice    : say {cfg.say_voice or '(the system voice)'} — the Mac's own, no server"]
         return [
             f"mqtt     : {cfg.mqtt.host}:{cfg.mqtt.port} ← {cfg.topic}" + (f", {cfg.chime_topic}" if cfg.chime_topic else ""),
             f"output   : {out.describe()} (gain {cfg.gain_db:+.0f} dB)",
-            f"voice    : server {cfg.voice or 'default'} → say {cfg.say_voice or 'default'} (after {cfg.tts_timeout:.0f}s)",
+            *voice,
             f"chime    : {cfg.chime}",
-            f"prewarm  : {len(cfg.prewarm)} line(s) → {cfg.cache_dir}",
         ]
 
     def preflight(self) -> list[str]:
@@ -329,7 +347,7 @@ class Alexa:
 
     def announcer(self, mod: ModClient | None) -> Announcer:
         fetch: Fetch | None = None
-        if mod is not None:
+        if mod is not None and self.cfg.engine == "server":
             cfg = self.cfg
 
             async def fetch(text: str, voice: str | None) -> bytes:
@@ -363,6 +381,7 @@ class Alexa:
             health_topic=HEALTH_TOPIC,
         )
         bridge.start()
+        log.info("voice: %s", "the server's, `say` as the fallback" if self.cfg.engine == "server" else f"say {self.cfg.say_voice or ''} (the Mac's own)".rstrip())
         warm = asyncio.ensure_future(self._prewarm(announcer))
         try:
             while True:
@@ -381,8 +400,8 @@ class Alexa:
 
     async def _prewarm(self, announcer: Announcer) -> None:
         # Retried each minute until every line is on disk (the server may
-        # come up after this Mac does).
-        total = len(self.cfg.prewarm)
+        # come up after this Mac does). `engine: say` has nothing to fetch.
+        total = len(self.cfg.prewarm) if self.cfg.engine == "server" else 0
         while total:
             n = await announcer.prewarm()
             log.info("prewarmed %d/%d announcement(s)", n, total)

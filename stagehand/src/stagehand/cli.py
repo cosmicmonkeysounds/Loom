@@ -134,7 +134,8 @@ def _announce(cfg: StagehandConfig, args: argparse.Namespace) -> int:
 
     async def go() -> str:
         s = cfg.server
-        mod = None if args.offline else ModClient(s.url, event=s.event, token=s.mod_token, passcode=s.mod_passcode)
+        # `engine: say` never asks the server, so it needs no link at all.
+        mod = None if args.offline or alexa.cfg.engine != "server" else ModClient(s.url, event=s.event, token=s.mod_token, passcode=s.mod_passcode)
         try:
             a = Announcement(text=" ".join(" ".join(args.text).split()), voice=args.voice, chime=not args.no_chime)
             return await alexa.announcer(mod).announce(a)

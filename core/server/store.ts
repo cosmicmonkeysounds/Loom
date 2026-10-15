@@ -79,8 +79,13 @@ const AVATARS = "avatars.json";
 /** Not `house.json`: `LOOM_HOUSE` may well point at `/data/house.json`, and
  *  the default event's state dir can be that same `/data`. */
 const HOUSE = "spatial-house.json";
+/** The project's map files as this event snapshotted them + the active
+ *  variant (SW-MAP-01 / SW-MAP-13, `house-maps.ts`). */
+const MAPS = "spatial-maps.json";
 /** Web Push subscriptions by device (K-31a, `push.ts`). */
 const PUSH = "push.json";
+/** Every duck found this story (SW-RE-14, the ceremony's speedrun). */
+const RUNS = "spatial-runs.jsonl";
 
 /** Read + JSON-parse a file, returning `null` on any miss/corruption. */
 function readJson<T>(path: string): T | null {
@@ -198,7 +203,8 @@ export class Store {
   //
   // A director's edit of the house map for this event (`docs/loom-reinstall.md`
   // §1.3), kept as `spatial-house.json` in the event's state dir. Absent →
-  // the show's own map file (`LOOM_HOUSE`, else the example's `house.json`).
+  // the project's map snapshot (its active variant, below), else the show's
+  // own map file (`LOOM_HOUSE`, else the example's `house.json`).
   // The raw JSON comes back unvalidated; the runtime validates it.
 
   loadHouse(): unknown {
@@ -206,6 +212,60 @@ export class Store {
   }
   saveHouse(house: unknown): void {
     writeFileSync(this.path(HOUSE), JSON.stringify(house, null, 2));
+  }
+  /** Drop the director's save (a variant switch replaces it, a save to the
+   *  project makes it redundant). True when there was one. */
+  clearHouse(): boolean {
+    const had = existsSync(this.path(HOUSE));
+    rmSync(this.path(HOUSE), { force: true });
+    return had;
+  }
+  hasHouse(): boolean {
+    return existsSync(this.path(HOUSE));
+  }
+
+  // The project's map files this event snapshotted at launch (or reload, or
+  // a save to the project), and which variant is active. Kept here as well
+  // as on the event row so a restart keeps both — and so the LAN default
+  // event, which has no row, remembers its variant. `files: null` = no
+  // project snapshot.
+
+  loadMaps(): { files: unknown; active: string | null } | null {
+    const v = readJson<{ version?: unknown; files?: unknown; active?: unknown }>(this.path(MAPS));
+    if (v === null || v.version !== 1) return null;
+    return { files: v.files ?? null, active: typeof v.active === "string" ? v.active : null };
+  }
+  saveMaps(files: Record<string, string> | null, active: string | null): void {
+    writeFileSync(this.path(MAPS), JSON.stringify({ version: 1, files, active }));
+  }
+
+  // One line per duck found (`spatial.ts` `DuckRun`), cleared with the
+  // journal: the runs belong to this story timeline. Raw lines come back
+  // unvalidated (`parseDuckRun` checks them); a torn last line is skipped.
+
+  appendRun(run: unknown): void {
+    appendFileSync(this.path(RUNS), JSON.stringify(run) + "\n");
+  }
+  loadRuns(): unknown[] {
+    let raw: string;
+    try {
+      raw = readFileSync(this.path(RUNS), "utf8");
+    } catch {
+      return [];
+    }
+    const out: unknown[] = [];
+    for (const line of raw.split("\n")) {
+      if (line.trim() === "") continue;
+      try {
+        out.push(JSON.parse(line));
+      } catch {
+        /* tolerate a torn final write */
+      }
+    }
+    return out;
+  }
+  clearRuns(): void {
+    rmSync(this.path(RUNS), { force: true });
   }
 
   // --- push subscriptions (K-31a) -----------------------------------------

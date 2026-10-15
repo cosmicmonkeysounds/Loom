@@ -1,13 +1,20 @@
 //! Where is a point? — `docs/loom-reinstall.md` §1.2 "Locate". The server
 //! labels every pose with `locate`; the games stand on `heightAt`.
 
-import { floorById, pointInPoly, pointInRect, pointInRectStrict, rampHeight, roomById, stairLevels } from "./geometry.ts";
-import type { HouseMap, Located, Room, Vec2, Vec3 } from "./types.ts";
+import { floorById, inPropFootprint, pointInPoly, pointInRect, pointInRectStrict, propSolid, rampHeight, roomById, stairLevels } from "./geometry.ts";
+import type { HouseMap, Located, Prop, Room, Vec2, Vec3 } from "./types.ts";
 
 /** How far below a floor's elevation a point still counts as on it. */
 export const FLOOR_SLACK = 0.5;
 /** The highest step up `heightAt` accepts above the hint. */
 export const STEP_UP = 0.45;
+/** How tall a standing player is, for the solid-prop checks (`solidPropAt`). */
+export const BODY_CLEAR = 1.7;
+/** How far into a prop's top a thing resting on it may sit. */
+export const PROP_REST = 0.01;
+/** A solid prop whose top clears the feet by less than this is stepped
+ *  over, not stood in (the games' `STEP_OVER`) — `standable`'s rest. */
+export const PROP_STEP_OVER = 0.05;
 
 /** The highest floor whose elevation ≤ `y + 0.5`, else the lowest (ties: first in array order). */
 export function floorOf(house: HouseMap, y: number): string {
@@ -83,4 +90,30 @@ export function heightAt(house: HouseMap, p: Vec2, yHint: number): number | null
     if (lowest === null || h < lowest) lowest = h;
   }
   return best ?? lowest;
+}
+
+/**
+ * The solid prop a thing `clear` metres tall with its base at `p` would be
+ * buried in (first in array order), else null. Resting on a prop's top (to
+ * within `rest`) is fine. The spawn / spot rule of `validateHouse`, and
+ * half of `standable` (which steps over `PROP_STEP_OVER`, like the games).
+ */
+export function solidPropAt(house: HouseMap, p: Vec3, clear = BODY_CLEAR, rest = PROP_REST): Prop | null {
+  const plan: Vec2 = [p[0], p[2]];
+  const y = p[1];
+  return house.props.find((q) => propSolid(q) && y < q.pos[1] + q.size[1] - rest && y + clear > q.pos[1] && inPropFootprint(q, plan)) ?? null;
+}
+
+/**
+ * Could a player stand with their feet at `p`? In a room (`locate`), over a
+ * surface (`heightAt`), and not buried in a solid prop (`solidPropAt`). A
+ * remap — a director's save, the tent ↔ shed switch — keeps every live
+ * player where they stand; one who isn't standable on the new map (the
+ * shed is a solid prop on the tent map) is put back at its spawn, by the
+ * games and the server alike (`docs/loom-reinstall.md` §1.3).
+ */
+export function standable(house: HouseMap, p: Vec3): boolean {
+  if (locate(house, p).room === null) return false;
+  if (heightAt(house, [p[0], p[2]], p[1]) === null) return false;
+  return solidPropAt(house, p, BODY_CLEAR, PROP_STEP_OVER) === null;
 }

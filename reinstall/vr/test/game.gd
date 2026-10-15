@@ -176,8 +176,8 @@ func _golden_locate(name: String, house: Dictionary) -> void:
 		var p: Array = q["p"]
 		var loc := HouseLocate.locate(house, p)
 		var h: Variant = HouseLocate.height_at(house, [p[0], p[2]], p[1])
-		var got := {"floor": loc["floor"], "room": loc["room"], "height": h}
-		var d := _diff(got, {"floor": q["floor"], "room": q["room"], "height": q["height"]}, JSON.stringify(p))
+		var got := {"floor": loc["floor"], "room": loc["room"], "height": h, "standable": HouseLocate.standable(house, p)}
+		var d := _diff(got, {"floor": q["floor"], "room": q["room"], "height": q["height"], "standable": q["standable"]}, JSON.stringify(p))
 		if d != "":
 			mismatches.append(d)
 	_report("golden %s.locate" % name, mismatches, want.size())
@@ -955,6 +955,31 @@ func _test_main_and_game() -> void:
 	player.teleport(Vector3(mp[0], mp[1], mp[2] + 0.3), 0.0)
 	game._process(0.016)
 	_check(link.found_calls == calls_before + 1, "game: the moved duck is the one claimed")
+	link.session_over.emit("test")
+
+	# A remap that leaves no floor where the player stands (the tent ↔ shed
+	# switch: the shed is a solid prop on the tent map) puts them back at the
+	# spawn; a remap where they still stand keeps them put.
+	link.assignment_received.emit(_assignment(house, "s-3r", true))
+	var kitchen := [3.5, 0.0, 7.5]
+	var blocked: Dictionary = house.duplicate(true)
+	var crate: Dictionary = {}
+	for pr: Dictionary in blocked["props"]:
+		if HouseGeometry.prop_solid(pr) and str(pr.get("kind", "")) == "box":
+			crate = pr.duplicate(true)
+			break
+	crate["id"] = "test-crate"
+	crate["room"] = "kitchen"
+	crate["pos"] = kitchen
+	blocked["props"].append(crate)
+	_check(not HouseLocate.standable(blocked, kitchen) and HouseLocate.standable(house, kitchen), "house: standable sees the crate")
+	player.teleport(HouseFrames.vec(kitchen), 0.0)
+	link.give_house(blocked)
+	_check(_v3(player.feet(), HouseFrames.vec(spawn)), "game: a remap that buries the player puts them back at the spawn (%s)" % player.feet())
+	_check(sub.text.begins_with("The house was remapped"), "game: … and the HUD says so (%s)" % sub.text)
+	player.teleport(HouseFrames.vec(kitchen), 0.0)
+	link.give_house(house)
+	_check(_v3(player.feet(), HouseFrames.vec(kitchen)), "game: a remap where they still stand keeps them put")
 	link.session_over.emit("test")
 
 	# Headset off, on a wall clock (a sleeping Quest runs no frames).

@@ -13,6 +13,7 @@ import { Store } from "./store.ts";
 import { EventRuntime } from "./event-runtime.ts";
 import type { WikiClient } from "./wiki.ts";
 import type { ImageCache } from "./avatars.ts";
+import type { MapFiles, ProjectLink } from "./house-maps.ts";
 
 /** The role a passcode grants when it resolves to an event. */
 export type CodeRole = "guest" | "prime" | "mod";
@@ -40,6 +41,13 @@ export interface EventSpec {
   /** A `preview` is an author's private rehearsal: hosted like any event,
    *  but never advertised (`landing`). Absent = live. */
   mode?: "live" | "preview";
+  /** The project's map files snapshotted at launch (`event.house_maps`). */
+  houseMaps?: MapFiles | null;
+  /** The map variant the row records (`event.map_variant`) — a fresh state
+   *  dir starts on it (a relaunch keeps the tent ↔ shed choice). */
+  mapVariant?: string | null;
+  /** The way back to the project ("Save to project"); absent → none. */
+  project?: ProjectLink | null;
 }
 
 export class EventRegistry {
@@ -101,6 +109,9 @@ export class EventRegistry {
       codes: spec.codes,
       scenarioName: spec.scenarioName,
       scenarioSource: spec.scenarioSource,
+      houseMaps: spec.houseMaps ?? null,
+      mapVariant: spec.mapVariant ?? null,
+      project: spec.project ?? null,
       joinBase: this.joinBase,
       wiki: this.wiki,
       ...(this.images !== null ? { images: this.images } : {}),

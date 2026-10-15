@@ -82,7 +82,7 @@ function indexedSources(): CompiledSource[] {
 function empty(): Pick<
   SimState,
   | 'phase' | 'run' | 'connected' | 'roster' | 'factions' | 'locations' | 'cast' | 'channels' | 'spaces'
-  | 'beats' | 'events' | 'interactions' | 'cues' | 'ledgerLen' | 'messages' | 'world' | 'personas' | 'log'
+  | 'beats' | 'events' | 'interactions' | 'cues' | 'codex' | 'quests' | 'ledgerLen' | 'messages' | 'world' | 'personas' | 'log'
   | 'choices' | 'selection' | 'perspective' | 'lens' | 'error' | 'entryBeat'
 > {
   return {
@@ -99,6 +99,8 @@ function empty(): Pick<
     events: [],
     interactions: [],
     cues: NO_CUES,
+    codex: [],
+    quests: [],
     ledgerLen: 0,
     messages: [],
     world: [],
@@ -144,6 +146,8 @@ export const useSim = create<SimState>((set, get) => {
       beats: view.beats,
       interactions: view.interactions ?? [],
       cues: view.cues ?? NO_CUES,
+      codex: view.codex ?? [],
+      quests: view.quests ?? [],
       ledgerLen: view.ledgerLen,
       messages: [...chat.all()],
       choices,
@@ -423,6 +427,24 @@ export const useSim = create<SimState>((set, get) => {
       })
     },
     setVar: async (path, value) => void run((s) => void s.setVar(path, value)),
+    // The same mutations `/api/mod/codex` and `/api/mod/quest` commit.
+    grantCodex: async (who, entry) => {
+      if (sim === null) return
+      if (!sim.persons.has(who) && !sim.model.characters.has(who)) {
+        set({ error: `unknown holder: ${who}` })
+        return
+      }
+      run((s) => void s.unlock(who, entry))
+    },
+    stepQuest: async (who, quest, action, text) => {
+      if (sim === null) return
+      if (!sim.persons.has(who)) {
+        set({ error: `unknown guest: ${who}` })
+        return
+      }
+      const line = typeof text === 'string' && text.trim() !== '' ? text.trim().slice(0, 500) : null
+      run((s) => void s.quest(action, who, quest, line))
+    },
     fireBeat: async (name, subject) => void run((s) => void s.fireBeat(name, subject)),
     fireSignal: async (name, subject, args, actor) =>
       void run((s) => void s.signal(name, subject, args ?? null, actor ?? null)),

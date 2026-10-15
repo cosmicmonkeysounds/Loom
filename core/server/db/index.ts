@@ -5,7 +5,7 @@
 //! tables that hang off an author account:
 //!
 //!   project         one `.loom` app an author develops
-//!   project_file    a single `.loom` file inside a project
+//!   project_file    a single file inside a project (`.loom`, the house maps)
 //!   project_member  another author invited to collaborate on a project
 //!   project_invite  a pending share to an email with no account yet
 //!   event           a launched run of a project (live or preview)
@@ -101,6 +101,13 @@ create unique index if not exists event_mod_code_uq on event (mod_code) where st
 create unique index if not exists event_one_active_per_project on event (project_id) where status <> 'ended';
 -- Who launched it (display name), so a co-writer landing in the run knows whose it is.
 alter table event add column if not exists created_by_name text;
+-- The project's house map files at launch / reload ({"house.json": "<text>",
+-- "house.shed.json": …}), snapshotted like scenario_source (SW-MAP-01).
+alter table event add column if not exists house_maps jsonb;
+-- The map variant the event plays (e.g. 'house.shed.json'; null = the
+-- default house.json). A relaunch starts on the project's last event's
+-- choice, so a rain night switched to the shed stays on it (SW-MAP-13).
+alter table event add column if not exists map_variant text;
 `;
 
 /** Create the domain tables if they don't exist. Throws if the DB is down. */

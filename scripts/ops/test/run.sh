@@ -186,8 +186,16 @@ teardown
 echo "── checklist"
 check "prints the 15 pre-show boxes" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' | grep -c '^\[ \]') -eq 15 ]"
 
+echo "── the voice is opt-in (2026-10-15)"
+# A plain `docker compose up` (release.sh / rollback.sh) must never need
+# Kokoro: it sits behind the `tts` profile and the server voice defaults off.
+check "kokoro is behind the tts profile" bash -c "awk '/^  kokoro:/{k=1; next} k && /^  [a-z]/{exit} k && /profiles: \[\"tts\"\]/{f=1} END{exit !f}' '$ROOT/docker-compose.yml'"
+check "LOOM_TTS_URL defaults to off" grep -q 'LOOM_TTS_URL: \${LOOM_TTS_URL:-off}' "$ROOT/docker-compose.yml"
+check ".env.example leaves the server voice off" grep -q '^LOOM_TTS_URL=off$' "$ROOT/.env.example"
+check "no deploy / ops script names kokoro" bash -c "! grep -il kokoro '$ROOT'/deploy/*.sh '$ROOT'/scripts/ops/*.sh"
+
 echo "── syntax"
-for f in "$ROOT"/deploy/*.sh "$ROOT"/scripts/ops/*.sh "$ROOT"/scripts/accept/K-08.sh; do
+for f in "$ROOT"/deploy/*.sh "$ROOT"/scripts/ops/*.sh "$ROOT"/scripts/accept/K-08.sh "$ROOT"/scripts/accept/K-19.sh; do
   [ -f "$f" ] && check "bash -n $(basename "$f")" bash -n "$f"
 done
 

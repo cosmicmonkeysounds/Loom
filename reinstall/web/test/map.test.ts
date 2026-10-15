@@ -30,7 +30,7 @@ import { L_ROOM, SHOW, STAIR, TWO_ROOMS } from "./houses.ts";
 
 describe("plan — the SVG frame", () => {
   it("bounds every floor, and pads the viewBox", () => {
-    expect(planBounds(SHOW())).toEqual([-4, 0, 6, 20]);
+    expect(planBounds(SHOW())).toEqual([-4, 0, 6, 23]);
     expect(viewBoxOf([0, 0, 4, 3], 1)).toEqual([-1, -1, 6, 5]);
   });
 
@@ -120,7 +120,8 @@ describe("plan — the SVG frame", () => {
   it("finds the room under a point on one floor", () => {
     const house = SHOW();
     expect(roomUnder(house, "ground", [3, 3])?.id).toBe("living");
-    expect(roomUnder(house, "basement", [3, 3])?.id).toBe("tent");
+    expect(roomUnder(house, "basement", [3, 3])?.id).toBe("registry");
+    expect(roomUnder(house, "ground", [4, 21])?.id).toBe("tent");
     expect(roomUnder(house, "ground", [50, 50])).toBeNull();
   });
 
@@ -162,9 +163,13 @@ describe("edit — every op returns a copy", () => {
   });
 
   it("moves the spawn on its own floor", () => {
-    const next = moveTo(frozen(), { kind: "spawn" }, [0, 4]);
-    expect(next.spawn.room).toBe("registry");
-    expect(next.spawn.pos[1]).toBe(-2.7);
+    // The tent is on the ground floor: [3, 3] is the Living Room, not the Rec Room below it.
+    const next = moveTo(frozen(), { kind: "spawn" }, [3, 3]);
+    expect(next.spawn.room).toBe("living");
+    expect(next.spawn.pos[1]).toBe(0);
+    const basement = moveTo({ ...frozen(), spawn: { room: "registry", pos: [0, -2.7, 4], yaw: 0 } }, { kind: "spawn" }, [3, 3]);
+    expect(basement.spawn.room).toBe("registry");
+    expect(basement.spawn.pos[1]).toBe(-2.7);
   });
 
   it("turns things: setYaw wraps, aimAt points (in 5° steps)", () => {
@@ -184,11 +189,11 @@ describe("edit — every op returns a copy", () => {
     expect(t.id).toBe("terminal-1");
     const spot = t.house.terminals.find((x) => x.id === t.id)!;
     expect(spot.room).toBe("tent");
-    expect(spot.pos[1]).toBeCloseTo(-2.7 + TERMINAL_HEIGHT);
+    expect(spot.pos[1]).toBeCloseTo(TERMINAL_HEIGHT);
     expect(addTerminal(t.house, "tent").id).toBe("terminal-2");
     const d = addDuckSpot(t.house, "tent");
     expect(d.id).toBe("duck-tent-1");
-    expect(roomAt(d.house, [d.house.duck.spots.at(-1)!.pos[0], d.house.duck.spots.at(-1)!.pos[2]], "basement")?.id).toBe("tent");
+    expect(roomAt(d.house, [d.house.duck.spots.at(-1)!.pos[0], d.house.duck.spots.at(-1)!.pos[2]], "ground")?.id).toBe("tent");
     expect(validateHouse(d.house).ok).toBe(true);
     expect(addTerminal(house, "nowhere")).toEqual({ house, id: "" });
     expect(uniqueId("x", ["x-1", "x-3"])).toBe("x-2");
@@ -216,7 +221,7 @@ describe("edit — every op returns a copy", () => {
   it("moves a room with what stands in it", () => {
     const house = frozen();
     const next = moveRoom(house, "tent", 0.5, -0.25);
-    expect(rectOf(next.rooms.find((r) => r.id === "tent")!.poly)).toEqual([2, 2.25, 6.5, 6.25]);
+    expect(rectOf(next.rooms.find((r) => r.id === "tent")!.poly)).toEqual([2.5, 18.75, 6.5, 22.75]);
     const t0 = house.terminals.find((t) => t.id === "tent")!.pos;
     expect(next.terminals.find((t) => t.id === "tent")!.pos).toEqual([t0[0] + 0.5, t0[1], t0[2] - 0.25]);
     expect(next.spawn.pos).toEqual([house.spawn.pos[0] + 0.5, house.spawn.pos[1], house.spawn.pos[2] - 0.25]);

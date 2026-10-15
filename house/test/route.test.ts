@@ -20,7 +20,7 @@ import {
 } from "../src/index.ts";
 import type { HouseMap, Prop, Vec2, Vec3 } from "../src/index.ts";
 import { labelPoint } from "../src/three/layout.ts";
-import { SHOW_HOUSE, fixture, loadHouse } from "./golden.ts";
+import { SHOW_HOUSE, SHOW_SHED_HOUSE, fixture, loadHouse } from "./golden.ts";
 
 const mm3 = (p: Vec3): Vec3 => p.map((v) => Math.round(v * 1000) / 1000 + 0) as Vec3;
 const path = (house: HouseMap, from: Vec3, to: Vec3): Vec3[] => route(house, from, to).map(mm3);
@@ -99,7 +99,7 @@ describe("route — the visibility graph", () => {
     const corners = routeNodes(show).filter((n) => n.kind === "corner").map((n) => [n.id, mm3(n.pos)]);
     expect(corners.slice(0, 6)).toEqual([
       ["hall", [-1.15, 0, 6.35]],
-      ["registry", [1.15, -2.7, 6.85]],
+      ["backyard", [1.65, 0, 18.65]], // the yard's corner round the tent
       ["hall", [-2.55, 0, 6.65]],
       ["hall", [-2.55, 0, 11.35]],
       ["landing", [-2.55, -2.7, 6.65]],
@@ -232,8 +232,11 @@ describe("route — solid props are obstacles", () => {
   });
 });
 
-describe("route — the show's map never walks through a wall", () => {
-  const house = loadHouse(SHOW_HOUSE);
+describe.each([
+  ["tent", SHOW_HOUSE],
+  ["shed", SHOW_SHED_HOUSE],
+])("route — the show's map (the Internet in the %s) never walks through a wall", (variant, file) => {
+  const house = loadHouse(file);
   const walls = buildWalls(house).filter((w) => w.kind === "wall" || w.kind === "rail" || w.kind === "fence");
   const HEAD = 1.8;
 
@@ -295,13 +298,15 @@ describe("route — the show's map never walks through a wall", () => {
     return out;
   }
 
-  it("catches the straight legs the portal chain used to draw", () => {
-    // Tent flap → furnace through the tent's south wall.
-    expect(badLegs([[1.5, -2.7, 4.5], [4.6, -2.7, 11.5]]).some((l) => l.includes("wall"))).toBe(true);
+  it.runIf(variant === "tent")("catches the straight legs the portal chain used to draw", () => {
+    // East lawn → behind the tent, straight through the tent's north wall.
+    expect(badLegs([[5, 0, 18.5], [1, 0, 22.5]]).some((l) => l.includes("wall"))).toBe(true);
     // Stair head → hall end across the hole's east rail.
     expect(badLegs([[-3.4, 0, 7], [-0.6, 0, 11.6]]).some((l) => l.includes("rail"))).toBe(true);
-    // Tent flap → furnace straight over the ping-pong table (the round-the-tent leg).
+    // Across the Rec Room straight over the ping-pong table.
     expect(badLegs([[1.15, -2.7, 6.85], [4.6, -2.7, 11.5]])).toEqual(["[1.15,-2.7,6.85]→[4.6,-2.7,11.5] × prop ping-pong"]);
+    // Across the yard straight over the Truth Pong table.
+    expect(badLegs([[2.5, 0, 14.5], [2.5, 0, 16.5]])).toEqual(["[2.5,0,14.5]→[2.5,0,16.5] × prop truth-pong"]);
   });
 
   it("from the spawn to every duck spot", () => {
@@ -321,12 +326,22 @@ describe("route — the show's map never walks through a wall", () => {
     }
   });
 
-  it("walks round the tent, then round the ping-pong table, to the furnace", () => {
-    expect(path(house, [1.5, -2.7, 4.5], [4.6, -2.7, 11.5])).toEqual([
-      [1.5, -2.7, 4.5],
-      [1.15, -2.7, 6.85],
-      [4.22, -2.7, 7.888], // the table's north-east corner waypoint
-      [4.6, -2.7, 11.5],
+  it.runIf(variant === "tent")("walks round the tent's corner of the yard, and round the tables", () => {
+    expect(path(house, [5, 0, 18.5], [1, 0, 22.5])).toEqual([
+      [5, 0, 18.5],
+      [1.65, 0, 18.65], // the yard's reflex corner, off the tent's north-west
+      [1, 0, 22.5],
+    ]);
+    expect(path(house, [2.5, 0, 14.5], [2.5, 0, 16.5])).toEqual([
+      [2.5, 0, 14.5],
+      [4.015, 0, 14.52], // the Truth Pong table's north-east corner waypoint
+      [4.015, 0, 16.48],
+      [2.5, 0, 16.5],
+    ]);
+    expect(path(house, [-1, -2.7, 9], [4.6, -2.7, 11.5])).toEqual([
+      [-1, -2.7, 9], // just in from the landing door
+      [0.28, -2.7, 10.612], // the ping-pong table's south-west corner waypoint
+      [4.6, -2.7, 11.5], // the furnace
     ]);
   });
 });

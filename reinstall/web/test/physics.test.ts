@@ -3,6 +3,7 @@ import { locate } from "@loom/house";
 import type { HouseMap, Prop, Vec3 } from "@loom/house";
 import {
   blocksAt,
+  bodyAfterRemap,
   buildPhysicsWorld,
   MAX_PITCH,
   move,
@@ -17,7 +18,7 @@ import {
   type MoveInput,
   type PhysicsWorld,
 } from "../src/game/physics.ts";
-import { SHOW, STAIR, TWO_ROOMS } from "./houses.ts";
+import { SHOW, SHOW_SHED, STAIR, TWO_ROOMS } from "./houses.ts";
 
 const FORWARD: MoveInput = { ...NO_INPUT, move: [0, 1] };
 const DT = 1 / 60;
@@ -264,5 +265,72 @@ describe("physics — the show's house", () => {
     const b = walk(world, body([-3.4, -2.7, 11.6], 0), 4);
     expect(b.p[2]).toBeLessThan(7);
     expect(b.p[1]).toBeCloseTo(0, 6);
+  });
+});
+
+describe("physics — a remap (the tent ↔ shed switch)", () => {
+  /** Every 0.3 m point `locate` puts in `room` on `on`. */
+  function pointsIn(on: HouseMap, room: string): Vec3[] {
+    const out: Vec3[] = [];
+    for (const r of on.rooms.filter((x) => x.id === room)) {
+      const xs = r.poly.map((v) => v[0]);
+      const zs = r.poly.map((v) => v[1]);
+      for (let x = Math.min(...xs) + 0.15; x < Math.max(...xs); x += 0.3) {
+        for (let z = Math.min(...zs) + 0.15; z < Math.max(...zs); z += 0.3) {
+          const p: Vec3 = [x, on.floors.find((f) => f.id === r.floor)!.elevation, z];
+          if (locate(on, p).room === room) out.push(p);
+        }
+      }
+    }
+    return out;
+  }
+  /** Can a body at `p` walk half a metre in some direction? */
+  function canLeave(world: PhysicsWorld, p: Vec3): boolean {
+    return [0, EAST, SOUTH, WEST].some((yaw) => {
+      const b = walk(world, body(p, yaw), 2);
+      return Math.hypot(b.p[0] - p[0], b.p[2] - p[2]) >= 0.5;
+    });
+  }
+
+  it("a program standing in the shed is put back at the tent map's spawn, never left inside the shed prop", () => {
+    const tent = SHOW();
+    const shed = SHOW_SHED();
+    const world = buildPhysicsWorld(tent);
+    const inShed = pointsIn(shed, "shed");
+    expect(inShed.length).toBeGreaterThan(40);
+    let respawned = 0;
+    for (const p of inShed) {
+      const after = bodyAfterRemap(tent, body(p, 0));
+      if (after.respawned) {
+        respawned++;
+        expect(after.body.p).toEqual(spawnBody(tent).p);
+      }
+      // Wherever they end up, they can walk away.
+      expect(canLeave(world, after.body.p), `stuck at ${p.join(",")}`).toBe(true);
+    }
+    expect(respawned).toBeGreaterThan(0);
+  });
+
+  it("and the other way: every point of each variant's spawn room is playable on the other variant", () => {
+    for (const [from, to] of [
+      [SHOW_SHED(), SHOW()],
+      [SHOW(), SHOW_SHED()],
+    ] as const) {
+      const world = buildPhysicsWorld(to);
+      const room = from.spawn.room;
+      for (const p of pointsIn(from, room)) {
+        const after = bodyAfterRemap(to, body(p, 0));
+        expect(canLeave(world, after.body.p), `${room} ${p.join(",")} on ${to.name}`).toBe(true);
+      }
+    }
+  });
+
+  it("a body that still stands somewhere stays put (pitch kept on a respawn)", () => {
+    const house = SHOW();
+    const b = { ...spawnBody(house), pitch: 12 };
+    expect(bodyAfterRemap(house, b)).toEqual({ body: b, respawned: false });
+    const lost = bodyAfterRemap(house, body([-100, 0, -100], 0));
+    expect(lost.respawned).toBe(true);
+    expect(lost.body.p).toEqual(spawnBody(house).p);
   });
 });

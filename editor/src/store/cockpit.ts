@@ -21,7 +21,17 @@ import { create, useStore } from 'zustand'
 import type { SignalArgs, StatField } from '@/lib/api'
 import type { SimEvent } from '@loom/core/sim'
 import type { WidgetCard } from '@loom/core/chat'
-import type { AgentControl, AgentMindSummary, AgentThought, CueState, GuestView, InteractionSummary, PrimeView } from '@loom/core/views'
+import type {
+  AgentControl,
+  AgentMindSummary,
+  AgentThought,
+  CodexSummary,
+  CueState,
+  GuestView,
+  InteractionSummary,
+  PrimeView,
+  QuestSummary,
+} from '@loom/core/views'
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -95,6 +105,17 @@ export const PlayerRole = {
 } as const
 
 export type PlayerRole = (typeof PlayerRole)[keyof typeof PlayerRole]
+
+/** A director's step on one person's quest — the server's `/api/mod/quest`
+ *  actions, the same steps `start / update / complete / fail quest` take. */
+export const QuestAction = {
+  Start: 'start',
+  Update: 'update',
+  Complete: 'complete',
+  Fail: 'fail',
+} as const
+
+export type QuestAction = (typeof QuestAction)[keyof typeof QuestAction]
 
 /** A live play-as session, shaped for `@loom/play/embed`'s `PlayEmbed`. */
 export type PlayerSession =
@@ -307,6 +328,12 @@ export interface CockpitState {
   /** The cue sheet's state (`ModView.cues`): which `who: admin` cues have
    *  fired and which was last — off the sim log, so every director agrees. */
   cues: CueState
+  /** Every declared codex entry with its holders (`ModView.codex`) — the
+   *  Inspector's "Grant codex entry…" picker. */
+  codex: CodexSummary[]
+  /** Every declared quest with each person's status (`ModView.quests`) —
+   *  the Inspector's quest buttons. */
+  quests: QuestSummary[]
   ledgerLen: number
   messages: CockpitMessage[]
   error: string | null
@@ -405,6 +432,15 @@ export interface CockpitState {
   closePlayer(session: PlayerSession): Promise<void>
   /** Write any world variable (the World browser's inline editing). */
   setVar(path: string, value: string): Promise<void>
+  /** Hand a codex entry to a holder (a guest or a character) — the story's
+   *  `unlock X for who`, server `/api/mod/codex` (journaled `by` you) or
+   *  `Sim.unlock` locally. Fires their `learns` hooks like any unlock. */
+  grantCodex(who: string, entry: string): Promise<void>
+  /** Move one person's quest (`/api/mod/quest` / `Sim.quest`): start one
+   *  they haven't got, or update / complete / fail an active one, with an
+   *  optional line for the quest's thread. A step that doesn't apply does
+   *  nothing, like the story's own statement. */
+  stepQuest(who: string, quest: string, action: QuestAction, text?: string | null): Promise<void>
   /** Re-pair a lost guest (N-02): mint a single-use, ten-minute pair code
    *  for the SAME guest and resolve to the link their new phone scans. Server runs only (the
    *  local backend has no phones — null, reason in `error`). `revokeOthers`
@@ -471,6 +507,8 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   events: [],
   interactions: [],
   cues: NO_CUES,
+  codex: [],
+  quests: [],
   ledgerLen: 0,
   messages: [],
   error: null,
@@ -514,6 +552,8 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   openPlayer: async () => null,
   closePlayer: noop,
   setVar: noop,
+  grantCodex: noop,
+  stepQuest: noop,
   pairGuest: async () => null,
   releasePart: async () => null,
   minds: [],

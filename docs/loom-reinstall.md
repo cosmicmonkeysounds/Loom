@@ -299,13 +299,13 @@ tolerance: metres, and m² for orientations).
 > **What it guarantees (not normative).** Inside a room every leg stays in
 > the room's polygon at its ends and midpoint and crosses none of its edges
 > properly, so a route no longer cuts a corner of a concave room — the
-> show's Rec Room, which wraps round the tent, now turns at the tent's
-> north-west corner (`[1.15, −2.7, 6.85]`) instead of running through its
-> south wall — and no leg crosses a stair hole or its rails, or the ramp
-> footprint below, and no leg runs through a solid prop's grown bounds —
-> the Rec Room's route from the tent flap to the furnace now turns at the
-> ping-pong table's north-east waypoint (`[4.22, −2.7, 7.888]`) instead of
-> crossing the table. Doors are walked through at their centre point; legs
+> show's backyard, which wraps round the tent, turns at the yard's reflex
+> corner off the tent's north-west (`[1.65, 0, 18.65]`) instead of running
+> through the tent's north wall — and no leg crosses a stair hole or its
+> rails, or the ramp footprint below, and no leg runs through a solid
+> prop's grown bounds — a route across the yard turns at the Truth Pong
+> table's corner waypoints (`[4.015, 0, 14.52]`) instead of crossing the
+> table. Doors are walked through at their centre point; legs
 > may run along a wall or touch a corner. A prop whose outer corners all
 > fall outside its room (one pushed against two walls) adds no waypoints,
 > so a route may detour through a door to reach past it, or — with no way
@@ -324,23 +324,86 @@ tolerance: metres, and m² for orientations).
 ### 1.3 Where the map lives
 
 - The show's map: `core/examples/trapped-in-the-internet/house.json` —
-  a **placeholder layout** (plausible rooms for the show's LOCATIONs) until
-  the real house is measured. Edit it with the **map editor**
-  (`/reinstall/map`) or by hand.
-- The event server serves the event's map: the director's saved one
-  when there is one (and it validates) — `STATE_DIR/<eventId>/spatial-house.json`,
-  or `STATE_DIR/spatial-house.json` for the default (env-passcode) event,
-  which journals to the state-dir root — else the show's file (env
-  `LOOM_HOUSE` overrides the default path). The save is deliberately
-  *not* named `house.json`: `LOOM_HOUSE` may well be `/data/house.json`
-  and the default event's state dir that same `/data`. Mount an override
-  read-only, outside the state dir, all the same.
+  a **placeholder layout** (guessed dimensions) until the real house is
+  measured, but with the story's structure: every LOCATION has a room, the
+  tent (The Internet: the spawn, the station mats, the `tent` terminal) is
+  an indoor room in a notched backyard, the Server Room has a door and no
+  duck. Edit it with the **map editor** (`/reinstall/map`) or by hand.
+- Its rain variant: `house.shed.json` beside it (the file convention is
+  `house.<variant>.json`) — the same map with The Internet in the shed
+  (room `shed`) and no tent, the same terminal ids, duck spots and
+  LOCATIONs. `core/test/show-house.test.ts` validates both, routes from the
+  spawn to every duck spot, and pins what they share; `pnpm test:vr` has
+  been run on both (2026-10-15).
+- Duck placement rules the show test enforces, because the find is plan
+  distance + floor only (no wall test — web `REACH`, VR `Duck.FIND_RADIUS`,
+  both 0.9 m): every spot is at least 10 m of walking from the spawn on
+  either variant, and no spot can be reached through a wall — nowhere a
+  player's feet fit (0.31 m off a wall line: body radius + half a wall)
+  within 0.9 m of a spot is in another room on its floor. In practice:
+  keep a spot ≥ 1.21 m from any wall it shares with a walkable room.
+- **The map belongs to the project** (SW-MAP-01). A project's map files
+  are ordinary project files beside the `.loom` story: `house.json` (the
+  default **variant**) and any `house.<variant>.json` (`<variant>` =
+  1–40 of `A–Z a–z 0–9 _ -`, e.g. `house.shed.json`), at the project's
+  root (`core/server/house-maps.ts` `isMapFile`). They are not story — the
+  launch source concatenates `.loom` files only. A project made from an
+  example template gets the example's maps; `core/scripts/sync-example.ts`
+  pushes them, but **the project's copy wins** (a survey kept with "Save
+  to project" lives there): an example map is only added when the project
+  lacks that file, a differing project map is kept and both versions are
+  summarised; `--replace-maps` overwrites (and deletes the ones the
+  example lacks, copying the old text to a temp directory first),
+  `--keep-maps` touches none. Each variant is a **whole map**, validated
+  on its own — a map file that doesn't validate is refused wherever one is
+  written (`PUT /api/projects/:id/files` 400 + `problems`, an empty new
+  file aside; `/api/mod/load {maps}` 400 before the restart; sync-example
+  stops before writing). The server stays show-agnostic and labels a
+  variant by its file (and the map's `name`).
+- **A launch snapshots them** like `scenario_source`: on the event row
+  (`event.house_maps`, jsonb, file → text) and in the event's state dir
+  (`spatial-maps.json`, with the **active variant**), so an event plays a
+  fixed map through a server restart (the files come from the row, like
+  the story — a sync written there while the server was down is what it
+  plays; the state dir's copy covers an event with no row snapshot, and the
+  active variant is always the state dir's), a reload (`POST
+  /api/projects/:id/event/reload`, "Push draft") refreshes the snapshot
+  (the active variant is kept while its file exists, else the default),
+  and End → relaunch is a new event on the project's current maps **and
+  the variant the last event played**: the choice is also recorded on the
+  row (`event.map_variant`, written on every switch), and a launch seeds
+  the new row from the project's last event, so a rain night switched to
+  the shed relaunches on the shed (a fresh state dir starts on the row's
+  choice; the state dir's own wins once it has one). Old event rows (no
+  snapshot) play the show's file.
+- The event server serves the event's map, the first that exists and
+  validates: **(1)** the director's save for this event —
+  `STATE_DIR/<eventId>/spatial-house.json`, or `STATE_DIR/spatial-house.json`
+  for the default (env-passcode) event, which journals to the state-dir
+  root; **(2)** the project snapshot's active variant (default
+  `house.json`); **(3)** the show's file (env `LOOM_HOUSE`, else the
+  example's `house.json` — now only the fallback). `source` on `GET
+  /api/spatial/house` says which (`event` | `project` | `show`). The save
+  is deliberately *not* named `house.json`: `LOOM_HOUSE` may well be
+  `/data/house.json` and the default event's state dir that same `/data`.
+  Mount an override read-only, outside the state dir, all the same.
+- A director's save stays the event's own until it is retired: **Save to
+  project** writes the event's current map into a project file (default:
+  the active variant's) and, when that is the active variant, deletes the
+  save (the event now plays the project's copy); a **variant switch**
+  drops it (it was an edit of the old variant). A reload (Push draft) and
+  a restart (Go live in place, Reset) keep it — the morning reset checks
+  the map page's status line reads "the project's map". An
+  event with no project map files (the LAN default event, an old project)
+  switches among the **show file's siblings** instead: `LOOM_HOUSE=
+  /config/house.json` → `/config/house.<variant>.json`.
 - The show's file is re-read whenever its **mtime** changes (a hand edit,
-  a file mounted after boot): while an event runs on the show's file, a
-  changed valid file replaces its map and is announced (`house` frame,
-  live ducks follow, §2.2). A missing, half-written or invalid file is
-  logged once and never sticks — the last good map keeps serving. An
-  event running on a director's save never follows the show's file.
+  a file mounted after boot): while an event runs on the show's file (or a
+  chosen sibling), a changed valid file replaces its map and is announced
+  (`house` frame, live ducks follow, §2.2). A missing, half-written or
+  invalid file is logged once and never sticks — the last good map keeps
+  serving. An event running on a director's save or a project snapshot
+  never follows the show's file.
 - Both games and the terminals fetch the map at start (`GET
   /api/spatial/house`) and refetch on a `house` frame, and on `hello`
   (every stream (re)connect) whenever its `houseVersion` differs from the
@@ -364,7 +427,7 @@ Golden fixtures for the Godot port: `house/test/golden/<name>.walls.json`,
 goldens` from `house/test/fixtures/*.json` + the show's `house.json`
 (`name` = `show`). Each is a JSON array, one value per line, every number
 rounded to 1 mm: walls = `WallSegment[]`; routes = `[{from, to, path}]`;
-locate = `[{p, floor, room, height}]` with `height = heightAt([x, z], y)`.
+locate = `[{p, floor, room, height, standable}]` with `height = heightAt([x, z], y)` and `standable = standable(house, p)` (the queries include every solid prop's base and top).
 Queries are stored with their answers, so a port only reads and compares.
 A test fails when the committed goldens drift from the code.
 
@@ -388,15 +451,18 @@ calls; it can do nothing else.
 
 | Route | Auth | Body / query | Result |
 |---|---|---|---|
-| `GET /api/spatial/house` | mod token (header or `?token=`), author session, or a session token | — | 401 none of those · 503 no map · `{house, version, source: "event" \| "show", duck?}` — `duck` (the session's current `DuckSpot`) only when the caller is a live session token: a map save may have moved or re-dealt it, and this is how a parked assignment (not on the stream yet) learns of it |
+| `GET /api/spatial/house` | mod token (header or `?token=`), author session, or a session token | — | 401 none of those · 503 no map · `{house, version, source: "event" \| "project" \| "show", duck?}` (§1.3) — `duck` (the session's current `DuckSpot`) only when the caller is a live session token: a map save may have moved or re-dealt it, and this is how a parked assignment (not on the stream yet) learns of it |
 | `POST /api/mod/spatial/house` | mod | `{house, base?}` — `base` = the version the editor loaded | 400 `{error, problems}` (checked first) · 409 `{error: "the map changed — reload", version}` when `base` is given and is not the current version (the map is loaded first if nothing has yet; no / null `base` = no check, last write wins) · 200 `{ok, version, warnings}`; persists `spatial-house.json` in the event's state dir (§1.3); streams get `house {version}`, then a `duck` frame per player whose duck moved (§2.2) |
+| `GET /api/mod/spatial/variants` | mod | — | `{variants: [{file, name, active, ok, problems}], from: "project" \| "show", edited, project}` — every whole-map variant (the default file first, then by name; `name` = the map's own, else the file), each validated afresh; `from` = the project snapshot, or the show file's siblings when it has no map files; `edited` = a director's save is in force; `project` = the event has a project (Save to project works) |
+| `POST /api/mod/spatial/variant` | mod | `{file, base?}` | 404 `{error: "no such map variant", variants}` · 400 `{error: "invalid house map", problems}` · 409 as for `house` on a stale `base` · 200 `{ok, version, warnings, file, dropped}`. **The tent ↔ shed switch** (SW-MAP-13), mid-show too: the same path as a save (live sessions carried over, ducks kept by spot id or re-dealt, `house` then `duck` frames), nothing saved; the active variant is remembered for the event (survives a restart) and on its row (`event.map_variant`, which End → relaunch starts on); a player standing where the new variant has no floor goes back to its spawn (§2.2); `dropped` = a director's save was in force and is gone |
+| `POST /api/mod/spatial/house/project` | mod | `{file?, base?}` — `file` default: the active variant's (a show sibling's too, on an event with no project maps yet, when it is named like a map file), else `house.json` | 409 `{error: "this event has no project — download the map instead"}` (the LAN default event; no `version`) · 400 not a map file name · 409 stale `base` · 502 the write failed · 200 `{ok, file, version}`. **Save to project**: writes the event's current map (two-space JSON + newline) as that project file — through the live co-editing doc when it is open, announced to every editor's tree — and records the snapshot on the event row, so the next launch and every co-writer see it. When `file` is the active variant, the director's save it came from is retired (the event now runs on the project's copy; same version, no frame) |
 | `POST /api/mod/spatial/begin` | mod | `{guest, world: "vr" \| "web", device, station?}` | 409 no scenario · 404 unknown guest · 400 bad world · 503 no map · 200 `Assignment` (below). An active session for the same guest is ended (`leave {reason: "replaced"}`). With `station`, the assignment is parked for that station until it claims it, and an older assignment still parked there is ended (`replaced`). |
 | `GET /api/mod/spatial/station` | mod | `?id=vr-1&name=Headset 1&world=vr` | marks the station seen; `{assignment: Assignment \| null}` — the newest unclaimed assignment for it |
 | `GET /api/mod/spatial/stations` | mod | — | `{stations: [{id, name, world, online (seen < 5 s), busy: {session, guest, name} \| null}]}` |
 | `GET /api/mod/spatial/candidates` | mod | — | `{players: [{id, name, captured, location}]}` — every guest/persona, captured first then by name |
 | `POST /api/mod/spatial/end` | mod | `{session}` | `{ok}` |
 | `POST /api/spatial/pose` | session token (`x-loom-token`) | `{p: Vec3, yaw, pitch?, t?}` (≤ 2 KB body, read before the generic 4 MiB parse); `p` is the player's **feet** (the floor point under the body — the eye is 1.6 m above it), `yaw` the view direction, `pitch` the head (degrees, + = up) | 204 · 400 malformed · 401 unknown token · 410 session over (the last 1000 ended tokens are remembered). First pose **claims** a parked assignment — and ends any *other* session on that station (`leave {reason: "replaced"}`: a headset that crashed mid-game never ended its last one). Poses (and the stream) **ignore pause**: they never touch the story. |
-| `POST /api/spatial/found` | session token | `{}` | 401 / 410 as for poses · 409 `{error: "doors are closed"}` while the event is not open (paused, or before the doors open) — the session stays un-found, so the game's retry lands after resume · 409 `{error: "this session has not started — send a pose first"}` for a parked assignment no pose has claimed · 409 `{error: "not near the duck", distance, dy}` unless the last pose is within 2.0 m (plan, `FOUND_PLAN_M`) of the duck **and** either within 1.2 m of its height (`DUCK_MAX_RISE`; a pose is the feet) or on the same floor (`floorOf`) — `nearDuck` · 200 `{ok, released, already}`; commits `signal("the simulation completed", guest)` then `signal("the golden duck", guest)`, journaled `by` the session's `device`. A repeat answers `already` without committing. |
+| `POST /api/spatial/found` | session token | `{}` | 401 / 410 as for poses · 409 `{error: "doors are closed"}` while the event is not open (paused, or before the doors open) — the session stays un-found, so the game's retry lands after resume · 409 `{error: "this session has not started — send a pose first"}` for a parked assignment no pose has claimed · 409 `{error: "not near the duck", distance, dy}` unless the last pose is within 2.0 m (plan, `FOUND_PLAN_M`) of the duck **and** either within 1.2 m of its height (`DUCK_MAX_RISE`; a pose is the feet) or on the same floor (`floorOf`) — `nearDuck` · 200 `{ok, released, already}`; commits `signal("the simulation completed", guest)` then `signal("the golden duck", guest)`, journaled `by` the session's `device`, and appends the run (`DuckRun`: guest, name, world, device, `ms` from the begin — or a parked assignment's claiming pose — to the find, less any time the doors were closed — a pause mid-run is not the player's time) to `spatial-runs.jsonl` in the event's state dir, which `/api/mod/recap`'s `duck` board reads (cleared by a story restart). A repeat answers `already` without committing. |
 | `POST /api/spatial/end` | session token | `{}` | `{ok}` |
 | `GET /api/spatial/stream` | mod (`?token=` / author session) or session token | `?name=Kitchen` | SSE, below |
 
@@ -443,14 +509,24 @@ the `found` response) means the program was captured and no longer is.
 streams. `hello` is sent on every (re)connect, so a client compares its
 `houseVersion` with the map it holds (§1.3).
 
-**A new map mid-game** (a director's save, or a changed show file):
-`setHouse` keeps every live session going. One that hasn't found its duck
+**A new map mid-game** (a director's save, the tent ↔ shed switch, or a
+changed show file): `setHouse` keeps every live session going. One that hasn't found its duck
 keeps its spot **id**, so a moved room carries the duck along and the
 session takes the spot's new position; a spot the new map no longer has
 is re-dealt (`pickDuckSpot`, still avoiding the one this guest found
 last). Rooms and floors are recomputed (the next `poses` flush carries
 them), a parked assignment moves to the new spawn, and every session's
-`houseVersion` becomes the new one. Then `house {version}`, then the
+`houseVersion` becomes the new one. A player stays where they stand
+unless that is not **`standable`** on the new map (`@loom/house`: in a
+room, over a surface, not buried in a solid prop — one stepped over at
+5 cm aside): then they go back to the new map's spawn. The rain variant
+is the case that needs it — the shed is a room on `house.shed.json` and a
+solid box prop on `house.json`, flush with the yard's fence, so a program
+standing in it on a switch back to the tent would be wedged between the
+box and the fence. The server re-seats its copy of the pose; the web game
+(`bodyAfterRemap`) and the VR game (`respawn_after_remap`) apply the same
+rule to their body when they load the new map (the locate goldens pin
+`standable` for the GDScript port). Then `house {version}`, then the
 `duck` frames above.
 
 ## 3. The web game — `reinstall/web/` (`loom-reinstall`)
@@ -511,15 +587,71 @@ Session lifecycle:
 
 The **map** page (`/reinstall/map`): the house plan (SVG, one floor at a
 time), live players, the duck of each session, terminals with their view
-cones; an **editor** for directors (drag terminals / duck spots / the spawn,
-nudge yaw, add/remove terminals and duck spots, move/resize rectangular
-rooms, edit the JSON with live validation) saving through
+cones; an **editor** for directors, saving through
 `POST /api/mod/spatial/house` with `base` = the version it loaded (none
 for the bundled stand-in, which is read-only anyway). A 409 saves nothing
 and offers **Copy my edits (JSON)** and **Reload the map**; a successful
 save moves the page's base to the new version. A terminal's view cone is
 drawn `horizontalFov(fov ?? 70)` wide (§1.1). A terminal's provisioning
-link is offered from its row.
+link is offered from its row. The page's **project bar**
+(`reinstall/web/src/map/ProjectBar.tsx`, logic in `map/project.ts`,
+mounted in the toolbar's `toolbarExtras` slot) toggles the variants,
+labelled **Tent** / **Shed** (`variantLabel`: a `house.<v>.json` file's
+`<v>`; `house.json`'s one distinguishing word in its map name, else
+*Main*), the playing one tagged **● live** (`GET …/variants`, `POST
+…/variant` with `base`; it asks first while programs are mid-game, a
+director's save would be dropped, or the page holds unsaved edits). A
+switch is live for every player at once, so the page reloads onto the
+server's map and version (a clean draft, never an undoable edit). It
+offers **Save to project** (`POST …/house/project`, only on an event with
+a project; it sends the file it names in its confirm, `saveTarget`; a
+valid unsaved draft is saved to the event first; the page reloads after)
+and **Download JSON** (the shown map as the active variant's file, to
+commit as the show's file).
+
+The editor works **within the §1.1 schema** — it never adds a field —
+and every op is pure (`reinstall/web/src/map/`: `edit.ts`, `doors.ts`,
+`yards.ts`, `structure.ts`), so undo / redo are stacks of map values:
+
+- **Floors**: add (id slugged from the label), edit label / elevation /
+  height (what stands on the floor rides an elevation change), delete with
+  its rooms and everything in them (refused for the last floor or the
+  spawn's).
+- **Rooms** are drawn as rectangles (or typed W × D / x, z — the
+  inspector's number fields commit on Enter / blur, since every value is a
+  real resize that clamps doors and re-cuts yards); polygon rooms
+  from the JSON still move, validate and delete. Delete cascades to the
+  room's doors, stairs, terminals, duck spots and props (refused while the
+  spawn is in it).
+- **Doors** are clicked onto a wall line; `a` / `b` are read off the plan
+  by sampling just either side of the line (one room there: `b: null`).
+  A door slides along its line (re-linking where it lands), "Open the
+  whole edge" spans its run, and doors (and wall-mounted things) follow a
+  moved or resized room edge, re-linked and kept inside their run.
+- **Yards**: an indoor room drawn, moved or resized over an outdoor room
+  cuts it — the yard's area minus every other room on the floor,
+  decomposed on the grid of polygon coordinates and split into as few
+  simple, hole-free pieces as it takes (same label / LOCATION; touching
+  pieces joined by a door spanning their whole shared edge), doors into
+  the yard re-linked, things re-homed, and a flap door added on the room's
+  side facing the most yard when it has none and is free-standing (no
+  indoor room beside it — a house room drawn into the yard gets none).
+  A part of the yard the cut seals off (no opening to the rest, no door,
+  no stair, not the spawn's) gets a flap from the room, and then the room
+  one into the rest unless it has another way in. A yard's pieces are one
+  place: deleted whole, never made indoor or nudged one piece at a time,
+  and its label + LOCATION may not equal another yard's on the floor. A room that stood in the
+  yard (fenced by it on ≥ half its edge) gives its footprint back when it
+  moves away or is deleted; "Fill the yard" re-cuts a yard from its
+  bounding box.
+- **Stairs**: draw the rect on the lower floor; `from` / `to` default to
+  the rooms under its middle on this floor and the next one up.
+- **Checks**, live: `validateHouse`'s problems (each read back to the
+  thing it names, a click selects it), plus two warnings that never block
+  a save — **walkability** (`route()` from the spawn to every duck spot,
+  the VR autopilot's algorithm; and every room no door / stair chain from
+  the spawn's room reaches) and the story's LOCATIONs (from the mod
+  view, `GET /api/state`): a room naming none, a LOCATION no room is.
 
 ## 4. The terminals — world view
 
@@ -534,7 +666,8 @@ place) and `view: "auto" | "world" | "face" | "mirror" | "tv"`:
 - `mirror`: a full-screen spectator: no scanner, no chat.
 - `tv` (`Tv.tsx`, OCT31 K-18): the TV above the fireplace, run by the house
   Mac's Chrome over HDMI — the character's face speaking every line it says
-  in the TV's room (`room=`, default The Desktop) through `/api/mod/tts`;
+  in the TV's room (`room=`, default The Desktop) in the Mac's own voice
+  (the server's `/api/mod/tts` is an opt-in);
   song beats and lore speakers are captioned only, nothing is said while
   the character is hidden or asleep.
 

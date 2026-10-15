@@ -91,7 +91,7 @@ the call words, the blackout rule, the 📝 buttons).
 
 | Time | You |
 |---|---|
-| **10:00** | Weather call with the tech op (gusts > 30–40 km/h or steady rain → the shed). **Morning reset, before anyone registers:** sync the story, **Push draft**, scan the door QR from a phone **on cellular**, then **Go live in place**. Delete any stale `spatial-house.json`. |
+| **10:00** | Weather call with the tech op (gusts > 30–40 km/h or steady rain → the shed). **Morning reset, before anyone registers:** sync the story, **Push draft**, scan the door QR from a phone **on cellular**, then **Go live in place**. Open `/reinstall/map`: press **Tent** or **Shed** in the *Map:* bar for the weather, and check its status line reads "the project's map". If it reads "this event's map", a rehearsal's map edit is still in force (Push draft and Go live keep it): **Save to project** to keep it, or switch to the other variant and back to drop it. |
 | 12:00 | Set dressing; tent or shed set. |
 | 15:00 | The tech op boots everything; you walk the pre-show checklist with them. |
 | **17:00** | **Performer call.** Costumes, phones charged, booths signed in (prime code + cast picker, after go-live), a test `!` alert to staff, walk the stations. Confirm the anti-AI program (MS Paint) with Task Manager and Clippy. |
@@ -108,8 +108,9 @@ the call words, the blackout rule, the 📝 buttons).
    backups armed for 19:00; uptime alerts reach the tech op + second director.
 2. Push draft → Go live in place done before any registration; the codes are
    the printed ones (door QR scanned on cellular).
-3. The show map is the tent or shed variant chosen at 10:00; no stale
-   `spatial-house.json`.
+3. The show map is the tent or shed variant chosen at 10:00 (**Tent** or
+   **Shed** `● live` in the map page's *Map:* bar), and its status line reads
+   "the project's map", not "this event's map".
 4. Trabolta: worker connected (Run → Mind), **mind Reset**, `lookup: false`,
    thinking off; both models loaded; the house Mac on its charger, `caffeinate`;
    he is hidden and asleep.

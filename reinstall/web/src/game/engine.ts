@@ -24,7 +24,7 @@ import type { Sfx } from "./audio.ts";
 import { formatElapsed, foundRetryMs, heat, PAUSED_NOTICE, perchedOutOfReach, relativeBearing, roomTitle, withinReach, type Heat } from "./hud.ts";
 import { combineInput, isActive, keyDown, keyUp, type StickVector } from "./input.ts";
 import { IdleLeash } from "./leash.ts";
-import { buildPhysicsWorld, eyeOf, move, NO_INPUT, spawnBody, type Body, type PhysicsWorld } from "./physics.ts";
+import { bodyAfterRemap, buildPhysicsWorld, eyeOf, move, NO_INPUT, spawnBody, type Body, type PhysicsWorld } from "./physics.ts";
 import { PosePump } from "./pump.ts";
 
 export { IDLE_LIMIT_MS, IDLE_WARN_MS } from "./leash.ts";
@@ -506,7 +506,8 @@ export class Game {
   /**
    * A director saved a new map (§1.3: refetch on a `house` frame): rebuild
    * the scene and the walls in place. The player stays where they stand
-   * (re-settled by the next frame). Gerald moves only when the server says
+   * (re-settled by the next frame) — unless that is no longer `standable`
+   * on the new map, then they go back to its spawn (`bodyAfterRemap`). Gerald moves only when the server says
    * so — the session-token GET carries this session's `duck`, which a save
    * may have moved or re-dealt; the server judges the find against that.
    */
@@ -547,7 +548,12 @@ export class Game {
     this.mapVersion = version;
     this.world = buildPhysicsWorld(house, walls);
     this.lastTrailAt = Number.NEGATIVE_INFINITY;
-    this.say("The house was remapped.", 3000);
+    // Standing somewhere the new map has no floor for (the shed is a solid
+    // box on the tent map): back to the start, as the server re-seats too.
+    const after = bodyAfterRemap(house, this.body);
+    this.body = after.body;
+    if (after.respawned) this.distHistory = [];
+    this.say(after.respawned ? "The house was remapped — you're back at the start." : "The house was remapped.", after.respawned ? 4000 : 3000);
   }
 
   /** Move Gerald to the spot the server now judges against (no-op when it

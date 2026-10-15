@@ -9,12 +9,24 @@ stagehand). QLab is not involved.
 story  do announce "Go to the living room."
   → stagehand show (cue rule)        MQTT show/announce {"text": "…"}
   → stagehand alexa (this job)       chime ─────────────┐
-       voice: disk cache → VPS /api/mod/tts (Kokoro)    ├─► MOTU ch 1/2 (Z1) + 3/4 (Z2)
-              → macOS `say` rendered to a file ─────────┘
+       voice: macOS `say` (Samantha) rendered to a file ├─► MOTU ch 1/2 (Z1) + 3/4 (Z2)
+              ──────────────────────────────────────────┘
        last resort: say -a <device>  (Z1 only — the device's first pair)
 story  sound alexa_chime             MQTT show/chime → the same chime
                                      (skipped if an announcement started or ended < 10 s ago)
+  ↘ the screen state (/api/screen/state `announce`) → every wall terminal
+    provisioned with &announce=1 chimes + says it in its own voice (N-09)
 ```
+
+**The voice is the Mac's own** (`engine: say`, the default since
+2026-10-15): no server round-trip, nothing to fetch or cache, and it works
+with the house internet down. Pick the voice with `say_voice:` — `say -v '?'`
+lists them; a downloaded *Enhanced* / *Premium* one (System Settings →
+Accessibility → Spoken Content → System Voice → Manage Voices) sounds much
+better than the stock Samantha. `engine: server` opts back in to the VPS's
+voice (`/api/mod/tts`, only when it runs the bundled Kokoro —
+`COMPOSE_PROFILES=tts`), cached on disk with `prewarm:`, `say` as the
+fallback.
 
 The code is the `alexa` module of stagehand
 (`stagehand/src/stagehand/alexa/`); the config is the `alexa:` section of
@@ -31,9 +43,11 @@ The code is the `alexa` module of stagehand
    removed (or set to its channel numbers).
 2. **Machine config.** `cp stagehand/trapped.house.yaml stagehand/house.yaml`
    (gitignored), then set `server.url: https://app.mapsandducks.com`,
-   `server.event` (the live event id) and `server.mod_passcode`, and
-   `alexa.device` to a unique part of the MOTU's name
-   (`scripts/accept/K-20.sh devices`).
+   `server.event` (the live event id) and `server.mod_passcode` (the
+   `show` job needs them; `alexa` with `engine: say` never calls the
+   server), `alexa.device` to a unique part of the MOTU's name
+   (`scripts/accept/K-20.sh devices`) and `alexa.say_voice` to the voice
+   you picked.
 3. **Install the agent.** `scripts/house-mac/install-alexa.sh` — validates
    the config, writes `~/Library/LaunchAgents/com.mapsandducks.stagehand-alexa.plist`
    from the template here, and loads it. It is a per-user **LaunchAgent**
@@ -80,17 +94,17 @@ The code is the `alexa` module of stagehand
 ## On the night
 
 - **Log:** `tail -f ~/Library/Logs/stagehand-alexa.log` — every line logs
-  `received`, then `via device` (server voice), `via device-say` (the Mac's
-  voice), `via say-device` / `say-default` (the device path failed).
+  `received`, then `via device-say` (the Mac's voice through the MOTU — the
+  normal one), `via say-device` / `say-default` (the device path failed),
+  or `via device` (the server voice, `engine: server` only).
 - **Restart:** `launchctl kickstart -k gui/$UID/com.mapsandducks.stagehand-alexa`.
-- **The four scripted lines are prewarmed** (fetched at boot and kept in
-  `~/Library/Caches/stagehand-alexa`), so they play instantly and still
-  sound like Kokoro when the internet is down.
 - **House internet down → fire by hand** (the show job can't hear the
-  story, but the broker and this player are local):
-  `mosquitto_pub -t show/announce -m '{"text":"Go to the living room."}'`
+  story, but the broker and this player are local, and `say` needs no
+  network): `mosquitto_pub -t show/announce -m '{"text":"Go to the living room."}'`
   or `cd stagehand && uv run stagehand announce --config house.yaml "Go to the living room."`.
-  A line that isn't prewarmed falls back to `say` after `tts_timeout` (4 s).
+- **With `engine: server`** the four scripted lines are prewarmed (fetched
+  at boot, kept in `~/Library/Caches/stagehand-alexa`) and anything else
+  falls back to `say` after `tts_timeout` (4 s).
 - **Health:** retained `health/alexa` = `online` / `offline` / `lost`.
 
 ## Acceptance

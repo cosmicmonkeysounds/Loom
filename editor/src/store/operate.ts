@@ -17,7 +17,16 @@
 
 import { create } from 'zustand'
 import { namedEvents, type SimEvent } from '@loom/core/sim'
-import type { AgentMindSummary, AgentThought, CueState, GuestView, InteractionSummary, PrimeView } from '@loom/core/views'
+import type {
+  AgentMindSummary,
+  AgentThought,
+  CodexSummary,
+  CueState,
+  GuestView,
+  InteractionSummary,
+  PrimeView,
+  QuestSummary,
+} from '@loom/core/views'
 import { ApiError, eventsApi, modApi, type EventInfo } from '@/lib/api'
 import { onCollabEvent, type CollabEventNotice } from '@/lib/collab'
 import { lspWorkspaceSync } from '@/lib/lsp-client'
@@ -72,6 +81,8 @@ interface ModSnapshot {
   interactions?: InteractionSummary[]
   minds?: AgentMindSummary[]
   cues?: CueState
+  codex?: CodexSummary[]
+  quests?: QuestSummary[]
 }
 
 /** What the server tells every console on a lifecycle transition. */
@@ -132,6 +143,8 @@ const EMPTY_SNAPSHOT = {
   beats: [] as string[],
   interactions: [] as InteractionSummary[],
   cues: NO_CUES,
+  codex: [] as CodexSummary[],
+  quests: [] as QuestSummary[],
   ledgerLen: 0,
   world: [] as WorldEntry[],
   modsOnline: null as number | null,
@@ -339,6 +352,8 @@ export const useOperate = create<OperateState>((set, get) => {
         beats: snap.beats ?? [],
         interactions: snap.interactions ?? [],
         cues: snap.cues ?? NO_CUES,
+        codex: snap.codex ?? [],
+        quests: snap.quests ?? [],
         choices: snap.choices ?? {},
         ledgerLen: snap.ledgerLen ?? 0,
         world: snap.world ?? [],
@@ -714,6 +729,9 @@ export const useOperate = create<OperateState>((set, get) => {
       }
     },
     setVar: (path, value) => withEvent((ev) => modApi.setVar(ev, path, value)),
+    // The server journals both with this director as `by`.
+    grantCodex: (who, entry) => withEvent((ev) => modApi.grantCodex(ev, who, entry)),
+    stepQuest: (who, quest, action, text) => withEvent((ev) => modApi.stepQuest(ev, who, quest, action, text)),
     pairGuest: async (id, opts) => {
       const ev = get().event
       if (!ev) return null

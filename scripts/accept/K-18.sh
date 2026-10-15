@@ -60,7 +60,7 @@ esac
 echo "event $event"
 look "" | json "'room=%r muted=%s head=%s attract=%s' % (d['voice']['room'], d['voice']['muted'], d['voice']['head'], d['attract'])"
 [[ "$(look "" | json "d['voice']['room']")" != "" ]] || echo "FAIL the story has no LOCATION named '$ROOM'"
-tts=$(curl -fsS -H "x-loom-token: $token" "$BASE/e/$event/api/mod/tts" | json "'server voice: %s (%s, default %s)' % ('ON' if d.get('available') else 'OFF — the TV uses the Mac Chrome voice', d.get('model'), d.get('voice'))" || echo "server voice: unknown")
+tts=$(curl -fsS -H "x-loom-token: $token" "$BASE/e/$event/api/mod/tts" | json "'server voice: %s (%s, default %s)' % ('ON (opt-in)' if d.get('available') else 'OFF (the default) — the TV speaks with the macOS voice in Chrome', d.get('model'), d.get('voice'))" || echo "server voice: unknown")
 echo "$tts"
 
 if [[ "${1:-}" == "--watch" ]]; then

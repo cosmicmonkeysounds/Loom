@@ -4,8 +4,9 @@
 # kitchen (or have someone in the kitchen). ≈ 10 minutes.
 #
 #   scripts/accept/K-20.sh devices    1. CoreAudio outputs — copy the MOTU's name into alexa.device
-#   scripts/accept/K-20.sh local      2. chime + the server voice on Z1 + Z2 now (no broker, no story)
-#   scripts/accept/K-20.sh offline    3. the same line through `say` (the internet-down voice)
+#   scripts/accept/K-20.sh local      2. chime + the Mac's `say` voice on Z1 + Z2 now (no broker, no story)
+#   scripts/accept/K-20.sh offline    3. the same line with no server link at all (what engine: say
+#                                        always does; with engine: server, the internet-down voice)
 #   scripts/accept/K-20.sh install    4. install / restart the launchd agent (install-alexa.sh)
 #   scripts/accept/K-20.sh mqtt       5. publish show/announce like the show does → the agent plays it
 #   scripts/accept/K-20.sh chime      6. `sound alexa_chime` alone (show/chime)
@@ -57,7 +58,7 @@ case "${1:-}" in
   local)
     need_config
     stage stagehand announce --config "$CONFIG" "$LINE"
-    echo "PASS if: one chime, then the line, in the living room AND the kitchen ('played via device' = the server voice)" ;;
+    echo "PASS if: one chime, then the line, in the living room AND the kitchen ('played via device-say' = the Mac's voice; 'via device' = the opt-in server voice)" ;;
   offline)
     need_config
     stage stagehand announce --config "$CONFIG" --offline "$LINE"

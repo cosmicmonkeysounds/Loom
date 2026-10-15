@@ -89,6 +89,25 @@ static func prop_solid(prop: Dictionary) -> bool:
 	return kind == "box" or kind == "cylinder"
 
 
+## Whether a plan point is inside a prop's footprint (boundary counts): a
+## cylinder's disc (radius `max(w, d) / 2`) or a box's yawed `w × d`
+## rectangle about `pos` — the shapes the games collide with.
+static func in_prop_footprint(prop: Dictionary, p: Array) -> bool:
+	var size: Array = prop["size"]
+	var pos: Array = prop["pos"]
+	var w := float(size[0])
+	var d := float(size[2])
+	var rx: float = float(p[0]) - float(pos[0])
+	var rz: float = float(p[1]) - float(pos[2])
+	if str(prop.get("kind", "")) == "cylinder":
+		return sqrt(rx * rx + rz * rz) <= maxf(w, d) / 2.0 + EPS
+	# Into the prop's frame (inverse of its yaw about +y).
+	var r := deg_to_rad(float(prop.get("yaw", 0.0)) if prop.get("yaw") != null else 0.0)
+	var lx := rx * cos(r) - rz * sin(r)
+	var lz := rx * sin(r) + rz * cos(r)
+	return absf(lx) <= w / 2.0 + EPS and absf(lz) <= d / 2.0 + EPS
+
+
 # --- plan helpers ----------------------------------------------------------
 
 

@@ -18,10 +18,11 @@
 //! LOOM_PRIME_PASS (any passcode left unset is auto-generated and printed
 //! at boot), LOOM_STATE_DIR (where restart-recovery state is kept),
 //! LOOM_APP_DIST, LOOM_TERMINAL_DIST, LOOM_REINSTALL_DIST (the built web
-//! reinstallation game, served at `/reinstall/`), LOOM_HOUSE (the show's
+//! reinstallation game, served at `/reinstall/`), LOOM_HOUSE (the fallback
 //! house map for the reinstallation games; default: the example's
-//! `house.json` — a director's save per event, kept as
-//! `spatial-house.json` in that event's state dir, overrides it).
+//! `house.json` — a project's own map files, snapshotted at launch, and a
+//! director's save per event, kept as `spatial-house.json` in that event's
+//! state dir, both override it; `server/house-maps.ts`).
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFileSync } from "node:fs";

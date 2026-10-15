@@ -4,10 +4,15 @@
 //! Nothing here enforces validity: an edit that leaves a door off its wall
 //! is shown to the director as a live problem, not silently refused.
 
-import { cloneData, roomAt, roomById, roomElevation, wrapYaw, yawToward } from "@loom/house";
-import type { HouseMap, Room, TerminalSpot, Vec2, Vec3 } from "@loom/house";
+import { DOOR_TOLERANCE, cloneData, distanceToBoundary, roomAt, roomById, roomElevation, wrapYaw, yawToward } from "@loom/house";
+import type { Door, HouseMap, Room, TerminalSpot, Vec2, Vec3 } from "@loom/house";
 import type { SaveHouseReply } from "../api.ts";
+import { clampGap, fitDoor, rectSideOf, resolveDoor, round } from "./doors.ts";
+import { uniqueId } from "./ids.ts";
 import { labelSpot, rectOf, snap, type Edge } from "./plan.ts";
+import { settleRoom, yardOf } from "./yards.ts";
+
+export { uniqueId };
 
 /** What the editor can point at. */
 export type Selection =
@@ -15,7 +20,10 @@ export type Selection =
   | { kind: "duck"; id: string }
   | { kind: "spawn" }
   | { kind: "room"; id: string }
-  | { kind: "prop"; id: string };
+  | { kind: "prop"; id: string }
+  | { kind: "door"; id: string }
+  | { kind: "stair"; id: string }
+  | { kind: "floor"; id: string };
 
 /** Terminal screens hang at about eye height above their floor. */
 export const TERMINAL_HEIGHT = 1.4;
@@ -37,7 +45,7 @@ export function positionOf(house: HouseMap, sel: Selection): Vec3 | null {
       return house.spawn.pos;
     case "prop":
       return house.props.find((p) => p.id === sel.id)?.pos ?? null;
-    case "room":
+    default:
       return null;
   }
 }
@@ -109,15 +117,6 @@ export function aimAt(house: HouseMap, sel: Selection, target: Vec2, step = 5): 
   return setYaw(house, sel, Math.round(yaw / step) * step);
 }
 
-/** An id not yet used by `taken`: `prefix-1`, `prefix-2`, … */
-export function uniqueId(prefix: string, taken: Iterable<string>): string {
-  const used = new Set(taken);
-  for (let i = 1; ; i++) {
-    const id = `${prefix}-${i}`;
-    if (!used.has(id)) return id;
-  }
-}
-
 /** Add a terminal in a room (at its middle, eye height, facing north). */
 export function addTerminal(house: HouseMap, roomId: string): { house: HouseMap; id: string } {
   const room = roomById(house, roomId);
@@ -141,27 +140,49 @@ export function addDuckSpot(house: HouseMap, roomId: string): { house: HouseMap;
   return { house: next, id };
 }
 
-/** Remove a terminal or a duck spot (the last duck spot stays — a map needs one). */
+/** Remove a terminal, a duck spot, a door, a stair or a prop (the last duck
+ *  spot stays — a map needs one). Rooms and floors cascade: `structure.ts`. */
 export function removeThing(house: HouseMap, sel: Selection): HouseMap {
-  if (sel.kind === "terminal") {
-    if (!house.terminals.some((t) => t.id === sel.id)) return house;
-    const next = clone(house);
-    next.terminals = next.terminals.filter((t) => t.id !== sel.id);
-    return next;
-  }
-  if (sel.kind === "duck") {
-    if (house.duck.spots.length <= 1 || !house.duck.spots.some((d) => d.id === sel.id)) return house;
-    const next = clone(house);
-    next.duck.spots = next.duck.spots.filter((d) => d.id !== sel.id);
-    return next;
-  }
-  return house;
+  if (sel.kind === "duck" && house.duck.spots.length <= 1) return house;
+  const lists: Partial<Record<Selection["kind"], { id: string }[]>> = { terminal: house.terminals, duck: house.duck.spots, door: house.doors, stair: house.stairs, prop: house.props };
+  const list = lists[sel.kind];
+  if (list === undefined || !("id" in sel) || !list.some((x) => x.id === sel.id)) return house;
+  const next = clone(house);
+  const keep = <T extends { id: string }>(l: T[]): T[] => l.filter((x) => x.id !== sel.id);
+  if (sel.kind === "terminal") next.terminals = keep(next.terminals);
+  else if (sel.kind === "duck") next.duck.spots = keep(next.duck.spots);
+  else if (sel.kind === "door") next.doors = keep(next.doors);
+  else if (sel.kind === "stair") next.stairs = keep(next.stairs);
+  else next.props = keep(next.props);
+  return next;
+}
+
+/** The doors on a room's own walls (± `DOOR_TOLERANCE`). */
+function doorsOnWalls(house: HouseMap, room: Room): Door[] {
+  return house.doors.filter((d) => (d.a === room.id || d.b === room.id) && distanceToBoundary(room.poly, d.at) <= DOOR_TOLERANCE + 1e-9);
+}
+
+/** The carried doors re-linked once the plan has settled (after any yard
+ *  re-cut, so the rooms either side are final) and kept inside their run.
+ *  `h` is a copy the caller owns. */
+function relinked(h: HouseMap, ids: ReadonlySet<string>): HouseMap {
+  h.doors = h.doors.map((d) => (ids.has(d.id) ? fitDoor(h, resolveDoor(h, d)) : d));
+  return h;
+}
+
+/** What stands in a room (terminals, duck spots, props, the spawn). */
+function thingsIn(house: HouseMap, roomId: string): { room: string; pos: Vec3 }[] {
+  return [...house.terminals, ...house.duck.spots, ...house.props, house.spawn].filter((t) => t.room === roomId);
 }
 
 /**
  * Drag one edge of a rectangular (4-vertex) room to `value` (an x for
  * e/w, a z for n/s). The far edge stays; the room keeps at least
- * `MIN_ROOM` per side. A non-rectangular room is returned unchanged.
+ * `MIN_ROOM` per side. Doors and wall-mounted things on the dragged edge
+ * move with it; a door on a side that got shorter slides to stay on it;
+ * every door on the room re-links to the rooms it now opens on, and a
+ * yard the room now overlaps is cut around it (`settleRoom`). A
+ * non-rectangular room is returned unchanged.
  */
 export function moveRectEdge(house: HouseMap, roomId: string, edge: Edge, value: number): HouseMap {
   const room = roomById(house, roomId);
@@ -172,10 +193,32 @@ export function moveRectEdge(house: HouseMap, roomId: string, edge: Edge, value:
   if (edge === "e") x1 = Math.max(value, x0 + MIN_ROOM);
   if (edge === "n") z0 = Math.min(value, z1 - MIN_ROOM);
   if (edge === "s") z1 = Math.max(value, z0 + MIN_ROOM);
+  const to: [number, number, number, number] = [round(x0), round(z0), round(x1), round(z1)];
+  if (to.every((v, i) => v === r[i])) return house;
   const next = clone(house);
   const target = next.rooms.find((x) => x.id === roomId)!;
-  target.poly = rectPolyLike(room.poly, r, [x0, z0, x1, z1]);
-  return next;
+  target.poly = rectPolyLike(room.poly, r, to);
+  const moved = new Set(doorsOnWalls(house, room).map((d) => d.id));
+  for (const d of next.doors) {
+    if (!moved.has(d.id)) continue;
+    const side = rectSideOf(r, d.at);
+    if (side !== null) d.at = sideMoved(d.at, side, d.width, to);
+  }
+  // Wall-mounted things on the dragged edge go with it.
+  for (const t of thingsIn(next, roomId)) {
+    if (rectSideOf(r, [t.pos[0], t.pos[2]], 0.05) !== edge) continue;
+    if (edge === "e" || edge === "w") t.pos = [edge === "e" ? to[2] : to[0], t.pos[1], t.pos[2]];
+    else t.pos = [t.pos[0], t.pos[1], edge === "s" ? to[3] : to[1]];
+  }
+  return relinked(settleRoom(house, next, roomId), moved);
+}
+
+/** A door on `side` of a rect, carried to the same side of the rect `to`:
+ *  across, the side's new line; along, kept, then clamped onto the side. */
+function sideMoved(at: Vec2, side: Edge, width: number, to: readonly [number, number, number, number]): Vec2 {
+  const [x0, z0, x1, z1] = to;
+  if (side === "n" || side === "s") return [round(clampGap(at[0], width, x0, x1)), side === "n" ? z0 : z1];
+  return [side === "w" ? x0 : x1, round(clampGap(at[1], width, z0, z1))];
 }
 
 /** The same rectangle's vertices, in the original winding / starting corner. */
@@ -184,21 +227,24 @@ function rectPolyLike(poly: readonly Vec2[], from: readonly number[], to: readon
 }
 
 /**
- * Move a room by `(dx, dz)`, carrying what stands in it: its terminals,
- * duck spots, props and (when it is the spawn room) the spawn. Doors and
- * stairs stay put — re-place them (the problem list will say which).
+ * Move a room by `(dx, dz)`, carrying what stands in it (its terminals,
+ * duck spots, props and — when it is the spawn room — the spawn) and the
+ * doors on its walls, which then re-link to whatever they open on at the
+ * new place (a door left facing nothing opens to the outside). A yard it
+ * now overlaps is cut around it; a yard it stood in gets its old
+ * footprint back (`settleRoom`).
  */
 export function moveRoom(house: HouseMap, roomId: string, dx: number, dz: number): HouseMap {
-  if (!house.rooms.some((r) => r.id === roomId) || (dx === 0 && dz === 0)) return house;
+  const room = roomById(house, roomId);
+  if (room === undefined || (dx === 0 && dz === 0)) return house;
   const next = clone(house);
-  const shift = (p: Vec3): Vec3 => [p[0] + dx, p[1], p[2] + dz];
-  const room = next.rooms.find((r) => r.id === roomId)!;
-  room.poly = room.poly.map(([x, z]) => [x + dx, z + dz] as Vec2);
-  for (const t of next.terminals) if (t.room === roomId) t.pos = shift(t.pos);
-  for (const d of next.duck.spots) if (d.room === roomId) d.pos = shift(d.pos);
-  for (const p of next.props) if (p.room === roomId) p.pos = shift(p.pos);
-  if (next.spawn.room === roomId) next.spawn.pos = shift(next.spawn.pos);
-  return next;
+  const shift = (p: Vec3): Vec3 => [round(p[0] + dx), p[1], round(p[2] + dz)];
+  const target = next.rooms.find((r) => r.id === roomId)!;
+  target.poly = target.poly.map(([x, z]) => [round(x + dx), round(z + dz)] as Vec2);
+  for (const t of thingsIn(next, roomId)) t.pos = shift(t.pos);
+  const moved = new Set(doorsOnWalls(house, room).map((d) => d.id));
+  for (const d of next.doors) if (moved.has(d.id)) d.at = [round(d.at[0] + dx), round(d.at[1] + dz)];
+  return relinked(settleRoom(house, next, roomId), moved);
 }
 
 /** Set one field of a terminal (the inspector's inputs). */
@@ -212,14 +258,20 @@ export function patchTerminal(house: HouseMap, id: string, patch: Partial<Omit<T
   return next;
 }
 
-/** Set a room's label / location / colour. */
-export function patchRoom(house: HouseMap, id: string, patch: Partial<Pick<Room, "label" | "location" | "color">>): HouseMap {
+/** Set a room's label / location / colour / height / outdoor flag (a
+ *  cleared location or height, or `outdoor: false`, is dropped). A room
+ *  made indoor is cut out of any yard it overlaps. */
+export function patchRoom(house: HouseMap, id: string, patch: Partial<Pick<Room, "label" | "location" | "color" | "height" | "outdoor">>): HouseMap {
   if (!house.rooms.some((r) => r.id === id)) return house;
+  // A yard cut into pieces is one place: one piece can't turn indoor alone.
+  if (patch.outdoor === false && yardOf(house, id).length > 1) return house;
   const next = clone(house);
   const r = next.rooms.find((x) => x.id === id)!;
   Object.assign(r, patch);
-  if (r.location === "") delete r.location;
-  return next;
+  if (r.location === "" || r.location === undefined) delete r.location;
+  if (r.height === undefined || !(r.height > 0)) delete r.height;
+  if (r.outdoor !== true) delete r.outdoor;
+  return patch.outdoor === false ? settleRoom(house, next, id) : next;
 }
 
 /** Set the height (y) of a placed thing. */

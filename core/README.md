@@ -288,9 +288,10 @@ timeline (clear the journal + chat + moderation).
 Environment: `LOOM_PORT` (7000), `LOOM_HOST` (0.0.0.0), `LOOM_EVENT_PASS`,
 `LOOM_PRIME_PASS`, `LOOM_MOD_PASS` (any unset code is auto-generated),
 `LOOM_STATE_DIR`, `LOOM_APP_DIST`, `LOOM_TERMINAL_DIST`,
-`LOOM_REINSTALL_DIST`, `LOOM_HOUSE`, `LOOM_TTS_*` (the speech proxy;
-`LOOM_TTS_URL` blank / `off` / `none` = no server voice — compose defaults
-it to its bundled `kokoro` service), `LOOM_VAPID_PUBLIC_KEY` /
+`LOOM_REINSTALL_DIST`, `LOOM_HOUSE`, `LOOM_TTS_*` (the opt-in speech
+proxy; `LOOM_TTS_URL` unset / blank / `off` / `none` / `false` / `0` = no
+server voice, the default — the terminals use the devices' own voices;
+compose's `kokoro` is behind `--profile tts`), `LOOM_VAPID_PUBLIC_KEY` /
 `LOOM_VAPID_PRIVATE_KEY` / `LOOM_VAPID_SUBJECT` (Web Push, below), plus the control-plane / hardening vars
 (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `LOOM_BASE_URL`,
 `LOOM_TRUSTED_ORIGINS`, `LOOM_TRUST_PROXY`), and the throttles
@@ -347,8 +348,10 @@ pushes during journal replay. The play app's `/sw.js` +
 - **Recap** (K-26, `server/recap.ts` + `routes/recap.ts`): `GET
   /api/mod/recap` (directors) → `totals`, ranked `lists` (`trust` /
   `truths` / `lies` / `internetVisits` / `codex` / `quests` /
-  `truthcoin`; ties share a rank, personas flagged), `factions`, `ending`
-  and a paste-ready `text`;
+  `truthcoin`; ties share a rank, personas flagged), `duck` (the Golden
+  Duck Speedrun: each program's fastest find, `m:ss`, off the
+  `SpatialHub` run log the runtime keeps in `spatial-runs.jsonl` —
+  SW-RE-14), `factions`, `ending` and a paste-ready `text`;
   `?format=text` returns only the text.
 - **Cue sheet** (K-21): `ModView.cues` = `cueState(sim)` (`views.ts`) —
   which `who: admin` INTERACTIONs fired and the last in-sequence one, read
@@ -356,6 +359,10 @@ pushes during journal replay. The play app's `/sw.js` +
   with `sequence: false` (machine-fired: the duck game, the door reed) is
   ticked but never "last"; `InteractionSummary.subject` marks a cue whose
   every listener binds a person (the ceremony's awards).
+- **Grants by hand** (S4): `ModView.quests` lists every declared QUEST
+  with each person's status (`QuestSummary.status`, person id → `active`
+  / `done` / `failed`), beside `ModView.codex`'s holders, so Run's
+  Inspector can offer `/api/mod/codex` and `/api/mod/quest` as buttons.
 - **Agents.** With no worker online for 20 s, the hub posts the
   character's authored `hold:` line (`CHARACTER … hold: "…"`) into the
   thread once, as a journaled `say`, and keeps the request queued for a
@@ -397,14 +404,27 @@ and its geometry are `@loom/house` (`../house`).
   outcome does — `signal("the simulation completed")` + `signal("the
   golden duck")`, journaled `by` the game's device, and refused (409
   "doors are closed") while the event is paused.
-- **The map** is the director's save for this event
-  (`spatial-house.json` in its state dir, `Store.loadHouse/saveHouse`)
-  else the show's file (`LOOM_HOUSE`, default the example's `house.json`,
-  re-read on mtime change, last good map kept). `POST
-  /api/mod/spatial/house {house, base?}` validates, refuses a stale `base`
-  (409), saves, and `setHouse` carries live sessions over: a duck keeps
-  its spot id (or is re-dealt), then the stream gets `house` + a `duck`
-  frame per moved duck.
+- **The map** belongs to the project (`server/house-maps.ts`, SW-MAP-01):
+  `house.json` + any `house.<variant>.json` are project files (not story —
+  `projectSource` concatenates `.loom` only), snapshotted at launch like
+  `scenario_source` (`event.house_maps` + `spatial-maps.json` in the state
+  dir with the active variant, which also rides `event.map_variant`),
+  refreshed by a reload, fresh on End → relaunch (on the last event's
+  variant: a launch seeds `map_variant` from the project's last event). The event's map is the director's save for this event
+  (`spatial-house.json`, `Store.loadHouse/saveHouse`) > the snapshot's
+  active variant > the show's file (`LOOM_HOUSE`, default the example's
+  `house.json`, re-read on mtime change, last good map kept; an event with
+  no project maps offers its `<stem>.<variant>.json` siblings as
+  variants). `POST /api/mod/spatial/house {house, base?}` validates,
+  refuses a stale `base` (409), saves, and `setHouse` carries live
+  sessions over: a duck keeps its spot id (or is re-dealt), then the
+  stream gets `house` + a `duck` frame per moved duck. `GET
+  /api/mod/spatial/variants` lists the variants; `POST
+  /api/mod/spatial/variant {file, base?}` switches (the tent ↔ shed
+  switch, mid-show: the same `setHouse` path, a director's save dropped);
+  `POST /api/mod/spatial/house/project {file?, base?}` is "Save to
+  project" (through the collab hub; 409 for an event with no project).
+  `/api/mod/load` takes `maps` beside `source` (`scripts/sync-example.ts`).
 - **The stream** (`GET /api/spatial/stream`, SSE, its own subscriber set —
   never `clients`): `hello` / `join` / `poses` / `found` / `leave` /
   `house` / `duck` / `reset`. A restart ends every session (`reset`).
@@ -423,8 +443,11 @@ the author's session) answers ~0.5 KB — `night` (`Night.screen` /
 a restart replays to the same answer), `character` (hidden = not
 `reveal`ed to everyone, `awake`, agent `online`), `attract` (hidden or
 asleep), `countdown` / `remaining` (story seconds on the running
-`Night.*_end` timer) and `terminals` (each terminal's last poll, newest
-first). Terminals poll it every 2 s instead of the mod feed. Alongside, the
+`Night.*_end` timer), `terminals` (each terminal's last poll, newest
+first) and `announce` (OCT31 N-09: the latest `do announce "…"`, `{seq,
+text, at}` — `at` 0 for replayed history — or null; a terminal set to
+`announce` chimes and says a new one, `terminal/src/announce.ts`).
+Terminals poll it every 2 s instead of the mod feed. Alongside, the
 `AgentHub` `admits` hook refuses a guest's DM with a character still hidden
 from that guest (no worker request, so no premature hold line); performers'
 `cast:` threads always pass. Tests: `test/screen-state.test.ts`.
@@ -589,7 +612,15 @@ on disk, and the server has no watch mode. After editing an example (or
 server code), `pnpm sync-example "<project name or id>" [example]`
 (`core/scripts/sync-example.ts`) writes the files into `project_file`,
 updates the event's snapshot, and reloads the running event through its
-own mod code (guests re-join); `pnpm dev --sync …` does it on boot.
+own mod code (guests re-join); `pnpm dev --sync …` does it on boot. The
+example's house maps (`house.json`, `house.<variant>.json`) go with it,
+but the **project's copy wins**: an example map is only added when the
+project lacks that file, and a project map that differs (one saved from
+the map page, say) is kept, with both versions summarised.
+`--replace-maps` overwrites them with the example's (copying the old ones
+to a temp directory first); `--keep-maps` touches no map. A map that
+doesn't validate stops the sync before anything is written, and `PUT
+/files` / `/api/mod/load {maps}` refuse one with 400 + `problems`.
 
 ## Status
 

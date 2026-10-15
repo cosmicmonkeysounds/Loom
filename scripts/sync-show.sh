@@ -11,7 +11,13 @@
 # on the tunnel and `--server` on the public origin. sync-example writes the
 # example's files into the project, updates the running event's snapshot
 # and (unless --no-reload) reloads it over the mod API — a real cut: every
-# guest re-joins. Never run it after doors (OCT31.md §3).
+# guest re-joins. Never run it after doors (OCT31.md §3). The house maps
+# (house.json, house.<variant>.json) go with the story (SW-MAP-01) — deploy
+# a server that knows them first: an older one would read them as story
+# text on its next launch. The project's maps win: a map surveyed on the
+# map page and kept with "Save to project" is never overwritten (it is
+# summarised next to the repo's copy); --replace-maps overwrites them with
+# the repo's, --keep-maps touches none.
 #
 # Environment (all optional except LOOM_SSH):
 #   LOOM_SSH           ssh destination of the VPS (user@host) — required
@@ -37,7 +43,7 @@ PASS=()
 for a in "$@"; do
   case "$a" in
     --dry-run) DRY=1 ;;
-    -h|--help) sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) awk 'NR == 1 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"; exit 0 ;;
     *) PASS+=("$a") ;;
   esac
 done

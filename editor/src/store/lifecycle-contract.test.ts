@@ -44,13 +44,15 @@ vi.mock('@/lib/api', async (importOriginal) => {
       persona: vi.fn(async () => ({ id: 'p-abc', owner: 'Ada' })),
       lens: vi.fn(async () => ({})),
       reset: vi.fn(async () => {}),
+      grantCodex: vi.fn(async () => {}),
+      stepQuest: vi.fn(async () => {}),
     },
   }
 })
 
 import { lspWorkspaceSync, uriFor } from '@/lib/lsp-client'
 import { useAuth } from '@/store/auth'
-import { CockpitPhase, CockpitTab, RunMode, type CockpitStore } from '@/store/cockpit'
+import { CockpitPhase, CockpitTab, QuestAction, RunMode, type CockpitStore } from '@/store/cockpit'
 import { useOperate } from '@/store/operate'
 import { useSim } from '@/store/sim'
 
@@ -139,6 +141,22 @@ describe('launch code rotation (server)', () => {
     await useOperate.getState().end()
     await useOperate.getState().startRun(RunMode.Live, { rotateStaff: true })
     expect(launch).toHaveBeenLastCalledWith('p-1', 'live', { rotate: 'staff' })
+    useOperate.getState().detach()
+  })
+})
+
+describe('codex + quest grants (server, S4)', () => {
+  it('post to the event mod routes', async () => {
+    const { modApi } = await import('@/lib/api')
+    useAuth.setState({ user: { id: 'u1', name: 'Ada', email: 'ada@example.test' } })
+    useOperate.getState().detach()
+    useOperate.getState().attach('p-1')
+    await useOperate.getState().startRun(RunMode.Rehearsal)
+    await useOperate.getState().grantCodex('g-1', 'The Sandy File')
+    expect(modApi.grantCodex).toHaveBeenLastCalledWith('evt-1', 'g-1', 'The Sandy File')
+    await useOperate.getState().stepQuest('g-1', 'The Hunt', QuestAction.Fail, 'Too slow.')
+    expect(modApi.stepQuest).toHaveBeenLastCalledWith('evt-1', 'g-1', 'The Hunt', 'fail', 'Too slow.')
+    expect(useOperate.getState().error).toBeNull()
     useOperate.getState().detach()
   })
 })

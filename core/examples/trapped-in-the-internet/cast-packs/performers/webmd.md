@@ -31,8 +31,7 @@ bring everyone up; **end any live game sessions** on the tablet.
 **Second device:** the WebMD video loops on it (it plays when the TV/tablet
 cue `tablet_webmd` fires; otherwise just keep it looping).
 
-**Duck speedrun award:** jot down the fastest find time if the tablet shows it
-[[EDIT: or drop the bonus award]].
+**Duck speedrun award:** nothing to time — the server clocks every find (the director reads the fastest off the recap).
 
 **Weather:** gusts over 30–40 km/h or steady rain → the shed (decided 10:00 on
 the day, W-22). The tech op switches the map; you move the tent light, the

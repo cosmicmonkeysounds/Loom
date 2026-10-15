@@ -26,7 +26,7 @@ The design contract is [`docs/loom-reinstall.md`](../../docs/loom-reinstall.md)
 ```bash
 pnpm --filter loom-reinstall dev        # :5176, proxies /api + /e to LOOM_SERVER (default :7000)
 pnpm --filter loom-reinstall build      # → dist/ (base /reinstall/), served by the event server
-pnpm --filter loom-reinstall test       # physics, input, sticks, the pose pump, config, HUD, stream, map helpers
+pnpm --filter loom-reinstall test       # physics, input, sticks, the pose pump, config, HUD, stream, map editor (ops, yard cut fuzz)
 pnpm --filter loom-reinstall typecheck
 ```
 
@@ -121,22 +121,56 @@ shows:
 
 The map page needs the same device setup (a moderator token).
 
-Tick **Edit** to change the map:
+Tick **Edit** to change the map. A second toolbar row holds the tools
+(letters in brackets), the snap step (1 / 5 / 10 / 25 / 50 cm, kept per
+device) and **New blank house…** (one floor + a yard, behind a confirm).
+The walkthrough for turning a survey into a map is the help article
+`docs/help/authoring/39-house-map.md`.
 
-- **drag** a terminal, a duck spot, the spawn or a prop. Its `room`
-  follows to whichever room on its floor now holds it. **Arrow keys**
-  nudge 5 cm (Shift: 50 cm).
-- **turn** a terminal, the spawn or a prop with the mouse wheel (5°, Shift
-  1°) or its round handle. A terminal's `fov` is the **vertical** field of
-  view (three.js; default 70°); its cone on the plan is the horizontal view
-  that gives on a landscape 16:10 tablet.
-- **+ Terminal / + Duck spot** add one in the selected room. **Delete**
-  removes one; the last duck spot always stays.
-- **rooms**: click a rectangular (4-vertex) room to select it, then drag
-  it to move it with everything in it, or drag an edge to resize it. Both
-  snap to 5 cm. Doors and stairs stay put: the problem list says which to
-  re-place. Other polygons are edited in the JSON tab. The plan's frame
-  holds still for the length of a drag.
+- **floors**: a tab each; **+ Floor** adds one above the top floor (id
+  slugged from the label); click the current tab again to edit its label /
+  elevation / height or delete it — with a confirm that lists the rooms,
+  doors, stairs and things that go with it (never the last floor or the
+  spawn's).
+- **▭ Room (R) / ▒ Yard (Y)**: drag a rectangle (snapped; edges pull onto
+  neighbouring room edges), or type **W × D** and Add (east of the
+  selected room, else east of everything on the floor). An indoor room
+  drawn, moved or resized over a yard **cuts it** (`yards.ts`): the yard
+  is re-split into simple, hole-free pieces with the same label /
+  LOCATION, joined by full-edge openings, things in it re-home, doors into
+  it re-link, and the room gets a flap door on its side facing the most
+  yard. A room that stood in the yard gives its footprint back when it
+  moves out or is deleted; **Fill the yard** re-cuts one from its box.
+- **▯ Door (D)**: click a wall; the door snaps onto the wall line (0.9 m,
+  shorter where the wall is) and its `a` / `b` are the rooms either side
+  (one room: `b: null`, to the outside). Drag a door along its wall (it
+  re-links where it lands); **Open the whole edge** spans the run.
+- **▤ Stairs (S)**: drag the rect on the lower floor; `from` / `to`
+  default to the rooms under it here and on the floor above; pick them and
+  the rising side in the inspector.
+- **↖ Select (V; Esc returns here)**: **drag** a terminal, a duck spot,
+  the spawn, a prop, a stair or a door. A thing's `room` follows to
+  whichever room on its floor now holds it. Click a room to select it,
+  then drag its body to move it — with what stands in it **and the doors
+  on its walls**, which re-link to whatever they open on — or drag a
+  rectangular room's edge to resize it (doors and wall terminals on that
+  edge go with it). The inspector types exact x / z / W / D, label, id,
+  LOCATION (a picker over the story's LOCATIONs, from the mod view),
+  colour, height and **Outdoor**. **Arrow keys** nudge by the snap step
+  (Shift ×10); **Delete** removes (a room with a cascade confirm).
+- **turn** a terminal, the spawn or a prop with ⌥ + wheel (5°, Shift 1°),
+  `[` / `]`, or its round handle. A terminal's `fov` is the **vertical**
+  field of view (three.js; default 70°); its cone on the plan is the
+  horizontal view that gives on a landscape 16:10 tablet.
+- **view**: the wheel zooms about the cursor, drag empty ground (or hold
+  Space, or the middle button) to pan, **Fit** shows the whole house; the
+  plan's frame holds still for the length of a drag. The selected room
+  shows its W × D.
+- **⌘Z / ⇧⌘Z** (⌘Y) undo / redo every edit, including the JSON tab's.
+- **🧊 3D** swaps the plan for a 3D preview of the (valid) draft, built by
+  the games' own `buildHouseScene` without ceilings (`Preview3D.tsx`, a
+  lazy chunk): drag to orbit, wheel to zoom, right-drag to pan; the floor
+  being edited, or every floor.
 - the **JSON** tab edits the whole map as text. Invalid maps still draw,
   so you can see what's wrong; text that isn't JSON or isn't drawable is
   held back.
@@ -146,8 +180,12 @@ Tick **Edit** to change the map:
   LOCATION). Games and terminals refetch it at once. The save carries the
   version the page loaded (`base`): if another director saved in between,
   nothing is saved and the page says so, with **Copy my edits (JSON)** and
-  **Reload the map**. **Undo** (⌘Z) and
-  **Revert** are there for mistakes.
+  **Reload the map**. **Revert** goes back to the map as loaded.
+- the problem list: `validateHouse` problems first (a click selects the
+  room / door / stair / thing a problem names and switches to its floor),
+  then **warnings** that never block a save — a duck spot `route()` can't
+  reach from the spawn (`check.ts`, the VR autopilot's algorithm), a room
+  naming no story LOCATION, a LOCATION no room is.
 - when the server can't be reached the page shows the bundled show map
   **read-only** (Edit and Save are off — saving it would replace the
   event's map) with a **Retry**; it reloads the real map by itself once the
@@ -157,8 +195,35 @@ The **Terminals** tab offers each terminal's provisioning link,
 `/terminal/?name=<name>&spot=<id>&view=auto`. Links never carry the
 passcode: append `&code=<mod passcode>` before opening one on its tablet.
 
+**The project bar** (`src/map/ProjectBar.tsx`; its decisions in
+`src/map/project.ts`, unit-tested), mounted in the toolbar by `main.tsx`
+through `MapApp`'s `toolbarExtras` slot (`projectBarExtras`). The
+toolbar's status line names the map's source with `sourceLabel` (this
+event's map / the project's map / the show's map). **Map:** a toggle per
+whole-map variant of the event (`GET /api/mod/spatial/variants`), labelled
+in a director's words by `variantLabel`: `house.shed.json` → **Shed**,
+the default `house.json` → the one word only its map's name has among the
+variants (the show's → **Tent**), else **Main**; the playing one is
+pressed and tagged **● live**, the file + map name are the tooltip, a
+broken one is disabled with its problems. A click switches the live map
+(`POST /api/mod/spatial/variant {file, base}`), asking first while
+programs are mid-game (they keep playing; a duck whose spot is gone is
+re-dealt; one standing where the new variant has no floor goes back to
+the start — `bodyAfterRemap` in `game/physics.ts`, the same `standable`
+rule the server re-seats by), when it would drop a director's save, or when the page holds
+unsaved edits. The switch is already live for every player, so the page
+then **reloads** onto the server's map and version as a clean draft (not
+an undoable adopt — undoing would only make an unsaved edit of the old
+variant). **Save to project** (an event with a project only) writes the
+map into the project as the active variant's file (`POST
+/api/mod/spatial/house/project`), so the next launch and every co-writer
+get it; a valid unsaved draft is 💾 saved to the event first, so what is
+on screen is what lands (an invalid one is not — the bar asks before
+saving the event's map without it); the page reloads after. **Download
+JSON** saves the shown map under that file name.
+
 To change the show's own map (`core/examples/trapped-in-the-internet/house.json`),
-copy the JSON tab into that file, then run
+**Download JSON** (or copy the JSON tab) into that file, then run
 `pnpm --filter @loom/house goldens && pnpm --filter @loom/house sync`
 (the Godot copy and the conformance goldens follow it).
 
@@ -178,7 +243,12 @@ copy the JSON tab into that file, then run
 | `src/game/hud.ts` | **pure**: room names, warmer / colder, compass, reach |
 | `src/game/leash.ts` | **pure**: the 120 s no-input leash (paused while the tab is hidden) |
 | `src/game/audio.ts` | WebAudio quack, fanfare and buzz (no assets) |
-| `src/map/` | the map page; `plan.ts` (SVG frame, hit tests, snapping) and `edit.ts` (edit ops, JSON drafts) are pure |
+| `src/map/MapApp.tsx` | the map page's state: load / save / stream, undo history, keys; `toolbarExtras` render prop (`MapToolbarContext`) for the project bar |
+| `src/map/Canvas.tsx`, `Toolbar.tsx`, `Inspector.tsx`, `Panels.tsx` | the plan + gestures, the toolbar, the inspector, the other tabs + the problem list |
+| `src/map/plan.ts`, `edit.ts` | **pure**: SVG frame, hit tests, snapping, zoom / pan; edit ops, JSON drafts |
+| `src/map/doors.ts`, `yards.ts`, `structure.ts` | **pure**: doors on wall lines; the yard cut; floors / rooms / stairs / blank house with cascades |
+| `src/map/history.ts`, `check.ts`, `tools.ts` | **pure**: undo / redo; structured problems + walkability + LOCATIONs; tools + selection floors |
+| `src/map/project.ts`, `ProjectBar.tsx` | **pure** + view: the project bar (variants, save to project, download), mounted through `toolbarExtras` |
 
 It reuses the terminal's scanner and pass parsing (`@loom/terminal/scanner.tsx`,
 `scan.ts`) and the play app's `api` / `ApiError` (`@loom/play/client.ts`)

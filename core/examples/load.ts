@@ -20,6 +20,8 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, relative, sep } from "node:path";
 
+import { isMapFile } from "../server/house-maps.ts";
+
 export interface ScenarioFile {
   /** Project-relative path (`main.loom`, `cast/algorithm.loom`). */
   path: string;
@@ -61,6 +63,20 @@ export function scenarioFiles(name: string): ScenarioFile[] {
     path: relative(root, full).split(sep).join("/"),
     source: readFileSync(full, "utf8"),
   }));
+}
+
+/**
+ * The example's house maps — `house.json` and every `house.<variant>.json`
+ * at its root (`server/house-maps.ts`) — as `{ path, source }`, by name.
+ * Not story: `scripts/sync-example.ts` pushes them as project files beside
+ * the `.loom` ones.
+ */
+export function scenarioMapFiles(name: string): ScenarioFile[] {
+  const root = scenarioDir(name);
+  return readdirSync(root)
+    .filter((f) => isMapFile(f) && statSync(join(root, f)).isFile())
+    .sort()
+    .map((f) => ({ path: f, source: readFileSync(join(root, f), "utf8") }));
 }
 
 /**

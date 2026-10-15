@@ -181,9 +181,10 @@ describe("validateHouse", () => {
 
   it("refuses a room whose walls rise through the floor above", () => {
     const p = showProblems((h) => (h.floors.find((f) => f.id === "basement")!.height = 2.85));
-    expect(p).toHaveLength(2); // the landing and the rec room; the tent sets its own 2.2
+    expect(p).toHaveLength(3); // the landing, the rec room and the server room
     expect(p[0]).toMatch(/^rooms\[6\] "landing": its top \(0\.15 m\) rises above floor "ground" \(elevation 0\) under room "(hall|bathroom)"$/);
     expect(p[1]).toMatch(/^rooms\[7\] "registry": its top \(0\.15 m\) rises above floor "ground"/);
+    expect(p[2]).toMatch(/^rooms\[9\] "server-room": its top \(0\.15 m\) rises above floor "ground"/);
     // Up to the floor above is fine.
     expect(showProblems((h) => (h.floors.find((f) => f.id === "basement")!.height = 2.7))).toEqual([]);
     // Away from the upper floor's rooms (a tall wing beside a lower storey) is fine.
@@ -202,8 +203,8 @@ describe("validateHouse", () => {
     );
     // The show: a hall door at a junction would cut the Living Room / Kitchen wall.
     expect(showProblems((h) => h.doors.push({ id: "fake", a: "hall", b: null, at: [0.5, 6.5], width: 1 }))).toEqual([
-      'doors[9] "fake": a door to the outside (b = null) sits on a wall shared with room "living" — name it as b',
-      'doors[9] "fake": a door to the outside (b = null) sits on a wall shared with room "kitchen" — name it as b',
+      'doors[11] "fake": a door to the outside (b = null) sits on a wall shared with room "living" — name it as b',
+      'doors[11] "fake": a door to the outside (b = null) sits on a wall shared with room "kitchen" — name it as b',
     ]);
   });
 
@@ -226,10 +227,10 @@ describe("validateHouse", () => {
     const door = (at: [number, number], width: number) => (h: HouseMap) =>
       h.doors.push({ id: "extra", a: "hall", b: "living", at, width });
     // hall-living: [0.5, 4.5], 1.2 m wide → z 3.9 to 5.1.
-    expect(showProblems(door([0.5, 4.6], 0.4))).toEqual(['doors[9] "extra": its gap overlaps door "hall-living"']);
-    expect(showProblems(door([0.5, 5.1], 0.9))).toEqual(['doors[9] "extra": its gap overlaps door "hall-living"']);
+    expect(showProblems(door([0.5, 4.6], 0.4))).toEqual(['doors[11] "extra": its gap overlaps door "hall-living"']);
+    expect(showProblems(door([0.5, 5.1], 0.9))).toEqual(['doors[11] "extra": its gap overlaps door "hall-living"']);
     // Within the line tolerance it is still the same wall.
-    expect(showProblems(door([0.51, 5.1], 0.9))).toEqual(['doors[9] "extra": its gap overlaps door "hall-living"']);
+    expect(showProblems(door([0.51, 5.1], 0.9))).toEqual(['doors[11] "extra": its gap overlaps door "hall-living"']);
     expect(showProblems(door([0.5, 5.4], 0.6))).toEqual([]); // 5.1 to 5.7: end to end
   });
 
@@ -246,12 +247,12 @@ describe("validateHouse", () => {
       'duck.spots[4] "kitchen-counter": y 2 must be 0 to 1.2 m above room "kitchen"\'s floor (elevation 0)',
     ]);
     expect(showProblems(spot("kitchen-counter", [5.7, 1.2, 8]))).toEqual([]);
-    // The spawn in the tent at ground level would stand the player in the Living Room.
-    expect(showProblems((h) => (h.spawn.pos = [4, 0, 5]))).toEqual([
-      'spawn: y 0 is on floor "ground", not room "tent"\'s floor "basement"',
+    // The spawn in the tent at basement level would stand the player under the yard.
+    expect(showProblems((h) => (h.spawn.pos = [3.6, -2.7, 20.6]))).toEqual([
+      'spawn: y -2.7 is on floor "basement", not room "tent"\'s floor "ground"',
     ]);
-    expect(showProblems((h) => (h.spawn.pos = [4, -2.1, 5]))).toEqual([
-      'spawn: y -2.1 must be within 0.45 m of room "tent"\'s floor (elevation -2.7)',
+    expect(showProblems((h) => (h.spawn.pos = [3.6, 0.6, 20.6]))).toEqual([
+      'spawn: y 0.6 must be within 0.45 m of room "tent"\'s floor (elevation 0)',
     ]);
     // A terminal / prop outside its room's storey.
     expect(showProblems((h) => (h.terminals.find((t) => t.id === "registry")!.pos = [6, 1.4, 9.25]))).toEqual([
@@ -276,14 +277,14 @@ describe("validateHouse", () => {
   });
 
   it("refuses a duck spot or spawn buried in a solid prop (resting on top is fine)", () => {
-    expect(showProblems((h) => (h.duck.spots.find((s) => s.id === "bathroom-tub")!.pos = [-3.2, 0.1, 5.6]))).toEqual([
-      'duck.spots[5] "bathroom-tub": [-3.2, 0.1, 5.6] is inside solid prop "tub" (rest it on top at y 0.55 or move it clear)',
+    expect(showProblems((h) => (h.duck.spots.find((s) => s.id === "bathroom-tub")!.pos = [-3.6, 0.1, 4.6]))).toEqual([
+      'duck.spots[5] "bathroom-tub": [-3.6, 0.1, 4.6] is inside solid prop "tub" (rest it on top at y 0.55 or move it clear)',
     ]);
     // A yawed box: the couch (2 × 0.9, yaw −90) runs along z.
     expect(showProblems((h) => (h.duck.spots.find((s) => s.id === "living-couch")!.pos = [2.8, 0, 4.1]))).toEqual([
       'duck.spots[2] "living-couch": [2.8, 0, 4.1] is inside solid prop "couch" (rest it on top at y 0.85 or move it clear)',
     ]);
-    expect(showProblems((h) => (h.spawn.pos = [5.3, -2.7, 5.8]))).toEqual([]);
+    expect(showProblems((h) => (h.spawn.pos = [5, 0, 22.2]))).toEqual([]); // on a (non-solid) station mat
     expect(showProblems((h) => (h.duck.spots[0]!.pos = [-1.2, 0, 2.9]))).toEqual([
       'duck.spots[0] "mudroom-boots": [-1.2, 0, 2.9] is outside room "mudroom" (± 0.05 m)',
     ]);

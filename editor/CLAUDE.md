@@ -311,7 +311,15 @@ when they are the lens), **Their feed** (the last 60 messages
 `visibleTo` them, hidden greyed), story position + trail, variables, and
 a **👁 Be <name>** button; a character shows **Their feed** (lines they
 spoke + `dm:` threads) plus their **scan readouts** (`respond` ledger
-events), variables, owned beats. Server runs add the lost-phone fixes:
+events), variables, owned beats. A guest also gets **Codex · N/M held**
+(a "grant codex entry…" picker over the entries they don't hold →
+`CockpitState.grantCodex` → `POST /api/mod/codex` / `Sim.unlock`) and
+**Quests** (every declared QUEST with their status; Start a new one,
+Update… / Complete / Fail an active one, each asking for the thread line
+— required for an update — → `stepQuest` → `POST /api/mod/quest` /
+`Sim.quest`), both off `CockpitState.codex` / `quests` (`ModView.codex`
+/ the new `ModView.quests` with per-person status); pure rules in
+`cockpit/grants.ts` (OCT31 S4). Server runs add the lost-phone fixes:
 a guest's **🔁 Re-pair** (`RePair` → `CockpitState.pairGuest` →
 `POST /api/mod/guest/pair`, a QR of the returned `?code=&pair=` link — a
 single-use code good for ten minutes —

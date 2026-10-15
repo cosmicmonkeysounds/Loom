@@ -5,8 +5,9 @@
 //! - `<name>.walls.json`  — `buildWalls(house)`.
 //! - `<name>.routes.json` — `[{from, to, path}]`, the queries stored with
 //!   their answers.
-//! - `<name>.locate.json` — `[{p, floor, room, height}]`; `height` is
-//!   `heightAt([x, z], y)`.
+//! - `<name>.locate.json` — `[{p, floor, room, height, standable}]`;
+//!   `height` is `heightAt([x, z], y)`, `standable` is `standable(p)` (the
+//!   remap re-seat rule — queries include every solid prop's base).
 //!
 //! Every number is rounded to 1 mm, queries included (answers are computed
 //! from the rounded queries). One JSON value per line, for readable diffs.
@@ -17,6 +18,8 @@ import {
   breakpoints,
   heightAt,
   locate,
+  propSolid,
+  standable,
   mm,
   pointInPolyStrict,
   pointInRect,
@@ -33,6 +36,8 @@ export const FIXTURES = join(ROOT, "test", "fixtures");
 export const GOLDEN = join(ROOT, "test", "golden");
 /** The show's house map (the default every server / game falls back to). */
 export const SHOW_HOUSE = join(ROOT, "..", "core", "examples", "trapped-in-the-internet", "house.json");
+/** Its rain variant (the Internet in the shed, not the tent) — not a golden; checked by the show + route suites. */
+export const SHOW_SHED_HOUSE = join(ROOT, "..", "core", "examples", "trapped-in-the-internet", "house.shed.json");
 /** The Godot project's copies (`pnpm --filter @loom/house sync`). */
 export const VR_HOUSE = join(ROOT, "..", "reinstall", "vr", "house", "house.json");
 export const VR_GOLDEN = join(ROOT, "..", "reinstall", "vr", "test", "golden");
@@ -96,6 +101,8 @@ export function locateQueries(house: HouseMap): Vec3[] {
   }
   for (const t of house.terminals) out.push(t.pos);
   for (const s of house.duck.spots) out.push(s.pos);
+  // Inside each solid prop (not standable), and on its top (standable).
+  for (const prop of house.props) if (propSolid(prop)) out.push(prop.pos, [prop.pos[0], prop.pos[1] + prop.size[1], prop.pos[2]]);
   out.push(house.spawn.pos, [-100, 0, -100]);
   return out.map(round3);
 }
@@ -135,7 +142,7 @@ export function goldenFiles(): Map<string, string> {
         locateQueries(house).map((p) => {
           const { floor, room } = locate(house, p);
           const h = heightAt(house, [p[0], p[2]], p[1]);
-          return { p, floor, room, height: h === null ? null : mm(h) };
+          return { p, floor, room, height: h === null ? null : mm(h), standable: standable(house, p) };
         }),
       ),
     );

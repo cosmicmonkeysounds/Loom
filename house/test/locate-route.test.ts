@@ -9,6 +9,8 @@ import {
   roomAt,
   route,
   sampleTrail,
+  solidPropAt,
+  standable,
   yawToward,
 } from "../src/index.ts";
 import { fixture } from "./golden.ts";
@@ -43,6 +45,26 @@ describe("floorOf / roomAt / locate", () => {
     expect(locate(stair, [0.5, -1.5, 3.5])).toEqual({ floor: "lower", room: "cellar" });
     expect(locate(stair, [0.5, 0, 3.5])).toEqual({ floor: "upper", room: "hall" });
     expect(locate(stair, [9, 0, 9])).toEqual({ floor: "upper", room: null });
+  });
+});
+
+describe("standable / solidPropAt (the remap re-seat rule)", () => {
+  const props = fixture("props");
+
+  it("in a room, over a floor, not buried in a solid prop; on top of one is fine", () => {
+    expect(standable(props, [1, 0, 5])).toBe(true);
+    expect(standable(props, [1, 0, 1])).toBe(true); // the rug is not solid
+    expect(solidPropAt(props, [6.2, 0, 4.5])?.id).toBe("crate-a");
+    expect(standable(props, [6.2, 0, 4.5])).toBe(false);
+    expect(standable(props, [6.2, 1, 4.5])).toBe(true); // standing on the crate
+    expect(standable(props, [6, 0, 1.2])).toBe(false); // the pillar (a disc)
+    expect(standable(props, [-100, 0, -100])).toBe(false); // outside every room
+  });
+
+  it("a prop low enough to step over is no prison (the games' 5 cm step-over)", () => {
+    const low = { ...props, props: [{ id: "mat", room: "parlour", kind: "box" as const, pos: [1, 0, 5] as [number, number, number], size: [1, 0.04, 1] as [number, number, number] }] };
+    expect(solidPropAt(low, [1, 0, 5])?.id).toBe("mat"); // validateHouse's rule: buried
+    expect(standable(low, [1, 0, 5])).toBe(true);
   });
 });
 

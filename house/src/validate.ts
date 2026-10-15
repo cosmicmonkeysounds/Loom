@@ -14,28 +14,23 @@ import {
   DOOR_TOLERANCE,
   breakpoints,
   distanceToBoundary,
-  inPropFootprint,
   mmi,
   onDoorLine,
   pointInPoly,
   pointInPolyStrict,
   polyBounds,
-  propSolid,
   rectPoly,
   styleOf,
 } from "./geometry.ts";
-import { FLOOR_SLACK, STEP_UP, floorOf, locate } from "./locate.ts";
+import { BODY_CLEAR, FLOOR_SLACK, STEP_UP, floorOf, locate, solidPropAt } from "./locate.ts";
 import type { HouseMap, Room, SpaceTransform, Validation, Vec2, Vec3 } from "./types.ts";
 
 /** How far outside its room a terminal / duck spot / spawn / prop may sit. */
 export const SPOT_TOLERANCE = 0.05;
 /** The clear floor a stair needs beyond its head (in `to`) and its foot (in `from`), in metres. */
 export const STAIR_CLEARANCE = 0.3;
-/** How tall a duck / a standing player is, for the solid-prop check. */
+/** How tall a duck is, for the solid-prop check (a player: `BODY_CLEAR`). */
 const DUCK_CLEAR = 0.5;
-const BODY_CLEAR = 1.7;
-/** How far into a prop's top a thing resting on it may sit. */
-const PROP_REST = 0.01;
 
 const PROP_KINDS = ["box", "cylinder", "screen", "label"];
 const COMPASS = ["n", "s", "e", "w"];
@@ -617,9 +612,7 @@ function checkGeometry(house: HouseMap, problems: string[]): void {
     }
     // Not buried in a solid prop (resting on its top is fine).
     const clear = kind === "duck" ? DUCK_CLEAR : BODY_CLEAR;
-    const prop = house.props.find(
-      (p) => propSolid(p) && y < p.pos[1] + p.size[1] - PROP_REST && y + clear > p.pos[1] && inPropFootprint(p, plan),
-    );
+    const prop = solidPropAt(house, [plan[0], y, plan[1]], clear);
     if (prop) {
       problems.push(`${at}: ${fmt(pos)} is inside solid prop "${prop.id}" (rest it on top at y ${mm3(prop.pos[1] + prop.size[1])} or move it clear)`);
     }

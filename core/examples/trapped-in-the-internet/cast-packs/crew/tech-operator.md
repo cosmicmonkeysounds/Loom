@@ -52,7 +52,7 @@ stagehand log · the heartbeat card · QLab.
 | house Mac dead | the story is fine on the VPS. Lights hold their last look; use wall switches / the WLED app. TV: [[EDIT: a spare laptop on the HDMI with the `view=tv` URL]]. Trabolta is down: the directors answer DMs |
 | router dead | the ISP router (same SSID/password) |
 | VPS dead | OP-21: start the warm standby, restore the newest backup, repoint DNS |
-| rain / wind mid-show | the shed switch: `show-map-switch shed` over SSH from this device (W-22); WebMD moves the tent light + speaker |
+| rain / wind mid-show | the shed switch (W-22): on this device open `/reinstall/map` (signed in with the mod code), press **Shed** in the *Map:* bar and confirm — or `POST /e/<event>/api/mod/spatial/variant {"file":"house.shed.json"}` with the mod token. Programs mid-game keep playing; anyone standing in the shed goes back to the new start. WebMD moves the tent light + speaker. (Copying files on the VPS does nothing: the event plays the project's maps.) |
 
 **ALL STOP:** QLab **Esc** (panic), mute the TV voice, then the wall switches.
 You stay at the house Mac; the house manager leads people.
@@ -97,7 +97,8 @@ terminal, or read them over the radio to the room.
 - [ ] Bench Thu 10-22 with John: the reed, the bay, the lights, the blackout
       test (stopwatch every flashing preset ≤ 3 Hz).
 - [ ] Tech run 10-28, dress 10-29 (incl. the shed switch in < 15 min).
-- [ ] Your device has the SSH key + `show-map-switch` (W-22) and the mod code.
+- [ ] Your device has the mod code and the map page (`/reinstall/map`) provisioned
+      and signed in, showing the *Map: Tent | Shed* bar (W-22).
 - [ ] The IP sheet + one-page runbook taped in the server room (every device's
       IP, these recovery steps, the mirror-view fallback URL, the rollback
       command). [[EDIT: write the IP sheet after the 10-22 bench]]
