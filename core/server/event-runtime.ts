@@ -42,6 +42,7 @@ import {
 } from "./identity.ts";
 import { foldName } from "../src/parser/names.ts";
 import { printExtras } from "./routes/k12.ts";
+import { sendRecap } from "./routes/recap.ts";
 import { SpatialHub, houseVersion, houseWarnings, isWorld, parsePose, sortCandidates, type SessionRef } from "./spatial.ts";
 import {
   AgentHub,
@@ -1687,6 +1688,13 @@ export class EventRuntime {
         return true;
       }
       sendJson(res, 200, this.tts.describe());
+      return true;
+    }
+
+    // --- K-26: the ceremony's recap numbers (directors only) ---
+    if (method === "GET" && path === "/api/mod/recap") {
+      if (opts.moderator !== true && !this.sessions.canModerate(queryTokenOf(req, url))) sendJson(res, 403, { error: "moderators only" });
+      else sendRecap(res, url, this.sim, { title: this.title, personas: this.personaOwners });
       return true;
     }
 
