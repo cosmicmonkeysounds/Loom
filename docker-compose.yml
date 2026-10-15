@@ -30,6 +30,9 @@ services:
     build:
       context: .
       target: server
+    # Pinned per release (deploy/release.sh writes LOOM_TAG into .env and
+    # keeps the previous tag's images for deploy/rollback.sh).
+    image: loom-server:${LOOM_TAG:-latest}
     restart: unless-stopped
     environment:
       DATABASE_URL: postgres://loom:${POSTGRES_PASSWORD}@db:5432/loom
@@ -84,6 +87,7 @@ services:
     build:
       context: .
       target: proxy
+    image: loom-proxy:${LOOM_TAG:-latest}
     restart: unless-stopped
     ports:
       - "80:80"
