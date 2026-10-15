@@ -9,7 +9,7 @@ import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { scenarioSource } from "../examples/load.ts";
-import { computeRecap, liesByPerson, rank } from "../server/recap.ts";
+import { computeRecap, duckBoard, liesByPerson, rank, runTime } from "../server/recap.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 
@@ -70,6 +70,26 @@ describe("K-26 recap", () => {
       ["c", 2],
       ["d", 4],
     ]);
+  });
+
+  it("the duck board: each program's fastest find, fastest first, ties by the second read aloud", () => {
+    const sim = Sim.fromSources("ROLE Program\n");
+    sim.createPerson("g1", "Winamp");
+    sim.createPerson("g2", "VLC");
+    const run = (guest: string, name: string, ms: number, world: "web" | "vr" = "web") => ({ guest, name, world, device: "x", ms, foundAt: 0 });
+    const board = duckBoard(
+      sim,
+      [run("g1", "Winamp", 95_400), run("g2", "VLC", 61_900, "vr"), run("g1", "Winamp", 61_200), run("g9", "Paint (left)", 200_000)],
+      new Set(["g2"]),
+    );
+    expect(board.map((d) => [d.id, d.name, d.time, d.rank, d.runs, d.world, d.persona])).toEqual([
+      ["g1", "Winamp", "1:01", 1, 2, "web", false],
+      ["g2", "VLC", "1:01", 1, 1, "vr", true],
+      ["g9", "Paint (left)", "3:20", 3, 1, "web", false],
+    ]);
+    expect(runTime(0)).toBe("0:00");
+    expect(runTime(59_999)).toBe("0:59");
+    expect(runTime(3_600_000)).toBe("60:00");
   });
 
   it("reads the show's live state into ranked lists + a paste-ready block", { timeout: SLOW }, () => {

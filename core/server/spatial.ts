@@ -62,6 +62,38 @@ export interface SpatialHubOptions {
   newToken?: () => string;
   /** Public session id minting (default `s-` + 6 hex). */
   newSessionId?: () => string;
+  /** A duck was found — the runtime keeps the run on disk (the ceremony's
+   *  Golden Duck Speedrun, SW-RE-14). */
+  onRun?: (run: DuckRun) => void;
+}
+
+/** One find of the duck: who, on what, and how long it took — from the
+ *  moment the player was in the simulation (a web begin, or a headset's
+ *  first pose) to the find, less any time the doors were closed (a
+ *  director's pause freezes the run like it freezes the story's clocks). */
+export interface DuckRun {
+  guest: string;
+  name: string;
+  world: SpatialWorld;
+  device: string;
+  ms: number;
+  /** When the duck was found (epoch ms on the hub's clock). */
+  foundAt: number;
+}
+
+/** Parse a stored run (a `spatial-runs.jsonl` line); null when malformed. */
+export function parseDuckRun(v: unknown): DuckRun | null {
+  if (typeof v !== "object" || v === null) return null;
+  const r = v as Record<string, unknown>;
+  const str = (k: string) => (typeof r[k] === "string" ? (r[k] as string) : null);
+  const n = (k: string) => (typeof r[k] === "number" && Number.isFinite(r[k]) && (r[k] as number) >= 0 ? (r[k] as number) : null);
+  const guest = str("guest");
+  const name = str("name");
+  const device = str("device");
+  const ms = n("ms");
+  const foundAt = n("foundAt");
+  if (guest === null || name === null || device === null || ms === null || foundAt === null || !isWorld(r["world"])) return null;
+  return { guest, name, world: r["world"], device, ms, foundAt };
 }
 
 /** Where the map came from: a director's save for this event, the
@@ -93,6 +125,10 @@ interface Session {
   /** The last pose (or the begin, before any pose). */
   activeAt: number;
   startedAt: number;
+  /** When the player entered the simulation (a web begin, or the claiming
+   *  pose of a parked assignment) — a duck run's clock starts here, read
+   *  on the open-doors clock (`runClock`). */
+  playingAt: number;
   found: boolean;
   foundAt: number;
   released: boolean;
@@ -214,7 +250,12 @@ export class SpatialHub {
   private readonly stations = new Map<string, Station>();
   /** The spot each guest found last (the next duck avoids it). */
   private readonly lastFound = new Map<string, string>();
+  /** Every find since the story (re)started (the ceremony's speedrun). */
+  private readonly runLog: DuckRun[] = [];
   private map: { house: HouseMap; version: string; source: HouseSource } | null = null;
+  /** Closed-doors time so far, and when the doors last closed (null = open). */
+  private closedMs = 0;
+  private closedSince: number | null = null;
 
   constructor(o: SpatialHubOptions) {
     this.o = o;
@@ -222,6 +263,24 @@ export class SpatialHub {
 
   private now(): number {
     return (this.o.now ?? Date.now)();
+  }
+
+  /** The hub's clock with every closed-doors stretch taken out: duck runs
+   *  are timed on it, so a pause mid-run doesn't count. */
+  private runClock(): number {
+    const now = this.now();
+    return now - this.closedMs - (this.closedSince === null ? 0 : now - this.closedSince);
+  }
+
+  /** The runtime's doors opened or closed (open / pause / a fresh load).
+   *  Poses still flow while closed; only the duck-run clock stops. */
+  setOpen(open: boolean): void {
+    if (open && this.closedSince !== null) {
+      this.closedMs += this.now() - this.closedSince;
+      this.closedSince = null;
+    } else if (!open && this.closedSince === null) {
+      this.closedSince = this.now();
+    }
   }
 
   // -- the house ------------------------------------------------------------
@@ -378,6 +437,7 @@ export class SpatialHub {
       dirty: false,
       activeAt: now,
       startedAt: now,
+      playingAt: this.runClock(),
       found: false,
       foundAt: 0,
       released: false,
@@ -474,6 +534,7 @@ export class SpatialHub {
    */
   private claim(s: Session): void {
     s.claimed = true;
+    s.playingAt = this.runClock();
     if (s.station !== null) {
       for (const o of [...this.sessions.values()]) {
         if (o !== s && o.station === s.station) this.finish(o, "replaced");
@@ -505,8 +566,22 @@ export class SpatialHub {
     s.activeAt = s.foundAt;
     s.released = release({ id: s.id, guest: s.guest, device: s.device, captured: s.captured });
     this.lastFound.set(s.guest, s.duck.id);
+    const run: DuckRun = { guest: s.guest, name: s.name, world: s.world, device: s.device, ms: Math.max(0, this.runClock() - s.playingAt), foundAt: s.foundAt };
+    this.runLog.push(run);
+    this.o.onRun?.(run);
     this.broadcast("found", { session: s.id, guest: s.guest, name: s.name, duck: s.duck, released: s.released });
     return { kind: "found", released: s.released, already: false };
+  }
+
+  /** Every duck found since the story (re)started, in order. */
+  runs(): DuckRun[] {
+    return [...this.runLog];
+  }
+
+  /** Adopt runs kept on disk (a server restart mid-show). */
+  restoreRuns(runs: readonly DuckRun[]): void {
+    this.runLog.length = 0;
+    this.runLog.push(...runs);
   }
 
   /** End a session by its token (the game quit). */
@@ -558,6 +633,7 @@ export class SpatialHub {
   reset(kind: string): void {
     for (const s of [...this.sessions.values()]) this.finish(s, "reset");
     this.lastFound.clear();
+    this.runLog.length = 0;
     this.broadcast("reset", { kind });
   }
 

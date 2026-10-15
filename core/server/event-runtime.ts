@@ -51,7 +51,7 @@ import { PushHub, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readou
 import { printExtras } from "./routes/k12.ts";
 import { sendRecap } from "./routes/recap.ts";
 import { ScreenWatch, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost } from "./routes/screen.ts";
-import { SpatialHub, houseVersion, houseWarnings, isWorld, parsePose, sortCandidates, type SessionRef } from "./spatial.ts";
+import { SpatialHub, houseVersion, houseWarnings, isWorld, parseDuckRun, parsePose, sortCandidates, type DuckRun, type SessionRef } from "./spatial.ts";
 import {
   DEFAULT_MAP_FILE,
   activeVariant,
@@ -458,7 +458,13 @@ export class EventRuntime {
     if (this.projectMaps !== null) this.store.saveMaps(this.projectMaps, this.mapVariant);
     if (init.now !== undefined) this.clock = init.now;
     this.modSnapshotMs = Math.max(0, init.modSnapshotMs ?? MOD_SNAPSHOT_MS);
-    this.spatial = new SpatialHub({ eventId: init.eventId, ...(init.now !== undefined ? { now: init.now } : {}) });
+    this.spatial = new SpatialHub({
+      eventId: init.eventId,
+      ...(init.now !== undefined ? { now: init.now } : {}),
+      // The speedrun survives a server restart mid-show (SW-RE-14).
+      onRun: (run) => this.store.appendRun(run),
+    });
+    this.spatial.setOpen(false); // idle until the doors open
     this.checkin = new GuestCheckin({
       sim: () => this.sim,
       open: () => this.open,
@@ -562,6 +568,13 @@ export class EventRuntime {
   /** True once the doors are open and a sim exists. */
   private get open(): boolean {
     return this.phase === "open" && this.sim !== null;
+  }
+
+  /** Move the lifecycle; the duck-run clock stops while the doors are
+   *  closed (SW-RE-14 — a pause mid-run isn't the player's time). */
+  private setPhase(phase: RuntimePhase): void {
+    this.phase = phase;
+    this.spatial.setOpen(this.open);
   }
 
   /** The live sim, or null before the doors open / after the event ends. */
@@ -1687,7 +1700,7 @@ export class EventRuntime {
     this.sim = Sim.fromSources(source);
     this.scenarioSource = source;
     this.scenarioName = name;
-    this.phase = "paused";
+    this.setPhase("paused");
     this.seedAvatars();
   }
 
@@ -1845,10 +1858,11 @@ export class EventRuntime {
     if (fresh) {
       this.loadScenario(this.scenarioSource, this.scenarioName);
       this.store.clearJournal();
+      this.store.clearRuns();
       this.resetChat();
       this.pendingTickMs = 0;
     }
-    this.phase = "open";
+    this.setPhase("open");
     this.persistMeta();
     this.startTicker();
     // A live event opens exactly like a rehearsal: the `entry:` beat plays
@@ -1863,7 +1877,7 @@ export class EventRuntime {
   /** Pause the event: stop the clock, keep all state. `/api/mod/stop`. */
   pause(): void {
     this.flushTick();
-    this.phase = "paused";
+    this.setPhase("paused");
     this.stopTicker();
     this.persistMeta();
     this.pushSnapshots();
@@ -1924,6 +1938,7 @@ export class EventRuntime {
     } else {
       this.loadScenario(source, name);
       this.store.clearJournal();
+      this.store.clearRuns();
       this.resetChat();
       this.pendingTickMs = 0;
       this.persistMeta();
@@ -2018,11 +2033,12 @@ export class EventRuntime {
       }
     }
     this.chat.loadHidden(this.store.loadHidden());
+    this.spatial.restoreRuns(this.store.loadRuns().map(parseDuckRun).filter((r): r is DuckRun => r !== null));
     for (const m of this.chat.all()) if (this.isExpired(m)) this.notifiedExpired.add(m.seq);
     for (const id of [...this.decisionChannels.keys()]) {
       if (this.sim?.pendingChoiceFor(id) == null) this.decisionChannels.delete(id);
     }
-    this.phase = meta.phase;
+    this.setPhase(meta.phase);
     for (const [id, owner] of meta.owners ?? []) this.personaOwners.set(id, owner);
     const entries = this.store.loadSessions();
     this.sessions.load(entries);
@@ -2136,7 +2152,7 @@ export class EventRuntime {
     // --- K-26: the ceremony's recap numbers (directors only) ---
     if (method === "GET" && path === "/api/mod/recap") {
       if (opts.moderator !== true && !this.sessions.canModerate(queryTokenOf(req, url))) sendJson(res, 403, { error: "moderators only" });
-      else sendRecap(res, url, this.sim, { title: this.title, personas: this.personaOwners });
+      else sendRecap(res, url, this.sim, { title: this.title, personas: this.personaOwners, duckRuns: this.spatial.runs() });
       return true;
     }
     // --- process load for the K-32 load test (directors only) ---

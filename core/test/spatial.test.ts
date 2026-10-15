@@ -20,8 +20,10 @@ import {
   SpatialHub,
   houseWarnings,
   nearDuck,
+  parseDuckRun,
   parsePose,
   sortCandidates,
+  type DuckRun,
   type SessionRef,
 } from "../server/spatial.ts";
 import { EventRuntime, defaultHouseFile } from "../server/event-runtime.ts";
@@ -895,5 +897,119 @@ describe("EventRuntime — the spatial plane", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The duck run log (SW-RE-14 — the ceremony's Golden Duck Speedrun)
+// ---------------------------------------------------------------------------
+
+describe("duck runs", () => {
+  it("a find logs how long the run took: from a web begin, or from a headset's first pose", () => {
+    const logged: DuckRun[] = [];
+    let clock = 1_000;
+    const hub = new SpatialHub({ eventId: "evt", now: () => clock, onRun: (r) => logged.push(r) });
+    hub.setHouse(fixture("two-rooms"), "show", false);
+    const web = hub.begin({ guest: "g-1", name: "Winamp", world: "web", device: "Tent tablet", station: null, captured: true })!;
+    const vr = hub.begin({ guest: "g-2", name: "VLC", world: "vr", device: "Headset 1", station: "vr-1", captured: true })!;
+    clock += 60_000; // the headset sits on the desk a minute…
+    hub.pose(vr.token, { p: [1, 0, 1], yaw: 0, pitch: 0 }); // …then someone puts it on
+    clock += 23_400;
+    hub.pose(web.token, { p: web.duck.pos, yaw: 0, pitch: 0 });
+    hub.found(web.token, () => true);
+    clock += 10_000;
+    hub.pose(vr.token, { p: vr.duck.pos, yaw: 0, pitch: 0 });
+    hub.found(vr.token, () => true);
+    hub.found(vr.token, () => true); // a repeat logs nothing
+    expect(hub.runs()).toEqual([
+      { guest: "g-1", name: "Winamp", world: "web", device: "Tent tablet", ms: 83_400, foundAt: 84_400 },
+      { guest: "g-2", name: "VLC", world: "vr", device: "Headset 1", ms: 33_400, foundAt: 94_400 },
+    ]);
+    expect(logged).toEqual(hub.runs());
+    // A far find logs nothing; a restart clears the log.
+    const far = hub.begin({ guest: "g-3", name: "Paint", world: "web", device: "Tent tablet", station: null, captured: false })!;
+    expect(hub.found(far.token, () => true).kind).toBe("far");
+    expect(hub.runs()).toHaveLength(2);
+    hub.reset("reset");
+    expect(hub.runs()).toEqual([]);
+  });
+
+  it("a director's pause mid-run is not the player's time (closed doors stop the run clock)", () => {
+    let clock = 1_000;
+    const hub = new SpatialHub({ eventId: "evt", now: () => clock });
+    hub.setHouse(fixture("two-rooms"), "show", false);
+    const web = hub.begin({ guest: "g-1", name: "Winamp", world: "web", device: "Tent tablet", station: null, captured: true })!;
+    const vr = hub.begin({ guest: "g-2", name: "VLC", world: "vr", device: "Headset 1", station: "vr-1", captured: true })!;
+    clock += 40_000;
+    hub.setOpen(false); // the director pauses for a cut…
+    hub.pose(vr.token, { p: [1, 0, 1], yaw: 0, pitch: 0 }); // …and the headset goes on mid-pause
+    clock += 180_000;
+    hub.setOpen(false); // a second close is a no-op
+    hub.setOpen(true);
+    clock += 5_000;
+    hub.pose(web.token, { p: web.duck.pos, yaw: 0, pitch: 0 });
+    hub.found(web.token, () => true);
+    hub.pose(vr.token, { p: vr.duck.pos, yaw: 0, pitch: 0 });
+    hub.found(vr.token, () => true);
+    expect(hub.runs().map((r) => [r.guest, r.ms])).toEqual([
+      ["g-1", 45_000],
+      ["g-2", 5_000],
+    ]);
+  });
+
+  it("the runtime stops the run clock while paused", async () => {
+    const d = freshDir();
+    const clock = { t: 0 };
+    const rt = runtimeAt(d, clock);
+    rt.openDoors();
+    const gid = await capturedPersona(rt, "Pinball");
+    const a = (await mod(rt, "/api/mod/spatial/begin", { guest: gid, world: "web", device: "Tent tablet" })).json as unknown as Assignment;
+    clock.t += 30_000;
+    rt.pause();
+    clock.t += 120_000;
+    await call(rt, "POST", "/api/spatial/pose", { p: a.duck.pos, yaw: 0 }, { token: a.token });
+    expect((await call(rt, "POST", "/api/spatial/found", {}, { token: a.token })).status).toBe(409); // doors are closed
+    rt.openDoors();
+    clock.t += 2_000; // the game's retry
+    expect((await call(rt, "POST", "/api/spatial/found", {}, { token: a.token })).json).toMatchObject({ ok: true });
+    expect(new Store(d).loadRuns().map((r) => parseDuckRun(r)?.ms)).toEqual([32_000]);
+    rt.dispose();
+  });
+
+  it("parseDuckRun keeps a well-formed stored line and drops anything else", () => {
+    const ok = { guest: "g-1", name: "Winamp", world: "vr", device: "Headset 1", ms: 5, foundAt: 9 };
+    expect(parseDuckRun(ok)).toEqual(ok);
+    expect(parseDuckRun({ ...ok, world: "mars" })).toBeNull();
+    expect(parseDuckRun({ ...ok, ms: -1 })).toBeNull();
+    expect(parseDuckRun({ ...ok, guest: 3 })).toBeNull();
+    expect(parseDuckRun("x")).toBeNull();
+  });
+
+  it("the runtime keeps the runs on disk, restores them, clears them on restart, and the recap ranks them", async () => {
+    const d = freshDir();
+    const clock = { t: 0 };
+    const rt = runtimeAt(d, clock);
+    rt.openDoors();
+    const gid = await capturedPersona(rt, "Pinball");
+    const a = (await mod(rt, "/api/mod/spatial/begin", { guest: gid, world: "web", device: "Tent tablet" })).json as unknown as Assignment;
+    clock.t += 95_000;
+    await call(rt, "POST", "/api/spatial/pose", { p: a.duck.pos, yaw: 0 }, { token: a.token });
+    expect((await call(rt, "POST", "/api/spatial/found", {}, { token: a.token })).json).toMatchObject({ ok: true, released: true });
+    expect(new Store(d).loadRuns()).toEqual([{ guest: gid, name: "Pinball", world: "web", device: "Tent tablet", ms: 95_000, foundAt: 95_000 }]);
+
+    const recap = await modGet(rt, "/api/mod/recap");
+    expect(recap.json.duck).toEqual([{ id: gid, name: "Pinball", ms: 95_000, time: "1:35", rank: 1, persona: true, world: "web", runs: 1 }]);
+    expect(String(recap.json.text)).toContain("Golden Duck Speedrun (fastest find):\n  1. Pinball (persona) — 1:35 (tablet)");
+    rt.dispose();
+
+    // A server restart mid-show keeps the speedrun.
+    const rt2 = runtimeAt(d, clock);
+    expect(rt2.restore()).not.toBeNull();
+    expect(rt2.spatial.runs().map((r) => r.ms)).toEqual([95_000]);
+    // A story restart is a new night: no runs, on disk either.
+    await mod(rt2, "/api/mod/reset");
+    expect(rt2.spatial.runs()).toEqual([]);
+    expect(new Store(d).loadRuns()).toEqual([]);
+    rt2.dispose();
   });
 });
