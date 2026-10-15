@@ -27,7 +27,7 @@ show-safety review of the night). Changes:
 - **Show-safety fixes.** The blackout no longer reaches the stairs or the server-room route. The maglock rules are deleted. Strobe presets drop to ≤ 3 Hz. The chess AI is set so it can be beaten.
 - **Crew and procedures.** A house manager, an `ALL STOP` call word, and procedures for late arrivals and lost performers.
 
-One new decision is open: **#35**, whether Trabolta may fall back to a hosted model (§12).
+Decision **#35** (whether Trabolta may fall back to a hosted model, §12) is answered: **no** — the directors answer his DMs and N-11 posts his hold line (§5 *Wave 1 status*).
 
 ---
 
@@ -116,6 +116,62 @@ Item ids are in §5 (scope + acceptance). "✔" marks what must be checked on a 
 ## 5. The build list (what actually gets built)
 
 Each line: lane · lane-days · done by · the minimal scope (anything not named is out) · **the acceptance check on a real device**. The checklist items each closes are tagged `🎃 <id>` in CHECKLIST.md.
+
+### Wave 1 status (integrated 2026-10-15, branch `oct31/wave-1`, not yet on master or the VPS)
+
+Lanes merged in order B → A → C → D, then `fix(oct31): integrate wave 1` (a530814). Every suite is green in the wave-1 worktree: loomcheck `--smoke` 0 errors / 0 warnings; core 859/859 **with** the Postgres-gated tests (`loom_dev`) + typecheck; house 125; reinstall/web 120; terminal 124; play 89; editor 200 + `tsc -b`; bank 142; stagehand 228; ops scripts 98; live-guard 2; server-room firmware 112 host checks + an ESP32 compile; reinstall/vr 226 + quest.sh 26.
+
+**Facts this wave was built on (they override the plan above where they differ):**
+- **One house Mac** (the 48 GB Ollama laptop) is "the TV computer" everywhere in this plan. It drives the TV over the long HDMI run (`/terminal/?…&view=tv` in Chrome `--kiosk --autoplay-policy=no-user-gesture-required`), the speakers through the MOTU (ADAT; Alexa on channels 1–4 = Z1 living + Z2 kitchen), and runs Mosquitto + Zigbee2MQTT, stagehand `show` and `agents` (separate launchd jobs), the `alexa` player and Ollama with `OLLAMA_MAX_LOADED_MODELS=2` (both models stay loaded; OP-06's "mind paused by default" is no longer forced).
+- **Decision #35 = no hosted fallback.** If Trabolta's worker dies the server posts his `hold:` line after 20 s (N-11) and the directors answer his DMs from Run. If the house internet dies, the cues are fired by hand (QLab, the Z2M frontend, WLED presets, `stagehand announce` / `mosquitto_pub -t show/announce`).
+- **The VPS is live** at https://app.mapsandducks.com (app, `/edit/`, API, apex invite site); invitations are sent; the PAUTIX strips are addressable on an off-the-shelf WLED controller (presets; preset 22 = dim Tube during a blackout); Meta developer mode is on.
+- **Broker layout (integration decision):** Mosquitto's anonymous listener is bound to `127.0.0.1:1883` (stagehand, Z2M, alexa), and the network props (WLED controllers, the server-room ESP32) use a password-only LAN listener `:1884` as user `props` — `scripts/house-mac/alexa.md` → *Lock down the broker*; the ESP32 reads `SR_MQTT_USER` / `SR_MQTT_PASS` from `secrets.h`.
+
+**Before any device check: deploy wave 1 to the VPS** (after it lands on master). In the VPS `.env`: `LOOM_BASE_URL=https://app.mapsandducks.com`; `LOOM_VAPID_PUBLIC_KEY` / `LOOM_VAPID_PRIVATE_KEY` (`npx web-push generate-vapid-keys`, once, never changed again); `KOKORO_CPUS` = `nproc` − 1 (check `free -h` first; leave `LOOM_TTS_URL` blank); `LOOM_RL_RESOLVE=600`, `LOOM_RL_REGISTER=400`, `LOOM_RL_LOGIN_FAILURES=100/300`. Then `deploy/release.sh --adopt pre-k08`, `docker compose up -d --build`, and `LOOM_SSH=<user>@app.mapsandducks.com scripts/sync-show.sh`.
+
+| Id | Wave 1 | The device check still to do (helper under `scripts/accept/`) |
+|---|---|---|
+| K-01 | built (334c11f) | `k01.sh` all green; iPhone on cellular scans the Run join QR → https://app.mapsandducks.com → Mud Room. The uptime check that pages 3 phones and DNS TTL 300 are still manual |
+| K-02 | **not done** — a device bench, yours | per tablet in Fully Kiosk: WebGL2, `/terminal/` face + mirror, `/reinstall/`, camera, TTS voice; tag the HW-SCR-08 table |
+| K-03 | **not done** — live device run, yours (10-20) | tent tablet over HTTPS: scan → Play here → duck → released + codex |
+| K-04 | **not done** — live run (10-21); no code needed (worker + both models on the house Mac) | `editor/e2e-live/mind.spec.ts` against the VPS, each power once, a 30-DM burst with p95 |
+| K-05 | built (0d1e388, 1335045, a530814) | `K-05.sh` on the house Mac (bench Thu 10-22): one reed opening = one signal, restart open = none, WAN pull 60 s reconnects, combos, blackout leaves the safety lights + dim Tube. Event id + passcode go in `stagehand/trapped.house.local.yaml` |
+| K-06 + N-07 | built (0a67cc5) | `k06.sh`: locked iPhone + Android banner/chime on wake; booth banners `!` and "⏰ … is late" |
+| K-07 | **not done** — the cellular test sheet (A + you, 10-21) | print from K-12, scan J1 / a C poster / an R sign on iPhone + Android with Wi-Fi off |
+| K-08 | built (307647a, 1335045) | `release.sh --adopt` on the VPS + the nightly cron; `K-08.sh` (answer `y` at step 3: restarts the live site twice); `showbackup.sh install` on 10-25 |
+| N-01 | built (4d3fbe5) | `n01.sh`: 10/10 passes hands-free on iPhone Safari and Android Chrome (rehearsal only) |
+| K-32 | built (b6b8921, 1335045) | `k32-load.ts --code <rehearsal MOD> --out k32.json --reset-after` → 4 ✔; paste the `record:` line into SW-OPS-24. Watch bandwidth: ≈ 24 KB/s of snapshots per guest |
+| K-10 | built (c6d0327; `rotate` 83f4393) | `k10.sh before` → End → Start rehearsal → `k10.sh after` all ✓; the old QR opens on cellular |
+| K-11 | built (d2c4c65) | `K-11.md`: rush 40 × 200; redeem 8 × 200 then 429; Run → Log shows 8 `codexMissed`. The play Codex box shows no message on a 429 yet |
+| K-12 | built (a275f24, fd277cb) | `K-12.md`: Safari → PDF, 4 per page, every QR present, links start `https://app.mapsandducks.com/?code=`, no Server Room sign |
+| K-13 | built (1e2a86d; `checkin: false` refused a530814) | `k13.sh`: refused before clearance, lands in The Cache after, 20 s cooldown, refused when captured |
+| K-14 | built (f10aaae) | `K-14.sh`, then the oldest tablet over `chrome://inspect`: no red errors on `/terminal/` + `/reinstall/` |
+| K-15 | built (81d8821) | `K-15.md` at the 10-20 gate: quick taps don't open ⚙, a 2 s hold does; screen lit after 2 h. Bathroom tablet outside the door, `spot=bathroom` |
+| K-16 | built (49c28e0) | `K-16.sh --watch`: screensaver through bingo, face within 2 s of `introduce_trabolta`, back on Restart |
+| K-17 + N-03 | built (a7313a5, 21dfeed) | `K-17.sh --watch` on the house Mac's TV Chrome + a tablet: slides, 15:00 corner, tablet back to the face after 45 s, a scan opens over a slide |
+| K-18 + N-04b | built (aee9f3b) | `K-18.sh` on the house Mac (`view=tv`, `spot=desktop-tv`): "HELLO, PROGRAMS" within 3 s, `--say` spoken, Song Ending without TTS, mute, reboot + one click |
+| K-19 | built (01fc3ef, 21dfeed) | `KOKORO_CPUS`, compose up, `docker compose ps kokoro` healthy, `K-19.sh` PASS (< 2 s); miss → N-12 |
+| K-20 | built (767832d, 21dfeed) | on the house Mac: `K-20.sh devices` → `alexa.device`, `local`, `offline`, `install`, `mqtt`, `chime`, `story`; `stagehand check` must not exit 3; LAN publish to :1883 refused |
+| K-21 | built (0726660) | `K-21.md` with the second director's own account: LAST / NEXT move, both sheets agree within 1 s, filter, reload keeps marks |
+| K-22 | built (ac114ae) | `K-22.ts --event <id> --passcode <MOD> --seconds 60` on a rehearsal: three ticks; restart stagehand after the deploy |
+| K-23 | built (bc047dc, fd277cb) | `K-23.md`: three hunt claims DM'd, none in Run → Mind → learned, `K-23.ts` PASS. The Data Centre Sinkhole codex text still implies the H3 answer (story text, not fixed) |
+| K-24 + N-05 | built (a9d47af) | `K-24.md`: file "Clippy" for H5, judge confident lie from `# hosts` → `Kernel.q5 = lie`, +50 |
+| K-25 | built (785a843) | `K-25.md`: `end song`, G1 + G2/G4/G7 on 3 phones, the TV speaks + shows the award slides; `end destroyed` → Clippy's booth |
+| K-26 | built (7cd0568) | `K-26.ts` late in the 10-25 run-through: "✔ lists well-formed", liar tops lies, the captive under Internet trips |
+| K-27 + N-06 | built (68657d2) | `K-27.md` (needs the K-05 reed chain): reed alarms, `rearm`, ♟ → green ring, two openings inside 90 s silent, red after |
+| K-28 | **not done** — blocked on the 10-17 measurement survey (lane D, Wed 10-21) | `validateHouse` passes on the measured `house.json` (+ shed); bind-mount the directory |
+| K-29 | built (a8858ce) | `K-29.sh`: all green N/N, pull one tablet's Wi-Fi → red + chime within 30 s, back green within 5 s; ✕ the test rows after |
+| K-30 | built (400a145) | `quest.sh setup` (back up the release keystore), capture a guest, `K-30.sh`: vr-1 + vr-2 connect, vr-1 finds Gerald → `released: true` |
+| K-31a | built (55702a6, 83f4393) | VAPID keys in `.env`, `k31a.sh` with 2 Android guests + 1 Android booth: in-app banner without a duplicate, locked `!`, locked Trabolta DM, locked booth "🚨 Server room breach" |
+| K-31b | **not done** — conditional on K-31a green on 10-21 (call Sat 10-24 12:00) | — |
+| N-02 + N-10 | built (b59718c, 83f4393; QR drawn in the browser a530814) | `n02.sh`: re-pair after clearing Safari → same program within 30 s; ⏏ Release Clippy → phone C signs in within 60 s |
+| N-08 | built (26c324b; :1884 + `props` login a530814) | `secrets.h` (Wi-Fi + props password), `N-08.sh /dev/cu.usbserial-…` on the bench, then `K-05.sh` (HW-PATCH-07); siren + click MP3s on the microSD |
+| N-11 (optional) | built (2c0d951) | `N-11.md`: stop the worker, DM twice, one hold line ≈ 20 s later, worker restart answers |
+| D-01 | drafted (cf8ac8b) | no device; read + edit the 9 featured sheets and fill the 85 `[[EDIT` blanks (codes, address, names); check the emergency numbers |
+| N-09, N-12, N-04a | **not done** — optional, only on slack | N-12 only if K-19 misses |
+
+**Found during wave 1, not fixed (outside the minimal scopes):** the hunt countdown keeps running after `trabolta_disabled` (hidden under the overlay; story, lane A); the play Codex box ignores a 429; chess lost / drawn rules + the *Cold Lock* codex; ceremony sounds; the server falls back to the local `loom_dev` database when `DATABASE_URL` is unset (several lanes' scratch servers read it — set `DATABASE_URL` to a dead port for scratch runs).
+
 
 ### MUST (7.0 lane-days; N-07 counts with the N folds under CHEAP-WIN): without it the night breaks or is unsafe
 
@@ -489,7 +545,7 @@ Every role gets **one laminated card** (D-01 drafts, PAPER prints in batch 2). W
 | **Chess disarm unwinnable** | Nobody beats the phone | Lichess at level 2–3, tuned 10-25; else a host who saw the game presses ♟, or the director fires `chess won` | 10-25 |
 | **Physical injury** (stairs, tent, kitchen, VR) | — | The safety one-pager (§11); the house manager is the safety lead; the emergency card (911, QEII Halifax Infirmary); first aid kit | 10-28 `ALL STOP` drill |
 
-**Open decision #35 (needed by 10-21, for K-04): may guest DMs to Trabolta go to a hosted model as a fallback?** If yes, `agents.fallback.yaml` points the same persona at a hosted OpenAI-compatible endpoint that any laptop can run, as zero-code insurance if the Ollama laptop dies. It does send guests' DM text to a third party. **Default if unanswered: no.** Build N-11 instead (the hold line from the hub), and the director answers key DMs.
+**Decision #35, answered 2026-10-15: no.** (N-11 built in wave 1; the directors answer DMs from Run.) The question was: **may guest DMs to Trabolta go to a hosted model as a fallback?** If yes, `agents.fallback.yaml` points the same persona at a hosted OpenAI-compatible endpoint that any laptop can run, as zero-code insurance if the Ollama laptop dies. It does send guests' DM text to a third party. **Default if unanswered: no.** Build N-11 instead (the hold line from the hub), and the director answers key DMs.
 
 ---
 
