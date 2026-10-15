@@ -2,7 +2,7 @@
 title: Live shows — people, places, casting
 section: Live Shows
 order: 30
-keywords: live, PERSON, ROSTER, cast, COHORT, LOCATION, participant, capacity, swings, roster, casting, immersive, ROLE, GROUP, hidden, someone joins, when, participant app, title
+keywords: live, PERSON, ROSTER, cast, COHORT, LOCATION, participant, capacity, swings, roster, casting, immersive, ROLE, GROUP, hidden, someone joins, when, participant app, title, check in, checked_in, checkin, sign, qr
 ---
 
 In a live Loom show, the audience aren't just readers — they're
@@ -108,6 +108,16 @@ COHORT Early Arrivals
   no rooms list, no buttons — one full-screen stream of what the story
   says *to them* (their lines, cards, decision), and a *Continue* into
   the app once the story moves them on. Use it for an arrival scene.
+- Every location also gets a **check-in sign** on Run's print sheet: a
+  QR a guest scans with their phone camera. It moves nobody by itself —
+  it fires `checked_in` for that guest with `at` set to the exact
+  location name, and your `when checked_in for guest:` rule decides:
+  `if at == "The Cellar":` then `move guest to The Cellar` (compare with
+  the exact name; never `move guest to at`). The server refuses captured
+  guests, guests on rails, rooms hidden from them, prisons and
+  cutscenes, and more than one check-in per 20 seconds; `checkin: false`
+  leaves a place off the sheet and never lands a guest there (a locked
+  room).
 - A `listed: true` **CHARACTER** can be `hidden: true` too: out of the
   People directory (and, for an agent-voiced one, off every phone) until
   `reveal Name` / `reveal self`.

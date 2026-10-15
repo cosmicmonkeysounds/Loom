@@ -2,7 +2,7 @@
 title: Live verbs — building game rules from primitives
 section: Live Shows
 order: 33
-keywords: capture, release, escape, reveal, respond, join, defect, betray, enroll, scan, signal, fire, named event, game, verbs, promote, cast, move, add, remove, reply, when, watcher, primitives, rules, hooks, do, INTERACTION, interaction, button, story rule, arguments, with, for
+keywords: capture, release, escape, reveal, respond, join, defect, betray, enroll, scan, signal, fire, named event, game, verbs, promote, cast, move, add, remove, reply, when, watcher, primitives, rules, hooks, do, INTERACTION, interaction, button, story rule, arguments, with, for, cue sheet, sequence, fallback, chess, chess won, majority, limit, power, screens, slide, overlay, tv, blackout, award
 ---
 
 Live shows run on **hooks** — `when <event>:` blocks in a CHARACTER,
@@ -138,6 +138,16 @@ house itself is a map file beside the story (`house.json` — rooms,
 doors, stairs, where each terminal hangs, where the duck may hide),
 edited live at `/reinstall/map`.
 
+**Screens** follow cues too. A `cue` in the `screens_`, `terminals_`
+or `tv_` family (`cue screens_bingo`, `cue tv_award_most_trusted`,
+`cue screens_blackout`) puts a slide or a notice on the wall terminals
+and the TV — `screens_` on both, the others on one. `blackout`,
+`go_to_living_room` and `alarm` are full-screen notices; `screensaver`
+clears back to the base view; any other value is a slide (a
+`public/slides/<cue>.png` in the terminal app, else a text card). A
+terminal whose character is still `hidden`, or whose
+`<Character>.awake` is false, shows its screensaver.
+
 **Watchers** are `when` with a condition — `when self.suspicion >= 70:`,
 `when Tension > 60:`. They fire once when the condition *becomes* true
 and re-arm when it goes false again; on a ROLE they run per participant.
@@ -187,7 +197,47 @@ The `who: admin` interactions are also the Director page's **cue sheet**,
 in the order you declare them. Add `sequence: false` to one a machine
 fires (a game, a door sensor) or that is only a hardware fallback: the
 sheet still ticks it when it fires, but it never becomes the sheet's
-*last* cue or its suggested *next* one.
+*last* cue or its suggested *next* one. A cue whose every `when` binds a
+person (`when award most trusted for program:`) gets a **who?** picker
+and an optional value (`{value}` in the body) — an awards ceremony is a
+run of these ([the cue sheet](run-mode.md)).
+
+### A button as a fallback for a machine
+
+The same event can come from a device, a performer and a director. In
+*Trapped in the Internet* a chess phone guards the server room; a host
+who sees the mate presses a button on the winner's card, and a dead
+phone means the director fires `chess won` from the cue sheet:
+
+```loom
+INTERACTION beat the machine
+  label: ♟ They beat the machine
+  who: performer
+
+INTERACTION chess won
+  label: ♟ Cold Lock (chess phone fallback)
+  who: admin
+  sequence: false
+
+when beat the machine for program:
+  fire chess won for program
+
+when chess won:
+  set Kernel.disarmed_until = Time.elapsed + 90
+  do door server_room, state: unlocked
+  broadcast "♟ The server-room door is open for 90 seconds." to channel(hosts)
+
+when Kernel.disarmed_until > 0 and Time.elapsed >= Kernel.disarmed_until:
+  set Kernel.disarmed_until = 0
+  do door server_room, state: locked
+```
+
+A device that can report (the phone itself, a sensor through the
+show-control bridge) fires the same names — `chess won`, `chess lost`,
+`chess drawn` — and the story treats them alike. Write the rule so a
+duplicate is harmless (it re-sets the same window). Give the director a
+manual button for anything a crowd decides too — the show's *Force the
+majority* cues settle a vote ghosts would otherwise block, once.
 
 ### Powers for a character with a mind: `who: agent`
 
@@ -214,9 +264,12 @@ When the model decides a guest has earned it, the server fires the event
 only that character's own hooks hear it — the story, not the model,
 decides what "cutting the lights" means (here: a `cue` the show-control
 bridge routes to the house, plus an alert in that room). Arguments the
-model supplies (`room`, `target`) bind by name like `fire … with`.
-`limit:` caps uses per run; every use is journaled and visible to the
-directors. The `description:` is what the model reads, so say what the
+model supplies (`room`, `target`) bind by name like `fire … with`; a
+`room` / `at` / `location` / `place` value is folded onto the declared
+LOCATION's exact name first ("the cache" arrives as `The Cache` — the
+same for an event fired from Run). `limit:` caps uses per run; a use
+the story answers with words only (a refusal) doesn't count. Every use
+is journaled and visible to the directors. The `description:` is what the model reads, so say what the
 power does and which args it takes. The character may also **share** any
 codex entry it holds, exactly as a performer's booth would.
 

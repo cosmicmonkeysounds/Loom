@@ -33,7 +33,8 @@ new thread model:
 pnpm --filter loom-terminal dev      # :5175, proxies /api + /e to the server on :7000
 pnpm --filter loom-terminal build    # → dist/, served by the event server at /terminal/
 pnpm --filter loom-terminal test     # the pure pieces (scan parsing, the leash, splitting, voice ranking, moods,
-                                     # the world state, the director, the mini-map)
+                                     # the world state, the director, the mini-map, the screen poll, slides +
+                                     # precedence, the TV voice, attract, kiosk, the WebGL2 probe)
 ```
 
 Open `http://<server>:7000/terminal/` on the tablet. Set it up on the
@@ -86,7 +87,7 @@ screensaver until the character is introduced.
 
 **Overlays, slides, countdowns** (OCT31 K-17 + N-03, `src/slides.ts` +
 `src/ScreenLayer.tsx`): the same poll carries the story's screen program
-for this terminal's target (`view=mirror` = the TV, else a wall terminal;
+for this terminal's target (`view=mirror` / `tv` = the TV, else a wall terminal;
 `core/server/routes/screen.ts`). Precedence, top first: **overlay**
 (`blackout` — 10 s true black even when `go_to_living_room` follows at
 once, then standing; `go_to_living_room` / `alarm` — text blinking at
@@ -226,8 +227,9 @@ Two settings, on the setup screen or in the provisioning link:
 | `view` | `auto` (default): the face pane shows the world view while anyone is in the simulation, the face otherwise. `world`: the world view always. `face`: never. `mirror`: see below. `tv`: the TV room voice (above), no scanner. While piloting it is **always the face**, because the face is the voice. A tablet with **no WebGL2** (three r186 needs it; `src/webgl.ts` probes once at boot) behaves as `face` whatever this says, never loads three.js, and a no-WebGL2 mirror shows a still notice — never the *SIMULATION UNAVAILABLE* retry loop. The build targets `chrome87` / `safari14` (`vite.config.ts`). |
 
 **The mirror (a TV).** `view=mirror` turns a screen into a full-screen
-spectator, like the TV over the fireplace: there is no scanner, no chat and
-no wake tap (it never speaks). It still needs the moderator passcode,
+spectator: there is no scanner, no chat and no wake tap (it never speaks).
+The show's TV over the fireplace runs `view=tv` instead (the same spectator
+plus the room voice, above); both get the TV's screen program. It still needs the moderator passcode,
 because the stream is mod-gated. Open the link on the TV's browser (a smart
 TV, a Fire Stick, or a laptop on HDMI in kiosk mode):
 
@@ -240,31 +242,15 @@ the corner reopens setup (hold it 2 s).
 
 **Before the character exists (attract).** A character can arrive partway
 through the night: in *Trapped in the Internet* Trabolta is `hidden: true`
-and his worker's gate is `when: self.awake == true` until Clippy
-introduces him (`introduce_trabolta`). The terminal does not know that
-yet. It shows *TRABOLTA ONLINE* whenever a worker is connected, and a
-pass scan pilots the guest into `dm:Trabolta`, which commits the hold
-line ("Jean Trabolta will make an appearance later tonight. Please do
-not move the mouse.") into the guest's real thread and grows a Trabolta
-row on their phone before the story has revealed him. Until that is
-fixed:
-
-- **Runbook (no code):** provision every terminal with `view=mirror` at
-  doors open. A mirror has no scanner and no pilot, and the empty virtual
-  house reads as a screensaver. Right after `introduce_trabolta`,
-  re-provision each with `view=auto` (the ⚙, or the provisioning link
-  again).
-- **Required before the party:** an attract mode. While the terminal's
-  character is hidden, or its `awake` is false, the terminal shows the
-  pre-introduction rotation (screensaver, a Winamp-style media player,
-  fake 1999 ads), never *ONLINE*, and never pilots a scanned pass. This
-  needs `revealed` on `CastSummary`.
-
-The story already records what every screen should be showing:
-`cue screens_*` / `terminals_*` / `tv_*` directives, mirrored into
-`Night.screen` (the TV) and `Night.terminals`. The terminal ignores
-those cues today (a Screens layer is future work); stagehand can route
-them meanwhile.
+and asleep until Clippy introduces him (`introduce_trabolta`). Every
+face/world terminal and the mirror hold the screensaver while the
+character is hidden or asleep (see *The screensaver while the character is
+secret* above): no *ONLINE*, no scanner, no pilot. Provision them all
+`view=auto` from the start. On the server, `AgentHub`'s `admits` hook
+refuses a guest's DM with a character still hidden from them, so a stale
+tab can't draw the hold line early either. The story's `cue screens_*` /
+`terminals_*` / `tv_*` directives drive the screen layer (*Overlays,
+slides, countdowns* above) through the same poll.
 
 ## Layout
 
@@ -277,6 +263,8 @@ src/attract.ts         the screensaver rotation, the ads' copy, Mystify (pure)
 src/Attract.tsx        the screensaver screen (Canvas2D) + ad cards (PNG, else a Win98 window)
 src/slides.ts          the screen layer's precedence, holds, slide copy, corner + Y2K clock (pure, K-17)
 src/ScreenLayer.tsx    overlays, slides (PNG, else a Win98 card), the corner, the flicker
+src/kiosk.ts           the Screen Wake Lock + the 2 s ⚙ hold (K-15)
+src/webgl.ts           the one-time WebGL2 probe: no WebGL2 → face only, three.js never loaded (K-14)
 src/config.ts          per-tablet config (localStorage) + URL provisioning
 src/scanner.tsx        camera + QR (BarcodeDetector, else jsQR)
 src/scan.ts            what a scanned code means; the typed-name fallback

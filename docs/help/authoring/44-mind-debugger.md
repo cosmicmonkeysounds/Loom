@@ -2,7 +2,7 @@
 title: The mind debugger — watching an agent think
 section: The Editor
 order: 44
-keywords: mind, agent, trabolta, stagehand, orchestrator, voice, model, ollama, reasoning, thinking, prompt, trace, thought, brief, stage, arc, drives, policy, bargain, questions, nudge, whisper, reset, survey, pause, re-run, effort, debugger, control panel
+keywords: mind, agent, trabolta, stagehand, orchestrator, voice, model, ollama, reasoning, thinking, prompt, trace, thought, brief, stage, arc, drives, policy, bargain, questions, nudge, whisper, reset, survey, pause, re-run, effort, debugger, control panel, hold, offline, worker down, not responding, answer by hand
 ---
 
 A character marked `mind: external` has no performer: a language model
@@ -17,6 +17,14 @@ the window into both, and the hand on the wheel.
 The page needs a server project with its rehearsal or live event
 running and a worker connected. On a local folder it explains that
 nothing voices the character in the browser.
+
+If the worker drops (the laptop sleeps, Ollama dies), guests are not
+left in silence: messages to the character queue, and after about 20
+seconds the server posts the character's authored `hold:` line once per
+waiting message ([a character with a mind](codex.md)). Answer by hand
+meanwhile — Chat, speaking as the character in that thread; your reply
+closes the waiting request, and the worker picks up from the next line
+when it reconnects, with your answer in its history.
 
 ## The mind now (left)
 

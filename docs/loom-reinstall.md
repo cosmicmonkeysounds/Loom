@@ -524,15 +524,27 @@ link is offered from its row.
 ## 4. The terminals — world view
 
 `TerminalConfig` gains `spot` (a `house.terminals[].id`; the terminal's
-place) and `view: "auto" | "world" | "face" | "mirror"`:
+place) and `view: "auto" | "world" | "face" | "mirror" | "tv"`:
 
 - `auto` (default): the attract screen's face pane becomes the **world view**
   whenever a program is in the simulation, and the face comes back when
   nobody is (and always while piloting — the face is the voice).
 - `world`: the world view always on the attract screen.
 - `face`: today's terminal.
-- `mirror`: a full-screen spectator (the TV above the fireplace): no scanner,
-  no chat.
+- `mirror`: a full-screen spectator: no scanner, no chat.
+- `tv` (`Tv.tsx`, OCT31 K-18): the TV above the fireplace, run by the house
+  Mac's Chrome over HDMI — the character's face speaking every line it says
+  in the TV's room (`room=`, default The Desktop) through `/api/mod/tts`;
+  song beats and lore speakers are captioned only, nothing is said while
+  the character is hidden or asleep.
+
+Every view polls the lean screen state (`GET /e/:id/api/screen/state`,
+`core/server/routes/screen.ts`; every 2 s, the TV every 1 s) instead of
+the mod feed: the screen cues, attract mode (the character hidden or asleep → screensaver /
+ads, never "ONLINE", no pass piloting), the countdown, the TV's lines, and a
+heartbeat the editor's Run → Terminals card reads. A tablet without
+**WebGL2** (probed once at boot, `terminal/src/webgl.ts`) behaves as
+`face` and never loads three.js; a `mirror` shows a still notice.
 
 The world view (`terminal/src/world/`) renders through `@loom/house/three`
 with one camera, cut by a pure director (`world/director.ts`): **mount**

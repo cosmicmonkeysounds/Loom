@@ -2,7 +2,7 @@
 title: Rooms & spaces
 section: Guest Guide
 order: 2
-keywords: rooms, spaces, channels, sidebar, open, private, faction, group, dm, location, lobby, check in, sign, qr
+keywords: rooms, spaces, channels, sidebar, open, private, faction, group, dm, location, lobby, check in, check-in, checkin, sign, qr, scan
 ---
 
 Conversations come in a few flavours, grouped into **spaces** (the

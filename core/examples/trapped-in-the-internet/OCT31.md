@@ -38,7 +38,7 @@ Decision **#35** (whether Trabolta may fall back to a hosted model, §12) is ans
 | **New software** | **29.6 lane-days scheduled.** That is **27.6 committed** plus **2.0 conditional** (K-31b, iPhone push, built only if K-31a is green on 10-21). Breakdown: MUST 7.0, CHEAP-WIN 20.6 (incl. K-31a, N-10, D-01), K-31b 2.0. **Committed × 1.25 buffer ≈ 34.5**, inside the 30–35 target. If K-31b ships, the total with buffer is ≈ 37.0, and it takes half the buffer. The real buffer is **about 2.5 calendar days** (10-24, 10-26 and the morning of 10-27; 10-25 is the run-through). Your evening merge review limits it, not lane count. |
 | **Lanes** (Claude Code worktrees, merged daily in the order **B → A → C → D**) | **A** story + agent 7.35 · **B** platform + play + push 7.75 (5.75 without K-31b) · **C** terminals + TV 7.0 · **D** house rig + tent + deploy 7.5. No lane does more than 1.0 lane-day on any day. **Every committed item lands by Fri Oct 23.** |
 | **Your capacity** (the real limit) | About 25 device checks plus 4 merges every evening, on days that also carry 4–8 h of hardware. So: **a fixed evening "device hour"**. Each item ships a scripted acceptance check (Playwright mobile, curl, or `scripts/accept/<id>`), and your hands-on part on a device takes ≤ 10 min. |
-| **Optional, only on slack** | N-09 terminals speak Alexa's lines (0.5; build it if push is no-go on 10-24) · N-11 the hub posts Trabolta's hold line when no worker is online (0.25) · N-12 the TV calls Kokoro on the TV Mac (0.25; if K-19 misses its acceptance) · N-04a TV plays slide MP4s (0.25) · S3 guest in-app scanner · S4 codex/quest grant buttons. **Dropped:** S2 chess puzzles (Lichess + K-27 cover chess). A cue-only phone view (+0.25) is not built; the radio is the phone fallback. |
+| **Optional, only on slack** | N-09 terminals speak Alexa's lines (0.5; build it if push is no-go on 10-24) · N-11 the hub posts Trabolta's hold line when no worker is online (0.25; **built in wave 1**) · N-12 the TV calls Kokoro on the TV Mac (0.25; if K-19 misses its acceptance) · N-04a TV plays slide MP4s (0.25) · S3 guest in-app scanner · S4 codex/quest grant buttons. **Dropped:** S2 chess puzzles (Lichess + K-27 cover chess). A cue-only phone view (+0.25) is not built; the radio is the phone fallback. |
 | **IN** (§5) | Public HTTPS on the VPS · pinned codes · `!` alerts that actually land, booths included · **push to phones** (Android + booths, iPhone if K-31b passes) · iPhone performer scanner · re-pair a lost guest · **release a lost performer's part** · room check-in by QR · print page · Trabolta live, hidden until introduced, hunt answers kept secret · **File a fact** (DM lies count) · terminal attract mode, overlays, PNG slides, countdowns, heartbeat · **the TV as Trabolta's face and voice** (Kokoro on the VPS) · Alexa through the house speakers · cue sheet · lean mod stream · **VPS load test before the freeze** · house rig link (door reed, patch bay, lights), **with a safe blackout and no lock rules** · chess disarm story · manual majority cues · ceremony as story beats + live recap numbers · measured `house.json` · Quest APK (time-boxed) · freeze, pinned deploy, show-night backups, warm standby |
 | **WORKAROUNDS** (§9, 34 workarounds + 21 night-of procedures) | Featured claims (trust at the door) · room-audio router (QLab routing) · media pipeline (local files) · fancy templates (PNG slides) · Trust Chart board · songs (QLab) · tent ↔ shed (copy a file) · ceremony tab + AI writer (cast-thread trick) · chess app (Lichess) · Truthcoin (host buttons) · phase map (set stage by hand) · tech rail (eyes) · timers (watchers) · INTERACTION 2.0 · scoped device tokens · badges · Bathroom Mode · reload-keep-run (never restart) |
 | **AFTER** | AWARD declaration · Run → Devices · map underlay + structural editor · chess engine package · Run → Screens · every P2 |
@@ -48,6 +48,8 @@ Decision **#35** (whether Trabolta may fall back to a hosted model, §12) is ans
 ---
 
 ## 2. Gates
+
+**Wave 1 (merged to `master` 2026-10-15) already holds the code behind every gate except K-31b**; what each gate still proves is its device check (§5 *Wave 1 status*), after the deploy to the VPS.
 
 | Date | Gate | Proven by | If it fails |
 |---|---|---|---|
@@ -70,6 +72,8 @@ Decision **#35** (whether Trabolta may fall back to a hosted model, §12) is ans
 
 ## 3. How the lanes run
 
+**Since 2026-10-15** wave 1 is merged to `master` and the lane branches + worktrees are retired. What's left (fixes from the device checks, K-31b if it's a go, the optional items) lands on `master` directly; the redeploy + sync after each merge still apply. The rules below are how wave 1 ran.
+
 - One lane = one Claude Code session in its own git worktree, one package context, **merged to `master` every evening** after you review it. Every item ends with its acceptance check **on a real device against the VPS**, not only `vitest`.
 - Lanes keep running the suites (`pnpm -r test`, `uv run pytest`, `loomcheck --smoke`) before each merge. Lane D owns the deploy, so it redeploys the VPS after each evening merge.
 - **You** review, run the device checks, and run the hardware and production lane (§8) with friends. If four lanes are too many to review, fold lane D into C after 10-20: the Quest and the rig bench mostly wait on hardware anyway.
@@ -77,7 +81,7 @@ Decision **#35** (whether Trabolta may fall back to a hosted model, §12) is ans
 - **Merge conflicts.** `core/server/event-runtime.ts` (≈ 3,000 lines) is touched by K-11, K-13, N-02, N-10, K-31a/b, K-16, K-18, K-22, K-26 and K-29: all four lanes. The editor's Run/Director/Inspector code is touched by K-12, K-21, K-06, N-02, N-10 and K-29. So:
   - each feature's routes live in their own `core/server/routes/<id>.ts`, with a one-line dispatch in `event-runtime.ts`;
   - the evening merge order is fixed at **B → A → C → D**, and each lane rebases before handing in.
-- **Getting the story onto the VPS.** `core/scripts/sync-example.ts` runs with `DATABASE_URL` over an SSH tunnel to the VPS's Postgres and `--server https://app.<domain>`. Lane B wraps it as one script (`scripts/sync-show.sh`) on 10-16 as part of K-01, and lane D runs it after each evening merge.
+- **Getting the story onto the VPS.** `core/scripts/sync-example.ts` runs with `DATABASE_URL` over an SSH tunnel to the VPS's Postgres and `--server https://app.<domain>`. `scripts/sync-show.sh` (K-01, on master) wraps it as one script — `LOOM_SSH=<user>@app.mapsandducks.com scripts/sync-show.sh` (`--dry-run` prints the plan, `--no-reload` skips the restart) — and it runs after each evening merge.
 - **The show runs the story you Push, not the one you write.** Go live restarts from the running snapshot (`events-api.ts:216`, `runtime.restart(undefined, …)`), so a fix that was never pushed never reaches guests. The rule:
   - **Evenings, 10-16 → 10-30:** after the merge, sync + **Push draft** on the preview (lane D). It wipes rehearsal guests only. Performers re-sign after Go live anyway.
   - **Never during a run-through, the tech or the dress** while friends are playing (OP-03).
@@ -89,6 +93,8 @@ Decision **#35** (whether Trabolta may fall back to a hosted model, §12) is ans
 ## 4. Day by day, Oct 15 → Nov 1
 
 Item ids are in §5 (scope + acceptance). "✔" marks what must be checked on a device that day.
+
+**Wave 1 ran ahead of this table:** on 10-15 every committed build in the lane columns was merged to `master` except K-02 / K-03 / K-04 / K-07 (device runs, no new code), K-28 (waits on the 10-17 survey) and K-31b (conditional on the 10-21 push check). So a lane cell from 10-16 on now means **that item's device check on that day** (§5 *Wave 1 status*, `scripts/accept/<id>`), and the freed lane-days are buffer for the fixes they turn up. The "You + friends" and Gate columns stand as written.
 
 | Day | Lane A: story + agent | Lane B: platform + play + push | Lane C: terminals + TV | Lane D: house rig + tent + deploy | You + friends | Gate |
 |---|---|---|---|---|---|---|
@@ -117,9 +123,9 @@ Item ids are in §5 (scope + acceptance). "✔" marks what must be checked on a 
 
 Each line: lane · lane-days · done by · the minimal scope (anything not named is out) · **the acceptance check on a real device**. The checklist items each closes are tagged `🎃 <id>` in CHECKLIST.md.
 
-### Wave 1 status (integrated 2026-10-15, branch `oct31/wave-1`, not yet on master or the VPS)
+### Wave 1 status (merged to `master` 2026-10-15, not yet deployed to the VPS)
 
-Lanes merged in order B → A → C → D, then `fix(oct31): integrate wave 1` (a530814). Every suite is green in the wave-1 worktree: loomcheck `--smoke` 0 errors / 0 warnings; core 859/859 **with** the Postgres-gated tests (`loom_dev`) + typecheck; house 125; reinstall/web 120; terminal 124; play 89; editor 200 + `tsc -b`; bank 142; stagehand 228; ops scripts 98; live-guard 2; server-room firmware 112 host checks + an ESP32 compile; reinstall/vr 226 + quest.sh 26.
+Lanes merged in order B → A → C → D, then `fix(oct31): integrate wave 1` (a530814), the verification pass (5ff3b8b) and the leftovers (d58803e) — all on `master` (ba494a7..d58803e). Suites on `master` after the leftovers: loomcheck `--smoke` 30 files, 0 errors / 0 warnings; core 877 **with** the Postgres-gated tests (`loom_dev`); house 125; reinstall/web 120; terminal 124; play 91; editor 201; bank 142; stagehand 230; ops scripts 98 (`scripts/ops/test/run.sh`); live-guard 2; server-room firmware 112 host checks + an ESP32 compile and reinstall/vr 226 + quest.sh 26 (both as integrated, not re-run).
 
 **Facts this wave was built on (they override the plan above where they differ):**
 - **One house Mac** (the 48 GB Ollama laptop) is "the TV computer" everywhere in this plan. It drives the TV over the long HDMI run (`/terminal/?…&view=tv` in Chrome `--kiosk --autoplay-policy=no-user-gesture-required`), the speakers through the MOTU (ADAT; Alexa on channels 1–4 = Z1 living + Z2 kitchen), and runs Mosquitto + Zigbee2MQTT, stagehand `show` and `agents` (separate launchd jobs), the `alexa` player and Ollama with `OLLAMA_MAX_LOADED_MODELS=2` (both models stay loaded; OP-06's "mind paused by default" is no longer forced).
@@ -127,7 +133,7 @@ Lanes merged in order B → A → C → D, then `fix(oct31): integrate wave 1` (
 - **The VPS is live** at https://app.mapsandducks.com (app, `/edit/`, API, apex invite site); invitations are sent; the PAUTIX strips are addressable on an off-the-shelf WLED controller (presets; preset 22 = dim Tube during a blackout); Meta developer mode is on.
 - **Broker layout (integration decision):** Mosquitto's anonymous listener is bound to `127.0.0.1:1883` (stagehand, Z2M, alexa), and the network props (WLED controllers, the server-room ESP32) use a password-only LAN listener `:1884` as user `props` — `scripts/house-mac/alexa.md` → *Lock down the broker*; the ESP32 reads `SR_MQTT_USER` / `SR_MQTT_PASS` from `secrets.h`.
 
-**Before any device check: deploy wave 1 to the VPS** (after it lands on master). In the VPS `.env`: `LOOM_BASE_URL=https://app.mapsandducks.com`; `LOOM_VAPID_PUBLIC_KEY` / `LOOM_VAPID_PRIVATE_KEY` (`npx web-push generate-vapid-keys`, once, never changed again); `KOKORO_CPUS` = `nproc` − 1 (check `free -h` first; leave `LOOM_TTS_URL` blank); `LOOM_RL_RESOLVE=600`, `LOOM_RL_REGISTER=400`, `LOOM_RL_LOGIN_FAILURES=100/300`. Then `deploy/release.sh --adopt pre-k08`, `docker compose up -d --build`, and `LOOM_SSH=<user>@app.mapsandducks.com scripts/sync-show.sh`.
+**Before any device check: deploy wave 1 to the VPS** (it is on `master`; the VPS still runs the pre-wave-1 build). In the VPS `.env`: `LOOM_BASE_URL=https://app.mapsandducks.com`; `LOOM_VAPID_PUBLIC_KEY` / `LOOM_VAPID_PRIVATE_KEY` (`npx web-push generate-vapid-keys`, once, never changed again); `KOKORO_CPUS` = `nproc` − 1 (check `free -h` first; leave `LOOM_TTS_URL` blank); `LOOM_RL_RESOLVE=600`, `LOOM_RL_REGISTER=400`, `LOOM_RL_LOGIN_FAILURES=100/300`. Then `deploy/release.sh --adopt pre-k08`, `docker compose up -d --build`, and `LOOM_SSH=<user>@app.mapsandducks.com scripts/sync-show.sh`.
 
 | Id | Wave 1 | The device check still to do (helper under `scripts/accept/`) |
 |---|---|---|
@@ -167,7 +173,7 @@ Lanes merged in order B → A → C → D, then `fix(oct31): integrate wave 1` (
 | N-02 + N-10 | built (b59718c, 83f4393; QR drawn in the browser a530814) | `n02.sh`: re-pair after clearing Safari → same program within 30 s; ⏏ Release Clippy → phone C signs in within 60 s |
 | N-08 | built (26c324b; :1884 + `props` login a530814) | `secrets.h` (Wi-Fi + props password), `N-08.sh /dev/cu.usbserial-…` on the bench, then `K-05.sh` (HW-PATCH-07); siren + click MP3s on the microSD |
 | N-11 (optional) | built (2c0d951) | `N-11.md`: stop the worker, DM twice, one hold line ≈ 20 s later, worker restart answers |
-| D-01 | drafted (cf8ac8b) | no device; read + edit the 9 featured sheets and fill the 85 `[[EDIT` blanks (codes, address, names); check the emergency numbers |
+| D-01 | drafted (cf8ac8b) | no device; read + edit the 9 featured sheets and fill the 83 `[[EDIT` blanks (codes, address, names); check the emergency numbers |
 | N-09, N-12, N-04a | **not done** — optional, only on slack | N-12 only if K-19 misses |
 
 **Found during wave 1 — fixed in `fix(oct31): wave 1 leftovers`** (each with a test): any ending now stops every story clock (`when Night.ended == true:` clears the hunt / hunt 2 / summons / bingo / Y2K countdowns, so no corner countdown or late time-up beat after `trabolta_disabled`, `computer_destroyed` or any other ending); the play Codex box shows "Too many tries — wait a minute, then try again." on the K-11 429; the Data Centre Sinkhole codex (and the Excel / OpenOffice identity texts + featured sheets) no longer say "five hours early", and a test checks no non-hunt codex entry carries an H1–H6 answer; `chess lost` / `chess drawn` rules (from the Y2K hour, while locked, Trabolta gloats in The Server Room; nothing disarms) and the *The Cold Lock* codex now exists (code-less, handed out with The Y2K Clock at the final round, kept out of Trabolta's first-24 ground truth); the ceremony plays `ceremony_bed` (start) + `award_fanfare` (every award) with QLab rules in `stagehand/trapped.house.yaml`, pinned by `test_the_ceremony_sounds_are_cued`; a `room` / `at` / `location` / `place` argument from an agent power or Run's `mod/signal` folds onto the declared LOCATION (`core/server/place-args.ts`), so `cut_the_lights` with "the cache" works; `docs/trapped/push-ceremony-dm-lies.md` describes the Home Screen handoff as the single-use `pair=` code flow.
@@ -185,7 +191,7 @@ Lanes merged in order B → A → C → D, then `fix(oct31): integrate wave 1` (
 - **K-10:** Run's empty state has **New performer + moderator codes** (launch `rotate: "staff"`, guest code kept) — tick it before the show if a mod code was shared at rehearsal or typed into a terminal (re-provision terminals with the new code).
 - **Minor:** a chess win or `server_unlock` clears a latched alarm at once (no stale overlay); after the night ends no fact is filed, dealt or judged (the ceremony's Truthcoin stands); a crafted guest DM to an agent still hidden from them is refused (403), not stored.
 
-Suites after the pass: loomcheck `--smoke` 0 / 0; core 872 + typecheck; play 90 + typecheck; editor 201 + `tsc -b`; stagehand 229; ops scripts 98; live-guard 2.
+Suites after the pass (before the leftovers; the current numbers are at the top of this section): core 872 + typecheck; play 90 + typecheck; editor 201 + `tsc -b`; stagehand 229.
 
 
 ### MUST (7.0 lane-days; N-07 counts with the N folds under CHEAP-WIN): without it the night breaks or is unsafe

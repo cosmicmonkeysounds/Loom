@@ -2,7 +2,7 @@
 title: The terminals on the walls
 section: Guest Guide
 order: 9
-keywords: terminal, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch
+keywords: terminal, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding
 ---
 
 Some events mount **terminals** around the house — tablets that are a
@@ -11,8 +11,9 @@ direct line to one of the story's characters. They talk back, out loud.
 ## Before the character is online
 
 A character can arrive partway through the night. Until then its
-terminals are just screens: a screensaver, a media player, the odd
-advertisement — no camera, nothing to scan, nobody to talk to. At
+terminals are just screens: a 1999 screensaver with the odd
+advertisement — no camera, nothing to scan, nobody to talk to. The same
+happens if the character is switched off later in the story. At
 *Trapped in the Internet* the terminals stay that way until Clippy
 introduces Trabolta; a message sent to him before then gets "Jean
 Trabolta will make an appearance later tonight. Please do not move the
@@ -47,7 +48,18 @@ scans their own pass and sees their own line.
 
 If the character is **away** (its voice isn't listening right now), the
 terminal says so — your message still goes through, and the answer
-arrives in your app when they're back.
+arrives in your app when they're back. After about twenty seconds the
+character may answer with a holding line ("Jean Trabolta is not
+responding. Please do not move the mouse.") — that's the system, not a
+reply; the real answer still comes.
+
+## Messages from the story
+
+Sometimes every screen at once becomes the story's: a **slide** (a
+trivia question, a bingo card, an award), a ⏱ **countdown** in the
+corner, or a full-screen **notice** — a blackout, "go to the living
+room", an alarm. A notice ends whatever line is open; when it clears,
+scan again.
 
 ## A window into the simulation
 
@@ -66,6 +78,13 @@ is in the simulation, the face is all there is.
 
 ## The TV
 
-The big screen (above the fireplace, at *Trapped in the Internet*) is a
-terminal in **mirror** view: the window into the simulation, full screen,
-for the whole room. It has no camera and no chat — just watch.
+The big screen above the fireplace (at *Trapped in the Internet*) is the
+character's **voice in the living room**. It shows his face full screen
+and **speaks his lines** in the room it watches (the Desktop), with a
+caption under each; songs are captioned only, and most other characters'
+lines stay on your phone. While someone is in the simulation, the window
+into it takes the right side of the screen. It shows the same slides,
+countdowns and notices as the terminals, and the screensaver until the
+character is introduced. It has no camera and no chat — just watch and
+listen. (Another screen can be a silent **mirror**: the window into the
+simulation, full screen.)

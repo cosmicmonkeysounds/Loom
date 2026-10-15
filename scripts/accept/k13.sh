@@ -5,7 +5,8 @@
 #   1. Start a REHEARSAL in the editor (Run → Start rehearsal).
 #   2. LOOM_EVENT_CODE=<guest code> scripts/accept/k13.sh
 #      → opens a sheet of hand-made room-sign QRs on this Mac's screen
-#        (`<server>/?code=<code>&checkin=<room>`, until K-12's signs merge).
+#        (`<server>/?code=<code>&checkin=<room>`; Run → 🖨 Print sheet
+#        prints the real R01… signs).
 #   3. iPhone, Safari: join the rehearsal as a guest (<server>/?code=<code>).
 #      You land in the Mud Room cutscene. Scan "The Desktop" with the iPhone's
 #      own CAMERA app (not the play app) → tap the banner → Safari opens →

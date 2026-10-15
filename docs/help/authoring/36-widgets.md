@@ -2,7 +2,7 @@
 title: Cards & widgets — `show`
 section: Live shows
 order: 36
-keywords: show, widget, card, fact, file a fact, captcha, security check, poll, picture, image, answered, verify, game, media, minigame
+keywords: show, widget, card, fact, file a fact, judge, verdict, filed, captcha, security check, poll, picture, image, answered, verify, game, media, minigame
 ---
 
 The participant app can put more than text in a conversation. A **card**
@@ -67,6 +67,23 @@ ROLE Program
 | `tutorial` | `completed` (they finished) or `skipped` + `step` (where they bailed), and `steps` |
 | `pass` | never answers |
 | `fact` | `question` (the picked id, e.g. `H2`), `answer` (the typed text — the one result field that may name a character, so "Clippy" is a fine wrong answer), `certain` (always true) |
+
+A `fact` card is judged by people, not by the story. The usual shape:
+post the filing to a staff room and give the hosts a performer button
+per verdict, which fires for the guest whose card it is:
+
+```loom
+when fact answered for program:
+  broadcast "📝 {program.name} filed {question}: {answer}" to channel(hosts)
+  show fact "📝 File a fact" to program with thread: Trabolta, questions: "H1: … | H2: …"
+
+INTERACTION fact accurate
+  label: 📝 Filed fact: accurate
+  who: performer
+```
+
+Each filing deals a fresh card, and the guest's
+reply should read the same whichever verdict a host presses.
 
 ## The guided tour: `show tutorial`
 

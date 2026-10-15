@@ -101,6 +101,13 @@ warning). **☰ → Keep my screen on** is an opt-in Screen Wake Lock
 (`src/wake-lock.ts`). A captive in a `sealed: true` prison gets no
 "make a break for it" button.
 
+**Cards** (`src/widgets.tsx`) render a story's `show <kind>`: `captcha`,
+`image`, `poll`, `tutorial`, `pass`, and the 📝 **File a fact** card
+(`show fact … with thread: Trabolta, questions: "H1: … | H2: …"`, K-24):
+pick a question, type an answer (≤ `FACT_MAX`, 200), tick *I'm certain* →
+`{question, answer, certain: true}` → `fact answered`; `with thread:` docks
+it in that character's DM.
+
 **Push to a locked phone (K-31a, 2026-10-15).** A 🔔 **Get alerts** card
 (and a row in the ☰ / profile sheet) asks for notification permission
 from a tap, then subscribes this phone through the push-only service
@@ -173,8 +180,8 @@ badges and sorts to the top, so a choice left unmade always pulls focus.
   gets **hide/show** on every message and capture/release in each guest
   thread.
 
-The operator/moderator surface is the [`editor`](../editor)'s Run/Deploy
-modes (not this app).
+The operator/moderator surface is the [`editor`](../editor)'s Run mode
+(not this app).
 
 ## Install
 
@@ -234,9 +241,16 @@ src/
   performer.tsx # the performer / booth app
   help.tsx      # the in-app Help window (searchable, role-aware; content from ../docs/help/play/)
   ui.tsx        # the role chooser
+  widgets.tsx   # show-cards registry (captcha / image / poll / tutorial / pass / 📝 fact)
+  alerts.ts     # `!` alerts: chime, buzz, banner, the last-seen mark (K-06 / N-07)
+  push.ts       # Web Push subscribe / re-bind / release + visibility beacons (K-31a); push-card.tsx = the 🔔 card
+  checkin.ts    # ?checkin=<slug> room signs (K-13) · resume.ts = ?pair= re-pair links (N-02)
+  scanner.tsx   # booth camera (BarcodeDetector, else jsQR) · scan.ts = what a code means (N-01)
+  wake-lock.ts  # ☰ → Keep my screen on
   main.tsx      # entry
   styles.css    # the AOL-chatroom skin (Win95 bevels, navy bars, serif lines)
-test/           # vitest: grouping (sender runs) · spaces · thread selectors · help
+public/sw.js    # push-only service worker (no fetch handler) + manifest.webmanifest
+test/           # vitest: grouping · spaces · threads · help · widgets · alerts · push · checkin · resume · scan · …
 index.html      # Vite entry
 vite.config.ts  # react plugin + dev proxy to LOOM_SERVER (default :7000)
 ```

@@ -16,9 +16,10 @@ still run as **separate launchd jobs** (see *launchd* below; the `alexa`
 player has its own agent in `scripts/house-mac/`).
 
 ```
-laptop.yaml                      desktop.yaml
-  server: {url, event, code}       server: {url, event, code}
-  agents: {llm, characters}        show:   {mqtt, osc, cues, sensors}
+trapped.house.yaml (the house Mac)     laptop.yaml (same Mac, the agents job)
+  server: {url, event, code}             server: {url, event, code}
+  show:   {mqtt, osc, cues, sensors}     agents: {llm, characters}
+  alexa:  {device, channels, chime, …}
 ```
 
 Every module shares the process's one authenticated link to the server
@@ -324,6 +325,13 @@ room or all of WLED, no lock topic, edge-only door sensors). The wiring walkthro
 [`docs/loom-show-control.md`](../docs/loom-show-control.md) → *Trapped in
 the Internet: the house rig*.
 
+Mosquitto on the house Mac (static `192.168.8.10`) runs two listeners:
+anonymous on `127.0.0.1:1883` for what runs on that Mac (stagehand's
+`mqtt.host`, Zigbee2MQTT, the `alexa` player) and password-only on the
+LAN at `:1884` as user `props` for the network props (WLED, the
+server-room ESP32 in [`hardware/server-room/`](../hardware/server-room)).
+Setup: `scripts/house-mac/alexa.md` → *Lock down the broker*.
+
 ```bash
 uv run stagehand check --config trapped.house.yaml
 uv run stagehand run   --config trapped.house.yaml --only show
@@ -428,6 +436,10 @@ Pure units: directive parsing, conditions, topic patterns, both maps,
 the SSE parser, config and module selection, plus the whole agents path
 (persona, prompt, reply parsing/clamping, the OpenAI-compatible call over
 a mock transport, and the worker loop's dispatch, cancel, concurrency,
-and dry-run against a fake server). The router's socket wiring is
+and dry-run against a fake server), answer secrecy (`test_secrets`), the
+`alexa` player, launchd plists, the `.local.yaml` overlay, `edge` /
+retained sensor rules, the real rig against the story
+(`test_trapped_house`) and the server-room firmware's broker settings
+(`test_serverroom_firmware`). The router's socket wiring is
 exercised live against Mosquitto + the event server (see the blinking-
 LED milestone in the design doc), not in unit tests.

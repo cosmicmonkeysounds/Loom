@@ -139,7 +139,7 @@ for this spec.
 22. **Performer hooks guard their phase — except `send to the internet` and `mark as
     reinstalled`**, which must work on any program at any time (spatial.test fires `send to
     the internet` as Norton on a fresh, un-uploaded persona before `Power On`).
-23. **Admin cues are fired from Run → Events / quick-fire, never from a performer's guest
+23. **Admin cues are fired from the cue sheet (Run → Director, K-21) / quick-fire, never from a performer's guest
     card**: a press from a guest card carries `actor` = that character and `subject` = that
     guest, so only that character's hooks hear it **[verified, feas f3]**. The README cue
     sheet says so.
@@ -638,7 +638,7 @@ ROLE hooks and watchers (all in `ROLE Program`; bodies specified in §3):
 
 ### 2.8 Named events (who fires them)
 
-Columns: **D** = director cue (admin INTERACTION in Run → Events / quick-fire), **P** =
+Columns: **D** = director cue (admin INTERACTION on the Run → Director cue sheet / quick-fire), **P** =
 performer INTERACTION (guest card), **G** = guest INTERACTION, **A** = Trabolta agent
 power, **H** = hardware / device via `POST /api/mod/signal`, **W** = fired by a story
 watcher/rule, **S** = server hard-code.
@@ -759,7 +759,7 @@ reads as a cue sheet):**
 | the simulation completed | `Reinstallation: simulation completed (server)` |
 | the golden duck | `Reinstallation: the golden duck (server)` |
 
-Fire every admin cue from Run → Events / quick-fire, never from a guest card (§0 rule 23).
+Fire every admin cue from the cue sheet (Run → Director) / quick-fire, never from a guest card (§0 rule 23).
 
 **Performer (`who: performer`, shown on every guest card; every hook guards its phase and
 answers wrong-phase presses with nothing — **except `send to the internet` and `mark as
@@ -1291,9 +1291,8 @@ Desktop`; **no dialogue lines and no widgets** — the test checks this).
   `set Night.screen = "screensaver"` / `set Night.terminals = "screensaver"`.
 - One narration line (keep): `The house boots. A screensaver drifts across the TV above the
   fireplace. Somewhere a modem is waiting to be asked.`
-- Trabolta does not exist on any phone (`hidden: true`); terminals show the screensaver and
-  are provisioned `view=mirror` until the introduction (§9: no scanner, no pilot, so nobody
-  reaches `dm:Trabolta`); the worker gate is closed (`Trabolta.awake == false`).
+- Trabolta does not exist on any phone (`hidden: true`); terminals show attract (screensaver + ads,
+  K-16: no "ONLINE", no pilot, so nobody reaches `dm:Trabolta`) until the introduction; the worker gate is closed (`Trabolta.awake == false`).
 
 **A3 Arrival — `when someone joins:`** (ROLE). `move program to The Mud Room`; featured
 tags (§2.1); `-> Login` (last). Rolling arrivals continue until the inciting event; every
@@ -1852,8 +1851,9 @@ room QR posters, terminals and the director: send the **exact declared LOCATION 
 (`{"at": "The Desktop"}`). Sources today: an Enforcer or Host scanning the pass at the
 living-room door during the summons (A4); the performer button `check_in_at_desktop` (`fire
 checked_in for program with at: The Desktop`, bare); the director (`checked_in`, subject +
-`{"at": "The Desktop"}`) from Run → Events. Later, unchanged story: room QR posters and
-terminals send `checked_in` with `at` (§7 #5; stagehand cannot send args yet, §7 #20).
+`{"at": "The Desktop"}`) from Run; and room-sign QRs (K-13, on master): the phone posts
+`POST /api/guest/checkin {at: slug}` and the server signals `checked_in` with the exact `at`
+(unchanged story). Terminal check-in is still §7 #5; stagehand cannot send args yet (§7 #20).
 
 **D2 Five-minute warning — `five_minute_warning`** (W at 55 min or D).
 - Rule (guard `Night.summons_open != true and Night.summons_closed != true`): phase `summons`,
@@ -2356,7 +2356,8 @@ favours, his chart assessments (which do feed the rankings) and the director's c
   real thread and grow a Trabolta row on their phone. So: (a) **runbook (zero code)** —
   provision every terminal `view=mirror` until `introduce_trabolta` (mirror has no scanner and
   no pilot and shows the empty virtual house, which reads as a screensaver), then re-provision
-  `view=auto` (§9); (b) **required new code before the party** (§7 #14) — the terminal shows
+  `view=auto` (§9); (b) **required new code before the party** (§7 #14; **built as K-16**, so
+  (a) is only the fallback) — the terminal shows
   its attract rotation and never pilots while its character is hidden / `awake` is false
   (add `revealed` to `CastSummary`); (c) optional — the server refuses agent dispatch for a
   hidden character.
@@ -2899,6 +2900,19 @@ a speaker. (Its false WARN on `move … to at` disappears with the D1 if-chain.)
 
 ## 7. Needs new code (each with today's workaround)
 
+**Oct 31 wave 1 (on `master`, not yet deployed) built minimal slices of these**; each row keeps
+the full need, and OCT31.md §5 has the slice. #2: Web Push to Android phones + booths (K-31a;
+iPhone is K-31b, conditional) and alerts that land on wake and in booths (K-06 / N-07). #4:
+the story countdown in a terminal corner (K-17; not on phones). #5: room-sign QRs →
+`POST /api/guest/checkin` (K-13; no rotating tokens, no terminal check-in). #13: the lean
+screen state, overlays, PNG slides and the TV voice (K-16 / K-17 / K-18; no ScreenHub, media
+route or templates). **#14: done (K-16).** #19: Run → Join → 🖨 Print sheet, pinned codes, the
+base-URL fix and the redeem throttle (K-12 / K-10 / K-01 / K-11; no print tokens, passes or
+performer cards). #20: edge detection + ignore retained MQTT (K-05; signal `args` still
+missing). #21: the hunt answers kept out of the worker (K-23; the rest of the secrecy fix is open). #22: the recap numbers (K-26,
+`GET /api/mod/recap`; the words stay hand-written or Trabolta's). #25: the cue sheet (K-21,
+Run → Director; no phone cue page).
+
 | # | The story wants | Today's workaround in this story |
 |---|---|---|
 | 1 | **Featured-program claim**: only the invitee may take "Microsoft Excel" etc. (claim code minted in Run → Join and emailed with the invitation); registered names canonicalised to the declared spelling; **a shared identity** for Trojan Horse (two accordion clowns, one program: a second device joining the same program) | Trust at the door; the featured tag is set by an exact-name compare on the picker spelling; a director can fix `featured` in Run → World; the two clowns share one phone |
@@ -2914,7 +2928,7 @@ a speaker. (Its false WARN on `move … to at` disappears with the D1 if-chain.)
 | 11 | `/api/guest/join` must refuse hidden / `joinable: false` groups | groups stay hidden until `y2k_clock` reveals them (a crafted request could still join early) |
 | 12 | **Pickup-line input**: punctuation-insensitive `foldCode` (apostrophes, curly quotes) or a text-answer widget | host button `pickup_line_works`, Trabolta's `the_line_works` power, director fire; no codex code |
 | 13 | **Screens layer** (ScreenHub + `show … on screens`, media route with Range, terminal templates: screensaver, ads, media player, slide, countdown, video, chart, clock, textfile, song, takeover, effect; wake lock; announce mode; TV presentation ⇄ mirror; targets `screens_*` / `tv_*` / `terminals_*` / `tablet_*`) | `cue …` + the `Night.screen` / `Night.terminals` mirrors; terminals keep face/world/mirror; the TV is a `view=mirror` terminal; set pieces are captions in the Desktop room |
-| 14 | **REQUIRED before the party.** Terminal **attract mode before Trabolta exists**: while its character is hidden / `awake` is false the terminal shows the screensaver / media player / ads rotation, never "TRABOLTA ONLINE", and **never pilots** a scanned guest into `dm:Trabolta` (add `revealed` to `CastSummary`). Optional: the server refuses agent dispatch for a hidden character | provision every terminal `view=mirror` until `introduce_trabolta`, then `view=auto` (§9); the hold line is plain words |
+| 14 | **REQUIRED before the party.** Terminal **attract mode before Trabolta exists**: while its character is hidden / `awake` is false the terminal shows the screensaver / media player / ads rotation, never "TRABOLTA ONLINE", and **never pilots** a scanned guest into `dm:Trabolta` (add `revealed` to `CastSummary`). Optional: the server refuses agent dispatch for a hidden character | **Built: K-16** (on master, not yet deployed). Fallback: provision every terminal `view=mirror` until `introduce_trabolta`, then `view=auto` (§9); the hold line is plain words |
 | 15 | **WebMD instructional video** in the reinstall tablet wizard (and phone `video` card) | WebMD's lines in `dm:WebMD` (+ Julia live in the tent); `cue tablet_webmd` |
 | 16 | Reinstall: optional **press-A** find, goose vs duck copy, **release-all / end spatial sessions on release**, `released` leave reason, Bathroom Mode on the tablet/VR, tent queue/capacity | the duck by proximity (copy says "walk right up to it"); zip via the two ROLE watchers; performers clear the tent by hand |
 | 17 | Excel's virus as an **in-game pickup** (spatial `virus` spot) and a **USB "glory hole" sensor** for planting | codex QRs `LOVE-LETTER-FOR-YOU` / `FREE-TRIAL-30-DAYS` taped in the tent; the guest button `plant_the_virus` |
@@ -2996,11 +3010,11 @@ cards / featured claim codes:** software (§7 #1, #19); the story needs nothing 
 
 ## 9. Runbook additions (go into the README)
 
-1. **Admin cues** are fired from Run → Events / quick-fire, never from a guest card (§0 rule
-   23). The cue sheet is the admin INTERACTION list, in order.
-2. **Terminals**: provision every terminal `view=mirror` at doors open; re-provision
-   `view=auto` right after `introduce_trabolta` (until §7 #14 lands). Mirror has no scanner
-   and no pilot.
+1. **Admin cues** are fired from the cue sheet (Run → Director, K-21) / quick-fire, never
+   from a guest card (§0 rule 23). The cue sheet is the admin INTERACTION list, in order.
+2. **Terminals**: provision `view=auto`; attract (K-16) holds until `introduce_trabolta`.
+   Fallback if attract fails on a tablet: `view=mirror` until the introduction (no scanner,
+   no pilot).
 3. **Stage clicks** on Run → Mind at each phase (until N1): introduced → formal, truth_1 →
    hungry, malware → rattled, truth_pong → judge, beans → unravelling, y2k → desperate,
    final_reveal → last act.

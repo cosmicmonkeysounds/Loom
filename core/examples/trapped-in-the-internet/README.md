@@ -7,7 +7,9 @@ by late-90s Web 1.0 aesthetics and existentialism.*
 > 2026.** It has the day-by-day lanes to the show, the gates (Oct 18 / 22 /
 > 25 / 27, tech 10-28, dress 10-29, freeze 10-30), the buy-today list, the
 > workaround runbook (W-01…W-34), the night-of crew + cheat-sheets, show-day
-> call times, the risk register and the cut order.
+> call times, the risk register and the cut order. **Wave 1 is merged to
+> `master` (not yet deployed to the VPS)**: its §5 *Wave 1 status* lists
+> every build and the device check still to do.
 >
 > **📋 [CHECKLIST.md](./CHECKLIST.md): the living tech checklist, covering
 > the software and hardware still to do before the party.** Tick items
@@ -96,6 +98,8 @@ house.json             the house map for the reinstallation games + the terminal
                        view. It is a placeholder layout until the house is measured; edit it
                        at /reinstall/map (docs/loom-reinstall.md §1)
 CHECKLIST.md           the living tech checklist
+cast-packs/            paper only (D-01): 9 performer packs, 4 crew cards, 9 featured
+                       sheets, the emergency card (not read by the server)
 ```
 
 Outside this folder: **`stagehand/trapped.house.yaml`** is the show's real
@@ -128,15 +132,18 @@ These rules matter when you edit. Break one and something fails silently.
   `!🔊 ALEXA:` broadcast plus `do announce`; Grok is codex lore; "Jean
   Trabolta" is the name on the invitation.
 
-As of 2026-10-14 the project compiles clean, both per file and
-concatenated the way the server joins them: **29 files, 0 errors, 0
-warnings; 90 beats, 133 codex entries (41 with codes), 16 quests, 75 story
-rules.**
+As of 2026-10-15 (wave 1 on `master`) the project compiles clean, both
+per file and concatenated the way the server joins them (`loomcheck`):
+**30 files, 0 errors, 0 warnings; 90 beats, 133 codex entries (41 with
+codes), 16 quests, 85 story rules, 100 INTERACTIONs.**
 
 ## Before the doors open
 
-1. **Sync the story.** Run `pnpm dev --sync "<project>"` (or
-   `core/scripts/sync-example.ts`). Removed files are deleted from the
+1. **Sync the story.** Locally: `pnpm dev --sync "<project>"` (or
+   `core/scripts/sync-example.ts`). To the VPS:
+   `LOOM_SSH=<user>@app.mapsandducks.com scripts/sync-show.sh` (an SSH
+   tunnel to its Postgres, then a reload — a real cut, so never after
+   doors; `--dry-run` / `--no-reload`). Removed files are deleted from the
    project automatically. Then press **Reset on Run → Mind**, or start the
    worker with a fresh `state_dir`. Otherwise `.stagehand-minds` keeps the
    old "lonely grandeur" arc, and a story restart sends `control reset`
@@ -149,32 +156,60 @@ rules.**
    bundle offline copies, and re-export the VR APK (low priority, because
    the live fetch wins). `pnpm house:sync` copies the map into
    `reinstall/vr`.
-3. **Terminals: mirror view until Trabolta exists.** Provision every wall
-   terminal with `view=mirror` at doors open:
-   `/terminal/?code=<mod>&name=Kitchen&character=Trabolta&spot=kitchen&view=mirror`.
-   Mirror view has no scanner and no pilot, so nobody can reach
-   `dm:Trabolta` early. Re-provision with `view=auto` right after
-   `introduce_trabolta`. This stays manual until CHECKLIST's terminal
-   attract-mode item lands.
-4. **Hardware.** Load `stagehand/trapped.house.yaml` on the desktop
-   (`uv run stagehand check --config trapped.house.yaml`, then `run`). The
+3. **Terminals + the TV.** Provision every wall terminal with `view=auto`
+   from the start:
+   `/terminal/?code=<mod>&name=Kitchen&character=Trabolta&spot=kitchen&view=auto`.
+   Until Trabolta is revealed (or while he's asleep) it shows **attract**
+   — a Mystify screensaver and fake-1999 ads, never "ONLINE", and it never
+   pilots a pass into `dm:Trabolta` (K-16); his face comes up within 2 s
+   of `introduce_trabolta`. `view=mirror` (no scanner, no pilot) is the
+   fallback for a tablet attract fails on. The TV is the house Mac's
+   Chrome on `view=tv` (integration contract); click once into it after
+   every boot. Every terminal and the TV must show green on the **Run
+   page's Terminals card** (K-29: red + a chime after 20 s silent).
+4. **Hardware (the house Mac).** Load `stagehand/trapped.house.yaml`
+   (`uv run stagehand check --config trapped.house.yaml`), then install the
+   `show` and `agents` modules as separate launchd jobs (`uv run stagehand
+   launchd install --job show|agents --config …`; `launchd status` /
+   `restart`) and the Alexa player (`scripts/house-mac/install-alexa.sh`,
+   `scripts/house-mac/alexa.md`). Mosquitto listens anonymously on
+   `127.0.0.1:1883` only; WLED and the server-room ESP32 log in as `props`
+   on `:1884`. The
    door contact uses `edge: true` and ignores retained messages. The patch
    bay sends `patch_combo_a` / `patch_combo_b` / `patch_rejected`. The two
    combo strings must match the `Kernel.combo_*` seeds in `main.loom` and
    the four combo-half codex texts, and the stagehand test checks this.
-5. **Trabolta's laptop.** Start the `agents` worker (see the integration
+5. **Trabolta (the house Mac).** Start the `agents` worker (see the integration
    contract). His gate is `when: self.awake == true`, so until Clippy
    introduces him every message gets the hold line *"Jean Trabolta will make
    an appearance later tonight. Please do not move the mouse."*
-6. **Print** the QR clues, the Bingo cards and the hat slips (appendix).
+6. **Print** from Run → Join → **🖨 Print sheet…** (K-12: the join poster,
+   every codex QR and the room check-in signs, QRs drawn in the browser,
+   1, 2 or 4 per page), plus the Bingo cards and the hat slips (appendix).
+7. **Codes.** The guest, performer and mod codes are pinned to the project
+   across End → relaunch (K-10), so printed QRs keep working. If a mod or
+   performer code was shared at rehearsal or typed into a terminal, tick
+   **New performer + moderator codes** on Start (the guest code stays) and
+   re-provision the terminals.
+8. **Push.** With `LOOM_VAPID_*` set, guests and booths get a 🔔 *Get
+   alerts* card (Android + booths, K-31a): `!` alerts and Trabolta DMs
+   reach a locked phone. Subscribe every staff phone before doors.
+9. **Paper + checks.** The performer packs, crew cards, featured sheets
+   and the emergency card are in [`cast-packs/`](./cast-packs/README.md).
+   Each OCT31 build has its device check under
+   [`scripts/accept/`](../../../scripts/accept) (`<id>.sh` / `.ts` / `.md`;
+   the scripts that fire cues refuse a live event with real guests unless
+   told otherwise).
 
 ## Running the night
 
-**Fire every admin cue from Run → Events (or quick-fire), never from a
-performer's guest card.** A press from a guest card carries `actor` = that
-character and `subject` = that guest, so only that character's hooks hear
-it. The admin INTERACTIONs are declared in running order, so the Events
-list *is* the cue sheet. Each label carries the source prompt code:
+**Fire every admin cue from the cue sheet (Run → Director, K-21) or
+quick-fire, never from a performer's guest card.** A press from a guest
+card carries `actor` = that character and `subject` = that guest, so only
+that character's hooks hear it. The admin INTERACTIONs are declared in
+running order, so the sheet lists them in that order, marks the **LAST**
+cue and suggests the **NEXT**, and every director's sheet agrees (it is
+read off the server's log). Each label carries the source prompt code:
 **C1/C2** are the app prompts, **V1–V6** are the monitor slides, and
 **Clippy N/X** is Clippy's instruction sheet. Every Clippy instruction
 also lands in Clippy's booth as a codex entry (`Clippy Instructions 1` …
@@ -190,6 +225,17 @@ has already run (Call to the Desktop, Bingo, Bingo time, the First Moment of
 Truth, Truth Pong, the tally, the rankings, the printer) does nothing. A
 judge's double tap of the same ✅/😤 on the same program credits once, and a
 program in the Internet cannot have an answer accepted.
+
+**Front of house fixes** (Run, server events only): a guest whose phone
+died or whose browser was cleared → Inspector → **🔁 Re-pair**, a
+single-use QR (ten minutes) that puts their *same* program on the new
+phone — never re-register them, a ghost counts toward the majority. A
+performer whose phone died → their character's Inspector → **⏏ Release**,
+then they sign in again on a loaner with the performer code. A silent
+tablet goes red on the Run page's Terminals card. A Director broadcast
+with **🔔 Alert** ticked banners, chimes and buzzes every phone it reaches,
+booths included. Guests can also check themselves into a room by
+scanning its sign (`checked_in`, see the integration contract).
 
 ### A. Pretext and entrance (rolling arrivals until C1)
 
@@ -248,7 +294,7 @@ program in the Internet cannot have an answer accepted.
 |---|---|---|
 | *(auto)* `majority_reached` | — | The room is unlocked (`do door server_room, state: unlocked`, `lights_server_open`). Every member of the winning faction gets **The Whole Truth**: all Trabolta and environmental facts, the four combo halves, and **The Legendary Fact** last. The recruit quests settle. |
 | **🚪 Server room door opened** (hardware fallback) / **🔓 unlock (override)** | every Antivirus booth: *"Server room breach. Get there."* | **From the Y2K clock on**, entering a locked room trips the **alarm**, latched for 120 s (before that the door and the patch bay, combos included, do nothing — a curious guest or a replayed sensor cannot end the night). Only the first alarm hurts Trabolta. After an unlock, the Antivirus police non-members in person. |
-| **♟ Cold Lock: they beat the machine** (`chess_won`, the dead-phone fallback) · **🔒 re-lock + re-arm** (`rearm_server_room`) | a host or Antivirus who **saw the mate** on the chess phone taps **♟ They beat the machine** on the winner's card | **From the Y2K clock on**, a chess win disarms the door for **90 s** (`Kernel.disarmed_until`, ring green, `lights_server_open`); then it re-locks (a door still propped open trips the alarm on its next report). Before that a win is practice. `# hosts` logs open/closed. Re-arm locks the room again, clears the alarm latch and closes a window; lights stay (💡 restores them). |
+| **♟ Cold Lock: they beat the machine** (`chess_won`, the dead-phone fallback) · **🔒 re-lock + re-arm** (`rearm_server_room`) | a host or Antivirus who **saw the mate** on the chess phone taps **♟ They beat the machine** on the winner's card | **From the Y2K clock on**, a chess win disarms the door for **90 s** (`Kernel.disarmed_until`, ring green, `lights_server_open`); then it re-locks (a door still propped open trips the alarm on its next report). Before that a win is practice. `# hosts` logs open/closed. Re-arm locks the room again, clears the alarm latch and closes a window; lights stay (💡 restores them). A **loss or draw** (`chess_lost` / `chess_drawn`, reported by the phone or a `mod/signal`, Y2K hour on, while locked) only makes Trabolta gloat in The Server Room. |
 | **🔌 Combo A** · **💥 Combo B** · **❌ wrong combination** (hardware fallbacks) | — | Combo A is `V2-D5, V4-D1, V6-D8, V7-D3` and disables Trabolta. Combo B is `V1-D6, V3-D2, V5-D7, V8-D4` and self-destructs. Two wrong combinations, or one in a locked room, trip the alarm; otherwise Trabolta says *"Stop touching me."* |
 | *(auto)* blackout → **🪩 Dance lights** (fallback; auto 10 s later) | — | Every light goes out, every phone says **GO TO THE LIVING ROOM**, and the dance song plays. |
 | **🏍 After the dance: weakened Trabolta recounts** (`trabolta_recounts`, after Combo A) | — | Everyone gets every backstory + truth.txt. He names each identity, motive and accomplishment, plus the trustworthy and worst program, then leaves on his motorcycle and everyone is freed. |
@@ -270,8 +316,8 @@ program in the Internet cannot have an answer accepted.
 
 | Director fires | Performers do | What happens |
 |---|---|---|
-| **G1 · 🏆 Start the awards ceremony** (`start_the_ceremony`; refused until `Night.ended`, and `banished` is not an ending) | Clippy hosts after `destroyed` / `rave` and **reads every line aloud** from The Desktop room | `!` alert to the living room, `screens_ceremony`, **The Ceremony**: the host opens in The Desktop, per ending (Trabolta weakened after `disabled`, rebooted after `hand_jive`, showman otherwise). Trabolta's lines are spoken by the TV. |
-| **G2–G6** the five fixed awards (`award_most_trusted`, `award_least_trusted`, `award_frequent_flyer`, `award_lore_hoarder`, `award_truthcoin_tycoon`) and **G7–G9** the three bonus awards (`award_best_liar`, `award_duck_speedrun`, `award_quest_completionist`), each **with the winner picked on the cue sheet** (from the recap numbers) | the winner comes up to the TV for a trophy | **Present Award**: the slide `screens_award_<name>` (`Night.screen` = `award_<name>`; it persists over the screensaver), the host's line with the winner's name and number (the winner's own var: trust, Internet visits, codex count, Truthcoin; the bonus awards read the cue sheet's **value** box — lies accepted, the duck time, quests done — and have a line without a number when it is empty), and a 🏆 reply to the winner. `value` also overrides a fixed award's number. Firing an award again corrects it. |
+| **G1 · 🏆 Start the awards ceremony** (`start_the_ceremony`; refused until `Night.ended`, and `banished` is not an ending) | Clippy hosts after `destroyed` / `rave` and **reads every line aloud** from The Desktop room | `!` alert to the living room, `screens_ceremony`, `sound ceremony_bed`, **The Ceremony**: the host opens in The Desktop, per ending (Trabolta weakened after `disabled`, rebooted after `hand_jive`, showman otherwise). Trabolta's lines are spoken by the TV. |
+| **G2–G6** the five fixed awards (`award_most_trusted`, `award_least_trusted`, `award_frequent_flyer`, `award_lore_hoarder`, `award_truthcoin_tycoon`) and **G7–G9** the three bonus awards (`award_best_liar`, `award_duck_speedrun`, `award_quest_completionist`), each **with the winner picked on the cue sheet** (from the recap numbers) | the winner comes up to the TV for a trophy | **Present Award**: `sound award_fanfare`, the slide `screens_award_<name>` (`Night.screen` = `award_<name>`; it persists over the screensaver), the host's line with the winner's name and number (the winner's own var: trust, Internet visits, codex count, Truthcoin; the bonus awards read the cue sheet's **value** box — lies accepted, the duck time, quests done — and have a line without a number when it is empty), and a 🏆 reply to the winner. `value` also overrides a fixed award's number. Firing an award again corrects it. |
 
 Lines Trabolta's worker writes (W-24) are posted by the director as
 Trabolta in The Desktop; the template lines stay the fallback.
@@ -413,7 +459,7 @@ pop-up or announcement and a non-positive amount are refused out loud.
 | flicker_the_screens | 3 | — | step 4–13 | `cue screens_flicker` (stagehand also blinks the lights) |
 | pop_up | 4 | target, text | step 5–15 | a 💬 message on one phone (garbled from beans on) |
 | mint_truthcoin | 10 | amount | step 6–15 | pays the speaker up to 50 (100 once desperate) |
-| cut_the_lights | 2 | room | step 7–15 | `<cue: lights, room: …, state: off>` for 90 s. Allowed only in The Cache (dims to ~20%, never dark), The Desktop or The Registry (never The Cloud, the tent, stairs, bathroom or server room); one room at a time |
+| cut_the_lights | 2 | room | step 7–15 | `<cue: lights, room: …, state: off>` for 90 s (the room folds onto the LOCATION: "the cache" works; the restore is skipped if a lighting cue has run since). Allowed only in The Cache (dims to ~20%, never dark), The Desktop or The Registry (never The Cloud, the tent, stairs, bathroom or server room); one room at a time |
 | summon_the_antivirus | 4 | target | step 7–15 | target doubt +15; every Antivirus booth: "Trabolta requests a sweep of X" |
 | trabolta_announces | 2 | text | step 7–15 | `!📢 TRABOLTA: …` to everyone |
 | assess | 40 | target, score | trust_chart, bobbing | sets the ±10 assessment and recomputes trust |
@@ -491,12 +537,13 @@ live night replay identically.
 
 | Piece | Direction | Call |
 |---|---|---|
-| **Show control** | story ⇄ house | [`stagehand/trapped.house.yaml`](../../../stagehand/trapped.house.yaml) (the `show` module, on the house Mac) joins the mod SSE feed. It maps `cue lights_*` to Zigbee2MQTT `scene_recall` + WLED presets, the long form `<cue: lights, room: X, state: off\|on>` to that room's group, `sound <name>` to the QLab cue of the same name, `do announce "…"` to the Alexa speaker, and `do door server_room, state: locked\|unlocked` to the ESP32 door indicator (`show/serverroom/lock`, retained; no maglock). `lights_blackout` never darkens the stairs, bathroom, tent, server room or the server-room → living-room path (they are out of the `house` group; WLED goes off per device and the Tube strip stays on a dim static preset). `screens_flicker` also blinks the house lights. Screen cues (`screens_*`, `tv_*`, `terminals_*`, `tablet_webmd`) are mirrored into `Night.screen` / `Night.terminals` until a Screens layer exists. |
-| **Sensors** | house → story | stagehand turns MQTT into `POST /api/mod/signal {name}`: `server_door_opened` (door contact, `edge: true`, retained messages ignored; the story latches the alarm for 120 s), `printer_button_pressed`, `printer_opened`, and the patch bay's `patch_combo_a` / `patch_combo_b` / `patch_rejected`. Stagehand judges the combos until signal args exist. Every one also has an admin fallback button. |
-| **Check-in** | door / QR / terminal → story | `POST /api/mod/signal {name: "checked_in", subject: "<guest id>", args: {at: "The Desktop"}}`. `at` must be the **exact declared LOCATION name**. Anything else, or no arg, moves nobody. Today the sources are the door scan during the summons and the 📍 button. |
+| **Show control** | story ⇄ house | [`stagehand/trapped.house.yaml`](../../../stagehand/trapped.house.yaml) (the `show` module, on the house Mac) joins the mod SSE feed. It maps `cue lights_*` to Zigbee2MQTT `scene_recall` + WLED presets, the long form `<cue: lights, room: X, state: off\|on>` to that room's group, `sound <name>` to the QLab cue of the same name, `do announce "…"` to MQTT `show/announce` → stagehand's `alexa` player on the house Mac (a chime + the Kokoro voice on MOTU zones Z1 living + Z2 kitchen; `say` as the last resort; [`scripts/house-mac/alexa.md`](../../../scripts/house-mac/alexa.md)), and `do door server_room, state: locked\|unlocked` to the ESP32 door indicator (`show/serverroom/lock`, retained; no maglock). `lights_blackout` never darkens the stairs, bathroom, tent, server room or the server-room → living-room path (they are out of the `house` group; WLED goes off per device and the Tube strip stays on a dim static preset). `screens_flicker` also blinks the house lights. Screen cues (`screens_*`, `tv_*`, `terminals_*`, `tablet_webmd`) are mirrored into `Night.screen` / `Night.terminals` until a Screens layer exists. |
+| **Sensors** | house → story | stagehand turns MQTT into `POST /api/mod/signal {name}`: `server_door_opened` (door contact, `edge: true`, retained messages ignored; the story latches the alarm for 120 s), `printer_button_pressed`, `printer_opened`, and the patch bay's `patch_combo_a` / `patch_combo_b` / `patch_rejected` (the server-room ESP32, [`hardware/server-room/`](../../../hardware/server-room)), plus `chess_lost` / `chess_drawn` from the chess phone. Stagehand judges the combos until signal args exist. Every one also has an admin fallback button. |
+| **Check-in** | door / QR / terminal → story | `POST /api/mod/signal {name: "checked_in", subject: "<guest id>", args: {at: "The Desktop"}}`. `at` must be the **exact declared LOCATION name**. Anything else, or no arg, moves nobody. Sources: the door scan during the summons, the 📍 button, and **room signs** (K-13): a guest's camera opens `?code=&checkin=<slug>` and the phone posts `POST /api/guest/checkin {at: slug}`; the server folds the slug onto the LOCATION and signals `checked_in`. Refused while captured, on rails, in a prison / sealed room, for a hidden, prison, cutscene or `checkin: false` room (The Server Room), and within 20 s of the last check-in. |
 | **The CAPTCHA, tutorial and poll** | guest phone → story | `show captcha / tutorial / poll …` cards answer via `POST /api/guest/widget {seq, result}`, which the story hears as `when captcha answered for program:` (and so on). |
 | **Wall QR codes** | guest phone → app | Print from the editor: Run → Join → **🖨 Print sheet…** (QRs drawn in the browser). Source: `POST /api/mod/codes` → `codex[]` (`?code=&unlock=`), `joinLink` (the join poster) and `checkin[]` (one room sign per non-prison, non-cutscene LOCATION, `?code=&checkin=<slug>`). A signed-in guest redeems on load. |
 | **Recap numbers** (the ceremony) | server → director | `GET /e/<event>/api/mod/recap` (directors only: the author session or `?token=<mod token>`) → ranked lists off live state: `trust`, `truths` (accepted minus lies), `lies` (accepted confident lies, Moment of Truth + DM filings, credited off the log — no program var holds them), `internetVisits`, `codex`, `quests` (done), `truthcoin`, plus `factions` and a paste-ready `text`. `?format=text` returns just the text, to copy into the cue sheet's winner/value boxes or `cast:Trabolta`. Rehearsal personas are listed, marked `(persona)`. Duck run times are not in it (read them off the tablet). |
+| **Phones: re-pair, release, push** | director / phone → server | `POST /api/mod/guest/pair {id, revokeOthers?}` → a single-use `?code=&pair=` link (10 min; the phone trades it at `POST /api/guest/resume {pair}` for a fresh token) · `POST /api/mod/prime/release {character}` · push: `GET /api/push/config`, `POST /api/push/subscribe {subscription}` (refused while the doors are closed; 300 devices per event), `POST /api/mod/push/status`. |
 | **Codex room** | guest phone → server | `POST /api/guest/codex/redeem {code}` · `POST /api/guest/codex/share {entry, to}` |
 | **Performer booth** | performer phone → server | `POST /api/prime/codex/share {entry, to}`; `POST /api/prime/act` fires the guest-card buttons *as* that character. |
 | **Puzzles / hardware unlocks** | puzzle → story | `POST /api/mod/codex {who, entry}` · `POST /api/mod/quest {who, quest, action, text?}`. Guest ids come from the pass QR, or from `/api/state?role=mod` → `roster`. |
@@ -505,9 +552,9 @@ live night replay identically.
 | **Reinstallation games: a session** | tablet → server | The captured program holds their pass to the tablet's camera (or the operator types their name; `GET /api/mod/spatial/candidates` lists captured programs first). Then **Play here** or **Send to VR-1** (`GET /api/mod/spatial/stations`) → `POST /api/mod/spatial/begin {guest, world, device, station?}`. The game streams `POST /api/spatial/pose` (10 Hz, house frame, session token) and ends with `POST /api/spatial/end`. The director can end a session with `POST /api/mod/spatial/end {session}`. Poses never touch the journal. |
 | **Reinstallation games: the duck** | game → story | Walking up to Gerald posts `POST /api/spatial/found` (409 unless the last pose is within 2 m). The server commits, `by` the device, `signal("the simulation completed", guest)`, which releases a corrupted program, then `signal("the golden duck", guest)`, which grants *The Golden Duck* to anyone. Admin fallbacks: **Reinstallation: simulation completed** / **the golden duck**. |
 | **The house map** | director → games + screens | `house.json` is served per event by `GET /api/spatial/house`. Edit it at **`/reinstall/map`**, which saves via `POST /api/mod/spatial/house {house, base}` (409 on a stale `base`). Rooms map to LOCATIONs: mudroom → The Mud Room, hall + landing → The Tube, living → The Desktop, kitchen → The Cache, bathroom → **Disk Cleanup**, backyard → The Cloud, rec room → The Registry, tent → The Internet. The Server Room has no geometry yet. |
-| **Terminals** | wall tablet ⇄ server | The [`terminal`](../../../terminal) app at `/terminal/`, a direct line to Trabolta. **Provision with `view=mirror` until `introduce_trabolta`, then `view=auto`** (Before the doors open, step 3): `/terminal/?code=<mod>&name=Kitchen&character=Trabolta&spot=kitchen&view=auto`. `spot` is the terminal's id in `house.json`. `auto` shows the world view while someone is in the simulation and the face otherwise. A program holds up their pass; the terminal pilots them (`POST /api/mod/impersonate {role: "guest", id, label}`) into their own `dm:Trabolta`. Replies are spoken via `POST /api/mod/tts` → `LOOM_TTS_URL` (the compose stack's bundled, CPU-capped `kokoro` service on the VPS). The line drops after 30 s without input. The mod feed tags terminal lines `via: "Terminal · <name>"`. |
+| **Terminals** | wall tablet ⇄ server | The [`terminal`](../../../terminal) app at `/terminal/`, a direct line to Trabolta. **Provision with `view=auto`**; it shows attract until Trabolta is revealed (Before the doors open, step 3): `/terminal/?code=<mod>&name=Kitchen&character=Trabolta&spot=kitchen&view=auto`. `spot` is the terminal's id in `house.json`. `auto` shows the world view while someone is in the simulation and the face otherwise. A program holds up their pass; the terminal pilots them (`POST /api/mod/impersonate {role: "guest", id, label}`) into their own `dm:Trabolta`. Replies are spoken via `POST /api/mod/tts` → `LOOM_TTS_URL` (the compose stack's bundled, CPU-capped `kokoro` service on the VPS). The line drops after 30 s without input. The mod feed tags terminal lines `via: "Terminal · <name>"`. Terminals poll the lean `GET /api/screen/state` every 2 s (attract, story screen cues, slides / overlays, the countdown, K-16/K-17), which doubles as their heartbeat: `GET /api/mod/screen/terminals` feeds the Run page's Terminals card. |
 | **TV** | story → screens + voice | The TV above the fireplace is the house Mac's Chrome on the `tv` view (K-18): `/terminal/?code=<mod>&name=TV&character=Trabolta&spot=desktop-tv&view=tv`. It shows Trabolta's face (the screensaver until the introduction, the VR world beside him while someone is in the Internet) and **speaks every `Trabolta:` line said in The Desktop** plus a director's `say` as Trabolta there; the song beats (`Song Ending`, `Sad Confession`, `The Hand Jive`) and Sandy are captioned only. Mute: `M` on the Mac or `POST /api/mod/screen/voice {muted}`. The story records what it should show in `Night.screen`. Anything else can watch the mod SSE feed (`GET /e/:id/events?role=mod`) for `captured` / `released` and `alert: true` broadcasts. |
-| **Trabolta** | laptop ⇄ server | Run stagehand's `agents` module: `cp stagehand/agents.example.yaml stagehand/laptop.yaml` (set `server.url`, `event`, `mod_passcode`), `ollama pull gpt-oss:20b tobestyledintro/qwen3.8-9b-distill:q8_0`, then `uv run stagehand run --config laptop.yaml`. The server sends every message to Trabolta as an agent request (`GET /api/agent/stream`) carrying the thread, the speaker's `them:` vars and the whitelisted `Night.*` facts. **`Kernel.*` never reaches him.** He answers with `POST /api/agent/reply {say, adjust}`. Powers fire as journaled signals. `stagehand ask --config laptop.yaml --reflect` tunes voice and mind offline. |
+| **Trabolta** | house Mac ⇄ server | Run stagehand's `agents` module: `cp stagehand/agents.example.yaml stagehand/laptop.yaml` (set `server.url`, `event`, `mod_passcode`), `ollama pull gpt-oss:20b tobestyledintro/qwen3.8-9b-distill:q8_0`, then `uv run stagehand run --config laptop.yaml`. The server sends every message to Trabolta as an agent request (`GET /api/agent/stream`) carrying the thread, the speaker's `them:` vars and the whitelisted `Night.*` facts. **`Kernel.*` never reaches him.** He answers with `POST /api/agent/reply {say, adjust}`. Powers fire as journaled signals. `stagehand ask --config laptop.yaml --reflect` tunes voice and mind offline. |
 
 **Staff visibility:** `# hosts` and `# quarantine` are **staff back-rooms,
 not private between factions**. Every performer booth sees and can post in
@@ -593,9 +640,10 @@ Server Room's sign — the check-in rule doesn't handle it).
 | **Anywhere** (Bugdom's hunt) | the four Antivirus personnel files: `NORTON-RELAY` · `MCAFEE-MOD` · `YUGI-MOTO` · `CRA-PENNY` |
 
 **Location check-in posters:** one per house LOCATION except The Internet,
-The Mud Room and The Server Room. Today they show the room name for an
-Antivirus. Once QR check-in lands they send `checked_in` with `at` = the
-exact LOCATION name. **Guest passes, performer cards and featured claim
+The Mud Room and The Server Room, printed by the Print sheet with a
+`?checkin=` QR (K-13). A guest scans it to check in (`checked_in` with
+`at` = the exact LOCATION name); an Antivirus can still read the room name
+off it. **Guest passes, performer cards and featured claim
 codes** are software (CHECKLIST); the story needs nothing more.
 
 ## For the user to review
@@ -627,9 +675,14 @@ content list above; see [OCT31.md](./OCT31.md)):
 
 Open the project in the editor and use **Run** (⌘2): on a local folder it
 runs in the browser, and on a server project it launches the preview
-event. Start a rehearsal, watch `Login` play, fire the cues from Run →
-Events in order, redeem a code from the Codex room, and step through to an
+event. Start a rehearsal, watch `Login` play, fire the cues from the cue
+sheet (Run → Director) in order, redeem a code from the Codex room, and step through to an
 ending. Run → World shows and edits every `Night.*` var and the `Kernel`
 secrets. The full arc is exercised by
 `core/test/trapped-in-the-internet.test.ts`, and the stagehand config by
-`stagehand/tests/test_trapped_house.py`.
+`stagehand/tests/test_trapped_house.py`. `pnpm --filter @loom/core
+loomcheck examples/trapped-in-the-internet --smoke` compiles the folder
+the way the server joins it. Rehearsing on the VPS, the device checks in
+[`scripts/accept/`](../../../scripts/accept) drive each OCT31 build
+(OCT31.md §5 *Wave 1 status*); the ones that fire cues or speak run a
+live guard first.

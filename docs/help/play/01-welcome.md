@@ -2,7 +2,7 @@
 title: Getting connected
 section: Guest Guide
 order: 1
-keywords: welcome, join, code, event code, log on, name, start, qr
+keywords: welcome, join, code, event code, log on, name, start, qr, lost phone, dead phone, re-pair, pair, sign back in, new phone, browser
 ---
 
 Welcome to the show. This app is your window into a **live interactive
@@ -24,8 +24,17 @@ room tonight.
    tap **Be …**. Changed your mind later? **🖼️ Change your picture** is
    on your pass.
 
-No account, no password. If you close the app or your phone dies, just
-open it again — you'll come back as yourself, history intact.
+No account, no password. If you close the app, just open it again in the
+same browser — you'll come back as yourself, history intact.
+
+## Lost your phone?
+
+A dead battery, a cleared browser, a QR that opened in a different
+browser, a borrowed phone: don't sign up again — find a host. The
+director can show you a **re-pair QR**: scan it with any phone and you're
+back in *as yourself* — same program, Codex, quests and score. The code
+works once, for ten minutes. If that phone was already signed in as
+someone, it asks first: **Switch this phone** or **Stay …**.
 
 ## The first minutes
 

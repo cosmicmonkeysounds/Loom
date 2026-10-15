@@ -2,7 +2,7 @@
 title: Your quest log
 section: Guest Guide
 order: 10
-keywords: quest, quests, quest log, task, mission, objective, progress, complete, failed, pinned, thread
+keywords: quest, quests, quest log, task, mission, objective, progress, complete, failed, pinned, thread, file a fact, fact, answer, certain, filed
 ---
 
 Some stories hand you things to **do**. They land in your **📜 Quest

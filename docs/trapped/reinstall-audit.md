@@ -1,4 +1,6 @@
 > Design/audit note from the 2026-10-14/15 planning sessions for *Trapped in the Internet* (see [SCHEDULE](../../core/examples/trapped-in-the-internet/SCHEDULE.md) / [CHECKLIST](../../core/examples/trapped-in-the-internet/CHECKLIST.md)). File:line citations are a snapshot of commit `6884a96`–`fba382b` and will drift.
+>
+> **Wave 1 status** (merged to master 2026-10-15, not yet deployed to the VPS; [OCT31 §5](../../core/examples/trapped-in-the-internet/OCT31.md)). Built: the Quest export toolchain (K-30 — `reinstall/vr/tools/quest.sh` setup/build/sideload from a staging copy, the Meta vendor plugin, HTTPS-only, no cleartext; the headset run itself is still a device check), terminal attract / slides so the TV shows a presentation by default (K-16 / K-17, `view=tv` K-18), and old-WebView compatibility (K-14). Not built: the measured house (K-28), the live tablet run (K-03), the WebMD video, tent Bathroom Mode, zip-everyone-out, Excel's virus, tent queueing, press-A. The hard-coded event names (§2.10) still hold.
 
 # Audit: the reinstallation games + spatial layer vs. "Inside the Internet"
 

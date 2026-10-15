@@ -1,4 +1,6 @@
 > Design/audit note from the 2026-10-14/15 planning sessions for *Trapped in the Internet* (see [SCHEDULE](../../core/examples/trapped-in-the-internet/SCHEDULE.md) / [CHECKLIST](../../core/examples/trapped-in-the-internet/CHECKLIST.md)). File:line citations are a snapshot of commit `6884a96`–`fba382b` and will drift.
+>
+> **Wave 1 status** (merged to master 2026-10-15, not yet deployed to the VPS; [OCT31 §5](../../core/examples/trapped-in-the-internet/OCT31.md)). **Built** from §A–B: the server-room ESP32 (N-08, [`hardware/server-room/`](../../hardware/server-room)) — reed + copper-tape door, the 2×12 patch bay scanned all-pairs on two MCP23017s, a WS2812 ring, a DFPlayer siren/click and a relay — dialing the house Mac's Mosquitto at `192.168.8.10:1884` as user `props`. The door is a sensor + indicator, never a lock (the maglock rules were deleted, K-05). From §C: `stagehand/trapped.house.yaml` (K-05) — the stairs, bathroom, tent, server room and the server-room → living-room path out of `house`, blackout as per-device WLED offs with the Tube on dim preset 22, retained messages ignored, `edge: true` door rules, `show` / `agents` as separate launchd jobs. From §D: **one house Mac** (the 48 GB Ollama laptop, static IP) drives the TV over HDMI, the speakers through the MOTU and runs Mosquitto / Z2M / stagehand — read "show laptop", "Z2M host" and "TV box / Pi 5" below as that Mac; the Alexa is stagehand's `alexa` player on it (K-20). Parts and wiring advice is still research; signal arguments for the patch bay are still not in stagehand (the YAML judges the combos).
 
 # Trapped In The Internet: hardware research and build notes
 
@@ -545,10 +547,11 @@ covers Zigbee too. DMX / E1.31 not needed.
   Kokoro, stagehand), the Z2M host, every ESP32/WLED, every terminal tablet,
   the TV box. Write them into a one-page **IP sheet** taped inside the server
   room.
-- **Mosquitto on the show laptop:** `brew install mosquitto`, then
-  `listener 1883 0.0.0.0`, and `allow_anonymous true` on the isolated show
-  LAN (or a password file). If Z2M already points at an existing broker, keep
-  that one and point stagehand and the ESP32s at it. One broker only.
+- **Mosquitto on the house Mac** (as built): `brew install mosquitto`, an
+  anonymous listener on `127.0.0.1:1883` for what runs on the Mac
+  (stagehand, Z2M, the alexa player) and a password-only LAN listener on
+  `:1884` (user `props`) for the WLED controllers and the ESP32
+  (`scripts/house-mac/alexa.md` → *Lock down the broker*). One broker only.
 - **Where the server runs.** If the event server is on the VPS (real domain,
   real TLS), every house device depends on the home uplink. Bring a **phone
   hotspot / LTE router as backup WAN**. Mosquitto, stagehand, Z2M and the

@@ -192,6 +192,38 @@ changing the password signs everyone out. The sent log lives in the
 state volume (`webmaster-sent.json`). Replies land wherever the
 domain's MX points (e.g. ImprovMX → your Gmail) — Resend only sends.
 
+### Show settings: join links, push, door-rush throttles
+
+- **`LOOM_BASE_URL` is also the join origin.** Every join link the server
+  hands out — the Run page's codes + QR (`/api/mod/codes`, the event's
+  `joinUrl`), the printable codex `?code=&unlock=` links and the Print
+  page — uses it; with it blank the server falls back to its first LAN IP
+  (fine on a LAN box, useless from cellular). It is also the Web Push
+  contact when `LOOM_VAPID_SUBJECT` is blank (an `https://` origin; else
+  the server logs a warning).
+- **Push notifications** (alerts, a character's DMs and the booths' door
+  alarm on a locked Android phone or performer booth): generate a pair
+  **once** with `npx web-push generate-vapid-keys` →
+  `LOOM_VAPID_PUBLIC_KEY` / `LOOM_VAPID_PRIVATE_KEY` (+ optional
+  `LOOM_VAPID_SUBJECT`, `mailto:` or `https:`). Never rotate them before
+  the show — every phone's subscription is bound to the public key.
+  Blank = push off (no 🔔 card; in-app alerts still work). Subscriptions
+  live in the event's state dir, so backups carry them.
+- **Door-rush throttles** (`LOOM_RL_*`, each `<max>` or `<max>/<seconds>`,
+  blank = default, a malformed value is logged and ignored):
+  `LOOM_RL_RESOLVE` (`/api/resolve-code` per IP, 30/60),
+  `LOOM_RL_REGISTER` (guest registrations per IP, 20/60),
+  `LOOM_RL_LOGIN_FAILURES` (wrong passcodes per IP before the lockout,
+  10/300), `LOOM_RL_REDEEM_MISSES` (wrong codex codes per guest, then 429
+  and nothing journaled, 8/60), `LOOM_RL_WIDGETS` (widget answers per
+  guest, 20/60). At the party every phone on the house Wi-Fi reaches the
+  VPS from **one** public IP, so the night's `.env` raises the per-IP ones:
+  `LOOM_RL_RESOLVE=600`, `LOOM_RL_REGISTER=400`,
+  `LOOM_RL_LOGIN_FAILURES=100/300`.
+
+After changing any of these, `docker compose up -d loom` (or the next
+`deploy/release.sh`).
+
 ---
 
 ## 4. Launch
@@ -218,7 +250,11 @@ Then check in a browser:
 
 The default (code-less) event's three passcodes are printed in the
 `loom` logs and saved in the state volume; events you launch from the
-editor get their own codes on the Run page.
+editor get their own codes on the Run page. Codes are **pinned per
+project**: End → relaunch reuses the last event's codes, so printed QRs
+keep working. Run's empty state offers **New performer + moderator codes**
+(the guest code is kept) for when a staff code leaked at rehearsal —
+re-provision the terminals and the tent tablet with the new mod code.
 
 ---
 
@@ -492,6 +528,17 @@ three front doors, that `/api/mod/codes` hands out the `LOOM_BASE_URL`
 origin, and that the SSE feed's 25 s pings arrive on time and uncompressed
 (the Caddyfile compresses everything *except* `*/events` and `*/stream`).
 
+**Load test** (OCT31 K-32, on a **rehearsal** event — it adds 45 bot
+personas and refuses an event with real guests):
+
+```bash
+node --no-warnings scripts/accept/k32-load.ts --code <rehearsal MOD code> --out k32.json --reset-after
+```
+
+It drives 45 guest streams, 9 booths, 6 terminals and 2 director consoles
+and passes on participant step-latency p95 < 1 s and mean server CPU
+< 70 % of one core (read from `GET /api/mod/metrics`).
+
 **Look at logs:**
 
 ```bash
@@ -516,7 +563,7 @@ docker run --rm -v loom_loom-state:/data -v "$PWD":/backup alpine \
   tar czf /backup/loom-state-$(date +%F).tgz -C /data .
 ```
 
-Copy those files off the VPS (`scp ubuntu@YOUR_VPS_IP:~/loom/loom-db-*.sql .`).
+Copy those files off the VPS (`scp ubuntu@YOUR_VPS_IP:~/loom/loom-db-*.sql .`). For the show, use `deploy/backup.sh` instead (below): it stamps, checksums and prunes.
 
 ### Pinned releases, rollback, backups (the show scripts)
 
@@ -630,6 +677,13 @@ and send its alerts to the tech op and the second director, not only John.
   validator's problems. `docker compose logs loom` shows `⚠️ … house
   map …` lines for an invalid saved map (the show's map is used instead)
   and for a room whose `location` names no `LOCATION` in the story.
+- **Phones at the door get "too many requests" (429)** — the per-IP
+  throttles: the whole house Wi-Fi is one IP. Raise `LOOM_RL_RESOLVE` /
+  `LOOM_RL_REGISTER` / `LOOM_RL_LOGIN_FAILURES` (see §3 *Show settings*)
+  and `docker compose up -d loom`.
+- **No push notifications / no 🔔 card** — `LOOM_VAPID_*` blank or invalid
+  (the boot log says `push disabled`). Push reaches Android and booths;
+  iPhones get it only from a Home Screen install.
 - **Guests can't reach it from phones** — they must use the public URL
   (`LOOM_BASE_URL`), not a LAN address; QR codes on the Run page encode the
   public URL automatically.

@@ -2,7 +2,7 @@
 title: Lore, people & private messages
 section: Guest Guide
 order: 8
-keywords: codex, unlock, redeem, lore, knowledge, share, people, directory, message, private, dm, alert, chime, puzzle, wall
+keywords: codex, unlock, redeem, lore, knowledge, share, people, directory, message, private, dm, alert, chime, push, notifications, get alerts, locked, keep screen on, puzzle, wall
 ---
 
 Some stories run on **knowledge**. What you know is yours to keep — or to
@@ -24,7 +24,7 @@ Lore reaches you three ways:
   send a message. Codes don't care about capitals, dashes or spaces. A
   miss says so right there in the room.
   A wrong code is *noticed* by the story, so don't guess in front of
-  anyone.
+  anyone. Too many tries in a row and the box asks you to wait a minute.
 - **The story.** Answer the right way, be scanned by the right person,
   finish the right puzzle.
 - **A person.** Someone shares it with you. You'll see who.
@@ -60,6 +60,8 @@ Tap the app once after you open it so it is allowed to make sound. If
 your screen was off when an alert went out, the banner is waiting when
 you wake the phone (anything from the last 10 minutes). Want to be sure?
 **☰ → Keep my screen on** stops the phone from sleeping while the app is
-open. On an Android phone, tap **🔔 Get alerts → Turn on** and allow
+open. On an Android phone, tap **🔔 Get alerts → Turn on** (the card
+above your rooms, or **☰ → Get alerts on this phone**) and allow
 notifications: alerts and messages from the characters then reach you
-even when the phone is locked.
+even when the phone is locked. Leaving the event turns them off. iPhones
+can't do this yet — keep the screen on instead.

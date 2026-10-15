@@ -1,6 +1,6 @@
 # Trapped in the Internet: the work schedule
 
-> **🎃 The party is Sat Oct 31, 2026 (set 2026-10-15, 16 days out). The active plan is [`OCT31.md`](./OCT31.md)**: 29.6 lane-days of minimal slices in 4 lanes (27.6 committed + 2.0 conditional for iPhone push), gates Oct 18 / 20 / 21 / 22 / 23, push call Oct 24 12:00, run-through Oct 25, freeze Oct 27, tech 10-28, dress 10-29, code freeze 10-30. **This schedule is now the full post-party / next-run roadmap.** Anything OCT31.md builds counts as done here; everything else stays as planned below.
+> **🎃 The party is Sat Oct 31, 2026 (set 2026-10-15, 16 days out). The active plan is [`OCT31.md`](./OCT31.md)**: 29.6 lane-days of minimal slices in 4 lanes (27.6 committed + 2.0 conditional for iPhone push), gates Oct 18 / 20 / 21 / 22 / 23, push call Oct 24 12:00, run-through Oct 25, freeze Oct 27, tech 10-28, dress 10-29, code freeze 10-30. **This schedule is now the full post-party / next-run roadmap.** Anything OCT31.md builds counts as done here; everything else stays as planned below. **Oct 31 wave 1 is merged to `master` (2026-10-15, not yet deployed to the VPS):** 37 builds, each a minimal slice (OCT31.md §5 *Wave 1 status*); the CHECKLIST items they advanced carry an "**Oct 31 wave 1:**" note, and the WPs below still own whatever each slice left out.
 >
 > **What OCT31.md pulled in** (as minimal slices, `K-xx` / `N-xx` ids in OCT31.md §5):
 > - **MUST:** WP-01 (K-01) · SP-1 (K-02) · WP-48 (K-03, K-30 Quest time-boxed) · WP-42 (K-04) · WP-39 + WP-40 link (K-05) · WP-10 (K-06) · WP-24 (K-07) · WP-62/63/64 (K-08 + the rehearsals, + K-32 the pre-freeze load test and the show-night backups / warm standby) · WP-61 uplink plan (ops: the LTE failover router B-9 + OP-16).
@@ -417,7 +417,7 @@ WP-16 (judging UIs) is no longer cuttable in practice: it finishes before G2. If
 
 ### If the party is in N weeks, cut here
 
-Weeks count from the start of work. Show-ready ≈ the last software day + 4 (dress 2.5, freeze 1). "With rebalancing" means a lane that runs out of work picks up the binding lane's next package. The simulated ends are from `scratchpad/sf/sim6.py`.
+Weeks count from the start of work. Show-ready ≈ the last software day + 4 (dress 2.5, freeze 1). "With rebalancing" means a lane that runs out of work picks up the binding lane's next package. The simulated ends came from a throwaway simulation script (not kept in the repo).
 
 | Weeks to the party | Lanes | What fits | Cut |
 |---|---|---|---|

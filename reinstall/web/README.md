@@ -33,6 +33,13 @@ pnpm --filter loom-reinstall typecheck
 The event server serves `dist/` at **`/reinstall/`**, and the map at
 **`/reinstall/map`** (`LOOM_REINSTALL_DIST` overrides the path).
 
+The build targets **`chrome87` / `safari14`** (`vite.config.ts`, the
+oldest wall tablets and iPads — OCT31 K-14). That pins syntax only, so a
+runtime API newer than Chrome 87 needs a fallback in code: deep copies go
+through `@loom/house`'s `cloneData`, never `structuredClone`, and the
+scanner box keeps 4:3 without `aspect-ratio`. `scripts/accept/K-14.sh`
+scans the built bundles.
+
 ## Provisioning a device
 
 Open the setup screen (moderator passcode, a name, a role, the camera), or

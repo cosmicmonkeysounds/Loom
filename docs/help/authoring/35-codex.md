@@ -2,7 +2,7 @@
 title: Lore — knowledge as a currency
 section: Live Shows
 order: 35
-keywords: CODEX, codex, lore, knowledge, unlock, puzzle, share, learns, directory, listed, people, private message, pm, alert, sealed, joinable, mind, LLM, language model
+keywords: CODEX, codex, lore, knowledge, unlock, puzzle, share, learns, directory, listed, people, private message, pm, alert, sealed, joinable, mind, LLM, language model, hold, offline, not responding
 ---
 
 Some shows run on what the guests *know*. A `CODEX` entry is a piece of
@@ -136,7 +136,9 @@ If no agent is running at all (the laptop is down), the message waits.
 Give the character a `hold:` line and the server says it for them after
 about 20 seconds — once per waiting message — then keeps the message for
 an agent that comes back. A director can still answer as the character
-from Run. Write it in plain words; a wall terminal reads it aloud:
+from Run — that answer settles the waiting message, so an agent that
+comes back doesn't answer it twice. Write it in plain words; a wall
+terminal reads it aloud:
 
 ```loom
 CHARACTER Trabolta

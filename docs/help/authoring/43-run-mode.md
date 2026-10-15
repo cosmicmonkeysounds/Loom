@@ -2,7 +2,7 @@
 title: Run mode — rehearse, go live, be anyone
 section: The Editor
 order: 43
-keywords: run, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private
+keywords: run, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, cue, next, ceremony, award, recap, re-pair, lost phone, release
 ---
 
 Run (`⌘2`) is the control room for your project's **one run**. You
@@ -53,11 +53,23 @@ Front of house: getting people in.
   work during the rehearsal (anyone with the event code can join it) and
   **stay the same when you go live** — and when you end the run and start
   a new one, since codes belong to the project — so you can print them
-  early. If a performer or moderator code leaks, end the run and relaunch
-  it with `rotate: "staff"` (see the core README): those two codes change,
-  the guest code and the printed QRs don't.
+  early. If a performer or moderator code leaked (shared at rehearsal,
+  typed into a terminal), end the run and tick **New performer +
+  moderator codes** under ▶ Start rehearsal before you start the next one:
+  those two codes change, the guest code and the printed QRs don't.
+- **🖨 Print sheet…** — everything to print, QRs drawn in the browser:
+  the **join poster**, one **codex poster** per entry with a code (title,
+  QR, the typed code), and one **room check-in sign** per place a guest
+  can check into (see [live shows](live-shows.md)). Tick sections, skip
+  single cards, choose 1, 2 or 4 per page.
 - **Directing now** — every co-writer with a console open, who started
   the run, and when.
+- **Terminals** — every wall terminal and the TV that has checked in,
+  with its spot and view. One silent for 20 seconds turns red and the
+  editor **chimes** — from any mode, again every minute until you
+  **ack** it (**✕** forgets one switched off on purpose). The header's
+  📟 pill counts the live ones. The **🔊 TV voice** button mutes the TV
+  to captions only (the TV's own 🔊 / `M` key does the same).
 - **Look up a guest** — scan a guest's pass QR (or type their id) to
   open them in the Inspector.
 
@@ -82,9 +94,26 @@ no run yet, the Run page also offers *Go live with real guests* directly.)
 | **Story** | the story map, lit by the run ([story graph](story-graph.md)) |
 | **Roster** | all guests and the cast — group, location, score, presence, whose persona |
 | **World** | the live state browser — a searchable variables table; **double-click any value to edit it live** |
-| **Director** | named events (with arguments), beats, broadcasts |
+| **Director** | the **cue sheet**, named events (with arguments), beats, broadcasts |
 | **Mind** | an agent-voiced character's mind — its arc, drives, brief, the prompts and both models' reasoning, and a control panel ([the mind debugger](44-mind-debugger.md)) |
 | **Log** | the raw ledger, event by event — **filter to one participant**; export the run |
+
+## The cue sheet
+
+The Director page opens on the **cue sheet**: the story's `who: admin`
+interactions in the order they are declared ([buttons in the
+app](live-verbs.md)), one click each. A label's leading code
+(`C1 · …`, `V4 · …`) is split off as the cue number. The last cue fired
+is amber **LAST**, the one after it is tagged **NEXT**, and every cue
+fired tonight gets a ✓ — the same sheet on every director's console,
+and it survives a reload. The header shows the story's `Night.phase`;
+the box filters by word. A cue that needs a person — an award: every
+hook that hears it binds one — has a **who?** picker and an optional
+**value** box (read as `{value}`) and fires with that person as the
+subject. For the numbers behind an award, open
+`/e/<event id>/api/mod/recap?format=text` in a tab while signed in: a
+paste-ready list of trust, truths and lies accepted, trips to the
+Internet, codex, quests, score, and who joined each side.
 
 ## Being anyone
 
@@ -122,7 +151,9 @@ every raw engine event that mentions them.
 **🔁 Re-pair**: it shows a QR that signs whatever phone scans it back in
 *as that guest* — same program, codex, quests and score, no new guest
 left behind. Use it for a dead phone, a cleared browser, a camera that
-opened another browser, or a loaner. Keep the QR off the big screen: it
+opened another browser, or a loaner. The code works once, for ten
+minutes. **Sign out old phones** cuts every other phone signed in as
+them (one someone else picked up). Keep the QR off the big screen: it
 is their sign-in. A character's Inspector has **⏏ Release**: it signs
 out whichever booth holds that part, so the performer can sign in again
 on another phone with the performer code. The character's threads and

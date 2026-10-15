@@ -1,4 +1,6 @@
 > Design/audit note from the 2026-10-14/15 planning sessions for *Trapped in the Internet* (see [SCHEDULE](../../core/examples/trapped-in-the-internet/SCHEDULE.md) / [CHECKLIST](../../core/examples/trapped-in-the-internet/CHECKLIST.md)). File:line citations are a snapshot of commit `6884a96`–`fba382b` and will drift.
+>
+> **Wave 1 status** (merged to master 2026-10-15, not yet deployed to the VPS; [OCT31 §5](../../core/examples/trapped-in-the-internet/OCT31.md)). **The `audio` router module was not built**; QLab stays the room router (OCT31 workaround). The topology is simpler than §1: there is **one house Mac** (the Ollama laptop) — it drives the TV over HDMI, the MOTU (ADAT) speakers and runs Mosquitto / Z2M / stagehand `show` + `agents` + the `alexa` player and Ollama; read "TV computer" and "show laptop" below as that Mac. Built: the TV view (`view=tv`, K-18) speaking Trabolta's lines in The Desktop through `/api/mod/tts` (song beats captioned only, a director mute), the fake Alexa (K-20: chime + voice on MOTU ch 1–4 = living + kitchen, a disk cache + `prewarm:`, `say` as last resort), and Kokoro as a CPU-capped compose service on the VPS (K-19, `KOKORO_CPUS`). Not built: `LOOM_TTS_CACHE_DIR` (the proxy cache is still in memory), `pnpm tts:warm`, the `/media/` route + manifest, the LAN control page.
 
 # Audio + TV architecture (Trapped in the Internet)
 

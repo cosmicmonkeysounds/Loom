@@ -16,15 +16,18 @@
    both models stay loaded). Warm both models once.
 4. Mosquitto, Zigbee2MQTT (frontend loads, every device seen), WLED
    controller answers (its app/web page).
-5. stagehand **`show`** job and **`agents`** job (separate launchd jobs)
-   [[EDIT: labels]]. Run → Mind shows Trabolta's worker connected.
-6. The Alexa (announce) player running.
+5. stagehand **`show`** job and **`agents`** job (separate launchd jobs:
+   `com.mapsandducks.stagehand.show` / `.agents`; `uv run stagehand launchd
+   status`). Run → Mind shows Trabolta's worker connected.
+6. The Alexa (announce) player running (`com.mapsandducks.stagehand-alexa`,
+   `scripts/house-mac/alexa.md`).
 7. QLab show file open, audio routed to the MOTU zones. [[EDIT: or the
    router, if it replaced QLab]]
-8. Chrome kiosk on the TV: `/terminal/?code=<mod>&name=Living Room
-   TV&spot=<spot>&view=tv`. **Click once into the TV page after every boot**
+8. Chrome kiosk on the TV: `/terminal/?code=<mod>&name=TV&character=Trabolta&spot=desktop-tv&view=tv`. **Click once into the TV page after every boot**
    (autoplay).
-9. Wall tablets in Fully Kiosk, all green on the heartbeat card.
+9. Wall tablets in Fully Kiosk (`view=auto`: they show the screensaver + ads
+   until Trabolta is introduced), all green on the heartbeat card (the Run
+   page's Terminals card; the `📟 N/N` pill goes red + chimes on a tablet silent 20 s).
 
 The **mod code is never printed**: [[EDIT: where it lives — your password
 manager]].
@@ -36,7 +39,7 @@ stagehand log · the heartbeat card · QLab.
 
 | Problem | Do |
 |---|---|
-| stagehand `show` crashed | restart its job [[EDIT: `launchctl kickstart -k gui/$(id -u)/<show label>`]], then **re-fire the current lights cue** (ask the director which) |
+| stagehand `show` crashed | restart its job (`uv run stagehand launchd restart --job show`), then **re-fire the current lights cue** (ask the director which) |
 | Trabolta's worker crashed | restart the `agents` job, or `uv run stagehand run --config <house>.yaml --only agents`. The hold line covers the gap; the directors answer DMs meanwhile |
 | **NEVER** | `pkill -f "stagehand run"` (it kills both jobs) |
 | Ollama slow / evicted | check `ollama ps` shows both models; reload; the first reply after a reload takes ≈ 25 s |

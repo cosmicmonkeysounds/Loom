@@ -1,4 +1,6 @@
 > Design/audit note from the 2026-10-14/15 planning sessions for *Trapped in the Internet* (see [SCHEDULE](../../core/examples/trapped-in-the-internet/SCHEDULE.md) / [CHECKLIST](../../core/examples/trapped-in-the-internet/CHECKLIST.md)). File:line citations are a snapshot of commit `6884a96`–`fba382b` and will drift.
+>
+> **Wave 1 status** (merged to master 2026-10-15, not yet deployed to the VPS; [OCT31 §5](../../core/examples/trapped-in-the-internet/OCT31.md)). **Nothing in the §5 plan was built**: the map page, the schema and per-event map storage are as audited here. Wave 1 only made `@loom/house` run on old tablet WebViews (`cloneData` instead of `structuredClone`, K-14). The measured `house.json` (K-28) still waits on the house survey; every phase below is still a design.
 
 # Floor-plan editor audit: `/reinstall/map`, `@loom/house`, the VR/web/terminal consumers
 

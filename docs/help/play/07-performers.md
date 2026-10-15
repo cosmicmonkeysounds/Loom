@@ -3,7 +3,7 @@ title: Performer station
 section: Performers
 order: 7
 role: performer
-keywords: performer, alert, chime, late, keep screen on, character, sign in, scanner, scan, camera, readout, admin, moderator, capture, release, hide, guest thread, guest card, actions, who's here
+keywords: performer, alert, chime, late, keep screen on, push, notifications, get alerts, release, re-sign, loaner, lost phone, file a fact, filed fact, judge, hosts, character, sign in, scanner, scan, camera, readout, admin, moderator, capture, release, hide, guest thread, guest card, actions, who's here
 ---
 
 The performer station is the same chat surface, recomposed for the
@@ -16,6 +16,12 @@ host (a scanned link fills it in). The story's **parts** appear — every
 character with something to do, with their pictures — tap yours. A part
 is one booth's: a greyed-out name is already taken by another
 performer. You now speak *as* that character everywhere.
+
+Phone died, or you need to swap to a loaner? Your part is still held by
+the old phone, so ask the director to **release** it (Run → the
+character's Inspector → **⏏ Release**). Then sign in on the new phone
+with the performer code and tap your part again: every guest thread and
+button is where you left it.
 
 ## Scanning guests
 
@@ -43,7 +49,18 @@ through is still there when you wake it.
 On an Android phone, tap **🔔 Get alerts → Turn on** (or **☰ → Get
 alerts on this phone**) and allow notifications: alerts, the door alarm
 and the late list then reach you as notifications even with the phone
-locked in your pocket.
+locked in your pocket. iPhones can't do this yet: keep the screen on.
+
+## Judging filed facts
+
+Guests can hand a character an answer on a **📝 File a fact** card
+instead of saying it (see [Filing a fact](quests.md)). A story that
+uses it posts each filing where the hosts can see it — at *Trapped in
+the Internet*, the `# hosts` room: "📝 *Name* filed H5 (round 2 Q2):
+*answer*". Judge it from that guest's card with the story's buttons
+(there: **📝 Filed fact: accurate** / **📝 Filed fact: confident
+lie**). The guest gets the same reply either way — only the story knows
+which you pressed.
 
 ## Guest threads and the guest card
 

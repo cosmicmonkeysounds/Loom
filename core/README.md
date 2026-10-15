@@ -123,6 +123,10 @@ channel the operator reads them from. The editor's Run page also
 shows the event + performer codes (with a join-QR) to hand out to
 the room. Guests can also arrive via a `?code=<event-code>` link (what the
 QR encodes), which pre-fills the field. Matching is trimmed + case-insensitive.
+Every join / codex / check-in / re-pair link the server builds sits on the
+**join base** (`pickJoinBase` in `server/routing.ts`): `LOOM_BASE_URL` when
+set (a public deployment — a container's LAN IP is unreachable from a phone
+on cellular), else the first non-localhost interface URL.
 
 ### Capabilities & scanning
 
@@ -284,7 +288,9 @@ timeline (clear the journal + chat + moderation).
 Environment: `LOOM_PORT` (7000), `LOOM_HOST` (0.0.0.0), `LOOM_EVENT_PASS`,
 `LOOM_PRIME_PASS`, `LOOM_MOD_PASS` (any unset code is auto-generated),
 `LOOM_STATE_DIR`, `LOOM_APP_DIST`, `LOOM_TERMINAL_DIST`,
-`LOOM_REINSTALL_DIST`, `LOOM_HOUSE`, `LOOM_VAPID_PUBLIC_KEY` /
+`LOOM_REINSTALL_DIST`, `LOOM_HOUSE`, `LOOM_TTS_*` (the speech proxy;
+`LOOM_TTS_URL` blank / `off` / `none` = no server voice — compose defaults
+it to its bundled `kokoro` service), `LOOM_VAPID_PUBLIC_KEY` /
 `LOOM_VAPID_PRIVATE_KEY` / `LOOM_VAPID_SUBJECT` (Web Push, below), plus the control-plane / hardening vars
 (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `LOOM_BASE_URL`,
 `LOOM_TRUSTED_ORIGINS`, `LOOM_TRUST_PROXY`), and the throttles
@@ -330,6 +336,43 @@ re-join); go-live and releasing a part (N-10) unbind booths. Nothing
 pushes during journal replay. The play app's `/sw.js` +
 `/manifest.webmanifest` are served `Cache-Control: no-cache` under
 `PLAY_CSP` (`worker-src 'self'`). Tested in `test/push.test.ts`.
+
+### Show-night routes + rules (OCT31 wave 1)
+
+- **Print sheet** (K-12, `server/routes/k12.ts`): `/api/mod/codes` also
+  returns `joinLink` (`<join base>/?code=<event>`) and `checkin[]` — one
+  sign per LOCATION a guest can check into (`{id, label, slug, url,
+  hidden}`; never a prison, a cutscene or a `checkin: false` room). The
+  editor draws the QRs itself (`/api/qr` is 60/min).
+- **Recap** (K-26, `server/recap.ts` + `routes/recap.ts`): `GET
+  /api/mod/recap` (directors) → `totals`, ranked `lists` (`trust` /
+  `truths` / `lies` / `internetVisits` / `codex` / `quests` /
+  `truthcoin`; ties share a rank, personas flagged), `factions`, `ending`
+  and a paste-ready `text`;
+  `?format=text` returns only the text.
+- **Cue sheet** (K-21): `ModView.cues` = `cueState(sim)` (`views.ts`) —
+  which `who: admin` INTERACTIONs fired and the last in-sequence one, read
+  off the sim log so every director agrees after a reload. An INTERACTION
+  with `sequence: false` (machine-fired: the duck game, the door reed) is
+  ticked but never "last"; `InteractionSummary.subject` marks a cue whose
+  every listener binds a person (the ceremony's awards).
+- **Agents.** With no worker online for 20 s, the hub posts the
+  character's authored `hold:` line (`CHARACTER … hold: "…"`) into the
+  thread once, as a journaled `say`, and keeps the request queued for a
+  worker that comes back (N-11). A director answering a thread as the
+  character settles its open request (`AgentHub.answeredByHand` — dropped,
+  or cancelled on its worker), so nobody answers twice. A power the story
+  answers with words only (a refusal) does not count against its `limit`.
+- **Place arguments** (`server/place-args.ts`): a `room` / `at` /
+  `location` / `place` argument on `/api/mod/signal` or an agent's act is
+  folded onto the exact LOCATION name (or `label:`) before it is
+  journaled, so `"the cache"` matches `room == "The Cache"` and
+  stagehand's rules.
+- **Story surface:** `broadcast "…" to channel(hosts)` posts into authored
+  rooms (a staff back room) and never the lobby; `show <kind> … with
+  thread: <Character>` pins a card to that character's DM; `show fact`
+  is the 📝 *File a fact* card (`{question, answer, certain}` →
+  `fact answered`, K-24).
 
 ### The spatial plane (the reinstallation games)
 

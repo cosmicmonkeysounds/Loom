@@ -426,12 +426,18 @@ rig: no projectors, no TouchDesigner, no vision layer. Its config is
 [`stagehand/trapped.house.yaml`](../stagehand/trapped.house.yaml), run on
 the house Mac as its own launchd job (`uv run stagehand launchd install
 --job show --config trapped.house.yaml`; the agents worker is a second
-job on the same Mac). The story server is the VPS; the house only dials
-out.
+job on the same Mac, and the `alexa` player a third, a per-user
+LaunchAgent installed by `scripts/house-mac/install-alexa.sh`). The story
+server is the VPS; the house only dials out.
 
-**The hardware.** One house Mac (static IP) runs Mosquitto + Zigbee2MQTT,
-stagehand (`show` and `agents`), Ollama, QLab, the TV (long HDMI run) and
-the speakers (MOTU). Zigbee bulbs and plugs are grouped one group per
+**The hardware.** One house Mac (static IP, `192.168.8.10`, hard-coded in
+the server-room firmware) runs Mosquitto + Zigbee2MQTT, stagehand (`show`,
+`agents` and `alexa`), Ollama, QLab, the TV (long HDMI run) and the
+speakers (MOTU). Mosquitto has two listeners: anonymous on
+`127.0.0.1:1883` for what runs on the Mac (stagehand, Z2M, the alexa
+player) and password-only on the LAN at `:1884` (user `props`) for the
+WLED controllers and the ESP32 (`scripts/house-mac/alexa.md` → *Lock down
+the broker*). Zigbee bulbs and plugs are grouped one group per
 room plus a whole-house group:
 `house`, `living` (The Desktop), `kitchen` (The Cache), `backyard`
 (The Cloud), `registry` (The Registry, the rec room), `tube` (hall and
@@ -442,9 +448,14 @@ the server room and the server-room → living-room path are not in
 bulbs have `power_on_behavior: on`). The addressable LED strips run on
 off-the-shelf WLED controllers (`wled/all` plus one topic per strip,
 identical preset IDs everywhere). Sound is QLab (or any OSC cue player)
-on UDP 53000, one cue per sound, numbered by its name. The Alexa speaker
-reads `show/announce`. The server room has a door sensor and an
-indicator ring on its ESP32, never a lock.
+on UDP 53000, one cue per sound, numbered by its name. The "Alexa" is
+stagehand's `alexa` module: it reads `show/announce` (and `show/chime`)
+and plays a chime + the line through the MOTU to the living room and the
+kitchen, voiced from a disk cache → the VPS's `/api/mod/tts` (Kokoro) →
+macOS `say` (`scripts/house-mac/alexa.md`). The server room has a reed
+door sensor, the patch-bay scanner and an indicator ring on one ESP32
+(firmware in [`hardware/server-room/`](../hardware/server-room)), never a
+lock.
 
 **Story → house.** The story only emits directives (the full registry
 is in the design spec §2.13):
@@ -456,12 +467,17 @@ is in the design spec §2.13):
 | `cue lights_blackout` | `house` OFF; WLED off **per device** (living, kitchen, backyard, registry), the Tube strip on dim static preset 22, the server room untouched |
 | `cue screens_flicker` | a one-shot `effect: blink` + a short WLED lightning playlist, so the power is felt in the house |
 | `sound <name>` (directive `sfx`) | OSC `/cue/<name>/start` to QLab |
-| `do announce "…"` | `show/announce {"text": "…"}` (a Home Assistant automation or local TTS on the speaker) |
+| `do announce "…"` | `show/announce {"text": "…"}` → the `alexa` player (chime + voice, one line at a time); `sound alexa_chime` → `show/chime` (not QLab) |
 | `do door server_room, state: locked\|unlocked` | `show/serverroom/lock {"state": …}` (retained) for the ESP32's indicator ring; `lights_alarm` also sends `show/serverroom/alarm` for its local siren |
 
-The `screens_*` / `tv_*` / `terminals_*` / `tablet_*` cues have no rule:
-they are for a future Screens layer, and the story mirrors each look into
-`Night.screen` / `Night.terminals` meanwhile.
+The `screens_*` / `tv_*` / `terminals_*` / `tablet_*` cues have no
+stagehand rule: the screens read them from the server. Every wall terminal
+and the TV (`/terminal/?view=tv`, the house Mac's browser) polls
+`GET /e/:id/api/screen/state` (`core/server/routes/screen.ts`) — the last
+cue per family, the story's `Night.screen` / `Night.terminals` mirrors,
+the running countdown, attract mode while the terminal's character is
+hidden or asleep, and for the TV the characters' lines to speak — instead
+of the mod feed.
 
 **House → story** (MQTT → `POST /api/mod/signal`):
 

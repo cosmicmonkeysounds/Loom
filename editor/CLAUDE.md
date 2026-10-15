@@ -196,7 +196,13 @@ front of house only: the empty state ("Rehearse <project>" · ▶ Start
 rehearsal · *Go live with real guests →* on a server project · the last
 run's Export line · the scratch offer on a control-plane error) and,
 while running, **Join** (three codes with copy, join URL, QR, a
-performer sign-in row per character with presence), **Directing now**
+performer sign-in row per character with presence, and **🖨 Print
+sheet…** — K-12, `run/PrintSheet.tsx` + pure `lib/print-sheet.ts`: a
+full-screen sheet over the editor built from `/api/mod/codes` (join
+poster, a poster per codex entry with its typed code, a check-in sign per
+room with QR + name only), QRs drawn in the browser as SVG (`qrcode`; a
+60–80 card sheet would trip `/api/qr`'s 60/min), sections / skip a card /
+1-2-4 per Letter page, `@media print` hides the editor), **Directing now**
 (names, `(you)`, started-by + age), **Terminals** (K-29,
 `run/TerminalsCard.tsx`: every wall terminal + the TV by last poll, red
 after 20 s silent with a chime — again each minute until *ack* — the
@@ -221,7 +227,10 @@ fires with that person as the subject; it stays disabled until one is
 picked. An off-sequence cue (`sequence: false` on the INTERACTION →
 `InteractionSummary.sequence === false`: the duck game, door reed,
 printer, patch bay) gets its ✓ but is never LAST (core skips it) or
-NEXT (`cueRows` suggests the next in-sequence row).
+NEXT (`cueRows` suggests the next in-sequence row). Under it, the
+broadcast form's **🔔 Alert** box (`cockpit/broadcast.ts` `alertCue`)
+prefixes the cue with `!`, so it banners, chimes and buzzes every phone
+and booth it reaches (K-06 / N-07).
 
 **Being anyone — the identity lens.** `perspective` is `OPERATOR_LENS`
 (god view) or a guest/persona/character id; `setPerspective` resolves

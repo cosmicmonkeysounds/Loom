@@ -49,6 +49,11 @@ addresses, codes, where things are kept).
 - **House internet down → cues are fired by hand** (WLED presets, wall switches,
   QLab GO). Phones fall back to cellular; the server is on the VPS, not in the
   house.
+- The Run tools the crew cards lean on — the cue sheet (Run → Director), 🔁
+  Re-pair and ⏏ Release in the Inspector, the Terminals card, the 🖨 Print
+  sheet, ♟ chess, 📝 filed-fact judging, the ceremony cues — are Oct 31 wave 1:
+  on `master`, not yet deployed to the VPS. Each has a device check under
+  [`scripts/accept/`](../../../../scripts/accept) (OCT31.md §5).
 - Meta developer mode is set up; whether the Quest runs in the tent is the
   K-30 call (Thu 10-22). Every tent line below works with or without it.
 

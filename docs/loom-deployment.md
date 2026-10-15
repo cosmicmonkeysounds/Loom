@@ -67,7 +67,7 @@ Read once at boot (`core/server/config.ts`, `core/server/server.ts`).
 | `LOOM_APP_DIST` | `../../play/dist/` | Built participant app to serve at `/` |
 | `DATABASE_URL` | `postgres://127.0.0.1:5432/loom_dev` | Control-plane Postgres |
 | `BETTER_AUTH_SECRET` | *(insecure dev default)* | **Session signing secret — set in prod** |
-| `LOOM_BASE_URL` | `http://localhost:$LOOM_PORT` | Public origin (drives auth cookies + HSTS) |
+| `LOOM_BASE_URL` | `http://localhost:$LOOM_PORT` | Public origin (drives auth cookies + HSTS, and every join link / QR the server hands out — unset, those use the first LAN IP) |
 | `LOOM_TRUSTED_ORIGINS` | *(none)* | Extra CORS/auth origins, comma-separated |
 | `LOOM_TRUST_PROXY` | *(off)* | Set `1` to key rate limits on `X-Forwarded-For` (**only** behind a proxy you control) |
 | `LOOM_EVENT_PASS` / `LOOM_MOD_PASS` / `LOOM_PRIME_PASS` | auto-generated | Pin the passcodes instead of generating them |
@@ -75,6 +75,10 @@ Read once at boot (`core/server/config.ts`, `core/server/server.ts`).
 | `LOOM_SMTP_URL` | *(none)* | Outbound mail via SMTP, e.g. `smtps://user:pass@smtp.example.com:465` |
 | `LOOM_RESEND_API_KEY` | *(none)* | Outbound mail via the Resend HTTP API (used when no SMTP URL) |
 | `LOOM_MAIL_FROM` | `Loom <no-reply@localhost>` | `From:` on outbound mail — an address your provider lets you send as |
+| `LOOM_RL_RESOLVE` / `LOOM_RL_REGISTER` / `LOOM_RL_LOGIN_FAILURES` | `30/60` · `20/60` · `10/300` | Per-IP throttles on resolve-code, guest registration, wrong passcodes (`<max>` or `<max>/<seconds>`; raise them when a venue's guests share one IP) |
+| `LOOM_RL_REDEEM_MISSES` / `LOOM_RL_WIDGETS` | `8/60` · `20/60` | Per-guest throttles on wrong codex codes and widget answers (429; misses past the cap aren't journaled) |
+| `LOOM_VAPID_PUBLIC_KEY` / `LOOM_VAPID_PRIVATE_KEY` / `LOOM_VAPID_SUBJECT` | *(none — push off)* | Web Push keys (`npx web-push generate-vapid-keys`, once; rotating cuts every subscription). Subject defaults to an https `LOOM_BASE_URL` |
+| `LOOM_TTS_URL` / `_API_KEY` / `_MODEL` / `_VOICE` / `_FORMAT` | *(none — server voice off)* | OpenAI-compatible speech endpoint proxied at `/api/mod/tts` (the Docker stack defaults it to its bundled Kokoro) |
 
 **Share invites.** Sharing a project from the launchpad emails the
 collaborator a link (`core/server/mail.ts`): an existing author is added on
@@ -268,6 +272,7 @@ Keep `/etc/loom/secrets.env` at mode `600`.
 - [ ] Play app built (`play/dist` present) so `/` serves the client.
 - [ ] Editor origin, if separate, added to `LOOM_TRUSTED_ORIGINS`.
 - [ ] Passcodes pinned (`LOOM_*_PASS`) if you pre-print join cards.
+- [ ] Guests behind one venue IP (house Wi-Fi)? Raise `LOOM_RL_RESOLVE` / `LOOM_RL_REGISTER` / `LOOM_RL_LOGIN_FAILURES`.
 
 ---
 

@@ -48,18 +48,21 @@ passcode:
 /terminal/?code=<mod>&name=Kitchen&character=Trabolta&spot=kitchen&view=auto
 ```
 
-At *Trapped in the Internet* the wall terminals start as `view=mirror` at
-doors open and are re-provisioned `view=auto` only after Clippy introduces
-Trabolta (`introduce_trabolta`); before that a scan would pilot a guest into
-a character who does not exist yet (see [`terminal/README.md`](../terminal/README.md)
-→ *Before the character exists*). In the tent, the story's `WebMD` messages
+At *Trapped in the Internet* the wall terminals are provisioned
+`view=auto` from the start: they hold a screensaver until Clippy introduces
+Trabolta (`introduce_trabolta`), then flip to his face within 2 s (see
+[`terminal/README.md`](../terminal/README.md) → *Before the character
+exists*). In the tent, the story's `WebMD` messages
 each captured program the reinstallation instructions (`cue tablet_webmd` is
 reserved for a future instructional video in the tablet wizard).
 
 A headset is configured with `user://station.json` or command-line flags;
 see [`vr/README.md`](./vr/README.md). The Docker image serves `web/` (the
 `/reinstall/` route) but not the Godot project. Headsets are exported and
-installed separately.
+sideloaded separately, by `vr/tools/quest.sh` (`setup` / `build --station
+vr-N` / `install`). Each APK is release-signed with its station baked in
+and talks to the VPS over HTTPS. The acceptance check is
+`scripts/accept/K-30.sh`.
 
 **End to end.** `vr/` has an `--autopilot` mode
 (`godot --headless --path reinstall/vr --xr-mode off -- --server … --code

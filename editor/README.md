@@ -30,7 +30,8 @@ The loom JS packages share one install — run it once from the repo root:
 pnpm install
 ```
 
-(`pnpm-workspace.yaml` covers `core`, `bank`, `play`, and `editor`.)
+(`pnpm-workspace.yaml` covers `core`, `bank`, `play`, `terminal`, `house`,
+`reinstall/web`, `editor`, and the rest of the JS packages.)
 
 ## Run
 
@@ -41,7 +42,7 @@ pnpm --filter loom-app dev        # Vite + HMR at http://localhost:5173
 Play works out of the box with **no server and no account** — open a local
 `.loom` folder (File System Access API) — the
 [`examples/`](../examples) projects are a good start — hit `⌘2` (Run)
-with the **Sim** source, and Start. For live events (accounts,
+and ▶ Start rehearsal (a local folder runs the in-browser `Sim`). For live events (accounts,
 projects, launched events), run the TS event server alongside the editor:
 
 ```bash

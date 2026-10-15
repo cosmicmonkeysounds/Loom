@@ -1,4 +1,6 @@
 > Design/audit note from the 2026-10-14/15 planning sessions for *Trapped in the Internet* (see [SCHEDULE](../../core/examples/trapped-in-the-internet/SCHEDULE.md) / [CHECKLIST](../../core/examples/trapped-in-the-internet/CHECKLIST.md)). File:line citations are a snapshot of commit `6884a96`–`fba382b` and will drift.
+>
+> **Wave 1 status** (merged to master 2026-10-15, not yet deployed to the VPS; [OCT31 §5](../../core/examples/trapped-in-the-internet/OCT31.md)). Built (K-05, K-20, N-08): retained messages reach the sensor map and are ignored unless `accept_retained: true`; per-rule `edge: true`; a 60 s SSE read deadline so a dead WAN reconnects; the lean mod feed (`&lean=1`, K-22); `stagehand launchd install --job show|agents`; the safety groups and per-device blackout in `trapped.house.yaml`; the maglock rules deleted; Z2M/WLED rules in the right shape (§3); the `alexa` module (a local TTS player for `show/announce`, §6.4); the server-room ESP32 firmware (§4–5, [`hardware/server-room/`](../../hardware/server-room)). Still open: signal `args` and a `var` action from the sensor map, a cue `delay:` / timed sequences, an audio player beyond OSC → QLab, the editor tech rail.
 
 # Stagehand vs. the *Trapped in the Internet* house hardware: audit
 
@@ -6,7 +8,7 @@
 
 **Test run:** `cd stagehand && uv run pytest -q` gives **153 passed in 0.81s**.
 
-**Config check:** I wrote a draft house config (`scratchpad/cfg/house.yaml`, copied in §9). `stagehand check` accepts it, and I ran it through the pure `evaluate_cues` / `evaluate_sensors` functions (`scratchpad/cfg/t.py`). Every "works today" snippet below was run that way. One snippet failed in an instructive way (the YAML `on:` trap, §3.3).
+**Config check:** I wrote a draft house config (copied in §9; the built config is now `stagehand/trapped.house.yaml`). `stagehand check` accepts it, and I ran it through the pure `evaluate_cues` / `evaluate_sensors` functions (a throwaway script). Every "works today" snippet below was run that way. One snippet failed in an instructive way (the YAML `on:` trap, §3.3).
 
 ---
 
@@ -443,7 +445,7 @@ with `signal: { name: patch changed, args: { combo: "{combo}", count: "{count}" 
 
 ## 9. The draft config that passes `stagehand check` today
 
-(`scratchpad/cfg/house.yaml`. Per §3.2, quote `"on"` inside WLED payloads.)
+(The 2026-10-14 draft; superseded by `stagehand/trapped.house.yaml`. Per §3.2, quote `"on"` inside WLED payloads.)
 
 ```yaml
 server: { url: http://127.0.0.1:7000, event: default, mod_passcode: "CHANGE-ME" }
