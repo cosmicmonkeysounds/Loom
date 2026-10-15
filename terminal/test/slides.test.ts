@@ -21,6 +21,7 @@ function state(over: Partial<Omit<ScreenState, "program">> & { program?: Partial
     remaining: null,
     target: "terminals",
     voice: null,
+    announce: null,
     ...over,
     program: { ...empty, ...over.program },
   };

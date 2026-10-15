@@ -10,16 +10,25 @@ Shape (trapped.house.yaml carries the real one):
                                        # omit = the system default output
       channels: [1, 2, 3, 4]           # optional: the device's output channels
                                        # (1-based) — the file repeats across them
-      voice:    af_sky                 # the server's (Kokoro) voice
-      speed:    1.0                    # optional, 0.5–2.0
-      say_voice: Samantha              # macOS `say` fallback voice
+      engine:   say                    # say (default) | server
+      say_voice: Samantha              # the macOS voice (`say -v '?'` lists them)
       chime:    synth                  # synth | off | a file (relative to the YAML)
       gain_db:  0
+      cache_dir: ~/Library/Caches/stagehand-alexa   # the player lock (+ server audio)
+      # engine: server only — the event server's opt-in voice (/api/mod/tts):
+      voice:    af_sky                 # the server's (Kokoro) voice
+      speed:    1.0                    # optional, 0.5–2.0
       tts_timeout: 4.0                 # seconds before falling back to `say`
-      cache_dir: ~/Library/Caches/stagehand-alexa
       prewarm:  [ "Go to the living room.", … ]   # fetched + cached at boot
 
 Everything but `mqtt` has a default, so a minimal section is just a broker.
+
+`engine: say` (the default, decision 2026-10-15) renders each line with the
+Mac's own `say` straight through the device + channel map — no server
+round-trip, nothing to fetch, works with the house internet down.
+`engine: server` asks the event server's voice first (cached on disk,
+`prewarm:`), with `say` as the fallback — only useful when the VPS runs
+the opt-in Kokoro (`COMPOSE_PROFILES=tts`).
 """
 
 from __future__ import annotations
@@ -33,6 +42,8 @@ from ..module import ConfigError
 from ..show.config import MqttConfig
 
 DEFAULT_CACHE = "~/Library/Caches/stagehand-alexa"
+#: Where the voice comes from: the Mac's own `say` (default) or the server.
+ENGINES = ("say", "server")
 
 
 @dataclass(frozen=True)
@@ -42,6 +53,8 @@ class AlexaConfig:
     chime_topic: str | None = "show/chime"
     device: str | None = None
     channels: tuple[int, ...] | None = None
+    #: "say" (the Mac's own voice, no server) or "server" (`/api/mod/tts` first).
+    engine: str = "say"
     voice: str | None = "af_sky"
     speed: float | None = None
     say_voice: str | None = "Samantha"
@@ -107,6 +120,10 @@ def parse_alexa(doc: Any, base_dir: str = ".") -> AlexaConfig:
     if not isinstance(prewarm, list) or not all(isinstance(t, str) and t.strip() for t in prewarm):
         raise ConfigError("alexa.prewarm: a list of announcement lines")
 
+    engine = doc.get("engine", "say")
+    if engine not in ENGINES:
+        raise ConfigError(f"alexa.engine: {' | '.join(ENGINES)} (got {engine!r})")
+
     timeout = doc.get("tts_timeout", 4.0)
     if not isinstance(timeout, (int, float)) or timeout <= 0:
         raise ConfigError("alexa.tts_timeout: seconds, > 0")
@@ -117,6 +134,7 @@ def parse_alexa(doc: Any, base_dir: str = ".") -> AlexaConfig:
         chime_topic=_opt_str(doc, "chime_topic", "show/chime"),
         device=_opt_str(doc, "device"),
         channels=channels,
+        engine=engine,
         voice=_opt_str(doc, "voice", "af_sky"),
         speed=speed,
         say_voice=_opt_str(doc, "say_voice", "Samantha"),

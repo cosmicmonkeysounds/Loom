@@ -12,6 +12,27 @@ describe("voice ranking", () => {
     expect(ranked.indexOf("Samantha")).toBeLessThan(ranked.indexOf("Fred") === -1 ? Infinity : ranked.indexOf("Fred"));
     expect(ranked.indexOf("Daniel (Enhanced)")).toBeLessThan(ranked.indexOf("Google US English"));
   });
+  it("on the house Mac's Chrome (view=tv): a good macOS English voice, never a novelty one", () => {
+    const mac = [
+      v("Albert"),
+      v("Bad News"),
+      v("Bells"),
+      v("Fred"),
+      v("Samantha", "en-US", { default: true }),
+      v("Daniel", "en-GB"),
+      v("Karen", "en-AU"),
+      v("Moira", "en-IE"),
+      v("Thomas", "fr-FR"),
+      v("Google US English", "en-US", { localService: false }),
+      v("Google UK English Male", "en-GB", { localService: false }),
+    ];
+    expect(pickVoice(mac, null)?.name).toBe("Samantha");
+    const ranked = rankVoices(mac).map((x) => x.name);
+    for (const novelty of ["Albert", "Bad News", "Bells", "Fred", "Thomas"]) expect(ranked).not.toContain(novelty);
+    // A downloaded Premium / Enhanced voice beats the stock one.
+    expect(pickVoice([...mac, v("Ava (Premium)")], null)?.name).toBe("Ava (Premium)");
+    expect(pickVoice([...mac, v("Evan (Enhanced)")], null)?.name).toBe("Evan (Enhanced)");
+  });
   it("never picks another language", () => {
     expect(scoreVoice(v("Amélie", "fr-CA"))).toBe(-1);
     expect(rankVoices([v("Amélie", "fr-CA"), v("Thomas", "fr-FR")])).toEqual([]);

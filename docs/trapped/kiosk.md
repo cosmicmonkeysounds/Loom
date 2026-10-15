@@ -34,6 +34,8 @@ search box at the top of Fully's Settings.
 | Web Auto Reload | **Auto Reload after Page Error** | ✔ | A network blip at boot recovers by itself. |
 | Web Auto Reload | **Auto Reload on Idle** | ✘ | **Never reload on a timer.** A reload loses the audio unlock. |
 | Advanced Web | **Wait for Network Connection** | ✔ | Boot waits for the Wi-Fi before loading the page. |
+| Advanced Web | **Enable JavaScript Interface** (PLUS) | ✔ | **The voice on the old tablets.** Their Android System WebView may not implement `speechSynthesis` (K-02); with this on, the terminal speaks through Fully's `fully.textToSpeech` (Android's own TTS) instead. Off → the terminal still runs, text only (the transcript reveals at reading pace). |
+| Other (or *Device Management*) | **Text To Speech** engine / language, if your version lists them | the device's best English engine | What `fully.textToSpeech` speaks with. Otherwise it is Android's: Settings → System → Languages & input → **Text-to-speech output** → *Preferred engine* (Google Speech Services) + *Language: English (US)*, and **install the voice data** there (offline). Speech rate / pitch set there apply too. |
 | Toolbars & Appearance | **Show Address Bar / Status Bar / Navigation Bar** | ✘ | Full screen. |
 | Device Management | **Keep Screen On** | ✔ | The belt to the Wake Lock's braces. |
 | Device Management | **Screen Off Timer** | 0 (off) | |
@@ -49,6 +51,21 @@ search box at the top of Fully's Settings.
 Android itself: Settings → Display → Sleep at its maximum; Developer
 options → *Stay awake while charging* ✔ (both belt-and-braces). Battery
 optimisation off for Fully.
+
+**The voice is the tablet's own** (decision 2026-10-15 — no server voice
+needed). After provisioning, hold ⚙ for 2 s: the setup screen says what
+this tablet can do — *this device has N voices* (the WebView's
+`speechSynthesis`), *Fully Kiosk's text-to-speech will speak*, or *text
+only* — and **TEST VOICE** says a line through exactly the voice the
+terminal will use and names it. Leave *voice* on **this device's own
+voice** (the ladder: WebView voices → Fully → text only); pick **Fully
+Kiosk's voice** on a tablet whose WebView lists voices but never says
+anything. The terminal also gives up on a `speak()` that hasn't started
+after 4 s (until the next tap, which tries the voice again), so a silent
+stub can't stall a conversation. On a tablet out of
+earshot of the house speakers, also tick *say the house announcements
+here* (or provision with `&announce=1`) — a chime and the line, in the
+tablet's voice (N-09).
 
 **Speaker tablets.** Media volume up, then lock it with Fully's *Volume
 Limits* if the version has it. Set the volume before the party, not after.
@@ -67,6 +84,14 @@ the TV over HDMI and runs the TV view (`view=tv`, K-18: Trabolta's face and
 voice, the world beside it while someone is in the simulation) full screen
 on it. Its sound leaves the Mac's default output — the MOTU's living-room
 pair — so the voice stays in sync with the face.
+
+**The TV's voice is the Mac's own** (Chrome's `speechSynthesis` over the
+macOS voices; no server voice). The terminal ranks them and picks a good
+English one — Samantha on a stock Mac. For a better one, download an
+*Enhanced* or *Premium* English voice (System Settings → Accessibility →
+Spoken Content → System Voice → Manage Voices…), restart Chrome, and pick
+it under ⚙ → *device voice* (TEST VOICE plays it). The TV leaves *say the
+house announcements* **off** — the living room hears the house speakers.
 
 - System Settings → Lock Screen → *Turn display off on power adapter when
   inactive*: **Never**; Energy → *Prevent automatic sleeping when the

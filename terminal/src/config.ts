@@ -8,12 +8,16 @@
 //!
 //!   /terminal/?code=<mod passcode>&name=TV&character=Trabolta&spot=desktop-tv&view=tv
 //!
+//! A tablet that should also say the house announcements (N-09 — the
+//! "Alexa" lines, `do announce "…"`) adds `&announce=1`; off by default.
+//!
 //! The mod passcode resolves (via `/api/resolve-code`) to the event and is
 //! traded for a **moderator token** (`/api/mod/login`) — that is what lets
 //! a terminal pilot a scanned guest through `/api/mod/impersonate`, and
-//! what gates the server voice. The passcode itself is never stored.
+//! what gates the (opt-in) server voice. The passcode itself is never stored.
 
 import { api, ApiError } from "@loom/play/client.ts";
+import type { VoiceChoice } from "./speech/engine.ts";
 
 export interface TerminalConfig {
   eventId: string;
@@ -25,9 +29,12 @@ export interface TerminalConfig {
   name: string;
   /** The agent-voiced character this is a line to. */
   character: string;
-  /** Speech: `server` (the laptop's neural voice via `/api/mod/tts`),
-   *  `browser` (the tablet's own), or `auto` (server when available). */
-  engine: "auto" | "server" | "browser";
+  /** Speech (`speech/engine.ts`): `browser` — this device's own voice, the
+   *  default (speechSynthesis → Fully Kiosk's TTS → text only); `fully` —
+   *  Fully Kiosk's voice first; `silent` — text only; `server` — opt-in, the
+   *  event server's `/api/mod/tts`, latching to the device voice when the
+   *  server has none. */
+  engine: VoiceChoice;
   /** A voice name for the server engine (empty = the server's default). */
   serverVoice: string;
   /** A voice URI / name for the browser engine (empty = best available). */
@@ -48,10 +55,23 @@ export interface TerminalConfig {
   view: TerminalView;
   /** `view: tv` — the LOCATION whose lines it speaks ("" = `DEFAULT_TV_ROOM`). */
   room: string;
+  /** Say the house announcements (N-09: a chime + `do announce "…"` in the
+   *  device's voice). Off by default — the TV's room already hears the
+   *  house speakers, and most tablets hang where the speakers reach. */
+  announce: boolean;
 }
 
 export type TerminalView = "auto" | "world" | "face" | "mirror" | "tv";
 export const VIEWS: readonly TerminalView[] = ["auto", "world", "face", "mirror", "tv"];
+
+export const VOICE_CHOICES: readonly VoiceChoice[] = ["browser", "fully", "silent", "server"];
+
+/** A stored / URL voice choice. `auto` was the old default ("server, the
+ *  tablet's as fallback") — the native voice is the default now, so it
+ *  reads as `browser`; anything unknown does too. */
+export function voiceChoiceOf(v: unknown): VoiceChoice {
+  return typeof v === "string" && (VOICE_CHOICES as readonly string[]).includes(v) ? (v as VoiceChoice) : "browser";
+}
 
 function isView(v: unknown): v is TerminalView {
   return typeof v === "string" && (VIEWS as readonly string[]).includes(v);
@@ -72,7 +92,7 @@ export function defaultConfig(partial: Partial<TerminalConfig> & Pick<TerminalCo
     title: "",
     name: "Terminal",
     character: DEFAULT_CHARACTER,
-    engine: "auto",
+    engine: "browser",
     serverVoice: "",
     browserVoice: "",
     speed: 1,
@@ -80,6 +100,7 @@ export function defaultConfig(partial: Partial<TerminalConfig> & Pick<TerminalCo
     spot: "",
     view: "auto",
     room: "",
+    announce: false,
     ...partial,
   };
 }
@@ -93,7 +114,7 @@ export function loadConfig(storage: Pick<Storage, "getItem"> = localStorage): Te
     const spot = typeof c.spot === "string" ? c.spot : "";
     const view = isView(c.view) ? c.view : "auto";
     const room = typeof c.room === "string" ? c.room : "";
-    return defaultConfig({ ...c, eventId: c.eventId, token: c.token, spot, view, room });
+    return defaultConfig({ ...c, eventId: c.eventId, token: c.token, spot, view, room, engine: voiceChoiceOf(c.engine), announce: c.announce === true });
   } catch {
     return null;
   }
@@ -107,7 +128,7 @@ export function dropConfig(storage: Pick<Storage, "removeItem"> = localStorage):
   storage.removeItem(CONFIG_KEY);
 }
 
-/** Provisioning hints riding on the URL (`?code=&name=&character=&camera=&engine=&spot=&view=&room=`). */
+/** Provisioning hints riding on the URL (`?code=&name=&character=&camera=&engine=&spot=&view=&room=&announce=`). */
 export interface UrlHints {
   code: string;
   name: string | null;
@@ -117,6 +138,8 @@ export interface UrlHints {
   spot: string | null;
   view: TerminalView | null;
   room: string | null;
+  /** `announce=1` / `0`; null = not given (provisioning keeps the default: off). */
+  announce: boolean | null;
 }
 
 export function hintsFromSearch(search: string): UrlHints {
@@ -124,15 +147,17 @@ export function hintsFromSearch(search: string): UrlHints {
   const camera = p.get("camera");
   const engine = p.get("engine");
   const view = p.get("view");
+  const announce = p.get("announce");
   return {
     code: (p.get("code") ?? "").trim(),
     name: p.get("name")?.trim() || null,
     character: p.get("character")?.trim() || null,
     camera: camera === "user" || camera === "environment" ? camera : null,
-    engine: engine === "auto" || engine === "server" || engine === "browser" ? engine : null,
+    engine: engine === null ? null : engine === "auto" ? "browser" : (VOICE_CHOICES as readonly string[]).includes(engine) ? (engine as VoiceChoice) : null,
     spot: p.get("spot")?.trim() || null,
     view: isView(view) ? view : null,
     room: p.get("room")?.trim() || null,
+    announce: announce === "1" || announce === "true" || announce === "on" ? true : announce === "0" || announce === "false" || announce === "off" ? false : null,
   };
 }
 
@@ -147,6 +172,7 @@ export function withoutSecrets(search: string): string {
   p.delete("spot");
   p.delete("view");
   p.delete("room");
+  p.delete("announce");
   const s = p.toString();
   return s === "" ? "" : `?${s}`;
 }
@@ -172,10 +198,11 @@ export async function provision(code: string, hints: Omit<UrlHints, "code">): Pr
     name: hints.name ?? "Terminal",
     character,
     camera: hints.camera ?? "user",
-    engine: hints.engine ?? "auto",
+    engine: hints.engine ?? "browser",
     spot: hints.spot ?? "",
     view: hints.view ?? "auto",
     room: hints.room ?? "",
+    announce: hints.announce ?? false,
   });
 }
 

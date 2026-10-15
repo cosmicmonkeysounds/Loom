@@ -27,6 +27,12 @@
 //! overlay ends the pilot. The mirror honours attract too: the TV keeps
 //! the screensaver until the character is introduced.
 //!
+//! The voice is the device's own (`speech/engine.ts`: speechSynthesis →
+//! Fully Kiosk's TTS → text only); the server voice is an opt-in. A
+//! terminal set to say the house announcements (`announce`, N-09) rings a
+//! chime and says each new `do announce "…"` (`announce.ts`) after the
+//! character's line in progress, with the words on a banner.
+//!
 //! A tap on the wake overlay (or anywhere on the page) is the one gesture the browser needs
 //! before the terminal may make a sound unattended. The screen is held on
 //! with a Wake Lock from boot (re-taken on that tap and whenever the page
@@ -42,7 +48,8 @@ import { useIdleTimeout } from "./idle.ts";
 import { beginPilot, endPilot, fetchRoster, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
 import { matchName, parseScan } from "./scan.ts";
 import { Scanner, type CameraState, cameraProblem } from "./scanner.tsx";
-import { BrowserEngine, ServerEngine, SpeechQueue, audioUnlocked, unlock, type SpeechEngine } from "./speech/engine.ts";
+import { BrowserEngine, DeviceEngine, ENGINE_LABEL, SpeechQueue, audioUnlocked, deviceEnv, pickDeviceEngine, unlock, voiceEngines, voiceNote, type EngineKind, type VoiceChoice } from "./speech/engine.ts";
+import { ringChime, useAnnouncements } from "./announce.ts";
 import { rankVoices } from "./speech/pick-voice.ts";
 import { revealOffsets, splitSentences } from "./speech/split.ts";
 import { mayReload, retryable } from "./retry.ts";
@@ -72,6 +79,8 @@ export function App() {
     tvCursor.current = null; // a new config starts at the room's head: no backlog
   }, [config]);
   const screenState = useScreenState(config, config?.view === "tv" ? () => ({ room: tvRoomOf(config), after: tvCursor.current }) : null);
+  // The house announcements (N-09), when this screen is set to say them.
+  const announcement = useAnnouncements(config, screenState.state);
 
   // Fetch the world view's code at boot, while this page and the server are
   // known to match — hours later a rebuild may have renamed the chunk. Not
@@ -185,7 +194,19 @@ export function App() {
   const piloting = screen.kind === "piloting" || screen.kind === "connecting";
   // An overlay (blackout / go to the living room / alarm) ends any pilot.
   const takeover = screenLayers(screenState.state, Date.now(), { piloting }).overlay !== null;
-  const layer = <LiveScreenLayer state={screenState.state} piloting={piloting} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />;
+  const layer = (
+    <>
+      <LiveScreenLayer state={screenState.state} piloting={piloting} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
+      {announcement !== null && (
+        <div className="announce-banner" role="status">
+          <span className="announce-icon" aria-hidden="true">
+            📢
+          </span>
+          {announcement}
+        </div>
+      )}
+    </>
+  );
   const attractScreen = (
     <Attract
       corner={
@@ -390,7 +411,8 @@ function Terminal({
   const [flash, setFlash] = useState<string | null>(null);
   const [camera, setCamera] = useState<CameraState>("starting");
   const [typedOpen, setTypedOpen] = useState(false);
-  const [engineUsed, setEngineUsed] = useState<SpeechEngine["kind"] | null>(null);
+  const [engineUsed, setEngineUsed] = useState<EngineKind | null>(null);
+  const [latched, setLatched] = useState(false);
   const face = useRef<FaceHandle | null>(null);
   const offsets = useRef(new Map<number, number[]>());
   const chunkText = useRef(new Map<number, string[]>());
@@ -404,10 +426,10 @@ function Terminal({
 
   // --- the voice ---
   const queue = useMemo(() => {
-    const browser = BrowserEngine.available() ? new BrowserEngine({ voice: config.browserVoice, speed: config.speed }) : null;
-    const server = new ServerEngine({ base: baseOf(config), token: config.token, voice: config.serverVoice, speed: config.speed });
-    const engines =
-      config.engine === "browser" && browser !== null ? { primary: browser as SpeechEngine, fallback: null } : { primary: server as SpeechEngine, fallback: browser as SpeechEngine | null };
+    const engines = voiceEngines(
+      { choice: config.engine, browserVoice: config.browserVoice, serverVoice: config.serverVoice, speed: config.speed, base: baseOf(config), token: config.token },
+      () => setLatched(true),
+    );
     return new SpeechQueue(engines, {
       level: (v) => face.current?.level(v),
       chunk: (id, i) => {
@@ -434,7 +456,10 @@ function Terminal({
       engine: (kind) => setEngineUsed(kind),
     });
   }, [config]);
-  useEffect(() => () => queue.stop(), [queue]);
+  useEffect(() => {
+    setLatched(false); // a new voice (setup changed) asks the server afresh
+    return () => queue.stop();
+  }, [queue]);
 
   // Each new line of the character's is spoken — and revealed as it is said.
   // Subscribed once per queue (`onNewLine` is stable; the session object is
@@ -568,7 +593,7 @@ function Terminal({
               queue's level handle and its own easing state. */}
           <Face mood={mood} speaking={speaking} handle={face} />
           <div className="nameplate">{config.character.toUpperCase()}</div>
-          {engineUsed === "browser" && config.engine !== "browser" && <div className="engine-note">voice: tablet fallback</div>}
+          {voiceNote(config.engine, engineUsed, latched) !== null && <div className="engine-note">{voiceNote(config.engine, engineUsed, latched)}</div>}
           {showWorld && <WorldSlot store={world} spotId={config.spot} size="pane" recover="retry" />}
         </section>
 
@@ -715,7 +740,9 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
   const [name, setName] = useState(current?.name ?? "");
   const [character, setCharacter] = useState(current?.character ?? "Trabolta");
   const [camera, setCamera] = useState<TerminalConfig["camera"]>(current?.camera ?? "user");
-  const [engine, setEngine] = useState<TerminalConfig["engine"]>(current?.engine ?? "auto");
+  const [engine, setEngine] = useState<VoiceChoice>(current?.engine ?? "browser");
+  const [announce, setAnnounce] = useState(current?.announce ?? false);
+  const [tested, setTested] = useState<string | null>(null);
   const [serverVoice, setServerVoice] = useState(current?.serverVoice ?? "");
   const [browserVoice, setBrowserVoice] = useState(current?.browserVoice ?? "");
   const [speed, setSpeed] = useState(current?.speed ?? 1);
@@ -735,16 +762,27 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
     speechSynthesis.addEventListener("voiceschanged", load);
     return () => speechSynthesis.removeEventListener("voiceschanged", load);
   }, []);
+  // Only asked when the (opt-in) server voice is chosen.
   useEffect(() => {
-    if (current === null) return;
+    if (current === null || engine !== "server") return;
     void fetch(`${baseOf(current)}/api/mod/tts`, { headers: { "x-loom-token": current.token } })
       .then((r) => (r.ok ? r.json() : null))
       .then((info: { available: boolean; voice: string; model: string } | null) => {
         if (info === null) return;
-        setServerVoiceInfo(info.available ? `server voice on (${info.model}, default ${info.voice})` : "no server voice configured (LOOM_TTS_URL) — the tablet's own will be used");
+        setServerVoiceInfo(info.available ? `server voice on (${info.model}, default ${info.voice})` : "the server has no voice (LOOM_TTS_URL is off) — this device's own will be used");
       })
       .catch(() => {});
-  }, [current]);
+  }, [current, engine]);
+  const env = deviceEnv();
+  const native = pickDeviceEngine(env);
+  const deviceVoice =
+    native === "browser"
+      ? `this device has ${voices.length || env.voices} voice${(voices.length || env.voices) === 1 ? "" : "s"}`
+      : native === "fully"
+        ? "no browser voices — Fully Kiosk's text-to-speech will speak"
+        : env.speech
+          ? "no voices loaded on this device yet — text only until one appears (in Fully Kiosk: enable its JavaScript Interface)"
+          : "this browser has no voice — text only (in Fully Kiosk: enable its JavaScript Interface)";
 
   // Where this screen can hang: the event's house map when this terminal can
   // read it, else the show's map baked into the build.
@@ -773,9 +811,9 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
     try {
       let next: TerminalConfig;
       if (code.trim() !== "") {
-        next = await provision(code.trim(), { name: name.trim() || null, character: character.trim() || null, camera, engine, spot, view, room: room.trim() || null });
+        next = await provision(code.trim(), { name: name.trim() || null, character: character.trim() || null, camera, engine, spot, view, room: room.trim() || null, announce });
       } else if (current !== null) {
-        next = { ...current, name: name.trim() || current.name, character: character.trim() || current.character, camera, engine, spot, view, room: room.trim() };
+        next = { ...current, name: name.trim() || current.name, character: character.trim() || current.character, camera, engine, spot, view, room: room.trim(), announce };
       } else {
         throw new Error("Enter the moderator passcode.");
       }
@@ -787,11 +825,28 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
     }
   };
 
+  // Says a line through exactly the voice this terminal will use (the
+  // server one when chosen, latching to the device's), and names it.
   const testVoice = async () => {
     await unlock();
-    const b = new BrowserEngine({ voice: browserVoice, speed });
-    const p = await b.prepare("Connection established. I have been expecting you, program.");
-    if (p !== null) void b.play(p, () => {});
+    setTested("…");
+    const engines =
+      engine === "server" && current !== null
+        ? voiceEngines({ choice: "server", browserVoice, serverVoice: serverVoice.trim(), speed, base: baseOf(current), token: current.token })
+        : { primary: new DeviceEngine({ voice: browserVoice, speed, choice: engine === "server" ? "browser" : engine }), fallback: null };
+    let used: EngineKind | null = null;
+    const q = new SpeechQueue(engines, {
+      level: () => {},
+      chunk: () => {},
+      done: () => {},
+      idle: () => setTested(used === null ? "nothing could speak" : `spoke with: ${ENGINE_LABEL[used]}`),
+      engine: (k) => (used = k),
+    });
+    q.say({ id: 1, chunks: ["Connection established.", "I have been expecting you, program."] });
+  };
+  const testChime = async () => {
+    await unlock();
+    await ringChime();
   };
 
   return (
@@ -828,10 +883,11 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
           </label>
           <label>
             voice
-            <select value={engine} onChange={(e) => setEngine(e.target.value as TerminalConfig["engine"])}>
-              <option value="auto">server voice, tablet as fallback</option>
-              <option value="server">server voice only</option>
-              <option value="browser">tablet voice only</option>
+            <select value={engine} onChange={(e) => setEngine(e.target.value as VoiceChoice)}>
+              <option value="browser">this device's own voice (recommended)</option>
+              <option value="fully">Fully Kiosk's voice (Android TTS)</option>
+              <option value="silent">no voice — text only</option>
+              <option value="server">the server's voice (needs LOOM_TTS_URL)</option>
             </select>
           </label>
         </div>
@@ -867,32 +923,43 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
         )}
         {!hasWebGL2() && view !== "face" && <div className="muted small">this tablet has no WebGL2 — it can't draw the simulation, so it will show the face</div>}
         {map !== null && map.source === "bundled" && current !== null && <div className="muted small">couldn't read the event's house map — listing the show's own spots</div>}
-        {serverVoiceInfo && <div className="muted">{serverVoiceInfo}</div>}
+        <div className="muted small">{deviceVoice}</div>
+        {engine === "server" && serverVoiceInfo && <div className="muted">{serverVoiceInfo}</div>}
         <div className="row">
-          <label>
-            server voice name <span className="muted">(blank = server default)</span>
-            <input value={serverVoice} onChange={(e) => setServerVoice(e.target.value)} placeholder="am_michael · bm_george · af_bella+af_sky" />
-          </label>
+          {engine === "server" && (
+            <label>
+              server voice name <span className="muted">(blank = server default)</span>
+              <input value={serverVoice} onChange={(e) => setServerVoice(e.target.value)} placeholder="am_michael · bm_george · af_bella+af_sky" />
+            </label>
+          )}
           <label>
             pace {speed.toFixed(2)}×
             <input type="range" min={0.6} max={1.5} step={0.05} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} />
           </label>
         </div>
         <label>
-          tablet voice <span className="muted">(best first)</span>
+          device voice <span className="muted">(best first)</span>
           <span className="row">
-            <select value={browserVoice} onChange={(e) => setBrowserVoice(e.target.value)}>
-              <option value="">best available{voices[0] ? ` — ${voices[0].name}` : ""}</option>
+            <select value={browserVoice} onChange={(e) => setBrowserVoice(e.target.value)} disabled={voices.length === 0}>
+              <option value="">{voices[0] ? `best available — ${voices[0].name}` : "the device's default"}</option>
               {voices.map((v) => (
                 <option key={v.voiceURI} value={v.voiceURI}>
                   {v.name} ({v.lang}){v.localService ? "" : " · online"}
                 </option>
               ))}
             </select>
-            <button type="button" className="ghost" onClick={() => void testVoice()} disabled={voices.length === 0}>
-              TEST
+            <button type="button" className="ghost" onClick={() => void testVoice()}>
+              TEST VOICE
             </button>
           </span>
+        </label>
+        {tested !== null && <div className="muted small">{tested}</div>}
+        <label className="check">
+          <input type="checkbox" checked={announce} onChange={(e) => setAnnounce(e.target.checked)} />
+          say the house announcements here <span className="muted">(a chime + "Go to the living room." — off where the house speakers reach)</span>
+          <button type="button" className="ghost" onClick={() => void testChime()}>
+            CHIME
+          </button>
         </label>
         <div className="actions">
           <button type="submit" disabled={busy}>
@@ -905,7 +972,7 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
           )}
         </div>
         <p className="muted small">
-          Provision a fleet by opening <code>/terminal/?code=&lt;mod passcode&gt;&amp;name=Kitchen&amp;character=Trabolta&amp;spot=kitchen&amp;view=auto</code> on each tablet. The camera needs https:// (or localhost); without it, programs type their name instead.
+          Provision a fleet by opening <code>/terminal/?code=&lt;mod passcode&gt;&amp;name=Kitchen&amp;character=Trabolta&amp;spot=kitchen&amp;view=auto</code> on each tablet (add <code>&amp;announce=1</code> where the house speakers don't reach). The camera needs https:// (or localhost); without it, programs type their name instead.
         </p>
       </form>
     </div>

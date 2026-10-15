@@ -1,10 +1,16 @@
 //! `view: tv` (OCT31 K-18 + N-04b) — the house Mac's Chrome, full screen on
 //! the TV over the fireplace: the character's face, speaking his lines in the
-//! TV's room through the server voice (`/api/mod/tts`, the Mac's Chrome voice
-//! as fallback), the mouth on the audio level, a caption under it. While
+//! TV's room in the Mac's own voice, the mouth moving as he speaks, a caption
+//! under it. While
 //! someone is in the reinstallation simulation the world takes the right of
 //! the screen. The screen layer (slides / overlays, K-17) is drawn over it by
 //! the app, and attract (the screensaver) stands until the introduction.
+//!
+//! The voice is the house Mac's own (decision 2026-10-15): Chrome's
+//! `speechSynthesis` over the macOS voices, ranked by `pick-voice.ts`
+//! (Samantha / an Enhanced or Premium download when installed; pick one in
+//! ⚙). The server voice (`engine: server`, `/api/mod/tts`) is an opt-in that
+//! latches back to the Mac's voice the first time the server has none.
 //!
 //! Sound: Chrome on the house Mac launches with
 //! `--autoplay-policy=no-user-gesture-required`; without it (or after a
@@ -18,7 +24,7 @@ import { baseOf, type TerminalConfig } from "./config.ts";
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import type { ScreenState } from "./screen.ts";
-import { BrowserEngine, ServerEngine, SpeechQueue, audioUnlocked, unlock, type SpeechEngine } from "./speech/engine.ts";
+import { SpeechQueue, audioUnlocked, unlock, voiceEngines, voiceNote, type EngineKind } from "./speech/engine.ts";
 import { splitSentences } from "./speech/split.ts";
 import { LinePlayer, cursorAfterGap, planVoice, postVoiceMute, type TvLine } from "./tv.ts";
 import { useSpatialStream, useWorld, type Gone, type WorldStore } from "./world/stream.ts";
@@ -52,7 +58,8 @@ export function Tv({
   const [speaking, setSpeaking] = useState(false);
   const [caption, setCaption] = useState<TvLine | null>(null);
   const [awake, setAwake] = useState(() => audioUnlocked());
-  const [engineUsed, setEngineUsed] = useState<SpeechEngine["kind"] | null>(null);
+  const [engineUsed, setEngineUsed] = useState<EngineKind | null>(null);
+  const [latched, setLatched] = useState(false);
   // The mute as the server last said it, overridden by a click until the next poll agrees.
   const [localMute, setLocalMute] = useState<boolean | null>(null);
   const serverMute = state?.voice?.muted ?? false;
@@ -74,10 +81,10 @@ export function Tv({
   // --- the voice: one speech queue, fed one line at a time by the player ---
   const waiters = useRef(new Map<number, () => void>());
   const queue = useMemo(() => {
-    const browser = BrowserEngine.available() ? new BrowserEngine({ voice: config.browserVoice, speed: config.speed }) : null;
-    const server = new ServerEngine({ base: baseOf(config), token: config.token, voice: config.serverVoice, speed: config.speed });
-    const engines =
-      config.engine === "browser" && browser !== null ? { primary: browser as SpeechEngine, fallback: null } : { primary: server as SpeechEngine, fallback: browser as SpeechEngine | null };
+    const engines = voiceEngines(
+      { choice: config.engine, browserVoice: config.browserVoice, serverVoice: config.serverVoice, speed: config.speed, base: baseOf(config), token: config.token },
+      () => setLatched(true),
+    );
     const chunks = new Map<number, string[]>();
     const q = new SpeechQueue(engines, {
       level: (v) => face.current?.level(v),
@@ -212,7 +219,7 @@ export function Tv({
         <button type="button" className={`tv-mute${muted ? " on" : ""}`} onClick={toggleMute} title="Mute the TV voice (M)">
           {muted ? "🔇 VOICE MUTED" : "🔊 VOICE"}
         </button>
-        {engineUsed === "browser" && config.engine !== "browser" && <span className="engine-note">voice: Chrome fallback</span>}
+        {voiceNote(config.engine, engineUsed, latched) !== null && <span className="engine-note">{voiceNote(config.engine, engineUsed, latched)}</span>}
       </div>
       {!awake && (
         <button type="button" className="tv-wake" onClick={wake}>

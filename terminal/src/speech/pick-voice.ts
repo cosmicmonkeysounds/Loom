@@ -1,4 +1,5 @@
-//! Rank the browser's built-in voices for the fallback engine. Quality
+//! Rank the device's built-in voices — the voice every terminal and the TV
+//! use by default (the house Mac's Chrome lists the macOS voices). Quality
 //! varies wildly: the "premium" / "enhanced" downloads on an iPad and
 //! Edge's online "Natural" voices are close to a real speaker; the old
 //! eSpeak-style defaults are not. The terminal's setup screen lists them
@@ -20,7 +21,7 @@ const FAVOURITES = [
   // Apple — the premium downloads, then the classic system voices.
   /premium/i,
   /enhanced/i,
-  /\b(daniel|samantha|alex|tom|evan|nathan|aaron|oliver)\b/i,
+  /\b(daniel|samantha|alex|tom|evan|nathan|aaron|oliver|ava|zoe|allison|susan|nicky)\b/i,
   // Google (Chrome / Android).
   /google (us|uk) english/i,
 ];

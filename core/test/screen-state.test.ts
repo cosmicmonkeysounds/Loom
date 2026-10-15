@@ -15,7 +15,7 @@ import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import type { AgentRequest } from "../server/agents.ts";
 import type { ChatMessage } from "../server/chat.ts";
-import { MAX_SCREENS, MAX_VOICE_LINES, ScreenWatch, TERMINAL_SILENT_MS, screenTerminals, type ScreenTerminals, foldProgram, voiceLinesOf, screenCueClass, screenCueOf, screenTargetOf, slidePersists, type ScreenProgram, type ScreenState } from "../server/routes/screen.ts";
+import { MAX_ANNOUNCE_TEXT, MAX_SCREENS, MAX_VOICE_LINES, announceTextOf, ScreenWatch, TERMINAL_SILENT_MS, screenTerminals, type ScreenTerminals, foldProgram, voiceLinesOf, screenCueClass, screenCueOf, screenTargetOf, slidePersists, type ScreenProgram, type ScreenState } from "../server/routes/screen.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { scenarioSource } from "../examples/load.ts";
 
@@ -299,9 +299,14 @@ describe("GET /api/screen/state — Trapped in the Internet", () => {
     expect(s.countdown).toBeNull();
     expect(JSON.stringify(s).length).toBeLessThan(1500);
 
+    expect(s.announce).toBeNull();
+
     await signal(rt, "call_to_the_desktop");
     s = await state(rt);
     expect(s.cues.screens).toEqual({ value: "call_desktop", seq: 2 });
+    // N-09: the summons is the night's first house announcement.
+    expect(s.announce).toMatchObject({ seq: 1, text: "All programs, report to the Desktop. A game is about to begin." });
+    expect(s.announce!.at).toBeGreaterThan(0);
     expect(s.night.terminals).toBe("call_desktop");
     expect(s.attract).toBe(true);
 
@@ -341,7 +346,53 @@ describe("GET /api/screen/state — Trapped in the Internet", () => {
     expect(r.attract).toBe(false);
     expect(r.cues).toEqual(s.cues);
     expect(r.night).toEqual(s.night);
+    // The same announcement, stamped as history: no terminal says it again.
+    expect(r.announce).toEqual({ seq: s.announce!.seq, text: s.announce!.text, at: 0 });
     again.dispose();
+  });
+});
+
+// --- the house announcement (N-09) --------------------------------------------
+
+describe("announceTextOf", () => {
+  it("reads the words like stagehand's {target}: quoted or bare, named args skipped", () => {
+    expect(announceTextOf(`"Go to the living room."`)).toBe("Go to the living room.");
+    expect(announceTextOf(`"All programs, report to the Desktop."`)).toBe("All programs, report to the Desktop.");
+    expect(announceTextOf(`Five minutes.`)).toBe("Five minutes.");
+    expect(announceTextOf(`voice: af_sky, "Time is up."`)).toBe("Time is up.");
+    expect(announceTextOf(`'Single quotes.', chime: false`)).toBe("Single quotes.");
+    expect(announceTextOf(`  "  spaced\n  out  "  `)).toBe("spaced out");
+    expect(announceTextOf(``)).toBeNull();
+    expect(announceTextOf(`""`)).toBeNull();
+    expect(announceTextOf(`{target}`)).toBeNull();
+    const long = announceTextOf(`"${"word ".repeat(100)}"`)!;
+    expect(long.length).toBeLessThanOrEqual(MAX_ANNOUNCE_TEXT);
+    expect(long.endsWith("word")).toBe(true);
+  });
+});
+
+describe("ScreenWatch — the announcement", () => {
+  it("carries the latest one: history at 0, new ones on the clock, a fresh sim starts over", () => {
+    const src = `# T\n\nwhen call:\n  do announce "Report to the Desktop."\n\nwhen later:\n  do announce "Go to the living room, {Night.n}."\n  do jingle "not an announcement"\n\n== Boot\nset Night.n = 3\ndo announce "Doors are open."\n`;
+    const sim = Sim.fromSources(src);
+    let t = 10_000;
+    const w = new ScreenWatch({ now: () => t });
+    const poll = (s: Sim = sim) => w.poll(s, { name: "K", spot: "", view: "auto", character: "" }, () => false).announce;
+    expect(poll()).toBeNull();
+    sim.fireBeat("Boot");
+    t = 11_000;
+    expect(poll()).toEqual({ seq: 1, text: "Doors are open.", at: 11_000 });
+    sim.signal("call");
+    sim.signal("later");
+    t = 12_000;
+    expect(poll()).toEqual({ seq: 3, text: "Go to the living room, 3.", at: 12_000 }); // the latest; interpolated
+    expect(poll()).toEqual({ seq: 3, text: "Go to the living room, 3.", at: 12_000 }); // stable between polls
+    // A rebooted server's first look is history.
+    const replayed = Sim.fromSources(src);
+    replayed.fireBeat("Boot");
+    expect(new ScreenWatch({ now: () => 99_000 }).poll(replayed, { name: "K", spot: "", view: "auto", character: "" }, () => false).announce).toEqual({ seq: 1, text: "Doors are open.", at: 0 });
+    // A story restart (a new sim with nothing announced yet) clears it.
+    expect(poll(Sim.fromSources(src))).toBeNull();
   });
 });
 

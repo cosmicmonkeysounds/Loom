@@ -13,11 +13,15 @@
 //! characters' new lines in that room, the room's head seq and the
 //! director's mute. It polls every second so a line is heard within 3 s.
 //!
+//! The answer also carries the latest house announcement (`announce`, N-09);
+//! a terminal set to say announcements speaks a new one (`announce.ts`).
+//!
 //! Fail closed: until the first answer arrives the terminal stays on
 //! attract, and an unreachable server keeps the last answer it gave — a
 //! dropped poll never flips a hidden character onto the wall.
 
 import { useEffect, useRef, useState } from "react";
+import { announceOf, type Announcement } from "./announce.ts";
 import { baseOf, type TerminalConfig } from "./config.ts";
 
 /** How often the terminal polls (ms). */
@@ -82,6 +86,8 @@ export interface ScreenState {
   program: ScreenProgram;
   /** Only on a poll that named a voice room. */
   voice: ScreenVoice | null;
+  /** The latest house announcement (N-09, `announce.ts`), null before the first. */
+  announce: Announcement | null;
 }
 
 /** What a TV adds to its poll: the room it speaks for + its chat cursor. */
@@ -166,6 +172,7 @@ export function parseScreenState(raw: unknown, receivedAt: number = Date.now()):
     target: r["target"] === "tv" ? "tv" : "terminals",
     program: programOf(r["program"]),
     voice: voiceOf(r["voice"]),
+    announce: announceOf(r["announce"]),
   };
 }
 

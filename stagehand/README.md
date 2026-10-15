@@ -9,7 +9,7 @@ machine, **modules** switched on by section:
 |---|---|---|---|
 | **show** | `show:` | the house Mac | story → OSC/MQTT cues; MQTT sensors → story mutations |
 | **agents** | `agents:` | the house Mac (Ollama) | answers every conversation with a `mind: external` character through a local model |
-| **alexa** | `alexa:` | the house Mac | MQTT `show/announce` → a chime + the server's voice (`/api/mod/tts`, cached on disk) on a named CoreAudio device + channel map; `say` fallback |
+| **alexa** | `alexa:` | the house Mac | MQTT `show/announce` → a chime + the Mac's own `say` voice on a named CoreAudio device + channel map (`engine: server` opts in to `/api/mod/tts`, cached on disk) |
 
 All three can run on one machine (the show does: one house Mac); they
 still run as **separate launchd jobs** (see *launchd* below; the `alexa`
@@ -341,22 +341,28 @@ uv run stagehand run   --config trapped.house.yaml --only show
 
 `do announce "…"` reaches the house as `show/announce {"text": "…"}` (a
 `show` cue rule). The `alexa` module, on the Mac wired to the speakers,
-subscribes, rings a chime (synthesised, or `chime: <file>`) and fetches
-the line from the event server's neural voice (`POST /api/mod/tts`,
-`ModClient.speak`) **while the chime rings**, then plays it on
-`device:` (a CoreAudio name or substring; omit = the default output),
-copying the file's channels across `channels:` (1-based — `[1, 2, 3, 4]`
-= two stereo zones of one interface). Fallbacks, in order: the disk
-cache (`cache_dir`; `prewarm:` lines are fetched at boot and retried
-each minute), macOS `say` rendered to a file and played the same way,
-then `say -a <device>`, then plain `say`. One announcement at a time;
+subscribes, rings a chime (synthesised, or `chime: <file>`) and renders
+the line with the Mac's own voice (`say -v <say_voice> -o …`, the default
+`engine: say`) **while the chime rings**, then plays it on `device:` (a
+CoreAudio name or substring; omit = the default output), copying the
+file's channels across `channels:` (1-based — `[1, 2, 3, 4]` = two stereo
+zones of one interface). No server round-trip: it works with the house
+internet down. Fallbacks: `say -a <device>`, then plain `say`.
+
+`engine: server` (opt-in — only when the VPS runs the bundled Kokoro,
+`COMPOSE_PROFILES=tts`) asks the event server's voice first (`POST
+/api/mod/tts`, `ModClient.speak`, with `voice:` / `speed:` /
+`tts_timeout:`), from a disk cache (`cache_dir`; `prewarm:` lines are
+fetched at boot and retried each minute), and falls back to the `say`
+ladder above. The same announcement also reaches every wall terminal
+provisioned with `&announce=1` (OCT31 N-09). One announcement at a time;
 `show/chime` (the story's `sound alexa_chime`) rings the chime alone
 unless an announcement started in the last 10 s. One player per machine
 (`player.lock`): a second one stands by. Health on `health/alexa`.
 
 ```bash
 uv run stagehand announce --config house.yaml "Go to the living room."            # play one now
-uv run stagehand announce --config house.yaml --offline --no-chime "Time is up."  # say path, no chime
+uv run stagehand announce --config house.yaml --offline --no-chime "Time is up."  # no chime (--offline: never the server)
 uv run stagehand run      --config house.yaml --only alexa                        # the daemon
 ```
 

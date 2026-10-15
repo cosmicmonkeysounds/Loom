@@ -2,7 +2,7 @@
 title: The terminals on the walls
 section: Guest Guide
 order: 9
-keywords: terminal, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding
+keywords: terminal, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, chime, alexa, speaker
 ---
 
 Some events mount **terminals** around the house — tablets that are a
@@ -33,7 +33,10 @@ name* and enter the name you registered with.
 ## Talking
 
 Type at the bottom and send. The character answers in the thread and
-**speaks** the reply — the face moves with the voice. Everything said at
+**speaks** the reply in the tablet's own voice — the face moves as it
+talks, and the words appear as they're said. (Every screen has its own
+voice, so the character may sound a little different from wall to wall.
+A tablet with no voice at all shows the reply as text.) Everything said at
 a terminal is the same private conversation as the one in your app: walk
 away and it's in your **direct message** with that character, and you
 can carry on from your phone.
@@ -60,6 +63,11 @@ trivia question, a bingo card, an award), a ⏱ **countdown** in the
 corner, or a full-screen **notice** — a blackout, "go to the living
 room", an alarm. A notice ends whatever line is open; when it clears,
 scan again.
+
+Some terminals also pass on the **house announcements** — a chime, then
+the line ("Go to the living room.") with a 📢 banner — the same ones you
+hear from the house speakers. An announcement waits for the character to
+finish his sentence; it never cuts him off.
 
 ## A window into the simulation
 

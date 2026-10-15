@@ -78,7 +78,7 @@ Read once at boot (`core/server/config.ts`, `core/server/server.ts`).
 | `LOOM_RL_RESOLVE` / `LOOM_RL_REGISTER` / `LOOM_RL_LOGIN_FAILURES` | `30/60` · `20/60` · `10/300` | Per-IP throttles on resolve-code, guest registration, wrong passcodes (`<max>` or `<max>/<seconds>`; raise them when a venue's guests share one IP) |
 | `LOOM_RL_REDEEM_MISSES` / `LOOM_RL_WIDGETS` | `8/60` · `20/60` | Per-guest throttles on wrong codex codes and widget answers (429; misses past the cap aren't journaled) |
 | `LOOM_VAPID_PUBLIC_KEY` / `LOOM_VAPID_PRIVATE_KEY` / `LOOM_VAPID_SUBJECT` | *(none — push off)* | Web Push keys (`npx web-push generate-vapid-keys`, once; rotating cuts every subscription). Subject defaults to an https `LOOM_BASE_URL` |
-| `LOOM_TTS_URL` / `_API_KEY` / `_MODEL` / `_VOICE` / `_FORMAT` | *(none — server voice off)* | OpenAI-compatible speech endpoint proxied at `/api/mod/tts` (the Docker stack defaults it to its bundled Kokoro) |
+| `LOOM_TTS_URL` / `_API_KEY` / `_MODEL` / `_VOICE` / `_FORMAT` | *(none — server voice off)* | OpenAI-compatible speech endpoint proxied at `/api/mod/tts` — **opt-in**: the terminals and the TV speak with the devices' own voices by default (the Docker stack's Kokoro sits behind `--profile tts`; `off` / blank = disabled) |
 
 **Share invites.** Sharing a project from the launchpad emails the
 collaborator a link (`core/server/mail.ts`): an existing author is added on

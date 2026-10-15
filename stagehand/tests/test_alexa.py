@@ -92,9 +92,12 @@ def test_payloads_json_bare_and_junk():
 
 def test_config_defaults_and_validation(tmp_path):
     c = parse_alexa({"mqtt": {"host": "h"}})
-    assert (c.topic, c.device, c.channels, c.chime, c.voice, c.say_voice) == (
-        "show/announce", None, None, "synth", "af_sky", "Samantha",
+    assert (c.topic, c.device, c.channels, c.chime, c.engine, c.voice, c.say_voice) == (
+        "show/announce", None, None, "synth", "say", "af_sky", "Samantha",
     )
+    assert parse_alexa({"mqtt": {"host": "h"}, "engine": "server"}).engine == "server"
+    with pytest.raises(ConfigError, match="engine"):
+        parse_alexa({"mqtt": {"host": "h"}, "engine": "kokoro"})
     assert c.mqtt.client_id == "stagehand-alexa"
     with pytest.raises(ConfigError, match="mqtt"):
         parse_alexa({})
@@ -121,8 +124,40 @@ def test_alexa_is_a_registered_module_section():
 # -- the fallback ladder -------------------------------------------------------
 
 
+def test_the_default_is_the_macs_own_say_voice_and_never_asks_the_server(tmp_path):
+    calls = []
+
+    async def fetch(text, voice):
+        calls.append(text)
+        return wav(rate=24000)
+
+    a, fx = announcer(cfg(tmp_path, prewarm=["Go to the living room."]), fetch)
+    assert run(a.announce(Announcement("Go to the living room."))) == "device-say"
+    assert fx.rendered == ["Go to the living room."]  # `say -o` → the device + channel map
+    assert [r for _, r in a.output.played] == [48000, 22050]  # chime, then the say render
+    assert run(a.prewarm()) == 0
+    assert calls == []
+
+
+def test_engine_say_needs_no_server_link(tmp_path):
+    from stagehand.alexa.module import Alexa
+
+    class NoMod:  # any use of the mod client would blow up
+        def __getattr__(self, name):
+            raise AssertionError(f"engine: say touched the server ({name})")
+
+    alexa = Alexa(cfg(tmp_path))
+    a = alexa.announcer(NoMod())  # type: ignore[arg-type]
+    a.output, effects = FakeOutput(), Effects()
+    a.render_say, a.speak_direct = effects.render, effects.speak
+    assert run(a.announce(Announcement("Time is up."))) == "device-say"
+    assert any("no server" in line for line in alexa.describe())
+    assert not any("prewarm" in line for line in alexa.describe())
+    assert any("prewarm" in line for line in Alexa(cfg(tmp_path, engine="server")).describe())
+
+
 def test_server_voice_plays_after_the_chime_and_is_cached(tmp_path):
-    c = cfg(tmp_path)
+    c = cfg(tmp_path, engine="server")
     calls = []
 
     async def fetch(text, voice):
@@ -142,7 +177,7 @@ def test_server_down_falls_back_to_say_through_the_device(tmp_path):
     async def fetch(text, voice):
         raise ModApiError("503 no voice", 503)
 
-    a, fx = announcer(cfg(tmp_path), fetch)
+    a, fx = announcer(cfg(tmp_path, engine="server"), fetch)
     assert run(a.announce(Announcement("Time is up."))) == "device-say"
     assert fx.rendered == ["Time is up."] and len(a.output.played) == 2
 
@@ -152,12 +187,12 @@ def test_a_slow_server_times_out_into_say(tmp_path):
         await asyncio.sleep(5)
         return wav()
 
-    a, fx = announcer(cfg(tmp_path, tts_timeout=0.05), fetch)
+    a, fx = announcer(cfg(tmp_path, engine="server", tts_timeout=0.05), fetch)
     assert run(a.announce(Announcement("Hi", chime=False))) == "device-say"
 
 
 def test_no_server_link_at_all_uses_say(tmp_path):
-    a, fx = announcer(cfg(tmp_path), None)
+    a, fx = announcer(cfg(tmp_path, engine="server"), None)
     assert run(a.announce(Announcement("Hi"))) == "device-say"
 
 
@@ -184,13 +219,16 @@ def test_chime_off_and_per_message_no_chime(tmp_path):
     async def fetch(text, voice):
         return wav()
 
-    a, _ = announcer(cfg(tmp_path, chime="off"), fetch)
+    a, _ = announcer(cfg(tmp_path, engine="server", chime="off"), fetch)
     run(a.announce(Announcement("Hi")))
     assert len(a.output.played) == 1
+    b, _ = announcer(cfg(tmp_path, chime="off"), None)  # engine: say
+    run(b.announce(Announcement("Hi")))
+    assert len(b.output.played) == 1
 
 
 def test_prewarm_fetches_once_and_survives_restart(tmp_path):
-    c = cfg(tmp_path, prewarm=["Go to the living room.", "Time is up."])
+    c = cfg(tmp_path, engine="server", prewarm=["Go to the living room.", "Time is up."])
     calls = []
 
     async def fetch(text, voice):
