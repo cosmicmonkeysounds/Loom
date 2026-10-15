@@ -5,7 +5,20 @@
 
 import { api, ApiError } from "@loom/play/client.ts";
 import { cloneData, normalizeHouse, validateHouse } from "@loom/house";
-import type { Assignment, DuckSpot, FoundResult, HouseMap, HouseResponse, SaveHouseResult, SpatialCandidate, SpatialWorld, StationInfo } from "@loom/house";
+import type {
+  Assignment,
+  DuckSpot,
+  FoundResult,
+  HouseMap,
+  HouseResponse,
+  MapVariantsResponse,
+  SaveHouseResult,
+  SaveToProjectResult,
+  SpatialCandidate,
+  SpatialWorld,
+  StationInfo,
+  SwitchVariantResult,
+} from "@loom/house";
 import { baseOf, type ReinstallConfig } from "./config.ts";
 import { showHouse } from "./show-house.ts";
 import { isDuckSpot } from "./spatial.ts";
@@ -104,12 +117,38 @@ export async function fetchDealtHouse(
   return null;
 }
 
-export type SaveHouseReply =
-  | { ok: true; result: SaveHouseResult }
+/** Every map write's reply (a save, a variant switch, a save to the
+ *  project), every outcome a value. */
+export type MapReply<T> =
+  | { ok: true; result: T }
   /** `conflict`: the map changed since `base` was loaded (409 `{error:
    *  "the map changed — reload", version}`) — nothing was saved; `version`
-   *  is the server's current one. */
+   *  is the server's current one. A 409 without a `version` (an event with
+   *  no project, for a save to it) is not a conflict. */
   | { ok: false; status: number; error: string; problems: string[]; conflict: boolean; version: string | null };
+
+export type SaveHouseReply = MapReply<SaveHouseResult>;
+
+/** POST a map write as a moderator and fold the reply into a `MapReply`. */
+async function postMap<T>(url: string, token: string, body: Record<string, unknown>, fetcher: typeof fetch): Promise<MapReply<T>> {
+  const res = await fetcher(url, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-loom-token": token },
+    body: JSON.stringify(body),
+  });
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (res.ok) return { ok: true, result: data as unknown as T };
+  const problems = Array.isArray(data["problems"]) ? (data["problems"] as unknown[]).map(String) : [];
+  const version = typeof data["version"] === "string" ? data["version"] : null;
+  return {
+    ok: false,
+    status: res.status,
+    error: typeof data["error"] === "string" ? data["error"] : `HTTP ${res.status}`,
+    problems,
+    conflict: res.status === 409 && version !== null,
+    version,
+  };
+}
 
 /**
  * Save a director's edit of the map. `base` is the version the editor
@@ -119,23 +158,32 @@ export type SaveHouseReply =
  * bad map carries the server's problem list (400 `{error, problems}`).
  */
 export async function saveHouse(config: ReinstallConfig, house: HouseMap, base: string | null = null, fetcher: typeof fetch = fetch): Promise<SaveHouseReply> {
-  const res = await fetcher(`${baseOf(config)}/api/mod/spatial/house`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-loom-token": config.token },
-    body: JSON.stringify(base !== null ? { house, base } : { house }),
-  });
-  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (res.ok) return { ok: true, result: data as unknown as SaveHouseResult };
-  const problems = Array.isArray(data["problems"]) ? (data["problems"] as unknown[]).map(String) : [];
-  const version = typeof data["version"] === "string" ? data["version"] : null;
-  return {
-    ok: false,
-    status: res.status,
-    error: typeof data["error"] === "string" ? data["error"] : `HTTP ${res.status}`,
-    problems,
-    conflict: res.status === 409,
-    version,
-  };
+  return postMap<SaveHouseResult>(`${baseOf(config)}/api/mod/spatial/house`, config.token, base !== null ? { house, base } : { house }, fetcher);
+}
+
+// --- the project's map variants (SW-MAP-01 / SW-MAP-13, §2.1) -----------
+
+/** The event's whole-map variants (`house.json`, `house.shed.json`, …). */
+export async function fetchVariants(base: string, token: string): Promise<MapVariantsResponse> {
+  return getJson<MapVariantsResponse>(`${base}/api/mod/spatial/variants`, token);
+}
+
+/** Play another variant — the tent ↔ shed switch, mid-show too. `version`
+ *  = the map version the page holds (null skips the check). */
+export async function switchVariant(base: string, token: string, file: string, version: string | null, fetcher: typeof fetch = fetch): Promise<MapReply<SwitchVariantResult>> {
+  return postMap<SwitchVariantResult>(`${base}/api/mod/spatial/variant`, token, version !== null ? { file, base: version } : { file }, fetcher);
+}
+
+/** "Save to project": the event's current map becomes a project file
+ *  (`file` null = the active variant's), for the next launch and every
+ *  co-writer. A 409 with no `version` = the event has no project. */
+export async function saveToProject(base: string, token: string, file: string | null, version: string | null, fetcher: typeof fetch = fetch): Promise<MapReply<SaveToProjectResult>> {
+  return postMap<SaveToProjectResult>(
+    `${base}/api/mod/spatial/house/project`,
+    token,
+    { ...(file !== null ? { file } : {}), ...(version !== null ? { base: version } : {}) },
+    fetcher,
+  );
 }
 
 // --- a game's own calls (session token) ---------------------------------
