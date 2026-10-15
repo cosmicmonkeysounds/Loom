@@ -567,3 +567,18 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 @supports not (aspect-ratio: 1) {
   .scan-frame { width: min(100%, 60vh); height: 45vh; max-height: 100%; }
 }
+
+/* The ⚙ opens setup only on a 2 s hold (kiosk.ts): a bar fills under it while held. */
+button.gear:not(.mirror-gear) { position: relative; }
+button.gear { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+button.gear::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  height: 2px;
+  width: 0;
+  background: currentColor;
+}
+button.gear.holding { opacity: 1; }
+button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000ms) linear; }

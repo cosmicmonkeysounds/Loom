@@ -14,7 +14,10 @@
 //! over the fireplace) — no scanner, no line, nothing to say.
 //!
 //! A tap on the wake overlay is the one user gesture the browser needs
-//! before the terminal may make a sound unattended.
+//! before the terminal may make a sound unattended. The screen is held on
+//! with a Wake Lock from boot (re-taken on that tap and whenever the page
+//! comes back into view), and the ⚙ opens setup only on a 2 s hold
+//! (`kiosk.ts`) — a guest's short tap does nothing.
 
 import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Composer, Thread } from "./chat.tsx";
@@ -31,6 +34,7 @@ import { revealOffsets, splitSentences } from "./speech/split.ts";
 import { mayReload, retryable } from "./retry.ts";
 import { bundledHouse, fetchHouse, useSpatialStream, useWorld, type Gone, type HouseInfo, type WorldStore } from "./world/stream.ts";
 import { effectiveView, hasWebGL2 } from "./webgl.ts";
+import { HOLD_MS, screenWake, useLongPress } from "./kiosk.ts";
 
 // three.js is most of the weight of the world view — a face-only terminal
 // never loads it. Retryable: `lazy` alone caches a failed load forever.
@@ -79,7 +83,14 @@ export function App() {
     });
   }, [config]);
 
+  // Keep the screen on from boot: Chrome grants a wake lock to a visible
+  // page without a gesture; `ScreenWake` re-takes it on every return to view.
+  useEffect(() => {
+    void screenWake().keepOn();
+  }, []);
+
   const wake = useCallback(() => {
+    void screenWake().keepOn();
     void unlock().then(() => setAwake(audioUnlocked() || !("AudioContext" in window)));
   }, []);
 
@@ -437,9 +448,7 @@ function Terminal({ config, screen, setScreen, onSetup, onGone }: { config: Term
             </button>
           )}
           {pilot === null && (
-            <button className="link gear" onClick={onSetup} aria-label="Set up this terminal">
-              ⚙
-            </button>
+            <Gear onOpen={onSetup} label="Set up this terminal" />
           )}
         </span>
       </header>
@@ -565,11 +574,28 @@ function Mirror({ config, canDraw, onSetup, onGone }: { config: TerminalConfig; 
         {config.title ? `${config.title} · ` : ""}
         {config.name.toUpperCase()}
       </div>
-      <button className="link gear mirror-gear" onClick={onSetup} aria-label="Set up this screen">
-        ⚙
-      </button>
+      <Gear onOpen={onSetup} label="Set up this screen" className="mirror-gear" />
       <div className="scanlines" aria-hidden="true" />
     </div>
+  );
+}
+
+// --- the gear ------------------------------------------------------------------
+
+/** The ⚙: opens setup only after a 2 s hold, filling up while held. A short
+ *  tap (or a click) does nothing — a wall tablet is in guests' hands. */
+function Gear({ onOpen, label, className }: { onOpen: () => void; label: string; className?: string }) {
+  const { holding, handlers } = useLongPress(onOpen);
+  return (
+    <button
+      type="button"
+      className={`link gear${className ? ` ${className}` : ""}${holding ? " holding" : ""}`}
+      style={{ ["--hold-ms" as string]: `${HOLD_MS}ms` }}
+      aria-label={`${label} (hold for ${HOLD_MS / 1000} seconds)`}
+      {...handlers}
+    >
+      ⚙
+    </button>
   );
 }
 

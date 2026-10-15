@@ -46,7 +46,7 @@
   {"p":[0.5,1.4,3.65],"floor":"ground","room":"hall","height":0},
   {"p":[6,1.8,3.25],"floor":"ground","room":"living","height":0},
   {"p":[3.5,1.4,6.5],"floor":"ground","room":"living","height":0},
-  {"p":[-2.75,1.4,2.5],"floor":"ground","room":"mudroom","height":0},
+  {"p":[-1.5,1.4,5.3],"floor":"ground","room":"hall","height":0},
   {"p":[6,-1.3,9.25],"floor":"basement","room":"registry","height":-2.7},
   {"p":[3.75,-1.3,6.5],"floor":"basement","room":"registry","height":-2.7},
   {"p":[-3,0,0.3],"floor":"ground","room":"mudroom","height":0},

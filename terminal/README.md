@@ -59,6 +59,13 @@ Add the page to the home screen / run the browser in kiosk mode. After a
 reload the terminal shows **TOUCH TO WAKE** until someone taps it once —
 that one gesture is what lets a browser play sound unattended afterwards.
 
+**Kiosk basics** (`src/kiosk.ts`): the terminal holds a Screen Wake Lock
+from boot, re-takes it on the wake tap and whenever the page comes back
+into view, and reports it on `<html data-wake-lock="held|off|unsupported">`.
+The ⚙ opens setup only after a **2 s hold** (a bar fills under it); a short
+tap does nothing. Fully Kiosk / iPad / TV-Mac settings for the show:
+[`docs/trapped/kiosk.md`](../docs/trapped/kiosk.md).
+
 ## The voice
 
 Two engines behind one queue (`src/speech/`):
@@ -163,7 +170,7 @@ http://<server>/terminal/?code=<mod passcode>&name=Desktop TV&view=mirror&spot=d
 ```
 
 A `spot` is optional for a mirror; without one it never mounts. The ⚙ in
-the corner reopens setup.
+the corner reopens setup (hold it 2 s).
 
 **Before the character exists (attract).** A character can arrive partway
 through the night: in *Trapped in the Internet* Trabolta is `hidden: true`
