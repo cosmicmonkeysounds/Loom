@@ -398,6 +398,10 @@ export interface ModView {
   /** Every codex entry with its unlock code and current holders — the
    *  director sees the whole currency supply. */
   codex?: CodexSummary[];
+  /** Every declared quest with where it stands for each person who has it —
+   *  the Inspector's quest buttons (a person missing from `status` hasn't
+   *  been handed it yet). */
+  quests?: QuestSummary[];
   /** Agent-voiced characters' minds, as their workers last reported them. */
   minds?: AgentMindSummary[];
   /** The director cue sheet's state: which `who: admin` cues have fired
@@ -480,6 +484,28 @@ export interface CodexSummary extends CodexEntryView {
   code: string | null;
   /** Holder ids (persons + characters). */
   holders: string[];
+}
+
+/** A declared quest as the director sees it: every person's status. */
+export interface QuestSummary {
+  id: string;
+  title: string;
+  giver: string | null;
+  /** Person id → where the quest stands for them. */
+  status: Record<string, QuestView["status"]>;
+}
+
+/** Every declared quest in model order, with each person's status. */
+function questSummaries(sim: Sim): QuestSummary[] {
+  const out = [...sim.model.quests.values()].map((q): QuestSummary => ({ id: q.id, title: q.title, giver: q.giver, status: {} }));
+  const byId = new Map(out.map((q) => [q.id, q]));
+  for (const person of sim.persons.keys()) {
+    for (const { def, status } of sim.questsFor(person)) {
+      const q = byId.get(def.id);
+      if (q !== undefined) q.status[person] = status;
+    }
+  }
+  return out;
 }
 
 /**
@@ -570,6 +596,7 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
     modsOnline: presence?.mods,
     directors: presence?.directors,
     codex: [...sim.model.codex.values()].map((e) => ({ ...codexEntry(e), code: e.code, holders: sim.codexHolders(e.id) })),
+    quests: questSummaries(sim),
     ...(presence?.minds !== undefined && presence.minds.length > 0 ? { minds: presence.minds } : {}),
     cues: cueState(sim),
   };

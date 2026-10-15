@@ -369,6 +369,15 @@ export const modApi = {
   async setVar(eventId: string, path: string, value: string): Promise<void> {
     await req('POST', `/e/${eventId}/api/mod/var`, { path, value })
   },
+  /** Hand a codex entry to a guest or a character (journaled `by` you). */
+  async grantCodex(eventId: string, who: string, entry: string): Promise<void> {
+    await req('POST', `/e/${eventId}/api/mod/codex`, { who, entry })
+  },
+  /** Move one guest's quest: start / update / complete / fail, with an
+   *  optional line for the quest's thread. */
+  async stepQuest(eventId: string, who: string, quest: string, action: string, text?: string | null): Promise<void> {
+    await req('POST', `/e/${eventId}/api/mod/quest`, { who, quest, action, ...(text ? { text } : {}) })
+  },
   /** Reset the event: clear the journal + replay from the loaded scenario. */
   async reset(eventId: string): Promise<void> {
     await req('POST', `/e/${eventId}/api/mod/reset`, {})

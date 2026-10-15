@@ -10,7 +10,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { lspWorkspaceSync, uriFor } from '@/lib/lsp-client'
 import { useLspIndexGen } from '@/lib/lsp-index'
 import { LOCAL_DIRECTOR, useSim } from '@/store/sim'
-import { CockpitPhase, CockpitTab, GLOBAL_CHOICE_KEY, OPERATOR_LENS, RunBackend, RunMode } from '@/store/cockpit'
+import { CockpitPhase, CockpitTab, GLOBAL_CHOICE_KEY, OPERATOR_LENS, QuestAction, RunBackend, RunMode } from '@/store/cockpit'
 import { useGraph } from '@/store/graph'
 
 const MAIN = `entry: opening
@@ -257,4 +257,45 @@ describe('local run store', () => {
     await useSim.getState().startRun(RunMode.Rehearsal, { scratch: true })
     expect(useSim.getState().run?.scratch).toBe(true)
   })
+
+  it('grants a codex entry and steps a quest (S4), firing the story rules like the server routes', async () => {
+    lspWorkspaceSync().updateMany([[uriFor('extras.loom'), GRANTS]])
+    await start()
+    const st = () => useSim.getState()
+    expect(st().codex.map((e) => [e.id, e.holders])).toEqual([['The Sandy File', []]])
+    expect(st().quests.map((q) => [q.id, q.status])).toEqual([['The Hunt', {}]])
+
+    await st().grantCodex('p1', 'The Sandy File')
+    expect(st().codex[0]!.holders).toEqual(['p1'])
+    expect(st().roster[0]!.score).toBe(3) // its `learns` rule ran
+    expect(st().messages.some((m) => m.kind === 'codex' && m.codex?.entry === 'The Sandy File')).toBe(true)
+
+    await st().stepQuest('p1', 'The Hunt', QuestAction.Start, null)
+    expect(st().quests[0]!.status).toEqual({ p1: 'active' })
+    await st().stepQuest('p1', 'The Hunt', QuestAction.Update, '  One down.  ')
+    expect(st().messages.some((m) => m.kind === 'quest' && m.text.includes('One down.'))).toBe(true)
+    await st().stepQuest('p1', 'The Hunt', QuestAction.Complete)
+    expect(st().quests[0]!.status).toEqual({ p1: 'done' })
+    expect(st().roster[0]!.score).toBe(13) // `when guest completes quest` ran
+    // A settled quest never restarts; an unknown guest is refused.
+    await st().stepQuest('p1', 'The Hunt', QuestAction.Start)
+    expect(st().quests[0]!.status).toEqual({ p1: 'done' })
+    await st().stepQuest('nobody', 'The Hunt', QuestAction.Start)
+    expect(st().error).toMatch(/unknown guest/)
+    await st().grantCodex('nobody', 'The Sandy File')
+    expect(st().error).toMatch(/unknown holder/)
+  })
 })
+
+const GRANTS = `CODEX The Sandy File
+  text: She kept the receipts.
+
+QUEST The Hunt
+  text: Find three facts.
+
+when guest learns The Sandy File:
+  set guest.score += 3
+
+when guest completes quest The Hunt:
+  set guest.score += 10
+`

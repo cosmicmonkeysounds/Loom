@@ -10,11 +10,20 @@
 //! closed: you are a participant right now, not the director.
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { CockpitTab, PlayerRole, RunBackend, SelectionKind, useCockpit, type CockpitMessage } from '@/store/cockpit'
+import { CockpitTab, PlayerRole, RunBackend, SelectionKind, useCockpit, type CockpitMessage, type QuestAction } from '@/store/cockpit'
 import { useGraph } from '@/store/graph'
 import { confirmAction, notify, promptText } from '@/store/dialog'
 import { FactionPill } from './ui'
 import { entityVars, GUEST_STANDARD_FIELDS } from './world'
+import {
+  codexGrantOptions,
+  codexHeldCount,
+  codexOptionLabel,
+  QUEST_ACTION_LABEL,
+  questActionNeedsText,
+  questRows,
+  questStatusLabel,
+} from './grants'
 import { VarTable } from './VarTable'
 import { usePlayAs } from './play-as'
 import { qrSvg } from '@/lib/print-sheet'
@@ -255,6 +264,110 @@ function TheirView({ id }: { id: string }) {
   )
 }
 
+/** S4: hand this guest a codex entry they don't hold yet — what a found
+ *  clue, a solved puzzle or a performer's say-so would have unlocked. */
+function CodexGrant({ id, name }: { id: string; name: string }) {
+  const codex = useCockpit((s) => s.codex)
+  const grantCodex = useCockpit((s) => s.grantCodex)
+  const [entry, setEntry] = useState('')
+  const options = useMemo(() => codexGrantOptions(codex, id), [codex, id])
+  if (codex.length === 0) return null
+  const held = codexHeldCount(codex, id)
+  // A grant that just landed drops out of the options — clear the pick.
+  const picked = options.some((e) => e.id === entry) ? entry : ''
+  return (
+    <div data-testid={`inspector-codex-${id}`}>
+      <div className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-zinc-500">
+        Codex · {held}/{codex.length} held
+      </div>
+      {options.length === 0 ? (
+        <Note>{name} holds every entry.</Note>
+      ) : (
+        <div className="flex items-center gap-2 px-3 pb-2">
+          <select className={inputCls} value={picked} onChange={(e) => setEntry(e.target.value)} data-testid={`inspector-codex-pick-${id}`}>
+            <option value="">— grant codex entry… —</option>
+            {options.map((e) => (
+              <option key={e.id} value={e.id}>
+                {codexOptionLabel(e)}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => {
+              if (picked === '') return
+              setEntry('')
+              void grantCodex(id, picked)
+            }}
+            disabled={picked === ''}
+            className="shrink-0 rounded bg-zinc-800 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-700 disabled:opacity-40"
+            title={`Unlock it for ${name}: it lands in their Codex room and fires their “learns” rules`}
+            data-testid={`inspector-codex-grant-${id}`}
+          >
+            Grant
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** S4: every declared quest and where it stands for this guest, with the
+ *  steps that would do something (start one they haven't got; update,
+ *  complete or fail an active one). Each step asks for the line their
+ *  quest thread shows — required for an update, optional otherwise. */
+function QuestSteps({ id, name }: { id: string; name: string }) {
+  const quests = useCockpit((s) => s.quests)
+  const stepQuest = useCockpit((s) => s.stepQuest)
+  const rows = useMemo(() => questRows(quests, id), [quests, id])
+  if (rows.length === 0) return null
+  const step = async (quest: string, title: string, action: QuestAction) => {
+    const needs = questActionNeedsText(action)
+    const text = await promptText({
+      title: `${QUEST_ACTION_LABEL[action].replace('…', '')} “${title}” for ${name}`,
+      body: needs ? 'The line their Quest Log thread shows.' : 'A line for their Quest Log thread (optional).',
+      placeholder: needs ? 'One down, two to go.' : 'Leave blank for none',
+      confirmLabel: QUEST_ACTION_LABEL[action].replace('…', ''),
+      allowEmpty: !needs,
+    })
+    if (text === null) return
+    await stepQuest(id, quest, action, text === '' ? null : text)
+  }
+  return (
+    <div data-testid={`inspector-quests-${id}`}>
+      <div className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-zinc-500">Quests</div>
+      <ul className="mx-3 mb-1 flex flex-col gap-0.5 rounded border border-zinc-800 p-1 text-xs">
+        {rows.map((q) => (
+          <li key={q.id} className="flex items-center gap-2 px-1 py-0.5" data-testid={`inspector-quest-${q.id}`}>
+            <span className="min-w-0 flex-1 truncate text-zinc-200" title={q.giver ? `${q.title} — from ${q.giver}` : q.title}>
+              {q.title}
+            </span>
+            <span
+              className={
+                q.status === 'active' ? 'text-amber-300'
+                : q.status === 'done' ? 'text-emerald-400'
+                : q.status === 'failed' ? 'text-red-400'
+                : 'text-zinc-600'
+              }
+            >
+              {questStatusLabel(q.status)}
+            </span>
+            {q.actions.map((a) => (
+              <button
+                key={a}
+                onClick={() => void step(q.id, q.title, a)}
+                className="shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800"
+                data-testid={`inspector-quest-${a}-${q.id}`}
+              >
+                {QUEST_ACTION_LABEL[a]}
+              </button>
+            ))}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 /** Every message this guest has seen, newest last, hidden ones greyed. */
 function GuestFeed({ id }: { id: string }) {
   const messages = useCockpit((s) => s.messages)
@@ -481,6 +594,9 @@ function GuestInspector({ id }: { id: string }) {
           Scan
         </button>
       </div>
+
+      <CodexGrant id={id} name={row.name} />
+      <QuestSteps id={id} name={row.name} />
 
       <div className="flex flex-col gap-1.5 px-3 pb-4 pt-1">
         <button onClick={dm} className="w-full rounded border border-zinc-800 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800">

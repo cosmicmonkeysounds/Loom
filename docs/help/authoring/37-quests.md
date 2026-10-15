@@ -82,7 +82,9 @@ underscores), and absent before it is handed out.
 `start` (default), `update`, `complete`, or `fail` — moves one guest's
 quest through the mod API: a puzzle box that finishes a quest, or a
 director doing it by hand. It is journaled like every other mutation, so
-a restart rebuilds every Quest Log thread exactly.
+a restart rebuilds every Quest Log thread exactly. In Run, a guest's
+Inspector has the same steps as buttons (**Quests**: Start / Update… /
+Complete / Fail) — see [Run mode](43-run-mode.md).
 
 Directors see each guest's Quest Log (and Codex) as rooms of their own in
 the Run cockpit (`Quest Log · Ada`); performers' booths don't see them.

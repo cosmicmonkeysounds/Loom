@@ -356,6 +356,10 @@ pushes during journal replay. The play app's `/sw.js` +
   with `sequence: false` (machine-fired: the duck game, the door reed) is
   ticked but never "last"; `InteractionSummary.subject` marks a cue whose
   every listener binds a person (the ceremony's awards).
+- **Grants by hand** (S4): `ModView.quests` lists every declared QUEST
+  with each person's status (`QuestSummary.status`, person id → `active`
+  / `done` / `failed`), beside `ModView.codex`'s holders, so Run's
+  Inspector can offer `/api/mod/codex` and `/api/mod/quest` as buttons.
 - **Agents.** With no worker online for 20 s, the hub posts the
   character's authored `hold:` line (`CHARACTER … hold: "…"`) into the
   thread once, as a journaled `say`, and keeps the request queued for a

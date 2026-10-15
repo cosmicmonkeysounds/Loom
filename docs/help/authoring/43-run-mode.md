@@ -2,7 +2,7 @@
 title: Run mode — rehearse, go live, be anyone
 section: The Editor
 order: 43
-keywords: run, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, cue, next, ceremony, award, recap, re-pair, lost phone, release
+keywords: run, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, cue, next, ceremony, award, recap, re-pair, lost phone, release, grant codex, give quest, complete quest, fail quest
 ---
 
 Run (`⌘2`) is the control room for your project's **one run**. You
@@ -146,6 +146,18 @@ hidden lines greyed; for a character, every line they spoke and every
 scan readout), their story position on the map, their variables, and
 one button to **Be** them. The **Log** page's participant filter shows
 every raw engine event that mentions them.
+
+**Hand out a clue or a quest by hand.** A guest's Inspector has a
+**Codex** box (how many entries they hold, and a *grant codex entry…*
+picker over the ones they don't — **Grant** unlocks it as if the story
+had, so their `learns` rules run) and a **Quests** list: every quest the
+story declares, with where it stands for them. **Start** hands out one
+they haven't got; an active one has **Update…**, **Complete** and
+**Fail**. Each asks for the line their Quest Log thread shows (an update
+needs one; the others can be left blank). Use them when a puzzle box
+fails, a clue was found the wrong way, or a guest missed a step. Both
+work on a local run too, and are journaled under your name on a server
+run.
 
 **Someone lost their phone.** On a server run, a guest's Inspector has
 **🔁 Re-pair**: it shows a QR that signs whatever phone scans it back in

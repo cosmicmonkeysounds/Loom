@@ -16,7 +16,7 @@ import { reflowText } from "../src/parser/decl-body.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { parseTrigger } from "../src/runtime/sim/model.ts";
 import { ChatStore, composeGuestMessages, describeChannel } from "../server/chat.ts";
-import { guestView } from "../server/views.ts";
+import { guestView, modView } from "../server/views.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 
@@ -210,6 +210,17 @@ describe("chat — the Quest Log room", () => {
     ]);
     expect(sim.canPost("g1", "quests")).toBe(false);
     expect(sim.canPost("g1", "codex")).toBe(false);
+  });
+
+  it("the director's snapshot lists every quest with each person's status", () => {
+    const sim = fresh();
+    sim.signal("start the hunt");
+    sim.quest("fail", "g2", "The Truth Scavenger Hunt");
+    expect(modView(sim, "open", "x").quests).toEqual([
+      { id: "The Truth Scavenger Hunt", title: "The Hunt", giver: "Clippy", status: { g1: "active", g2: "failed" } },
+      { id: "The Three Keys", title: "The Three Keys", giver: "OpenOffice", status: {} },
+      { id: "Unplug", title: "Unplug", giver: null, status: {} },
+    ]);
   });
 });
 
