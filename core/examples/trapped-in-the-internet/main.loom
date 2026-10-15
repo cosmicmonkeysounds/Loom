@@ -596,6 +596,11 @@ ROLE Program
         set Kernel.q8 = "accurate"
       fire fact_accepted for program
 
+  // ♟ The Cold Lock (performer button): the window itself is the story
+  // rule `when chess_won:`.
+  when beat_the_machine for program:
+    fire chess_won for program
+
   when fact_lie for program:
     if program.fact_pending != true:
       broadcast "📝 {program.name} has no unjudged filing." to channel(hosts)
@@ -1078,6 +1083,26 @@ INTERACTION server_door_opened
   label: 🚪 Server room door opened (hardware fallback)
   who: admin
 
+INTERACTION rearm_server_room
+  label: 🔒 Server room: re-lock + re-arm (clears the alarm latch)
+  who: admin
+  description: After a rehearsal or an early unlock left the door open. Closes a chess window too. Lights stay as they are (💡 restores them).
+
+INTERACTION chess_won
+  label: ♟ Cold Lock: they beat the machine (chess phone fallback)
+  who: admin
+  description: From the Y2K hour: the server-room door is disarmed for 90 s, then re-locks. Before that it is practice only.
+
+INTERACTION force_majority_stay
+  label: 🗳 Force the majority: Unlimited Power (stay)
+  who: admin
+  description: Final round only, when ghosts block a clear majority at the Y2K head count (OP-11). Runs the majority exactly once.
+
+INTERACTION force_majority_leave
+  label: 🗳 Force the majority: The Way Out (leave)
+  who: admin
+  description: Final round only, when ghosts block a clear majority at the Y2K head count (OP-11). Runs the majority exactly once.
+
 INTERACTION patch_combo_a
   label: 🔌 Patch: Combo A, disable Trabolta (hardware fallback)
   who: admin
@@ -1228,6 +1253,11 @@ INTERACTION fact_lie
   label: 📝 Filed fact: confident lie
   who: performer
   description: Hosts, from # hosts, any time. A wrong filed fact is still accepted. Only the Kernel knows.
+
+INTERACTION beat_the_machine
+  label: ♟ They beat the machine
+  who: performer
+  description: Hosts or Antivirus who saw the mate on the chess phone, on the winner's card. From the Y2K hour it disarms the server-room door for 90 s.
 
 INTERACTION uncertain_answer
   label: 🤷 Uncertain or guessed: to the Internet
@@ -1766,6 +1796,25 @@ when Night.final_round == true and Kernel.majority_reached != true and (Kernel.o
 when waive_leader_tasks:
   set Kernel.waive_leader_tasks = true
 
+// N-06: the director forces a majority when ghosts (lost sessions, early
+// leavers) keep `count(Persons)` too high for a real one. Same latch as
+// the natural watchers, so E1 still runs exactly once.
+when force_majority_stay:
+  if Night.ended != true and Night.final_round == true and Kernel.majority_reached != true:
+    set Kernel.majority_reached = true
+    set Kernel.majority = "stay"
+    fire majority_reached
+  else:
+    broadcast "🗳 No forced majority: it needs the final round and no majority yet." to channel(hosts)
+
+when force_majority_leave:
+  if Night.ended != true and Night.final_round == true and Kernel.majority_reached != true:
+    set Kernel.majority_reached = true
+    set Kernel.majority = "leave"
+    fire majority_reached
+  else:
+    broadcast "🗳 No forced majority: it needs the final round and no majority yet." to channel(hosts)
+
 // ── E. Act III — the server room ──
 
 // E1: a lock clicks. The members get the bundle (ROLE watchers).
@@ -1791,7 +1840,7 @@ when majority_reached:
 // Before the Y2K hour the door is just a door (a curious guest, or a
 // retained "open" replayed on a stagehand reconnect, trips nothing).
 when server_door_opened:
-  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true and Night.alarm_on != true:
+  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true and Night.alarm_on != true and Time.elapsed >= Kernel.disarmed_until:
     set Night.alarm_on = true
     set Night.alarm_clear_at = Time.elapsed + 120
     -> Server Room Alarm
@@ -1806,6 +1855,43 @@ when server_unlock:
   set Kernel.server_unlocked = true
   cue lights_server_open
   set Night.lights = "server_open"
+
+// Re-lock + re-arm mid-show (a rehearsal or an early unlock left the door
+// open): locked again, the alarm latch cleared, any chess window closed.
+// The majority stays won; its members now trip the alarm like anyone.
+when rearm_server_room:
+  set Kernel.server_unlocked = false
+  set Kernel.disarmed_until = 0
+  set Night.alarm_on = false
+  set Night.alarm_clear_at = 0
+  do door server_room, state: locked
+  broadcast "🔒 The server room is locked and armed again." to channel(hosts)
+
+// The Cold Lock: the chess phone outside the server room (Lichess on the
+// night). A host or Antivirus who saw the mate presses ♟ on the winner's
+// card; a dead phone → the director fires `chess_won` (a signal named
+// "chess won" folds to it). From the Y2K hour a win disarms the door for
+// 90 s (ring green); before that it's practice.
+when chess_won:
+  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true:
+    set Kernel.disarmed_until = Time.elapsed + 90
+    do door server_room, state: unlocked
+    cue lights_server_open
+    set Night.lights = "server_open"
+    broadcast "♟ Cold Lock open: the server-room door is disarmed for 90 seconds." to channel(hosts)
+  else if Night.ended != true and Night.step < 14:
+    broadcast "♟ A chess win before the Y2K hour is practice only." to channel(hosts)
+
+// The window closes: the door re-locks (a door propped open past it trips
+// the alarm on its next report).
+when Kernel.disarmed_until > 0 and Time.elapsed >= Kernel.disarmed_until:
+  set Kernel.disarmed_until = 0
+  if Kernel.server_unlocked != true and Night.ended != true:
+    do door server_room, state: locked
+    if Night.lights == "server_open":
+      cue lights_y2k
+      set Night.lights = "y2k"
+    broadcast "♟ Cold Lock closed: the server-room door is armed again." to channel(hosts)
 
 // E3: the patch bay. Today stagehand judges the cables and sends
 // patch_combo_a / patch_combo_b / patch_rejected; once signal args exist

@@ -212,6 +212,7 @@ describe("Trapped in the Internet — compile", () => {
       majority_reached: "false",
       majority: "none",
       server_unlocked: "false",
+      disarmed_until: "0",
     });
   });
 
@@ -1161,6 +1162,127 @@ describe("Trapped in the Internet — the server-room alarm", () => {
     expect(v(sim, "Night.alarms")).toBe(3);
     fire(sim, "patch_rejected"); // the second wrong combination trips it even unlocked
     expect(v(sim, "Night.alarms")).toBe(4);
+  });
+});
+
+/** Through the Y2K clock (Night.step 14), no majority yet. */
+function toY2k(sim: Sim) {
+  toTruth1(sim);
+  toHunt2(sim);
+  toBeans(sim);
+  fireAll(sim, "trabolta_overshares", "y2k_clock");
+}
+const hostsSaid = (evs: SimEvent[]) => casts(evs).map((b) => b.cue);
+
+describe("Trapped in the Internet — the Cold Lock (K-27)", () => {
+  it("a win before the Y2K hour is practice only", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    const e = fire(sim, "beat_the_machine", "g1", null, "Clippy");
+    expect(v(sim, "Kernel.disarmed_until")).toBe(0);
+    expect(has(cues(e), "state: unlocked")).toBe(false);
+    expect(has(hostsSaid(e), "practice only")).toBe(true);
+  });
+
+  it("a host's ♟ disarms the door for 90 s, then it re-locks and alarms", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    expect(v(sim, "Night.step")).toBe(14);
+    const w = fire(sim, "beat_the_machine", "g1", null, "Clippy");
+    expect(v(sim, "Kernel.disarmed_until")).toBeGreaterThan(0);
+    expect(has(cues(w), "door server_room, state: unlocked")).toBe(true);
+    expect(has(cues(w), "lights_server_open")).toBe(true);
+    expect(has(hostsSaid(w), "Cold Lock open")).toBe(true);
+    // Inside the window the door is quiet.
+    fire(sim, "server_door_opened");
+    advance(sim, 80);
+    fire(sim, "server_door_opened");
+    expect(v(sim, "Night.alarms")).toBe(0);
+    expect(v(sim, "Night.alarm_on")).toBe(false);
+    expect(v(sim, "Kernel.server_unlocked")).toBe(false);
+    // The window closes: re-locked, lights back to the Y2K look.
+    const close = advance(sim, 15);
+    expect(has(cues(close), "door server_room, state: locked")).toBe(true);
+    expect(has(cues(close), "lights_y2k")).toBe(true);
+    expect(v(sim, "Kernel.disarmed_until")).toBe(0);
+    const a = fire(sim, "server_door_opened");
+    expect(v(sim, "Night.alarms")).toBe(1);
+    expect(beats(a)).toContain("Server Room Alarm");
+  });
+
+  it("the director's chess_won does the same (a signal named \"chess won\" folds to it)", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    fire(sim, "chess won");
+    expect(v(sim, "Kernel.disarmed_until")).toBeGreaterThan(0);
+    fire(sim, "server_door_opened");
+    expect(v(sim, "Night.alarms")).toBe(0);
+  });
+
+  it("rearm_server_room closes a window, re-locks an unlock, clears the latch", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    fire(sim, "chess_won");
+    const r = fire(sim, "rearm_server_room");
+    expect(has(cues(r), "door server_room, state: locked")).toBe(true);
+    expect(v(sim, "Kernel.disarmed_until")).toBe(0);
+    fire(sim, "server_door_opened");
+    expect(v(sim, "Night.alarms")).toBe(1);
+    // The latch is cleared: the next opening trips again at once.
+    fire(sim, "rearm_server_room");
+    expect(v(sim, "Night.alarm_on")).toBe(false);
+    fire(sim, "server_door_opened");
+    expect(v(sim, "Night.alarms")).toBe(2);
+    // An override unlock re-locks too.
+    fire(sim, "server_unlock");
+    advance(sim, 120);
+    fire(sim, "server_door_opened");
+    expect(v(sim, "Night.alarms")).toBe(2);
+    fire(sim, "rearm_server_room");
+    expect(v(sim, "Kernel.server_unlocked")).toBe(false);
+    fire(sim, "server_door_opened");
+    expect(v(sim, "Night.alarms")).toBe(3);
+  });
+});
+
+describe("Trapped in the Internet — forced majorities (N-06)", () => {
+  it("refused before the final round", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    const e = fire(sim, "force_majority_stay");
+    expect(v(sim, "Kernel.majority_reached")).not.toBe(true);
+    expect(has(hostsSaid(e), "No forced majority")).toBe(true);
+  });
+
+  it("a forced stay runs E1 exactly once, like the natural one", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    const evs: SimEvent[] = [];
+    evs.push(...fire(sim, "force_majority_stay"));
+    expect(v(sim, "Kernel.majority")).toBe("stay");
+    expect(v(sim, "Night.phase")).toBe("majority");
+    expect(v(sim, "Night.step")).toBe(15);
+    expect(v(sim, "Kernel.server_unlocked")).toBe(true);
+    expect(has(cues(evs), "door server_room, state: unlocked")).toBe(true);
+    expect(sim.questStatus("g2", "Recruit To Stay")).toBe("done");
+    // Neither a second press, the other side, nor a real majority re-runs it.
+    evs.push(...fire(sim, "force_majority_stay"));
+    evs.push(...fire(sim, "force_majority_leave"));
+    for (const g of ["g1", "g3", "g4", "g5", "g6"]) evs.push(...sim.join(g, "The Way Out"));
+    evs.push(...fire(sim, "waive_leader_tasks"));
+    expect(v(sim, "Kernel.majority")).toBe("stay");
+    expect(beats(evs).filter((b) => b === "Majority Reached")).toHaveLength(1);
+  });
+
+  it("a forced leave hands The Way Out's members the bundle", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    sim.join("g1", "The Way Out");
+    fire(sim, "force_majority_leave");
+    expect(v(sim, "Kernel.majority")).toBe("leave");
+    expect(sim.questStatus("g3", "Recruit To Leave")).toBe("done");
+    expect(sim.holdsCodex("g1", "The Legendary Fact")).toBe(true);
+    expect(sim.holdsCodex("g5", "The Legendary Fact")).toBe(false);
   });
 });
 
