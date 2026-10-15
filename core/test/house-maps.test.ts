@@ -24,8 +24,11 @@ import {
   listVariants,
   mapFileText,
   mapFilesOf,
+  mapProblems,
+  mapSummary,
   parseMapText,
   planMapSync,
+  saveFileFor,
   showVariantFiles,
   type MapFiles,
   type ProjectLink,
@@ -123,13 +126,50 @@ describe("house-maps helpers", () => {
     expect(showVariantFiles(join(d, "nowhere", "house.json"))).toEqual([{ file: "house.json", path: join(d, "nowhere", "house.json") }]);
   });
 
-  it("planMapSync: example maps written, missing ones deleted, lost project text listed", () => {
-    expect(planMapSync({ "house.json": "A", "house.shed.json": "S", "house.old.json": "O" }, { "house.json": "A", "house.shed.json": "S2" })).toEqual({
+  it("planMapSync: by default the project's maps win — only missing example maps are added, differing ones kept", () => {
+    const project = { "house.json": "A", "house.shed.json": "S", "house.old.json": "O" };
+    const example = { "house.json": "A", "house.shed.json": "S2", "house.rain.json": "R" };
+    expect(planMapSync(project, example)).toEqual({
+      maps: { "house.json": "A", "house.shed.json": "S", "house.old.json": "O", "house.rain.json": "R" },
+      put: ["house.rain.json"],
+      remove: [],
+      kept: ["house.shed.json"],
+      replaced: [],
+    });
+    expect(planMapSync({}, { "house.json": "A" })).toMatchObject({ maps: { "house.json": "A" }, put: ["house.json"], kept: [] });
+  });
+
+  it("planMapSync: --replace-maps writes the example's, deletes the rest, lists the lost text; --keep-maps touches nothing", () => {
+    const project = { "house.json": "A", "house.shed.json": "S", "house.old.json": "O" };
+    const example = { "house.json": "A", "house.shed.json": "S2" };
+    expect(planMapSync(project, example, "replace")).toEqual({
+      maps: example,
       put: ["house.json", "house.shed.json"],
       remove: ["house.old.json"],
+      kept: [],
       replaced: ["house.old.json", "house.shed.json"],
     });
-    expect(planMapSync({}, { "house.json": "A" })).toEqual({ put: ["house.json"], remove: [], replaced: [] });
+    expect(planMapSync(project, example, "keep")).toEqual({ maps: project, put: [], remove: [], kept: [], replaced: [] });
+  });
+
+  it("mapProblems names the first broken map file; mapSummary tells two versions apart", () => {
+    expect(mapProblems({ "house.json": SHOW_TEXT, "house.shed.json": text(shedOf(show())) })).toBeNull();
+    const bad = mapProblems({ "house.json": SHOW_TEXT, "house.b.json": "{", "house.a.json": "{}" });
+    expect(bad!.file).toBe("house.a.json");
+    expect(bad!.problems.length).toBeGreaterThan(0);
+    expect(mapProblems({})).toBeNull();
+    const h = show();
+    expect(mapSummary(SHOW_TEXT)).toBe(
+      `"${h.name}" — ${h.floors.length} floors, ${h.rooms.length} rooms, ${h.doors.length} doors, ${h.terminals.length} terminals, ${h.duck.spots.length} duck spots, ${SHOW_TEXT.length} bytes`,
+    );
+    expect(mapSummary("{")).toMatch(/^invalid \(not JSON/u);
+  });
+
+  it("saveFileFor: the active variant's file when it is a map file name, else house.json", () => {
+    expect(saveFileFor("house.shed.json")).toBe("house.shed.json");
+    expect(saveFileFor("house.json")).toBe("house.json");
+    expect(saveFileFor("trapped-house.json")).toBe(DEFAULT_MAP_FILE); // a LOOM_HOUSE with another name
+    expect(saveFileFor(null)).toBe(DEFAULT_MAP_FILE);
   });
 
   it("the show example ships its map as a project file (sync-example + a new project's seed)", () => {
@@ -275,22 +315,37 @@ describe("EventRuntime — the project's maps", () => {
     broken.dispose();
   });
 
-  it("the snapshot + the active variant live in the state dir: a restart keeps them, a later spec can't replace them", async () => {
+  it("a restart: the map files come from the row (like the story), the active variant from the state dir", async () => {
     const d = freshDir();
     const rt = runtimeAt(d, { houseMaps: twoVariants() });
     expect((await mod(rt, "/api/mod/spatial/variant", { file: "house.shed.json" })).status).toBe(200);
     rt.dispose();
     expect(existsSync(join(d, "spatial-maps.json"))).toBe(true);
 
-    // The registry rebuilds a row's runtime with the row's maps; the state dir wins.
-    const again = runtimeAt(d, { houseMaps: { "house.json": text({ ...show(), name: "Stale" }) } });
+    // The registry rebuilds a row's runtime with the row's maps: the same
+    // files → the shed still plays.
+    const again = runtimeAt(d, { houseMaps: twoVariants() });
     again.restore();
     const got = await modGet(again, "/api/spatial/house");
     expect(got.json.source).toBe("project");
     expect((got.json.house as HouseMap).name).toBe("The house (shed)");
-    expect(Object.keys(again.houseMaps!)).toEqual(["house.json", "house.shed.json"]);
     expect((await variants(again)).variants.find((v) => v.active)?.file).toBe("house.shed.json");
     again.dispose();
+
+    // A sync wrote newer maps to the row while the runtime was down
+    // (`sync-example --no-reload`): the restart plays them, variant kept.
+    const newer = { "house.json": text(show()), "house.shed.json": text({ ...shedOf(show()), name: "Shed, synced" }) };
+    const synced = runtimeAt(d, { houseMaps: newer });
+    synced.restore();
+    expect(((await modGet(synced, "/api/spatial/house")).json.house as HouseMap).name).toBe("Shed, synced");
+    expect(synced.houseMaps).toEqual(newer);
+    synced.dispose();
+
+    // No row snapshot (the LAN default event, an old row): the state dir's copy.
+    const lan = runtimeAt(d);
+    lan.restore();
+    expect(((await modGet(lan, "/api/spatial/house")).json.house as HouseMap).name).toBe("Shed, synced");
+    lan.dispose();
   });
 
   it("GET variants: the project's files with the active one marked, `edited` while a director's save is in force", async () => {
@@ -400,6 +455,25 @@ describe("EventRuntime — the project's maps", () => {
     rt.dispose();
   });
 
+  it("Save to project on a show sibling (no project maps yet) writes that variant's file, never the tent's", async () => {
+    const d = freshDir();
+    writeFileSync(join(d, "house.json"), SHOW_TEXT);
+    writeFileSync(join(d, "house.shed.json"), text(shedOf(show())));
+    const p = fakeProject();
+    const rt = runtimeAt(freshDir(), { houseFile: join(d, "house.json"), project: p.link });
+    await mod(rt, "/api/mod/spatial/variant", { file: "house.shed.json" });
+    const saved = await mod(rt, "/api/mod/spatial/house", { house: { ...shedOf(show()), name: "The shed, adjusted" } });
+    const out = await mod(rt, "/api/mod/spatial/house/project", { base: saved.json.version });
+    expect(out.status).toBe(200);
+    expect(out.json.file).toBe("house.shed.json");
+    expect([...p.files.keys()]).toEqual(["house.shed.json"]);
+    expect(parseMapText(p.files.get("house.shed.json")!).house!.name).toBe("The shed, adjusted");
+    // …and the event keeps playing it, now as the project's file.
+    expect(rt.spatial.source).toBe("project");
+    expect((await variants(rt)).variants.find((v) => v.active)?.file).toBe("house.shed.json");
+    rt.dispose();
+  });
+
   it("Save to project: the live map becomes the active variant's file and retires the director's save", async () => {
     const d = freshDir();
     const p = fakeProject();
@@ -493,6 +567,24 @@ describe("EventRuntime — the project's maps", () => {
     expect(r.status).toBe(200);
     expect(rt.houseMaps).toEqual({ "house.json": text({ ...show(), name: "Synced" }) });
     expect(rt.spatial.house!.name).toBe("Synced");
+    rt.dispose();
+  });
+
+  it("/api/mod/load refuses a broken map before restarting, and records a good snapshot on the row", async () => {
+    const p = fakeProject();
+    const rt = runtimeAt(freshDir(), { houseMaps: twoVariants(), project: p.link });
+    rt.openDoors();
+    const bad = await mod(rt, "/api/mod/load", { source: SCENARIO, maps: { "house.json": text(show()), "house.shed.json": "{ \"rooms\": [], }" } });
+    expect(bad.status).toBe(400);
+    expect(bad.json.file).toBe("house.shed.json");
+    expect((bad.json.problems as string[]).length).toBeGreaterThan(0);
+    expect(rt.houseMaps).toEqual(twoVariants()); // nothing changed
+    expect(p.snapshots).toEqual([]);
+
+    const maps = { "house.json": text({ ...show(), name: "Synced" }) };
+    expect((await mod(rt, "/api/mod/load", { source: SCENARIO, maps })).status).toBe(200);
+    await new Promise((r) => setImmediate(r));
+    expect(p.snapshots).toEqual([maps]);
     rt.dispose();
   });
 

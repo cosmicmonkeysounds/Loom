@@ -55,6 +55,8 @@ import { SpatialHub, houseVersion, houseWarnings, isWorld, parsePose, sortCandid
 import {
   DEFAULT_MAP_FILE,
   activeVariant,
+  mapProblems,
+  saveFileFor,
   asMapFiles,
   isMapFile,
   listVariants,
@@ -445,15 +447,15 @@ export class EventRuntime {
     this.images = init.images ?? defaultImages();
     this.houseFile = init.houseFile ?? defaultHouseFile();
     this.project = init.project ?? null;
-    const maps = this.store.loadMaps();
-    if (maps !== null) {
-      this.projectMaps = asMapFiles(maps.files);
-      this.mapVariant = maps.active;
-    } else {
-      this.projectMaps = asMapFiles(init.houseMaps ?? null);
-      this.mapVariant = null;
-      if (this.projectMaps !== null) this.store.saveMaps(this.projectMaps, null);
-    }
+    // The map files come from the event row like `scenarioSource` does (a
+    // sync written to the row while the runtime was down — `sync-example
+    // --no-reload` — is what a restart plays); the state dir's copy covers an
+    // event with no row snapshot (the LAN default event, an old row). The
+    // active variant is the event's own, so it always comes from the state dir.
+    const stored = this.store.loadMaps();
+    this.projectMaps = asMapFiles(init.houseMaps ?? null) ?? asMapFiles(stored?.files ?? null);
+    this.mapVariant = stored?.active ?? null;
+    if (this.projectMaps !== null) this.store.saveMaps(this.projectMaps, this.mapVariant);
     if (init.now !== undefined) this.clock = init.now;
     this.modSnapshotMs = Math.max(0, init.modSnapshotMs ?? MOD_SNAPSHOT_MS);
     this.spatial = new SpatialHub({ eventId: init.eventId, ...(init.now !== undefined ? { now: init.now } : {}) });
@@ -1278,6 +1280,17 @@ export class EventRuntime {
     return { variants: listVariants(entries, active, fallback), from, edited: this.spatial.source === "event", project: this.project !== null };
   }
 
+  /** The variant the event plays now, by file — over the same list
+   *  `GET variants` shows (the project's files, else the show's). */
+  private activeVariantFile(): string | null {
+    const { fallback, entries } = this.variantEntries();
+    return activeVariant(
+      entries.map(([f]) => f),
+      this.mapVariant,
+      fallback,
+    );
+  }
+
   /**
    * A reload's fresh snapshot of the project's map files (`events-api.ts`,
    * `/api/mod/load {maps}`): the event plays its active variant from now on
@@ -1331,8 +1344,9 @@ export class EventRuntime {
       sendJson(res, 503, { error: "no house map" });
       return true;
     }
-    const maps = this.projectMapFiles;
-    const file = str(body, "file").trim() || (maps !== null ? activeVariant(Object.keys(maps), this.mapVariant) : null) || DEFAULT_MAP_FILE;
+    // The default is the variant playing now — a show sibling too (an event
+    // with no project maps yet), so the shed is never saved as the tent.
+    const file = str(body, "file").trim() || saveFileFor(this.activeVariantFile());
     if (!isMapFile(file)) {
       sendJson(res, 400, { error: "a map file is house.json or house.<variant>.json" });
       return true;
@@ -3053,9 +3067,21 @@ export class EventRuntime {
         const name = str(body, "name") || this.scenarioName;
         // `maps` (optional): the project's map files with it
         // (`scripts/sync-example.ts`) — a fresh snapshot, as on a reload.
+        // Every file must validate: a broken map would quietly play the show
+        // file instead. The row's snapshot follows (a restart reads it).
         const maps = asMapFiles(body["maps"]);
+        const bad = mapProblems(maps ?? {});
+        if (bad !== null) {
+          sendJson(res, 400, { error: `invalid house map ${bad.file}`, file: bad.file, problems: bad.problems });
+          return true;
+        }
         this.restart(source, name, { by });
-        if (maps !== null) this.setProjectMaps(maps);
+        if (maps !== null) {
+          this.setProjectMaps(maps);
+          this.project?.saveSnapshot(maps).catch((err: unknown) => {
+            process.stderr.write(`  ⚠️  event ${this.eventId}: recording the map snapshot failed (${err instanceof Error ? err.message : String(err)})\n`);
+          });
+        }
         sendJson(res, 200, { ok: true, phase: this.phase });
         return true;
       }

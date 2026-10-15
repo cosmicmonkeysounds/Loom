@@ -18,6 +18,7 @@ import { validateHouse, type HouseMap } from "@loom/house";
 import { dbReady, initSchema, pool } from "../server/db/index.ts";
 import { activeEvent, createProject, getFile, projectSource, upsertFile } from "../server/db/queries.ts";
 import { handleEvent } from "../server/events-api.ts";
+import { handleProjects } from "../server/projects.ts";
 import { EventRegistry } from "../server/registry.ts";
 import { mapFileText, parseMapText } from "../server/house-maps.ts";
 import type { EventRuntime } from "../server/event-runtime.ts";
@@ -151,6 +152,25 @@ describe("the map belongs to the project (Postgres)", () => {
     expect(await liveMap(next)).toMatchObject({ source: "project", house: { name: "Tent v2" } });
     expect(parseMapText(next.houseMaps!["house.shed.json"]!).house!.name).toBe("Shed, measured");
     await eventCall(p.id, "end");
+  });
+
+  it("PUT /files refuses a map file that doesn't validate (an empty new file is fine); other files are untouched", async (ctx) => {
+    if (!hasDb) return ctx.skip();
+    const p = await createProject(OWNER, "Map writes");
+    const put = async (path: string, content: string) => {
+      const res = fakeRes();
+      await handleProjects(fakeReq({ path, content }), res, "PUT", `/api/projects/${p.id}/files`, USER);
+      return { status: res.statusCode, json: JSON.parse(res.body || "{}") as Record<string, unknown> };
+    };
+    const bad = await put("house.json", '{ "floors": [], }');
+    expect(bad.status).toBe(400);
+    expect(bad.json.error).toBe("invalid house map house.json");
+    expect((bad.json.problems as string[])[0]).toMatch(/^not JSON/u);
+    expect((await put("house.shed.json", JSON.stringify({ version: 1 }))).status).toBe(400);
+    expect(await getFile(p.id, "house.json")).toBeNull();
+    expect((await put("house.json", "")).status).toBe(200); // the editor's New file…
+    expect((await put("house.json", named("Tent"))).status).toBe(200);
+    expect((await put("notes.json", "{ not a map")).status).toBe(200);
   });
 
   it("an old event row with no snapshot plays the show's file", async (ctx) => {

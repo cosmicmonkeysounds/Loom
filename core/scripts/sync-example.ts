@@ -14,12 +14,15 @@
 //! from the project. A reload cuts every guest's session — they re-join.
 //!
 //! The example's house maps (`house.json`, `house.<variant>.json`) are
-//! project files too (SW-MAP-01): they are pushed, dropped, snapshotted on
-//! the event row and handed to the reload like the `.loom` files. A project
-//! map the push would change or delete — one saved from the map page since
-//! the last sync, say — is copied to a temp directory first (printed), so a
-//! surveyed map is never lost to a stale example; `--keep-maps` leaves the
-//! project's maps alone entirely.
+//! project files too (SW-MAP-01), snapshotted on the event row and handed to
+//! the reload like the `.loom` files — but the **project's copy wins**: a map
+//! surveyed on the map page and kept with "Save to project" lives there, and
+//! the repo's copy is usually older. So by default an example map is only
+//! added when the project lacks that file; a project map that differs is
+//! kept (both versions summarised). `--replace-maps` makes the project's maps
+//! the example's (any project map it changes or deletes is copied to a temp
+//! directory first, printed); `--keep-maps` touches no map at all. An example
+//! map that doesn't validate stops the sync before anything is written.
 
 import { randomUUID } from "node:crypto";
 import { mkdtempSync, writeFileSync } from "node:fs";
@@ -27,12 +30,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Pool } from "pg";
 import { scenarioFiles, scenarioMapFiles } from "../examples/load.ts";
-import { isMapFile, planMapSync, type MapFiles } from "../server/house-maps.ts";
+import { isMapFile, mapProblems, mapSummary, planMapSync, type MapFiles, type MapSyncMode } from "../server/house-maps.ts";
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://127.0.0.1:5432/loom_dev";
 
 function usage(): never {
-  process.stderr.write("usage: sync-example <project name | id> [example=trapped-in-the-internet] [--server URL] [--no-reload] [--keep-maps]\n");
+  process.stderr.write("usage: sync-example <project name | id> [example=trapped-in-the-internet] [--server URL] [--no-reload] [--keep-maps | --replace-maps]\n");
   process.exit(2);
 }
 
@@ -40,13 +43,14 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   let server = process.env.LOOM_SERVER ?? `http://localhost:${process.env.LOOM_PORT ?? 7000}`;
   let reload = true;
-  let keepMaps = false;
+  let mapMode: MapSyncMode = "merge";
   const positional: string[] = [];
   for (let i = 0; i < args.length; i++) {
     const a = args[i]!;
     if (a === "--server") server = args[++i] ?? usage();
     else if (a === "--no-reload") reload = false;
-    else if (a === "--keep-maps") keepMaps = true;
+    else if (a === "--keep-maps") mapMode = "keep";
+    else if (a === "--replace-maps") mapMode = "replace";
     else if (a.startsWith("-")) usage();
     else positional.push(a);
   }
@@ -65,23 +69,32 @@ async function main(): Promise<void> {
     ).rows[0];
     if (project === undefined) throw new Error(`no project named or with id "${projectRef}"`);
 
-    // Maps: the example's replace the project's (unless --keep-maps); any
-    // project map that would change or vanish is backed up first.
+    // Maps: the project's copy wins unless --replace-maps (see the header).
     const projectMaps: MapFiles = {};
     for (const r of (await pool.query<{ path: string; content: string }>(`select path, content from project_file where project_id = $1`, [project.id])).rows) {
       if (isMapFile(r.path)) projectMaps[r.path] = r.content;
     }
     const exampleMaps: MapFiles = Object.fromEntries(scenarioMapFiles(example).map((f) => [f.path, f.source]));
-    const maps = keepMaps ? projectMaps : exampleMaps;
-    if (!keepMaps) {
-      const plan = planMapSync(projectMaps, exampleMaps);
-      if (plan.replaced.length > 0) {
-        const dir = mkdtempSync(join(tmpdir(), "loom-sync-maps-"));
-        for (const f of plan.replaced) writeFileSync(join(dir, f), projectMaps[f]!);
-        process.stdout.write(`⚠️  the project's ${plan.replaced.join(", ")} differed from the example's — the project's copies are in ${dir}\n`);
-      }
+    const bad = mapProblems(exampleMaps);
+    if (bad !== null) throw new Error(`the example's ${bad.file} does not validate — nothing synced:\n  ${bad.problems.join("\n  ")}`);
+    const plan = planMapSync(projectMaps, exampleMaps, mapMode);
+    const maps = plan.maps;
+    const broken = mapProblems(maps); // a kept project map the event would refuse
+    if (broken !== null) {
+      throw new Error(`the project's ${broken.file} does not validate — nothing synced (fix it, or --replace-maps / --keep-maps):\n  ${broken.problems.join("\n  ")}`);
     }
-    const pushed = keepMaps ? files : [...files, ...Object.entries(exampleMaps).map(([path, source]) => ({ path, source }))];
+    if (plan.replaced.length > 0) {
+      const dir = mkdtempSync(join(tmpdir(), "loom-sync-maps-"));
+      for (const f of plan.replaced) writeFileSync(join(dir, f), projectMaps[f]!);
+      process.stdout.write(`⚠️  replacing the project's ${plan.replaced.join(", ")} — its copies are in ${dir}\n`);
+    }
+    for (const f of plan.kept) {
+      process.stdout.write(
+        `⚠️  kept the project's ${f} (it differs from the example's — --replace-maps to overwrite it):\n` +
+          `     project  ${mapSummary(projectMaps[f]!)}\n     example  ${mapSummary(exampleMaps[f]!)}\n`,
+      );
+    }
+    const pushed = [...files, ...plan.put.map((path) => ({ path, source: exampleMaps[path]! }))];
 
     // Files: upsert every example file by path, drop the rest.
     const client = await pool.connect();
@@ -106,7 +119,12 @@ async function main(): Promise<void> {
       client.release();
     }
     process.stdout.write(`✓ ${files.length} files of "${example}" → project "${project.name}" (${project.id})\n`);
-    process.stdout.write(keepMaps ? `  (maps kept: ${Object.keys(maps).join(", ") || "none"})\n` : `✓ maps: ${Object.keys(maps).join(", ") || "none"}\n`);
+    process.stdout.write(
+      `✓ maps: ${Object.keys(maps).sort().join(", ") || "none"}` +
+        (plan.put.length > 0 ? ` (written from the example: ${plan.put.join(", ")})` : " (the project's own)") +
+        (plan.remove.length > 0 ? ` · removed ${plan.remove.join(", ")}` : "") +
+        "\n",
+    );
 
     // The concatenation the server uses (`db/queries.ts` projectSource).
     const source = [...files]

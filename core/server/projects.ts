@@ -11,6 +11,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { scenarioFiles, scenarioMapFiles } from "../examples/load.ts";
 import { collabHub } from "./collab.ts";
+import { isMapFile, mapProblems } from "./house-maps.ts";
 import { EDITOR_URL } from "./config.ts";
 import { readBody, sendJson, str } from "./http-util.ts";
 import { inviteEmail, sendQuietly, type Delivery } from "./mail.ts";
@@ -374,7 +375,18 @@ export async function handleProjects(
           sendJson(res, 400, { error: "bad file path" });
           return true;
         }
-        const file = await upsertFile(id, filePath, str(body, "content"));
+        // A house map (`house.json`, `house.<variant>.json`) must validate —
+        // a launch would otherwise quietly play the show file. An empty one
+        // is a file just created (the editor's New file…), not a map yet.
+        const content = str(body, "content");
+        if (isMapFile(filePath) && content.trim() !== "") {
+          const bad = mapProblems({ [filePath]: content });
+          if (bad !== null) {
+            sendJson(res, 400, { error: `invalid house map ${filePath}`, problems: bad.problems });
+            return true;
+          }
+        }
+        const file = await upsertFile(id, filePath, content);
         // If a live co-editing doc exists, fold this write into it (else the
         // next collab persist would clobber it); tell every editor's tree.
         collabHub().adoptExternalWrite(id, filePath, file.content);

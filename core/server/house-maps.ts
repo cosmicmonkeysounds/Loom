@@ -78,6 +78,18 @@ export function parseMapText(text: string): ParsedMap {
   return v.ok && v.house !== undefined ? { house: v.house, problems: [] } : { house: null, problems: v.problems };
 }
 
+/** The first map file that doesn't validate, with why — null when all do.
+ *  Every path that writes map files (`PUT /files`, `/api/mod/load {maps}`,
+ *  `scripts/sync-example.ts`) refuses a broken one: a launch would quietly
+ *  play the show file instead. */
+export function mapProblems(maps: MapFiles): { file: string; problems: string[] } | null {
+  for (const file of Object.keys(maps).sort()) {
+    const { house, problems } = parseMapText(maps[file]!);
+    if (house === null) return { file, problems };
+  }
+  return null;
+}
+
 /** The variant a stored choice resolves to among `files`: the choice when
  *  it is still there, else the default file, else the first; null when
  *  there are no files at all. */
@@ -85,6 +97,13 @@ export function activeVariant(files: readonly string[], wanted: string | null, f
   if (wanted !== null && files.includes(wanted)) return wanted;
   if (files.includes(fallback)) return fallback;
   return [...files].sort(compareMapFiles(fallback))[0] ?? null;
+}
+
+/** The project file "Save to project" writes by default: the active
+ *  variant's (a show sibling keeps its name when it is a map-file name),
+ *  else the default file. The map page's `saveTarget` mirrors this. */
+export function saveFileFor(active: string | null): string {
+  return active !== null && isMapFile(active) ? active : DEFAULT_MAP_FILE;
 }
 
 /** The variant list a director picks from (default first). */
@@ -136,20 +155,54 @@ export function mapFileText(house: HouseMap): string {
   return `${JSON.stringify(house, null, 2)}\n`;
 }
 
+/** How `scripts/sync-example.ts` treats the project's maps: `merge` (the
+ *  default) only adds the example maps the project lacks, `replace`
+ *  (`--replace-maps`) makes the project's maps the example's, `keep`
+ *  (`--keep-maps`) touches none. */
+export type MapSyncMode = "merge" | "replace" | "keep";
+
 /**
- * What pushing an example folder's maps over a project's does
- * (`scripts/sync-example.ts`): every example map is written, every project
- * map the example lacks is deleted, and `replaced` lists the project maps
- * whose text would be lost (changed or deleted) — a map saved from the map
- * page since the last sync, say — so the script can back them up first.
+ * What pushing an example folder's maps over a project's does. A project map
+ * is the live copy — a survey saved from the map page lands there ("Save to
+ * project") — so by default it is never overwritten: an example map is
+ * added only when the project lacks that file, and `kept` lists the project
+ * maps that differ from the example's (the script prints the difference).
+ * `replace` writes every example map, deletes every project map the example
+ * lacks, and lists in `replaced` the project text that is lost, so the
+ * script can back it up first. `maps` is the project's map set afterwards.
  */
-export function planMapSync(project: MapFiles, example: MapFiles): { put: string[]; remove: string[]; replaced: string[] } {
-  const put = Object.keys(example).sort();
-  const remove = Object.keys(project).filter((f) => !(f in example)).sort();
-  const replaced = Object.keys(project)
-    .filter((f) => !(f in example) || example[f] !== project[f])
-    .sort();
-  return { put, remove, replaced };
+export function planMapSync(
+  project: MapFiles,
+  example: MapFiles,
+  mode: MapSyncMode = "merge",
+): { maps: MapFiles; put: string[]; remove: string[]; kept: string[]; replaced: string[] } {
+  const differs = (f: string): boolean => f in example && example[f] !== project[f];
+  if (mode === "keep") return { maps: { ...project }, put: [], remove: [], kept: [], replaced: [] };
+  if (mode === "replace") {
+    return {
+      maps: { ...example },
+      put: Object.keys(example).sort(),
+      remove: Object.keys(project).filter((f) => !(f in example)).sort(),
+      kept: [],
+      replaced: Object.keys(project).filter((f) => !(f in example) || differs(f)).sort(),
+    };
+  }
+  return {
+    maps: { ...example, ...project },
+    put: Object.keys(example).filter((f) => !(f in project)).sort(),
+    remove: [],
+    kept: Object.keys(project).filter(differs).sort(),
+    replaced: [],
+  };
+}
+
+/** One line telling two versions of a map file apart (sync-example's
+ *  "kept the project's copy" note): name, counts, and the bytes. */
+export function mapSummary(text: string): string {
+  const { house, problems } = parseMapText(text);
+  if (house === null) return `invalid (${problems[0] ?? "?"})`;
+  const n = (k: number, what: string): string => `${k} ${what}${k === 1 ? "" : "s"}`;
+  return `"${house.name}" — ${n(house.floors.length, "floor")}, ${n(house.rooms.length, "room")}, ${n(house.doors.length, "door")}, ${n(house.terminals.length, "terminal")}, ${n(house.duck.spots.length, "duck spot")}, ${text.length} bytes`;
 }
 
 /**
