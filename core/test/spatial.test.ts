@@ -506,11 +506,11 @@ describe("EventRuntime — the spatial plane", () => {
     expect((await call(rt, "POST", "/api/mod/spatial/begin", { guest: gid, world: "web" }, { token: a.token })).status).toBe(403);
 
     // Poses: 204, malformed 400; the terminal sees them on the next flush.
-    expect((await call(rt, "POST", "/api/spatial/pose", { p: [4, -2.7, 5.5], yaw: 30 }, { token: a.token })).status).toBe(204);
-    expect((await call(rt, "POST", "/api/spatial/pose", { p: [4, "x", 5.5], yaw: 30 }, { token: a.token })).status).toBe(400);
+    expect((await call(rt, "POST", "/api/spatial/pose", { p: [4, 0, 21.5], yaw: 30 }, { token: a.token })).status).toBe(204);
+    expect((await call(rt, "POST", "/api/spatial/pose", { p: [4, "x", 21.5], yaw: 30 }, { token: a.token })).status).toBe(400);
     rt.spatial.flush();
     const moved = term.of("poses").flatMap((f) => f.players as Array<{ session: string; room: string; floor: string }>);
-    expect(moved).toContainEqual(expect.objectContaining({ session: a.session, room: "tent", floor: "basement" }));
+    expect(moved).toContainEqual(expect.objectContaining({ session: a.session, room: "tent", floor: "ground" }));
     // Poses never touch the journal.
     expect(new Store(d).readJournal().some((l) => JSON.stringify(l.a).includes("pose"))).toBe(false);
 
