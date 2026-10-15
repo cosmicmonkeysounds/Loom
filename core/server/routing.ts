@@ -24,6 +24,20 @@ export const TERMINAL_CSP = `${HTML_CSP}; media-src 'self' blob:`;
  *  the camera) plus blob workers (three.js loaders may spin one up). */
 export const REINSTALL_CSP = `${HTML_CSP}; media-src 'self' blob:; worker-src 'self' blob:`;
 
+/**
+ * The base URL guest-join QRs and `/api/mod/codes` links are built on.
+ * Behind a public proxy the operator sets `LOOM_BASE_URL`
+ * (`https://app.mapsandducks.com`) and that wins — the container's LAN IP
+ * (`http://172.18.0.3:7000`) is unreachable from a phone on cellular.
+ * Without it (a LAN box), the first non-localhost interface URL, since a
+ * QR pointing at `localhost` is the phone itself.
+ */
+export function pickJoinBase(baseUrl: string | undefined, lanUrls: readonly string[]): string {
+  const explicit = baseUrl?.trim().replace(/\/+$/, "");
+  if (explicit) return explicit;
+  return lanUrls.find((u) => !u.includes("localhost")) ?? lanUrls[0]!;
+}
+
 /** A request path → the file to read from a built app's `dist/` (no
  *  leading slash; `/` is `index.html`). Null for anything climbing out. */
 export function appRelPath(pathname: string): string | null {

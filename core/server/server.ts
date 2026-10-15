@@ -61,7 +61,7 @@ import { handleEvent, specFromRow } from "./events-api.ts";
 import { handleCollab } from "./collab-api.ts";
 import { mailer } from "./mail.ts";
 import { WebmasterPortal, resendSender } from "./webmaster.ts";
-import { HTML_CSP, REINSTALL_CSP, TERMINAL_CSP, appRelPath, subAppRoute, wantsModRead } from "./routing.ts";
+import { HTML_CSP, REINSTALL_CSP, TERMINAL_CSP, appRelPath, pickJoinBase, subAppRoute, wantsModRead } from "./routing.ts";
 
 const PORT = Number(process.env.LOOM_PORT ?? 7000);
 const HOST = process.env.LOOM_HOST ?? "0.0.0.0";
@@ -139,14 +139,13 @@ function serveAppFile(pathname: string, res: ServerResponse, dist: URL = APP_DIS
 }
 
 /**
- * Best LAN-reachable base URL for guest join QRs. A QR built from the
- * console's `location.origin` is `http://localhost:…` when the operator
- * opened the console locally — useless to a phone (localhost is the phone
- * itself). The server knows its real LAN IP, so it hands one out.
+ * Base URL for guest join QRs: `LOOM_BASE_URL` on a public deployment,
+ * else the best LAN-reachable address. A QR built from the console's
+ * `location.origin` is `http://localhost:…` when the operator opened the
+ * console locally — useless to a phone (localhost is the phone itself).
  */
 function joinBase(): string {
-  const urls = lanUrls(PORT);
-  return urls.find((u) => !u.includes("localhost")) ?? urls[0]!;
+  return pickJoinBase(process.env.LOOM_BASE_URL, lanUrls(PORT));
 }
 
 // The program directory: Wikipedia, for the cast's profile pictures and

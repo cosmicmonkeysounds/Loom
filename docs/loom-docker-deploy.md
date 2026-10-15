@@ -415,6 +415,25 @@ cd ~/loom && docker compose up -d --build
 Restarts are safe mid-event: live state is an append-only journal that
 replays on boot, so the room recovers where it was.
 
+**Push the show's story to the preview** (from your Mac, after a merge):
+
+```bash
+LOOM_SSH=ubuntu@app.mapsandducks.com scripts/sync-show.sh
+# options (env): LOOM_PROJECT="Untitled Project"  LOOM_VPS_DIR=loom
+#   LOOM_SERVER=https://app.mapsandducks.com  LOOM_EXAMPLE=trapped-in-the-internet
+# --no-reload saves the files + snapshot without restarting the event;
+# --dry-run prints the plan.
+```
+
+It tunnels to the VPS's Postgres container over SSH (the db publishes no
+port; the password is read from the VPS's `.env`), runs
+`core/scripts/sync-example.ts` through the tunnel, and reloads the running
+event over `https://app…` — a real cut, every guest re-joins, so **never
+after doors**. `scripts/accept/k01.sh` (needs `LOOM_MOD_CODE`) checks the
+three front doors, that `/api/mod/codes` hands out the `LOOM_BASE_URL`
+origin, and that the SSE feed's 25 s pings arrive on time and uncompressed
+(the Caddyfile compresses everything *except* `*/events` and `*/stream`).
+
 **Look at logs:**
 
 ```bash

@@ -6,19 +6,31 @@
 #     ":8081" (default)        → parked on an unmapped port, effectively off
 #     "mapsandducks.com"       → automatic HTTPS via Let's Encrypt
 {$SITE_ADDRESS::80} {
-	encode gzip zstd
+	# No site-wide `encode`: a compressor holds small writes until it has
+	# enough to emit, so an SSE stream's 25 s ping and single-message frames
+	# would sit in Caddy's buffer instead of reaching the phone.
 
 	# The author editor — a static SPA built with --base=/edit/.
 	handle /edit* {
+		encode gzip zstd
 		root * /srv
 		try_files {path} /edit/index.html
 		file_server
 	}
 
 	# Everything else — the play app at /, /api/*, /e/:eventId/* —
-	# goes to the event server. SSE streams pass through untouched.
+	# goes to the event server. The play/terminal/reinstall bundles and
+	# JSON are compressed; the SSE streams are not:
+	#   /events, /e/:id/events                    (guest / booth / mod feeds)
+	#   /api/agent/stream, /api/spatial/stream    (+ /e/:id/ forms)
+	#   /api/projects/:id/collab/stream           (co-editing)
+	# and every proxied write is flushed at once (`flush_interval -1`).
+	@compressible not path */events */stream
 	handle {
-		reverse_proxy loom:7000
+		encode @compressible gzip zstd
+		reverse_proxy loom:7000 {
+			flush_interval -1
+		}
 	}
 }
 
