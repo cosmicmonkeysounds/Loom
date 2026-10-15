@@ -62,6 +62,10 @@ static func _near(a: float, b: float, tol := TOL) -> bool:
 	return absf(a - b) <= tol
 
 
+static func _near3(a: Array, b: Array, tol := TOL) -> bool:
+	return _near(a[0], b[0], tol) and _near(a[1], b[1], tol) and _near(a[2], b[2], tol)
+
+
 # --- goldens ---------------------------------------------------------------
 
 
@@ -1046,6 +1050,15 @@ func _test_main_and_game() -> void:
 	_check(Game.is_at_duck(house, [0.5, -1.0, 4.25], ground_duck), "game: 1.0 m below (another floor by y) is within the server's 1.2 m rise")
 	_check(not Game.is_at_duck(house, [0.5, -1.4, 4.25], ground_duck), "game: 1.4 m below on another floor is not")
 	_check(Game.is_at_duck(house, [0.5, 0.0, 4.25], [0.5, 1.9, 4.25]), "game: a shelf 1.9 m up on the same floor counts (the server's floor rule)")
+
+	# The trail on a stair (the web game's trail.ts): the show's basement
+	# stair, foot (−3.4, −2.7, 11) in the landing, head (−3.4, 0, 7) in the hall.
+	var up_trail := Game.trail_path(house, [-3.4, -2.57, 10.8], [-0.6, 0.0, 11.6])
+	_check(up_trail.size() > 2 and _near3(up_trail[1], [-3.4, 0.0, 7.0]), "game: just past the stair's foot, the trail points up the flight, not back at the foot")
+	var down_trail := Game.trail_path(house, [-3.4, -0.13, 7.2], [-2.3, -2.7, 11.6])
+	_check(down_trail.size() > 2 and _near3(down_trail[1], [-3.4, -2.7, 11.0]), "game: just past the head, it points down the flight")
+	var flat_from := [-2.0, 0.0, 4.0]
+	_check(Game.trail_path(house, flat_from, [-0.6, 0.0, 11.6]) == HouseRoute.route(house, flat_from, [-0.6, 0.0, 11.6]), "game: off the stairs the trail is the plain route")
 
 	main.queue_free()
 	await process_frame

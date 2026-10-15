@@ -416,10 +416,44 @@ static func is_at_duck(house: Dictionary, p: Array, duck_p: Array) -> bool:
 	return HouseLocate.floor_of(house, p[1]) == HouseLocate.floor_of(house, duck_p[1])
 
 
+## The chevrons' path from feet `from` to the duck `to` (house frame) — the
+## web game's `trail.ts`: off a stair it is [method HouseRoute.route]; on a
+## stair's rect (on one of its two floors) it leaves by whichever end makes
+## the whole walk shorter, `[from, end, …route(end, to)]`. `route` from a
+## point on the ramp starts in one of the stair's rooms, so a player who has
+## just stepped onto the foot would be pointed back at it.
+static func trail_path(house: Dictionary, from: Array, to: Array) -> Array:
+	var stair: Variant = null
+	var floor_id := HouseLocate.floor_of(house, from[1])
+	for s: Dictionary in house.get("stairs", []):
+		if not HouseGeometry.point_in_rect(s["rect"], [from[0], from[2]]):
+			continue
+		var lo: Variant = HouseGeometry.room_by_id(house, s["from"])
+		var hi: Variant = HouseGeometry.room_by_id(house, s["to"])
+		if (lo != null and lo["floor"] == floor_id) or (hi != null and hi["floor"] == floor_id):
+			stair = s
+			break
+	if stair == null or HouseGeometry.point_in_rect(stair["rect"], [to[0], to[2]]):
+		return HouseRoute.route(house, from, to)
+	var best: Array = []
+	var best_length := INF
+	for end: Dictionary in HouseRoute.portals(house):
+		if end["kind"] == "door" or end["id"] != str(stair["id"]):
+			continue
+		var rest: Array = HouseRoute.route(house, end["pos"], to)
+		var walk: Array = [from, end["pos"]]
+		walk.append_array(rest.slice(1))
+		var length := HouseRoute.path_length(walk)
+		if length < best_length:
+			best = walk
+			best_length = length
+	return best if not best.is_empty() else HouseRoute.route(house, from, to)
+
+
 ## Re-route the chevrons from `from` to the duck (house frame).
 func refresh_trail(from: Array, to: Array) -> void:
 	var points: Array = []
-	for s: Dictionary in HouseRoute.sample_trail(HouseRoute.route(builder.house, from, to)):
+	for s: Dictionary in HouseRoute.sample_trail(trail_path(builder.house, from, to)):
 		points.append({"pos": builder.to_world(s["p"]), "yaw": builder.yaw_to_world(s["yaw"])})
 	trail.show_points(points)
 

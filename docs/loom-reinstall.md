@@ -477,8 +477,8 @@ indicator trail (`route` → golden chevrons every 0.75 m, refreshed twice a
 second; a player standing on a stair rect is routed out by whichever end
 of it makes the walk shorter — `[feet, end, …route(end, duck)]` — because
 `route` from a point on the ramp starts in one of the stair's rooms and
-would point back at the end just left; not normative, the game's
-`trail.ts`), a compass/room HUD, the duck (bobbing, glowing, quacks via
+would point back at the end just left; not normative — the web game's
+`trail.ts`, ported as the VR game's `Game.trail_path`), a compass/room HUD, the duck (bobbing, glowing, quacks via
 WebAudio), other players as ghosts (from the stream), the terminals as
 glowing screens on the walls ("someone is watching from the Kitchen").
 Arrive within 0.9 m of the duck in plan, on its floor and within 1.2 m
