@@ -27,7 +27,10 @@ in this frame; a game with its own world frame converts through
 | `three/` | `@loom/house/three` — the three.js scene builder (peer dep `three`) |
 
 The show's map is `core/examples/trapped-in-the-internet/house.json` (a
-placeholder layout until the house is measured).
+placeholder layout until the house is measured, with the story's rooms:
+the tent out in the backyard, the Server Room off the basement landing).
+Its rain variant `house.shed.json` (The Internet in the shed) is checked
+by `test/show.test.ts` + `test/route.test.ts` but has no golden.
 
 ```bash
 pnpm --filter @loom/house test        # vitest (validation, hand-computed walls, locate, route, goldens, sync)

@@ -299,13 +299,13 @@ tolerance: metres, and m² for orientations).
 > **What it guarantees (not normative).** Inside a room every leg stays in
 > the room's polygon at its ends and midpoint and crosses none of its edges
 > properly, so a route no longer cuts a corner of a concave room — the
-> show's Rec Room, which wraps round the tent, now turns at the tent's
-> north-west corner (`[1.15, −2.7, 6.85]`) instead of running through its
-> south wall — and no leg crosses a stair hole or its rails, or the ramp
-> footprint below, and no leg runs through a solid prop's grown bounds —
-> the Rec Room's route from the tent flap to the furnace now turns at the
-> ping-pong table's north-east waypoint (`[4.22, −2.7, 7.888]`) instead of
-> crossing the table. Doors are walked through at their centre point; legs
+> show's backyard, which wraps round the tent, turns at the yard's reflex
+> corner off the tent's north-west (`[1.65, 0, 18.65]`) instead of running
+> through the tent's north wall — and no leg crosses a stair hole or its
+> rails, or the ramp footprint below, and no leg runs through a solid
+> prop's grown bounds — a route across the yard turns at the Truth Pong
+> table's corner waypoints (`[4.015, 0, 14.52]`) instead of crossing the
+> table. Doors are walked through at their centre point; legs
 > may run along a wall or touch a corner. A prop whose outer corners all
 > fall outside its room (one pushed against two walls) adds no waypoints,
 > so a route may detour through a door to reach past it, or — with no way
@@ -324,9 +324,17 @@ tolerance: metres, and m² for orientations).
 ### 1.3 Where the map lives
 
 - The show's map: `core/examples/trapped-in-the-internet/house.json` —
-  a **placeholder layout** (plausible rooms for the show's LOCATIONs) until
-  the real house is measured. Edit it with the **map editor**
-  (`/reinstall/map`) or by hand.
+  a **placeholder layout** (guessed dimensions) until the real house is
+  measured, but with the story's structure: every LOCATION has a room, the
+  tent (The Internet: the spawn, the station mats, the `tent` terminal) is
+  an indoor room in a notched backyard, the Server Room has a door and no
+  duck. Edit it with the **map editor** (`/reinstall/map`) or by hand.
+- Its rain variant: `house.shed.json` beside it (the file convention is
+  `house.<variant>.json`) — the same map with The Internet in the shed
+  (room `shed`) and no tent, the same terminal ids, duck spots and
+  LOCATIONs. `core/test/show-house.test.ts` validates both, routes from the
+  spawn to every duck spot, and pins what they share; `pnpm test:vr` has
+  been run on both (2026-10-15).
 - The event server serves the event's map: the director's saved one
   when there is one (and it validates) — `STATE_DIR/<eventId>/spatial-house.json`,
   or `STATE_DIR/spatial-house.json` for the default (env-passcode) event,
