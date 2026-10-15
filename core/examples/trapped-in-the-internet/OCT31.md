@@ -273,7 +273,7 @@ Four lanes, each with its own review-fix round: **rooms** (the real house's room
 
 #### Deploy log
 
-- 2026-10-15: (pending)
+- 2026-10-15: waves 1–3 shipped as **`w3-1015`** (fcc9ccd; `scripts/ops/predeploy.sh --vr` green; rollback → `pre-w3-1015`, the adopted wave-1 build). `.env` gained `LOOM_VAPID_*` (generated on the VPS), `LOOM_RL_RESOLVE=600` / `LOOM_RL_REGISTER=400` / `LOOM_RL_LOGIN_FAILURES=100/300`, `LOOM_TTS_URL=off` (backup `~/loom/.env.bak-2026-10-15`); the kokoro container is removed; no stale `spatial-house.json` existed. `LOOM_SSH=loom-vps LOOM_PROJECT="trapped in the internet" pnpm sync-show` pushed 30 files + both maps into the project and reloaded its preview event (codes kept). Verified live with a headless driver on the mod code (no author login): two phones joined (CAPTCHA, upload, pass), Norton cleared them, Winamp was sent to the Internet, the tent tablet (`/reinstall/`) walked them from the tent to a duck in the Hard Drive (top floor) in 44 s, the phone got *The Golden Duck* and moved to the Desktop, the TV mirror showed "WINAMP HAS BEEN REINSTALLED"; no page errors. The rehearsal was then restarted clean.
 
 ### MUST (7.0 lane-days; N-07 counts with the N folds under CHEAP-WIN): without it the night breaks or is unsafe
 
