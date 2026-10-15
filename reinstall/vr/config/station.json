@@ -1,5 +1,5 @@
 {
-  "server": "http://192.168.1.10:7000",
+  "server": "https://app.mapsandducks.com",
   "code": "CHANGEME",
   "station": "vr-1",
   "name": "Headset 1",

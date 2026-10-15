@@ -2,7 +2,7 @@
 # Headless checks for the VR game: the §1.2 goldens (walls / routes /
 # locate ports vs @loom/house), frames, duck, locomotion maths, config,
 # the pose pump, the SSE parser, the lobby picker, the game state machine,
-# and a smoke test that main.tscn builds the house.
+# a smoke test that main.tscn builds the house, and the Quest build tooling.
 #
 #   ./test/run.sh [path-to-godot]
 
@@ -41,3 +41,6 @@ watchdog 180 "$godot" --headless --path "$project" --xr-mode off --script res://
 
 # --offline keeps the ServerLink autoload off the network.
 watchdog 180 "$godot" --headless --path "$project" --xr-mode off --script res://test/game.gd -- --offline
+
+# The Quest build tooling (K-30): pure helpers + dry runs, no Android needed.
+"$here/quest_sh.sh"

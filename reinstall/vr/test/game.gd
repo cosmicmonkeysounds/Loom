@@ -252,6 +252,9 @@ func _test_config() -> void:
 	_check(StationConfig.is_configured(cfg), "config: a real passcode + URL is configured")
 	var committed := StationConfig.read_file(StationConfig.RES_PATH)
 	_check(committed.get("code") == StationConfig.PLACEHOLDER_CODE, "config: the committed file carries the placeholder")
+	# Android refuses cleartext http and the Quest preset doesn't allow it (K-30):
+	# the committed server is the VPS over HTTPS.
+	_check(StationConfig.parse_url(str(committed.get("server", ""))).get("tls") == true, "config: the committed server is HTTPS")
 
 	var u := StationConfig.parse_url("http://192.168.1.10:7000/")
 	_check(u.get("host") == "192.168.1.10" and u.get("port") == 7000 and u.get("tls") == false and u.get("base") == "http://192.168.1.10:7000", "config: parse_url host/port")

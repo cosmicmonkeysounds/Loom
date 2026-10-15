@@ -551,7 +551,9 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=kitchen&vie
 
 - `project.godot`: OpenXR on, XR shaders on, Mobile renderer, ETC2/ASTC,
   `startup_alert=false`, physics 90 Hz; `export_presets.cfg` "Quest" (Gradle
-  build, `xr_mode` OpenXR, arm64, INTERNET permission). Without an OpenXR
+  build, `xr_mode` OpenXR, the Meta vendor plugin for Quest 3, arm64,
+  INTERNET permission, no cleartext — the server is HTTPS; built by
+  `tools/quest.sh` from a staging copy). Without an OpenXR
   runtime (a Mac) it runs as a desktop game (WASD + mouse) for development.
 - `net/server_link.gd` (autoload): config (`res://config/station.json` →
   `user://station.json` → command-line `-- --server … --code … --station …`),
