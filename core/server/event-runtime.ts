@@ -422,6 +422,7 @@ export class EventRuntime {
       // The speedrun survives a server restart mid-show (SW-RE-14).
       onRun: (run) => this.store.appendRun(run),
     });
+    this.spatial.setOpen(false); // idle until the doors open
     this.checkin = new GuestCheckin({
       sim: () => this.sim,
       open: () => this.open,
@@ -525,6 +526,13 @@ export class EventRuntime {
   /** True once the doors are open and a sim exists. */
   private get open(): boolean {
     return this.phase === "open" && this.sim !== null;
+  }
+
+  /** Move the lifecycle; the duck-run clock stops while the doors are
+   *  closed (SW-RE-14 — a pause mid-run isn't the player's time). */
+  private setPhase(phase: RuntimePhase): void {
+    this.phase = phase;
+    this.spatial.setOpen(this.open);
   }
 
   /** The live sim, or null before the doors open / after the event ends. */
@@ -1494,7 +1502,7 @@ export class EventRuntime {
     this.sim = Sim.fromSources(source);
     this.scenarioSource = source;
     this.scenarioName = name;
-    this.phase = "paused";
+    this.setPhase("paused");
     this.seedAvatars();
   }
 
@@ -1656,7 +1664,7 @@ export class EventRuntime {
       this.resetChat();
       this.pendingTickMs = 0;
     }
-    this.phase = "open";
+    this.setPhase("open");
     this.persistMeta();
     this.startTicker();
     // A live event opens exactly like a rehearsal: the `entry:` beat plays
@@ -1671,7 +1679,7 @@ export class EventRuntime {
   /** Pause the event: stop the clock, keep all state. `/api/mod/stop`. */
   pause(): void {
     this.flushTick();
-    this.phase = "paused";
+    this.setPhase("paused");
     this.stopTicker();
     this.persistMeta();
     this.pushSnapshots();
@@ -1832,7 +1840,7 @@ export class EventRuntime {
     for (const id of [...this.decisionChannels.keys()]) {
       if (this.sim?.pendingChoiceFor(id) == null) this.decisionChannels.delete(id);
     }
-    this.phase = meta.phase;
+    this.setPhase(meta.phase);
     for (const [id, owner] of meta.owners ?? []) this.personaOwners.set(id, owner);
     const entries = this.store.loadSessions();
     this.sessions.load(entries);

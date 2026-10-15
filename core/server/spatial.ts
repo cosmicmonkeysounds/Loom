@@ -68,7 +68,8 @@ export interface SpatialHubOptions {
 
 /** One find of the duck: who, on what, and how long it took — from the
  *  moment the player was in the simulation (a web begin, or a headset's
- *  first pose) to the find. */
+ *  first pose) to the find, less any time the doors were closed (a
+ *  director's pause freezes the run like it freezes the story's clocks). */
 export interface DuckRun {
   guest: string;
   name: string;
@@ -123,7 +124,8 @@ interface Session {
   activeAt: number;
   startedAt: number;
   /** When the player entered the simulation (a web begin, or the claiming
-   *  pose of a parked assignment) — a duck run's clock starts here. */
+   *  pose of a parked assignment) — a duck run's clock starts here, read
+   *  on the open-doors clock (`runClock`). */
   playingAt: number;
   found: boolean;
   foundAt: number;
@@ -249,6 +251,9 @@ export class SpatialHub {
   /** Every find since the story (re)started (the ceremony's speedrun). */
   private readonly runLog: DuckRun[] = [];
   private map: { house: HouseMap; version: string; source: HouseSource } | null = null;
+  /** Closed-doors time so far, and when the doors last closed (null = open). */
+  private closedMs = 0;
+  private closedSince: number | null = null;
 
   constructor(o: SpatialHubOptions) {
     this.o = o;
@@ -256,6 +261,24 @@ export class SpatialHub {
 
   private now(): number {
     return (this.o.now ?? Date.now)();
+  }
+
+  /** The hub's clock with every closed-doors stretch taken out: duck runs
+   *  are timed on it, so a pause mid-run doesn't count. */
+  private runClock(): number {
+    const now = this.now();
+    return now - this.closedMs - (this.closedSince === null ? 0 : now - this.closedSince);
+  }
+
+  /** The runtime's doors opened or closed (open / pause / a fresh load).
+   *  Poses still flow while closed; only the duck-run clock stops. */
+  setOpen(open: boolean): void {
+    if (open && this.closedSince !== null) {
+      this.closedMs += this.now() - this.closedSince;
+      this.closedSince = null;
+    } else if (!open && this.closedSince === null) {
+      this.closedSince = this.now();
+    }
   }
 
   // -- the house ------------------------------------------------------------
@@ -412,7 +435,7 @@ export class SpatialHub {
       dirty: false,
       activeAt: now,
       startedAt: now,
-      playingAt: now,
+      playingAt: this.runClock(),
       found: false,
       foundAt: 0,
       released: false,
@@ -509,7 +532,7 @@ export class SpatialHub {
    */
   private claim(s: Session): void {
     s.claimed = true;
-    s.playingAt = this.now();
+    s.playingAt = this.runClock();
     if (s.station !== null) {
       for (const o of [...this.sessions.values()]) {
         if (o !== s && o.station === s.station) this.finish(o, "replaced");
@@ -541,7 +564,7 @@ export class SpatialHub {
     s.activeAt = s.foundAt;
     s.released = release({ id: s.id, guest: s.guest, device: s.device, captured: s.captured });
     this.lastFound.set(s.guest, s.duck.id);
-    const run: DuckRun = { guest: s.guest, name: s.name, world: s.world, device: s.device, ms: Math.max(0, s.foundAt - s.playingAt), foundAt: s.foundAt };
+    const run: DuckRun = { guest: s.guest, name: s.name, world: s.world, device: s.device, ms: Math.max(0, this.runClock() - s.playingAt), foundAt: s.foundAt };
     this.runLog.push(run);
     this.o.onRun?.(run);
     this.broadcast("found", { session: s.id, guest: s.guest, name: s.name, duck: s.duck, released: s.released });

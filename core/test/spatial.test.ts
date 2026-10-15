@@ -934,6 +934,48 @@ describe("duck runs", () => {
     expect(hub.runs()).toEqual([]);
   });
 
+  it("a director's pause mid-run is not the player's time (closed doors stop the run clock)", () => {
+    let clock = 1_000;
+    const hub = new SpatialHub({ eventId: "evt", now: () => clock });
+    hub.setHouse(fixture("two-rooms"), "show", false);
+    const web = hub.begin({ guest: "g-1", name: "Winamp", world: "web", device: "Tent tablet", station: null, captured: true })!;
+    const vr = hub.begin({ guest: "g-2", name: "VLC", world: "vr", device: "Headset 1", station: "vr-1", captured: true })!;
+    clock += 40_000;
+    hub.setOpen(false); // the director pauses for a cut…
+    hub.pose(vr.token, { p: [1, 0, 1], yaw: 0, pitch: 0 }); // …and the headset goes on mid-pause
+    clock += 180_000;
+    hub.setOpen(false); // a second close is a no-op
+    hub.setOpen(true);
+    clock += 5_000;
+    hub.pose(web.token, { p: web.duck.pos, yaw: 0, pitch: 0 });
+    hub.found(web.token, () => true);
+    hub.pose(vr.token, { p: vr.duck.pos, yaw: 0, pitch: 0 });
+    hub.found(vr.token, () => true);
+    expect(hub.runs().map((r) => [r.guest, r.ms])).toEqual([
+      ["g-1", 45_000],
+      ["g-2", 5_000],
+    ]);
+  });
+
+  it("the runtime stops the run clock while paused", async () => {
+    const d = freshDir();
+    const clock = { t: 0 };
+    const rt = runtimeAt(d, clock);
+    rt.openDoors();
+    const gid = await capturedPersona(rt, "Pinball");
+    const a = (await mod(rt, "/api/mod/spatial/begin", { guest: gid, world: "web", device: "Tent tablet" })).json as unknown as Assignment;
+    clock.t += 30_000;
+    rt.pause();
+    clock.t += 120_000;
+    await call(rt, "POST", "/api/spatial/pose", { p: a.duck.pos, yaw: 0 }, { token: a.token });
+    expect((await call(rt, "POST", "/api/spatial/found", {}, { token: a.token })).status).toBe(409); // doors are closed
+    rt.openDoors();
+    clock.t += 2_000; // the game's retry
+    expect((await call(rt, "POST", "/api/spatial/found", {}, { token: a.token })).json).toMatchObject({ ok: true });
+    expect(new Store(d).loadRuns().map((r) => r.ms)).toEqual([32_000]);
+    rt.dispose();
+  });
+
   it("parseDuckRun keeps a well-formed stored line and drops anything else", () => {
     const ok = { guest: "g-1", name: "Winamp", world: "vr", device: "Headset 1", ms: 5, foundAt: 9 };
     expect(parseDuckRun(ok)).toEqual(ok);
