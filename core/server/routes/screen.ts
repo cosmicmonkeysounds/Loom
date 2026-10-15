@@ -18,6 +18,10 @@
 //!                 the poller's `after` seq, the room's `head` seq, and the
 //!                 director's TV-voice mute (`POST /api/mod/screen/voice`).
 //!
+//! The director's side (K-29): `GET /api/mod/screen/terminals` answers just
+//! the heartbeat list + the TV-voice mute, without recording a poll, for the
+//! editor's Run → Terminals card (red after `TERMINAL_SILENT_MS`, a chime).
+//!
 //! Why not the mod feed (`docs/trapped/screens-audit.md` §3.3): it pushes a
 //! full ModView per story step, carries every DM onto a wall a guest can
 //! touch, has no "current state" for a rebooted tablet, and counts every
@@ -188,6 +192,12 @@ export function voiceLinesOf(
   return { head, lines: lines.reverse() };
 }
 
+/** A terminal that hasn't polled for this long is silent (K-29): the editor's
+ *  card goes red and chimes. Terminals poll every 2 s (the TV every 1 s), so
+ *  this is ten missed polls; with the card's own 4 s poll a pulled tablet
+ *  turns red within ~25 s. */
+export const TERMINAL_SILENT_MS = 20_000;
+
 /** At most this many terminals are remembered (oldest poll evicted). */
 export const MAX_SCREENS = 32;
 
@@ -302,6 +312,11 @@ export class ScreenWatch {
     this.polls.delete(name); // re-insert: Map order = poll order
     this.polls.set(name, { name, spot: clip(who.spot), view: clip(who.view, 16), character: clip(who.character), at: this.now() });
     while (this.polls.size > MAX_SCREENS) this.polls.delete(this.polls.keys().next().value!);
+  }
+
+  /** The watch's clock (server epoch ms). */
+  clock(): number {
+    return this.now();
   }
 
   /** Each terminal's last poll, most recent first. */
@@ -422,5 +437,36 @@ export async function handleScreenVoicePost(watch: ScreenWatch, req: IncomingMes
   }
   if (typeof body["muted"] === "boolean") watch.voiceMuted = body["muted"];
   sendJson(res, 200, { muted: watch.voiceMuted });
+  return true;
+}
+
+/** What the director's terminals card reads (K-29). */
+export interface ScreenTerminals {
+  /** Server epoch ms. */
+  now: number;
+  /** Each terminal's last poll, most recent first (`ago` in ms). */
+  terminals: Array<ScreenPoll & { ago: number }>;
+  /** The TV-voice mute (K-18), so the card can flip it. */
+  voiceMuted: boolean;
+  /** The server's silence threshold (ms). */
+  silentMs: number;
+}
+
+/** The heartbeat list, read-only (pure apart from the watch's clock). */
+export function screenTerminals(watch: ScreenWatch): ScreenTerminals {
+  return { now: watch.clock(), terminals: watch.seen(), voiceMuted: watch.voiceMuted, silentMs: TERMINAL_SILENT_MS };
+}
+
+/**
+ * `GET /api/mod/screen/terminals` — moderator-gated (the author's session or a
+ * mod token). Reading it never records a poll, so the editor isn't a terminal.
+ */
+export function handleScreenTerminalsGet(watch: ScreenWatch, req: IncomingMessage, res: ServerResponse, url: URL, authorized: (token: string | undefined) => boolean): boolean {
+  if (!authorized(queryTokenOf(req, url))) {
+    sendJson(res, 403, { error: "moderators only" });
+    return true;
+  }
+  res.setHeader?.("cache-control", "no-store");
+  sendJson(res, 200, screenTerminals(watch));
   return true;
 }

@@ -361,7 +361,10 @@ the scripted beat, or null for a director's `say` as the character. No
 speak (`terminal/src/tv.ts`). `POST /e/:id/api/mod/screen/voice {muted}`
 (mod token or author session) sets the TV-voice mute every TV reads off
 its next poll — runtime state, a server restart unmutes; a body without
-`muted` reads it.
+`muted` reads it. `GET /e/:id/api/mod/screen/terminals` (K-29, mod token
+or author session) is the director's heartbeat list: `{now, terminals:
+[{name, spot, view, character, at, ago}], voiceMuted, silentMs}` —
+`TERMINAL_SILENT_MS` = 20 s — and reading it never records a poll.
 
 ## Running a live event
 

@@ -7,6 +7,7 @@
 //! makes these same-origin so the cookie flows.
 
 import type { AgentControl, AgentMindSummary, AgentThought, GuestView, PrimeView } from '@loom/core/views'
+import type { ScreenTerminals } from '@/lib/terminals'
 
 const BASE = import.meta.env.VITE_LOOM_API ?? ''
 
@@ -353,5 +354,18 @@ export const modApi = {
     if (o.limit !== undefined) q.set('limit', String(o.limit))
     const qs = q.toString()
     return await req('GET', `/e/${eventId}/api/mod/agent/trace${qs ? `?${qs}` : ''}`)
+  },
+}
+
+// --- the wall terminals + TV (K-29: the director's heartbeat card) --------
+
+export const screensApi = {
+  /** Each terminal's last poll, the server's silence threshold and the TV-voice mute. */
+  async terminals(eventId: string): Promise<ScreenTerminals> {
+    return await req<ScreenTerminals>('GET', `/e/${eventId}/api/mod/screen/terminals`)
+  },
+  /** Mute / unmute the TV's room voice (K-18); every TV reads it off its next poll. */
+  async setVoiceMuted(eventId: string, muted: boolean): Promise<{ muted: boolean }> {
+    return await req<{ muted: boolean }>('POST', `/e/${eventId}/api/mod/screen/voice`, { muted })
   },
 }

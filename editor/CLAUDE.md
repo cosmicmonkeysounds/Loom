@@ -194,7 +194,13 @@ rehearsal · *Go live with real guests →* on a server project · the last
 run's Export line · the scratch offer on a control-plane error) and,
 while running, **Join** (three codes with copy, join URL, QR, a
 performer sign-in row per character with presence), **Directing now**
-(names, `(you)`, started-by + age), **Look up a guest** (camera QR /
+(names, `(you)`, started-by + age), **Terminals** (K-29,
+`run/TerminalsCard.tsx`: every wall terminal + the TV by last poll, red
+after 20 s silent with a chime — again each minute until *ack* — the
+editor's own memory of terminals a restarted server forgot, the TV-voice
+mute; a `📟 N/N` header pill; `store/terminals.ts` is bound from `App.tsx`
+to the server run so it chimes from any mode, rules in pure
+`lib/terminals.ts`, sound in `lib/chime.ts`), **Look up a guest** (camera QR /
 manual id → Inspector); a local run gets one explainer card. A source
 test pins that `RunPage.tsx` renders none of the lifecycle testids.
 

@@ -15,7 +15,7 @@ import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import type { AgentRequest } from "../server/agents.ts";
 import type { ChatMessage } from "../server/chat.ts";
-import { MAX_SCREENS, MAX_VOICE_LINES, ScreenWatch, foldProgram, voiceLinesOf, screenCueClass, screenCueOf, screenTargetOf, slidePersists, type ScreenProgram, type ScreenState } from "../server/routes/screen.ts";
+import { MAX_SCREENS, MAX_VOICE_LINES, ScreenWatch, TERMINAL_SILENT_MS, screenTerminals, type ScreenTerminals, foldProgram, voiceLinesOf, screenCueClass, screenCueOf, screenTargetOf, slidePersists, type ScreenProgram, type ScreenState } from "../server/routes/screen.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { scenarioSource } from "../examples/load.ts";
 
@@ -410,6 +410,42 @@ describe("agent dispatch for a hidden character", () => {
     await signal(rt, "wake the ghost");
     await call(rt, "POST", "/api/guest/say", { channel: "dm:Ghost", text: "now?" }, { token });
     expect(requests().map((r) => r.thread.audience[0])).toEqual(["@Clippy", g.json["id"]]);
+    rt.dispose();
+  });
+});
+
+// --- the director's heartbeat card (K-29) -------------------------------------
+
+describe("GET /api/mod/screen/terminals — the heartbeat card", () => {
+  it("lists each terminal's last poll with the server clock and the TV mute; reading never records a poll", () => {
+    let t = 50_000;
+    const w = new ScreenWatch({ now: () => t });
+    w.poll(null, { name: "Kitchen", spot: "kitchen", view: "auto", character: "Trabolta" }, () => false);
+    t += TERMINAL_SILENT_MS + 1;
+    w.poll(null, { name: "TV", spot: "", view: "tv", character: "Trabolta" }, () => false);
+    w.voiceMuted = true;
+    const r = screenTerminals(w);
+    expect(r).toMatchObject({ now: t, voiceMuted: true, silentMs: TERMINAL_SILENT_MS });
+    expect(r.terminals.map((p) => [p.name, p.view, p.ago])).toEqual([
+      ["TV", "tv", 0],
+      ["Kitchen", "auto", TERMINAL_SILENT_MS + 1],
+    ]);
+    expect(screenTerminals(w).terminals).toHaveLength(2);
+  });
+
+  it("is mod-gated (author session or mod token) and doesn't count the editor as a terminal", async () => {
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(freshDir()), codes: CODES, scenarioName: "t", scenarioSource: AGENT_SOURCE, joinBase: () => "http://localhost" });
+    expect((await call(rt, "GET", "/api/mod/screen/terminals", {})).status).toBe(403);
+    await call(rt, "GET", "/api/screen/state?name=Hall&spot=hall&view=auto&character=Ghost", {}, { moderator: true });
+    const r = await call(rt, "GET", "/api/mod/screen/terminals", {}, { moderator: true });
+    expect(r.status).toBe(200);
+    expect(r.res.headers["cache-control"]).toBe("no-store");
+    const body = r.json as unknown as ScreenTerminals;
+    expect(body.terminals.map((p) => p.name)).toEqual(["Hall"]);
+    expect(body.voiceMuted).toBe(false);
+    const login = await call(rt, "POST", "/api/mod/login", { passcode: CODES.mod });
+    const token = login.json["token"] as string;
+    expect((await call(rt, "GET", `/api/mod/screen/terminals?token=${token}`, {})).status).toBe(200);
     rt.dispose();
   });
 });
