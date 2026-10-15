@@ -5,7 +5,9 @@ Wire contract (core/server/event-runtime.ts):
   - `POST /api/mod/signal {name, subject?}`
   - `POST /api/mod/beat   {name, subject?}`
   - `POST /api/mod/set    {id, field: "location", value}` — the arrive path
-  - SSE mod feed: `GET /events?role=mod&id=stagehand`
+  - SSE mod feed: `GET /events?role=mod&id=stagehand&lean=1` — the lean
+    feed: every `sim` / `message` / `lifecycle` frame, never the ≈ 200 KB
+    `snapshot` / `history` views a director's console needs
   - agents: `GET /api/agent/stream?characters=…&name=…` (SSE) and
     `POST /api/agent/reply {id, say, adjust, worker}`
 
@@ -69,7 +71,7 @@ class ModClient:
 
     @property
     def sse_url(self) -> str:
-        return f"{self.base_url}{self.path('/events')}?role=mod&id=stagehand"
+        return f"{self.base_url}{self.path('/events')}?role=mod&id=stagehand&lean=1"
 
     async def ensure_token(self) -> None:
         """Exchange the mod passcode for a session token if needed."""

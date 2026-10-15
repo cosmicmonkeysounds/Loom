@@ -257,9 +257,11 @@ the mod capability. Server side: `core/server/agents.ts`.
 
 ### Wire contracts (core/server/event-runtime.ts)
 
-- SSE feed: `GET {url}[/e/:event]/events?role=mod&id=stagehand` —
-  frames `snapshot` / `history` / `message` / `sim`; stagehand consumes
-  `sim` only.
+- SSE feed: `GET {url}[/e/:event]/events?role=mod&id=stagehand&lean=1` —
+  the **lean** mod feed: `message` / `sim` / `lifecycle` frames with no
+  `snapshot` / `history` (a director's `ModView` is ≈ 200 KB at a full
+  house — not something to pull over the house uplink on every step);
+  stagehand consumes `sim` only.
 - Mod auth: `x-loom-token` header; bootstrapped via
   `POST /api/mod/login {passcode}` when the config gives `mod_passcode`.
 - Mutations: `POST /api/mod/signal {name, subject?}`,

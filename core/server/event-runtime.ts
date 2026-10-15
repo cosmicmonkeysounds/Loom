@@ -74,6 +74,10 @@ interface Client {
    *  the session closes the stream). */
   via?: string;
   token?: string;
+  /** A house tool on the mod feed (`?lean=1` — stagehand): every `sim` /
+   *  `message` / `lifecycle` frame, but never a `snapshot` or `history`
+   *  (a `ModView` is ≈ 200 KB at a full house). */
+  lean?: boolean;
   res: ServerResponse;
 }
 
@@ -235,7 +239,16 @@ export interface EventRuntimeInit {
   houseFile?: string;
   /** The spatial hub's clock (tests). */
   now?: () => number;
+  /** Least gap between two `snapshot` frames to the full mod consoles
+   *  (default `MOD_SNAPSHOT_MS`; tests pass 0 for one frame per step). */
+  modSnapshotMs?: number;
 }
+
+/** Mod-console snapshots are coalesced to at most one per this many ms
+ *  (≤ 2/s): a `ModView` is ≈ 200 KB at 45 guests and used to be re-sent to
+ *  every director on every story step. The trailing frame is always sent,
+ *  computed at flush time, so a console never ends on a stale view. */
+export const MOD_SNAPSHOT_MS = 500;
 
 /** The process-wide speech proxy (configured from `LOOM_TTS_*`). */
 let sharedTts: TtsProxy | null = null;
@@ -321,6 +334,10 @@ export class EventRuntime {
   // going on; started lazily, stops itself when idle.
   private spatialLoop: ReturnType<typeof setInterval> | null = null;
   private spatialTicks = 0;
+  // Mod snapshot coalescing (`pushModSnapshots`).
+  private readonly modSnapshotMs: number;
+  private modSnapshotAt = Number.NEGATIVE_INFINITY;
+  private modSnapshotTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly agents = new AgentHub({
     build: (thread, id) => this.buildAgentRequest(thread, id),
     typing: (thread, on) => this.pushTyping(thread, on),
@@ -341,6 +358,7 @@ export class EventRuntime {
     this.wiki = init.wiki ?? null;
     this.images = init.images ?? defaultImages();
     this.houseFile = init.houseFile ?? defaultHouseFile();
+    this.modSnapshotMs = Math.max(0, init.modSnapshotMs ?? MOD_SNAPSHOT_MS);
     this.spatial = new SpatialHub({ eventId: init.eventId, ...(init.now !== undefined ? { now: init.now } : {}) });
   }
 
@@ -464,21 +482,55 @@ export class EventRuntime {
     return out.sort((a, b) => a - b);
   }
 
-  /** Push fresh snapshots to every connected client. */
+  /** Push fresh snapshots to every connected client (mod consoles coalesced). */
   private pushSnapshots(): void {
-    for (const c of this.clients) sseSend(c.res, "snapshot", this.snapshotFor(c));
+    for (const c of this.clients) if (c.role !== "mod") sseSend(c.res, "snapshot", this.snapshotFor(c));
+    this.pushModSnapshots();
   }
 
   /** Someone came or went — refresh every mod console's presence view. */
   private pushPresence(): void {
-    for (const c of this.clients) if (c.role === "mod") sseSend(c.res, "snapshot", this.snapshotFor(c));
+    this.pushModSnapshots();
+  }
+
+  /**
+   * Send the full mod consoles a fresh `ModView` — at once if the last one
+   * went out ≥ `modSnapshotMs` ago, else once when the window closes (a
+   * burst of steps → one trailing frame, computed then). The view is the
+   * same for every director, so it is built and serialised once per frame;
+   * lean clients never get one.
+   */
+  private pushModSnapshots(): void {
+    if (this.modSnapshotTimer !== null) return;
+    const wait = this.modSnapshotAt + this.modSnapshotMs - Date.now();
+    if (wait <= 0) {
+      this.flushModSnapshots();
+      return;
+    }
+    this.modSnapshotTimer = setTimeout(() => {
+      this.modSnapshotTimer = null;
+      this.flushModSnapshots();
+    }, wait);
+    this.modSnapshotTimer.unref?.();
+  }
+
+  private flushModSnapshots(): void {
+    // Same two writes as `sseSend`, the JSON serialised once for everyone.
+    let data: string | null = null;
+    for (const c of this.clients) {
+      if (c.role !== "mod" || c.lean === true) continue;
+      data ??= `data: ${JSON.stringify(this.modViewNow())}\n\n`;
+      c.res.write("event: snapshot\n");
+      c.res.write(data);
+    }
+    if (data !== null) this.modSnapshotAt = Date.now();
   }
 
   /** Re-send every client its full thread history — after a reset / reload
    *  the chat timeline restarts (seqs from 0 again), so a client that kept
    *  the old feed would interleave stale rows with new ones. */
   private pushHistory(): void {
-    for (const c of this.clients) sseSend(c.res, "history", this.historyFor(c));
+    for (const c of this.clients) if (c.lean !== true) sseSend(c.res, "history", this.historyFor(c));
   }
 
   private historyFor(c: Client): ChatMessage[] {
@@ -1479,6 +1531,8 @@ export class EventRuntime {
   /** Tear the runtime down (stop the clock, drop SSE clients). */
   dispose(by?: string): void {
     this.stopTicker();
+    if (this.modSnapshotTimer !== null) clearTimeout(this.modSnapshotTimer);
+    this.modSnapshotTimer = null;
     this.pushLifecycle("ended", by !== undefined ? { by } : {});
     for (const c of this.clients) {
       try {
@@ -1621,6 +1675,8 @@ export class EventRuntime {
       res.write(":ok\n\n");
       const client: Client = { role, id, res };
       if (role === "mod") client.name = opts.moderatorName ?? "Director";
+      // `?lean=1` (mod feed only): the house tools' stream — frames, no views.
+      if (role === "mod" && url.searchParams.get("lean") === "1") client.lean = true;
       if (role === "prime") client.admin = this.sessions.canModerate(token);
       const imp = token ? this.impersonations.get(token) : undefined;
       if (imp !== undefined) {
@@ -1629,10 +1685,12 @@ export class EventRuntime {
         client.admin = false;
       }
       this.clients.add(client);
-      sseSend(res, "snapshot", this.snapshotFor(client));
-      // A moderator sees the full feed *including* hidden messages (greyed in
-      // the UI) so they can un-hide; performers see the public feed only.
-      sseSend(res, "history", this.historyFor(client));
+      if (client.lean !== true) {
+        sseSend(res, "snapshot", this.snapshotFor(client));
+        // A moderator sees the full feed *including* hidden messages (greyed in
+        // the UI) so they can un-hide; performers see the public feed only.
+        sseSend(res, "history", this.historyFor(client));
+      }
       this.pushPresence();
       const ping = setInterval(() => res.write(":ping\n\n"), 25000);
       req.on("close", () => {

@@ -176,6 +176,11 @@ into channel-routed messages — the single source of truth the
   a fresh snapshot is pushed to every mod client whenever anyone
   connects or drops, so the editor's Run rail shows who's actually in
   the room.
+- **Mod feed bandwidth:** mod-console snapshots are coalesced to ≤ 2/s
+  (`MOD_SNAPSHOT_MS`; a burst of steps → one trailing `ModView`, built
+  once and shared by every director). House tools stream
+  `/events?role=mod&lean=1`: every `sim` / `message` / `lifecycle` frame,
+  never a `snapshot` or `history` (stagehand uses it).
 - **The director's read:** each roster row also carries the guest's
   story position (`beat`, from `beatEntered.subject` bookkeeping) and
   their visited-beat trail (`visited`), and the snapshot includes the

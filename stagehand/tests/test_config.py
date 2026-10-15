@@ -128,10 +128,10 @@ def test_example_yaml_is_valid_yaml():
 def test_mod_client_paths():
     default = ModClient("http://h:7000", event="default")
     assert default.path("/api/mod/signal") == "/api/mod/signal"
-    assert default.sse_url == "http://h:7000/events?role=mod&id=stagehand"
+    assert default.sse_url == "http://h:7000/events?role=mod&id=stagehand&lean=1"
     scoped = ModClient("http://h:7000/", event="ev_42")
     assert scoped.path("/api/mod/signal") == "/e/ev_42/api/mod/signal"
-    assert scoped.sse_url == "http://h:7000/e/ev_42/events?role=mod&id=stagehand"
+    assert scoped.sse_url == "http://h:7000/e/ev_42/events?role=mod&id=stagehand&lean=1"
 
 
 def test_decode_payload():
