@@ -27,6 +27,7 @@ K-23, K-26, k10, n02 step 0) can run anytime.
 | Item | Script | What you do |
 |---|---|---|
 | K-01 | `k01.sh` | Laptop: public join base, invite site, uncompressed SSE (two 25 s pings). Then one phone joins over cellular |
+| K-04 (SW-AI-23) | `K-04-burst.ts --code … [--dms 30] [--spread 0]` | The worker on the house Mac voicing Trabolta, Trabolta introduced: 30 persona DMs at once, the time to each first real reply (hold lines counted apart), p95 + a `record:` line (guarded; `--reset-after` clears the bots, then Reset the mind). Pure half: `node --no-warnings --test scripts/accept/burst.test.ts` |
 | K-05 | `K-05.sh` | House Mac, rig powered: touch the reed, patch the bay, watch the lights. Checks stagehand's log, MQTT, the static IP and the launchd jobs |
 | K-06 + N-07 | `k06.sh` | An iPhone, an Android phone and an Antivirus booth. Lock both phones, send a `!` alert, and it banners and chimes on wake. The booth banners the alert and the late list (N-07) |
 | K-08 | `K-08.sh [nightly\|show]` | House Mac over ssh: a show-night copy, a restore drill into a scratch `loom-drill` project, rollback timing (asks first, restarts the live site twice), the 10-minute backup job |
