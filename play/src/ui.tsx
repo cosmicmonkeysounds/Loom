@@ -27,7 +27,9 @@ export function App({ resume = null }: { resume?: ResumeLink | null }) {
   const brand = useLandingBrand();
   const urlTitle = brand.title;
   useDocumentTitle(urlTitle);
-  useTheme(role === "none" ? brand.theme : undefined);
+  // The chooser's skin; a guest / performer app skins itself (the landing's
+  // theme on its join screen, the story's once signed in).
+  useTheme(brand.theme, role === "none");
   // A director's re-pair QR (N-02): trade its code for that guest's session.
   // A phone already signed in as a guest asks first — the link replaces it.
   const [pending, setPending] = useState<ResumeLink | null>(resume);

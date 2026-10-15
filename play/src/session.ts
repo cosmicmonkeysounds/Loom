@@ -5,7 +5,7 @@
 //! plumbing — only their channel-shaping + actions differ.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Identities, PictureChoices, ProgramHit, ProgramPictures } from "./avatars.ts";
+import { DOORS_POLL_MS, type Identities, type PictureChoices, type ProgramHit, type ProgramPictures } from "./avatars.ts";
 import { ApiError, api, useChatStream } from "./client.ts";
 import { maxSeqOf, unsolicitedReadout, useAlerts, type Alert } from "./alerts.ts";
 import { checkinFromSearch, withoutCheckin } from "./checkin.ts";
@@ -55,10 +55,22 @@ export interface ResolvedCode {
 /** Resolve a passcode (null if unknown/invalid). The join screens use it to
  *  show what a scanned QR leads into and, for a performer, whom they can be. */
 export async function resolveCode(code: string): Promise<ResolvedCode | null> {
+  const r = await resolveOrBusy(code);
+  return r === "busy" ? null : r;
+}
+
+/**
+ * Like `resolveCode`, but tells "no such code" (404) from "ask again later":
+ * `/api/resolve-code` is throttled per IP, and a whole house on one Wi-Fi
+ * shares one public IP — a 429 (or no answer at all) must never read as a
+ * wrong code.
+ */
+async function resolveOrBusy(code: string): Promise<ResolvedCode | null | "busy"> {
   try {
     return await api<ResolvedCode>("/api/resolve-code", { code });
-  } catch {
-    return null;
+  } catch (e) {
+    const status = (e as Partial<ApiError>).status;
+    return typeof status === "number" && status !== 429 && status < 500 ? null : "busy";
   }
 }
 
@@ -66,24 +78,118 @@ export async function resolveCode(code: string): Promise<ResolvedCode | null> {
 export type IdentityLookup =
   /** The code opens nothing. */
   | { kind: "unknown" }
+  /** The server is throttling this address (or is unreachable): retry
+   *  shortly, the code may be fine. */
+  | { kind: "busy" }
   /** The code is good but the server couldn't give the picker (an older
    *  server, a hiccup): the screen falls back to a plain sign-in. */
   | { kind: "unavailable"; eventId: string; title?: string; role: string; characters?: string[]; error: string }
   | ({ kind: "ok"; eventId: string; title?: string } & Identities);
 
+/** An event a code already resolved to — a re-ask skips `/api/resolve-code`. */
+export interface KnownEvent {
+  eventId: string;
+  title?: string;
+  /** What the code is there ("guest" / "prime"). */
+  role: string;
+}
+
 /** The sign-in picker for a code: a guest's unclaimed programs, or a
- *  performer's unclaimed parts. */
-export async function fetchIdentities(code: string): Promise<IdentityLookup> {
-  const r = await resolveCode(code);
+ *  performer's unclaimed parts. Pass `known` (the event an earlier answer
+ *  named) on a re-ask — the closed-doors poll, a refresh after a 409 — so
+ *  only the event's own, unthrottled `/api/identities` is asked; a gone
+ *  event falls back to a fresh resolve. */
+export async function fetchIdentities(code: string, known?: KnownEvent): Promise<IdentityLookup> {
+  if (known !== undefined) {
+    const again = await identitiesOf(code, known, known.role);
+    if (again !== "gone") return again;
+  }
+  const r = await resolveOrBusy(code);
+  if (r === "busy") return { kind: "busy" };
   if (r === null) return { kind: "unknown" };
+  const out = await identitiesOf(code, r, r.role, r.characters);
+  return out === "gone" ? { kind: "unknown" } : out;
+}
+
+async function identitiesOf(code: string, ev: KnownEvent, role: string, characters?: string[]): Promise<IdentityLookup | "gone"> {
   try {
-    const ids = await api<Identities>(`/e/${encodeURIComponent(r.eventId)}/api/identities`, { passcode: code });
-    return { kind: "ok", ...ids, eventId: r.eventId, title: r.title };
+    const ids = await api<Identities>(`/e/${encodeURIComponent(ev.eventId)}/api/identities`, { passcode: code });
+    return { kind: "ok", ...ids, eventId: ev.eventId, title: ev.title };
   } catch (e) {
     const err = e as Partial<ApiError>;
+    if (typeof err.status === "number" && eventGone(err.status, err.message ?? "")) return "gone";
+    if (err.status === 429) return { kind: "busy" };
     const status = typeof err.status === "number" ? ` (HTTP ${err.status})` : "";
-    return { kind: "unavailable", eventId: r.eventId, title: r.title, role: r.role, characters: r.characters, error: `${err.message ?? "no answer"}${status}` };
+    return { kind: "unavailable", eventId: ev.eventId, title: ev.title, role, characters, error: `${err.message ?? "no answer"}${status}` };
   }
+}
+
+/** How long the join screen waits before re-asking: every 5 s while the
+ *  doors are closed (a minute of that, then every 15 s); a busy server
+ *  backs off 10 → 20 → 30 s. `attempt` counts re-asks in a row from 0. */
+export function retryDelay(kind: "closed" | "busy", attempt: number): number {
+  if (kind === "busy") return Math.min(30_000, 10_000 * (attempt + 1));
+  return attempt < 12 ? DOORS_POLL_MS : 15_000;
+}
+
+type Picker = Extract<IdentityLookup, { kind: "ok" }>;
+
+/**
+ * The join screens' picker for a typed / scanned code, kept fresh. A code
+ * answered `waiting` (the doors are closed) is re-asked on `retryDelay`
+ * straight at its event, never through the throttled resolve; a busy
+ * server keeps the last good screen and backs off. `refresh` re-asks now
+ * (someone may have just taken a name).
+ */
+export function useIdentities(code: string, waiting: (ids: Picker) => boolean): { ids: IdentityLookup | null | "loading"; busy: boolean; refresh: () => void } {
+  const [ids, setIds] = useState<IdentityLookup | null | "loading">(null);
+  const [busy, setBusy] = useState(false);
+  const [reload, setReload] = useState(0);
+  const known = useRef<{ code: string; event: KnownEvent } | null>(null);
+  const streak = useRef<{ kind: "closed" | "busy"; n: number }>({ kind: "closed", n: 0 });
+  const waitingRef = useRef(waiting);
+  waitingRef.current = waiting;
+  useEffect(() => {
+    const c = code.trim();
+    if (c.length < 4) {
+      setIds(null);
+      setBusy(false);
+      return;
+    }
+    let alive = true;
+    let timer: number | undefined;
+    // A re-ask keeps the current screen until the answer lands.
+    const keep = (prev: IdentityLookup | null | "loading") => prev !== null && prev !== "loading" && prev.kind === "ok";
+    setIds((prev) => (keep(prev) ? prev : "loading"));
+    const event = known.current?.code === c ? known.current.event : undefined;
+    void fetchIdentities(c, event).then((r) => {
+      if (!alive) return;
+      let again: "closed" | "busy" | null = null;
+      if (r.kind === "busy") {
+        again = "busy";
+        setBusy(true);
+        setIds((prev) => (keep(prev) ? prev : null));
+      } else {
+        setBusy(false);
+        setIds(r);
+        known.current = r.kind === "ok" ? { code: c, event: { eventId: r.eventId, title: r.title, role: r.role } } : null;
+        if (r.kind === "ok" && waitingRef.current(r)) again = "closed";
+      }
+      if (again === null) {
+        streak.current = { kind: "closed", n: 0 };
+        return;
+      }
+      const n = streak.current.kind === again ? streak.current.n : 0;
+      streak.current = { kind: again, n: n + 1 };
+      timer = window.setTimeout(() => setReload((x) => x + 1), retryDelay(again, n));
+    });
+    return () => {
+      alive = false;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [code, reload]);
+  const refresh = useCallback(() => setReload((x) => x + 1), []);
+  return { ids, busy, refresh };
 }
 
 /** The pictures a guest may choose for a program before signing in: one of
@@ -142,19 +248,41 @@ export async function fetchLanding(): Promise<{ title: string | null; theme: str
   }
 }
 
+type Brand = { title: string | null; theme: string | null };
+
+/** One branding lookup per page load, shared by every screen that asks
+ *  (the role chooser, the join screens, the session's skin): each ask is a
+ *  throttled `/api/resolve-code` on a `?code=` link. */
+let brandOnce: { key: string; ask: Promise<Brand>; value: Brand | null } | null = null;
+
+export function landingBrand(code: string): { ask: Promise<Brand>; value: Brand | null } {
+  if (brandOnce === null || brandOnce.key !== code) {
+    const once: { key: string; ask: Promise<Brand>; value: Brand | null } = {
+      key: code,
+      ask: code !== "" ? resolveCode(code).then((r) => ({ title: r?.title ?? null, theme: r?.theme ?? null })) : fetchLanding(),
+      value: null,
+    };
+    void once.ask.then((b) => {
+      once.value = b;
+    });
+    brandOnce = once;
+  }
+  return brandOnce;
+}
+
 /**
  * The join screens' branding: the event a `?code=` link names, else (the
  * bare address, typed in) the one event with its doors open. The title
- * heads the page; the theme skins it before anyone has joined.
+ * heads the page; the theme skins it until someone signs in. Asked once
+ * per page load (see `landingBrand`).
  */
-export function useLandingBrand(): { title: string | null; theme: string | null } {
+export function useLandingBrand(): Brand {
   const { ownsPage } = usePlayHost();
-  const [brand, setBrand] = useState<{ title: string | null; theme: string | null }>({ title: null, theme: null });
+  const [brand, setBrand] = useState<Brand>(() => (ownsPage ? (landingBrand(codeFromUrl()).value ?? { title: null, theme: null }) : { title: null, theme: null }));
   useEffect(() => {
     if (!ownsPage) return;
-    const code = codeFromUrl();
     let alive = true;
-    void (code !== "" ? resolveCode(code).then((r) => ({ title: r?.title ?? null, theme: r?.theme ?? null })) : fetchLanding()).then((b) => {
+    void landingBrand(codeFromUrl()).ask.then((b) => {
       if (alive) setBrand(b);
     });
     return () => {
@@ -177,14 +305,15 @@ export function useDocumentTitle(title: string | null | undefined): void {
  * stylesheet's neutral skin is the default; `aol97` is the 1997 chat-room
  * look one particular party shipped with (see `styles.css`).
  */
-export function useTheme(theme: string | null | undefined): void {
+export function useTheme(theme: string | null | undefined, active = true): void {
   const host = usePlayHost();
   useEffect(() => {
+    if (!active) return; // another screen owns the skin
     const el = host.themeRoot();
     if (el === null) return;
     if (theme && theme !== "plain") el.dataset["theme"] = theme;
     else delete el.dataset["theme"];
-  }, [host, theme]);
+  }, [host, theme, active]);
 }
 const GK = "loom.guest";
 const PK = "loom.prime";
@@ -771,7 +900,9 @@ export function useGuestSession(): GuestSession {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me, status, post]);
   const dismissAlert = alerts.dismiss;
-  useTheme(status?.theme);
+  // Signed out (the join screens), the landing's skin; signed in, the story's.
+  const landing = useLandingBrand();
+  useTheme(me === null ? landing.theme : status?.theme);
 
   return {
     me,
@@ -1123,6 +1254,7 @@ export function usePrimeSession(): PrimeSession {
   });
   alertsRef.current = alerts;
   const threads = useThreads(buildPrimeChannels(messages, view).map((c) => (typing.has(c.id) ? { ...c, typing: typing.get(c.id) } : c)));
-  useTheme(view?.theme);
+  const landing = useLandingBrand();
+  useTheme(auth === null ? landing.theme : view?.theme);
   return { auth, view, responses, alert: alerts.alert, dismissAlert: alerts.dismiss, connected, ready, notice, threads, login, scan, say, inviteToChannel, leaveChannel, becomeAdmin, act, shareCodex, moderate, setHidden, leave };
 }

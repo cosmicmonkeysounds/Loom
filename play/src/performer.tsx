@@ -26,8 +26,8 @@ import {
 } from "./chat.tsx";
 import { HelpSheet } from "./help.tsx";
 import { usePlayHost } from "./host.ts";
-import { AvatarsContext, DOORS_POLL_MS, avatarLookup, avatarUrl, foldName, orderPicker, type IdentityRow } from "./avatars.ts";
-import { codeFromUrl, fetchIdentities, useDocumentTitle, usePrimeSession, type IdentityLookup, type PrimeSession } from "./session.ts";
+import { AvatarsContext, avatarLookup, avatarUrl, foldName, orderPicker, type IdentityRow } from "./avatars.ts";
+import { codeFromUrl, useDocumentTitle, useIdentities, usePrimeSession, type IdentityLookup, type PrimeSession } from "./session.ts";
 import type { Action, Channel, Interaction, PrimeGuest } from "./types.ts";
 import { cameraProblem, parseScan, scanProblem, typedTarget, type CameraState } from "./scan.ts";
 import { CameraScanner } from "./scanner.tsx";
@@ -37,28 +37,17 @@ import { PushCard, PushRow } from "./push-card.tsx";
 function PrimeLogin({ session }: { session: PrimeSession }) {
   const [passcode, setPasscode] = useState(codeFromUrl);
   const [character, setCharacter] = useState("");
-  const [ids, setIds] = useState<IdentityLookup | null | "loading">(null);
-  const [reload, setReload] = useState(0);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   // A performer code resolves to the story's *parts* — every character
   // with something to do, minus the ones other booths already hold — so
-  // the picker shows who is still free, with their pictures.
-  useEffect(() => {
-    const code = passcode.trim();
-    if (code.length < 4) {
-      setIds(null);
-      return;
-    }
-    let alive = true;
-    setIds((prev) => (prev !== null && prev !== "loading" && prev.kind === "ok" ? prev : "loading"));
-    void fetchIdentities(code).then((r) => {
-      if (alive) setIds(r.kind !== "unknown" && r.role !== "prime" ? { kind: "unknown" } : r);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [passcode, reload]);
+  // the picker shows who is still free, with their pictures. Before the
+  // story loads there is no cast to list: say so and re-ask.
+  const lookup = useIdentities(passcode, (r) => r.role === "prime" && r.doorsOpen === false && r.identities.length === 0);
+  const serverBusy = lookup.busy;
+  // A guest code is not a performer code.
+  const ids: IdentityLookup | null | "loading" =
+    lookup.ids !== null && lookup.ids !== "loading" && (lookup.ids.kind === "ok" || lookup.ids.kind === "unavailable") && lookup.ids.role !== "prime" ? { kind: "unknown" } : lookup.ids;
   const resolved = ids !== null && ids !== "loading" && ids.kind === "ok" ? ids : null;
   const fallback = ids !== null && ids !== "loading" && ids.kind === "unavailable" ? ids : null;
   // An older server has no picker: offer its plain cast list (no claims, no pictures).
@@ -67,13 +56,7 @@ function PrimeLogin({ session }: { session: PrimeSession }) {
       ? orderPicker(resolved.identities)
       : (fallback?.characters ?? []).map((name) => ({ name, faction: null, avatar: null, claimed: false }));
   const eventId = resolved?.eventId ?? fallback?.eventId ?? null;
-  // Before the story loads there is no cast to list: say so and re-ask.
   const waiting = resolved !== null && resolved.doorsOpen === false && cast.length === 0;
-  useEffect(() => {
-    if (!waiting) return;
-    const id = window.setTimeout(() => setReload((n) => n + 1), DOORS_POLL_MS);
-    return () => window.clearTimeout(id);
-  }, [waiting, ids]);
   const go = async (name = character) => {
     const who = name.trim();
     if (who === "" || busy) return;
@@ -83,7 +66,7 @@ function PrimeLogin({ session }: { session: PrimeSession }) {
       await session.login(who, passcode.trim());
     } catch (e) {
       setErr((e as Error).message);
-      setReload((n) => n + 1); // another booth may have just taken the part
+      lookup.refresh(); // another booth may have just taken the part
     } finally {
       setBusy(false);
     }
@@ -106,6 +89,7 @@ function PrimeLogin({ session }: { session: PrimeSession }) {
       />
       {ids === "loading" && <p className="pick-hint">Looking up the cast…</p>}
       {ids !== null && ids !== "loading" && ids.kind === "unknown" && passcode.trim().length >= 4 && <p className="pick-hint">That code doesn't open a performer station. Check it with your host.</p>}
+      {serverBusy && <p className="pick-hint" role="status">The server is busy — trying again in a moment.</p>}
       {waiting && <p className="pick-hint" role="status">The story isn't loaded yet — the cast appears here once the director opens the doors.</p>}
       {fallback !== null && <p className="pick-hint">The server couldn't send who's still free — {fallback.error}. It may need a restart; the cast below is unfiltered.</p>}
       {cast.length > 0 ? (

@@ -30,9 +30,9 @@ import {
 import { CutsceneStage } from "./cutscene.tsx";
 import { HelpSheet } from "./help.tsx";
 import { usePlayHost } from "./host.ts";
-import { AvatarsContext, DOORS_POLL_MS, avatarLookup, avatarUrl, hitNote, hitPickable, initialPick, orderPicker, type PictureChoice, type PictureChoices, type ProgramHit } from "./avatars.ts";
+import { AvatarsContext, avatarLookup, avatarUrl, hitNote, hitPickable, initialPick, orderPicker, type PictureChoice, type PictureChoices, type ProgramHit } from "./avatars.ts";
 import { PictureGrid } from "./picture-pick.tsx";
-import { codeFromUrl, fetchIdentities, fetchPictures, pendingWidget, personalStream, searchPrograms, useDocumentTitle, useGuestSession, useLandingBrand, type GuestSession, type IdentityLookup } from "./session.ts";
+import { codeFromUrl, fetchPictures, pendingWidget, personalStream, searchPrograms, useDocumentTitle, useGuestSession, useIdentities, useLandingBrand, type GuestSession } from "./session.ts";
 import { Tutorial, tourResult, tutorialSteps } from "./tutorial.tsx";
 import type { Action, Channel, PersonCard } from "./types.ts";
 import { usePush, type Push } from "./push.ts";
@@ -41,7 +41,6 @@ import { redeemErrorText } from "./codex.ts";
 
 function GuestRegister({ session }: { session: GuestSession }) {
   const [code, setCode] = useState(codeFromUrl);
-  const [ids, setIds] = useState<IdentityLookup | null | "loading">(null);
   const [name, setName] = useState("");
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<ProgramHit[] | null>(null);
@@ -51,33 +50,11 @@ function GuestRegister({ session }: { session: GuestSession }) {
   const eventTitle = useLandingBrand().title;
   // The code opens the picker: the story's unclaimed programs, with their
   // pictures, and (when the server has the program directory) a search.
-  const [reload, setReload] = useState(0);
-  useEffect(() => {
-    const c = code.trim();
-    if (c.length < 4) {
-      setIds(null);
-      return;
-    }
-    let alive = true;
-    // A re-ask (the closed-doors poll, a refresh after a 409) keeps the
-    // current screen until the answer lands.
-    setIds((prev) => (prev !== null && prev !== "loading" && prev.kind === "ok" ? prev : "loading"));
-    void fetchIdentities(c).then((r) => {
-      if (alive) setIds(r);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [code, reload]);
-  const resolved = ids !== null && ids !== "loading" && ids.kind === "ok" ? ids : null;
   // Scanned before the director opened the doors: there is nobody to be
-  // yet. Say so, and ask again every few seconds until there is.
+  // yet. Say so, and ask again until there is.
+  const { ids, busy: serverBusy, refresh } = useIdentities(code, (r) => r.doorsOpen === false);
+  const resolved = ids !== null && ids !== "loading" && ids.kind === "ok" ? ids : null;
   const closed = resolved !== null && resolved.doorsOpen === false;
-  useEffect(() => {
-    if (!closed) return;
-    const id = window.setTimeout(() => setReload((n) => n + 1), DOORS_POLL_MS);
-    return () => window.clearTimeout(id);
-  }, [closed, ids]);
   const fallback = ids !== null && ids !== "loading" && ids.kind === "unavailable" ? ids : null;
   const programs = resolved === null ? [] : orderPicker(resolved.identities);
   // Having picked a program, the guest picks its picture (when there is
@@ -92,7 +69,7 @@ function GuestRegister({ session }: { session: GuestSession }) {
     } catch (e) {
       setErr((e as Error).message);
       setPicking(null);
-      setReload((n) => n + 1); // someone may have just taken it — refresh the list
+      refresh(); // someone may have just taken it — refresh the list
       if (hits !== null) setHits(null);
     } finally {
       setBusy(false);
@@ -156,6 +133,11 @@ function GuestRegister({ session }: { session: GuestSession }) {
             {busy ? "Joining…" : "Join →"}
           </button>
         </>
+      )}
+      {serverBusy && (
+        <p className="pick-hint" role="status">
+          The server is busy — trying again in a moment.
+        </p>
       )}
       {closed && (
         <p className="pick-hint" role="status">
