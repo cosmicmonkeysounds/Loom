@@ -75,8 +75,11 @@ export function screenTargetOf(view: string): ScreenTarget {
   return view === "mirror" || view === "tv" ? "tv" : "terminals";
 }
 
-/** Full-screen overlays that stand until the next slide / base cue. */
+/** Full-screen overlays that stand until the next slide / base cue (`alarm`:
+ *  or until the story clears `ALARM_VAR`). */
 export const SCREEN_OVERLAYS = ["blackout", "go_to_living_room", "alarm"] as const;
+/** The story var the `alarm` overlay follows (*Trapped in the Internet*'s latch). */
+export const ALARM_VAR = "Night.alarm_on";
 /** Base cues: they clear the slide (back to attract / the configured view). */
 export const SCREEN_BASES = ["screensaver", "attract", "trabolta_online", "mirror"] as const;
 
@@ -113,7 +116,8 @@ export interface ScreenShot {
 export interface ScreenProgram {
   /** The newest slide or base cue for this target (a base one = no slide). */
   slide: (ScreenShot & { kind: "slide" | "base"; persist: boolean }) | null;
-  /** The standing overlay (blackout / go_to_living_room / alarm), cleared by a newer slide or base cue. */
+  /** The standing overlay (blackout / go_to_living_room / alarm), cleared by a newer slide or base cue
+   *  — and `alarm` also as soon as the story's `Night.alarm_on` is no longer true. */
   overlay: ScreenShot | null;
   /** The last blackout (cleared like the overlay): 10 s of black even when another overlay follows at once. */
   blackout: ScreenShot | null;
@@ -163,21 +167,26 @@ export interface ScreenVoice {
   lines: ScreenVoiceLine[];
 }
 
+/** Speakers the TV shows as captions though they aren't its character (Sandy is
+ *  lore, decision #28). Mirrors `TV_TEXT_ONLY` in `terminal/src/tv.ts`. */
+export const SCREEN_TEXT_ONLY: readonly string[] = ["Sandy"];
+
 /** At most this many lines per answer (the newest). A whole scripted beat lands
  *  in one poll, so this is generous; a TV that was *away* resyncs on its own. */
 export const MAX_VOICE_LINES = 40;
 const MAX_VOICE_TEXT = 600;
 
 /**
- * The lines said by a character (`isCharacter`) in `channel` after `after`
- * (pure). Narration, system notices, typed guest chat and hidden messages are
- * left out; `after` null (a screen that just booted) returns no lines.
+ * The lines said by a speaker `speaks` admits in `channel` after `after`
+ * (pure). Narration, system notices and hidden messages are left out; the
+ * poll admits only the TV's character + `SCREEN_TEXT_ONLY`, which leaves out
+ * guests' typed chat. `after` null (a screen that just booted) returns no lines.
  */
 export function voiceLinesOf(
   messages: readonly ChatMessage[],
   channel: string,
   after: number | null,
-  isCharacter: (from: string) => boolean,
+  speaks: (from: string) => boolean,
   max = MAX_VOICE_LINES,
 ): { head: number; lines: ScreenVoiceLine[] } {
   const head = messages.length === 0 ? -1 : messages[messages.length - 1]!.seq;
@@ -186,7 +195,7 @@ export function voiceLinesOf(
   for (let i = messages.length - 1; i >= 0 && lines.length < max; i--) {
     const m = messages[i]!;
     if (m.seq <= after) break;
-    if (m.channel !== channel || m.kind !== "line" || m.hidden || m.from === "" || !isCharacter(m.from)) continue;
+    if (m.channel !== channel || m.kind !== "line" || m.hidden || m.from === "" || !speaks(m.from)) continue;
     lines.push({ seq: m.seq, from: m.from, text: m.text.slice(0, MAX_VOICE_TEXT), beat: m.beat ?? null });
   }
   return { head, lines: lines.reverse() };
@@ -266,6 +275,10 @@ const clip = (s: string | null, n = 48): string => (s ?? "").slice(0, n);
 export class ScreenWatch {
   private sim: Sim | null = null;
   private cursor = 0;
+  /** Has this sim's history been folded yet? Set after the first look even
+   *  when the log was empty (a restart while paused, doors not yet open), so
+   *  every later cue is stamped with the clock — not mistaken for history. */
+  private seeded = false;
   private readonly cues = new Map<ScreenCueFamily, ScreenCue>();
   private readonly programs = new Map<ScreenTarget, ScreenProgram>();
   private shots = 0;
@@ -284,6 +297,7 @@ export class ScreenWatch {
     if (sim !== this.sim) {
       this.sim = sim;
       this.cursor = 0;
+      this.seeded = false;
       this.cues.clear();
       this.programs.clear();
       this.shots = 0;
@@ -292,7 +306,8 @@ export class ScreenWatch {
     const events = sim.log.all();
     // The first look at a sim is its history (a boot or a restart replayed
     // the journal): stamped 0, so nothing held or one-shot re-runs.
-    const at = this.cursor === 0 ? 0 : this.now();
+    const at = this.seeded ? this.now() : 0;
+    this.seeded = true;
     for (; this.cursor < events.length; this.cursor++) {
       const e = events[this.cursor]!;
       if (e.type !== "directive" || e.verb !== "cue") continue;
@@ -365,6 +380,14 @@ export class ScreenWatch {
     const cues = {} as Record<ScreenCueFamily, ScreenCue | null>;
     for (const f of SCREEN_CUE_FAMILIES) cues[f] = this.cues.get(f) ?? null;
     const target = screenTargetOf(who.view);
+    let program = this.programs.get(target) ?? emptyProgram();
+    // The alarm overlay stands only while the story's alarm does: the story
+    // clears `Night.alarm_on` after 120 s with no screen cue of its own, so
+    // without this every terminal and the TV would flash INTRUSION (and the
+    // terminals stay in takeover) until some unrelated later cue.
+    // A story that never declares the var (null) keeps the plain rule.
+    const alarmOn = peek(ALARM_VAR);
+    if (program.overlay?.value === "alarm" && alarmOn !== null && alarmOn !== "true") program = { ...program, overlay: null };
 
     let voice: ScreenVoice | undefined;
     if (who.voice !== undefined && who.voice !== "") {
@@ -372,7 +395,13 @@ export class ScreenWatch {
       const loc = sim === null ? undefined : [...sim.model.locations.values()].find((l) => foldName(l.id) === want || (l.label !== null && foldName(l.label) === want));
       const room = loc === undefined ? "" : `loc:${loc.id}`;
       const chars = sim?.model.characters;
-      const got = voiceLinesOf(messages, room, who.after ?? null, (from) => chars?.has(from) === true);
+      const me = foldName(who.character);
+      const textOnly = new Set(SCREEN_TEXT_ONLY.map(foldName));
+      // Only the TV's own character and the text-only lore speakers: guests
+      // play declared characters too, so "any character" would carry their
+      // typed chat onto the TV.
+      const speaks = (from: string): boolean => chars?.has(from) === true && (foldName(from) === me || textOnly.has(foldName(from)));
+      const got = voiceLinesOf(messages, room, who.after ?? null, speaks);
       voice = { room, muted: this.voiceMuted, ...got };
     }
 
@@ -388,7 +417,7 @@ export class ScreenWatch {
       countdown,
       remaining,
       target,
-      program: this.programs.get(target) ?? emptyProgram(),
+      program,
       terminals: this.seen(),
       ...(voice !== undefined ? { voice } : {}),
     };
@@ -398,7 +427,7 @@ export class ScreenWatch {
 /**
  * `GET /api/screen/state?name=&spot=&view=&character=[&voice=<location>&after=<seq>]`
  * — moderator-gated (a terminal holds a mod token; the author's session works
- * too). Returns true when it answered.
+ * too — `routing.ts::wantsModRead` resolves it). Returns true when it answered.
  */
 export function handleScreenGet(
   watch: ScreenWatch,

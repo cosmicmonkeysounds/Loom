@@ -27,7 +27,7 @@
 //! overlay ends the pilot. The mirror honours attract too: the TV keeps
 //! the screensaver until the character is introduced.
 //!
-//! A tap on the wake overlay is the one user gesture the browser needs
+//! A tap on the wake overlay (or anywhere on the page) is the one gesture the browser needs
 //! before the terminal may make a sound unattended. The screen is held on
 //! with a Wake Lock from boot (re-taken on that tap and whenever the page
 //! comes back into view), and the ⚙ opens setup only on a 2 s hold
@@ -117,6 +117,13 @@ export function App() {
     setScreen({ kind: "setup", notice: "This terminal's access was revoked — enter the moderator passcode again." });
   }, [screenState.revoked]);
 
+  // The poll's event is gone (ended; a new one launched): back to setup, the
+  // config kept so its name / character / spot carry over — like `onGone`.
+  useEffect(() => {
+    if (!screenState.ended) return;
+    setScreen({ kind: "setup", notice: "The event this terminal was part of has ended — enter the moderator passcode of the next one." });
+  }, [screenState.ended]);
+
   // Keep the screen on from boot: Chrome grants a wake lock to a visible
   // page without a gesture; `ScreenWake` re-takes it on every return to view.
   useEffect(() => {
@@ -127,6 +134,16 @@ export function App() {
     void screenWake().keepOn();
     void unlock().then(() => setAwake(audioUnlocked() || !("AudioContext" in window)));
   }, []);
+
+  // Any touch counts as the wake gesture, not only the TOUCH TO WAKE button:
+  // a slide (z-index above it) can cover the button on a tablet that rebooted
+  // mid-show. Capture phase, so the tap still does whatever it landed on.
+  useEffect(() => {
+    if (awake) return;
+    const onDown = () => wake();
+    window.addEventListener("pointerdown", onDown, true);
+    return () => window.removeEventListener("pointerdown", onDown, true);
+  }, [awake, wake]);
 
   // The spatial stream was refused for good: access revoked, or the event over.
   const onGone = useCallback((g: Gone) => {

@@ -16,12 +16,17 @@ if [[ "${1:-}" != "--no-build" ]]; then
 fi
 
 fail=0
-# Runtime APIs newer than Chrome 87 that a build target cannot transpile.
+# Runtime APIs newer than Chrome 87 that a build target cannot transpile
+# (incl. `crypto.randomUUID`, Chrome 92; `.at()` is checked just below).
 # `structuredClone` is allowed only as `globalThis.structuredClone` (the
 # guarded `cloneData` in @loom/house).
-banned='Object\.hasOwn\(|\.findLast(Index)?\(|\.toSorted\(|\.toReversed\(|\.toSpliced\(|AbortSignal\.timeout|Promise\.withResolvers|Object\.groupBy|Array\.fromAsync|[^.a-zA-Z]structuredClone\('
+banned='randomUUID|Object\.hasOwn\(|\.findLast(Index)?\(|\.toSorted\(|\.toReversed\(|\.toSpliced\(|AbortSignal\.timeout|Promise\.withResolvers|Object\.groupBy|Array\.fromAsync|[^.a-zA-Z]structuredClone\('
 for f in terminal/dist/assets/*.js reinstall/web/dist/assets/*.js; do
   hits=$(grep -oE "$banned" "$f" | sort | uniq -c || true)
+  # Array/String `.at()` (Chrome 92). three.js's own `Ray.at(t, target)` is
+  # always called as `this.at(` in its bundle, so that one is allowed.
+  at=$(grep -oE '[A-Za-z_$][A-Za-z0-9_$]*\.at\(-?[0-9A-Za-z_$]' "$f" | grep -v '^this\.at(' | sort | uniq -c || true)
+  hits="$hits${hits:+${at:+$'\n'}}$at"
   if [[ -n "$hits" ]]; then
     echo "FAIL $f"; echo "$hits"; fail=1
   fi

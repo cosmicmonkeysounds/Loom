@@ -9,7 +9,10 @@
 # real show. tests/test_trapped_house.py cross-checks it against the story.)
 #
 # THE RIG
-#   Mosquitto on the brain-stem box; Zigbee2MQTT on the same broker.
+#   Mosquitto on the house Mac; Zigbee2MQTT on the same broker. Its anonymous
+#   listener is bound to 127.0.0.1 (stagehand + Z2M are local); the WLED
+#   controllers use a password-only LAN listener — scripts/house-mac/alexa.md
+#   → "Lock down the broker".
 #   Z2M groups, one per house.json room plus a whole-house group, named:
 #     house · living (The Desktop) · kitchen (The Cache) · backyard (The Cloud)
 #     registry (The Registry, rec room) · tube (hall + stair landing)

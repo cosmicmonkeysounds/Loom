@@ -422,6 +422,21 @@ VPS tells you; the default is `1`, safe on any 2-core box; Docker
 refuses a value above the core count). Then
 `docker compose up -d kokoro loom`.
 
+**Before the first deploy with it:**
+
+- **An existing `.env` changes behaviour.** A VPS `.env` that already has
+  `LOOM_TTS_URL=` (blank) used to mean "no server voice"; it now means the
+  bundled Kokoro. Set `LOOM_TTS_URL=off` to keep the old behaviour.
+- **RAM headroom.** Kokoro CPU holds ~1.5–2 GB resident. Run `free -h` on
+  the VPS: with Postgres, the event server and Caddy up, `available` should
+  stay above ~2.5 GB, or skip the bundled service (`LOOM_TTS_URL=off`, or a
+  Kokoro on the house Mac) and `docker compose stop kokoro`.
+- **The image** (checked 2026-10-15, without pulling): the pinned
+  `ghcr.io/remsky/kokoro-fastapi-cpu:v0.9.0` exists for linux/amd64 and
+  arm64, and its `PATH` has `/app/.venv/bin` + `/usr/local/bin` (a Python
+  3.12 base), so the healthcheck's `python` resolves. Re-check after bumping
+  `KOKORO_IMAGE`: `docker buildx imagetools inspect <image>`.
+
 The first start pulls a ~2 GB image and warms the model (a minute);
 `docker compose ps` shows it `healthy` when ready. The server never
 waits for it — while it is down `/api/mod/tts` answers 502 and the

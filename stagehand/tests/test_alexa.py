@@ -309,3 +309,66 @@ def test_a_bare_chime_merges_into_a_fresh_announcement(tmp_path):
     broken, _ = announcer(cfg(tmp_path), None, output=FakeOutput(fail=True))
     assert run(broken.ring()) == "failed"
     assert parse_alexa({"mqtt": {"host": "h"}}).chime_topic == "show/chime"
+
+
+# -- review fixes ----------------------------------------------------------------
+
+
+def test_a_chime_queued_behind_a_long_announcement_does_not_ring_after_it(tmp_path, monkeypatch):
+    """A slow voice fetch + a long line can run past CHIME_MERGE_S from the
+    announcement's start; the window also counts from its end."""
+    import stagehand.alexa.module as mod
+
+    clock = [1000.0]
+    monkeypatch.setattr(mod.time, "monotonic", lambda: clock[0])
+
+    class SlowOutput(FakeOutput):
+        def play(self, samples, rate) -> None:
+            super().play(samples, rate)
+            clock[0] += 7.0  # chime, then the line: 14 s in all
+
+    a, _ = announcer(cfg(tmp_path), None, output=SlowOutput())
+    run(a.announce(Announcement("All programs, report to the Desktop. A game is about to begin.")))
+    assert clock[0] - 1000.0 > mod.CHIME_MERGE_S
+    assert run(a.ring(now=clock[0] + 1)) == "merged"
+    assert run(a.ring(now=clock[0] + mod.CHIME_MERGE_S + 1)) == "chime"
+
+
+def test_an_overlong_payload_is_clipped(tmp_path):
+    from stagehand.alexa.module import MAX_TEXT
+
+    a = parse_payload(json.dumps({"text": "word " * 400}).encode())
+    assert a is not None and len(a.text) <= MAX_TEXT and a.text.endswith("word")
+    b = parse_payload(b"x" * (MAX_TEXT * 3))
+    assert b is not None and len(b.text) == MAX_TEXT
+
+
+def test_the_device_probe_fails_loudly_on_a_missing_or_ambiguous_output():
+    from stagehand.alexa.player import DeviceOutput
+
+    def ambiguous(device, kind):
+        raise ValueError(f"Multiple output devices found for {device!r}")
+
+    def found(device, kind):
+        return {"name": "MOTU UltraLite", "max_output_channels": 8}
+
+    assert "Multiple output devices" in (DeviceOutput("MOTU", (1, 2, 3, 4)).probe(ambiguous) or "")
+    assert DeviceOutput("MOTU", (1, 2, 3, 4)).probe(found) is None
+    assert "8 outputs" in (DeviceOutput("MOTU", (1, 9)).probe(found) or "")
+    assert DeviceOutput(None, None).probe(ambiguous) is None  # the default output: nothing to resolve
+
+
+def test_check_exits_nonzero_when_the_alexa_device_is_unusable(tmp_path, monkeypatch, capsys):
+    from stagehand.alexa.player import DeviceOutput
+    from stagehand.cli import main
+
+    conf = tmp_path / "house.yaml"
+    conf.write_text(
+        "server: {url: 'http://h', mod_passcode: x}\n"
+        f"alexa: {{mqtt: {{host: 127.0.0.1}}, device: MOTU, cache_dir: '{tmp_path / 'c'}'}}\n"
+    )
+    monkeypatch.setattr(DeviceOutput, "probe", lambda self, query=None: "output device 'MOTU': Multiple output devices found")
+    assert main(["check", "--config", str(conf)]) == 3
+    assert "Multiple output devices" in capsys.readouterr().err
+    monkeypatch.setattr(DeviceOutput, "probe", lambda self, query=None: None)
+    assert main(["check", "--config", str(conf)]) == 0

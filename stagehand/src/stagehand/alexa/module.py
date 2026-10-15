@@ -23,8 +23,12 @@ a bare string.
 
 `sound alexa_chime` (the story's chime on its own) arrives on
 `show/chime` and rings the same chime on the same zones — unless an
-announcement started within `CHIME_MERGE_S`, whose own chime already
-rang (the story often writes `do announce …` then `sound alexa_chime`).
+announcement started or ended within `CHIME_MERGE_S`, whose own chime
+already rang (the story often writes `do announce …` then `sound alexa_chime`).
+
+Anyone who can reach the broker can publish `show/announce`, so a line
+is clipped to `MAX_TEXT` characters; bind Mosquitto's anonymous listener
+to 127.0.0.1 (`scripts/house-mac/alexa.md` → *Lock down the broker*).
 """
 
 from __future__ import annotations
@@ -51,8 +55,13 @@ from .player import DeviceOutput, PlaybackError, chime, decode, say_direct, say_
 log = logging.getLogger("stagehand.alexa")
 
 HEALTH_TOPIC = "health/alexa"
-#: A bare chime this soon after an announcement started is the same moment.
+#: A bare chime this soon after an announcement (its start, or its end — a
+#: slow voice fetch can make the line itself run past this) is the same moment.
 CHIME_MERGE_S = 10.0
+#: Longest line spoken (characters): anyone on the broker can publish
+#: `show/announce`, so a payload is clipped rather than read out for minutes.
+#: Every scripted line is far shorter.
+MAX_TEXT = 300
 
 
 def build_alexa(section: Any, base_dir: str) -> "Alexa":
@@ -95,6 +104,8 @@ def parse_payload(raw: bytes) -> Announcement | None:
     if not isinstance(text, str):
         return None
     text = " ".join(text.split())
+    if len(text) > MAX_TEXT:
+        text = text[:MAX_TEXT].rsplit(" ", 1)[0] or text[:MAX_TEXT]
     # A cue template whose `{target}` never filled is not something to say aloud.
     if not text or text in ("{target}",):
         return None
@@ -153,7 +164,7 @@ class Announcer:
         self.render_say = render_say
         self.speak_direct = speak_direct
         self._chime = self._load_chime()
-        #: monotonic start of the last announcement (for chime merging).
+        #: monotonic start of the last announcement, restamped when it ends (for chime merging).
         self.last_announce: float | None = None
 
     def _load_chime(self):
@@ -225,6 +236,14 @@ class Announcer:
         """Play one announcement; returns the path taken (for logs + tests):
         `device` (server voice), `device-say` (say through the device),
         `say-device` (`say -a`), `say-default`, or `failed`."""
+        try:
+            return await self._announce(a)
+        finally:
+            # The merge window counts from the end too: `sound alexa_chime`
+            # queued behind a long announcement must not ring after the line.
+            self.last_announce = time.monotonic()
+
+    async def _announce(self, a: Announcement) -> str:
         started = self.last_announce = time.monotonic()
         log.info("announce %r received", a.text)
         # The voice (server, else `say` rendered to a file) is prepared while
@@ -302,6 +321,12 @@ class Alexa:
             f"prewarm  : {len(cfg.prewarm)} line(s) → {cfg.cache_dir}",
         ]
 
+    def preflight(self) -> list[str]:
+        """Problems `stagehand check` fails on (the output device)."""
+        cfg = self.cfg
+        err = DeviceOutput(cfg.device, cfg.channels, cfg.gain_db).probe()
+        return [f"alexa: {err} — see `scripts/accept/K-20.sh devices`"] if err else []
+
     def announcer(self, mod: ModClient | None) -> Announcer:
         fetch: Fetch | None = None
         if mod is not None:
@@ -324,6 +349,8 @@ class Alexa:
         from ..show.mqtt import MqttBridge
 
         announcer = self.announcer(ctx.mod)
+        for problem in self.preflight():
+            log.error("%s — announcements will fall back to `say`", problem)
         loop = asyncio.get_running_loop()
         bridge = MqttBridge(
             self.cfg.mqtt.host,

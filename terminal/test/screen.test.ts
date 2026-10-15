@@ -35,6 +35,8 @@ describe("screen state", () => {
     expect(await pollScreen(config, fakeFetch(403, {}))).toEqual({ kind: "revoked" });
     expect(await pollScreen(config, fakeFetch(401, {}))).toEqual({ kind: "revoked" });
     expect(await pollScreen(config, fakeFetch(404, {}))).toEqual({ kind: "miss" });
+    // The event this terminal was set up for is over (a new one launched).
+    expect(await pollScreen(config, fakeFetch(404, { error: "unknown event" }))).toEqual({ kind: "ended" });
     expect(await pollScreen(config, fakeFetch(200, { nope: 1 }))).toEqual({ kind: "miss" });
     const throwing = (async () => {
       throw new Error("offline");

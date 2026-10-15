@@ -174,13 +174,19 @@ export function attractOf(state: ScreenState | null): boolean {
   return state === null ? true : state.attract;
 }
 
-export type PollOutcome = { kind: "state"; state: ScreenState } | { kind: "revoked" } | { kind: "miss" };
+export type PollOutcome = { kind: "state"; state: ScreenState } | { kind: "revoked" } | { kind: "ended" } | { kind: "miss" };
 
-/** One poll. A 401/403 is a revoked token; anything else that fails is a miss (keep the last answer). */
+/** One poll. A 401/403 is a revoked token; a 404 "unknown event" means the
+ *  event this terminal was set up for is over (a new one was launched); anything
+ *  else that fails is a miss (keep the last answer). */
 export async function pollScreen(c: TerminalConfig, fetchFn: typeof fetch = fetch, voice: VoiceQuery | null = null): Promise<PollOutcome> {
   try {
     const res = await fetchFn(screenStateUrl(c, voice), { headers: { "x-loom-token": c.token }, cache: "no-store" });
     if (res.status === 401 || res.status === 403) return { kind: "revoked" };
+    if (res.status === 404) {
+      const err = await res.json().then((j: unknown) => (typeof j === "object" && j !== null ? (j as Record<string, unknown>)["error"] : null)).catch(() => null);
+      return err === "unknown event" ? { kind: "ended" } : { kind: "miss" };
+    }
     if (!res.ok) return { kind: "miss" };
     const state = parseScreenState(await res.json());
     return state === null ? { kind: "miss" } : { kind: "state", state };
@@ -191,18 +197,20 @@ export async function pollScreen(c: TerminalConfig, fetchFn: typeof fetch = fetc
 
 /**
  * Poll the screen state every `SCREEN_POLL_MS` (the TV: `TV_POLL_MS`) while a
- * config is present. Returns the last good answer (null until the first) and
- * whether the server refused this terminal's token. `voice` (the TV) is read
+ * config is present. Returns the last good answer (null until the first),
+ * whether the server refused this terminal's token, and whether its event is gone. `voice` (the TV) is read
  * fresh on every poll, so the cursor can move without restarting the loop.
  */
-export function useScreenState(config: TerminalConfig | null, voice: (() => VoiceQuery) | null = null): { state: ScreenState | null; revoked: boolean } {
+export function useScreenState(config: TerminalConfig | null, voice: (() => VoiceQuery) | null = null): { state: ScreenState | null; revoked: boolean; ended: boolean } {
   const voiceRef = useRef(voice);
   voiceRef.current = voice;
   const [state, setState] = useState<ScreenState | null>(null);
   const [revoked, setRevoked] = useState(false);
+  const [ended, setEnded] = useState(false);
   useEffect(() => {
     setState(null);
     setRevoked(false);
+    setEnded(false);
     if (config === null) return;
     let alive = true;
     let timer = 0;
@@ -214,6 +222,9 @@ export function useScreenState(config: TerminalConfig | null, voice: (() => Voic
       else if (out.kind === "revoked") {
         setRevoked(true);
         return; // stop polling: setup takes over
+      } else if (out.kind === "ended") {
+        setEnded(true);
+        return; // stop polling: setup asks for the next event's passcode
       }
       timer = window.setTimeout(() => void tick(), every);
     };
@@ -223,5 +234,5 @@ export function useScreenState(config: TerminalConfig | null, voice: (() => Voic
       window.clearTimeout(timer);
     };
   }, [config]);
-  return { state, revoked };
+  return { state, revoked, ended };
 }

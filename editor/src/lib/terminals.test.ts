@@ -146,6 +146,14 @@ describe('useTerminals', () => {
     await useTerminals.getState().setVoiceMuted(true)
     expect(setVoiceMuted).toHaveBeenCalledWith('evt', true)
     expect(useTerminals.getState().voiceMuted).toBe(true)
+
+    // A failed flip (offline, a 403) never rejects: it is said on the card.
+    setVoiceMuted.mockRejectedValueOnce(new Error('403 moderators only'))
+    await expect(useTerminals.getState().setVoiceMuted(false)).resolves.toBeUndefined()
+    expect(useTerminals.getState().voiceMuted).toBe(true)
+    expect(useTerminals.getState().muteError).toMatch(/unmute the TV voice: 403/)
+    await useTerminals.getState().setVoiceMuted(false)
+    expect(useTerminals.getState().muteError).toBeNull()
   })
 
   it('an unreachable server is said so, and the rows age to red on the client clock', async () => {

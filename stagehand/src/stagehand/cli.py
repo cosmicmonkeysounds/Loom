@@ -94,6 +94,11 @@ def main(argv: list[str] | None = None) -> int:
 
     print(_describe(cfg))
     if args.command == "check":
+        problems = [p for module in cfg.modules.values() for p in (module.preflight() if hasattr(module, "preflight") else [])]
+        for problem in problems:
+            print(f"check failed: {problem}", file=sys.stderr)
+        if problems:
+            return 3
         print("config OK")
         return 0
     try:

@@ -159,6 +159,77 @@ describe("the screen program (K-17 + N-03)", () => {
   });
 });
 
+describe("ScreenWatch — review fixes", () => {
+  it("a first look at an empty log seeds the fold: the next cues carry the clock, not history's 0", () => {
+    // No entry beat: the log is empty, as after a restart while paused or before doors open.
+    const sim = Sim.fromSources(`# T\n\nwhen hunt:\n  cue screens_trivia_1\n  cue screens_blackout\n\n== Later\nHi.\n`);
+    expect(sim.log.all()).toHaveLength(0);
+    let t = 70_000;
+    const w = new ScreenWatch({ now: () => t });
+    const poll = () => w.poll(sim, { name: "K", spot: "", view: "auto", character: "" }, () => false);
+    expect(poll().program.slide).toBeNull();
+    sim.signal("hunt");
+    t = 71_000;
+    const p = poll().program;
+    expect(p.slide).toMatchObject({ value: "trivia_1", at: 71_000, persist: false });
+    expect(p.blackout).toMatchObject({ value: "blackout", at: 71_000 });
+  });
+
+  it("the alarm overlay stands only while Night.alarm_on is true (the story clears it with no cue)", () => {
+    const sim = Sim.fromSources(
+      `# T\n\nwhen trip:\n  set Night.alarm_on = true\n  cue screens_alarm\n\nwhen calm:\n  set Night.alarm_on = false\n\nwhen drill:\n  cue screens_go_to_living_room\n\n== Boot\nset Night.alarm_on = false\n`,
+    );
+    sim.fireBeat("Boot");
+    const w = new ScreenWatch();
+    const poll = (view = "auto") => w.poll(sim, { name: view, spot: "", view, character: "" }, () => false);
+    expect(poll().program.overlay).toBeNull();
+    sim.signal("trip");
+    expect(poll().program.overlay?.value).toBe("alarm");
+    expect(poll("mirror").program.overlay?.value).toBe("alarm");
+    sim.signal("calm");
+    expect(poll().program.overlay).toBeNull();
+    expect(poll("mirror").program.overlay).toBeNull();
+    // Other overlays don't follow the alarm var.
+    sim.signal("drill");
+    expect(poll().program.overlay?.value).toBe("go_to_living_room");
+  });
+
+  it("a story without the alarm var keeps the alarm overlay until the next slide", () => {
+    const sim = Sim.fromSources(`# T\n\nwhen trip:\n  cue screens_alarm\n\n== Boot\nHi.\n`);
+    sim.fireBeat("Boot");
+    const w = new ScreenWatch();
+    sim.signal("trip");
+    expect(w.poll(sim, { name: "K", spot: "", view: "auto", character: "" }, () => false).program.overlay?.value).toBe("alarm");
+  });
+
+  it("the TV's voice block carries only its own character and the text-only lore speakers, never guests' typed chat", () => {
+    const sim = Sim.fromSources(`# T\n\nCHARACTER Trabolta\n\nCHARACTER Calculator\n\nCHARACTER Sandy\n\nCHARACTER Clippy\n\nLOCATION The Desktop\n\n== Boot\nHi.\n`);
+    const m = (seq: number, from: string, beat: string | null = null): ChatMessage => ({
+      seq,
+      channel: "loc:The Desktop",
+      channelKind: "location",
+      title: "The Desktop",
+      from,
+      kind: "line",
+      text: `line ${seq}`,
+      ts: 0,
+      audience: "all",
+      parentSeq: null,
+      hidden: false,
+      beat,
+    });
+    const ms = [m(0, "Trabolta", "Intro"), m(1, "Calculator"), m(2, "Sandy", "Song Ending"), m(3, "Clippy", "Bingo"), m(4, "Trabolta")];
+    const w = new ScreenWatch();
+    const s = w.poll(sim, { name: "TV", spot: "", view: "tv", character: "trabolta", voice: "The Desktop", after: -1 }, () => false, ms);
+    expect(s.voice?.lines.map((l) => [l.seq, l.from])).toEqual([
+      [0, "Trabolta"],
+      [2, "Sandy"],
+      [4, "Trabolta"],
+    ]);
+    expect(s.voice?.head).toBe(4);
+  });
+});
+
 describe("ScreenWatch — polls", () => {
   it("remembers each named terminal's last poll, most recent first, bounded", () => {
     let t = 1000;

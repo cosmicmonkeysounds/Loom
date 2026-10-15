@@ -86,6 +86,25 @@ class DeviceOutput:
         where = self.device or "system default output"
         return f"{where}" + (f" ch {','.join(map(str, self.channels))}" if self.channels else "")
 
+    def probe(self, query=None) -> str | None:
+        """None when `device` names exactly one CoreAudio output, else why not
+        (missing, or a substring several outputs match — every play would then
+        fall back to `say`, perhaps on the wrong zones). `query` is
+        `sounddevice.query_devices`, injectable for tests."""
+        if self.device is None:
+            return None
+        try:
+            if query is None:
+                import sounddevice as sd
+
+                query = sd.query_devices
+            info = query(self.device, "output")
+        except Exception as err:  # noqa: BLE001 — ValueError (missing / ambiguous), no PortAudio
+            return f"output device {self.device!r}: {err}"
+        if self.channels and max(self.channels) > int(info["max_output_channels"]):
+            return f"{info['name']!r} has {info['max_output_channels']} outputs; channels asks for {max(self.channels)}"
+        return None
+
     def play(self, samples: np.ndarray, rate: int) -> None:
         """Blocking: returns when the sound has finished."""
         try:

@@ -42,6 +42,7 @@ export function TerminalsCard() {
   const ack = useTerminals((s) => s.ack)
   const forget = useTerminals((s) => s.forget)
   const setVoiceMuted = useTerminals((s) => s.setVoiceMuted)
+  const muteError = useTerminals((s) => s.muteError)
   const silent = rows.some((r) => r.status === TerminalStatus.Silent)
   const hasTv = rows.some((r) => isTvView(r.view))
 
@@ -66,6 +67,11 @@ export function TerminalsCard() {
           </button>
         )}
       </div>
+      {muteError !== null && (
+        <p className="mb-2 rounded bg-amber-950/60 px-2 py-1 text-xs text-amber-200" data-testid="run-terminals-mute-error">
+          {muteError}
+        </p>
+      )}
       {!reachable && (
         <p className="mb-2 rounded bg-red-950/60 px-2 py-1 text-xs text-red-200" data-testid="run-terminals-unreachable">
           Can’t reach the server — the terminals may be fine. Check this laptop’s connection (and the house uplink).

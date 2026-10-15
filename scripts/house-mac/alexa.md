@@ -13,7 +13,7 @@ story  do announce "Go to the living room."
               → macOS `say` rendered to a file ─────────┘
        last resort: say -a <device>  (Z1 only — the device's first pair)
 story  sound alexa_chime             MQTT show/chime → the same chime
-                                     (skipped if an announcement started < 10 s ago)
+                                     (skipped if an announcement started or ended < 10 s ago)
 ```
 
 The code is the `alexa` module of stagehand
@@ -44,6 +44,36 @@ The code is the `alexa` module of stagehand
    `--only show`. (If it doesn't, the second player finds
    `player.lock` held and stands by silently — no double voice — but fix
    the job anyway.)
+
+5. **Lock down the broker.** Anyone on the house Wi-Fi who can reach
+   Mosquitto can publish `show/announce` (the speakers say it — clipped to
+   300 characters) or a sensor topic (a story signal). Everything that
+   talks to the broker anonymously runs on this Mac (stagehand, Zigbee2MQTT),
+   so bind that listener to localhost and give the network props (the WLED
+   controllers, any ESP prop) a password-only listener. In
+   `/opt/homebrew/etc/mosquitto/mosquitto.conf`:
+
+   ```
+   per_listener_settings true
+
+   listener 1883 127.0.0.1
+   allow_anonymous true
+
+   listener 1884
+   allow_anonymous false
+   password_file /opt/homebrew/etc/mosquitto/passwd
+   ```
+
+   `mosquitto_passwd -c /opt/homebrew/etc/mosquitto/passwd props`, then
+   `brew services restart mosquitto`, and point each WLED controller
+   (Config → Sync Interfaces → MQTT) at the Mac's LAN address, port 1884,
+   user `props`. Check: from another machine,
+   `mosquitto_pub -h <mac> -p 1883 -t show/announce -m hi` must be refused.
+   (A separate guest SSID for the props works too.)
+6. **`stagehand check` probes the device.** It exits non-zero when
+   `alexa.device` matches no output or several (a MOTU can expose more than
+   one) — every play would otherwise fall back to `say`, maybe on the wrong
+   zones. The player logs the same error at start.
 
 ## On the night
 

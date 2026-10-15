@@ -24,6 +24,8 @@ interface TerminalsState {
   rows: TerminalRow[]
   /** The TV-voice mute as the server last said (null = not known yet). */
   voiceMuted: boolean | null
+  /** Why the last TV-mute flip failed (offline, a 403), shown on the card; null = fine. */
+  muteError: string | null
   /** The last poll reached the server. */
   reachable: boolean
   /** Silent terminals the director has acknowledged (no re-chime). */
@@ -33,6 +35,7 @@ interface TerminalsState {
   ack: (name: string) => void
   /** Drop a remembered terminal (a spare that was switched off on purpose). */
   forget: (name: string) => void
+  /** Flip the TV-voice mute. Never rejects: a failure lands in `muteError`. */
   setVoiceMuted: (muted: boolean) => Promise<void>
   /** One poll now (the interval calls it). */
   tick: () => Promise<void>
@@ -74,6 +77,7 @@ export const useTerminals = create<TerminalsState>((set, get) => ({
   eventId: null,
   rows: [],
   voiceMuted: null,
+  muteError: null,
   reachable: true,
   acked: new Set(),
 
@@ -83,7 +87,7 @@ export const useTerminals = create<TerminalsState>((set, get) => ({
     timer = null
     memory = eventId === null ? {} : load(eventId)
     lastChime = 0
-    set({ eventId, rows: mergeTerminals(memory, null, Date.now()).rows, voiceMuted: null, reachable: true, acked: new Set() })
+    set({ eventId, rows: mergeTerminals(memory, null, Date.now()).rows, voiceMuted: null, muteError: null, reachable: true, acked: new Set() })
     if (eventId === null) return
     timer = setInterval(() => void get().tick(), TERMINALS_POLL_MS)
     void get().tick()
@@ -101,8 +105,12 @@ export const useTerminals = create<TerminalsState>((set, get) => ({
   setVoiceMuted: async (muted) => {
     const { eventId } = get()
     if (eventId === null) return
-    const r = await screensApi.setVoiceMuted(eventId, muted)
-    set({ voiceMuted: r.muted })
+    try {
+      const r = await screensApi.setVoiceMuted(eventId, muted)
+      if (get().eventId === eventId) set({ voiceMuted: r.muted, muteError: null })
+    } catch (e) {
+      if (get().eventId === eventId) set({ muteError: `Couldn’t ${muted ? 'mute' : 'unmute'} the TV voice: ${e instanceof Error ? e.message : String(e)}` })
+    }
   },
 
   tick: async () => {
