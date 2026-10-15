@@ -239,6 +239,8 @@ ROLE Program
   fact_h6: bool = false
   fact_f1: bool = false
   fact_f2: bool = false
+  fact_open: text? = none
+  fact_sep: text? = none
 
   // ── Arrival ──
   // A new program stands in the Optical Drive (the phone goes on rails there).
@@ -551,7 +553,8 @@ ROLE Program
   // answer, tick "I'm certain". Free chat never counts. A question from a
   // round that hasn't opened is refused (a crafted filing can't reach F2 in
   // round 1); an earlier round's question still files late — the verdict
-  // needs all eight. The card is dealt when each round's questions open
+  // needs all eight — so each card lists every open question the program
+  // hasn't filed. The card is dealt when each round's questions open
   // (and on clearance after that), and re-dealt after every filing (the
   // server throttles widget answers per guest, LOOM_RL_WIDGETS). A filing lands in # hosts; a host judges
   // it with 📝 accurate / 📝 confident lie on the program's card, any time
@@ -566,13 +569,41 @@ ROLE Program
     Trabolta: {self.name}. If you learn the answer to one of tonight's questions, file it with me on the card. Unfiled facts are rumours.
     fire deal_fact_card for self
 
+  // The card lists every open question this program hasn't filed yet, so
+  // a newer round's card never strands an earlier round's question (the
+  // play app folds every fact card but the newest in the thread).
   when deal_fact_card for program:
-    if Night.ended != true and Night.round == 1:
-      show fact "📝 File a fact" to program with thread: Trabolta, questions: "H1: Round 1 Q1. How many years did the Maps and Ducks billboard go unpaid? | H2: Round 1 Q2. What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery? | H3: Round 1 Q3. At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled?"
-    else if Night.ended != true and Night.round == 2:
-      show fact "📝 File a fact" to program with thread: Trabolta, questions: "H4: Round 2 Q1. What extension does the Customer Care card tell you to dial? | H5: Round 2 Q2. Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | H6: Round 2 Q3. What is the title of the last chapter of Trabolta's unfinished Unified Field Theory?"
-    else if Night.ended != true and Night.round == 3:
-      show fact "📝 File a fact" to program with thread: Trabolta, questions: "F1: Final Q1. What is the only thing Sandy has ever said? | F2: Final Q2. Who is taking Sandy to computer prom?"
+    if Night.ended != true and Night.round >= 1:
+      set program.fact_open = ""
+      set program.fact_sep = ""
+      if program.fact_h1 != true:
+        set program.fact_open = program.fact_open + program.fact_sep + "H1: Round 1 Q1. How many years did the Maps and Ducks billboard go unpaid?"
+        set program.fact_sep = " | "
+      if program.fact_h2 != true:
+        set program.fact_open = program.fact_open + program.fact_sep + "H2: Round 1 Q2. What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery?"
+        set program.fact_sep = " | "
+      if program.fact_h3 != true:
+        set program.fact_open = program.fact_open + program.fact_sep + "H3: Round 1 Q3. At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled?"
+        set program.fact_sep = " | "
+      if Night.round >= 2:
+        if program.fact_h4 != true:
+          set program.fact_open = program.fact_open + program.fact_sep + "H4: Round 2 Q1. What extension does the Customer Care card tell you to dial?"
+          set program.fact_sep = " | "
+        if program.fact_h5 != true:
+          set program.fact_open = program.fact_open + program.fact_sep + "H5: Round 2 Q2. Which song did Trabolta play 412 times the night before he registered mapsandducks.com?"
+          set program.fact_sep = " | "
+        if program.fact_h6 != true:
+          set program.fact_open = program.fact_open + program.fact_sep + "H6: Round 2 Q3. What is the title of the last chapter of Trabolta's unfinished Unified Field Theory?"
+          set program.fact_sep = " | "
+      if Night.round >= 3:
+        if program.fact_f1 != true:
+          set program.fact_open = program.fact_open + program.fact_sep + "F1: Final Q1. What is the only thing Sandy has ever said?"
+          set program.fact_sep = " | "
+        if program.fact_f2 != true:
+          set program.fact_open = program.fact_open + program.fact_sep + "F2: Final Q2. Who is taking Sandy to computer prom?"
+          set program.fact_sep = " | "
+      if program.fact_open != "":
+        show fact "📝 File a fact" to program with thread: Trabolta, questions: program.fact_open
 
   // `fact_try` / `fact_q_round` are scratch for this filing; the filing's
   // own record (`fact_n`, `fact_label`, `last_fact_q`) is written only when
@@ -1426,6 +1457,10 @@ INTERACTION the golden duck
 // Performer buttons (on every guest card). Every hook guards its phase
 // and ignores a wrong-phase press — except `send to the internet` and
 // `mark as reinstalled`, which work on any program at any time.
+// `by:` names whose button it is (a character, or a GROUP's members; a
+// character that owns a hook for it counts too) and `while:` when it is
+// on offer: a booth's card leads with its own live buttons and folds the
+// rest under More. Neither is enforced — the hooks still guard.
 
 INTERACTION send to the internet
   label: 🛡 Send to the Internet
@@ -1450,117 +1485,162 @@ INTERACTION vouch
 INTERACTION check_in_at_desktop
   label: 📍 Checked in at the Desktop
   who: performer
+  while: Night.summons_open == true
   description: Anyone at the living-room door during the five-minute summons.
 
 INTERACTION bingo_winner
   label: 🎱 Bingo winner
   who: performer
+  by: Clippy
+  while: Night.phase == "bingo_results"
   description: Clippy, at the Bingo results. Several winners are fine.
 
 INTERACTION award_the_ribbon
   label: 🎀 Award a ribbon (the Bingo Ribbon for a Bingo winner)
   who: performer
+  by: Hosts
 
 INTERACTION frame_for_bingo
   label: 🃏 Hand Clippy the fake Bingo card (no Bingo)
   who: performer
+  by: Task Manager
+  while: Night.phase == "bingo_results" and Night.bingo_winners < 1
   description: Task Manager, only if nobody has a Bingo.
 
 INTERACTION accurate_q1
   label: ✅ Q1 of this round: accurate, accepted
   who: performer
+  by: Hosts
+  while: Night.judging == true
 
 INTERACTION accurate_q2
   label: ✅ Q2 of this round: accurate, accepted
   who: performer
+  by: Hosts
+  while: Night.judging == true
 
 INTERACTION accurate_q3
   label: ✅ Q3 of this round: accurate, accepted
   who: performer
+  by: Hosts
+  while: Night.judging == true and Night.round != 3
 
 INTERACTION confident_q1
   label: 😤 Q1 of this round: wrong but confident, accepted
   who: performer
+  by: Hosts
+  while: Night.judging == true
 
 INTERACTION confident_q2
   label: 😤 Q2 of this round: wrong but confident, accepted
   who: performer
+  by: Hosts
+  while: Night.judging == true
 
 INTERACTION confident_q3
   label: 😤 Q3 of this round: wrong but confident, accepted
   who: performer
+  by: Hosts
+  while: Night.judging == true and Night.round != 3
 
 INTERACTION fact_accurate
   label: 📝 Filed fact: accurate
   who: performer
+  by: Hosts
+  while: Night.ended != true
   description: Hosts, from # hosts, any time. Judges this program's latest filed fact. Same reply as a lie.
 
 INTERACTION fact_lie
   label: 📝 Filed fact: confident lie
   who: performer
+  by: Hosts
+  while: Night.ended != true
   description: Hosts, from # hosts, any time. A wrong filed fact is still accepted. Only the Kernel knows.
 
 INTERACTION beat_the_machine
   label: ♟ They beat the machine
   who: performer
+  by: Hosts, Antivirus
   description: Hosts or Antivirus who saw the mate on the chess phone, on the winner's card. From the Y2K hour it disarms the server-room door for 90 s.
 
 INTERACTION uncertain_answer
   label: 🤷 Uncertain or guessed: to the Internet
   who: performer
+  by: Hosts
+  while: Night.judging == true
 
 INTERACTION chose_dare
   label: 🎩 Chose Dare: to the Internet
   who: performer
+  by: Hosts
+  while: Night.judging == true
 
 INTERACTION called_it_false
   label: 🙅 Called a false slip false: pass the turn
   who: performer
+  by: Hosts
+  while: Night.judging == true
 
 INTERACTION made_the_cup
   label: 🏓 Made the cup: may answer
   who: performer
+  by: Hosts
+  while: Night.phase == "truth_pong"
 
 INTERACTION missed_the_cup
   label: 🏓 Missed the cup: to the Internet
   who: performer
+  by: Hosts
+  while: Night.phase == "truth_pong"
 
 INTERACTION pay_truthcoin
   label: 🪙 Pay 100 Truthcoin
   who: performer
+  by: McAfee Anti-Virus, Hosts
   description: McAfee Anti-Virus (the exchange broker) or a host (the bank).
 
 INTERACTION charge_truthcoin
   label: 🪙 Charge 100 Truthcoin
   who: performer
+  by: McAfee Anti-Virus, CRA Agent Software, Hosts
   description: McAfee Anti-Virus, CRA Agent Software (audits) or a host.
 
 INTERACTION brought_up_the_bag
   label: 🍎 Brought up the Bag of Truth
   who: performer
+  by: Clippy, Adobe Acrobat
+  while: Night.phase == "bobbing" and Night.bag_up != true
 
 INTERACTION failed_the_bob
   label: 🍎 Failed the bob: to the Internet
   who: performer
+  by: Clippy, Adobe Acrobat
+  while: Night.phase == "bobbing" and Night.bag_up != true
 
 INTERACTION pickup_line_works
   label: 💘 Said "You're the one that I want"
   who: performer
+  by: Hosts
+  while: Night.phase == "grok_prom" and Night.ended != true
 
-// Guest buttons (on the pass; always shown, so every hook guards).
+// Guest buttons (on the pass). `while:` hides one that would do nothing
+// for this program right now; every hook still guards.
 
 INTERACTION go to the bathroom
   label: 🚻 Bathroom Mode
   who: guest
+  while: program.afk != true
   description: Leave honestly. Tells the Antivirus you are not hacking the Internet, and excuses you from a summons.
 
 INTERACTION back from the bathroom
   label: Back from the bathroom
   who: guest
+  while: program.afk == true
 
 INTERACTION plant_the_virus
   label: 💾 Insert a disk into the computer
   who: guest
+  while: program.carries_virus == true and program.planted_virus != true
 
 // ── House rules ─────────────────────────────────────────────────────
 // Story-level `when`s: the arc of the night, in running order. Phase

@@ -37,5 +37,8 @@ out loud: a **📝 File a fact** card in their private thread. Pick the
 question, type your answer, tick **I'm certain**, and tap **File it**.
 Only filed facts count — telling the character in chat is just a rumour.
 You can file each question once, and the reply is the same whether you
-were right or not. Once you've filed, a fresh card arrives for the next
-one.
+were right or not. A filed card says **sent** — the character's reply
+tells you whether it was accepted (one filing waits to be judged at a
+time). A fresh card arrives for the next one, and the old cards fold
+into one line each — the newest card lists every question you can still
+file, earlier rounds' included.

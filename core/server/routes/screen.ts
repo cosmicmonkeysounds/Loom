@@ -312,6 +312,9 @@ export interface ScreenCharacter {
   hidden: boolean;
   awake: boolean;
   online: boolean;
+  /** The character has a `hold:` line: guests are always answered, so a
+   *  guest-facing screen shows no online / away. */
+  hold: boolean;
 }
 
 export interface ScreenState {
@@ -455,7 +458,7 @@ export class ScreenWatch {
       if (def !== undefined) {
         const hidden = def.hidden && !sim.isRevealed(def.id);
         const awake = peek(`${def.id}.awake`) !== "false";
-        character = { id: def.id, hidden, awake, online: online(def.id) };
+        character = { id: def.id, hidden, awake, online: online(def.id), hold: def.hold !== null };
       }
     }
 

@@ -93,6 +93,11 @@ export interface Interaction {
   label: string;
   who: "performer" | "guest" | "admin" | "agent";
   description: string | null;
+  /** Whose button this is (character ids, the INTERACTION's `by:` + owned
+   *  hooks). Absent = anyone's. */
+  actors?: string[];
+  /** False while its `while:` is false — not on offer right now. */
+  live?: false;
 }
 
 /** A codex entry the viewer holds (mirror of server views.ts `CodexEntryView`). */
@@ -115,8 +120,9 @@ export interface PersonCard {
   /** Where they stand (guests only; null before the story places them). */
   location: string | null;
   /** A character voiced by an agent (`mind: external`, e.g. a language
-   *  model on a stagehand machine); `online` = someone is answering now. */
-  agent?: { online: boolean };
+   *  model on a stagehand machine); `online` = someone is answering now;
+   *  `hold` = the story has a `hold:` line, so they always answer. */
+  agent?: { online: boolean; hold?: true };
 }
 
 export interface GuestView {

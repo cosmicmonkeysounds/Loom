@@ -1234,6 +1234,15 @@ usually caught by a house rule (Part 6.4) or the role. `who: admin` needs
 the moderator passcode. Every interaction also appears in the Run
 cockpit's event list.
 
+Two optional lines keep a busy show's buttons in order. `by: Clippy,
+Antivirus` says whose button it is (characters, or a GROUP's members —
+and any character with its own `when` for the event counts too): a
+performer's guest card leads with their own and folds the rest under
+**More…**. `while: Night.phase == "bingo_results"` says when it is on
+offer: a performer's out-of-phase button folds away the same way, and a
+guest's is hidden while false (`while: program.afk == true` — the guest
+is the subject). Neither is enforced; the hooks still decide.
+
 A fourth value, `who: agent`, is not a button at all: it declares a
 **power** a character voiced by a language model (`mind: external`) may
 exercise from a conversation — cut the lights in a room, pardon a

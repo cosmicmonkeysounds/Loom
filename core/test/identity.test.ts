@@ -352,6 +352,7 @@ describe("the join screens' pickers", () => {
     expect(guests.status).toBe(200);
     expect(guests.json.role).toBe("guest");
     expect(guests.json.search).toBe(true);
+    expect(guests.json.doorsOpen).toBe(true);
     const names = guests.json.identities.map((r: { name: string }) => r.name);
     expect(names).toContain("MS Paint");
     expect(names).not.toContain("Clippy");
@@ -371,6 +372,19 @@ describe("the join screens' pickers", () => {
     expect(partNames).not.toContain("MS Paint");
     expect(parts.json.identities.find((r: { name: string }) => r.name === "Clippy").avatar).toBe(avatarKey(fileUrl("File:Windows 11 Clippy paperclip emoji.png")));
     expect((await post(rt, "/api/identities", { passcode: "nope" })).status).toBe(403);
+  });
+
+  it("says the doors are closed (and lists nobody) before the story loads", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-identity-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "trapped-in-the-internet", scenarioSource: SHOW, joinBase: () => "http://localhost" });
+    const closed = await post(rt, "/api/identities", { passcode: CODES.event });
+    expect(closed.status).toBe(200);
+    expect(closed.json).toMatchObject({ role: "guest", identities: [], doorsOpen: false });
+    rt.openDoors();
+    const open = await post(rt, "/api/identities", { passcode: CODES.event });
+    expect(open.json.doorsOpen).toBe(true);
+    expect(open.json.identities.length).toBeGreaterThan(0);
   });
 
   it("without a directory there is no search, and the hand-picked pictures still show", async () => {

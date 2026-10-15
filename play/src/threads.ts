@@ -191,6 +191,35 @@ export interface Threads {
   activeThreadRoot: number | null;
   openThread: (rootSeq: number) => void;
   closeThread: () => void;
+  /** Mark these messages read (each room up to its newest one listed) —
+   *  what the guest already read somewhere else, like the cutscene stage. */
+  markRead: (messages: Iterable<Pick<ChatMessage, "channel" | "seq">>) => void;
+}
+
+/** Where a session keeps its read marks, so a reload doesn't turn the
+ *  whole backlog back into badges: one storage `slot`, holding the marks of
+ *  the current sign-in (`session`; null = signed out, nothing kept). */
+export interface ReadMarkStore {
+  load<T>(key: string): T | null;
+  save(key: string, value: unknown): void;
+}
+export interface ReadMarkPersist {
+  store: ReadMarkStore;
+  slot: string;
+  session: string | null;
+}
+
+/** Fold `messages` into `marks`: each room's mark moves up to the newest
+ *  listed seq (never back). Returns `marks` itself when nothing moved. */
+export function advanceMarks(marks: ReadonlyMap<string, number>, messages: Iterable<Pick<ChatMessage, "channel" | "seq">>): ReadonlyMap<string, number> {
+  let next: Map<string, number> | null = null;
+  for (const m of messages) {
+    const cur = (next ?? marks).get(m.channel) ?? -1;
+    if (m.seq <= cur) continue;
+    next ??= new Map(marks);
+    next.set(m.channel, m.seq);
+  }
+  return next ?? marks;
 }
 
 /**
@@ -200,8 +229,25 @@ export interface Threads {
  * decisions, unread, populated rooms, recency) so an unanswered choice
  * always pulls focus and an empty room never crowds the top.
  */
-export function useThreads(channels: Channel[]): Threads {
-  const [readMarks, setReadMarks] = useState<Map<string, number>>(new Map());
+export function useThreads(channels: Channel[], persist?: ReadMarkPersist): Threads {
+  const storeKey = persist?.session ?? null;
+  const load = (): ReadonlyMap<string, number> => {
+    if (persist === undefined || storeKey === null) return new Map();
+    const raw = persist.store.load<{ session?: unknown; marks?: Record<string, unknown> }>(persist.slot);
+    if (raw === null || raw.session !== storeKey || typeof raw.marks !== "object" || raw.marks === null) return new Map();
+    return new Map(Object.entries(raw.marks).flatMap(([k, v]) => (typeof v === "number" ? [[k, v] as [string, number]] : [])));
+  };
+  const [marks, setMarks] = useState<{ key: string | null; marks: ReadonlyMap<string, number> }>(() => ({ key: storeKey, marks: load() }));
+  // A new sign-in reads its own marks (a fresh one starts with none).
+  const readMarks = marks.key === storeKey ? marks.marks : load();
+  if (marks.key !== storeKey) setMarks({ key: storeKey, marks: readMarks });
+  const setReadMarks = (fn: (prev: ReadonlyMap<string, number>) => ReadonlyMap<string, number>) =>
+    setMarks((prev) => {
+      const next = fn(prev.marks);
+      if (next === prev.marks) return prev;
+      if (persist !== undefined && prev.key !== null) persist.store.save(persist.slot, { session: prev.key, marks: Object.fromEntries(next) });
+      return { key: prev.key, marks: next };
+    });
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeThreadRoot, setActiveThreadRoot] = useState<number | null>(null);
 
@@ -212,13 +258,9 @@ export function useThreads(channels: Channel[]): Threads {
   // last-seen mark, clearing the badge.
   useEffect(() => {
     if (activeId === null) return;
-    setReadMarks((prev) => {
-      if (prev.get(activeId) === activeMax) return prev;
-      const next = new Map(prev);
-      next.set(activeId, activeMax);
-      return next;
-    });
-  }, [activeId, activeMax]);
+    setReadMarks((prev) => advanceMarks(prev, [{ channel: activeId, seq: activeMax }]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId, activeMax, storeKey]);
 
   const list = channels
     .map((c) => {
@@ -244,5 +286,6 @@ export function useThreads(channels: Channel[]): Threads {
     activeThreadRoot,
     openThread: (rootSeq) => setActiveThreadRoot(rootSeq),
     closeThread: () => setActiveThreadRoot(null),
+    markRead: (messages) => setReadMarks((prev) => advanceMarks(prev, messages)),
   };
 }

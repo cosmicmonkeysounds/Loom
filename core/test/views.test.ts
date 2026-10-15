@@ -122,6 +122,36 @@ describe("server views", () => {
   });
 });
 
+describe("a cutscene place is a room only while you stand in it", () => {
+  it("drops the login room from a guest's list once the story moves them on", () => {
+    const sim = Sim.fromSources(`# Rails
+
+LOCATION The Mud Room
+  cutscene: true
+
+LOCATION The Desktop
+
+INTERACTION done
+  who: admin
+
+ROLE Guest
+  when someone joins:
+    move guest to The Mud Room
+
+when done for guest:
+  move guest to The Desktop
+`);
+    sim.createPerson("g1", "Ada");
+    const rooms = () => guestView(sim, "g1").channels.map((c) => c.id);
+    expect(rooms()).toContain("loc:The Mud Room");
+    sim.signal("done", "g1");
+    expect(rooms()).not.toContain("loc:The Mud Room");
+    expect(rooms()).toContain("loc:The Desktop");
+    // Performers still run every room.
+    expect(primeView(sim, "Nobody").channels.map((c) => c.id)).toContain("loc:The Mud Room");
+  });
+});
+
 describe("titleOf — the authored display title", () => {
   it("reads the first `# Title` heading", () => {
     expect(titleOf("# Trapped in the Internet\n#\n# prose comment\n\nentry: start\n")).toBe("Trapped in the Internet");

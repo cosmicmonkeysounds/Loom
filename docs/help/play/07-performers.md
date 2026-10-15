@@ -74,8 +74,10 @@ room, or from a room's 👥 who's-here list. The card shows where they
 are and their group, and holds **📡 Scan**, **📓 Share lore…**, and the
 **story's own buttons** — whatever the writers declared for performers
 (a whisper, a blessing, a search…). Pressing one acts *as your
-character*, on that guest. Rooms themselves stay clean: just the
-conversation and your composer.
+character*, on that guest. The card leads with **your** buttons that
+make sense right now; the rest (another character's, or one for a later
+part of the night) fold under **More…** — still there if you need them.
+Rooms themselves stay clean: just the conversation and your composer.
 
 ## Rooms
 

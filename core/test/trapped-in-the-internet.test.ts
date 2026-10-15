@@ -1677,11 +1677,23 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05)", () => {
     // A late program gets the current round's card once an Antivirus clears them.
     const late = upload(sim, "g9", "Netscape Navigator");
     expect(facts(late).map((w) => w.audience)).toEqual([["g9"]]);
-    // Round 2 deals a fresh card with H4–H6; round 3 with F1–F2.
+    // Round 2 deals a fresh card that adds H4–H6 to every round-1 question
+    // the program hasn't filed: a newer card never strands an earlier one.
+    const questions = (w: { params: Record<string, string> }) => (w.params["questions"] ?? "").split("|").map((q) => q.trim()).filter(Boolean);
+    const ids = (w: { params: Record<string, string> }) => questions(w).map((q) => q.split(":")[0]);
+    file(sim, "g1", "H1", "Twelve");
     fireAll(sim, "hunt_time_up", "first_moment_of_truth", "second_hunt_preview");
     const r2 = facts(fire(sim, "start_the_second_hunt"));
     expect(r2.length).toBe(PROGRAMS.length + 1);
-    expect(r2[0]!.params["questions"]).toMatch(/^H4: .*\| H5: .*\| H6: /u);
+    const r2For = (g: string) => r2.find((w) => w.audience[0] === g)!;
+    expect(ids(r2For("g2"))).toEqual(["H1", "H2", "H3", "H4", "H5", "H6"]);
+    expect(ids(r2For("g1"))).toEqual(["H2", "H3", "H4", "H5", "H6"]); // H1 is filed
+    expect(questions(r2For("g2"))[3]).toMatch(/^H4: Round 2 Q1\. What extension/u);
+    // A round-1 question still files late off the round-2 card.
+    fire(sim, "fact_accurate", "g1", null, "Clippy");
+    const late2 = file(sim, "g1", "H3", "9 am");
+    expect(hosts(sim, late2)).toEqual([expect.stringMatching(/ filed H3 \(round 1 Q3\): 9 am$/u)]);
+    expect(ids(facts(late2)[0]!)).toEqual(["H2", "H4", "H5", "H6"]);
   });
 
   it("a filing lands in # hosts; 📝 confident lie is sticky, +50, and reads exactly like 📝 accurate", { timeout: SLOW }, () => {

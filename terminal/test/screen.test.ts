@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.ts";
-import { attractOf, parseScreenState, pollScreen, screenStateUrl, voiceOf } from "../src/screen.ts";
+import { MISSES_OFFLINE, attractOf, missesAfter, parseScreenState, pollScreen, screenReachable, screenStateUrl, voiceOf } from "../src/screen.ts";
 
 const config = defaultConfig({ eventId: "evt 1", token: "tok", name: "Kitchen", spot: "start-bar", view: "auto" });
 
@@ -44,6 +44,19 @@ describe("screen state", () => {
     expect(await pollScreen(config, throwing)).toEqual({ kind: "miss" });
   });
 
+  it("the bar's dot goes dark when the server stops answering, though the last state is kept", () => {
+    const state = parseScreenState(body);
+    expect(screenReachable(null, 0)).toBe(false); // never answered
+    let misses = missesAfter(0, "state");
+    expect(screenReachable(state, misses)).toBe(true);
+    misses = missesAfter(misses, "miss"); // one dropped poll is a blip
+    expect(screenReachable(state, misses)).toBe(true);
+    misses = missesAfter(misses, "miss");
+    expect(misses).toBe(MISSES_OFFLINE);
+    expect(screenReachable(state, misses)).toBe(false); // the server is gone
+    expect(screenReachable(state, missesAfter(misses, "state"))).toBe(true); // and back
+  });
+
   it("fails closed: no answer yet is attract", () => {
     expect(attractOf(null)).toBe(true);
     expect(attractOf(parseScreenState(body))).toBe(true);
@@ -54,7 +67,8 @@ describe("screen state", () => {
     expect(parseScreenState(null)).toBeNull();
     expect(parseScreenState({ attract: "yes" })).toBeNull();
     const s = parseScreenState({ attract: false, character: { id: "Clippy" }, remaining: Number.NaN })!;
-    expect(s.character).toEqual({ id: "Clippy", hidden: false, awake: true, online: false });
+    expect(s.character).toEqual({ id: "Clippy", hidden: false, awake: true, online: false, hold: false });
+    expect(parseScreenState({ attract: false, character: { id: "Trabolta", online: false, hold: true } })!.character!.hold).toBe(true);
     expect(s.remaining).toBeNull();
     expect(s.night).toEqual({ screen: null, terminals: null });
   });

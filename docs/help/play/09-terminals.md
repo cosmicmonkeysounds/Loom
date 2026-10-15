@@ -49,12 +49,13 @@ end is near; touch anything to stay. Tap **DISCONNECT** to end it
 yourself. Nobody can read your conversation after that: the next person
 scans their own pass and sees their own line.
 
-If the character is **away** (its voice isn't listening right now), the
-terminal says so — your message still goes through, and the answer
-arrives in your app when they're back. After about twenty seconds the
-character may answer with a holding line ("Jean Trabolta is not
-responding. Please do not move the mouse.") — that's the system, not a
-reply; the real answer still comes.
+If the character's voice isn't listening right now, your message still
+goes through. After about twenty seconds the character may answer with a
+holding line ("Jean Trabolta is not responding. Please do not move the
+mouse.") — that's the system, not a reply; a real answer still comes
+(from the character, or from someone running the show). A character
+without a holding line shows **away** in the header while nobody is
+answering.
 
 ## Messages from the story
 

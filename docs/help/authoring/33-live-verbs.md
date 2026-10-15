@@ -193,6 +193,35 @@ guest's pass sheet, fired with the guest as subject (catch it with a
 story rule or on the ROLE). `who: admin` needs the moderator passcode.
 Interactions are listed in the Run cockpit's event picker too.
 
+### Whose button, and when: `by:` and `while:`
+
+A show with many performer buttons can say whose each one is, and when
+it is on offer:
+
+```loom
+INTERACTION bingo winner
+  label: 🎱 Bingo winner
+  who: performer
+  by: Clippy
+  while: Night.phase == "bingo_results"
+
+INTERACTION go to the bathroom
+  label: 🚻 Bathroom Mode
+  who: guest
+  while: program.afk != true
+```
+
+`by:` names characters or a GROUP (all its members), comma-separated; a
+character that owns a `when` for the event counts too, so a trait's
+`when vouch for program:` makes every host's card lead with **Vouch**. A
+performer's guest card shows their own buttons that are on offer now and
+folds every other one under **More…** — nothing disappears, and nothing
+is enforced (the `when` still decides what happens). `while:` is a
+condition: on a performer's button it reads the world with `self` = the
+performer; on a guest's it is evaluated for that guest (the ROLE's name,
+`program`, is them), and a false one is **hidden** from their pass — so
+**Back from the bathroom** only shows while they are away.
+
 The `who: admin` interactions are also the Director page's **cue sheet**,
 in the order you declare them. Add `sequence: false` to one a machine
 fires (a game, a door sensor) or that is only a hardware fallback: the
