@@ -159,7 +159,9 @@ passcode: append `&code=<mod passcode>` before opening one on its tablet.
 
 **The project bar** (`src/map/ProjectBar.tsx`; its decisions in
 `src/map/project.ts`, unit-tested; not mounted on the page yet — the map
-page rewrite places it): a toggle per whole-map variant of the event
+page rewrite places it, and should label the page's `source` with
+`sourceLabel` from the same file — it knows `project`, the project's
+file by name): a toggle per whole-map variant of the event
 (`house.json`, `house.shed.json`, … — `GET /api/mod/spatial/variants`; the
 active one pressed, a broken one disabled with its problems as the
 tooltip). A click switches the live map (`POST /api/mod/spatial/variant

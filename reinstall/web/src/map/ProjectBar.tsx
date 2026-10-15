@@ -16,7 +16,8 @@
 //!     onSaved={(file) => …}        // optional: e.g. reload (the source is now "project")
 //!   />
 //!
-//! The decisions live in `project.ts` (pure, tested).
+//! The decisions live in `project.ts` (pure, tested) — incl. `sourceLabel`,
+//! the page's "where this map comes from" line (`source: "project"` too).
 
 import { useCallback, useEffect, useState } from "react";
 import type { HouseMap, MapVariantsResponse } from "@loom/house";
@@ -100,7 +101,7 @@ export function ProjectBar({ base, token, house, version, players = 0, dirty = f
     if (ask !== null && !confirm(ask)) return;
     setStatus({ kind: "busy", what: `Saving ${file} to the project…` });
     try {
-      const r = await saveToProject(base, token, null, version);
+      const r = await saveToProject(base, token, file, version);
       setStatus(statusOf(r, "save"));
       if (r.ok) onSaved?.(r.result.file);
     } catch (e) {

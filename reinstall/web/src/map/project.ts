@@ -4,7 +4,7 @@
 //! Pure, so the decisions are unit-tested; the component only wires them
 //! to the server (`api.ts`) and the DOM.
 
-import type { HouseMap, MapVariant, MapVariantsResponse } from "@loom/house";
+import type { HouseMap, HouseSource, MapVariant, MapVariantsResponse } from "@loom/house";
 import type { MapReply } from "../api.ts";
 
 /** The default variant's file (the server's `DEFAULT_MAP_FILE`). */
@@ -57,9 +57,35 @@ export function saveConfirm(file: string, dirty: boolean): string | null {
   return dirty ? `Your unsaved edits are not part of it: this saves the event's current map to the project as ${file}. Save the edits first to include them.\n\nSave anyway?` : null;
 }
 
-/** The file "Save to project" writes: the active variant's, else the default. */
+/** A project map file's name: `house.json` or `house.<variant>.json` (the
+ *  server's `isMapFile`). */
+const MAP_FILE = /^house(\.[A-Za-z0-9_-]{1,40})?\.json$/;
+
+/** The file "Save to project" writes: the active variant's — a show
+ *  sibling's too, when the event has no project maps yet — else the
+ *  default. The bar sends it explicitly, so what the director confirms is
+ *  what is written (the server's `saveFileFor` picks the same by default). */
 export function saveTarget(r: MapVariantsResponse | null): string {
-  return activeOf(r)?.file ?? DEFAULT_MAP_FILE;
+  const file = activeOf(r)?.file;
+  return file !== undefined && MAP_FILE.test(file) ? file : DEFAULT_MAP_FILE;
+}
+
+/** Where the map the page shows comes from, for its status line: a
+ *  director's save on this event, a project file (the playing variant's
+ *  name when known), the show's fallback file, or the bundled stand-in. */
+export function sourceLabel(source: HouseSource | "bundled", r: MapVariantsResponse | null = null): string {
+  switch (source) {
+    case "event":
+      return "this event's map";
+    case "project": {
+      const file = r?.from === "project" ? activeOf(r)?.file : undefined;
+      return file !== undefined ? `the project's ${file}` : "the project's map";
+    }
+    case "show":
+      return "the show's map";
+    case "bundled":
+      return "offline — the bundled show map";
+  }
 }
 
 /** "Download JSON": the file name (the active variant's) and its text —

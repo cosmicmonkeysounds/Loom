@@ -8,6 +8,7 @@ import {
   downloadOf,
   saveConfirm,
   saveTarget,
+  sourceLabel,
   statusOf,
   switchConfirm,
   variantLabel,
@@ -65,6 +66,10 @@ describe("project bar logic", () => {
     expect(saveTarget(list())).toBe("house.json");
     expect(saveTarget(list({ variants: [{ ...tent, active: false }, { ...shed, active: true }] }))).toBe("house.shed.json");
     expect(saveTarget(null)).toBe("house.json");
+    // A show sibling (an event with no project maps yet) is saved under its own name…
+    expect(saveTarget(list({ from: "show", variants: [{ ...tent, active: false }, { ...shed, active: true }] }))).toBe("house.shed.json");
+    // …unless the show file isn't named like a project map (LOOM_HOUSE=/config/trapped.json).
+    expect(saveTarget(list({ from: "show", variants: [{ ...tent, file: "trapped.json" }] }))).toBe("house.json");
     expect(activeOf(null)).toBeNull();
     expect(saveConfirm("house.json", false)).toBeNull();
     expect(saveConfirm("house.json", true)).toContain("unsaved edits are not part of it");
@@ -77,6 +82,15 @@ describe("project bar logic", () => {
     expect(d.text.endsWith("}\n")).toBe(true);
     expect(JSON.parse(d.text)).toEqual(house);
     expect(d.text.split("\n")[1]!.startsWith('  "')).toBe(true);
+  });
+
+  it("sourceLabel: where the shown map comes from — a project file by name", () => {
+    expect(sourceLabel("event")).toBe("this event's map");
+    expect(sourceLabel("project", list({ variants: [{ ...tent, active: false }, { ...shed, active: true }] }))).toBe("the project's house.shed.json");
+    expect(sourceLabel("project")).toBe("the project's map");
+    expect(sourceLabel("project", list({ from: "show" }))).toBe("the project's map");
+    expect(sourceLabel("show")).toBe("the show's map");
+    expect(sourceLabel("bundled")).toBe("offline — the bundled show map");
   });
 
   it("statusOf: ok · conflict · error with its first problem", () => {
