@@ -50,7 +50,7 @@ import { PushHub, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readou
 import { printExtras } from "./routes/k12.ts";
 import { sendRecap } from "./routes/recap.ts";
 import { ScreenWatch, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost } from "./routes/screen.ts";
-import { SpatialHub, houseVersion, houseWarnings, isWorld, parsePose, sortCandidates, type SessionRef } from "./spatial.ts";
+import { SpatialHub, houseVersion, houseWarnings, isWorld, parseDuckRun, parsePose, sortCandidates, type DuckRun, type SessionRef } from "./spatial.ts";
 import {
   AgentHub,
   AgentTraceLog,
@@ -416,7 +416,12 @@ export class EventRuntime {
     this.houseFile = init.houseFile ?? defaultHouseFile();
     if (init.now !== undefined) this.clock = init.now;
     this.modSnapshotMs = Math.max(0, init.modSnapshotMs ?? MOD_SNAPSHOT_MS);
-    this.spatial = new SpatialHub({ eventId: init.eventId, ...(init.now !== undefined ? { now: init.now } : {}) });
+    this.spatial = new SpatialHub({
+      eventId: init.eventId,
+      ...(init.now !== undefined ? { now: init.now } : {}),
+      // The speedrun survives a server restart mid-show (SW-RE-14).
+      onRun: (run) => this.store.appendRun(run),
+    });
     this.checkin = new GuestCheckin({
       sim: () => this.sim,
       open: () => this.open,
@@ -1647,6 +1652,7 @@ export class EventRuntime {
     if (fresh) {
       this.loadScenario(this.scenarioSource, this.scenarioName);
       this.store.clearJournal();
+      this.store.clearRuns();
       this.resetChat();
       this.pendingTickMs = 0;
     }
@@ -1726,6 +1732,7 @@ export class EventRuntime {
     } else {
       this.loadScenario(source, name);
       this.store.clearJournal();
+      this.store.clearRuns();
       this.resetChat();
       this.pendingTickMs = 0;
       this.persistMeta();
@@ -1820,6 +1827,7 @@ export class EventRuntime {
       }
     }
     this.chat.loadHidden(this.store.loadHidden());
+    this.spatial.restoreRuns(this.store.loadRuns().map(parseDuckRun).filter((r): r is DuckRun => r !== null));
     for (const m of this.chat.all()) if (this.isExpired(m)) this.notifiedExpired.add(m.seq);
     for (const id of [...this.decisionChannels.keys()]) {
       if (this.sim?.pendingChoiceFor(id) == null) this.decisionChannels.delete(id);
@@ -1938,7 +1946,7 @@ export class EventRuntime {
     // --- K-26: the ceremony's recap numbers (directors only) ---
     if (method === "GET" && path === "/api/mod/recap") {
       if (opts.moderator !== true && !this.sessions.canModerate(queryTokenOf(req, url))) sendJson(res, 403, { error: "moderators only" });
-      else sendRecap(res, url, this.sim, { title: this.title, personas: this.personaOwners });
+      else sendRecap(res, url, this.sim, { title: this.title, personas: this.personaOwners, duckRuns: this.spatial.runs() });
       return true;
     }
     // --- process load for the K-32 load test (directors only) ---

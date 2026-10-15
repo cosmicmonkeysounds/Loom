@@ -347,8 +347,10 @@ pushes during journal replay. The play app's `/sw.js` +
 - **Recap** (K-26, `server/recap.ts` + `routes/recap.ts`): `GET
   /api/mod/recap` (directors) → `totals`, ranked `lists` (`trust` /
   `truths` / `lies` / `internetVisits` / `codex` / `quests` /
-  `truthcoin`; ties share a rank, personas flagged), `factions`, `ending`
-  and a paste-ready `text`;
+  `truthcoin`; ties share a rank, personas flagged), `duck` (the Golden
+  Duck Speedrun: each program's fastest find, `m:ss`, off the
+  `SpatialHub` run log the runtime keeps in `spatial-runs.jsonl` —
+  SW-RE-14), `factions`, `ending` and a paste-ready `text`;
   `?format=text` returns only the text.
 - **Cue sheet** (K-21): `ModView.cues` = `cueState(sim)` (`views.ts`) —
   which `who: admin` INTERACTIONs fired and the last in-sequence one, read

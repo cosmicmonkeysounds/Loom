@@ -20,9 +20,13 @@
 //! - **codex** — entries held. **quests** — quests done. **truthcoin** —
 //!   `score`.
 //! - **factions** — every declared group with its members, biggest first.
+//! - **duck** — the Golden Duck Speedrun (G8): each program's fastest find
+//!   in the reinstallation games, fastest first, off the `SpatialHub`'s run
+//!   log (`spatial-runs.jsonl`, SW-RE-14) the runtime passes in.
 
 import { asNumber, display } from "../src/runtime/expr.ts";
 import type { Sim } from "../src/runtime/sim/index.ts";
+import type { DuckRun } from "./spatial.ts";
 
 /** The story's lie counter (cast/props.loom: `Kernel.lies_accepted`). */
 export const LIE_COUNTER = "Kernel.lies_accepted";
@@ -35,6 +39,22 @@ export interface RecapRow {
   rank: number;
   /** A director's rehearsal persona, not a real guest. */
   persona: boolean;
+}
+
+/** One program's best duck run (lowest time first; ties share a rank). */
+export interface RecapDuckRow {
+  id: string;
+  name: string;
+  /** The fastest find, in ms. */
+  ms: number;
+  /** The same as `m:ss` — the G8 award's value. */
+  time: string;
+  rank: number;
+  persona: boolean;
+  /** Where the fastest run was played. */
+  world: DuckRun["world"];
+  /** How many times they found the duck. */
+  runs: number;
 }
 
 export interface RecapFaction {
@@ -52,6 +72,8 @@ export interface Recap {
   programs: number;
   totals: { liesAccepted: number; truthsAccepted: number; internetVisits: number; codexHeld: number; questsDone: number };
   lists: Record<RecapList, RecapRow[]>;
+  /** The Golden Duck Speedrun, fastest first (empty: nobody found it). */
+  duck: RecapDuckRow[];
   factions: RecapFaction[];
   /** Paste-ready text: top 5 of each list (bottom 3 for trust as well). */
   text: string;
@@ -111,6 +133,43 @@ export interface RecapOptions {
   title?: string;
   /** Persona ids (mod-spawned rehearsal guests) — flagged, still listed. */
   personas?: ReadonlySet<string> | ReadonlyMap<string, unknown>;
+  /** Every duck found this story (`SpatialHub.runs()`). */
+  duckRuns?: readonly DuckRun[];
+}
+
+/** `83_400` → `1:23` (whole seconds, rounded down). */
+export function runTime(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** Each program's fastest find, fastest first, with shared ranks on ties
+ *  (by whole second, as read aloud). The name is the sim's when the person
+ *  still exists, else the one the run recorded. */
+export function duckBoard(sim: Sim, runs: readonly DuckRun[], personas: RecapOptions["personas"] = new Set<string>()): RecapDuckRow[] {
+  const best = new Map<string, { run: DuckRun; count: number }>();
+  for (const r of runs) {
+    const prev = best.get(r.guest);
+    if (prev === undefined) best.set(r.guest, { run: r, count: 1 });
+    else best.set(r.guest, { run: r.ms < prev.run.ms ? r : prev.run, count: prev.count + 1 });
+  }
+  const rows = [...best.values()]
+    .map(({ run, count }) => ({
+      id: run.guest,
+      name: sim.persons.get(run.guest)?.name ?? run.name,
+      ms: run.ms,
+      time: runTime(run.ms),
+      persona: personas.has(run.guest),
+      world: run.world,
+      runs: count,
+    }))
+    .sort((a, b) => a.ms - b.ms || a.name.localeCompare(b.name));
+  const out: RecapDuckRow[] = [];
+  rows.forEach((r, i) => {
+    const tied = i > 0 && out[i - 1]!.time === r.time;
+    out.push({ ...r, rank: tied ? out[i - 1]!.rank : i + 1 });
+  });
+  return out;
 }
 
 export function computeRecap(sim: Sim, opts: RecapOptions = {}): Recap {
@@ -164,6 +223,7 @@ export function computeRecap(sim: Sim, opts: RecapOptions = {}): Recap {
     programs: sim.persons.size,
     totals,
     lists: ranked,
+    duck: duckBoard(sim, opts.duckRuns ?? [], personas),
     factions,
   };
   return { ...recap, text: recapText(recap) };
@@ -192,6 +252,16 @@ export function recapText(r: Omit<Recap, "text">): string {
       out.push(line(r.lists.trust.slice(-3).reverse()));
     }
   }
+  out.push("");
+  out.push("Golden Duck Speedrun (fastest find):");
+  out.push(
+    r.duck.length === 0
+      ? "  (nobody found the duck)"
+      : r.duck
+          .slice(0, 5)
+          .map((d) => `  ${d.rank}. ${d.name}${d.persona ? " (persona)" : ""} — ${d.time} (${d.world === "vr" ? "headset" : "tablet"})`)
+          .join("\n"),
+  );
   out.push("");
   out.push("Factions:");
   const fs = r.factions.filter((f) => f.members.length > 0);

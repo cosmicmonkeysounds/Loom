@@ -81,6 +81,8 @@ const AVATARS = "avatars.json";
 const HOUSE = "spatial-house.json";
 /** Web Push subscriptions by device (K-31a, `push.ts`). */
 const PUSH = "push.json";
+/** Every duck found this story (SW-RE-14, the ceremony's speedrun). */
+const RUNS = "spatial-runs.jsonl";
 
 /** Read + JSON-parse a file, returning `null` on any miss/corruption. */
 function readJson<T>(path: string): T | null {
@@ -206,6 +208,35 @@ export class Store {
   }
   saveHouse(house: unknown): void {
     writeFileSync(this.path(HOUSE), JSON.stringify(house, null, 2));
+  }
+
+  // One line per duck found (`spatial.ts` `DuckRun`), cleared with the
+  // journal: the runs belong to this story timeline. Raw lines come back
+  // unvalidated (`parseDuckRun` checks them); a torn last line is skipped.
+
+  appendRun(run: unknown): void {
+    appendFileSync(this.path(RUNS), JSON.stringify(run) + "\n");
+  }
+  loadRuns(): unknown[] {
+    let raw: string;
+    try {
+      raw = readFileSync(this.path(RUNS), "utf8");
+    } catch {
+      return [];
+    }
+    const out: unknown[] = [];
+    for (const line of raw.split("\n")) {
+      if (line.trim() === "") continue;
+      try {
+        out.push(JSON.parse(line));
+      } catch {
+        /* tolerate a torn final write */
+      }
+    }
+    return out;
+  }
+  clearRuns(): void {
+    rmSync(this.path(RUNS), { force: true });
   }
 
   // --- push subscriptions (K-31a) -----------------------------------------
