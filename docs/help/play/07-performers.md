@@ -21,7 +21,9 @@ performer. You now speak *as* that character everywhere.
 
 The pinned **Scanner** thread is your instrument:
 
-- **📷 Use camera** — point it at a guest's QR pass.
+- **📷 Use camera** — point it at a guest's QR pass. Works on iPhone
+  and Android; the camera stays on, so a queue scans pass after pass
+  (each one shows a ✓ with the guest's id). It needs the https address.
 - Or type their guest id (it's under their QR).
 
 A scan fires your character's story for that guest — the **Readouts**

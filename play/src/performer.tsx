@@ -5,7 +5,7 @@
 //! guest's card — never on a permanent panel under every room. A pinned
 //! Scanner thread holds the camera + scan readouts.
 
-import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useState, type ReactElement } from "react";
 import {
   ActionRow,
   ChannelView,
@@ -27,6 +27,8 @@ import { usePlayHost } from "./host.ts";
 import { AvatarsContext, avatarLookup, avatarUrl, orderPicker, type IdentityRow } from "./avatars.ts";
 import { codeFromUrl, fetchIdentities, useDocumentTitle, usePrimeSession, type IdentityLookup, type PrimeSession } from "./session.ts";
 import type { Action, Channel, PrimeGuest } from "./types.ts";
+import { cameraProblem, parseScan, scanProblem, typedTarget, type CameraState } from "./scan.ts";
+import { CameraScanner } from "./scanner.tsx";
 
 function PrimeLogin({ session }: { session: PrimeSession }) {
   const [passcode, setPasscode] = useState(codeFromUrl);
@@ -138,63 +140,52 @@ function PrimeLogin({ session }: { session: PrimeSession }) {
 function Scanner({ onScan }: { onScan: (id: string) => void }) {
   const [manual, setManual] = useState("");
   const [camOn, setCamOn] = useState(false);
-  const [err, setErr] = useState("");
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    if (!camOn) return;
-    let stop = () => {};
-    let raf = 0;
-    (async () => {
-      const Detector = (window as unknown as { BarcodeDetector?: unknown }).BarcodeDetector;
-      if (!Detector) {
-        setErr("Camera scanning isn't supported on this device — type the id.");
-        setCamOn(false);
-        return;
-      }
-      try {
-        const det = new (Detector as new (o: unknown) => { detect: (v: unknown) => Promise<Array<{ rawValue: string }>> })({ formats: ["qr_code"] });
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        const v = videoRef.current!;
-        v.srcObject = stream;
-        await v.play();
-        stop = () => stream.getTracks().forEach((t) => t.stop());
-        const tick = async () => {
-          try {
-            const codes = await det.detect(v);
-            if (codes[0]) {
-              onScan(codes[0].rawValue);
-              setCamOn(false);
-              return;
-            }
-          } catch {
-            /* frame skip */
-          }
-          raf = requestAnimationFrame(tick);
-        };
-        tick();
-      } catch (e) {
-        setErr("Camera error: " + (e as Error).message);
-        setCamOn(false);
-      }
-    })();
-    return () => {
-      cancelAnimationFrame(raf);
-      stop();
-    };
-  }, [camOn, onScan]);
-
+  const [cam, setCam] = useState<CameraState>("off");
+  const [note, setNote] = useState("");
+  const problem = cameraProblem(cam);
+  // The camera stays on between passes — a door queue scans one after
+  // another; a wall QR or a stray code just says so.
+  const onCode = (raw: string) => {
+    const hit = parseScan(raw);
+    if (hit.kind === "guest") {
+      setNote(`✓ ${hit.id}`);
+      onScan(hit.id);
+    } else setNote(scanProblem(hit) ?? "");
+  };
+  const typed = () => {
+    const target = typedTarget(manual);
+    if (!target) return;
+    onScan(target);
+    setManual("");
+  };
   return (
     <div className="card">
-      <input placeholder="Guest id (e.g. g-1a2b3c)" value={manual} onChange={(e) => setManual(e.target.value)} onKeyDown={(e) => e.key === "Enter" && onScan(manual.trim())} />
-      <button className="choice primary" onClick={() => onScan(manual.trim())}>
+      <input
+        placeholder="Guest id (e.g. g-1a2b3c)"
+        value={manual}
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        onChange={(e) => setManual(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && typed()}
+      />
+      <button className="choice primary" onClick={typed}>
         Scan
       </button>
-      <button className="choice ghost" onClick={() => setCamOn((v) => !v)}>
+      <button
+        className="choice ghost"
+        onClick={() => {
+          setNote("");
+          setCam("off");
+          setCamOn((v) => !v);
+        }}
+      >
         {camOn ? "Stop camera" : "📷 Use camera"}
       </button>
-      {camOn && <video ref={videoRef} playsInline className="cam" />}
-      {err && <div className="err">{err}</div>}
+      {camOn && !problem && <CameraScanner onCode={onCode} onState={setCam} />}
+      {camOn && cam === "live" && <div className="muted pad">Hold a pass up to the camera — it stays on for the next guest.</div>}
+      {note && <div className="muted pad">{note}</div>}
+      {problem && <div className="err">{problem}</div>}
     </div>
   );
 }

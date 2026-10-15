@@ -132,7 +132,8 @@ badges and sorts to the top, so a choice left unmade always pulls focus.
   restores every thread.
 - **🎭 Performer** — sign in as a character → the *same* threaded surface,
   recomposed for the booth: a pinned **Scanner** thread (camera via
-  `BarcodeDetector`, or manual id) + scan readouts, a read-only
+  `BarcodeDetector`, else `jsQR` on a canvas — iPhone Safari — left on
+  between passes; or manual id; `src/scanner.tsx` + pure `src/scan.ts`) + scan readouts, a read-only
   **broadcast feed**, and one **conversation per guest** to scan into. An
   admin (performer who also enters the moderator passcode) additionally
   gets **hide/show** on every message and capture/release in each guest
@@ -219,5 +220,6 @@ markdown in `docs/help/play/`, parsed by the shared
 `docs/help/helpdoc.ts` engine and bundled at build time —
 edit the markdown, rebuild (or let Vite HMR pick it up), done.
 
-> Note: `BarcodeDetector` (camera QR scanning) is Chrome/Android only;
-> iOS performers use the always-present manual id field.
+> Note: camera scanning uses `BarcodeDetector` where the browser has it
+> (Chrome/Android) and falls back to `jsQR` (iOS Safari). The camera needs
+> a secure context (https / localhost); the manual id field is always there.

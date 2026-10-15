@@ -318,6 +318,9 @@ importers:
 
   play:
     dependencies:
+      jsqr:
+        specifier: ^1.4.0
+        version: 1.4.0
       react:
         specifier: ^18.3.1
         version: 18.3.1
