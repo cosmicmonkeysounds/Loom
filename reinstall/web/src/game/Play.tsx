@@ -16,6 +16,11 @@ import { Joystick } from "./joystick.tsx";
 
 export type PlayExit = { kind: "found"; name: string; complete: boolean } | { kind: "over"; reason: string } | { kind: "idle" } | { kind: "quit" };
 
+/** Said wherever this browser would otherwise start a game it can't draw
+ *  (three r186 needs WebGL2: the wizard probes for it before "Play here"). */
+export const NO_WEBGL2 =
+  "This browser can't draw the simulation: it has no WebGL2 (3D graphics are switched off or unsupported). Send the program to a headset, or open this page in a current Chrome, Safari or Firefox with hardware acceleration on.";
+
 /** Seconds the celebration stays before returning to the scanner by itself. */
 const CELEBRATE_S = 15;
 
@@ -70,9 +75,11 @@ export function Play({
         onEnd: (e: GameEnd) => exit.current(e.kind === "idle" ? { kind: "idle" } : e),
       });
     } catch (e) {
-      // No WebGL (an old tablet, a locked-down browser).
+      // No WebGL (an old tablet, a locked-down browser) that the probe
+      // missed: a context that exists but won't start.
       void postEnd(base, assignment.token);
-      exit.current({ kind: "over", reason: `This device can't draw the simulation (${(e as Error).message}).` });
+      console.warn("reinstall: no renderer", e);
+      exit.current({ kind: "over", reason: NO_WEBGL2 });
       return;
     }
     game.current = g;
