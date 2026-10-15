@@ -528,7 +528,8 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
         const run = prev !== undefined ? placeRuns.get(prev) : undefined;
         if (e.kind === "location" && run !== undefined && sameAudience(prev!.audience, audience)) {
           run.push(head.title);
-          prev!.text = `📂 ${listWords(run)} are open now.`;
+          // A list reads by name: "The RAM (studio, basement)" → "The RAM".
+          prev!.text = `📂 ${listWords(run.map((t) => t.replace(/\s*\([^()]*\)$/u, "")))} are open now.`;
           break;
         }
         const notice = sys(`📂 ${head.title} is open now.`, audience);

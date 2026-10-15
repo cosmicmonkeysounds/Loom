@@ -135,22 +135,22 @@ LOCATION The Cloud
   hidden: true
 
 LOCATION The RAM
-  label: The RAM (studio, basement)
+  label: The RAM (studio)
   ambient: dial-tone
   hidden: true
 
 LOCATION The Fan Closet
-  label: The Fan Closet (laundry, basement)
+  label: The Fan Closet (laundry)
   ambient: dryer-tumble
   hidden: true
 
 LOCATION The Graphics Card
-  label: The Graphics Card (bedroom 2, upstairs)
+  label: The Graphics Card (bedroom 2)
   ambient: coil-whine
   hidden: true
 
 LOCATION The Hard Drive
-  label: The Hard Drive (crawl space, upstairs)
+  label: The Hard Drive (crawl space)
   ambient: platter-spin
   hidden: true
 

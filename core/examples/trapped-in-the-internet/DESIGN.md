@@ -390,10 +390,10 @@ not refuse hidden groups; §7.)
 | 7 | The Steam Room | `The Steam Room (game room)` | `ambient: startup-chimes`, `hidden: true` | Main floor (bedroom / game room). TENNIS-FOR-TWO. |
 | 8 | Disk Cleanup | `Disk Cleanup (bathrooms)` | `ambient: dripping-tap`, `hidden: true` | Recycling Bin's domain: Bathroom 1 (basement) and Bathroom 2 (top). |
 | 9 | The Cloud | `The Cloud (backyard — Truth Pong)` | `hidden: true` | |
-| 10 | The RAM | `The RAM (studio, basement)` | `ambient: dial-tone`, `hidden: true` | Was The Registry. The pet-cemetery codes. |
-| 11 | The Fan Closet | `The Fan Closet (laundry, basement)` | `ambient: dryer-tumble`, `hidden: true` | FBI-HALIFAX (a coat pocket). |
-| 12 | The Graphics Card | `The Graphics Card (bedroom 2, upstairs)` | `ambient: coil-whine`, `hidden: true` | NSCAD-LETTER (the sketchbook). |
-| 13 | The Hard Drive | `The Hard Drive (crawl space, upstairs)` | `ambient: platter-spin`, `hidden: true` | TRABOLTA-4EVER, hidden. |
+| 10 | The RAM | `The RAM (studio)` | `ambient: dial-tone`, `hidden: true` | Was The Registry. The pet-cemetery codes. |
+| 11 | The Fan Closet | `The Fan Closet (laundry)` | `ambient: dryer-tumble`, `hidden: true` | FBI-HALIFAX (a coat pocket). |
+| 12 | The Graphics Card | `The Graphics Card (bedroom 2)` | `ambient: coil-whine`, `hidden: true` | NSCAD-LETTER (the sketchbook). |
+| 13 | The Hard Drive | `The Hard Drive (crawl space)` | `ambient: platter-spin`, `hidden: true` | TRABOLTA-4EVER, hidden. |
 | 14 | The Server Room | `The Server Room (cold storage)` | `hidden: true`, `checkin: false` | Trabolta's heart (the video patch bay). Door alarmed. Off the basement hall. |
 
 Reveal policy: house rooms 5–13 are revealed **per program** in `Clearance` (`reveal The Start Bar

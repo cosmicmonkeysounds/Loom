@@ -129,7 +129,7 @@ describe("hidden places", () => {
     const sim = Sim.fromSources(`# Rooms
 LOCATION Hall
 LOCATION Cellar
-  label: The Cellar
+  label: The Cellar (downstairs)
   hidden: true
 LOCATION Attic
   hidden: true
@@ -150,7 +150,8 @@ ROLE Guest
     sim.createPerson("g1", "Ada");
     sim.createPerson("g2", "Bob");
     const notices = composeGuestMessages(sim, sim.signal("cleared", "g1")).filter((m) => m.kind === "system");
-    // A run of places is one line; a chat room keeps its own; a repeat records nothing.
+    // A run of places is one line, listed by name (labels lose their
+    // parenthetical); a chat room keeps its own; a repeat records nothing.
     expect(notices.map((m) => [m.text, m.audience])).toEqual([
       ["📂 The Cellar, Attic and Shed are open now.", ["g1"]],
       ["📂 #secrets is open now.", ["g1"]],
