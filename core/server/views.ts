@@ -135,6 +135,10 @@ export interface GuestView {
   /** The story's title + theme — the client's chrome comes from the story. */
   title: string;
   theme: string;
+  /** The story clock (ms, `Sim.elapsed()`) when this view was built — the
+   *  "now" a client measures a message's `ts` against (e.g. only banner an
+   *  alert it missed if it is under 10 minutes old). */
+  clock?: number;
   role: string | null;
   /** App-facing faction — hidden factions read `null` until revealed. */
   faction: string | null;
@@ -192,6 +196,7 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     name: p?.name ?? id,
     title: sim.lobbyTitle(),
     theme: sim.model.theme ?? "plain",
+    clock: sim.elapsed(),
     role: p?.role ?? null,
     faction: sim.publicFactionOf(id),
     score: sim.scoreOf(id),
@@ -476,6 +481,10 @@ export interface PrimeView {
   character: string;
   title: string;
   theme: string;
+  /** The story clock (ms, `Sim.elapsed()`) when this view was built — the
+   *  "now" a client measures a message's `ts` against (e.g. only banner an
+   *  alert it missed if it is under 10 minutes old). */
+  clock?: number;
   faction: string | null;
   guests: PrimeGuest[];
   /** Every authored channel — performers run every room. */
@@ -524,6 +533,7 @@ export function primeView(sim: Sim | null, character: string, agentsOnline?: Rea
     character,
     title: sim.lobbyTitle(),
     theme: sim.model.theme ?? "plain",
+    clock: sim.elapsed(),
     faction: c?.faction ?? null,
     guests,
     channels: sim.allChannelsFor(character),

@@ -72,6 +72,13 @@ guest holds is a card (`kind: "codex"`, **Share…** → a person picker via
 `CardActionsProvider`), and the room's composer *redeems* codes
 (**Unlock**); a miss or a share lands there as a note. A scanned wall QR
 arrives as `?unlock=<code>`, is redeemed on load, and opens the Codex.
+A room's sign arrives as `?checkin=<slug>` (`checkin.ts`, K-13): checked in
+on load (`/api/guest/checkin`), it opens that room's chat, or banners why
+not (captured, on rails, not open yet).
+A director's re-pair QR arrives as `?code=<event>&resume=<token>`
+(`resume.ts`, N-02): `main.tsx` strips the token from the URL before
+rendering, and `App` adopts it as `loom.guest` (resolve the code, then
+`/api/state?role=guest` names the guest) — the same Person, back in.
 Both stay out of a cutscene (`personalStream`). Tested in
 `test/quests.test.ts`.
 
@@ -79,10 +86,35 @@ Both stay out of a cutscene (`personalStream`). Tested in
 and listed character with exactly the lore about them the viewer holds,
 plus **💬 Message**. Performers see what their character knows in the ☰
 sheet and share it from a guest's thread (**📓 Share lore…**). A
-broadcast whose cue starts with `!` is an **alert**: chime (synthesised),
-vibration, and a sticky banner (`src/codex.ts`, tested in
-`test/codex.test.ts`). A captive in a `sealed: true` prison gets no
+broadcast whose cue starts with `!` is an **alert**: chime (synthesised,
+on one shared `AudioContext` unlocked on the first tap), vibration, and a
+banner — in guest *and* booth sessions (`src/alerts.ts` `useAlerts`,
+tested in `test/alerts.test.ts`). The last-seen mark survives a
+reconnect's history replay (and is persisted per sign-in), so the newest
+unseen alert from the last 10 story-minutes (`GuestView.clock` /
+`PrimeView.clock`) banners on wake; a hidden page chimes when it becomes
+visible. A booth also banners + chimes any readout it didn't ask for
+(not within 4 s of its own scan / act — the late list, a private
+warning). **☰ → Keep my screen on** is an opt-in Screen Wake Lock
+(`src/wake-lock.ts`). A captive in a `sealed: true` prison gets no
 "make a break for it" button.
+
+**Push to a locked phone (K-31a, 2026-10-15).** A 🔔 **Get alerts** card
+(and a row in the ☰ / profile sheet) asks for notification permission
+from a tap, then subscribes this phone through the push-only service
+worker `public/sw.js` (no fetch handler — nothing is cached) and
+`POST /e/:id/api/push/subscribe`; a phone that already said yes re-binds
+silently on every sign-in, and **Leave / Sign out** unbinds it
+(`Push.release` → `/api/push/unsubscribe` + the browser's own
+unsubscribe), so a handed-on phone stops getting that person's alerts. Every `visibilitychange` / `pagehide` is
+beaconed to `/api/push/visible`, so the server pushes a character's DM
+or a booth readout only while the app is hidden; `!` alerts push always,
+and the worker skips the notification while a play window is in the
+foreground (no duplicate of the banner — except on iPhone, K-31b).
+Nothing registers when embedded (`host.embedded`, Run → Players), on
+plain http, without the Push API (an iPhone Safari tab), or when the
+server has no VAPID keys (`src/push.ts` `usePush`, `src/push-card.tsx`,
+tested in `test/push.test.ts`).
 - **authored rooms** (`room:<name>`) — an `open` / `private` / `faction` /
   `group` / `dm` channel declared in `.loom`, grouped under its `SPACE`.
 
@@ -132,7 +164,8 @@ badges and sorts to the top, so a choice left unmade always pulls focus.
   restores every thread.
 - **🎭 Performer** — sign in as a character → the *same* threaded surface,
   recomposed for the booth: a pinned **Scanner** thread (camera via
-  `BarcodeDetector`, or manual id) + scan readouts, a read-only
+  `BarcodeDetector`, else `jsQR` on a canvas — iPhone Safari — left on
+  between passes; or manual id; `src/scanner.tsx` + pure `src/scan.ts`) + scan readouts, a read-only
   **broadcast feed**, and one **conversation per guest** to scan into. An
   admin (performer who also enters the moderator passcode) additionally
   gets **hide/show** on every message and capture/release in each guest
@@ -219,5 +252,6 @@ markdown in `docs/help/play/`, parsed by the shared
 `docs/help/helpdoc.ts` engine and bundled at build time —
 edit the markdown, rebuild (or let Vite HMR pick it up), done.
 
-> Note: `BarcodeDetector` (camera QR scanning) is Chrome/Android only;
-> iOS performers use the always-present manual id field.
+> Note: camera scanning uses `BarcodeDetector` where the browser has it
+> (Chrome/Android) and falls back to `jsQR` (iOS Safari). The camera needs
+> a secure context (https / localhost); the manual id field is always there.

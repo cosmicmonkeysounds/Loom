@@ -24,6 +24,7 @@ import {
   SessionEnded,
   Shell,
   SpaceList,
+  WakeLockToggle,
   useWide,
 } from "./chat.tsx";
 import { CutsceneStage } from "./cutscene.tsx";
@@ -34,6 +35,8 @@ import { PictureGrid } from "./picture-pick.tsx";
 import { codeFromUrl, fetchIdentities, fetchPictures, pendingWidget, personalStream, searchPrograms, useDocumentTitle, useGuestSession, useUrlEventTitle, type GuestSession, type IdentityLookup } from "./session.ts";
 import { Tutorial, tourResult, tutorialSteps } from "./tutorial.tsx";
 import type { Action, Channel, PersonCard } from "./types.ts";
+import { usePush, type Push } from "./push.ts";
+import { PushCard, PushRow } from "./push-card.tsx";
 
 function GuestRegister({ session }: { session: GuestSession }) {
   const [code, setCode] = useState(codeFromUrl);
@@ -273,7 +276,7 @@ function PictureChanger({ session, eventId }: { session: GuestSession; eventId: 
 
 /** Out-of-band actions: show your pass, the story's own interactions, switch
  *  sides, or leave. */
-function ProfileSheet({ session, onClose, onLeave }: { session: GuestSession; onClose: () => void; onLeave: () => void }) {
+function ProfileSheet({ session, push, onClose, onLeave }: { session: GuestSession; push: Push; onClose: () => void; onLeave: () => void }) {
   const faction = session.status?.faction ?? null;
   // One switch-sides button per other public group — driven by the story's
   // declared groups, not a baked-in pair.
@@ -290,6 +293,8 @@ function ProfileSheet({ session, onClose, onLeave }: { session: GuestSession; on
         </div>
       )}
       {session.me && <PictureChanger session={session} eventId={session.me.eventId} />}
+      <WakeLockToggle />
+      <PushRow push={push} />
       {interactions.length > 0 && <div className="sheet-h">Things you can do</div>}
       {interactions.map((i) => (
         <button key={i.id} className="choice" title={i.description ?? undefined} onClick={() => void session.act(i.id)}>
@@ -305,6 +310,7 @@ function ProfileSheet({ session, onClose, onLeave }: { session: GuestSession; on
       <button
         className="choice danger"
         onClick={() => {
+          push.release();
           session.leave();
           onLeave();
         }}
@@ -465,6 +471,8 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const [inviting, setInviting] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   useDocumentTitle(s.me?.title);
+  // K-31a: `!` alerts + a character's DMs on a locked phone.
+  const push = usePush(s.me ? { base: `/e/${encodeURIComponent(s.me.eventId)}`, token: s.me.token } : null);
   const t = s.threads;
   const st = s.status;
   // Everyone's profile pictures (a program's Wikipedia image, an authored
@@ -604,6 +612,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     <CardActionsProvider value={{ shareCodex: (entry, title) => setSharing({ entry, title }) }}>
     <div className={`root ${captured ? "trapped-bg" : ""}`} ref={rootRef}>
       {banner}
+      <PushCard push={push} why="the house can reach you when your phone is locked: alarms, and messages from the characters." />
       <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room on the left. The one you're standing in is at the top." />
       {tour && (
         <Tutorial
@@ -622,7 +631,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
           onClose={() => setInviting(false)}
         />
       )}
-      {profile && <ProfileSheet session={s} onClose={() => setProfile(false)} onLeave={onLeave} />}
+      {profile && <ProfileSheet session={s} push={push} onClose={() => setProfile(false)} onLeave={onLeave} />}
       {sharing && (
         <PickerSheet
           title={`Share “${sharing.title}” with…`}

@@ -7,7 +7,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Identities, PictureChoices, ProgramHit, ProgramPictures } from "./avatars.ts";
 import { ApiError, api, useChatStream } from "./client.ts";
-import { maxSeqOf, pickAlerts, playChime, pmChannelId, pmOtherParty, unlockFromSearch, vibrate, withoutUnlock } from "./codex.ts";
+import { maxSeqOf, unsolicitedReadout, useAlerts, type Alert } from "./alerts.ts";
+import { checkinFromSearch, withoutCheckin } from "./checkin.ts";
+import { pmChannelId, pmOtherParty, unlockFromSearch, withoutUnlock } from "./codex.ts";
 import { usePlayHost } from "./host.ts";
 import { SessionRole, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "./lifecycle.ts";
 import { locationOfRoom, occupantsByLocation, type Presence } from "./presence.ts";
@@ -173,6 +175,9 @@ export function useTheme(theme: string | null | undefined): void {
 }
 const GK = "loom.guest";
 const PK = "loom.prime";
+/** The last `!` alert each role's sign-in has seen (alerts.ts). */
+const GUEST_ALERTS = "loom.guest.alerts";
+const PRIME_ALERTS = "loom.prime.alerts";
 
 // --- guest ------------------------------------------------------------------
 
@@ -219,12 +224,6 @@ function requiredDecision(
     };
   }
   return null;
-}
-
-/** An alert broadcast that just landed — chime, buzz, banner. */
-export interface Alert {
-  seq: number;
-  text: string;
 }
 
 /** A room whose *listing* the server snapshot decides: a location's room or
@@ -467,16 +466,17 @@ export function useGuestSession(): GuestSession {
     setNotice(why);
     host.onEnded("guest", why);
   }, [drop, host]);
-  // Alerts chime only when they arrive live: the history load sets the
-  // baseline so a re-login doesn't replay every alarm of the night.
-  const alertMark = useRef(-1);
-  const [alert, setAlert] = useState<Alert | null>(null);
+  // `!` alerts: the mark of the last one seen survives a reconnect's
+  // history replay, so one that landed while the screen was off banners on
+  // wake (see alerts.ts). The hook needs the stream's messages, the stream
+  // needs the hook's `onHistory` — a ref breaks the cycle.
+  const alertsRef = useRef<ReturnType<typeof useAlerts> | null>(null);
   const { typing, onTyping } = useTyping(me !== null ? { role: "guest" } : null);
   const { messages, connected } = useChatStream(url, {
     onSnapshot: (v) => setStatus(v as GuestView),
     onTyping,
     onHistory: (list) => {
-      alertMark.current = Math.max(alertMark.current, maxSeqOf(list));
+      alertsRef.current?.onHistory(list);
       crawl.loaded(maxSeqOf(list)); // the backlog never crawls; only what lands from now on
       setReady(true);
     },
@@ -493,22 +493,16 @@ export function useGuestSession(): GuestSession {
       });
     },
   });
-  useEffect(() => {
-    const fresh = pickAlerts(messages.values(), alertMark.current);
-    if (fresh.length === 0) return;
-    const last = fresh[fresh.length - 1]!;
-    alertMark.current = last.seq;
-    setAlert({ seq: last.seq, text: last.text });
-    if (host.sound) {
-      playChime();
-      vibrate();
-    }
-  }, [messages, host.sound]);
-  useEffect(() => {
-    if (alert === null) return;
-    const t = window.setTimeout(() => setAlert(null), 12_000);
-    return () => window.clearTimeout(t);
-  }, [alert]);
+  const alerts = useAlerts({
+    messages,
+    clock: status?.clock,
+    session: me?.token ?? null,
+    storage: host.storage,
+    storageKey: GUEST_ALERTS,
+    sound: host.sound,
+  });
+  alertsRef.current = alerts;
+  const alert: Alert | null = alerts.alert;
 
   // Every action is scoped to the event the guest joined (`/e/:eventId/...`)
   // and carries the guest's capability token — the server derives who is
@@ -650,7 +644,25 @@ export function useGuestSession(): GuestSession {
     threads.open(CODEX_ROOM);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openCodex]);
-  const dismissAlert = useCallback(() => setAlert(null), []);
+  // A room's sign carries `?checkin=<slug>` (K-13): check in once signed in
+  // with the doors open, then open that room's chat — or banner why not
+  // (captured, still on rails, a room the story hasn't opened yet).
+  const pendingCheckin = useRef<string | null>(host.ownsPage ? checkinFromSearch(window.location.search) : null);
+  useEffect(() => {
+    const at = pendingCheckin.current;
+    if (at === null || me === null || status === null) return;
+    pendingCheckin.current = null;
+    try {
+      window.history.replaceState(null, "", `${window.location.pathname}${withoutCheckin(window.location.search)}`);
+    } catch {
+      /* fine */
+    }
+    void post<{ channel: string }>("/api/guest/checkin", { at })
+      .then((r) => threads.open(r.channel))
+      .catch((e: unknown) => alerts.raise(e instanceof Error ? e.message : "Check-in failed.", { quiet: true }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me, status, post]);
+  const dismissAlert = alerts.dismiss;
   useTheme(status?.theme);
 
   return {
@@ -809,6 +821,10 @@ export interface PrimeSession {
   auth: PrimeAuth | null;
   view: PrimeView | null;
   responses: Array<{ id: number; text: string }>;
+  /** The alert that just landed — a `!` broadcast, or a readout the booth
+   *  didn't ask for (the late list, a private warning) — until dismissed. */
+  alert: Alert | null;
+  dismissAlert: () => void;
   connected: boolean;
   /** The backlog has loaded — the rooms list is real, not a placeholder. */
   ready: boolean;
@@ -863,19 +879,32 @@ export function usePrimeSession(): PrimeSession {
     host.onEnded("prime", why);
   }, [drop, host]);
   const { typing, onTyping } = useTyping(auth !== null ? { role: "performer", character: auth.character } : null);
+  // Booths get the guest's alerts (alerts.ts) plus N-07: a readout that
+  // isn't the answer to this booth's own scan / act — the late list,
+  // Trabolta's warning to Clippy — banners and chimes too.
+  const alertsRef = useRef<ReturnType<typeof useAlerts> | null>(null);
+  const lastActionAt = useRef(Number.NEGATIVE_INFINITY);
+  /** The booth's own requests in flight: a readout while one is pending is
+   *  its answer, however slow the network (a scan on cellular). */
+  const inFlight = useRef(0);
   const { messages, connected } = useChatStream(url, {
     onSnapshot: (v) => setView(v as PrimeView),
     onTyping,
     onHistory: (list) => {
+      alertsRef.current?.onHistory(list);
       crawl.loaded(maxSeqOf(list));
       setReady(true);
     },
-    onResponse: (text) => setResponses((r) => [{ id: rid.current++, text }, ...r]),
+    onResponse: (text) => {
+      setResponses((r) => [{ id: rid.current++, text }, ...r]);
+      if (inFlight.current === 0 && unsolicitedReadout(lastActionAt.current, Date.now())) alertsRef.current?.raise(text);
+    },
     // Going live signs every performer out (rehearsal booths must not carry
     // into the show); a reset / reload keeps the character — the server just
-    // re-sends the snapshot + history.
+    // re-sends the snapshot + history, which is then old news for alerts.
     onLifecycle: (n) => {
       if (lifecycleDropsSession(n.kind, SessionRole.Performer)) dropBooth(lifecycleNotice(n.kind, SessionRole.Performer));
+      else alertsRef.current?.rebase();
     },
     // The stream closed for good: confirm the booth's token is really gone
     // (the show went live while the phone slept) before signing out.
@@ -892,6 +921,8 @@ export function usePrimeSession(): PrimeSession {
   // while this phone wasn't listening) — drop the booth and say so.
   const post = useCallback(
     async <T,>(path: string, body?: unknown, token?: string): Promise<T> => {
+      lastActionAt.current = Date.now();
+      inFlight.current++;
       try {
         return await api<T>(`${base}${path}`, body, token);
       } catch (e) {
@@ -900,6 +931,9 @@ export function usePrimeSession(): PrimeSession {
           else if (performerSessionDead(e.status, e.message)) dropBooth(lifecycleNotice("golive", SessionRole.Performer));
         }
         throw e;
+      } finally {
+        inFlight.current--;
+        lastActionAt.current = Date.now(); // the grace runs from the answer too
       }
     },
     [base, auth, dropBooth],
@@ -967,7 +1001,16 @@ export function usePrimeSession(): PrimeSession {
     host.onEnded("prime", null);
   }, [drop, host]);
 
+  const alerts = useAlerts({
+    messages,
+    clock: view?.clock,
+    session: auth?.token ?? null,
+    storage: host.storage,
+    storageKey: PRIME_ALERTS,
+    sound: host.sound,
+  });
+  alertsRef.current = alerts;
   const threads = useThreads(buildPrimeChannels(messages, view).map((c) => (typing.has(c.id) ? { ...c, typing: typing.get(c.id) } : c)));
   useTheme(view?.theme);
-  return { auth, view, responses, connected, ready, notice, threads, login, scan, say, inviteToChannel, leaveChannel, becomeAdmin, act, shareCodex, moderate, setHidden, leave };
+  return { auth, view, responses, alert: alerts.alert, dismissAlert: alerts.dismiss, connected, ready, notice, threads, login, scan, say, inviteToChannel, leaveChannel, becomeAdmin, act, shareCodex, moderate, setHidden, leave };
 }

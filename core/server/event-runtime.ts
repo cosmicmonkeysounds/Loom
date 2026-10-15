@@ -41,6 +41,10 @@ import {
   type PictureChoice,
 } from "./identity.ts";
 import { foldName } from "../src/parser/names.ts";
+import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
+import { Pairing } from "./routes/n02.ts";
+import { PushRoutes } from "./routes/k31.ts";
+import { PushHub, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
 import { SpatialHub, houseVersion, houseWarnings, isWorld, parsePose, sortCandidates, type SessionRef } from "./spatial.ts";
 import {
   AgentHub,
@@ -235,12 +239,22 @@ export interface EventRuntimeInit {
   houseFile?: string;
   /** The spatial hub's clock (tests). */
   now?: () => number;
+  /** Web Push (K-31a). Absent → the process-wide sender from `LOOM_VAPID_*`;
+   *  null → push off (tests inject a fake). */
+  push?: PushSender | null;
 }
 
 /** The process-wide speech proxy (configured from `LOOM_TTS_*`). */
 let sharedTts: TtsProxy | null = null;
 function defaultTts(): TtsProxy {
   return (sharedTts ??= new TtsProxy(ttsConfigFromEnv()));
+}
+
+/** The process-wide push sender (from `LOOM_VAPID_*`; null = push off). */
+let sharedPush: PushSender | null | undefined;
+function defaultPush(): PushSender | null {
+  if (sharedPush === undefined) sharedPush = webPushSender(pushConfigFromEnv());
+  return sharedPush;
 }
 
 let sharedImages: ImageCache | null = null;
@@ -315,6 +329,13 @@ export class EventRuntime {
   // stations, poses and the house map. In memory; poses never journal.
   readonly spatial: SpatialHub;
   private readonly houseFile: string;
+  // K-13 room check-in by QR (routes/k13.ts).
+  private readonly checkin: GuestCheckin;
+  // N-02 re-pair a guest + N-10 release a performer part (routes/n02.ts).
+  private readonly pairing: Pairing;
+  // K-31a Web Push to guests + booths (push.ts, routes/k31.ts).
+  readonly push: PushHub;
+  private readonly pushRoutes: PushRoutes;
   // Spatial stream subscribers (terminals, the map page) — never `clients`.
   private readonly spatialStreams = new Set<ServerResponse>();
   // Flushes poses every 100 ms (and sweeps every second) while anything is
@@ -342,6 +363,59 @@ export class EventRuntime {
     this.images = init.images ?? defaultImages();
     this.houseFile = init.houseFile ?? defaultHouseFile();
     this.spatial = new SpatialHub({ eventId: init.eventId, ...(init.now !== undefined ? { now: init.now } : {}) });
+    this.checkin = new GuestCheckin({
+      sim: () => this.sim,
+      open: () => this.open,
+      guest: (req, body, res) => this.requireGuest(req, body, res),
+      signal: (guest, at) => {
+        const events = this.commit("signal", "checked_in", guest, { at });
+        this.fanout(events);
+        return events;
+      },
+      now: init.now ?? Date.now,
+    });
+    this.push = new PushHub({
+      sender: init.push === undefined ? defaultPush() : init.push,
+      load: () => this.store.loadPush(),
+      save: (data) => this.store.savePush(data),
+    });
+    this.pushRoutes = new PushRoutes({
+      push: this.push,
+      ownerOf: (token) => {
+        if (!token || this.impersonations.has(token)) return null;
+        const guest = this.guestTokens.get(token);
+        if (guest !== undefined) return `guest:${guest}`;
+        const character = this.sessions.characterOf(token);
+        return character === null ? null : boothOwner(character);
+      },
+      nameOf: (id) => this.sim?.persons.get(id)?.name ?? null,
+    });
+    this.pairing = new Pairing({
+      sim: () => this.sim,
+      addGuestToken: (token, id) => {
+        this.guestTokens.set(token, id);
+        this.persistGuests();
+      },
+      isPersona: (id) => this.personaOwners.has(id) || id.startsWith("p-"),
+      revokeGuest: (id) => this.revokeGuest(id),
+      sessions: this.sessions,
+      persistSessions: () => this.persistSessions(),
+      endBooths: (character) => {
+        for (const c of [...this.clients]) {
+          if (c.role !== "prime" || c.id !== character || c.via !== undefined) continue;
+          this.clients.delete(c);
+          try {
+            c.res.end();
+          } catch {
+            /* client already gone */
+          }
+        }
+        this.push.drop((owner) => owner === boothOwner(character));
+        this.pushPresence();
+      },
+      joinBase: () => this.joinBase(),
+      eventCode: () => this.codes.event,
+    });
   }
 
   /** Current lifecycle phase (idle | open | paused). */
@@ -497,6 +571,30 @@ export class EventRuntime {
 
   /** Close every stream of one role (after a cut they announce) and forget
    *  the clients, so presence stops counting them. */
+  /** N-02 `revokeOthers`: cut every token of guest `id`, their real
+   *  streams, and their push devices. Returns how many tokens went. */
+  private revokeGuest(id: string): number {
+    let n = 0;
+    for (const [token, guest] of [...this.guestTokens]) {
+      if (guest !== id) continue;
+      this.guestTokens.delete(token);
+      n++;
+    }
+    if (n > 0) this.persistGuests();
+    for (const c of [...this.clients]) {
+      if (c.role !== "guest" || c.id !== id || c.via !== undefined) continue;
+      this.clients.delete(c);
+      try {
+        c.res.end();
+      } catch {
+        /* client already gone */
+      }
+    }
+    this.push.drop((owner) => owner === guestOwner(id));
+    this.pushPresence();
+    return n;
+  }
+
   private endClients(role: Client["role"]): void {
     for (const c of [...this.clients]) {
       if (c.role !== role) continue;
@@ -528,6 +626,29 @@ export class EventRuntime {
         sseSend(c.res, "message", m);
       }
     }
+    this.pushMessage(m);
+  }
+
+  /**
+   * K-31a: push one just-delivered message to the phones entitled to it —
+   * the same visibility as the SSE delivery. `!` alerts go to every
+   * subscribed guest who can see it and every booth; a character's DM only
+   * to its addressee, and only while their page says it is hidden.
+   */
+  private pushMessage(m: ChatMessage): void {
+    if (!this.push.enabled) return;
+    const rule = messagePush(m, this.title);
+    if (rule === null) return;
+    for (const owner of this.push.owners()) {
+      if (owner.startsWith("guest:")) {
+        const id = owner.slice("guest:".length);
+        if (m.from === id || !visibleTo(m, id)) continue;
+        if (rule.payload.kind === "dm" && (m.audience === "all" || !m.audience.includes(id))) continue;
+      } else if (rule.payload.kind !== "alert") {
+        continue; // booths: alerts here, their own readouts in `fanout`
+      }
+      this.push.notify(owner, rule.payload, rule.always);
+    }
   }
 
   // -- ephemeral messages --------------------------------------------------
@@ -557,7 +678,11 @@ export class EventRuntime {
    */
   private fanout(events: SimEvent[], via?: string): void {
     for (const e of events) {
-      if (e.type === "respond") this.toPrime(e.to, "response", { text: e.text });
+      if (e.type === "respond") {
+        this.toPrime(e.to, "response", { text: e.text });
+        // A locked booth still hears it (the door alarm, the late list).
+        this.push.notify(boothOwner(e.to), readoutPush(e.to, e.text), false);
+      }
       if (e.type === "choicePrompted" && e.person !== null) {
         this.decisionChannels.set(e.person, decisionChannelFor(events, e.person));
       }
@@ -1441,6 +1566,9 @@ export class EventRuntime {
     // guest's dies with every restart, a booth's only when the show goes live.
     this.endImpersonations((imp) => imp.role === "guest" || kind === "golive");
     this.endClients("guest");
+    // Push follows the sessions: every guest's device unbinds (the phone
+    // re-subscribes when it re-joins), a booth's only when the show goes live.
+    this.push.drop((owner) => owner.startsWith("guest:") || (kind === "golive" && owner.startsWith("prime:")));
     if (kind === "golive") {
       for (const [token, session] of this.sessions.entries()) {
         if (session.character === null) continue;
@@ -1807,6 +1935,9 @@ export class EventRuntime {
       if (this.handleSpatialGet(req, res, path, url, opts.moderator === true)) return true;
     }
 
+    // --- K-31a push config (public) ---
+    if (this.pushRoutes.handleGet(method, path, res)) return true;
+
     if (method !== "POST") return false;
 
     // --- a game's own calls (pose at 10 Hz, found, end): tiny bodies, read
@@ -1816,6 +1947,8 @@ export class EventRuntime {
     }
 
     const body = await readBody(req);
+
+    if (this.pushRoutes.handlePost(req, res, path, body)) return true;
 
     if (path === "/api/agent/reply") {
       if (opts.moderator !== true && !this.sessions.canModerate(tokenOf(req, body))) {
@@ -2074,6 +2207,8 @@ export class EventRuntime {
         sendJson(res, 200, { options, avatar: this.avatars.keyFor(me.name) });
         return true;
       }
+      case CHECKIN_ROUTE:
+        return this.checkin.handle(req, res, body);
       case "/api/guest/join": {
         const id = this.requireGuest(req, body, res);
         if (id === null) return true;
@@ -2533,6 +2668,8 @@ export class EventRuntime {
   }
 
   private handleModInner(res: ServerResponse, path: string, body: Record<string, unknown>, by: string): boolean {
+    if (this.pairing.handle(path, res, body)) return true;
+    if (this.pushRoutes.handleMod(path, res)) return true;
     switch (path) {
       case "/api/mod/load": {
         const source = str(body, "source") || this.scenarioSource;

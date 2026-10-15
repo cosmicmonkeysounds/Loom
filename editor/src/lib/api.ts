@@ -243,6 +243,15 @@ export interface PlayAsSession {
   title: string
 }
 
+/** What `/api/mod/guest/pair` mints (N-02). */
+export interface GuestPairing {
+  id: string
+  name: string
+  token: string
+  /** `<join base>/?code=<event>&resume=<token>` — shown as a QR. */
+  url: string
+}
+
 export const modApi = {
   async act(eventId: string, id: string, action: 'capture' | 'release'): Promise<void> {
     await req('POST', `/e/${eventId}/api/mod/act`, { id, action })
@@ -327,6 +336,18 @@ export const modApi = {
   /** End a play-as session (its pane closed). */
   async endImpersonation(eventId: string, session: string): Promise<void> {
     await req('POST', `/e/${eventId}/api/mod/impersonate/end`, { session })
+  },
+  /** Re-pair a lost guest (N-02): a fresh token for the SAME guest, and the
+   *  `?code=<event>&resume=<token>` link their new phone opens.
+   *  `revokeOthers` also signs out every other phone holding that guest. */
+  async pairGuest(eventId: string, id: string, opts: { revokeOthers?: boolean } = {}): Promise<GuestPairing> {
+    return await req<GuestPairing>('POST', `/e/${eventId}/api/mod/guest/pair`, { id, ...(opts.revokeOthers ? { revokeOthers: true } : {}) })
+  },
+  /** Release a performer's part (N-10): drop the session holding it so the
+   *  performer can re-sign on a loaner. Resolves to how many sessions held it. */
+  async releasePart(eventId: string, character: string): Promise<number> {
+    const r = await req<{ released?: number }>('POST', `/e/${eventId}/api/mod/prime/release`, { character })
+    return r.released ?? 0
   },
   /** Write any world variable (the World browser's inline editing). */
   async setVar(eventId: string, path: string, value: string): Promise<void> {

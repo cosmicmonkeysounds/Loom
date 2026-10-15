@@ -16,6 +16,15 @@ export const HTML_CSP = [
   "frame-ancestors 'none'",
 ].join("; ");
 
+/** The play app (K-31a): its push-only service worker (`/sw.js`) and its
+ *  manifest are same-origin; said explicitly rather than left to fall back. */
+export const PLAY_CSP = `${HTML_CSP}; worker-src 'self'; manifest-src 'self'`;
+
+/** Play-app files served `Cache-Control: no-cache`: a stale service worker
+ *  or manifest would outlive a deploy (the browser re-checks `sw.js` on its
+ *  own schedule; no-cache makes every check a real one). */
+export const PLAY_PWA_FILES: ReadonlySet<string> = new Set(["/sw.js", "/manifest.webmanifest"]);
+
 /** The terminal plays synthesised speech from in-memory blobs and reads
  *  the tablet's camera; only the media source differs from the play app. */
 export const TERMINAL_CSP = `${HTML_CSP}; media-src 'self' blob:`;
@@ -23,6 +32,20 @@ export const TERMINAL_CSP = `${HTML_CSP}; media-src 'self' blob:`;
 /** The reinstallation game: the terminal's media rule (the duck's quack,
  *  the camera) plus blob workers (three.js loaders may spin one up). */
 export const REINSTALL_CSP = `${HTML_CSP}; media-src 'self' blob:; worker-src 'self' blob:`;
+
+/**
+ * The base URL guest-join QRs and `/api/mod/codes` links are built on.
+ * Behind a public proxy the operator sets `LOOM_BASE_URL`
+ * (`https://app.mapsandducks.com`) and that wins — the container's LAN IP
+ * (`http://172.18.0.3:7000`) is unreachable from a phone on cellular.
+ * Without it (a LAN box), the first non-localhost interface URL, since a
+ * QR pointing at `localhost` is the phone itself.
+ */
+export function pickJoinBase(baseUrl: string | undefined, lanUrls: readonly string[]): string {
+  const explicit = baseUrl?.trim().replace(/\/+$/, "");
+  if (explicit) return explicit;
+  return lanUrls.find((u) => !u.includes("localhost")) ?? lanUrls[0]!;
+}
 
 /** A request path → the file to read from a built app's `dist/` (no
  *  leading slash; `/` is `index.html`). Null for anything climbing out. */

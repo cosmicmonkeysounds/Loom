@@ -14,6 +14,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { useAvatars } from "./avatars.ts";
 import { usePlayHost } from "./host.ts";
 import { occupancyLabel } from "./presence.ts";
+import { useWakeLock } from "./wake-lock.ts";
 import {
   groupRuns,
   prettyName,
@@ -365,6 +366,20 @@ export function PickerSheet({
         </button>
       ))}
     </Sheet>
+  );
+}
+
+/** "Keep screen on" — the opt-in wake lock, so a phone left lying around
+ *  never sleeps through an alert. Hidden where the browser has none, and
+ *  in an embedded pane (the editor's screen is not a phone). */
+export function WakeLockToggle() {
+  const host = usePlayHost();
+  const lock = useWakeLock(host.storage);
+  if (host.embedded || !lock.supported) return null;
+  return (
+    <button className="choice" aria-pressed={lock.on} onClick={lock.toggle}>
+      {lock.on ? "🔆 Screen stays on — tap to allow sleep" : "🔅 Keep my screen on (so alerts never sleep)"}
+    </button>
   );
 }
 

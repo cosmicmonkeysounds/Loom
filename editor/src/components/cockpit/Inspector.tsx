@@ -12,7 +12,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { CockpitTab, PlayerRole, RunBackend, SelectionKind, useCockpit, type CockpitMessage } from '@/store/cockpit'
 import { useGraph } from '@/store/graph'
-import { promptText } from '@/store/dialog'
+import { confirmAction, notify, promptText } from '@/store/dialog'
 import { FactionPill } from './ui'
 import { entityVars, GUEST_STANDARD_FIELDS } from './world'
 import { VarTable } from './VarTable'
@@ -20,6 +20,72 @@ import { usePlayAs } from './play-as'
 
 /** How many recent messages "Their feed" shows. */
 const FEED_LIMIT = 60
+
+/** N-02: a lost guest's way back in — a fresh session for the SAME guest
+ *  (codex, quests, score intact; no ghost), shown as a QR their new phone
+ *  scans (`?code=<event>&resume=<token>`). The token is a credential: the
+ *  panel only lives while it is open, and Done forgets it. */
+function RePair({ id, name }: { id: string; name: string }) {
+  const pairGuest = useCockpit((s) => s.pairGuest)
+  const [link, setLink] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [revoked, setRevoked] = useState(false)
+  const mint = async (revokeOthers = false) => {
+    setBusy(true)
+    try {
+      const r = await pairGuest(id, revokeOthers ? { revokeOthers: true } : undefined)
+      if (r !== null) {
+        setLink(r.url)
+        setRevoked(revokeOthers)
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+  if (link === null) {
+    return (
+      <button
+        onClick={() => void mint()}
+        disabled={busy}
+        className="rounded border border-amber-900 px-2 py-0.5 text-[10px] text-amber-300 hover:bg-amber-950 disabled:opacity-50"
+        title={`${name} lost their phone or browser? Show a QR that signs a phone back in as ${name}`}
+        data-testid={`inspector-repair-${id}`}
+      >
+        🔁 Re-pair
+      </button>
+    )
+  }
+  return (
+    <div className="mt-2 w-full rounded border border-amber-900/70 bg-amber-950/20 p-2 text-center" data-testid={`inspector-repair-qr-${id}`}>
+      <p className="mb-1 text-[11px] text-amber-200">Have {name} scan this with their phone's camera.</p>
+      <img src={`/api/qr?text=${encodeURIComponent(link)}`} alt={`Re-pair QR for ${name}`} className="mx-auto block h-40 w-40 rounded bg-white p-1" />
+      <p className="mt-1 text-[10px] text-zinc-500">It signs that phone in as {name} — keep it off the big screen.</p>
+      <div className="mt-1 flex justify-center gap-2">
+        <button
+          onClick={() => void navigator.clipboard?.writeText(link)}
+          className="rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800"
+        >
+          Copy link
+        </button>
+        <button onClick={() => void mint()} disabled={busy} className="rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800">
+          New code
+        </button>
+        <button
+          onClick={() => void mint(true)}
+          disabled={busy || revoked}
+          className="rounded border border-red-900 px-2 py-0.5 text-[10px] text-red-300 hover:bg-red-950 disabled:opacity-50"
+          title={`Someone else has ${name}'s old phone? Sign every other phone out of ${name} (a fresh code replaces this one)`}
+          data-testid={`inspector-repair-revoke-${id}`}
+        >
+          {revoked ? 'Old phones signed out' : 'Sign out old phones'}
+        </button>
+        <button onClick={() => setLink(null)} className="rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800">
+          Done
+        </button>
+      </div>
+    </div>
+  )
+}
 
 function Note({ children }: { children: ReactNode }) {
   return <p className="px-3 pb-1 text-[10px] text-zinc-600">{children}</p>
@@ -286,6 +352,11 @@ function GuestInspector({ id }: { id: string }) {
           )}
         </div>
         <div className="text-[10px] text-zinc-600">{row.id}</div>
+        {server && !row.owner && (
+          <div className="mt-1 flex flex-wrap">
+            <RePair id={id} name={row.name} />
+          </div>
+        )}
       </div>
 
       <div className="pt-2">
@@ -464,8 +535,27 @@ function CharacterInspector({ id }: { id: string }) {
   const beats = useCockpit((s) => s.beats)
   const locked = useCockpit((s) => s.lens !== null)
   const fireBeat = useCockpit((s) => s.fireBeat)
+  const releasePart = useCockpit((s) => s.releasePart)
   const setPerspective = useCockpit((s) => s.setPerspective)
   const setTab = useCockpit((s) => s.setTab)
+
+  // N-10: a performer's phone died — free the part so they can re-sign on a
+  // loaner (the prime code + the cast picker). Their threads stay.
+  const release = async () => {
+    const ok = await confirmAction({
+      title: `Release ${id}?`,
+      body: `Signs out whichever booth is ${id} right now, so the performer can sign in again on another phone. ${id}'s threads and buttons stay.`,
+      confirmLabel: 'Release',
+      danger: true,
+    })
+    if (!ok) return
+    const n = await releasePart(id)
+    if (n === null) return
+    await notify({
+      title: n > 0 ? `${id} is free` : `Nobody held ${id}`,
+      body: n > 0 ? `The performer can sign in again with the performer code and pick ${id}.` : `${id} was already free to sign in to.`,
+    })
+  }
 
   // Beats this character owns are keyed `Owner.beat`.
   const owned = beats.filter((b) => b.startsWith(`${id}.`))
@@ -502,6 +592,18 @@ function CharacterInspector({ id }: { id: string }) {
       </div>
 
       {member?.online === true && <Note>A performer is signed in as {id} right now.</Note>}
+      {server && (
+        <div className="px-3 pt-2">
+          <button
+            onClick={() => void release()}
+            className="rounded border border-red-900 px-2 py-0.5 text-[10px] text-red-300 hover:bg-red-950"
+            title={`Performer lost their phone? Free ${id} so they can sign in again on a loaner`}
+            data-testid={`inspector-release-${id}`}
+          >
+            ⏏ Release {id}
+          </button>
+        </div>
+      )}
       <CharacterFeed id={id} />
       <VarsSection id={id} />
 

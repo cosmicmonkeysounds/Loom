@@ -51,7 +51,11 @@ Front of house: getting people in.
   **performer code**, and the **moderator code**, with copy buttons, plus
   a sign-in line per character to hand to each performer. These codes
   work during the rehearsal (anyone with the event code can join it) and
-  **stay the same when you go live**, so you can print them early.
+  **stay the same when you go live** — and when you end the run and start
+  a new one, since codes belong to the project — so you can print them
+  early. If a performer or moderator code leaks, end the run and relaunch
+  it with `rotate: "staff"` (see the core README): those two codes change,
+  the guest code and the printed QRs don't.
 - **Directing now** — every co-writer with a console open, who started
   the run, and when.
 - **Look up a guest** — scan a guest's pass QR (or type their id) to
@@ -113,6 +117,16 @@ hidden lines greyed; for a character, every line they spoke and every
 scan readout), their story position on the map, their variables, and
 one button to **Be** them. The **Log** page's participant filter shows
 every raw engine event that mentions them.
+
+**Someone lost their phone.** On a server run, a guest's Inspector has
+**🔁 Re-pair**: it shows a QR that signs whatever phone scans it back in
+*as that guest* — same program, codex, quests and score, no new guest
+left behind. Use it for a dead phone, a cleared browser, a camera that
+opened another browser, or a loaner. Keep the QR off the big screen: it
+is their sign-in. A character's Inspector has **⏏ Release**: it signs
+out whichever booth holds that part, so the performer can sign in again
+on another phone with the performer code. The character's threads and
+buttons stay.
 
 ## Directing together
 

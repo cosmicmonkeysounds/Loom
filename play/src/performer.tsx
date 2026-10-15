@@ -5,9 +5,10 @@
 //! guest's card — never on a permanent panel under every room. A pinned
 //! Scanner thread holds the camera + scan readouts.
 
-import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useState, type ReactElement } from "react";
 import {
   ActionRow,
+  AlertBanner,
   ChannelView,
   ConnDot,
   GroupPill,
@@ -19,6 +20,7 @@ import {
   Shell,
   SpaceList,
   SessionEnded,
+  WakeLockToggle,
   plural,
   useWide,
 } from "./chat.tsx";
@@ -27,6 +29,10 @@ import { usePlayHost } from "./host.ts";
 import { AvatarsContext, avatarLookup, avatarUrl, orderPicker, type IdentityRow } from "./avatars.ts";
 import { codeFromUrl, fetchIdentities, useDocumentTitle, usePrimeSession, type IdentityLookup, type PrimeSession } from "./session.ts";
 import type { Action, Channel, PrimeGuest } from "./types.ts";
+import { cameraProblem, parseScan, scanProblem, typedTarget, type CameraState } from "./scan.ts";
+import { CameraScanner } from "./scanner.tsx";
+import { usePush, type Push } from "./push.ts";
+import { PushCard, PushRow } from "./push-card.tsx";
 
 function PrimeLogin({ session }: { session: PrimeSession }) {
   const [passcode, setPasscode] = useState(codeFromUrl);
@@ -138,63 +144,52 @@ function PrimeLogin({ session }: { session: PrimeSession }) {
 function Scanner({ onScan }: { onScan: (id: string) => void }) {
   const [manual, setManual] = useState("");
   const [camOn, setCamOn] = useState(false);
-  const [err, setErr] = useState("");
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    if (!camOn) return;
-    let stop = () => {};
-    let raf = 0;
-    (async () => {
-      const Detector = (window as unknown as { BarcodeDetector?: unknown }).BarcodeDetector;
-      if (!Detector) {
-        setErr("Camera scanning isn't supported on this device — type the id.");
-        setCamOn(false);
-        return;
-      }
-      try {
-        const det = new (Detector as new (o: unknown) => { detect: (v: unknown) => Promise<Array<{ rawValue: string }>> })({ formats: ["qr_code"] });
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        const v = videoRef.current!;
-        v.srcObject = stream;
-        await v.play();
-        stop = () => stream.getTracks().forEach((t) => t.stop());
-        const tick = async () => {
-          try {
-            const codes = await det.detect(v);
-            if (codes[0]) {
-              onScan(codes[0].rawValue);
-              setCamOn(false);
-              return;
-            }
-          } catch {
-            /* frame skip */
-          }
-          raf = requestAnimationFrame(tick);
-        };
-        tick();
-      } catch (e) {
-        setErr("Camera error: " + (e as Error).message);
-        setCamOn(false);
-      }
-    })();
-    return () => {
-      cancelAnimationFrame(raf);
-      stop();
-    };
-  }, [camOn, onScan]);
-
+  const [cam, setCam] = useState<CameraState>("off");
+  const [note, setNote] = useState("");
+  const problem = cameraProblem(cam);
+  // The camera stays on between passes — a door queue scans one after
+  // another; a wall QR or a stray code just says so.
+  const onCode = (raw: string) => {
+    const hit = parseScan(raw);
+    if (hit.kind === "guest") {
+      setNote(`✓ ${hit.id}`);
+      onScan(hit.id);
+    } else setNote(scanProblem(hit) ?? "");
+  };
+  const typed = () => {
+    const target = typedTarget(manual);
+    if (!target) return;
+    onScan(target);
+    setManual("");
+  };
   return (
     <div className="card">
-      <input placeholder="Guest id (e.g. g-1a2b3c)" value={manual} onChange={(e) => setManual(e.target.value)} onKeyDown={(e) => e.key === "Enter" && onScan(manual.trim())} />
-      <button className="choice primary" onClick={() => onScan(manual.trim())}>
+      <input
+        placeholder="Guest id (e.g. g-1a2b3c)"
+        value={manual}
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        onChange={(e) => setManual(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && typed()}
+      />
+      <button className="choice primary" onClick={typed}>
         Scan
       </button>
-      <button className="choice ghost" onClick={() => setCamOn((v) => !v)}>
+      <button
+        className="choice ghost"
+        onClick={() => {
+          setNote("");
+          setCam("off");
+          setCamOn((v) => !v);
+        }}
+      >
         {camOn ? "Stop camera" : "📷 Use camera"}
       </button>
-      {camOn && <video ref={videoRef} playsInline className="cam" />}
-      {err && <div className="err">{err}</div>}
+      {camOn && !problem && <CameraScanner onCode={onCode} onState={setCam} />}
+      {camOn && cam === "live" && <div className="muted pad">Hold a pass up to the camera — it stays on for the next guest.</div>}
+      {note && <div className="muted pad">{note}</div>}
+      {problem && <div className="err">{problem}</div>}
     </div>
   );
 }
@@ -242,7 +237,7 @@ function ScannerScreen({ session, onBack, wide }: { session: PrimeSession; onBac
 }
 
 /** Inline "elevate me to admin" + what your character knows + sign-out. */
-function PerformerSheet({ session, onClose, onLeave }: { session: PrimeSession; onClose: () => void; onLeave: () => void }) {
+function PerformerSheet({ session, push, onClose, onLeave }: { session: PrimeSession; push: Push; onClose: () => void; onLeave: () => void }) {
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
   return (
@@ -267,6 +262,8 @@ function PerformerSheet({ session, onClose, onLeave }: { session: PrimeSession; 
           {err && <div className="err">{err}</div>}
         </>
       )}
+      <WakeLockToggle />
+      <PushRow push={push} />
       {session.auth?.admin && <div className="muted pad">You hold moderator powers — hide/show messages, and every admin-only interaction the story declares.</div>}
       {(session.view?.codex?.length ?? 0) > 0 && (
         <>
@@ -285,6 +282,7 @@ function PerformerSheet({ session, onClose, onLeave }: { session: PrimeSession; 
       <button
         className="choice danger"
         onClick={() => {
+          push.release();
           session.leave();
           onLeave();
         }}
@@ -411,6 +409,8 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   const [people, setPeople] = useState<Channel | null>(null);
   const [picking, setPicking] = useState(false);
   useDocumentTitle(s.auth?.title);
+  // K-31a: the door alarm + the late list on a locked phone.
+  const push = usePush(s.auth?.character ? { base: `/e/${encodeURIComponent(s.auth.eventId)}`, token: s.auth.token } : null);
   // Everyone's profile pictures, for every tile in the booth.
   const avatars = useMemo(() => avatarLookup(s.auth?.eventId ?? null, s.view?.avatars), [s.auth?.eventId, s.view?.avatars]);
   const t = s.threads;
@@ -520,6 +520,8 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   return (
     <AvatarsContext.Provider value={avatars}>
     <div className="root">
+      {s.alert && <AlertBanner text={s.alert.text} onDismiss={s.dismissAlert} />}
+      <PushCard push={push} why="the door alarm and the late list reach you even with the phone locked." />
       <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room, or a guest." />
       {picking && t.active && (
         <InviteSheet
@@ -550,7 +552,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
           }}
         />
       )}
-      {sheet && <PerformerSheet session={s} onClose={() => setSheet(false)} onLeave={onLeave} />}
+      {sheet && <PerformerSheet session={s} push={push} onClose={() => setSheet(false)} onLeave={onLeave} />}
       {help && <HelpSheet role="performer" onClose={() => setHelp(false)} />}
     </div>
     </AvatarsContext.Provider>

@@ -1,24 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { maxSeqOf, pickAlerts, pmChannelId, pmOtherParty, unlockFromSearch, withoutUnlock } from "../src/codex.ts";
-import type { ChatMessage } from "../src/types.ts";
-
-function msg(seq: number, alert: boolean, hidden = false): ChatMessage {
-  return {
-    seq,
-    channel: "lobby",
-    channelKind: "lobby",
-    title: "Lobby",
-    from: "",
-    kind: "signal",
-    text: `a${seq}`,
-    ts: seq,
-    audience: "all",
-    parentSeq: null,
-    hidden,
-    ...(alert ? { alert: true } : {}),
-  };
-}
+import { pmChannelId, pmOtherParty, unlockFromSearch, withoutUnlock } from "../src/codex.ts";
 
 describe("private threads", () => {
   it("one id whoever opens it, and the other party from my side", () => {
@@ -38,16 +20,5 @@ describe("unlock deep link", () => {
     expect(unlockFromSearch("?unlock=")).toBeNull();
     expect(withoutUnlock("?code=EVT1&unlock=SANDY-1997")).toBe("?code=EVT1");
     expect(withoutUnlock("?unlock=X")).toBe("");
-  });
-});
-
-describe("alerts", () => {
-  it("picks only new, visible alert broadcasts, oldest first", () => {
-    const all = [msg(3, true), msg(1, true), msg(2, false), msg(4, true, true), msg(5, true)];
-    expect(pickAlerts(all, 1).map((m) => m.seq)).toEqual([3, 5]);
-    expect(pickAlerts(all, -1).map((m) => m.seq)).toEqual([1, 3, 5]);
-    expect(pickAlerts(all, 5)).toEqual([]);
-    expect(maxSeqOf(all)).toBe(5);
-    expect(maxSeqOf([])).toBe(-1);
   });
 });

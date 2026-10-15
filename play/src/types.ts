@@ -125,6 +125,8 @@ export interface GuestView {
   /** The story's title + theme — every piece of chrome comes from the story. */
   title?: string;
   theme?: string;
+  /** Story clock (ms) when the server built this view — "now" for `ts`. */
+  clock?: number;
   role: string | null;
   faction: string | null;
   score: number;
@@ -176,6 +178,8 @@ export interface PrimeView {
   character: string;
   title?: string;
   theme?: string;
+  /** Story clock (ms) when the server built this view — "now" for `ts`. */
+  clock?: number;
   faction: string | null;
   guests: PrimeGuest[];
   channels: ChannelSnapshot[];

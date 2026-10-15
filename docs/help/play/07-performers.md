@@ -3,7 +3,7 @@ title: Performer station
 section: Performers
 order: 7
 role: performer
-keywords: performer, character, sign in, scanner, scan, camera, readout, admin, moderator, capture, release, hide, guest thread, guest card, actions, who's here
+keywords: performer, alert, chime, late, keep screen on, character, sign in, scanner, scan, camera, readout, admin, moderator, capture, release, hide, guest thread, guest card, actions, who's here
 ---
 
 The performer station is the same chat surface, recomposed for the
@@ -21,13 +21,29 @@ performer. You now speak *as* that character everywhere.
 
 The pinned **Scanner** thread is your instrument:
 
-- **📷 Use camera** — point it at a guest's QR pass.
+- **📷 Use camera** — point it at a guest's QR pass. Works on iPhone
+  and Android; the camera stays on, so a queue scans pass after pass
+  (each one shows a ✓ with the guest's id). It needs the https address.
 - Or type their guest id (it's under their QR).
 
 A scan fires your character's story for that guest — the **Readouts**
 card shows what the system delivered, and anything the story wants you
 to *say or do* arrives as your direction. You can also **📡 Scan this
 guest** from inside their thread.
+
+## Alerts in your booth
+
+Your booth chimes, buzzes and shows a banner for every **alert** the
+story or the director sends, and for any readout you didn't ask for —
+"⏰ *Name* is late", a private warning. Tap the app once after signing in
+so it may make sound (iPhones never buzz — watch for the banner). Keep
+the phone awake with **☰ → Keep my screen on**; a banner you slept
+through is still there when you wake it.
+
+On an Android phone, tap **🔔 Get alerts → Turn on** (or **☰ → Get
+alerts on this phone**) and allow notifications: alerts, the door alarm
+and the late list then reach you as notifications even with the phone
+locked in your pocket.
 
 ## Guest threads and the guest card
 

@@ -28,6 +28,8 @@ import {
   projectSource,
   removeMember,
   setEventMode,
+  setEventStatus,
+  lastEventCodes,
   activeEvent,
   upsertFile,
 } from '../server/db/queries.ts'
@@ -132,6 +134,22 @@ describe('control-plane data layer (Postgres)', () => {
     await expect(
       createEvent({ id: randomUUID(), project_id: p.id, mode: 'live', status: 'open', scenario_name: 'x', scenario_source: 'y', ...codeFields('GOM') }),
     ).rejects.toThrow()
+  })
+
+  it('pins codes to the project: an ended event frees its codes for the relaunch (K-10)', async (ctx) => {
+    if (!hasDb) return ctx.skip()
+    const p = await createProject(OWNER, 'Pinned Codes')
+    expect(await lastEventCodes(p.id)).toBeNull()
+    const base = { project_id: p.id, mode: 'live' as const, status: 'open' as const, scenario_name: 'x', scenario_source: 'y' }
+    const first = await createEvent({ id: randomUUID(), ...base, ...codeFields('PIN') })
+    await setEventStatus(first.id, 'ended')
+    const pinned = await lastEventCodes(p.id)
+    expect(pinned).toEqual(codes('PIN'))
+    // The same three codes insert again — the unique indexes skip ended rows.
+    const second = await createEvent({ id: randomUUID(), ...base, ...codeFields('PIN') })
+    expect(second.event_code).toBe(first.event_code)
+    expect((await activeEvent(p.id))?.id).toBe(second.id)
+    expect(await lastEventCodes(p.id)).toEqual(codes('PIN'))
   })
 
   it('rejects a duplicate event code across live events', async (ctx) => {

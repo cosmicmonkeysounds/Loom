@@ -61,7 +61,7 @@ import { handleEvent, specFromRow } from "./events-api.ts";
 import { handleCollab } from "./collab-api.ts";
 import { mailer } from "./mail.ts";
 import { WebmasterPortal, resendSender } from "./webmaster.ts";
-import { HTML_CSP, REINSTALL_CSP, TERMINAL_CSP, appRelPath, subAppRoute, wantsModRead } from "./routing.ts";
+import { HTML_CSP, PLAY_CSP, PLAY_PWA_FILES, REINSTALL_CSP, TERMINAL_CSP, appRelPath, pickJoinBase, subAppRoute, wantsModRead } from "./routing.ts";
 
 const PORT = Number(process.env.LOOM_PORT ?? 7000);
 const HOST = process.env.LOOM_HOST ?? "0.0.0.0";
@@ -122,7 +122,7 @@ const CONTENT_TYPES: Record<string, string> = {
 };
 
 /** Serve a file from a built app dir; returns false if it isn't there. */
-function serveAppFile(pathname: string, res: ServerResponse, dist: URL = APP_DIST, csp: string = HTML_CSP): boolean {
+function serveAppFile(pathname: string, res: ServerResponse, dist: URL = APP_DIST, csp: string = HTML_CSP, noCache = false): boolean {
   const rel = appRelPath(pathname);
   if (rel === null) return false;
   try {
@@ -130,6 +130,7 @@ function serveAppFile(pathname: string, res: ServerResponse, dist: URL = APP_DIS
     const ext = rel.slice(rel.lastIndexOf("."));
     const headers: Record<string, string> = { "content-type": CONTENT_TYPES[ext] ?? "application/octet-stream" };
     if (ext === ".html") headers["content-security-policy"] = csp;
+    if (noCache) headers["cache-control"] = "no-cache";
     res.writeHead(200, headers);
     res.end(buf);
     return true;
@@ -139,14 +140,13 @@ function serveAppFile(pathname: string, res: ServerResponse, dist: URL = APP_DIS
 }
 
 /**
- * Best LAN-reachable base URL for guest join QRs. A QR built from the
- * console's `location.origin` is `http://localhost:…` when the operator
- * opened the console locally — useless to a phone (localhost is the phone
- * itself). The server knows its real LAN IP, so it hands one out.
+ * Base URL for guest join QRs: `LOOM_BASE_URL` on a public deployment,
+ * else the best LAN-reachable address. A QR built from the console's
+ * `location.origin` is `http://localhost:…` when the operator opened the
+ * console locally — useless to a phone (localhost is the phone itself).
  */
 function joinBase(): string {
-  const urls = lanUrls(PORT);
-  return urls.find((u) => !u.includes("localhost")) ?? urls[0]!;
+  return pickJoinBase(process.env.LOOM_BASE_URL, lanUrls(PORT));
 }
 
 // The program directory: Wikipedia, for the cast's profile pictures and
@@ -340,9 +340,13 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   // console; guests + performers use this app.
   if (
     method === "GET" &&
-    (path === "/" || path === "/index.html" || path.startsWith("/assets/") || path === "/favicon.ico")
+    (path === "/" || path === "/index.html" || path.startsWith("/assets/") || path === "/favicon.ico" || PLAY_PWA_FILES.has(path))
   ) {
-    if (serveAppFile(path, res)) return;
+    // The HTML shell is no-cache too, so a phone picks up a new build (and
+    // its service worker) on the next open.
+    const shell = path === "/" || path === "/index.html";
+    if (serveAppFile(path, res, APP_DIST, PLAY_CSP, shell || PLAY_PWA_FILES.has(path))) return;
+    if (PLAY_PWA_FILES.has(path)) return void sendJson(res, 404, { error: "not found" });
     // Not built yet — a plain hint rather than a blank page.
     res.writeHead(200, { "content-type": "text/html; charset=utf-8", "content-security-policy": HTML_CSP });
     res.end(
