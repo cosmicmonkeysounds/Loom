@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import runPageSource from './RunPage.tsx?raw'
 import { CockpitPhase, RunBackend, RunMode, type RunInfo } from '@/store/cockpit'
-import { runAge, runStatusText, runTone } from './run-chrome'
+import { recapPath, runAge, runStatusText, runTone } from './run-chrome'
 
 const base: RunInfo = {
   backend: RunBackend.Server,
@@ -49,5 +49,15 @@ describe('the Run page is front of house only', () => {
       expect(src.includes(`'${id}'`) || src.includes(`"${id}"`), id).toBe(false)
     }
     expect(src.includes('LifecycleControls')).toBe(false)
+  })
+})
+
+describe('the recap link', () => {
+  it('points at the event\'s text recap, same-origin, with the id escaped', () => {
+    expect(recapPath('evt_1')).toBe('/e/evt_1/api/mod/recap?format=text')
+    expect(recapPath('a/b')).toBe('/e/a%2Fb/api/mod/recap?format=text')
+    const src: string = runPageSource
+    expect(src.includes('recapPath(run.eventId)')).toBe(true)
+    expect(src.includes('run-recap')).toBe(true)
   })
 })

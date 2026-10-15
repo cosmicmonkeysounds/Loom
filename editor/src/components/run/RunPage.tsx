@@ -17,7 +17,7 @@ import { confirmAction } from '@/store/dialog'
 import { downloadRunExport } from '@/lib/run-export'
 import { useInspect } from '@/components/cockpit/inspect'
 import { FactionPill } from '@/components/cockpit/ui'
-import { runAge } from './run-chrome'
+import { recapPath, runAge } from './run-chrome'
 import { PrintSheet } from './PrintSheet'
 import { TerminalsCard } from './TerminalsCard'
 
@@ -270,6 +270,18 @@ function JoinCard() {
             >
               🖨 Print sheet…
             </button>
+          )}
+          {run.eventId !== null && (
+            <a
+              href={recapPath(run.eventId)}
+              target="_blank"
+              rel="noreferrer"
+              className="text-center text-xs text-indigo-400 hover:underline"
+              data-testid="run-recap"
+              title="Trust, the ending, the ceremony lists and the duck board, as text"
+            >
+              Recap ↗
+            </a>
           )}
         </div>
         <div>

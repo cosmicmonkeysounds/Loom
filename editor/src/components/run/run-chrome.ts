@@ -4,6 +4,13 @@
 
 import { CockpitPhase, RunBackend, RunMode, type RunInfo } from '@/store/cockpit'
 
+/** The night's recap as plain text (`/api/mod/recap?format=text`: trust,
+ *  the endings, the ceremony lists, the duck board). Same-origin like the
+ *  join QR; the author's session authorizes it, so no mod code to type. */
+export function recapPath(eventId: string): string {
+  return `/e/${encodeURIComponent(eventId)}/api/mod/recap?format=text`
+}
+
 /** The world your actions land in — drives every accent colour. */
 export type RunTone = 'idle' | 'local' | 'scratch' | 'rehearsal' | 'live'
 

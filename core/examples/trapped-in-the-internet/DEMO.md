@@ -28,6 +28,9 @@ change the order here, change it there.
 4. Open two more tabs on the laptop (or a second screen):
    - **The TV**: `https://app.mapsandducks.com/terminal/?code=<moderator code>&name=TV&character=Trabolta&view=tv`
      (the living-room screen: screensaver, then Trabolta's face, the slides, the live Trust Chart, the overlays).
+     **Click the TV tab once** ("🔇 CLICK ONCE TO ENABLE THE VOICE"): a browser
+     keeps a page silent until someone touches it, so Trabolta's TV voice is
+     mute until you do.
    - **The tent tablet**: `https://app.mapsandducks.com/reinstall/?code=<moderator code>&name=Tent tablet`
      (the reinstallation game; keyboard WASD / arrows, Q/E turn, Shift runs).
 5. Optional: Trabolta's voice. Start stagehand's `agents` worker on the
@@ -48,7 +51,8 @@ change the order here, change it there.
 
 Two phones only? Skip C and D: in Run, the **👁 identity control** lets you
 *be* Norton or Clippy (the performer's booth, their buttons on each guest),
-and **Inspector → 📡 Scan** scans a guest in as them. Add a third guest
+and the guest's **Inspector** scans them in as Norton (the *— scan as
+character —* menu → *Norton Anti-Virus* → **Scan**). Add a third guest
 (Calculator, any pool program) if you have the phone: three programs make
 the Trust Chart and the majority read better.
 
@@ -66,16 +70,16 @@ guest's card in that performer's booth (phone C / D), or in Run while you
 | Phones A, B join (event code → pick the program). | A dark full-screen **cutscene**: The Uploader in the Optical Drive (the mud room). |
 | Each fails the **CAPTCHA**: tap any squares → VERIFY. (Getting it *right* proves you're human: INCORRECT, try again.) | "CORRECT. You failed at once." |
 | A pool program (Calculator) picks a problem; everyone picks **Deposited** / *I have nothing to leave*. | *100 Truthcoin credited*, then a **pass** (QR) on the stage: "An Antivirus will scan you in." |
-| **Norton** (phone C's **Scanner**, or Run → Inspector → 📡 Scan as Norton) scans each pass. | "Scanned. … free of viruses." The Tube, the Desktop, "📂 The Start Bar, The CPU, … are open now." **Continue** leaves the cutscene for the chat app. Clippy's **orientation tour** opens (Next / Skip). Excel and MS Paint get their human memories in *The Uploader*'s thread; MS Paint gets *The Centre Square*. |
+| **Norton** (phone C's **Scanner**, or Run → the guest's Inspector → *scan as character* Norton → **Scan**) scans each pass. | "Scanned. … free of viruses." The Tube, the Desktop, "📂 The Start Bar, The CPU, … are open now." **Continue** leaves the cutscene for the chat app. Clippy's **orientation tour** opens (Next / Skip). Excel and MS Paint get their human memories in *The Uploader*'s thread; MS Paint gets *The Centre Square*. |
 
 ### Act I — the Desktop (8 min)
 
 | Cue (Director) | Performer | What you see |
 |---|---|---|
 | **C1/V1 · 📣 Call everyone to the Desktop** | — | 🔔 alert on every phone; `# task-manager` opens; the TV leaves the screensaver. |
-| **V2 · 🎱 Start Computer Bingo (20 min)** | — | Clippy's rules in *The Desktop* room, the Bingo Card quest, the TV's Bingo slide + corner countdown. |
+| **V2 · 🎱 Start Computer Bingo (20 min)** | — | Clippy's rules in *The Desktop* room, the Bingo Card quest, the TV's Bingo slide (a text placeholder) + corner countdown. |
 | **V3 · ⏰ Bingo time: results** | Clippy: **🎱 Bingo winner** + **🎀 Award a ribbon** on a guest (Calculator). Norton: **🛡 Send to the Internet** on **MS Paint**. | 🎀 broadcast; Norton's line to MS Paint ("you did not agree to be ruled by AI"); **Corrupted Code** (Clippy: "this is normal"). Phone B: "⛓️ You've been taken to The Internet", **WebMD**'s reinstallation instructions. |
-| *(tent tablet)* | — | On the laptop's tent tab: **MS Paint** is under *corrupted* → **Play here** → follow the golden chevrons to **Gerald, the golden duck** and walk into him. Phone B: "Reinstallation complete", *The Golden Duck*. (The map is the 3-floor placeholder of the house; the tent is out back.) |
+| *(tent tablet)* | — | On the laptop's tent tab: **MS Paint** is listed under *In the Internet now* (☣ MS Paint) → **Play here** → follow the golden chevrons to **Gerald, the golden duck** and walk into him. Phone B: "Reinstallation complete", *The Golden Duck*. (The map is the 3-floor placeholder of the house; the tent is out back.) |
 | **Clippy 2/X · 🤖 Clippy introduces Trabolta** | — | Trabolta appears in everyone's People list and DMs ("Hello, …"); the TV flips to his face, then the mirror of the house. |
 | **V4/V5 · 🔎 Truth Scavenger Hunt 1 (15 min)** | — | Hunt One in the Quest Log; a **📝 File a fact** card in each Trabolta thread. |
 | **C2 · ⏰ Hunt over** → **V6 · ⚖️ First Moment of Truth** | Clippy: **✅ Q1** on Calculator, **😤 Q2** on Excel (a confident lie: accepted, looks identical). | "✅ … answer is accepted" for both. A refused press (pressing again) lands in `# hosts`, never on the guest's phone. |
@@ -92,13 +96,16 @@ guest's card in that performer's booth (phone C / D), or in Run while you
 | **🧮 Trabolta tallies round 2** → **📊 Trust Chart** | — | **The TV draws the Trust Chart live**: every program, ranked by trust. |
 | **🏆 Praise the top, humiliate the bottom, VLC prints** → **🫘 Printer opened** | — | Praise / shame by name, the certificate ("The media player is not responding" with no VLC here), then *Full Of Beans*. |
 | **🗜 Antivirus zip everyone out** → **🤖 Trabolta shares the next facts** | — | Captives zipped out; an overshare (scenario 1–4 by what Excel / OpenOffice did); The Final Facts quest. |
-| **🕚 System clock → 11 PM, 31 Dec 1999** | Phones: **Choose your side** (Unlimited Power / The Way Out) now shows. | 🔔 the clock alert; the TV becomes the Y2K clock; Excel's Final Orders. |
+| **🕚 System clock → 11 PM, 31 Dec 1999** | **Choose your side** (Unlimited Power / The Way Out) now shows on every phone not in a group yet (Phone B; Excel is already in Unlimited Power). | 🔔 the clock alert; the TV becomes the Y2K clock; Excel's Final Orders. |
 
 ### Act III — pick one ending (3–5 min)
 
 **A · The server room (Combo A)** — the shortest, loudest one.
 
-1. Get a majority: both phones join **The Way Out**, then fire **🧾 Let a faction win without its leader's task** (OpenOffice isn't here) — or just fire **🗳 Force the majority: The Way Out**.
+1. Get a majority: **Phone B** (MS Paint): **Choose your side → The Way Out**.
+   **Phone A** (Excel) is already in *Unlimited Power* from his Truther
+   Download choice, so he never sees *Choose your side*: **☰ → Your pass →
+   Leave … for The Way Out** (a defection). Then fire **🧾 Let a faction win without its leader's task** (OpenOffice isn't here) — or just fire **🗳 Force the majority: The Way Out**.
    Members get the whole truth (50+ codex entries, *The Legendary Fact*) and The Server Room appears.
 2. **🔌 Patch: Combo A** → every phone: 🔔 **GO TO THE LIVING ROOM**; the TV: blackout, then the flashing overlay; 10 s later the dance look.
 3. **🏍 After the dance: weakened Trabolta recounts** — he reads every identity of the programs who came, the first reinstall, the virus planter, the best and worst program, and rides off. Everyone is released.
@@ -113,17 +120,20 @@ guest's card in that performer's booth (phone C / D), or in Run while you
 **Then the ceremony (2 min)**: **G1 · 🏆 Start the awards ceremony**, then e.g.
 **G2 · 🥇 Most Trusted** with the winner picked in the cue's *who?* box (the
 top of the Trust Chart). The winner's phone: "🏆 You won Most Trusted!"; the
-host's line in *The Desktop*; the TV's award slide.
+host's line in *The Desktop*; the TV's award slide (text only).
 
-**The recap**: open `https://app.mapsandducks.com/e/<event id>/api/mod/recap?format=text`
-in a tab while signed in (the event id is in Run's URL / header): trust,
-truths and lies accepted, Internet trips, codex, quests, Truthcoin, factions.
+**The recap**: the Run page's **Recap ↗** link (under the codes) opens it as
+text in a new tab, signed in as you: trust, truths and lies accepted,
+Internet trips, codex, quests, Truthcoin, factions. (By hand it is
+`https://app.mapsandducks.com/e/<event id>/api/mod/recap?format=text`; the
+event id is the one `pnpm sync-show` prints as `✓ event <id>`.)
 
 ## Resetting between demos
 
 Header **↺ Restart ▾ → Restart this draft**: the story starts again from the
 top, the codes stay, joined phones are signed out (they land on the join
-screen with a note). Performers sign in again.
+screen with a note). Performer booths stay signed in (only **Go live** signs
+them out).
 
 ## What is not built yet (say so on the day)
 
@@ -133,5 +143,6 @@ screen with a note). Performers sign in again.
 - **Trabolta's voice needs the laptop worker**; without it he has his hold line and a director answers as him.
 - **Phones at the server-room endings** show the GO TO THE LIVING ROOM *alert banner*, not a full-screen flashing screen (the TV and terminals do flash it).
 - **Every guest button shows all night** (🚻 Bathroom Mode, 💾 Insert a disk) — pressing one at the wrong time only answers "You have no disk." etc.
+- **TV slides are text placeholders** (no artwork yet: "CEREMONY", "AWARD MOST TRUSTED"); the award slide doesn't name the winner — the winner's phone and the host's line do. Only the Trust Chart is drawn for real.
 - **Old 📝 cards stay** in each Trabolta thread after a new round deals a fresh one.
 - Not built: the tablet bench (K-02), the live tent run (K-03), the live mind run (K-04), the cellular sheet (K-07), K-31b, the printed QR posters on the walls (the Run page's 🖨 Print sheet makes them), cast-pack rehearsals.
