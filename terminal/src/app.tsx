@@ -253,8 +253,8 @@ export function App() {
         config={config}
         screen={screen}
         setScreen={setScreen}
-        castOnline={screenState.state?.character?.hold === true ? null : (screenState.state?.character?.online ?? null)}
-        polled={screenState.state !== null}
+        castOnline={!screenState.reachable || screenState.state?.character?.hold === true ? null : (screenState.state?.character?.online ?? null)}
+        polled={screenState.reachable}
         takeover={takeover}
         onSetup={openSetup}
         onGone={onGone}

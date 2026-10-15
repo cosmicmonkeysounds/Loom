@@ -197,20 +197,41 @@ export async function pollScreen(c: TerminalConfig, fetchFn: typeof fetch = fetc
   }
 }
 
+/** Polls in a row that may miss before the bar's dot goes dark: one
+ *  dropped 2 s poll is a blip, two is the server gone. */
+export const MISSES_OFFLINE = 2;
+
+/** Missed polls in a row after this outcome (an answer resets it). */
+export function missesAfter(misses: number, out: PollOutcome["kind"]): number {
+  return out === "state" ? 0 : misses + 1;
+}
+
+/** Is the server answering? The last good state is kept on a miss (so the
+ *  screen doesn't flicker), so its presence alone can't say. */
+export function screenReachable(state: ScreenState | null, misses: number): boolean {
+  return state !== null && misses < MISSES_OFFLINE;
+}
+
 /**
  * Poll the screen state every `SCREEN_POLL_MS` (the TV: `TV_POLL_MS`) while a
  * config is present. Returns the last good answer (null until the first),
- * whether the server refused this terminal's token, and whether its event is gone. `voice` (the TV) is read
+ * whether the server is answering right now (`reachable`), whether the server
+ * refused this terminal's token, and whether its event is gone. `voice` (the TV) is read
  * fresh on every poll, so the cursor can move without restarting the loop.
  */
-export function useScreenState(config: TerminalConfig | null, voice: (() => VoiceQuery) | null = null): { state: ScreenState | null; revoked: boolean; ended: boolean } {
+export function useScreenState(
+  config: TerminalConfig | null,
+  voice: (() => VoiceQuery) | null = null,
+): { state: ScreenState | null; reachable: boolean; revoked: boolean; ended: boolean } {
   const voiceRef = useRef(voice);
   voiceRef.current = voice;
   const [state, setState] = useState<ScreenState | null>(null);
+  const [misses, setMisses] = useState(0);
   const [revoked, setRevoked] = useState(false);
   const [ended, setEnded] = useState(false);
   useEffect(() => {
     setState(null);
+    setMisses(0);
     setRevoked(false);
     setEnded(false);
     if (config === null) return;
@@ -220,6 +241,7 @@ export function useScreenState(config: TerminalConfig | null, voice: (() => Voic
     const tick = async () => {
       const out = await pollScreen(config, fetch, voiceRef.current?.() ?? null);
       if (!alive) return;
+      setMisses((m) => missesAfter(m, out.kind));
       if (out.kind === "state") setState(out.state);
       else if (out.kind === "revoked") {
         setRevoked(true);
@@ -236,5 +258,5 @@ export function useScreenState(config: TerminalConfig | null, voice: (() => Voic
       window.clearTimeout(timer);
     };
   }, [config]);
-  return { state, revoked, ended };
+  return { state, reachable: screenReachable(state, misses), revoked, ended };
 }

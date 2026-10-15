@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.ts";
-import { attractOf, parseScreenState, pollScreen, screenStateUrl, voiceOf } from "../src/screen.ts";
+import { MISSES_OFFLINE, attractOf, missesAfter, parseScreenState, pollScreen, screenReachable, screenStateUrl, voiceOf } from "../src/screen.ts";
 
 const config = defaultConfig({ eventId: "evt 1", token: "tok", name: "Kitchen", spot: "kitchen", view: "auto" });
 
@@ -42,6 +42,19 @@ describe("screen state", () => {
       throw new Error("offline");
     }) as unknown as typeof fetch;
     expect(await pollScreen(config, throwing)).toEqual({ kind: "miss" });
+  });
+
+  it("the bar's dot goes dark when the server stops answering, though the last state is kept", () => {
+    const state = parseScreenState(body);
+    expect(screenReachable(null, 0)).toBe(false); // never answered
+    let misses = missesAfter(0, "state");
+    expect(screenReachable(state, misses)).toBe(true);
+    misses = missesAfter(misses, "miss"); // one dropped poll is a blip
+    expect(screenReachable(state, misses)).toBe(true);
+    misses = missesAfter(misses, "miss");
+    expect(misses).toBe(MISSES_OFFLINE);
+    expect(screenReachable(state, misses)).toBe(false); // the server is gone
+    expect(screenReachable(state, missesAfter(misses, "state"))).toBe(true); // and back
   });
 
   it("fails closed: no answer yet is attract", () => {
