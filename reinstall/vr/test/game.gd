@@ -1059,6 +1059,13 @@ func _test_main_and_game() -> void:
 	_check(down_trail.size() > 2 and _near3(down_trail[1], [-3.4, -2.7, 11.0]), "game: just past the head, it points down the flight")
 	var flat_from := [-2.0, 0.0, 4.0]
 	_check(Game.trail_path(house, flat_from, [-0.6, 0.0, 11.6]) == HouseRoute.route(house, flat_from, [-0.6, 0.0, 11.6]), "game: off the stairs the trail is the plain route")
+	# On the ramp means on it, not merely over its rect: under the high end
+	# (landing floor, the ramp 2.6 m overhead) the trail steps out of the
+	# nearer side (x −2.9 + 0.35) before the route, never along the underside.
+	_check(Game.stair_under(house, [-3.4, -1.35, 9.0]) != null, "game: half way up the ramp is on the stair")
+	_check(Game.stair_under(house, [-3.38, -2.7, 7.2]) == null and Game.stair_above(house, [-3.38, -2.7, 7.2]) != null, "game: under the high end is under the stair, not on it")
+	var under_trail := Game.trail_path(house, [-3.38, -2.7, 7.2], [-0.6, 0.0, 11.6])
+	_check(under_trail.size() > 2 and _near3(under_trail[1], [-2.55, -2.7, 7.2]), "game: from under the stair the trail first steps out of its nearer side")
 
 	main.queue_free()
 	await process_frame

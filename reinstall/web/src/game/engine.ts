@@ -26,6 +26,7 @@ import { formatElapsed, foundRetryMs, heat, PAUSED_NOTICE, perchedOutOfReach, re
 import { combineInput, isActive, keyDown, keyUp, type StickVector } from "./input.ts";
 import { IdleLeash } from "./leash.ts";
 import { buildPhysicsWorld, eyeOf, move, NO_INPUT, spawnBody, type Body, type PhysicsWorld } from "./physics.ts";
+import { NoRenderer } from "./no-start.ts";
 import { PosePump } from "./pump.ts";
 import { trail } from "./trail.ts";
 
@@ -148,7 +149,11 @@ export class Game {
     const coarse = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
     const dpr = window.devicePixelRatio || 1;
     // A cheap tablet at DPR 1 pays for MSAA it can't afford.
-    this.renderer = new WebGLRenderer({ canvas: opts.canvas, antialias: !(coarse && dpr < 2), powerPreference: "high-performance" });
+    try {
+      this.renderer = new WebGLRenderer({ canvas: opts.canvas, antialias: !(coarse && dpr < 2), powerPreference: "high-performance" });
+    } catch (e) {
+      throw new NoRenderer(e);
+    }
     this.renderer.setPixelRatio(Math.min(dpr, 1.5));
     houseAtmosphere(this.scene);
     this.camera.rotation.order = "YXZ";

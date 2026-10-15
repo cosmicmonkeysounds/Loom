@@ -49,8 +49,8 @@
     { "id": "tophall-bath2", "a": "tophall", "b": "bath2", "at": [3, 10.5], "width": 0.8 }
   ],
   "stairs": [
-    { "id": "basement-stairs", "from": "landing", "to": "hall", "rect": [4.6, 2.5, 5.6, 6.5], "up": "n" },
-    { "id": "upstairs", "from": "hall", "to": "tophall", "rect": [4.6, 7, 5.6, 11], "up": "s" }
+    { "id": "basement-stairs", "from": "landing", "to": "hall", "rect": [4.4, 2.5, 5.4, 6.5], "up": "n" },
+    { "id": "upstairs", "from": "hall", "to": "tophall", "rect": [4.4, 7, 5.4, 11], "up": "s" }
   ],
   "terminals": [
     { "id": "living-tv", "name": "TV", "room": "living", "pos": [11.9, 1.6, 3], "yaw": 90 },

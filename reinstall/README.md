@@ -70,7 +70,8 @@ or a second window as the guest, the keyboard to walk) is spelled out in
 game's own autopilot (`web/test/autopilot.test.ts`) walks the real physics
 along the trail to every duck spot of the show's map and of
 `house/test/fixtures/three-floors.json` (basement / main / top + the tent,
-two stairs stacked in the hall).
+two flights end to end in the hall; a stairwell stacked flight over flight
+is refused by `validateHouse`, so offset the flights in plan).
 
 **End to end.** `vr/` has an `--autopilot` mode
 (`godot --headless --path reinstall/vr --xr-mode off -- --server … --code

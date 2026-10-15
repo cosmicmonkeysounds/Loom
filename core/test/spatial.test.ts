@@ -220,7 +220,7 @@ describe("SpatialHub", () => {
   });
 
   it("three floors: poses are labelled per floor, and Gerald upstairs is never found from the floor below", () => {
-    // `three-floors`: basement −2.7 / main 0 / top 2.8, two stairs stacked in
+    // `three-floors`: basement −2.7 / main 0 / top 2.8, two flights end to end in
     // the hall — the real house's shape (2026-10-15).
     const h = hubHarness();
     const house = fixture("three-floors");

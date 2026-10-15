@@ -26,6 +26,8 @@ export const STAIR = (): HouseMap => load(stair);
 export const L_ROOM = (): HouseMap => load(lRoom);
 export const SHOW = (): HouseMap => load(showHouse);
 /** The real house's shape (2026-10-15): basement / main / top + the tent
- *  outside, two stairs stacked in the hall (`@loom/house`'s `three-floors`
- *  fixture, so the Godot port has its goldens too). */
+ *  outside, two flights end to end in the hall (basement → main, then
+ *  main → top; not stacked one over the other, which `validateHouse`
+ *  refuses) — `@loom/house`'s `three-floors` fixture, so the Godot port has
+ *  its goldens too. */
 export const THREE_FLOORS = (): HouseMap => load(threeFloors);

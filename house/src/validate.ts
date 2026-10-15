@@ -572,6 +572,25 @@ function checkGeometry(house: HouseMap, problems: string[]): void {
     }
   });
 
+  // A stairwell stacked flight over flight (the upper one's rect over the
+  // lower one's, in plan) can't be walked: the lower flight's hole and its
+  // rails sit right where the upper one starts. Offset them in plan; the
+  // virtual house only has to read like the real one.
+  const floorOfRoom = (id: string): string | undefined => rooms.get(id)?.floor;
+  house.stairs.forEach((a, i) => {
+    for (let j = i + 1; j < house.stairs.length; j++) {
+      const b = house.stairs[j]!;
+      const fa = [floorOfRoom(a.from), floorOfRoom(a.to)];
+      const fb = [floorOfRoom(b.from), floorOfRoom(b.to)];
+      if (!fa.some((f) => f !== undefined && fb.includes(f))) continue;
+      const [ax0, az0, ax1, az1] = a.rect.map(mmi) as [number, number, number, number];
+      const [bx0, bz0, bx1, bz1] = b.rect.map(mmi) as [number, number, number, number];
+      if (ax0 < bx1 && bx0 < ax1 && az0 < bz1 && bz0 < az1) {
+        problems.push(`${label("stairs", i, a)}: its rect overlaps stair "${b.id}" in plan (a stacked stairwell can't be walked; offset the flights)`);
+      }
+    }
+  });
+
   const placed = (kind: "terminal" | "duck" | "spawn" | "prop", at: string, roomId: string, pos: readonly number[]): void => {
     const room = rooms.get(roomId);
     if (!room) {

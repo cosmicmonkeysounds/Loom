@@ -76,10 +76,14 @@ with `pnpm dev`, or the VPS):
    browser: that window is the tent tablet. The camera may not start (no
    webcam, plain `http://` on a LAN address); that is fine.
 2. Join as a guest on a phone (or a phone-sized window) at `/`, and get
-   sent to the Internet: an Antivirus performer's **Send to the Internet**,
-   or the director's cue sheet in Run. The program then appears under
-   *In the Internet now* on the tablet within 10 s: tap it (or type its
-   name), then **Play here**.
+   sent to the Internet. That is a performer's button (`send to the
+   internet` is `who: performer`, so it is not on Run's cue sheet, which
+   lists only the director's cues): sign a second phone in with the
+   performer code as an Antivirus (e.g. Norton Anti-Virus) and press
+   **🛡 Send to the Internet** on the guest's card, or in Run use the
+   identity control to *be* Norton Anti-Virus and press it on the guest
+   there. The program then appears under *In the Internet now* on the
+   tablet within 10 s: tap it (or type its name), then **Play here**.
 3. Walk with **W A S D** / the arrows, look by dragging, **Shift** runs.
    Follow the chevrons. At Gerald the program is released, the phone gets
    *The Golden Duck* and is back on the Desktop.

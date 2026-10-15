@@ -12,14 +12,12 @@ import type { Sfx } from "./audio.ts";
 import { Game, type GameEnd, type HudState } from "./engine.ts";
 import { bearingOf, HEAT_LABEL } from "./hud.ts";
 import { CENTRED, type StickVector } from "./input.ts";
+import { whyNoStart } from "./no-start.ts";
 import { Joystick } from "./joystick.tsx";
 
 export type PlayExit = { kind: "found"; name: string; complete: boolean } | { kind: "over"; reason: string } | { kind: "idle" } | { kind: "quit" };
 
-/** Said wherever this browser would otherwise start a game it can't draw
- *  (three r186 needs WebGL2: the wizard probes for it before "Play here"). */
-export const NO_WEBGL2 =
-  "This browser can't draw the simulation: it has no WebGL2 (3D graphics are switched off or unsupported). Send the program to a headset, or open this page in a current Chrome, Safari or Firefox with hardware acceleration on.";
+export { NO_WEBGL2 } from "./no-start.ts";
 
 /** Seconds the celebration stays before returning to the scanner by itself. */
 const CELEBRATE_S = 15;
@@ -75,11 +73,11 @@ export function Play({
         onEnd: (e: GameEnd) => exit.current(e.kind === "idle" ? { kind: "idle" } : e),
       });
     } catch (e) {
-      // No WebGL (an old tablet, a locked-down browser) that the probe
-      // missed: a context that exists but won't start.
+      // No WebGL the probe missed (a context that exists but won't start:
+      // NO_WEBGL2), or the dealt map / spawn tripping the build (said as is).
       void postEnd(base, assignment.token);
-      console.warn("reinstall: no renderer", e);
-      exit.current({ kind: "over", reason: NO_WEBGL2 });
+      console.warn("reinstall: the game didn't start", e);
+      exit.current({ kind: "over", reason: whyNoStart(e) });
       return;
     }
     game.current = g;
