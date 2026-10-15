@@ -204,7 +204,12 @@ cue (one in flight at a time), the **LAST** cue amber + the next one
 tagged **NEXT** + ✓ on fired ones — all from `CockpitState.cues`
 (`ModView.cues` = core `cueState(sim)` off the sim log, so every
 director's sheet agrees and survives a reload) — `Night.phase` in the
-header, and a word filter. Desktop only.
+header, and a word filter. Desktop only. A cue whose
+`InteractionSummary.subject` is set (every hook that hears it binds a
+person — the ceremony's awards, K-25) shows a **who?** picker over the
+roster plus an optional **value** box (`cueValueArgs` → `{value}`), and
+fires with that person as the subject; it stays disabled until one is
+picked.
 
 **Being anyone — the identity lens.** `perspective` is `OPERATOR_LENS`
 (god view) or a guest/persona/character id; `setPerspective` resolves

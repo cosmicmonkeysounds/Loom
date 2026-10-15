@@ -1901,3 +1901,141 @@ describe("Trapped in the Internet — a director's mis-taps", () => {
     }
   });
 });
+
+describe("Trapped in the Internet — the awards ceremony (K-25)", () => {
+  const AWARDS = [
+    "award_most_trusted",
+    "award_least_trusted",
+    "award_frequent_flyer",
+    "award_lore_hoarder",
+    "award_truthcoin_tycoon",
+    "award_best_liar",
+    "award_duck_speedrun",
+    "award_quest_completionist",
+  ];
+  /** The Desktop room's lines, as the phones render them. */
+  const desktop = (sim: Sim, evs: SimEvent[]) =>
+    composeGuestMessages(sim, evs).filter((m) => m.channel === "loc:The Desktop" && m.kind === "line").map((m) => `${m.from}: ${m.text}`);
+  /** A sim whose night has ended the given way (the endings are tested above). */
+  function ended(ending: string): Sim {
+    const sim = boot();
+    sim.setVar("Night.ended", "true");
+    sim.setVar("Night.ending", ending);
+    return sim;
+  }
+
+  it("declares G1 + 5 fixed + 3 bonus admin cues, in running order after the endings", () => {
+    const admin = [...fresh().model.interactions.values()].filter((i) => i.who === "admin").map((i) => i.id);
+    const at = admin.indexOf("start_the_ceremony");
+    expect(at).toBeGreaterThan(admin.indexOf("the_hand_jive"));
+    expect(admin.slice(at, at + 9)).toEqual(["start_the_ceremony", ...AWARDS]);
+  });
+
+  it("refuses before the ending: no ceremony, no award, nothing leaks", () => {
+    const sim = boot();
+    const s = fire(sim, "start_the_ceremony");
+    expect(beats(s)).toEqual([]);
+    expect(v(sim, "Night.ceremony")).toBe(false);
+    const a = fire(sim, "award_best_liar", "g1", { value: 3 });
+    expect(texts(a)).toEqual([]);
+    expect(v(sim, "Night.award_winner")).toBe("none");
+  });
+
+  it("an ending → Trabolta hosts in The Desktop; awards carry the winner's name and number", () => {
+    const sim = ended("song");
+    const s = fire(sim, "start_the_ceremony");
+    expect(v(sim, "Night.ceremony_host")).toBe("Trabolta");
+    expect(beats(s)).toContain("The Ceremony");
+    expect(cues(s)).toContain("cue screens_ceremony");
+    expect(casts(s).map((c) => c.cue.replace(/^"|"$/gu, ""))).toEqual(["!🏆 THE AWARDS CEREMONY. Every program to the living room."]);
+    expect(composeGuestMessages(sim, s).some((m) => m.alert === true)).toBe(true);
+    expect(desktop(sim, s).length).toBe(2);
+    expect(desktop(sim, s).every((l) => l.startsWith("Trabolta: "))).toBe(true);
+
+    sim.setVar("g1.trust", "42");
+    const a = fire(sim, "award_most_trusted", "g1");
+    expect(desktop(sim, a)).toEqual([
+      "Trabolta: Most Trusted. Trust score 42. Calculator. When I needed a program to believe, I believed you. Come and take your trophy.",
+    ]);
+    expect(cues(a)).toContain("cue screens_award_most_trusted");
+    expect(v(sim, "Night.screen")).toBe("award_most_trusted");
+    expect(v(sim, "Night.terminals")).toBe("award_most_trusted");
+    // Never in a DM: the winner hears a personal reply, the room hears the line.
+    expect(composeGuestMessages(sim, a).some((m) => m.channel.startsWith("dm:"))).toBe(false);
+    expect(replies(a).map((r) => `${r.to}: ${r.text}`)).toEqual(["g1: 🏆 You won Most Trusted! Come up to the TV for your trophy."]);
+
+    // Three awards on three real programs (the acceptance), names in the room.
+    fire(sim, "award_frequent_flyer", "g5");
+    const lh = fire(sim, "award_lore_hoarder", "g3");
+    expect(desktop(sim, lh)[0]).toMatch(/^Trabolta: Lore Hoarder\. Codex entries: \d+\. OpenOffice\./u);
+    const tt = fire(sim, "award_truthcoin_tycoon", "g6");
+    expect(desktop(sim, tt)[0]).toMatch(/^Trabolta: Truthcoin Tycoon\. Balance \d+ Truthcoin\. VLC\./u);
+    expect(v(sim, "Night.awards_given")).toBe(4);
+  });
+
+  it("every award reads a fallback with no number, and the director's value when given", () => {
+    const sim = ended("help");
+    fire(sim, "start_the_ceremony");
+    for (const a of AWARDS) {
+      const out = fire(sim, a, "g2");
+      const said = desktop(sim, out);
+      expect(said.length, a).toBe(1);
+      expect(said[0], a).toContain("Microsoft Excel");
+      expect(said[0], a).not.toMatch(/\bnull\b|\bnone\b|\{/u);
+      expect(cues(out), a).toContain(`cue screens_${a}`);
+    }
+    // A bonus award with no value reads its fallback; with one, the number.
+    expect(desktop(sim, fire(sim, "award_best_liar", "g4"))[0]).toBe(
+      "Trabolta: A bonus award. Best Liar. MS Paint. I believed you. Every time. I am not angry. I am impressed. Come up here.",
+    );
+    expect(desktop(sim, fire(sim, "award_best_liar", "g4", { value: 3 }))[0]).toContain("Confident lies I accepted: 3. MS Paint.");
+    expect(desktop(sim, fire(sim, "award_duck_speedrun", "g1", { value: "2:41" }))[0]).toContain("Calculator reached the golden duck in 2:41.");
+    // `value` overrides a fixed award's own number (a corrected recap).
+    expect(desktop(sim, fire(sim, "award_most_trusted", "g1", { value: 99 }))[0]).toContain("Trust score 99. Calculator.");
+    // …and the next award without one falls back to the winner's var again.
+    expect(desktop(sim, fire(sim, "award_best_liar", "g4"))[0]).not.toContain("accepted:");
+  });
+
+  it("the host changes per ending: Clippy after destroyed and rave, a weakened Trabolta after disabled", () => {
+    for (const [ending, host] of [["destroyed", "Clippy"], ["rave", "Clippy"], ["disabled", "Trabolta"], ["song_pickup", "Trabolta"], ["hand_jive", "Trabolta"]] as const) {
+      const sim = ended(ending);
+      const s = fire(sim, "start_the_ceremony");
+      expect(v(sim, "Night.ceremony_host"), ending).toBe(host);
+      expect(desktop(sim, s).every((l) => l.startsWith(`${host}: `)), ending).toBe(true);
+      const a = fire(sim, "award_least_trusted", "g1");
+      const said = desktop(sim, a);
+      expect(said.length, ending).toBe(1);
+      expect(said[0]!.startsWith(`${host}: `), ending).toBe(true);
+      expect(said[0], ending).toContain("Calculator");
+      // The TV shows the award slide whoever hosts.
+      expect(cues(a), ending).toContain("cue screens_award_least_trusted");
+    }
+    const d = ended("disabled");
+    expect(saidBy(fire(d, "start_the_ceremony"), "Trabolta")[0]!.text).toMatch(/^Before I go\./u);
+    const c = ended("destroyed");
+    expect(lines(fire(c, "start_the_ceremony"), "Clippy")[0]).toMatch(/^The computer is off\./u);
+  });
+
+  it("banished is not final: no ceremony until the hand jive ends the night", () => {
+    const sim = boot();
+    sim.setVar("Night.ending", "banished");
+    expect(beats(fire(sim, "start_the_ceremony"))).toEqual([]);
+  });
+
+  it("runs once: a second start replays nothing", () => {
+    const sim = ended("song");
+    fire(sim, "start_the_ceremony");
+    expect(beats(fire(sim, "start_the_ceremony"))).toEqual([]);
+  });
+
+  it("a real ending (all eight accurate → Song Ending) opens the ceremony", { timeout: SLOW }, () => {
+    const sim = boot();
+    toBobbing(sim);
+    fire(sim, "read_truth_txt");
+    expect(v(sim, "Night.ending")).toBe("song");
+    const s = fire(sim, "start_the_ceremony");
+    expect(beats(s)).toContain("The Ceremony");
+    const a = fire(sim, "award_most_trusted", "g1");
+    expect(desktop(sim, a)[0]).toMatch(/^Trabolta: Most Trusted\. Trust score -?\d+\. Calculator\./u);
+  });
+});

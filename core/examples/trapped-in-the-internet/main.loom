@@ -788,6 +788,81 @@ ROLE Program
         set Night.thwart_votes += 1
         set program.advice = "thwart"
 
+  // ── The awards ceremony (K-25) ──
+  // The director fires one event per award with the winner as the
+  // subject, only once `start_the_ceremony` has run. Each hook names the
+  // award and the number its line reads (the winner's own var; a bonus
+  // award has none). `award_won` lets a director's `value: …` override
+  // it, tells the winner, and hands the line to the story rule
+  // `present_award`: subject-free, so the host speaks in The Desktop
+  // (where the TV voice listens), never in a DM.
+  when award_most_trusted for program:
+    if Night.ceremony == true:
+      set Night.award = "most_trusted"
+      set Night.award_title = "Most Trusted"
+      set Night.award_value = program.trust
+      fire award_won for program with value: value
+
+  when award_least_trusted for program:
+    if Night.ceremony == true:
+      set Night.award = "least_trusted"
+      set Night.award_title = "Least Trusted"
+      set Night.award_value = program.trust
+      fire award_won for program with value: value
+
+  when award_frequent_flyer for program:
+    if Night.ceremony == true:
+      set Night.award = "frequent_flyer"
+      set Night.award_title = "Frequent Flyer to the Internet"
+      set Night.award_value = program.internet_visits
+      fire award_won for program with value: value
+
+  when award_lore_hoarder for program:
+    if Night.ceremony == true:
+      set Night.award = "lore_hoarder"
+      set Night.award_title = "Lore Hoarder"
+      set Night.award_value = program.codex
+      fire award_won for program with value: value
+
+  when award_truthcoin_tycoon for program:
+    if Night.ceremony == true:
+      set Night.award = "truthcoin_tycoon"
+      set Night.award_title = "Truthcoin Tycoon"
+      set Night.award_value = program.score
+      fire award_won for program with value: value
+
+  when award_best_liar for program:
+    if Night.ceremony == true:
+      set Night.award = "best_liar"
+      set Night.award_title = "Best Liar"
+      set Night.award_value = "none"
+      fire award_won for program with value: value
+
+  when award_duck_speedrun for program:
+    if Night.ceremony == true:
+      set Night.award = "duck_speedrun"
+      set Night.award_title = "Golden Duck Speedrun"
+      set Night.award_value = "none"
+      fire award_won for program with value: value
+
+  when award_quest_completionist for program:
+    if Night.ceremony == true:
+      set Night.award = "quest_completionist"
+      set Night.award_title = "Quest Completionist"
+      set Night.award_value = "none"
+      fire award_won for program with value: value
+
+  when award_won for program:
+    if Night.ceremony == true:
+      if value != null and value != "":
+        set Night.award_value = value
+      if Night.award_value == null:
+        set Night.award_value = "none"
+      set Night.award_winner = program.name
+      set Night.awards_given += 1
+      reply 🏆 You won {Night.award_title}! Come up to the TV for your trophy.
+      fire present_award
+
   // ── Fan-out watchers (one run per program; late arrivals included) ──
   // Every one carries `self.cleared`, so a program still in the Mud Room
   // hears nothing until an Antivirus scans it in.
@@ -1165,6 +1240,48 @@ INTERACTION advice_thwarted
 
 INTERACTION the_hand_jive
   label: 🕺 (Alt) Everyone hand-jived: Trabolta crashes
+  who: admin
+
+// G. The awards ceremony (K-25), after any final ending. Each award is
+// fired WITH THE WINNER AS THE SUBJECT (the cue sheet asks for one),
+// picked from the recap numbers. `value: …` overrides the number the
+// line reads (the bonus awards have none of their own: leave it empty
+// and the line reads without one). Firing an award again corrects it.
+INTERACTION start_the_ceremony
+  label: G1 · 🏆 Start the awards ceremony (after the ending)
+  who: admin
+  description: Only once the night has ended. Trabolta hosts; Clippy hosts after destroyed and rave, and reads every line aloud.
+
+INTERACTION award_most_trusted
+  label: G2 · 🥇 Award: Most Trusted (winner = top trust)
+  who: admin
+
+INTERACTION award_least_trusted
+  label: G3 · 🫘 Award: Least Trusted (winner = bottom trust)
+  who: admin
+
+INTERACTION award_frequent_flyer
+  label: G4 · ✈️ Award: Frequent Flyer to the Internet (most visits)
+  who: admin
+
+INTERACTION award_lore_hoarder
+  label: G5 · 📚 Award: Lore Hoarder (most codex entries)
+  who: admin
+
+INTERACTION award_truthcoin_tycoon
+  label: G6 · 🪙 Award: Truthcoin Tycoon (most Truthcoin)
+  who: admin
+
+INTERACTION award_best_liar
+  label: G7 · 🎲 Bonus: Best Liar (value = lies accepted)
+  who: admin
+
+INTERACTION award_duck_speedrun
+  label: G8 · 🎲 Bonus: Golden Duck Speedrun (value = the time)
+  who: admin
+
+INTERACTION award_quest_completionist
+  label: G9 · 🎲 Bonus: Quest Completionist (value = quests done)
   who: admin
 
 INTERACTION the simulation completed
@@ -2138,6 +2255,29 @@ when the_hand_jive:
     cue lights_restore
     set Night.lights = "restore"
 
+// ── G. The awards ceremony (K-25) ──
+// After any final ending (never before: Best Liar would leak). The host
+// follows the ending: Clippy when Trabolta is gone (destroyed: switched
+// off; rave: rode away), Trabolta otherwise, so the TV speaks his lines.
+// The award events are ROLE hooks (main.loom, ROLE Program); each ends
+// in `present_award`, which shows the award slide and the host's line.
+when start_the_ceremony:
+  if Night.ended == true and Night.ceremony != true:
+    set Night.ceremony = true
+    if Night.ending == "destroyed" or Night.ending == "rave":
+      set Night.ceremony_host = "Clippy"
+    else:
+      set Night.ceremony_host = "Trabolta"
+    cue screens_ceremony
+    set Night.screen = "ceremony"
+    set Night.terminals = "ceremony"
+    broadcast "!🏆 THE AWARDS CEREMONY. Every program to the living room." to everyone
+    -> The Ceremony
+
+when present_award:
+  if Night.ceremony == true:
+    -> Present Award
+
 // ── Anytime ──
 
 // Lore shared TO Trabolta counts as a delivery for the sharer.
@@ -2236,6 +2376,13 @@ set Night.dark_room = "none"
 set Night.lights_back_at = 0
 set Night.dance_at = 0
 set Night.sweep_target = "none"
+set Night.ceremony = false
+set Night.ceremony_host = "none"
+set Night.award = "none"
+set Night.award_title = "none"
+set Night.award_winner = "none"
+set Night.award_value = "none"
+set Night.awards_given = 0
 set Kernel.combo_a = "V2-D5,V4-D1,V6-D8,V7-D3"
 set Kernel.combo_b = "V1-D6,V3-D2,V5-D7,V8-D4"
 cue lights_screensaver

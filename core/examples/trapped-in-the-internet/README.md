@@ -74,6 +74,8 @@ beats/finale.loom      Final Reveal · Bobbing For Truth · The Bag Of Truth · 
                        · Truth Txt · The Verdict · Song Ending · Grok Prom · Pickup Line ·
                        Sad Confession · Relationship Advice · Advice Helped · Advice
                        Thwarted · The Hand Jive
+beats/ceremony.loom    the awards ceremony (K-25): The Ceremony (the host opens, per
+                       ending) · Present Award (the award slide + the host's line)
 cast/kit.loom          TRAITs: Prop(beat) · Person · Host · Enforcer (the door scan, the
                        shared Clearance beat, Send to the Internet, Mark as reinstalled)
 cast/hosts.loom        Clippy · Task Manager · Adobe Acrobat · Recycling Bin
@@ -263,6 +265,16 @@ program in the Internet cannot have an answer accepted.
 | *(in Grok Prom)* | a host presses **💘 Said "You're the one that I want"**, or Trabolta fires `the_line_works` in a DM | **Pickup Line** → Song Ending. |
 | **💔 Nobody has the line → confession → rave** (`no_pickup_line`) | — | **Sad Confession** → rave. |
 | *(alt, only in Grok Prom)* **💌 Trabolta begs for relationship advice** → **🗳 Count the advice poll** (or **💞 helped** / **⛈ thwarted**, which only answer in the advice phase) → **🕺 Everyone hand-jived** | after thwarted: every Antivirus booth says they are banished too | Help → he wins Sandy. Thwart → everyone is banished to the Internet and learns *The Hand Jive Exception* → the hand jive crashes him. |
+
+### G. The awards ceremony (after any final ending, K-25)
+
+| Director fires | Performers do | What happens |
+|---|---|---|
+| **G1 · 🏆 Start the awards ceremony** (`start_the_ceremony`; refused until `Night.ended`, and `banished` is not an ending) | Clippy hosts after `destroyed` / `rave` and **reads every line aloud** from The Desktop room | `!` alert to the living room, `screens_ceremony`, **The Ceremony**: the host opens in The Desktop, per ending (Trabolta weakened after `disabled`, rebooted after `hand_jive`, showman otherwise). Trabolta's lines are spoken by the TV. |
+| **G2–G6** the five fixed awards (`award_most_trusted`, `award_least_trusted`, `award_frequent_flyer`, `award_lore_hoarder`, `award_truthcoin_tycoon`) and **G7–G9** the three bonus awards (`award_best_liar`, `award_duck_speedrun`, `award_quest_completionist`), each **with the winner picked on the cue sheet** (from the recap numbers) | the winner comes up to the TV for a trophy | **Present Award**: the slide `screens_award_<name>` (`Night.screen` = `award_<name>`; it persists over the screensaver), the host's line with the winner's name and number (the winner's own var: trust, Internet visits, codex count, Truthcoin; the bonus awards read the cue sheet's **value** box — lies accepted, the duck time, quests done — and have a line without a number when it is empty), and a 🏆 reply to the winner. `value` also overrides a fixed award's number. Firing an award again corrects it. |
+
+Lines Trabolta's worker writes (W-24) are posted by the director as
+Trabolta in The Desktop; the template lines stay the fallback.
 
 ## Endings
 

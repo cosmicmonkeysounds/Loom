@@ -25,6 +25,9 @@ export interface CueRow {
   last: boolean
   /** The cue after the last one in running order. */
   next: boolean
+  /** The cue does nothing without a person (an award's winner): the sheet
+   *  asks for one before it fires. */
+  subject: boolean
 }
 
 /** A code is the label's first ` · `-separated part, if it is short. */
@@ -51,6 +54,7 @@ export function cueRows(interactions: InteractionSummary[], cues: CueState): Cue
       fired: fired.has(i.id),
       last: idx === lastIdx,
       next: idx === lastIdx + 1,
+      subject: i.subject === true,
     }
   })
 }
@@ -71,4 +75,12 @@ export function nightPhase(world: WorldEntry[]): string | null {
   if (e === undefined) return null
   const v = e.value.replace(/^"(.*)"$/u, '$1').trim()
   return v === '' || v === 'null' ? null : v
+}
+
+/** A person-cue's optional `value` box (the number the award line reads):
+ *  empty → no arguments, a number → a number, anything else → the text. */
+export function cueValueArgs(raw: string): { value: string | number } | null {
+  const t = raw.trim()
+  if (t === '') return null
+  return { value: /^-?\d+(\.\d+)?$/u.test(t) ? Number(t) : t }
 }

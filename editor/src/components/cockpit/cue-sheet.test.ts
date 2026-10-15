@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { InteractionSummary } from '@loom/core/views'
-import { cueRows, filterCues, nightPhase, splitCode } from './cue-sheet'
+import { cueRows, cueValueArgs, filterCues, nightPhase, splitCode } from './cue-sheet'
 import { NO_CUES } from '@/store/cockpit'
 
 const ix = (id: string, label: string, who: InteractionSummary['who'] = 'admin'): InteractionSummary => ({ id, label, who, description: null })
@@ -67,5 +67,30 @@ describe('nightPhase', () => {
     expect(nightPhase([{ path: 'Night.phase', value: '"hunt_1"' }])).toBe('hunt_1')
     expect(nightPhase([{ path: 'Night.other', value: '1' }])).toBeNull()
     expect(nightPhase([{ path: 'Night.phase', value: 'null' }])).toBeNull()
+  })
+})
+
+describe('person cues (K-25 awards)', () => {
+  it('marks a cue that needs a winner, and only that one', () => {
+    const rows = cueRows(
+      [
+        ix('start_the_ceremony', 'G1 · 🏆 Start the awards ceremony'),
+        { ...ix('award_most_trusted', 'G2 · 🥇 Award: Most Trusted'), subject: true },
+      ],
+      NO_CUES,
+    )
+    expect(rows.map((r) => [r.id, r.subject])).toEqual([
+      ['start_the_ceremony', false],
+      ['award_most_trusted', true],
+    ])
+    expect(rows[1]!.code).toBe('G2')
+  })
+
+  it('turns the value box into the event arguments', () => {
+    expect(cueValueArgs('')).toBeNull()
+    expect(cueValueArgs('   ')).toBeNull()
+    expect(cueValueArgs('3')).toEqual({ value: 3 })
+    expect(cueValueArgs('-12')).toEqual({ value: -12 })
+    expect(cueValueArgs(' 2:41 ')).toEqual({ value: '2:41' })
   })
 })

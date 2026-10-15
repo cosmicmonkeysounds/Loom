@@ -82,12 +82,34 @@ export interface InteractionSummary {
   label: string;
   who: "performer" | "guest" | "admin" | "agent";
   description: string | null;
+  /** True when every hook that hears this event binds a subject
+   *  (`when x for program:`), so firing it with no one does nothing — the
+   *  cue sheet asks for the person first (the ceremony's award winner). */
+  subject?: boolean;
+}
+
+/** Folded event names whose every listener binds a subject. */
+function subjectOnlyEvents(sim: Sim): Set<string> {
+  const m = sim.model;
+  const bound = new Map<string, boolean>();
+  const hooks = [...m.rules, ...[...m.characters.values()].flatMap((c) => c.hooks), ...[...m.roles.values()].flatMap((r) => r.hooks)];
+  for (const h of hooks) {
+    if (h.verb === "" || h.timer !== null) continue;
+    const k = foldName(h.verb);
+    bound.set(k, (bound.get(k) ?? true) && h.param !== null);
+  }
+  return new Set([...bound].filter(([, all]) => all).map(([k]) => k));
 }
 
 function interactionsFor(sim: Sim, who: Array<InteractionSummary["who"]> | null): InteractionSummary[] {
+  const subjectOnly = subjectOnlyEvents(sim);
   return [...sim.model.interactions.values()]
     .filter((i) => who === null || who.includes(i.who))
-    .map((i) => ({ id: i.id, label: i.label, who: i.who, description: i.description }));
+    .map((i) => {
+      const s: InteractionSummary = { id: i.id, label: i.label, who: i.who, description: i.description };
+      if (subjectOnly.has(foldName(i.id))) s.subject = true;
+      return s;
+    });
 }
 
 export function titleOf(source: string): string | null {
