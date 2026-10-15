@@ -8,13 +8,14 @@ import { roomOrder } from "./presence.ts";
 import type { Channel, ChannelKind, ChatMessage, MessageKind, QuestStatus } from "./types.ts";
 
 /** `MODERATOR_PRIME` / `recruiter` → a friendly contact name. A name the
- *  story already wrote in mixed case (`WebMD`, `MS Paint`, `Norton
- *  Anti-Virus`) is kept as written: only all-caps, all-lower and
- *  snake_case raw ids are recased. */
+ *  story already wrote in mixed case (`WebMD`, `MS Paint`, `MS_Paint`,
+ *  `Norton Anti-Virus`) keeps its casing (each word's first letter is
+ *  raised: `cast_Member` → "Cast Member"); only all-caps and all-lower raw
+ *  ids are recased. */
 export function prettyName(raw: string): string {
   const words = raw.split(/[_\s]+/).filter(Boolean);
   const mixed = /\p{Ll}/u.test(raw) && /\p{Lu}/u.test(raw);
-  if (mixed && !raw.includes("_")) return words.join(" ");
+  if (mixed) return words.map((w) => w[0]!.toUpperCase() + w.slice(1)).join(" ");
   return words.map((w) => w[0]!.toUpperCase() + w.slice(1).toLowerCase()).join(" ");
 }
 

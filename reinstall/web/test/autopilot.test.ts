@@ -12,7 +12,7 @@ import type { DuckSpot, HouseMap, Vec3 } from "@loom/house";
 import { withinReach } from "../src/game/hud.ts";
 import { stairAbove, stairUnder, trail } from "../src/game/trail.ts";
 import { buildPhysicsWorld, move, spawnBody, type Body, type MoveInput } from "../src/game/physics.ts";
-import { SHOW, THREE_FLOORS } from "./houses.ts";
+import { SHOW, THREE_FLOORS, TWO_FLOOR } from "./houses.ts";
 
 const DT = 1 / 30;
 const LIMIT_S = 240;
@@ -73,9 +73,10 @@ describe("autopilot — three floors, both flights", () => {
 });
 
 describe("trail — on a stair", () => {
-  // The show's basement stair: rect [−3.9, 7, −2.9, 11], foot (−3.4, −2.7, 11)
-  // in the landing, head (−3.4, 0, 7) in the hall.
-  const house = SHOW();
+  // The wave-2 show map's basement stair (frozen as TWO_FLOOR): rect
+  // [−3.9, 7, −2.9, 11], foot (−3.4, −2.7, 11) in the landing, head
+  // (−3.4, 0, 7) in the hall.
+  const house = TWO_FLOOR();
   const hallEnd = house.duck.spots.find((s) => s.id === "hall-end")!.pos;
   const landingFoot = house.duck.spots.find((s) => s.id === "landing-foot")!.pos;
 
@@ -111,8 +112,8 @@ describe("autopilot — from under a stair's high end", () => {
   // step it back out sideways, not run it along the underside into the solid.
   const cases: Array<[string, () => HouseMap, Vec3, number]> = [
     // The show's basement stair [−3.9, 7, −2.9, 11] up n, from the landing's east side.
-    ["the show's house, under the head", SHOW, [-2.3, -2.7, 7.2], 90],
-    ["the show's house, further down", SHOW, [-2.3, -2.7, 7.8], 90],
+    ["the two-floor house, under the head", TWO_FLOOR, [-2.3, -2.7, 7.2], 90],
+    ["the two-floor house, further down", TWO_FLOOR, [-2.3, -2.7, 7.8], 90],
     // `three-floors`' basement stair [4.4, 2.5, 5.4, 6.5] up n, from either side.
     ["three floors, from the west", THREE_FLOORS, [4, -2.7, 2.7], -90],
     ["three floors, from the east", THREE_FLOORS, [5.8, -2.7, 2.7], 90],
