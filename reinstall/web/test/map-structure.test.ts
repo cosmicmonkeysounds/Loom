@@ -25,7 +25,7 @@ import {
 } from "../src/map/structure.ts";
 import { fillYard, gridFor, partition, patchYard, traceCells, yardOf, yardShare } from "../src/map/yards.ts";
 import { floorOfSelection, selectionExists } from "../src/map/tools.ts";
-import { SHOW, STAIR, TWO_ROOMS } from "./houses.ts";
+import { L_ROOM, SHOW, STAIR, TWO_ROOMS } from "./houses.ts";
 
 /** The map is valid — or the test fails with `validateHouse`'s problems. */
 function valid(h: HouseMap): HouseMap {
@@ -181,6 +181,15 @@ describe("doors follow their room", () => {
     expect(w.doors.find((d) => d.id === "front")!.at).toEqual([2.95, 0]);
     // (What stood in the cut-off part is outside now — the problem list says so.)
     expect(validateHouse(w).problems.every((p) => /in-a|spawn/.test(p))).toBe(true);
+  });
+
+  it("a polygon room (from the JSON) still moves with its things and stays valid", () => {
+    const h = L_ROOM();
+    const id = h.rooms[0]!.id;
+    const moved = valid(moveRoom(h, id, 1.5, -0.5));
+    expect(moved.rooms[0]!.poly).toEqual(h.rooms[0]!.poly.map(([x, z]) => [x + 1.5, z - 0.5]));
+    expect(moved.spawn.pos[0]).toBeCloseTo(h.spawn.pos[0] + 1.5);
+    expect(moveRectEdge(h, id, "e", 9)).toBe(h); // edges resize rectangles only
   });
 
   it("a wall terminal rides the edge it hangs on", () => {

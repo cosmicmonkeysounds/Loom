@@ -143,43 +143,18 @@ export function addDuckSpot(house: HouseMap, roomId: string): { house: HouseMap;
 /** Remove a terminal, a duck spot, a door, a stair or a prop (the last duck
  *  spot stays — a map needs one). Rooms and floors cascade: `structure.ts`. */
 export function removeThing(house: HouseMap, sel: Selection): HouseMap {
-  const without = <T extends { id: string }>(list: T[], id: string, keepOne = false): T[] | null =>
-    !list.some((x) => x.id === id) || (keepOne && list.length <= 1) ? null : list.filter((x) => x.id !== id);
+  if (sel.kind === "duck" && house.duck.spots.length <= 1) return house;
+  const lists: Partial<Record<Selection["kind"], { id: string }[]>> = { terminal: house.terminals, duck: house.duck.spots, door: house.doors, stair: house.stairs, prop: house.props };
+  const list = lists[sel.kind];
+  if (list === undefined || !("id" in sel) || !list.some((x) => x.id === sel.id)) return house;
   const next = clone(house);
-  switch (sel.kind) {
-    case "terminal": {
-      const l = without(next.terminals, sel.id);
-      if (l === null) return house;
-      next.terminals = l;
-      return next;
-    }
-    case "duck": {
-      const l = without(next.duck.spots, sel.id, true);
-      if (l === null) return house;
-      next.duck.spots = l;
-      return next;
-    }
-    case "door": {
-      const l = without(next.doors, sel.id);
-      if (l === null) return house;
-      next.doors = l;
-      return next;
-    }
-    case "stair": {
-      const l = without(next.stairs, sel.id);
-      if (l === null) return house;
-      next.stairs = l;
-      return next;
-    }
-    case "prop": {
-      const l = without(next.props, sel.id);
-      if (l === null) return house;
-      next.props = l;
-      return next;
-    }
-    default:
-      return house;
-  }
+  const keep = <T extends { id: string }>(l: T[]): T[] => l.filter((x) => x.id !== sel.id);
+  if (sel.kind === "terminal") next.terminals = keep(next.terminals);
+  else if (sel.kind === "duck") next.duck.spots = keep(next.duck.spots);
+  else if (sel.kind === "door") next.doors = keep(next.doors);
+  else if (sel.kind === "stair") next.stairs = keep(next.stairs);
+  else next.props = keep(next.props);
+  return next;
 }
 
 /** The doors on a room's own walls (± `DOOR_TOLERANCE`). */
