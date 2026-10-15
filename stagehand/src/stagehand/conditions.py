@@ -189,5 +189,40 @@ class Condition:
     def evaluate(self, ctx: dict[str, Any]) -> bool:
         return bool(_eval(self._ast, ctx))
 
+    def names(self) -> frozenset[str]:
+        """Every identifier the expression reads (dotted paths kept whole)."""
+        out: set[str] = set()
+
+        def walk(node: tuple) -> None:
+            kind = node[0]
+            if kind == "ident":
+                out.add(node[1])
+            elif kind == "not":
+                walk(node[1])
+            elif kind in ("and", "or"):
+                for n in node[1]:
+                    walk(n)
+            elif kind == "cmp":
+                walk(node[2])
+                walk(node[3])
+
+        walk(self._ast)
+        return frozenset(out)
+
+    def mentions_any(self, ctx: dict[str, Any]) -> bool:
+        """Whether `ctx` carries at least one field the expression reads — a
+        message without any of them says nothing about the condition."""
+        for name in self.names():
+            if name in ctx:
+                return True
+            cur: Any = ctx
+            for part in name.split("."):
+                if not (isinstance(cur, dict) and part in cur):
+                    break
+                cur = cur[part]
+            else:
+                return True
+        return False
+
     def __repr__(self) -> str:  # pragma: no cover
         return f"Condition({self.source!r})"

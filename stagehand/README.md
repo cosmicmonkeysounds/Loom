@@ -7,8 +7,11 @@ machine, **modules** switched on by section:
 
 | Module | Section | Runs on | Does |
 |---|---|---|---|
-| **show** | `show:` | the desktop | story → OSC/MQTT cues; MQTT sensors → story mutations |
-| **agents** | `agents:` | the laptop (Ollama) | answers every conversation with a `mind: external` character through a local model |
+| **show** | `show:` | the house Mac | story → OSC/MQTT cues; MQTT sensors → story mutations |
+| **agents** | `agents:` | the house Mac (Ollama) | answers every conversation with a `mind: external` character through a local model |
+
+Both can run on one machine (the show does: one house Mac); they still
+run as **separate launchd jobs** (see *launchd* below).
 
 ```
 laptop.yaml                      desktop.yaml
@@ -271,25 +274,72 @@ The mod feed is capability-gated: `role=mod` needs the mod token
 `show.example.yaml` is the generic, test-pinned example. *Trapped in the
 Internet*'s actual rig is [`trapped.house.yaml`](./trapped.house.yaml):
 Zigbee2MQTT group scenes + WLED presets for every `cue lights_*`, the
-per-room long form `<cue: lights, room: …, state: …>` (The Cache,
-The Desktop, The Cloud, The Registry), `screens_flicker` blinking the
-house, every `sound <name>` as a QLab OSC cue, `do announce` to the Alexa
-speaker, the optional server-room maglock, and the sensors that come back
-as story signals (`server_door_opened`, debounced until stagehand
-learns edge detection; the printer's
-button and door, and the patch bay's `patch_combo_a` / `patch_combo_b` /
-`patch_rejected`, judged here until signals carry arguments).
+per-room long form `<cue: lights, room: …, state: …>` (The Cache — dimmed
+to ~20%, never dark — The Desktop, The Registry), `screens_flicker`
+blinking the house, every `sound <name>` as a QLab OSC cue, `do announce`
+to the Alexa speaker, `do door server_room` to the ESP32's door
+**indicator** (`show/serverroom/lock`, the one retained command; there is
+no maglock), `lights_alarm` to the server-room box's own siren
+(`show/serverroom/alarm`), and the sensors that come back as story
+signals (`server_door_opened` from the reed on `sensors/serverroom/door`
+plus an optional Zigbee contact, both `edge: true`; the printer's button
+and lid, and the patch bay's `patch_combo_a` / `patch_combo_b` /
+`patch_rejected`, judged here until signals carry arguments). The
+safety rooms (stairs, bathroom, tent, server room, the server-room →
+living-room path) are out of the `house` group, and `lights_blackout`
+turns WLED off per device, leaving the Tube strip on dim preset 22.
 `tests/test_trapped_house.py` cross-checks it against the story: every
 light / sound cue has a rule, every sensor signal has a `when` in
-`main.loom`, and the two combos match the `Kernel.combo_*` seeds and the
-codex halves. The wiring walkthrough is in
+`main.loom`, the two combos match the `Kernel.combo_*` seeds and the
+codex halves — and it pins the safety edits (no cue darkens a safety
+room or all of WLED, no lock topic, edge-only door sensors). The wiring walkthrough is in
 [`docs/loom-show-control.md`](../docs/loom-show-control.md) → *Trapped in
 the Internet: the house rig*.
 
 ```bash
 uv run stagehand check --config trapped.house.yaml
-uv run stagehand run   --config trapped.house.yaml
+uv run stagehand run   --config trapped.house.yaml --only show
 ```
+
+### Sensor rules: `edge` and retained messages
+
+A state sensor republishes its state (Z2M sends `contact: false` with
+every battery report; the broker replays a retained "open" on every
+reconnect). Two per-rule switches make it fire once per real change:
+
+```yaml
+- on: { topic: "sensors/serverroom/door", when: "open == true" }
+  edge: true                 # fire on false → true only (per topic)
+  signal: { name: server_door_opened, debounce_s: 5 }
+```
+
+- **Retained messages never fire a rule** unless it says
+  `accept_retained: true`. On an `edge: true` rule they still set the
+  level, so a restart with the door propped open fires nothing.
+- `edge: true` needs a `when:`; the level starts false (the first "open"
+  after boot fires), and a message carrying none of the fields the
+  condition reads (a battery-only report) is ignored.
+
+### launchd: one job per module
+
+```bash
+uv run stagehand launchd install --job show   --config trapped.house.yaml
+uv run stagehand launchd install --job agents --config laptop.yaml
+uv run stagehand launchd status                    # both
+uv run stagehand launchd restart --job show        # only the show; agents keep talking
+uv run stagehand launchd print --job agents --config laptop.yaml   # the plist, not installed
+```
+
+Each job is a per-user LaunchAgent (`com.mapsandducks.stagehand.<job>`),
+started at login, relaunched by launchd if it exits (throttled to 10 s),
+logging to `~/Library/Logs/stagehand/<job>.log`. `install` validates the
+config for that module first. Never `pkill -f "stagehand run"`: it kills
+both. Turn on automatic login on the house Mac so a power cut brings both
+back.
+
+The SSE streams give up after 60 s of silence (the server pings every
+25 s) and reconnect with backoff, so a WAN outage that leaves a dead TCP
+connection behind still recovers on its own.
 
 ### The `t_exec` contract
 

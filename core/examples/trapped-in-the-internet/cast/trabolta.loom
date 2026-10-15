@@ -156,8 +156,9 @@ CHARACTER Trabolta is Person
         Trabolta: That is not an amount I can pay.
 
   // One room dark for 90 s, one room at a time. Allow-listed rooms only:
-  // never the tent (guests in VR headsets), the stairs, the bathroom or
-  // the server room. The restore is the `Night.lights_back_at` story rule
+  // never the tent (guests in VR headsets), The Cloud (the outdoor steps +
+  // the tent path), the stairs, the bathroom or the server room; the
+  // kitchen only dims to ~20% (stagehand/trapped.house.yaml). The restore is the `Night.lights_back_at` story rule
   // in main.loom; the admin cue "Restore the house lights" is the manual
   // fallback.
   when cut_the_lights for program:
@@ -168,7 +169,7 @@ CHARACTER Trabolta is Person
         Trabolta: I do not have the strength.
       else if Night.lights_back_at > 0:
         Trabolta: One room at a time.
-      else if room == "The Cache" or room == "The Desktop" or room == "The Cloud" or room == "The Registry":
+      else if room == "The Cache" or room == "The Desktop" or room == "The Registry":
         <cue: lights, room: {room}, state: off>
         set Night.dark_room = room
         set Night.lights_back_at = Time.elapsed + 90
@@ -295,7 +296,7 @@ INTERACTION cut_the_lights
   label: Cut the lights in a room
   who: agent
   limit: 2
-  description: Kill the lights in one room for ninety seconds. args: room — one of The Cache, The Desktop, The Cloud, The Registry (no other room answers). Live from the malware on.
+  description: Kill the lights in one room for ninety seconds. args: room — one of The Cache, The Desktop, The Registry (no other room answers). Live from the malware on.
 
 INTERACTION summon_the_antivirus
   label: Request an Antivirus sweep

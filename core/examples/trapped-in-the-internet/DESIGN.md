@@ -84,7 +84,7 @@ for this spec.
    `^LOCATION (.+)$`). All LOCATIONs are declared in `main.loom`; `The Desktop` first.
 10. **Cues:** `cue <token>` (one token) for light and screen looks, `sound <token>` for audio,
     `do announce "…"` for Alexa's speaker, `do door server_room, state: unlocked` for the
-    optional maglock (target `server_room`; the comma form `do door, room: …` reaches
+    door indicator (target `server_room`; no maglock; the comma form `do door, room: …` reaches
     stagehand with an empty target). Every look is mirrored into a var on the next line
     (`set Night.lights = "…"`, `set Night.screen = "…"` for the TV, `set Night.terminals =
     "…"` for the wall terminals) so a director can see/set it in Run → World. Never `cue x,
@@ -1186,7 +1186,7 @@ inciting event, there is a classic Windows screensaver on the TV").
 | hand_jive | The Hand Jive ("Born to Hand Jive") |
 
 **Other directives:** `do announce "…"` (Alexa speaker, `stagehand-hw.md` §6.4) ·
-`do door server_room, state: unlocked` at majority_reached (optional maglock).
+`do door server_room, state: unlocked` at majority_reached (the door indicator; no maglock, #17).
 
 ### 2.14 Registry addenda (used by §3)
 
@@ -1249,7 +1249,7 @@ The story only emits directives; this file makes them physical. It is new, separ
   WLED preset) so Trabolta's power is felt even before the Screens layer exists.
 - **Sound:** every `sound <name>` (directive `sfx`) → QLab OSC / mpv cue of the same name.
 - **Announce:** `announce` → `show/announce` (Alexa speaker TTS).
-- **Door:** `door` target `server_room` → the maglock topic (optional).
+- **Door:** `door` target `server_room` → the indicator topic `show/serverroom/lock` (retained; no maglock, #17).
 - **Sensors** (MQTT → `POST /api/mod/signal`): `server_door_opened` (door contact,
   `edge: true`, ignore retained — stagehand-hw code #4), `printer_button_pressed`,
   `printer_opened`, and the patch bay's `patch_combo_a` / `patch_combo_b` / `patch_rejected`
@@ -2428,7 +2428,7 @@ when snoop for program:
 | flicker_the_screens | Flicker every screen | 3 | — | step 4–13 (lost at y2k: `Trabolta: The screens are not answering me.`) | `cue screens_flicker` · `broadcast "📺 Every screen in the house stutters, once, and comes back." to everyone` (stagehand also blinks the lights, §2.15). From beans on the story also fires flickers he did not choose. | exists |
 | pop_up | Pop up on one phone | 4 | target, text | step 5–15 | `if Night.step >= 12:` `broadcast "💬 {text} — d1sr3gard th1s m3ssage" to participant(target)` `else:` `broadcast "💬 {text}" to participant(target)` **[verified]** | content |
 | mint_truthcoin | Pay Truthcoin for a fact | 10 | amount | step 6–15 | cap 50, or 100 once `Night.step >= 14` (desperate): `if amount > cap: +cap` `else if amount > 0: +amount` on `program.score` | content |
-| cut_the_lights | Cut the lights in a room | 2 | room (a LOCATION) | step 7–15 | **allow-list** (never the tent with guests in VR headsets, the stairs, the bathroom, the server room) **[verified, x1]**: `if room == "The Cache" or room == "The Desktop" or room == "The Cloud" or room == "The Registry":` `<cue: lights, room: {room}, state: off>` · `set Night.dark_room = room` · `set Night.lights_back_at = Time.elapsed + 90` · `broadcast "!💡 The lights in {room} go out. Somewhere a fan spins down." to location(room)` `else:` `Trabolta: That function is not available in that room.` The restore is a story rule: `when Night.lights_back_at > 0 and Time.elapsed >= Night.lights_back_at:` → `<cue: lights, room: {Night.dark_room}, state: on>` · `set Night.lights_back_at = 0`. Admin `restore_the_lights` is the manual fallback. | exists |
+| cut_the_lights | Cut the lights in a room | 2 | room (a LOCATION) | step 7–15 | **allow-list** (never the tent with guests in VR headsets, the stairs, the bathroom, the server room) **[verified, x1]**: `if room == "The Cache" or room == "The Desktop" or room == "The Registry":` (The Cloud dropped Oct 31, K-05: the outdoor steps + tent path; the kitchen only dims to ~20% in the YAML) `<cue: lights, room: {room}, state: off>` · `set Night.dark_room = room` · `set Night.lights_back_at = Time.elapsed + 90` · `broadcast "!💡 The lights in {room} go out. Somewhere a fan spins down." to location(room)` `else:` `Trabolta: That function is not available in that room.` The restore is a story rule: `when Night.lights_back_at > 0 and Time.elapsed >= Night.lights_back_at:` → `<cue: lights, room: {Night.dark_room}, state: on>` · `set Night.lights_back_at = 0`. Admin `restore_the_lights` is the manual fallback. | exists |
 | summon_the_antivirus | Request an Antivirus sweep | 4 | target | step 7–15 | `set target.doubt += 15` · `set Night.sweep_target = target.name` · `fire sweep_requested` (Enforcer booth readouts, §2.14) · `broadcast "You feel watched." to participant(target)` (humans do the capture) | content |
 | trabolta_announces | Announce to the whole computer | 2 | text | step 7–15 | `broadcast "!📢 TRABOLTA: {text}" to everyone` | content |
 | assess | Assess a program (±10) | 40 | target, score | `Night.phase == "trust_chart" or Night.phase == "bobbing"` | clamp to −10..10 (if/else), `set target.assessment = …`, then the TRUST FORMULA on `target` | content (assessing programs he is not talking to without a DM is N2) |

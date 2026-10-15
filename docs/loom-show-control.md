@@ -424,18 +424,27 @@ design for `escape-the-internet`. The show that actually runs,
 (`core/examples/trapped-in-the-internet`), uses a smaller, off-the-shelf
 rig: no projectors, no TouchDesigner, no vision layer. Its config is
 [`stagehand/trapped.house.yaml`](../stagehand/trapped.house.yaml), run on
-the desktop with `uv run stagehand run --config trapped.house.yaml`.
+the house Mac as its own launchd job (`uv run stagehand launchd install
+--job show --config trapped.house.yaml`; the agents worker is a second
+job on the same Mac). The story server is the VPS; the house only dials
+out.
 
-**The hardware.** One Mosquitto broker with Zigbee2MQTT on it. Zigbee
-bulbs and plugs are grouped one group per room plus a whole-house group:
+**The hardware.** One house Mac (static IP) runs Mosquitto + Zigbee2MQTT,
+stagehand (`show` and `agents`), Ollama, QLab, the TV (long HDMI run) and
+the speakers (MOTU). Zigbee bulbs and plugs are grouped one group per
+room plus a whole-house group:
 `house`, `living` (The Desktop), `kitchen` (The Cache), `backyard`
 (The Cloud), `registry` (The Registry, the rec room), `tube` (hall and
 stair landing), `mudroom`, `bathroom` (Disk Cleanup), `tent`
-(The Internet) and `server_room`. The LED strips run WLED on ESP32s
-(`wled/all` plus one topic per strip). Sound is QLab (or any OSC cue
-player) on UDP 53000, one cue per sound, numbered by its name. The Alexa
-speaker reads `show/announce`. The server room can take a maglock on a
-Zigbee relay.
+(The Internet) and `server_room`. **The stairs, the bathroom, the tent,
+the server room and the server-room → living-room path are not in
+`house`**, so no whole-house scene or blackout can darken them (their
+bulbs have `power_on_behavior: on`). The addressable LED strips run on
+off-the-shelf WLED controllers (`wled/all` plus one topic per strip,
+identical preset IDs everywhere). Sound is QLab (or any OSC cue player)
+on UDP 53000, one cue per sound, numbered by its name. The Alexa speaker
+reads `show/announce`. The server room has a door sensor and an
+indicator ring on its ESP32, never a lock.
 
 **Story → house.** The story only emits directives (the full registry
 is in the design spec §2.13):
@@ -443,11 +452,12 @@ is in the design spec §2.13):
 | In the `.loom` | Stagehand sends |
 |---|---|
 | `cue lights_<look>` (screensaver, tube_chase, call_desktop, game, truth_time, ad_hijack, glitch, pong, trust_chart, y2k, server_open, alarm, blackout, dance, final_reveal, song, rave, purgatory, banish, restore) | Z2M `scene_recall <id>` to the room or `house` group + WLED preset `ps <id>`. Each look has the same ID everywhere: `scene_store` it once per group and build identical WLED presets on every controller. Flicker is a bulb `effect` or a WLED preset, never streamed over Zigbee. |
-| `<cue: lights, room: The Cache, state: off>` (Trabolta's `cut_the_lights`; allow-listed to The Cache, The Desktop, The Cloud, The Registry) | that room's Z2M group `state` + its WLED strip on/off. The story turns the room back on 90 s later itself. |
+| `<cue: lights, room: The Cache, state: off>` (Trabolta's `cut_the_lights`; allow-listed to The Cache, The Desktop, The Registry) | that room's Z2M group `state` + its WLED strip on/off (the kitchen only dims to ~20%). The story turns the room back on 90 s later itself. |
+| `cue lights_blackout` | `house` OFF; WLED off **per device** (living, kitchen, backyard, registry), the Tube strip on dim static preset 22, the server room untouched |
 | `cue screens_flicker` | a one-shot `effect: blink` + a short WLED lightning playlist, so the power is felt in the house |
 | `sound <name>` (directive `sfx`) | OSC `/cue/<name>/start` to QLab |
 | `do announce "…"` | `show/announce {"text": "…"}` (a Home Assistant automation or local TTS on the speaker) |
-| `do door server_room, state: unlocked` | the maglock relay off (optional) |
+| `do door server_room, state: locked\|unlocked` | `show/serverroom/lock {"state": …}` (retained) for the ESP32's indicator ring; `lights_alarm` also sends `show/serverroom/alarm` for its local siren |
 
 The `screens_*` / `tv_*` / `terminals_*` / `tablet_*` cues have no rule:
 they are for a future Screens layer, and the story mirrors each look into
@@ -457,7 +467,7 @@ they are for a future Screens layer, and the story mirrors each look into
 
 | Sensor | Signal |
 |---|---|
-| Zigbee contact on the server-room door (`contact == false`) | `server_door_opened`, debounced 20 s; the story latches the alarm for 120 s |
+| Reed switch on the server-room ESP32 (`sensors/serverroom/door {"open": true}`), plus an optional Zigbee contact (`contact == false`) | `server_door_opened`, `edge: true` (once per opening; retained replays ignored); the story latches the alarm for 120 s |
 | Zigbee button over the printer's START key | `printer_button_pressed` |
 | Reed switch on the printer lid | `printer_opened` |
 | The patch bay scanner (`sensors/patchbay/state {"combo", "complete"}`) | `patch_combo_a` / `patch_combo_b` / `patch_rejected`, judged in the YAML until signals carry arguments |
@@ -470,8 +480,9 @@ validates signal names, so a typo is silent:
 `screens_flicker` and `sound` in the story has a rule, that every sensor
 signal has a `when` in `main.loom`, and that the two patch-bay combos
 equal the `Kernel.combo_*` seeds and the four combo-half codex entries.
-Edge detection, ignoring retained sensor messages, signal arguments and
-a `delay:` on cues are still stagehand work.
+Sensor rules ignore retained messages and take `edge: true` (see the
+stagehand README); signal arguments and a `delay:` on cues are still
+stagehand work.
 
 ## Worked example: the reinforcements sequence
 

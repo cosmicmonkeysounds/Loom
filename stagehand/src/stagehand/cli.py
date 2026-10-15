@@ -3,6 +3,8 @@
     stagehand run    --config laptop.yaml [--only agents]   run every enabled module
     stagehand check  --config laptop.yaml [--only agents]   validate + describe, exit
     stagehand modules                                        list the module kinds
+    stagehand launchd install|uninstall|restart|status|print --job show|agents [--config f.yaml]
+                     one launchd job per module on the house Mac (see launchd.py)
     stagehand ask    --config laptop.yaml [--character Trabolta] [--name Ada] [--reflect] [text…]
                      talk to an agent persona straight through the model — no
                      server, no story; one line, or an interactive chat. With
@@ -47,6 +49,10 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--config", required=True, help="path to the machine's stagehand YAML")
         p.add_argument("--only", help="comma list of modules to run from the config (default: all present)")
     sub.add_parser("modules", help="list the available modules")
+    ld = sub.add_parser("launchd", help="install / restart a module as its own launchd job (macOS)")
+    ld.add_argument("action", choices=("install", "uninstall", "restart", "status", "print"))
+    ld.add_argument("--job", choices=("show", "agents"), help="which module (status: default both)")
+    ld.add_argument("--config", help="the YAML the job runs (install / print)")
     ask = sub.add_parser("ask", help="chat with an agent persona through the model (no server)")
     ask.add_argument("--config", required=True)
     ask.add_argument("--character", help="which persona (default: the only / first one)")
@@ -70,6 +76,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{name:<8} {spec.summary}")
         return 0
 
+    if args.command == "launchd":
+        return _launchd(args)
+
     try:
         cfg = load_config(args.config, only=["agents"] if args.command == "ask" else _only(args.only))
     except ConfigError as err:
@@ -87,6 +96,37 @@ def main(argv: list[str] | None = None) -> int:
         asyncio.run(app.run(cfg, base_dir=str(Path(args.config).resolve().parent)))
     except KeyboardInterrupt:
         print("stagehand: stopped")
+    return 0
+
+
+def _launchd(args: argparse.Namespace) -> int:
+    import plistlib
+
+    from .launchd import Launchd
+
+    ld = Launchd(stagehand_dir=Path(__file__).resolve().parents[2])
+    try:
+        if args.action == "status":
+            lines = ld.status([args.job] if args.job else ("show", "agents"))
+        elif args.job is None:
+            print(f"launchd {args.action}: needs --job show|agents", file=sys.stderr)
+            return 2
+        elif args.action in ("install", "print"):
+            if not args.config:
+                print(f"launchd {args.action}: needs --config", file=sys.stderr)
+                return 2
+            if args.action == "print":
+                print(plistlib.dumps(ld.render(args.job, args.config)).decode())
+                return 0
+            lines = ld.install(args.job, args.config)
+        elif args.action == "restart":
+            lines = ld.restart(args.job)
+        else:
+            lines = ld.uninstall(args.job)
+    except ConfigError as err:
+        print(f"launchd: {err}", file=sys.stderr)
+        return 2
+    print("\n".join(lines))
     return 0
 
 

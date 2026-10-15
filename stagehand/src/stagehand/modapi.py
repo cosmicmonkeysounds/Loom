@@ -38,6 +38,13 @@ class ModApiError(RuntimeError):
         self.status = status
 
 
+#: The server writes an SSE `:ping` every 25 s, so a stream that has been
+#: silent for longer than this is dead even if TCP never said so — the
+#: house WAN dropped, or the router's NAT forgot the connection. Without a
+#: read deadline the stream would hang forever and never reconnect.
+STREAM_READ_TIMEOUT_S = 60.0
+
+
 class ModClient:
     def __init__(
         self,
@@ -45,7 +52,9 @@ class ModClient:
         event: str = "default",
         token: str | None = None,
         passcode: str | None = None,
+        stream_read_timeout: float = STREAM_READ_TIMEOUT_S,
     ) -> None:
+        self.stream_read_timeout = stream_read_timeout
         self.base_url = base_url.rstrip("/")
         self.event = event
         self.token = token
@@ -128,11 +137,12 @@ class ModClient:
 
     async def stream(self, url: str) -> AsyncIterator[tuple[str, str]]:
         """Open one authenticated SSE stream and yield `(event, data)` frames
-        until it closes. Raises `ModApiError` (with `.status`) when refused —
-        reconnect policy belongs to the caller (see `run_stream`)."""
+        until it closes. Raises `ModApiError` (with `.status`) when refused, and
+        `httpx.ReadTimeout` after `stream_read_timeout` s of silence (no frame,
+        no keepalive) — reconnect policy belongs to the caller (see `run_stream`)."""
         await self.ensure_token()
         headers = {"x-loom-token": self.token or ""}
-        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, read=None)) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, read=self.stream_read_timeout)) as client:
             async with client.stream("GET", url, headers=headers) as resp:
                 if resp.status_code != 200:
                     await resp.aread()

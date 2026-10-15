@@ -31,7 +31,9 @@ class MqttBridge:
     ) -> None:
         self._filters = filters
         self._loop = loop
-        self.queue: asyncio.Queue[tuple[str, bytes]] = asyncio.Queue()
+        #: (topic, payload, retained) — `retained` is True for a message the
+        #: broker replayed on (re)subscribe, so the sensor map can ignore it.
+        self.queue: asyncio.Queue[tuple[str, bytes, bool]] = asyncio.Queue()
         self._client = paho.Client(paho.CallbackAPIVersion.VERSION2, client_id=client_id, clean_session=True)
         if username is not None:
             self._client.username_pw_set(username, password)
@@ -55,7 +57,7 @@ class MqttBridge:
         log.warning("mqtt disconnected (%s) — paho will retry", reason_code)
 
     def _on_message(self, _client, _userdata, msg: paho.MQTTMessage) -> None:
-        self._loop.call_soon_threadsafe(self.queue.put_nowait, (msg.topic, msg.payload))
+        self._loop.call_soon_threadsafe(self.queue.put_nowait, (msg.topic, msg.payload, bool(msg.retain)))
 
     def start(self) -> None:
         self._client.connect_async(self._host, self._port)
