@@ -1,6 +1,12 @@
-import { describe, expect, it } from "vitest";
-import type { MapVariant, MapVariantsResponse } from "@loom/house";
-import { fetchVariants, saveToProject, switchVariant } from "../src/api.ts";
+import { describe, expect, it, vi } from "vitest";
+import type { ReactElement } from "react";
+import type { HouseMap, MapVariant, MapVariantsResponse } from "@loom/house";
+import { fetchVariants, saveToProject, switchVariant, type LoadedHouse } from "../src/api.ts";
+import type { ReinstallConfig } from "../src/config.ts";
+import { projectBarExtras, type ProjectBarProps } from "../src/map/ProjectBar.tsx";
+import type { MapToolbarContext } from "../src/map/tools.ts";
+import showTent from "../../../core/examples/trapped-in-the-internet/house.json";
+import showShed from "../../../core/examples/trapped-in-the-internet/house.shed.json";
 import {
   activeOf,
   canSaveToProject,
@@ -12,6 +18,7 @@ import {
   statusOf,
   switchConfirm,
   variantLabel,
+  variantName,
   variantTitle,
 } from "../src/map/project.ts";
 import { SHOW } from "./houses.ts";
@@ -32,12 +39,28 @@ function fakeFetch(status: number, body: unknown) {
 }
 
 describe("project bar logic", () => {
-  it("labels: the file on the button, the map's name (or its problems) on the tooltip", () => {
-    expect(variantLabel(shed)).toBe("house.shed.json");
-    expect(variantTitle(tent)).toBe("The house (playing now)");
-    expect(variantTitle(shed)).toBe("Play The house (shed)");
+  it("labels: a director's word on the button, the file + the map's name (or its problems) on the tooltip", () => {
+    expect(variantLabel(shed)).toBe("Shed");
+    expect(variantLabel({ ...shed, file: "house.rain_night.json" })).toBe("Rain night");
+    // The default file: the word only its map's name has, else "Main".
+    expect(variantLabel(tent, [tent, shed])).toBe("Main");
+    expect(variantLabel({ ...tent, name: "The house (tent)" }, [tent, shed])).toBe("Tent");
+    expect(variantLabel(tent)).toBe("Main");
+    // A show sibling not named like a project map keeps its stem.
+    expect(variantLabel({ ...tent, file: "trapped.json" })).toBe("trapped");
+    expect(variantName(shed)).toBe("Shed (house.shed.json)");
+    expect(variantTitle(tent)).toBe("house.json — The house (playing now)");
+    expect(variantTitle(shed)).toBe("Play house.shed.json — The house (shed)");
     expect(variantTitle(broken)).toContain("does not validate");
     expect(variantTitle(broken)).toContain("rooms must be an array");
+  });
+
+  it("the show's own maps read Tent / Shed", () => {
+    const t: MapVariant = { file: "house.json", name: (showTent as { name: string }).name, active: true, ok: true, problems: [] };
+    const sh: MapVariant = { file: "house.shed.json", name: (showShed as { name: string }).name, active: false, ok: true, problems: [] };
+    expect(variantLabel(t, [t, sh])).toBe("Tent");
+    expect(variantLabel(sh, [t, sh])).toBe("Shed");
+    expect(switchConfirm(sh, { players: 2, edited: false, all: [t, sh] })).toContain("Switch the house map to Shed (house.shed.json)?");
   });
 
   it("a switch: only to another valid variant, never mid-request", () => {
@@ -51,10 +74,13 @@ describe("project bar logic", () => {
     expect(switchConfirm(shed, { players: 0, edited: false })).toBeNull();
     const one = switchConfirm(shed, { players: 1, edited: false })!;
     expect(one).toContain("1 program is in the simulation now");
+    expect(one).toContain("goes back to its start"); // standing in what is a solid prop there
     expect(one).toContain("house.shed.json");
     const both = switchConfirm(shed, { players: 3, edited: true })!;
     expect(both).toContain("3 programs are");
     expect(both).toContain("Save to project first");
+    // The page's own unsaved draft goes too (the server's map replaces it).
+    expect(switchConfirm(shed, { players: 0, edited: false, dirty: true })).toContain("unsaved edits on this page are dropped");
   });
 
   it("Save to project: offered on a project's event, for a served map; the active variant's file; warns about unsaved edits", () => {
@@ -73,6 +99,8 @@ describe("project bar logic", () => {
     expect(activeOf(null)).toBeNull();
     expect(saveConfirm("house.json", false)).toBeNull();
     expect(saveConfirm("house.json", true)).toContain("unsaved edits are not part of it");
+    // A valid draft is saved to the event on the way: nothing to ask.
+    expect(saveConfirm("house.json", true, true)).toBeNull();
   });
 
   it("Download JSON: the active variant's name, two-space JSON + a newline", () => {
@@ -95,6 +123,7 @@ describe("project bar logic", () => {
 
   it("statusOf: ok · conflict · error with its first problem", () => {
     expect(statusOf({ ok: true, result: { file: "house.shed.json" } }, "switch")).toEqual({ kind: "ok", text: "Playing house.shed.json" });
+    expect(statusOf({ ok: true, result: { file: "house.shed.json" } }, "switch", "Shed")).toEqual({ kind: "ok", text: "Playing Shed (house.shed.json)" });
     expect(statusOf({ ok: true, result: { file: "house.json" } }, "save")).toEqual({ kind: "ok", text: "Saved to the project as house.json" });
     expect(statusOf({ ok: false, status: 409, error: "the map changed — reload", problems: [], conflict: true, version: "v2" }, "switch").kind).toBe("error");
     expect(statusOf({ ok: false, status: 400, error: "invalid house map", problems: ["a", "b"], conflict: false, version: null }, "switch")).toEqual({
@@ -135,5 +164,59 @@ describe("project bar API calls", () => {
     expect(JSON.parse(ok.calls[0]!.init!.body as string)).toEqual({ base: "v1" });
     const none = await saveToProject("/e/evt", "tok", "house.shed.json", null, fakeFetch(409, { error: "this event has no project — download the map instead" }).f);
     expect(none).toMatchObject({ ok: false, status: 409, conflict: false, error: "this event has no project — download the map instead" });
+  });
+});
+
+describe("the project bar in the map page's toolbar slot", () => {
+  const config: ReinstallConfig = { server: "", eventId: "evt", token: "tok", name: "Map" } as unknown as ReinstallConfig;
+  const ctxOf = (over: Partial<MapToolbarContext> = {}): MapToolbarContext => {
+    const house: HouseMap = SHOW();
+    const loaded: LoadedHouse = { house, version: "v3", source: "project" };
+    return {
+      house,
+      saved: house,
+      loaded,
+      config,
+      base: "/e/evt",
+      players: 2,
+      dirty: false,
+      valid: true,
+      adopt: vi.fn(),
+      reload: vi.fn(async () => {}),
+      save: vi.fn(async () => "v4"),
+      ...over,
+    };
+  };
+  const propsOf = (ctx: MapToolbarContext) => (projectBarExtras(ctx) as ReactElement<ProjectBarProps>).props;
+
+  it("is fed from the editor: the event's base + token, the saved map + its version, the players", () => {
+    const p = propsOf(ctxOf());
+    expect(p.base).toBe("/e/evt");
+    expect(p.token).toBe("tok");
+    expect(p.version).toBe("v3");
+    expect(p.players).toBe(2);
+    expect(p.dirty).toBe(false);
+    expect(p.saveDraft).toBeUndefined(); // nothing unsaved
+  });
+
+  it("a switch and a save to the project reload the page (a clean draft at the server's version, never an undoable adopt)", () => {
+    const ctx = ctxOf();
+    const p = propsOf(ctx);
+    p.onSwitched(SHOW(), "v9");
+    p.onSaved?.("house.json");
+    expect(ctx.reload).toHaveBeenCalledTimes(2);
+    expect(ctx.adopt).not.toHaveBeenCalled();
+  });
+
+  it("a valid unsaved draft is saved to the event first; an invalid one is not offered", () => {
+    expect(propsOf(ctxOf({ dirty: true, valid: true })).saveDraft).toBeDefined();
+    expect(propsOf(ctxOf({ dirty: true, valid: false })).saveDraft).toBeUndefined();
+  });
+
+  it("offline (the bundled stand-in) shows no bar; a draft-free page downloads the saved map", () => {
+    const house = SHOW();
+    expect(projectBarExtras(ctxOf({ loaded: { house, version: "bundled", source: "bundled" } }))).toBeNull();
+    const draft = { ...house, name: "draft" };
+    expect(propsOf(ctxOf({ house: draft, saved: house })).house).toBe(house);
   });
 });

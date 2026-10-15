@@ -245,8 +245,8 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     setTextError(null);
   };
 
-  const save = async () => {
-    if (draft === null || !validation?.ok || !editable) return;
+  const save = async (): Promise<string | null> => {
+    if (draft === null || !validation?.ok || !editable) return null;
     setSaveState({ kind: "saving" });
     saving.current = true;
     try {
@@ -270,8 +270,10 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         if (r.conflict) setRemoteChanged(false);
       }
       setSaveState(saveStateOf(r));
+      return r.ok ? r.result.version : null;
     } catch (e) {
       setSaveState({ kind: "error", error: (e as Error).message, problems: [] });
+      return null;
     } finally {
       saving.current = false;
     }
@@ -429,10 +431,13 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     saved,
     loaded,
     config,
+    base,
+    players: players.size,
     dirty: dirty || textError !== null,
-    valid: validation?.ok === true,
+    valid: validation?.ok === true && textError === null && editable,
     adopt: (next) => apply(next),
     reload: load,
+    save,
   };
 
   return (

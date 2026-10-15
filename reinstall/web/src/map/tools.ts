@@ -81,14 +81,20 @@ export interface MapToolbarContext {
   saved: HouseMap | null;
   loaded: LoadedHouse;
   config: ReinstallConfig;
+  /** The event's API base (`baseOf(config)`). */
+  base: string;
+  /** Programs in the simulation now. */
+  players: number;
   /** The draft differs from `saved` (or the JSON tab holds unparsed text). */
   dirty: boolean;
-  /** `validateHouse` passes on the draft. */
+  /** The draft can be saved: `validateHouse` passes, the JSON tab parses, the map is the server's (not the bundled stand-in). */
   valid: boolean;
   /** Replace the draft as one undoable edit (a variant loaded from the project, an imported file). */
   adopt: (next: HouseMap) => void;
   /** Reload the event's map from the server, dropping the draft. */
   reload: () => Promise<void>;
+  /** Save the draft to the event, like 💾 Save: the new version, null when refused. */
+  save: () => Promise<string | null>;
 }
 
 /** A number field's text: a number, `null` for an empty field, `undefined` for something that isn't one. */

@@ -452,7 +452,8 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 .map-status { padding: 0 0.6em; white-space: nowrap; font-size: 0.9em; }
 /* The project bar (map/ProjectBar.tsx): variant toggles, save to project, download. */
 .map-project { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-.map-project .w98-tabs { display: flex; gap: 2px; padding: 0; }
+.map-project .w98-tabs { display: flex; align-items: center; gap: 2px; padding: 0; }
+.map-project .live-tag { color: #007000; font-weight: bold; }
 .map-status.error { color: #a00000; white-space: normal; }
 .map-banner { display: flex; align-items: center; gap: 0.8em; padding: 0.4em 0.8em; background: #ffffe1; }
 .map-main { display: grid; grid-template-columns: 1fr minmax(300px, 380px); gap: 6px; min-height: 0; padding: 6px; }

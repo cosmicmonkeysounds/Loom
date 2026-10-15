@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import type { HouseMap, PlayerState } from "@loom/house";
 import type { LoadedHouse } from "../api.ts";
 import { SNAP_STEPS } from "./plan.ts";
+import { sourceLabel } from "./project.ts";
 import { TOOLS, type Tool } from "./tools.ts";
 
 export interface ToolbarProps {
@@ -99,7 +100,7 @@ export function Toolbar(p: ToolbarProps) {
         {p.extras}
         <span className="map-status">
           <span className={`led${p.live ? " on" : ""}`} />
-          {p.loaded.source === "bundled" ? "offline — the bundled show map" : `${p.loaded.source === "event" ? "this event's map" : "the show's map"} · v${p.loaded.version}`}
+          {p.loaded.source === "bundled" ? sourceLabel("bundled") : `${sourceLabel(p.loaded.source)} · v${p.loaded.version}`}
           {p.dirty && <b> · unsaved</b>}
         </span>
         <a className="w98-button" href="./" title="Back to the game">

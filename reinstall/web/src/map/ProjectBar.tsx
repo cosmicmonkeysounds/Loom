@@ -14,12 +14,20 @@
 //!     dirty={dirty}                // unsaved edits ("Save to project" warns)
 //!     onSwitched={(house, version) => …}  // load it as the clean draft
 //!     onSaved={(file) => …}        // optional: e.g. reload (the source is now "project")
+//!     saveDraft={() => …}          // optional: save a valid draft to the event first
 //!   />
+//!
+//! `MapApp` mounts it through `projectBarExtras` (its `toolbarExtras` slot,
+//! `main.tsx`): a switch reloads the page onto the server's new map — the
+//! switch is already live for every player, so it lands as a clean draft
+//! with the server's version, never as an unsaved edit; a save to the
+//! project reloads too (the map's source is the project again).
 //!
 //! The decisions live in `project.ts` (pure, tested) — incl. `sourceLabel`,
 //! the page's "where this map comes from" line (`source: "project"` too).
 
 import { useCallback, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import type { HouseMap, MapVariantsResponse } from "@loom/house";
 import { fetchHouse, fetchVariants, saveToProject, switchVariant } from "../api.ts";
 import {
@@ -32,9 +40,12 @@ import {
   statusOf,
   switchConfirm,
   variantLabel,
+  variantName,
   variantTitle,
   type BarStatus,
 } from "./project.ts";
+import { saveBaseOf } from "./edit.ts";
+import type { MapToolbarContext } from "./tools.ts";
 
 export interface ProjectBarProps {
   /** The event's API base (`baseOf(config)`). */
@@ -53,11 +64,15 @@ export interface ProjectBarProps {
   onSwitched: (house: HouseMap, version: string) => void;
   /** A save to the project landed. */
   onSaved?: (file: string) => void;
+  /** Save the page's (valid) unsaved edits to the event first, so "Save to
+   *  project" writes what is on screen: resolves to the new version, null
+   *  when the save was refused. Left out when the draft can't be saved. */
+  saveDraft?: () => Promise<string | null>;
   /** Ask the director (default `window.confirm`). */
   confirm?: (message: string) => boolean;
 }
 
-export function ProjectBar({ base, token, house, version, players = 0, dirty = false, onSwitched, onSaved, confirm = (m) => window.confirm(m) }: ProjectBarProps) {
+export function ProjectBar({ base, token, house, version, players = 0, dirty = false, onSwitched, onSaved, saveDraft, confirm = (m) => window.confirm(m) }: ProjectBarProps) {
   const [list, setList] = useState<MapVariantsResponse | null>(null);
   const [status, setStatus] = useState<BarStatus>({ kind: "idle" });
   const busy = status.kind === "busy";
@@ -76,9 +91,10 @@ export function ProjectBar({ base, token, house, version, players = 0, dirty = f
   const toVariant = async (file: string) => {
     const v = list?.variants.find((x) => x.file === file);
     if (v === undefined || !canSwitch(v, busy)) return;
-    const ask = switchConfirm(v, { players, edited: list?.edited ?? false });
+    const all = list?.variants ?? [];
+    const ask = switchConfirm(v, { players, edited: list?.edited ?? false, dirty, all });
     if (ask !== null && !confirm(ask)) return;
-    setStatus({ kind: "busy", what: `Switching to ${file}…` });
+    setStatus({ kind: "busy", what: `Switching to ${variantName(v, all)}…` });
     try {
       const r = await switchVariant(base, token, file, version);
       if (r.ok) {
@@ -86,7 +102,7 @@ export function ProjectBar({ base, token, house, version, players = 0, dirty = f
         if (loaded.source === "bundled") setStatus({ kind: "error", text: `Playing ${file}, but the map did not load here — reload the page.` });
         else {
           onSwitched(loaded.house, loaded.version);
-          setStatus(statusOf(r, "switch"));
+          setStatus(statusOf(r, "switch", variantLabel(v, all)));
         }
       } else setStatus(statusOf(r, "switch"));
     } catch (e) {
@@ -97,11 +113,25 @@ export function ProjectBar({ base, token, house, version, players = 0, dirty = f
 
   const toProject = async () => {
     const file = saveTarget(list);
-    const ask = saveConfirm(file, dirty);
+    const withDraft = dirty && saveDraft !== undefined;
+    const ask = saveConfirm(file, dirty, withDraft);
     if (ask !== null && !confirm(ask)) return;
+    let at = version;
+    if (withDraft) {
+      setStatus({ kind: "busy", what: "Saving your edits…" });
+      try {
+        at = await saveDraft();
+      } catch {
+        at = null;
+      }
+      if (at === null) {
+        setStatus({ kind: "error", text: "Your edits didn't save (see the problem list) — nothing was written to the project." });
+        return;
+      }
+    }
     setStatus({ kind: "busy", what: `Saving ${file} to the project…` });
     try {
-      const r = await saveToProject(base, token, file, version);
+      const r = await saveToProject(base, token, file, at);
       setStatus(statusOf(r, "save"));
       if (r.ok) onSaved?.(r.result.file);
     } catch (e) {
@@ -123,10 +153,14 @@ export function ProjectBar({ base, token, house, version, players = 0, dirty = f
   };
 
   const active = activeOf(list);
+  const all = list?.variants ?? [];
   return (
     <div className="map-project" role="group" aria-label="The house map's project">
       {list !== null && list.variants.length > 1 && (
         <div className="w98-tabs" role="radiogroup" aria-label="Map variant">
+          <span className="map-status" title="The whole-map variants this event can play — the pressed one is live for every player">
+            Map:
+          </span>
           {list.variants.map((v) => (
             <button
               key={v.file}
@@ -139,14 +173,19 @@ export function ProjectBar({ base, token, house, version, players = 0, dirty = f
               onClick={() => void toVariant(v.file)}
             >
               {v.ok ? "" : "⚠ "}
-              {variantLabel(v)}
+              {variantLabel(v, all)}
+              {v.active && <span className="live-tag"> ● live</span>}
             </button>
           ))}
         </div>
       )}
-      {list !== null && list.variants.length === 1 && active !== null && <span className="map-status">{active.file}</span>}
+      {list !== null && list.variants.length === 1 && active !== null && (
+        <span className="map-status" title={variantTitle(active)}>
+          {active.file}
+        </span>
+      )}
       {list?.project === true && (
-        <button className="w98-button small" disabled={!canSaveToProject(list, version, busy)} onClick={() => void toProject()} title={`Write the event's map into the project as ${saveTarget(list)} — the next launch and every co-writer see it`}>
+        <button className="w98-button small" disabled={!canSaveToProject(list, version, busy)} onClick={() => void toProject()} title={`Write the map into the project as ${saveTarget(list)}${dirty && saveDraft !== undefined ? " (your edits are saved first)" : ""} — the next launch and every co-writer see it`}>
           Save to project
         </button>
       )}
@@ -159,5 +198,29 @@ export function ProjectBar({ base, token, house, version, players = 0, dirty = f
         </span>
       )}
     </div>
+  );
+}
+
+/**
+ * The project bar in `MapApp`'s toolbar slot (`main.tsx`): fed from the
+ * editor's state. A switch reloads onto the server's map (clean, its
+ * version); a save to the project reloads; a valid unsaved draft is saved
+ * to the event on the way to the project.
+ */
+export function projectBarExtras(ctx: MapToolbarContext): ReactNode {
+  if (ctx.loaded.source === "bundled") return null; // offline: nothing to switch or save
+  const saveDraft = ctx.dirty && ctx.valid ? ctx.save : undefined;
+  return (
+    <ProjectBar
+      base={ctx.base}
+      token={ctx.config.token}
+      house={ctx.saved ?? ctx.house}
+      version={saveBaseOf(ctx.loaded)}
+      players={ctx.players}
+      dirty={ctx.dirty}
+      onSwitched={() => void ctx.reload()}
+      onSaved={() => void ctx.reload()}
+      {...(saveDraft !== undefined ? { saveDraft } : {})}
+    />
   );
 }

@@ -377,7 +377,7 @@ function RoomInspector({ house, edit, locations, commit, onSelect, onNotice, id 
         value={r.location ?? ""}
         disabled={!edit}
         list={listId}
-        placeholder="The Cache"
+        placeholder="(none) — pick a LOCATION"
         onCommit={(v) => patchNamed({ location: v })}
       >
         <datalist id={listId}>

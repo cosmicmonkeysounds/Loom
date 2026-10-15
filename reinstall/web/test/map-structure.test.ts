@@ -687,7 +687,10 @@ describe("the problem list", () => {
     const h = SHOW();
     expect(locationProblems(h, null)).toEqual([]);
     const locs = ["The Desktop", "The Mud Room", "The Tube", "The Internet", "The Cache", "Disk Cleanup", "The Cloud", "The Registry", "The Server Room"].map((id) => ({ id, label: null }));
-    expect(locationProblems(h, locs).map((p) => p.text)).toEqual(["LOCATION The Server Room has no room on the map"]);
+    // The show map has a room for every LOCATION (the Server Room since wave 2)…
+    expect(locationProblems(h, locs)).toEqual([]);
+    // …and one the story declares but the map lacks is named.
+    expect(locationProblems(h, [...locs, { id: "The Attic", label: null }]).map((p) => p.text)).toEqual(["LOCATION The Attic has no room on the map"]);
     const typo = patchRoom(h, "kitchen", { location: "The Cash" });
     expect(locationProblems(typo, locs)[0]).toMatchObject({ sel: { kind: "room", id: "kitchen" }, level: "warning" });
     expect(foldName("  the_mud-ROOM ")).toBe("the mud room");
