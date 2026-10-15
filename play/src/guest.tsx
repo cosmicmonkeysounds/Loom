@@ -310,6 +310,7 @@ function ProfileSheet({ session, push, onClose, onLeave }: { session: GuestSessi
       <button
         className="choice danger"
         onClick={() => {
+          push.release();
           session.leave();
           onLeave();
         }}

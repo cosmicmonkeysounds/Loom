@@ -3,7 +3,9 @@
 //! An author launches an event (live or a private preview) from their
 //! dashboard; the server snapshots the project's `.loom` source, reuses the
 //! project's previous event's three passcodes (minting them on a first
-//! launch — codes are pinned so End → relaunch keeps printed QRs working),
+//! launch — codes are pinned so End → relaunch keeps printed QRs working;
+//! a launch body's `rotate: "staff"` mints fresh performer + mod codes and
+//! keeps the guest code, `rotate: true` mints all three),
 //! records the event, and spins up (or reuses) its `EventRuntime` with the
 //! doors open. Guests then join with the event code —
 //! their experience is the ordinary per-event flow, unchanged.
@@ -92,12 +94,53 @@ function freshCodes(): Passcodes {
 }
 
 /**
- * The codes a launch tries on `attempt`: the project's previous event's codes
- * first (pinned — End → relaunch keeps every printed QR working), fresh ones
- * if there were none or the pinned set collided with another live event.
+ * How a launch treats the project's pinned codes (K-10): `none` reuses them
+ * all (End → relaunch keeps every printed QR working), `staff` keeps the
+ * guest code but mints fresh performer + mod codes (a leaked staff code,
+ * printed join QRs untouched), `all` mints three fresh codes.
  */
-export function launchCodes(previous: Passcodes | null, attempt: number, mint: () => Passcodes = freshCodes): Passcodes {
-  return attempt === 0 && previous !== null ? { ...previous } : mint();
+export type CodeRotation = "none" | "staff" | "all";
+
+/** The launch body's `rotate` field: `true` / `"all"` → all, `"staff"` → staff. */
+export function parseRotation(raw: unknown): CodeRotation {
+  if (raw === true || raw === "all") return "all";
+  if (raw === "staff") return "staff";
+  return "none";
+}
+
+/**
+ * The codes a launch tries on `attempt`: the project's previous event's codes
+ * first (pinned — or partly, per `rotate`), fresh ones if there were none or
+ * the pinned set collided with another live event.
+ */
+export function launchCodes(previous: Passcodes | null, attempt: number, mint: () => Passcodes = freshCodes, rotate: CodeRotation = "none"): Passcodes {
+  if (attempt !== 0 || previous === null || rotate === "all") return mint();
+  return rotate === "staff" ? { ...mint(), event: previous.event } : { ...previous };
+}
+
+/**
+ * Insert a launch row, trying the pinned codes first and fresh ones on a
+ * collision (another project's live event holds them — the unique indexes
+ * throw). Three attempts; the last error propagates.
+ */
+export async function insertWithCodes<T>(
+  previous: Passcodes | null,
+  insert: (codes: Passcodes) => Promise<T>,
+  opts: { rotate?: CodeRotation; mint?: () => Passcodes; warn?: (msg: string) => void } = {},
+): Promise<T> {
+  const rotate = opts.rotate ?? "none";
+  const warn = opts.warn ?? ((m: string) => console.warn(m));
+  for (let attempt = 0; ; attempt++) {
+    const codes = launchCodes(previous, attempt, opts.mint, rotate);
+    if (attempt === 1 && previous !== null && rotate !== "all") {
+      warn("pinned codes are taken by another live event; minting fresh ones");
+    }
+    try {
+      return await insert(codes);
+    } catch (err) {
+      if (attempt >= 2) throw err;
+    }
+  }
 }
 
 /**
@@ -158,16 +201,13 @@ export async function handleEvent(
 
     // Insert the row. Codes are pinned to the project: reuse the last
     // event's (ended events free their codes), falling back to fresh ones on
-    // a collision with another project's live event.
+    // a collision with another project's live event. `rotate` ("staff" /
+    // true) is how a leaked code gets replaced.
     const previous = await lastEventCodes(projectId);
-    let row: EventRow | null = null;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const codes = launchCodes(previous, attempt);
-      if (attempt === 1 && previous !== null) {
-        console.warn(`[events] pinned codes for project ${projectId} are taken by another live event; minting fresh ones`);
-      }
-      try {
-        row = await createEvent({
+    const row = await insertWithCodes(
+      previous,
+      (codes) =>
+        createEvent({
           id: randomUUID(),
           project_id: projectId,
           mode,
@@ -178,17 +218,14 @@ export async function handleEvent(
           scenario_name: project.name,
           scenario_source: src.source,
           created_by_name: by,
-        });
-        break;
-      } catch (err) {
-        if (attempt === 2) throw err;
-      }
-    }
+        }),
+      { rotate: parseRotation(body["rotate"]), warn: (m) => console.warn(`[events] project ${projectId}: ${m}`) },
+    );
 
-    const runtime = registry.ensure(specFromRow(row!));
+    const runtime = registry.ensure(specFromRow(row));
     runtime.openDoors();
-    collabHub().notifyEvent(projectId, { kind: "launched", by, eventId: row!.id, mode });
-    sendJson(res, 200, { event: eventView(row!, joinBase, runtime.currentPhase) });
+    collabHub().notifyEvent(projectId, { kind: "launched", by, eventId: row.id, mode });
+    sendJson(res, 200, { event: eventView(row, joinBase, runtime.currentPhase) });
     return true;
   }
 

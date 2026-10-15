@@ -15,11 +15,13 @@ import { afterAll, describe, expect, it } from "vitest";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import type { ChatMessage } from "../server/chat.ts";
+import { SUBSCRIBE_PER_MINUTE } from "../server/routes/k31.ts";
 import { HTML_CSP, PLAY_CSP, PLAY_PWA_FILES, REINSTALL_CSP } from "../server/routing.ts";
 import {
   MAX_DEVICES_PER_OWNER,
   PushHub,
   messagePush,
+  isPushServiceHost,
   parseSubscription,
   pushConfigFromEnv,
   readoutPush,
@@ -74,9 +76,10 @@ function fakeSender(status: (endpoint: string) => number = () => 201): PushSende
 
 function memHub(sender: PushSender | null, seed: unknown = null) {
   let saved: unknown = seed;
+  let writes = 0;
   let t = 1000;
-  const hub = new PushHub({ sender, load: () => saved, save: (d) => (saved = d), now: () => ++t, log: () => {} });
-  return { hub, saved: () => saved };
+  const hub = new PushHub({ sender, load: () => saved, save: (d) => ((saved = d), writes++), now: () => ++t, log: () => {} });
+  return { hub, saved: () => saved, writes: () => writes };
 }
 
 function msg(over: Partial<ChatMessage>): ChatMessage {
@@ -129,6 +132,23 @@ describe("parseSubscription", () => {
     expect(parseSubscription({ endpoint: sub(1).endpoint })).toBeNull();
     expect(parseSubscription(null)).toBeNull();
   });
+
+  it("only names a known push service — no IP literals, no other hosts, no ports (SSRF)", () => {
+    const at = (endpoint: string) => parseSubscription({ ...sub(1), endpoint });
+    expect(at("https://web.push.apple.com/QGx")).not.toBeNull();
+    expect(at("https://updates.push.services.mozilla.com/wpush/v2/x")).not.toBeNull();
+    expect(at("https://wns2-par02p.notify.windows.com/w/?token=x")).not.toBeNull();
+    expect(at("https://10.0.0.1/x")).toBeNull();
+    expect(at("https://[::1]/x")).toBeNull();
+    expect(at("https://evil.example/x")).toBeNull();
+    expect(at("https://fcm.googleapis.com.evil.example/x")).toBeNull();
+    expect(at("https://evilpush.apple.com/x")).toBeNull();
+    expect(at("https://push.apple.com/x")).toBeNull();
+    expect(at("https://fcm.googleapis.com:8443/fcm/send/x")).toBeNull();
+    expect(at("https://user@fcm.googleapis.com/fcm/send/x")).toBeNull();
+    expect(isPushServiceHost("FCM.googleapis.com")).toBe(true);
+    expect(isPushServiceHost("127.0.0.1")).toBe(false);
+  });
 });
 
 describe("messagePush (the send rule)", () => {
@@ -162,6 +182,18 @@ describe("PushHub", () => {
     // Persisted, and reloads.
     const again = memHub(fakeSender(), saved()).hub;
     expect(again.status()).toEqual(hub.status());
+  });
+
+  it("a repeat subscribe refreshes in memory without rewriting push.json", () => {
+    const { hub, writes } = memHub(fakeSender());
+    hub.subscribe("guest:a", sub(1));
+    expect(writes()).toBe(1);
+    hub.setHidden("guest:a", sub(1).endpoint, true);
+    for (let i = 0; i < 20; i++) hub.subscribe("guest:a", sub(1));
+    expect(writes()).toBe(1);
+    expect(hub.status().guests).toEqual([{ id: "a", devices: 1, hidden: 0 }]);
+    hub.subscribe("guest:a", { ...sub(1), keys: { p256dh: "new", auth: "new" } }); // rotated keys → saved
+    expect(writes()).toBe(2);
   });
 
   it("only the owner flips a device's hidden flag or removes it", () => {
@@ -369,8 +401,10 @@ describe("EventRuntime push wiring", () => {
     // A story reset keeps the booth (performers stay signed in)…
     const g = await register(rt, "Winamp");
     await post(rt, "/api/push/subscribe", { token: g.token, subscription: sub(1) });
+    expect(rt.push.status().guests).toEqual([{ id: g.id, devices: 1, hidden: 0 }]);
     expect((await mod(rt, "/api/mod/reset", {})).status).toBe(200);
-    expect(rt.push.owners()).toEqual(["prime:Norton"]);
+    expect(rt.push.status().guests).toEqual([]); // guests' phones are dropped…
+    expect(rt.push.owners()).toEqual(["prime:Norton"]); // …the booth's kept
     // …release (N-10) drops it; so does go-live.
     expect((await mod(rt, "/api/mod/prime/release", { character: "Norton" })).status).toBe(200);
     expect(rt.push.owners()).toEqual([]);
@@ -383,5 +417,17 @@ describe("EventRuntime push wiring", () => {
     const imp = await mod(rt, "/api/mod/impersonate", { role: "guest", id: g.id });
     expect(imp.status).toBe(200);
     expect((await post(rt, "/api/push/subscribe", { token: imp.json.token, subscription: sub(1) })).status).toBe(401);
+  });
+
+  it("rate-limits subscribe per owner (429), and refuses a non-push-service endpoint (400)", async () => {
+    const rt = runtime(fakeSender());
+    rt.openDoors();
+    const g = await register(rt, "Winamp");
+    expect((await post(rt, "/api/push/subscribe", { token: g.token, subscription: { ...sub(1), endpoint: "https://10.0.0.1/x" } })).status).toBe(400);
+    let last = 0;
+    for (let i = 0; i < SUBSCRIBE_PER_MINUTE + 1; i++) last = (await post(rt, "/api/push/subscribe", { token: g.token, subscription: sub(1) })).status;
+    expect(last).toBe(429);
+    const other = await register(rt, "Napster");
+    expect((await post(rt, "/api/push/subscribe", { token: other.token, subscription: sub(2) })).status).toBe(200);
   });
 });

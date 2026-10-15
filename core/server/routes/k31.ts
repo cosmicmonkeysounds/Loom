@@ -16,6 +16,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { sendJson, str, tokenOf } from "../http-util.ts";
 import { parseSubscription, type PushHub } from "../push.ts";
+import { RateLimiter } from "../rate-limit.ts";
 
 export const PUSH_CONFIG_ROUTE = "/api/push/config";
 export const PUSH_STATUS_ROUTE = "/api/mod/push/status";
@@ -29,7 +30,12 @@ export interface PushRoutesHost {
   nameOf(id: string): string | null;
 }
 
+/** Subscribes per owner per minute (a real phone subscribes once a load). */
+export const SUBSCRIBE_PER_MINUTE = 10;
+
 export class PushRoutes {
+  private readonly subscribeLimit = new RateLimiter(SUBSCRIBE_PER_MINUTE, 60_000);
+
   constructor(private readonly host: PushRoutesHost) {}
 
   /** `GET /api/push/config`; false when `path` isn't it. */
@@ -53,6 +59,10 @@ export class PushRoutes {
       case "/api/push/subscribe": {
         if (!push.enabled) {
           sendJson(res, 503, { error: "push is not configured on this server" });
+          return true;
+        }
+        if (!this.subscribeLimit.take(owner)) {
+          sendJson(res, 429, { error: "too many subscribe calls — try again in a minute" });
           return true;
         }
         const sub = parseSubscription(body["subscription"]);

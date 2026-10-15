@@ -89,6 +89,18 @@ export function markAfterHistory(list: readonly ChatMessage[], mark: number, reb
   return mark;
 }
 
+/**
+ * The mark a sign-in starts from: its persisted mark (a reconnect or a
+ * reloaded tab of the *same* session keeps what it had seen), else a
+ * `baseline` — a brand-new sign-in (a performer at the call, a loaner
+ * phone, a re-paired guest) takes its first history as old news rather
+ * than chiming the newest alarm of the last ten minutes.
+ */
+export function initialMark(stored: { session: string; mark: number } | null, session: string | null): { mark: number; baseline: boolean } {
+  if (session !== null && stored !== null && stored.session === session) return { mark: stored.mark, baseline: false };
+  return { mark: -1, baseline: session !== null };
+}
+
 /** Is a booth readout news (chime it) rather than the answer to the booth's own scan / act? */
 export function unsolicitedReadout(lastActionAt: number, now: number): boolean {
   return now - lastActionAt > READOUT_GRACE_MS;
@@ -209,8 +221,9 @@ interface StoredMark {
 export interface Alerts {
   alert: Alert | null;
   dismiss: () => void;
-  /** Banner + chime arbitrary text now (a booth readout). */
-  raise: (text: string) => void;
+  /** Banner + chime arbitrary text now (a booth readout). `quiet` banners
+   *  without the chime / buzz (a refusal, not a show alarm). */
+  raise: (text: string, opts?: { quiet?: boolean }) => void;
   /** Call from the stream's `onHistory`, before the messages are applied. */
   onHistory: (list: readonly ChatMessage[]) => void;
   /** The story restarted under a live session: the next history is old news. */
@@ -233,6 +246,7 @@ export function useAlerts(opts: {
   const { messages, clock, session, storage, storageKey, sound } = opts;
   const mark = useRef(-1);
   const rebasing = useRef(false);
+  const baseline = useRef(false);
   const owner = useRef<string | null>(null);
   const pendingChime = useRef(false);
   const readoutSeq = useRef(-1);
@@ -244,9 +258,13 @@ export function useAlerts(opts: {
   // Load the mark for this sign-in (a different session starts from scratch).
   if (owner.current !== session) {
     owner.current = session;
-    rebasing.current = false;
     const stored = session !== null ? storage.load<StoredMark>(storageKey) : null;
-    mark.current = stored !== null && stored.session === session ? stored.mark : -1;
+    const start = initialMark(stored, session);
+    mark.current = start.mark;
+    // A fresh sign-in's first history is the baseline (persisted even when
+    // empty, so a reloaded tab of this session keeps its place).
+    rebasing.current = start.baseline;
+    baseline.current = start.baseline;
   }
   const persist = useCallback(() => {
     if (owner.current === null) return;
@@ -262,9 +280,9 @@ export function useAlerts(opts: {
   }, [sound]);
 
   const show = useCallback(
-    (a: Alert) => {
+    (a: Alert, quiet = false) => {
       setAlert(a);
-      if (!sound) return;
+      if (!sound || quiet) return;
       if (visibleRef.current) {
         playChime();
         vibrate();
@@ -310,12 +328,14 @@ export function useAlerts(opts: {
     pendingChime.current = false;
     setAlert(null);
   }, []);
-  const raise = useCallback((text: string) => show({ seq: readoutSeq.current--, text }), [show]);
+  const raise = useCallback((text: string, o?: { quiet?: boolean }) => show({ seq: readoutSeq.current--, text }, o?.quiet === true), [show]);
   const onHistory = useCallback(
     (list: readonly ChatMessage[]) => {
       const m = markAfterHistory(list, mark.current, rebasing.current);
       rebasing.current = false;
-      if (m !== mark.current) {
+      const first = baseline.current;
+      baseline.current = false;
+      if (m !== mark.current || first) {
         mark.current = m;
         persist();
       }

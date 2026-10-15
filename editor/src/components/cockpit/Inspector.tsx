@@ -29,11 +29,15 @@ function RePair({ id, name }: { id: string; name: string }) {
   const pairGuest = useCockpit((s) => s.pairGuest)
   const [link, setLink] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const mint = async () => {
+  const [revoked, setRevoked] = useState(false)
+  const mint = async (revokeOthers = false) => {
     setBusy(true)
     try {
-      const r = await pairGuest(id)
-      if (r !== null) setLink(r.url)
+      const r = await pairGuest(id, revokeOthers ? { revokeOthers: true } : undefined)
+      if (r !== null) {
+        setLink(r.url)
+        setRevoked(revokeOthers)
+      }
     } finally {
       setBusy(false)
     }
@@ -65,6 +69,15 @@ function RePair({ id, name }: { id: string; name: string }) {
         </button>
         <button onClick={() => void mint()} disabled={busy} className="rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800">
           New code
+        </button>
+        <button
+          onClick={() => void mint(true)}
+          disabled={busy || revoked}
+          className="rounded border border-red-900 px-2 py-0.5 text-[10px] text-red-300 hover:bg-red-950 disabled:opacity-50"
+          title={`Someone else has ${name}'s old phone? Sign every other phone out of ${name} (a fresh code replaces this one)`}
+          data-testid={`inspector-repair-revoke-${id}`}
+        >
+          {revoked ? 'Old phones signed out' : 'Sign out old phones'}
         </button>
         <button onClick={() => setLink(null)} className="rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800">
           Done

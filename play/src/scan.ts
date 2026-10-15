@@ -1,7 +1,8 @@
 //! What a booth scan means. A guest's **pass** (their "Your pass" sheet,
 //! or the `show pass` card) is a QR of their guest id — `g-3f9a1c` (a
 //! persona spawned from the editor is `p-…`). The walls also carry the
-//! join QR (`…/?code=<event>`) and the codex QRs (`…&unlock=<code>`); a
+//! join QR (`…/?code=<event>`), the codex QRs (`…&unlock=<code>`) and the
+//! room check-in signs (`…&checkin=<room>`, K-13); a
 //! booth recognises those so the performer hears "that's a wall code"
 //! instead of a bare 404. Mirrors `terminal/src/scan.ts`.
 //!
@@ -9,7 +10,7 @@
 
 export type ScanHit =
   | { kind: "guest"; id: string }
-  | { kind: "wall"; unlock: string | null }
+  | { kind: "wall"; unlock: string | null; checkin?: string }
   | { kind: "unknown"; text: string };
 
 /** A guest / persona id as the server mints them. */
@@ -21,7 +22,10 @@ export function parseScan(raw: string): ScanHit {
   if (GUEST_ID.test(text)) return { kind: "guest", id: text.toLowerCase() };
   try {
     const url = new URL(text);
-    if (url.searchParams.has("code")) return { kind: "wall", unlock: url.searchParams.get("unlock") };
+    if (url.searchParams.has("code")) {
+      const checkin = url.searchParams.get("checkin");
+      return checkin !== null ? { kind: "wall", unlock: null, checkin } : { kind: "wall", unlock: url.searchParams.get("unlock") };
+    }
     const id = url.searchParams.get("pass") ?? url.searchParams.get("guest");
     if (id !== null && GUEST_ID.test(id)) return { kind: "guest", id: id.toLowerCase() };
   } catch {
@@ -46,6 +50,7 @@ export function scanProblem(hit: ScanHit): string | null {
     case "guest":
       return null;
     case "wall":
+      if (hit.checkin !== undefined) return "That's a room sign — scan the guest's pass.";
       return hit.unlock !== null ? "That's a codex code from the wall — scan the guest's pass." : "That's the join code — scan the guest's pass.";
     case "unknown":
       return "That QR isn't a guest pass.";

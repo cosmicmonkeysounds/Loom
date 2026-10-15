@@ -25,8 +25,11 @@
 //!   is *hidden*. Every push carries a visible notification (iOS revokes a
 //!   subscription that receives silent pushes). 404 / 410 from the push
 //!   service prunes the device.
-//! - **Out (K-31a):** director push, `notify`, a health card, rate limits,
-//!   quiet modes, the install-first door gate (iPhone is K-31b).
+//! - **Limits.** Endpoints must be on a known push service
+//!   (`PUSH_SERVICE_HOSTS` — no SSRF), subscribe is rate-limited per owner
+//!   (`routes/k31.ts`), and a repeat subscribe writes nothing.
+//! - **Out (K-31a):** director push, `notify`, a health card, send-side
+//!   rate limits, quiet modes, the install-first door gate (iPhone is K-31b).
 
 import webpush from "web-push";
 
@@ -70,13 +73,16 @@ export interface PushConfig {
   subject: string;
 }
 
+/** The VAPID subject when nothing better is configured (Apple may refuse it). */
+const LOCALHOST_SUBJECT = "mailto:push@localhost";
+
 /** The VAPID config from the environment, or null (push off). */
 export function pushConfigFromEnv(env: NodeJS.ProcessEnv = process.env): PushConfig | null {
   const publicKey = (env.LOOM_VAPID_PUBLIC_KEY ?? "").trim();
   const privateKey = (env.LOOM_VAPID_PRIVATE_KEY ?? "").trim();
   if (publicKey === "" || privateKey === "") return null;
   const base = (env.LOOM_BASE_URL ?? "").trim();
-  const subject = (env.LOOM_VAPID_SUBJECT ?? "").trim() || (base.startsWith("https://") ? base : "mailto:push@localhost");
+  const subject = (env.LOOM_VAPID_SUBJECT ?? "").trim() || (base.startsWith("https://") ? base : LOCALHOST_SUBJECT);
   return { publicKey, privateKey, subject };
 }
 
@@ -90,6 +96,9 @@ export function webPushSender(config: PushConfig | null, log: (msg: string) => v
   } catch (err) {
     log(`  ⚠️  push disabled — LOOM_VAPID_* is invalid: ${(err as Error).message}\n`);
     return null;
+  }
+  if (config.subject === LOCALHOST_SUBJECT) {
+    log(`  ⚠️  push: no LOOM_VAPID_SUBJECT and LOOM_BASE_URL isn't https — some push services refuse ${LOCALHOST_SUBJECT}\n`);
   }
   const vapidDetails = { subject: config.subject, publicKey: config.publicKey, privateKey: config.privateKey };
   return {
@@ -131,8 +140,26 @@ const MAX_BODY = 240;
  *  for the K-06 window; a DM can wait a little longer. */
 export const TTL: Record<PushPayload["kind"], number> = { alert: 600, dm: 1800, readout: 600 };
 
-/** A subscription a client sent, validated — or null. Only `https:` push
- *  endpoints are accepted (the server must never be aimed at the LAN). */
+/** The browsers' push services — the only hosts a subscription may name.
+ *  Anything else would let a guest aim the server's POSTs at any host
+ *  (SSRF). `.`-prefixed entries match that domain's subdomains. */
+export const PUSH_SERVICE_HOSTS: readonly string[] = [
+  "fcm.googleapis.com", // Chrome / Android
+  ".push.apple.com", // Safari / iOS (web.push.apple.com)
+  "updates.push.services.mozilla.com", // Firefox
+  ".notify.windows.com", // Edge (WNS)
+];
+
+/** True when `host` is one of the push services (never an IP literal). */
+export function isPushServiceHost(host: string): boolean {
+  const h = host.toLowerCase().replace(/\.$/u, "");
+  if (h === "" || h.startsWith("[") || /^[\d.]+$/u.test(h)) return false;
+  return PUSH_SERVICE_HOSTS.some((allowed) => (allowed.startsWith(".") ? h.endsWith(allowed) && h.length > allowed.length : h === allowed));
+}
+
+/** A subscription a client sent, validated — or null. Only `https:`
+ *  endpoints on a known push service are accepted (the server must never be
+ *  aimed at the LAN or an arbitrary host), on the default port. */
 export function parseSubscription(raw: unknown): PushSubscriptionJSON | null {
   if (raw === null || typeof raw !== "object") return null;
   const r = raw as { endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown } };
@@ -143,7 +170,8 @@ export function parseSubscription(raw: unknown): PushSubscriptionJSON | null {
   } catch {
     return null;
   }
-  if (url.protocol !== "https:") return null;
+  if (url.protocol !== "https:" || url.port !== "" || url.username !== "" || url.password !== "") return null;
+  if (!isPushServiceHost(url.hostname)) return null;
   const p256dh = r.keys?.p256dh;
   const auth = r.keys?.auth;
   if (typeof p256dh !== "string" || typeof auth !== "string") return null;
@@ -231,8 +259,16 @@ export class PushHub {
     this.init.save({ v: 1, devices: [...this.devices.values()] });
   }
 
-  /** Bind a device to `owner` (moving it off anyone else), page visible. */
+  /** Bind a device to `owner` (moving it off anyone else), page visible.
+   *  A repeat of the same binding only refreshes it in memory (no disk
+   *  write — a looping client must not hammer `push.json`). */
   subscribe(owner: string, sub: PushSubscriptionJSON): void {
+    const prev = this.devices.get(sub.endpoint);
+    if (prev !== undefined && prev.owner === owner && prev.sub.keys.p256dh === sub.keys.p256dh && prev.sub.keys.auth === sub.keys.auth) {
+      prev.hidden = false;
+      prev.at = this.now();
+      return;
+    }
     this.devices.delete(sub.endpoint);
     this.devices.set(sub.endpoint, { owner, sub, hidden: false, at: this.now() });
     const mine = [...this.devices.values()].filter((d) => d.owner === owner).sort((a, b) => a.at - b.at);

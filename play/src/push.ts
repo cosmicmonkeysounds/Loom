@@ -99,6 +99,11 @@ export interface Push {
   /** Hide the card on this phone (the profile sheet still offers it). */
   dismiss: () => void;
   dismissed: boolean;
+  /** Leaving / signing out: unbind this phone from the session on the
+   *  server and drop the browser's subscription, so a handed-on or loaner
+   *  phone stops getting this person's alerts. Fire-and-forget; call it
+   *  *before* the session forgets its token. */
+  release: () => void;
 }
 
 /** Push for one signed-in session (`base` = `/e/<eventId>`, the session's
@@ -131,7 +136,9 @@ export function usePush(target: { base: string; token: string } | null): Push {
         await sub.unsubscribe().catch(() => false);
         sub = null;
       }
-      sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: want });
+      // `want` owns its whole buffer (see urlBase64ToUint8Array); passing the
+      // ArrayBuffer keeps both TS lib flavours happy (play's + the editor's).
+      sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: want.buffer as ArrayBuffer });
       await api(`${base}/api/push/subscribe`, { subscription: sub.toJSON() }, token);
       endpoint.current = sub.endpoint;
       setState("on");
@@ -207,5 +214,17 @@ export function usePush(target: { base: string; token: string } | null): Push {
     }
   }, [host.storage]);
 
-  return { state, enable, dismiss, dismissed };
+  const release = useCallback(() => {
+    const ep = endpoint.current;
+    endpoint.current = "";
+    if (!supported || ep === "" || base === null || token === null) return;
+    void api(`${base}/api/push/unsubscribe`, { endpoint: ep }, token).catch(() => {});
+    void navigator.serviceWorker.ready
+      .then((reg) => reg.pushManager.getSubscription())
+      .then((sub) => (sub !== null && sub.endpoint === ep ? sub.unsubscribe() : false))
+      .catch(() => false);
+    setState("ask");
+  }, [supported, base, token]);
+
+  return { state, enable, dismiss, dismissed, release };
 }

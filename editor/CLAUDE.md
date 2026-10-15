@@ -279,8 +279,9 @@ a **👁 Be <name>** button; a character shows **Their feed** (lines they
 spoke + `dm:` threads) plus their **scan readouts** (`respond` ledger
 events), variables, owned beats. Server runs add the lost-phone fixes:
 a guest's **🔁 Re-pair** (`RePair` → `CockpitState.pairGuest` →
-`POST /api/mod/guest/pair`, a QR of the returned `?code=&resume=` link;
-not shown for personas) and a character's **⏏ Release**
+`POST /api/mod/guest/pair`, a QR of the returned `?code=&resume=` link,
+plus **Sign out old phones** = `revokeOthers`; not shown for personas,
+which the server refuses anyway) and a character's **⏏ Release**
 (`CockpitState.releasePart` → `POST /api/mod/prime/release`, confirmed);
 the local backend refuses both with an explanation. The **Log** page
 (`cockpit/LogTab.tsx`) filters to one participant (`log-filter.ts`

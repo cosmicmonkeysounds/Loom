@@ -9,8 +9,12 @@
 //! like a registration's, cut by every restart like one) and shows it as a
 //! QR: `<join base>/?code=<event>&resume=<token>`. The play app adopts it
 //! as its guest session and strips it from the URL. The guest's old tokens
-//! stay valid (it also moves a guest onto a loaner phone; the old one is
-//! gone or harmless). Nothing is journaled — a token is not a story fact.
+//! stay valid by default (it also moves a guest onto a loaner phone; the old
+//! one is gone or harmless) — **`revokeOthers: true`** cuts them instead
+//! (a phone someone else picked up: its tokens, streams and push devices
+//! go). A director's persona (`p-…`) is refused with 409: personas are
+//! puppeted from the cockpit, never paired to a phone. Nothing is
+//! journaled — a token is not a story fact.
 //!
 //! **Release** (`POST /e/:id/api/mod/prime/release {character}`): a part is
 //! one performer's (`/api/prime/login` refuses a held part with 409) and
@@ -53,6 +57,11 @@ export interface PairingHost {
   sim(): Sim | null;
   /** Bind a fresh guest token to `id` and persist the token table. */
   addGuestToken(token: string, id: string): void;
+  /** Is `id` a director's persona (not a phone's guest)? */
+  isPersona(id: string): boolean;
+  /** Cut every token of guest `id` (their streams + push devices too);
+   *  returns how many tokens went. */
+  revokeGuest(id: string): number;
   sessions: SessionStore;
   persistSessions(): void;
   /** Close the real booth streams for a character (not directors' panes). */
@@ -85,6 +94,11 @@ export class Pairing {
       sendJson(res, 404, { error: "unknown guest" });
       return true;
     }
+    if (this.host.isPersona(id)) {
+      sendJson(res, 409, { error: "that's a director's persona — play it from the cockpit, not a phone" });
+      return true;
+    }
+    const revoked = body["revokeOthers"] === true ? this.host.revokeGuest(id) : 0;
     const token = (this.host.mint ?? randomUUID)();
     this.host.addGuestToken(token, id);
     sendJson(res, 200, {
@@ -92,6 +106,7 @@ export class Pairing {
       id,
       name: person.name,
       token,
+      revoked,
       url: resumeUrl(this.host.joinBase(), this.host.eventCode(), token),
     });
     return true;

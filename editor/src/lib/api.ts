@@ -338,9 +338,10 @@ export const modApi = {
     await req('POST', `/e/${eventId}/api/mod/impersonate/end`, { session })
   },
   /** Re-pair a lost guest (N-02): a fresh token for the SAME guest, and the
-   *  `?code=<event>&resume=<token>` link their new phone opens. */
-  async pairGuest(eventId: string, id: string): Promise<GuestPairing> {
-    return await req<GuestPairing>('POST', `/e/${eventId}/api/mod/guest/pair`, { id })
+   *  `?code=<event>&resume=<token>` link their new phone opens.
+   *  `revokeOthers` also signs out every other phone holding that guest. */
+  async pairGuest(eventId: string, id: string, opts: { revokeOthers?: boolean } = {}): Promise<GuestPairing> {
+    return await req<GuestPairing>('POST', `/e/${eventId}/api/mod/guest/pair`, { id, ...(opts.revokeOthers ? { revokeOthers: true } : {}) })
   },
   /** Release a performer's part (N-10): drop the session holding it so the
    *  performer can re-sign on a loaner. Resolves to how many sessions held it. */

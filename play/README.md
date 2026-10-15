@@ -104,7 +104,9 @@ warning). **☰ → Keep my screen on** is an opt-in Screen Wake Lock
 from a tap, then subscribes this phone through the push-only service
 worker `public/sw.js` (no fetch handler — nothing is cached) and
 `POST /e/:id/api/push/subscribe`; a phone that already said yes re-binds
-silently on every sign-in. Every `visibilitychange` / `pagehide` is
+silently on every sign-in, and **Leave / Sign out** unbinds it
+(`Push.release` → `/api/push/unsubscribe` + the browser's own
+unsubscribe), so a handed-on phone stops getting that person's alerts. Every `visibilitychange` / `pagehide` is
 beaconed to `/api/push/visible`, so the server pushes a character's DM
 or a booth readout only while the app is hidden; `!` alerts push always,
 and the worker skips the notification while a play window is in the

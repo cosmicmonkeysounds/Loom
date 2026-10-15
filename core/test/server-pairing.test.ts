@@ -193,6 +193,37 @@ describe("N-02 re-pair a guest", () => {
     expect((await post(rt, "/api/mod/guest/pair", { id: ana.id }, ana.token)).status).toBe(403);
     expect((await mod(rt, "/api/mod/guest/pair", { id: "g-nobody" })).status).toBe(404);
   });
+
+  it("refuses a director's persona (409) — personas are puppeted, never paired", async () => {
+    const rt = runtimeAt(freshDir());
+    rt.openDoors();
+    const persona = await mod(rt, "/api/mod/persona", { name: "Ada's persona" });
+    expect(persona.status).toBe(200);
+    const r = await mod(rt, "/api/mod/guest/pair", { id: persona.json.guest.id });
+    expect(r.status).toBe(409);
+    expect(r.json.token).toBeUndefined();
+  });
+
+  it("revokeOthers cuts the lost phone: its tokens and stream go, the new token works", async () => {
+    const rt = runtimeAt(freshDir());
+    rt.openDoors();
+    const ana = await register(rt, "Winamp");
+    const bob = await register(rt, "Napster");
+    const lost = stream(rt, `role=guest&token=${ana.token}`);
+    const bobs = stream(rt, `role=guest&token=${bob.token}`);
+    const paired = await mod(rt, "/api/mod/guest/pair", { id: ana.id, revokeOthers: true });
+    expect(paired.status).toBe(200);
+    expect(paired.json.revoked).toBe(1);
+    expect(lost.isEnded()).toBe(true);
+    expect(bobs.isEnded()).toBe(false);
+    expect((await state(rt, "guest", ana.token)).status).toBe(401);
+    expect((await state(rt, "guest", paired.json.token as string)).json.id).toBe(ana.id);
+    expect((await state(rt, "guest", bob.token)).status).toBe(200);
+    // Without the flag, the old token survives (the loaner move).
+    const again = await mod(rt, "/api/mod/guest/pair", { id: ana.id });
+    expect(again.json.revoked).toBe(0);
+    expect((await state(rt, "guest", paired.json.token as string)).status).toBe(200);
+  });
 });
 
 describe("N-10 release a performer's part", () => {

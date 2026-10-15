@@ -9,6 +9,10 @@ describe("booth scan parsing", () => {
   it("recognises wall codes and pass links", () => {
     expect(parseScan("https://app.mapsandducks.com/?code=ABCD")).toEqual({ kind: "wall", unlock: null });
     expect(parseScan("https://app.mapsandducks.com/?code=ABCD&unlock=duck")).toEqual({ kind: "wall", unlock: "duck" });
+    const sign = parseScan("https://app.mapsandducks.com/?code=ABCD&checkin=the-cache");
+    expect(sign).toEqual({ kind: "wall", unlock: null, checkin: "the-cache" });
+    expect(scanProblem(sign)).toBe("That's a room sign — scan the guest's pass.");
+    expect(scanProblem(parseScan("https://app.mapsandducks.com/?code=ABCD"))).toBe("That's the join code — scan the guest's pass.");
     expect(parseScan("https://x.test/?pass=g-00ff11")).toEqual({ kind: "guest", id: "g-00ff11" });
   });
   it("names what a non-pass is", () => {

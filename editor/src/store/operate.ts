@@ -710,11 +710,11 @@ export const useOperate = create<OperateState>((set, get) => {
       }
     },
     setVar: (path, value) => withEvent((ev) => modApi.setVar(ev, path, value)),
-    pairGuest: async (id) => {
+    pairGuest: async (id, opts) => {
       const ev = get().event
       if (!ev) return null
       try {
-        const p = await modApi.pairGuest(ev.id, id)
+        const p = await modApi.pairGuest(ev.id, id, opts)
         return { url: p.url, name: p.name }
       } catch (e) {
         set({ error: (e as Error).message })

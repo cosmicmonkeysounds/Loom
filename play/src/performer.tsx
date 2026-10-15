@@ -282,6 +282,7 @@ function PerformerSheet({ session, push, onClose, onLeave }: { session: PrimeSes
       <button
         className="choice danger"
         onClick={() => {
+          push.release();
           session.leave();
           onLeave();
         }}

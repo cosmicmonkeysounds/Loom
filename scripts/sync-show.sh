@@ -48,6 +48,8 @@ if [[ -z "${LOOM_SSH:-}" ]]; then
 fi
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Shell-quoted for the remote command line (a dir with spaces or quotes).
+VPS_DIR_Q="$(printf '%q' "$LOOM_VPS_DIR")"
 
 if [[ $DRY -eq 1 ]]; then
   echo "would: ssh $LOOM_SSH  →  docker IP of the 'db' service in $LOOM_VPS_DIR (+ POSTGRES_PASSWORD from its .env if unset)"
@@ -58,7 +60,7 @@ if [[ $DRY -eq 1 ]]; then
 fi
 
 # 1. Where the db container lives on the VPS's Docker network.
-DB_IP="$(ssh "$LOOM_SSH" "cd $LOOM_VPS_DIR && docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' \$(docker compose ps -q db)" | awk '{print $1}')"
+DB_IP="$(ssh "$LOOM_SSH" "cd $VPS_DIR_Q && docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' \$(docker compose ps -q db)" | awk '{print $1}')"
 if [[ -z "$DB_IP" ]]; then
   echo "sync-show: no running 'db' service in $LOOM_VPS_DIR on $LOOM_SSH" >&2
   exit 1
@@ -66,7 +68,7 @@ fi
 
 # 2. The db password: local env wins, else the VPS's .env.
 if [[ -z "${POSTGRES_PASSWORD:-}" ]]; then
-  POSTGRES_PASSWORD="$(ssh "$LOOM_SSH" "cd $LOOM_VPS_DIR && sed -n 's/^POSTGRES_PASSWORD=//p' .env | tail -1")"
+  POSTGRES_PASSWORD="$(ssh "$LOOM_SSH" "cd $VPS_DIR_Q && sed -n 's/^POSTGRES_PASSWORD=//p' .env | tail -1")"
   POSTGRES_PASSWORD="${POSTGRES_PASSWORD%\"}"; POSTGRES_PASSWORD="${POSTGRES_PASSWORD#\"}"
 fi
 if [[ -z "$POSTGRES_PASSWORD" ]]; then

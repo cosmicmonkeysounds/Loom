@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ALERT_WINDOW_MS, READOUT_GRACE_MS, markAfterHistory, maxSeqOf, maxTsOf, nextAlert, pickAlerts, unsolicitedReadout } from "../src/alerts.ts";
+import { ALERT_WINDOW_MS, READOUT_GRACE_MS, initialMark, markAfterHistory, maxSeqOf, maxTsOf, nextAlert, pickAlerts, unsolicitedReadout } from "../src/alerts.ts";
 import type { ChatMessage } from "../src/types.ts";
 
 function msg(seq: number, alert: boolean, opts: { hidden?: boolean; ts?: number } = {}): ChatMessage {
@@ -79,6 +79,23 @@ describe("the mark across a reconnect", () => {
     expect(markAfterHistory(fresh, 40, false)).toBe(1);
     expect(nextAlert(fresh, markAfterHistory(fresh, 40, false), 2).alert).toBeNull();
     expect(markAfterHistory([], 5, true)).toBe(-1);
+  });
+});
+
+describe("a fresh sign-in (L-1)", () => {
+  it("keeps the same session's stored mark; a new sign-in baselines on its first history", () => {
+    expect(initialMark({ session: "tok", mark: 7 }, "tok")).toEqual({ mark: 7, baseline: false });
+    expect(initialMark({ session: "old", mark: 7 }, "tok")).toEqual({ mark: -1, baseline: true });
+    expect(initialMark(null, "tok")).toEqual({ mark: -1, baseline: true });
+    expect(initialMark(null, null)).toEqual({ mark: -1, baseline: false });
+    // The performer signing in after go-live: the first history is old news…
+    const replay = [msg(0, false), msg(1, true, { ts: 5 * MIN }), msg(2, false, { ts: 6 * MIN })];
+    const { mark, baseline } = initialMark(null, "booth");
+    const after = markAfterHistory(replay, mark, baseline);
+    expect(after).toBe(2);
+    expect(nextAlert(replay, after, 7 * MIN).alert).toBeNull();
+    // …while the same session reconnecting after a screen-off still banners.
+    expect(nextAlert(replay, markAfterHistory(replay, 0, false), 7 * MIN).alert?.seq).toBe(1);
   });
 });
 

@@ -659,7 +659,7 @@ export function useGuestSession(): GuestSession {
     }
     void post<{ channel: string }>("/api/guest/checkin", { at })
       .then((r) => threads.open(r.channel))
-      .catch((e: unknown) => alerts.raise(e instanceof Error ? e.message : "Check-in failed."));
+      .catch((e: unknown) => alerts.raise(e instanceof Error ? e.message : "Check-in failed.", { quiet: true }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me, status, post]);
   const dismissAlert = alerts.dismiss;
@@ -884,6 +884,9 @@ export function usePrimeSession(): PrimeSession {
   // Trabolta's warning to Clippy — banners and chimes too.
   const alertsRef = useRef<ReturnType<typeof useAlerts> | null>(null);
   const lastActionAt = useRef(Number.NEGATIVE_INFINITY);
+  /** The booth's own requests in flight: a readout while one is pending is
+   *  its answer, however slow the network (a scan on cellular). */
+  const inFlight = useRef(0);
   const { messages, connected } = useChatStream(url, {
     onSnapshot: (v) => setView(v as PrimeView),
     onTyping,
@@ -894,7 +897,7 @@ export function usePrimeSession(): PrimeSession {
     },
     onResponse: (text) => {
       setResponses((r) => [{ id: rid.current++, text }, ...r]);
-      if (unsolicitedReadout(lastActionAt.current, Date.now())) alertsRef.current?.raise(text);
+      if (inFlight.current === 0 && unsolicitedReadout(lastActionAt.current, Date.now())) alertsRef.current?.raise(text);
     },
     // Going live signs every performer out (rehearsal booths must not carry
     // into the show); a reset / reload keeps the character — the server just
@@ -919,6 +922,7 @@ export function usePrimeSession(): PrimeSession {
   const post = useCallback(
     async <T,>(path: string, body?: unknown, token?: string): Promise<T> => {
       lastActionAt.current = Date.now();
+      inFlight.current++;
       try {
         return await api<T>(`${base}${path}`, body, token);
       } catch (e) {
@@ -927,6 +931,9 @@ export function usePrimeSession(): PrimeSession {
           else if (performerSessionDead(e.status, e.message)) dropBooth(lifecycleNotice("golive", SessionRole.Performer));
         }
         throw e;
+      } finally {
+        inFlight.current--;
+        lastActionAt.current = Date.now(); // the grace runs from the answer too
       }
     },
     [base, auth, dropBooth],

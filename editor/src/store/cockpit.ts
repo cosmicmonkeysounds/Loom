@@ -402,8 +402,9 @@ export interface CockpitState {
   setVar(path: string, value: string): Promise<void>
   /** Re-pair a lost guest (N-02): mint a fresh session for the SAME guest and
    *  resolve to the resume link their new phone scans. Server runs only (the
-   *  local backend has no phones — null, reason in `error`). */
-  pairGuest(id: string): Promise<{ url: string; name: string } | null>
+   *  local backend has no phones — null, reason in `error`). `revokeOthers`
+   *  also signs out the guest's other phones (a lost phone someone found). */
+  pairGuest(id: string, opts?: { revokeOthers?: boolean }): Promise<{ url: string; name: string } | null>
   /** Release a performer's part (N-10) so they can re-sign on a loaner.
    *  Resolves to how many sessions held it (null on failure / local runs). */
   releasePart(character: string): Promise<number | null>

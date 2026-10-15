@@ -44,7 +44,7 @@ import { foldName } from "../src/parser/names.ts";
 import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
 import { Pairing } from "./routes/n02.ts";
 import { PushRoutes } from "./routes/k31.ts";
-import { PushHub, boothOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
+import { PushHub, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
 import { SpatialHub, houseVersion, houseWarnings, isWorld, parsePose, sortCandidates, type SessionRef } from "./spatial.ts";
 import {
   AgentHub,
@@ -396,6 +396,8 @@ export class EventRuntime {
         this.guestTokens.set(token, id);
         this.persistGuests();
       },
+      isPersona: (id) => this.personaOwners.has(id) || id.startsWith("p-"),
+      revokeGuest: (id) => this.revokeGuest(id),
       sessions: this.sessions,
       persistSessions: () => this.persistSessions(),
       endBooths: (character) => {
@@ -569,6 +571,30 @@ export class EventRuntime {
 
   /** Close every stream of one role (after a cut they announce) and forget
    *  the clients, so presence stops counting them. */
+  /** N-02 `revokeOthers`: cut every token of guest `id`, their real
+   *  streams, and their push devices. Returns how many tokens went. */
+  private revokeGuest(id: string): number {
+    let n = 0;
+    for (const [token, guest] of [...this.guestTokens]) {
+      if (guest !== id) continue;
+      this.guestTokens.delete(token);
+      n++;
+    }
+    if (n > 0) this.persistGuests();
+    for (const c of [...this.clients]) {
+      if (c.role !== "guest" || c.id !== id || c.via !== undefined) continue;
+      this.clients.delete(c);
+      try {
+        c.res.end();
+      } catch {
+        /* client already gone */
+      }
+    }
+    this.push.drop((owner) => owner === guestOwner(id));
+    this.pushPresence();
+    return n;
+  }
+
   private endClients(role: Client["role"]): void {
     for (const c of [...this.clients]) {
       if (c.role !== role) continue;

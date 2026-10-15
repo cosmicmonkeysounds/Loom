@@ -296,7 +296,11 @@ push off cleanly (`enabled: false`, no 🔔 card). Routes, per event:
 `GET /api/push/config` → `{enabled, publicKey}`; `POST
 /api/push/subscribe {subscription}` (guest token → `guest:<id>`,
 performer token → `prime:<character>`; a director's play-as session is
-refused); `POST /api/push/unsubscribe {endpoint}`; `POST
+refused; the endpoint must be on a known push service —
+`PUSH_SERVICE_HOSTS`: FCM, `*.push.apple.com`, Mozilla, `*.notify.windows.com`,
+never an IP literal or a port → else 400; 10 per owner per minute → 429;
+a repeat writes nothing); `POST /api/push/unsubscribe {endpoint}` (the
+play app sends it on Leave / Sign out); `POST
 /api/push/visible {token, endpoint, hidden}` (the client's
 `sendBeacon`); `POST /api/mod/push/status` → who is subscribed.
 Subscriptions live in `push.json` in the event's state dir (one owner per
@@ -405,7 +409,10 @@ Two planes:
   `POST /api/projects/:id/event` (launch `live`/`preview`) + `…/pause|resume|end`.
   Codes are pinned per project: a launch reuses the previous event's three
   codes (`lastEventCodes`; ended events free them), so End → relaunch keeps
-  every printed join / clue QR working.
+  every printed join / clue QR working. To replace a leaked code, End the
+  event and relaunch with `{"rotate": "staff"}` in the launch body (fresh
+  performer + moderator codes, the guest code and printed QRs kept) or
+  `{"rotate": true}` (all three fresh — reprint the QRs).
   All ownership-scoped to the signed-in author. If the DB is unreachable the
   control plane disables itself and the LAN event plane still runs.
 - **Event plane** — one `EventRuntime` per live event under `/e/:eventId`, kept
@@ -447,10 +454,11 @@ Two planes:
   or the room is a prison / cutscene / hidden from them; 429 inside a
   20 s per-guest cooldown. → `{ok, at, channel: "loc:<at>", moved}`.
 - **Lost phones** (N-02 / N-10, `server/routes/n02.ts`, mod-only): `POST
-  /e/:id/api/mod/guest/pair {id}` mints a fresh guest token for an
-  existing Person (persisted in `guests.json`, cut by every restart like
-  a registration's; the old tokens stay valid) → `{ok, id, name, token,
-  url}` with `url` = `<join base>/?code=<event>&resume=<token>`, which the
+  /e/:id/api/mod/guest/pair {id, revokeOthers?}` mints a fresh guest
+  token for an existing Person (persisted in `guests.json`, cut by every
+  restart like a registration's; the old tokens stay valid unless
+  `revokeOthers: true`, which cuts them + their streams + push devices;
+  a director's persona → 409) → `{ok, id, name, token, revoked, url}` with `url` = `<join base>/?code=<event>&resume=<token>`, which the
   play app adopts. `POST /e/:id/api/mod/prime/release {character}` takes
   the part off every session holding it (a performer+admin session keeps
   admin), closes those booth streams, persists → `{ok, character,

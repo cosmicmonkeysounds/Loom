@@ -53,7 +53,9 @@ Front of house: getting people in.
   work during the rehearsal (anyone with the event code can join it) and
   **stay the same when you go live** — and when you end the run and start
   a new one, since codes belong to the project — so you can print them
-  early.
+  early. If a performer or moderator code leaks, end the run and relaunch
+  it with `rotate: "staff"` (see the core README): those two codes change,
+  the guest code and the printed QRs don't.
 - **Directing now** — every co-writer with a console open, who started
   the run, and when.
 - **Look up a guest** — scan a guest's pass QR (or type their id) to
