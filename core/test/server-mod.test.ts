@@ -8,9 +8,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 
-import { EventRuntime } from "../server/event-runtime.ts";
+import { EventRuntime, type EventRuntimeInit } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import { guestView, primeView } from "../server/views.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
@@ -20,7 +20,7 @@ const SCENARIO = scenarioSource("escape-the-internet");
 const CODES = { event: "EVT111", prime: "PRM111", mod: "MOD111" };
 
 const dirs: string[] = [];
-function freshRuntime(): EventRuntime {
+function freshRuntime(extra: Partial<EventRuntimeInit> = {}): EventRuntime {
   const d = mkdtempSync(join(tmpdir(), "loom-mod-"));
   dirs.push(d);
   return new EventRuntime({
@@ -30,6 +30,7 @@ function freshRuntime(): EventRuntime {
     scenarioName: "escape-the-internet",
     scenarioSource: SCENARIO,
     joinBase: () => "http://localhost",
+    ...extra,
   });
 }
 afterAll(() => {
@@ -384,7 +385,7 @@ describe("mod choice answering", () => {
 
 // -- collaborative lifecycle: reset / reload / end reach every open console --
 
-function modStream(rt: EventRuntime, name?: string) {
+function modStream(rt: EventRuntime, name?: string, query = "") {
   const chunks: string[] = [];
   const stream = {
     writeHead() {
@@ -398,7 +399,7 @@ function modStream(rt: EventRuntime, name?: string) {
       return stream;
     },
   } as unknown as ServerResponse;
-  const open = rt.handle(fakeReq(null), stream, "GET", "/events", new URL("http://x/events?role=mod"), {
+  const open = rt.handle(fakeReq(null), stream, "GET", "/events", new URL(`http://x/events?role=mod${query}`), {
     moderator: true,
     moderatorName: name,
   });
@@ -409,7 +410,14 @@ function modStream(rt: EventRuntime, name?: string) {
       .split("\n\n")
       .filter((f) => f.startsWith(`event: ${type}\n`))
       .map((f) => JSON.parse(f.slice(f.indexOf("data: ") + 6)));
-  return { open, events };
+  /** Every SSE event type, in arrival order. */
+  const kinds = (): string[] =>
+    chunks
+      .join("")
+      .split("\n\n")
+      .filter((f) => f.startsWith("event: "))
+      .map((f) => f.slice(7, f.indexOf("\n")));
+  return { open, events, kinds };
 }
 
 describe("lifecycle fan-out to co-directors", () => {
@@ -644,9 +652,11 @@ describe("being anyone — the mod reads a participant's own projection", () => 
     await a.open;
     const created = await postAs(rt, "/api/mod/persona", { name: "Ivo" }, "Ada");
     const pid = created.json.guest.id as string;
-    const snaps = a.events("snapshot") as Array<{ roster: Array<{ id: string; owner?: string | null }> }>;
-    const row = snaps[snaps.length - 1]!.roster.find((r) => r.id === pid);
-    expect(row?.owner).toBe("Ada");
+    // Mod snapshots are coalesced (≤ 2/s): the persona lands in the trailing frame.
+    await vi.waitFor(() => {
+      const snaps = a.events("snapshot") as Array<{ roster: Array<{ id: string; owner?: string | null }> }>;
+      expect(snaps[snaps.length - 1]!.roster.find((r) => r.id === pid)?.owner).toBe("Ada");
+    });
   });
 });
 
@@ -689,5 +699,108 @@ describe("the go-live cut", () => {
     const primeState = fakeRes();
     await rt.handle(fakeReq({}), primeState, "GET", "/api/state", new URL(`http://x/api/state?role=prime&token=${prime.json.token}`), {});
     expect(primeState.statusCode).toBe(200);
+  });
+});
+
+// -- K-22: the lean mod stream + coalesced mod snapshots ----------------------
+
+describe("the mod feed's bandwidth", () => {
+  it("?lean=1 gets every sim / message / lifecycle frame but never a snapshot or history", async () => {
+    const rt = freshRuntime({ modSnapshotMs: 0 });
+    rt.openDoors();
+    const lean = modStream(rt, undefined, "&lean=1");
+    const full = modStream(rt, "Ada");
+    await Promise.all([lean.open, full.open]);
+    expect(lean.events("snapshot")).toEqual([]);
+    expect(lean.events("history")).toEqual([]);
+
+    await post(rt, "/api/mod/say", { channel: "lobby", text: "lean hello" });
+    const probe = Sim.fromSources(SCENARIO);
+    const beat = [...probe.model.beats.keys()].find((b) => !b.includes("."))!;
+    await post(rt, "/api/mod/beat", { name: beat });
+    expect((lean.events("message") as Array<{ text: string }>).some((m) => m.text === "lean hello")).toBe(true);
+    // Every sim frame the full console saw, the lean one saw too.
+    expect(lean.events("sim").length).toBeGreaterThan(0);
+    expect(lean.events("sim")).toEqual(full.events("sim"));
+
+    expect((await postAs(rt, "/api/mod/reset", {}, "Ada")).status).toBe(200);
+    expect(lean.events("lifecycle")).toContainEqual(expect.objectContaining({ kind: "reset" }));
+    expect(lean.events("snapshot")).toEqual([]);
+    expect(lean.events("history")).toEqual([]);
+    // The full console still gets its views.
+    expect(full.events("snapshot").length).toBeGreaterThan(1);
+    expect(full.events("history").length).toBe(2);
+  });
+
+  it("lean is a mod-feed flag only — a guest stream ignores it", async () => {
+    const rt = freshRuntime();
+    rt.openDoors();
+    const reg = await post(rt, "/api/guest/register", { name: "Alice", passcode: CODES.event }, false);
+    const chunks: string[] = [];
+    const res = {
+      writeHead: () => res,
+      write: (c: unknown) => chunks.push(String(c)) > 0,
+      end: () => res,
+    } as unknown as ServerResponse;
+    const url = new URL(`http://x/events?role=guest&lean=1&token=${encodeURIComponent(reg.json.token as string)}`);
+    await rt.handle(fakeReq(null), res, "GET", "/events", url, {});
+    const frames = chunks.join("").split("\n\n");
+    expect(frames.filter((f) => f.startsWith("event: snapshot\n")).length).toBe(1);
+    expect(frames.filter((f) => f.startsWith("event: history\n")).length).toBe(1);
+  });
+
+  it("coalesces a burst of steps into one trailing mod snapshot, built after the last step", async () => {
+    const rt = freshRuntime({ modSnapshotMs: 150 });
+    rt.openDoors();
+    const a = modStream(rt, "Ada");
+    const b = modStream(rt, "Bo");
+    await Promise.all([a.open, b.open]);
+    const before = a.events("snapshot").length;
+    const ids: string[] = [];
+    for (let i = 0; i < 8; i++) {
+      const p = await postAs(rt, "/api/mod/persona", { name: `Burst ${i}` }, "Ada");
+      ids.push(p.json.guest.id as string);
+    }
+    // At most one frame went out during the burst (the window's leading edge).
+    expect(a.events("snapshot").length - before).toBeLessThanOrEqual(1);
+    await vi.waitFor(() => {
+      const snaps = a.events("snapshot") as Array<{ roster: Array<{ id: string }> }>;
+      const roster = snaps[snaps.length - 1]!.roster.map((r) => r.id);
+      for (const id of ids) expect(roster).toContain(id);
+    });
+    // ≤ 2 frames for 8 steps; both directors got the same bytes.
+    expect(a.events("snapshot").length - before).toBeLessThanOrEqual(2);
+    expect(b.events("snapshot").slice(-1)).toEqual(a.events("snapshot").slice(-1));
+    rt.dispose();
+  });
+
+  it("a restart inside the coalescing window still sends the snapshot before the new history", async () => {
+    const rt = freshRuntime({ modSnapshotMs: 60_000 });
+    rt.openDoors();
+    const a = modStream(rt, "Ada");
+    await a.open;
+    await postAs(rt, "/api/mod/persona", { name: "Ivo" }, "Ada"); // leaves a trailing frame pending
+    const from = a.kinds().length;
+    expect((await postAs(rt, "/api/mod/reset", {}, "Ada")).status).toBe(200);
+    const after = a.kinds().slice(from).filter((k) => k === "snapshot" || k === "history" || k === "lifecycle");
+    expect(after[0]).toBe("lifecycle");
+    expect(after.indexOf("snapshot")).toBeGreaterThan(-1);
+    expect(after.indexOf("snapshot")).toBeLessThan(after.indexOf("history"));
+    rt.dispose();
+  });
+
+  it("a director connecting gets exactly one snapshot, and the others one presence frame", async () => {
+    const rt = freshRuntime({ modSnapshotMs: 0 });
+    rt.openDoors();
+    const a = modStream(rt, "Ada");
+    await a.open;
+    const before = a.events("snapshot").length;
+    const b = modStream(rt, "Bo");
+    await b.open;
+    expect(b.kinds().filter((k) => k === "snapshot" || k === "history")).toEqual(["snapshot", "history"]);
+    expect(a.events("snapshot").length - before).toBe(1);
+    const last = a.events("snapshot").slice(-1)[0] as { directors?: string[] };
+    expect(b.events("snapshot")[0]).toEqual(last);
+    rt.dispose();
   });
 });

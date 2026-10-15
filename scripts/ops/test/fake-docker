@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# A stand-in `docker` for scripts/ops/test/run.sh. Images are files under
+# $FAKE/images; every call is appended to $FAKE/calls.
+set -u
+echo "$* LOOM_TAG=${LOOM_TAG:-}" >> "$FAKE/calls"
+all="$*"
+case "$all" in
+  *"image inspect "*) [ -f "$FAKE/images/${!#}" ] ;;
+  "image ls"*) ls "$FAKE/images" 2>/dev/null | sed 's/$/  1 hour ago  100MB/' ;;
+  "tag "*) touch "$FAKE/images/$3" ;;
+  "inspect --format {{.State.Health.Status}}"*) echo "${FAKE_HEALTH:-healthy}" ;;
+  "inspect --format {{.Image}}"*) echo "sha256:abc" ;;
+  compose*" build"*)
+    [ "${FAKE_BUILD_FAIL:-0}" = 1 ] && exit 1
+    touch "$FAKE/images/loom-server:$LOOM_TAG" "$FAKE/images/loom-proxy:$LOOM_TAG" ;;
+  compose*" ps -q "*) [ "${FAKE_PS_EMPTY:-0}" = 1 ] || echo "cid-123" ;;
+  compose*"exec -T db pg_dump"*)
+    [ "${FAKE_DB_DOWN:-0}" = 1 ] && { echo "service db is not running" >&2; exit 1; }
+    printf -- '--\n-- PostgreSQL database dump\n--\nCREATE TABLE x();\n' ;;
+  compose*"exec -T loom tar czf - -C /data"*)
+    excl=""; case "$all" in *"--exclude=./pictures"*) excl="--exclude=./pictures" ;; esac
+    tar cf - -C "$FAKE/data" $excl . | gzip -c ;;
+  compose*"exec -T db pg_isready"*) exit 0 ;;
+  compose*"exec -T db psql"*) cat > "$FAKE/restored.sql" ;;
+  compose*" run --rm --no-deps -T --entrypoint sh loom"*) cat > "$FAKE/restored.tgz" ;;
+  compose*) : ;;
+  *) echo "fake-docker: unhandled: $all" >&2; exit 99 ;;
+esac

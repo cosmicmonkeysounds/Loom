@@ -1,28 +1,55 @@
-# Trapped in the Internet — the house's show-control config (the desktop).
+# Trapped in the Internet — the house's show-control config (the house Mac).
 # The story (core/examples/trapped-in-the-internet) only emits directives;
 # this file makes them physical. Run it with:
 #
 #   uv run stagehand check --config trapped.house.yaml
-#   uv run stagehand run   --config trapped.house.yaml
+#   uv run stagehand run   --config trapped.house.yaml --only show
+#
+# On the night it runs as its own launchd job, next to (never inside) the
+# agents worker on the same Mac — restart one without touching the other,
+# and never `pkill -f "stagehand run"`:
+#
+#   uv run stagehand launchd install --job show   --config trapped.house.yaml
+#   uv run stagehand launchd install --job agents --config laptop.yaml
+#   uv run stagehand launchd restart --job show   # logs: ~/Library/Logs/stagehand/
 #
 # (show.example.yaml stays the generic, test-pinned example; this is the
 # real show. tests/test_trapped_house.py cross-checks it against the story.)
 #
-# THE RIG
-#   Mosquitto on the house Mac; Zigbee2MQTT on the same broker. Its anonymous
-#   listener is bound to 127.0.0.1 (stagehand + Z2M are local); the WLED
-#   controllers use a password-only LAN listener — scripts/house-mac/alexa.md
-#   → "Lock down the broker".
+# THE RIG — one house Mac does it all: Mosquitto + Zigbee2MQTT, this file
+#   (stagehand `show`), the agents worker + Ollama, QLab, the TV over the
+#   long HDMI run and the speakers through the MOTU. It has a STATIC IP (a
+#   DHCP reservation on the router); `mqtt.host` below is that address, and
+#   the server-room ESP32 firmware hard-codes the same one. Mosquitto needs a
+#   LAN listener for the network props (the WLED controllers, the ESP32):
+#   the anonymous listener is bound to 127.0.0.1 (stagehand + Z2M are
+#   local) and the props use a password-only listener on 1884 —
+#   scripts/house-mac/alexa.md → "Lock down the broker".
+#   The story server is the VPS (https://app.mapsandducks.com); this machine
+#   only dials out. If the house internet dies, fire the cues by hand
+#   (QLab + the Z2M frontend scenes + WLED presets).
+#
 #   Z2M groups, one per house.json room plus a whole-house group, named:
 #     house · living (The Desktop) · kitchen (The Cache) · backyard (The Cloud)
 #     registry (The Registry, rec room) · tube (hall + stair landing)
 #     mudroom · bathroom (Disk Cleanup) · tent (The Internet) · server_room
-#   Scenes: `scene_store` each look ONCE per group while setting up, with the
-#   IDs in the table below (same ID in every group), then the show only ever
-#   sends `scene_recall`.
-#   WLED (the PAUTIX COB runs on ESP32s): group topic `wled/all`, plus device
-#   topics wled/tube, wled/living, wled/kitchen, wled/backyard, wled/registry,
-#   wled/server. Build IDENTICAL preset IDs on every controller (same table).
+#   SAFETY: the stairs, the bathroom, the tent, the server room and the
+#   server-room → living-room path are NOT in `house` (nor in any group a
+#   darkening cue targets), so no `house` scene and no blackout can darken
+#   them; give those bulbs `power_on_behavior: on`. `bathroom`, `tent` and
+#   `server_room` exist for their own looks only; nothing here turns them off.
+#   Scenes: `scene_store` each look ONCE while setting up — a whole-house look
+#   on the `house` group itself, a room look on that room's group — with the
+#   IDs in the table below, then the show only ever sends `scene_recall`.
+#
+#   WLED: the PAUTIX strips are addressable, on off-the-shelf WLED
+#   controllers. Group topic `wled/all`, plus device topics wled/tube,
+#   wled/living, wled/kitchen, wled/backyard, wled/registry, wled/server.
+#   Build IDENTICAL preset IDs on every controller (same table). If one
+#   controller drives several runs as segments, build each preset with the
+#   segment looks it needs (e.g. ps 22 = the tube segment dim, the others off).
+#   Preset 22 (tube_safe) lives on the tube controller: a dim, STATIC warm
+#   white on the hall + stair landing — what the blackout leaves lit.
 #   QLab (or any OSC cue player) on this machine, UDP 53000: one cue per
 #   `sound <name>`, its cue NUMBER = the name (e.g. cue "dance_song").
 #
@@ -45,7 +72,8 @@
 #  10  lights_y2k            house  scene 10 amber, dim           all ps 10 (slow red pulse)
 #  11  lights_server_open    server_room scene 11 dim green       server ps 11
 #  12  lights_alarm          server_room red breathe + house 12   all ps 12 (red strobe)
-#  13  lights_blackout       house  OFF, no transition            all off
+#  13  lights_blackout       house  OFF, no transition            per device: living/kitchen/backyard/
+#                                                                  registry off, tube ps 22, server untouched
 #  14  lights_dance          house  scene 14 dance                all ps 14 (audio-reactive if fitted)
 #  15  lights_final_reveal   house  scene 15 near dark            all ps 15 (embers)
 #  16  lights_song           house  scene 16 pink, romantic       all ps 16
@@ -55,6 +83,11 @@
 #  20  lights_restore        house  scene 20 house normal         all ps 20
 #  21  screens_flicker       house  effect blink (one-shot)       all ps 21 (a short Lightning playlist
 #                                                                  whose `end` is preset 20)
+#  22  (tube_safe)           —                                    tube ps 22 (dim static: the blackout's
+#                                                                  stair light)
+#
+# Build ps 15 (final reveal) and ps 18 (purgatory) on the tube controller as
+# a look that still lights the stair landing.
 #
 # SCREENS. The `screens_*` / `tv_*` / `terminals_*` / `tablet_*` cues have no
 # rule here on purpose: the Screens layer (design §7 #13) consumes them from
@@ -62,14 +95,19 @@
 # Night.terminals. Only `screens_flicker` is physical today: it blinks the
 # house so Trabolta's power is felt.
 
+# The real event id + mod passcode never go in this tracked file: put them in
+# trapped.house.local.yaml next to it (git-ignored, merged over `server:`) —
+#   server: { event: <id>, mod_passcode: "<code>" }
+# — or set LOOM_EVENT_ID / LOOM_MOD_PASSCODE. `stagehand check` flags a
+# CHANGE-ME that nothing replaced.
 server:
-  url: http://127.0.0.1:7000
-  event: default             # the live event's id, or "default"
+  url: https://app.mapsandducks.com
+  event: CHANGE-ME-EVENT-ID  # the live event's id (Run → front of house / the /e/<id> URL)
   mod_passcode: "CHANGE-ME"  # or mod_token: "…"
 
 show:
   mqtt:
-    host: 127.0.0.1
+    host: 192.168.8.10       # the house Mac's static IP (same as the ESP32 firmware)
     port: 1883
     client_id: stagehand-house
 
@@ -81,20 +119,23 @@ show:
   cues:
     # ── Trabolta's `cut_the_lights` power and its restore (the long form) ──
     # <cue: lights, room: The Cache, state: off> — the story allow-lists
-    # exactly these four rooms (cast/trabolta.loom) and turns the room back on
-    # itself 90 s later (<cue: lights, room: {Night.dark_room}, state: on>).
+    # exactly these three rooms (cast/trabolta.loom; never The Cloud: the
+    # outdoor steps + the tent path) and turns the room back on itself 90 s
+    # later (<cue: lights, room: {Night.dark_room}, state: on>).
+    # The kitchen (knives, a stove) only drops to ~20%, never dark.
     - on: { directive: cue }
       match: { target: lights, room: The Cache, state: "off" }
-      mqtt: { topic: "zigbee2mqtt/kitchen/set", payload: { state: "OFF", transition: 0 } }
+      mqtt: { topic: "zigbee2mqtt/kitchen/set", payload: { state: "ON", brightness: 51, transition: 0 } }
     - on: { directive: cue }
       match: { target: lights, room: The Cache, state: "off" }
-      mqtt: { topic: "wled/kitchen/api", payload: { "on": false } }
+      # bri only: WLED keeps its on/off state, so the cut never lights a strip that was off.
+      mqtt: { topic: "wled/kitchen/api", payload: { bri: 51 } }
     - on: { directive: cue }
       match: { target: lights, room: The Cache, state: "on" }
-      mqtt: { topic: "zigbee2mqtt/kitchen/set", payload: { state: "ON", transition: 1 } }
+      mqtt: { topic: "zigbee2mqtt/kitchen/set", payload: { state: "ON", brightness: 254, transition: 1 } }
     - on: { directive: cue }
       match: { target: lights, room: The Cache, state: "on" }
-      mqtt: { topic: "wled/kitchen/api", payload: { "on": true } }
+      mqtt: { topic: "wled/kitchen/api", payload: { "on": true, bri: 255 } }
 
     - on: { directive: cue }
       match: { target: lights, room: The Desktop, state: "off" }
@@ -108,19 +149,6 @@ show:
     - on: { directive: cue }
       match: { target: lights, room: The Desktop, state: "on" }
       mqtt: { topic: "wled/living/api", payload: { "on": true } }
-
-    - on: { directive: cue }
-      match: { target: lights, room: The Cloud, state: "off" }
-      mqtt: { topic: "zigbee2mqtt/backyard/set", payload: { state: "OFF", transition: 0 } }
-    - on: { directive: cue }
-      match: { target: lights, room: The Cloud, state: "off" }
-      mqtt: { topic: "wled/backyard/api", payload: { "on": false } }
-    - on: { directive: cue }
-      match: { target: lights, room: The Cloud, state: "on" }
-      mqtt: { topic: "zigbee2mqtt/backyard/set", payload: { state: "ON", transition: 1 } }
-    - on: { directive: cue }
-      match: { target: lights, room: The Cloud, state: "on" }
-      mqtt: { topic: "wled/backyard/api", payload: { "on": true } }
 
     - on: { directive: cue }
       match: { target: lights, room: The Registry, state: "off" }
@@ -209,6 +237,9 @@ show:
     - on: { directive: cue }
       match: { target: lights_server_open }
       mqtt: { topic: "wled/server/api", payload: { "on": true, ps: 11 } }
+    - on: { directive: cue }
+      match: { target: lights_server_open }
+      mqtt: { topic: "show/serverroom/alarm", payload: { state: "off" } }
 
     - on: { directive: cue }
       match: { target: lights_alarm }
@@ -219,15 +250,36 @@ show:
     - on: { directive: cue }
       match: { target: lights_alarm }
       mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 12 } }
+    # The server-room ESP32's own siren + ring strobe, for the story's 120 s
+    # latch (it strobes locally even if the Wi-Fi drops mid-alarm).
+    - on: { directive: cue }
+      match: { target: lights_alarm }
+      mqtt: { topic: "show/serverroom/alarm", payload: { state: "on", seconds: 120 } }
 
     # The blackout is 10 s in the story: it cues lights_dance itself
-    # (Night.dance_at), so the off here needs no timer.
+    # (Night.dance_at), so the off here needs no timer. `house` holds no
+    # safety bulb (see THE RIG), and WLED goes off PER DEVICE: never
+    # `wled/all`, so the tube strip (hall + stair landing) drops to its dim
+    # static preset and the server-room strip (guests are in there) is left
+    # alone.
     - on: { directive: cue }
       match: { target: lights_blackout }
       mqtt: { topic: "zigbee2mqtt/house/set", payload: { state: "OFF", transition: 0 } }
     - on: { directive: cue }
       match: { target: lights_blackout }
-      mqtt: { topic: "wled/all/api", payload: { "on": false } }
+      mqtt: { topic: "wled/living/api", payload: { "on": false } }
+    - on: { directive: cue }
+      match: { target: lights_blackout }
+      mqtt: { topic: "wled/kitchen/api", payload: { "on": false } }
+    - on: { directive: cue }
+      match: { target: lights_blackout }
+      mqtt: { topic: "wled/backyard/api", payload: { "on": false } }
+    - on: { directive: cue }
+      match: { target: lights_blackout }
+      mqtt: { topic: "wled/registry/api", payload: { "on": false } }
+    - on: { directive: cue }
+      match: { target: lights_blackout }
+      mqtt: { topic: "wled/tube/api", payload: { "on": true, ps: 22 } }
 
     - on: { directive: cue }
       match: { target: lights_dance }
@@ -277,6 +329,9 @@ show:
     - on: { directive: cue }
       match: { target: lights_restore }
       mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 20 } }
+    - on: { directive: cue }
+      match: { target: lights_restore }
+      mqtt: { topic: "show/serverroom/alarm", payload: { state: "off" } }
 
     # ── Trabolta's flicker (and the story's involuntary ones): the screens
     # stutter (Screens layer) and the house blinks once so it is felt. ──
@@ -352,30 +407,45 @@ show:
     - on: { directive: announce }
       mqtt: { topic: "show/announce", payload: { text: "{target}" } }
 
-    # ── The optional server-room maglock: `do door server_room, state: unlocked`
-    # (at majority_reached). Maglock on a Zigbee relay: power off = released. ──
+    # ── The server-room door INDICATOR (no maglock, ever: the door is never
+    # physically locked). `do door server_room, state: locked|unlocked` →
+    # the ESP32's ring: red breathing = armed, green = unlocked. The one
+    # retained command here — it is an indicator, so a rebooted ESP32
+    # re-converges on it, and the story re-sends `locked` on every boot. ──
     - on: { directive: door }
       match: { target: server_room, state: unlocked }
-      mqtt: { topic: "zigbee2mqtt/server_room_lock/set", payload: { state: "OFF" } }
+      mqtt: { topic: "show/serverroom/lock", payload: { state: unlocked }, retain: true }
     - on: { directive: door }
       match: { target: server_room, state: locked }
-      mqtt: { topic: "zigbee2mqtt/server_room_lock/set", payload: { state: "ON" } }
+      mqtt: { topic: "show/serverroom/lock", payload: { state: locked }, retain: true }
 
   # --- house → story ----------------------------------------------------------
   # Every name here must be a `when <name>` story rule in main.loom: stagehand
   # never validates signal names, so a typo is silent (the test checks it).
+  # Retained messages never fire a rule (the broker replays them on every
+  # reconnect); on an `edge: true` rule they only prime the level, so a
+  # stagehand restart with the door propped open fires nothing.
   sensors:
-    # Server-room door: a Zigbee contact sensor (contact false = OPEN). Z2M
-    # republishes the state on every battery report, so the debounce stops a
-    # flood, and the story latches the alarm for 120 s on its own. (Edge
-    # detection and ignoring retained messages are stagehand code #4.)
+    # Server-room door, PRIMARY: the reed switch on the server-room ESP32
+    # (copper tape is the fallback on a second GPIO, same topic). Firmware
+    # publishes {"open": bool} on change, RETAINED (so a restart primes).
+    - on: { topic: "sensors/serverroom/door", when: "open == true" }
+      edge: true
+      signal: { name: server_door_opened, debounce_s: 5 }
+    # …and the optional Zigbee contact on the same door (contact false =
+    # OPEN). Z2M republishes the state on every battery report — the edge
+    # makes that one fire per real opening; set `retain: true` on this device
+    # in Z2M so a restart primes too. The story latches the alarm for 120 s,
+    # so both sensors firing for one opening is harmless.
     - on: { topic: "zigbee2mqtt/server_room_door", when: "contact == false" }
+      edge: true
       signal: { name: server_door_opened, debounce_s: 20 }
 
     # The printer: a Zigbee button over its START key, a reed switch on the lid.
     - on: { topic: "zigbee2mqtt/printer_button", when: "action == 'single'" }
       signal: { name: printer_button_pressed, debounce_s: 3 }
     - on: { topic: "zigbee2mqtt/printer_lid", when: "contact == false" }
+      edge: true
       signal: { name: printer_opened, debounce_s: 30 }
 
     # The patch bay (Trabolta's heart): the scanner publishes the canonical,
@@ -384,9 +454,13 @@ show:
     # Stagehand judges until signal args exist (§7 #20). These two strings MUST
     # equal the Kernel.combo_a / Kernel.combo_b seeds in main.loom and the
     # four combo-half codex entries (codex/4-trabolta.loom).
+    # Each combo fires once per time it is made (edge), however often the
+    # scanner republishes it.
     - on: { topic: "sensors/patchbay/state", when: "complete == true && combo == 'V2-D5,V4-D1,V6-D8,V7-D3'" }
+      edge: true
       signal: { name: patch_combo_a, debounce_s: 60 }
     - on: { topic: "sensors/patchbay/state", when: "complete == true && combo == 'V1-D6,V3-D2,V5-D7,V8-D4'" }
+      edge: true
       signal: { name: patch_combo_b, debounce_s: 60 }
     - on: { topic: "sensors/patchbay/state", when: "complete == true && combo != 'V2-D5,V4-D1,V6-D8,V7-D3' && combo != 'V1-D6,V3-D2,V5-D7,V8-D4'" }
       signal: { name: patch_rejected, debounce_s: 10 }

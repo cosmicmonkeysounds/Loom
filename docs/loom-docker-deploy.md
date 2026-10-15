@@ -467,6 +467,9 @@ the tablets.
 cd ~/loom && docker compose up -d --build
 ```
 
+For the show, ship pinned releases instead (`scripts/ops/ship.sh`, see
+*Pinned releases, rollback, backups* below).
+
 Restarts are safe mid-event: live state is an append-only journal that
 replays on boot, so the room recovers where it was.
 
@@ -514,6 +517,83 @@ docker run --rm -v loom_loom-state:/data -v "$PWD":/backup alpine \
 ```
 
 Copy those files off the VPS (`scp ubuntu@YOUR_VPS_IP:~/loom/loom-db-*.sql .`).
+
+### Pinned releases, rollback, backups (the show scripts)
+
+For the show, deploys go through scripts instead of a bare
+`docker compose up -d --build`, so every deploy is a **pinned tag** with
+the previous one kept for a one-command rollback. Two places run them:
+your Mac (`scripts/ops/`) and the VPS checkout (`deploy/`). `ssh` from the
+Mac to the VPS must work without a prompt; set `LOOM_VPS`
+(default `ubuntu@app.mapsandducks.com`) and `LOOM_VPS_DIR` (default
+`loom`) in `~/.config/loom/ops.env` if yours differ.
+
+| Where | Command | What it does |
+|---|---|---|
+| Mac | `scripts/ops/predeploy.sh` | Clean tree, `loomcheck --smoke` on the show, `pnpm -r typecheck` + `test`, stagehand `pytest`, the ops-script tests, compose parses → stamps the commit |
+| Mac | `scripts/ops/ship.sh show-1031` | Refuses an unstamped commit, rsyncs (never anything git-ignored: `secrets.h`, `reinstall/vr/build/`, `*.local.yaml`, `.env`), then runs `deploy/release.sh show-1031 --commit <sha>` on the VPS. `--sync-only` stops after the rsync |
+| VPS | `deploy/release.sh <tag>` | Pre-release backup → build `loom-server:<tag>` + `loom-proxy:<tag>` → `LOOM_TAG=<tag>` in `.env` → `up -d` → waits for the healthcheck + the public URL → `~/loom-ops/releases.log`. Never rebuilds an existing tag. The **first** release on a box (empty log) first adopts what runs now as `pre-<tag>`, so the very first scripted release already has a rollback target (`--no-adopt` skips it) |
+| VPS | `deploy/release.sh --adopt <tag>` | Tags what runs **now** by hand, no rebuild (the first release does this for you) |
+| VPS | `deploy/release.sh --list` | Running tag, the release log, the kept images |
+| VPS | `deploy/rollback.sh [tag]` | Back to the previous tag (or a named one), no build: a container restart. Twice in a row toggles back. A release that failed its health check is never picked |
+| VPS | `deploy/backup.sh --label nightly` | `pg_dump` + a tar of the state volume + a `.sha256`, UTC-stamped, in `~/loom-backups` (14 days kept) |
+| VPS | `deploy/restore.sh …` | Restores a pair into a compose project (below) |
+| House Mac | `scripts/ops/showbackup.sh install` | Show night: every 10 min from 19:00 to 03:00, a fresh `--label show` backup copied to `~/LoomBackups` and verified; `status` shows the newest copy's age; `uninstall` after the show |
+| Any | `scripts/ops/checklist.sh` | Prints the OCT31 §11 pre-show checklist as tick boxes |
+
+Once you use `release.sh`, don't run `docker compose up -d --build` by
+hand: it would rebuild the pinned tag in place and wipe the rollback
+target. A plain `docker compose up -d` (or a reboot) is fine; it stays on
+`.env`'s `LOOM_TAG`.
+
+**Nightly backup cron** (on the VPS, `crontab -e`). Ubuntu's cron ignores
+`CRON_TZ` and runs on the system clock, so check the VPS is on UTC
+(`timedatectl` → `Time zone: Etc/UTC`, or `sudo timedatectl set-timezone
+UTC`) and the 02:00 DST change on Nov 1 can't move it. Backups are written
+owner-only (`umask 077`): they hold guest tokens and the DB dump.
+
+```
+17 9 * * * cd ~/loom && deploy/backup.sh --label nightly >> ~/loom-backups/backup.log 2>&1
+```
+
+**Show-night copies.** Last night's backup predates every registration of
+the night, so on the night the copy that matters is the newest 10-min one
+on the house Mac. `--label show` leaves out `pictures/` (a re-fetchable
+image cache) to keep 48 copies a night light.
+
+**Restore drill** (rehearse once before the show). On the VPS, a scratch
+project gets its own volumes and starts only `db` + `loom`, with no Caddy
+and no port clash, on the image the live stack runs:
+
+```bash
+deploy/restore.sh --latest nightly --project loom-drill --check --yes
+docker compose -p loom-drill down -v          # tear the drill down
+```
+
+`--check` proves the restore: for each event whose state has guest
+tokens, the first token still reads that guest's own view. From the house
+Mac, `scripts/accept/K-08.sh` runs the whole acceptance: a show copy, the
+drill, the rollback timing (it asks first) and the 10-min job's count.
+
+**The host is dead** (show night). Start the warm standby (built 10-30
+from a provider snapshot, images pulled, `.env` + Caddy volume in place,
+left stopped). Copy the newest pair from `~/LoomBackups` on the house Mac
+to `~/loom-backups/` on the standby, then run:
+
+```bash
+cd ~/loom && deploy/restore.sh --project loom --live \
+  --db ~/loom-backups/loom-db-show-<stamp>.sql.gz \
+  --state ~/loom-backups/loom-state-show-<stamp>.tgz --yes
+docker compose up -d                          # brings Caddy back too
+```
+
+Then point the A records (`app.` + the apex) at the standby. Keep the TTL
+at 300 s in the week before the show. The restore keeps guest tokens and
+journals, so phones reconnect on their own.
+
+**Uptime alerts** are not scripted. Point an external checker (e.g.
+UptimeRobot, free tier) at `https://app.mapsandducks.com/` every minute,
+and send its alerts to the tech op and the second director, not only John.
 
 **Reset the database** (nuclear — deletes all accounts/projects):
 `docker compose down`, `docker volume rm loom_pgdata`, `docker compose up -d`.

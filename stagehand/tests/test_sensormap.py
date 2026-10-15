@@ -76,3 +76,62 @@ def test_validation():
         parse_sensor_rule({"on": {"topic": "a/b"}, "arrive": {"person": "p"}}, 0)  # missing location
     with pytest.raises(SensorMapError):
         parse_sensor_rule({"on": {"topic": "a/b"}, "signal": {"name": "x", "bogus": 1}}, 0)  # unknown key
+    with pytest.raises(SensorMapError):
+        parse_sensor_rule({"on": {"topic": "a/b"}, "edge": True, "signal": {"name": "x"}}, 0)  # edge needs a when:
+    with pytest.raises(SensorMapError, match="payload field"):
+        parse_sensor_rule({"on": {"topic": "sensors/{room}/door", "when": "room == 'kitchen'"}, "edge": True, "signal": {"name": "x"}}, 0)
+    with pytest.raises(SensorMapError, match="payload field"):
+        parse_sensor_rule({"on": {"topic": "a/b", "when": "topic == 'a/b'"}, "edge": True, "signal": {"name": "x"}}, 0)
+    with pytest.raises(SensorMapError):
+        parse_sensor_rule({"on": {"topic": "a/b", "when": "x == 1"}, "edge": "yes", "signal": {"name": "x"}}, 0)
+
+
+# -- edge + retained (a door contact that republishes its state) -------------------
+
+DOOR = {"on": {"topic": "sensors/serverroom/door", "when": "open == true"}, "edge": True, "signal": {"name": "server_door_opened"}}
+
+
+def _door(rs, d, payload, now, retained=False):
+    return [c.fields["name"] for c in evaluate_sensors(rs, "sensors/serverroom/door", payload, d, now, retained=retained)]
+
+
+def test_edge_fires_once_per_opening_however_often_open_is_republished():
+    rs, d = rules(DOOR), Debouncer()
+    assert _door(rs, d, {"open": True}, 0.0) == ["server_door_opened"]  # first open after boot fires
+    assert _door(rs, d, {"open": True}, 60.0) == []  # a battery / link report repeating "open"
+    assert _door(rs, d, {"open": True, "battery": 90}, 120.0) == []
+    assert _door(rs, d, {"open": False}, 130.0) == []
+    assert _door(rs, d, {"open": True}, 131.0) == ["server_door_opened"]  # a real second opening
+
+
+def test_edge_ignores_a_message_that_does_not_mention_the_field():
+    rs, d = rules(DOOR), Debouncer()
+    assert _door(rs, d, {"open": True}, 0.0) == ["server_door_opened"]
+    assert _door(rs, d, {"battery": 80}, 1.0) == []  # says nothing about the door: level kept…
+    assert _door(rs, d, {"open": True}, 2.0) == []  # …so this is not a new opening
+
+
+def test_retained_messages_never_fire_but_prime_the_edge():
+    rs, d = rules(DOOR), Debouncer()
+    # stagehand restarts with the door propped open: the broker replays the retained "open"
+    assert _door(rs, d, {"open": True}, 0.0, retained=True) == []
+    assert _door(rs, d, {"open": True}, 30.0) == []  # the next live republish is not an edge either
+    assert _door(rs, d, {"open": False}, 40.0) == []
+    assert _door(rs, d, {"open": True}, 41.0) == ["server_door_opened"]
+
+
+def test_retained_is_ignored_on_plain_rules_unless_accepted():
+    plain = rules(PROXIMITY)
+    assert evaluate_sensors(plain, "sensors/crawlspace/proximity", {"near": True}, Debouncer(), 0.0, retained=True) == []
+    accepting = rules({**PROXIMITY, "accept_retained": True})
+    assert len(evaluate_sensors(accepting, "sensors/crawlspace/proximity", {"near": True}, Debouncer(), 0.0, retained=True)) == 1
+
+
+def test_edge_level_is_per_topic_and_debounce_still_applies():
+    rule = {"on": {"topic": "sensors/{room}/door", "when": "open == true"}, "edge": True, "signal": {"name": "door", "subject": "{room}", "debounce_s": 10}}
+    rs, d = rules(rule), Debouncer()
+    a = evaluate_sensors(rs, "sensors/a/door", {"open": True}, d, 0.0)
+    b = evaluate_sensors(rs, "sensors/b/door", {"open": True}, d, 0.5)
+    assert [c.fields["subject"] for c in a + b] == ["a", "b"]
+    evaluate_sensors(rs, "sensors/a/door", {"open": False}, d, 1.0)
+    assert evaluate_sensors(rs, "sensors/a/door", {"open": True}, d, 2.0) == []  # an edge, but inside the debounce

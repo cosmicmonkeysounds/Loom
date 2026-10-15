@@ -125,9 +125,9 @@ class ShowControl:
     async def _sensor_loop(self) -> None:
         assert self.mqtt is not None
         while True:
-            topic, raw = await self.mqtt.queue.get()
+            topic, raw, retained = await self.mqtt.queue.get()
             payload = _decode_payload(raw)
-            calls = evaluate_sensors(self.cfg.sensors, topic, payload, self.debouncer, time.monotonic())
+            calls = evaluate_sensors(self.cfg.sensors, topic, payload, self.debouncer, time.monotonic(), retained=retained)
             for call in calls:
                 await self._mod_call(topic, call)
 

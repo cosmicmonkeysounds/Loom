@@ -27,7 +27,7 @@ Thumbsticks only, no buttons anywhere:
 | `game/` | The state machine (`game_flow.gd`, `game.gd`), the lobby and its picker, the duck, the chevron trail, ghosts of other players, and the HUD. |
 | `main.tscn` / `main.gd` | Bootstrap: OpenXR when there is a runtime, else the desktop rig. |
 | `test/` | The headless checks (`run.sh`). |
-| `tools/` | `make_action_map.gd` regenerates `openxr_action_map.tres`; `screenshot.gd` renders a few views. |
+| `tools/` | `quest.sh` builds, sideloads and provisions the Quest APK (below); `make_action_map.gd` regenerates `openxr_action_map.tres`; `screenshot.gd` renders a few views. |
 
 ### The house map
 
@@ -90,7 +90,7 @@ and logs in as a moderator. Settings are applied in this order (lowest first):
 4. the command line after `--`: `--server URL --code PASS --station vr-1 --name "Headset 1" [--guest g-xxxxxx] [--offline] [--smooth-turn] [--autopilot]`
 
 ```json
-{ "server": "http://192.168.1.10:7000", "code": "4821", "station": "vr-1", "name": "Headset 1", "smooth_turn": false }
+{ "server": "https://app.mapsandducks.com", "code": "4821", "station": "vr-1", "name": "Headset 1", "smooth_turn": false }
 ```
 
 `station` is the id the tablet's **Send to <station>** targets (§2.1). Give
@@ -98,59 +98,81 @@ every headset its own `station` and `name`.
 
 ## The Quest build
 
-The preset `export_presets.cfg` → **Quest**: Android, Gradle build, OpenXR,
-arm64-v8a only, `INTERNET` permission, package `com.mapsandducks.reinstall`,
-immersive. The bundled `house/*.json` and `config/*.json` are included.
+`tools/quest.sh` does the whole Android side. It exports from a **staging
+copy** (`build/stage/`, git-ignored): it rsyncs the project there, adds the
+[OpenXR vendors plugin](https://github.com/GodotVR/godot_openxr_vendors)
+(pinned `5.1.0-stable`, checksum-checked, a 48 MB binary GDExtension that
+never goes into git), and optionally bakes a per-headset `station.json`
+carrying the mod passcode. The working project and `test/run.sh` never see
+either. The preset `export_presets.cfg` → **Quest**: Android, Gradle build,
+OpenXR, the **Meta vendor plugin** (`com.oculus.intent.category.VR`,
+`supportedDevices = quest3|quest3s`), arm64-v8a only, `INTERNET`,
+package `com.mapsandducks.reinstall`, immersive. There is **no cleartext
+opt-in**: Android refuses plain `http://`, so a headset talks to the VPS over
+HTTPS (`https://app.mapsandducks.com`, the committed `config/station.json`).
 
-One-time setup:
+### What you run, once (≈ 15 min)
 
-1. **JDK 17** (e.g. `brew install --cask temurin@17`) and the **Android SDK**
-   (Android Studio, or the command-line tools) with `platform-tools`,
-   `build-tools` and a current `platforms;android-3x`. In Godot: *Editor
-   Settings → Export → Android*, set `Java SDK Path` (the JDK 17 home) and
-   `Android SDK Path`. Godot creates a debug keystore on its own. For a
-   release build, set your own keystore in the preset.
-2. Open the project in the editor and run *Project → Install Android Build
-   Template…*. This creates `android/`, which is git-ignored.
-3. The export templates for 4.7.1, Android included, must be installed (they
-   already are on this machine).
-4. Put the headset in **developer mode** (Meta Horizon app → Devices →
-   Developer Mode), connect it by USB, and accept the debugging prompt inside
-   the headset. `adb devices` should then list it.
+| | |
+|---|---|
+| Godot 4.7 + export templates | `/Applications/Godot.app`; *Editor → Manage Export Templates → Download and Install* (Android included) |
+| JDK 17–21 | `brew install --cask temurin@17`, or nothing if Android Studio is installed (its bundled JBR 21 works; verified with Godot 4.7.1's Gradle 8.11 / AGP 8.6) |
+| Android SDK | Android Studio → SDK Manager: `platform-tools`, `build-tools` 35+, `platforms;android-36`, *Command-line Tools (latest)*; accept the licences |
+| Meta developer mode | done (Horizon app → Devices → Developer Mode) |
 
-Build and install:
-
-```bash
-G=/Applications/Godot.app/Contents/MacOS/Godot
-mkdir -p reinstall/vr/build
-$G --headless --path reinstall/vr --export-debug Quest build/reinstall-vr.apk
-adb install -r reinstall/vr/build/reinstall-vr.apk
-adb shell am start -n com.mapsandducks.reinstall/com.godot.game.GodotApp
-adb logcat -s godot           # the game's prints and errors
-```
-
-The Khronos OpenXR loader built into Godot drives the Quest, so no vendor
-plugin is needed. Add `godot_openxr_vendors` only for Meta-specific
-extensions (passthrough, …), which this game does not use.
-
-### Configuring a headset
-
-The simplest route is to edit `config/station.json` before the export, which
-bakes it into the APK. Do this for a per-headset build, or when all headsets
-share one server and passcode and differ only in a field you change before
-each export.
-
-Otherwise, push a per-headset `user://station.json`. On Android that file is
-the app's private `files/` directory, which a **debug** build can reach with
-`run-as`:
+Then:
 
 ```bash
-adb push station.json /data/local/tmp/station.json
-adb shell run-as com.mapsandducks.reinstall sh -c 'mkdir -p files && cp /data/local/tmp/station.json files/station.json'
+reinstall/vr/tools/quest.sh setup
 ```
 
-Restart the app afterwards. The lobby shows the station name and the
-connection state ("Connected to …", or what is wrong).
+It checks all of the above and fixes what it can, asking first: Godot's
+*Java SDK Path* / *Android SDK Path* editor settings (it backs the file up
+to `*.bak-quest`), the vendors plugin download, a debug keystore
+(`~/.android/debug.keystore`), and a **release keystore**
+(`~/.config/loom/reinstall-release.keystore`, its password in
+`reinstall-release.env` next to it, mode 600). **Back the release keystore
+up**: an update over an installed release build must be signed with the same
+key, otherwise it's `adb uninstall com.mapsandducks.reinstall` first.
+
+### Build and sideload
+
+One APK per headset, release-signed, with its station baked in (the fast
+template; `run-as` can't reach a release build's files, so baking is how a
+release headset gets its config):
+
+```bash
+Q=reinstall/vr/tools/quest.sh
+export LOOM_MOD_CODE=…                     # the event's mod passcode (or --code)
+$Q build --station vr-1                     # → build/reinstall-vr-vr-1.apk ("Headset 1", the VPS)
+$Q build --station vr-2                     # → build/reinstall-vr-vr-2.apk
+# plug in headset 1 by USB-C, accept "Allow USB debugging" inside it
+$Q install build/reinstall-vr-vr-1.apk      # adb install -r + launch
+$Q logs                                     # adb logcat, the game's lines
+```
+
+`--name "…"` and `--server URL` override the defaults (`Headset N`, the
+VPS); a non-HTTPS server prints a warning, since the APK can't reach it.
+Each export takes about a minute (the first one installs the Android build
+template into `build/stage/android/`). `--dry-run` prints every command
+without running it.
+
+For quick iteration, a **debug** build (`$Q build --debug`) carries the
+committed placeholder and is provisioned over adb afterwards:
+
+```bash
+$Q build --debug && $Q install
+$Q provision vr-1 --code …                  # pushes user://station.json via run-as, restarts the game
+```
+
+`$Q station vr-1 --code …` prints the JSON either route would write. The
+lobby shows the station name and the connection state ("Connected to …", or
+what is wrong).
+
+The acceptance check (K-30) is `scripts/accept/K-30.sh`: setup, both
+exports, sideload one headset at a time, wait for each station to poll the
+VPS, then send a captured program to `vr-1` and wait for the `found` frame
+with `released: true` while you walk to Gerald.
 
 ### On the night
 
@@ -202,6 +224,7 @@ scene, then runs `test/game.gd` headless with `--offline`:
   from the map answer and from `duck` frames
 - the game's state machine with a fake link
 - a smoke test that `main.tscn` builds the house
+- `test/quest_sh.sh`: `tools/quest.sh`'s helpers and dry runs, and the Quest preset's must-haves (no Android SDK needed)
 - the autopilot reaching every duck spot of the show from the spawn, once
   kinematically and once with real collision (the body stepped by hand)
 

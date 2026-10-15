@@ -1511,6 +1511,11 @@ describe("Trapped in the Internet — Trabolta's powers", () => {
     const bad = fire(sim, "cut_the_lights", "g1", { room: "The Internet" }, "Trabolta");
     expect(cues(bad).some((c) => c.includes("state: off"))).toBe(false);
     expect(saidBy(bad, "Trabolta")).toHaveLength(1);
+    // The Cloud is off the list (K-05): the outdoor steps + the tent path stay lit.
+    const cloud = fire(sim, "cut_the_lights", "g1", { room: "The Cloud" }, "Trabolta");
+    expect(cues(cloud).some((c) => c.includes("state: off"))).toBe(false);
+    expect(lines(cloud, "Trabolta")).toEqual(["That function is not available in that room."]);
+    expect(v(sim, "Night.lights_back_at")).toBe(0);
 
     const d0 = v(sim, "g5.doubt");
     fire(sim, "snoop", "g1", { target: "g5" }, "Trabolta");

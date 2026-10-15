@@ -2421,7 +2421,7 @@ cue screens_screensaver
 set Night.screen = "screensaver"
 set Night.terminals = "screensaver"
 // Re-arm the server room on every boot: a story restart puts the door
-// indicator and the optional maglock back to "armed" (majority_reached
-// is the only thing that unlocks it).
+// indicator back to "armed" (there is no maglock; majority_reached is the
+// only thing that turns it green).
 do door server_room, state: locked
 The house boots. A screensaver drifts across the TV above the fireplace. Somewhere a modem is waiting to be asked.

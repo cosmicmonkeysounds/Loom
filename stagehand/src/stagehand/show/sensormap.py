@@ -9,6 +9,18 @@ identified evidence an arrive — the story decides what either means.
 Debounce is per rule + rendered identity, so two different cameras
 tripping the same tamper rule each fire, while one flapping sensor
 doesn't spam the journal.
+
+Two per-rule switches make a state sensor (a door contact that Z2M
+republishes on every battery report) fire once per real change:
+
+  - `edge: true` fires only when the rule's `when:` goes false → true for
+    that topic (the level starts false, so the first "open" after boot
+    fires; a message without any field the condition reads is ignored);
+  - retained messages never fire unless the rule says
+    `accept_retained: true` — the broker replays a retained "open" on
+    every reconnect. A retained message still *primes* an edge rule's
+    level, so a stagehand restart with the door propped open fires
+    nothing, and neither does the next republish of "open".
 """
 
 from __future__ import annotations
@@ -41,6 +53,8 @@ class SensorRule:
     topic: TopicPattern
     when: Condition | None
     actions: tuple[ActionSpec, ...]
+    edge: bool = False
+    accept_retained: bool = False
 
 
 @dataclass(frozen=True)
@@ -98,14 +112,38 @@ def parse_sensor_rule(raw: Any, idx: int) -> SensorRule:
         actions.append(ActionSpec(kind=kind, fields=fields, debounce_s=float(spec.get("debounce_s", 0))))
     if not actions:
         raise SensorMapError(f"{where}: rule has no action (signal/beat/arrive)")
-    return SensorRule(id=idx, topic=topic, when=when, actions=tuple(actions))
+    flags: dict[str, bool] = {}
+    for key in ("edge", "accept_retained"):
+        value = raw.get(key, False)
+        if not isinstance(value, bool):
+            raise SensorMapError(f"{where}: '{key}:' must be true or false")
+        flags[key] = value
+    if flags["edge"] and when is None:
+        raise SensorMapError(f"{where}: 'edge: true' needs a 'when:' condition to watch")
+    if flags["edge"] and when is not None:
+        # An edge rule only looks at messages carrying a payload field its
+        # condition reads, so a condition over captures/`topic` alone would
+        # never fire — say so now rather than go quietly dead.
+        not_payload = {"topic", *(name for kind, name in topic.segments if kind == "+" and name)}
+        if all(name.split(".")[0] in not_payload for name in when.names()):
+            raise SensorMapError(f"{where}: an 'edge: true' condition must read a payload field (not only the topic or its captures)")
+    return SensorRule(id=idx, topic=topic, when=when, actions=tuple(actions), **flags)
 
 
 class Debouncer:
-    """Rate-limits (rule, identity) pairs; pass a monotonic clock in."""
+    """Rate-limits (rule, identity) pairs and remembers each edge rule's
+    last level per topic; pass a monotonic clock in."""
 
     def __init__(self) -> None:
         self._last: dict[tuple[int, int, str], float] = {}
+        self._level: dict[tuple[int, str], bool] = {}
+
+    def rose(self, rule_id: int, topic: str, level: bool) -> bool:
+        """Record the level; True only on a false → true change."""
+        key = (rule_id, topic)
+        before = self._level.get(key, False)
+        self._level[key] = level
+        return level and not before
 
     def allow(self, rule_id: int, action_idx: int, identity: str, window_s: float, now: float) -> bool:
         if window_s <= 0:
@@ -124,6 +162,7 @@ def evaluate_sensors(
     payload: dict[str, Any],
     debouncer: Debouncer,
     now: float,
+    retained: bool = False,
 ) -> list[ModCall]:
     """Match one MQTT message against every rule; return mod calls to make."""
     calls: list[ModCall] = []
@@ -132,8 +171,19 @@ def evaluate_sensors(
         if captures is None:
             continue
         ctx: dict[str, Any] = {**payload, **captures, "topic": topic}
-        if rule.when is not None and not rule.when.evaluate(ctx):
-            continue
+        if rule.edge:
+            assert rule.when is not None
+            if not rule.when.mentions_any(payload):
+                continue  # e.g. a battery-only report: says nothing about the door
+            if not debouncer.rose(rule.id, topic, rule.when.evaluate(ctx)):
+                continue
+            if retained and not rule.accept_retained:
+                continue  # primed, not fired
+        else:
+            if retained and not rule.accept_retained:
+                continue
+            if rule.when is not None and not rule.when.evaluate(ctx):
+                continue
         for action_idx, action in enumerate(rule.actions):
             rendered: dict[str, str] = {}
             unfilled = False

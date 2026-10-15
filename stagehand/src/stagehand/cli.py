@@ -7,6 +7,8 @@
                      play one announcement through the `alexa:` section's
                      device right now (no broker, no story) — the routing
                      check and the hand-fired fallback.
+    stagehand launchd install|uninstall|restart|status|print --job show|agents [--config f.yaml]
+                     one launchd job per module on the house Mac (see launchd.py)
     stagehand ask    --config laptop.yaml [--character Trabolta] [--name Ada] [--reflect] [text…]
                      talk to an agent persona straight through the model — no
                      server, no story; one line, or an interactive chat. With
@@ -25,7 +27,7 @@ import sys
 from pathlib import Path
 
 from . import app
-from .config import ConfigError, StagehandConfig, load_config
+from .config import ConfigError, StagehandConfig, load_config, local_overlay_path, placeholders
 from .module import REGISTRY
 
 
@@ -57,6 +59,10 @@ def main(argv: list[str] | None = None) -> int:
     ann.add_argument("--voice", help="server voice (default: the section's voice)")
     ann.add_argument("--offline", action="store_true", help="don't ask the server — cache, then say")
     ann.add_argument("text", nargs="+")
+    ld = sub.add_parser("launchd", help="install / restart a module as its own launchd job (macOS)")
+    ld.add_argument("action", choices=("install", "uninstall", "restart", "status", "print"))
+    ld.add_argument("--job", choices=("show", "agents"), help="which module (status: default both)")
+    ld.add_argument("--config", help="the YAML the job runs (install / print)")
     ask = sub.add_parser("ask", help="chat with an agent persona through the model (no server)")
     ask.add_argument("--config", required=True)
     ask.add_argument("--character", help="which persona (default: the only / first one)")
@@ -80,6 +86,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{name:<8} {spec.summary}")
         return 0
 
+    if args.command == "launchd":
+        return _launchd(args)
+
     try:
         only = {"ask": ["agents"], "announce": ["alexa"]}.get(args.command) or _only(getattr(args, "only", None))
         cfg = load_config(args.config, only=only)
@@ -93,6 +102,13 @@ def main(argv: list[str] | None = None) -> int:
         return _announce(cfg, args)
 
     print(_describe(cfg))
+    todo = placeholders(cfg.server)
+    if todo:
+        print(
+            f"PLACEHOLDER server.{', server.'.join(todo)} is still CHANGE-ME — put the real values in "
+            f"{local_overlay_path(args.config).name} (git-ignored) or LOOM_EVENT_ID / LOOM_MOD_PASSCODE",
+            file=sys.stderr,
+        )
     if args.command == "check":
         problems = [p for module in cfg.modules.values() for p in (module.preflight() if hasattr(module, "preflight") else [])]
         for problem in problems:
@@ -129,6 +145,37 @@ def _announce(cfg: StagehandConfig, args: argparse.Namespace) -> int:
     path = asyncio.run(go())
     print(f"played via {path}")
     return 0 if path != "failed" else 1
+
+
+def _launchd(args: argparse.Namespace) -> int:
+    import plistlib
+
+    from .launchd import Launchd
+
+    ld = Launchd(stagehand_dir=Path(__file__).resolve().parents[2])
+    try:
+        if args.action == "status":
+            lines = ld.status([args.job] if args.job else ("show", "agents"))
+        elif args.job is None:
+            print(f"launchd {args.action}: needs --job show|agents", file=sys.stderr)
+            return 2
+        elif args.action in ("install", "print"):
+            if not args.config:
+                print(f"launchd {args.action}: needs --config", file=sys.stderr)
+                return 2
+            if args.action == "print":
+                print(plistlib.dumps(ld.render(args.job, args.config)).decode())
+                return 0
+            lines = ld.install(args.job, args.config)
+        elif args.action == "restart":
+            lines = ld.restart(args.job)
+        else:
+            lines = ld.uninstall(args.job)
+    except ConfigError as err:
+        print(f"launchd: {err}", file=sys.stderr)
+        return 2
+    print("\n".join(lines))
+    return 0
 
 
 def _ask(cfg: StagehandConfig, args: argparse.Namespace) -> int:

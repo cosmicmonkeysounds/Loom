@@ -7,3 +7,4 @@ laptop.yaml
 stagehand.yaml
 .stagehand-minds/
 house.yaml
+*.local.yaml

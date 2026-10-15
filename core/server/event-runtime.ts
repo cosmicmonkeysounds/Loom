@@ -26,6 +26,7 @@ import { Store, type Mutation } from "./store.ts";
 import { ChatStore, composeGuestMessages, decisionChannelFor, isPinnedRoom, visibleTo, type ChatMessage } from "./chat.ts";
 import { ipOf, queryTokenOf, readBody, sendJson, sseSend, str, tokenOf } from "./http-util.ts";
 import { RateLimiter, limiterFor, rateLimitsFromEnv, type RateLimits } from "./rate-limit.ts";
+import { handleMetrics } from "./routes/metrics.ts";
 import { TtsProxy, ttsConfigFromEnv } from "./tts.ts";
 import { AvatarBook, ImageCache, avatarKey, avatarRefUrl } from "./avatars.ts";
 import { WikiClient, isAntivirusSoftware } from "./wiki.ts";
@@ -81,6 +82,10 @@ interface Client {
    *  the session closes the stream). */
   via?: string;
   token?: string;
+  /** A house tool on the mod feed (`?lean=1` — stagehand): every `sim` /
+   *  `message` / `lifecycle` frame, but never a `snapshot` or `history`
+   *  (a `ModView` is ≈ 200 KB at a full house). */
+  lean?: boolean;
   res: ServerResponse;
 }
 
@@ -257,7 +262,16 @@ export interface EventRuntimeInit {
   push?: PushSender | null;
   /** Throttle overrides (tests); the rest come from `LOOM_RL_*`. */
   limits?: Partial<RateLimits>;
+  /** Least gap between two `snapshot` frames to the full mod consoles
+   *  (default `MOD_SNAPSHOT_MS`; tests pass 0 for one frame per step). */
+  modSnapshotMs?: number;
 }
+
+/** Mod-console snapshots are coalesced to at most one per this many ms
+ *  (≤ 2/s): a `ModView` is ≈ 200 KB at 45 guests and used to be re-sent to
+ *  every director on every story step. The trailing frame is always sent,
+ *  computed at flush time, so a console never ends on a stale view. */
+export const MOD_SNAPSHOT_MS = 500;
 
 /** The process-wide speech proxy (configured from `LOOM_TTS_*`). */
 let sharedTts: TtsProxy | null = null;
@@ -367,6 +381,10 @@ export class EventRuntime {
   // The injectable clock (`EventRuntimeInit.now`), read lazily by the hubs
   // built in field initialisers.
   private clock: () => number = Date.now;
+  // Mod snapshot coalescing (`pushModSnapshots`).
+  private readonly modSnapshotMs: number;
+  private modSnapshotAt = Number.NEGATIVE_INFINITY;
+  private modSnapshotTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly agents = new AgentHub({
     build: (thread, id) => this.buildAgentRequest(thread, id),
     admits: (thread) => this.agentAdmits(thread),
@@ -391,6 +409,7 @@ export class EventRuntime {
     this.images = init.images ?? defaultImages();
     this.houseFile = init.houseFile ?? defaultHouseFile();
     if (init.now !== undefined) this.clock = init.now;
+    this.modSnapshotMs = Math.max(0, init.modSnapshotMs ?? MOD_SNAPSHOT_MS);
     this.spatial = new SpatialHub({ eventId: init.eventId, ...(init.now !== undefined ? { now: init.now } : {}) });
     this.checkin = new GuestCheckin({
       sim: () => this.sim,
@@ -573,21 +592,63 @@ export class EventRuntime {
     return out.sort((a, b) => a - b);
   }
 
-  /** Push fresh snapshots to every connected client. */
+  /** Push fresh snapshots to every connected client (mod consoles coalesced). */
   private pushSnapshots(): void {
-    for (const c of this.clients) sseSend(c.res, "snapshot", this.snapshotFor(c));
+    for (const c of this.clients) if (c.role !== "mod") sseSend(c.res, "snapshot", this.snapshotFor(c));
+    this.pushModSnapshots();
   }
 
   /** Someone came or went — refresh every mod console's presence view. */
   private pushPresence(): void {
-    for (const c of this.clients) if (c.role === "mod") sseSend(c.res, "snapshot", this.snapshotFor(c));
+    this.pushModSnapshots();
+  }
+
+  /**
+   * Send the full mod consoles a fresh `ModView` — at once if the last one
+   * went out ≥ `modSnapshotMs` ago, else once when the window closes (a
+   * burst of steps → one trailing frame, computed then). The view is the
+   * same for every director, so it is built and serialised once per frame;
+   * lean clients never get one.
+   */
+  private pushModSnapshots(): void {
+    if (this.modSnapshotTimer !== null) return;
+    const wait = this.modSnapshotAt + this.modSnapshotMs - Date.now();
+    if (wait <= 0) {
+      this.flushModSnapshots();
+      return;
+    }
+    this.modSnapshotTimer = setTimeout(() => {
+      this.modSnapshotTimer = null;
+      this.flushModSnapshots();
+    }, wait);
+    this.modSnapshotTimer.unref?.();
+  }
+
+  /** Flush a pending (coalesced) mod snapshot right now, if one is waiting. */
+  private flushModSnapshotsNow(): void {
+    if (this.modSnapshotTimer === null) return;
+    clearTimeout(this.modSnapshotTimer);
+    this.modSnapshotTimer = null;
+    this.flushModSnapshots();
+  }
+
+  private flushModSnapshots(): void {
+    // Same two writes as `sseSend`, the JSON serialised once for everyone.
+    let data: string | null = null;
+    for (const c of this.clients) {
+      if (c.role !== "mod" || c.lean === true) continue;
+      data ??= `data: ${JSON.stringify(this.modViewNow())}\n\n`;
+      c.res.write("event: snapshot\n");
+      c.res.write(data);
+    }
+    if (data !== null) this.modSnapshotAt = Date.now();
   }
 
   /** Re-send every client its full thread history — after a reset / reload
    *  the chat timeline restarts (seqs from 0 again), so a client that kept
    *  the old feed would interleave stale rows with new ones. */
   private pushHistory(): void {
-    for (const c of this.clients) sseSend(c.res, "history", this.historyFor(c));
+    for (const c of this.clients) if (c.lean !== true) sseSend(c.res, "history", this.historyFor(c));
   }
 
   private historyFor(c: Client): ChatMessage[] {
@@ -1653,6 +1714,9 @@ export class EventRuntime {
       this.persistMeta();
       this.pushSnapshots();
     }
+    // A restart is a timeline cut: a director's fresh view must land before
+    // the new history, never coalesced to after it.
+    this.flushModSnapshotsNow();
     this.pushHistory();
   }
 
@@ -1664,6 +1728,8 @@ export class EventRuntime {
   /** Tear the runtime down (stop the clock, drop SSE clients). */
   dispose(by?: string): void {
     this.stopTicker();
+    if (this.modSnapshotTimer !== null) clearTimeout(this.modSnapshotTimer);
+    this.modSnapshotTimer = null;
     this.pushLifecycle("ended", by !== undefined ? { by } : {});
     for (const c of this.clients) {
       try {
@@ -1806,6 +1872,8 @@ export class EventRuntime {
       res.write(":ok\n\n");
       const client: Client = { role, id, res };
       if (role === "mod") client.name = opts.moderatorName ?? "Director";
+      // `?lean=1` (mod feed only): the house tools' stream — frames, no views.
+      if (role === "mod" && url.searchParams.get("lean") === "1") client.lean = true;
       if (role === "prime") client.admin = this.sessions.canModerate(token);
       const imp = token ? this.impersonations.get(token) : undefined;
       if (imp !== undefined) {
@@ -1814,11 +1882,23 @@ export class EventRuntime {
         client.admin = false;
       }
       this.clients.add(client);
-      sseSend(res, "snapshot", this.snapshotFor(client));
-      // A moderator sees the full feed *including* hidden messages (greyed in
-      // the UI) so they can un-hide; performers see the public feed only.
-      sseSend(res, "history", this.historyFor(client));
-      this.pushPresence();
+      const fullMod = role === "mod" && client.lean !== true;
+      if (fullMod) {
+        // One `ModView` frame to every full director — the newcomer's first
+        // view *and* everyone's presence update, serialised once (so the
+        // newcomer never gets two ≈200 KB snapshots back to back).
+        if (this.modSnapshotTimer !== null) clearTimeout(this.modSnapshotTimer);
+        this.modSnapshotTimer = null;
+        this.flushModSnapshots();
+      } else if (client.lean !== true) {
+        sseSend(res, "snapshot", this.snapshotFor(client));
+      }
+      if (client.lean !== true) {
+        // A moderator sees the full feed *including* hidden messages (greyed in
+        // the UI) so they can un-hide; performers see the public feed only.
+        sseSend(res, "history", this.historyFor(client));
+      }
+      if (!fullMod) this.pushPresence();
       const ping = setInterval(() => res.write(":ping\n\n"), 25000);
       req.on("close", () => {
         clearInterval(ping);
@@ -1844,6 +1924,8 @@ export class EventRuntime {
       else sendRecap(res, url, this.sim, { title: this.title, personas: this.personaOwners });
       return true;
     }
+    // --- process load for the K-32 load test (directors only) ---
+    if (handleMetrics(req, res, method, path, url, () => opts.moderator === true || this.sessions.canModerate(queryTokenOf(req, url)), () => this.clients.size)) return true;
 
     // --- the mind debugger's trace (directors only) ---
     if (method === "GET" && path === "/api/mod/agent/trace") {
