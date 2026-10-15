@@ -241,9 +241,10 @@ describe("/api/mod/tts", () => {
   });
 });
 
-// K-19: the compose stack bundles Kokoro. Guard the two properties the show
-// depends on — a CPU cap (it must never starve the event server) and the
-// server pointed at it by default — without a YAML dependency.
+// K-19: the compose stack can bundle Kokoro, opt-in only (the show runs on the
+// devices' own voices). Guard what an opt-in still depends on — a CPU cap (it
+// must never starve the event server), the `tts` profile so a plain `up` never
+// starts it, and the server's voice off unless asked — without a YAML dependency.
 describe("docker-compose kokoro service (K-19)", () => {
   const compose = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../docker-compose.yml"), "utf8");
   const service = (name: string): string => {
@@ -257,9 +258,10 @@ describe("docker-compose kokoro service (K-19)", () => {
     expect(kokoro).not.toMatch(/^    ports:/m);
     expect(kokoro).toMatch(/DEFAULT_VOICE: \$\{LOOM_TTS_VOICE:-am_michael\}/);
   });
-  it("is the event server's default speech endpoint, and the server never waits on it", () => {
+  it("is opt-in (tts profile), off by default, and the server never waits on it", () => {
+    expect(service("kokoro")).toMatch(/^    profiles: \["tts"\]$/m);
     const loom = service("loom");
-    expect(loom).toMatch(/LOOM_TTS_URL: \$\{LOOM_TTS_URL:-http:\/\/kokoro:8880\/v1\}/);
+    expect(loom).toMatch(/LOOM_TTS_URL: \$\{LOOM_TTS_URL:-off\}/);
     expect(loom).not.toMatch(/kokoro:\n\s+condition/);
   });
 });
