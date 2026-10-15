@@ -12,10 +12,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Assignment, HouseMap, SpatialCandidate, StationInfo } from "@loom/house";
 import { matchName, parseScan } from "@loom/terminal/scan.ts";
 import { Scanner, cameraProblem, type CameraState } from "@loom/terminal/scanner.tsx";
+import { hasWebGL2 } from "@loom/terminal/webgl.ts";
 import { ApiError, begin, fetchCandidates, fetchDealtHouse, fetchStations, postEnd, tokenAlive } from "./api.ts";
 import { applyHints, baseOf, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, withoutSecrets, type DeviceRole, type ReinstallConfig } from "./config.ts";
 import { createSfx } from "./game/audio.ts";
-import { Play, type PlayExit } from "./game/Play.tsx";
+import { NO_WEBGL2, Play, type PlayExit } from "./game/Play.tsx";
 import { Desktop, ProgressBar, Window, Wizard } from "./wizard.tsx";
 
 interface Program {
@@ -34,6 +35,7 @@ type Screen =
   | { kind: "play"; assignment: Assignment; house: HouseMap; houseVersion: string };
 
 const STATION_POLL_MS = 2000;
+
 const SENT_BACK_MS = 9000;
 
 export function App() {
@@ -172,6 +174,8 @@ function Device({
   onSetup: () => void;
 }) {
   const stations = useStations(config, config.role !== "player");
+  // three.js needs WebGL2: never begin a session this browser can't play.
+  const canDraw = useMemo(() => hasWebGL2(), []);
   const vr = stations.list.filter((s) => s.world === "vr");
   const online = vr.filter((s) => s.online).length;
 
@@ -258,7 +262,7 @@ function Device({
     <Desktop status={status}>
       <Window title={`Reinstallation Wizard — ${config.name}`} className="main-window">
         {screen.kind === "scan" && (
-          <ScanStep config={config} onCode={onCode} onPick={(p) => setScreen({ kind: "choose", program: p })} onProblem={(t) => setFlash({ text: t, tone: "bad" })} stations={vr} showStations={config.role !== "player"} onSetup={onSetup} />
+          <ScanStep config={config} canDraw={canDraw} onCode={onCode} onPick={(p) => setScreen({ kind: "choose", program: p })} onProblem={(t) => setFlash({ text: t, tone: "bad" })} stations={vr} showStations={config.role !== "player"} onSetup={onSetup} />
         )}
         {screen.kind === "choose" && (
           <Wizard
@@ -272,7 +276,7 @@ function Device({
                 </button>
                 <span className="spacer" />
                 {config.role !== "station" && (
-                  <button className="w98-button default big" onClick={() => void playHere(screen.program)} autoFocus>
+                  <button className="w98-button default big" onClick={() => void playHere(screen.program)} disabled={!canDraw} autoFocus={canDraw}>
                     Play here &gt;
                   </button>
                 )}
@@ -294,6 +298,7 @@ function Device({
             <p>
               To be reinstalled, a program must prove it can follow instructions: walk the virtual house and find <b>Gerald, the golden duck</b>.
             </p>
+            {!canDraw && config.role !== "station" && <div className="w98-error">⚠ {NO_WEBGL2}</div>}
             {config.role !== "player" && (
               <fieldset className="w98-group">
                 <legend>Send to a headset</legend>
@@ -404,6 +409,7 @@ function useStations(config: ReinstallConfig, enabled: boolean): { list: Station
 
 function ScanStep({
   config,
+  canDraw,
   onCode,
   onPick,
   onProblem,
@@ -412,6 +418,8 @@ function ScanStep({
   onSetup,
 }: {
   config: ReinstallConfig;
+  /** This browser has WebGL2 (it can play here). */
+  canDraw: boolean;
   onCode: (text: string) => void;
   onPick: (p: Program) => void;
   onProblem: (text: string) => void;
@@ -480,12 +488,23 @@ function ScanStep({
       }
     >
       <div className="scan-layout">
-        <div className="scan-camera w98-sunken">
+        <div className={`scan-camera w98-sunken${noCamera ? " off" : ""}`}>
           <Scanner facing={config.camera} active onCode={onCode} onState={setCamera} />
           {camera === "live" && <div className="scan-hint">hold the pass to the camera</div>}
         </div>
         <div className="scan-side">
-          <p>Show the program's <b>pass</b> (the QR on their phone: menu → Your pass).</p>
+          {!canDraw && config.role === "player" && <div className="w98-error">⚠ {NO_WEBGL2}</div>}
+          <p>
+            {!noCamera ? (
+              <>
+                Show the program's <b>pass</b> (the QR on their phone: menu → Your pass).
+              </>
+            ) : corrupted.length > 0 ? (
+              <>No camera here: tap the program in the Internet below, or type their name.</>
+            ) : (
+              <>No camera here: type the program's name.</>
+            )}
+          </p>
           <form
             className="typed"
             onSubmit={(e) => {
@@ -493,7 +512,7 @@ function ScanStep({
               void submit();
             }}
           >
-            <label htmlFor="typed-name">{noCamera ? "Type the program's name instead:" : "No camera? Type the program's name:"}</label>
+            <label htmlFor="typed-name">{noCamera ? "The program's name:" : "No camera? Type the program's name:"}</label>
             <div className="typed-row">
               <input id="typed-name" className="w98-input" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Winamp" autoComplete="off" autoCapitalize="off" spellCheck={false} />
               <button className="w98-button" type="submit" disabled={busy || typed.trim() === ""}>

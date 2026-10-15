@@ -174,16 +174,22 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 .desktop {
   height: 100%;
   display: grid;
-  grid-template-rows: 1fr auto;
+  /* minmax(0, …): the taskbar's nowrap text must never widen the page past
+     a phone's screen (it used to push the window's right edge off it). */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
   background:
     radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, 0.08), transparent 60%),
     radial-gradient(rgba(0, 0, 0, 0.08) 1px, transparent 1px) 0 0 / 4px 4px,
     var(--teal);
 }
-.desktop-stage { display: grid; place-items: center; min-height: 0; padding: clamp(8px, 2.5vw, 28px); overflow: auto; }
+.desktop-stage { display: flex; min-height: 0; padding: clamp(8px, 2.5vw, 28px); overflow: auto; }
+/* Centred with auto margins, not place-items: a window taller than a
+   landscape phone then scrolls from its top instead of losing it. */
+.desktop-stage > * { margin: auto; }
 .taskbar { display: flex; align-items: center; gap: 4px; padding: 3px; background: var(--face); box-shadow: inset 0 1px var(--face-light), inset 0 2px var(--hi); }
 .taskbar .start { min-width: 0; font-weight: bold; padding: 0.15em 0.6em; min-height: 2em; }
-.taskbar .task { flex: 1; max-width: 22em; padding: 0.25em 0.6em; background: var(--face-light); font-weight: bold; white-space: nowrap; overflow: hidden; }
+.taskbar .task { flex: 1; min-width: 0; max-width: 22em; padding: 0.25em 0.6em; background: var(--face-light); font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .taskbar .tray { margin-left: auto; padding: 0.25em 0.7em; background: var(--face); white-space: nowrap; }
 
 .main-window { width: min(980px, 100%); max-height: 100%; }
@@ -218,6 +224,16 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
   box-shadow: inset 0 1px var(--hi);
 }
 .w98-actions { display: flex; justify-content: flex-end; gap: 0.6em; padding: 0.8em 1em; }
+
+/* A phone (or a phone on its side): no banner, the step gets the width. */
+@media (max-width: 560px), (max-height: 500px) {
+  .wizard { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .wizard-banner { display: none; }
+  .wizard-main { padding: 0.7em 0.9em 0.5em; }
+  .wizard-actions { padding: 0.5em 0.7em; }
+  .desktop-stage { padding: 6px; }
+}
+@media (max-width: 560px) { .taskbar .task { display: none; } }
 
 .banner-art { position: absolute; inset: 0; }
 .banner-cd {
@@ -255,6 +271,8 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 .scan-layout { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(260px, 1.1fr); gap: 1.2em; align-items: start; }
 @media (max-width: 720px), (orientation: portrait) and (max-width: 900px) { .scan-layout { grid-template-columns: 1fr; } }
 .scan-camera { position: relative; aspect-ratio: 4 / 3; padding: 3px; background: #000; overflow: hidden; }
+/* No camera to show: a short strip saying so, not a big black box. */
+.scan-camera.off { aspect-ratio: auto; height: 4.5em; }
 .scan-hint { position: absolute; left: 0; right: 0; bottom: 6px; text-align: center; font-family: var(--pixel); font-size: 1.3em; color: #9f9; text-shadow: 0 0 6px #000; pointer-events: none; }
 .scanner { position: absolute; inset: 3px; background: #000; }
 .scanner video { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -378,6 +396,8 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
   text-align: center;
 }
 .help-card .help-goal { color: var(--navy); font-weight: bold; }
+/* A phone on its side: under the compass, just above the status line. */
+@media (max-height: 500px) { .help-card { bottom: 44px; max-width: min(60vw, 520px); font-size: 0.9em; } }
 
 .stick-zone { position: absolute; bottom: 0; width: 42vw; max-width: 340px; height: min(46vh, 300px); touch-action: none; }
 .stick-zone.left { left: 0; }
@@ -570,4 +590,5 @@ textarea.json { width: 100%; height: 100%; min-height: 320px; resize: none; font
    with the padding trick so the scanner doesn't collapse. */
 @supports not (aspect-ratio: 1) {
   .scan-camera { height: 0; padding: 75% 0 0; }
+  .scan-camera.off { height: 4.5em; padding: 3px; }
 }

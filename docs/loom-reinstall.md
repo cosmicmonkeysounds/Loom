@@ -136,7 +136,12 @@ Validation (`validateHouse`) returns `{ ok, problems: string[], house? }`
   rect not inside both rooms; less than 0.3 m (`STAIR_CLEARANCE`) of `to`
   beyond the head (the `up` edge) or of `from` beyond the foot; a stair
   that passes a floor between its two where a room of that floor overlaps
-  the rect (that floor would get no hole).
+  the rect (that floor would get no hole); two stairs that share a floor
+  and whose rects overlap in plan (a stairwell stacked flight over flight:
+  the lower flight's hole and rails sit where the upper one starts, so
+  nothing could walk it — when measuring a real house with stacked stairs,
+  draw the flights side by side or end to end; the virtual house only has
+  to read like the real one).
 - **Placed things** (terminals, duck spots, the spawn, props): an unknown
   room; a plan point outside the room's footprint (± 0.05 m,
   `SPOT_TOLERANCE`). A terminal or prop: a `y` outside its room's storey
@@ -531,7 +536,9 @@ rule to their body when they load the new map (the locate goldens pin
 
 ## 3. The web game — `reinstall/web/` (`loom-reinstall`)
 
-React shell + three.js canvas. Screens: **setup** (moderator passcode,
+React shell + three.js canvas (three r186 needs WebGL2: the wizard probes
+for it once and, without it, disables **Play here** with the reason rather
+than begin a session it can't draw). Screens: **setup** (moderator passcode,
 device name, role) → **scan** (camera via the terminal's `Scanner`, typed
 name fallback via `candidates`) → for a scanned program, **Play here** or
 **Send to <station>** (online VR stations listed) → **play** → **found**
@@ -548,7 +555,18 @@ so the walker slides along the underside of a stair instead of walking
 into it. Controls: left on-screen stick = move, right stick = turn
 (x) and look (y); keyboard WASD/arrows/QE/Shift; mouse drag to look. The
 indicator trail (`route` → golden chevrons every 0.75 m, refreshed twice a
-second), a compass/room HUD, the duck (bobbing, glowing, quacks via
+second; a player standing on a stair's ramp (in its rect and within
+0.45 m of the ramp's surface; the nearest ramp if two overlap) is routed
+out by whichever end of it makes the walk shorter — `[feet, end,
+…route(end, duck)]` — because `route` from a point on the ramp starts in
+one of the stair's rooms and would point back at the end just left; a
+player who has walked under a stair's high end (on its `from` floor, in
+the rect or within 0.3 m of a side along the flight, the ramp more than
+0.45 m overhead) first steps 0.35 m out of the nearer side still in
+`from` — else out of the high end — then follows `route`, which from
+under the ramp would run along the underside into the solid; not
+normative — the web game's `trail.ts`, ported as the VR game's
+`Game.trail_path`), a compass/room HUD, the duck (bobbing, glowing, quacks via
 WebAudio), other players as ghosts (from the stream), the terminals as
 glowing screens on the walls ("someone is watching from the Kitchen").
 Arrive within 0.9 m of the duck in plan, on its floor and within 1.2 m

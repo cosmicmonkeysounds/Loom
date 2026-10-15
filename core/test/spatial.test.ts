@@ -221,6 +221,27 @@ describe("SpatialHub", () => {
     expect(h.hub.found(a.token, () => true)).toEqual({ kind: "found", released: true, already: false });
   });
 
+  it("three floors: poses are labelled per floor, and Gerald upstairs is never found from the floor below", () => {
+    // `three-floors`: basement −2.7 / main 0 / top 2.8, two flights end to end in
+    // the hall — the real house's shape (2026-10-15).
+    const h = hubHarness();
+    const house = fixture("three-floors");
+    h.hub.setHouse(house, "event", false);
+    const a = h.begin("g-1");
+    const rooms: string[] = [];
+    for (const p of [[1, -2.7, 1], [1, 0, 5], [1, 2.8, 7]] as const) {
+      h.hub.pose(a.token, { p: [...p], yaw: 0, pitch: 0 });
+      h.hub.flush();
+      const last = h.of("poses").at(-1)!["players"] as Array<{ room: string; floor: string }>;
+      rooms.push(`${last[0]!.floor}/${last[0]!.room}`);
+    }
+    expect(rooms).toEqual(["basement/server", "main/office", "top/crawl"]);
+    // The crawl-space duck straight overhead of someone in the office.
+    const crawl = house.duck.spots.find((s) => s.id === "crawl-box")!;
+    expect(nearDuck([crawl.pos[0], 0, crawl.pos[2]], crawl.pos, house).near).toBe(false);
+    expect(nearDuck([crawl.pos[0], 2.8, crawl.pos[2]], crawl.pos, house).near).toBe(true);
+  });
+
   it("found on a parked assignment nobody has played is refused; it stays parked", () => {
     const h = hubHarness();
     const a = h.begin("g-1", "vr-1");

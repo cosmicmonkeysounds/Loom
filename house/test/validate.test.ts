@@ -168,6 +168,28 @@ describe("validateHouse", () => {
     expect(p).toEqual(['stairs[0] "s": it passes through floor "mid" (room "m"), which has no hole for it']);
   });
 
+  it("refuses a stairwell stacked flight over flight (the game can't walk it)", () => {
+    // `three-floors` puts its two flights end to end in the hall; stack the
+    // upper one right over the basement one (a real house's usual shape).
+    const stack = (up: "n" | "s") => (h: HouseMap) => {
+      h.rooms.find((r) => r.id === "tophall")!.poly = [[3, 0], [6, 0], [6, 12], [3, 12]];
+      Object.assign(h.stairs[1]!, { rect: [4.4, 2.5, 5.4, 6.5], up });
+    };
+    for (const up of ["n", "s"] as const) {
+      refuses("three-floors", stack(up), /stairs\[0\] "basement-stairs": its rect overlaps stair "upstairs" in plan .*offset the flights/);
+    }
+    // Side by side, or end to end (the fixture as it is), is fine.
+    expect(problems("three-floors", () => {})).toEqual([]);
+    // Overlapping in plan but sharing no floor (basement → main under top → attic) is left alone.
+    const p = problems("three-floors", (h) => {
+      h.floors.push({ id: "attic", label: "Attic", elevation: 5.2, height: 2 });
+      h.rooms.push({ id: "attic", label: "Attic", floor: "attic", poly: [[3, 0], [6, 0], [6, 12], [3, 12]] });
+      h.rooms.find((r) => r.id === "tophall")!.poly = [[3, 0], [6, 0], [6, 12], [3, 12]];
+      h.stairs.push({ id: "attic-stairs", from: "tophall", to: "attic", rect: [4.4, 2.5, 5.4, 6.5], up: "n" });
+    });
+    expect(p.filter((m) => m.includes("overlaps stair"))).toEqual([]);
+  });
+
   it("refuses floors whose elevations differ by 0.5 m or less", () => {
     const add = (elevation: number) => (h: HouseMap) => {
       h.floors.push({ id: "g2", label: "G2", elevation, height: 2.5 });

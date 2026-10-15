@@ -109,6 +109,15 @@ vr-N` / `install`). Each APK is release-signed with its station baked in
 and talks to the VPS over HTTPS. The acceptance check is
 `scripts/accept/K-30.sh`.
 
+**A demo with no hardware** (a desktop browser as the tent tablet, a phone
+or a second window as the guest, the keyboard to walk) is spelled out in
+[`web/README.md`](./web/README.md) → *A demo with no hardware*. The web
+game's own autopilot (`web/test/autopilot.test.ts`) walks the real physics
+along the trail to every duck spot of the show's map and of
+`house/test/fixtures/three-floors.json` (basement / main / top + the tent,
+two flights end to end in the hall; a stairwell stacked flight over flight
+is refused by `validateHouse`, so offset the flights in plan).
+
 **End to end.** `vr/` has an `--autopilot` mode
 (`godot --headless --path reinstall/vr --xr-mode off -- --server … --code
 <mod> --guest g-… --autopilot`). In it the game walks to the duck through

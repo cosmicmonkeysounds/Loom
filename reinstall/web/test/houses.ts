@@ -7,6 +7,7 @@ import type { HouseMap } from "@loom/house";
 import twoRooms from "../../../house/test/fixtures/two-rooms.json";
 import stair from "../../../house/test/fixtures/stair.json";
 import lRoom from "../../../house/test/fixtures/l-room.json";
+import threeFloors from "../../../house/test/fixtures/three-floors.json";
 import { showHouse } from "../src/show-house.ts";
 import showShed from "../../../core/examples/trapped-in-the-internet/house.shed.json";
 import twoFloor from "../../../house/test/maps/two-floor.json";
@@ -34,3 +35,9 @@ export const SHOW_SHED = (): HouseMap => load(showShed);
  *  don't move with the live map (`@loom/house` golden.ts `TWO_FLOOR_HOUSE`). */
 export const TWO_FLOOR = (): HouseMap => load(twoFloor);
 export const TWO_FLOOR_SHED = (): HouseMap => load(twoFloorShed);
+/** The real house's shape (2026-10-15): basement / main / top + the tent
+ *  outside, two flights end to end in the hall (basement → main, then
+ *  main → top; not stacked one over the other, which `validateHouse`
+ *  refuses) — `@loom/house`'s `three-floors` fixture, so the Godot port has
+ *  its goldens too. */
+export const THREE_FLOORS = (): HouseMap => load(threeFloors);

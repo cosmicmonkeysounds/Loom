@@ -432,10 +432,117 @@ static func is_at_duck(house: Dictionary, p: Array, duck_p: Array) -> bool:
 	return HouseLocate.floor_of(house, p[1]) == HouseLocate.floor_of(house, duck_p[1])
 
 
+## The chevrons' path from feet `from` to the duck `to` (house frame) — the
+## web game's `trail.ts`: off a stair it is [method HouseRoute.route]; on a
+## stair's ramp (in its rect, within a step of its surface) it leaves by
+## whichever end makes the whole walk shorter, `[from, end, …route(end, to)]`.
+## `route` from a point on the ramp starts in one of the stair's rooms, so a
+## player who has just stepped onto the foot would be pointed back at it.
+## Under a stair's high end it first steps out of the nearer side
+## ([method stair_step_out]), since `route` from there runs along the
+## underside into the solid.
+static func trail_path(house: Dictionary, from: Array, to: Array) -> Array:
+	var stair: Variant = stair_under(house, from)
+	if stair == null:
+		var over: Variant = stair_above(house, from)
+		var out: Variant = null if over == null else stair_step_out(house, over, from)
+		if out == null:
+			return HouseRoute.route(house, from, to)
+		var stepped: Array = [from, out]
+		stepped.append_array(HouseRoute.route(house, out, to).slice(1))
+		return stepped
+	if HouseGeometry.point_in_rect(stair["rect"], [to[0], to[2]]):
+		return HouseRoute.route(house, from, to)
+	var best: Array = []
+	var best_length := INF
+	for end: Dictionary in HouseRoute.portals(house):
+		if end["kind"] == "door" or end["id"] != str(stair["id"]):
+			continue
+		var rest: Array = HouseRoute.route(house, end["pos"], to)
+		var walk: Array = [from, end["pos"]]
+		walk.append_array(rest.slice(1))
+		var length := HouseRoute.path_length(walk)
+		if length < best_length:
+			best = walk
+			best_length = length
+	return best if not best.is_empty() else HouseRoute.route(house, from, to)
+
+
+## How far past a stair's side the step out from under it lands.
+const STAIR_OUT := VrPlayer.RADIUS + 0.1
+## Within this of a side (a body rubbing it), the step out isn't done yet.
+const STAIR_RUB := VrPlayer.RADIUS + 0.05
+
+
+## The stair whose ramp feet `p` stand on (in its rect, within
+## [constant HouseLocate.STEP_UP] of its surface; the nearest if two overlap
+## in plan), else null.
+static func stair_under(house: Dictionary, p: Array) -> Variant:
+	var best: Variant = null
+	var best_dy := INF
+	for s: Dictionary in house.get("stairs", []):
+		if not HouseGeometry.point_in_rect(s["rect"], [p[0], p[2]]):
+			continue
+		var dy := absf(float(p[1]) - HouseGeometry.ramp_height(house, s, [p[0], p[2]]))
+		if dy <= HouseLocate.STEP_UP and dy < best_dy:
+			best = s
+			best_dy = dy
+	return best
+
+
+## The stair feet `p` stand beneath: on its `from` floor, in its rect in plan
+## (or rubbing a side along the flight), the ramp more than a step overhead.
+static func stair_above(house: Dictionary, p: Array) -> Variant:
+	var floor_id := HouseLocate.floor_of(house, p[1])
+	for s: Dictionary in house.get("stairs", []):
+		var lo: Variant = HouseGeometry.room_by_id(house, s["from"])
+		if lo == null or lo["floor"] != floor_id:
+			continue
+		var r: Array = s["rect"]
+		var along: bool = s["up"] == "n" or s["up"] == "s"
+		var grown: Array = [r[0] - STAIR_RUB, r[1], r[2] + STAIR_RUB, r[3]] if along else [r[0], r[1] - STAIR_RUB, r[2], r[3] + STAIR_RUB]
+		if not HouseGeometry.point_in_rect(grown, [p[0], p[2]]):
+			continue
+		if HouseGeometry.ramp_height(house, s, [p[0], p[2]]) > float(p[1]) + HouseLocate.STEP_UP:
+			return s
+	return null
+
+
+## Where a body under `stair` steps out to: out of the nearer of the rect's
+## two sides along the flight, else (both against a wall) out of its high
+## end — only a point still in the stair's `from` room counts. Null if none.
+static func stair_step_out(house: Dictionary, stair: Dictionary, p: Array) -> Variant:
+	var r: Array = stair["rect"]
+	var x := float(p[0])
+	var y := float(p[1])
+	var z := float(p[2])
+	var up: String = stair["up"]
+	var a: Array
+	var b: Array
+	if up == "n" or up == "s":
+		a = [r[0] - STAIR_OUT, y, z]
+		b = [r[2] + STAIR_OUT, y, z]
+	else:
+		a = [x, y, r[1] - STAIR_OUT]
+		b = [x, y, r[3] + STAIR_OUT]
+	var head: Array
+	match up:
+		"n": head = [x, y, r[1] - STAIR_OUT]
+		"s": head = [x, y, r[3] + STAIR_OUT]
+		"e": head = [r[2] + STAIR_OUT, y, z]
+		_: head = [r[0] - STAIR_OUT, y, z]
+	var near: Array = [a, b] if Vector2(a[0] - x, a[2] - z).length() <= Vector2(b[0] - x, b[2] - z).length() else [b, a]
+	near.append(head)
+	for q: Array in near:
+		if HouseLocate.locate(house, q)["room"] == stair["from"]:
+			return q
+	return null
+
+
 ## Re-route the chevrons from `from` to the duck (house frame).
 func refresh_trail(from: Array, to: Array) -> void:
 	var points: Array = []
-	for s: Dictionary in HouseRoute.sample_trail(HouseRoute.route(builder.house, from, to)):
+	for s: Dictionary in HouseRoute.sample_trail(trail_path(builder.house, from, to)):
 		points.append({"pos": builder.to_world(s["p"]), "yaw": builder.yaw_to_world(s["yaw"])})
 	trail.show_points(points)
 

@@ -26,7 +26,7 @@ ways to play:
   it on; you're already in.
 
 No camera, or it won't read your pass? Whoever runs the tent can find you
-by name.
+by name, or tap you in the list of programs in the Internet.
 
 ## Moving around
 
@@ -38,8 +38,9 @@ There are **no buttons** — only sticks.
 | Turn | **right stick** — left or right, a step at a time | **right** on-screen stick (push up/down to look up/down) |
 | Look | turn your head | drag on the screen |
 
-On a tablet with a keyboard: **W A S D** or the arrows walk, **Q / E**
-turn, **Shift** runs.
+On a tablet with a keyboard (or a laptop standing in for the tablet):
+**W A S D** or the arrows walk, **Q / E** turn, **Shift** runs, drag with
+the mouse to look.
 
 The walls are where the real walls are, the stairs go where the real
 stairs go. If moving in VR makes you queasy, stop pushing the stick and
@@ -49,10 +50,10 @@ help.
 ## Find the duck
 
 **Follow the golden chevrons** on the floor. They lead, room by room and
-up the stairs, to **Gerald, the golden duck** off the Maps and Ducks
-billboard — he hides in a different spot every time. Walk right up to
-him. He lays a golden egg and flies away, and
-that's it: you're done. If you were corrupted, you're **reinstalled** and
+up or down the stairs (the house has three floors), to **Gerald, the
+golden duck** off the Maps and Ducks billboard — he hides in a different
+spot every time. Walk right up to him. He lays a golden egg and flies
+away, and that's it: you're done. If you were corrupted, you're **reinstalled** and
 free to go back to the house — your app says so, and you learn *The
 Golden Duck*.
 

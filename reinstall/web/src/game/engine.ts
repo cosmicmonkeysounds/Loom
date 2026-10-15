@@ -4,7 +4,8 @@
 //!
 //! One `Game` per session: the house from `@loom/house/three` (the same
 //! scene the terminals render), Gerald at the assignment's duck spot, the
-//! golden chevron trail along `route()` refreshed twice a second, the other
+//! golden chevron trail along `route()` (`trail.ts`: made walkable on a
+//! stair) refreshed twice a second, the other
 //! players as ghosts off the spatial stream, a first-person camera at eye
 //! height. The pose goes out at 10 Hz through the pump. Reaching the duck
 //! (≤ 0.9 m, same floor) posts `found`; the duck lays its egg and flies.
@@ -14,7 +15,7 @@
 
 import { PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
 import type { Group } from "three";
-import { buildWalls, pathLength, route, spaceOf, toSpace, yawFromSpace, yawToSpace } from "@loom/house";
+import { buildWalls, pathLength, spaceOf, toSpace, yawFromSpace, yawToSpace } from "@loom/house";
 import type { Assignment, DuckSpot, FoundResult, HouseMap, PlayerPose, PlayerState, SpatialFrame, Vec3 } from "@loom/house";
 import { applySpace, buildHouseScene, createAvatar, createDuck, createTrail, houseAtmosphere, PoseBuffer, spaceGroup } from "@loom/house/three";
 import type { Avatar, Duck, HouseScene, Trail } from "@loom/house/three";
@@ -25,7 +26,9 @@ import { formatElapsed, foundRetryMs, heat, PAUSED_NOTICE, perchedOutOfReach, re
 import { combineInput, isActive, keyDown, keyUp, type StickVector } from "./input.ts";
 import { IdleLeash } from "./leash.ts";
 import { bodyAfterRemap, buildPhysicsWorld, eyeOf, move, NO_INPUT, spawnBody, type Body, type PhysicsWorld } from "./physics.ts";
+import { NoRenderer } from "./no-start.ts";
 import { PosePump } from "./pump.ts";
+import { trail } from "./trail.ts";
 
 export { IDLE_LIMIT_MS, IDLE_WARN_MS } from "./leash.ts";
 const TRAIL_EVERY_MS = 500;
@@ -146,7 +149,11 @@ export class Game {
     const coarse = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
     const dpr = window.devicePixelRatio || 1;
     // A cheap tablet at DPR 1 pays for MSAA it can't afford.
-    this.renderer = new WebGLRenderer({ canvas: opts.canvas, antialias: !(coarse && dpr < 2), powerPreference: "high-performance" });
+    try {
+      this.renderer = new WebGLRenderer({ canvas: opts.canvas, antialias: !(coarse && dpr < 2), powerPreference: "high-performance" });
+    } catch (e) {
+      throw new NoRenderer(e);
+    }
     this.renderer.setPixelRatio(Math.min(dpr, 1.5));
     houseAtmosphere(this.scene);
     this.camera.rotation.order = "YXZ";
@@ -389,7 +396,7 @@ export class Game {
 
   private refreshTrail(now: number): void {
     this.lastTrailAt = now;
-    this.path = route(this.map, this.body.p, this.duckSpot.pos);
+    this.path = trail(this.map, this.body.p, this.duckSpot.pos);
     this.distance = pathLength(this.path);
     this.trail.set(this.path);
     this.distHistory.push({ t: now, d: this.distance });

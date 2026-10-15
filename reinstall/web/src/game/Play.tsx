@@ -12,9 +12,12 @@ import type { Sfx } from "./audio.ts";
 import { Game, type GameEnd, type HudState } from "./engine.ts";
 import { bearingOf, HEAT_LABEL } from "./hud.ts";
 import { CENTRED, type StickVector } from "./input.ts";
+import { whyNoStart } from "./no-start.ts";
 import { Joystick } from "./joystick.tsx";
 
 export type PlayExit = { kind: "found"; name: string; complete: boolean } | { kind: "over"; reason: string } | { kind: "idle" } | { kind: "quit" };
+
+export { NO_WEBGL2 } from "./no-start.ts";
 
 /** Seconds the celebration stays before returning to the scanner by itself. */
 const CELEBRATE_S = 15;
@@ -70,9 +73,11 @@ export function Play({
         onEnd: (e: GameEnd) => exit.current(e.kind === "idle" ? { kind: "idle" } : e),
       });
     } catch (e) {
-      // No WebGL (an old tablet, a locked-down browser).
+      // No WebGL the probe missed (a context that exists but won't start:
+      // NO_WEBGL2), or the dealt map / spawn tripping the build (said as is).
       void postEnd(base, assignment.token);
-      exit.current({ kind: "over", reason: `This device can't draw the simulation (${(e as Error).message}).` });
+      console.warn("reinstall: the game didn't start", e);
+      exit.current({ kind: "over", reason: whyNoStart(e) });
       return;
     }
     game.current = g;
