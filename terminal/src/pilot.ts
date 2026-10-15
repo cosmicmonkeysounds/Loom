@@ -156,6 +156,8 @@ export function usePilotSession(config: TerminalConfig, pilot: Pilot | null): Pi
 
   const online = useMemo(() => {
     const me = view?.people?.find((p) => p.kind === "character" && p.id === config.character);
+    // A character with a `hold:` line always answers: no presence to show.
+    if (me?.agent?.hold === true) return null;
     return me?.agent?.online ?? null;
   }, [view, config.character]);
 

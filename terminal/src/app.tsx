@@ -253,7 +253,8 @@ export function App() {
         config={config}
         screen={screen}
         setScreen={setScreen}
-        castOnline={screenState.state?.character?.online ?? null}
+        castOnline={screenState.state?.character?.hold === true ? null : (screenState.state?.character?.online ?? null)}
+        polled={screenState.state !== null}
         takeover={takeover}
         onSetup={openSetup}
         onGone={onGone}
@@ -368,6 +369,7 @@ function Terminal({
   screen,
   setScreen,
   castOnline,
+  polled,
   takeover,
   onSetup,
   onGone,
@@ -375,8 +377,11 @@ function Terminal({
   config: TerminalConfig;
   screen: Screen;
   setScreen: (s: Screen) => void;
-  /** Is the character's agent online? (from the screen-state poll; null = unknown) */
+  /** Is the character's agent online? (from the screen-state poll; null =
+   *  unknown, or a `hold:` character that always answers) */
   castOnline: boolean | null;
+  /** The screen-state poll is answering (the bar's connection dot). */
+  polled: boolean;
   /** A story overlay covers the screen: no scanning, and an open line ends. */
   takeover: boolean;
   onSetup: () => void;
@@ -544,7 +549,7 @@ function Terminal({
     <div className={`terminal ${screen.kind}${warning !== null ? " warning" : ""}`} data-leash={remaining ?? undefined} data-busy={pilot !== null ? String(busy) : undefined}>
       <header className="bar">
         <span className="bar-left">
-          <span className="dot" data-on={String(pilot !== null ? session.connected : castOnline !== null)} />
+          <span className="dot" data-on={String(pilot !== null ? session.connected : polled)} />
           {config.title ? `${config.title} · ` : ""}TERMINAL {config.name.toUpperCase()}
         </span>
         <span className="bar-mid">{status}</span>
@@ -580,7 +585,7 @@ function Terminal({
               </div>
               <div className="attract-text">
                 <div className="big">SCAN YOUR PASS</div>
-                <div className="small">open the app · tap ⚙ · hold your pass to the camera</div>
+                <div className="small">open the app · tap ☰ · hold your pass to the camera</div>
                 {cameraProblem(camera) !== null && <div className="small problem">{cameraProblem(camera)}</div>}
                 <button className="link typed-link" onClick={() => setTypedOpen((o) => !o)}>
                   no camera? type your program name

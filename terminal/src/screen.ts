@@ -74,7 +74,8 @@ export interface ScreenState {
   receivedAt: number;
   night: { screen: string | null; terminals: string | null };
   cues: Partial<Record<ScreenCueFamily, ScreenCue | null>>;
-  character: { id: string; hidden: boolean; awake: boolean; online: boolean } | null;
+  /** `hold` — the character has a `hold:` line (it always answers): show no presence. */
+  character: { id: string; hidden: boolean; awake: boolean; online: boolean; hold: boolean } | null;
   attract: boolean;
   countdown: string | null;
   remaining: number | null;
@@ -149,6 +150,7 @@ export function parseScreenState(raw: unknown, receivedAt: number = Date.now()):
           hidden: (ch as Record<string, unknown>)["hidden"] === true,
           awake: (ch as Record<string, unknown>)["awake"] !== false,
           online: (ch as Record<string, unknown>)["online"] === true,
+          hold: (ch as Record<string, unknown>)["hold"] === true,
         }
       : null;
   const night = (typeof r["night"] === "object" && r["night"] !== null ? r["night"] : {}) as Record<string, unknown>;

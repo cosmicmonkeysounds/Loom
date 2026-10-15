@@ -54,7 +54,8 @@ describe("screen state", () => {
     expect(parseScreenState(null)).toBeNull();
     expect(parseScreenState({ attract: "yes" })).toBeNull();
     const s = parseScreenState({ attract: false, character: { id: "Clippy" }, remaining: Number.NaN })!;
-    expect(s.character).toEqual({ id: "Clippy", hidden: false, awake: true, online: false });
+    expect(s.character).toEqual({ id: "Clippy", hidden: false, awake: true, online: false, hold: false });
+    expect(parseScreenState({ attract: false, character: { id: "Trabolta", online: false, hold: true } })!.character!.hold).toBe(true);
     expect(s.remaining).toBeNull();
     expect(s.night).toEqual({ screen: null, terminals: null });
   });
