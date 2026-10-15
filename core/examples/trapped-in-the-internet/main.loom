@@ -177,10 +177,13 @@ ROLE Program
   // Trabolta's agent requests and the facts document, for the voice and
   // the orchestrator alike): the virus they carry or planted, the glitch
   // missions they chose and how far along they are, the dossier, the
-  // frame, the centre-square secret and the 📝 filing state. The verdicts
-  // are on the Kernel already; the orders and the virus files are
-  // `secret: true` CODEX entries (codex/1-world.loom, 6-missions.loom).
-  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, anti_ai, framed, fact_pending, fact_n, fact_try, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit
+  // frame, the centre-square secret, the 📝 filing state, and every
+  // featured mission and leader's recruiting quest (a hidden group's
+  // membership the server masks itself until the group is revealed). The
+  // verdicts and the anti-AI designation are on the Kernel already; the
+  // orders and the virus files are `secret: true` CODEX entries
+  // (codex/1-world.loom, 6-missions.loom).
+  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, anti_ai, framed, fact_pending, fact_n, fact_try, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave
   uploaded: bool = false
   cleared: bool = false
   captchas: 0 to 10 = 0
@@ -290,10 +293,10 @@ ROLE Program
   when self.cleared and self.featured != "none":
     -> Featured Briefing
 
-  // The designated anti-AI program (Night.anti_ai, MS Paint unless a
+  // The designated anti-AI program (Kernel.anti_ai, MS Paint unless a
   // director changes it before Bingo) is told the truth about the centre
   // square.
-  when self.cleared and self.name == Night.anti_ai:
+  when self.cleared and self.name == Kernel.anti_ai:
     set self.anti_ai = true
     unlock The Centre Square for self
 
@@ -2487,7 +2490,6 @@ when restore_the_lights:
 set Night.phase = "arrivals"
 set Night.step = 0
 set Night.clock = "--:--"
-set Night.anti_ai = "MS Paint"
 set Night.bingo_on = false
 set Night.bingo_end = 0
 set Night.bingo_winners = 0
@@ -2567,6 +2569,7 @@ set Night.award_value = "none"
 set Night.awards_given = 0
 set Kernel.combo_a = "V2-D5,V4-D1,V6-D8,V7-D3"
 set Kernel.combo_b = "V1-D6,V3-D2,V5-D7,V8-D4"
+set Kernel.anti_ai = "MS Paint"
 cue lights_screensaver
 set Night.lights = "screensaver"
 cue screens_screensaver

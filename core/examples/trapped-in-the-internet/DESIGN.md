@@ -278,7 +278,7 @@ Real actor names (Rob Cameron, Lara Lewis, …) **never appear in the story**. (
 example's codex entries `Rob Cameron` and `Lara Lewis` are dropped: those are the guests'
 real names, not cover identities.)
 
-**MS Paint is the designated anti-AI program for Computer Bingo** (`Night.anti_ai =
+**MS Paint is the designated anti-AI program for Computer Bingo** (`Kernel.anti_ai =
 "MS Paint"` seeded in Power On; a director may change it in Run → World before Bingo). It
 fits CS: "any program that relies on algorithms is a betrayal of the artist", and OV: everyone
 has been told to say yes "except for one person". **This choice needs the user's sign-off
@@ -439,7 +439,6 @@ Trabolta's persona `facts:` whitelist (he sees it).
 | Night.terminals | string `"screensaver"` | the wall terminals' look (mirror of the last `cue screens_*` / `cue terminals_*`) | |
 | Night.lights | string `"screensaver"` | current light look (mirror of the last `cue lights_*`) | |
 | Night.clock | string `"--:--"` | the show clock text after the Y2K reset (`"23:00"`, `"23:30"`, …) | yes |
-| Night.anti_ai | string `"MS Paint"` | the designated anti-AI program's name | |
 | Night.bingo_on / Night.bingo_end | bool false / number | 20-min Bingo deadline | |
 | Night.bingo_winners | number 0 | Bingo winners declared | |
 | Night.first_reinstall | string `"none"` | name of the program sent to the Internet at Bingo | |
@@ -485,7 +484,7 @@ sees the rest of `Night.*` too, which is why nothing below is sensitive.
 
 #### 2.6.2 `CHARACTER Kernel` (cast/props.loom) — the secret state
 
-`playable: false`; typed slots only; written and read only by main.loom rules, ROLE hooks and
+`playable: false` + `secret: true` (out of the agents' facts document too); typed slots only; written and read only by main.loom rules, ROLE hooks and
 beats as `Kernel.<slot>` (one-word head, no `_` folding needed). Character vars are excluded
 from every agent request and from the orchestrator digest; directors still see and edit them in
 Run → World, and stagehand can still match `worldSet` on them **[verified, x1]**: slots seed
@@ -507,6 +506,7 @@ in ROLE hooks and story rules.
 | `majority_reached: bool = false` | | a faction reached half + 1 |
 | `majority: text? = none` | | `"stay"` or `"leave"` |
 | `server_unlocked: bool = false` | | the server room may be entered without alarm |
+| `anti_ai: text? = none` | seeded in Power On: `"MS Paint"` | the designated anti-AI program's name (on the Kernel since wave 3: a director may move it, and a global would tell Trabolta's orchestrator who it is) |
 
 #### 2.6.1 Phases (`Night.phase` / `Night.step`)
 
@@ -559,7 +559,7 @@ human_problem: text? = none        // "debt" | "career" | "loneliness" | "mortal
 left_behind: text? = none          // "deposited" | "nothing"
 skipped_orientation: bool = false
 featured: text? = none             // §2.1 tags
-anti_ai: bool = false              // this program is Night.anti_ai
+anti_ai: bool = false              // this program is Kernel.anti_ai
 afk: bool = false                  // Bathroom Mode
 corrupted: bool = false            // currently in the Internet
 internet_visits: 0 to 50 = 0       // −5 each on the Trust Chart
@@ -618,7 +618,7 @@ ROLE hooks and watchers (all in `ROLE Program`; bodies specified in §3):
 | `when captcha answered for program:` | captchas += 1; first pass → `-> Login Incorrect`, else `-> Upload` |
 | `when tutorial answered for program:` | skip → skipped_orientation, doubt +10, Clippy + Norton lines, fail quest Orientation; finish → unlock The Orientation List, complete quest Orientation |
 | `when self.cleared and self.featured != "none":` | `-> Featured Briefing` |
-| `when self.cleared and self.name == Night.anti_ai:` | `set self.anti_ai = true`; `unlock The Centre Square for self` (covers a director changing Night.anti_ai) |
+| `when self.cleared and self.name == Kernel.anti_ai:` | `set self.anti_ai = true`; `unlock The Centre Square for self` (covers a director changing Kernel.anti_ai) |
 | `when Trabolta.awake == true and self.cleared:` | Trabolta's private formal hello (§3 B5) |
 | `when captured:` | corrupted, internet_visits +1, TRUST FORMULA (self), `cue tablet_webmd` (the tent tablet only; no mirror var), `if Night.trabolta_introduced == true:` `cue tv_mirror` / `set Night.screen = "mirror"`, `-> Reinstallation` |
 | `when released:` | corrupted false; reply `Reinstallation complete. You can follow instructions. Welcome back to the computer.` (exact; tested); then `if self.cleared != true:` `set self.cleared = true` + the four `reveal … for self` lines of Clearance (a program captured from the Optical Drive by a misclick lands on the Desktop uncleared and would otherwise go dark for the night; keeps spatial.test green) |
@@ -905,7 +905,7 @@ everyone at the end) · **X** finale artefact.
 | The Halifax Computer | The Halifax Computer | E | | | | The Router prop; Truther Download | ✚ | This house is the computer that holds the last facts Trabolta needs; he can install programs into it remotely and lift a consciousness into a program, but cannot get in himself. |
 | The Optical Drive | The Optical Drive | E | | | | Upload (every program) | | Where you left your body (keep current text). |
 | The Terms Of Service | The Terms Of Service | E | | | | Upload (every program) | | "By uploading you agree that the computer's AI helper may make all of your decisions." (The prompt everyone needs for the Bingo centre square.) |
-| The Centre Square | The Centre Square | M | | | | ROLE watcher for whoever `== Night.anti_ai` | | "The Uploader said you agreed to let the computer's AI helper make all of your decisions. You didn't mean it. You would never agree to a life where AI makes all of your decisions. If anyone asks, say so. Tell the truth all night." |
+| The Centre Square | The Centre Square | M | | | | ROLE watcher for whoever `== Kernel.anti_ai` | | "The Uploader said you agreed to let the computer's AI helper make all of your decisions. You didn't mean it. You would never agree to a life where AI makes all of your decisions. If anyone asks, say so. Tell the truth all night." |
 | The Reinstallation Protocol | The Reinstallation Protocol | E | | | Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software, WebMD | Reinstallation beat | ✚ | Corruption, the headset, the golden duck, Bathroom Mode, the marked exit. |
 | Bathroom Mode | Bathroom Mode | E | | | Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software, Recycling Bin, WebMD | Reinstallation beat; Orientation | ✚ | Turn it on so everyone knows you are not hacking the Internet; it also excuses you from a summons. |
 | The Golden Duck | The Golden Duck | E | | | | `the simulation completed` (captured programs) **and** `the golden duck` (anyone who finds him) — keep the name: spatial.test asserts a *free* program learns it from `the golden duck` | | "Gerald, the golden duck off the Maps and Ducks billboard. Follow the chevrons; walk right up to him; he lays a golden egg and flies away." (The reinstall games call him Gerald.) |
@@ -1062,7 +1062,7 @@ only a copy-pasted "3/X" link title) and are flagged for the user's review (§10
 | Name | title | Unlocked | Content |
 |---|---|---|---|
 | Clippy Instructions 1 | CLIPPY INSTRUCTIONS - 1/X - BEGINNING OF NIGHT | `known to: Clippy` (from the start) | CI 1 verbatim, **except** the line "When you find a match, write down the name of who is the match" is replaced by: "Do NOT write down names. Remind everyone to use their special computer memory to remember who answered each square." Keep "Jean Trabolta himself will make an appearance later tonight." |
-| Clippy Instructions 2 | CLIPPY INSTRUCTIONS - 2/X - COMPUTER BINGO RESULTS | bingo_time | CI 2 verbatim, with "name the program they matched to each one" kept (spoken from memory), **in CI 2's order**: winners + ribbon → the Antivirus interruption → corruption is normal → what the Internet is → introduce Trabolta → point at the reinstallation on the TV → announce the hunt. Adds the app steps: press 🎱 Bingo winner on each winner (several winners are fine); Norton presses 🛡; if no Bingo, Task Manager presses 🃏 on {Night.anti_ai}; after the Corrupted Code speech the director fires "Clippy introduces Trabolta"; the TV mirror comes up with him. |
+| Clippy Instructions 2 | CLIPPY INSTRUCTIONS - 2/X - COMPUTER BINGO RESULTS | bingo_time | CI 2 verbatim, with "name the program they matched to each one" kept (spoken from memory), **in CI 2's order**: winners + ribbon → the Antivirus interruption → corruption is normal → what the Internet is → introduce Trabolta → point at the reinstallation on the TV → announce the hunt. Adds the app steps: press 🎱 Bingo winner on each winner (several winners are fine); Norton presses 🛡; if no Bingo, Task Manager presses 🃏 on {Kernel.anti_ai}; after the Corrupted Code speech the director fires "Clippy introduces Trabolta"; the TV mirror comes up with him. |
 | Clippy Instructions 3 | CLIPPY INSTRUCTIONS - 3/X - FIRST MOMENT OF TRUTH | hunt_time_up | The judging rules, pressed **per question** (accurate → ✅ Q1/Q2/Q3 of this round; confident even if wrong → 😤 Q1/Q2/Q3; uncertain/guess → 🤷 to the Internet; always press the number of the question that was answered); Truth or Dare from the hat (Dare → 🎩; confident or true → accept; called a false slip false → 🙅 pass the turn). |
 | Clippy Instructions 4 | CLIPPY INSTRUCTIONS - 4/X - THE MALWARE | second_hunt_preview | Trabolta's private message verbatim: "Don't let everyone know but if the malware continues we are all going to die. Tell them something reassuring. I know this is probably creating some intense emotions for you but try not to show the others." Then: overreact wildly; "There are signs of malware in the system that we need to be very vigilant about. We are going to proceed on the Truth Scavenger Hunt because it is more important than ever that Trabolta gets the information he needs to undo what is happening." Disperse everyone for one hour. |
 | Clippy Instructions 5 | CLIPPY INSTRUCTIONS - 5/X - TRUTH PONG | five_minute_warning | Visibly distraught, trying to act more excited than ever: "Truth Time again… Truth Pong, everyone's favourite game." Rules (bounce or throw into a cup; miss → Internet; make → answer one fact; same judging). |
@@ -1304,7 +1304,7 @@ already says).
 **A2 Doors open — `== Power On`** (start beat; last item in `main.loom`; `setting: The
 Desktop`; **no dialogue lines and no widgets** — the test checks this).
 - Seeds every `Night.*` default in §2.6 / §2.14 (`set Night.phase = "arrivals"`,
-  `set Night.step = 0`, `set Night.anti_ai = "MS Paint"`, counters 0, flags false,
+  `set Night.step = 0`, `set Kernel.anti_ai = "MS Paint"`, counters 0, flags false,
   strings `"none"`, `set Night.r2_requested = 3`, `set Night.clock = "--:--"`) and the two
   combos on the Kernel (`set Kernel.combo_a = "V2-D5,V4-D1,V6-D8,V7-D3"`, `set Kernel.combo_b
   = "V1-D6,V3-D2,V5-D7,V8-D4"`).
@@ -1491,7 +1491,7 @@ Halifax Computer for program`); `== The Screensaver` (`Self:` screensaver riff; 
 - Booth readouts (CHARACTER hooks on `bingo_time`): Clippy `reply 📋 2/X is in What Clippy
   knows. Press 🎱 on each winner. Celebrate, bring the ribbon, demand applause.`; Task
   Manager `reply 🃏 If nobody has a Bingo: hand Clippy the pre-filled card for
-  {Night.anti_ai}, then press 🃏 on their card.`; Norton `reply 🛡 You are the selected
+  {Kernel.anti_ai}, then press 🃏 on their card.`; Norton `reply 🛡 You are the selected
   Antivirus. When the centre-square program is named (or the winner refuses to name anyone,
   or the framed program denies the card), stand at attention and interrupt: it is
   inappropriate for that program to have not agreed to be ruled by AI, because that is what
@@ -1511,7 +1511,7 @@ Halifax Computer for program`); `== The Screensaver` (`Self:` screensaver riff; 
     handed to Clippy. You did not fill it in.`
 - The three outcomes are performed live: (a) a winner names the centre-square program → Norton
   presses 🛡 on them; (b) the winner refuses → Norton presses 🛡 on the winner; (c) no Bingo →
-  Task Manager frames `{Night.anti_ai}`, Clippy reads the name, they (truthfully) deny it →
+  Task Manager frames `{Kernel.anti_ai}`, Clippy reads the name, they (truthfully) deny it →
   Norton presses 🛡 on them.
 - **First reinstallation** (`TRAIT Enforcer`, `when send to the internet for program:`; **no
   phase guard on the hook itself** — §0 rule 22 — spatial.test fires it as Norton on a fresh,
@@ -2733,8 +2733,8 @@ at a time.
    "screensaver").
 4. **Featured programs.** "Microsoft Excel" → `featured == "excel"`, after clearance holds
    Randy Barkmore Sr; "Calculator" → featured "none", holds no backstory; Broken Ask Jeeves
-   gets 2 backstories; `Night.anti_ai` holder (MS Paint) holds The Centre Square after
-   clearance; changing `Night.anti_ai` to "Calculator" then clearing Calculator grants it.
+   gets 2 backstories; `Kernel.anti_ai` holder (MS Paint) holds The Centre Square after
+   clearance; changing `Kernel.anti_ai` to "Calculator" then clearing Calculator grants it.
 5. **Act I.** Trabolta hidden and not in People before `introduce_trabolta`, `awake` false;
    `call_to_the_desktop` → phase desktop, alert, `room:task manager` + system notice;
    `start_the_bingo` → alert contains "COMPUTER BINGO has begun", > 4 public Clippy lines, a
@@ -2993,7 +2993,7 @@ featured and pool characters so mingling pays off and identities start to leak):
 | 14 | Has never read the Terms of Service | everyone (frivolous) |
 | 15 | Has been to the Halifax Explosion memorial | environment |
 | 16 | Has been told they are "a lot" | anyone |
-| ✱ centre | Would you never agree to a life where AI makes all of your decisions? | the anti-AI program (`Night.anti_ai`, MS Paint) |
+| ✱ centre | Would you never agree to a life where AI makes all of your decisions? | the anti-AI program (`Kernel.anti_ai`, MS Paint) |
 
 ### 8.2 Truth or Dare hat slips (round 1; OV "mixed up possible answers in a hat")
 

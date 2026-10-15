@@ -89,7 +89,7 @@ CHARACTER Task Manager is Host
 
   when bingo_time:
     if Night.step < 3:
-      reply 🃏 If nobody has a Bingo: hand Clippy the pre-filled card for {Night.anti_ai}, then press 🃏 on their card.
+      reply 🃏 If nobody has a Bingo: hand Clippy the pre-filled card for {Kernel.anti_ai}, then press 🃏 on their card.
 
   when truther_download:
     if Night.truther_sent != true:
@@ -106,9 +106,15 @@ CHARACTER Adobe Acrobat is Host
     else:
       Self: Need something printed? For a small fee, yes. For no fee, I believe in you.
 
+  // The same test Print The Certificate (beats/pong.loom) asks VLC by:
+  // a cleared VLC who is not in the Internet. With none, Trabolta asks
+  // anyone, and so does the booth.
   when show_the_rankings:
     if Night.phase == "trust_chart" and Night.rank_round < 1:
-      reply 🖨 Stand by the printer. VLC is about to be asked to print a certificate.
+      if count([p for p in Persons where p.featured == "vlc" and p.cleared and not p.captured]) > 0:
+        reply 🖨 Stand by the printer. VLC is about to be asked to print a certificate.
+      else:
+        reply 🖨 Stand by the printer. Nobody is asked by name: whoever presses START, let them.
 
   when bobbing_for_truth:
     if Night.ended != true and Night.step < 17:

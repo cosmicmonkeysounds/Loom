@@ -849,6 +849,47 @@ describe("EventRuntime agents", () => {
     expect(facts.powers.map((p) => p.id)).toEqual(["cut the lights", "snoop"]);
   });
 
+  it("no agent reads a secret character or an unrevealed hidden group's membership", async () => {
+    const source = `${SOURCE}
+GROUP Cabal
+  hidden: true
+
+CHARACTER Vault
+  playable: false
+  secret: true
+  combo: text? = none
+`;
+    const rt = runtime({ source });
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Ada", passcode: CODES.event });
+    const id = g.json["id"] as string;
+    const token = g.json["token"] as string;
+    const worker = await call(rt, "GET", "/api/agent/stream?characters=Trabolta&name=laptop", {}, { moderator: true });
+    const sim = rt.liveSim!;
+    sim.setVar("Vault.combo", "1-2-3");
+    sim.join(id, "Cabal");
+    expect(sim.groupsOf(id)).toEqual(["Cabal"]);
+
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "hi" }, { token });
+    const req = worker.res.frames().filter(([e]) => e === "request").map(([, d]) => d as AgentRequest)[0]!;
+    const blob = JSON.stringify(req);
+    for (const leak of ["Cabal", "1-2-3", "Vault"]) expect(blob, leak).not.toContain(leak);
+    expect(req.them.vars["groups"]).toBe("[]");
+
+    const facts = (await call(rt, "GET", "/api/agent/facts", {}, { moderator: true })).json as unknown as AgentFacts;
+    for (const leak of ["Cabal", "1-2-3", "Vault"]) expect(JSON.stringify(facts), leak).not.toContain(leak);
+    expect(facts.characters.map((c) => c.id).sort()).toEqual(["Clippy", "Trabolta"]);
+
+    // Revealed, the group is public: membership reads like any other.
+    expect((await call(rt, "POST", "/api/mod/reveal", { faction: "Cabal" }, { moderator: true })).status).toBe(200);
+    const after = (await call(rt, "GET", "/api/agent/facts", {}, { moderator: true })).json as unknown as AgentFacts;
+    const ada = after.programs.find((p) => p.id === id)!;
+    expect(ada.groups).toEqual(["Cabal"]);
+    expect(ada.faction).toBe("Cabal");
+    expect(ada.vars).toMatchObject({ group: "Cabal", faction: "Cabal", groups: "[Cabal]" });
+    expect(JSON.stringify(after)).not.toContain("1-2-3"); // the Vault stays secret
+  });
+
   it("a worker's mind report shows up on the director's view, and a restart forgets it", async () => {
     const { rt } = await setup();
     expect((await call(rt, "POST", "/api/agent/mind", { character: "Trabolta" })).status).toBe(403);

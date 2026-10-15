@@ -200,8 +200,10 @@ describe("Trapped in the Internet — compile", () => {
     expect(k).toBeDefined();
     expect(k.listed).toBe(false);
     expect(k.playable).toBe(false);
+    expect(k.secret).toBe(true); // out of the agents' facts document too
     const seeded = Object.fromEntries(sim.worldEntries().filter((w) => w.path.startsWith("Kernel.")).map((w) => [w.path.slice(7), w.value]));
     expect(seeded).toEqual({
+      anti_ai: "none",
       combo_a: "none",
       combo_b: "none",
       q1: "none",
@@ -327,7 +329,7 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(has(cues(boot), "screens_screensaver")).toBe(true);
     expect(v(sim, "Night.phase")).toBe("arrivals");
     expect(v(sim, "Night.step")).toBe(0);
-    expect(v(sim, "Night.anti_ai")).toBe("MS Paint");
+    expect(v(sim, "Kernel.anti_ai")).toBe("MS Paint");
     expect(v(sim, "Night.screen")).toBe("screensaver");
     expect(diags(boot)).toEqual([]);
   });
@@ -679,7 +681,7 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(sim.questStatus("g3", "OpenOffice Dossier")).toBe("done");
     // secrets never live in Night.*
     const night = worldKeys(sim).filter((k) => k.startsWith("Night."));
-    expect(night.filter((k) => /^Night\.combo|combo_[ab]|lies|planter|planted|dossier|majority|\.q[1-8]$|all_accurate|server_unlocked/u.test(k))).toEqual([]);
+    expect(night.filter((k) => /^Night\.combo|combo_[ab]|lies|planter|planted|dossier|majority|\.q[1-8]$|all_accurate|server_unlocked|anti_ai/u.test(k))).toEqual([]);
   });
 
   it("the summons: check-ins, exemptions, bad check-in points, the late list", { timeout: SLOW }, () => {
@@ -776,6 +778,9 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(lines(rk, "Trabolta").some((t) => t.startsWith("The media player is not responding"))).toBe(true);
     expect(v(sim, "Night.printer_vlc")).toBe(false);
     expect(saidBy(rk, "Truther Download")).toEqual([]);
+    // …and Adobe Acrobat's booth says so, instead of promising a VLC.
+    const acrobat = replies(rk).filter((r) => r.to === "Adobe Acrobat").map((r) => r.text);
+    expect(acrobat).toEqual(["🖨 Stand by the printer. Nobody is asked by name: whoever presses START, let them."]);
   });
 
   it("the printer, the beans, the zip", () => {
@@ -993,7 +998,7 @@ describe("Trapped in the Internet — arrival edge cases", () => {
     sim.scan("Norton Anti-Virus", "g2");
 
     upload(sim, "g3", "Minesweeper");
-    sim.setVar("Night.anti_ai", "Calculator");
+    sim.setVar("Kernel.anti_ai", "Calculator");
     expect(sim.holdsCodex("g1", "The Centre Square")).toBe(true);
 
     sim.signal("send to the internet", "g3", null, "Norton Anti-Virus");
@@ -1011,7 +1016,7 @@ describe("Trapped in the Internet — arrival edge cases", () => {
   it("an anti-AI program chosen before arrival gets The Centre Square on clearance", () => {
     const sim = fresh();
     sim.fireBeat("Power On");
-    sim.setVar("Night.anti_ai", "Calculator");
+    sim.setVar("Kernel.anti_ai", "Calculator");
     upload(sim, "g1", "Calculator");
     expect(sim.holdsCodex("g1", "The Centre Square")).toBe(true);
     upload(sim, "g2", "MS Paint");
@@ -2242,6 +2247,7 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
     const rk = fire(sim, "show_the_rankings");
     expect(lines(rk, "Trabolta").some((t) => t.startsWith("VLC Player."))).toBe(true);
     expect(v(sim, "Night.printer_vlc")).toBe(true);
+    expect(replies(rk).filter((r) => r.to === "Adobe Acrobat").map((r) => r.text)).toEqual(["🖨 Stand by the printer. VLC is about to be asked to print a certificate."]);
     const nudges = saidBy(rk, "Truther Download").map(aud).sort();
     expect(nudges).toEqual(['["g4"]', '["g6"]']); // MS Paint, VLC
     // Captured after the call: no nudge in the tent; a reminder once released, before the beans.
@@ -2405,6 +2411,16 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
     expect(beats(sc)).toContain("The Tablet Video");
     expect(replies(sc).map((r) => [r.to, r.text])).toEqual([["WebMD", "🩺 Winamp: corrupted, visit 1. Hand them a headset or the tablet."]]);
     expect(saidBy(sc, "WebMD").every((e) => e.audience.includes("g5"))).toBe(true);
+    // Anywhere but the tent it is a readout only: no video, no doubt.
+    const d0 = v(sim, "g1.doubt");
+    const away = sim.scan("WebMD", "g1");
+    expect(beats(away)).not.toContain("The Tablet Video");
+    expect(replies(away).map((r) => r.text)).toEqual(["🩺 Calculator is not corrupted, and not in the Internet. Nothing to do."]);
+    expect(v(sim, "g1.doubt")).toBe(d0);
+    sim.createPerson("g99", "Notepad");
+    const door = sim.scan("WebMD", "g99");
+    expect(beats(door)).toEqual([]);
+    expect(replies(door).map((r) => r.text)).toEqual(["🩺 Notepad has not finished uploading. Nothing to check yet."]);
     const pu = fire(sim, "pop_up", "g1", { target: "g3", text: "Hello OpenOffice" }, "Trabolta");
     const pop = composeGuestMessages(sim, pu).find((m) => m.text.includes("Hello OpenOffice"));
     expect(pop?.alert).toBe(true);
@@ -2434,7 +2450,7 @@ describe("Trapped in the Internet — a secret on a program never reaches Trabol
     expect(sim.agentRefuses("Clippy", "ILOVEYOU")).toBe(false); // a performer takes anything
   });
 
-  it("Excel DMs him after planting: no virus, mission, frame or filing state in the request or the facts", { timeout: SLOW }, async () => {
+  it("Excel DMs him after planting: no virus, mission, frame, filing state or hidden group in the request or the facts", { timeout: SLOW }, async () => {
     const dir = mkdtempSync(join(tmpdir(), "loom-trapped-"));
     tmp.push(dir);
     const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: SHOW, scenarioSource: SRC, joinBase: () => "http://localhost" });
@@ -2462,9 +2478,32 @@ describe("Trapped in the Internet — a secret on a program never reaches Trabol
     const blob = JSON.stringify(req);
     for (const leak of ["sabotage", "LOVE-LETTER", "If This Machine Has Malware", "codex.iloveyou", "excel_mission"]) expect(blob, leak).not.toContain(leak);
 
+    // Excel is in Unlimited Power now, and nobody has revealed it: no
+    // agent may read the membership (not even that the group exists).
+    expect(rt.liveSim!.groupsOf(id)).toContain("Unlimited Power");
+    expect(blob).not.toContain("Unlimited Power");
+    expect(req.them.vars["groups"]).toBe("[]");
+    // The anti-AI designation is on the Kernel, never a global.
+    expect(Object.keys(req.world).filter((k) => k.includes("anti_ai"))).toEqual([]);
+
     const facts = (await call(rt, "GET", "/api/agent/facts", {}, { moderator: true })).json as unknown as AgentFacts;
     const me = facts.programs.find((p) => p.id === id)!;
     for (const k of SECRET) expect(Object.keys(me.vars).includes(k), k).toBe(false);
+    expect(JSON.stringify(facts)).not.toContain("Unlimited Power");
+    expect(me.groups).toEqual([]);
+    // The Kernel (`secret: true`) is not in the facts at all: no combos, verdicts or planter.
+    expect(facts.characters.map((c) => c.id)).not.toContain("Kernel");
+    for (const leak of ["V2-D5", "anti_ai", "virus_planter", "Kernel."]) expect(JSON.stringify(facts), leak).not.toContain(leak);
+
+    // At the Y2K clock the groups are revealed (membership is public now),
+    // but a leader's recruiting orders stay secret.
+    for (const n of ["five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "printer_opened", "zip_everyone_out", "trabolta_overshares", "y2k_clock"]) await mod(n);
+    expect(rt.liveSim!.questStatus(id, "Recruit To Stay")).toMatch(/^(active|done)$/u); // the only program: his own vote is the majority
+    const late = (await call(rt, "GET", "/api/agent/facts", {}, { moderator: true })).json as unknown as AgentFacts;
+    const me2 = late.programs.find((p) => p.id === id)!;
+    expect(me2.groups).toContain("Unlimited Power");
+    expect(me2.vars["group"]).toBe("Unlimited Power");
+    expect(Object.keys(me2.vars).filter((k) => k.startsWith("quest.recruit") || k === "quest.excel_mission")).toEqual([]);
     rt.dispose();
   });
 });

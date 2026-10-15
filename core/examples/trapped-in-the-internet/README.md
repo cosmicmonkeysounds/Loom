@@ -122,10 +122,15 @@ These rules matter when you edit. Break one and something fails silently.
   Their private material comes from `Truther Download:` / `The Uploader:`
   lines and from `unlock` in ROLE hooks gated on `program.featured`.
 - **Secrets never live in `Night.*`.** Trabolta's orchestrator sees every
-  global. Combos, lies, the majority, the virus planter and the dossier are
-  slots on the hidden `CHARACTER Kernel`, whose vars never reach an agent.
+  global. Combos, lies, the majority, the virus planter, the dossier and
+  the anti-AI program (`Kernel.anti_ai`) are slots on the hidden
+  `CHARACTER Kernel` (`secret: true`): a character's vars never land in an
+  agent request's world, and `secret: true` keeps it out of the agents'
+  facts document. Membership of the two hidden groups is masked by the
+  server until the Y2K clock reveals them.
   A program's own secrets (the virus it carries or planted, its mission
-  choices, the frame, the 📝 filing state) are on the ROLE's `secret:`
+  choices, the frame, the 📝 filing state, every featured mission and
+  leader's recruiting quest) are on the ROLE's `secret:`
   line, and the orders + the tent virus files are `secret: true` CODEX
   entries: the server leaves both out of every agent request and the
   facts document, so neither model can read them off the guest it talks
@@ -262,7 +267,7 @@ scanning its sign (`checked_in`, see the integration contract).
 | — (start beat `Power On`) | — | Seeds every `Night.*` default and the two Kernel combos. `cue lights_screensaver` / `screens_screensaver`: a classic Windows screensaver on the TV. Trabolta is `hidden: true` and appears on no phone. |
 | — | — | **Arrival** (`when someone joins:`): the phone goes on rails in the Optical Drive (`cutscene: true`). **Login**: The Uploader and a real CAPTCHA, which you must *fail* (solving it proves you are human: INCORRECT, try again). **Upload**: pool programs pick the problem Trabolta promised to solve (debt / career / loneliness / mortality), everyone leaves something in the deposit box, agrees to the Terms Of Service, gets 100 Truthcoin, and waits with **their pass** on screen. |
 | — | **Antivirus scans the pass at the door** | `TRAIT Enforcer` routes the scan to the shared `Clearance` beat: cleared, the Tube ("a tunnel of lights"), moved to The Desktop, and the house rooms (The Start Bar, The CPU, The Steam Room, Disk Cleanup, The Cloud, The RAM, The Fan Closet, The Graphics Card, The Hard Drive) are revealed on their phone, in one "📂 … are open now." notice. The first clearance starts the terminals' attract loop (`terminals_attract`). A host's scan only greets. |
-| — | — | **Orientation**: Clippy's spotlight tour (`show tutorial`). Finishing it earns *The Orientation List*. Skipping it costs +10 doubt, Norton logs it, and Clippy remembers. **Featured Briefing**: a featured program's human memories are restored into their Codex ("Tell no one"). **MS Paint** (`Night.anti_ai`) also gets *The Centre Square*: she never agreed to let AI decide. |
+| — | — | **Orientation**: Clippy's spotlight tour (`show tutorial`). Finishing it earns *The Orientation List*. Skipping it costs +10 doubt, Norton logs it, and Clippy remembers. **Featured Briefing**: a featured program's human memories are restored into their Codex ("Tell no one"). **MS Paint** (`Kernel.anti_ai`) also gets *The Centre Square*: she never agreed to let AI decide. |
 | — | Recycling Bin / Antivirus get booth readouts | **Explore and meet.** Bathroom Mode (guest button 🚻) tells the Antivirus you are not hacking the Internet and excuses you from a summons. Props: The Router (kitchen) and The Screensaver (TV). |
 
 ### B. Act I
@@ -621,7 +626,7 @@ programs use their "special computer memory".
 | 14 | Has never read the Terms of Service | everyone (frivolous) |
 | 15 | Has been to the Halifax Explosion memorial | environment |
 | 16 | Has been told they are "a lot" | anyone |
-| ✱ centre | **Would you never agree to a life where AI makes all of your decisions?** | the anti-AI program (`Night.anti_ai`, MS Paint) |
+| ✱ centre | **Would you never agree to a life where AI makes all of your decisions?** | the anti-AI program (`Kernel.anti_ai`, MS Paint) |
 
 ### The hunt questions (on the TV and in the Quest Log)
 

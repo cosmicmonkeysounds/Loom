@@ -911,11 +911,15 @@ export class EventRuntime {
    * name, or a dotted path like `quest.excel_mission`) and the
    * `codex.<slug>` flag of every `secret: true` CODEX entry are left out,
    * so neither the voice nor the orchestrator can read a secret off the
-   * guest it is talking to (or off the facts document).
+   * guest it is talking to (or off the facts document). Membership of a
+   * hidden group nobody has revealed yet is left out too: `faction` /
+   * `group` / `trueFaction` naming it are dropped and `groups` lists only
+   * the groups an agent may know of.
    */
   private agentVarsOf(world: ReadonlyArray<{ path: string; value: string }>): (head: string) => Record<string, string> {
     const sim = this.sim!;
     const secretCodex = new Set([...sim.model.codex.values()].filter((e) => e.secret).map((e) => `codex.${Sim.codexSlug(e.id)}`));
+    const hidden = (g: string) => this.agentHiddenGroup(g);
     return (head: string): Record<string, string> => {
       const person = sim.persons.get(head);
       const secret = person === undefined ? null : (sim.model.roles.get(person.role)?.secret ?? null);
@@ -925,10 +929,37 @@ export class EventRuntime {
         const key = w.path.slice(head.length + 1);
         if (secretCodex.has(key)) continue;
         if (secret !== null && (secret.has(key) || secret.has(key.split(".")[0]!))) continue;
+        if ((key === "faction" || key === "group" || key === "trueFaction") && hidden(w.value)) continue;
+        if (key === "groups" && person !== undefined) {
+          out[key] = `[${sim.groupsOf(head).filter((g) => !hidden(g)).join(", ")}]`;
+          continue;
+        }
         out[key] = w.value;
       }
       return out;
     };
+  }
+
+  /** A `hidden: true` group the story has not revealed: an agent may not
+   *  know it exists, let alone who is in it. */
+  private agentHiddenGroup(group: string): boolean {
+    const sim = this.sim!;
+    return (sim.model.factions.get(group)?.hidden ?? false) && !sim.factionRevealed(group);
+  }
+
+  /** The world's globals as an agent may see them: every path whose head is
+   *  neither a person nor a character, minus an unrevealed hidden group's
+   *  own paths (`<Group>.members` would name its members). */
+  private agentGlobals(world: ReadonlyArray<{ path: string; value: string }>): Record<string, string> {
+    const sim = this.sim!;
+    const globals: Record<string, string> = {};
+    for (const w of world) {
+      const head = w.path.split(".")[0]!;
+      if (sim.persons.has(head) || sim.model.characters.has(head)) continue;
+      if (this.agentHiddenGroup(head)) continue;
+      globals[w.path] = w.value;
+    }
+    return globals;
   }
 
   /** Everything a worker needs to answer one thread, read from the live sim. */
@@ -950,11 +981,7 @@ export class EventRuntime {
     if (last === undefined) return null; // nothing said to answer
     const world = sim.worldEntries();
     const varsOf = this.agentVarsOf(world);
-    const globals: Record<string, string> = {};
-    for (const w of world) {
-      const head = w.path.split(".")[0]!;
-      if (!sim.persons.has(head) && !sim.model.characters.has(head)) globals[w.path] = w.value;
-    }
+    const globals = this.agentGlobals(world);
     const codex = (holder: string) => sim.codexFor(holder).filter((e) => !e.secret).map((e) => ({ id: e.id, title: e.title, about: e.about, text: e.text }));
     const def = sim.model.characters.get(thread.character);
     const speakerId = performer ?? who;
@@ -995,19 +1022,16 @@ export class EventRuntime {
   /**
    * The whole session as one lookup document (`GET /api/agent/facts`) —
    * a worker whose character "has access to everything" reads this and
-   * decides what the character may know. Mod-gated; nothing here is
-   * secret from a director.
+   * decides what the character may know. Mod-gated, but it is written for
+   * a model, so the agent secrets stay out: ROLE `secret:` slots, `secret:
+   * true` CODEX entries and characters, unrevealed hidden groups.
    */
   private agentFacts(): AgentFacts | null {
     const sim = this.sim;
     if (sim === null) return null;
     const world = sim.worldEntries();
     const varsOf = this.agentVarsOf(world);
-    const globals: Record<string, string> = {};
-    for (const w of world) {
-      const head = w.path.split(".")[0]!;
-      if (!sim.persons.has(head) && !sim.model.characters.has(head)) globals[w.path] = w.value;
-    }
+    const globals = this.agentGlobals(world);
     const online = new Set(this.agents.onlineCharacters());
     const primes = this.presence().primes;
     const nameOf = (id: string) => sim.persons.get(id)?.name ?? id;
@@ -1015,7 +1039,7 @@ export class EventRuntime {
       id: p.id,
       name: p.name,
       faction: sim.publicFactionOf(p.id),
-      groups: sim.groupsOf(p.id),
+      groups: sim.groupsOf(p.id).filter((g) => !this.agentHiddenGroup(g)),
       location: sim.locationOf(p.id),
       captured: sim.isCaptured(p.id),
       vars: varsOf(p.id),
@@ -1025,9 +1049,12 @@ export class EventRuntime {
       at: Date.now(),
       world: globals,
       programs,
-      characters: [...sim.model.characters.values()].map((c) => ({
+      // A `secret: true` character (the show's Kernel) is bookkeeping no
+      // agent may read; a character's hidden group reads as null like a
+      // guest's.
+      characters: [...sim.model.characters.values()].filter((c) => !c.secret).map((c) => ({
         id: c.id,
-        faction: c.faction,
+        faction: c.faction !== null && this.agentHiddenGroup(c.faction) ? null : c.faction,
         listed: c.listed,
         mind: c.mind,
         online: c.mind === "external" ? online.has(c.id) : primes.has(c.id),

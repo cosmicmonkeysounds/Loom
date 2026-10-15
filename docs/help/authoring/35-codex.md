@@ -112,7 +112,25 @@ ROLE Program
 ```
 
 Everything else about the guest still reaches the agent's worker; the
-persona's `them:` whitelist then picks which of it the models read.
+persona's `them:` whitelist then picks which of it the models read. One
+thing the server hides for you: membership of a `hidden: true` group
+nobody has revealed yet (the guest's `group`, `faction` and `groups`,
+and the group's own member list) stays out until the story `reveal`s it.
+
+Secrets that belong to nobody (a door combination, which answers were
+lies) live best on a hidden bookkeeping character marked `secret: true`.
+A character's variables never land in an agent request's world, and
+`secret: true` keeps it out of the agents' facts document as well:
+
+```loom
+CHARACTER Kernel
+  playable: false
+  secret: true
+  combo_a: text? = none
+```
+
+Never keep a secret in a story-wide global such as `Night.combo`: the
+agent's worker sees every global.
 
 The codex has a sibling for what guests are *doing*: see *Quests — the
 quest log*.

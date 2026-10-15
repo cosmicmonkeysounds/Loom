@@ -149,6 +149,12 @@ export interface CharDef {
    *  *is*, when its name alone would find the wrong one (the naval
    *  minesweeper). The source of a guest's extra picture options. */
   wiki: string | null;
+  /** `secret: true` — a hidden bookkeeping character no agent may read
+   *  (the show's Kernel holding the combos and verdicts): left out of the
+   *  agents' facts document, vars and codex alike. Its world paths already
+   *  stay out of every request's globals (a character's head never lands
+   *  there). Default false. */
+  secret: boolean;
 }
 
 /** A compiled `CODEX` entry — a unit of shareable lore (Loom 4 §10.1). */
@@ -669,6 +675,7 @@ function charDef(id: string, body: CharacterBody): CharDef {
     playable: body.properties.get("playable")?.value.trim() !== "false",
     avatar: avatarsOf(body.properties.get("avatar")?.value),
     wiki: body.properties.get("wiki")?.value.trim() || null,
+    secret: body.properties.get("secret")?.value.trim() === "true",
   };
 }
 
