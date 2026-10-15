@@ -397,14 +397,26 @@ and its geometry are `@loom/house` (`../house`).
   outcome does — `signal("the simulation completed")` + `signal("the
   golden duck")`, journaled `by` the game's device, and refused (409
   "doors are closed") while the event is paused.
-- **The map** is the director's save for this event
-  (`spatial-house.json` in its state dir, `Store.loadHouse/saveHouse`)
-  else the show's file (`LOOM_HOUSE`, default the example's `house.json`,
-  re-read on mtime change, last good map kept). `POST
-  /api/mod/spatial/house {house, base?}` validates, refuses a stale `base`
-  (409), saves, and `setHouse` carries live sessions over: a duck keeps
-  its spot id (or is re-dealt), then the stream gets `house` + a `duck`
-  frame per moved duck.
+- **The map** belongs to the project (`server/house-maps.ts`, SW-MAP-01):
+  `house.json` + any `house.<variant>.json` are project files (not story —
+  `projectSource` concatenates `.loom` only), snapshotted at launch like
+  `scenario_source` (`event.house_maps` + `spatial-maps.json` in the state
+  dir with the active variant), refreshed by a reload, fresh on End →
+  relaunch. The event's map is the director's save for this event
+  (`spatial-house.json`, `Store.loadHouse/saveHouse`) > the snapshot's
+  active variant > the show's file (`LOOM_HOUSE`, default the example's
+  `house.json`, re-read on mtime change, last good map kept; an event with
+  no project maps offers its `<stem>.<variant>.json` siblings as
+  variants). `POST /api/mod/spatial/house {house, base?}` validates,
+  refuses a stale `base` (409), saves, and `setHouse` carries live
+  sessions over: a duck keeps its spot id (or is re-dealt), then the
+  stream gets `house` + a `duck` frame per moved duck. `GET
+  /api/mod/spatial/variants` lists the variants; `POST
+  /api/mod/spatial/variant {file, base?}` switches (the tent ↔ shed
+  switch, mid-show: the same `setHouse` path, a director's save dropped);
+  `POST /api/mod/spatial/house/project {file?, base?}` is "Save to
+  project" (through the collab hub; 409 for an event with no project).
+  `/api/mod/load` takes `maps` beside `source` (`scripts/sync-example.ts`).
 - **The stream** (`GET /api/spatial/stream`, SSE, its own subscriber set —
   never `clients`): `hello` / `join` / `poses` / `found` / `leave` /
   `house` / `duck` / `reset`. A restart ends every session (`reset`).
@@ -589,7 +601,11 @@ on disk, and the server has no watch mode. After editing an example (or
 server code), `pnpm sync-example "<project name or id>" [example]`
 (`core/scripts/sync-example.ts`) writes the files into `project_file`,
 updates the event's snapshot, and reloads the running event through its
-own mod code (guests re-join); `pnpm dev --sync …` does it on boot.
+own mod code (guests re-join); `pnpm dev --sync …` does it on boot. The
+example's house maps (`house.json`, `house.<variant>.json`) go with it: a
+project map the push would change or delete (one saved from the map page,
+say) is copied to a temp directory first and the path printed;
+`--keep-maps` leaves the project's maps alone.
 
 ## Status
 

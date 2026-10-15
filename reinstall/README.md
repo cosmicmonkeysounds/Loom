@@ -17,12 +17,23 @@ is [`docs/loom-reinstall.md`](../docs/loom-reinstall.md), and it is normative.
 
 The show's map is
 [`core/examples/trapped-in-the-internet/house.json`](../core/examples/trapped-in-the-internet/house.json).
-It is a placeholder until the house is measured. A director's save from
-`/reinstall/map` is kept per event in the server's state directory (as
-`spatial-house.json`) and takes precedence over it. A save carries the
-version the editor loaded, so two directors never silently overwrite each
-other (409, then reload). After you edit the show's file, regenerate the Godot
-goldens and the Godot copy of the map:
+It is a placeholder until the house is measured. **The map belongs to the
+project**: `house.json` and any `house.<variant>.json` (the rain plan's
+`house.shed.json`) are project files beside the story, pushed by
+`pnpm sync-example` / `pnpm sync-show` and snapshotted when an event
+launches (a reload refreshes them; End → relaunch plays the project's
+current map). An event plays, in order: a director's save from
+`/reinstall/map` (kept per event in the server's state directory as
+`spatial-house.json`), the project's active variant, then the show file
+(`LOOM_HOUSE`, now only the fallback). A save carries the version the
+editor loaded, so two directors never silently overwrite each other (409,
+then reload). The **tent ↔ shed switch** is `POST /api/mod/spatial/variant
+{file}` (mid-show too: players keep playing, a duck whose spot is gone is
+re-dealt); **Save to project** (`POST /api/mod/spatial/house/project`)
+writes the event's map back into the project. The map page's
+`map/ProjectBar.tsx` offers both, plus **Download JSON**
+(`docs/loom-reinstall.md` §1.3, §2.1). After you edit the show's file,
+regenerate the Godot goldens and the Godot copy of the map:
 
 ```bash
 pnpm house:sync          # = @loom/house goldens + sync → vr/house/house.json, vr/test/golden/

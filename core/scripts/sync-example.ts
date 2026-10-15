@@ -124,6 +124,9 @@ async function main(): Promise<void> {
       process.stdout.write("  (no running event for this project — launch one from the editor's Run mode)\n");
       return;
     }
+    // The column the server's boot migration adds (`server/db/index.ts`) —
+    // idempotent, so a sync never fails on a server that hasn't booted it yet.
+    await pool.query(`alter table event add column if not exists house_maps jsonb`);
     await pool.query(`update event set scenario_source = $2, house_maps = $3::jsonb where id = $1`, [event.id, source, JSON.stringify(maps)]);
     process.stdout.write(`✓ event ${event.id} (${event.mode}, ${event.status}) snapshot updated — codes: guest ${event.event_code} · performer ${event.prime_code} · mod ${event.mod_code}\n`);
     if (!reload) return;

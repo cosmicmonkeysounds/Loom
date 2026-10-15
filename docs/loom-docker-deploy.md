@@ -402,19 +402,29 @@ https://app.mapsandducks.com/terminal/?code=<mod passcode>&name=Kitchen&characte
 ```
 
 (the map page offers each terminal's link from its row). The house map
-the games and terminals share is the show's
-`core/examples/trapped-in-the-internet/house.json`, baked into the
-image; a director's save from `/reinstall/map` is stored per event in
-the `loom-state` volume and wins over it — the default event (the one
-the env passcodes open) saves to `/data/spatial-house.json`, every other
-event to `/data/<eventId>/spatial-house.json`. To pin a different
-default map, mount a file read-only **outside the state volume** and set
-`LOOM_HOUSE` on the `loom` service (`docker-compose.yml` has both lines
-commented), e.g.
+the games and terminals share **belongs to the project**: its
+`house.json` (and any `house.<variant>.json`, e.g. the rain plan's
+`house.shed.json`) are project files, pushed by `scripts/sync-show.sh`
+with the story and snapshotted when the event launches; a reload (Push
+draft) refreshes them, End → relaunch plays the project's current map.
+The map page's variant buttons switch the live map (mid-show too), **Save
+to project** writes the event's map back into the project, **Download
+JSON** gives you the file to commit. Order: a director's save from
+`/reinstall/map` (stored per event in the `loom-state` volume — the
+default event, the one the env passcodes open, at
+`/data/spatial-house.json`, every other event at
+`/data/<eventId>/spatial-house.json`) > the project's active variant >
+the show file. **`LOOM_HOUSE` is now only the fallback** — for the LAN
+default event and old events with no map snapshot — and defaults to the
+`core/examples/trapped-in-the-internet/house.json` baked into the image.
+To pin a different fallback, mount it read-only **outside the state
+volume** and set `LOOM_HOUSE` on the `loom` service (`docker-compose.yml`
+has both lines commented); mount the **directory**, so its
+`house.<variant>.json` siblings become that event's variants, e.g.
 
 ```yaml
     volumes:
-      - ./house.json:/config/house.json:ro
+      - ./show-map:/config:ro       # house.json + house.shed.json
     environment:
       LOOM_HOUSE: /config/house.json
 ```
@@ -423,7 +433,8 @@ The server re-reads that file whenever it changes (its mtime): an event
 still running on the show map picks up the edit and the games and
 terminals refetch it; a half-written or invalid file is logged and the
 last good map keeps serving. An event a director has saved a map for
-keeps its own save. Never point `LOOM_HOUSE` at a `spatial-house.json`
+keeps its own save, and an event on a project snapshot never follows the
+file. Never point `LOOM_HOUSE` at a `spatial-house.json`
 inside `/data` — that is an event's own save file, and the show map and
 that save would become one file.
 

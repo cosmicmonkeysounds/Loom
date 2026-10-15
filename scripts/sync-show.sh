@@ -11,7 +11,10 @@
 # on the tunnel and `--server` on the public origin. sync-example writes the
 # example's files into the project, updates the running event's snapshot
 # and (unless --no-reload) reloads it over the mod API — a real cut: every
-# guest re-joins. Never run it after doors (OCT31.md §3).
+# guest re-joins. Never run it after doors (OCT31.md §3). The house maps
+# (house.json, house.<variant>.json) go with the story (SW-MAP-01) — deploy
+# a server that knows them first: an older one would read them as story
+# text on its next launch. --keep-maps leaves the project's maps alone.
 #
 # Environment (all optional except LOOM_SSH):
 #   LOOM_SSH           ssh destination of the VPS (user@host) — required

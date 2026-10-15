@@ -157,8 +157,22 @@ The **Terminals** tab offers each terminal's provisioning link,
 `/terminal/?name=<name>&spot=<id>&view=auto`. Links never carry the
 passcode: append `&code=<mod passcode>` before opening one on its tablet.
 
+**The project bar** (`src/map/ProjectBar.tsx`; its decisions in
+`src/map/project.ts`, unit-tested; not mounted on the page yet — the map
+page rewrite places it): a toggle per whole-map variant of the event
+(`house.json`, `house.shed.json`, … — `GET /api/mod/spatial/variants`; the
+active one pressed, a broken one disabled with its problems as the
+tooltip). A click switches the live map (`POST /api/mod/spatial/variant
+{file, base}`), asking first while programs are mid-game (they keep
+playing; a duck whose spot is gone is re-dealt) or when it would drop a
+director's save; the page then loads the new map (`onSwitched`). **Save to
+project** (an event with a project only) writes the event's map into the
+project as the active variant's file (`POST
+/api/mod/spatial/house/project`), so the next launch and every co-writer
+get it. **Download JSON** saves the shown map under that file name.
+
 To change the show's own map (`core/examples/trapped-in-the-internet/house.json`),
-copy the JSON tab into that file, then run
+**Download JSON** (or copy the JSON tab) into that file, then run
 `pnpm --filter @loom/house goldens && pnpm --filter @loom/house sync`
 (the Godot copy and the conformance goldens follow it).
 
@@ -178,7 +192,7 @@ copy the JSON tab into that file, then run
 | `src/game/hud.ts` | **pure**: room names, warmer / colder, compass, reach |
 | `src/game/leash.ts` | **pure**: the 120 s no-input leash (paused while the tab is hidden) |
 | `src/game/audio.ts` | WebAudio quack, fanfare and buzz (no assets) |
-| `src/map/` | the map page; `plan.ts` (SVG frame, hit tests, snapping) and `edit.ts` (edit ops, JSON drafts) are pure |
+| `src/map/` | the map page; `plan.ts` (SVG frame, hit tests, snapping), `edit.ts` (edit ops, JSON drafts) and `project.ts` (the project bar: variants, save to project, download) are pure; `ProjectBar.tsx` renders the last |
 
 It reuses the terminal's scanner and pass parsing (`@loom/terminal/scanner.tsx`,
 `scan.ts`) and the play app's `api` / `ApiError` (`@loom/play/client.ts`)
