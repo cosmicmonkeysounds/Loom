@@ -46,9 +46,11 @@ describe("tts config + helpers", () => {
     expect(ttsConfigFromEnv({ LOOM_TTS_URL: "x", LOOM_TTS_FORMAT: "wav" }).format).toBe("wav");
     expect(ttsConfigFromEnv({ LOOM_TTS_URL: "x", LOOM_TTS_FORMAT: "flac" }).format).toBe("mp3");
   });
-  it("treats LOOM_TTS_URL=off / none as disabled (compose defaults blank to its kokoro service)", () => {
+  it("treats LOOM_TTS_URL unset / blank / off / none / false / 0 as disabled (the default: the devices' own voices)", () => {
     expect(ttsConfigFromEnv({ LOOM_TTS_URL: "off" }).baseUrl).toBeNull();
     expect(ttsConfigFromEnv({ LOOM_TTS_URL: " NONE " }).baseUrl).toBeNull();
+    expect(ttsConfigFromEnv({ LOOM_TTS_URL: "   " }).baseUrl).toBeNull();
+    for (const v of ["false", "no", "0", "Disabled"]) expect(ttsConfigFromEnv({ LOOM_TTS_URL: v }).baseUrl).toBeNull();
     expect(new TtsProxy(ttsConfigFromEnv({ LOOM_TTS_URL: "Off" })).describe().available).toBe(false);
     expect(ttsConfigFromEnv({ LOOM_TTS_URL: "http://kokoro:8880/v1" }).baseUrl).toBe("http://kokoro:8880/v1");
   });

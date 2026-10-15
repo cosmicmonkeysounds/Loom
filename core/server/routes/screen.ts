@@ -13,6 +13,10 @@
 //! - `remaining` — seconds left on the story countdown that is running, if any;
 //! - `terminals` — each terminal's last poll (name, spot, view, how long ago),
 //!                 so a director can tell a silent tablet from a live one;
+//! - `announce`  — (N-09) the latest house announcement, `do announce "…"`
+//!                 (`{seq, text, at}`: a `seq` per announcement, `at` 0 for
+//!                 replayed history) — a terminal set to say announcements
+//!                 speaks a new one in its own voice after a chime;
 //! - `voice`     — (K-18, only when the poll names a `voice` room — the TV)
 //!                 the characters' lines said in that location's room after
 //!                 the poller's `after` seq, the room's `head` seq, and the
@@ -201,6 +205,66 @@ export function voiceLinesOf(
   return { head, lines: lines.reverse() };
 }
 
+// --- the house announcement (N-09) ---------------------------------------------
+
+/** The verb the story announces with (`do announce "Go to the living room."`) —
+ *  the same directive stagehand's `show` sends to the house speakers (K-20). */
+export const ANNOUNCE_VERB = "announce";
+/** Longest announcement carried (characters) — the alexa player's `MAX_TEXT`. */
+export const MAX_ANNOUNCE_TEXT = 300;
+
+export interface ScreenAnnounce {
+  /** Bumps on every announcement the fold sees (history included). */
+  seq: number;
+  text: string;
+  /** Server epoch ms the fold first saw it; 0 = replayed history. */
+  at: number;
+}
+
+/**
+ * The words of an announcement's directive args, read like stagehand reads
+ * `{target}` (`show/directives.py`): the first top-level-comma segment that
+ * isn't `key: value`, unquoted. `"Go to the living room."` → the sentence;
+ * a bare `Five minutes. Everyone to the Desktop.` → itself; nothing → null.
+ */
+export function announceTextOf(args: string): string | null {
+  const segments: string[] = [];
+  let cur = "";
+  let quote: string | null = null;
+  let depth = 0;
+  for (const ch of args) {
+    if (quote !== null) {
+      cur += ch;
+      if (ch === quote) quote = null;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+      cur += ch;
+    } else if (ch === "(" || ch === "[" || ch === "{") {
+      depth++;
+      cur += ch;
+    } else if ((ch === ")" || ch === "]" || ch === "}") && depth > 0) {
+      depth--;
+      cur += ch;
+    } else if (ch === "," && depth === 0) {
+      segments.push(cur);
+      cur = "";
+    } else cur += ch;
+  }
+  segments.push(cur);
+  for (const raw of segments) {
+    const seg = raw.trim();
+    if (seg === "") continue;
+    const quoted = seg.length >= 2 && (seg[0] === '"' || seg[0] === "'") && seg[seg.length - 1] === seg[0];
+    // A `key: value` named argument (outside quotes) is not the words.
+    if (!quoted && /^[\p{L}\p{N}_-]+\s*:/u.test(seg)) continue;
+    const text = (quoted ? seg.slice(1, -1) : seg).replace(/\s+/gu, " ").trim();
+    if (text === "" || text === "{target}") return null;
+    if (text.length <= MAX_ANNOUNCE_TEXT) return text;
+    return text.slice(0, MAX_ANNOUNCE_TEXT).replace(/\s+\S*$/u, "") || text.slice(0, MAX_ANNOUNCE_TEXT);
+  }
+  return null;
+}
+
 /** A terminal that hasn't polled for this long is silent (K-29): the editor's
  *  card goes red and chimes. Terminals poll every 2 s (the TV every 1 s), so
  *  this is ten missed polls; with the card's own 4 s poll a pulled tablet
@@ -246,6 +310,8 @@ export interface ScreenState {
   target: ScreenTarget;
   program: ScreenProgram;
   terminals: Array<ScreenPoll & { ago: number }>;
+  /** The latest house announcement (N-09), null before the first. */
+  announce: ScreenAnnounce | null;
   /** Only when the poll names a voice room (K-18). */
   voice?: ScreenVoice;
 }
@@ -282,6 +348,7 @@ export class ScreenWatch {
   private readonly cues = new Map<ScreenCueFamily, ScreenCue>();
   private readonly programs = new Map<ScreenTarget, ScreenProgram>();
   private shots = 0;
+  private announcement: ScreenAnnounce | null = null;
   private readonly polls = new Map<string, ScreenPoll>();
   private readonly now: () => number;
   /** The director's TV-voice mute (K-18). Runtime state: a server restart unmutes. */
@@ -301,6 +368,7 @@ export class ScreenWatch {
       this.cues.clear();
       this.programs.clear();
       this.shots = 0;
+      this.announcement = null;
     }
     if (sim === null) return;
     const events = sim.log.all();
@@ -310,7 +378,13 @@ export class ScreenWatch {
     this.seeded = true;
     for (; this.cursor < events.length; this.cursor++) {
       const e = events[this.cursor]!;
-      if (e.type !== "directive" || e.verb !== "cue") continue;
+      if (e.type !== "directive") continue;
+      if (e.verb === ANNOUNCE_VERB) {
+        const text = announceTextOf(e.args);
+        if (text !== null) this.announcement = { seq: (this.announcement?.seq ?? 0) + 1, text, at };
+        continue;
+      }
+      if (e.verb !== "cue") continue;
       const hit = screenCueOf(e.args);
       if (hit === null) continue;
       const prev = this.cues.get(hit.family);
@@ -419,6 +493,7 @@ export class ScreenWatch {
       target,
       program,
       terminals: this.seen(),
+      announce: this.announcement,
       ...(voice !== undefined ? { voice } : {}),
     };
   }
