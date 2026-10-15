@@ -5,8 +5,8 @@ to an agent-voiced character** (Trabolta, in *Trapped in the Internet*).
 A program holds their pass up to the camera, and for as long as they keep
 typing the screen is theirs: the conversation on one side, the
 character's **animated face** on the other, and every reply **spoken
-aloud** in a synthesised voice. Thirty seconds without input and the line
-drops.
+aloud** in the device's own voice. Thirty seconds without input and the
+line drops.
 
 It is the same chat architecture as the rest of Loom — no new server, no
 new thread model:
@@ -45,9 +45,10 @@ provision a whole fleet by opening one link on each:
 http://<server>/terminal/?code=<mod passcode>&name=Kitchen&character=Trabolta&spot=kitchen&view=auto
 ```
 
-(`&camera=environment` for the back camera, `&engine=browser` to skip the
-server voice; `&spot=` and `&view=` — see *The world view* below.) The
-passcode and the other hints are scrubbed from the address bar at once.
+(`&camera=environment` for the back camera; `&engine=` — see *The voice*
+below; `&announce=1` to also say the house announcements; `&spot=` and
+`&view=` — see *The world view* below.) The passcode and the other hints
+are scrubbed from the address bar at once.
 
 **The camera needs a secure context** — `https://` or `localhost`. On a
 plain `http://192.168.x.x` address every browser refuses `getUserMedia`;
@@ -121,8 +122,9 @@ someone is in the simulation), the K-17 layer over it, attract until the
 introduction. It polls every **1 s** with `voice=<room>` (default
 `The Desktop`) and its chat cursor, and plays the room's new lines strictly
 in order with a caption: the character's own lines — scripted, or a
-director's `say` as him — are **spoken** (server voice via `/api/mod/tts`,
-Chrome's voice as fallback, mouth on the audio level); lines from the song
+director's `say` as him — are **spoken** (the Mac's own voice in Chrome —
+Samantha, or a downloaded Enhanced / Premium voice ranked above it; pick
+one in ⚙); lines from the song
 beats `Song Ending` / `Sad Confession` / `The Hand Jive` are **captioned
 only** (QLab plays the sung track); **Sandy** is captioned, never voiced
 (lore, #28); other characters are ignored; nothing is said on attract. A
@@ -135,22 +137,45 @@ a *CLICK ONCE TO ENABLE THE VOICE* banner asks for one click. Device check:
 
 ## The voice
 
-Two engines behind one queue (`src/speech/`):
+**Every device speaks with its own voice** (decision 2026-10-15: "for the
+most part I don't care if the voices on the terminals / TV are consistent").
+Nothing on the night depends on a server voice. `src/speech/engine.ts`:
 
-| Engine | Where it runs | Quality |
-|---|---|---|
-| **server** (default) | The show laptop, behind the event server's `/api/mod/tts` proxy | Neural — the one to use. The compose stack bundles [Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI) as its CPU-capped `kokoro` service and points the server at it by default (`docs/loom-docker-deploy.md` §5¾ *The voice*). Elsewhere, run it yourself (`docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu`, or the GPU image) and set `LOOM_TTS_URL=http://<host>:8880/v1` on the event server. Any OpenAI-compatible `/audio/speech` endpoint works, OpenAI's own included (`LOOM_TTS_URL=https://api.openai.com/v1 LOOM_TTS_API_KEY=… LOOM_TTS_MODEL=tts-1 LOOM_TTS_VOICE=onyx`). |
-| **browser** (fallback) | The tablet's `speechSynthesis` | Varies: Edge's online *Natural* voices and an iPad's downloaded *Enhanced/Premium* voices are close to real; stock Android is not. The setup screen ranks the installed voices best-first with a TEST button. |
+| `engine` (⚙ / `&engine=`) | What speaks |
+|---|---|
+| **`browser`** (default) — *this device's own voice* | The ladder, re-decided per sentence: `speechSynthesis` when it lists voices (ranked by `pick-voice.ts`: Edge *Natural*, iPad / Mac *Enhanced* / *Premium*, Samantha …) → **Fully Kiosk's** text-to-speech (`fully.textToSpeech`, Android's TTS engine) when the page runs in Fully with its *JavaScript Interface* on — the old tablets' System WebView may not implement `speechSynthesis` at all (OCT31 K-02) → **text only**. A `speak()` that hasn't started after 4 s is written off as a stub and the ladder moves on. |
+| `fully` — *Fully Kiosk's voice* | Fully's TTS first, even when the WebView lists voices (some list voices and never speak). Outside Fully: the ladder. |
+| `silent` — *no voice, text only* | The transcript reveals at reading pace, the mouth flutters. |
+| `server` — opt-in | The event server's `/api/mod/tts` (Kokoro, OpenAI, any OpenAI-compatible endpoint — `core/server/tts.ts`), cached per line across every terminal, the mouth on the real waveform. The first **502 / 503 / 504** (no server voice, the box is down) **latches** it to this device's voice for the session — no asking per sentence. Needs `LOOM_TTS_URL` on the server (off by default; the compose stack's `kokoro` is behind `--profile tts`, `docs/loom-docker-deploy.md` §5¾). |
 
-The server voice is cached per line across every terminal, so the hold
-message costs the GPU once a night. If the laptop is down mid-sentence
-the queue hands that chunk to the tablet voice rather than going mute
-(`voice: tablet fallback` appears under the face). Replies are split into
-sentences and synthesised one ahead, so speech starts on the first
-sentence and the transcript reveals as it is said. Server env:
+⚙ lists the device's voices best first (blank = the best one), says what
+this device can do ("this device has 23 voices" / "Fully Kiosk's
+text-to-speech will speak" / "text only"), and **TEST VOICE** says a line
+through exactly the voice the terminal will use and names it. A voiceless
+device never stalls the queue: every engine ends a sentence by itself
+(reading-time caps), and the transcript keeps revealing. The note under
+the face says when the voice isn't the one asked for (`no voice on this
+device — text only`, `this device's own (no server voice)`). Replies are
+split into sentences and prepared one ahead, so speech starts on the first
+sentence and the transcript reveals as it is said.
+
+**The house announcements** (OCT31 N-09, decision #20, `src/announce.ts`):
+the story's `do announce "Go to the living room."` already plays out of the
+house speakers (stagehand `alexa`, K-20). The screen poll carries the
+latest one too (`announce: {seq, text, at}`), and a terminal with
+**`announce`** on (⚙ → *say the house announcements here*, or
+`&announce=1`; **off by default**, the TV too — its room hears the house
+speakers) rings a two-tone chime and says it in its own voice under a 📢
+banner. Never one that was current when the page loaded, never replayed
+history after a server reboot, never one older than 30 s, and never over
+the character: every voice on the page waits its turn on one `VoiceFloor`,
+so an announcement follows the line being said and the next line follows
+the announcement. On the TV the director's mute holds for announcements.
+
+Server env (only for the opt-in server voice):
 
 ```
-LOOM_TTS_URL       base of the speech API (unset / off = no server voice; compose defaults it to its kokoro service)
+LOOM_TTS_URL       base of the speech API (unset / blank / off = no server voice — the default)
 LOOM_TTS_API_KEY   bearer token, if the endpoint wants one
 LOOM_TTS_MODEL     default "kokoro"
 LOOM_TTS_VOICE     default "am_michael"  (Kokoro: am_adam, bm_george, af_bella+af_sky …)
@@ -161,8 +186,9 @@ LOOM_TTS_FORMAT    mp3 (default) | wav | opus
 
 `src/face/` — an SVG head driven by a requestAnimationFrame loop: brows,
 lidded eyes that look around and blink, a mouth that opens with the live
-loudness of the voice (an `AnalyserNode` on the decoded audio; a
-syllable-rate flutter on the browser engine, which exposes no waveform).
+loudness of the voice (an `AnalyserNode` on the server voice's decoded
+audio; on the device voices, which expose no waveform, a synthesised
+syllable flutter gated by a word rhythm — `syntheticLevel`).
 The mood is read off the situation (waiting / someone connected /
 composing / speaking) and off each sentence as it is said (`mood.ts`:
 shouting is anger, a question is curiosity, an ellipsis is slyness). A
@@ -271,7 +297,9 @@ src/scan.ts            what a scanned code means; the typed-name fallback
 src/pilot.ts           impersonate / end / say; the DM thread off the guest stream
 src/idle.ts            the 30 s leash (paused while the character is answering)
 src/chat.tsx           the thread + composer
-src/speech/            engine.ts (server + browser + queue), split.ts, pick-voice.ts
+src/speech/            engine.ts (device ladder: browser → Fully → silent; opt-in server; the queue + VoiceFloor),
+                       split.ts, pick-voice.ts
+src/announce.ts        the house announcements (N-09): which to say, the chime, the hook
 src/face/              Face.tsx (SVG + animation), mood.ts
 src/world/             stream.ts (spatial SSE + house map → WorldStore), state.ts (the reducer),
                        director.ts (mount / follow / orbit), minimap.ts + MiniMap.tsx,

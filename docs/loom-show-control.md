@@ -451,8 +451,13 @@ identical preset IDs everywhere). Sound is QLab (or any OSC cue player)
 on UDP 53000, one cue per sound, numbered by its name. The "Alexa" is
 stagehand's `alexa` module: it reads `show/announce` (and `show/chime`)
 and plays a chime + the line through the MOTU to the living room and the
-kitchen, voiced from a disk cache → the VPS's `/api/mod/tts` (Kokoro) →
-macOS `say` (`scripts/house-mac/alexa.md`). The server room has a reed
+kitchen in the Mac's own voice (`say`, `engine: say` — no server
+round-trip; `engine: server` opts in to the VPS's `/api/mod/tts`;
+`scripts/house-mac/alexa.md`). The same announcement rides the event
+server's screen state (`/api/screen/state` → `announce`), so a wall
+terminal provisioned with `&announce=1` chimes and says it in its own
+voice too, after any line its character is saying (N-09, decision #20 —
+for the rooms the house speakers don't reach). The server room has a reed
 door sensor, the patch-bay scanner and an indicator ring on one ESP32
 (firmware in [`hardware/server-room/`](../hardware/server-room)), never a
 lock.
@@ -467,7 +472,7 @@ is in the design spec §2.13):
 | `cue lights_blackout` | `house` OFF; WLED off **per device** (living, kitchen, backyard, registry), the Tube strip on dim static preset 22, the server room untouched |
 | `cue screens_flicker` | a one-shot `effect: blink` + a short WLED lightning playlist, so the power is felt in the house |
 | `sound <name>` (directive `sfx`) | OSC `/cue/<name>/start` to QLab |
-| `do announce "…"` | `show/announce {"text": "…"}` → the `alexa` player (chime + voice, one line at a time); `sound alexa_chime` → `show/chime` (not QLab) |
+| `do announce "…"` | `show/announce {"text": "…"}` → the `alexa` player (chime + the Mac's `say` voice, one line at a time); `sound alexa_chime` → `show/chime` (not QLab). Also the screen state's `announce` → terminals with `announce` on (N-09) |
 | `do door server_room, state: locked\|unlocked` | `show/serverroom/lock {"state": …}` (retained) for the ESP32's indicator ring; `lights_alarm` also sends `show/serverroom/alarm` for its local siren |
 
 The `screens_*` / `tv_*` / `terminals_*` / `tablet_*` cues have no

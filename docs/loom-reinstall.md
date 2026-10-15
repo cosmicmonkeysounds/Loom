@@ -534,7 +534,8 @@ place) and `view: "auto" | "world" | "face" | "mirror" | "tv"`:
 - `mirror`: a full-screen spectator: no scanner, no chat.
 - `tv` (`Tv.tsx`, OCT31 K-18): the TV above the fireplace, run by the house
   Mac's Chrome over HDMI — the character's face speaking every line it says
-  in the TV's room (`room=`, default The Desktop) through `/api/mod/tts`;
+  in the TV's room (`room=`, default The Desktop) in the Mac's own voice
+  (the server's `/api/mod/tts` is an opt-in);
   song beats and lore speakers are captioned only, nothing is said while
   the character is hidden or asleep.
 

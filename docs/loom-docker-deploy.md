@@ -31,8 +31,9 @@ Under the hood it's four containers, defined in the repo-root
   everything else to the event server, and (once you have a domain)
   handles HTTPS certificates automatically.
 - **db** — Postgres, for author accounts + server-stored projects.
-- **kokoro** — the terminals' neural voice (internal only, CPU-capped;
-  see [§5¾ The voice](#the-voice-kokoro)).
+- **kokoro** — **opt-in, not started by default** (the `tts` profile): a
+  neural voice for the terminals; the devices speak with their own voices
+  without it. See [§5¾ The voice](#the-voice).
 
 Everything that must survive restarts (the Postgres data, the event
 journals, the TLS certificates) lives in named Docker volumes — the
@@ -438,35 +439,58 @@ The pass scanners (terminal + tent tablet) need the camera, which
 browsers only grant on **https or localhost** — on a plain-HTTP IP
 address they fall back to typing the guest's name.
 
-### The voice (Kokoro)
+### The voice
 
-The terminals and the TV (`view=tv`) speak Trabolta's lines through
-`/api/mod/tts`, which the event server proxies and caches in front of an
-OpenAI-compatible speech endpoint. The stack bundles one: the `kokoro`
-service (Kokoro-FastAPI, CPU, image pinned in `docker-compose.yml`). A
-blank `LOOM_TTS_URL` points the server at it (`http://kokoro:8880/v1`
-on the compose network — no port is published, so only the server can
-reach it). `LOOM_TTS_URL=off` turns the server voice off (the tablets
-use their own voices); any other URL — a Kokoro on a laptop, OpenAI —
-replaces it (then stop the bundled one: `docker compose stop kokoro`).
+**The terminals and the TV speak with the devices' own voices** (decision
+2026-10-15): each tablet's `speechSynthesis`, Fully Kiosk's text-to-speech
+on the old Android tablets, the macOS voices on the house Mac's Chrome
+(`terminal/README.md` → *The voice*, `docs/trapped/kiosk.md`). The house
+speakers' announcements use the Mac's `say` (`scripts/house-mac/alexa.md`).
+**Nothing to deploy, and nothing on the night depends on the VPS for a
+voice.** A plain `docker compose up -d` does not start Kokoro, and
+`LOOM_TTS_URL` defaults to `off` — `/api/mod/tts` answers 503 and any
+terminal still set to the server voice latches to its own at once.
+
+**One-time cleanup — a VPS that already runs Kokoro** (deployed before
+2026-10-15, when it was bundled and on by default). After pulling this
+change, Kokoro's container keeps running (and holding ~2 GB of RAM) until
+you remove it. On the VPS, in the checkout:
+
+```bash
+grep -n '^LOOM_TTS_URL\|^COMPOSE_PROFILES' .env   # blank / off = no server voice (good)
+docker compose rm -sf kokoro                       # stop + remove the container
+#   (equivalently: docker compose stop kokoro && docker compose rm -f kokoro)
+docker compose up -d --remove-orphans              # the stack without it
+docker compose ps                                  # db, loom, caddy — no kokoro
+docker image rm ghcr.io/remsky/kokoro-fastapi-cpu:v0.9.0   # optional: the ~2 GB image
+```
+
+If `.env` says `LOOM_TTS_URL=http://kokoro:8880/v1`, set it to `off` (or
+delete the line) first, then `docker compose up -d loom`.
+
+**Opting in** (one consistent neural voice on every terminal — optional):
+
+1. In `.env`: `COMPOSE_PROFILES=tts` (so `docker compose up`, and
+   `deploy/release.sh` / `rollback.sh`, include the `kokoro` service) and
+   `LOOM_TTS_URL=http://kokoro:8880/v1` (on the compose network — no port
+   is published, so only the server can reach it). Or point
+   `LOOM_TTS_URL` at a Kokoro on a laptop, or at OpenAI.
+2. `docker compose up -d` (or `docker compose --profile tts up -d kokoro loom`).
+3. On each terminal: ⚙ → voice → *the server's voice*, or provision with
+   `&engine=server`.
+
+The rest of this section only applies to the opt-in.
 
 **The CPU cap.** Kokoro serves one synthesis at a time and will take
 every core it can see. `cpus: ${KOKORO_CPUS}` caps it so a burst of
 lines can never starve the event server, Postgres or Caddy: set
 `KOKORO_CPUS` in `.env` to **the VPS's cores minus one** (`nproc` on the
 VPS tells you; the default is `1`, safe on any 2-core box; Docker
-refuses a value above the core count). Then
-`docker compose up -d kokoro loom`.
+refuses a value above the core count).
 
-**Before the first deploy with it:**
-
-- **An existing `.env` changes behaviour.** A VPS `.env` that already has
-  `LOOM_TTS_URL=` (blank) used to mean "no server voice"; it now means the
-  bundled Kokoro. Set `LOOM_TTS_URL=off` to keep the old behaviour.
 - **RAM headroom.** Kokoro CPU holds ~1.5–2 GB resident. Run `free -h` on
   the VPS: with Postgres, the event server and Caddy up, `available` should
-  stay above ~2.5 GB, or skip the bundled service (`LOOM_TTS_URL=off`, or a
-  Kokoro on the house Mac) and `docker compose stop kokoro`.
+  stay above ~2.5 GB, or don't opt in.
 - **The image** (checked 2026-10-15, without pulling): the pinned
   `ghcr.io/remsky/kokoro-fastapi-cpu:v0.9.0` exists for linux/amd64 and
   arm64, and its `PATH` has `/app/.venv/bin` + `/usr/local/bin` (a Python
@@ -476,20 +500,19 @@ refuses a value above the core count). Then
 The first start pulls a ~2 GB image and warms the model (a minute);
 `docker compose ps` shows it `healthy` when ready. The server never
 waits for it — while it is down `/api/mod/tts` answers 502 and the
-terminals fall back to the browser voice.
+terminals latch to their own voices.
 
-**Acceptance (OCT31 K-19).** With the stack up, run from your Mac:
+**Acceptance (OCT31 K-19, opt-in only).** With the stack up, run from your Mac:
 
 ```bash
 MOD_CODE=<mod passcode> scripts/accept/K-19.sh
 ```
 
-It opens 50 SSE streams on the event, then synthesises 3 fresh sentences
-at once (twice), and passes if **every sentence lands in < 2 s**. On a
-miss, raise `KOKORO_CPUS` if the VPS has the cores; otherwise the
-fallbacks are the TV calling a Kokoro on the house Mac directly (N-12)
-or Chrome's own voice on the TV, and the pre-rendered fixed lines on
-the tablets.
+With the server voice off (the default) it prints `SKIP` and exits 0.
+Opted in, it opens 50 SSE streams on the event, then synthesises 3 fresh
+sentences at once (twice), and passes if **every sentence lands in < 2 s**.
+On a miss, raise `KOKORO_CPUS` if the VPS has the cores; otherwise drop
+the opt-in.
 
 ---
 
@@ -664,11 +687,16 @@ and send its alerts to the tech op and the second director, not only John.
 - **HTTPS won't issue** — the A record must already point at the VPS
   and port 80 must be reachable from the internet (Let's Encrypt
   validates over it).
-- **The terminals talk in a robot voice / `/api/mod/tts` answers 502** —
-  the server voice is off or Kokoro is down: `docker compose ps kokoro`
-  (still starting? `unhealthy`?), `docker compose logs kokoro`. A
-  `.env` written before Kokoro was bundled may say `LOOM_TTS_URL=off`
-  or a laptop URL — blank it to use the bundled service.
+- **A terminal says nothing / shows "no voice on this device — text only"**
+  — that tablet has no usable voice: in Fully Kiosk enable *JavaScript
+  Interface* and install Android's TTS voice data (`docs/trapped/kiosk.md`);
+  ⚙ → TEST VOICE names what speaks. Not a server problem: the voices are
+  the devices' own.
+- **`/api/mod/tts` answers 503** — expected: the server voice is off by
+  default. Only with the opt-in (§5¾): 502 = Kokoro is down —
+  `docker compose ps kokoro` (still starting? `unhealthy`?),
+  `docker compose logs kokoro`; the terminals have already latched to
+  their own voices.
 - **`/reinstall/` or `/terminal/` answers 404** — the image predates
   them; rebuild (`docker compose up -d --build`). The image serves them
   from `LOOM_TERMINAL_DIST` / `LOOM_REINSTALL_DIST` (set in the

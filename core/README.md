@@ -288,9 +288,10 @@ timeline (clear the journal + chat + moderation).
 Environment: `LOOM_PORT` (7000), `LOOM_HOST` (0.0.0.0), `LOOM_EVENT_PASS`,
 `LOOM_PRIME_PASS`, `LOOM_MOD_PASS` (any unset code is auto-generated),
 `LOOM_STATE_DIR`, `LOOM_APP_DIST`, `LOOM_TERMINAL_DIST`,
-`LOOM_REINSTALL_DIST`, `LOOM_HOUSE`, `LOOM_TTS_*` (the speech proxy;
-`LOOM_TTS_URL` blank / `off` / `none` = no server voice — compose defaults
-it to its bundled `kokoro` service), `LOOM_VAPID_PUBLIC_KEY` /
+`LOOM_REINSTALL_DIST`, `LOOM_HOUSE`, `LOOM_TTS_*` (the opt-in speech
+proxy; `LOOM_TTS_URL` unset / blank / `off` / `none` / `false` / `0` = no
+server voice, the default — the terminals use the devices' own voices;
+compose's `kokoro` is behind `--profile tts`), `LOOM_VAPID_PUBLIC_KEY` /
 `LOOM_VAPID_PRIVATE_KEY` / `LOOM_VAPID_SUBJECT` (Web Push, below), plus the control-plane / hardening vars
 (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `LOOM_BASE_URL`,
 `LOOM_TRUSTED_ORIGINS`, `LOOM_TRUST_PROXY`), and the throttles
@@ -423,8 +424,11 @@ the author's session) answers ~0.5 KB — `night` (`Night.screen` /
 a restart replays to the same answer), `character` (hidden = not
 `reveal`ed to everyone, `awake`, agent `online`), `attract` (hidden or
 asleep), `countdown` / `remaining` (story seconds on the running
-`Night.*_end` timer) and `terminals` (each terminal's last poll, newest
-first). Terminals poll it every 2 s instead of the mod feed. Alongside, the
+`Night.*_end` timer), `terminals` (each terminal's last poll, newest
+first) and `announce` (OCT31 N-09: the latest `do announce "…"`, `{seq,
+text, at}` — `at` 0 for replayed history — or null; a terminal set to
+`announce` chimes and says a new one, `terminal/src/announce.ts`).
+Terminals poll it every 2 s instead of the mod feed. Alongside, the
 `AgentHub` `admits` hook refuses a guest's DM with a character still hidden
 from that guest (no worker request, so no premature hold line); performers'
 `cast:` threads always pass. Tests: `test/screen-state.test.ts`.
