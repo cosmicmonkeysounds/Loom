@@ -72,6 +72,9 @@ guest holds is a card (`kind: "codex"`, **Share…** → a person picker via
 `CardActionsProvider`), and the room's composer *redeems* codes
 (**Unlock**); a miss or a share lands there as a note. A scanned wall QR
 arrives as `?unlock=<code>`, is redeemed on load, and opens the Codex.
+A room's sign arrives as `?checkin=<slug>` (`checkin.ts`, K-13): checked in
+on load (`/api/guest/checkin`), it opens that room's chat, or banners why
+not (captured, on rails, not open yet).
 Both stay out of a cutscene (`personalStream`). Tested in
 `test/quests.test.ts`.
 

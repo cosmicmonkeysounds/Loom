@@ -41,6 +41,7 @@ import {
   type PictureChoice,
 } from "./identity.ts";
 import { foldName } from "../src/parser/names.ts";
+import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
 import { SpatialHub, houseVersion, houseWarnings, isWorld, parsePose, sortCandidates, type SessionRef } from "./spatial.ts";
 import {
   AgentHub,
@@ -315,6 +316,8 @@ export class EventRuntime {
   // stations, poses and the house map. In memory; poses never journal.
   readonly spatial: SpatialHub;
   private readonly houseFile: string;
+  // K-13 room check-in by QR (routes/k13.ts).
+  private readonly checkin: GuestCheckin;
   // Spatial stream subscribers (terminals, the map page) — never `clients`.
   private readonly spatialStreams = new Set<ServerResponse>();
   // Flushes poses every 100 ms (and sweeps every second) while anything is
@@ -342,6 +345,17 @@ export class EventRuntime {
     this.images = init.images ?? defaultImages();
     this.houseFile = init.houseFile ?? defaultHouseFile();
     this.spatial = new SpatialHub({ eventId: init.eventId, ...(init.now !== undefined ? { now: init.now } : {}) });
+    this.checkin = new GuestCheckin({
+      sim: () => this.sim,
+      open: () => this.open,
+      guest: (req, body, res) => this.requireGuest(req, body, res),
+      signal: (guest, at) => {
+        const events = this.commit("signal", "checked_in", guest, { at });
+        this.fanout(events);
+        return events;
+      },
+      now: init.now ?? Date.now,
+    });
   }
 
   /** Current lifecycle phase (idle | open | paused). */
@@ -2074,6 +2088,8 @@ export class EventRuntime {
         sendJson(res, 200, { options, avatar: this.avatars.keyFor(me.name) });
         return true;
       }
+      case CHECKIN_ROUTE:
+        return this.checkin.handle(req, res, body);
       case "/api/guest/join": {
         const id = this.requireGuest(req, body, res);
         if (id === null) return true;

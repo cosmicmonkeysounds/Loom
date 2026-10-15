@@ -409,6 +409,14 @@ Two planes:
   `POST /api/guest/picture {picture?}` lists / switches a signed-in
   guest's. Views carry `avatars` (folded name → key). `LOOM_WIKI=off`
   keeps the server offline (hand-picked pictures still work).
+- **Room check-in by QR** (K-13, `server/routes/k13.ts`): `POST
+  /e/:id/api/guest/checkin {at}` folds a sign's slug (`the-cache`) onto
+  the exact LOCATION and journals `signal("checked_in", guest, {at})` —
+  the story's `when checked_in for program:` rule does the move. Refused
+  (nothing journaled) when the guest is captured, stands in a prison /
+  sealed room, is on rails (a cutscene room, or `uploaded && !cleared`),
+  or the room is a prison / cutscene / hidden from them; 429 inside a
+  20 s per-guest cooldown. → `{ok, at, channel: "loc:<at>", moved}`.
 
 The owning author's BetterAuth session is accepted on `/e/:eventId/api/mod/*`
 and the gated mod reads, so authors moderate from the editor's Run mode

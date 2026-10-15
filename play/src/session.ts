@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Identities, PictureChoices, ProgramHit, ProgramPictures } from "./avatars.ts";
 import { ApiError, api, useChatStream } from "./client.ts";
 import { maxSeqOf, unsolicitedReadout, useAlerts, type Alert } from "./alerts.ts";
+import { checkinFromSearch, withoutCheckin } from "./checkin.ts";
 import { pmChannelId, pmOtherParty, unlockFromSearch, withoutUnlock } from "./codex.ts";
 import { usePlayHost } from "./host.ts";
 import { SessionRole, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "./lifecycle.ts";
@@ -643,6 +644,24 @@ export function useGuestSession(): GuestSession {
     threads.open(CODEX_ROOM);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openCodex]);
+  // A room's sign carries `?checkin=<slug>` (K-13): check in once signed in
+  // with the doors open, then open that room's chat — or banner why not
+  // (captured, still on rails, a room the story hasn't opened yet).
+  const pendingCheckin = useRef<string | null>(host.ownsPage ? checkinFromSearch(window.location.search) : null);
+  useEffect(() => {
+    const at = pendingCheckin.current;
+    if (at === null || me === null || status === null) return;
+    pendingCheckin.current = null;
+    try {
+      window.history.replaceState(null, "", `${window.location.pathname}${withoutCheckin(window.location.search)}`);
+    } catch {
+      /* fine */
+    }
+    void post<{ channel: string }>("/api/guest/checkin", { at })
+      .then((r) => threads.open(r.channel))
+      .catch((e: unknown) => alerts.raise(e instanceof Error ? e.message : "Check-in failed."));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me, status, post]);
   const dismissAlert = alerts.dismiss;
   useTheme(status?.theme);
 

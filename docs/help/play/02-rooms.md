@@ -2,7 +2,7 @@
 title: Rooms & spaces
 section: Guest Guide
 order: 2
-keywords: rooms, spaces, channels, sidebar, open, private, faction, group, dm, location, lobby
+keywords: rooms, spaces, channels, sidebar, open, private, faction, group, dm, location, lobby, check in, sign, qr
 ---
 
 Conversations come in a few flavours, grouped into **spaces** (the
@@ -44,3 +44,12 @@ The list tells you where everyone is: the place you're standing in is
 first, tagged **you are here**; every other place says who's in it.
 Empty rooms are dimmed. Inside a room, the 👥 count in the header opens
 the list of who's here — tap a name to message them.
+
+## Checking in at a room's sign
+
+Some rooms have a sign with a QR code: **Scan to enter this room's
+chat**. Point your phone's own camera at it and open the link — in the
+same browser you joined in — and you're checked in: you're standing in
+that room and its chat opens. It won't work while you're captured,
+before you've finished getting in, or for a room the story hasn't
+opened for you yet; and one check-in every 20 seconds.
