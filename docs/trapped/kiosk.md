@@ -67,6 +67,16 @@ earshot of the house speakers, also tick *say the house announcements
 here* (or provision with `&announce=1`) — a chime and the line, in the
 tablet's voice (N-09).
 
+**Trabolta must not sound like Alexa.** With no voice picked, the
+character's lines take the device's best **male** voice and the house
+announcements its best **female** one (`terminal/src/speech/pick-voice.ts`;
+the house Mac's `alexa` player says them as `say_voice: Samantha`). The
+*device voice* list is ranked that way, and a voice picked there is
+Trabolta's only — announcements never use it. Check it on every tablet
+with TEST VOICE. **In Fully** (no voice list) `fully.textToSpeech` speaks
+the Android default, often female: type a male Android voice's name into
+*device voice* if TEST VOICE sounds like Alexa.
+
 **Speaker tablets.** Media volume up, then lock it with Fully's *Volume
 Limits* if the version has it. Set the volume before the party, not after.
 
@@ -87,10 +97,14 @@ pair — so the voice stays in sync with the face.
 
 **The TV's voice is the Mac's own** (Chrome's `speechSynthesis` over the
 macOS voices; no server voice). The terminal ranks them and picks a good
-English one — Samantha on a stock Mac. For a better one, download an
-*Enhanced* or *Premium* English voice (System Settings → Accessibility →
-Spoken Content → System Voice → Manage Voices…), restart Chrome, and pick
-it under ⚙ → *device voice* (TEST VOICE plays it). The TV leaves *say the
+**male** English one — Daniel on a stock Mac — because the `alexa`
+player speaks the house announcements in Samantha on the same Mac and the
+same living-room speakers, and the two must not sound alike. For a better
+one, download an *Enhanced* or *Premium* male English voice (Evan, Aaron,
+Nathan, Tom; System Settings → Accessibility → Spoken Content → System
+Voice → Manage Voices…), restart Chrome, and pick it under ⚙ → *device
+voice* (TEST VOICE plays it). Never pick Samantha (or whatever
+`say_voice` is in `stagehand/trapped.house.yaml`). The TV leaves *say the
 house announcements* **off** — the living room hears the house speakers.
 
 - System Settings → Lock Screen → *Turn display off on power adapter when

@@ -24,22 +24,25 @@ project**: `house.json` and any `house.<variant>.json` (the rain plan's
 `house.shed.json`) are project files beside the story, pushed by
 `pnpm sync-example` / `pnpm sync-show` and snapshotted when an event
 launches (a reload refreshes them; End → relaunch plays the project's
-current map). An event plays, in order: a director's save from
+current map, on the variant the last event played). An event plays, in order: a director's save from
 `/reinstall/map` (kept per event in the server's state directory as
 `spatial-house.json`), the project's active variant, then the show file
 (`LOOM_HOUSE`, now only the fallback). A save carries the version the
 editor loaded, so two directors never silently overwrite each other (409,
 then reload). The **tent ↔ shed switch** is `POST /api/mod/spatial/variant
 {file}` (mid-show too: players keep playing, a duck whose spot is gone is
-re-dealt); **Save to project** (`POST /api/mod/spatial/house/project`)
+re-dealt, and a player standing where the new variant has no floor — the
+shed is a solid prop on the tent map — goes back to the start); **Save to project** (`POST /api/mod/spatial/house/project`)
 writes the event's map back into the project. The map page's
-`map/ProjectBar.tsx` offers both, plus **Download JSON** (mounted in the editor's toolbar slot)
+project bar (`map/ProjectBar.tsx`, mounted in the editor's toolbar slot
+by `main.tsx`) offers both as **Map: Tent ● live | Shed** buttons, plus
+**Download JSON**; a switch reloads the page onto the server's new map
 (`docs/loom-reinstall.md` §1.3, §2.1).
 
 ### The map editor (`/reinstall/map`)
 
 Tick **Edit** to build the house from a survey (the walkthrough is the
-help article `docs/help/authoring/38-house-map.md`; the rules are
+help article `docs/help/authoring/39-house-map.md`; the rules are
 `docs/loom-reinstall.md` §3):
 
 | Tool / control | Does |

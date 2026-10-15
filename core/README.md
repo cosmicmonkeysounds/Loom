@@ -408,8 +408,9 @@ and its geometry are `@loom/house` (`../house`).
   `house.json` + any `house.<variant>.json` are project files (not story —
   `projectSource` concatenates `.loom` only), snapshotted at launch like
   `scenario_source` (`event.house_maps` + `spatial-maps.json` in the state
-  dir with the active variant), refreshed by a reload, fresh on End →
-  relaunch. The event's map is the director's save for this event
+  dir with the active variant, which also rides `event.map_variant`),
+  refreshed by a reload, fresh on End → relaunch (on the last event's
+  variant: a launch seeds `map_variant` from the project's last event). The event's map is the director's save for this event
   (`spatial-house.json`, `Store.loadHouse/saveHouse`) > the snapshot's
   active variant > the show's file (`LOOM_HOUSE`, default the example's
   `house.json`, re-read on mtime change, last good map kept; an event with

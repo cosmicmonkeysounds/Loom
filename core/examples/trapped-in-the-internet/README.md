@@ -153,9 +153,11 @@ codes), 16 quests, 85 story rules, 100 INTERACTIONs.**
    old "lonely grandeur" arc, and a story restart sends `control reset`
    only to a worker that is connected.
 2. **House map.** After the `Disk Cleanup` relabel (the bathroom used to be
-   The Recycle Bin), delete the preview event's director save
-   `LOOM_STATE_DIR/<event>/spatial-house.json`, or re-save it at
-   `/reinstall/map`. Otherwise `houseWarnings` reports "The Recycle Bin is
+   The Recycle Bin), make sure no director's save is in force on the
+   preview event: Push draft and Go live in place keep one. The map page's
+   status line must read "the project's map"; if it reads "this
+   event's map", press **Save to project** (to keep the edit) or switch to
+   the other variant and back (to drop it). Otherwise `houseWarnings` reports "The Recycle Bin is
    not a LOCATION" forever. Rebuild `reinstall/web` and `terminal`, which
    bundle offline copies, and re-export the VR APK (low priority, because
    the live fetch wins). `pnpm house:sync` copies the map into

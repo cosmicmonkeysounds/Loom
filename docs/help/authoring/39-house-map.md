@@ -1,7 +1,7 @@
 ---
 title: The house map — drawing the house from a survey
 section: Live Shows
-order: 38
+order: 39
 keywords: house map, map editor, floor plan, survey, measure, rooms, doors, yard, outdoor, tent, shed, stairs, floors, basement, upstairs, duck spot, spawn, terminal, location, reinstall, house.json, walkable, unreachable, undo
 ---
 
@@ -75,3 +75,30 @@ drag to orbit, wheel to zoom.
 **💾 Save** sends the map to the event. If another director saved since
 you loaded it, nothing is saved and you are offered your edits as JSON
 and a reload.
+
+## Tent or shed, and keeping the map
+
+The toolbar's **Map:** buttons are the whole-map variants the event can
+play — for *Trapped in the Internet*, **Tent** (`house.json`) and
+**Shed** (`house.shed.json`, the rain night). The one marked **● live**
+is what every program and terminal plays now. Press the other to switch,
+mid-show too: programs keep playing from where they stand, and a duck
+whose spot isn't on the new map is dealt a new one. Anyone standing where
+the new map has no floor — inside the shed when you switch back to the
+tent, where the shed is a solid box — is put back at the start. The choice
+sticks: it survives a restart and **End → relaunch** (the next launch
+starts on the variant the last one played). The page asks first when programs are in the
+simulation, when a saved edit would be dropped, or when you have unsaved
+edits, then shows the new map.
+
+**The labels come from the maps.** A variant's button is named after
+its file (`house.shed.json` → **Shed**); the default `house.json` is
+named after the one word in its map's `name` that the others' names lack
+("…the Internet in the **tent**" → **Tent**), else **Main**. If you rename
+the map in the JSON tab, keep "tent" in its name, or the button reads
+Main.
+
+A 💾 save belongs to this event only. **Save to project** writes the map
+into the project as the live variant's file (your unsaved edits are saved
+first), so the next launch and every co-writer get it. **Download JSON**
+gives you the file to commit.

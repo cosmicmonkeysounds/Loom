@@ -125,7 +125,7 @@ Tick **Edit** to change the map. A second toolbar row holds the tools
 (letters in brackets), the snap step (1 / 5 / 10 / 25 / 50 cm, kept per
 device) and **New blank house…** (one floor + a yard, behind a confirm).
 The walkthrough for turning a survey into a map is the help article
-`docs/help/authoring/38-house-map.md`.
+`docs/help/authoring/39-house-map.md`.
 
 - **floors**: a tab each; **+ Floor** adds one above the top floor (id
   slugged from the label); click the current tab again to edit its label /
@@ -196,20 +196,31 @@ The **Terminals** tab offers each terminal's provisioning link,
 passcode: append `&code=<mod passcode>` before opening one on its tablet.
 
 **The project bar** (`src/map/ProjectBar.tsx`; its decisions in
-`src/map/project.ts`, unit-tested; not mounted on the page yet — the map
-page rewrite places it, and should label the page's `source` with
-`sourceLabel` from the same file — it knows `project`, the project's
-file by name): a toggle per whole-map variant of the event
-(`house.json`, `house.shed.json`, … — `GET /api/mod/spatial/variants`; the
-active one pressed, a broken one disabled with its problems as the
-tooltip). A click switches the live map (`POST /api/mod/spatial/variant
-{file, base}`), asking first while programs are mid-game (they keep
-playing; a duck whose spot is gone is re-dealt) or when it would drop a
-director's save; the page then loads the new map (`onSwitched`). **Save to
-project** (an event with a project only) writes the event's map into the
-project as the active variant's file (`POST
+`src/map/project.ts`, unit-tested), mounted in the toolbar by `main.tsx`
+through `MapApp`'s `toolbarExtras` slot (`projectBarExtras`). The
+toolbar's status line names the map's source with `sourceLabel` (this
+event's map / the project's map / the show's map). **Map:** a toggle per
+whole-map variant of the event (`GET /api/mod/spatial/variants`), labelled
+in a director's words by `variantLabel`: `house.shed.json` → **Shed**,
+the default `house.json` → the one word only its map's name has among the
+variants (the show's → **Tent**), else **Main**; the playing one is
+pressed and tagged **● live**, the file + map name are the tooltip, a
+broken one is disabled with its problems. A click switches the live map
+(`POST /api/mod/spatial/variant {file, base}`), asking first while
+programs are mid-game (they keep playing; a duck whose spot is gone is
+re-dealt; one standing where the new variant has no floor goes back to
+the start — `bodyAfterRemap` in `game/physics.ts`, the same `standable`
+rule the server re-seats by), when it would drop a director's save, or when the page holds
+unsaved edits. The switch is already live for every player, so the page
+then **reloads** onto the server's map and version as a clean draft (not
+an undoable adopt — undoing would only make an unsaved edit of the old
+variant). **Save to project** (an event with a project only) writes the
+map into the project as the active variant's file (`POST
 /api/mod/spatial/house/project`), so the next launch and every co-writer
-get it. **Download JSON** saves the shown map under that file name.
+get it; a valid unsaved draft is 💾 saved to the event first, so what is
+on screen is what lands (an invalid one is not — the bar asks before
+saving the event's map without it); the page reloads after. **Download
+JSON** saves the shown map under that file name.
 
 To change the show's own map (`core/examples/trapped-in-the-internet/house.json`),
 **Download JSON** (or copy the JSON tab) into that file, then run

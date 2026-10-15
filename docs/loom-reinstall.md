@@ -369,8 +369,13 @@ tolerance: metres, and m² for orientations).
   active variant is always the state dir's), a reload (`POST
   /api/projects/:id/event/reload`, "Push draft") refreshes the snapshot
   (the active variant is kept while its file exists, else the default),
-  and End → relaunch is a new event on the project's current maps. Old
-  event rows (no snapshot) play the show's file.
+  and End → relaunch is a new event on the project's current maps **and
+  the variant the last event played**: the choice is also recorded on the
+  row (`event.map_variant`, written on every switch), and a launch seeds
+  the new row from the project's last event, so a rain night switched to
+  the shed relaunches on the shed (a fresh state dir starts on the row's
+  choice; the state dir's own wins once it has one). Old event rows (no
+  snapshot) play the show's file.
 - The event server serves the event's map, the first that exists and
   validates: **(1)** the director's save for this event —
   `STATE_DIR/<eventId>/spatial-house.json`, or `STATE_DIR/spatial-house.json`
@@ -386,7 +391,9 @@ tolerance: metres, and m² for orientations).
   project** writes the event's current map into a project file (default:
   the active variant's) and, when that is the active variant, deletes the
   save (the event now plays the project's copy); a **variant switch**
-  drops it (it was an edit of the old variant). A reload keeps it. An
+  drops it (it was an edit of the old variant). A reload (Push draft) and
+  a restart (Go live in place, Reset) keep it — the morning reset checks
+  the map page's status line reads "the project's map". An
   event with no project map files (the LAN default event, an old project)
   switches among the **show file's siblings** instead: `LOOM_HOUSE=
   /config/house.json` → `/config/house.<variant>.json`.
@@ -420,7 +427,7 @@ Golden fixtures for the Godot port: `house/test/golden/<name>.walls.json`,
 goldens` from `house/test/fixtures/*.json` + the show's `house.json`
 (`name` = `show`). Each is a JSON array, one value per line, every number
 rounded to 1 mm: walls = `WallSegment[]`; routes = `[{from, to, path}]`;
-locate = `[{p, floor, room, height}]` with `height = heightAt([x, z], y)`.
+locate = `[{p, floor, room, height, standable}]` with `height = heightAt([x, z], y)` and `standable = standable(house, p)` (the queries include every solid prop's base and top).
 Queries are stored with their answers, so a port only reads and compares.
 A test fails when the committed goldens drift from the code.
 
@@ -447,7 +454,7 @@ calls; it can do nothing else.
 | `GET /api/spatial/house` | mod token (header or `?token=`), author session, or a session token | — | 401 none of those · 503 no map · `{house, version, source: "event" \| "project" \| "show", duck?}` (§1.3) — `duck` (the session's current `DuckSpot`) only when the caller is a live session token: a map save may have moved or re-dealt it, and this is how a parked assignment (not on the stream yet) learns of it |
 | `POST /api/mod/spatial/house` | mod | `{house, base?}` — `base` = the version the editor loaded | 400 `{error, problems}` (checked first) · 409 `{error: "the map changed — reload", version}` when `base` is given and is not the current version (the map is loaded first if nothing has yet; no / null `base` = no check, last write wins) · 200 `{ok, version, warnings}`; persists `spatial-house.json` in the event's state dir (§1.3); streams get `house {version}`, then a `duck` frame per player whose duck moved (§2.2) |
 | `GET /api/mod/spatial/variants` | mod | — | `{variants: [{file, name, active, ok, problems}], from: "project" \| "show", edited, project}` — every whole-map variant (the default file first, then by name; `name` = the map's own, else the file), each validated afresh; `from` = the project snapshot, or the show file's siblings when it has no map files; `edited` = a director's save is in force; `project` = the event has a project (Save to project works) |
-| `POST /api/mod/spatial/variant` | mod | `{file, base?}` | 404 `{error: "no such map variant", variants}` · 400 `{error: "invalid house map", problems}` · 409 as for `house` on a stale `base` · 200 `{ok, version, warnings, file, dropped}`. **The tent ↔ shed switch** (SW-MAP-13), mid-show too: the same path as a save (live sessions carried over, ducks kept by spot id or re-dealt, `house` then `duck` frames), nothing saved; the active variant is remembered for the event (survives a restart); `dropped` = a director's save was in force and is gone |
+| `POST /api/mod/spatial/variant` | mod | `{file, base?}` | 404 `{error: "no such map variant", variants}` · 400 `{error: "invalid house map", problems}` · 409 as for `house` on a stale `base` · 200 `{ok, version, warnings, file, dropped}`. **The tent ↔ shed switch** (SW-MAP-13), mid-show too: the same path as a save (live sessions carried over, ducks kept by spot id or re-dealt, `house` then `duck` frames), nothing saved; the active variant is remembered for the event (survives a restart) and on its row (`event.map_variant`, which End → relaunch starts on); a player standing where the new variant has no floor goes back to its spawn (§2.2); `dropped` = a director's save was in force and is gone |
 | `POST /api/mod/spatial/house/project` | mod | `{file?, base?}` — `file` default: the active variant's (a show sibling's too, on an event with no project maps yet, when it is named like a map file), else `house.json` | 409 `{error: "this event has no project — download the map instead"}` (the LAN default event; no `version`) · 400 not a map file name · 409 stale `base` · 502 the write failed · 200 `{ok, file, version}`. **Save to project**: writes the event's current map (two-space JSON + newline) as that project file — through the live co-editing doc when it is open, announced to every editor's tree — and records the snapshot on the event row, so the next launch and every co-writer see it. When `file` is the active variant, the director's save it came from is retired (the event now runs on the project's copy; same version, no frame) |
 | `POST /api/mod/spatial/begin` | mod | `{guest, world: "vr" \| "web", device, station?}` | 409 no scenario · 404 unknown guest · 400 bad world · 503 no map · 200 `Assignment` (below). An active session for the same guest is ended (`leave {reason: "replaced"}`). With `station`, the assignment is parked for that station until it claims it, and an older assignment still parked there is ended (`replaced`). |
 | `GET /api/mod/spatial/station` | mod | `?id=vr-1&name=Headset 1&world=vr` | marks the station seen; `{assignment: Assignment \| null}` — the newest unclaimed assignment for it |
@@ -502,14 +509,24 @@ the `found` response) means the program was captured and no longer is.
 streams. `hello` is sent on every (re)connect, so a client compares its
 `houseVersion` with the map it holds (§1.3).
 
-**A new map mid-game** (a director's save, or a changed show file):
-`setHouse` keeps every live session going. One that hasn't found its duck
+**A new map mid-game** (a director's save, the tent ↔ shed switch, or a
+changed show file): `setHouse` keeps every live session going. One that hasn't found its duck
 keeps its spot **id**, so a moved room carries the duck along and the
 session takes the spot's new position; a spot the new map no longer has
 is re-dealt (`pickDuckSpot`, still avoiding the one this guest found
 last). Rooms and floors are recomputed (the next `poses` flush carries
 them), a parked assignment moves to the new spawn, and every session's
-`houseVersion` becomes the new one. Then `house {version}`, then the
+`houseVersion` becomes the new one. A player stays where they stand
+unless that is not **`standable`** on the new map (`@loom/house`: in a
+room, over a surface, not buried in a solid prop — one stepped over at
+5 cm aside): then they go back to the new map's spawn. The rain variant
+is the case that needs it — the shed is a room on `house.shed.json` and a
+solid box prop on `house.json`, flush with the yard's fence, so a program
+standing in it on a switch back to the tent would be wedged between the
+box and the fence. The server re-seats its copy of the pose; the web game
+(`bodyAfterRemap`) and the VR game (`respawn_after_remap`) apply the same
+rule to their body when they load the new map (the locate goldens pin
+`standable` for the GDScript port). Then `house {version}`, then the
 `duck` frames above.
 
 ## 3. The web game — `reinstall/web/` (`loom-reinstall`)
@@ -577,14 +594,20 @@ and offers **Copy my edits (JSON)** and **Reload the map**; a successful
 save moves the page's base to the new version. A terminal's view cone is
 drawn `horizontalFov(fov ?? 70)` wide (§1.1). A terminal's provisioning
 link is offered from its row. The page's **project bar**
-(`reinstall/web/src/map/ProjectBar.tsx`, logic in `map/project.ts`; built
-and tested but **not mounted on the page yet** — the map-page rewrite
-places it) toggles
-the variants (`GET …/variants`, `POST …/variant` with `base`; it asks first
-while programs are mid-game or a director's save would be dropped), offers
-**Save to project** (`POST …/house/project`, only on an event with a
-project; it sends the file it names in its confirm, `saveTarget`) and **Download JSON** (the shown map as the active variant's file,
-to commit as the show's file).
+(`reinstall/web/src/map/ProjectBar.tsx`, logic in `map/project.ts`,
+mounted in the toolbar's `toolbarExtras` slot) toggles the variants,
+labelled **Tent** / **Shed** (`variantLabel`: a `house.<v>.json` file's
+`<v>`; `house.json`'s one distinguishing word in its map name, else
+*Main*), the playing one tagged **● live** (`GET …/variants`, `POST
+…/variant` with `base`; it asks first while programs are mid-game, a
+director's save would be dropped, or the page holds unsaved edits). A
+switch is live for every player at once, so the page reloads onto the
+server's map and version (a clean draft, never an undoable edit). It
+offers **Save to project** (`POST …/house/project`, only on an event with
+a project; it sends the file it names in its confirm, `saveTarget`; a
+valid unsaved draft is saved to the event first; the page reloads after)
+and **Download JSON** (the shown map as the active variant's file, to
+commit as the show's file).
 
 The editor works **within the §1.1 schema** — it never adds a field —
 and every op is pure (`reinstall/web/src/map/`: `edit.ts`, `doors.ts`,
