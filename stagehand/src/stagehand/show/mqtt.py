@@ -3,7 +3,9 @@ asyncio via a queue.
 
 Stagehand announces itself on `health/stagehand` (retained "online",
 broker-set LWT "lost") so the Run-mode tech rail can watch the bridge
-the same way it watches every prop.
+the same way it watches every prop. Another module on its own client
+(the `alexa` player) passes its own `health_topic` so the two never
+overwrite each other's status.
 """
 
 from __future__ import annotations
@@ -28,14 +30,16 @@ class MqttBridge:
         client_id: str = "stagehand",
         username: str | None = None,
         password: str | None = None,
+        health_topic: str = HEALTH_TOPIC,
     ) -> None:
         self._filters = filters
+        self._health = health_topic
         self._loop = loop
         self.queue: asyncio.Queue[tuple[str, bytes]] = asyncio.Queue()
         self._client = paho.Client(paho.CallbackAPIVersion.VERSION2, client_id=client_id, clean_session=True)
         if username is not None:
             self._client.username_pw_set(username, password)
-        self._client.will_set(HEALTH_TOPIC, "lost", retain=True)
+        self._client.will_set(health_topic, "lost", retain=True)
         self._client.on_connect = self._on_connect
         self._client.on_disconnect = self._on_disconnect
         self._client.on_message = self._on_message
@@ -46,7 +50,7 @@ class MqttBridge:
 
     def _on_connect(self, client: paho.Client, _userdata, _flags, reason_code, _props) -> None:
         log.info("mqtt connected (%s)", reason_code)
-        client.publish(HEALTH_TOPIC, "online", retain=True)
+        client.publish(self._health, "online", retain=True)
         for f in self._filters:
             client.subscribe(f)
             log.info("mqtt subscribed %s", f)
@@ -63,7 +67,7 @@ class MqttBridge:
 
     def stop(self) -> None:
         try:
-            self._client.publish(HEALTH_TOPIC, "offline", retain=True).wait_for_publish(timeout=2)
+            self._client.publish(self._health, "offline", retain=True).wait_for_publish(timeout=2)
         except (RuntimeError, ValueError):
             pass
         self._client.disconnect()

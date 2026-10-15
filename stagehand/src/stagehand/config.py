@@ -3,6 +3,7 @@
     server:  { url, event?, mod_token? | mod_passcode? }
     show:    { … }     # stagehand.show   — see show.example.yaml
     agents:  { … }     # stagehand.agents — see agents.example.yaml
+    alexa:   { … }     # stagehand.alexa  — see trapped.house.yaml
 
 A top-level key that isn't `server` or a registered module is an error
 (a typo'd section would otherwise silently switch a job off). A config

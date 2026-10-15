@@ -9,6 +9,7 @@ machine, **modules** switched on by section:
 |---|---|---|---|
 | **show** | `show:` | the desktop | story → OSC/MQTT cues; MQTT sensors → story mutations |
 | **agents** | `agents:` | the laptop (Ollama) | answers every conversation with a `mind: external` character through a local model |
+| **alexa** | `alexa:` | the house Mac | MQTT `show/announce` → a chime + the server's voice (`/api/mod/tts`, cached on disk) on a named CoreAudio device + channel map; `say` fallback |
 
 ```
 laptop.yaml                      desktop.yaml
@@ -273,7 +274,7 @@ Internet*'s actual rig is [`trapped.house.yaml`](./trapped.house.yaml):
 Zigbee2MQTT group scenes + WLED presets for every `cue lights_*`, the
 per-room long form `<cue: lights, room: …, state: …>` (The Cache,
 The Desktop, The Cloud, The Registry), `screens_flicker` blinking the
-house, every `sound <name>` as a QLab OSC cue, `do announce` to the Alexa
+house, every `sound <name>` as a QLab OSC cue (but `alexa_chime` → the `alexa` player), `do announce` to the `alexa`
 speaker, the optional server-room maglock, and the sensors that come back
 as story signals (`server_door_opened`, debounced until stagehand
 learns edge detection; the printer's
@@ -290,6 +291,32 @@ the Internet: the house rig*.
 uv run stagehand check --config trapped.house.yaml
 uv run stagehand run   --config trapped.house.yaml
 ```
+
+## alexa — announcements out of the house speakers
+
+`do announce "…"` reaches the house as `show/announce {"text": "…"}` (a
+`show` cue rule). The `alexa` module, on the Mac wired to the speakers,
+subscribes, rings a chime (synthesised, or `chime: <file>`) and fetches
+the line from the event server's neural voice (`POST /api/mod/tts`,
+`ModClient.speak`) **while the chime rings**, then plays it on
+`device:` (a CoreAudio name or substring; omit = the default output),
+copying the file's channels across `channels:` (1-based — `[1, 2, 3, 4]`
+= two stereo zones of one interface). Fallbacks, in order: the disk
+cache (`cache_dir`; `prewarm:` lines are fetched at boot and retried
+each minute), macOS `say` rendered to a file and played the same way,
+then `say -a <device>`, then plain `say`. One announcement at a time;
+`show/chime` (the story's `sound alexa_chime`) rings the chime alone
+unless an announcement started in the last 10 s. One player per machine
+(`player.lock`): a second one stands by. Health on `health/alexa`.
+
+```bash
+uv run stagehand announce --config house.yaml "Go to the living room."            # play one now
+uv run stagehand announce --config house.yaml --offline --no-chime "Time is up."  # say path, no chime
+uv run stagehand run      --config house.yaml --only alexa                        # the daemon
+```
+
+House-Mac setup, launchd agent and the night's runbook:
+[`scripts/house-mac/alexa.md`](../scripts/house-mac/alexa.md).
 
 ### The `t_exec` contract
 

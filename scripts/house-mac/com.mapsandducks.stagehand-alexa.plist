@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The fake Alexa (K-20) on the house Mac — a per-user LaunchAgent, not a
+  system daemon: CoreAudio output needs the logged-in user's session, so
+  the Mac auto-logs-in that user. Template: install-alexa.sh fills the
+  __UV__ / __STAGEHAND__ / __CONFIG__ / __LOG__ / __PATH__ placeholders and
+  loads it. See alexa.md.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.mapsandducks.stagehand-alexa</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__UV__</string>
+    <string>run</string>
+    <string>--project</string>
+    <string>__STAGEHAND__</string>
+    <string>stagehand</string>
+    <string>run</string>
+    <string>--config</string>
+    <string>__CONFIG__</string>
+    <string>--only</string>
+    <string>alexa</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__STAGEHAND__</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>__PATH__</string>
+    <key>PYTHONUNBUFFERED</key>
+    <string>1</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>5</integer>
+  <key>ProcessType</key>
+  <string>Interactive</string>
+  <key>StandardOutPath</key>
+  <string>__LOG__</string>
+  <key>StandardErrorPath</key>
+  <string>__LOG__</string>
+</dict>
+</plist>

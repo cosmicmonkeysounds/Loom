@@ -3,6 +3,10 @@
     stagehand run    --config laptop.yaml [--only agents]   run every enabled module
     stagehand check  --config laptop.yaml [--only agents]   validate + describe, exit
     stagehand modules                                        list the module kinds
+    stagehand announce --config house.yaml [--no-chime] text…
+                     play one announcement through the `alexa:` section's
+                     device right now (no broker, no story) — the routing
+                     check and the hand-fired fallback.
     stagehand ask    --config laptop.yaml [--character Trabolta] [--name Ada] [--reflect] [text…]
                      talk to an agent persona straight through the model — no
                      server, no story; one line, or an interactive chat. With
@@ -47,6 +51,12 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--config", required=True, help="path to the machine's stagehand YAML")
         p.add_argument("--only", help="comma list of modules to run from the config (default: all present)")
     sub.add_parser("modules", help="list the available modules")
+    ann = sub.add_parser("announce", help="play one announcement through the alexa: device now")
+    ann.add_argument("--config", required=True)
+    ann.add_argument("--no-chime", action="store_true", help="skip the chime")
+    ann.add_argument("--voice", help="server voice (default: the section's voice)")
+    ann.add_argument("--offline", action="store_true", help="don't ask the server — cache, then say")
+    ann.add_argument("text", nargs="+")
     ask = sub.add_parser("ask", help="chat with an agent persona through the model (no server)")
     ask.add_argument("--config", required=True)
     ask.add_argument("--character", help="which persona (default: the only / first one)")
@@ -71,13 +81,16 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     try:
-        cfg = load_config(args.config, only=["agents"] if args.command == "ask" else _only(args.only))
+        only = {"ask": ["agents"], "announce": ["alexa"]}.get(args.command) or _only(getattr(args, "only", None))
+        cfg = load_config(args.config, only=only)
     except ConfigError as err:
         print(f"config error: {err}", file=sys.stderr)
         return 2
 
     if args.command == "ask":
         return _ask(cfg, args)
+    if args.command == "announce":
+        return _announce(cfg, args)
 
     print(_describe(cfg))
     if args.command == "check":
@@ -88,6 +101,29 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         print("stagehand: stopped")
     return 0
+
+
+def _announce(cfg: StagehandConfig, args: argparse.Namespace) -> int:
+    from .alexa.module import Alexa, Announcement
+    from .modapi import ModClient
+
+    alexa = cfg.modules["alexa"]
+    assert isinstance(alexa, Alexa)
+    print("\n".join(alexa.describe()))
+
+    async def go() -> str:
+        s = cfg.server
+        mod = None if args.offline else ModClient(s.url, event=s.event, token=s.mod_token, passcode=s.mod_passcode)
+        try:
+            a = Announcement(text=" ".join(" ".join(args.text).split()), voice=args.voice, chime=not args.no_chime)
+            return await alexa.announcer(mod).announce(a)
+        finally:
+            if mod is not None:
+                await mod.aclose()
+
+    path = asyncio.run(go())
+    print(f"played via {path}")
+    return 0 if path != "failed" else 1
 
 
 def _ask(cfg: StagehandConfig, args: argparse.Namespace) -> int:
