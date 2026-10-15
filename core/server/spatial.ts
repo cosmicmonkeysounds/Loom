@@ -19,6 +19,7 @@ import type {
   Assignment,
   DuckSpot,
   HouseMap,
+  HouseSource,
   LeaveReason,
   PlayerPose,
   PlayerState,
@@ -63,8 +64,9 @@ export interface SpatialHubOptions {
   newSessionId?: () => string;
 }
 
-/** Where the map came from: a director's save for this event, or the show's file. */
-export type HouseSource = "event" | "show";
+/** Where the map came from: a director's save for this event, the
+ *  project's snapshot (its active variant), or the show's file. */
+export type { HouseSource };
 
 /** One program in the simulation. */
 interface Session {

@@ -12,15 +12,27 @@
 //! default `loom_dev`) and the event server's mod API (the event's own mod
 //! code, read from the row). Files the example no longer has are removed
 //! from the project. A reload cuts every guest's session — they re-join.
+//!
+//! The example's house maps (`house.json`, `house.<variant>.json`) are
+//! project files too (SW-MAP-01): they are pushed, dropped, snapshotted on
+//! the event row and handed to the reload like the `.loom` files. A project
+//! map the push would change or delete — one saved from the map page since
+//! the last sync, say — is copied to a temp directory first (printed), so a
+//! surveyed map is never lost to a stale example; `--keep-maps` leaves the
+//! project's maps alone entirely.
 
 import { randomUUID } from "node:crypto";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Pool } from "pg";
-import { scenarioFiles } from "../examples/load.ts";
+import { scenarioFiles, scenarioMapFiles } from "../examples/load.ts";
+import { isMapFile, planMapSync, type MapFiles } from "../server/house-maps.ts";
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://127.0.0.1:5432/loom_dev";
 
 function usage(): never {
-  process.stderr.write("usage: sync-example <project name | id> [example=trapped-in-the-internet] [--server URL] [--no-reload]\n");
+  process.stderr.write("usage: sync-example <project name | id> [example=trapped-in-the-internet] [--server URL] [--no-reload] [--keep-maps]\n");
   process.exit(2);
 }
 
@@ -28,11 +40,13 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   let server = process.env.LOOM_SERVER ?? `http://localhost:${process.env.LOOM_PORT ?? 7000}`;
   let reload = true;
+  let keepMaps = false;
   const positional: string[] = [];
   for (let i = 0; i < args.length; i++) {
     const a = args[i]!;
     if (a === "--server") server = args[++i] ?? usage();
     else if (a === "--no-reload") reload = false;
+    else if (a === "--keep-maps") keepMaps = true;
     else if (a.startsWith("-")) usage();
     else positional.push(a);
   }
@@ -51,13 +65,31 @@ async function main(): Promise<void> {
     ).rows[0];
     if (project === undefined) throw new Error(`no project named or with id "${projectRef}"`);
 
+    // Maps: the example's replace the project's (unless --keep-maps); any
+    // project map that would change or vanish is backed up first.
+    const projectMaps: MapFiles = {};
+    for (const r of (await pool.query<{ path: string; content: string }>(`select path, content from project_file where project_id = $1`, [project.id])).rows) {
+      if (isMapFile(r.path)) projectMaps[r.path] = r.content;
+    }
+    const exampleMaps: MapFiles = Object.fromEntries(scenarioMapFiles(example).map((f) => [f.path, f.source]));
+    const maps = keepMaps ? projectMaps : exampleMaps;
+    if (!keepMaps) {
+      const plan = planMapSync(projectMaps, exampleMaps);
+      if (plan.replaced.length > 0) {
+        const dir = mkdtempSync(join(tmpdir(), "loom-sync-maps-"));
+        for (const f of plan.replaced) writeFileSync(join(dir, f), projectMaps[f]!);
+        process.stdout.write(`⚠️  the project's ${plan.replaced.join(", ")} differed from the example's — the project's copies are in ${dir}\n`);
+      }
+    }
+    const pushed = keepMaps ? files : [...files, ...Object.entries(exampleMaps).map(([path, source]) => ({ path, source }))];
+
     // Files: upsert every example file by path, drop the rest.
     const client = await pool.connect();
     try {
       await client.query("begin");
-      const keep = files.map((f) => f.path);
+      const keep = [...files.map((f) => f.path), ...Object.keys(maps)];
       await client.query(`delete from project_file where project_id = $1 and not (path = any($2::text[]))`, [project.id, keep]);
-      for (const f of files) {
+      for (const f of pushed) {
         const r = await client.query(
           `update project_file set content = $3, updated_at = now() where project_id = $1 and path = $2`,
           [project.id, f.path, f.source],
@@ -74,6 +106,7 @@ async function main(): Promise<void> {
       client.release();
     }
     process.stdout.write(`✓ ${files.length} files of "${example}" → project "${project.name}" (${project.id})\n`);
+    process.stdout.write(keepMaps ? `  (maps kept: ${Object.keys(maps).join(", ") || "none"})\n` : `✓ maps: ${Object.keys(maps).join(", ") || "none"}\n`);
 
     // The concatenation the server uses (`db/queries.ts` projectSource).
     const source = [...files]
@@ -91,7 +124,7 @@ async function main(): Promise<void> {
       process.stdout.write("  (no running event for this project — launch one from the editor's Run mode)\n");
       return;
     }
-    await pool.query(`update event set scenario_source = $2 where id = $1`, [event.id, source]);
+    await pool.query(`update event set scenario_source = $2, house_maps = $3::jsonb where id = $1`, [event.id, source, JSON.stringify(maps)]);
     process.stdout.write(`✓ event ${event.id} (${event.mode}, ${event.status}) snapshot updated — codes: guest ${event.event_code} · performer ${event.prime_code} · mod ${event.mod_code}\n`);
     if (!reload) return;
 
@@ -109,7 +142,7 @@ async function main(): Promise<void> {
     const load = await fetch(`${server}/e/${encodeURIComponent(event.id)}/api/mod/load`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-loom-token": token },
-      body: JSON.stringify({ source, name: project.name }),
+      body: JSON.stringify({ source, name: project.name, maps }),
     });
     if (!load.ok) throw new Error(`mod/load failed: ${load.status} ${await load.text()}`);
     process.stdout.write(`✓ event reloaded on the new story → ${server}/?code=${event.event_code}\n`);

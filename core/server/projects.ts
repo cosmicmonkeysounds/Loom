@@ -9,7 +9,7 @@
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { scenarioFiles } from "../examples/load.ts";
+import { scenarioFiles, scenarioMapFiles } from "../examples/load.ts";
 import { collabHub } from "./collab.ts";
 import { EDITOR_URL } from "./config.ts";
 import { readBody, sendJson, str } from "./http-util.ts";
@@ -67,6 +67,11 @@ async function seedFiles(projectId: string, template: string): Promise<void> {
   // unknown template id falls back to the default example.
   const name = (EXAMPLE_TEMPLATES as readonly string[]).includes(template) ? template : DEFAULT_TEMPLATE;
   for (const f of scenarioFiles(name)) {
+    await upsertFile(projectId, f.path, f.source);
+  }
+  // …and its house maps (`house.json`, `house.<variant>.json`): the map
+  // belongs to the project (SW-MAP-01).
+  for (const f of scenarioMapFiles(name)) {
     await upsertFile(projectId, f.path, f.source);
   }
 }

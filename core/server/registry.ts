@@ -13,6 +13,7 @@ import { Store } from "./store.ts";
 import { EventRuntime } from "./event-runtime.ts";
 import type { WikiClient } from "./wiki.ts";
 import type { ImageCache } from "./avatars.ts";
+import type { MapFiles, ProjectLink } from "./house-maps.ts";
 
 /** The role a passcode grants when it resolves to an event. */
 export type CodeRole = "guest" | "prime" | "mod";
@@ -37,6 +38,10 @@ export interface EventSpec {
   codes: Passcodes;
   scenarioName: string;
   scenarioSource: string;
+  /** The project's map files snapshotted at launch (`event.house_maps`). */
+  houseMaps?: MapFiles | null;
+  /** The way back to the project ("Save to project"); absent → none. */
+  project?: ProjectLink | null;
 }
 
 export class EventRegistry {
@@ -93,6 +98,8 @@ export class EventRegistry {
       codes: spec.codes,
       scenarioName: spec.scenarioName,
       scenarioSource: spec.scenarioSource,
+      houseMaps: spec.houseMaps ?? null,
+      project: spec.project ?? null,
       joinBase: this.joinBase,
       wiki: this.wiki,
       ...(this.images !== null ? { images: this.images } : {}),
