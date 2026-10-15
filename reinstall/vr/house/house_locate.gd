@@ -8,6 +8,13 @@ extends RefCounted
 const FLOOR_SLACK := 0.5
 ## The highest step up [method height_at] accepts above the hint.
 const STEP_UP := 0.45
+## How tall a standing player is, for the solid-prop checks.
+const BODY_CLEAR := 1.7
+## How far into a prop's top a thing resting on it may sit.
+const PROP_REST := 0.01
+## A solid prop whose top clears the feet by less than this is stepped over
+## (the games' step-over) — [method standable]'s rest.
+const PROP_STEP_OVER := 0.05
 
 
 ## The highest floor whose elevation ≤ `y + 0.5`, else the lowest (ties:
@@ -96,3 +103,31 @@ static func height_at(house: Dictionary, p: Array, y_hint: float) -> Variant:
 		if lowest == null or h < lowest:
 			lowest = h
 	return best if best != null else lowest
+
+
+## The solid prop a thing `clear` metres tall with its base at `p` would be
+## buried in (first in array order), else `null`. Resting on top (to within
+## `rest`) is fine.
+static func solid_prop_at(house: Dictionary, p: Array, clear: float = BODY_CLEAR, rest: float = PROP_REST) -> Variant:
+	var y := float(p[1])
+	var plan := [float(p[0]), float(p[2])]
+	for prop: Dictionary in house.get("props", []):
+		if not HouseGeometry.prop_solid(prop):
+			continue
+		var bottom := float(prop["pos"][1])
+		var top := bottom + float(prop["size"][1])
+		if y < top - rest and y + clear > bottom and HouseGeometry.in_prop_footprint(prop, plan):
+			return prop
+	return null
+
+
+## Could a player stand with their feet at `p`? In a room ([method locate]),
+## over a surface ([method height_at]) and not buried in a solid prop. A
+## remap keeps the player where they stand unless this says no — then the
+## game puts them back at the spawn (`docs/loom-reinstall.md` §1.3).
+static func standable(house: Dictionary, p: Array) -> bool:
+	if locate(house, p)["room"] == null:
+		return false
+	if height_at(house, [p[0], p[2]], p[1]) == null:
+		return false
+	return solid_prop_at(house, p, BODY_CLEAR, PROP_STEP_OVER) == null

@@ -269,9 +269,9 @@ describe("SpatialHub", () => {
       expect(moved.duck.spots.map((s) => s.id)).toContain(bDuck.id);
       expect(bDuck.id).not.toBe(b.duck.id);
     }
-    // A's room is recomputed: x = 5 is no longer room b.
+    // A stood at x = 5, which is no longer in any room: back at the spawn.
     const frame = h.hub.flush()!;
-    expect(frame.players.find((p) => p.session === a.session)?.room).toBeNull();
+    expect(frame.players.find((p) => p.session === a.session)).toMatchObject({ room: "a", p: moved.spawn.pos });
     expect(h.hub.players().every((p) => p.duck.pos !== undefined)).toBe(true);
     expect(h.of("house")).toEqual([{ version: v }]);
     // Each player whose duck moved hears it, after the `house` frame.
@@ -285,6 +285,29 @@ describe("SpatialHub", () => {
     h.hub.pose(a.token, { p: aDuck.pos, yaw: 0, pitch: 0 });
     expect(h.hub.found(a.token, () => true).kind).toBe("found");
     expect(h.hub.duckFor("nope")).toBeNull();
+  });
+
+  it("the tent ↔ shed switch puts a program standing in the shed back at the spawn; others stay put", () => {
+    const load = (f: string): HouseMap => {
+      const v = validateHouse(JSON.parse(readFileSync(fileURLToPath(new URL(`../examples/trapped-in-the-internet/${f}`, import.meta.url)), "utf8")));
+      if (!v.ok || v.house === undefined) throw new Error(v.problems.join("\n"));
+      return v.house;
+    };
+    const tent = load("house.json");
+    const shed = load("house.shed.json");
+    const h = hubHarness();
+    h.hub.setHouse(shed, "project");
+    const inShed = h.begin("g-1"); // starts at the shed's spawn, in the shed
+    const inKitchen = h.begin("g-2");
+    const kitchen: [number, number, number] = [3.5, 0, 7.5];
+    expect(h.hub.pose(inShed.token, { p: [-3.5, 0, 21.5], yaw: 30, pitch: 0 })).toBe("ok");
+    expect(h.hub.pose(inKitchen.token, { p: kitchen, yaw: 0, pitch: 0 })).toBe("ok");
+    h.hub.flush();
+    h.hub.setHouse(tent, "project");
+    const rows = h.hub.flush()!.players;
+    // The shed is a solid prop on the tent map: back to the tent's spawn.
+    expect(rows.find((r) => r.session === inShed.session)).toMatchObject({ p: tent.spawn.pos, yaw: tent.spawn.yaw, room: tent.spawn.room });
+    expect(h.hub.players().find((r) => r.session === inKitchen.session)).toMatchObject({ p: kitchen, room: "kitchen" });
   });
 
   it("a new map is announced; sessions keep their duck", () => {

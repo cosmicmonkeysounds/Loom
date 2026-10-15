@@ -14,7 +14,7 @@
 
 import { randomBytes, randomUUID } from "node:crypto";
 
-import { DUCK_MAX_RISE, floorOf, houseHash, locate, pickDuckSpot, wrapYaw } from "@loom/house";
+import { DUCK_MAX_RISE, floorOf, houseHash, locate, pickDuckSpot, standable, wrapYaw } from "@loom/house";
 import type {
   Assignment,
   DuckSpot,
@@ -302,7 +302,9 @@ export class SpatialHub {
    * (so a moved room carries the duck along) and takes the spot's new
    * position; a spot the new map no longer has is re-dealt. Rooms + floors
    * are recomputed (the next flush carries them), a parked assignment moves
-   * to the new spawn. After the `house` frame, every player whose duck
+   * to the new spawn — and so does a player whose pose is not `standable`
+   * on the new map (inside a solid prop, outside every room); the games
+   * re-seat their body by the same rule. After the `house` frame, every player whose duck
    * moved or was re-dealt gets a `duck {session, duck}` frame; a game also
    * learns its (possibly new) duck from `GET /api/spatial/house` with its
    * session token (a parked assignment, not on the stream yet, only there).
@@ -323,7 +325,11 @@ export class SpatialHub {
         if (s.joined && !sameSpot(before, s.duck)) moved.push(s);
       }
       s.spawn = house.spawn;
-      if (!s.claimed) s.pose = { p: [...house.spawn.pos], yaw: house.spawn.yaw, pitch: 0 };
+      // A parked assignment starts at the new spawn; a player who stands
+      // where the new map has no floor (in a room that is a solid prop
+      // there — the shed on the tent map — or outside every room) is put
+      // back at it, as the games put their body back (`standable`).
+      if (!s.claimed || !standable(house, s.pose.p)) s.pose = { p: [...house.spawn.pos], yaw: house.spawn.yaw, pitch: 0 };
       const at = locate(house, s.pose.p);
       s.room = at.room;
       s.floor = at.floor;

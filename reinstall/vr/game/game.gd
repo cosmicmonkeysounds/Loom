@@ -156,9 +156,25 @@ func _on_house(h: Dictionary, _version: String) -> void:
 	if flow.state != GameFlow.State.LOBBY:
 		duck.place(builder.to_world(flow.assignment["duck"]["pos"]))
 	if flow.state == GameFlow.State.PLAYING:
+		# A remap keeps the player where they stand — unless the new map has
+		# no floor there (the shed is a solid prop on the tent map): back to
+		# its spawn, as the server re-seats them (`HouseLocate.standable`).
+		if not respawn_after_remap().is_empty():
+			_notice("The house was remapped — you're back at the start.")
 		_trail_in = 0.0
 		if autopilot != null:
 			autopilot.plan(builder.house, builder.to_house(player.feet()), flow.assignment["duck"]["pos"])
+
+
+## Put the player back at the map's spawn when where they stand is not
+## standable on it; returns the spawn used, `{}` when they stay put.
+func respawn_after_remap() -> Dictionary:
+	var house := builder.house
+	if house.is_empty() or HouseLocate.standable(house, builder.to_house(player.feet())):
+		return {}
+	var spawn: Dictionary = house["spawn"]
+	player.teleport(builder.to_world(spawn["pos"]), builder.yaw_to_world(float(spawn["yaw"])))
+	return spawn
 
 
 ## The server moved our duck (a map edit): it hides somewhere else now.

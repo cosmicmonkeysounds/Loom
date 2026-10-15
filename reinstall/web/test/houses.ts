@@ -8,6 +8,7 @@ import twoRooms from "../../../house/test/fixtures/two-rooms.json";
 import stair from "../../../house/test/fixtures/stair.json";
 import lRoom from "../../../house/test/fixtures/l-room.json";
 import { showHouse } from "../src/show-house.ts";
+import showShed from "../../../core/examples/trapped-in-the-internet/house.shed.json";
 
 function load(raw: unknown): HouseMap {
   const v = validateHouse(structuredClone(raw));
@@ -24,3 +25,5 @@ export const STAIR = (): HouseMap => load(stair);
 /** One 7-vertex L-shaped room. */
 export const L_ROOM = (): HouseMap => load(lRoom);
 export const SHOW = (): HouseMap => load(showHouse);
+/** The show's rain variant (the Internet in the shed). */
+export const SHOW_SHED = (): HouseMap => load(showShed);

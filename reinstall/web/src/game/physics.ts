@@ -21,7 +21,7 @@
 //! Units: metres, seconds, degrees. Yaw follows the house frame (0 = north,
 //! + = counter-clockwise from above, i.e. turning left).
 
-import { buildWalls, heightAt, pointInRect, propSolid, rampHeight, STEP_UP, surfacesAt, wallEnds } from "@loom/house";
+import { buildWalls, heightAt, pointInRect, propSolid, rampHeight, standable, STEP_UP, surfacesAt, wallEnds } from "@loom/house";
 import type { HouseMap, Vec2, Vec3, WallSegment } from "@loom/house";
 
 export const RADIUS = 0.25;
@@ -104,6 +104,18 @@ export function buildPhysicsWorld(house: HouseMap, walls: readonly WallSegment[]
 export function spawnBody(house: HouseMap, at: { pos: Vec3; yaw: number } = house.spawn): Body {
   const y = heightAt(house, [at.pos[0], at.pos[2]], at.pos[1]) ?? at.pos[1];
   return { p: [at.pos[0], y, at.pos[2]], yaw: wrap(at.yaw), pitch: 0, vy: 0 };
+}
+
+/**
+ * The body after a remap (a director's save, the tent ↔ shed switch,
+ * `docs/loom-reinstall.md` §1.3): where it stands when that is still
+ * `standable` on the new map, else back at the new map's spawn (facing its
+ * way, pitch kept) — a player inside what is now a solid prop (the shed on
+ * the tent map) or outside every room would be stuck there.
+ */
+export function bodyAfterRemap(house: HouseMap, body: Body): { body: Body; respawned: boolean } {
+  if (standable(house, body.p)) return { body, respawned: false };
+  return { body: { ...spawnBody(house), pitch: body.pitch }, respawned: true };
 }
 
 /** Where the eye is, for a body. */
