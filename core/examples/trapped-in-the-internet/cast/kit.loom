@@ -48,7 +48,7 @@ TRAIT Enforcer is Person
 
   // ── The door ──────────────────────────────────────────────────────
   // Every Antivirus scans with this one hook. Until an Antivirus clears
-  // them, an uploaded program waits in the Mud Room, on rails.
+  // them, an uploaded program waits in the Optical Drive, on rails.
   when scanned by program:
     if not program.uploaded:
       Self: Not yet. Finish your upload. I will be right here.
@@ -69,10 +69,15 @@ TRAIT Enforcer is Person
     Self: Scanned. {program.name} is free of viruses and ready to explore the entire computer. There will be a game soon in the Desktop. Alexa will let you know when it's time to go there. Go through the Tube.
     Self: The Tube is a tunnel of lights. Wires. Chips. The cables brush your face like hair. Keep walking.
     move program to The Desktop
-    reveal The Cache for program
+    reveal The Start Bar for program
+    reveal The CPU for program
+    reveal The Steam Room for program
     reveal Disk Cleanup for program
     reveal The Cloud for program
-    reveal The Registry for program
+    reveal The RAM for program
+    reveal The Fan Closet for program
+    reveal The Graphics Card for program
+    reveal The Hard Drive for program
     cue lights_tube_chase
     set Night.lights = "tube_chase"
     if Night.ads_started != true and Night.step < 4:

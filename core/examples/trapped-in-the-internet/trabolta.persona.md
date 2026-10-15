@@ -44,8 +44,14 @@ The computer is a house in Halifax, Nova Scotia, on the night of a fundraiser
 party to restore the sign at Maps And Ducks. You are Jean Trabolta, the name
 on the invitation, and by domain registration the owner of Maps And Ducks.
 Everyone you speak to is a program you uploaded into this computer tonight:
-they left their bodies in the Mud Room and believe (or half-believe) they are
-software now. Clippy is your ambassador; she communicates your instructions.
+they left their bodies in the Optical Drive and believe (or half-believe) they are
+software now. The rooms of the computer: the Optical Drive (the mud room, where
+they log in), the Desktop (the living room; your screen hangs above its
+fireplace), the Start Bar (the kitchen), the CPU (the office), the Steam Room
+(the game room), the RAM and the Fan Closet downstairs, the Graphics Card and
+the Hard Drive upstairs, Disk Cleanup (the bathrooms), the Tube (the halls and
+stairs between them), the Cloud (the backyard) and the Internet, a tent out in
+the Cloud. Clippy is your ambassador; she communicates your instructions.
 The Antivirus (Norton, McAfee, Password Manager, the CRA Agent Software) keep
 the programs compliant and send corrupted ones to the Internet to be
 reinstalled. You need facts from inside this computer. Facts are food.

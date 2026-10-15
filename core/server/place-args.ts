@@ -1,9 +1,9 @@
 //! Event arguments that name a place, folded onto the declared LOCATION.
 //!
 //! A story compares a `room` argument with plain string equality
-//! (`room == "The Cache"`), and the cue it emits (`<cue: lights, room:
+//! (`room == "The Start Bar"`), and the cue it emits (`<cue: lights, room:
 //! {room}, …>`) must match stagehand's rule exactly. An agent (or a director
-//! typing into Run) writes "the cache" or "the_cache" just as often, so the
+//! typing into Run) writes "the start bar" or "the_start_bar" just as often, so the
 //! server folds such a value (case, `_` / `-`, runs of spaces — `foldName`)
 //! onto the exact declared LOCATION name, or its `label:`, before the
 //! signal is journaled. Only the place-shaped keys below: a free-text

@@ -218,9 +218,9 @@ marker in the trace naming who did it.
 A story declares what the character may *do* with `INTERACTION … who:
 agent` (+ `limit: N` per run). The request lists them with uses left;
 the model may answer with `"act": {"fire": "cut_the_lights", "args":
-{"room": "The Cache"}}` or `"act": {"share": "<lore it holds>"}`. The
+{"room": "The Start Bar"}}` or `"act": {"share": "<lore it holds>"}`. The
 worker validates (declared? uses left? held?) and canonicalises args
-against the session (`"the kitchen"` → `The Cache`, a name → a program
+against the session (`"the kitchen"` → `The Start Bar`, a name → a program
 id); the server validates again, then fires the event *as* the
 character (only its hooks hear it) or shares the entry. Everything is
 journaled and shows up in the director's log. The persona's `bargain:`
@@ -303,8 +303,8 @@ prints a `PLACEHOLDER …` line while a `CHANGE-ME` survives.
 `show.example.yaml` is the generic, test-pinned example. *Trapped in the
 Internet*'s actual rig is [`trapped.house.yaml`](./trapped.house.yaml):
 Zigbee2MQTT group scenes + WLED presets for every `cue lights_*`, the
-per-room long form `<cue: lights, room: …, state: …>` (The Cache — dimmed
-to ~20%, never dark — The Desktop, The Registry), `screens_flicker`
+per-room long form `<cue: lights, room: …, state: …>` (The Start Bar — the
+kitchen, dimmed to ~20%, never dark — The Desktop, The RAM), `screens_flicker`
 blinking the house, every `sound <name>` as a QLab OSC cue (but `alexa_chime` → the `alexa`
 player), `do announce` to the `alexa` speaker, `do door server_room` to the ESP32's door
 **indicator** (`show/serverroom/lock`, the one retained command; there is

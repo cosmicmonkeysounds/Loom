@@ -15,7 +15,7 @@ export interface CheckinSign {
   id: string;
   /** The LOCATION's `label:` (else its name) — the big text on the sign. */
   label: string;
-  /** The `checkin=` value: the name in kebab case (`the-cache`). */
+  /** The `checkin=` value: the name in kebab case (`the-start-bar`). */
   slug: string;
   url: string;
   /** `hidden: true` — the sign only works once the story opens the room. */
@@ -40,7 +40,7 @@ export function checkinSlug(name: string): string {
 }
 
 /** Every LOCATION a check-in sign makes sense for: never a prison (only
- *  the story releases), never a cutscene (on rails — the Mud Room), and
+ *  the story releases), never a cutscene (on rails — the Optical Drive), and
  *  never a `checkin: false` room (the locked Server Room: a visit would
  *  reveal it early). */
 export function checkinSigns(model: Pick<SimModel, "locations">, base: string, eventCode: string): CheckinSign[] {

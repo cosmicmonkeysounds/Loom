@@ -266,7 +266,7 @@ decides what "cutting the lights" means (here: a `cue` the show-control
 bridge routes to the house, plus an alert in that room). Arguments the
 model supplies (`room`, `target`) bind by name like `fire … with`; a
 `room` / `at` / `location` / `place` value is folded onto the declared
-LOCATION's exact name first ("the cache" arrives as `The Cache` — the
+LOCATION's exact name first ("the start bar" arrives as `The Start Bar` — the
 same for an event fired from Run). `limit:` caps uses per run; a use
 the story answers with words only (a refusal) doesn't count. Every use
 is journaled and visible to the directors. The `description:` is what the model reads, so say what the

@@ -1,6 +1,6 @@
 # Emergency card
 
-> Posted at the front door (Mud Room) and printed on the back of every crew
+> Posted at the front door (the Optical Drive, the mud room) and printed on the back of every crew
 > and performer card. Fill every `[[EDIT]]` before batch 2 (10-26) and walk it
 > on Fri 10-30.
 

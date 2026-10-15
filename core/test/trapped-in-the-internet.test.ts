@@ -69,7 +69,10 @@ function advance(sim: Sim, seconds: number): SimEvent[] {
 
 const FEATURED = ["Microsoft Excel", "OpenOffice", "DraftKings", "Bugdom", "Broken Ask Jeeves", "Runescape", "MS Paint", "VLC", "Pong"];
 const PERFORMERS = ["Adobe Acrobat", "CRA Agent Software", "Clippy", "McAfee Anti-Virus", "Norton Anti-Virus", "Password Manager", "Recycling Bin", "Task Manager", "WebMD"];
-const fold = (s: string) => s.toLowerCase().replace(/[_-]/g, " ").replace(/\s+/g, " ").trim();
+/** The rooms an Antivirus clearance (or a release) opens: the whole house
+ *  but the Optical Drive, the Tube, the Internet and the Server Room. */
+const HOUSE_ROOMS = ["The Start Bar", "The CPU", "The Steam Room", "Disk Cleanup", "The Cloud", "The RAM", "The Fan Closet", "The Graphics Card", "The Hard Drive"];
+const fold = (s: string) =>s.toLowerCase().replace(/[_-]/g, " ").replace(/\s+/g, " ").trim();
 
 /** Register → CAPTCHA (pass = INCORRECT, then CORRECT) → the problem (skipped
  *  for a featured name, which is not asked) → deposit → the door scan. */
@@ -119,11 +122,11 @@ describe("Trapped in the Internet — compile", () => {
     expect(m.factions.get("Antivirus")!.joinable).toBe(false);
     expect(m.factions.get("Unlimited Power")!.hidden).toBe(true);
     expect(m.factions.get("The Way Out")!.hidden).toBe(true);
-    expect([...m.locations.keys()]).toEqual(["The Desktop", "The Mud Room", "The Tube", "The Internet", "The Cache", "Disk Cleanup", "The Cloud", "The Registry", "The Server Room"]);
+    expect([...m.locations.keys()]).toEqual(["The Desktop", "The Optical Drive", "The Tube", "The Internet", "The Start Bar", "The CPU", "The Steam Room", "Disk Cleanup", "The Cloud", "The RAM", "The Fan Closet", "The Graphics Card", "The Hard Drive", "The Server Room"]);
     const inet = m.locations.get("The Internet")!;
     expect(inet.prison).toBe(true);
     expect(inet.sealed).toBe(true);
-    expect(m.locations.get("The Mud Room")!.cutscene).toBe(true);
+    expect(m.locations.get("The Optical Drive")!.cutscene).toBe(true);
     expect(m.locations.get("The Server Room")!.hidden).toBe(true);
     expect(m.defaultRole).toBe("Program");
   });
@@ -329,13 +332,13 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(diags(boot)).toEqual([]);
   });
 
-  it("arrival: the Mud Room, the CAPTCHA, the problem, the deposit", () => {
+  it("arrival: the Optical Drive, the CAPTCHA, the problem, the deposit", () => {
     const j = sim.createPerson("g1", "Calculator");
     expect(lines(j, "The Uploader")).toContain("Welcome to the computer. It is dark because you have no eyes yet. Stand still.");
     expect(widgets(j)).toHaveLength(1);
     expect(widgets(j)[0]!.widget).toBe("captcha");
     expect(aud(widgets(j)[0]!)).toBe('["g1"]');
-    expect(sim.locationOf("g1")).toBe("The Mud Room");
+    expect(sim.locationOf("g1")).toBe("The Optical Drive");
 
     const pm = sim.scan("Password Manager", "g1");
     expect(lines(pm, "Password Manager")).toContain("Not yet. Finish your upload. I will be right here.");
@@ -353,15 +356,15 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(v(sim, "g1.left_behind")).toBe("deposited");
     expect(sim.scoreOf("g1")).toBe(100);
     expect(v(sim, "g1.uploaded")).toBe(true);
-    expect(sim.holdsCodex("g1", "The Mud Room")).toBe(true);
+    expect(sim.holdsCodex("g1", "The Optical Drive")).toBe(true);
     expect(sim.holdsCodex("g1", "The Terms Of Service")).toBe(true);
     expect(widgets(dep).some((w) => w.widget === "pass" && (w.text ?? "").includes("Hold this up."))).toBe(true);
-    expect(sim.locationOf("g1")).toBe("The Mud Room");
+    expect(sim.locationOf("g1")).toBe("The Optical Drive");
   });
 
   it("the door: Clippy can't clear, Norton clears, the rooms open, the tutorial deals", () => {
     const cl = sim.scan("Clippy", "g1");
-    expect(sim.locationOf("g1"), texts(cl).join("\n")).toBe("The Mud Room");
+    expect(sim.locationOf("g1"), texts(cl).join("\n")).toBe("The Optical Drive");
     expect(v(sim, "g1.cleared")).not.toBe(true);
 
     const nz = sim.scan("Norton Anti-Virus", "g1");
@@ -370,7 +373,7 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(n.some((t) => t.includes("tunnel of lights"))).toBe(true);
     expect(sim.locationOf("g1")).toBe("The Desktop");
     expect(v(sim, "g1.cleared")).toBe(true);
-    for (const r of ["The Cache", "Disk Cleanup", "The Cloud", "The Registry"]) expect(sim.isRevealedTo(r, "g1"), r).toBe(true);
+    for (const r of HOUSE_ROOMS) expect(sim.isRevealedTo(r, "g1"), r).toBe(true);
     const tut = widgets(nz).find((w) => w.widget === "tutorial");
     expect(tut).toBeDefined();
     expect(aud(tut!)).toBe('["g1"]');
@@ -524,7 +527,7 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(sim.peopleFor("g1").some((p) => p.name === "Trabolta")).toBe(true);
     expect(replies(intro).some((r) => r.to === "Clippy" && r.text.includes("Trabolta is online"))).toBe(true);
 
-    // a late arrival gets the hello on clearance, not in the Mud Room
+    // a late arrival gets the hello on clearance, not in the Optical Drive
     sim.createPerson("g13", "Notepad");
     sim.signal("captcha answered", "g13", { passed: false });
     const pre = [...sim.choose("g13", 0), ...sim.choose("g13", 0)];
@@ -612,7 +615,7 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(sim.questStatus("g1", "Hunt Two")).toBe("active");
     expect(v(sim, "Night.round")).toBe(2);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect(h2.some((e: any) => e.type === "revealed" && e.target === "room:ram")).toBe(true);
+    expect(h2.some((e: any) => e.type === "revealed" && e.target === "room:clipboard")).toBe(true);
 
     const td = advance(sim, 120);
     expect(diags(td)).toEqual([]);
@@ -694,10 +697,18 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(v(sim, "g3.summons_ok")).toBe(true);
     sim.signal("go to the bathroom", "g10"); // exempt
     sim.signal("send to the internet", "g12", null, "Norton Anti-Virus"); // exempt
-    sim.signal("checked_in", "g13", { at: "The Cache" });
-    expect(sim.locationOf("g13")).toBe("The Cache");
-    expect(v(sim, "g13.checked_in")).toBe("The Cache");
-    for (const args of [null, { at: "the cache" }, { at: "The Server Room" }]) {
+    sim.signal("checked_in", "g13", { at: "The Start Bar" });
+    expect(sim.locationOf("g13")).toBe("The Start Bar");
+    expect(v(sim, "g13.checked_in")).toBe("The Start Bar");
+    // Every house room has its sign (the check-in chain's arms), the new ones
+    // included; a check-in away from the Desktop is still late.
+    for (const room of HOUSE_ROOMS) {
+      const x = sim.signal("checked_in", "g13", { at: room });
+      expect(sim.locationOf("g13"), room).toBe(room);
+      expect(replies(x).some((r) => r.text.startsWith("📍 Checked in at")), room).toBe(true);
+    }
+    sim.signal("checked_in", "g13", { at: "The Start Bar" });
+    for (const args of [null, { at: "the start bar" }, { at: "The Server Room" }]) {
       const loc0 = sim.locationOf("g9");
       const x = sim.signal("checked_in", "g9", args);
       expect(sim.locationOf("g9"), JSON.stringify(args)).toBe(loc0);
@@ -947,7 +958,7 @@ describe("Trapped in the Internet — Bingo branches", () => {
     sim.signal("the simulation completed", "p1");
     expect(sim.isCaptured("p1")).toBe(false);
     expect(v(sim, "p1.cleared")).toBe(true); // released uncleared → cleared, rooms open
-    expect(sim.isRevealedTo("The Cache", "p1")).toBe(true);
+    for (const r of HOUSE_ROOMS) expect(sim.isRevealedTo(r, "p1"), r).toBe(true);
     sim.signal("send to the internet", "p1", null, "Norton Anti-Virus");
     const r = sim.signal("mark as reinstalled", "p1", null, "Norton Anti-Virus");
     expect(sim.isCaptured("p1")).toBe(false);
@@ -987,7 +998,7 @@ describe("Trapped in the Internet — arrival edge cases", () => {
     sim.signal("the simulation completed", "g3");
 
     const t0 = v(sim, "Trabolta.truth");
-    sim.share("g1", "Trabolta", "The Mud Room");
+    sim.share("g1", "Trabolta", "The Optical Drive");
     expect(v(sim, "g1.delivered")).toBe(true);
     expect(v(sim, "Trabolta.truth")).toBe(t0 + 2);
   });
@@ -1476,7 +1487,7 @@ const POWERS: Array<[string, Args | null]> = [
   ["flicker_the_screens", null],
   ["pop_up", { target: "g2", text: "hi" }],
   ["mint_truthcoin", { amount: 20 }],
-  ["cut_the_lights", { room: "The Cache" }],
+  ["cut_the_lights", { room: "The Start Bar" }],
   ["summon_the_antivirus", { target: "g2" }],
   ["trabolta_announces", { text: "hi" }],
   ["assess", { target: "g2", score: 5 }],
@@ -1516,13 +1527,13 @@ describe("Trapped in the Internet — Trabolta's powers", () => {
   it("each power's effect inside its window", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
-    expect(lines(fire(sim, "cut_the_lights", "g1", { room: "The Cache" }, "Trabolta"), "Trabolta")).toContain("That function is not available yet.");
+    expect(lines(fire(sim, "cut_the_lights", "g1", { room: "The Start Bar" }, "Trabolta"), "Trabolta")).toContain("That function is not available yet.");
     toHunt2(sim);
 
-    const cl = fire(sim, "cut_the_lights", "g1", { room: "The Cache" }, "Trabolta");
-    expect(cues(cl)).toContain("cue lights, room: The Cache, state: off");
-    expect(casts(cl).some((b) => b.cue.includes("The lights in The Cache go out"))).toBe(true);
-    expect(cues(advance(sim, 90))).toContain("cue lights, room: The Cache, state: on");
+    const cl = fire(sim, "cut_the_lights", "g1", { room: "The Start Bar" }, "Trabolta");
+    expect(cues(cl)).toContain("cue lights, room: The Start Bar, state: off");
+    expect(casts(cl).some((b) => b.cue.includes("The lights in The Start Bar go out"))).toBe(true);
+    expect(cues(advance(sim, 90))).toContain("cue lights, room: The Start Bar, state: on");
     const bad = fire(sim, "cut_the_lights", "g1", { room: "The Internet" }, "Trabolta");
     expect(cues(bad).some((c) => c.includes("state: off"))).toBe(false);
     expect(saidBy(bad, "Trabolta")).toHaveLength(1);
@@ -1906,13 +1917,13 @@ describe("Trapped in the Internet — a director's mis-taps", () => {
     const sim = boot();
     toTruth1(sim);
     toHunt2(sim);
-    expect(cues(fire(sim, "cut_the_lights", "g1", { room: "The Cache" }, "Trabolta"))).toContain("cue lights, room: The Cache, state: off");
+    expect(cues(fire(sim, "cut_the_lights", "g1", { room: "The Start Bar" }, "Trabolta"))).toContain("cue lights, room: The Start Bar, state: off");
     // An ending (or the alarm) changes the house look 30 s later…
     advance(sim, 30);
     expect(cues(fire(sim, "lights_dance"))).toContain("cue lights_dance");
     // …so at 90 s the kitchen is NOT switched back on over the dance.
     const later = cues(advance(sim, 61));
-    expect(later.some((c) => c.includes("room: The Cache, state: on"))).toBe(false);
+    expect(later.some((c) => c.includes("room: The Start Bar, state: on"))).toBe(false);
     expect(v(sim, "Night.lights_back_at")).toBe(0);
     // And a cut that nothing interrupts still comes back on its own.
     sim.setVar("Night.lights", "game");
@@ -1924,7 +1935,7 @@ describe("Trapped in the Internet — a director's mis-taps", () => {
     const sim = boot();
     toTruth1(sim);
     toHunt2(sim);
-    fire(sim, "cut_the_lights", "g1", { room: "The Cache" }, "Trabolta");
+    fire(sim, "cut_the_lights", "g1", { room: "The Start Bar" }, "Trabolta");
     expect(lines(fire(sim, "cut_the_lights", "g1", { room: "The Cloud" }, "Trabolta"), "Trabolta")).toEqual(["One room at a time."]);
     sim.setVar("Night.phase", "bobbing");
     sim.setVar("Night.step", "17");

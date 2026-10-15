@@ -71,7 +71,7 @@ the look yourself. [[EDIT: fill the preset numbers / scene names after the
 
 | Story cue | Lights (WLED preset / Z2M scene) | Sound (QLab) |
 |---|---|---|
-| `lights_screensaver` (doors) | [[EDIT]] | `modem_handshake` (each login, Mud Room) |
+| `lights_screensaver` (doors) | [[EDIT]] | `modem_handshake` (each login, the Optical Drive) |
 | `lights_tube_chase` (each clearance) | WLED Tube chase [[EDIT: preset #]] | — |
 | `lights_call_desktop` (C1, C2, ⏳) | [[EDIT]] | `alexa_chime` (`countdown_tick` at ⏳) |
 | `lights_game` (Bingo, hunts) | [[EDIT]] | `bingo_start` (V2) |

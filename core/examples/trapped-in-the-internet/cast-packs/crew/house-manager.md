@@ -11,7 +11,7 @@
 - Get the handover from Recycling Bin: which featured guests are in.
 - The sign says "ring and wait". Open, welcome, point at the door QR, radio
   **ARRIVAL**.
-- **After C1, a late guest is stuck in the Mud Room** until an Antivirus scans
+- **After C1, a late guest is stuck in the Optical Drive** until an Antivirus scans
   them. Radio ARRIVAL; the director scans them in from Run (OP-18), or walk an
   Antivirus over.
 - Answer from the door FAQ ([`all-crew.md`](../all-crew.md)): rejoin, loaners,

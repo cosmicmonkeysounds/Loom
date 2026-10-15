@@ -158,14 +158,14 @@ def test_every_room_trabolta_can_darken_goes_off_and_comes_back():
     trabolta = (STORY / "cast/trabolta.loom").read_text(encoding="utf-8")
     rooms = set(re.findall(r'room == "([^"]+)"', trabolta))
     # Never The Cloud: the outdoor steps + the tent path, with captives walked through it.
-    assert rooms == {"The Cache", "The Desktop", "The Registry"}
+    assert rooms == {"The Start Bar", "The Desktop", "The RAM"}
     for room in rooms:
         off = _mqtt(evaluate_cues(_show().cues, _directive("cue", f"lights, room: {room}, state: off")))
         on = _mqtt(evaluate_cues(_show().cues, _directive("cue", f"lights, room: {room}, state: on")))
         z_off = [p for t, p in off if t.startswith("zigbee2mqtt/")]
         w_off = [p for t, p in off if t.startswith("wled/")]
         assert len(z_off) == 1 and len(w_off) == 1, room
-        if room == "The Cache":
+        if room == "The Start Bar":
             # The kitchen (knives, a stove) only drops to ~20%, never dark.
             assert z_off[0]["state"] == "ON" and 0 < z_off[0]["brightness"] <= 51
             # bri only — sending "on" would light a strip that was off in the current look.
@@ -176,10 +176,11 @@ def test_every_room_trabolta_can_darken_goes_off_and_comes_back():
         assert any(t.startswith("zigbee2mqtt/") and p["state"] == "ON" for t, p in on), room
         assert any(t.startswith("wled/") and p["on"] is True for t, p in on), room
     # The restore undoes the kitchen dim.
-    back = dict(_mqtt(evaluate_cues(_show().cues, _directive("cue", "lights, room: The Cache, state: on"))))
+    back = dict(_mqtt(evaluate_cues(_show().cues, _directive("cue", "lights, room: The Start Bar, state: on"))))
     assert back["zigbee2mqtt/kitchen/set"]["brightness"] == 254 and back["wled/kitchen/api"]["bri"] == 255
     # A room outside the allow-list reaches nothing, even if a director types it.
-    for room in ("The Internet", "The Cloud", "Disk Cleanup", "The Tube", "The Server Room"):
+    for room in ("The Internet", "The Cloud", "Disk Cleanup", "The Tube", "The Server Room", "The Optical Drive", "The CPU",
+                 "The Steam Room", "The Fan Closet", "The Graphics Card", "The Hard Drive"):
         assert evaluate_cues(_show().cues, _directive("cue", f"lights, room: {room}, state: off")) == [], room
 
 

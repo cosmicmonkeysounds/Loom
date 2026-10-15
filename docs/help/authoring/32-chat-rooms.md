@@ -63,7 +63,7 @@ A phone full of rooms is overwhelming on arrival. Declare a room (or a
 opens it:
 
 ```loom
-CHANNEL ram
+CHANNEL clipboard
   kind: open
   hidden: true
 
@@ -71,7 +71,7 @@ LOCATION The Cellar
   hidden: true
 
 when the house opens:
-  reveal ram                 // everyone
+  reveal clipboard           // everyone
   reveal The Cellar          // everyone
 
 when the doors open for guest:

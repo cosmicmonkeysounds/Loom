@@ -8,13 +8,13 @@ for two readers:
 
   - the **fast path**, which resolves a reply's `lookup` names (a program,
     a room, a piece of lore) into a short card the model answers from, and
-    canonicalises act arguments (`room: "the kitchen"` → `The Cache`);
+    canonicalises act arguments (`room: "the kitchen"` → `The Start Bar`);
   - the **orchestrator**, which reads a digest + the delta since its last
-    look ("Excel moved to The Registry", "3 programs now hold The Sandy
+    look ("Excel moved to The RAM", "3 programs now hold The Sandy
     File", "phase: hunt → free_roam") to evolve the character's brief.
 
 Names fold the way the story folds them (case, spaces, `_`, `-`), so
-"the cache", "The Cache (kitchen)" and "TheCache" all find the kitchen.
+"the start bar", "The Start Bar (kitchen)" and "TheStartBar" all find the kitchen.
 """
 
 from __future__ import annotations

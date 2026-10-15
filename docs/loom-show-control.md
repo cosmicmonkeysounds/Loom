@@ -439,10 +439,11 @@ player) and password-only on the LAN at `:1884` (user `props`) for the
 WLED controllers and the ESP32 (`scripts/house-mac/alexa.md` → *Lock down
 the broker*). Zigbee bulbs and plugs are grouped one group per
 room plus a whole-house group:
-`house`, `living` (The Desktop), `kitchen` (The Cache), `backyard`
-(The Cloud), `registry` (The Registry, the rec room), `tube` (hall and
-stair landing), `mudroom`, `bathroom` (Disk Cleanup), `tent`
-(The Internet) and `server_room`. **The stairs, the bathroom, the tent,
+`house`, `living` (The Desktop), `kitchen` (The Start Bar), `backyard`
+(The Cloud), `registry` (The RAM, the basement studio), `tube` (the halls and
+both stairs), `mudroom` (The Optical Drive), `bathroom` (Disk Cleanup, both
+bathrooms), `tent` (The Internet) and `server_room`; the ids predate the
+real house's room names and stay as wired. **The stairs, the bathrooms, the tent,
 the server room and the server-room → living-room path are not in
 `house`**, so no whole-house scene or blackout can darken them (their
 bulbs have `power_on_behavior: on`). The addressable LED strips run on
@@ -468,7 +469,7 @@ is in the design spec §2.13):
 | In the `.loom` | Stagehand sends |
 |---|---|
 | `cue lights_<look>` (screensaver, tube_chase, call_desktop, game, truth_time, ad_hijack, glitch, pong, trust_chart, y2k, server_open, alarm, blackout, dance, final_reveal, song, rave, purgatory, banish, restore) | Z2M `scene_recall <id>` to the room or `house` group + WLED preset `ps <id>`. Each look has the same ID everywhere: `scene_store` it once per group and build identical WLED presets on every controller. Flicker is a bulb `effect` or a WLED preset, never streamed over Zigbee. |
-| `<cue: lights, room: The Cache, state: off>` (Trabolta's `cut_the_lights`; allow-listed to The Cache, The Desktop, The Registry) | that room's Z2M group `state` + its WLED strip on/off (the kitchen only dims to ~20%). The story turns the room back on 90 s later itself. |
+| `<cue: lights, room: The Start Bar, state: off>` (Trabolta's `cut_the_lights`; allow-listed to The Start Bar, The Desktop, The RAM) | that room's Z2M group `state` + its WLED strip on/off (the kitchen only dims to ~20%). The story turns the room back on 90 s later itself. |
 | `cue lights_blackout` | `house` OFF; WLED off **per device** (living, kitchen, backyard, registry), the Tube strip on dim static preset 22, the server room untouched |
 | `cue screens_flicker` | a one-shot `effect: blink` + a short WLED lightning playlist, so the power is felt in the house |
 | `sound <name>` (directive `sfx`) | OSC `/cue/<name>/start` to QLab |

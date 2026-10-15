@@ -1,5 +1,5 @@
 //! The cutscene — the app on rails. While the story has a guest standing in
-//! a `cutscene: true` location (the Mud Room login of *Trapped in the
+//! a `cutscene: true` location (the Optical Drive login of *Trapped in the
 //! Internet*), there is no sidebar, no rooms, no HUD to be overwhelmed by:
 //! one dark stage carrying exactly what is said *to them*, in order, with
 //! the story's cards (a CAPTCHA) and their decision docked underneath.

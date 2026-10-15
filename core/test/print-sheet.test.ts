@@ -45,8 +45,8 @@ describe("K-12 print extras", () => {
   it("the show prints a sign for every room the check-in rule handles", () => {
     const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
     const ids = checkinSigns(sim.model, "https://a", "E").map((s) => s.id);
-    for (const room of ["The Desktop", "The Cache", "The Tube", "Disk Cleanup", "The Cloud", "The Registry"]) expect(ids).toContain(room);
-    expect(ids).not.toContain("The Mud Room");
+    for (const room of ["The Desktop", "The Start Bar", "The CPU", "The Steam Room", "The Tube", "Disk Cleanup", "The Cloud", "The RAM", "The Fan Closet", "The Graphics Card", "The Hard Drive"]) expect(ids).toContain(room);
+    expect(ids).not.toContain("The Optical Drive");
     expect(ids).not.toContain("The Internet");
     expect(ids).not.toContain("The Server Room"); // locked: a visit would reveal it early
   });

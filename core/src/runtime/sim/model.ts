@@ -85,7 +85,7 @@ export interface LocationDef {
   hidden: boolean;
   /** `cutscene: true` — while a guest stands here the app goes on rails:
    *  a full-screen stream of what is said *to them*, no rooms sidebar. The
-   *  Mud Room login of *Trapped in the Internet* is the reference. */
+   *  Optical Drive login of *Trapped in the Internet* is the reference. */
   cutscene: boolean;
   /** `checkin: false` — no room check-in sign is printed for this place and
    *  a check-in never lands a guest there (a locked room like the Server

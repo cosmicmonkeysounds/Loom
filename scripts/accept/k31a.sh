@@ -67,7 +67,7 @@ echo "Setup (Chrome on each Android, Wi-Fi still on is fine for now):"
 echo "  • Booth: open $SERVER/?code=${PRIME_CODE:-<performer code>}, sign in as an ANTIVIRUS part"
 echo "    (Norton, McAfee…), tap 🔔 Get alerts → Turn on → Allow."
 echo "  • Guest phones 1 + 2: open $SERVER/?code=$GUEST_CODE, pick a program, solve the"
-echo "    CAPTCHA; the booth scans each pass (My pass) to let them out of the Mud Room;"
+echo "    CAPTCHA; the booth scans each pass (My pass) to let them out of the Optical Drive;"
 echo "    then tap 🔔 Get alerts → Turn on → Allow."
 read -r -p "Press Enter when all three show \"Alerts are on\" in ☰ / the profile sheet… " _
 echo "  Subscribed now:"

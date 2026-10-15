@@ -72,11 +72,19 @@ GROUP The Way Out
   hidden: true
 
 // ── The house ───────────────────────────────────────────────────────
-// Every LOCATION is also a room in the app. The Desktop is declared
-// first so a released program lands there. The Mud Room is a cutscene:
-// while a program stands there the phone is on rails. The four house
-// rooms are revealed per program when an Antivirus clears them; The
-// Internet appears once stood in; The Server Room is revealed to the
+// Every LOCATION is also a room in the app, named for the part of the
+// computer it plays. Three floors and the yard: the basement (the RAM,
+// the Fan Closet, the Server Room, a bathroom), the main floor (the
+// Optical Drive, the Start Bar, the CPU, the Steam Room, the Desktop),
+// the top floor (the Graphics Card, the Hard Drive, a bathroom), and out
+// back the Cloud, with the tent (the Internet) in it. The Tube is the
+// hall and the stairs that join the floors; both bathrooms are Disk
+// Cleanup.
+// The Desktop is declared first so a released program lands there. The
+// Optical Drive is a cutscene: while a program stands there the phone is
+// on rails. The house rooms are revealed per program when an Antivirus
+// clears them ("ready to explore the entire computer", cast/kit.loom);
+// The Internet appears once stood in; The Server Room is revealed to the
 // winning faction's members, and to everyone when its alarm trips.
 // (LOCATION lines carry no trailing comment: house/test reads them.)
 
@@ -85,13 +93,13 @@ LOCATION The Desktop
   ambient: screensaver-hum
   capacity: 60
 
-LOCATION The Mud Room
-  label: Mud Room — Login
+LOCATION The Optical Drive
+  label: The Optical Drive (mud room) — Login
   ambient: pitch-black
   cutscene: true
 
 LOCATION The Tube
-  label: The Tube
+  label: The Tube (hall + stairs)
   ambient: cable-rattle
   hidden: true
 
@@ -102,20 +110,48 @@ LOCATION The Internet
   hidden: true
   capacity: 3
 
-LOCATION The Cache
-  label: The Cache (kitchen)
+LOCATION The Start Bar
+  label: The Start Bar (kitchen)
+  ambient: fridge-hum
+  hidden: true
+
+LOCATION The CPU
+  label: The CPU (office)
+  ambient: processor-whine
+  hidden: true
+
+LOCATION The Steam Room
+  label: The Steam Room (game room)
+  ambient: startup-chimes
   hidden: true
 
 LOCATION Disk Cleanup
-  label: Disk Cleanup (bathroom)
+  label: Disk Cleanup (bathrooms)
+  ambient: dripping-tap
   hidden: true
 
 LOCATION The Cloud
   label: The Cloud (backyard — Truth Pong)
   hidden: true
 
-LOCATION The Registry
-  label: The Registry (basement)
+LOCATION The RAM
+  label: The RAM (studio, basement)
+  ambient: dial-tone
+  hidden: true
+
+LOCATION The Fan Closet
+  label: The Fan Closet (laundry, basement)
+  ambient: dryer-tumble
+  hidden: true
+
+LOCATION The Graphics Card
+  label: The Graphics Card (bedroom 2, upstairs)
+  ambient: coil-whine
+  hidden: true
+
+LOCATION The Hard Drive
+  label: The Hard Drive (crawl space, upstairs)
+  ambient: platter-spin
   hidden: true
 
 LOCATION The Server Room
@@ -194,11 +230,11 @@ ROLE Program
   fact_f2: bool = false
 
   // ── Arrival ──
-  // A new program stands in the Mud Room (the phone goes on rails there).
+  // A new program stands in the Optical Drive (the phone goes on rails there).
   // The nine featured programs are tagged by their exact picker spelling;
   // every later check reads `featured`, never the name.
   when someone joins:
-    move program to The Mud Room
+    move program to The Optical Drive
     if program.name == "Microsoft Excel":
       set program.featured = "excel"
     else if program.name == "OpenOffice":
@@ -219,7 +255,7 @@ ROLE Program
       set program.featured = "pong"
     -> Login
 
-  // The Mud Room CAPTCHA. You must FAIL it: passing proves you are human
+  // The Optical Drive CAPTCHA. You must FAIL it: passing proves you are human
   // (INCORRECT, once). Anything after that is CORRECT.
   when captcha answered for program:
     set program.captchas += 1
@@ -289,7 +325,7 @@ ROLE Program
     -> Reinstallation
 
   // In the Internet when the summons closed: excused, never late.
-  // A program captured from the Mud Room by a misclick lands on the
+  // A program captured from the Optical Drive by a misclick lands on the
   // Desktop uncleared; clear it here so it doesn't go dark for the night.
   when released:
     set self.corrupted = false
@@ -298,10 +334,15 @@ ROLE Program
     reply Reinstallation complete. You can follow instructions. Welcome back to the computer.
     if self.cleared != true:
       set self.cleared = true
-      reveal The Cache for self
+      reveal The Start Bar for self
+      reveal The CPU for self
+      reveal The Steam Room for self
       reveal Disk Cleanup for self
       reveal The Cloud for self
-      reveal The Registry for self
+      reveal The RAM for self
+      reveal The Fan Closet for self
+      reveal The Graphics Card for self
+      reveal The Hard Drive for self
 
   when wrong code for program:
     set program.doubt += 8
@@ -744,11 +785,21 @@ ROLE Program
         reply 📍 Checked in at the Desktop. You will not be swept.
       else:
         reply 📍 Checked in at the Desktop.
-    else if at == "The Cache":
-      move program to The Cache
-      set program.checked_in = "The Cache"
+    else if at == "The Start Bar":
+      move program to The Start Bar
+      set program.checked_in = "The Start Bar"
       set program.checked_in_time = Time.elapsed
-      reply 📍 Checked in at the Cache.
+      reply 📍 Checked in at the Start Bar.
+    else if at == "The CPU":
+      move program to The CPU
+      set program.checked_in = "The CPU"
+      set program.checked_in_time = Time.elapsed
+      reply 📍 Checked in at the CPU. A filing box is open on the desk, next to a very thick binder.
+    else if at == "The Steam Room":
+      move program to The Steam Room
+      set program.checked_in = "The Steam Room"
+      set program.checked_in_time = Time.elapsed
+      reply 📍 Checked in at the Steam Room. Something is rolled up in a cardboard tube behind the games.
     else if at == "The Tube":
       move program to The Tube
       set program.checked_in = "The Tube"
@@ -764,11 +815,26 @@ ROLE Program
       set program.checked_in = "The Cloud"
       set program.checked_in_time = Time.elapsed
       reply 📍 Checked in at the Cloud.
-    else if at == "The Registry":
-      move program to The Registry
-      set program.checked_in = "The Registry"
+    else if at == "The RAM":
+      move program to The RAM
+      set program.checked_in = "The RAM"
       set program.checked_in_time = Time.elapsed
-      reply 📍 Checked in at the Registry.
+      reply 📍 Checked in at the RAM.
+    else if at == "The Fan Closet":
+      move program to The Fan Closet
+      set program.checked_in = "The Fan Closet"
+      set program.checked_in_time = Time.elapsed
+      reply 📍 Checked in at the Fan Closet. A coat hangs by the dryer, waiting to be washed. Check the pockets.
+    else if at == "The Graphics Card":
+      move program to The Graphics Card
+      set program.checked_in = "The Graphics Card"
+      set program.checked_in_time = Time.elapsed
+      reply 📍 Checked in at the Graphics Card. A sketchbook lies open on the bed, every drawing in pixels.
+    else if at == "The Hard Drive":
+      move program to The Hard Drive
+      set program.checked_in = "The Hard Drive"
+      set program.checked_in_time = Time.elapsed
+      reply 📍 Checked in at the Hard Drive. Nobody is supposed to be up here. Things get stored here so nobody reads them.
     else:
       reply That check-in point is not in this computer.
 
@@ -890,7 +956,7 @@ ROLE Program
       fire present_award
 
   // ── Fan-out watchers (one run per program; late arrivals included) ──
-  // Every one carries `self.cleared`, so a program still in the Mud Room
+  // Every one carries `self.cleared`, so a program still in the Optical Drive
   // hears nothing until an Antivirus scans it in.
 
   // Party-wide quests: catch-up for anyone cleared after the start.
@@ -1689,7 +1755,7 @@ when start_the_second_hunt:
     set Night.truther_at = Time.elapsed + 120
     set Night.warn_at = Time.elapsed + 3300
     set Night.facts_requested = 6
-    reveal ram
+    reveal clipboard
     start quest Hunt Two for everyone
     cue screens_trivia_2
     set Night.screen = "trivia_2"
@@ -2377,7 +2443,7 @@ when restore_the_lights:
 // The story's opening beat, heard by every phone and every performer:
 // it seeds every global (Trabolta's worker reads them), sets the
 // screensaver look, and says one line to the room. Everything personal
-// (the Mud Room) plays per program on arrival, never here. No dialogue,
+// (the Optical Drive) plays per program on arrival, never here. No dialogue,
 // no widgets. This must stay the LAST item in main.loom.
 == Power On
   setting: The Desktop

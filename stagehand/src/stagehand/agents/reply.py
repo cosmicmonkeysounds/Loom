@@ -3,9 +3,9 @@
 Models are told to answer with one JSON object:
 
     {"say": "…", "adjust": {"truth": 5},
-     "lookup": ["Excel", "The Cache"],                 # optional: ask the session first
+     "lookup": ["Excel", "The Start Bar"],                 # optional: ask the session first
      "act": {"share": "The Missing Constant"}          # optional: a bargain
-         or {"fire": "cut the lights", "args": {"room": "The Cache"}}}
+         or {"fire": "cut the lights", "args": {"room": "The Start Bar"}}}
 
 and mostly do; when they don't, the whole text is the line and nothing
 else happens. Reasoning models may leak a `<think>` block or a code fence;

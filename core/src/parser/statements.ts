@@ -38,7 +38,7 @@ const EVENT = /^[A-Za-z_][A-Za-z0-9_.\-]*(\s+(for|with)\s+.+)?$/u;
 /** A name of one word, or several words each Capitalised (`The Society`). */
 const NAME_WORDS = /^[A-Za-z_][A-Za-z0-9_.'\-]*(\s+[A-Z][A-Za-z0-9_.'\-]*)*$/u;
 const HAS_BAR = /\|/u;
-/** `reveal The Society` / `reveal task manager` / `reveal The Cache for guest`
+/** `reveal The Society` / `reveal task manager` / `reveal The Start Bar for guest`
  *  — a name of up to four words (a room's name may be lowercase), optionally
  *  scoped to one participant. Longer prose starting with "reveal" stays prose. */
 const REVEAL = /^[A-Za-z_][A-Za-z0-9_.'\-]*(?:\s+[A-Za-z][A-Za-z0-9_.'\-]*){0,3}(?:\s+for\s+\S+)?$/u;

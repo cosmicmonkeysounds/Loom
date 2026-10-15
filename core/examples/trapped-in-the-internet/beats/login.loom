@@ -1,9 +1,9 @@
-// Arrival — the Mud Room. Exclusively through the front door, alone,
+// Arrival — the Optical Drive. Exclusively through the front door, alone,
 // in the dark. The CAPTCHA you must fail. The thing you leave behind.
 // This is the moment a human uploads their consciousness and takes on
 // their identity as a computer program. It plays to each program on
 // their own phone the moment they register (ROLE Program: `when someone
-// joins` moves them into the Mud Room, a `cutscene: true` location — the
+// joins` moves them into the Optical Drive, a `cutscene: true` location — the
 // app shows nothing but this stream until an Antivirus scans them in) —
 // and to nobody else: the story's `start:` beat is `Power On`.
 //
@@ -16,7 +16,7 @@
 // (main.loom).
 
 == Login
-  setting: The Mud Room
+  setting: The Optical Drive
   cast: The Uploader
 
 sound modem_handshake
@@ -26,7 +26,7 @@ show captcha "Select every square that contains a traffic light" to program with
 
 // The human passed the CAPTCHA. Wrong answer.
 == Login Incorrect
-  setting: The Mud Room
+  setting: The Optical Drive
   cast: The Uploader
 
 The Uploader: INCORRECT. Humans are not permitted in the computer. You are not a human. Try again.
@@ -39,7 +39,7 @@ show captcha "Select every square that contains a traffic light" to program with
 // everyone needs for the Bingo centre square, 100 Truthcoin, and the pass
 // an Antivirus scans at the door.
 == Upload
-  setting: The Mud Room
+  setting: The Optical Drive
   cast: The Uploader
 
 if program.captchas == 1:
@@ -75,7 +75,7 @@ The Uploader: To complete the upload you must leave one thing behind. Place some
   The Uploader: Everyone has something. Noted.
 
 The Uploader: By uploading you agree that the computer's AI helper may make all of your decisions. You agree.
-unlock The Mud Room for program
+unlock The Optical Drive for program
 unlock The Terms Of Service for program
 set program.score = 100
 The Uploader: 100 Truthcoin credited.
@@ -83,7 +83,7 @@ set program.uploaded = true
 The Uploader: Upload complete. Antivirus, confirm.
 show pass "Hold this up. An Antivirus will scan you in. Until then you are nowhere." to program
 
-// The door. A program waits in the Mud Room — still on rails — until an
+// The door. A program waits in the Optical Drive — still on rails — until an
 // Antivirus scans their pass (`TRAIT Enforcer` in cast/kit.loom:
 // `beat Clearance`). Only then are they moved to the Desktop and handed
 // to Clippy. A host scanning them at the door just greets them.
@@ -101,10 +101,10 @@ start quest Orientation for program
 unlock Bathroom Mode for program
 show tutorial "Clippy's orientation" to program with guide: "Clippy"
 
-// A program scanned at the Mud Room station a second time
+// A program scanned at the Optical Drive station a second time
 // (The Uploader is `Prop(Re-upload)`).
 == Re-upload
-  setting: The Mud Room
+  setting: The Optical Drive
   cast: The Uploader
 
 The Uploader: You have already been uploaded. Leaving again would require a body, and yours is being looked after.

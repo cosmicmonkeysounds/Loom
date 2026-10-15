@@ -118,6 +118,6 @@ Each guest answers a card once; the app keeps a submitted card visible
 with what they answered. A bank (a game-engine build) passes `show`
 through as a host verb, so an engine can render its own card.
 
-*Trapped in the Internet* uses this for the Mud Room: solving the
+*Trapped in the Internet* uses this for the Optical Drive (the mud room): solving the
 CAPTCHA proves you are human, and humans are not permitted — INCORRECT,
 try again. See `core/examples/trapped-in-the-internet/beats/login.loom`.

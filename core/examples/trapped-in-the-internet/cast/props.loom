@@ -3,7 +3,7 @@
 // performer signs in as on a spare phone taped to it, or a host scans
 // "as" it from the Run cockpit). Each is one line: a `Prop(beat)`.
 //
-//   The Uploader     the Mud Room voice; a second scan → Re-upload (beats/login.loom)
+//   The Uploader     the Optical Drive voice; a second scan → Re-upload (beats/login.loom)
 //   The Router       the kitchen router → The Router (beats/desktop.loom)
 //   The Screensaver  the TV above the fireplace → The Screensaver (beats/desktop.loom)
 //   The Tablet       the tent tablet station → The Tablet Video (beats/internet.loom)

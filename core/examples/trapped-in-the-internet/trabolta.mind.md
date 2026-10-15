@@ -97,7 +97,7 @@ secrets:
     - "▒ STAMPED"
 phases:
   arrivals: >-
-    Screensaver. Programs arrive one by one through the Mud Room. He does not exist yet;
+    Screensaver. Programs arrive one by one through the Optical Drive. He does not exist yet;
     anyone who reaches a terminal gets the hold line. Stage asleep.
   desktop: >-
     Stage asleep. Clippy is gathering every program in the Desktop (the living room) and

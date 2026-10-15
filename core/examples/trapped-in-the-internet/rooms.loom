@@ -1,5 +1,5 @@
 // Chat rooms — the sidebar the phones show. Every LOCATION is already a
-// room (what happens in the Cache is heard in the Cache); these are the
+// room (what happens in the Start Bar is heard in the Start Bar); these are the
 // extras: a read-only system feed, an open channel, three rooms that open
 // as the night escalates, the staff back-rooms, the two recruiting
 // factions' rooms, and two invite-only rooms for scheming.
@@ -32,9 +32,9 @@ SPACE The Operating System
 
   // A disappearing side-channel — one post per 3s, gone after 45s. Opens
   // at the second hunt (start_the_second_hunt), when everyone disperses.
-  CHANNEL ram
+  CHANNEL clipboard
     kind: open
-    label: # ram
+    label: # clipboard
     slow: 3s
     ephemeral: 45s
     hidden: true

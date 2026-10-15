@@ -23,8 +23,8 @@ export const CHECKIN_ROUTE = "/api/guest/checkin";
 /** One check-in per guest per this long (a sign scanned twice, a loop). */
 export const CHECKIN_COOLDOWN_MS = 20_000;
 
-/** The declared LOCATION a sign's slug names (`the-cache`, `The Cache`,
- *  `the_cache` all fold to `The Cache`), or null. */
+/** The declared LOCATION a sign's slug names (`the-start-bar`, `The Start Bar`,
+ *  `the_start_bar` all fold to `The Start Bar`), or null. */
 export function checkinTarget(sim: Sim, raw: string): string | null {
   const want = foldName(raw.trim());
   if (want === "") return null;

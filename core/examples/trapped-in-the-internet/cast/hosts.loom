@@ -125,7 +125,7 @@ CHARACTER Recycling Bin is Host
 
   beat Greet(program)
     Self: {program.name}! Looking sharp. Looking very sharp. Could look sharper.
-    Self: Disk Cleanup is down the hall. Turn on Bathroom Mode on your way in so the Antivirus knows you are not hacking the Internet.
+    Self: Disk Cleanup is one floor down, and one floor up. Turn on Bathroom Mode on your way in so the Antivirus knows you are not hacking the Internet.
 
   when go to the bathroom for program:
     reply 🚻 {program.name} is in Bathroom Mode. Not hacking the Internet.

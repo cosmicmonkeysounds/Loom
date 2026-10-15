@@ -65,7 +65,7 @@ Phone check (an iPhone with Wi-Fi OFF, ~5 min):
   1. Scan the Run page's join QR (editor → Run → codes) — or open:
        $SERVER/?code=$GUEST
   2. It must land on $SERVER (not an IP), pick a program, register.
-  3. The Mud Room cutscene plays; solve the CAPTCHA.
+  3. The Optical Drive cutscene plays; solve the CAPTCHA.
   4. Uptime: stop the container (docker compose stop loom on the VPS) —
      your phone, the tech op's and the second director's get paged; start it again.
 EOF

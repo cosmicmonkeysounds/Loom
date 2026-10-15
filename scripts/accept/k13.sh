@@ -8,15 +8,15 @@
 #        (`<server>/?code=<code>&checkin=<room>`; Run → 🖨 Print sheet
 #        prints the real R01… signs).
 #   3. iPhone, Safari: join the rehearsal as a guest (<server>/?code=<code>).
-#      You land in the Mud Room cutscene. Scan "The Desktop" with the iPhone's
+#      You land in the Optical Drive cutscene. Scan "The Desktop" with the iPhone's
 #      own CAMERA app (not the play app) → tap the banner → Safari opens →
 #      a banner says "Not yet — finish getting in first." (on rails). PASS 1.
 #   4. Clear the guest: Run → Players → an Antivirus booth (e.g. Norton) →
 #      Scanner → type the guest's id (their pass). Clearance walks them to
 #      the Desktop and opens the house rooms for them.
-#   5. Scan "The Cache" with the Camera app → Safari lands IN "The Cache"
+#   5. Scan "The Start Bar" with the Camera app → Safari lands IN "The Start Bar"
 #      chat, a "📍 Checked in" reply arrives, and Run shows the guest standing
-#      in The Cache. PASS 2. Scan "The Desktop" within 20 s → "You just
+#      in The Start Bar. PASS 2. Scan "The Desktop" within 20 s → "You just
 #      checked in — try again in …s". PASS 3. Wait 20 s, scan it again →
 #      lands in the Desktop room. PASS 4.
 #   6. Director → capture the guest → scan "The Desktop" → "You're captured
@@ -38,7 +38,7 @@ ROLE="$(printf '%s' "$hit" | json role)"
 # The check-in points the story's `when checked_in for program:` chain handles
 # (main.loom). The server folds a slug onto the exact LOCATION name.
 cells=""
-for room in "The Desktop" "The Cache" "The Tube" "Disk Cleanup" "The Cloud" "The Registry"; do
+for room in "The Desktop" "The Start Bar" "The CPU" "The Steam Room" "The Tube" "Disk Cleanup" "The Cloud" "The RAM" "The Fan Closet" "The Graphics Card" "The Hard Drive"; do
   slug="$(printf '%s' "$room" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')"
   link="$SERVER/?code=$LOOM_EVENT_CODE&checkin=$slug"
   enc="$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]))' "$link")"

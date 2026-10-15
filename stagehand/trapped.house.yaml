@@ -30,11 +30,15 @@
 #   only dials out. If the house internet dies, fire the cues by hand
 #   (QLab + the Z2M frontend scenes + WLED presets).
 #
-#   Z2M groups, one per house.json room plus a whole-house group, named:
-#     house · living (The Desktop) · kitchen (The Cache) · backyard (The Cloud)
-#     registry (The Registry, rec room) · tube (hall + stair landing)
-#     mudroom · bathroom (Disk Cleanup) · tent (The Internet) · server_room
-#   SAFETY: the stairs, the bathroom, the tent, the server room and the
+#   Z2M groups, one per lit room plus a whole-house group. The ids predate
+#   the real house's room names (2026-10-15) and stay as wired:
+#     house · living (The Desktop) · kitchen (The Start Bar) · backyard (The Cloud)
+#     registry (The RAM, the basement studio) · tube (the halls + both stairs)
+#     mudroom (The Optical Drive) · bathroom (Disk Cleanup: both bathrooms)
+#     tent (The Internet) · server_room
+#   The CPU, the Steam Room, the Fan Closet, the Graphics Card and the Hard
+#   Drive have no group of their own: their bulbs join `house`.
+#   SAFETY: the stairs, the bathrooms, the tent, the server room and the
 #   server-room → living-room path are NOT in `house` (nor in any group a
 #   darkening cue targets), so no `house` scene and no blackout can darken
 #   them; give those bulbs `power_on_behavior: on`. `bathroom`, `tent` and
@@ -50,7 +54,7 @@
 #   controller drives several runs as segments, build each preset with the
 #   segment looks it needs (e.g. ps 22 = the tube segment dim, the others off).
 #   Preset 22 (tube_safe) lives on the tube controller: a dim, STATIC warm
-#   white on the hall + stair landing — what the blackout leaves lit.
+#   white on the halls + stairs — what the blackout leaves lit.
 #   QLab (or any OSC cue player) on this machine, UDP 53000: one cue per
 #   `sound <name>`, its cue NUMBER = the name (e.g. cue "dance_song").
 #
@@ -119,23 +123,24 @@ show:
   # --- story → house ----------------------------------------------------------
   cues:
     # ── Trabolta's `cut_the_lights` power and its restore (the long form) ──
-    # <cue: lights, room: The Cache, state: off> — the story allow-lists
+    # <cue: lights, room: The Start Bar, state: off> — the story allow-lists
     # exactly these three rooms (cast/trabolta.loom; never The Cloud: the
     # outdoor steps + the tent path) and turns the room back on itself 90 s
     # later (<cue: lights, room: {Night.dark_room}, state: on>).
-    # The kitchen (knives, a stove) only drops to ~20%, never dark.
+    # The Start Bar is the kitchen (knives, a stove): it only drops to ~20%,
+    # never dark.
     - on: { directive: cue }
-      match: { target: lights, room: The Cache, state: "off" }
+      match: { target: lights, room: The Start Bar, state: "off" }
       mqtt: { topic: "zigbee2mqtt/kitchen/set", payload: { state: "ON", brightness: 51, transition: 0 } }
     - on: { directive: cue }
-      match: { target: lights, room: The Cache, state: "off" }
+      match: { target: lights, room: The Start Bar, state: "off" }
       # bri only: WLED keeps its on/off state, so the cut never lights a strip that was off.
       mqtt: { topic: "wled/kitchen/api", payload: { bri: 51 } }
     - on: { directive: cue }
-      match: { target: lights, room: The Cache, state: "on" }
+      match: { target: lights, room: The Start Bar, state: "on" }
       mqtt: { topic: "zigbee2mqtt/kitchen/set", payload: { state: "ON", brightness: 254, transition: 1 } }
     - on: { directive: cue }
-      match: { target: lights, room: The Cache, state: "on" }
+      match: { target: lights, room: The Start Bar, state: "on" }
       mqtt: { topic: "wled/kitchen/api", payload: { "on": true, bri: 255 } }
 
     - on: { directive: cue }
@@ -152,16 +157,16 @@ show:
       mqtt: { topic: "wled/living/api", payload: { "on": true } }
 
     - on: { directive: cue }
-      match: { target: lights, room: The Registry, state: "off" }
+      match: { target: lights, room: The RAM, state: "off" }
       mqtt: { topic: "zigbee2mqtt/registry/set", payload: { state: "OFF", transition: 0 } }
     - on: { directive: cue }
-      match: { target: lights, room: The Registry, state: "off" }
+      match: { target: lights, room: The RAM, state: "off" }
       mqtt: { topic: "wled/registry/api", payload: { "on": false } }
     - on: { directive: cue }
-      match: { target: lights, room: The Registry, state: "on" }
+      match: { target: lights, room: The RAM, state: "on" }
       mqtt: { topic: "zigbee2mqtt/registry/set", payload: { state: "ON", transition: 1 } }
     - on: { directive: cue }
-      match: { target: lights, room: The Registry, state: "on" }
+      match: { target: lights, room: The RAM, state: "on" }
       mqtt: { topic: "wled/registry/api", payload: { "on": true } }
 
     # ── Scenes: one look per `cue lights_*` (IDs in the table above) ──

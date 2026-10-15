@@ -8,7 +8,7 @@
 **Porch + door (18:00 → ≈ 20:30, then the house manager takes over)**
 
 - Candy bowl + sign for trick-or-treaters ("take two! This house is a computer
-  tonight"). Kids never wander into the Mud Room. Mud Room **dim, not dark**,
+  tonight"). Kids never wander into the Optical Drive (the mud room). It stays **dim, not dark**,
   until 20:00 (OP-01).
 - Point every guest at the **door QR**. Phone dead or none → loaners
   [[EDIT: where]] + the charging station.

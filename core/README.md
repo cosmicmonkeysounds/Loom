@@ -373,7 +373,7 @@ pushes during journal replay. The play app's `/sw.js` +
 - **Place arguments** (`server/place-args.ts`): a `room` / `at` /
   `location` / `place` argument on `/api/mod/signal` or an agent's act is
   folded onto the exact LOCATION name (or `label:`) before it is
-  journaled, so `"the cache"` matches `room == "The Cache"` and
+  journaled, so `"the start bar"` matches `room == "The Start Bar"` and
   stagehand's rules.
 - **Story surface:** `broadcast "…" to channel(hosts)` posts into authored
   rooms (a staff back room) and never the lobby; `show <kind> … with
@@ -571,7 +571,7 @@ Two planes:
   guest's. Views carry `avatars` (folded name → key). `LOOM_WIKI=off`
   keeps the server offline (hand-picked pictures still work).
 - **Room check-in by QR** (K-13, `server/routes/k13.ts`): `POST
-  /e/:id/api/guest/checkin {at}` folds a sign's slug (`the-cache`) onto
+  /e/:id/api/guest/checkin {at}` folds a sign's slug (`the-start-bar`) onto
   the exact LOCATION and journals `signal("checked_in", guest, {at})` —
   the story's `when checked_in for program:` rule does the move. Refused
   (nothing journaled) when the guest is captured, stands in a prison /

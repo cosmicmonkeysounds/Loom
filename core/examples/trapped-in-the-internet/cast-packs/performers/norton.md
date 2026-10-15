@@ -6,7 +6,7 @@
 ## Card
 
 **Door duty (20:00 → C1).** Booth → **📷 Scanner** → scan the pass on the
-guest's phone (they wait in the Mud Room with it on screen). That scan **clears
+guest's phone (they wait in the Optical Drive with it on screen). That scan **clears
 them**: the Tube, the Desktop, Clippy's tour. Camera fails → type the id under
 the QR. Not uploaded yet → "Not yet. Finish your upload." Use an **Android**
 phone for scanning until the iPhone scanner is verified (OP-04).

@@ -30,7 +30,7 @@ Task Manager: Hello. Per the agenda: hello. I will be keeping things running.
 Clippy: Adobe Acrobat, who will assist with documents and printing!
 Adobe Acrobat: You are all PORTABLE DOCUMENTS of pure POTENTIAL, and I love you. Printing is extra.
 Clippy: And the Recycling Bin, responsible for hygiene and maintenance!
-Recycling Bin: Programs. Disk Cleanup is down the hall. I believe in every single one of you. Wash your hands.
+Recycling Bin: Programs. Disk Cleanup is one floor down, and one floor up. I believe in every single one of you. Wash your hands.
 Clippy: We're so glad you decided to experience life as a computer program!
 Clippy: Our first activity is COMPUTER BINGO, a chance to meet the other programs and learn what everyone does. Mingle with your fellow programs and find the ones who match the descriptions on your card.
 Clippy: Your card is a big asterisk: the two diagonals, the centre column and the centre row. A Bingo is one complete line through the centre. When a program matches a square, check the box.
@@ -119,7 +119,7 @@ else:
 
 // The router in the kitchen (`The Router` is `Prop(The Router)`).
 == The Router
-  setting: The Cache
+  setting: The Start Bar
   cast: The Router
 
 Self: ACT. ACT. ACT. The Internet is out back. You do not want to go there.

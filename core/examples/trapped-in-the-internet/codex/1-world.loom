@@ -8,7 +8,7 @@
 //
 // An entry with a `code:` is a QR on a wall or a prop (see README §8.3:
 // codes never contain apostrophes). An entry without one is handed out
-// by the story: the Mud Room, the Reinstallation beat, the tutorial, the
+// by the story: the Optical Drive, the Reinstallation beat, the tutorial, the
 // Bingo ribbon, the Printer, the Truther Download, the clock.
 
 CODEX Maps And Ducks
@@ -68,8 +68,8 @@ CODEX The Halifax Computer
     Antivirus, every one of you: installed remotely. He has never been
     inside. He has never been anywhere.
 
-CODEX The Mud Room
-  title: The Mud Room
+CODEX The Optical Drive
+  title: The Optical Drive
   text:
     You entered alone, in the dark, through the front door. You failed a
     CAPTCHA on purpose. You left something behind. The thing you left is
