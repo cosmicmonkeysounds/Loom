@@ -24,8 +24,10 @@ CHARACTER McAfee Anti-Virus is Enforcer
   // Expired. Nobody renewed him. Still pops up. Secretly here to get rich:
   // he brokers the # truthcoin-exchange.
 
+  // Not once the night is over (there is nothing left to protect).
   every 20m:
-    broadcast "🛡️ McAfee Anti-Virus: Your protection has expired. Your protection has expired. Renew now." to everyone
+    if Night.ended != true:
+      broadcast "🛡️ McAfee Anti-Virus: Your protection has expired. Your protection has expired. Renew now." to everyone
 
   when truther_download:
     if Night.truther_sent != true:

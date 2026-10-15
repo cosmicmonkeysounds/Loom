@@ -137,9 +137,9 @@ CHARACTER Trabolta is Person
       else if text == null or text == "":
         Trabolta: A pop-up needs words.
       else if Night.step >= 12:
-        broadcast "💬 {text} — d1sr3gard th1s m3ssage" to participant(target)
+        broadcast "!💬 {text} — d1sr3gard th1s m3ssage" to participant(target)
       else:
-        broadcast "💬 {text}" to participant(target)
+        broadcast "!💬 {text}" to participant(target)
 
   // Truthcoin for a fact: DraftKings' buyer. Capped at 50 a payment, 100
   // once he is desperate (y2k). "Facts are food. Coin is a picture of food."

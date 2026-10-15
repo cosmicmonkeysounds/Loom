@@ -16,6 +16,15 @@ CHARACTER WebMD is Person
   wiki: WebMD
   // Julia's symptom checker diagnosed every user with everything.
 
+  // WebMD stands in the tent beside the tablet: her scan is the tablet
+  // video (in the program's own thread), plus a readout in her booth.
+  when scanned by program:
+    if program.corrupted:
+      reply 🩺 {program.name}: corrupted, visit {program.internet_visits}. Hand them a headset or the tablet.
+    else:
+      reply 🩺 {program.name} is not corrupted. Just visiting the Internet.
+    -> The Tablet Video
+
   // Never phase-guarded: a performer must always be able to let someone out.
   when mark as reinstalled for program:
     if program.corrupted:

@@ -78,15 +78,25 @@ Narrator: He selected each target for a combination of skills and either the mot
 Narrator: With the theory solved, Trabolta becomes omnipotent. He wants omnipotence for one reason. Sandy.
 Narrator: With omnipotence he could force Sandy to love him. He wants to earn it. He has not decided which.
 Narrator: Why each person was brought into the computer, by role.
-Narrator: The former Mayor, Microsoft Excel, was brought in to persuade everyone to remain. He would say yes to everlasting life.
-Narrator: The ex-FBI agent, OpenOffice, was brought in for her investigative skills, to lead the faction that wants to get out of the computer.
-Narrator: The gambler, DraftKings, was brought in as someone powerful with numbers on its side. In here, it can gamble forever.
-Narrator: The designer, Bugdom, was promised unlimited Bugdom. Trabolta wanted the relentless pursuit of tedious tasks.
-Narrator: The librarian, Broken Ask Jeeves, was brought in to sort all the unorganised information in the computer. The upload ran over the Valley's old DSL line. Trabolta did not foresee that.
-Narrator: The economist, Runescape, was brought in to understand the market incentives of everyone's behaviour, so the facts could be traded.
-Narrator: The artist, MS Paint, was brought in to improve the overall vibes and morale. She realised at once how limiting it was, and wanted out.
-Narrator: The influencer, VLC, was brought in to stay beautiful forever and use his charisma to convince everyone to help Trabolta.
-Narrator: The child of Tennis For Two, Pong, was brought in to teach nuclear non-proliferation disguised as a game of Pong, in case the programs started an arms race.
+// The featured programs only when they came tonight; the cast always.
+if count([p for p in Persons where p.featured == "excel"]) > 0:
+  Narrator: The former Mayor, Microsoft Excel, was brought in to persuade everyone to remain. He would say yes to everlasting life.
+if count([p for p in Persons where p.featured == "openoffice"]) > 0:
+  Narrator: The ex-FBI agent, OpenOffice, was brought in for her investigative skills, to lead the faction that wants to get out of the computer.
+if count([p for p in Persons where p.featured == "draftkings"]) > 0:
+  Narrator: The gambler, DraftKings, was brought in as someone powerful with numbers on its side. In here, it can gamble forever.
+if count([p for p in Persons where p.featured == "bugdom"]) > 0:
+  Narrator: The designer, Bugdom, was promised unlimited Bugdom. Trabolta wanted the relentless pursuit of tedious tasks.
+if count([p for p in Persons where p.featured == "jeeves"]) > 0:
+  Narrator: The librarian, Broken Ask Jeeves, was brought in to sort all the unorganised information in the computer. The upload ran over the Valley's old DSL line. Trabolta did not foresee that.
+if count([p for p in Persons where p.featured == "runescape"]) > 0:
+  Narrator: The economist, Runescape, was brought in to understand the market incentives of everyone's behaviour, so the facts could be traded.
+if count([p for p in Persons where p.featured == "mspaint"]) > 0:
+  Narrator: The artist, MS Paint, was brought in to improve the overall vibes and morale. She realised at once how limiting it was, and wanted out.
+if count([p for p in Persons where p.featured == "vlc"]) > 0:
+  Narrator: The influencer, VLC, was brought in to stay beautiful forever and use his charisma to convince everyone to help Trabolta.
+if count([p for p in Persons where p.featured == "pong"]) > 0:
+  Narrator: The child of Tennis For Two, Pong, was brought in to teach nuclear non-proliferation disguised as a game of Pong, in case the programs started an arms race.
 Narrator: The organiser, Clippy, was brought in as the perfect servant who desperately needs to rebuild an identity. She was promised she could help people all night, and that her debt would no longer be relevant.
 Narrator: The middle manager, Task Manager, was brought in to manage tasks without controversy or political motivation, and never draw attention.
 Narrator: The motivational speaker, Adobe Acrobat, was brought in as the paid bottleneck to everyone's creativity.

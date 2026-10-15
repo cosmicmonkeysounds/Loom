@@ -84,7 +84,8 @@ set Night.printer_called = true
 cue screens_print_certificate
 set Night.screen = "print_certificate"
 set Night.terminals = "print_certificate"
-if count([p for p in Persons where p.featured == "vlc"]) > 0:
+if count([p for p in Persons where p.featured == "vlc" and p.cleared and not p.captured]) > 0:
+  set Night.printer_vlc = true
   Trabolta: VLC Player. You are trusted with all forms of multimedia. Please, press the start button on the printer, to print a PDF file with a certificate for our great hero.
 else:
   Trabolta: The media player is not responding. Any program. Please, press the start button on the printer, to print a PDF file with a certificate for our great hero.

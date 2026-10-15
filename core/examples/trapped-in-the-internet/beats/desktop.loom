@@ -74,9 +74,16 @@ Trabolta: HELLO, PROGRAMS. I am Trabolta. I keep the computer running. Your requ
 Clippy: Isn't he wonderful?
 cue tv_mirror
 set Night.screen = "mirror"
-Narrator: The TV above the fireplace shows a copy of this house. A small figure walks through it, following golden arrows.
-if Night.first_reinstall != "none":
-  Clippy: Look! That's {Night.first_reinstall}! Doing great!
+// The mirror is live: say what is on it right now. Someone in the tent is
+// walking; else the house is empty (the first program may already be out).
+if count([p for p in Persons where p.captured]) > 0:
+  Narrator: The TV above the fireplace shows a copy of this house. A small figure walks through it, following golden arrows.
+  if count([p for p in Persons where p.captured and p.name == Night.first_reinstall]) > 0:
+    Clippy: Look! That's {Night.first_reinstall}! Doing great!
+else:
+  Narrator: The TV above the fireplace shows a copy of this house. Golden arrows run along the floor. Nobody is walking them right now.
+  if Night.first_reinstall != "none":
+    Clippy: {Night.first_reinstall} already found the golden duck and came right back! See? Reinstallation is quick and easy!
 Clippy: And now, Trabolta has a game for all of us.
 
 // ── Optional set pieces (director-fired, truth_1 → trust_chart) ─────

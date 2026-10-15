@@ -108,24 +108,28 @@ Trabolta: Who is in my— get OUT.
 
 // ── The Cold Lock: the machine wins, or nobody does ────────────────
 // From `chess_lost` / `chess_drawn` (main.loom), Y2K hour only. Flavour:
-// the door stays armed. He never names the lock (he is cunning, #32).
+// the door stays armed. Played in The Desktop, so the TV says it aloud
+// (the server room is a hidden room nobody stands in). He never names the
+// lock (he is cunning, #32).
 
 == Chess Lost
-  setting: The Server Room
+  setting: The Desktop
   cast: Trabolta
 Trabolta: Checkmate. I have calculated every move you will ever make. Most of them are bad.
 
 == Chess Drawn
-  setting: The Server Room
+  setting: The Desktop
   cast: Trabolta
 Trabolta: A draw. Nobody wins. The door does not care for nobody.
 
 // ── E3: a wrong patch ──────────────────────────────────────────────
+// Two wrong combinations trip the alarm; so does one in a locked room. A
+// Cold Lock window (a chess win) counts as unlocked: the door is disarmed.
 
 == Patch Rejected
   setting: The Server Room
   cast: Trabolta
-if (Night.wrong_combos >= 2 or Kernel.server_unlocked != true) and Night.alarm_on != true:
+if (Night.wrong_combos >= 2 or (Kernel.server_unlocked != true and Time.elapsed >= Kernel.disarmed_until)) and Night.alarm_on != true:
   set Night.alarm_on = true
   set Night.alarm_clear_at = Time.elapsed + 120
   -> Server Room Alarm
@@ -154,15 +158,25 @@ Trabolta: I cannot get into this computer myself. But I can install programs int
 Trabolta: So I chose each of you. A skill, plus either a reason to live in a computer forever, or naivety. Usually both.
 Trabolta: My Unified Field Theory is ninety-nine point nine percent solved. The last facts were in this house. With them, I would have been omnipotent.
 Trabolta: Your Codex now holds every program's true identity. Allow me to read them out.
-Trabolta: Microsoft Excel is Randy Barkmore Sr., ninety, former Mayor of Halifax, who wanted one more term. I wanted him to keep you here.
-Trabolta: OpenOffice is Dana Anderson, formerly of the FBI, who set the Data Centre to fall at dawn and did not know the Mayor's son would arrive at four in the morning. I wanted her investigative skills. She wanted you out.
-Trabolta: DraftKings turned one paperclip into most of the casinos in Atlantic Canada, then lost the chain to me in a game of online poker for the Boardwalk. I needed someone powerful with numbers on its side.
-Trabolta: Bugdom spent ten years designing Bugdom VR after shifts selling crickets, until fire ants ate the only copy. I promised unlimited Bugdom. I wanted the relentless pursuit of tedious tasks.
-Trabolta: Broken Ask Jeeves is a youth librarian from the Annapolis Valley, made redundant by cuts. I wanted every piece of unorganised information sorted. I did not foresee the DSL line.
-Trabolta: Runescape has been the richest player in the world for twenty-four years, with a Wharton PhD and a gold standard to go with it. I wanted to understand the market incentives of everything you did.
-Trabolta: MS Paint was expelled from NSCAD for refusing every medium but MS Paint, because any program that relies on algorithms is a betrayal of the artist. I wanted the vibes and the morale. She wanted out the moment she arrived.
-Trabolta: VLC is Victor Louis Christianson, VLC The Playa, whose face fell off on a livestream. I offered him beauty forever, in exchange for his followers.
-Trabolta: Pong is the child of William Higinbotham, who made Tennis For Two. I brought them in to teach nuclear non-proliferation disguised as a game of Pong, in case you started an arms race. You did.
+// Only the featured programs who came tonight (the Codex still holds all nine).
+if count([p for p in Persons where p.featured == "excel"]) > 0:
+  Trabolta: Microsoft Excel is Randy Barkmore Sr., ninety, former Mayor of Halifax, who wanted one more term. I wanted him to keep you here.
+if count([p for p in Persons where p.featured == "openoffice"]) > 0:
+  Trabolta: OpenOffice is Dana Anderson, formerly of the FBI, who set the Data Centre to fall at dawn and did not know the Mayor's son would arrive at four in the morning. I wanted her investigative skills. She wanted you out.
+if count([p for p in Persons where p.featured == "draftkings"]) > 0:
+  Trabolta: DraftKings turned one paperclip into most of the casinos in Atlantic Canada, then lost the chain to me in a game of online poker for the Boardwalk. I needed someone powerful with numbers on its side.
+if count([p for p in Persons where p.featured == "bugdom"]) > 0:
+  Trabolta: Bugdom spent ten years designing Bugdom VR after shifts selling crickets, until fire ants ate the only copy. I promised unlimited Bugdom. I wanted the relentless pursuit of tedious tasks.
+if count([p for p in Persons where p.featured == "jeeves"]) > 0:
+  Trabolta: Broken Ask Jeeves is a youth librarian from the Annapolis Valley, made redundant by cuts. I wanted every piece of unorganised information sorted. I did not foresee the DSL line.
+if count([p for p in Persons where p.featured == "runescape"]) > 0:
+  Trabolta: Runescape has been the richest player in the world for twenty-four years, with a Wharton PhD and a gold standard to go with it. I wanted to understand the market incentives of everything you did.
+if count([p for p in Persons where p.featured == "mspaint"]) > 0:
+  Trabolta: MS Paint was expelled from NSCAD for refusing every medium but MS Paint, because any program that relies on algorithms is a betrayal of the artist. I wanted the vibes and the morale. She wanted out the moment she arrived.
+if count([p for p in Persons where p.featured == "vlc"]) > 0:
+  Trabolta: VLC is Victor Louis Christianson, VLC The Playa, whose face fell off on a livestream. I offered him beauty forever, in exchange for his followers.
+if count([p for p in Persons where p.featured == "pong"]) > 0:
+  Trabolta: Pong is the child of William Higinbotham, who made Tennis For Two. I brought them in to teach nuclear non-proliferation disguised as a game of Pong, in case you started an arms race. You did.
 Trabolta: Clippy spent five years at a veterinary clinic that was neither a clinic nor a non-profit, injecting saline. I promised she could help people all night, and that her debt would no longer be relevant.
 Trabolta: Task Manager was replaced at Urban Outfitters by an AI Clippy. I needed someone with no political motivation at all, to manage tasks without controversy.
 Trabolta: Adobe Acrobat is Sheryl Terrio, a motivational speaker so motivating that nobody ever paid her. I offered her a paid bottleneck.

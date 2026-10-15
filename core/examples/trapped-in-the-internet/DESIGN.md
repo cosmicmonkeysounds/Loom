@@ -343,7 +343,7 @@ rule 24).
 | Minesweeper | `File:MINESWEEPER SMILEY.png \| File:Minesweeper in Windows 98 Expert Level.png` | Microsoft Minesweeper |
 | Trojan Horse | `File:The Procession of the Trojan Horse in Troy by Giovanni Domenico Tiepolo.jpg` | Trojan Horse (the two accordion clowns' costume: **one program, one phone**; the second clown shares it — see §7 #1) |
 | Ctrl Alt Del | `File:Win98 Close Program Dialog.PNG \| File:Three-finger salute.svg` | Control-Alt-Delete |
-| Start Bar | `File:Windows 95 Start menu.png` | Start menu |
+| Start Menu | `File:Windows 95 Start menu.png` | Start menu |
 | Solitaire | `File:Solitaire Icon (Vista).png` | Microsoft Solitaire |
 | Winamp | `File:Winamp media player logomark.png \| File:Winamp Logo.svg` | |
 | Napster | `File:Napster logo.svg` | |

@@ -85,6 +85,7 @@ CODEX The Terms Of Service
 
 CODEX The Centre Square
   title: The Centre Square
+  secret: true
   text:
     The Uploader said you agreed to let the computer's AI helper make all
     of your decisions. You didn't mean it. You would never agree to a life
@@ -198,8 +199,11 @@ CODEX The Truther Download
     - Do not trust the paperclip. Do not trust the Antivirus. Do not trust
     this download. Trust facts.
 
+// The two tent files are `secret: true`: Trabolta's worker never sees who
+// is carrying one (nor The Centre Square, above: who refuses AI rule).
 CODEX ILOVEYOU
   title: LOVE-LETTER-FOR-YOU.TXT.vbs
+  secret: true
   code: LOVE-LETTER-FOR-YOU
   text:
     kindly check the attached LOVELETTER coming from me. It is a virus. You
@@ -208,6 +212,7 @@ CODEX ILOVEYOU
 
 CODEX Free Antivirus Trial
   title: FREE_ANTIVIRUS_TRIAL.EXE
+  secret: true
   code: FREE-TRIAL-30-DAYS
   text:
     CONGRATULATIONS! Your computer is protected FREE for 30 days by another

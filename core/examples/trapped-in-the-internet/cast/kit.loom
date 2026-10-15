@@ -136,7 +136,8 @@ TRAIT Enforcer is Person
       reply 🛡 Scan every program arriving at the Desktop: that is their check-in.
 
   when zip_everyone_out:
-    reply 🗜 Bring everyone out of the tent and zip them up.
+    if Night.ended != true and Night.ending != "banished":
+      reply 🗜 Bring everyone out of the tent and zip them up.
 
   when advice_thwarted:
     if Night.phase == "advice" and Night.ended != true and Night.ending != "banished":
