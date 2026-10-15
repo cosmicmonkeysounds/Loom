@@ -39,7 +39,7 @@ K-23, K-26, k10, n02 step 0) can run anytime.
 | K-16 | `K-16.sh [--watch]` | `/api/screen/state` says attract. Time the flip to the face after `introduce_trabolta` (≤ 2 s) |
 | K-17 + N-03 | `K-17.sh [--watch\|--fire <event>…]` | Fire cues and watch the TV and terminals layer overlays, slides and the ⏱ corner in the right precedence |
 | K-18 + N-04b | `K-18.sh [--watch\|--say\|--beat\|--fire\|--mute]` | TV (`view=tv`) speaks Trabolta's Desktop lines, captions the song beats, honours the mute |
-| K-19 | `K-19.sh` | 50 mod SSE streams + 3 concurrent Kokoro syntheses: each sentence < 2 s (before doors) |
+| K-19 | `K-19.sh` | **Opt-in only** (the default is the devices' own voices — it SKIPs with the server voice off): 50 mod SSE streams + 3 concurrent Kokoro syntheses, each sentence < 2 s |
 | K-20 | `K-20.sh devices\|local\|offline\|install\|mqtt\|chime\|story` | House Mac, steps 1–7: MOTU device, chime + voice on both zones, the `say` fallback, the launchd agent, `do announce` from the story |
 | K-21 | `K-21.md` | Second director's laptop: the Director cue sheet (LAST / NEXT / ✓, who? picker), agreeing across two editors and a reload |
 | K-22 | `K-22.ts --event … --passcode …` | Bytes per step, full mod feed vs `&lean=1`. `--steps N` posts probe lines (guarded) |
