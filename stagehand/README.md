@@ -235,7 +235,7 @@ is YAML frontmatter + the system prompt:
 | `facts` | world path prefixes to show it (Trabolta lists exact `Night.*` names, never the bare `Night.` and never `Kernel.`: the show keeps its secrets on `Kernel`) |
 | `them` | the speaker's variables to show it (default: all) |
 | `when` | a gate over `self.<var>`, `them.<var>`, `speaker.kind`, world paths |
-| `unavailable` | what it says while the gate is closed (else silence) |
+| `unavailable` | what it says while the gate is closed (else silence). With **no worker online at all**, the event server says the story's `CHARACTER … hold:` line instead, after ~20 s |
 | `fallback` | what it says when the model fails (else silence) |
 | `model` / `endpoint` / `temperature` / `max_tokens` / `reasoning_effort` | per-character overrides of the section's `llm:` |
 | `mind` | the orchestrator's prompt file (how *this* character grows); a built-in default otherwise |

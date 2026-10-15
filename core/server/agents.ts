@@ -21,6 +21,12 @@
 //!                          │ commit say + vars; typing off
 //!                          └ follow-up pending? → a fresh request
 //!
+//! With no worker online the request waits in the queue; after
+//! `holdAfterMs` (20 s) the hub asks the runtime to post the character's
+//! authored hold line (`CHARACTER … hold: …`) once, so a guest is never left
+//! in silence when the laptop is down. The request stays queued, so a worker
+//! that comes back still answers it.
+//!
 //! One open request per thread keeps a burst of three messages from
 //! producing three replies: the model answers once, then once more with
 //! everything said meanwhile. The hub is transport-agnostic — workers are
@@ -619,6 +625,10 @@ interface OpenRequest {
   attempts: number;
   /** A newer line arrived while this one was open. */
   followUp: boolean;
+  /** Hub clock when the request was opened (a refresh never moves it). */
+  createdAt: number;
+  /** The hold line was already offered for this request. */
+  held: boolean;
 }
 
 export interface AgentHubOptions {
@@ -632,6 +642,14 @@ export interface AgentHubOptions {
   replyTimeoutMs?: number;
   /** A queued request no worker picked up within this long is dropped. */
   queueMaxAgeMs?: number;
+  /**
+   * The request has waited `holdAfterMs` since it opened and no worker voicing
+   * the character is online: post the character's hold line into the thread.
+   * Called at most once per request; returns whether a line was posted.
+   */
+  hold?: (req: AgentRequest) => boolean;
+  /** How long a queued request waits with nobody online before `hold` (20 s). */
+  holdAfterMs?: number;
   /** Dispatch attempts before a request is given up. */
   maxAttempts?: number;
   now?: () => number;
@@ -725,7 +743,7 @@ export class AgentHub {
     const id = `ar-${globalThis.crypto.randomUUID().slice(0, 8)}`;
     const req = this.o.build(thread, id);
     if (req === null) return;
-    const r: OpenRequest = { req, key: threadKey(thread), worker: null, dispatchedAt: null, attempts: 0, followUp: false };
+    const r: OpenRequest = { req, key: threadKey(thread), worker: null, dispatchedAt: null, attempts: 0, followUp: false, createdAt: this.now(), held: false };
     this.open.set(id, r);
     this.byThread.set(r.key, id);
     this.dispatch(r);
@@ -775,6 +793,7 @@ export class AgentHub {
     const timeout = this.o.replyTimeoutMs ?? 120_000;
     const maxAge = this.o.queueMaxAgeMs ?? 10 * 60_000;
     const maxAttempts = this.o.maxAttempts ?? 2;
+    const holdAfter = this.o.holdAfterMs ?? 20_000;
     for (const [id, r] of [...this.open]) {
       if (r.worker !== null && r.dispatchedAt !== null && now - r.dispatchedAt > timeout) {
         this.workers.get(r.worker)?.send("cancel", { id });
@@ -788,6 +807,11 @@ export class AgentHub {
         this.dispatch(r);
       } else if (r.worker === null && now - r.req.at > maxAge) {
         this.drop(id, r);
+      } else if (r.worker === null && !r.held && now - r.createdAt >= holdAfter && !this.isOnline(r.req.character)) {
+        // Nobody can answer: say the hold line once, keep the request queued
+        // so a worker that comes back still answers it.
+        r.held = true;
+        this.o.hold?.(r.req);
       }
     }
   }

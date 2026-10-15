@@ -91,6 +91,13 @@ describe("Trapped in the Internet — compile", () => {
   const sim = fresh();
   const m = sim.model;
 
+  it("Trabolta has a plain-words server hold line for when no worker is online (N-11)", () => {
+    const hold = m.characters.get("Trabolta")?.hold ?? "";
+    expect(hold).toMatch(/^Jean Trabolta /u);
+    // A terminal reads it aloud: no glyphs, brackets or quotes.
+    expect(hold).toMatch(/^[A-Za-z .,']+$/u);
+  });
+
   it("parses clean, concatenated and per file; both builds agree on the rules", () => {
     const [, all] = parse(SRC);
     expect(all.filter((d) => d.severity === "error")).toEqual([]);

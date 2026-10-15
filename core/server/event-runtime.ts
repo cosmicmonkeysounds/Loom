@@ -243,7 +243,7 @@ export interface EventRuntimeInit {
   /** The show's house map (the reinstallation games) — used until a
    *  director saves one for this event. Default: `defaultHouseFile()`. */
   houseFile?: string;
-  /** The spatial hub's clock (tests). */
+  /** The spatial + agent hubs' clock (tests). */
   now?: () => number;
   /** Throttle overrides (tests); the rest come from `LOOM_RL_*`. */
   limits?: Partial<RateLimits>;
@@ -337,9 +337,14 @@ export class EventRuntime {
   // going on; started lazily, stops itself when idle.
   private spatialLoop: ReturnType<typeof setInterval> | null = null;
   private spatialTicks = 0;
+  // The injectable clock (`EventRuntimeInit.now`), read lazily by the hubs
+  // built in field initialisers.
+  private clock: () => number = Date.now;
   private readonly agents = new AgentHub({
     build: (thread, id) => this.buildAgentRequest(thread, id),
     typing: (thread, on) => this.pushTyping(thread, on),
+    hold: (req) => this.postAgentHold(req),
+    now: () => this.clock(),
     presence: () => {
       this.pushPresence();
       for (const c of this.clients) if (c.role !== "mod") sseSend(c.res, "snapshot", this.snapshotFor(c));
@@ -357,6 +362,7 @@ export class EventRuntime {
     this.wiki = init.wiki ?? null;
     this.images = init.images ?? defaultImages();
     this.houseFile = init.houseFile ?? defaultHouseFile();
+    if (init.now !== undefined) this.clock = init.now;
     this.spatial = new SpatialHub({ eventId: init.eventId, ...(init.now !== undefined ? { now: init.now } : {}) });
     const limits = { ...rateLimitsFromEnv(process.env), ...init.limits };
     this.loginFailures = limiterFor(limits.loginFailures);
@@ -611,6 +617,16 @@ export class EventRuntime {
     const character = channel.slice("dm:".length);
     if (!this.isAgent(character)) return;
     this.agents.line({ character, channel, audience });
+  }
+
+  /** No worker has picked up `req` in time: post the character's authored
+   *  `hold:` line into the thread as an ordinary journaled say (the director
+   *  can still answer as the character from Run). */
+  private postAgentHold(req: AgentRequest): boolean {
+    const line = this.sim?.model.characters.get(req.character)?.hold ?? null;
+    if (line === null) return false;
+    this.fanout(this.commit("say", req.character, req.thread.channel, line, null, req.thread.audience));
+    return true;
   }
 
   /** Everything a worker needs to answer one thread, read from the live sim. */

@@ -117,6 +117,10 @@ export interface CharDef {
    *  `dm:` thread becomes an agent request instead of waiting for a
    *  performer. Null when a human (or nobody) voices it. */
   mind: string | null;
+  /** `hold: …` — what an agent-voiced character says when no worker is
+   *  online to voice it (the server posts it after ~20 s of silence). Plain
+   *  words: a terminal reads it aloud. Null = say nothing. */
+  hold: string | null;
   /** Declared numeric ranges (`truth: 0 to 100 = 35`) — the bounds an
    *  agent's variable adjustments are clamped to. */
   ranges: Map<string, [number, number]>;
@@ -631,11 +635,19 @@ function charDef(id: string, body: CharacterBody): CharDef {
     listed: body.properties.get("listed")?.value.trim() === "true",
     hidden: body.properties.get("hidden")?.value.trim() === "true",
     mind: mind === "" ? null : mind,
+    hold: holdOf(body.properties.get("hold")?.value),
     ranges,
     playable: body.properties.get("playable")?.value.trim() !== "false",
     avatar: avatarsOf(body.properties.get("avatar")?.value),
     wiki: body.properties.get("wiki")?.value.trim() || null,
   };
+}
+
+/** An authored `hold:` line, surrounding quotes optional. */
+function holdOf(raw: string | undefined): string | null {
+  let v = (raw ?? "").trim();
+  if (v.length >= 2 && v.startsWith('"') && v.endsWith('"')) v = v.slice(1, -1).trim();
+  return v === "" ? null : v;
 }
 
 /**
