@@ -195,7 +195,7 @@ marker in the trace naming who did it.
 
 A story declares what the character may *do* with `INTERACTION … who:
 agent` (+ `limit: N` per run). The request lists them with uses left;
-the model may answer with `"act": {"fire": "cut the lights", "args":
+the model may answer with `"act": {"fire": "cut_the_lights", "args":
 {"room": "The Cache"}}` or `"act": {"share": "<lore it holds>"}`. The
 worker validates (declared? uses left? held?) and canonicalises args
 against the session (`"the kitchen"` → `The Cache`, a name → a program
@@ -209,7 +209,7 @@ loosens it in the brief as the night goes.
 ollama pull gpt-oss:20b tobestyledintro/qwen3.8-9b-distill:q8_0
 uv run stagehand ask --config laptop.yaml                  # chat with the persona, no server
 uv run stagehand ask --config laptop.yaml --reflect        # …and watch the mind grow after each line
-uv run stagehand ask --config laptop.yaml --reflect --power "cut the lights" --var love=80 "Do you love Sandy?"
+uv run stagehand ask --config laptop.yaml --reflect --power cut_the_lights --var love=80 "Do you love Sandy?"
 ```
 
 The persona file (`core/examples/trapped-in-the-internet/trabolta.persona.md`)
@@ -218,9 +218,9 @@ is YAML frontmatter + the system prompt:
 | Key | Meaning |
 |---|---|
 | `character` | the CHARACTER as declared (required) |
-| `variables` | the numbers it may nudge (`truth, untruth, stance, love`) |
+| `variables` | the numbers it may nudge (Trabolta: `truth, untruth, composure, love, regard`) |
 | `max_step` | ±cap per variable per reply (default 15) |
-| `facts` | world path prefixes to show it (`Night.`) |
+| `facts` | world path prefixes to show it (Trabolta lists exact `Night.*` names, never the bare `Night.` and never `Kernel.`: the show keeps its secrets on `Kernel`) |
 | `them` | the speaker's variables to show it (default: all) |
 | `when` | a gate over `self.<var>`, `them.<var>`, `speaker.kind`, world paths |
 | `unavailable` | what it says while the gate is closed (else silence) |
@@ -229,7 +229,7 @@ is YAML frontmatter + the system prompt:
 | `mind` | the orchestrator's prompt file (how *this* character grows); a built-in default otherwise |
 | `orchestrator` | orchestrator model overrides for this character |
 | `thread_window` / `summarize_after` / `reflect_after` | 12 / 20 / 1 — window, when to summarise, how often to reflect |
-| `lookup` | may read the live session (default true) |
+| `lookup` | may read the live session (default true; Trabolta ships `false` until lookups are filtered by what he holds) |
 | `lookup_power` | a `who: agent` power fired with `target` = each program a lookup resolves (Trabolta: `snoop`) — being read is felt, deterministically |
 | `powers` | `all` (default), `none`, or a list of `who: agent` interaction names |
 | `bargain` | the favour policy the fast model reads (the orchestrator adjusts it in the brief) |
@@ -263,10 +263,33 @@ the mod capability. Server side: `core/server/agents.ts`.
   `POST /api/mod/beat {name, subject?}`,
   `POST /api/mod/set {id, field: "location", value}`.
 
-> Note: the SSE stream itself grants the raw mod feed to any client that
-> asks for `role=mod` — acceptable on the show's LAN island, but server-
-> side hardening (tokened SSE) is an open item alongside the known
-> `/api/history` IDOR.
+The mod feed is capability-gated: `role=mod` needs the mod token
+(`?token=` or the header) or the owning author's session.
+
+### The real house: `trapped.house.yaml`
+
+`show.example.yaml` is the generic, test-pinned example. *Trapped in the
+Internet*'s actual rig is [`trapped.house.yaml`](./trapped.house.yaml):
+Zigbee2MQTT group scenes + WLED presets for every `cue lights_*`, the
+per-room long form `<cue: lights, room: …, state: …>` (The Cache,
+The Desktop, The Cloud, The Registry), `screens_flicker` blinking the
+house, every `sound <name>` as a QLab OSC cue, `do announce` to the Alexa
+speaker, the optional server-room maglock, and the sensors that come back
+as story signals (`server_door_opened`, debounced until stagehand
+learns edge detection; the printer's
+button and door, and the patch bay's `patch_combo_a` / `patch_combo_b` /
+`patch_rejected`, judged here until signals carry arguments).
+`tests/test_trapped_house.py` cross-checks it against the story: every
+light / sound cue has a rule, every sensor signal has a `when` in
+`main.loom`, and the two combos match the `Kernel.combo_*` seeds and the
+codex halves. The wiring walkthrough is in
+[`docs/loom-show-control.md`](../docs/loom-show-control.md) → *Trapped in
+the Internet: the house rig*.
+
+```bash
+uv run stagehand check --config trapped.house.yaml
+uv run stagehand run   --config trapped.house.yaml
+```
 
 ### The `t_exec` contract
 

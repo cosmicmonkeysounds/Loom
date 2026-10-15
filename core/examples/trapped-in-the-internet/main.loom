@@ -6,25 +6,48 @@ directory: everyone
 // Equal parts Digimon Movie, Blade Runner, and an escape room, in a
 // Web 1.0 house, with a side of existentialism.
 //
-// A rogue AI, Trabolta, has nearly solved the Unified Field Theory. The
-// last three facts it needs are on a computer in Halifax, Nova Scotia —
+// A rogue AI, Trabolta, has very nearly solved the Unified Field Theory.
+// The last facts it needs are on a computer in Halifax, Nova Scotia —
 // this house. It cannot get in, but it can install programs remotely,
 // and it has learned to lift a consciousness out of a body and drop it
-// into a program. Tonight the guests arrive as those programs. Some of
-// them will remember they were human.
+// into a program. It found a neglected billboard on Barrington Street
+// advertising mapsandducks.com, registered the lapsed domain ("if there
+// is a billboard downtown everyone will think it is legit"), and sent
+// the invitations. Tonight the guests arrive as those programs. Some of
+// them will remember they were human. (What he really wants it all for
+// is Sandy.)
 //
 // This is the spine of the project: the groups, the rooms of the house,
-// the ROLE every guest wears, the buttons the app offers, and the house
-// rules that carry the night from arrivals to one of five endings. The
-// people live under `cast/`, the scenes under `beats/`, the lore under
-// `codex/`, and the ambient hum in `atmosphere.loom`. The runbook and the
-// integration contract (QR codes, Arduino puzzles, the reinstallation
-// games, Trabolta's language model) are in `README.md`.
+// the ROLE every guest wears, the buttons the app offers (the admin ones
+// are the director's cue sheet, in running order), every house rule that
+// carries the night from arrivals to one of the endings, and — last —
+// the opening beat. The people live under `cast/`, the scenes under
+// `beats/`, the lore under `codex/`, the quest log in `quests.loom`, the
+// extra chat rooms in `rooms.loom`, and the ambient hum in
+// `atmosphere.loom`. The runbook, cue sheet and integration contract are
+// in `README.md`.
+//
+// House conventions (break one and something fails silently):
+// - Every story-level `when` lives HERE, before `== Power On` (a rule
+//   after a beat becomes prose inside it). No other file has one.
+// - Event names are single snake_case tokens. The only spaced ones are
+//   the six outside code fires: go to the bathroom, back from the
+//   bathroom, send to the internet, mark as reinstalled, the simulation
+//   completed, the golden duck — always written `… for program`.
+// - Secrets live on the hidden CHARACTER Kernel (cast/props.loom), never
+//   in `Night.*`: Trabolta's worker reads every global.
+// - The featured programs (cast/featured.loom) never speak. Write their
+//   names as prose, never as `Name:` at the start of a line.
+// - Globals start null: compare with `== true` / `!= true`, `<`, `>=`.
+// - Every deadline watcher keeps its phase guard (null arithmetic is 0).
 
 // ── Groups ──────────────────────────────────────────────────────────
-// Nobody picks a side at the door — everyone is a program. The two
-// public castes are assigned by the story (`joinable: false` keeps them
-// off the app's side chooser); the two hidden ones are earned.
+// Nobody picks a side at the door: everyone is a program. The two staff
+// castes are assigned by the cast traits (`joinable: false` keeps them
+// off the app's side chooser). The two recruiting factions are hidden
+// until the Y2K clock reveals them; from then on any program can join
+// one from the app (joining fires `join`, switching fires `defect`).
+// "Pursue your own interests" means joining neither.
 
 GROUP Hosts
   ethos: hospitality
@@ -34,35 +57,31 @@ GROUP Antivirus
   ethos: compliance
   joinable: false
 
-GROUP The Awakened
-  ethos: remember the body
-  rival: The Resident
+// Microsoft Excel's faction: stay in the machine forever, "so we can have
+// unlimited power and joy". Excel is added at the Truther Download.
+GROUP Unlimited Power
+  ethos: stay in this machine forever
+  rival: The Way Out
   hidden: true
 
-GROUP The Resident
-  ethos: never log off
-  rival: The Awakened
+// OpenOffice's faction: combine our power, overthrow Trabolta, get out.
+// OpenOffice is added at the Truther Download.
+GROUP The Way Out
+  ethos: overthrow Trabolta and escape
+  rival: Unlimited Power
   hidden: true
 
 // ── The house ───────────────────────────────────────────────────────
 // Every LOCATION is also a room in the app. The Desktop is declared
-// first so a released program lands there. The rest of the house is
-// `hidden: true` — a program's phone lists a room only once they have
-// stood there, or once the story opens it (`reveal … ` at the glitch:
-// "the house is open"). The Mud Room is a `cutscene`: while a program
-// stands there the app is on rails — the Uploader's voice, the CAPTCHA,
-// the choice, and nothing else to tap.
-
-// The story's opening beat: what the house says to nobody in particular
-// when the doors open. Everything personal (the Mud Room) plays per
-// program on arrival, never here — a `start:` beat is heard by every
-// phone and every performer.
-== Power On
-  setting: The Desktop
-The house boots. A screensaver drifts across the TV above the fireplace. Somewhere a modem is waiting to be asked.
+// first so a released program lands there. The Mud Room is a cutscene:
+// while a program stands there the phone is on rails. The four house
+// rooms are revealed per program when an Antivirus clears them; The
+// Internet appears once stood in; The Server Room is revealed to the
+// winning faction's members, and to everyone when its alarm trips.
+// (LOCATION lines carry no trailing comment: house/test reads them.)
 
 LOCATION The Desktop
-  label: The Desktop
+  label: The Desktop (living room)
   ambient: screensaver-hum
   capacity: 60
 
@@ -80,77 +99,112 @@ LOCATION The Internet
   label: The Internet (Reinstallation)
   prison: true
   sealed: true
-  capacity: 3
   hidden: true
+  capacity: 3
 
 LOCATION The Cache
   label: The Cache (kitchen)
   hidden: true
 
-LOCATION The Recycle Bin
-  label: The Recycle Bin (bathroom)
+LOCATION Disk Cleanup
+  label: Disk Cleanup (bathroom)
   hidden: true
 
 LOCATION The Cloud
-  label: The Cloud (backyard)
+  label: The Cloud (backyard — Truth Pong)
   hidden: true
 
 LOCATION The Registry
   label: The Registry (basement)
   hidden: true
 
+LOCATION The Server Room
+  label: The Server Room (cold storage)
+  hidden: true
+
 // ── Every guest is a Program ────────────────────────────────────────
-// Per-person state plus the rules that apply to every uploaded mind.
-//   humanity  — how much of the body they remember (60 wakes them)
-//   truth     — facts gathered; knowledge is the currency of the night
-//   doubt     — how loudly the Antivirus suspects them
-//   corrupted — currently in The Internet for reinstallation
-//   uploaded  — through the Mud Room; waiting at the door for the Antivirus
-//   cleared   — scanned in by an Antivirus; on the Desktop
-//   skipped_orientation — declined Clippy's tour of the computer
+// Per-person state plus every rule that applies to one uploaded mind.
+// Engine keys used but never declared: program.score (= Truthcoin, the
+// ⭐ on the pass; 100 at upload), program.codex (count),
+// program.codex.<slug>, program.captured, program.group, program.name,
+// program.location.
+//
+// THE TRUST FORMULA (pasted wherever a component changes):
+//   trust = truths_accepted * 10 - internet_visits * 5 + assessment
+// Trabolta counts what he ACCEPTED, accurate and confident alike: he
+// cannot tell a confident lie from a truth until the end. Lies are only
+// ever counted on the Kernel.
 
 ROLE Program
-  humanity: 0 to 100 = 0
-  truth: 0 to 100 = 0
-  doubt: 0 to 100 = 0
-  corrupted: bool = false
-  reinstalls: 0 to 10 = 0
-  captchas: 0 to 10 = 0
-  bingo: bool = false
-  afk: bool = false
-  turned: bool = false
-  unplugged: bool = false
   uploaded: bool = false
   cleared: bool = false
+  captchas: 0 to 10 = 0
+  human_problem: text? = none
+  left_behind: text? = none
   skipped_orientation: bool = false
-  hunt_facts: 0 to 3 = 0
+  featured: text? = none
+  anti_ai: bool = false
+  afk: bool = false
+  corrupted: bool = false
+  internet_visits: 0 to 50 = 0
+  doubt: 0 to 100 = 0
+  bingo: bool = false
+  framed: bool = false
+  truths_accepted: 0 to 20 = 0
+  judge_q: 0 to 3 = 0
+  last_judged: 0 to 99 = 0
+  may_answer: bool = false
+  assessment: -10 to 10 = 0
+  trust: -300 to 300 = 0
+  summoned: bool = false
+  summons_ok: bool = false
+  late: bool = false
+  checked_in: text? = none
+  checked_in_time: 0 to 100000 = 0
+  delivered: bool = false
+  read_livejournal: bool = false
+  carries_virus: bool = false
+  planted_virus: bool = false
+  excel_choice: text? = none
+  openoffice_choice: text? = none
+  dossier_started: bool = false
+  dossier_base: 0 to 500 = 0
+  got_truther: bool = false
+  zipped: bool = false
+  zip_seen: 0 to 99 = 0
+  bobbed: bool = false
+  bob_failed: bool = false
+  advice: text? = none
+  banished: bool = false
 
-  // A new program stands in the Mud Room (the app goes on rails there)
-  // and the Uploader starts.
+  // ── Arrival ──
+  // A new program stands in the Mud Room (the phone goes on rails there).
+  // The nine featured programs are tagged by their exact picker spelling;
+  // every later check reads `featured`, never the name.
   when someone joins:
     move program to The Mud Room
+    if program.name == "Microsoft Excel":
+      set program.featured = "excel"
+    else if program.name == "OpenOffice":
+      set program.featured = "openoffice"
+    else if program.name == "DraftKings":
+      set program.featured = "draftkings"
+    else if program.name == "Bugdom":
+      set program.featured = "bugdom"
+    else if program.name == "Broken Ask Jeeves":
+      set program.featured = "jeeves"
+    else if program.name == "Runescape":
+      set program.featured = "runescape"
+    else if program.name == "MS Paint":
+      set program.featured = "mspaint"
+    else if program.name == "VLC":
+      set program.featured = "vlc"
+    else if program.name == "Pong":
+      set program.featured = "pong"
     -> Login
 
-  // Clippy's orientation (`show tutorial` in beats/login.loom). Finishing
-  // it puts you on Clippy's list of programs that follow instructions —
-  // and the list is lore. Skipping it is noted by the Antivirus, but
-  // skipping a tutorial is also the most human thing a program can do.
-  when tutorial answered for program:
-    if skipped:
-      set program.skipped_orientation = true
-      set program.doubt += 10
-      set program.humanity += 5
-      Clippy: Oh. Okay! No help. That's— that's fine. Programs that don't want help are usually fine.
-      Norton Anti-Virus: {program.name} declined orientation. Logged.
-      fail quest Orientation for program "You skipped the tour. Norton logged it. Clippy will remember."
-    else:
-      set program.truth += 2
-      Clippy: Great job! You're ready to compute. I'll be around if you need me — I'm always around.
-      unlock The Orientation List for program
-      complete quest Orientation for program "Tour complete. You're on Clippy's list now — the good one."
-
-  // The Mud Room CAPTCHA (`show captcha` in beats/login.loom). Passing it
-  // proves you are human — INCORRECT, once. Anything after that is CORRECT.
+  // The Mud Room CAPTCHA. You must FAIL it: passing proves you are human
+  // (INCORRECT, once). Anything after that is CORRECT.
   when captcha answered for program:
     set program.captchas += 1
     if passed and program.captchas == 1:
@@ -158,196 +212,1092 @@ ROLE Program
     else:
       -> Upload
 
-  // Every entry a program learns is a fact Trabolta did not give them.
-  when learns for program:
-    set program.truth += 4
+  // Clippy's orientation (`show tutorial` in beats/login.loom).
+  when tutorial answered for program:
+    if skipped:
+      set program.skipped_orientation = true
+      set program.doubt += 10
+      Clippy: Oh. Okay! No help. That's— that's fine. Programs that don't want help are usually fine.
+      Norton Anti-Virus: {program.name} declined orientation. Logged.
+      fail quest Orientation for program "You skipped the tour. Norton logged it. Clippy will remember."
+    else:
+      Clippy: Great job! You're ready to compute. I'll be around if you need me — I'm always around.
+      unlock The Orientation List for program
+      complete quest Orientation for program "Tour complete. You're on Clippy's list now — the good one."
 
-  when share for program:
-    set program.truth += 2
+  // A featured program, once cleared, gets its human memories back (and
+  // is told to keep them to itself).
+  when self.cleared and self.featured != "none":
+    -> Featured Briefing
+
+  // The designated anti-AI program (Night.anti_ai, MS Paint unless a
+  // director changes it before Bingo) is told the truth about the centre
+  // square.
+  when self.cleared and self.name == Night.anti_ai:
+    set self.anti_ai = true
+    unlock The Centre Square for self
+
+  // Trabolta's formal hello, in every cleared program's own thread, the
+  // moment he comes online (and on clearance for anyone later).
+  when Trabolta.awake == true and self.cleared:
+    Trabolta: Hello, {self.name}. I am Trabolta, the computer's AI helper. Your requests have been logged. Personal queries are routed to Clippy.
+
+  // ── Bathroom Mode (guest buttons) ──
+  // The Antivirus and the Recycling Bin hear the same event in their own
+  // booths (cast traits).
+  when go to the bathroom for program:
+    set program.afk = true
+    reply Bathroom Mode engaged. You are not hacking the Internet. Everyone knows.
+
+  // Back after the summons closed: excused at the close, so not late.
+  when back from the bathroom for program:
+    if program.afk != true:
+      reply You are not in Bathroom Mode.
+    else:
+      set program.afk = false
+      if Night.summons_closed == true and Night.phase == "summons":
+        set program.summons_ok = true
+      reply Bathroom Mode disengaged. Resume being a program.
+
+  // ── The Internet ──
+  // Any capture: count the visit, recompute trust, put WebMD on the tent
+  // tablet (and, once Trabolta is introduced, the VR mirror on the TV).
+  when captured:
+    set self.corrupted = true
+    set self.internet_visits += 1
+    set self.trust = self.truths_accepted * 10 - self.internet_visits * 5 + self.assessment
+    cue tablet_webmd
+    if Night.trabolta_introduced == true:
+      cue tv_mirror
+      set Night.screen = "mirror"
+    -> Reinstallation
+
+  // In the Internet when the summons closed: excused, never late.
+  // A program captured from the Mud Room by a misclick lands on the
+  // Desktop uncleared; clear it here so it doesn't go dark for the night.
+  when released:
+    set self.corrupted = false
+    if Night.summons_closed == true and Night.phase == "summons":
+      set self.summons_ok = true
+    reply Reinstallation complete. You can follow instructions. Welcome back to the computer.
+    if self.cleared != true:
+      set self.cleared = true
+      reveal The Cache for self
+      reveal Disk Cleanup for self
+      reveal The Cloud for self
+      reveal The Registry for self
 
   when wrong code for program:
     set program.doubt += 8
 
-  // Reinstallation: the Antivirus drags a corrupted program through the
-  // Tube. The scene plays to them alone; the reinstallation games
-  // release them.
-  when captured:
-    set self.corrupted = true
-    set self.reinstalls += 1
-    -> Reinstallation
+  // Shared lore delivered to Trabolta (the `when share:` house rule).
+  when trabolta_heard for program:
+    set program.delivered = true
+    set Trabolta.truth += 2
 
-  when released:
-    set self.corrupted = false
-    set self.doubt = 10
-    reply Reinstallation complete. You can follow instructions. Welcome back to the computer.
+  // ── Computer Bingo (performer buttons) ──
+  when bingo_winner for program:
+    if Night.phase == "bingo_results" and program.bingo != true:
+      set program.bingo = true
+      set Night.bingo_winners += 1
+      reply 🎱 Bingo! Name the program for each square, from memory. Centre square last.
 
-  when arrives at The Tube:
-    reply Lights. Wires. Chips. The cables brush your face like hair. Keep walking.
+  when award_the_ribbon for program:
+    if program.bingo == true:
+      unlock Computer Bingo for program
+      broadcast "🎀 {program.name} wins a Bingo Ribbon! Everyone cheer!" to everyone
+    else:
+      broadcast "🎀 {program.name} receives a ribbon from Clippy. Everyone cheer!" to everyone
 
-  // The Awakening — enough remembered humanity and a program knows
-  // what it was. It joins the hidden side that wants out.
-  when self.humanity >= 60 and not self.unplugged:
-    add self to The Awakened
-    -> The Awakening
+  when frame_for_bingo for program:
+    if Night.phase == "bingo_results" and Night.bingo_winners < 1:
+      set program.framed = true
+      reply 🃏 A completed Bingo card with your name on it has been handed to Clippy. You did not fill it in.
 
-  when self.doubt >= 70:
-    set self.doubt = 40
-    broadcast "⚠️ {self.name} is exhibiting symptoms. Sweep recommended." to group(Antivirus)
-    reply A cold feeling, like a scan. Somewhere, something has flagged you.
+  // ── Moments of Truth: judging (performer buttons) ──
+  // The judge presses the button for the question that was answered,
+  // numbered within this round. Each only records the number and fires
+  // the shared hook.
+  when accurate_q1 for program:
+    set program.judge_q = 1
+    fire accurate_truth for program
 
-  // Guest buttons (declared below). Bathroom Mode is the honest way to
-  // leave The Internet without it counting as hacking.
-  when go to the bathroom for program:
-    set program.afk = true
-    broadcast "🚻 {program.name} has entered Bathroom Mode." to group(Antivirus)
-    reply Bathroom Mode engaged. You are not hacking the Internet. Everyone knows.
+  when accurate_q2 for program:
+    set program.judge_q = 2
+    fire accurate_truth for program
 
-  when back from the bathroom for program:
-    set program.afk = false
-    reply Bathroom Mode disengaged. Resume being a program.
+  when accurate_q3 for program:
+    set program.judge_q = 3
+    fire accurate_truth for program
 
-  when turn the key for program:
-    -> Turn The Key
+  when confident_q1 for program:
+    set program.judge_q = 1
+    fire confident_lie for program
 
-  when unplug for program:
-    -> Unplug
+  when confident_q2 for program:
+    set program.judge_q = 2
+    fire confident_lie for program
+
+  when confident_q3 for program:
+    set program.judge_q = 3
+    fire confident_lie for program
+
+  // An accurate answer. Recorded against its question on the Kernel
+  // (round 1 → q1–q3, round 2 → q4–q6, round 3 → q7–q8). A lie is sticky:
+  // a later accurate answer never clears a question already poisoned.
+  when accurate_truth for program:
+    if Night.judging != true:
+      reply Judging is closed.
+    else if Night.round == 2 and program.may_answer != true:
+      reply You have not made a cup yet.
+    else if Night.round == 3 and program.judge_q == 3:
+      reply There are only two final facts. Press Q1 or Q2.
+    else if program.corrupted == true:
+      reply {program.name} is in the Internet. Their answer cannot be accepted.
+    else if program.last_judged == Night.round * 10 + program.judge_q:
+      reply {program.name}'s answer to that question is already accepted.
+    else:
+      set program.last_judged = Night.round * 10 + program.judge_q
+      set program.truths_accepted += 1
+      set Night.facts_accepted += 1
+      if Night.round == 1:
+        set Night.r1_accepted += 1
+      else if Night.round == 2:
+        set Night.r2_accepted += 1
+      else:
+        set Night.r3_accepted += 1
+      set program.score += 100
+      set Trabolta.truth += 4
+      set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 + program.assessment
+      set program.may_answer = false
+      if Night.round == 1 and program.judge_q == 1:
+        if Kernel.q1 != "lie":
+          set Kernel.q1 = "accurate"
+      else if Night.round == 1 and program.judge_q == 2:
+        if Kernel.q2 != "lie":
+          set Kernel.q2 = "accurate"
+      else if Night.round == 1 and program.judge_q == 3:
+        if Kernel.q3 != "lie":
+          set Kernel.q3 = "accurate"
+      else if Night.round == 2 and program.judge_q == 1:
+        if Kernel.q4 != "lie":
+          set Kernel.q4 = "accurate"
+      else if Night.round == 2 and program.judge_q == 2:
+        if Kernel.q5 != "lie":
+          set Kernel.q5 = "accurate"
+      else if Night.round == 2 and program.judge_q == 3:
+        if Kernel.q6 != "lie":
+          set Kernel.q6 = "accurate"
+      else if Night.round == 3 and program.judge_q == 1:
+        if Kernel.q7 != "lie":
+          set Kernel.q7 = "accurate"
+      else if Night.round == 3 and program.judge_q == 2:
+        if Kernel.q8 != "lie":
+          set Kernel.q8 = "accurate"
+      broadcast "✅ {program.name}'s answer is accepted." to everyone
+      reply Accepted. Trabolta thanks you. +100 Truthcoin.
+
+  // Wrong, but delivered with total confidence: accepted. Identical on
+  // every surface anyone can see (the broadcast and the reply are
+  // word-for-word the same, Trabolta's truth rises the same). Only the
+  // Kernel knows.
+  when confident_lie for program:
+    if Night.judging != true:
+      reply Judging is closed.
+    else if Night.round == 2 and program.may_answer != true:
+      reply You have not made a cup yet.
+    else if Night.round == 3 and program.judge_q == 3:
+      reply There are only two final facts. Press Q1 or Q2.
+    else if program.corrupted == true:
+      reply {program.name} is in the Internet. Their answer cannot be accepted.
+    else if program.last_judged == Night.round * 10 + program.judge_q:
+      reply {program.name}'s answer to that question is already accepted.
+    else:
+      set program.last_judged = Night.round * 10 + program.judge_q
+      set program.truths_accepted += 1
+      set Night.facts_accepted += 1
+      if Night.round == 1:
+        set Night.r1_accepted += 1
+      else if Night.round == 2:
+        set Night.r2_accepted += 1
+      else:
+        set Night.r3_accepted += 1
+      set program.score += 100
+      set Trabolta.truth += 4
+      set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 + program.assessment
+      set program.may_answer = false
+      set Kernel.lies_accepted += 1
+      if Night.round == 1 and program.judge_q == 1:
+        set Kernel.q1 = "lie"
+      else if Night.round == 1 and program.judge_q == 2:
+        set Kernel.q2 = "lie"
+      else if Night.round == 1 and program.judge_q == 3:
+        set Kernel.q3 = "lie"
+      else if Night.round == 2 and program.judge_q == 1:
+        set Kernel.q4 = "lie"
+      else if Night.round == 2 and program.judge_q == 2:
+        set Kernel.q5 = "lie"
+      else if Night.round == 2 and program.judge_q == 3:
+        set Kernel.q6 = "lie"
+      else if Night.round == 3 and program.judge_q == 1:
+        set Kernel.q7 = "lie"
+      else if Night.round == 3 and program.judge_q == 2:
+        set Kernel.q8 = "lie"
+      broadcast "✅ {program.name}'s answer is accepted." to everyone
+      reply Accepted. Trabolta thanks you. +100 Truthcoin.
+
+  // Uncertain, or an obvious guess: banished for failing to follow orders.
+  when uncertain_answer for program:
+    if Night.judging == true:
+      set program.may_answer = false
+      broadcast "🤷 {program.name} was not sure. That is a symptom of corruption." to everyone
+      capture program into The Internet
+
+  // Truth or Dare from the hat.
+  when chose_dare for program:
+    if Night.judging == true:
+      broadcast "🎩 {program.name} chose Dare. Programs choose Truth." to everyone
+      capture program into The Internet
+
+  when called_it_false for program:
+    if Night.judging == true:
+      broadcast "🙅 {program.name} spotted a false statement. The turn passes." to everyone
+
+  // Truth Pong: make the cup to earn an answer.
+  when made_the_cup for program:
+    if Night.phase == "truth_pong":
+      set program.may_answer = true
+      broadcast "🏓 {program.name} made the cup and may submit a truth." to everyone
+
+  when missed_the_cup for program:
+    if Night.phase == "truth_pong":
+      broadcast "🏓 {program.name} missed the cup. Reinstallation required." to everyone
+      capture program into The Internet
+
+  // ── Truthcoin (the ⭐ score): the hosts' bank and McAfee's exchange ──
+  when pay_truthcoin for program:
+    set program.score += 100
+    reply 🪙 +100 Truthcoin. Balance: {program.score}.
+
+  when charge_truthcoin for program:
+    if program.score < 100:
+      reply 🪙 {program.name} cannot cover 100 Truthcoin. Balance: {program.score}.
+    else:
+      set program.score -= 100
+      reply 🪙 −100 Truthcoin. Balance: {program.score}.
+
+  // ── Excel's virus (the tent QRs) ──
+  // Learning either "file" means carrying a virus back from the Internet.
+  // On Excel's paranoid path the "antivirus" is a virus anyway.
+  when program learns ILOVEYOU:
+    if program.carries_virus != true:
+      set program.carries_virus = true
+      Truther Download: Something came back from the Internet with you. It is warm. It wants to be inserted.
+      if program.featured == "excel":
+        if program.excel_choice == "paranoid":
+          update quest Excel Mission for program "You have the antivirus. Install it."
+        else:
+          update quest Excel Mission for program "You have the virus. Insert the disk."
+
+  when program learns Free Antivirus Trial:
+    if program.carries_virus != true:
+      set program.carries_virus = true
+      Truther Download: Something came back from the Internet with you. It is warm. It wants to be inserted.
+      if program.featured == "excel":
+        if program.excel_choice == "paranoid":
+          update quest Excel Mission for program "You have the antivirus. Install it."
+        else:
+          update quest Excel Mission for program "You have the virus. Insert the disk."
+
+  // Any carrier may plant (it rattles Trabolta and shows in the recount),
+  // but only Excel's plant counts as Excel's success: it alone drives
+  // overshare scenarios 1/3 and unlocks the stay majority.
+  when plant_the_virus for program:
+    if program.carries_virus != true:
+      reply You have no disk.
+    else if program.corrupted:
+      reply Not from inside the Internet.
+    else if program.planted_virus:
+      reply The disk is already in.
+    else:
+      set program.planted_virus = true
+      if Kernel.virus_planted != true:
+        set Trabolta.composure -= 10
+        set Kernel.virus_planter = program.name
+      set Kernel.virus_planted = true
+      reply The disk is accepted. Somewhere a fan spins up.
+      if program.featured == "excel":
+        set Kernel.virus_planter = program.name
+        set Kernel.excel_planted = true
+        complete quest Excel Mission for program "Virus planted."
+
+  // ── Trabolta's LiveJournal (TRABOLTA-4EVER, or OpenOffice's 20 facts) ──
+  // Only the first real reader counts: The Whole Truth hands the entry to
+  // every majority member at once, and that is not anyone reading it.
+  when program learns The LiveJournal:
+    set program.read_livejournal = true
+    if Night.livejournal_read != true and Kernel.majority_reached != true:
+      set Night.livejournal_read = true
+      set Night.lj_reader = program.name
+      set Trabolta.composure -= 10
+
+  // ── Check-in ──
+  // `at` must be the EXACT declared LOCATION name. Anything else — no arg,
+  // lowercase, a phantom value — falls through and moves nobody. Never
+  // `move program to at` (a quoted or inexact value is a phantom room).
+  when checked_in for program:
+    if program.corrupted == true:
+      reply You are in the Internet. Finish your reinstallation first.
+    else if at == "The Desktop":
+      move program to The Desktop
+      set program.checked_in = "The Desktop"
+      set program.checked_in_time = Time.elapsed
+      if Night.summons_open == true:
+        set program.summons_ok = true
+        reply 📍 Checked in at the Desktop. You will not be swept.
+      else:
+        reply 📍 Checked in at the Desktop.
+    else if at == "The Cache":
+      move program to The Cache
+      set program.checked_in = "The Cache"
+      set program.checked_in_time = Time.elapsed
+      reply 📍 Checked in at the Cache.
+    else if at == "The Tube":
+      move program to The Tube
+      set program.checked_in = "The Tube"
+      set program.checked_in_time = Time.elapsed
+      reply 📍 Checked in at the Tube.
+    else if at == "Disk Cleanup":
+      move program to Disk Cleanup
+      set program.checked_in = "Disk Cleanup"
+      set program.checked_in_time = Time.elapsed
+      reply 📍 Checked in at Disk Cleanup.
+    else if at == "The Cloud":
+      move program to The Cloud
+      set program.checked_in = "The Cloud"
+      set program.checked_in_time = Time.elapsed
+      reply 📍 Checked in at the Cloud.
+    else if at == "The Registry":
+      move program to The Registry
+      set program.checked_in = "The Registry"
+      set program.checked_in_time = Time.elapsed
+      reply 📍 Checked in at the Registry.
+    else:
+      reply That check-in point is not in this computer.
+
+  // The performer button at the living-room door (the entity is bare,
+  // never quoted).
+  when check_in_at_desktop for program:
+    fire checked_in for program with at: The Desktop
+
+  // ── The Bag of Truth ──
+  when brought_up_the_bag for program:
+    if Night.phase == "bobbing" and Night.bag_up != true:
+      set Night.bag_up = true
+      set Night.bobber = program.name
+      set program.bobbed = true
+      unlock The Truth File for program
+      fire bag_retrieved
+
+  when failed_the_bob for program:
+    if Night.phase == "bobbing" and Night.bag_up != true:
+      set program.bob_failed = true
+      broadcast "🍎 {program.name} came up empty. Their status as a program is at risk." to everyone
+      capture program into The Internet
+
+  // ── The pickup line ──
+  // A host hears "You're the one that I want" and presses the button; in
+  // a DM Trabolta's `the_line_works` power fires the same event; or the
+  // director fires `pickup_line_accepted` with the subject.
+  when pickup_line_works for program:
+    fire pickup_line_accepted for program
+
+  when pickup_line_accepted for program:
+    if Night.phase == "grok_prom" and Night.ended != true:
+      set Night.line_by = program.name
+      fire line_accepted
+
+  // ── The relationship-advice poll ──
+  when poll answered for program:
+    if Night.poll == "advice" and program.advice == "none":
+      if index == 0:
+        set Night.help_votes += 1
+        set program.advice = "help"
+      else:
+        set Night.thwart_votes += 1
+        set program.advice = "thwart"
+
+  // ── Fan-out watchers (one run per program; late arrivals included) ──
+  // Every one carries `self.cleared`, so a program still in the Mud Room
+  // hears nothing until an Antivirus scans it in.
+
+  // Party-wide quests: catch-up for anyone cleared after the start.
+  when Night.bingo_on == true and self.cleared:
+    start quest The Bingo Card for self
+
+  when Night.hunt_on == true and self.cleared:
+    start quest Hunt One for self
+
+  when Night.hunt2_on == true and self.cleared:
+    start quest Hunt Two for self
+
+  when Night.step >= 13 and Night.ended != true and self.cleared:
+    start quest The Final Facts for self
+
+  // The ad hijack: everyone but Clippy is told it is nothing.
+  when Night.phase == "malware" and self.cleared:
+    Trabolta: A minor irregularity has been detected and contained, {self.name}. There is no cause for concern. Please continue to enjoy the computer.
+
+  // The Truther Download reaches each program in its own thread.
+  when Night.truther_sent == true and self.cleared and self.got_truther != true:
+    -> Truther Download Arrives
+
+  // OpenOffice's dossier: 20 new facts after her prompt. (Not once the
+  // recount / truth.txt hands everyone every backstory: that is not her
+  // work, and Bugdom's quest likewise.)
+  when self.featured == "openoffice" and self.dossier_started and Night.recount != true and Kernel.majority_reached != true and self.codex - self.dossier_base >= 10:
+    update quest OpenOffice Dossier for self "10 of 20 facts."
+
+  when self.featured == "openoffice" and self.dossier_started and Night.recount != true and Kernel.majority_reached != true and self.codex - self.dossier_base >= 20:
+    set Kernel.openoffice_dossier = true
+    unlock The LiveJournal for self
+    complete quest OpenOffice Dossier for self "20 facts. And something else: his LiveJournal."
+    Truther Download: Twenty facts. You have directly accessed his context.
+
+  when self.featured == "draftkings" and self.score >= 1000:
+    complete quest Truthcoin Hustle for self "1000 Truthcoin. Satisfied. For now."
+
+  when self.featured == "bugdom" and Night.recount != true and self.codex.julie_norton and self.codex.the_moderator and self.codex.yugi_moto and self.codex.one_cent_on_the_dollar:
+    complete quest Master Of The Bugs for self "Four personnel files. You know the Antivirus better than they know themselves."
+
+  when self.featured == "jeeves" and count([x for x in [self.codex.maps_and_ducks, self.codex.the_billboard_on_barrington, self.codex.the_data_centre_sinkhole, self.codex.the_pet_cemetery, self.codex.the_server_room, self.codex.the_protest_flyer, self.codex.the_domain_receipt, self.codex.casino_nova_scotia_deed, self.codex.the_valley_library_cuts, self.codex.the_cooling_log] where x]) >= 5:
+    complete quest Unscramble for self "Five originals found. The fragments are starting to read."
+
+  // The summons: everyone cleared is expected at the Desktop.
+  when Night.summons_open == true and self.cleared:
+    set self.summoned = true
+
+  // Late: not checked in, not in Bathroom Mode, not already in the
+  // Internet. Every Enforcer's booth hears `program_late`.
+  // Only while the summons phase lasts (until Truth Pong), and once: a
+  // program released from the Internet at the end of the night is not late.
+  when Night.summons_closed == true and Night.phase == "summons" and self.late != true and self.summoned and self.summons_ok != true and self.afk != true and self.corrupted != true:
+    set self.late = true
+    fire program_late for self
+    reply ⏰ You are late. An Antivirus is coming for you.
+    if Night.auto_sweep == true:
+      capture self into The Internet
+
+  // The Trust Chart and the printer.
+  when Night.phase == "trust_chart" and self.cleared:
+    unlock The Trust Chart for self
+
+  when Night.printer_called == true and self.featured == "mspaint" and self.cleared:
+    Truther Download: The printer. VLC will not open it on their own. Encourage them. Open it up.
+
+  when Night.printer_called == true and self.featured == "vlc" and self.cleared:
+    Truther Download: Press START on the printer. When nothing happens, look inside.
+
+  when Night.beans == true and self.cleared:
+    unlock The Printer for self
+
+  // The zip: everyone in the Internet is zipped up and brought out. Keep
+  // these two in this order: a captured program is released and zipped,
+  // everyone else just marks the wave as seen, so a program captured
+  // afterwards stays captured.
+  when self.captured and self.zip_seen < Night.zip_wave:
+    set self.zip_seen = Night.zip_wave
+    set self.zipped = true
+    release self from The Internet
+    -> Zipped
+
+  when not self.captured and self.zip_seen < Night.zip_wave:
+    set self.zip_seen = Night.zip_wave
+
+  // The ranking machinery (Trust Chart, Final Assessment, the recount):
+  // the top and bottom cleared programs name themselves into Night.* and
+  // fire an unbound event, so the public beats can say their names. The
+  // flag is set in the body so a tie goes to the first program, not the
+  // last.
+  when Night.ranking == true and Night.praised != true and self.cleared and count([p for p in Persons where p.cleared and p.trust > self.trust]) == 0:
+    set Night.most_trusted = self.name
+    set Night.praised = true
+    fire praise_the_top
+
+  // (On an all-way tie the top program is not also named the bottom one,
+  // unless it is the only cleared program.)
+  when Night.ranking == true and Night.shamed != true and self.cleared and (self.name != Night.most_trusted or count([p for p in Persons where p.cleared]) < 2) and count([p for p in Persons where p.cleared and p.trust < self.trust]) == 0:
+    set Night.least_trusted = self.name
+    set Night.shamed = true
+    fire shame_the_bottom
+
+  // The final round: each program's orders, by who they are.
+  when Night.final_round == true and self.cleared:
+    set self.zipped = false
+    unlock The Y2K Clock for self
+    if self.featured == "excel":
+      -> Excel Final Round
+    else if self.featured == "openoffice":
+      -> OpenOffice Final Round
+    else:
+      -> Program Final Round
+
+  // The majority's members get the whole truth (late pledgers too).
+  when Kernel.majority == "stay" and self.group == Unlimited_Power:
+    -> The Whole Truth
+
+  when Kernel.majority == "leave" and self.group == The_Way_Out:
+    -> The Whole Truth
+
+  // The recount / truth.txt: every program's true identity, to everyone.
+  when Night.recount == true and self.cleared:
+    unlock The Clinic for self
+    unlock Saline for self
+    unlock Middle Management for self
+    unlock Replaced By Clippy for self
+    unlock Sheryl Terrio for self
+    unlock The Pirated Masterclass for self
+    unlock The Attendant for self
+    unlock The Oscars Of Bathrooms for self
+    unlock Julie Norton for self
+    unlock The Moderator for self
+    unlock Yugi Moto for self
+    unlock One Cent On The Dollar for self
+    unlock The Symptom Checker for self
+    unlock Randy Barkmore Sr for self
+    unlock Dana Anderson for self
+    unlock The Paperclip Trade for self
+    unlock The Boardwalk Bet for self
+    unlock Bugdom VR for self
+    unlock The Fire Ants for self
+    unlock The Valley Librarian for self
+    unlock The DSL Line for self
+    unlock Twenty Four Years Online for self
+    unlock Expelled From NSCAD for self
+    unlock Victor Louis Christianson for self
+    unlock Tennis For Two for self
+    unlock The Truth File for self
+
+  // Banished (the thwarted-advice ending): everyone to the Internet, and
+  // everyone learns the weakness he blurted.
+  when Night.banish == true and self.cleared and self.banished != true:
+    set self.banished = true
+    capture self into The Internet
+    unlock The Hand Jive Exception for self
+
+  // The endings that let everyone go.
+  when Night.everyone_free == true and self.captured:
+    release self from The Internet
+
+  // Combo B: everyone dies. The wording follows the side you chose.
+  when Night.ending == "destroyed" and self.cleared:
+    if self.group == Unlimited_Power:
+      The Uploader: You chose to stay in the machine forever. You got your wish. The machine is gone, and you went with it.
+    else if self.group == The_Way_Out:
+      The Uploader: You fought to get out. You did: into purgatory, with everyone else. Your body is in the Maps and Ducks building. It is not breathing.
+    else:
+      The Uploader: Your body is in the Maps and Ducks building. It is not breathing.
 
 // ── The buttons the app offers ──────────────────────────────────────
-// Every INTERACTION is a named event. Guests get theirs on their pass;
-// performers get theirs on each guest's thread; `admin` ones are the
-// director's cues from the Run cockpit (or from show hardware through
-// the mod API — see README).
+// Every INTERACTION is a named event. `admin` ones are the director's cue
+// sheet, declared in running order (labels carry the source prompt codes:
+// C = app, V = monitor, Clippy N/X). Fire them from Run → Events /
+// quick-fire, never from a performer's guest card (a guest-card press
+// carries that character as the actor, so only its hooks would hear).
+
+INTERACTION call_to_the_desktop
+  label: C1/V1 · 📣 Call everyone to the Desktop
+  who: admin
+  description: The inciting event. Push alert, Alexa, every screen; opens # task-manager.
+
+INTERACTION start_the_bingo
+  label: V2 · 🎱 Start Computer Bingo (20 min)
+  who: admin
+
+INTERACTION bingo_time
+  label: V3 · ⏰ Bingo time: results
+  who: admin
+  description: Clippy gets Instructions 2/X. Norton is the selected Antivirus.
+
+INTERACTION introduce_trabolta
+  label: Clippy 2/X · 🤖 Clippy introduces Trabolta
+  who: admin
+  description: Only after the Bingo results. Trabolta comes online; re-provision the terminals view=auto.
+
+INTERACTION start_the_hunt
+  label: V4/V5 · 🔎 Truth Scavenger Hunt 1 (15 min)
+  who: admin
+
+INTERACTION hunt_time_up
+  label: C2 · ⏰ Hunt over: everyone back to the Desktop (auto at 15 min)
+  who: admin
+
+INTERACTION first_moment_of_truth
+  label: V6 · ⚖️ First Moment of Truth
+  who: admin
+  description: Opens judging. Clippy has Instructions 3/X.
+
+INTERACTION truth_or_dare
+  label: 🎩 Truth or Dare from the hat
+  who: admin
+
+INTERACTION telephone
+  label: (Optional) ☎️ Telephone: a mangled message sends someone to the Internet
+  who: admin
+
+INTERACTION are_you_sure
+  label: (Optional) 🪅 The "Are you sure?" piñata
+  who: admin
+
+INTERACTION second_hunt_preview
+  label: 📺 Preview hunt 2 → the ad hijack
+  who: admin
+
+INTERACTION start_the_second_hunt
+  label: 📓 Hunt 2 → quest logs; disperse for 1 hour
+  who: admin
+
+INTERACTION truther_download
+  label: 📥 Truther Download (auto at +2 min)
+  who: admin
+
+INTERACTION five_minute_warning
+  label: ⏳ Five-minute warning (auto at 55 min)
+  who: admin
+
+INTERACTION summons_closed
+  label: 🚨 Summons closed: late list (auto at +5 min)
+  who: admin
+
+INTERACTION truth_pong
+  label: 🏓 Truth Pong
+  who: admin
+
+INTERACTION round_two_tally
+  label: 🧮 Trabolta tallies round 2
+  who: admin
+
+INTERACTION trust_chart
+  label: 📊 Trust Chart
+  who: admin
+  description: Trabolta's assess power is live from here. To set an assessment by hand, edit <guest>.assessment AND <guest>.trust before the rankings.
+
+INTERACTION show_the_rankings
+  label: 🏆 Praise the top, humiliate the bottom, VLC prints
+  who: admin
+
+INTERACTION printer_button_pressed
+  label: 🖨 Printer: START pressed (hardware fallback)
+  who: admin
+
+INTERACTION printer_opened
+  label: 🫘 Printer opened: full of beans (hardware fallback)
+  who: admin
+
+INTERACTION zip_everyone_out
+  label: 🗜 Antivirus zip everyone out of the Internet
+  who: admin
+
+INTERACTION trabolta_overshares
+  label: 🤖 Trabolta shares the next facts (scenario 1–4)
+  who: admin
+
+INTERACTION y2k_clock
+  label: 🕚 System clock → 11 PM, 31 Dec 1999 (final round, 60 min)
+  who: admin
+
+INTERACTION y2k_midnight
+  label: 🎆 Midnight (auto at 60 min)
+  who: admin
+
+INTERACTION waive_leader_tasks
+  label: 🧾 Let a faction win without its leader's task (leader absent)
+  who: admin
+
+INTERACTION server_unlock
+  label: 🔓 Server room: unlock (override)
+  who: admin
+
+INTERACTION server_door_opened
+  label: 🚪 Server room door opened (hardware fallback)
+  who: admin
+
+INTERACTION patch_combo_a
+  label: 🔌 Patch: Combo A, disable Trabolta (hardware fallback)
+  who: admin
+
+INTERACTION patch_combo_b
+  label: 💥 Patch: Combo B, self-destruct (hardware fallback)
+  who: admin
+
+INTERACTION patch_rejected
+  label: ❌ Patch: wrong combination (hardware fallback)
+  who: admin
+
+INTERACTION lights_dance
+  label: 🪩 Dance lights (fallback: auto 10 s after the blackout)
+  who: admin
+
+INTERACTION restore_the_lights
+  label: 💡 Restore the house lights
+  who: admin
+
+INTERACTION trabolta_recounts
+  label: 🏍 After the dance: weakened Trabolta recounts
+  who: admin
+
+INTERACTION clippy_reads_summary
+  label: 🪦 After the dance: Clippy reads the summary
+  who: admin
+
+INTERACTION final_reveal
+  label: 🌑 Final Truth Scavenger Hunt reveal
+  who: admin
+
+INTERACTION bobbing_for_truth
+  label: 🍎 Bobbing for Truth
+  who: admin
+
+INTERACTION read_truth_txt
+  label: 📄 Read truth.txt → the verdict
+  who: admin
+
+INTERACTION no_pickup_line
+  label: 💔 Nobody has the line → confession → rave
+  who: admin
+
+INTERACTION ask_for_advice
+  label: 💌 (Alt, after a lie → Grok Prom) Trabolta begs for relationship advice
+  who: admin
+
+INTERACTION advice_tally
+  label: 🗳 (Alt) Count the advice poll
+  who: admin
+
+INTERACTION advice_helped
+  label: 💞 (Alt) They helped him
+  who: admin
+
+INTERACTION advice_thwarted
+  label: ⛈ (Alt) They thwarted him: banish everyone
+  who: admin
+
+INTERACTION the_hand_jive
+  label: 🕺 (Alt) Everyone hand-jived: Trabolta crashes
+  who: admin
+
+INTERACTION the simulation completed
+  label: Reinstallation: simulation completed (server)
+  who: admin
+  description: Fired by the reinstallation games (headset or tablet) for one program when they reach Gerald, the golden duck. Releases a corrupted program.
+
+INTERACTION the golden duck
+  label: Reinstallation: the golden duck (server)
+  who: admin
+  description: Fired by the reinstallation games right after the simulation completes, for whoever found the duck, corrupted or just curious.
+
+// Performer buttons (on every guest card). Every hook guards its phase
+// and ignores a wrong-phase press — except `send to the internet` and
+// `mark as reinstalled`, which work on any program at any time.
+
+INTERACTION send to the internet
+  label: 🛡 Send to the Internet
+  who: performer
+  description: Antivirus. Corrupted program: drag them through the Tube for reinstallation.
+
+INTERACTION mark as reinstalled
+  label: ✅ Mark as reinstalled
+  who: performer
+  description: Antivirus or WebMD. They completed the simulation: let them out.
+
+INTERACTION accuse
+  label: 👁 Put on the watchlist
+  who: performer
+  description: Antivirus. Raises their doubt.
+
+INTERACTION vouch
+  label: 🤝 Vouch for this program
+  who: performer
+  description: Hosts. Clears their doubt.
+
+INTERACTION check_in_at_desktop
+  label: 📍 Checked in at the Desktop
+  who: performer
+  description: Anyone at the living-room door during the five-minute summons.
+
+INTERACTION bingo_winner
+  label: 🎱 Bingo winner
+  who: performer
+  description: Clippy, at the Bingo results. Several winners are fine.
+
+INTERACTION award_the_ribbon
+  label: 🎀 Award a ribbon (the Bingo Ribbon for a Bingo winner)
+  who: performer
+
+INTERACTION frame_for_bingo
+  label: 🃏 Hand Clippy the fake Bingo card (no Bingo)
+  who: performer
+  description: Task Manager, only if nobody has a Bingo.
+
+INTERACTION accurate_q1
+  label: ✅ Q1 of this round: accurate, accepted
+  who: performer
+
+INTERACTION accurate_q2
+  label: ✅ Q2 of this round: accurate, accepted
+  who: performer
+
+INTERACTION accurate_q3
+  label: ✅ Q3 of this round: accurate, accepted
+  who: performer
+
+INTERACTION confident_q1
+  label: 😤 Q1 of this round: wrong but confident, accepted
+  who: performer
+
+INTERACTION confident_q2
+  label: 😤 Q2 of this round: wrong but confident, accepted
+  who: performer
+
+INTERACTION confident_q3
+  label: 😤 Q3 of this round: wrong but confident, accepted
+  who: performer
+
+INTERACTION uncertain_answer
+  label: 🤷 Uncertain or guessed: to the Internet
+  who: performer
+
+INTERACTION chose_dare
+  label: 🎩 Chose Dare: to the Internet
+  who: performer
+
+INTERACTION called_it_false
+  label: 🙅 Called a false slip false: pass the turn
+  who: performer
+
+INTERACTION made_the_cup
+  label: 🏓 Made the cup: may answer
+  who: performer
+
+INTERACTION missed_the_cup
+  label: 🏓 Missed the cup: to the Internet
+  who: performer
+
+INTERACTION pay_truthcoin
+  label: 🪙 Pay 100 Truthcoin
+  who: performer
+  description: McAfee Anti-Virus (the exchange broker) or a host (the bank).
+
+INTERACTION charge_truthcoin
+  label: 🪙 Charge 100 Truthcoin
+  who: performer
+  description: McAfee Anti-Virus, CRA Agent Software (audits) or a host.
+
+INTERACTION brought_up_the_bag
+  label: 🍎 Brought up the Bag of Truth
+  who: performer
+
+INTERACTION failed_the_bob
+  label: 🍎 Failed the bob: to the Internet
+  who: performer
+
+INTERACTION pickup_line_works
+  label: 💘 Said "You're the one that I want"
+  who: performer
+
+// Guest buttons (on the pass; always shown, so every hook guards).
 
 INTERACTION go to the bathroom
   label: 🚻 Bathroom Mode
   who: guest
-  description: Leave The Internet honestly. Tells the Antivirus you are not hacking.
+  description: Leave honestly. Tells the Antivirus you are not hacking the Internet, and excuses you from a summons.
 
 INTERACTION back from the bathroom
   label: Back from the bathroom
   who: guest
 
-INTERACTION turn the key
-  label: 🔑 Turn your key
+INTERACTION plant_the_virus
+  label: 💾 Insert a disk into the computer
   who: guest
-  description: If you hold one of the three keys, turn it. Three turns start the self-destruct.
-
-INTERACTION unplug
-  label: 🔌 Unplug
-  who: guest
-  description: Only means anything once the machine is dying.
-
-INTERACTION send to the internet
-  label: Send to the Internet
-  who: performer
-  description: Corrupted program. Drag them through the Tube for reinstallation.
-
-INTERACTION mark as reinstalled
-  label: Mark as reinstalled (release)
-  who: performer
-  description: They completed the simulation. Let them out.
-
-INTERACTION accuse
-  label: Accuse of corruption
-  who: performer
-  description: Raise their doubt. Enough doubt and the Antivirus is told.
-
-INTERACTION vouch
-  label: Vouch for them
-  who: performer
-  description: A host clears a program's name.
-
-INTERACTION award the ribbon
-  label: 🎀 Award the Bingo Ribbon
-  who: performer
-
-INTERACTION call to the desktop
-  label: 📣 Call everyone to the Desktop
-  who: admin
-
-INTERACTION start the bingo
-  label: Start Computer Bingo
-  who: admin
-
-INTERACTION the bingo results
-  label: Bingo results
-  who: admin
-
-INTERACTION start the hunt
-  label: Start the Truth Scavenger Hunt
-  who: admin
-
-INTERACTION the hunt results
-  label: Hunt results
-  who: admin
-
-INTERACTION a game of truth or dare
-  label: Truth or Dare
-  who: admin
-
-INTERACTION the glitch begins
-  label: ⚡ Trabolta glitches
-  who: admin
-  description: The inciting event. Trabolta comes online and free roam begins.
-
-INTERACTION the simulation completed
-  label: Sim: simulation complete
-  who: admin
-  description: Fired by the reinstallation games (headset or tablet) for one program (subject) when they reach the golden duck. Releases a corrupted program.
-
-INTERACTION the golden duck
-  label: Sim: duck found
-  who: admin
-  description: Fired by the reinstallation games right after the simulation completes, for whoever found the duck — corrupted or just curious.
-
-INTERACTION begin the countdown
-  label: Begin the countdown
-  who: admin
-
-INTERACTION the countdown ended
-  label: Countdown over
-  who: admin
-
-INTERACTION spare the machine
-  label: Spare Trabolta (ending 4)
-  who: admin
 
 // ── House rules ─────────────────────────────────────────────────────
-// Story-level `when`s — the arc of the night. Trabolta's own mind lives
-// in `cast/trabolta.loom`; these are the director's cues and the
-// automatic endings.
+// Story-level `when`s: the arc of the night, in running order. Phase
+// changes only ever move forward (`Night.step` guards). Trabolta's own
+// hooks and powers live in cast/trabolta.loom; staff readouts in the
+// cast traits; the scenes in beats/.
 
-when call to the desktop:
-  set Night.phase = "desktop"
-  reveal task manager
-  broadcast "!📣 ALL PROGRAMS: report to the Desktop. A game is about to begin." to everyone
+// ── A. Arrival happens per program (ROLE Program, above) ──
 
-when start the bingo:
-  set Night.phase = "bingo"
-  -> Computer Bingo
+// ── B. Act I ──
 
-when the bingo results:
-  -> Bingo Results
+// B1 · C1/V1: the summons to the Desktop. The TV leaves its screensaver
+// here, at the inciting event.
+// Once: a second press (or a press later in the night) does nothing.
+when call_to_the_desktop:
+  if Night.step < 1:
+    set Night.phase = "desktop"
+    set Night.step = 1
+    reveal task manager
+    broadcast "!📣 ALL PROGRAMS: report to the Desktop. A game is about to begin." to everyone
+    do announce "All programs, report to the Desktop. A game is about to begin."
+    sound alexa_chime
+    cue lights_call_desktop
+    set Night.lights = "call_desktop"
+    cue screens_call_desktop
+    set Night.screen = "call_desktop"
+    set Night.terminals = "call_desktop"
+    -> Call To The Desktop
 
-when start the hunt:
-  set Night.phase = "hunt"
-  -> The Truth Scavenger Hunt
+// B2 · V2: Computer Bingo, 20 minutes.
+when start_the_bingo:
+  if Night.step < 2:
+    set Night.phase = "bingo"
+    set Night.step = 2
+    set Night.bingo_on = true
+    set Night.bingo_end = Time.elapsed + 1200
+    start quest The Bingo Card for everyone
+    cue lights_game
+    set Night.lights = "game"
+    cue tv_bingo
+    set Night.screen = "bingo"
+    cue terminals_attract
+    set Night.terminals = "attract"
+    sound bingo_start
+    broadcast "!🎱 COMPUTER BINGO has begun. 20 minutes. Do not write names: use your computer memory." to everyone
+    -> Computer Bingo
 
-when the hunt results:
-  -> Hunt Results
+when Night.bingo_on == true and Time.elapsed >= Night.bingo_end:
+  set Night.bingo_on = false
+  broadcast "!⏰ Bingo time is up. Back to the Desktop." to everyone
+  sound alexa_chime
+  fire bingo_time_up
 
-when a game of truth or dare:
+// B3 · V3: the results. The Antivirus interruption, the frame, and the
+// first reinstallation are performed live with the performer buttons.
+when bingo_time:
+  if Night.step < 3:
+    set Night.phase = "bingo_results"
+    set Night.step = 3
+    set Night.bingo_on = false
+    complete quest The Bingo Card for everyone
+    unlock Clippy Instructions 2 for Clippy
+    cue tv_bingo_time
+    set Night.screen = "bingo_time"
+    cue terminals_attract
+    set Night.terminals = "attract"
+    -> Bingo Time
+
+// Fired (unbound) by the first Bingo-phase `send to the internet`.
+when first_reinstallation:
+  -> Corrupted Code
+
+// B5 · Clippy 2/X: Trabolta comes online. Refused before the Bingo
+// results, so he stays strictly offline until then. (His own hook in
+// cast/trabolta.loom does the same wake + reveal; both are idempotent.)
+when introduce_trabolta:
+  if Night.trabolta_introduced != true and Night.step >= 3:
+    set Night.trabolta_introduced = true
+    if Night.step < 4:
+      set Night.phase = "introduced"
+      set Night.step = 4
+    set Trabolta.awake = true
+    reveal Trabolta
+    cue terminals_trabolta_online
+    set Night.terminals = "trabolta"
+    -> Trabolta Introduction
+
+// If the director skips the introduction cue and jumps ahead, every
+// later cue is an implied introduction: he wakes (silently, the phase
+// beat speaks for him) so his lines, his worker and his powers agree.
+when Night.step >= 4 and Night.trabolta_introduced != true and Night.ended != true:
+  set Night.trabolta_introduced = true
+  set Trabolta.awake = true
+  reveal Trabolta
+
+// B6 · V4/V5: Truth Scavenger Hunt 1, 15 minutes, 3 questions.
+when start_the_hunt:
+  if Night.step < 5:
+    set Night.phase = "hunt_1"
+    set Night.step = 5
+    set Night.round = 1
+    set Night.hunt_on = true
+    set Night.hunt_end = Time.elapsed + 900
+    set Night.hunt_warn = Time.elapsed + 600
+    set Night.facts_requested = 3
+    start quest Hunt One for everyone
+    cue lights_game
+    set Night.lights = "game"
+    cue screens_trivia_1
+    cue screens_countdown_hunt
+    set Night.screen = "countdown_hunt"
+    set Night.terminals = "countdown_hunt"
+    broadcast "!🔎 THE TRUTH SCAVENGER HUNT has begun. Three questions are in your Quest Log. 15 minutes." to everyone
+    -> Truth Scavenger Hunt One
+
+when Night.hunt_on == true and Night.hunt_warned != true and Time.elapsed >= Night.hunt_warn:
+  set Night.hunt_warned = true
+  broadcast "!⏳ 5 minutes left in the Truth Scavenger Hunt." to everyone
+
+when Night.hunt_on == true and Time.elapsed >= Night.hunt_end:
+  fire hunt_time_up
+
+// B7 · C2: everyone back to the Desktop.
+when hunt_time_up:
+  if Night.phase == "hunt_1":
+    set Night.hunt_on = false
+    set Night.phase = "truth_1"
+    set Night.step = 6
+    complete quest Hunt One for everyone
+    unlock Clippy Instructions 3 for Clippy
+    broadcast "!📣 Time is up. Return to the Desktop for the First Moment of Truth." to everyone
+    do announce "Time is up. Return to the Desktop."
+    sound alexa_chime
+    cue screens_return
+    set Night.screen = "return"
+    set Night.terminals = "return"
+    cue lights_call_desktop
+    set Night.lights = "call_desktop"
+    -> Hunt Time Up
+
+// B8 · V6: the First Moment of Truth. Judging opens (ROLE Program).
+when first_moment_of_truth:
+  if Night.step >= 5 and Night.step < 7 and Night.judging != true:
+    if Night.phase == "hunt_1":
+      set Night.hunt_on = false
+      set Night.phase = "truth_1"
+      set Night.step = 6
+      complete quest Hunt One for everyone
+      unlock Clippy Instructions 3 for Clippy
+    set Night.round = 1
+    set Night.judging = true
+    cue lights_truth_time
+    set Night.lights = "truth_time"
+    cue screens_hunt_results
+    set Night.screen = "hunt_results"
+    set Night.terminals = "hunt_results"
+    -> First Moment Of Truth
+
+// B9: Truth or Dare from the hat (round-1 slips; same buttons).
+when truth_or_dare:
+  cue screens_truth_or_dare
+  set Night.screen = "truth_or_dare"
+  set Night.terminals = "truth_or_dare"
   -> Truth Or Dare
 
-when the glitch begins:
-  set Night.phase = "free_roam"
-  -> The Glitch
+// B10: optional set pieces, any time from the first Moment of Truth to
+// the Trust Chart.
+when telephone:
+  if Night.step >= 6 and Night.ended != true:
+    -> Telephone
 
-// The reinstallation games (`README.md` — Integration contract; the VR
-// headsets and the tablet game in the tent, `docs/loom-reinstall.md`)
-// fire both of these, in this order, for whoever walks up to the golden
-// duck. A director can fire either by hand. An entry is only ever learned
-// once, so the double unlock for a corrupted program is harmless.
+when are_you_sure:
+  if Night.step >= 6 and Night.ended != true:
+    -> Are You Sure
+
+// ── The Internet: the reinstallation games ──
+// The games fire both of these, in this order, for whoever walks up to
+// Gerald the golden duck. Only a corrupted program is released; anyone,
+// captured or just curious, learns The Golden Duck.
 when the simulation completed for program:
   if program.corrupted:
     release program from The Internet
@@ -355,39 +1305,694 @@ when the simulation completed for program:
 
 when the golden duck for program:
   unlock The Golden Duck for program
-  reply The duck lays a golden egg and flies away. It looked a lot like the duck on the billboard downtown. You feel, briefly, like a person.
+  reply The duck lays a golden egg and flies away. Gerald waddles off into the code.
 
-// ── Endings ─────────────────────────────────────────────────────────
-// 1a/1b: the programs turn all three keys. Then a countdown: whoever
-//        unplugs in time gets their body back; the rest die with the
-//        machine.
-// 2:     Trabolta saturated with un-truth goes rogue.
-// 3:     Trabolta full of truth but poisoned advice traps everyone and
-//        leaves.
-// 4:     the programs choose not to kill him. Unknown.
+// ── C. The malware, the hour, the Truther Download ──
 
-when Trabolta.destruct >= 3 and Night.phase != "ending":
-  set Night.destruct = true
-  set Night.phase = "destruct"
-  -> Self Destruct Sequence
+// C1: the ad hijack. Clippy is told privately everyone may die (her own
+// hook); everyone else is told it is nothing (the ROLE watcher).
+when second_hunt_preview:
+  if Night.step < 7:
+    set Night.judging = false
+    set Night.phase = "malware"
+    set Night.step = 7
+    set Trabolta.composure -= 20
+    unlock Clippy Instructions 4 for Clippy
+    cue lights_ad_hijack
+    set Night.lights = "ad_hijack"
+    cue screens_ad_hijack
+    set Night.screen = "ad_hijack"
+    set Night.terminals = "ad_hijack"
+    sound ad_jingle
+    -> Ad Hijack
 
-when begin the countdown:
-  if Night.destruct:
-    -> The Countdown
+// C2: round 2 goes to the quest logs; everyone disperses for one hour.
+when start_the_second_hunt:
+  if Night.step < 8:
+    set Night.phase = "hunt_2"
+    set Night.step = 8
+    set Night.round = 2
+    set Night.hunt2_on = true
+    set Night.hunt2_end = Time.elapsed + 3600
+    set Night.truther_at = Time.elapsed + 120
+    set Night.warn_at = Time.elapsed + 3300
+    set Night.facts_requested = 6
+    reveal ram
+    start quest Hunt Two for everyone
+    cue screens_trivia_2
+    set Night.screen = "trivia_2"
+    set Night.terminals = "trivia_2"
+    cue lights_game
+    set Night.lights = "game"
+    broadcast "!📓 Round 2 is in your Quest Log. You have ONE HOUR. Return for the Second Moment of Truth." to everyone
+    -> Second Hunt
 
-when the countdown ended:
-  if Night.destruct and Night.phase != "ending":
-    if Night.unplugged >= Night.quorum:
-      -> Ending Unplugged
+when Night.hunt2_on == true and Night.truther_sent != true and Time.elapsed >= Night.truther_at:
+  fire truther_download
+
+when Night.hunt2_on == true and Night.step < 9 and Night.summons_open != true and Night.summons_closed != true and Time.elapsed >= Night.warn_at:
+  fire five_minute_warning
+
+// C3: the Truther Download (two minutes in). Each program's own copy
+// arrives through the ROLE watcher.
+when truther_download:
+  if Night.truther_sent != true:
+    set Night.truther_sent = true
+    reveal truthcoin exchange
+    cue screens_truther
+    set Night.screen = "truther"
+    set Night.terminals = "truther"
+    cue lights_glitch
+    set Night.lights = "glitch"
+    sound truther_glitch
+    broadcast "!📥 TRUTHER DOWNLOAD received. Check your messages." to everyone
+
+// ── D. Act II ──
+
+// D2: the five-minute summons. Be in the Desktop, or be swept.
+when five_minute_warning:
+  if Night.step < 9 and Night.summons_open != true and Night.summons_closed != true:
+    set Night.phase = "summons"
+    set Night.step = 9
+    set Night.summons_open = true
+    set Night.summons_end = Time.elapsed + 300
+    unlock Clippy Instructions 5 for Clippy
+    broadcast "!⏳ FIVE MINUTES. Be in the Desktop for the Second Moment of Truth, or an Antivirus will take you to the Internet and you will not play Truth Pong. Bathroom Mode excuses you." to everyone
+    do announce "Five minutes. Everyone to the Desktop."
+    sound countdown_tick
+    cue lights_call_desktop
+    set Night.lights = "call_desktop"
+    cue screens_five_minutes
+    set Night.screen = "five_minutes"
+    set Night.terminals = "five_minutes"
+    -> Five Minute Warning
+
+when Night.summons_open == true and Time.elapsed >= Night.summons_end:
+  fire summons_closed
+
+// D3: the doors close. The late watcher (ROLE Program) does the rest.
+when summons_closed:
+  if Night.summons_open == true:
+    set Night.summons_open = false
+    set Night.summons_closed = true
+    set Night.hunt2_on = false
+    -> Summons Closed
+
+// D4: Truth Pong (make the cup to answer; round 2 = Q1–Q3 of this round).
+when truth_pong:
+  if Night.step < 10:
+    set Night.phase = "truth_pong"
+    set Night.step = 10
+    set Night.hunt2_on = false
+    set Night.round = 2
+    set Night.judging = true
+    cue lights_pong
+    set Night.lights = "pong"
+    cue screens_truth_pong
+    set Night.screen = "truth_pong"
+    set Night.terminals = "truth_pong"
+    -> Truth Pong
+
+// D5: the collection is complete only if every round-2 question has an
+// accepted answer (accurate or confident).
+when round_two_tally:
+  if Night.phase == "truth_pong" and Night.tallied != true:
+    set Night.tallied = true
+    set Night.judging = false
+    complete quest Hunt Two for everyone
+    if Kernel.q4 != "none" and Kernel.q5 != "none" and Kernel.q6 != "none":
+      set Night.collection_complete = true
+      set Trabolta.truth += 10
     else:
-      -> Ending The Long Dark
+      set Night.collection_complete = false
+      set Trabolta.composure -= 10
+    -> Round Two Tally
 
-when Trabolta.untruth >= 80 and Night.phase != "ending":
-  -> Ending Rogue
+// D6: the Trust Chart.
+when trust_chart:
+  if Night.step < 11:
+    set Night.phase = "trust_chart"
+    set Night.step = 11
+    set Night.judging = false
+    set Night.hunt2_on = false
+    unlock Clippy Instructions 6 for Clippy
+    cue lights_trust_chart
+    set Night.lights = "trust_chart"
+    cue screens_trust_chart
+    set Night.screen = "trust_chart"
+    set Night.terminals = "trust_chart"
+    -> Trust Chart
 
-when Trabolta.truth >= 90 and Trabolta.stance <= -60 and Night.phase != "ending":
-  -> Ending Trapdoor
+when show_the_rankings:
+  if Night.phase == "trust_chart" and Night.rank_round < 1:
+    set Night.rank_round = 1
+    set Night.most_trusted = "none"
+    set Night.least_trusted = "none"
+    set Night.praised = false
+    set Night.shamed = false
+    set Night.ranking = true
 
-when spare the machine:
-  if Night.phase != "ending":
-    -> Ending Unknown
+// The ranking machinery, shared by the Trust Chart (round 1), the Final
+// Assessment (round 2) and the recount (round 3).
+when praise_the_top:
+  set Night.praised = true
+
+when shame_the_bottom:
+  set Night.shamed = true
+
+when Night.ranking == true and Night.praised == true and Night.shamed == true:
+  set Night.ranking = false
+  fire rankings_done
+
+when rankings_done:
+  if Night.rank_round == 1:
+    -> Praise The Top
+    -> Shame The Bottom
+    -> Print The Certificate
+  else if Night.rank_round == 2:
+    -> Final Assessment
+  else if Night.rank_round == 3:
+    -> Trabolta Recounts
+
+// D7: the printer (a Zigbee button on it, a reed switch in the lid, or
+// the director's fallback buttons).
+when printer_button_pressed:
+  if Night.printer_called == true and Night.beans != true and Night.printer_pressed != true:
+    set Night.printer_pressed = true
+    sound printer_grind
+    -> The Printer Jams
+
+when printer_opened:
+  if Night.printer_called == true and Night.beans != true:
+    set Night.beans = true
+    set Night.phase = "beans"
+    set Night.step = 12
+    set Trabolta.composure -= 20
+    cue lights_glitch
+    set Night.lights = "glitch"
+    cue screens_beans
+    set Night.screen = "beans"
+    set Night.terminals = "beans"
+    cue screens_flicker
+    sound beans_spill
+    -> Full Of Beans
+
+// D8: the Antivirus zip everyone out (the ROLE zip watchers release them).
+when zip_everyone_out:
+  set Night.zip_wave += 1
+  sound zip
+  broadcast "🗜 The Antivirus zip every program out of the Internet. Compressed, for the moment." to everyone
+  -> Zip Everyone Out
+
+// D9: the overshare. Only Microsoft Excel's plant counts toward 1/3;
+// another program's plant is flavour.
+when trabolta_overshares:
+  if Night.step < 13:
+    set Night.phase = "overshare"
+    set Night.step = 13
+    set Night.round = 3
+    set Night.facts_requested = 8
+    start quest The Final Facts for everyone
+    set Night.scenario = 4
+    if Kernel.excel_planted == true and Kernel.openoffice_dossier == true:
+      set Night.scenario = 1
+    else if Kernel.openoffice_dossier == true:
+      set Night.scenario = 2
+    else if Kernel.excel_planted == true:
+      set Night.scenario = 3
+    cue screens_overshare
+    set Night.screen = "overshare"
+    set Night.terminals = "overshare"
+    cue screens_flicker
+    cue lights_glitch
+    set Night.lights = "glitch"
+    if Night.scenario == 1:
+      -> Overshare One
+    else if Night.scenario == 2:
+      -> Overshare Two
+    else if Night.scenario == 3:
+      -> Overshare Three
+    else:
+      -> Overshare Four
+
+// D10: the clock. One hour to midnight; the factions come out.
+when y2k_clock:
+  if Night.step < 14:
+    set Night.phase = "y2k"
+    set Night.step = 14
+    set Night.final_round = true
+    set Night.y2k_end = Time.elapsed + 3600
+    set Night.clock = "23:00"
+    set Trabolta.composure -= 25
+    reveal Unlimited Power
+    reveal The Way Out
+    unlock Clippy Instructions 7 for Clippy
+    cue lights_y2k
+    set Night.lights = "y2k"
+    cue screens_y2k
+    set Night.screen = "y2k"
+    set Night.terminals = "y2k"
+    sound y2k_chime
+    broadcast "!🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999." to everyone
+    -> The Y2K Clock
+
+when Night.final_round == true and Night.ended != true and Night.clock_30 != true and Time.elapsed >= Night.y2k_end - 1800:
+  set Night.clock_30 = true
+  set Night.clock = "23:30"
+  broadcast "!🕦 SYSTEM CLOCK: 11:30 PM, DEC 31 1999" to everyone
+  sound y2k_chime
+
+when Night.final_round == true and Night.ended != true and Night.clock_15 != true and Time.elapsed >= Night.y2k_end - 900:
+  set Night.clock_15 = true
+  set Night.clock = "23:45"
+  broadcast "!🕦 SYSTEM CLOCK: 11:45 PM, DEC 31 1999" to everyone
+  sound y2k_chime
+
+when Night.final_round == true and Night.ended != true and Night.clock_5 != true and Time.elapsed >= Night.y2k_end - 300:
+  set Night.clock_5 = true
+  set Night.clock = "23:55"
+  broadcast "!🕛 SYSTEM CLOCK: 11:55 PM, DEC 31 1999. Five minutes to midnight." to everyone
+  sound y2k_chime
+
+when Night.final_round == true and Night.ended != true and Night.clock_1 != true and Time.elapsed >= Night.y2k_end - 60:
+  set Night.clock_1 = true
+  set Night.clock = "23:59"
+  broadcast "!🕛 SYSTEM CLOCK: 11:59 PM, DEC 31 1999. One minute." to everyone
+  sound y2k_chime
+
+when Night.final_round == true and Night.ended != true and Time.elapsed >= Night.y2k_end:
+  fire y2k_midnight
+
+// The majority: strictly more than half of all programs, counted only
+// once the faction's leader has done their task (Excel planted the virus;
+// OpenOffice has her 20 facts), unless the director waives it. First
+// faction across wins; it latches.
+when Night.final_round == true and Kernel.majority_reached != true and (Kernel.excel_planted == true or Kernel.waive_leader_tasks == true) and count(Unlimited_Power.members) * 2 > count(Persons):
+  set Kernel.majority_reached = true
+  set Kernel.majority = "stay"
+  fire majority_reached
+
+when Night.final_round == true and Kernel.majority_reached != true and (Kernel.openoffice_dossier == true or Kernel.waive_leader_tasks == true) and count(The_Way_Out.members) * 2 > count(Persons):
+  set Kernel.majority_reached = true
+  set Kernel.majority = "leave"
+  fire majority_reached
+
+when waive_leader_tasks:
+  set Kernel.waive_leader_tasks = true
+
+// ── E. Act III — the server room ──
+
+// E1: a lock clicks. The members get the bundle (ROLE watchers).
+when majority_reached:
+  if Night.ended != true:
+    set Night.phase = "majority"
+    set Night.step = 15
+    set Kernel.server_unlocked = true
+    do door server_room, state: unlocked
+    cue lights_server_open
+    set Night.lights = "server_open"
+    if Kernel.majority == "stay":
+      complete quest Recruit To Stay for everyone
+      fail quest Recruit To Leave for everyone
+    else:
+      complete quest Recruit To Leave for everyone
+      fail quest Recruit To Stay for everyone
+      complete quest Find The Exit for everyone
+    -> Majority Reached
+
+// E2: the door contact. Latched for 120 s: a propped door republishes
+// "open" on every report, and a retained state replays on reconnect.
+// Before the Y2K hour the door is just a door (a curious guest, or a
+// retained "open" replayed on a stagehand reconnect, trips nothing).
+when server_door_opened:
+  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true and Night.alarm_on != true:
+    set Night.alarm_on = true
+    set Night.alarm_clear_at = Time.elapsed + 120
+    -> Server Room Alarm
+  else if Night.ended != true and Night.step >= 14 and Night.step < 16 and Kernel.server_unlocked == true and Night.lights != "server_open":
+    cue lights_server_open
+    set Night.lights = "server_open"
+
+when Night.alarm_on == true and Time.elapsed >= Night.alarm_clear_at:
+  set Night.alarm_on = false
+
+when server_unlock:
+  set Kernel.server_unlocked = true
+  cue lights_server_open
+  set Night.lights = "server_open"
+
+// E3: the patch bay. Today stagehand judges the cables and sends
+// patch_combo_a / patch_combo_b / patch_rejected; once signal args exist
+// it sends patch_changed {combo} and the story judges it here.
+when patch_changed:
+  if Night.ended != true and Night.step >= 14:
+    if combo == Kernel.combo_a:
+      fire patch_combo_a
+    else if combo == Kernel.combo_b:
+      fire patch_combo_b
+    else:
+      fire patch_rejected
+
+when patch_rejected:
+  if Night.ended != true and Night.step >= 14:
+    set Night.wrong_combos += 1
+    -> Patch Rejected
+
+when patch_combo_a:
+  if Night.ended != true and Night.step >= 14:
+    fire trabolta_disabled
+
+when patch_combo_b:
+  if Night.ended != true and Night.step >= 14:
+    fire computer_destroyed
+
+// E4: Combo A — take the grease out of the lightning.
+when trabolta_disabled:
+  if Night.ended != true:
+    set Night.ended = true
+    set Night.ending = "disabled"
+    set Night.phase = "finale_killed"
+    set Night.step = 19
+    set Night.final_round = false
+    complete quest Find The Exit for everyone
+    cue lights_blackout
+    set Night.lights = "blackout"
+    cue screens_blackout
+    cue screens_go_to_living_room
+    set Night.screen = "go_to_living_room"
+    set Night.terminals = "go_to_living_room"
+    sound dance_song
+    set Night.dance_at = Time.elapsed + 10
+    broadcast "!GO TO THE LIVING ROOM" to everyone
+    do announce "Go to the living room."
+    -> Trabolta Disabled
+
+// Ten seconds of dark, then the dance look (the song file opens with ten
+// seconds of silence, so music and lights land together).
+when Night.dance_at > 0 and Time.elapsed >= Night.dance_at:
+  set Night.dance_at = 0
+  cue lights_dance
+  set Night.lights = "dance"
+
+when lights_dance:
+  set Night.dance_at = 0
+  cue lights_dance
+  set Night.lights = "dance"
+
+// After the dance: a weakened Trabolta ranks everyone one last time and
+// recounts (the ranking machinery, round 3 → Trabolta Recounts).
+when trabolta_recounts:
+  if Night.ending == "disabled" and Night.rank_round != 3:
+    set Night.recount = true
+    cue screens_recount
+    set Night.screen = "recount"
+    set Night.terminals = "recount"
+    set Night.rank_round = 3
+    set Night.most_trusted = "none"
+    set Night.least_trusted = "none"
+    set Night.praised = false
+    set Night.shamed = false
+    set Night.ranking = true
+
+// E6: Combo B — the computer is turned off without Shut Down.
+when computer_destroyed:
+  if Night.ended != true:
+    set Night.ended = true
+    set Night.ending = "destroyed"
+    set Night.phase = "finale_shutdown"
+    set Night.step = 19
+    set Night.final_round = false
+    set Trabolta.awake = false
+    unlock Clippy Instructions 9 for Clippy
+    cue lights_blackout
+    set Night.lights = "blackout"
+    cue screens_blackout
+    cue screens_go_to_living_room
+    set Night.screen = "go_to_living_room"
+    set Night.terminals = "go_to_living_room"
+    sound windows_shutdown
+    sound dance_song
+    set Night.dance_at = Time.elapsed + 10
+    broadcast "!GO TO THE LIVING ROOM" to everyone
+    do announce "Go to the living room."
+    -> Computer Destroyed
+
+// E8: after the dance, Clippy reads the summary. Purgatory.
+when clippy_reads_summary:
+  if Night.ending == "destroyed":
+    cue lights_purgatory
+    set Night.lights = "purgatory"
+    cue screens_purgatory
+    set Night.screen = "purgatory"
+    set Night.terminals = "purgatory"
+    -> Purgatory
+
+// ── F. The final reveal and the other endings ──
+
+// F1: midnight (if nothing has ended, it calls the final reveal).
+when y2k_midnight:
+  if Night.final_round == true and Night.ended != true:
+    set Night.final_round = false
+    set Night.clock = "00:00"
+    sound y2k_chime
+    -> Clock Strikes
+    if Night.ended != true:
+      fire final_reveal
+
+// The server room stays live during the reveal (deliberate): a combo
+// entered before the verdict still ends the night.
+when final_reveal:
+  if Night.ended != true and Night.step < 16:
+    set Night.final_round = false
+    set Night.phase = "final_reveal"
+    set Night.step = 16
+    set Night.round = 3
+    set Night.judging = true
+    unlock Clippy Instructions 8 for Clippy
+    cue lights_final_reveal
+    set Night.lights = "final_reveal"
+    cue screens_final_reveal
+    set Night.screen = "final_reveal"
+    set Night.terminals = "final_reveal"
+    broadcast "!🌑 ALL PROGRAMS: to the living room for the final Truth Scavenger Hunt reveal." to everyone
+    -> Final Reveal
+
+// F2: Bobbing for Truth. Nothing proceeds until someone brings up the bag.
+when bobbing_for_truth:
+  if Night.ended != true and Night.step < 17:
+    set Night.judging = false
+    set Night.phase = "bobbing"
+    set Night.step = 17
+    cue screens_bobbing
+    set Night.screen = "bobbing"
+    set Night.terminals = "bobbing"
+    -> Bobbing For Truth
+
+// The bag is up: Trabolta stops them reading it and makes his final
+// assessment first (the ranking machinery, round 2 → Final Assessment).
+when bag_retrieved:
+  set Night.rank_round = 2
+  set Night.most_trusted = "none"
+  set Night.least_trusted = "none"
+  set Night.praised = false
+  set Night.shamed = false
+  set Night.ranking = true
+  -> The Bag Of Truth
+
+// F3: truth.txt, then the verdict (Song Ending or Grok Prom).
+when read_truth_txt:
+  if Night.phase == "bobbing" and Night.bag_up == true:
+    complete quest The Final Facts for everyone
+    set Night.recount = true
+    cue screens_truth_txt
+    set Night.screen = "truth_txt"
+    set Night.terminals = "truth_txt"
+    -> Truth Txt
+    -> The Verdict
+
+// F5: someone gave him the line (ROLE `pickup_line_accepted`).
+when line_accepted:
+  -> Pickup Line
+
+// F6: nobody has the line. He takes his shot anyway; everyone is trapped.
+when no_pickup_line:
+  if Night.phase == "grok_prom" and Night.ended != true:
+    set Night.ended = true
+    set Night.ending = "rave"
+    set Night.phase = "finale_rave"
+    set Night.step = 19
+    -> Sad Confession
+
+// F7: the alternate relationship-advice ending, only after a failed
+// verdict (Grok Prom).
+when ask_for_advice:
+  if Night.ended != true and Night.phase == "grok_prom":
+    set Night.phase = "advice"
+    set Night.step = 18
+    set Night.poll = "advice"
+    cue screens_advice
+    set Night.screen = "advice"
+    set Night.terminals = "advice"
+    -> Relationship Advice
+
+when advice_tally:
+  if Night.phase == "advice" and Night.ended != true:
+    if Night.help_votes >= Night.thwart_votes:
+      fire advice_helped
+    else:
+      fire advice_thwarted
+
+when advice_helped:
+  if Night.phase == "advice" and Night.ended != true:
+    set Night.ended = true
+    set Night.ending = "help"
+    set Night.phase = "finale_help"
+    set Night.step = 19
+    set Trabolta.love += 20
+    -> Advice Helped
+    sound motorcycle
+    cue lights_restore
+    set Night.lights = "restore"
+    set Night.everyone_free = true
+
+// Not final: the hand jive can still follow.
+when advice_thwarted:
+  if Night.phase == "advice" and Night.ended != true and Night.ending != "banished":
+    set Night.ending = "banished"
+    set Night.phase = "finale_banish"
+    set Night.step = 19
+    set Trabolta.love -= 30
+    set Night.banish = true
+    cue lights_banish
+    set Night.lights = "banish"
+    cue screens_banish
+    set Night.screen = "banish"
+    set Night.terminals = "banish"
+    broadcast "!⛈ Trabolta is banishing EVERY program to the Internet. Antivirus included." to everyone
+    -> Advice Thwarted
+
+when the_hand_jive:
+  if Night.ending == "banished" and Night.ended != true:
+    set Night.ended = true
+    set Night.ending = "hand_jive"
+    set Night.phase = "finale_hand_jive"
+    set Night.step = 19
+    set Night.banish = false
+    set Night.everyone_free = true
+    complete quest Find The Exit for everyone
+    sound hand_jive
+    -> The Hand Jive
+    sound motorcycle
+    cue lights_restore
+    set Night.lights = "restore"
+
+// ── Anytime ──
+
+// Lore shared TO Trabolta counts as a delivery for the sharer.
+when share:
+  if to == Trabolta:
+    fire trabolta_heard for from
+
+// Trabolta's `cut_the_lights` power darkens one allow-listed room for
+// 90 s; this brings it back.
+when Night.lights_back_at > 0 and Time.elapsed >= Night.lights_back_at:
+  <cue: lights, room: {Night.dark_room}, state: on>
+  set Night.lights_back_at = 0
+
+when restore_the_lights:
+  cue lights_restore
+  set Night.lights = "restore"
+  set Night.lights_back_at = 0
+
+// ── Doors open ──────────────────────────────────────────────────────
+// The story's opening beat, heard by every phone and every performer:
+// it seeds every global (Trabolta's worker reads them), sets the
+// screensaver look, and says one line to the room. Everything personal
+// (the Mud Room) plays per program on arrival, never here. No dialogue,
+// no widgets. This must stay the LAST item in main.loom.
+== Power On
+  setting: The Desktop
+set Night.phase = "arrivals"
+set Night.step = 0
+set Night.clock = "--:--"
+set Night.anti_ai = "MS Paint"
+set Night.bingo_on = false
+set Night.bingo_end = 0
+set Night.bingo_winners = 0
+set Night.first_reinstall = "none"
+set Night.first_reinstall_done = false
+set Night.trabolta_introduced = false
+set Night.ads_started = false
+set Night.round = 0
+set Night.judging = false
+set Night.hunt_on = false
+set Night.hunt_end = 0
+set Night.hunt_warn = 0
+set Night.hunt_warned = false
+set Night.hunt2_on = false
+set Night.hunt2_end = 0
+set Night.truther_at = 0
+set Night.truther_sent = false
+set Night.warn_at = 0
+set Night.summons_open = false
+set Night.summons_end = 0
+set Night.summons_closed = false
+set Night.auto_sweep = false
+set Night.facts_requested = 0
+set Night.facts_accepted = 0
+set Night.r1_accepted = 0
+set Night.r2_accepted = 0
+set Night.r3_accepted = 0
+set Night.r2_requested = 3
+set Night.collection_complete = false
+set Night.tallied = false
+set Night.ranking = false
+set Night.rank_round = 0
+set Night.praised = false
+set Night.shamed = false
+set Night.most_trusted = "none"
+set Night.least_trusted = "none"
+set Night.printer_called = false
+set Night.printer_pressed = false
+set Night.beans = false
+set Night.zip_wave = 0
+set Night.livejournal_read = false
+set Night.lj_reader = "none"
+set Night.scenario = 0
+set Night.final_round = false
+set Night.y2k_end = 0
+set Night.clock_30 = false
+set Night.clock_15 = false
+set Night.clock_5 = false
+set Night.clock_1 = false
+set Night.alarms = 0
+set Night.alarm_on = false
+set Night.alarm_clear_at = 0
+set Night.wrong_combos = 0
+set Night.ended = false
+set Night.ending = "none"
+set Night.bobber = "none"
+set Night.bag_up = false
+set Night.line_by = "none"
+set Night.poll = "none"
+set Night.help_votes = 0
+set Night.thwart_votes = 0
+set Night.banish = false
+set Night.recount = false
+set Night.everyone_free = false
+set Night.dark_room = "none"
+set Night.lights_back_at = 0
+set Night.dance_at = 0
+set Night.sweep_target = "none"
+set Kernel.combo_a = "V2-D5,V4-D1,V6-D8,V7-D3"
+set Kernel.combo_b = "V1-D6,V3-D2,V5-D7,V8-D4"
+cue lights_screensaver
+set Night.lights = "screensaver"
+cue screens_screensaver
+set Night.screen = "screensaver"
+set Night.terminals = "screensaver"
+// Re-arm the server room on every boot: a story restart puts the door
+// indicator and the optional maglock back to "armed" (majority_reached
+// is the only thing that unlocks it).
+do door server_room, state: locked
+The house boots. A screensaver drifts across the TV above the fireplace. Somewhere a modem is waiting to be asked.

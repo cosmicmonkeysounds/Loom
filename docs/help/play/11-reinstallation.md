@@ -2,13 +2,18 @@
 title: The simulation (reinstallation)
 section: Guest Guide
 order: 11
-keywords: simulation, reinstallation, reinstall, VR, headset, tablet, joystick, stick, controls, chevrons, indicators, duck, golden duck, egg, tent, Internet, game, walk, wall screens, TV
+keywords: simulation, reinstallation, WebMD, Gerald, reinstall, VR, headset, tablet, joystick, stick, controls, chevrons, indicators, duck, golden duck, egg, tent, Internet, game, walk, wall screens, TV
 ---
 
 Some events have a **simulation**: a virtual copy of the house you're
 standing in. In *Trapped in the Internet* it is how a corrupted program
 gets out of the Internet — prove you can follow instructions, and you are
 **reinstalled**. Anyone may play it; only the corrupted are released by it.
+
+When you are sent to the Internet, **WebMD**, your wellness companion,
+messages you with what happens next: why you are there, the headset or
+the tablet, Bathroom Mode, and where the exit is (it is clearly marked;
+it is for safety). Look for WebMD's thread in your app.
 
 ## Getting in
 
@@ -44,8 +49,9 @@ help.
 ## Find the duck
 
 **Follow the golden chevrons** on the floor. They lead, room by room and
-up the stairs, to the **golden duck** — it hides in a different spot
-every time. Walk right up to it. It lays a golden egg and flies away, and
+up the stairs, to **Gerald, the golden duck** off the Maps and Ducks
+billboard — he hides in a different spot every time. Walk right up to
+him. He lays a golden egg and flies away, and
 that's it: you're done. If you were corrupted, you're **reinstalled** and
 free to go back to the house — your app says so, and you learn *The
 Golden Duck*.

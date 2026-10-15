@@ -204,7 +204,8 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     channels: sim.visibleChannelsFor(id),
     spaces: sim.spaceList(),
     roster: sim.rosterFor(id),
-    factions: [...sim.model.factions.values()].filter((f) => !f.hidden && f.joinable).map((f) => f.id),
+    // A hidden group becomes a side once the story reveals it (`reveal G`).
+    factions: [...sim.model.factions.values()].filter((f) => (!f.hidden || sim.factionRevealed(f.id)) && f.joinable).map((f) => f.id),
     groups: sim.groupsOf(id).filter((g) => {
       const def = sim.model.factions.get(g);
       return def === undefined || !def.hidden || sim.factionRevealed(g);

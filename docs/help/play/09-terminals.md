@@ -2,11 +2,21 @@
 title: The terminals on the walls
 section: Guest Guide
 order: 9
-keywords: terminal, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, disconnect, timeout, world view, simulation, mirror, TV, screen, watch
+keywords: terminal, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch
 ---
 
 Some events mount **terminals** around the house — tablets that are a
 direct line to one of the story's characters. They talk back, out loud.
+
+## Before the character is online
+
+A character can arrive partway through the night. Until then its
+terminals are just screens: a screensaver, a media player, the odd
+advertisement — no camera, nothing to scan, nobody to talk to. At
+*Trapped in the Internet* the terminals stay that way until Clippy
+introduces Trabolta; a message sent to him before then gets "Jean
+Trabolta will make an appearance later tonight. Please do not move the
+mouse." Once he is introduced, the terminals become his line.
 
 ## Connecting
 

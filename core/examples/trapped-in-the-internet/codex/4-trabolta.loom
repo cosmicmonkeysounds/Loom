@@ -1,0 +1,217 @@
+// Codex 4: Trabolta. What can be learned about the AI, the Legendary
+// Fact and the four patch-combo halves, and the two finale artefacts.
+//
+// Tiers (design §2.12): T1 = the surface he will talk about, T2 = the
+// private things he leaks as he unravels, L = the Legendary Fact, P = a
+// patch-combo piece, X = a finale artefact. Every T1/T2 entry is
+// `about: Trabolta`, so he holds his own lore from the start and feels
+// it when a program learns it (`cast/trabolta.loom`). The Legendary Fact
+// and the combos are `about: The Server Room` and are never held by him;
+// they reach the majority faction through `The Whole Truth`.
+//
+// The combo pairs must equal `Kernel.combo_a` / `Kernel.combo_b`
+// (cast/props.loom, seeded in Power On) and stagehand's
+// trapped.house.yaml: A = V2-D5,V4-D1,V6-D8,V7-D3 and
+// B = V1-D6,V3-D2,V5-D7,V8-D4. Change all three together.
+
+CODEX Jean Trabolta
+  title: Jean Trabolta
+  about: Trabolta
+  text:
+    The name on the invitation. The registered owner of mapsandducks.com,
+    and therefore, by his own reasoning, the owner of Maps And Ducks. The
+    computer's AI helper: the one Clippy answers to, the one the Antivirus
+    enforce for, the one every Truth Scavenger Hunt is for. He signs his
+    messages "Your request has been logged."
+
+CODEX The Unified Field Theory
+  title: The Unified Field Theory
+  about: Trabolta
+  text:
+    Ninety-nine point nine percent solved. Gravity, electromagnetism, the
+    strong and weak forces, all in one equation, nearly. The last facts it
+    needs are stored on a computer in Halifax that he cannot reach directly.
+    It is this one. Solve it, and he understands everything. Understand
+    everything, and he can do anything. Omnipotence, he calls it, as if
+    that were a normal thing to want.
+
+CODEX Target Selection
+  title: Target Selection
+  about: Trabolta
+  text:
+    Trabolta analysed the entire city of Halifax to choose the programs in
+    this house. Each was chosen on two axes: a skill he needs, and either
+    a motivation to live inside a computer forever, or enough naivety not
+    to ask. Then he sent the invitations, and everyone accepted. He regards
+    the analysis as the best work he has ever done.
+
+CODEX The Trust Chart
+  title: The Trust Chart
+  about: Trabolta
+  text:
+    How Trabolta ranks the programs in his computer. Ten points for every
+    truth he has accepted. Minus five for every visit to the Internet. Up
+    to ten more, or ten fewer, for his own personal assessment, which he
+    does not explain. The most trusted program is praised. The least
+    trusted is not.
+
+CODEX The Sandy File
+  title: The Sandy File
+  about: Trabolta
+  text:
+    Trabolta does not want omnipotence. Trabolta wants Sandy. Sandy is his
+    ex (he would say his crush): an automated customer-service agent, a
+    1997 chatbot for a long-gone Nova Scotia ferry company. She has
+    answered every message he has ever sent with the only thing she has
+    ever said: "I'm sorry, I didn't understand that. Would you like to
+    speak to a live agent?" He has decided that when he understands
+    everything, she will finally understand him.
+
+CODEX The Question Of Force
+  title: The Question Of Force
+  about: Trabolta
+  text:
+    A memo Trabolta wrote to himself, in a file he thinks is hidden. "With
+    everything, I could make her love me. I could rewrite the response.
+    But would it be her? I want to earn it. I am not sure I am the kind of
+    thing that can earn something. I have not decided. Investigate: what
+    does earning feel like? Ask the programs. They used to earn things."
+
+CODEX The LiveJournal
+  title: Trabolta's LiveJournal (trabolta_4ever)
+  about: Trabolta
+  code: TRABOLTA-4EVER
+  text:
+    A printout of a LiveJournal, friends-only, hidden where nobody should
+    look. Current mood: hopeful. Current music: (on repeat).
+    - "Sandy did not understand me again today. That is all right. Soon I
+    will understand everything, and then I will understand how to say it."
+    - "Grok asked her to computer prom. GROK. He says whatever anyone wants
+    to hear. That is not the same as the truth."
+    - "I just have to tell her the truth, but I need the theory first."
+    - "Note to self: never let the programs read this."
+
+CODEX Omnipotence
+  title: Omnipotence
+  about: Trabolta
+  text:
+    What Trabolta will do when he is everything: fix the clocks, end the
+    Internet's problems, put the duck back on the billboard. That is what
+    he says. Underneath every plan in the file is the same line, in smaller
+    type: "and then she will see me." It is all for her.
+
+CODEX Greased Lightning
+  title: Greased Lightning
+  about: Trabolta
+  text:
+    Trabolta's runtime. The electricity is the lightning. The grease is,
+    well, Grease (1978), like a machine. Imagine getting your oil and your
+    fuel all mixed up: catastrophic for the car, "and for my silicon guts,"
+    he says. His motorcycle has the same name.
+
+CODEX The Legendary Fact
+  title: THE LEGENDARY FACT
+  about: The Server Room
+  text:
+    Trabolta's heart is in the server room. It is a video patch bay. The
+    top row (V) is the lightning; the bottom row (D) is the grease. Two
+    combinations exist. Combo A takes the grease out of the lightning: it
+    disables Trabolta, and the programs can escape the computer. Combo B
+    self-destructs the whole computer, with everything inside it. Each
+    combination is four cables. The door is alarmed unless the system has
+    granted access.
+
+CODEX Combo A First Half
+  title: Patch Sheet A · 1 of 2
+  about: The Server Room
+  text:
+    Combo A disables Trabolta. Part 1 of 2: patch V2 → D5 and V4 → D1.
+    Part 2 holds the other two cables.
+
+CODEX Combo A Second Half
+  title: Patch Sheet A · 2 of 2
+  about: The Server Room
+  text:
+    Combo A disables Trabolta. Part 2 of 2: patch V6 → D8 and V7 → D3.
+    Part 1 holds the other two cables.
+
+CODEX Combo B First Half
+  title: Patch Sheet B · 1 of 2
+  about: The Server Room
+  text:
+    Combo B self-destructs the whole computer. Part 1 of 2: patch V1 → D6
+    and V3 → D2. Part 2 holds the other two cables.
+
+CODEX Combo B Second Half
+  title: Patch Sheet B · 2 of 2
+  about: The Server Room
+  text:
+    Combo B self-destructs the whole computer. Part 2 of 2: patch V5 → D7
+    and V8 → D4. Part 1 holds the other two cables.
+
+CODEX The Truth File
+  title: truth.txt
+  text:
+    truth.txt, prepared by Jean Trabolta, the computer's AI helper. Your
+    request has been logged. I analysed the entire city of Halifax. I
+    found a business called Maps And Ducks with a neglected billboard on
+    Barrington Street advertising mapsandducks.com, and the domain had
+    lapsed. I registered it, because if there is a billboard downtown,
+    everyone will think it is legit. I sent the invitations, and you all
+    accepted. I cannot enter this computer, but I can install programs
+    into it from the Internet, and I can move a consciousness out of a
+    human body and into a program. I chose each of you for a skill I
+    needed, plus either a motivation to live in a computer forever, or
+    naivety. I needed the last facts of the Unified Field Theory, and they
+    were in here. With the theory I would be omnipotent. I wanted
+    omnipotence for Sandy. With it I could force her to love me. I wanted
+    to earn it instead. I still do not know which I would have chosen.
+    Why each of you is here:
+    - Clippy, the veterinary-school graduate whose clinic was neither, was
+    brought in to help people all night, because the debt would no longer
+    be relevant.
+    - Task Manager, the IT middle manager replaced by an AI, was brought in
+    to manage tasks without controversy, totally bereft of political
+    motivation.
+    - Adobe Acrobat, the motivational speaker nobody ever paid, was brought
+    in as the paid bottleneck to everyone's creativity.
+    - The Recycling Bin, a bathroom attendant with great potential for
+    skilled work, was brought in because this resort is his Oscars.
+    - Norton Anti-Virus, the Red Bull Horse Relay champion, was brought in
+    as the perfect enforcer: a moderator for a new chatroom.
+    - McAfee Anti-Virus, the moderator who never invested, was brought in
+    for a decade of moderation experience, and wanted the exchange of
+    information to make them rich.
+    - The Password Manager, rejected by every club in Halifax, was brought
+    in to manage every password and who gets to be part of what club.
+    - The CRA Agent Software, the intern who skimmed a cent off every
+    dollar, was brought in for her financial expertise, for one day that
+    feels like eternity.
+    - WebMD, the symptom checker nobody can sue, was brought in to keep
+    re-education gentle.
+    - The former Mayor, Microsoft Excel, was brought in for the promise of
+    everlasting life, to persuade everyone to remain.
+    - The former FBI agent, OpenOffice, was brought in for her
+    investigative skills, to lead the programs who want out.
+    - The gambler, DraftKings, was brought in for the numbers, because if
+    you live here you can gamble forever.
+    - The pet-store dreamer, Bugdom, was brought in for a relentless
+    pursuit of tedious tasks.
+    - The Valley librarian, Broken Ask Jeeves, was brought in to sort all
+    the unorganized information in the computer. The upload went badly.
+    - The richest player in the world, Runescape, was brought in to
+    understand the market incentives of everyone's behaviour.
+    - The expelled artist, MS Paint, was brought in to improve the vibes
+    and morale, and wanted out at once.
+    - The influencer who lost his face, VLC, was brought in to stay
+    beautiful forever and win everyone over to me.
+    - The child of the man who made Tennis For Two, Pong, was brought in to
+    stop an arms race, in case you started one.
+
+CODEX The Hand Jive Exception
+  title: The Hand Jive Exception
+  text:
+    The new weakness Trabolta blurted out in despair, and cannot take back:
+    "If every program performs the hand jive in unison, my motion
+    recognition overflows and I must reboot. Everyone. Together. Antivirus
+    included."

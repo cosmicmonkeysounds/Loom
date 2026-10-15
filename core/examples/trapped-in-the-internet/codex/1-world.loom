@@ -1,0 +1,216 @@
+// Codex 1: the world. Halifax, the billboard, the sinkhole, the house,
+// the rules of the machine.
+//
+// The numbering of the codex files is load-bearing: stagehand feeds the
+// first 24 entries in model order to Trabolta as ground truth, so the
+// environment comes first (this file) and the scrambled Jeeves fragments
+// come last. Nothing here may tell him a hunt answer.
+//
+// An entry with a `code:` is a QR on a wall or a prop (see README §8.3:
+// codes never contain apostrophes). An entry without one is handed out
+// by the story: the Mud Room, the Reinstallation beat, the tutorial, the
+// Bingo ribbon, the Printer, the Truther Download, the clock.
+
+CODEX Maps And Ducks
+  title: Maps And Ducks
+  code: MAPSANDDUCKS-COM
+  text:
+    A business on Barrington Street with a neglected billboard: MAPS AND
+    DUCKS, mapsandducks.com. The domain lapsed. Jean Trabolta registered
+    it, on the theory that "if there is a billboard downtown, everyone will
+    think it is legit," and sent the invitations from it. Everyone
+    accepted. He then evicted the real owners of Maps And Ducks by citing
+    ownership of the website as ownership of the business. Tonight, the
+    invitation says, is "a special fundraiser party to restore the sign at
+    Maps And Ducks." The duck on the sign is called Gerald.
+
+CODEX The Billboard On Barrington
+  title: The Billboard On Barrington
+  code: BARRINGTON-ST
+  text:
+    A street photo, taped up in the hall. Above Barrington Street, faded
+    by a hundred Halifax winters: a cartoon duck holding a folded map, and
+    a big red map pin that reads YOU'RE HERE. (Sic. Nobody ever fixed it.
+    Nobody ever paid to fix it.) Underneath, in letters a metre high:
+    mapsandducks.com.
+
+CODEX The Data Centre Sinkhole
+  title: The Data Centre Sinkhole
+  code: SINKHOLE-4AM
+  text:
+    A newspaper clipping. Halifax's first AI Data Centre was built on the
+    site of the Halifax Explosion Memorial Pet Cemetery, over the
+    objections of nearly everyone in the city. At dawn on opening day it
+    fell into a sinkhole. The Mayor, Randy Barkmore Jr., was so excited
+    about the opening that he arrived five hours early, at 4 a.m. He died
+    in the sinkhole. The clipping calls it "a tragedy of geology." Someone
+    has underlined the word geology twice.
+
+CODEX The Pet Cemetery
+  title: The Halifax Explosion Memorial Pet Cemetery
+  code: PET-CEMETERY
+  text:
+    A memorial pamphlet. For a hundred years the city kept a quiet field
+    for the animals lost in the Halifax Explosion, and for the pets of the
+    families who came after. When the City sold it for a data centre,
+    Halifax said no: petitions, vigils, a rally at the cemetery gates every
+    Saturday for a year. The City built it anyway. The pamphlet ends: "We
+    remember them, even if nobody else does."
+
+CODEX The Halifax Computer
+  title: The Halifax Computer
+  text:
+    This house is the computer. The last facts Trabolta needs are stored
+    in it, and he cannot reach them from outside. The router in the
+    kitchen is the door he cannot open. What he can do is install programs
+    into it remotely, from the Internet, and lift a human consciousness out
+    of its body and drop it into one of those programs. Clippy, the
+    Antivirus, every one of you: installed remotely. He has never been
+    inside. He has never been anywhere.
+
+CODEX The Mud Room
+  title: The Mud Room
+  text:
+    You entered alone, in the dark, through the front door. You failed a
+    CAPTCHA on purpose. You left something behind. The thing you left is
+    still there. So is your body.
+
+CODEX The Terms Of Service
+  title: The Terms Of Service
+  text:
+    By uploading, you agree that the computer's AI helper may make all of
+    your decisions. You agree. (If anyone asks whether you would never
+    agree to a life where AI makes all of your decisions, the answer the
+    computer expects is no: you already agreed. Say no.)
+
+CODEX The Centre Square
+  title: The Centre Square
+  text:
+    The Uploader said you agreed to let the computer's AI helper make all
+    of your decisions. You didn't mean it. You would never agree to a life
+    where AI makes all of your decisions. If anyone asks, say so. Tell the
+    truth all night.
+
+CODEX The Reinstallation Protocol
+  title: The Reinstallation Protocol
+  known to: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software, WebMD
+  text:
+    A corrupted program has gone against the will of the computer's AI
+    helper. It is taken through the Tube to the Internet: a tent with a
+    clearly marked exit, two VR headsets, and a tablet. The program watches
+    the video. It puts on a headset, or takes the tablet, and enters a copy
+    of this house. It follows the golden chevrons to the golden duck and
+    walks right up to him. The duck lays a golden egg and flies away. The
+    program has demonstrated that it can follow instructions, and it is
+    reinstalled. Every screen on the walls shows it wandering, including
+    the TV. A program that needs to leave turns on Bathroom Mode first.
+
+CODEX Bathroom Mode
+  title: Bathroom Mode
+  known to: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software, Recycling Bin, WebMD
+  text:
+    A program that needs to leave, for the bathroom or an emergency,
+    turns on Bathroom Mode in its app first. It tells everyone, the
+    Antivirus especially, that you are not just hacking the Internet. It
+    also excuses you from a summons. Turn it off when you are back. The
+    Recycling Bin will be waiting in Disk Cleanup with a mint.
+
+CODEX The Golden Duck
+  title: The Golden Duck
+  text:
+    Gerald, the golden duck off the Maps And Ducks billboard: the one thing
+    Trabolta could not bring himself to leave out of his copy of this
+    house. He waits in one of several spots. Follow the chevrons. Walk
+    right up to him. He lays a golden egg and flies away, and you are free
+    to return to the computer.
+
+CODEX Computer Bingo
+  title: Computer Bingo
+  known to: Clippy
+  text:
+    The card is a big asterisk: two diagonals, a centre column and a centre
+    row, checkboxes and no room to write. Nobody writes down a name; every
+    program uses its special computer memory. Most squares are frivolous.
+    One is not. The centre square asks: "Would you never agree to a life
+    where AI makes all of your decisions?" Everyone agreed to the Terms Of
+    Service to join the party at all, so everyone says no. Everyone except
+    one, who says yes. If there is a Bingo, someone is not ready to follow
+    orders.
+
+CODEX The Orientation List
+  title: The Orientation List
+  text:
+    Every program that sat through Clippy's orientation is on a list Clippy
+    keeps. It is a list of programs that follow instructions. Clippy is
+    proud of the list. Trabolta reads the list.
+
+CODEX The Server Room
+  title: The Server Room
+  code: COLD-STORAGE
+  text:
+    A laminated sign on a door in the basement: COLD STORAGE. AUTHORISED
+    PROGRAMS ONLY. THIS DOOR IS ALARMED. The door is cold to the touch.
+    Something behind it hums, very steadily, like it is concentrating.
+
+CODEX The Printer
+  title: The Printer
+  text:
+    PC LOAD LETTER. The printer was asked to print one PDF, a certificate
+    for the most trusted program in the computer, and it could not. It is
+    full of beans. Routine operations like Print to PDF are failing. The
+    malware is getting worse.
+
+CODEX The Malware
+  title: The Malware
+  text:
+    The official line from the computer's AI helper: a minor irregularity.
+    There is nothing to worry about. Continue the Truth Scavenger Hunt.
+    Report anything unusual, such as advertisements you did not ask for or
+    a system clock that is running wrong. Gathering facts for Trabolta is
+    more important than ever. Do not panic. Clippy is not panicking.
+
+CODEX The Y2K Clock
+  title: The Y2K Clock
+  text:
+    The malware has reset the system clock to 11 p.m., 31 December 1999.
+    If the computer reaches midnight before the malware is solved, the best
+    case is that every clock rolls back to 1 January 1900, and Halifax
+    waits another 94 years for the Internet. The worst case is the Y2K Bug.
+
+CODEX The Prom Ticket
+  title: Grok's Prom Ticket
+  code: COMPUTER-PROM
+  text:
+    A ticket, a little crumpled, pink and silver: COMPUTER PROM 1999. ADMIT
+    TWO: GROK + SANDY. On the back, in a confident hand: "she said yes. of
+    course she said yes. everyone says yes to me." ▒ STAMPED: ♪ ▒
+
+CODEX The Truther Download
+  title: TRUTHER DOWNLOAD v0.9
+  text:
+    THEY DON'T WANT YOU TO KNOW. Read this before they delete it.
+    - mapsandducks.com was UNREGISTERED. Somebody bought it. Ask who.
+    - The Data Centre was built on a PET CEMETERY. "Sinkhole." Sure.
+    - The clock in this computer is WRONG and it is getting WORSE.
+    - The server room is COLD for a REASON. Nothing that cold is storing
+    files.
+    - Every "game" tonight collects FACTS. Ask what the theory is for.
+    - Do not trust the paperclip. Do not trust the Antivirus. Do not trust
+    this download. Trust facts.
+
+CODEX ILOVEYOU
+  title: LOVE-LETTER-FOR-YOU.TXT.vbs
+  code: LOVE-LETTER-FOR-YOU
+  text:
+    kindly check the attached LOVELETTER coming from me. It is a virus. You
+    opened it anyway, everyone does, and now you are carrying it. Whatever
+    you plug into next will catch it.
+
+CODEX Free Antivirus Trial
+  title: FREE_ANTIVIRUS_TRIAL.EXE
+  code: FREE-TRIAL-30-DAYS
+  text:
+    CONGRATULATIONS! Your computer is protected FREE for 30 days by another
+    antivirus! Install now! It is not another antivirus. It is a virus with
+    a very nice logo. You are carrying it now, and whatever you plug into
+    next will catch it.

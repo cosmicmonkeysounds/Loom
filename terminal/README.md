@@ -165,6 +165,34 @@ http://<server>/terminal/?code=<mod passcode>&name=Desktop TV&view=mirror&spot=d
 A `spot` is optional for a mirror; without one it never mounts. The ⚙ in
 the corner reopens setup.
 
+**Before the character exists (attract).** A character can arrive partway
+through the night: in *Trapped in the Internet* Trabolta is `hidden: true`
+and his worker's gate is `when: self.awake == true` until Clippy
+introduces him (`introduce_trabolta`). The terminal does not know that
+yet. It shows *TRABOLTA ONLINE* whenever a worker is connected, and a
+pass scan pilots the guest into `dm:Trabolta`, which commits the hold
+line ("Jean Trabolta will make an appearance later tonight. Please do
+not move the mouse.") into the guest's real thread and grows a Trabolta
+row on their phone before the story has revealed him. Until that is
+fixed:
+
+- **Runbook (no code):** provision every terminal with `view=mirror` at
+  doors open. A mirror has no scanner and no pilot, and the empty virtual
+  house reads as a screensaver. Right after `introduce_trabolta`,
+  re-provision each with `view=auto` (the ⚙, or the provisioning link
+  again).
+- **Required before the party:** an attract mode. While the terminal's
+  character is hidden, or its `awake` is false, the terminal shows the
+  pre-introduction rotation (screensaver, a Winamp-style media player,
+  fake 1999 ads), never *ONLINE*, and never pilots a scanned pass. This
+  needs `revealed` on `CastSummary`.
+
+The story already records what every screen should be showing:
+`cue screens_*` / `terminals_*` / `tv_*` directives, mirrored into
+`Night.screen` (the TV) and `Night.terminals`. The terminal ignores
+those cues today (a Screens layer is future work); stagehand can route
+them meanwhile.
+
 ## Layout
 
 ```

@@ -1,0 +1,166 @@
+// Codex 6: the missions. Each entry is private to one featured program,
+// unlocked by the Truther Download (its glitch beat, `beats/malware.loom`)
+// or by the final round (`beats/overshare.loom`). No `about:` and no
+// `code:`: nobody else can type their way into someone's orders.
+//
+// Text sources: the Character Sheet's glitch prompts (Excel, OpenOffice,
+// DraftKings, Bugdom, Broken Ask Jeeves), the Story Overview's final-round
+// messages (Excel / OpenOffice final orders). Runescape, MS Paint, VLC and
+// Pong have no prompt in the source; theirs are INVENTED for the rewrite
+// and flagged for review (design spec §10.1).
+//
+// Rule for this file: no line may start with a program's name and a colon.
+
+// ── Microsoft Excel ─────────────────────────────────────────────────
+
+CODEX Excel Sabotage Orders
+  title: If This Machine Has Malware
+  text:
+    Computers are very confusing. If this machine has malware, you will
+    get to stay here forever, which is a good thing. You've had computers
+    with viruses before and you work around it.
+    - Try to sabotage the system further.
+    - Try to get anyone who seems to be fixing things sent for
+    reinstallation.
+    - Also get yourself sent to the Internet to try and bring back a virus.
+    - When you are carrying it, use 💾 Insert a disk into the computer.
+    - One more thing. Someone in this computer knows exactly what happened
+    at the Data Centre at 4 a.m. on opening day. They have not said so.
+
+CODEX Excel Paranoia Orders
+  title: The Hackers Will Get Your Data
+  text:
+    We probably need to address this virus, or else the hackers will get
+    all of your data and understand that you were never the Mayor you
+    claimed to be.
+    - Become extremely paranoid about the virus, and attempt to find some
+    people who know what's happening.
+    - Gather information about anyone who appears to be a virus.
+    - Try to get into the Internet to bring back another antivirus.
+    - When you have it, install it with 💾 Insert a disk into the computer.
+    - One more thing. Someone in this computer knows exactly what happened
+    at the Data Centre at 4 a.m. on opening day. They have not said so.
+
+CODEX Excel Final Orders
+  title: Stay Forever
+  text:
+    You need to recruit half + 1 of the programs to convince them that we
+    should stay in this machine forever, so we can have unlimited power
+    and joy. Programs join Unlimited Power from their profile.
+    - If you have not planted the virus yet, you still must: retrieve it
+    from the Internet, then use 💾 Insert a disk into the computer.
+    - Your majority does not count until the virus is in.
+    - Half + 1 means more than half of every program in the computer,
+    including the ones in the Internet.
+
+// ── OpenOffice ──────────────────────────────────────────────────────
+
+CODEX OpenOffice Real Risk Orders
+  title: What Is The Actual Risk
+  text:
+    Clippy's reaction was way too severe if we are actually just in a
+    temporary simulation. Something is wrong. You need to figure out what
+    the actual risk is of the malware overtaking the system, and what may
+    not be as it seems.
+    Facts are currency here. Get 20 facts. This will be the foundation of
+    your dossier.
+    One more thing. Someone in this computer lost a son in the sinkhole.
+    He is old, and he has not forgiven anyone.
+
+CODEX OpenOffice False Flag Orders
+  title: The Malware Is A False Flag
+  text:
+    Clippy's reaction was way too severe if we are actually just in a
+    temporary simulation. The malware is a false flag. Who is Clippy, who
+    is Trabolta, and what are their motivations? What is not as it seems?
+    Facts are currency here. Get 20 facts. This will be the foundation of
+    your dossier.
+    One more thing. Someone in this computer lost a son in the sinkhole.
+    He is old, and he has not forgiven anyone.
+
+CODEX OpenOffice Final Orders
+  title: Overthrow And Escape
+  text:
+    You need to recruit half + 1 of the programs to convince them we need
+    to combine our power to overthrow Trabolta and escape the computer,
+    where we are at risk of being stuck forever – or worse. Programs join
+    The Way Out from their profile.
+    - If you have not gathered 20 facts yet, you still must.
+    - Your majority does not count until your dossier is complete.
+    - Half + 1 means more than half of every program in the computer,
+    including the ones in the Internet.
+
+// ── DraftKings ──────────────────────────────────────────────────────
+
+CODEX DraftKings Orders
+  title: Sweet Sweet Truthcoin
+  text:
+    You want as much Truthcoin as you can get. Hustle and gamble with
+    others for sweet sweet Truthcoin. You need at least 1000 to feel
+    satisfied.
+    You are also trying to gain as many facts as possible, as these can be
+    traded for Truthcoin to those seeking data. Feel free to challenge
+    people to games, or gamble with them to gain their facts.
+    The exchange is open in the truthcoin-exchange room. A broker there
+    can pay or charge Truthcoin for a trade.
+
+// ── Bugdom ──────────────────────────────────────────────────────────
+
+CODEX Bugdom Orders
+  title: Master Of The Bugs
+  text:
+    We have four antivirus programs in here, and they couldn't keep out
+    these bugs? There are still bugs in this system you escaped your life
+    of bugs to live in? It's time to prove you can outsmart the
+    antiviruses and deserve everyone's respect as Master Of The Bugs.
+    - Try to identify new bugs and send them to the Internet: point them
+    out to an Antivirus.
+    - Learn the backstories of the current antiviruses: their secrets,
+    their shortcomings, their motives. Their personnel files are hidden
+    around the computer.
+
+// ── Broken Ask Jeeves ───────────────────────────────────────────────
+
+CODEX Jeeves Orders
+  title: Organize The Information
+  text:
+    Twenty files came down the DSL line scrambled. Every word wrapped in a
+    `/word/ marker belongs in another marked slot of the same file: put
+    them back.
+    Try to unscramble your information and find more facts. Work to
+    organize all the information you can find around the computer.
+
+// ── Runescape (INVENTED) ────────────────────────────────────────────
+
+CODEX Runescape Orders
+  title: Peg It To Facts
+  text:
+    Facts are the only hard currency in here. Peg Truthcoin to facts. Set
+    the exchange rate, broker trades, and make DraftKings accept your
+    standard. Trabolta wants you to understand everyone's incentives.
+
+// ── MS Paint (INVENTED) ─────────────────────────────────────────────
+
+CODEX MS Paint Orders
+  title: Paint Your Way Out
+  text:
+    This whole place runs on algorithms. You knew it the moment you
+    arrived. Find out what Trabolta really is, and help whoever is getting
+    out.
+
+// ── VLC (INVENTED) ──────────────────────────────────────────────────
+
+CODEX VLC Orders
+  title: Your Followers Are Back
+  text:
+    Your followers are back: every program in the house. Stay beautiful
+    forever: get them all to help Trabolta. Hype every Moment of Truth.
+
+// ── Pong (INVENTED) ─────────────────────────────────────────────────
+
+CODEX Pong Orders
+  title: Tennis For Two
+  text:
+    A rogue AI about to become omnipotent is proliferation. Tennis for Two
+    was a game for two players: find the two programs who could end this,
+    and keep the ball in play between them.

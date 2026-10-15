@@ -5,7 +5,10 @@
 (Python/uv: SSE→cue-map→OSC/MQTT, MQTT→sensor-map→mod API, `show.yaml`
 config, 70 unit tests, smoke-tested end-to-end against the event
 server: mod `signal` → SSE → OSC datagram with `t_exec` stamp).
-Companion to the `escape-the-internet` immersive show.*
+Companion to the `escape-the-internet` immersive show. The rig that
+*Trapped in the Internet* actually runs (Zigbee2MQTT + WLED + QLab, no
+projectors) is in [Trapped in the Internet: the house
+rig](#trapped-in-the-internet-the-house-rig).*
 
 ## The premise
 
@@ -412,6 +415,63 @@ Two engine-adjacent additions:
   Full loop: *guest cracks the router password → `signal router_unlocked` →
   beat fires → 8 projectors flip + the crawl-space TV wakes + a hidden channel
   appears in every sidebar.*
+
+## Trapped in the Internet: the house rig
+
+*2026-10-14.* The rest of this document describes the TouchDesigner-era
+design for `escape-the-internet`. The show that actually runs,
+*Trapped in the Internet*
+(`core/examples/trapped-in-the-internet`), uses a smaller, off-the-shelf
+rig: no projectors, no TouchDesigner, no vision layer. Its config is
+[`stagehand/trapped.house.yaml`](../stagehand/trapped.house.yaml), run on
+the desktop with `uv run stagehand run --config trapped.house.yaml`.
+
+**The hardware.** One Mosquitto broker with Zigbee2MQTT on it. Zigbee
+bulbs and plugs are grouped one group per room plus a whole-house group:
+`house`, `living` (The Desktop), `kitchen` (The Cache), `backyard`
+(The Cloud), `registry` (The Registry, the rec room), `tube` (hall and
+stair landing), `mudroom`, `bathroom` (Disk Cleanup), `tent`
+(The Internet) and `server_room`. The LED strips run WLED on ESP32s
+(`wled/all` plus one topic per strip). Sound is QLab (or any OSC cue
+player) on UDP 53000, one cue per sound, numbered by its name. The Alexa
+speaker reads `show/announce`. The server room can take a maglock on a
+Zigbee relay.
+
+**Story → house.** The story only emits directives (the full registry
+is in the design spec §2.13):
+
+| In the `.loom` | Stagehand sends |
+|---|---|
+| `cue lights_<look>` (screensaver, tube_chase, call_desktop, game, truth_time, ad_hijack, glitch, pong, trust_chart, y2k, server_open, alarm, blackout, dance, final_reveal, song, rave, purgatory, banish, restore) | Z2M `scene_recall <id>` to the room or `house` group + WLED preset `ps <id>`. Each look has the same ID everywhere: `scene_store` it once per group and build identical WLED presets on every controller. Flicker is a bulb `effect` or a WLED preset, never streamed over Zigbee. |
+| `<cue: lights, room: The Cache, state: off>` (Trabolta's `cut_the_lights`; allow-listed to The Cache, The Desktop, The Cloud, The Registry) | that room's Z2M group `state` + its WLED strip on/off. The story turns the room back on 90 s later itself. |
+| `cue screens_flicker` | a one-shot `effect: blink` + a short WLED lightning playlist, so the power is felt in the house |
+| `sound <name>` (directive `sfx`) | OSC `/cue/<name>/start` to QLab |
+| `do announce "…"` | `show/announce {"text": "…"}` (a Home Assistant automation or local TTS on the speaker) |
+| `do door server_room, state: unlocked` | the maglock relay off (optional) |
+
+The `screens_*` / `tv_*` / `terminals_*` / `tablet_*` cues have no rule:
+they are for a future Screens layer, and the story mirrors each look into
+`Night.screen` / `Night.terminals` meanwhile.
+
+**House → story** (MQTT → `POST /api/mod/signal`):
+
+| Sensor | Signal |
+|---|---|
+| Zigbee contact on the server-room door (`contact == false`) | `server_door_opened`, debounced 20 s; the story latches the alarm for 120 s |
+| Zigbee button over the printer's START key | `printer_button_pressed` |
+| Reed switch on the printer lid | `printer_opened` |
+| The patch bay scanner (`sensors/patchbay/state {"combo", "complete"}`) | `patch_combo_a` / `patch_combo_b` / `patch_rejected`, judged in the YAML until signals carry arguments |
+
+**Rules of thumb.** `retain: false` on every `/set` and WLED `/api`
+command, so a retained `OFF` does not survive into the next night. Quote
+`"on"` in WLED payloads (a bare `on:` key is YAML `true`). Stagehand never
+validates signal names, so a typo is silent:
+`stagehand/tests/test_trapped_house.py` checks that every `cue lights_*`,
+`screens_flicker` and `sound` in the story has a rule, that every sensor
+signal has a `when` in `main.loom`, and that the two patch-bay combos
+equal the `Kernel.combo_*` seeds and the four combo-half codex entries.
+Edge detection, ignoring retained sensor messages, signal arguments and
+a `delay:` on cues are still stagehand work.
 
 ## Worked example: the reinforcements sequence
 

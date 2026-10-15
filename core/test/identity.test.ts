@@ -199,10 +199,14 @@ describe("the story classifies its characters", () => {
   it("a character with a part (hooks / beats / a body) is special; a bare name is pool", () => {
     expect(byName("Clippy").kind).toBe("special");
     expect(byName("Norton Anti-Virus").kind).toBe("special");
-    expect(byName("Broken Ask Jeeves").kind).toBe("special");
-    expect(byName("Microsoft Excel").kind).toBe("special");
+    for (const part of ["Task Manager", "Adobe Acrobat", "Recycling Bin", "WebMD"]) expect(byName(part).kind, part).toBe("special");
     expect(byName("Calculator").kind).toBe("pool");
     expect(byName("MS Paint").kind).toBe("pool");
+    // The nine featured programs are guests with pre-written characters:
+    // no hooks, no beats, no lines, so they stay on the guest picker.
+    for (const f of ["Microsoft Excel", "OpenOffice", "DraftKings", "Bugdom", "Broken Ask Jeeves", "Runescape", "MS Paint", "VLC", "Pong"]) {
+      expect(byName(f).kind, f).toBe("pool");
+    }
   });
 
   it("guests pick from the pool; performers pick the parts; props and Trabolta are nobody's", () => {
@@ -212,8 +216,16 @@ describe("the story classifies its characters", () => {
     expect(guests).toContain("Minesweeper");
     expect(guests).not.toContain("Clippy");
     expect(guests).not.toContain("Norton Anti-Virus");
-    expect(performers).toEqual(expect.arrayContaining(["Clippy", "Norton Anti-Virus", "Broken Ask Jeeves", "Microsoft Excel", "Task Manager", "MalwareBytes"]));
+    expect(guests).toEqual(expect.arrayContaining(["Microsoft Excel", "OpenOffice", "Broken Ask Jeeves", "MS Paint"]));
+    expect([...performers].sort()).toEqual(
+      ["Adobe Acrobat", "CRA Agent Software", "Clippy", "McAfee Anti-Virus", "Norton Anti-Virus", "Password Manager", "Recycling Bin", "Task Manager", "WebMD"],
+    );
     expect(performers).not.toContain("Calculator");
+    // The secret state holder and the voices are nobody's.
+    for (const n of ["Kernel", "Sandy", "Truther Download", "The Tablet", "The Screensaver"]) {
+      expect(guests, n).not.toContain(n);
+      expect(performers, n).not.toContain(n);
+    }
     // `playable: false` on the Prop trait; `mind: external` on Trabolta.
     expect(byName("The Uploader").playable).toBe(false);
     expect(performers).not.toContain("The Uploader");
@@ -422,6 +434,14 @@ describe("guests: exclusive programs, any software, never antivirus", () => {
     expect(av.status).toBe(409);
     expect(av.json.error).toMatch(/can't be Antivirus/u);
     expect((await post(rt, "/api/guest/register", { name: "The Router", passcode: CODES.event })).status).toBe(409);
+  });
+
+  it("a featured program is a guest's to claim, once; the secret state holder is nobody's", async () => {
+    const rt = freshRuntime();
+    expect((await post(rt, "/api/guest/register", { name: "Microsoft Excel", passcode: CODES.event })).status).toBe(200);
+    expect((await post(rt, "/api/guest/register", { name: "Microsoft Excel", passcode: CODES.event })).status).toBe(409);
+    expect((await post(rt, "/api/guest/register", { name: "Kernel", passcode: CODES.event })).status).toBe(409);
+    expect((await post(rt, "/api/prime/login", { character: "Kernel", passcode: CODES.prime })).status).toBe(409);
   });
 
   it("a searched program becomes the guest's name + picture; antivirus is greyed out and refused", async () => {

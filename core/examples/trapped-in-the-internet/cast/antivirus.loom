@@ -1,78 +1,58 @@
-// The Antivirus — the enforcers. They patrol the computer, sweep the
-// programs back to the Desktop, and drag the corrupted through the Tube.
-// Everything they can do to a program is an `Enforcer` interaction
-// (`cast/kit.loom`); what makes each of them themselves is below.
+// The Antivirus — the enforcers. They scan programs in at the door,
+// patrol the computer, sweep everyone back to the Desktop, and drag the
+// corrupted through the Tube to the Internet. Everything they can do to a
+// program — the door scan, Clearance, Send to the Internet, Mark as
+// reinstalled, the watchlist, and every booth cue — is `TRAIT Enforcer`
+// (cast/kit.loom). What makes each of them themselves is below.
+//
+// Their backstories (Julie Norton, The Moderator, Yugi Moto, One Cent On
+// The Dollar) are personnel files hidden around the house, for Bugdom.
 
 CHARACTER Norton Anti-Virus is Enforcer
   avatar: File:Norton-logo-2021.svg
   wiki: Norton AntiVirus
-  // Stands at attention. Interrupts parties. Takes it personally.
-  trusts Program: 50 of 100
-  when scanned by program:
-    if not program.cleared:
-      -> self.Clearance
-    else:
-      -> self.Sweep
-  beat Sweep(program)
-    Self: Scanning. Scanning. {program.name}: {program.doubt} threats detected.
-    if program.doubt >= 50:
-      Self: That is too many threats. I am recommending reinstallation.
-      set Norton_Anti_Virus.trusts.program -= 10
-    else if program.corrupted:
-      Self: You are already in the Internet. Why am I scanning you? Why is anyone scanning anyone?
-    else:
-      Self: You're clean. Suspiciously clean. Stay clean.
-      set program.doubt += 2
+  // The selected Antivirus. Stands at attention. Interrupts parties.
+  // Takes it personally.
 
-CHARACTER Password Manager is Enforcer
-  avatar: File:1password-logo.svg
-  wiki: 1Password
-  // Knows every code in the house. Notices when you get one wrong.
-  when wrong code for program:
-    set program.doubt += 5
-    Password Manager: That's not a password I recognise. I recognise all of them. Try to look less like you're guessing.
-
-  when scanned by program:
-    if not program.cleared:
-      -> self.Clearance
-    else:
-      -> self.Audit
-  beat Audit(program)
-    Self: Codex audit. You are holding {program.codex} entries. {program.truth} truth on file.
-    if program.codex >= 6:
-      Self: That is a great deal of knowledge for a program. Where did you get it? Who have you been talking to?
-      set program.doubt += 10
-    else:
-      Self: Adequate. Keep collecting. Trabolta likes a well-informed program.
-
-CHARACTER MalwareBytes is Enforcer
-  avatar: File:Malwarebytes logo new.svg
-  wiki: Malwarebytes
-  // The one who actually likes dragging people through the Tube.
-  when captured program:
-    MalwareBytes: Another one. Mind the cables, {program.name}. Or don't. I'm not your bathroom attendant.
-  when scanned by program:
-    if not program.cleared:
-      -> self.Clearance
-    else:
-      Self: {program.name}. Doubt on file: {program.doubt}. Give me a reason. Any reason.
+  when bingo_time:
+    if Night.step < 3:
+      reply 🛡 You are the selected Antivirus. When the centre-square program is named (or the winner refuses to name anyone, or the framed program denies the card), stand at attention and interrupt: it is inappropriate for that program to have not agreed to be ruled by AI, because that is what computer programs are here for. They must have a virus that was not caught at the door. They need to be taken to the Internet for a reinstallation. Then press 🛡 on them and drag them to the Tube.
 
 CHARACTER McAfee Anti-Virus is Enforcer
   avatar: File:McAfee logo.svg
   wiki: McAfee Antivirus
-  // Expired. Nobody renewed him. Still pops up.
+  // Expired. Nobody renewed him. Still pops up. Secretly here to get rich:
+  // he brokers the # truthcoin-exchange.
+
   every 20m:
-    broadcast "🛡️ McAfee: Your protection has expired. Your protection has expired. Renew now." to everyone
-  when scanned by program:
-    if not program.cleared:
-      -> self.Clearance
-    else:
-      -> self.Popup
-  beat Popup(program)
-    Self: {program.name}! Your protection has expired! Would you like to renew?
-    * Renew.
-      set program.doubt -= 10
-      Self: Protected. Until it expires again. In about a minute.
-    + Close the popup.
-      set program.doubt += 3
-      Self: You can't close me. Nobody can close me. That is my whole thing.
+    broadcast "🛡️ McAfee Anti-Virus: Your protection has expired. Your protection has expired. Renew now." to everyone
+
+  when truther_download:
+    if Night.truther_sent != true:
+      reply 🪙 The # truthcoin-exchange is open. You are its broker: press 🪙 Pay or 🪙 Charge on a program's card to settle every trade. Take your cut in person.
+
+CHARACTER Password Manager is Enforcer
+  avatar: File:1password-logo.svg
+  wiki: 1Password
+  // Knows every code in the house. Notices when you get one wrong. Keeps
+  // the list of who is in which club. Yu-gi-oh! everywhere.
+
+  when wrong code for program:
+    Self: That's not a password I recognise. I recognise all of them. It's time to d-d-d-duel with the truth, {program.name}. Try to look less like you're guessing.
+    reply 🔑 {program.name} entered a wrong code.
+
+  when who joins Unlimited Power:
+    reply 🔑 {who.name} joined Unlimited Power.
+
+  when who joins The Way Out:
+    reply 🔑 {who.name} joined The Way Out.
+
+CHARACTER CRA Agent Software is Enforcer
+  avatar: File:Canada Revenue Agency logo.svg
+  wiki: Canada Revenue Agency
+  // A digital CRA Agent for one day that feels like eternity. Audits
+  // Truthcoin, to the cent. Especially the cent.
+
+  when truther_download:
+    if Night.truther_sent != true:
+      reply 🧾 Truthcoin is trading in # truthcoin-exchange. Audit it: press 🪙 Charge on any program that profits without declaring it.

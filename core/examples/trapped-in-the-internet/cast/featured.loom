@@ -1,0 +1,55 @@
+// The featured programs — guests with pre-written characters.
+//
+// Nine invitees arrive with a character sheet in their invitation. In
+// the app they are ordinary guest programs: each is a bare CHARACTER
+// (a name, a picture, at most a `wiki:`), so it stays on the guest
+// picker, can be captured, redeems codes, holds quests, answers
+// choices, joins a faction and counts toward a majority.
+//
+// THE RULE: nothing anywhere in the story may make one of these a
+// performer's part. No hooks, no beats, no `listed`, no `faction`, and
+// no line anywhere that parses as their speech — a line that starts
+// with one of these names and a colon is dialogue, and one dialogue
+// line flips the program to a performer booth (identity.ts:isSpecial).
+// Write their names as prose ("Microsoft Excel is Randy Barkmore Sr.").
+//
+// On arrival `ROLE Program` (main.loom) tags the guest by the exact
+// picker spelling (`program.featured` = excel / openoffice / draftkings /
+// bugdom / jeeves / runescape / mspaint / vlc / pong) and every later
+// check reads that tag. Their private material comes from `The Uploader`
+// and `Truther Download` lines and from `unlock`s gated on the tag.
+// The human identities are in codex/5-people.loom; the real invitees'
+// names never appear in the story.
+
+CHARACTER Microsoft Excel
+  avatar: File:Microsoft Office Excel (2013–2019).svg | File:Office Excel 2007 logo.svg
+
+CHARACTER OpenOffice
+  avatar: File:OOo3.2.1Icon.png
+  wiki: Apache OpenOffice
+
+CHARACTER DraftKings
+  avatar: File:DraftKings logo.svg
+
+CHARACTER Bugdom
+  avatar: File:Bugdom.jpg
+
+CHARACTER Broken Ask Jeeves
+  avatar: File:Jeeves-in-2009.jpg | File:Ask.com Logo.svg
+  wiki: Ask.com
+
+CHARACTER Runescape
+  avatar: File:Runescape 3 Logo.png
+  wiki: RuneScape
+
+CHARACTER MS Paint
+  avatar: File:Microsoft Paint.svg
+  wiki: Microsoft Paint
+
+CHARACTER VLC
+  avatar: File:VLC Icon.svg
+  wiki: VLC media player
+
+CHARACTER Pong
+  avatar: File:Pong.png
+  wiki: Pong

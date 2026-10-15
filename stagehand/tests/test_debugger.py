@@ -186,9 +186,9 @@ def test_the_shipped_trabolta_mind_declares_an_arc():
     from stagehand.agents.persona import load_persona
 
     p = load_persona(TRABOLTA)
-    assert p.stages == ("lonely grandeur", "appetite", "the question", "the turn")
-    assert set(p.drives) == {"hunger", "suspicion", "generosity", "resolve"}
-    assert {"desktop", "bingo", "hunt", "free_roam", "destruct", "ending"} <= set(p.phase_cues)
+    assert p.stages == ("asleep", "formal", "hungry", "rattled", "judge", "unravelling", "desperate", "last act")
+    assert set(p.drives) == {"hunger", "suspicion", "pride", "candour", "longing"}
+    assert {"arrivals", "introduced", "hunt_1", "truth_1", "malware", "hunt_2", "truth_pong", "trust_chart", "beans", "overshare", "y2k", "final_reveal", "bobbing"} <= set(p.phase_cues)
 
 
 # -- the orchestrator with structure --------------------------------------------------------

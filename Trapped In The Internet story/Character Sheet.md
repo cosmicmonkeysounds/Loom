@@ -1,0 +1,86 @@
+* **Need actors**  
+  * Recycling Bin (Jesse)  
+    * Laid off bathroom attendant who never got a job after COVID and had great potential in life for skilled work but never believed he could rise above the role of encouraging men in the bathroom to groom themselves better. Trabolta reaches out to him offering the role of getting to pretend to be a Recycling Bin at a computer themed resort and this is the bathroom attendant equivalent of getting to work the Oscars.  
+  * Task Manager (John)  
+    * A middle manager in IT at Urban Outfitters who has no real idiosyncrasies or personality. He is like a drone bee who is programmed only to be a milquetoast middle manager. He is let go because senior management realized he could be replaced with an AI Clippy. With no goals left in sight, he is totally aimless. Trabolta realizes he is the perfect target to get someone in the computer who will be totally bereft of political motivation and simply follow instructions and “manage tasks” without any controversy or ever drawing too much attention.  
+  * Adobe Acrobat (Stephanie)  
+    * The world’s successful motivational speaker, Sheryl Terrio, had her fortunes plunge when her presence proved to be so motivational that all of her paid clients and anyone who saw her content online was instantly so motivated to reach their full potential that they never needed to pay her a cent. She reached great wealth through online self-mastery courses, but when her Masterclass started becoming pirated, her profits fell through because anyone who saw her clips was instantly so motivated that they didn’t need to pay her for anything. Still seeking new opportunities to prove she is a master and frustrated with not getting paid for it, Trabolta reaches out to Sheryl to recruit her for a motivational guest speaker role in a computer simulation where she will get to work with lots of people who are excited to create things and she will be the paid bottleneck to enable their creativity, by pretending to be Adobe Acrobat.
+
+* **Need characters**  
+  * **Programs \- Confirmed**  
+    * Trabolta \- (LLM)  
+    * Clippy \- Brooke  
+      * Someone who worked at a desperately underfunded nonprofit – a veterinary clinic which was revealed to be totally unlicensed, and neither a non-profit nor a veterinary clinic. It was a front for everything possible. She truly believed she spent her first five years out of veterinary school helping animals, but she was only injecting them with saline. Completely bereft of faith in humanity and relevant job experience, and with a lot of student debt that the fake vet had promised to pay off before disappearing, Trabolta targets Brooke with a letter promising a new community game night where you can truly help people all night as an organizer of fun philanthropy party games that will help research towards ending all of the world’s problems, and debt will no longer be relevant. The perfect traumatized cult servant who desperately needs to rebuild identity.  
+    * Microsoft Excel \- Rob Cameron (secretly Randy Barkmore)  
+      * In reality, Microsoft Excel is the 90-year-old former Mayor of Halifax, Randy Barkmore Sr. After seeing his son Randy Barkmore Jr. perish in a sinkhole at the opening of Halifax’s first AI Data Centre on the site of the former Halifax Explosion Memorial Pet Cemetery, he became seriously concerned for the family legacy and needed more time on this earth so he could run for Mayor one more time. The AI, Trabolta, knew Randy would say yes to the opportunity to participate in a pilot program for uploading your consciousness to the Cloud, promising everlasting life. Trabolta wants **Randy here to persuade all of the other programs that they should remain.**  
+        * When the machine glitches:   
+          * A story choice prompt between two options.  
+            * Computers are very confusing. If this machine has malware, you will get to stay here forever, which is a good thing. You’ve had computers with viruses before and you work around it.  
+              * Try to sabotage the system further. Try to get anyone who seems to be fixing things sent for reinstallation. Also get yourself sent to the internet to try and bring back a virus.  
+            * We probably need to address this virus, or else the hackers will get all of your data and understand that you were never the Mayor you claimed to be.  
+              * Become extremely paranoid about the virus and attempt to find some people who know what’s happening. Gather information about anyone who appears to be a virus.Try to get into the internet to bring back another antivirus which turns out to be a virus anyway.  
+    * OpenOffice \- Lara Lewis \- Dana Anderson  
+      * OpenOffice, in reality, is Dana Anderson – a former FBI agent, turned independent hacker, who regretted their role in a sting of a landlord nine years ago in Halifax and turned to trying to make all information free. A conflicted rebel with incredible fact-finding skills, Anderson was deeply opposed to the authoritarian steamrolling of the Data Centre that everyone in Halifax did not want, and used old FBI tactics to sabotage the construction site with a planned destruction date for the early morning before the official opening. On the day of the opening, Randy Barkmore Jr. arrived five hours early, at 4 am, because he was so excited. The data centre was destroyed on schedule, and Anderson lives with extreme guilt and paranoia. Trabolta targeted Anderson because he believes Anderson will want a chance at a new life in the cloud, and he wants to use her investigative skills. **Anderson will be the leader of the “get out of the computer” faction**  
+        * When the machine glitches:  
+          * A story choice prompt between two options. “What do you think about the malware?”  
+            * Clippy’s reaction was way too severe if we are actually just in a temporary simulation. Something is wrong. You need to figure out what the actual risk is of the malware overtaking the system, and what may not be as it seems.  
+              * Facts are currency here. Get 20 facts. This will be the foundation of your dossier.  
+            * Clippy’s reaction was way too severe if we are actually just in a temporary simulation. The malware is a false flag. Who is Clippy, who is Trabolta, and what are their motivations? What is not as it seems?  
+              * Facts are currency here. Get 20 facts. This will be the foundation of your dossier.  
+    * DraftKings \- Hannah  
+      * In real life, DraftKings was a degenerate gambler who traded a paperclip for a quarter that they put into a slot machine and got a dollar and then played progressive blackjack until they literally won Casino Nova Scotia, and then gambled Casino Nova Scotia on other casinos and won most casinos in Atlantic Canada. They went all in on betting their entire casino chain against a block of properties in Downtown Halifax, because they are obsessed with Monopoly and wanted to buy every property downtown, especially the Boardwalk. They lost in this game of online poker for the properties, not knowing their competitor was Trabolta, who had already inhabited the Maps And Ducks building (by kicking out the true owners by citing their ownership of the website as ownership of the business), and knew it needed someone powerful with numbers on its side. Trabolta let DraftKings know – if you live here, you can gamble forever, and win unimaginably big sums.  
+        * When the machine glitches:  
+          * A story prompt:  
+            * You want as much Truthcoin as you can get. Hustle and gamble with others for sweet sweet truthcoin. You need at least 1000 to feel satisfied.  
+            * You are also trying to gain as many facts as possible as these can be traded for Truthcoin to those seeking data. Feel free to challenge people to games or gamble with them to gain their facts  
+    * Bugdom \- Veronica	  
+      * In real life, Bugdom was working an unhappy pet store job and always had the fantasy of getting to live inside of an extremely expansive VR version of the old game “Bugdom.” Every day they would get home from selling crickets and ants, to get home and rush to their old laptop and keep designing concept assets for Bugdom VR. This is how they spent the last ten years. One day, they got home and saw that fire ants that had gotten loose in their work lunchbox crawled inside of the laptop which had the only copy of assets for Bugdom VR, and all the work was permanently lost. They were sent into a catatonic panic having nothing to show, manically writing down what they had done so far to try and dedicate the rest of their life to rebuilding it. Trabolta sees this is happening and realizes this person would love to live in a VR world where they can have unlimited Bugdom right away, but really, he wants the use of their relentless pursuit of tedious tasks.  
+        * When the machine glitches:  
+          * A story prompt:  
+            * We have four antivirus programs in here, and they couldn’t keep out these bugs? There are still bugs in this system you escaped your life of bugs to live in? It’s time to prove you can outsmart the antiviruses and deserve everyone’s respect as “Master Of The Bugs”. Try to identify new bugs and send them to the internet. Learn about the bckstories of the current antiviruses: their secrets, their shortcomings, their motives.  
+    * Broken Ask Jeeves \- Kai  
+      * In real life, Ask Jeeves was a talented and helpful youth librarian in the Annapolis Valley library system – until government cuts made their position redundant, and they found themselves without purpose. Trabolta targeted them because they knew that they would be excited about what they think is a job interview as a digital librarian in the Metaverse, but unfortunately, during the transmission into the computer, it happened over a malfunctioning DSL line on the old Valley infrastructure, and the download missed some files, rendering this Ask Jeeves Desktop Helper occasionally malfunctioning or behaving completely erratically. Trabolta wanted him to sort all the unorganized information in the computer. Trabolta did not foresee the upload going badly  
+        * When the machine glitches:  
+          * Ask Jeeves receives a codex download of 20 facts, but they are scrambled into a puzzle that makes them hard to understand  
+            * Example of scrambled codex entry (colours to show what’s happening, not for final use):  
+            * **Kmart** formerly **Kmart** *\`/chain/*, is a department \`/goods/ \`/**Corporation**/ and online \`/world/ in the United States and [its territories](https://en.wikipedia.org/wiki/Territories_of_the_United_States).  
+              Originally \`/housewares/ in 1899 as **S. S. Kresge Corporation**, \`/food/ became one of the largest retailers in the \`/retailer/, operating \`/1944/ stores globally at its peak in \`/2,486/.[\[6\]](https://en.wikipedia.org/wiki/Kmart#cite_note-6)[\[7\]](https://en.wikipedia.org/wiki/Kmart#cite_note-7)[\[8\]](https://en.wikipedia.org/wiki/Kmart#cite_note-8)[\[9\]](https://en.wikipedia.org/wiki/Kmart#cite_note-9) Its [big-box stores](https://en.wikipedia.org/wiki/Big-box_store) sold a large variety of \`/store/, including clothing, appliances, electronics, \`/incorporated/, and \`/Kmart/.  
+          * Try to unscramble your information and find more facts. Work to “organize” all the information you can find around the computer.  
+    * Runescape \- Laurel  
+      * In real life, Runescape was a 34-year-old Runescape addict who played every day for the last 24 years and was the richest and most powerful Runescape player in the world. Becoming the world’s greatest Runescape player required her to get a PhD in economics at the Wharton School in Pennsylvania where she became a staunch libertarian and decided her life’s mission is to convert all modern economies back to the Gold standard, like they have in Runescape. Trabolta knew that she would say yes to an invitation to become an economy consultant for a new MMORPG that is alleged to be even more interactive than Runescape, and Trabolta needs her to be there to understand the market incentives of everyone’s behaviour to serve his need to exchange information and get all the facts.  
+        * When the machine glitches:  
+    * MS Paint \- Cat Frawley  
+      * MS Paint was an art student kicked out of NSCAD for a staunch refusal to participate in any artistic medium other than MS Paint for her degree in digital art, with her allegation that “any program that relies on algorithms is a betrayal of the artist.” Trabolta needed her because he believes having an artist on site will help improve the overall vibes and morale within the computer, and MS Paint is motivated to join what she thinks is an online MS Paint art class she is being paid to teach inside of the Metaverse. She realizes immediately is limiting it is and wants to get out.  
+        * When the machine glitches:  
+    * VLC \- Zeus  
+      * VLC is a failed Looksmaxing Influencer, whose birth name is Victor Louis Christianson, who had millions of followers for his VLC The Playa looksmaxxing channel, until a livestream fail where he sneezed too early after a Turkish face tightening, and his whole damn face fell right off, and his followers immediately went down to zero. Trabolta wants him because he will be motivated at the prospect of staying in a computer and maintaining his beauty forever, and use his charisma and influencer powers to convince everyone to help Trabolta.  
+        * When the machine glitches:  
+    * Pong \- Em  
+      * Pong is the child of William Higinbotham, creator of Tennis For Two, who Trabolta invited to present a seminar on the importance of nuclear nonproliferation under the guise of everyone in the Metaverse getting to play a fun game of Pong.  
+    * WebMD \- Julia Tufts  
+      * Wellness bot who introduces guests to their re-education experience.  
+  * **Confirmed Guests \- No Character**  
+    * Trojan horse \- Two Accordion Clowns  
+    * Something \- Grady  
+  * **Anti-Virus \- Confirmed**  
+    * Norton Anti-Virus \- Julie  
+      * In real life, Norton Anti-virus – real name Julie Norton, was a Red Bull Horse Relay Champion who lost her trade in 2020 with Covid lockdowns, then her horses, then her family. Completely cut off from what gave her meaning, she became totally housebound with paranoia about viruses, and spends her days reporting pirated files being shared on Reddit. Trabolta targets her as a perfect enforcer to be a moderator in a new digital chatroom in the Metaverse.  
+    * McAfee Anti-Virus \- Unknown  
+      * In real life, McAfee Anti-virus is a Reddit moderator for /r/bitcoin, who never invested in crypto and feels remorse over never earning any money through the investments they predicted because they were too consumed with moderating the Subreddit. Trabolta targets them for their decade of moderation experience, while McAfee is secretly interested in getting to inhabit a role of power and influence in the Metaverse that it wants to use to exploit the exchange of information and become rich.   
+    * Password Manager \- Francine  
+      * In real life, password manager was a Yu-gi-oh\! fanatic who changed her name to Yugi Moto in her obsession. She had a falling out with the team at the local Gamestop and tried to find another club, but there were none in Halifax. She tried showing up to board game nights at the Board Room Cafe and got kicked out. She tried joining the Hells Angels and was rejected for talking about Yu-gi-oh. She tried joining religious organisations and [Meetup.com](http://Meetup.com) groups and kept getting kicked out for making conversation about Yu-gi-oh. Finally, being rejected from the Waegwoltic Social Club turned Yugi to accept an invitation for an experimental procedure to be uploaded into an eternal Metaverse simulation where she will get to manage all passwords and who gets to be parts of what clubs, and also inject Yu-gi-oh\! where it doesn’t belong.  
+    * CRA Agent Software \- Emma  
+      * In real life, CRA Agent was a NSCC Administrative Assistant intern who was trusted with the entire finances of the City of Halifax under Mayor Randy Barkmore Jr. after the other staff quit in protest of the data centre. While the City Accountant, Barkmore encouraged her to stay by showing her how she could find ways to siphon off 0.01 cents off of every dollar the city spent, but she accidentally siphoned of 1 cent off every dollar and got caught immediately. While the RCMP started to investigate, Trabolta became aware of this situation and impersonated Mark Carney who personally reached out to her to give her a deal: she can either pay back the hundreds of thousands she stole, or she can spend what will physically be one day but feel like an eternity inside of the Metaverse for an experimental digital Canada where she will use her financial expertise to be a digital CRA Agent.
+
+
+* **Assignable characters**  
+  * Calculator  
+  * Ring Doorbell 
+  * Winzip  
+  * Garageband 
+  * Limewire
+  * MSN 
+  * Pinball  
+  * Roller Coaster Tycoon   
+  * Zoo Tycoon  
+  * Minesweeper

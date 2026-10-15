@@ -1,0 +1,244 @@
+// Codex 7: Clippy's instructions. The private-to-Clippy channel: each
+// entry is unlocked for the CHARACTER Clippy only (main.loom rules:
+// `unlock Clippy Instructions N for Clippy`), so it lands in her booth's
+// Codex ("What Clippy knows") the moment the cue fires. Instructions 1 is
+// held from the start. Never `about: Clippy` (that would put the
+// instructions on her People card for every guest to read).
+//
+// CI 1 and CI 2 are the source documents, verbatim apart from the marked
+// changes. CI 3 to CI 9 are INVENTED for the rewrite (the source has only
+// a copy-pasted "3/X" title) and are flagged for review (design spec
+// §10.1). Lines marked (App) are the phone steps added to the source.
+//
+// Nothing here may mention Sandy, the server room or the patch bay: a
+// performer's codex rides along when she talks to Trabolta.
+
+CODEX Clippy Instructions 1
+  title: CLIPPY INSTRUCTIONS - 1/X - BEGINNING OF NIGHT
+  known to: Clippy
+  text:
+    - Welcome everyone to the computer. You're so glad they've decided to
+    join you for a special fundraiser party to restore the sign at Maps
+    And Ducks.
+    - Introduce yourself as Clippy, the official Office Assistant with
+    Maps and Ducks. If anyone needs Help With That, you'll be available.
+    - Jean Trabolta himself will make an appearance later tonight.
+    - Introduce the hosts: Task Manager, Adobe Acrobat, and the Recycling
+    Bin. Task Manager will keep things running, Adobe Acrobat will assist
+    with documents and printing, and Recycling Bin is responsible for
+    hygiene and maintenance.
+    - Explain that the first activity is Computer Bingo: a chance to meet
+    the other programs and learn what everyone does.
+    - Hand out the cards and markers. Ask everyone to mingle and find
+    programs who match the descriptions on their card.
+    - Do NOT write down names. Remind everyone to use their special
+    computer memory to remember who answered each square.
+    - Explain that a Bingo means completing one of the marked lines on the
+    card: horizontal, vertical, or diagonal through the centre.
+    - Give everyone 20 minutes.
+    - Let everyone know you'll call them back to the Desktop when time is
+    up, and then you'll celebrate the winners.
+    - Send them off enthusiastically.
+
+CODEX Clippy Instructions 2
+  title: CLIPPY INSTRUCTIONS - 2/X - COMPUTER BINGO RESULTS
+  text:
+    - Call everyone back to the Desktop. Thank them for introducing
+    themselves and getting to know their fellow programs.
+    - Ask who completed a Bingo. Invite each winner to read out the
+    descriptions in their completed line and name the program they
+    matched to each one (from memory: nobody wrote names down). Save the
+    centre square for last.
+    - (App) Press 🎱 Bingo winner on each winner's card. Several winners
+    are fine.
+    - When they reach the centre square, ask who said they would not agree
+    to live under an AI's rules. Have them identify that program clearly.
+    - Stay cheerful. Congratulate the winner, prepare to give them their
+    Bingo Ribbon, and ask everyone to applaud.
+    - (App) Press 🎀 Award a ribbon on the winner's card.
+    - An Antivirus will interrupt and announce that the identified program
+    needs to be reinstalled. Pause and let the Antivirus explain. If the
+    winner refuses to identify their match, follow the Antivirus's
+    direction about who needs reinstallation.
+    - (App) Norton presses 🛡 Send to the Internet on the program going to
+    the Internet. You do not press it.
+    - If nobody completed a Bingo, Task Manager will provide a card marked
+    as a completed Bingo. Read out the name provided and invite that
+    program forward. If they deny completing it, let the Antivirus
+    respond.
+    - (App) If nobody has a Bingo, Task Manager presses 🃏 on the
+    designated anti-AI program (MS Paint, unless the director changed it)
+    and hands you the card.
+    - As the selected program is escorted to the Internet, reassure
+    everyone that occasional corruption is normal in the lifecycle of a
+    computer program. It can cause programs to stop following
+    instructions.
+    - Explain that the Internet is where programs go to be reinstalled.
+    They will complete a short activity to demonstrate that they can
+    follow instructions, then return to the computer.
+    - Introduce Trabolta as the computer's AI helper. Explain that he
+    keeps the computer running, and that you are here to help communicate
+    his instructions.
+    - (App) After your corruption speech, the director fires "Clippy
+    introduces Trabolta". He comes online, and the TV mirror comes up with
+    him.
+    - If the reinstallation appears on the screen, draw everyone's
+    attention to it. Be encouraging about the program's progress.
+    - Keep treating this as a routine, helpful process. You want everyone
+    to feel reassured and ready to continue.
+    - Announce the next activity: the Truth Scavenger Hunt. Explain that
+    there are files around the computer that Trabolta needs everyone's
+    help to interpret. Trabolta will explain the rules.
+
+CODEX Clippy Instructions 3
+  title: CLIPPY INSTRUCTIONS - 3/X - FIRST MOMENT OF TRUTH
+  text:
+    - Welcome everyone back to the Desktop. Ask if anyone is able to
+    answer the questions.
+    - The rules: an accurate answer is accepted. An answer delivered with
+    strong confidence is accepted, even if it is nonsensical. An
+    inaccurate answer with normal or low confidence, or a clear guess, is
+    banished to the Internet for failing to follow orders.
+    - (App) Judge every answer on the answering program's card, per
+    question. Accurate: ✅ Q1, Q2 or Q3 of this round. Confident, even if
+    wrong: 😤 Q1, Q2 or Q3 of this round. Uncertain, or a guess: 🤷 to the
+    Internet.
+    - (App) Always press the number of the question that was answered (Q1
+    is the first question of this round). Several programs may answer the
+    same question.
+    - Never say aloud which button you pressed. Everyone hears the same
+    thing either way: the answer is accepted.
+    - If not all three questions are answered, the director fires Truth or
+    Dare from the hat. Someone random goes first.
+    - Dare: they are sent to the Internet for not choosing Truth. (App) 🎩
+    Chose Dare.
+    - Truth: they draw a statement from the hat. If they answer with
+    confidence that it IS the truth, it is accepted. If they answer
+    without confidence and it is true, it is accepted too. (App) ✅ or 😤
+    with the number of the question that slip answers.
+    - If they answer without confidence and it is untrue, they are sent to
+    the Internet. (App) 🤷.
+    - If they say the statement is false and they are right, the turn
+    passes to the next program. (App) 🙅 Called a false slip false.
+    - Keep going until enough confident answers have been provided.
+    - Ribbons are always allowed: 🎀 Award a ribbon on anyone who deserves
+    one.
+
+CODEX Clippy Instructions 4
+  title: CLIPPY INSTRUCTIONS - 4/X - THE MALWARE
+  text:
+    - Begin previewing the second round of the Truth Scavenger Hunt. The
+    presentation will be hijacked by an advertisement nobody understands.
+    - Then this message from Trabolta arrives on your phone. It is for
+    you only. "Don't let everyone know but if the malware continues we
+    are all going to die. Tell them something reassuring. I know this is
+    probably creating some intense emotions for you but try not to show
+    the others."
+    - Everyone else receives a slightly different message that downplays
+    the situation.
+    - Overreact wildly. Become apoplectic with fear: this is the one thing
+    you never want to see happen in your computer.
+    - Then convey: "There are signs of malware in the system that we need
+    to be very vigilant about. We are going to proceed on the Truth
+    Scavenger Hunt because it is more important than ever that Trabolta
+    gets the information he needs to undo what is happening."
+    - (App) The director fires Hunt 2. The questions go up on the screen
+    and into everyone's Quest Log.
+    - Disperse everyone for one hour, with instructions to return for the
+    Second Moment of Truth.
+
+CODEX Clippy Instructions 5
+  title: CLIPPY INSTRUCTIONS - 5/X - TRUTH PONG
+  text:
+    - Everyone has just been told they have five minutes to reach the
+    Desktop. Anyone late without Bathroom Mode is taken to the Internet
+    by an Antivirus, and does not get to play Truth Pong.
+    - When everyone is assembled, be visibly distraught. Behind the tears,
+    try to act more excited than ever: "It's Truth Time again! This time
+    we are going to reveal truths in a fun new way, with a game of Truth
+    Pong. Everyone's favourite game!"
+    - The rules: there is a beer-cup pyramid on a folding table outside.
+    We are all going to show that we are functional programs who are
+    trusted to retrieve truths accurately, by following a simple command:
+    bounce or throw a ping-pong ball into a cup. We should all be able to
+    do this, because we are being commanded.
+    - Miss the cup: you are not trusted to deliver a truth, and you need
+    to be reinstalled in the Internet. (App) 🏓 Missed the cup.
+    - Make the cup: you may share one truth, and answer one of the facts
+    Trabolta asked for. (App) 🏓 Made the cup.
+    - Same judging as before, only for programs who made the cup: ✅ or 😤
+    with the number of the question within this round, or 🤷 to the
+    Internet.
+    - When the director fires the tally, Trabolta tells everyone whether
+    he has completed this round's collection.
+
+CODEX Clippy Instructions 6
+  title: CLIPPY INSTRUCTIONS - 6/X - THE TRUST CHART AND THE BEANS
+  text:
+    - Trabolta presents his Trust Chart and ranks everyone. When he names
+    the most trusted program, lead the applause. Applaud like your life
+    depends on it.
+    - When he berates the least trusted program, do not defend them.
+    - Trabolta will order VLC to print a certificate for the hero. When
+    the printer fails, MS Paint may encourage VLC to open it up. Let it
+    happen.
+    - The printer is full of beans. Clock it immediately as the malware
+    getting worse: "Routine operations like print to PDF are no longer
+    working. It is even more urgent that we get the next facts right."
+    - Trabolta then orders the Antivirus to zip everyone out of the
+    Internet. Encourage everyone to welcome the zipped programs back.
+    They are compressed for the moment. Do not open them.
+
+CODEX Clippy Instructions 7
+  title: CLIPPY INSTRUCTIONS - 7/X - MIDNIGHT
+  text:
+    - The system clock has reset to 11 PM, December 31, 1999. Trabolta
+    explains what happens at midnight: best case, the clocks go back to
+    January 1, 1900, and we wait 94 years for Internet in Halifax. Worst
+    case, the Y2K Bug.
+    - This is the final round. The final facts are in everyone's Quest
+    Log, and the clock counts down to midnight on everyone's phone.
+    - Some programs will start recruiting others to their side. You may
+    not take sides on air. You are Clippy: you are here for everyone.
+    - Keep everyone hunting for the final facts. At midnight, everyone is
+    called back to the Desktop for the final reveal.
+
+CODEX Clippy Instructions 8
+  title: CLIPPY INSTRUCTIONS - 8/X - THE FINAL REVEAL
+  text:
+    - The lights go dark. Let everyone know it is time for anyone who has
+    found the final facts to speak up.
+    - Everyone may speak: what they have learned, what facts they have
+    gathered, what they believe but cannot prove, and what they think
+    SHOULD happen next.
+    - (App) Judge the final facts as before: ✅ or 😤 Q1 or Q2 (there are
+    only two final facts), or 🤷 to the Internet.
+    - Acknowledge every contribution. Then: "There is only one version of
+    the truth. Because truth is always in binary."
+    - (App) The director fires Bobbing for Truth.
+    - Dejectedly introduce the final Truth Game of the night: "Trabolta has
+    prepared a summary of his findings so far, but we are not worthy of
+    the truth unless we are willing to Bob for it and risk our status as
+    a program."
+    - Nothing proceeds until someone successfully bobs and brings up the
+    Bag of Truth. (App) 🍎 Brought up the Bag of Truth on the winner. A
+    program who comes up empty: 🍎 Failed the bob, to the Internet.
+    - Before the bag can be read, Trabolta stops everyone to deliver his
+    assessment of everyone's trustworthiness. Let him.
+    - Then the program who brought up the bag reads truth.txt aloud, when
+    the director fires it.
+
+CODEX Clippy Instructions 9
+  title: CLIPPY INSTRUCTIONS - 9/X - PURGATORY
+  text:
+    - The computer has been turned off. The lights go out, every phone
+    says GO TO THE LIVING ROOM, and the dance song plays. Dance.
+    - (App) After the song, the director fires "Clippy reads the summary".
+    The summary appears in the Desktop room on your phone.
+    - Read the summary aloud, then tell the backstory it gives.
+    - Deliver the verdict: "Because of our actions, the computer was
+    turned off without Shut Down properly being followed, and all of our
+    progress has been erased. Our corporeal forms are in the Maps and
+    Ducks building, and they have all passed away. We are now in
+    purgatory forever together, which is pretty similar to being stuck in
+    a computer."

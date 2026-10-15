@@ -486,3 +486,43 @@ describe("routes — private threads + performer scoping", () => {
     expect(seen(nAdmin)).toContain("secret");
   });
 });
+
+describe("Sim — an agent-voiced character never takes lore about someone else", () => {
+  const SRC = `# Agents
+start: Open
+
+CHARACTER Bot
+  mind: external
+
+CHARACTER Ann
+
+CODEX Ann Secret
+  about: Ann
+  text: Ann's secret.
+
+CODEX Loose Talk
+  text: Anyone may know this.
+
+CODEX Bot Diary
+  about: Bot
+  text: The bot's own diary.
+
+== Open
+The doors open.
+`;
+  it("refuses third-party lore to a mind: external character; unowned lore and lore about others to people still move", () => {
+    const sim = Sim.fromSources(SRC);
+    sim.createPerson("g1", "Minesweeper");
+    sim.createPerson("g2", "Pinball");
+    sim.unlock("g1", "Ann Secret");
+    sim.unlock("g1", "Loose Talk");
+    expect(sim.agentRefuses("Bot", "Ann Secret")).toBe(true);
+    expect(sim.agentRefuses("Bot", "Loose Talk")).toBe(false);
+    expect(sim.agentRefuses("Ann", "Ann Secret")).toBe(false);
+    expect(sim.share("g1", "Bot", "Ann Secret").filter((e) => e.type === "codexUnlocked")).toEqual([]);
+    expect(sim.holdsCodex("Bot", "Ann Secret")).toBe(false);
+    expect(sim.share("g1", "Bot", "Loose Talk").filter((e) => e.type === "codexUnlocked")).toHaveLength(1);
+    expect(sim.share("g1", "g2", "Ann Secret").filter((e) => e.type === "codexUnlocked")).toHaveLength(1);
+    expect(sim.holdsCodex("Bot", "Bot Diary")).toBe(true);
+  });
+});

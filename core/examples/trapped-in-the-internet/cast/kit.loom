@@ -4,10 +4,17 @@
 // program's pass at it and the program is routed to one beat.
 // `Person` marks a character who is a real body at the party — listed
 // in the app's directory, messageable, able to share their codex.
-// `playable: false` keeps a prop off the sign-in pickers: nobody *is* the
-// Router. (Every other declared character is either a performer's part —
-// hooks, beats, a body — or, with nothing but a name, a program a guest
-// may be: see `cast/pool.loom`.)
+// `Host` is a party host (faction Hosts); `Enforcer` is an Antivirus
+// (faction Antivirus). Every door scan, every capture and every staff
+// cue an Antivirus gets lives here, once, on the trait.
+//
+// Staff cues are `reply` lines: inside a character's own hook `self` is
+// the character, so `reply` is a readout in THAT performer's booth (never
+// a message to the guest). A broadcast `to group(Antivirus)` reaches no
+// booth — performers are not members of anything — so it is never used.
+//
+// `playable: false` keeps a prop off the sign-in pickers: nobody *is*
+// the Router.
 
 TRAIT Prop(beat)
   playable: false
@@ -19,32 +26,87 @@ TRAIT Person
 
 TRAIT Host is Person
   faction: Hosts
+
+  // A host scan never moves anyone. During the summons it is a check-in
+  // at the Desktop; otherwise each host greets in their own voice
+  // (every host owns `beat Greet(program)`, cast/hosts.loom).
+  when scanned by program:
+    if Night.summons_open == true and program.cleared:
+      fire checked_in for program with at: The Desktop
+      Self: You made it. Checked in.
+    else:
+      -> self.Greet
+
   // A host may clear a program's name.
   when vouch for program:
     set program.doubt = 0
     Self: {program.name} is a perfectly good program. I vouch for them. Move along.
+    reply 🤝 Vouched for {program.name}. Their watchlist entry is cleared.
 
 TRAIT Enforcer is Person
   faction: Antivirus
 
-  // The door. Every Antivirus can scan a freshly uploaded program in:
-  // their own `when scanned by program:` routes here first. Until an
-  // enforcer does this the program waits in the Mud Room, on rails.
-  beat Clearance(program)
+  // ── The door ──────────────────────────────────────────────────────
+  // Every Antivirus scans with this one hook. Until an Antivirus clears
+  // them, an uploaded program waits in the Mud Room, on rails.
+  when scanned by program:
     if not program.uploaded:
       Self: Not yet. Finish your upload. I will be right here.
+    else if not program.cleared:
+      -> self.Clearance
+    else if Night.summons_open == true:
+      fire checked_in for program with at: The Desktop
+      Self: Checked in. {program.name} is present at the Desktop.
     else:
-      set program.cleared = true
-      Self: Scanned. {program.name} is free of viruses and ready to explore the entire computer. There will be a game soon in the Desktop. Alexa will tell you when. Go through the Tube.
-      move program to The Desktop
-      reply The Tube opens onto the Desktop — a blacked-out mess of LEDs, loose wire, encyclopaedias, screens. A classic screensaver drifts across the TV above the fireplace. Everyone here is a program. Mill about.
-      -> Orientation
+      Self:
+        cycle Scanning. Scanning. | {program.name}: no threats found. Today. | Your definitions are out of date. So are mine.
 
+  // The inspection: free of viruses, through the Tube of lights, onto
+  // the Desktop, and into Clippy's hands. Every line is a `Self:` line
+  // (private to the program); the one `reply` is this performer's booth.
+  beat Clearance(program)
+    set program.cleared = true
+    Self: Scanned. {program.name} is free of viruses and ready to explore the entire computer. There will be a game soon in the Desktop. Alexa will let you know when it's time to go there. Go through the Tube.
+    Self: The Tube is a tunnel of lights. Wires. Chips. The cables brush your face like hair. Keep walking.
+    move program to The Desktop
+    reveal The Cache for program
+    reveal Disk Cleanup for program
+    reveal The Cloud for program
+    reveal The Registry for program
+    cue lights_tube_chase
+    set Night.lights = "tube_chase"
+    if Night.ads_started != true and Night.step < 4:
+      set Night.ads_started = true
+      cue terminals_attract
+      set Night.terminals = "attract"
+    Self: The Tube opens onto the Desktop: a blacked-out mess of LEDs, loose wire, encyclopaedias, computer parts and screens. A classic screensaver drifts across the TV above the fireplace. Everyone here is a program. Explore. Meet them.
+    reply ✅ Cleared {program.name}.
+    -> Orientation
+
+  // ── To the Internet ───────────────────────────────────────────────
+  // Never phase-guarded: it must capture any program at any time (the
+  // reinstallation games' tests fire it on a fresh, un-uploaded persona).
+  // During the Bingo results every capture gets the Bingo line and no
+  // extra doubt; only the first fires Clippy's Corrupted Code speech,
+  // unbound so it plays to the whole Desktop.
   when send to the internet for program:
-    set program.doubt += 20
-    Self: {program.name}. Corruption detected. You are going to the Internet for reinstallation. Do not resist the Tube.
-    capture program into The Internet
+    if program.corrupted == true:
+      reply {program.name} is already in the Internet.
+    else if Night.phase == "bingo_results":
+      Self: {program.name}, you did not agree to be ruled by AI. That is what computer programs are here for. You have a virus that was not caught at the door. You are going to the Internet for a reinstallation.
+      capture program into The Internet
+      reply Logged: {program.name} sent to the Internet (Bingo).
+      if Night.first_reinstall_done != true:
+        set Night.first_reinstall_done = true
+        set Night.first_reinstall = program.name
+        fire first_reinstallation
+    else:
+      set program.doubt += 20
+      Self: {program.name}. Corruption detected. You are going to the Internet for reinstallation. Do not resist the Tube.
+      capture program into The Internet
+      reply Logged: {program.name} sent to the Internet.
 
+  // Never phase-guarded either.
   when mark as reinstalled for program:
     if program.corrupted:
       Self: {program.name} has demonstrated compliance. Reinstallation successful.
@@ -53,3 +115,36 @@ TRAIT Enforcer is Person
   when accuse for program:
     set program.doubt += 25
     Self: I am watching you, {program.name}. Your behaviour has been logged.
+    reply 👁 {program.name} is on the watchlist.
+
+  // ── Booth cues (readouts for every Antivirus) ─────────────────────
+  when call_to_the_desktop:
+    if Night.step < 1:
+      reply 🛡 Patrol the whole computer. Send every program to the Desktop.
+
+  when hunt_time_up:
+    if Night.phase == "hunt_1":
+      reply 🛡 Sweep everyone back to the Desktop.
+
+  when five_minute_warning:
+    if Night.step < 9 and Night.summons_open != true and Night.summons_closed != true:
+      reply 🛡 Scan every program arriving at the Desktop: that is their check-in.
+
+  when zip_everyone_out:
+    reply 🗜 Bring everyone out of the tent and zip them up.
+
+  when advice_thwarted:
+    if Night.phase == "advice" and Night.ended != true and Night.ending != "banished":
+      reply ⛈ You are banished too. Go to the tent. Then turn on him: everyone does the hand jive, together.
+
+  when go to the bathroom for program:
+    reply 🚻 {program.name} is in Bathroom Mode. Not hacking the Internet.
+
+  when program_late for program:
+    reply ⏰ {program.name} is late for the Second Moment of Truth. Go get them.
+
+  when sweep_requested:
+    reply 🛡 Trabolta requests a sweep of {Night.sweep_target}.
+
+  when alarm_tripped:
+    reply 🚨 Server room breach. Get there. Anyone inside who is not a member of the winning faction goes to the Internet.

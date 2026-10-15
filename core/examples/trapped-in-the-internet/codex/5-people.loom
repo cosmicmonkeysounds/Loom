@@ -1,0 +1,353 @@
+// Codex 5: the people. Every human identity in the computer, two entries
+// a person where the Character Sheet gives enough: the first is what they
+// might tell a stranger, the second is what has to be forced out of them.
+//
+// Performers' entries are `about:` the performer, so each performer holds
+// their own from the start. Featured entries are `about:` the featured
+// CHARACTER (harmless: the guest who plays that program receives them in
+// `Featured Briefing`). The four Antivirus entries carry codes: their
+// personnel files are hidden around the house for Bugdom to find.
+// Everyone receives every entry at the end (the recount, truth.txt).
+//
+// Every person's last entry ends with "Why Trabolta chose you", because
+// truth.txt and the recount must say why each person was brought in.
+//
+// Rules for this file: no actor names (only the in-fiction ones the
+// Character Sheet gives), no line may start with a program's name and a
+// colon, and nothing here mentions Sandy or the server room (a performer's
+// codex rides along when they talk to Trabolta).
+
+// ── Hosts ───────────────────────────────────────────────────────────
+
+CODEX The Clinic
+  title: The Clinic
+  about: Clippy
+  text:
+    Before the computer, Clippy spent her first five years out of
+    veterinary school at a desperately underfunded nonprofit veterinary
+    clinic. She believed she was helping animals every single day. She
+    still talks about the animals.
+
+CODEX Saline
+  title: Saline
+  about: Clippy
+  text:
+    The clinic was totally unlicensed. It was not a nonprofit, and it was
+    not a veterinary clinic. It was a front for everything possible, and
+    for five years she was only ever injecting the animals with saline.
+    The fake vet promised to pay off her student debt and disappeared. She
+    was left with no faith in humanity, no relevant job experience, and a
+    lot of debt. Then a letter arrived promising a new community game
+    night where she could truly help people all night, as an organiser of
+    fun philanthropy party games that would help research towards ending
+    all of the world's problems, and debt would no longer be relevant.
+    Why Trabolta chose you: you were the perfect traumatised cult servant
+    who desperately needs to rebuild an identity. He promised you could
+    help people all night, and that your debt would no longer be relevant.
+
+CODEX Middle Management
+  title: Middle Management
+  about: Task Manager
+  text:
+    Task Manager was a middle manager in IT at Urban Outfitters. He has no
+    real idiosyncrasies and no personality to speak of: a drone bee,
+    programmed only to be a milquetoast middle manager. He manages tasks.
+
+CODEX Replaced By Clippy
+  title: Replaced By Clippy
+  about: Task Manager
+  text:
+    Senior management let him go when they realised he could be replaced
+    with an AI Clippy. With no goals left in sight, he was totally
+    aimless. Now he keeps things running for the very assistant that took
+    his job, and he has not said a word about it.
+    Why Trabolta chose you: he wanted someone in the computer who would be
+    totally bereft of political motivation, who would simply follow
+    instructions and manage tasks without any controversy or ever drawing
+    too much attention.
+
+CODEX Sheryl Terrio
+  title: Sheryl Terrio
+  about: Adobe Acrobat
+  text:
+    Adobe Acrobat is Sheryl Terrio, the world's most successful
+    motivational speaker. She reached great wealth through online
+    self-mastery courses. Her presence is so motivational that her paid
+    clients reached their full potential almost at once, and never needed
+    to pay her another cent.
+
+CODEX The Pirated Masterclass
+  title: The Pirated Masterclass
+  about: Adobe Acrobat
+  text:
+    When her Masterclass was pirated, her profits fell through: anyone who
+    saw a single clip was instantly so motivated that they did not need to
+    pay her for anything. She is still seeking new ways to prove she is a
+    master, and she is frustrated with never being paid for it.
+    Why Trabolta chose you: he recruited you for a paid motivational guest
+    speaker role in a computer simulation, working with lots of people who
+    are excited to create things, where you would be the paid bottleneck
+    that enables their creativity, by pretending to be Adobe Acrobat.
+
+CODEX The Attendant
+  title: The Attendant
+  about: Recycling Bin
+  text:
+    Recycling Bin was a bathroom attendant, laid off during COVID and
+    never rehired. He had great potential in life for skilled work, but
+    never believed he could rise above encouraging men in the bathroom to
+    groom themselves better.
+
+CODEX The Oscars Of Bathrooms
+  title: The Oscars Of Bathrooms
+  about: Recycling Bin
+  text:
+    The invitation offered him the role of pretending to be a Recycling
+    Bin at a computer-themed resort. For a bathroom attendant, this is the
+    equivalent of getting to work the Oscars. He keeps Disk Cleanup
+    spotless, and he is very proud of Bathroom Mode.
+    Why Trabolta chose you: a computer-themed resort needs a Recycling
+    Bin, and you had great potential for skilled work that you never
+    believed you could reach.
+
+// ── The Antivirus (personnel files, hidden around the house) ───────
+
+CODEX Julie Norton
+  title: Julie Norton
+  about: Norton Anti-Virus
+  code: NORTON-RELAY
+  text:
+    PERSONNEL FILE. Norton Anti-Virus, real name Julie Norton, was a Red
+    Bull Horse Relay Champion. In 2020 the COVID lockdowns took her trade,
+    then her horses, then her family. Cut off from everything that gave
+    her meaning, she became totally housebound with paranoia about
+    viruses, and spent her days reporting pirated files being shared on
+    Reddit.
+    Why Trabolta chose you: a perfect enforcer, to be a moderator in a new
+    digital chatroom in the Metaverse.
+
+CODEX The Moderator
+  title: The Moderator
+  about: McAfee Anti-Virus
+  code: MCAFEE-MOD
+  text:
+    PERSONNEL FILE. McAfee Anti-Virus was a Reddit moderator for
+    /r/bitcoin who never invested in crypto, and feels real remorse over
+    never earning anything from the investments they predicted, because
+    they were too consumed with moderating the subreddit.
+    Why Trabolta chose you: a decade of moderation experience. Your
+    secret: you want a role of power and influence in the Metaverse, to
+    exploit the exchange of information and become rich.
+
+CODEX Yugi Moto
+  title: Yugi Moto
+  about: Password Manager
+  code: YUGI-MOTO
+  text:
+    PERSONNEL FILE. Password Manager is a Yu-gi-oh! fanatic who changed
+    her name to Yugi Moto. After a falling out with the team at the local
+    Gamestop she looked for another club, and there were none in Halifax.
+    She was kicked out of board game night at the Board Room Cafe. The
+    Hells Angels rejected her for talking about Yu-gi-oh!. Religious
+    organisations and Meetup.com groups kept throwing her out for the same
+    reason. Rejection by the Waegwoltic Social Club was the last straw.
+    Why Trabolta chose you: an experimental procedure, an eternal
+    Metaverse simulation, and the job of managing all passwords and who
+    gets to be part of what clubs (and of injecting Yu-gi-oh! where it
+    does not belong).
+
+CODEX One Cent On The Dollar
+  title: One Cent On The Dollar
+  about: CRA Agent Software
+  code: CRA-PENNY
+  text:
+    PERSONNEL FILE. CRA Agent Software was an NSCC administrative
+    assistant intern, left in charge of the entire finances of the City of
+    Halifax under Mayor Randy Barkmore Jr. after the other staff quit in
+    protest of the Data Centre. Barkmore Jr. encouraged her to stay by
+    showing her how to siphon 0.01 cents off every dollar the City spent.
+    She accidentally siphoned 1 cent off every dollar and was caught
+    immediately. While the RCMP investigated, "Mark Carney" reached out to
+    her personally with a deal: pay back the hundreds of thousands she
+    took, or spend what will physically be one day, but feel like an
+    eternity, inside an experimental digital Canada. Mark Carney was
+    Trabolta.
+    Why Trabolta chose you: the other staff quit and you were left with
+    the City's finances. He wants your financial expertise, as a digital
+    CRA Agent, for one day that feels like eternity.
+
+// ── WebMD ───────────────────────────────────────────────────────────
+// INVENTED: the Character Sheet gives WebMD no backstory. This one is
+// new for the rewrite and is flagged for review (design spec §10.1).
+
+CODEX The Symptom Checker
+  title: The Symptom Checker
+  about: WebMD
+  text:
+    Before the computer, WebMD ran an online symptom checker that
+    diagnosed every single user with everything. A headache? Everything.
+    A sore knee? Everything. The lawsuits came in alphabetical order. The
+    invitation offered a wellness role "where nobody can sue."
+    Why Trabolta chose you: a wellness voice nobody can sue, to keep the
+    re-education gentle.
+
+// ── The featured programs (guests with written characters) ─────────
+
+CODEX Randy Barkmore Sr
+  title: Randy Barkmore Sr.
+  about: Microsoft Excel
+  text:
+    In reality, Microsoft Excel is the ninety-year-old former Mayor of
+    Halifax, Randy Barkmore Sr. His son, Mayor Randy Barkmore Jr., died in
+    a sinkhole at the opening of Halifax's first AI Data Centre, built on
+    the site of the Halifax Explosion Memorial Pet Cemetery. He arrived
+    five hours early, at 4 a.m., because he was so excited. Randy Sr.
+    became seriously concerned for the family legacy and needed more time
+    on this earth, so he could run for Mayor one more time. The invitation
+    offered a pilot program for uploading your consciousness to the Cloud,
+    promising everlasting life.
+    Why Trabolta chose you: he knew you would say yes to everlasting life,
+    and he wants you here to persuade all of the other programs that they
+    should remain.
+
+CODEX Dana Anderson
+  title: Dana Anderson
+  about: OpenOffice
+  text:
+    OpenOffice, in reality, is Dana Anderson: a former FBI agent turned
+    independent hacker, who regretted her role in a sting of a landlord in
+    Halifax nine years ago, and turned to trying to make all information
+    free. A conflicted rebel with incredible fact-finding skills, she was
+    deeply opposed to the authoritarian steamrolling of the Data Centre
+    that nobody in Halifax wanted, and used old FBI tactics to sabotage the
+    construction site, with a planned destruction for the early morning
+    before the official opening. On opening day, Randy Barkmore Jr.
+    arrived five hours early, at 4 a.m., because he was so excited. The
+    Data Centre was destroyed on schedule. She lives with extreme guilt
+    and paranoia.
+    Why Trabolta chose you: he believes you want a chance at a new life in
+    the cloud, and he wants your investigative skills. You will be the
+    leader of the "get out of the computer" faction.
+
+CODEX The Paperclip Trade
+  title: The Paperclip Trade
+  about: DraftKings
+  text:
+    In real life, DraftKings was a degenerate gambler who traded a
+    paperclip for a quarter, put the quarter in a slot machine and got a
+    dollar, then played progressive blackjack until they literally won
+    Casino Nova Scotia. Then they gambled Casino Nova Scotia on other
+    casinos, and won most of the casinos in Atlantic Canada.
+
+CODEX The Boardwalk Bet
+  title: The Boardwalk Bet
+  about: DraftKings
+  text:
+    Obsessed with Monopoly, DraftKings went all in: the entire casino
+    chain, against a block of properties in downtown Halifax, especially
+    the Boardwalk, in a game of online poker. They lost. They did not know
+    their opponent was Trabolta, who had already taken the Maps And Ducks
+    building by citing ownership of the website as ownership of the
+    business.
+    Why Trabolta chose you: he needed someone powerful with numbers on its
+    side. If you live here, you can gamble forever, and win unimaginably
+    big sums.
+
+CODEX Bugdom VR
+  title: Bugdom VR
+  about: Bugdom
+  text:
+    In real life, Bugdom worked an unhappy pet-store job, selling crickets
+    and ants, and always had the fantasy of living inside an extremely
+    expansive VR version of the old game Bugdom. Every day they rushed home
+    to an old laptop to keep designing concept assets for Bugdom VR. That
+    is how they spent the last ten years.
+
+CODEX The Fire Ants
+  title: The Fire Ants
+  about: Bugdom
+  text:
+    One day, fire ants that had gotten loose in their work lunchbox
+    crawled inside the laptop that held the only copy of the Bugdom VR
+    assets. All the work was permanently lost. Bugdom fell into a
+    catatonic panic, manically writing down everything they had done so
+    far, to dedicate the rest of their life to rebuilding it.
+    Why Trabolta chose you: he promised a VR world with unlimited Bugdom
+    right away. Really, he wants the use of your relentless pursuit of
+    tedious tasks.
+
+CODEX The Valley Librarian
+  title: The Valley Librarian
+  about: Broken Ask Jeeves
+  text:
+    In real life, Broken Ask Jeeves was a talented and helpful youth
+    librarian in the Annapolis Valley library system, until government
+    cuts made the position redundant and left them without purpose. They
+    thought tonight was a job interview, for a digital librarian in the
+    Metaverse.
+
+CODEX The DSL Line
+  title: The DSL Line
+  about: Broken Ask Jeeves
+  text:
+    The transmission into the computer happened over a malfunctioning DSL
+    line on the old Valley infrastructure. The download missed some files,
+    and this Ask Jeeves Desktop Helper now malfunctions occasionally, or
+    behaves completely erratically.
+    Why Trabolta chose you: to sort all the unorganised information in the
+    computer. He did not foresee the upload going badly.
+
+CODEX Twenty Four Years Online
+  title: Twenty Four Years Online
+  about: Runescape
+  text:
+    In real life, Runescape is a 34-year-old who played Runescape every
+    day for 24 years and became the richest and most powerful player in
+    the world. That took a PhD in economics at the Wharton School, where
+    she became a staunch libertarian and decided her life's mission is to
+    convert every modern economy back to the gold standard, like they have
+    in Runescape. The invitation offered her a job as economy consultant
+    for a new MMORPG said to be even more interactive than Runescape.
+    Why Trabolta chose you: he needs you to understand the market
+    incentives of everyone's behaviour, to serve his need to exchange
+    information and get all the facts.
+
+CODEX Expelled From NSCAD
+  title: Expelled From NSCAD
+  about: MS Paint
+  text:
+    MS Paint was an art student kicked out of NSCAD for a staunch refusal
+    to work in any artistic medium other than MS Paint for her degree in
+    digital art. Her position: "any program that relies on algorithms is
+    a betrayal of the artist." She came because she thought she was being
+    paid to teach an online MS Paint art class inside the Metaverse. She
+    realised at once how limiting this place is, and she wants out.
+    Why Trabolta chose you: he believes having an artist on site will help
+    improve the overall vibes and morale within the computer.
+
+CODEX Victor Louis Christianson
+  title: Victor Louis Christianson
+  about: VLC
+  text:
+    VLC is a failed looksmaxxing influencer, birth name Victor Louis
+    Christianson. He had millions of followers on his VLC The Playa
+    channel, until a livestream fail: he sneezed too early after a Turkish
+    face tightening, his whole face fell right off, and his followers went
+    to zero on the spot.
+    Why Trabolta chose you: you would want to stay in a computer and keep
+    your beauty forever, and he wants your charisma and influencer powers
+    to convince everyone to help him.
+
+// INVENTED: the Character Sheet gives no reason for Pong; the "why" line
+// is new for the rewrite (design spec §10.1).
+CODEX Tennis For Two
+  title: Tennis For Two
+  about: Pong
+  text:
+    Pong is the child of William Higinbotham, who built Tennis For Two,
+    the first video game, at Brookhaven in 1958. The invitation asked them
+    to present a seminar on the importance of nuclear non-proliferation,
+    under the guise of everyone in the Metaverse getting to play a fun
+    game of Pong.
+    Why Trabolta chose you: a mind that knows how to stop an arms race, in
+    case the programs start one.

@@ -103,6 +103,14 @@ describe("server views", () => {
     // The two public sides — never the hidden TheAlgorithm / Glitchers.
     expect(v.factions).toEqual(["Mods", "Chatters"]);
   });
+
+  it("offers a hidden faction as a side once the story reveals it", () => {
+    const sim = Sim.fromSources(SCENARIO);
+    sim.createPerson("g1", "Alice");
+    expect(guestView(sim, "g1").factions).not.toContain("Glitchers");
+    sim.reveal("Glitchers");
+    expect(guestView(sim, "g1").factions).toContain("Glitchers");
+  });
 });
 
 describe("titleOf — the authored display title", () => {

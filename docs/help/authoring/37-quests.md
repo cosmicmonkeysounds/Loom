@@ -13,12 +13,12 @@ thread, in the giver's voice.
 ## Declaring a quest
 
 ```loom
-QUEST Three Keys
-  title: The Three Keys
-  from: OpenOffice
+QUEST Dossier
+  title: Facts Are Currency
+  from: Truther Download
   text:
-    There are three keys to the machine, and they are in three
-    people's heads. Find them. Turn yours from your pass.
+    Facts are currency here. Get 20 facts. This will be the
+    foundation of your dossier.
 ```
 
 | Line | Means |
@@ -38,10 +38,10 @@ Four statements, each `for` a guest, `everyone`, or a scope
 for the thread:
 
 ```loom
-start quest Three Keys for everyone
-update quest Three Keys for program "You hold the First Key."
-complete quest Three Keys for everyone "Three turned. The machine is dying."
-fail quest Three Keys for everyone "The keys never turned."
+start quest Dossier for program
+update quest Dossier for program "Ten facts. Halfway."
+complete quest Dossier for program "Twenty facts. The dossier is ready."
+fail quest Dossier for everyone "The clock struck midnight."
 ```
 
 - `start` hands it out — once. A quest that was finished never restarts.
@@ -60,7 +60,7 @@ Lines interpolate like dialogue: `"Fact {program.hunt_facts} of 3."`.
 ```loom
 when program completes quest Three Facts:
   set program.truth += 10
-when program fails quest Three Keys:
+when program fails quest Dossier:
   reply Too late.
 when program starts quest Three Facts:
   if program.hunt_facts > 0:
@@ -72,7 +72,7 @@ The word `quest` is required after the verb (`starts` / `completes` /
 `the simulation completed` is never mistaken for one. Leave the quest
 name off to hear every quest.
 
-A quest's state is readable in conditions: `guest.quest.three_keys` is
+A quest's state is readable in conditions: `guest.quest.dossier` is
 `"active"`, `"done"`, or `"failed"` (the name lowercased, spaces as
 underscores), and absent before it is handed out.
 

@@ -89,8 +89,20 @@ def test_persona_errors(text, match):
 def test_the_shipped_trabolta_persona_loads():
     p = load_persona(TRABOLTA)
     assert p.character == "Trabolta"
-    assert set(p.variables) == {"truth", "untruth", "stance", "love"}
+    assert set(p.variables) == {"truth", "untruth", "composure", "love", "regard"}
     assert p.when is not None
+
+
+def test_the_shipped_trabolta_persona_keeps_secrets_out():
+    """Persona hygiene for the shipped show: nothing in `them` tells a lie from a
+    truth, no `facts:` prefix is the bare `Night.` (the voice would see every
+    global), and lookups stay off until the stagehand secrecy fix lands."""
+    p = load_persona(TRABOLTA)
+    assert p.them is not None and "truths_confident_false" not in p.them
+    assert all(prefix.strip() not in ("Night.", "Night") for prefix in p.facts)
+    assert all(not prefix.startswith("Kernel") for prefix in p.facts)
+    assert p.lookup is False
+    assert p.unavailable and not any(ch in p.unavailable for ch in "[]◌")
 
 
 # -- prompt -------------------------------------------------------------------

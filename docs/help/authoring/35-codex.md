@@ -19,10 +19,10 @@ CODEX The Sandy File
     Trabolta does not want omnipotence. Trabolta wants Sandy.
     She has never understood a word he said.
 
-CODEX The Third Key
+CODEX The LiveJournal
   about: Trabolta
-  known to: Broken Ask Jeeves
-  text: A key. Jeeves has carried it for years.
+  known to: OpenOffice
+  text: A printout of Trabolta's LiveJournal. Current mood: hopeful.
 ```
 
 | Line | Means |
@@ -38,7 +38,7 @@ CODEX The Third Key
    or types the code into their **Codex room** — a pinned room whose
    message box takes codes; every entry they hold is a card in it. Misses
    fire the named event `wrong code` for them.
-2. **The story:** `unlock The Third Key for guest` in any beat or hook.
+2. **The story:** `unlock The LiveJournal for guest` in any beat or hook.
 3. **A person:** a guest shares from their Codex; a performer shares
    their character's entries from a guest's thread. One recipient at a
    time.
@@ -70,13 +70,21 @@ yourself:
 
 ```loom
 CHARACTER Trabolta
-  when who learns The Joe Rogan Archive:
+  when who learns The Prom Ticket:
     if who == self:
-      set self.untruth += 30
+      set self.composure -= 15
+      set self.love -= 10
 ```
 
-That is how "recommend he downloads the whole archive" becomes a
-political stance, and eventually an ending.
+That is how "show him who is taking Sandy to prom" rattles him into
+oversharing.
+
+One exception: an **agent-voiced** character (`mind: external`, below)
+never takes an entry that is `about` *someone or somewhere else*. Its
+holdings are read into its model's prompt and it can share them on, so a
+guest could otherwise launder a secret (another person's file, a door
+code) through it. Entries with no `about:`, and entries about the agent
+itself, go through as usual. Performer characters accept anything.
 
 The codex has a sibling for what guests are *doing*: see *Quests — the
 quest log*.

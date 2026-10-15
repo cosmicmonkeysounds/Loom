@@ -96,8 +96,8 @@ agents:
     }
   }
   try {
-    // Trabolta only talks to programs after the glitch: open the gate.
-    r = await api.post(`/e/${event.id}/api/mod/var`, { data: { path: 'Trabolta.glitched', value: 'true' } })
+    // Trabolta is offline until Clippy introduces him: open the gate.
+    r = await api.post(`/e/${event.id}/api/mod/var`, { data: { path: 'Trabolta.awake', value: 'true' } })
     expect(r.ok(), await r.text()).toBeTruthy()
 
     const ctx = await browser.newContext({ storageState: await api.storageState(), viewport: { width: 1600, height: 1000 } })
@@ -114,7 +114,7 @@ agents:
     await expect(page.getByTestId('mind-tab')).toBeVisible({ timeout: 60_000 })
     await expect(page.getByTestId('mind-character')).toHaveText('Trabolta')
     await expect(page.getByTestId('mind-thought-survey').first()).toBeVisible({ timeout: 120_000 })
-    await expect(page.getByTestId('mind-arc')).toContainText('lonely grandeur')
+    await expect(page.getByTestId('mind-arc')).toContainText('asleep')
     await expect(page.getByTestId('mind-drives')).toContainText('hunger')
     await expect(page.getByTestId('mind-brief')).not.toContainText('None yet', { timeout: 30_000 })
     await page.screenshot({ path: join(SHOTS, '1-after-survey.png'), fullPage: false })

@@ -37,10 +37,14 @@ examples/
   load.ts                    # multi-file project loader (main.loom first)
   trapped-in-the-internet/   # THE SHOW — the server's default scenario (Loom 4 surface):
                              #   a rogue AI, a house that is a computer, Computer Bingo,
-                             #   reinstallation in "the Internet", a CODEX economy
-                             #   (42 entries, wall QR codes + puzzles + performers), an
-                             #   LLM-voiced Trabolta, and five endings. Runbook +
-                             #   integration contract (VR / Arduino / mind): its README
+                             #   two Truth Scavenger Hunts + Moments of Truth, Truth Pong,
+                             #   the Trust Chart, reinstallation in "the Internet", nine
+                             #   featured programs + a pool, a CODEX economy (132
+                             #   entries, 41 codes: wall QRs, files, puzzles, performers),
+                             #   16 quests, an LLM-voiced Trabolta (offline until Clippy
+                             #   introduces him), two factions racing for a majority,
+                             #   the server-room patch bay, and seven endings. Runbook +
+                             #   integration contract (VR / Z2M + WLED / mind): its README
   glass-orchard/             # the Loom 4 reference project (a garden-party mystery)
   escape-the-internet/       # the v3-era scenario, authored across ~18 files
     main.loom                #   world spine: factions, locations, ROLE Guest

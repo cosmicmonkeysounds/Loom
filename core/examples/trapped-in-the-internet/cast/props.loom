@@ -1,15 +1,49 @@
-// Scannable stations around the house. An enforcer or host scans a
-// program's pass at the station (the station's name is the character
-// the performer signs in as on a spare phone taped to it, or the host
-// scans "as" it from the Run cockpit). Each is one line: a `Prop(beat)`.
+// Scannable stations around the house. An Antivirus or a host scans a
+// program's pass at the station (the station's name is the character a
+// performer signs in as on a spare phone taped to it, or a host scans
+// "as" it from the Run cockpit). Each is one line: a `Prop(beat)`.
 //
-// The wall QR codes and Arduino puzzles are *not* props — they are
-// CODEX entries with a `code:` (see `codex/`), scanned by the guest's
-// own phone camera.
+//   The Uploader     the Mud Room voice; a second scan → Re-upload (beats/login.loom)
+//   The Router       the kitchen router → The Router (beats/desktop.loom)
+//   The Screensaver  the TV above the fireplace → The Screensaver (beats/desktop.loom)
+//   The Tablet       the tent tablet station → The Tablet Video (beats/internet.loom)
+//
+// The QR codes hidden around the house are *not* props: they are CODEX
+// entries with a `code:` (codex/), scanned by the guest's own phone.
 
-CHARACTER The Uploader is Prop(Login)
+CHARACTER The Uploader is Prop(Re-upload)
+CHARACTER The Router is Prop(The Router)
 CHARACTER The Screensaver is Prop(The Screensaver)
 CHARACTER The Tablet is Prop(The Tablet Video)
-CHARACTER The Router is Prop(The Router)
-CHARACTER The Modem is Prop(The Modem)
-CHARACTER The Encyclopaedias is Prop(The Encyclopaedias)
+
+// ── The Kernel: the secret state ────────────────────────────────────
+// Not a person, not a prop: a place to keep what Trabolta must never
+// know. Character variables are left out of every agent request and the
+// orchestrator's digest, so the patch-bay combinations, the per-question
+// verdicts, the lies, the virus planter, the dossier and the majority
+// live here as `Kernel.<slot>` — never in `Night.*`, which the worker
+// sees whole. Written and read only by main.loom's rules, ROLE hooks and
+// beats; directors see and edit them in Run → World. No trait, no hooks,
+// no lines, no avatar, not in the directory.
+CHARACTER Kernel
+  playable: false
+  combo_a: text? = none
+  combo_b: text? = none
+  q1: text? = none
+  q2: text? = none
+  q3: text? = none
+  q4: text? = none
+  q5: text? = none
+  q6: text? = none
+  q7: text? = none
+  q8: text? = none
+  lies_accepted: 0 to 50 = 0
+  all_accurate: bool = false
+  virus_planted: bool = false
+  excel_planted: bool = false
+  virus_planter: text? = none
+  openoffice_dossier: bool = false
+  waive_leader_tasks: bool = false
+  majority_reached: bool = false
+  majority: text? = none
+  server_unlocked: bool = false

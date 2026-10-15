@@ -1,5 +1,10 @@
-// Atmosphere — the autonomous hum of a dying computer. Pure mood, no
-// consequences; the threat in this house is reactive, not ambient.
+// Atmosphere — the autonomous hum of a computer that is slowly going
+// wrong. Pure mood, no consequences; the threat in this house is
+// reactive, not ambient.
+//
+// Generators bark from minute 0, as lobby narration to every phone, so
+// nothing here may name Trabolta: he is offline until Clippy introduces
+// him after the Bingo results.
 
 GENERATOR ScreensaverHum
   tier: ambient

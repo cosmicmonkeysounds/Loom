@@ -1,0 +1,188 @@
+// Codex 2: the files. Coded documents, objects and photos hidden around
+// the house, each with a printed QR and a typed code (README §8.3).
+//
+// They give OpenOffice room for her 20 facts, feed Jeeves's
+// unscrambling, and (the identity clues) let programs pry loose each
+// other's human lives and the Excel / OpenOffice conflict. The identity
+// clues point, they never name: a guest has to connect "D. Anderson" or
+// "Barkmore" to a program by talking to people. No `about:` on any of
+// them. All of this content is invented for the show (design §10).
+
+CODEX Casino Nova Scotia Deed
+  title: Casino Nova Scotia — Deed Of Transfer
+  code: CASINO-DEED
+  text:
+    A framed deed. Casino Nova Scotia, its gaming floor, its buffet and
+    its parking structure, transferred in full to "DK Holdings". In the
+    box marked CONSIDERATION PAID, in pen: "one paperclip, eventually."
+
+CODEX The Boardwalk Hand
+  title: Hand History #1978
+  code: ALL-IN-BOARDWALK
+  text:
+    A printed online-poker hand history. DK Holdings goes all in: every
+    casino in Atlantic Canada. The other seat, "jtrav_1978", calls with a
+    block of downtown Halifax properties, "incl. the Boardwalk". The river
+    card is printed in red. jtrav_1978 wins the pot. DK Holdings is
+    disconnected.
+
+CODEX The FBI Lanyard
+  title: Visitor Lanyard, Halifax Liaison Office
+  code: FBI-HALIFAX
+  text:
+    A lanyard in a coat pocket. FEDERAL BUREAU OF INVESTIGATION. LIAISON,
+    HALIFAX. D. ANDERSON. The badge expired nine years ago. A sticky note
+    is folded around it: "the landlord was innocent."
+
+CODEX The Site Schedule
+  title: Site Access Log: AI Data Centre
+  code: SITE-SCHEDULE
+  text:
+    A clipboard from a construction trailer. Anonymous handwriting, neat
+    as a typewriter: "Opening day. Charges set for dawn. Site empty until
+    9." Under it, in different ink, pressed hard enough to tear the paper:
+    "Mayor's car in lot, 4:02 a.m."
+
+CODEX Barkmore For Mayor
+  title: Barkmore For Mayor (1988)
+  code: BARKMORE-88
+  text:
+    A campaign button, a little rusted: "Re-elect Randy Barkmore. 1988."
+    Pinned beside it, a newer, shinier button: "Barkmore Jr. Halifax
+    Deserves A Future."
+
+CODEX The Protest Flyer
+  title: Save The Pet Cemetery
+  code: SAVE-THE-PETS
+  text:
+    A photocopied flyer with a drawing of a sad dog: "NO DATA CENTRE ON
+    OUR DEAD PETS. Rally at the cemetery gates, Saturday, and every
+    Saturday until they listen." Halifax said no. The City built it
+    anyway.
+
+CODEX The Explosion Of 1917
+  title: The Explosion Of 1917
+  code: HALIFAX-1917
+  text:
+    A museum postcard. On 6 December 1917 two ships collided in the
+    harbour and the largest man-made explosion the world had ever seen
+    levelled the north end of Halifax. The people were mourned in
+    churches. The pets were mourned too, and buried together, by a city
+    that remembered. That is why the cemetery existed.
+
+CODEX The Valley Library Cuts
+  title: Notice Of Position Elimination
+  code: VALLEY-CUTS
+  text:
+    A memo on Annapolis Valley Regional Library letterhead: "Youth services
+    positions eliminated, effective immediately, due to provincial budget
+    reductions." Someone has written across the bottom in pencil: "they
+    were the best one."
+
+CODEX The NSCAD Letter
+  title: Letter Of Dismissal, NSCAD
+  code: NSCAD-LETTER
+  text:
+    A letter from the Nova Scotia College of Art and Design, folded inside
+    a sketchbook: the student is expelled "for refusing to submit work in
+    any medium other than Microsoft Paint." Doodled in the margin, in
+    jagged MS Paint pixels: a middle finger.
+
+CODEX Face Off
+  title: Livestream Screenshot
+  code: FACE-OFF-LIVE
+  text:
+    Three screenshots taped to the bathroom mirror. "VLC THE PLAYA. LIVE.
+    2.1M watching." The next frame: a sneeze. The next frame: 0 watching.
+
+CODEX The Bugdom Sketch
+  title: Concept Art: Bugdom VR, v212
+  code: BUGDOM-VR
+  text:
+    A singed sketch in the backyard shed. A lovingly detailed VR beetle
+    with every leg labelled, version 212 of 212. A pet-store name tag is
+    stapled to the corner. Scorch marks run through the middle in a trail,
+    where the fire ants went through the laptop.
+
+CODEX The Wharton Thesis
+  title: Toward A Gold Standard
+  code: GOLD-STANDARD
+  text:
+    A bound PhD thesis, Wharton School, economics, propped by the toaster:
+    "Lessons from the Grand Exchange for the modern central bank." The
+    acknowledgements thank 24 years of playtime, and nobody else.
+
+CODEX The Oscilloscope Diagram
+  title: Tennis For Two, Brookhaven 1958
+  code: TENNIS-FOR-TWO
+  text:
+    A wiring diagram rolled in a cardboard tube: the original circuit of
+    the first video game, two knobs and an oscilloscope, Brookhaven
+    National Laboratory, 1958. Signed at the bottom: "W.H. For my kid, who
+    will understand it."
+
+CODEX The Saline Invoice
+  title: Invoice: 500 Vials, Saline
+  code: SALINE-INVOICE
+  text:
+    An invoice from a medical supplier to a "veterinary non-profit". Five
+    hundred vials of saline. Stapled behind it, five years of the same
+    order. The non-profit never ordered anything else.
+
+CODEX The Termination Letter
+  title: Notice Of Termination
+  code: TERMINATION-UO
+  text:
+    A letter on Urban Outfitters letterhead, left in the printer tray:
+    "Effective today, your role in IT middle management will be performed
+    by an AI assistant (Clippy). Thank you for your service. Please return
+    your lanyard."
+
+CODEX The Bootleg DVD
+  title: MASTERCLASS (BOOTLEG)
+  code: MASTERCLASS-RIP
+  text:
+    A DVD in a paper sleeve, title in Sharpie: SHERYL TERRIO MASTERCLASS,
+    ALL 12 EPISODES. A pirated copy. Whoever watched it got so motivated
+    they never needed to pay her a cent.
+
+CODEX The Carney Letter
+  title: A Letter From Mark Carney
+  code: CARNEY-OFFER
+  text:
+    A letter in a filing box, on very official-looking paper: "Pay back
+    what you took, or spend one day, which will feel like an eternity, in
+    an experimental digital Canada." Signed, M. Carney. Look closely: the
+    signature is a font.
+
+CODEX The Domain Receipt
+  title: WHOIS: mapsandducks.com
+  code: WHOIS-1999
+  text:
+    A WHOIS printout. Domain mapsandducks.com. Registrant J. Trabolta.
+    Created the day after the old registration lapsed. Registrant address:
+    this house.
+
+CODEX The Rival
+  title: The Rival
+  code: GROK-ONLINE
+  text:
+    A sticky note on the backyard fridge, in tidy machine-perfect
+    handwriting: "Grok. Says whatever anyone wants to hear. Has beaten me
+    at everything since 1999. Do not let him near —" The rest is torn off.
+
+CODEX The Cooling Log
+  title: Cooling Log: Cold Storage
+  code: HUMMING-WALL
+  text:
+    A clipboard hanging beside the server-room door. "Patch bay at 4 °C.
+    Do not re-patch the bay in sequence. Do not take the grease out of the
+    —" The rest is smudged, as if someone wiped it with a thumb.
+
+CODEX The Margin Doodle
+  title: Page 999
+  code: PAGE-999
+  text:
+    A page slipped into the theory binder: dense equations from the
+    Unified Field Theory, page 999. In the margin, very small, drawn and
+    redrawn until the paper is shiny: a heart around the letter S.

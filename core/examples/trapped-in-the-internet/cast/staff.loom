@@ -1,0 +1,31 @@
+// Staff and voices.
+//
+// WebMD is a performer: the wellness bot who introduces the corrupted to
+// their re-education. Their script is `Reinstallation` (beats/internet.loom),
+// private lines in each captured program's `dm:WebMD` thread — the same
+// script the tent tablet plays. WebMD can release a program by hand.
+//
+// Sandy and Truther Download are voices, never bodies (`playable: false`,
+// never on a picker). Sandy only ever says one thing. Truther Download is
+// the anonymous sender of the Truther Download and every per-program
+// glitch prompt; its lines land in each program's own
+// `dm:Truther Download` thread.
+
+CHARACTER WebMD is Person
+  avatar: File:WebMD logo.svg
+  wiki: WebMD
+  // Julia's symptom checker diagnosed every user with everything.
+
+  // Never phase-guarded: a performer must always be able to let someone out.
+  when mark as reinstalled for program:
+    if program.corrupted:
+      Self: {program.name} has demonstrated compliance. Reinstallation successful.
+      release program from The Internet
+
+CHARACTER Sandy
+  playable: false
+  // "I'm sorry, I didn't understand that. Would you like to speak to a live agent?"
+
+CHARACTER Truther Download
+  playable: false
+  // THEY DON'T WANT YOU TO KNOW.

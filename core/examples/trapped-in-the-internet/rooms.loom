@@ -1,7 +1,15 @@
 // Chat rooms — the sidebar the phones show. Every LOCATION is already a
 // room (what happens in the Cache is heard in the Cache); these are the
-// extras: a read-only system feed, an open channel, the two castes'
-// private rooms, and a couple of places for programs to scheme.
+// extras: a read-only system feed, an open channel, three rooms that open
+// as the night escalates, the staff back-rooms, the two recruiting
+// factions' rooms, and two invite-only rooms for scheming.
+//
+// `# hosts` and `# quarantine` are STAFF BACK-ROOMS, not secrets: every
+// performer booth sees and can post in every authored channel, and no
+// guest can (faction membership holds guest programs only). Never put
+// anything there meant for one faction's eyes.
+// `# unlimited-power` / `# the-way-out` are the guest factions' own rooms
+// (members only); the factions are hidden until the Y2K clock.
 
 SPACE The Operating System
   label: The Operating System
@@ -15,7 +23,7 @@ SPACE The Operating System
     kind: open
     label: # general
 
-  // Opens when the hosts call the first game (`when call to the desktop`).
+  // Opens when Clippy calls everyone to the Desktop (call_to_the_desktop).
   CHANNEL task manager
     kind: open
     label: # task-manager
@@ -23,12 +31,20 @@ SPACE The Operating System
     hidden: true
 
   // A disappearing side-channel — one post per 3s, gone after 45s. Opens
-  // with the rest of the house at the glitch.
+  // at the second hunt (start_the_second_hunt), when everyone disperses.
   CHANNEL ram
     kind: open
+    label: # ram
     slow: 3s
     ephemeral: 45s
-    label: # ram
+    hidden: true
+
+  // Facts for Truthcoin. Opens with the Truther Download; McAfee
+  // Anti-Virus brokers the trades (and takes his cut).
+  CHANNEL truthcoin exchange
+    kind: open
+    label: # truthcoin-exchange
+    slow: 3s
     hidden: true
 
 CHANNEL hosts
@@ -43,27 +59,28 @@ CHANNEL quarantine
   faction: Antivirus
   label: # quarantine
 
-CHANNEL the awakened
+CHANNEL unlimited power
   space: The Operating System
   kind: faction
-  faction: The Awakened
-  label: # the-awakened
+  faction: Unlimited Power
+  label: # unlimited-power
 
-CHANNEL the resident
+CHANNEL the way out
   space: The Operating System
   kind: faction
-  faction: The Resident
-  label: # the-resident
+  faction: The Way Out
+  label: # the-way-out
 
-// Invite-only rooms programs can pull each other into.
+// Invite-only rooms programs can pull each other into. Password Manager
+// keeps the club list.
 CHANNEL hidden partition
   space: The Operating System
   kind: private
-  label: # hidden-partition
   invite: members
+  label: # hidden-partition
 
 CHANNEL back channel
   space: The Operating System
   kind: private
-  label: # back-channel
   invite: members
+  label: # back-channel

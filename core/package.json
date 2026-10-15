@@ -19,7 +19,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "migrate": "tsx server/migrate.ts",
-    "serve": "tsx server/server.ts"
+    "serve": "tsx server/server.ts",
+    "loomcheck": "tsx scripts/loomcheck.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

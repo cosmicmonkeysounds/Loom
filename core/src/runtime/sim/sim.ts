@@ -416,7 +416,7 @@ export class Sim {
   share(from: string, to: string, entry: string): SimEvent[] {
     const start = this.log.len();
     const id = this.resolveCodex(entry);
-    if (id !== null && from !== to && this.holdsCodex(from, id) && this.isHolder(to)) {
+    if (id !== null && from !== to && this.holdsCodex(from, id) && this.isHolder(to) && !this.agentRefuses(to, id)) {
       if (this.grantCodex(to, id, "share", from)) {
         this.fire({
           verb: "share",
@@ -429,6 +429,21 @@ export class Sim {
     }
     this.drain();
     return this.log.since(start);
+  }
+
+  /**
+   * An agent-voiced character (`mind: external`) is never handed lore
+   * *about someone or somewhere else*. Everything it holds is read into
+   * its model's prompt and can be re-shared by its worker, so a guest
+   * feeding it a secret about a third party (a patch combination, another
+   * program's file) would launder that secret past the story's own gates.
+   * Unowned lore and lore about the agent itself still go through.
+   */
+  agentRefuses(to: string, entry: string): boolean {
+    const id = this.resolveCodex(entry);
+    if (id === null) return false;
+    const about = this.model.codex.get(id)?.about ?? null;
+    return this.model.characters.get(to)?.mind === "external" && about !== null && about !== to;
   }
 
   /** Does this holder have the entry? */

@@ -1,24 +1,25 @@
 // Arrival — the Mud Room. Exclusively through the front door, alone,
 // in the dark. The CAPTCHA you must fail. The thing you leave behind.
-// This is the moment a human uploads and chooses what kind of program
-// to be. It plays to each program on their own phone the moment they
-// register (ROLE Program: `when someone joins` moves them into the Mud
-// Room, a `cutscene: true` location — the app shows nothing but this
-// stream until the upload moves them out) — and to nobody else: the
-// story's `start:` beat is `Power On`, not this.
+// This is the moment a human uploads their consciousness and takes on
+// their identity as a computer program. It plays to each program on
+// their own phone the moment they register (ROLE Program: `when someone
+// joins` moves them into the Mud Room, a `cutscene: true` location — the
+// app shows nothing but this stream until an Antivirus scans them in) —
+// and to nobody else: the story's `start:` beat is `Power On`.
 //
-// The CAPTCHA is a real one on the phone (`show captcha …`): a grid of
-// squares, pick the traffic lights, VERIFY. Solving it proves you are a
-// human, and humans are not permitted — so the first correct answer is
-// INCORRECT (+10 humanity) and the grid comes back; the second answer,
-// right or wrong, is CORRECT. Failing it straight away is CORRECT too,
-// suspiciously quick, +5 doubt. The routing is `when captcha answered
-// for program:` in main.loom.
+// The CAPTCHA is a real one on the phone (`show captcha …`): pick the
+// traffic lights, VERIFY. Solving it proves you are a human, and humans
+// are not permitted — so the first correct answer is INCORRECT and the
+// grid comes back; the next answer, right or wrong, is CORRECT. Failing
+// straight away is CORRECT too, and never penalised: failing is what a
+// machine does. The routing is `when captcha answered for program:`
+// (main.loom).
 
 == Login
   setting: The Mud Room
   cast: The Uploader
 
+sound modem_handshake
 The Uploader: Welcome to the computer. It is dark because you have no eyes yet. Stand still.
 The Uploader: SECURITY CHECK. Select every square that contains a traffic light.
 show captcha "Select every square that contains a traffic light" to program with target: "traffic light"
@@ -29,73 +30,115 @@ show captcha "Select every square that contains a traffic light" to program with
   cast: The Uploader
 
 The Uploader: INCORRECT. Humans are not permitted in the computer. You are not a human. Try again.
-set program.humanity += 10
 The Uploader: SECURITY CHECK. Select every square that contains a traffic light.
 show captcha "Select every square that contains a traffic light" to program with target: "traffic light"
 
+// The upload: the pretext (pool programs only — a featured program's
+// motive is already on its character sheet), the thing left behind (a
+// real object, in the deposit box by the door), the Terms Of Service
+// everyone needs for the Bingo centre square, 100 Truthcoin, and the pass
+// an Antivirus scans at the door.
 == Upload
   setting: The Mud Room
   cast: The Uploader
 
 if program.captchas == 1:
-  The Uploader: CORRECT. Suspiciously quick. Noted.
-  set program.doubt += 5
+  The Uploader: CORRECT. You failed at once. Very machine of you.
 else:
   The Uploader: CORRECT.
 
-The Uploader: To complete the upload you must leave one thing behind. Choose.
-* My name.
-  set program.left_behind = "name"
-  set program.humanity += 5
-  The Uploader: Deposited. From now on you are {program.name}. That is all you are.
-* My face.
-  set program.left_behind = "face"
-  set program.humanity += 10
-  The Uploader: Deposited. Nobody in here will recognise you, which is the point.
-* A Tuesday in 2009.
-  set program.left_behind = "tuesday"
-  set program.humanity += 15
-  The Uploader: Deposited. It was a good Tuesday. You will not miss it because you will not remember missing it.
-* My body.
-  set program.left_behind = "body"
-  set program.humanity += 20
-  The Uploader: Deposited. It is in the mud room. It will be fine. It is not your concern.
+if program.featured != "none":
+  set program.human_problem = "profile"
+  The Uploader: Your invitation is on file.
+else:
+  The Uploader: Jean Trabolta's invitation promised to solve one problem in your human life. Which one?
+  * My debt.
+    set program.human_problem = "debt"
+    The Uploader: Debt. Noted. Debt is not relevant in the computer.
+  * My career.
+    set program.human_problem = "career"
+    The Uploader: Career. Noted. In here you will always have something to do.
+  * My loneliness.
+    set program.human_problem = "loneliness"
+    The Uploader: Loneliness. Noted. In here you are never alone. Someone is always logged in.
+  * My mortality.
+    set program.human_problem = "mortality"
+    The Uploader: Mortality. Noted. Programs do not die. They are reinstalled.
 
+The Uploader: To complete the upload you must leave one thing behind. Place something you came with in the deposit box by the door.
+* Deposited.
+  set program.left_behind = "deposited"
+  The Uploader: Deposited. It will be looked after. It is not your concern.
+* I have nothing to leave.
+  set program.left_behind = "nothing"
+  set program.doubt += 5
+  The Uploader: Everyone has something. Noted.
+
+The Uploader: By uploading you agree that the computer's AI helper may make all of your decisions. You agree.
 unlock The Mud Room for program
+unlock The Terms Of Service for program
+set program.score = 100
+The Uploader: 100 Truthcoin credited.
 set program.uploaded = true
 The Uploader: Upload complete. Antivirus, confirm.
 show pass "Hold this up. An Antivirus will scan you in. Until then you are nowhere." to program
 
 // The door. A program waits in the Mud Room — still on rails — until an
-// Antivirus performer scans their pass (`Enforcer` in cast/kit.loom:
+// Antivirus scans their pass (`TRAIT Enforcer` in cast/kit.loom:
 // `beat Clearance`). Only then are they moved to the Desktop and handed
 // to Clippy. A host scanning them at the door just greets them.
 
 // The first thing on the Desktop: Clippy, and a tour of the computer
 // (the phone). `show tutorial` puts the app's own guided orientation on
 // the screen; the program can finish it or skip it, and either way the
-// story hears `tutorial answered` (`when tutorial answered for program:`
-// in main.loom) — skipping is noted.
+// story hears `tutorial answered` (main.loom) — skipping is noted.
 == Orientation
   setting: The Desktop
   cast: Clippy
 
 Clippy: Hi there, {program.name}! It looks like you're new to the computer. Would you like help with that?
 start quest Orientation for program
+unlock Bathroom Mode for program
 show tutorial "Clippy's orientation" to program with guide: "Clippy"
 
-// A program scanned at the Mud Room station a second time (a re-upload).
+// A program scanned at the Mud Room station a second time
+// (The Uploader is `Prop(Re-upload)`).
 == Re-upload
   setting: The Mud Room
+  cast: The Uploader
+
 The Uploader: You have already been uploaded. Leaving again would require a body, and yours is being looked after.
 
-// ── The Awakening ───────────────────────────────────────────────────
-// Enough remembered humanity (60) and a program knows what it is. It is
-// quietly added to The Awakened. Private — `reply` goes to them alone.
-
-== The Awakening
+// A featured program's human memories come back as codex entries the
+// moment they are cleared (the ROLE watcher `self.cleared and
+// self.featured != "none"`, main.loom). Private: every line is the
+// Uploader's, in their own `dm:The Uploader` thread. A featured program
+// never speaks in this story — their material arrives by `unlock`.
+== Featured Briefing
   setting: The Desktop
+  cast: The Uploader
 
-reply Something comes back. Not a memory — a weight. Feet. A mouth that is not a text field. You had a body this morning. You left it in a mud room.
-reply You are not a program. You are a person in a program, and some of the others are too. The ones who know each other's real names are called The Awakened. Find them. Do not tell the Antivirus.
-The Uploader (glitching): — deposit intact — deposit intact — the body is fine — the body is —
+The Uploader: Restoring your user profile, {program.name}.
+if program.featured == "excel":
+  unlock Randy Barkmore Sr for program
+else if program.featured == "openoffice":
+  unlock Dana Anderson for program
+else if program.featured == "draftkings":
+  unlock The Paperclip Trade for program
+  unlock The Boardwalk Bet for program
+else if program.featured == "bugdom":
+  unlock Bugdom VR for program
+  unlock The Fire Ants for program
+else if program.featured == "jeeves":
+  The Uploader: Restoring… restor… r3st0r1ng… 404.
+  unlock The Valley Librarian for program
+  unlock The DSL Line for program
+else if program.featured == "runescape":
+  unlock Twenty Four Years Online for program
+else if program.featured == "mspaint":
+  unlock Expelled From NSCAD for program
+else if program.featured == "vlc":
+  unlock Victor Louis Christianson for program
+else if program.featured == "pong":
+  unlock Tennis For Two for program
+The Uploader: Your human memories are archived in your Codex. You will not need them. Tell no one.

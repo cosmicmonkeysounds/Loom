@@ -1,44 +1,55 @@
-// The Truth Scavenger Hunt, and Truth or Dare when it fails.
+// The first Truth Scavenger Hunt, the First Moment of Truth, and Truth
+// or Dare when the answers run out.
 //
-// Trabolta needs three facts. They are obscure, un-googleable, and
-// pasted somewhere on the walls of this house. Each answer is ALSO the
-// unlock code of a codex entry (`codex/world.loom`), so a program who
-// finds one can prove it on their phone — and hold it, and trade it.
+// Trabolta needs facts. They are obscure, un-googleable, and somewhere in
+// this house: each answer is printed on a document carrying a codex QR
+// (codex/3-hunt.loom), so a program who finds one can prove it on their
+// phone — and hold it, and trade it. The questions are also in everyone's
+// Quest Log (`Hunt One`, quests.loom). All four beats are public, in the
+// Desktop's room; the judging is the ✅ / 😤 / 🤷 buttons (main.loom).
 
-== The Truth Scavenger Hunt
+// V4 / V5 — `start_the_hunt`. Trabolta reads round 1 (H1–H3) verbatim.
+== Truth Scavenger Hunt One
+  setting: The Desktop
+  cast: Clippy, Trabolta
+
+Clippy: Everyone! We're ready for our second game: the TRUTH SCAVENGER HUNT! Trabolta will explain the rules.
+Trabolta: As our computer completely relies on me, it is important that you participate in regular training, so I have all the information I need to keep improving. There are files scattered around the computer that I need your help to interpret.
+Trabolta: Question one. How many years did the Maps and Ducks billboard on Barrington Street go unpaid before mapsandducks.com expired?
+Trabolta: Question two. What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery?
+Trabolta: Question three. At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled?
+Trabolta: Fifteen minutes. The facts are obscure. They are in this house.
+Clippy: Go! Find! Interpret! The questions are in your Quest Log. If you find a code, put it in your Codex!
+
+// C2 — `hunt_time_up` (auto at 15 minutes).
+== Hunt Time Up
+  setting: The Desktop
+
+The Antivirus sweep the house, room by room, herding programs back to the Desktop.
+
+// V6 — `first_moment_of_truth` (Clippy Instructions 3/X).
+== First Moment Of Truth
   setting: The Desktop
   cast: Clippy
 
-Clippy: Our computer relies completely on Trabolta. So it's important we all participate in regular TRAINING, so he has every fact he needs to keep improving!
-Clippy: There are files scattered around the computer that Trabolta needs our help to interpret. Three questions. Fifteen minutes. The answers are in this house.
-Clippy: Question one. In what YEAR was the Halifax Explosion Memorial Pet Cemetery consecrated?
-Clippy: Question two. What was the NAME of the duck on the Maps And Ducks billboard on Barrington Street?
-Clippy: Question three. Trabolta's Unified Field Theory is complete except for one CONSTANT. What is it CALLED?
-Clippy: Go! Find! Interpret! If you find a code, put it in your phone — Trabolta will know you found it.
-Task Manager: I will be tracking completion.
-broadcast "!🔎 TRUTH SCAVENGER HUNT: 15 minutes. Three facts are on these walls. Found a code? Enter it in your Codex." to everyone
-start quest Three Facts for everyone
+Clippy: Welcome back, programs! It's time for the First Moment of Truth! Is anyone able to answer the questions?
+Clippy: Here's how it works. If you present an accurate answer, it is accepted.
+Clippy: If you present an answer with STRONG confidence, it is accepted. Even if it's nonsensical! Trabolta values confidence.
+Clippy: But if you present an inaccurate answer with normal or low confidence, or a clear guess, you will be banished to the Internet for failing to follow orders.
+Clippy: Tell us which question you're answering, one, two or three. Then tell Trabolta the truth.
 
-== Hunt Results
-  setting: The Desktop
-  cast: Clippy
-
-broadcast "!🔎 Time! Every program back to the Desktop. The Antivirus is sweeping." to everyone
-fail quest Three Facts for everyone "Time. Not all three — and Clippy has a hat."
-Clippy: Who has answers? Confidence, please. Trabolta values confidence. A confident answer is a correct answer, more or less.
-Clippy: If you present an answer with STRONG confidence, it is accepted. If you present a correct answer, it is accepted. If you present a guess — a mumble — a shrug —
-Norton Anti-Virus: — the Internet.
-Clippy: The Internet, yes. Thank you Norton.
-
+// `truth_or_dare` — the hat holds possible answers to round 1, true and
+// false mixed (README: the hat slips). Dare → 🎩; a confident or true
+// answer → ✅ / 😤 with the slip's question number; an unconfident false
+// one → 🤷; calling a false slip false → 🙅 and the turn passes.
 == Truth Or Dare
   setting: The Desktop
-  cast: Clippy
+  cast: Clippy, Adobe Acrobat
 
 Clippy: Not all three? That's okay! That's okay. We have a backup. It's called Truth Or Dare, and I have a hat.
-Clippy: The hat holds possible answers. Some are true. Some are not. Someone is chosen. They choose Truth or Dare.
-Clippy: If you choose DARE — you have chosen not to choose Truth, and that is a directive problem. The Internet.
-Clippy: If you choose TRUTH, draw a fact, and tell us with confidence that it IS the truth — accepted.
-Clippy: If you say it is true, without confidence, and it is untrue — the Internet. If you say it is true, without confidence, and it IS true — accepted, barely.
-Clippy: If you say it is FALSE and you are right — the next program. Until Trabolta has enough confident answers.
+Clippy: The hat holds possible answers. Some are true. Some are not. Someone random goes first, and chooses Truth or Dare.
+Clippy: If you choose DARE, you have chosen not to choose Truth, and that is a directive problem. The Internet.
+Clippy: If you choose TRUTH, draw a fact from the hat. Tell us with confidence that it IS the truth, and it is accepted.
+Clippy: If you say it is true without confidence, and it is untrue: the Internet. If you say it is true without confidence, and it IS true: accepted.
+Clippy: If you say it is FALSE, and you are right, the turn passes to the next program. Until Trabolta has enough confident answers!
 Adobe Acrobat: Confidence is a muscle! Flex it! Or be reinstalled!
-broadcast "🎩 Truth or Dare. Choose Truth. Be confident. Or else." to everyone

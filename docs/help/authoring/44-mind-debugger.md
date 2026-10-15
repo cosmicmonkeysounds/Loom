@@ -21,8 +21,9 @@ nothing voices the character in the browser.
 ## The mind now (left)
 
 - **The arc.** The mind file declares the character's night as
-  **stages** (`stages:` in its frontmatter — for Trabolta: *lonely
-  grandeur → appetite → the question → the turn*). The stepper shows
+  **stages** (`stages:` in its frontmatter — for Trabolta: *asleep →
+  formal → hungry → rattled → judge → unravelling → desperate → last
+  act*). The stepper shows
   where the character is, when it got there and why (hover a stage).
   Click a later stage to move the character there yourself; you are
   asked for the reason, which goes into the history.
@@ -31,7 +32,7 @@ nothing voices the character in the browser.
   may rewrite it again). Pending **whispers** (your nudges, below) show
   here until the orchestrator folds them in.
 - **Drives** — the mind's own 0–100 dials (`drives:` in the mind file:
-  hunger, suspicion, generosity, resolve…), each with a sparkline over
+  hunger, suspicion, pride, candour, longing…), each with a sparkline over
   every revision of the night and its change since the first. Drag a
   slider to set one.
 - **Bargains** — the policy on favours as the orchestrator keeps it:
@@ -83,7 +84,7 @@ thoughts, so a console opened late still sees the night.
 
 | Control | What it does |
 |---|---|
-| **Nudge** | whisper to the mind. The voice obeys it on its very next line; the survey it queues folds it into the brief and clears it. "Be shaken: you just felt a key turn." |
+| **Nudge** | whisper to the mind. The voice obeys it on its very next line; the survey it queues folds it into the brief and clears it. "Be shaken: someone just read your LiveJournal." |
 | **Survey now** | the orchestrator looks at the house immediately |
 | **Pause / Resume mind** | freeze the mind: replies keep coming, but nothing changes it until you resume |
 | **Mind reasoning on / off** | show the orchestrator's thinking in the trace (slower) |
@@ -99,8 +100,15 @@ a rehearsal's log says what the models did and what a human did.
 The mind file (`trabolta.mind.md` beside the persona) is where the
 night's shape lives: `stages:` in order, `drives:` with opening values,
 and `phases:` — a cue per story phase (`Night.phase`) handed to the
-orchestrator when the house enters it, so *the glitch* or *the keys
-turning* changes the character on cue rather than by accident. The
+orchestrator when the house enters it, so *the malware*, *the
+overshare* or *the Y2K clock* changes the character on cue rather than by accident. The
 prose below the frontmatter is the orchestrator's brief for how to
 steer. Tune both offline with `stagehand ask --reflect`, then watch the
 real night here.
+
+Until the orchestrator learns to follow the story's phases on its own,
+a director can keep the arc in step by hand: click the stage on the
+stepper as the night reaches it. For *Trapped in the Internet*:
+introduced → *formal*, the first Moment of Truth → *hungry*, the
+malware → *rattled*, Truth Pong → *judge*, the beans → *unravelling*,
+the Y2K clock → *desperate*, the final reveal → *last act*.

@@ -1,0 +1,387 @@
+# Trapped in the Internet — the house's show-control config (the desktop).
+# The story (core/examples/trapped-in-the-internet) only emits directives;
+# this file makes them physical. Run it with:
+#
+#   uv run stagehand check --config trapped.house.yaml
+#   uv run stagehand run   --config trapped.house.yaml
+#
+# (show.example.yaml stays the generic, test-pinned example; this is the
+# real show. tests/test_trapped_house.py cross-checks it against the story.)
+#
+# THE RIG
+#   Mosquitto on the brain-stem box; Zigbee2MQTT on the same broker.
+#   Z2M groups, one per house.json room plus a whole-house group, named:
+#     house · living (The Desktop) · kitchen (The Cache) · backyard (The Cloud)
+#     registry (The Registry, rec room) · tube (hall + stair landing)
+#     mudroom · bathroom (Disk Cleanup) · tent (The Internet) · server_room
+#   Scenes: `scene_store` each look ONCE per group while setting up, with the
+#   IDs in the table below (same ID in every group), then the show only ever
+#   sends `scene_recall`.
+#   WLED (the PAUTIX COB runs on ESP32s): group topic `wled/all`, plus device
+#   topics wled/tube, wled/living, wled/kitchen, wled/backyard, wled/registry,
+#   wled/server. Build IDENTICAL preset IDs on every controller (same table).
+#   QLab (or any OSC cue player) on this machine, UDP 53000: one cue per
+#   `sound <name>`, its cue NUMBER = the name (e.g. cue "dance_song").
+#
+# RULES OF THUMB (stagehand-hw.md §3)
+#   - retain: false on every /set and /api command (a retained "OFF" survives
+#     into tomorrow night). That is the default, so no rule sets it.
+#   - Quote "on" inside WLED payloads: a bare `on:` key is YAML boolean true.
+#   - Never stream flicker over Zigbee; use the bulb's own effect or WLED.
+#
+#  ID  cue                   Z2M (group → payload)               WLED
+#   1  lights_screensaver    house  scene 1  dim cool blue drift  all ps 1
+#   2  lights_tube_chase     —                                    tube ps 2 (chase toward the living room)
+#   3  lights_call_desktop   house  scene 3  white, living bright all ps 3 (floor lines sweep to the Desktop)
+#   4  lights_game           living scene 4  warm, bright         living ps 4
+#   5  lights_truth_time     living scene 5  spot on fireplace    living ps 5
+#   6  lights_ad_hijack      house  scene 6  garish magenta       all ps 6
+#   7  lights_glitch         house  effect breathe (Hue + IKEA)   all ps 7 (Lightning / strobe)
+#   8  lights_pong           backyard floods full                 backyard ps 8
+#   9  lights_trust_chart    living scene 9  blue podium          living ps 9
+#  10  lights_y2k            house  scene 10 amber, dim           all ps 10 (slow red pulse)
+#  11  lights_server_open    server_room scene 11 dim green       server ps 11
+#  12  lights_alarm          server_room red breathe + house 12   all ps 12 (red strobe)
+#  13  lights_blackout       house  OFF, no transition            all off
+#  14  lights_dance          house  scene 14 dance                all ps 14 (audio-reactive if fitted)
+#  15  lights_final_reveal   house  scene 15 near dark            all ps 15 (embers)
+#  16  lights_song           house  scene 16 pink, romantic       all ps 16
+#  17  lights_rave           house  scene 17 colour loop          all ps 17 (strobe / rainbow)
+#  18  lights_purgatory      house  scene 18 grey, dim            all ps 18
+#  19  lights_banish         house  scene 19 red everywhere       all ps 19
+#  20  lights_restore        house  scene 20 house normal         all ps 20
+#  21  screens_flicker       house  effect blink (one-shot)       all ps 21 (a short Lightning playlist
+#                                                                  whose `end` is preset 20)
+#
+# SCREENS. The `screens_*` / `tv_*` / `terminals_*` / `tablet_*` cues have no
+# rule here on purpose: the Screens layer (design §7 #13) consumes them from
+# the mod feed directly, and the story mirrors each look into Night.screen /
+# Night.terminals. Only `screens_flicker` is physical today: it blinks the
+# house so Trabolta's power is felt.
+
+server:
+  url: http://127.0.0.1:7000
+  event: default             # the live event's id, or "default"
+  mod_passcode: "CHANGE-ME"  # or mod_token: "…"
+
+show:
+  mqtt:
+    host: 127.0.0.1
+    port: 1883
+    client_id: stagehand-house
+
+  osc:
+    targets:
+      qlab: { host: 127.0.0.1, port: 53000 }
+
+  # --- story → house ----------------------------------------------------------
+  cues:
+    # ── Trabolta's `cut_the_lights` power and its restore (the long form) ──
+    # <cue: lights, room: The Cache, state: off> — the story allow-lists
+    # exactly these four rooms (cast/trabolta.loom) and turns the room back on
+    # itself 90 s later (<cue: lights, room: {Night.dark_room}, state: on>).
+    - on: { directive: cue }
+      match: { target: lights, room: The Cache, state: "off" }
+      mqtt: { topic: "zigbee2mqtt/kitchen/set", payload: { state: "OFF", transition: 0 } }
+    - on: { directive: cue }
+      match: { target: lights, room: The Cache, state: "off" }
+      mqtt: { topic: "wled/kitchen/api", payload: { "on": false } }
+    - on: { directive: cue }
+      match: { target: lights, room: The Cache, state: "on" }
+      mqtt: { topic: "zigbee2mqtt/kitchen/set", payload: { state: "ON", transition: 1 } }
+    - on: { directive: cue }
+      match: { target: lights, room: The Cache, state: "on" }
+      mqtt: { topic: "wled/kitchen/api", payload: { "on": true } }
+
+    - on: { directive: cue }
+      match: { target: lights, room: The Desktop, state: "off" }
+      mqtt: { topic: "zigbee2mqtt/living/set", payload: { state: "OFF", transition: 0 } }
+    - on: { directive: cue }
+      match: { target: lights, room: The Desktop, state: "off" }
+      mqtt: { topic: "wled/living/api", payload: { "on": false } }
+    - on: { directive: cue }
+      match: { target: lights, room: The Desktop, state: "on" }
+      mqtt: { topic: "zigbee2mqtt/living/set", payload: { state: "ON", transition: 1 } }
+    - on: { directive: cue }
+      match: { target: lights, room: The Desktop, state: "on" }
+      mqtt: { topic: "wled/living/api", payload: { "on": true } }
+
+    - on: { directive: cue }
+      match: { target: lights, room: The Cloud, state: "off" }
+      mqtt: { topic: "zigbee2mqtt/backyard/set", payload: { state: "OFF", transition: 0 } }
+    - on: { directive: cue }
+      match: { target: lights, room: The Cloud, state: "off" }
+      mqtt: { topic: "wled/backyard/api", payload: { "on": false } }
+    - on: { directive: cue }
+      match: { target: lights, room: The Cloud, state: "on" }
+      mqtt: { topic: "zigbee2mqtt/backyard/set", payload: { state: "ON", transition: 1 } }
+    - on: { directive: cue }
+      match: { target: lights, room: The Cloud, state: "on" }
+      mqtt: { topic: "wled/backyard/api", payload: { "on": true } }
+
+    - on: { directive: cue }
+      match: { target: lights, room: The Registry, state: "off" }
+      mqtt: { topic: "zigbee2mqtt/registry/set", payload: { state: "OFF", transition: 0 } }
+    - on: { directive: cue }
+      match: { target: lights, room: The Registry, state: "off" }
+      mqtt: { topic: "wled/registry/api", payload: { "on": false } }
+    - on: { directive: cue }
+      match: { target: lights, room: The Registry, state: "on" }
+      mqtt: { topic: "zigbee2mqtt/registry/set", payload: { state: "ON", transition: 1 } }
+    - on: { directive: cue }
+      match: { target: lights, room: The Registry, state: "on" }
+      mqtt: { topic: "wled/registry/api", payload: { "on": true } }
+
+    # ── Scenes: one look per `cue lights_*` (IDs in the table above) ──
+    - on: { directive: cue }
+      match: { target: lights_screensaver }
+      mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 1, transition: 3 } }
+    - on: { directive: cue }
+      match: { target: lights_screensaver }
+      mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 1 } }
+
+    - on: { directive: cue }
+      match: { target: lights_tube_chase }
+      mqtt: { topic: "wled/tube/api", payload: { "on": true, ps: 2 } }
+
+    - on: { directive: cue }
+      match: { target: lights_call_desktop }
+      mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 3, transition: 1 } }
+    - on: { directive: cue }
+      match: { target: lights_call_desktop }
+      mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 3 } }
+
+    - on: { directive: cue }
+      match: { target: lights_game }
+      mqtt: { topic: "zigbee2mqtt/living/set", payload: { scene_recall: 4, transition: 2 } }
+    - on: { directive: cue }
+      match: { target: lights_game }
+      mqtt: { topic: "wled/living/api", payload: { "on": true, ps: 4 } }
+
+    - on: { directive: cue }
+      match: { target: lights_truth_time }
+      mqtt: { topic: "zigbee2mqtt/living/set", payload: { scene_recall: 5, transition: 1 } }
+    - on: { directive: cue }
+      match: { target: lights_truth_time }
+      mqtt: { topic: "wled/living/api", payload: { "on": true, ps: 5 } }
+
+    - on: { directive: cue }
+      match: { target: lights_ad_hijack }
+      mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 6, transition: 0 } }
+    - on: { directive: cue }
+      match: { target: lights_ad_hijack }
+      mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 6 } }
+
+    - on: { directive: cue }
+      match: { target: lights_glitch }
+      mqtt: { topic: "zigbee2mqtt/house/set", payload: { effect: "breathe" } }
+    - on: { directive: cue }
+      match: { target: lights_glitch }
+      mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 7 } }
+
+    - on: { directive: cue }
+      match: { target: lights_pong }
+      mqtt: { topic: "zigbee2mqtt/backyard/set", payload: { state: "ON", brightness: 254, transition: 2 } }
+    - on: { directive: cue }
+      match: { target: lights_pong }
+      mqtt: { topic: "wled/backyard/api", payload: { "on": true, ps: 8 } }
+
+    - on: { directive: cue }
+      match: { target: lights_trust_chart }
+      mqtt: { topic: "zigbee2mqtt/living/set", payload: { scene_recall: 9, transition: 1 } }
+    - on: { directive: cue }
+      match: { target: lights_trust_chart }
+      mqtt: { topic: "wled/living/api", payload: { "on": true, ps: 9 } }
+
+    - on: { directive: cue }
+      match: { target: lights_y2k }
+      mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 10, transition: 4 } }
+    - on: { directive: cue }
+      match: { target: lights_y2k }
+      mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 10 } }
+
+    - on: { directive: cue }
+      match: { target: lights_server_open }
+      mqtt: { topic: "zigbee2mqtt/server_room/set", payload: { scene_recall: 11, transition: 2 } }
+    - on: { directive: cue }
+      match: { target: lights_server_open }
+      mqtt: { topic: "wled/server/api", payload: { "on": true, ps: 11 } }
+
+    - on: { directive: cue }
+      match: { target: lights_alarm }
+      mqtt: { topic: "zigbee2mqtt/server_room/set", payload: { state: "ON", brightness: 254, color: { hex: "#FF0000" }, effect: "breathe" } }
+    - on: { directive: cue }
+      match: { target: lights_alarm }
+      mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 12, transition: 0 } }
+    - on: { directive: cue }
+      match: { target: lights_alarm }
+      mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 12 } }
+
+    # The blackout is 10 s in the story: it cues lights_dance itself
+    # (Night.dance_at), so the off here needs no timer.
+    - on: { directive: cue }
+      match: { target: lights_blackout }
+      mqtt: { topic: "zigbee2mqtt/house/set", payload: { state: "OFF", transition: 0 } }
+    - on: { directive: cue }
+      match: { target: lights_blackout }
+      mqtt: { topic: "wled/all/api", payload: { "on": false } }
+
+    - on: { directive: cue }
+      match: { target: lights_dance }
+      mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 14, transition: 0 } }
+    - on: { directive: cue }
+      match: { target: lights_dance }
+      mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 14 } }
+
+    - on: { directive: cue }
+      match: { target: lights_final_reveal }
+      mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 15, transition: 3 } }
+    - on: { directive: cue }
+      match: { target: lights_final_reveal }
+      mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 15 } }
+
+    - on: { directive: cue }
+      match: { target: lights_song }
+      mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 16, transition: 3 } }
+    - on: { directive: cue }
+      match: { target: lights_song }
+      mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 16 } }
+
+    - on: { directive: cue }
+      match: { target: lights_rave }
+      mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 17, transition: 0 } }
+    - on: { directive: cue }
+      match: { target: lights_rave }
+      mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 17 } }
+
+    - on: { directive: cue }
+      match: { target: lights_purgatory }
+      mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 18, transition: 4 } }
+    - on: { directive: cue }
+      match: { target: lights_purgatory }
+      mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 18 } }
+
+    - on: { directive: cue }
+      match: { target: lights_banish }
+      mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 19, transition: 0 } }
+    - on: { directive: cue }
+      match: { target: lights_banish }
+      mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 19 } }
+
+    - on: { directive: cue }
+      match: { target: lights_restore }
+      mqtt: { topic: "zigbee2mqtt/house/set", payload: { scene_recall: 20, transition: 2 } }
+    - on: { directive: cue }
+      match: { target: lights_restore }
+      mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 20 } }
+
+    # ── Trabolta's flicker (and the story's involuntary ones): the screens
+    # stutter (Screens layer) and the house blinks once so it is felt. ──
+    - on: { directive: cue }
+      match: { target: screens_flicker }
+      mqtt: { topic: "zigbee2mqtt/house/set", payload: { effect: "blink" } }
+    - on: { directive: cue }
+      match: { target: screens_flicker }
+      mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 21 } }
+
+    # ── Sound: `sound <name>` (directive sfx) → the QLab cue of that name ──
+    # (no t_exec: QLab does not want the extra argument)
+    - on: { directive: sfx }
+      match: { target: modem_handshake }
+      osc: { addr: "/cue/modem_handshake/start", to: qlab }
+    - on: { directive: sfx }
+      match: { target: alexa_chime }
+      osc: { addr: "/cue/alexa_chime/start", to: qlab }
+    - on: { directive: sfx }
+      match: { target: bingo_start }
+      osc: { addr: "/cue/bingo_start/start", to: qlab }
+    - on: { directive: sfx }
+      match: { target: ad_jingle }
+      osc: { addr: "/cue/ad_jingle/start", to: qlab }
+    - on: { directive: sfx }
+      match: { target: truther_glitch }
+      osc: { addr: "/cue/truther_glitch/start", to: qlab }
+    - on: { directive: sfx }
+      match: { target: countdown_tick }
+      osc: { addr: "/cue/countdown_tick/start", to: qlab }
+    - on: { directive: sfx }
+      match: { target: printer_grind }
+      osc: { addr: "/cue/printer_grind/start", to: qlab }
+    - on: { directive: sfx }
+      match: { target: beans_spill }
+      osc: { addr: "/cue/beans_spill/start", to: qlab }
+    - on: { directive: sfx }
+      match: { target: zip }
+      osc: { addr: "/cue/zip/start", to: qlab }
+    - on: { directive: sfx }
+      match: { target: y2k_chime }
+      osc: { addr: "/cue/y2k_chime/start", to: qlab }
+    - on: { directive: sfx }
+      match: { target: alarm_siren }
+      osc: { addr: "/cue/alarm_siren/start", to: qlab }
+    - on: { directive: sfx }
+      match: { target: windows_shutdown }
+      osc: { addr: "/cue/windows_shutdown/start", to: qlab }
+    # dance_song: the file opens with 10 s of silence (the blackout).
+    - on: { directive: sfx }
+      match: { target: dance_song }
+      osc: { addr: "/cue/dance_song/start", to: qlab }
+    - on: { directive: sfx }
+      match: { target: motorcycle }
+      osc: { addr: "/cue/motorcycle/start", to: qlab }
+    - on: { directive: sfx }
+      match: { target: youre_the_one_vocoder }
+      osc: { addr: "/cue/youre_the_one_vocoder/start", to: qlab }
+    - on: { directive: sfx }
+      match: { target: youre_the_one_sandy_only }
+      osc: { addr: "/cue/youre_the_one_sandy_only/start", to: qlab }
+    - on: { directive: sfx }
+      match: { target: rave }
+      osc: { addr: "/cue/rave/start", to: qlab }
+    - on: { directive: sfx }
+      match: { target: hand_jive }
+      osc: { addr: "/cue/hand_jive/start", to: qlab }
+
+    # ── Alexa: `do announce "…"` → show/announce {"text": "…"} → the house
+    # speaker (a Home Assistant automation, or a local TTS player). ──
+    - on: { directive: announce }
+      mqtt: { topic: "show/announce", payload: { text: "{target}" } }
+
+    # ── The optional server-room maglock: `do door server_room, state: unlocked`
+    # (at majority_reached). Maglock on a Zigbee relay: power off = released. ──
+    - on: { directive: door }
+      match: { target: server_room, state: unlocked }
+      mqtt: { topic: "zigbee2mqtt/server_room_lock/set", payload: { state: "OFF" } }
+    - on: { directive: door }
+      match: { target: server_room, state: locked }
+      mqtt: { topic: "zigbee2mqtt/server_room_lock/set", payload: { state: "ON" } }
+
+  # --- house → story ----------------------------------------------------------
+  # Every name here must be a `when <name>` story rule in main.loom: stagehand
+  # never validates signal names, so a typo is silent (the test checks it).
+  sensors:
+    # Server-room door: a Zigbee contact sensor (contact false = OPEN). Z2M
+    # republishes the state on every battery report, so the debounce stops a
+    # flood, and the story latches the alarm for 120 s on its own. (Edge
+    # detection and ignoring retained messages are stagehand code #4.)
+    - on: { topic: "zigbee2mqtt/server_room_door", when: "contact == false" }
+      signal: { name: server_door_opened, debounce_s: 20 }
+
+    # The printer: a Zigbee button over its START key, a reed switch on the lid.
+    - on: { topic: "zigbee2mqtt/printer_button", when: "action == 'single'" }
+      signal: { name: printer_button_pressed, debounce_s: 3 }
+    - on: { topic: "zigbee2mqtt/printer_lid", when: "contact == false" }
+      signal: { name: printer_opened, debounce_s: 30 }
+
+    # The patch bay (Trabolta's heart): the scanner publishes the canonical,
+    # V-sorted pairs once stable, e.g.
+    #   sensors/patchbay/state {"combo": "V2-D5,V4-D1,V6-D8,V7-D3", "complete": true}
+    # Stagehand judges until signal args exist (§7 #20). These two strings MUST
+    # equal the Kernel.combo_a / Kernel.combo_b seeds in main.loom and the
+    # four combo-half codex entries (codex/4-trabolta.loom).
+    - on: { topic: "sensors/patchbay/state", when: "complete == true && combo == 'V2-D5,V4-D1,V6-D8,V7-D3'" }
+      signal: { name: patch_combo_a, debounce_s: 60 }
+    - on: { topic: "sensors/patchbay/state", when: "complete == true && combo == 'V1-D6,V3-D2,V5-D7,V8-D4'" }
+      signal: { name: patch_combo_b, debounce_s: 60 }
+    - on: { topic: "sensors/patchbay/state", when: "complete == true && combo != 'V2-D5,V4-D1,V6-D8,V7-D3' && combo != 'V1-D6,V3-D2,V5-D7,V8-D4'" }
+      signal: { name: patch_rejected, debounce_s: 10 }

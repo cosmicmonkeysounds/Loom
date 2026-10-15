@@ -1,0 +1,110 @@
+// Act II: the summons, Truth Pong, the Trust Chart, the printer (spec §3 D2–D8).
+//
+// Every beat here is a PUBLIC set piece: no subject is bound, so every
+// line lands in the Desktop room for everyone. The state, timers and cues
+// live in the story rules in main.loom that divert here; these beats are
+// what the room reads. Names in the ranking beats come from Night.* vars
+// the ROLE ranking watchers set before `rankings_done` fires.
+//
+// No line here may start `VLC:` / `MS Paint:` (a featured program never
+// speaks, spec §0 rule 5): VLC and MS Paint get their printer nudges in
+// their own DMs from main.loom's ROLE watchers.
+
+== Five Minute Warning
+  setting: The Desktop
+  cast: Clippy
+
+Every phone in the house buzzes at once. Five minutes. Somewhere in the hall an Antivirus starts counting.
+Clippy: Programs! Programs, it is time! Back to the Desktop for the Second Moment Of Truth! Five minutes!
+Clippy: If you are in Bathroom Mode, you are excused. If you are not in Bathroom Mode, and you are not here— well. Please just be here.
+
+== Summons Closed
+  setting: The Desktop
+  cast: Clippy
+
+The doors of the Desktop close.
+Anyone who is not here, and is not in Bathroom Mode, is late. The Antivirus have the list.
+Clippy: Okay. Okay! Everyone who is here is wonderful. Let's begin.
+
+== Truth Pong
+  setting: The Desktop
+  cast: Clippy, Adobe Acrobat
+
+Clippy is visibly distraught. Behind the tears, she is trying to be more excited than ever.
+Clippy (through tears): It's Truth Time again! And this time we are going to reveal our truths in a fun new way. With a game of TRUTH PONG. Everyone's favourite game!
+Clippy: Out in the Cloud there is a pyramid of cups on a folding table. We are all going to show that we are functional programs who can be trusted to retrieve truths accurately.
+Clippy: By following one simple command. Bounce or throw a ping pong ball into a cup. We should all be able to do this, because we are being commanded to.
+Clippy: If you miss, you will not be trusted to deliver a truth, and you will need to be reinstalled in the Internet.
+Clippy: If you make the cup, you get to share one truth, and answer one of the facts Trabolta asked for. Accurate is accepted. Confident is accepted. A guess is the Internet. Same as before!
+Adobe Acrobat: Visualise the cup. Become the cup. Then throw the ball into the cup.
+Clippy: Everyone outside! Line up! It's going to be so fun!
+
+== Round Two Tally
+  setting: The Desktop
+  cast: Trabolta
+
+Trabolta: The second collection is closed. I will now tally the facts I have received.
+if Night.collection_complete == true:
+  Trabolta: I have every fact I asked for. My confidence that we will defeat the malware is sixty-one percent.
+  Trabolta: That is the highest number I have said tonight. Thank you, programs. Your cooperation has been logged.
+else:
+  Trabolta: I remain without the information I requested. My confidence that we will defeat the malware is twelve percent.
+  Trabolta: Twelve. I would like everyone to sit with that number.
+
+== Trust Chart
+  setting: The Desktop
+  cast: Trabolta, Clippy
+
+Trabolta: TRUST CHART. Ten points per correct truth. Minus five per visit to the Internet. Plus or minus ten for my personal assessment.
+Trabolta: Every program in this computer is on the chart. You may look for yourself. You may not argue with it.
+Trabolta: Assessments are being finalised.
+Clippy: Isn't this exciting? Somebody's going to be the most trusted program in the whole computer!
+
+== Praise The Top
+  setting: The Desktop
+  cast: Trabolta, Clippy
+
+Trabolta: The most trusted program in this computer is {Night.most_trusted}. A round of applause for {Night.most_trusted}.
+Clippy: Everybody! Applause! Big applause for {Night.most_trusted}!
+Trabolta: {Night.most_trusted} has done exactly what was asked, accurately and with confidence. This is what a program is for.
+
+== Shame The Bottom
+  setting: The Desktop
+  cast: Trabolta
+
+Trabolta: And the least trusted program in this computer is {Night.least_trusted}.
+Trabolta: {Night.least_trusted}. You have the lowest trust score in the computer. I have seen screensavers with more integrity.
+Trabolta: I brought you here for a reason. I am beginning to forget what it was.
+
+== Print The Certificate
+  setting: The Desktop
+  cast: Trabolta
+
+set Night.printer_called = true
+cue screens_print_certificate
+set Night.screen = "print_certificate"
+set Night.terminals = "print_certificate"
+if count([p for p in Persons where p.featured == "vlc"]) > 0:
+  Trabolta: VLC Player. You are trusted with all forms of multimedia. Please, press the start button on the printer, to print a PDF file with a certificate for our great hero.
+else:
+  Trabolta: The media player is not responding. Any program. Please, press the start button on the printer, to print a PDF file with a certificate for our great hero.
+
+== The Printer Jams
+  setting: The Desktop
+
+Someone presses START. The printer thinks about it. Nothing happens.
+The screen says the certificate is printing. It has said that for a while.
+
+== Full Of Beans
+  setting: The Desktop
+  cast: Clippy, Trabolta
+
+Narrator: The printer is full of beans.
+Clippy: Beans. Those are— those are symptoms. The malware is getting worse. Routine operations like print to PDF are no longer working. It is even more urgent that we get the next facts right.
+Trabolta: Antivirus. Everyone in the Internet is to be zipped up and brought out. Immediately.
+
+== Zip Everyone Out
+  setting: The Desktop
+
+The Antivirus march into the Internet and bring every program out of the tent, one by one, zipped up and compressed for the moment.
+Whatever was in there with them is still in there.

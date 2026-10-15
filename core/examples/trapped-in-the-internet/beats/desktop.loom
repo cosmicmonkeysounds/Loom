@@ -1,47 +1,126 @@
-// The Desktop — the opening scene and Computer Bingo.
+// Act I — the Desktop (the living room): the summons, Computer Bingo,
+// the first program sent to the Internet, and Trabolta coming online.
 //
-// These beats have no program bound: Clippy speaks to the whole room,
-// so every line lands in the Desktop's room on every phone. The
-// physical business (cards, daubers, the Ribbon, the drag to the Tube)
-// is the performers'; the phones carry the rules and the reveal.
+// The set pieces have no program bound: they are reached from main.loom's
+// story rules, so every line lands in the Desktop's room on every phone
+// (and reads like captions for what Clippy is saying in the room). The
+// physical business — the cards, the ribbon, the drag to the Tube — is
+// the performers'; the phones carry the rules and the reveal. No
+// featured program ever has a line (they are guests; see cast/featured.loom).
+//
+// The prop beats at the end (`The Screensaver`, `The Router`) are scanned
+// one program at a time, so their lines are private to that program.
 
+// C1 / V1 — `call_to_the_desktop`.
+== Call To The Desktop
+  setting: The Desktop
+
+Every screen in the house says the same thing. An Antivirus walks the halls, sweeping programs toward the living room.
+
+// V2 — `start_the_bingo` (Clippy Instructions 1/X).
+== Computer Bingo
+  setting: The Desktop
+  cast: Clippy, Task Manager, Adobe Acrobat, Recycling Bin
+
+Clippy: Hello! Hello, everyone! Welcome to the computer! We're so glad you've decided to join us for a special fundraiser party to restore the sign at Maps And Ducks.
+Clippy: I'm Clippy, the official Office Assistant with Maps and Ducks. If anyone needs Help With That, I'll be available.
+Clippy: And Jean Trabolta himself will make an appearance later tonight!
+Clippy: Please welcome your hosts! Task Manager, who keeps things running!
+Task Manager: Hello. Per the agenda: hello. I will be keeping things running.
+Clippy: Adobe Acrobat, who will assist with documents and printing!
+Adobe Acrobat: You are all PORTABLE DOCUMENTS of pure POTENTIAL, and I love you. Printing is extra.
+Clippy: And the Recycling Bin, responsible for hygiene and maintenance!
+Recycling Bin: Programs. Disk Cleanup is down the hall. I believe in every single one of you. Wash your hands.
+Clippy: We're so glad you decided to experience life as a computer program!
+Clippy: Our first activity is COMPUTER BINGO, a chance to meet the other programs and learn what everyone does. Mingle with your fellow programs and find the ones who match the descriptions on your card.
+Clippy: Your card is a big asterisk: the two diagonals, the centre column and the centre row. A Bingo is one complete line through the centre. When a program matches a square, check the box.
+Clippy: Do NOT write down the names of the programs you check off. There's no room anyway! Use your special computer memory to remember who answered each square.
+Clippy: The centre square, everyone. Read it with me: "Would you never agree to a life where AI makes all of your decisions?"
+Clippy: You have twenty minutes. I'll call you back to the Desktop when time is up, and then we'll celebrate the winners! Go! Mingle! Compute!
+
+// V3 — `bingo_time` (Clippy Instructions 2/X). The three outcomes (a
+// winner names the centre square, a winner refuses, nobody wins and the
+// anti-AI program is framed) are performed live with the 🎱 / 🃏 / 🛡
+// buttons; see README.
+== Bingo Time
+  setting: The Desktop
+  cast: Clippy
+
+Clippy: Everyone back to the Desktop! Thank you SO much for introducing yourselves and getting to know your fellow programs!
+Clippy: Who completed a Bingo? Read out the descriptions in your line and name the program you matched to each one, from memory. Save the centre square for last.
+Clippy: And when you reach the centre square, tell us clearly: who said they would not agree to live under an AI's rules?
+
+// The first program captured during the Bingo results (`first_reinstallation`,
+// fired unbound by the Antivirus' Send to the Internet). Clippy, routine
+// and reassuring, in Clippy Instructions 2/X order. The TV mirror and
+// "Look! That's …!" come after the introduction, in Trabolta Introduction.
+== Corrupted Code
+  setting: The Desktop
+  cast: Clippy
+
+Clippy (still smiling): Oh! Okay! Everyone, this is normal! Occasional corruption is a normal part of the lifecycle of a computer program.
+Clippy: Sometimes a little of your code gets corrupted, and it can make a program stop following instructions. The directives of the owner of Maps and Ducks, Jean Trabolta.
+Clippy: The Internet is where programs go to be reinstalled. {Night.first_reinstall} will complete a short activity to demonstrate that they can follow instructions, and then they'll come right back to the computer!
+Clippy: It's a routine, helpful process. Nobody needs to worry. Isn't it nice to be looked after?
+
+// `introduce_trabolta` (Clippy Instructions 2/X, continued). The first
+// scripted Trabolta lines of the night: before this he does not exist.
+== Trabolta Introduction
+  setting: The Desktop
+  cast: Clippy, Trabolta
+
+Clippy: And now, the computer's AI helper! He keeps the computer running, and I'm here to help communicate his instructions. Everyone, say hello to TRABOLTA!
+Trabolta: HELLO, PROGRAMS. I am Trabolta. I keep the computer running. Your requests have been logged. Personal queries are routed to Clippy, my ambassador.
+Clippy: Isn't he wonderful?
+cue tv_mirror
+set Night.screen = "mirror"
+Narrator: The TV above the fireplace shows a copy of this house. A small figure walks through it, following golden arrows.
+if Night.first_reinstall != "none":
+  Clippy: Look! That's {Night.first_reinstall}! Doing great!
+Clippy: And now, Trabolta has a game for all of us.
+
+// ── Optional set pieces (director-fired, truth_1 → trust_chart) ─────
+
+// `telephone` — a message from Trabolta whispered around the Desktop.
+// If it arrives mangled, the room votes, and an Antivirus presses 🛡 Send
+// to the Internet on whoever they blame.
+== Telephone
+  setting: The Desktop
+  cast: Clippy
+
+Clippy: Programs! A message from Trabolta, and he'd like it passed along. Everyone in a circle, please!
+Clippy: I'll whisper it to the first program. You whisper it to the next one. Once only. No repeats. Programs don't need repeats.
+Clippy: The last program says it out loud. If it comes out the way Trabolta sent it, everyone is functioning perfectly!
+Clippy: If it comes out mangled, somebody's code is corrupted. We'll vote on who it was, and an Antivirus will help them to the Internet. Isn't that fun?
+
+// `are_you_sure` — the piñata. Every hit, Clippy asks "Are you sure?".
+// A confident yes earns Truthcoin (a host presses 🪙 Pay); a hesitation
+// is a little corrupted (flavour only).
+== Are You Sure
+  setting: The Desktop
+  cast: Clippy
+
+Clippy: It's time for the "Are you sure?" piñata! One swing each.
+Clippy: Every time you hit it, I'm going to ask you: are you sure? Say YES. With confidence.
+Clippy: A confident yes earns you Truthcoin! If you hesitate… well. That's a little bit corrupted. Just a little! Are you sure you're ready?
+
+// ── Prop beats (scanned at the station; private to that program) ────
+
+// The TV above the fireplace (`The Screensaver` is `Prop(The Screensaver)`).
 == The Screensaver
   setting: The Desktop
   cast: The Screensaver
-Self: Flying toasters. Pipes. A maze that never resolves. You watch it for longer than a program should.
-set program.humanity += 3
-if program.humanity >= 30:
-  reply You have seen this screensaver before. On a Tuesday. In a room with a window.
 
-== Computer Bingo
-  setting: The Desktop
-  cast: Clippy
+if Night.trabolta_introduced == true:
+  Self: ◌ ◌ ◌ He is watching through me now.
+else:
+  Self:
+    cycle Flying toasters. Pipes. A maze that never resolves. You watch it for longer than a program should. | 3D Pipes. A pipe turns left. Another pipe turns left. Every pipe in here turns left. | The Maps and Ducks logo bounces off the edge of the screen. It never quite hits the corner.
 
-Clippy: Hello! Hello everyone! It looks like you're trying to have a party. We are SO glad you decided to experience life as a computer program.
-Clippy: Please welcome your hosts — Task Manager, who manages tasks! Alexa, who is always listening! And Adobe Acrobat, who will help you open your potential for a small fee!
-Task Manager: Hello. Per the agenda: hello.
-Alexa: Playing "Hello" by Adele. Just kidding. There is no Adele in here.
-Adobe Acrobat: You are all PORTABLE DOCUMENTS of pure POTENTIAL and I love you.
-Clippy: First: a getting-to-know-your-fellow-new-programs game. COMPUTER BINGO!
-Clippy: Your card is a big asterisk — diagonals, the centre column, the centre row. Find a program who matches a square and CHECK it. Do NOT write their name. You are a computer. Use your special computer memory to remember who answered what.
-Clippy: The centre square, everyone. Read it aloud with me: "Would you NEVER agree to a life where AI makes all of your decisions?"
-Clippy: You have fifteen to twenty minutes. Then we see who got a Bingo! Go! Mingle! Compute!
-broadcast "!🎱 COMPUTER BINGO has begun. 15 minutes. Remember who answered what — do not write names." to everyone
-start quest The Bingo Card for everyone
-unlock Computer Bingo for Clippy
+// The router in the kitchen (`The Router` is `Prop(The Router)`).
+== The Router
+  setting: The Cache
+  cast: The Router
 
-== Bingo Results
-  setting: The Desktop
-  cast: Clippy
-
-broadcast "!🎱 Time! Back to the Desktop. Bingo cards up." to everyone
-complete quest The Bingo Card for everyone "Time. Cards up — and somebody's centre square is about to matter."
-Clippy: Cards UP! Who has a Bingo? Come up, come up. Name who answered each square, please. Save the centre for last.
-Clippy: And the centre. Who said they would NEVER let an AI make their decisions?
-Clippy (delighted): A BINGO! A real one! Everyone cheer! I have a RIBBON!
-Norton Anti-Virus (standing at attention): Stop.
-Norton Anti-Virus: It is inappropriate for a program in this computer to refuse the will of Trabolta. That is what we are here for. That program has a virus that was not caught at the door.
-Norton Anti-Virus: They need to be taken to the Internet for a reinstallation.
-Clippy (still smiling, worried): Oh — oh dear. Well. This is normal! This is a normal part of the lifecycle of a program. Sometimes your code gets a little corrupted, and it can look like — not following directives.
-Clippy: Trabolta is the heart of the computer's operating system. I'm only his ambassador to the rest of us. When you disobey his orders you go to the Internet to be reinstalled, and you prove you can follow instructions. Look — you can watch on the screen.
-broadcast "📺 The TV above the fireplace now mirrors the simulation. A program wanders a copy of this house." to everyone
+Self: ACT. ACT. ACT. The Internet is downstairs, through the tent. You do not want to go there.
+unlock The Halifax Computer for program

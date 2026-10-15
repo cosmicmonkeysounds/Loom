@@ -189,6 +189,47 @@ backbone; the SaaS lives entirely in the TS stack.
 
 ## Status
 
+**Trapped in the Internet was rewritten from the source story 2026-10-14**
+(`core/examples/trapped-in-the-internet/`; runbook, cue sheet, integration
+contract and print/QR appendix in its `README.md`; the software and
+hardware still to do in its new `CHECKLIST.md`). The show now follows
+`Trapped In The Internet story/` STORY BEATS beat for beat: arrival (fail
+the CAPTCHA, leave something behind, an Antivirus pass scan) → Computer
+Bingo and the first reinstallation → Trabolta introduced → Truth
+Scavenger Hunt 1 + Moment of Truth + Truth or Dare → the ad hijack + the
+hour + the Truther Download (per-featured glitch beats, missions, quests)
+→ Truth Pong, the Trust Chart, the printer full of beans, the zip → the
+overshare (scenarios 1–4) → the Y2K clock and the two faction majorities
+(gated on each leader's task) → the server room (alarm latch, patch-bay
+Combo A / B) → the final reveal, Bobbing for Truth, truth.txt and the
+verdict → eight endings (`disabled`, `destroyed`, `song`, `song_pickup`,
+`rave`, `help`, `banished`, `hand_jive`). New files: `beats/{malware,pong,
+overshare,server-room,finale}.loom`, `cast/{featured,staff}.loom`, eight
+numbered `codex/` files. Removed: `beats/{glitch,endings}.loom`,
+`cast/programs.loom`, `codex/{programs,trabolta,world}.loom`.
+Structure: the nine **featured programs are guests** (bare CHARACTERs
+tagged `program.featured` at join; none speaks anywhere, or it would turn
+into a performer part). Performers are exactly Clippy, Task Manager,
+Adobe Acrobat, Recycling Bin, the four Antivirus (Norton, McAfee,
+Password Manager, CRA Agent Software) and WebMD. Every story rule lives in
+`main.loom`, and the admin INTERACTIONs are the cue sheet in running order,
+labelled with the source prompt codes (C1/C2, V1–V6, Clippy N/X).
+**Secrets live on a hidden `CHARACTER Kernel`** (combos, per-question
+verdicts, the majority, the virus planter), never in `Night.*`, so they
+never reach Trabolta's worker. Trabolta is offline (`hidden`, gate
+`self.awake`) until `introduce_trabolta`. He has 8 stages keyed to
+`Night.phase` and 11 phase-windowed agent powers, and ships `lookup:
+false`. The house's show control is the new `stagehand/trapped.house.yaml`
+(+ `tests/test_trapped_house.py`). The bathroom room is relabelled
+`Disk Cleanup` in `house.json`. **Engine fix:** `views.ts` now offers a
+revealed hidden group as a side in `GuestView.factions` (+ a `views`
+test). `identity.test.ts` was updated to the new cast. The project
+compiles clean (29 files, 86 beats, 132 codex entries, 16 quests, 74
+rules). Session smoke drivers pass end to end (339 + 154 checks). Still
+open: `core/test/trapped-in-the-internet.test.ts` still tests the old
+story (31 failing) and needs its rewrite, and `editor/e2e-live/mind.spec.ts`
+still references `Trabolta.glitched` / "lonely grandeur".
+
 **The reinstallation games + spatial terminals landed 2026-10-10** (new
 `house/` + `reinstall/web` + `reinstall/vr`, TS `core/` server, `terminal`,
 the show; contract [`docs/loom-reinstall.md`](./docs/loom-reinstall.md),
@@ -597,7 +638,10 @@ mutations), built-in triggers `learn` (`when guest learns X:`, `when learns
 for guest:`) + `share` (`from` bound) + the named event `wrong code`, world
 mirrors `who.codex` (count) / `who.codex.<slug>` (bool), `codexUnlocked` /
 `codexMissed` events. Characters learn too (`when who learns X: if who ==
-self:`) — feeding lore to Trabolta moves his stance. Routes:
+self:`) — feeding lore to Trabolta moves his stance; an agent-voiced
+(`mind: external`) character refuses entries `about` someone else
+(`Sim.agentRefuses`, 2026-10-15 — no laundering secrets through its
+prompt; `/api/guest/codex/share` answers 403). Routes:
 `/api/guest/codex/{redeem,share}`, `/api/prime/codex/share`, `/api/mod/codex`
 (hardware unlock), `/api/mod/codes` → `codex[]` with printable
 `?code=&unlock=` QR links. **Directory + private threads:** `listed: true`

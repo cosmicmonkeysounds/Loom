@@ -6,24 +6,22 @@
 // once claimed it is greyed out for everyone else. A guest who wants to be
 // something not on this list searches the program directory (Wikipedia,
 // software only — never antivirus) and picks one of that article's pictures.
+// The nine featured programs (cast/featured.loom) are on the same picker.
 //
 // Profile pictures are hand-picked: `avatar: File:…` names a Wikipedia /
 // Commons file (the server downloads it when the story loads), and
 // `a | b` offers more than one — the first is the default, and a guest
 // chooses between them plus the article's own gallery at sign-in.
 // `wiki:` names the article when the program's name alone would find the
-// wrong one (Minesweeper the ship). A program with no `avatar:` gets the
-// best picture its article has.
+// wrong one (Minesweeper the ship). Every pool program carries an
+// `avatar:` so no picture needs a lookup on the night.
+//
+// Trojan Horse is the two accordion clowns' costume: one program, one
+// phone (a shared identity is new code, see README).
 
 CHARACTER Calculator
   avatar: File:Windows 11 Windows Calculator.svg
   wiki: Windows Calculator
-CHARACTER MS Paint
-  avatar: File:Microsoft Paint.svg
-  wiki: Microsoft Paint
-CHARACTER VLC
-  avatar: File:VLC Icon.svg
-  wiki: VLC media player
 CHARACTER Ring Doorbell
   avatar: File:Ring-Logo.svg
   wiki: Ring (company)
@@ -45,6 +43,9 @@ CHARACTER Zoo Tycoon
 CHARACTER Minesweeper
   avatar: File:MINESWEEPER SMILEY.png | File:Minesweeper in Windows 98 Expert Level.png
   wiki: Microsoft Minesweeper
+CHARACTER Trojan Horse
+  avatar: File:The Procession of the Trojan Horse in Troy by Giovanni Domenico Tiepolo.jpg
+  wiki: Trojan Horse
 CHARACTER Ctrl Alt Del
   avatar: File:Win98 Close Program Dialog.PNG | File:Three-finger salute.svg
   wiki: Control-Alt-Delete

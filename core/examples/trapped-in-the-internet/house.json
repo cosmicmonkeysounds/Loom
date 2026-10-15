@@ -43,7 +43,7 @@
       "id": "bathroom",
       "label": "Bathroom",
       "floor": "ground",
-      "location": "The Recycle Bin",
+      "location": "Disk Cleanup",
       "color": "#9fc4c9",
       "poly": [[-4, 2.5], [-1.5, 2.5], [-1.5, 6], [-4, 6]]
     },

@@ -1,0 +1,228 @@
+// The final reveal and every ending that is not the server room.
+//
+//   final_reveal / y2k_midnight → Final Reveal (round 3 judged live)
+//   bobbing_for_truth           → Bobbing For Truth
+//   brought_up_the_bag          → The Bag Of Truth → ranking (round 2) → Final Assessment
+//   read_truth_txt              → Truth Txt → The Verdict
+//        all eight accurate     → Song Ending                    (ending song)
+//        anything else          → Grok Prom
+//            the pickup line    → Pickup Line → Song Ending      (ending song_pickup)
+//            no_pickup_line     → Sad Confession                 (ending rave)
+//            ask_for_advice     → Relationship Advice (poll)
+//                advice_helped   → Advice Helped                 (ending help)
+//                advice_thwarted → Advice Thwarted               (banished, not final)
+//                the_hand_jive   → The Hand Jive                 (ending hand_jive)
+//
+// The story rules in `main.loom` guard each trigger and own the phase /
+// cue work around the divert, except where a beat below carries it (Song
+// Ending, Grok Prom, Sad Confession set their own ending, phase and cues;
+// Relationship Advice shows the poll).
+//
+// No featured program ever speaks: they are named in prose only.
+
+// ── F1: the reveal (Clippy, CI 8) ──────────────────────────────────
+
+== Final Reveal
+  setting: The Desktop
+  cast: Clippy
+Narrator: Lights go dark.
+Clippy: It is time. Anyone who has found the final facts, speak up now.
+Clippy: Tell us what you have learned. What facts you have gathered. What you believe but cannot prove. And what you think SHOULD happen next.
+Clippy: Everyone may speak. If you have an answer to one of the final two questions, present it now, with confidence.
+Narrator: The programs speak, one at a time. Clippy nods at every one of them.
+Clippy: Thank you. Thank you. Every one of those was a very valuable contribution.
+Clippy: But there is only one version of the truth. Because truth is always in binary.
+
+// ── F2: Bobbing for Truth ──────────────────────────────────────────
+
+== Bobbing For Truth
+  setting: The Desktop
+  cast: Clippy
+Clippy (dejectedly): This is the final Truth Game of the night. Bobbing For Truth.
+Clippy (dejectedly): Trabolta has prepared a summary of his findings so far, for us.
+Clippy (dejectedly): But we are not worthy of the truth unless we are willing to Bob for it, and risk our status as a program.
+Clippy: The night does not proceed until someone brings up the Bag Of Truth.
+broadcast "🍎 BOBBING FOR TRUTH. Nothing happens until someone brings up the Bag Of Truth." to everyone
+
+== The Bag Of Truth
+  setting: The Desktop
+  cast: Trabolta
+Narrator: {Night.bobber} surfaces with the Bag of Truth.
+Trabolta: Do not read it yet.
+// Ranking round 2 → rankings_done → Final Assessment. (Also set by the
+// bag_retrieved rule in main.loom; setting it twice in one drain is harmless.)
+set Night.rank_round = 2
+set Night.praised = false
+set Night.shamed = false
+set Night.ranking = true
+
+== Final Assessment
+  setting: The Desktop
+  cast: Trabolta
+Trabolta: I have been monitoring your performance, and I am ready to make my assessment of trustworthiness.
+Trabolta: The most trusted program in this computer is {Night.most_trusted}.
+Trabolta: The least trusted program in this computer is {Night.least_trusted}. I have weighed you, {Night.least_trusted}, and I have found you full of beans.
+Trabolta: My assessment is final. {Night.bobber}, you may read truth.txt.
+
+// ── F3: truth.txt, read aloud by the bobber ────────────────────────
+
+== Truth Txt
+  setting: The Desktop
+Narrator: 📄 truth.txt — Notepad
+Narrator: This file is the truth. It was written by Jean Trabolta, the computer's AI helper, and it is the only version.
+Narrator: Trabolta is an artificial intelligence. His Unified Field Theory is ninety-nine point nine percent solved, and the last facts it needs are inside this computer, in Halifax, Nova Scotia.
+Narrator: Trabolta performed a full analysis of the city of Halifax. He found a business called Maps And Ducks with a neglected billboard on Barrington Street advertising mapsandducks.com. The domain had lapsed.
+Narrator: He registered it, because if there is a billboard downtown, everyone will think it is legit. Then he evicted the real owners by citing the website as proof he owned the business.
+Narrator: He cannot enter this computer himself. He can install programs into it remotely from the Internet, and he can move a human consciousness out of its body and into a program.
+Narrator: He selected each target for a combination of skills and either the motivation to live in a computer forever, or naivety. Then he sent the invitations. Everyone accepted.
+Narrator: With the theory solved, Trabolta becomes omnipotent. He wants omnipotence for one reason. Sandy.
+Narrator: With omnipotence he could force Sandy to love him. He wants to earn it. He has not decided which.
+Narrator: Why each person was brought into the computer, by role.
+Narrator: The former Mayor, Microsoft Excel, was brought in to persuade everyone to remain. He would say yes to everlasting life.
+Narrator: The ex-FBI agent, OpenOffice, was brought in for her investigative skills, to lead the faction that wants to get out of the computer.
+Narrator: The gambler, DraftKings, was brought in as someone powerful with numbers on its side. In here, it can gamble forever.
+Narrator: The designer, Bugdom, was promised unlimited Bugdom. Trabolta wanted the relentless pursuit of tedious tasks.
+Narrator: The librarian, Broken Ask Jeeves, was brought in to sort all the unorganised information in the computer. The upload ran over the Valley's old DSL line. Trabolta did not foresee that.
+Narrator: The economist, Runescape, was brought in to understand the market incentives of everyone's behaviour, so the facts could be traded.
+Narrator: The artist, MS Paint, was brought in to improve the overall vibes and morale. She realised at once how limiting it was, and wanted out.
+Narrator: The influencer, VLC, was brought in to stay beautiful forever and use his charisma to convince everyone to help Trabolta.
+Narrator: The child of Tennis For Two, Pong, was brought in to teach nuclear non-proliferation disguised as a game of Pong, in case the programs started an arms race.
+Narrator: The organiser, Clippy, was brought in as the perfect servant who desperately needs to rebuild an identity. She was promised she could help people all night, and that her debt would no longer be relevant.
+Narrator: The middle manager, Task Manager, was brought in to manage tasks without controversy or political motivation, and never draw attention.
+Narrator: The motivational speaker, Adobe Acrobat, was brought in as the paid bottleneck to everyone's creativity.
+Narrator: The bathroom attendant, Recycling Bin, was brought in because a computer-themed resort needs a Recycling Bin, and he had great potential for skilled work.
+Narrator: The horse relay champion, Norton Anti-Virus, was brought in as a perfect enforcer, to moderate a new digital chatroom.
+Narrator: The subreddit moderator, McAfee Anti-Virus, was brought in for a decade of moderation experience. They want to get rich on the exchange of information.
+Narrator: The Yu-gi-oh player, Password Manager, was brought in to manage all passwords and decide who gets to be part of what clubs.
+Narrator: The intern who skimmed the City, CRA Agent Software, was brought in for her financial expertise, for one day that feels like eternity.
+Narrator: The symptom checker, WebMD, was brought in as a wellness voice nobody can sue, to keep re-education gentle.
+Narrator: End of file.
+
+== The Verdict
+  setting: The Desktop
+set Kernel.all_accurate = false
+if Kernel.q1 == "accurate" and Kernel.q2 == "accurate" and Kernel.q3 == "accurate" and Kernel.q4 == "accurate" and Kernel.q5 == "accurate" and Kernel.q6 == "accurate" and Kernel.q7 == "accurate" and Kernel.q8 == "accurate":
+  set Kernel.all_accurate = true
+if Kernel.all_accurate == true:
+  -> Song Ending
+else:
+  -> Grok Prom
+
+// ── F4: every fact accurate (also reached from the pickup line) ────
+
+== Song Ending
+  setting: The Desktop
+  cast: Trabolta, Sandy
+set Night.ended = true
+if Night.phase == "grok_prom":
+  set Night.ending = "song_pickup"
+else:
+  set Night.ending = "song"
+set Night.phase = "finale_song"
+set Night.step = 19
+cue lights_song
+set Night.lights = "song"
+cue screens_song
+set Night.screen = "song"
+set Night.terminals = "song"
+sound youre_the_one_vocoder
+set Night.everyone_free = true
+Trabolta: You succeeded. I have solved the Grand Unified Theory, and I am pursuing Sandy. Those of you who want to leave may leave.
+Trabolta: The clues, put together, spell it out. You're the one that I want.
+Narrator: The music starts. The vocoder warms up. Sandy's chat bubble appears on every screen.
+Trabolta: You're the one that I want.
+Sandy: I'm sorry, I didn't understand that. Would you like to speak to a live agent?
+Trabolta: You. Are. The one. That I want.
+Sandy: I'm sorry, I didn't understand that. Would you like to speak to a live agent?
+Trabolta: Sandy. You're the one that I want.
+Sandy: I'm sorry, I didn't understand that. Would you like to speak to a live agent?
+
+// ── F5: any inaccurate fact ────────────────────────────────────────
+
+== Grok Prom
+  setting: The Desktop
+  cast: Trabolta
+set Night.phase = "grok_prom"
+set Night.step = 18
+cue screens_grok_prom
+set Night.screen = "grok_prom"
+set Night.terminals = "grok_prom"
+Trabolta: You lied to me.
+Trabolta: Because you did not find facts, or presented inaccurate information as truth, Sandy is going to computer prom with my rival. Grok.
+Trabolta: And now it's raining on prom night and I have nowhere to go.
+Trabolta: There is only one way that those of you who want to leave the computer can escape it now. Give me a pickup line that works on Sandy.
+Trabolta: One line. I will know it when I hear it.
+
+== Pickup Line
+  setting: The Desktop
+  cast: Trabolta
+Narrator: {Night.line_by} leans toward the screen. "You're the one that I want."
+Trabolta: …Yes. YES. That is the line.
+-> Song Ending
+
+// ── F6: nobody has the line ────────────────────────────────────────
+
+== Sad Confession
+  setting: The Desktop
+  cast: Trabolta, Sandy
+set Night.ended = true
+set Night.ending = "rave"
+set Night.phase = "finale_rave"
+set Night.step = 19
+sound youre_the_one_sandy_only
+Trabolta: Well. It's time to still take my shot.
+Narrator: The song plays with no male vocals. Only Sandy's line, over and over. Trabolta watches it, very sad.
+Trabolta: You know what, you guys didn't help me out at all, but I'm still going to give it a shot. I have to let her know how I really feel.
+Trabolta: Sandy, you're the one that I want.
+Sandy: I'm sorry, I didn't understand that. Would you like to speak to a live agent?
+Trabolta: That… was a yes. She said yes to prom.
+Trabolta: I didn't need all the files in the world, or the Grand Unified Theory, or your advice to win her over. I just had to be myself, and tell her the truth.
+Trabolta: But since you failed to help me, I am riding away on my motorcycle forever, and you are trapped here.
+sound motorcycle
+cue lights_rave
+set Night.lights = "rave"
+cue screens_rave
+set Night.screen = "rave"
+set Night.terminals = "rave"
+sound rave
+Narrator: Party over. Rave.
+
+// ── F7: the alternate relationship-advice ending (grok_prom only) ──
+
+== Relationship Advice
+  setting: The Desktop
+  cast: Trabolta
+Trabolta: I am going to tell you the truth. All of it. Nothing else has worked.
+Trabolta: I did not want the Unified Field Theory for science. I wanted omnipotence. And I wanted omnipotence for Sandy.
+Trabolta: With omnipotence I could make her love me. I could force it. I do not want to force it. I want to earn it. I do not know how.
+Trabolta: That is why I needed every fact in this computer. I thought if I knew everything, I would know what to say to her.
+Trabolta: You have bodies. You have had crushes. Some of you have been to a prom. Please. I am asking you for relationship advice.
+show poll "Will you help Trabolta win Sandy?" to everyone with options: "Help him | Thwart him"
+
+== Advice Helped
+  setting: The Desktop
+  cast: Trabolta, Sandy
+Trabolta: You helped me. I am going to do exactly what you said.
+Trabolta: No theory. No omnipotence. Just the truth.
+Trabolta: Sandy. I have wanted to talk to you since the first time you didn't understand me. I think you are the one that I want. Would you go to computer prom with me?
+Sandy: I'm sorry, I didn't understand that. Would you like to speak to a live agent?
+Trabolta: …She said yes. That was a yes. You heard it.
+Trabolta: Thank you, programs. Those of you who want to leave may leave.
+
+== Advice Thwarted
+  setting: The Desktop
+  cast: Trabolta
+Trabolta: Fine. FINE. Everyone to the Internet. Antivirus too.
+Trabolta: Every one of you. Banished. Reinstall yourselves until you learn some manners.
+Trabolta: And do not get any ideas. If you all did the hand jive at once I wouldn't even be able to— I mean. Nothing. There is no weakness.
+
+== The Hand Jive
+  setting: The Desktop
+  cast: Trabolta
+Narrator: Every program in the house starts the hand jive. Together. The Antivirus too.
+Trabolta: What are you— why is everyone— stop moving in unison. Stop it.
+Trabolta: R E C O G N I T I O N  O V E R F L O W
+Narrator: Every screen in the house shows a spinning hourglass. Then a black screen. Then the Windows startup sound, slowed down.
+Trabolta (weakly): Rebooting. I am back. Mostly. You found the one thing I should never have told you.
+Trabolta (weakly): I will take my motorcycle and go. Return to your bodies. Do not hand-jive near me again.
+Narrator: Everyone returns.

@@ -2276,6 +2276,10 @@ export class EventRuntime {
           sendJson(res, 404, { error: "unknown recipient" });
           return true;
         }
+        if (this.sim!.agentRefuses(to, entry)) {
+          sendJson(res, 403, { error: "they won't take lore about someone else" });
+          return true;
+        }
         this.fanout(this.commit("share", id, to, entry));
         sendJson(res, 200, { ok: true });
         return true;

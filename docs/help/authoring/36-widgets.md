@@ -68,7 +68,8 @@ ROLE Program
 == Orientation
   setting: The Desktop
   cast: Clippy
-Clippy: It looks like you're new to the computer. Would you like help with that?
+Clippy: Hi there, {program.name}! It looks like you're new to the computer. Would you like help with that?
+start quest Orientation for program
 show tutorial "Clippy's orientation" to program with guide: "Clippy"
 ```
 
