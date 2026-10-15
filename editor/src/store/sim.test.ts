@@ -92,6 +92,14 @@ describe('local run store', () => {
     expect(narration).toMatchObject({ from: 'Narrator', text: 'The lights dim.', channel: 'lobby', beat: 'opening' })
   })
 
+  it('re-pair (N-02) and release (N-10) are server-only and say so', async () => {
+    await start()
+    expect(await useSim.getState().pairGuest(useSim.getState().personas[0]!)).toBeNull()
+    expect(useSim.getState().error).toMatch(/event server/)
+    expect(await useSim.getState().releasePart('Greeter')).toBeNull()
+    expect(useSim.getState().error).toMatch(/event server/)
+  })
+
   it('startRun(Live) is refused on a folder', async () => {
     await useSim.getState().startRun(RunMode.Live)
     expect(useSim.getState().run).toBeNull()

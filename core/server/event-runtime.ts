@@ -42,6 +42,7 @@ import {
 } from "./identity.ts";
 import { foldName } from "../src/parser/names.ts";
 import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
+import { Pairing } from "./routes/n02.ts";
 import { SpatialHub, houseVersion, houseWarnings, isWorld, parsePose, sortCandidates, type SessionRef } from "./spatial.ts";
 import {
   AgentHub,
@@ -318,6 +319,8 @@ export class EventRuntime {
   private readonly houseFile: string;
   // K-13 room check-in by QR (routes/k13.ts).
   private readonly checkin: GuestCheckin;
+  // N-02 re-pair a guest + N-10 release a performer part (routes/n02.ts).
+  private readonly pairing: Pairing;
   // Spatial stream subscribers (terminals, the map page) — never `clients`.
   private readonly spatialStreams = new Set<ServerResponse>();
   // Flushes poses every 100 ms (and sweeps every second) while anything is
@@ -355,6 +358,29 @@ export class EventRuntime {
         return events;
       },
       now: init.now ?? Date.now,
+    });
+    this.pairing = new Pairing({
+      sim: () => this.sim,
+      addGuestToken: (token, id) => {
+        this.guestTokens.set(token, id);
+        this.persistGuests();
+      },
+      sessions: this.sessions,
+      persistSessions: () => this.persistSessions(),
+      endBooths: (character) => {
+        for (const c of [...this.clients]) {
+          if (c.role !== "prime" || c.id !== character || c.via !== undefined) continue;
+          this.clients.delete(c);
+          try {
+            c.res.end();
+          } catch {
+            /* client already gone */
+          }
+        }
+        this.pushPresence();
+      },
+      joinBase: () => this.joinBase(),
+      eventCode: () => this.codes.event,
     });
   }
 
@@ -2549,6 +2575,7 @@ export class EventRuntime {
   }
 
   private handleModInner(res: ServerResponse, path: string, body: Record<string, unknown>, by: string): boolean {
+    if (this.pairing.handle(path, res, body)) return true;
     switch (path) {
       case "/api/mod/load": {
         const source = str(body, "source") || this.scenarioSource;

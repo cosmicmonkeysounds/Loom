@@ -75,6 +75,10 @@ arrives as `?unlock=<code>`, is redeemed on load, and opens the Codex.
 A room's sign arrives as `?checkin=<slug>` (`checkin.ts`, K-13): checked in
 on load (`/api/guest/checkin`), it opens that room's chat, or banners why
 not (captured, on rails, not open yet).
+A director's re-pair QR arrives as `?code=<event>&resume=<token>`
+(`resume.ts`, N-02): `main.tsx` strips the token from the URL before
+rendering, and `App` adopts it as `loom.guest` (resolve the code, then
+`/api/state?role=guest` names the guest) — the same Person, back in.
 Both stay out of a cutscene (`personalStream`). Tested in
 `test/quests.test.ts`.
 

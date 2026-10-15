@@ -116,6 +116,16 @@ scan readout), their story position on the map, their variables, and
 one button to **Be** them. The **Log** page's participant filter shows
 every raw engine event that mentions them.
 
+**Someone lost their phone.** On a server run, a guest's Inspector has
+**🔁 Re-pair**: it shows a QR that signs whatever phone scans it back in
+*as that guest* — same program, codex, quests and score, no new guest
+left behind. Use it for a dead phone, a cleared browser, a camera that
+opened another browser, or a loaner. Keep the QR off the big screen: it
+is their sign-in. A character's Inspector has **⏏ Release**: it signs
+out whichever booth holds that part, so the performer can sign in again
+on another phone with the performer code. The character's threads and
+buttons stay.
+
 ## Directing together
 
 A server run is one world for the whole writing team. Everything a

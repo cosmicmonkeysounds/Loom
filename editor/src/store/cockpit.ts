@@ -400,6 +400,13 @@ export interface CockpitState {
   closePlayer(session: PlayerSession): Promise<void>
   /** Write any world variable (the World browser's inline editing). */
   setVar(path: string, value: string): Promise<void>
+  /** Re-pair a lost guest (N-02): mint a fresh session for the SAME guest and
+   *  resolve to the resume link their new phone scans. Server runs only (the
+   *  local backend has no phones — null, reason in `error`). */
+  pairGuest(id: string): Promise<{ url: string; name: string } | null>
+  /** Release a performer's part (N-10) so they can re-sign on a loaner.
+   *  Resolves to how many sessions held it (null on failure / local runs). */
+  releasePart(character: string): Promise<number | null>
   /** Agent-voiced characters' minds as their stagehand workers last mirrored
    *  them (`ModView.minds`) — the Mind page's live state. Empty on the local
    *  backend (nothing voices a `mind: external` character in the browser). */
@@ -497,6 +504,8 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   openPlayer: async () => null,
   closePlayer: noop,
   setVar: noop,
+  pairGuest: async () => null,
+  releasePart: async () => null,
   minds: [],
   thoughts: [],
   mindControl: async () => ({ ok: false, error: 'no run' }),

@@ -710,6 +710,27 @@ export const useOperate = create<OperateState>((set, get) => {
       }
     },
     setVar: (path, value) => withEvent((ev) => modApi.setVar(ev, path, value)),
+    pairGuest: async (id) => {
+      const ev = get().event
+      if (!ev) return null
+      try {
+        const p = await modApi.pairGuest(ev.id, id)
+        return { url: p.url, name: p.name }
+      } catch (e) {
+        set({ error: (e as Error).message })
+        return null
+      }
+    },
+    releasePart: async (character) => {
+      const ev = get().event
+      if (!ev) return null
+      try {
+        return await modApi.releasePart(ev.id, character)
+      } catch (e) {
+        set({ error: (e as Error).message })
+        return null
+      }
+    },
 
     setTab: (activeTab) => set({ activeTab }),
     selectChannel: (activeChannel) => set({ activeChannel }),

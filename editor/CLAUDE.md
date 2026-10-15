@@ -277,7 +277,12 @@ when they are the lens), **Their feed** (the last 60 messages
 `visibleTo` them, hidden greyed), story position + trail, variables, and
 a **👁 Be <name>** button; a character shows **Their feed** (lines they
 spoke + `dm:` threads) plus their **scan readouts** (`respond` ledger
-events), variables, owned beats. The **Log** page
+events), variables, owned beats. Server runs add the lost-phone fixes:
+a guest's **🔁 Re-pair** (`RePair` → `CockpitState.pairGuest` →
+`POST /api/mod/guest/pair`, a QR of the returned `?code=&resume=` link;
+not shown for personas) and a character's **⏏ Release**
+(`CockpitState.releasePart` → `POST /api/mod/prime/release`, confirmed);
+the local backend refuses both with an explanation. The **Log** page
 (`cockpit/LogTab.tsx`) filters to one participant (`log-filter.ts`
 `eventMentions`, generic over every string field of a `SimEvent`) and
 exports a run that just ended (`lib/run-export.ts` reads `run ??

@@ -417,6 +417,15 @@ Two planes:
   sealed room, is on rails (a cutscene room, or `uploaded && !cleared`),
   or the room is a prison / cutscene / hidden from them; 429 inside a
   20 s per-guest cooldown. → `{ok, at, channel: "loc:<at>", moved}`.
+- **Lost phones** (N-02 / N-10, `server/routes/n02.ts`, mod-only): `POST
+  /e/:id/api/mod/guest/pair {id}` mints a fresh guest token for an
+  existing Person (persisted in `guests.json`, cut by every restart like
+  a registration's; the old tokens stay valid) → `{ok, id, name, token,
+  url}` with `url` = `<join base>/?code=<event>&resume=<token>`, which the
+  play app adopts. `POST /e/:id/api/mod/prime/release {character}` takes
+  the part off every session holding it (a performer+admin session keeps
+  admin), closes those booth streams, persists → `{ok, character,
+  released}`; 404 for an unknown character. Nothing is journaled.
 
 The owning author's BetterAuth session is accepted on `/e/:eventId/api/mod/*`
 and the gated mod reads, so authors moderate from the editor's Run mode

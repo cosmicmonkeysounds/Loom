@@ -447,6 +447,15 @@ export const useSim = create<SimState>((set, get) => {
       return null
     },
     closePlayer: async () => {},
+    // Re-pairing and releasing are about real phones on an event server.
+    pairGuest: async () => {
+      set({ error: 'Re-pairing a phone needs an event server — open a server project.' })
+      return null
+    },
+    releasePart: async () => {
+      set({ error: 'Performer booths sign in to an event server — there is nothing to release in an in-browser run.' })
+      return null
+    },
     // Nothing voices a `mind: external` character in the browser: no minds,
     // no trace, and a control has nobody to go to.
     minds: [],
