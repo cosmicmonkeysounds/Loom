@@ -972,7 +972,7 @@ describe("duck runs", () => {
     rt.openDoors();
     clock.t += 2_000; // the game's retry
     expect((await call(rt, "POST", "/api/spatial/found", {}, { token: a.token })).json).toMatchObject({ ok: true });
-    expect(new Store(d).loadRuns().map((r) => r.ms)).toEqual([32_000]);
+    expect(new Store(d).loadRuns().map((r) => parseDuckRun(r)?.ms)).toEqual([32_000]);
     rt.dispose();
   });
 
