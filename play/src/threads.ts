@@ -7,13 +7,22 @@ import { useEffect, useState } from "react";
 import { roomOrder } from "./presence.ts";
 import type { Channel, ChannelKind, ChatMessage, MessageKind, QuestStatus } from "./types.ts";
 
-/** `MODERATOR_PRIME` / `Recruiter` → a friendly contact name. */
+/** `MODERATOR_PRIME` / `recruiter` → a friendly contact name. A name the
+ *  story already wrote in mixed case (`WebMD`, `MS Paint`, `Norton
+ *  Anti-Virus`) is kept as written: only all-caps, all-lower and
+ *  snake_case raw ids are recased. */
 export function prettyName(raw: string): string {
-  return raw
-    .split(/[_\s]+/)
-    .filter(Boolean)
-    .map((w) => w[0]!.toUpperCase() + w.slice(1).toLowerCase())
-    .join(" ");
+  const words = raw.split(/[_\s]+/).filter(Boolean);
+  const mixed = /\p{Ll}/u.test(raw) && /\p{Lu}/u.test(raw);
+  if (mixed && !raw.includes("_")) return words.join(" ");
+  return words.map((w) => w[0]!.toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+}
+
+/** "the Mods", but "The Way Out" as named: a group whose name already
+ *  starts with an article keeps it, so a button never reads "the The …"
+ *  (the server's notices use the same rule, `withThe` in core's chat.ts). */
+export function withThe(name: string): string {
+  return /^(the|a|an)\s/iu.test(name) ? name : `the ${name}`;
 }
 
 /** Title + kind for a channel id, used for threads with no messages yet. */

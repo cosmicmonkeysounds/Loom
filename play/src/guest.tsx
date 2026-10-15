@@ -34,6 +34,7 @@ import { AvatarsContext, avatarLookup, avatarUrl, hitNote, hitPickable, initialP
 import { PictureGrid } from "./picture-pick.tsx";
 import { codeFromUrl, fetchIdentities, fetchPictures, pendingWidget, personalStream, searchPrograms, useDocumentTitle, useGuestSession, useUrlEventTitle, type GuestSession, type IdentityLookup } from "./session.ts";
 import { Tutorial, tourResult, tutorialSteps } from "./tutorial.tsx";
+import { withThe } from "./threads.ts";
 import type { Action, Channel, PersonCard } from "./types.ts";
 import { usePush, type Push } from "./push.ts";
 import { PushCard, PushRow } from "./push-card.tsx";
@@ -305,7 +306,7 @@ function ProfileSheet({ session, push, onClose, onLeave }: { session: GuestSessi
       {faction &&
         others.map((other) => (
           <button key={other} className="choice ghost" onClick={() => void session.defect(other)}>
-            Leave the {faction} for the {other}
+            Leave {withThe(faction)} for {withThe(other)}
           </button>
         ))}
       <button

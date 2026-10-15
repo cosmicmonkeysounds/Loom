@@ -13,7 +13,7 @@ import { pmChannelId, pmOtherParty, unlockFromSearch, withoutUnlock } from "./co
 import { usePlayHost } from "./host.ts";
 import { SessionRole, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "./lifecycle.ts";
 import { locationOfRoom, occupantsByLocation, type Presence } from "./presence.ts";
-import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, channelHead, groupByChannel, prettyName, questSummary, useThreads, type Threads } from "./threads.ts";
+import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, channelHead, groupByChannel, prettyName, questSummary, withThe, useThreads, type Threads } from "./threads.ts";
 import { useTyping } from "./typing.ts";
 import type { Channel, ChatMessage, Decision, GuestView, PrimeView } from "./types.ts";
 import { WIDGETS, type WidgetResult } from "./widgets.tsx";
@@ -182,7 +182,7 @@ const PRIME_ALERTS = "loom.prime.alerts";
 // --- guest ------------------------------------------------------------------
 
 /** The one required decision (if any), and the channel it should dock under. */
-function requiredDecision(
+export function requiredDecision(
   status: GuestView | null,
   acts: { choose: (i: number) => void; join: (f: string) => void; escape: () => void },
 ): { channel: string; decision: Decision } | null {
@@ -205,7 +205,7 @@ function requiredDecision(
       decision: {
         title: "Choose your side",
         options: factions.map((f, i) => ({
-          label: `Side with the ${f}`,
+          label: `Side with ${withThe(f)}`,
           onClick: () => acts.join(f),
           tone: i === 0 ? undefined : ("ghost" as const),
         })),
