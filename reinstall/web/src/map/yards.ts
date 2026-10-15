@@ -492,6 +492,22 @@ export function giveBack(before: HouseMap, after: HouseMap, roomId: string): Hou
   return next;
 }
 
+/** Set the label / LOCATION / colour of every piece of a room's yard at
+ *  once (one piece relabelled alone would split off into a yard of its
+ *  own). An indoor room is patched alone. Works on a copy. */
+export function patchYard(house: HouseMap, roomId: string, patch: Partial<Pick<Room, "label" | "location" | "color">>): HouseMap {
+  const ids = yardOf(house, roomId);
+  const targets = new Set(ids.length > 0 ? ids : [roomId]);
+  if (!house.rooms.some((r) => targets.has(r.id))) return house;
+  const next = cloneData(house);
+  for (const r of next.rooms) {
+    if (!targets.has(r.id)) continue;
+    Object.assign(r, patch);
+    if (r.location === "" || r.location === undefined) delete r.location;
+  }
+  return next;
+}
+
 /** Fill a yard out to its bounding box again, cut around the rooms in it (the escape hatch). */
 export function fillYard(house: HouseMap, roomId: string): HouseMap {
   const yard = yardOf(house, roomId);

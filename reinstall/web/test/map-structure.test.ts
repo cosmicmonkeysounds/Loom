@@ -23,7 +23,8 @@ import {
   renameRoom,
   setRoomRect,
 } from "../src/map/structure.ts";
-import { fillYard, gridFor, partition, traceCells, yardOf, yardShare } from "../src/map/yards.ts";
+import { fillYard, gridFor, partition, patchYard, traceCells, yardOf, yardShare } from "../src/map/yards.ts";
+import { floorOfSelection, selectionExists } from "../src/map/tools.ts";
 import { SHOW, STAIR, TWO_ROOMS } from "./houses.ts";
 
 /** The map is valid — or the test fails with `validateHouse`'s problems. */
@@ -492,6 +493,29 @@ describe("stairs", () => {
     expect(s.to).not.toBe("");
     const moved = moveStair(r.house, r.id, 0.5, 0);
     expect(moved.stairs[0]!.rect).toEqual([1.5, 1, 4.5, 2]);
+  });
+});
+
+describe("selections", () => {
+  it("know their floor, and whether they still exist", () => {
+    const h = STAIR();
+    const stair = h.stairs[0]!.id;
+    expect(floorOfSelection(h, { kind: "stair", id: stair })).toBe("lower");
+    expect(floorOfSelection(h, { kind: "spawn" })).toBe("upper");
+    expect(floorOfSelection(h, { kind: "room", id: "cellar" })).toBe("lower");
+    expect(floorOfSelection(h, { kind: "floor", id: "upper" })).toBe("upper");
+    expect(floorOfSelection(TWO_ROOMS(), { kind: "door", id: "ab" })).toBe("f");
+    expect(selectionExists(h, { kind: "stair", id: stair })).toBe(true);
+    expect(selectionExists(removeThing(h, { kind: "stair", id: stair }), { kind: "stair", id: stair })).toBe(false);
+  });
+
+  it("a yard's label, LOCATION and colour change on every piece at once", () => {
+    const h = addRoom(blankHouse("Test"), "ground", [-2, -2, 2, 1], { label: "Tent" }).house;
+    const pieces = yardOf(h, "yard");
+    const next = patchYard(h, pieces[1]!, { label: "Lawn", location: "The Cloud" });
+    expect(yardOf(next, "yard")).toEqual(pieces);
+    for (const id of pieces) expect(room(next, id)).toMatchObject({ label: "Lawn", location: "The Cloud" });
+    expect(room(patchYard(h, "tent", { label: "Big top" }), "tent").label).toBe("Big top");
   });
 });
 
