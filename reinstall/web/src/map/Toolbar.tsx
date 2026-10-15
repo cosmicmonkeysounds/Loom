@@ -25,12 +25,15 @@ export interface ToolbarProps {
   saving: boolean;
   canUndo: boolean;
   canRedo: boolean;
+  /** The 3D preview is showing instead of the plan. */
+  view3d: boolean;
   /** Extras for the toolbar (the project bar) — rendered before the status. */
   extras?: ReactNode;
   onFloor: (id: string) => void;
   onFloorInspect: (id: string) => void;
   onAddFloor: () => void;
   onEdit: (on: boolean) => void;
+  onView3d: (on: boolean) => void;
   onTool: (t: Tool) => void;
   onSnap: (step: number) => void;
   onAddSized: (w: number, d: number) => void;
@@ -70,6 +73,9 @@ export function Toolbar(p: ToolbarProps) {
           )}
         </div>
         <span className="spacer" />
+        <button className={`w98-button${p.view3d ? " pressed" : ""}`} aria-pressed={p.view3d} onClick={() => p.onView3d(!p.view3d)} title="Look at the draft in 3D, as the games build it">
+          {p.view3d ? "▦ Plan" : "🧊 3D"}
+        </button>
         <label className="radio checkbox">
           <input type="checkbox" checked={p.edit} disabled={!p.editable} onChange={(e) => p.onEdit(e.target.checked)} /> Edit
         </label>

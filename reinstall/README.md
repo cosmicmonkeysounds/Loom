@@ -35,6 +35,7 @@ help article `docs/help/authoring/38-house-map.md`; the rules are
 | **↖ Select** (V, Esc) | click / drag; a selected room by its body (with its doors and contents) or an edge |
 | snap, wheel, Space-drag | 1–50 cm snap with room edges pulled onto neighbours'; zoom; pan |
 | ⌘Z / ⇧⌘Z | undo / redo every edit |
+| **🧊 3D** | the draft as the games build it (`buildHouseScene`, no ceilings; a lazy chunk), this floor or every floor |
 | problem list | `validateHouse` problems (click selects), warnings: unreachable duck spots, LOCATION mismatches |
 
 The code: `src/map/MapApp.tsx` (state, load / save), `Canvas.tsx` (the

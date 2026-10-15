@@ -167,6 +167,10 @@ The walkthrough for turning a survey into a map is the help article
   plan's frame holds still for the length of a drag. The selected room
   shows its W × D.
 - **⌘Z / ⇧⌘Z** (⌘Y) undo / redo every edit, including the JSON tab's.
+- **🧊 3D** swaps the plan for a 3D preview of the (valid) draft, built by
+  the games' own `buildHouseScene` without ceilings (`Preview3D.tsx`, a
+  lazy chunk): drag to orbit, wheel to zoom, right-drag to pan; the floor
+  being edited, or every floor.
 - the **JSON** tab edits the whole map as text. Invalid maps still draw,
   so you can see what's wrong; text that isn't JSON or isn't drawable is
   held back.

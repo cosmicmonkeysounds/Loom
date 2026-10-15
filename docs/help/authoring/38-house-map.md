@@ -62,6 +62,9 @@ VR autopilot takes), a room naming no LOCATION in the story, a LOCATION
 with no room. The **JSON** tab is the whole map as text, for anything the
 drawing tools don't do (props, colours).
 
+**🧊 3D** shows the draft as the games will build it (once it is valid):
+drag to orbit, wheel to zoom.
+
 **💾 Save** sends the map to the event. If another director saved since
 you loaded it, nothing is saved and you are offered your edits as JSON
 and a reload.

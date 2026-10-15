@@ -434,6 +434,11 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 .map-toolbar .sized input { width: 4.6em; }
 .map-toolbar .snap { display: inline-flex; align-items: center; gap: 4px; font-size: 0.9em; }
 .map-banner.notice { background: #e8f0ff; }
+.map-3d { position: relative; flex: 1; min-height: 0; }
+.map-3d canvas { width: 100%; height: 100%; display: block; }
+.map-3d-all { position: absolute; top: 8px; right: 10px; background: var(--face); padding: 2px 6px; }
+.map-3d-note { position: absolute; top: 8px; left: 10px; margin: 0; padding: 4px 8px; background: #ffffe1; }
+.map-toolbar .w98-button.pressed { background: var(--face-light); box-shadow: inset 1px 1px var(--dark), inset -1px -1px var(--hi); }
 .map-zoom { position: absolute; top: 8px; right: 8px; display: flex; gap: 3px; }
 .map-zoom .w98-button { min-width: 2em; }
 .button-row { display: flex; flex-wrap: wrap; gap: 0.4em; margin: 0.6em 0; }

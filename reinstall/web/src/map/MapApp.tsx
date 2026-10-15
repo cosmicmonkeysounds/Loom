@@ -16,7 +16,7 @@
 //! problem list `Panels.tsx`, and every edit a pure op (`edit.ts`,
 //! `doors.ts`, `yards.ts`, `structure.ts`).
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { polyBounds, validateHouse } from "@loom/house";
 import type { HouseMap, PlayerState, Vec2 } from "@loom/house";
@@ -36,6 +36,9 @@ import { snap2, SNAP_STEPS } from "./plan.ts";
 import { addFloor, addRoom, blankHouse, cascadeOf, cascadeText, floorDefaults, moveStair, placeRect, removeRoom } from "./structure.ts";
 import { Toolbar } from "./Toolbar.tsx";
 import { floorOfSelection, selectionExists, TOOLS, type EditMode, type MapToolbarContext, type Tool } from "./tools.ts";
+
+/** three.js only loads when the 3D preview is opened. */
+const Preview3D = lazy(() => import("./Preview3D.tsx"));
 
 export interface MapAppProps {
   /** Extra toolbar controls (the project bar), handed the editor's state. */
@@ -116,6 +119,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   const [copied, setCopied] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [locations, setLocations] = useState<StoryLocation[] | null>(null);
+  const [view3d, setView3d] = useState(false);
   const saving = useRef(false);
   const versionRef = useRef<string | null>(null);
   const dirtyRef = useRef(false);
@@ -436,6 +440,8 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         saving={saveState.kind === "saving"}
         canUndo={history.past.length > 0}
         canRedo={history.future.length > 0}
+        view3d={view3d}
+        onView3d={setView3d}
         extras={toolbarExtras?.(ctx)}
         onFloor={(id) => {
           setFloor(id);
@@ -496,7 +502,15 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
       )}
 
       <main className="map-main">
-        <Canvas house={house} floor={floor} edit={edit} tool={tool} snapStep={snapStep} sel={sel} players={players} onSelect={select} onEdit={apply} onNotice={setNotice} />
+        {view3d ? (
+          <div className="map-canvas w98-sunken">
+            <Suspense fallback={<p className="pad">Loading 3D…</p>}>
+              <Preview3D house={validation?.ok ? (validation.house ?? null) : null} floor={floor} />
+            </Suspense>
+          </div>
+        ) : (
+          <Canvas house={house} floor={floor} edit={edit} tool={tool} snapStep={snapStep} sel={sel} players={players} onSelect={select} onEdit={apply} onNotice={setNotice} />
+        )}
 
         <aside className="map-side">
           <div className="w98-tabs" role="tablist">
