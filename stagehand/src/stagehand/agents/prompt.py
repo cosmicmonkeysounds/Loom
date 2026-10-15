@@ -163,7 +163,7 @@ def state_block(persona: Persona, req: dict[str, Any]) -> str:
     their_codex = [e.get("title", "") for e in them.get("codex") or []]
     lines.append(f"They know: {'; '.join(their_codex)}" if their_codex else "They know nothing yet.")
 
-    my_codex = me.get("codex") or []
+    my_codex = persona.secrets.visible(me.get("codex"))
     if my_codex:
         lines.append("What you know (your codex — lore people shared has changed you):")
         for e in my_codex:

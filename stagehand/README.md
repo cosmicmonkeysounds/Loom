@@ -122,6 +122,10 @@ drives: { hunger: 40, suspicion: 55, generosity: 10, resolve: 30 }  # 0–100, o
 phases:                                   # an authored cue per Night.phase
   free_roam: "The glitch. The house is open and he has just revealed himself…"
   destruct: "Three keys have turned. He feels it…"
+secrets:                                  # a hunt he must never be able to check
+  topics: [billboard, pet cemetery]       #   the questions' words (he is told never to judge these)
+  match: [pickles, eleven years]          #   answer words (never shown to any model)
+  lore: ["▒ STAMPED"]                     #   codex entries holding this are hunt answers
 ---
 You are the DIRECTOR OF THE MIND of Trabolta…
 ```
@@ -139,6 +143,14 @@ You are the DIRECTOR OF THE MIND of Trabolta…
 - **`questions`** — the open questions the character is collecting
   answers to (its obsessions), each with the answers gathered so far and
   who gave them.
+- **`secrets`** — answer secrecy (`agents/secrets.py`). Every orchestrator
+  output is scrubbed before it reaches the mind: a `learned` claim that
+  names a topic or match word is dropped whole (no verdict is ever kept,
+  so the voice can never tell a true answer from a confident lie), and a
+  note, brief line or dossier entry that *judges* one is dropped too; the
+  trace's result lists what was `suppressed`. Codex entries carrying a
+  `lore` marker never reach any prompt (ground-truth lore, held lore,
+  lookup cards), and a restored mind is pruned on boot.
 - **`phases`** — when the house enters a phase (`Night.phase` in the
   facts delta), the orchestrator's survey is handed the author's cue for
   it; a reflection always sees the current phase's cue.

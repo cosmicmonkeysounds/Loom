@@ -103,6 +103,8 @@ def test_the_shipped_trabolta_persona_keeps_secrets_out():
     assert all(not prefix.startswith("Kernel") for prefix in p.facts)
     assert p.lookup is False
     assert p.unavailable and not any(ch in p.unavailable for ch in "[]◌")
+    # K-23: the hunt is declared, so the worker can refuse to judge it.
+    assert p.secrets.topics and p.secrets.match and p.secrets.lore
 
 
 # -- prompt -------------------------------------------------------------------

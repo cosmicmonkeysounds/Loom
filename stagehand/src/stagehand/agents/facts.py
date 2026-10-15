@@ -22,6 +22,7 @@ from __future__ import annotations
 import re
 import time
 from dataclasses import dataclass, field
+from collections.abc import Callable
 from typing import Any
 
 _FOLD = re.compile(r"[^a-z0-9]+")
@@ -132,10 +133,11 @@ class Facts:
             out[k] = v
         return out
 
-    def render(self, name: str) -> str:
-        """A short card for a lookup, or a plain 'no record'."""
+    def render(self, name: str, lore_ok: Callable[[dict[str, Any]], bool] | None = None) -> str:
+        """A short card for a lookup, or a plain 'no record'. `lore_ok`
+        hides lore the character must never read (a hunt answer)."""
         hit = self.find(name)
-        if hit is None:
+        if hit is None or (hit.kind == "lore" and lore_ok is not None and not lore_ok(hit.data)):
             return f"{name}: no record in this system."
         d = hit.data
         if hit.kind == "program":
