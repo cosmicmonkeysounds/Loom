@@ -337,6 +337,19 @@ first). Terminals poll it every 2 s instead of the mod feed. Alongside, the
 from that guest (no worker request, so no premature hold line); performers'
 `cast:` threads always pass. Tests: `test/screen-state.test.ts`.
 
+It also carries the poller's **screen program** (OCT31 K-17 + N-03):
+`target` (`tv` for `view=mirror|tv`, else `terminals`; `screens_*` reach
+both, `tv_*` / `terminals_*` one, `tablet_*` neither) and `program` —
+`slide` (the newest slide or base cue: `screensaver` / `attract` /
+`trabolta_online` / `mirror` clear it; `persist` for `bingo` / `y2k` /
+`trust_chart` / `truth_txt` / `award_*` / `ceremony*`), `overlay`
+(`blackout` / `go_to_living_room` / `alarm`, until the next slide or base
+cue), `blackout` and `flicker` (one-shots). `countdown_*` cues never
+replace the slide. Each is `{value, cue, seq, at}`, `at` = server epoch ms
+when the fold first saw it — 0 for history replayed at a boot/restart, so
+nothing held re-runs. The terminal applies the holds and precedence
+(`terminal/src/slides.ts`).
+
 ## Running a live event
 
 ```bash

@@ -14,7 +14,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import type { AgentRequest } from "../server/agents.ts";
-import { MAX_SCREENS, ScreenWatch, screenCueOf, type ScreenState } from "../server/routes/screen.ts";
+import { MAX_SCREENS, ScreenWatch, foldProgram, screenCueClass, screenCueOf, screenTargetOf, slidePersists, type ScreenProgram, type ScreenState } from "../server/routes/screen.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { scenarioSource } from "../examples/load.ts";
 
@@ -98,6 +98,63 @@ describe("screenCueOf", () => {
     expect(screenCueOf("lights_game")).toBeNull();
     expect(screenCueOf("screens_")).toBeNull();
     expect(screenCueOf("screensaver")).toBeNull();
+  });
+});
+
+describe("the screen program (K-17 + N-03)", () => {
+  it("classifies a cue value: overlays, the flicker, countdown corners, bases, slides", () => {
+    expect(["blackout", "go_to_living_room", "alarm"].map(screenCueClass)).toEqual(["overlay", "overlay", "overlay"]);
+    expect(screenCueClass("flicker")).toBe("flicker");
+    expect(screenCueClass("countdown_hunt")).toBe("countdown");
+    expect(["screensaver", "attract", "trabolta_online", "mirror"].map(screenCueClass)).toEqual(["base", "base", "base", "base"]);
+    expect(["trivia_1", "five_minutes", "bingo", "y2k", "award_best_liar"].map(screenCueClass)).toEqual(["slide", "slide", "slide", "slide", "slide"]);
+    expect(["bingo", "y2k", "trust_chart", "truth_txt", "award_most_honest", "ceremony_host"].every(slidePersists)).toBe(true);
+    expect(["trivia_1", "bingo_time", "call_desktop", "hunt_results"].some(slidePersists)).toBe(false);
+    expect(screenTargetOf("mirror")).toBe("tv");
+    expect(screenTargetOf("tv")).toBe("tv");
+    expect(screenTargetOf("auto")).toBe("terminals");
+    expect(screenTargetOf("")).toBe("terminals");
+  });
+
+  it("a countdown keeps the slide; a blackout survives the overlay after it; a slide clears both", () => {
+    const shot = (value: string, seq: number) => ({ value, cue: `screens_${value}`, seq, at: seq * 1000 });
+    let p: ScreenProgram = { slide: null, overlay: null, blackout: null, flicker: null };
+    p = foldProgram(p, shot("trivia_1", 1));
+    p = foldProgram(p, shot("countdown_hunt", 2));
+    expect(p.slide).toMatchObject({ value: "trivia_1", cue: "screens_trivia_1", kind: "slide", persist: false });
+    p = foldProgram(p, shot("flicker", 3));
+    expect(p.flicker?.seq).toBe(3);
+    expect(p.slide?.value).toBe("trivia_1");
+    p = foldProgram(p, shot("blackout", 4));
+    p = foldProgram(p, shot("go_to_living_room", 5));
+    expect(p.overlay?.value).toBe("go_to_living_room");
+    expect(p.blackout?.seq).toBe(4);
+    expect(p.slide?.value).toBe("trivia_1"); // under the overlay
+    p = foldProgram(p, shot("y2k", 6));
+    expect(p).toMatchObject({ overlay: null, blackout: null, slide: { value: "y2k", persist: true } });
+    p = foldProgram(p, shot("screensaver", 7));
+    expect(p.slide).toMatchObject({ value: "screensaver", kind: "base", persist: false });
+  });
+
+  it("splits by target, stamps history 0 and new cues with the clock", () => {
+    const sim = Sim.fromSources(
+      `# T\n\nwhen v2:\n  cue tv_bingo\n  cue terminals_attract\n\nwhen hunt:\n  cue screens_trivia_1\n  cue screens_countdown_hunt\n\nwhen tent:\n  cue tablet_webmd\n\n== Boot\ncue screens_screensaver\nHi.\n`,
+    );
+    let t = 50_000;
+    const w = new ScreenWatch({ now: () => t });
+    const poll = (view: string) => w.poll(sim, { name: view, spot: "", view, character: "" }, () => false);
+    sim.fireBeat("Boot");
+    expect(poll("mirror")).toMatchObject({ target: "tv", program: { slide: { value: "screensaver", kind: "base", at: 0 } } });
+    sim.signal("v2");
+    t = 60_000;
+    expect(poll("mirror").program.slide).toMatchObject({ value: "bingo", cue: "tv_bingo", persist: true, at: 60_000 });
+    expect(poll("auto")).toMatchObject({ target: "terminals", program: { slide: { value: "attract", kind: "base", at: 60_000 } } });
+    sim.signal("hunt");
+    t = 61_000;
+    for (const view of ["mirror", "auto"]) expect(poll(view).program.slide).toMatchObject({ value: "trivia_1", cue: "screens_trivia_1", at: 61_000 });
+    sim.signal("tent");
+    expect(poll("auto").program.slide?.value).toBe("trivia_1");
+    expect(JSON.stringify(poll("auto")).length).toBeLessThan(1500);
   });
 });
 
@@ -185,6 +242,10 @@ describe("GET /api/screen/state — Trapped in the Internet", () => {
     expect(s.remaining).toBeLessThanOrEqual(1200);
     expect(s.attract).toBe(true);
 
+    const tv = (await call(rt, "GET", `/api/screen/state?name=TV&spot=&view=mirror&character=Trabolta`, {}, { moderator: true })).json as unknown as ScreenState;
+    expect(tv).toMatchObject({ target: "tv", attract: true, program: { slide: { cue: "tv_bingo", persist: true } } });
+    expect(s).toMatchObject({ target: "terminals", program: { slide: { cue: "terminals_attract", kind: "base" } } });
+
     await signal(rt, "bingo_time");
     s = await state(rt);
     expect(s.countdown).toBeNull();
@@ -197,7 +258,7 @@ describe("GET /api/screen/state — Trapped in the Internet", () => {
     expect(s.attract).toBe(false);
     expect(s.cues.terminals?.value).toBe("trabolta_online");
     expect(s.night.terminals).toBe("trabolta");
-    expect(s.terminals.map((t) => t.name)).toEqual(["Hall", "Kitchen"]);
+    expect(s.terminals.map((t) => t.name)).toEqual(["Hall", "Kitchen", "TV"]);
     expect(s.terminals[0]).toMatchObject({ spot: "kitchen", view: "auto", character: "Trabolta" });
 
     // A rebooted server replays the journal: the same answer.

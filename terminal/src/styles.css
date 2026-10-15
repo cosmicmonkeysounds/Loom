@@ -627,3 +627,99 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
   border-color: #fff #404040 #404040 #fff;
   background: #c0c0c0;
 }
+
+/* --- the screen layer (K-17 + N-03): overlays, slides, the corner countdown --- */
+/* Above the wake prompt (20): a slide the story put up is what the room sees. */
+.screen-slide, .screen-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  z-index: 30;
+}
+.screen-overlay { z-index: 32; cursor: none; }
+.screen-slide.dark { background: #000; }
+.slide-image { width: 100%; height: 100%; object-fit: contain; display: block; }
+/* The text card a missing PNG renders: a Win98 window with the slide's copy. */
+.slide-window {
+  width: min(94%, 48em);
+  max-height: 94%;
+  overflow: hidden;
+  font-family: "Tahoma", "MS Sans Serif", "Segoe UI", sans-serif;
+  font-size: clamp(16px, 2.6vw, 34px);
+  background: #c0c0c0;
+  color: #000;
+  border: 2px solid;
+  border-color: #fff #404040 #404040 #fff;
+  box-shadow: 1px 1px 0 #000;
+}
+.slide-body { padding: 0.8em 1.2em 1.1em; text-align: left; }
+.slide-body h2 { margin: 0 0 0.5em; font-size: 1.6em; text-align: center; }
+.slide-body p { margin: 0 0 0.6em; line-height: 1.3; }
+/* The Y2K clock: a Win98 taskbar tray, blown up. */
+.y2k-slide { background: #008080; }
+.y2k-tray {
+  display: grid;
+  justify-items: end;
+  gap: 0.1em;
+  padding: 0.25em 0.6em;
+  font-family: "Tahoma", "MS Sans Serif", "Segoe UI", sans-serif;
+  background: #c0c0c0;
+  color: #000;
+  border: 3px solid;
+  border-color: #808080 #fff #fff #808080;
+}
+.y2k-time { font-size: clamp(48px, 12vw, 220px); line-height: 1; }
+.y2k-date { font-size: clamp(18px, 3.5vw, 64px); }
+/* Overlays: black field, flashing text at 1 Hz (≤ 3 Hz), never full-field red. */
+.screen-overlay.blackout { background: #000; }
+.overlay-text {
+  max-width: 92%;
+  text-align: center;
+  font-family: "Tahoma", "MS Sans Serif", "Segoe UI", sans-serif;
+  font-weight: bold;
+  font-size: clamp(36px, 8vw, 160px);
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  color: #fff;
+  animation: overlay-blink 1s steps(1, end) infinite;
+}
+.overlay-text.alarm { color: var(--amber); }
+.overlay-icon { display: block; font-size: 0.8em; }
+@keyframes overlay-blink { 50% { opacity: 0.15; } }
+/* The corner countdown: a tray box, bottom right, over a slide / attract / the face. */
+.screen-corner {
+  position: fixed;
+  right: var(--pad);
+  bottom: var(--pad);
+  z-index: 31;
+  padding: 0.15em 0.6em;
+  font-family: "Tahoma", "MS Sans Serif", "Segoe UI", sans-serif;
+  font-size: clamp(22px, 4vw, 64px);
+  font-variant-numeric: tabular-nums;
+  background: #c0c0c0;
+  color: #000;
+  border: 2px solid;
+  border-color: #808080 #fff #fff #808080;
+}
+.screen-corner.last { background: #000080; color: #fff; }
+/* The flicker: two dips over a second (2 Hz), never to full black. */
+.screen-flicker {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  background: #000;
+  pointer-events: none;
+  opacity: 0;
+  animation: screen-flicker 1s linear 1;
+}
+@keyframes screen-flicker {
+  0% { opacity: 0; } 10% { opacity: 0.7; } 25% { opacity: 0; }
+  55% { opacity: 0.6; } 70% { opacity: 0; } 100% { opacity: 0; }
+}
+.screen-gear { position: fixed; top: 0; right: 0; z-index: 40; opacity: 0.25; }
+@media (prefers-reduced-motion: reduce) {
+  .overlay-text, .screen-flicker { animation: none; }
+}

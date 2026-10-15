@@ -48,6 +48,88 @@ export const SCREEN_COUNTDOWNS: ReadonlyArray<{ name: string; on: string; end: s
   { name: "bingo", on: "Night.bingo_on", end: "Night.bingo_end" },
 ];
 
+// --- the screen program (K-17 + N-03) -----------------------------------------
+
+/** Who a screen cue is for: `screens_*` = both, `tv_*` = the TV, `terminals_*` =
+ *  the wall terminals. `tablet_*` (the tent tablet) reaches neither. */
+export type ScreenTarget = "tv" | "terminals";
+export const SCREEN_TARGETS: readonly ScreenTarget[] = ["tv", "terminals"];
+const FAMILY_TARGETS: Record<ScreenCueFamily, readonly ScreenTarget[]> = {
+  screens: ["tv", "terminals"],
+  tv: ["tv"],
+  terminals: ["terminals"],
+  tablet: [],
+};
+
+/** The terminal's target from its `view`: the TV runs `mirror` (or K-18's `tv`). */
+export function screenTargetOf(view: string): ScreenTarget {
+  return view === "mirror" || view === "tv" ? "tv" : "terminals";
+}
+
+/** Full-screen overlays that stand until the next slide / base cue. */
+export const SCREEN_OVERLAYS = ["blackout", "go_to_living_room", "alarm"] as const;
+/** Base cues: they clear the slide (back to attract / the configured view). */
+export const SCREEN_BASES = ["screensaver", "attract", "trabolta_online", "mirror"] as const;
+
+/** Slides that stay up until the next cue (no 45 s / 90 s hold); they beat attract. */
+export function slidePersists(value: string): boolean {
+  return value === "bingo" || value === "y2k" || value === "trust_chart" || value === "truth_txt" || /^(award|ceremony)/u.test(value);
+}
+
+export type ScreenCueClass = "overlay" | "flicker" | "countdown" | "base" | "slide";
+
+/** What a screen cue value does: `countdown_*` is a corner (it never replaces
+ *  the slide), `flicker` a one-shot effect, the overlays stand, the bases clear,
+ *  and anything else is a slide (`/terminal/slides/<cue>.png`). */
+export function screenCueClass(value: string): ScreenCueClass {
+  if ((SCREEN_OVERLAYS as readonly string[]).includes(value)) return "overlay";
+  if (value === "flicker") return "flicker";
+  if (value.startsWith("countdown_") || value === "countdown") return "countdown";
+  if ((SCREEN_BASES as readonly string[]).includes(value)) return "base";
+  return "slide";
+}
+
+export interface ScreenShot {
+  /** The cue's value (`trivia_1`). */
+  value: string;
+  /** The whole cue (`screens_trivia_1`) — the slide PNG is named after it. */
+  cue: string;
+  /** Bumps on every screen cue the fold sees. */
+  seq: number;
+  /** Server epoch ms the fold first saw it; 0 = replayed history (a restart),
+   *  so a held slide or a blackout never re-runs after a reboot. */
+  at: number;
+}
+
+export interface ScreenProgram {
+  /** The newest slide or base cue for this target (a base one = no slide). */
+  slide: (ScreenShot & { kind: "slide" | "base"; persist: boolean }) | null;
+  /** The standing overlay (blackout / go_to_living_room / alarm), cleared by a newer slide or base cue. */
+  overlay: ScreenShot | null;
+  /** The last blackout (cleared like the overlay): 10 s of black even when another overlay follows at once. */
+  blackout: ScreenShot | null;
+  /** The last one-shot flicker. */
+  flicker: ScreenShot | null;
+}
+
+const emptyProgram = (): ScreenProgram => ({ slide: null, overlay: null, blackout: null, flicker: null });
+
+/** Fold one screen cue into a target's program (pure; returns a new program). */
+export function foldProgram(p: ScreenProgram, shot: ScreenShot): ScreenProgram {
+  const cls = screenCueClass(shot.value);
+  switch (cls) {
+    case "overlay":
+      return { ...p, overlay: shot, blackout: shot.value === "blackout" ? shot : p.blackout };
+    case "flicker":
+      return { ...p, flicker: shot };
+    case "countdown":
+      return p; // the corner reads the running countdown, never a slide
+    case "base":
+    case "slide":
+      return { ...p, slide: { ...shot, kind: cls, persist: cls === "slide" && slidePersists(shot.value) }, overlay: null, blackout: null };
+  }
+}
+
 /** At most this many terminals are remembered (oldest poll evicted). */
 export const MAX_SCREENS = 32;
 
@@ -83,6 +165,9 @@ export interface ScreenState {
   attract: boolean;
   countdown: string | null;
   remaining: number | null;
+  /** Which program `program` is: the poller's, from its `view`. */
+  target: ScreenTarget;
+  program: ScreenProgram;
   terminals: Array<ScreenPoll & { ago: number }>;
 }
 
@@ -108,6 +193,8 @@ export class ScreenWatch {
   private sim: Sim | null = null;
   private cursor = 0;
   private readonly cues = new Map<ScreenCueFamily, ScreenCue>();
+  private readonly programs = new Map<ScreenTarget, ScreenProgram>();
+  private shots = 0;
   private readonly polls = new Map<string, ScreenPoll>();
   private readonly now: () => number;
 
@@ -122,9 +209,14 @@ export class ScreenWatch {
       this.sim = sim;
       this.cursor = 0;
       this.cues.clear();
+      this.programs.clear();
+      this.shots = 0;
     }
     if (sim === null) return;
     const events = sim.log.all();
+    // The first look at a sim is its history (a boot or a restart replayed
+    // the journal): stamped 0, so nothing held or one-shot re-runs.
+    const at = this.cursor === 0 ? 0 : this.now();
     for (; this.cursor < events.length; this.cursor++) {
       const e = events[this.cursor]!;
       if (e.type !== "directive" || e.verb !== "cue") continue;
@@ -132,6 +224,8 @@ export class ScreenWatch {
       if (hit === null) continue;
       const prev = this.cues.get(hit.family);
       this.cues.set(hit.family, { value: hit.value, seq: (prev?.seq ?? 0) + 1 });
+      const shot: ScreenShot = { value: hit.value, cue: `${hit.family}_${hit.value}`, seq: ++this.shots, at };
+      for (const t of FAMILY_TARGETS[hit.family]) this.programs.set(t, foldProgram(this.programs.get(t) ?? emptyProgram(), shot));
     }
   }
 
@@ -188,6 +282,7 @@ export class ScreenWatch {
 
     const cues = {} as Record<ScreenCueFamily, ScreenCue | null>;
     for (const f of SCREEN_CUE_FAMILIES) cues[f] = this.cues.get(f) ?? null;
+    const target = screenTargetOf(who.view);
 
     return {
       now: this.now(),
@@ -200,6 +295,8 @@ export class ScreenWatch {
       attract: character !== null && (character.hidden || !character.awake),
       countdown,
       remaining,
+      target,
+      program: this.programs.get(target) ?? emptyProgram(),
       terminals: this.seen(),
     };
   }

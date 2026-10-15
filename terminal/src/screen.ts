@@ -25,15 +25,38 @@ export interface ScreenCue {
   seq: number;
 }
 
+/** Who a cue is for — the server picks the poller's from its `view`. */
+export type ScreenTarget = "tv" | "terminals";
+
+/** One screen cue as the server's fold saw it (`at` = server epoch ms, 0 = history). */
+export interface ScreenShot {
+  value: string;
+  cue: string;
+  seq: number;
+  at: number;
+}
+
+/** What to layer over the base view (K-17 + N-03; `slides.ts` applies the precedence). */
+export interface ScreenProgram {
+  slide: (ScreenShot & { kind: "slide" | "base"; persist: boolean }) | null;
+  overlay: ScreenShot | null;
+  blackout: ScreenShot | null;
+  flicker: ScreenShot | null;
+}
+
 /** The server's answer (a subset is all the terminal reads today). */
 export interface ScreenState {
   now: number;
+  /** Local `Date.now()` when this answer arrived (not from the server). */
+  receivedAt: number;
   night: { screen: string | null; terminals: string | null };
   cues: Partial<Record<ScreenCueFamily, ScreenCue | null>>;
   character: { id: string; hidden: boolean; awake: boolean; online: boolean } | null;
   attract: boolean;
   countdown: string | null;
   remaining: number | null;
+  target: ScreenTarget;
+  program: ScreenProgram;
 }
 
 /** The poll URL for this terminal (its name/spot/view ride along as the heartbeat). */
@@ -42,8 +65,29 @@ export function screenStateUrl(c: Pick<TerminalConfig, "eventId" | "name" | "spo
   return `${baseOf(c)}/api/screen/state?${q.toString()}`;
 }
 
+function shotOf(v: unknown): ScreenShot | null {
+  if (typeof v !== "object" || v === null) return null;
+  const r = v as Record<string, unknown>;
+  if (typeof r["value"] !== "string" || typeof r["cue"] !== "string") return null;
+  const n = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : 0);
+  return { value: r["value"], cue: r["cue"], seq: n(r["seq"]), at: n(r["at"]) };
+}
+
+/** A program off the wire; anything malformed reads as "nothing to layer". */
+export function programOf(raw: unknown): ScreenProgram {
+  const r = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
+  const slideShot = shotOf(r["slide"]);
+  const slideRaw = (r["slide"] ?? {}) as Record<string, unknown>;
+  return {
+    slide: slideShot === null ? null : { ...slideShot, kind: slideRaw["kind"] === "base" ? "base" : "slide", persist: slideRaw["persist"] === true },
+    overlay: shotOf(r["overlay"]),
+    blackout: shotOf(r["blackout"]),
+    flicker: shotOf(r["flicker"]),
+  };
+}
+
 /** Accept a body only if it has the shape the terminal relies on. */
-export function parseScreenState(raw: unknown): ScreenState | null {
+export function parseScreenState(raw: unknown, receivedAt: number = Date.now()): ScreenState | null {
   if (typeof raw !== "object" || raw === null) return null;
   const r = raw as Record<string, unknown>;
   if (typeof r["attract"] !== "boolean") return null;
@@ -62,12 +106,15 @@ export function parseScreenState(raw: unknown): ScreenState | null {
   const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
   return {
     now: num(r["now"]) ?? 0,
+    receivedAt,
     night: { screen: str(night["screen"]), terminals: str(night["terminals"]) },
     cues: (typeof r["cues"] === "object" && r["cues"] !== null ? r["cues"] : {}) as ScreenState["cues"],
     character,
     attract: r["attract"] as boolean,
     countdown: str(r["countdown"]),
     remaining: num(r["remaining"]),
+    target: r["target"] === "tv" ? "tv" : "terminals",
+    program: programOf(r["program"]),
   };
 }
 

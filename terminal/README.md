@@ -81,7 +81,29 @@ answers; a missed poll keeps the last answer) and an open line finishes
 on its own leash first. Ads are `public/ads/<id>.png` (ids in
 `attract.ts`: `ad-maps-and-ducks`, `ad-protection-expired`,
 `ad-geocities`, `ad-y2k`); a missing PNG renders the ad's copy as a Win98
-window. A mirror is unaffected (it only sends the heartbeat).
+window. The mirror (the TV) honours attract too since K-17: it keeps the
+screensaver until the character is introduced.
+
+**Overlays, slides, countdowns** (OCT31 K-17 + N-03, `src/slides.ts` +
+`src/ScreenLayer.tsx`): the same poll carries the story's screen program
+for this terminal's target (`view=mirror` = the TV, else a wall terminal;
+`core/server/routes/screen.ts`). Precedence, top first: **overlay**
+(`blackout` — 10 s true black even when `go_to_living_room` follows at
+once, then standing; `go_to_living_room` / `alarm` — text blinking at
+1 Hz on a black field, never full-field red; an overlay pauses the
+scanner and ends an open line) > **slide** (any other `screens_*` /
+`tv_*` / `terminals_*` value, held 45 s on a terminal / 90 s on the TV;
+`bingo`, `y2k`, `trust_chart`, `truth_txt`, `award_*`, `ceremony*` stay
+until the next cue and beat attract) > **attract** > the base view. A
+pilot pre-empts a slide. A slide is `public/slides/<cue>.png` (e.g.
+`screens_trivia_1.png`, `tv_bingo.png`), else `<value>.png`; a missing
+PNG renders a Win98 text card (`SLIDE_COPY` — the trivia cards carry the
+Quest Log's own questions, test-checked against `quests.loom`), never a
+broken image. `y2k` is drawn live: a blown-up taskbar clock at midnight
+minus `remaining`. Any running story countdown shows as a ⏱ corner
+(`countdown_*` cues never replace the slide); `flicker` is one 2 Hz
+stutter. Ages run on the server's clock. Device check:
+`scripts/accept/K-17.sh`.
 
 ## The voice
 
@@ -224,6 +246,8 @@ src/app.tsx            the screens: setup → (screensaver) → attract → conn
 src/screen.ts          the 2 s screen-state poll (K-16): attract while the character is hidden/asleep
 src/attract.ts         the screensaver rotation, the ads' copy, Mystify (pure)
 src/Attract.tsx        the screensaver screen (Canvas2D) + ad cards (PNG, else a Win98 window)
+src/slides.ts          the screen layer's precedence, holds, slide copy, corner + Y2K clock (pure, K-17)
+src/ScreenLayer.tsx    overlays, slides (PNG, else a Win98 card), the corner, the flicker
 src/config.ts          per-tablet config (localStorage) + URL provisioning
 src/scanner.tsx        camera + QR (BarcodeDetector, else jsQR)
 src/scan.ts            what a scanned code means; the typed-name fallback

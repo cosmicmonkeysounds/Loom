@@ -18,6 +18,13 @@
 //! terminal altogether: a full-screen spectator of the simulation (the TV
 //! over the fireplace) — no scanner, no line, nothing to say.
 //!
+//! Over all of it, the **screen layer** (`ScreenLayer.tsx` / `slides.ts` —
+//! K-17 + N-03): the story's overlays, PNG slides, corner countdown and Y2K
+//! clock, in the order overlay > slide (held 45 s here, 90 s on the TV; a
+//! few persist) > attract > the base view. A pilot pre-empts a slide; an
+//! overlay ends the pilot. The mirror honours attract too: the TV keeps
+//! the screensaver until the character is introduced.
+//!
 //! A tap on the wake overlay is the one user gesture the browser needs
 //! before the terminal may make a sound unattended. The screen is held on
 //! with a Wake Lock from boot (re-taken on that tap and whenever the page
@@ -42,6 +49,8 @@ import { effectiveView, hasWebGL2 } from "./webgl.ts";
 import { HOLD_MS, screenWake, useLongPress } from "./kiosk.ts";
 import { attractOf, useScreenState } from "./screen.ts";
 import { Attract } from "./Attract.tsx";
+import { LiveScreenLayer } from "./ScreenLayer.tsx";
+import { screenLayers } from "./slides.ts";
 
 // three.js is most of the weight of the world view — a face-only terminal
 // never loads it. Retryable: `lazy` alone caches a failed load forever.
@@ -147,7 +156,33 @@ export function App() {
     );
   }
 
-  if (config.view === "mirror") return <Mirror config={config} canDraw={webgl2} onSetup={() => setScreen({ kind: "setup", notice: null })} onGone={onGone} />;
+  const openSetup = () => setScreen({ kind: "setup", notice: null });
+  const piloting = screen.kind === "piloting" || screen.kind === "connecting";
+  // An overlay (blackout / go to the living room / alarm) ends any pilot.
+  const takeover = screenLayers(screenState.state, Date.now(), { piloting }).overlay !== null;
+  const layer = <LiveScreenLayer state={screenState.state} piloting={piloting} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />;
+  const attractScreen = (
+    <Attract
+      corner={
+        <>
+          <div className="mirror-corner">
+            {config.title ? `${config.title} · ` : ""}
+            {config.name.toUpperCase()}
+          </div>
+          <Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />
+        </>
+      }
+    />
+  );
+
+  if (config.view === "mirror") {
+    return (
+      <>
+        {attractOf(screenState.state) ? attractScreen : <Mirror config={config} canDraw={webgl2} onSetup={openSetup} onGone={onGone} />}
+        {layer}
+      </>
+    );
+  }
 
   const wakeOverlay = !awake && (
     <button className="wake" onClick={wake}>
@@ -161,18 +196,9 @@ export function App() {
   if (attractOf(screenState.state) && screen.kind !== "piloting") {
     return (
       <>
-        <Attract
-          corner={
-            <>
-              <div className="mirror-corner">
-                {config.title ? `${config.title} · ` : ""}
-                {config.name.toUpperCase()}
-              </div>
-              <Gear onOpen={() => setScreen({ kind: "setup", notice: null })} label="Set up this terminal" className="mirror-gear" />
-            </>
-          }
-        />
+        {attractScreen}
         {wakeOverlay}
+        {layer}
       </>
     );
   }
@@ -184,10 +210,12 @@ export function App() {
         screen={screen}
         setScreen={setScreen}
         castOnline={screenState.state?.character?.online ?? null}
-        onSetup={() => setScreen({ kind: "setup", notice: null })}
+        takeover={takeover}
+        onSetup={openSetup}
         onGone={onGone}
       />
       {wakeOverlay}
+      {layer}
     </>
   );
 }
@@ -296,6 +324,7 @@ function Terminal({
   screen,
   setScreen,
   castOnline,
+  takeover,
   onSetup,
   onGone,
 }: {
@@ -304,6 +333,8 @@ function Terminal({
   setScreen: (s: Screen) => void;
   /** Is the character's agent online? (from the screen-state poll; null = unknown) */
   castOnline: boolean | null;
+  /** A story overlay covers the screen: no scanning, and an open line ends. */
+  takeover: boolean;
   onSetup: () => void;
   onGone: (g: Gone) => void;
 }) {
@@ -399,6 +430,9 @@ function Terminal({
   useEffect(() => {
     if (session.dead !== null && pilot !== null) end("dead");
   }, [session.dead, pilot, end]);
+  useEffect(() => {
+    if (takeover && pilot !== null) end("left");
+  }, [takeover, pilot, end]);
 
   // Mood follows the situation when nothing is being said.
   useEffect(() => {
@@ -498,7 +532,7 @@ function Terminal({
           {screen.kind === "attract" && (
             <div className="attract">
               <div className="scan-frame">
-                <Scanner facing={config.camera} active onCode={onCode} onState={setCamera} />
+                <Scanner facing={config.camera} active={!takeover} onCode={onCode} onState={setCamera} />
               </div>
               <div className="attract-text">
                 <div className="big">SCAN YOUR PASS</div>
