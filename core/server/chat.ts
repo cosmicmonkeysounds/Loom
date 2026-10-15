@@ -297,6 +297,13 @@ function storyChannel(sim: Sim, setting: string | null | undefined): ChannelHead
 
 // --- composition ------------------------------------------------------------
 
+const sameAudience = (a: Audience, b: Audience): boolean =>
+  a === "all" || b === "all" ? a === b : a.length === b.length && a.every((p, i) => p === b[i]);
+
+/** "A", "A and B", "A, B and C". */
+const listWords = (words: readonly string[]): string =>
+  words.length < 2 ? (words[0] ?? "") : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
+
 /**
  * Route a freshly-emitted batch of sim events into guest-facing messages.
  * Pure apart from reading the sim's current clock + faction membership, both
@@ -313,6 +320,8 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
   // after a character's line docks in that character's thread (the way a
   // choice does, see `decisionChannelFor`).
   const lastSpeaker = new Map<string, string>();
+  // "📂 … is open now." notices for places, by the titles they list.
+  const placeRuns = new Map<DraftMessage, string[]>();
 
   for (const e of events) {
     switch (e.type) {
@@ -512,7 +521,19 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
         // character's reveal is the story's to announce (it is a person).
         if (e.kind === "character") break;
         const head = sim.channelHead(e.kind === "location" ? `loc:${e.target}` : e.target);
-        out.push(sys(`📂 ${head.title} is open now.`, e.person === null ? "all" : [e.person]));
+        const audience: Audience = e.person === null ? "all" : [e.person];
+        // A run of places opening for the same people at once (a house
+        // opening room by room) is one notice, not one per room.
+        const prev = out[out.length - 1];
+        const run = prev !== undefined ? placeRuns.get(prev) : undefined;
+        if (e.kind === "location" && run !== undefined && sameAudience(prev!.audience, audience)) {
+          run.push(head.title);
+          prev!.text = `📂 ${listWords(run)} are open now.`;
+          break;
+        }
+        const notice = sys(`📂 ${head.title} is open now.`, audience);
+        if (e.kind === "location") placeRuns.set(notice, [head.title]);
+        out.push(notice);
         break;
       }
       default:

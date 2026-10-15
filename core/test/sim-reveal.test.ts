@@ -125,6 +125,41 @@ describe("hidden places", () => {
     expect(sim.signal("nothing", "g1").some((e) => e.type === "revealed")).toBe(false);
   });
 
+  it("a house opening room by room is one notice, not one per room", () => {
+    const sim = Sim.fromSources(`# Rooms
+LOCATION Hall
+LOCATION Cellar
+  label: The Cellar
+  hidden: true
+LOCATION Attic
+  hidden: true
+LOCATION Shed
+  hidden: true
+SPACE Rooms
+  CHANNEL secrets
+    kind: open
+    hidden: true
+ROLE Guest
+  when cleared for guest:
+    reveal Cellar for guest
+    reveal Attic for guest
+    reveal Shed for guest
+    reveal secrets for guest
+    reveal Attic for guest
+`);
+    sim.createPerson("g1", "Ada");
+    sim.createPerson("g2", "Bob");
+    const notices = composeGuestMessages(sim, sim.signal("cleared", "g1")).filter((m) => m.kind === "system");
+    // A run of places is one line; a chat room keeps its own; a repeat records nothing.
+    expect(notices.map((m) => [m.text, m.audience])).toEqual([
+      ["📂 The Cellar, Attic and Shed are open now.", ["g1"]],
+      ["📂 #secrets is open now.", ["g1"]],
+    ]);
+    // The next person's run is their own notice.
+    const both = [...sim.signal("cleared", "g2")];
+    expect(composeGuestMessages(sim, both).filter((m) => m.kind === "system").map((m) => m.audience)).toEqual([["g2"], ["g2"]]);
+  });
+
   it("open for everyone with a bare `reveal X`, including a late arrival", () => {
     const sim = fresh();
     sim.createPerson("g1", "Ada");
