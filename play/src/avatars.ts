@@ -34,7 +34,13 @@ export interface Identities {
   identities: IdentityRow[];
   /** Is the program directory (search) available to guests? */
   search: boolean;
+  /** False until the director opens the doors (there is no cast to pick
+   *  from yet). Absent from an older server → treated as open. */
+  doorsOpen?: boolean;
 }
+
+/** How often the join screen re-asks while the doors are still closed. */
+export const DOORS_POLL_MS = 5000;
 
 /** One hit of the program directory search. */
 export interface ProgramHit {

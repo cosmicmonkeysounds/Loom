@@ -10,7 +10,7 @@
 //! widget docks right in the flow. Wide screens show both panes; a phone
 //! drills in.
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useAvatars } from "./avatars.ts";
 import { usePlayHost } from "./host.ts";
 import { occupancyLabel } from "./presence.ts";
@@ -26,7 +26,7 @@ import {
   type SpaceGroup,
 } from "./threads.ts";
 import type { Action, Channel, ChatMessage, Decision, QuestStatus } from "./types.ts";
-import { WidgetHost, widgetLabel, type WidgetResult } from "./widgets.tsx";
+import { WidgetHost, supersededCards, widgetLabel, type WidgetResult } from "./widgets.tsx";
 
 // --- small shared atoms -----------------------------------------------------
 
@@ -425,7 +425,7 @@ function lastPreview(c: Channel): string {
 
 export function ChannelRow({ channel, active, meId, onOpen }: { channel: Channel; active?: boolean; meId?: string | null; onOpen: (id: string) => void }) {
   const occupancy = occupancyLabel(channel, meId ?? null);
-  const sub = channel.subtitle ?? lastPreview(channel);
+  const sub = channel.typing ? `${channel.typing} is typing…` : (channel.subtitle ?? lastPreview(channel));
   const quiet = channel.kind === "location" && (channel.people?.length ?? 0) === 0 && channel.messages.length === 0 && !channel.here;
   return (
     <button
@@ -636,10 +636,13 @@ export function MessageBubble({
   widgets,
   onPerson,
   questStatus,
+  superseded,
 }: {
   msg: ChatMessage;
   /** Where a quest card's quest stands (read off its thread). */
   questStatus?: QuestStatus;
+  /** A newer card of the same re-dealt kind follows this one. */
+  superseded?: boolean;
   /** Tag the bubble with its channel (used in the performer's flat view). */
   showChannel?: boolean;
   moderate?: ModerateHook;
@@ -674,7 +677,14 @@ export function MessageBubble({
     return (
       <div className={`msg widget-msg ${msg.hidden ? "hidden" : ""}`}>
         {showChannel && <div className="msg-channel">{msg.title}</div>}
-        <WidgetHost card={msg.widget} seed={msg.seq} answered={answered} viewer={widgets?.viewer ?? null} onAnswer={widgets && !answered ? (r) => widgets.answer(msg.seq, r) : undefined} />
+        <WidgetHost
+          card={msg.widget}
+          seed={msg.seq}
+          answered={answered}
+          superseded={superseded}
+          viewer={widgets?.viewer ?? null}
+          onAnswer={widgets && !answered && !superseded ? (r) => widgets.answer(msg.seq, r) : undefined}
+        />
         {modBtn}
       </div>
     );
@@ -742,10 +752,13 @@ export function MessageGroup({
   onOpenThread,
   widgets,
   onPerson,
+  superseded,
 }: {
   run: MessageRun;
   /** The full channel history, so each root can show its reply count. */
   allMessages: ChatMessage[];
+  /** Cards a newer card of the same kind replaced (`supersededCards`). */
+  superseded?: ReadonlySet<number>;
   showChannel?: boolean;
   moderate?: ModerateHook;
   onOpenThread?: (rootSeq: number) => void;
@@ -766,7 +779,8 @@ export function MessageGroup({
     );
   }
   if (run.kind !== "line") {
-    return <MessageBubble msg={run.messages[0]!} showChannel={showChannel} moderate={moderate} widgets={widgets} />;
+    const m = run.messages[0]!;
+    return <MessageBubble msg={m} showChannel={showChannel} moderate={moderate} widgets={widgets} superseded={superseded?.has(m.seq)} />;
   }
   return (
     <div className="run">
@@ -786,6 +800,56 @@ export function MessageGroup({
   );
 }
 
+/** How close to the bottom (px) still counts as "reading the newest line". */
+export const STICK_SLACK = 80;
+
+/** Is a scroll box (scrollTop / scrollHeight / clientHeight) at its bottom,
+ *  give or take `slack`? */
+export function atBottom(el: { scrollTop: number; scrollHeight: number; clientHeight: number }, slack = STICK_SLACK): boolean {
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= slack;
+}
+
+/**
+ * Keep a message stream on its newest line, the way every chat app does:
+ * while the reader is at (or near) the bottom, anything that makes the
+ * stream taller — a line the crawl reveals, a card, the pass, a picture
+ * loading — or the box itself shorter (the decision tray docking under it)
+ * scrolls it back to the bottom. Scroll up to read the backlog and it
+ * leaves you there until you come back down. Returns a callback ref for
+ * the scrolling element.
+ */
+export function useStickToBottom<T extends HTMLElement>(): (el: T | null) => void {
+  const cleanup = useRef<(() => void) | null>(null);
+  return useCallback((el: T | null) => {
+    cleanup.current?.();
+    cleanup.current = null;
+    if (el === null) return;
+    let pinned = true;
+    const stick = () => {
+      if (pinned) el.scrollTop = el.scrollHeight;
+    };
+    // Only the reader moves `pinned`: our own jump to the bottom lands
+    // inside the slack, so it never unpins.
+    const onScroll = () => {
+      pinned = atBottom(el);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    // A picture finishing loading grows its message without a mutation.
+    el.addEventListener("load", stick, true);
+    const mo = typeof MutationObserver === "function" ? new MutationObserver(stick) : null;
+    mo?.observe(el, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class"] });
+    const ro = typeof ResizeObserver === "function" ? new ResizeObserver(stick) : null;
+    ro?.observe(el);
+    stick();
+    cleanup.current = () => {
+      el.removeEventListener("scroll", onScroll);
+      el.removeEventListener("load", stick, true);
+      mo?.disconnect();
+      ro?.disconnect();
+    };
+  }, []);
+}
+
 export function MessageList({
   messages,
   showChannel,
@@ -803,16 +867,14 @@ export function MessageList({
   onPerson?: (name: string) => void;
   empty?: ReactNode;
 }) {
-  const end = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    end.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages.length]);
+  const box = useStickToBottom<HTMLDivElement>();
   // Only top-level messages live in the channel; replies are tucked into their
   // thread panel. Consecutive same-sender lines coalesce into one banner.
   const roots = rootsOf(messages);
   const runs = groupRuns(roots);
+  const superseded = supersededCards(roots);
   return (
-    <div className="thread">
+    <div className="thread" ref={box}>
       {runs.length === 0 && <div className="thread-empty">{empty ?? "Nothing here yet."}</div>}
       {runs.map((run) => (
         <MessageGroup
@@ -824,9 +886,9 @@ export function MessageList({
           onOpenThread={onOpenThread}
           widgets={widgets}
           onPerson={onPerson}
+          superseded={superseded}
         />
       ))}
-      <div ref={end} />
     </div>
   );
 }
@@ -987,6 +1049,7 @@ export function ChannelView({
         </div>
       </header>
       <MessageList
+        key={channel.id}
         messages={channel.messages}
         showChannel={showChannel}
         moderate={moderate}
@@ -1039,13 +1102,10 @@ export function MessageThread({
   moderate?: ModerateHook;
   onSend?: (text: string, parentSeq?: number) => void;
 }) {
-  const end = useRef<HTMLDivElement>(null);
+  const box = useStickToBottom<HTMLDivElement>();
   const root = channel.messages.find((m) => m.seq === rootSeq);
   const replies = repliesFor(channel.messages, rootSeq);
   const quest = root?.quest;
-  useEffect(() => {
-    end.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [replies.length]);
   return (
     <div className="screen stage">
       <header className="thread-head">
@@ -1058,7 +1118,7 @@ export function MessageThread({
           <span className="muted">in {channel.title}</span>
         </div>
       </header>
-      <div className="thread">
+      <div className="thread" ref={box}>
         {root && <MessageBubble msg={root} moderate={moderate} questStatus={quest ? questStatusOf(channel.messages, rootSeq) : undefined} />}
         <div className="thread-divider">
           {quest
@@ -1070,7 +1130,6 @@ export function MessageThread({
         {groupRuns(replies).map((run) => (
           <MessageGroup key={run.messages[0]!.seq} run={run} allMessages={channel.messages} moderate={moderate} />
         ))}
-        <div ref={end} />
       </div>
       {onSend && channel.canPost !== false && (
         <footer>

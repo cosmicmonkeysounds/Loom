@@ -517,6 +517,14 @@ footer {
 }
 .sheet-x:active { box-shadow: var(--pressed); }
 .sheet > *:not(h2) { margin-left: 8px; margin-right: 8px; }
+/* a full-width button in a sheet fills the space between those margins —
+   `width: 100%` plus the margins ran past the dialog's right border (a
+   button never stretches by itself, so `auto` would shrink it) */
+.sheet > .choice, .sheet > .link { width: calc(100% - 16px); }
+.more-toggle { text-align: left; }
+.card-actions.more { opacity: 0.85; }
+/* a re-dealt card's earlier copy: one quiet line, not a live form */
+.widget.fact.folded { padding: 6px 10px; font-size: 13px; }
 .sheet-h {
   font: 700 11px var(--ui-font); text-transform: uppercase; letter-spacing: 0.4px;
   color: var(--muted-ink); margin: 12px 8px 4px;
@@ -571,7 +579,7 @@ footer {
 
 /* ── pass / QR ──────────────────────────────────────────────────────────── */
 .pass { text-align: center; margin: 4px 8px 12px; }
-.pass img { width: 168px; background: var(--white); box-shadow: var(--sunken); padding: 8px; border-radius: var(--radius); }
+.pass img { display: block; margin: 0 auto; width: 168px; background: var(--white); box-shadow: var(--sunken); padding: 8px; border-radius: var(--radius); }
 .bigid {
   font: 800 20px var(--ui-font); letter-spacing: 2px; margin-top: 8px;
   background: var(--white); box-shadow: var(--sunken); display: inline-block; padding: 4px 12px;
@@ -748,9 +756,11 @@ footer {
   box-shadow: var(--sunken); border-radius: var(--radius);
 }
 .people-top { display: flex; align-items: center; gap: 6px; }
-.people-top .name { flex: 1; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.people-top .choice { margin: 0; padding: 3px 8px; font-size: 12px; width: auto; }
-.people-where { font-size: 12px; color: var(--muted-ink); margin-top: 3px; }
+.people-id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.people-id .name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.people-tags { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+.people-top .choice { margin: 0; padding: 3px 8px; font-size: 14px; width: auto; flex-shrink: 0; }
+.people-where { font-size: 12px; color: var(--muted-ink); }
 .people-known { margin: 4px 0 0; padding: 0; list-style: none; font-size: 12px; }
 .people-known li { color: var(--ink); }
 .people-known li::before { content: "📓 "; }

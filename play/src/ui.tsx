@@ -3,14 +3,15 @@
 //!
 //! Branding is per-event: the title comes from `/api/resolve-code` (a `?code=`
 //! link resolves before joining; a stored session keeps the title it joined
-//! with) — nothing story-specific is baked into the client.
+//! with), or — the bare address, typed in — from `/api/landing` (the one
+//! event with its doors open). Nothing story-specific is baked into the client.
 
 import { useEffect, useState } from "react";
 import { GuestApp } from "./guest.tsx";
 import { HelpSheet } from "./help.tsx";
 import { PerformerApp } from "./performer.tsx";
 import { adoptResume, storedGuestName, type ResumeLink } from "./resume.ts";
-import { useDocumentTitle, useUrlEventTitle } from "./session.ts";
+import { useDocumentTitle, useLandingBrand, useTheme } from "./session.ts";
 
 type Role = "none" | "guest" | "prime";
 
@@ -21,8 +22,12 @@ export function App({ resume = null }: { resume?: ResumeLink | null }) {
     return "none";
   });
   const [help, setHelp] = useState(false);
-  const urlTitle = useUrlEventTitle();
+  // A `?code=` link's event, else the one open event: the bare address
+  // reads as the show, skinned, before anyone joins.
+  const brand = useLandingBrand();
+  const urlTitle = brand.title;
   useDocumentTitle(urlTitle);
+  useTheme(role === "none" ? brand.theme : undefined);
   // A director's re-pair QR (N-02): trade its code for that guest's session.
   // A phone already signed in as a guest asks first — the link replaces it.
   const [pending, setPending] = useState<ResumeLink | null>(resume);

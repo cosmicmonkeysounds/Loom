@@ -30,9 +30,9 @@ import {
 import { CutsceneStage } from "./cutscene.tsx";
 import { HelpSheet } from "./help.tsx";
 import { usePlayHost } from "./host.ts";
-import { AvatarsContext, avatarLookup, avatarUrl, hitNote, hitPickable, initialPick, orderPicker, type PictureChoice, type PictureChoices, type ProgramHit } from "./avatars.ts";
+import { AvatarsContext, DOORS_POLL_MS, avatarLookup, avatarUrl, hitNote, hitPickable, initialPick, orderPicker, type PictureChoice, type PictureChoices, type ProgramHit } from "./avatars.ts";
 import { PictureGrid } from "./picture-pick.tsx";
-import { codeFromUrl, fetchIdentities, fetchPictures, pendingWidget, personalStream, searchPrograms, useDocumentTitle, useGuestSession, useUrlEventTitle, type GuestSession, type IdentityLookup } from "./session.ts";
+import { codeFromUrl, fetchIdentities, fetchPictures, pendingWidget, personalStream, searchPrograms, useDocumentTitle, useGuestSession, useLandingBrand, type GuestSession, type IdentityLookup } from "./session.ts";
 import { Tutorial, tourResult, tutorialSteps } from "./tutorial.tsx";
 import type { Action, Channel, PersonCard } from "./types.ts";
 import { usePush, type Push } from "./push.ts";
@@ -48,7 +48,7 @@ function GuestRegister({ session }: { session: GuestSession }) {
   const [searching, setSearching] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-  const eventTitle = useUrlEventTitle();
+  const eventTitle = useLandingBrand().title;
   // The code opens the picker: the story's unclaimed programs, with their
   // pictures, and (when the server has the program directory) a search.
   const [reload, setReload] = useState(0);
@@ -59,7 +59,9 @@ function GuestRegister({ session }: { session: GuestSession }) {
       return;
     }
     let alive = true;
-    setIds("loading");
+    // A re-ask (the closed-doors poll, a refresh after a 409) keeps the
+    // current screen until the answer lands.
+    setIds((prev) => (prev !== null && prev !== "loading" && prev.kind === "ok" ? prev : "loading"));
     void fetchIdentities(c).then((r) => {
       if (alive) setIds(r);
     });
@@ -68,6 +70,14 @@ function GuestRegister({ session }: { session: GuestSession }) {
     };
   }, [code, reload]);
   const resolved = ids !== null && ids !== "loading" && ids.kind === "ok" ? ids : null;
+  // Scanned before the director opened the doors: there is nobody to be
+  // yet. Say so, and ask again every few seconds until there is.
+  const closed = resolved !== null && resolved.doorsOpen === false;
+  useEffect(() => {
+    if (!closed) return;
+    const id = window.setTimeout(() => setReload((n) => n + 1), DOORS_POLL_MS);
+    return () => window.clearTimeout(id);
+  }, [closed, ids]);
   const fallback = ids !== null && ids !== "loading" && ids.kind === "unavailable" ? ids : null;
   const programs = resolved === null ? [] : orderPicker(resolved.identities);
   // Having picked a program, the guest picks its picture (when there is
@@ -147,7 +157,12 @@ function GuestRegister({ session }: { session: GuestSession }) {
           </button>
         </>
       )}
-      {resolved !== null && picking !== null && (
+      {closed && (
+        <p className="pick-hint" role="status">
+          The doors aren't open yet — hang on, this page refreshes by itself.
+        </p>
+      )}
+      {resolved !== null && !closed && picking !== null && (
         <div className="cast-pick" role="group" aria-label={`Your picture as ${picking.name}`}>
           <div className="sheet-h">Your picture as {picking.name}</div>
           <p className="pick-hint">Pick the one that looks most like you.</p>
@@ -160,7 +175,7 @@ function GuestRegister({ session }: { session: GuestSession }) {
           </button>
         </div>
       )}
-      {resolved !== null && picking === null && (
+      {resolved !== null && !closed && picking === null && (
         <div className="cast-pick" role="group" aria-label="Which program are you?">
           <div className="sheet-h">Which program are you?</div>
           {programs.length === 0 && <p className="pick-hint">{resolved.search ? "Every named program is taken — search for another below." : "No programs left to pick — ask your host."}</p>}
@@ -298,7 +313,15 @@ function ProfileSheet({ session, push, onClose, onLeave }: { session: GuestSessi
       <PushRow push={push} />
       {interactions.length > 0 && <div className="sheet-h">Things you can do</div>}
       {interactions.map((i) => (
-        <button key={i.id} className="choice" title={i.description ?? undefined} onClick={() => void session.act(i.id)}>
+        <button
+          key={i.id}
+          className="choice"
+          title={i.description ?? undefined}
+          onClick={() => {
+            onClose(); // the reply banners over the app, not behind the sheet
+            void session.act(i.id, i.label).catch(() => {});
+          }}
+        >
           {i.label}
         </button>
       ))}
@@ -343,15 +366,20 @@ function PersonRow({ card, onMessage }: { card: PersonCard; onMessage: () => voi
     <div className="people-row">
       <div className="people-top">
         <PersonAvatar name={card.name} size="sm" kind={card.kind} />
-        <span className="name">{card.name}</span>
-        <span className="pill kind">{card.kind}</span>
-        {card.faction && <GroupPill group={card.faction} />}
-        <button className="choice ghost" onClick={onMessage}>
-          💬 Message
+        {/* The name gets the whole line; its tags sit under it, so a phone
+            never squeezes "Password Manager" down to "Pass…". */}
+        <div className="people-id">
+          <span className="name">{card.name}</span>
+          <span className="people-tags">
+            {card.faction && <GroupPill group={card.faction} />}
+            {card.location && <span className="people-where">📍 {card.location}</span>}
+          </span>
+        </div>
+        <button className="choice ghost" onClick={onMessage} aria-label={`Message ${card.name}`}>
+          💬
         </button>
       </div>
-      {card.location && <div className="people-where">📍 {card.location}</div>}
-      {card.known.length > 0 ? (
+      {card.known.length > 0 && (
         <ul className="people-known">
           {card.known.map((e) => (
             <li key={e.id}>
@@ -362,8 +390,6 @@ function PersonRow({ card, onMessage }: { card: PersonCard; onMessage: () => voi
             </li>
           ))}
         </ul>
-      ) : (
-        <div className="people-unknown">You know nothing about them.</div>
       )}
     </div>
   );
@@ -383,12 +409,14 @@ function PeopleSheet({ session, only, onClose }: { session: GuestSession; only?:
   return (
     <Sheet title={only ? "👥 Who's here" : "👥 People"} onClose={onClose} tall>
       {people.length === 0 && <div className="codex-empty">{only ? "Nobody else is in this room." : "Nobody else is here yet."}</div>}
-      {cast.length > 0 && <div className="codex-about">Characters</div>}
-      {cast.map((p) => (
-        <PersonRow key={p.id} card={p} onMessage={() => open(p)} />
-      ))}
+      {people.length > 0 && <div className="people-unknown">What your Codex holds about someone shows under their name. Tap 💬 to message them.</div>}
+      {/* The other programs first — they are who a guest is looking for. */}
       {guests.length > 0 && <div className="codex-about">Guests</div>}
       {guests.map((p) => (
+        <PersonRow key={p.id} card={p} onMessage={() => open(p)} />
+      ))}
+      {cast.length > 0 && <div className="codex-about">Characters</div>}
+      {cast.map((p) => (
         <PersonRow key={p.id} card={p} onMessage={() => open(p)} />
       ))}
     </Sheet>
@@ -495,6 +523,14 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     // `t` is rebuilt each render; the ids are what matter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, wide, activeId, home]);
+  // What the cutscene stage shows is read: stepping into the app, the
+  // rooms it came from (The Uploader's thread) carry no backlog badges.
+  const staged = cut.showing && s.me !== null ? personalStream(s.messages, s.me.id) : null;
+  const stagedMax = staged !== null && staged.length > 0 ? staged[staged.length - 1]!.seq : -1;
+  useEffect(() => {
+    if (staged !== null && stagedMax >= 0) t.markRead(staged);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stagedMax]);
   // The tour walks the sidebar: on a phone, come back to it first.
   useEffect(() => {
     if (tourSeq !== null && !wide && activeId !== null) t.back();
@@ -529,7 +565,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     return (
       <div className="root cut-root">
         <CutsceneStage
-          messages={personalStream(s.messages, s.me.id)}
+          messages={staged ?? []}
           title={st.title ?? s.me.title}
           where={cut.over ? null : where}
           decision={dock}

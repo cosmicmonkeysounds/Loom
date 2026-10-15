@@ -103,6 +103,7 @@ describe("📝 fact card", () => {
     expect(factResult("H5", "Clippy", false)).toBeNull();
     expect(factResult("H5", "x".repeat(FACT_MAX + 1), true)).toBeNull();
     expect(WIDGETS["fact"]?.answerable).toBe(true);
-    expect(widgetLabel({ kind: "fact", text: "📝 File a fact", params: {} })).toBe("📝 file a fact — 📝 File a fact");
+    expect(widgetLabel({ kind: "fact", text: "📝 File a fact", params: {} })).toBe("📝 File a fact");
+    expect(widgetLabel({ kind: "fact", text: "Round 2", params: {} })).toBe("📝 file a fact — Round 2");
   });
 });

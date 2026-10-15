@@ -8,7 +8,7 @@
 //! as plain text so an older client never hides a newer story's card.
 
 import { useMemo, useState, type ReactNode } from "react";
-import type { WidgetCard } from "./types.ts";
+import type { ChatMessage, WidgetCard } from "./types.ts";
 
 export type WidgetResult = Record<string, string | number | boolean>;
 
@@ -23,6 +23,9 @@ export interface WidgetProps {
   onAnswer?: (result: WidgetResult) => void;
   /** The answer already given, if any — the card shows its resolved state. */
   answered?: WidgetResult | null;
+  /** A newer card of the same kind came after this one in the room (a
+   *  re-dealt 📝 fact card): show it folded, not as a live form. */
+  superseded?: boolean;
 }
 
 export interface WidgetDef {
@@ -33,6 +36,9 @@ export interface WidgetDef {
   /** The card is answered through a surface over the whole app (the
    *  guided tutorial), not inline — the in-thread card is only its receipt. */
   overlay?: boolean;
+  /** The story re-deals this kind (a fresh 📝 card after every filing):
+   *  only the newest in a room is live; earlier ones fold away. */
+  supersedes?: boolean;
   render: (p: WidgetProps) => ReactNode;
 }
 
@@ -151,7 +157,10 @@ function Captcha({ card, seed, onAnswer, answered }: WidgetProps) {
       </div>
       <div className="widget-foot">
         {done ? (
-          <span className="widget-state">{answered["passed"] === undefined ? "✔ Submitted" : answered["passed"] === true ? "✔ Verified · submitted" : "✖ Failed · submitted"}</span>
+          // Neutral on purpose: the story judges the answer (in *Trapped in
+          // the Internet* a "verified" grid is the wrong one), so the card
+          // never stamps its own verdict.
+          <span className="widget-state">✔ Submitted</span>
         ) : onAnswer ? (
           <button type="button" className="choice primary widget-go" onClick={verify}>
             VERIFY
@@ -310,7 +319,7 @@ export function factResult(question: string, answer: string, certain: boolean): 
  * and its reply is the same whether the answer was right or a lie. The
  * answer is `{question, answer, certain: true}` → `fact answered`.
  */
-function FactCard({ card, onAnswer, answered }: WidgetProps) {
+function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
   const questions = factQuestions(card.params["questions"]);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -318,6 +327,19 @@ function FactCard({ card, onAnswer, answered }: WidgetProps) {
   const done = answered !== null && answered !== undefined;
   const result = factResult(question, answer, certain);
   const filedFor = done && typeof answered["question"] === "string" ? questions.find((q) => q.id === answered["question"])?.label ?? String(answered["question"]) : null;
+  // "Sent", not "filed": the story still has to accept it (a question from
+  // a round that hasn't opened, a second filing… is refused in its reply).
+  const sent = filedFor ? `✔ sent: ${filedFor}` : "✔ sent";
+  if (superseded) {
+    return (
+      <div className="widget fact done folded" role="note">
+        <span className="widget-glyph" aria-hidden>
+          📝
+        </span>{" "}
+        <span className="widget-state">{done ? sent : "An earlier card — use the newest one below."}</span>
+      </div>
+    );
+  }
   return (
     <div className={`widget fact ${done ? "done" : ""}`} role="group" aria-label={card.text || "File a fact"}>
       <div className="widget-head">
@@ -353,7 +375,7 @@ function FactCard({ card, onAnswer, answered }: WidgetProps) {
       )}
       <div className="widget-foot">
         {done ? (
-          <span className="widget-state">{filedFor ? `✔ filed: ${filedFor}` : "✔ filed"}</span>
+          <span className="widget-state">{sent} — the reply says whether it's accepted</span>
         ) : onAnswer ? (
           <button type="button" className="widget-go" disabled={result === null} onClick={() => result && onAnswer(result)}>
             File it
@@ -374,13 +396,32 @@ export const WIDGETS: Record<string, WidgetDef> = {
   poll: { label: "📊 poll", answerable: true, render: (p) => <Poll {...p} /> },
   tutorial: { label: "📘 orientation", answerable: true, overlay: true, render: (p) => <TutorialCard {...p} /> },
   pass: { label: "🎟️ your pass", answerable: false, render: (p) => <PassCard {...p} /> },
-  fact: { label: "📝 file a fact", answerable: true, render: (p) => <FactCard {...p} /> },
+  fact: { label: "📝 file a fact", answerable: true, supersedes: true, render: (p) => <FactCard {...p} /> },
 };
+
+/** The cards a newer card of the same (re-dealt) kind has replaced, per
+ *  room: every one but the newest of each `supersedes` kind. */
+export function supersededCards(messages: Iterable<ChatMessage>): Set<number> {
+  const newest = new Map<string, number>();
+  const all: Array<{ key: string; seq: number }> = [];
+  for (const m of messages) {
+    if (m.kind !== "widget" || m.widget === undefined || WIDGETS[m.widget.kind]?.supersedes !== true) continue;
+    const key = `${m.channel}\u0000${m.widget.kind}`;
+    all.push({ key, seq: m.seq });
+    if ((newest.get(key) ?? -Infinity) < m.seq) newest.set(key, m.seq);
+  }
+  return new Set(all.filter((c) => newest.get(c.key) !== c.seq).map((c) => c.seq));
+}
 
 /** A one-line description of a card, for previews and performer feeds. */
 export function widgetLabel(card: WidgetCard): string {
   const def = WIDGETS[card.kind];
-  return def ? `${def.label}${card.text ? ` — ${card.text}` : ""}` : `🧩 ${card.kind}${card.text ? ` — ${card.text}` : ""}`;
+  if (def === undefined) return `🧩 ${card.kind}${card.text ? ` — ${card.text}` : ""}`;
+  // A card whose text already leads with the kind's glyph ("📝 File a
+  // fact") says it once, not "📝 file a fact — 📝 File a fact".
+  const glyph = def.label.split(" ")[0]!;
+  if (card.text && card.text.startsWith(glyph)) return card.text;
+  return `${def.label}${card.text ? ` — ${card.text}` : ""}`;
 }
 
 /** Render a card by kind; an unknown kind falls back to its label + text. */

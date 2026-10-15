@@ -4,7 +4,7 @@
 //! threads (`useThreads`). The guest and performer both build on the same
 //! plumbing — only their channel-shaping + actions differ.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Identities, PictureChoices, ProgramHit, ProgramPictures } from "./avatars.ts";
 import { ApiError, api, useChatStream } from "./client.ts";
 import { maxSeqOf, unsolicitedReadout, useAlerts, type Alert } from "./alerts.ts";
@@ -16,7 +16,7 @@ import { locationOfRoom, occupantsByLocation, type Presence } from "./presence.t
 import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, channelHead, groupByChannel, prettyName, questSummary, useThreads, type Threads } from "./threads.ts";
 import { useTyping } from "./typing.ts";
 import type { Channel, ChatMessage, Decision, GuestView, PrimeView } from "./types.ts";
-import { WIDGETS, type WidgetResult } from "./widgets.tsx";
+import { WIDGETS, supersededCards, type WidgetResult } from "./widgets.tsx";
 
 // --- persistence ------------------------------------------------------------
 
@@ -46,6 +46,8 @@ export interface ResolvedCode {
   eventId: string;
   role: string;
   title?: string;
+  /** The story's `theme:` (the join screens skin themselves with it). */
+  theme?: string;
   /** A performer / mod code lists the characters one may sign in as. */
   characters?: string[];
 }
@@ -96,11 +98,6 @@ export async function searchPrograms(eventId: string, code: string, q: string): 
   return r.results;
 }
 
-/** Resolve a passcode to its event's display title (null if unknown/invalid). */
-export async function resolveEventTitle(code: string): Promise<string | null> {
-  return (await resolveCode(code))?.title ?? null;
-}
-
 /**
  * Is this token still good? Asked before dropping a session over a closed
  * stream — a closed `EventSource` is also what a flaky network, a sleeping
@@ -132,23 +129,39 @@ export function codeFromUrl(): string {
   }
 }
 
-/** The event title for a `?code=` join link, once resolved (else null). */
-export function useUrlEventTitle(): string | null {
+/** The landing page's branding before any code: the one open event's title
+ *  + skin (`GET /api/landing`), or nulls. */
+export async function fetchLanding(): Promise<{ title: string | null; theme: string | null }> {
+  try {
+    const res = await fetch("/api/landing");
+    if (!res.ok) return { title: null, theme: null };
+    const j = (await res.json()) as { title?: unknown; theme?: unknown };
+    return { title: typeof j.title === "string" ? j.title : null, theme: typeof j.theme === "string" ? j.theme : null };
+  } catch {
+    return { title: null, theme: null };
+  }
+}
+
+/**
+ * The join screens' branding: the event a `?code=` link names, else (the
+ * bare address, typed in) the one event with its doors open. The title
+ * heads the page; the theme skins it before anyone has joined.
+ */
+export function useLandingBrand(): { title: string | null; theme: string | null } {
   const { ownsPage } = usePlayHost();
-  const [title, setTitle] = useState<string | null>(null);
+  const [brand, setBrand] = useState<{ title: string | null; theme: string | null }>({ title: null, theme: null });
   useEffect(() => {
     if (!ownsPage) return;
     const code = codeFromUrl();
-    if (code === "") return;
     let alive = true;
-    void resolveEventTitle(code).then((t) => {
-      if (alive && t !== null) setTitle(t);
+    void (code !== "" ? resolveCode(code).then((r) => ({ title: r?.title ?? null, theme: r?.theme ?? null })) : fetchLanding()).then((b) => {
+      if (alive) setBrand(b);
     });
     return () => {
       alive = false;
     };
   }, [ownsPage]);
-  return title;
+  return brand;
 }
 
 /** Keep the browser tab named after the event once we know its title. */
@@ -178,6 +191,49 @@ const PK = "loom.prime";
 /** The last `!` alert each role's sign-in has seen (alerts.ts). */
 const GUEST_ALERTS = "loom.guest.alerts";
 const PRIME_ALERTS = "loom.prime.alerts";
+/** A guest sign-in's read marks (threads.ts) and echoed choices. */
+const GUEST_READ = "loom.guest.read";
+const GUEST_ECHO = "loom.guest.echo";
+/** How many echoed choices a sign-in keeps. */
+const ECHO_CAP = 200;
+
+/** The guest's pick as their own line in the room the choice docked in,
+ *  just after everything already there (a half seq, so the story's answer
+ *  — the next real message — lands under it). */
+export function choiceEcho(channel: string, text: string, me: { id: string; name: string }, afterSeq: number): ChatMessage {
+  return {
+    seq: afterSeq + 0.5,
+    channel,
+    channelKind: channelHead(channel).kind,
+    title: channelHead(channel).title,
+    from: me.name,
+    kind: "line",
+    text,
+    ts: Date.now(),
+    audience: [me.id],
+    parentSeq: null,
+    hidden: false,
+  };
+}
+
+/** The stream with the guest's echoed choices folded in. */
+export function withEchoes(messages: ReadonlyMap<number, ChatMessage>, echoes: readonly ChatMessage[]): Map<number, ChatMessage> {
+  const out = new Map(messages);
+  for (const e of echoes) if (!out.has(e.seq)) out.set(e.seq, e);
+  return out;
+}
+
+function loadEchoes(load: <T>(key: string) => T | null, token: string | null): ChatMessage[] {
+  if (token === null) return [];
+  const raw = load<{ session?: unknown; list?: unknown }>(GUEST_ECHO);
+  return raw !== null && raw.session === token && Array.isArray(raw.list) ? (raw.list as ChatMessage[]) : [];
+}
+
+function saveEchoes(save: (key: string, value: unknown) => void, token: string, list: ChatMessage[]): ChatMessage[] {
+  const kept = list.slice(-ECHO_CAP);
+  save(GUEST_ECHO, { session: token, list: kept });
+  return kept;
+}
 
 // --- guest ------------------------------------------------------------------
 
@@ -224,6 +280,14 @@ function requiredDecision(
     };
   }
   return null;
+}
+
+/** What a guest sees after pressing one of the story's buttons: the
+ *  story's reply to them, else a plain acknowledgement of the button. */
+export function actFeedback(replies: readonly string[] | undefined, label?: string): string {
+  const said = (replies ?? []).map((r) => r.trim()).filter((r) => r !== "");
+  if (said.length > 0) return said.join(" ");
+  return label ? `✔ ${label}` : "✔ Done.";
 }
 
 /** A room whose *listing* the server snapshot decides: a location's room or
@@ -287,8 +351,11 @@ export function buildGuestChannels(
   };
   // A card still waiting on this guest (an answerable widget with no answer
   // in this session) pulls its room to the top, like a decision does.
-  const needsYou = (msgs: ChatMessage[]): boolean =>
-    msgs.some((m) => m.kind === "widget" && m.widget !== undefined && (WIDGETS[m.widget.kind]?.answerable ?? false) && !answered.has(m.seq));
+  // A re-dealt card (a 📝 fact card) only counts while it is the newest.
+  const needsYou = (msgs: ChatMessage[]): boolean => {
+    const old = supersededCards(msgs);
+    return msgs.some((m) => m.kind === "widget" && m.widget !== undefined && (WIDGETS[m.widget.kind]?.answerable ?? false) && !answered.has(m.seq) && !old.has(m.seq));
+  };
   if (!groups.has("lobby")) groups.set("lobby", []); // the lobby is always present
   // The pinned rooms are there from the start whenever the story has a
   // codex / declares quests — the Codex is where codes get typed.
@@ -370,10 +437,13 @@ export function buildGuestChannels(
       other !== null
         ? (view?.people?.find((p) => p.id === other)?.name ?? view?.roster.find((p) => p.id === other)?.name ?? prettyName(other))
         : null;
+    // A character's DM is titled with their declared name (`WebMD`), not a
+    // re-cased channel key.
+    const castName = id.startsWith("dm:") ? (view?.people?.find((p) => p.kind === "character" && p.id === id.slice(3))?.name ?? null) : null;
     return {
       id,
       kind: head.kind,
-      title: otherName ?? (head.kind === "lobby" && storyTitle ? storyTitle : head.title),
+      title: otherName ?? castName ?? (head.kind === "lobby" && storyTitle ? storyTitle : head.title),
       subtitle: otherName !== null ? "private" : undefined,
       spaceId: STORY_SPACE,
       spaceTitle: storyTitle,
@@ -408,8 +478,9 @@ export interface GuestSession {
   defect: (to: string) => Promise<unknown>;
   choose: (index: number) => Promise<unknown>;
   escape: () => Promise<unknown>;
-  /** Fire one of the story's `who: guest` interactions for yourself. */
-  act: (name: string) => Promise<unknown>;
+  /** Fire one of the story's `who: guest` interactions for yourself; the
+   *  story's reply (if any) banners, so it is never lost in the lobby. */
+  act: (name: string, label?: string) => Promise<unknown>;
   /** Hybrid chat: type into a channel (a reply carries the root's seq). */
   say: (channel: string, text: string, parentSeq?: number) => Promise<unknown>;
   /** Access control: pull another participant into a membership-gated channel. */
@@ -527,9 +598,42 @@ export function useGuestSession(): GuestSession {
 
   const join = useCallback((faction: string) => post("/api/guest/join", { faction }), [post]);
   const defect = useCallback((to: string) => post("/api/guest/defect", { to }), [post]);
-  const choose = useCallback((index: number) => post("/api/guest/choose", { index }), [post]);
+  // The guest's own pick, echoed into the thread as their bubble (the
+  // server records the choice, not a line), so the story's answer never
+  // reads as a non sequitur. Kept per sign-in so a reload keeps it.
+  const [echoes, setEchoes] = useState<ChatMessage[]>(() => loadEchoes(load, me?.token ?? null));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => setEchoes(loadEchoes(load, me?.token ?? null)), [me?.token]);
+  const pendingRef = useRef<{ options: string[] | null; channel: string }>({ options: null, channel: "lobby" });
+  pendingRef.current = { options: status?.pendingChoice ?? null, channel: status?.decisionChannel ?? "lobby" };
+  const choose = useCallback(
+    async (index: number) => {
+      const { options, channel } = pendingRef.current;
+      const text = options?.[index];
+      const echo = text !== undefined && me !== null ? choiceEcho(channel, text, me, maxSeqOf(messages.values())) : null;
+      if (echo !== null) {
+        crawl.claim(echo.seq); // your own words never crawl
+        setEchoes((prev) => saveEchoes(save, me!.token, [...prev, echo]));
+      }
+      try {
+        return await post("/api/guest/choose", { index });
+      } catch (e) {
+        if (echo !== null) setEchoes((prev) => saveEchoes(save, me!.token, prev.filter((m) => m.seq !== echo.seq)));
+        throw e;
+      }
+    },
+    [post, me, messages, crawl, save],
+  );
+  const shown = useMemo(() => withEchoes(messages, echoes), [messages, echoes]);
   const escape = useCallback(() => post("/api/guest/escape", {}), [post]);
-  const act = useCallback((name: string) => post("/api/guest/act", { name }), [post]);
+  const act = useCallback(
+    async (name: string, label?: string) => {
+      const r = await post<{ ok: boolean; replies?: string[] }>("/api/guest/act", { name });
+      alertsRef.current?.raise(actFeedback(r.replies, label), { quiet: true });
+      return r;
+    },
+    [post],
+  );
   const say = useCallback(
     (channel: string, text: string, parentSeq?: number) => post("/api/guest/say", { channel, text, parentSeq }),
     [post],
@@ -627,7 +731,11 @@ export function useGuestSession(): GuestSession {
 
   const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
   const dock = requiredDecision(status, { choose: (i) => void choose(i), join: (f) => void join(f), escape: () => void escape() });
-  const threads = useThreads(withAgents(buildGuestChannels(messages, dock, status, opened, new Set(widgetAnswers.keys())), status, typing));
+  const threads = useThreads(withAgents(buildGuestChannels(shown, dock, status, opened, new Set(widgetAnswers.keys())), status, typing), {
+    store: host.storage,
+    slot: GUEST_READ,
+    session: me?.token ?? null,
+  });
   const message = useCallback(
     (person: { id: string; kind: "guest" | "character" }) => {
       if (me === null) return;
@@ -690,7 +798,7 @@ export function useGuestSession(): GuestSession {
     dismissAlert,
     answerWidget,
     widgetAnswers,
-    messages,
+    messages: shown,
     leave,
   };
 }
@@ -802,6 +910,9 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
 /**
  * Guest-side agent chrome: a DM with an agent-voiced character says whether
  * anyone is answering, and shows "… is typing" while a reply is composed.
+ * A character with a `hold:` line always answers (the story covers for a
+ * missing worker), so its row never says "away": it previews the last
+ * message like any other thread.
  */
 export function withAgents(channels: Channel[], view: GuestView | null, typing: ReadonlyMap<string, string>): Channel[] {
   const agents = new Map((view?.people ?? []).filter((p) => p.agent !== undefined).map((p) => [`dm:${p.id}`, p.agent!]));
@@ -809,9 +920,10 @@ export function withAgents(channels: Channel[], view: GuestView | null, typing: 
     const agent = agents.get(c.id);
     const who = typing.get(c.id);
     if (agent === undefined && who === undefined) return c;
+    const presence = agent !== undefined && agent.hold !== true && c.subtitle === undefined;
     return {
       ...c,
-      ...(agent !== undefined && c.subtitle === undefined ? { subtitle: agent.online ? "online" : "away — they'll answer when they're back" } : {}),
+      ...(presence ? { subtitle: agent.online ? "online" : "away — they'll answer when they're back" } : {}),
       ...(who !== undefined ? { typing: who } : {}),
     };
   });
