@@ -26,7 +26,7 @@ The design contract is [`docs/loom-reinstall.md`](../../docs/loom-reinstall.md)
 ```bash
 pnpm --filter loom-reinstall dev        # :5176, proxies /api + /e to LOOM_SERVER (default :7000)
 pnpm --filter loom-reinstall build      # → dist/ (base /reinstall/), served by the event server
-pnpm --filter loom-reinstall test       # physics, input, sticks, the pose pump, config, HUD, stream, map helpers
+pnpm --filter loom-reinstall test       # physics, input, sticks, the pose pump, config, HUD, stream, map helpers, the autopilot
 pnpm --filter loom-reinstall typecheck
 ```
 
@@ -59,7 +59,36 @@ The passcode and the hints are scrubbed from the address bar at once. A
 stored token the server no longer accepts sends the device back to setup.
 **The camera needs a secure context** (`https://` or `localhost`); without
 one, type the program's name instead. Corrupted programs are also offered
-as one-tap picks under *In the Internet now*.
+as one-tap picks under *In the Internet now*. With no camera at all the
+camera box shrinks to a strip and the step says so.
+
+The game needs **WebGL2** (three r186). A browser without it (3D off, an
+old GPU, a locked-down WebView) is probed once: **Play here** is disabled
+with the reason, so a session is never begun on a device that can't draw
+it. Send the program to a headset, or use another browser.
+
+## A demo with no hardware
+
+Everything runs in desktop browsers against one event server (a laptop
+with `pnpm dev`, or the VPS):
+
+1. Open `/reinstall/?code=<mod passcode>&name=Tent tablet` in a desktop
+   browser: that window is the tent tablet. The camera may not start (no
+   webcam, plain `http://` on a LAN address); that is fine.
+2. Join as a guest on a phone (or a phone-sized window) at `/`, and get
+   sent to the Internet: an Antivirus performer's **Send to the Internet**,
+   or the director's cue sheet in Run. The program then appears under
+   *In the Internet now* on the tablet within 10 s: tap it (or type its
+   name), then **Play here**.
+3. Walk with **W A S D** / the arrows, look by dragging, **Shift** runs.
+   Follow the chevrons. At Gerald the program is released, the phone gets
+   *The Golden Duck* and is back on the Desktop.
+4. `/terminal/?code=<mod>&name=TV&view=mirror` is the TV. It holds the
+   screensaver until Trabolta is introduced (`introduce_trabolta` in the
+   cue sheet), then follows whoever is playing.
+
+The layout works from a phone held either way up to a 1280 px laptop
+(below 560 px wide or 500 px tall the wizard drops its banner).
 
 ## Playing
 
@@ -72,7 +101,10 @@ as one-tap picks under *In the Internet now*.
 
 The sticks appear on a touch device, or as soon as the screen is touched.
 Golden chevrons on the floor lead to Gerald along the house's real route
-(doors, stairs). The route is recomputed twice a second. The HUD shows:
+(doors, stairs). The route is recomputed twice a second. On a stair the
+trail leaves it by whichever end is shorter (`trail.ts`): `route()` alone
+would point a player who has just stepped onto the foot back at it. The
+HUD shows:
 
 - the room you are in and its story location;
 - warmer / colder;
@@ -176,6 +208,7 @@ copy the JSON tab into that file, then run
 | `src/game/input.ts` | **pure**: keyboard + sticks + drag → one frame of intent; stick maths (dead zone 0.12) |
 | `src/game/pump.ts` | **pure**: the 10 Hz latest-only pose pump (keepalive, backoff, stop on 401 / 410) |
 | `src/game/hud.ts` | **pure**: room names, warmer / colder, compass, reach |
+| `src/game/trail.ts` | **pure**: the chevrons' path, `route()` made walkable on a stair (`test/autopilot.test.ts` walks the real physics along it to every duck spot, on the show's map and the three-floor fixture) |
 | `src/game/leash.ts` | **pure**: the 120 s no-input leash (paused while the tab is hidden) |
 | `src/game/audio.ts` | WebAudio quack, fanfare and buzz (no assets) |
 | `src/map/` | the map page; `plan.ts` (SVG frame, hit tests, snapping) and `edit.ts` (edit ops, JSON drafts) are pure |

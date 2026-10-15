@@ -455,7 +455,9 @@ them), a parked assignment moves to the new spawn, and every session's
 
 ## 3. The web game — `reinstall/web/` (`loom-reinstall`)
 
-React shell + three.js canvas. Screens: **setup** (moderator passcode,
+React shell + three.js canvas (three r186 needs WebGL2: the wizard probes
+for it once and, without it, disables **Play here** with the reason rather
+than begin a session it can't draw). Screens: **setup** (moderator passcode,
 device name, role) → **scan** (camera via the terminal's `Scanner`, typed
 name fallback via `candidates`) → for a scanned program, **Play here** or
 **Send to <station>** (online VR stations listed) → **play** → **found**
@@ -472,7 +474,11 @@ so the walker slides along the underside of a stair instead of walking
 into it. Controls: left on-screen stick = move, right stick = turn
 (x) and look (y); keyboard WASD/arrows/QE/Shift; mouse drag to look. The
 indicator trail (`route` → golden chevrons every 0.75 m, refreshed twice a
-second), a compass/room HUD, the duck (bobbing, glowing, quacks via
+second; a player standing on a stair rect is routed out by whichever end
+of it makes the walk shorter — `[feet, end, …route(end, duck)]` — because
+`route` from a point on the ramp starts in one of the stair's rooms and
+would point back at the end just left; not normative, the game's
+`trail.ts`), a compass/room HUD, the duck (bobbing, glowing, quacks via
 WebAudio), other players as ghosts (from the stream), the terminals as
 glowing screens on the walls ("someone is watching from the Kitchen").
 Arrive within 0.9 m of the duck in plan, on its floor and within 1.2 m
