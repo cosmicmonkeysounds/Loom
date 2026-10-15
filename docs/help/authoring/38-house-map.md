@@ -29,13 +29,20 @@ out is plenty; 5 cm is close enough.
 - **▭ Room** — drag a rectangle, or type its **W × D** and press **Add**
   (it lands east of the selected room, so a survey goes room by room).
   Select it to type its exact **x / z / W / D**, its label and the story
-  **LOCATION** it is (the picker lists the story's LOCATIONs).
+  **LOCATION** it is (the picker lists the story's LOCATIONs). A typed
+  field takes effect when you press **Enter** or leave it (Esc puts it
+  back); the spinner arrows apply at once.
 - **▒ Yard** — an outdoor rectangle: no roof, fences instead of walls.
   Draw an indoor room *inside* a yard (the tent, the shed) and the yard
   is cut around it on its own, with a flap door from the room into the
-  yard. Move or delete the tent and the yard closes up behind it. A yard
-  the tent splits in two stays one place: its pieces share the label and
-  are joined edge to edge.
+  yard (a notice says so — move or delete it if the way in is elsewhere).
+  House rooms drawn against each other get no flaps: put their doors in
+  yourself. A part of the yard the cut shuts off from everything else gets
+  a flap too, so nobody is walled out. Move or delete the tent and the
+  yard closes up behind it. A yard the tent splits in two stays one place:
+  its pieces share the label and are joined edge to edge, so it is
+  selected, renamed and deleted whole (it moves with the rooms in it, or
+  **Fill the yard**). Two yards on one floor need different names.
 - **▯ Door** — click a wall. The door snaps onto it (90 cm wide) and
   joins the rooms on either side; a wall with a room on one side only is
   a door to the outside. Drag a door along its wall; **Open the whole
@@ -58,8 +65,8 @@ The panel under the inspector lists what is wrong as you draw — click an
 entry to select what it names. **Problems** (rooms overlapping, a door
 off its wall, a stair without room to land) block a save. **Warnings**
 don't: a duck spot nobody can walk to from the spawn (the same route the
-VR autopilot takes), a room naming no LOCATION in the story, a LOCATION
-with no room. The **JSON** tab is the whole map as text, for anything the
+VR autopilot takes), a room or yard no door leads into yet, a room naming
+no LOCATION in the story, a LOCATION with no room. The **JSON** tab is the whole map as text, for anything the
 drawing tools don't do (props, colours).
 
 **🧊 3D** shows the draft as the games will build it (once it is valid):

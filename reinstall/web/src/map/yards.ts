@@ -14,8 +14,10 @@
 //! is joined by a door spanning their whole shared edge — an opening, so
 //! the yard still walks as one. Doors into the yard are re-linked to
 //! whichever piece they now open on, things standing in it are re-homed,
-//! and a room cut into the yard with no way out gets a door on its side
-//! facing the most yard (the tent flap). A room that stood *in* the yard
+//! and a free-standing room cut into the yard (the tent, the shed — no
+//! indoor room beside it) with no way out gets a door on its side facing
+//! the most yard (the tent flap); so does any part of the yard the cut
+//! sealed off from everything else. A room that stood *in* the yard
 //! (fenced by it on at least half its edge) gives its old footprint back
 //! when it moves away or is deleted; a house room that only borders the
 //! yard never does.
@@ -472,9 +474,75 @@ export function settleRoom(before: HouseMap, after: HouseMap, roomId: string): H
     const cut = reflowYard(next, yard, stoodIn ? [old.poly] : []);
     if (cut === next) continue;
     next = cut;
-    if (overlaps) next = addFlap(next, roomId, yardsOn(next, room.floor).find((y) => yard.some((id) => y.includes(id))) ?? yard);
+    if (overlaps) next = addFlaps(next, roomId, yardsOn(next, room.floor).find((y) => yard.some((id) => y.includes(id))) ?? yard);
   }
   return next;
+}
+
+/** Whether a room shares any of its edge with an indoor room on its floor (it is part of a house). */
+export function touchesIndoor(house: HouseMap, roomId: string): boolean {
+  const room = roomById(house, roomId);
+  if (room === undefined) return false;
+  const polys = house.rooms.filter((r) => r.floor === room.floor).map((r) => r.poly);
+  return outsideRuns(house, room, polys).some((r) => r.out !== null && roomById(house, r.out)?.outdoor !== true);
+}
+
+/** A yard's pieces grouped by the openings between them: each group walks as one. */
+export function yardParts(house: HouseMap, pieces: readonly string[]): string[][] {
+  const parent = new Map(pieces.map((id) => [id, id]));
+  const find = (id: string): string => {
+    let at = id;
+    while (parent.get(at) !== at) at = parent.get(at)!;
+    return at;
+  };
+  for (const d of house.doors) {
+    if (d.b === null || !parent.has(d.a) || !parent.has(d.b)) continue;
+    parent.set(find(d.a), find(d.b));
+  }
+  const groups = new Map<string, string[]>();
+  for (const id of pieces) {
+    const root = find(id);
+    const g = groups.get(root);
+    if (g) g.push(id);
+    else groups.set(root, [id]);
+  }
+  return [...groups.values()];
+}
+
+/**
+ * The flaps a room cut into a yard needs. A free-standing room (the tent,
+ * the shed — no indoor room beside it) with no way into the yard gets one,
+ * on its side facing the most yard; a house room drawn over the yard does
+ * not (the house has its own doors). And a part of the yard the cut sealed
+ * off — no opening to the rest, no door to any room — gets one from this
+ * room, or nobody could ever walk into it; the room then gets one into the
+ * rest of the yard too, unless it has a way in already.
+ */
+function addFlaps(house: HouseMap, roomId: string, pieces: readonly string[]): HouseMap {
+  let next = house;
+  const joins = (h: HouseMap, part: readonly string[]) => h.doors.some((d) => (d.a === roomId && d.b !== null && part.includes(d.b)) || (d.b === roomId && part.includes(d.a)));
+  if (!joins(next, pieces) && !touchesIndoor(next, roomId)) next = addFlap(next, roomId, pieces);
+  const sealed = yardParts(next, pieces).filter(
+    (part) =>
+      !joins(next, part) &&
+      !part.includes(next.spawn.room) &&
+      !next.doors.some((d) => d.b !== null && part.includes(d.a) !== part.includes(d.b)) &&
+      !next.stairs.some((st) => part.includes(st.from) || part.includes(st.to)),
+  );
+  for (const part of sealed) next = addFlap(next, roomId, part);
+  if (sealed.length === 0) return next;
+  // The room is now the only way into those parts: it needs a way in itself
+  // (a shed drawn from the house to the fence is walked through).
+  const shut = new Set(sealed.flat());
+  const otherWay = next.doors.some((d) => (d.a === roomId || d.b === roomId) && d.b !== null && !shut.has(d.a) && !shut.has(d.b));
+  const rest = pieces.filter((id) => !shut.has(id));
+  return otherWay || rest.length === 0 ? next : addFlap(next, roomId, rest);
+}
+
+/** The flaps an edit added (doors new in `after` that the yard cut made), for the notice that says so. */
+export function flapsAdded(before: HouseMap, after: HouseMap): Door[] {
+  const had = new Set(before.doors.map((d) => d.id));
+  return after.doors.filter((d) => !had.has(d.id) && /-flap(-\d+)?$/.test(d.id));
 }
 
 /**
@@ -490,6 +558,20 @@ export function giveBack(before: HouseMap, after: HouseMap, roomId: string): Hou
     next = reflowYard(next, yard, [room.poly]);
   }
   return next;
+}
+
+/**
+ * Whether giving a room's yard this label / LOCATION would make it the
+ * same yard as another one on its floor (pieces are grouped by label +
+ * LOCATION, so the two would silently merge) — refused by the inspector.
+ */
+export function yardClash(house: HouseMap, roomId: string, patch: Partial<Pick<Room, "label" | "location">>): boolean {
+  const room = roomById(house, roomId);
+  if (room === undefined || room.outdoor !== true) return false;
+  const own = new Set(yardOf(house, roomId));
+  const label = patch.label ?? room.label;
+  const location = patch.location !== undefined ? patch.location || undefined : room.location;
+  return house.rooms.some((r) => !own.has(r.id) && r.outdoor === true && r.floor === room.floor && r.label === label && r.location === location);
 }
 
 /** Set the label / LOCATION / colour of every piece of a room's yard at

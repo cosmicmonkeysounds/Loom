@@ -527,7 +527,9 @@ and every op is pure (`reinstall/web/src/map/`: `edit.ts`, `doors.ts`,
   height (what stands on the floor rides an elevation change), delete with
   its rooms and everything in them (refused for the last floor or the
   spawn's).
-- **Rooms** are drawn as rectangles (or typed W × D / x, z); polygon rooms
+- **Rooms** are drawn as rectangles (or typed W × D / x, z — the
+  inspector's number fields commit on Enter / blur, since every value is a
+  real resize that clamps doors and re-cuts yards); polygon rooms
   from the JSON still move, validate and delete. Delete cascades to the
   room's doors, stairs, terminals, duck spots and props (refused while the
   spawn is in it).
@@ -542,7 +544,13 @@ and every op is pure (`reinstall/web/src/map/`: `edit.ts`, `doors.ts`,
   simple, hole-free pieces as it takes (same label / LOCATION; touching
   pieces joined by a door spanning their whole shared edge), doors into
   the yard re-linked, things re-homed, and a flap door added on the room's
-  side facing the most yard when it has none. A room that stood in the
+  side facing the most yard when it has none and is free-standing (no
+  indoor room beside it — a house room drawn into the yard gets none).
+  A part of the yard the cut seals off (no opening to the rest, no door,
+  no stair, not the spawn's) gets a flap from the room, and then the room
+  one into the rest unless it has another way in. A yard's pieces are one
+  place: deleted whole, never made indoor or nudged one piece at a time,
+  and its label + LOCATION may not equal another yard's on the floor. A room that stood in the
   yard (fenced by it on ≥ half its edge) gives its footprint back when it
   moves away or is deleted; "Fill the yard" re-cuts a yard from its
   bounding box.
@@ -551,7 +559,8 @@ and every op is pure (`reinstall/web/src/map/`: `edit.ts`, `doors.ts`,
 - **Checks**, live: `validateHouse`'s problems (each read back to the
   thing it names, a click selects it), plus two warnings that never block
   a save — **walkability** (`route()` from the spawn to every duck spot,
-  the VR autopilot's algorithm) and the story's LOCATIONs (from the mod
+  the VR autopilot's algorithm; and every room no door / stair chain from
+  the spawn's room reaches) and the story's LOCATIONs (from the mod
   view, `GET /api/state`): a room naming none, a LOCATION no room is.
 
 ## 4. The terminals — world view

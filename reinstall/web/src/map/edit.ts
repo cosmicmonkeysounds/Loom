@@ -10,7 +10,7 @@ import type { SaveHouseReply } from "../api.ts";
 import { clampGap, fitDoor, rectSideOf, resolveDoor, round } from "./doors.ts";
 import { uniqueId } from "./ids.ts";
 import { labelSpot, rectOf, snap, type Edge } from "./plan.ts";
-import { settleRoom } from "./yards.ts";
+import { settleRoom, yardOf } from "./yards.ts";
 
 export { uniqueId };
 
@@ -263,6 +263,8 @@ export function patchTerminal(house: HouseMap, id: string, patch: Partial<Omit<T
  *  made indoor is cut out of any yard it overlaps. */
 export function patchRoom(house: HouseMap, id: string, patch: Partial<Pick<Room, "label" | "location" | "color" | "height" | "outdoor">>): HouseMap {
   if (!house.rooms.some((r) => r.id === id)) return house;
+  // A yard cut into pieces is one place: one piece can't turn indoor alone.
+  if (patch.outdoor === false && yardOf(house, id).length > 1) return house;
   const next = clone(house);
   const r = next.rooms.find((x) => x.id === id)!;
   Object.assign(r, patch);

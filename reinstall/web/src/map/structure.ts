@@ -11,7 +11,7 @@ import { round } from "./doors.ts";
 import { freshId, freshLabel, slug } from "./ids.ts";
 import { moveRectEdge, moveRoom } from "./edit.ts";
 import { rectOf, type Bounds } from "./plan.ts";
-import { giveBack, reflowYard, settleRoom } from "./yards.ts";
+import { giveBack, reflowYard, settleFloor, settleRoom, yardOf } from "./yards.ts";
 
 /** A new floor's default storey height, metres. */
 export const FLOOR_HEIGHT = 2.5;
@@ -94,6 +94,13 @@ export function cascadeText(c: Cascade, withRooms = false): string {
   return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
 }
 
+/** The confirm before deleting a room (or a whole yard). */
+export function deleteRoomText(room: Room, c: Cascade): string {
+  const extra = cascadeText(c);
+  const what = room.outdoor === true ? `the yard “${room.label}”${c.rooms.length > 1 ? ` (all ${c.rooms.length} pieces)` : ""}` : `the room “${room.label}”`;
+  return `Delete ${what}${extra !== "" ? ` with ${extra}` : ""}?`;
+}
+
 function dropRooms(house: HouseMap, c: Cascade): HouseMap {
   const next = cloneData(house);
   const has = (list: string[]) => new Set(list);
@@ -136,8 +143,10 @@ export function rectFrom(a: Vec2, b: Vec2): Bounds {
 /**
  * Add a rectangular room on a floor (`outdoor`: a yard — no roof, fences).
  * Its label defaults to "Room" / "Yard" (numbered when taken), its id is
- * slugged from it. An indoor room drawn over a yard is cut out of it with
- * a flap into it (`settleRoom`); a yard drawn over rooms is cut around them.
+ * slugged from it. An indoor room drawn over a yard is cut out of it
+ * (`settleRoom`, a flap when it is free-standing); a yard drawn over rooms
+ * is cut around them; a door to the outside on a wall it now shares opens
+ * onto it.
  */
 export function addRoom(house: HouseMap, floor: string, rect: Bounds, opts: { outdoor?: boolean; label?: string } = {}): { house: HouseMap; id: string } {
   const r = rect.map(round) as Bounds;
@@ -148,7 +157,11 @@ export function addRoom(house: HouseMap, floor: string, rect: Bounds, opts: { ou
   const room: Room = { id, label, floor, poly: rectPoly(r) };
   if (opts.outdoor) room.outdoor = true;
   next.rooms.push(room);
-  return { house: opts.outdoor ? reflowYard(next, [id]) : settleRoom(house, next, id), id };
+  const cut = opts.outdoor ? reflowYard(next, [id]) : settleRoom(house, next, id);
+  // Nothing re-cut: still, a door to the outside on a wall the new room now
+  // shares opens onto it (a yard drawn beside the house's front door).
+  if (cut === next) settleFloor(next, floor, new Set([id]));
+  return { house: cut, id };
 }
 
 /**
@@ -165,13 +178,20 @@ export function placeRect(house: HouseMap, w: number, d: number, beside: string 
   return [at[0], at[1], round(at[0] + w), round(at[1] + d)];
 }
 
+/** The rooms deleting `id` deletes: a yard goes whole (every piece), any other room alone. */
+export function deletesWith(house: HouseMap, id: string): string[] {
+  const pieces = yardOf(house, id);
+  return pieces.length > 0 ? pieces : [id];
+}
+
 /**
- * Delete a room with its doors, stairs and what stands in it. Refused
- * while the spawn is in it. A yard the room stood in gets its footprint back.
+ * Delete a room with its doors, stairs and what stands in it — a yard with
+ * all its pieces. Refused while the spawn is in it. A yard the room stood
+ * in gets its footprint back.
  */
 export function removeRoom(house: HouseMap, id: string): { house: HouseMap } | { error: string } {
   if (!house.rooms.some((r) => r.id === id)) return { house };
-  const c = cascadeOf(house, [id]);
+  const c = cascadeOf(house, deletesWith(house, id));
   if (c.spawn) return { error: "The spawn is in this room — move the spawn to another room first." };
   return { house: giveBack(house, dropRooms(house, c), id) };
 }

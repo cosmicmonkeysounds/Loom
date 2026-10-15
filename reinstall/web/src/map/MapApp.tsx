@@ -33,7 +33,8 @@ import { EMPTY_HISTORY, pushed, redone, undone, type History } from "./history.t
 import { Inspector } from "./Inspector.tsx";
 import { JsonTab, PlayersTab, ProblemsPanel, TerminalsTab } from "./Panels.tsx";
 import { snap2, SNAP_STEPS } from "./plan.ts";
-import { addFloor, addRoom, blankHouse, cascadeOf, cascadeText, floorDefaults, moveStair, placeRect, removeRoom } from "./structure.ts";
+import { addFloor, addRoom, blankHouse, cascadeOf, deleteRoomText, deletesWith, floorDefaults, moveStair, placeRect, removeRoom } from "./structure.ts";
+import { flapsAdded, yardOf } from "./yards.ts";
 import { Toolbar } from "./Toolbar.tsx";
 import { floorOfSelection, selectionExists, TOOLS, type EditMode, type MapToolbarContext, type Tool } from "./tools.ts";
 
@@ -208,6 +209,12 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     setText(stringify(next));
     setTextError(null);
     setSaveState((s) => (s.kind === "ok" ? { kind: "idle" } : s));
+    // A door nobody placed is said out loud: the cut gave a room a flap into the yard.
+    const flaps = flapsAdded(cur, next);
+    if (flaps.length > 0) {
+      const name = (id: string | null) => (id === null ? "outside" : (next.rooms.find((r) => r.id === id)?.label ?? id));
+      setNotice(`Added ${flaps.map((d) => `a door from ${name(d.a)} into ${name(d.b)}`).join(" and ")} (a tent flap) — move or delete it if that's not where the way in is.`);
+    }
   }, []);
 
   const step = useCallback((dir: "undo" | "redo") => {
@@ -291,11 +298,12 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     const h = draftRef.current;
     if (h === null || sel === null) return;
     if (sel.kind === "room") {
-      const c = cascadeOf(h, [sel.id]);
-      if (c.spawn) return setNotice("The spawn is in this room — move the spawn to another room first.");
-      const extra = cascadeText(c);
-      const label = h.rooms.find((r) => r.id === sel.id)?.label ?? sel.id;
-      if (!window.confirm(`Delete the room “${label}”${extra !== "" ? ` with ${extra}` : ""}?`)) return;
+      const room = h.rooms.find((r) => r.id === sel.id);
+      if (room === undefined) return;
+      // A yard goes whole: every piece it was cut into.
+      const c = cascadeOf(h, deletesWith(h, sel.id));
+      if (c.spawn) return setNotice(`The spawn is in this ${room.outdoor ? "yard" : "room"} — move the spawn to another room first.`);
+      if (!window.confirm(deleteRoomText(room, c))) return;
       const out = removeRoom(h, sel.id);
       if ("error" in out) return setNotice(out.error);
       apply(out.house);
@@ -354,7 +362,11 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
       const by = v[e.key];
       if (by === undefined) return;
       e.preventDefault();
-      if (sel.kind === "room") apply(moveRoom(h, sel.id, by[0], by[1]));
+      if (sel.kind === "room") {
+        // Like a drag: a yard cut into pieces never moves piece by piece.
+        if (yardOf(h, sel.id).length > 1) setNotice("A yard cut into pieces moves with the rooms standing in it — move those, or Fill the yard.");
+        else apply(moveRoom(h, sel.id, by[0], by[1]));
+      }
       else if (sel.kind === "stair") apply(moveStair(h, sel.id, by[0], by[1]));
       else if (sel.kind === "door") {
         const door = h.doors.find((x) => x.id === sel.id);

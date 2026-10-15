@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildWalls, polyArea, roomAt, route, validateHouse } from "@loom/house";
 import type { HouseMap } from "@loom/house";
-import { unreachableDucks, foldName, locationProblems, selectionOf, structuredProblems, walkabilityProblems } from "../src/map/check.ts";
+import { unreachableDucks, unreachableRooms, foldName, locationProblems, selectionOf, structuredProblems, walkabilityProblems } from "../src/map/check.ts";
 import { doorLine, moveDoorAlong, openEdge, patchDoor, placeDoor, resolveDoor, sidesAt, wallRun } from "../src/map/doors.ts";
 import { moveRectEdge, moveRoom, moveTo, patchRoom, removeThing } from "../src/map/edit.ts";
 import { EMPTY_HISTORY, HISTORY_DEPTH, pushed, redone, undone } from "../src/map/history.ts";
@@ -14,6 +14,8 @@ import {
   blankHouse,
   cascadeOf,
   cascadeText,
+  deleteRoomText,
+  deletesWith,
   floorDefaults,
   moveStair,
   patchFloor,
@@ -23,8 +25,8 @@ import {
   renameRoom,
   setRoomRect,
 } from "../src/map/structure.ts";
-import { fillYard, gridFor, partition, patchYard, traceCells, yardOf, yardShare } from "../src/map/yards.ts";
-import { floorOfSelection, selectionExists } from "../src/map/tools.ts";
+import { fillYard, flapsAdded, gridFor, partition, patchYard, touchesIndoor, traceCells, yardClash, yardOf, yardParts, yardShare } from "../src/map/yards.ts";
+import { floorOfSelection, isStep, parseNum, selectionExists } from "../src/map/tools.ts";
 import { L_ROOM, SHOW, STAIR, TWO_ROOMS } from "./houses.ts";
 
 /** The map is valid — or the test fails with `validateHouse`'s problems. */
@@ -403,6 +405,137 @@ describe("yards", () => {
     expect(room(o, "b").outdoor).toBe(true);
     const i = patchRoom(o, "b", { outdoor: false });
     expect("outdoor" in room(i, "b")).toBe(false);
+  });
+});
+
+describe("yards — flaps only where a way in is missing", () => {
+  /** A survey drawn room by room into a blank house's yard. */
+  const HOUSE: [string, [number, number, number, number]][] = [
+    ["Mud", [-4, 0, 0.5, 2.5]],
+    ["Bath", [-4, 2.5, 0.5, 5]],
+    ["Living", [0.5, 0, 6, 6.5]],
+    ["Kitchen", [0.5, 6.5, 6, 12]],
+    ["Hall", [-4, 5, 0.5, 8]],
+    ["Back", [-4, 8, 0.5, 12]],
+  ];
+
+  it("house rooms drawn into the yard get no exterior doors nobody placed — only the first, free-standing one a flap", () => {
+    let h = blankHouse("Survey");
+    const added: string[] = [];
+    for (const [label, rect] of HOUSE) {
+      const next = addRoom(h, "ground", rect, { label }).house;
+      added.push(...flapsAdded(h, next).map((d) => d.a));
+      h = next;
+    }
+    valid(h);
+    expect(added).toEqual(["mud"]);
+    expect(h.doors.map((d) => d.id)).toEqual(["mud-flap"]);
+    expect(touchesIndoor(h, "bath")).toBe(true);
+    expect(touchesIndoor(h, "yard")).toBe(true);
+    // The rooms the director hasn't put doors in yet are flagged.
+    expect(unreachableRooms(h)).toEqual(["bath", "living", "kitchen", "hall", "back"]);
+    expect(walkabilityProblems(h).filter((p) => p.sel?.kind === "room")).toHaveLength(5);
+  });
+
+  it("a tent cutting the yard in two opens into both parts, never sealing one off", () => {
+    const h = valid(addRoom(blankHouse("Test"), "ground", [-1, -6, 2, 10], { label: "Tent" }).house);
+    const pieces = yardOf(h, "yard");
+    expect(pieces).toHaveLength(2);
+    expect(yardParts(h, pieces)).toHaveLength(2); // no opening between them: the tent is in the way
+    for (const id of pieces) expect(h.doors.some((d) => d.a === "tent" && d.b === id)).toBe(true);
+    expect(unreachableRooms(h)).toEqual([]);
+  });
+
+  it("a shed from the house to the fence: the part it seals off opens through the shed", () => {
+    // A yard strip along TWO_ROOMS' north wall; the front door opens onto it.
+    const yard = addRoom(TWO_ROOMS(), "f", [-3, -3, 10, 0], { outdoor: true });
+    const before = valid(yard.house);
+    expect(before.doors.find((d) => d.id === "front")!.b).toBe(yard.id);
+    // The shed touches the house (b), so it is no free-standing tent — but it cuts the strip in two.
+    const h = valid(addRoom(before, "f", [5, -3, 6, 0], { label: "Shed" }).house);
+    const parts = yardParts(h, yardOf(h, yard.id));
+    expect(parts).toHaveLength(2);
+    // West keeps the front door; east is reached through the shed, which opens on both.
+    expect(h.doors.filter((d) => d.a === "shed").map((d) => d.b).sort()).toEqual(yardOf(h, yard.id).sort());
+    expect(unreachableRooms(h)).toEqual([]);
+    expect(unreachableDucks(h)).toEqual([]);
+  });
+
+  it("a part that keeps its own door gets no extra flap", () => {
+    // Doors at both ends of the strip: the east part keeps one, so the shed (touching the house) gets none.
+    const yard = addRoom(TWO_ROOMS(), "f", [-3, -3, 10, 0], { outdoor: true });
+    const withBack = { ...yard.house, doors: [...yard.house.doors, { id: "east", a: "b", b: yard.id, at: [6.5, 0] as [number, number], width: 0.9 }] };
+    const h = valid(addRoom(valid(withBack), "f", [5, -3, 6, 0], { label: "Shed" }).house);
+    expect(h.doors.filter((d) => d.a === "shed" || d.b === "shed")).toEqual([]);
+    expect(unreachableRooms(h)).toEqual(["shed"]);
+  });
+
+  it("a free-standing tent still gets its flap, said by flapsAdded", () => {
+    const before = blankHouse("Test");
+    const after = addRoom(before, "ground", [-2, -2, 2, 1], { label: "Tent" }).house;
+    expect(flapsAdded(before, after).map((d) => d.id)).toEqual(["tent-flap"]);
+    expect(flapsAdded(after, moveRoom(after, "tent", 1, 0))).toEqual([]);
+  });
+});
+
+describe("yards — one place, not its pieces", () => {
+  const split = () => addRoom(blankHouse("Test"), "ground", [-2, -2, 2, 1], { label: "Tent" }).house;
+
+  it("deleting a yard deletes every piece (and asks about all of them)", () => {
+    const h = moveTo(split(), { kind: "spawn" }, [0, -1]); // the spawn into the tent
+    const pieces = yardOf(h, "yard");
+    expect(pieces.length).toBeGreaterThan(1);
+    expect(deletesWith(h, pieces[1]!)).toEqual(pieces);
+    expect(deletesWith(h, "tent")).toEqual(["tent"]);
+    const c = cascadeOf(h, deletesWith(h, pieces[1]!));
+    expect(deleteRoomText(room(h, pieces[1]!), c)).toMatch(/^Delete the yard “Yard” \(all 2 pieces\)/);
+    const out = removeRoom(h, pieces[1]!) as { house: HouseMap };
+    expect(out.house.rooms.map((r) => r.id)).toEqual(["tent"]);
+    expect(out.house.duck.spots).toEqual([]); // the yard's duck went with it
+  });
+
+  it("a yard in pieces can't be made indoor one piece at a time", () => {
+    const h = split();
+    const pieces = yardOf(h, "yard");
+    expect(patchRoom(h, pieces[1]!, { outdoor: false })).toBe(h);
+    const whole = blankHouse("Test");
+    expect(room(patchRoom(whole, "yard", { outdoor: false }), "yard").outdoor).toBeUndefined();
+  });
+
+  it("a label or LOCATION that would merge two yards is caught", () => {
+    const h = addRoom(blankHouse("Test"), "ground", [12, -6, 20, 2], { outdoor: true }).house;
+    expect(room(h, "yard-2").label).toBe("Yard 2");
+    expect(yardClash(h, "yard-2", { label: "Yard" })).toBe(true);
+    expect(yardClash(h, "yard-2", { label: "Yard back" })).toBe(false);
+    expect(yardClash(h, "yard-2", { label: "Yard", location: "The Cloud" })).toBe(false);
+    expect(yardClash(h, "yard", { label: "Yard" })).toBe(false); // its own name
+    // A committed rename touches only its own yard.
+    const renamed = patchYard(h, "yard-2", { label: "Yard back" });
+    expect(room(renamed, "yard").label).toBe("Yard");
+  });
+});
+
+describe("number fields — commit a value, not its prefixes", () => {
+  it("parses what a field holds", () => {
+    expect(parseNum("10.5")).toBe(10.5);
+    expect(parseNum("  ")).toBeNull();
+    expect(parseNum("-")).toBeUndefined();
+    expect(parseNum("1e")).toBeUndefined();
+  });
+
+  it("applies a step at once, typing on Enter / blur", () => {
+    expect(isStep(new Event("input"))).toBe(true); // the spinner, ↑ / ↓
+    expect(isStep({ type: "input", inputType: "insertText" } as unknown as Event)).toBe(false);
+    expect(isStep({ type: "input", inputType: "deleteContentBackward" } as unknown as Event)).toBe(false);
+  });
+
+  it("why: a typed width applied keystroke by keystroke would drag the doors", () => {
+    // "10.5" typed into the backyard's W field: 1, then 10.5. Applied once, the back door stays.
+    const show = SHOW();
+    const r = room(show, "backyard").poly;
+    const [x0, z0, , z1] = [Math.min(...r.map((p) => p[0])), Math.min(...r.map((p) => p[1])), 0, Math.max(...r.map((p) => p[1]))];
+    const once = setRoomRect(show, "backyard", [x0, z0, x0 + 10.5, z1]);
+    expect(once.doors.find((d) => d.id === "back")!.at).toEqual(show.doors.find((d) => d.id === "back")!.at);
   });
 });
 

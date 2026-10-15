@@ -29,14 +29,15 @@ help article `docs/help/authoring/38-house-map.md`; the rules are
 |---|---|
 | floor tabs, **+ Floor** | switch floors; add one above the top; click the current tab to edit / delete it |
 | **▭ Room** (R) | drag a rectangle, or type **W × D** + Add (lands east of the selected room) |
-| **▒ Yard** (Y) | an outdoor rectangle; an indoor room drawn in it (the tent, the shed) is cut out of it with a flap door |
+| **▒ Yard** (Y) | an outdoor rectangle; an indoor room drawn in it (the tent, the shed) is cut out of it — a free-standing one with a flap door (a notice says so), and any part of the yard the cut seals off gets one; a yard in pieces is selected / renamed / deleted whole |
 | **▯ Door** (D) | click a wall: snaps on, 0.9 m, joins the rooms either side (one room = outside) |
 | **▤ Stairs** (S) | drag the rect on the lower floor, pick the rooms + the rising side |
 | **↖ Select** (V, Esc) | click / drag; a selected room by its body (with its doors and contents) or an edge |
 | snap, wheel, Space-drag | 1–50 cm snap with room edges pulled onto neighbours'; zoom; pan |
 | ⌘Z / ⇧⌘Z | undo / redo every edit |
 | **🧊 3D** | the draft as the games build it (`buildHouseScene`, no ceilings; a lazy chunk), this floor or every floor |
-| problem list | `validateHouse` problems (click selects), warnings: unreachable duck spots, LOCATION mismatches |
+| inspector numbers | commit on Enter / blur (a typed prefix is never applied as a resize); spinner steps at once |
+| problem list | `validateHouse` problems (click selects), warnings: unreachable duck spots, rooms no door leads into, LOCATION mismatches |
 
 The code: `src/map/MapApp.tsx` (state, load / save), `Canvas.tsx` (the
 plan + gestures), `Toolbar.tsx`, `Inspector.tsx`, `Panels.tsx`, and the

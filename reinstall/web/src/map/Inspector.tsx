@@ -4,7 +4,7 @@
 //! `structure.ts`, `yards.ts`) and lands as one undo step; deleting a room
 //! or a floor says first what goes with it.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { DEFAULT_SPOT_FOV, DUCK_MAX_RISE, floorById, roomById } from "@loom/house";
 import type { Compass, HouseMap } from "@loom/house";
@@ -12,12 +12,36 @@ import type { StoryLocation } from "./check.ts";
 import { DOOR_WIDTH, openEdge, patchDoor, resolveDoor } from "./doors.ts";
 import { addDuckSpot, addTerminal, moveTo, patchRoom, patchTerminal, positionOf, provisionLink, removeThing, setHeight, setYaw, yawOf, type Selection } from "./edit.ts";
 import { metres, rectOf } from "./plan.ts";
-import { cascadeOf, cascadeText, patchFloor, patchStair, removeFloor, removeRoom, renameRoom, setRoomRect, stairCandidates } from "./structure.ts";
-import { fillYard, patchYard, yardOf } from "./yards.ts";
+import { cascadeOf, cascadeText, deleteRoomText, deletesWith, patchFloor, patchStair, removeFloor, removeRoom, renameRoom, setRoomRect, stairCandidates } from "./structure.ts";
+import { fillYard, patchYard, yardClash, yardOf } from "./yards.ts";
+import { isStep, parseNum } from "./tools.ts";
 
+/** A field typed into and then unmounted (the selection moved on before it blurred) still lands what was typed. */
+function useCommitOnUnmount(pending: (() => void) | null): void {
+  const ref = useRef(pending);
+  ref.current = pending;
+  useEffect(() => () => ref.current?.(), []);
+}
+
+/**
+ * A number field that commits on Enter / blur — a typed number passes
+ * through every prefix of itself ("10.5" is 1, then 10, …), and each of
+ * those applied would be a real resize, leaving doors clamped and yards
+ * re-cut by values nobody meant. A step (the spinner, ↑ / ↓) is a whole
+ * value and lands at once. Esc puts the field back.
+ */
 export function Num({ label, value, onChange, step = 0.05, disabled, placeholder }: { label: string; value: number | null; onChange: (v: number | null) => void; step?: number; disabled: boolean; placeholder?: string }) {
-  const [text, setText] = useState(value === null ? "" : String(value));
-  useEffect(() => setText(value === null ? "" : String(value)), [value]);
+  const shown = value === null ? "" : String(value);
+  const [text, setText] = useState(shown);
+  useEffect(() => setText(shown), [shown]);
+  const commit = (t: string) => {
+    if (t === shown) return;
+    const v = parseNum(t);
+    // Back to the value shown: the edit (if it changed anything) re-renders it.
+    setText(shown);
+    if (v !== undefined) onChange(v);
+  };
+  useCommitOnUnmount(text !== shown ? () => commit(text) : null);
   return (
     <label className="num">
       {label}
@@ -30,19 +54,23 @@ export function Num({ label, value, onChange, step = 0.05, disabled, placeholder
         placeholder={placeholder}
         onChange={(e) => {
           setText(e.target.value);
-          if (e.target.value.trim() === "") return onChange(null);
-          const v = Number(e.target.value);
-          if (Number.isFinite(v)) onChange(v);
+          if (isStep(e.nativeEvent)) commit(e.target.value);
+        }}
+        onBlur={(e) => commit(e.currentTarget.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+          else if (e.key === "Escape") setText(shown);
         }}
       />
     </label>
   );
 }
 
-/** A text field that commits on Enter / blur (ids: renaming on every keystroke would churn references). */
-function CommitText({ label, value, disabled, onCommit }: { label: string; value: string; disabled: boolean; onCommit: (v: string) => void }) {
+/** A text field that commits on Enter / blur (ids: renaming on every keystroke would churn references; a yard's label: its pieces are grouped by it). */
+function CommitText({ label, value, disabled, onCommit, list, placeholder, children }: { label: ReactNode; value: string; disabled: boolean; onCommit: (v: string) => void; list?: string; placeholder?: string; children?: ReactNode }) {
   const [text, setText] = useState(value);
   useEffect(() => setText(value), [value]);
+  useCommitOnUnmount(text !== value ? () => onCommit(text) : null);
   return (
     <label className="field">
       {label}
@@ -50,10 +78,16 @@ function CommitText({ label, value, disabled, onCommit }: { label: string; value
         className="w98-input"
         value={text}
         disabled={disabled}
+        {...(list !== undefined ? { list } : {})}
+        {...(placeholder !== undefined ? { placeholder } : {})}
         onChange={(e) => setText(e.target.value)}
         onBlur={() => text !== value && onCommit(text)}
-        onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+          else if (e.key === "Escape") setText(value);
+        }}
       />
+      {children}
     </label>
   );
 }
@@ -190,7 +224,7 @@ export function Inspector(props: InspectorProps) {
       );
     }
     case "room":
-      return <RoomInspector {...props} id={sel.id} />;
+      return <RoomInspector key={sel.id} {...props} id={sel.id} />;
     case "door": {
       const d = house.doors.find((x) => x.id === sel.id);
       if (d === undefined) return null;
@@ -279,7 +313,7 @@ export function Inspector(props: InspectorProps) {
       );
     }
     case "floor":
-      return <FloorInspector {...props} id={sel.id} />;
+      return <FloorInspector key={sel.id} {...props} id={sel.id} />;
   }
 }
 
@@ -301,14 +335,18 @@ function RoomInspector({ house, edit, locations, commit, onSelect, onNotice, id 
     commit(setRoomRect(house, r.id, to));
   };
   const remove = () => {
-    const c = cascadeOf(house, [r.id]);
-    if (c.spawn) return onNotice("The spawn is in this room — move the spawn to another room first.");
-    const extra = cascadeText(c);
-    if (!window.confirm(`Delete the room “${r.label}”${extra !== "" ? ` with ${extra}` : ""}?`)) return;
+    const c = cascadeOf(house, deletesWith(house, r.id));
+    if (c.spawn) return onNotice(`The spawn is in this ${r.outdoor ? "yard" : "room"} — move the spawn to another room first.`);
+    if (!window.confirm(deleteRoomText(r, c))) return;
     const out = removeRoom(house, r.id);
     if ("error" in out) return onNotice(out.error);
     commit(out.house);
     onSelect(null);
+  };
+  /** Label / LOCATION: never into another yard's (its pieces would merge with this one's). */
+  const patchNamed = (patch: { label?: string; location?: string }) => {
+    if (yardClash(house, r.id, patch)) return onNotice(`Another yard on this floor is already “${patch.label ?? r.label}”${(patch.location ?? r.location) ? ` (${patch.location ?? r.location})` : ""} — two yards with one name would merge into one. Pick another name.`);
+    commit(patchYard(house, r.id, patch));
   };
   const add = (kind: "terminal" | "duck") => {
     const out = kind === "terminal" ? addTerminal(house, r.id) : addDuckSpot(house, r.id);
@@ -322,10 +360,7 @@ function RoomInspector({ house, edit, locations, commit, onSelect, onNotice, id 
         {floor?.label ?? r.floor} · {rect !== null ? `${metres(rect[2] - rect[0])} × ${metres(rect[3] - rect[1])}` : `${r.poly.length}-sided`}
         {pieces.length > 1 && ` · 1 of ${pieces.length} pieces`}
       </div>
-      <label className="field">
-        label
-        <input className="w98-input" value={r.label} disabled={!edit} onChange={(e) => commit(patchYard(house, r.id, { label: e.target.value }))} />
-      </label>
+      <CommitText label="label" value={r.label} disabled={!edit} onCommit={(v) => patchNamed({ label: v })} />
       <CommitText
         label="id (doors, terminals and the games refer to it)"
         value={r.id}
@@ -337,15 +372,20 @@ function RoomInspector({ house, edit, locations, commit, onSelect, onNotice, id 
           onSelect({ kind: "room", id: v.trim() });
         }}
       />
-      <label className="field">
-        story LOCATION{locations === null && <span className="muted"> (the story isn't loaded — names used so far)</span>}
-        <input className="w98-input" list={listId} value={r.location ?? ""} disabled={!edit} onChange={(e) => commit(patchYard(house, r.id, { location: e.target.value }))} placeholder="The Cache" />
+      <CommitText
+        label={<>story LOCATION{locations === null && <span className="muted"> (the story isn't loaded — names used so far)</span>}</>}
+        value={r.location ?? ""}
+        disabled={!edit}
+        list={listId}
+        placeholder="The Cache"
+        onCommit={(v) => patchNamed({ location: v })}
+      >
         <datalist id={listId}>
           {names.map((n) => (
             <option key={n} value={n} />
           ))}
         </datalist>
-      </label>
+      </CommitText>
       <div className="num-row">
         <label className="num">
           floor tint
@@ -354,9 +394,18 @@ function RoomInspector({ house, edit, locations, commit, onSelect, onNotice, id 
         <Num label="height m" value={r.height ?? null} placeholder={`${floor?.height ?? ""}`} disabled={!edit || r.outdoor === true} onChange={(v) => commit(patchRoom(house, r.id, { height: v ?? undefined }))} />
       </div>
       <label className="radio checkbox">
-        <input type="checkbox" checked={r.outdoor === true} disabled={!edit} onChange={(e) => commit(patchRoom(house, r.id, { outdoor: e.target.checked }))} /> Outdoor (yard — no roof, fences)
+        <input
+          type="checkbox"
+          checked={r.outdoor === true}
+          disabled={!edit}
+          onChange={(e) => {
+            if (!e.target.checked && pieces.length > 1) return onNotice(`This yard is cut into ${pieces.length} pieces around the rooms in it, so it can't become one indoor room — delete it and draw a room instead.`);
+            commit(patchRoom(house, r.id, { outdoor: e.target.checked }));
+          }}
+        />{" "}
+        Outdoor (yard — no roof, fences)
       </label>
-      {rect !== null && (
+      {rect !== null && pieces.length < 2 && (
         <div className="num-row">
           <Num label="x (west)" value={rect[0]} disabled={!edit} onChange={(v) => setRect(0, v)} />
           <Num label="z (north)" value={rect[1]} disabled={!edit} onChange={(v) => setRect(1, v)} />
@@ -378,13 +427,15 @@ function RoomInspector({ house, edit, locations, commit, onSelect, onNotice, id 
             </button>
           )}
           <button className="w98-button" onClick={remove}>
-            Delete room…
+            {r.outdoor ? "Delete yard…" : "Delete room…"}
           </button>
         </div>
       )}
       <p className="muted small">
         {edit
-          ? rect !== null
+          ? pieces.length > 1
+            ? "A yard cut around the rooms in it: move or resize those rooms (the yard follows), or Fill the yard. Deleting it deletes every piece."
+            : rect !== null
             ? "Drag the room to move it (with what stands in it and its doors); drag an edge to resize. Drawn over a yard, an indoor room is cut out of it with a door in."
             : "A polygon room: drag it to move it; its shape is edited in the JSON tab."
           : "Tick Edit to change it."}

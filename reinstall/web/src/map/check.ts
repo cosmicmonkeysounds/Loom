@@ -3,7 +3,8 @@
 //! a click selects it. On top of validation, two checks the validator
 //! can't make: **walkability** (SW-MAP-09 — `route()` from the spawn to
 //! every duck spot, the algorithm the VR autopilot follows, so a duck
-//! nobody can walk to is caught before the show), and the story's
+//! nobody can walk to is caught before the show — plus every room no
+//! chain of doors leads into), and the story's
 //! **LOCATIONs** (a room naming none of them; a LOCATION no room is).
 //! Those two are warnings: they never block a save.
 
@@ -65,13 +66,44 @@ export function unreachableDucks(house: HouseMap): string[] {
   return out;
 }
 
-/** Walkability as warnings (one per unreachable duck spot). */
+/**
+ * The rooms no door (or stair) chain leads to from the spawn's room — a
+ * part of a yard a tent sealed off, a room drawn with no door yet. Read
+ * off the door graph alone (a door to the outside leads nowhere), so it
+ * runs on any draft.
+ */
+export function unreachableRooms(house: HouseMap): string[] {
+  const links = new Map<string, string[]>(house.rooms.map((r) => [r.id, []]));
+  const link = (a: string, b: string) => {
+    links.get(a)?.push(b);
+    links.get(b)?.push(a);
+  };
+  for (const d of house.doors) if (d.b !== null) link(d.a, d.b);
+  for (const s of house.stairs) link(s.from, s.to);
+  const seen = new Set<string>([house.spawn.room]);
+  const stack = [house.spawn.room];
+  while (stack.length > 0) {
+    for (const n of links.get(stack.pop()!) ?? []) {
+      if (seen.has(n)) continue;
+      seen.add(n);
+      stack.push(n);
+    }
+  }
+  return house.rooms.filter((r) => !seen.has(r.id)).map((r) => r.id);
+}
+
+/** Walkability as warnings: one per unreachable duck spot, then one per room nobody can walk into. */
 export function walkabilityProblems(house: HouseMap): Problem[] {
-  return unreachableDucks(house).map((id) => {
+  const ducks = unreachableDucks(house).map((id): Problem => {
     const spot = house.duck.spots.find((d) => d.id === id)!;
     const room = roomById(house, spot.room)?.label ?? spot.room;
     return { text: `duck spot "${id}" (${room}) can't be reached from the spawn (no way through the doors)`, sel: { kind: "duck", id }, level: "warning" };
   });
+  const rooms = unreachableRooms(house).map((id): Problem => {
+    const r = roomById(house, id)!;
+    return { text: `${r.outdoor ? "yard" : "room"} "${id}" (${r.label}) can't be reached from the spawn — no door leads into it`, sel: { kind: "room", id }, level: "warning" };
+  });
+  return [...ducks, ...rooms];
 }
 
 /** A story LOCATION, as the mod view lists them. */

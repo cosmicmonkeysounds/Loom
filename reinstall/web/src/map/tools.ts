@@ -90,3 +90,20 @@ export interface MapToolbarContext {
   /** Reload the event's map from the server, dropping the draft. */
   reload: () => Promise<void>;
 }
+
+/** A number field's text: a number, `null` for an empty field, `undefined` for something that isn't one. */
+export function parseNum(text: string): number | null | undefined {
+  if (text.trim() === "") return null;
+  const v = Number(text);
+  return Number.isFinite(v) ? v : undefined;
+}
+
+/**
+ * Whether a number field's `input` event is a step (its spinner, ↑ / ↓ —
+ * a whole value, safe to apply at once) rather than typing (an
+ * `InputEvent` with an `inputType`: the field may hold a prefix of the
+ * number being typed, so it waits for Enter / blur).
+ */
+export function isStep(ev: Event): boolean {
+  return !("inputType" in ev) || (ev as InputEvent).inputType === "";
+}
