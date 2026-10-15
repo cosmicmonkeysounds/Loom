@@ -200,6 +200,12 @@ codes), 16 quests, 85 story rules, 100 INTERACTIONs.**
    [`scripts/accept/`](../../../scripts/accept) (`<id>.sh` / `.ts` / `.md`;
    the scripts that fire cues refuse a live event with real guests unless
    told otherwise).
+10. **The chess phone** (the Cold Lock, outside the server room): charged,
+    plugged in, on Wi-Fi, screen held awake, Lichess at the agreed
+    computer level. It sends no heartbeat, so it never shows on the
+    Terminals card. Every host and Antivirus knows the honour rule: ♟ *They
+    beat the machine* only after **seeing** "checkmate" (OP-12). Director's
+    side: the editor's Help → *Running the Cold Lock*.
 
 ## Running the night
 
@@ -300,6 +306,17 @@ scanning its sign (`checked_in`, see the integration contract).
 | **🏍 After the dance: weakened Trabolta recounts** (`trabolta_recounts`, after Combo A) | — | Everyone gets every backstory + truth.txt. He names each identity, motive and accomplishment, plus the trustworthy and worst program, then leaves on his motorcycle and everyone is freed. |
 | **🪦 After the dance: Clippy reads the summary** (`clippy_reads_summary`, after Combo B) | Clippy reads Purgatory from their phone (CI 9) | Purgatory. Private fate lines by faction. Trabolta's line goes dark. |
 | **💡 Restore the house lights** | — | The manual fallback for Trabolta's `cut_the_lights` (auto-restored after 90 s). |
+
+**The Cold Lock, when it goes wrong.** *The phone is dead, froze, or lost
+its game mid-mate, and the crew saw the win:* fire **♟ Cold Lock: they
+beat the machine** from the cue sheet (no guest needed; it's off-sequence,
+so LAST / NEXT don't move). *A door propped open:* once the 90 s window
+closes, the next "open" report from the door trips the alarm (the first
+alarm costs Trabolta), so the server-room watch shuts the door behind the
+group. If the crew propped it (setup, a rehearsal, a leftover unlock),
+**🔒 re-lock + re-arm** clears the latch and closes any window; **💡**
+brings the lights back. A second win inside a window restarts the 90 s;
+pausing the run freezes it.
 
 ### F. The final reveal and the other endings
 
@@ -539,6 +556,7 @@ live night replay identically.
 |---|---|---|
 | **Show control** | story ⇄ house | [`stagehand/trapped.house.yaml`](../../../stagehand/trapped.house.yaml) (the `show` module, on the house Mac) joins the mod SSE feed. It maps `cue lights_*` to Zigbee2MQTT `scene_recall` + WLED presets, the long form `<cue: lights, room: X, state: off\|on>` to that room's group, `sound <name>` to the QLab cue of the same name, `do announce "…"` to MQTT `show/announce` → stagehand's `alexa` player on the house Mac (a chime + the Kokoro voice on MOTU zones Z1 living + Z2 kitchen; `say` as the last resort; [`scripts/house-mac/alexa.md`](../../../scripts/house-mac/alexa.md)), and `do door server_room, state: locked\|unlocked` to the ESP32 door indicator (`show/serverroom/lock`, retained; no maglock). `lights_blackout` never darkens the stairs, bathroom, tent, server room or the server-room → living-room path (they are out of the `house` group; WLED goes off per device and the Tube strip stays on a dim static preset). `screens_flicker` also blinks the house lights. Screen cues (`screens_*`, `tv_*`, `terminals_*`, `tablet_webmd`) are mirrored into `Night.screen` / `Night.terminals` until a Screens layer exists. |
 | **Sensors** | house → story | stagehand turns MQTT into `POST /api/mod/signal {name}`: `server_door_opened` (door contact, `edge: true`, retained messages ignored; the story latches the alarm for 120 s), `printer_button_pressed`, `printer_opened`, and the patch bay's `patch_combo_a` / `patch_combo_b` / `patch_rejected` (the server-room ESP32, [`hardware/server-room/`](../../../hardware/server-room)), plus `chess_lost` / `chess_drawn` from the chess phone. Stagehand judges the combos until signal args exist. Every one also has an admin fallback button. |
+| **The chess phone** (the Cold Lock) | phone / performer / director → story | On the night the phone runs the Lichess app and reports nothing, so a win arrives one of two ways: a host or Antivirus who saw the mate presses **♟ They beat the machine** on the winner's card (`POST /api/prime/act {name: "beat_the_machine", guest: <guest id>}` → `fire chess_won for program`), or the director fires the admin cue **♟ Cold Lock** (`POST /api/mod/signal {name: "chess_won"}`; `"chess won"` folds to it). A phone app that can report sends the same signal, plus `chess_lost` / `chess_drawn`; a duplicate win only restarts the window. From `Night.step >= 14`, while the room is locked: `Kernel.disarmed_until = Time.elapsed + 90`, the alarm latch cleared, `do door server_room, state: unlocked` (ring green), `lights_server_open`, and `# hosts` logs it; when the window closes, `do door server_room, state: locked` and `lights_y2k`. `server_door_opened` alarms only outside a window. `rearm_server_room` closes a window. No heartbeat (OP-12). Director's runbook: Help → *Running the Cold Lock* (`docs/help/authoring/38-cold-lock.md`). |
 | **Check-in** | door / QR / terminal → story | `POST /api/mod/signal {name: "checked_in", subject: "<guest id>", args: {at: "The Desktop"}}`. `at` must be the **exact declared LOCATION name**. Anything else, or no arg, moves nobody. Sources: the door scan during the summons, the 📍 button, and **room signs** (K-13): a guest's camera opens `?code=&checkin=<slug>` and the phone posts `POST /api/guest/checkin {at: slug}`; the server folds the slug onto the LOCATION and signals `checked_in`. Refused while captured, on rails, in a prison / sealed room, for a hidden, prison, cutscene or `checkin: false` room (The Server Room), and within 20 s of the last check-in. |
 | **The CAPTCHA, tutorial and poll** | guest phone → story | `show captcha / tutorial / poll …` cards answer via `POST /api/guest/widget {seq, result}`, which the story hears as `when captcha answered for program:` (and so on). |
 | **Wall QR codes** | guest phone → app | Print from the editor: Run → Join → **🖨 Print sheet…** (QRs drawn in the browser). Source: `POST /api/mod/codes` → `codex[]` (`?code=&unlock=`), `joinLink` (the join poster) and `checkin[]` (one room sign per non-prison, non-cutscene LOCATION, `?code=&checkin=<slug>`). A signed-in guest redeems on load. |
