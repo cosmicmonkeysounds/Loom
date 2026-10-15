@@ -41,6 +41,7 @@ import {
   type PictureChoice,
 } from "./identity.ts";
 import { foldName } from "../src/parser/names.ts";
+import { printExtras } from "./routes/k12.ts";
 import { SpatialHub, houseVersion, houseWarnings, isWorld, parsePose, sortCandidates, type SessionRef } from "./spatial.ts";
 import {
   AgentHub,
@@ -2708,6 +2709,7 @@ export class EventRuntime {
           modPass: this.codes.mod,
           joinUrl: base,
           codex,
+          ...printExtras(this.sim?.model ?? null, base, this.codes.event),
         });
         return true;
       }

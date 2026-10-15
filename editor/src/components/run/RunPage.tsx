@@ -18,6 +18,7 @@ import { downloadRunExport } from '@/lib/run-export'
 import { useInspect } from '@/components/cockpit/inspect'
 import { FactionPill } from '@/components/cockpit/ui'
 import { runAge } from './run-chrome'
+import { PrintSheet } from './PrintSheet'
 
 // The Barcode Detection API isn't in the TS DOM lib; narrow shim (no `any`).
 interface BarcodeDetectorLike {
@@ -233,6 +234,7 @@ function EmptyState() {
 function JoinCard() {
   const run = useCockpit((s) => s.run)
   const cast = useCockpit((s) => s.cast)
+  const [printing, setPrinting] = useState(false)
   if (run === null || run.codes === null || run.joinUrl === null) return null
   const live = run.mode === RunMode.Live
   return (
@@ -245,6 +247,16 @@ function JoinCard() {
           <a href={run.joinUrl} target="_blank" rel="noreferrer" className="text-center text-xs text-indigo-400 hover:underline">
             Open guest view ↗
           </a>
+          {run.eventId !== null && (
+            <button
+              onClick={() => setPrinting(true)}
+              className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-200 hover:bg-zinc-800"
+              data-testid="run-print"
+              title="Join poster, codex posters and room check-in signs, ready to print"
+            >
+              🖨 Print sheet…
+            </button>
+          )}
         </div>
         <div>
           <div className="rounded-lg bg-white p-2">
@@ -282,6 +294,7 @@ function JoinCard() {
           </ul>
         </div>
       )}
+      {printing && run.eventId !== null && <PrintSheet eventId={run.eventId} onClose={() => setPrinting(false)} />}
     </Card>
   )
 }

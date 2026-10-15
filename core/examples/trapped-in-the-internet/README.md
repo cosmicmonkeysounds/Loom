@@ -483,7 +483,7 @@ live night replay identically.
 | **Sensors** | house → story | stagehand turns MQTT into `POST /api/mod/signal {name}`: `server_door_opened` (door contact, `edge: true`, retained messages ignored; the story latches the alarm for 120 s), `printer_button_pressed`, `printer_opened`, and the patch bay's `patch_combo_a` / `patch_combo_b` / `patch_rejected`. Stagehand judges the combos until signal args exist. Every one also has an admin fallback button. |
 | **Check-in** | door / QR / terminal → story | `POST /api/mod/signal {name: "checked_in", subject: "<guest id>", args: {at: "The Desktop"}}`. `at` must be the **exact declared LOCATION name**. Anything else, or no arg, moves nobody. Today the sources are the door scan during the summons and the 📍 button. |
 | **The CAPTCHA, tutorial and poll** | guest phone → story | `show captcha / tutorial / poll …` cards answer via `POST /api/guest/widget {seq, result}`, which the story hears as `when captcha answered for program:` (and so on). |
-| **Wall QR codes** | guest phone → app | Print the `url` from `POST /api/mod/codes` → `codex[]` (`?code=&unlock=`). A signed-in guest redeems on load. |
+| **Wall QR codes** | guest phone → app | Print from the editor: Run → Join → **🖨 Print sheet…** (QRs drawn in the browser). Source: `POST /api/mod/codes` → `codex[]` (`?code=&unlock=`), `joinLink` (the join poster) and `checkin[]` (one room sign per non-prison, non-cutscene LOCATION, `?code=&checkin=<slug>`). A signed-in guest redeems on load. |
 | **Codex room** | guest phone → server | `POST /api/guest/codex/redeem {code}` · `POST /api/guest/codex/share {entry, to}` |
 | **Performer booth** | performer phone → server | `POST /api/prime/codex/share {entry, to}`; `POST /api/prime/act` fires the guest-card buttons *as* that character. |
 | **Puzzles / hardware unlocks** | puzzle → story | `POST /api/mod/codex {who, entry}` · `POST /api/mod/quest {who, quest, action, text?}`. Guest ids come from the pass QR, or from `/api/state?role=mod` → `roster`. |
@@ -563,8 +563,9 @@ presses the slip's question number (Q1–Q3).
 ### QR placements (all 41 coded entries)
 
 Print each as a QR of its `?code=&unlock=` link (from `POST
-/api/mod/codes`) **plus** the typed code. The printable-sheet software is
-a CHECKLIST item.
+/api/mod/codes`) **plus** the typed code: Run → Join → **🖨 Print sheet…**
+prints them with the join poster and the room check-in signs (skip The
+Server Room's sign — the check-in rule doesn't handle it).
 
 | Where | Codes |
 |---|---|

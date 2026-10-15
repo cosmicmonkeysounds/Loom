@@ -420,6 +420,11 @@ describe("routes — codex", () => {
         url: "http://party.local:7000/?code=EVT777&unlock=sandy1997",
       },
     ]);
+    // K-12: the print sheet's join poster + one check-in sign per room.
+    expect(codes.json.joinLink).toBe("http://party.local:7000/?code=EVT777");
+    expect(codes.json.checkin).toEqual([
+      { id: "The Desktop", label: "The Desktop", slug: "the-desktop", url: "http://party.local:7000/?code=EVT777&checkin=the-desktop", hidden: false },
+    ]);
   });
 
   it("the 9th wrong code in a minute gets a 429 and is never journaled; other guests are unaffected", async () => {
