@@ -149,8 +149,12 @@ You are the DIRECTOR OF THE MIND of Trabolta…
   so the voice can never tell a true answer from a confident lie), and a
   note, brief line or dossier entry that *judges* one is dropped too; the
   trace's result lists what was `suppressed`. Codex entries carrying a
-  `lore` marker never reach any prompt (ground-truth lore, held lore,
-  lookup cards), and a restored mind is pruned on boot.
+  `lore` marker never reach any prompt — text *or* title, since a title
+  can be the answer (ground-truth lore, held lore, what the speaker holds,
+  lookup cards, the house digest, the survey delta) — and a restored mind
+  is pruned on boot. Keep `topics` to specific phrases (a common word
+  like "song" drops every claim that uses it) and never an answer word:
+  topics are printed into the orchestrator's prompt.
 - **`phases`** — when the house enters a phase (`Night.phase` in the
   facts delta), the orchestrator's survey is handed the author's cue for
   it; a reflection always sees the current phase's cue.

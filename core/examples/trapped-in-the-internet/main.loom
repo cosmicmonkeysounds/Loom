@@ -121,6 +121,7 @@ LOCATION The Registry
 LOCATION The Server Room
   label: The Server Room (cold storage)
   hidden: true
+  checkin: false
 
 // ── Every guest is a Program ────────────────────────────────────────
 // Per-person state plus every rule that applies to one uploaded mind.
@@ -178,6 +179,7 @@ ROLE Program
   banished: bool = false
   fact_round: 0 to 3 = 0
   fact_try: 0 to 8 = 0
+  fact_q_round: 0 to 3 = 0
   fact_n: 0 to 8 = 0
   fact_pending: bool = false
   last_fact_q: text? = none
@@ -440,6 +442,7 @@ ROLE Program
       set Trabolta.truth += 4
       set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 + program.assessment
       set program.may_answer = false
+      // K-26 recap credits this to the last program write above it: keep one directly before.
       set Kernel.lies_accepted += 1
       if Night.round == 1 and program.judge_q == 1:
         set Kernel.q1 = "lie"
@@ -491,9 +494,12 @@ ROLE Program
   // ── 📝 File a fact: DM filings with Trabolta (#33) ──
   // A lie told to Trabolta counts only when the program FILES it on the 📝
   // card in dm:Trabolta: pick a question of the current round, type the
-  // answer, tick "I'm certain". Free chat never counts. The card is dealt
-  // when each round's questions open (and on clearance after that), and
-  // re-dealt after every filing. A filing lands in # hosts; a host judges
+  // answer, tick "I'm certain". Free chat never counts. A question from a
+  // round that hasn't opened is refused (a crafted filing can't reach F2 in
+  // round 1); an earlier round's question still files late — the verdict
+  // needs all eight. The card is dealt when each round's questions open
+  // (and on clearance after that), and re-dealt after every filing (the
+  // server throttles widget answers per guest, LOOM_RL_WIDGETS). A filing lands in # hosts; a host judges
   // it with 📝 accurate / 📝 confident lie on the program's card, any time
   // (no judging window, no cup). Question ids are absolute: H1–H6 are the
   // two hunts, F1–F2 the final facts → Kernel.q1–q8. One filing per
@@ -514,32 +520,43 @@ ROLE Program
 
   when fact answered for program:
     set program.fact_try = 0
+    set program.fact_q_round = 0
     if question == "H1":
       set program.fact_try = 1
+      set program.fact_q_round = 1
       set program.fact_label = "round 1 Q1"
     else if question == "H2":
       set program.fact_try = 2
+      set program.fact_q_round = 1
       set program.fact_label = "round 1 Q2"
     else if question == "H3":
       set program.fact_try = 3
+      set program.fact_q_round = 1
       set program.fact_label = "round 1 Q3"
     else if question == "H4":
       set program.fact_try = 4
+      set program.fact_q_round = 2
       set program.fact_label = "round 2 Q1"
     else if question == "H5":
       set program.fact_try = 5
+      set program.fact_q_round = 2
       set program.fact_label = "round 2 Q2"
     else if question == "H6":
       set program.fact_try = 6
+      set program.fact_q_round = 2
       set program.fact_label = "round 2 Q3"
     else if question == "F1":
       set program.fact_try = 7
+      set program.fact_q_round = 3
       set program.fact_label = "final Q1"
     else if question == "F2":
       set program.fact_try = 8
+      set program.fact_q_round = 3
       set program.fact_label = "final Q2"
     if certain != true or program.fact_try == 0:
       Trabolta: Pick one of tonight's questions, {program.name}, and file only what you are certain of.
+    else if program.fact_q_round > Night.round:
+      Trabolta: That question is not open yet, {program.name}. File what has been asked.
     else if program.corrupted == true:
       Trabolta: Programs in the Internet cannot file facts. Come back reinstalled.
     else if program.fact_pending == true:
@@ -606,6 +623,7 @@ ROLE Program
       broadcast "📝 {program.name} has no unjudged filing." to channel(hosts)
     else:
       set program.fact_pending = false
+      // K-26 recap credits this to the last program write above it: keep one directly before.
       set Kernel.lies_accepted += 1
       if program.fact_n == 1:
         set Kernel.q1 = "lie"
@@ -1040,6 +1058,9 @@ ROLE Program
 // C = app, V = monitor, Clippy N/X). Fire them from Run → Events /
 // quick-fire, never from a performer's guest card (a guest-card press
 // carries that character as the actor, so only its hooks would hear).
+// `sequence: false` marks a cue a machine fires (the duck game, the door
+// reed, the printer, the patch bay, the chess phone) — the sheet ticks it
+// but it never becomes LAST / NEXT, so a duck find can't eat the next cue.
 
 INTERACTION call_to_the_desktop
   label: C1/V1 · 📣 Call everyone to the Desktop
@@ -1125,10 +1146,12 @@ INTERACTION show_the_rankings
 INTERACTION printer_button_pressed
   label: 🖨 Printer: START pressed (hardware fallback)
   who: admin
+  sequence: false
 
 INTERACTION printer_opened
   label: 🫘 Printer opened: full of beans (hardware fallback)
   who: admin
+  sequence: false
 
 INTERACTION zip_everyone_out
   label: 🗜 Antivirus zip everyone out of the Internet
@@ -1157,6 +1180,7 @@ INTERACTION server_unlock
 INTERACTION server_door_opened
   label: 🚪 Server room door opened (hardware fallback)
   who: admin
+  sequence: false
 
 INTERACTION rearm_server_room
   label: 🔒 Server room: re-lock + re-arm (clears the alarm latch)
@@ -1166,6 +1190,7 @@ INTERACTION rearm_server_room
 INTERACTION chess_won
   label: ♟ Cold Lock: they beat the machine (chess phone fallback)
   who: admin
+  sequence: false
   description: From the Y2K hour: the server-room door is disarmed for 90 s, then re-locks. Before that it is practice only.
 
 INTERACTION force_majority_stay
@@ -1181,14 +1206,17 @@ INTERACTION force_majority_leave
 INTERACTION patch_combo_a
   label: 🔌 Patch: Combo A, disable Trabolta (hardware fallback)
   who: admin
+  sequence: false
 
 INTERACTION patch_combo_b
   label: 💥 Patch: Combo B, self-destruct (hardware fallback)
   who: admin
+  sequence: false
 
 INTERACTION patch_rejected
   label: ❌ Patch: wrong combination (hardware fallback)
   who: admin
+  sequence: false
 
 INTERACTION lights_dance
   label: 🪩 Dance lights (fallback: auto 10 s after the blackout)
@@ -1287,11 +1315,13 @@ INTERACTION award_quest_completionist
 INTERACTION the simulation completed
   label: Reinstallation: simulation completed (server)
   who: admin
+  sequence: false
   description: Fired by the reinstallation games (headset or tablet) for one program when they reach Gerald, the golden duck. Releases a corrupted program.
 
 INTERACTION the golden duck
   label: Reinstallation: the golden duck (server)
   who: admin
+  sequence: false
   description: Fired by the reinstallation games right after the simulation completes, for whoever found the duck, corrupted or just curious.
 
 // Performer buttons (on every guest card). Every hook guards its phase

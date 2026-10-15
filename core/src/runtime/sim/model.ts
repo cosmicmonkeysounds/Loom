@@ -87,6 +87,10 @@ export interface LocationDef {
    *  a full-screen stream of what is said *to them*, no rooms sidebar. The
    *  Mud Room login of *Trapped in the Internet* is the reference. */
   cutscene: boolean;
+  /** `checkin: false` — no room check-in sign is printed for this place and
+   *  a check-in never lands a guest there (a locked room like the Server
+   *  Room, whose `hidden` would otherwise open on a visit). */
+  checkin: boolean;
   capacity: number | null;
   contains: string[];
 }
@@ -208,6 +212,10 @@ export interface InteractionDef {
   description: string | null;
   /** `limit: N` uses per run (agent powers); null = unlimited. */
   limit: number | null;
+  /** `sequence: false` — an admin cue a machine fires (the duck game, a door
+   *  reed, the printer) or a hardware fallback: the director's cue sheet
+   *  still ticks it, but it never becomes the sheet's LAST / NEXT. */
+  sequence: boolean;
 }
 
 export interface SimModel {
@@ -396,6 +404,7 @@ export function compileModel(bundle: Bundle): SimModel {
               who: decl.interaction.who,
               description: decl.interaction.description,
               limit: decl.interaction.limit,
+              sequence: decl.interaction.properties.get("sequence")?.value.trim() !== "false",
             });
           }
           break;
@@ -533,6 +542,7 @@ function locationDef(id: string, body: LocationBody): LocationDef {
     sealed: body.properties.get("sealed")?.value === "true",
     hidden: body.properties.get("hidden")?.value === "true",
     cutscene: body.properties.get("cutscene")?.value === "true",
+    checkin: body.properties.get("checkin")?.value.trim() !== "false",
     capacity: body.capacity,
     contains: body.contains,
   };

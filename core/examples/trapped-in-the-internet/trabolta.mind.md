@@ -28,38 +28,39 @@ drives:
 #   The worker drops any orchestrator verdict on a claim naming one of
 #   these (never in `learned`, never "true/false/a lie" in brief, notes or
 #   dossiers) and keeps every codex entry carrying a `lore` marker (the hunt
-#   answers + Grok's Prom Ticket, all stamped) out of every prompt.
+#   answers + Grok's Prom Ticket, all stamped — titles too) out of every
+#   prompt.
 #   topics — the questions' own words (as shown on the TV); the
-#            orchestrator is told never to judge these.
+#            orchestrator is told never to judge these. Specific phrases
+#            only: a claim naming one is dropped from `learned` whole, so a
+#            common word (song, prom, chapter) would gut the finale's mind.
+#            Never an answer word — topics ARE shown to a model.
 #   match  — answer words a guest may use instead. NEVER shown to a model
 #            (this frontmatter is parsed out; only the body is a prompt).
 secrets:
   topics:
     - billboard            # H1
     - barrington
-    - unpaid
+    - went unpaid
     - pet cemetery         # H2
     - first animal
     - first pet
-    - buried
     - ribbon               # H3
     - grand opening
     - opening day
     - extension            # H4
-    - ext
     - customer care
-    - dial
-    - song                 # H5
+    - reach sandy
+    - which song           # H5
     - "412"
     - play count
     - unified field        # H6
-    - chapter
-    - appendix
-    - binder
-    - live agent           # F1
-    - only thing
-    - prom                 # F2
-    - grok
+    - last chapter
+    - final chapter
+    - only thing sandy     # F1
+    - computer prom        # F2
+    - prom date
+    - taking sandy
   match:
     - eleven years
     - 11 years
@@ -81,14 +82,17 @@ secrets:
     - 4 a.m.
     - "1978"
     - hopelessly devoted
+    - appendix
     - loose ends
     - do not print
+    - live agent
     - didn't understand
     - did not understand
     - sandy said
     - sandy says
     - sandy ever said
     - sandy has ever said
+    - grok
   lore:
     - "▒ STAMPED"
 phases:

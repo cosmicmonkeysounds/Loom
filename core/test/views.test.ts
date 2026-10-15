@@ -174,6 +174,35 @@ when hunt_time_up:
     expect(cueState(sim).fired).toEqual(["ring_the_bell", "hunt_time_up"]);
     expect(modView(sim, "open", "x").cues?.last).toBe("hunt_time_up");
   });
+
+  it("ticks an off-sequence cue (`sequence: false`) without moving LAST", async () => {
+    const { cueState } = await import("../server/views.ts");
+    const sim = Sim.fromSources(`${CUES}
+INTERACTION the golden duck
+  label: Reinstallation: the golden duck (server)
+  who: admin
+  sequence: false
+`);
+    sim.signal("ring_the_bell");
+    sim.signal("the golden duck");
+    const s = cueState(sim);
+    expect(s.last).toBe("hunt_time_up");
+    expect(s.fired).toEqual(["ring_the_bell", "hunt_time_up", "the golden duck"]);
+    const duck = (modView(sim, "open", "x").interactions ?? []).find((i) => i.id === "the golden duck");
+    expect(duck?.sequence).toBe(false);
+    expect((modView(sim, "open", "x").interactions ?? []).find((i) => i.id === "ring_the_bell")).not.toHaveProperty("sequence");
+  });
+
+  it("reads only new log entries on each snapshot, and returns a fresh copy", async () => {
+    const { cueState } = await import("../server/views.ts");
+    const sim = Sim.fromSources(CUES);
+    const a = cueState(sim);
+    sim.signal("ring_the_bell");
+    const b = cueState(sim);
+    expect(a.fired).toEqual([]); // the earlier snapshot is not mutated
+    expect(b.fired).toEqual(["ring_the_bell", "hunt_time_up"]);
+    expect(cueState(sim)).toEqual(b);
+  });
 });
 
 describe("the show's cue sheet (K-21)", () => {
@@ -186,6 +215,18 @@ describe("the show's cue sheet (K-21)", () => {
     expect(codes.indexOf("V2")).toBeLessThan(codes.indexOf("V6"));
     sim.signal("call_to_the_desktop");
     expect(modView(sim, "open", "x").cues?.last).toBe("call_to_the_desktop");
+  });
+
+  it("keeps the machine-fired cues off LAST / NEXT (the duck game, door reed, printer, patch bay)", () => {
+    const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
+    const admin = (modView(sim, "open", "x").interactions ?? []).filter((i) => i.who === "admin");
+    const off = admin.filter((i) => i.sequence === false).map((i) => i.id);
+    for (const id of ["the simulation completed", "the golden duck", "server_door_opened", "printer_button_pressed", "printer_opened", "patch_combo_a", "patch_combo_b", "patch_rejected", "chess_won"]) expect(off).toContain(id);
+    for (const id of ["call_to_the_desktop", "bingo_time", "start_the_ceremony"]) expect(off).not.toContain(id);
+    sim.signal("bingo_time");
+    sim.signal("the golden duck");
+    expect(modView(sim, "open", "x").cues?.last).toBe("bingo_time");
+    expect(modView(sim, "open", "x").cues?.fired).toContain("the golden duck");
   });
 
   it("flags the cues that need a person: the ceremony's awards ask for the winner (K-25)", () => {

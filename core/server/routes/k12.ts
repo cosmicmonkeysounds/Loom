@@ -40,11 +40,13 @@ export function checkinSlug(name: string): string {
 }
 
 /** Every LOCATION a check-in sign makes sense for: never a prison (only
- *  the story releases) and never a cutscene (on rails — the Mud Room). */
+ *  the story releases), never a cutscene (on rails — the Mud Room), and
+ *  never a `checkin: false` room (the locked Server Room: a visit would
+ *  reveal it early). */
 export function checkinSigns(model: Pick<SimModel, "locations">, base: string, eventCode: string): CheckinSign[] {
   const out: CheckinSign[] = [];
   for (const loc of model.locations.values()) {
-    if (loc.prison || loc.cutscene) continue;
+    if (loc.prison || loc.cutscene || !loc.checkin) continue;
     const slug = checkinSlug(loc.id);
     out.push({
       id: loc.id,

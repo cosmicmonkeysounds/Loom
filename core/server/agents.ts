@@ -811,7 +811,12 @@ export class AgentHub {
         // Nobody can answer: say the hold line once, keep the request queued
         // so a worker that comes back still answers it.
         r.held = true;
-        this.o.hold?.(r.req);
+        if (this.o.hold?.(r.req) === true) {
+          // The line is in the thread now: rebuild the queued body so a
+          // worker that comes back answers knowing it already said it.
+          const fresh = this.o.build(r.req.thread, r.req.id);
+          if (fresh !== null) r.req = fresh;
+        }
       }
     }
   }

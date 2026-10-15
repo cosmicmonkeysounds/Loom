@@ -89,7 +89,7 @@ async def answer(
     if gate and persona.when is not None and not persona.when.evaluate(gate_context(req)):
         return Reply(say=persona.unavailable)
     powers = [p for p in (req.get("powers") or []) if isinstance(p, dict)]
-    codex = tuple(str(e.get("title", "")) for e in ((req.get("self") or {}).get("codex") or []) if isinstance(e, dict))
+    codex = tuple(str(e.get("title", "")) for e in persona.secrets.visible((req.get("self") or {}).get("codex")))
     started = time.monotonic()
     messages = build_messages(persona, req, mind=mind)
 
@@ -110,7 +110,7 @@ async def answer(
     reply = parse_reply(raw, persona.variables, persona.max_step, powers, codex)
     await record("voice", messages, completion, reply, note=note)
     if reply.lookup and persona.lookup and facts is not None:
-        cards = {name: facts.render(name, persona.secrets.lore_ok) for name in reply.lookup}
+        cards = {name: facts.render(name, persona.secrets) for name in reply.lookup}
         log.info("%s looked up %s", persona.character, ", ".join(reply.lookup))
         prior = json.dumps({"lookup": list(reply.lookup)})
         second_messages = build_messages(persona, req, mind=mind, lookups=cards, prior_json=prior)

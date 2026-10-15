@@ -12,14 +12,15 @@ describe("K-12 print extras", () => {
     expect(checkinSlug("The Server Room")).toBe("the-server-room");
   });
 
-  it("skips prisons and cutscenes, keeps hidden rooms flagged", () => {
-    const loc = (id: string, o: Partial<{ prison: boolean; cutscene: boolean; hidden: boolean; label: string }> = {}) => ({
+  it("skips prisons, cutscenes and `checkin: false` rooms, keeps hidden rooms flagged", () => {
+    const loc = (id: string, o: Partial<{ prison: boolean; cutscene: boolean; hidden: boolean; checkin: boolean; label: string }> = {}) => ({
       id,
       label: o.label ?? null,
       prison: o.prison ?? false,
       sealed: false,
       hidden: o.hidden ?? false,
       cutscene: o.cutscene ?? false,
+      checkin: o.checkin ?? true,
       capacity: null,
       contains: [],
     });
@@ -29,6 +30,7 @@ describe("K-12 print extras", () => {
         ["The Mud Room", loc("The Mud Room", { cutscene: true })],
         ["The Internet", loc("The Internet", { prison: true, hidden: true })],
         ["The Cache", loc("The Cache", { hidden: true })],
+        ["The Server Room", loc("The Server Room", { hidden: true, checkin: false })],
       ]),
     };
     const signs = checkinSigns(model, "https://app.example.com", "EVT 1");
@@ -46,5 +48,6 @@ describe("K-12 print extras", () => {
     for (const room of ["The Desktop", "The Cache", "The Tube", "Disk Cleanup", "The Cloud", "The Registry"]) expect(ids).toContain(room);
     expect(ids).not.toContain("The Mud Room");
     expect(ids).not.toContain("The Internet");
+    expect(ids).not.toContain("The Server Room"); // locked: a visit would reveal it early
   });
 });

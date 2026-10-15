@@ -18,6 +18,8 @@
 //                            three guests in the roster
 //   status                   print the ceremony state
 
+import { rehearsalGuard } from "./guard.ts";
+
 const args = process.argv.slice(2);
 const cmd = args[0];
 const opt = (name: string): string => {
@@ -45,6 +47,7 @@ const hit = await post("/api/resolve-code", { code });
 if (hit["role"] !== "mod") throw new Error("that is not the event's mod code");
 const ev = `/e/${String(hit["eventId"])}`;
 const { token } = (await post(`${ev}/api/mod/login`, { passcode: code })) as { token: string };
+await rehearsalGuard(base, ev, token, args);
 console.log(`event ${String(hit["eventId"])} · ${String(hit["title"])}`);
 
 interface ModState {

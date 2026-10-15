@@ -9,7 +9,9 @@ model ("fact" / "bluster") would tell the voice — and through it the guest
 The mind file declares the hunt in its frontmatter (never shown to a model):
 
     secrets:
-      topics: [billboard, pet cemetery, ribbon]   # the questions' own words;
+      topics: [billboard, pet cemetery, ribbon]   # the questions' own words —
+                                                  #   specific phrases, never a
+                                                  #   common word or an answer;
                                                   #   shown to the orchestrator
                                                   #   as "never judge these"
       match: [pickles, 1978]                      # extra words a claim may use
@@ -26,9 +28,13 @@ come through:
     a `learned_add` claim naming a hunt topic is dropped whole (no verdict
     is ever recorded), and a note, brief line or dossier claim that names a
     topic *and* passes judgement on it is dropped too;
-  - `lore_ok(entry)` keeps hunt-answer codex entries out of the
-    orchestrator's ground truth (`lore_block`), the lore the character
-    holds (voice + reflect prompts) and lookup cards;
+  - `lore_ok(entry)` / `hidden_titles(codex)` keep hunt-answer codex
+    entries — text *and* title, since a title can be the answer — out of
+    every prompt: the orchestrator's ground truth (`lore_block`), the lore
+    the character holds, what the speaker holds (voice "They know", reflect
+    "holds"), lookup cards (a program's holds, a character's knows, a lore
+    card), the house digest's lore spread and holdings counts, and the
+    survey delta's "X learned …";
   - `prune(mind)` drops hunt verdicts from a mind restored from disk.
 """
 
@@ -82,6 +88,22 @@ class Secrets:
 
     def visible(self, entries: Any) -> list[dict[str, Any]]:
         return [e for e in (entries or []) if isinstance(e, dict) and self.lore_ok(e)]
+
+    def hidden_titles(self, codex: Any) -> frozenset[str]:
+        """The (case-folded) titles of every hunt-answer entry in a full codex
+        listing — for the places that carry titles only (a program's
+        `holds`, the survey's "learned …")."""
+        if not self.lore:
+            return frozenset()
+        return frozenset(
+            _norm(e.get("title", "")) for e in (codex or []) if isinstance(e, dict) and not self.lore_ok(e) and e.get("title")
+        )
+
+    def titles_ok(self, titles: Any, codex: Any) -> list[str]:
+        """`titles` minus every hunt-answer title (`codex` = the full listing
+        that says which titles are stamped)."""
+        hidden = self.hidden_titles(codex)
+        return [str(t) for t in (titles or []) if _norm(str(t)) not in hidden]
 
     # -- claims ----------------------------------------------------------------
 

@@ -265,7 +265,7 @@ def reflect_messages(
     state = {
         "my_variables": me.get("vars") or {},
         "lore_i_hold": [f"{e.get('title')}: {' '.join(str(e.get('text', '')).split())[:160]}" for e in persona.secrets.visible(me.get("codex"))[:12]],
-        "speaker": {"kind": speaker.get("kind"), "name": name, "group": speaker.get("faction"), "location": them.get("location"), "variables": them.get("vars") or {}, "holds": [e.get("title") for e in (them.get("codex") or [])]},
+        "speaker": {"kind": speaker.get("kind"), "name": name, "group": speaker.get("faction"), "location": them.get("location"), "variables": them.get("vars") or {}, "holds": [e.get("title") for e in persona.secrets.visible(them.get("codex"))]},
         "world": req.get("world") or {},
         "powers": [{"name": p.get("id"), "left": (None if p.get("limit") is None else max(0, int(p.get("limit", 0)) - int(p.get("used", 0))))} for p in req.get("powers") or []],
     }
@@ -278,7 +278,7 @@ def reflect_messages(
     if cue:
         parts.append(f"=== THE STORY'S PHASE: {phase} (the author's cue for this phase) ===\n{cue}")
     if facts is not None:
-        parts.append(f"=== THE HOUSE ===\n{facts.digest()}")
+        parts.append(f"=== THE HOUSE ===\n{facts.digest(secrets=persona.secrets)}")
         lore = lore_block(facts, [str(e.get("title", "")) for e in (me.get("codex") or []) if isinstance(e, dict)], secrets=persona.secrets)
         if lore:
             parts.append(lore)
@@ -319,7 +319,7 @@ def lore_block(facts: Facts, held: list[str], max_entries: int = 24, secrets: Se
 def survey_messages(persona: Persona, mind: Mind, facts: Facts, delta: list[str], phase_changed_to: str | None = None) -> list[dict[str, str]]:
     parts = [
         f"=== {persona.character.upper()}'S MIND NOW ===\n{mind_snapshot(mind, None, None)}",
-        f"=== THE HOUSE NOW ===\n{facts.digest()}",
+        f"=== THE HOUSE NOW ===\n{facts.digest(secrets=persona.secrets)}",
     ]
     if delta:
         parts.append("=== WHAT CHANGED SINCE YOU LAST LOOKED ===\n" + "\n".join(f"- {d}" for d in delta))
@@ -572,7 +572,7 @@ class Orchestrator:
         else:
             if facts is None:
                 return
-            delta = facts.delta(self._last_facts)
+            delta = facts.delta(self._last_facts, persona.secrets)
             if self._last_facts is not None and self._last_facts.phase != facts.phase:
                 phase_changed_to = facts.phase
             self._last_facts = facts

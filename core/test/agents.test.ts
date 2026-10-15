@@ -155,6 +155,7 @@ describe("AgentHub", () => {
     h.tick(1_000);
     h.hub.sweep();
     expect(h.held.map((r) => r.thread)).toEqual([T]);
+    expect(h.builds()).toBe(3); // the hold line rebuilt the queued body
     h.tick(30_000);
     h.hub.line(T);
     h.hub.sweep();
@@ -654,6 +655,9 @@ describe("EventRuntime agents", () => {
     // Still queued: a worker that connects now answers the guest.
     const w = await call(rt, "GET", "/api/agent/stream?characters=Trabolta", {}, { moderator: true });
     expect(w.res.frames().filter(([e]) => e === "request")).toHaveLength(1);
+    // …and the queued body was rebuilt after the hold, so it knows it said it.
+    const req = w.res.frames().find(([e]) => e === "request")![1] as AgentRequest;
+    expect(req.history.map((h) => h.text)).toEqual(["hello?", "Jean Trabolta will make an appearance later tonight."]);
   });
 
   it("no hold: authored → silence, as before", async () => {

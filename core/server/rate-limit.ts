@@ -76,6 +76,10 @@ export interface RateLimits {
   loginFailures: RateRule;
   /** Wrong codex codes per guest (`/api/guest/codex/redeem`). `LOOM_RL_REDEEM_MISSES`. */
   redeemMisses: RateRule;
+  /** Widget answers per guest (`/api/guest/widget`) — a story that re-deals
+   *  a card after every answer (📝 File a fact) can't be tapped into a
+   *  flood of its thread + journal. `LOOM_RL_WIDGETS`. */
+  widgets: RateRule;
 }
 
 export const DEFAULT_RATE_LIMITS: RateLimits = {
@@ -83,6 +87,7 @@ export const DEFAULT_RATE_LIMITS: RateLimits = {
   register: { max: 20, windowMs: 60_000 },
   loginFailures: { max: 10, windowMs: 5 * 60_000 },
   redeemMisses: { max: 8, windowMs: 60_000 },
+  widgets: { max: 20, windowMs: 60_000 },
 };
 
 const ENV_KEYS: Record<keyof RateLimits, string> = {
@@ -90,6 +95,7 @@ const ENV_KEYS: Record<keyof RateLimits, string> = {
   register: "LOOM_RL_REGISTER",
   loginFailures: "LOOM_RL_LOGIN_FAILURES",
   redeemMisses: "LOOM_RL_REDEEM_MISSES",
+  widgets: "LOOM_RL_WIDGETS",
 };
 
 /**

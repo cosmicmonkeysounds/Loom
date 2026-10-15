@@ -1,6 +1,6 @@
 //! The Run → Print sheet (K-12): turns `/api/mod/codes` into the cards a
 //! director prints — the join poster, one poster per codex entry (title +
-//! QR + the typed code), one check-in sign per room. QRs are drawn here,
+//! QR + the typed code), one check-in sign per room (QR + room name only — no typed code). QRs are drawn here,
 //! in the browser (`qrcode` → inline SVG): `/api/qr` allows 60/min per IP
 //! and a full sheet needs 60–80. Pure, unit-tested in `print-sheet.test.ts`.
 
@@ -33,7 +33,9 @@ export interface PrintItem {
   title: string
   /** The line under the title (what to do with it). */
   hint: string
-  /** The speakable fallback, printed big under the QR. */
+  /** The speakable fallback, printed big under the QR — empty for a room
+   *  sign: a slug looks like a codex code, and typed into the Codex it
+   *  fires `wrong code` (doubt + a spent miss). */
   code: string
   /** What the QR encodes. */
   url: string
@@ -74,7 +76,7 @@ export function buildPrintItems(codes: PrintCodes): PrintItem[] {
       kind: PrintKind.Room,
       title: r.label,
       hint: "Scan to enter this room's chat.",
-      code: r.slug,
+      code: '',
       url: r.url,
       note: r.hidden ? 'hidden until the story opens it' : null,
     }),

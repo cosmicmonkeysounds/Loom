@@ -209,7 +209,10 @@ header, and a word filter. Desktop only. A cue whose
 person — the ceremony's awards, K-25) shows a **who?** picker over the
 roster plus an optional **value** box (`cueValueArgs` → `{value}`), and
 fires with that person as the subject; it stays disabled until one is
-picked.
+picked. An off-sequence cue (`sequence: false` on the INTERACTION →
+`InteractionSummary.sequence === false`: the duck game, door reed,
+printer, patch bay) gets its ✓ but is never LAST (core skips it) or
+NEXT (`cueRows` suggests the next in-sequence row).
 
 **Being anyone — the identity lens.** `perspective` is `OPERATOR_LENS`
 (god view) or a guest/persona/character id; `setPerspective` resolves

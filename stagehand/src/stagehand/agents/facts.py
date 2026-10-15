@@ -22,8 +22,10 @@ from __future__ import annotations
 import re
 import time
 from dataclasses import dataclass, field
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .secrets import Secrets
 
 _FOLD = re.compile(r"[^a-z0-9]+")
 
@@ -133,11 +135,19 @@ class Facts:
             out[k] = v
         return out
 
-    def render(self, name: str, lore_ok: Callable[[dict[str, Any]], bool] | None = None) -> str:
-        """A short card for a lookup, or a plain 'no record'. `lore_ok`
-        hides lore the character must never read (a hunt answer)."""
+    def held(self, titles: Any, secrets: "Secrets | None" = None) -> list[str]:
+        """Codex titles someone holds, minus the hunt answers (`secrets`) —
+        a stamped entry's title can itself be the answer."""
+        if secrets is None:
+            return [str(t) for t in (titles or [])]
+        return secrets.titles_ok(titles, self.codex)
+
+    def render(self, name: str, secrets: "Secrets | None" = None) -> str:
+        """A short card for a lookup, or a plain 'no record'. `secrets`
+        hides lore the character must never read (a hunt answer) — the
+        entry itself and its title wherever someone holds it."""
         hit = self.find(name)
-        if hit is None or (hit.kind == "lore" and lore_ok is not None and not lore_ok(hit.data)):
+        if hit is None or (hit.kind == "lore" and secrets is not None and not secrets.lore_ok(hit.data)):
             return f"{name}: no record in this system."
         d = hit.data
         if hit.kind == "program":
@@ -155,7 +165,7 @@ class Facts:
             nums = ", ".join(f"{k}={v}" for k, v in sorted(vars_.items()) if "." not in k and k not in ("name",))
             if nums:
                 bits.append(nums)
-            held = d.get("codex") or []
+            held = self.held(d.get("codex"), secrets)
             bits.append("holds: " + ("; ".join(held) if held else "nothing"))
             return " · ".join(bits)
         if hit.kind == "character":
@@ -163,7 +173,7 @@ class Facts:
             if d.get("faction"):
                 bits.append(f"group {d['faction']}")
             bits.append("present" if d.get("online") else "not at their post")
-            held = d.get("codex") or []
+            held = self.held(d.get("codex"), secrets)
             if held:
                 bits.append("knows: " + "; ".join(held))
             return " · ".join(bits)
@@ -178,7 +188,7 @@ class Facts:
 
     # -- for the orchestrator -------------------------------------------------
 
-    def digest(self, max_programs: int = 40) -> str:
+    def digest(self, max_programs: int = 40, secrets: "Secrets | None" = None) -> str:
         lines = []
         phase = self.phase
         world = ", ".join(f"{k}={v}" for k, v in sorted(self.world.items()))
@@ -197,14 +207,15 @@ class Facts:
                 extras.append(str(p["faction"]))
             if p.get("captured"):
                 extras.append("captured")
-            held = p.get("codex") or []
+            held = self.held(p.get("codex"), secrets)
             if held:
                 extras.append(f"holds {len(held)}")
             if extras:
                 tag += f" [{', '.join(extras)}]"
             progs.append(tag)
         lines.append(f"Programs ({len(self.programs)}): " + (", ".join(progs) if progs else "none yet"))
-        hot = sorted(self.codex, key=lambda e: -len(e.get("holders") or []))[:8]
+        codex = secrets.visible(self.codex) if secrets is not None else self.codex
+        hot = sorted(codex, key=lambda e: -len(e.get("holders") or []))[:8]
         spread = [f"{e.get('title')}→{len(e.get('holders') or [])}" for e in hot if e.get("holders")]
         if spread:
             lines.append("Lore spread: " + ", ".join(spread))
@@ -212,8 +223,9 @@ class Facts:
             lines.append(f"Phase: {phase}")
         return "\n".join(lines)
 
-    def delta(self, prev: "Facts | None") -> list[str]:
-        """Human lines for what changed since `prev` (empty if nothing / no prev)."""
+    def delta(self, prev: "Facts | None", secrets: "Secrets | None" = None) -> list[str]:
+        """Human lines for what changed since `prev` (empty if nothing / no
+        prev); `secrets` keeps hunt-answer titles out of "X learned …"."""
         if prev is None:
             return []
         out: list[str] = []
@@ -235,7 +247,7 @@ class Facts:
                 out.append(f"{name} was released")
             if old.get("faction") != p.get("faction") and p.get("faction"):
                 out.append(f"{name} joined {p['faction']}")
-            new_lore = [t for t in (p.get("codex") or []) if t not in (old.get("codex") or [])]
+            new_lore = [t for t in self.held(p.get("codex"), secrets) if t not in (old.get("codex") or [])]
             if new_lore:
                 out.append(f"{name} learned {', '.join(new_lore[:3])}")
         for pid, old in before.items():

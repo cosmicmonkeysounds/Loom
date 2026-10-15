@@ -23,8 +23,11 @@ export interface CueRow {
   fired: boolean
   /** The most recent cue to fire. */
   last: boolean
-  /** The cue after the last one in running order. */
+  /** The first in-sequence cue after the last one in running order. */
   next: boolean
+  /** False for an off-sequence cue (`sequence: false` — machine-fired or a
+   *  hardware fallback): it ticks when it fires but is never LAST / NEXT. */
+  sequence: boolean
   /** The cue does nothing without a person (an award's winner): the sheet
    *  asks for one before it fires. */
   subject: boolean
@@ -44,6 +47,7 @@ export function cueRows(interactions: InteractionSummary[], cues: CueState): Cue
   const fired = new Set(cues.fired)
   const admin = interactions.filter((i) => i.who === 'admin')
   const lastIdx = cues.last === null ? -1 : admin.findIndex((i) => i.id === cues.last)
+  const nextIdx = admin.findIndex((i, idx) => idx > lastIdx && i.sequence !== false)
   return admin.map((i, idx) => {
     const { code, title } = splitCode(i.label || i.id)
     return {
@@ -53,7 +57,8 @@ export function cueRows(interactions: InteractionSummary[], cues: CueState): Cue
       title,
       fired: fired.has(i.id),
       last: idx === lastIdx,
-      next: idx === lastIdx + 1,
+      next: idx === nextIdx,
+      sequence: i.sequence !== false,
       subject: i.subject === true,
     }
   })

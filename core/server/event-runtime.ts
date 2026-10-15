@@ -300,6 +300,7 @@ export class EventRuntime {
   private readonly loginFailures: RateLimiter;
   private readonly registrations: RateLimiter;
   private readonly redeemMisses: RateLimiter;
+  private readonly widgetAnswers: RateLimiter;
   // Server-authoritative chat, rebuilt deterministically from the journal.
   private readonly chat = new ChatStore();
   // Where each guest's pending decision docks (channel id). Ephemeral.
@@ -370,6 +371,7 @@ export class EventRuntime {
     this.loginFailures = limiterFor(limits.loginFailures);
     this.registrations = limiterFor(limits.register);
     this.redeemMisses = limiterFor(limits.redeemMisses);
+    this.widgetAnswers = limiterFor(limits.widgets);
   }
 
   /** Current lifecycle phase (idle | open | paused). */
@@ -2208,6 +2210,10 @@ export class EventRuntime {
         const args = widgetResultArgs(body["result"], this.sim!, m.widget.kind);
         if (args === null) {
           sendJson(res, 400, { error: "bad widget result" });
+          return true;
+        }
+        if (!this.widgetAnswers.take(id)) {
+          sendJson(res, 429, { error: "slow down — wait a minute" });
           return true;
         }
         this.answeredWidgets.add(key);

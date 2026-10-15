@@ -46,6 +46,19 @@ describe('cueRows', () => {
     expect(rows.filter((r) => r.fired).map((r) => r.id)).toEqual(['call_to_the_desktop', 'start_the_bingo'])
   })
 
+  it('never suggests an off-sequence cue (machine-fired / hardware fallback) as NEXT', () => {
+    const withDuck: InteractionSummary[] = [
+      ix('start_the_bingo', 'V2 · 🎱 Start Computer Bingo'),
+      { ...ix('printer_opened', '🫘 Printer opened (hardware fallback)'), sequence: false },
+      ix('introduce_trabolta', 'Clippy 2/X · 🤖 Clippy introduces Trabolta'),
+      { ...ix('the golden duck', 'Reinstallation: the golden duck (server)'), sequence: false },
+    ]
+    const rows = cueRows(withDuck, { last: 'start_the_bingo', lastBy: 'director', fired: ['start_the_bingo', 'the golden duck'] })
+    expect(rows.find((r) => r.next)!.id).toBe('introduce_trabolta')
+    expect(rows.find((r) => r.id === 'the golden duck')).toMatchObject({ fired: true, sequence: false, last: false })
+    expect(cueRows(withDuck, { last: 'introduce_trabolta', lastBy: 'director', fired: [] }).some((r) => r.next)).toBe(false)
+  })
+
   it('suggests nothing after the final cue', () => {
     const rows = cueRows(interactions, { last: 'telephone', lastBy: 'director', fired: ['telephone'] })
     expect(rows.some((r) => r.next)).toBe(false)

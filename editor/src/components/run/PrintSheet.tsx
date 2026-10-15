@@ -62,7 +62,7 @@ function Card({ item, svg, skipped, onToggle }: { item: PrintItem; svg: string |
       <p className="hint">{item.hint}</p>
       {/* `qrcode`'s own SVG output for our own link — no user markup. */}
       <div className="qr" dangerouslySetInnerHTML={{ __html: svg ?? '' }} />
-      <div className="code">{item.code}</div>
+      {item.code !== '' && <div className="code">{item.code}</div>}
       <span className="url" title={item.url}>{item.url}</span>
       <span className="ref">{item.ref}</span>
     </div>

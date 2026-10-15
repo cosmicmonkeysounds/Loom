@@ -1699,6 +1699,20 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05)", () => {
     expect(trabolta(repeat, "g1").some((t) => t.includes("already filed"))).toBe(true);
     expect(v(sim, "g1.truths_accepted")).toBe(1);
   });
+
+  it("refuses a question whose round hasn't opened; an earlier round's question still files late", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    const early = file(sim, "g2", "F2", "Grok");
+    expect(hosts(sim, early)).toEqual([]);
+    expect(trabolta(early, "g2").some((t) => t.includes("not open yet"))).toBe(true);
+    expect(v(sim, "g2.fact_f2")).not.toBe(true);
+    expect(v(sim, "g2.fact_pending")).not.toBe(true);
+    toHunt2(sim);
+    expect(hosts(sim, file(sim, "g2", "H6", "Appendix Z"))).toEqual(["📝 Microsoft Excel filed H6 (round 2 Q3): Appendix Z"]);
+    fire(sim, "fact_accurate", "g2", null, "Clippy");
+    expect(hosts(sim, file(sim, "g2", "H1", "Eleven years"))).toHaveLength(1); // late, still counts
+  });
 });
 
 describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {

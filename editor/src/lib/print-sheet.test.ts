@@ -24,9 +24,11 @@ describe('print sheet', () => {
       ['J1', PrintKind.Join, 'EVT777'],
       ['C01', PrintKind.Codex, 'sandy1997'],
       ['C02', PrintKind.Codex, 'bill'],
-      ['R01', PrintKind.Room, 'the-desktop'],
-      ['R02', PrintKind.Room, 'the-cache'],
+      // a room sign prints no code: a slug typed into the Codex is a `wrong code`
+      ['R01', PrintKind.Room, ''],
+      ['R02', PrintKind.Room, ''],
     ])
+    expect(items[3]!.url).toContain('checkin=the-desktop')
     expect(items[0]!.url).toBe('https://app.example.com/?code=EVT777')
     expect(items[3]!.title).toBe('The Desktop (living room)')
     expect(items[4]!.note).toMatch(/hidden/)
