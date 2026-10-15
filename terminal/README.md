@@ -66,6 +66,23 @@ The ⚙ opens setup only after a **2 s hold** (a bar fills under it); a short
 tap does nothing. Fully Kiosk / iPad / TV-Mac settings for the show:
 [`docs/trapped/kiosk.md`](../docs/trapped/kiosk.md).
 
+**The screensaver while the character is secret** (OCT31 K-16,
+`src/screen.ts` + `src/Attract.tsx` + `src/attract.ts`): every 2 s the
+terminal polls `GET /e/:id/api/screen/state` (mod token, ~0.5 KB — the
+story's screen cues, the running countdown, its character's
+hidden/awake/online; the poll is also its heartbeat). While the character
+is **hidden** (not yet `reveal`ed) or **asleep** (`<Character>.awake ==
+false`) a face/world terminal shows a full-screen **Mystify** screensaver
+(Canvas2D, ≤ 30 fps) with a fake-1999 ad every 40 s for 10 s: no camera,
+no scanner, never "ONLINE", never a pilot — so tablets are provisioned
+`view=auto` from the start and flip to the face within 2 s of
+`introduce_trabolta`. It fails closed (attract until the server first
+answers; a missed poll keeps the last answer) and an open line finishes
+on its own leash first. Ads are `public/ads/<id>.png` (ids in
+`attract.ts`: `ad-maps-and-ducks`, `ad-protection-expired`,
+`ad-geocities`, `ad-y2k`); a missing PNG renders the ad's copy as a Win98
+window. A mirror is unaffected (it only sends the heartbeat).
+
 ## The voice
 
 Two engines behind one queue (`src/speech/`):
@@ -203,7 +220,10 @@ them meanwhile.
 ## Layout
 
 ```
-src/app.tsx            the screens: setup → attract → connecting → piloting
+src/app.tsx            the screens: setup → (screensaver) → attract → connecting → piloting
+src/screen.ts          the 2 s screen-state poll (K-16): attract while the character is hidden/asleep
+src/attract.ts         the screensaver rotation, the ads' copy, Mystify (pure)
+src/Attract.tsx        the screensaver screen (Canvas2D) + ad cards (PNG, else a Win98 window)
 src/config.ts          per-tablet config (localStorage) + URL provisioning
 src/scanner.tsx        camera + QR (BarcodeDetector, else jsQR)
 src/scan.ts            what a scanned code means; the typed-name fallback
@@ -220,6 +240,7 @@ src/world/             stream.ts (spatial SSE + house map → WorldStore), state
 Server-side pieces live in `core/server`: `tts.ts` (the proxy + cache),
 the `/api/mod/tts` route and the `label` on `/api/mod/impersonate` in
 `event-runtime.ts`, and static serving of `dist/` at `/terminal/` in
-`server.ts`. The spatial plane the world view watches is `spatial.ts`
+`server.ts`; the screen-state poll is `routes/screen.ts` (`ScreenWatch`).
+The spatial plane the world view watches is `spatial.ts`
 (`SpatialHub`) plus the `/api/spatial/*` routes; the house map, its
 geometry and the three.js scene live in `house/` (`@loom/house`).

@@ -737,6 +737,11 @@ export class Sim {
     return this.revealed.has(target) || (this.revealedFor.get(person)?.has(target) ?? false);
   }
 
+  /** Has a hidden thing been revealed to everyone (`reveal X`, no `for`)? */
+  isRevealed(target: string): boolean {
+    return this.revealed.has(target);
+  }
+
   /** Is `person` standing in a `cutscene: true` location right now? The
    *  app goes on rails there (no sidebar, just what is said to them). */
   cutsceneFor(person: string): boolean {

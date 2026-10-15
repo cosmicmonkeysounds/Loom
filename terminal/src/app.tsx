@@ -2,6 +2,11 @@
 //!
 //!   setup      — provision this tablet (moderator passcode → token), name it,
 //!                pick the character, camera and voice. Once per tablet.
+//!   (screensaver) while the character is hidden or asleep (`screen.ts`
+//!                polls `/api/screen/state` every 2 s — K-16): the Mystify
+//!                screensaver + fake-1999 ads (`Attract.tsx`). No camera,
+//!                no scanner, never "ONLINE", never a pilot. Fails closed:
+//!                shown until the server first says otherwise.
 //!   attract    — the face, waiting; the camera looking for a pass.
 //!   connecting — a pass was scanned: minting the guest's session.
 //!   piloting   — the direct line: the thread, the composer, the countdown.
@@ -35,6 +40,8 @@ import { mayReload, retryable } from "./retry.ts";
 import { bundledHouse, fetchHouse, useSpatialStream, useWorld, type Gone, type HouseInfo, type WorldStore } from "./world/stream.ts";
 import { effectiveView, hasWebGL2 } from "./webgl.ts";
 import { HOLD_MS, screenWake, useLongPress } from "./kiosk.ts";
+import { attractOf, useScreenState } from "./screen.ts";
+import { Attract } from "./Attract.tsx";
 
 // three.js is most of the weight of the world view — a face-only terminal
 // never loads it. Retryable: `lazy` alone caches a failed load forever.
@@ -46,6 +53,8 @@ export function App() {
   const [config, setConfig] = useState<TerminalConfig | null>(() => loadConfig());
   const [screen, setScreen] = useState<Screen>(() => (loadConfig() ? { kind: "attract" } : { kind: "setup", notice: null }));
   const [awake, setAwake] = useState(() => audioUnlocked());
+  // The lean screen state, polled every 2 s (also this terminal's heartbeat).
+  const screenState = useScreenState(config);
 
   // Fetch the world view's code at boot, while this page and the server are
   // known to match — hours later a rebuild may have renamed the chunk. Not
@@ -82,6 +91,14 @@ export function App() {
       }
     });
   }, [config]);
+
+  // The poll was refused: the token no longer works for this run.
+  useEffect(() => {
+    if (!screenState.revoked) return;
+    dropConfig();
+    setConfig(null);
+    setScreen({ kind: "setup", notice: "This terminal's access was revoked — enter the moderator passcode again." });
+  }, [screenState.revoked]);
 
   // Keep the screen on from boot: Chrome grants a wake lock to a visible
   // page without a gesture; `ScreenWake` re-takes it on every return to view.
@@ -132,21 +149,45 @@ export function App() {
 
   if (config.view === "mirror") return <Mirror config={config} canDraw={webgl2} onSetup={() => setScreen({ kind: "setup", notice: null })} onGone={onGone} />;
 
+  const wakeOverlay = !awake && (
+    <button className="wake" onClick={wake}>
+      <span className="wake-title">TOUCH TO WAKE</span>
+      <span className="wake-sub">this terminal needs one touch before it may speak</span>
+    </button>
+  );
+
+  // The character is hidden or asleep: the screensaver, unless a line is
+  // already open (a pilot ends on its own leash, then attract takes over).
+  if (attractOf(screenState.state) && screen.kind !== "piloting") {
+    return (
+      <>
+        <Attract
+          corner={
+            <>
+              <div className="mirror-corner">
+                {config.title ? `${config.title} · ` : ""}
+                {config.name.toUpperCase()}
+              </div>
+              <Gear onOpen={() => setScreen({ kind: "setup", notice: null })} label="Set up this terminal" className="mirror-gear" />
+            </>
+          }
+        />
+        {wakeOverlay}
+      </>
+    );
+  }
+
   return (
     <>
       <Terminal
         config={config}
         screen={screen}
         setScreen={setScreen}
+        castOnline={screenState.state?.character?.online ?? null}
         onSetup={() => setScreen({ kind: "setup", notice: null })}
         onGone={onGone}
       />
-      {!awake && (
-        <button className="wake" onClick={wake}>
-          <span className="wake-title">TOUCH TO WAKE</span>
-          <span className="wake-sub">this terminal needs one touch before it may speak</span>
-        </button>
-      )}
+      {wakeOverlay}
     </>
   );
 }
@@ -250,7 +291,22 @@ function useGone(world: WorldStore, onGone: (g: Gone) => void): void {
 
 // --- the running terminal ----------------------------------------------------
 
-function Terminal({ config, screen, setScreen, onSetup, onGone }: { config: TerminalConfig; screen: Screen; setScreen: (s: Screen) => void; onSetup: () => void; onGone: (g: Gone) => void }) {
+function Terminal({
+  config,
+  screen,
+  setScreen,
+  castOnline,
+  onSetup,
+  onGone,
+}: {
+  config: TerminalConfig;
+  screen: Screen;
+  setScreen: (s: Screen) => void;
+  /** Is the character's agent online? (from the screen-state poll; null = unknown) */
+  castOnline: boolean | null;
+  onSetup: () => void;
+  onGone: (g: Gone) => void;
+}) {
   const pilot = screen.kind === "piloting" ? screen.pilot : null;
   const session = usePilotSession(config, pilot);
   const [mood, setMood] = useState<Mood>("idle");
@@ -259,7 +315,6 @@ function Terminal({ config, screen, setScreen, onSetup, onGone }: { config: Term
   const [flash, setFlash] = useState<string | null>(null);
   const [camera, setCamera] = useState<CameraState>("starting");
   const [typedOpen, setTypedOpen] = useState(false);
-  const [castOnline, setCastOnline] = useState<boolean | null>(null);
   const [engineUsed, setEngineUsed] = useState<SpeechEngine["kind"] | null>(null);
   const face = useRef<FaceHandle | null>(null);
   const offsets = useRef(new Map<number, number[]>());
@@ -373,30 +428,6 @@ function Terminal({ config, screen, setScreen, onSetup, onGone }: { config: Term
     const t = window.setTimeout(() => setFlash(null), 5000);
     return () => window.clearTimeout(t);
   }, [flash]);
-
-  // While waiting: is the character's agent online? (a mod-only read,
-  // polled gently — the status line on the attract screen).
-  useEffect(() => {
-    if (screen.kind !== "attract") return;
-    let alive = true;
-    const poll = async () => {
-      try {
-        const res = await fetch(`${baseOf(config)}/api/state?role=mod`, { headers: { "x-loom-token": config.token } });
-        if (!res.ok) return;
-        const view = (await res.json()) as { cast?: Array<{ id: string; online?: boolean }> };
-        const me = view.cast?.find((c) => c.id === config.character);
-        if (alive) setCastOnline(me?.online ?? null);
-      } catch {
-        /* the status line just stays blank */
-      }
-    };
-    void poll();
-    const t = window.setInterval(() => void poll(), 20_000);
-    return () => {
-      alive = false;
-      window.clearInterval(t);
-    };
-  }, [screen.kind, config]);
 
   // --- connecting a scanned pass ---
   const connect = useCallback(

@@ -323,6 +323,20 @@ and its geometry are `@loom/house` (`../house`).
   bare default event. Tests: `test/spatial.test.ts` (hub + runtime) and
   `test/spatial-routing.test.ts` (`routing.ts`).
 
+**The wall terminals' screen state** (OCT31 K-16, `server/routes/screen.ts`):
+`GET /e/:id/api/screen/state?name=&spot=&view=&character=` (mod token or
+the author's session) answers ~0.5 KB — `night` (`Night.screen` /
+`Night.terminals`), `cues` (the last `cue screens_*` / `terminals_*` /
+`tv_*` / `tablet_*` value per family + a `seq`, folded from the sim log so
+a restart replays to the same answer), `character` (hidden = not
+`reveal`ed to everyone, `awake`, agent `online`), `attract` (hidden or
+asleep), `countdown` / `remaining` (story seconds on the running
+`Night.*_end` timer) and `terminals` (each terminal's last poll, newest
+first). Terminals poll it every 2 s instead of the mod feed. Alongside, the
+`AgentHub` `admits` hook refuses a guest's DM with a character still hidden
+from that guest (no worker request, so no premature hold line); performers'
+`cast:` threads always pass. Tests: `test/screen-state.test.ts`.
+
 ## Running a live event
 
 ```bash

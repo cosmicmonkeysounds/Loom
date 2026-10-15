@@ -41,6 +41,7 @@ import {
   type PictureChoice,
 } from "./identity.ts";
 import { foldName } from "../src/parser/names.ts";
+import { ScreenWatch, handleScreenGet } from "./routes/screen.ts";
 import { SpatialHub, houseVersion, houseWarnings, isWorld, parsePose, sortCandidates, type SessionRef } from "./spatial.ts";
 import {
   AgentHub,
@@ -315,6 +316,8 @@ export class EventRuntime {
   // stations, poses and the house map. In memory; poses never journal.
   readonly spatial: SpatialHub;
   private readonly houseFile: string;
+  // The wall terminals' poll (K-16): screen cues folded from the sim log + each terminal's last poll.
+  readonly screens: ScreenWatch;
   // Spatial stream subscribers (terminals, the map page) — never `clients`.
   private readonly spatialStreams = new Set<ServerResponse>();
   // Flushes poses every 100 ms (and sweeps every second) while anything is
@@ -323,6 +326,7 @@ export class EventRuntime {
   private spatialTicks = 0;
   private readonly agents = new AgentHub({
     build: (thread, id) => this.buildAgentRequest(thread, id),
+    admits: (thread) => this.agentAdmits(thread),
     typing: (thread, on) => this.pushTyping(thread, on),
     presence: () => {
       this.pushPresence();
@@ -342,6 +346,7 @@ export class EventRuntime {
     this.images = init.images ?? defaultImages();
     this.houseFile = init.houseFile ?? defaultHouseFile();
     this.spatial = new SpatialHub({ eventId: init.eventId, ...(init.now !== undefined ? { now: init.now } : {}) });
+    this.screens = new ScreenWatch(init.now !== undefined ? { now: init.now } : {});
   }
 
   /** Current lifecycle phase (idle | open | paused). */
@@ -578,6 +583,18 @@ export class EventRuntime {
   }
 
   // -- agent-voiced characters ---------------------------------------------
+
+  /** May this thread reach the agent at all? Not a guest's DM with a
+   *  character still hidden from that guest (K-16): before Clippy introduces
+   *  Trabolta nothing — a wall terminal, a stale tab — may draw a hold line
+   *  into a guest's real thread. Performers' cast threads always pass. */
+  private agentAdmits(thread: AgentThread): boolean {
+    const sim = this.sim;
+    const who = thread.audience[0];
+    if (sim === null || who === undefined || who.startsWith("@")) return true;
+    const def = sim.model.characters.get(thread.character);
+    return def === undefined || !def.hidden || sim.isRevealedTo(def.id, who);
+  }
 
   /** Is `name` a character voiced by an outside agent (`mind: external`)? */
   private isAgent(name: string): boolean {
@@ -1800,6 +1817,11 @@ export class EventRuntime {
       if (facts === null) sendJson(res, 409, { error: "no scenario loaded" });
       else sendJson(res, 200, facts);
       return true;
+    }
+
+    // --- the wall terminals' lean screen state (K-16, routes/screen.ts) ---
+    if (method === "GET" && path === "/api/screen/state") {
+      return handleScreenGet(this.screens, this.sim, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t), (c) => this.agents.isOnline(c));
     }
 
     // --- the reinstallation games: the map, the stream, stations ---
