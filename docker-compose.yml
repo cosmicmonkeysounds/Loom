@@ -68,14 +68,18 @@ services:
       LOOM_VAPID_PRIVATE_KEY: ${LOOM_VAPID_PRIVATE_KEY:-}
       LOOM_VAPID_SUBJECT: ${LOOM_VAPID_SUBJECT:-}
       # The reinstallation games + terminals share one house map
-      # (docs/loom-reinstall.md §1.3). The image bakes in the show's
-      # house.json; a director's save from /reinstall/map wins over it and
+      # (docs/loom-reinstall.md §1.3). It belongs to the project: its
+      # house.json (+ house.<variant>.json) are project files, snapshotted
+      # at launch. A director's save from /reinstall/map wins over it and
       # lives per event in the state volume as spatial-house.json
       # (/data/spatial-house.json for the default event,
-      # /data/<eventId>/spatial-house.json for the rest). To pin another
-      # default map, bind-mount it read-only outside /data (see the
-      # commented volume below) and uncomment — never set it blank (an
-      # empty path is not "unset"). The file is re-read when it changes.
+      # /data/<eventId>/spatial-house.json for the rest). LOOM_HOUSE is
+      # only the fallback (the default event, events with no map snapshot);
+      # the image bakes in the show's house.json. To pin another, bind-mount
+      # its directory read-only outside /data (see the commented volume
+      # below; its house.<variant>.json siblings become variants) and
+      # uncomment — never set it blank (an empty path is not "unset"). The
+      # file is re-read when it changes.
       # LOOM_HOUSE: /config/house.json
       # Optional: pin the default event's passcodes (otherwise auto-generated
       # and printed in the logs + saved under the state volume):
@@ -84,8 +88,9 @@ services:
       # LOOM_PRIME_PASS: ...
     volumes:
       - loom-state:/data
-      # With LOOM_HOUSE above: your own house map, read-only.
-      # - ./house.json:/config/house.json:ro
+      # With LOOM_HOUSE above: your own house maps, read-only (a directory,
+      # so a `cp` over house.json is seen — a single-file mount keeps the old inode).
+      # - ./show-map:/config:ro
     depends_on:
       db:
         condition: service_healthy

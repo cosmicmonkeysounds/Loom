@@ -308,11 +308,16 @@ export type SpatialFrame = {
   [K in SpatialFrameName]: { event: K; data: SpatialFrames[K] };
 }[SpatialFrameName];
 
+/** Where an event's map came from (`docs/loom-reinstall.md` §1.3): a
+ *  director's save for this event, the project's map file snapshotted at
+ *  launch (its active variant), or the show's file (`LOOM_HOUSE`). */
+export type HouseSource = "event" | "project" | "show";
+
 /** `GET /api/spatial/house`. */
 export interface HouseResponse {
   house: HouseMap;
   version: string;
-  source: "event" | "show";
+  source: HouseSource;
 }
 
 /** `POST /api/mod/spatial/house` (200). */
@@ -320,6 +325,42 @@ export interface SaveHouseResult {
   ok: true;
   version: string;
   warnings: string[];
+}
+
+/** One whole-map variant of an event (`house.json`, `house.shed.json`, …),
+ *  `GET /api/mod/spatial/variants`. `name` is the map's own `name` (else
+ *  the file's); `ok` / `problems` are `validateHouse`'s verdict. */
+export interface MapVariant {
+  file: string;
+  name: string;
+  active: boolean;
+  ok: boolean;
+  problems: string[];
+}
+
+/** `GET /api/mod/spatial/variants`. `from`: the project's snapshot, or the
+ *  show file's directory (an event with no project map files). `edited`: a
+ *  director's save is in force over the active variant (a switch drops it).
+ *  `project`: the event belongs to a project ("Save to project" works). */
+export interface MapVariantsResponse {
+  variants: MapVariant[];
+  from: "project" | "show";
+  edited: boolean;
+  project: boolean;
+}
+
+/** `POST /api/mod/spatial/variant` (200). `dropped`: a director's save was
+ *  in force and is gone (the variant replaced it). */
+export interface SwitchVariantResult extends SaveHouseResult {
+  file: string;
+  dropped: boolean;
+}
+
+/** `POST /api/mod/spatial/house/project` (200). */
+export interface SaveToProjectResult {
+  ok: true;
+  file: string;
+  version: string;
 }
 
 /** `GET /api/mod/spatial/stations` rows. */

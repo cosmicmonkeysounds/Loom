@@ -5,6 +5,7 @@
 import { randomUUID } from "node:crypto";
 
 import { pool } from "./index.ts";
+import { mapFilesOf, type MapFiles } from "../house-maps.ts";
 
 export interface ProjectRow {
   id: string;
@@ -40,6 +41,10 @@ export interface EventRow {
   ended_at: string | null;
   /** Display name of the author who launched it (null on rows from before 2026-09-10). */
   created_by_name: string | null;
+  /** The project's map files at launch / reload (`house.json`,
+   *  `house.<variant>.json` → text; `house-maps.ts`). Null on rows from
+   *  before 2026-10-15 — the event then plays the show's file. */
+  house_maps: MapFiles | null;
 }
 
 // --- projects -----------------------------------------------------------
@@ -337,13 +342,15 @@ export async function deleteFile(projectId: string, path: string): Promise<boole
 }
 
 /**
- * A project's files concatenated into one `.loom` source string — `main.loom`
+ * A project's `.loom` files concatenated into one source string — `main.loom`
  * first, then the rest by path, with the same per-file header comment the
  * on-disk example loader uses (`examples/load.ts`), so the compiled model is
- * identical whether an author splits the world across files or not.
+ * identical whether an author splits the world across files or not. Other
+ * files (the house maps, `projectMaps`) are not story: the editor indexes
+ * `.loom` only, and so does this.
  */
 export async function projectSource(projectId: string): Promise<{ name: string; source: string } | null> {
-  const files = await listFiles(projectId);
+  const files = (await listFiles(projectId)).filter((f) => f.path.endsWith(".loom"));
   if (files.length === 0) return null;
   const ordered = [...files].sort((a, b) => {
     const am = a.path === "main.loom" ? 0 : 1;
@@ -381,11 +388,19 @@ export async function lastEventCodes(projectId: string): Promise<{ event: string
   return r ? { event: r.event_code, prime: r.prime_code, mod: r.mod_code } : null;
 }
 
-export async function createEvent(row: Omit<EventRow, "created_at" | "ended_at" | "created_by_name"> & { created_by_name?: string | null }): Promise<EventRow> {
+/** A project's house map files (`house.json`, `house.<variant>.json`) —
+ *  what a launch or reload snapshots beside the source. */
+export async function projectMaps(projectId: string): Promise<MapFiles> {
+  return mapFilesOf(await listFiles(projectId));
+}
+
+export async function createEvent(
+  row: Omit<EventRow, "created_at" | "ended_at" | "created_by_name" | "house_maps"> & { created_by_name?: string | null; house_maps?: MapFiles | null },
+): Promise<EventRow> {
   const { rows } = await pool().query<EventRow>(
     `insert into event
-       (id, project_id, mode, status, event_code, prime_code, mod_code, scenario_name, scenario_source, created_by_name)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       (id, project_id, mode, status, event_code, prime_code, mod_code, scenario_name, scenario_source, created_by_name, house_maps)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)
      returning *`,
     [
       row.id,
@@ -398,6 +413,7 @@ export async function createEvent(row: Omit<EventRow, "created_at" | "ended_at" 
       row.scenario_name,
       row.scenario_source,
       row.created_by_name ?? null,
+      row.house_maps !== undefined && row.house_maps !== null ? JSON.stringify(row.house_maps) : null,
     ],
   );
   return rows[0]!;
@@ -417,6 +433,11 @@ export async function setEventStatus(id: string, status: EventStatus): Promise<v
 /** Swap the story source a live event runs on (the editor's "push draft"). */
 export async function setEventSource(id: string, source: string): Promise<void> {
   await pool().query("update event set scenario_source = $2 where id = $1", [id, source]);
+}
+
+/** Swap the map snapshot a live event holds (a reload, a save to the project). */
+export async function setEventHouseMaps(id: string, maps: MapFiles): Promise<void> {
+  await pool().query("update event set house_maps = $2::jsonb where id = $1", [id, JSON.stringify(maps)]);
 }
 
 /** Every non-ended event across all projects (for boot rehydration). */

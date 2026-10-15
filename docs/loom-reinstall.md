@@ -342,20 +342,61 @@ tolerance: metres, and m² for orientations).
   player's feet fit (0.31 m off a wall line: body radius + half a wall)
   within 0.9 m of a spot is in another room on its floor. In practice:
   keep a spot ≥ 1.21 m from any wall it shares with a walkable room.
-- The event server serves the event's map: the director's saved one
-  when there is one (and it validates) — `STATE_DIR/<eventId>/spatial-house.json`,
-  or `STATE_DIR/spatial-house.json` for the default (env-passcode) event,
-  which journals to the state-dir root — else the show's file (env
-  `LOOM_HOUSE` overrides the default path). The save is deliberately
-  *not* named `house.json`: `LOOM_HOUSE` may well be `/data/house.json`
-  and the default event's state dir that same `/data`. Mount an override
-  read-only, outside the state dir, all the same.
+- **The map belongs to the project** (SW-MAP-01). A project's map files
+  are ordinary project files beside the `.loom` story: `house.json` (the
+  default **variant**) and any `house.<variant>.json` (`<variant>` =
+  1–40 of `A–Z a–z 0–9 _ -`, e.g. `house.shed.json`), at the project's
+  root (`core/server/house-maps.ts` `isMapFile`). They are not story — the
+  launch source concatenates `.loom` files only. A project made from an
+  example template gets the example's maps; `core/scripts/sync-example.ts`
+  pushes them, but **the project's copy wins** (a survey kept with "Save
+  to project" lives there): an example map is only added when the project
+  lacks that file, a differing project map is kept and both versions are
+  summarised; `--replace-maps` overwrites (and deletes the ones the
+  example lacks, copying the old text to a temp directory first),
+  `--keep-maps` touches none. Each variant is a **whole map**, validated
+  on its own — a map file that doesn't validate is refused wherever one is
+  written (`PUT /api/projects/:id/files` 400 + `problems`, an empty new
+  file aside; `/api/mod/load {maps}` 400 before the restart; sync-example
+  stops before writing). The server stays show-agnostic and labels a
+  variant by its file (and the map's `name`).
+- **A launch snapshots them** like `scenario_source`: on the event row
+  (`event.house_maps`, jsonb, file → text) and in the event's state dir
+  (`spatial-maps.json`, with the **active variant**), so an event plays a
+  fixed map through a server restart (the files come from the row, like
+  the story — a sync written there while the server was down is what it
+  plays; the state dir's copy covers an event with no row snapshot, and the
+  active variant is always the state dir's), a reload (`POST
+  /api/projects/:id/event/reload`, "Push draft") refreshes the snapshot
+  (the active variant is kept while its file exists, else the default),
+  and End → relaunch is a new event on the project's current maps. Old
+  event rows (no snapshot) play the show's file.
+- The event server serves the event's map, the first that exists and
+  validates: **(1)** the director's save for this event —
+  `STATE_DIR/<eventId>/spatial-house.json`, or `STATE_DIR/spatial-house.json`
+  for the default (env-passcode) event, which journals to the state-dir
+  root; **(2)** the project snapshot's active variant (default
+  `house.json`); **(3)** the show's file (env `LOOM_HOUSE`, else the
+  example's `house.json` — now only the fallback). `source` on `GET
+  /api/spatial/house` says which (`event` | `project` | `show`). The save
+  is deliberately *not* named `house.json`: `LOOM_HOUSE` may well be
+  `/data/house.json` and the default event's state dir that same `/data`.
+  Mount an override read-only, outside the state dir, all the same.
+- A director's save stays the event's own until it is retired: **Save to
+  project** writes the event's current map into a project file (default:
+  the active variant's) and, when that is the active variant, deletes the
+  save (the event now plays the project's copy); a **variant switch**
+  drops it (it was an edit of the old variant). A reload keeps it. An
+  event with no project map files (the LAN default event, an old project)
+  switches among the **show file's siblings** instead: `LOOM_HOUSE=
+  /config/house.json` → `/config/house.<variant>.json`.
 - The show's file is re-read whenever its **mtime** changes (a hand edit,
-  a file mounted after boot): while an event runs on the show's file, a
-  changed valid file replaces its map and is announced (`house` frame,
-  live ducks follow, §2.2). A missing, half-written or invalid file is
-  logged once and never sticks — the last good map keeps serving. An
-  event running on a director's save never follows the show's file.
+  a file mounted after boot): while an event runs on the show's file (or a
+  chosen sibling), a changed valid file replaces its map and is announced
+  (`house` frame, live ducks follow, §2.2). A missing, half-written or
+  invalid file is logged once and never sticks — the last good map keeps
+  serving. An event running on a director's save or a project snapshot
+  never follows the show's file.
 - Both games and the terminals fetch the map at start (`GET
   /api/spatial/house`) and refetch on a `house` frame, and on `hello`
   (every stream (re)connect) whenever its `houseVersion` differs from the
@@ -403,8 +444,11 @@ calls; it can do nothing else.
 
 | Route | Auth | Body / query | Result |
 |---|---|---|---|
-| `GET /api/spatial/house` | mod token (header or `?token=`), author session, or a session token | — | 401 none of those · 503 no map · `{house, version, source: "event" \| "show", duck?}` — `duck` (the session's current `DuckSpot`) only when the caller is a live session token: a map save may have moved or re-dealt it, and this is how a parked assignment (not on the stream yet) learns of it |
+| `GET /api/spatial/house` | mod token (header or `?token=`), author session, or a session token | — | 401 none of those · 503 no map · `{house, version, source: "event" \| "project" \| "show", duck?}` (§1.3) — `duck` (the session's current `DuckSpot`) only when the caller is a live session token: a map save may have moved or re-dealt it, and this is how a parked assignment (not on the stream yet) learns of it |
 | `POST /api/mod/spatial/house` | mod | `{house, base?}` — `base` = the version the editor loaded | 400 `{error, problems}` (checked first) · 409 `{error: "the map changed — reload", version}` when `base` is given and is not the current version (the map is loaded first if nothing has yet; no / null `base` = no check, last write wins) · 200 `{ok, version, warnings}`; persists `spatial-house.json` in the event's state dir (§1.3); streams get `house {version}`, then a `duck` frame per player whose duck moved (§2.2) |
+| `GET /api/mod/spatial/variants` | mod | — | `{variants: [{file, name, active, ok, problems}], from: "project" \| "show", edited, project}` — every whole-map variant (the default file first, then by name; `name` = the map's own, else the file), each validated afresh; `from` = the project snapshot, or the show file's siblings when it has no map files; `edited` = a director's save is in force; `project` = the event has a project (Save to project works) |
+| `POST /api/mod/spatial/variant` | mod | `{file, base?}` | 404 `{error: "no such map variant", variants}` · 400 `{error: "invalid house map", problems}` · 409 as for `house` on a stale `base` · 200 `{ok, version, warnings, file, dropped}`. **The tent ↔ shed switch** (SW-MAP-13), mid-show too: the same path as a save (live sessions carried over, ducks kept by spot id or re-dealt, `house` then `duck` frames), nothing saved; the active variant is remembered for the event (survives a restart); `dropped` = a director's save was in force and is gone |
+| `POST /api/mod/spatial/house/project` | mod | `{file?, base?}` — `file` default: the active variant's (a show sibling's too, on an event with no project maps yet, when it is named like a map file), else `house.json` | 409 `{error: "this event has no project — download the map instead"}` (the LAN default event; no `version`) · 400 not a map file name · 409 stale `base` · 502 the write failed · 200 `{ok, file, version}`. **Save to project**: writes the event's current map (two-space JSON + newline) as that project file — through the live co-editing doc when it is open, announced to every editor's tree — and records the snapshot on the event row, so the next launch and every co-writer see it. When `file` is the active variant, the director's save it came from is retired (the event now runs on the project's copy; same version, no frame) |
 | `POST /api/mod/spatial/begin` | mod | `{guest, world: "vr" \| "web", device, station?}` | 409 no scenario · 404 unknown guest · 400 bad world · 503 no map · 200 `Assignment` (below). An active session for the same guest is ended (`leave {reason: "replaced"}`). With `station`, the assignment is parked for that station until it claims it, and an older assignment still parked there is ended (`replaced`). |
 | `GET /api/mod/spatial/station` | mod | `?id=vr-1&name=Headset 1&world=vr` | marks the station seen; `{assignment: Assignment \| null}` — the newest unclaimed assignment for it |
 | `GET /api/mod/spatial/stations` | mod | — | `{stations: [{id, name, world, online (seen < 5 s), busy: {session, guest, name} \| null}]}` |
@@ -534,7 +578,15 @@ for the bundled stand-in, which is read-only anyway). A 409 saves nothing
 and offers **Copy my edits (JSON)** and **Reload the map**; a successful
 save moves the page's base to the new version. A terminal's view cone is
 drawn `horizontalFov(fov ?? 70)` wide (§1.1). A terminal's provisioning
-link is offered from its row.
+link is offered from its row. The page's **project bar**
+(`reinstall/web/src/map/ProjectBar.tsx`, logic in `map/project.ts`; built
+and tested but **not mounted on the page yet** — the map-page rewrite
+places it) toggles
+the variants (`GET …/variants`, `POST …/variant` with `base`; it asks first
+while programs are mid-game or a director's save would be dropped), offers
+**Save to project** (`POST …/house/project`, only on an event with a
+project; it sends the file it names in its confirm, `saveTarget`) and **Download JSON** (the shown map as the active variant's file,
+to commit as the show's file).
 
 ## 4. The terminals — world view
 

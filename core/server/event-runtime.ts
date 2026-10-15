@@ -14,9 +14,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
 import { readFileSync, statSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { validateHouse, type HouseMap } from "@loom/house";
+import { validateHouse, type HouseMap, type MapVariantsResponse } from "@loom/house";
 
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { guestView, modView, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
@@ -51,6 +52,22 @@ import { printExtras } from "./routes/k12.ts";
 import { sendRecap } from "./routes/recap.ts";
 import { ScreenWatch, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost } from "./routes/screen.ts";
 import { SpatialHub, houseVersion, houseWarnings, isWorld, parsePose, sortCandidates, type SessionRef } from "./spatial.ts";
+import {
+  DEFAULT_MAP_FILE,
+  activeVariant,
+  mapProblems,
+  saveFileFor,
+  asMapFiles,
+  isMapFile,
+  listVariants,
+  mapFileText,
+  parseMapText,
+  readMapFile,
+  showVariantFiles,
+  type MapFiles,
+  type ParsedMap,
+  type ProjectLink,
+} from "./house-maps.ts";
 import {
   AgentHub,
   AgentTraceLog,
@@ -253,9 +270,18 @@ export interface EventRuntimeInit {
   /** The wall terminals' voice (`/api/mod/tts`). One proxy — one cache —
    *  is shared by every event in the process; tests inject their own. */
   tts?: TtsProxy;
-  /** The show's house map (the reinstallation games) — used until a
-   *  director saves one for this event. Default: `defaultHouseFile()`. */
+  /** The show's house map (the reinstallation games) — the fallback when
+   *  the event has neither a director's save nor a project map snapshot.
+   *  Default: `defaultHouseFile()`. Its siblings `<stem>.<variant>.json`
+   *  are the variants of an event with no project map files. */
   houseFile?: string;
+  /** The project's map files snapshotted at launch (`house.json`,
+   *  `house.<variant>.json` → raw text; `house-maps.ts`). Seeds a fresh
+   *  state dir only — a restart reads its own copy back. */
+  houseMaps?: MapFiles | null;
+  /** The way back to the project ("Save to project"); absent → the event
+   *  has none (the LAN default event). */
+  project?: ProjectLink | null;
   /** The spatial + agent hubs' clock (tests). */
   now?: () => number;
   /** Web Push (K-31a). Absent → the process-wide sender from `LOOM_VAPID_*`;
@@ -369,6 +395,12 @@ export class EventRuntime {
   // stations, poses and the house map. In memory; poses never journal.
   readonly spatial: SpatialHub;
   private readonly houseFile: string;
+  // The project's map files as snapshotted (launch / reload / a save to the
+  // project), null = no project snapshot; and the active variant's file
+  // (null = the default). Both persist in the state dir (`spatial-maps.json`).
+  private projectMaps: MapFiles | null;
+  private mapVariant: string | null;
+  private readonly project: ProjectLink | null;
   // K-13 room check-in by QR (routes/k13.ts).
   private readonly checkin: GuestCheckin;
   // N-02 re-pair a guest + N-10 release a performer part (routes/n02.ts).
@@ -414,6 +446,16 @@ export class EventRuntime {
     this.wiki = init.wiki ?? null;
     this.images = init.images ?? defaultImages();
     this.houseFile = init.houseFile ?? defaultHouseFile();
+    this.project = init.project ?? null;
+    // The map files come from the event row like `scenarioSource` does (a
+    // sync written to the row while the runtime was down — `sync-example
+    // --no-reload` — is what a restart plays); the state dir's copy covers an
+    // event with no row snapshot (the LAN default event, an old row). The
+    // active variant is the event's own, so it always comes from the state dir.
+    const stored = this.store.loadMaps();
+    this.projectMaps = asMapFiles(init.houseMaps ?? null) ?? asMapFiles(stored?.files ?? null);
+    this.mapVariant = stored?.active ?? null;
+    if (this.projectMaps !== null) this.store.saveMaps(this.projectMaps, this.mapVariant);
     if (init.now !== undefined) this.clock = init.now;
     this.modSnapshotMs = Math.max(0, init.modSnapshotMs ?? MOD_SNAPSHOT_MS);
     this.spatial = new SpatialHub({ eventId: init.eventId, ...(init.now !== undefined ? { now: init.now } : {}) });
@@ -1153,15 +1195,17 @@ export class EventRuntime {
 
   // -- the reinstallation games (docs/loom-reinstall.md §2) ----------------
 
-  /** The event's house map, loaded on first use: the director's save for
-   *  this event when valid, else the show's file. Null: neither exists.
-   *  While the event runs on the show's file, a changed file (a hand edit)
-   *  replaces the map and is announced; a director's save never is. */
+  /** The event's house map, loaded on first use (`docs/loom-reinstall.md`
+   *  §1.3): the director's save for this event when valid, else the
+   *  project snapshot's active variant, else the show's file. Null: none
+   *  exists. While the event runs on the show's file, a changed file (a
+   *  hand edit, a `cp` over it) replaces the map and is announced; a
+   *  director's save and a project snapshot never change by themselves. */
   private spatialHouse(): HouseMap | null {
     const current = this.spatial.house;
     if (current !== null) {
-      if (this.spatial.source === "event") return current;
-      const next = showHouse(this.houseFile);
+      if (this.spatial.source !== "show") return current;
+      const next = showHouse(this.showMapPath());
       if (next !== null && next !== current && houseVersion(next) !== this.spatial.version) {
         this.spatial.setHouse(next, "show");
         this.logHouseWarnings(next);
@@ -1176,14 +1220,165 @@ export class EventRuntime {
         this.logHouseWarnings(v.house);
         return v.house;
       }
-      process.stderr.write(`  ⚠️  event ${this.eventId}: saved house map is invalid — using the show's (${v.problems.join("; ")})\n`);
+      process.stderr.write(`  ⚠️  event ${this.eventId}: saved house map is invalid — using the project's or the show's (${v.problems.join("; ")})\n`);
     }
-    const show = showHouse(this.houseFile);
-    if (show !== null) {
-      this.spatial.setHouse(show, "show", false);
-      this.logHouseWarnings(show);
+    const base = this.baseHouse();
+    if (base !== null) {
+      this.spatial.setHouse(base.house, base.source, false);
+      this.logHouseWarnings(base.house);
     }
-    return show;
+    return base?.house ?? null;
+  }
+
+  /** The project's map files, when the snapshot has any. */
+  private get projectMapFiles(): MapFiles | null {
+    return this.projectMaps !== null && Object.keys(this.projectMaps).length > 0 ? this.projectMaps : null;
+  }
+
+  /** The map under any director's save: the project snapshot's active
+   *  variant when it validates, else the show's file (its active sibling). */
+  private baseHouse(): { house: HouseMap; source: "project" | "show" } | null {
+    const maps = this.projectMapFiles;
+    if (maps !== null) {
+      const file = activeVariant(Object.keys(maps), this.mapVariant);
+      if (file !== null) {
+        const parsed = parseMapText(maps[file]!);
+        if (parsed.house !== null) return { house: parsed.house, source: "project" };
+        process.stderr.write(`  ⚠️  event ${this.eventId}: the project's ${file} is invalid — using the show's (${parsed.problems.join("; ")})\n`);
+      }
+    }
+    const show = showHouse(this.showMapPath());
+    return show === null ? null : { house: show, source: "show" };
+  }
+
+  /** The show-side file of the active variant: a chosen sibling of the show
+   *  file (an event with no project map files), else the show file. */
+  private showMapPath(): string {
+    const v = this.mapVariant;
+    if (v === null || this.projectMapFiles !== null || v === basename(this.houseFile)) return this.houseFile;
+    return join(dirname(this.houseFile), v); // a variant name is checked when it is chosen
+  }
+
+  /** The variants on offer — the project snapshot's map files, else the
+   *  show file and its siblings — each read and validated afresh. */
+  private variantEntries(): { from: "project" | "show"; fallback: string; entries: Array<[string, ParsedMap]> } {
+    const maps = this.projectMapFiles;
+    if (maps !== null) return { from: "project", fallback: DEFAULT_MAP_FILE, entries: Object.entries(maps).map(([f, t]) => [f, parseMapText(t)]) };
+    const files = showVariantFiles(this.houseFile);
+    return { from: "show", fallback: files[0]!.file, entries: files.map((v) => [v.file, readMapFile(v.path)]) };
+  }
+
+  /** `GET /api/mod/spatial/variants`. */
+  private mapVariants(): MapVariantsResponse {
+    this.spatialHouse();
+    const { from, fallback, entries } = this.variantEntries();
+    const active = activeVariant(
+      entries.map(([f]) => f),
+      this.mapVariant,
+      fallback,
+    );
+    return { variants: listVariants(entries, active, fallback), from, edited: this.spatial.source === "event", project: this.project !== null };
+  }
+
+  /** The variant the event plays now, by file — over the same list
+   *  `GET variants` shows (the project's files, else the show's). */
+  private activeVariantFile(): string | null {
+    const { fallback, entries } = this.variantEntries();
+    return activeVariant(
+      entries.map(([f]) => f),
+      this.mapVariant,
+      fallback,
+    );
+  }
+
+  /**
+   * A reload's fresh snapshot of the project's map files (`events-api.ts`,
+   * `/api/mod/load {maps}`): the event plays its active variant from now on
+   * (the default when that file is gone) — unless a director's save is in
+   * force, which stays (it is never silently lost; "Save to project" or a
+   * variant switch retires it).
+   */
+  setProjectMaps(maps: MapFiles): void {
+    this.projectMaps = { ...maps };
+    const files = Object.keys(maps);
+    if (files.length > 0) this.mapVariant = activeVariant(files, this.mapVariant);
+    this.store.saveMaps(this.projectMaps, this.mapVariant);
+    if (this.spatial.house === null || this.spatial.source === "event") return; // loads lazily / the save stays
+    const base = this.baseHouse();
+    if (base === null) return;
+    const changed = houseVersion(base.house) !== this.spatial.version;
+    this.spatial.setHouse(base.house, base.source, changed);
+    if (changed) this.logHouseWarnings(base.house);
+  }
+
+  /** The project's map files as this event holds them (tests, tooling). */
+  get houseMaps(): MapFiles | null {
+    return this.projectMaps === null ? null : { ...this.projectMaps };
+  }
+
+  /** `base` (the map version the caller loaded) against the live map. No /
+   *  null `base` = no check. False: the 409 has been sent. */
+  private baseIsCurrent(base: unknown, res: ServerResponse): boolean {
+    if (base === undefined || base === null) return true;
+    this.spatialHouse(); // the current version (loads it on first use)
+    if (base === this.spatial.version) return true;
+    sendJson(res, 409, { error: "the map changed — reload", version: this.spatial.version });
+    return false;
+  }
+
+  /**
+   * `POST /api/mod/spatial/house/project {file?, base?}` — "Save to
+   * project": the event's current map becomes a project file (default: the
+   * active variant's), so the next launch and every co-writer see it. When
+   * that file is the active variant, the director's save it came from is
+   * retired: the event now runs on the project's copy.
+   */
+  private async saveMapToProject(res: ServerResponse, body: Record<string, unknown>, by: string): Promise<boolean> {
+    const project = this.project;
+    if (project === null) {
+      sendJson(res, 409, { error: "this event has no project — download the map instead" });
+      return true;
+    }
+    const house = this.spatialHouse();
+    if (house === null) {
+      sendJson(res, 503, { error: "no house map" });
+      return true;
+    }
+    // The default is the variant playing now — a show sibling too (an event
+    // with no project maps yet), so the shed is never saved as the tent.
+    const file = str(body, "file").trim() || saveFileFor(this.activeVariantFile());
+    if (!isMapFile(file)) {
+      sendJson(res, 400, { error: "a map file is house.json or house.<variant>.json" });
+      return true;
+    }
+    if (!this.baseIsCurrent(body["base"], res)) return true;
+    const version = this.spatial.version;
+    const text = mapFileText(house);
+    try {
+      await project.writeFile(file, text);
+    } catch (err) {
+      process.stderr.write(`  ⚠️  event ${this.eventId}: saving ${file} to the project failed (${err instanceof Error ? err.message : String(err)})\n`);
+      sendJson(res, 502, { error: "could not write the project file" });
+      return true;
+    }
+    const next = { ...(this.projectMaps ?? {}), [file]: text };
+    this.projectMaps = next;
+    // The live map *is* the saved file when it resolves as the active
+    // variant (and nobody saved another map while the write was in flight).
+    if (activeVariant(Object.keys(next), this.mapVariant) === file && this.spatial.version === version) {
+      this.mapVariant = file;
+      this.store.clearHouse();
+      this.spatial.setHouse(house, "project", false);
+    }
+    this.store.saveMaps(next, this.mapVariant);
+    try {
+      await project.saveSnapshot(next);
+    } catch (err) {
+      process.stderr.write(`  ⚠️  event ${this.eventId}: recording the map snapshot failed (${err instanceof Error ? err.message : String(err)})\n`);
+    }
+    process.stdout.write(`  🗺️  event ${this.eventId}: ${by} saved the map to the project as ${file}\n`);
+    sendJson(res, 200, { ok: true, file, version });
+    return true;
   }
 
   /** Rooms naming a LOCATION the loaded story doesn't declare. */
@@ -1280,6 +1475,9 @@ export class EventRuntime {
       }
       case "/api/mod/spatial/stations":
         sendJson(res, 200, { stations: this.spatial.stationList() });
+        return true;
+      case "/api/mod/spatial/variants":
+        sendJson(res, 200, this.mapVariants());
         return true;
       case "/api/mod/spatial/candidates": {
         // The typed-name fallback when a pass won't scan: every guest and
@@ -2271,6 +2469,7 @@ export class EventRuntime {
         sendJson(res, 403, { error: "moderators only" });
         return true;
       }
+      if (path === "/api/mod/spatial/house/project") return this.saveMapToProject(res, body, opts.moderatorName ?? "Director");
       return this.handleMod(res, path, body, opts.moderatorName ?? "Director");
     }
 
@@ -2866,7 +3065,23 @@ export class EventRuntime {
       case "/api/mod/load": {
         const source = str(body, "source") || this.scenarioSource;
         const name = str(body, "name") || this.scenarioName;
+        // `maps` (optional): the project's map files with it
+        // (`scripts/sync-example.ts`) — a fresh snapshot, as on a reload.
+        // Every file must validate: a broken map would quietly play the show
+        // file instead. The row's snapshot follows (a restart reads it).
+        const maps = asMapFiles(body["maps"]);
+        const bad = mapProblems(maps ?? {});
+        if (bad !== null) {
+          sendJson(res, 400, { error: `invalid house map ${bad.file}`, file: bad.file, problems: bad.problems });
+          return true;
+        }
         this.restart(source, name, { by });
+        if (maps !== null) {
+          this.setProjectMaps(maps);
+          this.project?.saveSnapshot(maps).catch((err: unknown) => {
+            process.stderr.write(`  ⚠️  event ${this.eventId}: recording the map snapshot failed (${err instanceof Error ? err.message : String(err)})\n`);
+          });
+        }
         sendJson(res, 200, { ok: true, phase: this.phase });
         return true;
       }
@@ -2896,19 +3111,42 @@ export class EventRuntime {
           sendJson(res, 400, { error: "invalid house map", problems: v.problems });
           return true;
         }
-        const base = body["base"];
-        if (base !== undefined && base !== null) {
-          this.spatialHouse(); // the current version (loads it on first use)
-          if (base !== this.spatial.version) {
-            sendJson(res, 409, { error: "the map changed — reload", version: this.spatial.version });
-            return true;
-          }
-        }
+        if (!this.baseIsCurrent(body["base"], res)) return true;
         this.store.saveHouse(v.house);
         const version = this.spatial.setHouse(v.house, "event");
         const warnings = this.houseWarnings(v.house);
         for (const w of warnings) process.stderr.write(`  ⚠️  event ${this.eventId}: house map ${w}\n`);
         sendJson(res, 200, { ok: true, version, warnings });
+        return true;
+      }
+      case "/api/mod/spatial/variant": {
+        // The tent ↔ shed switch (SW-MAP-13): play another whole-map
+        // variant — mid-show too. The same path as a director's save (live
+        // sessions carried over, ducks kept or re-dealt, `house` + `duck`
+        // frames, 409 on a stale `base`), but nothing is saved: the variant
+        // is remembered, and a director's save in force is dropped.
+        const file = str(body, "file");
+        const { from, entries } = this.variantEntries();
+        const hit = entries.find(([f]) => f === file);
+        if (hit === undefined) {
+          sendJson(res, 404, { error: "no such map variant", variants: entries.map(([f]) => f) });
+          return true;
+        }
+        const house = hit[1].house;
+        if (house === null) {
+          sendJson(res, 400, { error: "invalid house map", problems: hit[1].problems });
+          return true;
+        }
+        if (!this.baseIsCurrent(body["base"], res)) return true;
+        const dropped = this.spatial.source === "event";
+        this.store.clearHouse();
+        this.mapVariant = file;
+        this.store.saveMaps(this.projectMaps, file);
+        const version = this.spatial.setHouse(house, from);
+        const warnings = this.houseWarnings(house);
+        for (const w of warnings) process.stderr.write(`  ⚠️  event ${this.eventId}: house map ${w}\n`);
+        process.stdout.write(`  🗺️  event ${this.eventId}: ${by} switched the map to ${file}\n`);
+        sendJson(res, 200, { ok: true, version, warnings, file, dropped });
         return true;
       }
       case "/api/mod/spatial/begin": {
