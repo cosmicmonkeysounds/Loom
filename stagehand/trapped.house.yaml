@@ -92,6 +92,11 @@
 # Night.terminals. Only `screens_flicker` is physical today: it blinks the
 # house so Trabolta's power is felt.
 
+# The real event id + mod passcode never go in this tracked file: put them in
+# trapped.house.local.yaml next to it (git-ignored, merged over `server:`) —
+#   server: { event: <id>, mod_passcode: "<code>" }
+# — or set LOOM_EVENT_ID / LOOM_MOD_PASSCODE. `stagehand check` flags a
+# CHANGE-ME that nothing replaced.
 server:
   url: https://app.mapsandducks.com
   event: CHANGE-ME-EVENT-ID  # the live event's id (Run → front of house / the /e/<id> URL)
@@ -120,7 +125,8 @@ show:
       mqtt: { topic: "zigbee2mqtt/kitchen/set", payload: { state: "ON", brightness: 51, transition: 0 } }
     - on: { directive: cue }
       match: { target: lights, room: The Cache, state: "off" }
-      mqtt: { topic: "wled/kitchen/api", payload: { "on": true, bri: 51 } }
+      # bri only: WLED keeps its on/off state, so the cut never lights a strip that was off.
+      mqtt: { topic: "wled/kitchen/api", payload: { bri: 51 } }
     - on: { directive: cue }
       match: { target: lights, room: The Cache, state: "on" }
       mqtt: { topic: "zigbee2mqtt/kitchen/set", payload: { state: "ON", brightness: 254, transition: 1 } }

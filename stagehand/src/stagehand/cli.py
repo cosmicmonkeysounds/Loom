@@ -23,7 +23,7 @@ import sys
 from pathlib import Path
 
 from . import app
-from .config import ConfigError, StagehandConfig, load_config
+from .config import ConfigError, StagehandConfig, load_config, local_overlay_path, placeholders
 from .module import REGISTRY
 
 
@@ -89,6 +89,13 @@ def main(argv: list[str] | None = None) -> int:
         return _ask(cfg, args)
 
     print(_describe(cfg))
+    todo = placeholders(cfg.server)
+    if todo:
+        print(
+            f"PLACEHOLDER server.{', server.'.join(todo)} is still CHANGE-ME — put the real values in "
+            f"{local_overlay_path(args.config).name} (git-ignored) or LOOM_EVENT_ID / LOOM_MOD_PASSCODE",
+            file=sys.stderr,
+        )
     if args.command == "check":
         print("config OK")
         return 0

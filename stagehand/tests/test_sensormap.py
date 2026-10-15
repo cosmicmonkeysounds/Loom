@@ -78,6 +78,10 @@ def test_validation():
         parse_sensor_rule({"on": {"topic": "a/b"}, "signal": {"name": "x", "bogus": 1}}, 0)  # unknown key
     with pytest.raises(SensorMapError):
         parse_sensor_rule({"on": {"topic": "a/b"}, "edge": True, "signal": {"name": "x"}}, 0)  # edge needs a when:
+    with pytest.raises(SensorMapError, match="payload field"):
+        parse_sensor_rule({"on": {"topic": "sensors/{room}/door", "when": "room == 'kitchen'"}, "edge": True, "signal": {"name": "x"}}, 0)
+    with pytest.raises(SensorMapError, match="payload field"):
+        parse_sensor_rule({"on": {"topic": "a/b", "when": "topic == 'a/b'"}, "edge": True, "signal": {"name": "x"}}, 0)
     with pytest.raises(SensorMapError):
         parse_sensor_rule({"on": {"topic": "a/b", "when": "x == 1"}, "edge": "yes", "signal": {"name": "x"}}, 0)
 

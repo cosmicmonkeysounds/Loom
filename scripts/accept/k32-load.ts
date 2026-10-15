@@ -21,12 +21,17 @@
 // bots. Booths are play-as sessions (`/api/mod/impersonate`), so no real
 // performer's part is held, and they end when the script exits. Afterwards
 // press Restart in Run (or pass `--reset-after`) to clear the bots.
+// It REFUSES an event with any real guest on the roster (anyone who isn't a
+// persona or a K32 bot — `live-guard.ts`), names the event and asks y/N
+// before writing anything; `--reset-after` re-checks before restarting.
+// `--i-know-this-is-live` overrides the refusal.
 //
 // Flags: --event <id> (skip code resolution) · --guests 45 --booths 9
 // --terminals 6 --mods 2 · --rate 2 (actions / guest / minute between
 // bursts) · --burst-every 20 · --probe-every 2 · --join persona|register ·
 // --open-doors (start a closed rehearsal) · --reset-after · --out <file.json>
-// (the recorded numbers) · --yes (skip the 5 s countdown). Node ≥ 22.6
+// (the recorded numbers) · --yes (skip the y/N question) ·
+// --i-know-this-is-live (skip the real-guest refusal). Node ≥ 22.6
 // (type stripping); no dependencies.
 //
 // Pass: ≥ 90 % of the guests joined, step-latency p95 < 1000 ms for the
@@ -43,7 +48,7 @@
 // (each guest ≈ 24 KB/s of full snapshots), which matters more on the
 // house downlink / guests' cellular than on the VPS.
 
-export {}; // a module: top-level await
+import { judge, liveGuard, LIVE_OVERRIDE, type GuardRow } from "./live-guard.ts";
 
 // ---------------------------------------------------------------- args
 
@@ -374,7 +379,7 @@ interface Sample {
 const samples: Sample[] = [];
 let metricsMissing = false;
 async function sampleMetrics(token: string): Promise<void> {
-  const r = await call<{ at: number; cpu: { userUs: number; systemUs: number }; loadavg: number[]; cpus: number; eventLoop: { p99Ms: number; maxMs: number }; memory: { rssMb: number }; clients: number }>(null, "GET", "/api/mod/metrics", { token });
+  const r = await call<{ at: number; cpu: { userUs: number; systemUs: number }; loadavg: number[]; cpus: number; eventLoop: { p99Ms: number; maxMs: number }; memory: { rssMb: number }; clients: number }>(null, "GET", `/api/mod/metrics?window=k32-${RUN}`, { token });
   if (r.status === 404) {
     metricsMissing = true;
     return;
@@ -389,7 +394,8 @@ async function sampleMetrics(token: string): Promise<void> {
 const local = /^https?:\/\/(localhost|127\.|\[::1\])/u.test(base);
 await resolveScope();
 const codes = await modLogin();
-const state = await call<{ phase?: string }>(null, "GET", "/api/state?role=mod", { token: codes.token });
+const state = await call<{ phase?: string; title?: string; roster?: GuardRow[] }>(null, "GET", "/api/state?role=mod", { token: codes.token });
+await liveGuard({ title: state.json.title, where: `${base}${scope || " (default event)"}`, roster: state.json.roster, action: "load-test this event", local });
 if (state.json.phase !== "open") {
   if (flag("open-doors")) {
     await call(null, "POST", "/api/mod/start", { token: codes.token, body: {} });
@@ -402,10 +408,6 @@ const codexList = await call<{ codex?: Array<{ code: string }> }>(null, "POST", 
 codexCodes = (codexList.json.codex ?? []).map((e) => e.code).filter(Boolean);
 
 console.log(`K-32 · ${base}${scope || " (default event)"} · ${nGuests} guests (${joinMode}) · ${nBooths} booths · ${nTerminals} terminals · ${nMods} directors · ${seconds}s`);
-if (!flag("yes") && !local) {
-  console.log("  REHEARSAL EVENTS ONLY — this adds bot guests and lobby lines. Ctrl+C now to abort (5 s)…");
-  await sleep(5000);
-}
 
 // 1. Directors + metrics baseline.
 const clients: Client[] = [];
@@ -506,8 +508,16 @@ console.log();
 streamStop.abort();
 await Promise.all(impersonations.map((session) => call(null, "POST", "/api/mod/impersonate/end", { token: codes.token, body: { session } })));
 if (flag("reset-after")) {
-  const r = await call(null, "POST", "/api/mod/reset", { token: codes.token, body: {} });
-  console.log(`  rehearsal restarted (bots cleared) → ${r.status}`);
+  // A restart is a real cut (every guest token cleared): re-check, since a
+  // real phone may have joined while the test ran.
+  const now = await call<{ roster?: GuardRow[] }>(null, "GET", "/api/state?role=mod", { token: codes.token });
+  const verdict = judge(now.json.roster, flag(LIVE_OVERRIDE), "restart this event");
+  if (verdict.ok) {
+    const r = await call(null, "POST", "/api/mod/reset", { token: codes.token, body: {} });
+    console.log(`  rehearsal restarted (bots cleared) → ${r.status}`);
+  } else {
+    console.error(`  ✘ --reset-after skipped — ${verdict.reason}`);
+  }
 }
 await Promise.race([Promise.allSettled(streams), sleep(2000)]);
 
@@ -561,6 +571,7 @@ const p95 = pct(people, 95);
 check(guests.length >= Math.ceil(nGuests * 0.9), `≥ 90 % of the guests joined (${guests.length}/${nGuests})`);
 check(people.length > 0 && p95 < 1000, `step latency p95 < 1 s (${fmt(p95)})`);
 if (metricsMissing) console.log("  ? CPU not measured by the script (see above)");
+if (joinMode === "persona") console.log("  ? the per-IP register / login rate limits were NOT exercised (personas skip them) — the door rush shares the house's one public IP (K-11)");
 else check(Number.isFinite(cpuMean) && cpuMean < 70, `server CPU mean < 70 % of one core (${cpuMean.toFixed(0)} %, peak ${cpuPeak.toFixed(0)} %)`);
 check(deliveryRatio >= 0.95, `probe lines reached ≥ 95 % of client × probe pairs (${(deliveryRatio * 100).toFixed(1)} %)`);
 

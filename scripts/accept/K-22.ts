@@ -10,13 +10,17 @@
 // second of full-feed snapshots. Best run during a rehearsal with a few
 // people playing (or Run → Players); `--steps N` instead posts N lobby
 // lines as the Operator ("K-22 probe i") — REHEARSAL EVENTS ONLY, guests see
-// them. Node ≥ 22.6 (type stripping); no dependencies.
+// them: with `--steps` it refuses an event with real guests on the roster
+// (`live-guard.ts`; `--i-know-this-is-live` overrides) and asks y/N
+// (`--yes` skips). Node ≥ 22.6 (type stripping); no dependencies.
 //
 // Pass: the lean feed saw every `sim` frame the full feed saw, no `snapshot`
 // / `history` at all, and the full feed never sent more than 2 snapshots in
 // any one second after connecting. Record "bytes per step" (full vs lean) in
 // the checklist. Local dry run (2026-10-15, 30 personas, 20 steps): full
 // 74 KB/step with 9 snapshots (was one per step), lean 0.3 KB/step.
+
+import { liveGuard, type GuardRow } from "./live-guard.ts";
 
 interface Tally {
   bytes: number;
@@ -101,6 +105,18 @@ function report(name: string, t: Tally, stepCount: number): void {
 }
 
 const token = await login();
+if (steps > 0) {
+  const st = await fetch(`${base}${scope}/api/state?role=mod`, { headers: { "x-loom-token": token } });
+  if (!st.ok) throw new Error(`mod state → ${st.status}`);
+  const view = (await st.json()) as { title?: string; roster?: GuardRow[] };
+  await liveGuard({
+    title: view.title,
+    where: `${base}${scope}`,
+    roster: view.roster,
+    action: `post ${steps} probe lines into the lobby`,
+    local: /^https?:\/\/(localhost|127\.|\[::1\])/u.test(base),
+  });
+}
 console.log(`K-22 · ${base}${scope} · watching ${seconds}s${steps > 0 ? ` · posting ${steps} probe lines` : ""}`);
 const stop = new AbortController();
 const t0 = Date.now();

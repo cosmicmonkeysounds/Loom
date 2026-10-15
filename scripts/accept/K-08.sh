@@ -13,8 +13,9 @@
 #   4. the 10-min job: armed, and ≥ 2 OK copies today (the 10-25 criterion)
 #
 # Needs: ssh to $LOOM_VPS without a prompt, the deploy/ scripts shipped to
-# the VPS (scripts/ops/ship.sh), at least one release logged
-# (deploy/release.sh --adopt <tag> if nothing was released yet), and for
+# the VPS (scripts/ops/ship.sh — its first release adopts what ran before as
+# pre-<tag>, so there is a rollback target; `ship.sh --sync-only` just copies
+# the scripts), at least one release logged, and for
 # step 2 a backup taken after someone registered on an event.
 set -u
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"

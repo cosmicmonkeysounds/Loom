@@ -2,7 +2,7 @@
 # Build + deploy a PINNED release on the VPS, keeping the previous image for
 # a one-command rollback (deploy/rollback.sh). Run in the checkout:
 #
-#   deploy/release.sh show-1031 [--commit <sha>] [--no-backup]
+#   deploy/release.sh show-1031 [--commit <sha>] [--no-backup] [--no-adopt]
 #   deploy/release.sh --adopt pre-k08      # tag what runs now; no rebuild
 #   deploy/release.sh --list               # the release log + local images
 #
@@ -13,10 +13,13 @@
 # the healthcheck + the public URL, (6) a line in ~/loom-ops/releases.log.
 # A tag is never rebuilt in place — that would destroy the pinned image —
 # so every deploy takes a new tag (show-1031, show-1031b, …).
+# The FIRST release on a box (empty release log) first adopts whatever runs
+# now as pre-<tag>, so there is always something to roll back to
+# (--no-adopt skips that; --adopt does it by hand).
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-usage() { sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
+usage() { sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
 
 list() {
   echo "running: $(current_tag)"
@@ -42,7 +45,7 @@ adopt() { # tag the images the running containers use, so there is a rollback ta
 }
 
 main() {
-  local tag="" backup=1 mode=release
+  local tag="" backup=1 mode=release autoadopt=1
   COMMIT=""
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -51,6 +54,7 @@ main() {
       --adopt) mode=adopt; tag="${2:-}"; shift ;;
       --commit) COMMIT="${2:-}"; shift ;;
       --no-backup) backup=0 ;;
+      --no-adopt) autoadopt=0 ;;
       -*) usage 1 ;;
       *) tag="$1" ;;
     esac
@@ -61,6 +65,16 @@ main() {
   [[ "$tag" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] || die "bad tag '$tag' (letters, digits, . _ -)"
   [ -f "$LOOM_DIR/.env" ] || die "no .env in $LOOM_DIR"
   [ "$mode" = adopt ] && { adopt "$tag"; return; }
+
+  # First scripted release: tag what runs now so it can be rolled back to.
+  if [ "$autoadopt" = 1 ] && ! releases_logged; then
+    if [ -n "$(compose ps -q loom 2>/dev/null | head -n1)" ] && [ -n "$(compose ps -q caddy 2>/dev/null | head -n1)" ]; then
+      say "first release on this box — adopting what runs now as pre-$tag"
+      ( COMMIT="" adopt "pre-$tag" ) || die "could not adopt the running stack (use --no-adopt to release without a rollback target)"
+    else
+      say "first release, nothing running to adopt — there will be no rollback target"
+    fi
+  fi
 
   local prev; prev="$(current_tag)"
   [ "$tag" = "$prev" ] && die "$tag is already running — take a new tag (e.g. ${tag}b)"

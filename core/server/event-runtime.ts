@@ -515,6 +515,14 @@ export class EventRuntime {
     this.modSnapshotTimer.unref?.();
   }
 
+  /** Flush a pending (coalesced) mod snapshot right now, if one is waiting. */
+  private flushModSnapshotsNow(): void {
+    if (this.modSnapshotTimer === null) return;
+    clearTimeout(this.modSnapshotTimer);
+    this.modSnapshotTimer = null;
+    this.flushModSnapshots();
+  }
+
   private flushModSnapshots(): void {
     // Same two writes as `sseSend`, the JSON serialised once for everyone.
     let data: string | null = null;
@@ -1521,6 +1529,9 @@ export class EventRuntime {
       this.persistMeta();
       this.pushSnapshots();
     }
+    // A restart is a timeline cut: a director's fresh view must land before
+    // the new history, never coalesced to after it.
+    this.flushModSnapshotsNow();
     this.pushHistory();
   }
 
@@ -1686,13 +1697,23 @@ export class EventRuntime {
         client.admin = false;
       }
       this.clients.add(client);
-      if (client.lean !== true) {
+      const fullMod = role === "mod" && client.lean !== true;
+      if (fullMod) {
+        // One `ModView` frame to every full director — the newcomer's first
+        // view *and* everyone's presence update, serialised once (so the
+        // newcomer never gets two ≈200 KB snapshots back to back).
+        if (this.modSnapshotTimer !== null) clearTimeout(this.modSnapshotTimer);
+        this.modSnapshotTimer = null;
+        this.flushModSnapshots();
+      } else if (client.lean !== true) {
         sseSend(res, "snapshot", this.snapshotFor(client));
+      }
+      if (client.lean !== true) {
         // A moderator sees the full feed *including* hidden messages (greyed in
         // the UI) so they can un-hide; performers see the public feed only.
         sseSend(res, "history", this.historyFor(client));
       }
-      this.pushPresence();
+      if (!fullMod) this.pushPresence();
       const ping = setInterval(() => res.write(":ping\n\n"), 25000);
       req.on("close", () => {
         clearInterval(ping);
@@ -1713,7 +1734,7 @@ export class EventRuntime {
     }
 
     // --- process load for the K-32 load test (directors only) ---
-    if (handleMetrics(req, res, method, path, () => opts.moderator === true || this.sessions.canModerate(queryTokenOf(req, url)), () => this.clients.size)) return true;
+    if (handleMetrics(req, res, method, path, url, () => opts.moderator === true || this.sessions.canModerate(queryTokenOf(req, url)), () => this.clients.size)) return true;
 
     // --- the mind debugger's trace (directors only) ---
     if (method === "GET" && path === "/api/mod/agent/trace") {

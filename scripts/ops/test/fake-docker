@@ -13,7 +13,7 @@ case "$all" in
   compose*" build"*)
     [ "${FAKE_BUILD_FAIL:-0}" = 1 ] && exit 1
     touch "$FAKE/images/loom-server:$LOOM_TAG" "$FAKE/images/loom-proxy:$LOOM_TAG" ;;
-  compose*" ps -q "*) echo "cid-123" ;;
+  compose*" ps -q "*) [ "${FAKE_PS_EMPTY:-0}" = 1 ] || echo "cid-123" ;;
   compose*"exec -T db pg_dump"*)
     [ "${FAKE_DB_DOWN:-0}" = 1 ] && { echo "service db is not running" >&2; exit 1; }
     printf -- '--\n-- PostgreSQL database dump\n--\nCREATE TABLE x();\n' ;;

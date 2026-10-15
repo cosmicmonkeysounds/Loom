@@ -20,6 +20,7 @@
 # ssh must work non-interactively: a key in the macOS keychain
 # (`ssh-add --apple-use-keychain ~/.ssh/id_ed25519`) or a passphrase-less one.
 set -uo pipefail
+umask 077   # the copies hold guest tokens + the DB dump: owner-only
 SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 [ -f "$HOME/.config/loom/ops.env" ] && . "$HOME/.config/loom/ops.env"
 LOOM_VPS="${LOOM_VPS:-ubuntu@app.mapsandducks.com}"

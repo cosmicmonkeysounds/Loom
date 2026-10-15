@@ -8,7 +8,7 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
-import { sampleMetrics, type ServerMetrics } from "../server/routes/metrics.ts";
+import { MAX_WINDOWS, sampleMetrics, windowKey, type ServerMetrics } from "../server/routes/metrics.ts";
 import { scenarioSource } from "../examples/load.ts";
 
 const SCENARIO = scenarioSource("escape-the-internet");
@@ -84,6 +84,24 @@ describe("/api/mod/metrics", () => {
     expect(b.memory.rssMb).toBeGreaterThan(0);
     expect(b.clients).toBe(0);
     for (const k of ["p50Ms", "p99Ms", "maxMs"] as const) expect(b.eventLoop[k]).toBeGreaterThanOrEqual(0);
+  });
+
+  it("keeps one event-loop window per reader, so readers never reset each other", async () => {
+    sampleMetrics(0, "k32"); // open both windows
+    sampleMetrics(0, "curl");
+    await new Promise((r) => setTimeout(r, 120)); // both histograms collect samples
+    // These reads are synchronous — no sample can land between them.
+    expect(sampleMetrics(0, "curl").eventLoop.p50Ms).toBeGreaterThan(0); // resets curl's window only
+    expect(sampleMetrics(0, "k32").eventLoop.p50Ms).toBeGreaterThan(0); // k32's samples survived it
+    expect(sampleMetrics(0, "curl").eventLoop).toEqual({ p50Ms: 0, p99Ms: 0, maxMs: 0 }); // freshly reset
+  });
+
+  it("sanitises window names and caps how many it keeps", () => {
+    expect(windowKey("k32-4242")).toBe("k32-4242");
+    expect(windowKey("../etc")).toBe("default");
+    expect(windowKey("")).toBe("default");
+    expect(windowKey(null)).toBe("default");
+    for (let i = 0; i < MAX_WINDOWS + 3; i++) expect(sampleMetrics(0, `w${i}`).clients).toBe(0);
   });
 
   it("counts connected stream clients", () => {

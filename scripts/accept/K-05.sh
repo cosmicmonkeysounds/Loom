@@ -7,7 +7,8 @@
 #
 # Needs: uv, mosquitto clients (brew install mosquitto), the `show` and
 # `agents` launchd jobs installed (uv run stagehand launchd install …), and a
-# live event on the VPS whose id + mod passcode are in the YAML.
+# live event on the VPS whose id + mod passcode are in the git-ignored
+# trapped.house.local.yaml (or LOOM_EVENT_ID / LOOM_MOD_PASSCODE).
 set -u
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SH="$ROOT/stagehand"
@@ -20,7 +21,9 @@ step() { echo; echo "── $*"; }
 ask()  { read -r -p "  → $* [enter] " _; }
 lines() { [ -f "$LOG" ] && wc -l < "$LOG" | tr -d ' ' || echo 0; }
 since() { tail -n +"$(( $1 + 1 ))" "$LOG" 2>/dev/null; }
-count_since() { since "$1" | grep -cF -- "$2" || true; }
+# A refused mod call logs "… → signal {…} FAILED: …" — that is not a pass.
+count_since() { since "$1" | grep -F -- "$2" | grep -vc "FAILED" || true; }
+fails_since() { since "$1" | grep -F -- "$2" | grep -c "FAILED" || true; }
 wait_for() { # wait_for <from-line> <pattern> <seconds>
   local t=0; while [ $t -lt "$3" ]; do
     [ "$(count_since "$1" "$2")" -gt 0 ] && return 0; sleep 1; t=$((t+1)); done; return 1; }
@@ -29,8 +32,12 @@ HOST=$(awk '/^  mqtt:/{m=1} m&&/host:/{print $2; exit}' "$CFG")
 step "0. preflight"
 command -v mosquitto_sub >/dev/null && ok "mosquitto clients" || bad "brew install mosquitto (clients)"
 ( cd "$SH" && uv run pytest -q tests/test_trapped_house.py >/dev/null 2>&1 ) && ok "test_trapped_house.py green" || bad "test_trapped_house.py failing"
-( cd "$SH" && uv run stagehand check --config "$CFG" >/dev/null 2>&1 ) && ok "stagehand check" || bad "stagehand check --config $CFG fails"
-grep -q "CHANGE-ME" "$CFG" && bad "the YAML still has a CHANGE-ME (event id / mod passcode)" || ok "event id + passcode filled in"
+CHECK_OUT=$( cd "$SH" && uv run stagehand check --config "$CFG" 2>&1 ) && ok "stagehand check" || bad "stagehand check --config $CFG fails"
+# The tracked YAML keeps its CHANGE-ME; the real values live in the
+# git-ignored <name>.local.yaml beside it (or LOOM_EVENT_ID / LOOM_MOD_PASSCODE).
+echo "$CHECK_OUT" | grep -q "^PLACEHOLDER" \
+  && bad "event id / mod passcode not filled in — create ${CFG%.yaml}.local.yaml with: server: { event: <id>, mod_passcode: \"<code>\" }" \
+  || ok "event id + passcode filled in (outside git)"
 MYIPS=$(ifconfig | awk '/inet /{print $2}')
 echo "$MYIPS" | grep -qx "$HOST" && ok "this Mac owns the broker address $HOST" || bad "mqtt.host $HOST is not this Mac's IP ($(echo $MYIPS | tr '\n' ' ')) — fix the DHCP reservation or the YAML + firmware"
 mosquitto_pub -h "$HOST" -t k05/ping -m x 2>/dev/null && ok "Mosquitto answers on $HOST (LAN listener)" || bad "Mosquitto not reachable on $HOST:1883 (add 'listener 1883' to mosquitto.conf)"
@@ -43,6 +50,8 @@ ask "close the server-room door, then press enter"
 L=$(lines); ask "OPEN the door once (leave it open ~5 s), close it, then press enter"
 sleep 3
 N=$(count_since "$L" "sensor sensors/serverroom/door → signal {'name': 'server_door_opened'}")
+F=$(fails_since "$L" "server_door_opened")
+[ "$F" = 0 ] || bad "$F server_door_opened call(s) FAILED at the server — wrong event id / passcode, or the VPS is down (see $LOG)"
 [ "$N" = 1 ] && ok "one server_door_opened (check Run → Log shows it once)" || bad "expected 1 server_door_opened from the reed, saw $N"
 
 step "2. restart with the door open fires nothing"
@@ -65,6 +74,8 @@ MQ=$(mktemp); mosquitto_sub -h "$HOST" -v -t 'wled/+/api' -t 'zigbee2mqtt/+/set'
 for C in a b; do
   L=$(lines); ask "plug in COMBO $(echo "$C" | tr a-z A-Z) completely, leave it in ~70 s, then press enter"
   N=$(count_since "$L" "'name': 'patch_combo_$C'")
+  F=$(fails_since "$L" "'name': 'patch_combo_$C'")
+  [ "$F" = 0 ] || bad "patch_combo_$C: $F call(s) FAILED at the server (see $LOG)"
   [ "$N" = 1 ] && ok "patch_combo_$C fired once" || bad "patch_combo_$C fired $N times"
   ask "pull the cables (and restore the house look from Run if it went dark)"
 done

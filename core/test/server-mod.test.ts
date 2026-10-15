@@ -410,7 +410,14 @@ function modStream(rt: EventRuntime, name?: string, query = "") {
       .split("\n\n")
       .filter((f) => f.startsWith(`event: ${type}\n`))
       .map((f) => JSON.parse(f.slice(f.indexOf("data: ") + 6)));
-  return { open, events };
+  /** Every SSE event type, in arrival order. */
+  const kinds = (): string[] =>
+    chunks
+      .join("")
+      .split("\n\n")
+      .filter((f) => f.startsWith("event: "))
+      .map((f) => f.slice(7, f.indexOf("\n")));
+  return { open, events, kinds };
 }
 
 describe("lifecycle fan-out to co-directors", () => {
@@ -764,6 +771,36 @@ describe("the mod feed's bandwidth", () => {
     // ≤ 2 frames for 8 steps; both directors got the same bytes.
     expect(a.events("snapshot").length - before).toBeLessThanOrEqual(2);
     expect(b.events("snapshot").slice(-1)).toEqual(a.events("snapshot").slice(-1));
+    rt.dispose();
+  });
+
+  it("a restart inside the coalescing window still sends the snapshot before the new history", async () => {
+    const rt = freshRuntime({ modSnapshotMs: 60_000 });
+    rt.openDoors();
+    const a = modStream(rt, "Ada");
+    await a.open;
+    await postAs(rt, "/api/mod/persona", { name: "Ivo" }, "Ada"); // leaves a trailing frame pending
+    const from = a.kinds().length;
+    expect((await postAs(rt, "/api/mod/reset", {}, "Ada")).status).toBe(200);
+    const after = a.kinds().slice(from).filter((k) => k === "snapshot" || k === "history" || k === "lifecycle");
+    expect(after[0]).toBe("lifecycle");
+    expect(after.indexOf("snapshot")).toBeGreaterThan(-1);
+    expect(after.indexOf("snapshot")).toBeLessThan(after.indexOf("history"));
+    rt.dispose();
+  });
+
+  it("a director connecting gets exactly one snapshot, and the others one presence frame", async () => {
+    const rt = freshRuntime({ modSnapshotMs: 0 });
+    rt.openDoors();
+    const a = modStream(rt, "Ada");
+    await a.open;
+    const before = a.events("snapshot").length;
+    const b = modStream(rt, "Bo");
+    await b.open;
+    expect(b.kinds().filter((k) => k === "snapshot" || k === "history")).toEqual(["snapshot", "history"]);
+    expect(a.events("snapshot").length - before).toBe(1);
+    const last = a.events("snapshot").slice(-1)[0] as { directors?: string[] };
+    expect(b.events("snapshot")[0]).toEqual(last);
     rt.dispose();
   });
 });

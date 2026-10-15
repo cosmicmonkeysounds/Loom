@@ -9,8 +9,11 @@
  * figure covers exactly its own window. The server is one Node thread, so
  * the meaningful ceiling is **one core** (`cpu Δ / wall Δ`), not the box;
  * `loadavg` + `cpus` give the box view. `eventLoop` is the event-loop delay
- * since the previous read (p50/p99/max ms) — a full-snapshot fan-out that
- * blocks the loop shows up here before it shows up anywhere else.
+ * since the previous read *of the same window* (p50/p99/max ms) — a
+ * full-snapshot fan-out that blocks the loop shows up here before it shows
+ * up anywhere else. A caller names its window with `?window=<id>` (the load
+ * test uses its own), so two readers never reset each other's histogram;
+ * at most `MAX_WINDOWS` are kept, the least recently read dropped first.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { cpus, loadavg } from "node:os";
@@ -28,19 +31,39 @@ export interface ServerMetrics {
   clients: number;
 }
 
-// One process-wide histogram (every event runtime shares the one loop),
-// started on the first read so an idle server pays nothing.
-let loop: IntervalHistogram | null = null;
+// One histogram per reader's window (every event runtime shares the one
+// loop), each started on its first read so an idle server pays nothing.
+export const MAX_WINDOWS = 4;
+const windows = new Map<string, IntervalHistogram>();
+
+/** `?window=` → a window key; anything odd falls back to "default". */
+export function windowKey(raw: string | null | undefined): string {
+  return typeof raw === "string" && /^[A-Za-z0-9_.-]{1,40}$/.test(raw) ? raw : "default";
+}
+
+function histogramFor(key: string): IntervalHistogram {
+  let h = windows.get(key);
+  if (h !== undefined) {
+    windows.delete(key); // re-insert: Map order = least recently read first
+  } else {
+    if (windows.size >= MAX_WINDOWS) {
+      const [oldest, gone] = windows.entries().next().value as [string, IntervalHistogram];
+      gone.disable();
+      windows.delete(oldest);
+    }
+    h = monitorEventLoopDelay({ resolution: 10 });
+    h.enable();
+  }
+  windows.set(key, h);
+  return h;
+}
 
 const mb = (n: number) => Math.round((n / 1048576) * 10) / 10;
 const ms = (ns: number) => Math.round((Number.isFinite(ns) ? ns : 0) / 1e4) / 100;
 
-/** A metrics sample; reading resets the event-loop window. */
-export function sampleMetrics(clients: number): ServerMetrics {
-  if (loop === null) {
-    loop = monitorEventLoopDelay({ resolution: 10 });
-    loop.enable();
-  }
+/** A metrics sample; reading resets that caller's event-loop window. */
+export function sampleMetrics(clients: number, window = "default"): ServerMetrics {
+  const loop = histogramFor(windowKey(window));
   const cpu = process.cpuUsage();
   const mem = process.memoryUsage();
   const [a, b, c] = loadavg();
@@ -69,6 +92,7 @@ export function handleMetrics(
   res: ServerResponse,
   method: string,
   path: string,
+  url: URL,
   isModerator: () => boolean,
   clients: () => number,
 ): boolean {
@@ -77,6 +101,6 @@ export function handleMetrics(
     sendJson(res, 403, { error: "moderators only" });
     return true;
   }
-  sendJson(res, 200, sampleMetrics(clients()));
+  sendJson(res, 200, sampleMetrics(clients(), url.searchParams.get("window") ?? "default"));
   return true;
 }

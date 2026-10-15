@@ -13,10 +13,12 @@
 # The last stdout line is machine-readable for the off-box puller:
 #   BACKUP <db file> <state file> <sha file>
 #
-# Nightly cron (UTC — DST ends 02:00 Nov 1 and must not move it):
-#   CRON_TZ=UTC
+# Nightly cron, on the VPS's clock — which must be UTC (`timedatectl`
+# shows "Time zone: Etc/UTC"; Ubuntu's cron ignores CRON_TZ), so the
+# DST change at 02:00 Nov 1 can't move it:
 #   17 9 * * * cd ~/loom && deploy/backup.sh --label nightly >> ~/loom-backups/backup.log 2>&1
 set -euo pipefail
+umask 077   # guest tokens, the mod session store and the DB dump: owner-only
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 main() {
@@ -25,7 +27,7 @@ main() {
     case "$1" in
       --label) label="${2:?}"; shift ;;
       --keep-days) keep="${2:?}"; shift ;;
-      -h|--help) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; return ;;
+      -h|--help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; return ;;
       *) die "unknown argument $1" ;;
     esac
     shift

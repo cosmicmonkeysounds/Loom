@@ -140,3 +140,43 @@ def test_decode_payload():
     assert _decode_payload(b"on") == {"value": "on"}
     assert _decode_payload(b"true") == {"value": True}
     assert _decode_payload(b"\xff\xfe") == {"value": None}
+
+
+# ── secrets out of git: the .local.yaml overlay + LOOM_* env ───────────────
+
+
+def _house(tmp_path, server):
+    doc = minimal()
+    doc["server"] = server
+    p = tmp_path / "trapped.house.yaml"
+    p.write_text(yaml.safe_dump(doc), encoding="utf-8")
+    return p
+
+
+def test_local_overlay_fills_the_placeholders(tmp_path):
+    from stagehand.config import placeholders
+
+    p = _house(tmp_path, {"url": "https://x", "event": "CHANGE-ME-EVENT-ID", "mod_passcode": "CHANGE-ME"})
+    assert placeholders(load_config(p, env={}).server) == ["event", "mod_passcode"]
+    (tmp_path / "trapped.house.local.yaml").write_text("server: { event: ev-7, mod_passcode: 'real' }\n")
+    cfg = load_config(p, env={})
+    assert (cfg.server.url, cfg.server.event, cfg.server.mod_passcode) == ("https://x", "ev-7", "real")
+    assert placeholders(cfg.server) == []
+
+
+def test_env_beats_the_overlay_and_a_token_drops_the_placeholder_passcode(tmp_path):
+    p = _house(tmp_path, {"url": "https://x", "event": "CHANGE-ME-EVENT-ID", "mod_passcode": "CHANGE-ME"})
+    (tmp_path / "trapped.house.local.yaml").write_text("server: { event: ev-7 }\n")
+    cfg = load_config(p, env={"LOOM_EVENT_ID": "ev-9", "LOOM_MOD_TOKEN": "tok", "LOOM_MOD_PASSCODE": ""})
+    assert (cfg.server.event, cfg.server.mod_token, cfg.server.mod_passcode) == ("ev-9", "tok", None)
+
+
+def test_local_overlay_may_only_hold_server(tmp_path):
+    p = _house(tmp_path, {"url": "https://x", "mod_passcode": "x"})
+    (tmp_path / "trapped.house.local.yaml").write_text("show: { cues: [] }\n")
+    with pytest.raises(ConfigError, match="only hold a 'server:'"):
+        load_config(p, env={})
+
+
+def test_local_overlay_is_git_ignored():
+    assert "*.local.yaml" in (ROOT / ".gitignore").read_text(encoding="utf-8").split()

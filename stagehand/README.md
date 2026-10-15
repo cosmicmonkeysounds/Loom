@@ -271,6 +271,14 @@ the mod capability. Server side: `core/server/agents.ts`.
 The mod feed is capability-gated: `role=mod` needs the mod token
 (`?token=` or the header) or the owning author's session.
 
+**Secrets stay out of git.** `load_config` merges a sibling
+`<name>.local.yaml` (git-ignored — e.g. `trapped.house.local.yaml` holding
+`server: { event: <id>, mod_passcode: "<code>" }`) over the `server:`
+section, and `LOOM_SERVER_URL` / `LOOM_EVENT_ID` / `LOOM_MOD_PASSCODE` /
+`LOOM_MOD_TOKEN` win over both. The launchd jobs need nothing extra: they
+load the same path, so the overlay beside it applies. `stagehand check`
+prints a `PLACEHOLDER …` line while a `CHANGE-ME` survives.
+
 ### The real house: `trapped.house.yaml`
 
 `show.example.yaml` is the generic, test-pinned example. *Trapped in the

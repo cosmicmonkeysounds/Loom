@@ -59,7 +59,9 @@ log_release() {
 }
 
 # previous_tag CURRENT — the newest logged tag that isn't CURRENT and whose
-# server image still exists. So two rollbacks in a row toggle back.
+# server image still exists. So two rollbacks in a row toggle back. Lines
+# whose kind ends in -unhealthy are skipped: a release that failed its
+# health check is never a rollback target.
 previous_tag() {
   [ -f "$RELEASES" ] || return 0
   local t
@@ -67,8 +69,11 @@ previous_tag() {
   while read -r t; do
     [ "$t" = "$1" ] && continue
     image_exists "$SERVER_IMAGE:$t" && { echo "$t"; return 0; }
-  done < <(awk '{ l[NR]=$2 } END { for (i=NR; i>0; i--) print l[i] }' "$RELEASES")
+  done < <(awk '$3 !~ /-unhealthy$/ { l[++n]=$2 } END { for (i=n; i>0; i--) print l[i] }' "$RELEASES")
 }
+
+# releases_logged — true once anything (release / adopt / rollback) is logged.
+releases_logged() { [ -s "$RELEASES" ]; }
 
 sha256_of() { if command -v sha256sum >/dev/null; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
 sha256_check() { if command -v sha256sum >/dev/null; then sha256sum -c --quiet "$@"; else shasum -a 256 -c --quiet "$@"; fi; }

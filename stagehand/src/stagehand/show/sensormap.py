@@ -120,6 +120,13 @@ def parse_sensor_rule(raw: Any, idx: int) -> SensorRule:
         flags[key] = value
     if flags["edge"] and when is None:
         raise SensorMapError(f"{where}: 'edge: true' needs a 'when:' condition to watch")
+    if flags["edge"] and when is not None:
+        # An edge rule only looks at messages carrying a payload field its
+        # condition reads, so a condition over captures/`topic` alone would
+        # never fire — say so now rather than go quietly dead.
+        not_payload = {"topic", *(name for kind, name in topic.segments if kind == "+" and name)}
+        if all(name.split(".")[0] in not_payload for name in when.names()):
+            raise SensorMapError(f"{where}: an 'edge: true' condition must read a payload field (not only the topic or its captures)")
     return SensorRule(id=idx, topic=topic, when=when, actions=tuple(actions), **flags)
 
 

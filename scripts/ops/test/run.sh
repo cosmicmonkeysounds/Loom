@@ -41,6 +41,8 @@ teardown
 echo "── release + rollback"
 setup
 check "release builds + pins" bash "$ROOT/deploy/release.sh" show-1029 --commit abc --no-backup
+check "first release adopts what ran before" test -f "$FAKE/images/loom-server:pre-show-1029" -a -f "$FAKE/images/loom-proxy:pre-show-1029"
+check "adopt logged before the release" bash -c "head -n1 '$LOOM_OPS_HOME/releases.log' | grep -q ' pre-show-1029 adopt'"
 check "images tagged" test -f "$FAKE/images/loom-server:show-1029" -a -f "$FAKE/images/loom-proxy:show-1029"
 check "build ran with LOOM_TAG" grep -q "build LOOM_TAG=show-1029" "$FAKE/calls"
 check ".env pinned" grep -q '^LOOM_TAG=show-1029$' "$LOOM_DIR/.env"
@@ -67,9 +69,20 @@ check "unhealthy release exits 2" eq "$rc" 2
 check "unhealthy release logged" grep -q ' bad-one release-unhealthy' "$LOOM_OPS_HOME/releases.log"
 check "rollback after an unhealthy release" bash "$ROOT/deploy/rollback.sh"
 check "… lands on the last good tag" eq "$(bash -c ". '$ROOT/deploy/lib.sh'; current_tag")" show-1029
+bash "$ROOT/deploy/rollback.sh" >/dev/null 2>&1
+check "a failed release is never a rollback target" eq "$(bash -c ". '$ROOT/deploy/lib.sh'; current_tag")" show-1031
 check "--list" bash -c "bash '$ROOT/deploy/release.sh' --list | grep -q 'loom-server:show-1029'"
 check "--adopt tags the running images" bash "$ROOT/deploy/release.sh" --adopt pre-k08
 check "adopted images exist" test -f "$FAKE/images/loom-server:pre-k08" -a -f "$FAKE/images/loom-proxy:pre-k08"
+teardown
+
+echo "── release: no adopt when told / nothing runs"
+setup
+check "--no-adopt skips the adopt" bash "$ROOT/deploy/release.sh" t1 --no-backup --no-adopt
+check "… so no pre-t1 image" test ! -e "$FAKE/images/loom-server:pre-t1"
+teardown; setup
+FAKE_PS_EMPTY=1 bash "$ROOT/deploy/release.sh" t1 --no-backup >/dev/null 2>&1
+check "nothing running: releases without adopting" bash -c "test -f '$FAKE/images/loom-server:t1' && test ! -e '$FAKE/images/loom-server:pre-t1'"
 teardown
 
 echo "── backup"
@@ -94,6 +107,7 @@ bash "$ROOT/deploy/backup.sh" --label show --keep-days 14 >/dev/null 2>&1
 check "retention prunes old files" test ! -e "$LOOM_BACKUP_DIR/loom-db-nightly-20200101T000000Z.sql.gz"
 check "db down fails loudly" bash -c "FAKE_DB_DOWN=1 bash '$ROOT/deploy/backup.sh' --label x 2>&1 | grep -q 'pg_dump'"
 check "bad label refused" bash -c "! bash '$ROOT/deploy/backup.sh' --label 'A B' 2>/dev/null"
+check "backups are owner-only" bash -c "[ \"\$(stat -f %Lp '$db' 2>/dev/null || stat -c %a '$db')\" = 600 ]"
 
 echo "── restore"
 check "refuses the live project" bash -c "! bash '$ROOT/deploy/restore.sh' --project repo --db '$db' --state '$st' --yes 2>/dev/null"
@@ -144,9 +158,30 @@ check "plist is valid" bash -c "! command -v plutil >/dev/null || plutil -lint -
 check "uninstall removes it" bash -c "bash '$ROOT/scripts/ops/showbackup.sh' uninstall >/dev/null && [ ! -e '$T/agents/com.mapsandducks.loom-showbackup.plist' ]"
 teardown
 
-echo "── ship (dry run)"
+echo "── ship"
+setup
 check "ship refuses without a pre-deploy stamp" bash -c "cd '$ROOT' && ! LOOM_PREDEPLOY_STAMP=/nonexistent RSYNC=false SSH=false bash scripts/ops/ship.sh t-1 2>/dev/null"
 check "ship --force --dry-run prints rsync + release" bash -c "cd '$ROOT' && bash scripts/ops/ship.sh t-1 --force --dry-run | grep -q 'deploy/release.sh t-1 --commit'"
+
+check "ship --sync-only --dry-run syncs without releasing" bash -c "cd '$ROOT' && out=\$(bash scripts/ops/ship.sh --sync-only --force --dry-run) && echo \"\$out\" | grep -q rsync && ! echo \"\$out\" | grep -q release.sh"
+check "ship merges every .gitignore into the rsync" bash -c "cd '$ROOT' && bash scripts/ops/ship.sh t-1 --force --dry-run | grep -q -- '--filter=:- .gitignore'"
+# A real (listing-only) rsync over this checkout: git-ignored secrets never ship.
+made=()
+for f in hardware/server-room/server_room/secrets.h reinstall/vr/build/stage/config/station.json stagehand/trapped.house.local.yaml; do
+  [ -e "$ROOT/$f" ] || { mkdir -p "$(dirname "$ROOT/$f")"; echo secret > "$ROOT/$f"; made+=("$f"); }
+done
+cat > "$T/rsync-list" <<'EOF2'
+#!/usr/bin/env bash
+args=(); for a in "$@"; do case "$a" in *:*/) args+=("$RSYNC_DEST/") ;; *) args+=("$a") ;; esac; done
+exec rsync -n --out-format='%n' "${args[@]}"
+EOF2
+chmod +x "$T/rsync-list"; mkdir -p "$T/dest"
+listed="$(cd "$ROOT" && RSYNC_DEST="$T/dest" RSYNC="$T/rsync-list" SSH=true bash scripts/ops/ship.sh --sync-only --force 2>/dev/null)"
+check "ship lists the deploy scripts" bash -c "grep -q '^deploy/release.sh$' <<<\"\$1\"" _ "$listed"
+check "ship never sends secrets.h / vr build / *.local.yaml / node_modules" bash -c "! grep -E 'secrets\.h|reinstall/vr/build/|\.local\.yaml|node_modules/|(^|/)\.env$' <<<\"\$1\"" _ "$listed"
+for f in ${made[@]+"${made[@]}"}; do rm -f "$ROOT/$f"; done
+rmdir -p "$ROOT/reinstall/vr/build/stage/config" 2>/dev/null || true
+teardown
 
 echo "── checklist"
 check "prints the 15 pre-show boxes" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' | grep -c '^\[ \]') -eq 15 ]"

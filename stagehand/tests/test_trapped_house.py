@@ -150,7 +150,8 @@ def test_every_room_trabolta_can_darken_goes_off_and_comes_back():
         if room == "The Cache":
             # The kitchen (knives, a stove) only drops to ~20%, never dark.
             assert z_off[0]["state"] == "ON" and 0 < z_off[0]["brightness"] <= 51
-            assert w_off[0]["on"] is True and 0 < w_off[0]["bri"] <= 51
+            # bri only — sending "on" would light a strip that was off in the current look.
+            assert "on" not in w_off[0] and 0 < w_off[0]["bri"] <= 51
         else:
             assert z_off[0]["state"] == "OFF", room
             assert w_off[0]["on"] is False, room

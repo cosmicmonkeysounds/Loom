@@ -47,6 +47,7 @@ fi
 
 run "story: loomcheck --smoke" pnpm --filter @loom/core loomcheck examples/trapped-in-the-internet --smoke
 run "ops scripts" bash scripts/ops/test/run.sh
+run "accept-script live guard" node --no-warnings --test scripts/accept/live-guard.test.ts
 run "compose file parses" env POSTGRES_PASSWORD=x BETTER_AUTH_SECRET=x LOOM_BASE_URL=http://x \
   docker compose -f docker-compose.yml config -q
 if [ "$skip_tests" = 0 ]; then
