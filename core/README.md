@@ -274,13 +274,42 @@ timeline (clear the journal + chat + moderation).
 Environment: `LOOM_PORT` (7000), `LOOM_HOST` (0.0.0.0), `LOOM_EVENT_PASS`,
 `LOOM_PRIME_PASS`, `LOOM_MOD_PASS` (any unset code is auto-generated),
 `LOOM_STATE_DIR`, `LOOM_APP_DIST`, `LOOM_TERMINAL_DIST`,
-`LOOM_REINSTALL_DIST`, `LOOM_HOUSE`, plus the control-plane / hardening vars
+`LOOM_REINSTALL_DIST`, `LOOM_HOUSE`, `LOOM_VAPID_PUBLIC_KEY` /
+`LOOM_VAPID_PRIVATE_KEY` / `LOOM_VAPID_SUBJECT` (Web Push, below), plus the control-plane / hardening vars
 (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `LOOM_BASE_URL`,
 `LOOM_TRUSTED_ORIGINS`, `LOOM_TRUST_PROXY`). **For a full production
 deployment + the security model, see
 [`docs/loom-deployment.md`](../docs/loom-deployment.md).**
 
 For the participant app's dev/build flow (HMR), see [`../play`](../play).
+
+### Web Push (K-31a — Android + booths)
+
+`server/push.ts` (`PushHub`, transport-free; `web-push` behind a
+`PushSender`) + `server/routes/k31.ts`. Keys come from the environment —
+generate them **once** with `npx web-push generate-vapid-keys` and pin
+them in `.env` (`LOOM_VAPID_PUBLIC_KEY`, `LOOM_VAPID_PRIVATE_KEY`,
+`LOOM_VAPID_SUBJECT` = `mailto:you@…` or the `https:` site; default
+`LOOM_BASE_URL`). **Never rotate them before the show** — every phone's
+subscription is bound to the public key. A missing or invalid key turns
+push off cleanly (`enabled: false`, no 🔔 card). Routes, per event:
+`GET /api/push/config` → `{enabled, publicKey}`; `POST
+/api/push/subscribe {subscription}` (guest token → `guest:<id>`,
+performer token → `prime:<character>`; a director's play-as session is
+refused); `POST /api/push/unsubscribe {endpoint}`; `POST
+/api/push/visible {token, endpoint, hidden}` (the client's
+`sendBeacon`); `POST /api/mod/push/status` → who is subscribed.
+Subscriptions live in `push.json` in the event's state dir (one owner per
+device; 404/410 from the push service prunes). **Send rule**: `!` alerts
+to every entitled guest + every booth, always; a character's own line in
+`dm:<Character>` to its addressee, and a booth's readout (`reply` — the
+door alarm, the late list) to that booth, only while the device's last
+flag says hidden. Every push carries a notification (high urgency). A
+story restart unbinds every guest device (the phone re-binds on
+re-join); go-live and releasing a part (N-10) unbind booths. Nothing
+pushes during journal replay. The play app's `/sw.js` +
+`/manifest.webmanifest` are served `Cache-Control: no-cache` under
+`PLAY_CSP` (`worker-src 'self'`). Tested in `test/push.test.ts`.
 
 ### The spatial plane (the reinstallation games)
 

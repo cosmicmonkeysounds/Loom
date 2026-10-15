@@ -98,6 +98,21 @@ visible. A booth also banners + chimes any readout it didn't ask for
 warning). **☰ → Keep my screen on** is an opt-in Screen Wake Lock
 (`src/wake-lock.ts`). A captive in a `sealed: true` prison gets no
 "make a break for it" button.
+
+**Push to a locked phone (K-31a, 2026-10-15).** A 🔔 **Get alerts** card
+(and a row in the ☰ / profile sheet) asks for notification permission
+from a tap, then subscribes this phone through the push-only service
+worker `public/sw.js` (no fetch handler — nothing is cached) and
+`POST /e/:id/api/push/subscribe`; a phone that already said yes re-binds
+silently on every sign-in. Every `visibilitychange` / `pagehide` is
+beaconed to `/api/push/visible`, so the server pushes a character's DM
+or a booth readout only while the app is hidden; `!` alerts push always,
+and the worker skips the notification while a play window is in the
+foreground (no duplicate of the banner — except on iPhone, K-31b).
+Nothing registers when embedded (`host.embedded`, Run → Players), on
+plain http, without the Push API (an iPhone Safari tab), or when the
+server has no VAPID keys (`src/push.ts` `usePush`, `src/push-card.tsx`,
+tested in `test/push.test.ts`).
 - **authored rooms** (`room:<name>`) — an `open` / `private` / `faction` /
   `group` / `dm` channel declared in `.loom`, grouped under its `SPACE`.
 

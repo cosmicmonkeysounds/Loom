@@ -40,6 +40,11 @@ so it may make sound (iPhones never buzz — watch for the banner). Keep
 the phone awake with **☰ → Keep my screen on**; a banner you slept
 through is still there when you wake it.
 
+On an Android phone, tap **🔔 Get alerts → Turn on** (or **☰ → Get
+alerts on this phone**) and allow notifications: alerts, the door alarm
+and the late list then reach you as notifications even with the phone
+locked in your pocket.
+
 ## Guest threads and the guest card
 
 Each guest is a thread under **Guests**. What you type there lands as

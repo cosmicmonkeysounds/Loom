@@ -16,6 +16,15 @@ export const HTML_CSP = [
   "frame-ancestors 'none'",
 ].join("; ");
 
+/** The play app (K-31a): its push-only service worker (`/sw.js`) and its
+ *  manifest are same-origin; said explicitly rather than left to fall back. */
+export const PLAY_CSP = `${HTML_CSP}; worker-src 'self'; manifest-src 'self'`;
+
+/** Play-app files served `Cache-Control: no-cache`: a stale service worker
+ *  or manifest would outlive a deploy (the browser re-checks `sw.js` on its
+ *  own schedule; no-cache makes every check a real one). */
+export const PLAY_PWA_FILES: ReadonlySet<string> = new Set(["/sw.js", "/manifest.webmanifest"]);
+
 /** The terminal plays synthesised speech from in-memory blobs and reads
  *  the tablet's camera; only the media source differs from the play app. */
 export const TERMINAL_CSP = `${HTML_CSP}; media-src 'self' blob:`;

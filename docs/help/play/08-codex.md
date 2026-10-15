@@ -60,4 +60,6 @@ Tap the app once after you open it so it is allowed to make sound. If
 your screen was off when an alert went out, the banner is waiting when
 you wake the phone (anything from the last 10 minutes). Want to be sure?
 **☰ → Keep my screen on** stops the phone from sleeping while the app is
-open.
+open. On an Android phone, tap **🔔 Get alerts → Turn on** and allow
+notifications: alerts and messages from the characters then reach you
+even when the phone is locked.

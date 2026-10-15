@@ -31,6 +31,8 @@ import { codeFromUrl, fetchIdentities, useDocumentTitle, usePrimeSession, type I
 import type { Action, Channel, PrimeGuest } from "./types.ts";
 import { cameraProblem, parseScan, scanProblem, typedTarget, type CameraState } from "./scan.ts";
 import { CameraScanner } from "./scanner.tsx";
+import { usePush, type Push } from "./push.ts";
+import { PushCard, PushRow } from "./push-card.tsx";
 
 function PrimeLogin({ session }: { session: PrimeSession }) {
   const [passcode, setPasscode] = useState(codeFromUrl);
@@ -235,7 +237,7 @@ function ScannerScreen({ session, onBack, wide }: { session: PrimeSession; onBac
 }
 
 /** Inline "elevate me to admin" + what your character knows + sign-out. */
-function PerformerSheet({ session, onClose, onLeave }: { session: PrimeSession; onClose: () => void; onLeave: () => void }) {
+function PerformerSheet({ session, push, onClose, onLeave }: { session: PrimeSession; push: Push; onClose: () => void; onLeave: () => void }) {
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
   return (
@@ -261,6 +263,7 @@ function PerformerSheet({ session, onClose, onLeave }: { session: PrimeSession; 
         </>
       )}
       <WakeLockToggle />
+      <PushRow push={push} />
       {session.auth?.admin && <div className="muted pad">You hold moderator powers — hide/show messages, and every admin-only interaction the story declares.</div>}
       {(session.view?.codex?.length ?? 0) > 0 && (
         <>
@@ -405,6 +408,8 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   const [people, setPeople] = useState<Channel | null>(null);
   const [picking, setPicking] = useState(false);
   useDocumentTitle(s.auth?.title);
+  // K-31a: the door alarm + the late list on a locked phone.
+  const push = usePush(s.auth?.character ? { base: `/e/${encodeURIComponent(s.auth.eventId)}`, token: s.auth.token } : null);
   // Everyone's profile pictures, for every tile in the booth.
   const avatars = useMemo(() => avatarLookup(s.auth?.eventId ?? null, s.view?.avatars), [s.auth?.eventId, s.view?.avatars]);
   const t = s.threads;
@@ -515,6 +520,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
     <AvatarsContext.Provider value={avatars}>
     <div className="root">
       {s.alert && <AlertBanner text={s.alert.text} onDismiss={s.dismissAlert} />}
+      <PushCard push={push} why="the door alarm and the late list reach you even with the phone locked." />
       <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room, or a guest." />
       {picking && t.active && (
         <InviteSheet
@@ -545,7 +551,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
           }}
         />
       )}
-      {sheet && <PerformerSheet session={s} onClose={() => setSheet(false)} onLeave={onLeave} />}
+      {sheet && <PerformerSheet session={s} push={push} onClose={() => setSheet(false)} onLeave={onLeave} />}
       {help && <HelpSheet role="performer" onClose={() => setHelp(false)} />}
     </div>
     </AvatarsContext.Provider>

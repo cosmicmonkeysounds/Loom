@@ -79,6 +79,8 @@ const AVATARS = "avatars.json";
 /** Not `house.json`: `LOOM_HOUSE` may well point at `/data/house.json`, and
  *  the default event's state dir can be that same `/data`. */
 const HOUSE = "spatial-house.json";
+/** Web Push subscriptions by device (K-31a, `push.ts`). */
+const PUSH = "push.json";
 
 /** Read + JSON-parse a file, returning `null` on any miss/corruption. */
 function readJson<T>(path: string): T | null {
@@ -204,6 +206,18 @@ export class Store {
   }
   saveHouse(house: unknown): void {
     writeFileSync(this.path(HOUSE), JSON.stringify(house, null, 2));
+  }
+
+  // --- push subscriptions (K-31a) -----------------------------------------
+  //
+  // One device per entry (`push.ts` validates on load). Not journaled: a
+  // phone is not a story fact.
+
+  loadPush(): unknown {
+    return readJson<unknown>(this.path(PUSH));
+  }
+  savePush(data: unknown): void {
+    writeFileSync(this.path(PUSH), JSON.stringify(data));
   }
 
   // --- moderation (hidden message seqs) -----------------------------------
