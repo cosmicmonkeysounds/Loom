@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "name": "Three floors + a tent (test fixture shaped like the real house)",
+  "origin": "fixture: the mud room's north-west corner, main-floor level",
+  "floors": [
+    { "id": "basement", "label": "Basement", "elevation": -2.7, "height": 2.7 },
+    { "id": "main", "label": "Main floor", "elevation": 0, "height": 2.8 },
+    { "id": "top", "label": "Top floor", "elevation": 2.8, "height": 2.4 }
+  ],
+  "rooms": [
+    { "id": "landing", "label": "Basement hall", "floor": "basement", "location": "The Tube", "poly": [[3, 2], [6, 2], [6, 8], [3, 8]] },
+    { "id": "server", "label": "Cold storage", "floor": "basement", "location": "The Server Room", "poly": [[0, 0], [3, 0], [3, 4], [0, 4]] },
+    { "id": "fan", "label": "Laundry", "floor": "basement", "location": "The Fan Closet", "poly": [[0, 4], [3, 4], [3, 8], [0, 8]] },
+    { "id": "ram", "label": "Studio", "floor": "basement", "location": "The RAM", "poly": [[6, 0], [12, 0], [12, 12], [6, 12]] },
+    { "id": "bath1", "label": "Bathroom 1", "floor": "basement", "location": "Disk Cleanup", "poly": [[3, 8], [6, 8], [6, 12], [3, 12]] },
+
+    { "id": "mudroom", "label": "Mud room", "floor": "main", "location": "The Optical Drive", "poly": [[0, 0], [3, 0], [3, 3], [0, 3]] },
+    { "id": "office", "label": "Office", "floor": "main", "location": "The CPU", "poly": [[0, 3], [3, 3], [3, 7], [0, 7]] },
+    { "id": "steam", "label": "Game room", "floor": "main", "location": "The Steam Room", "poly": [[0, 7], [3, 7], [3, 12], [0, 12]] },
+    { "id": "hall", "label": "Hall", "floor": "main", "location": "The Tube", "poly": [[3, 0], [6, 0], [6, 12], [3, 12]] },
+    { "id": "living", "label": "Living room", "floor": "main", "location": "The Desktop", "poly": [[6, 0], [12, 0], [12, 6], [6, 6]] },
+    { "id": "kitchen", "label": "Kitchen", "floor": "main", "location": "The Start Bar", "poly": [[6, 6], [12, 6], [12, 12], [6, 12]] },
+    { "id": "backyard", "label": "Backyard", "floor": "main", "location": "The Cloud", "outdoor": true, "poly": [[0, 12], [12, 12], [12, 20], [0, 20]] },
+    { "id": "tent", "label": "The Tent", "floor": "main", "location": "The Internet", "height": 2.4, "poly": [[12, 12], [16, 12], [16, 16], [12, 16]] },
+
+    { "id": "tophall", "label": "Upstairs hall", "floor": "top", "location": "The Tube", "poly": [[3, 6], [6, 6], [6, 12], [3, 12]] },
+    { "id": "gpu", "label": "Bedroom 2", "floor": "top", "location": "The Graphics Card", "poly": [[6, 6], [12, 6], [12, 12], [6, 12]] },
+    { "id": "crawl", "label": "Crawl space", "floor": "top", "location": "The Hard Drive", "height": 1.8, "poly": [[0, 6], [3, 6], [3, 9], [0, 9]] },
+    { "id": "bath2", "label": "Bathroom 2", "floor": "top", "location": "Disk Cleanup", "poly": [[0, 9], [3, 9], [3, 12], [0, 12]] }
+  ],
+  "doors": [
+    { "id": "landing-fan", "a": "landing", "b": "fan", "at": [3, 5], "width": 0.9 },
+    { "id": "fan-server", "a": "fan", "b": "server", "at": [1.5, 4], "width": 0.9 },
+    { "id": "landing-ram", "a": "landing", "b": "ram", "at": [6, 7.3], "width": 0.9 },
+    { "id": "landing-bath1", "a": "landing", "b": "bath1", "at": [4.2, 8], "width": 0.8 },
+
+    { "id": "front", "a": "mudroom", "b": null, "at": [1.5, 0], "width": 0.9 },
+    { "id": "mud-hall", "a": "mudroom", "b": "hall", "at": [3, 1.5], "width": 0.9 },
+    { "id": "hall-office", "a": "hall", "b": "office", "at": [3, 5], "width": 0.9 },
+    { "id": "hall-steam", "a": "hall", "b": "steam", "at": [3, 9.5], "width": 0.9 },
+    { "id": "hall-living", "a": "hall", "b": "living", "at": [6, 1.2], "width": 1.2 },
+    { "id": "living-kitchen", "a": "living", "b": "kitchen", "at": [9, 6], "width": 1.4 },
+    { "id": "hall-backyard", "a": "hall", "b": "backyard", "at": [4, 12], "width": 0.9 },
+    { "id": "kitchen-backyard", "a": "kitchen", "b": "backyard", "at": [9, 12], "width": 0.9 },
+    { "id": "tent-flap", "a": "tent", "b": "backyard", "at": [12, 14], "width": 1.2 },
+
+    { "id": "tophall-gpu", "a": "tophall", "b": "gpu", "at": [6, 11.6], "width": 0.7 },
+    { "id": "tophall-crawl", "a": "tophall", "b": "crawl", "at": [3, 7.5], "width": 0.8 },
+    { "id": "tophall-bath2", "a": "tophall", "b": "bath2", "at": [3, 10.5], "width": 0.8 }
+  ],
+  "stairs": [
+    { "id": "basement-stairs", "from": "landing", "to": "hall", "rect": [4.6, 2.5, 5.6, 6.5], "up": "n" },
+    { "id": "upstairs", "from": "hall", "to": "tophall", "rect": [4.6, 7, 5.6, 11], "up": "s" }
+  ],
+  "terminals": [
+    { "id": "living-tv", "name": "TV", "room": "living", "pos": [11.9, 1.6, 3], "yaw": 90 },
+    { "id": "kitchen", "name": "Kitchen", "room": "kitchen", "pos": [9, 1.4, 6.1], "yaw": 180 }
+  ],
+  "duck": {
+    "spots": [
+      { "id": "server-rack", "room": "server", "pos": [0.6, -2.7, 0.6] },
+      { "id": "fan-dryer", "room": "fan", "pos": [0.5, -2.7, 7.4] },
+      { "id": "ram-desk", "room": "ram", "pos": [11.2, -2.7, 11.2] },
+      { "id": "bath1-tub", "room": "bath1", "pos": [3.6, -2.7, 11.5] },
+      { "id": "office-chair", "room": "office", "pos": [0.6, 0, 3.6] },
+      { "id": "steam-bed", "room": "steam", "pos": [0.6, 0, 11.4] },
+      { "id": "kitchen-island", "room": "kitchen", "pos": [9, 0, 9] },
+      { "id": "gpu-closet", "room": "gpu", "pos": [11.4, 2.8, 6.6] },
+      { "id": "crawl-box", "room": "crawl", "pos": [0.5, 2.8, 6.5] },
+      { "id": "bath2-sink", "room": "bath2", "pos": [0.5, 2.8, 11.5] }
+    ]
+  },
+  "spawn": { "room": "tent", "pos": [14.5, 0, 14], "yaw": 90 },
+  "props": [],
+  "spaces": {}
+}

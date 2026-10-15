@@ -7,6 +7,7 @@ import type { HouseMap } from "@loom/house";
 import twoRooms from "../../../house/test/fixtures/two-rooms.json";
 import stair from "../../../house/test/fixtures/stair.json";
 import lRoom from "../../../house/test/fixtures/l-room.json";
+import threeFloors from "../../../house/test/fixtures/three-floors.json";
 import { showHouse } from "../src/show-house.ts";
 
 function load(raw: unknown): HouseMap {
@@ -24,3 +25,7 @@ export const STAIR = (): HouseMap => load(stair);
 /** One 7-vertex L-shaped room. */
 export const L_ROOM = (): HouseMap => load(lRoom);
 export const SHOW = (): HouseMap => load(showHouse);
+/** The real house's shape (2026-10-15): basement / main / top + the tent
+ *  outside, two stairs stacked in the hall (`@loom/house`'s `three-floors`
+ *  fixture, so the Godot port has its goldens too). */
+export const THREE_FLOORS = (): HouseMap => load(threeFloors);
