@@ -129,12 +129,25 @@ class DeviceOutput:
             raise PlaybackError(f"{self.describe()}: {err}") from err
 
 
+def say_argv(text: str, voice: str | None, *, device: str | None = None, out: str | None = None) -> list[str]:
+    """The `say` command line. The text goes after `--`, so an announcement
+    that starts with `-` (`-o/some/file …`) is spoken, never read as a flag."""
+    return [
+        "say",
+        *(["-v", voice] if voice else []),
+        *(["-a", device] if device else []),
+        *(["-o", out] if out else []),
+        "--",
+        text,
+    ]
+
+
 def say_to_file(text: str, voice: str | None) -> bytes:
     """macOS `say` rendered to AIFF bytes — the offline voice that still
     goes through the device + channel map."""
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "say.aiff"
-        argv = ["say", *(["-v", voice] if voice else []), "-o", str(out), text]
+        argv = say_argv(text, voice, out=str(out))
         try:
             subprocess.run(argv, check=True, capture_output=True, timeout=30)
             return out.read_bytes()
@@ -144,8 +157,8 @@ def say_to_file(text: str, voice: str | None) -> bytes:
 
 def say_direct(text: str, voice: str | None, device: str | None) -> None:
     """Last resort: `say -a <device>` (or the default output). Blocking."""
-    argv = ["say", *(["-v", voice] if voice else []), *(["-a", device] if device else []), text]
+    argv = say_argv(text, voice, device=device)
     try:
         subprocess.run(argv, check=True, capture_output=True, timeout=60)
     except (OSError, subprocess.SubprocessError) as err:
-        raise PlaybackError(f"{' '.join(argv[:-1])} failed: {err}") from err
+        raise PlaybackError(f"{' '.join(argv[:-2])} failed: {err}") from err

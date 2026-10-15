@@ -24,8 +24,8 @@ const FEED_LIMIT = 60
 
 /** N-02: a lost guest's way back in — a fresh session for the SAME guest
  *  (codex, quests, score intact; no ghost), shown as a QR their new phone
- *  scans (`?code=<event>&resume=<token>`). The token is a credential: the
- *  panel only lives while it is open, and Done forgets it. */
+ *  scans (`?code=<event>&pair=<code>`). The code works once, for ten
+ *  minutes; the panel only lives while it is open, and Done forgets it. */
 function RePair({ id, name }: { id: string; name: string }) {
   const pairGuest = useCockpit((s) => s.pairGuest)
   const [link, setLink] = useState<string | null>(null)
@@ -60,7 +60,7 @@ function RePair({ id, name }: { id: string; name: string }) {
     <div className="mt-2 w-full rounded border border-amber-900/70 bg-amber-950/20 p-2 text-center" data-testid={`inspector-repair-qr-${id}`}>
       <p className="mb-1 text-[11px] text-amber-200">Have {name} scan this with their phone's camera.</p>
       <LocalQr text={link} label={`Re-pair QR for ${name}`} />
-      <p className="mt-1 text-[10px] text-zinc-500">It signs that phone in as {name} — keep it off the big screen.</p>
+      <p className="mt-1 text-[10px] text-zinc-500">It signs one phone in as {name}, once, within 10 minutes — keep it off the big screen.</p>
       <div className="mt-1 flex justify-center gap-2">
         <button
           onClick={() => void navigator.clipboard?.writeText(link)}

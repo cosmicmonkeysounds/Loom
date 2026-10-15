@@ -505,17 +505,19 @@ ROLE Program
   // two hunts, F1–F2 the final facts → Kernel.q1–q8. One filing per
   // program per question, one unjudged at a time. Trabolta never sees the
   // answer or the verdict: his thread gets the same words either way.
-  when Night.round > self.fact_round and self.cleared and Trabolta.awake == true:
+  // Once the night has ended the record is closed: no filing, no card, no
+  // judging (the ceremony's Truthcoin and trust stand as they were).
+  when Night.round > self.fact_round and self.cleared and Trabolta.awake == true and Night.ended != true:
     set self.fact_round = Night.round
     Trabolta: {self.name}. If you learn the answer to one of tonight's questions, file it with me on the card. Unfiled facts are rumours.
     fire deal_fact_card for self
 
   when deal_fact_card for program:
-    if Night.round == 1:
+    if Night.ended != true and Night.round == 1:
       show fact "📝 File a fact" to program with thread: Trabolta, questions: "H1: Round 1 Q1. How many years did the Maps and Ducks billboard go unpaid? | H2: Round 1 Q2. What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery? | H3: Round 1 Q3. At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled?"
-    else if Night.round == 2:
+    else if Night.ended != true and Night.round == 2:
       show fact "📝 File a fact" to program with thread: Trabolta, questions: "H4: Round 2 Q1. What extension does the Customer Care card tell you to dial? | H5: Round 2 Q2. Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | H6: Round 2 Q3. What is the title of the last chapter of Trabolta's unfinished Unified Field Theory?"
-    else if Night.round == 3:
+    else if Night.ended != true and Night.round == 3:
       show fact "📝 File a fact" to program with thread: Trabolta, questions: "F1: Final Q1. What is the only thing Sandy has ever said? | F2: Final Q2. Who is taking Sandy to computer prom?"
 
   when fact answered for program:
@@ -553,7 +555,9 @@ ROLE Program
       set program.fact_try = 8
       set program.fact_q_round = 3
       set program.fact_label = "final Q2"
-    if certain != true or program.fact_try == 0:
+    if Night.ended == true:
+      Trabolta: The record is closed, {program.name}. No more filings tonight.
+    else if certain != true or program.fact_try == 0:
       Trabolta: Pick one of tonight's questions, {program.name}, and file only what you are certain of.
     else if program.fact_q_round > Night.round:
       Trabolta: That question is not open yet, {program.name}. File what has been asked.
@@ -591,7 +595,9 @@ ROLE Program
   // every surface the program or Trabolta can see; only the Kernel knows.
   // A lie is sticky, an accurate filing never clears one.
   when fact_accurate for program:
-    if program.fact_pending != true:
+    if Night.ended == true:
+      broadcast "📝 The night is over — the record is closed." to channel(hosts)
+    else if program.fact_pending != true:
       broadcast "📝 {program.name} has no unjudged filing." to channel(hosts)
     else:
       set program.fact_pending = false
@@ -619,7 +625,9 @@ ROLE Program
     fire chess_won for program
 
   when fact_lie for program:
-    if program.fact_pending != true:
+    if Night.ended == true:
+      broadcast "📝 The night is over — the record is closed." to channel(hosts)
+    else if program.fact_pending != true:
       broadcast "📝 {program.name} has no unjudged filing." to channel(hosts)
     else:
       set program.fact_pending = false
@@ -2000,6 +2008,8 @@ when Night.alarm_on == true and Time.elapsed >= Night.alarm_clear_at:
 
 when server_unlock:
   set Kernel.server_unlocked = true
+  set Night.alarm_on = false
+  set Night.alarm_clear_at = 0
   cue lights_server_open
   set Night.lights = "server_open"
 
@@ -2018,10 +2028,13 @@ when rearm_server_room:
 // night). A host or Antivirus who saw the mate presses ♟ on the winner's
 // card; a dead phone → the director fires `chess_won` (a signal named
 // "chess won" folds to it). From the Y2K hour a win disarms the door for
-// 90 s (ring green); before that it's practice.
+// 90 s (ring green) and clears a latched alarm (the screens drop the
+// alarm overlay with it); before that it's practice.
 when chess_won:
   if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true:
     set Kernel.disarmed_until = Time.elapsed + 90
+    set Night.alarm_on = false
+    set Night.alarm_clear_at = 0
     do door server_room, state: unlocked
     cue lights_server_open
     set Night.lights = "server_open"
@@ -2316,9 +2329,13 @@ when share:
     fire trabolta_heard for from
 
 // Trabolta's `cut_the_lights` power darkens one allow-listed room for
-// 90 s; this brings it back.
+// 90 s; this brings it back — but only if the house look is still the one
+// he cut into. Any lighting cue since (an ending's blackout / dance, the
+// server-room alarm, a restore) re-lit every room already, and switching
+// the room "on" now would punch the kitchen to full in the middle of it.
 when Night.lights_back_at > 0 and Time.elapsed >= Night.lights_back_at:
-  <cue: lights, room: {Night.dark_room}, state: on>
+  if Night.lights == Night.dark_scene:
+    <cue: lights, room: {Night.dark_room}, state: on>
   set Night.lights_back_at = 0
 
 when restore_the_lights:
@@ -2403,6 +2420,7 @@ set Night.banish = false
 set Night.recount = false
 set Night.everyone_free = false
 set Night.dark_room = "none"
+set Night.dark_scene = "none"
 set Night.lights_back_at = 0
 set Night.dance_at = 0
 set Night.sweep_target = "none"

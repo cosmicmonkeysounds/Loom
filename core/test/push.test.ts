@@ -18,7 +18,9 @@ import type { ChatMessage } from "../server/chat.ts";
 import { SUBSCRIBE_PER_MINUTE } from "../server/routes/k31.ts";
 import { HTML_CSP, PLAY_CSP, PLAY_PWA_FILES, REINSTALL_CSP } from "../server/routing.ts";
 import {
+  MAX_DEVICES,
   MAX_DEVICES_PER_OWNER,
+  isDeadStatus,
   PushHub,
   messagePush,
   isPushServiceHost,
@@ -237,6 +239,33 @@ describe("PushHub", () => {
     expect(hub.status().booths).toEqual([{ character: "Norton", devices: 1, hidden: 0 }]);
   });
 
+  it("prunes on any 4xx but 429 (a junk key never comes back); 429 / 5xx / network errors keep it", async () => {
+    expect([400, 401, 403, 404, 410, 413].every(isDeadStatus)).toBe(true);
+    expect([0, 201, 429, 500, 503].some(isDeadStatus)).toBe(false);
+    const codes: Record<string, number> = { "dev-1": 400, "dev-2": 403, "dev-3": 429, "dev-4": 502 };
+    const sender = fakeSender((ep) => codes[ep.slice(-5)] ?? 201);
+    const { hub } = memHub(sender);
+    for (const n of [1, 2]) hub.subscribe("guest:a", sub(n));
+    for (const n of [3, 4]) hub.subscribe("guest:b", sub(n));
+    hub.notify("guest:a", readoutPush("N", "x"), true);
+    hub.notify("guest:b", readoutPush("N", "x"), true);
+    await hub.settle();
+    expect(hub.status().guests).toEqual([{ id: "b", devices: 2, hidden: 0 }]);
+  });
+
+  it("caps devices across every owner: a new device past MAX_DEVICES is refused, a known one still refreshes", () => {
+    const { hub, writes } = memHub(fakeSender());
+    for (let i = 0; i < MAX_DEVICES; i++) expect(hub.subscribe(`guest:g${i}`, sub(i))).toBe(true);
+    const w = writes();
+    expect(hub.subscribe("guest:late", sub(MAX_DEVICES + 1))).toBe(false);
+    expect(writes()).toBe(w);
+    expect(hub.owners()).not.toContain("guest:late");
+    expect(hub.subscribe("guest:g0", sub(0))).toBe(true); // a repeat is fine
+    expect(hub.subscribe("guest:late", sub(0))).toBe(true); // moving an existing device is fine
+    hub.drop((o) => o === "guest:g1");
+    expect(hub.subscribe("guest:late", sub(MAX_DEVICES + 1))).toBe(true); // room again
+  });
+
   it("disabled (no sender): sends nothing", () => {
     const { hub } = memHub(null);
     hub.subscribe("guest:a", sub(1));
@@ -429,5 +458,18 @@ describe("EventRuntime push wiring", () => {
     expect(last).toBe(429);
     const other = await register(rt, "Napster");
     expect((await post(rt, "/api/push/subscribe", { token: other.token, subscription: sub(2) })).status).toBe(200);
+  });
+
+  it("refuses a guest's subscribe while the doors are closed (409); a booth may still bind", async () => {
+    const rt = runtime(fakeSender());
+    rt.openDoors();
+    const g = await register(rt, "Winamp");
+    const booth = await post(rt, "/api/prime/login", { character: "Norton", passcode: CODES.prime });
+    rt.pause();
+    expect((await post(rt, "/api/push/subscribe", { token: g.token, subscription: sub(1) })).status).toBe(409);
+    expect((await post(rt, "/api/push/subscribe", { token: booth.json.token, subscription: sub(2) })).status).toBe(200);
+    expect(rt.push.owners()).toEqual(["prime:Norton"]);
+    rt.openDoors();
+    expect((await post(rt, "/api/push/subscribe", { token: g.token, subscription: sub(1) })).status).toBe(200);
   });
 });

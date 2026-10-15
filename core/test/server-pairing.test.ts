@@ -1,5 +1,7 @@
-//! N-02 — re-pair a lost guest (`/api/mod/guest/pair`): a fresh token for the
-//! SAME Person, so codex / score survive and no ghost is left behind.
+//! N-02 — re-pair a lost guest (`/api/mod/guest/pair` mints a single-use,
+//! ten-minute pair code; the phone trades it at `/api/guest/resume` for a
+//! fresh token for the SAME Person, so codex / score survive and no ghost is
+//! left behind).
 //! N-10 — release a performer's part (`/api/mod/prime/release`): the dead
 //! booth's session loses the character, its stream closes, and the part can
 //! be signed into again from a loaner.
@@ -14,7 +16,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import { SessionStore } from "../server/session.ts";
-import { releasePart, resumeUrl } from "../server/routes/n02.ts";
+import { PAIR_TTL_MS, releasePart, resumeUrl } from "../server/routes/n02.ts";
 
 const CODES = { event: "EVT202", prime: "PRM202", mod: "MOD202" };
 
@@ -49,8 +51,9 @@ function freshDir(): string {
   dirs.push(d);
   return d;
 }
-function runtimeAt(d: string): EventRuntime {
+function runtimeAt(d: string, now?: () => number): EventRuntime {
   return new EventRuntime({
+    ...(now !== undefined ? { now } : {}),
     eventId: "evt",
     store: new Store(d),
     codes: CODES,
@@ -126,6 +129,17 @@ function stream(rt: EventRuntime, query: string) {
   void rt.handle(fakeReq(null), res, "GET", "/events", new URL(`http://x/events?${query}`), {});
   return { isEnded: () => ended };
 }
+async function resume(rt: EventRuntime, pair: string) {
+  return post(rt, "/api/guest/resume", { pair });
+}
+/** Pair `id` and trade the code at once → the new phone's token. */
+async function pairToken(rt: EventRuntime, id: string, extra: Record<string, unknown> = {}) {
+  const paired = await mod(rt, "/api/mod/guest/pair", { id, ...extra });
+  expect(paired.status).toBe(200);
+  const r = await resume(rt, paired.json.pair as string);
+  expect(r.status).toBe(200);
+  return { paired: paired.json, token: r.json.token as string };
+}
 async function register(rt: EventRuntime, name: string) {
   const r = await post(rt, "/api/guest/register", { name, passcode: CODES.event });
   expect(r.status).toBe(200);
@@ -134,7 +148,7 @@ async function register(rt: EventRuntime, name: string) {
 
 describe("resumeUrl / releasePart", () => {
   it("builds the re-pair link off the public join base", () => {
-    expect(resumeUrl("https://app.example.com/", "EVT 1", "t/k")).toBe("https://app.example.com/?code=EVT%201&resume=t%2Fk");
+    expect(resumeUrl("https://app.example.com/", "EVT 1", "t/k")).toBe("https://app.example.com/?code=EVT%201&pair=t%2Fk");
   });
   it("takes the part off every holder; an admin keeps admin", () => {
     const s = new SessionStore();
@@ -162,9 +176,17 @@ describe("N-02 re-pair a guest", () => {
     const paired = await mod(rt, "/api/mod/guest/pair", { id: ana.id });
     expect(paired.status).toBe(200);
     expect(paired.json).toMatchObject({ ok: true, id: ana.id, name: "Winamp" });
-    const token = paired.json.token as string;
+    // The director's QR never carries a token — only the pair code.
+    expect(paired.json.token).toBeUndefined();
+    const pair = paired.json.pair as string;
+    expect(paired.json.url).toBe(`https://app.example.com/?code=EVT202&pair=${pair}`);
+    const traded = await resume(rt, pair);
+    expect(traded.status).toBe(200);
+    expect(traded.json).toMatchObject({ ok: true, id: ana.id, name: "Winamp" });
+    const token = traded.json.token as string;
     expect(token).not.toBe(ana.token);
-    expect(paired.json.url).toBe(`https://app.example.com/?code=EVT202&resume=${token}`);
+    // Single use.
+    expect((await resume(rt, pair)).status).toBe(410);
 
     // The new phone IS Ana: same id, her codex, her score.
     const view = await state(rt, "guest", token);
@@ -211,18 +233,49 @@ describe("N-02 re-pair a guest", () => {
     const bob = await register(rt, "Napster");
     const lost = stream(rt, `role=guest&token=${ana.token}`);
     const bobs = stream(rt, `role=guest&token=${bob.token}`);
-    const paired = await mod(rt, "/api/mod/guest/pair", { id: ana.id, revokeOthers: true });
-    expect(paired.status).toBe(200);
-    expect(paired.json.revoked).toBe(1);
+    const { paired, token } = await pairToken(rt, ana.id, { revokeOthers: true });
+    expect(paired.revoked).toBe(1);
     expect(lost.isEnded()).toBe(true);
     expect(bobs.isEnded()).toBe(false);
     expect((await state(rt, "guest", ana.token)).status).toBe(401);
-    expect((await state(rt, "guest", paired.json.token as string)).json.id).toBe(ana.id);
+    expect((await state(rt, "guest", token)).json.id).toBe(ana.id);
     expect((await state(rt, "guest", bob.token)).status).toBe(200);
     // Without the flag, the old token survives (the loaner move).
-    const again = await mod(rt, "/api/mod/guest/pair", { id: ana.id });
-    expect(again.json.revoked).toBe(0);
-    expect((await state(rt, "guest", paired.json.token as string)).status).toBe(200);
+    const again = await pairToken(rt, ana.id);
+    expect(again.paired.revoked).toBe(0);
+    expect((await state(rt, "guest", token)).status).toBe(200);
+  });
+});
+
+describe("N-02 pair codes", () => {
+  it("expire after ten minutes; a newer QR voids the older; a restart voids them all", async () => {
+    let t = 1_000_000;
+    const rt = runtimeAt(freshDir(), () => t);
+    rt.openDoors();
+    const ana = await register(rt, "Winamp");
+    const old = (await mod(rt, "/api/mod/guest/pair", { id: ana.id })).json.pair as string;
+    t += PAIR_TTL_MS + 1;
+    expect((await resume(rt, old)).status).toBe(410);
+
+    const first = (await mod(rt, "/api/mod/guest/pair", { id: ana.id })).json.pair as string;
+    const second = (await mod(rt, "/api/mod/guest/pair", { id: ana.id })).json.pair as string;
+    expect(second).not.toBe(first);
+    expect((await resume(rt, first)).status).toBe(410);
+    t += PAIR_TTL_MS - 1000;
+    expect((await resume(rt, second)).status).toBe(200);
+
+    const pending = (await mod(rt, "/api/mod/guest/pair", { id: ana.id })).json.pair as string;
+    expect((await mod(rt, "/api/mod/reset", {})).status).toBe(200);
+    expect((await resume(rt, pending)).status).toBe(410);
+  });
+
+  it("a guest's own token is no re-pair link: resume needs a director's code", async () => {
+    const rt = runtimeAt(freshDir());
+    rt.openDoors();
+    const ana = await register(rt, "Winamp");
+    expect((await resume(rt, ana.token)).status).toBe(410);
+    expect((await resume(rt, "")).status).toBe(410);
+    expect((await post(rt, "/api/guest/resume", {})).status).toBe(410);
   });
 });
 

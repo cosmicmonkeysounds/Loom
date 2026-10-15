@@ -14,7 +14,7 @@ import soundfile as sf
 
 from stagehand.alexa.config import parse_alexa
 from stagehand.alexa.module import Announcement, Announcer, VoiceCache, parse_payload
-from stagehand.alexa.player import PlaybackError, chime, fit_channels, resample
+from stagehand.alexa.player import PlaybackError, chime, fit_channels, resample, say_argv
 from stagehand.config import parse_config
 from stagehand.modapi import ModApiError, ModClient
 from stagehand.module import ConfigError
@@ -372,3 +372,11 @@ def test_check_exits_nonzero_when_the_alexa_device_is_unusable(tmp_path, monkeyp
     assert "Multiple output devices" in capsys.readouterr().err
     monkeypatch.setattr(DeviceOutput, "probe", lambda self, query=None: None)
     assert main(["check", "--config", str(conf)]) == 0
+
+
+def test_say_argv_never_reads_the_announcement_as_a_flag():
+    # `-o/path` as the text would make `say` write over that file.
+    argv = say_argv("-o/Users/x/somefile hi", "Samantha", out="/tmp/a.aiff")
+    assert argv == ["say", "-v", "Samantha", "-o", "/tmp/a.aiff", "--", "-o/Users/x/somefile hi"]
+    assert say_argv("Hi", None, device="MOTU") == ["say", "-a", "MOTU", "--", "Hi"]
+    assert say_argv("-", None) == ["say", "--", "-"]

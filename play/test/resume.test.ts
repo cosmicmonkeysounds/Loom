@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { adoptResume, resumeFromSearch, withoutResume } from "../src/resume.ts";
+import { adoptResume, resumeFromSearch, storedGuestName, withoutResume } from "../src/resume.ts";
 
 function fakeFetch(routes: Record<string, { status: number; body: unknown }>) {
   const calls: Array<{ url: string; init?: RequestInit }> = [];
@@ -13,33 +13,49 @@ function fakeFetch(routes: Record<string, { status: number; body: unknown }>) {
 }
 
 describe("re-pair link (N-02)", () => {
-  it("reads code + token off the QR and strips only the token", () => {
-    expect(resumeFromSearch("?code=EVT1&resume=tok-1")).toEqual({ code: "EVT1", token: "tok-1" });
-    expect(resumeFromSearch("?resume=tok-1")).toBeNull();
-    expect(resumeFromSearch("?code=EVT1&resume=")).toBeNull();
+  it("reads code + pair code off the QR and strips only the pair code", () => {
+    expect(resumeFromSearch("?code=EVT1&pair=p-1")).toEqual({ code: "EVT1", pair: "p-1" });
+    expect(resumeFromSearch("?pair=p-1")).toBeNull();
+    expect(resumeFromSearch("?code=EVT1&pair=")).toBeNull();
     expect(resumeFromSearch("?code=EVT1")).toBeNull();
-    expect(withoutResume("?code=EVT1&resume=tok-1")).toBe("?code=EVT1");
-    expect(withoutResume("?resume=tok-1")).toBe("");
+    // A guest's raw token in the old `resume=` shape is not a re-pair link.
+    expect(resumeFromSearch("?code=EVT1&resume=tok-1")).toBeNull();
+    expect(withoutResume("?code=EVT1&pair=p-1")).toBe("?code=EVT1");
+    expect(withoutResume("?pair=p-1")).toBe("");
   });
 
-  it("adopts the token as the guest the event says it is", async () => {
+  it("trades the pair code for the guest's fresh token", async () => {
     const f = fakeFetch({
       "/api/resolve-code": { status: 200, body: { eventId: "evt 1", role: "guest", title: "Trapped" } },
-      "/e/evt%201/api/state?role=guest": { status: 200, body: { id: "g-abc", name: "Winamp", title: "Trapped" } },
+      "/e/evt%201/api/guest/resume": { status: 200, body: { ok: true, id: "g-abc", name: "Winamp", token: "tok-1" } },
     });
-    const g = await adoptResume({ code: "EVT1", token: "tok-1" }, f.fn);
+    const g = await adoptResume({ code: "EVT1", pair: "p-1" }, f.fn);
     expect(g).toEqual({ id: "g-abc", name: "Winamp", token: "tok-1", eventId: "evt 1", title: "Trapped" });
     expect(JSON.parse(String(f.calls[0]!.init!.body))).toEqual({ code: "EVT1" });
-    expect((f.calls[1]!.init!.headers as Record<string, string>)["x-loom-token"]).toBe("tok-1");
+    expect(f.calls[1]!.init!.method).toBe("POST");
+    expect(JSON.parse(String(f.calls[1]!.init!.body))).toEqual({ pair: "p-1" });
   });
 
-  it("explains a dead code or an expired token", async () => {
+  it("explains a dead event code, a spent / expired pair code, and a throttle", async () => {
     const noEvent = fakeFetch({});
-    await expect(adoptResume({ code: "OLD", token: "t" }, noEvent.fn)).rejects.toThrow(/event code/u);
-    const expired = fakeFetch({
+    await expect(adoptResume({ code: "OLD", pair: "p" }, noEvent.fn)).rejects.toThrow(/event code/u);
+    const spent = fakeFetch({
       "/api/resolve-code": { status: 200, body: { eventId: "evt" } },
-      "/e/evt/api/state?role=guest": { status: 401, body: { error: "not signed in" } },
+      "/e/evt/api/guest/resume": { status: 410, body: { error: "expired" } },
     });
-    await expect(adoptResume({ code: "EVT1", token: "t" }, expired.fn)).rejects.toThrow(/expired/u);
+    await expect(adoptResume({ code: "EVT1", pair: "p" }, spent.fn)).rejects.toThrow(/expired or was already used/u);
+    const slow = fakeFetch({
+      "/api/resolve-code": { status: 200, body: { eventId: "evt" } },
+      "/e/evt/api/guest/resume": { status: 429, body: { error: "too many" } },
+    });
+    await expect(adoptResume({ code: "EVT1", pair: "p" }, slow.fn)).rejects.toThrow(/Too many tries/u);
+  });
+
+  it("names the guest this phone already is, so the app asks before switching", () => {
+    expect(storedGuestName(null)).toBeNull();
+    expect(storedGuestName("")).toBeNull();
+    expect(storedGuestName("{not json")).toBeNull();
+    expect(storedGuestName(JSON.stringify({ id: "g-1", name: "Winamp", token: "t" }))).toBe("Winamp");
+    expect(storedGuestName(JSON.stringify({ id: "g-1", token: "t" }))).toBe("g-1");
   });
 });

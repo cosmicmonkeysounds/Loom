@@ -87,8 +87,11 @@ CHARACTER Trabolta is Person
   // `INTERACTION … who: agent` (declared below); the worker fires it as
   // Trabolta with `program` = the guest he is talking to and the args he
   // chose. Only these hooks hear it. Powers change by phase (Night.step,
-  // §2.6.1 of the design): a use outside its window still counts against
-  // the limit, so every refusal answers privately. Before its window:
+  // §2.6.1 of the design): every refusal answers privately, and a refusal
+  // (his words alone, no cue / variable / broadcast) does NOT count against
+  // the power's `limit:` — the server only counts a use that did something,
+  // so a wrong room or an early try can't spend the night's blackouts.
+  // Before its window:
   // "That function is not available yet." After it: "I do not have the
   // strength." Every hook opens with `if program.name != null`: fired from
   // a performer's Cast thread (or by a director with no subject) there is
@@ -180,6 +183,7 @@ CHARACTER Trabolta is Person
       else if room == "The Cache" or room == "The Desktop" or room == "The Registry":
         <cue: lights, room: {room}, state: off>
         set Night.dark_room = room
+        set Night.dark_scene = Night.lights
         set Night.lights_back_at = Time.elapsed + 90
         broadcast "!💡 The lights in {room} go out. Somewhere a fan spins down." to location(room)
       else:

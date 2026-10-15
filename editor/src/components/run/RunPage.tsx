@@ -177,6 +177,10 @@ function EmptyState() {
   const startRun = useCockpit((s) => s.startRun)
   const enterScratch = useScratch((s) => s.enter)
   const server = backend === RunBackend.Server
+  // Codes are pinned across End → relaunch (printed QRs keep working); a
+  // mod code shared at rehearsal would otherwise stay valid for the show.
+  const [rotateStaff, setRotateStaff] = useState(false)
+  const launchOpts = server && rotateStaff ? { rotateStaff: true } : undefined
 
   const goLive = async () => {
     const ok = await confirmAction({
@@ -185,7 +189,7 @@ function EmptyState() {
       confirmLabel: 'Go live',
       danger: true,
     })
-    if (ok) await startRun(RunMode.Live)
+    if (ok) await startRun(RunMode.Live, launchOpts)
   }
 
   return (
@@ -198,13 +202,22 @@ function EmptyState() {
         </p>
         <div className="mt-5 flex flex-col items-center gap-2">
           <button
-            onClick={() => void startRun(RunMode.Rehearsal)}
+            onClick={() => void startRun(RunMode.Rehearsal, launchOpts)}
             disabled={busy}
             className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
             data-testid="run-start"
           >
             ▶ Start rehearsal
           </button>
+          {server && (
+            <label
+              className="flex items-center gap-1.5 text-xs text-zinc-400"
+              title="Mint new performer + moderator codes for this launch (the guest code on the invitations stays). Do it before the show if a code was shared at rehearsal or typed into a terminal."
+            >
+              <input type="checkbox" checked={rotateStaff} onChange={(e) => setRotateStaff(e.target.checked)} data-testid="run-rotate-staff" />
+              New performer + moderator codes
+            </label>
+          )}
           {server ? (
             <button onClick={() => void goLive()} disabled={busy} className="text-xs text-emerald-400/90 underline hover:text-emerald-200" data-testid="run-go-live">
               Go live with real guests →

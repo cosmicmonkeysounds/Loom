@@ -114,6 +114,9 @@ export interface AgentActResult {
   /** `entry` / `name` as resolved by the story. */
   what: string;
   error?: string;
+  /** A fire the story answered with words only (a refusal): not counted
+   *  against the power's limit. */
+  refused?: boolean;
 }
 
 /**
@@ -824,6 +827,28 @@ export class AgentHub {
         }
       }
     }
+  }
+
+  /**
+   * A director answered in the thread by hand (Run → speak as the
+   * character; decision #35 — the directors answer DMs when the worker is
+   * down). The open request on that thread is settled: dropped if queued,
+   * cancelled on its worker if in flight — so a worker that comes back
+   * doesn't answer the same question a second time. The next line in the
+   * thread opens a fresh request whose history includes the director's
+   * answer. Returns whether a request was closed.
+   */
+  answeredByHand(thread: AgentThread): boolean {
+    const key = threadKey(thread);
+    const id = this.byThread.get(key);
+    const r = id === undefined ? undefined : this.open.get(id);
+    if (id === undefined || r === undefined) return false;
+    if (r.worker !== null) {
+      this.workers.get(r.worker)?.send("cancel", { id });
+      this.o.typing?.(r.req.thread, false);
+    }
+    this.drop(id, r);
+    return true;
   }
 
   private drop(id: string, r: OpenRequest): void {

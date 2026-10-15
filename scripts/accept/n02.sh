@@ -15,7 +15,8 @@
 #   3. Editor: Run → roster → the guest → Inspector → 🔁 Re-pair. START A TIMER.
 #   4. Phone A, CAMERA app: scan the QR → Safari opens → "Getting you back in…"
 #      → you are the same program, same codex, same ⭐, same quests. STOP: < 30 s.
-#      The address bar no longer shows `resume=`. Run's roster count did NOT grow
+#      The address bar no longer shows `pair=`. Scanning the SAME QR again on
+#      another phone says the code expired / was used (single use). Run's roster count did NOT grow
 #      (no new guest). PASS N-02.
 #
 #   N-10 (performer, < 60 s):

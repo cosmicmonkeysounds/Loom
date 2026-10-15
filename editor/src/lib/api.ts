@@ -200,8 +200,11 @@ export const eventsApi = {
   async status(projectId: string): Promise<EventInfo | null> {
     return (await req<{ event: EventInfo | null }>('GET', `/api/projects/${projectId}/event`)).event
   },
-  async launch(projectId: string, mode: 'live' | 'preview'): Promise<EventInfo> {
-    return (await req<{ event: EventInfo }>('POST', `/api/projects/${projectId}/event`, { mode })).event
+  /** Launch the project's run. Codes are pinned across End → relaunch;
+   *  `rotate: 'staff'` mints fresh performer + moderator codes and keeps the
+   *  guest code (the invitations' QR stays valid). */
+  async launch(projectId: string, mode: 'live' | 'preview', opts: { rotate?: 'staff' } = {}): Promise<EventInfo> {
+    return (await req<{ event: EventInfo }>('POST', `/api/projects/${projectId}/event`, { mode, ...(opts.rotate ? { rotate: opts.rotate } : {}) })).event
   },
   async pause(projectId: string): Promise<EventInfo> {
     return (await req<{ event: EventInfo }>('POST', `/api/projects/${projectId}/event/pause`)).event
@@ -249,8 +252,13 @@ export interface PlayAsSession {
 export interface GuestPairing {
   id: string
   name: string
-  token: string
-  /** `<join base>/?code=<event>&resume=<token>` — shown as a QR. */
+  /** A single-use pair code (the phone trades it for a token). */
+  pair: string
+  /** When the code stops working (epoch ms; ten minutes after minting). */
+  expiresAt: number
+  /** Other tokens signed out (`revokeOthers`). */
+  revoked: number
+  /** `<join base>/?code=<event>&pair=<code>` — shown as a QR. */
   url: string
 }
 
@@ -344,8 +352,9 @@ export const modApi = {
   async endImpersonation(eventId: string, session: string): Promise<void> {
     await req('POST', `/e/${eventId}/api/mod/impersonate/end`, { session })
   },
-  /** Re-pair a lost guest (N-02): a fresh token for the SAME guest, and the
-   *  `?code=<event>&resume=<token>` link their new phone opens.
+  /** Re-pair a lost guest (N-02): a single-use, ten-minute pair code for
+   *  the SAME guest, and the `?code=<event>&pair=<code>` link their new
+   *  phone opens (it trades the code for a fresh token).
    *  `revokeOthers` also signs out every other phone holding that guest. */
   async pairGuest(eventId: string, id: string, opts: { revokeOthers?: boolean } = {}): Promise<GuestPairing> {
     return await req<GuestPairing>('POST', `/e/${eventId}/api/mod/guest/pair`, { id, ...(opts.revokeOthers ? { revokeOthers: true } : {}) })

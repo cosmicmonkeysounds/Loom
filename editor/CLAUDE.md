@@ -14,7 +14,10 @@ folder with no account.
   **single run**. "▶ Start rehearsal" is one action everywhere — on a
   **server project** it launches the project's shared `preview` event
   (every co-writer lands in the same run), on a **local folder** it
-  compiles the in-browser `@loom/core` `Sim`. The backend is resolved
+  compiles the in-browser `@loom/core` `Sim`. Codes are pinned across End
+  → relaunch; the empty state's **New performer + moderator codes** box
+  (`startRun(mode, {rotateStaff: true})` → launch `rotate: "staff"`)
+  mints fresh staff codes and keeps the guest code. The backend is resolved
   from the workspace kind (`store/run.ts`), never picked by the user;
   both stores (`store/operate.ts`, `store/sim.ts`) implement the whole
   `CockpitState` contract, lifecycle included. The header carries the
@@ -301,7 +304,8 @@ a **👁 Be <name>** button; a character shows **Their feed** (lines they
 spoke + `dm:` threads) plus their **scan readouts** (`respond` ledger
 events), variables, owned beats. Server runs add the lost-phone fixes:
 a guest's **🔁 Re-pair** (`RePair` → `CockpitState.pairGuest` →
-`POST /api/mod/guest/pair`, a QR of the returned `?code=&resume=` link,
+`POST /api/mod/guest/pair`, a QR of the returned `?code=&pair=` link — a
+single-use code good for ten minutes —
 plus **Sign out old phones** = `revokeOthers`; not shown for personas,
 which the server refuses anyway) and a character's **⏏ Release**
 (`CockpitState.releasePart` → `POST /api/mod/prime/release`, confirmed);

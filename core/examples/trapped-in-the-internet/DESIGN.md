@@ -454,7 +454,7 @@ Trabolta's persona `facts:` whitelist (he sees it).
 | Night.help_votes / Night.thwart_votes | number 0 | the advice poll | |
 | Night.banish | bool false | everyone banished (thwart branch) | |
 | Night.recount | bool false | trabolta_recounts ran (bulk backstory unlock) | |
-| Night.dark_room / Night.lights_back_at | string `"none"` / number 0 | the room Trabolta darkened and when it comes back (90 s) | |
+| Night.dark_room / Night.dark_scene / Night.lights_back_at | string `"none"` / string `"none"` / number 0 | the room Trabolta darkened, the house look (`Night.lights`) he cut into, and when it comes back (90 s — skipped if the look changed meanwhile) | |
 | Night.dance_at | number 0 | blackout + 10 s: fire `cue lights_dance` (§3 E4) | |
 | Night.sweep_target | string `"none"` | the program Trabolta asked the Antivirus to sweep | |
 

@@ -6,7 +6,9 @@
 //! - `POST /e/:id/api/push/subscribe {subscription}` — bind this device to
 //!   the caller (a guest token → the guest, a performer token → the booth's
 //!   character). A director's play-as session (Run → Players) is refused:
-//!   the embedded app never registers a service worker anyway.
+//!   the embedded app never registers a service worker anyway. A guest is
+//!   refused (409) while the doors are closed; a full event (`MAX_DEVICES`)
+//!   answers 503.
 //! - `POST /e/:id/api/push/unsubscribe {endpoint}`.
 //! - `POST /e/:id/api/push/visible {endpoint, hidden}` — the page's
 //!   `visibilitychange`, sent with `navigator.sendBeacon` (so the token rides
@@ -28,6 +30,8 @@ export interface PushRoutesHost {
   ownerOf(token: string | undefined): string | null;
   /** A guest's display name (the status listing). */
   nameOf(id: string): string | null;
+  /** Are the doors open? A guest can't subscribe while they're closed. */
+  open(): boolean;
 }
 
 /** Subscribes per owner per minute (a real phone subscribes once a load). */
@@ -61,6 +65,10 @@ export class PushRoutes {
           sendJson(res, 503, { error: "push is not configured on this server" });
           return true;
         }
+        if (owner.startsWith("guest:") && !this.host.open()) {
+          sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
         if (!this.subscribeLimit.take(owner)) {
           sendJson(res, 429, { error: "too many subscribe calls — try again in a minute" });
           return true;
@@ -70,7 +78,10 @@ export class PushRoutes {
           sendJson(res, 400, { error: "bad subscription" });
           return true;
         }
-        push.subscribe(owner, sub);
+        if (!push.subscribe(owner, sub)) {
+          sendJson(res, 503, { error: "too many devices subscribed tonight" });
+          return true;
+        }
         sendJson(res, 200, { ok: true });
         return true;
       }

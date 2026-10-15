@@ -14,10 +14,13 @@
 #                                        `do announce` (default call_to_the_desktop) on a
 #                                        REHEARSAL run and time it — chime + line in both
 #                                        rooms within 3 s. (Or fire it from Run → Director.)
+#                                        Runs the live guard first (refuses real guests unless
+#                                        --i-know-this-is-live; y/N unless --yes).
 #   scripts/accept/K-20.sh status     launchd state + the last log lines
 #
 # CONFIG=<yaml> (default stagehand/house.yaml) · BASE (default https://app.mapsandducks.com)
 set -euo pipefail
+source "$(dirname "$0")/guard.sh" "$@"; set -- ${ARGS[@]+"${ARGS[@]}"}
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 STAGEHAND="$ROOT/stagehand"
@@ -82,8 +85,7 @@ case "${1:-}" in
     resolved=$(curl -fsS -X POST "$BASE/api/resolve-code" -H 'content-type: application/json' -d "{\"code\":\"$MOD_CODE\"}")
     event=$(printf '%s' "$resolved" | json "d['eventId']")
     token=$(curl -fsS -X POST "$BASE/e/$event/api/mod/login" -H 'content-type: application/json' -d "{\"passcode\":\"$MOD_CODE\"}" | json "d['token']")
-    read -r -p "fire '$ev' on event $event? It moves the story (rehearsal only) [y/N] " ok
-    [[ "$ok" == y* ]] || exit 1
+    guard_writes "fire $ev (it moves the story)"
     n=$(wc -l < "$LOG" 2>/dev/null || echo 0)
     t0=$(python3 -c 'import time; print(time.time())')
     curl -fsS -X POST "$BASE/e/$event/api/mod/signal" -H "x-loom-token: $token" -H 'content-type: application/json' -d "{\"name\":\"$ev\"}" > /dev/null

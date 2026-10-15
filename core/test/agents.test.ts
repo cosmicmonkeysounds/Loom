@@ -50,6 +50,24 @@ function hubHarness(opts: { replyTimeoutMs?: number; queueMaxAgeMs?: number } = 
 }
 
 describe("AgentHub", () => {
+  it("answeredByHand drops a queued request and cancels an in-flight one", () => {
+    const h = hubHarness();
+    h.hub.line(T);
+    expect(h.hub.answeredByHand(T)).toBe(true);
+    expect(h.hub.pending).toHaveLength(0);
+    expect(h.hub.answeredByHand(T)).toBe(false);
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    expect(a.requests()).toHaveLength(0);
+    h.hub.line(T);
+    const id = a.requests()[0]!.id;
+    expect(h.hub.answeredByHand({ ...T, audience: ["g-2"] })).toBe(false); // another thread
+    expect(h.hub.answeredByHand(T)).toBe(true);
+    expect(a.got.filter(([e]) => e === "cancel")).toEqual([["cancel", { id }]]);
+    expect(h.typing).toEqual([true, false]);
+    expect(h.hub.settle(id, "laptop")).toBeNull();
+  });
+
   it("queues while no worker is online and hands the queue over on attach", () => {
     const h = hubHarness();
     h.hub.line(T);
@@ -660,6 +678,57 @@ describe("EventRuntime agents", () => {
     expect(req.history.map((h) => h.text)).toEqual(["hello?", "Jean Trabolta will make an appearance later tonight."]);
   });
 
+  it("a director answering as the agent closes the queued request: the returning worker doesn't answer twice", async () => {
+    let clock = 1_000_000;
+    const source = SOURCE.replace("  mind: external\n", '  mind: external\n  hold: "Back soon."\n');
+    const rt = runtime({ source, now: () => clock });
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Ed", passcode: CODES.event });
+    const id = g.json["id"] as string;
+    const token = g.json["token"] as string;
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "Who is Sandy?" }, { token });
+    clock += 20_000;
+    (rt as unknown as { agents: AgentHub }).agents.sweep();
+    // The director answers from Run, as Trabolta.
+    expect((await call(rt, "POST", "/api/mod/say", { as: "Trabolta", channel: `guest:${id}`, text: "Sandy is nobody. Forget her." }, { moderator: true })).status).toBe(200);
+    expect((rt as unknown as { agents: AgentHub }).agents.pending).toHaveLength(0);
+    const w = await call(rt, "GET", "/api/agent/stream?characters=Trabolta", {}, { moderator: true });
+    expect(w.res.frames().filter(([e]) => e === "request")).toHaveLength(0);
+    // The guest's next line opens a fresh request that knows the director's answer.
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "Liar." }, { token });
+    const reqs = w.res.frames().filter(([e]) => e === "request").map(([, d]) => d as AgentRequest);
+    expect(reqs).toHaveLength(1);
+    expect(reqs[0]!.history.map((h) => h.text)).toEqual(["Who is Sandy?", "Back soon.", "Sandy is nobody. Forget her.", "Liar."]);
+  });
+
+  it("a director's answer cancels the request on a slow worker, and its late reply is refused", async () => {
+    const { rt, guest, worker, requests } = await setup();
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "hello?" }, { token: guest.token });
+    const rid = requests()[0]!.id;
+    expect((await call(rt, "POST", "/api/mod/say", { as: "Trabolta", channel: `guest:${guest.id}`, text: "Hello, program." }, { moderator: true })).status).toBe(200);
+    expect(worker.res.frames().filter(([e]) => e === "cancel").map(([, d]) => (d as { id: string }).id)).toEqual([rid]);
+    expect((await call(rt, "POST", "/api/agent/reply", { id: rid, say: "HELLO." }, { moderator: true })).status).toBe(410);
+    // A director's line as a performed character (or as the Operator) touches nothing.
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "again?" }, { token: guest.token });
+    await call(rt, "POST", "/api/mod/say", { as: "Clippy", channel: `guest:${guest.id}`, text: "Hi!" }, { moderator: true });
+    expect((rt as unknown as { agents: AgentHub }).agents.pending).toHaveLength(1);
+  });
+
+  it("a crafted DM to an agent still hidden from the guest is refused, not stored; after the reveal it goes through", async () => {
+    const source = SOURCE.replace("  mind: external\n", "  mind: external\n  hidden: true\n");
+    const rt = runtime({ source });
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Fay", passcode: CODES.event });
+    const token = g.json["token"] as string;
+    expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "psst" }, { token })).status).toBe(403);
+    const dm = async () =>
+      ((await call(rt, "GET", "/api/history", {}, { token })).json["messages"] as Array<{ channel: string }>).filter((m) => m.channel === "dm:Trabolta");
+    expect(await dm()).toEqual([]);
+    rt.liveSim!.reveal("Trabolta");
+    expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "psst" }, { token })).status).toBe(200);
+    expect(await dm()).toHaveLength(1);
+  });
+
   it("no hold: authored → silence, as before", async () => {
     let clock = 1_000_000;
     const rt = runtime({ now: () => clock });
@@ -733,6 +802,32 @@ describe("EventRuntime agents", () => {
     expect(again.json["acted"]).toEqual([{ kind: "fire", ok: false, what: "cut the lights", error: "power exhausted for this run" }]);
     // …and the journal replays the acts (share + signal are ordinary mutations).
     expect(sim.worldEntries().find((w) => w.path === "Trabolta.lights_cut")?.value).toBe("1");
+  });
+
+  it("a fire the story only answers with words (a refusal) doesn't spend the power's limit", async () => {
+    const source = SOURCE.replace(
+      "  when cut the lights for program:\n    set self.lights_cut += 1\n    <cue: lights, room: {room}, state: off>\n",
+      '  when cut the lights for program:\n    if room != "The Cache":\n      Trabolta: That function is not available in that room.\n    else:\n      set self.lights_cut += 1\n      <cue: lights, room: {room}, state: off>\n',
+    );
+    expect(source).not.toBe(SOURCE);
+    const rt = runtime({ source });
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Gil", passcode: CODES.event });
+    const token = g.json["token"] as string;
+    const worker = await call(rt, "GET", "/api/agent/stream?characters=Trabolta", {}, { moderator: true });
+    const requests = () => worker.res.frames().filter(([e]) => e === "request").map(([, d]) => d as AgentRequest);
+    const cut = async (room: string) => {
+      await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: `the lights in ${room}` }, { token });
+      const r = requests().at(-1)!;
+      const reply = await call(rt, "POST", "/api/agent/reply", { id: r.id, say: "", acts: [{ kind: "fire", name: "cut the lights", args: { room } }] }, { moderator: true });
+      return { used: r.powers.find((p) => p.id === "cut the lights")?.used, acted: reply.json["acted"] };
+    };
+    expect(await cut("the cache")).toEqual({ used: 0, acted: [{ kind: "fire", ok: true, what: "cut the lights", refused: true }] });
+    expect(await cut("The Cloud")).toEqual({ used: 0, acted: [{ kind: "fire", ok: true, what: "cut the lights", refused: true }] });
+    // Still one use left (limit: 1): the real cut lands, then the limit holds.
+    expect(await cut("The Cache")).toEqual({ used: 0, acted: [{ kind: "fire", ok: true, what: "cut the lights" }] });
+    expect(rt.liveSim!.worldEntries().find((w) => w.path === "Trabolta.lights_cut")?.value).toBe("1");
+    expect((await cut("The Cache")).acted).toEqual([{ kind: "fire", ok: false, what: "cut the lights", error: "power exhausted for this run" }]);
   });
 
   it("the facts document describes the whole session, mod-gated", async () => {

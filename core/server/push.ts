@@ -23,11 +23,15 @@
 //!   duplicate). A character's DM to a guest, and an unsolicited booth
 //!   readout (the door alarm, the late list), only when the device says it
 //!   is *hidden*. Every push carries a visible notification (iOS revokes a
-//!   subscription that receives silent pushes). 404 / 410 from the push
-//!   service prunes the device.
+//!   subscription that receives silent pushes). Any 4xx from the push
+//!   service except 429 (404 / 410 gone, 400 / 401 / 403 a junk or revoked
+//!   subscription) prunes the device; 429 / 5xx / network errors keep it.
 //! - **Limits.** Endpoints must be on a known push service
 //!   (`PUSH_SERVICE_HOSTS` — no SSRF), subscribe is rate-limited per owner
-//!   (`routes/k31.ts`), and a repeat subscribe writes nothing.
+//!   (`routes/k31.ts`), a guest can't subscribe while the doors are closed,
+//!   the whole event holds at most `MAX_DEVICES` (a new device past it is
+//!   refused — never evicting a real guest's), and a repeat subscribe writes
+//!   nothing.
 //! - **Out (K-31a):** director push, `notify`, a health card, send-side
 //!   rate limits, quiet modes, the install-first door gate (iPhone is K-31b).
 
@@ -115,6 +119,12 @@ export function webPushSender(config: PushConfig | null, log: (msg: string) => v
   };
 }
 
+/** A push-service answer that means the device will never take a push:
+ *  any 4xx but 429 (Too Many Requests is transient). */
+export function isDeadStatus(status: number): boolean {
+  return status >= 400 && status < 500 && status !== 429;
+}
+
 /** Owner keys. */
 export const guestOwner = (id: string): string => `guest:${id}`;
 export const boothOwner = (character: string): string => `prime:${character}`;
@@ -132,6 +142,10 @@ interface Device {
 /** A device past this many per owner drops the oldest (a guest re-joining
  *  from a fresh browser profile, again and again). */
 export const MAX_DEVICES_PER_OWNER = 4;
+/** Devices across every owner (a ~60-guest party needs ~100). Past it a
+ *  new device is refused, so a registration loop can't grow `push.json`
+ *  (rewritten whole on every subscribe) or the fan-out of every alert. */
+export const MAX_DEVICES = 300;
 const MAX_ENDPOINT = 1024;
 const MAX_KEY = 256;
 const MAX_BODY = 240;
@@ -261,19 +275,22 @@ export class PushHub {
 
   /** Bind a device to `owner` (moving it off anyone else), page visible.
    *  A repeat of the same binding only refreshes it in memory (no disk
-   *  write — a looping client must not hammer `push.json`). */
-  subscribe(owner: string, sub: PushSubscriptionJSON): void {
+   *  write — a looping client must not hammer `push.json`). False when
+   *  the event is full (`MAX_DEVICES`) and this is a new device. */
+  subscribe(owner: string, sub: PushSubscriptionJSON): boolean {
     const prev = this.devices.get(sub.endpoint);
     if (prev !== undefined && prev.owner === owner && prev.sub.keys.p256dh === sub.keys.p256dh && prev.sub.keys.auth === sub.keys.auth) {
       prev.hidden = false;
       prev.at = this.now();
-      return;
+      return true;
     }
+    if (prev === undefined && this.devices.size >= MAX_DEVICES) return false;
     this.devices.delete(sub.endpoint);
     this.devices.set(sub.endpoint, { owner, sub, hidden: false, at: this.now() });
     const mine = [...this.devices.values()].filter((d) => d.owner === owner).sort((a, b) => a.at - b.at);
     for (const d of mine.slice(0, Math.max(0, mine.length - MAX_DEVICES_PER_OWNER))) this.devices.delete(d.sub.endpoint);
     this.persist();
+    return true;
   }
 
   /** Forget one of `owner`'s devices. True when it was theirs. */
@@ -328,9 +345,11 @@ export class PushHub {
       const p = this.sender
         .send(d.sub, body, { ttl: TTL[payload.kind], urgency: "high" })
         .then((status) => {
-          if (status === 404 || status === 410) {
-            // The browser dropped the subscription — forget the device
-            // (unless it re-subscribed meanwhile under the same endpoint).
+          if (isDeadStatus(status)) {
+            // The browser dropped the subscription (404 / 410), or the push
+            // service refuses it outright (a junk key, a revoked VAPID
+            // binding) — forget the device (unless it re-subscribed
+            // meanwhile under the same endpoint).
             if (this.devices.get(d.sub.endpoint) === d) {
               this.devices.delete(d.sub.endpoint);
               this.persist();

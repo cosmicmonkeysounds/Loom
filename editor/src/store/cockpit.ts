@@ -354,8 +354,10 @@ export interface CockpitState {
    *  persona named `me` is spawned and the cockpit lands on Chat / lobby;
    *  locally = compile the indexed sources + the same persona + entry beat.
    *  `Live` is server-only (locally: sets `error`). `opts.scratch` marks an
-   *  in-browser run entered from a server project. */
-  startRun(mode: RunMode, opts?: { scratch?: boolean }): Promise<void>
+   *  in-browser run entered from a server project. `opts.rotateStaff` (server
+   *  only) mints fresh performer + moderator codes for this launch — codes
+   *  are otherwise pinned across End → relaunch; the guest code always stays. */
+  startRun(mode: RunMode, opts?: { scratch?: boolean; rotateStaff?: boolean }): Promise<void>
   pause(): Promise<void>
   resume(): Promise<void>
   /** Start the story over on the SAME snapshot (server `/api/mod/reset`;
@@ -403,11 +405,11 @@ export interface CockpitState {
   closePlayer(session: PlayerSession): Promise<void>
   /** Write any world variable (the World browser's inline editing). */
   setVar(path: string, value: string): Promise<void>
-  /** Re-pair a lost guest (N-02): mint a fresh session for the SAME guest and
-   *  resolve to the resume link their new phone scans. Server runs only (the
+  /** Re-pair a lost guest (N-02): mint a single-use, ten-minute pair code
+   *  for the SAME guest and resolve to the link their new phone scans. Server runs only (the
    *  local backend has no phones — null, reason in `error`). `revokeOthers`
    *  also signs out the guest's other phones (a lost phone someone found). */
-  pairGuest(id: string, opts?: { revokeOthers?: boolean }): Promise<{ url: string; name: string } | null>
+  pairGuest(id: string, opts?: { revokeOthers?: boolean }): Promise<{ url: string; name: string; expiresAt: number } | null>
   /** Release a performer's part (N-10) so they can re-sign on a loaner.
    *  Resolves to how many sessions held it (null on failure / local runs). */
   releasePart(character: string): Promise<number | null>

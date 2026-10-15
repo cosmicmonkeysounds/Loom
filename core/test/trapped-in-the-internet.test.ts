@@ -1226,6 +1226,21 @@ describe("Trapped in the Internet — the Cold Lock (K-27)", () => {
     expect(v(sim, "Night.alarms")).toBe(0);
   });
 
+  it("a chess win (or an unlock) during a latched alarm clears the latch at once — the screens drop the overlay", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    fire(sim, "server_door_opened");
+    expect(v(sim, "Night.alarm_on")).toBe(true);
+    fire(sim, "chess_won");
+    expect(v(sim, "Night.alarm_on")).toBe(false);
+    expect(v(sim, "Kernel.disarmed_until")).toBeGreaterThan(0);
+    advance(sim, 91); // the window closes, the door re-arms
+    fire(sim, "server_door_opened");
+    expect(v(sim, "Night.alarm_on")).toBe(true);
+    fire(sim, "server_unlock");
+    expect(v(sim, "Night.alarm_on")).toBe(false);
+  });
+
   it("rearm_server_room closes a window, re-locks an unlock, clears the latch", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
@@ -1718,6 +1733,26 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05)", () => {
     fire(sim, "fact_accurate", "g2", null, "Clippy");
     expect(hosts(sim, file(sim, "g2", "H1", "Eleven years"))).toHaveLength(1); // late, still counts
   });
+
+  it("once the night has ended the record is closed: no filing, no card, no judging", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    toHunt2(sim);
+    file(sim, "g4", "H5", "Clippy"); // unjudged when the night ends
+    sim.setVar("Night.ended", "true");
+    const s0 = v(sim, "g4.score");
+    const late = file(sim, "g5", "H4", "Extension 0");
+    expect(hosts(sim, late)).toEqual([]);
+    expect(facts(late)).toEqual([]);
+    expect(trabolta(late, "g5").some((t) => t.includes("record is closed"))).toBe(true);
+    expect(v(sim, "g5.fact_pending")).not.toBe(true);
+    const judged = fire(sim, "fact_lie", "g4", null, "Clippy");
+    expect(hosts(sim, judged)).toEqual(["📝 The night is over — the record is closed."]);
+    expect(v(sim, "Kernel.lies_accepted")).toBe(0);
+    expect(v(sim, "g4.score")).toBe(s0);
+    expect(hosts(sim, fire(sim, "fact_accurate", "g4", null, "Clippy"))).toEqual(["📝 The night is over — the record is closed."]);
+    expect(v(sim, "Kernel.q5")).not.toBe("accurate");
+  });
 });
 
 describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
@@ -1865,6 +1900,24 @@ describe("Trapped in the Internet — a director's mis-taps", () => {
     expect(v(sim, "Trabolta.composure")).toBe(c0 - 10);
     expect(beats(fire(sim, "truth_pong"))).toEqual([]);
     expect(v(sim, "Night.judging")).toBe(false);
+  });
+
+  it("a lighting cue during a cut wins: the 90 s restore never re-lights the room over it", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    toHunt2(sim);
+    expect(cues(fire(sim, "cut_the_lights", "g1", { room: "The Cache" }, "Trabolta"))).toContain("cue lights, room: The Cache, state: off");
+    // An ending (or the alarm) changes the house look 30 s later…
+    advance(sim, 30);
+    expect(cues(fire(sim, "lights_dance"))).toContain("cue lights_dance");
+    // …so at 90 s the kitchen is NOT switched back on over the dance.
+    const later = cues(advance(sim, 61));
+    expect(later.some((c) => c.includes("room: The Cache, state: on"))).toBe(false);
+    expect(v(sim, "Night.lights_back_at")).toBe(0);
+    // And a cut that nothing interrupts still comes back on its own.
+    sim.setVar("Night.lights", "game");
+    fire(sim, "cut_the_lights", "g1", { room: "The Desktop" }, "Trabolta");
+    expect(cues(advance(sim, 91))).toContain("cue lights, room: The Desktop, state: on");
   });
 
   it("one room dark at a time; truth.txt waits for the Bag", { timeout: SLOW }, () => {

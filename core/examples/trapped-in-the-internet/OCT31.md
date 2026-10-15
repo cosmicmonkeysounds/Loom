@@ -172,6 +172,19 @@ Lanes merged in order B → A → C → D, then `fix(oct31): integrate wave 1` (
 
 **Found during wave 1, not fixed (outside the minimal scopes):** the hunt countdown keeps running after `trabolta_disabled` (hidden under the overlay; story, lane A); the play Codex box ignores a 429; chess lost / drawn rules + the *Cold Lock* codex; ceremony sounds; the server falls back to the local `loom_dev` database when `DATABASE_URL` is unset (several lanes' scratch servers read it — set `DATABASE_URL` to a dead port for scratch runs).
 
+**Verification pass (2026-10-15, `fix(oct31): wave 1 verification`).** Two reviewers (a code read + a full-night drive of Sim / EventRuntime) found no auth bypass, leak, XSS or CSP regression; these were fixed, each with a regression test:
+- **N-02 re-pair is a single-use pair code now**, not a guest token in the URL: `/api/mod/guest/pair` → `?code=<event>&pair=<code>` (ten minutes, one use, a newer QR voids the older, cut by a restart); the phone trades it at `POST /api/guest/resume {pair}` for a fresh token (410 when spent / expired; throttled like a sign-in). A guest can no longer hand their own token to someone else's phone, and a phone already signed in asks *Switch this phone* / *Stay <name>* first. `n02.sh` step 4 also checks that the same QR fails on a second phone.
+- **Directors answering for Trabolta (decision #35):** a Run `say` as an agent into a guest's DM closes that thread's queued request (or cancels it on a slow worker), so a returning worker no longer answers the same question twice; the guest's next line opens a fresh request with the director's answer in its history.
+- **The kitchen no longer comes back on over an ending:** the 90 s `cut_the_lights` restore only fires if `Night.lights` is still the look he cut into (`Night.dark_scene`); any lighting cue since (blackout, dance, alarm, restore) wins.
+- **Refused powers don't spend their limit:** a `who: agent` fire the story answers with words alone (wrong room, "not available yet") comes back `refused: true` and isn't counted — the night keeps both blackouts.
+- **Push:** a 300-device cap across the event (new devices refused, never evicting), any 4xx but 429 prunes a device, and a guest can't subscribe while the doors are closed (409).
+- **Acceptance scripts:** `K-17.sh --fire`, `K-18.sh --say/--beat/--fire/--mute` and `K-20.sh story` run the live guard first (`guard.sh` → `guard-cli.ts`: refuses real guests unless `--i-know-this-is-live`, y/N unless `--yes`); `K-16/17/18` look without a terminal name, so they no longer leave silent rows on the K-29 card.
+- **House Mac `say`:** announcement text goes after `--` (a line starting `-o/…` can't write a file).
+- **K-10:** Run's empty state has **New performer + moderator codes** (launch `rotate: "staff"`, guest code kept) — tick it before the show if a mod code was shared at rehearsal or typed into a terminal (re-provision terminals with the new code).
+- **Minor:** a chess win or `server_unlock` clears a latched alarm at once (no stale overlay); after the night ends no fact is filed, dealt or judged (the ceremony's Truthcoin stands); a crafted guest DM to an agent still hidden from them is refused (403), not stored.
+
+Suites after the pass: loomcheck `--smoke` 0 / 0; core 872 + typecheck; play 90 + typecheck; editor 201 + `tsc -b`; stagehand 229; ops scripts 98; live-guard 2.
+
 
 ### MUST (7.0 lane-days; N-07 counts with the N folds under CHEAP-WIN): without it the night breaks or is unsafe
 

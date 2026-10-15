@@ -314,12 +314,13 @@ performer token → `prime:<character>`; a director's play-as session is
 refused; the endpoint must be on a known push service —
 `PUSH_SERVICE_HOSTS`: FCM, `*.push.apple.com`, Mozilla, `*.notify.windows.com`,
 never an IP literal or a port → else 400; 10 per owner per minute → 429;
-a repeat writes nothing); `POST /api/push/unsubscribe {endpoint}` (the
+a guest while the doors are closed → 409; a new device past
+`MAX_DEVICES` (300, the whole event) → 503; a repeat writes nothing); `POST /api/push/unsubscribe {endpoint}` (the
 play app sends it on Leave / Sign out); `POST
 /api/push/visible {token, endpoint, hidden}` (the client's
 `sendBeacon`); `POST /api/mod/push/status` → who is subscribed.
 Subscriptions live in `push.json` in the event's state dir (one owner per
-device; 404/410 from the push service prunes). **Send rule**: `!` alerts
+device; any 4xx from the push service but 429 prunes). **Send rule**: `!` alerts
 to every entitled guest + every booth, always; a character's own line in
 `dm:<Character>` to its addressee, and a booth's readout (`reply` — the
 door alarm, the late list) to that booth, only while the device's last
@@ -511,13 +512,18 @@ Two planes:
   sealed room, is on rails (a cutscene room, or `uploaded && !cleared`),
   or the room is a prison / cutscene / hidden from them; 429 inside a
   20 s per-guest cooldown. → `{ok, at, channel: "loc:<at>", moved}`.
-- **Lost phones** (N-02 / N-10, `server/routes/n02.ts`, mod-only): `POST
-  /e/:id/api/mod/guest/pair {id, revokeOthers?}` mints a fresh guest
-  token for an existing Person (persisted in `guests.json`, cut by every
-  restart like a registration's; the old tokens stay valid unless
-  `revokeOthers: true`, which cuts them + their streams + push devices;
-  a director's persona → 409) → `{ok, id, name, token, revoked, url}` with `url` = `<join base>/?code=<event>&resume=<token>`, which the
-  play app adopts. `POST /e/:id/api/mod/prime/release {character}` takes
+- **Lost phones** (N-02 / N-10, `server/routes/n02.ts`): `POST
+  /e/:id/api/mod/guest/pair {id, revokeOthers?}` (mod-only) mints a
+  **single-use pair code** for an existing Person (ten minutes, in memory,
+  cut by every restart; a newer code for the same guest voids the older;
+  the old tokens stay valid unless `revokeOthers: true`, which cuts them
+  + their streams + push devices; a director's persona → 409) →
+  `{ok, id, name, pair, expiresAt, revoked, url}` with `url` =
+  `<join base>/?code=<event>&pair=<code>`. The phone trades it at `POST
+  /e/:id/api/guest/resume {pair}` (no token; throttled like a sign-in)
+  → `{ok, id, name, token}` — a fresh token persisted in `guests.json`
+  like a registration's; a spent / expired / unknown code → 410. A
+  guest's own token is never a re-pair link. `POST /e/:id/api/mod/prime/release {character}` takes
   the part off every session holding it (a performer+admin session keeps
   admin), closes those booth streams, persists → `{ok, character,
   released}`; 404 for an unknown character. Nothing is journaled.

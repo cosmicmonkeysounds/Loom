@@ -5,10 +5,15 @@
 //! browser can't get back in — tokens are minted only at `register`, and
 //! re-picking their program is 409 "taken" — so they would come back as a
 //! new program and leave a ghost that still counts toward the majority.
-//! The director mints a **fresh token for the existing Person** (persisted
-//! like a registration's, cut by every restart like one) and shows it as a
-//! QR: `<join base>/?code=<event>&resume=<token>`. The play app adopts it
-//! as its guest session and strips it from the URL. The guest's old tokens
+//! The director mints a **single-use pair code** for the existing Person
+//! (`PAIR_TTL_MS`, ten minutes; in memory, cut by every restart; a newer
+//! code for the same guest voids the older) and shows it as a QR:
+//! `<join base>/?code=<event>&pair=<code>`. The phone that opens it
+//! exchanges the code at **`POST /e/:id/api/guest/resume {pair}`** for a
+//! **fresh token** (persisted like a registration's, cut by every restart
+//! like one) and strips the code from the URL. So a guest who copies their
+//! own token can't hand themselves to someone else's phone, and no
+//! long-lived credential ever sits in a URL. The guest's old tokens
 //! stay valid by default (it also moves a guest onto a loaner phone; the old
 //! one is gone or harmless) — **`revokeOthers: true`** cuts them instead
 //! (a phone someone else picked up: its tokens, streams and push devices
@@ -24,7 +29,7 @@
 //! booth streams; the performer re-signs on a loaner with the prime code.
 //! The character's threads and buttons are story state — untouched.
 
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import type { ServerResponse } from "node:http";
 import type { Sim } from "../../src/runtime/sim/index.ts";
 import { sendJson, str } from "../http-util.ts";
@@ -32,10 +37,14 @@ import type { SessionStore } from "../session.ts";
 
 export const PAIR_ROUTE = "/api/mod/guest/pair";
 export const RELEASE_ROUTE = "/api/mod/prime/release";
+/** The phone's side: exchange a pair code for a guest token. */
+export const RESUME_ROUTE = "/api/guest/resume";
+/** How long a re-pair QR stays good. */
+export const PAIR_TTL_MS = 10 * 60_000;
 
 /** The link a re-pair QR carries. `base` is the public join base. */
-export function resumeUrl(base: string, eventCode: string, token: string): string {
-  return `${base.replace(/\/+$/u, "")}/?code=${encodeURIComponent(eventCode)}&resume=${encodeURIComponent(token)}`;
+export function resumeUrl(base: string, eventCode: string, pair: string): string {
+  return `${base.replace(/\/+$/u, "")}/?code=${encodeURIComponent(eventCode)}&pair=${encodeURIComponent(pair)}`;
 }
 
 /** Take `character` off every session holding it: a performer-only session
@@ -70,16 +79,57 @@ export interface PairingHost {
   eventCode(): string;
   /** Mint a token (injected for tests). */
   mint?: () => string;
+  /** Mint a pair code (injected for tests). */
+  mintPair?: () => string;
+  /** Wall clock (injected for tests). */
+  now?: () => number;
+}
+
+interface PendingPair {
+  id: string;
+  expiresAt: number;
 }
 
 export class Pairing {
+  /** Outstanding pair codes → the guest each re-pairs. */
+  private readonly pending = new Map<string, PendingPair>();
+
   constructor(private readonly host: PairingHost) {}
+
+  private now(): number {
+    return (this.host.now ?? Date.now)();
+  }
+
+  /** Forget every outstanding pair code (a story restart). */
+  clear(): void {
+    this.pending.clear();
+  }
 
   /** Handle one of this module's mod routes; false when `path` isn't ours. */
   handle(path: string, res: ServerResponse, body: Record<string, unknown>): boolean {
     if (path === PAIR_ROUTE) return this.pair(res, body);
     if (path === RELEASE_ROUTE) return this.release(res, body);
     return false;
+  }
+
+  /** The phone's `POST /api/guest/resume {pair}` (no token — the code is
+   *  the credential); false when `path` isn't it. */
+  handlePublic(path: string, res: ServerResponse, body: Record<string, unknown>): boolean {
+    if (path !== RESUME_ROUTE) return false;
+    const code = str(body, "pair").trim();
+    const hit = code === "" ? undefined : this.pending.get(code);
+    // Single use: a code is spent the moment it's presented.
+    if (hit !== undefined) this.pending.delete(code);
+    const sim = this.host.sim();
+    const person = hit === undefined ? undefined : sim?.persons.get(hit.id);
+    if (hit === undefined || hit.expiresAt <= this.now() || person === undefined) {
+      sendJson(res, 410, { error: "that re-pair code has expired — ask the director for a new one" });
+      return true;
+    }
+    const token = (this.host.mint ?? randomUUID)();
+    this.host.addGuestToken(token, hit.id);
+    sendJson(res, 200, { ok: true, id: hit.id, name: person.name, token });
+    return true;
   }
 
   private pair(res: ServerResponse, body: Record<string, unknown>): true {
@@ -99,15 +149,20 @@ export class Pairing {
       return true;
     }
     const revoked = body["revokeOthers"] === true ? this.host.revokeGuest(id) : 0;
-    const token = (this.host.mint ?? randomUUID)();
-    this.host.addGuestToken(token, id);
+    const now = this.now();
+    // Only the newest QR for a guest works; expired codes are swept here.
+    for (const [code, p] of [...this.pending]) if (p.id === id || p.expiresAt <= now) this.pending.delete(code);
+    const pair = (this.host.mintPair ?? (() => randomBytes(12).toString("base64url")))();
+    const expiresAt = now + PAIR_TTL_MS;
+    this.pending.set(pair, { id, expiresAt });
     sendJson(res, 200, {
       ok: true,
       id,
       name: person.name,
-      token,
+      pair,
+      expiresAt,
       revoked,
-      url: resumeUrl(this.host.joinBase(), this.host.eventCode(), token),
+      url: resumeUrl(this.host.joinBase(), this.host.eventCode(), pair),
     });
     return true;
   }

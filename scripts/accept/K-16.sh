@@ -8,8 +8,8 @@
 #
 # Desk part (automatic): the route answers with the mod code, says whether
 # the terminals are on attract, and stays small. Device part (≤ 10 min) is
-# printed at the end. The poll this script makes shows up in the route's own
-# `terminals` list as "K-16 script" — harmless.
+# printed at the end. Read-only: it polls with no terminal name, so it never
+# lands in the route's `terminals` list (the K-29 card) and writes nothing.
 set -euo pipefail
 
 BASE="${BASE:-https://app.mapsandducks.com}"
@@ -22,9 +22,9 @@ event=$(printf '%s' "$resolved" | json "d['eventId']")
 role=$(printf '%s' "$resolved" | json "d['role']")
 [[ "$role" == "mod" ]] || { echo "FAIL that code is a $role code, not the moderator passcode"; exit 1; }
 token=$(curl -fsS -X POST "$BASE/e/$event/api/mod/login" -H 'content-type: application/json' -d "{\"passcode\":\"$MOD_CODE\"}" | json "d['token']")
-url="$BASE/e/$event/api/screen/state?name=K-16%20script&spot=&view=script&character=Trabolta"
+url="$BASE/e/$event/api/screen/state?spot=&view=script&character=Trabolta"
 
-code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/e/$event/api/screen/state?name=x")
+code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/e/$event/api/screen/state")
 [[ "$code" == "403" ]] && echo "OK  no token → 403" || { echo "FAIL no token → $code (expected 403)"; exit 1; }
 
 look() { curl -fsS -H "x-loom-token: $token" "$url"; }

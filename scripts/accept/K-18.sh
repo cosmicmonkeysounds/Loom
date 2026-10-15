@@ -13,8 +13,12 @@
 #   MOD_CODE=… scripts/accept/K-18.sh --mute on|off              the director's TV-voice mute
 #   BASE=http://localhost:7000 MOD_CODE=… scripts/accept/K-18.sh  against a local server
 #
-# The watcher polls as "K-18 watch" (view=tv) — it shows up in the route's `terminals` list.
+# The watcher polls with no terminal name (view=tv), so it never lands in the route's
+# `terminals` list (the K-29 card). --say / --beat / --fire / --mute WRITE to the event:
+# they run the live guard first (refuses a roster with real guests unless
+# --i-know-this-is-live; asks y/N unless --yes or localhost).
 set -euo pipefail
+source "$(dirname "$0")/guard.sh" "$@"; set -- ${ARGS[@]+"${ARGS[@]}"}
 
 BASE="${BASE:-https://app.mapsandducks.com}"
 ROOM="${ROOM:-The Desktop}"
@@ -31,7 +35,11 @@ role=$(printf '%s' "$resolved" | json "d['role']")
 token=$(curl -fsS -X POST "$BASE/e/$event/api/mod/login" -H 'content-type: application/json' -d "{\"passcode\":\"$MOD_CODE\"}" | json "d['token']")
 room_q=$(python3 -I -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1]))' "$ROOM")
 
-look() { curl -fsS -H "x-loom-token: $token" "$BASE/e/$event/api/screen/state?name=K-18%20watch&spot=&view=tv&character=Trabolta&voice=$room_q${1:+&after=$1}"; }
+look() { curl -fsS -H "x-loom-token: $token" "$BASE/e/$event/api/screen/state?spot=&view=tv&character=Trabolta&voice=$room_q${1:+&after=$1}"; }
+
+case "${1:-}" in
+  --say|--beat|--fire|--mute) guard_writes "${1#--} ${*:2}" ;;
+esac
 
 case "${1:-}" in
   --say)

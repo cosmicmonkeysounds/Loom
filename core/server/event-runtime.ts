@@ -43,7 +43,7 @@ import {
 } from "./identity.ts";
 import { foldName } from "../src/parser/names.ts";
 import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
-import { Pairing } from "./routes/n02.ts";
+import { Pairing, RESUME_ROUTE } from "./routes/n02.ts";
 import { PushRoutes } from "./routes/k31.ts";
 import { PushHub, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
 import { printExtras } from "./routes/k12.ts";
@@ -291,6 +291,11 @@ function defaultImages(): ImageCache {
   return (sharedImages ??= new ImageCache());
 }
 
+/** Events a `who: agent` power's fire may produce without being *used*:
+ *  the signal itself and the character's own words (a refusal). Anything
+ *  else — a cue, a variable, a broadcast — spends one use. */
+const POWER_FREE_EVENTS: ReadonlySet<string> = new Set(["signal", "dialogue", "action", "diagnostic", "tick", "ambient"]);
+
 export class EventRuntime {
   readonly eventId: string;
   readonly codes: Passcodes;
@@ -437,6 +442,7 @@ export class EventRuntime {
         return character === null ? null : boothOwner(character);
       },
       nameOf: (id) => this.sim?.persons.get(id)?.name ?? null,
+      open: () => this.open,
     });
     this.pairing = new Pairing({
       sim: () => this.sim,
@@ -463,6 +469,7 @@ export class EventRuntime {
       },
       joinBase: () => this.joinBase(),
       eventCode: () => this.codes.event,
+      now: () => this.clock(),
     });
     const limits = { ...rateLimitsFromEnv(process.env), ...init.limits };
     this.loginFailures = limiterFor(limits.loginFailures);
@@ -972,7 +979,8 @@ export class EventRuntime {
    * with the thread's guest as subject, so only the character's own hooks
    * hear it and the story decides what "cutting the lights" means. A power
    * over its `limit:` is refused. Anything undeclared is refused, never
-   * improvised.
+   * improvised. A fire the story only answered with words (a refusal) is
+   * not counted against the limit.
    */
   private applyAgentActs(req: AgentRequest, acts: AgentAct[]): AgentActResult[] {
     const sim = this.sim!;
@@ -1013,9 +1021,15 @@ export class EventRuntime {
           out.push({ kind: "fire", ok: false, what: def.id, error: "unknown subject" });
           continue;
         }
-        this.agentPowerUses.set(def.id, used + 1);
-        this.fanout(this.commit("signal", def.id, subject, act.args ?? null, req.character));
-        out.push({ kind: "fire", ok: true, what: def.id });
+        const events = this.commit("signal", def.id, subject, act.args ?? null, req.character);
+        this.fanout(events);
+        // A use only counts when the story did something with it. A refusal
+        // ("That function is not available yet.", a room off the allow-list)
+        // is the character's words alone — it must not spend the night's
+        // two blackouts.
+        const spent = events.some((e) => !POWER_FREE_EVENTS.has(e.type));
+        if (spent) this.agentPowerUses.set(def.id, used + 1);
+        out.push({ kind: "fire", ok: true, what: def.id, ...(spent ? {} : { refused: true }) });
       }
     }
     return out;
@@ -1679,6 +1693,7 @@ export class EventRuntime {
     // — rehearsal booths must not carry into the show.
     this.guestTokens.clear();
     this.persistGuests();
+    this.pairing.clear();
     this.personaOwners.clear();
     // Operator play-as sessions follow the sessions they stand in for: a
     // guest's dies with every restart, a booth's only when the show goes live.
@@ -2102,6 +2117,13 @@ export class EventRuntime {
     const body = await readBody(req);
 
     if (this.pushRoutes.handlePost(req, res, path, body)) return true;
+    if (path === RESUME_ROUTE) {
+      if (this.throttled(req, res)) return true;
+      if (this.pairing.handlePublic(path, res, body)) {
+        if (res.statusCode !== 200) this.loginFailures.record(ipOf(req));
+        return true;
+      }
+    }
 
     if (path === "/api/agent/reply") {
       if (opts.moderator !== true && !this.sessions.canModerate(tokenOf(req, body))) {
@@ -2481,7 +2503,11 @@ export class EventRuntime {
           sendJson(res, 400, { error: "empty message" });
           return true;
         }
-        if (!this.sim!.canPost(id, channel)) {
+        // An agent still hidden from this guest (Trabolta before Clippy
+        // introduces him) has no thread yet: a crafted DM is refused, not
+        // stored where nothing will ever answer it.
+        const agentDm = channel.startsWith("dm:") && this.isAgent(channel.slice(3)) ? channel.slice(3) : null;
+        if (!this.sim!.canPost(id, channel) || (agentDm !== null && !this.agentAdmits({ character: agentDm, channel, audience: [id] }))) {
           sendJson(res, 403, { error: "you can't post here" });
           return true;
         }
@@ -3152,6 +3178,10 @@ export class EventRuntime {
         // A director's persona messaging an agent gets an answer, exactly as
         // the guest would — that's what makes a rehearsal of the bot real.
         if (isPerson) this.agentHeard(channel, [speaker]);
+        // A director answering a guest AS the agent (its worker is down —
+        // decision #35) closes the request that guest's line opened, so a
+        // worker that comes back doesn't answer it a second time.
+        else if (isCharacter && Array.isArray(audience) && this.isAgent(speaker)) this.agents.answeredByHand({ character: speaker, channel, audience });
         sendJson(res, 200, { ok: true });
         return true;
       }

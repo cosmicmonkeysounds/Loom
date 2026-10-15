@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { GuestApp } from "./guest.tsx";
 import { HelpSheet } from "./help.tsx";
 import { PerformerApp } from "./performer.tsx";
-import { adoptResume, type ResumeLink } from "./resume.ts";
+import { adoptResume, storedGuestName, type ResumeLink } from "./resume.ts";
 import { useDocumentTitle, useUrlEventTitle } from "./session.ts";
 
 type Role = "none" | "guest" | "prime";
@@ -23,22 +23,49 @@ export function App({ resume = null }: { resume?: ResumeLink | null }) {
   const [help, setHelp] = useState(false);
   const urlTitle = useUrlEventTitle();
   useDocumentTitle(urlTitle);
-  // A director's re-pair QR (N-02): adopt that guest's session — it replaces
-  // whatever guest this phone was before (a loaner, another browser).
-  const [resuming, setResuming] = useState(resume !== null);
+  // A director's re-pair QR (N-02): trade its code for that guest's session.
+  // A phone already signed in as a guest asks first — the link replaces it.
+  const [pending, setPending] = useState<ResumeLink | null>(resume);
+  const [confirmFor, setConfirmFor] = useState<string | null>(() => (resume === null ? null : storedGuestName(localStorage.getItem("loom.guest"))));
+  const [resuming, setResuming] = useState(false);
   const [resumeError, setResumeError] = useState<string | null>(null);
   useEffect(() => {
-    if (resume === null) return;
-    void adoptResume(resume)
+    if (pending === null || confirmFor !== null) return;
+    setResuming(true);
+    void adoptResume(pending)
       .then((guest) => {
         localStorage.setItem("loom.guest", JSON.stringify(guest));
         setRole("guest");
       })
       .catch((e: unknown) => setResumeError(e instanceof Error ? e.message : "That re-pair code didn't work."))
-      .finally(() => setResuming(false));
-  }, [resume]);
+      .finally(() => {
+        setResuming(false);
+        setPending(null);
+      });
+  }, [pending, confirmFor]);
 
-  if (resuming) {
+  if (pending !== null && confirmFor !== null) {
+    return (
+      <div className="hero">
+        <div className="glyph">🔁</div>
+        <p className="sub">This phone is signed in as {confirmFor}. The code you scanned signs it in as someone else.</p>
+        <button className="choice primary" onClick={() => setConfirmFor(null)}>
+          Switch this phone
+        </button>
+        <button
+          className="choice ghost"
+          onClick={() => {
+            setPending(null);
+            setConfirmFor(null);
+          }}
+        >
+          Stay {confirmFor}
+        </button>
+      </div>
+    );
+  }
+
+  if (resuming || pending !== null) {
     return (
       <div className="hero">
         <div className="glyph">🔁</div>

@@ -3,7 +3,7 @@ import { resumeFromSearch, withoutResume } from "./resume.ts";
 import { App } from "./ui.tsx";
 import "./styles.css";
 
-// A re-pair QR (`?resume=<token>`, N-02) carries a credential: take it and
+// A re-pair QR (`?pair=<code>`, N-02) carries a one-time credential: take it and
 // strip it from the address bar before anything renders.
 const resume = resumeFromSearch(window.location.search);
 if (resume !== null) {

@@ -125,3 +125,20 @@ describe.each(backends)('lifecycle contract · %s backend', (_name, store, setup
     await teardown()
   })
 })
+
+describe('launch code rotation (server)', () => {
+  it('pins codes by default; rotateStaff asks the control plane for fresh staff codes', async () => {
+    const { eventsApi } = await import('@/lib/api')
+    const launch = vi.mocked(eventsApi.launch)
+    useAuth.setState({ user: { id: 'u1', name: 'Ada', email: 'ada@example.test' } })
+    useOperate.getState().detach()
+    useOperate.getState().attach('p-1')
+    launch.mockClear()
+    await useOperate.getState().startRun(RunMode.Rehearsal)
+    expect(launch).toHaveBeenLastCalledWith('p-1', 'preview', {})
+    await useOperate.getState().end()
+    await useOperate.getState().startRun(RunMode.Live, { rotateStaff: true })
+    expect(launch).toHaveBeenLastCalledWith('p-1', 'live', { rotate: 'staff' })
+    useOperate.getState().detach()
+  })
+})

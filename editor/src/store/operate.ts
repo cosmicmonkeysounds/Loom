@@ -553,14 +553,14 @@ export const useOperate = create<OperateState>((set, get) => {
     },
 
     // ---- lifecycle ----
-    startRun: async (mode) => {
+    startRun: async (mode, opts) => {
       const projectId = get().projectId
       if (!projectId) return
       set({ busy: true, error: null })
       try {
         let event: EventInfo
         try {
-          event = await eventsApi.launch(projectId, mode === RunMode.Live ? 'live' : 'preview')
+          event = await eventsApi.launch(projectId, mode === RunMode.Live ? 'live' : 'preview', opts?.rotateStaff ? { rotate: 'staff' } : {})
         } catch (e) {
           // Someone beat us to it: that IS the shared run — join it.
           if (e instanceof ApiError && e.status === 409 && e.data['event']) {
@@ -719,7 +719,7 @@ export const useOperate = create<OperateState>((set, get) => {
       if (!ev) return null
       try {
         const p = await modApi.pairGuest(ev.id, id, opts)
-        return { url: p.url, name: p.name }
+        return { url: p.url, name: p.name, expiresAt: p.expiresAt }
       } catch (e) {
         set({ error: (e as Error).message })
         return null
