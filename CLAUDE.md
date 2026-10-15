@@ -265,7 +265,7 @@ only corrects footprints now (stacked flights must be drawn offset). The
 five new rooms have no light groups. The shed clues still need a home.
 Merged-master suites: core 966 (incl. Postgres), play 107, reinstall/web
 232, house 137 + 4 skipped, terminal 153, editor 209, bank 142, stagehand
-234, ops 103, VR 248 (5 stale stair checks).
+234, ops 103, VR 248 + `quest.sh` 26.
 
 **Oct 31 crunch, wave 2 landed 2026-10-15** (on master, e28da4d..9e0d0dd;
 **not yet deployed to the VPS**; OCT31.md §5 *Wave 2 status* has the
