@@ -4,6 +4,7 @@
 //! geometry. Room `location` names are not checked here (no model); the
 //! server warns about those.
 
+import { cloneData } from "./clone.ts";
 import { DUCK_MAX_RISE } from "./duck.ts";
 import { IDENTITY_SPACE } from "./frames.ts";
 import {
@@ -69,7 +70,7 @@ export function validateHouse(raw: unknown): Validation {
  * identity, `style` complete. Tolerates those keys missing at runtime.
  */
 export function normalizeHouse(house: HouseMap): HouseMap {
-  const h = structuredClone(house);
+  const h = cloneData(house);
   h.doors ??= [];
   h.stairs ??= [];
   h.terminals ??= [];

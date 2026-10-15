@@ -6,6 +6,7 @@
 //! `@loom/house/three` subpath. Normative: `docs/loom-reinstall.md`.
 
 export type * from "./types.ts";
+export * from "./clone.ts";
 export * from "./validate.ts";
 export * from "./geometry.ts";
 export * from "./locate.ts";

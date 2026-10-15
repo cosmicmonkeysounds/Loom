@@ -30,6 +30,7 @@ import { rankVoices } from "./speech/pick-voice.ts";
 import { revealOffsets, splitSentences } from "./speech/split.ts";
 import { mayReload, retryable } from "./retry.ts";
 import { bundledHouse, fetchHouse, useSpatialStream, useWorld, type Gone, type HouseInfo, type WorldStore } from "./world/stream.ts";
+import { effectiveView, hasWebGL2 } from "./webgl.ts";
 
 // three.js is most of the weight of the world view — a face-only terminal
 // never loads it. Retryable: `lazy` alone caches a failed load forever.
@@ -43,11 +44,13 @@ export function App() {
   const [awake, setAwake] = useState(() => audioUnlocked());
 
   // Fetch the world view's code at boot, while this page and the server are
-  // known to match — hours later a rebuild may have renamed the chunk.
+  // known to match — hours later a rebuild may have renamed the chunk. Not
+  // on a tablet that can't draw it (no WebGL2 → face only, see `webgl.ts`).
+  const webgl2 = hasWebGL2();
   const view = config?.view;
   useEffect(() => {
-    if (view !== undefined && view !== "face") void loadWorld().catch(() => {});
-  }, [view]);
+    if (webgl2 && view !== undefined && view !== "face") void loadWorld().catch(() => {});
+  }, [view, webgl2]);
 
   // Provision from the URL (`?code=…&name=…`) — a fleet is set up by opening one link each.
   useEffect(() => {
@@ -116,7 +119,7 @@ export function App() {
     );
   }
 
-  if (config.view === "mirror") return <Mirror config={config} onSetup={() => setScreen({ kind: "setup", notice: null })} onGone={onGone} />;
+  if (config.view === "mirror") return <Mirror config={config} canDraw={webgl2} onSetup={() => setScreen({ kind: "setup", notice: null })} onGone={onGone} />;
 
   return (
     <>
@@ -252,10 +255,11 @@ function Terminal({ config, screen, setScreen, onSetup, onGone }: { config: Term
   const chunkText = useRef(new Map<number, string[]>());
 
   // --- the reinstallation simulation, beside the scanner ---
-  const world = useSpatialStream(config, config.view !== "face");
+  const view = effectiveView(config.view, hasWebGL2());
+  const world = useSpatialStream(config, view !== "face");
   const inSimulation = useWorld(world, (s) => s.world.players.size > 0);
   useGone(world, onGone);
-  const showWorld = screen.kind === "attract" && (config.view === "world" || (config.view === "auto" && inSimulation));
+  const showWorld = screen.kind === "attract" && (view === "world" || (view === "auto" && inSimulation));
 
   // --- the voice ---
   const queue = useMemo(() => {
@@ -543,14 +547,19 @@ function TypedFallback({ config, onPick, onProblem }: { config: TerminalConfig; 
 // --- the mirror ----------------------------------------------------------------
 
 /** `view: mirror` — the simulation full screen, for a TV: nothing to scan,
- *  nothing to say (so no wake gesture is needed), only the gear. */
-function Mirror({ config, onSetup, onGone }: { config: TerminalConfig; onSetup: () => void; onGone: (g: Gone) => void }) {
-  const world = useSpatialStream(config, true);
+ *  nothing to say (so no wake gesture is needed), only the gear. A screen
+ *  with no WebGL2 (`canDraw` false) says so, still — no retry loop. */
+function Mirror({ config, canDraw, onSetup, onGone }: { config: TerminalConfig; canDraw: boolean; onSetup: () => void; onGone: (g: Gone) => void }) {
+  const world = useSpatialStream(config, canDraw);
   const connected = useWorld(world, (s) => s.connected);
   useGone(world, onGone);
   return (
     <div className="terminal mirror">
-      <WorldSlot store={world} spotId={config.spot} size="full" recover="reload" />
+      {canDraw ? (
+        <WorldSlot store={world} spotId={config.spot} size="full" recover="reload" />
+      ) : (
+        <div className="world-note">THIS SCREEN CAN'T DRAW THE SIMULATION (NO WEBGL2) — SET IT TO FACE ONLY</div>
+      )}
       <div className="mirror-corner">
         <span className="dot" data-on={String(connected)} />
         {config.title ? `${config.title} · ` : ""}
@@ -713,6 +722,7 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
             </select>
           </label>
         </div>
+        {!hasWebGL2() && view !== "face" && <div className="muted small">this tablet has no WebGL2 — it can't draw the simulation, so it will show the face</div>}
         {map !== null && map.source === "bundled" && current !== null && <div className="muted small">couldn't read the event's house map — listing the show's own spots</div>}
         {serverVoiceInfo && <div className="muted">{serverVoiceInfo}</div>}
         <div className="row">

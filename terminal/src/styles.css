@@ -561,3 +561,9 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 @media (prefers-reduced-motion: reduce) {
   .scanner.live .reticle::after, .big.blink, .wake-title, .world-celebrate, .world-celebrate-line, .mm-ring, .world-tag .rec, .world-note.blink { animation: none; }
 }
+
+/* Chrome < 88 (old wall tablets) has no aspect-ratio: the scan frame would
+   collapse to nothing. Give it a fixed 4:3 box instead. */
+@supports not (aspect-ratio: 1) {
+  .scan-frame { width: min(100%, 60vh); height: 45vh; max-height: 100%; }
+}

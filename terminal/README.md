@@ -150,7 +150,7 @@ Two settings, on the setup screen or in the provisioning link:
 | Setting | Values |
 |---|---|
 | `spot` | a `house.terminals[].id` of the event's map: where this screen hangs (the setup screen lists them as *name — room*). Blank = unplaced: it never mounts, only follows / orbits the spawn room. |
-| `view` | `auto` (default): the face pane shows the world view while anyone is in the simulation, the face otherwise. `world`: the world view always. `face`: never. `mirror`: see below. While piloting it is **always the face**, because the face is the voice. |
+| `view` | `auto` (default): the face pane shows the world view while anyone is in the simulation, the face otherwise. `world`: the world view always. `face`: never. `mirror`: see below. While piloting it is **always the face**, because the face is the voice. A tablet with **no WebGL2** (three r186 needs it; `src/webgl.ts` probes once at boot) behaves as `face` whatever this says, never loads three.js, and a no-WebGL2 mirror shows a still notice — never the *SIMULATION UNAVAILABLE* retry loop. The build targets `chrome87` / `safari14` (`vite.config.ts`). |
 
 **The mirror (a TV).** `view=mirror` turns a screen into a full-screen
 spectator, like the TV over the fireplace: there is no scanner, no chat and
