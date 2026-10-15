@@ -132,6 +132,18 @@ variables. Guests see "… is typing" while it thinks, and "away" when no
 agent is running. Your `when` rules decide what the numbers mean; the
 model never decides the plot.
 
+If no agent is running at all (the laptop is down), the message waits.
+Give the character a `hold:` line and the server says it for them after
+about 20 seconds — once per waiting message — then keeps the message for
+an agent that comes back. A director can still answer as the character
+from Run. Write it in plain words; a wall terminal reads it aloud:
+
+```loom
+CHARACTER Trabolta
+  mind: external
+  hold: Jean Trabolta is not responding. Please do not move the mouse.
+```
+
 The character **grows** over the night. Two models share the work: a
 fast one speaks every line; a slower *orchestrator* runs between turns
 and keeps the character's **mind** — a brief for how to behave right

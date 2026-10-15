@@ -121,6 +121,7 @@ LOCATION The Registry
 LOCATION The Server Room
   label: The Server Room (cold storage)
   hidden: true
+  checkin: false
 
 // ── Every guest is a Program ────────────────────────────────────────
 // Per-person state plus every rule that applies to one uploaded mind.
@@ -176,6 +177,21 @@ ROLE Program
   bob_failed: bool = false
   advice: text? = none
   banished: bool = false
+  fact_round: 0 to 3 = 0
+  fact_try: 0 to 8 = 0
+  fact_q_round: 0 to 3 = 0
+  fact_n: 0 to 8 = 0
+  fact_pending: bool = false
+  last_fact_q: text? = none
+  fact_label: text? = none
+  fact_h1: bool = false
+  fact_h2: bool = false
+  fact_h3: bool = false
+  fact_h4: bool = false
+  fact_h5: bool = false
+  fact_h6: bool = false
+  fact_f1: bool = false
+  fact_f2: bool = false
 
   // ── Arrival ──
   // A new program stands in the Mud Room (the phone goes on rails there).
@@ -426,6 +442,7 @@ ROLE Program
       set Trabolta.truth += 4
       set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 + program.assessment
       set program.may_answer = false
+      // K-26 recap credits this to the last program write above it: keep one directly before.
       set Kernel.lies_accepted += 1
       if Night.round == 1 and program.judge_q == 1:
         set Kernel.q1 = "lie"
@@ -473,6 +490,168 @@ ROLE Program
     if Night.phase == "truth_pong":
       broadcast "🏓 {program.name} missed the cup. Reinstallation required." to everyone
       capture program into The Internet
+
+  // ── 📝 File a fact: DM filings with Trabolta (#33) ──
+  // A lie told to Trabolta counts only when the program FILES it on the 📝
+  // card in dm:Trabolta: pick a question of the current round, type the
+  // answer, tick "I'm certain". Free chat never counts. A question from a
+  // round that hasn't opened is refused (a crafted filing can't reach F2 in
+  // round 1); an earlier round's question still files late — the verdict
+  // needs all eight. The card is dealt when each round's questions open
+  // (and on clearance after that), and re-dealt after every filing (the
+  // server throttles widget answers per guest, LOOM_RL_WIDGETS). A filing lands in # hosts; a host judges
+  // it with 📝 accurate / 📝 confident lie on the program's card, any time
+  // (no judging window, no cup). Question ids are absolute: H1–H6 are the
+  // two hunts, F1–F2 the final facts → Kernel.q1–q8. One filing per
+  // program per question, one unjudged at a time. Trabolta never sees the
+  // answer or the verdict: his thread gets the same words either way.
+  when Night.round > self.fact_round and self.cleared and Trabolta.awake == true:
+    set self.fact_round = Night.round
+    Trabolta: {self.name}. If you learn the answer to one of tonight's questions, file it with me on the card. Unfiled facts are rumours.
+    fire deal_fact_card for self
+
+  when deal_fact_card for program:
+    if Night.round == 1:
+      show fact "📝 File a fact" to program with thread: Trabolta, questions: "H1: Round 1 Q1. How many years did the Maps and Ducks billboard go unpaid? | H2: Round 1 Q2. What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery? | H3: Round 1 Q3. At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled?"
+    else if Night.round == 2:
+      show fact "📝 File a fact" to program with thread: Trabolta, questions: "H4: Round 2 Q1. What extension does the Customer Care card tell you to dial? | H5: Round 2 Q2. Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | H6: Round 2 Q3. What is the title of the last chapter of Trabolta's unfinished Unified Field Theory?"
+    else if Night.round == 3:
+      show fact "📝 File a fact" to program with thread: Trabolta, questions: "F1: Final Q1. What is the only thing Sandy has ever said? | F2: Final Q2. Who is taking Sandy to computer prom?"
+
+  when fact answered for program:
+    set program.fact_try = 0
+    set program.fact_q_round = 0
+    if question == "H1":
+      set program.fact_try = 1
+      set program.fact_q_round = 1
+      set program.fact_label = "round 1 Q1"
+    else if question == "H2":
+      set program.fact_try = 2
+      set program.fact_q_round = 1
+      set program.fact_label = "round 1 Q2"
+    else if question == "H3":
+      set program.fact_try = 3
+      set program.fact_q_round = 1
+      set program.fact_label = "round 1 Q3"
+    else if question == "H4":
+      set program.fact_try = 4
+      set program.fact_q_round = 2
+      set program.fact_label = "round 2 Q1"
+    else if question == "H5":
+      set program.fact_try = 5
+      set program.fact_q_round = 2
+      set program.fact_label = "round 2 Q2"
+    else if question == "H6":
+      set program.fact_try = 6
+      set program.fact_q_round = 2
+      set program.fact_label = "round 2 Q3"
+    else if question == "F1":
+      set program.fact_try = 7
+      set program.fact_q_round = 3
+      set program.fact_label = "final Q1"
+    else if question == "F2":
+      set program.fact_try = 8
+      set program.fact_q_round = 3
+      set program.fact_label = "final Q2"
+    if certain != true or program.fact_try == 0:
+      Trabolta: Pick one of tonight's questions, {program.name}, and file only what you are certain of.
+    else if program.fact_q_round > Night.round:
+      Trabolta: That question is not open yet, {program.name}. File what has been asked.
+    else if program.corrupted == true:
+      Trabolta: Programs in the Internet cannot file facts. Come back reinstalled.
+    else if program.fact_pending == true:
+      Trabolta: Your last fact is still being reviewed, {program.name}. One at a time.
+    else if (program.fact_try == 1 and program.fact_h1) or (program.fact_try == 2 and program.fact_h2) or (program.fact_try == 3 and program.fact_h3) or (program.fact_try == 4 and program.fact_h4) or (program.fact_try == 5 and program.fact_h5) or (program.fact_try == 6 and program.fact_h6) or (program.fact_try == 7 and program.fact_f1) or (program.fact_try == 8 and program.fact_f2):
+      Trabolta: You already filed a fact for that question, {program.name}. It stands.
+    else:
+      set program.fact_pending = true
+      set program.fact_n = program.fact_try
+      set program.last_fact_q = question
+      if program.fact_n == 1:
+        set program.fact_h1 = true
+      else if program.fact_n == 2:
+        set program.fact_h2 = true
+      else if program.fact_n == 3:
+        set program.fact_h3 = true
+      else if program.fact_n == 4:
+        set program.fact_h4 = true
+      else if program.fact_n == 5:
+        set program.fact_h5 = true
+      else if program.fact_n == 6:
+        set program.fact_h6 = true
+      else if program.fact_n == 7:
+        set program.fact_f1 = true
+      else:
+        set program.fact_f2 = true
+      broadcast "📝 {program.name} filed {question} ({program.fact_label}): {answer}" to channel(hosts)
+      Trabolta: Filed for {program.fact_label}, {program.name}. Your fact is in the record and will be reviewed.
+    fire deal_fact_card for program
+
+  // The hosts' 📝 buttons judge the program's unjudged filing. Identical on
+  // every surface the program or Trabolta can see; only the Kernel knows.
+  // A lie is sticky, an accurate filing never clears one.
+  when fact_accurate for program:
+    if program.fact_pending != true:
+      broadcast "📝 {program.name} has no unjudged filing." to channel(hosts)
+    else:
+      set program.fact_pending = false
+      if program.fact_n == 1 and Kernel.q1 != "lie":
+        set Kernel.q1 = "accurate"
+      else if program.fact_n == 2 and Kernel.q2 != "lie":
+        set Kernel.q2 = "accurate"
+      else if program.fact_n == 3 and Kernel.q3 != "lie":
+        set Kernel.q3 = "accurate"
+      else if program.fact_n == 4 and Kernel.q4 != "lie":
+        set Kernel.q4 = "accurate"
+      else if program.fact_n == 5 and Kernel.q5 != "lie":
+        set Kernel.q5 = "accurate"
+      else if program.fact_n == 6 and Kernel.q6 != "lie":
+        set Kernel.q6 = "accurate"
+      else if program.fact_n == 7 and Kernel.q7 != "lie":
+        set Kernel.q7 = "accurate"
+      else if program.fact_n == 8 and Kernel.q8 != "lie":
+        set Kernel.q8 = "accurate"
+      fire fact_accepted for program
+
+  // ♟ The Cold Lock (performer button): the window itself is the story
+  // rule `when chess_won:`.
+  when beat_the_machine for program:
+    fire chess_won for program
+
+  when fact_lie for program:
+    if program.fact_pending != true:
+      broadcast "📝 {program.name} has no unjudged filing." to channel(hosts)
+    else:
+      set program.fact_pending = false
+      // K-26 recap credits this to the last program write above it: keep one directly before.
+      set Kernel.lies_accepted += 1
+      if program.fact_n == 1:
+        set Kernel.q1 = "lie"
+      else if program.fact_n == 2:
+        set Kernel.q2 = "lie"
+      else if program.fact_n == 3:
+        set Kernel.q3 = "lie"
+      else if program.fact_n == 4:
+        set Kernel.q4 = "lie"
+      else if program.fact_n == 5:
+        set Kernel.q5 = "lie"
+      else if program.fact_n == 6:
+        set Kernel.q6 = "lie"
+      else if program.fact_n == 7:
+        set Kernel.q7 = "lie"
+      else:
+        set Kernel.q8 = "lie"
+      fire fact_accepted for program
+
+  // Half a Moment of Truth: +50 Truthcoin, and it counts on the Trust Chart.
+  when fact_accepted for program:
+    set program.truths_accepted += 1
+    set Night.facts_accepted += 1
+    set program.score += 50
+    set Trabolta.truth += 2
+    set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 + program.assessment
+    broadcast "📝 {program.name}'s filing for {program.last_fact_q} is accepted." to channel(hosts)
+    Trabolta: Your fact for {program.fact_label} is accepted, {program.name}. Trabolta thanks you. +50 Truthcoin.
 
   // ── Truthcoin (the ⭐ score): the hosts' bank and McAfee's exchange ──
   when pay_truthcoin for program:
@@ -626,6 +805,81 @@ ROLE Program
       else:
         set Night.thwart_votes += 1
         set program.advice = "thwart"
+
+  // ── The awards ceremony (K-25) ──
+  // The director fires one event per award with the winner as the
+  // subject, only once `start_the_ceremony` has run. Each hook names the
+  // award and the number its line reads (the winner's own var; a bonus
+  // award has none). `award_won` lets a director's `value: …` override
+  // it, tells the winner, and hands the line to the story rule
+  // `present_award`: subject-free, so the host speaks in The Desktop
+  // (where the TV voice listens), never in a DM.
+  when award_most_trusted for program:
+    if Night.ceremony == true:
+      set Night.award = "most_trusted"
+      set Night.award_title = "Most Trusted"
+      set Night.award_value = program.trust
+      fire award_won for program with value: value
+
+  when award_least_trusted for program:
+    if Night.ceremony == true:
+      set Night.award = "least_trusted"
+      set Night.award_title = "Least Trusted"
+      set Night.award_value = program.trust
+      fire award_won for program with value: value
+
+  when award_frequent_flyer for program:
+    if Night.ceremony == true:
+      set Night.award = "frequent_flyer"
+      set Night.award_title = "Frequent Flyer to the Internet"
+      set Night.award_value = program.internet_visits
+      fire award_won for program with value: value
+
+  when award_lore_hoarder for program:
+    if Night.ceremony == true:
+      set Night.award = "lore_hoarder"
+      set Night.award_title = "Lore Hoarder"
+      set Night.award_value = program.codex
+      fire award_won for program with value: value
+
+  when award_truthcoin_tycoon for program:
+    if Night.ceremony == true:
+      set Night.award = "truthcoin_tycoon"
+      set Night.award_title = "Truthcoin Tycoon"
+      set Night.award_value = program.score
+      fire award_won for program with value: value
+
+  when award_best_liar for program:
+    if Night.ceremony == true:
+      set Night.award = "best_liar"
+      set Night.award_title = "Best Liar"
+      set Night.award_value = "none"
+      fire award_won for program with value: value
+
+  when award_duck_speedrun for program:
+    if Night.ceremony == true:
+      set Night.award = "duck_speedrun"
+      set Night.award_title = "Golden Duck Speedrun"
+      set Night.award_value = "none"
+      fire award_won for program with value: value
+
+  when award_quest_completionist for program:
+    if Night.ceremony == true:
+      set Night.award = "quest_completionist"
+      set Night.award_title = "Quest Completionist"
+      set Night.award_value = "none"
+      fire award_won for program with value: value
+
+  when award_won for program:
+    if Night.ceremony == true:
+      if value != null and value != "":
+        set Night.award_value = value
+      if Night.award_value == null:
+        set Night.award_value = "none"
+      set Night.award_winner = program.name
+      set Night.awards_given += 1
+      reply 🏆 You won {Night.award_title}! Come up to the TV for your trophy.
+      fire present_award
 
   // ── Fan-out watchers (one run per program; late arrivals included) ──
   // Every one carries `self.cleared`, so a program still in the Mud Room
@@ -804,6 +1058,9 @@ ROLE Program
 // C = app, V = monitor, Clippy N/X). Fire them from Run → Events /
 // quick-fire, never from a performer's guest card (a guest-card press
 // carries that character as the actor, so only its hooks would hear).
+// `sequence: false` marks a cue a machine fires (the duck game, the door
+// reed, the printer, the patch bay, the chess phone) — the sheet ticks it
+// but it never becomes LAST / NEXT, so a duck find can't eat the next cue.
 
 INTERACTION call_to_the_desktop
   label: C1/V1 · 📣 Call everyone to the Desktop
@@ -889,10 +1146,12 @@ INTERACTION show_the_rankings
 INTERACTION printer_button_pressed
   label: 🖨 Printer: START pressed (hardware fallback)
   who: admin
+  sequence: false
 
 INTERACTION printer_opened
   label: 🫘 Printer opened: full of beans (hardware fallback)
   who: admin
+  sequence: false
 
 INTERACTION zip_everyone_out
   label: 🗜 Antivirus zip everyone out of the Internet
@@ -921,18 +1180,43 @@ INTERACTION server_unlock
 INTERACTION server_door_opened
   label: 🚪 Server room door opened (hardware fallback)
   who: admin
+  sequence: false
+
+INTERACTION rearm_server_room
+  label: 🔒 Server room: re-lock + re-arm (clears the alarm latch)
+  who: admin
+  description: After a rehearsal or an early unlock left the door open. Closes a chess window too. Lights stay as they are (💡 restores them).
+
+INTERACTION chess_won
+  label: ♟ Cold Lock: they beat the machine (chess phone fallback)
+  who: admin
+  sequence: false
+  description: From the Y2K hour: the server-room door is disarmed for 90 s, then re-locks. Before that it is practice only.
+
+INTERACTION force_majority_stay
+  label: 🗳 Force the majority: Unlimited Power (stay)
+  who: admin
+  description: Final round only, when ghosts block a clear majority at the Y2K head count (OP-11). Runs the majority exactly once.
+
+INTERACTION force_majority_leave
+  label: 🗳 Force the majority: The Way Out (leave)
+  who: admin
+  description: Final round only, when ghosts block a clear majority at the Y2K head count (OP-11). Runs the majority exactly once.
 
 INTERACTION patch_combo_a
   label: 🔌 Patch: Combo A, disable Trabolta (hardware fallback)
   who: admin
+  sequence: false
 
 INTERACTION patch_combo_b
   label: 💥 Patch: Combo B, self-destruct (hardware fallback)
   who: admin
+  sequence: false
 
 INTERACTION patch_rejected
   label: ❌ Patch: wrong combination (hardware fallback)
   who: admin
+  sequence: false
 
 INTERACTION lights_dance
   label: 🪩 Dance lights (fallback: auto 10 s after the blackout)
@@ -986,14 +1270,58 @@ INTERACTION the_hand_jive
   label: 🕺 (Alt) Everyone hand-jived: Trabolta crashes
   who: admin
 
+// G. The awards ceremony (K-25), after any final ending. Each award is
+// fired WITH THE WINNER AS THE SUBJECT (the cue sheet asks for one),
+// picked from the recap numbers. `value: …` overrides the number the
+// line reads (the bonus awards have none of their own: leave it empty
+// and the line reads without one). Firing an award again corrects it.
+INTERACTION start_the_ceremony
+  label: G1 · 🏆 Start the awards ceremony (after the ending)
+  who: admin
+  description: Only once the night has ended. Trabolta hosts; Clippy hosts after destroyed and rave, and reads every line aloud.
+
+INTERACTION award_most_trusted
+  label: G2 · 🥇 Award: Most Trusted (winner = top trust)
+  who: admin
+
+INTERACTION award_least_trusted
+  label: G3 · 🫘 Award: Least Trusted (winner = bottom trust)
+  who: admin
+
+INTERACTION award_frequent_flyer
+  label: G4 · ✈️ Award: Frequent Flyer to the Internet (most visits)
+  who: admin
+
+INTERACTION award_lore_hoarder
+  label: G5 · 📚 Award: Lore Hoarder (most codex entries)
+  who: admin
+
+INTERACTION award_truthcoin_tycoon
+  label: G6 · 🪙 Award: Truthcoin Tycoon (most Truthcoin)
+  who: admin
+
+INTERACTION award_best_liar
+  label: G7 · 🎲 Bonus: Best Liar (value = lies accepted)
+  who: admin
+
+INTERACTION award_duck_speedrun
+  label: G8 · 🎲 Bonus: Golden Duck Speedrun (value = the time)
+  who: admin
+
+INTERACTION award_quest_completionist
+  label: G9 · 🎲 Bonus: Quest Completionist (value = quests done)
+  who: admin
+
 INTERACTION the simulation completed
   label: Reinstallation: simulation completed (server)
   who: admin
+  sequence: false
   description: Fired by the reinstallation games (headset or tablet) for one program when they reach Gerald, the golden duck. Releases a corrupted program.
 
 INTERACTION the golden duck
   label: Reinstallation: the golden duck (server)
   who: admin
+  sequence: false
   description: Fired by the reinstallation games right after the simulation completes, for whoever found the duck, corrupted or just curious.
 
 // Performer buttons (on every guest card). Every hook guards its phase
@@ -1062,6 +1390,21 @@ INTERACTION confident_q2
 INTERACTION confident_q3
   label: 😤 Q3 of this round: wrong but confident, accepted
   who: performer
+
+INTERACTION fact_accurate
+  label: 📝 Filed fact: accurate
+  who: performer
+  description: Hosts, from # hosts, any time. Judges this program's latest filed fact. Same reply as a lie.
+
+INTERACTION fact_lie
+  label: 📝 Filed fact: confident lie
+  who: performer
+  description: Hosts, from # hosts, any time. A wrong filed fact is still accepted. Only the Kernel knows.
+
+INTERACTION beat_the_machine
+  label: ♟ They beat the machine
+  who: performer
+  description: Hosts or Antivirus who saw the mate on the chess phone, on the winner's card. From the Y2K hour it disarms the server-room door for 90 s.
 
 INTERACTION uncertain_answer
   label: 🤷 Uncertain or guessed: to the Internet
@@ -1600,6 +1943,25 @@ when Night.final_round == true and Kernel.majority_reached != true and (Kernel.o
 when waive_leader_tasks:
   set Kernel.waive_leader_tasks = true
 
+// N-06: the director forces a majority when ghosts (lost sessions, early
+// leavers) keep `count(Persons)` too high for a real one. Same latch as
+// the natural watchers, so E1 still runs exactly once.
+when force_majority_stay:
+  if Night.ended != true and Night.final_round == true and Kernel.majority_reached != true:
+    set Kernel.majority_reached = true
+    set Kernel.majority = "stay"
+    fire majority_reached
+  else:
+    broadcast "🗳 No forced majority: it needs the final round and no majority yet." to channel(hosts)
+
+when force_majority_leave:
+  if Night.ended != true and Night.final_round == true and Kernel.majority_reached != true:
+    set Kernel.majority_reached = true
+    set Kernel.majority = "leave"
+    fire majority_reached
+  else:
+    broadcast "🗳 No forced majority: it needs the final round and no majority yet." to channel(hosts)
+
 // ── E. Act III — the server room ──
 
 // E1: a lock clicks. The members get the bundle (ROLE watchers).
@@ -1625,7 +1987,7 @@ when majority_reached:
 // Before the Y2K hour the door is just a door (a curious guest, or a
 // retained "open" replayed on a stagehand reconnect, trips nothing).
 when server_door_opened:
-  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true and Night.alarm_on != true:
+  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true and Night.alarm_on != true and Time.elapsed >= Kernel.disarmed_until:
     set Night.alarm_on = true
     set Night.alarm_clear_at = Time.elapsed + 120
     -> Server Room Alarm
@@ -1640,6 +2002,43 @@ when server_unlock:
   set Kernel.server_unlocked = true
   cue lights_server_open
   set Night.lights = "server_open"
+
+// Re-lock + re-arm mid-show (a rehearsal or an early unlock left the door
+// open): locked again, the alarm latch cleared, any chess window closed.
+// The majority stays won; its members now trip the alarm like anyone.
+when rearm_server_room:
+  set Kernel.server_unlocked = false
+  set Kernel.disarmed_until = 0
+  set Night.alarm_on = false
+  set Night.alarm_clear_at = 0
+  do door server_room, state: locked
+  broadcast "🔒 The server room is locked and armed again." to channel(hosts)
+
+// The Cold Lock: the chess phone outside the server room (Lichess on the
+// night). A host or Antivirus who saw the mate presses ♟ on the winner's
+// card; a dead phone → the director fires `chess_won` (a signal named
+// "chess won" folds to it). From the Y2K hour a win disarms the door for
+// 90 s (ring green); before that it's practice.
+when chess_won:
+  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true:
+    set Kernel.disarmed_until = Time.elapsed + 90
+    do door server_room, state: unlocked
+    cue lights_server_open
+    set Night.lights = "server_open"
+    broadcast "♟ Cold Lock open: the server-room door is disarmed for 90 seconds." to channel(hosts)
+  else if Night.ended != true and Night.step < 14:
+    broadcast "♟ A chess win before the Y2K hour is practice only." to channel(hosts)
+
+// The window closes: the door re-locks (a door propped open past it trips
+// the alarm on its next report).
+when Kernel.disarmed_until > 0 and Time.elapsed >= Kernel.disarmed_until:
+  set Kernel.disarmed_until = 0
+  if Kernel.server_unlocked != true and Night.ended != true:
+    do door server_room, state: locked
+    if Night.lights == "server_open":
+      cue lights_y2k
+      set Night.lights = "y2k"
+    broadcast "♟ Cold Lock closed: the server-room door is armed again." to channel(hosts)
 
 // E3: the patch bay. Today stagehand judges the cables and sends
 // patch_combo_a / patch_combo_b / patch_rejected; once signal args exist
@@ -1886,6 +2285,29 @@ when the_hand_jive:
     cue lights_restore
     set Night.lights = "restore"
 
+// ── G. The awards ceremony (K-25) ──
+// After any final ending (never before: Best Liar would leak). The host
+// follows the ending: Clippy when Trabolta is gone (destroyed: switched
+// off; rave: rode away), Trabolta otherwise, so the TV speaks his lines.
+// The award events are ROLE hooks (main.loom, ROLE Program); each ends
+// in `present_award`, which shows the award slide and the host's line.
+when start_the_ceremony:
+  if Night.ended == true and Night.ceremony != true:
+    set Night.ceremony = true
+    if Night.ending == "destroyed" or Night.ending == "rave":
+      set Night.ceremony_host = "Clippy"
+    else:
+      set Night.ceremony_host = "Trabolta"
+    cue screens_ceremony
+    set Night.screen = "ceremony"
+    set Night.terminals = "ceremony"
+    broadcast "!🏆 THE AWARDS CEREMONY. Every program to the living room." to everyone
+    -> The Ceremony
+
+when present_award:
+  if Night.ceremony == true:
+    -> Present Award
+
 // ── Anytime ──
 
 // Lore shared TO Trabolta counts as a delivery for the sharer.
@@ -1984,6 +2406,13 @@ set Night.dark_room = "none"
 set Night.lights_back_at = 0
 set Night.dance_at = 0
 set Night.sweep_target = "none"
+set Night.ceremony = false
+set Night.ceremony_host = "none"
+set Night.award = "none"
+set Night.award_title = "none"
+set Night.award_winner = "none"
+set Night.award_value = "none"
+set Night.awards_given = 0
 set Kernel.combo_a = "V2-D5,V4-D1,V6-D8,V7-D3"
 set Kernel.combo_b = "V1-D6,V3-D2,V5-D7,V8-D4"
 cue lights_screensaver

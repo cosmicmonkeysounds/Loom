@@ -47,3 +47,4 @@ CHARACTER Kernel
   majority_reached: bool = false
   majority: text? = none
   server_unlocked: bool = false
+  disarmed_until: 0 to 100000 = 0

@@ -2,7 +2,7 @@
 title: Cards & widgets — `show`
 section: Live shows
 order: 36
-keywords: show, widget, card, captcha, security check, poll, picture, image, answered, verify, game, media, minigame
+keywords: show, widget, card, fact, file a fact, captcha, security check, poll, picture, image, answered, verify, game, media, minigame
 ---
 
 The participant app can put more than text in a conversation. A **card**
@@ -20,7 +20,9 @@ show poll "Ready?" to group(Antivirus) with options: "Yes | No | Never"
 - **kind** is a lowercase word the app knows: `captcha`, `image`,
   `poll`, `tutorial`, `pass` (the guest's own QR, for the moment a
   performer needs to scan them — e.g. inside a `cutscene`, where the
-  menu is out of reach). An unknown kind still shows its text — an
+  menu is out of reach), `fact` (file an answer to one of the night's
+  questions: a picker from `questions: "H1: … | H2: …"`, a typed answer of
+  up to 200 characters, and an "I'm certain" tick). An unknown kind still shows its text — an
   older app never hides a newer story's card.
 - **text** (optional, quoted) is the card's caption / question.
   `{…}` interpolation works like a line.
@@ -36,6 +38,9 @@ Where it lands follows the same rule as a choice: a card shown right
 after a character's line docks in that character's thread with the
 guest; otherwise it plays in the enclosing beat's `setting:` room (else
 the lobby).
+`with thread: <Character>` pins the card to that character's thread no
+matter who spoke last — handy for a card re-dealt from a rule with no
+line before it.
 
 ## Hearing the answer
 
@@ -61,6 +66,7 @@ ROLE Program
 | `image` | never answers |
 | `tutorial` | `completed` (they finished) or `skipped` + `step` (where they bailed), and `steps` |
 | `pass` | never answers |
+| `fact` | `question` (the picked id, e.g. `H2`), `answer` (the typed text — the one result field that may name a character, so "Clippy" is a fine wrong answer), `certain` (always true) |
 
 ## The guided tour: `show tutorial`
 

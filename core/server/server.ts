@@ -40,7 +40,7 @@ import { WikiClient } from "./wiki.ts";
 import { ImageCache } from "./avatars.ts";
 import { join } from "node:path";
 import { ipOf, readBody, sendJson, str, PayloadTooLarge } from "./http-util.ts";
-import { RateLimiter } from "./rate-limit.ts";
+import { RateLimiter, limiterFor, rateLimitsFromEnv } from "./rate-limit.ts";
 import { auth, authUser, migrateAuth } from "./auth-server.ts";
 import { dbReady, initSchema } from "./db/index.ts";
 import { canModerateEvent, liveEvents } from "./db/queries.ts";
@@ -269,8 +269,9 @@ const TRUSTED = new Set(TRUSTED_ORIGINS);
 
 // Route-level throttles (per client IP): `/api/resolve-code` is a code
 // oracle (any valid code → its event), `/api/qr` renders attacker-chosen
-// content. Both are cheap to call and deserve a ceiling.
-const resolveLimiter = new RateLimiter(30, 60_000);
+// content. Both are cheap to call and deserve a ceiling. The resolve
+// ceiling is `LOOM_RL_RESOLVE` (house Wi-Fi = one shared IP at the door).
+const resolveLimiter = limiterFor(rateLimitsFromEnv(process.env).resolve);
 const qrLimiter = new RateLimiter(60, 60_000);
 
 async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {

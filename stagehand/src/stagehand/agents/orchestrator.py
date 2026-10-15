@@ -50,6 +50,7 @@ from .llm import Completion, LlmConfig, LlmError
 from .mind import Mind
 from .persona import Persona
 from .reply import extract_json, strip_think
+from .secrets import Secrets
 from .trace import Thought, Trace, new_thought
 
 log = logging.getLogger("stagehand.agents.orchestrator")
@@ -212,6 +213,9 @@ def _system(persona: Persona, mind: Mind | None = None) -> str:
     if mind is not None:
         parts.append(structure_block(persona, mind))
     parts.append(f"=== WHO {persona.character.upper()} IS (their persona, verbatim) ===\n{persona.system}")
+    rule = persona.secrets.rule(persona.character)
+    if rule:
+        parts.append(rule)
     return "\n\n".join(parts)
 
 
@@ -260,8 +264,8 @@ def reflect_messages(
     them = req.get("them") or {}
     state = {
         "my_variables": me.get("vars") or {},
-        "lore_i_hold": [f"{e.get('title')}: {' '.join(str(e.get('text', '')).split())[:160]}" for e in (me.get("codex") or [])[:12] if isinstance(e, dict)],
-        "speaker": {"kind": speaker.get("kind"), "name": name, "group": speaker.get("faction"), "location": them.get("location"), "variables": them.get("vars") or {}, "holds": [e.get("title") for e in (them.get("codex") or [])]},
+        "lore_i_hold": [f"{e.get('title')}: {' '.join(str(e.get('text', '')).split())[:160]}" for e in persona.secrets.visible(me.get("codex"))[:12]],
+        "speaker": {"kind": speaker.get("kind"), "name": name, "group": speaker.get("faction"), "location": them.get("location"), "variables": them.get("vars") or {}, "holds": [e.get("title") for e in persona.secrets.visible(them.get("codex"))]},
         "world": req.get("world") or {},
         "powers": [{"name": p.get("id"), "left": (None if p.get("limit") is None else max(0, int(p.get("limit", 0)) - int(p.get("used", 0))))} for p in req.get("powers") or []],
     }
@@ -274,8 +278,8 @@ def reflect_messages(
     if cue:
         parts.append(f"=== THE STORY'S PHASE: {phase} (the author's cue for this phase) ===\n{cue}")
     if facts is not None:
-        parts.append(f"=== THE HOUSE ===\n{facts.digest()}")
-        lore = lore_block(facts, [str(e.get("title", "")) for e in (me.get("codex") or []) if isinstance(e, dict)])
+        parts.append(f"=== THE HOUSE ===\n{facts.digest(secrets=persona.secrets)}")
+        lore = lore_block(facts, [str(e.get("title", "")) for e in (me.get("codex") or []) if isinstance(e, dict)], secrets=persona.secrets)
         if lore:
             parts.append(lore)
     whisper = director_block(mind)
@@ -294,11 +298,12 @@ def reflect_messages(
     return [{"role": "system", "content": _system(persona, mind)}, {"role": "user", "content": "\n\n".join(parts)}]
 
 
-def lore_block(facts: Facts, held: list[str], max_entries: int = 24) -> str:
+def lore_block(facts: Facts, held: list[str], max_entries: int = 24, secrets: Secrets | None = None) -> str:
     """The story's whole codex — ground truth for the director's verdicts.
     The *character* knows only the entries marked held; the director knows
-    everything, and decides how a character who doesn't know reacts."""
-    entries = facts.codex[:max_entries]
+    everything, and decides how a character who doesn't know reacts —
+    except the hunt answers (`secrets.lore`), which nobody here may check."""
+    entries = (secrets.visible(facts.codex) if secrets else facts.codex)[:max_entries]
     if not entries:
         return ""
     held_set = {h.lower() for h in held}
@@ -314,7 +319,7 @@ def lore_block(facts: Facts, held: list[str], max_entries: int = 24) -> str:
 def survey_messages(persona: Persona, mind: Mind, facts: Facts, delta: list[str], phase_changed_to: str | None = None) -> list[dict[str, str]]:
     parts = [
         f"=== {persona.character.upper()}'S MIND NOW ===\n{mind_snapshot(mind, None, None)}",
-        f"=== THE HOUSE NOW ===\n{facts.digest()}",
+        f"=== THE HOUSE NOW ===\n{facts.digest(secrets=persona.secrets)}",
     ]
     if delta:
         parts.append("=== WHAT CHANGED SINCE YOU LAST LOOKED ===\n" + "\n".join(f"- {d}" for d in delta))
@@ -567,7 +572,7 @@ class Orchestrator:
         else:
             if facts is None:
                 return
-            delta = facts.delta(self._last_facts)
+            delta = facts.delta(self._last_facts, persona.secrets)
             if self._last_facts is not None and self._last_facts.phase != facts.phase:
                 phase_changed_to = facts.phase
             self._last_facts = facts
@@ -599,6 +604,10 @@ class Orchestrator:
             return
         if whispered:
             update["director_consumed"] = True
+        suppressed = persona.secrets.scrub(update)
+        if suppressed:
+            update["suppressed"] = suppressed  # the trace shows the director; Mind.apply ignores it
+            log.info("%s's mind: suppressed %d hunt verdict(s)", job.character, len(suppressed))
         thought = new_thought(job.character, job.kind, trigger=trigger, model=model, messages=messages, completion=completion, request=req_for_trace, result=update)
         touched = mind.apply(update, speaker_id=speaker_id or None, thread_key=thread_key, upto=upto, by=job.kind, thought_id=thought.id)
         thought.touched = touched

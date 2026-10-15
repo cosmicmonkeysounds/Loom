@@ -24,6 +24,7 @@ import { useWorkspace } from '@/store/workspace'
 import {
   CockpitPhase,
   CockpitTab,
+  NO_CUES,
   OPERATOR_LENS,
   RunBackend,
   RunMode,
@@ -81,7 +82,7 @@ function indexedSources(): CompiledSource[] {
 function empty(): Pick<
   SimState,
   | 'phase' | 'run' | 'connected' | 'roster' | 'factions' | 'locations' | 'cast' | 'channels' | 'spaces'
-  | 'beats' | 'events' | 'interactions' | 'ledgerLen' | 'messages' | 'world' | 'personas' | 'log'
+  | 'beats' | 'events' | 'interactions' | 'cues' | 'ledgerLen' | 'messages' | 'world' | 'personas' | 'log'
   | 'choices' | 'selection' | 'perspective' | 'lens' | 'error' | 'entryBeat'
 > {
   return {
@@ -97,6 +98,7 @@ function empty(): Pick<
     beats: [],
     events: [],
     interactions: [],
+    cues: NO_CUES,
     ledgerLen: 0,
     messages: [],
     world: [],
@@ -141,6 +143,7 @@ export const useSim = create<SimState>((set, get) => {
       spaces: view.spaces,
       beats: view.beats,
       interactions: view.interactions ?? [],
+      cues: view.cues ?? NO_CUES,
       ledgerLen: view.ledgerLen,
       messages: [...chat.all()],
       choices,

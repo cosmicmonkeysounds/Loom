@@ -24,6 +24,77 @@ drives:
   pride: 60       # vanity; flattery feeds it, being caught out drains it
   candour: 10     # how much leaks out; rises as composure falls
   longing: 40     # Sandy, felt
+# secrets — the hunt answers he must never be able to check (OCT31 K-23).
+#   The worker drops any orchestrator verdict on a claim naming one of
+#   these (never in `learned`, never "true/false/a lie" in brief, notes or
+#   dossiers) and keeps every codex entry carrying a `lore` marker (the hunt
+#   answers + Grok's Prom Ticket, all stamped — titles too) out of every
+#   prompt.
+#   topics — the questions' own words (as shown on the TV); the
+#            orchestrator is told never to judge these. Specific phrases
+#            only: a claim naming one is dropped from `learned` whole, so a
+#            common word (song, prom, chapter) would gut the finale's mind.
+#            Never an answer word — topics ARE shown to a model.
+#   match  — answer words a guest may use instead. NEVER shown to a model
+#            (this frontmatter is parsed out; only the body is a prompt).
+secrets:
+  topics:
+    - billboard            # H1
+    - barrington
+    - went unpaid
+    - pet cemetery         # H2
+    - first animal
+    - first pet
+    - ribbon               # H3
+    - grand opening
+    - opening day
+    - extension            # H4
+    - customer care
+    - reach sandy
+    - which song           # H5
+    - "412"
+    - play count
+    - unified field        # H6
+    - last chapter
+    - final chapter
+    - only thing sandy     # F1
+    - computer prom        # F2
+    - prom date
+    - taking sandy
+  match:
+    - eleven years
+    - 11 years
+    - pickles
+    - harbour tabby
+    - tabby
+    - 9am
+    - 9 am
+    - 9 a.m.
+    - "9:00"
+    - "9:00am"
+    - nine a.m.
+    - nine am
+    - 9 o'clock
+    - nine o'clock
+    - nine in the morning
+    - five hours early
+    - 4am
+    - 4 a.m.
+    - "1978"
+    - hopelessly devoted
+    - appendix
+    - loose ends
+    - do not print
+    - live agent
+    - didn't understand
+    - did not understand
+    - sandy said
+    - sandy says
+    - sandy ever said
+    - sandy has ever said
+    - grok
+  lore:
+    - "▒ STAMPED"
 phases:
   arrivals: >-
     Screensaver. Programs arrive one by one through the Mud Room. He does not exist yet;

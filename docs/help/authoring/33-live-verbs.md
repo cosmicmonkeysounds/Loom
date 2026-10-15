@@ -183,6 +183,12 @@ guest's pass sheet, fired with the guest as subject (catch it with a
 story rule or on the ROLE). `who: admin` needs the moderator passcode.
 Interactions are listed in the Run cockpit's event picker too.
 
+The `who: admin` interactions are also the Director page's **cue sheet**,
+in the order you declare them. Add `sequence: false` to one a machine
+fires (a game, a door sensor) or that is only a hardware fallback: the
+sheet still ticks it when it fires, but it never becomes the sheet's
+*last* cue or its suggested *next* one.
+
 ### Powers for a character with a mind: `who: agent`
 
 A character voiced by a language model (`mind: external`, see *Codex →

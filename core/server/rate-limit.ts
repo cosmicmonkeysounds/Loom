@@ -55,3 +55,72 @@ export class RateLimiter {
     return list;
   }
 }
+
+/** One limiter's shape: `max` hits per `windowMs`. */
+export interface RateRule {
+  max: number;
+  windowMs: number;
+}
+
+/**
+ * Every throttle the event server applies. The per-IP ones bite hard on a
+ * party's house Wi-Fi, where every phone shares one public IP — so each is
+ * env-configurable (`LOOM_RL_*`) and the night's deployment raises them.
+ */
+export interface RateLimits {
+  /** `/api/resolve-code` per IP (a code oracle). `LOOM_RL_RESOLVE`. */
+  resolve: RateRule;
+  /** Successful guest registrations per IP. `LOOM_RL_REGISTER`. */
+  register: RateRule;
+  /** Failed passcode attempts per IP before the lockout. `LOOM_RL_LOGIN_FAILURES`. */
+  loginFailures: RateRule;
+  /** Wrong codex codes per guest (`/api/guest/codex/redeem`). `LOOM_RL_REDEEM_MISSES`. */
+  redeemMisses: RateRule;
+  /** Widget answers per guest (`/api/guest/widget`) — a story that re-deals
+   *  a card after every answer (📝 File a fact) can't be tapped into a
+   *  flood of its thread + journal. `LOOM_RL_WIDGETS`. */
+  widgets: RateRule;
+}
+
+export const DEFAULT_RATE_LIMITS: RateLimits = {
+  resolve: { max: 30, windowMs: 60_000 },
+  register: { max: 20, windowMs: 60_000 },
+  loginFailures: { max: 10, windowMs: 5 * 60_000 },
+  redeemMisses: { max: 8, windowMs: 60_000 },
+  widgets: { max: 20, windowMs: 60_000 },
+};
+
+const ENV_KEYS: Record<keyof RateLimits, string> = {
+  resolve: "LOOM_RL_RESOLVE",
+  register: "LOOM_RL_REGISTER",
+  loginFailures: "LOOM_RL_LOGIN_FAILURES",
+  redeemMisses: "LOOM_RL_REDEEM_MISSES",
+  widgets: "LOOM_RL_WIDGETS",
+};
+
+/**
+ * Read `LOOM_RL_*` overrides. Each takes `<max>` or `<max>/<seconds>`
+ * (`LOOM_RL_REGISTER=400` or `LOOM_RL_LOGIN_FAILURES=60/300`); a missing or
+ * malformed value keeps the default (logged, never fatal).
+ */
+export function rateLimitsFromEnv(env: Record<string, string | undefined>): RateLimits {
+  const out = { ...DEFAULT_RATE_LIMITS };
+  for (const key of Object.keys(ENV_KEYS) as (keyof RateLimits)[]) {
+    const raw = env[ENV_KEYS[key]]?.trim();
+    if (raw === undefined || raw === "") continue;
+    const m = /^(\d+)(?:\s*\/\s*(\d+))?$/.exec(raw);
+    const max = m !== null ? Number(m[1]) : NaN;
+    const secs = m?.[2] !== undefined ? Number(m[2]) : null;
+    if (!Number.isSafeInteger(max) || max < 1 || (secs !== null && secs < 1)) {
+      console.warn(`${ENV_KEYS[key]}=${raw} ignored (want <max> or <max>/<seconds>)`);
+      continue;
+    }
+    out[key] = { max, windowMs: secs !== null ? secs * 1000 : DEFAULT_RATE_LIMITS[key].windowMs };
+  }
+  return out;
+}
+
+/** A limiter built from a rule. */
+export function limiterFor(rule: RateRule): RateLimiter {
+  return new RateLimiter(rule.max, rule.windowMs);
+}

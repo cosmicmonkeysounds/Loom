@@ -144,3 +144,107 @@ describe("titleOf — the authored display title", () => {
     expect(titleOf("")).toBeNull();
   });
 });
+
+describe("cue sheet state (K-21)", () => {
+  const CUES = `# Cue Test
+
+INTERACTION ring_the_bell
+  label: C1 · 📣 Call everyone
+  who: admin
+
+INTERACTION hunt_time_up
+  label: C2 · ⏰ Hunt over (auto)
+  who: admin
+
+INTERACTION accuse
+  who: performer
+
+when ring_the_bell:
+  set Night.phase = "desktop"
+  fire hunt_time_up
+
+when hunt_time_up:
+  set Night.phase = "truth"
+`;
+
+  it("starts empty and marks the last admin cue, director- or story-fired", async () => {
+    const { cueState } = await import("../server/views.ts");
+    const sim = Sim.fromSources(CUES);
+    expect(cueState(sim)).toEqual({ last: null, lastBy: null, fired: [] });
+    sim.signal("accuse"); // not an admin cue
+    expect(cueState(sim).last).toBeNull();
+    sim.signal("ring the bell"); // folds to `ring_the_bell`
+    const s = cueState(sim);
+    // the hook's own `fire hunt_time_up` lands after the director's signal
+    expect(s.fired).toEqual(["ring_the_bell", "hunt_time_up"]);
+    expect(s.last).toBe("hunt_time_up");
+    expect(s.lastBy).toBe("story");
+    sim.signal("ring_the_bell");
+    expect(cueState(sim).fired).toEqual(["ring_the_bell", "hunt_time_up"]);
+    expect(modView(sim, "open", "x").cues?.last).toBe("hunt_time_up");
+  });
+
+  it("ticks an off-sequence cue (`sequence: false`) without moving LAST", async () => {
+    const { cueState } = await import("../server/views.ts");
+    const sim = Sim.fromSources(`${CUES}
+INTERACTION the golden duck
+  label: Reinstallation: the golden duck (server)
+  who: admin
+  sequence: false
+`);
+    sim.signal("ring_the_bell");
+    sim.signal("the golden duck");
+    const s = cueState(sim);
+    expect(s.last).toBe("hunt_time_up");
+    expect(s.fired).toEqual(["ring_the_bell", "hunt_time_up", "the golden duck"]);
+    const duck = (modView(sim, "open", "x").interactions ?? []).find((i) => i.id === "the golden duck");
+    expect(duck?.sequence).toBe(false);
+    expect((modView(sim, "open", "x").interactions ?? []).find((i) => i.id === "ring_the_bell")).not.toHaveProperty("sequence");
+  });
+
+  it("reads only new log entries on each snapshot, and returns a fresh copy", async () => {
+    const { cueState } = await import("../server/views.ts");
+    const sim = Sim.fromSources(CUES);
+    const a = cueState(sim);
+    sim.signal("ring_the_bell");
+    const b = cueState(sim);
+    expect(a.fired).toEqual([]); // the earlier snapshot is not mutated
+    expect(b.fired).toEqual(["ring_the_bell", "hunt_time_up"]);
+    expect(cueState(sim)).toEqual(b);
+  });
+});
+
+describe("the show's cue sheet (K-21)", () => {
+  it("declares the admin cues in running order, coded C1/V1 → V6", () => {
+    const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
+    const admin = (modView(sim, "open", "x").interactions ?? []).filter((i) => i.who === "admin");
+    const codes = admin.map((i) => i.label.split(" · ")[0]);
+    expect(admin[0]!.id).toBe("call_to_the_desktop");
+    for (const c of ["C1/V1", "V2", "V3", "Clippy 2/X", "V4/V5", "C2", "V6"]) expect(codes).toContain(c);
+    expect(codes.indexOf("V2")).toBeLessThan(codes.indexOf("V6"));
+    sim.signal("call_to_the_desktop");
+    expect(modView(sim, "open", "x").cues?.last).toBe("call_to_the_desktop");
+  });
+
+  it("keeps the machine-fired cues off LAST / NEXT (the duck game, door reed, printer, patch bay)", () => {
+    const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
+    const admin = (modView(sim, "open", "x").interactions ?? []).filter((i) => i.who === "admin");
+    const off = admin.filter((i) => i.sequence === false).map((i) => i.id);
+    for (const id of ["the simulation completed", "the golden duck", "server_door_opened", "printer_button_pressed", "printer_opened", "patch_combo_a", "patch_combo_b", "patch_rejected", "chess_won"]) expect(off).toContain(id);
+    for (const id of ["call_to_the_desktop", "bingo_time", "start_the_ceremony"]) expect(off).not.toContain(id);
+    sim.signal("bingo_time");
+    sim.signal("the golden duck");
+    expect(modView(sim, "open", "x").cues?.last).toBe("bingo_time");
+    expect(modView(sim, "open", "x").cues?.fired).toContain("the golden duck");
+  });
+
+  it("flags the cues that need a person: the ceremony's awards ask for the winner (K-25)", () => {
+    const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
+    const admin = (modView(sim, "open", "x").interactions ?? []).filter((i) => i.who === "admin");
+    const needs = admin.filter((i) => i.subject === true).map((i) => i.id);
+    for (const a of ["award_most_trusted", "award_best_liar", "award_quest_completionist"]) expect(needs).toContain(a);
+    // Global cues stay one click, including the ceremony's own start.
+    for (const a of ["call_to_the_desktop", "start_the_ceremony", "chess_won"]) expect(needs).not.toContain(a);
+    expect(admin.find((i) => i.id === "call_to_the_desktop")).not.toHaveProperty("subject");
+  });
+});

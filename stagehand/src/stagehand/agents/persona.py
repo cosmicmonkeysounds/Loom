@@ -18,6 +18,9 @@
                                        #   stages: [a, b, c]   the arc, in order
                                        #   drives: {hunger: 40, suspicion: 55}
                                        #   phases: {glitch: "cue text"}  per Night.phase
+                                       #   secrets: {topics, match, lore}  hunt answers
+                                       #     it must never be able to check
+                                       #     (see `secrets.py`)
     orchestrator: { model: … }         # orchestrator model overrides for this one
     thread_window: 12                  # thread lines the fast model sees
     summarize_after: 20                # a thread this long gets a rolling summary
@@ -46,6 +49,7 @@ import yaml
 
 from ..conditions import Condition
 from ..module import ConfigError
+from .secrets import Secrets
 
 _KNOWN = {
     "character",
@@ -109,6 +113,8 @@ class Persona:
     #: None = every declared power; () = none; else the allowed power ids.
     powers: tuple[str, ...] | None = None
     bargain: str = ""
+    #: Hunt answers the character must never check (mind-file `secrets:`).
+    secrets: Secrets = field(default_factory=Secrets)
 
 
 def _names(value: Any, where: str) -> tuple[str, ...]:
@@ -161,6 +167,7 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
     stages: tuple[str, ...] = ()
     drives: dict[str, int] = {}
     phase_cues: dict[str, str] = {}
+    secrets = Secrets()
     if meta.get("mind") not in (None, ""):
         mind_path = Path(str(meta["mind"]))
         if not mind_path.is_absolute() and source not in ("<persona>", ""):
@@ -170,6 +177,7 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         except OSError as err:
             raise ConfigError(f"{source}: cannot read mind file {mind_path}: {err}") from err
         mind_prompt, stages, drives, phase_cues = parse_mind_file(mind_text, str(mind_path))
+        secrets = parse_mind_secrets(mind_text, str(mind_path))
     orchestrator = meta.get("orchestrator")
     if orchestrator is not None and not isinstance(orchestrator, dict):
         raise ConfigError(f"{source}: orchestrator: must be a mapping of model overrides")
@@ -205,10 +213,11 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         lookup_power=(str(meta["lookup_power"]).strip() or None) if meta.get("lookup_power") not in (None, "") else None,
         powers=powers,
         bargain=str(meta.get("bargain") or "").strip(),
+        secrets=secrets,
     )
 
 
-_MIND_KNOWN = {"stages", "drives", "phases"}
+_MIND_KNOWN = {"stages", "drives", "phases", "secrets"}
 
 
 def parse_mind_file(text: str, source: str = "<mind>") -> tuple[str | None, tuple[str, ...], dict[str, int], dict[str, str]]:
@@ -253,6 +262,36 @@ def parse_mind_file(text: str, source: str = "<mind>") -> tuple[str | None, tupl
         body = text[end + 4 :]
     prompt = body.strip() or None
     return prompt, stages, drives, phases
+
+
+def parse_mind_secrets(text: str, source: str = "<mind>") -> Secrets:
+    """The mind file's `secrets:` block (`topics` / `match` / `lore`, each a
+    list or comma list). Never shown to a model; see `secrets.py`."""
+    if not text.startswith("---"):
+        return Secrets()
+    end = text.find("\n---", 3)
+    if end < 0:
+        return Secrets()  # parse_mind_file reports the unterminated block
+    try:
+        meta = yaml.safe_load(text[3:end]) or {}
+    except yaml.YAMLError:
+        return Secrets()
+    raw = meta.get("secrets") if isinstance(meta, dict) else None
+    if raw is None:
+        return Secrets()
+    if not isinstance(raw, dict):
+        raise ConfigError(f"{source}: secrets must be a mapping with topics / match / lore")
+    unknown = sorted(set(raw) - {"topics", "match", "lore"})
+    if unknown:
+        raise ConfigError(f"{source}: unknown secrets key(s) {', '.join(map(str, unknown))}")
+
+    def words(key: str) -> tuple[str, ...]:
+        value = raw.get(key)
+        if isinstance(value, list):
+            value = [str(v) for v in value if v is not None]
+        return _names(value, f"{source}: secrets.{key}")
+
+    return Secrets(topics=words("topics"), match=words("match"), lore=words("lore"))
 
 
 def load_persona(path: str | Path) -> Persona:

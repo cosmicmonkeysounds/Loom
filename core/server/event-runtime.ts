@@ -25,7 +25,7 @@ import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
 import { ChatStore, composeGuestMessages, decisionChannelFor, isPinnedRoom, visibleTo, type ChatMessage } from "./chat.ts";
 import { ipOf, queryTokenOf, readBody, sendJson, sseSend, str, tokenOf } from "./http-util.ts";
-import { RateLimiter } from "./rate-limit.ts";
+import { RateLimiter, limiterFor, rateLimitsFromEnv, type RateLimits } from "./rate-limit.ts";
 import { TtsProxy, ttsConfigFromEnv } from "./tts.ts";
 import { AvatarBook, ImageCache, avatarKey, avatarRefUrl } from "./avatars.ts";
 import { WikiClient, isAntivirusSoftware } from "./wiki.ts";
@@ -45,6 +45,8 @@ import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
 import { Pairing } from "./routes/n02.ts";
 import { PushRoutes } from "./routes/k31.ts";
 import { PushHub, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
+import { printExtras } from "./routes/k12.ts";
+import { sendRecap } from "./routes/recap.ts";
 import { SpatialHub, houseVersion, houseWarnings, isWorld, parsePose, sortCandidates, type SessionRef } from "./spatial.ts";
 import {
   AgentHub,
@@ -99,13 +101,22 @@ export interface Impersonation {
  * performer (or an admin) sees a `dm:<character>` thread, and nobody but a
  * mod sees a `pm:`. Knowledge is a currency; the booth can't skim it.
  */
+/** Free-text answer fields, per widget kind, that may name anyone: a 📝 fact
+ *  card's `answer` is whatever the guest typed ("Clippy" is a fine lie), and
+ *  the story only ever quotes it back, never aims a rule with it. */
+export const WIDGET_FREE_TEXT: Readonly<Record<string, ReadonlySet<string>>> = {
+  fact: new Set(["answer"]),
+};
+
 /**
  * Sanitise a widget's client-supplied result into event arguments: a flat
  * bag of short scalars under plain keys. A string that happens to name a
  * participant or an entity is refused — `Sim.signal` would bind it as that
- * id, and a phone must not be able to aim a story rule at someone else.
+ * id, and a phone must not be able to aim a story rule at someone else —
+ * except in the kind's free-text fields (`WIDGET_FREE_TEXT`).
  */
-export function widgetResultArgs(raw: unknown, sim: Sim): Record<string, string | number | boolean> | null {
+export function widgetResultArgs(raw: unknown, sim: Sim, kind = ""): Record<string, string | number | boolean> | null {
+  const free = Object.hasOwn(WIDGET_FREE_TEXT, kind) ? WIDGET_FREE_TEXT[kind] : undefined;
   if (raw === undefined || raw === null) return {};
   if (typeof raw !== "object" || Array.isArray(raw)) return null;
   const out: Record<string, string | number | boolean> = {};
@@ -114,7 +125,8 @@ export function widgetResultArgs(raw: unknown, sim: Sim): Record<string, string 
     if (++n > 16 || !/^[A-Za-z_][A-Za-z0-9_]{0,31}$/u.test(k)) return null;
     if (typeof v === "boolean" || (typeof v === "number" && Number.isFinite(v))) out[k] = v;
     else if (typeof v === "string") {
-      if (v.length > 200 || sim.persons.has(v) || sim.model.entityKind.has(v)) return null;
+      if (v.length > 200) return null;
+      if (free?.has(k) !== true && (sim.persons.has(v) || sim.model.entityKind.has(v))) return null;
       out[k] = v;
     } else return null;
   }
@@ -237,11 +249,13 @@ export interface EventRuntimeInit {
   /** The show's house map (the reinstallation games) — used until a
    *  director saves one for this event. Default: `defaultHouseFile()`. */
   houseFile?: string;
-  /** The spatial hub's clock (tests). */
+  /** The spatial + agent hubs' clock (tests). */
   now?: () => number;
   /** Web Push (K-31a). Absent → the process-wide sender from `LOOM_VAPID_*`;
    *  null → push off (tests inject a fake). */
   push?: PushSender | null;
+  /** Throttle overrides (tests); the rest come from `LOOM_RL_*`. */
+  limits?: Partial<RateLimits>;
 }
 
 /** The process-wide speech proxy (configured from `LOOM_TTS_*`). */
@@ -293,9 +307,14 @@ export class EventRuntime {
   // Failed passcode attempts per client IP (guest register + prime/mod
   // login). The codes are short and speakable, so throttling online
   // guessing is what actually protects them.
-  private readonly loginFailures = new RateLimiter(10, 5 * 60_000);
   // Successful registrations per client IP — a cap on drive-by guest spam.
-  private readonly registrations = new RateLimiter(20, 60_000);
+  // Wrong codex codes per guest: past the cap, redeem answers 429 and the
+  // miss is never journaled (a guessing phone can't flood the story).
+  // All three are `LOOM_RL_*`-configurable (see `rateLimitsFromEnv`).
+  private readonly loginFailures: RateLimiter;
+  private readonly registrations: RateLimiter;
+  private readonly redeemMisses: RateLimiter;
+  private readonly widgetAnswers: RateLimiter;
   // Server-authoritative chat, rebuilt deterministically from the journal.
   private readonly chat = new ChatStore();
   // Where each guest's pending decision docks (channel id). Ephemeral.
@@ -342,9 +361,14 @@ export class EventRuntime {
   // going on; started lazily, stops itself when idle.
   private spatialLoop: ReturnType<typeof setInterval> | null = null;
   private spatialTicks = 0;
+  // The injectable clock (`EventRuntimeInit.now`), read lazily by the hubs
+  // built in field initialisers.
+  private clock: () => number = Date.now;
   private readonly agents = new AgentHub({
     build: (thread, id) => this.buildAgentRequest(thread, id),
     typing: (thread, on) => this.pushTyping(thread, on),
+    hold: (req) => this.postAgentHold(req),
+    now: () => this.clock(),
     presence: () => {
       this.pushPresence();
       for (const c of this.clients) if (c.role !== "mod") sseSend(c.res, "snapshot", this.snapshotFor(c));
@@ -362,6 +386,7 @@ export class EventRuntime {
     this.wiki = init.wiki ?? null;
     this.images = init.images ?? defaultImages();
     this.houseFile = init.houseFile ?? defaultHouseFile();
+    if (init.now !== undefined) this.clock = init.now;
     this.spatial = new SpatialHub({ eventId: init.eventId, ...(init.now !== undefined ? { now: init.now } : {}) });
     this.checkin = new GuestCheckin({
       sim: () => this.sim,
@@ -416,6 +441,11 @@ export class EventRuntime {
       joinBase: () => this.joinBase(),
       eventCode: () => this.codes.event,
     });
+    const limits = { ...rateLimitsFromEnv(process.env), ...init.limits };
+    this.loginFailures = limiterFor(limits.loginFailures);
+    this.registrations = limiterFor(limits.register);
+    this.redeemMisses = limiterFor(limits.redeemMisses);
+    this.widgetAnswers = limiterFor(limits.widgets);
   }
 
   /** Current lifecycle phase (idle | open | paused). */
@@ -716,6 +746,16 @@ export class EventRuntime {
     const character = channel.slice("dm:".length);
     if (!this.isAgent(character)) return;
     this.agents.line({ character, channel, audience });
+  }
+
+  /** No worker has picked up `req` in time: post the character's authored
+   *  `hold:` line into the thread as an ordinary journaled say (the director
+   *  can still answer as the character from Run). */
+  private postAgentHold(req: AgentRequest): boolean {
+    const line = this.sim?.model.characters.get(req.character)?.hold ?? null;
+    if (line === null) return false;
+    this.fanout(this.commit("say", req.character, req.thread.channel, line, null, req.thread.audience));
+    return true;
   }
 
   /** Everything a worker needs to answer one thread, read from the live sim. */
@@ -1781,6 +1821,13 @@ export class EventRuntime {
       return true;
     }
 
+    // --- K-26: the ceremony's recap numbers (directors only) ---
+    if (method === "GET" && path === "/api/mod/recap") {
+      if (opts.moderator !== true && !this.sessions.canModerate(queryTokenOf(req, url))) sendJson(res, 403, { error: "moderators only" });
+      else sendRecap(res, url, this.sim, { title: this.title, personas: this.personaOwners });
+      return true;
+    }
+
     // --- the mind debugger's trace (directors only) ---
     if (method === "GET" && path === "/api/mod/agent/trace") {
       if (opts.moderator !== true && !this.sessions.canModerate(queryTokenOf(req, url))) {
@@ -2295,9 +2342,13 @@ export class EventRuntime {
           sendJson(res, 409, { error: "already answered" });
           return true;
         }
-        const args = widgetResultArgs(body["result"], this.sim!);
+        const args = widgetResultArgs(body["result"], this.sim!, m.widget.kind);
         if (args === null) {
           sendJson(res, 400, { error: "bad widget result" });
+          return true;
+        }
+        if (!this.widgetAnswers.take(id)) {
+          sendJson(res, 429, { error: "slow down — wait a minute" });
           return true;
         }
         this.answeredWidgets.add(key);
@@ -2386,8 +2437,15 @@ export class EventRuntime {
           sendJson(res, 400, { error: "empty code" });
           return true;
         }
+        // Past the miss cap every redeem waits (a hit too — else guessing
+        // just goes on unjournaled), and nothing reaches the journal.
+        if (!this.redeemMisses.allowed(id)) {
+          sendJson(res, 429, { error: "too many wrong codes — wait a minute" });
+          return true;
+        }
         const events = this.commit("redeem", id, code);
         this.fanout(events);
+        if (events.some((e) => e.type === "codexMissed" && e.person === id)) this.redeemMisses.record(id);
         const hit = events.find((e): e is Extract<SimEvent, { type: "codexUnlocked" }> => e.type === "codexUnlocked" && e.person === id);
         sendJson(res, 200, { ok: true, unlocked: hit !== undefined ? hit.entry : null, codex: guestView(this.sim!, id).codex });
         return true;
@@ -2802,6 +2860,7 @@ export class EventRuntime {
           modPass: this.codes.mod,
           joinUrl: base,
           codex,
+          ...printExtras(this.sim?.model ?? null, base, this.codes.event),
         });
         return true;
       }

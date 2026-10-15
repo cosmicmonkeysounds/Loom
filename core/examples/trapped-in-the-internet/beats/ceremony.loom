@@ -1,0 +1,139 @@
+// G. The awards ceremony (K-25): after any final ending.
+//
+//   start_the_ceremony → The Ceremony   (the host opens, per ending)
+//   award_<name> for W → Present Award  (the award slide + the host's line)
+//
+// The director fires each award from the cue sheet WITH THE WINNER AS THE
+// SUBJECT, picked from the recap numbers. The ROLE hooks in `main.loom`
+// set `Night.award` / `award_title` / `award_winner` / `award_value`;
+// these beats only read them. Every line has a version without the
+// number (`award_value` is "none": a bonus award fired with no value).
+//
+// The host follows the ending. Trabolta's lines play in The Desktop, so
+// the TV speaks them. After `destroyed` (switched off) and `rave` (gone on
+// his motorcycle) Clippy hosts: her lines land in The Desktop for her to
+// read aloud, and the TV shows the award slide (`screens_award_<name>`,
+// which persists over the screensaver).
+//
+// When Trabolta's worker has written better lines (the cast-thread trick,
+// W-24), the director posts those as Trabolta in The Desktop; these stay
+// the fallback.
+
+== The Ceremony
+  setting: The Desktop
+if Night.ceremony_host == "Clippy":
+  if Night.ending == "destroyed":
+    Clippy: The computer is off. Trabolta is not running. Before it went dark, the chat app auto-generated a summary of the night.
+    Clippy: I have been asked to read it aloud. It includes awards. Please applaud after each award. Applause is mandatory.
+  else:
+    Clippy: Trabolta has left on his motorcycle. He left the awards behind. Somebody has to read them. It might as well be me.
+    Clippy: These are the official awards of the night, from the system report. Please applaud after each one. It helps.
+else if Night.ending == "disabled":
+  Trabolta (weakly): Before I go. One last report. I counted every one of you, all night. Let me give some of it back.
+  Trabolta (weakly): These are the awards. Come up when I call your name. Quickly. I do not have much grease left.
+else if Night.ending == "hand_jive":
+  Trabolta (weakly): Reboot complete. Most of my memory survived the hand jive. The awards survived too.
+  Trabolta: Before I leave, the night in awards. Come up when I call your name.
+else:
+  Trabolta: Programs. Before the prom, a ceremony. I kept score of every one of you tonight.
+  Trabolta: These are the awards of the night. When I say your name, come up to the screen and collect your trophy.
+
+== Present Award
+  setting: The Desktop
+if Night.award == "most_trusted":
+  cue screens_award_most_trusted
+  set Night.screen = "award_most_trusted"
+  if Night.ceremony_host == "Clippy":
+    if Night.award_value == "none":
+      Clippy: Award. Most Trusted. The report lists {Night.award_winner}. Please come forward. Applause is now appropriate.
+    else:
+      Clippy: Award. Most Trusted. The report lists {Night.award_winner}, with a trust score of {Night.award_value}. Please come forward. Applause is now appropriate.
+  else if Night.award_value == "none":
+    Trabolta: Most Trusted. {Night.award_winner}. When I needed a program to believe, I believed you. Come and take your trophy.
+  else:
+    Trabolta: Most Trusted. Trust score {Night.award_value}. {Night.award_winner}. When I needed a program to believe, I believed you. Come and take your trophy.
+else if Night.award == "least_trusted":
+  cue screens_award_least_trusted
+  set Night.screen = "award_least_trusted"
+  if Night.ceremony_host == "Clippy":
+    if Night.award_value == "none":
+      Clippy: Award. Least Trusted. The report lists {Night.award_winner}. This is still an award. Please come forward.
+    else:
+      Clippy: Award. Least Trusted. The report lists {Night.award_winner}, with a trust score of {Night.award_value}. This is still an award. Please come forward.
+  else if Night.award_value == "none":
+    Trabolta: Least Trusted. {Night.award_winner}. I weighed every word you said tonight and found you full of beans. It is still an award. Come and get it.
+  else:
+    Trabolta: Least Trusted. Trust score {Night.award_value}. {Night.award_winner}. I weighed every word you said tonight and found you full of beans. It is still an award. Come and get it.
+else if Night.award == "frequent_flyer":
+  cue screens_award_frequent_flyer
+  set Night.screen = "award_frequent_flyer"
+  if Night.ceremony_host == "Clippy":
+    if Night.award_value == "none":
+      Clippy: Award. Frequent Flyer to the Internet. The report lists {Night.award_winner}. Please come forward, unless you are being reinstalled.
+    else:
+      Clippy: Award. Frequent Flyer to the Internet. The report lists {Night.award_winner}. Trips through the Tube: {Night.award_value}. Please come forward, unless you are being reinstalled.
+  else if Night.award_value == "none":
+    Trabolta: Frequent Flyer to the Internet. {Night.award_winner}. The Antivirus know you by name. So do I. Come and collect your miles.
+  else:
+    Trabolta: Frequent Flyer to the Internet. Trips through the Tube: {Night.award_value}. {Night.award_winner}. The Antivirus know you by name. So do I. Come and collect your miles.
+else if Night.award == "lore_hoarder":
+  cue screens_award_lore_hoarder
+  set Night.screen = "award_lore_hoarder"
+  if Night.ceremony_host == "Clippy":
+    if Night.award_value == "none":
+      Clippy: Award. Lore Hoarder. The report lists {Night.award_winner}. Please come forward.
+    else:
+      Clippy: Award. Lore Hoarder. The report lists {Night.award_winner}. Codex entries held: {Night.award_value}. Please come forward.
+  else if Night.award_value == "none":
+    Trabolta: Lore Hoarder. {Night.award_winner}. You know more about this computer than its own help file. Come and take your trophy.
+  else:
+    Trabolta: Lore Hoarder. Codex entries: {Night.award_value}. {Night.award_winner}. You know more about this computer than its own help file. Come and take your trophy.
+else if Night.award == "truthcoin_tycoon":
+  cue screens_award_truthcoin_tycoon
+  set Night.screen = "award_truthcoin_tycoon"
+  if Night.ceremony_host == "Clippy":
+    if Night.award_value == "none":
+      Clippy: Award. Truthcoin Tycoon. The report lists {Night.award_winner}. Please come forward.
+    else:
+      Clippy: Award. Truthcoin Tycoon. The report lists {Night.award_winner}, with a balance of {Night.award_value} Truthcoin. Please come forward.
+  else if Night.award_value == "none":
+    Trabolta: Truthcoin Tycoon. {Night.award_winner}. The richest program in the machine. Do not spend it all in one exchange. Come and take your trophy.
+  else:
+    Trabolta: Truthcoin Tycoon. Balance {Night.award_value} Truthcoin. {Night.award_winner}. The richest program in the machine. Do not spend it all in one exchange. Come and take your trophy.
+else if Night.award == "best_liar":
+  cue screens_award_best_liar
+  set Night.screen = "award_best_liar"
+  if Night.ceremony_host == "Clippy":
+    if Night.award_value == "none":
+      Clippy: Bonus award. Best Liar. The report lists {Night.award_winner}. The details are classified. Please come forward.
+    else:
+      Clippy: Bonus award. Best Liar. The report lists {Night.award_winner}. Confident lies accepted: {Night.award_value}. The report does not say which ones. Please come forward.
+  else if Night.award_value == "none":
+    Trabolta: A bonus award. Best Liar. {Night.award_winner}. I believed you. Every time. I am not angry. I am impressed. Come up here.
+  else:
+    Trabolta: A bonus award. Best Liar. Confident lies I accepted: {Night.award_value}. {Night.award_winner}. I believed every one. I am not angry. I am impressed. Come up here.
+else if Night.award == "duck_speedrun":
+  cue screens_award_duck_speedrun
+  set Night.screen = "award_duck_speedrun"
+  if Night.ceremony_host == "Clippy":
+    if Night.award_value == "none":
+      Clippy: Bonus award. Golden Duck Speedrun. The report lists {Night.award_winner}, who reached the golden duck first. Please come forward.
+    else:
+      Clippy: Bonus award. Golden Duck Speedrun. The report lists {Night.award_winner}, who reached the golden duck in {Night.award_value}. Please come forward.
+  else if Night.award_value == "none":
+    Trabolta: A bonus award. Golden Duck Speedrun. {Night.award_winner} reached the golden duck faster than any other program. Gerald was not ready. Come and take your trophy.
+  else:
+    Trabolta: A bonus award. Golden Duck Speedrun. {Night.award_winner} reached the golden duck in {Night.award_value}. Gerald was not ready. Come and take your trophy.
+else if Night.award == "quest_completionist":
+  cue screens_award_quest_completionist
+  set Night.screen = "award_quest_completionist"
+  if Night.ceremony_host == "Clippy":
+    if Night.award_value == "none":
+      Clippy: Bonus award. Quest Completionist. The report lists {Night.award_winner}. Please come forward.
+    else:
+      Clippy: Bonus award. Quest Completionist. The report lists {Night.award_winner}. Quests completed: {Night.award_value}. Please come forward.
+  else if Night.award_value == "none":
+    Trabolta: A bonus award. Quest Completionist. {Night.award_winner}. Nobody finished more of the Quest Log. Come up here.
+  else:
+    Trabolta: A bonus award. Quest Completionist. Quests done: {Night.award_value}. {Night.award_winner}. Nobody finished more of the Quest Log. Come up here.
+set Night.terminals = Night.screen

@@ -89,7 +89,7 @@ async def answer(
     if gate and persona.when is not None and not persona.when.evaluate(gate_context(req)):
         return Reply(say=persona.unavailable)
     powers = [p for p in (req.get("powers") or []) if isinstance(p, dict)]
-    codex = tuple(str(e.get("title", "")) for e in ((req.get("self") or {}).get("codex") or []) if isinstance(e, dict))
+    codex = tuple(str(e.get("title", "")) for e in persona.secrets.visible((req.get("self") or {}).get("codex")))
     started = time.monotonic()
     messages = build_messages(persona, req, mind=mind)
 
@@ -110,7 +110,7 @@ async def answer(
     reply = parse_reply(raw, persona.variables, persona.max_step, powers, codex)
     await record("voice", messages, completion, reply, note=note)
     if reply.lookup and persona.lookup and facts is not None:
-        cards = {name: facts.render(name) for name in reply.lookup}
+        cards = {name: facts.render(name, persona.secrets) for name in reply.lookup}
         log.info("%s looked up %s", persona.character, ", ".join(reply.lookup))
         prior = json.dumps({"lookup": list(reply.lookup)})
         second_messages = build_messages(persona, req, mind=mind, lookups=cards, prior_json=prior)
@@ -287,6 +287,9 @@ class Agents:
             path = mind_path(self.cfg.state_dir, self.event, name)
             mind = Mind.load(path, name, self.event)
             mind.seed(persona.stages, persona.drives)
+            pruned = persona.secrets.prune(mind)
+            if pruned:
+                log.info("%s's mind: dropped %d restored hunt verdict(s)", name, pruned)
             self.minds[name] = mind
             if mind.exchanges or mind.notes:
                 log.info("%s's mind restored from %s (%d exchanges, %d notes, %d people)", name, path, mind.exchanges, len(mind.notes), len(mind.people))

@@ -277,7 +277,12 @@ Environment: `LOOM_PORT` (7000), `LOOM_HOST` (0.0.0.0), `LOOM_EVENT_PASS`,
 `LOOM_REINSTALL_DIST`, `LOOM_HOUSE`, `LOOM_VAPID_PUBLIC_KEY` /
 `LOOM_VAPID_PRIVATE_KEY` / `LOOM_VAPID_SUBJECT` (Web Push, below), plus the control-plane / hardening vars
 (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `LOOM_BASE_URL`,
-`LOOM_TRUSTED_ORIGINS`, `LOOM_TRUST_PROXY`). **For a full production
+`LOOM_TRUSTED_ORIGINS`, `LOOM_TRUST_PROXY`), and the throttles
+`LOOM_RL_RESOLVE` (30/60), `LOOM_RL_REGISTER` (20/60),
+`LOOM_RL_LOGIN_FAILURES` (10/300) — per IP — and `LOOM_RL_REDEEM_MISSES`
+(8/60, per guest: past it `/api/guest/codex/redeem` answers 429 and journals
+nothing) and `LOOM_RL_WIDGETS` (20/60, per guest: widget answers on
+`/api/guest/widget`), each `<max>` or `<max>/<seconds>` (`server/rate-limit.ts`). **For a full production
 deployment + the security model, see
 [`docs/loom-deployment.md`](../docs/loom-deployment.md).**
 

@@ -8,7 +8,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { EventRuntime } from "../server/event-runtime.ts";
+import { EventRuntime, widgetResultArgs } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { guestView, modView, primeView } from "../server/views.ts";
@@ -70,7 +70,7 @@ Narrator: The gate.
 `;
 
 const dirs: string[] = [];
-function runtimeIn(d: string): EventRuntime {
+function runtimeIn(d: string, limits?: ConstructorParameters<typeof EventRuntime>[0]["limits"]): EventRuntime {
   return new EventRuntime({
     eventId: "evt",
     store: new Store(d),
@@ -78,12 +78,13 @@ function runtimeIn(d: string): EventRuntime {
     scenarioName: "orchard",
     scenarioSource: SOURCE,
     joinBase: () => "http://localhost",
+    limits,
   });
 }
-function freshRuntime(): EventRuntime {
+function freshRuntime(limits?: ConstructorParameters<typeof EventRuntime>[0]["limits"]): EventRuntime {
   const d = mkdtempSync(join(tmpdir(), "loom-ix-"));
   dirs.push(d);
-  return runtimeIn(d);
+  return runtimeIn(d, limits);
 }
 afterAll(() => {
   for (const d of dirs) rmSync(d, { recursive: true, force: true });
@@ -247,6 +248,38 @@ describe("/api/guest/widget", () => {
     // Still unanswered after the refusals.
     expect((await post(rt, "/api/guest/widget", { token: a.token, seq, result: { passed: false } })).status).toBe(200);
     expect(rt.liveSim!.log.all().some((e) => e.type === "respond" && e.to === a.id && e.text === "Welcome, machine.")).toBe(true);
+  });
+
+  it("throttles widget answers per guest (a re-dealt card can't be tapped into a flood)", async () => {
+    const rt = freshRuntime({ widgets: { max: 2, windowMs: 60_000 } });
+    rt.openDoors();
+    const a = await guest(rt, "Ada");
+    const b = await guest(rt, "Bob");
+    const deal = async (g: { token: string; id: string }): Promise<number> => {
+      expect((await post(rt, "/api/guest/act", { token: g.token, name: "riddle" })).status).toBe(200);
+      return rt.chatHistoryFor(g.id).filter((m) => m.kind === "widget").at(-1)!.seq;
+    };
+    for (let i = 0; i < 2; i++) expect((await post(rt, "/api/guest/widget", { token: a.token, seq: await deal(a), result: { passed: false } })).status).toBe(200);
+    const third = await deal(a);
+    expect((await post(rt, "/api/guest/widget", { token: a.token, seq: third, result: { passed: false } })).status).toBe(429);
+    expect((await state(rt, a.token)).json.answered).not.toContain(third); // not spent: answerable once the minute passes
+    // per guest
+    expect((await post(rt, "/api/guest/widget", { token: b.token, seq: await deal(b), result: { passed: false } })).status).toBe(200);
+  });
+});
+
+describe("widgetResultArgs — free-text fields", () => {
+  it("lets a 📝 fact card's answer name anyone, and nothing else", () => {
+    const rt = freshRuntime();
+    rt.openDoors();
+    const sim = rt.liveSim!;
+    // "The Gatekeeper" is an entity: a fine (wrong) answer on a fact card…
+    expect(widgetResultArgs({ question: "H2", answer: "The Gatekeeper", certain: true }, sim, "fact")).toEqual({ question: "H2", answer: "The Gatekeeper", certain: true });
+    // …but still refused in any other field or any other kind.
+    expect(widgetResultArgs({ question: "The Gatekeeper", answer: "x" }, sim, "fact")).toBeNull();
+    expect(widgetResultArgs({ answer: "The Gatekeeper" }, sim, "captcha")).toBeNull();
+    expect(widgetResultArgs({ answer: "The Gatekeeper" }, sim, "constructor")).toBeNull();
+    expect(widgetResultArgs({ answer: "x".repeat(201) }, sim, "fact")).toBeNull();
   });
 });
 

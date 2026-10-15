@@ -21,7 +21,7 @@ import { create, useStore } from 'zustand'
 import type { SignalArgs, StatField } from '@/lib/api'
 import type { SimEvent } from '@loom/core/sim'
 import type { WidgetCard } from '@loom/core/chat'
-import type { AgentControl, AgentMindSummary, AgentThought, GuestView, InteractionSummary, PrimeView } from '@loom/core/views'
+import type { AgentControl, AgentMindSummary, AgentThought, CueState, GuestView, InteractionSummary, PrimeView } from '@loom/core/views'
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -304,6 +304,9 @@ export interface CockpitState {
    *  buttons under a guest lens (`who: guest`) / performer lens
    *  (`who: performer | admin`, on a target guest). */
   interactions: InteractionSummary[]
+  /** The cue sheet's state (`ModView.cues`): which `who: admin` cues have
+   *  fired and which was last — off the sim log, so every director agrees. */
+  cues: CueState
   ledgerLen: number
   messages: CockpitMessage[]
   error: string | null
@@ -442,6 +445,9 @@ export type CockpitStore = {
 
 const noop = async (): Promise<void> => {}
 
+/** The cue sheet before anything has fired. */
+export const NO_CUES: CueState = { last: null, lastBy: null, fired: [] }
+
 /**
  * The inert default cockpit — every surface empty, every action a no-op.
  * Lets cockpit-aware components (e.g. the story canvas's "Fire beat")
@@ -462,6 +468,7 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   beats: [],
   events: [],
   interactions: [],
+  cues: NO_CUES,
   ledgerLen: 0,
   messages: [],
   error: null,

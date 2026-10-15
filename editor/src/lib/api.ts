@@ -6,6 +6,7 @@
 //! carry the session cookie (`credentials: "include"`); in dev the Vite proxy
 //! makes these same-origin so the cookie flows.
 
+import type { PrintCodes } from './print-sheet'
 import type { AgentControl, AgentMindSummary, AgentThought, GuestView, PrimeView } from '@loom/core/views'
 
 const BASE = import.meta.env.VITE_LOOM_API ?? ''
@@ -305,6 +306,11 @@ export const modApi = {
       'GET',
       `/e/${eventId}/api/state?role=${kind}&as=${encodeURIComponent(id)}`,
     )
+  },
+  /** Everything printable: the codex QR links, the join link, one room
+   *  check-in sign per LOCATION (K-12 — the Run → Print sheet). */
+  async codes(eventId: string): Promise<PrintCodes> {
+    return await req<PrintCodes>('POST', `/e/${eventId}/api/mod/codes`, {})
   },
   /** Expose a hidden faction (the secret-villain reveal). */
   async reveal(eventId: string, faction: string): Promise<void> {

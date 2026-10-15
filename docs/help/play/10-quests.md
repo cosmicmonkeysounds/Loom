@@ -29,3 +29,13 @@ does their part, your thread hears about it too.
 
 A quest can be **failed** — time runs out, the story moves on. It stays
 in your log as a record of the night.
+
+## Filing a fact
+
+Some stories let you hand an answer to a character instead of saying it
+out loud: a **📝 File a fact** card in their private thread. Pick the
+question, type your answer, tick **I'm certain**, and tap **File it**.
+Only filed facts count — telling the character in chat is just a rumour.
+You can file each question once, and the reply is the same whether you
+were right or not. Once you've filed, a fresh card arrives for the next
+one.

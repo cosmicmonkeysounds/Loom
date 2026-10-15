@@ -29,6 +29,7 @@ channel routing see it); `to` introduces the scope. The scope atoms:
 | `location(The Long Table)` | everyone standing at the table |
 | `group(The Gardeners)` | everyone on that side (`faction(…)` still works) |
 | `participant(guest)` | one specific person |
+| `channel(hosts)` | posts straight into that authored `CHANNEL` (a staff back-room), for whoever may read it — not the lobby |
 
 Scope arguments are expressions, so `group(guest.group)` broadcasts to
 whichever side the acting guest is on.

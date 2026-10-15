@@ -13,6 +13,13 @@
 // who reaches him gets the hold line. No scripted `Trabolta:` line plays
 // before `introduce_trabolta`.
 //
+// `hold:` is what the SERVER says for him when no worker is online at all
+// (the laptop or its worker is down): after ~20 s of silence the event
+// server posts it into the thread once, keeps the message queued for a
+// worker that comes back, and a director can still answer as him from Run
+// (decision #35: no hosted fallback model). Plain words — a terminal reads
+// it aloud. The worker's own gate line is `unavailable:` in the persona.
+//
 // The story decides the night; the model colours it. Set pieces are
 // scripted `Trabolta:` lines in the beats. The voice may nudge the five
 // numbers below (clamped to their ranges by the server); the story moves
@@ -36,6 +43,7 @@
 CHARACTER Trabolta is Person
   avatar: File:HAL9000.svg
   mind: external
+  hold: Jean Trabolta is not responding. Please do not move the mouse.
   hidden: true
   awake: bool = false
   truth: 0 to 100 = 20

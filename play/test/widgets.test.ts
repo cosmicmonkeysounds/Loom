@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createCrawl } from "../src/host.ts";
-import { CAPTCHA_TILES, WIDGETS, captchaGrid, captchaPassed, widgetLabel } from "../src/widgets.tsx";
+import { CAPTCHA_TILES, FACT_MAX, WIDGETS, captchaGrid, captchaPassed, factQuestions, factResult, widgetLabel } from "../src/widgets.tsx";
 
 describe("captcha grid", () => {
   it("is deterministic per seed and always has 2–4 target squares", () => {
@@ -83,5 +83,26 @@ describe("typewriter crawl policy", () => {
     b.loaded(3);
     expect(a.claim(4)).toBe(true);
     expect(b.claim(4)).toBe(true);
+  });
+});
+
+describe("📝 fact card", () => {
+  it("parses the question picker from `with questions:`", () => {
+    expect(factQuestions("H4: Round 2 Q1. What extension? | H5: Round 2 Q2. Which song? |  ")).toEqual([
+      { id: "H4", label: "Round 2 Q1. What extension?" },
+      { id: "H5", label: "Round 2 Q2. Which song?" },
+    ]);
+    expect(factQuestions(undefined)).toEqual([]);
+    expect(factQuestions("F1")).toEqual([{ id: "F1", label: "F1" }]);
+  });
+
+  it("files only a picked question, a trimmed answer within the limit, and a certain one", () => {
+    expect(factResult("H5", "  Clippy ", true)).toEqual({ question: "H5", answer: "Clippy", certain: true });
+    expect(factResult("", "Clippy", true)).toBeNull();
+    expect(factResult("H5", "   ", true)).toBeNull();
+    expect(factResult("H5", "Clippy", false)).toBeNull();
+    expect(factResult("H5", "x".repeat(FACT_MAX + 1), true)).toBeNull();
+    expect(WIDGETS["fact"]?.answerable).toBe(true);
+    expect(widgetLabel({ kind: "fact", text: "📝 File a fact", params: {} })).toBe("📝 file a fact — 📝 File a fact");
   });
 });

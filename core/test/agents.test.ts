@@ -27,7 +27,12 @@ function hubHarness(opts: { replyTimeoutMs?: number; queueMaxAgeMs?: number } = 
   let clock = 1000;
   let builds = 0;
   const typing: boolean[] = [];
+  const held: AgentRequest[] = [];
   const hub = new AgentHub({
+    hold: (req) => {
+      held.push(req);
+      return true;
+    },
     build: (thread, id) => {
       builds += 1;
       return { id, character: thread.character, thread, text: `line ${builds}`, at: clock } as unknown as AgentRequest;
@@ -41,7 +46,7 @@ function hubHarness(opts: { replyTimeoutMs?: number; queueMaxAgeMs?: number } = 
     const w: AgentWorker = { id, name: id, characters: new Set(characters), send: (e, d) => got.push([e, d]) };
     return { w, got, requests: () => got.filter(([e]) => e === "request").map(([, d]) => d as AgentRequest) };
   };
-  return { hub, worker, typing, tick: (ms: number) => (clock += ms), builds: () => builds };
+  return { hub, worker, typing, held, tick: (ms: number) => (clock += ms), builds: () => builds };
 }
 
 describe("AgentHub", () => {
@@ -137,6 +142,42 @@ describe("AgentHub", () => {
     h.tick(61_000);
     h.hub.sweep();
     expect(h.hub.pending).toHaveLength(0);
+  });
+
+  it("with nobody online, the hold line is offered once after 20 s and the request stays queued", () => {
+    const h = hubHarness();
+    h.hub.line(T);
+    h.tick(10_000);
+    h.hub.line(T); // a second message neither stacks nor moves the clock
+    h.tick(9_000);
+    h.hub.sweep();
+    expect(h.held).toHaveLength(0);
+    h.tick(1_000);
+    h.hub.sweep();
+    expect(h.held.map((r) => r.thread)).toEqual([T]);
+    expect(h.builds()).toBe(3); // the hold line rebuilt the queued body
+    h.tick(30_000);
+    h.hub.line(T);
+    h.hub.sweep();
+    expect(h.held).toHaveLength(1);
+    // The laptop comes back: it still gets the (refreshed) request.
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    expect(a.requests()).toHaveLength(1);
+  });
+
+  it("no hold line while a worker voicing the character is online, even a slow one", () => {
+    const h = hubHarness();
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    h.hub.line(T);
+    h.tick(60_000);
+    h.hub.sweep();
+    expect(h.held).toHaveLength(0);
+    // It dies mid-reply long after the request opened: the hold follows at once.
+    h.hub.detach("laptop");
+    h.hub.sweep();
+    expect(h.held).toHaveLength(1);
   });
 
   it("reset cancels everything open and tells workers", () => {
@@ -336,7 +377,7 @@ afterAll(() => {
   for (const d of dirs) rmSync(d, { recursive: true, force: true });
 });
 
-function runtime(): EventRuntime {
+function runtime(o: { source?: string; now?: () => number } = {}): EventRuntime {
   const d = mkdtempSync(join(tmpdir(), "loom-agents-"));
   dirs.push(d);
   return new EventRuntime({
@@ -344,8 +385,9 @@ function runtime(): EventRuntime {
     store: new Store(d),
     codes: CODES,
     scenarioName: "uploaded",
-    scenarioSource: SOURCE,
+    scenarioSource: o.source ?? SOURCE,
     joinBase: () => "http://localhost",
+    ...(o.now !== undefined ? { now: o.now } : {}),
   });
 }
 
@@ -584,6 +626,52 @@ describe("EventRuntime agents", () => {
     await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "anyone?" }, { token: g.json["token"] as string });
     const w = await call(rt, "GET", "/api/agent/stream?characters=Trabolta", {}, { moderator: true });
     expect(w.res.frames().filter(([e]) => e === "request")).toHaveLength(1);
+  });
+
+  it("with no worker online, the authored hold line lands in the guest's thread after 20 s", async () => {
+    let clock = 1_000_000;
+    const source = SOURCE.replace("  mind: external\n", '  mind: external\n  hold: "Jean Trabolta will make an appearance later tonight."\n');
+    const rt = runtime({ source, now: () => clock });
+    rt.openDoors();
+    expect(rt.liveSim!.model.characters.get("Trabolta")?.hold).toBe("Jean Trabolta will make an appearance later tonight.");
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Cy", passcode: CODES.event });
+    const token = g.json["token"] as string;
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "hello?" }, { token });
+    const hub = (rt as unknown as { agents: AgentHub }).agents;
+    const dm = async () => {
+      const history = await call(rt, "GET", "/api/history", {}, { token });
+      return (history.json["messages"] as Array<{ from: string; text: string; channel: string }>).filter((m) => m.channel === "dm:Trabolta").map((m) => [m.from, m.text]);
+    };
+    clock += 19_000;
+    hub.sweep();
+    expect(await dm()).toEqual([["Cy", "hello?"]]);
+    clock += 1_000;
+    hub.sweep();
+    hub.sweep();
+    expect(await dm()).toEqual([
+      ["Cy", "hello?"],
+      ["Trabolta", "Jean Trabolta will make an appearance later tonight."],
+    ]);
+    // Still queued: a worker that connects now answers the guest.
+    const w = await call(rt, "GET", "/api/agent/stream?characters=Trabolta", {}, { moderator: true });
+    expect(w.res.frames().filter(([e]) => e === "request")).toHaveLength(1);
+    // …and the queued body was rebuilt after the hold, so it knows it said it.
+    const req = w.res.frames().find(([e]) => e === "request")![1] as AgentRequest;
+    expect(req.history.map((h) => h.text)).toEqual(["hello?", "Jean Trabolta will make an appearance later tonight."]);
+  });
+
+  it("no hold: authored → silence, as before", async () => {
+    let clock = 1_000_000;
+    const rt = runtime({ now: () => clock });
+    rt.openDoors();
+    expect(rt.liveSim!.model.characters.get("Trabolta")?.hold).toBeNull();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Di", passcode: CODES.event });
+    const token = g.json["token"] as string;
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "hello?" }, { token });
+    clock += 30_000;
+    (rt as unknown as { agents: AgentHub }).agents.sweep();
+    const history = await call(rt, "GET", "/api/history", {}, { token });
+    expect((history.json["messages"] as Array<{ from: string; channel: string }>).filter((m) => m.channel === "dm:Trabolta").map((m) => m.from)).toEqual(["Di"]);
   });
 
   it("the request lists the character's powers with this run's use counts", async () => {

@@ -16,7 +16,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import { scenarioSource } from "../examples/load.ts";
-import { RateLimiter } from "../server/rate-limit.ts";
+import { DEFAULT_RATE_LIMITS, RateLimiter, rateLimitsFromEnv } from "../server/rate-limit.ts";
 import { makePass } from "../server/auth.ts";
 
 const SCENARIO = scenarioSource("escape-the-internet");
@@ -243,6 +243,49 @@ describe("login endpoints throttle guessing", () => {
     // A different IP with the right code still succeeds.
     const r = await post(rt, "/api/mod/login", { passcode: CODES.mod }, { "x-test-ip": "10.0.0.2" });
     expect(r.status).toBe(200);
+  });
+});
+
+describe("door-rush limits (LOOM_RL_*)", () => {
+  it("parses <max> and <max>/<seconds>, keeping defaults for missing or malformed values", () => {
+    expect(rateLimitsFromEnv({})).toEqual(DEFAULT_RATE_LIMITS);
+    const l = rateLimitsFromEnv({
+      LOOM_RL_REGISTER: "400",
+      LOOM_RL_LOGIN_FAILURES: "60/300",
+      LOOM_RL_RESOLVE: "nope",
+      LOOM_RL_REDEEM_MISSES: "0",
+    });
+    expect(l.register).toEqual({ max: 400, windowMs: 60_000 });
+    expect(l.loginFailures).toEqual({ max: 60, windowMs: 300_000 });
+    expect(l.resolve).toEqual(DEFAULT_RATE_LIMITS.resolve);
+    expect(l.redeemMisses).toEqual(DEFAULT_RATE_LIMITS.redeemMisses);
+  });
+
+  async function registerMany(rt: EventRuntime, n: number): Promise<number[]> {
+    rt.openDoors();
+    const out: number[] = [];
+    for (let i = 0; i < n; i++) {
+      out.push((await post(rt, "/api/guest/register", { name: `Phone ${i}`, passcode: CODES.event }, { "x-test-ip": "203.0.113.7" })).status);
+    }
+    return out;
+  }
+
+  it("by default the 21st registration from one IP in a minute is refused", async () => {
+    const statuses = await registerMany(freshRuntime(), 21);
+    expect(statuses.slice(0, 20).every((s) => s === 200)).toBe(true);
+    expect(statuses[20]).toBe(429);
+  });
+
+  it("with the night's env, 40 registrations from one shared IP in a minute all pass", async () => {
+    const prev = process.env.LOOM_RL_REGISTER;
+    process.env.LOOM_RL_REGISTER = "400";
+    try {
+      const statuses = await registerMany(freshRuntime(), 40);
+      expect(statuses.every((s) => s === 200)).toBe(true);
+    } finally {
+      if (prev === undefined) delete process.env.LOOM_RL_REGISTER;
+      else process.env.LOOM_RL_REGISTER = prev;
+    }
   });
 });
 

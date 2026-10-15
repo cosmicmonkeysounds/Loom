@@ -74,6 +74,8 @@ beats/finale.loom      Final Reveal · Bobbing For Truth · The Bag Of Truth · 
                        · Truth Txt · The Verdict · Song Ending · Grok Prom · Pickup Line ·
                        Sad Confession · Relationship Advice · Advice Helped · Advice
                        Thwarted · The Hand Jive
+beats/ceremony.loom    the awards ceremony (K-25): The Ceremony (the host opens, per
+                       ending) · Present Award (the award slide + the host's line)
 cast/kit.loom          TRAITs: Prop(beat) · Person · Host · Enforcer (the door scan, the
                        shared Clearance beat, Send to the Internet, Mark as reinstalled)
 cast/hosts.loom        Clippy · Task Manager · Adobe Acrobat · Recycling Bin
@@ -211,6 +213,7 @@ program in the Internet cannot have an answer accepted.
 | **V4/V5 · 🔎 Truth Scavenger Hunt 1 (15 min)** (`start_the_hunt`) | — | Trabolta reads questions H1–H3 on the TV, and they also appear in the *Hunt One* quest. A 5-minute warning comes at 10 minutes. Every answer is a QR clue in the house. |
 | **C2 · ⏰ Hunt over** (`hunt_time_up`, *auto* at 15 min) | Antivirus sweep everyone back | *Clippy Instructions 3* unlock. Set stage *hungry*. |
 | **V6 · ⚖️ First Moment of Truth** (`first_moment_of_truth`; from the hunt on — pressed during the hunt it ends the hunt first) | **Clippy judges** each answer by the question it answered, numbered within the round: **✅ Q1–Q3** accurate · **😤 Q1–Q3** wrong but confident (accepted) · **🤷** uncertain or guessed, which sends the program to the Internet | Accurate and confident answers look the same in public (`✅ … accepted`, +100 Truthcoin, Trabolta truth +4). Only `Kernel.q1…q8` knows which was a lie, and **a lie is sticky**. |
+| *(after the hunt opens, all night)* **📝 File a fact** (dm:Trabolta) | **A host judges filings from `# hosts`**: each filing posts `📝 X filed H5 (round 2 Q2): …` there; press **📝 Filed fact: accurate** or **📝 Filed fact: confident lie** on that program's card. Any time — no judging window, no cup. | The card is dealt in every program's Trabolta thread when each round's questions open (H1–H3, H4–H6, F1–F2) and re-dealt after each filing. Certain answers only, one per program per question, one unjudged at a time. Either button: +50 Truthcoin, it counts on the Trust Chart, and the **same** reply. The verdict lives only on `Kernel.qN` (a lie is sticky), so **one DM bluff fails the "all accurate" verdict for good**. Trabolta never sees the answer or the verdict; free chat never counts. |
 | **🎩 Truth or Dare from the hat** (`truth_or_dare`) | Clippy: **🎩 Chose Dare** (to the Internet) · **🙅 Called a false slip false** (the turn passes) · ✅/😤/🤷 for answers | Slips: see the appendix. |
 | *(optional)* **☎️ Telephone** · **🪅 Are you sure?** | an Antivirus presses 🛡 on the mangler · a host presses 🪙 Pay | Invented set pieces, live from `truth_1` to `trust_chart`. |
 
@@ -237,7 +240,7 @@ program in the Internet cannot have an answer accepted.
 | **🗜 Antivirus zip everyone out of the Internet** (`zip_everyone_out`) | Antivirus bring everyone out of the tent | Every captured program is released and `.zip`ped. |
 | **🤖 Trabolta shares the next facts (scenario 1–4)** (`trabolta_overshares`) | — | He reads F1/F2 (the *Final Facts* quest), then overshares by scenario: **1** Excel planted + 20 facts (Sandy, permanence, the virus, the LiveJournal) · **2** 20 facts only (the LiveJournal) · **3** Excel planted only (the virus) · **4** neither (composed, one slip). Only *Excel's* plant counts. |
 | **🕚 System clock → 11 PM, 31 Dec 1999** (`y2k_clock`) | Password Manager's booth logs every faction join | *Clippy Instructions 7* unlock. Composure −25. Unlimited Power and The Way Out are revealed and become sides in the app. Excel / OpenOffice get their Final Orders + recruit quests; everyone else gets *Program Final Round*. Clock warnings come at 23:30 / 23:45 / 23:55 / 23:59. Set stage *desperate*. |
-| *(auto)* **majority** | — | **Half + 1 of all guest programs** in one faction, *once its leader has done their task* (Excel planted / OpenOffice's dossier). Performers do not count. **If a leader is absent or stuck, fire 🧾 Let a faction win without its leader's task** (`waive_leader_tasks`). |
+| *(auto)* **majority** | — | **Half + 1 of all guest programs** in one faction, *once its leader has done their task* (Excel planted / OpenOffice's dossier). Performers do not count. **If a leader is absent or stuck, fire 🧾 Let a faction win without its leader's task** (`waive_leader_tasks`). **If ghosts (lost sessions, early leavers) keep the bar out of reach at the Y2K head count, fire 🗳 Force the majority: stay / leave** (`force_majority_stay` / `force_majority_leave`, final round only, latched like the real one). |
 
 ### E. Act III: the server room
 
@@ -245,6 +248,7 @@ program in the Internet cannot have an answer accepted.
 |---|---|---|
 | *(auto)* `majority_reached` | — | The room is unlocked (`do door server_room, state: unlocked`, `lights_server_open`). Every member of the winning faction gets **The Whole Truth**: all Trabolta and environmental facts, the four combo halves, and **The Legendary Fact** last. The recruit quests settle. |
 | **🚪 Server room door opened** (hardware fallback) / **🔓 unlock (override)** | every Antivirus booth: *"Server room breach. Get there."* | **From the Y2K clock on**, entering a locked room trips the **alarm**, latched for 120 s (before that the door and the patch bay, combos included, do nothing — a curious guest or a replayed sensor cannot end the night). Only the first alarm hurts Trabolta. After an unlock, the Antivirus police non-members in person. |
+| **♟ Cold Lock: they beat the machine** (`chess_won`, the dead-phone fallback) · **🔒 re-lock + re-arm** (`rearm_server_room`) | a host or Antivirus who **saw the mate** on the chess phone taps **♟ They beat the machine** on the winner's card | **From the Y2K clock on**, a chess win disarms the door for **90 s** (`Kernel.disarmed_until`, ring green, `lights_server_open`); then it re-locks (a door still propped open trips the alarm on its next report). Before that a win is practice. `# hosts` logs open/closed. Re-arm locks the room again, clears the alarm latch and closes a window; lights stay (💡 restores them). |
 | **🔌 Combo A** · **💥 Combo B** · **❌ wrong combination** (hardware fallbacks) | — | Combo A is `V2-D5, V4-D1, V6-D8, V7-D3` and disables Trabolta. Combo B is `V1-D6, V3-D2, V5-D7, V8-D4` and self-destructs. Two wrong combinations, or one in a locked room, trip the alarm; otherwise Trabolta says *"Stop touching me."* |
 | *(auto)* blackout → **🪩 Dance lights** (fallback; auto 10 s later) | — | Every light goes out, every phone says **GO TO THE LIVING ROOM**, and the dance song plays. |
 | **🏍 After the dance: weakened Trabolta recounts** (`trabolta_recounts`, after Combo A) | — | Everyone gets every backstory + truth.txt. He names each identity, motive and accomplishment, plus the trustworthy and worst program, then leaves on his motorcycle and everyone is freed. |
@@ -261,6 +265,16 @@ program in the Internet cannot have an answer accepted.
 | *(in Grok Prom)* | a host presses **💘 Said "You're the one that I want"**, or Trabolta fires `the_line_works` in a DM | **Pickup Line** → Song Ending. |
 | **💔 Nobody has the line → confession → rave** (`no_pickup_line`) | — | **Sad Confession** → rave. |
 | *(alt, only in Grok Prom)* **💌 Trabolta begs for relationship advice** → **🗳 Count the advice poll** (or **💞 helped** / **⛈ thwarted**, which only answer in the advice phase) → **🕺 Everyone hand-jived** | after thwarted: every Antivirus booth says they are banished too | Help → he wins Sandy. Thwart → everyone is banished to the Internet and learns *The Hand Jive Exception* → the hand jive crashes him. |
+
+### G. The awards ceremony (after any final ending, K-25)
+
+| Director fires | Performers do | What happens |
+|---|---|---|
+| **G1 · 🏆 Start the awards ceremony** (`start_the_ceremony`; refused until `Night.ended`, and `banished` is not an ending) | Clippy hosts after `destroyed` / `rave` and **reads every line aloud** from The Desktop room | `!` alert to the living room, `screens_ceremony`, **The Ceremony**: the host opens in The Desktop, per ending (Trabolta weakened after `disabled`, rebooted after `hand_jive`, showman otherwise). Trabolta's lines are spoken by the TV. |
+| **G2–G6** the five fixed awards (`award_most_trusted`, `award_least_trusted`, `award_frequent_flyer`, `award_lore_hoarder`, `award_truthcoin_tycoon`) and **G7–G9** the three bonus awards (`award_best_liar`, `award_duck_speedrun`, `award_quest_completionist`), each **with the winner picked on the cue sheet** (from the recap numbers) | the winner comes up to the TV for a trophy | **Present Award**: the slide `screens_award_<name>` (`Night.screen` = `award_<name>`; it persists over the screensaver), the host's line with the winner's name and number (the winner's own var: trust, Internet visits, codex count, Truthcoin; the bonus awards read the cue sheet's **value** box — lies accepted, the duck time, quests done — and have a line without a number when it is empty), and a 🏆 reply to the winner. `value` also overrides a fixed award's number. Firing an award again corrects it. |
+
+Lines Trabolta's worker writes (W-24) are posted by the director as
+Trabolta in The Desktop; the template lines stay the fallback.
 
 ## Endings
 
@@ -481,7 +495,8 @@ live night replay identically.
 | **Sensors** | house → story | stagehand turns MQTT into `POST /api/mod/signal {name}`: `server_door_opened` (door contact, `edge: true`, retained messages ignored; the story latches the alarm for 120 s), `printer_button_pressed`, `printer_opened`, and the patch bay's `patch_combo_a` / `patch_combo_b` / `patch_rejected`. Stagehand judges the combos until signal args exist. Every one also has an admin fallback button. |
 | **Check-in** | door / QR / terminal → story | `POST /api/mod/signal {name: "checked_in", subject: "<guest id>", args: {at: "The Desktop"}}`. `at` must be the **exact declared LOCATION name**. Anything else, or no arg, moves nobody. Today the sources are the door scan during the summons and the 📍 button. |
 | **The CAPTCHA, tutorial and poll** | guest phone → story | `show captcha / tutorial / poll …` cards answer via `POST /api/guest/widget {seq, result}`, which the story hears as `when captcha answered for program:` (and so on). |
-| **Wall QR codes** | guest phone → app | Print the `url` from `POST /api/mod/codes` → `codex[]` (`?code=&unlock=`). A signed-in guest redeems on load. |
+| **Wall QR codes** | guest phone → app | Print from the editor: Run → Join → **🖨 Print sheet…** (QRs drawn in the browser). Source: `POST /api/mod/codes` → `codex[]` (`?code=&unlock=`), `joinLink` (the join poster) and `checkin[]` (one room sign per non-prison, non-cutscene LOCATION, `?code=&checkin=<slug>`). A signed-in guest redeems on load. |
+| **Recap numbers** (the ceremony) | server → director | `GET /e/<event>/api/mod/recap` (directors only: the author session or `?token=<mod token>`) → ranked lists off live state: `trust`, `truths` (accepted minus lies), `lies` (accepted confident lies, Moment of Truth + DM filings, credited off the log — no program var holds them), `internetVisits`, `codex`, `quests` (done), `truthcoin`, plus `factions` and a paste-ready `text`. `?format=text` returns just the text, to copy into the cue sheet's winner/value boxes or `cast:Trabolta`. Rehearsal personas are listed, marked `(persona)`. Duck run times are not in it (read them off the tablet). |
 | **Codex room** | guest phone → server | `POST /api/guest/codex/redeem {code}` · `POST /api/guest/codex/share {entry, to}` |
 | **Performer booth** | performer phone → server | `POST /api/prime/codex/share {entry, to}`; `POST /api/prime/act` fires the guest-card buttons *as* that character. |
 | **Puzzles / hardware unlocks** | puzzle → story | `POST /api/mod/codex {who, entry}` · `POST /api/mod/quest {who, quest, action, text?}`. Guest ids come from the pass QR, or from `/api/state?role=mod` → `roster`. |
@@ -561,8 +576,9 @@ presses the slip's question number (Q1–Q3).
 ### QR placements (all 41 coded entries)
 
 Print each as a QR of its `?code=&unlock=` link (from `POST
-/api/mod/codes`) **plus** the typed code. The printable-sheet software is
-a CHECKLIST item.
+/api/mod/codes`) **plus** the typed code: Run → Join → **🖨 Print sheet…**
+prints them with the join poster and the room check-in signs (skip The
+Server Room's sign — the check-in rule doesn't handle it).
 
 | Where | Codes |
 |---|---|

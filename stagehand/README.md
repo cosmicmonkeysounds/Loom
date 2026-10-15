@@ -122,6 +122,10 @@ drives: { hunger: 40, suspicion: 55, generosity: 10, resolve: 30 }  # 0–100, o
 phases:                                   # an authored cue per Night.phase
   free_roam: "The glitch. The house is open and he has just revealed himself…"
   destruct: "Three keys have turned. He feels it…"
+secrets:                                  # a hunt he must never be able to check
+  topics: [billboard, pet cemetery]       #   the questions' words (he is told never to judge these)
+  match: [pickles, eleven years]          #   answer words (never shown to any model)
+  lore: ["▒ STAMPED"]                     #   codex entries holding this are hunt answers
 ---
 You are the DIRECTOR OF THE MIND of Trabolta…
 ```
@@ -139,6 +143,18 @@ You are the DIRECTOR OF THE MIND of Trabolta…
 - **`questions`** — the open questions the character is collecting
   answers to (its obsessions), each with the answers gathered so far and
   who gave them.
+- **`secrets`** — answer secrecy (`agents/secrets.py`). Every orchestrator
+  output is scrubbed before it reaches the mind: a `learned` claim that
+  names a topic or match word is dropped whole (no verdict is ever kept,
+  so the voice can never tell a true answer from a confident lie), and a
+  note, brief line or dossier entry that *judges* one is dropped too; the
+  trace's result lists what was `suppressed`. Codex entries carrying a
+  `lore` marker never reach any prompt — text *or* title, since a title
+  can be the answer (ground-truth lore, held lore, what the speaker holds,
+  lookup cards, the house digest, the survey delta) — and a restored mind
+  is pruned on boot. Keep `topics` to specific phrases (a common word
+  like "song" drops every claim that uses it) and never an answer word:
+  topics are printed into the orchestrator's prompt.
 - **`phases`** — when the house enters a phase (`Night.phase` in the
   facts delta), the orchestrator's survey is handed the author's cue for
   it; a reflection always sees the current phase's cue.
@@ -223,7 +239,7 @@ is YAML frontmatter + the system prompt:
 | `facts` | world path prefixes to show it (Trabolta lists exact `Night.*` names, never the bare `Night.` and never `Kernel.`: the show keeps its secrets on `Kernel`) |
 | `them` | the speaker's variables to show it (default: all) |
 | `when` | a gate over `self.<var>`, `them.<var>`, `speaker.kind`, world paths |
-| `unavailable` | what it says while the gate is closed (else silence) |
+| `unavailable` | what it says while the gate is closed (else silence). With **no worker online at all**, the event server says the story's `CHARACTER … hold:` line instead, after ~20 s |
 | `fallback` | what it says when the model fails (else silence) |
 | `model` / `endpoint` / `temperature` / `max_tokens` / `reasoning_effort` | per-character overrides of the section's `llm:` |
 | `mind` | the orchestrator's prompt file (how *this* character grows); a built-in default otherwise |
