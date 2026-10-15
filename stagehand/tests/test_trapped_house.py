@@ -138,6 +138,18 @@ def test_every_sound_has_a_qlab_cue():
         assert cues == [OscCue(addr=f"/cue/{name}/start", args=(), t_exec_offset_ms=None, to=("qlab",))], name
 
 
+def test_the_ceremony_sounds_are_cued():
+    """K-25: the ceremony beats (and the rule that opens them) play their own
+    sounds; each is a `sound` line the story really emits, with a QLab rule."""
+    ceremony = _code((STORY / "beats/ceremony.loom").read_text(encoding="utf-8"))
+    main = _code((STORY / "main.loom").read_text(encoding="utf-8"))
+    opener = main[main.index("when start_the_ceremony:") :].split("\nwhen ", 1)[0]
+    sounds = set(re.findall(r"^\s*(?:sound|sfx)\s+([A-Za-z0-9_]+)\s*$", ceremony + "\n" + opener, re.M))
+    assert {"ceremony_bed", "award_fanfare"} <= sounds, sounds
+    for name in sounds:
+        assert evaluate_cues(_show().cues, _directive("sfx", name)) == [OscCue(addr=f"/cue/{name}/start", args=(), t_exec_offset_ms=None, to=("qlab",))], name
+
+
 def _mqtt(cues) -> list[tuple[str, dict]]:
     return [(c.topic, json.loads(c.payload)) for c in cues if isinstance(c, MqttCue)]
 

@@ -25,7 +25,7 @@ and you will make a pivot table out of anything.
 **Randy Barkmore Sr.**, ninety, the former Mayor of Halifax. Your son, Mayor
 **Randy Barkmore Jr.**, died in a sinkhole at the opening of Halifax's first AI
 Data Centre, built on the site of the Halifax Explosion Memorial Pet Cemetery.
-He arrived five hours early, at 4 a.m., because he was so excited. Nobody has
+He arrived at 4 a.m., hours before anyone else, because he was so excited. Nobody has
 ever told you why the ground gave way.
 
 Since then you have been seriously worried about the family legacy. You need

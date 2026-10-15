@@ -42,6 +42,7 @@ import {
   type PictureChoice,
 } from "./identity.ts";
 import { foldName } from "../src/parser/names.ts";
+import { canonicalPlaceArgs } from "./place-args.ts";
 import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
 import { Pairing, RESUME_ROUTE } from "./routes/n02.ts";
 import { PushRoutes } from "./routes/k31.ts";
@@ -1021,7 +1022,8 @@ export class EventRuntime {
           out.push({ kind: "fire", ok: false, what: def.id, error: "unknown subject" });
           continue;
         }
-        const events = this.commit("signal", def.id, subject, act.args ?? null, req.character);
+        const args = act.args === undefined ? null : canonicalPlaceArgs(act.args, sim.model.locations.values());
+        const events = this.commit("signal", def.id, subject, args, req.character);
         this.fanout(events);
         // A use only counts when the story did something with it. A refusal
         // ("That function is not available yet.", a room off the allow-list)
@@ -3077,7 +3079,7 @@ export class EventRuntime {
         // Optional JSON arguments (`{ level: 3 }`) bind by name in listening
         // bodies, like `fire name with level: 3` (Loom 4 §9.2).
         const rawArgs = body["args"];
-        const args = rawArgs !== null && typeof rawArgs === "object" && !Array.isArray(rawArgs) ? rawArgs : null;
+        const args = rawArgs !== null && typeof rawArgs === "object" && !Array.isArray(rawArgs) ? canonicalPlaceArgs(rawArgs as Record<string, unknown>, this.sim.model.locations.values()) : null;
         // Fired *as* a character (the performer-lens interaction path, like
         // `/api/prime/act`): only that character's hooks hear it.
         const actor = str(body, "actor");

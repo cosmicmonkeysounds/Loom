@@ -402,6 +402,14 @@ show:
     - on: { directive: sfx }
       match: { target: hand_jive }
       osc: { addr: "/cue/hand_jive/start", to: qlab }
+    # The awards ceremony (K-25): a bed under the whole ceremony, a fanfare
+    # on every award. Assets: HW-AUD-15.
+    - on: { directive: sfx }
+      match: { target: ceremony_bed }
+      osc: { addr: "/cue/ceremony_bed/start", to: qlab }
+    - on: { directive: sfx }
+      match: { target: award_fanfare }
+      osc: { addr: "/cue/award_fanfare/start", to: qlab }
 
     # ── Alexa: `do announce "…"` → show/announce {"text": "…"} → the `alexa:`
     # section below (same box) plays it on the house speakers. ──

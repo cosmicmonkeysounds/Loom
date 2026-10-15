@@ -879,7 +879,7 @@ everyone at the end) · **X** finale artefact.
 |---|---|---|---|---|---|---|---|---|
 | Maps And Ducks | Maps And Ducks | E | | `MAPSANDDUCKS-COM` | | QR on the framed billboard photo (Desktop) | ✚ | The business whose neglected billboard on Barrington Street advertises mapsandducks.com; Trabolta registered the lapsed domain ("if there is a billboard downtown everyone will think it is legit") and evicted the real owners by citing the website as ownership. Tonight is "a special fundraiser party to restore the sign at Maps And Ducks." |
 | The Billboard On Barrington | The Billboard On Barrington | E | | `BARRINGTON-ST` | | QR on a street photo (The Tube) | ✚ | The billboard: a duck, a map pin that reads YOU'RE HERE (sic). |
-| The Data Centre Sinkhole | The Data Centre Sinkhole | E | | `SINKHOLE-4AM` | | QR on a newspaper clipping (The Cache) | ✚ | Halifax's first AI Data Centre, built on the site of the Halifax Explosion Memorial Pet Cemetery over everyone's objections; destroyed at dawn on opening day; Mayor Randy Barkmore Jr. arrived five hours early, at 4 a.m., and died in the sinkhole. |
+| The Data Centre Sinkhole | The Data Centre Sinkhole | E | | `SINKHOLE-4AM` | | QR on a newspaper clipping (The Cache) | ✚ | Halifax's first AI Data Centre, built on the site of the Halifax Explosion Memorial Pet Cemetery over everyone's objections; destroyed at dawn on opening day; Mayor Randy Barkmore Jr. arrived at 4 a.m., hours before anyone else, and died in the sinkhole (the text never says how early: that would give away H3). |
 | The Pet Cemetery | The Halifax Explosion Memorial Pet Cemetery | E | | `PET-CEMETERY` | | QR on a memorial pamphlet (The Registry) | ✚ | The cemetery and the protests. |
 | The Halifax Computer | The Halifax Computer | E | | | | The Router prop; Truther Download | ✚ | This house is the computer that holds the last facts Trabolta needs; he can install programs into it remotely and lift a consciousness into a program, but cannot get in himself. |
 | The Mud Room | The Mud Room | E | | | | Upload (every program) | | Where you left your body (keep current text). |
@@ -2679,7 +2679,7 @@ at a time.
    `[Antivirus, Hosts, The Way Out, Unlimited Power]` (sorted), Hosts/Antivirus `joinable:
    false`, both recruit factions hidden; LOCATION ids in declaration order exactly §2.4 (The
    Desktop first; The Internet prison + sealed; The Mud Room cutscene; The Server Room
-   hidden); default role `Program`; codex size **132**; 41 coded entries; quests: 16 in §2.10
+   hidden); default role `Program`; codex size **133**; 41 coded entries; quests: 16 in §2.10
    order with titles and givers; rule count equals the number of top-level `when` rules in
    main.loom (both builds agree); `namedEvents` ⊇ every admin INTERACTION in §2.9; performer
    interactions include the six `accurate_q*` / `confident_q*` and **not** `accurate_truth` /

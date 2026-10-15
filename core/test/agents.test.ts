@@ -822,11 +822,16 @@ describe("EventRuntime agents", () => {
       const reply = await call(rt, "POST", "/api/agent/reply", { id: r.id, say: "", acts: [{ kind: "fire", name: "cut the lights", args: { room } }] }, { moderator: true });
       return { used: r.powers.find((p) => p.id === "cut the lights")?.used, acted: reply.json["acted"] };
     };
-    expect(await cut("the cache")).toEqual({ used: 0, acted: [{ kind: "fire", ok: true, what: "cut the lights", refused: true }] });
+    expect(await cut("the attic")).toEqual({ used: 0, acted: [{ kind: "fire", ok: true, what: "cut the lights", refused: true }] });
     expect(await cut("The Cloud")).toEqual({ used: 0, acted: [{ kind: "fire", ok: true, what: "cut the lights", refused: true }] });
-    // Still one use left (limit: 1): the real cut lands, then the limit holds.
-    expect(await cut("The Cache")).toEqual({ used: 0, acted: [{ kind: "fire", ok: true, what: "cut the lights" }] });
+    // Still one use left (limit: 1): the real cut lands — a `room` argument
+    // folds onto the declared LOCATION (case, `_`, spaces), so the story's
+    // exact compare and stagehand's cue rule both see "The Cache" — then
+    // the limit holds.
+    expect(await cut("the  CACHE")).toEqual({ used: 0, acted: [{ kind: "fire", ok: true, what: "cut the lights" }] });
     expect(rt.liveSim!.worldEntries().find((w) => w.path === "Trabolta.lights_cut")?.value).toBe("1");
+    const cue = rt.liveSim!.log.since(0).find((e) => e.type === "directive" && (e as { verb: string }).verb === "cue") as { args: string } | undefined;
+    expect(cue?.args).toBe("lights, room: The Cache, state: off");
     expect((await cut("The Cache")).acted).toEqual([{ kind: "fire", ok: false, what: "cut the lights", error: "power exhausted for this run" }]);
   });
 

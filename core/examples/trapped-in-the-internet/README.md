@@ -87,7 +87,7 @@ cast/pool.loom         23 more guest programs: bare names + avatars
 cast/props.loom        The Uploader · The Router · The Screensaver · The Tablet · Kernel (the
                        hidden secret state)
 cast/trabolta.loom     the AI: his vars, hooks, and 11 agent powers
-codex/1-world.loom …   132 CODEX entries in eight numbered files. The order matters:
+codex/1-world.loom …   133 CODEX entries in eight numbered files. The order matters:
 codex/8-jeeves.loom    stagehand feeds Trabolta the first 24 entries as "ground truth", so
                        the environment comes first and the scrambled Jeeves fragments last
 trabolta.persona.md    the voice: the fast model's system prompt + frontmatter knobs
@@ -130,7 +130,7 @@ These rules matter when you edit. Break one and something fails silently.
 
 As of 2026-10-14 the project compiles clean, both per file and
 concatenated the way the server joins them: **29 files, 0 errors, 0
-warnings; 86 beats, 132 codex entries (41 with codes), 16 quests, 75 story
+warnings; 90 beats, 133 codex entries (41 with codes), 16 quests, 75 story
 rules.**
 
 ## Before the doors open

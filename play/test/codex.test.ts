@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { pmChannelId, pmOtherParty, unlockFromSearch, withoutUnlock } from "../src/codex.ts";
+import { ApiError } from "../src/client.ts";
+import { REDEEM_THROTTLED, pmChannelId, pmOtherParty, redeemErrorText, unlockFromSearch, withoutUnlock } from "../src/codex.ts";
 
 describe("private threads", () => {
   it("one id whoever opens it, and the other party from my side", () => {
@@ -20,5 +21,15 @@ describe("unlock deep link", () => {
     expect(unlockFromSearch("?unlock=")).toBeNull();
     expect(withoutUnlock("?code=EVT1&unlock=SANDY-1997")).toBe("?code=EVT1");
     expect(withoutUnlock("?unlock=X")).toBe("");
+  });
+});
+
+describe("the Codex box on a failed redeem (K-11)", () => {
+  it("says to wait on a 429 and stays quiet otherwise", () => {
+    expect(redeemErrorText(new ApiError("slow down", 429))).toBe(REDEEM_THROTTLED);
+    expect(REDEEM_THROTTLED).toMatch(/Too many tries/u);
+    expect(redeemErrorText(new ApiError("nope", 400))).toBeNull();
+    expect(redeemErrorText(new Error("offline"))).toBeNull();
+    expect(redeemErrorText(null)).toBeNull();
   });
 });

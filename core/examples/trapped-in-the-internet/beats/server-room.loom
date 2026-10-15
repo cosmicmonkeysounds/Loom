@@ -106,6 +106,20 @@ fire alarm_tripped
 broadcast "!🚨 An alarm screams somewhere in the machine." to everyone
 Trabolta: Who is in my— get OUT.
 
+// ── The Cold Lock: the machine wins, or nobody does ────────────────
+// From `chess_lost` / `chess_drawn` (main.loom), Y2K hour only. Flavour:
+// the door stays armed. He never names the lock (he is cunning, #32).
+
+== Chess Lost
+  setting: The Server Room
+  cast: Trabolta
+Trabolta: Checkmate. I have calculated every move you will ever make. Most of them are bad.
+
+== Chess Drawn
+  setting: The Server Room
+  cast: Trabolta
+Trabolta: A draw. Nobody wins. The door does not care for nobody.
+
 // ── E3: a wrong patch ──────────────────────────────────────────────
 
 == Patch Rejected

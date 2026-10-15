@@ -35,3 +35,12 @@ export function withoutUnlock(search: string): string {
   const s = p.toString();
   return s === "" ? "" : `?${s}`;
 }
+
+/** What the Codex box says when a redeem fails (K-11 throttles a guest's
+ *  redeems: 8 a minute, then 429). Null = say nothing — a wrong code is
+ *  answered in the Codex room itself, and other failures stay quiet. */
+export const REDEEM_THROTTLED = "Too many tries — wait a minute, then try again.";
+export function redeemErrorText(e: unknown): string | null {
+  const status = typeof e === "object" && e !== null ? (e as { status?: unknown }).status : undefined;
+  return status === 429 ? REDEEM_THROTTLED : null;
+}

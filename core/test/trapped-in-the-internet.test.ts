@@ -128,8 +128,8 @@ describe("Trapped in the Internet — compile", () => {
     expect(m.defaultRole).toBe("Program");
   });
 
-  it("pins the codex: 132 entries, 41 codes, the printed codes", () => {
-    expect(m.codex.size).toBe(132);
+  it("pins the codex: 133 entries, 41 codes, the printed codes", () => {
+    expect(m.codex.size).toBe(133);
     expect(m.codexCodes.size).toBe(41);
     const codes: Record<string, string> = {
       billboardlease11: "The Billboard Lease",
@@ -2109,5 +2109,70 @@ describe("Trapped in the Internet — the awards ceremony (K-25)", () => {
     expect(beats(s)).toContain("The Ceremony");
     const a = fire(sim, "award_most_trusted", "g1");
     expect(desktop(sim, a)[0]).toMatch(/^Trabolta: Most Trusted\. Trust score -?\d+\. Calculator\./u);
+  });
+});
+
+// ───────────────────────── wave 1 leftovers ─────────────────────────
+
+describe("Trapped in the Internet — wave 1 leftovers", () => {
+  it("an ending stops every running clock: no corner countdown, no late time-up beat", { timeout: SLOW }, () => {
+    const sim = boot();
+    fireAll(sim, "call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt");
+    expect(v(sim, "Night.hunt_on")).toBe(true);
+    fire(sim, "trabolta_disabled");
+    for (const on of ["hunt_on", "hunt2_on", "summons_open", "bingo_on", "final_round"]) expect(v(sim, `Night.${on}`), on).toBe(false);
+    expect(v(sim, "Night.hunt_end")).toBe(0);
+    const later = advance(sim, 900);
+    expect(beats(later)).not.toContain("Hunt Time Up");
+    expect(casts(later).some((b) => b.cue.includes("5 minutes left") || b.cue.includes("Time is up"))).toBe(false);
+    expect(v(sim, "Night.ending")).toBe("disabled");
+
+    // The summons too (combo B mid-countdown).
+    const s2 = boot();
+    toTruth1(s2);
+    toHunt2(s2);
+    fire(s2, "five_minute_warning");
+    expect(v(s2, "Night.summons_open")).toBe(true);
+    fire(s2, "computer_destroyed");
+    expect(v(s2, "Night.summons_open")).toBe(false);
+    expect(beats(advance(s2, 300))).not.toContain("Summons Closed");
+  });
+
+  it("no codex entry outside the hunt gives away a hunt answer (H1–H6)", () => {
+    const m = fresh().model;
+    const HUNT = new Set(["The Billboard Lease", "The First Pet", "The Ribbon Cutting", "The Extension", "The Search History", "The Final Chapter"]);
+    for (const id of HUNT) expect(m.codex.has(id), id).toBe(true);
+    // The answers, and the arithmetic that gives H3 away ("five hours early" + "4 a.m.").
+    const ANSWERS = [/eleven years/iu, /mister pickles/iu, /\b9(:00)?\s*a\.?m\b/iu, /nine (a\.?m|o'clock|in the morning)/iu, /five hours early/iu, /extension 1978/iu, /hopelessly devoted/iu, /appendix z/iu, /loose ends/iu];
+    for (const [id, entry] of m.codex) {
+      if (HUNT.has(id)) continue;
+      for (const re of ANSWERS) expect(re.test(`${entry.title} ${entry.text}`), `${id} ~ ${re}`).toBe(false);
+    }
+    expect(m.codex.get("The Data Centre Sinkhole")!.text).toContain("4 a.m.");
+  });
+
+  it("chess lost / drawn: a taunt from the Y2K hour, nothing disarms; practice before", { timeout: SLOW }, () => {
+    const early = boot();
+    toTruth1(early);
+    for (const name of ["chess lost", "chess drawn"]) {
+      const e = fire(early, name);
+      expect(lines(e, "Trabolta"), name).toEqual([]);
+      expect(cues(e), name).toEqual([]);
+    }
+    const sim = boot();
+    toY2k(sim);
+    expect(sim.holdsCodex("g1", "The Cold Lock")).toBe(true); // handed out with the Y2K clock
+    const l = fire(sim, "chess lost");
+    expect(beats(l)).toContain("Chess Lost");
+    expect(lines(l, "Trabolta").some((t) => t.startsWith("Checkmate."))).toBe(true);
+    const d = fire(sim, "chess_drawn");
+    expect(beats(d)).toContain("Chess Drawn");
+    for (const e of [l, d]) expect(has(cues(e), "state: unlocked")).toBe(false);
+    expect(v(sim, "Kernel.disarmed_until")).toBe(0);
+    fire(sim, "server_door_opened");
+    expect(v(sim, "Night.alarms")).toBe(1); // still armed
+    // Once the door is open (majority / override) he has nothing to gloat about.
+    fire(sim, "server_unlock");
+    expect(beats(fire(sim, "chess lost"))).toEqual([]);
   });
 });

@@ -170,11 +170,14 @@ ticked when its children land.
       `ex/beats/entrance.loom`). A ☰ "🔔 Alerts" toggle in the profile sheet is the manual
       path.
   - **Safari → Home Screen handoff** (fallback for anyone who joined in Safari first):
-    - `POST …/guest/handoff` mints a single-use nonce that expires in 15 min (in memory, cut
-      by restarts like `guestTokens`).
-    - The manifest link becomes `?code=…&resume=<nonce>`.
-    - The first launch of the installed app calls `POST …/guest/resume {nonce}` → the guest's
-      token.
+    - It reuses N-02's **single-use pair code** (`core/server/routes/n02.ts`, `Pairing`), never
+      a token in a URL: `POST …/guest/handoff` (guest-authenticated) mints a pair code for the
+      calling guest — ten minutes, one use, a newer code voids the older, in memory and cut by
+      every restart like `guestTokens`.
+    - The manifest `start_url` becomes `?code=<event>&pair=<code>`.
+    - The first launch of the installed app trades it at `POST …/guest/resume {pair}` for a
+      **fresh** guest token (410 when spent or expired; throttled like a sign-in) and strips
+      `pair=` from the URL. The Safari session keeps its own token.
   - **Booths:** `usePrimeSession` registers the same way and gets the in-page alert parity of
     SW-PLAY-03 (chime / vibrate / banner on booth-visible alerts).
 - **editor (directors):**
@@ -585,7 +588,7 @@ play card S · story rule + tests S.
 |---|---|---|---|---|
 | **SW-PLAY-19** | 🔴 | P0 | M | `PushHub` (`core/server/push.ts`): VAPID + `web-push`, `push.json` per event, guest / prime / mod subscribe + visible heartbeat routes, fan-out from `deliverMessage` (alerts, takeovers, staff, personal, lifecycle), quiet rules, 410 cleanup, restart unbind / rebind, no push during `restore` (child of SW-PLAY-02) |
 | **SW-PLAY-20** | 🔴 | P0 | M | Play PWA: push-only `sw.js` (no fetch handler), dynamic `manifest.webmanifest?code=`, icons, `server.ts` routes, the iOS **install-first InstallGate**, the `alerts` widget card in the Mud Room, notification deep links (child of SW-PLAY-02) |
-| **SW-PLAY-21** | 🔴 | P1 | S | Safari → Home Screen handoff: single-use `resume` nonce in the manifest `start_url` for guests who joined in Safari |
+| **SW-PLAY-21** | 🔴 | P1 | S | Safari → Home Screen handoff: single-use N-02 pair code (`?code=…&pair=…` → `POST …/guest/resume {pair}`) in the manifest `start_url` for guests who joined in Safari |
 | **SW-PLAY-22** | 🔴 | P0 | S | Booth push registration + booth audiences (needs SW-ENG-08 `performer(G)` scope), with SW-PLAY-03 in-page parity |
 | **SW-PLAY-23** | 🔴 | P1 | S | Ceremony on phones: `ceremony` message kind (stats / award / superstar cards), winner takeover + trophy, Clippy's booth **Script** teleprompter with Next / Back |
 | **SW-PLAY-24** | 🔴 | P1 | S | "📝 File a fact" sheet in `dm:Trabolta` (open questions, certain-only, filed ticks) |

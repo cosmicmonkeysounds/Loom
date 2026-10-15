@@ -15,6 +15,10 @@
 // read aloud, and the TV shows the award slide (`screens_award_<name>`,
 // which persists over the screensaver).
 //
+// Sound: `start_the_ceremony` starts `ceremony_bed` under the whole
+// ceremony; every award opens on `award_fanfare` (QLab cues in
+// `stagehand/trapped.house.yaml`, pinned by its cross-check test).
+//
 // When Trabolta's worker has written better lines (the cast-thread trick,
 // W-24), the director posts those as Trabolta in The Desktop; these stay
 // the fallback.
@@ -40,6 +44,7 @@ else:
 
 == Present Award
   setting: The Desktop
+sound award_fanfare
 if Night.award == "most_trusted":
   cue screens_award_most_trusted
   set Night.screen = "award_most_trusted"

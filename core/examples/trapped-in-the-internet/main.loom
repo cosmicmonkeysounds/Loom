@@ -997,6 +997,7 @@ ROLE Program
   when Night.final_round == true and self.cleared:
     set self.zipped = false
     unlock The Y2K Clock for self
+    unlock The Cold Lock for self
     if self.featured == "excel":
       -> Excel Final Round
     else if self.featured == "openoffice":
@@ -2042,6 +2043,19 @@ when chess_won:
   else if Night.ended != true and Night.step < 14:
     broadcast "♟ A chess win before the Y2K hour is practice only." to channel(hosts)
 
+// A loss or a draw on the chess phone (a phone app reports `chess lost` /
+// `chess drawn`; the director never needs to). Flavour only: nothing
+// disarms and nothing re-arms. From the Y2K hour, while the door is still
+// locked, Trabolta gloats in the server room (a hidden room: only programs
+// who have been inside see it); before that the phone is practice.
+when chess_lost:
+  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true:
+    -> Chess Lost
+
+when chess_drawn:
+  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true:
+    -> Chess Drawn
+
 // The window closes: the door re-locks (a door propped open past it trips
 // the alarm on its next report).
 when Kernel.disarmed_until > 0 and Time.elapsed >= Kernel.disarmed_until:
@@ -2077,6 +2091,21 @@ when patch_combo_a:
 when patch_combo_b:
   if Night.ended != true and Night.step >= 14:
     fire computer_destroyed
+
+// Any ending stops every clock: a hunt, the summons, bingo or the Y2K
+// hour left running would keep its corner countdown on the screens (under
+// the go-to-the-living-room overlay) and fire its own time-up beat later.
+when Night.ended == true:
+  set Night.hunt_on = false
+  set Night.hunt2_on = false
+  set Night.summons_open = false
+  set Night.bingo_on = false
+  set Night.final_round = false
+  set Night.hunt_end = 0
+  set Night.hunt2_end = 0
+  set Night.summons_end = 0
+  set Night.bingo_end = 0
+  set Night.y2k_end = 0
 
 // E4: Combo A — take the grease out of the lightning.
 when trabolta_disabled:
@@ -2314,6 +2343,7 @@ when start_the_ceremony:
     cue screens_ceremony
     set Night.screen = "ceremony"
     set Night.terminals = "ceremony"
+    sound ceremony_bed
     broadcast "!🏆 THE AWARDS CEREMONY. Every program to the living room." to everyone
     -> The Ceremony
 

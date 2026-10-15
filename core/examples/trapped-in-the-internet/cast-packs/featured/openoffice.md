@@ -29,7 +29,7 @@ ever since. You turned to making information free.
 Nobody in Halifax wanted the AI Data Centre. You used old FBI tactics to
 sabotage the construction site, with the destruction timed for the early
 morning before the official opening. On opening day, **Mayor Randy Barkmore
-Jr.** arrived five hours early, at **4 a.m.**, because he was so excited. The
+Jr.** arrived at **4 a.m.**, hours before anyone else, because he was so excited. The
 Data Centre was destroyed on schedule. **Nobody knows it was you.** You live
 with extreme guilt and paranoia.
 

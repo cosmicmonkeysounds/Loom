@@ -37,6 +37,7 @@ import { Tutorial, tourResult, tutorialSteps } from "./tutorial.tsx";
 import type { Action, Channel, PersonCard } from "./types.ts";
 import { usePush, type Push } from "./push.ts";
 import { PushCard, PushRow } from "./push-card.tsx";
+import { redeemErrorText } from "./codex.ts";
 
 function GuestRegister({ session }: { session: GuestSession }) {
   const [code, setCode] = useState(codeFromUrl);
@@ -469,6 +470,8 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const [people, setPeople] = useState<ReadonlySet<string> | "all" | null>(null);
   const [help, setHelp] = useState(false);
   const [inviting, setInviting] = useState(false);
+  // K-11: the Codex box says so when the redeem throttle answers 429.
+  const [codexNote, setCodexNote] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   useDocumentTitle(s.me?.title);
   // K-31a: `!` alerts + a character's DMs on a locked phone.
@@ -561,7 +564,11 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       // cards open their threads). Everywhere else, you talk.
       const send =
         active.kind === "codex"
-          ? (text: string) => void s.redeem(text).catch(() => {})
+          ? (text: string) =>
+              void s.redeem(text).then(
+                () => setCodexNote(null),
+                (e: unknown) => setCodexNote(redeemErrorText(e)),
+              )
           : active.kind === "quests"
             ? undefined
             : (text: string) => void s.say(active.id, text);
@@ -580,7 +587,15 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
           onSend={send}
           widgets={widgets}
           onPeople={() => setPeople(new Set((active.people ?? []).map((p) => p.id)))}
-          footer={roomActions.length > 0 ? <ActionRow actions={roomActions} /> : undefined}
+          footer={
+            active.kind === "codex" && codexNote !== null ? (
+              <p className="notice" role="status">
+                {codexNote}
+              </p>
+            ) : roomActions.length > 0 ? (
+              <ActionRow actions={roomActions} />
+            ) : undefined
+          }
         />
       );
     }
