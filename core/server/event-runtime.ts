@@ -26,6 +26,7 @@ import { Store, type Mutation } from "./store.ts";
 import { ChatStore, composeGuestMessages, decisionChannelFor, isPinnedRoom, visibleTo, type ChatMessage } from "./chat.ts";
 import { ipOf, queryTokenOf, readBody, sendJson, sseSend, str, tokenOf } from "./http-util.ts";
 import { RateLimiter } from "./rate-limit.ts";
+import { handleMetrics } from "./routes/metrics.ts";
 import { TtsProxy, ttsConfigFromEnv } from "./tts.ts";
 import { AvatarBook, ImageCache, avatarKey, avatarRefUrl } from "./avatars.ts";
 import { WikiClient, isAntivirusSoftware } from "./wiki.ts";
@@ -1710,6 +1711,9 @@ export class EventRuntime {
       sendJson(res, 200, this.tts.describe());
       return true;
     }
+
+    // --- process load for the K-32 load test (directors only) ---
+    if (handleMetrics(req, res, method, path, () => opts.moderator === true || this.sessions.canModerate(queryTokenOf(req, url)), () => this.clients.size)) return true;
 
     // --- the mind debugger's trace (directors only) ---
     if (method === "GET" && path === "/api/mod/agent/trace") {

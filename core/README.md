@@ -181,6 +181,11 @@ into channel-routed messages — the single source of truth the
   once and shared by every director). House tools stream
   `/events?role=mod&lean=1`: every `sim` / `message` / `lifecycle` frame,
   never a `snapshot` or `history` (stagehand uses it).
+- **Process load:** `GET /api/mod/metrics` (moderators) returns the
+  server process's cumulative CPU µs, memory, `loadavg` / `cpus`, the
+  event-loop delay since the previous read, and the stream-client count
+  (`server/routes/metrics.ts`) — the K-32 load test
+  (`scripts/accept/k32-load.ts`) samples it to record CPU on the VPS.
 - **The director's read:** each roster row also carries the guest's
   story position (`beat`, from `beatEntered.subject` bookkeeping) and
   their visited-beat trail (`visited`), and the snapshot includes the
