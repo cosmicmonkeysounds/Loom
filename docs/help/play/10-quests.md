@@ -40,4 +40,5 @@ You can file each question once, and the reply is the same whether you
 were right or not. A filed card says **sent** — the character's reply
 tells you whether it was accepted (one filing waits to be judged at a
 time). A fresh card arrives for the next one, and the old cards fold
-into one line each.
+into one line each — the newest card lists every question you can still
+file, earlier rounds' included.

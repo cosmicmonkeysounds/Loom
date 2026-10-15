@@ -192,6 +192,8 @@ ROLE Program
   fact_h6: bool = false
   fact_f1: bool = false
   fact_f2: bool = false
+  fact_open: text? = none
+  fact_sep: text? = none
 
   // ── Arrival ──
   // A new program stands in the Mud Room (the phone goes on rails there).
@@ -497,7 +499,8 @@ ROLE Program
   // answer, tick "I'm certain". Free chat never counts. A question from a
   // round that hasn't opened is refused (a crafted filing can't reach F2 in
   // round 1); an earlier round's question still files late — the verdict
-  // needs all eight. The card is dealt when each round's questions open
+  // needs all eight — so each card lists every open question the program
+  // hasn't filed. The card is dealt when each round's questions open
   // (and on clearance after that), and re-dealt after every filing (the
   // server throttles widget answers per guest, LOOM_RL_WIDGETS). A filing lands in # hosts; a host judges
   // it with 📝 accurate / 📝 confident lie on the program's card, any time
@@ -512,13 +515,41 @@ ROLE Program
     Trabolta: {self.name}. If you learn the answer to one of tonight's questions, file it with me on the card. Unfiled facts are rumours.
     fire deal_fact_card for self
 
+  // The card lists every open question this program hasn't filed yet, so
+  // a newer round's card never strands an earlier round's question (the
+  // play app folds every fact card but the newest in the thread).
   when deal_fact_card for program:
-    if Night.ended != true and Night.round == 1:
-      show fact "📝 File a fact" to program with thread: Trabolta, questions: "H1: Round 1 Q1. How many years did the Maps and Ducks billboard go unpaid? | H2: Round 1 Q2. What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery? | H3: Round 1 Q3. At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled?"
-    else if Night.ended != true and Night.round == 2:
-      show fact "📝 File a fact" to program with thread: Trabolta, questions: "H4: Round 2 Q1. What extension does the Customer Care card tell you to dial? | H5: Round 2 Q2. Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | H6: Round 2 Q3. What is the title of the last chapter of Trabolta's unfinished Unified Field Theory?"
-    else if Night.ended != true and Night.round == 3:
-      show fact "📝 File a fact" to program with thread: Trabolta, questions: "F1: Final Q1. What is the only thing Sandy has ever said? | F2: Final Q2. Who is taking Sandy to computer prom?"
+    if Night.ended != true and Night.round >= 1:
+      set program.fact_open = ""
+      set program.fact_sep = ""
+      if program.fact_h1 != true:
+        set program.fact_open = program.fact_open + program.fact_sep + "H1: Round 1 Q1. How many years did the Maps and Ducks billboard go unpaid?"
+        set program.fact_sep = " | "
+      if program.fact_h2 != true:
+        set program.fact_open = program.fact_open + program.fact_sep + "H2: Round 1 Q2. What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery?"
+        set program.fact_sep = " | "
+      if program.fact_h3 != true:
+        set program.fact_open = program.fact_open + program.fact_sep + "H3: Round 1 Q3. At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled?"
+        set program.fact_sep = " | "
+      if Night.round >= 2:
+        if program.fact_h4 != true:
+          set program.fact_open = program.fact_open + program.fact_sep + "H4: Round 2 Q1. What extension does the Customer Care card tell you to dial?"
+          set program.fact_sep = " | "
+        if program.fact_h5 != true:
+          set program.fact_open = program.fact_open + program.fact_sep + "H5: Round 2 Q2. Which song did Trabolta play 412 times the night before he registered mapsandducks.com?"
+          set program.fact_sep = " | "
+        if program.fact_h6 != true:
+          set program.fact_open = program.fact_open + program.fact_sep + "H6: Round 2 Q3. What is the title of the last chapter of Trabolta's unfinished Unified Field Theory?"
+          set program.fact_sep = " | "
+      if Night.round >= 3:
+        if program.fact_f1 != true:
+          set program.fact_open = program.fact_open + program.fact_sep + "F1: Final Q1. What is the only thing Sandy has ever said?"
+          set program.fact_sep = " | "
+        if program.fact_f2 != true:
+          set program.fact_open = program.fact_open + program.fact_sep + "F2: Final Q2. Who is taking Sandy to computer prom?"
+          set program.fact_sep = " | "
+      if program.fact_open != "":
+        show fact "📝 File a fact" to program with thread: Trabolta, questions: program.fact_open
 
   when fact answered for program:
     set program.fact_try = 0
