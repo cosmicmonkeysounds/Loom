@@ -700,6 +700,15 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
 .slide-body { padding: 0.8em 1.2em 1.1em; text-align: left; }
 .slide-body h2 { margin: 0 0 0.5em; font-size: 1.6em; text-align: center; }
 .slide-body p { margin: 0 0 0.6em; line-height: 1.3; }
+/* The live Trust Chart: a ranked list that shrinks to fit a full party. */
+.chart-window .slide-body { max-height: 80vh; overflow: hidden; }
+.chart-rows { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: 1.5em; font-size: clamp(12px, 1.8vw, 26px); }
+.chart-row { display: flex; gap: 0.5em; break-inside: avoid; padding: 0.15em 0.3em; background: #fff; border: 1px solid #808080; margin-bottom: 0.2em; }
+.chart-row:first-child { background: #ffffa0; font-weight: bold; }
+.chart-row:last-child:not(:first-child) { background: #e0e0e0; }
+.chart-rank { width: 2em; text-align: right; color: #404040; }
+.chart-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chart-value { font-variant-numeric: tabular-nums; }
 /* The Y2K clock: a Win98 taskbar tray, blown up. */
 .y2k-slide { background: #008080; }
 .y2k-tray {

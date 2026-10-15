@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parseScreenState, type ScreenProgram, type ScreenState } from "../src/screen.ts";
-import { BLACKOUT_MS, FLICKER_FRESH_MS, SLIDE_COPY, SLIDE_HOLD_MS, formatCountdown, screenLayers, slideCopy, slideSources, y2kClock } from "../src/slides.ts";
+import { BLACKOUT_MS, FLICKER_FRESH_MS, SLIDE_COPY, SLIDE_HOLD_MS, chartLines, formatCountdown, screenLayers, slideCopy, slideSources, y2kClock } from "../src/slides.ts";
 
 const T0 = 1_000_000;
 const empty: ScreenProgram = { slide: null, overlay: null, blackout: null, flicker: null };
@@ -19,6 +19,7 @@ function state(over: Partial<Omit<ScreenState, "program">> & { program?: Partial
     attract: false,
     countdown: null,
     remaining: null,
+    chart: null,
     target: "terminals",
     voice: null,
     announce: null,
@@ -90,7 +91,26 @@ describe("screen layers — precedence (N-03)", () => {
   });
 
   it("no answer yet: nothing on top", () => {
-    expect(screenLayers(null, T0, { piloting: false })).toEqual({ overlay: null, slide: null, corner: null, y2k: null, flicker: null });
+    expect(screenLayers(null, T0, { piloting: false })).toEqual({ overlay: null, slide: null, corner: null, y2k: null, flicker: null, chart: null });
+  });
+});
+
+describe("the live Trust Chart", () => {
+  const chart = { slide: "trust_chart", rows: [{ name: "Calculator", value: 30 }, { name: "Winamp", value: 10 }, { name: "VLC", value: 10 }, { name: "MS Paint", value: -5 }] };
+
+  it("rides the trust_chart slide only, and ranks ties together", () => {
+    const up = state({ chart, program: { slide: slide("trust_chart", T0, true) } });
+    expect(at(up, 60_000).chart).toBe(chart);
+    expect(at(state({ chart, program: { slide: slide("bingo", T0, true) } }), 0).chart).toBeNull();
+    expect(at(state({ chart, program: { slide: slide("trust_chart", T0, true), overlay: shot("alarm", T0, 2) } }), 0).chart).toBeNull();
+    expect(chartLines(chart).map((r) => `${r.rank}:${r.name}:${r.value}`)).toEqual(["1:Calculator:30", "2:Winamp:10", "2:VLC:10", "4:MS Paint:-5"]);
+  });
+
+  it("parses off the wire; junk rows drop, a junk chart is null", () => {
+    const s = parseScreenState({ attract: false, chart: { slide: "trust_chart", rows: [{ name: "A", value: 3 }, { name: 4 }, null, { name: "B", value: "x" }] } });
+    expect(s?.chart).toEqual({ slide: "trust_chart", rows: [{ name: "A", value: 3 }] });
+    expect(parseScreenState({ attract: false, chart: "nope" })?.chart).toBeNull();
+    expect(parseScreenState({ attract: false })?.chart).toBeNull();
   });
 });
 

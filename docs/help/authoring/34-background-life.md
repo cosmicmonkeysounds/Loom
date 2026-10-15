@@ -2,7 +2,7 @@
 title: Background life — scenes & generators
 section: Live Shows
 order: 34
-keywords: SCENE, GENERATOR, coroutine, tier, ambient, focal, active, loop, wait until, yield, bark, spawn, run, at, every, cancel, wait
+keywords: SCENE, GENERATOR, while, coroutine, tier, ambient, focal, active, loop, wait until, yield, bark, spawn, run, at, every, cancel, wait
 ---
 
 A living world needs things happening even when the audience isn't
@@ -33,7 +33,18 @@ GENERATOR Table Murmur
 A generator can also be **bound to a character** (a `generator` block
 inside a CHARACTER body) — it auto-starts with them and speaks as them.
 A `when <condition>` line in the header holds a generator back until the
-condition is true (`on <condition>` is the older spelling).
+condition is true (`on <condition>` is the older spelling). A `while
+<condition>` line silences a timed generator whenever the condition is
+false (the interval keeps running, so it resumes on the beat): the hum of
+the house stops once the night is over.
+
+```loom
+GENERATOR House Hum
+  tier: ambient
+  every 4m
+  while Night.ended != true
+  yield bark from A fan spins up. | An LED that was green is amber.
+```
 
 ## Scenes — scripted sequences with states
 

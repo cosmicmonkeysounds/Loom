@@ -2,7 +2,7 @@
 title: Lore — knowledge as a currency
 section: Live Shows
 order: 35
-keywords: CODEX, codex, lore, knowledge, unlock, puzzle, share, learns, directory, listed, people, private message, pm, alert, sealed, joinable, mind, LLM, language model, hold, offline, not responding
+keywords: secret, CODEX, codex, lore, knowledge, unlock, puzzle, share, learns, directory, listed, people, private message, pm, alert, sealed, joinable, mind, LLM, language model, hold, offline, not responding
 ---
 
 Some shows run on what the guests *know*. A `CODEX` entry is a piece of
@@ -85,6 +85,34 @@ holdings are read into its model's prompt and it can share them on, so a
 guest could otherwise launder a secret (another person's file, a door
 code) through it. Entries with no `about:`, and entries about the agent
 itself, go through as usual. Performer characters accept anything.
+
+Some lore must never reach a model at all, even in the holder's own
+conversation: a program's private orders, the virus they are carrying.
+Mark it `secret: true`. The entry is left out of every agent request and
+the agents' facts document (its title, its text, its holders, and the
+holder's `codex.<slug>` flag), and an agent refuses it as a share:
+
+```loom
+CODEX ILOVEYOU
+  title: LOVE-LETTER-FOR-YOU.TXT.vbs
+  secret: true
+  code: LOVE-LETTER-FOR-YOU
+  text:
+    It is a virus. You opened it anyway, and now you are carrying it.
+```
+
+The same goes for a ROLE's own state. List the slots no agent may read
+off a participant in the ROLE's `secret:` line (a plain name, or a dotted
+path such as `quest.excel_mission`):
+
+```loom
+ROLE Program
+  secret: carries_virus, planted_virus, excel_choice, quest.excel_mission
+  carries_virus: bool = false
+```
+
+Everything else about the guest still reaches the agent's worker; the
+persona's `them:` whitelist then picks which of it the models read.
 
 The codex has a sibling for what guests are *doing*: see *Quests — the
 quest log*.

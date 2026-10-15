@@ -60,6 +60,9 @@ export interface GenSpec {
   id: string;
   intervalMs: number;
   barks: string[];
+  /** `while <condition>` — barks only while this holds (the interval keeps
+   *  running, so a gate that reopens resumes on the beat). Null = always. */
+  while: string | null;
 }
 
 export interface FactionDef {
@@ -100,6 +103,10 @@ export interface RoleDef {
   /** Per-person state defaults from the typed slots. */
   defaults: Map<string, Value>;
   hooks: Hook[];
+  /** `secret: a, b, …` — per-person slots no agent-voiced character may
+   *  see: dropped from every agent request and the agents' facts document
+   *  (a guest's own `<id>.a`, and anything under `<id>.a.…`). */
+  secret: Set<string>;
 }
 
 export interface CharDef {
@@ -155,6 +162,11 @@ export interface CodexDef {
   /** Characters that hold the entry from the start (plus its subject). */
   knownTo: string[];
   text: string;
+  /** `secret: true` — never in an agent's prompt: kept out of every agent
+   *  request and the agents' facts document (title, text, holders and the
+   *  holder's `codex.<slug>` flag), and an agent refuses it as a share.
+   *  For a holder's private orders, or the virus they carry. */
+  secret: boolean;
 }
 
 /** A compiled `QUEST` — a task the story hands a participant, tracked in
@@ -527,6 +539,7 @@ function codexDef(id: string, body: CodexBody): CodexDef {
     code: body.code !== null && foldCode(body.code).length > 0 ? foldCode(body.code) : null,
     knownTo: [...body.knownTo],
     text: body.text,
+    secret: body.properties.get("secret")?.value.trim() === "true",
   };
 }
 
@@ -624,7 +637,13 @@ function roleDef(id: string, body: CharacterBody): RoleDef {
     const v = defaultValueOf(prop);
     if (v !== null) defaults.set(prop.name, v);
   }
-  return { id, defaults, hooks: hooksOf(id, "role", body) };
+  const secret = new Set(
+    (body.properties.get("secret")?.value ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s !== ""),
+  );
+  return { id, defaults, hooks: hooksOf(id, "role", body), secret };
 }
 
 function charDef(id: string, body: CharacterBody): CharDef {
@@ -721,9 +740,15 @@ export function parseDuration(s: string): number | null {
 /** Lower a generator body into an interval + bark list, or null. */
 function genSpec(id: string, body: RawLine[]): GenSpec | null {
   let intervalMs: number | null = null;
+  let gate: string | null = null;
   const barks: string[] = [];
   for (const line of body) {
     const text = line.text.trim();
+    const cond = stripPrefix(text, "while ");
+    if (cond !== null) {
+      gate = cond.trim().replace(/:$/u, "").trim() || null;
+      continue;
+    }
     const every = stripPrefix(text, "every ");
     if (every !== null) {
       // `every 20s` or `wait random(20s, 60s)` → take the first duration.
@@ -740,7 +765,7 @@ function genSpec(id: string, body: RawLine[]): GenSpec | null {
     if (yieldText !== null) barks.push(yieldText.trim());
   }
   if (intervalMs === null || barks.length === 0) return null;
-  return { id, intervalMs, barks };
+  return { id, intervalMs, barks, while: gate };
 }
 
 /**

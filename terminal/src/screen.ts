@@ -82,12 +82,34 @@ export interface ScreenState {
   attract: boolean;
   countdown: string | null;
   remaining: number | null;
+  /** The live chart while a chart slide is up (the Trust Chart), else null. */
+  chart: ScreenChart | null;
   target: ScreenTarget;
   program: ScreenProgram;
   /** Only on a poll that named a voice room. */
   voice: ScreenVoice | null;
   /** The latest house announcement (N-09, `announce.ts`), null before the first. */
   announce: Announcement | null;
+}
+
+/** A ranked chart the server keeps live (`SCREEN_CHARTS`, core). */
+export interface ScreenChart {
+  slide: string;
+  rows: Array<{ name: string; value: number }>;
+}
+
+/** A chart off the wire; malformed rows are dropped, a malformed chart is null. */
+export function chartOf(raw: unknown): ScreenChart | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r["slide"] !== "string" || !Array.isArray(r["rows"])) return null;
+  const rows: ScreenChart["rows"] = [];
+  for (const x of r["rows"]) {
+    if (typeof x !== "object" || x === null) continue;
+    const row = x as Record<string, unknown>;
+    if (typeof row["name"] === "string" && typeof row["value"] === "number" && Number.isFinite(row["value"])) rows.push({ name: row["name"], value: row["value"] });
+  }
+  return { slide: r["slide"], rows };
 }
 
 /** What a TV adds to its poll: the room it speaks for + its chat cursor. */
@@ -169,6 +191,7 @@ export function parseScreenState(raw: unknown, receivedAt: number = Date.now()):
     attract: r["attract"] as boolean,
     countdown: str(r["countdown"]),
     remaining: num(r["remaining"]),
+    chart: chartOf(r["chart"]),
     target: r["target"] === "tv" ? "tv" : "terminals",
     program: programOf(r["program"]),
     voice: voiceOf(r["voice"]),

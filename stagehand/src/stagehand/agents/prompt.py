@@ -125,6 +125,16 @@ def powers_block(persona: Persona, powers: list[dict[str, Any]], may_lookup: boo
     return "\n".join(lines)
 
 
+def their_variables(persona: Persona, their_vars: dict[str, Any] | None) -> dict[str, Any]:
+    """The speaker's variables a model may read: the persona's `them:`
+    whitelist (in its order; every plain name when there is none), never a
+    dotted sub-path. The voice and the orchestrator both read through this,
+    so a slot the author left off `them:` reaches neither model."""
+    vars_ = their_vars or {}
+    wanted = persona.them if persona.them is not None else tuple(sorted(vars_))
+    return {k: vars_[k] for k in wanted if k in vars_ and "." not in k}
+
+
 def state_block(persona: Persona, req: dict[str, Any]) -> str:
     me = req.get("self") or {}
     them = req.get("them") or {}
@@ -155,11 +165,8 @@ def state_block(persona: Persona, req: dict[str, Any]) -> str:
         lines.append(f"You are talking to: {name} (a guest{group})")
     if them.get("location"):
         lines.append(f"Where they are: {them['location']}")
-    their_vars = them.get("vars") or {}
-    wanted = persona.them if persona.them is not None else tuple(sorted(their_vars))
-    for key in wanted:
-        if key in their_vars and "." not in key:
-            lines.append(f"Their {key}: {their_vars[key]}")
+    for key, value in their_variables(persona, them.get("vars")).items():
+        lines.append(f"Their {key}: {value}")
     their_codex = [e.get("title", "") for e in persona.secrets.visible(them.get("codex"))]
     lines.append(f"They know: {'; '.join(their_codex)}" if their_codex else "They know nothing yet.")
 

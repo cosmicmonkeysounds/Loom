@@ -49,6 +49,7 @@ from .facts import Facts
 from .llm import Completion, LlmConfig, LlmError
 from .mind import Mind
 from .persona import Persona
+from .prompt import their_variables
 from .reply import extract_json, strip_think
 from .secrets import Secrets
 from .trace import Thought, Trace, new_thought
@@ -265,7 +266,7 @@ def reflect_messages(
     state = {
         "my_variables": me.get("vars") or {},
         "lore_i_hold": [f"{e.get('title')}: {' '.join(str(e.get('text', '')).split())[:160]}" for e in persona.secrets.visible(me.get("codex"))[:12]],
-        "speaker": {"kind": speaker.get("kind"), "name": name, "group": speaker.get("faction"), "location": them.get("location"), "variables": them.get("vars") or {}, "holds": [e.get("title") for e in persona.secrets.visible(them.get("codex"))]},
+        "speaker": {"kind": speaker.get("kind"), "name": name, "group": speaker.get("faction"), "location": them.get("location"), "variables": their_variables(persona, them.get("vars")), "holds": [e.get("title") for e in persona.secrets.visible(them.get("codex"))]},
         "world": req.get("world") or {},
         "powers": [{"name": p.get("id"), "left": (None if p.get("limit") is None else max(0, int(p.get("limit", 0)) - int(p.get("used", 0))))} for p in req.get("powers") or []],
     }

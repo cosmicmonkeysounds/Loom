@@ -5,13 +5,14 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { ScreenState } from "./screen.ts";
-import { FLICKER_MS, formatCountdown, screenLayers, slideCopy, slideSources, y2kClock, type OverlayKind, type ScreenLayers } from "./slides.ts";
+import type { ScreenChart } from "./screen.ts";
+import { FLICKER_MS, chartLines, formatCountdown, screenLayers, slideCopy, slideSources, y2kClock, type OverlayKind, type ScreenLayers } from "./slides.ts";
 
 /** PNGs that failed to load this page-load: go straight to the next source. */
 const missing = new Set<string>();
 
 /** One slide: the first of its PNGs that loads, else its text card. */
-export function SlideView({ slide, y2k }: { slide: { value: string; cue: string }; y2k: number | null }) {
+export function SlideView({ slide, y2k, chart = null }: { slide: { value: string; cue: string }; y2k: number | null; chart?: ScreenChart | null }) {
   const sources = slideSources(slide, import.meta.env.BASE_URL);
   const firstOk = () => sources.find((s) => !missing.has(s)) ?? null;
   const [src, setSrc] = useState<string | null>(firstOk);
@@ -26,6 +27,33 @@ export function SlideView({ slide, y2k }: { slide: { value: string; cue: string 
         <div className="y2k-tray">
           <span className="y2k-time">{c.time}</span>
           <span className="y2k-date">{c.date}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (chart !== null && chart.rows.length > 0) {
+    // A live chart (the Trust Chart): drawn from the server's rows, never a
+    // PNG, so an assessment mid-chart moves a name at the next poll.
+    return (
+      <div className="screen-slide" data-slide={slide.cue} data-chart="">
+        <div className="slide-window chart-window" role="table" aria-label={copy.title}>
+          <div className="ad-titlebar">
+            <span>{copy.title}</span>
+            <span className="ad-x">×</span>
+          </div>
+          <div className="slide-body">
+            <h2>{copy.title}</h2>
+            <ol className="chart-rows">
+              {chartLines(chart).map((r) => (
+                <li key={r.name} className="chart-row" role="row">
+                  <span className="chart-rank">{r.rank}.</span>
+                  <span className="chart-name">{r.name}</span>
+                  <span className="chart-value">{r.value}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
         </div>
       </div>
     );
@@ -113,7 +141,7 @@ export function ScreenLayer({ layers, gear }: { layers: ScreenLayers; gear: Reac
   const covered = layers.overlay !== null || layers.slide !== null;
   return (
     <>
-      {layers.overlay === null && layers.slide !== null && <SlideView slide={layers.slide} y2k={layers.y2k} />}
+      {layers.overlay === null && layers.slide !== null && <SlideView slide={layers.slide} y2k={layers.y2k} chart={layers.chart} />}
       {layers.overlay !== null && <OverlayView kind={layers.overlay} />}
       {layers.corner !== null && <CornerCountdown seconds={layers.corner} />}
       <Flicker seq={layers.flicker} />

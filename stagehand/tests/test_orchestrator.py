@@ -51,6 +51,20 @@ def test_reflect_prompt_carries_persona_mind_state_and_the_exchange():
     assert 'The person\'s id is \'g1\'' in user
 
 
+def test_reflect_shows_only_the_personas_them_whitelist_of_the_speakers_variables():
+    # The orchestrator reads the guest the way the voice does: a slot the
+    # author left off `them:` (a virus carried, a mission chosen) reaches
+    # neither model.
+    persona = parse_persona("---\ncharacter: Trabolta\nthem: trust, corrupted\n---\nBody.")
+    r = req(them={"vars": {"trust": "20", "corrupted": "false", "planted_virus": "true", "excel_choice": "sabotage", "codex.ilove_you": "true"}, "codex": [], "location": "The Desktop"})
+    user = reflect_messages(persona, Mind("Trabolta", "e"), r, Reply(say="x"), None, 20, "t")[1]["content"]
+    assert '"variables": {"trust": "20", "corrupted": "false"}' in user
+    assert "planted_virus" not in user and "sabotage" not in user and "ilove_you" not in user
+    # No whitelist: every plain name, never a dotted sub-path.
+    open_user = reflect_messages(PERSONA, Mind("Trabolta", "e"), r, Reply(say="x"), None, 20, "t")[1]["content"]
+    assert "planted_virus" in open_user and "ilove_you" not in open_user
+
+
 def test_reflect_asks_for_a_summary_once_a_thread_is_long_and_uses_the_mind_file():
     persona = parse_persona("---\ncharacter: Trabolta\n---\nBody.")
     persona = type(persona)(**{**persona.__dict__, "mind_prompt": "Custom director for {character}."})

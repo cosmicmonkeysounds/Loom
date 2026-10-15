@@ -253,11 +253,16 @@ for (const h of allHooks) {
     const ok = entity(f) || m.codexIndex.get(f) !== null || m.questIndex.get(f) !== null;
     if (!ok) report("WARN", `[${owner} · when ${h.event}] filter "${f}" matches no LOCATION / GROUP / CODEX / QUEST (a name with a lowercase or filler word — "of", "the", "at" — cannot be a trigger filter)`);
   }
+}
+// Only once every beat, hook, rule and watcher body has been walked (a rule
+// fires what an earlier-walked character hook hears): named events that
+// nothing in the story fires and no button offers.
+for (const h of allHooks) {
+  const owner = h.ownerKind === "story" ? "story rule" : `${h.ownerKind} ${h.ownerId}`;
   if (h.timer === null && h.condition === null && h.verb !== "" && !isBuiltinVerb(h.verb) && !m.interactions.has(h.verb) && ![...m.interactions.keys()].some((k: string) => foldName(k) === foldName(h.verb))) {
     if (!/ answered$/.test(h.verb) && h.verb !== "wrong code" && !fired.has(foldName(h.verb))) report("INFO", `[${owner}] \`when ${h.event}\` → named event "${h.verb}" is only fired by the director / hardware (no INTERACTION, no \`fire\`) `);
   }
 }
-// Re-check fired-but-unheard after all bodies were walked (fired is filled during the walk).
 
 // Typed slots that look like defaults but are not (no `=`).
 const [cfile] = parse(concat);

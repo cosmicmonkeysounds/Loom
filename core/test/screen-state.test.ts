@@ -194,6 +194,25 @@ describe("ScreenWatch — review fixes", () => {
     expect(poll().program.overlay?.value).toBe("go_to_living_room");
   });
 
+  it("the Trust Chart slide carries every cleared participant, ranked live; other screens carry none", () => {
+    const sim = Sim.fromSources(
+      `# T\n\nROLE Guest\n  cleared: bool = false\n  trust: -300 to 300 = 0\n\nwhen chart:\n  set Night.screen = "trust_chart"\n  set Night.terminals = "trust_chart"\n\n== Boot\nset Night.screen = "screensaver"\n`,
+    );
+    sim.fireBeat("Boot");
+    for (const [id, name, trust] of [["a", "Calculator", 30], ["b", "Winamp", 10], ["c", "Napster", 10], ["d", "Ghost", 99]] as const) {
+      sim.createPerson(id, name);
+      sim.setVar(`${id}.trust`, String(trust));
+      if (id !== "d") sim.setVar(`${id}.cleared`, "true"); // d never cleared: off the chart
+    }
+    const w = new ScreenWatch();
+    const poll = (view = "auto") => w.poll(sim, { name: view, spot: "", view, character: "" }, () => false);
+    expect(poll().chart).toBeNull();
+    sim.signal("chart");
+    expect(poll().chart).toEqual({ slide: "trust_chart", rows: [{ name: "Calculator", value: 30 }, { name: "Napster", value: 10 }, { name: "Winamp", value: 10 }] });
+    sim.setVar("b.trust", "40"); // an assessment mid-chart moves a name at the next poll
+    expect(poll("tv").chart?.rows[0]).toEqual({ name: "Winamp", value: 40 });
+  });
+
   it("a story without the alarm var keeps the alarm overlay until the next slide", () => {
     const sim = Sim.fromSources(`# T\n\nwhen trip:\n  cue screens_alarm\n\n== Boot\nHi.\n`);
     sim.fireBeat("Boot");

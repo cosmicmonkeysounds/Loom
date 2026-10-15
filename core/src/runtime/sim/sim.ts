@@ -437,13 +437,15 @@ export class Sim {
    * its model's prompt and can be re-shared by its worker, so a guest
    * feeding it a secret about a third party (a patch combination, another
    * program's file) would launder that secret past the story's own gates.
-   * Unowned lore and lore about the agent itself still go through.
+   * Unowned lore and lore about the agent itself still go through — but
+   * never a `secret: true` entry (a holder's private orders).
    */
   agentRefuses(to: string, entry: string): boolean {
     const id = this.resolveCodex(entry);
     if (id === null) return false;
-    const about = this.model.codex.get(id)?.about ?? null;
-    return this.model.characters.get(to)?.mind === "external" && about !== null && about !== to;
+    const def = this.model.codex.get(id);
+    const about = def?.about ?? null;
+    return this.model.characters.get(to)?.mind === "external" && ((about !== null && about !== to) || def?.secret === true);
   }
 
   /** Does this holder have the entry? */
@@ -480,7 +482,7 @@ export class Sim {
   }
 
   /** World key for an entry under a holder: `g1.codex.the_sandy_file`. */
-  private static codexSlug(entry: string): string {
+  static codexSlug(entry: string): string {
     return foldName(entry).replace(/ /gu, "_");
   }
 
@@ -774,12 +776,14 @@ export class Sim {
     this.world.set("Time.elapsed", vNumber(Math.floor(this.elapsedMs / 1000)));
     this.world.set("Time.minute", vNumber(Math.floor(this.elapsedMs / 60000)));
 
-    // Ambient generators emit a bark per interval, cycled deterministically.
+    // Ambient generators emit a bark per interval, cycled deterministically
+    // (a `while` gate skips the bark, not the interval).
     for (const g of this.model.gens) {
       let last = this.genState.get(g.id) ?? 0;
       let guard = 0;
       while (this.elapsedMs >= last + g.intervalMs && guard++ < 1000) {
         last += g.intervalMs;
+        if (g.while !== null && !this.evalCond(g.while, new Map())) continue;
         const cursor = this.genCursor.get(g.id) ?? 0;
         this.genCursor.set(g.id, cursor + 1);
         this.record({ type: "ambient", source: g.id, text: g.barks[cursor % g.barks.length]! });

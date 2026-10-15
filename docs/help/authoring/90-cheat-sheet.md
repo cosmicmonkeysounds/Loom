@@ -124,7 +124,7 @@ openers end with `:` and indent their body.
 | `participant(X)` `group(G)` `location(L)` , `and` / `but` | broadcast scopes |
 | `(improv duration: 45s, advance on: any […])` | an improvised beat |
 | `SPACE` / `CHANNEL` | chat sections / rooms |
-| `GENERATOR` / `SCENE` , `loop` / `wait until` / `tier:` | background life |
+| `GENERATOR` / `SCENE` , `loop` / `wait until` / `tier:` / `while` | background life |
 | `spawn X` / `run X(args)` / `cancel X` | launch / await / stop a coroutine |
 
 **`when` events** — inside a CHARACTER, ROLE, or TRAIT body

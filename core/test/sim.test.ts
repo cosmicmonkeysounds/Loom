@@ -485,6 +485,16 @@ describe("Escape the Internet — the clock (autonomous life)", () => {
     expect(new Set(texts).size).toBe(4); // four distinct barks, in order
   });
 
+  it("a `while` gate silences a generator without moving its interval", () => {
+    const sim = Sim.fromSources(`# T\n\nGENERATOR Hum\n  tier: ambient\n  every 10s\n  while Night.quiet != true\n  yield bark from one | two | three\n\n== Boot\nHi.\n`);
+    expect(sim.model.gens[0]!.while).toBe("Night.quiet != true");
+    expect(ambient(sim.tick(10000))).toEqual(["one"]); // a null var is not true: barks
+    sim.setVar("Night.quiet", "true");
+    expect(ambient(sim.tick(20000))).toEqual([]);
+    sim.setVar("Night.quiet", "false");
+    expect(ambient(sim.tick(10000))).toEqual(["two"]); // on the beat, the next bark in order
+  });
+
   it("exposes Time.* on the world clock", () => {
     const sim = fresh();
     sim.tick(65000);

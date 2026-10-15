@@ -905,6 +905,32 @@ export class EventRuntime {
     return true;
   }
 
+  /**
+   * `<head>.*` vars as an agent may see them: a participant's ROLE
+   * `secret:` slots (the virus they carry, the mission they chose — a
+   * name, or a dotted path like `quest.excel_mission`) and the
+   * `codex.<slug>` flag of every `secret: true` CODEX entry are left out,
+   * so neither the voice nor the orchestrator can read a secret off the
+   * guest it is talking to (or off the facts document).
+   */
+  private agentVarsOf(world: ReadonlyArray<{ path: string; value: string }>): (head: string) => Record<string, string> {
+    const sim = this.sim!;
+    const secretCodex = new Set([...sim.model.codex.values()].filter((e) => e.secret).map((e) => `codex.${Sim.codexSlug(e.id)}`));
+    return (head: string): Record<string, string> => {
+      const person = sim.persons.get(head);
+      const secret = person === undefined ? null : (sim.model.roles.get(person.role)?.secret ?? null);
+      const out: Record<string, string> = {};
+      for (const w of world) {
+        if (!w.path.startsWith(`${head}.`)) continue;
+        const key = w.path.slice(head.length + 1);
+        if (secretCodex.has(key)) continue;
+        if (secret !== null && (secret.has(key) || secret.has(key.split(".")[0]!))) continue;
+        out[key] = w.value;
+      }
+      return out;
+    };
+  }
+
   /** Everything a worker needs to answer one thread, read from the live sim. */
   private buildAgentRequest(thread: AgentThread, id: string): AgentRequest | null {
     const sim = this.sim;
@@ -923,17 +949,13 @@ export class EventRuntime {
     const last = [...history].reverse().find((l) => !l.mine);
     if (last === undefined) return null; // nothing said to answer
     const world = sim.worldEntries();
-    const varsOf = (head: string): Record<string, string> => {
-      const out: Record<string, string> = {};
-      for (const w of world) if (w.path.startsWith(`${head}.`)) out[w.path.slice(head.length + 1)] = w.value;
-      return out;
-    };
+    const varsOf = this.agentVarsOf(world);
     const globals: Record<string, string> = {};
     for (const w of world) {
       const head = w.path.split(".")[0]!;
       if (!sim.persons.has(head) && !sim.model.characters.has(head)) globals[w.path] = w.value;
     }
-    const codex = (holder: string) => sim.codexFor(holder).map((e) => ({ id: e.id, title: e.title, about: e.about, text: e.text }));
+    const codex = (holder: string) => sim.codexFor(holder).filter((e) => !e.secret).map((e) => ({ id: e.id, title: e.title, about: e.about, text: e.text }));
     const def = sim.model.characters.get(thread.character);
     const speakerId = performer ?? who;
     return {
@@ -980,11 +1002,7 @@ export class EventRuntime {
     const sim = this.sim;
     if (sim === null) return null;
     const world = sim.worldEntries();
-    const varsOf = (head: string): Record<string, string> => {
-      const out: Record<string, string> = {};
-      for (const w of world) if (w.path.startsWith(`${head}.`)) out[w.path.slice(head.length + 1)] = w.value;
-      return out;
-    };
+    const varsOf = this.agentVarsOf(world);
     const globals: Record<string, string> = {};
     for (const w of world) {
       const head = w.path.split(".")[0]!;
@@ -1001,7 +1019,7 @@ export class EventRuntime {
       location: sim.locationOf(p.id),
       captured: sim.isCaptured(p.id),
       vars: varsOf(p.id),
-      codex: sim.codexFor(p.id).map((e) => e.title),
+      codex: sim.codexFor(p.id).filter((e) => !e.secret).map((e) => e.title),
     }));
     return {
       at: Date.now(),
@@ -1014,14 +1032,14 @@ export class EventRuntime {
         mind: c.mind,
         online: c.mind === "external" ? online.has(c.id) : primes.has(c.id),
         vars: varsOf(c.id),
-        codex: sim.codexFor(c.id).map((e) => e.title),
+        codex: sim.codexFor(c.id).filter((e) => !e.secret).map((e) => e.title),
       })),
       locations: [...sim.model.locations.values()].map((l) => ({
         id: l.id,
         label: l.label ?? l.id,
         occupants: programs.filter((p) => p.location === l.id).map((p) => p.name),
       })),
-      codex: [...sim.model.codex.values()].map((e) => ({
+      codex: [...sim.model.codex.values()].filter((e) => !e.secret).map((e) => ({
         id: e.id,
         title: e.title,
         about: e.about,

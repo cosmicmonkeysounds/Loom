@@ -143,6 +143,16 @@ const CUES: Record<string, string> = {
  * string, or words with spaces — `broadcast "The lights go down." to …`) is
  * its own copy; a bare cue name looks up the legacy table, else a megaphone.
  */
+/** "the Mods", but "The Way Out" as named: a group whose name already
+ *  starts with an article keeps it, so a notice never reads "the The …". */
+export function withThe(name: string): string {
+  return /^(the|a|an)\s/iu.test(name) ? name : `the ${name}`;
+}
+
+function capitalised(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export function cueText(cue: string): string {
   const t = cue.trim();
   const quoted = /^"(.*)"$/su.exec(t);
@@ -508,13 +518,13 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
         out.push(sys("🔓 The door swings open — you're released.", [e.person]));
         break;
       case "joined":
-        out.push(sys(`You threw in with the ${e.faction}.`, [e.person]));
+        out.push(sys(`You threw in with ${withThe(e.faction)}.`, [e.person]));
         break;
       case "defected":
-        out.push(sys(`You betrayed the ${e.from ?? "unaligned"} and defected to the ${e.to}.`, [e.person]));
+        out.push(sys(`You betrayed ${withThe(e.from ?? "unaligned")} and defected to ${withThe(e.to)}.`, [e.person]));
         break;
       case "factionRevealed":
-        out.push(sys(`⚠️ The ${e.faction} has been exposed!`, "all"));
+        out.push(sys(`⚠️ ${capitalised(withThe(e.faction))} has been exposed!`, "all"));
         break;
       case "revealed": {
         // A hidden place / room opened up — tell whoever it opened for. A

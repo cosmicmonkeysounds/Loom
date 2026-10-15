@@ -17,7 +17,7 @@
 //! pilot. `flicker` is a one-shot stutter over everything but a blackout.
 //! Every flash is ≤ 3 Hz and never full-field red (photosensitivity).
 
-import type { ScreenState, ScreenTarget } from "./screen.ts";
+import type { ScreenChart, ScreenState, ScreenTarget } from "./screen.ts";
 
 /** How long a non-persistent slide stays up after its cue (ms). */
 export const SLIDE_HOLD_MS: Record<ScreenTarget, number> = { terminals: 45_000, tv: 90_000 };
@@ -39,9 +39,11 @@ export interface ScreenLayers {
   y2k: number | null;
   /** The seq of a flicker to play now (once per seq), or null. */
   flicker: number | null;
+  /** The live chart for the slide on screen (the Trust Chart), or null. */
+  chart: ScreenChart | null;
 }
 
-export const NO_LAYERS: ScreenLayers = { overlay: null, slide: null, corner: null, y2k: null, flicker: null };
+export const NO_LAYERS: ScreenLayers = { overlay: null, slide: null, corner: null, y2k: null, flicker: null, chart: null };
 
 const isOverlay = (v: string): v is OverlayKind => v === "blackout" || v === "go_to_living_room" || v === "alarm";
 
@@ -70,7 +72,19 @@ export function screenLayers(state: ScreenState | null, nowMs: number, o: { pilo
   const corner = overlay === null && !o.piloting && state.countdown !== null && remaining !== null && slide?.value !== "y2k" ? remaining : null;
 
   const flicker = p.flicker !== null && overlay !== "blackout" && age(p.flicker.at) < FLICKER_FRESH_MS ? p.flicker.seq : null;
-  return { overlay, slide, corner, y2k, flicker };
+  const chart = overlay === null && slide !== null && state.chart !== null && state.chart.slide === slide.value ? state.chart : null;
+  return { overlay, slide, corner, y2k, flicker, chart };
+}
+
+/** The chart's rows as the slide draws them: rank, name, number. Ties share
+ *  a rank (1, 2, 2, 4). The top is the "most trusted" the story names. */
+export function chartLines(chart: ScreenChart): Array<{ rank: number; name: string; value: number }> {
+  const out: Array<{ rank: number; name: string; value: number }> = [];
+  chart.rows.forEach((r, i) => {
+    const prev = out[i - 1];
+    out.push({ rank: prev !== undefined && prev.value === r.value ? prev.rank : i + 1, name: r.name, value: r.value });
+  });
+  return out;
 }
 
 /** `mm:ss` (or `h:mm:ss`) for the corner. */
