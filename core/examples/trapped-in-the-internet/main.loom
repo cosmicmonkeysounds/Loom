@@ -1769,7 +1769,7 @@ when second_hunt_preview:
     set Night.screen = "ad_hijack"
     set Night.terminals = "ad_hijack"
     sound ad_jingle
-    broadcast "!📺 000. 000. 000. A SPECIAL OFFER FOR YOU. Call now: (   )    -    . Offer expires never." to everyone
+    broadcast "!📺 000. 000. 000. A SPECIAL OFFER FOR YOU. A duck. A phone number with no digits. Offer expires never." to everyone
     -> Ad Hijack
 
 // C2: round 2 goes to the quest logs; everyone disperses for one hour.
