@@ -1,0 +1,76 @@
+# Cast paper: performer packs, crew cards, featured sheets (D-01)
+
+Drafts for **Trapped in the Internet** (Sat Oct 31, 2026), written from
+[`DESIGN.md`](../DESIGN.md), the [`README`](../README.md), the story files and
+[`OCT31.md`](../OCT31.md) §9–§11. **These are drafts for you to edit.** Nothing
+here is read by the server: `sync-example` only pushes `.loom` files.
+
+Search for `[[EDIT` to find every blank the drafts could not fill (names,
+addresses, codes, where things are kept).
+
+## What is here
+
+| File | For | Hand out |
+|---|---|---|
+| [`emergency-card.md`](./emergency-card.md) | everyone: posted at the door and on the back of every crew card | print batch 2 (10-26) |
+| [`all-crew.md`](./all-crew.md) | everyone: radio call words, the performer basics, the blackout rule, the door FAQ | read-through 10-25 |
+| [`patch-bay-watch.md`](./patch-bay-watch.md) | the Antivirus stationed in the server room (Tier 0 only) | 10-25, kept face-down |
+| **Performers** (one pack each; the card on page 1 is the laminated one) | | read-through **10-25** |
+| [`performers/clippy.md`](./performers/clippy.md) | Clippy (Brooke), incl. CI 1–9 cards, the answer key, Bingo + hat slips | |
+| [`performers/task-manager.md`](./performers/task-manager.md) | Task Manager (John) | |
+| [`performers/adobe-acrobat.md`](./performers/adobe-acrobat.md) | Adobe Acrobat (Stephanie), incl. the truth.txt printout | |
+| [`performers/recycling-bin.md`](./performers/recycling-bin.md) | Recycling Bin (Jesse), incl. the porch card | |
+| [`performers/norton.md`](./performers/norton.md) | Norton Anti-Virus (Julie) | |
+| [`performers/mcafee.md`](./performers/mcafee.md) | McAfee Anti-Virus ([[EDIT: cast by 10-18 or cut]]) | |
+| [`performers/password-manager.md`](./performers/password-manager.md) | Password Manager (Francine) | |
+| [`performers/cra-agent.md`](./performers/cra-agent.md) | CRA Agent Software (Emma) | |
+| [`performers/webmd.md`](./performers/webmd.md) | WebMD (Julia), incl. the tent card | |
+| **Crew** | | trained 10-25 |
+| [`crew/director.md`](./crew/director.md) | the Director card (the Run console) + the show owner's day (John) | |
+| [`crew/second-director.md`](./crew/second-director.md) | the second director (at Run all night) | |
+| [`crew/tech-operator.md`](./crew/tech-operator.md) | the tech operator (at the house Mac all night) | |
+| [`crew/house-manager.md`](./crew/house-manager.md) | the house manager (door after 20:30, safety lead) | |
+| **Featured guests** (one sheet each, for the invitee only) | | **[[EDIT: already sent with the invitations? If so these are reference copies]]** |
+| [`featured/microsoft-excel.md`](./featured/microsoft-excel.md) · [`openoffice`](./featured/openoffice.md) · [`draftkings`](./featured/draftkings.md) · [`bugdom`](./featured/bugdom.md) · [`broken-ask-jeeves`](./featured/broken-ask-jeeves.md) · [`runescape`](./featured/runescape.md) · [`ms-paint`](./featured/ms-paint.md) · [`vlc`](./featured/vlc.md) · [`pong`](./featured/pong.md) | | |
+
+## Facts these drafts assume (from 2026-10-15)
+
+- The app lives at **https://app.mapsandducks.com** (the editor at `/edit/`, the
+  invite one-pager at the apex). Invitations are out.
+- **One house Mac** does everything local: it drives the TV over the long HDMI
+  run (`view=tv`), plays room audio through the **MOTU** (ADAT), and runs
+  Mosquitto, Zigbee2MQTT, stagehand `show` + `agents`, Ollama (48 GB: both
+  models stay loaded, `OLLAMA_MAX_LOADED_MODELS=2`) and the Alexa player. Where
+  OCT31 says "the TV computer" or "the Ollama laptop", read "the house Mac".
+- The PAUTIX strips are addressable, on an off-the-shelf **WLED** controller
+  (presets; the Tube gets a chase).
+- **No hosted-model fallback** (decision #35): if Trabolta's worker dies, the
+  server posts his hold line and **the directors answer his DMs by hand**.
+- **House internet down → cues are fired by hand** (WLED presets, wall switches,
+  QLab GO). Phones fall back to cellular; the server is on the VPS, not in the
+  house.
+- Meta developer mode is set up; whether the Quest runs in the tent is the
+  K-30 call (Thu 10-22). Every tent line below works with or without it.
+
+## Rules every sheet keeps
+
+- **Actor names never appear in the story.** They appear on paper only (who a
+  sheet is for). The featured programs never "speak" in the app; each guest
+  speaks for themselves in person and in chat.
+- **Secrets are need-to-know.** The answer key is on Clippy's, Adobe's and the
+  directors' cards only. The patch-bay combos are on the patch-bay card and the
+  director's card only. A featured sheet holds only its own secret.
+- Buttons that do nothing out of phase are normal (W-05). Only 🛡 **Send to the
+  Internet** and ✅ **Mark as reinstalled** work any time.
+
+## Print notes (for PAPER, batch 2 on 10-26)
+
+- Each performer and crew file starts with a **Card** section: print that on
+  one side of a half-letter sheet and laminate it; print the emergency card on
+  the back. The rest of the file is the pack (read it once at home).
+- Clippy's CI 1–9 cards: one index card each (from the appendix of her pack).
+- Adobe's truth.txt: print, then put it in a zip bag (it goes in the Bag of
+  Truth, which goes in the bobbing tub).
+- If the story changes after 10-24 12:00 (content lock for batch 2), re-check
+  the answer key and truth.txt against `codex/3-hunt.loom` and
+  `beats/finale.loom`.
