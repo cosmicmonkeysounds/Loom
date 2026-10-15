@@ -9,6 +9,8 @@ import stair from "../../../house/test/fixtures/stair.json";
 import lRoom from "../../../house/test/fixtures/l-room.json";
 import { showHouse } from "../src/show-house.ts";
 import showShed from "../../../core/examples/trapped-in-the-internet/house.shed.json";
+import twoFloor from "../../../house/test/maps/two-floor.json";
+import twoFloorShed from "../../../house/test/maps/two-floor.shed.json";
 
 function load(raw: unknown): HouseMap {
   const v = validateHouse(structuredClone(raw));
@@ -27,3 +29,8 @@ export const L_ROOM = (): HouseMap => load(lRoom);
 export const SHOW = (): HouseMap => load(showHouse);
 /** The show's rain variant (the Internet in the shed). */
 export const SHOW_SHED = (): HouseMap => load(showShed);
+/** The show's map as it stood before the real floor plan (two floors, the
+ *  tent / the shed), frozen: the suites that pin coordinates use it, so they
+ *  don't move with the live map (`@loom/house` golden.ts `TWO_FLOOR_HOUSE`). */
+export const TWO_FLOOR = (): HouseMap => load(twoFloor);
+export const TWO_FLOOR_SHED = (): HouseMap => load(twoFloorShed);

@@ -972,7 +972,7 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
           )}
         </div>
         <p className="muted small">
-          Provision a fleet by opening <code>/terminal/?code=&lt;mod passcode&gt;&amp;name=Kitchen&amp;character=Trabolta&amp;spot=kitchen&amp;view=auto</code> on each tablet (add <code>&amp;announce=1</code> where the house speakers don't reach). The camera needs https:// (or localhost); without it, programs type their name instead.
+          Provision a fleet by opening <code>/terminal/?code=&lt;mod passcode&gt;&amp;name=Kitchen&amp;character=Trabolta&amp;spot=start-bar&amp;view=auto</code> on each tablet (add <code>&amp;announce=1</code> where the house speakers don't reach). The camera needs https:// (or localhost); without it, programs type their name instead.
         </p>
       </form>
     </div>

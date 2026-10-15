@@ -688,12 +688,12 @@ func _test_room_scale() -> void:
 	_check(through.is_empty(), "room scale: a real step into a wall never takes the head or the feet through it %s" % [through])
 
 	# Walk the headset 2 m up the basement stairs (a 35° ramp, north).
-	player.teleport(b.to_world([-3.4, -2.7, 11.8]), b.yaw_to_world(0.0))
+	player.teleport(b.to_world([-2.4, -2.7, 10.8]), b.yaw_to_world(0.0))
 	for i in 180:
 		player.camera.global_position += Vector3(0, 0, -2.0 / 180.0)
 		player._physics_process(dt)
 	var up := b.to_house(player.feet())
-	_check(up[2] < 10.0 and up[1] > -2.3 and player.head_gap() <= VrPlayer.MAX_HEAD_GAP + 0.01, "room scale: a real step up the stairs climbs them (feet %s, head %.2f m off)" % [up, player.head_gap()])
+	_check(up[2] < 9.0 and up[1] > -2.3 and player.head_gap() <= VrPlayer.MAX_HEAD_GAP + 0.01, "room scale: a real step up the stairs climbs them (feet %s, head %.2f m off)" % [up, player.head_gap()])
 	var eye: float = b.to_house(player.camera.global_position)[1] - up[1]
 	_check(_near(eye, VrPlayer.EYE_HEIGHT, 0.05), "room scale: … and the head rises with the body (eye %.2f m over the feet)" % eye)
 
@@ -763,10 +763,10 @@ func _test_builder_geometry(b: HouseBuilder, house: Dictionary) -> void:
 		if glass_out <= wt / 2.0 + 0.01 or back_out <= wt / 2.0:
 			buried.append("%s: glass %.3f, back %.3f m out" % [t["id"], glass_out, back_out])
 	_check(buried.is_empty(), "builder: every terminal screen stands clear of its wall box %s" % [buried])
-	var kitchen := b.get_node_or_null("Terminal_kitchen/Glass") as Node3D
+	var kitchen := b.get_node_or_null("Terminal_start-bar/Glass") as Node3D
 	if kitchen != null:
 		var kz: float = b.to_house(kitchen.global_position)[2]
-		_check(kz > 6.5 + wt / 2.0, "builder: the kitchen screen is in front of its wall (z %.3f)" % kz)
+		_check(kz > 6.0 + wt / 2.0, "builder: the Start Bar (kitchen) screen is in front of its wall (z %.3f)" % kz)
 
 	var boxes := HouseBuilder.wall_boxes(b.walls, wt)
 	_check(boxes.size() == b.walls.size(), "builder: one wall box per segment")
@@ -961,7 +961,7 @@ func _test_main_and_game() -> void:
 	# switch: the shed is a solid prop on the tent map) puts them back at the
 	# spawn; a remap where they still stand keeps them put.
 	link.assignment_received.emit(_assignment(house, "s-3r", true))
-	var kitchen := [3.5, 0.0, 7.5]
+	var kitchen := [-4.6, 0.0, 10.0]  # the Start Bar
 	var blocked: Dictionary = house.duplicate(true)
 	var crate: Dictionary = {}
 	for pr: Dictionary in blocked["props"]:
@@ -969,7 +969,7 @@ func _test_main_and_game() -> void:
 			crate = pr.duplicate(true)
 			break
 	crate["id"] = "test-crate"
-	crate["room"] = "kitchen"
+	crate["room"] = "start-bar"
 	crate["pos"] = kitchen
 	blocked["props"].append(crate)
 	_check(not HouseLocate.standable(blocked, kitchen) and HouseLocate.standable(house, kitchen), "house: standable sees the crate")

@@ -203,68 +203,82 @@ describe("physics — the show's house", () => {
   });
 
   it("a stair's side is a wall from the floor below: no walking into the solid under its ramp", () => {
-    // basement-stairs: rect [−3.9, 7, −2.9, 11], ramp −2.7 (z 11) → 0 (z 7).
+    // basement-stairs: rect [−2.9, 6, −2, 10], ramp −2.7 (z 10) → 0 (z 6).
     const house = SHOW();
     const world = buildPhysicsWorld(house);
-    const ramp = (z: number) => -2.7 + (2.7 * (11 - z)) / 4;
-    for (const z of [9.5, 9, 8.8]) {
-      const b = walk(world, body([-2, -2.7, z], WEST), 3, FORWARD, (cur) => {
+    const ramp = (z: number) => -2.7 + (2.7 * (10 - z)) / 4;
+    for (const z of [8.5, 8, 7.8]) {
+      const b = walk(world, body([-1, -2.7, z], WEST), 3, FORWARD, (cur) => {
         // Never under a ramp lower than the top of the head.
-        if (cur.p[0] < -2.9 + 1e-9) expect(ramp(cur.p[2])).toBeGreaterThanOrEqual(cur.p[1] + 1.7);
+        if (cur.p[0] < -2 + 1e-9) expect(ramp(cur.p[2])).toBeGreaterThanOrEqual(cur.p[1] + 1.7);
       });
-      expect(b.p[0]).toBeGreaterThan(-2.9);
+      expect(b.p[0]).toBeGreaterThan(-2);
       expect(b.p[1]).toBeCloseTo(-2.7, 6);
     }
     // Walking on along the side never slips under it either.
-    let b = walk(world, body([-2.4, -2.7, 9.5], WEST), 1);
+    let b = walk(world, body([-1.4, -2.7, 8.5], WEST), 1);
     b = walk(world, { ...b, yaw: 0 }, 3, FORWARD, (cur) => {
-      if (cur.p[0] < -2.9 + 1e-9) expect(ramp(cur.p[2])).toBeGreaterThanOrEqual(cur.p[1] + 1.7);
+      if (cur.p[0] < -2 + 1e-9) expect(ramp(cur.p[2])).toBeGreaterThanOrEqual(cur.p[1] + 1.7);
     });
   });
 
   it("the high end of the stair still has head room to walk under", () => {
     const house = SHOW();
     const world = buildPhysicsWorld(house);
-    const b = walk(world, body([-2, -2.7, 7.5], WEST), 1.5);
-    expect(b.p[0]).toBeLessThan(-3);
+    const b = walk(world, body([-1, -2.7, 6.5], WEST), 1.5);
+    expect(b.p[0]).toBeLessThan(-2);
     expect(b.p[1]).toBeCloseTo(-2.7, 6);
   });
 
   it("walking under the stair from its high end stops where the ramp comes down to the head", () => {
-    // From the landing under the hall end (z 7.3, ramp ≈ −0.2), heading
-    // south toward the foot: the ramp drops to head height (−1.0) at
-    // z ≈ 8.48, and the body (its rim included) never goes past it.
+    // From the basement hall under the hall end (z 6.3, ramp ≈ −0.2),
+    // heading south toward the foot: the ramp drops to head height (−1.0)
+    // at z ≈ 7.48, and the body (its rim included) never goes past it.
     const house = SHOW();
     const world = buildPhysicsWorld(house);
-    const ramp = (z: number) => -2.7 + (2.7 * (11 - z)) / 4;
-    const b = walk(world, body([-3.4, -2.7, 7.3], SOUTH), 3, FORWARD, (cur) => {
+    const ramp = (z: number) => -2.7 + (2.7 * (10 - z)) / 4;
+    const b = walk(world, body([-2.4, -2.7, 6.3], SOUTH), 3, FORWARD, (cur) => {
       expect(cur.p[1]).toBeCloseTo(-2.7, 6);
       expect(ramp(cur.p[2] + RADIUS * 0.9)).toBeGreaterThanOrEqual(cur.p[1] + 1.7 - 1e-9);
     });
-    expect(b.p[2]).toBeGreaterThan(8);
-    expect(b.p[2]).toBeLessThan(8.48);
+    expect(b.p[2]).toBeGreaterThan(7);
+    expect(b.p[2]).toBeLessThan(7.48);
     // And back out the way it came.
     const back = walk(world, { ...b, yaw: 0 }, 1.5);
-    expect(back.p[2]).toBeLessThan(7);
+    expect(back.p[2]).toBeLessThan(6);
   });
 
-  it("descends the stair from the hall down to the landing", () => {
+  it("descends the stair from the hall down to the basement hall", () => {
     const house = SHOW();
     const world = buildPhysicsWorld(house);
     let lowest = 0;
-    const b = walk(world, body([-3.4, 0, 6.5], SOUTH), 4, FORWARD, (cur) => (lowest = Math.min(lowest, cur.p[1])));
-    expect(b.p[2]).toBeGreaterThan(11);
+    const b = walk(world, body([-2.4, 0, 5.5], SOUTH), 4, FORWARD, (cur) => (lowest = Math.min(lowest, cur.p[1])));
+    expect(b.p[2]).toBeGreaterThan(10);
     expect(b.p[1]).toBeCloseTo(-2.7, 6);
     expect(lowest).toBeGreaterThanOrEqual(-2.7 - 1e-9);
-    expect(locate(house, b.p).room).toBe("landing");
+    expect(locate(house, b.p).room).toBe("basement-hall");
   });
 
-  it("the stair itself still climbs from the landing to the hall", () => {
+  it("the stair itself still climbs from the basement hall to the hall", () => {
     const house = SHOW();
     const world = buildPhysicsWorld(house);
-    const b = walk(world, body([-3.4, -2.7, 11.6], 0), 4);
-    expect(b.p[2]).toBeLessThan(7);
+    const b = walk(world, body([-2.4, -2.7, 10.6], 0), 4);
+    expect(b.p[2]).toBeLessThan(6);
     expect(b.p[1]).toBeCloseTo(0, 6);
+  });
+
+  it("climbs the upstairs from the hall to the top floor, and comes back down", () => {
+    // upstairs: rect [0.05, 6, 0.95, 10], rising south, 0 (z 6) → 2.8 (z 10).
+    const house = SHOW();
+    const world = buildPhysicsWorld(house);
+    const up = walk(world, body([0.5, 0, 5.5], SOUTH), 4);
+    expect(up.p[2]).toBeGreaterThan(10);
+    expect(up.p[1]).toBeCloseTo(2.8, 6);
+    expect(locate(house, up.p).room).toBe("upstairs-hall");
+    const down = walk(world, { ...up, yaw: 0 }, 4);
+    expect(down.p[2]).toBeLessThan(6);
+    expect(down.p[1]).toBeCloseTo(0, 6);
+    expect(locate(house, down.p).room).toBe("hall");
   });
 });
 

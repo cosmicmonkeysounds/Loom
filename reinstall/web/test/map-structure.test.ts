@@ -342,7 +342,7 @@ describe("yards", () => {
       for (let step = 0; step < 6; step++) {
         const op = next();
         let n: HouseMap;
-        const target = seed % 2 === 0 && next() < 0.3 ? (["kitchen", "living", "mudroom"] as const)[Math.floor(next() * 3)]! : r.id;
+        const target = seed % 2 === 0 && next() < 0.3 ? (["start-bar", "desktop", "optical-drive"] as const)[Math.floor(next() * 3)]! : r.id;
         if (op < 0.5) n = moveRoom(h, target, pick(-2, 2, 0.05), pick(-2, 2, 0.05));
         else n = moveRectEdge(h, target, (["n", "s", "e", "w"] as const)[Math.floor(next() * 4)]!, pick(-10, 20, 0.05));
         if (validateHouse(n).problems.some((p) => /overlap/.test(p))) continue;
@@ -364,7 +364,7 @@ describe("yards", () => {
 
   it("a tent in the show's backyard leaves the show valid, every duck still walkable", () => {
     const show = SHOW();
-    const r = addRoom(show, "ground", [0, 14, 3, 17], { label: "Tent" });
+    const r = addRoom(show, "main", [0, 14, 3, 17], { label: "Tent" });
     const h = valid(r.house);
     expect(yardOf(h, "backyard").length).toBeGreaterThan(1);
     expect(h.doors.find((d) => d.id === "back")!.b).toMatch(/^backyard/);
@@ -393,10 +393,10 @@ describe("yards", () => {
 
   it("a room that only borders a yard never gives it ground", () => {
     const show = SHOW();
-    expect(yardShare(show, "kitchen", yardOf(show, "backyard"))).toBeLessThan(0.5);
-    const shrunk = moveRectEdge(show, "kitchen", "s", 11);
+    expect(yardShare(show, "start-bar", yardOf(show, "backyard"))).toBeLessThan(0.5);
+    const shrunk = moveRectEdge(show, "start-bar", "s", 11);
     expect(room(shrunk, "backyard").poly).toEqual(room(show, "backyard").poly);
-    expect(shrunk.doors.find((d) => d.id === "back")).toMatchObject({ a: "kitchen", b: null, at: [3, 11] });
+    expect(shrunk.doors.find((d) => d.id === "back")).toMatchObject({ a: "start-bar", b: null, at: [-4.5, 11] });
   });
 
   it("making a yard indoor cuts it from yards it overlaps; toggling outdoor keeps the polygon", () => {
@@ -686,13 +686,16 @@ describe("the problem list", () => {
   it("checks rooms against the story's LOCATIONs", () => {
     const h = SHOW();
     expect(locationProblems(h, null)).toEqual([]);
-    const locs = ["The Desktop", "The Mud Room", "The Tube", "The Internet", "The Cache", "Disk Cleanup", "The Cloud", "The Registry", "The Server Room"].map((id) => ({ id, label: null }));
-    // The show map has a room for every LOCATION (the Server Room since wave 2)…
+    const locs = [
+      "The Desktop", "The Optical Drive", "The Tube", "The Internet", "The Start Bar", "The CPU", "The Steam Room", "Disk Cleanup",
+      "The Cloud", "The RAM", "The Fan Closet", "The Graphics Card", "The Hard Drive", "The Server Room",
+    ].map((id) => ({ id, label: null }));
+    // The show map has a room for every LOCATION (the real house's names since wave 3)…
     expect(locationProblems(h, locs)).toEqual([]);
     // …and one the story declares but the map lacks is named.
     expect(locationProblems(h, [...locs, { id: "The Attic", label: null }]).map((p) => p.text)).toEqual(["LOCATION The Attic has no room on the map"]);
-    const typo = patchRoom(h, "kitchen", { location: "The Cash" });
-    expect(locationProblems(typo, locs)[0]).toMatchObject({ sel: { kind: "room", id: "kitchen" }, level: "warning" });
+    const typo = patchRoom(h, "start-bar", { location: "The Start Bra" });
+    expect(locationProblems(typo, locs)[0]).toMatchObject({ sel: { kind: "room", id: "start-bar" }, level: "warning" });
     expect(foldName("  the_mud-ROOM ")).toBe("the mud room");
   });
 });

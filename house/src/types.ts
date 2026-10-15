@@ -61,7 +61,7 @@ export interface Room {
   id: string;
   label: string;
   floor: string;
-  /** The Loom LOCATION it is in the story ("The Cache"). Not validated here. */
+  /** The Loom LOCATION it is in the story ("The Start Bar"). Not validated here. */
   location?: string;
   /** Rectilinear (every edge axis-aligned), ≥ 4 vertices, simple, either winding. */
   poly: Vec2[];

@@ -26,7 +26,7 @@ import {
   yawOf,
 } from "../src/map/edit.ts";
 import { along, clientToPlan, hitRectEdge, labelSpot, planBounds, playerColor, pointsAttr, propCorners, rectOf, roomUnder, snap, snap2, stairArrow, viewBoxOf, viewCone } from "../src/map/plan.ts";
-import { L_ROOM, SHOW, STAIR, TWO_ROOMS } from "./houses.ts";
+import { L_ROOM, STAIR, TWO_FLOOR as SHOW, TWO_ROOMS } from "./houses.ts";
 
 describe("plan — the SVG frame", () => {
   it("bounds every floor, and pads the viewBox", () => {

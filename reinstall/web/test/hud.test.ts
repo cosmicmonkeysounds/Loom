@@ -25,7 +25,7 @@ describe("hud", () => {
 
   it("names the room and its story location", () => {
     const house = SHOW();
-    expect(roomTitle(house, [3, 0, 3])).toEqual({ room: house.rooms.find((r) => r.id === "living")!.label, location: "The Desktop" });
+    expect(roomTitle(house, [3, 0, 8])).toEqual({ room: house.rooms.find((r) => r.id === "desktop")!.label, location: "The Desktop" });
     expect(roomTitle(house, [100, 0, 100]).location).toBeNull();
   });
 

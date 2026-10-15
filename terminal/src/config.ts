@@ -2,7 +2,7 @@
 //! `localStorage`, and bootstrappable from the URL so a fleet is provisioned
 //! by opening one link on each:
 //!
-//!   /terminal/?code=<mod passcode>&name=Kitchen&character=Trabolta&spot=kitchen&view=auto
+//!   /terminal/?code=<mod passcode>&name=Kitchen&character=Trabolta&spot=start-bar&view=auto
 //!
 //! The TV (the house Mac, Chrome full screen over the long HDMI — K-18):
 //!

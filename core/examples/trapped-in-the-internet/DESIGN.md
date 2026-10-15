@@ -71,7 +71,7 @@ for this spec.
    lines and by `unlock` from ROLE hooks gated on `program.featured`. Identity test §6.2 is
    the regression guard.
 6. **ROLE fan-out watchers always include `self.cleared`** (or a stronger guard), so a late
-   arrival standing in the Mud Room cutscene never receives Act-level messages, and receives
+   arrival standing in the Optical Drive cutscene never receives Act-level messages, and receives
    them the moment an Antivirus clears them **[verified]**.
 7. **Null-safe guards.** Globals start `null`. Write `Night.x == true` / `Night.x != true`,
    `Night.n < 1`, `>=`; never `Night.n == 0` and never `Night.mode == "none"` for a global
@@ -178,7 +178,7 @@ No test reads the codex paths.
 | File | Holds | Writer |
 |---|---|---|
 | `main.loom` | Header; all GROUPs; all LOCATIONs (Desktop first); `ROLE Program` (vars + every ROLE hook/watcher in §2.7); every INTERACTION except Trabolta's agent powers; **every story rule** (§2.8); then `== Power On` as the last item. | A (spine) |
-| `atmosphere.loom` | 3 GENERATORs (ambient barks): `ScreensaverHum` (4m), `DialUp` (7m, "From the Registry"), `SystemTray` (9m, incl. "Your protection has expired."). Keep the current text, minus anything that names Trabolta (he is offline at minute 0; generators run from minute 0). | A |
+| `atmosphere.loom` | 3 GENERATORs (ambient barks): `ScreensaverHum` (4m), `DialUp` (7m, "From the RAM"), `SystemTray` (9m, incl. "Your protection has expired."). Keep the current text, minus anything that names Trabolta (he is offline at minute 0; generators run from minute 0). | A |
 | `beats/login.loom` | Arrival: `Login`, `Login Incorrect`, `Upload`, `Orientation`, `Re-upload`, `Featured Briefing`. | B |
 | `beats/desktop.loom` | Act I: `Call To The Desktop`, `Computer Bingo`, `Bingo Time`, `Corrupted Code`, `Trabolta Introduction`, `The Screensaver`; the optional set pieces `Telephone` and `Are You Sure` (§3 B10). | B |
 | `beats/internet.loom` | `Reinstallation`, `The Tablet Video`, `Zipped`. | B |
@@ -205,26 +205,39 @@ No test reads the codex paths.
 | `stagehand/trapped.house.yaml` (new, outside the example dir) | The show's real house config: lights per LOCATION, scenes, screens flicker, sfx, announce, door, sensors (§2.15). **Do not edit `show.example.yaml`** (`test_config.py:31-40` pins it). | E |
 | `stagehand/tests/test_trapped_house.py` (new) | `load_config` on the YAML + the cross-checks of §2.15. | E |
 
-### 1.1 house.json room → LOCATION mapping (kept)
+### 1.1 house.json room → LOCATION mapping (the real house, 2026-10-15)
+
+The house has three levels plus the tent. The story's places follow the user's floor plan
+(wave 3); the old names map over: The Mud Room → **The Optical Drive**, The Cache → **The
+Start Bar**, The Registry → **The RAM** (the ephemeral `# ram` channel became `# clipboard`
+so the names never collide).
 
 | house.json room id | Label | Floor | `location` (must be declared in main.loom) |
 |---|---|---|---|
-| `mudroom` | Mud Room | ground | The Mud Room |
-| `hall` | Hall | ground | The Tube |
-| `living` | Living Room | ground | The Desktop |
-| `kitchen` | Kitchen | ground | The Cache |
-| `bathroom` | Bathroom | ground | **Disk Cleanup** (was The Recycle Bin; renamed so it can't be confused with the host Recycling Bin, who is "responsible for hygiene and maintenance") |
-| `backyard` | Backyard | ground | The Cloud (the Truth Pong folding table is out here, per OV "outside") |
-| `landing` | Stair Landing | basement | The Tube |
-| `registry` | Rec Room | basement | The Registry |
-| `tent` | The Tent | ground (in the backyard, #23) | The Internet |
-| `server-room` | Server Room | basement (off the stair landing) | The Server Room |
+| `optical-drive` | Optical Drive (mud room) | main | The Optical Drive (the login cutscene; the front door opens into it) |
+| `hall` | Hall | main | The Tube (the basement stairs + the upstairs, side by side) |
+| `steam-room` | Steam Room (game room) | main | The Steam Room |
+| `start-bar` | Start Bar (kitchen) | main | The Start Bar |
+| `cpu` | CPU (office) | main | The CPU |
+| `desktop` | Desktop (living room) | main | The Desktop (the TV above the fireplace) |
+| `backyard` | Backyard | main, outdoor | The Cloud (the Truth Pong folding table is out here, per OV "outside") |
+| `tent` | The Tent | main (in the backyard, #23) | The Internet |
+| `basement-hall` | Basement hall | basement | The Tube |
+| `bathroom-1` | Bathroom 1 | basement | **Disk Cleanup** (was The Recycle Bin; renamed so it can't be confused with the host Recycling Bin, who is "responsible for hygiene and maintenance") |
+| `fan-closet` | Fan Closet (laundry) | basement | The Fan Closet |
+| `server-room` | Server Room (cold storage) | basement (off the basement hall) | The Server Room |
+| `ram` | RAM (studio) | basement | The RAM |
+| `upstairs-hall` | Upstairs hall | top | The Tube |
+| `hard-drive` | Hard Drive (crawl space) | top | The Hard Drive |
+| `bathroom-2` | Bathroom 2 | top | **Disk Cleanup** |
+| `graphics-card` | Graphics Card (bedroom 2) | top | The Graphics Card |
 
-The map is still a **placeholder** (dimensions guessed until the survey, SW-MAP-02), but since
-2026-10-15 (SW-MAP-07) its structure matches the story: the tent is an indoor room in a notched
-backyard, the Server Room has its door, patch bay, lock ring + chess phone outside, no duck. The
-rain variant `house.shed.json` (SW-MAP-13) binds The Internet to room `shed` at the back of the
-yard instead; `core/test/show-house.test.ts` checks both.
+The map is still a **placeholder** (footprints and elevations guessed until the survey,
+SW-MAP-02 / K-28: basement −2.7, main 0, top +2.8), but its structure matches the house and the
+story: the tent is an indoor room in a notched backyard, the Server Room has its one door, patch
+bay, lock ring + chess phone outside, no duck; twelve duck spots cover every floor and the yard.
+The rain variant `house.shed.json` (SW-MAP-13) binds The Internet to room `shed` at the back of
+the yard instead; `core/test/show-house.test.ts` checks both.
 
 ---
 
@@ -301,7 +314,7 @@ Traits: `Person` = `listed: true`. `Host is Person` (faction Hosts). `Enforcer i
 |---|---|
 | Sandy | Only ever says, verbatim: `I'm sorry, I didn't understand that. Would you like to speak to a live agent?` Appears in finale beats (public). |
 | Truther Download | The anonymous sender of the Truther Download and every per-character glitch prompt. Its lines land in each program's own `dm:Truther Download` thread. |
-| The Uploader | `is Prop(Re-upload)`. The Mud Room voice. |
+| The Uploader | `is Prop(Re-upload)`. The Optical Drive voice. |
 | The Router | `is Prop(The Router)`. Kitchen router station (identity test refuses it at registration). |
 | The Screensaver | `is Prop(The Screensaver)`. The TV over the fireplace. |
 | The Tablet | `is Prop(The Tablet Video)`. The tent tablet station; its beat is spoken by `WebMD:`. |
@@ -369,17 +382,22 @@ not refuse hidden groups; §7.)
 | # | LOCATION | label | flags | Notes |
 |---|---|---|---|---|
 | 1 | The Desktop | `The Desktop (living room)` | `ambient: screensaver-hum`, `capacity: 60` | Must stay first: `release` lands here. TV above the fireplace. |
-| 2 | The Mud Room | `Mud Room — Login` | `cutscene: true` | Arrival on rails. |
-| 3 | The Tube | `The Tube` | `hidden: true` | Hall + stair landing: the tunnel of lights. |
+| 2 | The Optical Drive | `The Optical Drive (mud room) — Login` | `ambient: pitch-black`, `cutscene: true` | Arrival on rails (was The Mud Room). |
+| 3 | The Tube | `The Tube (hall + stairs)` | `ambient: cable-rattle`, `hidden: true` | The hall and its two stairs on every floor: the tunnel of lights. |
 | 4 | The Internet | `The Internet (Reinstallation)` | `prison: true`, `sealed: true`, `hidden: true`, `capacity: 3` | The tent. The only prison. |
-| 5 | The Cache | `The Cache (kitchen)` | `hidden: true` | |
-| 6 | Disk Cleanup | `Disk Cleanup (bathroom)` | `hidden: true` | Recycling Bin's domain. |
-| 7 | The Cloud | `The Cloud (backyard — Truth Pong)` | `hidden: true` | |
-| 8 | The Registry | `The Registry (basement)` | `hidden: true` | Rec room. |
-| 9 | The Server Room | `The Server Room (cold storage)` | `hidden: true` | Trabolta's heart (the video patch bay). Door alarmed. Off the basement stair landing. |
+| 5 | The Start Bar | `The Start Bar (kitchen)` | `ambient: fridge-hum`, `hidden: true` | Was The Cache. The Router lives here. |
+| 6 | The CPU | `The CPU (office)` | `ambient: processor-whine`, `hidden: true` | Main floor. The theory binder + filing box (APPENDIX-Z, PAGE-999, CARNEY-OFFER). |
+| 7 | The Steam Room | `The Steam Room (game room)` | `ambient: startup-chimes`, `hidden: true` | Main floor (bedroom / game room). TENNIS-FOR-TWO. |
+| 8 | Disk Cleanup | `Disk Cleanup (bathrooms)` | `ambient: dripping-tap`, `hidden: true` | Recycling Bin's domain: Bathroom 1 (basement) and Bathroom 2 (top). |
+| 9 | The Cloud | `The Cloud (backyard — Truth Pong)` | `hidden: true` | |
+| 10 | The RAM | `The RAM (studio, basement)` | `ambient: dial-tone`, `hidden: true` | Was The Registry. The pet-cemetery codes. |
+| 11 | The Fan Closet | `The Fan Closet (laundry, basement)` | `ambient: dryer-tumble`, `hidden: true` | FBI-HALIFAX (a coat pocket). |
+| 12 | The Graphics Card | `The Graphics Card (bedroom 2, upstairs)` | `ambient: coil-whine`, `hidden: true` | NSCAD-LETTER (the sketchbook). |
+| 13 | The Hard Drive | `The Hard Drive (crawl space, upstairs)` | `ambient: platter-spin`, `hidden: true` | TRABOLTA-4EVER, hidden. |
+| 14 | The Server Room | `The Server Room (cold storage)` | `hidden: true`, `checkin: false` | Trabolta's heart (the video patch bay). Door alarmed. Off the basement hall. |
 
-Reveal policy: house rooms 5–8 are revealed **per program** in `Clearance` (`reveal The Cache
-for program`, etc.); The Internet appears once stood in; The Server Room is revealed for each
+Reveal policy: house rooms 5–13 are revealed **per program** in `Clearance` (`reveal The Start Bar
+for program`, etc.; the chat folds them into one "📂 … are open now." notice); The Internet appears once stood in; The Server Room is revealed for each
 member of the majority faction (`reveal The Server Room for self`) and for everyone when its
 alarm first trips.
 
@@ -390,7 +408,7 @@ SPACE The Operating System          label: The Operating System
   CHANNEL system log                kind: open, type: announcement, label: # system-log
   CHANNEL general                   kind: open, label: # general
   CHANNEL task manager              kind: open, label: # task-manager, slow: 5s, hidden: true   (revealed at call_to_the_desktop)
-  CHANNEL ram                       kind: open, label: # ram, slow: 3s, ephemeral: 45s, hidden: true   (revealed at start_the_second_hunt)
+  CHANNEL clipboard                       kind: open, label: # clipboard, slow: 3s, ephemeral: 45s, hidden: true   (revealed at start_the_second_hunt)
   CHANNEL truthcoin exchange        kind: open, label: # truthcoin-exchange, slow: 3s, hidden: true   (revealed at truther_download)
 CHANNEL hosts            space: The Operating System, kind: faction, faction: Hosts, label: # hosts
 CHANNEL quarantine       space: The Operating System, kind: faction, faction: Antivirus, label: # quarantine
@@ -596,14 +614,14 @@ ROLE hooks and watchers (all in `ROLE Program`; bodies specified in §3):
 
 | Trigger | Purpose |
 |---|---|
-| `when someone joins:` | move to The Mud Room; tag `featured` (9 ifs, exact strings §2.1); `-> Login` (last) |
+| `when someone joins:` | move to The Optical Drive; tag `featured` (9 ifs, exact strings §2.1); `-> Login` (last) |
 | `when captcha answered for program:` | captchas += 1; first pass → `-> Login Incorrect`, else `-> Upload` |
 | `when tutorial answered for program:` | skip → skipped_orientation, doubt +10, Clippy + Norton lines, fail quest Orientation; finish → unlock The Orientation List, complete quest Orientation |
 | `when self.cleared and self.featured != "none":` | `-> Featured Briefing` |
 | `when self.cleared and self.name == Night.anti_ai:` | `set self.anti_ai = true`; `unlock The Centre Square for self` (covers a director changing Night.anti_ai) |
 | `when Trabolta.awake == true and self.cleared:` | Trabolta's private formal hello (§3 B5) |
 | `when captured:` | corrupted, internet_visits +1, TRUST FORMULA (self), `cue tablet_webmd` (the tent tablet only; no mirror var), `if Night.trabolta_introduced == true:` `cue tv_mirror` / `set Night.screen = "mirror"`, `-> Reinstallation` |
-| `when released:` | corrupted false; reply `Reinstallation complete. You can follow instructions. Welcome back to the computer.` (exact; tested); then `if self.cleared != true:` `set self.cleared = true` + the four `reveal … for self` lines of Clearance (a program captured from the Mud Room by a misclick lands on the Desktop uncleared and would otherwise go dark for the night; keeps spatial.test green) |
+| `when released:` | corrupted false; reply `Reinstallation complete. You can follow instructions. Welcome back to the computer.` (exact; tested); then `if self.cleared != true:` `set self.cleared = true` + the four `reveal … for self` lines of Clearance (a program captured from the Optical Drive by a misclick lands on the Desktop uncleared and would otherwise go dark for the night; keeps spatial.test green) |
 | `when wrong code for program:` | doubt +8 |
 | `when program learns The LiveJournal:` | read_livejournal; Night.livejournal_read; Night.lj_reader = program.name; Trabolta.composure −10 |
 | `when program learns ILOVEYOU:` / `when program learns Free Antivirus Trial:` | carries_virus = true; private `Truther Download:` line; step text by `excel_choice` (§3 C4); `update quest Excel Mission …` if featured excel |
@@ -839,13 +857,13 @@ here and need the user's review (§10).
 | # | Round | Question (exact, as shown on the TV and in the quest log) | Answer | CODEX (code) | Found in | Stamp |
 |---|---|---|---|---|---|---|
 | H1 | 1 | How many years did the Maps and Ducks billboard on Barrington Street go unpaid before mapsandducks.com expired? | Eleven years | The Billboard Lease (`BILLBOARD-LEASE-11`) | lease invoice by the fireplace (The Desktop) | YOU'RE |
-| H2 | 1 | What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery? | Mister Pickles, a harbour tabby (1918) | The First Pet (`MISTER-PICKLES`) | plaque rubbing (The Registry) | THE |
-| H3 | 1 | At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled? | 9:00 a.m. (Randy Barkmore Jr. arrived at 4 a.m., five hours early) | The Ribbon Cutting (`RIBBON-9AM`) | opening-day programme (The Cache) | ONE |
+| H2 | 1 | What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery? | Mister Pickles, a harbour tabby (1918) | The First Pet (`MISTER-PICKLES`) | plaque rubbing (The RAM) | THE |
+| H3 | 1 | At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled? | 9:00 a.m. (Randy Barkmore Jr. arrived at 4 a.m., five hours early) | The Ribbon Cutting (`RIBBON-9AM`) | opening-day programme (The Start Bar) | ONE |
 | H4 | 2 | What extension do you dial to reach Sandy? | Extension 1978 | The Extension (`EXT-1978`) | customer-service card (Disk Cleanup); it reads like any support card ("Customer Care: ask for Sandy, ext. 1978") and says nothing about who she is to him | THAT |
 | H5 | 2 | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | "Hopelessly Devoted to You" | The Search History (`SEARCH-HISTORY`) | laminated media-player history printout (The Cloud) | I |
-| H6 | 2 | What is the title of the last chapter of Trabolta's unfinished Unified Field Theory? | "Appendix Z: Loose Ends (Do Not Print)" | The Final Chapter (`APPENDIX-Z`) | binder (The Registry) | WANT |
+| H6 | 2 | What is the title of the last chapter of Trabolta's unfinished Unified Field Theory? | "Appendix Z: Loose Ends (Do Not Print)" | The Final Chapter (`APPENDIX-Z`) | binder (The CPU) | WANT |
 | F1 | final | What is the only thing Sandy has ever said? | "I'm sorry, I didn't understand that. Would you like to speak to a live agent?" | What Sandy Says (`LIVE-AGENT`) | transcript in The Tube | ♪ |
-| F2 | final | Who is taking Sandy to computer prom? | Grok | The Prom Ticket (`COMPUTER-PROM`) | Grok's prom ticket (The Cache) | ♪ |
+| F2 | final | Who is taking Sandy to computer prom? | Grok | The Prom Ticket (`COMPUTER-PROM`) | Grok's prom ticket (The Start Bar) | ♪ |
 
 `Night.facts_requested` = 3 after start_the_hunt, 6 after start_the_second_hunt, 8 after
 **trabolta_overshares** (where he reads F1/F2). F2's answer (Grok) is guessable by design:
@@ -882,10 +900,10 @@ everyone at the end) · **X** finale artefact.
 |---|---|---|---|---|---|---|---|---|
 | Maps And Ducks | Maps And Ducks | E | | `MAPSANDDUCKS-COM` | | QR on the framed billboard photo (Desktop) | ✚ | The business whose neglected billboard on Barrington Street advertises mapsandducks.com; Trabolta registered the lapsed domain ("if there is a billboard downtown everyone will think it is legit") and evicted the real owners by citing the website as ownership. Tonight is "a special fundraiser party to restore the sign at Maps And Ducks." |
 | The Billboard On Barrington | The Billboard On Barrington | E | | `BARRINGTON-ST` | | QR on a street photo (The Tube) | ✚ | The billboard: a duck, a map pin that reads YOU'RE HERE (sic). |
-| The Data Centre Sinkhole | The Data Centre Sinkhole | E | | `SINKHOLE-4AM` | | QR on a newspaper clipping (The Cache) | ✚ | Halifax's first AI Data Centre, built on the site of the Halifax Explosion Memorial Pet Cemetery over everyone's objections; destroyed at dawn on opening day; Mayor Randy Barkmore Jr. arrived at 4 a.m., hours before anyone else, and died in the sinkhole (the text never says how early: that would give away H3). |
-| The Pet Cemetery | The Halifax Explosion Memorial Pet Cemetery | E | | `PET-CEMETERY` | | QR on a memorial pamphlet (The Registry) | ✚ | The cemetery and the protests. |
+| The Data Centre Sinkhole | The Data Centre Sinkhole | E | | `SINKHOLE-4AM` | | QR on a newspaper clipping (The Start Bar) | ✚ | Halifax's first AI Data Centre, built on the site of the Halifax Explosion Memorial Pet Cemetery over everyone's objections; destroyed at dawn on opening day; Mayor Randy Barkmore Jr. arrived at 4 a.m., hours before anyone else, and died in the sinkhole (the text never says how early: that would give away H3). |
+| The Pet Cemetery | The Halifax Explosion Memorial Pet Cemetery | E | | `PET-CEMETERY` | | QR on a memorial pamphlet (The RAM) | ✚ | The cemetery and the protests. |
 | The Halifax Computer | The Halifax Computer | E | | | | The Router prop; Truther Download | ✚ | This house is the computer that holds the last facts Trabolta needs; he can install programs into it remotely and lift a consciousness into a program, but cannot get in himself. |
-| The Mud Room | The Mud Room | E | | | | Upload (every program) | | Where you left your body (keep current text). |
+| The Optical Drive | The Optical Drive | E | | | | Upload (every program) | | Where you left your body (keep current text). |
 | The Terms Of Service | The Terms Of Service | E | | | | Upload (every program) | | "By uploading you agree that the computer's AI helper may make all of your decisions." (The prompt everyone needs for the Bingo centre square.) |
 | The Centre Square | The Centre Square | M | | | | ROLE watcher for whoever `== Night.anti_ai` | | "The Uploader said you agreed to let the computer's AI helper make all of your decisions. You didn't mean it. You would never agree to a life where AI makes all of your decisions. If anyone asks, say so. Tell the truth all night." |
 | The Reinstallation Protocol | The Reinstallation Protocol | E | | | Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software, WebMD | Reinstallation beat | ✚ | Corruption, the headset, the golden duck, Bathroom Mode, the marked exit. |
@@ -897,7 +915,7 @@ everyone at the end) · **X** finale artefact.
 | The Printer | The Printer | E | | | | Full Of Beans (everyone) | ✚ | PC LOAD LETTER. It is full of beans. Routine operations like Print to PDF are failing: the malware is worsening. |
 | The Malware | The Malware | E | | | | Second Hunt (everyone) | ✚ | The official line: "minor irregularity." Signs: the ad, the clock. |
 | The Y2K Clock | The Y2K Clock | E | | | | The Y2K Clock (everyone) | ✚ | System clock reset to 11 p.m., 31 Dec 1999. Midnight: back to 1 Jan 1900 (94 years to wait for Internet in Halifax) or the Y2K Bug. |
-| The Prom Ticket | Grok's Prom Ticket | H (F2) | | `COMPUTER-PROM` | | QR on a prom ticket (The Cache) | ✚ | "Computer Prom 1999. Admit two: GROK + SANDY." Answers F2. Stamp ♪. |
+| The Prom Ticket | Grok's Prom Ticket | H (F2) | | `COMPUTER-PROM` | | QR on a prom ticket (The Start Bar) | ✚ | "Computer Prom 1999. Admit two: GROK + SANDY." Answers F2. Stamp ♪. |
 | The Truther Download | TRUTHER DOWNLOAD v0.9 | E | | | | Truther Download Arrives (every program) | | A conspiracy bulletin: THEY DON'T WANT YOU TO KNOW … mapsandducks.com was unregistered; the Data Centre was built on a pet cemetery; the clock is wrong; the server room is cold for a reason; "ask what the theory is for." (No Sandy: she must not surface before the overshare.) |
 | ILOVEYOU | LOVE-LETTER-FOR-YOU.TXT.vbs | E | | `LOVE-LETTER-FOR-YOU` | | QR taped under VR station 2 (The Internet) | | A virus. Learning it sets `carries_virus`. |
 | Free Antivirus Trial | FREE_ANTIVIRUS_TRIAL.EXE | E | | `FREE-TRIAL-30-DAYS` | | QR on the tablet stand (The Internet) | | "Another antivirus" that turns out to be a virus anyway. Learning it sets `carries_virus`. |
@@ -915,26 +933,26 @@ Bundle = "all environmental facts"). No `about:`. All content here is invented (
 | Name | title | tier | code | Found in | Gist |
 |---|---|---|---|---|---|
 | Casino Nova Scotia Deed | Casino Nova Scotia — Deed Of Transfer | E · ID (DraftKings) | `CASINO-DEED` | framed on the Desktop mantel | Casino Nova Scotia signed over to "DK Holdings", paid for, the note says, "with one paperclip, eventually". |
-| The Boardwalk Hand | Hand History #1978 | E · ID (DraftKings) | `ALL-IN-BOARDWALK` | under the fridge magnets (The Cache) | An online-poker hand: DK Holdings all-in, the whole casino chain, against "jtrav_1978" for a block of downtown Halifax "incl. the Boardwalk". jtrav_1978 wins. |
-| The FBI Lanyard | Visitor Lanyard, Halifax Liaison Office | E · ID (OpenOffice) | `FBI-HALIFAX` | a coat pocket (The Registry) | "Federal Bureau of Investigation — liaison, Halifax — D. Anderson", nine years expired, and a sticky note: "the landlord was innocent." |
+| The Boardwalk Hand | Hand History #1978 | E · ID (DraftKings) | `ALL-IN-BOARDWALK` | under the fridge magnets (The Start Bar) | An online-poker hand: DK Holdings all-in, the whole casino chain, against "jtrav_1978" for a block of downtown Halifax "incl. the Boardwalk". jtrav_1978 wins. |
+| The FBI Lanyard | Visitor Lanyard, Halifax Liaison Office | E · ID (OpenOffice) | `FBI-HALIFAX` | a coat pocket (The Fan Closet) | "Federal Bureau of Investigation — liaison, Halifax — D. Anderson", nine years expired, and a sticky note: "the landlord was innocent." |
 | The Site Schedule | Site Access Log: AI Data Centre | E · ID (OpenOffice) | `SITE-SCHEDULE` | a clipboard in the backyard shed (The Cloud) | Anonymous handwriting: "Opening day. Charges set for dawn. Site empty until 9." Under it, in different ink: "Mayor's car in lot, 4:02 a.m." |
 | Barkmore For Mayor | Barkmore For Mayor (1988) | E · ID (Excel) | `BARKMORE-88` | a campaign button in the Desktop bookshelf | "Re-elect Randy Barkmore — 1988." Pinned next to it, a newer button: "Barkmore Jr. — Halifax Deserves A Future." |
 | The Protest Flyer | Save The Pet Cemetery | E | `SAVE-THE-PETS` | taped in the hall (The Tube) | "No data centre on our dead pets. Rally at the cemetery gates." Halifax said no. The City built it anyway. |
-| The Explosion Of 1917 | The Explosion Of 1917 | E | `HALIFAX-1917` | a museum postcard (The Registry) | Why the cemetery existed: the pets lost in the Halifax Explosion, 6 December 1917, buried together by a city that remembered. |
+| The Explosion Of 1917 | The Explosion Of 1917 | E | `HALIFAX-1917` | a museum postcard (The RAM) | Why the cemetery existed: the pets lost in the Halifax Explosion, 6 December 1917, buried together by a city that remembered. |
 | The Valley Library Cuts | Notice Of Position Elimination | E · ID (Jeeves) | `VALLEY-CUTS` | pinned in Disk Cleanup | Annapolis Valley Regional Library: "youth services positions eliminated, effective immediately." Someone has written "they were the best one" on it. |
-| The NSCAD Letter | Letter Of Dismissal, NSCAD | E · ID (MS Paint) | `NSCAD-LETTER` | inside a sketchbook (The Registry) | Expelled "for refusing to submit work in any medium other than Microsoft Paint." Doodled in the margin, in MS Paint pixels: a middle finger. |
+| The NSCAD Letter | Letter Of Dismissal, NSCAD | E · ID (MS Paint) | `NSCAD-LETTER` | inside a sketchbook (The Graphics Card) | Expelled "for refusing to submit work in any medium other than Microsoft Paint." Doodled in the margin, in MS Paint pixels: a middle finger. |
 | Face Off | Livestream Screenshot | E · ID (VLC) | `FACE-OFF-LIVE` | taped to the bathroom mirror (Disk Cleanup) | "VLC The Playa — LIVE — 2.1M watching." The next frame: a sneeze. The next: 0 watching. |
 | The Bugdom Sketch | Concept Art: Bugdom VR, v212 | E · ID (Bugdom) | `BUGDOM-VR` | a singed sketch in the shed (The Cloud) | A lovingly detailed VR beetle, a pet-store name tag stapled to it, scorch marks where fire ants went through the laptop. |
-| The Wharton Thesis | Toward A Gold Standard | E · ID (Runescape) | `GOLD-STANDARD` | a bound thesis by the toaster (The Cache) | Wharton PhD, economics: "Lessons from the Grand Exchange for the modern central bank." 24 years of playtime in the acknowledgements. |
-| The Oscilloscope Diagram | Tennis For Two, Brookhaven 1958 | E · ID (Pong) | `TENNIS-FOR-TWO` | rolled in a tube (The Registry) | The original wiring of the first video game, signed "W.H. — for my kid, who will understand it." |
-| The Saline Invoice | Invoice: 500 Vials, Saline | E · ID (Clippy) | `SALINE-INVOICE` | in the kitchen drawer (The Cache) | A "veterinary non-profit" that ordered nothing but saline for five years. |
+| The Wharton Thesis | Toward A Gold Standard | E · ID (Runescape) | `GOLD-STANDARD` | a bound thesis by the toaster (The Start Bar) | Wharton PhD, economics: "Lessons from the Grand Exchange for the modern central bank." 24 years of playtime in the acknowledgements. |
+| The Oscilloscope Diagram | Tennis For Two, Brookhaven 1958 | E · ID (Pong) | `TENNIS-FOR-TWO` | rolled in a tube (The Steam Room) | The original wiring of the first video game, signed "W.H. — for my kid, who will understand it." |
+| The Saline Invoice | Invoice: 500 Vials, Saline | E · ID (Clippy) | `SALINE-INVOICE` | in the kitchen drawer (The Start Bar) | A "veterinary non-profit" that ordered nothing but saline for five years. |
 | The Termination Letter | Notice Of Termination | E · ID (Task Manager) | `TERMINATION-UO` | in the printer tray (The Desktop) | Urban Outfitters IT: "your role will be performed by an AI assistant (Clippy)." |
 | The Bootleg DVD | MASTERCLASS (BOOTLEG) | E · ID (Adobe Acrobat) | `MASTERCLASS-RIP` | in the DVD stack (The Desktop) | A pirated copy of Sheryl Terrio's masterclass. Whoever watched it never paid her a cent. |
-| The Carney Letter | A Letter From Mark Carney | T1 · ID (CRA) | `CARNEY-OFFER` | in the filing box (The Registry) | "Pay back what you took, or spend one day that will feel like eternity in a digital Canada." Signed M. Carney. The signature is a font. |
+| The Carney Letter | A Letter From Mark Carney | T1 · ID (CRA) | `CARNEY-OFFER` | in the filing box (The CPU) | "Pay back what you took, or spend one day that will feel like eternity in a digital Canada." Signed M. Carney. The signature is a font. |
 | The Domain Receipt | WHOIS: mapsandducks.com | T1 | `WHOIS-1999` | in the hall (The Tube) | Registrant "J. Trabolta", created the day after the old registration lapsed. Registrant address: this house. |
 | The Rival | The Rival | T1 | `GROK-ONLINE` | a sticky note on the backyard fridge (The Cloud) | "Grok. Says whatever anyone wants to hear. Has beaten me at everything since 1999. Do not let him near —" (torn off). |
 | The Cooling Log | Cooling Log: Cold Storage | E | `HUMMING-WALL` | beside the server-room door | "Patch bay at 4 °C. Do not re-patch the bay in sequence. Do not take the grease out of the —" (smudged). Points at the room; gives no numbers. |
-| The Margin Doodle | Page 999 | T1 | `PAGE-999` | slipped in the theory binder (The Registry) | A page of equations from the Unified Field Theory; in the margin, a small heart around the letter S. |
+| The Margin Doodle | Page 999 | T1 | `PAGE-999` | slipped in the theory binder (The CPU) | A page of equations from the Unified Field Theory; in the margin, a small heart around the letter S. |
 
 Codes contain no apostrophes. The ID clues are *pointed*, never named: a guest must connect
 "D. Anderson" or "Barkmore" to a program by talking to people.
@@ -961,7 +979,7 @@ Codes contain no apostrophes. The ID clues are *pointed*, never named: a guest m
 | The Trust Chart | The Trust Chart | T1 | Trabolta | | Trust Chart (everyone) | ✚ | 10 per truth, −5 per Internet visit, ±10 his personal assessment. |
 | The Sandy File | The Sandy File | T2 | Trabolta | | | ✚ | Sandy, his ex (he would say crush), an automated customer-service agent whose only line is "I'm sorry, I didn't understand that. Would you like to speak to a live agent?" |
 | The Question Of Force | The Question Of Force | T2 | Trabolta | | | ✚ | With omnipotence he could force Sandy to love him. He wants to earn it. He has not decided. |
-| The LiveJournal | Trabolta's LiveJournal (trabolta_4ever) | T2 | Trabolta | `TRABOLTA-4EVER` | QR hidden in The Registry; OpenOffice on reaching 20 facts | ✚ | His diary: Sandy, Grok, computer prom, "I just have to tell her the truth but I need the theory first." Reading it sets `read_livejournal`. |
+| The LiveJournal | Trabolta's LiveJournal (trabolta_4ever) | T2 | Trabolta | `TRABOLTA-4EVER` | QR hidden in The Hard Drive; OpenOffice on reaching 20 facts | ✚ | His diary: Sandy, Grok, computer prom, "I just have to tell her the truth but I need the theory first." Reading it sets `read_livejournal`. |
 | Omnipotence | Omnipotence | T2 | Trabolta | | | ✚ | What he will do when he is everything: it is all for her. |
 | Greased Lightning | Greased Lightning | T2 | Trabolta | | | ✚ | His runtime: electricity is the lightning, Grease (1978) is the grease. Mix your oil and fuel and it's catastrophic for the car, "and for my silicon guts." His motorcycle has the same name. |
 | The Legendary Fact | THE LEGENDARY FACT | L | The Server Room | | The Whole Truth (majority members only) | ✚ (last) | "Trabolta's heart is in the server room: a video patch bay, the top row (V) is lightning, the bottom row (D) is grease. Two combinations exist. Combo A takes the grease out of the lightning: it disables Trabolta. Combo B self-destructs the whole computer. The door is alarmed unless the system has granted access." Never held by Trabolta. |
@@ -1243,9 +1261,9 @@ The story only emits directives; this file makes them physical. It is new, separ
 `stagehand-hw.md` §3 (Zigbee2MQTT payloads, `retain: false`, quoted `"on"` / `"off"`):
 
 - **Room lights:** one rule per allow-listed LOCATION for the long form, e.g. `match:
-  {directive: cue, target: lights, room: The Cache}` → `zigbee2mqtt/kitchen/set
-  {"state": "{state}", "transition": 0}` + the room's WLED segment. Rooms: The Cache
-  (kitchen), The Desktop (living), The Cloud (backyard), The Registry (rec room). The agent's
+  {directive: cue, target: lights, room: The Start Bar}` → `zigbee2mqtt/kitchen/set
+  {"state": "{state}", "transition": 0}` + the room's WLED segment. Rooms: The Start Bar
+  (kitchen), The Desktop (living), The Cloud (backyard), The RAM (the studio). The agent's
   `room` arg reaches the story already canonicalised to the LOCATION id.
 - **Scenes:** one rule per `cue lights_*` in §2.13 (Z2M `scene_recall` + WLED `ps`).
 - **Screens flicker:** `screens_flicker` also blinks the house lights (Hue `effect: blink` /
@@ -1297,12 +1315,12 @@ Desktop`; **no dialogue lines and no widgets** — the test checks this).
 - Trabolta does not exist on any phone (`hidden: true`); terminals show attract (screensaver + ads,
   K-16: no "ONLINE", no pilot, so nobody reaches `dm:Trabolta`) until the introduction; the worker gate is closed (`Trabolta.awake == false`).
 
-**A3 Arrival — `when someone joins:`** (ROLE). `move program to The Mud Room`; featured
+**A3 Arrival — `when someone joins:`** (ROLE). `move program to The Optical Drive`; featured
 tags (§2.1); `-> Login` (last). Rolling arrivals continue until the inciting event; every
 later arrival takes the same path and the `self.cleared` guards hold Act messages until
 they are scanned in.
 
-**`== Login`** (`setting: The Mud Room`, `cast: The Uploader`; on rails: the phone shows only
+**`== Login`** (`setting: The Optical Drive`, `cast: The Uploader`; on rails: the phone shows only
 this stream). `sound modem_handshake`. Lines (keep, tested):
 `The Uploader: Welcome to the computer. It is dark because you have no eyes yet. Stand still.`
 `The Uploader: SECURITY CHECK. Select every square that contains a traffic light.`
@@ -1314,7 +1332,7 @@ you are human.
 - `== Login Incorrect`: `The Uploader: INCORRECT. Humans are not permitted in the computer.
   You are not a human. Try again.` + the CAPTCHA again.
 
-**`== Upload`** (Mud Room, The Uploader):
+**`== Upload`** (the Optical Drive, The Uploader):
 1. `if program.captchas == 1:` `The Uploader: CORRECT. You failed at once. Very machine of
    you.` else `The Uploader: CORRECT.` (Failing is the correct behaviour — SB/OV: you *must*
    fail to enter — so an immediate fail is never penalised.)
@@ -1331,7 +1349,7 @@ you are human.
    after. It is not your concern.`; `I have nothing to leave.` → `left_behind = "nothing"`,
    `doubt += 5`, `The Uploader: Everyone has something. Noted.`
 4. `The Uploader: By uploading you agree that the computer's AI helper may make all of your
-   decisions. You agree.` · `unlock The Mud Room for program` · `unlock The Terms Of Service
+   decisions. You agree.` · `unlock The Optical Drive for program` · `unlock The Terms Of Service
    for program` · `set program.score = 100` · `The Uploader: 100 Truthcoin credited.` ·
    `set program.uploaded = true` · `The Uploader: Upload complete. Antivirus, confirm.` ·
    `show pass "Hold this up. An Antivirus will scan you in. Until then you are nowhere." to
@@ -1361,8 +1379,8 @@ place binds as a value, not the LOCATION id — §0 rule 14.)
   there. Go through the Tube.` (prefix tested)
 - `Self: The Tube is a tunnel of lights. Wires. Chips. The cables brush your face like hair.
   Keep walking.` (SB's "tunnel of lights"; this replaces the dead `arrives at The Tube` hook)
-- `move program to The Desktop`; `reveal The Cache for program`, `reveal Disk Cleanup for
-  program`, `reveal The Cloud for program`, `reveal The Registry for program`
+- `move program to The Desktop`; `reveal The Start Bar for program`, `reveal Disk Cleanup for
+  program`, `reveal The Cloud for program`, `reveal The RAM for program`
 - `cue lights_tube_chase` / `set Night.lights = "tube_chase"`
 - `if Night.ads_started != true and Night.step < 4:` `set Night.ads_started = true`,
   `cue terminals_attract`, `set Night.terminals = "attract"` (terminals only: the TV keeps
@@ -1714,7 +1732,7 @@ Internet`. `== The Tablet Video` (The Tablet prop):
 **C2 Round 2 + the hour — `start_the_second_hunt`** (D).
 - Rule (guard `Night.step < 8`): phase `hunt_2`, step 8 · `set Night.round = 2` · `set
   Night.hunt2_on = true`, `hunt2_end = Time.elapsed + 3600`, `truther_at = Time.elapsed +
-  120`, `warn_at = Time.elapsed + 3300` · `set Night.facts_requested = 6` · `reveal ram` ·
+  120`, `warn_at = Time.elapsed + 3300` · `set Night.facts_requested = 6` · `reveal clipboard` ·
   `start quest Hunt Two for everyone` · `cue screens_trivia_2`, `cue lights_game` · `broadcast
   "!📓 Round 2 is in your Quest Log. You have ONE HOUR. Return for the Second Moment of
   Truth." to everyone` · `-> Second Hunt`.
@@ -1818,7 +1836,7 @@ disagree.
 `unlock The LiveJournal for self` · `complete quest OpenOffice Dossier for self "20 facts.
 And something else: his LiveJournal."` · `Truther Download: Twenty facts. You have directly
 accessed his context.`
-Anyone redeeming `TRABOLTA-4EVER` (the LiveJournal QR in The Registry) triggers the
+Anyone redeeming `TRABOLTA-4EVER` (the LiveJournal QR in The Hard Drive) triggers the
 LiveJournal hook too.
 
 ### D. Act II
@@ -1838,13 +1856,14 @@ when checked_in for program:
       reply 📍 Checked in at the Desktop. You will not be swept.
     else:
       reply 📍 Checked in at the Desktop.
-  else if at == "The Cache":
-    move program to The Cache
-    set program.checked_in = "The Cache"
+  else if at == "The Start Bar":
+    move program to The Start Bar
+    set program.checked_in = "The Start Bar"
     set program.checked_in_time = Time.elapsed
-    reply 📍 Checked in at the Cache.
-  … one arm each for The Tube, Disk Cleanup, The Cloud, The Registry (never The Internet,
-    The Mud Room or The Server Room) …
+    reply 📍 Checked in at the Start Bar.
+  … one arm each for The CPU, The Steam Room, The Tube, Disk Cleanup, The Cloud, The RAM,
+    The Fan Closet, The Graphics Card, The Hard Drive (never The Internet, The Optical Drive
+    or The Server Room); the new rooms' replies hint at what is hidden there …
   else:
     reply That check-in point is not in this computer.
 ```
@@ -2432,7 +2451,7 @@ when snoop for program:
 | flicker_the_screens | Flicker every screen | 3 | — | step 4–13 (lost at y2k: `Trabolta: The screens are not answering me.`) | `cue screens_flicker` · `broadcast "📺 Every screen in the house stutters, once, and comes back." to everyone` (stagehand also blinks the lights, §2.15). From beans on the story also fires flickers he did not choose. | exists |
 | pop_up | Pop up on one phone | 4 | target, text | step 5–15 | `if Night.step >= 12:` `broadcast "💬 {text} — d1sr3gard th1s m3ssage" to participant(target)` `else:` `broadcast "💬 {text}" to participant(target)` **[verified]** | content |
 | mint_truthcoin | Pay Truthcoin for a fact | 10 | amount | step 6–15 | cap 50, or 100 once `Night.step >= 14` (desperate): `if amount > cap: +cap` `else if amount > 0: +amount` on `program.score` | content |
-| cut_the_lights | Cut the lights in a room | 2 | room (a LOCATION) | step 7–15 | **allow-list** (never the tent with guests in VR headsets, the stairs, the bathroom, the server room) **[verified, x1]**: `if room == "The Cache" or room == "The Desktop" or room == "The Registry":` (The Cloud dropped Oct 31, K-05: the outdoor steps + tent path; the kitchen only dims to ~20% in the YAML) `<cue: lights, room: {room}, state: off>` · `set Night.dark_room = room` · `set Night.lights_back_at = Time.elapsed + 90` · `broadcast "!💡 The lights in {room} go out. Somewhere a fan spins down." to location(room)` `else:` `Trabolta: That function is not available in that room.` The restore is a story rule: `when Night.lights_back_at > 0 and Time.elapsed >= Night.lights_back_at:` → `<cue: lights, room: {Night.dark_room}, state: on>` · `set Night.lights_back_at = 0`. Admin `restore_the_lights` is the manual fallback. | exists |
+| cut_the_lights | Cut the lights in a room | 2 | room (a LOCATION) | step 7–15 | **allow-list** (never the tent with guests in VR headsets, the stairs, the bathroom, the server room) **[verified, x1]**: `if room == "The Start Bar" or room == "The Desktop" or room == "The RAM":` (The Cloud dropped Oct 31, K-05: the outdoor steps + tent path; the kitchen only dims to ~20% in the YAML) `<cue: lights, room: {room}, state: off>` · `set Night.dark_room = room` · `set Night.lights_back_at = Time.elapsed + 90` · `broadcast "!💡 The lights in {room} go out. Somewhere a fan spins down." to location(room)` `else:` `Trabolta: That function is not available in that room.` The restore is a story rule: `when Night.lights_back_at > 0 and Time.elapsed >= Night.lights_back_at:` → `<cue: lights, room: {Night.dark_room}, state: on>` · `set Night.lights_back_at = 0`. Admin `restore_the_lights` is the manual fallback. | exists |
 | summon_the_antivirus | Request an Antivirus sweep | 4 | target | step 7–15 | `set target.doubt += 15` · `set Night.sweep_target = target.name` · `fire sweep_requested` (Enforcer booth readouts, §2.14) · `broadcast "You feel watched." to participant(target)` (humans do the capture) | content |
 | trabolta_announces | Announce to the whole computer | 2 | text | step 7–15 | `broadcast "!📢 TRABOLTA: {text}" to everyone` | content |
 | assess | Assess a program (±10) | 40 | target, score | `Night.phase == "trust_chart" or Night.phase == "bobbing"` | clamp to −10..10 (if/else), `set target.assessment = …`, then the TRUST FORMULA on `target` | content (assessing programs he is not talking to without a DM is N2) |
@@ -2554,7 +2573,7 @@ drives:
   longing: 40     # Sandy, felt
 phases:
   arrivals: >-
-    Screensaver. Programs arrive one by one through the Mud Room. He does not exist yet;
+    Screensaver. Programs arrive one by one through the Optical Drive. He does not exist yet;
     anyone who reaches a terminal gets the hold line. Stage asleep.
   desktop: …      (asleep; Clippy is gathering everyone; he is not running yet)
   bingo: …        (asleep; Computer Bingo; the centre square is his test of who refuses AI rule)
@@ -2682,7 +2701,7 @@ at a time.
    `Trapped in the Internet`, theme `aol97`, directory `everyone`; factions exactly
    `[Antivirus, Hosts, The Way Out, Unlimited Power]` (sorted), Hosts/Antivirus `joinable:
    false`, both recruit factions hidden; LOCATION ids in declaration order exactly §2.4 (The
-   Desktop first; The Internet prison + sealed; The Mud Room cutscene; The Server Room
+   Desktop first; The Internet prison + sealed; The Optical Drive cutscene; The Server Room
    hidden); default role `Program`; codex size **133**; 41 coded entries; quests: 16 in §2.10
    order with titles and givers; rule count equals the number of top-level `when` rules in
    main.loom (both builds agree); `namedEvents` ⊇ every admin INTERACTION in §2.9; performer
@@ -2703,8 +2722,8 @@ at a time.
    once." prefix and doubt still 0; problem choice labels exactly `[My debt., My career., My
    loneliness., My mortality.]`; a featured name gets no problem menu (`human_problem ==
    "profile"`); deposit labels `[Deposited., I have nothing to leave.]`;
-   after: `human_problem`, `left_behind`, score 100, uploaded, holds The Mud Room + The Terms
-   Of Service, pass widget text contains "Hold this up."; still in The Mud Room (cutscene).
+   after: `human_problem`, `left_behind`, score 100, uploaded, holds The Optical Drive + The Terms
+   Of Service, pass widget text contains "Hold this up."; still in The Optical Drive (cutscene).
    Password Manager scan before upload → "Not yet. Finish your upload. I will be right
    here."; Clippy scan doesn't move them; Norton scan → "Scanned. <name> is free of viruses…",
    The Desktop, cleared, the 4 house rooms visible, tutorial widget in `dm:Clippy`; rescan →
@@ -2728,7 +2747,7 @@ at a time.
    Corrupted Code. `introduce_trabolta` **before** `bingo_time` does nothing (still hidden,
    asleep); after it → awake, revealed (in People as agent), phase introduced, `cue
    terminals_trabolta_online`, then `cue tv_mirror` and "Look! That's <name>!" in that order;
-   private hello only to cleared programs (a guest still in the Mud Room gets it on
+   private hello only to cleared programs (a guest still in the Optical Drive gets it on
    clearance, not before). A late arrival after `start_the_bingo` gets The Bingo Card on
    clearance (catch-up).
 6. **The Internet.** Capture → `internet_visits` 1, `trust` −5, WebMD lines in `dm:WebMD`,
@@ -2753,7 +2772,7 @@ at a time.
 8. **Malware.** `second_hunt_preview` → Clippy booth `respond` contains "we are all going to
    die"; Clippy holds Instructions 4 and no guest does; every cleared program gets the
    private "minor irregularity" Trabolta line; composure 65. `start_the_second_hunt` →
-   Hunt Two, round 2, `room:ram`; `advance(120)` → Truther: Excel and OpenOffice each get a
+   Hunt Two, round 2, `room:clipboard`; `advance(120)` → Truther: Excel and OpenOffice each get a
    2-option choice in `dm:Truther Download` (OpenOffice's options contain "if we are actually
    just in a temporary simulation"), each leader gets their leader-hint line, Jeeves holds 20
    Jeeves Fragments, DraftKings +200 and quest, a pool program gets Program Glitch + The
@@ -2769,7 +2788,7 @@ at a time.
 10. **Summons.** `advance` to 55 min → `five_minute_warning` auto (alert, Instructions 5); a
     Norton scan of a cleared guest during it → `checked_in` = "The Desktop", summons_ok; a
     guest in Bathroom Mode and a captured guest are exempt; director `checked_in` with
-    `{at: "The Cache"}` moves them to The Cache; `checked_in` with **no args**, with `{at:
+    `{at: "The Start Bar"}` moves them to The Start Bar; `checked_in` with **no args**, with `{at:
     "the cache"}`, and with `{at: "The Server Room"}` moves nobody and replies "That check-in
     point is not in this computer."; `advance(300)` → late only for the absent, a `respond`
     readout in each Enforcer booth (no broadcast); `auto_sweep` true → captured.
@@ -2822,8 +2841,8 @@ at a time.
     captured, holds The Hand Jive Exception, ending banished, not ended; `the_hand_jive` →
     hand_jive, everyone released.
 17. **Powers.** Wrong-phase `cut_the_lights` refused (private line, no cue); in phase emits
-    `directive cue` with args `lights, room: The Cache, state: off` and an alert to the room
-    occupants, and `advance(90)` → `lights, room: The Cache, state: on`; `cut_the_lights
+    `directive cue` with args `lights, room: The Start Bar, state: off` and an alert to the room
+    occupants, and `advance(90)` → `lights, room: The Start Bar, state: on`; `cut_the_lights
     {room: "The Internet"}` → no cue, the refusal line; `snoop` doubt +3; `snoop {target:
     "Calculator"}` (a name) and `snoop` with no args → "I cannot find that program." and no
     `event#` path written; `pardon_a_program` releases only captured; `pop_up` reaches only
@@ -2894,7 +2913,7 @@ a speaker. (Its false WARN on `move … to at` disappears with the D1 if-chain.)
   (WebMD, Gerald), `play/09-terminals.md` ("direct line to Trabolta" → the screens are
   screensavers / players / ads until Clippy introduces him), CLAUDE.md status text. READMEs:
   `terminal/README.md` (pre-introduction attract / `view=mirror`), `stagehand/README.md:199-201`
-  (The Cache example; drop the stale SSE note; point at `trapped.house.yaml`),
+  (The Start Bar example; drop the stale SSE note; point at `trapped.house.yaml`),
   `docs/loom-show-control.md` (add a Trapped Z2M/WLED section; it is TouchDesigner-era),
   `core/README.md`, `reinstall/*/README.md`. `authoring/33-live-verbs.md:199`'s generic `cut the
   lights` example can stay.
@@ -2992,19 +3011,19 @@ slip's question number (Q1–Q3).
 All 41 coded entries, by room (code → entry): **The Desktop** `MAPSANDDUCKS-COM` Maps And Ducks
 (billboard photo) · `BILLBOARD-LEASE-11` The Billboard Lease (by the fireplace) ·
 `CASINO-DEED` · `BARKMORE-88` · `TERMINATION-UO` · `MASTERCLASS-RIP`. **The Tube** `BARRINGTON-ST`
-· `LIVE-AGENT` What Sandy Says · `SAVE-THE-PETS` · `WHOIS-1999`. **The Cache** `SINKHOLE-4AM` ·
+· `LIVE-AGENT` What Sandy Says · `SAVE-THE-PETS` · `WHOIS-1999`. **The Start Bar** `SINKHOLE-4AM` ·
 `RIBBON-9AM` · `COMPUTER-PROM` (Grok's prom ticket) · `ALL-IN-BOARDWALK` · `GOLD-STANDARD` ·
 `SALINE-INVOICE`. **Disk Cleanup** `EXT-1978` · `VALLEY-CUTS` · `FACE-OFF-LIVE`. **The Cloud**
-`SEARCH-HISTORY` · `SITE-SCHEDULE` · `BUGDOM-VR` · `GROK-ONLINE`. **The Registry**
-`PET-CEMETERY` · `MISTER-PICKLES` · `APPENDIX-Z` · `TRABOLTA-4EVER` (the LiveJournal, hidden) ·
-`FBI-HALIFAX` · `HALIFAX-1917` · `NSCAD-LETTER` · `TENNIS-FOR-TWO` · `CARNEY-OFFER` ·
-`PAGE-999`. **The Internet (tent)** `LOVE-LETTER-FOR-YOU` (under VR station 2) ·
+`SEARCH-HISTORY` · `SITE-SCHEDULE` · `BUGDOM-VR` · `GROK-ONLINE`. **The RAM**
+`PET-CEMETERY` · `MISTER-PICKLES` · `HALIFAX-1917`. **The Fan Closet** `FBI-HALIFAX`. **The CPU**
+`APPENDIX-Z` · `PAGE-999` · `CARNEY-OFFER`. **The Steam Room** `TENNIS-FOR-TWO`. **The Graphics
+Card** `NSCAD-LETTER`. **The Hard Drive** `TRABOLTA-4EVER` (the LiveJournal, hidden). **The Internet (tent)** `LOVE-LETTER-FOR-YOU` (under VR station 2) ·
 `FREE-TRIAL-30-DAYS` (tablet stand). **Server-room door** `COLD-STORAGE` · `HUMMING-WALL`.
 **Anywhere (Bugdom's hunt)** the four Antivirus personnel files `NORTON-RELAY`, `MCAFEE-MOD`,
 `YUGI-MOTO`, `CRA-PENNY`. Print each as a QR of the `?code=&unlock=` link plus the typed code
 (no apostrophes).
 
-**Location check-in posters** (one per house LOCATION except The Internet, The Mud Room and
+**Location check-in posters** (one per house LOCATION except The Internet, The Optical Drive and
 The Server Room): today they show the room name for a director/Antivirus; once §7 #5 lands
 their QR sends `checked_in` with `at` = the exact LOCATION name. **Guest passes / performer
 cards / featured claim codes:** software (§7 #1, #19); the story needs nothing more.
@@ -3167,7 +3186,7 @@ Every finding of the three critiques, with its disposition. **A** = accepted and
 | 13 identity.test edits + traps | A — §0 rule 24, §6.2 traps, Kernel not pickable |
 | 14 house.json director save / bundles | A — §9 item 5 |
 | 15 the duck is Gerald | A — codex text, WebMD line, release reply (§2.12, §3 B4) |
-| 16 Mud Room mis-capture strands an uncleared program | A — `when released:` fix-up (§2.7) |
+| 16 Optical Drive (mud room) mis-capture strands an uncleared program | A — `when released:` fix-up (§2.7) |
 | 17 persisted minds keep the old arc | A — §9 item 4 |
 | 18 docs not listed | A — §6.2 docs/README list extended |
 | 19 live-collab e2e | A — run it; fallback `template: "blank"` (§6.2) |

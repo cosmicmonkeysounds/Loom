@@ -125,9 +125,10 @@ house announcements* **off** — the living room hears the house speakers.
 
 ## The bathroom terminal
 
-**Mounted outside the door, never inside.** The house map's `bathroom`
-spot is on the hall wall beside the bathroom door (`house.json`: room
-`hall`, facing into the hall), so its camera looks at the hall, not the
-bathroom. Provision it with `spot=bathroom`. If it ever has to go inside,
+**Mounted outside the door, never inside.** The house map's
+`bathroom-1-door` spot is on the basement hall wall beside Bathroom 1's
+door (`house.json`: room `basement-hall`, facing into the hall), so its
+camera looks at the hall, not the bathroom. Provision it with
+`spot=bathroom-1-door`. If it ever has to go inside,
 run it as `view=face` with the camera taped and say so to the tech op —
 but the plan is outside.

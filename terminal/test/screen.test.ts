@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.ts";
 import { attractOf, parseScreenState, pollScreen, screenStateUrl, voiceOf } from "../src/screen.ts";
 
-const config = defaultConfig({ eventId: "evt 1", token: "tok", name: "Kitchen", spot: "kitchen", view: "auto" });
+const config = defaultConfig({ eventId: "evt 1", token: "tok", name: "Kitchen", spot: "start-bar", view: "auto" });
 
 const body = {
   now: 1,
@@ -24,7 +24,7 @@ function fakeFetch(status: number, json: unknown, seen: Array<{ url: string; ini
 
 describe("screen state", () => {
   it("polls the event-scoped route with the terminal's heartbeat fields and its token", async () => {
-    expect(screenStateUrl(config)).toBe("/e/evt%201/api/screen/state?name=Kitchen&spot=kitchen&view=auto&character=Trabolta");
+    expect(screenStateUrl(config)).toBe("/e/evt%201/api/screen/state?name=Kitchen&spot=start-bar&view=auto&character=Trabolta");
     const seen: Array<{ url: string; init?: RequestInit }> = [];
     const out = await pollScreen(config, fakeFetch(200, body, seen));
     expect(out).toMatchObject({ kind: "state", state: { attract: true, character: { id: "Trabolta", hidden: true, awake: false } } });

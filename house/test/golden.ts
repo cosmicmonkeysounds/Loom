@@ -38,6 +38,14 @@ export const GOLDEN = join(ROOT, "test", "golden");
 export const SHOW_HOUSE = join(ROOT, "..", "core", "examples", "trapped-in-the-internet", "house.json");
 /** Its rain variant (the Internet in the shed, not the tent) — not a golden; checked by the show + route suites. */
 export const SHOW_SHED_HOUSE = join(ROOT, "..", "core", "examples", "trapped-in-the-internet", "house.shed.json");
+/**
+ * The show's map as it stood before the real floor plan (wave 2: two floors,
+ * the tent; `two-floor.shed.json` is its shed variant), frozen as the suites'
+ * realistic many-room fixture: the mechanics tests pin its coordinates, so
+ * they must not move with every edit to the live map. Not a golden.
+ */
+export const TWO_FLOOR_HOUSE = join(ROOT, "test", "maps", "two-floor.json");
+export const TWO_FLOOR_SHED_HOUSE = join(ROOT, "test", "maps", "two-floor.shed.json");
 /** The Godot project's copies (`pnpm --filter @loom/house sync`). */
 export const VR_HOUSE = join(ROOT, "..", "reinstall", "vr", "house", "house.json");
 export const VR_GOLDEN = join(ROOT, "..", "reinstall", "vr", "test", "golden");

@@ -42,7 +42,7 @@ screen (moderator passcode, a name, the character, camera, voice), or
 provision a whole fleet by opening one link on each:
 
 ```
-http://<server>/terminal/?code=<mod passcode>&name=Kitchen&character=Trabolta&spot=kitchen&view=auto
+http://<server>/terminal/?code=<mod passcode>&name=Kitchen&character=Trabolta&spot=start-bar&view=auto
 ```
 
 (`&camera=environment` for the back camera; `&engine=` — see *The voice*

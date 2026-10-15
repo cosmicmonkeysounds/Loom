@@ -20,7 +20,7 @@ import {
 } from "../src/index.ts";
 import type { HouseMap, Prop, Vec2, Vec3 } from "../src/index.ts";
 import { labelPoint } from "../src/three/layout.ts";
-import { SHOW_HOUSE, SHOW_SHED_HOUSE, fixture, loadHouse } from "./golden.ts";
+import { SHOW_HOUSE, SHOW_SHED_HOUSE, TWO_FLOOR_HOUSE, fixture, loadHouse } from "./golden.ts";
 
 const mm3 = (p: Vec3): Vec3 => p.map((v) => Math.round(v * 1000) / 1000 + 0) as Vec3;
 const path = (house: HouseMap, from: Vec3, to: Vec3): Vec3[] => route(house, from, to).map(mm3);
@@ -94,8 +94,8 @@ describe("route — the visibility graph", () => {
       ["corner", "cellar", [4.35, -3, 2.35]],
       ["corner", "cellar", [0.65, -3, 2.35]],
     ]);
-    // A corner outside its room is skipped (the show's stair is 0.1 m off the west wall).
-    const show = loadHouse(SHOW_HOUSE);
+    // A corner outside its room is skipped (the two-floor map's stair is 0.1 m off the west wall).
+    const show = loadHouse(TWO_FLOOR_HOUSE);
     const corners = routeNodes(show).filter((n) => n.kind === "corner").map((n) => [n.id, mm3(n.pos)]);
     expect(corners.slice(0, 6)).toEqual([
       ["hall", [-1.15, 0, 6.35]],
@@ -300,11 +300,11 @@ describe.each([
 
   it.runIf(variant === "tent")("catches the straight legs the portal chain used to draw", () => {
     // East lawn → behind the tent, straight through the tent's north wall.
-    expect(badLegs([[5, 0, 18.5], [1, 0, 22.5]]).some((l) => l.includes("wall"))).toBe(true);
-    // Stair head → hall end across the hole's east rail.
-    expect(badLegs([[-3.4, 0, 7], [-0.6, 0, 11.6]]).some((l) => l.includes("rail"))).toBe(true);
-    // Across the Rec Room straight over the ping-pong table.
-    expect(badLegs([[1.15, -2.7, 6.85], [4.6, -2.7, 11.5]])).toEqual(["[1.15,-2.7,6.85]→[4.6,-2.7,11.5] × prop ping-pong"]);
+    expect(badLegs([[6, 0, 18.5], [2, 0, 22.5]]).some((l) => l.includes("wall"))).toBe(true);
+    // Basement stair head → hall end across the hole's east rail.
+    expect(badLegs([[-2.45, 0, 5.7], [-0.5, 0, 11.6]]).some((l) => l.includes("rail"))).toBe(true);
+    // Across the RAM straight over the studio couch.
+    expect(badLegs([[6.4, -2.7, 9.2], [6.4, -2.7, 11.8]])).toEqual(["[6.4,-2.7,9.2]→[6.4,-2.7,11.8] × prop studio-couch"]);
     // Across the yard straight over the Truth Pong table.
     expect(badLegs([[2.5, 0, 14.5], [2.5, 0, 16.5]])).toEqual(["[2.5,0,14.5]→[2.5,0,16.5] × prop truth-pong"]);
   });
@@ -327,10 +327,10 @@ describe.each([
   });
 
   it.runIf(variant === "tent")("walks round the tent's corner of the yard, and round the tables", () => {
-    expect(path(house, [5, 0, 18.5], [1, 0, 22.5])).toEqual([
-      [5, 0, 18.5],
-      [1.65, 0, 18.65], // the yard's reflex corner, off the tent's north-west
-      [1, 0, 22.5],
+    expect(path(house, [6, 0, 18.5], [2, 0, 22.5])).toEqual([
+      [6, 0, 18.5],
+      [2.65, 0, 18.65], // the yard's reflex corner, off the tent's north-west
+      [2, 0, 22.5],
     ]);
     expect(path(house, [2.5, 0, 14.5], [2.5, 0, 16.5])).toEqual([
       [2.5, 0, 14.5],
@@ -338,10 +338,10 @@ describe.each([
       [4.015, 0, 16.48],
       [2.5, 0, 16.5],
     ]);
-    expect(path(house, [-1, -2.7, 9], [4.6, -2.7, 11.5])).toEqual([
-      [-1, -2.7, 9], // just in from the landing door
-      [0.28, -2.7, 10.612], // the ping-pong table's south-west corner waypoint
-      [4.6, -2.7, 11.5], // the furnace
+    expect(path(house, [-1, -2.7, 9], [6.4, -2.7, 8.8])).toEqual([
+      [-1, -2.7, 9], // the basement hall, beside the stair
+      [1, -2.7, 5], // the studio door
+      [6.4, -2.7, 8.8], // the RAM, beside the couch
     ]);
   });
 });

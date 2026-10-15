@@ -234,7 +234,7 @@ describe("ScreenWatch — polls", () => {
   it("remembers each named terminal's last poll, most recent first, bounded", () => {
     let t = 1000;
     const w = new ScreenWatch({ now: () => t });
-    const who = (name: string) => ({ name, spot: "kitchen", view: "auto", character: "Trabolta" });
+    const who = (name: string) => ({ name, spot: "start-bar", view: "auto", character: "Trabolta" });
     w.poll(null, who("Kitchen"), () => false);
     t = 3000;
     const s = w.poll(null, who("Hall"), () => false);
@@ -271,7 +271,7 @@ async function showRuntime(dir: string): Promise<EventRuntime> {
   return rt;
 }
 const state = async (rt: EventRuntime, name = "Kitchen"): Promise<ScreenState> => {
-  const r = await call(rt, "GET", `/api/screen/state?name=${name}&spot=kitchen&view=auto&character=Trabolta`, {}, { moderator: true });
+  const r = await call(rt, "GET", `/api/screen/state?name=${name}&spot=start-bar&view=auto&character=Trabolta`, {}, { moderator: true });
   expect(r.status).toBe(200);
   return r.json as unknown as ScreenState;
 };
@@ -336,7 +336,7 @@ describe("GET /api/screen/state — Trapped in the Internet", () => {
     expect(s.cues.terminals?.value).toBe("trabolta_online");
     expect(s.night.terminals).toBe("trabolta");
     expect(s.terminals.map((t) => t.name)).toEqual(["Hall", "Kitchen", "TV"]);
-    expect(s.terminals[0]).toMatchObject({ spot: "kitchen", view: "auto", character: "Trabolta" });
+    expect(s.terminals[0]).toMatchObject({ spot: "start-bar", view: "auto", character: "Trabolta" });
 
     // A rebooted server replays the journal: the same answer.
     rt.dispose();
@@ -542,7 +542,7 @@ describe("GET /api/mod/screen/terminals — the heartbeat card", () => {
   it("lists each terminal's last poll with the server clock and the TV mute; reading never records a poll", () => {
     let t = 50_000;
     const w = new ScreenWatch({ now: () => t });
-    w.poll(null, { name: "Kitchen", spot: "kitchen", view: "auto", character: "Trabolta" }, () => false);
+    w.poll(null, { name: "Kitchen", spot: "start-bar", view: "auto", character: "Trabolta" }, () => false);
     t += TERMINAL_SILENT_MS + 1;
     w.poll(null, { name: "TV", spot: "", view: "tv", character: "Trabolta" }, () => false);
     w.voiceMuted = true;

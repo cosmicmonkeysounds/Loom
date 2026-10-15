@@ -90,7 +90,7 @@ passcode:
 
 ```
 /reinstall/?code=<mod>&name=Tent tablet
-/terminal/?code=<mod>&name=Kitchen&character=Trabolta&spot=kitchen&view=auto
+/terminal/?code=<mod>&name=Kitchen&character=Trabolta&spot=start-bar&view=auto
 ```
 
 At *Trapped in the Internet* the wall terminals are provisioned

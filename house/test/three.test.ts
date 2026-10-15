@@ -106,10 +106,13 @@ describe("buildHouseScene (the show's map, headless)", () => {
 
   it("ramps are their own double-sided mesh on the lower floor (visible from underneath)", () => {
     const scene = buildHouseScene(show, { labels: false });
-    const ramp = scene.floors.get("basement")!.getObjectByName("ramps:basement") as Mesh;
-    expect(ramp).toBeDefined();
-    expect((ramp.material as Material).side).toBe(DoubleSide);
-    expect(scene.floors.get("ground")!.getObjectByName("ramps:ground")).toBeUndefined();
+    // The basement stair's ramp is the basement's, the upstairs one the main floor's.
+    for (const floor of ["basement", "main"]) {
+      const ramp = scene.floors.get(floor)!.getObjectByName(`ramps:${floor}`) as Mesh;
+      expect(ramp, floor).toBeDefined();
+      expect((ramp.material as Material).side).toBe(DoubleSide);
+    }
+    expect(scene.floors.get("top")!.getObjectByName("ramps:top")).toBeUndefined();
     scene.dispose();
   });
 

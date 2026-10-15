@@ -299,15 +299,15 @@ describe("SpatialHub", () => {
     h.hub.setHouse(shed, "project");
     const inShed = h.begin("g-1"); // starts at the shed's spawn, in the shed
     const inKitchen = h.begin("g-2");
-    const kitchen: [number, number, number] = [3.5, 0, 7.5];
-    expect(h.hub.pose(inShed.token, { p: [-3.5, 0, 21.5], yaw: 30, pitch: 0 })).toBe("ok");
+    const kitchen: [number, number, number] = [-4.6, 0, 10];
+    expect(h.hub.pose(inShed.token, { p: [-5, 0, 21.5], yaw: 30, pitch: 0 })).toBe("ok");
     expect(h.hub.pose(inKitchen.token, { p: kitchen, yaw: 0, pitch: 0 })).toBe("ok");
     h.hub.flush();
     h.hub.setHouse(tent, "project");
     const rows = h.hub.flush()!.players;
     // The shed is a solid prop on the tent map: back to the tent's spawn.
     expect(rows.find((r) => r.session === inShed.session)).toMatchObject({ p: tent.spawn.pos, yaw: tent.spawn.yaw, room: tent.spawn.room });
-    expect(h.hub.players().find((r) => r.session === inKitchen.session)).toMatchObject({ p: kitchen, room: "kitchen" });
+    expect(h.hub.players().find((r) => r.session === inKitchen.session)).toMatchObject({ p: kitchen, room: "start-bar" });
   });
 
   it("a new map is announced; sessions keep their duck", () => {
@@ -535,7 +535,7 @@ describe("EventRuntime — the spatial plane", () => {
     expect((await call(rt, "POST", "/api/spatial/pose", { p: [4, "x", 21.5], yaw: 30 }, { token: a.token })).status).toBe(400);
     rt.spatial.flush();
     const moved = term.of("poses").flatMap((f) => f.players as Array<{ session: string; room: string; floor: string }>);
-    expect(moved).toContainEqual(expect.objectContaining({ session: a.session, room: "tent", floor: "ground" }));
+    expect(moved).toContainEqual(expect.objectContaining({ session: a.session, room: "tent", floor: "main" }));
     // Poses never touch the journal.
     expect(new Store(d).readJournal().some((l) => JSON.stringify(l.a).includes("pose"))).toBe(false);
 

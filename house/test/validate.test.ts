@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { DUCK_MAX_RISE, buildWalls, mm, normalizeHouse, polygonProblems, validateHouse } from "../src/index.ts";
 import type { HouseMap } from "../src/index.ts";
-import { FIXTURES, SHOW_HOUSE } from "./golden.ts";
+import { FIXTURES, SHOW_HOUSE, TWO_FLOOR_HOUSE } from "./golden.ts";
 
 const raw = (name: string): HouseMap => JSON.parse(readFileSync(join(FIXTURES, `${name}.json`), "utf8")) as HouseMap;
 
@@ -16,9 +16,9 @@ function problems(name: string, mutate: (h: HouseMap) => void): string[] {
   return v.problems;
 }
 
-/** The show's map after `mutate`; the problems. */
+/** The frozen two-floor show map (golden.ts `TWO_FLOOR_HOUSE`) after `mutate`; the problems. */
 function showProblems(mutate: (h: HouseMap) => void): string[] {
-  const h = JSON.parse(readFileSync(SHOW_HOUSE, "utf8")) as HouseMap;
+  const h = JSON.parse(readFileSync(TWO_FLOOR_HOUSE, "utf8")) as HouseMap;
   mutate(h);
   const v = validateHouse(h);
   expect(v.ok).toBe(v.problems.length === 0);
@@ -35,6 +35,7 @@ function refuses(name: string, mutate: (h: HouseMap) => void, re: RegExp): void 
 describe("validateHouse", () => {
   it("accepts every fixture and the show's map", () => {
     for (const name of ["two-rooms", "l-room", "yard", "stair", "tie"]) expect(problems(name, () => {})).toEqual([]);
+    expect(showProblems(() => {})).toEqual([]);
     const show = validateHouse(JSON.parse(readFileSync(SHOW_HOUSE, "utf8")));
     expect(show.problems).toEqual([]);
     expect(show.ok).toBe(true);
@@ -217,7 +218,7 @@ describe("validateHouse", () => {
       'doors[0] "front": [-0.45, 0.0203] is not on a wall of room "mudroom" (± 0.02 m)',
     ]);
     expect(showProblems(nudge(0.0199))).toEqual([]);
-    const h = JSON.parse(readFileSync(SHOW_HOUSE, "utf8")) as HouseMap;
+    const h = JSON.parse(readFileSync(TWO_FLOOR_HOUSE, "utf8")) as HouseMap;
     nudge(0.0199)(h);
     const front = buildWalls(h).filter((w) => w.floor === "ground" && w.axis === "x" && w.c === 0);
     expect(front.some((w) => w.kind === "lintel" && w.lo === -0.9 && w.hi === 0)).toBe(true);

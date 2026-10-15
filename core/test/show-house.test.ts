@@ -100,6 +100,29 @@ describe.each(Object.entries(VARIANTS))("the show's house map (%s)", (variant, h
     expect(house.duck.spots.filter((s) => s.room === server.id)).toEqual([]);
   });
 
+  it("stacks the real house's three levels, each room on its own floor, joined by the hall's two stairs", () => {
+    expect(house.floors.map((f) => [f.id, f.elevation])).toEqual([
+      ["basement", -2.7],
+      ["main", 0],
+      ["top", 2.8],
+    ]);
+    const on = (floor: string) =>
+      house.rooms
+        .filter((r) => r.floor === floor && r.location !== "The Tube")
+        .map((r) => r.location!)
+        .sort();
+    // The user's floor plan (2026-10-15); both bathrooms are Disk Cleanup.
+    expect(on("basement")).toEqual(["Disk Cleanup", "The Fan Closet", "The RAM", "The Server Room"]);
+    expect(on("main").filter((l) => l !== "The Cloud" && l !== "The Internet")).toEqual(
+      ["The CPU", "The Desktop", "The Optical Drive", "The Start Bar", "The Steam Room"],
+    );
+    expect(on("top")).toEqual(["Disk Cleanup", "The Graphics Card", "The Hard Drive"]);
+    expect(house.stairs.map((s) => [s.from, s.to])).toEqual([
+      ["basement-hall", "hall"],
+      ["hall", "upstairs-hall"],
+    ]);
+  });
+
   it("puts the Truth Pong folding table in the backyard", () => {
     const table = house.props.find((p) => p.id === "truth-pong");
     expect(table?.room).toBe(roomFor(house, "The Cloud").id);
@@ -107,19 +130,27 @@ describe.each(Object.entries(VARIANTS))("the show's house map (%s)", (variant, h
   });
 
   it("maps the Tube: front door → the hall → the living room, and out the back door to the yard", () => {
-    expect(house.rooms.filter((r) => r.location === "The Tube").map((r) => r.id)).toEqual(["hall", "landing"]);
-    expect(house.doors.find((d) => d.id === "mud-hall")).toMatchObject({ a: "mudroom", b: "hall" });
-    expect(house.doors.find((d) => d.id === "hall-living")).toMatchObject({ a: "hall", b: "living" });
+    expect(house.rooms.filter((r) => r.location === "The Tube").map((r) => [r.id, r.floor])).toEqual([
+      ["hall", "main"],
+      ["basement-hall", "basement"],
+      ["upstairs-hall", "top"],
+    ]);
+    expect(house.doors.find((d) => d.id === "front")).toMatchObject({ a: "optical-drive", b: null });
+    expect(house.doors.find((d) => d.id === "mud-hall")).toMatchObject({ a: "optical-drive", b: "hall" });
+    expect(house.doors.find((d) => d.id === "hall-living")).toMatchObject({ a: "hall", b: "desktop" });
     expect(house.doors.find((d) => d.id === "hall-back")).toMatchObject({ a: "hall", b: "backyard" });
     // The LED run marks the way on: down the hall and across the yard.
     expect(house.props.find((p) => p.id === "tube-hall")?.room).toBe("hall");
     expect(house.props.find((p) => p.id === "tube-yard")?.room).toBe("backyard");
   });
 
-  it("hides 6–10 ducks, none in the spawn room or the Server Room, each walkable from the spawn", () => {
+  it("hides 8–12 ducks on every floor and in the yard, none in the spawn room or the Server Room, each walkable from the spawn", () => {
     const spots = house.duck.spots;
-    expect(spots.length).toBeGreaterThanOrEqual(6);
-    expect(spots.length).toBeLessThanOrEqual(10);
+    expect(spots.length).toBeGreaterThanOrEqual(8);
+    expect(spots.length).toBeLessThanOrEqual(12);
+    const floorOf = (room: string) => house.rooms.find((r) => r.id === room)!.floor;
+    expect([...new Set(spots.map((s) => floorOf(s.room)))].sort()).toEqual([...house.floors.map((f) => f.id)].sort());
+    expect(spots.some((s) => s.room === roomFor(house, "The Cloud").id), "a duck in the yard").toBe(true);
     const server = roomFor(house, "The Server Room").id;
     for (const s of spots) {
       expect(s.room, s.id).not.toBe(house.spawn.room);
@@ -170,7 +201,7 @@ describe("the two variants", () => {
 
   it("share the terminal ids, the duck spots and the LOCATIONs", () => {
     const ids = (h: HouseMap) => h.terminals.map((t) => t.id).sort();
-    expect(ids(tent)).toEqual(["bathroom", "desktop-tv", "hall", "kitchen", "mudroom", "registry", "tent"]);
+    expect(ids(tent)).toEqual(["bathroom-1-door", "desktop-tv", "hall", "optical-drive", "ram", "start-bar", "tent"]);
     expect(ids(shed)).toEqual(ids(tent));
     expect(shed.duck.spots).toEqual(tent.duck.spots);
     const locations = (h: HouseMap) => h.rooms.map((r) => r.location).sort();

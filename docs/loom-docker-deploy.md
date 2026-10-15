@@ -399,7 +399,7 @@ provisioned with the event's **moderator passcode** by a link, e.g.
 
 ```
 https://app.mapsandducks.com/reinstall/?code=<mod passcode>&name=Tent tablet
-https://app.mapsandducks.com/terminal/?code=<mod passcode>&name=Kitchen&character=Trabolta&spot=kitchen&view=auto
+https://app.mapsandducks.com/terminal/?code=<mod passcode>&name=Kitchen&character=Trabolta&spot=start-bar&view=auto
 ```
 
 (the map page offers each terminal's link from its row). The house map

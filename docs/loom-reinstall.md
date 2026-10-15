@@ -77,7 +77,7 @@ interface HouseMap {
 interface Floor  { id: string; label: string; elevation: number; height: number }
 interface Room {
   id: string; label: string; floor: string;
-  location?: string;            // the Loom LOCATION it is in the story ("The Cache")
+  location?: string;            // the Loom LOCATION it is in the story ("The Start Bar")
   poly: Vec2[];                 // rectilinear (every edge axis-aligned), ≥ 4 vertices, simple, either winding
   height?: number;              // default: its floor's height
   outdoor?: boolean;            // no ceiling; unshared edges become a fence
@@ -690,7 +690,7 @@ dot and the terminal's cone `horizontalFov` wide; a `duck` frame moves
 that player's unfound duck on screen; name tags over ghosts; a banner "REINSTALLATION IN
 PROGRESS · <name> · <room>"; a celebration on `found`. Rendering is capped
 at 30 fps and pauses when hidden; poses are interpolated ~120 ms behind.
-Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=kitchen&view=auto`.
+Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&view=auto`.
 
 ## 5. The VR game — `reinstall/vr/` (Godot 4.7, Quest 3)
 

@@ -24,8 +24,8 @@ describe("terminal config", () => {
   });
   it("keeps a placed spot and view, and repairs junk ones", () => {
     const s = memory();
-    saveConfig(defaultConfig({ eventId: "evt", token: "t", spot: "kitchen", view: "mirror" }), s);
-    expect(loadConfig(s)).toMatchObject({ spot: "kitchen", view: "mirror" });
+    saveConfig(defaultConfig({ eventId: "evt", token: "t", spot: "start-bar", view: "mirror" }), s);
+    expect(loadConfig(s)).toMatchObject({ spot: "start-bar", view: "mirror" });
     s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "evt", token: "t", spot: 7, view: "hologram" }));
     expect(loadConfig(s)).toMatchObject({ spot: "", view: "auto" });
   });
@@ -47,9 +47,9 @@ describe("terminal config", () => {
     expect(loadConfig(s)).toBeNull();
   });
   it("reads provisioning hints off the URL and scrubs them back out", () => {
-    const h = hintsFromSearch("?code=MOD111&name=Kitchen&character=Trabolta&camera=environment&engine=browser&spot=kitchen&view=world&keep=1");
-    expect(h).toEqual({ code: "MOD111", name: "Kitchen", character: "Trabolta", camera: "environment", engine: "browser", spot: "kitchen", view: "world", room: null, announce: null });
-    expect(withoutSecrets("?code=MOD111&name=Kitchen&spot=kitchen&view=mirror&keep=1")).toBe("?keep=1");
+    const h = hintsFromSearch("?code=MOD111&name=Kitchen&character=Trabolta&camera=environment&engine=browser&spot=start-bar&view=world&keep=1");
+    expect(h).toEqual({ code: "MOD111", name: "Kitchen", character: "Trabolta", camera: "environment", engine: "browser", spot: "start-bar", view: "world", room: null, announce: null });
+    expect(withoutSecrets("?code=MOD111&name=Kitchen&spot=start-bar&view=mirror&keep=1")).toBe("?keep=1");
     expect(withoutSecrets("?code=MOD111")).toBe("");
     // The TV (K-18): view=tv + the room it speaks for.
     expect(hintsFromSearch("?code=M&name=TV&spot=desktop-tv&view=tv&room=The%20Desktop")).toMatchObject({ view: "tv", room: "The Desktop", spot: "desktop-tv" });
