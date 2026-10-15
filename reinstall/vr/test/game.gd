@@ -1077,20 +1077,21 @@ func _test_main_and_game() -> void:
 	_check(Game.is_at_duck(house, [0.5, 0.0, 4.25], [0.5, 1.9, 4.25]), "game: a shelf 1.9 m up on the same floor counts (the server's floor rule)")
 
 	# The trail on a stair (the web game's trail.ts): the show's basement
-	# stair, foot (−3.4, −2.7, 11) in the landing, head (−3.4, 0, 7) in the hall.
-	var up_trail := Game.trail_path(house, [-3.4, -2.57, 10.8], [-0.6, 0.0, 11.6])
-	_check(up_trail.size() > 2 and _near3(up_trail[1], [-3.4, 0.0, 7.0]), "game: just past the stair's foot, the trail points up the flight, not back at the foot")
-	var down_trail := Game.trail_path(house, [-3.4, -0.13, 7.2], [-2.3, -2.7, 11.6])
-	_check(down_trail.size() > 2 and _near3(down_trail[1], [-3.4, -2.7, 11.0]), "game: just past the head, it points down the flight")
-	var flat_from := [-2.0, 0.0, 4.0]
-	_check(Game.trail_path(house, flat_from, [-0.6, 0.0, 11.6]) == HouseRoute.route(house, flat_from, [-0.6, 0.0, 11.6]), "game: off the stairs the trail is the plain route")
+	# stair, rect [−2.9, 6, −2, 10] rising north, foot (−2.45, −2.7, 10) in
+	# the basement hall, head (−2.45, 0, 6) in the hall.
+	var up_trail := Game.trail_path(house, [-2.45, -2.57, 9.8], [-1.2, 0.0, 11.5])
+	_check(up_trail.size() > 2 and _near3(up_trail[1], [-2.45, 0.0, 6.0]), "game: just past the stair's foot, the trail points up the flight, not back at the foot")
+	var down_trail := Game.trail_path(house, [-2.45, -0.13, 6.2], [-1.2, -2.7, 11.5])
+	_check(down_trail.size() > 2 and _near3(down_trail[1], [-2.45, -2.7, 10.0]), "game: just past the head, it points down the flight")
+	var flat_from := [-1.5, 0.0, 4.0]
+	_check(Game.trail_path(house, flat_from, [-1.2, 0.0, 11.5]) == HouseRoute.route(house, flat_from, [-1.2, 0.0, 11.5]), "game: off the stairs the trail is the plain route")
 	# On the ramp means on it, not merely over its rect: under the high end
-	# (landing floor, the ramp 2.6 m overhead) the trail steps out of the
-	# nearer side (x −2.9 + 0.35) before the route, never along the underside.
-	_check(Game.stair_under(house, [-3.4, -1.35, 9.0]) != null, "game: half way up the ramp is on the stair")
-	_check(Game.stair_under(house, [-3.38, -2.7, 7.2]) == null and Game.stair_above(house, [-3.38, -2.7, 7.2]) != null, "game: under the high end is under the stair, not on it")
-	var under_trail := Game.trail_path(house, [-3.38, -2.7, 7.2], [-0.6, 0.0, 11.6])
-	_check(under_trail.size() > 2 and _near3(under_trail[1], [-2.55, -2.7, 7.2]), "game: from under the stair the trail first steps out of its nearer side")
+	# (basement floor, the ramp 2.6 m overhead) the trail steps out of the
+	# nearer side (x −2 + 0.35) before the route, never along the underside.
+	_check(Game.stair_under(house, [-2.45, -1.35, 8.0]) != null, "game: half way up the ramp is on the stair")
+	_check(Game.stair_under(house, [-2.43, -2.7, 6.2]) == null and Game.stair_above(house, [-2.43, -2.7, 6.2]) != null, "game: under the high end is under the stair, not on it")
+	var under_trail := Game.trail_path(house, [-2.43, -2.7, 6.2], [-1.2, 0.0, 11.5])
+	_check(under_trail.size() > 2 and _near3(under_trail[1], [-1.65, -2.7, 6.2]), "game: from under the stair the trail first steps out of its nearer side")
 
 	main.queue_free()
 	await process_frame
