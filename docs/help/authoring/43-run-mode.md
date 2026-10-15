@@ -51,7 +51,9 @@ Front of house: getting people in.
   **performer code**, and the **moderator code**, with copy buttons, plus
   a sign-in line per character to hand to each performer. These codes
   work during the rehearsal (anyone with the event code can join it) and
-  **stay the same when you go live**, so you can print them early.
+  **stay the same when you go live** — and when you end the run and start
+  a new one, since codes belong to the project — so you can print them
+  early.
 - **Directing now** — every co-writer with a console open, who started
   the run, and when.
 - **Look up a guest** — scan a guest's pass QR (or type their id) to

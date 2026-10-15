@@ -374,6 +374,9 @@ Two planes:
   (BetterAuth `user/session/account/verification` + `project/project_file/event`).
   Routes: `/api/auth/*` (BetterAuth email/password), `/api/projects/*` CRUD,
   `POST /api/projects/:id/event` (launch `live`/`preview`) + `…/pause|resume|end`.
+  Codes are pinned per project: a launch reuses the previous event's three
+  codes (`lastEventCodes`; ended events free them), so End → relaunch keeps
+  every printed join / clue QR working.
   All ownership-scoped to the signed-in author. If the DB is unreachable the
   control plane disables itself and the LAN event plane still runs.
 - **Event plane** — one `EventRuntime` per live event under `/e/:eventId`, kept

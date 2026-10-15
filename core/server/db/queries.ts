@@ -367,6 +367,20 @@ export async function activeEvent(projectId: string): Promise<EventRow | null> {
   return rows[0] ?? null;
 }
 
+/**
+ * The passcodes of the project's most recent event, ended or not — a
+ * relaunch reuses them so every printed join / clue QR survives End
+ * (the unique code indexes skip ended events, so they are free again).
+ */
+export async function lastEventCodes(projectId: string): Promise<{ event: string; prime: string; mod: string } | null> {
+  const { rows } = await pool().query<Pick<EventRow, "event_code" | "prime_code" | "mod_code">>(
+    "select event_code, prime_code, mod_code from event where project_id = $1 order by created_at desc limit 1",
+    [projectId],
+  );
+  const r = rows[0];
+  return r ? { event: r.event_code, prime: r.prime_code, mod: r.mod_code } : null;
+}
+
 export async function createEvent(row: Omit<EventRow, "created_at" | "ended_at" | "created_by_name"> & { created_by_name?: string | null }): Promise<EventRow> {
   const { rows } = await pool().query<EventRow>(
     `insert into event
