@@ -144,7 +144,11 @@ codes), 16 quests, 85 story rules, 100 INTERACTIONs.**
    `LOOM_SSH=<user>@app.mapsandducks.com scripts/sync-show.sh` (an SSH
    tunnel to its Postgres, then a reload — a real cut, so never after
    doors; `--dry-run` / `--no-reload`). Removed files are deleted from the
-   project automatically. Then press **Reset on Run → Mind**, or start the
+   project automatically. The house maps are the exception: the project's
+   copy wins, so a map surveyed at `/reinstall/map` and kept with **Save
+   to project** survives every sync (the script prints both versions when
+   they differ). To make the repo's copy the show's again, **Download
+   JSON**, commit it as `house.json`, then sync with `--replace-maps`. Then press **Reset on Run → Mind**, or start the
    worker with a fresh `state_dir`. Otherwise `.stagehand-minds` keeps the
    old "lonely grandeur" arc, and a story restart sends `control reset`
    only to a worker that is connected.

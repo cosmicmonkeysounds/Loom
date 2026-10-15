@@ -602,10 +602,14 @@ server code), `pnpm sync-example "<project name or id>" [example]`
 (`core/scripts/sync-example.ts`) writes the files into `project_file`,
 updates the event's snapshot, and reloads the running event through its
 own mod code (guests re-join); `pnpm dev --sync …` does it on boot. The
-example's house maps (`house.json`, `house.<variant>.json`) go with it: a
-project map the push would change or delete (one saved from the map page,
-say) is copied to a temp directory first and the path printed;
-`--keep-maps` leaves the project's maps alone.
+example's house maps (`house.json`, `house.<variant>.json`) go with it,
+but the **project's copy wins**: an example map is only added when the
+project lacks that file, and a project map that differs (one saved from
+the map page, say) is kept, with both versions summarised.
+`--replace-maps` overwrites them with the example's (copying the old ones
+to a temp directory first); `--keep-maps` touches no map. A map that
+doesn't validate stops the sync before anything is written, and `PUT
+/files` / `/api/mod/load {maps}` refuse one with 400 + `problems`.
 
 ## Status
 

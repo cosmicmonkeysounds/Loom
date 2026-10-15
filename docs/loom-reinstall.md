@@ -334,15 +334,24 @@ tolerance: metres, and m² for orientations).
   root (`core/server/house-maps.ts` `isMapFile`). They are not story — the
   launch source concatenates `.loom` files only. A project made from an
   example template gets the example's maps; `core/scripts/sync-example.ts`
-  pushes them (and deletes the ones the example lacks, copying any project
-  map it would change or delete to a temp directory first; `--keep-maps`
-  leaves them alone). Each variant is a **whole map**, validated on its
-  own; the server stays show-agnostic and labels a variant by its file
-  (and the map's `name`).
+  pushes them, but **the project's copy wins** (a survey kept with "Save
+  to project" lives there): an example map is only added when the project
+  lacks that file, a differing project map is kept and both versions are
+  summarised; `--replace-maps` overwrites (and deletes the ones the
+  example lacks, copying the old text to a temp directory first),
+  `--keep-maps` touches none. Each variant is a **whole map**, validated
+  on its own — a map file that doesn't validate is refused wherever one is
+  written (`PUT /api/projects/:id/files` 400 + `problems`, an empty new
+  file aside; `/api/mod/load {maps}` 400 before the restart; sync-example
+  stops before writing). The server stays show-agnostic and labels a
+  variant by its file (and the map's `name`).
 - **A launch snapshots them** like `scenario_source`: on the event row
   (`event.house_maps`, jsonb, file → text) and in the event's state dir
   (`spatial-maps.json`, with the **active variant**), so an event plays a
-  fixed map through a server restart, a reload (`POST
+  fixed map through a server restart (the files come from the row, like
+  the story — a sync written there while the server was down is what it
+  plays; the state dir's copy covers an event with no row snapshot, and the
+  active variant is always the state dir's), a reload (`POST
   /api/projects/:id/event/reload`, "Push draft") refreshes the snapshot
   (the active variant is kept while its file exists, else the default),
   and End → relaunch is a new event on the project's current maps. Old
@@ -424,7 +433,7 @@ calls; it can do nothing else.
 | `POST /api/mod/spatial/house` | mod | `{house, base?}` — `base` = the version the editor loaded | 400 `{error, problems}` (checked first) · 409 `{error: "the map changed — reload", version}` when `base` is given and is not the current version (the map is loaded first if nothing has yet; no / null `base` = no check, last write wins) · 200 `{ok, version, warnings}`; persists `spatial-house.json` in the event's state dir (§1.3); streams get `house {version}`, then a `duck` frame per player whose duck moved (§2.2) |
 | `GET /api/mod/spatial/variants` | mod | — | `{variants: [{file, name, active, ok, problems}], from: "project" \| "show", edited, project}` — every whole-map variant (the default file first, then by name; `name` = the map's own, else the file), each validated afresh; `from` = the project snapshot, or the show file's siblings when it has no map files; `edited` = a director's save is in force; `project` = the event has a project (Save to project works) |
 | `POST /api/mod/spatial/variant` | mod | `{file, base?}` | 404 `{error: "no such map variant", variants}` · 400 `{error: "invalid house map", problems}` · 409 as for `house` on a stale `base` · 200 `{ok, version, warnings, file, dropped}`. **The tent ↔ shed switch** (SW-MAP-13), mid-show too: the same path as a save (live sessions carried over, ducks kept by spot id or re-dealt, `house` then `duck` frames), nothing saved; the active variant is remembered for the event (survives a restart); `dropped` = a director's save was in force and is gone |
-| `POST /api/mod/spatial/house/project` | mod | `{file?, base?}` — `file` default: the active variant's (`house.json` when none) | 409 `{error: "this event has no project — download the map instead"}` (the LAN default event; no `version`) · 400 not a map file name · 409 stale `base` · 502 the write failed · 200 `{ok, file, version}`. **Save to project**: writes the event's current map (two-space JSON + newline) as that project file — through the live co-editing doc when it is open, announced to every editor's tree — and records the snapshot on the event row, so the next launch and every co-writer see it. When `file` is the active variant, the director's save it came from is retired (the event now runs on the project's copy; same version, no frame) |
+| `POST /api/mod/spatial/house/project` | mod | `{file?, base?}` — `file` default: the active variant's (a show sibling's too, on an event with no project maps yet, when it is named like a map file), else `house.json` | 409 `{error: "this event has no project — download the map instead"}` (the LAN default event; no `version`) · 400 not a map file name · 409 stale `base` · 502 the write failed · 200 `{ok, file, version}`. **Save to project**: writes the event's current map (two-space JSON + newline) as that project file — through the live co-editing doc when it is open, announced to every editor's tree — and records the snapshot on the event row, so the next launch and every co-writer see it. When `file` is the active variant, the director's save it came from is retired (the event now runs on the project's copy; same version, no frame) |
 | `POST /api/mod/spatial/begin` | mod | `{guest, world: "vr" \| "web", device, station?}` | 409 no scenario · 404 unknown guest · 400 bad world · 503 no map · 200 `Assignment` (below). An active session for the same guest is ended (`leave {reason: "replaced"}`). With `station`, the assignment is parked for that station until it claims it, and an older assignment still parked there is ended (`replaced`). |
 | `GET /api/mod/spatial/station` | mod | `?id=vr-1&name=Headset 1&world=vr` | marks the station seen; `{assignment: Assignment \| null}` — the newest unclaimed assignment for it |
 | `GET /api/mod/spatial/stations` | mod | — | `{stations: [{id, name, world, online (seen < 5 s), busy: {session, guest, name} \| null}]}` |
@@ -555,11 +564,13 @@ and offers **Copy my edits (JSON)** and **Reload the map**; a successful
 save moves the page's base to the new version. A terminal's view cone is
 drawn `horizontalFov(fov ?? 70)` wide (§1.1). A terminal's provisioning
 link is offered from its row. The page's **project bar**
-(`reinstall/web/src/map/ProjectBar.tsx`, logic in `map/project.ts`) toggles
+(`reinstall/web/src/map/ProjectBar.tsx`, logic in `map/project.ts`; built
+and tested but **not mounted on the page yet** — the map-page rewrite
+places it) toggles
 the variants (`GET …/variants`, `POST …/variant` with `base`; it asks first
 while programs are mid-game or a director's save would be dropped), offers
 **Save to project** (`POST …/house/project`, only on an event with a
-project) and **Download JSON** (the shown map as the active variant's file,
+project; it sends the file it names in its confirm, `saveTarget`) and **Download JSON** (the shown map as the active variant's file,
 to commit as the show's file).
 
 ## 4. The terminals — world view

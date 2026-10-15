@@ -31,7 +31,8 @@ then reload). The **tent ↔ shed switch** is `POST /api/mod/spatial/variant
 {file}` (mid-show too: players keep playing, a duck whose spot is gone is
 re-dealt); **Save to project** (`POST /api/mod/spatial/house/project`)
 writes the event's map back into the project. The map page's
-`map/ProjectBar.tsx` offers both, plus **Download JSON**
+`map/ProjectBar.tsx` offers both, plus **Download JSON** (built and
+tested, not mounted on the page yet — the map-page rewrite places it)
 (`docs/loom-reinstall.md` §1.3, §2.1). After you edit the show's file,
 regenerate the Godot goldens and the Godot copy of the map:
 
