@@ -1416,7 +1416,7 @@ generators bark. Bathroom Mode:
   being a program.`
 Props: `== Re-upload` (`The Uploader: You have already been uploaded. Leaving again would
 require a body, and yours is being looked after.`); `== The Router` (`Self: ACT. ACT. ACT.
-The Internet is out back, in the tent. You do not want to go there.` + `unlock The
+The Internet is out back. You do not want to go there.` + `unlock The
 Halifax Computer for program`); `== The Screensaver` (`Self:` screensaver riff; after
 `Night.trabolta_introduced` it says `Self: ◌ ◌ ◌ He is watching through me now.`).
 

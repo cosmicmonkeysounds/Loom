@@ -277,8 +277,8 @@ describe("validateHouse", () => {
   });
 
   it("refuses a duck spot or spawn buried in a solid prop (resting on top is fine)", () => {
-    expect(showProblems((h) => (h.duck.spots.find((s) => s.id === "bathroom-tub")!.pos = [-3.2, 0.1, 5.6]))).toEqual([
-      'duck.spots[5] "bathroom-tub": [-3.2, 0.1, 5.6] is inside solid prop "tub" (rest it on top at y 0.55 or move it clear)',
+    expect(showProblems((h) => (h.duck.spots.find((s) => s.id === "bathroom-tub")!.pos = [-3.6, 0.1, 4.6]))).toEqual([
+      'duck.spots[5] "bathroom-tub": [-3.6, 0.1, 4.6] is inside solid prop "tub" (rest it on top at y 0.55 or move it clear)',
     ]);
     // A yawed box: the couch (2 × 0.9, yaw −90) runs along z.
     expect(showProblems((h) => (h.duck.spots.find((s) => s.id === "living-couch")!.pos = [2.8, 0, 4.1]))).toEqual([

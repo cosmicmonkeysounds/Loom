@@ -118,12 +118,12 @@
   "duck": {
     "spots": [
       { "id": "mudroom-boots", "room": "mudroom", "pos": [-3.0, 0, 0.3] },
-      { "id": "hall-end", "room": "hall", "pos": [-1.6, 0, 11.6] },
+      { "id": "hall-end", "room": "hall", "pos": [-1.6, 0, 10.6] },
       { "id": "living-couch", "room": "living", "pos": [1.9, 0, 3.25] },
       { "id": "living-plant", "room": "living", "pos": [5.05, 0, 0.4] },
       { "id": "kitchen-counter", "room": "kitchen", "pos": [5.7, 0.9, 8] },
-      { "id": "bathroom-tub", "room": "bathroom", "pos": [-3.2, 0.55, 5.6] },
-      { "id": "backyard-shed", "room": "backyard", "pos": [0.3, 0, 22.5] },
+      { "id": "bathroom-tub", "room": "bathroom", "pos": [-3.6, 0.55, 4.6] },
+      { "id": "registry-boxes", "room": "registry", "pos": [4.6, -2.7, 3.1] },
       { "id": "backyard-bbq", "room": "backyard", "pos": [4.8, 0, 13.4] },
       { "id": "landing-foot", "room": "landing", "pos": [-2.3, -2.7, 11.6] },
       { "id": "registry-furnace", "room": "registry", "pos": [4.6, -2.7, 11.5] }
@@ -150,7 +150,7 @@
     { "id": "kitchen-table", "room": "kitchen", "kind": "box", "pos": [2.6, 0, 9.4], "size": [1.6, 0.75, 1], "color": "#8b6a45" },
     { "id": "stove", "room": "kitchen", "kind": "box", "pos": [4.4, 0, 11.7], "size": [0.75, 0.9, 0.6], "color": "#2b2b2b" },
 
-    { "id": "tub", "room": "bathroom", "kind": "box", "pos": [-3.2, 0, 5.6], "size": [1.5, 0.55, 0.75], "color": "#f2f2f2" },
+    { "id": "tub", "room": "bathroom", "kind": "box", "pos": [-3.6, 0, 4.6], "size": [0.75, 0.55, 1.5], "color": "#f2f2f2" },
     { "id": "toilet", "room": "bathroom", "kind": "box", "pos": [-2, 0, 5.6], "size": [0.4, 0.75, 0.65], "color": "#f7f7f7" },
     { "id": "sink", "room": "bathroom", "kind": "box", "pos": [-3.75, 0, 3.4], "size": [0.45, 0.85, 0.6], "color": "#e6e6e6" },
 

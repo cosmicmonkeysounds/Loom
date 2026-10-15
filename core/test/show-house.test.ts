@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { locate, pickDuckSpot, route, validateHouse, type HouseMap, type Room } from "@loom/house";
+import { locate, pickDuckSpot, route, validateHouse, type HouseMap, type Room, type Vec2 } from "@loom/house";
 import { houseWarnings } from "../server/spatial.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { scenarioSource } from "../examples/load.ts";
@@ -28,6 +28,29 @@ const load = (name: string): HouseMap => {
 
 const VARIANTS = { tent: load("house.json"), shed: load("house.shed.json") };
 const LOCATIONS = [...Sim.fromSources(scenarioSource("trapped-in-the-internet")).model.locations.keys()];
+
+/** How near the duck a player must stand to find it, on the plan — the web
+ *  game's `REACH` (`reinstall/web/src/game/hud.ts`) and the headset's
+ *  `Duck.FIND_RADIUS` (`reinstall/vr/game/duck.gd`). Neither checks walls. */
+const REACH = 0.9;
+/** The nearest a player's feet get to a wall line: the body's radius
+ *  (`reinstall/web/src/game/physics.ts` `RADIUS`) plus half the wall. */
+const CLEARANCE = (house: HouseMap) => 0.25 + (house.style?.wallThickness ?? 0.12) / 2;
+/** A dealt duck should be a walk, not a doorstep (CHECKLIST SW-MAP-07). */
+const MIN_WALK = 10;
+
+/** Plan distance from `p` to the nearest edge of `poly`. */
+const edgeDistance = (poly: Vec2[], p: Vec2): number => {
+  let best = Infinity;
+  for (let i = 0; i < poly.length; i++) {
+    const [ax, az] = poly[i]!;
+    const [bx, bz] = poly[(i + 1) % poly.length]!;
+    const len2 = (bx - ax) ** 2 + (bz - az) ** 2;
+    const t = Math.max(0, Math.min(1, ((p[0] - ax) * (bx - ax) + (p[1] - az) * (bz - az)) / len2));
+    best = Math.min(best, Math.hypot(p[0] - (ax + t * (bx - ax)), p[1] - (az + t * (bz - az))));
+  }
+  return best;
+};
 
 /** The one room bound to `location`. */
 const roomFor = (house: HouseMap, location: string): Room => {
@@ -108,6 +131,37 @@ describe.each(Object.entries(VARIANTS))("the show's house map (%s)", (variant, h
       expect(path[path.length - 1], s.id).toEqual(s.pos);
     }
     for (let i = 0; i < 50; i++) expect(pickDuckSpot(house, `session-${i}`).room).not.toBe(house.spawn.room);
+  });
+
+  it(`deals every duck at least ${MIN_WALK} m of walking from the spawn`, () => {
+    for (const s of house.duck.spots) {
+      const path = route(house, house.spawn.pos, s.pos);
+      let walk = 0;
+      for (let i = 1; i < path.length; i++) walk += Math.hypot(path[i]![0] - path[i - 1]![0], path[i]![2] - path[i - 1]![2]);
+      expect(walk, s.id).toBeGreaterThanOrEqual(MIN_WALK);
+    }
+  });
+
+  it("never lets a duck be found through a wall from the next room", () => {
+    // The find is plan distance + floor only, so a duck within REACH of a
+    // wall can be picked up from the room behind it. Sample everywhere a
+    // player's feet can stand within REACH and insist it is the duck's room.
+    const step = 0.05;
+    const leaks = new Set<string>();
+    for (const s of house.duck.spots) {
+      const own = house.rooms.find((r) => r.id === s.room)!;
+      const feet = house.floors.find((f) => f.id === own.floor)!.elevation;
+      for (let dx = -REACH; dx <= REACH; dx += step) {
+        for (let dz = -REACH; dz <= REACH; dz += step) {
+          if (Math.hypot(dx, dz) > REACH) continue;
+          const p: Vec2 = [s.pos[0] + dx, s.pos[2] + dz];
+          if (edgeDistance(own.poly, p) < CLEARANCE(house)) continue; // against the wall line: no feet fit
+          const at = locate(house, [p[0], feet, p[1]]);
+          if (at.room !== null && at.room !== s.room && at.floor === own.floor) leaks.add(`${s.id} from ${at.room}`);
+        }
+      }
+    }
+    expect([...leaks]).toEqual([]);
   });
 });
 

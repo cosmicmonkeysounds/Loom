@@ -335,6 +335,13 @@ tolerance: metres, and m² for orientations).
   LOCATIONs. `core/test/show-house.test.ts` validates both, routes from the
   spawn to every duck spot, and pins what they share; `pnpm test:vr` has
   been run on both (2026-10-15).
+- Duck placement rules the show test enforces, because the find is plan
+  distance + floor only (no wall test — web `REACH`, VR `Duck.FIND_RADIUS`,
+  both 0.9 m): every spot is at least 10 m of walking from the spawn on
+  either variant, and no spot can be reached through a wall — nowhere a
+  player's feet fit (0.31 m off a wall line: body radius + half a wall)
+  within 0.9 m of a spot is in another room on its floor. In practice:
+  keep a spot ≥ 1.21 m from any wall it shares with a walkable room.
 - The event server serves the event's map: the director's saved one
   when there is one (and it validates) — `STATE_DIR/<eventId>/spatial-house.json`,
   or `STATE_DIR/spatial-house.json` for the default (env-passcode) event,
