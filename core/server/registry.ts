@@ -37,10 +37,15 @@ export interface EventSpec {
   codes: Passcodes;
   scenarioName: string;
   scenarioSource: string;
+  /** A `preview` is an author's private rehearsal: hosted like any event,
+   *  but never advertised (`landing`). Absent = live. */
+  mode?: "live" | "preview";
 }
 
 export class EventRegistry {
   private readonly byId = new Map<string, EventRuntime>();
+  /** Hosted events that are private previews (see `EventSpec.mode`). */
+  private readonly previews = new Set<string>();
 
   /**
    * @param stateDir base directory; each event journals under `stateDir/<id>`.
@@ -85,6 +90,9 @@ export class EventRegistry {
    * restoring from disk) one if it isn't hosted yet. Idempotent.
    */
   ensure(spec: EventSpec): EventRuntime {
+    // The mode follows the latest spec (a go-live promotes in place).
+    if (spec.mode === "preview") this.previews.add(spec.eventId);
+    else if (spec.mode === "live") this.previews.delete(spec.eventId);
     const existing = this.byId.get(spec.eventId);
     if (existing) return existing;
     const runtime = new EventRuntime({
@@ -108,6 +116,7 @@ export class EventRegistry {
     if (runtime) {
       runtime.dispose(by);
       this.byId.delete(eventId);
+      this.previews.delete(eventId);
     }
   }
 
@@ -115,9 +124,12 @@ export class EventRegistry {
    * The branding for the bare landing page (someone who typed the address,
    * no code yet): the one event whose doors are open, if exactly one is —
    * its title and skin, never a code. Null when none or several are open.
+   * A private preview never counts: an author's rehearsal is nobody's
+   * business on an unauthenticated route. (The default / LAN event does —
+   * on a LAN-only server it is the show.)
    */
   landing(): { title: string; theme: string } | null {
-    const open = [...this.byId.values()].filter((rt) => rt.currentPhase === "open");
+    const open = [...this.byId.values()].filter((rt) => rt.currentPhase === "open" && !this.previews.has(rt.eventId));
     if (open.length !== 1) return null;
     return { title: open[0]!.title, theme: open[0]!.theme };
   }

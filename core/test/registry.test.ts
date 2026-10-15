@@ -77,3 +77,43 @@ describe("EventRegistry — code resolution", () => {
     expect(reg.resolveCode("BBBB11")).toBeNull();
   });
 });
+
+describe("EventRegistry — the bare landing's branding", () => {
+  const story = (title: string) => `# ${title}\ntheme: aol97\nstart: Go\n\n== Go\nHi.\n`;
+  const spec = (eventId: string, n: number, title: string, mode?: "live" | "preview") => ({
+    eventId,
+    codes: { event: `LAND${n}1`, prime: `LAND${n}2`, mod: `LAND${n}3` },
+    scenarioName: "demo",
+    scenarioSource: story(title),
+    ...(mode !== undefined ? { mode } : {}),
+  });
+
+  it("names the one open live event; none or several open → no branding", () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-reg-"));
+    dirs.push(d);
+    const reg = new EventRegistry(d, () => "http://localhost");
+    expect(reg.landing()).toBeNull();
+    const show = reg.ensure(spec("evt-show", 1, "Trapped in the Internet", "live"));
+    expect(reg.landing()).toBeNull(); // hosted, doors still closed
+    show.openDoors();
+    expect(reg.landing()).toEqual({ title: "Trapped in the Internet", theme: "aol97" });
+    reg.ensure(spec("evt-other", 2, "Another Party", "live")).openDoors();
+    expect(reg.landing()).toBeNull(); // two shows open: guess neither
+  });
+
+  it("never advertises a private preview — until it goes live in place", () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-reg-"));
+    dirs.push(d);
+    const reg = new EventRegistry(d, () => "http://localhost");
+    reg.ensure(spec("evt-rehearsal", 3, "Secret Rehearsal", "preview")).openDoors();
+    expect(reg.landing()).toBeNull();
+    // A live show opening beside it is the one open live event.
+    const show = reg.ensure(spec("evt-show", 4, "Trapped in the Internet", "live"));
+    show.openDoors();
+    expect(reg.landing()).toEqual({ title: "Trapped in the Internet", theme: "aol97" });
+    reg.stop("evt-show");
+    // Go live promotes the same event (same id): now it counts.
+    reg.ensure(spec("evt-rehearsal", 3, "Secret Rehearsal", "live"));
+    expect(reg.landing()).toEqual({ title: "Secret Rehearsal", theme: "aol97" });
+  });
+});

@@ -45,6 +45,7 @@ export function specFromRow(row: EventRow): EventSpec {
     codes: { event: row.event_code, prime: row.prime_code, mod: row.mod_code },
     scenarioName: row.scenario_name,
     scenarioSource: row.scenario_source,
+    mode: row.mode === "preview" ? "preview" : "live",
   };
 }
 
@@ -271,10 +272,10 @@ export async function handleEvent(
       // The DB write first: it can fail harmlessly; the restart below is the
       // irreversible cut (tokens cleared, booths signed out).
       await setEventMode(active.id, "live");
-      const runtime = registry.ensure(specFromRow(active));
+      const promoted: EventRow = { ...active, mode: "live" };
+      const runtime = registry.ensure(specFromRow(promoted));
       runtime.restart(undefined, undefined, { kind: "golive", by });
       notify("golive", "live");
-      const promoted: EventRow = { ...active, mode: "live" };
       sendJson(res, 200, {
         event: eventView(promoted, joinBase, runtime.currentPhase, await sourceIsStale(projectId, runtime.source)),
       });
