@@ -12,7 +12,11 @@
 // a guest's DM makes), then times every bot's first REAL reply on the mod
 // feed (`/events?role=mod&lean=1`). The hold line (`hold:` in
 // cast/trabolta.loom, posted by the server after 20 s with no worker) is
-// counted apart: it means nobody was voicing him.
+// counted apart: it means nobody was voicing him. So are the worker's own
+// canned lines from trabolta.persona.md — `fallback:` (the model failed,
+// timed out or said nothing usable: the overload this test is for) and
+// `unavailable:` (his `when: self.awake == true` gate is closed — before
+// introduce_trabolta, or after an ending put him to sleep).
 //
 // RUN IT ON A REHEARSAL, with the agents worker on the house Mac connected
 // and Trabolta introduced (`introduce_trabolta`; before that he's hidden and
@@ -32,7 +36,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { BurstClock, recordLine, type FeedMessage } from "./burst.ts";
+import { BurstClock, personaLines, recordLine, type CannedLines, type FeedMessage } from "./burst.ts";
 import { judge, liveGuard, LIVE_OVERRIDE, type GuardRow } from "./live-guard.ts";
 
 // ---------------------------------------------------------------- args
@@ -71,6 +75,13 @@ try {
   hold = /^\s+hold:\s*(.+?)\s*$/mu.exec(cast)?.[1]?.replace(/^"|"$/gu, "") ?? null;
 } catch {
   /* another show: every reply counts */
+}
+// The worker's canned lines, so a fast fallback isn't mistaken for one either.
+let canned: CannedLines = {};
+try {
+  canned = personaLines(readFileSync(join(here, "../../core/examples/trapped-in-the-internet/trabolta.persona.md"), "utf8"));
+} catch {
+  /* no persona file: only the hold line is set apart */
 }
 
 // What programs say back to his private hello (varied, so the voice has to work).
@@ -135,7 +146,7 @@ if (state.json.phase !== "open") console.warn(`  ⚠ the event is ${state.json.p
 
 // ---------------------------------------------------------------- the feed
 
-const clock = new BurstClock(character, hold);
+const clock = new BurstClock(character, hold, canned);
 const stop = new AbortController();
 let feedUp = false;
 async function feed(): Promise<void> {
@@ -206,13 +217,16 @@ for (const [why, n] of refused) console.error(`  ✘ ${n} DM(s) refused: ${why}`
 
 const deadline = t0 + spread * 1000 + timeoutS * 1000;
 let lastPrint = 0;
-while (clock.waiting().length > 0 && performance.now() < deadline) {
+while (clock.outstanding().length > 0 && performance.now() < deadline) {
   await sleep(500);
   const now = performance.now();
   if (now - lastPrint >= 10_000) {
     lastPrint = now;
     const s = clock.summary();
-    console.log(`  ${Math.round((now - t0) / 1000)} s · ${s.answered}/${s.sent} answered${s.heldOnly > 0 ? ` · ${s.heldOnly} hold line only` : ""}`);
+    console.log(
+      `  ${Math.round((now - t0) / 1000)} s · ${s.answered}/${s.sent} answered${s.heldOnly > 0 ? ` · ${s.heldOnly} hold line only` : ""}` +
+        `${s.fallbackOnly > 0 ? ` · ${s.fallbackOnly} fallback` : ""}${s.gatedOnly > 0 ? ` · ${s.gatedOnly} gate closed` : ""}`,
+    );
   }
 }
 
@@ -233,6 +247,8 @@ const sec = (n: number) => (Number.isFinite(n) ? `${n.toFixed(1)} s` : "—");
 console.log();
 console.log(`  ${s.answered}/${s.sent} answered · p50 ${sec(s.p50)} · p95 ${sec(s.p95)} · max ${sec(s.max)}`);
 if (s.heldOnly > 0) console.log(`  ${s.heldOnly} got only the hold line (no worker online for them)`);
+if (s.fallbackOnly > 0) console.log(`  ${s.fallbackOnly} got only the worker's fallback line (the model failed or timed out — see Run → Mind)`);
+if (s.gatedOnly > 0) console.log(`  ${s.gatedOnly} got only the gate line (${character}.awake is off — run after introduce_trabolta, before an ending)`);
 if (s.missing > 0) console.log(`  ${s.missing} unanswered after ${timeoutS} s`);
 const line = recordLine(s, new Date().toLocaleString("sv-SE").slice(0, 16), new URL(base).host, spread);
 console.log(`\n  ${line}\n`);
