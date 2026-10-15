@@ -279,6 +279,11 @@ export interface EventRuntimeInit {
    *  `house.<variant>.json` → raw text; `house-maps.ts`). Seeds a fresh
    *  state dir only — a restart reads its own copy back. */
   houseMaps?: MapFiles | null;
+  /** The map variant the event row records (`event.map_variant`): where a
+   *  fresh state dir starts — a relaunch seeds it from the project's last
+   *  event, so the tent ↔ shed choice survives End → relaunch. The state
+   *  dir's own choice wins once it has one. */
+  mapVariant?: string | null;
   /** The way back to the project ("Save to project"); absent → the event
    *  has none (the LAN default event). */
   project?: ProjectLink | null;
@@ -451,10 +456,11 @@ export class EventRuntime {
     // sync written to the row while the runtime was down — `sync-example
     // --no-reload` — is what a restart plays); the state dir's copy covers an
     // event with no row snapshot (the LAN default event, an old row). The
-    // active variant is the event's own, so it always comes from the state dir.
+    // active variant is the event's own: the state dir's choice, else the
+    // row's (a relaunch starts on the project's last event's choice).
     const stored = this.store.loadMaps();
     this.projectMaps = asMapFiles(init.houseMaps ?? null) ?? asMapFiles(stored?.files ?? null);
-    this.mapVariant = stored?.active ?? null;
+    this.mapVariant = stored?.active ?? init.mapVariant ?? null;
     if (this.projectMaps !== null) this.store.saveMaps(this.projectMaps, this.mapVariant);
     if (init.now !== undefined) this.clock = init.now;
     this.modSnapshotMs = Math.max(0, init.modSnapshotMs ?? MOD_SNAPSHOT_MS);
@@ -1314,14 +1320,33 @@ export class EventRuntime {
   setProjectMaps(maps: MapFiles): void {
     this.projectMaps = { ...maps };
     const files = Object.keys(maps);
+    const was = this.mapVariant;
     if (files.length > 0) this.mapVariant = activeVariant(files, this.mapVariant);
     this.store.saveMaps(this.projectMaps, this.mapVariant);
+    if (this.mapVariant !== was) this.recordVariant();
     if (this.spatial.house === null || this.spatial.source === "event") return; // loads lazily / the save stays
     const base = this.baseHouse();
     if (base === null) return;
     const changed = houseVersion(base.house) !== this.spatial.version;
     this.spatial.setHouse(base.house, base.source, changed);
     if (changed) this.logHouseWarnings(base.house);
+  }
+
+  /** Put the variant choice on the event row (`event.map_variant`), so the
+   *  project's next launch starts on it. Best effort: the state dir has it
+   *  either way, and a failed write only costs the relaunch the choice. */
+  private recordVariant(): void {
+    const project = this.project;
+    if (project === null) return;
+    const file = this.mapVariant;
+    void project.saveVariant(file).catch((err: unknown) => {
+      process.stderr.write(`  ⚠️  event ${this.eventId}: recording the map variant failed (${err instanceof Error ? err.message : String(err)})\n`);
+    });
+  }
+
+  /** The active map variant as this event holds it (null = the default). */
+  get activeMapVariant(): string | null {
+    return this.mapVariant;
   }
 
   /** The project's map files as this event holds them (tests, tooling). */
@@ -1379,9 +1404,11 @@ export class EventRuntime {
     // The live map *is* the saved file when it resolves as the active
     // variant (and nobody saved another map while the write was in flight).
     if (activeVariant(Object.keys(next), this.mapVariant) === file && this.spatial.version === version) {
+      const was = this.mapVariant;
       this.mapVariant = file;
       this.store.clearHouse();
       this.spatial.setHouse(house, "project", false);
+      if (was !== file) this.recordVariant();
     }
     this.store.saveMaps(next, this.mapVariant);
     try {
@@ -3158,6 +3185,7 @@ export class EventRuntime {
         this.store.clearHouse();
         this.mapVariant = file;
         this.store.saveMaps(this.projectMaps, file);
+        this.recordVariant();
         const version = this.spatial.setHouse(house, from);
         const warnings = this.houseWarnings(house);
         for (const w of warnings) process.stderr.write(`  ⚠️  event ${this.eventId}: house map ${w}\n`);

@@ -190,6 +190,7 @@ const SCENARIO = scenarioSource("trapped-in-the-internet");
 function fakeProject(opts: { fail?: boolean } = {}) {
   const files = new Map<string, string>();
   const snapshots: MapFiles[] = [];
+  const variants: Array<string | null> = [];
   const link: ProjectLink = {
     projectId: "proj-1",
     async writeFile(path, content) {
@@ -199,11 +200,14 @@ function fakeProject(opts: { fail?: boolean } = {}) {
     async saveSnapshot(maps) {
       snapshots.push(maps);
     },
+    async saveVariant(file) {
+      variants.push(file);
+    },
   };
-  return { link, files, snapshots };
+  return { link, files, snapshots, variants };
 }
 
-function runtimeAt(d: string, init: { houseFile?: string; houseMaps?: MapFiles | null; project?: ProjectLink | null } = {}): EventRuntime {
+function runtimeAt(d: string, init: { houseFile?: string; houseMaps?: MapFiles | null; mapVariant?: string | null; project?: ProjectLink | null } = {}): EventRuntime {
   return new EventRuntime({
     eventId: "evt",
     store: new Store(d),
@@ -213,6 +217,7 @@ function runtimeAt(d: string, init: { houseFile?: string; houseMaps?: MapFiles |
     joinBase: () => "http://localhost",
     houseFile: init.houseFile ?? SHOW_FILE,
     ...(init.houseMaps !== undefined ? { houseMaps: init.houseMaps } : {}),
+    ...(init.mapVariant !== undefined ? { mapVariant: init.mapVariant } : {}),
     ...(init.project !== undefined ? { project: init.project } : {}),
   });
 }
@@ -346,6 +351,36 @@ describe("EventRuntime — the project's maps", () => {
     lan.restore();
     expect(((await modGet(lan, "/api/spatial/house")).json.house as HouseMap).name).toBe("Shed, synced");
     lan.dispose();
+  });
+
+  it("the variant rides the event row: a switch records it, and a relaunch's fresh state dir starts on it", async () => {
+    const p = fakeProject();
+    const rt = runtimeAt(freshDir(), { houseMaps: twoVariants(), project: p.link });
+    expect((await mod(rt, "/api/mod/spatial/variant", { file: "house.shed.json" })).status).toBe(200);
+    expect(p.variants).toEqual(["house.shed.json"]);
+    rt.dispose();
+
+    // End → relaunch: a new event, a fresh state dir, the row seeded from
+    // the project's last event (`events-api.ts`) — still the shed.
+    const next = runtimeAt(freshDir(), { houseMaps: twoVariants(), mapVariant: "house.shed.json", project: fakeProject().link });
+    expect(next.activeMapVariant).toBe("house.shed.json");
+    expect(((await modGet(next, "/api/spatial/house")).json.house as HouseMap).name).toBe("The house (shed)");
+    expect((await variants(next)).variants.find((v) => v.active)?.file).toBe("house.shed.json");
+    next.dispose();
+
+    // A recorded variant the project no longer has: the default.
+    const gone = runtimeAt(freshDir(), { houseMaps: { "house.json": text(show()) }, mapVariant: "house.shed.json" });
+    expect((await variants(gone)).variants.find((v) => v.active)?.file).toBe("house.json");
+    gone.dispose();
+
+    // The state dir's own choice outranks the row's (a server restart).
+    const d = freshDir();
+    const own = runtimeAt(d, { houseMaps: twoVariants(), project: p.link });
+    await mod(own, "/api/mod/spatial/variant", { file: "house.json" });
+    own.dispose();
+    const back = runtimeAt(d, { houseMaps: twoVariants(), mapVariant: "house.shed.json" });
+    expect(back.activeMapVariant).toBe("house.json");
+    back.dispose();
   });
 
   it("GET variants: the project's files with the active one marked, `edited` while a director's save is in force", async () => {

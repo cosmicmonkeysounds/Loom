@@ -33,9 +33,11 @@ import {
   createEvent,
   getProjectFor,
   lastEventCodes,
+  lastEventMapVariant,
   projectMaps,
   projectSource,
   setEventHouseMaps,
+  setEventMapVariant,
   setEventMode,
   setEventStatus,
   upsertFile,
@@ -55,6 +57,7 @@ export function specFromRow(row: EventRow): EventSpec {
     scenarioName: row.scenario_name,
     scenarioSource: row.scenario_source,
     houseMaps: asMapFiles(row.house_maps),
+    mapVariant: row.map_variant ?? null,
     project: projectLink(row.project_id, row.id),
   };
 }
@@ -75,6 +78,9 @@ export function projectLink(projectId: string, eventId: string): ProjectLink {
     },
     async saveSnapshot(maps) {
       await setEventHouseMaps(eventId, maps);
+    },
+    async saveVariant(file) {
+      await setEventMapVariant(eventId, file);
     },
   };
 }
@@ -236,6 +242,10 @@ export async function handleEvent(
     // a collision with another project's live event. `rotate` ("staff" /
     // true) is how a leaked code gets replaced.
     const previous = await lastEventCodes(projectId);
+    // The tent ↔ shed choice carries over too: a relaunch on a rain night
+    // stays on the shed (a variant the project no longer has falls back to
+    // house.json in the runtime).
+    const mapVariant = await lastEventMapVariant(projectId);
     const row = await insertWithCodes(
       previous,
       (codes) =>
@@ -251,6 +261,7 @@ export async function handleEvent(
           scenario_source: src.source,
           created_by_name: by,
           house_maps: maps,
+          map_variant: mapVariant,
         }),
       { rotate: parseRotation(body["rotate"]), warn: (m) => console.warn(`[events] project ${projectId}: ${m}`) },
     );

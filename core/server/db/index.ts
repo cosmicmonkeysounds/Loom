@@ -104,6 +104,10 @@ alter table event add column if not exists created_by_name text;
 -- The project's house map files at launch / reload ({"house.json": "<text>",
 -- "house.shed.json": …}), snapshotted like scenario_source (SW-MAP-01).
 alter table event add column if not exists house_maps jsonb;
+-- The map variant the event plays (e.g. 'house.shed.json'; null = the
+-- default house.json). A relaunch starts on the project's last event's
+-- choice, so a rain night switched to the shed stays on it (SW-MAP-13).
+alter table event add column if not exists map_variant text;
 `;
 
 /** Create the domain tables if they don't exist. Throws if the DB is down. */

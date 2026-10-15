@@ -218,4 +218,7 @@ export interface ProjectLink {
   writeFile(path: string, content: string): Promise<void>;
   /** Record the event's map snapshot on its row (`event.house_maps`). */
   saveSnapshot(maps: MapFiles): Promise<void>;
+  /** Record the variant the event plays on its row (`event.map_variant`),
+   *  which the project's next launch starts on. */
+  saveVariant(file: string | null): Promise<void>;
 }

@@ -40,6 +40,9 @@ export interface EventSpec {
   scenarioSource: string;
   /** The project's map files snapshotted at launch (`event.house_maps`). */
   houseMaps?: MapFiles | null;
+  /** The map variant the row records (`event.map_variant`) — a fresh state
+   *  dir starts on it (a relaunch keeps the tent ↔ shed choice). */
+  mapVariant?: string | null;
   /** The way back to the project ("Save to project"); absent → none. */
   project?: ProjectLink | null;
 }
@@ -99,6 +102,7 @@ export class EventRegistry {
       scenarioName: spec.scenarioName,
       scenarioSource: spec.scenarioSource,
       houseMaps: spec.houseMaps ?? null,
+      mapVariant: spec.mapVariant ?? null,
       project: spec.project ?? null,
       joinBase: this.joinBase,
       wiki: this.wiki,

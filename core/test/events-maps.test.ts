@@ -2,7 +2,7 @@
 //! files, snapshotted on the event row at launch like `scenario_source`, so
 //! an event plays a fixed map; a reload refreshes it; "Save to project"
 //! writes the file back (and the row follows); End → relaunch plays the
-//! project's current map. Gated on DB connectivity like `db.test.ts` (every
+//! project's current map on the variant the last event played. Gated on DB connectivity like `db.test.ts` (every
 //! case skips with no database).
 
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
@@ -144,13 +144,24 @@ describe("the map belongs to the project (Postgres)", () => {
     expect(parseMapText((await getFile(p.id, "house.shed.json"))!.content).house!.name).toBe("Shed, measured");
     expect(parseMapText((await activeEvent(p.id))!.house_maps!["house.shed.json"]!).house!.name).toBe("Shed, measured");
 
-    // End → relaunch: a new event, the project's current maps, the default variant.
+    expect((await activeEvent(p.id))!.map_variant).toBe("house.shed.json");
+
+    // End → relaunch: a new event, the project's current maps — and the
+    // variant the last event played (a rain night stays on the shed).
     expect((await eventCall(p.id, "end")).status).toBe(200);
     const again = await eventCall(p.id, undefined, { mode: "preview" });
     const next = registry.get((again.json.event as { id: string }).id)!;
     expect(next.eventId).not.toBe(id);
-    expect(await liveMap(next)).toMatchObject({ source: "project", house: { name: "Tent v2" } });
-    expect(parseMapText(next.houseMaps!["house.shed.json"]!).house!.name).toBe("Shed, measured");
+    expect((await activeEvent(p.id))!.map_variant).toBe("house.shed.json");
+    expect(await liveMap(next)).toMatchObject({ source: "project", house: { name: "Shed, measured" } });
+    expect(parseMapText(next.houseMaps!["house.json"]!).house!.name).toBe("Tent v2");
+
+    // Back to the tent; the relaunch after that is on the tent.
+    expect((await modCall(next, "POST", "/api/mod/spatial/variant", { file: "house.json" })).status).toBe(200);
+    await new Promise((r) => setTimeout(r, 50)); // the row write is fire-and-forget
+    expect((await eventCall(p.id, "end")).status).toBe(200);
+    const third = registry.get(((await eventCall(p.id, undefined, { mode: "preview" })).json.event as { id: string }).id)!;
+    expect(await liveMap(third)).toMatchObject({ source: "project", house: { name: "Tent v2" } });
     await eventCall(p.id, "end");
   });
 
