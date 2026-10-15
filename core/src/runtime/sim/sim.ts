@@ -742,6 +742,27 @@ export class Sim {
     return this.revealed.has(target);
   }
 
+  /**
+   * Evaluate a read-only condition outside any beat — an INTERACTION's
+   * `while:` (is its button on offer right now?). `subject` is bound under
+   * every subject name (`guest`, the ROLE's alias — `program`), `self` to
+   * `self` (else the subject). A condition that fails to evaluate reads
+   * false. Nothing is written: this only reads the world.
+   */
+  holds(condition: string, subject: string | null, self: string | null = subject): boolean {
+    const bindings: Bindings = new Map();
+    if (subject !== null) for (const name of this.subjectNames) bindings.set(name, subject);
+    if (self !== null) bindings.set("self", self);
+    const saved = this.currentBindings;
+    try {
+      return this.evalCond(condition, bindings);
+    } catch {
+      return false;
+    } finally {
+      this.currentBindings = saved;
+    }
+  }
+
   /** Is `person` standing in a `cutscene: true` location right now? The
    *  app goes on rails there (no sidebar, just what is said to them). */
   cutsceneFor(person: string): boolean {
@@ -1091,14 +1112,18 @@ export class Sim {
   }
 
   /** The channels a person can see — authored rooms they have access to, plus
-   *  every location room (the stage feed) — as flat snapshots for the view. */
+   *  every location room (the stage feed) — as flat snapshots for the view.
+   *  A `cutscene: true` place is only a room while they stand in it: once
+   *  the story moves them on (the login is over) it leaves their sidebar. */
   visibleChannelsFor(person: string): ChannelView[] {
     const out: ChannelView[] = [];
     for (const def of this.model.channels.values()) {
       if (!this.canSeeChannel(person, def.id)) continue;
       out.push(this.snapshot(person, def, this.canPost(person, def.id)));
     }
-    return [...this.locationSnapshots(person, false).filter((s) => this.canSeeChannel(person, s.id)), ...out];
+    const behind = new Set([...this.model.locations.values()].filter((l) => l.cutscene).map((l) => Sim.locationChannel(l.id)));
+    const places = this.locationSnapshots(person, false).filter((s) => this.canSeeChannel(person, s.id) && !(behind.has(s.id) && !s.member));
+    return [...places, ...out];
   }
 
   /** Every authored + location channel (operator/performer view — they run

@@ -49,15 +49,18 @@ export interface PersonCard {
    *  before the story places them) — what lets the app show who's *here*. */
   location: string | null;
   /** A character voiced by an agent (`mind: external`); `online` says whether
-   *  one is answering right now. Absent for guests and performed characters. */
-  agent?: { online: boolean };
+   *  one is answering right now. Absent for guests and performed characters.
+   *  `hold` — the character has a `hold:` line, so a guest is always
+   *  answered (by the line, then a director) and the app shows no presence. */
+  agent?: { online: boolean; hold?: true };
 }
 
 function peopleFor(sim: Sim, id: string, agentsOnline?: ReadonlySet<string>): PersonCard[] {
   return sim.peopleFor(id).map((p) => {
     const card: PersonCard = { ...p, known: p.known.map(codexEntry), location: p.kind === "guest" ? sim.locationOf(p.id) : null };
-    if (p.kind === "character" && sim.model.characters.get(p.id)?.mind === "external") {
-      card.agent = { online: agentsOnline?.has(p.id) ?? false };
+    const def = p.kind === "character" ? sim.model.characters.get(p.id) : undefined;
+    if (def?.mind === "external") {
+      card.agent = { online: agentsOnline?.has(p.id) ?? false, ...(def.hold !== null ? { hold: true as const } : {}) };
     }
     return card;
   });
@@ -89,6 +92,14 @@ export interface InteractionSummary {
   /** False for an off-sequence cue (`sequence: false`): machine-fired or a
    *  hardware fallback — the cue sheet ticks it but never suggests it. */
   sequence?: false;
+  /** Whose button this is — character ids, from the INTERACTION's `by:`
+   *  (characters, or a GROUP's members) plus every character that owns a
+   *  hook for it (a trait's `when vouch for program:`). Absent = anyone's.
+   *  A performer's guest card leads with their own; the rest fold away. */
+  actors?: string[];
+  /** False while the INTERACTION's `while:` condition is false — a guest
+   *  never sees it; a performer finds it under "More". */
+  live?: false;
 }
 
 const subjectOnlyCache = new WeakMap<Sim["model"], Set<string>>();
@@ -111,14 +122,51 @@ function subjectOnlyEvents(sim: Sim): Set<string> {
   return out;
 }
 
-function interactionsFor(sim: Sim, who: Array<InteractionSummary["who"]> | null): InteractionSummary[] {
+const actorsCache = new WeakMap<Sim["model"], Map<string, string[]>>();
+
+/** Each INTERACTION's actors (see `InteractionSummary.actors`), per model;
+ *  an interaction with none is missing from the map. */
+export function interactionActors(sim: Sim): Map<string, string[]> {
+  const m = sim.model;
+  const cached = actorsCache.get(m);
+  if (cached !== undefined) return cached;
+  const out = new Map<string, string[]>();
+  const chars = [...m.characters.values()];
+  for (const i of m.interactions.values()) {
+    const ids = new Set<string>();
+    for (const name of i.by) {
+      const k = foldName(name);
+      const one = chars.find((c) => foldName(c.id) === k);
+      if (one !== undefined) ids.add(one.id);
+      else for (const c of chars) if (c.faction !== null && foldName(c.faction) === k) ids.add(c.id);
+    }
+    const verb = foldName(i.id);
+    for (const c of chars) if (c.hooks.some((h) => h.timer === null && foldName(h.verb) === verb)) ids.add(c.id);
+    if (ids.size > 0) out.set(i.id, [...ids]);
+  }
+  actorsCache.set(m, out);
+  return out;
+}
+
+/** The INTERACTIONs `who` may fire. With `at`, each `while:` is evaluated
+ *  (`subject` / `self` bound as given) and marked `live: false` when it
+ *  fails; without, nothing is evaluated (the director's cue sheet). */
+function interactionsFor(
+  sim: Sim,
+  who: Array<InteractionSummary["who"]> | null,
+  at?: { subject: string | null; self: string | null },
+): InteractionSummary[] {
   const subjectOnly = subjectOnlyEvents(sim);
+  const actors = interactionActors(sim);
   return [...sim.model.interactions.values()]
     .filter((i) => who === null || who.includes(i.who))
     .map((i) => {
       const s: InteractionSummary = { id: i.id, label: i.label, who: i.who, description: i.description };
       if (subjectOnly.has(foldName(i.id))) s.subject = true;
       if (!i.sequence) s.sequence = false;
+      const by = i.who === "performer" ? actors.get(i.id) : undefined; // a guest never learns who hears their buttons
+      if (by !== undefined) s.actors = by;
+      if (at !== undefined && i.while !== null && !sim.holds(i.while, at.subject, at.self)) s.live = false;
       return s;
     });
 }
@@ -249,7 +297,8 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
       const def = sim.model.factions.get(g);
       return def === undefined || !def.hidden || sim.factionRevealed(g);
     }),
-    interactions: interactionsFor(sim, ["guest"]),
+    // A guest only ever sees the buttons on offer to them right now.
+    interactions: interactionsFor(sim, ["guest"], { subject: id, self: id }).filter((i) => i.live !== false),
     codex: sim.codexFor(id).map(codexEntry),
     codexTotal: sim.model.codex.size,
     quests: sim.questsFor(id).map(({ def, status }) => ({ id: def.id, title: def.title, giver: def.giver, status })),
@@ -646,7 +695,7 @@ export function primeView(sim: Sim | null, character: string, agentsOnline?: Rea
     guests,
     channels: sim.allChannelsFor(character),
     spaces: sim.spaceList(),
-    interactions: interactionsFor(sim, ["performer", "admin"]),
+    interactions: interactionsFor(sim, ["performer", "admin"], { subject: null, self: character }),
     legacyCapture: [...sim.model.locations.values()].some((l) => l.prison),
     codex: sim.codexFor(character).map(codexEntry),
     agents: agentContacts(sim, character, agentsOnline),

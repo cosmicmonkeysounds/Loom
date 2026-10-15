@@ -2203,7 +2203,9 @@ export class EventRuntime {
         sendJson(res, 403, { error: "wrong code" });
         return true;
       }
-      sendJson(res, 200, { role, identities: this.identities(role), search: role === "guest" && this.wiki !== null });
+      // `doorsOpen: false` — before the director opens the doors there is
+      // no cast to list yet: the join screen says so and polls.
+      sendJson(res, 200, { role, identities: this.identities(role), search: role === "guest" && this.wiki !== null, doorsOpen: this.open });
       return true;
     }
     // A guest's search of the program directory: any software on Wikipedia
@@ -2446,8 +2448,13 @@ export class EventRuntime {
           sendJson(res, 404, { error: "no such interaction for guests" });
           return true;
         }
-        this.fanout(this.commit("signal", name, id));
-        sendJson(res, 200, { ok: true });
+        const evs = this.commit("signal", name, id);
+        this.fanout(evs);
+        // The story's `reply` lines to this guest ride the answer too, so
+        // the app can show them where the guest is looking (they land in
+        // the lobby feed, rarely the room the guest has open).
+        const replies = evs.flatMap((e) => (e.type === "respond" && e.to === id ? [e.text] : []));
+        sendJson(res, 200, { ok: true, replies });
         return true;
       }
       case "/api/guest/widget": {

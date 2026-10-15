@@ -255,7 +255,7 @@ describe("ScreenWatch — polls", () => {
     const sim = Sim.fromSources(`# T\n\nCHARACTER Ghost\n  hidden: true\n  mind: external\n\nCHARACTER Clippy\n\nwhen wake the ghost:\n  reveal Ghost\n\n== Boot\nHi.\n`);
     const w = new ScreenWatch();
     const at = (c: string) => w.poll(sim, { name: "K", spot: "", view: "auto", character: c }, (id) => id === "Ghost");
-    expect(at("ghost").character).toEqual({ id: "Ghost", hidden: true, awake: true, online: true });
+    expect(at("ghost").character).toEqual({ id: "Ghost", hidden: true, awake: true, online: true, hold: false });
     expect(at("Ghost").attract).toBe(true);
     expect(at("Clippy").attract).toBe(false);
     expect(at("Nobody").character).toBeNull();

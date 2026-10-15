@@ -216,6 +216,15 @@ export interface InteractionDef {
    *  reed, the printer) or a hardware fallback: the director's cue sheet
    *  still ticks it, but it never becomes the sheet's LAST / NEXT. */
   sequence: boolean;
+  /** `by: Clippy, Antivirus` — whose button this is (characters, or a
+   *  GROUP's members): a performer's guest card leads with their own and
+   *  folds the rest away. Empty = anyone's. Advisory, never enforced. */
+  by: string[];
+  /** `while: Night.phase == "bingo_results"` — when the button is on offer.
+   *  A guest's is hidden while false (evaluated with the guest as the
+   *  subject); a performer's folds under "More" (evaluated with `self` =
+   *  the performer). Null = always. */
+  while: string | null;
 }
 
 export interface SimModel {
@@ -405,6 +414,11 @@ export function compileModel(bundle: Bundle): SimModel {
               description: decl.interaction.description,
               limit: decl.interaction.limit,
               sequence: decl.interaction.properties.get("sequence")?.value.trim() !== "false",
+              by: (decl.interaction.properties.get("by")?.value ?? "")
+                .split(",")
+                .map((n) => n.trim())
+                .filter((n) => n !== ""),
+              while: decl.interaction.properties.get("while")?.value.trim() || null,
             });
           }
           break;

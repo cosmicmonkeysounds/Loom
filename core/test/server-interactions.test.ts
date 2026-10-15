@@ -173,6 +173,8 @@ describe("/api/guest/act", () => {
     const g = await guest(rt);
     const r = await post(rt, "/api/guest/act", { token: g.token, name: "knock" });
     expect(r.status).toBe(200);
+    // …and the reply rides the answer, so the app can show it on top.
+    expect(r.json.replies).toEqual(["Nobody answers."]);
     // The role's `when knock for guest:` replied to the guest.
     expect(rt.liveSim!.log.all().some((e) => e.type === "respond" && e.to === g.id && e.text === "Nobody answers.")).toBe(true);
   });

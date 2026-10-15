@@ -1336,6 +1336,10 @@ INTERACTION the golden duck
 // Performer buttons (on every guest card). Every hook guards its phase
 // and ignores a wrong-phase press — except `send to the internet` and
 // `mark as reinstalled`, which work on any program at any time.
+// `by:` names whose button it is (a character, or a GROUP's members; a
+// character that owns a hook for it counts too) and `while:` when it is
+// on offer: a booth's card leads with its own live buttons and folds the
+// rest under More. Neither is enforced — the hooks still guard.
 
 INTERACTION send to the internet
   label: 🛡 Send to the Internet
@@ -1360,117 +1364,162 @@ INTERACTION vouch
 INTERACTION check_in_at_desktop
   label: 📍 Checked in at the Desktop
   who: performer
+  while: Night.summons_open == true
   description: Anyone at the living-room door during the five-minute summons.
 
 INTERACTION bingo_winner
   label: 🎱 Bingo winner
   who: performer
+  by: Clippy
+  while: Night.phase == "bingo_results"
   description: Clippy, at the Bingo results. Several winners are fine.
 
 INTERACTION award_the_ribbon
   label: 🎀 Award a ribbon (the Bingo Ribbon for a Bingo winner)
   who: performer
+  by: Hosts
 
 INTERACTION frame_for_bingo
   label: 🃏 Hand Clippy the fake Bingo card (no Bingo)
   who: performer
+  by: Task Manager
+  while: Night.phase == "bingo_results" and Night.bingo_winners < 1
   description: Task Manager, only if nobody has a Bingo.
 
 INTERACTION accurate_q1
   label: ✅ Q1 of this round: accurate, accepted
   who: performer
+  by: Hosts
+  while: Night.judging == true
 
 INTERACTION accurate_q2
   label: ✅ Q2 of this round: accurate, accepted
   who: performer
+  by: Hosts
+  while: Night.judging == true
 
 INTERACTION accurate_q3
   label: ✅ Q3 of this round: accurate, accepted
   who: performer
+  by: Hosts
+  while: Night.judging == true and Night.round != 3
 
 INTERACTION confident_q1
   label: 😤 Q1 of this round: wrong but confident, accepted
   who: performer
+  by: Hosts
+  while: Night.judging == true
 
 INTERACTION confident_q2
   label: 😤 Q2 of this round: wrong but confident, accepted
   who: performer
+  by: Hosts
+  while: Night.judging == true
 
 INTERACTION confident_q3
   label: 😤 Q3 of this round: wrong but confident, accepted
   who: performer
+  by: Hosts
+  while: Night.judging == true and Night.round != 3
 
 INTERACTION fact_accurate
   label: 📝 Filed fact: accurate
   who: performer
+  by: Hosts
+  while: Night.ended != true
   description: Hosts, from # hosts, any time. Judges this program's latest filed fact. Same reply as a lie.
 
 INTERACTION fact_lie
   label: 📝 Filed fact: confident lie
   who: performer
+  by: Hosts
+  while: Night.ended != true
   description: Hosts, from # hosts, any time. A wrong filed fact is still accepted. Only the Kernel knows.
 
 INTERACTION beat_the_machine
   label: ♟ They beat the machine
   who: performer
+  by: Hosts, Antivirus
   description: Hosts or Antivirus who saw the mate on the chess phone, on the winner's card. From the Y2K hour it disarms the server-room door for 90 s.
 
 INTERACTION uncertain_answer
   label: 🤷 Uncertain or guessed: to the Internet
   who: performer
+  by: Hosts
+  while: Night.judging == true
 
 INTERACTION chose_dare
   label: 🎩 Chose Dare: to the Internet
   who: performer
+  by: Hosts
+  while: Night.judging == true
 
 INTERACTION called_it_false
   label: 🙅 Called a false slip false: pass the turn
   who: performer
+  by: Hosts
+  while: Night.judging == true
 
 INTERACTION made_the_cup
   label: 🏓 Made the cup: may answer
   who: performer
+  by: Hosts
+  while: Night.phase == "truth_pong"
 
 INTERACTION missed_the_cup
   label: 🏓 Missed the cup: to the Internet
   who: performer
+  by: Hosts
+  while: Night.phase == "truth_pong"
 
 INTERACTION pay_truthcoin
   label: 🪙 Pay 100 Truthcoin
   who: performer
+  by: McAfee Anti-Virus, Hosts
   description: McAfee Anti-Virus (the exchange broker) or a host (the bank).
 
 INTERACTION charge_truthcoin
   label: 🪙 Charge 100 Truthcoin
   who: performer
+  by: McAfee Anti-Virus, CRA Agent Software, Hosts
   description: McAfee Anti-Virus, CRA Agent Software (audits) or a host.
 
 INTERACTION brought_up_the_bag
   label: 🍎 Brought up the Bag of Truth
   who: performer
+  by: Clippy, Adobe Acrobat
+  while: Night.phase == "bobbing" and Night.bag_up != true
 
 INTERACTION failed_the_bob
   label: 🍎 Failed the bob: to the Internet
   who: performer
+  by: Clippy, Adobe Acrobat
+  while: Night.phase == "bobbing" and Night.bag_up != true
 
 INTERACTION pickup_line_works
   label: 💘 Said "You're the one that I want"
   who: performer
+  by: Hosts
+  while: Night.phase == "grok_prom" and Night.ended != true
 
-// Guest buttons (on the pass; always shown, so every hook guards).
+// Guest buttons (on the pass). `while:` hides one that would do nothing
+// for this program right now; every hook still guards.
 
 INTERACTION go to the bathroom
   label: 🚻 Bathroom Mode
   who: guest
+  while: program.afk != true
   description: Leave honestly. Tells the Antivirus you are not hacking the Internet, and excuses you from a summons.
 
 INTERACTION back from the bathroom
   label: Back from the bathroom
   who: guest
+  while: program.afk == true
 
 INTERACTION plant_the_virus
   label: 💾 Insert a disk into the computer
   who: guest
+  while: program.carries_virus == true and program.planted_virus != true
 
 // ── House rules ─────────────────────────────────────────────────────
 // Story-level `when`s: the arc of the night, in running order. Phase

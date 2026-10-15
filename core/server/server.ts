@@ -415,6 +415,12 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     return;
   }
 
+  // --- the bare landing's branding (no code): the one open event's title +
+  // theme, so `/` reads "Trapped in the Internet", not "Loom" ---
+  if (method === "GET" && path === "/api/landing") {
+    return void sendJson(res, 200, registry.landing() ?? { title: null, theme: null });
+  }
+
   // --- public bootstrap: a short passcode → which event + role it grants ---
   // A guest/performer/moderator knows only their code; this tells the client
   // which `/e/:eventId` to talk to before it registers or signs in.

@@ -112,6 +112,17 @@ export class EventRegistry {
   }
 
   /**
+   * The branding for the bare landing page (someone who typed the address,
+   * no code yet): the one event whose doors are open, if exactly one is —
+   * its title and skin, never a code. Null when none or several are open.
+   */
+  landing(): { title: string; theme: string } | null {
+    const open = [...this.byId.values()].filter((rt) => rt.currentPhase === "open");
+    if (open.length !== 1) return null;
+    return { title: open[0]!.title, theme: open[0]!.theme };
+  }
+
+  /**
    * Resolve a short passcode to the event + role it grants. Guests use an
    * event's `event` code, performers its `prime` code, moderators its `mod`
    * code. Codes are globally unique across live events, so the first match
