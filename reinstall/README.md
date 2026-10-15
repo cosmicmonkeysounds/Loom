@@ -17,7 +17,34 @@ is [`docs/loom-reinstall.md`](../docs/loom-reinstall.md), and it is normative.
 
 The show's map is
 [`core/examples/trapped-in-the-internet/house.json`](../core/examples/trapped-in-the-internet/house.json).
-It is a placeholder until the house is measured. A director's save from
+It is a placeholder until the house is measured.
+
+### The map editor (`/reinstall/map`)
+
+Tick **Edit** to build the house from a survey (the walkthrough is the
+help article `docs/help/authoring/38-house-map.md`; the rules are
+`docs/loom-reinstall.md` §3):
+
+| Tool / control | Does |
+|---|---|
+| floor tabs, **+ Floor** | switch floors; add one above the top; click the current tab to edit / delete it |
+| **▭ Room** (R) | drag a rectangle, or type **W × D** + Add (lands east of the selected room) |
+| **▒ Yard** (Y) | an outdoor rectangle; an indoor room drawn in it (the tent, the shed) is cut out of it with a flap door |
+| **▯ Door** (D) | click a wall: snaps on, 0.9 m, joins the rooms either side (one room = outside) |
+| **▤ Stairs** (S) | drag the rect on the lower floor, pick the rooms + the rising side |
+| **↖ Select** (V, Esc) | click / drag; a selected room by its body (with its doors and contents) or an edge |
+| snap, wheel, Space-drag | 1–50 cm snap with room edges pulled onto neighbours'; zoom; pan |
+| ⌘Z / ⇧⌘Z | undo / redo every edit |
+| problem list | `validateHouse` problems (click selects), warnings: unreachable duck spots, LOCATION mismatches |
+
+The code: `src/map/MapApp.tsx` (state, load / save), `Canvas.tsx` (the
+plan + gestures), `Toolbar.tsx`, `Inspector.tsx`, `Panels.tsx`, and the
+pure ops `edit.ts` / `doors.ts` / `yards.ts` / `structure.ts` /
+`history.ts` / `check.ts` (tested in `test/map*.test.ts`, the yard cut
+fuzzed against `validateHouse`). `MapApp` takes a `toolbarExtras` render
+prop (`MapToolbarContext` in `tools.ts`) — the slot for the project bar.
+
+A director's save from
 `/reinstall/map` is kept per event in the server's state directory (as
 `spatial-house.json`) and takes precedence over it. A save carries the
 version the editor loaded, so two directors never silently overwrite each
