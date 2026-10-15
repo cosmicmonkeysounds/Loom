@@ -3,14 +3,20 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { forward, heightAt, inPropFootprint, locate, pickDuckSpot, propSolid, roomById, route, validateHouse } from "../src/index.ts";
 import type { HouseMap, Vec2, Vec3 } from "../src/index.ts";
-import { ROOT, SHOW_HOUSE, loadHouse, samplePoint } from "./golden.ts";
+import { ROOT, SHOW_HOUSE, SHOW_SHED_HOUSE, loadHouse, samplePoint } from "./golden.ts";
 
-/** The show's house map (core/examples/trapped-in-the-internet/house.json). */
-describe("the show's house map", () => {
-  const house: HouseMap = loadHouse(SHOW_HOUSE);
+/**
+ * The show's house map (core/examples/trapped-in-the-internet/house.json)
+ * and its rain variant (house.shed.json: the Internet in the shed).
+ */
+describe.each([
+  ["tent", SHOW_HOUSE],
+  ["shed", SHOW_SHED_HOUSE],
+])("the show's house map (the Internet in the %s)", (variant, file) => {
+  const house: HouseMap = loadHouse(file);
 
   it("validates with zero problems", () => {
-    expect(validateHouse(JSON.parse(readFileSync(SHOW_HOUSE, "utf8"))).problems).toEqual([]);
+    expect(validateHouse(JSON.parse(readFileSync(file, "utf8"))).problems).toEqual([]);
   });
 
   it("names only LOCATIONs the story declares", () => {
@@ -64,29 +70,30 @@ describe("the show's house map", () => {
     }
   });
 
-  it("hides the duck in every room but the tent, on something to stand on", () => {
+  it("hides the duck in every room but the Internet and the Server Room, on something to stand on", () => {
     const rooms = new Set(house.duck.spots.map((s) => s.room));
-    for (const room of house.rooms) expect(rooms.has(room.id), room.id).toBe(room.id !== "tent");
+    for (const room of house.rooms) expect(rooms.has(room.id), room.id).toBe(room.id !== variant && room.id !== "server-room");
     for (const s of house.duck.spots) {
       expect(locate(house, s.pos).room, s.id).toBe(s.room);
       expect(heightAt(house, [s.pos[0], s.pos[2]], s.pos[1]), s.id).not.toBeNull();
     }
-    expect(house.spawn.room).toBe("tent");
-    expect(roomById(house, "tent")?.location).toBe("The Internet");
+    expect(house.spawn.room).toBe(variant);
+    expect(roomById(house, variant)?.location).toBe("The Internet");
+    expect(roomById(house, "server-room")?.location).toBe("The Server Room");
     // Never the spawn room.
-    for (let i = 0; i < 50; i++) expect(pickDuckSpot(house, `session-${i}`).room).not.toBe("tent");
+    for (let i = 0; i < 50; i++) expect(pickDuckSpot(house, `session-${i}`).room).not.toBe(variant);
   });
 
-  it("climbs the basement stairs into the hall", () => {
+  it.runIf(variant === "tent")("walks out of the tent, in by the back door and down the basement stairs", () => {
     const mm3 = (p: Vec3): Vec3 => p.map((v) => Math.round(v * 1000) / 1000 + 0) as Vec3;
-    expect(route(house, house.spawn.pos, [-0.5, 0, 6]).map(mm3)).toEqual([
+    expect(route(house, house.spawn.pos, [-2.3, -2.7, 11.6]).map(mm3)).toEqual([
       house.spawn.pos,
-      [1.5, -2.7, 4.5], // the tent flap
-      [-1.5, -2.7, 9], // landing ⇄ rec room
-      [-2.55, -2.7, 11.35], // round the ramp's south-east corner
-      [-3.4, -2.7, 11], // the stair's foot
-      [-3.4, 0, 7], // its head, in the hall
-      [-0.5, 0, 6],
+      [2, 0, 20.6], // the tent flap
+      [0, 0, 12], // the hall's back door
+      [-2.55, 0, 6.65], // round the stair hole's north-east corner
+      [-3.4, 0, 7], // the stair's head, in the hall
+      [-3.4, -2.7, 11], // its foot
+      [-2.3, -2.7, 11.6], // the landing duck
     ]);
   });
 });

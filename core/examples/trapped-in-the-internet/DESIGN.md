@@ -217,11 +217,14 @@ No test reads the codex paths.
 | `backyard` | Backyard | ground | The Cloud (the Truth Pong folding table is out here, per OV "outside") |
 | `landing` | Stair Landing | basement | The Tube |
 | `registry` | Rec Room | basement | The Registry |
-| `tent` | The Tent | basement | The Internet |
+| `tent` | The Tent | ground (in the backyard, #23) | The Internet |
+| `server-room` | Server Room | basement (off the stair landing) | The Server Room |
 
-`LOCATION The Server Room` is declared in `main.loom` with **no** house.json room. The floor
-plan work (§7) adds the cold-storage room, its door, a terminal and duck rules later; the
-house test only checks map → story, so an unmapped LOCATION is legal today.
+The map is still a **placeholder** (dimensions guessed until the survey, SW-MAP-02), but since
+2026-10-15 (SW-MAP-07) its structure matches the story: the tent is an indoor room in a notched
+backyard, the Server Room has its door, patch bay, lock ring + chess phone outside, no duck. The
+rain variant `house.shed.json` (SW-MAP-13) binds The Internet to room `shed` at the back of the
+yard instead; `core/test/show-house.test.ts` checks both.
 
 ---
 
@@ -372,8 +375,8 @@ not refuse hidden groups; §7.)
 | 5 | The Cache | `The Cache (kitchen)` | `hidden: true` | |
 | 6 | Disk Cleanup | `Disk Cleanup (bathroom)` | `hidden: true` | Recycling Bin's domain. |
 | 7 | The Cloud | `The Cloud (backyard — Truth Pong)` | `hidden: true` | |
-| 8 | The Registry | `The Registry (basement)` | `hidden: true` | Rec room next to the tent. |
-| 9 | The Server Room | `The Server Room (cold storage)` | `hidden: true` | Trabolta's heart (the video patch bay). Door alarmed. No map geometry yet. |
+| 8 | The Registry | `The Registry (basement)` | `hidden: true` | Rec room. |
+| 9 | The Server Room | `The Server Room (cold storage)` | `hidden: true` | Trabolta's heart (the video patch bay). Door alarmed. Off the basement stair landing. |
 
 Reveal policy: house rooms 5–8 are revealed **per program** in `Clearance` (`reveal The Cache
 for program`, etc.); The Internet appears once stood in; The Server Room is revealed for each
@@ -1413,7 +1416,7 @@ generators bark. Bathroom Mode:
   being a program.`
 Props: `== Re-upload` (`The Uploader: You have already been uploaded. Leaving again would
 require a body, and yours is being looked after.`); `== The Router` (`Self: ACT. ACT. ACT.
-The Internet is downstairs, through the tent. You do not want to go there.` + `unlock The
+The Internet is out back. You do not want to go there.` + `unlock The
 Halifax Computer for program`); `== The Screensaver` (`Self:` screensaver riff; after
 `Night.trabolta_introduced` it says `Self: ◌ ◌ ◌ He is watching through me now.`).
 

@@ -37,9 +37,9 @@ if program.corrupted:
   * "Where is the exit?"
     WebMD: Clearly marked. Behind you. It is for safety. It is not the way out. Gerald is the way out.
   * Put the headset on.
-    WebMD: Loading a copy of this house. Everyone upstairs can see you now. Wave.
+    WebMD: Loading a copy of this house. Every screen in the house can see you now. Wave.
   * Take the tablet.
-    WebMD: Loading a copy of this house, smaller. Hold it with both hands. Everyone upstairs can see you now.
+    WebMD: Loading a copy of this house, smaller. Hold it with both hands. Every screen in the house can see you now.
 else:
   WebMD: You are not corrupted, {program.name}. You have wandered into the Internet voluntarily. That is a strange thing for a program to do.
   set program.doubt += 10

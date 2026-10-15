@@ -17,7 +17,9 @@ is [`docs/loom-reinstall.md`](../docs/loom-reinstall.md), and it is normative.
 
 The show's map is
 [`core/examples/trapped-in-the-internet/house.json`](../core/examples/trapped-in-the-internet/house.json).
-It is a placeholder until the house is measured. A director's save from
+It is a placeholder until the house is measured (the tent is out in the
+backyard; `house.shed.json` beside it is the rain variant, The Internet
+in the shed — the same terminal ids and duck spots). A director's save from
 `/reinstall/map` is kept per event in the server's state directory (as
 `spatial-house.json`) and takes precedence over it. A save carries the
 version the editor loaded, so two directors never silently overwrite each

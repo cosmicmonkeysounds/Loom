@@ -33,6 +33,8 @@ export const FIXTURES = join(ROOT, "test", "fixtures");
 export const GOLDEN = join(ROOT, "test", "golden");
 /** The show's house map (the default every server / game falls back to). */
 export const SHOW_HOUSE = join(ROOT, "..", "core", "examples", "trapped-in-the-internet", "house.json");
+/** Its rain variant (the Internet in the shed, not the tent) — not a golden; checked by the show + route suites. */
+export const SHOW_SHED_HOUSE = join(ROOT, "..", "core", "examples", "trapped-in-the-internet", "house.shed.json");
 /** The Godot project's copies (`pnpm --filter @loom/house sync`). */
 export const VR_HOUSE = join(ROOT, "..", "reinstall", "vr", "house", "house.json");
 export const VR_GOLDEN = join(ROOT, "..", "reinstall", "vr", "test", "golden");
