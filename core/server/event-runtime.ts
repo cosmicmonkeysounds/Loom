@@ -25,7 +25,7 @@ import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
 import { ChatStore, composeGuestMessages, decisionChannelFor, isPinnedRoom, visibleTo, type ChatMessage } from "./chat.ts";
 import { ipOf, queryTokenOf, readBody, sendJson, sseSend, str, tokenOf } from "./http-util.ts";
-import { RateLimiter } from "./rate-limit.ts";
+import { RateLimiter, limiterFor, rateLimitsFromEnv, type RateLimits } from "./rate-limit.ts";
 import { TtsProxy, ttsConfigFromEnv } from "./tts.ts";
 import { AvatarBook, ImageCache, avatarKey, avatarRefUrl } from "./avatars.ts";
 import { WikiClient, isAntivirusSoftware } from "./wiki.ts";
@@ -245,6 +245,8 @@ export interface EventRuntimeInit {
   houseFile?: string;
   /** The spatial hub's clock (tests). */
   now?: () => number;
+  /** Throttle overrides (tests); the rest come from `LOOM_RL_*`. */
+  limits?: Partial<RateLimits>;
 }
 
 /** The process-wide speech proxy (configured from `LOOM_TTS_*`). */
@@ -289,9 +291,13 @@ export class EventRuntime {
   // Failed passcode attempts per client IP (guest register + prime/mod
   // login). The codes are short and speakable, so throttling online
   // guessing is what actually protects them.
-  private readonly loginFailures = new RateLimiter(10, 5 * 60_000);
   // Successful registrations per client IP — a cap on drive-by guest spam.
-  private readonly registrations = new RateLimiter(20, 60_000);
+  // Wrong codex codes per guest: past the cap, redeem answers 429 and the
+  // miss is never journaled (a guessing phone can't flood the story).
+  // All three are `LOOM_RL_*`-configurable (see `rateLimitsFromEnv`).
+  private readonly loginFailures: RateLimiter;
+  private readonly registrations: RateLimiter;
+  private readonly redeemMisses: RateLimiter;
   // Server-authoritative chat, rebuilt deterministically from the journal.
   private readonly chat = new ChatStore();
   // Where each guest's pending decision docks (channel id). Ephemeral.
@@ -352,6 +358,10 @@ export class EventRuntime {
     this.images = init.images ?? defaultImages();
     this.houseFile = init.houseFile ?? defaultHouseFile();
     this.spatial = new SpatialHub({ eventId: init.eventId, ...(init.now !== undefined ? { now: init.now } : {}) });
+    const limits = { ...rateLimitsFromEnv(process.env), ...init.limits };
+    this.loginFailures = limiterFor(limits.loginFailures);
+    this.registrations = limiterFor(limits.register);
+    this.redeemMisses = limiterFor(limits.redeemMisses);
   }
 
   /** Current lifecycle phase (idle | open | paused). */
@@ -2261,8 +2271,15 @@ export class EventRuntime {
           sendJson(res, 400, { error: "empty code" });
           return true;
         }
+        // Past the miss cap every redeem waits (a hit too — else guessing
+        // just goes on unjournaled), and nothing reaches the journal.
+        if (!this.redeemMisses.allowed(id)) {
+          sendJson(res, 429, { error: "too many wrong codes — wait a minute" });
+          return true;
+        }
         const events = this.commit("redeem", id, code);
         this.fanout(events);
+        if (events.some((e) => e.type === "codexMissed" && e.person === id)) this.redeemMisses.record(id);
         const hit = events.find((e): e is Extract<SimEvent, { type: "codexUnlocked" }> => e.type === "codexUnlocked" && e.person === id);
         sendJson(res, 200, { ok: true, unlocked: hit !== undefined ? hit.entry : null, codex: guestView(this.sim!, id).codex });
         return true;

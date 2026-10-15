@@ -37,6 +37,12 @@ services:
       LOOM_BASE_URL: ${LOOM_BASE_URL:?set LOOM_BASE_URL in .env, e.g. http://YOUR_VPS_IP or https://loom.example.com}
       # Caddy is the only route in, so rate-limit on the real client IP.
       LOOM_TRUST_PROXY: "1"
+      # Door-rush throttles (blank = defaults; see .env.example). On the
+      # night every phone on the house Wi-Fi shares one public IP.
+      LOOM_RL_RESOLVE: ${LOOM_RL_RESOLVE:-}
+      LOOM_RL_REGISTER: ${LOOM_RL_REGISTER:-}
+      LOOM_RL_LOGIN_FAILURES: ${LOOM_RL_LOGIN_FAILURES:-}
+      LOOM_RL_REDEEM_MISSES: ${LOOM_RL_REDEEM_MISSES:-}
       # Share-invite email (either transport; both blank = links only).
       LOOM_SMTP_URL: ${LOOM_SMTP_URL:-}
       LOOM_RESEND_API_KEY: ${LOOM_RESEND_API_KEY:-}

@@ -422,6 +422,42 @@ describe("routes — codex", () => {
     ]);
   });
 
+  it("the 9th wrong code in a minute gets a 429 and is never journaled; other guests are unaffected", async () => {
+    const rt = freshRuntime();
+    const a = await guest(rt, "Minesweeper");
+    const b = await guest(rt, "Pinball");
+    const misses = () => rt.liveSim!.log.count((e) => e.type === "codexMissed" && e.person === a.id);
+    for (let i = 0; i < 8; i++) expect((await post(rt, "/api/guest/codex/redeem", { code: `GUESS${i}` }, a.token)).status).toBe(200);
+    expect(misses()).toBe(8);
+    const ninth = await post(rt, "/api/guest/codex/redeem", { code: "GUESS8" }, a.token);
+    expect(ninth.status).toBe(429);
+    // A right code waits too (else guessing just goes on, unjournaled).
+    expect((await post(rt, "/api/guest/codex/redeem", { code: "SANDY-1997" }, a.token)).status).toBe(429);
+    expect(misses()).toBe(8);
+    expect(rt.liveSim!.holdsCodex(a.id, "The Sandy File")).toBe(false);
+    // The cap is per guest.
+    expect((await post(rt, "/api/guest/codex/redeem", { code: "SANDY-1997" }, b.token)).json.unlocked).toBe("The Sandy File");
+  });
+
+  it("hits never count toward the miss cap", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-codex-hits-"));
+    dirs.push(d);
+    const rt = new EventRuntime({
+      eventId: "evt",
+      store: new Store(d),
+      codes: CODES,
+      scenarioName: "trapped",
+      scenarioSource: SOURCE,
+      joinBase: () => "http://x",
+      limits: { redeemMisses: { max: 1, windowMs: 60_000 } },
+    });
+    rt.openDoors();
+    const a = await guest(rt, "Minesweeper");
+    for (let i = 0; i < 3; i++) expect((await post(rt, "/api/guest/codex/redeem", { code: "SANDY-1997" }, a.token)).status).toBe(200);
+    expect((await post(rt, "/api/guest/codex/redeem", { code: "WRONG" }, a.token)).status).toBe(200);
+    expect((await post(rt, "/api/guest/codex/redeem", { code: "WRONG" }, a.token)).status).toBe(429);
+  });
+
   it("codex + shares replay deterministically from the journal", async () => {
     const d = mkdtempSync(join(tmpdir(), "loom-codex-replay-"));
     dirs.push(d);
