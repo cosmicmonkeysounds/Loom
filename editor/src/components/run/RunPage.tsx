@@ -19,6 +19,7 @@ import { useInspect } from '@/components/cockpit/inspect'
 import { FactionPill } from '@/components/cockpit/ui'
 import { runAge } from './run-chrome'
 import { PrintSheet } from './PrintSheet'
+import { TerminalsCard } from './TerminalsCard'
 
 // The Barcode Detection API isn't in the TS DOM lib; narrow shim (no `any`).
 interface BarcodeDetectorLike {
@@ -380,6 +381,7 @@ export function RunPage() {
           <>
             <JoinCard />
             <DirectingCard />
+            <TerminalsCard />
             <LookupCard />
           </>
         ) : (

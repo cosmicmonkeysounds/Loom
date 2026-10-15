@@ -31,6 +31,11 @@ export default defineConfig({
     },
   },
   build: {
+    // The oldest wall tablets (#15, OCT31 K-14): Chrome/WebView 87 = Android
+    // 5's last Chrome; Safari 14 for the iPads. Pinned rather than Vite's
+    // moving default. Syntax only — runtime APIs newer than 87 need a
+    // fallback in code (e.g. `cloneData` for `structuredClone`).
+    target: ["chrome87", "safari14"],
     // three.js is one big chunk by nature; split it from the app so the
     // map page and the game share it cached.
     chunkSizeWarningLimit: 900,

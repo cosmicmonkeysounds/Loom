@@ -59,13 +59,86 @@ Add the page to the home screen / run the browser in kiosk mode. After a
 reload the terminal shows **TOUCH TO WAKE** until someone taps it once —
 that one gesture is what lets a browser play sound unattended afterwards.
 
+**Kiosk basics** (`src/kiosk.ts`): the terminal holds a Screen Wake Lock
+from boot, re-takes it on the wake tap and whenever the page comes back
+into view, and reports it on `<html data-wake-lock="held|off|unsupported">`.
+The ⚙ opens setup only after a **2 s hold** (a bar fills under it); a short
+tap does nothing. Fully Kiosk / iPad / TV-Mac settings for the show:
+[`docs/trapped/kiosk.md`](../docs/trapped/kiosk.md).
+
+**The screensaver while the character is secret** (OCT31 K-16,
+`src/screen.ts` + `src/Attract.tsx` + `src/attract.ts`): every 2 s the
+terminal polls `GET /e/:id/api/screen/state` (mod token, ~0.5 KB — the
+story's screen cues, the running countdown, its character's
+hidden/awake/online; the poll is also its heartbeat). While the character
+is **hidden** (not yet `reveal`ed) or **asleep** (`<Character>.awake ==
+false`) a face/world terminal shows a full-screen **Mystify** screensaver
+(Canvas2D, ≤ 30 fps) with a fake-1999 ad every 40 s for 10 s: no camera,
+no scanner, never "ONLINE", never a pilot — so tablets are provisioned
+`view=auto` from the start and flip to the face within 2 s of
+`introduce_trabolta`. It fails closed (attract until the server first
+answers; a missed poll keeps the last answer) and an open line finishes
+on its own leash first. Ads are `public/ads/<id>.png` (ids in
+`attract.ts`: `ad-maps-and-ducks`, `ad-protection-expired`,
+`ad-geocities`, `ad-y2k`); a missing PNG renders the ad's copy as a Win98
+window. The mirror (the TV) honours attract too since K-17: it keeps the
+screensaver until the character is introduced.
+
+**Overlays, slides, countdowns** (OCT31 K-17 + N-03, `src/slides.ts` +
+`src/ScreenLayer.tsx`): the same poll carries the story's screen program
+for this terminal's target (`view=mirror` = the TV, else a wall terminal;
+`core/server/routes/screen.ts`). Precedence, top first: **overlay**
+(`blackout` — 10 s true black even when `go_to_living_room` follows at
+once, then standing; `go_to_living_room` / `alarm` — text blinking at
+1 Hz on a black field, never full-field red; an overlay pauses the
+scanner and ends an open line) > **slide** (any other `screens_*` /
+`tv_*` / `terminals_*` value, held 45 s on a terminal / 90 s on the TV;
+`bingo`, `y2k`, `trust_chart`, `truth_txt`, `award_*`, `ceremony*` stay
+until the next cue and beat attract) > **attract** > the base view. A
+pilot pre-empts a slide. A slide is `public/slides/<cue>.png` (e.g.
+`screens_trivia_1.png`, `tv_bingo.png`), else `<value>.png`; a missing
+PNG renders a Win98 text card (`SLIDE_COPY` — the trivia cards carry the
+Quest Log's own questions, test-checked against `quests.loom`), never a
+broken image. `y2k` is drawn live: a blown-up taskbar clock at midnight
+minus `remaining`. Any running story countdown shows as a ⏱ corner
+(`countdown_*` cues never replace the slide); `flicker` is one 2 Hz
+stutter. Ages run on the server's clock. Device check:
+`scripts/accept/K-17.sh`.
+
+**The TV room voice** (OCT31 K-18 + N-04b, `src/Tv.tsx` + `src/tv.ts`):
+`view=tv` is the TV over the fireplace, run by the house Mac's Chrome full
+screen over the long HDMI (launched with
+`--autoplay-policy=no-user-gesture-required`; sound out of the MOTU's
+living-room pair):
+
+```
+https://<server>/terminal/?code=<mod passcode>&name=TV&character=Trabolta&spot=desktop-tv&view=tv[&room=The Desktop]
+```
+
+The character's face full screen (the world takes the right 62 % while
+someone is in the simulation), the K-17 layer over it, attract until the
+introduction. It polls every **1 s** with `voice=<room>` (default
+`The Desktop`) and its chat cursor, and plays the room's new lines strictly
+in order with a caption: the character's own lines — scripted, or a
+director's `say` as him — are **spoken** (server voice via `/api/mod/tts`,
+Chrome's voice as fallback, mouth on the audio level); lines from the song
+beats `Song Ending` / `Sad Confession` / `The Hand Jive` are **captioned
+only** (QLab plays the sung track); **Sandy** is captioned, never voiced
+(lore, #28); other characters are ignored; nothing is said on attract. A
+booting TV starts at the room's head (no backlog), a gap of 15 s between
+answers resyncs, a restart resyncs. **Mute**: the 🔊 button or `M` on the
+TV's keyboard → `POST /api/mod/screen/voice` (server-side, so it survives a
+reload and the director can flip it — K-29 card). Without the autoplay flag
+a *CLICK ONCE TO ENABLE THE VOICE* banner asks for one click. Device check:
+`scripts/accept/K-18.sh`.
+
 ## The voice
 
 Two engines behind one queue (`src/speech/`):
 
 | Engine | Where it runs | Quality |
 |---|---|---|
-| **server** (default) | The show laptop, behind the event server's `/api/mod/tts` proxy | Neural — the one to use. Run [Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI) (`docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu`, or the GPU image) and set `LOOM_TTS_URL=http://<laptop>:8880/v1` on the event server. Any OpenAI-compatible `/audio/speech` endpoint works, OpenAI's own included (`LOOM_TTS_URL=https://api.openai.com/v1 LOOM_TTS_API_KEY=… LOOM_TTS_MODEL=tts-1 LOOM_TTS_VOICE=onyx`). |
+| **server** (default) | The show laptop, behind the event server's `/api/mod/tts` proxy | Neural — the one to use. The compose stack bundles [Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI) as its CPU-capped `kokoro` service and points the server at it by default (`docs/loom-docker-deploy.md` §5¾ *The voice*). Elsewhere, run it yourself (`docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu`, or the GPU image) and set `LOOM_TTS_URL=http://<host>:8880/v1` on the event server. Any OpenAI-compatible `/audio/speech` endpoint works, OpenAI's own included (`LOOM_TTS_URL=https://api.openai.com/v1 LOOM_TTS_API_KEY=… LOOM_TTS_MODEL=tts-1 LOOM_TTS_VOICE=onyx`). |
 | **browser** (fallback) | The tablet's `speechSynthesis` | Varies: Edge's online *Natural* voices and an iPad's downloaded *Enhanced/Premium* voices are close to real; stock Android is not. The setup screen ranks the installed voices best-first with a TEST button. |
 
 The server voice is cached per line across every terminal, so the hold
@@ -76,7 +149,7 @@ sentences and synthesised one ahead, so speech starts on the first
 sentence and the transcript reveals as it is said. Server env:
 
 ```
-LOOM_TTS_URL       base of the speech API (unset = no server voice)
+LOOM_TTS_URL       base of the speech API (unset / off = no server voice; compose defaults it to its kokoro service)
 LOOM_TTS_API_KEY   bearer token, if the endpoint wants one
 LOOM_TTS_MODEL     default "kokoro"
 LOOM_TTS_VOICE     default "am_michael"  (Kokoro: am_adam, bm_george, af_bella+af_sky …)
@@ -150,7 +223,7 @@ Two settings, on the setup screen or in the provisioning link:
 | Setting | Values |
 |---|---|
 | `spot` | a `house.terminals[].id` of the event's map: where this screen hangs (the setup screen lists them as *name — room*). Blank = unplaced: it never mounts, only follows / orbits the spawn room. |
-| `view` | `auto` (default): the face pane shows the world view while anyone is in the simulation, the face otherwise. `world`: the world view always. `face`: never. `mirror`: see below. While piloting it is **always the face**, because the face is the voice. |
+| `view` | `auto` (default): the face pane shows the world view while anyone is in the simulation, the face otherwise. `world`: the world view always. `face`: never. `mirror`: see below. `tv`: the TV room voice (above), no scanner. While piloting it is **always the face**, because the face is the voice. A tablet with **no WebGL2** (three r186 needs it; `src/webgl.ts` probes once at boot) behaves as `face` whatever this says, never loads three.js, and a no-WebGL2 mirror shows a still notice — never the *SIMULATION UNAVAILABLE* retry loop. The build targets `chrome87` / `safari14` (`vite.config.ts`). |
 
 **The mirror (a TV).** `view=mirror` turns a screen into a full-screen
 spectator, like the TV over the fireplace: there is no scanner, no chat and
@@ -163,7 +236,7 @@ http://<server>/terminal/?code=<mod passcode>&name=Desktop TV&view=mirror&spot=d
 ```
 
 A `spot` is optional for a mirror; without one it never mounts. The ⚙ in
-the corner reopens setup.
+the corner reopens setup (hold it 2 s).
 
 **Before the character exists (attract).** A character can arrive partway
 through the night: in *Trapped in the Internet* Trabolta is `hidden: true`
@@ -196,7 +269,14 @@ them meanwhile.
 ## Layout
 
 ```
-src/app.tsx            the screens: setup → attract → connecting → piloting
+src/app.tsx            the screens: setup → (screensaver) → attract → connecting → piloting
+src/screen.ts          the 2 s screen-state poll (K-16): attract while the character is hidden/asleep
+src/tv.ts              the TV room voice: which lines are spoken / captioned, the cursor, the player (pure, K-18)
+src/Tv.tsx             view=tv: the face full screen, the voice, captions, the mute
+src/attract.ts         the screensaver rotation, the ads' copy, Mystify (pure)
+src/Attract.tsx        the screensaver screen (Canvas2D) + ad cards (PNG, else a Win98 window)
+src/slides.ts          the screen layer's precedence, holds, slide copy, corner + Y2K clock (pure, K-17)
+src/ScreenLayer.tsx    overlays, slides (PNG, else a Win98 card), the corner, the flicker
 src/config.ts          per-tablet config (localStorage) + URL provisioning
 src/scanner.tsx        camera + QR (BarcodeDetector, else jsQR)
 src/scan.ts            what a scanned code means; the typed-name fallback
@@ -213,6 +293,7 @@ src/world/             stream.ts (spatial SSE + house map → WorldStore), state
 Server-side pieces live in `core/server`: `tts.ts` (the proxy + cache),
 the `/api/mod/tts` route and the `label` on `/api/mod/impersonate` in
 `event-runtime.ts`, and static serving of `dist/` at `/terminal/` in
-`server.ts`. The spatial plane the world view watches is `spatial.ts`
+`server.ts`; the screen-state poll is `routes/screen.ts` (`ScreenWatch`).
+The spatial plane the world view watches is `spatial.ts`
 (`SpatialHub`) plus the `/api/spatial/*` routes; the house map, its
 geometry and the three.js scene live in `house/` (`@loom/house`).

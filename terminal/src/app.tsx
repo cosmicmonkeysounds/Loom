@@ -2,6 +2,11 @@
 //!
 //!   setup      — provision this tablet (moderator passcode → token), name it,
 //!                pick the character, camera and voice. Once per tablet.
+//!   (screensaver) while the character is hidden or asleep (`screen.ts`
+//!                polls `/api/screen/state` every 2 s — K-16): the Mystify
+//!                screensaver + fake-1999 ads (`Attract.tsx`). No camera,
+//!                no scanner, never "ONLINE", never a pilot. Fails closed:
+//!                shown until the server first says otherwise.
 //!   attract    — the face, waiting; the camera looking for a pass.
 //!   connecting — a pass was scanned: minting the guest's session.
 //!   piloting   — the direct line: the thread, the composer, the countdown.
@@ -10,15 +15,27 @@
 //! view** (`world/`) while a program is in the reinstallation simulation —
 //! per the terminal's `view` (auto / world / face); while piloting it is
 //! always the face, which is the voice. `view: mirror` is a different
-//! terminal altogether: a full-screen spectator of the simulation (the TV
-//! over the fireplace) — no scanner, no line, nothing to say.
+//! terminal altogether: a full-screen spectator of the simulation — no
+//! scanner, no line, nothing to say. `view: tv` (`Tv.tsx`, K-18) is the TV
+//! over the fireplace: the face full screen, speaking the character's lines
+//! in the TV's room, the world beside it while someone is in the simulation.
 //!
-//! A tap on the wake overlay is the one user gesture the browser needs
-//! before the terminal may make a sound unattended.
+//! Over all of it, the **screen layer** (`ScreenLayer.tsx` / `slides.ts` —
+//! K-17 + N-03): the story's overlays, PNG slides, corner countdown and Y2K
+//! clock, in the order overlay > slide (held 45 s here, 90 s on the TV; a
+//! few persist) > attract > the base view. A pilot pre-empts a slide; an
+//! overlay ends the pilot. The mirror honours attract too: the TV keeps
+//! the screensaver until the character is introduced.
+//!
+//! A tap on the wake overlay (or anywhere on the page) is the one gesture the browser needs
+//! before the terminal may make a sound unattended. The screen is held on
+//! with a Wake Lock from boot (re-taken on that tap and whenever the page
+//! comes back into view), and the ⚙ opens setup only on a 2 s hold
+//! (`kiosk.ts`) — a guest's short tap does nothing.
 
 import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Composer, Thread } from "./chat.tsx";
-import { baseOf, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, withoutSecrets, type TerminalConfig, type TerminalView } from "./config.ts";
+import { DEFAULT_TV_ROOM, baseOf, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, tvRoomOf, withoutSecrets, type TerminalConfig, type TerminalView } from "./config.ts";
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import { useIdleTimeout } from "./idle.ts";
@@ -30,6 +47,13 @@ import { rankVoices } from "./speech/pick-voice.ts";
 import { revealOffsets, splitSentences } from "./speech/split.ts";
 import { mayReload, retryable } from "./retry.ts";
 import { bundledHouse, fetchHouse, useSpatialStream, useWorld, type Gone, type HouseInfo, type WorldStore } from "./world/stream.ts";
+import { effectiveView, hasWebGL2 } from "./webgl.ts";
+import { HOLD_MS, screenWake, useLongPress } from "./kiosk.ts";
+import { attractOf, useScreenState } from "./screen.ts";
+import { Attract } from "./Attract.tsx";
+import { LiveScreenLayer } from "./ScreenLayer.tsx";
+import { Tv } from "./Tv.tsx";
+import { screenLayers } from "./slides.ts";
 
 // three.js is most of the weight of the world view — a face-only terminal
 // never loads it. Retryable: `lazy` alone caches a failed load forever.
@@ -41,13 +65,22 @@ export function App() {
   const [config, setConfig] = useState<TerminalConfig | null>(() => loadConfig());
   const [screen, setScreen] = useState<Screen>(() => (loadConfig() ? { kind: "attract" } : { kind: "setup", notice: null }));
   const [awake, setAwake] = useState(() => audioUnlocked());
+  // The lean screen state, polled every 2 s (also this terminal's heartbeat).
+  // The TV also asks for its room's new lines after its chat cursor (K-18).
+  const tvCursor = useRef<number | null>(null);
+  useEffect(() => {
+    tvCursor.current = null; // a new config starts at the room's head: no backlog
+  }, [config]);
+  const screenState = useScreenState(config, config?.view === "tv" ? () => ({ room: tvRoomOf(config), after: tvCursor.current }) : null);
 
   // Fetch the world view's code at boot, while this page and the server are
-  // known to match — hours later a rebuild may have renamed the chunk.
+  // known to match — hours later a rebuild may have renamed the chunk. Not
+  // on a tablet that can't draw it (no WebGL2 → face only, see `webgl.ts`).
+  const webgl2 = hasWebGL2();
   const view = config?.view;
   useEffect(() => {
-    if (view !== undefined && view !== "face") void loadWorld().catch(() => {});
-  }, [view]);
+    if (webgl2 && view !== undefined && view !== "face") void loadWorld().catch(() => {});
+  }, [view, webgl2]);
 
   // Provision from the URL (`?code=…&name=…`) — a fleet is set up by opening one link each.
   useEffect(() => {
@@ -76,9 +109,41 @@ export function App() {
     });
   }, [config]);
 
+  // The poll was refused: the token no longer works for this run.
+  useEffect(() => {
+    if (!screenState.revoked) return;
+    dropConfig();
+    setConfig(null);
+    setScreen({ kind: "setup", notice: "This terminal's access was revoked — enter the moderator passcode again." });
+  }, [screenState.revoked]);
+
+  // The poll's event is gone (ended; a new one launched): back to setup, the
+  // config kept so its name / character / spot carry over — like `onGone`.
+  useEffect(() => {
+    if (!screenState.ended) return;
+    setScreen({ kind: "setup", notice: "The event this terminal was part of has ended — enter the moderator passcode of the next one." });
+  }, [screenState.ended]);
+
+  // Keep the screen on from boot: Chrome grants a wake lock to a visible
+  // page without a gesture; `ScreenWake` re-takes it on every return to view.
+  useEffect(() => {
+    void screenWake().keepOn();
+  }, []);
+
   const wake = useCallback(() => {
+    void screenWake().keepOn();
     void unlock().then(() => setAwake(audioUnlocked() || !("AudioContext" in window)));
   }, []);
+
+  // Any touch counts as the wake gesture, not only the TOUCH TO WAKE button:
+  // a slide (z-index above it) can cover the button on a tablet that rebooted
+  // mid-show. Capture phase, so the tap still does whatever it landed on.
+  useEffect(() => {
+    if (awake) return;
+    const onDown = () => wake();
+    window.addEventListener("pointerdown", onDown, true);
+    return () => window.removeEventListener("pointerdown", onDown, true);
+  }, [awake, wake]);
 
   // The spatial stream was refused for good: access revoked, or the event over.
   const onGone = useCallback((g: Gone) => {
@@ -116,7 +181,71 @@ export function App() {
     );
   }
 
-  if (config.view === "mirror") return <Mirror config={config} onSetup={() => setScreen({ kind: "setup", notice: null })} onGone={onGone} />;
+  const openSetup = () => setScreen({ kind: "setup", notice: null });
+  const piloting = screen.kind === "piloting" || screen.kind === "connecting";
+  // An overlay (blackout / go to the living room / alarm) ends any pilot.
+  const takeover = screenLayers(screenState.state, Date.now(), { piloting }).overlay !== null;
+  const layer = <LiveScreenLayer state={screenState.state} piloting={piloting} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />;
+  const attractScreen = (
+    <Attract
+      corner={
+        <>
+          <div className="mirror-corner">
+            {config.title ? `${config.title} · ` : ""}
+            {config.name.toUpperCase()}
+          </div>
+          <Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />
+        </>
+      }
+    />
+  );
+
+  if (config.view === "tv") {
+    return (
+      <>
+        <Tv
+          config={config}
+          state={screenState.state}
+          cursor={tvCursor}
+          attract={attractOf(screenState.state)}
+          attractScreen={attractScreen}
+          canDraw={webgl2}
+          worldSlot={(store) => <WorldSlot store={store} spotId={config.spot} size="full" recover="reload" />}
+          gear={<Gear onOpen={openSetup} label="Set up this screen" className="mirror-gear" />}
+          onGone={onGone}
+        />
+        {layer}
+      </>
+    );
+  }
+
+  if (config.view === "mirror") {
+    return (
+      <>
+        {attractOf(screenState.state) ? attractScreen : <Mirror config={config} canDraw={webgl2} onSetup={openSetup} onGone={onGone} />}
+        {layer}
+      </>
+    );
+  }
+
+  const wakeOverlay = !awake && (
+    <button className="wake" onClick={wake}>
+      <span className="wake-title">TOUCH TO WAKE</span>
+      <span className="wake-sub">this terminal needs one touch before it may speak</span>
+    </button>
+  );
+
+  // The character is hidden or asleep: the screensaver, unless a line is
+  // already open (a pilot ends on its own leash, then attract takes over).
+  if (attractOf(screenState.state) && screen.kind !== "piloting") {
+    return (
+      <>
+        {attractScreen}
+        {wakeOverlay}
+        {layer}
+      </>
+    );
+  }
 
   return (
     <>
@@ -124,15 +253,13 @@ export function App() {
         config={config}
         screen={screen}
         setScreen={setScreen}
-        onSetup={() => setScreen({ kind: "setup", notice: null })}
+        castOnline={screenState.state?.character?.online ?? null}
+        takeover={takeover}
+        onSetup={openSetup}
         onGone={onGone}
       />
-      {!awake && (
-        <button className="wake" onClick={wake}>
-          <span className="wake-title">TOUCH TO WAKE</span>
-          <span className="wake-sub">this terminal needs one touch before it may speak</span>
-        </button>
-      )}
+      {wakeOverlay}
+      {layer}
     </>
   );
 }
@@ -236,7 +363,25 @@ function useGone(world: WorldStore, onGone: (g: Gone) => void): void {
 
 // --- the running terminal ----------------------------------------------------
 
-function Terminal({ config, screen, setScreen, onSetup, onGone }: { config: TerminalConfig; screen: Screen; setScreen: (s: Screen) => void; onSetup: () => void; onGone: (g: Gone) => void }) {
+function Terminal({
+  config,
+  screen,
+  setScreen,
+  castOnline,
+  takeover,
+  onSetup,
+  onGone,
+}: {
+  config: TerminalConfig;
+  screen: Screen;
+  setScreen: (s: Screen) => void;
+  /** Is the character's agent online? (from the screen-state poll; null = unknown) */
+  castOnline: boolean | null;
+  /** A story overlay covers the screen: no scanning, and an open line ends. */
+  takeover: boolean;
+  onSetup: () => void;
+  onGone: (g: Gone) => void;
+}) {
   const pilot = screen.kind === "piloting" ? screen.pilot : null;
   const session = usePilotSession(config, pilot);
   const [mood, setMood] = useState<Mood>("idle");
@@ -245,17 +390,17 @@ function Terminal({ config, screen, setScreen, onSetup, onGone }: { config: Term
   const [flash, setFlash] = useState<string | null>(null);
   const [camera, setCamera] = useState<CameraState>("starting");
   const [typedOpen, setTypedOpen] = useState(false);
-  const [castOnline, setCastOnline] = useState<boolean | null>(null);
   const [engineUsed, setEngineUsed] = useState<SpeechEngine["kind"] | null>(null);
   const face = useRef<FaceHandle | null>(null);
   const offsets = useRef(new Map<number, number[]>());
   const chunkText = useRef(new Map<number, string[]>());
 
   // --- the reinstallation simulation, beside the scanner ---
-  const world = useSpatialStream(config, config.view !== "face");
+  const view = effectiveView(config.view, hasWebGL2());
+  const world = useSpatialStream(config, view !== "face");
   const inSimulation = useWorld(world, (s) => s.world.players.size > 0);
   useGone(world, onGone);
-  const showWorld = screen.kind === "attract" && (config.view === "world" || (config.view === "auto" && inSimulation));
+  const showWorld = screen.kind === "attract" && (view === "world" || (view === "auto" && inSimulation));
 
   // --- the voice ---
   const queue = useMemo(() => {
@@ -329,6 +474,9 @@ function Terminal({ config, screen, setScreen, onSetup, onGone }: { config: Term
   useEffect(() => {
     if (session.dead !== null && pilot !== null) end("dead");
   }, [session.dead, pilot, end]);
+  useEffect(() => {
+    if (takeover && pilot !== null) end("left");
+  }, [takeover, pilot, end]);
 
   // Mood follows the situation when nothing is being said.
   useEffect(() => {
@@ -358,30 +506,6 @@ function Terminal({ config, screen, setScreen, onSetup, onGone }: { config: Term
     const t = window.setTimeout(() => setFlash(null), 5000);
     return () => window.clearTimeout(t);
   }, [flash]);
-
-  // While waiting: is the character's agent online? (a mod-only read,
-  // polled gently — the status line on the attract screen).
-  useEffect(() => {
-    if (screen.kind !== "attract") return;
-    let alive = true;
-    const poll = async () => {
-      try {
-        const res = await fetch(`${baseOf(config)}/api/state?role=mod`, { headers: { "x-loom-token": config.token } });
-        if (!res.ok) return;
-        const view = (await res.json()) as { cast?: Array<{ id: string; online?: boolean }> };
-        const me = view.cast?.find((c) => c.id === config.character);
-        if (alive) setCastOnline(me?.online ?? null);
-      } catch {
-        /* the status line just stays blank */
-      }
-    };
-    void poll();
-    const t = window.setInterval(() => void poll(), 20_000);
-    return () => {
-      alive = false;
-      window.clearInterval(t);
-    };
-  }, [screen.kind, config]);
 
   // --- connecting a scanned pass ---
   const connect = useCallback(
@@ -433,9 +557,7 @@ function Terminal({ config, screen, setScreen, onSetup, onGone }: { config: Term
             </button>
           )}
           {pilot === null && (
-            <button className="link gear" onClick={onSetup} aria-label="Set up this terminal">
-              ⚙
-            </button>
+            <Gear onOpen={onSetup} label="Set up this terminal" />
           )}
         </span>
       </header>
@@ -454,7 +576,7 @@ function Terminal({ config, screen, setScreen, onSetup, onGone }: { config: Term
           {screen.kind === "attract" && (
             <div className="attract">
               <div className="scan-frame">
-                <Scanner facing={config.camera} active onCode={onCode} onState={setCamera} />
+                <Scanner facing={config.camera} active={!takeover} onCode={onCode} onState={setCamera} />
               </div>
               <div className="attract-text">
                 <div className="big">SCAN YOUR PASS</div>
@@ -543,24 +665,46 @@ function TypedFallback({ config, onPick, onProblem }: { config: TerminalConfig; 
 // --- the mirror ----------------------------------------------------------------
 
 /** `view: mirror` — the simulation full screen, for a TV: nothing to scan,
- *  nothing to say (so no wake gesture is needed), only the gear. */
-function Mirror({ config, onSetup, onGone }: { config: TerminalConfig; onSetup: () => void; onGone: (g: Gone) => void }) {
-  const world = useSpatialStream(config, true);
+ *  nothing to say (so no wake gesture is needed), only the gear. A screen
+ *  with no WebGL2 (`canDraw` false) says so, still — no retry loop. */
+function Mirror({ config, canDraw, onSetup, onGone }: { config: TerminalConfig; canDraw: boolean; onSetup: () => void; onGone: (g: Gone) => void }) {
+  const world = useSpatialStream(config, canDraw);
   const connected = useWorld(world, (s) => s.connected);
   useGone(world, onGone);
   return (
     <div className="terminal mirror">
-      <WorldSlot store={world} spotId={config.spot} size="full" recover="reload" />
+      {canDraw ? (
+        <WorldSlot store={world} spotId={config.spot} size="full" recover="reload" />
+      ) : (
+        <div className="world-note">THIS SCREEN CAN'T DRAW THE SIMULATION (NO WEBGL2) — SET IT TO FACE ONLY</div>
+      )}
       <div className="mirror-corner">
         <span className="dot" data-on={String(connected)} />
         {config.title ? `${config.title} · ` : ""}
         {config.name.toUpperCase()}
       </div>
-      <button className="link gear mirror-gear" onClick={onSetup} aria-label="Set up this screen">
-        ⚙
-      </button>
+      <Gear onOpen={onSetup} label="Set up this screen" className="mirror-gear" />
       <div className="scanlines" aria-hidden="true" />
     </div>
+  );
+}
+
+// --- the gear ------------------------------------------------------------------
+
+/** The ⚙: opens setup only after a 2 s hold, filling up while held. A short
+ *  tap (or a click) does nothing — a wall tablet is in guests' hands. */
+function Gear({ onOpen, label, className }: { onOpen: () => void; label: string; className?: string }) {
+  const { holding, handlers } = useLongPress(onOpen);
+  return (
+    <button
+      type="button"
+      className={`link gear${className ? ` ${className}` : ""}${holding ? " holding" : ""}`}
+      style={{ ["--hold-ms" as string]: `${HOLD_MS}ms` }}
+      aria-label={`${label} (hold for ${HOLD_MS / 1000} seconds)`}
+      {...handlers}
+    >
+      ⚙
+    </button>
   );
 }
 
@@ -577,6 +721,7 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
   const [speed, setSpeed] = useState(current?.speed ?? 1);
   const [spot, setSpot] = useState(current?.spot ?? "");
   const [view, setView] = useState<TerminalView>(current?.view ?? "auto");
+  const [room, setRoom] = useState(current?.room ?? "");
   const [map, setMap] = useState<HouseInfo | null>(() => bundledHouse());
   const [error, setError] = useState<string | null>(notice);
   const [busy, setBusy] = useState(false);
@@ -628,9 +773,9 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
     try {
       let next: TerminalConfig;
       if (code.trim() !== "") {
-        next = await provision(code.trim(), { name: name.trim() || null, character: character.trim() || null, camera, engine, spot, view });
+        next = await provision(code.trim(), { name: name.trim() || null, character: character.trim() || null, camera, engine, spot, view, room: room.trim() || null });
       } else if (current !== null) {
-        next = { ...current, name: name.trim() || current.name, character: character.trim() || current.character, camera, engine, spot, view };
+        next = { ...current, name: name.trim() || current.name, character: character.trim() || current.character, camera, engine, spot, view, room: room.trim() };
       } else {
         throw new Error("Enter the moderator passcode.");
       }
@@ -710,9 +855,17 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
               <option value="world">the simulation, always (face while piloting)</option>
               <option value="face">face only</option>
               <option value="mirror">mirror — full-screen simulation, no scanner</option>
+              <option value="tv">TV — the face speaks the room's lines, no scanner</option>
             </select>
           </label>
         </div>
+        {view === "tv" && (
+          <label>
+            the room it speaks for <span className="muted">(a LOCATION; blank = {DEFAULT_TV_ROOM})</span>
+            <input value={room} onChange={(e) => setRoom(e.target.value)} placeholder={DEFAULT_TV_ROOM} />
+          </label>
+        )}
+        {!hasWebGL2() && view !== "face" && <div className="muted small">this tablet has no WebGL2 — it can't draw the simulation, so it will show the face</div>}
         {map !== null && map.source === "bundled" && current !== null && <div className="muted small">couldn't read the event's house map — listing the show's own spots</div>}
         {serverVoiceInfo && <div className="muted">{serverVoiceInfo}</div>}
         <div className="row">

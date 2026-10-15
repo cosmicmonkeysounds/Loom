@@ -53,6 +53,10 @@ describe("which event reads resolve the author session", () => {
     expect(wantsModRead("/api/spatial/stream", params("name=Map"))).toBe(true);
   });
 
+  it("the wall terminals' screen state (a terminal's mod token, or the author's session)", () => {
+    expect(wantsModRead("/api/screen/state", params("name=Kitchen&view=auto"))).toBe(true);
+  });
+
   it("the mod-role reads, not a guest's or performer's", () => {
     expect(wantsModRead("/events", params())).toBe(true);
     expect(wantsModRead("/api/state", params("role=mod"))).toBe(true);

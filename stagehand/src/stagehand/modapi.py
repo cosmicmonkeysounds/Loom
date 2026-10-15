@@ -6,6 +6,7 @@ Wire contract (core/server/event-runtime.ts):
   - `POST /api/mod/beat   {name, subject?}`
   - `POST /api/mod/set    {id, field: "location", value}` — the arrive path
   - SSE mod feed: `GET /events?role=mod&id=stagehand`
+  - alexa: `POST /api/mod/tts {text, voice?, speed?}` → audio bytes (mp3/wav)
   - agents: `GET /api/agent/stream?characters=…&name=…` (SSE) and
     `POST /api/agent/reply {id, say, adjust, worker}`
 
@@ -112,6 +113,28 @@ class ModClient:
         except json.JSONDecodeError:
             return {}
         return doc if isinstance(doc, dict) else {}
+
+    async def speak(self, text: str, voice: str | None = None, speed: float | None = None, timeout: float = 10.0) -> tuple[bytes, str]:
+        """The server's neural voice (`/api/mod/tts`) → (audio bytes, content type).
+        Raises `ModApiError` on any non-200 (503 = no voice configured)."""
+        await self.ensure_token()
+        body: dict[str, Any] = {"text": text}
+        if voice:
+            body["voice"] = voice
+        if speed is not None:
+            body["speed"] = speed
+        for attempt in (0, 1):
+            r = await self._client.post(
+                self.path("/api/mod/tts"), json=body, headers={"x-loom-token": self.token or ""}, timeout=timeout
+            )
+            if r.status_code == 403 and attempt == 0 and self.passcode is not None:
+                self.forget_token()
+                await self.ensure_token()
+                continue
+            break
+        if r.status_code != 200:
+            raise ModApiError(f"POST /api/mod/tts → {r.status_code} {r.text[:200]}", r.status_code)
+        return r.content, r.headers.get("content-type", "")
 
     # -- mod mutations -------------------------------------------------------
 

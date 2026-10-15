@@ -4,7 +4,7 @@
 //! the play app's `ApiError` (the server's `error` text + the HTTP status).
 
 import { api, ApiError } from "@loom/play/client.ts";
-import { normalizeHouse, validateHouse } from "@loom/house";
+import { cloneData, normalizeHouse, validateHouse } from "@loom/house";
 import type { Assignment, DuckSpot, FoundResult, HouseMap, HouseResponse, SaveHouseResult, SpatialCandidate, SpatialWorld, StationInfo } from "@loom/house";
 import { baseOf, type ReinstallConfig } from "./config.ts";
 import { showHouse } from "./show-house.ts";
@@ -74,7 +74,7 @@ export async function fetchHouse(base: string, token: string): Promise<LoadedHou
   } catch {
     /* fall through to the bundled map */
   }
-  return { house: normalizeHouse(structuredClone(showHouse)), version: "bundled", source: "bundled" };
+  return { house: normalizeHouse(cloneData(showHouse)), version: "bundled", source: "bundled" };
 }
 
 /**

@@ -71,7 +71,7 @@ def _targets(on_directive: str) -> set[str]:
 
 def test_the_house_config_loads():
     cfg = load_config(HOUSE)
-    assert list(cfg.modules) == ["show"]
+    assert list(cfg.modules) == ["show", "alexa"]
     show = cfg.modules["show"].cfg
     assert show.mqtt is not None and "qlab" in show.osc_targets
     assert show.cues and show.sensors
@@ -107,6 +107,10 @@ def test_every_sound_has_a_qlab_cue():
     assert not missing, f"sounds with no rule in trapped.house.yaml: {missing}"
     for name in used:
         cues = evaluate_cues(_show().cues, _directive("sfx", name))
+        if name == "alexa_chime":  # the alexa player's chime, not QLab (K-20)
+            assert cues == [MqttCue(topic="show/chime", payload="{}", retain=False, qos=0)]
+            assert load_config(HOUSE).modules["alexa"].cfg.chime_topic == "show/chime"
+            continue
         assert cues == [OscCue(addr=f"/cue/{name}/start", args=(), t_exec_offset_ms=None, to=("qlab",))], name
 
 
@@ -219,3 +223,14 @@ def test_scene_cues_hit_both_zigbee_and_wled(cue):
     cues = evaluate_cues(_show().cues, _directive("cue", cue))
     topics = {c.topic for c in cues if isinstance(c, MqttCue)}
     assert "zigbee2mqtt/house/set" in topics and "wled/all/api" in topics
+
+
+def test_alexa_prewarms_every_scripted_announcement():
+    """Every `do announce "…"` line is cached on the house Mac at boot — a
+    line missing here costs the server round trip on the night (and is
+    silent-to-`say` if the uplink is down)."""
+    lines = set(re.findall(r'^\s*do announce "([^"]+)"', _code(_story_text()), re.M))
+    alexa = load_config(HOUSE).modules["alexa"].cfg
+    assert lines, "the story no longer announces anything — drop the alexa prewarm list"
+    assert lines <= set(alexa.prewarm), f"add to alexa.prewarm: {sorted(lines - set(alexa.prewarm))}"
+    assert alexa.topic == "show/announce" == _rules("announce")[0]["mqtt"]["topic"]

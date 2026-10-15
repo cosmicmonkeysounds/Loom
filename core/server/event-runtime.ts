@@ -47,6 +47,7 @@ import { PushRoutes } from "./routes/k31.ts";
 import { PushHub, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
 import { printExtras } from "./routes/k12.ts";
 import { sendRecap } from "./routes/recap.ts";
+import { ScreenWatch, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost } from "./routes/screen.ts";
 import { SpatialHub, houseVersion, houseWarnings, isWorld, parsePose, sortCandidates, type SessionRef } from "./spatial.ts";
 import {
   AgentHub,
@@ -355,6 +356,8 @@ export class EventRuntime {
   // K-31a Web Push to guests + booths (push.ts, routes/k31.ts).
   readonly push: PushHub;
   private readonly pushRoutes: PushRoutes;
+  // The wall terminals' poll (K-16): screen cues folded from the sim log + each terminal's last poll.
+  readonly screens: ScreenWatch;
   // Spatial stream subscribers (terminals, the map page) — never `clients`.
   private readonly spatialStreams = new Set<ServerResponse>();
   // Flushes poses every 100 ms (and sweeps every second) while anything is
@@ -366,6 +369,7 @@ export class EventRuntime {
   private clock: () => number = Date.now;
   private readonly agents = new AgentHub({
     build: (thread, id) => this.buildAgentRequest(thread, id),
+    admits: (thread) => this.agentAdmits(thread),
     typing: (thread, on) => this.pushTyping(thread, on),
     hold: (req) => this.postAgentHold(req),
     now: () => this.clock(),
@@ -446,6 +450,7 @@ export class EventRuntime {
     this.registrations = limiterFor(limits.register);
     this.redeemMisses = limiterFor(limits.redeemMisses);
     this.widgetAnswers = limiterFor(limits.widgets);
+    this.screens = new ScreenWatch(init.now !== undefined ? { now: init.now } : {});
   }
 
   /** Current lifecycle phase (idle | open | paused). */
@@ -733,6 +738,18 @@ export class EventRuntime {
   }
 
   // -- agent-voiced characters ---------------------------------------------
+
+  /** May this thread reach the agent at all? Not a guest's DM with a
+   *  character still hidden from that guest (K-16): before Clippy introduces
+   *  Trabolta nothing — a wall terminal, a stale tab — may draw a hold line
+   *  into a guest's real thread. Performers' cast threads always pass. */
+  private agentAdmits(thread: AgentThread): boolean {
+    const sim = this.sim;
+    const who = thread.audience[0];
+    if (sim === null || who === undefined || who.startsWith("@")) return true;
+    const def = sim.model.characters.get(thread.character);
+    return def === undefined || !def.hidden || sim.isRevealedTo(def.id, who);
+  }
 
   /** Is `name` a character voiced by an outside agent (`mind: external`)? */
   private isAgent(name: string): boolean {
@@ -1976,6 +1993,13 @@ export class EventRuntime {
       else sendJson(res, 200, facts);
       return true;
     }
+
+    // --- the wall terminals' lean screen state (K-16, routes/screen.ts) ---
+    if (method === "GET" && path === "/api/screen/state") {
+      return handleScreenGet(this.screens, this.sim, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t), (c) => this.agents.isOnline(c), () => this.chat.all());
+    }
+    if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
+    if (method === "POST" && path === "/api/mod/screen/voice") return handleScreenVoicePost(this.screens, req, res, (t) => opts.moderator === true || this.sessions.canModerate(t));
 
     // --- the reinstallation games: the map, the stream, stations ---
     if (method === "GET" && (path.startsWith("/api/spatial/") || path.startsWith("/api/mod/spatial/"))) {

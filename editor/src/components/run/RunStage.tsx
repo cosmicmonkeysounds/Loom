@@ -24,6 +24,7 @@ import { IdentityControl } from '@/components/cockpit/Identity'
 import { RunPage } from './RunPage'
 import { LifecycleControls } from './LifecycleControls'
 import { LifecycleBanner } from './LifecycleBanner'
+import { TerminalsPill } from './TerminalsCard'
 import { TONE, runStatusText, runTone } from './run-chrome'
 
 interface TabSpec {
@@ -173,6 +174,7 @@ function StageChrome() {
           <IdentityControl />
           <QuickFire />
           <DecisionsPill />
+          <TerminalsPill />
         </span>
       </div>
       <LifecycleBanner />

@@ -552,6 +552,48 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 }
 .mirror-gear { position: absolute; top: 6px; right: 8px; z-index: 6; }
 
+/* The TV (view=tv, K-18): the face full screen, read from across the room;
+   the world takes the right while someone is in the simulation. */
+.terminal.tv { display: block; overflow: hidden; font-size: clamp(22px, 2.6vw, 44px); }
+.tv-face { position: absolute; inset: 0; display: grid; place-items: center; padding: var(--pad); transition: right 0.4s ease; }
+.tv-face .face { width: min(100%, 86vh); }
+.terminal.tv.with-world .tv-face { right: 62%; }
+.tv-world { position: absolute; top: 0; bottom: 0; right: 0; left: 38%; border-left: 2px solid var(--phosphor-faint); }
+.tv-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 7%;
+  transform: translateX(-50%);
+  width: min(90%, 1400px);
+  padding: 0.35em 0.8em;
+  background: rgba(0, 0, 0, 0.72);
+  color: var(--white);
+  text-align: center;
+  font-size: 1.05em;
+  line-height: 1.25;
+  z-index: 4;
+}
+.tv-caption.text-only { color: var(--phosphor); font-style: italic; }
+.tv-caption-who { color: var(--amber); font-style: normal; }
+.tv-attract { position: absolute; inset: 0; z-index: 5; }
+.tv-status { position: absolute; right: 10px; bottom: 8px; z-index: 6; display: flex; gap: 0.6em; align-items: center; font-size: 0.5em; }
+.tv-status .engine-note { position: static; font-size: 1em; }
+.tv-mute { background: transparent; border: 1px solid var(--phosphor-faint); color: var(--phosphor-faint); padding: 0.2em 0.6em; letter-spacing: 0.1em; }
+.tv-mute.on { color: var(--amber); border-color: var(--amber); }
+.tv-wake {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 8;
+  background: #000;
+  border: 2px solid var(--amber);
+  color: var(--amber);
+  padding: 0.3em 1em;
+  font-size: 0.7em;
+  letter-spacing: 0.12em;
+}
+
 /* --- motion ------------------------------------------------------------- */
 
 @keyframes pulse { 50% { opacity: 0.25; } }
@@ -560,4 +602,166 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 @keyframes celebrate { from { transform: translate(-50%, -50%) scale(0.6); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .scanner.live .reticle::after, .big.blink, .wake-title, .world-celebrate, .world-celebrate-line, .mm-ring, .world-tag .rec, .world-note.blink { animation: none; }
+}
+
+/* Chrome < 88 (old wall tablets) has no aspect-ratio: the scan frame would
+   collapse to nothing. Give it a fixed 4:3 box instead. */
+@supports not (aspect-ratio: 1) {
+  .scan-frame { width: min(100%, 60vh); height: 45vh; max-height: 100%; }
+}
+
+/* The ⚙ opens setup only on a 2 s hold (kiosk.ts): a bar fills under it while held. */
+button.gear:not(.mirror-gear) { position: relative; }
+button.gear { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+button.gear::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  height: 2px;
+  width: 0;
+  background: currentColor;
+}
+button.gear.holding { opacity: 1; }
+button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000ms) linear; }
+
+/* --- attract (K-16): the screensaver + fake-1999 ads while the character is hidden --- */
+.attract-screen { background: #000; overflow: hidden; }
+.mystify { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.ad-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--pad);
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 4;
+}
+.ad-image { max-width: 100%; max-height: 100%; object-fit: contain; display: block; image-rendering: pixelated; }
+/* The text card: a Win98 window, so a missing PNG still reads as an ad. */
+.ad-window {
+  width: min(92%, 34em);
+  font-family: "Tahoma", "MS Sans Serif", "Segoe UI", sans-serif;
+  font-size: clamp(16px, 2.4vw, 30px);
+  background: #c0c0c0;
+  color: #000;
+  border: 2px solid;
+  border-color: #fff #404040 #404040 #fff;
+  box-shadow: 1px 1px 0 #000;
+}
+.ad-titlebar {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5em;
+  padding: 0.2em 0.4em;
+  background: linear-gradient(90deg, #000080, #1084d0);
+  color: #fff;
+  font-weight: bold;
+}
+.ad-x { background: #c0c0c0; color: #000; padding: 0 0.35em; border: 1px solid; border-color: #fff #404040 #404040 #fff; }
+.ad-body { padding: 0.8em 1em 1em; text-align: center; }
+.ad-body p { margin: 0 0 0.9em; line-height: 1.3; }
+.ad-button {
+  display: inline-block;
+  padding: 0.25em 1.4em;
+  border: 2px solid;
+  border-color: #fff #404040 #404040 #fff;
+  background: #c0c0c0;
+}
+
+/* --- the screen layer (K-17 + N-03): overlays, slides, the corner countdown --- */
+/* Above the wake prompt (20): a slide the story put up is what the room sees. */
+.screen-slide, .screen-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  z-index: 30;
+}
+.screen-overlay { z-index: 32; cursor: none; }
+.screen-slide.dark { background: #000; }
+.slide-image { width: 100%; height: 100%; object-fit: contain; display: block; }
+/* The text card a missing PNG renders: a Win98 window with the slide's copy. */
+.slide-window {
+  width: min(94%, 48em);
+  max-height: 94%;
+  overflow: hidden;
+  font-family: "Tahoma", "MS Sans Serif", "Segoe UI", sans-serif;
+  font-size: clamp(16px, 2.6vw, 34px);
+  background: #c0c0c0;
+  color: #000;
+  border: 2px solid;
+  border-color: #fff #404040 #404040 #fff;
+  box-shadow: 1px 1px 0 #000;
+}
+.slide-body { padding: 0.8em 1.2em 1.1em; text-align: left; }
+.slide-body h2 { margin: 0 0 0.5em; font-size: 1.6em; text-align: center; }
+.slide-body p { margin: 0 0 0.6em; line-height: 1.3; }
+/* The Y2K clock: a Win98 taskbar tray, blown up. */
+.y2k-slide { background: #008080; }
+.y2k-tray {
+  display: grid;
+  justify-items: end;
+  gap: 0.1em;
+  padding: 0.25em 0.6em;
+  font-family: "Tahoma", "MS Sans Serif", "Segoe UI", sans-serif;
+  background: #c0c0c0;
+  color: #000;
+  border: 3px solid;
+  border-color: #808080 #fff #fff #808080;
+}
+.y2k-time { font-size: clamp(48px, 12vw, 220px); line-height: 1; }
+.y2k-date { font-size: clamp(18px, 3.5vw, 64px); }
+/* Overlays: black field, flashing text at 1 Hz (≤ 3 Hz), never full-field red. */
+.screen-overlay.blackout { background: #000; }
+.overlay-text {
+  max-width: 92%;
+  text-align: center;
+  font-family: "Tahoma", "MS Sans Serif", "Segoe UI", sans-serif;
+  font-weight: bold;
+  font-size: clamp(36px, 8vw, 160px);
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  color: #fff;
+  animation: overlay-blink 1s steps(1, end) infinite;
+}
+.overlay-text.alarm { color: var(--amber); }
+.overlay-icon { display: block; font-size: 0.8em; }
+@keyframes overlay-blink { 50% { opacity: 0.15; } }
+/* The corner countdown: a tray box, bottom right, over a slide / attract / the face. */
+.screen-corner {
+  position: fixed;
+  right: var(--pad);
+  bottom: var(--pad);
+  z-index: 31;
+  padding: 0.15em 0.6em;
+  font-family: "Tahoma", "MS Sans Serif", "Segoe UI", sans-serif;
+  font-size: clamp(22px, 4vw, 64px);
+  font-variant-numeric: tabular-nums;
+  background: #c0c0c0;
+  color: #000;
+  border: 2px solid;
+  border-color: #808080 #fff #fff #808080;
+}
+.screen-corner.last { background: #000080; color: #fff; }
+/* The flicker: two dips over a second (2 Hz), never to full black. */
+.screen-flicker {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  background: #000;
+  pointer-events: none;
+  opacity: 0;
+  animation: screen-flicker 1s linear 1;
+}
+@keyframes screen-flicker {
+  0% { opacity: 0; } 10% { opacity: 0.7; } 25% { opacity: 0; }
+  55% { opacity: 0.6; } 70% { opacity: 0; } 100% { opacity: 0; }
+}
+.screen-gear { position: fixed; top: 0; right: 0; z-index: 40; opacity: 0.25; }
+@media (prefers-reduced-motion: reduce) {
+  .overlay-text, .screen-flicker { animation: none; }
 }

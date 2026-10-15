@@ -9,7 +9,10 @@
 # real show. tests/test_trapped_house.py cross-checks it against the story.)
 #
 # THE RIG
-#   Mosquitto on the brain-stem box; Zigbee2MQTT on the same broker.
+#   Mosquitto on the house Mac; Zigbee2MQTT on the same broker. Its anonymous
+#   listener is bound to 127.0.0.1 (stagehand + Z2M are local); the WLED
+#   controllers use a password-only LAN listener — scripts/house-mac/alexa.md
+#   → "Lock down the broker".
 #   Z2M groups, one per house.json room plus a whole-house group, named:
 #     house · living (The Desktop) · kitchen (The Cache) · backyard (The Cloud)
 #     registry (The Registry, rec room) · tube (hall + stair landing)
@@ -291,7 +294,9 @@ show:
       osc: { addr: "/cue/modem_handshake/start", to: qlab }
     - on: { directive: sfx }
       match: { target: alexa_chime }
-      osc: { addr: "/cue/alexa_chime/start", to: qlab }
+      # Not QLab: the alexa player owns the chime (K-20), so an announcement
+      # and the story's `sound alexa_chime` beside it ring once, not twice.
+      mqtt: { topic: "show/chime", payload: {} }
     - on: { directive: sfx }
       match: { target: bingo_start }
       osc: { addr: "/cue/bingo_start/start", to: qlab }
@@ -342,8 +347,8 @@ show:
       match: { target: hand_jive }
       osc: { addr: "/cue/hand_jive/start", to: qlab }
 
-    # ── Alexa: `do announce "…"` → show/announce {"text": "…"} → the house
-    # speaker (a Home Assistant automation, or a local TTS player). ──
+    # ── Alexa: `do announce "…"` → show/announce {"text": "…"} → the `alexa:`
+    # section below (same box) plays it on the house speakers. ──
     - on: { directive: announce }
       mqtt: { topic: "show/announce", payload: { text: "{target}" } }
 
@@ -385,3 +390,32 @@ show:
       signal: { name: patch_combo_b, debounce_s: 60 }
     - on: { topic: "sensors/patchbay/state", when: "complete == true && combo != 'V2-D5,V4-D1,V6-D8,V7-D3' && combo != 'V1-D6,V3-D2,V5-D7,V8-D4'" }
       signal: { name: patch_rejected, debounce_s: 10 }
+
+# --- the fake Alexa (K-20) -----------------------------------------------------
+# Runs on this same house Mac as its own launchd job (`--only alexa`, see
+# scripts/house-mac/README.md) so a show restart never cuts an announcement.
+# show/announce → chime + the server's Kokoro voice → the MOTU, Z1 + Z2.
+# Falls back to `say` rendered through the same channels, then `say -a`.
+# Find the device's exact name with `uv run python -m sounddevice`.
+alexa:
+  mqtt:
+    host: 127.0.0.1
+    port: 1883
+    client_id: stagehand-alexa
+  topic: show/announce
+  chime_topic: show/chime    # `sound alexa_chime` (merged into a fresh announcement)
+  device: "MOTU"             # a substring of the interface's CoreAudio name
+  channels: [1, 2, 3, 4]     # Z1 living (1/2) + Z2 kitchen (3/4) — B-4
+  voice: af_sky              # Kokoro, via the event server's /api/mod/tts
+  say_voice: Samantha        # the offline voice
+  chime: synth               # or a file: chime: media/alexa_chime.wav
+  gain_db: 0
+  tts_timeout: 4
+  # Every `do announce "…"` line in the story (tests/test_trapped_house.py
+  # keeps this in step): fetched once at boot and kept on disk, so the
+  # scripted lines play instantly and survive the house internet dying.
+  prewarm:
+    - "All programs, report to the Desktop. A game is about to begin."
+    - "Five minutes. Everyone to the Desktop."
+    - "Go to the living room."
+    - "Time is up. Return to the Desktop."

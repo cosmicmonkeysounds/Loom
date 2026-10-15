@@ -52,9 +52,10 @@ services:
       LOOM_WEBMASTER_PASSWORD: ${LOOM_WEBMASTER_PASSWORD:-}
       LOOM_WEBMASTER_FROM: ${LOOM_WEBMASTER_FROM:-}
       LOOM_WEBMASTER_REPLY_TO: ${LOOM_WEBMASTER_REPLY_TO:-}
-      # The wall terminals' voice: an OpenAI-compatible speech endpoint
-      # (Kokoro-FastAPI on the show laptop). Blank = the tablets' own voices.
-      LOOM_TTS_URL: ${LOOM_TTS_URL:-}
+      # The wall terminals' + TV's voice: an OpenAI-compatible speech
+      # endpoint. Blank = the bundled `kokoro` service below; `off` = the
+      # tablets' own voices; or any other URL (a laptop Kokoro, OpenAI).
+      LOOM_TTS_URL: ${LOOM_TTS_URL:-http://kokoro:8880/v1}
       LOOM_TTS_API_KEY: ${LOOM_TTS_API_KEY:-}
       LOOM_TTS_MODEL: ${LOOM_TTS_MODEL:-kokoro}
       LOOM_TTS_VOICE: ${LOOM_TTS_VOICE:-am_michael}
@@ -91,6 +92,28 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
+  # The terminals' neural voice (Kokoro-82M, CPU). Internal only — the
+  # event server proxies + caches it at /api/mod/tts, so no port is
+  # published. `cpus:` caps it so a burst of syntheses can never starve the
+  # event server (Kokoro serves one synthesis at a time and would otherwise
+  # take every core): set KOKORO_CPUS to (VPS cores - 1). The server does
+  # not wait for it — while it is down the terminals use their own voices.
+  # docs/loom-docker-deploy.md §5¾ "The voice".
+  kokoro:
+    image: ${KOKORO_IMAGE:-ghcr.io/remsky/kokoro-fastapi-cpu:v0.9.0}
+    restart: unless-stopped
+    cpus: ${KOKORO_CPUS:-1}
+    environment:
+      API_LOG_LEVEL: WARNING
+      # Warm the model with the voice the server asks for.
+      DEFAULT_VOICE: ${LOOM_TTS_VOICE:-am_michael}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8880/v1/audio/voices', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
 
   caddy:
     build:

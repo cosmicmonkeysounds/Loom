@@ -4,7 +4,7 @@
 //! Nothing here enforces validity: an edit that leaves a door off its wall
 //! is shown to the director as a live problem, not silently refused.
 
-import { roomAt, roomById, roomElevation, wrapYaw, yawToward } from "@loom/house";
+import { cloneData, roomAt, roomById, roomElevation, wrapYaw, yawToward } from "@loom/house";
 import type { HouseMap, Room, TerminalSpot, Vec2, Vec3 } from "@loom/house";
 import type { SaveHouseReply } from "../api.ts";
 import { labelSpot, rectOf, snap, type Edge } from "./plan.ts";
@@ -23,7 +23,7 @@ export const TERMINAL_HEIGHT = 1.4;
 export const MIN_ROOM = 0.3;
 
 function clone(h: HouseMap): HouseMap {
-  return structuredClone(h);
+  return cloneData(h);
 }
 
 /** The plan position of a selectable thing (null for a room / unknown id). */

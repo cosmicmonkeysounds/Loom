@@ -634,6 +634,10 @@ interface OpenRequest {
 export interface AgentHubOptions {
   /** Build the request body for a thread right now (null → nothing to answer). */
   build: (thread: AgentThread, id: string) => AgentRequest | null;
+  /** May this thread reach a worker at all? False → the line is ignored, no
+   *  request is made (e.g. a guest's DM with a character still hidden from
+   *  them — the runtime's belt against a premature hold line). Default: yes. */
+  admits?: (thread: AgentThread) => boolean;
   /** Show / hide the "… is typing" indicator in the thread. */
   typing?: (thread: AgentThread, on: boolean) => void;
   /** Presence changed (a worker came or went). */
@@ -720,6 +724,7 @@ export class AgentHub {
 
   /** Someone said something in an agent thread. */
   line(thread: AgentThread): void {
+    if (this.o.admits !== undefined && !this.o.admits(thread)) return;
     const key = threadKey(thread);
     const openId = this.byThread.get(key);
     if (openId !== undefined) {

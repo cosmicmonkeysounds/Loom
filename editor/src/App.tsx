@@ -14,6 +14,8 @@ import { useSettings } from '@/store/settings'
 import { useAuth } from '@/store/auth'
 import { useProjects } from '@/store/projects'
 import { useOperate } from '@/store/operate'
+import { useTerminals } from '@/store/terminals'
+import { armChime } from '@/lib/chime'
 import { captureLinkFromLocation } from '@/lib/invite-link'
 
 export default function App() {
@@ -49,6 +51,12 @@ export default function App() {
     useOperate.getState().attach(projectId)
     return () => useOperate.getState().detach()
   }, [projectId])
+  // The terminal heartbeat watch (K-29) follows the server run, from any mode.
+  const runEventId = useOperate((s) => (s.run !== null && s.event !== null ? s.event.id : null))
+  useEffect(() => {
+    armChime()
+    useTerminals.getState().bind(runEventId)
+  }, [runEventId])
 
   return (
     <>

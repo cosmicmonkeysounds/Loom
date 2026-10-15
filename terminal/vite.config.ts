@@ -32,6 +32,11 @@ export default defineConfig({
     },
   },
   build: {
+    // The oldest wall tablets (#15, OCT31 K-14): Chrome/WebView 87 = Android
+    // 5's last Chrome; Safari 14 for the iPads. Pinned rather than Vite's
+    // moving default. Syntax only — runtime APIs newer than 87 need a
+    // fallback in code (e.g. `cloneData` for `structuredClone`).
+    target: ["chrome87", "safari14"],
     // The lazy world-view chunk is mostly three.js (~600 kB, ~160 kB gzip),
     // loaded only by a terminal that shows the simulation.
     chunkSizeWarningLimit: 700,

@@ -361,6 +361,49 @@ and its geometry are `@loom/house` (`../house`).
   bare default event. Tests: `test/spatial.test.ts` (hub + runtime) and
   `test/spatial-routing.test.ts` (`routing.ts`).
 
+**The wall terminals' screen state** (OCT31 K-16, `server/routes/screen.ts`):
+`GET /e/:id/api/screen/state?name=&spot=&view=&character=` (mod token or
+the author's session) answers ~0.5 KB — `night` (`Night.screen` /
+`Night.terminals`), `cues` (the last `cue screens_*` / `terminals_*` /
+`tv_*` / `tablet_*` value per family + a `seq`, folded from the sim log so
+a restart replays to the same answer), `character` (hidden = not
+`reveal`ed to everyone, `awake`, agent `online`), `attract` (hidden or
+asleep), `countdown` / `remaining` (story seconds on the running
+`Night.*_end` timer) and `terminals` (each terminal's last poll, newest
+first). Terminals poll it every 2 s instead of the mod feed. Alongside, the
+`AgentHub` `admits` hook refuses a guest's DM with a character still hidden
+from that guest (no worker request, so no premature hold line); performers'
+`cast:` threads always pass. Tests: `test/screen-state.test.ts`.
+
+It also carries the poller's **screen program** (OCT31 K-17 + N-03):
+`target` (`tv` for `view=mirror|tv`, else `terminals`; `screens_*` reach
+both, `tv_*` / `terminals_*` one, `tablet_*` neither) and `program` —
+`slide` (the newest slide or base cue: `screensaver` / `attract` /
+`trabolta_online` / `mirror` clear it; `persist` for `bingo` / `y2k` /
+`trust_chart` / `truth_txt` / `award_*` / `ceremony*`), `overlay`
+(`blackout` / `go_to_living_room` / `alarm`, until the next slide or base
+cue), `blackout` and `flicker` (one-shots). `countdown_*` cues never
+replace the slide. Each is `{value, cue, seq, at}`, `at` = server epoch ms
+when the fold first saw it — 0 for history replayed at a boot/restart, so
+nothing held re-runs. The terminal applies the holds and precedence
+(`terminal/src/slides.ts`).
+
+**The TV room voice** (OCT31 K-18 + N-04b): a poll that adds
+`&voice=<LOCATION>&after=<seq>` (the TV, `view=tv`) gets a `voice` block —
+`room` (`loc:<Id>`, "" for an unknown location), `muted`, `head` (the
+newest chat seq) and `lines`: every *character's* `line` in that room
+after `after` (narration, typed guest chat and hidden messages left out),
+`{seq, from, text, beat}`, the newest `MAX_VOICE_LINES` (40). `beat` is
+the scripted beat, or null for a director's `say` as the character. No
+`after` = no lines (a booting TV starts at `head`); the TV decides what to
+speak (`terminal/src/tv.ts`). `POST /e/:id/api/mod/screen/voice {muted}`
+(mod token or author session) sets the TV-voice mute every TV reads off
+its next poll — runtime state, a server restart unmutes; a body without
+`muted` reads it. `GET /e/:id/api/mod/screen/terminals` (K-29, mod token
+or author session) is the director's heartbeat list: `{now, terminals:
+[{name, spot, view, character, at, ago}], voiceMuted, silentMs}` —
+`TERMINAL_SILENT_MS` = 20 s — and reading it never records a poll.
+
 ## Running a live event
 
 ```bash

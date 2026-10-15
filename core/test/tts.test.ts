@@ -3,9 +3,10 @@
 //! `/api/mod/tts` route is moderator-gated and maps every outcome to a
 //! status a terminal can act on (503 → fall back to the browser voice).
 
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { afterAll, describe, expect, it } from "vitest";
@@ -44,6 +45,12 @@ describe("tts config + helpers", () => {
     expect(CONFIG.format).toBe("mp3");
     expect(ttsConfigFromEnv({ LOOM_TTS_URL: "x", LOOM_TTS_FORMAT: "wav" }).format).toBe("wav");
     expect(ttsConfigFromEnv({ LOOM_TTS_URL: "x", LOOM_TTS_FORMAT: "flac" }).format).toBe("mp3");
+  });
+  it("treats LOOM_TTS_URL=off / none as disabled (compose defaults blank to its kokoro service)", () => {
+    expect(ttsConfigFromEnv({ LOOM_TTS_URL: "off" }).baseUrl).toBeNull();
+    expect(ttsConfigFromEnv({ LOOM_TTS_URL: " NONE " }).baseUrl).toBeNull();
+    expect(new TtsProxy(ttsConfigFromEnv({ LOOM_TTS_URL: "Off" })).describe().available).toBe(false);
+    expect(ttsConfigFromEnv({ LOOM_TTS_URL: "http://kokoro:8880/v1" }).baseUrl).toBe("http://kokoro:8880/v1");
   });
   it("normalises whitespace, clamps speed, and refuses odd voice names", () => {
     expect(normaliseSpeech("  Hello,\n\n  program.  ")).toBe("Hello, program.");
@@ -229,5 +236,28 @@ describe("/api/mod/tts", () => {
     expect((await call(on, "POST", "/api/mod/tts", { text: "" }, { moderator: true })).statusCode).toBe(400);
     const broken = runtimeWith(new TtsProxy(CONFIG, { fetch: fakeEndpoint({ status: 500 }).fetch }));
     expect((await call(broken, "POST", "/api/mod/tts", { text: "hi" }, { moderator: true })).statusCode).toBe(502);
+  });
+});
+
+// K-19: the compose stack bundles Kokoro. Guard the two properties the show
+// depends on — a CPU cap (it must never starve the event server) and the
+// server pointed at it by default — without a YAML dependency.
+describe("docker-compose kokoro service (K-19)", () => {
+  const compose = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../docker-compose.yml"), "utf8");
+  const service = (name: string): string => {
+    const m = new RegExp(`^  ${name}:\\n([\\s\\S]*?)(?=^  [a-z][\\w-]*:\\n|^\\S)`, "m").exec(compose);
+    return m?.[1] ?? "";
+  };
+  it("is CPU-capped, internal-only, and warmed with the server's voice", () => {
+    const kokoro = service("kokoro");
+    expect(kokoro).toMatch(/image: \$\{KOKORO_IMAGE:-ghcr\.io\/remsky\/kokoro-fastapi-cpu:v\d+\.\d+\.\d+\}/);
+    expect(kokoro).toMatch(/^    cpus: \$\{KOKORO_CPUS:-[\d.]+\}$/m);
+    expect(kokoro).not.toMatch(/^    ports:/m);
+    expect(kokoro).toMatch(/DEFAULT_VOICE: \$\{LOOM_TTS_VOICE:-am_michael\}/);
+  });
+  it("is the event server's default speech endpoint, and the server never waits on it", () => {
+    const loom = service("loom");
+    expect(loom).toMatch(/LOOM_TTS_URL: \$\{LOOM_TTS_URL:-http:\/\/kokoro:8880\/v1\}/);
+    expect(loom).not.toMatch(/kokoro:\n\s+condition/);
   });
 });
