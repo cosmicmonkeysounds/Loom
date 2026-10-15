@@ -24,6 +24,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { TerminalConfig } from "./config.ts";
 import type { ScreenState } from "./screen.ts";
 import { DeviceEngine, SpeechQueue, audioContext, type VoiceChoice } from "./speech/engine.ts";
+import { ANNOUNCE_VOICE } from "./speech/pick-voice.ts";
 import { splitSentences } from "./speech/split.ts";
 
 /** The latest announcement, as the screen poll carries it. */
@@ -120,12 +121,13 @@ export function useAnnouncements(config: TerminalConfig | null, state: ScreenSta
   const linger = useRef(0);
   const enabled = config?.announce === true;
   const choice = config?.engine ?? "browser";
-  const voice = config?.browserVoice ?? "";
   const speed = config?.speed ?? 1;
 
   const queue = useMemo(() => {
     if (!enabled) return null;
-    const engine = new DeviceEngine({ voice, speed, choice: announceChoice(choice) });
+    // Never the character's voice (the one picked in ⚙ is Trabolta's): the
+    // device's best female-first voice, like the house Mac's announcements.
+    const engine = new DeviceEngine({ voice: "", speed, choice: announceChoice(choice), prefer: ANNOUNCE_VOICE });
     return new SpeechQueue(
       { primary: engine, fallback: null },
       {
@@ -138,7 +140,7 @@ export function useAnnouncements(config: TerminalConfig | null, state: ScreenSta
         idle: () => {},
       },
     );
-  }, [enabled, choice, voice, speed]);
+  }, [enabled, choice, speed]);
   useEffect(() => () => queue?.stop(), [queue]);
   useEffect(() => () => window.clearTimeout(linger.current), []);
   // A new config (another event) starts over: no backlog.

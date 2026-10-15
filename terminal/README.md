@@ -123,8 +123,9 @@ introduction. It polls every **1 s** with `voice=<room>` (default
 `The Desktop`) and its chat cursor, and plays the room's new lines strictly
 in order with a caption: the character's own lines — scripted, or a
 director's `say` as him — are **spoken** (the Mac's own voice in Chrome —
-Samantha, or a downloaded Enhanced / Premium voice ranked above it; pick
-one in ⚙); lines from the song
+a male one first, Daniel on a stock Mac, or a downloaded Enhanced /
+Premium voice ranked above it; pick one in ⚙ — never the `alexa`
+player's Samantha); lines from the song
 beats `Song Ending` / `Sad Confession` / `The Hand Jive` are **captioned
 only** (QLab plays the sung track); **Sandy** is captioned, never voiced
 (lore, #28); other characters are ignored; nothing is said on attract. A
@@ -148,7 +149,14 @@ Nothing on the night depends on a server voice. `src/speech/engine.ts`:
 | `silent` — *no voice, text only* | The transcript reveals at reading pace, the mouth flutters. |
 | `server` — opt-in | The event server's `/api/mod/tts` (Kokoro, OpenAI, any OpenAI-compatible endpoint — `core/server/tts.ts`), cached per line across every terminal, the mouth on the real waveform. The first **502 / 503 / 504** (no server voice, the box is down) **latches** it to this device's voice for the session — no asking per sentence. Needs `LOOM_TTS_URL` on the server (off by default; the compose stack's `kokoro` is behind `--profile tts`, `docs/loom-docker-deploy.md` §5¾). |
 
-⚙ lists the device's voices best first (blank = the best one), says what
+**The character never sounds like the announcements.** With no voice
+picked, the character's lines rank a **male** voice first
+(`CHARACTER_VOICE` — Daniel on a stock Mac) and the house announcements a
+**female** one (`ANNOUNCE_VOICE` — Samantha, which is also the house
+Mac's `alexa` `say_voice`); a voice picked in ⚙ is the character's only,
+never the announcements'. A name the lists don't know leans neither way.
+
+⚙ lists the device's voices best first for the character (blank = the best one), says what
 this device can do ("this device has 23 voices" / "Fully Kiosk's
 text-to-speech will speak" / "text only"), and **TEST VOICE** says a line
 through exactly the voice the terminal will use and names it. A voiceless

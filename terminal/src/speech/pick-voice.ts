@@ -4,6 +4,12 @@
 //! Edge's online "Natural" voices are close to a real speaker; the old
 //! eSpeak-style defaults are not. The terminal's setup screen lists them
 //! best first and lets the operator override.
+//!
+//! The character (Trabolta) and the house announcements ("Alexa") must not
+//! sound alike: the character's voice prefers a male voice
+//! (`CHARACTER_VOICE`), an announcement a female one (`ANNOUNCE_VOICE`, like
+//! the house Mac's `say_voice: Samantha`) — on a stock Mac that is Daniel
+//! vs Samantha. A voice picked in ⚙ always wins.
 
 export interface VoiceLike {
   name: string;
@@ -26,8 +32,39 @@ const FAVOURITES = [
   /google (us|uk) english/i,
 ];
 
+/** Voices known to be male / female by name (Apple, Microsoft, Google);
+ *  anything else is neither — a preference never drops a voice, it ranks. */
+const MALE =
+  /\b(daniel|alex|tom|evan|nathan|aaron|oliver|arthur|gordon|lee|reed|rishi|rocko|eddy|grandpa|guy|davis|ryan|david|mark|andrew|brian|christopher|eric|roger|steffan|thomas|james|william|liam|jacques|thierry)\b|(^|[^e])male\b/i;
+const FEMALE =
+  /\b(samantha|ava|zoe|allison|susan|nicky|karen|moira|tessa|victoria|fiona|kathy|aria|jenny|sonia|serena|kate|flo|sandy|shelley|emma|michelle|libby|natasha|clara|kimberly|joanna|salli|ivy|kendra|catherine|veena|amelie|female)\b|^google us english$/i;
+
+/** Which way a voice's name leans (null: unknown). */
+export function voiceGender(v: Pick<VoiceLike, "name">): "male" | "female" | null {
+  if (FEMALE.test(v.name)) return "female";
+  if (MALE.test(v.name)) return "male";
+  return null;
+}
+
+/** What a queue would like its voice to be: a language, and a lean
+ *  (`male: true` = male first, `false` = female first, absent = either). */
+export interface VoicePrefer {
+  lang?: string;
+  male?: boolean;
+}
+
+/** The character's voice (Trabolta): male first, so it never sounds like
+ *  the house announcements. */
+export const CHARACTER_VOICE: VoicePrefer = { male: true };
+/** A house announcement ("Alexa"): female first, like the house Mac's. */
+export const ANNOUNCE_VOICE: VoicePrefer = { male: false };
+
+/** How much a matching / opposite lean moves a voice — enough to put a
+ *  decent other-accent voice (Daniel, en-GB) over the default Samantha. */
+const LEAN = 45;
+
 /** A score: higher is better. Exported for tests + the setup screen's list. */
-export function scoreVoice(v: VoiceLike, prefer: { lang?: string; male?: boolean } = {}): number {
+export function scoreVoice(v: VoiceLike, prefer: VoicePrefer = {}): number {
   let s = 0;
   const lang = v.lang.toLowerCase().replace("_", "-");
   const want = (prefer.lang ?? "en-us").toLowerCase();
@@ -40,11 +77,14 @@ export function scoreVoice(v: VoiceLike, prefer: { lang?: string; male?: boolean
   if (/compact|espeak|novelty|whisper|bells|cellos|bad news|good news|bubbles|zarvox|trinoids|boing|deranged|hysterical|organ|wobble|jester|fred|junior|kathy|ralph|albert|bahh/i.test(v.name)) s -= 80;
   if (!v.localService) s += 5; // the streamed neural ones
   if (v.default) s += 1;
-  return s;
+  if (s < 0 || prefer.male === undefined) return s; // a novelty voice stays out
+  const g = voiceGender(v);
+  if (g === null) return s;
+  return Math.max(0, s + ((g === "male") === prefer.male ? LEAN : -LEAN)); // a lean ranks, never drops
 }
 
 /** Best first; unusable voices (other languages, novelty) dropped. */
-export function rankVoices<T extends VoiceLike>(voices: readonly T[], prefer: { lang?: string } = {}): T[] {
+export function rankVoices<T extends VoiceLike>(voices: readonly T[], prefer: VoicePrefer = {}): T[] {
   return voices
     .map((v) => ({ v, s: scoreVoice(v, prefer) }))
     .filter((x) => x.s >= 0)
@@ -53,7 +93,7 @@ export function rankVoices<T extends VoiceLike>(voices: readonly T[], prefer: { 
 }
 
 /** The voice to use: an explicit choice by URI / name if it still exists, else the best. */
-export function pickVoice<T extends VoiceLike>(voices: readonly T[], chosen: string | null, prefer: { lang?: string } = {}): T | null {
+export function pickVoice<T extends VoiceLike>(voices: readonly T[], chosen: string | null, prefer: VoicePrefer = {}): T | null {
   if (chosen !== null && chosen !== "") {
     const hit = voices.find((v) => v.voiceURI === chosen || v.name === chosen);
     if (hit !== undefined) return hit;

@@ -36,7 +36,7 @@
 //! Playback on a tablet needs one user gesture before any sound: `unlock()`
 //! is called from the first tap (the setup screen, the wake overlay).
 
-import { pickVoice } from "./pick-voice.ts";
+import { CHARACTER_VOICE, pickVoice, type VoicePrefer } from "./pick-voice.ts";
 
 export type EngineKind = "server" | "browser" | "fully" | "silent";
 
@@ -252,7 +252,9 @@ export class BrowserEngine implements SpeechEngine {
   private stopCurrent: (() => void) | null = null;
   /** The `unlock()` generation in which a `speak()` never started here. */
   private deadAt: number | null = null;
-  constructor(private readonly opts: { voice: string; speed: number; pitch?: number }) {}
+  /** `prefer`: the lean when no voice is chosen (`CHARACTER_VOICE` /
+   *  `ANNOUNCE_VOICE`, so the character never sounds like an announcement). */
+  constructor(private readonly opts: { voice: string; speed: number; pitch?: number; prefer?: VoicePrefer }) {}
 
   /** `speak()` never started here since the last tap: a stub, or a page
    *  that hasn't been touched yet. The next `unlock()` clears it. */
@@ -282,7 +284,7 @@ export class BrowserEngine implements SpeechEngine {
     if (p.kind !== "browser" || !BrowserEngine.available()) return Promise.resolve();
     return new Promise<void>((resolve) => {
       const u = new SpeechSynthesisUtterance(p.text);
-      const voice = pickVoice(speechSynthesis.getVoices(), this.opts.voice || null);
+      const voice = pickVoice(speechSynthesis.getVoices(), this.opts.voice || null, this.opts.prefer ?? {});
       if (voice !== null) u.voice = voice;
       u.rate = this.opts.speed;
       u.pitch = this.opts.pitch ?? 0.85;
@@ -529,7 +531,7 @@ export class DeviceEngine implements SpeechEngine {
   private fully: FullyEngine | null = null;
   private readonly silent: SilentEngine;
   private ready: Promise<void> | null = null;
-  constructor(private readonly opts: { voice: string; speed: number; choice?: Exclude<VoiceChoice, "server"> }) {
+  constructor(private readonly opts: { voice: string; speed: number; choice?: Exclude<VoiceChoice, "server">; prefer?: VoicePrefer }) {
     this.browser = new BrowserEngine(opts);
     this.silent = new SilentEngine(opts);
   }
@@ -572,7 +574,8 @@ export function voiceEngines(
   o: { choice: VoiceChoice; browserVoice: string; serverVoice: string; speed: number; base: string; token: string },
   onLatch?: () => void,
 ): { primary: SpeechEngine; fallback: SpeechEngine | null } {
-  const device = new DeviceEngine({ voice: o.browserVoice, speed: o.speed, choice: o.choice === "server" ? "browser" : o.choice });
+  // The character's voice: male first unless one is picked in ⚙ (never the announcements' voice).
+  const device = new DeviceEngine({ voice: o.browserVoice, speed: o.speed, choice: o.choice === "server" ? "browser" : o.choice, prefer: CHARACTER_VOICE });
   if (o.choice !== "server") return { primary: device, fallback: null };
   return { primary: new ServerEngine({ base: o.base, token: o.token, voice: o.serverVoice, speed: o.speed }, onLatch), fallback: device };
 }

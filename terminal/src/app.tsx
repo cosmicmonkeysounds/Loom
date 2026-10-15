@@ -50,7 +50,7 @@ import { matchName, parseScan } from "./scan.ts";
 import { Scanner, type CameraState, cameraProblem } from "./scanner.tsx";
 import { BrowserEngine, DeviceEngine, ENGINE_LABEL, SpeechQueue, audioUnlocked, deviceEnv, pickDeviceEngine, unlock, voiceEngines, voiceNote, type EngineKind, type VoiceChoice } from "./speech/engine.ts";
 import { ringChime, useAnnouncements } from "./announce.ts";
-import { rankVoices } from "./speech/pick-voice.ts";
+import { CHARACTER_VOICE, rankVoices } from "./speech/pick-voice.ts";
 import { revealOffsets, splitSentences } from "./speech/split.ts";
 import { mayReload, retryable } from "./retry.ts";
 import { bundledHouse, fetchHouse, useSpatialStream, useWorld, type Gone, type HouseInfo, type WorldStore } from "./world/stream.ts";
@@ -757,7 +757,7 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
 
   useEffect(() => {
     if (!BrowserEngine.available()) return;
-    const load = () => setVoices(rankVoices(speechSynthesis.getVoices()));
+    const load = () => setVoices(rankVoices(speechSynthesis.getVoices(), CHARACTER_VOICE));
     load();
     speechSynthesis.addEventListener("voiceschanged", load);
     return () => speechSynthesis.removeEventListener("voiceschanged", load);
@@ -833,7 +833,7 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
     const engines =
       engine === "server" && current !== null
         ? voiceEngines({ choice: "server", browserVoice, serverVoice: serverVoice.trim(), speed, base: baseOf(current), token: current.token })
-        : { primary: new DeviceEngine({ voice: browserVoice, speed, choice: engine === "server" ? "browser" : engine }), fallback: null };
+        : { primary: new DeviceEngine({ voice: browserVoice, speed, choice: engine === "server" ? "browser" : engine, prefer: CHARACTER_VOICE }), fallback: null };
     let used: EngineKind | null = null;
     const q = new SpeechQueue(engines, {
       level: () => {},
@@ -938,7 +938,7 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
           </label>
         </div>
         <label>
-          device voice <span className="muted">(best first)</span>
+          device voice <span className="muted">({character.trim() || "the character"}'s — best first, male first; announcements take a different one)</span>
           <span className="row">
             <select value={browserVoice} onChange={(e) => setBrowserVoice(e.target.value)} disabled={voices.length === 0}>
               <option value="">{voices[0] ? `best available — ${voices[0].name}` : "the device's default"}</option>
