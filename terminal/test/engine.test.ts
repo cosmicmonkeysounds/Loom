@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  BrowserEngine,
+  DeviceEngine,
   ENGINE_LABEL,
+  START_TIMEOUT_MS,
   ServerEngine,
   SpeechQueue,
   VoiceFloor,
@@ -8,6 +11,7 @@ import {
   pickDeviceEngine,
   readingMs,
   syntheticLevel,
+  unlock,
   voiceNote,
   type DeviceEnv,
   type Prepared,
@@ -202,5 +206,61 @@ describe("ServerEngine — the opt-in server voice", () => {
     expect(server.latched).toBe(false);
     expect((await server.prepare("Two."))?.kind).toBe("server");
     expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("BrowserEngine — a speak() that never starts", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  // A page whose speechSynthesis lists voices but ignores speak() — Safari
+  // before the first tap, or a WebView stub.
+  function ignoringSpeech(): { speak: ReturnType<typeof vi.fn> } {
+    vi.useFakeTimers();
+    vi.stubGlobal("window", globalThis);
+    vi.stubGlobal("requestAnimationFrame", () => 0);
+    vi.stubGlobal("cancelAnimationFrame", () => {});
+    vi.stubGlobal("SpeechSynthesisUtterance", class { constructor(readonly text: string) {} });
+    const synth = {
+      speak: vi.fn(),
+      cancel: vi.fn(),
+      resume: vi.fn(),
+      paused: false,
+      getVoices: () => [{ name: "Samantha", lang: "en-US", voiceURI: "samantha", default: true, localService: true }],
+    };
+    vi.stubGlobal("speechSynthesis", synth);
+    return synth;
+  }
+
+  it("is written off until the next tap, then tried again", async () => {
+    ignoringSpeech();
+    const device = new DeviceEngine({ voice: "", speed: 1 });
+    expect(device.current()).toBe("browser");
+    const played = device.browser.play({ kind: "browser", text: "Doors open at nine." }, () => {});
+    await vi.advanceTimersByTimeAsync(START_TIMEOUT_MS);
+    await played;
+    expect(device.browser.dead).toBe(true);
+    expect(device.current()).toBe("silent"); // no Fully here: text only meanwhile
+    expect(await device.browser.prepare("Again.")).toBeNull();
+    await unlock(); // TOUCH TO WAKE
+    expect(device.browser.dead).toBe(false);
+    expect(device.current()).toBe("browser");
+    expect((await device.browser.prepare("Again."))?.kind).toBe("browser");
+  });
+
+  it("a write-off made after the tap holds until the next one", async () => {
+    ignoringSpeech();
+    await unlock();
+    const browser = new BrowserEngine({ voice: "", speed: 1 });
+    const played = browser.play({ kind: "browser", text: "Hello." }, () => {});
+    await vi.advanceTimersByTimeAsync(START_TIMEOUT_MS);
+    await played;
+    expect(browser.dead).toBe(true);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(browser.dead).toBe(true);
+    await unlock();
+    expect(browser.dead).toBe(false);
   });
 });

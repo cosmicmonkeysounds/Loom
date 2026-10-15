@@ -25,7 +25,9 @@
 //! `DeviceEngine` is the native ladder every terminal uses unless told
 //! otherwise: `browser` (speechSynthesis with voices) → `fully` → `silent`,
 //! re-decided per chunk (Chrome loads its voice list late; a WebView whose
-//! `speak()` never starts is written off after `START_TIMEOUT_MS`).
+//! `speak()` never starts is written off after `START_TIMEOUT_MS` — until the
+//! next tap: Safari ignores a `speak()` made before any gesture, so the
+//! write-off is only as old as the last `unlock()`).
 //!
 //! All the queues on a page share one `VoiceFloor`, so a house announcement
 //! (`announce.ts`) waits for the end of the line the character is saying,
@@ -64,6 +66,8 @@ export type Prepared = { kind: "server"; buffer: AudioBuffer } | { kind: "browse
 // --- audio context (shared, unlocked by a gesture) --------------------------
 
 let ctx: AudioContext | null = null;
+/** Bumped by every `unlock()`; a `BrowserEngine` write-off holds until the next. */
+let gesture = 0;
 export function audioContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
   const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -79,6 +83,9 @@ export function audioUnlocked(): boolean {
 
 /** Call from a user gesture: resume the context, prime `speechSynthesis`. */
 export async function unlock(): Promise<boolean> {
+  // A gesture is a fresh chance for speechSynthesis: a write-off made before
+  // it (an announcement that landed before anyone tapped) is forgotten.
+  gesture += 1;
   const c = audioContext();
   if (c !== null && c.state !== "running") {
     try {
@@ -243,9 +250,15 @@ export const START_TIMEOUT_MS = 4000;
 export class BrowserEngine implements SpeechEngine {
   readonly kind = "browser" as const;
   private stopCurrent: (() => void) | null = null;
-  /** `speak()` never started here: this device's speechSynthesis is a stub. */
-  dead = false;
+  /** The `unlock()` generation in which a `speak()` never started here. */
+  private deadAt: number | null = null;
   constructor(private readonly opts: { voice: string; speed: number; pitch?: number }) {}
+
+  /** `speak()` never started here since the last tap: a stub, or a page
+   *  that hasn't been touched yet. The next `unlock()` clears it. */
+  get dead(): boolean {
+    return this.deadAt === gesture;
+  }
 
   static available(): boolean {
     return typeof speechSynthesis !== "undefined" && typeof SpeechSynthesisUtterance !== "undefined";
@@ -307,7 +320,7 @@ export class BrowserEngine implements SpeechEngine {
       timers.push(
         window.setTimeout(() => {
           if (speaking || settled) return;
-          this.dead = true;
+          this.deadAt = gesture;
           speechSynthesis.cancel();
           finish();
         }, START_TIMEOUT_MS),

@@ -61,7 +61,8 @@ terminal will use and names it. Leave *voice* on **this device's own
 voice** (the ladder: WebView voices → Fully → text only); pick **Fully
 Kiosk's voice** on a tablet whose WebView lists voices but never says
 anything. The terminal also gives up on a `speak()` that hasn't started
-after 4 s, so a silent stub can't stall a conversation. On a tablet out of
+after 4 s (until the next tap, which tries the voice again), so a silent
+stub can't stall a conversation. On a tablet out of
 earshot of the house speakers, also tick *say the house announcements
 here* (or provision with `&announce=1`) — a chime and the line, in the
 tablet's voice (N-09).
