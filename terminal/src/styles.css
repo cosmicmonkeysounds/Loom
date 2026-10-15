@@ -765,3 +765,29 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
 @media (prefers-reduced-motion: reduce) {
   .overlay-text, .screen-flicker { animation: none; }
 }
+
+/* --- the house announcement (N-09) --------------------------------------- */
+
+/* Over everything (slides, overlays, the screensaver): the words of the
+   announcement being said, like the alerts on the phones. */
+.announce-banner {
+  position: fixed;
+  left: 50%;
+  top: 6%;
+  transform: translateX(-50%);
+  z-index: 41;
+  max-width: 88%;
+  padding: 0.6em 1.4em;
+  background: #000;
+  border: 3px solid var(--amber);
+  color: var(--amber);
+  font-size: 1.4em;
+  letter-spacing: 0.06em;
+  text-align: center;
+  box-shadow: 0 0 28px rgba(255, 176, 0, 0.45);
+  pointer-events: none;
+}
+.announce-banner .announce-icon { margin-right: 0.5em; }
+
+.setup label.check { display: flex; align-items: center; gap: 0.6em; flex-wrap: wrap; }
+.setup label.check input { width: auto; }
