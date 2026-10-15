@@ -12,7 +12,11 @@
 //!                 never "ONLINE", and never pilots a pass into the thread;
 //! - `remaining` — seconds left on the story countdown that is running, if any;
 //! - `terminals` — each terminal's last poll (name, spot, view, how long ago),
-//!                 so a director can tell a silent tablet from a live one.
+//!                 so a director can tell a silent tablet from a live one;
+//! - `voice`     — (K-18, only when the poll names a `voice` room — the TV)
+//!                 the characters' lines said in that location's room after
+//!                 the poller's `after` seq, the room's `head` seq, and the
+//!                 director's TV-voice mute (`POST /api/mod/screen/voice`).
 //!
 //! Why not the mod feed (`docs/trapped/screens-audit.md` §3.3): it pushes a
 //! full ModView per story step, carries every DM onto a wall a guest can
@@ -27,8 +31,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 import type { Sim } from "../../src/runtime/sim/index.ts";
+import type { ChatMessage } from "../chat.ts";
 import { foldName } from "../../src/parser/names.ts";
-import { queryTokenOf, sendJson } from "../http-util.ts";
+import { queryTokenOf, readBody, sendJson, tokenOf } from "../http-util.ts";
 
 /** The cue families a screen cares about (`cue <family>_<value>`). */
 export const SCREEN_CUE_FAMILIES = ["screens", "terminals", "tv", "tablet"] as const;
@@ -130,6 +135,59 @@ export function foldProgram(p: ScreenProgram, shot: ScreenShot): ScreenProgram {
   }
 }
 
+// --- the room voice (K-18 + N-04b) ---------------------------------------------
+
+/** One line a character said in the voice room. `beat` is the scripted beat it
+ *  was spoken in (the TV stays silent on the song beats); null = typed — a
+ *  director's `say` as that character. */
+export interface ScreenVoiceLine {
+  seq: number;
+  from: string;
+  text: string;
+  beat: string | null;
+}
+
+export interface ScreenVoice {
+  /** The room's channel id (`loc:The Desktop`), or "" when the story has no such location. */
+  room: string;
+  /** The director's TV-voice mute: lines still arrive (as captions), nothing is spoken. */
+  muted: boolean;
+  /** The newest chat seq (−1 = none). A screen with no cursor yet starts here —
+   *  no backlog — and one whose cursor is past it saw a restart: it resyncs. */
+  head: number;
+  /** Lines after the poller's `after`, oldest first, the newest `MAX_VOICE_LINES` at most. */
+  lines: ScreenVoiceLine[];
+}
+
+/** At most this many lines per answer (the newest). A whole scripted beat lands
+ *  in one poll, so this is generous; a TV that was *away* resyncs on its own. */
+export const MAX_VOICE_LINES = 40;
+const MAX_VOICE_TEXT = 600;
+
+/**
+ * The lines said by a character (`isCharacter`) in `channel` after `after`
+ * (pure). Narration, system notices, typed guest chat and hidden messages are
+ * left out; `after` null (a screen that just booted) returns no lines.
+ */
+export function voiceLinesOf(
+  messages: readonly ChatMessage[],
+  channel: string,
+  after: number | null,
+  isCharacter: (from: string) => boolean,
+  max = MAX_VOICE_LINES,
+): { head: number; lines: ScreenVoiceLine[] } {
+  const head = messages.length === 0 ? -1 : messages[messages.length - 1]!.seq;
+  const lines: ScreenVoiceLine[] = [];
+  if (after === null || after >= head || channel === "") return { head, lines };
+  for (let i = messages.length - 1; i >= 0 && lines.length < max; i--) {
+    const m = messages[i]!;
+    if (m.seq <= after) break;
+    if (m.channel !== channel || m.kind !== "line" || m.hidden || m.from === "" || !isCharacter(m.from)) continue;
+    lines.push({ seq: m.seq, from: m.from, text: m.text.slice(0, MAX_VOICE_TEXT), beat: m.beat ?? null });
+  }
+  return { head, lines: lines.reverse() };
+}
+
 /** At most this many terminals are remembered (oldest poll evicted). */
 export const MAX_SCREENS = 32;
 
@@ -169,6 +227,8 @@ export interface ScreenState {
   target: ScreenTarget;
   program: ScreenProgram;
   terminals: Array<ScreenPoll & { ago: number }>;
+  /** Only when the poll names a voice room (K-18). */
+  voice?: ScreenVoice;
 }
 
 export interface ScreenWho {
@@ -176,6 +236,10 @@ export interface ScreenWho {
   spot: string;
   view: string;
   character: string;
+  /** A location whose characters' lines this screen speaks (the TV: `The Desktop`). */
+  voice?: string;
+  /** The last chat seq this screen has handled; null = none yet. */
+  after?: number | null;
 }
 
 /** `screens_call_desktop` → `{family: "screens", value: "call_desktop"}`; anything else → null. */
@@ -197,6 +261,8 @@ export class ScreenWatch {
   private shots = 0;
   private readonly polls = new Map<string, ScreenPoll>();
   private readonly now: () => number;
+  /** The director's TV-voice mute (K-18). Runtime state: a server restart unmutes. */
+  voiceMuted = false;
 
   constructor(o: { now?: () => number } = {}) {
     this.now = o.now ?? Date.now;
@@ -244,8 +310,9 @@ export class ScreenWatch {
     return [...this.polls.values()].reverse().map((p) => ({ ...p, ago: Math.max(0, now - p.at) }));
   }
 
-  /** One terminal polls: record it, and answer the current screen state. */
-  poll(sim: Sim | null, who: ScreenWho, online: (character: string) => boolean): ScreenState {
+  /** One terminal polls: record it, and answer the current screen state.
+   *  `messages` is the chat timeline (only read for a `voice` poll). */
+  poll(sim: Sim | null, who: ScreenWho, online: (character: string) => boolean, messages: readonly ChatMessage[] = []): ScreenState {
     this.sync(sim);
     this.note(who);
     const peek = (path: string): string | null => {
@@ -284,6 +351,16 @@ export class ScreenWatch {
     for (const f of SCREEN_CUE_FAMILIES) cues[f] = this.cues.get(f) ?? null;
     const target = screenTargetOf(who.view);
 
+    let voice: ScreenVoice | undefined;
+    if (who.voice !== undefined && who.voice !== "") {
+      const want = foldName(who.voice);
+      const loc = sim === null ? undefined : [...sim.model.locations.values()].find((l) => foldName(l.id) === want || (l.label !== null && foldName(l.label) === want));
+      const room = loc === undefined ? "" : `loc:${loc.id}`;
+      const chars = sim?.model.characters;
+      const got = voiceLinesOf(messages, room, who.after ?? null, (from) => chars?.has(from) === true);
+      voice = { room, muted: this.voiceMuted, ...got };
+    }
+
     return {
       now: this.now(),
       night: { screen: peek("Night.screen"), terminals: peek("Night.terminals") },
@@ -298,14 +375,15 @@ export class ScreenWatch {
       target,
       program: this.programs.get(target) ?? emptyProgram(),
       terminals: this.seen(),
+      ...(voice !== undefined ? { voice } : {}),
     };
   }
 }
 
 /**
- * `GET /api/screen/state?name=&spot=&view=&character=` — moderator-gated
- * (a terminal holds a mod token; the author's session works too). Returns
- * true when it answered.
+ * `GET /api/screen/state?name=&spot=&view=&character=[&voice=<location>&after=<seq>]`
+ * — moderator-gated (a terminal holds a mod token; the author's session works
+ * too). Returns true when it answered.
  */
 export function handleScreenGet(
   watch: ScreenWatch,
@@ -315,13 +393,34 @@ export function handleScreenGet(
   url: URL,
   authorized: (token: string | undefined) => boolean,
   online: (character: string) => boolean,
+  messages: () => readonly ChatMessage[] = () => [],
 ): boolean {
   if (!authorized(queryTokenOf(req, url))) {
     sendJson(res, 403, { error: "moderators only" });
     return true;
   }
   const q = (k: string): string => url.searchParams.get(k) ?? "";
+  const voice = q("voice").slice(0, 64);
+  const afterRaw = q("after");
+  const after = afterRaw !== "" && /^-?\d+$/u.test(afterRaw) ? Number(afterRaw) : null;
   res.setHeader?.("cache-control", "no-store");
-  sendJson(res, 200, watch.poll(sim, { name: q("name"), spot: q("spot"), view: q("view"), character: q("character") }, online));
+  const who: ScreenWho = { name: q("name"), spot: q("spot"), view: q("view"), character: q("character"), ...(voice !== "" ? { voice, after } : {}) };
+  sendJson(res, 200, watch.poll(sim, who, online, voice !== "" ? messages() : []));
+  return true;
+}
+
+/**
+ * `POST /api/mod/screen/voice {muted: boolean}` — the director's (or the TV's
+ * own) mute for the room voice. Every TV reads it off its next poll. Answers
+ * `{muted}`; a body without a boolean `muted` just reads the current state.
+ */
+export async function handleScreenVoicePost(watch: ScreenWatch, req: IncomingMessage, res: ServerResponse, authorized: (token: string | undefined) => boolean): Promise<boolean> {
+  const body = await readBody(req, 1024);
+  if (!authorized(tokenOf(req, body))) {
+    sendJson(res, 403, { error: "moderators only" });
+    return true;
+  }
+  if (typeof body["muted"] === "boolean") watch.voiceMuted = body["muted"];
+  sendJson(res, 200, { muted: watch.voiceMuted });
   return true;
 }

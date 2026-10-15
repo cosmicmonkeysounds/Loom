@@ -8,15 +8,22 @@
 //! The poll is also the terminal's heartbeat — the server remembers each
 //! terminal's last poll by name (K-29 reads it).
 //!
+//! The TV (`view: tv`, K-18) also names its `voice` room and the last chat
+//! seq it handled (`after`); the answer's `voice` block carries the
+//! characters' new lines in that room, the room's head seq and the
+//! director's mute. It polls every second so a line is heard within 3 s.
+//!
 //! Fail closed: until the first answer arrives the terminal stays on
 //! attract, and an unreachable server keeps the last answer it gave — a
 //! dropped poll never flips a hidden character onto the wall.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { baseOf, type TerminalConfig } from "./config.ts";
 
 /** How often the terminal polls (ms). */
 export const SCREEN_POLL_MS = 2000;
+/** How often the TV polls (ms): a line must be heard within 3 s. */
+export const TV_POLL_MS = 1000;
 
 export type ScreenCueFamily = "screens" | "terminals" | "tv" | "tablet";
 
@@ -44,6 +51,22 @@ export interface ScreenProgram {
   flicker: ScreenShot | null;
 }
 
+/** A character's line in the voice room (`beat` null = a director's typed `say`). */
+export interface VoiceLine {
+  seq: number;
+  from: string;
+  text: string;
+  beat: string | null;
+}
+
+/** The TV's voice block (K-18). */
+export interface ScreenVoice {
+  room: string;
+  muted: boolean;
+  head: number;
+  lines: VoiceLine[];
+}
+
 /** The server's answer (a subset is all the terminal reads today). */
 export interface ScreenState {
   now: number;
@@ -57,12 +80,39 @@ export interface ScreenState {
   remaining: number | null;
   target: ScreenTarget;
   program: ScreenProgram;
+  /** Only on a poll that named a voice room. */
+  voice: ScreenVoice | null;
+}
+
+/** What a TV adds to its poll: the room it speaks for + its chat cursor. */
+export interface VoiceQuery {
+  room: string;
+  after: number | null;
 }
 
 /** The poll URL for this terminal (its name/spot/view ride along as the heartbeat). */
-export function screenStateUrl(c: Pick<TerminalConfig, "eventId" | "name" | "spot" | "view" | "character">): string {
+export function screenStateUrl(c: Pick<TerminalConfig, "eventId" | "name" | "spot" | "view" | "character">, voice: VoiceQuery | null = null): string {
   const q = new URLSearchParams({ name: c.name, spot: c.spot, view: c.view, character: c.character });
+  if (voice !== null) {
+    q.set("voice", voice.room);
+    if (voice.after !== null) q.set("after", String(voice.after));
+  }
   return `${baseOf(c)}/api/screen/state?${q.toString()}`;
+}
+
+/** A voice block off the wire; malformed lines are dropped, a malformed block is null. */
+export function voiceOf(raw: unknown): ScreenVoice | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r["head"] !== "number" || !Number.isFinite(r["head"])) return null;
+  const lines: VoiceLine[] = [];
+  for (const l of Array.isArray(r["lines"]) ? r["lines"] : []) {
+    if (typeof l !== "object" || l === null) continue;
+    const x = l as Record<string, unknown>;
+    if (typeof x["seq"] !== "number" || typeof x["from"] !== "string" || typeof x["text"] !== "string") continue;
+    lines.push({ seq: x["seq"], from: x["from"], text: x["text"], beat: typeof x["beat"] === "string" ? x["beat"] : null });
+  }
+  return { room: typeof r["room"] === "string" ? r["room"] : "", muted: r["muted"] === true, head: r["head"], lines };
 }
 
 function shotOf(v: unknown): ScreenShot | null {
@@ -115,6 +165,7 @@ export function parseScreenState(raw: unknown, receivedAt: number = Date.now()):
     remaining: num(r["remaining"]),
     target: r["target"] === "tv" ? "tv" : "terminals",
     program: programOf(r["program"]),
+    voice: voiceOf(r["voice"]),
   };
 }
 
@@ -126,9 +177,9 @@ export function attractOf(state: ScreenState | null): boolean {
 export type PollOutcome = { kind: "state"; state: ScreenState } | { kind: "revoked" } | { kind: "miss" };
 
 /** One poll. A 401/403 is a revoked token; anything else that fails is a miss (keep the last answer). */
-export async function pollScreen(c: TerminalConfig, fetchFn: typeof fetch = fetch): Promise<PollOutcome> {
+export async function pollScreen(c: TerminalConfig, fetchFn: typeof fetch = fetch, voice: VoiceQuery | null = null): Promise<PollOutcome> {
   try {
-    const res = await fetchFn(screenStateUrl(c), { headers: { "x-loom-token": c.token }, cache: "no-store" });
+    const res = await fetchFn(screenStateUrl(c, voice), { headers: { "x-loom-token": c.token }, cache: "no-store" });
     if (res.status === 401 || res.status === 403) return { kind: "revoked" };
     if (!res.ok) return { kind: "miss" };
     const state = parseScreenState(await res.json());
@@ -139,11 +190,14 @@ export async function pollScreen(c: TerminalConfig, fetchFn: typeof fetch = fetc
 }
 
 /**
- * Poll the screen state every `SCREEN_POLL_MS` while a config is present.
- * Returns the last good answer (null until the first) and whether the
- * server refused this terminal's token.
+ * Poll the screen state every `SCREEN_POLL_MS` (the TV: `TV_POLL_MS`) while a
+ * config is present. Returns the last good answer (null until the first) and
+ * whether the server refused this terminal's token. `voice` (the TV) is read
+ * fresh on every poll, so the cursor can move without restarting the loop.
  */
-export function useScreenState(config: TerminalConfig | null): { state: ScreenState | null; revoked: boolean } {
+export function useScreenState(config: TerminalConfig | null, voice: (() => VoiceQuery) | null = null): { state: ScreenState | null; revoked: boolean } {
+  const voiceRef = useRef(voice);
+  voiceRef.current = voice;
   const [state, setState] = useState<ScreenState | null>(null);
   const [revoked, setRevoked] = useState(false);
   useEffect(() => {
@@ -152,15 +206,16 @@ export function useScreenState(config: TerminalConfig | null): { state: ScreenSt
     if (config === null) return;
     let alive = true;
     let timer = 0;
+    const every = config.view === "tv" ? TV_POLL_MS : SCREEN_POLL_MS;
     const tick = async () => {
-      const out = await pollScreen(config);
+      const out = await pollScreen(config, fetch, voiceRef.current?.() ?? null);
       if (!alive) return;
       if (out.kind === "state") setState(out.state);
       else if (out.kind === "revoked") {
         setRevoked(true);
         return; // stop polling: setup takes over
       }
-      timer = window.setTimeout(() => void tick(), SCREEN_POLL_MS);
+      timer = window.setTimeout(() => void tick(), every);
     };
     void tick();
     return () => {

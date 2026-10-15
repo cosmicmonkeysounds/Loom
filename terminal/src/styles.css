@@ -552,6 +552,48 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 }
 .mirror-gear { position: absolute; top: 6px; right: 8px; z-index: 6; }
 
+/* The TV (view=tv, K-18): the face full screen, read from across the room;
+   the world takes the right while someone is in the simulation. */
+.terminal.tv { display: block; overflow: hidden; font-size: clamp(22px, 2.6vw, 44px); }
+.tv-face { position: absolute; inset: 0; display: grid; place-items: center; padding: var(--pad); transition: right 0.4s ease; }
+.tv-face .face { width: min(100%, 86vh); }
+.terminal.tv.with-world .tv-face { right: 62%; }
+.tv-world { position: absolute; top: 0; bottom: 0; right: 0; left: 38%; border-left: 2px solid var(--phosphor-faint); }
+.tv-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 7%;
+  transform: translateX(-50%);
+  width: min(90%, 1400px);
+  padding: 0.35em 0.8em;
+  background: rgba(0, 0, 0, 0.72);
+  color: var(--white);
+  text-align: center;
+  font-size: 1.05em;
+  line-height: 1.25;
+  z-index: 4;
+}
+.tv-caption.text-only { color: var(--phosphor); font-style: italic; }
+.tv-caption-who { color: var(--amber); font-style: normal; }
+.tv-attract { position: absolute; inset: 0; z-index: 5; }
+.tv-status { position: absolute; right: 10px; bottom: 8px; z-index: 6; display: flex; gap: 0.6em; align-items: center; font-size: 0.5em; }
+.tv-status .engine-note { position: static; font-size: 1em; }
+.tv-mute { background: transparent; border: 1px solid var(--phosphor-faint); color: var(--phosphor-faint); padding: 0.2em 0.6em; letter-spacing: 0.1em; }
+.tv-mute.on { color: var(--amber); border-color: var(--amber); }
+.tv-wake {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 8;
+  background: #000;
+  border: 2px solid var(--amber);
+  color: var(--amber);
+  padding: 0.3em 1em;
+  font-size: 0.7em;
+  letter-spacing: 0.12em;
+}
+
 /* --- motion ------------------------------------------------------------- */
 
 @keyframes pulse { 50% { opacity: 0.25; } }

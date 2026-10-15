@@ -15,8 +15,10 @@
 //! view** (`world/`) while a program is in the reinstallation simulation —
 //! per the terminal's `view` (auto / world / face); while piloting it is
 //! always the face, which is the voice. `view: mirror` is a different
-//! terminal altogether: a full-screen spectator of the simulation (the TV
-//! over the fireplace) — no scanner, no line, nothing to say.
+//! terminal altogether: a full-screen spectator of the simulation — no
+//! scanner, no line, nothing to say. `view: tv` (`Tv.tsx`, K-18) is the TV
+//! over the fireplace: the face full screen, speaking the character's lines
+//! in the TV's room, the world beside it while someone is in the simulation.
 //!
 //! Over all of it, the **screen layer** (`ScreenLayer.tsx` / `slides.ts` —
 //! K-17 + N-03): the story's overlays, PNG slides, corner countdown and Y2K
@@ -33,7 +35,7 @@
 
 import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Composer, Thread } from "./chat.tsx";
-import { baseOf, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, withoutSecrets, type TerminalConfig, type TerminalView } from "./config.ts";
+import { DEFAULT_TV_ROOM, baseOf, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, tvRoomOf, withoutSecrets, type TerminalConfig, type TerminalView } from "./config.ts";
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import { useIdleTimeout } from "./idle.ts";
@@ -50,6 +52,7 @@ import { HOLD_MS, screenWake, useLongPress } from "./kiosk.ts";
 import { attractOf, useScreenState } from "./screen.ts";
 import { Attract } from "./Attract.tsx";
 import { LiveScreenLayer } from "./ScreenLayer.tsx";
+import { Tv } from "./Tv.tsx";
 import { screenLayers } from "./slides.ts";
 
 // three.js is most of the weight of the world view — a face-only terminal
@@ -63,7 +66,12 @@ export function App() {
   const [screen, setScreen] = useState<Screen>(() => (loadConfig() ? { kind: "attract" } : { kind: "setup", notice: null }));
   const [awake, setAwake] = useState(() => audioUnlocked());
   // The lean screen state, polled every 2 s (also this terminal's heartbeat).
-  const screenState = useScreenState(config);
+  // The TV also asks for its room's new lines after its chat cursor (K-18).
+  const tvCursor = useRef<number | null>(null);
+  useEffect(() => {
+    tvCursor.current = null; // a new config starts at the room's head: no backlog
+  }, [config]);
+  const screenState = useScreenState(config, config?.view === "tv" ? () => ({ room: tvRoomOf(config), after: tvCursor.current }) : null);
 
   // Fetch the world view's code at boot, while this page and the server are
   // known to match — hours later a rebuild may have renamed the chunk. Not
@@ -174,6 +182,25 @@ export function App() {
       }
     />
   );
+
+  if (config.view === "tv") {
+    return (
+      <>
+        <Tv
+          config={config}
+          state={screenState.state}
+          cursor={tvCursor}
+          attract={attractOf(screenState.state)}
+          attractScreen={attractScreen}
+          canDraw={webgl2}
+          worldSlot={(store) => <WorldSlot store={store} spotId={config.spot} size="full" recover="reload" />}
+          gear={<Gear onOpen={openSetup} label="Set up this screen" className="mirror-gear" />}
+          onGone={onGone}
+        />
+        {layer}
+      </>
+    );
+  }
 
   if (config.view === "mirror") {
     return (
@@ -677,6 +704,7 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
   const [speed, setSpeed] = useState(current?.speed ?? 1);
   const [spot, setSpot] = useState(current?.spot ?? "");
   const [view, setView] = useState<TerminalView>(current?.view ?? "auto");
+  const [room, setRoom] = useState(current?.room ?? "");
   const [map, setMap] = useState<HouseInfo | null>(() => bundledHouse());
   const [error, setError] = useState<string | null>(notice);
   const [busy, setBusy] = useState(false);
@@ -728,9 +756,9 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
     try {
       let next: TerminalConfig;
       if (code.trim() !== "") {
-        next = await provision(code.trim(), { name: name.trim() || null, character: character.trim() || null, camera, engine, spot, view });
+        next = await provision(code.trim(), { name: name.trim() || null, character: character.trim() || null, camera, engine, spot, view, room: room.trim() || null });
       } else if (current !== null) {
-        next = { ...current, name: name.trim() || current.name, character: character.trim() || current.character, camera, engine, spot, view };
+        next = { ...current, name: name.trim() || current.name, character: character.trim() || current.character, camera, engine, spot, view, room: room.trim() };
       } else {
         throw new Error("Enter the moderator passcode.");
       }
@@ -810,9 +838,16 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
               <option value="world">the simulation, always (face while piloting)</option>
               <option value="face">face only</option>
               <option value="mirror">mirror — full-screen simulation, no scanner</option>
+              <option value="tv">TV — the face speaks the room's lines, no scanner</option>
             </select>
           </label>
         </div>
+        {view === "tv" && (
+          <label>
+            the room it speaks for <span className="muted">(a LOCATION; blank = {DEFAULT_TV_ROOM})</span>
+            <input value={room} onChange={(e) => setRoom(e.target.value)} placeholder={DEFAULT_TV_ROOM} />
+          </label>
+        )}
         {!hasWebGL2() && view !== "face" && <div className="muted small">this tablet has no WebGL2 — it can't draw the simulation, so it will show the face</div>}
         {map !== null && map.source === "bundled" && current !== null && <div className="muted small">couldn't read the event's house map — listing the show's own spots</div>}
         {serverVoiceInfo && <div className="muted">{serverVoiceInfo}</div>}

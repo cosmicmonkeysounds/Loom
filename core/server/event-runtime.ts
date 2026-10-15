@@ -41,7 +41,7 @@ import {
   type PictureChoice,
 } from "./identity.ts";
 import { foldName } from "../src/parser/names.ts";
-import { ScreenWatch, handleScreenGet } from "./routes/screen.ts";
+import { ScreenWatch, handleScreenGet, handleScreenVoicePost } from "./routes/screen.ts";
 import { SpatialHub, houseVersion, houseWarnings, isWorld, parsePose, sortCandidates, type SessionRef } from "./spatial.ts";
 import {
   AgentHub,
@@ -1821,8 +1821,9 @@ export class EventRuntime {
 
     // --- the wall terminals' lean screen state (K-16, routes/screen.ts) ---
     if (method === "GET" && path === "/api/screen/state") {
-      return handleScreenGet(this.screens, this.sim, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t), (c) => this.agents.isOnline(c));
+      return handleScreenGet(this.screens, this.sim, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t), (c) => this.agents.isOnline(c), () => this.chat.all());
     }
+    if (method === "POST" && path === "/api/mod/screen/voice") return handleScreenVoicePost(this.screens, req, res, (t) => opts.moderator === true || this.sessions.canModerate(t));
 
     // --- the reinstallation games: the map, the stream, stations ---
     if (method === "GET" && (path.startsWith("/api/spatial/") || path.startsWith("/api/mod/spatial/"))) {

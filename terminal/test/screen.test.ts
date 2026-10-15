@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.ts";
-import { attractOf, parseScreenState, pollScreen, screenStateUrl } from "../src/screen.ts";
+import { attractOf, parseScreenState, pollScreen, screenStateUrl, voiceOf } from "../src/screen.ts";
 
 const config = defaultConfig({ eventId: "evt 1", token: "tok", name: "Kitchen", spot: "kitchen", view: "auto" });
 
@@ -55,5 +55,35 @@ describe("screen state", () => {
     expect(s.character).toEqual({ id: "Clippy", hidden: false, awake: true, online: false });
     expect(s.remaining).toBeNull();
     expect(s.night).toEqual({ screen: null, terminals: null });
+  });
+});
+
+describe("the TV's voice block (K-18)", () => {
+  const tv = defaultConfig({ eventId: "evt", token: "tok", name: "TV", spot: "desktop-tv", view: "tv" });
+
+  it("the TV names its room and cursor in the poll", async () => {
+    expect(screenStateUrl(tv, { room: "The Desktop", after: null })).toBe("/e/evt/api/screen/state?name=TV&spot=desktop-tv&view=tv&character=Trabolta&voice=The+Desktop");
+    expect(screenStateUrl(tv, { room: "The Desktop", after: 41 })).toMatch(/&voice=The\+Desktop&after=41$/u);
+    const seen: Array<{ url: string; init?: RequestInit }> = [];
+    await pollScreen(tv, fakeFetch(200, body, seen), { room: "The Desktop", after: 7 });
+    expect(seen[0]!.url).toContain("after=7");
+  });
+
+  it("parses the voice block; malformed lines are dropped, no block is null", () => {
+    const s = parseScreenState({
+      ...body,
+      voice: { room: "loc:The Desktop", muted: true, head: 9, lines: [{ seq: 9, from: "Trabolta", text: "Hi.", beat: null }, { seq: "x" }, { seq: 8, from: "Sandy", text: "…", beat: "Song Ending" }] },
+    });
+    expect(s?.voice).toEqual({
+      room: "loc:The Desktop",
+      muted: true,
+      head: 9,
+      lines: [
+        { seq: 9, from: "Trabolta", text: "Hi.", beat: null },
+        { seq: 8, from: "Sandy", text: "…", beat: "Song Ending" },
+      ],
+    });
+    expect(parseScreenState(body)?.voice).toBeNull();
+    expect(voiceOf({ lines: [] })).toBeNull();
   });
 });

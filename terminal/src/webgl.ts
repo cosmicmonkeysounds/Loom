@@ -40,9 +40,10 @@ export function hasWebGL2(): boolean {
 /**
  * The view this tablet can actually show: `auto` / `world` drop to `face`
  * without WebGL2 (a mirror stays a mirror — it has no face to fall back to,
- * so it shows a notice instead of the world).
+ * so it shows a notice instead of the world; the TV keeps its face and just
+ * never raises the world pane).
  */
 export function effectiveView(view: TerminalView, webgl2: boolean): TerminalView {
-  if (webgl2 || view === "face" || view === "mirror") return view;
+  if (webgl2 || view === "face" || view === "mirror" || view === "tv") return view;
   return "face";
 }

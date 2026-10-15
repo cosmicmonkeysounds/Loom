@@ -105,6 +105,33 @@ minus `remaining`. Any running story countdown shows as a ⏱ corner
 stutter. Ages run on the server's clock. Device check:
 `scripts/accept/K-17.sh`.
 
+**The TV room voice** (OCT31 K-18 + N-04b, `src/Tv.tsx` + `src/tv.ts`):
+`view=tv` is the TV over the fireplace, run by the house Mac's Chrome full
+screen over the long HDMI (launched with
+`--autoplay-policy=no-user-gesture-required`; sound out of the MOTU's
+living-room pair):
+
+```
+https://<server>/terminal/?code=<mod passcode>&name=TV&character=Trabolta&spot=desktop-tv&view=tv[&room=The Desktop]
+```
+
+The character's face full screen (the world takes the right 62 % while
+someone is in the simulation), the K-17 layer over it, attract until the
+introduction. It polls every **1 s** with `voice=<room>` (default
+`The Desktop`) and its chat cursor, and plays the room's new lines strictly
+in order with a caption: the character's own lines — scripted, or a
+director's `say` as him — are **spoken** (server voice via `/api/mod/tts`,
+Chrome's voice as fallback, mouth on the audio level); lines from the song
+beats `Song Ending` / `Sad Confession` / `The Hand Jive` are **captioned
+only** (QLab plays the sung track); **Sandy** is captioned, never voiced
+(lore, #28); other characters are ignored; nothing is said on attract. A
+booting TV starts at the room's head (no backlog), a gap of 15 s between
+answers resyncs, a restart resyncs. **Mute**: the 🔊 button or `M` on the
+TV's keyboard → `POST /api/mod/screen/voice` (server-side, so it survives a
+reload and the director can flip it — K-29 card). Without the autoplay flag
+a *CLICK ONCE TO ENABLE THE VOICE* banner asks for one click. Device check:
+`scripts/accept/K-18.sh`.
+
 ## The voice
 
 Two engines behind one queue (`src/speech/`):
@@ -196,7 +223,7 @@ Two settings, on the setup screen or in the provisioning link:
 | Setting | Values |
 |---|---|
 | `spot` | a `house.terminals[].id` of the event's map: where this screen hangs (the setup screen lists them as *name — room*). Blank = unplaced: it never mounts, only follows / orbits the spawn room. |
-| `view` | `auto` (default): the face pane shows the world view while anyone is in the simulation, the face otherwise. `world`: the world view always. `face`: never. `mirror`: see below. While piloting it is **always the face**, because the face is the voice. A tablet with **no WebGL2** (three r186 needs it; `src/webgl.ts` probes once at boot) behaves as `face` whatever this says, never loads three.js, and a no-WebGL2 mirror shows a still notice — never the *SIMULATION UNAVAILABLE* retry loop. The build targets `chrome87` / `safari14` (`vite.config.ts`). |
+| `view` | `auto` (default): the face pane shows the world view while anyone is in the simulation, the face otherwise. `world`: the world view always. `face`: never. `mirror`: see below. `tv`: the TV room voice (above), no scanner. While piloting it is **always the face**, because the face is the voice. A tablet with **no WebGL2** (three r186 needs it; `src/webgl.ts` probes once at boot) behaves as `face` whatever this says, never loads three.js, and a no-WebGL2 mirror shows a still notice — never the *SIMULATION UNAVAILABLE* retry loop. The build targets `chrome87` / `safari14` (`vite.config.ts`). |
 
 **The mirror (a TV).** `view=mirror` turns a screen into a full-screen
 spectator, like the TV over the fireplace: there is no scanner, no chat and
@@ -244,6 +271,8 @@ them meanwhile.
 ```
 src/app.tsx            the screens: setup → (screensaver) → attract → connecting → piloting
 src/screen.ts          the 2 s screen-state poll (K-16): attract while the character is hidden/asleep
+src/tv.ts              the TV room voice: which lines are spoken / captioned, the cursor, the player (pure, K-18)
+src/Tv.tsx             view=tv: the face full screen, the voice, captions, the mute
 src/attract.ts         the screensaver rotation, the ads' copy, Mystify (pure)
 src/Attract.tsx        the screensaver screen (Canvas2D) + ad cards (PNG, else a Win98 window)
 src/slides.ts          the screen layer's precedence, holds, slide copy, corner + Y2K clock (pure, K-17)

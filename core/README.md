@@ -350,6 +350,19 @@ when the fold first saw it — 0 for history replayed at a boot/restart, so
 nothing held re-runs. The terminal applies the holds and precedence
 (`terminal/src/slides.ts`).
 
+**The TV room voice** (OCT31 K-18 + N-04b): a poll that adds
+`&voice=<LOCATION>&after=<seq>` (the TV, `view=tv`) gets a `voice` block —
+`room` (`loc:<Id>`, "" for an unknown location), `muted`, `head` (the
+newest chat seq) and `lines`: every *character's* `line` in that room
+after `after` (narration, typed guest chat and hidden messages left out),
+`{seq, from, text, beat}`, the newest `MAX_VOICE_LINES` (40). `beat` is
+the scripted beat, or null for a director's `say` as the character. No
+`after` = no lines (a booting TV starts at `head`); the TV decides what to
+speak (`terminal/src/tv.ts`). `POST /e/:id/api/mod/screen/voice {muted}`
+(mod token or author session) sets the TV-voice mute every TV reads off
+its next poll — runtime state, a server restart unmutes; a body without
+`muted` reads it.
+
 ## Running a live event
 
 ```bash

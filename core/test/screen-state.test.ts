@@ -14,7 +14,8 @@ import { afterAll, describe, expect, it } from "vitest";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import type { AgentRequest } from "../server/agents.ts";
-import { MAX_SCREENS, ScreenWatch, foldProgram, screenCueClass, screenCueOf, screenTargetOf, slidePersists, type ScreenProgram, type ScreenState } from "../server/routes/screen.ts";
+import type { ChatMessage } from "../server/chat.ts";
+import { MAX_SCREENS, MAX_VOICE_LINES, ScreenWatch, foldProgram, voiceLinesOf, screenCueClass, screenCueOf, screenTargetOf, slidePersists, type ScreenProgram, type ScreenState } from "../server/routes/screen.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { scenarioSource } from "../examples/load.ts";
 
@@ -270,6 +271,100 @@ describe("GET /api/screen/state — Trapped in the Internet", () => {
     expect(r.cues).toEqual(s.cues);
     expect(r.night).toEqual(s.night);
     again.dispose();
+  });
+});
+
+// --- the room voice (K-18 + N-04b) ------------------------------------------
+
+describe("voiceLinesOf", () => {
+  const msg = (seq: number, o: Partial<ChatMessage> = {}): ChatMessage => ({
+    seq,
+    channel: "loc:The Desktop",
+    channelKind: "location",
+    title: "The Desktop",
+    from: "Trabolta",
+    kind: "line",
+    text: `line ${seq}`,
+    ts: 0,
+    audience: "all",
+    parentSeq: null,
+    hidden: false,
+    ...o,
+  });
+  const isChar = (f: string) => f === "Trabolta" || f === "Sandy";
+
+  it("keeps characters' lines in the room after the cursor; no backlog on boot", () => {
+    const ms = [
+      msg(0),
+      msg(1, { from: "Narrator", kind: "narration" }),
+      msg(2, { channel: "lobby" }),
+      msg(3, { from: "Calculator" }), // typed guest chat
+      msg(4, { hidden: true }),
+      msg(5, { from: "Sandy", beat: "Song Ending" }),
+      msg(6, { beat: "Trabolta Introduction" }),
+    ];
+    expect(voiceLinesOf(ms, "loc:The Desktop", null, isChar)).toEqual({ head: 6, lines: [] });
+    expect(voiceLinesOf(ms, "loc:The Desktop", -1, isChar).lines.map((l) => [l.seq, l.from, l.beat])).toEqual([
+      [0, "Trabolta", null],
+      [5, "Sandy", "Song Ending"],
+      [6, "Trabolta", "Trabolta Introduction"],
+    ]);
+    expect(voiceLinesOf(ms, "loc:The Desktop", 5, isChar).lines.map((l) => l.seq)).toEqual([6]);
+    // A cursor past the head (the server restarted): nothing, resync to head.
+    expect(voiceLinesOf(ms, "loc:The Desktop", 40, isChar)).toEqual({ head: 6, lines: [] });
+    expect(voiceLinesOf([], "loc:The Desktop", 3, isChar)).toEqual({ head: -1, lines: [] });
+  });
+
+  it("an answer carries at most the newest MAX_VOICE_LINES; a whole beat fits", () => {
+    expect(MAX_VOICE_LINES).toBeGreaterThanOrEqual(20);
+    const n = MAX_VOICE_LINES + 20;
+    const ms = Array.from({ length: n }, (_, i) => msg(i));
+    expect(voiceLinesOf(ms, "loc:The Desktop", 0, isChar).lines.map((l) => l.seq)).toEqual(Array.from({ length: MAX_VOICE_LINES }, (_, i) => n - MAX_VOICE_LINES + i));
+  });
+});
+
+describe("GET /api/screen/state?voice= — the TV room voice", () => {
+  it("Trabolta's Desktop lines after a seq, a director's say as Trabolta, the mute", { timeout: SLOW }, async () => {
+    const rt = await showRuntime(freshDir());
+    const tv = async (after: number | null) => {
+      const q = `/api/screen/state?name=TV&spot=desktop-tv&view=tv&character=Trabolta&voice=The%20Desktop${after === null ? "" : `&after=${after}`}`;
+      const r = await call(rt, "GET", q, {}, { moderator: true });
+      expect(r.status).toBe(200);
+      return r.json as unknown as ScreenState;
+    };
+    // A terminal that names no voice room gets no voice block.
+    expect((await state(rt)).voice).toBeUndefined();
+    const boot = await tv(null);
+    expect(boot.voice).toMatchObject({ room: "loc:The Desktop", muted: false, lines: [] });
+    let cursor = boot.voice!.head;
+    expect(cursor).toBeGreaterThanOrEqual(0);
+
+    for (const name of ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta"]) await signal(rt, name);
+    let s = await tv(cursor);
+    expect(s.attract).toBe(false);
+    const hello = s.voice!.lines.find((l) => l.from === "Trabolta");
+    expect(hello).toMatchObject({ beat: "Trabolta Introduction" });
+    expect(hello!.text).toMatch(/^HELLO, PROGRAMS/u);
+    expect(s.voice!.lines.every((l) => l.from !== "Narrator")).toBe(true);
+    cursor = s.voice!.head;
+
+    // A director speaks as Trabolta in the Desktop: a line with no beat.
+    expect((await call(rt, "POST", "/api/mod/say", { as: "Trabolta", channel: "loc:The Desktop", text: "And the award goes to…" }, { moderator: true })).status).toBe(200);
+    s = await tv(cursor);
+    expect(s.voice!.lines).toEqual([{ seq: s.voice!.head, from: "Trabolta", text: "And the award goes to…", beat: null }]);
+    expect((await tv(s.voice!.head)).voice!.lines).toEqual([]);
+
+    // The mute: mod-gated, read back by every TV poll.
+    expect((await call(rt, "POST", "/api/mod/screen/voice", { muted: true })).status).toBe(403);
+    expect((await call(rt, "POST", "/api/mod/screen/voice", { muted: true }, { moderator: true })).json).toEqual({ muted: true });
+    expect((await tv(s.voice!.head)).voice!.muted).toBe(true);
+    expect((await call(rt, "POST", "/api/mod/screen/voice", {}, { moderator: true })).json).toEqual({ muted: true });
+    expect((await call(rt, "POST", "/api/mod/screen/voice", { muted: false }, { moderator: true })).json).toEqual({ muted: false });
+
+    // An unknown room answers an empty voice, never another room's lines.
+    const r = await call(rt, "GET", `/api/screen/state?name=TV&view=tv&character=Trabolta&voice=Nowhere&after=0`, {}, { moderator: true });
+    expect((r.json as unknown as ScreenState).voice).toMatchObject({ room: "", lines: [] });
+    rt.dispose();
   });
 });
 

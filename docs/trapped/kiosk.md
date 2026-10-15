@@ -63,7 +63,10 @@ no autoplay setting).
 ## The TV — the house Mac on the long HDMI run
 
 There is no separate TV computer: the house Mac (the Ollama laptop) drives
-the TV over HDMI and runs the mirror (`view=mirror`) full screen on it.
+the TV over HDMI and runs the TV view (`view=tv`, K-18: Trabolta's face and
+voice, the world beside it while someone is in the simulation) full screen
+on it. Its sound leaves the Mac's default output — the MOTU's living-room
+pair — so the voice stays in sync with the face.
 
 - System Settings → Lock Screen → *Turn display off on power adapter when
   inactive*: **Never**; Energy → *Prevent automatic sleeping when the
@@ -73,8 +76,13 @@ the TV over HDMI and runs the mirror (`view=mirror`) full screen on it.
 - Chrome on the TV display, its own profile:
   `open -na "Google Chrome" --args --user-data-dir="$HOME/.loom-tv" --kiosk --autoplay-policy=no-user-gesture-required "https://app.mapsandducks.com/terminal/"`
   — `--kiosk` is full screen with no chrome; the autoplay flag means no wake
-  tap is ever needed on the TV.
-- The ⚙ on the mirror is a 2 s mouse hold as well.
+  tap is ever needed on the TV. Provision it once with
+  `…/terminal/?code=<mod>&name=TV&character=Trabolta&spot=desktop-tv&view=tv`.
+  If Chrome came back without the flag (a reboot), the page shows *CLICK
+  ONCE TO ENABLE THE VOICE*: one click anywhere.
+- `M` on the Mac's keyboard (or the 🔊 button bottom right) mutes the TV
+  voice — the same server-side mute the director has (OP-20 `ALL STOP`).
+- The ⚙ on the TV is a 2 s mouse hold as well.
 
 ## The bathroom terminal
 

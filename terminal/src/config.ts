@@ -4,6 +4,10 @@
 //!
 //!   /terminal/?code=<mod passcode>&name=Kitchen&character=Trabolta&spot=kitchen&view=auto
 //!
+//! The TV (the house Mac, Chrome full screen over the long HDMI — K-18):
+//!
+//!   /terminal/?code=<mod passcode>&name=TV&character=Trabolta&spot=desktop-tv&view=tv
+//!
 //! The mod passcode resolves (via `/api/resolve-code`) to the event and is
 //! traded for a **moderator token** (`/api/mod/login`) — that is what lets
 //! a terminal pilot a scanned guest through `/api/mod/impersonate`, and
@@ -38,12 +42,16 @@ export interface TerminalConfig {
   /** What the attract screen shows: `auto` (the world view while a program
    *  is in the reinstallation simulation, else the face), `world` (always
    *  the world view), `face` (never), `mirror` (a full-screen spectator —
-   *  no scanner, no chat). */
+   *  no scanner, no chat), `tv` (the room voice, K-18: the face full screen
+   *  speaking the character's lines in `room`, the world pane while someone
+   *  is in the simulation — no scanner). */
   view: TerminalView;
+  /** `view: tv` — the LOCATION whose lines it speaks ("" = `DEFAULT_TV_ROOM`). */
+  room: string;
 }
 
-export type TerminalView = "auto" | "world" | "face" | "mirror";
-export const VIEWS: readonly TerminalView[] = ["auto", "world", "face", "mirror"];
+export type TerminalView = "auto" | "world" | "face" | "mirror" | "tv";
+export const VIEWS: readonly TerminalView[] = ["auto", "world", "face", "mirror", "tv"];
 
 function isView(v: unknown): v is TerminalView {
   return typeof v === "string" && (VIEWS as readonly string[]).includes(v);
@@ -51,6 +59,13 @@ function isView(v: unknown): v is TerminalView {
 
 export const CONFIG_KEY = "loom.terminal";
 export const DEFAULT_CHARACTER = "Trabolta";
+/** The room the TV hangs in — *Trapped in the Internet*'s living room. */
+export const DEFAULT_TV_ROOM = "The Desktop";
+
+/** The room a `view: tv` screen speaks for. */
+export function tvRoomOf(c: Pick<TerminalConfig, "room">): string {
+  return c.room.trim() || DEFAULT_TV_ROOM;
+}
 
 export function defaultConfig(partial: Partial<TerminalConfig> & Pick<TerminalConfig, "eventId" | "token">): TerminalConfig {
   return {
@@ -64,6 +79,7 @@ export function defaultConfig(partial: Partial<TerminalConfig> & Pick<TerminalCo
     camera: "user",
     spot: "",
     view: "auto",
+    room: "",
     ...partial,
   };
 }
@@ -76,7 +92,8 @@ export function loadConfig(storage: Pick<Storage, "getItem"> = localStorage): Te
     if (typeof c.eventId !== "string" || typeof c.token !== "string" || c.eventId === "" || c.token === "") return null;
     const spot = typeof c.spot === "string" ? c.spot : "";
     const view = isView(c.view) ? c.view : "auto";
-    return defaultConfig({ ...c, eventId: c.eventId, token: c.token, spot, view });
+    const room = typeof c.room === "string" ? c.room : "";
+    return defaultConfig({ ...c, eventId: c.eventId, token: c.token, spot, view, room });
   } catch {
     return null;
   }
@@ -90,7 +107,7 @@ export function dropConfig(storage: Pick<Storage, "removeItem"> = localStorage):
   storage.removeItem(CONFIG_KEY);
 }
 
-/** Provisioning hints riding on the URL (`?code=&name=&character=&camera=&engine=&spot=&view=`). */
+/** Provisioning hints riding on the URL (`?code=&name=&character=&camera=&engine=&spot=&view=&room=`). */
 export interface UrlHints {
   code: string;
   name: string | null;
@@ -99,6 +116,7 @@ export interface UrlHints {
   engine: TerminalConfig["engine"] | null;
   spot: string | null;
   view: TerminalView | null;
+  room: string | null;
 }
 
 export function hintsFromSearch(search: string): UrlHints {
@@ -114,6 +132,7 @@ export function hintsFromSearch(search: string): UrlHints {
     engine: engine === "auto" || engine === "server" || engine === "browser" ? engine : null,
     spot: p.get("spot")?.trim() || null,
     view: isView(view) ? view : null,
+    room: p.get("room")?.trim() || null,
   };
 }
 
@@ -127,6 +146,7 @@ export function withoutSecrets(search: string): string {
   p.delete("engine");
   p.delete("spot");
   p.delete("view");
+  p.delete("room");
   const s = p.toString();
   return s === "" ? "" : `?${s}`;
 }
@@ -155,6 +175,7 @@ export async function provision(code: string, hints: Omit<UrlHints, "code">): Pr
     engine: hints.engine ?? "auto",
     spot: hints.spot ?? "",
     view: hints.view ?? "auto",
+    room: hints.room ?? "",
   });
 }
 
