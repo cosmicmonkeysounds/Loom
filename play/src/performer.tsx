@@ -8,6 +8,7 @@
 import { useEffect, useMemo, useState, type ReactElement } from "react";
 import {
   ActionRow,
+  AlertBanner,
   ChannelView,
   ConnDot,
   GroupPill,
@@ -19,6 +20,7 @@ import {
   Shell,
   SpaceList,
   SessionEnded,
+  WakeLockToggle,
   plural,
   useWide,
 } from "./chat.tsx";
@@ -258,6 +260,7 @@ function PerformerSheet({ session, onClose, onLeave }: { session: PrimeSession; 
           {err && <div className="err">{err}</div>}
         </>
       )}
+      <WakeLockToggle />
       {session.auth?.admin && <div className="muted pad">You hold moderator powers — hide/show messages, and every admin-only interaction the story declares.</div>}
       {(session.view?.codex?.length ?? 0) > 0 && (
         <>
@@ -511,6 +514,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   return (
     <AvatarsContext.Provider value={avatars}>
     <div className="root">
+      {s.alert && <AlertBanner text={s.alert.text} onDismiss={s.dismissAlert} />}
       <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room, or a guest." />
       {picking && t.active && (
         <InviteSheet

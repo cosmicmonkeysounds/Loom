@@ -9,7 +9,7 @@
 
 import type { ReactNode } from "react";
 import { AlertBanner, DecisionTray, MessageList, type WidgetHook } from "./chat.tsx";
-import type { Alert } from "./session.ts";
+import type { Alert } from "./alerts.ts";
 import type { ChatMessage, Decision } from "./types.ts";
 
 export function CutsceneStage({

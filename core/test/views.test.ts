@@ -96,6 +96,15 @@ describe("server views", () => {
     expect(primeView(null, "X").guests).toEqual([]);
   });
 
+  it("stamps the story clock on guest + prime views (the alert window's \"now\")", () => {
+    const sim = Sim.fromSources(SCENARIO);
+    sim.createPerson("g1", "Alice");
+    sim.tick(90_000);
+    expect(guestView(sim, "g1").clock).toBe(sim.elapsed());
+    expect(primeView(sim, "Moderator_Prime").clock).toBe(sim.elapsed());
+    expect(sim.elapsed()).toBeGreaterThanOrEqual(90_000);
+  });
+
   it("lists only public factions as the guest's joinable sides", () => {
     const sim = Sim.fromSources(SCENARIO);
     sim.createPerson("g1", "Alice");

@@ -79,9 +79,17 @@ Both stay out of a cutscene (`personalStream`). Tested in
 and listed character with exactly the lore about them the viewer holds,
 plus **💬 Message**. Performers see what their character knows in the ☰
 sheet and share it from a guest's thread (**📓 Share lore…**). A
-broadcast whose cue starts with `!` is an **alert**: chime (synthesised),
-vibration, and a sticky banner (`src/codex.ts`, tested in
-`test/codex.test.ts`). A captive in a `sealed: true` prison gets no
+broadcast whose cue starts with `!` is an **alert**: chime (synthesised,
+on one shared `AudioContext` unlocked on the first tap), vibration, and a
+banner — in guest *and* booth sessions (`src/alerts.ts` `useAlerts`,
+tested in `test/alerts.test.ts`). The last-seen mark survives a
+reconnect's history replay (and is persisted per sign-in), so the newest
+unseen alert from the last 10 story-minutes (`GuestView.clock` /
+`PrimeView.clock`) banners on wake; a hidden page chimes when it becomes
+visible. A booth also banners + chimes any readout it didn't ask for
+(not within 4 s of its own scan / act — the late list, a private
+warning). **☰ → Keep my screen on** is an opt-in Screen Wake Lock
+(`src/wake-lock.ts`). A captive in a `sealed: true` prison gets no
 "make a break for it" button.
 - **authored rooms** (`room:<name>`) — an `open` / `private` / `faction` /
   `group` / `dm` channel declared in `.loom`, grouped under its `SPACE`.

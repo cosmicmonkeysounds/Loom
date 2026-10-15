@@ -24,6 +24,7 @@ import {
   SessionEnded,
   Shell,
   SpaceList,
+  WakeLockToggle,
   useWide,
 } from "./chat.tsx";
 import { CutsceneStage } from "./cutscene.tsx";
@@ -290,6 +291,7 @@ function ProfileSheet({ session, onClose, onLeave }: { session: GuestSession; on
         </div>
       )}
       {session.me && <PictureChanger session={session} eventId={session.me.eventId} />}
+      <WakeLockToggle />
       {interactions.length > 0 && <div className="sheet-h">Things you can do</div>}
       {interactions.map((i) => (
         <button key={i.id} className="choice" title={i.description ?? undefined} onClick={() => void session.act(i.id)}>

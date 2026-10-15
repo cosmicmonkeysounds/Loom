@@ -55,3 +55,9 @@ tonight. Some characters are not people at all, and still answer.
 Some announcements arrive as **alerts**: your phone chimes, buzzes, and a
 banner appears. That's the story telling you to *move* — go where it
 says.
+
+Tap the app once after you open it so it is allowed to make sound. If
+your screen was off when an alert went out, the banner is waiting when
+you wake the phone (anything from the last 10 minutes). Want to be sure?
+**☰ → Keep my screen on** stops the phone from sleeping while the app is
+open.

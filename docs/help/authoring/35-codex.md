@@ -105,7 +105,10 @@ admins and the operator see everything.
 ## Alerts
 
 A broadcast whose text starts with `!` is an **alert** — every phone
-chimes, buzzes, and banners it:
+chimes, buzzes, and banners it, performers' booths included. A phone that
+was asleep banners the newest alert it missed from the last 10 minutes
+when it wakes. In Run → Director, tick **🔔 Alert** on the broadcast form
+instead of typing the `!`:
 
 ```loom
 broadcast "!📣 ALL PROGRAMS: report to the Desktop." to everyone

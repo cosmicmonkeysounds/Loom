@@ -3,7 +3,7 @@ title: Performer station
 section: Performers
 order: 7
 role: performer
-keywords: performer, character, sign in, scanner, scan, camera, readout, admin, moderator, capture, release, hide, guest thread, guest card, actions, who's here
+keywords: performer, alert, chime, late, keep screen on, character, sign in, scanner, scan, camera, readout, admin, moderator, capture, release, hide, guest thread, guest card, actions, who's here
 ---
 
 The performer station is the same chat surface, recomposed for the
@@ -30,6 +30,15 @@ A scan fires your character's story for that guest — the **Readouts**
 card shows what the system delivered, and anything the story wants you
 to *say or do* arrives as your direction. You can also **📡 Scan this
 guest** from inside their thread.
+
+## Alerts in your booth
+
+Your booth chimes, buzzes and shows a banner for every **alert** the
+story or the director sends, and for any readout you didn't ask for —
+"⏰ *Name* is late", a private warning. Tap the app once after signing in
+so it may make sound (iPhones never buzz — watch for the banner). Keep
+the phone awake with **☰ → Keep my screen on**; a banner you slept
+through is still there when you wake it.
 
 ## Guest threads and the guest card
 

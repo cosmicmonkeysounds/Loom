@@ -1,10 +1,8 @@
-//! Pure helpers behind the Codex + People surfaces and the alert chime:
-//! private-thread ids between two participants (mirror of the server's
-//! `Sim.pmChannel`), the `?unlock=` deep link a wall QR carries, and
-//! spotting freshly-arrived alert broadcasts. No
-//! React, no storage — unit-tested in `test/codex.test.ts`.
-
-import type { ChatMessage } from "./types.ts";
+//! Pure helpers behind the Codex + People surfaces: private-thread ids
+//! between two participants (mirror of the server's `Sim.pmChannel`) and
+//! the `?unlock=` deep link a wall QR carries. No React, no storage —
+//! unit-tested in `test/codex.test.ts`. (The alert chime lives in
+//! `alerts.ts`.)
 
 /** The private thread between two participants — one id whoever opens it. */
 export function pmChannelId(a: string, b: string): string {
@@ -36,58 +34,4 @@ export function withoutUnlock(search: string): string {
   p.delete("unlock");
   const s = p.toString();
   return s === "" ? "" : `?${s}`;
-}
-
-/** Alert broadcasts newer than `sinceSeq`, oldest first. */
-export function pickAlerts(messages: Iterable<ChatMessage>, sinceSeq: number): ChatMessage[] {
-  const out: ChatMessage[] = [];
-  for (const m of messages) if (m.alert === true && m.seq > sinceSeq && !m.hidden) out.push(m);
-  return out.sort((a, b) => a.seq - b.seq);
-}
-
-/** The highest seq in a message list (−1 when empty). */
-export function maxSeqOf(messages: Iterable<ChatMessage>): number {
-  let max = -1;
-  for (const m of messages) if (m.seq > max) max = m.seq;
-  return max;
-}
-
-/**
- * A short two-tone chime, synthesised (no asset, no network). Browsers
- * only let audio start after a user gesture, so this may be silent on a
- * phone that has never been tapped — the banner + vibration still land.
- */
-export function playChime(): void {
-  try {
-    const Ctx = (window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext
-      ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    const tone = (freq: number, at: number, dur: number): void => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "square";
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.0001, ctx.currentTime + at);
-      gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + at + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + dur);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(ctx.currentTime + at);
-      osc.stop(ctx.currentTime + at + dur + 0.05);
-    };
-    tone(880, 0, 0.18);
-    tone(1320, 0.2, 0.28);
-    setTimeout(() => void ctx.close(), 800);
-  } catch {
-    /* no audio — fine */
-  }
-}
-
-/** Buzz the phone, where the browser allows it. */
-export function vibrate(): void {
-  try {
-    navigator.vibrate?.([180, 80, 180]);
-  } catch {
-    /* unsupported */
-  }
 }

@@ -25,6 +25,7 @@ import { openContextMenu, type ContextMenuEntry } from '@/store/context-menu'
 import { confirmAction } from '@/store/dialog'
 import { FactionPill } from './ui'
 import { publicFaction } from './format'
+import { alertCue } from './broadcast'
 import { LensKind, lensKindOf, roomMessages, useRooms } from './rooms'
 import { useInspect } from './inspect'
 import { groupWorld, type WorldGroup } from './world'
@@ -903,6 +904,7 @@ function DirectorControls() {
   const [beatSubject, setBeatSubject] = useState('')
   const [cue, setCue] = useState('')
   const [scope, setScope] = useState('all')
+  const [alertOn, setAlertOn] = useState(false)
 
   const chosenSignal = signal === CUSTOM_EVENT ? custom.trim() : signal
   const parsedArgs = parseSignalArgs(signalArgs)
@@ -990,7 +992,10 @@ function DirectorControls() {
 
         <section className="rounded-xl border border-zinc-800 p-3">
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">Broadcast cue</div>
-          <p className="mb-2 text-xs text-zinc-600">A room-wide cue, scoped (e.g. <code>faction(Mods)</code>, <code>location(Internet)</code>).</p>
+          <p className="mb-2 text-xs text-zinc-600">
+            A room-wide cue, scoped (e.g. <code>faction(Mods)</code>, <code>location(Internet)</code>). An
+            <strong> alert</strong> banners, chimes and buzzes every phone it reaches — booths included.
+          </p>
           <div className="flex flex-wrap gap-2">
             <input
               value={cue}
@@ -1005,11 +1010,24 @@ function DirectorControls() {
               className="w-32 rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm outline-none focus:border-indigo-500"
             />
             <button
-              onClick={() => cue.trim() && void broadcast(scope.trim() || 'all', cue.trim())}
-              className="rounded bg-indigo-600 px-3 py-1.5 text-sm text-white hover:bg-indigo-500"
+              onClick={() => cue.trim() && void broadcast(scope.trim() || 'all', alertCue(cue, alertOn))}
+              className={clsx(
+                'rounded px-3 py-1.5 text-sm text-white',
+                alertOn ? 'bg-amber-600 hover:bg-amber-500' : 'bg-indigo-600 hover:bg-indigo-500',
+              )}
+              data-testid="director-broadcast-send"
             >
-              Send
+              {alertOn ? 'Send alert' : 'Send'}
             </button>
+            <label className="flex w-full items-center gap-2 text-xs text-zinc-400">
+              <input
+                type="checkbox"
+                checked={alertOn}
+                onChange={(e) => setAlertOn(e.target.checked)}
+                data-testid="director-broadcast-alert"
+              />
+              🔔 Alert (chime + vibrate + banner)
+            </label>
           </div>
         </section>
       </div>
