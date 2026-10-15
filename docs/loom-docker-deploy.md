@@ -19,7 +19,7 @@ have a domain everything under the app address is reachable by plain
 | `https://app.mapsandducks.com/reinstall/map` | The **house map** viewer + editor for directors |
 | `…/api/*`, `…/e/*` | The event server's API (used by both apps) |
 
-Under the hood it's three containers, defined in the repo-root
+Under the hood it's four containers, defined in the repo-root
 [`docker-compose.yml`](../docker-compose.yml):
 
 - **loom** — the `@loom/core` event server (built by the repo-root
@@ -31,6 +31,8 @@ Under the hood it's three containers, defined in the repo-root
   everything else to the event server, and (once you have a domain)
   handles HTTPS certificates automatically.
 - **db** — Postgres, for author accounts + server-stored projects.
+- **kokoro** — the terminals' neural voice (internal only, CPU-capped;
+  see [§5¾ The voice](#the-voice-kokoro)).
 
 Everything that must survive restarts (the Postgres data, the event
 journals, the TLS certificates) lives in named Docker volumes — the
@@ -46,7 +48,7 @@ containers themselves are disposable.
   a running image is a *container*. You don't install Node, pnpm, or
   Postgres on the VPS — Docker builds/runs all of it.
 - **docker compose** reads `docker-compose.yml` and starts the whole
-  three-container stack with one command.
+  four-container stack with one command.
 - "Deploying" is: copy the source code to the VPS → `docker compose up
   -d --build`. "Updating" is the same two steps again.
 
@@ -203,7 +205,7 @@ The first build takes a few minutes (it installs the JS workspace and
 builds both web apps inside Docker). When it returns:
 
 ```bash
-docker compose ps            # all three services "running", loom "healthy"
+docker compose ps            # all four services "running", loom "healthy"
 docker compose logs loom     # boot banner: passcodes + URLs
 ```
 
@@ -400,6 +402,44 @@ The pass scanners (terminal + tent tablet) need the camera, which
 browsers only grant on **https or localhost** — on a plain-HTTP IP
 address they fall back to typing the guest's name.
 
+### The voice (Kokoro)
+
+The terminals and the TV (`view=tv`) speak Trabolta's lines through
+`/api/mod/tts`, which the event server proxies and caches in front of an
+OpenAI-compatible speech endpoint. The stack bundles one: the `kokoro`
+service (Kokoro-FastAPI, CPU, image pinned in `docker-compose.yml`). A
+blank `LOOM_TTS_URL` points the server at it (`http://kokoro:8880/v1`
+on the compose network — no port is published, so only the server can
+reach it). `LOOM_TTS_URL=off` turns the server voice off (the tablets
+use their own voices); any other URL — a Kokoro on a laptop, OpenAI —
+replaces it (then stop the bundled one: `docker compose stop kokoro`).
+
+**The CPU cap.** Kokoro serves one synthesis at a time and will take
+every core it can see. `cpus: ${KOKORO_CPUS}` caps it so a burst of
+lines can never starve the event server, Postgres or Caddy: set
+`KOKORO_CPUS` in `.env` to **the VPS's cores minus one** (`nproc` on the
+VPS tells you; the default is `1`, safe on any 2-core box; Docker
+refuses a value above the core count). Then
+`docker compose up -d kokoro loom`.
+
+The first start pulls a ~2 GB image and warms the model (a minute);
+`docker compose ps` shows it `healthy` when ready. The server never
+waits for it — while it is down `/api/mod/tts` answers 502 and the
+terminals fall back to the browser voice.
+
+**Acceptance (OCT31 K-19).** With the stack up, run from your Mac:
+
+```bash
+MOD_CODE=<mod passcode> scripts/accept/K-19.sh
+```
+
+It opens 50 SSE streams on the event, then synthesises 3 fresh sentences
+at once (twice), and passes if **every sentence lands in < 2 s**. On a
+miss, raise `KOKORO_CPUS` if the VPS has the cores; otherwise the
+fallbacks are the TV calling a Kokoro on the house Mac directly (N-12)
+or Chrome's own voice on the TV, and the pre-rendered fixed lines on
+the tablets.
+
 ---
 
 ## 6. Day-2 operations
@@ -463,6 +503,11 @@ Copy those files off the VPS (`scp ubuntu@YOUR_VPS_IP:~/loom/loom-db-*.sql .`).
 - **HTTPS won't issue** — the A record must already point at the VPS
   and port 80 must be reachable from the internet (Let's Encrypt
   validates over it).
+- **The terminals talk in a robot voice / `/api/mod/tts` answers 502** —
+  the server voice is off or Kokoro is down: `docker compose ps kokoro`
+  (still starting? `unhealthy`?), `docker compose logs kokoro`. A
+  `.env` written before Kokoro was bundled may say `LOOM_TTS_URL=off`
+  or a laptop URL — blank it to use the bundled service.
 - **`/reinstall/` or `/terminal/` answers 404** — the image predates
   them; rebuild (`docker compose up -d --build`). The image serves them
   from `LOOM_TERMINAL_DIST` / `LOOM_REINSTALL_DIST` (set in the

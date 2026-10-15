@@ -138,7 +138,7 @@ Two engines behind one queue (`src/speech/`):
 
 | Engine | Where it runs | Quality |
 |---|---|---|
-| **server** (default) | The show laptop, behind the event server's `/api/mod/tts` proxy | Neural — the one to use. Run [Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI) (`docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu`, or the GPU image) and set `LOOM_TTS_URL=http://<laptop>:8880/v1` on the event server. Any OpenAI-compatible `/audio/speech` endpoint works, OpenAI's own included (`LOOM_TTS_URL=https://api.openai.com/v1 LOOM_TTS_API_KEY=… LOOM_TTS_MODEL=tts-1 LOOM_TTS_VOICE=onyx`). |
+| **server** (default) | The show laptop, behind the event server's `/api/mod/tts` proxy | Neural — the one to use. The compose stack bundles [Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI) as its CPU-capped `kokoro` service and points the server at it by default (`docs/loom-docker-deploy.md` §5¾ *The voice*). Elsewhere, run it yourself (`docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu`, or the GPU image) and set `LOOM_TTS_URL=http://<host>:8880/v1` on the event server. Any OpenAI-compatible `/audio/speech` endpoint works, OpenAI's own included (`LOOM_TTS_URL=https://api.openai.com/v1 LOOM_TTS_API_KEY=… LOOM_TTS_MODEL=tts-1 LOOM_TTS_VOICE=onyx`). |
 | **browser** (fallback) | The tablet's `speechSynthesis` | Varies: Edge's online *Natural* voices and an iPad's downloaded *Enhanced/Premium* voices are close to real; stock Android is not. The setup screen ranks the installed voices best-first with a TEST button. |
 
 The server voice is cached per line across every terminal, so the hold
@@ -149,7 +149,7 @@ sentences and synthesised one ahead, so speech starts on the first
 sentence and the transcript reveals as it is said. Server env:
 
 ```
-LOOM_TTS_URL       base of the speech API (unset = no server voice)
+LOOM_TTS_URL       base of the speech API (unset / off = no server voice; compose defaults it to its kokoro service)
 LOOM_TTS_API_KEY   bearer token, if the endpoint wants one
 LOOM_TTS_MODEL     default "kokoro"
 LOOM_TTS_VOICE     default "am_michael"  (Kokoro: am_adam, bm_george, af_bella+af_sky …)
