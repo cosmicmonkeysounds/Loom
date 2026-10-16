@@ -57,6 +57,17 @@ do_ "$RSYNC" -az --delete --filter=':- .gitignore' \
   --exclude '*.local.yaml' --exclude secrets.h --exclude reinstall/vr/build \
   --exclude '*.keystore' \
   "$ROOT/" "$LOOM_VPS:$LOOM_VPS_DIR/"
+# The rsync skips .git, so the VPS checkout's git record would stay on the
+# commit it was cloned at while its files moved on: every shipped file then
+# reads as a local change and a `git pull` there refuses ("would be
+# overwritten by merge"). Point the record at the shipped commit — a mixed
+# reset moves HEAD + the index only, never a file — so `git status` on the
+# VPS is clean after a ship. Needs the commit on origin (push first).
+if [ -n "$(git branch -r --contains "$HEAD" 2>/dev/null)" ]; then
+  do_ "$SSH" "$LOOM_VPS" "cd $LOOM_VPS_DIR && if [ -d .git ]; then git fetch -q origin && git reset -q $HEAD && echo '── VPS git record → $(git rev-parse --short HEAD)'; fi"
+else
+  echo "⚠ $(git rev-parse --short HEAD) is not pushed: the VPS's git record stays where it was (push, then re-run with --sync-only)" >&2
+fi
 if [ "$sync_only" = 1 ]; then
   echo "── synced only. Release with: scripts/ops/ship.sh <tag>"
   exit 0

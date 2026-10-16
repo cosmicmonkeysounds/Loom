@@ -164,6 +164,7 @@ check "ship refuses without a pre-deploy stamp" bash -c "cd '$ROOT' && ! LOOM_PR
 check "ship --force --dry-run prints rsync + release" bash -c "cd '$ROOT' && bash scripts/ops/ship.sh t-1 --force --dry-run | grep -q 'deploy/release.sh t-1 --commit'"
 
 check "ship --sync-only --dry-run syncs without releasing" bash -c "cd '$ROOT' && out=\$(bash scripts/ops/ship.sh --sync-only --force --dry-run) && echo \"\$out\" | grep -q rsync && ! echo \"\$out\" | grep -q release.sh"
+check "ship points the VPS git record at the shipped commit (pushed HEAD)" bash -c "cd '$ROOT' && { [ -z \"\$(git branch -r --contains HEAD 2>/dev/null)\" ] || bash scripts/ops/ship.sh --sync-only --force --dry-run | grep -q \"git reset -q \$(git rev-parse HEAD)\"; }"
 check "ship merges every .gitignore into the rsync" bash -c "cd '$ROOT' && bash scripts/ops/ship.sh t-1 --force --dry-run | grep -q -- '--filter=:- .gitignore'"
 # A real (listing-only) rsync over this checkout: git-ignored secrets never ship.
 made=()
