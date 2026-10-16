@@ -117,6 +117,7 @@ describe('buildRooms with the identity projection (exact)', () => {
     score: 0,
     location: null,
     captured: false,
+    restricted: false,
     canEscape: true,
     pendingChoice: null,
     decisionChannel: null,
@@ -183,14 +184,17 @@ describe('buildRooms with the identity projection (exact)', () => {
       theme: 'plain',
       faction: 'Mods',
       guests: [
-        { id: 'g1', name: 'Ada', faction: 'Mods', captured: false, location: null },
-        { id: 'g2', name: 'Bo', faction: null, captured: false, location: null },
+        { id: 'g1', name: 'Ada', faction: 'Mods', captured: false, restricted: false, location: null },
+        { id: 'g2', name: 'Bo', faction: null, captured: false, restricted: false, location: null },
       ],
       channels: [{ id: 'room:backroom', kind: 'private', title: '# the-backroom', spaceId: 'internet', member: true, canPost: true, threadable: true }],
       spaces: [],
       interactions: [],
       legacyCapture: false,
       codex: [],
+      codexTotal: 0,
+      quests: [],
+      questTotal: 0,
       agents: [],
     }
     const rooms = buildRooms({ ...INPUT, perspective: 'Greeter', lens: { kind: 'performer', id: 'Greeter', view } })

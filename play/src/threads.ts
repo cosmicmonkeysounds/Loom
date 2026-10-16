@@ -31,6 +31,7 @@ export function channelHead(id: string): { kind: ChannelKind; title: string } {
   if (id === "lobby") return { kind: "lobby", title: "Lobby" };
   if (id === CODEX_ROOM) return { kind: "codex", title: "Codex" };
   if (id === QUEST_LOG) return { kind: "quests", title: "Quest Log" };
+  if (id === WALLET_ROOM) return { kind: "wallet", title: "Wallet" };
   if (id.startsWith("faction:")) return { kind: "faction", title: `#${id.slice(8).toLowerCase()}` };
   if (id.startsWith("dm:")) return { kind: "dm", title: prettyName(id.slice(3)) };
   if (id.startsWith("loc:")) return { kind: "location", title: prettyName(id.slice(4)) };
@@ -51,6 +52,8 @@ export const STORY_SPACE = "story";
 export const PINNED_SPACE = "pinned";
 export const CODEX_ROOM = "codex";
 export const QUEST_LOG = "quests";
+/** The pinned Wallet room — only when the story declares a `currency:`. */
+export const WALLET_ROOM = "wallet";
 export const SPACES: Record<string, { title: string; order: number }> = {
   [PINNED_SPACE]: { title: "Pinned", order: -2 },
   booth: { title: "Booth", order: -1 }, // the performer's tools, pinned on top

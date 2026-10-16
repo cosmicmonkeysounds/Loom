@@ -17,7 +17,7 @@ The mind file declares the hunt in its frontmatter (never shown to a model):
       match: [pickles, 1978]                      # extra words a claim may use
                                                   #   instead (answer words; never
                                                   #   shown to any model)
-      lore: ["▒ STAMPED"]                          # a codex entry whose title or
+      lore: ["▒ HUNT ANSWER"]                      # a codex entry whose title or
                                                   #   text holds one of these is a
                                                   #   hunt answer
 

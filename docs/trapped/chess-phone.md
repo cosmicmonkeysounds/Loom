@@ -1,3 +1,14 @@
+> **Superseded (Wave 4, 2026-10-16).** The Cold Lock is now **the King in the
+> simulation**: a `king` prop standing in the server-room doorway of the house
+> map (`house.json` `cold-lock-king`, door `server-door` with `guard`), fought on
+> the **tent tablet** (`reinstall/web`: walk up, ⚔ hit him to knock his chess
+> down a ladder, ♟ challenge him on a chess.js board; checkmate opens the door
+> in the simulation and the tablet posts `chess won` itself, journaled `by` the
+> tablet) — `docs/loom-reinstall.md` §3 *The King*. **This phone stays the
+> fallback (decision U17)** until the King is device-checked: the Lichess app
+> on the taped phone, and **♟ They beat the machine** on the winner's card.
+> Headsets show the King and a notice; they cannot fight him.
+>
 > Design/audit note from the 2026-10-14/15 planning sessions for *Trapped in the Internet* (see [SCHEDULE](../../core/examples/trapped-in-the-internet/SCHEDULE.md) / [CHECKLIST](../../core/examples/trapped-in-the-internet/CHECKLIST.md)). File:line citations are a snapshot of commit `6884a96`–`fba382b` and will drift.
 >
 > **Wave 1 status** (merged to master 2026-10-15, not yet deployed to the VPS; [OCT31 §5](../../core/examples/trapped-in-the-internet/OCT31.md)). The `chess/` kiosk app designed below was **not built** (S2 dropped): the taped phone runs the Lichess app (computer at level 2–3), and a host or Antivirus who saw the mate presses **♟ They beat the machine** on the winner's card (`beat_the_machine`; fallback: the admin `chess_won` INTERACTION, or the director firing `chess won`). **Built** (K-27 + N-06), the §5 story hook: from `Night.step >= 14` a win opens a 90 s `Kernel.disarmed_until` window that the `server_door_opened` rule respects (ring green, a latched alarm cleared, re-lock after), `rearm_server_room`, `chess lost` / `chess drawn` flavour rules (Trabolta gloats; nothing disarms), the *The Cold Lock* codex, and `force_majority_stay` / `force_majority_leave`. §1–4 and §6–8 remain a design.
@@ -276,7 +287,7 @@ switch to that. Phases: `idle` (practice) → `armed` ("AUTHENTICATE BY CHECKMAT
 
 ### Voice
 Trabolta taunts through the phone itself (canned lines, offline-safe), spoken via
-`/api/mod/tts` with the mod token, the same server voice as the terminals and the fake Alexa,
+`/api/mod/tts` with the mod token, the same server voice as the terminals and the house-announcements player (stagehand's `alexa` module),
 with `speechSynthesis` as the fallback. Examples: "Checkmate is a human fantasy." /
 "Again?" / on a win: "…That was not supposed to be possible." Optionally the story's `chess won`
 line also plays on the living-room TV.

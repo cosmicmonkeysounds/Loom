@@ -16,7 +16,7 @@ import type {
   RawLine,
   SpaceBody,
 } from "../../parser/index.ts";
-import { stripPrefix } from "../../parser/rust.ts";
+import { splitTopLevelCommas, stripPrefix } from "../../parser/rust.ts";
 import { FoldedIndex, foldName } from "../../parser/names.ts";
 import type { Bundle } from "../bundle.ts";
 import { vBool, vNumber, vString, type Value } from "../expr.ts";
@@ -155,6 +155,40 @@ export interface CharDef {
    *  stay out of every request's globals (a character's head never lands
    *  there). Default false. */
   secret: boolean;
+  /** `wallet: approver[, every N][, window <dur>]` / `wallet: minter[, limit N]
+   *  [, while <cond>]` — a role in the story's currency (see `CurrencyDef`).
+   *  A property, never a part: it keeps a bare character on the guest picker.
+   *  Null for everyone else. */
+  wallet: WalletRole | null;
+}
+
+/**
+ * A character's part in the currency (`CharDef.wallet`): the **approver**
+ * audits transfers (every Nth is held for an Approve, the rest settle after
+ * a window unless denied); the **minter** may pay every eligible person a
+ * stimulus, at most `limit` times. Whether the approver is a performer's
+ * booth or a guest's program is decided at the door, not here.
+ */
+export type WalletRole =
+  | { role: "approver"; every: number; windowMs: number }
+  | { role: "minter"; limit: number; while: string | null };
+
+/**
+ * Header `currency: <slot> as <Name>[, max N][, expiry <dur>]` — the story
+ * opts into a wallet. `slot` is the per-person world slot that *is* the
+ * balance (`score`), `name` the unit on every card. `approver` / `minter`
+ * are the first characters declaring each `wallet:` role (source order; a
+ * second is ignored). Null = no wallet anywhere.
+ */
+export interface CurrencyDef {
+  slot: string;
+  name: string;
+  /** Per-transfer cap (default 500). */
+  maxTransfer: number;
+  /** Request / offer lifetime (default 10 min). */
+  expiryMs: number;
+  approver: { id: string; every: number; windowMs: number } | null;
+  minter: { id: string; limit: number; while: string | null } | null;
 }
 
 /** A compiled `CODEX` entry — a unit of shareable lore (Loom 4 §10.1). */
@@ -267,6 +301,9 @@ export interface SimModel {
   /** Header `directory:` — `everyone` lists every participant to every
    *  guest; unset keeps the acquaintance-only roster. */
   directory: string | null;
+  /** Header `currency:` — the story's wallet (`currency: score as Truthcoin`).
+   *  Null = no wallet anywhere. */
+  currency: CurrencyDef | null;
   factions: Map<string, FactionDef>;
   locations: Map<string, LocationDef>;
   roles: Map<string, RoleDef>;
@@ -307,6 +344,7 @@ export function compileModel(bundle: Bundle): SimModel {
     quests: new Map(),
     questIndex: new FoldedIndex(),
     directory: null,
+    currency: null,
     factions: new Map(),
     locations: new Map(),
     roles: new Map(),
@@ -337,6 +375,8 @@ export function compileModel(bundle: Bundle): SimModel {
     if (model.theme === null && themeProp !== undefined) model.theme = themeProp.value.trim();
     const dirProp = entry.file.header.properties.get("directory");
     if (model.directory === null && dirProp !== undefined) model.directory = dirProp.value.trim().toLowerCase();
+    const curProp = entry.file.header.properties.get("currency");
+    if (model.currency === null && curProp !== undefined) model.currency = parseCurrency(curProp.value);
 
     for (const item of entry.file.items) {
       if (item.kind === "beat") {
@@ -486,6 +526,18 @@ export function compileModel(bundle: Bundle): SimModel {
   for (const ch of model.channels.values()) {
     const space = ensureSpace(model, ch.spaceId);
     if (!space.channelIds.includes(ch.id)) space.channelIds.push(ch.id);
+  }
+  // The currency's roles: the first character declaring each `wallet:` role
+  // wins (source order). Without a `currency:` header a `wallet:` line is inert.
+  if (model.currency !== null) {
+    for (const c of model.characters.values()) {
+      if (c.wallet === null) continue;
+      if (c.wallet.role === "approver" && model.currency.approver === null) {
+        model.currency.approver = { id: c.id, every: c.wallet.every, windowMs: c.wallet.windowMs };
+      } else if (c.wallet.role === "minter" && model.currency.minter === null) {
+        model.currency.minter = { id: c.id, limit: c.wallet.limit, while: c.wallet.while };
+      }
+    }
   }
   return model;
 }
@@ -690,7 +742,76 @@ function charDef(id: string, body: CharacterBody): CharDef {
     avatar: avatarsOf(body.properties.get("avatar")?.value),
     wiki: body.properties.get("wiki")?.value.trim() || null,
     secret: body.properties.get("secret")?.value.trim() === "true",
+    wallet: walletRoleOf(body.properties.get("wallet")?.value),
   };
+}
+
+/** Parse `wallet: approver[, every N][, window <dur>]` / `wallet: minter[,
+ *  limit N][, while <cond>]` (clauses in any order, case-insensitive role).
+ *  Defaults: every 3, window 60s; limit 3, no `while` (= everyone with a
+ *  balance). Anything else — a typo, a missing role — reads null. */
+export function walletRoleOf(raw: string | undefined): WalletRole | null {
+  if (raw === undefined) return null;
+  const parts = splitTopLevelCommas(raw).map((p) => p.trim());
+  const role = (parts.shift() ?? "").toLowerCase();
+  if (role === "approver") {
+    let every = 3;
+    let windowMs = 60_000;
+    for (const clause of parts) {
+      const m = /^(every|window)\s+(.+)$/iu.exec(clause);
+      if (m === null) return null;
+      if (m[1]!.toLowerCase() === "every") {
+        const n = Number(m[2]);
+        if (!Number.isInteger(n) || n < 1) return null;
+        every = n;
+      } else {
+        const ms = parseDuration(m[2]!);
+        if (ms === null) return null;
+        windowMs = ms;
+      }
+    }
+    return { role: "approver", every, windowMs };
+  }
+  if (role === "minter") {
+    let limit = 3;
+    let cond: string | null = null;
+    for (const clause of parts) {
+      const m = /^(limit|while)\s+(.+)$/iu.exec(clause);
+      if (m === null) return null;
+      if (m[1]!.toLowerCase() === "limit") {
+        const n = Number(m[2]);
+        if (!Number.isInteger(n) || n < 0) return null;
+        limit = n;
+      } else {
+        cond = m[2]!.trim();
+      }
+    }
+    return { role: "minter", limit, while: cond };
+  }
+  return null;
+}
+
+/** Parse the header `currency: <slot> as <Name>[, max N][, expiry <dur>]`
+ *  (roles are resolved later, from the characters). Unparseable → null. */
+export function parseCurrency(raw: string): CurrencyDef | null {
+  const m = /^([A-Za-z_][A-Za-z0-9_]*)\s+as\s+([^,]+?)\s*(?:,(.*))?$/su.exec(raw.trim());
+  if (m === null) return null;
+  const def: CurrencyDef = { slot: m[1]!, name: m[2]!.trim(), maxTransfer: 500, expiryMs: 600_000, approver: null, minter: null };
+  if (def.name === "") return null;
+  for (const clause of splitTopLevelCommas(m[3] ?? "").map((c) => c.trim()).filter((c) => c !== "")) {
+    const cm = /^(max|expiry)\s+(.+)$/iu.exec(clause);
+    if (cm === null) return null;
+    if (cm[1]!.toLowerCase() === "max") {
+      const n = Number(cm[2]);
+      if (!Number.isInteger(n) || n < 1 || n > 1_000_000) return null;
+      def.maxTransfer = n;
+    } else {
+      const ms = parseDuration(cm[2]!);
+      if (ms === null) return null;
+      def.expiryMs = ms;
+    }
+  }
+  return def;
 }
 
 /** An authored `hold:` line, surrounding quotes optional. */
@@ -808,6 +929,10 @@ export const BuiltinVerb = {
   Captured: "captured",
   Released: "released",
   Escape: "escape",
+  /** `restrict who` shrank their app (`when restricted for guest:`). */
+  Restricted: "restricted",
+  /** `unrestrict who` lifted it. */
+  Unrestricted: "unrestricted",
   Revealed: "revealed",
   /** A codex entry landed in someone's hands (Loom 4 §10.1):
    *  `when guest learns The Sandy File:`. */
@@ -882,6 +1007,8 @@ const VERB_SYNONYMS: ReadonlyMap<string, string> = new Map([
   ["betray", "betray"], ["betrays", "betray"], ["betrayed", "betray"],
   ["captured", "captured"], ["capture", "captured"],
   ["released", "released"], ["release", "released"],
+  ["restricted", "restricted"], ["restrict", "restricted"],
+  ["unrestricted", "unrestricted"], ["unrestrict", "unrestricted"],
   ["escape", "escape"], ["escapes", "escape"], ["escaped", "escape"],
   ["revealed", "revealed"], ["reveal", "revealed"],
   ["removed", "removed"], ["remove", "removed"],

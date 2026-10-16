@@ -28,7 +28,7 @@ describe.each([
     }
   });
 
-  it("reaches every room from the spawn", () => {
+  it("reaches every room from the spawn — but the Server Room, whose door the King guards", () => {
     for (const room of house.rooms) {
       const [x, z] = samplePoint(house, room);
       const y = house.floors.find((f) => f.id === room.floor)!.elevation;
@@ -36,8 +36,29 @@ describe.each([
       expect(locate(house, to).room).toBe(room.id);
       const path = route(house, house.spawn.pos, to);
       if (room.id === house.spawn.room) expect(path).toHaveLength(2);
+      else if (room.id === "server-room") expect(path, "the guarded door is shut for routing").toHaveLength(2);
       else expect(path.length, room.id).toBeGreaterThan(2);
     }
+  });
+
+  it("the King guards the Server Room's door: a solid king prop in the doorway, and the room routes once the guard is lifted", () => {
+    const door = house.doors.find((d) => d.id === "server-door")!;
+    expect(door.guard).toBe("cold-lock-king");
+    const king = house.props.find((p) => p.id === door.guard)!;
+    expect(king.kind).toBe("king");
+    expect(king.room).toBe(door.a);
+    expect(propSolid(king)).toBe(true);
+    expect(king.hp).toBe(4);
+    expect(king.signals).toEqual({ won: "chess won", lost: "chess lost", drawn: "chess drawn" });
+    expect(king.armed).toEqual({ path: "Night.step", min: 14 });
+    // He stands in the gap: a body (radius 0.25) can't pass on either side.
+    expect(Math.hypot(king.pos[0] - door.at[0], king.pos[2] - door.at[1])).toBeLessThan(0.5);
+    const inside: Vec3 = [-5, -2.7, 9.5];
+    expect(route(house, house.spawn.pos, inside)).toHaveLength(2);
+    const open: HouseMap = { ...house, doors: house.doors.map((d) => (d.id === door.id ? { ...d, guard: undefined } : d)), props: house.props.filter((p) => p.id !== king.id) };
+    const path = route(open, open.spawn.pos, inside);
+    expect(path.length).toBeGreaterThan(2);
+    expect(path.some((p) => p[0] === door.at[0] && p[2] === door.at[1])).toBe(true);
   });
 
   it("puts every terminal on a wall, facing into its room", () => {
@@ -96,7 +117,7 @@ describe.each([
       [-1.65, 0, 5.65], // round the stair hole's north-east corner
       [-2.45, 0, 6], // the stair's head, in the hall
       [-2.45, -2.7, 10], // its foot
-      [-1.65, -2.7, 10.35], // round the stair's south-east corner
+      [-1.65, -2.7, 10.3], // round the King's obstacle corner (a hair short of the stair's south-east one)
       [-1.65, -2.7, 5.65], // and its north-east one
       [-3, -2.7, 4.5], // the laundry door
       [-6.65, -1.85, 4.4], // the duck on the dryer

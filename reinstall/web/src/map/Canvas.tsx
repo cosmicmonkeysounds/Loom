@@ -398,8 +398,13 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
               ) : (
                 <polygon points={pointsAttr(propCorners(p))} fill={p.kind === "label" ? "#ffffe0" : (p.color ?? "#999")} />
               )}
+              {p.kind === "king" && (
+                <text x={p.pos[0]} y={p.pos[2]} className="king-glyph">
+                  ♔
+                </text>
+              )}
               {(p.label !== undefined || p.kind === "label") && (
-                <text x={p.pos[0]} y={p.pos[2]} className="prop-label">
+                <text x={p.pos[0]} y={p.pos[2] + (p.kind === "king" ? 0.45 : 0)} className="prop-label">
                   {p.label ?? p.id}
                 </text>
               )}

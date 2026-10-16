@@ -62,8 +62,8 @@ message lands in one channel kind:
 - **Private** (`pm:<a>:<b>`) — a guest-to-guest thread, opened from the
   **👥 People** directory. Only its two parties (and the operator) see it.
 
-**Pinned rooms — the Quest Log + the Codex (2026-10-02).** Two rooms sit
-in a **Pinned** space above everything else (`PINNED_SPACE`; fixed order
+**Pinned rooms — the Quest Log + the Codex (2026-10-02).** Two rooms (a
+third, Wallet, with a `currency:` story — below) sit in a **Pinned** space above everything else (`PINNED_SPACE`; fixed order
 via `roomOrder`). **📜 Quest Log** (`quests`, read-only): every quest the
 story handed the guest is a card (`kind: "quest"`, giver avatar, brief,
 status read off its thread by `questStatusOf`); tapping it opens the
@@ -84,6 +84,27 @@ guest asks first (*Switch this phone* / *Stay <name>*).
 Both stay out of a cutscene (`personalStream`). Tested in
 `test/quests.test.ts`.
 
+**🪙 Wallet (Oct 31 wave 4).** A story with a `currency:` header gives
+every guest a third pinned room, **Wallet** (`wallet`, `src/wallet.tsx`):
+the header's ⭐ score becomes a `BalancePill` that opens it; the footer
+offers **send / request / trade** (a `PeopleAmountSheet`, an `OfferSheet`
+to buy or sell a codex entry for coin, a `StimulusSheet` for the minter),
+and every transfer, request and offer is a card with its own thread
+(`kind: "wallet"`, `WalletCardView`, buttons from `walletButtonsFor`) —
+accept / decline / cancel, a countdown while a send waits in the
+approver's window. The approver's booth sees its held queue in *its*
+Wallet room with **Approve / Deny** (`/api/prime/wallet/{approve,deny}`);
+guests call `/api/guest/wallet/*`. `WalletActionsProvider` carries the
+calls to the cards. Tested in `test/wallet.test.tsx`.
+
+**📌 Pins + ⛔ restricted (Oct 31 wave 4).** A story's `pin "…"` is a
+sticky notice: `pins.ts` `activePins` keeps the newest pin per (room,
+key) until its `unpin` lands, and `PinnedRail` shows them above the
+stream (a `!` pin also alerts). A `restrict`ed guest keeps their DMs and
+the rooms the story named, read-only — the header says **⛔ restricted**,
+every action button is gone, check-in is refused — until the story lifts
+it. Tested in `test/pins.test.tsx`.
+
 **People (2026-09-10).** The **👥 People** sheet lists every guest
 and listed character with exactly the lore about them the viewer holds,
 plus **💬 Message**. Performers see what their character knows in the ☰
@@ -102,11 +123,15 @@ warning). **☰ → Keep my screen on** is an opt-in Screen Wake Lock
 "make a break for it" button.
 
 **Cards** (`src/widgets.tsx`) render a story's `show <kind>`: `captcha`,
-`image`, `poll`, `tutorial`, `pass`, and the 📝 **File a fact** card
+`image`, `poll`, `tutorial` (with a Bathroom Mode step when the story
+passes `bathroom:`), `pass`, the 📝 **File a fact** card
 (`show fact … with thread: Trabolta, questions: "H1: … | H2: …"`, K-24):
-pick a question, type an answer (≤ `FACT_MAX`, 200), tick *I'm certain* →
-`{question, answer, certain: true}` → `fact answered`; `with thread:` docks
-it in that character's DM.
+pick a question, type an answer (≤ `FACT_MAX`, 200), set the slider
+*Please select your confidence level in this response* (1–100) →
+`{question, answer, confidence}` → `fact answered` (the server judges it;
+the phone never sees the verdict), and the 💬 **answer** card (`show
+answer "…" … with question: "P1"`): one free-text line → `{text}` →
+`answer answered`. `with thread:` docks a card in that character's DM.
 
 **Push to a locked phone (K-31a, 2026-10-15).** A 🔔 **Get alerts** card
 (and a row in the ☰ / profile sheet) asks for notification permission
@@ -175,7 +200,11 @@ badges and sorts to the top, so a choice left unmade always pulls focus.
   recomposed for the booth: a pinned **Scanner** thread (camera via
   `BarcodeDetector`, else `jsQR` on a canvas — iPhone Safari — left on
   between passes; or manual id; `src/scanner.tsx` + pure `src/scan.ts`) + scan readouts, a read-only
-  **broadcast feed**, and one **conversation per guest** to scan into. An
+  **broadcast feed**, and one **conversation per guest** to scan into —
+  plus, since wave 4, the booth's own pinned **Quest Log / Codex / Inbox /
+  Wallet** rooms (the character's quests and lore, cards the story shows
+  the character, answered via `POST /api/prime/widget`; the approver's
+  Approve / Deny queue). An
   admin (performer who also enters the moderator passcode) additionally
   gets **hide/show** on every message and capture/release in each guest
   thread.
@@ -241,7 +270,9 @@ src/
   performer.tsx # the performer / booth app
   help.tsx      # the in-app Help window (searchable, role-aware; content from ../docs/help/play/)
   ui.tsx        # the role chooser
-  widgets.tsx   # show-cards registry (captcha / image / poll / tutorial / pass / 📝 fact)
+  widgets.tsx   # show-cards registry (captcha / image / poll / tutorial / pass / 📝 fact / 💬 answer)
+  wallet.tsx    # the Wallet room: BalancePill, cards, send / request / offer / stimulus sheets, approvals
+  pins.ts       # sticky notices: activePins → PinnedRail (chat.tsx)
   alerts.ts     # `!` alerts: chime, buzz, banner, the last-seen mark (K-06 / N-07)
   push.ts       # Web Push subscribe / re-bind / release + visibility beacons (K-31a); push-card.tsx = the 🔔 card
   checkin.ts    # ?checkin=<slug> room signs (K-13) · resume.ts = ?pair= re-pair links (N-02)
@@ -250,7 +281,7 @@ src/
   main.tsx      # entry
   styles.css    # the AOL-chatroom skin (Win95 bevels, navy bars, serif lines)
 public/sw.js    # push-only service worker (no fetch handler) + manifest.webmanifest
-test/           # vitest: grouping · spaces · threads · help · widgets · alerts · push · checkin · resume · scan · …
+test/           # vitest: grouping · spaces · threads · help · widgets · wallet · pins · alerts · push · checkin · resume · scan · …
 index.html      # Vite entry
 vite.config.ts  # react plugin + dev proxy to LOOM_SERVER (default :7000)
 ```

@@ -131,7 +131,7 @@ phases:                                   # an authored cue per Night.phase
 secrets:                                  # a hunt he must never be able to check
   topics: [billboard, pet cemetery]       #   the questions' words (he is told never to judge these)
   match: [pickles, eleven years]          #   answer words (never shown to any model)
-  lore: ["▒ STAMPED"]                     #   codex entries holding this are hunt answers
+  lore: ["▒ HUNT ANSWER"]                 #   codex entries holding this are hunt answers
 ---
 You are the DIRECTOR OF THE MIND of Trabolta…
 ```
@@ -305,7 +305,7 @@ Internet*'s actual rig is [`trapped.house.yaml`](./trapped.house.yaml):
 Zigbee2MQTT group scenes + WLED presets for every `cue lights_*`, the
 per-room long form `<cue: lights, room: …, state: …>` (The Start Bar — the
 kitchen, dimmed to ~20%, never dark — The Desktop, The RAM), `screens_flicker`
-blinking the house, every `sound <name>` as a QLab OSC cue (but `alexa_chime` → the `alexa`
+blinking the house, every `sound <name>` as a QLab OSC cue (but `announce_chime` → the `alexa`
 player), `do announce` to the `alexa` speaker, `do door server_room` to the ESP32's door
 **indicator** (`show/serverroom/lock`, the one retained command; there is
 no maglock), `lights_alarm` to the server-room box's own siren
@@ -356,7 +356,7 @@ internet down. Fallbacks: `say -a <device>`, then plain `say`.
 fetched at boot and retried each minute), and falls back to the `say`
 ladder above. The same announcement also reaches every wall terminal
 provisioned with `&announce=1` (OCT31 N-09). One announcement at a time;
-`show/chime` (the story's `sound alexa_chime`) rings the chime alone
+`show/chime` (the story's `sound announce_chime`) rings the chime alone
 unless an announcement started in the last 10 s. One player per machine
 (`player.lock`): a second one stands by. Health on `health/alexa`.
 

@@ -632,7 +632,8 @@ describe("being anyone — the mod reads a participant's own projection", () => 
     expect(asGuest.json).toEqual(JSON.parse(JSON.stringify({ ...guestView(rt.liveSim!, id, "dm:Recruiter"), answered: [], avatars: {} })));
     const asPrime = await get(rt, "/api/state?role=prime&as=Recruiter");
     expect(asPrime.status).toBe(200);
-    expect(asPrime.json).toEqual(JSON.parse(JSON.stringify({ ...primeView(rt.liveSim!, "Recruiter"), avatars: {} })));
+    // (plus the booth's own `answered` cards list — empty here)
+    expect(asPrime.json).toEqual(JSON.parse(JSON.stringify({ ...primeView(rt.liveSim!, "Recruiter"), answered: [], avatars: {} })));
     expect((await get(rt, "/api/state?role=guest&as=nobody")).status).toBe(404);
     expect((await get(rt, "/api/state?role=prime&as=Nobody")).status).toBe(404);
     expect((await get(rt, `/api/state?role=guest&as=${id}`, false)).status).toBe(403);
@@ -802,5 +803,27 @@ describe("the mod feed's bandwidth", () => {
     const last = a.events("snapshot").slice(-1)[0] as { directors?: string[] };
     expect(b.events("snapshot")[0]).toEqual(last);
     rt.dispose();
+  });
+});
+
+describe("/api/mod/signal `label`", () => {
+  it("journals `label` as `by` for a mod-token caller and keeps an author's name", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-mod-"));
+    dirs.push(d);
+    const store = new Store(d);
+    const rt = new EventRuntime({ eventId: "evt", store, codes: CODES, scenarioName: "x", scenarioSource: SCENARIO, joinBase: () => "http://localhost" });
+    const id = await withGuest(rt);
+    // A device holding the mod token (`by` = the generic "Director") names
+    // itself — trimmed, capped at 60 chars.
+    expect((await post(rt, "/api/mod/signal", { name: "lockdown", subject: id, label: "  Tent tablet  " })).status).toBe(200);
+    expect((await post(rt, "/api/mod/signal", { name: "lockdown", subject: id, label: "x".repeat(80) })).status).toBe(200);
+    // An author session's own name is never overridden by a label.
+    expect((await postAs(rt, "/api/mod/signal", { name: "lockdown", subject: id, label: "Tent tablet" }, "Ada")).status).toBe(200);
+    // No label → the generic attribution, and the label never leaks onto the next commit.
+    expect((await post(rt, "/api/mod/signal", { name: "lockdown", subject: id })).status).toBe(200);
+    await post(rt, "/api/mod/set", { id, field: "score", value: 7 });
+    const signals = store.readJournal().filter((l) => l.m === "signal");
+    expect(signals.map((l) => l.by)).toEqual(["Tent tablet", "x".repeat(60), "Ada", "Director"]);
+    expect(store.readJournal().find((l) => l.m === "setScore")?.by).toBe("Director");
   });
 });

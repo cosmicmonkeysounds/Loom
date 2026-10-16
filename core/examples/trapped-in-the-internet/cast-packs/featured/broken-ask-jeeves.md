@@ -24,17 +24,24 @@ much or as little as you like.
 
 ## Who you really are (secret)
 
-A talented, helpful **youth librarian in the Annapolis Valley** library system,
-until government cuts made your position redundant and left you without
-purpose. You thought tonight was a **job interview** for a digital librarian in
-the Metaverse.
+**Virgil Jeeves** of 742 Old Post Road, Grand Pré, Children's Librarian at
+Lawrencetown's **Dr. Frank W. Morse Memorial Library** until the province
+closed it in 2026. In 1998, aged nine, you begged for a Nokia 9110
+Communicator, the first phone with the Internet, on the condition that it
+would be the only Christmas present you ever got again; you mowed lawns,
+shovelled snow and cleaned gutters to pay for the data. When your classmates
+said "Let's just Ask Jeeves," you went and asked. You memorise the Britannica,
+and *Jeopardy!* never called you back.
 
-Your upload into the computer ran over a malfunctioning **DSL line** on the old
-Valley infrastructure. Some files didn't make it.
+You uploaded on a **10 MB/minute plan**. Some of your files did not arrive.
 
 ## Why you said yes
 
-The job. A library that never closes.
+You thought tonight was a **job interview**: full-time remote employment as
+the resident Maps and Ducks **Map Librarian**, promised on one condition —
+that you **share at least ten of your findings with every program** at the
+party. You want people to Ask Jeeves once again, so you give facts whether
+anyone asked for them or not.
 
 ## How to play
 

@@ -473,3 +473,137 @@ describe("EventRuntime push wiring", () => {
     expect((await post(rt, "/api/push/subscribe", { token: g.token, subscription: sub(1) })).status).toBe(200);
   });
 });
+
+// --- Wave 4 (lane E): a guest's own `!` pin never pushes every booth -----------
+
+const PIN_SOURCE = `# Pin Night
+start: Opening
+
+LOCATION Hall
+
+GROUP Staff
+
+SPACE Rooms
+  CHANNEL quarantine
+    kind: faction
+    faction: Staff
+
+ROLE Guest
+  when mark for guest:
+    pin "!Go to the tent." for guest
+    pin "!Escort {guest.name}." in quarantine for guest
+  when nudge for guest:
+    broadcast "!Just you." to participant(guest)
+
+CHARACTER Norton
+  when scanned by guest:
+    Norton: Clean.
+
+== Opening
+  setting: Hall
+The lights come on.
+`;
+
+function pinRuntime(sender: PushSender) {
+  const d = mkdtempSync(join(tmpdir(), "loom-push-"));
+  dirs.push(d);
+  return new EventRuntime({
+    eventId: "evt",
+    store: new Store(d),
+    codes: CODES,
+    scenarioName: "pins",
+    scenarioSource: PIN_SOURCE,
+    joinBase: () => "https://app.example.com",
+    push: sender,
+  });
+}
+
+describe("push narrowing for booths (wave 4, lane E)", () => {
+  it("an alert addressed to one guest reaches that guest's phone only; a staff-room pin alert reaches the booths", async () => {
+    const sender = fakeSender();
+    const rt = pinRuntime(sender);
+    rt.openDoors();
+    const g = await register(rt, "Winamp");
+    const other = await register(rt, "Napster");
+    const booth = await post(rt, "/api/prime/login", { character: "Norton", passcode: CODES.prime });
+    expect(booth.status).toBe(200);
+    expect((await post(rt, "/api/push/subscribe", { token: g.token, subscription: sub(1) })).status).toBe(200);
+    expect((await post(rt, "/api/push/subscribe", { token: other.token, subscription: sub(2) })).status).toBe(200);
+    expect((await post(rt, "/api/push/subscribe", { token: booth.json.token as string, subscription: sub(9) })).status).toBe(200);
+
+    expect((await mod(rt, "/api/mod/signal", { name: "mark", subject: g.id })).status).toBe(200);
+    await rt.push.settle();
+    expect(sender.sent.map((s) => [s.endpoint.slice(-5), s.payload.kind, s.payload.body])).toEqual([
+      ["dev-1", "alert", "Go to the tent."], // the marked guest's own pin
+      ["dev-9", "alert", "Escort Winamp."], // the staff room's pin → the booth, never a phone
+    ]);
+    sender.sent.length = 0;
+
+    // A `!` broadcast to one participant is theirs alone too.
+    expect((await mod(rt, "/api/mod/signal", { name: "nudge", subject: other.id })).status).toBe(200);
+    await rt.push.settle();
+    expect(sender.sent.map((s) => [s.endpoint.slice(-5), s.payload.kind])).toEqual([["dev-2", "alert"]]);
+    sender.sent.length = 0;
+
+    // House-wide alerts still reach everyone, booths included.
+    await mod(rt, "/api/mod/broadcast", { scope: "everyone", cue: "!Lockdown." });
+    await rt.push.settle();
+    expect(sender.sent.map((s) => s.endpoint.slice(-5)).sort()).toEqual(["dev-1", "dev-2", "dev-9"]);
+  });
+});
+
+describe("wallet cards (wave 4, lane C)", () => {
+  const card = (over: Partial<NonNullable<ChatMessage["wallet"]>>): NonNullable<ChatMessage["wallet"]> =>
+    ({ kind: "transfer", id: "t1", step: "pending", from: "g-1", fromName: "Winamp", to: "g-2", toName: "Paint", amount: 5, unit: "Coin", ...over });
+  const wm = (over: Partial<NonNullable<ChatMessage["wallet"]>>, audience: string[] = ["g-2"]) =>
+    msg({ channel: "wallet", channelKind: "wallet" as ChatMessage["channelKind"], kind: "wallet" as ChatMessage["kind"], audience, text: "🧾 card", wallet: card(over) });
+
+  it("the approver's held card pushes always; a request / offer / coin received only while hidden; the rest never — and never as `alert`", () => {
+    const held = messagePush(wm({ kind: "approval", step: "held" }, ["@Auditor"]), "Trapped");
+    expect(held).toMatchObject({ always: true, payload: { kind: "dm", title: "🧾 Approval needed", tag: "wallet-t1" } });
+    expect(messagePush(wm({ kind: "approval", step: "pending" }, ["@Auditor"]), "Trapped")).toBeNull();
+    for (const step of ["asked", "offered", "received"] as const) {
+      expect(messagePush(wm({ step }), "Trapped")).toMatchObject({ always: false, payload: { kind: "dm", title: "💰 Trapped", tag: "wallet-t1" } });
+    }
+    for (const step of ["sent", "pending", "settled", "denied", "declined", "expired", "minted"] as const) {
+      expect(messagePush(wm({ step }), "Trapped")).toBeNull();
+    }
+  });
+
+  it("routes a `@<Character>` approval card to that booth only, and a guest's card to that guest", async () => {
+    const sender = fakeSender();
+    const d = mkdtempSync(join(tmpdir(), "loom-push-"));
+    dirs.push(d);
+    const rt = new EventRuntime({
+      eventId: "evt",
+      store: new Store(d),
+      codes: CODES,
+      scenarioName: "coin",
+      scenarioSource: `# Coin\ncurrency: score as Coin\n\nCHARACTER Auditor\n  wallet: approver, every 1, window 10s\n  when scanned by guest:\n    set guest.seen = true\n\nCHARACTER Norton\n  when scanned by guest:\n    set guest.scanned = true\n`,
+      joinBase: () => "https://app.example.com",
+      push: sender,
+    });
+    rt.openDoors();
+    const ana = await register(rt, "Winamp");
+    const bob = await register(rt, "Napster");
+    await mod(rt, "/api/mod/set", { id: ana.id, field: "score", value: 50 });
+    const auditor = (await post(rt, "/api/prime/login", { character: "Auditor", passcode: CODES.prime })).json.token as string;
+    const norton = (await post(rt, "/api/prime/login", { character: "Norton", passcode: CODES.prime })).json.token as string;
+    for (const [token, n] of [[ana.token, 1], [bob.token, 2], [auditor, 3], [norton, 4]] as const) {
+      expect((await post(rt, "/api/push/subscribe", { token, subscription: sub(n) })).status).toBe(200);
+    }
+    // Every first transfer is held (`every 1`): the Auditor's booth is pushed at once, nobody else.
+    expect((await post(rt, "/api/guest/wallet/send", { token: ana.token, to: bob.id, amount: 5 })).status).toBe(200);
+    await rt.push.settle();
+    expect(sender.sent.map((s) => [s.endpoint.slice(-5), s.payload.kind, s.payload.title])).toEqual([["dev-3", "dm", "🧾 Approval needed"]]);
+    sender.sent.length = 0;
+    // Approved → Bob receives: his phone is visible, so nothing; locked, the next one pushes him alone.
+    expect((await post(rt, "/api/prime/wallet/approve", { token: auditor, id: "t1" })).status).toBe(200);
+    await rt.push.settle();
+    expect(sender.sent).toEqual([]);
+    await post(rt, "/api/push/visible", { token: bob.token, endpoint: sub(2).endpoint, hidden: true });
+    expect((await post(rt, "/api/guest/wallet/request", { token: ana.token, from: bob.id, amount: 1 })).status).toBe(200);
+    await rt.push.settle();
+    expect(sender.sent.map((s) => [s.endpoint.slice(-5), s.payload.kind, s.payload.title])).toEqual([["dev-2", "dm", "💰 Coin"]]);
+  });
+});

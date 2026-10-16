@@ -5,8 +5,9 @@
 // reinstalled, the watchlist, and every booth cue — is `TRAIT Enforcer`
 // (cast/kit.loom). What makes each of them themselves is below.
 //
-// Their backstories (Julie Norton, The Moderator, Yugi Moto, One Cent On
-// The Dollar) are personnel files hidden around the house, for Bugdom.
+// Their backstories are one identity entry each in codex/5-people.loom
+// plus two CHARACTER FACTS each in codex/9-facts.loom (from facts.json),
+// hidden in the Desktop's books for Bugdom.
 
 CHARACTER Norton Anti-Virus is Enforcer
   avatar: File:Norton-logo-2021.svg
@@ -31,16 +32,17 @@ CHARACTER McAfee Anti-Virus is Enforcer
 
   when truther_download:
     if Night.truther_sent != true:
-      reply 🪙 The # truthcoin-exchange is open. You are its broker: press 🪙 Pay or 🪙 Charge on a program's card to settle every trade. Take your cut in person.
+      reply 🪙 The # truthcoin-exchange is open. Every settled trade is posted there. Broker: set prices, match buyers to facts, take your cut in person. 🪙 Pay / 🪙 Charge are still yours for cash deals.
 
 CHARACTER Password Manager is Enforcer
   avatar: File:1password-logo.svg
   wiki: 1Password
   // Knows every code in the house. Notices when you get one wrong. Keeps
-  // the list of who is in which club. Yu-gi-oh! everywhere.
+  // the list of who is in which club. Sixteen elections, sixteen losses.
+  // Decides what gets left out.
 
   when wrong code for program:
-    Self: That's not a password I recognise. I recognise all of them. It's time to d-d-d-duel with the truth, {program.name}. Try to look less like you're guessing.
+    Self: That is not a password I recognise, {program.name}, and I have reviewed every one of them. Unsubstantiated claims are removed. Try to look less like you are guessing.
     reply 🔑 {program.name} entered a wrong code.
 
   when who joins Unlimited Power:
@@ -54,7 +56,10 @@ CHARACTER CRA Agent Software is Enforcer
   wiki: Canada Revenue Agency
   // A digital CRA Agent for one day that feels like eternity. Audits
   // Truthcoin, to the cent. Especially the cent.
+  // The wallet's approver: every third transfer waits in this booth's
+  // Wallet room for Approve / Deny; any other one can be denied for 60 s.
+  wallet: approver, every 3, window 60s
 
   when truther_download:
     if Night.truther_sent != true:
-      reply 🧾 Truthcoin is trading in # truthcoin-exchange. Audit it: press 🪙 Charge on any program that profits without declaring it.
+      reply 🧾 Every program has a Wallet now. Every third transfer waits in your Wallet room for Approve; any transfer can be denied for 60 seconds. Elaborate security questions encouraged.

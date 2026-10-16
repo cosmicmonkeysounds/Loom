@@ -856,6 +856,14 @@ func _test_main_and_game() -> void:
 		_check(b.get_node_or_null("Ramp_%s" % s["id"]) != null, "main: ramp %s" % s["id"])
 	for t: Dictionary in house["terminals"]:
 		_check(b.get_node_or_null("Terminal_%s" % t["id"]) != null, "main: terminal screen %s" % t["id"])
+	# The King (a `king` prop) stands at the cold door, solid, with a crown.
+	var king_prop: Dictionary = {}
+	for pr: Dictionary in house["props"]:
+		if str(pr.get("kind", "")) == "king":
+			king_prop = pr
+	_check(not king_prop.is_empty() and b.get_node_or_null("Prop_%s" % king_prop.get("id", "")) != null, "main: the king stands at the cold door")
+	_check(not king_prop.is_empty() and HouseGeometry.prop_solid(king_prop), "house: the king is solid")
+	_check(not king_prop.is_empty() and b.get_node_or_null("Prop_%s" % king_prop.get("id", "")).get_child_count() >= 3, "main: the king has a body, a crown and his name")
 	for r: Dictionary in house["rooms"]:
 		_check(b.get_node_or_null("Label_%s" % r["id"]) != null, "main: room label %s" % r["id"])
 	_test_builder_geometry(b, house)
@@ -984,6 +992,24 @@ func _test_main_and_game() -> void:
 	player.teleport(HouseFrames.vec(kitchen), 0.0)
 	link.give_house(house)
 	_check(_v3(player.feet(), HouseFrames.vec(kitchen)), "game: a remap where they still stand keeps them put")
+	link.session_over.emit("test")
+
+	# The King (U16): a headset near him is told the fight is the tablet's,
+	# once per approach; the guarded door never opens here.
+	link.assignment_received.emit(_assignment(house, "s-3k", true))
+	game.hud.notice("")
+	player.teleport(HouseFrames.vec([-1.6, -2.7, 11.2]), 0.0)
+	game._process(0.016)
+	_check(sub.text.begins_with("The King is fought"), "game: near the King the HUD says he is fought on the tablet (%s)" % sub.text)
+	game.hud.notice("")
+	game._process(0.016)
+	_check(sub.text == "", "game: … and not again while still beside him")
+	player.teleport(HouseFrames.vec([2.0, -2.7, 11.2]), 0.0)  # across the hall, > 3 m away
+	game._process(0.016)
+	player.teleport(HouseFrames.vec([-1.6, -2.7, 11.2]), 0.0)
+	game._process(0.016)
+	_check(sub.text.begins_with("The King is fought"), "game: … but again on the next approach")
+	_check(HouseRoute.route(house, house["spawn"]["pos"], [-5.0, -2.7, 9.5]).size() == 2, "route: the guarded door is shut for routing")
 	link.session_over.emit("test")
 
 	# Headset off, on a wall clock (a sleeping Quest runs no frames).

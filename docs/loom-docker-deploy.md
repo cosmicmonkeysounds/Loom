@@ -15,7 +15,7 @@ have a domain everything under the app address is reachable by plain
 | `https://app.mapsandducks.com/` | The **play** app — guests/performers join here |
 | `https://app.mapsandducks.com/edit/` | The **editor** — sign up, write, run + deploy events |
 | `https://app.mapsandducks.com/terminal/` | The **wall terminals** — the kiosk tablets around the house (`terminal/`) |
-| `https://app.mapsandducks.com/reinstall/` | The **web reinstallation game** — the tent tablet's golden-duck hunt (`reinstall/web/`) |
+| `https://app.mapsandducks.com/reinstall/` | The **web reinstallation game** — the tent tablet's golden-duck hunt, and the King at the server-room door (`reinstall/web/`) |
 | `https://app.mapsandducks.com/reinstall/map` | The **house map** viewer + editor for directors |
 | `…/api/*`, `…/e/*` | The event server's API (used by both apps) |
 
@@ -217,7 +217,9 @@ domain's MX points (e.g. ImprovMX → your Gmail) — Resend only sends.
   `LOOM_RL_LOGIN_FAILURES` (wrong passcodes per IP before the lockout,
   10/300), `LOOM_RL_REDEEM_MISSES` (wrong codex codes per guest, then 429
   and nothing journaled, 8/60), `LOOM_RL_WIDGETS` (widget answers per
-  guest, 20/60). At the party every phone on the house Wi-Fi reaches the
+  guest, 20/60), `LOOM_RL_WALLET` (wallet calls per guest — sends,
+  requests, offers, the stimulus — 30/60, the only brake on a phone
+  flooding the approver's queue). At the party every phone on the house Wi-Fi reaches the
   VPS from **one** public IP, so the night's `.env` raises the per-IP ones:
   `LOOM_RL_RESOLVE=600`, `LOOM_RL_REGISTER=400`,
   `LOOM_RL_LOGIN_FAILURES=100/300`.
@@ -439,6 +441,28 @@ file. Never point `LOOM_HOUSE` at a `spatial-house.json`
 inside `/data` — that is an event's own save file, and the show map and
 that save would become one file.
 
+**The facts judge's key** rides the same way. The show's `facts.json` (the
+hunt questions and answers, the scannable facts, the truth-or-dare
+questions — the one file the team edits; `pnpm --filter @loom/core
+titi:facts` writes `generated/questions.loom`, `codex/9-facts.loom` and
+the print stacks from it, and `titi:facts --check` is a predeploy gate) is
+a **project file** beside `house.json`: `scripts/sync-show.sh` pushes it,
+a launch snapshots it (on the event row and in the state volume as
+`project-facts.json`), a reload refreshes it, and that copy is the key the
+server judges every 📝 filing against (`Night.judge_mode` `auto` /
+`review`). `LOOM_FACTS` is only the fallback for an event with no project
+copy (the LAN default event): default `facts.json` beside the house map
+(`LOOM_HOUSE`'s directory, else the show's in the image); point it at a
+mounted file the same way as `LOOM_HOUSE` if you ever need to.
+
+**Deploy order (Wave 4).** Ship the server **before** the first
+`sync-show` that carries `facts.json` or the maps with the King: an older
+server has no judge (every filing lands in `# hosts` as "could not be
+judged") and its `validateHouse` refuses a map with a `kind: "king"` prop
+or a `guard` door, so the sync would stop before writing. Then remove any
+stale kokoro container (*The voice* below) and any `spatial-house.json`
+left from a pre-Wave-2 save.
+
 The **VR game** (`reinstall/vr/`, Godot, Quest 3) is not in any image:
 export it to the headsets from a laptop (`reinstall/vr/README.md`) and
 point each headset's `station.json` at the public URL + the moderator
@@ -557,7 +581,9 @@ It tunnels to the VPS's Postgres container over SSH (the db publishes no
 port; the password is read from the VPS's `.env`), runs
 `core/scripts/sync-example.ts` through the tunnel, and reloads the running
 event over `https://app…` — a real cut, every guest re-joins, so **never
-after doors**. `scripts/accept/k01.sh` (needs `LOOM_MOD_CODE`) checks the
+after doors**. It carries `facts.json` and the house maps with the
+story, so a server that predates them must be shipped **first** (§5¾
+*Deploy order*). `scripts/accept/k01.sh` (needs `LOOM_MOD_CODE`) checks the
 three front doors, that `/api/mod/codes` hands out the `LOOM_BASE_URL`
 origin, and that the SSE feed's 25 s pings arrive on time and uncompressed
 (the Caddyfile compresses everything *except* `*/events` and `*/stream`).
@@ -611,7 +637,7 @@ Mac to the VPS must work without a prompt; set `LOOM_VPS`
 
 | Where | Command | What it does |
 |---|---|---|
-| Mac | `scripts/ops/predeploy.sh` | Clean tree, `loomcheck --smoke` on the show, `pnpm -r typecheck` + `test`, stagehand `pytest`, the ops-script tests, compose parses → stamps the commit |
+| Mac | `scripts/ops/predeploy.sh` | Clean tree, `loomcheck --smoke` on the show, `titi:facts --check` (the generated hunt files match `facts.json`), `pnpm -r typecheck` + `test`, stagehand `pytest`, the ops-script tests, compose parses → stamps the commit |
 | Mac | `scripts/ops/ship.sh show-1031` | Refuses an unstamped commit, rsyncs (never anything git-ignored: `secrets.h`, `reinstall/vr/build/`, `*.local.yaml`, `.env`), then runs `deploy/release.sh show-1031 --commit <sha>` on the VPS. `--sync-only` stops after the rsync |
 | VPS | `deploy/release.sh <tag>` | Pre-release backup → build `loom-server:<tag>` + `loom-proxy:<tag>` → `LOOM_TAG=<tag>` in `.env` → `up -d` → waits for the healthcheck + the public URL → `~/loom-ops/releases.log`. Never rebuilds an existing tag. The **first** release on a box (empty log) first adopts what runs now as `pre-<tag>`, so the very first scripted release already has a rollback target (`--no-adopt` skips it) |
 | VPS | `deploy/release.sh --adopt <tag>` | Tags what runs **now** by hand, no rebuild (the first release does this for you) |
@@ -715,7 +741,14 @@ and send its alerts to the tech op and the second director, not only John.
 - **A saved house map was refused** — the map editor shows the
   validator's problems. `docker compose logs loom` shows `⚠️ … house
   map …` lines for an invalid saved map (the show's map is used instead)
-  and for a room whose `location` names no `LOCATION` in the story.
+  and for a room whose `location` names no `LOCATION` in the story. A
+  map refused for its `kind: "king"` prop or a door's `guard` means the
+  running server predates Wave 4 — ship it first (§5¾ *Deploy order*).
+- **📝 filings all land in `# hosts` as "could not be judged"** — the event
+  has no facts key: the project's `facts.json` was never synced (run
+  `scripts/sync-show.sh`, then Push draft), or the server predates the
+  judge. `docker compose logs loom` shows `⚠️ … facts …` for an invalid
+  key.
 - **Phones at the door get "too many requests" (429)** — the per-IP
   throttles: the whole house Wi-Fi is one IP. Raise `LOOM_RL_RESOLVE` /
   `LOOM_RL_REGISTER` / `LOOM_RL_LOGIN_FAILURES` (see §3 *Show settings*)

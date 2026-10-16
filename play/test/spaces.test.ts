@@ -17,9 +17,9 @@ function ch(id: string, spaceId: string, lastTs: number, decision = false): Chan
 }
 
 describe("groupBySpace — Discord sidebar sections", () => {
-  it("orders sections booth → story → guests (the performer's tools stay on top)", () => {
-    const groups = groupBySpace([ch("g", "guests", 1), ch("s", "booth", 1), ch("l", "story", 1)]);
-    expect(groups.map((g) => g.id)).toEqual(["booth", "story", "guests"]);
+  it("orders sections pinned → booth → story → guests (the performer's tools stay on top)", () => {
+    const groups = groupBySpace([ch("g", "guests", 1), ch("s", "booth", 1), ch("l", "story", 1), ch("quests", "pinned", 1)]);
+    expect(groups.map((g) => g.id)).toEqual(["pinned", "booth", "story", "guests"]);
   });
 
   it("titles each section from the space table", () => {

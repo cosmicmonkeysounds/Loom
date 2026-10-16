@@ -22,14 +22,22 @@
 
 | When | Press |
 |---|---|
-| any time | **🎀 Award a ribbon** · **🤝 Vouch for this program** |
+| any time | **🎀 Award a ribbon** · **🤝 Vouch for this program** · **🩹 Unmark: not going to the Internet** |
 | the summons (⏳ → 🚨) | scan a pass at the living-room door, or **📍 Checked in at the Desktop** |
 | Grok Prom | **💘 Said "You're the one that I want"** |
 | Y2K on | **♟ They beat the machine** (only if you **saw** the checkmate) |
 
-**Bathroom Mode:** guests turn it on from ☰ *Things you can do*. Your booth
-shows *🚻 X is in Bathroom Mode* and *🚻 X is back*. A guest in Bathroom Mode is
-excused from a summons. Remind people to turn it **off** when they come out.
+**Bathroom Mode:** the 🚻 button on every program's pass. They learn it three
+times: Clippy's tour ends on it (a step over the pass button: *tap 🚻 before
+you leave for Disk Cleanup, tap again when you're back*), the Installation
+Wizard repeats it in the tent, and your own scan greeting tells them to use
+it. Your booth shows *🚻 X is in Bathroom Mode* and *🚻 X is back*. A guest in
+Bathroom Mode is excused from a summons. Remind people to turn it **off** when
+they come out. A **marked** program (grey phone, the 🚨 card) has lost every
+button, Bathroom Mode included: point them at an Antivirus.
+
+**Your booth:** Scanner · Inbox · Codex · `# hosts` · `# quarantine` · the
+rooms · one thread per guest.
 
 **Radio:** ARRIVAL · HOLD · ALL STOP.
 
@@ -52,6 +60,9 @@ use it.
 
 - **Porch until ≈ 20:30**, then hand the door to the house manager (tell them
   which featured guests have arrived).
+- **Clearance:** every cleared program hears Task Manager introduce the four
+  hosts ("The Recycling Bin: hygiene and maintenance") in the app before
+  Clippy's tour.
 - **C1:** be in the living room. Clippy introduces you: hygiene and maintenance.
 - **All night:** Disk Cleanup is your domain. Keep the line moving, keep it
   clean, keep the Bathroom Mode joke alive. There is a hunt clue in there

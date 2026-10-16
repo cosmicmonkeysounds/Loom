@@ -21,19 +21,26 @@ fire ants. You notice every bug.
 
 ## Who you really are (secret)
 
-You worked an unhappy pet-store job, **selling crickets** and ants, and always
-dreamed of living inside an enormous VR version of Bugdom. Every day you rushed
-home to an old laptop to design concept assets for *Bugdom VR*. That's how you
-spent the last **ten years**.
+**Bea Nunes** of 2 Cricket Lane, Hubley. You sell **crickets** and ants at
+the Halifax Shopping Centre PetSmart to customers who only see them as lizard
+food; you would rather discuss the civilisation the crickets might establish.
+Every evening for **ten years** you opened an old laptop and built *Bugdom
+Reloaded*: a fallen branch that is housing or camouflage or a mate, depending
+on the bug; a puddle with a shoreline worth visiting; somewhere for every bug
+to go after King Thorax is defeated. Friends ask when it will be finished.
 
-One day, fire ants that got loose in your work lunchbox crawled into the
-laptop that held the only copy. Everything was lost. You fell into a catatonic
-panic and started writing down everything you'd done, to spend the rest of your
-life rebuilding it.
+Then fire ants from the pet store got into your lunchbox and escaped. The
+lunchbox was beside the laptop. The ants were inside the laptop. It held the
+**only copy**; you had always meant to arrange a backup. You sat in front of
+it for hours, then filled notebooks with everything you could remember, afraid
+that sleeping would cost you a detail, and told the fandom on DeviantArt you
+would rebuild.
 
 ## Why you said yes
 
-Jean Trabolta's offer: a VR world with **unlimited Bugdom**, right away.
+The invitation said **a hundred hours** can pass inside this machine without a
+single minute passing outside, that the hunt has a Special Bugdom Twist, and
+that King Thorax himself might make an appearance. You came for the time.
 
 ## How to play
 

@@ -23,7 +23,9 @@ SPACE The Operating System
     kind: open
     label: # general
 
-  // Opens when Clippy calls everyone to the Desktop (call_to_the_desktop).
+  // Opens for each program at Clearance (cast/kit.loom): the app help
+  // desk. Task Manager answers here and in his thread — from his phone,
+  // or the director from Run as him.
   CHANNEL task manager
     kind: open
     label: # task-manager

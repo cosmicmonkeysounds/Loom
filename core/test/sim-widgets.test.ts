@@ -156,3 +156,41 @@ broadcast "{program.name} took a card" to channel(backstage)
     expect(again.map((m) => m.audience)).toEqual([["g1"]]);
   });
 });
+
+// ───────────────────────── the `answer` kind (free text, keyed) ─────────────────────────
+
+describe("show answer — a free-text card keyed to a facts.json answer", () => {
+  const SRC = `# Answers
+start: Boot
+
+LOCATION Lobby
+  label: The Lobby
+
+ROLE Program
+  when someone joins:
+    -> Deal
+
+CHARACTER The Oracle
+  listed: true
+
+== Boot
+  setting: Lobby
+Nothing yet.
+
+== Deal
+  setting: Lobby
+show answer "Give me a line." to program with thread: The Oracle, question: "P1", max: 120, button: "Say it"
+`;
+
+  it('`show answer … with question: "P1"` carries the param, quoted (a bare P1 would evaluate to null); the server judges on it, never the client\'s', () => {
+    const sim = Sim.fromSources(SRC);
+    const w = sim.createPerson("g1", "Minesweeper").find((e): e is Extract<SimEvent, { type: "widget" }> => e.type === "widget");
+    expect(w).toBeDefined();
+    expect(w!.widget).toBe("answer");
+    expect(w!.text).toBe("Give me a line.");
+    expect(w!.params).toEqual({ thread: "The Oracle", question: "P1", max: "120", button: "Say it" });
+    const card = composeGuestMessages(sim, sim.createPerson("g2", "Winamp")).find((m) => m.kind === "widget");
+    expect(card?.channel).toBe("dm:The Oracle");
+    expect(card?.widget?.params["question"]).toBe("P1");
+  });
+});

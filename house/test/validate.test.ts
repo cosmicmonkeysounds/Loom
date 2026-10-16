@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { DUCK_MAX_RISE, buildWalls, mm, normalizeHouse, polygonProblems, validateHouse } from "../src/index.ts";
+import { DUCK_MAX_RISE, GUARD_REACH, buildWalls, guardWarnings, mm, normalizeHouse, polygonProblems, validateHouse } from "../src/index.ts";
 import type { HouseMap } from "../src/index.ts";
 import { FIXTURES, SHOW_HOUSE, TWO_FLOOR_HOUSE } from "./golden.ts";
 
@@ -357,5 +357,102 @@ describe("normalizeHouse", () => {
   it("keeps given spaces, completing partial ones", () => {
     const n = normalizeHouse({ ...raw("stair"), spaces: { vr: { yaw: 90 } as never } });
     expect(n.spaces["vr"]).toEqual({ offset: [0, 0, 0], yaw: 90, scale: 1 });
+  });
+});
+
+describe("king props and guarded doors", () => {
+  /** A king in the doorway of two-rooms' door `ab` (at [4, 1.5], room a). */
+  const king = (over: Partial<HouseMap["props"][number]> = {}): HouseMap["props"][number] => ({
+    id: "king",
+    room: "a",
+    kind: "king",
+    pos: [3.6, 0, 1.5],
+    size: [0.6, 1.9, 0.6],
+    yaw: -90,
+    hp: 4,
+    signals: { won: "chess won", lost: "chess lost", drawn: "chess drawn" },
+    armed: { path: "Night.step", min: 14 },
+    ...over,
+  });
+
+  it("accepts a king prop (solid by default) and a door it guards, and round-trips hp as given", () => {
+    const h = raw("two-rooms");
+    h.props.push(king());
+    h.doors[0]!.guard = "king"; // ab, at [4, 1.5]
+    const v = validateHouse(h);
+    expect(v.problems).toEqual([]);
+    expect(v.house!.props.find((p) => p.id === "king")).toMatchObject({ kind: "king", hp: 4, armed: { path: "Night.step", min: 14 } });
+    expect(v.house!.doors[0]!.guard).toBe("king");
+    const minimal = raw("two-rooms");
+    minimal.props.push(king({ hp: undefined, signals: undefined, armed: undefined }));
+    expect(validateHouse(minimal).problems).toEqual([]);
+    expect(validateHouse(minimal).house!.props.at(-1)!.hp).toBeUndefined();
+  });
+
+  it("refuses a guard that names no prop, a non-king, or a king in another room", () => {
+    refuses(
+      "two-rooms",
+      (h) => (h.doors[0]!.guard = "nobody"),
+      /^doors\[0\] "ab": guard names unknown prop "nobody"$/,
+    );
+    refuses(
+      "two-rooms",
+      (h) => {
+        h.props.push({ id: "crate", room: "a", kind: "box", pos: [3.6, 0, 1.5], size: [0.6, 0.6, 0.6] });
+        h.doors[0]!.guard = "crate";
+      },
+      /^doors\[0\] "ab": guard "crate" is a "box", not a king$/,
+    );
+    // A king in room b guards ab (b is one of its rooms) — but not the
+    // front door (a → outside), which b is not beside.
+    expect(
+      problems("two-rooms", (h) => {
+        h.props.push(king({ id: "far", room: "b", pos: [4.4, 0, 1.5] }));
+        h.doors[0]!.guard = "far";
+      }),
+    ).toEqual([]);
+    refuses(
+      "two-rooms",
+      (h) => {
+        h.props.push(king({ id: "far", room: "b", pos: [4.4, 0, 1.5] }));
+        h.doors[1]!.guard = "far";
+      },
+      /^doors\[1\] "front": guard "far" stands in room "b", not beside door "front"$/,
+    );
+  });
+
+  it("refuses hp outside 1–9, a bad signals object, a bad armed object, and hp / signals / armed on a box", () => {
+    refuses("two-rooms", (h) => h.props.push(king({ hp: 0 })), /^props\[0\] "king": hp must be an integer 1–9$/);
+    refuses("two-rooms", (h) => h.props.push(king({ hp: 2.5 })), /hp must be an integer 1–9/);
+    refuses("two-rooms", (h) => h.props.push(king({ hp: 10 })), /hp must be an integer 1–9/);
+    refuses("two-rooms", (h) => h.props.push(king({ signals: { won: "" } })), /signals must be \{won\?, lost\?, drawn\?\} of non-empty strings/);
+    refuses("two-rooms", (h) => h.props.push(king({ signals: { tied: "x" } as never })), /signals must be/);
+    refuses("two-rooms", (h) => h.props.push(king({ armed: { path: "", min: 1 } })), /armed must be \{path, min\}/);
+    refuses("two-rooms", (h) => h.props.push(king({ armed: { path: "Night.step" } as never })), /armed must be/);
+    const p = problems("two-rooms", (h) => h.props.push({ id: "crate", room: "a", kind: "box", pos: [1, 0, 1], size: [0.5, 0.5, 0.5], hp: 3, signals: { won: "x" }, armed: { path: "a", min: 1 } }));
+    expect(p).toEqual([
+      'props[0] "crate": "hp" is only for kind "king"',
+      'props[0] "crate": "signals" is only for kind "king"',
+      'props[0] "crate": "armed" is only for kind "king"',
+    ]);
+  });
+
+  it("warns (never refuses) when the guard stands more than a metre from its door", () => {
+    const h = raw("two-rooms");
+    h.props.push(king({ pos: [2.2, 0, 1.5] }));
+    h.doors[0]!.guard = "king";
+    const v = validateHouse(h);
+    expect(v.problems).toEqual([]);
+    expect(guardWarnings(v.house!)).toEqual([`door "ab": its guard "king" stands 1.8 m from the door (more than ${GUARD_REACH} m) — he is not in the doorway`]);
+    h.props[h.props.length - 1]!.pos = [3.6, 0, 1.5];
+    expect(guardWarnings(validateHouse(h).house!)).toEqual([]);
+    expect(guardWarnings(raw("two-rooms"))).toEqual([]);
+  });
+
+  it("the show's maps carry a king in the Server Room's doorway, standing in the hall", () => {
+    const show = validateHouse(JSON.parse(readFileSync(SHOW_HOUSE, "utf8"))).house!;
+    const door = show.doors.find((d) => d.guard !== undefined)!;
+    expect(door.id).toBe("server-door");
+    expect(guardWarnings(show)).toEqual([]);
   });
 });

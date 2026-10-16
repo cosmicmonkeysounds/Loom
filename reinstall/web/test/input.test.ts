@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CENTRED, combineInput, DEAD_ZONE, DRAG_DEGREES_PER_PX, isActive, keyDown, keyUp, response, stickVector, type InputSources, type KeyLike } from "../src/game/input.ts";
+import { CENTRED, combineInput, DEAD_ZONE, DRAG_DEGREES_PER_PX, GAME_KEYS, isActive, keyDown, keyUp, response, stickVector, type InputSources, type KeyLike } from "../src/game/input.ts";
 
 const src = (over: Partial<InputSources> = {}): InputSources => ({ keys: new Set(), left: CENTRED, right: CENTRED, drag: [0, 0], arrowsTurn: true, ...over });
 const keys = (...codes: string[]) => src({ keys: new Set(codes) });
@@ -122,5 +122,20 @@ describe("keyDown / keyUp — the held-key set", () => {
     keyDown(keys, ev("KeyD", { ctrlKey: true }));
     keyDown(keys, ev("KeyA", { altKey: true }));
     expect(keys.size).toBe(0);
+  });
+});
+
+describe("the King's keys", () => {
+  it("KeyC and Space are game keys (their defaults are suppressed) and never move the body", () => {
+    expect(GAME_KEYS.has("Space")).toBe(true);
+    expect(GAME_KEYS.has("KeyC")).toBe(true);
+    const held = new Set<string>();
+    const key = (code: string): KeyLike => ({ code, key: code, metaKey: false, ctrlKey: false, altKey: false });
+    expect(keyDown(held, key("KeyC"))).toBe(true);
+    expect(keyDown(held, key("Space"))).toBe(true);
+    const input = combineInput(src({ keys: held }));
+    expect(input.move).toEqual([0, 0]);
+    expect(input.turn).toBe(0);
+    expect(isActive(input)).toBe(false);
   });
 });

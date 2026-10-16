@@ -2,7 +2,7 @@
 title: The simulation (reinstallation)
 section: Guest Guide
 order: 11
-keywords: simulation, reinstallation, WebMD, Gerald, reinstall, VR, headset, tablet, joystick, stick, controls, chevrons, indicators, duck, golden duck, egg, tent, Internet, game, walk, wall screens, TV
+keywords: simulation, reinstallation, Installation Wizard, Gerald, reinstall, VR, headset, tablet, joystick, stick, controls, chevrons, indicators, duck, golden duck, egg, tent, backyard, tunnel, Internet, game, walk, wall screens, TV, marked, escort, the King, king, chess, server room, hit, challenge
 ---
 
 Some events have a **simulation**: a virtual copy of the house you're
@@ -10,10 +10,18 @@ standing in. In *Trapped in the Internet* it is how a corrupted program
 gets out of the Internet — prove you can follow instructions, and you are
 **reinstalled**. Anyone may play it; only the corrupted are released by it.
 
-When you are sent to the Internet, **WebMD**, your wellness companion,
-messages you with what happens next: why you are there, the headset or
-the tablet, Bathroom Mode, and where the exit is (it is clearly marked;
-it is for safety). Look for WebMD's thread in your app.
+## Being sent
+
+First you are **marked** for reinstallation — a host saw something
+(named on the Bingo card, a dare, a refused truth, an answer you
+weren't sure of). Your phone greys out, a pinned *🚨 GO TO THE INTERNET*
+tells you so, and an Antivirus comes to escort you through the Tube
+([Your pass](your-pass.md)). The Internet is the **tent in the
+backyard, at the end of the tunnel**. Once you are in it, the
+**Installation Wizard** messages you with what happens next: why you are
+there, the headset or the tablet, Bathroom Mode, and where the exit is
+(it is clearly marked; it is for safety). Look for the Installation
+Wizard's thread in your app. Click Next.
 
 ## Getting in
 
@@ -60,6 +68,22 @@ Golden Duck*.
 Wander off for two minutes without touching anything (or take the
 headset off) and the simulation ends — scan your pass to start again.
 
+## The King
+
+Down in the basement hall of the simulation a tall golden chess piece
+stands in the server-room doorway: **the King**, with a health bar. He
+is nothing to do with the duck — the chevrons never lead to him — but
+he guards a door the story may want open later in the night. **Only
+the tablet can fight him**: a headset just shows him and says so.
+
+Walk up and face him. **⚔ HIT** (or Space) lands a blow every second or
+so, and each one makes him dumber — *at full strength* → *rattled* →
+*reeling* → *dizzy* → *PAWNS ONLY*, a king with nothing but his eight
+pawns. **♟ CHALLENGE** (or C) opens a chessboard against him at whatever
+strength you've left him. Checkmate him and the door opens — and the
+story hears about it. Lose, and he holds; hit him again. He is fresh
+for the next player.
+
 ## Everyone is watching
 
 The **terminals** on the walls and the **TV** can show the simulation
@@ -72,4 +96,5 @@ the floor. Find the duck and every screen watching you celebrates. See
 [The terminals on the walls](terminals.md).
 
 Need the bathroom, or there's an emergency? Tap **🚻 Bathroom Mode** on
-your pass before you leave the tent.
+your pass before you leave the tent. The exit is clearly marked. It is
+for safety. It is not the way out — Gerald is the way out.

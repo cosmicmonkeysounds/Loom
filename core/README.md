@@ -33,18 +33,26 @@ server/
   spatial.ts     # the reinstallation games' SpatialHub (sessions, stations,
                  #   poses, the found check) — never journaled but the outcome
   routing.ts     # pure routing decisions (CSPs, sub-app paths, mod reads)
+  facts.ts       # the facts judge: a FactsBook off the project's facts.json,
+                 #   Night.judge_mode auto | review, the director's ledger
+  wallet.ts      # the WalletBook — a `currency:` story's transfers, requests,
+                 #   escrowed codex offers, the approver's queue, the stimulus
 examples/
   load.ts                    # multi-file project loader (main.loom first)
   trapped-in-the-internet/   # THE SHOW — the server's default scenario (Loom 4 surface):
                              #   a rogue AI, a house that is a computer, Computer Bingo,
-                             #   two Truth Scavenger Hunts + Moments of Truth, Truth Pong,
+                             #   two Truth Scavenger Hunts + Moments of Truth (judged
+                             #   from the team's facts.json, then the bottle), Truth Pong,
                              #   the Trust Chart, reinstallation in "the Internet", nine
-                             #   featured programs + a pool, a CODEX economy (132
-                             #   entries, 41 codes: wall QRs, files, puzzles, performers),
-                             #   16 quests, an LLM-voiced Trabolta (offline until Clippy
-                             #   introduces him), two factions racing for a majority,
-                             #   the server-room patch bay, and seven endings. Runbook +
-                             #   integration contract (VR / Z2M + WLED / mind): its README
+                             #   featured programs + a pool, a CODEX economy (177
+                             #   entries, 90 codes: wall QRs, files, puzzles, performers),
+                             #   23 quests, a Truthcoin wallet, an LLM-voiced Trabolta
+                             #   (offline until Clippy introduces him), two factions
+                             #   racing for a majority, the server-room patch bay (and
+                             #   the King guarding it), and eight endings. facts.json +
+                             #   `pnpm titi:facts` → generated/ + codex/9-facts.loom.
+                             #   Runbook + integration contract (VR / Z2M + WLED / mind):
+                             #   its README
   glass-orchard/             # the Loom 4 reference project (a garden-party mystery)
   escape-the-internet/       # the v3-era scenario, authored across ~18 files
     main.loom                #   world spine: factions, locations, ROLE Guest
@@ -84,6 +92,7 @@ the repo root):
 | `pnpm test`      | vitest — the full suite (parser + runtime/sim + views)  |
 | `pnpm typecheck` | `tsc --noEmit`                                           |
 | `pnpm serve`     | boot the **event server** (tsx) — see below             |
+| `pnpm titi:facts [--check]` | regenerate the show's files from its `facts.json` (`scripts/titi-facts.ts`); `--check` writes nothing, exits 1 when stale |
 
 ## The event server
 
@@ -146,7 +155,8 @@ Scanning is one capability-dispatched endpoint, **`POST /api/scan`**: a
 moderation. An admin may also pass **`as: <character>`** to scan *as* any
 character (firing that character's story beat) — the editor's Run cockpit
 exposes a "scan as…" control whose default, **Silent**, is moderation-only.
-Admins then act via **`POST /api/mod/act`** (`capture` / `release`) and
+Admins then act via **`POST /api/mod/act`** (`capture` / `release` /
+`restrict` / `unrestrict`) and
 **`POST /api/mod/signal`** (a named event, optionally *as* a character via
 `actor`), which reuse the sim's own primitives — so the moderation
 toolset grows by adding a case, not an endpoint. The editor's Run mode
@@ -288,7 +298,9 @@ timeline (clear the journal + chat + moderation).
 Environment: `LOOM_PORT` (7000), `LOOM_HOST` (0.0.0.0), `LOOM_EVENT_PASS`,
 `LOOM_PRIME_PASS`, `LOOM_MOD_PASS` (any unset code is auto-generated),
 `LOOM_STATE_DIR`, `LOOM_APP_DIST`, `LOOM_TERMINAL_DIST`,
-`LOOM_REINSTALL_DIST`, `LOOM_HOUSE`, `LOOM_TTS_*` (the opt-in speech
+`LOOM_REINSTALL_DIST`, `LOOM_HOUSE`, `LOOM_FACTS` (the facts judge's key
+for an event with no project `facts.json`; default `facts.json` beside the
+house map), `LOOM_TTS_*` (the opt-in speech
 proxy; `LOOM_TTS_URL` unset / blank / `off` / `none` / `false` / `0` = no
 server voice, the default — the terminals use the devices' own voices;
 compose's `kokoro` is behind `--profile tts`), `LOOM_VAPID_PUBLIC_KEY` /
@@ -298,8 +310,9 @@ compose's `kokoro` is behind `--profile tts`), `LOOM_VAPID_PUBLIC_KEY` /
 `LOOM_RL_RESOLVE` (30/60), `LOOM_RL_REGISTER` (20/60),
 `LOOM_RL_LOGIN_FAILURES` (10/300) — per IP — and `LOOM_RL_REDEEM_MISSES`
 (8/60, per guest: past it `/api/guest/codex/redeem` answers 429 and journals
-nothing) and `LOOM_RL_WIDGETS` (20/60, per guest: widget answers on
-`/api/guest/widget`), each `<max>` or `<max>/<seconds>` (`server/rate-limit.ts`). **For a full production
+nothing), `LOOM_RL_WIDGETS` (20/60, per guest: widget answers on
+`/api/guest/widget`) and `LOOM_RL_WALLET` (30/60, per guest: every
+`/api/guest/wallet/*` call), each `<max>` or `<max>/<seconds>` (`server/rate-limit.ts`). **For a full production
 deployment + the security model, see
 [`docs/loom-deployment.md`](../docs/loom-deployment.md).**
 
@@ -378,8 +391,65 @@ pushes during journal replay. The play app's `/sw.js` +
 - **Story surface:** `broadcast "…" to channel(hosts)` posts into authored
   rooms (a staff back room) and never the lobby; `show <kind> … with
   thread: <Character>` pins a card to that character's DM; `show fact`
-  is the 📝 *File a fact* card (`{question, answer, certain}` →
-  `fact answered`, K-24).
+  is the 📝 *File a fact* card (a question, an answer and a 1–100
+  confidence slider → `{question, answer, confidence}` → `fact answered`,
+  K-24); `show answer "…" … with question: "<id>"` is the 💬 free-text
+  card (`{text}` → `answer answered`).
+
+### Oct 31 wave 4 (uncommitted in the working tree)
+
+- **The facts judge** (`server/facts.ts`, pure types + the answer fold in
+  `src/facts.ts`): a project's `facts.json` (the hunt questions per round
+  with their answer key + aliases, the scannable + character facts, the
+  truth-or-dare `truths`) is snapshotted at launch like the house maps —
+  `Store.loadFacts/saveFacts` (`project-facts.json` in the event's state
+  dir), `/api/mod/load {facts}`, `scenarioFactsFile` in `examples/load.ts`,
+  and `sync-example` always pushes the example's copy (it is generated,
+  never edited in a project); an event with none reads `LOOM_FACTS`. Every
+  filed fact is judged at once — **accurate** = fold-match, **lie** = a
+  miss at confidence 100, **uncertain** = a miss below — under the
+  journaled mode `Night.judge_mode` (`auto`, or `review`: a proposal until
+  a director confirms / overrides it with the `fact_accurate` /
+  `fact_lie` / `fact_uncertain` events from the editor's Judging card or
+  the hosts' booth). The story emits `do fact_filed` / `do fact_judged`,
+  folded into `ModView.facts`; the key never reaches the world, the
+  journal, a phone or the voice worker.
+- **The wallet** (`server/wallet.ts`, `WalletBook`): a story opts in with
+  the header `currency: <slot> as <Name>[, max N][, expiry <dur>]`; the
+  balance stays the per-person slot (`<id>.score`), and characters take
+  the two roles with `wallet: approver[, every N][, window <dur>]` /
+  `wallet: minter[, limit N][, while <cond>]` (`runtime/sim/model.ts`,
+  first declaration wins). The book holds what is in flight — pending
+  transfers inside their deny window, the approver's held queue (every
+  Nth send), open requests, escrowed codex offers, the stimulus count —
+  as one journaled `wallet` op per change, timers on the story clock
+  (`EventRuntime.tickOnce` sweeps them), cards addressed to each party's
+  pinned **Wallet** room. Routes: `POST
+  /api/guest/wallet/{send,request,respond,offer,accept,decline,cancel,stimulus,approve,deny}`
+  → `{ok, wallet}` (404 for a story with no currency, 409 doors closed,
+  429 past `LOOM_RL_WALLET`), `POST /api/prime/wallet/{approve,deny}` →
+  `{ok, queue}` (the approver's booth, or an admin), `POST
+  /api/mod/wallet/{approve,deny,cancel,stimulus}` → `{ok, wallet}` (the
+  director's hand: the journal line carries the director's name, the
+  cards read `Director`). `GuestView.wallet`,
+  `PrimeView.wallet` (the queue), `ModView.wallet`.
+- **Restricting + pinning** (`parser/statements.ts`): `restrict who [to
+  Place, …]` / `unrestrict who` (`Sim.restrict/unrestrict`, triggers
+  `restricted` / `unrestricted`, `GuestView.restricted`) keep a person's
+  DMs + the named places, read-only, with no interactions
+  (`/api/guest/act` → 403, check-in → 409); `pin "…" [in room] [for who]`
+  / `unpin [in room] [for who] ["text"]` are sticky notices
+  (`ChatMessage.pin` / `unpin`, one per (person, room), a leading `!` is
+  an alert). Moderation: `/api/mod/act restrict | unrestrict`,
+  `/api/mod/set restricted`.
+- **Characters' quests + cards**: `start | update | complete | fail quest X
+  for <Character>` and `/api/mod/quest {who: <character>}` feed a
+  performer's booth (`PrimeView.quests` / `questTotal` / `answered`);
+  `show <kind> … to <Character>` deals a card the booth answers with `POST
+  /api/prime/widget {seq, result}` (fired as the character, so only its
+  own hooks hear `<kind> answered`).
+- `/api/mod/signal` takes a `label` (≤ 60 chars) so a mod-token device —
+  the tent tablet felling the King — names itself in the journal / recap.
 
 ### The spatial plane (the reinstallation games)
 
@@ -618,7 +688,9 @@ but the **project's copy wins**: an example map is only added when the
 project lacks that file, and a project map that differs (one saved from
 the map page, say) is kept, with both versions summarised.
 `--replace-maps` overwrites them with the example's (copying the old ones
-to a temp directory first); `--keep-maps` touches no map. A map that
+to a temp directory first); `--keep-maps` touches no map. The example's
+`facts.json` is always pushed (it is generated from the team's file, never
+edited in a project). A map that
 doesn't validate stops the sync before anything is written, and `PUT
 /files` / `/api/mod/load {maps}` refuse one with 400 + `problems`.
 

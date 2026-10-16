@@ -147,7 +147,10 @@ COHORT Early Arrivals
 
 Your story can read all of these memberships and counts — `count(The
 Gardeners)`, `guest.group == The_Gardeners` — and react to them with
-`when` hooks ([Live verbs](live-verbs.md)).
+`when` hooks ([Live verbs](live-verbs.md)). A show can also give its
+guests money: one header line, `currency: score as Truthcoin`, turns a
+ROLE slot into a wallet they send, request and trade from their phones
+([currency](currency.md)).
 
 ## One beat, many participants
 

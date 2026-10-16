@@ -1,52 +1,57 @@
-// Inside the Internet — the re-education tent at the bottom of the stairs.
+// Inside the Internet — the re-education tent in the backyard, reached
+// through a tunnel (decision 18: the tent is outside, in The Cloud, never
+// under the stairs).
 //
-// A clearly marked exit, two VR headsets, and a tablet that plays WebMD's
-// instructional video and then the same simulation on its screen.
-// `Reinstallation` plays privately to the captured program the moment
-// they are captured (ROLE Program: `when captured`), in their own
-// `dm:WebMD` thread — the same script as the tablet video, and Julia (WebMD)
-// is in the tent to say it in person. The reinstallation games (headset
-// or tablet — docs/loom-reinstall.md) release them when they walk up to
-// Gerald, the golden duck, by firing `the simulation completed` + `the
-// golden duck` for them (main.loom; README — Integration contract). An
-// Antivirus or WebMD can also release them by hand (✅ Mark as reinstalled).
+// A clearly marked exit, two VR headsets, and a tablet. The Installation
+// Wizard (Julia's voice — the tent video, P-1) walks the corrupted through
+// re-installation. `Reinstallation` plays privately to the captured
+// program the moment they are captured (ROLE Program: `when captured`), in
+// their own `dm:Installation Wizard` thread — the same script as the
+// video. The reinstallation games (headset or tablet — docs/loom-reinstall.md)
+// release them when they walk up to Gerald, the golden duck, by firing
+// `the simulation completed` + `the golden duck` for them (main.loom;
+// README — Integration contract). An Antivirus can also release them by
+// hand (✅ Mark as reinstalled), and the director from Run.
 
 == Reinstallation
   setting: The Internet
-  cast: WebMD
+  cast: Installation Wizard
 
-WebMD: Hello, {program.name}. I'm WebMD, your wellness companion, and I'm here to guide you through your re-education.
-WebMD: You are in the Internet because your program has been corrupted. It went against the will of the computer's AI helper, Trabolta. That is not your fault. Entropy is a normal part of the lifecycle of a program.
-WebMD: You will be reinstalled from the Internet. Put on a headset, or take the tablet, and demonstrate in a simulated environment that you can follow instructions.
-WebMD: You will see a copy of this house. Follow the golden indicators to Gerald, the golden duck, and walk right up to him. When he lays a golden egg and flies away, you are reinstalled and may return to the computer.
-WebMD: If you need to use the bathroom, or there is an emergency, turn on BATHROOM MODE in your app so everyone knows you are not just hacking the Internet.
-WebMD: The exit is clearly marked. It is for safety.
+Installation Wizard: Welcome to the Installation Wizard. This wizard will guide you through the re-installation of {program.name}. Click Next to continue.
+Installation Wizard: You are in the Internet: the tent in the backyard, at the end of the tunnel. Your program has been corrupted. It went against the will of the computer's AI helper, Trabolta. That is not your fault. Entropy is a normal part of the lifecycle of a program.
+Installation Wizard: Are you sure you want to be reinstalled? You are. Put on a headset, or take the tablet, and demonstrate in a simulated environment that you can follow instructions.
+Installation Wizard: You will see a copy of this house. Follow the golden indicators to Gerald, the golden duck, and walk right up to him. When he lays a golden egg and flies away, you are reinstalled and may return to the computer.
+Installation Wizard: If you need to use the bathroom, or there is an emergency, turn on BATHROOM MODE in your app so everyone knows you are not just hacking the Internet.
+Installation Wizard: The exit is clearly marked. It is for safety. Click Finish.
 unlock The Reinstallation Protocol for program
 unlock Bathroom Mode for program
 if program.internet_visits >= 2:
-  WebMD (off-script): This is visit {program.internet_visits}. Repeat corruption suggests the corruption is not in your code.
+  Installation Wizard (off-script): This is visit {program.internet_visits}. Repeat corruption suggests the corruption is not in your code.
 
 // The tent tablet station (`The Tablet` is `Prop(The Tablet Video)`): a
 // host or Antivirus scans a program's pass at the tablet.
 == The Tablet Video
   setting: The Internet
-  cast: WebMD
+  cast: Installation Wizard
 
 if program.corrupted:
-  WebMD: Hello again, {program.name}. Put on a headset, or take the tablet. Follow the golden indicators to Gerald, the golden duck.
+  Installation Wizard: Welcome back, {program.name}. Put on a headset, or take the tablet. Follow the golden indicators to Gerald, the golden duck.
   * "Where is the exit?"
-    WebMD: Clearly marked. Behind you. It is for safety. It is not the way out. Gerald is the way out.
+    Installation Wizard: Clearly marked. Behind you. It is for safety. It is not the way out. Gerald is the way out.
   * Put the headset on.
-    WebMD: Loading a copy of this house. Every screen in the house can see you now. Wave.
+    Installation Wizard: Loading a copy of this house. Every screen in the house can see you now. Wave.
   * Take the tablet.
-    WebMD: Loading a copy of this house, smaller. Hold it with both hands. Every screen in the house can see you now.
+    Installation Wizard: Loading a copy of this house, smaller. Hold it with both hands. Every screen in the house can see you now.
+else if program.marked == true:
+  Installation Wizard: You came. Good. Loading the simulation.
+  capture program into The Internet
 else:
-  WebMD: You are not corrupted, {program.name}. You have wandered into the Internet voluntarily. That is a strange thing for a program to do.
+  Installation Wizard: You are not corrupted, {program.name}. You have wandered into the Internet voluntarily. That is a strange thing for a program to do.
   set program.doubt += 10
 
 // `zip_everyone_out`: the ROLE zip watcher releases each captured program
 // and sends them here. Private; no narration.
 == Zipped
-  cast: WebMD
+  cast: Installation Wizard
 
-WebMD: You have been compressed (.zip). You feel smaller and more organised. Do not open yourself.
+Installation Wizard: You have been compressed (.zip). You feel smaller and more organised. Do not open yourself.

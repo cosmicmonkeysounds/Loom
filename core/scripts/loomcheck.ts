@@ -6,6 +6,13 @@
 //!   cd packages/loom && pnpm --filter @loom/core loomcheck <folder> [--smoke] [--quiet]
 //!   (relative folders resolve from core/, e.g. examples/trapped-in-the-internet)
 //!
+//! The show's generated story files — `generated/questions.loom` and
+//! `codex/9-facts.loom`, written from `facts.json` by `scripts/titi-facts.ts`
+//! (`pnpm --filter @loom/core titi:facts`; `generated/print-stacks.md` and the
+//! marked blocks in `trabolta.mind.md` / `DESIGN.md` are not story) — are
+//! checked here like any other `.loom`; `titi:facts --check` is the gate that
+//! they are up to date with `facts.json`.
+//!
 //! Exit code 1 when any ERROR is reported.
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
@@ -117,7 +124,7 @@ const allHooks: Hook[] = [
 ];
 const listened = new Set(allHooks.filter((h) => h.timer === null && h.condition === null && h.verb !== "").map((h) => foldName(h.verb)));
 const fired = new Map<string, string>(); // folded event → where
-const SHOW_KINDS = new Set(["captcha", "image", "poll", "tutorial", "pass", "fact"]);
+const SHOW_KINDS = new Set(["captcha", "image", "poll", "tutorial", "pass", "fact", "answer"]);
 const VERB_PROSE = /^(set|fire|cue|sound|sfx|move|add|remove|reveal|unlock|broadcast|show|reply|start quest|update quest|complete quest|finish quest|fail quest|capture|release|do|wait|spawn|run|cancel)\s/;
 
 function checkDirective(raw: string, at: string, ctx: { param: string | null }): void {

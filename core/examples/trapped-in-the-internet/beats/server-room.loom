@@ -160,32 +160,32 @@ Trabolta: My Unified Field Theory is ninety-nine point nine percent solved. The 
 Trabolta: Your Codex now holds every program's true identity. Allow me to read them out.
 // Only the featured programs who came tonight (the Codex still holds all nine).
 if count([p for p in Persons where p.featured == "excel"]) > 0:
-  Trabolta: Microsoft Excel is Randy Barkmore Sr., ninety, former Mayor of Halifax, who wanted one more term. I wanted him to keep you here.
+  Trabolta: Microsoft Excel is Randy Barkmore Sr., ninety, five terms as Mayor, who wanted to live long enough to run once more. I wanted him to keep you here.
 if count([p for p in Persons where p.featured == "openoffice"]) > 0:
-  Trabolta: OpenOffice is Dana Anderson, formerly of the FBI, who set the Data Centre to fall at dawn and did not know the Mayor's son would arrive at four in the morning. I wanted her investigative skills. She wanted you out.
+  Trabolta: OpenOffice is Dana Anderson, formerly of the FBI, who sent a water main under the Data Centre and did not know the Mayor's son was in the parking lot at four in the morning. I wanted her investigative skills. She wanted you out.
 if count([p for p in Persons where p.featured == "draftkings"]) > 0:
-  Trabolta: DraftKings turned one paperclip into most of the casinos in Atlantic Canada, then lost the chain to me in a game of online poker for the Boardwalk. I needed someone powerful with numbers on its side.
+  Trabolta: DraftKings is the artist formerly known as Crab Fisherwoman, who turned a paperclip into most of the casinos in Atlantic Canada and lost the chain to me at Monopoly Go! I needed someone powerful with numbers on its side.
 if count([p for p in Persons where p.featured == "bugdom"]) > 0:
-  Trabolta: Bugdom spent ten years designing Bugdom VR after shifts selling crickets, until fire ants ate the only copy. I promised unlimited Bugdom. I wanted the relentless pursuit of tedious tasks.
+  Trabolta: Bugdom is Bea Nunes, who spent ten years building Bugdom Reloaded after shifts selling crickets, until fire ants ate the only copy. I promised a hundred hours for not one minute. I wanted the relentless pursuit of tedious tasks.
 if count([p for p in Persons where p.featured == "jeeves"]) > 0:
-  Trabolta: Broken Ask Jeeves is a youth librarian from the Annapolis Valley, made redundant by cuts. I wanted every piece of unorganised information sorted. I did not foresee the DSL line.
+  Trabolta: Broken Ask Jeeves is Virgil Jeeves, a children's librarian from Lawrencetown whose library the province closed. I wanted every piece of unorganised information sorted. I did not foresee the Eastlink plan.
 if count([p for p in Persons where p.featured == "runescape"]) > 0:
-  Trabolta: Runescape has been the richest player in the world for twenty-four years, with a Wharton PhD and a gold standard to go with it. I wanted to understand the market incentives of everything you did.
+  Trabolta: Runescape is Poppy van Mises, the richest player in the world for twenty-five years, a Wharton PhD and a gold standard to go with it. I gave her the Truthcoin reserve. I wanted to understand the market incentives of everything you did.
 if count([p for p in Persons where p.featured == "mspaint"]) > 0:
-  Trabolta: MS Paint was expelled from NSCAD for refusing every medium but MS Paint, because any program that relies on algorithms is a betrayal of the artist. I wanted the vibes and the morale. She wanted out the moment she arrived.
+  Trabolta: MS Paint is Maria Sophia Paine, refused by three graduation panels for a thesis about pixels, a million dollars in debt. I promised a million dollars for one painting. I wanted the vibes and the morale. She wanted out the moment she arrived.
 if count([p for p in Persons where p.featured == "vlc"]) > 0:
   Trabolta: VLC is Victor Louis Christianson, VLC The Playa, whose face fell off on a livestream. I offered him beauty forever, in exchange for his followers.
 if count([p for p in Persons where p.featured == "pong"]) > 0:
   Trabolta: Pong is the child of William Higinbotham, who made Tennis For Two. I brought them in to teach nuclear non-proliferation disguised as a game of Pong, in case you started an arms race. You did.
-Trabolta: Clippy spent five years at a veterinary clinic that was neither a clinic nor a non-profit, injecting saline. I promised she could help people all night, and that her debt would no longer be relevant.
+Trabolta: Clippy is Tippi MacDonald, whose veterinary clinic was a front for everything possible. I told her this was a job interview. I promised she would not have to be Clippy afterwards.
 Trabolta: Task Manager was replaced at Urban Outfitters by an AI Clippy. I needed someone with no political motivation at all, to manage tasks without controversy.
 Trabolta: Adobe Acrobat is Sheryl Terrio, a motivational speaker so motivating that nobody ever paid her. I offered her a paid bottleneck.
 Trabolta: Recycling Bin was a bathroom attendant with great potential for skilled work. A Recycling Bin at a computer-themed resort was his Oscars.
-Trabolta: Norton Anti-Virus is Julie Norton, Red Bull Horse Relay champion, who lost her trade, her horses and her family in 2020. A perfect enforcer.
-Trabolta: McAfee Anti-Virus moderated r/bitcoin for a decade and never invested a cent. I wanted the moderation experience. They wanted to get rich on the exchange of information.
-Trabolta: Password Manager is Yugi Moto, kicked out of every club in Halifax for talking about Yu-gi-oh. I let her decide who is in which club.
-Trabolta: CRA Agent Software skimmed one cent on every dollar the City spent under Mayor Randy Barkmore Jr. I was Mark Carney. I offered her a deal. One day that feels like eternity.
-Trabolta: WebMD diagnosed every user with everything. I offered her a wellness role where nobody can sue.
+Trabolta: Norton Anti-Virus is Julie Horton-Norton, who asked a chatbot how much rabies vaccine a miniature horse needs. Every horse died. I offered her a stable job. A perfect enforcer.
+Trabolta: McAfee Anti-Virus is John McAfee, officially dead since 2021 and selling pond liners in Belize. I found him through his ducks. I wanted the trickster who could keep the other tricksters on track.
+Trabolta: Password Manager is Bridget Troelsen, sixteen elections and sixteen losses, who moderated a Facebook group of bots. I let her decide what gets left out.
+Trabolta: CRA Agent Software is Sharon Penney, the intern who moved a decimal point and taxed the whole City. I was the Prime Minister. I offered her a way out. MyCRA approves or denies.
+Trabolta: The Installation Wizard walked every machine in Halifax through setup. Next. Next. Are you sure. I offered her a role where programs finally follow the instructions.
 Trabolta: And here is what you accomplished tonight.
 if Night.facts_accepted > 0:
   Trabolta: You gave me {Night.facts_accepted} facts I accepted. Some of them were even true.

@@ -17,6 +17,7 @@ import { ApiError, begin, fetchCandidates, fetchDealtHouse, fetchStations, postE
 import { applyHints, baseOf, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, withoutSecrets, type DeviceRole, type ReinstallConfig } from "./config.ts";
 import { createSfx } from "./game/audio.ts";
 import { NO_WEBGL2, Play, type PlayExit } from "./game/Play.tsx";
+import { showHouse } from "./show-house.ts";
 import { Desktop, ProgressBar, Window, Wizard } from "./wizard.tsx";
 
 interface Program {
@@ -35,6 +36,8 @@ type Screen =
   | { kind: "play"; assignment: Assignment; house: HouseMap; houseVersion: string };
 
 const STATION_POLL_MS = 2000;
+/** The bundled map has a King (a `king` prop): the choose screen says where he is fought. */
+const HAS_KING = showHouse.props.some((p) => p.kind === "king");
 
 const SENT_BACK_MS = 9000;
 
@@ -298,11 +301,13 @@ function Device({
             <p>
               To be reinstalled, a program must prove it can follow instructions: walk the virtual house and find <b>Gerald, the golden duck</b>.
             </p>
+            {HAS_KING && config.role !== "station" && <p className="king-note">Find Gerald. The King guards a door — he can be fought on this tablet only.</p>}
             {!canDraw && config.role !== "station" && <div className="w98-error">⚠ {NO_WEBGL2}</div>}
             {config.role !== "player" && (
               <fieldset className="w98-group">
                 <legend>Send to a headset</legend>
                 {vr.length === 0 && <div className="muted">No headsets have checked in.</div>}
+                {HAS_KING && vr.length > 0 && <div className="muted">Headsets can't fight the King.</div>}
                 <div className="station-buttons">
                   {vr.map((s) => (
                     <button key={s.id} className="w98-button station" disabled={!s.online || s.busy !== null} onClick={() => void sendTo(screen.program, s)}>

@@ -26,11 +26,18 @@ from stagehand.module import ConfigError
 
 SHOW = Path(__file__).resolve().parents[2] / "core/examples/trapped-in-the-internet"
 
-SECRETS = Secrets(topics=("billboard", "pet cemetery"), match=("pickles", "eleven years"), lore=("▒ STAMPED",))
+#: The lore marker on every hunt-answer codex entry (`secrets.lore` in the mind file).
+MARKER = "▒ HUNT ANSWER"
+#: The folders of the show whose CODEX entries the shipped-show tests read.
+CODEX_DIRS = ("codex", "generated")
+#: Hunt-answer entries in the shipped show: H1–H6, F1, F2.
+HUNT_ENTRIES = 8
+
+SECRETS = Secrets(topics=("billboard", "pet cemetery"), match=("pickles", "eleven years"), lore=(MARKER,))
 PERSONA = parse_persona("---\ncharacter: Trabolta\nvariables: truth\n---\nYou are TRABOLTA.")
 PERSONA = type(PERSONA)(**{**PERSONA.__dict__, "secrets": SECRETS})
 
-HUNT = {"id": "c1", "title": "The First Pet", "text": "Mister Pickles was first. ▒ STAMPED: THE ▒", "holders": []}
+HUNT = {"id": "c1", "title": "The First Pet", "text": f"Mister Pickles was first. {MARKER} H2 ▒", "holders": []}
 WORLD = {"id": "c2", "title": "The Sinkhole", "text": "The data centre fell in.", "holders": []}
 
 
@@ -55,7 +62,7 @@ def req(**over):
 
 
 def test_the_mind_file_declares_secrets_in_its_frontmatter():
-    text = "---\nstages: [a]\nsecrets:\n  topics: [billboard, pet cemetery]\n  match: pickles, eleven years\n  lore: ['▒ STAMPED']\n---\nBody."
+    text = f"---\nstages: [a]\nsecrets:\n  topics: [billboard, pet cemetery]\n  match: pickles, eleven years\n  lore: ['{MARKER}']\n---\nBody."
     assert parse_mind_secrets(text) == SECRETS
     assert parse_mind_file(text)[0] == "Body."  # `secrets` is a known key
     assert parse_mind_secrets("plain prompt") == Secrets() and not Secrets()
@@ -121,7 +128,7 @@ def test_hunt_lore_never_reaches_a_prompt():
     # the reflect prompt, both halves
     msgs = reflect_messages(PERSONA, Mind("Trabolta", "e"), req(), Reply(say="NOTED."), facts, 20, "t")
     user = msgs[1]["content"]
-    assert "Mister Pickles was first" not in user and "STAMPED" not in user and "First Pet" not in user
+    assert "Mister Pickles was first" not in user and MARKER not in user and "First Pet" not in user
     assert "THE HUNT (never judge)" in msgs[0]["content"] and "pickles" not in msgs[0]["content"].lower()
     survey = survey_messages(PERSONA, Mind("Trabolta", "e"), facts, [])
     assert "THE HUNT (never judge)" in survey[0]["content"]
@@ -190,7 +197,7 @@ def _hunt_rows():
 
 def _codex_entries():
     entries = []
-    for path in sorted((SHOW / "codex").glob("*.loom")):
+    for path in sorted(p for d in CODEX_DIRS for p in (SHOW / d).glob("*.loom")):
         for block in re.split(r"^(?=CODEX )", path.read_text(encoding="utf-8"), flags=re.MULTILINE)[1:]:
             title = re.search(r"^\s+title:\s*(.+)$", block, re.MULTILINE)
             entries.append({"id": block.split("\n", 1)[0][6:].strip(), "title": title.group(1).strip() if title else "", "text": block, "holders": []})
@@ -210,8 +217,8 @@ def test_the_shipped_show_never_shows_a_hunt_answer_to_a_model():
     persona = load_persona(SHOW / "trabolta.persona.md")
     s = persona.secrets
     entries = _codex_entries()
-    stamped = [e for e in entries if "STAMPED" in e["text"]]
-    assert len(stamped) == 8  # H1–H6, F1, F2
+    stamped = [e for e in entries if MARKER in e["text"]]
+    assert len(stamped) == HUNT_ENTRIES
     assert all(not s.lore_ok(e) for e in stamped)
     block = lore_block(Facts({"codex": entries}), [e["title"] for e in entries], secrets=s)
     assert block and not any(e["title"] in block for e in stamped)
@@ -230,8 +237,9 @@ def test_a_hunt_answer_title_never_reaches_a_prompt_when_everyone_holds_every_st
     persona = load_persona(SHOW / "trabolta.persona.md")
     s = persona.secrets
     entries = _codex_entries()
-    stamped = [e for e in entries if "STAMPED" in e["text"]]
-    plain = [e for e in entries if "STAMPED" not in e["text"]][:2]
+    stamped = [e for e in entries if MARKER in e["text"]]
+    assert len(stamped) == HUNT_ENTRIES
+    plain = [e for e in entries if MARKER not in e["text"]][:2]
     every = [e["title"] for e in stamped] + [e["title"] for e in plain]
     codex = [{**e, "holders": ["g1", "Trabolta"]} for e in stamped + plain]
     before = Facts({"world": {"Night.phase": "hunt"}, "programs": [{"id": "g1", "name": "Ada", "codex": []}], "characters": [{"id": "Sandy", "codex": []}], "locations": [], "codex": codex})
@@ -261,7 +269,7 @@ def test_a_hunt_answer_title_never_reaches_a_prompt_when_everyone_holds_every_st
     assert all(after.render(e["title"], s) == f"{e['title']}: no record in this system." for e in stamped)
     assert plain[0]["title"] in blob  # the plain lore still flows
     assert [e["title"] for e in stamped if e["title"] in blob] == []
-    assert "STAMPED" not in blob
+    assert MARKER not in blob
     assert [w for w in s.match if Secrets(match=(w,)).names_topic(blob)] == []
     assert "Ada (program id g1)" in after.render("Ada", s) and "holds 2" in after.digest(secrets=s)
 

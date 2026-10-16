@@ -32,7 +32,12 @@ export const STAIR_CLEARANCE = 0.3;
 /** How tall a duck is, for the solid-prop check (a player: `BODY_CLEAR`). */
 const DUCK_CLEAR = 0.5;
 
-const PROP_KINDS = ["box", "cylinder", "screen", "label"];
+const PROP_KINDS = ["box", "cylinder", "screen", "label", "king"];
+/** The fields only a `king` prop may carry. */
+const KING_FIELDS = ["hp", "signals", "armed"] as const;
+const SIGNAL_KEYS = ["won", "lost", "drawn"];
+/** A guard further than this (plan metres) from its door's point is warned about (`guardWarnings`). */
+export const GUARD_REACH = 1.0;
 const COMPASS = ["n", "s", "e", "w"];
 const COLOR = /^#[0-9a-fA-F]{6}$/;
 
@@ -181,6 +186,7 @@ function checkShape(raw: unknown, problems: string[]): void {
     ["at", vec2, "[x, z] (finite numbers)"],
     ["width", positive, POS],
     ["height", positive, POS, true],
+    ["guard", isId, ID, true],
   ]);
   ids("door", doors);
 
@@ -239,8 +245,23 @@ function checkShape(raw: unknown, problems: string[]): void {
     ["color", (v) => isStr(v) && COLOR.test(v), '"#rrggbb"', true],
     ["label", isStr, "a string", true],
     ["solid", (v) => typeof v === "boolean", "a boolean", true],
+    ["hp", (v) => Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 9, "an integer 1–9", true],
+    [
+      "signals",
+      (v) => isObj(v) && Object.entries(v).every(([k, s]) => SIGNAL_KEYS.includes(k) && isStr(s) && s.trim() !== ""),
+      "{won?, lost?, drawn?} of non-empty strings",
+      true,
+    ],
+    ["armed", (v) => isObj(v) && isStr(v["path"]) && v["path"] !== "" && isNum(v["min"]), "{path, min}", true],
   ]);
   ids("prop", props);
+  // `hp` / `signals` / `armed` mean nothing on anything but a king.
+  props.forEach((item, i) => {
+    if (!isObj(item) || item["kind"] === "king") return;
+    for (const key of KING_FIELDS) {
+      if (item[key] !== undefined) problems.push(`${label("props", i, item)}: "${key}" is only for kind "king"`);
+    }
+  });
 
   const spaces = raw["spaces"];
   if (spaces !== undefined) {
@@ -526,6 +547,24 @@ function checkGeometry(house: HouseMap, problems: string[]): void {
     else problems.push(`${at}: ${fmt(door.at)} is not on a wall room "${a.id}" shares with "${b?.id}"`);
   });
 
+  // A guarded door: its guard is a king prop standing in one of its rooms.
+  house.doors.forEach((door, i) => {
+    if (door.guard === undefined) return;
+    const at = label("doors", i, door);
+    const king = house.props.find((p) => p.id === door.guard);
+    if (!king) {
+      problems.push(`${at}: guard names unknown prop "${door.guard}"`);
+      return;
+    }
+    if (king.kind !== "king") {
+      problems.push(`${at}: guard "${king.id}" is a "${king.kind}", not a king`);
+      return;
+    }
+    if (king.room !== door.a && king.room !== door.b) {
+      problems.push(`${at}: guard "${king.id}" stands in room "${king.room}", not beside door "${door.id}"`);
+    }
+  });
+
   house.stairs.forEach((stair, i) => {
     const at = label("stairs", i, stair);
     const from = rooms.get(stair.from);
@@ -640,6 +679,26 @@ function checkGeometry(house: HouseMap, problems: string[]): void {
   house.duck.spots.forEach((s, i) => placed("duck", label("duck.spots", i, s), s.room, s.pos));
   placed("spawn", "spawn", house.spawn.room, house.spawn.pos);
   house.props.forEach((p, i) => placed("prop", label("props", i, p), p.room, p.pos));
+}
+
+/**
+ * Advice, not refusals, about guarded doors on a valid map (the server
+ * folds these into its map warnings; the map page lists them): a king
+ * whose base centre stands more than `GUARD_REACH` (plan) from the door
+ * it guards — he would not be in the doorway at all.
+ */
+export function guardWarnings(house: HouseMap): string[] {
+  const out: string[] = [];
+  for (const door of house.doors) {
+    if (door.guard === undefined) continue;
+    const king = house.props.find((p) => p.id === door.guard);
+    if (!king || king.kind !== "king") continue;
+    const d = Math.hypot(king.pos[0] - door.at[0], king.pos[2] - door.at[1]);
+    if (d > GUARD_REACH + 1e-9) {
+      out.push(`door "${door.id}": its guard "${king.id}" stands ${mm3(d)} m from the door (more than ${GUARD_REACH} m) — he is not in the doorway`);
+    }
+  }
+  return out;
 }
 
 /** Round for a message (1 mm, no float noise). */

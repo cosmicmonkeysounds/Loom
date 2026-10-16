@@ -21,8 +21,9 @@ CHARACTER The Tablet is Prop(The Tablet Video)
 // know. A character's variables never reach an agent request's world,
 // and `secret: true` keeps the Kernel out of the agents' facts document
 // (the orchestrator's digest) too, so the patch-bay combinations, the
-// per-question verdicts, the lies, the virus planter, the dossier, the
-// majority and the anti-AI program live here as `Kernel.<slot>` — never
+// per-question verdicts, the lies, what everyone filed per question (read
+// aloud at the results), the virus planter, the dossier, the majority and
+// the anti-AI program live here as `Kernel.<slot>` — never
 // in `Night.*`, which the worker sees whole. Written and read only by main.loom's rules, ROLE hooks and
 // beats; directors see and edit them in Run → World. No trait, no hooks,
 // no lines, no avatar, not in the directory.
@@ -42,6 +43,26 @@ CHARACTER Kernel
   q8: text? = none
   lies_accepted: 0 to 50 = 0
   all_accurate: bool = false
+  said_1: text? = none
+  said_2: text? = none
+  said_3: text? = none
+  said_4: text? = none
+  said_5: text? = none
+  said_6: text? = none
+  said_7: text? = none
+  said_8: text? = none
+  ans_1: text? = none
+  ans_2: text? = none
+  ans_3: text? = none
+  ans_4: text? = none
+  ans_5: text? = none
+  ans_6: text? = none
+  ans_7: text? = none
+  ans_8: text? = none
+  res_filed: 0 to 999 = 0
+  res_consensus: 0 to 999 = 0
+  res_said: text? = none
+  res_answer: text? = none
   virus_planted: bool = false
   excel_planted: bool = false
   virus_planter: text? = none

@@ -15,6 +15,8 @@ export { buildHouseScene, houseAtmosphere, planeGeometry, rampGeometry } from ".
 export type { HouseScene, HouseSceneOptions } from "./scene.ts";
 export { createDuck, DUCK_FLIGHT } from "./duck.ts";
 export type { Duck } from "./duck.ts";
+export { createKing, KING_FALL, KING_STAGGER, KING_COLOR } from "./king.ts";
+export type { King } from "./king.ts";
 export { createTrail, chevronGeometry, TRAIL_STEP, TRAIL_LIFT } from "./trail.ts";
 export type { Trail, TrailOptions } from "./trail.ts";
 export { createAvatar, avatarColor, AVATAR_HEIGHT } from "./avatar.ts";

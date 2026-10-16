@@ -14,7 +14,7 @@ import { statementToDirective } from "../src/parser/statements.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import type { SimEvent } from "../src/runtime/sim/index.ts";
 import { parseTrigger } from "../src/runtime/sim/model.ts";
-import { composeGuestMessages, splitAlert } from "../server/chat.ts";
+import { audienceOf, composeGuestMessages, splitAlert, visibleTo } from "../server/chat.ts";
 import { guestView, modView, primeView } from "../server/views.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
@@ -291,8 +291,8 @@ describe("chat — alerts + codex notices", () => {
       ["codex", "codex", ["g2"], "Minesweeper"],
       ["codex", "system", ["g1"], "📤 You shared “The Sandy File” with Pinball."],
     ]);
-    // Sharing *to* a character: no card (no phone), just the sharer's note.
-    expect(composeGuestMessages(sim, sim.share("g1", "Norton", "The Sandy File")).filter((m) => m.channel === "codex").map((m) => [m.kind, m.audience])).toEqual([["system", ["g1"]]]);
+    // Sharing *to* a character: the card goes to its booth (`@Norton`), the sharer gets the note.
+    expect(composeGuestMessages(sim, sim.share("g1", "Norton", "The Sandy File")).filter((m) => m.channel === "codex").map((m) => [m.kind, m.audience])).toEqual([["codex", ["@Norton"]], ["system", ["g1"]]]);
   });
 });
 
@@ -565,5 +565,56 @@ The doors open.
     expect(sim.share("g1", "Bot", "Loose Talk").filter((e) => e.type === "codexUnlocked")).toHaveLength(1);
     expect(sim.share("g1", "g2", "Ann Secret").filter((e) => e.type === "codexUnlocked")).toHaveLength(1);
     expect(sim.holdsCodex("Bot", "Bot Diary")).toBe(true);
+  });
+});
+
+describe("codex cards for a character's booth (wave 4, lane D)", () => {
+  it("`audienceOf` is a guest's id, else `@<Character>`", () => {
+    const sim = fresh();
+    sim.createPerson("g1", "Minesweeper");
+    expect(audienceOf(sim, "g1")).toBe("g1");
+    expect(audienceOf(sim, "Norton")).toBe("@Norton");
+  });
+
+  it("an unlock for a character lands in its Codex room as a card addressed `@<Character>`; no guest ever matches it", () => {
+    const sim = fresh();
+    sim.createPerson("g1", "Minesweeper");
+    const got = composeGuestMessages(sim, sim.unlock("Norton", "The Sandy File"));
+    expect(got.filter((m) => m.channel === "codex").map((m) => [m.kind, m.codex?.title, m.codex?.via, m.audience])).toEqual([
+      ["codex", "The Sandy File", "story", ["@Norton"]],
+    ]);
+    const card = got.find((m) => m.kind === "codex")!;
+    expect(visibleTo(card as never, "g1")).toBe(false);
+    expect(visibleTo(card as never, "Norton")).toBe(false); // only the `@` form is the booth's
+    // A guest sharing with a character: the character's card + the guest's receipt.
+    const shared = composeGuestMessages(sim, sim.share("g1", "Trabolta", "The Billboard"));
+    expect(shared.length).toBe(0); // g1 does not hold The Billboard
+    sim.unlock("g1", "The Billboard");
+    const ok = composeGuestMessages(sim, sim.share("g1", "Norton", "The Billboard"));
+    expect(ok.filter((m) => m.channel === "codex").map((m) => [m.kind, m.audience])).toEqual([
+      ["codex", ["@Norton"]],
+      ["system", ["g1"]],
+    ]);
+    expect(primeView(sim, "Norton").codexTotal).toBe(3);
+  });
+
+  it("the booth's stream carries its own character's Codex / Quest Log rows and nobody else's", async () => {
+    const rt = freshRuntime();
+    const g = await guest(rt, "Minesweeper");
+    const norton = await performer(rt, "Norton");
+    const trabolta = await performer(rt, "Trabolta");
+    const nStream = await stream(rt, "prime", norton);
+    const tStream = await stream(rt, "prime", trabolta);
+    expect((await post(rt, "/api/mod/codex", { who: "Norton", entry: "The Billboard" }, undefined, true)).status).toBe(200);
+    const seen = (r: FakeRes) => r.frames.filter((f) => f.event === "message").map((f) => f.data as { channel: string; audience: unknown; codex?: { title: string } });
+    expect(seen(nStream).map((m) => [m.channel, m.audience, m.codex?.title])).toEqual([["codex", ["@Norton"], "The Billboard"]]);
+    expect(seen(tStream).filter((m) => m.channel === "codex")).toEqual([]);
+    expect(rt.chatHistoryFor(g.id).filter((m) => m.channel === "codex")).toEqual([]);
+    // A fresh booth stream replays it in the history; the other booth's never has it.
+    const again = await stream(rt, "prime", norton);
+    const history = again.frames.find((f) => f.event === "history")!.data as Array<{ channel: string; audience: unknown }>;
+    expect(history.filter((m) => m.channel === "codex").map((m) => m.audience)).toEqual([["@Norton"]]);
+    const tHistory = (await stream(rt, "prime", trabolta)).frames.find((f) => f.event === "history")!.data as Array<{ channel: string }>;
+    expect(tHistory.filter((m) => m.channel === "codex")).toEqual([]);
   });
 });

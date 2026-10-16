@@ -260,7 +260,7 @@ describe("the show's cue sheet (K-21)", () => {
     const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
     const admin = (modView(sim, "open", "x").interactions ?? []).filter((i) => i.who === "admin");
     const off = admin.filter((i) => i.sequence === false).map((i) => i.id);
-    for (const id of ["the simulation completed", "the golden duck", "server_door_opened", "printer_button_pressed", "printer_opened", "patch_combo_a", "patch_combo_b", "patch_rejected", "chess_won"]) expect(off).toContain(id);
+    for (const id of ["the simulation completed", "the golden duck", "server_door_opened", "printer_button_pressed", "printer_opened", "patch_combo_a", "patch_combo_b", "patch_rejected", "chess_won", "spin_the_bottle"]) expect(off).toContain(id);
     for (const id of ["call_to_the_desktop", "bingo_time", "start_the_ceremony"]) expect(off).not.toContain(id);
     sim.signal("bingo_time");
     sim.signal("the golden duck");
@@ -276,5 +276,50 @@ describe("the show's cue sheet (K-21)", () => {
     // Global cues stay one click, including the ceremony's own start.
     for (const a of ["call_to_the_desktop", "start_the_ceremony", "chess_won"]) expect(needs).not.toContain(a);
     expect(admin.find((i) => i.id === "call_to_the_desktop")).not.toHaveProperty("subject");
+  });
+});
+
+describe("the performer view's own quest log + codex totals (wave 4, lane D)", () => {
+  it("carries `quests`, `questTotal`, `codexTotal` (empty on a story with none; zeros with no scenario)", () => {
+    const sim = Sim.fromSources(SCENARIO);
+    const v = primeView(sim, "Moderator_Prime");
+    expect(v.quests).toEqual([]);
+    expect(v.questTotal).toBe(sim.model.quests.size);
+    expect(v.codexTotal).toBe(sim.model.codex.size);
+    expect(v.answered).toBeUndefined(); // the runtime fills it
+    const none = primeView(null, "Moderator_Prime");
+    expect(none).toMatchObject({ codex: [], codexTotal: 0, quests: [], questTotal: 0 });
+  });
+});
+
+describe("`restricted` on every view (wave 4, lane E)", () => {
+  it("is false by default on the guest / booth guest / roster row, true after `restrict`, and empties the guest's buttons", () => {
+    const sim = Sim.fromSources(SCENARIO);
+    sim.createPerson("g1", "Alice");
+    expect(guestView(sim, "g1").restricted).toBe(false);
+    expect(primeView(sim, "Moderator_Prime").guests[0]!.restricted).toBe(false);
+    expect(modView(sim, "open", "escape-the-internet").roster[0]!.restricted).toBe(false);
+    sim.restrict("g1");
+    expect(guestView(sim, "g1")).toMatchObject({ restricted: true, interactions: [] });
+    expect(primeView(sim, "Moderator_Prime").guests[0]!.restricted).toBe(true);
+    expect(modView(sim, "open", "escape-the-internet").roster[0]!.restricted).toBe(true);
+    expect(guestView(sim, "g1").channels.every((c) => c.canPost === false)).toBe(true);
+  });
+});
+
+describe("the wallet on the views (wave 4, lane C)", () => {
+  it("GuestView carries no wallet when the header declares no currency — the runtime fills it, the pure projection never does", () => {
+    const sim = Sim.fromSources(SCENARIO);
+    sim.createPerson("g1", "Alice");
+    expect(sim.model.currency).toBeNull();
+    expect(guestView(sim, "g1").wallet).toBeUndefined();
+    expect(primeView(sim, "Moderator_Prime").wallet).toBeUndefined();
+    expect(modView(sim, "open", "escape-the-internet").wallet).toBeUndefined();
+    // Even with a currency the pure projection is wallet-free: the book lives on the server.
+    const coin = Sim.fromSources("# Coin\ncurrency: score as Coin\n\nCHARACTER Auditor\n  wallet: approver\n");
+    coin.createPerson("g1", "Alice");
+    expect(coin.model.currency?.name).toBe("Coin");
+    expect(guestView(coin, "g1").wallet).toBeUndefined();
+    expect(coin.canPost("g1", "wallet")).toBe(false);
   });
 });

@@ -2,7 +2,7 @@
 title: The mind debugger — watching an agent think
 section: The Editor
 order: 44
-keywords: mind, agent, trabolta, stagehand, orchestrator, voice, model, ollama, reasoning, thinking, prompt, trace, thought, brief, stage, arc, drives, policy, bargain, questions, nudge, whisper, reset, survey, pause, re-run, effort, debugger, control panel, hold, offline, worker down, not responding, answer by hand
+keywords: mind, agent, trabolta, stagehand, orchestrator, voice, model, ollama, reasoning, thinking, prompt, trace, thought, brief, stage, arc, drives, policy, bargain, questions, nudge, whisper, reset, survey, pause, re-run, effort, debugger, control panel, hold, offline, worker down, not responding, answer by hand, judging, judge, facts.json, verdict, override, judge_mode, auto, review, pending, filing, tally, consensus
 ---
 
 A character marked `mind: external` has no performer: a language model
@@ -102,6 +102,37 @@ thoughts, so a console opened late still sees the night.
 Everything the panel does is recorded as a **control** row in the
 trace with your name, and every direct edit is a revision *by you*, so
 a rehearsal's log says what the models did and what a human did.
+
+## Judging (the facts judge)
+
+Above the mind sits the **Judging** card — the server's judge of filed
+facts (see *Judging with facts.json* in [cards & widgets](widgets.md)).
+It shows even before a worker has reported; on a project with no
+`facts.json` it says so and judges nothing.
+
+- **The mode switch** — `auto` / `review`, writing the variable the
+  card names (`Night.judge_mode` by default) through the same journaled
+  `set` as the World page. In `auto` every filed fact gets its verdict
+  at once; in `review` every verdict is a proposal until someone
+  confirms it, and a round closing settles the rest by the proposal.
+  Beside it: *nothing pending* or *N pending*.
+- **Pending filings** (review mode): one row per filing waiting for a
+  verdict — the program, the question id, the answer in quotes, the
+  confidence, and *proposed accurate / lie / uncertain*. Three buttons
+  settle it: **✅ accurate**, **😤 confident lie**, **🤷 uncertain** —
+  the proposal's button is outlined; press it to confirm, another to
+  override. Each fires the story's own confirm event for that program
+  with the question attached (the events `facts.json` names under
+  `judge.confirm`; the hosts' 📝 booth buttons fire the same ones), so
+  the story reacts exactly as it would to a host, and the override is
+  journaled under your name.
+- **The tallies** — per question: filed, accurate, lie, uncertain,
+  pending, and ✓ **consensus** (every filing accurate at confidence
+  100 — what *Trapped in the Internet* reads as "Clippy happy").
+
+Judging runs on the event server, so a local-folder run shows the card
+with an explanation and no verdicts: rehearse the hunt on a server
+project ([run mode](run-mode.md)).
 
 ## Shaping the arc
 

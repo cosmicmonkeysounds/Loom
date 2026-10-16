@@ -56,6 +56,7 @@ import {
   type Selection,
   type SpaceSummary,
   type WorldEntry,
+  type FactsView,
 } from '@/store/cockpit'
 
 // The shared cockpit shapes (roster rows, messages, faction/location
@@ -83,6 +84,7 @@ interface ModSnapshot {
   cues?: CueState
   codex?: CodexSummary[]
   quests?: QuestSummary[]
+  facts?: FactsView | null
 }
 
 /** What the server tells every console on a lifecycle transition. */
@@ -145,6 +147,7 @@ const EMPTY_SNAPSHOT = {
   cues: NO_CUES,
   codex: [] as CodexSummary[],
   quests: [] as QuestSummary[],
+  facts: null as FactsView | null,
   ledgerLen: 0,
   world: [] as WorldEntry[],
   modsOnline: null as number | null,
@@ -354,6 +357,7 @@ export const useOperate = create<OperateState>((set, get) => {
         cues: snap.cues ?? NO_CUES,
         codex: snap.codex ?? [],
         quests: snap.quests ?? [],
+        facts: snap.facts ?? null,
         choices: snap.choices ?? {},
         ledgerLen: snap.ledgerLen ?? 0,
         world: snap.world ?? [],

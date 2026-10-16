@@ -260,6 +260,65 @@ export async function postEnd(base: string, token: string): Promise<void> {
   }
 }
 
+// --- the King (the tablet speaks for the story, with its mod token) --------
+
+/** Retry waits for `postSignal`: 0.5 s doubling to 8 s. */
+export const SIGNAL_RETRY_MS = [500, 1000, 2000, 4000, 8000] as const;
+
+/**
+ * Fire a story signal as this device: `POST /api/mod/signal {name, subject,
+ * label}` with the moderator token (`label` = the device's name, so the
+ * journal reads "by Tent tablet" on a server that honours it). Retries a
+ * network failure or a 5xx `attempts` times (0.5 → 8 s); a 4xx is final.
+ * Resolves true on a 200. In memory only: a reload drops a pending post.
+ */
+export async function postSignal(
+  config: ReinstallConfig,
+  name: string,
+  subject: string,
+  opts: { attempts?: number; fetcher?: typeof fetch; sleep?: (ms: number) => Promise<void> } = {},
+): Promise<boolean> {
+  const attempts = Math.max(1, opts.attempts ?? 1 + SIGNAL_RETRY_MS.length);
+  const fetcher = opts.fetcher ?? fetch;
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const body = JSON.stringify({ name, subject, label: config.name });
+  for (let i = 0; i < attempts; i++) {
+    if (i > 0) await sleep(SIGNAL_RETRY_MS[Math.min(i - 1, SIGNAL_RETRY_MS.length - 1)]!);
+    try {
+      const res = await fetcher(`${baseOf(config)}/api/mod/signal`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-loom-token": config.token },
+        body,
+      });
+      if (res.ok) return true;
+      if (res.status < 500) return false;
+    } catch {
+      /* the network: try again */
+    }
+  }
+  return false;
+}
+
+/**
+ * Is the fight armed? Reads the mod view (`GET /api/state?role=mod`, as
+ * `fetchLocations` does) for the world var at `path` and compares it with
+ * `min`; null when the server is away or the var is absent / not a number.
+ */
+export async function fetchArmed(config: ReinstallConfig, path: string, min: number, fetcher: typeof fetch = fetch): Promise<boolean | null> {
+  try {
+    const res = await fetcher(`${baseOf(config)}/api/state?role=mod`, { headers: { "x-loom-token": config.token } });
+    if (!res.ok) return null;
+    const r = (await res.json()) as { world?: unknown };
+    if (!Array.isArray(r.world)) return null;
+    const row = r.world.find((w: unknown) => typeof w === "object" && w !== null && (w as { path?: unknown }).path === path) as { value?: unknown } | undefined;
+    if (row === undefined) return null;
+    const v = typeof row.value === "number" ? row.value : typeof row.value === "string" ? Number(row.value) : Number.NaN;
+    return Number.isFinite(v) ? v >= min : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The spatial stream's URL (a mod token or a session token). */
 export function streamUrl(base: string, token: string, name: string): string {
   return `${base}/api/spatial/stream?name=${encodeURIComponent(name)}&token=${encodeURIComponent(token)}`;

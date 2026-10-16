@@ -126,7 +126,8 @@ export interface SlideCopy {
 }
 
 /** Copy for the cue registry's slides (DESIGN.md §2.13). The trivia lines are
- *  the Quest Log's own questions (a test keeps them in step with `quests.loom`).
+ *  the Quest Log's own questions (a test keeps them in step with the show's
+ *  `generated/questions.loom`, which is generated from its facts.json).
  *  Slides that can show before the introduction never name the character. */
 export const SLIDE_COPY: Readonly<Record<string, SlideCopy>> = {
   call_desktop: { title: "REPORT TO THE DESKTOP", lines: ["All programs: a game is about to begin."] },
@@ -150,7 +151,7 @@ export const SLIDE_COPY: Readonly<Record<string, SlideCopy>> = {
   },
   return: { title: "RETURN TO THE DESKTOP", lines: ["Time is up."] },
   hunt_results: { title: "THE RESULTS", lines: ["The First Moment of Truth."] },
-  truth_or_dare: { title: "TRUTH OR DARE", lines: ["Draw from the hat."] },
+  truth_or_dare: { title: "TRUTH OR DARE", lines: ["The bottle is spinning."] },
   ad_hijack: { title: "000. 000. 000.", lines: ["A special offer for you."] },
   truther: { title: "TRUTHER DOWNLOAD", lines: ["Downloading… do not turn off your computer."] },
   five_minutes: { title: "SECOND MOMENT OF TRUTH", lines: ["Five minutes. Return to the Desktop."] },

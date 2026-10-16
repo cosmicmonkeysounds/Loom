@@ -2,7 +2,7 @@
 title: Live verbs — building game rules from primitives
 section: Live Shows
 order: 33
-keywords: capture, release, escape, reveal, respond, join, defect, betray, enroll, scan, signal, fire, named event, game, verbs, promote, cast, move, add, remove, reply, when, watcher, primitives, rules, hooks, do, INTERACTION, interaction, button, story rule, arguments, with, for, cue sheet, sequence, fallback, chess, chess won, majority, limit, power, screens, slide, overlay, tv, blackout, award
+keywords: capture, release, escape, reveal, respond, join, defect, betray, enroll, scan, signal, fire, named event, game, verbs, promote, cast, move, add, remove, reply, when, watcher, primitives, rules, hooks, do, INTERACTION, interaction, button, story rule, arguments, with, for, cue sheet, sequence, fallback, chess, chess won, the King, majority, limit, power, screens, slide, overlay, tv, blackout, award, restrict, unrestrict, restricted, marked, quarantine, pin, unpin, sticky, notice, pinned, staff quest, character quest
 ---
 
 Live shows run on **hooks** — `when <event>:` blocks in a CHARACTER,
@@ -19,6 +19,8 @@ show builds its own rules out of four primitives:
 | **Movement** | `move guest to The Cellar` | `when arrives at The Cellar:` / `when guest leaves The Cellar:` |
 | **Groups** | `add guest to The Society` / `remove guest from The Collectors` / `reveal The Society` | `when joins The Society:` |
 | **Named events** | `fire lockdown` / `fire unlocked for guest` | `when lockdown:` / `when unlocked for guest:` |
+| **Reach** | `restrict guest to The Tube` / `unrestrict guest` — how much of the app they have | `when restricted for guest:` / `when guest.restricted:` |
+| **Notices** | `pin "!🚨 Go to the Internet." for guest` / `unpin for guest` — a sticky line above their feed | — |
 
 Because the rules are yours, a garden-party mystery and a jailbreak are
 written with the same handful of words.
@@ -113,7 +115,91 @@ beats with `-> self.Beat` ([Owned beats](owned-beats.md)).
 | `fire name` / `fire name for who` / `fire name with k: v` | raise a named event every matching `when` hears |
 | `broadcast cue to scope` | send a cue (and indented lines) to an audience ([scopes](broadcast-improv.md)) |
 | `cast who as Role` / `promote who to Role` | bind or promote a person to a part |
+| `restrict who [to Place, Place]` / `unrestrict who` | shrink a participant's app to DMs + the named places, read-only, no buttons — and lift it (below) |
+| `pin "text" [in room] [for who]` / `unpin [in room] [for who] ["text"]` | a sticky notice above a stream, and taking it down (below) |
+| `start quest X for who` … | the quest log — for a guest, a scope, or a **character** ([quests](quests.md)) |
 | `do verb args` | any custom verb — show control, a `.luau` extension |
+
+## Restricting a participant
+
+Capture is a place; **restriction** is a leash. `restrict guest` keeps
+the phone signed in but shrinks it: the guest keeps their own feed
+(where a pin for them lands), their DMs and private threads and their
+pinned Quest Log / Codex / Wallet; every authored room and every place
+the story didn't name is gone, every story button is
+off (the server refuses `INTERACTION` presses, room check-ins and room
+posts while it lasts), and the app greys out with a ⛔ tag. `restrict
+guest to The Tube, The Internet` keeps those places visible too —
+read-only, and **by name even if they are hidden**: naming a place is
+opening it for them, so name only what they may see. Wherever they are
+standing stays visible as well. `unrestrict guest` gives everything
+back.
+
+```loom
+when mark_for_reinstallation for program:
+  set program.marked = true
+  restrict program to The Tube, The Internet
+  pin "!🚨 GO TO THE INTERNET. An Antivirus will escort you through the Tube." for program
+  pin "🚨 Escort {program.name} to the Internet — {reason}." in quarantine for program
+
+when unmarked for program:
+  set program.marked = false
+  unrestrict program
+  unpin for program "✅ The mark is lifted."
+  unpin in quarantine for program "✅ {program.name}: {how}."
+```
+
+The flag is `who.restricted` (readable in conditions, settable from
+Run through the mod API's `set`), and the edge fires `restricted` /
+`unrestricted` for them — `when restricted for guest:` /
+`when unrestricted for guest:` — once per real transition, so a second
+`restrict` is harmless. Performers see a **⛔ restricted** pill on
+that guest's card and on their thread's line in the guest list. *Trapped in the
+Internet* uses it for a program **marked for reinstallation**: marked
+on the spot by a host's verdict, restricted to the Tube and the
+Internet, escorted by an Antivirus, and freed by the capture, the
+release, or 🩹 Unmark.
+
+## Sticky notices
+
+`pin "text"` puts a line **above** a stream that stays until the story
+takes it down — a standing order, an escort task. Where it goes:
+
+- `pin "…" for guest` — above that one guest's own feed (their lobby);
+  with no `for`, the bound subject of the rule.
+- `pin "…" in quarantine for guest` — above an authored room or a
+  place, for whoever reads that room (a staff back-room's readers are
+  its performers and the directors, exactly like `broadcast … to
+  channel(hosts)`). The `for` is the pin's **key**: one pin per
+  (person, room), so pinning again for the same person replaces it.
+  Leave `for` off in a rule with no subject — a story rule such as
+  `when lockdown:`, or a `Night.*` watcher — for the room's one unkeyed
+  pin; inside a `for program` rule a pin with no `for` is still keyed
+  to that program.
+- A leading `!` makes it an **alert** as well — chime, buzz, banner —
+  and the `!` is not shown.
+
+`unpin [in room] [for who] ["text"]` takes the matching pin down and
+posts the optional text as a system notice in its place (default
+*📌 Cleared.*). A bare `unpin` is prose; name at least a room or a
+person. Pins and unpins are ordinary journaled messages, so a reload
+or a restart rebuilds the rail exactly.
+
+## Quests for the cast
+
+The four quest statements take a **character** as well as a guest or a
+scope — `start quest Run The Bingo for Clippy`, `complete quest The
+Audit for CRA Agent Software "…"` — and land in that performer's own
+pinned **Quest Log** room in their booth. The mirror is
+`<Character>.quest.<slug>` (`Clippy.quest.run_the_bingo`), and a story
+rule hears the step — `when Clippy starts quest Run The Bingo:` /
+`completes` / `fails` — exactly as `when program completes quest X:`
+does for a guest ([quests](quests.md)); the name in the hook is a
+label, not a filter — the rule fires for whoever takes that step, so
+use a quest only the cast holds, or check `self`. `… for everyone` stays
+guests-only: `fail quest X for everyone` at a deadline never touches
+the cast's. Staff quests are how a show briefs its performers in the
+app instead of on paper.
 
 ## What fires hooks
 
@@ -234,9 +320,12 @@ run of these ([the cue sheet](run-mode.md)).
 ### A button as a fallback for a machine
 
 The same event can come from a device, a performer and a director. In
-*Trapped in the Internet* a chess phone guards the server room; a host
-who sees the mate presses a button on the winner's card, and a dead
-phone means the director fires `chess won` from the cue sheet:
+*Trapped in the Internet* the **King** — a chess piece in the
+simulation, guarding the server-room door on the house map — posts
+`chess won` himself when a program checkmates him on the tent tablet;
+until he is device-checked a chess phone on the wall is the fallback,
+a host who sees the mate presses a button on the winner's card, and a
+dead tablet means the director fires `chess won` from the cue sheet:
 
 ```loom
 INTERACTION beat the machine
@@ -244,7 +333,7 @@ INTERACTION beat the machine
   who: performer
 
 INTERACTION chess won
-  label: ♟ Cold Lock (chess phone fallback)
+  label: ♟ Cold Lock: they beat the King (fallback)
   who: admin
   sequence: false
 
@@ -261,12 +350,15 @@ when Kernel.disarmed_until > 0 and Time.elapsed >= Kernel.disarmed_until:
   do door server_room, state: locked
 ```
 
-A device that can report (the phone itself, a sensor through the
+A device that can report (the tent tablet, a sensor through the
 show-control bridge) fires the same names — `chess won`, `chess lost`,
 `chess drawn` — and the story treats them alike. Write the rule so a
 duplicate is harmless (it re-sets the same window). Give the director a
 manual button for anything a crowd decides too — the show's *Force the
 majority* cues settle a vote ghosts would otherwise block, once.
+A story with a [currency](currency.md) hears its wallet the same way:
+`transfer_received`, `transfer_denied`, `stimulus` … are named events
+the server fires; your rules narrate them and never move coin.
 
 ### Powers for a character with a mind: `who: agent`
 

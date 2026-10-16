@@ -84,6 +84,12 @@ notice ("📂 The Cellar is open now.") to whoever it opened for; lines
 said in a room before it opened are delivered and appear with it.
 Performers and directors always see every room. A hidden `private` /
 `group` room still needs membership once revealed.
+
+Any room — and a guest's own feed — can carry a **sticky notice**
+above its stream: `pin "🚨 Escort {program.name} to the Internet." in
+quarantine for program`, taken down with `unpin` ([live
+verbs](live-verbs.md), *Sticky notices*).
+
 ## The rooms your story creates on its own
 
 Beyond authored channels, every event automatically has:
@@ -99,6 +105,9 @@ Beyond authored channels, every event automatically has:
   occupants.
 - **DM threads** — a character addressing one guest lands in a private
   thread between them; so does `reply`.
+- **Pinned rooms** — a guest's Quest Log and Codex, and a **Wallet**
+  when the story declares a [currency](currency.md); a performer's
+  booth has its own, plus an Inbox for cards dealt to the character.
 
 Where a scripted line lands is decided by the
 [unified conversation model](first-scene.md): subject-bound dialogue →

@@ -159,7 +159,7 @@
     { "id": "shed-door", "a": "shed", "b": "backyard", "at": [-3.5, 21], "width": 0.9 },
     { "id": "bathroom-1-door", "a": "basement-hall", "b": "bathroom-1", "at": [-1.75, 3], "width": 0.8 },
     { "id": "laundry-door", "a": "basement-hall", "b": "fan-closet", "at": [-3, 4.5], "width": 0.8 },
-    { "id": "server-door", "a": "basement-hall", "b": "server-room", "at": [-3, 11.2], "width": 0.8 },
+    { "id": "server-door", "a": "basement-hall", "b": "server-room", "at": [-3, 11.2], "width": 0.8, "guard": "cold-lock-king" },
     { "id": "studio-door", "a": "basement-hall", "b": "ram", "at": [1, 5], "width": 1 },
     { "id": "crawl-hatch", "a": "upstairs-hall", "b": "hard-drive", "at": [0, 5], "width": 0.8 },
     { "id": "bathroom-2-door", "a": "upstairs-hall", "b": "bathroom-2", "at": [0, 11], "width": 0.8 },
@@ -249,6 +249,9 @@
     { "id": "lock-ring", "room": "basement-hall", "kind": "screen", "pos": [-2.97, -1.2, 10.5], "size": [0.2, 0.2, 0.02], "yaw": -90, "color": "#ff2a2a", "label": "LOCK" },
     { "id": "chess-phone", "room": "basement-hall", "kind": "screen", "pos": [-2.97, -1.45, 11.85], "size": [0.08, 0.16, 0.02], "yaw": -90, "color": "#101820", "label": "CHESS" },
     { "id": "cold-storage-sign", "room": "basement-hall", "kind": "label", "pos": [-2.97, -0.6, 11.2], "size": [1, 0.25, 0.02], "yaw": -90, "label": "COLD STORAGE" },
+    { "id": "cold-lock-king", "room": "basement-hall", "kind": "king", "pos": [-2.55, -2.7, 11.2], "size": [0.6, 1.9, 0.6], "yaw": -90, "color": "#d4af37", "label": "THE KING", "hp": 4,
+      "signals": { "won": "chess won", "lost": "chess lost", "drawn": "chess drawn" },
+      "armed": { "path": "Night.step", "min": 14 } },
 
     { "id": "mixing-desk", "room": "ram", "kind": "box", "pos": [5, -2.7, 3.4], "size": [1.6, 0.8, 0.7], "color": "#2a2a30", "label": "RAM" },
     { "id": "studio-couch", "room": "ram", "kind": "box", "pos": [6.4, -2.7, 10.5], "size": [0.9, 0.8, 1.8], "color": "#7a4a4a" },

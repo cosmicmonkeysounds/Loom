@@ -42,6 +42,11 @@ export const SimEventType = {
   CodexUnlocked: "codexUnlocked",
   CodexMissed: "codexMissed",
   Quest: "quest",
+  Restricted: "restricted",
+  Unrestricted: "unrestricted",
+  Pinned: "pinned",
+  Unpinned: "unpinned",
+  Wallet: "wallet",
   Ambient: "ambient",
   Tick: "tick",
   Diagnostic: "diagnostic",
@@ -115,9 +120,86 @@ export type SimEvent =
   // (`update`), or settled (`complete` / `fail`). `text` is the authored
   // line for the quest's thread (null = the default copy / the brief).
   | { type: "quest"; person: string; quest: string; action: QuestAction; text: string | null }
+  // `restrict who [to Place, …]`: the story shrank a participant's app to
+  // the named places (+ DMs), read-only, no buttons. `places` is the list
+  // the viewer keeps (possibly empty). `unrestrict who` lifts it.
+  | { type: "restricted"; person: string; places: string[] }
+  | { type: "unrestricted"; person: string }
+  // `pin "…" [in room] [for who]`: a sticky notice. `channel` null = the
+  // person's own feed (the lobby), else an authored room (`room:x`) or a
+  // place (`loc:X`). `key` = the person's id, or "" for a room-wide pin —
+  // the client keeps the newest pin per (channel, key) until an `unpin`
+  // with the same key. A leading `!` in the text is an alert.
+  | { type: "pinned"; text: string; channel: string | null; person: string | null; key: string }
+  | { type: "unpinned"; text: string | null; channel: string | null; person: string | null; key: string }
+  // A wallet card for one viewer (a person id, or `@<Character>` for a booth)
+  // — emitted by the server's WalletBook, never by the Sim itself; `root`
+  // opens the card's thread, else it is a step.
+  | { type: "wallet"; to: string; card: WalletCard; root: boolean }
   | { type: "ambient"; source: string; text: string }
   | { type: "tick"; elapsedMs: number }
   | { type: "diagnostic"; message: string };
+
+// --- the wallet card (shared by the server's WalletBook, chat and the play mirror) ---
+
+export type WalletTxState = "pending" | "held" | "settled" | "denied" | "cancelled";
+
+export type WalletCardKind = "transfer" | "request" | "offer" | "stimulus" | "approval";
+
+export type WalletStep =
+  | "sent"
+  | "pending"
+  | "held"
+  | "settled"
+  | "received"
+  | "approved"
+  | "denied"
+  | "cancelled"
+  | "asked"
+  | "paid"
+  | "declined"
+  | "expired"
+  | "offered"
+  | "accepted"
+  | "failed"
+  | "minted";
+
+/**
+ * One wallet card as a viewer sees it. `kind` + `step` say which side the
+ * viewer is on (a `transfer/pending` root is the sender's, a
+ * `transfer/received` root the receiver's, an `approval/*` card the
+ * approver's). `id` (`t12` / `r3` / `o7` / `s1`) is the thread key per viewer.
+ */
+export interface WalletCard {
+  kind: WalletCardKind;
+  id: string;
+  step: WalletStep;
+  from: string;
+  fromName: string;
+  to: string;
+  toName: string;
+  amount: number;
+  /** The unit — `CurrencyDef.name`. */
+  unit: string;
+  side?: "buy" | "sell";
+  /** Codex entry id + title, on an offer. */
+  entry?: string;
+  entryTitle?: string;
+  /** Story ms — the countdown on pending / approval cards. */
+  settleAt?: number;
+  /** Who approved / denied / cancelled (a character id or `Director`). */
+  by?: string;
+  /** The approver's display name, on a card that waits on them. */
+  approver?: string;
+}
+
+/** The event the book emits per card — `to` is a person id or `@<Character>`. */
+export interface WalletEvent {
+  type: "wallet";
+  to: string;
+  card: WalletCard;
+  root: boolean;
+}
 
 type MutuallyAssignable<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 /** Compile-time guard: the `SimEventType` enum and the union's `type`

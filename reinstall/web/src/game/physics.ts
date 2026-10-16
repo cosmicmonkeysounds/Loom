@@ -21,7 +21,7 @@
 //! Units: metres, seconds, degrees. Yaw follows the house frame (0 = north,
 //! + = counter-clockwise from above, i.e. turning left).
 
-import { buildWalls, heightAt, pointInRect, propSolid, rampHeight, standable, STEP_UP, surfacesAt, wallEnds } from "@loom/house";
+import { buildWalls, doorGap, heightAt, pointInRect, propSolid, rampHeight, standable, STEP_UP, surfacesAt, wallEnds } from "@loom/house";
 import type { HouseMap, Vec2, Vec3, WallSegment } from "@loom/house";
 
 export const RADIUS = 0.25;
@@ -79,14 +79,31 @@ export interface PhysicsWorld {
   blockers: Blocker[];
 }
 
-export function buildPhysicsWorld(house: HouseMap, walls: readonly WallSegment[] = buildWalls(house)): PhysicsWorld {
+export interface PhysicsOptions {
+  /** Props (by id) left out of the collision — a fallen king. */
+  omitProps?: ReadonlySet<string>;
+  /** Doors (by id) shut: their gap (`doorGap`) blocks like a wall — a guarded door while its king stands. */
+  closedDoors?: ReadonlySet<string>;
+}
+
+export function buildPhysicsWorld(house: HouseMap, walls: readonly WallSegment[] = buildWalls(house), opts: PhysicsOptions = {}): PhysicsWorld {
   const blockers: Blocker[] = [];
   for (const w of walls) {
     const [a, b] = wallEnds(w);
     blockers.push({ kind: "segment", a, b, bottom: w.bottom, top: w.top });
   }
+  if (opts.closedDoors !== undefined) {
+    for (const door of house.doors) {
+      if (!opts.closedDoors.has(door.id)) continue;
+      const gap = doorGap(house, door);
+      if (gap === null) continue;
+      const [a, b] = wallEnds(gap);
+      blockers.push({ kind: "segment", a, b, bottom: gap.bottom, top: gap.top });
+    }
+  }
   for (const prop of house.props) {
     if (!propSolid(prop)) continue;
+    if (opts.omitProps?.has(prop.id)) continue;
     const [w, h, d] = prop.size;
     const c: Vec2 = [prop.pos[0], prop.pos[2]];
     const bottom = prop.pos[1];

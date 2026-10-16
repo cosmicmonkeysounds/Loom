@@ -2,7 +2,7 @@
 title: Your quest log
 section: Guest Guide
 order: 10
-keywords: quest, quests, quest log, task, mission, objective, progress, complete, failed, pinned, thread, file a fact, fact, answer, certain, filed
+keywords: quest, quests, quest log, task, mission, objective, progress, complete, failed, pinned, thread, file a fact, fact, answer, confidence, sure, filed, judged, verdict, staff quest, performer quest
 ---
 
 Some stories hand you things to **do**. They land in your **📜 Quest
@@ -30,15 +30,23 @@ does their part, your thread hears about it too.
 A quest can be **failed** — time runs out, the story moves on. It stays
 in your log as a record of the night.
 
+Characters have quests too: the people running the night carry their
+own Quest Log in their booths, with the story's standing orders for
+them. If a performer seems to be following a script, they are.
+
 ## Filing a fact
 
 Some stories let you hand an answer to a character instead of saying it
 out loud: a **📝 File a fact** card in their private thread. Pick the
-question, type your answer, tick **I'm certain**, and tap **File it**.
+question, type your answer, set the slider — *Please select your
+confidence level in this response*, 1 to 100 — and tap **File it**.
 Only filed facts count — telling the character in chat is just a rumour.
-You can file each question once, and the reply is the same whether you
-were right or not. A filed card says **sent** — the character's reply
-tells you whether it was accepted (one filing waits to be judged at a
-time). A fresh card arrives for the next one, and the old cards fold
-into one line each — the newest card lists every question you can still
-file, earlier rounds' included.
+You can file each open question once, and the reply is the same whether
+you were right or not: it is judged the moment you file it, and the
+story decides what to do with a right answer, a wrong one you were sure
+of, and a guess. Mind the slider — at *Trapped in the Internet*, a wrong
+answer filed at 100 is a lie on the record, and a guess filed below 100
+is a guess. A filed card says **sent** with your confidence; a fresh
+card arrives for the next question, and the old cards fold into one
+line each. The newest card lists every open question you haven't filed
+yet; once a round closes, its unfiled questions are gone for good.

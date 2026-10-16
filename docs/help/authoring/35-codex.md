@@ -45,6 +45,11 @@ CODEX The LiveJournal
 4. **Show hardware:** `POST /api/mod/codex {who, entry}` through the mod
    API (a puzzle box). A game can also fire a named event whose `when`
    unlocks the entry — the reinstallation games' `the golden duck`.
+5. **A trade.** With a [currency](currency.md) declared, a guest can
+   offer coin for an entry another guest holds (or offer an entry for
+   coin) from their Wallet; when the other side accepts, the server
+   moves the coin and shares the entry in one step — so `share` and
+   `learns` fire exactly as for a hand-to-hand share.
 
 Every unlock fires `learn`; a share also fires `share` with `from` bound:
 

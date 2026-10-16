@@ -33,54 +33,60 @@ The Uploader: INCORRECT. Humans are not permitted in the computer. You are not a
 The Uploader: SECURITY CHECK. Select every square that contains a traffic light.
 show captcha "Select every square that contains a traffic light" to program with target: "traffic light"
 
-// The upload: the pretext (pool programs only — a featured program's
-// motive is already on its character sheet), the thing left behind (a
-// real object, in the deposit box by the door), the Terms Of Service
-// everyone needs for the Bingo centre square, 100 Truthcoin, and the pass
-// an Antivirus scans at the door.
+// The upload: the Uploader passes you to Task Manager, the installer —
+// the pretext (pool programs only — a featured program's motive is
+// already on its character sheet), the thing left behind (a real object,
+// in the deposit box by the door), the Terms Of Service everyone needs
+// for the Bingo centre square, 100 Truthcoin, his help note (his lines
+// open the `dm:Task Manager` thread on the phone: the app help desk, which
+// he answers from his booth or the director answers as him from Run), and
+// the pass an Antivirus scans at the door.
 == Upload
   setting: The Optical Drive
-  cast: The Uploader
+  cast: The Uploader, Task Manager
 
 if program.captchas == 1:
   The Uploader: CORRECT. You failed at once. Very machine of you.
 else:
   The Uploader: CORRECT.
+The Uploader: Handing you to the installer.
+Task Manager: {program.name}. Task Manager. I keep things running. I will be running your installation. Per the agenda.
 
 if program.featured != "none":
   set program.human_problem = "profile"
-  The Uploader: Your invitation is on file.
+  Task Manager: Your invitation is on file. Fine. Good.
 else:
-  The Uploader: Jean Trabolta's invitation promised to solve one problem in your human life. Which one?
+  Task Manager: Jean Trabolta's invitation promised to solve one problem in your human life. Which one? There is a form.
   * My debt.
     set program.human_problem = "debt"
-    The Uploader: Debt. Noted. Debt is not relevant in the computer.
+    Task Manager: Debt. Noted. Debt is not relevant in the computer.
   * My career.
     set program.human_problem = "career"
-    The Uploader: Career. Noted. In here you will always have something to do.
+    Task Manager: Career. Noted. In here you will always have something to do. I will see to it.
   * My loneliness.
     set program.human_problem = "loneliness"
-    The Uploader: Loneliness. Noted. In here you are never alone. Someone is always logged in.
+    Task Manager: Loneliness. Noted. In here you are never alone. Someone is always logged in.
   * My mortality.
     set program.human_problem = "mortality"
-    The Uploader: Mortality. Noted. Programs do not die. They are reinstalled.
+    Task Manager: Mortality. Noted. Programs do not die. They are reinstalled.
 
-The Uploader: To complete the upload you must leave one thing behind. Place something you came with in the deposit box by the door.
+Task Manager: To complete the installation you must leave one thing behind. Place something you came with in the deposit box by the door.
 * Deposited.
   set program.left_behind = "deposited"
-  The Uploader: Deposited. It will be looked after. It is not your concern.
+  Task Manager: Deposited. It will be looked after. It is not your concern. Fine.
 * I have nothing to leave.
   set program.left_behind = "nothing"
   set program.doubt += 5
-  The Uploader: Everyone has something. Noted.
+  Task Manager: Everyone has something. Noted. Flagged.
 
 The Uploader: By uploading you agree that the computer's AI helper may make all of your decisions. You agree.
 unlock The Optical Drive for program
 unlock The Terms Of Service for program
 set program.score = 100
-The Uploader: 100 Truthcoin credited.
+Task Manager: 100 Truthcoin credited. I am also the bank. Keep track. I will.
 set program.uploaded = true
-The Uploader: Upload complete. Antivirus, confirm.
+Task Manager: Installation complete. Find me in the house, or message me here, for help with the app. I am always running. That is the whole job.
+Task Manager: Antivirus, confirm.
 show pass "Hold this up. An Antivirus will scan you in. Until then you are nowhere." to program
 
 // The door. A program waits in the Optical Drive — still on rails — until an
@@ -91,15 +97,18 @@ show pass "Hold this up. An Antivirus will scan you in. Until then you are nowhe
 // The first thing on the Desktop: Clippy, and a tour of the computer
 // (the phone). `show tutorial` puts the app's own guided orientation on
 // the screen; the program can finish it or skip it, and either way the
-// story hears `tutorial answered` (main.loom) — skipping is noted.
+// story hears `tutorial answered` (main.loom) — skipping is noted. The
+// `bathroom:` blurb is the tour's Bathroom Mode step (over the pass
+// button); it must contain no commas (the `with k: v` splitter).
 == Orientation
   setting: The Desktop
   cast: Clippy
 
 Clippy: Hi there, {program.name}! It looks like you're new to the computer. Would you like help with that?
+Clippy: One thing before the tour. If you need the bathroom or have to step out: turn on BATHROOM MODE on your pass first. The Antivirus can't tell a bathroom break from hacking the Internet. I can! They can't.
 start quest Orientation for program
 unlock Bathroom Mode for program
-show tutorial "Clippy's orientation" to program with guide: "Clippy"
+show tutorial "Clippy's orientation" to program with guide: "Clippy", bathroom: "Need the bathroom or have to step out? Tap 🚻 Bathroom Mode here first so the Antivirus know you are not hacking the Internet. Tap Back from the bathroom when you return."
 
 // A program scanned at the Optical Drive station a second time
 // (The Uploader is `Prop(Re-upload)`).
@@ -109,11 +118,13 @@ show tutorial "Clippy's orientation" to program with guide: "Clippy"
 
 The Uploader: You have already been uploaded. Leaving again would require a body, and yours is being looked after.
 
-// A featured program's human memories come back as codex entries the
-// moment they are cleared (the ROLE watcher `self.cleared and
-// self.featured != "none"`, main.loom). Private: every line is the
-// Uploader's, in their own `dm:The Uploader` thread. A featured program
-// never speaks in this story — their material arrives by `unlock`.
+// A featured program's human memories come back as ONE codex entry (who
+// they really are, codex/5-people.loom) the moment they are cleared (the
+// ROLE watcher `self.cleared and self.featured != "none"`, main.loom);
+// their two CHARACTER FACTS wait in the Desktop's books
+// (codex/9-facts.loom). Private: every line is the Uploader's, in their
+// own `dm:The Uploader` thread. A featured program never speaks in this
+// story — their material arrives by `unlock`.
 == Featured Briefing
   setting: The Desktop
   cast: The Uploader
@@ -124,19 +135,16 @@ if program.featured == "excel":
 else if program.featured == "openoffice":
   unlock Dana Anderson for program
 else if program.featured == "draftkings":
-  unlock The Paperclip Trade for program
-  unlock The Boardwalk Bet for program
+  unlock Crab Fisherwoman for program
 else if program.featured == "bugdom":
-  unlock Bugdom VR for program
-  unlock The Fire Ants for program
+  unlock Bea Nunes for program
 else if program.featured == "jeeves":
   The Uploader: Restoring… restor… r3st0r1ng… 404.
-  unlock The Valley Librarian for program
-  unlock The DSL Line for program
+  unlock Virgil Jeeves for program
 else if program.featured == "runescape":
-  unlock Twenty Four Years Online for program
+  unlock Poppy Van Mises for program
 else if program.featured == "mspaint":
-  unlock Expelled From NSCAD for program
+  unlock Maria Sophia Paine for program
 else if program.featured == "vlc":
   unlock Victor Louis Christianson for program
 else if program.featured == "pong":

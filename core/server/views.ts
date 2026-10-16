@@ -9,6 +9,13 @@ import type { AgentMindReport } from "./agents.ts";
 export type { AgentControl, AgentControlAction, AgentMindPerson, AgentMindRevision, AgentThought } from "./agents.ts";
 import type { Sim } from "../src/runtime/sim/index.ts";
 import type { CodexDef } from "../src/runtime/sim/model.ts";
+import type { WalletModView, WalletQueueView, WalletView } from "./wallet.ts";
+import type { FactsView } from "./facts.ts";
+
+export type { WalletModView, WalletOfferView, WalletQueueView, WalletRequestView, WalletTxView, WalletView } from "./wallet.ts";
+// The facts judge's ledger (`ModView.facts`, Wave 4 lane B): the editor
+// imports these from `@loom/core/views` only.
+export type { FactFinal, FactVerdict, FactsFiling, FactsQuestion, FactsTally, FactsView, JudgeMode } from "./facts.ts";
 
 export type RuntimePhase = "idle" | "open" | "paused";
 
@@ -227,6 +234,9 @@ export interface GuestView {
   score: number;
   location: string | null;
   captured: boolean;
+  /** The story restricted this guest (`restrict who`): the app greys out,
+   *  no buttons, only the listed rooms, read-only; DMs stay. */
+  restricted: boolean;
   /** May a captured guest free themselves from the app (the v3 "make a
    *  break for it" button)? False when their prison is `sealed: true` —
    *  only the story lets them out. */
@@ -263,6 +273,9 @@ export interface GuestView {
   quests: QuestView[];
   /** How many quests the story declares (0 → no Quest Log room). */
   questTotal: number;
+  /** The story's currency, when it declares one (`currency:`) — filled by
+   *  the runtime's WalletBook; a local sim has none. */
+  wallet?: WalletView;
   /** The participants directory: who else is here, and what one knows of them. */
   people: PersonCard[];
   /** Profile pictures by (folded) display name → serving key
@@ -284,6 +297,7 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     score: sim.scoreOf(id),
     location: sim.locationOf(id),
     captured: sim.isCaptured(id),
+    restricted: sim.isRestricted(id),
     canEscape: !(sim.model.locations.get(sim.locationOf(id) ?? "")?.sealed ?? false),
     pendingChoice,
     decisionChannel: pendingChoice ? (decisionChannel ?? "lobby") : null,
@@ -297,8 +311,9 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
       const def = sim.model.factions.get(g);
       return def === undefined || !def.hidden || sim.factionRevealed(g);
     }),
-    // A guest only ever sees the buttons on offer to them right now.
-    interactions: interactionsFor(sim, ["guest"], { subject: id, self: id }).filter((i) => i.live !== false),
+    // A guest only ever sees the buttons on offer to them right now — and
+    // none at all while the story has them restricted.
+    interactions: sim.isRestricted(id) ? [] : interactionsFor(sim, ["guest"], { subject: id, self: id }).filter((i) => i.live !== false),
     codex: sim.codexFor(id).map(codexEntry),
     codexTotal: sim.model.codex.size,
     quests: sim.questsFor(id).map(({ def, status }) => ({ id: def.id, title: def.title, giver: def.giver, status })),
@@ -316,6 +331,8 @@ export interface RosterRow {
   trueFaction: string | null;
   location: string | null;
   captured: boolean;
+  /** `restrict who` is in force (the phone is greyed, buttons off). */
+  restricted: boolean;
   score: number;
   /** Story position — the beat this guest is currently inside, if any. */
   beat: string | null;
@@ -341,6 +358,7 @@ export function rosterRow(sim: Sim, id: string): RosterRow | null {
     trueFaction: sim.trueFactionOf(p.id),
     location: sim.locationOf(p.id),
     captured: sim.isCaptured(p.id),
+    restricted: sim.isRestricted(p.id),
     score: sim.scoreOf(p.id),
     beat: sim.lastBeatOf(p.id),
     visited: sim.visitedBeatsFor(p.id),
@@ -400,6 +418,8 @@ export interface ModPresence {
   /** What each agent worker last reported about its character's evolving
    *  mind (`POST /api/agent/mind`) — the director's window into it. */
   minds?: AgentMindSummary[];
+  /** The facts judge's ledger (facts.ts), present only when the event has a facts.json. */
+  facts?: FactsView;
 }
 
 /** An agent-voiced character's mind as its worker last mirrored it — the
@@ -453,10 +473,16 @@ export interface ModView {
   quests?: QuestSummary[];
   /** Agent-voiced characters' minds, as their workers last reported them. */
   minds?: AgentMindSummary[];
+  /** The facts judge's ledger — every key of the project's `facts.json` with
+   *  its filings, verdicts and tallies, plus the judging mode (runtime-
+   *  filled; absent when the event has no `facts.json`). */
+  facts?: FactsView;
   /** The director cue sheet's state: which `who: admin` cues have fired
    *  and which was last — read off the sim log, so a director who signs
    *  in mid-show (or reloads) sees the same sheet as the one who fired. */
   cues?: CueState;
+  /** The director's mirror of the story's wallet (runtime-filled). */
+  wallet?: WalletModView;
 }
 
 /** Where the night is on the `who: admin` cue sheet. */
@@ -647,6 +673,7 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
     codex: [...sim.model.codex.values()].map((e) => ({ ...codexEntry(e), code: e.code, holders: sim.codexHolders(e.id) })),
     quests: questSummaries(sim),
     ...(presence?.minds !== undefined && presence.minds.length > 0 ? { minds: presence.minds } : {}),
+    ...(presence?.facts !== undefined ? { facts: presence.facts } : {}),
     cues: cueState(sim),
   };
 }
@@ -656,6 +683,8 @@ export interface PrimeGuest {
   name: string;
   faction: string | null;
   captured: boolean;
+  /** `restrict who` is in force — the booth shows a ⛔ pill. */
+  restricted: boolean;
   /** Where the story has them standing — the booth's "who's here" view. */
   location: string | null;
 }
@@ -681,6 +710,16 @@ export interface PrimeView {
   legacyCapture: boolean;
   /** The codex entries this character holds — their backstory, shareable. */
   codex: CodexEntryView[];
+  /** How many entries the story declares (0 → no Codex room in the booth). */
+  codexTotal: number;
+  /** The character's quest log (`start quest X for <Character>`), in hand-out order. */
+  quests: QuestView[];
+  /** How many quests the story declares (0 → no Quest Log room in the booth). */
+  questTotal: number;
+  /** Widget cards (by message seq) this character has already answered. */
+  answered?: number[];
+  /** The approver's queue — only the approver character's booth (runtime-filled). */
+  wallet?: WalletQueueView;
   /** Agent-voiced characters (`mind: external`) this performer can message
    *  in a `cast:<Character>` thread; `online` = a worker is answering. */
   agents: AgentContact[];
@@ -703,7 +742,7 @@ export function agentContacts(sim: Sim, self: string | null, online?: ReadonlySe
 
 export function primeView(sim: Sim | null, character: string, agentsOnline?: ReadonlySet<string>): PrimeView {
   if (sim === null) {
-    return { character, title: "Loom", theme: "plain", faction: null, guests: [], channels: [], spaces: [], interactions: [], legacyCapture: false, codex: [], agents: [] };
+    return { character, title: "Loom", theme: "plain", faction: null, guests: [], channels: [], spaces: [], interactions: [], legacyCapture: false, codex: [], codexTotal: 0, quests: [], questTotal: 0, agents: [] };
   }
   const c = sim.model.characters.get(character);
   const guests: PrimeGuest[] = [...sim.persons.values()].map((p) => ({
@@ -711,6 +750,7 @@ export function primeView(sim: Sim | null, character: string, agentsOnline?: Rea
     name: p.name,
     faction: sim.publicFactionOf(p.id),
     captured: sim.isCaptured(p.id),
+    restricted: sim.isRestricted(p.id),
     location: sim.locationOf(p.id),
   }));
   return {
@@ -725,6 +765,9 @@ export function primeView(sim: Sim | null, character: string, agentsOnline?: Rea
     interactions: interactionsFor(sim, ["performer", "admin"], { subject: null, self: character }),
     legacyCapture: [...sim.model.locations.values()].some((l) => l.prison),
     codex: sim.codexFor(character).map(codexEntry),
+    codexTotal: sim.model.codex.size,
+    quests: sim.questsFor(character).map(({ def, status }) => ({ id: def.id, title: def.title, giver: def.giver, status })),
+    questTotal: sim.model.quests.size,
     agents: agentContacts(sim, character, agentsOnline),
   };
 }

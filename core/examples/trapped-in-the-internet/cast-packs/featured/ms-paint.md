@@ -21,17 +21,28 @@ three. No algorithms.
 
 ## Who you really are (secret)
 
-An art student **kicked out of NSCAD** for refusing to work in any medium other
-than MS Paint for your degree in digital art. Your position: *"Any program that
-relies on algorithms is a betrayal of the artist."*
+**Maria Sophia Paine**, Apt. 304, 2485 Agricola Street, thirty-four, from a
+working-class family in the North End. You have drawn in nothing but MS Paint
+since you were left alone with a computer at five; at thirteen you made the
+first MS Paint cover of *Wired*, mostly with the spray-paint tool. You hold
+one value above all others: **integrity**. Your guidance counsellor said no
+art school would ever pass a Paint-only student. You enrolled in **four**:
+NSCAD, Yale, The New School and the Beaux-Arts de Paris, one year each in
+rotation, on a seventeen-year plan.
 
-You came because you thought you were being paid to teach an online MS Paint
-class inside the Metaverse. The moment you arrived, you realised how limiting
-this place is. **You want out.**
+Between 2022 and 2024 **three graduation panels refused your thesis**, *"MS
+Paint Is The Most Pure Art Tool: All Art Is Just Pixels If You Take A Picture
+And Zoom In Close Enough."* You are in the final weeks of your last chance in
+Paris. You owe **exactly $1,000,000** in student loans, and the retired
+counsellor has a YouTube video about it ready to publish.
 
 ## Why you said yes
 
-The class. The pay. You were wrong.
+The invitation offers **$1,000,000** if every program at the party contributes
+a considered illustration of their signature to **one collaborative MS Paint
+painting**, to be revealed at a silent auction. That is exactly your debt. You
+have not been told what the painting is really for, and you already want out
+of this place — but not before everyone has signed.
 
 ## The one thing you must do
 
@@ -52,5 +63,6 @@ What happens next is part of the show. Commit to it.
 - If a completed Bingo card turns up with your name on it, you didn't fill it
   in. Say so.
 - Your identity can leak (there are files about people in the house). Bluff.
-- **Bingo:** expelled from art school? Yes.
+- **Bingo:** expelled from art school? Three panels refused your thesis: say
+  yes.
 - You never get lines read for you. Everything MS Paint says, you say.

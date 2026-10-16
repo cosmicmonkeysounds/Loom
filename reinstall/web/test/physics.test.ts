@@ -348,3 +348,23 @@ describe("physics — a remap (the tent ↔ shed switch)", () => {
     expect(lost.body.p).toEqual(spawnBody(house).p);
   });
 });
+
+describe("physics — the King in the doorway (the show's map)", () => {
+  it("the King's box plugs the server doorway: no way round on either side", () => {
+    const house = SHOW();
+    const door = house.doors.find((d) => d.id === "server-door")!;
+    const king = house.props.find((p) => p.id === door.guard)!;
+    expect(king.kind).toBe("king");
+    // The door's gap on the x = −3 wall spans z 10.8..11.6; try every
+    // approach line across it (and a little past the jambs) walking west.
+    const world = buildPhysicsWorld(house);
+    for (let z = 10.6; z <= 11.8 + 1e-9; z += 0.05) {
+      const b = walk(world, body([-1.2, -2.7, z], WEST), 3);
+      expect(b.p[0], `z ${z.toFixed(2)}`).toBeGreaterThanOrEqual(-3 + RADIUS - 1e-6);
+      expect(locate(house, b.p).room, `z ${z.toFixed(2)}`).toBe("basement-hall");
+    }
+    // Without him (a fallen king is left out of the world) the same walk goes through.
+    const open = buildPhysicsWorld(house, undefined, { omitProps: new Set([king.id]) });
+    expect(locate(house, walk(open, body([-1.2, -2.7, 11.2], WEST), 3).p).room).toBe("server-room");
+  });
+});

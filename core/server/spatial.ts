@@ -14,7 +14,7 @@
 
 import { randomBytes, randomUUID } from "node:crypto";
 
-import { DUCK_MAX_RISE, floorOf, houseHash, locate, pickDuckSpot, standable, wrapYaw } from "@loom/house";
+import { DUCK_MAX_RISE, floorOf, guardWarnings, houseHash, locate, pickDuckSpot, standable, wrapYaw } from "@loom/house";
 import type {
   Assignment,
   DuckSpot,
@@ -224,7 +224,9 @@ export function sortCandidates(rows: SpatialCandidate[]): SpatialCandidate[] {
   });
 }
 
-/** Rooms whose `location` names no LOCATION in the story (the validator has no model). */
+/** Rooms whose `location` names no LOCATION in the story (the validator has
+ *  no model), plus `@loom/house`'s own soft warnings (a door's guard standing
+ *  more than `GUARD_REACH` from the door it guards). */
 export function houseWarnings(house: HouseMap, isLocation: (name: string) => boolean): string[] {
   const out: string[] = [];
   for (const room of house.rooms) {
@@ -232,6 +234,7 @@ export function houseWarnings(house: HouseMap, isLocation: (name: string) => boo
       out.push(`room "${room.id}": location "${room.location}" is not a LOCATION in the story`);
     }
   }
+  out.push(...guardWarnings(house));
   return out;
 }
 

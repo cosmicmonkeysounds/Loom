@@ -163,6 +163,8 @@ export class Sim {
 
   private membership = new Map<string, Set<string>>();
   private occupants = new Map<string, Set<string>>();
+  /** `restrict who to …`: person → the places a restricted viewer still sees. */
+  private restrictedTo = new Map<string, string[]>();
   /** Runtime members of authored private/group/dm channels (by channel id). */
   private channelMembers = new Map<string, Set<string>>();
   /** Story-clock time of each sender's last message per channel (slow mode). */
@@ -566,7 +568,9 @@ export class Sim {
    * trigger. True when something happened.
    */
   private stepQuest(person: string, id: string, action: QuestAction, text: string | null): boolean {
-    if (!this.persons.has(person)) return false;
+    // A person or a declared CHARACTER may hold a quest (the codex rule):
+    // `start quest X for <Character>` lands in that performer's booth.
+    if (!this.isHolder(person)) return false;
     let log = this.questLog.get(person);
     const prior = log?.get(id) ?? null;
     let status: QuestStatus;
@@ -612,8 +616,10 @@ export class Sim {
     if (GLOBAL_SCOPES.has(scope.toLowerCase())) who = [...this.persons.keys()];
     else if (/\w+\(.*\)/u.test(scope)) who = this.resolveScope(scope, bindings);
     else {
+      // A bare name may be a guest or a character; `everyone` and the
+      // scope forms above stay persons-only.
       const p = this.resolveId(scope, bindings);
-      who = this.persons.has(p) ? [p] : [];
+      who = this.isHolder(p) ? [p] : [];
     }
     for (const p of who) this.stepQuest(p, id, action, text);
   }
@@ -673,6 +679,8 @@ export class Sim {
           return this.join(head, bareText(value));
         case "captured":
           return bareText(value) === "true" ? this.capture(head) : this.escape(head);
+        case "restricted":
+          return bareText(value) === "true" ? this.restrict(head) : this.unrestrict(head);
         case "score":
           return this.setScore(head, Number(bareText(value)));
       }
@@ -1046,8 +1054,10 @@ export class Sim {
    *  role). Visibility is a precondition. */
   canPost(person: string, id: string): boolean {
     // The pinned rooms are personal logs, not conversations: the Codex
-    // takes codes (`redeem`), the Quest Log takes nothing.
-    if (id === "codex" || id === "quests") return false;
+    // takes codes (`redeem`), the Quest Log and the Wallet take nothing.
+    if (id === "codex" || id === "quests" || id === "wallet") return false;
+    // A restricted participant keeps only their private threads.
+    if (this.isRestricted(person) && !id.startsWith("dm:") && !id.startsWith("pm:")) return false;
     // A location room takes posts only from whoever is standing in it
     // (operator surfaces bypass this, as they do for authored rooms).
     if (id.startsWith("loc:")) return this.occupants.get(id.slice("loc:".length))?.has(person) ?? false;
@@ -1120,6 +1130,17 @@ export class Sim {
    *  A `cutscene: true` place is only a room while they stand in it: once
    *  the story moves them on (the login is over) it leaves their sidebar. */
   visibleChannelsFor(person: string): ChannelView[] {
+    if (this.isRestricted(person)) {
+      // DMs are derived (always on the client); a restricted viewer keeps
+      // only the places the story named, plus wherever they stand, all
+      // read-only — hidden or not (the story named them).
+      const allowed = new Set(this.restrictedPlaces(person));
+      const here = this.locationOf(person);
+      if (here !== null) allowed.add(here);
+      return this.locationSnapshots(person, false)
+        .filter((s) => allowed.has(s.id.slice("loc:".length)))
+        .map((s) => ({ ...s, canPost: false }));
+    }
     const out: ChannelView[] = [];
     for (const def of this.model.channels.values()) {
       if (!this.canSeeChannel(person, def.id)) continue;
@@ -1297,6 +1318,30 @@ export class Sim {
   }
   isCaptured(person: string): boolean {
     return truthy(this.world.get(`${person}.captured`));
+  }
+  /** The story restricted this participant (`restrict who`): their app
+   *  keeps DMs and the places the story named, read-only, no buttons. */
+  isRestricted(person: string): boolean {
+    return truthy(this.world.get(`${person}.restricted`));
+  }
+  /** The places a restricted viewer still sees (`restrict who to A, B`). */
+  restrictedPlaces(person: string): string[] {
+    return [...(this.restrictedTo.get(person) ?? [])];
+  }
+  /** Operator twin of `restrict who [to …]` (journaled by the server as
+   *  `restrict`); the hook fires on the false→true edge only. */
+  restrict(person: string, places: string[] = []): SimEvent[] {
+    const from = this.log.len();
+    this.doRestrict(person, places);
+    this.drain();
+    return this.log.since(from);
+  }
+  /** Operator twin of `unrestrict who` (journaled as `unrestrict`). */
+  unrestrict(person: string): SimEvent[] {
+    const from = this.log.len();
+    this.doUnrestrict(person);
+    this.drain();
+    return this.log.since(from);
   }
   scoreOf(person: string): number {
     return asNumber(this.world.get(`${person}.score`)) ?? 0;
@@ -1897,6 +1942,25 @@ export class Sim {
       case "escape":
         this.doEscape(this.resolveId(rest, bindings));
         break;
+      case "restrict": {
+        const kw = splitKeyword(rest, "to");
+        const p = this.resolveId(kw !== null ? kw[0] : rest, bindings);
+        const places = kw === null ? [] : splitTopLevelCommas(kw[1]).map((x) => this.resolveId(x.trim(), bindings));
+        for (const l of places) {
+          if (!this.model.locations.has(l)) this.record({ type: "diagnostic", message: `restrict: no LOCATION named ${l}` });
+        }
+        this.doRestrict(p, places.filter((l) => this.model.locations.has(l)));
+        break;
+      }
+      case "unrestrict":
+        this.doUnrestrict(this.resolveId(rest, bindings));
+        break;
+      case "pin":
+        this.runPin(rest, bindings);
+        break;
+      case "unpin":
+        this.runUnpin(rest, bindings);
+        break;
       case "join": {
         const kw = splitKeyword(rest, "to");
         if (kw !== null) {
@@ -2152,6 +2216,72 @@ export class Sim {
     this.fire({ verb: "escape", subject: person, scanner: null, filter: null });
   }
 
+  /** `restrict who [to …]`. Idempotent on the flag (the hook fires on the
+   *  false→true edge only); a repeat refreshes the places and records again. */
+  private doRestrict(person: string, places: string[]): void {
+    if (!this.persons.has(person)) return;
+    const was = this.isRestricted(person);
+    this.restrictedTo.set(person, [...new Set(places)]);
+    this.world.set(`${person}.restricted`, vBool(true));
+    this.record({ type: "restricted", person, places: this.restrictedPlaces(person) });
+    if (!was) this.fire({ verb: "restricted", subject: person, scanner: null, filter: null });
+  }
+
+  private doUnrestrict(person: string): void {
+    if (!this.isRestricted(person)) return;
+    this.restrictedTo.delete(person);
+    this.world.set(`${person}.restricted`, vBool(false));
+    this.record({ type: "unrestricted", person });
+    this.fire({ verb: "unrestricted", subject: person, scanner: null, filter: null });
+  }
+
+  /** `pin "text" [in <room|place>] [for who]`. No `for` → the bound subject
+   *  (as `reply` / `show`); no subject at all → a room-wide pin (key ""). A
+   *  leading `!` in the text is an alert (chat.ts splits it). */
+  private runPin(rest: string, bindings: Bindings): void {
+    const m = /^("(?:[^"\\]|\\.)*")(?:\s+in\s+(.+?))?(?:\s+for\s+(\S+))?$/su.exec(rest.trim());
+    if (m === null) return;
+    const text = this.interpolate(m[1]!.slice(1, -1), bindings);
+    const channel = m[2] !== undefined ? this.pinChannel(m[2]) : null;
+    if (m[2] !== undefined && channel === null) {
+      this.record({ type: "diagnostic", message: `pin: no room or place named ${m[2]}` });
+      return;
+    }
+    const who = m[3] !== undefined ? this.resolveId(m[3], bindings) : (this.subjectAudience(bindings)[0] ?? null);
+    const person = who !== null && this.persons.has(who) ? who : null;
+    if (m[3] !== undefined && person === null) return; // `for` someone unknown: nothing
+    this.record({ type: "pinned", text, channel, person, key: person ?? "" });
+  }
+
+  /** `unpin [in <room>] [for who] ["text"]` — takes down the pin with that
+   *  key in that channel; the optional text is the notice that replaces it. */
+  private runUnpin(rest: string, bindings: Bindings): void {
+    const m = /^(?:in\s+([^"]+?))?(?:\s*\bfor\s+(\S+))?(?:\s*("(?:[^"\\]|\\.)*"))?$/su.exec(rest.trim());
+    if (m === null) return;
+    const channel = m[1] !== undefined ? this.pinChannel(m[1]) : null;
+    if (m[1] !== undefined && channel === null) {
+      this.record({ type: "diagnostic", message: `unpin: no room or place named ${m[1]}` });
+      return;
+    }
+    const who = m[2] !== undefined ? this.resolveId(m[2], bindings) : (this.subjectAudience(bindings)[0] ?? null);
+    const person = who !== null && this.persons.has(who) ? who : null;
+    if (m[2] !== undefined && person === null) return;
+    const text = m[3] !== undefined ? this.interpolate(m[3].slice(1, -1), bindings) : null;
+    this.record({ type: "unpinned", text, channel, person, key: person ?? "" });
+  }
+
+  /** `in quarantine` → `room:quarantine` (exact, then folded); `in The Tube`
+   *  → `loc:The Tube`. Null when nothing is named that. */
+  private pinChannel(raw: string): string | null {
+    const t = raw.trim();
+    if (this.model.channels.has(channelId(t))) return channelId(t);
+    for (const id of this.model.channels.keys()) {
+      if (foldName(id.slice("room:".length)) === foldName(t)) return id;
+    }
+    const loc = this.model.locations.has(t) ? t : (this.model.entityIndex.get(t) ?? null);
+    return loc !== null && this.model.locations.has(loc) ? Sim.locationChannel(loc) : null;
+  }
+
   private doBetray(person: string, secret: string): void {
     const displayed = this.factionOf(person);
     this.world.set(`${person}.trueFaction`, vString(secret));
@@ -2235,8 +2365,11 @@ export class Sim {
     else if (GLOBAL_SCOPES.has(scopeText.toLowerCase())) audience = [];
     else if (/\w+\(.*\)/u.test(scopeText)) audience = this.resolveScope(scopeText, bindings);
     else {
+      // A bare name may be a guest or a character (`show approval "…" to
+      // <Character>` deals the card to that performer's booth); the no-`to`
+      // form above still targets the bound guest only.
       const id = this.resolveId(scopeText, bindings);
-      audience = this.persons.has(id) ? [id] : [];
+      audience = this.isHolder(id) ? [id] : [];
     }
     this.record({ type: "widget", widget: kind, text, params, audience, scope: scopeText, setting: ctx.setting, beat: ctx.beat });
   }

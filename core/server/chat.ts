@@ -25,17 +25,18 @@
 //! The codex and the quest log are *pinned* rooms: one id for everyone,
 //! each person's messages addressed to them alone.
 
-import type { Sim, SimEvent } from "../src/runtime/sim/index.ts";
+import type { Sim, SimEvent, WalletCard } from "../src/runtime/sim/index.ts";
+import { walletLine } from "./wallet.ts";
 
 // `lobby` / `faction` / `dm` / `location` are derived; `group` / `open` /
 // `private` come from authored SPACE/CHANNEL declarations. `location` is the
 // derived room of a `LOCATION` (`loc:<Id>`) — the stage itself is a channel.
-export type ChannelKind = "lobby" | "faction" | "dm" | "group" | "open" | "private" | "location" | "codex" | "quests";
+export type ChannelKind = "lobby" | "faction" | "dm" | "group" | "open" | "private" | "location" | "codex" | "quests" | "wallet";
 
 /** Who receives a message: `"all"` guests, or a fixed set of guest ids. */
 export type Audience = "all" | string[];
 
-export type MessageKind = "line" | "narration" | "signal" | "system" | "widget" | "codex" | "quest";
+export type MessageKind = "line" | "narration" | "signal" | "system" | "widget" | "codex" | "quest" | "wallet";
 
 /** The entry a `codex` message carries (its `text` is the entry's text). */
 export interface CodexCard {
@@ -98,12 +99,20 @@ export interface ChatMessage {
   /** An **alert**: a broadcast whose cue text began with `!` — the client
    *  chimes, vibrates, and banners it ("!Come to the Desktop."). */
   alert?: boolean;
+  /** A sticky notice (`pin "…"`): the key it was pinned under (a person's
+   *  id, or "" for a room-wide pin). The client keeps the newest pin per
+   *  (channel, key) above the stream until an `unpin` with the same key. */
+  pin?: string;
+  /** Takes down the pin with this key in this channel (`unpin …`). */
+  unpin?: string;
   /** The card a `widget` message renders (a CAPTCHA, a picture, a poll…). */
   widget?: WidgetCard;
   /** The entry a `codex` message shows. */
   codex?: CodexCard;
   /** The quest a `quest` message is a step of. */
   quest?: QuestCard;
+  /** The card a `wallet` message renders. */
+  wallet?: WalletCard;
 }
 
 /** A message before the store assigns it a `seq` + resolves `hidden`. A
@@ -177,11 +186,13 @@ function lobbyHead(sim: Sim): ChannelHead {
  *  message in them is addressed to one person). */
 export const CODEX_ROOM: ChannelHead = { channel: "codex", channelKind: "codex", title: "Codex" };
 export const QUEST_LOG: ChannelHead = { channel: "quests", channelKind: "quests", title: "Quest Log" };
+/** The pinned Wallet room — present only when the story declares a `currency:`. */
+export const WALLET_ROOM: ChannelHead = { channel: "wallet", channelKind: "wallet", title: "Wallet" };
 export const PINNED_SPACE = "pinned";
 
 /** Is this one of the personal pinned rooms (codex / quest log)? */
 export function isPinnedRoom(channel: string): boolean {
-  return channel === CODEX_ROOM.channel || channel === QUEST_LOG.channel;
+  return channel === CODEX_ROOM.channel || channel === QUEST_LOG.channel || channel === WALLET_ROOM.channel;
 }
 
 function factionChannel(faction: string): ChannelHead {
@@ -227,6 +238,7 @@ function headOf(id: string): ChannelHead {
   if (id === LOBBY.channel) return LOBBY;
   if (id === CODEX_ROOM.channel) return CODEX_ROOM;
   if (id === QUEST_LOG.channel) return QUEST_LOG;
+  if (id === WALLET_ROOM.channel) return WALLET_ROOM;
   if (id.startsWith("faction:")) return factionChannel(id.slice("faction:".length));
   if (id.startsWith("dm:")) return dmChannel(id.slice("dm:".length));
   // Model-free fallback — `sim.channelHead` resolves the location's label.
@@ -237,6 +249,7 @@ function headOf(id: string): ChannelHead {
 }
 
 function orderOf(kind: ChannelKind): number {
+  if (kind === "wallet") return -3;
   if (kind === "quests") return -2;
   if (kind === "codex") return -1;
   return kind === "lobby" ? 0 : kind === "faction" ? 1 : kind === "location" ? 2 : 3;
@@ -370,6 +383,16 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
         const pinned = thread !== undefined && sim.model.characters.has(thread) ? thread : undefined;
         const byChannel = new Map<string, { head: ChannelHead; to: string[] }>();
         for (const p of e.audience) {
+          if (!sim.persons.has(p)) {
+            // `show … to <Character>`: the card is dealt to that performer's
+            // booth — its Inbox (`dm:<Character>`), or with `with thread:
+            // <T>` that Cast thread — addressed `@<Character>`.
+            const head = dmChannel(pinned ?? p);
+            const slot = byChannel.get(head.channel) ?? { head, to: [] };
+            slot.to.push(audienceOf(sim, p));
+            byChannel.set(head.channel, slot);
+            continue;
+          }
           const speaker = pinned ?? lastSpeaker.get(p);
           const head = speaker !== undefined ? dmChannel(speaker) : storyChannel(sim, e.setting);
           const slot = byChannel.get(head.channel) ?? { head, to: [] };
@@ -466,16 +489,33 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
         }
         break;
       }
+      case "pinned":
+      case "unpinned": {
+        // A sticky notice: in the person's own feed (the lobby, addressed to
+        // them), or in an authored room / a place (to whoever reads it now —
+        // a staff back-room's audience is `[]`, which performers and mods
+        // still receive, exactly like `broadcast … to channel(hosts)`).
+        const head = e.channel !== null ? sim.channelHead(e.channel) : lobby;
+        const audience: Audience = e.channel !== null ? sim.channelAudience(e.channel) : e.person !== null ? [e.person] : "all";
+        const h = { channel: head.channel, channelKind: head.channelKind as ChannelKind, title: head.title, from: "", ts, audience, parentSeq: null as number | null };
+        if (e.type === "pinned") {
+          const alert = e.text.startsWith("!");
+          out.push({ ...h, kind: "signal", text: alert ? e.text.slice(1).trim() : e.text, pin: e.key, ...(alert ? { alert: true } : {}) });
+        } else {
+          out.push({ ...h, kind: "system", text: e.text ?? "📌 Cleared.", unpin: e.key });
+        }
+        break;
+      }
       case "codexUnlocked": {
         // Knowledge changed hands. The holder's Codex gains the entry as a
-        // card (a character holder has no phone; the booth sees it in the
-        // snapshot), and a guest who shared it sees that in their own.
+        // card — a guest's phone, or a character's booth (addressed
+        // `@<Character>`) — and a guest who shared it sees that in their own.
         const def = sim.model.codex.get(e.entry);
         const title = def?.title ?? e.entry;
         const nameOf = (id: string) => sim.persons.get(id)?.name ?? id;
-        if (sim.persons.has(e.person)) {
+        {
           const codex: CodexCard = { entry: e.entry, title, about: def?.about ?? null, via: e.via, from: e.from !== null ? nameOf(e.from) : null };
-          out.push({ ...CODEX_ROOM, from: "", kind: "codex", text: def?.text ?? "", ts, audience: [e.person], parentSeq: null, codex });
+          out.push({ ...CODEX_ROOM, from: "", kind: "codex", text: def?.text ?? "", ts, audience: [audienceOf(sim, e.person)], parentSeq: null, codex });
         }
         if (e.via === "share" && e.from !== null && sim.persons.has(e.from)) {
           out.push({ ...CODEX_ROOM, from: "", kind: "system", text: `📤 You shared “${title}” with ${nameOf(e.person)}.`, ts, audience: [e.from], parentSeq: null });
@@ -497,7 +537,7 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
           kind: "quest",
           text,
           ts,
-          audience: [e.person],
+          audience: [audienceOf(sim, e.person)],
           parentSeq: null,
           quest: { quest: e.quest, title, action: e.action },
           threadKey: `${e.person}\u0000${e.quest}`,
@@ -505,6 +545,23 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
         });
         break;
       }
+      case "wallet":
+        // One viewer per card: a person id, or `@<Character>` for the
+        // approver's booth. A root opens the card's thread in the viewer's
+        // Wallet room; a step replies to it.
+        out.push({
+          ...WALLET_ROOM,
+          from: "",
+          kind: "wallet",
+          text: walletLine(e.card, ts),
+          ts,
+          audience: [e.to],
+          parentSeq: null,
+          wallet: e.card,
+          threadKey: `${e.to}\u0000${e.card.id}`,
+          ...(e.root ? { threadRoot: true } : {}),
+        });
+        break;
       case "ambient":
         out.push({ ...LOBBY, from: "", kind: "narration", text: e.text, ts, audience: "all", parentSeq: null });
         break;
@@ -567,6 +624,14 @@ export function decisionChannelFor(events: readonly SimEvent[], person: string):
     if (e.type === "choicePrompted" && e.person === person) break;
   }
   return speaker ? `dm:${speaker}` : LOBBY.channel;
+}
+
+/** The audience entry for a holder: a guest's id, or `@<Character>` — the
+ *  booth convention `/api/prime/say` already uses for a performer's own
+ *  conversation with an agent (`event-runtime.ts` visibleToPrime). A guest
+ *  id never starts with `@`, so a character's rows never reach a phone. */
+export function audienceOf(sim: Sim, id: string): string {
+  return sim.persons.has(id) ? id : `@${id}`;
 }
 
 /** Is a message visible to a given guest (audience match)? */

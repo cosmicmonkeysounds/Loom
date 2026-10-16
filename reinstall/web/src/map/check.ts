@@ -92,7 +92,42 @@ export function unreachableRooms(house: HouseMap): string[] {
   return house.rooms.filter((r) => !seen.has(r.id)).map((r) => r.id);
 }
 
-/** Walkability as warnings: one per unreachable duck spot, then one per room nobody can walk into. */
+/**
+ * The rooms a guarded door (`Door.guard`, a king standing in it) seals off:
+ * for each such door, the room on the far side from the spawn (by the door
+ * graph with the guarded doors shut) — a room no other way reaches. Nothing
+ * when the guard leaves another way in.
+ */
+export function guardedRooms(house: HouseMap): Array<{ room: string; door: string; king: string }> {
+  const guarded = house.doors.filter((d) => d.guard !== undefined);
+  if (guarded.length === 0) return [];
+  const shut = new Set(guarded.map((d) => d.id));
+  const links = new Map<string, string[]>(house.rooms.map((r) => [r.id, []]));
+  const link = (a: string, b: string) => {
+    links.get(a)?.push(b);
+    links.get(b)?.push(a);
+  };
+  for (const d of house.doors) if (d.b !== null && !shut.has(d.id)) link(d.a, d.b);
+  for (const s of house.stairs) link(s.from, s.to);
+  const seen = new Set<string>([house.spawn.room]);
+  const stack = [house.spawn.room];
+  while (stack.length > 0) {
+    for (const n of links.get(stack.pop()!) ?? []) {
+      if (seen.has(n)) continue;
+      seen.add(n);
+      stack.push(n);
+    }
+  }
+  const out: Array<{ room: string; door: string; king: string }> = [];
+  for (const d of guarded) {
+    if (d.b === null) continue;
+    const far = seen.has(d.a) && !seen.has(d.b) ? d.b : seen.has(d.b) && !seen.has(d.a) ? d.a : null;
+    if (far !== null && !out.some((o) => o.room === far)) out.push({ room: far, door: d.id, king: d.guard! });
+  }
+  return out;
+}
+
+/** Walkability as warnings: one per unreachable duck spot, one per room nobody can walk into, then one per room a King guards. */
 export function walkabilityProblems(house: HouseMap): Problem[] {
   const ducks = unreachableDucks(house).map((id): Problem => {
     const spot = house.duck.spots.find((d) => d.id === id)!;
@@ -103,7 +138,11 @@ export function walkabilityProblems(house: HouseMap): Problem[] {
     const r = roomById(house, id)!;
     return { text: `${r.outdoor ? "yard" : "room"} "${id}" (${r.label}) can't be reached from the spawn — no door leads into it`, sel: { kind: "room", id }, level: "warning" };
   });
-  return [...ducks, ...rooms];
+  const guarded = guardedRooms(house).map(({ room, door, king }): Problem => {
+    const r = roomById(house, room)!;
+    return { text: `room "${room}" (${r.label}) is guarded by king "${king}" at door "${door}" — it opens when he falls`, sel: { kind: "door", id: door }, level: "warning" };
+  });
+  return [...ducks, ...rooms, ...guarded];
 }
 
 /** A story LOCATION, as the mod view lists them. */

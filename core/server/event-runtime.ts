@@ -25,6 +25,7 @@ import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
 import { ChatStore, composeGuestMessages, decisionChannelFor, isPinnedRoom, visibleTo, type ChatMessage } from "./chat.ts";
+import { DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
 import { ipOf, queryTokenOf, readBody, sendJson, sseSend, str, tokenOf } from "./http-util.ts";
 import { RateLimiter, limiterFor, rateLimitsFromEnv, type RateLimits } from "./rate-limit.ts";
 import { handleMetrics } from "./routes/metrics.ts";
@@ -68,6 +69,7 @@ import {
   type ParsedMap,
   type ProjectLink,
 } from "./house-maps.ts";
+import { FACTS_FILE, FactsWatch, factsProblems, judgeAnswer, parseFactsBook, readFactsFile, type FactsBook, type FactsView } from "./facts.ts";
 import {
   AgentHub,
   AgentTraceLog,
@@ -130,7 +132,14 @@ export interface Impersonation {
  *  the story only ever quotes it back, never aims a rule with it. */
 export const WIDGET_FREE_TEXT: Readonly<Record<string, ReadonlySet<string>>> = {
   fact: new Set(["answer"]),
+  answer: new Set(["text"]),
 };
+
+/** Result keys the server attaches itself — `card` (the message seq a
+ *  restart rebuilds the answered set from) and `verdict` (the facts judge's
+ *  word, `facts.ts`). A phone that sends one is refused outright: it must
+ *  never supply its own verdict. */
+export const RESERVED_WIDGET_KEYS: ReadonlySet<string> = new Set(["card", "verdict"]);
 
 /**
  * Sanitise a widget's client-supplied result into event arguments: a flat
@@ -147,6 +156,7 @@ export function widgetResultArgs(raw: unknown, sim: Sim, kind = ""): Record<stri
   let n = 0;
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
     if (++n > 16 || !/^[A-Za-z_][A-Za-z0-9_]{0,31}$/u.test(k)) return null;
+    if (RESERVED_WIDGET_KEYS.has(k)) return null;
     if (typeof v === "boolean" || (typeof v === "number" && Number.isFinite(v))) out[k] = v;
     else if (typeof v === "string") {
       if (v.length > 200) return null;
@@ -159,9 +169,10 @@ export function widgetResultArgs(raw: unknown, sim: Sim, kind = ""): Record<stri
 
 function visibleToPrime(m: ChatMessage, c: Client): boolean {
   if (c.admin === true) return true;
-  // A guest's Codex + Quest Log are their own (the booth reads what its
-  // character holds from the snapshot).
-  if (m.channel.startsWith("pm:") || isPinnedRoom(m.channel)) return false;
+  if (m.channel.startsWith("pm:")) return false;
+  // The booth's own Quest Log / Codex: cards addressed `@<its character>`
+  // (a guest's pinned rooms are their own).
+  if (isPinnedRoom(m.channel)) return Array.isArray(m.audience) && m.audience.includes(`@${c.id}`);
   if (m.channel.startsWith("dm:")) {
     // Their own character's threads, public lines, and the performer's own
     // conversation with an agent-voiced character (audience `@<Character>`).
@@ -202,6 +213,12 @@ const SPATIAL_BODY_LIMIT = 2048;
 /** The show's house map file: `LOOM_HOUSE`, else the example's `house.json`. */
 export function defaultHouseFile(): string {
   return process.env.LOOM_HOUSE ?? fileURLToPath(new URL("../examples/trapped-in-the-internet/house.json", import.meta.url));
+}
+
+/** The show's facts key (`facts.ts`): `LOOM_FACTS`, else `facts.json` next
+ *  to the house map — the fallback for an event with no project snapshot. */
+export function defaultFactsFile(houseFile = defaultHouseFile()): string {
+  return process.env.LOOM_FACTS ?? join(dirname(houseFile), FACTS_FILE);
 }
 
 /** Show maps by path: the last *good* read, keyed on the file's mtime — a
@@ -287,6 +304,15 @@ export interface EventRuntimeInit {
   /** The way back to the project ("Save to project"); absent → the event
    *  has none (the LAN default event). */
   project?: ProjectLink | null;
+  /** The project's `facts.json` text snapshotted at launch (`facts.ts`):
+   *  null = the row says the project has none; absent = no row snapshot
+   *  (the state dir's copy, else the show file). */
+  facts?: string | null;
+  /** The show's facts key for an event with no project copy — `LOOM_FACTS`,
+   *  default `facts.json` beside `houseFile` (`defaultFactsFile`). */
+  factsFile?: string;
+  /** The `do pick … from […] else …` draw (tests inject; default `Math.random`). */
+  random?: () => number;
   /** The spatial + agent hubs' clock (tests). */
   now?: () => number;
   /** Web Push (K-31a). Absent → the process-wide sender from `LOOM_VAPID_*`;
@@ -367,6 +393,13 @@ export class EventRuntime {
   private readonly registrations: RateLimiter;
   private readonly redeemMisses: RateLimiter;
   private readonly widgetAnswers: RateLimiter;
+  // Wallet calls per guest (`/api/guest/wallet/*`, `LOOM_RL_WALLET`).
+  private readonly walletCalls: RateLimiter;
+  // The story's currency in flight (`currency:` header) — pending transfers,
+  // the approver's queue, open requests / offers, the stimulus count. Null
+  // when the story declares no currency. Rebuilt with every `loadScenario`;
+  // every change is one journaled `wallet` op (see `commitWallet`).
+  private wallet: WalletBook | null = null;
   // Server-authoritative chat, rebuilt deterministically from the journal.
   private readonly chat = new ChatStore();
   // Where each guest's pending decision docks (channel id). Ephemeral.
@@ -406,6 +439,19 @@ export class EventRuntime {
   private projectMaps: MapFiles | null;
   private mapVariant: string | null;
   private readonly project: ProjectLink | null;
+  // The facts judge (facts.ts, Wave 4 lane B): the project's facts.json as
+  // snapshotted (null = none → the show file beside the house map, re-read
+  // on mtime change), the book parsed from whichever applies, and the
+  // ledger folded off the sim log for `ModView.facts`. The key lives here
+  // only: never in the world, the journal or a message.
+  private projectFacts: string | null;
+  private readonly factsFile: string;
+  private factsMemo: { text: string; book: FactsBook | null } | null = null;
+  private showFacts: { mtimeMs: number; book: FactsBook | null } | null = null;
+  private readonly factsWatch = new FactsWatch();
+  private readonly random: () => number;
+  /** `runPicks` re-entrancy: a pick's own signal never draws again. */
+  private pickDepth = 0;
   // K-13 room check-in by QR (routes/k13.ts).
   private readonly checkin: GuestCheckin;
   // N-02 re-pair a guest + N-10 release a performer part (routes/n02.ts).
@@ -462,6 +508,12 @@ export class EventRuntime {
     this.projectMaps = asMapFiles(init.houseMaps ?? null) ?? asMapFiles(stored?.files ?? null);
     this.mapVariant = stored?.active ?? init.mapVariant ?? null;
     if (this.projectMaps !== null) this.store.saveMaps(this.projectMaps, this.mapVariant);
+    // The project's facts.json rides the same row record as the maps; the
+    // state dir's copy covers an event with no row snapshot.
+    this.factsFile = init.factsFile ?? defaultFactsFile(this.houseFile);
+    this.projectFacts = init.facts !== undefined ? init.facts : this.store.loadFacts();
+    if (init.facts !== undefined) this.store.saveFacts(init.facts);
+    this.random = init.random ?? Math.random;
     if (init.now !== undefined) this.clock = init.now;
     this.modSnapshotMs = Math.max(0, init.modSnapshotMs ?? MOD_SNAPSHOT_MS);
     this.spatial = new SpatialHub({
@@ -531,6 +583,7 @@ export class EventRuntime {
     this.registrations = limiterFor(limits.register);
     this.redeemMisses = limiterFor(limits.redeemMisses);
     this.widgetAnswers = limiterFor(limits.widgets);
+    this.walletCalls = limiterFor(limits.wallet);
     this.screens = new ScreenWatch(init.now !== undefined ? { now: init.now } : {});
   }
 
@@ -622,6 +675,7 @@ export class EventRuntime {
       owners: this.personaOwners,
       agents: new Set(this.agents.onlineCharacters()),
       minds: [...this.agentMinds.values()],
+      facts: this.factsView(),
     };
   }
 
@@ -638,17 +692,20 @@ export class EventRuntime {
       ...guestView(this.reqSim(), id, this.decisionChannels.get(id) ?? null, online),
       answered: this.answeredFor(id),
       avatars: this.avatarMap(),
+      ...(this.wallet !== null ? { wallet: this.wallet.viewFor(id) } : {}),
     };
   }
 
-  /** A performer's snapshot, with everyone's profile pictures. */
+  /** A performer's snapshot, plus the cards their character has already
+   *  answered, with everyone's profile pictures. */
   private primeViewFor(character: string, online: ReadonlySet<string>): PrimeView {
-    return { ...primeView(this.sim, character, online), avatars: this.avatarMap() };
+    const queue = this.wallet?.queueFor(character) ?? null;
+    return { ...primeView(this.sim, character, online), answered: this.answeredFor(character), avatars: this.avatarMap(), ...(queue !== null ? { wallet: queue } : {}) };
   }
 
   /** The operator's god view, with everyone's profile pictures. */
   private modViewNow(): ModView {
-    return { ...modView(this.sim, this.phase, this.scenarioName, this.presence()), avatars: this.avatarMap() };
+    return { ...modView(this.sim, this.phase, this.scenarioName, this.presence()), avatars: this.avatarMap(), ...(this.wallet !== null ? { wallet: this.wallet.modView() } : {}) };
   }
 
   /** Message seqs of the widget cards `id` has answered. */
@@ -797,8 +854,10 @@ export class EventRuntime {
   /**
    * K-31a: push one just-delivered message to the phones entitled to it —
    * the same visibility as the SSE delivery. `!` alerts go to every
-   * subscribed guest who can see it and every booth; a character's DM only
-   * to its addressee, and only while their page says it is hidden.
+   * subscribed guest who can see it, and to the booths when they are
+   * house-wide or in an authored room (a guest's own `!` pin is theirs
+   * alone); a character's DM only to its addressee, and only while their
+   * page says it is hidden.
    */
   private pushMessage(m: ChatMessage): void {
     if (!this.push.enabled) return;
@@ -809,8 +868,18 @@ export class EventRuntime {
         const id = owner.slice("guest:".length);
         if (m.from === id || !visibleTo(m, id)) continue;
         if (rule.payload.kind === "dm" && (m.audience === "all" || !m.audience.includes(id))) continue;
+      } else if (m.kind === "wallet") {
+        // A wallet card addressed `@<Character>` (the approver's queue)
+        // reaches that character's booth and nobody else's.
+        const character = owner.startsWith("prime:") ? owner.slice("prime:".length) : null;
+        if (character === null || m.audience === "all" || !m.audience.includes(`@${character}`)) continue;
       } else if (rule.payload.kind !== "alert") {
         continue; // booths: alerts here, their own readouts in `fanout`
+      } else if (m.audience !== "all" && !m.channel.startsWith("room:")) {
+        // A booth hears only house-wide alerts and authored-room alerts (a
+        // staff back-room's pin). One addressed to a single guest — their
+        // own `!` pin — is theirs alone; the booth's cue is its readout.
+        continue;
       }
       this.push.notify(owner, rule.payload, rule.always);
     }
@@ -865,6 +934,128 @@ export class EventRuntime {
       if (this.sim?.pendingChoiceFor(id) == null) this.decisionChannels.delete(id);
     }
     this.pushSnapshots();
+    this.runPicks(events);
+  }
+
+  /**
+   * `do pick <event> from [id, id, …] else <event>` — the story asks for one
+   * random person (Loom has no random person pick; `Math.random` inside the
+   * sim would break replay). The draw is journaled as an ordinary signal,
+   * so a restart replays the same pick. Live only: `restore()` never calls
+   * `fanout`. A pick fired from inside a pick's own signal is ignored (no
+   * loop through a hook that draws again).
+   */
+  private runPicks(events: SimEvent[]): void {
+    if (this.sim === null || this.pickDepth > 0) return;
+    for (const e of events) {
+      if (e.type !== "directive" || e.verb !== "pick") continue;
+      const m = /^(\S+)\s+from\s+\[([^\]]*)\](?:\s+else\s+(\S+))?$/u.exec(e.args.trim());
+      if (m === null) continue;
+      const pool = m[2]!
+        .split(",")
+        .map((s) => s.trim())
+        .filter((id) => id !== "" && this.sim!.persons.has(id));
+      this.pickDepth += 1;
+      try {
+        if (pool.length === 0) {
+          if (m[3] !== undefined) this.fanout(this.commit("signal", m[3]));
+          continue;
+        }
+        const pick = pool[Math.min(pool.length - 1, Math.max(0, Math.floor(this.random() * pool.length)))]!;
+        this.fanout(this.commit("signal", m[1]!, pick));
+      } finally {
+        this.pickDepth -= 1;
+      }
+    }
+  }
+
+  // -- the facts judge (facts.ts) --------------------------------------------
+
+  /** The key in force: the project's snapshot (parsed once per text; a
+   *  broken one judges nothing rather than quietly playing the show's), else
+   *  the show file, re-read when its mtime changes with the last good book
+   *  kept over a broken edit. Null = no key → nothing is judged. */
+  private factsBook(): FactsBook | null {
+    const text = this.projectFacts;
+    if (text !== null) {
+      if (this.factsMemo === null || this.factsMemo.text !== text) {
+        const p = parseFactsBook(text);
+        if (p.book === null) process.stderr.write(`  ⚠️  event ${this.eventId}: the project's ${FACTS_FILE} is ignored (${p.problems[0] ?? "invalid"})\n`);
+        this.factsMemo = { text, book: p.book };
+      }
+      return this.factsMemo.book;
+    }
+    let mtimeMs: number;
+    try {
+      mtimeMs = statSync(this.factsFile).mtimeMs;
+    } catch {
+      return this.showFacts?.book ?? null;
+    }
+    if (this.showFacts === null || this.showFacts.mtimeMs !== mtimeMs) {
+      const p = readFactsFile(this.factsFile);
+      if (p.book === null) {
+        process.stderr.write(`  ⚠️  facts key ${this.factsFile}: ${p.problems[0] ?? "invalid"} — keeping the last good key\n`);
+        this.showFacts = { mtimeMs, book: this.showFacts?.book ?? null };
+      } else this.showFacts = { mtimeMs, book: p.book };
+    }
+    return this.showFacts.book;
+  }
+
+  /** The director's ledger (`ModView.facts`), only when a key is in force. */
+  private factsView(): FactsView | undefined {
+    const book = this.factsBook();
+    return book === null || this.sim === null ? undefined : this.factsWatch.view(this.sim, book);
+  }
+
+  /** The project's `facts.json` as this event holds it (tests, tooling). */
+  get facts(): string | null {
+    return this.projectFacts;
+  }
+
+  /** A reload's fresh snapshot of the project's facts.json (`events-api.ts`,
+   *  `/api/mod/load {facts}`): the key the judge reads from now on (null =
+   *  the project has none → the show file). */
+  setProjectFacts(text: string | null): void {
+    this.projectFacts = text;
+    this.store.saveFacts(text);
+    this.pushModSnapshots();
+  }
+
+  /** The event row's data-file record: the map files plus the project's
+   *  `facts.json` when it has one (`events-api.ts` reads the maps with
+   *  `asMapFiles`, the facts with `factsOf`). */
+  private dataSnapshot(maps: MapFiles): MapFiles {
+    return { ...maps, ...(this.projectFacts !== null ? { [FACTS_FILE]: this.projectFacts } : {}) };
+  }
+
+  /**
+   * The judge hop: a `fact` card is judged on the client's {question, answer,
+   * confidence}, an `answer` card on the card's own `question` param (never
+   * the client's) and {text}. Null = nothing to judge (no key in force, an
+   * un-keyed card, another kind); "refused" = a bad filing (400). A `fact`
+   * filing for a question the key lacks is refused only while a key exists;
+   * without one the args pass untouched (other projects).
+   */
+  private judgeWidget(card: NonNullable<ChatMessage["widget"]>, args: Record<string, string | number | boolean>): Record<string, string | number> | null | "refused" {
+    const book = this.factsBook();
+    if (book === null) return null;
+    if (card.kind === "fact") {
+      const q = args["question"];
+      const a = args["answer"];
+      const c = args["confidence"];
+      if (typeof q !== "string" || typeof a !== "string" || a.trim() === "" || typeof c !== "number" || !Number.isInteger(c) || c < 1 || c > 100) return "refused";
+      const verdict = judgeAnswer(book, q, a, c);
+      return verdict === null ? "refused" : { verdict };
+    }
+    if (card.kind === "answer") {
+      const q = card.params["question"];
+      const t = args["text"];
+      if (q === undefined) return null;
+      if (typeof t !== "string" || t.trim() === "") return "refused";
+      const verdict = judgeAnswer(book, q, t, 100);
+      return verdict === null ? "refused" : { verdict, question: q };
+    }
+    return null;
   }
 
   // -- agent-voiced characters ---------------------------------------------
@@ -1457,7 +1648,7 @@ export class EventRuntime {
     }
     this.store.saveMaps(next, this.mapVariant);
     try {
-      await project.saveSnapshot(next);
+      await project.saveSnapshot(this.dataSnapshot(next));
     } catch (err) {
       process.stderr.write(`  ⚠️  event ${this.eventId}: recording the map snapshot failed (${err instanceof Error ? err.message : String(err)})\n`);
     }
@@ -1667,6 +1858,53 @@ export class EventRuntime {
 
   // -- persistence (event-sourced journal) ---------------------------------
 
+  /** Build the journaled op for one `/api/guest/wallet/<sub>` call after
+   *  the book's own check — or the refusal the phone shows. */
+  private guestWalletOp(sub: string, me: string, body: Record<string, unknown>): { op: WalletOp } | WalletRefusal {
+    const book = this.wallet!;
+    const at = this.sim!.elapsed();
+    const id = str(body, "id");
+    const amount = Number(body["amount"]);
+    switch (sub) {
+      case "send": {
+        const to = str(body, "to");
+        return book.checkSend(me, to, amount) ?? { op: { op: "send", id: book.nextId("t"), from: me, to, amount: Math.trunc(amount), at, via: "send" } };
+      }
+      case "request": {
+        const from = str(body, "from"); // whom you ask: the payer
+        return book.checkRequest(me, from, amount) ?? { op: { op: "request", id: book.nextId("r"), from: me, to: from, amount: Math.trunc(amount), at } };
+      }
+      case "respond": {
+        const accept = body["accept"] === true;
+        return book.checkRespond(id, me, accept) ?? { op: { op: "respond", id, accept, ...(accept ? { tx: book.nextId("t") } : {}), at } };
+      }
+      case "offer": {
+        const to = str(body, "to");
+        const side = str(body, "side") === "buy" ? "buy" : "sell";
+        const entry = str(body, "entry");
+        const bad = book.checkOffer(me, to, side, entry, amount);
+        if (bad !== null) return bad;
+        return { op: { op: "offer", id: book.nextId("o"), from: me, to, side, entry: book.entryIdOf(entry)!, amount: Math.trunc(amount), at } };
+      }
+      case "accept":
+        return book.checkAccept(id, me) ?? { op: { op: "accept", id, at } };
+      case "decline":
+        return book.checkDecline(id, me) ?? { op: { op: "decline", id } };
+      case "cancel":
+        return book.checkCancel(id, me) ?? { op: { op: "cancel", id, by: me } };
+      case "stimulus":
+        return book.checkStimulus(me, amount) ?? { op: { op: "stimulus", id: book.nextId("s"), by: me, amount: Math.trunc(amount), at } };
+      case "approve":
+        if (!book.isApprover(me)) return { status: 403, error: "not the approver" };
+        return book.checkApprove(id) ?? { op: { op: "approve", id, by: me } };
+      case "deny":
+        if (!book.isApprover(me)) return { status: 403, error: "not the approver" };
+        return book.checkDeny(id) ?? { op: { op: "deny", id, by: me } };
+      default:
+        return { status: 404, error: "no such wallet call" };
+    }
+  }
+
   private flushTick(): void {
     if (this.pendingTickMs > 0) {
       this.store.appendCommand("tick", [this.pendingTickMs]);
@@ -1676,10 +1914,26 @@ export class EventRuntime {
 
   /** Apply a sim mutation *and* journal it, so it survives a restart. Inside
    *  a mod route the journal line also carries who did it (`by`). */
-  private commit(m: Mutation, ...args: unknown[]): SimEvent[] {
+  private commit(m: Exclude<Mutation, "wallet">, ...args: unknown[]): SimEvent[] {
     this.flushTick();
     this.store.appendCommand(m, args, this.actingBy);
     return (this.sim![m] as (...a: unknown[]) => SimEvent[])(...args);
+  }
+
+  /** Apply one wallet op *and* journal it as a single `wallet` line — the
+   *  book calls the sim (balances, codex grants, story signals) unjournaled
+   *  inside, so a replay of the line lands on the same state. */
+  private commitWallet(op: WalletOp): SimEvent[] {
+    this.flushTick();
+    this.store.appendCommand("wallet", [op], this.actingBy);
+    return this.wallet!.apply(op);
+  }
+
+  /** Settle / expire whatever the story clock has made due, one journal
+   *  line each (so replay never depends on how ticks were coalesced). */
+  private sweepWallet(): void {
+    if (this.wallet === null || this.sim === null) return;
+    for (const op of this.wallet.due(this.sim.elapsed())) this.fanout(this.commitWallet(op));
   }
 
   private persistSessions(): void {
@@ -1770,6 +2024,8 @@ export class EventRuntime {
 
   private loadScenario(source: string, name: string): void {
     this.sim = Sim.fromSources(source);
+    const currency = this.sim.model.currency;
+    this.wallet = currency !== null ? new WalletBook(currency, walletSeam(this.sim, currency)) : null;
     this.scenarioSource = source;
     this.scenarioName = name;
     this.setPhase("paused");
@@ -1898,20 +2154,25 @@ export class EventRuntime {
 
   private startTicker(): void {
     if (this.ticker !== null) return;
-    this.ticker = setInterval(() => {
-      if (this.sim !== null && this.phase === "open") {
-        const evs = this.sim.tick(1000);
-        this.pendingTickMs += 1000;
-        if (evs.length > 0) {
-          this.flushTick();
-          this.fanout(evs);
-        } else if (this.pendingTickMs >= 15000) {
-          this.flushTick();
-        }
-        this.sweepEphemeral();
-        this.agents.sweep();
-      }
-    }, 1000);
+    this.ticker = setInterval(() => this.tickOnce(1000), 1000);
+  }
+
+  /** The ticker's body: advance the story clock by `ms` while the doors are
+   *  open, route what fired, then sweep the ephemeral rooms, the wallet's
+   *  due timers and the agent hub. Public so tests drive the clock. */
+  tickOnce(ms = 1000): void {
+    if (this.sim === null || this.phase !== "open") return;
+    const evs = this.sim.tick(ms);
+    this.pendingTickMs += ms;
+    if (evs.length > 0) {
+      this.flushTick();
+      this.fanout(evs);
+    } else if (this.pendingTickMs >= 15000) {
+      this.flushTick();
+    }
+    this.sweepEphemeral();
+    this.sweepWallet();
+    this.agents.sweep();
   }
 
   private stopTicker(): void {
@@ -2074,6 +2335,20 @@ export class EventRuntime {
     this.loadScenario(meta.scenarioSource, meta.scenarioName); // sets phase → paused
     let events = 0;
     for (const e of this.store.readJournal()) {
+      if (e.m === "wallet") {
+        // A wallet op: the book re-applies it (balances, grants, signals,
+        // cards) exactly as it did live.
+        if (this.wallet !== null) {
+          try {
+            const batch = this.wallet.apply(e.a[0] as WalletOp);
+            events++;
+            this.chat.append(composeGuestMessages(this.sim!, batch));
+          } catch {
+            /* tolerate a torn line */
+          }
+        }
+        continue;
+      }
       const fn = (this.sim as unknown as Record<string, unknown>)[e.m];
       if (typeof fn === "function") {
         try {
@@ -2735,6 +3010,11 @@ export class EventRuntime {
           sendJson(res, 404, { error: "no such interaction for guests" });
           return true;
         }
+        // `restrict who`: every button is off until the story lifts it.
+        if (this.sim!.isRestricted(id)) {
+          sendJson(res, 403, { error: "you're restricted — the story has to lift it first" });
+          return true;
+        }
         const evs = this.commit("signal", name, id);
         this.fanout(evs);
         // The story's `reply` lines to this guest ride the answer too, so
@@ -2771,6 +3051,13 @@ export class EventRuntime {
           sendJson(res, 400, { error: "bad widget result" });
           return true;
         }
+        // The facts judge (facts.ts): a 📝 fact / keyed answer card gets its
+        // verdict here, journaled with the answer — never re-judged on replay.
+        const judged = this.judgeWidget(m.widget, args);
+        if (judged === "refused") {
+          sendJson(res, 400, { error: "bad fact filing" });
+          return true;
+        }
         if (!this.widgetAnswers.take(id)) {
           sendJson(res, 429, { error: "slow down — wait a minute" });
           return true;
@@ -2778,7 +3065,7 @@ export class EventRuntime {
         this.answeredWidgets.add(key);
         // `card` rides the journaled args so a restart rebuilds the
         // answered set (`restore`) — the story sees it as one more argument.
-        this.fanout(this.commit("signal", `${m.widget.kind} answered`, id, { ...args, card: seq }));
+        this.fanout(this.commit("signal", `${m.widget.kind} answered`, id, { ...args, ...(judged ?? {}), card: seq }));
         sendJson(res, 200, { ok: true });
         return true;
       }
@@ -2905,6 +3192,42 @@ export class EventRuntime {
         sendJson(res, 200, { ok: true });
         return true;
       }
+      case "/api/guest/wallet/send":
+      case "/api/guest/wallet/request":
+      case "/api/guest/wallet/respond":
+      case "/api/guest/wallet/offer":
+      case "/api/guest/wallet/accept":
+      case "/api/guest/wallet/decline":
+      case "/api/guest/wallet/cancel":
+      case "/api/guest/wallet/stimulus":
+      case "/api/guest/wallet/approve":
+      case "/api/guest/wallet/deny": {
+        // The story's currency (`currency:` header): every call is checked
+        // by the book (status + message), rate-limited, then committed as
+        // one journaled `wallet` op whose cards land in the Wallet rooms.
+        const id = this.requireGuest(req, body, res);
+        if (id === null) return true;
+        if (!open) {
+          sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        if (this.wallet === null) {
+          sendJson(res, 404, { error: "this story has no currency" });
+          return true;
+        }
+        const r = this.guestWalletOp(path.slice("/api/guest/wallet/".length), id, body);
+        if ("status" in r) {
+          sendJson(res, r.status, { error: r.error });
+          return true;
+        }
+        if (!this.walletCalls.take(id)) {
+          sendJson(res, 429, { error: "slow down — wait a minute" });
+          return true;
+        }
+        this.fanout(this.commitWallet(r.op));
+        sendJson(res, 200, { ok: true, wallet: this.wallet.viewFor(id) });
+        return true;
+      }
       case "/api/prime/codex/share": {
         // A performer shares one of their character's entries with a guest.
         const token = tokenOf(req, body);
@@ -3010,6 +3333,39 @@ export class EventRuntime {
       }
 
       // --- performer types into a channel (hybrid chat) ---
+      case "/api/prime/wallet/approve":
+      case "/api/prime/wallet/deny": {
+        // The approver's booth settles a held transfer (or denies one inside
+        // its window). Only the approver character — or an admin booth.
+        const token = tokenOf(req, body);
+        const character = this.characterOf(token);
+        if (!character) {
+          sendJson(res, 403, { error: "no character — sign in" });
+          return true;
+        }
+        if (!open) {
+          sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        if (this.wallet === null) {
+          sendJson(res, 404, { error: "this story has no currency" });
+          return true;
+        }
+        if (this.wallet.currency.approver?.id !== character && !this.sessions.canModerate(token)) {
+          sendJson(res, 403, { error: "not the approver" });
+          return true;
+        }
+        const id = str(body, "id");
+        const approve = path.endsWith("/approve");
+        const bad = approve ? this.wallet.checkApprove(id) : this.wallet.checkDeny(id);
+        if (bad !== null) {
+          sendJson(res, bad.status, { error: bad.error });
+          return true;
+        }
+        this.fanout(this.commitWallet(approve ? { op: "approve", id, by: character } : { op: "deny", id, by: character }));
+        sendJson(res, 200, { ok: true, queue: this.wallet.queueFor(character) });
+        return true;
+      }
       case "/api/prime/act": {
         // A performer fires a `who: performer` INTERACTION on a guest, as
         // their character: only that character's hooks hear it (plus role
@@ -3038,6 +3394,47 @@ export class EventRuntime {
         const character = this.characterOf(token);
         this.fanout(this.commit("signal", name, guest, null, character));
         sendJson(res, 200, { ok: true, guest: rosterRow(this.sim!, guest) });
+        return true;
+      }
+      case "/api/prime/widget": {
+        // A performer answered a card the story showed their character
+        // (`show <kind> … to <Character>`): the named event `<kind> answered`
+        // fires with the character as subject AND actor, so only that
+        // character's own hooks + story rules hear it (never ROLE hooks).
+        const token = tokenOf(req, body);
+        const character = this.characterOf(token);
+        if (!character || !this.canScan(token)) {
+          sendJson(res, 403, { error: "no performer capability — sign in" });
+          return true;
+        }
+        if (!open) {
+          sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        const seq = Number(body["seq"]);
+        const m = Number.isInteger(seq) ? this.chat.get(seq) : undefined;
+        const mine = m !== undefined && m.channel.startsWith("dm:") && Array.isArray(m.audience) && m.audience.includes(`@${character}`);
+        if (m === undefined || m.kind !== "widget" || m.widget === undefined || !mine) {
+          sendJson(res, 404, { error: "no such card for your character" });
+          return true;
+        }
+        const key = `${seq}:${character}`;
+        if (this.answeredWidgets.has(key)) {
+          sendJson(res, 409, { error: "already answered" });
+          return true;
+        }
+        const args = widgetResultArgs(body["result"], this.sim!, m.widget.kind);
+        if (args === null) {
+          sendJson(res, 400, { error: "bad widget result" });
+          return true;
+        }
+        if (!this.widgetAnswers.take(character)) {
+          sendJson(res, 429, { error: "slow down — wait a minute" });
+          return true;
+        }
+        this.answeredWidgets.add(key);
+        this.fanout(this.commit("signal", `${m.widget.kind} answered`, character, { ...args, card: seq }, character));
+        sendJson(res, 200, { ok: true });
         return true;
       }
       case "/api/prime/say": {
@@ -3170,10 +3567,25 @@ export class EventRuntime {
           sendJson(res, 400, { error: `invalid house map ${bad.file}`, file: bad.file, problems: bad.problems });
           return true;
         }
+        // `facts` (optional): the project's facts.json with it — a string
+        // (validated; a broken key would judge nothing), null = the project
+        // has none; absent = untouched.
+        const facts = body["facts"];
+        if (facts !== undefined && facts !== null && typeof facts !== "string") {
+          sendJson(res, 400, { error: "bad facts" });
+          return true;
+        }
+        const factsText = typeof facts === "string" && facts.trim() !== "" ? facts : null;
+        const factsBad = factsText !== null ? factsProblems(factsText) : [];
+        if (factsBad.length > 0) {
+          sendJson(res, 400, { error: `invalid ${FACTS_FILE}`, problems: factsBad });
+          return true;
+        }
         this.restart(source, name, { by });
+        if (facts !== undefined) this.setProjectFacts(factsText);
         if (maps !== null) {
           this.setProjectMaps(maps);
-          this.project?.saveSnapshot(maps).catch((err: unknown) => {
+          this.project?.saveSnapshot(this.dataSnapshot(maps)).catch((err: unknown) => {
             process.stderr.write(`  ⚠️  event ${this.eventId}: recording the map snapshot failed (${err instanceof Error ? err.message : String(err)})\n`);
           });
         }
@@ -3355,7 +3767,8 @@ export class EventRuntime {
       }
       case "/api/mod/quest": {
         // A director (or show hardware — a puzzle that finishes a quest)
-        // moves one person's quest: `{who, quest, action, text?}`.
+        // moves one person's — or one character's — quest:
+        // `{who, quest, action, text?}`.
         if (this.sim === null) {
           sendJson(res, 409, { error: "no scenario loaded" });
           return true;
@@ -3364,8 +3777,8 @@ export class EventRuntime {
         const quest = str(body, "quest");
         const action = str(body, "action") || "start";
         const text = typeof body["text"] === "string" && body["text"].trim() !== "" ? body["text"].trim().slice(0, 500) : null;
-        if (!this.sim.persons.has(who)) {
-          sendJson(res, 404, { error: "unknown guest" });
+        if (!this.sim.persons.has(who) && !this.sim.model.characters.has(who)) {
+          sendJson(res, 404, { error: "unknown guest or character" });
           return true;
         }
         if (!this.sim.model.quests.has(quest) && this.sim.model.questIndex.get(quest) === null) {
@@ -3378,6 +3791,44 @@ export class EventRuntime {
         }
         this.fanout(this.commit("quest", action, who, quest, text));
         sendJson(res, 200, { ok: true, status: this.sim.questStatus(who, quest) });
+        return true;
+      }
+      case "/api/mod/wallet/approve":
+      case "/api/mod/wallet/deny":
+      case "/api/mod/wallet/cancel":
+      case "/api/mod/wallet/stimulus": {
+        // The director's hand on the wallet: approve / deny / cancel any
+        // open item, or pay the stimulus when the minter's phone is gone
+        // (it still counts against the limit). The journal line carries the
+        // director's name; the cards read `Director`.
+        if (this.sim === null || this.wallet === null) {
+          sendJson(res, this.sim === null ? 409 : 404, { error: this.sim === null ? "no scenario loaded" : "this story has no currency" });
+          return true;
+        }
+        const sub = path.slice("/api/mod/wallet/".length);
+        const id = str(body, "id");
+        let bad: WalletRefusal | null;
+        let op: WalletOp;
+        if (sub === "stimulus") {
+          const amount = Number(body["amount"]);
+          bad = this.wallet.checkStimulus(DIRECTOR, amount, true);
+          op = { op: "stimulus", id: this.wallet.nextId("s"), by: DIRECTOR, amount, at: this.sim.elapsed() };
+        } else if (sub === "approve") {
+          bad = this.wallet.checkApprove(id);
+          op = { op: "approve", id, by: DIRECTOR };
+        } else if (sub === "deny") {
+          bad = this.wallet.checkDeny(id);
+          op = { op: "deny", id, by: DIRECTOR };
+        } else {
+          bad = this.wallet.checkCancel(id, DIRECTOR, true);
+          op = { op: "cancel", id, by: DIRECTOR };
+        }
+        if (bad !== null) {
+          sendJson(res, bad.status, { error: bad.error });
+          return true;
+        }
+        this.fanout(this.commitWallet(op));
+        sendJson(res, 200, { ok: true, wallet: this.wallet.modView() });
         return true;
       }
       case "/api/mod/act": {
@@ -3396,6 +3847,12 @@ export class EventRuntime {
             break;
           case "release":
             this.fanout(this.commit("escape", id));
+            break;
+          case "restrict":
+            this.fanout(this.commit("restrict", id));
+            break;
+          case "unrestrict":
+            this.fanout(this.commit("unrestrict", id));
             break;
           default:
             sendJson(res, 400, { error: "unknown action" });
@@ -3421,6 +3878,13 @@ export class EventRuntime {
           sendJson(res, 404, { error: "unknown character" });
           return true;
         }
+        // A mod-token device (a tablet, a terminal — `by` is the generic
+        // "Director") names itself in `label` so the journal says which
+        // screen fired it (the recap carries no `by`) (restored by `handleMod`'s finally, as
+        // `/api/mod/impersonate` does). An author session's own name is
+        // never overridden.
+        const label = str(body, "label").trim().slice(0, 60);
+        if (label !== "" && by === "Director") this.actingBy = label;
         this.fanout(this.commit("signal", str(body, "name"), subject === "" ? undefined : subject, args, actor === "" ? null : actor));
         sendJson(res, 200, { ok: true });
         return true;
@@ -3560,6 +4024,12 @@ export class EventRuntime {
             const on = value === true || value === "true";
             // `capture` is idempotent; `escape` only fires on a real transition.
             this.fanout(this.commit(on ? "capture" : "escape", id));
+            break;
+          }
+          case "restricted": {
+            // Both are idempotent; the hook fires on a real transition only.
+            const on = value === true || value === "true";
+            this.fanout(this.commit(on ? "restrict" : "unrestrict", id));
             break;
           }
           default:

@@ -4,7 +4,7 @@
 //! `signal` route carries arguments.
 
 import { afterAll, describe, expect, it } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -276,12 +276,26 @@ describe("widgetResultArgs — free-text fields", () => {
     rt.openDoors();
     const sim = rt.liveSim!;
     // "The Gatekeeper" is an entity: a fine (wrong) answer on a fact card…
-    expect(widgetResultArgs({ question: "H2", answer: "The Gatekeeper", certain: true }, sim, "fact")).toEqual({ question: "H2", answer: "The Gatekeeper", certain: true });
+    expect(widgetResultArgs({ question: "H2", answer: "The Gatekeeper", confidence: 73 }, sim, "fact")).toEqual({ question: "H2", answer: "The Gatekeeper", confidence: 73 });
     // …but still refused in any other field or any other kind.
     expect(widgetResultArgs({ question: "The Gatekeeper", answer: "x" }, sim, "fact")).toBeNull();
     expect(widgetResultArgs({ answer: "The Gatekeeper" }, sim, "captcha")).toBeNull();
     expect(widgetResultArgs({ answer: "The Gatekeeper" }, sim, "constructor")).toBeNull();
     expect(widgetResultArgs({ answer: "x".repeat(201) }, sim, "fact")).toBeNull();
+    // A free-text `answer` card's `text` may name anyone too.
+    expect(widgetResultArgs({ text: "The Gatekeeper" }, sim, "answer")).toEqual({ text: "The Gatekeeper" });
+    expect(widgetResultArgs({ text: "The Gatekeeper" }, sim, "fact")).toBeNull();
+  });
+
+  it("refuses the reserved keys the server attaches itself (`card`, `verdict`) on every kind", () => {
+    const rt = freshRuntime();
+    rt.openDoors();
+    const sim = rt.liveSim!;
+    expect(widgetResultArgs({ answer: "x", verdict: "accurate" }, sim, "fact")).toBeNull();
+    expect(widgetResultArgs({ answer: "x", card: 3 }, sim, "fact")).toBeNull();
+    expect(widgetResultArgs({ passed: true, card: 1 }, sim, "captcha")).toBeNull();
+    expect(widgetResultArgs({ text: "x", verdict: "lie" }, sim, "answer")).toBeNull();
+    expect(widgetResultArgs({ passed: true }, sim, "captcha")).toEqual({ passed: true });
   });
 });
 
@@ -340,5 +354,233 @@ describe("/api/mod/signal with arguments", () => {
     const r = await post(rt, "/api/mod/signal", { name: "alarm", args: { level: 4 } }, true);
     expect(r.status).toBe(200);
     expect(rt.liveSim!.log.all().some((e) => e.type === "dialogue" && e.text === "Level 4.")).toBe(true);
+  });
+});
+
+describe("/api/prime/widget — cards dealt to a character (wave 4, lane D)", () => {
+  // A story that deals cards to a character's booth: plain (→ its Inbox,
+  // `dm:The Gatekeeper`) and threaded (→ the Cast thread with an agent).
+  // ROLE hooks must never hear the answer; the character's own hook and
+  // story rules do; another character's hook does not. (A character's own
+  // hook is written `when <kind> answered for who:` — a two-word trigger
+  // with no `for` parses as `<verb> <param>`, like every named event.)
+  const BOOTH = `# Booth cards
+start: Gate
+
+LOCATION Gate
+
+ROLE Guest
+  favour: 0 to 100 = 0
+  when poll answered for guest:
+    set guest.favour += 50
+
+CHARACTER The Gatekeeper
+  heard: 0 to 10 = 0
+  polled: 0 to 10 = 0
+  when poll answered for who:
+    set self.heard += 1
+
+CHARACTER Ivo Marsh
+  heard: 0 to 10 = 0
+  when poll answered for who:
+    set self.heard += 1
+
+CHARACTER Trabolta
+  mind: external
+
+INTERACTION deal
+  who: admin
+
+INTERACTION deal_thread
+  who: admin
+
+when deal:
+  show poll "Approve the transfer?" to The Gatekeeper with options: "Yes | No"
+
+when deal_thread:
+  show poll "Trabolta asks: approve?" to The Gatekeeper with thread: Trabolta, options: "Yes | No"
+
+when poll answered for who:
+  set who.polled += 1
+
+== Gate
+  setting: Gate
+Narrator: The gate.
+`;
+  type Frame = { event: string; data: unknown };
+  function sseRes(): ServerResponse & { statusCode: number; body: string; frames: Frame[] } {
+    let pending: string | null = null;
+    const res = {
+      statusCode: 0,
+      body: "",
+      frames: [] as Frame[],
+      writeHead(s: number) {
+        res.statusCode = s;
+        return res;
+      },
+      write(chunk: string) {
+        const ev = /^event: (\S+)\n$/u.exec(chunk);
+        if (ev) pending = ev[1]!;
+        const data = /^data: (.*)\n\n$/su.exec(chunk);
+        if (data && pending !== null) res.frames.push({ event: pending, data: JSON.parse(data[1]!) });
+        return true;
+      },
+      end(b?: string) {
+        if (typeof b === "string") res.body = b;
+        return res;
+      },
+    };
+    return res as unknown as ServerResponse & { statusCode: number; body: string; frames: Frame[] };
+  }
+  async function get(rt: EventRuntime, pathAndQuery: string, moderator = false) {
+    const res = sseRes();
+    const url = new URL(`http://x${pathAndQuery}`);
+    await rt.handle(fakeReq({}), res, "GET", url.pathname, url, { moderator });
+    return res;
+  }
+  function boothRuntime(): { rt: EventRuntime; dir: string } {
+    const d = mkdtempSync(join(tmpdir(), "loom-booth-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "booth", scenarioSource: BOOTH, joinBase: () => "http://localhost" });
+    return { rt, dir: d };
+  }
+  type Row = { seq: number; channel: string; kind: string; audience: unknown; text: string };
+  const messages = (r: { frames: Frame[] }) => r.frames.filter((f) => f.event === "message").map((f) => f.data as Row);
+  const history = (r: { frames: Frame[] }) => r.frames.find((f) => f.event === "history")!.data as Row[];
+
+  it("a card `to <Character>` lands in that booth's Inbox, addressed `@<Character>`, and in no other booth or phone", async () => {
+    const { rt } = boothRuntime();
+    rt.openDoors();
+    const g = await guest(rt);
+    const keeper = (await post(rt, "/api/prime/login", { character: "The Gatekeeper", passcode: CODES.prime })).json.token as string;
+    const ivo = (await post(rt, "/api/prime/login", { character: "Ivo Marsh", passcode: CODES.prime })).json.token as string;
+    const kStream = await get(rt, `/events?role=prime&token=${encodeURIComponent(keeper)}`);
+    const iStream = await get(rt, `/events?role=prime&token=${encodeURIComponent(ivo)}`);
+    expect((await post(rt, "/api/mod/signal", { name: "deal" }, true)).status).toBe(200);
+    const cards = messages(kStream).filter((m) => m.kind === "widget");
+    expect(cards.map((m) => [m.channel, m.audience, m.text])).toEqual([["dm:The Gatekeeper", ["@The Gatekeeper"], "Approve the transfer?"]]);
+    expect(messages(iStream).filter((m) => m.kind === "widget")).toEqual([]);
+    expect(rt.chatHistoryFor(g.id).filter((m) => m.kind === "widget")).toEqual([]);
+    // A fresh booth stream replays it in the history.
+    expect(history(await get(rt, `/events?role=prime&token=${encodeURIComponent(keeper)}`)).filter((m) => m.kind === "widget")).toHaveLength(1);
+  });
+
+  it("the performer answers it: `<kind> answered` fires with the character as subject + actor — its own hook + story rules hear it, ROLE hooks and other characters do not", async () => {
+    const { rt, dir } = boothRuntime();
+    rt.openDoors();
+    const g = await guest(rt);
+    const keeper = (await post(rt, "/api/prime/login", { character: "The Gatekeeper", passcode: CODES.prime })).json.token as string;
+    const ivo = (await post(rt, "/api/prime/login", { character: "Ivo Marsh", passcode: CODES.prime })).json.token as string;
+    await post(rt, "/api/mod/signal", { name: "deal" }, true);
+    const kStream = await get(rt, `/events?role=prime&token=${encodeURIComponent(keeper)}`);
+    const seq = history(kStream).find((m) => m.kind === "widget")!.seq;
+    // A guest token can't answer a booth's card; another booth gets a 404.
+    expect((await post(rt, "/api/prime/widget", { token: g.token, seq, result: { index: 0 } })).status).toBe(403);
+    expect((await post(rt, "/api/prime/widget", { seq, result: { index: 0 } })).status).toBe(403);
+    expect((await post(rt, "/api/prime/widget", { token: ivo, seq, result: { index: 0 } })).status).toBe(404);
+    expect((await post(rt, "/api/prime/widget", { token: keeper, seq: 9999, result: { index: 0 } })).status).toBe(404);
+    expect((await post(rt, "/api/prime/widget", { token: keeper, seq, result: [1] })).status).toBe(400);
+    const r = await post(rt, "/api/prime/widget", { token: keeper, seq, result: { index: 0 } });
+    expect(r.status).toBe(200);
+    const sim = rt.liveSim!;
+    const num = (path: string) => (sim.world.get(path) as { value: unknown } | undefined)?.value;
+    expect(num("The Gatekeeper.heard")).toBe(1); // its own hook
+    expect(num("The Gatekeeper.polled")).toBe(1); // the story rule, `who` = the character
+    expect(num("Ivo Marsh.heard")).toBe(0); // another character's hook
+    expect(num(`${g.id}.favour`)).toBe(0); // the ROLE hook never ran
+    // The journaled event: the character is the subject (the actor + the
+    // `card` arg are proven above by which hooks ran and by the restart below).
+    const sig = sim.log.all().find((e) => e.type === "signal" && (e as { name: string }).name === "poll answered") as { subject: string } | undefined;
+    expect(sig).toMatchObject({ subject: "The Gatekeeper" });
+    // One answer per card.
+    expect((await post(rt, "/api/prime/widget", { token: keeper, seq, result: { index: 1 } })).status).toBe(409);
+    // The booth's snapshot lists it as answered — and a restart keeps that.
+    const snap = await get(rt, `/api/state?role=prime&token=${encodeURIComponent(keeper)}`);
+    expect((JSON.parse(snap.body) as { answered: number[] }).answered).toEqual([seq]);
+    const rt2 = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: "booth", scenarioSource: BOOTH, joinBase: () => "http://localhost" });
+    expect(rt2.restore()).not.toBeNull();
+    const snap2 = await get(rt2, `/api/state?role=prime&token=${encodeURIComponent(keeper)}`);
+    expect(snap2.statusCode).toBe(200);
+    expect((JSON.parse(snap2.body) as { answered: number[] }).answered).toEqual([seq]);
+    expect((await post(rt2, "/api/prime/widget", { token: keeper, seq, result: { index: 1 } })).status).toBe(409);
+  });
+
+  it("refuses while the doors are closed", async () => {
+    const { rt } = boothRuntime();
+    rt.openDoors();
+    const keeper = (await post(rt, "/api/prime/login", { character: "The Gatekeeper", passcode: CODES.prime })).json.token as string;
+    await post(rt, "/api/mod/signal", { name: "deal" }, true);
+    const seq = history(await get(rt, `/events?role=prime&token=${encodeURIComponent(keeper)}`)).find((m) => m.kind === "widget")!.seq;
+    rt.pause();
+    expect((await post(rt, "/api/prime/widget", { token: keeper, seq, result: { index: 0 } })).status).toBe(409);
+  });
+
+  it("`with thread: <Agent>` deals the card into the Cast thread, and the AgentHub never carries a widget row into a request (K-23)", async () => {
+    const { rt } = boothRuntime();
+    rt.openDoors();
+    const keeper = (await post(rt, "/api/prime/login", { character: "The Gatekeeper", passcode: CODES.prime })).json.token as string;
+    const worker = await get(rt, "/api/agent/stream?characters=Trabolta&name=laptop", true);
+    expect(worker.frames.find((f) => f.event === "hello")).toBeDefined();
+    await post(rt, "/api/mod/signal", { name: "deal_thread" }, true);
+    const kStream = await get(rt, `/events?role=prime&token=${encodeURIComponent(keeper)}`);
+    const card = history(kStream).find((m) => m.kind === "widget")!;
+    expect([card.channel, card.audience, card.text]).toEqual(["dm:Trabolta", ["@The Gatekeeper"], "Trabolta asks: approve?"]);
+    // The card alone raises no request; the performer's line does, and the
+    // request's history is lines only — the card's text is never in it.
+    const requests = () => worker.frames.filter((f) => f.event === "request").map((f) => f.data as { text: string; history: Array<{ text: string }>; thread: { channel: string; audience: string[] } });
+    expect(requests()).toHaveLength(0);
+    expect((await post(rt, "/api/prime/say", { token: keeper, channel: "cast:Trabolta", text: "Should I approve?" })).status).toBe(200);
+    const [req] = requests();
+    expect(req).toBeDefined();
+    expect(req!.thread).toMatchObject({ channel: "dm:Trabolta", audience: ["@The Gatekeeper"] });
+    expect(req!.history.map((l) => l.text)).toEqual(["Should I approve?"]);
+    expect(JSON.stringify(req)).not.toContain("Trabolta asks"); // the card's text is nowhere in the request
+    // Answering the threaded card works the same way.
+    expect((await post(rt, "/api/prime/widget", { token: keeper, seq: card.seq, result: { index: 1 } })).status).toBe(200);
+    expect((rt.liveSim!.world.get("The Gatekeeper.heard") as { value: unknown }).value).toBe(1);
+    // …and still raises no request of its own.
+    expect(requests()).toHaveLength(1);
+  });
+});
+
+describe("restricted guests (wave 4, lane E)", () => {
+  it("refuses buttons and room posts, keeps DMs; the mod routes journal restrict/unrestrict and a restart replays them", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-ix-"));
+    dirs.push(d);
+    const rt = runtimeIn(d);
+    rt.openDoors();
+    const g = await guest(rt);
+    expect((await state(rt, g.token)).json.restricted).toBe(false);
+    rt.liveSim!.restrict(g.id);
+    expect((await state(rt, g.token)).json).toMatchObject({ restricted: true, interactions: [] });
+    const act = await post(rt, "/api/guest/act", { token: g.token, name: "knock" });
+    expect(act.status).toBe(403);
+    expect(act.json.error).toMatch(/restricted/);
+    expect((await post(rt, "/api/guest/say", { token: g.token, channel: "lobby", text: "hi" })).status).toBe(403);
+    expect((await post(rt, "/api/guest/say", { token: g.token, channel: "loc:Gate", text: "hi" })).status).toBe(403);
+    expect((await post(rt, "/api/guest/say", { token: g.token, channel: "dm:The Gatekeeper", text: "hi" })).status).toBe(200);
+    // The director's twin: journaled, visible in the roster row, replayed on restore.
+    rt.liveSim!.unrestrict(g.id);
+    const on = await post(rt, "/api/mod/act", { id: g.id, action: "restrict" }, true);
+    expect(on.status).toBe(200);
+    expect((on.json.guest as { restricted: boolean }).restricted).toBe(true);
+    expect((await state(rt, g.token)).json.restricted).toBe(true);
+    const journal = () => readFileSync(join(d, "journal.ndjson"), "utf8");
+    expect(journal()).toContain('"restrict"');
+    const off = await post(rt, "/api/mod/act", { id: g.id, action: "unrestrict" }, true);
+    expect((off.json.guest as { restricted: boolean }).restricted).toBe(false);
+    expect(journal()).toContain('"unrestrict"');
+    expect((await post(rt, "/api/guest/act", { token: g.token, name: "knock" })).status).toBe(200);
+    // The inspector's field edit routes the same way.
+    const set = await post(rt, "/api/mod/set", { id: g.id, field: "restricted", value: true }, true);
+    expect(set.status).toBe(200);
+    expect((set.json.guest as { restricted: boolean }).restricted).toBe(true);
+    expect((await post(rt, "/api/mod/set", { id: g.id, field: "restricted", value: "false" }, true)).json).toMatchObject({ guest: { restricted: false } });
+    await post(rt, "/api/mod/set", { id: g.id, field: "restricted", value: true }, true);
+    const again = runtimeIn(d);
+    expect(again.restore()).not.toBeNull();
+    expect(again.liveSim!.isRestricted(g.id)).toBe(true);
+    expect(primeView(again.liveSim!, "The Gatekeeper").guests.find((x) => x.id === g.id)!.restricted).toBe(true);
+    expect(modView(again.liveSim!, "open", "x").roster.find((r) => r.id === g.id)!.restricted).toBe(true);
   });
 });

@@ -130,7 +130,8 @@ static func reflex_waypoints(poly: Array) -> Array:
 	return out
 
 
-## The route graph's nodes, in order: the portals ([method portals]), then
+## The route graph's nodes, in order: the portals ([method portals]) — every
+## door but a guarded one (`guard`: shut until its king falls), then
 ## per room (array order) its reflex waypoints ([method reflex_waypoints]),
 ## then per stair (array order) the four corners of its rect moved 0.35 m
 ## outward along each axis (`[x0, z0] [x1, z0] [x1, z1] [x0, z1]` order) —
@@ -144,7 +145,15 @@ static func reflex_waypoints(poly: Array) -> Array:
 ## elevation and is in that room only.
 static func route_nodes(house: Dictionary) -> Array:
 	var out: Array = []
+	# A guarded door (`guard`: a king standing in it) is shut for routing:
+	# its portal is left out, so nothing paths through it.
+	var guarded := {}
+	for door: Dictionary in house.get("doors", []):
+		if door.get("guard") != null:
+			guarded[str(door["id"])] = true
 	for p: Dictionary in portals(house):
+		if str(p["kind"]) == "door" and guarded.has(str(p["id"])):
+			continue
 		out.append({"kind": p["kind"], "id": p["id"], "pos": (p["pos"] as Array).duplicate(), "rooms": (p["rooms"] as Array).duplicate()})
 	for room: Dictionary in house.get("rooms", []):
 		for w: Array in reflex_waypoints(room["poly"]):

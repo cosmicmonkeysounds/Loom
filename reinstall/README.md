@@ -9,9 +9,9 @@ is [`docs/loom-reinstall.md`](../docs/loom-reinstall.md), and it is normative.
 
 | Piece | Where | What it is |
 |---|---|---|
-| [`web/`](./web) (`loom-reinstall`) | `/reinstall/` on the event server | The **tablet game**: Vite + React + three.js. Its screens are setup → scan a pass → **Play here** or **Send to <headset>** → play → found. You move with the on-screen twin sticks or the keyboard. The same app serves the **house map** viewer and editor at `/reinstall/map`. §3. |
+| [`web/`](./web) (`loom-reinstall`) | `/reinstall/` on the event server | The **tablet game**: Vite + React + three.js. Its screens are setup → scan a pass → **Play here** or **Send to <headset>** → play → found. You move with the on-screen twin sticks or the keyboard. It is also where **the King** is fought (below). The same app serves the **house map** viewer and editor at `/reinstall/map`. §3. |
 | [`vr/`](./vr) | Quest 3 headsets in the tent | The **VR game**: a Godot 4.7 OpenXR project, thumbsticks only. A headset is a station that polls for work, or its wearer picks a program with the stick. On a Mac it runs as a desktop game. §5. |
-| [`../house`](../house) (`@loom/house`) | shared | The **house map**: one frame (metres, Y up, `+z` south). It holds the schema, validation, the procedural geometry, `locate` and `route`, and the duck pick. `@loom/house/three` is the three.js scene that the web game and the terminals both render. §1. |
+| [`../house`](../house) (`@loom/house`) | shared | The **house map**: one frame (metres, Y up, `+z` south). It holds the schema (incl. the `king` prop and a door's `guard`), validation, the procedural geometry, `locate` and `route` (a guarded door is shut), and the duck pick. `@loom/house/three` is the three.js scene that the web game and the terminals both render, the King included. §1. |
 | [`../core/server/spatial.ts`](../core/server/spatial.ts) | the event server | `SpatialHub` holds sessions, stations, poses, and a found check gated on distance and height (`nearDuck`), refused while the run is paused. Only the outcome ever reaches the journal: `the simulation completed` + `the golden duck`. A map save carries live sessions over and moves their ducks (`duck` frame). §2. |
 | [`../terminal/src/world/`](../terminal/src/world) | the wall tablets | The **world view**: each terminal shows the players exploring, seen from where it hangs on the real wall. `view=mirror` is the TV. §4. |
 
@@ -38,6 +38,26 @@ project bar (`map/ProjectBar.tsx`, mounted in the editor's toolbar slot
 by `main.tsx`) offers both as **Map: Tent ● live | Shed** buttons, plus
 **Download JSON**; a switch reloads the page onto the server's new map
 (`docs/loom-reinstall.md` §1.3, §2.1).
+
+### The King (the Cold Lock in the simulation)
+
+A `king` prop stands in the server-room doorway of the show's map
+(`cold-lock-king`, `hp: 4`; the door `server-door` names him as its
+`guard`), and the door is shut — a closed leaf in the gap — until he falls.
+On the **tablet** a program walks down to him and **hits** him (**⚔** or
+Space, one hit every 1.2 s, facing him within 1.25 m): every hit takes a
+heart and makes his chess worse — grandmaster → club → beginner → dizzy
+(random moves) → **pawns only** (his own worst move, with nothing but his
+eight pawns). **♟ CHALLENGE** (or C) opens the board (a lazy chunk with
+chess.js; tap a piece, tap a square; 💡 Hint; Give up changes nothing).
+Checkmate fells him, the door opens in the simulation, and the tablet
+posts `chess won` to the story with its moderator token (`chess lost` /
+`chess drawn` otherwise) — the story keeps its Y2K gate, so before step 14
+the board says **PRACTICE** (the badge reads `Night.step` off the mod
+view) and `# hosts` says so. The fight is per session; a headset only
+shows him and says "The King is fought on the tent tablet." The design is
+`docs/loom-reinstall.md` §3 *The King*; the wall chess phone stays the
+fallback until this is device-checked (`scripts/accept/K-27.md`).
 
 ### The map editor (`/reinstall/map`)
 
@@ -79,9 +99,11 @@ pnpm house:sync          # = @loom/house goldens + sync → vr/house/house.json,
 pnpm dev                                   # builds play + terminal + reinstall; server :7000
                                            # → http://localhost:7000/reinstall/  (map: /reinstall/map)
 pnpm dev --reinstall                       # + the game's own Vite with HMR on :5176
-pnpm --filter loom-reinstall test          # web: physics, input, pose pump, HUD, map editor
-pnpm --filter @loom/house test             # the map + the §1.2 goldens
-pnpm test:vr                               # = reinstall/vr/test/run.sh (needs Godot 4.7)
+pnpm --filter loom-reinstall test          # web: physics, input, pose pump, HUD, map editor,
+                                           #   the fight + the board (271 tests)
+pnpm --filter @loom/house test             # the map + the §1.2 goldens (151 + 4 skipped)
+pnpm test:vr                               # = reinstall/vr/test/run.sh (needs Godot 4.7;
+                                           #   255 checks + 26 for tools/quest.sh)
 ```
 
 To provision a device, open a link that carries the event's **moderator**
@@ -97,9 +119,12 @@ At *Trapped in the Internet* the wall terminals are provisioned
 `view=auto` from the start: they hold a screensaver until Clippy introduces
 Trabolta (`introduce_trabolta`), then flip to his face within 2 s (see
 [`terminal/README.md`](../terminal/README.md) → *Before the character
-exists*). In the tent, the story's `WebMD` messages
-each captured program the reinstallation instructions (`cue tablet_webmd` is
-reserved for a future instructional video in the tablet wizard).
+exists*). In the tent — in the backyard, through the tunnel — the story's
+**Installation Wizard** (a voice, not a performer: `cast/staff.loom`,
+`beats/internet.loom`) messages each captured program the reinstallation
+instructions in its own `dm:Installation Wizard` thread (`cue
+tablet_wizard` is reserved for a future instructional video in the tablet
+wizard).
 
 A headset is configured with `user://station.json` or command-line flags;
 see [`vr/README.md`](./vr/README.md). The Docker image serves `web/` (the

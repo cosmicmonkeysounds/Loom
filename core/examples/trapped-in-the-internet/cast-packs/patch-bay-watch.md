@@ -40,7 +40,10 @@ Do **not** help them: you are an Antivirus.
 - **The chess phone** (Cold Lock). Glance at it each act. A guest who beats
   the machine opens the door for 90 seconds. Press **♟ They beat the machine**
   on the winner's card **only after you saw "checkmate" on the phone** (OP-12).
-  Phone dead → radio the director, who fires it.
+  Phone dead → radio the director, who fires it. The same lock also listens
+  to **the King** in the tent tablet's game (a chess king at this door inside
+  the simulation): a checkmate there reports itself, nobody presses anything,
+  and the ring goes green just the same.
 - **The real gear** (router, UPS, the dongle, the ESP32 power) is taped off and
   out of reach. Keep guests off it, politely and firmly. In Act III the room
   fills up.

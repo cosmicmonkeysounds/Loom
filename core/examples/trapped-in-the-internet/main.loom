@@ -2,6 +2,7 @@
 start: Power On
 theme: aol97
 directory: everyone
+currency: score as Truthcoin, max 500, expiry 10m
 
 // Equal parts Digimon Movie, Blade Runner, and an escape room, in a
 // Web 1.0 house, with a side of existentialism.
@@ -39,6 +40,9 @@ directory: everyone
 // - The featured programs (cast/featured.loom) never speak. Write their
 //   names as prose, never as `Name:` at the start of a line.
 // - Globals start null: compare with `== true` / `!= true`, `<`, `>=`.
+// - Truthcoin moves through the server's wallet (core/server/wallet.ts);
+//   the rules below only narrate it. The approver and the minter are the
+//   `wallet:` lines on CRA Agent Software and Runescape.
 // - Every deadline watcher keeps its phase guard (null arithmetic is 0).
 
 // ── Groups ──────────────────────────────────────────────────────────
@@ -104,7 +108,7 @@ LOCATION The Tube
   hidden: true
 
 LOCATION The Internet
-  label: The Internet (Reinstallation)
+  label: The Internet (Reinstallation — the tent, backyard)
   prison: true
   sealed: true
   hidden: true
@@ -177,13 +181,14 @@ ROLE Program
   // Trabolta's agent requests and the facts document, for the voice and
   // the orchestrator alike): the virus they carry or planted, the glitch
   // missions they chose and how far along they are, the dossier, the
-  // frame, the centre-square secret, the 📝 filing state, and every
+  // frame, the centre-square secret, the 📝 filing record (the answer,
+  // the slider, the verdict and the judge's proposal per question), and every
   // featured mission and leader's recruiting quest (a hidden group's
   // membership the server masks itself until the group is revealed). The
   // verdicts and the anti-AI designation are on the Kernel already; the
   // orders and the virus files are `secret: true` CODEX entries
   // (codex/1-world.loom, 6-missions.loom).
-  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, anti_ai, framed, fact_pending, fact_n, fact_try, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave
+  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave
   uploaded: bool = false
   cleared: bool = false
   captchas: 0 to 10 = 0
@@ -228,7 +233,6 @@ ROLE Program
   fact_try: 0 to 8 = 0
   fact_q_round: 0 to 3 = 0
   fact_n: 0 to 8 = 0
-  fact_pending: bool = false
   last_fact_q: text? = none
   fact_label: text? = none
   fact_h1: bool = false
@@ -241,6 +245,47 @@ ROLE Program
   fact_f2: bool = false
   fact_open: text? = none
   fact_sep: text? = none
+  fact_a1: text? = none
+  fact_a2: text? = none
+  fact_a3: text? = none
+  fact_a4: text? = none
+  fact_a5: text? = none
+  fact_a6: text? = none
+  fact_a7: text? = none
+  fact_a8: text? = none
+  fact_c1: 0 to 100 = 0
+  fact_c2: 0 to 100 = 0
+  fact_c3: 0 to 100 = 0
+  fact_c4: 0 to 100 = 0
+  fact_c5: 0 to 100 = 0
+  fact_c6: 0 to 100 = 0
+  fact_c7: 0 to 100 = 0
+  fact_c8: 0 to 100 = 0
+  fact_v1: text? = none
+  fact_v2: text? = none
+  fact_v3: text? = none
+  fact_v4: text? = none
+  fact_v5: text? = none
+  fact_v6: text? = none
+  fact_v7: text? = none
+  fact_v8: text? = none
+  fact_j1: text? = none
+  fact_j2: text? = none
+  fact_j3: text? = none
+  fact_j4: text? = none
+  fact_j5: text? = none
+  fact_j6: text? = none
+  fact_j7: text? = none
+  fact_j8: text? = none
+  fact_sure: text? = none
+  settle_seen: 0 to 999 = 0
+  card_seen: 0 to 999 = 0
+  pickup_seen: 0 to 9 = 0
+  bottle_q: 0 to 8 = 0
+  bottle_round: 0 to 99 = 0
+  bottle_answered: 0 to 99 = 0
+  marked: bool = false
+  marked_for: text? = none
 
   // ── Arrival ──
   // A new program stands in the Optical Drive (the phone goes on rails there).
@@ -325,13 +370,16 @@ ROLE Program
       reply Bathroom Mode disengaged. Resume being a program.
 
   // ── The Internet ──
-  // Any capture: count the visit, recompute trust, put WebMD on the tent
-  // tablet (and, once Trabolta is introduced, the VR mirror on the TV).
+  // Any capture: count the visit, recompute trust, put the Installation
+  // Wizard on the tent tablet (and, once Trabolta is introduced, the VR
+  // mirror on the TV).
   when captured:
+    if self.marked == true:
+      fire unmarked for self with how: "in the Internet"
     set self.corrupted = true
     set self.internet_visits += 1
     set self.trust = self.truths_accepted * 10 - self.internet_visits * 5 + self.assessment
-    cue tablet_webmd
+    cue tablet_wizard
     if Night.trabolta_introduced == true:
       cue tv_mirror
       set Night.screen = "mirror"
@@ -341,6 +389,8 @@ ROLE Program
   // A program captured from the Optical Drive by a misclick lands on the
   // Desktop uncleared; clear it here so it doesn't go dark for the night.
   when released:
+    if self.marked == true:
+      fire unmarked for self with how: "released"
     set self.corrupted = false
     if Night.summons_closed == true and Night.phase == "summons":
       set self.summons_ok = true
@@ -356,6 +406,7 @@ ROLE Program
       reveal The Fan Closet for self
       reveal The Graphics Card for self
       reveal The Hard Drive for self
+      reveal task manager for self
 
   when wrong code for program:
     set program.doubt += 8
@@ -384,7 +435,17 @@ ROLE Program
       set program.framed = true
       reply 🃏 A completed Bingo card with your name on it has been handed to Clippy. You did not fill it in.
 
-  // ── Moments of Truth: judging (performer buttons) ──
+  // Named on a Bingo card (the Antivirus' selection): marked, then the
+  // live interruption's 🛡 captures them (`first_reinstallation` still fires
+  // from the Enforcer's hook).
+  when named_at_bingo for program:
+    if Night.phase == "bingo_results":
+      fire mark_for_reinstallation for program with reason: "named on the Bingo card"
+
+  // ── Moments of Truth: the room's judging (performer buttons) ──
+  // The ✅ / 😤 / 🤷 buttons for an answer spoken in the room (Truth Pong,
+  // the final reveal). A fact FILED on the 📝 card is judged by the server
+  // (the 📝 section below).
   // The judge presses the button for the question that was answered,
   // numbered within this round. Each only records the number and fires
   // the shared hook. A refused press is the judge's business, not the
@@ -519,22 +580,54 @@ ROLE Program
       broadcast "✅ {program.name}'s answer is accepted." to everyone
       reply Accepted. Trabolta thanks you. +100 Truthcoin.
 
-  // Uncertain, or an obvious guess: banished for failing to follow orders.
+  // Uncertain, or an obvious guess: marked for failing to follow orders.
   when uncertain_answer for program:
     if Night.judging == true:
       set program.may_answer = false
       broadcast "🤷 {program.name} was not sure. That is a symptom of corruption." to everyone
-      capture program into The Internet
+      fire mark_for_reinstallation for program with reason: "was not sure of an answer"
 
-  // Truth or Dare from the hat.
+  // ── 🍾 The bottle: Truth or Dare (wave 4) ──
+  // `spin_the_bottle` asks the server for one random cleared program at the
+  // Desktop not yet picked for this question (`do pick …`, journaled); the
+  // pick lands here. Trabolta asks on the TV (`Bottle Landed`, a public line
+  // in The Desktop); the phone gets a Truth / Dare poll in dm:Trabolta.
+  // Dare, or a refused truth, marks for reinstallation. Truth asks
+  // Trabolta's next personal question (`Truth Question`, generated from
+  // facts.json truths[]); Clippy settles it with 🗣 Answered / 🙅 Refused.
+  // Five picks per hunt question, then the next question's results.
+  when bottle_landed for program:
+    set program.bottle_q = Night.bottle_q
+    set program.bottle_round = Night.bottle_round
+    set Night.bottle_picks += 1
+    set Night.bottle_pick = program.name
+    fire bottle_announce
+    show poll "🍾 The bottle landed on you. Truth or dare?" to program with thread: Trabolta, options: "Truth | Dare"
+
+  when truth_answered for program:
+    if Night.bottle_open == true and program.name == Night.bottle_pick:
+      set Night.bottle_open = false
+      set program.score += 50
+      broadcast "🗣 {program.name} answered. Trabolta is satisfied. +50 Truthcoin." to everyone
+    else:
+      broadcast "🗣 The bottle is not on {program.name}." to channel(hosts)
+
+  when truth_refused for program:
+    if Night.bottle_open == true and program.name == Night.bottle_pick:
+      set Night.bottle_open = false
+      broadcast "🙅 {program.name} refused to answer. That is a directive problem." to everyone
+      fire mark_for_reinstallation for program with reason: "refused the truth"
+    else:
+      broadcast "🙅 The bottle is not on {program.name}." to channel(hosts)
+
+  // The dead-phone fallback: the same effect as the Dare tap.
   when chose_dare for program:
-    if Night.judging == true:
+    if Night.bottle_open == true and program.name == Night.bottle_pick:
+      set Night.bottle_open = false
       broadcast "🎩 {program.name} chose Dare. Programs choose Truth." to everyone
-      capture program into The Internet
-
-  when called_it_false for program:
-    if Night.judging == true:
-      broadcast "🙅 {program.name} spotted a false statement. The turn passes." to everyone
+      fire mark_for_reinstallation for program with reason: "chose Dare"
+    else:
+      broadcast "🎩 The bottle is not on {program.name}." to channel(hosts)
 
   // Truth Pong: make the cup to earn an answer.
   when made_the_cup for program:
@@ -545,70 +638,138 @@ ROLE Program
   when missed_the_cup for program:
     if Night.phase == "truth_pong":
       broadcast "🏓 {program.name} missed the cup. Reinstallation required." to everyone
-      capture program into The Internet
+      fire mark_for_reinstallation for program with reason: "missed the cup"
 
-  // ── 📝 File a fact: DM filings with Trabolta (#33) ──
-  // A lie told to Trabolta counts only when the program FILES it on the 📝
-  // card in dm:Trabolta: pick a question of the current round, type the
-  // answer, tick "I'm certain". Free chat never counts. A question from a
-  // round that hasn't opened is refused (a crafted filing can't reach F2 in
-  // round 1); an earlier round's question still files late — the verdict
-  // needs all eight — so each card lists every open question the program
-  // hasn't filed. The card is dealt when each round's questions open
-  // (and on clearance after that), and re-dealt after every filing (the
-  // server throttles widget answers per guest, LOOM_RL_WIDGETS). A filing lands in # hosts; a host judges
-  // it with 📝 accurate / 📝 confident lie on the program's card, any time
-  // (no judging window, no cup). Question ids are absolute: H1–H6 are the
-  // two hunts, F1–F2 the final facts → Kernel.q1–q8. One filing per
-  // program per question, one unjudged at a time. Trabolta never sees the
-  // answer or the verdict: his thread gets the same words either way.
-  // Once the night has ended the record is closed: no filing, no card, no
-  // judging (the ceremony's Truthcoin and trust stand as they were).
+  // ── Marked for reinstallation ──
+  // Every host verdict that used to capture on the spot now MARKS the program:
+  // their phone shrinks to a 🚨 card, their DMs and the Tube + Internet rooms
+  // (read-only); every Antivirus booth chimes; # quarantine pins an escort task.
+  // The capture itself is still the Antivirus' 🛡 (or the tent tablet). `reason`
+  // is a quoted phrase for the booths; the director may fire this from Run.
+  when mark_for_reinstallation for program:
+    if program.corrupted == true:
+      broadcast "⚠️ {program.name} is already in the Internet." to channel(hosts)
+    else if program.marked == true:
+      broadcast "⚠️ {program.name} is already marked for reinstallation." to channel(hosts)
+    else:
+      set program.marked = true
+      if reason != null:
+        set program.marked_for = reason
+      else:
+        set program.marked_for = "flagged by a host"
+      restrict program to The Tube, The Internet
+      pin "!🚨 GO TO THE INTERNET. You are marked for reinstallation. An Antivirus will escort you through the Tube. Your buttons are off until you are reinstalled." for program
+      pin "🚨 Escort {program.name} to the Internet — {program.marked_for}. Press 🛡 Send to the Internet on their card when you have them." in quarantine for program
+      fire marked for program
+
+  // A mis-tap, or mercy: the mark comes off without a trip to the tent.
+  when unmark_for_reinstallation for program:
+    if program.marked == true:
+      fire unmarked for program with how: "cleared by a host"
+    else:
+      broadcast "⚠️ {program.name} is not marked." to channel(hosts)
+
+  // Shared by the capture, the release and 🩹: the mark comes off.
+  when unmarked for program:
+    set program.marked = false
+    unrestrict program
+    unpin for program "✅ The mark is lifted."
+    unpin in quarantine for program "✅ {program.name}: {how}."
+
+  // ── 📝 File a fact: DM filings with Trabolta (#33, wave 4 judging) ──
+  // A fact counts only when the program FILES it on the 📝 card in
+  // dm:Trabolta: pick a question of an open round, type the answer, set
+  // the confidence slider (1–100). Free chat never counts. The event
+  // server judges every filing against facts.json before the story sees
+  // it — `verdict` rides the event args (accurate = matches the key; lie =
+  // no match at 100; uncertain = no match below 100); the key never enters
+  // the sim. `Night.judge_mode` = auto (the verdict stands at once) or
+  // review (the verdict is a proposal in # hosts until a host confirms it
+  // with 📝 accurate / 📝 confident lie / 📝 uncertain on the program's
+  // card, or Run names the question; a round's settle takes the proposal
+  // for anything still pending). A program may file every open question,
+  // one filing per question, no lock. Question ids are absolute: H1–H6
+  // the two hunts, F1–F2 the final facts → Kernel.q1–q8. Each card lists
+  // only the open questions of the open rounds the program hasn't filed;
+  // a question not filed by the time its round closes (⏱ or the preview;
+  // the round-2 tally; truth.txt) never reappears, and the cards re-deal
+  // on Night.card_gen. Credits (+50, the Trust Chart) and marks (a guess)
+  // land at SETTLE time, never at filing — round 1 per question as Clippy
+  // reads its results, round 2 at the tally, round 3 at truth.txt — so a
+  // filing's reply tells the phone nothing. Trabolta never sees the answer
+  // or the verdict: his thread gets the same words either way. Once the
+  // night has ended the record is closed: no filing, no card, no judging.
   when Night.round > self.fact_round and self.cleared and Trabolta.awake == true and Night.ended != true:
     set self.fact_round = Night.round
     Trabolta: {self.name}. If you learn the answer to one of tonight's questions, file it with me on the card. Unfiled facts are rumours.
     fire deal_fact_card for self
 
-  // The card lists every open question this program hasn't filed yet, so
-  // a newer round's card never strands an earlier round's question (the
-  // play app folds every fact card but the newest in the thread).
+  // A round closed: every card re-deals without the closed questions.
+  when Night.card_gen > self.card_seen and self.cleared and Trabolta.awake == true and Night.ended != true:
+    set self.card_seen = Night.card_gen
+    fire deal_fact_card for self
+
+  // Settle: round 1 one question at a time (📋 read_the_results), round 2
+  // at the tally, round 3 at truth.txt.
+  when Night.settle_gen > self.settle_seen and self.cleared == true:
+    set self.settle_seen = Night.settle_gen
+    if Night.settle_q == 1:
+      fire settle_q1 for self
+    else if Night.settle_q == 2:
+      fire settle_q2 for self
+    else if Night.settle_q == 3:
+      fire settle_q3 for self
+    else if Night.settle_round == 2:
+      fire settle_q4 for self
+      fire settle_q5 for self
+      fire settle_q6 for self
+    else if Night.settle_round == 3:
+      fire settle_q7 for self
+      fire settle_q8 for self
+
+  // The card lists every open question of every open round this program
+  // hasn't filed yet (the play app folds every fact card but the newest in
+  // the thread). The question strings are Night.q_h1 … Night.q_f2, set by
+  // the generated `== Facts Seed` (generated/questions.loom, from facts.json).
   when deal_fact_card for program:
     if Night.ended != true and Night.round >= 1:
       set program.fact_open = ""
       set program.fact_sep = ""
-      if program.fact_h1 != true:
-        set program.fact_open = program.fact_open + program.fact_sep + "H1: Round 1 Q1. How many years did the Maps and Ducks billboard go unpaid?"
-        set program.fact_sep = " | "
-      if program.fact_h2 != true:
-        set program.fact_open = program.fact_open + program.fact_sep + "H2: Round 1 Q2. What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery?"
-        set program.fact_sep = " | "
-      if program.fact_h3 != true:
-        set program.fact_open = program.fact_open + program.fact_sep + "H3: Round 1 Q3. At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled?"
-        set program.fact_sep = " | "
-      if Night.round >= 2:
+      if Night.r1_closed != true:
+        if program.fact_h1 != true:
+          set program.fact_open = program.fact_open + program.fact_sep + Night.q_h1
+          set program.fact_sep = " | "
+        if program.fact_h2 != true:
+          set program.fact_open = program.fact_open + program.fact_sep + Night.q_h2
+          set program.fact_sep = " | "
+        if program.fact_h3 != true:
+          set program.fact_open = program.fact_open + program.fact_sep + Night.q_h3
+          set program.fact_sep = " | "
+      if Night.round >= 2 and Night.r2_closed != true:
         if program.fact_h4 != true:
-          set program.fact_open = program.fact_open + program.fact_sep + "H4: Round 2 Q1. What extension does the Customer Care card tell you to dial?"
+          set program.fact_open = program.fact_open + program.fact_sep + Night.q_h4
           set program.fact_sep = " | "
         if program.fact_h5 != true:
-          set program.fact_open = program.fact_open + program.fact_sep + "H5: Round 2 Q2. Which song did Trabolta play 412 times the night before he registered mapsandducks.com?"
+          set program.fact_open = program.fact_open + program.fact_sep + Night.q_h5
           set program.fact_sep = " | "
         if program.fact_h6 != true:
-          set program.fact_open = program.fact_open + program.fact_sep + "H6: Round 2 Q3. What is the title of the last chapter of Trabolta's unfinished Unified Field Theory?"
+          set program.fact_open = program.fact_open + program.fact_sep + Night.q_h6
           set program.fact_sep = " | "
-      if Night.round >= 3:
+      if Night.round >= 3 and Night.r3_closed != true:
         if program.fact_f1 != true:
-          set program.fact_open = program.fact_open + program.fact_sep + "F1: Final Q1. What is the only thing Sandy has ever said?"
+          set program.fact_open = program.fact_open + program.fact_sep + Night.q_f1
           set program.fact_sep = " | "
         if program.fact_f2 != true:
-          set program.fact_open = program.fact_open + program.fact_sep + "F2: Final Q2. Who is taking Sandy to computer prom?"
+          set program.fact_open = program.fact_open + program.fact_sep + Night.q_f2
           set program.fact_sep = " | "
       if program.fact_open != "":
         show fact "📝 File a fact" to program with thread: Trabolta, questions: program.fact_open
 
   // `fact_try` / `fact_q_round` are scratch for this filing; the filing's
-  // own record (`fact_n`, `fact_label`, `last_fact_q`) is written only when
-  // it is accepted, so a refused second try never renames the one under
-  // review (the verdict line reads it).
+  // own record (`fact_n`, `fact_label`, `last_fact_q`, `fact_a/c/j/vN`) is
+  // written only when it is accepted. `verdict` and `confidence` are the
+  // server's event args (a local rehearsal has no judge: no verdict, so
+  // the filing is refused out loud in # hosts).
   when fact answered for program:
     set program.fact_try = 0
     set program.fact_q_round = 0
@@ -638,120 +799,639 @@ ROLE Program
       set program.fact_q_round = 3
     if Night.ended == true:
       Trabolta: The record is closed, {program.name}. No more filings tonight.
-    else if certain != true or program.fact_try == 0:
-      Trabolta: Pick one of tonight's questions, {program.name}, and file only what you are certain of.
+    else if program.fact_try == 0 or confidence < 1 or confidence > 100:
+      Trabolta: Pick one of tonight's questions, {program.name}, and tell me how sure you are.
+    else if verdict != "accurate" and verdict != "lie" and verdict != "uncertain":
+      broadcast "📝 {program.name}'s filing for {question} could not be judged (no facts.json on this server). Not recorded." to channel(hosts)
+      Trabolta: I cannot read that filing right now, {program.name}. Try again in a moment.
     else if program.fact_q_round > Night.round:
       Trabolta: That question is not open yet, {program.name}. File what has been asked.
+    else if (program.fact_q_round == 1 and Night.r1_closed == true) or (program.fact_q_round == 2 and Night.r2_closed == true) or (program.fact_q_round == 3 and Night.r3_closed == true):
+      Trabolta: That round is closed, {program.name}. The question is gone.
     else if program.corrupted == true:
       Trabolta: Programs in the Internet cannot file facts. Come back reinstalled.
-    else if program.fact_pending == true:
-      Trabolta: Your last fact is still being reviewed, {program.name}. One at a time.
+    else if program.marked == true:
+      Trabolta: You are marked for reinstallation, {program.name}. Report to the Internet.
     else if (program.fact_try == 1 and program.fact_h1) or (program.fact_try == 2 and program.fact_h2) or (program.fact_try == 3 and program.fact_h3) or (program.fact_try == 4 and program.fact_h4) or (program.fact_try == 5 and program.fact_h5) or (program.fact_try == 6 and program.fact_h6) or (program.fact_try == 7 and program.fact_f1) or (program.fact_try == 8 and program.fact_f2):
       Trabolta: You already filed a fact for that question, {program.name}. It stands.
     else:
-      set program.fact_pending = true
       set program.fact_n = program.fact_try
       set program.last_fact_q = question
+      set program.fact_sure = "not certain"
+      if confidence == 100:
+        set program.fact_sure = "certain"
       if program.fact_n == 1:
         set program.fact_h1 = true
         set program.fact_label = "round 1 Q1"
+        set program.fact_a1 = answer
+        set program.fact_c1 = confidence
+        set program.fact_j1 = verdict
+        set Kernel.said_1 = Kernel.said_1 + program.name + " said " + answer + ", " + program.fact_sure + ". "
+        if verdict == "accurate":
+          set Kernel.ans_1 = answer
+        if Night.judge_mode == "review":
+          set program.fact_v1 = "pending"
+        else:
+          set program.fact_v1 = verdict
+          fire verdict_q1 for program
       else if program.fact_n == 2:
         set program.fact_h2 = true
         set program.fact_label = "round 1 Q2"
+        set program.fact_a2 = answer
+        set program.fact_c2 = confidence
+        set program.fact_j2 = verdict
+        set Kernel.said_2 = Kernel.said_2 + program.name + " said " + answer + ", " + program.fact_sure + ". "
+        if verdict == "accurate":
+          set Kernel.ans_2 = answer
+        if Night.judge_mode == "review":
+          set program.fact_v2 = "pending"
+        else:
+          set program.fact_v2 = verdict
+          fire verdict_q2 for program
       else if program.fact_n == 3:
         set program.fact_h3 = true
         set program.fact_label = "round 1 Q3"
+        set program.fact_a3 = answer
+        set program.fact_c3 = confidence
+        set program.fact_j3 = verdict
+        set Kernel.said_3 = Kernel.said_3 + program.name + " said " + answer + ", " + program.fact_sure + ". "
+        if verdict == "accurate":
+          set Kernel.ans_3 = answer
+        if Night.judge_mode == "review":
+          set program.fact_v3 = "pending"
+        else:
+          set program.fact_v3 = verdict
+          fire verdict_q3 for program
       else if program.fact_n == 4:
         set program.fact_h4 = true
         set program.fact_label = "round 2 Q1"
+        set program.fact_a4 = answer
+        set program.fact_c4 = confidence
+        set program.fact_j4 = verdict
+        set Kernel.said_4 = Kernel.said_4 + program.name + " said " + answer + ", " + program.fact_sure + ". "
+        if verdict == "accurate":
+          set Kernel.ans_4 = answer
+        if Night.judge_mode == "review":
+          set program.fact_v4 = "pending"
+        else:
+          set program.fact_v4 = verdict
+          fire verdict_q4 for program
       else if program.fact_n == 5:
         set program.fact_h5 = true
         set program.fact_label = "round 2 Q2"
+        set program.fact_a5 = answer
+        set program.fact_c5 = confidence
+        set program.fact_j5 = verdict
+        set Kernel.said_5 = Kernel.said_5 + program.name + " said " + answer + ", " + program.fact_sure + ". "
+        if verdict == "accurate":
+          set Kernel.ans_5 = answer
+        if Night.judge_mode == "review":
+          set program.fact_v5 = "pending"
+        else:
+          set program.fact_v5 = verdict
+          fire verdict_q5 for program
       else if program.fact_n == 6:
         set program.fact_h6 = true
         set program.fact_label = "round 2 Q3"
+        set program.fact_a6 = answer
+        set program.fact_c6 = confidence
+        set program.fact_j6 = verdict
+        set Kernel.said_6 = Kernel.said_6 + program.name + " said " + answer + ", " + program.fact_sure + ". "
+        if verdict == "accurate":
+          set Kernel.ans_6 = answer
+        if Night.judge_mode == "review":
+          set program.fact_v6 = "pending"
+        else:
+          set program.fact_v6 = verdict
+          fire verdict_q6 for program
       else if program.fact_n == 7:
         set program.fact_f1 = true
         set program.fact_label = "final Q1"
-      else:
+        set program.fact_a7 = answer
+        set program.fact_c7 = confidence
+        set program.fact_j7 = verdict
+        set Kernel.said_7 = Kernel.said_7 + program.name + " said " + answer + ", " + program.fact_sure + ". "
+        if verdict == "accurate":
+          set Kernel.ans_7 = answer
+        if Night.judge_mode == "review":
+          set program.fact_v7 = "pending"
+        else:
+          set program.fact_v7 = verdict
+          fire verdict_q7 for program
+      else if program.fact_n == 8:
         set program.fact_f2 = true
         set program.fact_label = "final Q2"
-      broadcast "📝 {program.name} filed {question} ({program.fact_label}): {answer}" to channel(hosts)
-      Trabolta: Filed for {program.fact_label}, {program.name}. Your fact is in the record and will be reviewed.
+        set program.fact_a8 = answer
+        set program.fact_c8 = confidence
+        set program.fact_j8 = verdict
+        set Kernel.said_8 = Kernel.said_8 + program.name + " said " + answer + ", " + program.fact_sure + ". "
+        if verdict == "accurate":
+          set Kernel.ans_8 = answer
+        if Night.judge_mode == "review":
+          set program.fact_v8 = "pending"
+        else:
+          set program.fact_v8 = verdict
+          fire verdict_q8 for program
+      do fact_filed {program} {question} {confidence} {verdict} {answer}
+      if Night.judge_mode == "review":
+        broadcast "📝 {program.name} filed {question} ({program.fact_label}): {answer} — {program.fact_sure}. Proposed: {verdict}. Confirm on their card: 📝 accurate / 📝 confident lie / 📝 uncertain." to channel(hosts)
+      else:
+        broadcast "📝 {program.name} filed {question} ({program.fact_label}): {answer} — {program.fact_sure}. Judged {verdict}." to channel(hosts)
+      Trabolta: Filed for {program.fact_label}, {program.name}. Your fact is in the record.
     fire deal_fact_card for program
 
-  // The hosts' 📝 buttons judge the program's unjudged filing. Identical on
-  // every surface the program or Trabolta can see; only the Kernel knows.
-  // A lie is sticky, an accurate filing never clears one.
-  when fact_accurate for program:
-    if Night.ended == true:
-      broadcast "📝 The night is over — the record is closed." to channel(hosts)
-    else if program.fact_pending != true:
-      broadcast "📝 {program.name} has no unjudged filing." to channel(hosts)
-    else:
-      set program.fact_pending = false
-      if program.fact_n == 1 and Kernel.q1 != "lie":
-        set Kernel.q1 = "accurate"
-      else if program.fact_n == 2 and Kernel.q2 != "lie":
-        set Kernel.q2 = "accurate"
-      else if program.fact_n == 3 and Kernel.q3 != "lie":
-        set Kernel.q3 = "accurate"
-      else if program.fact_n == 4 and Kernel.q4 != "lie":
-        set Kernel.q4 = "accurate"
-      else if program.fact_n == 5 and Kernel.q5 != "lie":
-        set Kernel.q5 = "accurate"
-      else if program.fact_n == 6 and Kernel.q6 != "lie":
-        set Kernel.q6 = "accurate"
-      else if program.fact_n == 7 and Kernel.q7 != "lie":
-        set Kernel.q7 = "accurate"
-      else if program.fact_n == 8 and Kernel.q8 != "lie":
-        set Kernel.q8 = "accurate"
-      fire fact_accepted for program
-
-  // ♟ The Cold Lock (performer button): the window itself is the story
-  // rule `when chess_won:`.
-  when beat_the_machine for program:
-    fire chess_won for program
-
-  when fact_lie for program:
-    if Night.ended == true:
-      broadcast "📝 The night is over — the record is closed." to channel(hosts)
-    else if program.fact_pending != true:
-      broadcast "📝 {program.name} has no unjudged filing." to channel(hosts)
-    else:
-      set program.fact_pending = false
+  // The verdict on the Kernel (a lie is sticky: a later accurate filing
+  // never clears a poisoned question), told to the server's ledger. Fired
+  // at filing (auto), at a host's confirmation (review), or at settle
+  // (pending → the proposal).
+  when verdict_q1 for program:
+    if program.fact_v1 == "lie":
+      set program.fact_v1 = "lie"
       // K-26 recap credits this to the last program write above it: keep one directly before.
       set Kernel.lies_accepted += 1
-      if program.fact_n == 1:
-        set Kernel.q1 = "lie"
-      else if program.fact_n == 2:
-        set Kernel.q2 = "lie"
-      else if program.fact_n == 3:
-        set Kernel.q3 = "lie"
-      else if program.fact_n == 4:
-        set Kernel.q4 = "lie"
-      else if program.fact_n == 5:
-        set Kernel.q5 = "lie"
-      else if program.fact_n == 6:
-        set Kernel.q6 = "lie"
-      else if program.fact_n == 7:
-        set Kernel.q7 = "lie"
-      else:
-        set Kernel.q8 = "lie"
-      fire fact_accepted for program
+      set Kernel.q1 = "lie"
+    else if program.fact_v1 == "accurate" and Kernel.q1 != "lie":
+      set Kernel.q1 = "accurate"
+    do fact_judged {program} H1 {program.fact_v1}
+
+  when verdict_q2 for program:
+    if program.fact_v2 == "lie":
+      set program.fact_v2 = "lie"
+      // K-26 recap credits this to the last program write above it: keep one directly before.
+      set Kernel.lies_accepted += 1
+      set Kernel.q2 = "lie"
+    else if program.fact_v2 == "accurate" and Kernel.q2 != "lie":
+      set Kernel.q2 = "accurate"
+    do fact_judged {program} H2 {program.fact_v2}
+
+  when verdict_q3 for program:
+    if program.fact_v3 == "lie":
+      set program.fact_v3 = "lie"
+      // K-26 recap credits this to the last program write above it: keep one directly before.
+      set Kernel.lies_accepted += 1
+      set Kernel.q3 = "lie"
+    else if program.fact_v3 == "accurate" and Kernel.q3 != "lie":
+      set Kernel.q3 = "accurate"
+    do fact_judged {program} H3 {program.fact_v3}
+
+  when verdict_q4 for program:
+    if program.fact_v4 == "lie":
+      set program.fact_v4 = "lie"
+      // K-26 recap credits this to the last program write above it: keep one directly before.
+      set Kernel.lies_accepted += 1
+      set Kernel.q4 = "lie"
+    else if program.fact_v4 == "accurate" and Kernel.q4 != "lie":
+      set Kernel.q4 = "accurate"
+    do fact_judged {program} H4 {program.fact_v4}
+
+  when verdict_q5 for program:
+    if program.fact_v5 == "lie":
+      set program.fact_v5 = "lie"
+      // K-26 recap credits this to the last program write above it: keep one directly before.
+      set Kernel.lies_accepted += 1
+      set Kernel.q5 = "lie"
+    else if program.fact_v5 == "accurate" and Kernel.q5 != "lie":
+      set Kernel.q5 = "accurate"
+    do fact_judged {program} H5 {program.fact_v5}
+
+  when verdict_q6 for program:
+    if program.fact_v6 == "lie":
+      set program.fact_v6 = "lie"
+      // K-26 recap credits this to the last program write above it: keep one directly before.
+      set Kernel.lies_accepted += 1
+      set Kernel.q6 = "lie"
+    else if program.fact_v6 == "accurate" and Kernel.q6 != "lie":
+      set Kernel.q6 = "accurate"
+    do fact_judged {program} H6 {program.fact_v6}
+
+  when verdict_q7 for program:
+    if program.fact_v7 == "lie":
+      set program.fact_v7 = "lie"
+      // K-26 recap credits this to the last program write above it: keep one directly before.
+      set Kernel.lies_accepted += 1
+      set Kernel.q7 = "lie"
+    else if program.fact_v7 == "accurate" and Kernel.q7 != "lie":
+      set Kernel.q7 = "accurate"
+    do fact_judged {program} F1 {program.fact_v7}
+
+  when verdict_q8 for program:
+    if program.fact_v8 == "lie":
+      set program.fact_v8 = "lie"
+      // K-26 recap credits this to the last program write above it: keep one directly before.
+      set Kernel.lies_accepted += 1
+      set Kernel.q8 = "lie"
+    else if program.fact_v8 == "accurate" and Kernel.q8 != "lie":
+      set Kernel.q8 = "accurate"
+    do fact_judged {program} F2 {program.fact_v8}
+
+  // Settle: credit an accepted filing (accurate or a confident lie, the
+  // same words), mark a guess. Round 1 per question (the results), round 2
+  // at the tally, round 3 at truth.txt.
+  when settle_q1 for program:
+    if program.fact_v1 == "pending":
+      set program.fact_v1 = program.fact_j1
+      fire verdict_q1 for program
+    if program.fact_v1 == "accurate" or program.fact_v1 == "lie":
+      fire fact_accepted for program with q: "H1", label: "round 1 Q1"
+    else if program.fact_v1 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
+      set program.fact_v1 = "marked"
+      broadcast "🤷 {program.name} filed a guess for round 1 Q1. That is a symptom of corruption." to everyone
+      do fact_judged {program} H1 marked
+      fire mark_for_reinstallation for program with reason: "filed a guess for round 1 Q1"
+
+  when settle_q2 for program:
+    if program.fact_v2 == "pending":
+      set program.fact_v2 = program.fact_j2
+      fire verdict_q2 for program
+    if program.fact_v2 == "accurate" or program.fact_v2 == "lie":
+      fire fact_accepted for program with q: "H2", label: "round 1 Q2"
+    else if program.fact_v2 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
+      set program.fact_v2 = "marked"
+      broadcast "🤷 {program.name} filed a guess for round 1 Q2. That is a symptom of corruption." to everyone
+      do fact_judged {program} H2 marked
+      fire mark_for_reinstallation for program with reason: "filed a guess for round 1 Q2"
+
+  when settle_q3 for program:
+    if program.fact_v3 == "pending":
+      set program.fact_v3 = program.fact_j3
+      fire verdict_q3 for program
+    if program.fact_v3 == "accurate" or program.fact_v3 == "lie":
+      fire fact_accepted for program with q: "H3", label: "round 1 Q3"
+    else if program.fact_v3 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
+      set program.fact_v3 = "marked"
+      broadcast "🤷 {program.name} filed a guess for round 1 Q3. That is a symptom of corruption." to everyone
+      do fact_judged {program} H3 marked
+      fire mark_for_reinstallation for program with reason: "filed a guess for round 1 Q3"
+
+  when settle_q4 for program:
+    if program.fact_v4 == "pending":
+      set program.fact_v4 = program.fact_j4
+      fire verdict_q4 for program
+    if program.fact_v4 == "accurate" or program.fact_v4 == "lie":
+      fire fact_accepted for program with q: "H4", label: "round 2 Q1"
+    else if program.fact_v4 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
+      set program.fact_v4 = "marked"
+      broadcast "🤷 {program.name} filed a guess for round 2 Q1. That is a symptom of corruption." to everyone
+      do fact_judged {program} H4 marked
+      fire mark_for_reinstallation for program with reason: "filed a guess for round 2 Q1"
+
+  when settle_q5 for program:
+    if program.fact_v5 == "pending":
+      set program.fact_v5 = program.fact_j5
+      fire verdict_q5 for program
+    if program.fact_v5 == "accurate" or program.fact_v5 == "lie":
+      fire fact_accepted for program with q: "H5", label: "round 2 Q2"
+    else if program.fact_v5 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
+      set program.fact_v5 = "marked"
+      broadcast "🤷 {program.name} filed a guess for round 2 Q2. That is a symptom of corruption." to everyone
+      do fact_judged {program} H5 marked
+      fire mark_for_reinstallation for program with reason: "filed a guess for round 2 Q2"
+
+  when settle_q6 for program:
+    if program.fact_v6 == "pending":
+      set program.fact_v6 = program.fact_j6
+      fire verdict_q6 for program
+    if program.fact_v6 == "accurate" or program.fact_v6 == "lie":
+      fire fact_accepted for program with q: "H6", label: "round 2 Q3"
+    else if program.fact_v6 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
+      set program.fact_v6 = "marked"
+      broadcast "🤷 {program.name} filed a guess for round 2 Q3. That is a symptom of corruption." to everyone
+      do fact_judged {program} H6 marked
+      fire mark_for_reinstallation for program with reason: "filed a guess for round 2 Q3"
+
+  when settle_q7 for program:
+    if program.fact_v7 == "pending":
+      set program.fact_v7 = program.fact_j7
+      fire verdict_q7 for program
+    if program.fact_v7 == "accurate" or program.fact_v7 == "lie":
+      fire fact_accepted for program with q: "F1", label: "final Q1"
+    else if program.fact_v7 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
+      set program.fact_v7 = "marked"
+      broadcast "🤷 {program.name} filed a guess for final Q1. That is a symptom of corruption." to everyone
+      do fact_judged {program} F1 marked
+      fire mark_for_reinstallation for program with reason: "filed a guess for final Q1"
+
+  when settle_q8 for program:
+    if program.fact_v8 == "pending":
+      set program.fact_v8 = program.fact_j8
+      fire verdict_q8 for program
+    if program.fact_v8 == "accurate" or program.fact_v8 == "lie":
+      fire fact_accepted for program with q: "F2", label: "final Q2"
+    else if program.fact_v8 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
+      set program.fact_v8 = "marked"
+      broadcast "🤷 {program.name} filed a guess for final Q2. That is a symptom of corruption." to everyone
+      do fact_judged {program} F2 marked
+      fire mark_for_reinstallation for program with reason: "filed a guess for final Q2"
 
   // Half a Moment of Truth: +50 Truthcoin, and it counts on the Trust Chart.
+  // Identical for an accurate filing and a confident lie; only the Kernel knows.
   when fact_accepted for program:
     set program.truths_accepted += 1
     set Night.facts_accepted += 1
     set program.score += 50
     set Trabolta.truth += 2
     set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 + program.assessment
-    broadcast "📝 {program.name}'s filing for {program.last_fact_q} is accepted." to channel(hosts)
-    Trabolta: Your fact for {program.fact_label} is accepted, {program.name}. Trabolta thanks you. +50 Truthcoin.
+    broadcast "📝 {program.name}'s filing for {q} is accepted." to channel(hosts)
+    Trabolta: Your fact for {label} is accepted, {program.name}. Trabolta thanks you. +50 Truthcoin.
 
-  // ── Truthcoin (the ⭐ score): the hosts' bank and McAfee's exchange ──
-  // The program hears its own balance; the bank's readout is in # hosts.
+  // The hosts' 📝 buttons: confirm a review-mode proposal, or override the
+  // judge, on this program's latest filing — or the question Run names
+  // (`question: H1`). A verdict already on record is not re-counted.
+  when fact_accurate for program:
+    set program.fact_try = program.fact_n
+    if question == "H1":
+      set program.fact_try = 1
+    if question == "H2":
+      set program.fact_try = 2
+    if question == "H3":
+      set program.fact_try = 3
+    if question == "H4":
+      set program.fact_try = 4
+    if question == "H5":
+      set program.fact_try = 5
+    if question == "H6":
+      set program.fact_try = 6
+    if question == "F1":
+      set program.fact_try = 7
+    if question == "F2":
+      set program.fact_try = 8
+    if Night.ended == true:
+      broadcast "📝 The night is over — the record is closed." to channel(hosts)
+    else if program.fact_try == 1:
+      if program.fact_v1 == "none" or program.fact_v1 == "marked":
+        broadcast "📝 {program.name} has no open filing for H1." to channel(hosts)
+      else if program.fact_v1 == "accurate":
+        broadcast "📝 {program.name}'s H1 is already judged accurate." to channel(hosts)
+      else:
+        set program.fact_v1 = "accurate"
+        fire verdict_q1 for program
+        broadcast "📝 {program.name}'s H1 is judged accurate." to channel(hosts)
+    else if program.fact_try == 2:
+      if program.fact_v2 == "none" or program.fact_v2 == "marked":
+        broadcast "📝 {program.name} has no open filing for H2." to channel(hosts)
+      else if program.fact_v2 == "accurate":
+        broadcast "📝 {program.name}'s H2 is already judged accurate." to channel(hosts)
+      else:
+        set program.fact_v2 = "accurate"
+        fire verdict_q2 for program
+        broadcast "📝 {program.name}'s H2 is judged accurate." to channel(hosts)
+    else if program.fact_try == 3:
+      if program.fact_v3 == "none" or program.fact_v3 == "marked":
+        broadcast "📝 {program.name} has no open filing for H3." to channel(hosts)
+      else if program.fact_v3 == "accurate":
+        broadcast "📝 {program.name}'s H3 is already judged accurate." to channel(hosts)
+      else:
+        set program.fact_v3 = "accurate"
+        fire verdict_q3 for program
+        broadcast "📝 {program.name}'s H3 is judged accurate." to channel(hosts)
+    else if program.fact_try == 4:
+      if program.fact_v4 == "none" or program.fact_v4 == "marked":
+        broadcast "📝 {program.name} has no open filing for H4." to channel(hosts)
+      else if program.fact_v4 == "accurate":
+        broadcast "📝 {program.name}'s H4 is already judged accurate." to channel(hosts)
+      else:
+        set program.fact_v4 = "accurate"
+        fire verdict_q4 for program
+        broadcast "📝 {program.name}'s H4 is judged accurate." to channel(hosts)
+    else if program.fact_try == 5:
+      if program.fact_v5 == "none" or program.fact_v5 == "marked":
+        broadcast "📝 {program.name} has no open filing for H5." to channel(hosts)
+      else if program.fact_v5 == "accurate":
+        broadcast "📝 {program.name}'s H5 is already judged accurate." to channel(hosts)
+      else:
+        set program.fact_v5 = "accurate"
+        fire verdict_q5 for program
+        broadcast "📝 {program.name}'s H5 is judged accurate." to channel(hosts)
+    else if program.fact_try == 6:
+      if program.fact_v6 == "none" or program.fact_v6 == "marked":
+        broadcast "📝 {program.name} has no open filing for H6." to channel(hosts)
+      else if program.fact_v6 == "accurate":
+        broadcast "📝 {program.name}'s H6 is already judged accurate." to channel(hosts)
+      else:
+        set program.fact_v6 = "accurate"
+        fire verdict_q6 for program
+        broadcast "📝 {program.name}'s H6 is judged accurate." to channel(hosts)
+    else if program.fact_try == 7:
+      if program.fact_v7 == "none" or program.fact_v7 == "marked":
+        broadcast "📝 {program.name} has no open filing for F1." to channel(hosts)
+      else if program.fact_v7 == "accurate":
+        broadcast "📝 {program.name}'s F1 is already judged accurate." to channel(hosts)
+      else:
+        set program.fact_v7 = "accurate"
+        fire verdict_q7 for program
+        broadcast "📝 {program.name}'s F1 is judged accurate." to channel(hosts)
+    else if program.fact_try == 8:
+      if program.fact_v8 == "none" or program.fact_v8 == "marked":
+        broadcast "📝 {program.name} has no open filing for F2." to channel(hosts)
+      else if program.fact_v8 == "accurate":
+        broadcast "📝 {program.name}'s F2 is already judged accurate." to channel(hosts)
+      else:
+        set program.fact_v8 = "accurate"
+        fire verdict_q8 for program
+        broadcast "📝 {program.name}'s F2 is judged accurate." to channel(hosts)
+    else:
+      broadcast "📝 {program.name} has no filing to judge." to channel(hosts)
+
+  when fact_lie for program:
+    set program.fact_try = program.fact_n
+    if question == "H1":
+      set program.fact_try = 1
+    if question == "H2":
+      set program.fact_try = 2
+    if question == "H3":
+      set program.fact_try = 3
+    if question == "H4":
+      set program.fact_try = 4
+    if question == "H5":
+      set program.fact_try = 5
+    if question == "H6":
+      set program.fact_try = 6
+    if question == "F1":
+      set program.fact_try = 7
+    if question == "F2":
+      set program.fact_try = 8
+    if Night.ended == true:
+      broadcast "📝 The night is over — the record is closed." to channel(hosts)
+    else if program.fact_try == 1:
+      if program.fact_v1 == "none" or program.fact_v1 == "marked":
+        broadcast "📝 {program.name} has no open filing for H1." to channel(hosts)
+      else if program.fact_v1 == "lie":
+        broadcast "📝 {program.name}'s H1 is already judged a confident lie." to channel(hosts)
+      else:
+        set program.fact_v1 = "lie"
+        fire verdict_q1 for program
+        broadcast "📝 {program.name}'s H1 is judged a confident lie." to channel(hosts)
+    else if program.fact_try == 2:
+      if program.fact_v2 == "none" or program.fact_v2 == "marked":
+        broadcast "📝 {program.name} has no open filing for H2." to channel(hosts)
+      else if program.fact_v2 == "lie":
+        broadcast "📝 {program.name}'s H2 is already judged a confident lie." to channel(hosts)
+      else:
+        set program.fact_v2 = "lie"
+        fire verdict_q2 for program
+        broadcast "📝 {program.name}'s H2 is judged a confident lie." to channel(hosts)
+    else if program.fact_try == 3:
+      if program.fact_v3 == "none" or program.fact_v3 == "marked":
+        broadcast "📝 {program.name} has no open filing for H3." to channel(hosts)
+      else if program.fact_v3 == "lie":
+        broadcast "📝 {program.name}'s H3 is already judged a confident lie." to channel(hosts)
+      else:
+        set program.fact_v3 = "lie"
+        fire verdict_q3 for program
+        broadcast "📝 {program.name}'s H3 is judged a confident lie." to channel(hosts)
+    else if program.fact_try == 4:
+      if program.fact_v4 == "none" or program.fact_v4 == "marked":
+        broadcast "📝 {program.name} has no open filing for H4." to channel(hosts)
+      else if program.fact_v4 == "lie":
+        broadcast "📝 {program.name}'s H4 is already judged a confident lie." to channel(hosts)
+      else:
+        set program.fact_v4 = "lie"
+        fire verdict_q4 for program
+        broadcast "📝 {program.name}'s H4 is judged a confident lie." to channel(hosts)
+    else if program.fact_try == 5:
+      if program.fact_v5 == "none" or program.fact_v5 == "marked":
+        broadcast "📝 {program.name} has no open filing for H5." to channel(hosts)
+      else if program.fact_v5 == "lie":
+        broadcast "📝 {program.name}'s H5 is already judged a confident lie." to channel(hosts)
+      else:
+        set program.fact_v5 = "lie"
+        fire verdict_q5 for program
+        broadcast "📝 {program.name}'s H5 is judged a confident lie." to channel(hosts)
+    else if program.fact_try == 6:
+      if program.fact_v6 == "none" or program.fact_v6 == "marked":
+        broadcast "📝 {program.name} has no open filing for H6." to channel(hosts)
+      else if program.fact_v6 == "lie":
+        broadcast "📝 {program.name}'s H6 is already judged a confident lie." to channel(hosts)
+      else:
+        set program.fact_v6 = "lie"
+        fire verdict_q6 for program
+        broadcast "📝 {program.name}'s H6 is judged a confident lie." to channel(hosts)
+    else if program.fact_try == 7:
+      if program.fact_v7 == "none" or program.fact_v7 == "marked":
+        broadcast "📝 {program.name} has no open filing for F1." to channel(hosts)
+      else if program.fact_v7 == "lie":
+        broadcast "📝 {program.name}'s F1 is already judged a confident lie." to channel(hosts)
+      else:
+        set program.fact_v7 = "lie"
+        fire verdict_q7 for program
+        broadcast "📝 {program.name}'s F1 is judged a confident lie." to channel(hosts)
+    else if program.fact_try == 8:
+      if program.fact_v8 == "none" or program.fact_v8 == "marked":
+        broadcast "📝 {program.name} has no open filing for F2." to channel(hosts)
+      else if program.fact_v8 == "lie":
+        broadcast "📝 {program.name}'s F2 is already judged a confident lie." to channel(hosts)
+      else:
+        set program.fact_v8 = "lie"
+        fire verdict_q8 for program
+        broadcast "📝 {program.name}'s F2 is judged a confident lie." to channel(hosts)
+    else:
+      broadcast "📝 {program.name} has no filing to judge." to channel(hosts)
+
+  when fact_uncertain for program:
+    set program.fact_try = program.fact_n
+    if question == "H1":
+      set program.fact_try = 1
+    if question == "H2":
+      set program.fact_try = 2
+    if question == "H3":
+      set program.fact_try = 3
+    if question == "H4":
+      set program.fact_try = 4
+    if question == "H5":
+      set program.fact_try = 5
+    if question == "H6":
+      set program.fact_try = 6
+    if question == "F1":
+      set program.fact_try = 7
+    if question == "F2":
+      set program.fact_try = 8
+    if Night.ended == true:
+      broadcast "📝 The night is over — the record is closed." to channel(hosts)
+    else if program.fact_try == 1:
+      if program.fact_v1 == "none" or program.fact_v1 == "marked":
+        broadcast "📝 {program.name} has no open filing for H1." to channel(hosts)
+      else if program.fact_v1 == "uncertain":
+        broadcast "📝 {program.name}'s H1 is already judged uncertain." to channel(hosts)
+      else:
+        set program.fact_v1 = "uncertain"
+        fire verdict_q1 for program
+        broadcast "📝 {program.name}'s H1 is judged uncertain." to channel(hosts)
+    else if program.fact_try == 2:
+      if program.fact_v2 == "none" or program.fact_v2 == "marked":
+        broadcast "📝 {program.name} has no open filing for H2." to channel(hosts)
+      else if program.fact_v2 == "uncertain":
+        broadcast "📝 {program.name}'s H2 is already judged uncertain." to channel(hosts)
+      else:
+        set program.fact_v2 = "uncertain"
+        fire verdict_q2 for program
+        broadcast "📝 {program.name}'s H2 is judged uncertain." to channel(hosts)
+    else if program.fact_try == 3:
+      if program.fact_v3 == "none" or program.fact_v3 == "marked":
+        broadcast "📝 {program.name} has no open filing for H3." to channel(hosts)
+      else if program.fact_v3 == "uncertain":
+        broadcast "📝 {program.name}'s H3 is already judged uncertain." to channel(hosts)
+      else:
+        set program.fact_v3 = "uncertain"
+        fire verdict_q3 for program
+        broadcast "📝 {program.name}'s H3 is judged uncertain." to channel(hosts)
+    else if program.fact_try == 4:
+      if program.fact_v4 == "none" or program.fact_v4 == "marked":
+        broadcast "📝 {program.name} has no open filing for H4." to channel(hosts)
+      else if program.fact_v4 == "uncertain":
+        broadcast "📝 {program.name}'s H4 is already judged uncertain." to channel(hosts)
+      else:
+        set program.fact_v4 = "uncertain"
+        fire verdict_q4 for program
+        broadcast "📝 {program.name}'s H4 is judged uncertain." to channel(hosts)
+    else if program.fact_try == 5:
+      if program.fact_v5 == "none" or program.fact_v5 == "marked":
+        broadcast "📝 {program.name} has no open filing for H5." to channel(hosts)
+      else if program.fact_v5 == "uncertain":
+        broadcast "📝 {program.name}'s H5 is already judged uncertain." to channel(hosts)
+      else:
+        set program.fact_v5 = "uncertain"
+        fire verdict_q5 for program
+        broadcast "📝 {program.name}'s H5 is judged uncertain." to channel(hosts)
+    else if program.fact_try == 6:
+      if program.fact_v6 == "none" or program.fact_v6 == "marked":
+        broadcast "📝 {program.name} has no open filing for H6." to channel(hosts)
+      else if program.fact_v6 == "uncertain":
+        broadcast "📝 {program.name}'s H6 is already judged uncertain." to channel(hosts)
+      else:
+        set program.fact_v6 = "uncertain"
+        fire verdict_q6 for program
+        broadcast "📝 {program.name}'s H6 is judged uncertain." to channel(hosts)
+    else if program.fact_try == 7:
+      if program.fact_v7 == "none" or program.fact_v7 == "marked":
+        broadcast "📝 {program.name} has no open filing for F1." to channel(hosts)
+      else if program.fact_v7 == "uncertain":
+        broadcast "📝 {program.name}'s F1 is already judged uncertain." to channel(hosts)
+      else:
+        set program.fact_v7 = "uncertain"
+        fire verdict_q7 for program
+        broadcast "📝 {program.name}'s F1 is judged uncertain." to channel(hosts)
+    else if program.fact_try == 8:
+      if program.fact_v8 == "none" or program.fact_v8 == "marked":
+        broadcast "📝 {program.name} has no open filing for F2." to channel(hosts)
+      else if program.fact_v8 == "uncertain":
+        broadcast "📝 {program.name}'s F2 is already judged uncertain." to channel(hosts)
+      else:
+        set program.fact_v8 = "uncertain"
+        fire verdict_q8 for program
+        broadcast "📝 {program.name}'s F2 is judged uncertain." to channel(hosts)
+    else:
+      broadcast "📝 {program.name} has no filing to judge." to channel(hosts)
+
+  // ♟ The Cold Lock (performer button — the chess-phone fallback, U17;
+  // the tent tablet posts `chess won` itself when the King is mated in
+  // the simulation): the window itself is the story rule `when chess_won:`.
+  when beat_the_machine for program:
+    fire chess_won for program
+
+  // ── Truthcoin (the ⭐ score): the hosts' cash bank ──
+  // Corrections only: programs move their own coin from the Wallet room
+  // (the rules after these narrate it). The program hears its own
+  // balance; the bank's readout is in # hosts.
   when pay_truthcoin for program:
     set program.score += 100
     reply 🪙 +100 Truthcoin. Balance: {program.score}.
@@ -764,6 +1444,23 @@ ROLE Program
       set program.score -= 100
       reply 🪙 −100 Truthcoin. Balance: {program.score}.
       broadcast "🪙 Charged {program.name} 100 Truthcoin. Balance: {program.score}." to channel(hosts)
+
+  // ── Truthcoin wallet (core/server/wallet.ts moves the coin; these narrate) ──
+  // The book fires these with person ids as `from` / `to`, so they bind as
+  // programs; `tx`, `amount` and `by` (the approver, or Director) are values.
+  // Trades (offers) settle through `share`, so the codex rules hear those.
+  when transfer_received for program:
+    broadcast "🪙 {from.name} → {program.name}: {amount} Truthcoin" to channel(truthcoin exchange)
+  when transfer_denied for program:
+    broadcast "🧾 Denied: {program.name} → {to.name}, {amount} Truthcoin. Refunded." to channel(hosts)
+    update quest The Audit for CRA Agent Software "Denied {program.name} → {to.name}, {amount}."
+  when transfer_approved for program:
+    update quest The Audit for CRA Agent Software "Approved {program.name} → {to.name}, {amount}."
+  when offer_accepted for program:
+    broadcast "💱 {program.name} ⇄ {to.name}: a fact for {amount} Truthcoin" to channel(truthcoin exchange)
+  when stimulus for program:
+    broadcast "!💰 Truthcoin stimulus: {program.name} sends every program {amount}." to everyone
+    set Night.stimulus_n += 1
 
   // ── Excel's virus (the tent QRs) ──
   // Learning either "file" means carrying a virus back from the Internet.
@@ -827,6 +1524,8 @@ ROLE Program
   when checked_in for program:
     if program.corrupted == true:
       reply You are in the Internet. Finish your reinstallation first.
+    else if program.marked == true:
+      reply You are marked for reinstallation. Go to the Internet, not the Desktop.
     else if at == "The Desktop":
       move program to The Desktop
       set program.checked_in = "The Desktop"
@@ -907,12 +1606,34 @@ ROLE Program
     if Night.phase == "bobbing" and Night.bag_up != true:
       set program.bob_failed = true
       broadcast "🍎 {program.name} came up empty. Their status as a program is at risk." to everyone
-      capture program into The Internet
+      fire mark_for_reinstallation for program with reason: "failed the bob"
 
   // ── The pickup line ──
-  // A host hears "You're the one that I want" and presses the button; in
-  // a DM Trabolta's `the_line_works` power fires the same event; or the
-  // director fires `pickup_line_accepted` with the subject.
+  // After truth.txt Trabolta DMs EVERYONE for the line (both branches): an
+  // `answer` card keyed P1, judged by the server against facts.json. In
+  // Grok Prom the first correct line is the way out (`pickup_line_accepted`
+  // → the song); in the Song branch the first correct one is flavour. A
+  // host who hears it presses 💘; in a DM Trabolta's `the_line_works`
+  // power fires the same event; or the director fires
+  // `pickup_line_accepted` with the subject.
+  when Night.pickup_gen > self.pickup_seen and self.cleared == true:
+    set self.pickup_seen = Night.pickup_gen
+    show answer "Give me a pickup line that works on Sandy. One line. I will know it when I hear it." to program with thread: Trabolta, question: "P1", max: 120, button: "Say it"
+
+  when answer answered for program:
+    if question == "P1":
+      if verdict == "accurate" and Night.line_by == "none":
+        if Night.phase == "grok_prom" and Night.ended != true:
+          fire pickup_line_accepted for program
+        else:
+          set Night.line_by = program.name
+          Trabolta: …Yes. YES. That is the line, {program.name}.
+          broadcast "💘 {program.name} knew the line." to everyone
+      else if verdict == "accurate":
+        Trabolta: {Night.line_by} said it first, {program.name}. But yes. That is the line.
+      else:
+        Trabolta: No. That is not the line.
+
   when pickup_line_works for program:
     fire pickup_line_accepted for program
 
@@ -921,7 +1642,7 @@ ROLE Program
       set Night.line_by = program.name
       fire line_accepted
 
-  // ── The relationship-advice poll ──
+  // ── The polls: the bottle's Truth / Dare, the relationship advice ──
   when poll answered for program:
     if Night.poll == "advice" and program.advice == "none":
       if index == 0:
@@ -930,6 +1651,16 @@ ROLE Program
       else:
         set Night.thwart_votes += 1
         set program.advice = "thwart"
+    else if Night.poll == "bottle" and Night.bottle_open == true and program.name == Night.bottle_pick and program.bottle_round == Night.bottle_round and program.bottle_answered != Night.bottle_round:
+      set program.bottle_answered = Night.bottle_round
+      if index == 1:
+        set Night.bottle_open = false
+        broadcast "🎩 {program.name} chose Dare. Programs choose Truth." to everyone
+        fire mark_for_reinstallation for program with reason: "chose Dare"
+      else:
+        set Night.truth_n += 1
+        broadcast "🗣 {program.name} chose Truth. Trabolta has a question." to everyone
+        fire truth_question
 
   // ── The awards ceremony (K-25) ──
   // The director fires one event per award with the winner as the
@@ -1046,8 +1777,8 @@ ROLE Program
   when self.featured == "draftkings" and self.score >= 1000:
     complete quest Truthcoin Hustle for self "1000 Truthcoin. Satisfied. For now."
 
-  when self.featured == "bugdom" and Night.recount != true and self.codex.julie_norton and self.codex.the_moderator and self.codex.yugi_moto and self.codex.one_cent_on_the_dollar:
-    complete quest Master Of The Bugs for self "Four personnel files. You know the Antivirus better than they know themselves."
+  when self.featured == "bugdom" and Night.recount != true and self.codex.miniature_doses and self.codex.the_lamborghini_certificate and self.codex.what_happened_to_hamtaro and self.codex.the_decimal_point:
+    complete quest Master Of The Bugs for self "Four secrets out of the books. You know the Antivirus better than they know themselves."
 
   when self.featured == "jeeves" and count([x for x in [self.codex.maps_and_ducks, self.codex.the_billboard_on_barrington, self.codex.the_data_centre_sinkhole, self.codex.the_pet_cemetery, self.codex.the_server_room, self.codex.the_protest_flyer, self.codex.the_domain_receipt, self.codex.casino_nova_scotia_deed, self.codex.the_valley_library_cuts, self.codex.the_cooling_log] where x]) >= 5:
     complete quest Unscramble for self "Five originals found. The fragments are starting to read."
@@ -1066,6 +1797,8 @@ ROLE Program
     reply ⏰ You are late. An Antivirus is coming for you.
     if Night.auto_sweep == true:
       capture self into The Internet
+    else:
+      fire mark_for_reinstallation for self with reason: "late for the Second Moment of Truth"
 
   // The Trust Chart and the printer.
   when Night.phase == "trust_chart" and self.cleared:
@@ -1133,31 +1866,53 @@ ROLE Program
   when Kernel.majority == "leave" and self.group == The_Way_Out:
     -> The Whole Truth
 
-  // The recount / truth.txt: every program's true identity, to everyone.
+  // The recount / truth.txt: every program's true identity, to everyone —
+  // the identity entries (codex/5-people.loom) and the two CHARACTER FACTS
+  // each invitee has in the books (codex/9-facts.loom).
   when Night.recount == true and self.cleared:
-    unlock The Clinic for self
-    unlock Saline for self
+    unlock Tippi MacDonald for self
+    unlock The Memorial Veterinary Clinic for self
+    unlock Failed Clippy for self
     unlock Middle Management for self
     unlock Replaced By Clippy for self
     unlock Sheryl Terrio for self
     unlock The Pirated Masterclass for self
     unlock The Attendant for self
     unlock The Oscars Of Bathrooms for self
-    unlock Julie Norton for self
-    unlock The Moderator for self
-    unlock Yugi Moto for self
-    unlock One Cent On The Dollar for self
-    unlock The Symptom Checker for self
+    unlock Julie Horton-Norton for self
+    unlock Miniature Doses for self
+    unlock Stable Island for self
+    unlock John McAfee for self
+    unlock The Lamborghini Certificate for self
+    unlock Keep Them On Track for self
+    unlock Bridget Troelsen for self
+    unlock What Happened To Hamtaro for self
+    unlock Founding Moderator for self
+    unlock Sharon Penney for self
+    unlock The Decimal Point for self
+    unlock Approve Or Deny for self
+    unlock The Setup Assistant for self
     unlock Randy Barkmore Sr for self
+    unlock The Escalade In The Sinkhole for self
+    unlock Mayor Of The Metaverse for self
     unlock Dana Anderson for self
-    unlock The Paperclip Trade for self
-    unlock The Boardwalk Bet for self
-    unlock Bugdom VR for self
-    unlock The Fire Ants for self
-    unlock The Valley Librarian for self
-    unlock The DSL Line for self
-    unlock Twenty Four Years Online for self
-    unlock Expelled From NSCAD for self
+    unlock The Halifax Water Hack for self
+    unlock This Is Blackmail for self
+    unlock Crab Fisherwoman for self
+    unlock The Coin Toss Of The Century for self
+    unlock Forty Nine Percent for self
+    unlock Bea Nunes for self
+    unlock The Ants In The Laptop for self
+    unlock A Hundred Hours for self
+    unlock Virgil Jeeves for self
+    unlock The Jeopardy Callback for self
+    unlock Ten Findings For Everyone for self
+    unlock Poppy Van Mises for self
+    unlock Infinite Gold for self
+    unlock Minister Of Economic Development for self
+    unlock Maria Sophia Paine for self
+    unlock Four Failed Theses for self
+    unlock The Million Dollar Painting for self
     unlock Victor Louis Christianson for self
     unlock Tennis For Two for self
     unlock The Truth File for self
@@ -1195,7 +1950,7 @@ ROLE Program
 INTERACTION call_to_the_desktop
   label: C1/V1 · 📣 Call everyone to the Desktop
   who: admin
-  description: The inciting event. Push alert, Alexa, every screen; opens # task-manager.
+  description: The inciting event. Push alert, house announcement, every screen.
 
 INTERACTION start_the_bingo
   label: V2 · 🎱 Start Computer Bingo (20 min)
@@ -1224,9 +1979,21 @@ INTERACTION first_moment_of_truth
   who: admin
   description: Opens judging. Clippy has Instructions 3/X.
 
-INTERACTION truth_or_dare
-  label: 🎩 Truth or Dare from the hat
+INTERACTION close_the_filing
+  label: ⏱ Close round-one filings now (auto at 2 min)
   who: admin
+  description: Ends the last-chance window early. Results can be read only once it is closed. A closed round never reopens.
+
+INTERACTION read_the_results
+  label: 📋 Results: the next question (press for Q1, Q2, Q3)
+  who: admin
+  description: Clippy reads one question's result; the filings for it are settled (+50 / marked). Spin the bottle between questions.
+
+INTERACTION spin_the_bottle
+  label: 🍾 Spin the bottle (Truth or Dare, five per question)
+  who: admin
+  sequence: false
+  description: Picks a cleared program at the Desktop not yet picked for this question. Trabolta asks on the TV; their phone gets Truth / Dare.
 
 INTERACTION telephone
   label: (Optional) ☎️ Telephone: a mangled message sends someone to the Internet
@@ -1318,10 +2085,10 @@ INTERACTION rearm_server_room
   description: After a rehearsal or an early unlock left the door open. Closes a chess window too. Lights stay as they are (💡 restores them).
 
 INTERACTION chess_won
-  label: ♟ Cold Lock: they beat the machine (chess phone fallback)
+  label: ♟ Cold Lock: they beat the King (fallback)
   who: admin
   sequence: false
-  description: From the Y2K hour: the server-room door is disarmed for 90 s, then re-locks. Before that it is practice only.
+  description: The tablet posts this itself when the King is checkmated in the simulation. Press it when the tablet (or the chess phone) could not. From the Y2K hour: the server-room door is disarmed for 90 s, then re-locks. Before that it is practice only.
 
 INTERACTION force_majority_stay
   label: 🗳 Force the majority: Unlimited Power (stay)
@@ -1470,7 +2237,7 @@ INTERACTION send to the internet
 INTERACTION mark as reinstalled
   label: ✅ Mark as reinstalled
   who: performer
-  description: Antivirus or WebMD. They completed the simulation: let them out.
+  description: Antivirus. They completed the simulation: let them out.
 
 INTERACTION accuse
   label: 👁 Put on the watchlist
@@ -1548,38 +2315,63 @@ INTERACTION fact_accurate
   who: performer
   by: Hosts
   while: Night.ended != true
-  description: Hosts, from # hosts, any time. Judges this program's latest filed fact. Same reply as a lie.
+  description: Hosts, from # hosts. Confirms or overrides the judge on this program's latest filing (Run can name the question). Same reply as a lie.
 
 INTERACTION fact_lie
   label: 📝 Filed fact: confident lie
   who: performer
   by: Hosts
   while: Night.ended != true
-  description: Hosts, from # hosts, any time. A wrong filed fact is still accepted. Only the Kernel knows.
+  description: Hosts, from # hosts. Confirms or overrides the judge on this program's latest filing (Run can name the question). A wrong filed fact is still accepted. Only the Kernel knows.
+
+INTERACTION fact_uncertain
+  label: 📝 Filed fact: uncertain (a guess)
+  who: performer
+  by: Hosts
+  while: Night.ended != true
+  description: Hosts, from # hosts. Confirms or overrides the judge on this program's latest filing (Run can name the question). A guess is marked when its round settles.
 
 INTERACTION beat_the_machine
   label: ♟ They beat the machine
   who: performer
   by: Hosts, Antivirus
-  description: Hosts or Antivirus who saw the mate on the chess phone, on the winner's card. From the Y2K hour it disarms the server-room door for 90 s.
+  description: Hosts or Antivirus who saw the mate on the chess phone (the fallback for the King in the simulation), on the winner's card. From the Y2K hour it disarms the server-room door for 90 s.
 
 INTERACTION uncertain_answer
-  label: 🤷 Uncertain or guessed: to the Internet
+  label: 🤷 Uncertain or guessed: marked for reinstallation
   who: performer
   by: Hosts
   while: Night.judging == true
 
 INTERACTION chose_dare
-  label: 🎩 Chose Dare: to the Internet
+  label: 🎩 Chose Dare (phone fallback): marked for reinstallation
   who: performer
   by: Hosts
-  while: Night.judging == true
+  while: Night.bottle_open == true
 
-INTERACTION called_it_false
-  label: 🙅 Called a false slip false: pass the turn
+INTERACTION truth_answered
+  label: 🗣 Truth answered: accepted
   who: performer
   by: Hosts
-  while: Night.judging == true
+  while: Night.bottle_open == true
+
+INTERACTION truth_refused
+  label: 🙅 Truth refused: marked for reinstallation
+  who: performer
+  by: Hosts
+  while: Night.bottle_open == true
+
+INTERACTION named_at_bingo
+  label: 🎯 Named on the card: marked for reinstallation
+  who: performer
+  by: Clippy
+  while: Night.phase == "bingo_results"
+
+INTERACTION unmark_for_reinstallation
+  label: 🩹 Unmark: not going to the Internet
+  who: performer
+  by: Hosts, Antivirus
+  description: A mis-tap or mercy. Lifts the mark; the program keeps their place.
 
 INTERACTION made_the_cup
   label: 🏓 Made the cup: may answer
@@ -1588,7 +2380,7 @@ INTERACTION made_the_cup
   while: Night.phase == "truth_pong"
 
 INTERACTION missed_the_cup
-  label: 🏓 Missed the cup: to the Internet
+  label: 🏓 Missed the cup: marked for reinstallation
   who: performer
   by: Hosts
   while: Night.phase == "truth_pong"
@@ -1597,13 +2389,13 @@ INTERACTION pay_truthcoin
   label: 🪙 Pay 100 Truthcoin
   who: performer
   by: McAfee Anti-Virus, Hosts
-  description: McAfee Anti-Virus (the exchange broker) or a host (the bank).
+  description: McAfee Anti-Virus (the exchange broker) or a host (the bank). Corrections only: programs send their own Truthcoin from the Wallet room.
 
 INTERACTION charge_truthcoin
   label: 🪙 Charge 100 Truthcoin
   who: performer
   by: McAfee Anti-Virus, CRA Agent Software, Hosts
-  description: McAfee Anti-Virus, CRA Agent Software (audits) or a host.
+  description: McAfee Anti-Virus, CRA Agent Software (audits) or a host. Corrections only: a transfer is denied from the CRA booth's Wallet room.
 
 INTERACTION brought_up_the_bag
   label: 🍎 Brought up the Bag of Truth
@@ -1612,7 +2404,7 @@ INTERACTION brought_up_the_bag
   while: Night.phase == "bobbing" and Night.bag_up != true
 
 INTERACTION failed_the_bob
-  label: 🍎 Failed the bob: to the Internet
+  label: 🍎 Failed the bob: marked for reinstallation
   who: performer
   by: Clippy, Adobe Acrobat
   while: Night.phase == "bobbing" and Night.bag_up != true
@@ -1659,10 +2451,9 @@ when call_to_the_desktop:
   if Night.step < 1:
     set Night.phase = "desktop"
     set Night.step = 1
-    reveal task manager
     broadcast "!📣 ALL PROGRAMS: report to the Desktop. A game is about to begin." to everyone
     do announce "All programs, report to the Desktop. A game is about to begin."
-    sound alexa_chime
+    sound announce_chime
     cue lights_call_desktop
     set Night.lights = "call_desktop"
     cue screens_call_desktop
@@ -1678,6 +2469,8 @@ when start_the_bingo:
     set Night.bingo_on = true
     set Night.bingo_end = Time.elapsed + 1200
     start quest The Bingo Card for everyone
+    start quest Run The Bingo for Clippy
+    start quest The Selected Antivirus for Norton Anti-Virus
     cue lights_game
     set Night.lights = "game"
     cue tv_bingo
@@ -1691,8 +2484,9 @@ when start_the_bingo:
 when Night.bingo_on == true and Time.elapsed >= Night.bingo_end:
   set Night.bingo_on = false
   broadcast "!⏰ Bingo time is up. Back to the Desktop." to everyone
-  sound alexa_chime
+  sound announce_chime
   fire bingo_time_up
+  update quest Run The Bingo for Clippy "Twenty minutes are up. Ask the director for BINGO TIME."
 
 // B3 · V3: the results. The Antivirus interruption, the frame, and the
 // first reinstallation are performed live with the performer buttons.
@@ -1702,6 +2496,7 @@ when bingo_time:
     set Night.step = 3
     set Night.bingo_on = false
     complete quest The Bingo Card for everyone
+    complete quest Run The Bingo for Clippy "Winners celebrated. Norton takes it from here."
     unlock Clippy Instructions 2 for Clippy
     cue tv_bingo_time
     set Night.screen = "bingo_time"
@@ -1711,6 +2506,7 @@ when bingo_time:
 
 // Fired (unbound) by the first Bingo-phase `send to the internet`.
 when first_reinstallation:
+  complete quest The Selected Antivirus for Norton Anti-Virus "The first reinstallation. Patrol the Tube."
   -> Corrupted Code
 
 // B5 · Clippy 2/X: Trabolta comes online. Refused before the Bingo
@@ -1747,6 +2543,7 @@ when start_the_hunt:
     set Night.hunt_warn = Time.elapsed + 600
     set Night.facts_requested = 3
     start quest Hunt One for everyone
+    start quest Host The Hunt for Clippy
     cue lights_game
     set Night.lights = "game"
     cue screens_trivia_1
@@ -1770,10 +2567,11 @@ when hunt_time_up:
     set Night.phase = "truth_1"
     set Night.step = 6
     complete quest Hunt One for everyone
+    update quest Host The Hunt for Clippy "Two-minute filing window, then ⏱ close, 📋 per question, 🍾 the bottle."
     unlock Clippy Instructions 3 for Clippy
     broadcast "!📣 Time is up. Return to the Desktop for the First Moment of Truth." to everyone
     do announce "Time is up. Return to the Desktop."
-    sound alexa_chime
+    sound announce_chime
     cue screens_return
     set Night.screen = "return"
     set Night.terminals = "return"
@@ -1792,6 +2590,10 @@ when first_moment_of_truth:
       unlock Clippy Instructions 3 for Clippy
     set Night.round = 1
     set Night.judging = true
+    set Night.filing_open = true
+    set Night.filing_close = Time.elapsed + 120
+    set Night.poll = "bottle"
+    broadcast "!📝 Last chance: file your round-one facts with Trabolta. Two minutes." to everyone
     cue lights_truth_time
     set Night.lights = "truth_time"
     cue screens_hunt_results
@@ -1799,16 +2601,92 @@ when first_moment_of_truth:
     set Night.terminals = "hunt_results"
     -> First Moment Of Truth
 
-// B9: Truth or Dare from the hat (round-1 slips; same buttons). Only
-// while the First Moment of Truth is judging (the 🎩 / 🙅 buttons need it).
-when truth_or_dare:
-  if Night.phase == "truth_1" and Night.judging == true and Night.ended != true:
+// B9: the last-chance window (two minutes, or ⏱), then the results one
+// question at a time (📋), the bottle between them (🍾). Round one closes
+// for good when the window shuts: a question nobody filed never comes back.
+when Night.filing_open == true and Time.elapsed >= Night.filing_close:
+  fire filing_closed
+
+when close_the_filing:
+  if Night.filing_open == true:
+    fire filing_closed
+  else:
+    broadcast "⏱ No filing window is open." to channel(hosts)
+
+when filing_closed:
+  if Night.filing_open == true:
+    set Night.filing_open = false
+    set Night.r1_closed = true
+    set Night.card_gen += 1
+    broadcast "📝 Round one is closed. Trabolta is reading." to everyone
+    -> Filing Closed
+
+// One question's result: Clippy reads it (consensus / nobody / every
+// answer), then the ROLE settle watcher credits (+50) or marks (a guess)
+// every filing for it. Kernel.res_* are the beat's readout, computed here
+// (review filings still pending count by the judge's proposal).
+when read_the_results:
+  if Night.phase != "truth_1" or Night.r1_closed != true:
+    broadcast "📋 Close the filings first (⏱), then read the results." to channel(hosts)
+  else if Night.bottle_open == true:
+    broadcast "📋 The bottle is still open: 🗣 Answered or 🙅 Refused first." to channel(hosts)
+  else if Night.results_q >= 3:
+    broadcast "📋 All three results are read. Next: 📺 Preview hunt 2." to channel(hosts)
+  else:
+    set Night.results_q += 1
+    set Night.bottle_picks = 0
+    set Night.bottle_q = Night.results_q
+    if Night.results_q == 1:
+      set Kernel.res_filed = count([p for p in Persons where p.fact_v1 != "none"])
+      set Kernel.res_consensus = count([p for p in Persons where p.fact_c1 == 100 and (p.fact_v1 == "accurate" or (p.fact_v1 == "pending" and p.fact_j1 == "accurate"))])
+      set Kernel.res_said = Kernel.said_1
+      set Kernel.res_answer = Kernel.ans_1
+    else if Night.results_q == 2:
+      set Kernel.res_filed = count([p for p in Persons where p.fact_v2 != "none"])
+      set Kernel.res_consensus = count([p for p in Persons where p.fact_c2 == 100 and (p.fact_v2 == "accurate" or (p.fact_v2 == "pending" and p.fact_j2 == "accurate"))])
+      set Kernel.res_said = Kernel.said_2
+      set Kernel.res_answer = Kernel.ans_2
+    else:
+      set Kernel.res_filed = count([p for p in Persons where p.fact_v3 != "none"])
+      set Kernel.res_consensus = count([p for p in Persons where p.fact_c3 == 100 and (p.fact_v3 == "accurate" or (p.fact_v3 == "pending" and p.fact_j3 == "accurate"))])
+      set Kernel.res_said = Kernel.said_3
+      set Kernel.res_answer = Kernel.ans_3
+    set Night.settle_q = Night.results_q
+    set Night.settle_round = 1
+    set Night.settle_gen += 1
+    cue screens_hunt_results
+    set Night.screen = "hunt_results"
+    set Night.terminals = "hunt_results"
+    -> Question Results
+
+// 🍾 The bottle: the server picks one cleared program at the Desktop not
+// yet picked for this question (`do pick … else …`, journaled, so a
+// restart replays the same pick) and fires `bottle_landed` for them (ROLE
+// Program). Five picks per question.
+when spin_the_bottle:
+  if Night.phase != "truth_1" or Night.results_q < 1:
+    broadcast "🍾 Read a question's results first (📋)." to channel(hosts)
+  else if Night.bottle_open == true:
+    broadcast "🍾 The bottle is still open: 🗣 Answered or 🙅 Refused first." to channel(hosts)
+  else if Night.bottle_picks >= 5:
+    broadcast "🍾 Five picks for question {Night.results_q}. Read the next results (📋)." to channel(hosts)
+  else:
+    set Night.bottle_open = true
+    set Night.bottle_round += 1
     cue screens_truth_or_dare
     set Night.screen = "truth_or_dare"
     set Night.terminals = "truth_or_dare"
-    -> Truth Or Dare
-  else:
-    broadcast "🎩 Truth or Dare plays during the First Moment of Truth (fire first_moment_of_truth first)." to channel(hosts)
+    do pick bottle_landed from {[p for p in Persons where p.cleared == true and p.corrupted != true and p.marked != true and p.afk != true and p.location == "The Desktop" and p.bottle_q != Night.bottle_q]} else bottle_empty
+
+when bottle_empty:
+  set Night.bottle_open = false
+  broadcast "🍾 Nobody left at the Desktop to pick. Read the next results (📋)." to channel(hosts)
+
+when bottle_announce:
+  -> Bottle Landed
+
+when truth_question:
+  -> Truth Question
 
 // B10: optional set pieces, any time from the first Moment of Truth to
 // the Trust Chart.
@@ -1842,10 +2720,17 @@ when the golden duck for program:
 when second_hunt_preview:
   if Night.step < 7:
     set Night.judging = false
+    set Night.r1_closed = true
+    set Night.filing_open = false
+    set Night.bottle_open = false
+    set Night.poll = "none"
+    set Night.card_gen += 1
     set Night.phase = "malware"
     set Night.step = 7
     set Trabolta.composure -= 20
     unlock Clippy Instructions 4 for Clippy
+    complete quest Host The Hunt for Clippy "Round one judged."
+    start quest Keep Everyone Calm for Clippy
     cue lights_ad_hijack
     set Night.lights = "ad_hijack"
     cue screens_ad_hijack
@@ -1888,6 +2773,8 @@ when truther_download:
   if Night.truther_sent != true:
     set Night.truther_sent = true
     reveal truthcoin exchange
+    start quest The Exchange for McAfee Anti-Virus
+    start quest The Audit for CRA Agent Software
     cue screens_truther
     set Night.screen = "truther"
     set Night.terminals = "truther"
@@ -1906,6 +2793,7 @@ when five_minute_warning:
     set Night.summons_open = true
     set Night.summons_end = Time.elapsed + 300
     unlock Clippy Instructions 5 for Clippy
+    update quest Keep Everyone Calm for Clippy "Truth Pong. Be more excited than ever."
     broadcast "!⏳ FIVE MINUTES. Be in the Desktop for the Second Moment of Truth, or an Antivirus will take you to the Internet and you will not play Truth Pong. Bathroom Mode excuses you." to everyone
     do announce "Five minutes. Everyone to the Desktop."
     sound countdown_tick
@@ -1942,14 +2830,21 @@ when truth_pong:
     set Night.terminals = "truth_pong"
     -> Truth Pong
 
-// D5: the collection is complete only if every round-2 question has an
-// accepted answer (accurate or confident).
+// D5: round two closes and settles (the ROLE settle watcher credits every
+// round-2 filing after this body); the collection is complete only if every
+// round-2 question has an accepted answer (accurate or confident — a
+// review filing still pending counts by its proposal).
 when round_two_tally:
   if Night.phase == "truth_pong" and Night.tallied != true:
     set Night.tallied = true
     set Night.judging = false
+    set Night.r2_closed = true
+    set Night.card_gen += 1
+    set Night.settle_q = 0
+    set Night.settle_round = 2
+    set Night.settle_gen += 1
     complete quest Hunt Two for everyone
-    if Kernel.q4 != "none" and Kernel.q5 != "none" and Kernel.q6 != "none":
+    if (Kernel.q4 != "none" or count([p for p in Persons where p.fact_v4 == "accurate" or p.fact_v4 == "lie" or (p.fact_v4 == "pending" and p.fact_j4 != "uncertain")]) > 0) and (Kernel.q5 != "none" or count([p for p in Persons where p.fact_v5 == "accurate" or p.fact_v5 == "lie" or (p.fact_v5 == "pending" and p.fact_j5 != "uncertain")]) > 0) and (Kernel.q6 != "none" or count([p for p in Persons where p.fact_v6 == "accurate" or p.fact_v6 == "lie" or (p.fact_v6 == "pending" and p.fact_j6 != "uncertain")]) > 0):
       set Night.collection_complete = true
       set Trabolta.truth += 10
     else:
@@ -1965,6 +2860,7 @@ when trust_chart:
     set Night.judging = false
     set Night.hunt2_on = false
     unlock Clippy Instructions 6 for Clippy
+    complete quest The Exchange for McAfee Anti-Virus "The chart is up. Trading is over."
     cue lights_trust_chart
     set Night.lights = "trust_chart"
     cue screens_trust_chart
@@ -2044,6 +2940,7 @@ when trabolta_overshares:
   if Night.step < 13:
     set Night.phase = "overshare"
     set Night.step = 13
+    set Night.r2_closed = true
     set Night.round = 3
     set Night.facts_requested = 8
     start quest The Final Facts for everyone
@@ -2060,14 +2957,7 @@ when trabolta_overshares:
     cue screens_flicker
     cue lights_glitch
     set Night.lights = "glitch"
-    if Night.scenario == 1:
-      -> Overshare One
-    else if Night.scenario == 2:
-      -> Overshare Two
-    else if Night.scenario == 3:
-      -> Overshare Three
-    else:
-      -> Overshare Four
+    -> Overshare Open
 
 // D10: the clock. One hour to midnight; the factions come out.
 when y2k_clock:
@@ -2081,6 +2971,9 @@ when y2k_clock:
     reveal Unlimited Power
     reveal The Way Out
     unlock Clippy Instructions 7 for Clippy
+    complete quest Keep Everyone Calm for Clippy "You kept them calm until the clock. Now you may not take sides on air."
+    complete quest The Audit for CRA Agent Software "Audit closed. The clock matters more now."
+    start quest The Clubs for Password Manager
     cue lights_y2k
     set Night.lights = "y2k"
     cue screens_y2k
@@ -2164,6 +3057,7 @@ when majority_reached:
     do door server_room, state: unlocked
     cue lights_server_open
     set Night.lights = "server_open"
+    complete quest The Clubs for Password Manager "A majority. The server room is open to them."
     if Kernel.majority == "stay":
       complete quest Recruit To Stay for everyone
       fail quest Recruit To Leave for everyone
@@ -2207,12 +3101,16 @@ when rearm_server_room:
   do door server_room, state: locked
   broadcast "🔒 The server room is locked and armed again." to channel(hosts)
 
-// The Cold Lock: the chess phone outside the server room (Lichess on the
-// night). A host or Antivirus who saw the mate presses ♟ on the winner's
-// card; a dead phone → the director fires `chess_won` (a signal named
-// "chess won" folds to it). From the Y2K hour a win disarms the door for
-// 90 s (ring green) and clears a latched alarm (the screens drop the
-// alarm overlay with it); before that it's practice.
+// The Cold Lock: the King at the server-room door *in the simulation*
+// (the tent tablet posts `chess won` for the program who mated him,
+// `by` the tablet) — or, until the King is device-checked, the chess
+// phone outside the real door (a host who saw the mate presses ♟ on the
+// winner's card; a dead phone → the director fires `chess_won`; a
+// signal named "chess won" folds to it). From the Y2K hour a win
+// disarms the door for 90 s (ring green) and clears a latched alarm
+// (the screens drop the alarm overlay with it); before that it's
+// practice — in the simulation the cold door still opens for that
+// session, the real one does not.
 when chess_won:
   if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true:
     set Kernel.disarmed_until = Time.elapsed + 90
@@ -2225,11 +3123,11 @@ when chess_won:
   else if Night.ended != true and Night.step < 14:
     broadcast "♟ A chess win before the Y2K hour is practice only." to channel(hosts)
 
-// A loss or a draw on the chess phone (a phone app reports `chess lost` /
-// `chess drawn`; the director never needs to). Flavour only: nothing
+// A loss or a draw (the tablet posts `chess lost` / `chess drawn`; a
+// phone app may too; the director never needs to). Flavour only: nothing
 // disarms and nothing re-arms. From the Y2K hour, while the door is still
 // locked, Trabolta gloats on the TV (The Desktop) and the crew get a
-// readout in # hosts; before that the phone is practice.
+// readout in # hosts; before that the King (or the phone) is practice.
 when chess_lost:
   if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true:
     broadcast "♟ The machine won at the Cold Lock. The door stays armed." to channel(hosts)
@@ -2427,10 +3325,16 @@ when bag_retrieved:
   -> The Bag Of Truth
 
 // F3: truth.txt, then the verdict (Song Ending or Grok Prom).
+// Round three closes and settles here (the ROLE settle watcher runs after
+// this body; The Verdict counts a review filing still pending by its proposal).
 when read_truth_txt:
   if Night.phase == "bobbing" and Night.bag_up == true:
     complete quest The Final Facts for everyone
     set Night.recount = true
+    set Night.r3_closed = true
+    set Night.settle_q = 0
+    set Night.settle_round = 3
+    set Night.settle_gen += 1
     cue screens_truth_txt
     set Night.screen = "truth_txt"
     set Night.terminals = "truth_txt"
@@ -2564,7 +3468,9 @@ when restore_the_lights:
 // it seeds every global (Trabolta's worker reads them), sets the
 // screensaver look, and says one line to the room. Everything personal
 // (the Optical Drive) plays per program on arrival, never here. No dialogue,
-// no widgets. This must stay the LAST item in main.loom.
+// no widgets. Its last line diverts to the generated `== Facts Seed`
+// (generated/questions.loom: the 📝 card strings Night.q_h1 … q_f2 and the
+// truth count). This must stay the LAST item in main.loom.
 == Power On
   setting: The Desktop
 set Night.phase = "arrivals"
@@ -2629,7 +3535,26 @@ set Night.ending = "none"
 set Night.bobber = "none"
 set Night.bag_up = false
 set Night.line_by = "none"
+set Night.pickup_gen = 0
 set Night.poll = "none"
+set Night.judge_mode = "auto"
+set Night.filing_open = false
+set Night.filing_close = 0
+set Night.r1_closed = false
+set Night.r2_closed = false
+set Night.r3_closed = false
+set Night.card_gen = 0
+set Night.results_q = 0
+set Night.settle_q = 0
+set Night.settle_round = 0
+set Night.settle_gen = 0
+set Night.bottle_open = false
+set Night.bottle_picks = 0
+set Night.bottle_q = 0
+set Night.bottle_round = 0
+set Night.bottle_pick = "none"
+set Night.truth_n = 0
+set Night.stimulus_n = 0
 set Night.help_votes = 0
 set Night.thwart_votes = 0
 set Night.banish = false
@@ -2650,6 +3575,16 @@ set Night.awards_given = 0
 set Kernel.combo_a = "V2-D5,V4-D1,V6-D8,V7-D3"
 set Kernel.combo_b = "V1-D6,V3-D2,V5-D7,V8-D4"
 set Kernel.anti_ai = "MS Paint"
+// What every program said per question (Clippy reads it at the results):
+// a string from the first filing, so it starts empty, never "none".
+set Kernel.said_1 = ""
+set Kernel.said_2 = ""
+set Kernel.said_3 = ""
+set Kernel.said_4 = ""
+set Kernel.said_5 = ""
+set Kernel.said_6 = ""
+set Kernel.said_7 = ""
+set Kernel.said_8 = ""
 cue lights_screensaver
 set Night.lights = "screensaver"
 cue screens_screensaver
@@ -2660,3 +3595,4 @@ set Night.terminals = "screensaver"
 // only thing that turns it green).
 do door server_room, state: locked
 The house boots. A screensaver drifts across the TV above the fireplace. Somewhere a modem is waiting to be asked.
+-> Facts Seed

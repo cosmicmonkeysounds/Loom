@@ -4,8 +4,10 @@
 #   scripts/ops/predeploy.sh [--allow-dirty] [--skip-tests] [--vr]
 #
 # Checks: a clean tree, the story (`loomcheck --smoke` on Trapped in the
-# Internet), every TS package's typecheck + tests (`pnpm -r`), stagehand's
-# pytest, the ops-script tests, and that docker-compose.yml still parses.
+# Internet, and `titi:facts --check` — the files generated from the show's
+# facts.json are up to date), every TS package's typecheck + tests
+# (`pnpm -r`), stagehand's pytest, the ops-script tests, and that
+# docker-compose.yml still parses.
 # `--vr` adds the Godot suite (needs godot on PATH). On success it stamps
 # the commit, and scripts/ops/ship.sh refuses to ship any other commit.
 set -uo pipefail
@@ -46,6 +48,7 @@ if [ -n "$dirty" ]; then
 fi
 
 run "story: loomcheck --smoke" pnpm --filter @loom/core loomcheck examples/trapped-in-the-internet --smoke
+run "story: facts.json → generated files" pnpm --filter @loom/core titi:facts --check
 run "ops scripts" bash scripts/ops/test/run.sh
 run "accept-script helpers" node --no-warnings --test scripts/accept/live-guard.test.ts scripts/accept/burst.test.ts
 run "compose file parses" env POSTGRES_PASSWORD=x BETTER_AUTH_SECRET=x LOOM_BASE_URL=http://x \

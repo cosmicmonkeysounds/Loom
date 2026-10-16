@@ -23,16 +23,19 @@ import {
   WakeLockToggle,
   plural,
   useWide,
+  type WidgetHook,
 } from "./chat.tsx";
 import { HelpSheet } from "./help.tsx";
 import { usePlayHost } from "./host.ts";
+import { WalletActionsProvider, approvalBadge } from "./wallet.tsx";
 import { AvatarsContext, avatarLookup, avatarUrl, foldName, orderPicker, type IdentityRow } from "./avatars.ts";
-import { codeFromUrl, useDocumentTitle, useIdentities, usePrimeSession, type IdentityLookup, type PrimeSession } from "./session.ts";
+import { INBOX, codeFromUrl, useDocumentTitle, useIdentities, usePrimeSession, type IdentityLookup, type PrimeSession } from "./session.ts";
 import type { Action, Channel, Interaction, PrimeGuest } from "./types.ts";
 import { cameraProblem, parseScan, scanProblem, typedTarget, type CameraState } from "./scan.ts";
 import { CameraScanner } from "./scanner.tsx";
 import { usePush, type Push } from "./push.ts";
 import { PushCard, PushRow } from "./push-card.tsx";
+import { activePins } from "./pins.ts";
 
 function PrimeLogin({ session }: { session: PrimeSession }) {
   const [passcode, setPasscode] = useState(codeFromUrl);
@@ -261,6 +264,7 @@ function PerformerSheet({ session, push, onClose, onLeave }: { session: PrimeSes
         <>
           <div className="sheet-h">📓 What {session.auth?.character} knows</div>
           <div className="muted pad">Share any of these from a guest's card — one guest at a time. Knowledge is the currency.</div>
+          {(session.view?.codexTotal ?? 0) > 0 && <div className="muted pad">Also a room: 📓 Codex, under Pinned.</div>}
           {session.view!.codex!.map((e) => (
             <div key={e.id} className="codex-entry">
               <div className="codex-entry-head">
@@ -359,6 +363,7 @@ function GuestCard({
           <GroupPill group={guest.faction} />
           {where && <span className="pill">📍 {where}</span>}
           {guest.captured && <span className="pill">🔒 captured</span>}
+          {guest.restricted && <span className="pill">⛔ restricted</span>}
           <span className="pill kind">{guest.id}</span>
         </div>
         <button className="choice" onClick={onOpenThread}>
@@ -406,6 +411,7 @@ function BoothCard({ s, admin, onHelp, onSheet }: { s: PrimeSession; admin: bool
           <div className="me-sub">
             <GroupPill group={s.view?.faction ?? null} />
             <span>{plural(s.view?.guests.length ?? 0, "guest")}</span>
+            {approvalBadge(s.view?.wallet) !== null && <span className="wallet-badge">{approvalBadge(s.view?.wallet)}</span>}
             <ConnDot connected={s.connected} label="live" />
           </div>
         </div>
@@ -454,6 +460,9 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   const guests = s.view?.guests ?? [];
   const guestByName = (name: string) => guests.find((g) => g.name === name || g.id === name) ?? null;
   const mod = admin ? { setHidden: (seq: number, hidden: boolean) => void s.setHidden(seq, hidden) } : undefined;
+  // Cards the story deals to this character (`show … to <Character>`): the
+  // booth answers them like a guest, through `/api/prime/widget`.
+  const widgets: WidgetHook = { answer: (seq, r) => void s.answerWidget(seq, r).catch(() => {}), answered: s.widgetAnswers };
   const openCard = (name: string) => {
     const g = guestByName(name);
     if (g) setCard(g.id);
@@ -478,6 +487,20 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
             onSend={(text, parentSeq) => void s.say(postChannel, text, parentSeq)}
           />
         );
+      } else if (active.id === "quests" || active.id === "codex" || active.id === "wallet" || active.id === INBOX) {
+        // The character's own pinned Quest Log / Codex / Wallet and its Inbox:
+        // read-only rooms whose cards the booth answers (sharing stays on the
+        // guest card; Approve / Deny live on the wallet cards).
+        stage = (
+          <ChannelView
+            channel={active}
+            wide={wide}
+            onBack={t.back}
+            moderate={mod}
+            onOpenThread={t.openThread}
+            widgets={widgets}
+          />
+        );
       } else if (active.kind === "guest") {
         const gid = active.id.slice("guest:".length);
         stage = (
@@ -490,6 +513,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
             onOpenThread={t.openThread}
             onSend={(text) => void s.say(active.id, text)}
             onPerson={openCard}
+            pins={activePins(active.messages)}
             headerActions={
               <button className="icon-btn wide" title="What you can do with this guest" onClick={() => setCard(gid)}>
                 ⚡ Actions
@@ -508,6 +532,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
             moderate={mod}
             onOpenThread={t.openThread}
             onSend={(text) => void s.say(active.id, text)}
+            widgets={widgets}
           />
         );
       } else {
@@ -527,6 +552,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
             onSend={(text) => void s.say(postChannel, text)}
             onPerson={openCard}
             onPeople={() => setPeople(active)}
+            pins={activePins(active.messages)}
             footer={actions.length > 0 ? <ActionRow actions={actions} /> : undefined}
           />
         );
@@ -547,6 +573,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
 
   return (
     <AvatarsContext.Provider value={avatars}>
+    <WalletActionsProvider value={{ view: s.view?.wallet ?? null, me: null, clock: s.view?.clock ?? 0, approve: (id) => void s.walletApprove(id), deny: (id) => void s.walletDeny(id) }}>
     <div className="root">
       {s.alert && <AlertBanner text={s.alert.text} onDismiss={s.dismissAlert} />}
       <PushCard push={push} why="the door alarm and the late list reach you even with the phone locked." />
@@ -583,6 +610,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
       {sheet && <PerformerSheet session={s} push={push} onClose={() => setSheet(false)} onLeave={onLeave} />}
       {help && <HelpSheet role="performer" onClose={() => setHelp(false)} />}
     </div>
+    </WalletActionsProvider>
     </AvatarsContext.Provider>
   );
 }

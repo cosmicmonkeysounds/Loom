@@ -20,6 +20,15 @@ project, *Go live with real guests* straight away).
 Either way: a persona named after you joins, the story's `start:` beat
 plays, its choices dock in Chat, and the story map lights up as you go.
 
+Two things only the server does. A local-folder rehearsal has **no
+judge**: a filed `fact` card's `fact answered` arrives with no `verdict`
+(write the rule's `else:` to say so — *could not be judged*), and the
+Judging card on the Mind page explains rather than judges. It has **no
+wallet** either: a story that declares a `currency:` shows the plain ⭐
+score and no Wallet room in the browser. Rehearse the hunt and the
+wallet on a server project ([cards & widgets](widgets.md),
+[currency](currency.md)).
+
 ## The header
 
 Every page shares one header:

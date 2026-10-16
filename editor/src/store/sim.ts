@@ -82,7 +82,7 @@ function indexedSources(): CompiledSource[] {
 function empty(): Pick<
   SimState,
   | 'phase' | 'run' | 'connected' | 'roster' | 'factions' | 'locations' | 'cast' | 'channels' | 'spaces'
-  | 'beats' | 'events' | 'interactions' | 'cues' | 'codex' | 'quests' | 'ledgerLen' | 'messages' | 'world' | 'personas' | 'log'
+  | 'beats' | 'events' | 'interactions' | 'cues' | 'codex' | 'quests' | 'facts' | 'ledgerLen' | 'messages' | 'world' | 'personas' | 'log'
   | 'choices' | 'selection' | 'perspective' | 'lens' | 'error' | 'entryBeat'
 > {
   return {
@@ -101,6 +101,9 @@ function empty(): Pick<
     cues: NO_CUES,
     codex: [],
     quests: [],
+    // No judge in the browser: a local rehearsal's `fact answered` carries
+    // no verdict (rehearse the hunt on a server project).
+    facts: null,
     ledgerLen: 0,
     messages: [],
     world: [],

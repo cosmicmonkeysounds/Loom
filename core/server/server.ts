@@ -22,7 +22,10 @@
 //! house map for the reinstallation games; default: the example's
 //! `house.json` — a project's own map files, snapshotted at launch, and a
 //! director's save per event, kept as `spatial-house.json` in that event's
-//! state dir, both override it; `server/house-maps.ts`).
+//! state dir, both override it; `server/house-maps.ts`), LOOM_FACTS (the
+//! fallback facts key for the facts judge; default: `facts.json` beside the
+//! house map — a project's own `facts.json`, snapshotted at launch,
+//! overrides it; `server/facts.ts`).
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFileSync } from "node:fs";
@@ -190,6 +193,7 @@ const defaultEvent = registry.register(
     joinBase,
     wiki,
     images,
+    ...(process.env.LOOM_FACTS !== undefined ? { factsFile: process.env.LOOM_FACTS } : {}),
   }),
 );
 

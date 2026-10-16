@@ -241,7 +241,10 @@ refreshed on every snapshot. `cockpit/rooms.ts` `buildRooms` then lists
 **exactly** the lens's channels (real `member` / `canPost` /
 `threadable`), the lobby, their faction room, their folded DM threads —
 or, for a character, the performer's booth (one `guest:<gid>` thread per
-guest, kind `guest`, `roomMessages` = everything addressed to them). A
+guest, kind `guest`, `roomMessages` = everything addressed to them —
+**not** the booth's own pinned rooms (Quest Log / Codex / Inbox / Wallet)
+the real booth shows since Oct 31 wave 4: `isPinnedRoom` covers only a
+guest's `codex` / `quests`; open). A
 guest lens never sees a hidden message (`messageInLens`). Chat's
 composer defaults to the persona (`isPersonaId`, a `p…` id) or the
 character; speaking as a **real** guest defaults to the Operator, needs
@@ -304,6 +307,23 @@ survey now, pause/resume, mind reasoning on/off, voice effort, reset with
 confirm). Colours are the reference dark categorical slots in fixed order
 (voice / lookup / reflect / survey / re-run); every badge carries its
 label. Tests: `cockpit/mind.test.ts`; live: `e2e-live/mind.spec.ts`.
+
+**Judging — the facts judge** (the top card on Mind, Oct 31 wave 4,
+U10; `JudgingCard` in `MindTab.tsx` + pure `judgeModeOf` /
+`pendingFilings` / `questionTallies` in `cockpit/mind.ts`). Reads
+`CockpitState.facts` (← `ModView.facts`, the server's `FactsWatch`
+ledger off `do fact_filed` / `do fact_judged`; null = the project has no
+`facts.json`, and the local backend adds that judging runs on the event
+server). The **mode** (`auto` / `review`) is a journaled world var
+(`facts.modeVar`, `Night.judge_mode` by default) written through
+`setVar`, the same `/api/mod/var` path as the World page. The pending
+list shows each filing's proposed verdict with **accurate / lie /
+uncertain** buttons → `fireSignal(<judge.confirm event>, person,
+{question}, null)` — the same `fact_accurate` / `fact_lie` /
+`fact_uncertain` names the hosts' booth buttons fire — and a per-question
+tally table follows. The verdict never reaches a phone or the voice
+worker; this card is the only place it is shown. Tests: the judging
+cases in `cockpit/mind.test.ts`.
 
 **The super-admin's peek** (`cockpit/Inspector.tsx`): a guest shows
 **Their view** (side / where / score / deciding / rooms / can — exact

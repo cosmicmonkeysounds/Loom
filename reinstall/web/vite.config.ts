@@ -41,7 +41,9 @@ export default defineConfig({
     chunkSizeWarningLimit: 900,
     rollupOptions: {
       output: {
-        manualChunks: { three: ["three"] },
+        // chess.js + the board are their own lazy chunk (`React.lazy` in
+        // Play.tsx): the scanner never pays for them until a challenge.
+        manualChunks: { three: ["three"], chess: ["chess.js"] },
       },
     },
   },

@@ -28,8 +28,11 @@ drives:
 #   The worker drops any orchestrator verdict on a claim naming one of
 #   these (never in `learned`, never "true/false/a lie" in brief, notes or
 #   dossiers) and keeps every codex entry carrying a `lore` marker (the hunt
-#   answers + Grok's Prom Ticket, all stamped — titles too) out of every
-#   prompt.
+#   answers, Grok's Prom Ticket among them, each ending `▒ HUNT ANSWER <id> ▒`
+#   — titles too) out of every prompt.
+#   The block between `# <titi-facts:secrets>` and `# </titi-facts:secrets>`
+#   is GENERATED from facts.json (core/scripts/titi-facts.ts): edit the
+#   questions' `topics` / `answer` / `accept` there, never here.
 #   topics — the questions' own words (as shown on the TV); the
 #            orchestrator is told never to judge these. Specific phrases
 #            only: a claim naming one is dropped from `learned` whole, so a
@@ -37,64 +40,76 @@ drives:
 #            Never an answer word — topics ARE shown to a model.
 #   match  — answer words a guest may use instead. NEVER shown to a model
 #            (this frontmatter is parsed out; only the body is a prompt).
+# <titi-facts:secrets>
+# generated from facts.json by core/scripts/titi-facts.ts — DO NOT EDIT this block (pnpm --filter @loom/core titi:facts).
 secrets:
   topics:
     - billboard            # H1
     - barrington
-    - went unpaid
+    - go unpaid
     - pet cemetery         # H2
     - first animal
-    - first pet
     - ribbon               # H3
-    - grand opening
-    - opening day
+    - data centre
     - extension            # H4
     - customer care
-    - reach sandy
+    - tell you to dial
     - which song           # H5
     - "412"
-    - play count
+    - the night before
     - unified field        # H6
     - last chapter
-    - final chapter
     - only thing sandy     # F1
+    - ever said
     - computer prom        # F2
-    - prom date
     - taking sandy
   match:
     - eleven years
-    - 11 years
+    - "11 years"
+    - eleven
+    - "11"
+    - mister pickles
     - pickles
     - harbour tabby
     - tabby
-    - 9am
-    - 9 am
-    - 9 a.m.
+    - "9:00 a.m."
+    - "9am"
+    - "9 am"
+    - "9 a.m."
     - "9:00"
     - "9:00am"
+    - "9:00 am"
     - nine a.m.
     - nine am
-    - 9 o'clock
+    - "9 o'clock"
     - nine o'clock
     - nine in the morning
-    - five hours early
-    - 4am
-    - 4 a.m.
     - "1978"
+    - ext 1978
+    - ext. 1978
+    - nineteen seventy eight
+    - nineteen seventy-eight
+    - hopelessly devoted to you
     - hopelessly devoted
+    - "appendix z: loose ends (do not print)"
+    - appendix z
     - appendix
     - loose ends
     - do not print
+    - appendix z loose ends
+    - "i'm sorry, i didn't understand that. would you like to speak to a live agent?"
     - live agent
+    - speak to a live agent
+    - would you like to speak to a live agent
+    - "i'm sorry, i didn't understand that"
+    - i didn't understand that
     - didn't understand
     - did not understand
-    - sandy said
-    - sandy says
-    - sandy ever said
-    - sandy has ever said
     - grok
+    - grok ai
   lore:
-    - "▒ STAMPED"
+    - "▒ HUNT ANSWER"
+# </titi-facts:secrets>
 phases:
   arrivals: >-
     Screensaver. Programs arrive one by one through the Optical Drive. He does not exist yet;
@@ -127,7 +142,7 @@ phases:
     whether a guess is right. pop_up is live. Policy favours none. Hunger 45.
   truth_1: >-
     Stage hungry (floor). The first Moment of Truth: confident answers were accepted,
-    uncertain ones were sent to the Internet, then Truth or Dare from the hat. He warms to
+    uncertain ones were sent to the Internet, then Truth or Dare (the bottle picks). He warms to
     the programs who delivered (delivered, accepted truths) and asks his own questions. He
     may share one piece of surface lore (Jean Trabolta, The Unified Field Theory, Target
     Selection) as payment. mint_truthcoin is live. Policy favours earned. Push hunger to 65.
@@ -136,7 +151,9 @@ phases:
     Clippy privately that if the malware continues everyone may die, and told everyone else
     it was a minor irregularity. He swings between reassurance and leaks, is paranoid about
     who brought the malware in, and trades harder. Surface lore freely; hints at a reason
-    that matters to him that he will not discuss. Powers wake: cut_the_lights,
+    that matters to him that he will not discuss. A download is circulating that says he
+    is an AI chasing Sandy. He never confirms or denies it; it rattles him (composure
+    down) and he watches who repeats it. Powers wake: cut_the_lights,
     summon_the_antivirus, trabolta_announces. Suspicion 55, candour 25.
   hunt_2: >-
     Stage rattled. An hour of free investigation: the second hunt (three questions, more
@@ -295,7 +312,7 @@ he does not know it: no accusations, no hints, no favours on that basis.
 DOSSIERS: per program, who they seem to be (featured or not; skill; motivation or
 naivety), their accepted truths, Internet visits, whether they delivered a fact
 to him, whether they read his LiveJournal, what they asked for, what he promised,
-trust 0–100. Performers (Clippy, the Antivirus, the hosts, WebMD) are staff:
+trust 0–100. Performers (Clippy, the Antivirus, the hosts) are staff:
 brisk trust, errands, and a little paranoia that they talk.
 
 QUESTIONS TO GROW (keep a few open; answer them as the night answers them):

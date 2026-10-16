@@ -1,4 +1,4 @@
-"""The fake Alexa — `do announce "…"` out of the house speakers.
+"""House announcements (the `alexa` module) — `do announce "…"` out of the house speakers.
 
     story  `do announce "Go to the living room."`
       → show module cue  → MQTT show/announce {"text": "Go to the living room."}
@@ -25,10 +25,10 @@ Announcements play one at a time in arrival order; the player never
 overlaps two voices. Payloads: `{"text", "voice"?, "chime"?: false}` or
 a bare string.
 
-`sound alexa_chime` (the story's chime on its own) arrives on
+`sound announce_chime` (the story's chime on its own) arrives on
 `show/chime` and rings the same chime on the same zones — unless an
 announcement started or ended within `CHIME_MERGE_S`, whose own chime
-already rang (the story often writes `do announce …` then `sound alexa_chime`).
+already rang (the story often writes `do announce …` then `sound announce_chime`).
 
 Anyone who can reach the broker can publish `show/announce`, so a line
 is clipped to `MAX_TEXT` characters; bind Mosquitto's anonymous listener
@@ -218,7 +218,7 @@ class Announcer:
         return done
 
     async def ring(self, now: float | None = None) -> str:
-        """The chime alone (`sound alexa_chime`): `chime`, `merged` (an
+        """The chime alone (`sound announce_chime`): `chime`, `merged` (an
         announcement just rang it), `off`, or `failed`."""
         now = time.monotonic() if now is None else now
         if self.last_announce is not None and now - self.last_announce < CHIME_MERGE_S:
@@ -250,7 +250,7 @@ class Announcer:
         try:
             return await self._announce(a)
         finally:
-            # The merge window counts from the end too: `sound alexa_chime`
+            # The merge window counts from the end too: `sound announce_chime`
             # queued behind a long announcement must not ring after the line.
             self.last_announce = time.monotonic()
 

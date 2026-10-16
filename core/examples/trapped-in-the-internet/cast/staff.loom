@@ -1,42 +1,22 @@
 // Staff and voices.
 //
-// WebMD is a performer: the wellness bot who introduces the corrupted to
-// their re-education. Their script is `Reinstallation` (beats/internet.loom),
-// private lines in each captured program's `dm:WebMD` thread — the same
-// script the tent tablet plays. WebMD can release a program by hand.
+// The Installation Wizard is Julia Tufts's part, and it is a VOICE, not a
+// booth (`playable: false`, never on a picker): her lines are the tent
+// tablet's script (the P-1 video) and they also land in each captured
+// program's own `dm:Installation Wizard` thread (`Reinstallation`,
+// beats/internet.loom). Julia runs the tent with the tablet's mod token
+// (/reinstall/: scan the pass, Play here / Send to a headset). A release
+// by hand is an Antivirus's ✅ Mark as reinstalled, or the director from
+// Run (Inspector → Captured → Release).
 //
-// Sandy and Truther Download are voices, never bodies (`playable: false`,
-// never on a picker). Sandy only ever says one thing. Truther Download is
-// the anonymous sender of the Truther Download and every per-program
-// glitch prompt; its lines land in each program's own
-// `dm:Truther Download` thread.
+// Sandy and Truther Download are voices too. Sandy only ever says one
+// thing. Truther Download is the anonymous sender of the Truther Download
+// and every per-program glitch prompt; its lines land in each program's
+// own `dm:Truther Download` thread.
 
-CHARACTER WebMD is Person
-  avatar: File:WebMD logo.svg
-  wiki: WebMD
-  // Julia's symptom checker diagnosed every user with everything.
-
-  // WebMD stands in the tent beside the tablet: her scan is the tablet
-  // video (in the program's own thread), plus a readout in her booth —
-  // but only for a program in the tent. A scan anywhere else (an arrival
-  // at the door, a guest at the Desktop) is a readout and nothing more.
-  when scanned by program:
-    if not program.uploaded:
-      reply 🩺 {program.name} has not finished uploading. Nothing to check yet.
-    else if program.corrupted:
-      reply 🩺 {program.name}: corrupted, visit {program.internet_visits}. Hand them a headset or the tablet.
-      -> The Tablet Video
-    else if program.location == "The Internet":
-      reply 🩺 {program.name} is not corrupted. Just visiting the Internet.
-      -> The Tablet Video
-    else:
-      reply 🩺 {program.name} is not corrupted, and not in the Internet. Nothing to do.
-
-  // Never phase-guarded: a performer must always be able to let someone out.
-  when mark as reinstalled for program:
-    if program.corrupted:
-      Self: {program.name} has demonstrated compliance. Reinstallation successful.
-      release program from The Internet
+CHARACTER Installation Wizard
+  playable: false
+  // Julia's setup assistant. Next. Next. Are you sure? Finish.
 
 CHARACTER Sandy
   playable: false

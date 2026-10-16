@@ -29,7 +29,10 @@ describe("play help", () => {
     expect(searchHelp(articles, "invite")[0]?.article.slug).toBe("invites");
     expect(searchHelp(articles, "captured").map((h) => h.article.slug)).toContain("your-pass");
     expect(searchHelp(articles, "decision")[0]?.article.slug).toBe("decisions");
+    expect(searchHelp(articles, "wallet")[0]?.article.slug).toBe("wallet");
+    expect(searchHelp(articles, "restricted").map((h) => h.article.slug)).toContain("your-pass");
     const scan = searchHelp(articlesFor("performer"), "scanner");
     expect(scan[0]?.article.slug).toBe("performers");
+    expect(searchHelp(articlesFor("performer"), "approve")[0]?.article.slug).toBe("performers");
   });
 });

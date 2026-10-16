@@ -2,7 +2,7 @@
 //
 // Nine invitees arrive with a character sheet in their invitation. In
 // the app they are ordinary guest programs: each is a bare CHARACTER
-// (a name, a picture, at most a `wiki:`), so it stays on the guest
+// (a name, a picture, at most a `wiki:` or a `wallet:` property), so it stays on the guest
 // picker, can be captured, redeems codes, holds quests, answers
 // choices, joins a faction and counts toward a majority.
 //
@@ -41,6 +41,9 @@ CHARACTER Broken Ask Jeeves
 CHARACTER Runescape
   avatar: File:Runescape 3 Logo.png
   wiki: RuneScape
+  // the Truthcoin reserve: 💰 Stimulus pays every cleared program the same
+  // amount, three times a night. A property, not a hook — she stays a guest.
+  wallet: minter, limit 3, while program.cleared == true
 
 CHARACTER MS Paint
   avatar: File:Microsoft Paint.svg

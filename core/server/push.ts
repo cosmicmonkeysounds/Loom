@@ -20,9 +20,14 @@
 //!   for minutes.
 //! - **What pushes.** `!` alerts **always** (the flag may be stale, and an
 //!   app in the foreground is caught by the service worker, which shows no
-//!   duplicate). A character's DM to a guest, and an unsolicited booth
-//!   readout (the door alarm, the late list), only when the device says it
-//!   is *hidden*. Every push carries a visible notification (iOS revokes a
+//!   duplicate) — to every guest who can see one; a booth hears only a
+//!   house-wide alert or one in an authored room (a staff back-room's pin),
+//!   never an alert addressed to a single guest (their own `!` pin: the
+//!   booth's cue is its readout). A character's DM to a guest, and an
+//!   unsolicited booth readout (the door alarm, the late list), only when
+//!   the device says it is *hidden*. A wallet card: the approver's held
+//!   card always, to that character's booth alone; a request / offer / coin
+//!   received only while hidden (`messagePush`). Every push carries a visible notification (iOS revokes a
 //!   subscription that receives silent pushes). Any 4xx from the push
 //!   service except 429 (404 / 410 gone, 400 / 401 / 403 a junk or revoked
 //!   subscription) prunes the device; 429 / 5xx / network errors keep it.
@@ -209,6 +214,21 @@ export function messagePush(m: ChatMessage, eventTitle: string): { payload: Push
   if (m.hidden) return null;
   if (m.alert === true) {
     return { always: true, payload: { kind: "alert", title: `🚨 ${eventTitle}`, body: clip(m.text), tag: `alert-${m.seq}`, url: "/" } };
+  }
+  // A wallet card: the approver's held card always (someone is waiting on
+  // them); a card that asks something of its viewer (a request, an offer,
+  // coin received) only while their page is hidden. Never the `alert` kind
+  // — a booth's wallet card is addressed `@<Character>`, which the
+  // booth-alert narrowing would drop.
+  if (m.kind === "wallet" && m.wallet) {
+    const w = m.wallet;
+    if (w.kind === "approval" && w.step === "held") {
+      return { always: true, payload: { kind: "dm", title: "🧾 Approval needed", body: clip(m.text), tag: `wallet-${w.id}`, url: "/" } };
+    }
+    if (w.step === "asked" || w.step === "offered" || w.step === "received") {
+      return { always: false, payload: { kind: "dm", title: `💰 ${eventTitle}`, body: clip(m.text), tag: `wallet-${w.id}`, url: "/" } };
+    }
+    return null;
   }
   // A DM thread is `dm:<Character>`; only the character's own lines push
   // (never the guest's typed reply, never a director's puppet guest).

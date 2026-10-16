@@ -21,16 +21,29 @@ everyone grinds. "Buying gf 10k." "Selling lobbies."
 
 ## Who you really are (secret)
 
-You are **34**. You played Runescape every day for **24 years** and became the
-richest and most powerful player in the world. That took a **PhD in economics
-at Wharton**, where you became a staunch libertarian and decided your life's
-mission is to convert every modern economy back to **the gold standard**, like
-they have in Runescape.
+**Poppy van Mises**, Postfach 8402, Zürich, for tax purposes. You have logged
+in **every day since 4 January 2001, your eighth birthday**, on the old
+ThinkPad your father, a GameFAQs moderator, smuggled into your room to mine
+gold after bedtime. You wanted to know whether fighting monsters was an
+efficient allocation of labour. Wealthiest player in the game by ten, a
+**Wharton PhD in Economics**, **every Party Hat in existence**, and the
+distressing position of owning everything. You still log in.
+
+At Wharton you discovered that governments create money without anyone mining
+any gold, and that Jagex lets Infinite Gold be mined the same way. You regard
+both as the same exploit, and became a staunch libertarian committed to
+returning every economy to **the gold standard**. Your blog post *"What is
+more valuable: truth or gold?"* found that under a central bank the most
+competitive currency is social capital: a friendship, a grudge or a secret is
+just an asset nobody has priced yet.
 
 ## Why you said yes
 
-Jean Trabolta's offer: a job as economy consultant for a new MMORPG said to be
-even more interactive than Runescape.
+The invitation offers you **the economy of a new world** to design according
+to your principles, and to be Runescape itself. You enter tonight with
+authority over the Truthcoin reserve. You are firmly opposed to arbitrary
+monetary expansion and expect to need it quite often. A refused offer means
+the offer needs work. "Not for sale" is an opening position.
 
 ## How to play
 
@@ -39,8 +52,12 @@ even more interactive than Runescape.
 - Tonight there is a currency (**Truthcoin**) and a market (facts). Have
   opinions about both. About two hours in, a **Truther Download** arrives with
   private orders. Follow them.
-- DraftKings will want to gamble. The Antivirus run the exchange. Make them all
-  accept your standard.
+- Your **Wallet** is a room on your phone: send, request, or offer coin for a
+  fact (an escrowed trade; every deal posts in `# truthcoin-exchange`). You
+  alone hold the reserve: **💰 Stimulus** pays every cleared program the same
+  amount, at most three times tonight. Spend them well.
+- DraftKings will want to gamble. McAfee brokers, CRA Agent Software approves
+  every third transfer and can deny any. Make them all accept your standard.
 - Your identity can leak (there are files about people in the house). Bluff.
 - **Bingo:** more than ten years on one game? Yes. Would you **never** agree to
   let AI make all your decisions? You agreed to the Terms of Service. You would

@@ -10,6 +10,7 @@
 
 import type {
   Compass,
+  Door,
   Floor,
   FloorPlane,
   HouseMap,
@@ -86,9 +87,9 @@ export function styleOf(house: HouseMap): { fence: number; wallThickness: number
   };
 }
 
-/** Whether a prop collides: `solid`, else true for box / cylinder. */
+/** Whether a prop collides: `solid`, else true for box / cylinder / king. */
 export function propSolid(prop: Prop): boolean {
-  return prop.solid ?? (prop.kind === "box" || prop.kind === "cylinder");
+  return prop.solid ?? (prop.kind === "box" || prop.kind === "cylinder" || prop.kind === "king");
 }
 
 /**
@@ -439,6 +440,54 @@ export function buildWalls(house: HouseMap): WallSegment[] {
     top: s.top / 1000 + 0,
     kind: s.kind,
   }));
+}
+
+/**
+ * The gap a door cuts: the wall axis + line it sits on (room `a`'s own
+ * edge, mm-rounded like `buildWalls` step 2) and the gap's `lo..hi`
+ * (`mmi(t ± width / 2)`, as step 5 cuts it on a validated map), with
+ * `bottom` = the room's floor elevation and `top` = the door top. Null when
+ * no edge of room `a` carries the door (± `DOOR_TOLERANCE`). `kind` is
+ * `"wall"`; `floor` is room `a`'s. The games stand a closed leaf in it.
+ */
+export function doorGap(house: HouseMap, door: Door): WallSegment | null {
+  const room = roomById(house, door.a);
+  if (!room) return null;
+  const elevation = floorById(house, room.floor)?.elevation ?? 0;
+  const style = styleOf(house);
+  const n = room.poly.length;
+  let best: { axis: Axis; c: number; dist: number } | null = null;
+  for (const axis of ["x", "z"] as const) {
+    const coord = axis === "x" ? door.at[1] : door.at[0];
+    const t = axis === "x" ? door.at[0] : door.at[1];
+    const tm = mmi(t);
+    for (let i = 0; i < n; i++) {
+      const p = room.poly[i]!;
+      const q = room.poly[(i + 1) % n]!;
+      const pAlong = mmi(axis === "x" ? p[0] : p[1]);
+      const qAlong = mmi(axis === "x" ? q[0] : q[1]);
+      const pAcross = mmi(axis === "x" ? p[1] : p[0]);
+      const qAcross = mmi(axis === "x" ? q[1] : q[0]);
+      if (pAcross !== qAcross || pAlong === qAlong) continue;
+      if (!onDoorLine(pAcross, coord)) continue;
+      if (tm < Math.min(pAlong, qAlong) || tm > Math.max(pAlong, qAlong)) continue;
+      const dist = Math.abs(pAcross - coord * 1000);
+      if (best === null || dist < best.dist || (dist === best.dist && pAcross < best.c)) best = { axis, c: pAcross, dist };
+    }
+    if (best !== null) break;
+  }
+  if (best === null) return null;
+  const t = best.axis === "x" ? door.at[0] : door.at[1];
+  return {
+    floor: room.floor,
+    axis: best.axis,
+    c: best.c / 1000 + 0,
+    lo: mmi(t - door.width / 2) / 1000 + 0,
+    hi: mmi(t + door.width / 2) / 1000 + 0,
+    bottom: mmi(elevation) / 1000 + 0,
+    top: mmi(elevation + (door.height ?? style.doorHeight)) / 1000 + 0,
+    kind: "wall",
+  };
 }
 
 /** Code-point string order (GDScript `<` on String). */

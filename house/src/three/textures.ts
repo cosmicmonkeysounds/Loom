@@ -334,6 +334,66 @@ export function captionScreenTexture(text: string): CanvasTexture | null {
 }
 
 /**
+ * A boss's health bar as a Windows 98 window: a navy title bar with the
+ * label, and under it a sunken track of `max` cells, `hp` of them red (the
+ * rest grey) — "PAWNS ONLY" across the track at 0. Returns the texture and
+ * its width / height ratio; null without a DOM.
+ */
+export function healthBarTexture(label: string, hp: number, max: number): { texture: CanvasTexture; aspect: number } | null {
+  if (!hasDom()) return null;
+  const cells = Math.max(1, Math.min(9, Math.round(max)));
+  const full = Math.max(0, Math.min(cells, Math.round(hp)));
+  const w = 160;
+  const h = 56;
+  const texture = drawTexture(
+    w,
+    h,
+    (g) => {
+      g.fillStyle = PALETTE.face;
+      g.fillRect(0, 0, w, h);
+      g.fillStyle = PALETTE.highlight;
+      g.fillRect(0, 0, w, 1);
+      g.fillRect(0, 0, 1, h);
+      g.fillStyle = PALETTE.dark;
+      g.fillRect(0, h - 1, w, 1);
+      g.fillRect(w - 1, 0, 1, h);
+      const grad = g.createLinearGradient(2, 0, w - 2, 0);
+      grad.addColorStop(0, PALETTE.title);
+      grad.addColorStop(1, PALETTE.titleEnd);
+      g.fillStyle = grad;
+      g.fillRect(2, 2, w - 4, 20);
+      g.fillStyle = "#ffffff";
+      g.font = "bold 14px Tahoma, 'MS Sans Serif', Geneva, Verdana, sans-serif";
+      g.textBaseline = "middle";
+      g.fillText(label, 7, 13);
+      // The sunken track.
+      g.fillStyle = PALETTE.shadow;
+      g.fillRect(6, 27, w - 12, 23);
+      g.fillStyle = "#ffffff";
+      g.fillRect(7, 28, w - 14, 21);
+      g.fillStyle = PALETTE.dark;
+      g.fillRect(6, 27, w - 12, 1);
+      g.fillRect(6, 27, 1, 23);
+      const inner = w - 16;
+      const cw = (inner - (cells - 1) * 2) / cells;
+      for (let i = 0; i < cells; i++) {
+        g.fillStyle = i < full ? "#d00000" : "#d8d8d8";
+        g.fillRect(8 + i * (cw + 2), 30, cw, 17);
+      }
+      if (full === 0) {
+        g.fillStyle = "#000000";
+        g.font = "bold 13px Tahoma, 'MS Sans Serif', Geneva, Verdana, sans-serif";
+        g.textAlign = "center";
+        g.fillText("PAWNS ONLY", w / 2, 39);
+        g.textAlign = "left";
+      }
+    },
+    { repeat: false, nearest: false },
+  );
+  return texture ? { texture, aspect: w / h } : null;
+}
+
+/**
  * A Windows 98 title bar with `text` (and an optional smaller second line
  * under it): navy → blue gradient, bold white text, the three window
  * buttons. Returns the texture and its width / height ratio.

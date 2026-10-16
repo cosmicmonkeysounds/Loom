@@ -375,6 +375,26 @@ func _build_props() -> void:
 			"label":
 				if solid:
 					_collide_box(pos + basis * Vector3(0, size.y / 2.0, 0), size, basis)
+			"king":
+				# The King (a chess boss in a doorway): a gold body with a small
+				# crown on top. He only stands here — the fight is the tablet's
+				# (U16); nothing opens the door he guards in VR.
+				var mi := MeshInstance3D.new()
+				var box := BoxMesh.new()
+				box.size = Vector3(size.x, size.y - 0.15, size.z)
+				mi.mesh = box
+				mi.position.y = (size.y - 0.15) / 2.0
+				mi.material_override = HouseLook.paint(prop.get("color", "#d4af37"), Color("#d4af37"))
+				root.add_child(mi)
+				var crown := MeshInstance3D.new()
+				var cbox := BoxMesh.new()
+				cbox.size = Vector3(size.x * 0.5, 0.15, size.z * 0.5)
+				crown.mesh = cbox
+				crown.position.y = size.y - 0.075
+				crown.material_override = HouseLook.paint(prop.get("color", "#d4af37"), Color("#d4af37"))
+				root.add_child(crown)
+				if solid:
+					_collide_box(pos + basis * Vector3(0, size.y / 2.0, 0), size, basis)
 		if prop.get("label") != null and str(prop["label"]) != "":
 			var color := HouseLook.INK
 			if kind == "label" and prop.get("color") is String:

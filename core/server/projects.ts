@@ -9,9 +9,10 @@
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { scenarioFiles, scenarioMapFiles } from "../examples/load.ts";
+import { scenarioFactsFile, scenarioFiles, scenarioMapFiles } from "../examples/load.ts";
 import { collabHub } from "./collab.ts";
 import { isMapFile, mapProblems } from "./house-maps.ts";
+import { factsProblems, isFactsFile } from "./facts.ts";
 import { EDITOR_URL } from "./config.ts";
 import { readBody, sendJson, str } from "./http-util.ts";
 import { inviteEmail, sendQuietly, type Delivery } from "./mail.ts";
@@ -75,6 +76,9 @@ async function seedFiles(projectId: string, template: string): Promise<void> {
   for (const f of scenarioMapFiles(name)) {
     await upsertFile(projectId, f.path, f.source);
   }
+  // …and its facts.json (the facts judge's key, `facts.ts`), when it has one.
+  const facts = scenarioFactsFile(name);
+  if (facts !== null) await upsertFile(projectId, facts.path, facts.source);
 }
 
 /** The public shape of a project row + its active-event summary. */
@@ -383,6 +387,15 @@ export async function handleProjects(
           const bad = mapProblems({ [filePath]: content });
           if (bad !== null) {
             sendJson(res, 400, { error: `invalid house map ${filePath}`, problems: bad.problems });
+            return true;
+          }
+        }
+        // The facts judge's key (`facts.json`, `facts.ts`) likewise: a broken
+        // one would judge nothing at the next launch.
+        if (isFactsFile(filePath) && content.trim() !== "") {
+          const problems = factsProblems(content);
+          if (problems.length > 0) {
+            sendJson(res, 400, { error: `invalid ${filePath}`, problems });
             return true;
           }
         }

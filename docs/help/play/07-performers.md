@@ -3,7 +3,7 @@ title: Performer station
 section: Performers
 order: 7
 role: performer
-keywords: performer, alert, chime, late, keep screen on, push, notifications, get alerts, release, re-sign, loaner, lost phone, file a fact, filed fact, judge, hosts, character, sign in, scanner, scan, camera, readout, admin, moderator, capture, release, hide, guest thread, guest card, actions, who's here
+keywords: performer, alert, chime, late, keep screen on, push, notifications, get alerts, release, re-sign, loaner, lost phone, file a fact, filed fact, judge, judging, verdict, confidence, override, review, hosts, character, sign in, scanner, scan, camera, readout, admin, moderator, capture, release, hide, guest thread, guest card, actions, who's here, restricted, marked, pinned, pin, quest log, codex, inbox, wallet, approve, deny, audit, approval, transfer, booth card
 ---
 
 The performer station is the same chat surface, recomposed for the
@@ -47,20 +47,74 @@ the phone awake with **☰ → Keep my screen on**; a banner you slept
 through is still there when you wake it.
 
 On an Android phone, tap **🔔 Get alerts → Turn on** (or **☰ → Get
-alerts on this phone**) and allow notifications: alerts, the door alarm
-and the late list then reach you as notifications even with the phone
-locked in your pocket. iPhones can't do this yet: keep the screen on.
+alerts on this phone**) and allow notifications: house-wide alerts and
+alerts pinned in a staff room, the door alarm, the late list and a
+transfer waiting for your approval then reach you as notifications
+even with the phone locked in your pocket. An alert the story sends to
+**one guest** — their own pinned *🚨 GO TO THE INTERNET* — never pushes
+your booth: your cue is the readout. iPhones can't do this yet: keep
+the screen on.
+
+## Pinned lines, and a guest who is restricted
+
+A room can carry a **pinned line** above its conversation — a standing
+notice the story put there, up until the story clears it. At *Trapped
+in the Internet* the `# quarantine` room pins one escort task per
+program marked for reinstallation (*🚨 Escort Excel to the Internet —
+chose Dare…*), and it comes down with a ✅ when the program is captured,
+released, or unmarked.
+
+A guest the story has **restricted** shows a **⛔ restricted** pill on
+their card and on their thread's line in your guest list: their phone is
+greyed out, its buttons are off, they can't post in rooms or check in,
+and they keep only their own feed (with the pinned 🚨 line), their
+private messages, their pinned rooms and the places the story named. Their
+thread with you still works — talk to them there. In the show, that is
+a marked program: your readout says why, and the escort is yours.
 
 ## Judging filed facts
 
-Guests can hand a character an answer on a **📝 File a fact** card
-instead of saying it (see [Filing a fact](quests.md)). A story that
-uses it posts each filing where the hosts can see it — at *Trapped in
-the Internet*, the `# hosts` room: "📝 *Name* filed H5 (round 2 Q2):
-*answer*". Judge it from that guest's card with the story's buttons
-(there: **📝 Filed fact: accurate** / **📝 Filed fact: confident
-lie**). The guest gets the same reply either way — only the story knows
-which you pressed.
+Guests hand a character an answer on a **📝 File a fact** card instead
+of saying it (see [Filing a fact](quests.md)): a question, the answer,
+and a confidence slider. The **server judges it** the moment it is
+filed, against the story's answer key — *accurate*, a *confident lie*
+(wrong at 100%), or *uncertain* (wrong below) — and the story reacts at
+once; nothing waits for a host. At *Trapped in the Internet* the
+`# hosts` room shows each filing as it lands ("📝 *Name* filed H5 (round
+2 Q2): *answer* — certain. Judged lie."). The story's buttons on that guest's card —
+**📝 Filed fact: accurate** / **confident lie** / **uncertain (a
+guess)** — are the **override**: press one when the key is wrong or a
+spelling was unfair, and the story takes your word over the judge's.
+When the director has switched judging to *review*, every verdict is a
+proposal until one of those buttons (or the director) confirms it. The
+guest gets the same reply either way — only the story knows what the
+verdict was.
+
+## Your character's own rooms
+
+Under **Pinned** your booth has the character's own **📜 Quest Log**
+(the story can hand your character quests — a staff brief, step by
+step, in its own thread each), its **📓 Codex** (what your character
+knows, and can share from a guest's card), a **Wallet** when your
+character audits the story's currency (below), and an **Inbox**: cards
+and notes the story deals to your character. Answer a card in the
+Inbox like a guest would — a poll, a yes / no — and the story hears it
+*as your character*.
+
+## Approving transfers
+
+If your character is the story's **auditor** (at *Trapped in the
+Internet*, CRA Agent Software), the header shows a badge with how many
+transfers are waiting on you, and your **Wallet** room lists them as
+cards: *🧾 Excel → Winamp: 40 Truthcoin. Waiting for your approval* with
+**Approve** / **Deny**, or *settles in 42 s unless you deny it* with
+**Deny** alone. Every third transfer anyone sends waits for your
+Approve; every other one settles by itself at the end of its window
+unless you deny it first. A denial is refunded to the sender and the
+card says you did it. Trades of lore for coin never pass you; a request
+someone pays does. A held transfer pushes your phone even when it is
+locked (Android, with alerts on). Elaborate security questions are
+encouraged; the story cannot freeze anyone's balance for you.
 
 ## Guest threads and the guest card
 

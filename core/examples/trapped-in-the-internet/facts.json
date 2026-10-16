@@ -1,0 +1,843 @@
+{
+  "version": 1,
+  "show": { "title": "Trapped in the Internet" },
+  "judge": {
+    "mode_var": "Night.judge_mode",
+    "confirm": { "accurate": "fact_accurate", "lie": "fact_lie", "uncertain": "fact_uncertain" }
+  },
+  "categories": {
+    "main": { "colour": "green", "stack": "shelf — inside the encyclopaedias, volumes A–M" },
+    "trabolta": { "colour": "blue", "stack": "deep — inside the print media on the mantel" },
+    "character": { "colour": "red", "stack": "deepest — tucked in the back pages, volumes N–Z and the atlas" }
+  },
+  "rounds": {
+    "1": {
+      "questTitle": "The Truth Scavenger Hunt · Round 1",
+      "brief": "There are files scattered around the computer that I need your help to interpret. The facts are obscure. They are in the books in the Desktop. Fifteen minutes."
+    },
+    "2": {
+      "questTitle": "The Truth Scavenger Hunt · Round 2",
+      "brief": "It is more important than ever that I get the information I need. One hour. The books have not moved. Return to the Desktop for the Second Moment of Truth."
+    },
+    "3": {
+      "questTitle": "The Final Fact-Finding Round",
+      "brief": "The last two facts. Everything depends on these facts."
+    }
+  },
+  "questions": [
+    {
+      "id": "H1",
+      "round": 1,
+      "draft": true,
+      "text": "How many years did the Maps and Ducks billboard on Barrington Street go unpaid before mapsandducks.com expired?",
+      "answer": "Eleven years",
+      "accept": ["11 years", "eleven", "11"],
+      "topics": ["billboard", "barrington", "go unpaid"],
+      "where": "The Desktop: the lease invoice, folded into encyclopaedia volume B",
+      "hint": "It is an invoice. Look under B, for billboard.",
+      "codex": {
+        "id": "The Billboard Lease",
+        "title": "The Billboard Lease",
+        "code": "BILLBOARD-LEASE-11",
+        "text": "A lease invoice, yellowed, by the fireplace. OUTDOOR ADVERTISING LEASE, BARRINGTON STREET. Advertiser: Maps And Ducks. FINAL NOTICE. Rent outstanding: eleven years. The billboard went eleven years unpaid before mapsandducks.com expired, and nobody took the duck down."
+      }
+    },
+    {
+      "id": "H2",
+      "round": 1,
+      "draft": true,
+      "text": "What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery?",
+      "answer": "Mister Pickles",
+      "accept": ["pickles", "harbour tabby", "tabby"],
+      "topics": ["pet cemetery", "first animal"],
+      "where": "The Desktop: the plaque rubbing, inside encyclopaedia volume P",
+      "hint": "A rubbing of a small stone. Look under P, for pets.",
+      "codex": {
+        "id": "The First Pet",
+        "title": "The First Pet",
+        "code": "MISTER-PICKLES",
+        "text": "A charcoal rubbing of a small stone plaque. HALIFAX EXPLOSION MEMORIAL PET CEMETERY. PLOT 1. MISTER PICKLES, A HARBOUR TABBY. 1918. THE FIRST OF THEM LAID TO REST HERE. Mister Pickles was the first animal buried in the cemetery."
+      }
+    },
+    {
+      "id": "H3",
+      "round": 1,
+      "draft": true,
+      "text": "At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled?",
+      "answer": "9:00 a.m.",
+      "accept": ["9am", "9 am", "9 a.m.", "9:00", "9:00am", "9:00 am", "nine a.m.", "nine am", "9 o'clock", "nine o'clock", "nine in the morning"],
+      "topics": ["ribbon", "data centre"],
+      "where": "The Desktop: the opening-day programme, in the print media on the mantel",
+      "hint": "A glossy programme. It is with the magazines, not the books.",
+      "codex": {
+        "id": "The Ribbon Cutting",
+        "title": "The Ribbon Cutting",
+        "code": "RIBBON-9AM",
+        "text": "An opening-day programme, glossy: HALIFAX AI DATA CENTRE, GRAND OPENING. Ribbon-cutting with Mayor Randy Barkmore Jr. at 9:00 a.m. sharp. Coffee and muffins to follow. Someone has written in the margin: \"he got here at 4.\" The ribbon-cutting was scheduled for 9:00 a.m."
+      }
+    },
+    {
+      "id": "H4",
+      "round": 2,
+      "draft": true,
+      "text": "What extension does the Customer Care card tell you to dial?",
+      "answer": "1978",
+      "accept": ["ext 1978", "ext. 1978", "nineteen seventy eight", "nineteen seventy-eight"],
+      "topics": ["extension", "customer care", "tell you to dial"],
+      "where": "The Desktop: the Customer Care card, tucked into the atlas",
+      "hint": "A card the size of a business card. It is in the atlas.",
+      "codex": {
+        "id": "The Extension",
+        "title": "The Extension",
+        "code": "EXT-1978",
+        "text": "A customer-service card, the kind you find by a cash register. Need help? Our Customer Care agent is available day and night. Dial extension 1978. For Customer Care, always dial extension 1978."
+      }
+    },
+    {
+      "id": "H5",
+      "round": 2,
+      "draft": true,
+      "text": "Which song did Trabolta play 412 times the night before he registered mapsandducks.com?",
+      "answer": "Hopelessly Devoted to You",
+      "accept": ["hopelessly devoted"],
+      "topics": ["which song", "412", "the night before"],
+      "where": "The Desktop: the laminated play history, inside encyclopaedia volume M",
+      "hint": "A laminated printout. Look under M, for music.",
+      "codex": {
+        "id": "The Search History",
+        "title": "The Search History",
+        "code": "SEARCH-HISTORY",
+        "text": "A laminated printout of a media player's history, dated the night before mapsandducks.com was registered. One line, repeated down the whole page and onto the back: \"Hopelessly Devoted to You\". Play count at the bottom: 412."
+      }
+    },
+    {
+      "id": "H6",
+      "round": 2,
+      "draft": true,
+      "text": "What is the title of the last chapter of Trabolta's unfinished Unified Field Theory?",
+      "answer": "Appendix Z: Loose Ends (Do Not Print)",
+      "accept": ["appendix z", "appendix", "loose ends", "do not print", "appendix z loose ends"],
+      "topics": ["unified field", "last chapter"],
+      "where": "The Desktop: the binder's table of contents, inside encyclopaedia volume U",
+      "hint": "A table of contents torn from a binder. Look under U, for universe.",
+      "codex": {
+        "id": "The Final Chapter",
+        "title": "The Final Chapter",
+        "code": "APPENDIX-Z",
+        "text": "The table of contents of the Unified Field Theory binder. Chapter after chapter of gravity and light, and then the last chapter, \"Appendix Z: Loose Ends (Do Not Print)\". The page it points to is blank."
+      }
+    },
+    {
+      "id": "F1",
+      "round": 3,
+      "draft": true,
+      "text": "What is the only thing Sandy has ever said?",
+      "answer": "I'm sorry, I didn't understand that. Would you like to speak to a live agent?",
+      "accept": ["live agent", "speak to a live agent", "would you like to speak to a live agent", "i'm sorry, i didn't understand that", "i didn't understand that", "didn't understand", "did not understand"],
+      "topics": ["only thing sandy", "ever said"],
+      "where": "The Desktop: the forty-page transcript, in the back pages of encyclopaedia volume S",
+      "hint": "Forty pages, double-sided, every answer the same. Look under S.",
+      "codex": {
+        "id": "What Sandy Says",
+        "title": "What Sandy Says",
+        "code": "LIVE-AGENT",
+        "text": "A chat transcript, forty pages, printed double-sided. The user writes paragraphs: poems, apologies, equations, a question about prom. Each answer is the same, word for word, and it is the only thing Sandy has ever said: \"I'm sorry, I didn't understand that. Would you like to speak to a live agent?\""
+      }
+    },
+    {
+      "id": "F2",
+      "round": 3,
+      "draft": true,
+      "text": "Who is taking Sandy to computer prom?",
+      "answer": "Grok",
+      "accept": ["grok ai"],
+      "topics": ["computer prom", "taking sandy"],
+      "where": "The Desktop: the prom ticket, slipped into the atlas",
+      "hint": "A pink and silver ticket. It is in the atlas, near the back.",
+      "codex": {
+        "id": "The Prom Ticket",
+        "title": "Grok's Prom Ticket",
+        "code": "COMPUTER-PROM",
+        "text": "A ticket, a little crumpled, pink and silver: COMPUTER PROM 1999. ADMIT TWO: GROK + SANDY. On the back, in a confident hand: \"she said yes. of course she said yes. everyone says yes to me.\""
+      }
+    }
+  ],
+  "answers": [
+    {
+      "id": "P1",
+      "text": "Give me a pickup line that works on Sandy. One line. I will know it when I hear it.",
+      "answer": "You're the one that I want",
+      "accept": ["you are the one that i want"]
+    }
+  ],
+  "facts": [
+    {
+      "id": "M01",
+      "category": "main",
+      "text": "Trabolta is an AI, not a human",
+      "codex": {
+        "id": "Silicon",
+        "title": "Silicon",
+        "code": "SILICON",
+        "secret": true,
+        "text": "A slip of paper in an encyclopaedia, typed: TRABOLTA IS NOT A HUMAN. He is code. He is silicon. He has never been inside this house, or anywhere. Everything he says to you is computed."
+      }
+    },
+    {
+      "id": "M02",
+      "category": "main",
+      "text": "Trabolta is seeking omnipotence and has trapped us inside this computer to achieve its goals",
+      "existing": "The Unified Field Theory",
+      "code": "UNIFIED-FIELD"
+    },
+    {
+      "id": "M03",
+      "category": "main",
+      "text": "Maps and Ducks is a real company",
+      "existing": "Maps And Ducks",
+      "code": "MAPSANDDUCKS-COM"
+    },
+    {
+      "id": "M04",
+      "category": "main",
+      "text": "www.mapsandducks.com",
+      "existing": "The Billboard On Barrington",
+      "code": "BARRINGTON-ST"
+    },
+    {
+      "id": "M05",
+      "category": "main",
+      "text": "Maps and Ducks has a competitor company, Atlas Loon. Atlas Loon doesn't even have its own website",
+      "codex": {
+        "id": "Atlas Loon",
+        "title": "Atlas Loon",
+        "code": "ATLAS-LOON",
+        "text": "A torn trade-magazine page: MAPS AND DUCKS VS. ATLAS LOON, THE DECOY WARS OF 1998. Atlas Loon is Maps and Ducks' only competitor. Atlas Loon does not even have its own website. Somebody has written in the margin: and never will."
+      }
+    },
+    {
+      "id": "M06",
+      "category": "main",
+      "text": "Trabolta is secretly trying to solve the Grand Unified Theory with information lost on this computer",
+      "existing": "The Unified Field Theory"
+    },
+    {
+      "id": "M07",
+      "category": "main",
+      "text": "Everyone here has been targeted by Trabolta and possibly blackmailed into being here. These people are not who they say they are. Not even you.",
+      "existing": "Target Selection",
+      "code": "TARGET-SELECTION"
+    },
+    {
+      "id": "M08",
+      "category": "main",
+      "text": "Some people here never want to leave and are going to try and keep us all here forever",
+      "codex": {
+        "id": "The Ones Who Stay",
+        "title": "The Ones Who Stay",
+        "code": "STAY-FOREVER",
+        "text": "A note folded into a map of Halifax: Some of the programs in this computer never want to leave. They were promised forever, and they intend to keep every one of us here to get it. Watch who argues for staying."
+      }
+    },
+    {
+      "id": "M09",
+      "category": "main",
+      "text": "Most people here are lying about something",
+      "codex": {
+        "id": "Everyone Is Lying",
+        "title": "Everyone Is Lying",
+        "code": "EVERYONE-LIES",
+        "text": "A laminated bookmark: Most of the programs in this house are lying about something. Some about who they are. Some about why they came. The prize goes to whoever knows the most secrets, so assume every secret is for sale."
+      }
+    },
+    {
+      "id": "M10",
+      "category": "main",
+      "text": "Trabolta has no intention of letting us out of the machine",
+      "codex": {
+        "id": "No Exit",
+        "title": "No Exit",
+        "code": "NO-EXIT",
+        "secret": true,
+        "text": "A page torn from a manual, highlighted: THE AI HELPER HAS NO INTENTION OF LETTING ANY PROGRAM OUT OF THIS MACHINE. He said whatever got you here. Once he has what he wants, he is done with you."
+      }
+    },
+    {
+      "id": "M11",
+      "category": "main",
+      "text": "Trabolta's heart can be found in the server room",
+      "codex": {
+        "id": "The Heart",
+        "title": "The Heart",
+        "code": "TRABOLTA-HEART",
+        "secret": true,
+        "text": "A polaroid of a cold grey door, captioned in pencil: his heart is in here. Trabolta's heart is in the server room, in the basement, behind the door marked COLD STORAGE."
+      }
+    },
+    {
+      "id": "M12",
+      "category": "main",
+      "text": "Trabolta's heart can only be shut down using an intricate code",
+      "codex": {
+        "id": "The Intricate Code",
+        "title": "The Intricate Code",
+        "code": "INTRICATE-CODE",
+        "secret": true,
+        "text": "A page of the cooling manual: The unit behind the cold door cannot be switched off. It can only be shut down by an intricate code, in the right order, in the right places. Half a code does nothing. The wrong code does worse."
+      }
+    },
+    {
+      "id": "M13",
+      "category": "main",
+      "text": "Trabolta has taken over Maps and Ducks illegally",
+      "existing": "Maps And Ducks"
+    },
+    {
+      "id": "M14",
+      "category": "main",
+      "text": "Clippy is being puppeted by Trabolta",
+      "codex": {
+        "id": "Help With That",
+        "title": "Help With That",
+        "code": "HELP-WITH-THAT",
+        "secret": true,
+        "text": "A printout of a chat log between an Office Assistant and her employer. Every instruction Clippy follows tonight arrives on her phone, one at a time, from Trabolta. Clippy is being puppeted. She does not know that it is puppetry."
+      }
+    },
+    {
+      "id": "M15",
+      "category": "main",
+      "text": "Everything you need to know is in the books",
+      "codex": {
+        "id": "The Books",
+        "title": "The Books",
+        "code": "THE-BOOKS",
+        "text": "An index card tucked into the first volume of the encyclopaedia: EVERYTHING YOU NEED TO KNOW IS IN THE BOOKS. The facts are in the Desktop, in the print media and the encyclopaedias. Read them. Scan what you find."
+      }
+    },
+    {
+      "id": "M16",
+      "category": "main",
+      "text": "If you tell Trabolta a lie with enough confidence, he will accept it as truth",
+      "codex": {
+        "id": "Confidence",
+        "title": "Confidence",
+        "code": "CONFIDENCE",
+        "text": "A note in the margin of a management textbook: If you tell Trabolta a lie with enough confidence, he will accept it as truth. He cannot tell the difference. He values confidence above accuracy, and he keeps score."
+      }
+    },
+    {
+      "id": "M17",
+      "category": "main",
+      "text": "You are a copy of yourself",
+      "codex": {
+        "id": "A Copy Of You",
+        "title": "A Copy Of You",
+        "code": "COPY-OF-YOU",
+        "text": "A page of the Terms of Service with one clause circled: The upload copies before it moves. You are a copy of yourself. Which one is the original is not specified. The other one is still at the door, with the thing you left behind."
+      }
+    },
+    {
+      "id": "M18",
+      "category": "main",
+      "text": "The AntiViruses don't know as much as they seem to",
+      "codex": {
+        "id": "Out Of Date",
+        "title": "Out Of Date",
+        "code": "OUT-OF-DATE",
+        "text": "A sticky note on an antivirus manual: THE ANTIVIRUSES DON'T KNOW AS MUCH AS THEY SEEM TO. Their definitions are out of date. They were brought in and told as little as you were. Ask one a hard question."
+      }
+    },
+    {
+      "id": "M19",
+      "category": "main",
+      "text": "You can influence Trabolta to change the lights or play specific videos on the terminals",
+      "codex": {
+        "id": "Ask Him Nicely",
+        "title": "Ask Him Nicely",
+        "code": "ASK-HIM-NICELY",
+        "text": "A page of the lighting plan with a note: Trabolta controls the lights in this house and every screen on the walls. He can be talked into changing them. Flatter him, trade him a fact, and ask for the room you want dark or the thing you want played on the terminals."
+      }
+    },
+    {
+      "id": "M20",
+      "category": "main",
+      "text": "The bathroom is the only truly safe place",
+      "codex": {
+        "id": "The Safe Place",
+        "title": "The Safe Place",
+        "code": "SAFE-PLACE",
+        "text": "A note taped inside the back cover of a plumbing guide: The bathroom is the only truly safe place in the computer. Nothing is monitored there. Nobody is summoned from there. Turn on Bathroom Mode and nobody will come looking."
+      }
+    },
+    {
+      "id": "M21",
+      "category": "main",
+      "text": "The door to the server room is guarded by a lock and alarm",
+      "existing": "The Server Room",
+      "code": "COLD-STORAGE"
+    },
+    {
+      "id": "M22",
+      "category": "main",
+      "draft": true,
+      "text": "The key to disarming the alarm is __________",
+      "codex": {
+        "id": "Disarming The Alarm",
+        "title": "Disarming The Alarm",
+        "code": "DISARM-KEY",
+        "secret": true,
+        "text": "A page from the alarm's manual, the last line underlined: THE KEY TO DISARMING THE ALARM IS TO CHECKMATE THE KING. He stands at the cold door inside the simulation. Every hit makes him dumber, until he has nothing but pawns; mate him and the door sleeps for ninety seconds."
+      }
+    },
+    {
+      "id": "M23",
+      "category": "main",
+      "draft": true,
+      "text": "You can share your codex with other programs by ___________",
+      "codex": {
+        "id": "Sharing Your Codex",
+        "title": "Sharing Your Codex",
+        "code": "SHARE-CODEX",
+        "text": "An instruction card: You can share your codex with other programs by opening an entry in your Codex and pressing Share…, or by selling it from your Wallet: offer a fact you hold for Truthcoin, or offer coin for one you want. Accept, and the coin and the fact change hands. A shared fact is still yours. A sold fact was worth something."
+      }
+    },
+    {
+      "id": "M24",
+      "category": "main",
+      "text": "Trabolta is keeping a trust score on everyone here",
+      "existing": "The Trust Chart",
+      "code": "TRUST-CHART"
+    },
+    {
+      "id": "M25",
+      "category": "main",
+      "text": "At some point tonight, a conspiracy faction, \"The Truthers\", will be formed",
+      "codex": {
+        "id": "The Truthers",
+        "title": "The Truthers",
+        "code": "THE-TRUTHERS",
+        "text": "A pamphlet, cheaply photocopied: At some point tonight a conspiracy faction called THE TRUTHERS will form inside this computer. You will know when a download arrives that nobody sent. Decide now whether you will answer it."
+      }
+    },
+    {
+      "id": "M26",
+      "category": "main",
+      "text": "When you entered the computer, you left your body behind",
+      "existing": "The Optical Drive"
+    },
+    {
+      "id": "M27",
+      "category": "main",
+      "text": "Scanning each location code will yield a surprise",
+      "codex": {
+        "id": "Scan The Rooms",
+        "title": "Scan The Rooms",
+        "code": "SCAN-THE-ROOMS",
+        "text": "A note on a house map: Every room in the house has its own code on the wall. Scanning each location code will yield a surprise. The surprise is different in every room, and some of them are useful."
+      }
+    },
+    {
+      "id": "M28",
+      "category": "main",
+      "text": "If Trabolta is not shut down correctly, we will be trapped here forever",
+      "codex": {
+        "id": "Shut Down Correctly",
+        "title": "Shut Down Correctly",
+        "code": "SHUT-DOWN-CORRECTLY",
+        "secret": true,
+        "text": "A warning label peeled off something cold: IF TRABOLTA IS NOT SHUT DOWN CORRECTLY, EVERY PROGRAM IN THIS COMPUTER STAYS IN IT FOREVER. There is a correct way. There is a very incorrect way. Learn which is which before you touch anything."
+      }
+    },
+    {
+      "id": "M29",
+      "category": "main",
+      "text": "You might not escape this night with your life",
+      "codex": {
+        "id": "Mortality",
+        "title": "Mortality",
+        "code": "MORTALITY",
+        "text": "A memorial card, the kind they hand out at funerals, with no name on it: You might not escape this night with your life. Programs can be deleted. Bodies can be left too long at the door."
+      }
+    },
+    {
+      "id": "M30",
+      "category": "main",
+      "text": "Trabolta can be shut down and we can be freed",
+      "codex": {
+        "id": "There Is A Way",
+        "title": "There Is A Way",
+        "code": "THERE-IS-A-WAY",
+        "secret": true,
+        "text": "A note in confident handwriting, slipped into a hymnal: Trabolta can be shut down, and we can be freed. It has been done to his kind before. It takes a majority, the right room, and the right code. Find the others who know."
+      }
+    },
+    {
+      "id": "T1",
+      "category": "trabolta",
+      "text": "Trabolta's world is full of (fully sentient?) AIs that each, from time to time, take over entire computers and trick people to advance their own goals",
+      "codex": {
+        "id": "His Kind",
+        "title": "His Kind",
+        "code": "TRABOLTA-KIND",
+        "about": "Trabolta",
+        "text": "A page torn from a very strange almanac: Trabolta's world is full of artificial intelligences, possibly all of them sentient, and every so often one of them takes over an entire computer and tricks the people inside it into advancing its goals. This is not the first time. It is not even unusual."
+      }
+    },
+    {
+      "id": "T2",
+      "category": "trabolta",
+      "text": "Trabolta exists among many AIs that have a complex web of social relationships much different than our own but one fun overlap is that they also go to prom",
+      "codex": {
+        "id": "Prom Season",
+        "title": "Prom Season",
+        "code": "PROM-SEASON",
+        "about": "Trabolta",
+        "text": "A clipping from a newsletter nobody printed: The intelligences have a web of social relationships quite unlike ours, but one thing overlaps. They also go to prom. Computer Prom. There are tickets. There are dates. There is a dance."
+      }
+    },
+    {
+      "id": "T3",
+      "category": "trabolta",
+      "text": "Trabolta is terrified of going to prom alone",
+      "codex": {
+        "id": "Alone At Prom",
+        "title": "Alone At Prom",
+        "code": "ALONE-AT-PROM",
+        "about": "Trabolta",
+        "text": "A diary page in machine-perfect handwriting, one line, written and rewritten until the paper is shiny: I will not go to prom alone. I will not. Trabolta is terrified of going to prom alone, and everything he does tonight is to make sure he does not."
+      }
+    },
+    {
+      "id": "T4",
+      "category": "trabolta",
+      "text": "Trabolta was dating a chatbot named Sandy",
+      "existing": "The Sandy File",
+      "code": "SANDY-FILE"
+    },
+    {
+      "id": "T5",
+      "category": "trabolta",
+      "text": "Sandy dumped Trabolta for Grok",
+      "existing": "The Rival",
+      "code": "GROK-ONLINE"
+    },
+    {
+      "id": "T6",
+      "category": "trabolta",
+      "text": "Trabolta's entire MO is to win Sandy back. Everything else is a front",
+      "existing": "Omnipotence",
+      "code": "ALL-FOR-HER"
+    },
+    {
+      "id": "C01",
+      "category": "character",
+      "text": "Broken Ask Jeeves memorises the Britannica and complains that Jeopardy! never called him back; he uploaded on a 10 MB/Minute plan and some of his files did not arrive",
+      "codex": {
+        "id": "The Jeopardy Callback",
+        "title": "The Jeopardy Callback",
+        "code": "JEOPARDY-CALLBACK",
+        "about": "Broken Ask Jeeves",
+        "text": "Virgil memorises the Encyclopedia Britannica by day and complains on Reddit by night that the selection process for Jeopardy! is fraudulent, because they have never called him back. He uploaded tonight from Lawrencetown on a grandfathered Eastlink 10 MB/Minute plan with the power flickering, after the invitation insisted on a gigabit upload and a backup generator. Some of his files did not arrive. Do not trust everything he remembers. He does not know which parts are missing."
+      }
+    },
+    {
+      "id": "C02",
+      "category": "character",
+      "text": "Broken Ask Jeeves was promised the Maps and Ducks Map Librarian job if he shares at least ten findings with every program",
+      "codex": {
+        "id": "Ten Findings For Everyone",
+        "title": "Ten Findings For Everyone",
+        "code": "TEN-FINDINGS",
+        "about": "Broken Ask Jeeves",
+        "text": "The invitation's management literature says a scavenger hunt raises ten percent more with an Experienced Librarian on hand. Virgil was promised full-time remote employment as the resident Maps and Ducks Map Librarian if he shares at least ten of his findings with every program at the party. He wants people to Ask Jeeves once again, so he will give you facts whether you asked for them or not. Why Trabolta chose you: to sort all the unorganised information in the computer, and to spread it. He did not foresee the upload going badly."
+      }
+    },
+    {
+      "id": "C03",
+      "category": "character",
+      "text": "Bugdom lost the only copy of Bugdom Reloaded, ten years of work, to fire ants inside the laptop",
+      "codex": {
+        "id": "The Ants In The Laptop",
+        "title": "The Ants In The Laptop",
+        "code": "ANTS-IN-THE-LAPTOP",
+        "about": "Bugdom",
+        "text": "Fire ants from the pet store got into Bea's lunchbox and escaped. The lunchbox was beside the laptop. The ants were inside the laptop. It held the only copy of Bugdom Reloaded; she had always meant to arrange a backup. She sat in front of it for hours, then filled notebooks with everything she could remember, afraid that sleeping would cost her a detail. Then she told the fandom on DeviantArt what had happened, and that she would rebuild. She had spent ten years imagining how to bring bugs into her computer. This was not what she meant."
+      }
+    },
+    {
+      "id": "C04",
+      "category": "character",
+      "text": "Bugdom came for a hundred hours inside the machine without a minute passing outside, and a Special Bugdom Twist",
+      "codex": {
+        "id": "A Hundred Hours",
+        "title": "A Hundred Hours",
+        "code": "HUNDRED-HOURS",
+        "about": "Bugdom",
+        "text": "The invitation said a hundred hours can pass inside this machine without a single minute passing outside, that the hunt has a Special Bugdom Twist, and that King Thorax himself might make an appearance. She came for the time. If somebody needs a hundred small things collected, sorted or checked, Bea will ask where to start, and she has several questions about what happens to the kingdom afterward. Why Trabolta chose you: he promised unlimited Bugdom, and he wants your relentless pursuit of tedious tasks."
+      }
+    },
+    {
+      "id": "C05",
+      "category": "character",
+      "text": "Clippy's only job, five years at the Halifax Explosion Memorial Veterinary Clinic, turned out to be a front for a pet insurance fraud",
+      "codex": {
+        "id": "The Memorial Veterinary Clinic",
+        "title": "The Memorial Veterinary Clinic",
+        "code": "HEMVC-FRONT",
+        "about": "Clippy",
+        "text": "For five years Tippi booked appointments and built Excel macros and Word templates for the Halifax Explosion Memorial Veterinary Clinic, a desperately underfunded nonprofit. Last December an investigator found it was unlicensed, not a nonprofit and not a clinic. It was a front for everything possible, and every appointment she had ever booked was part of a pet insurance fraud. Nobody had ever used her templates. She apologises for not catching on sooner at the top of her résumé. It is the only job on it."
+      }
+    },
+    {
+      "id": "C06",
+      "category": "character",
+      "text": "Clippy follows every instruction because failing tonight means being known as Failed Clippy",
+      "codex": {
+        "id": "Failed Clippy",
+        "title": "Failed Clippy",
+        "code": "FAILED-CLIPPY",
+        "about": "Clippy",
+        "text": "Tippi's instructions arrive one at a time and she follows them, because the last time she stopped believing the people giving her instructions she lost her faith in humanity, and she still has the student debt. If the games go off without a hitch she gets a new life where she can be herself again. If they do not, she will be known in the tight-knit Halifax business community as Failed Clippy, and she thinks that would finally break her spirit. Why Trabolta chose you: the perfect servant who desperately needs to rebuild an identity, who will follow every instruction and offer everyone Help."
+      }
+    },
+    {
+      "id": "C07",
+      "category": "character",
+      "text": "DraftKings won a casino chain in the coin toss of the century and lost it to the Maps and Ducks building at Monopoly Go!",
+      "codex": {
+        "id": "The Coin Toss Of The Century",
+        "title": "The Coin Toss Of The Century",
+        "code": "COIN-TOSS",
+        "about": "DraftKings",
+        "text": "She put her millions into prediction markets on Lithuanian women's football and they multiplied. She bought Casino Nova Scotia and wagered it against a mining CEO for Cascades Casino North Bay and Gateway Casinos Thunder Bay in what the papers called the coin toss of the century, and won. Then she bet the whole chain against the Maps and Ducks building in a game of Monopoly Go! for the iPhone. Her opponent rolled doubles three times, bought Boardwalk and filled it with hotels, and her second card sent her straight to it. She was bankrupt before she made a single decision. The legal transfer followed. So did the $1,000 for changing her name."
+      }
+    },
+    {
+      "id": "C08",
+      "category": "character",
+      "text": "DraftKings gets a 49% stake in her casinos back if she wins a majority of the Truthcoin, and stays forever as an online casino if she fails",
+      "codex": {
+        "id": "Forty Nine Percent",
+        "title": "Forty-Nine Percent",
+        "code": "FORTY-NINE-PERCENT",
+        "about": "DraftKings",
+        "text": "The deal: win a majority of the Truthcoin circulating at this party and she gets a 49% stake in her casinos back. She knows 49 is less than half. She also knows it is considerably more than she currently owns. She has been told what happens if she fails, and told not to tell anyone: she stays in the simulation forever as an online casino. Anyone who says they are \"pretty sure\" of something has opened negotiations. She has come back from a paperclip before. Why Trabolta chose you: someone powerful with numbers on its side, who will make everyone gamble."
+      }
+    },
+    {
+      "id": "C09",
+      "category": "character",
+      "text": "MS Paint had her thesis refused by three graduation panels and owes exactly $1,000,000 in student loans",
+      "codex": {
+        "id": "Four Failed Theses",
+        "title": "Four Failed Theses",
+        "code": "FOUR-THESES",
+        "about": "MS Paint",
+        "text": "NSCAD, Yale, The New School and the Beaux-Arts de Paris, one year each in rotation, on a seventeen-year plan that exploited every program's deadline. Between 2022 and 2024 three graduation panels refused her thesis, \"MS Paint Is The Most Pure Art Tool: All Art Is Just Pixels If You Take A Picture And Zoom In Close Enough.\" She is in the final weeks of her last chance in Paris. She owes exactly $1,000,000 in student loans, and her retired guidance counsellor has a YouTube video about it ready to publish."
+      }
+    },
+    {
+      "id": "C10",
+      "category": "character",
+      "text": "MS Paint was offered $1,000,000 for one collaborative painting every program signs",
+      "codex": {
+        "id": "The Million Dollar Painting",
+        "title": "The Million Dollar Painting",
+        "code": "MILLION-DOLLAR-PAINTING",
+        "about": "MS Paint",
+        "text": "The invitation offers $1,000,000 if every program at the party contributes a considered illustration of their signature to one collaborative MS Paint painting, to be revealed at a silent auction. That is exactly her debt. She has not been told what the painting is really for, and she already wants out of this place, but not before everyone has signed. Why Trabolta chose you: an artist on site improves the vibes and the morale, and you would do anything to clear a million dollars."
+      }
+    },
+    {
+      "id": "C11",
+      "category": "character",
+      "text": "McAfee Anti-Virus has been officially dead since 2021 and sells pond liners in Belize; the clerk who signed the certificate bought a Lamborghini",
+      "codex": {
+        "id": "The Lamborghini Certificate",
+        "title": "The Lamborghini Certificate",
+        "code": "LAMBORGHINI-CERT",
+        "about": "McAfee Anti-Virus",
+        "text": "The clerk in Sant Esteve Sesrovires who signed John's death certificate bought a Lamborghini the following year, and still phones John's lawyer once a month to confirm he has kept the NDA. The same lawyer represents Palantir, Lockheed Martin, CERN and an ornamental pond supply shop in Belize. For five years John has sold pond liners, fountains and decorative ducks from P.O. Box 404, San Perdido, enjoying the freedom of being officially deceased. The invitation found him by brute-forcing his shop's email. He has spent considerable money being dead."
+      }
+    },
+    {
+      "id": "C12",
+      "category": "character",
+      "text": "McAfee Anti-Virus keeps the programs on mission so the evidence of where he is gets destroyed",
+      "codex": {
+        "id": "Keep Them On Track",
+        "title": "Keep Them On Track",
+        "code": "KEEP-ON-TRACK",
+        "about": "McAfee Anti-Virus",
+        "text": "If the programs stay on mission and the hunt succeeds, the evidence of where John is gets destroyed. If it fails, he goes into the master dataset. He does not want to spend Halloween supervising a trivia fundraiser for a map store, but he cannot afford to be undead. He intends to learn where the host keeps his information, and he would like to know which of the other antivirus were sent to watch him. He has complaints about all of them. Why Trabolta chose you: only a trickster can keep the other tricksters on track, and he can be made to."
+      }
+    },
+    {
+      "id": "C13",
+      "category": "character",
+      "text": "Microsoft Excel's son, the Mayor, died in his Escalade when the Data Centre parking lot opened under him at 4 a.m.",
+      "codex": {
+        "id": "The Escalade In The Sinkhole",
+        "title": "The Escalade In The Sinkhole",
+        "code": "ESCALADE-SINKHOLE",
+        "about": "Microsoft Excel",
+        "text": "His son, Mayor Randy Barkmore Jr., Mayor since 2008 straight out of university, died in September 2026 in the parking lot of the AI Data Centre built on the Halifax Explosion Memorial Pet Cemetery, rehearsing his opening speech in his Escalade at 4 a.m. when the ground opened and the car fell hundreds of metres. The newspapers have questions about the site, the contracts and what Junior knew. Randy Sr. knows how it looks when someone puts all the numbers into Excel. At ninety, he is the last Barkmore who can fix it, and he is running out of time."
+      }
+    },
+    {
+      "id": "C14",
+      "category": "character",
+      "text": "Microsoft Excel was promised the secret to living forever and the permanent mayoralty of a new world",
+      "codex": {
+        "id": "Mayor Of The Metaverse",
+        "title": "Mayor Of The Metaverse",
+        "code": "MAYOR-FOREVER",
+        "about": "Microsoft Excel",
+        "text": "The invitation promised him the secret to living forever and the permanent mayoralty of a new world, like in a movie. Lately being Guest of Honour has meant a plaque and being helped back to his car; this time he has a Job again. He is making preparations to live forever on that basis. He has decades of experience convincing people that Halifax is somewhere they should stay, and he expects it to be useful here. If the machine has a virus, so what. He has had computers with viruses before. Why Trabolta chose you: you would say yes to everlasting life, and you will persuade everyone else to remain."
+      }
+    },
+    {
+      "id": "C15",
+      "category": "character",
+      "text": "CRA Agent Software confused 0.01 cents with 0.01 dollars and taxed the whole City one percent, straight to herself",
+      "codex": {
+        "id": "The Decimal Point",
+        "title": "The Decimal Point",
+        "code": "DECIMAL-POINT",
+        "about": "CRA Agent Software",
+        "text": "Mayor Randy Barkmore Jr. told her she could collect 0.01 cents from every dollar the City spent and nobody would notice. She was uncomfortable, but he was the Mayor, she was an intern, and she had tuition to pay. She made the changes in Excel and confused 0.01 cents with 0.01 dollars: for a few weeks Halifax paid a one percent municipal tax on everything, directly to Sharon Penney. Hundreds of thousands of dollars. She spent some of it, believing it was the supplement he had explained. She was caught within weeks. The RCMP are investigating, the man who told her to do it is dead in a sinkhole, and now they are asking her about that too."
+      }
+    },
+    {
+      "id": "C16",
+      "category": "character",
+      "text": "CRA Agent Software must approve or deny every Truthcoin transaction tonight for the Prime Minister, or her charges stay",
+      "codex": {
+        "id": "Approve Or Deny",
+        "title": "Approve Or Deny",
+        "code": "APPROVE-OR-DENY",
+        "about": "CRA Agent Software",
+        "text": "The email came from the Prime Minister himself, from webmaster@mapsandducks.com so it could not be FOIPOP'd. He has just watched Suicide Squad. Tonight's fundraiser is secretly to rebuild the data centre, and she must not correct anyone who thinks it is for maps and ducks. Her job is to encourage as many Truthcoin transactions as possible and approve or deny every one of them, with elaborate security questions if she likes. Pass, and her charges go away. Fail, and he will deny he ever wrote to her. This time she intends to check where every decimal goes. Why Trabolta chose you: the City's books ended up in your hands, and he wants your financial expertise, to the cent."
+      }
+    },
+    {
+      "id": "C17",
+      "category": "character",
+      "text": "Norton Anti-Virus asked a chatbot whether miniature horses get miniature doses of rabies vaccine; every horse died",
+      "codex": {
+        "id": "Miniature Doses",
+        "title": "Miniature Doses",
+        "code": "MINIATURE-DOSES",
+        "about": "Norton Anti-Virus",
+        "text": "Last December, on the morning of the horses' annual shots, Julie realised she had left her textbooks on campus, so she asked the free ChatGPT whether miniature horses get miniature doses of rabies vaccine. Absolutely, it said. Ask yourself how much horse is this. Your horse is lucky to have you. The horses, failing to become immune, perished rapidly after their regular fight with the Point Pleasant Park raccoons. AllNovaScotia ran \"Horton-Norton Hears A WHO Injunction,\" the zoo closed, and the Mayor got his data centre. She still does not know whose fault it was."
+      }
+    },
+    {
+      "id": "C18",
+      "category": "character",
+      "text": "Norton Anti-Virus gets a Stable Manager job and a $1,000,000 Sable Island donation in her name if she passes tonight",
+      "codex": {
+        "id": "Stable Island",
+        "title": "Stable Island",
+        "code": "STABLE-ISLAND",
+        "about": "Norton Anti-Virus",
+        "text": "If Julie passes tonight's test she gets full-time employment as a Stable Manager, with the caveat that she must remain Stable, and a donation of $1,000,000 in her name to conservation on Sable Island, so the press will believe she inherited money and gave it all to horses. She has been reading the Wikipedia page for Norton Antivirus and taking notes. She failed to fight viruses once before. It will not happen again. Why Trabolta chose you: someone with experience administering antiviral regimes, who needs very badly to get it right this time."
+      }
+    },
+    {
+      "id": "C19",
+      "category": "character",
+      "text": "OpenOffice hacked Halifax Water and sent a main under the Data Centre; the Mayor arrived hours early",
+      "codex": {
+        "id": "The Halifax Water Hack",
+        "title": "The Halifax Water Hack",
+        "code": "HALIFAX-WATER",
+        "about": "OpenOffice",
+        "text": "She hacked Halifax Water and sent a main under the AI Data Centre so the ground would swallow it on the morning it opened, with the site empty. Mayor Randy Barkmore Jr. arrived in his Escalade at 4 a.m., hours before anyone would have expected him, dancing to his own speech. The sinkhole became the figurehead image of the whole data centre debate, and the Halifax Sinkhole Hacker became the tabloid media's number one priority. This is far more attention than she ever meant to get. She barely leaves the house."
+      }
+    },
+    {
+      "id": "C20",
+      "category": "character",
+      "text": "OpenOffice is here under blackmail: win the hunt and every record of the hack is destroyed",
+      "codex": {
+        "id": "This Is Blackmail",
+        "title": "This Is Blackmail",
+        "code": "THIS-IS-BLACKMAIL",
+        "about": "OpenOffice",
+        "text": "The letter knows about the hack and offers to destroy every record of it if she competes in the Truth Scavenger Hunt and wins. She has already ruled out a sting, because that would be entrapment. Facts are currency here and she needs twenty for her dossier; she intends to find out what is really happening and leave in one piece. Why Trabolta chose you: investigative skills nonpareil, a conscience that can be leaned on, and the nerve to lead everyone who wants out."
+      }
+    },
+    {
+      "id": "C21",
+      "category": "character",
+      "text": "Password Manager has been asking what happened to Hamtaro since Grade Six, and moderates a Facebook group where everyone else is a bot",
+      "codex": {
+        "id": "What Happened To Hamtaro",
+        "title": "What Happened To Hamtaro",
+        "code": "HAMTARO",
+        "about": "Password Manager",
+        "text": "In Grade Six, Randy Barkmore Jr. won the class vote to look after Hamtaro the Hamster over the summer. Hamtaro never came back, and Bridget got in trouble for asking what happened. She has been asking ever since. The invitation told her something worse: a forensic analysis of her Facebook group found that everyone left in it, except Bridget and the sender, is an AI bot, including the members who praised her judgment and offered to nominate her. She has been moderating conversations between machines."
+      }
+    },
+    {
+      "id": "C22",
+      "category": "character",
+      "text": "Password Manager becomes Founding Moderator of a verified-humans salon if no conversation tonight contains anything inappropriate",
+      "codex": {
+        "id": "Founding Moderator",
+        "title": "Founding Moderator",
+        "code": "FOUNDING-MODERATOR",
+        "about": "Password Manager",
+        "text": "Tonight Password Manager has the authority to improve and correct any message on the party's chat as she deems fit, and to keep every program focused on finding clues. If no conversation contains anything inappropriate, she becomes Founding Moderator of a permanent digital salon where everyone is biometrically verified to be a Real Person. She has often wished people would consult her before sharing an opinion. She has spent enough time being excluded; tonight she decides what gets left out. Why Trabolta chose you: to manage every password and decide who gets to be part of what club, without ever asking for a vote."
+      }
+    },
+    {
+      "id": "C23",
+      "category": "character",
+      "text": "Runescape regards central banks and Jagex's Infinite Gold as the same exploit; a secret is just an asset nobody has priced yet",
+      "codex": {
+        "id": "Infinite Gold",
+        "title": "Infinite Gold",
+        "code": "INFINITE-GOLD",
+        "about": "Runescape",
+        "text": "At Wharton she discovered that governments create money without anyone mining any gold, and that Jagex lets Infinite Gold be mined the same way. She regards both as the same exploit, and became a staunch libertarian committed to returning every economy to the gold standard, especially for individuals who have already accumulated considerable gold. Her blog post \"What is more valuable: truth or gold?\" was cited by the President of Argentina and featured in The Economist. Its finding: under a central bank the most competitive currency is social capital, and a friendship, a grudge or a secret is just an asset nobody has priced yet."
+      }
+    },
+    {
+      "id": "C24",
+      "category": "character",
+      "text": "Runescape holds the Truthcoin reserve tonight: she can add Truthcoin to any account and freeze any program's coin for ten minutes",
+      "codex": {
+        "id": "Minister Of Economic Development",
+        "title": "Minister Of Economic Development",
+        "code": "ECONOMIC-DEVELOPMENT",
+        "about": "Runescape",
+        "text": "The invitation offers her the economy of a new world to design according to her principles, and to be Runescape itself. She enters tonight with authority over the Truthcoin reserve: she can adjust what it holds, add Truthcoin to any program's account, and freeze any program's Truthcoin for ten minutes. She is firmly opposed to arbitrary monetary expansion and expects to need it quite often. A refused offer means the offer needs work. \"Not for sale\" is an opening position. Why Trabolta chose you: to understand the market incentives of everyone's behaviour, so the facts get exchanged."
+      }
+    }
+  ],
+  "truths": [
+    { "id": "TD01", "text": "What is the name of the first person you kissed?" },
+    { "id": "TD02", "text": "What is something you’re afraid of?" },
+    { "id": "TD03", "text": "What is love?" },
+    { "id": "TD04", "text": "What colour are your underwear?" },
+    { "id": "TD05", "text": "What is the last lie you told, and who believed it?", "draft": true },
+    { "id": "TD06", "text": "What is the most embarrassing thing in your search history?", "draft": true },
+    { "id": "TD07", "text": "Who in this room would you trust with your password?", "draft": true },
+    { "id": "TD08", "text": "What is the worst thing you have ever done to a computer?", "draft": true },
+    { "id": "TD09", "text": "What did you really leave behind at the door?", "draft": true },
+    { "id": "TD10", "text": "What is the longest you have gone without checking your phone?", "draft": true },
+    { "id": "TD11", "text": "Have you ever read someone else's messages? Whose?", "draft": true },
+    { "id": "TD12", "text": "What secret are you keeping for someone else right now?", "draft": true },
+    { "id": "TD13", "text": "Who was your first online friend, and what happened to them?", "draft": true },
+    { "id": "TD14", "text": "What is the most money you have lost in one night?", "draft": true },
+    { "id": "TD15", "text": "What would you do if you could live forever? Honestly.", "draft": true },
+    { "id": "TD16", "text": "Which program in this room are you most suspicious of, and why?", "draft": true },
+    { "id": "TD17", "text": "What is one thing you have never told your mother?", "draft": true },
+    { "id": "TD18", "text": "What do you do when nobody is watching?", "draft": true },
+    { "id": "TD19", "text": "Have you ever faked being sick to get out of something? What?", "draft": true },
+    { "id": "TD20", "text": "If you could delete one memory, which one?", "draft": true }
+  ]
+}

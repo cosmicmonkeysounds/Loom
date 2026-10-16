@@ -13,6 +13,10 @@ export interface Sfx {
   fanfare(): void;
   /** A soft "no" (the server said not yet). */
   buzz(): void;
+  /** A hit landing on the King: a short low thump with a noise burst. */
+  thud(): void;
+  /** A chess piece landing: a short click. */
+  clack(): void;
   dispose(): void;
 }
 
@@ -21,7 +25,7 @@ type Ctx = AudioContext;
 export function createSfx(): Sfx {
   const Ctor: typeof AudioContext | undefined =
     typeof window === "undefined" ? undefined : (window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
-  if (Ctor === undefined) return { resume() {}, quack() {}, fanfare() {}, buzz() {}, dispose() {} };
+  if (Ctor === undefined) return { resume() {}, quack() {}, fanfare() {}, buzz() {}, thud() {}, clack() {}, dispose() {} };
   let ctx: Ctx | null = null;
   let master: GainNode | null = null;
   const get = (): { ctx: Ctx; out: GainNode } | null => {
@@ -75,6 +79,22 @@ export function createSfx(): Sfx {
     osc.stop(at + len + 0.02);
   };
 
+  /** A burst of white noise, `len` seconds, through a short envelope. */
+  const noise = (c: Ctx, out: AudioNode, at: number, len: number, vol: number): void => {
+    const frames = Math.max(1, Math.floor(c.sampleRate * len));
+    const buffer = c.createBuffer(1, frames, c.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
+    const src = c.createBufferSource();
+    src.buffer = buffer;
+    const env = c.createGain();
+    env.gain.setValueAtTime(vol, at);
+    env.gain.exponentialRampToValueAtTime(0.0001, at + len);
+    src.connect(env).connect(out);
+    src.start(at);
+    src.stop(at + len + 0.01);
+  };
+
   return {
     resume() {
       const a = get();
@@ -112,6 +132,31 @@ export function createSfx(): Sfx {
       const t = a.ctx.currentTime + 0.01;
       tone(a.ctx, a.out, t, 196, 0.18, 0.12, "square");
       tone(a.ctx, a.out, t + 0.2, 147, 0.25, 0.12, "square");
+    },
+    thud() {
+      const a = get();
+      if (a === null) return;
+      const t = a.ctx.currentTime + 0.005;
+      // A 90 ms low square, pitch dropping, under a burst of noise.
+      const osc = a.ctx.createOscillator();
+      osc.type = "square";
+      osc.frequency.setValueAtTime(110, t);
+      osc.frequency.exponentialRampToValueAtTime(45, t + 0.09);
+      const env = a.ctx.createGain();
+      env.gain.setValueAtTime(0.0001, t);
+      env.gain.exponentialRampToValueAtTime(0.3, t + 0.006);
+      env.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+      osc.connect(env).connect(a.out);
+      osc.start(t);
+      osc.stop(t + 0.11);
+      noise(a.ctx, a.out, t, 0.06, 0.16);
+    },
+    clack() {
+      const a = get();
+      if (a === null) return;
+      const t = a.ctx.currentTime + 0.005;
+      tone(a.ctx, a.out, t, 1800, 0.03, 0.08, "square");
+      noise(a.ctx, a.out, t, 0.02, 0.1);
     },
     dispose() {
       const c = ctx;

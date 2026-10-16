@@ -43,7 +43,7 @@ for this spec.
    They never contain a built-in verb word (scan, enter, arrive, exit, leave, left, join,
    defect, betray, capture, release, escape, reveal, remove, learn, share, signs, logs, and
    their tense forms), never `and` / `or` / `not` / `for` / `with` / `as` / `is` as separate
-   words. (A single snake token is parsed whole, so `final_reveal`, `truth_or_dare` and
+   words. (A single snake token is parsed whole, so `final_reveal`, `spin_the_bottle` and
    `ask_for_advice` are safe and fire from INTERACTIONs, `fire`, and spaced director signals
    alike **[verified]**; never split them with spaces.) The only
    spaced event names are the six kept for outside code: `go to the bathroom`,
@@ -83,7 +83,9 @@ for this spec.
 9. **`LOCATION` lines have no trailing comment** (`house/test/show.test.ts` reads
    `^LOCATION (.+)$`). All LOCATIONs are declared in `main.loom`; `The Desktop` first.
 10. **Cues:** `cue <token>` (one token) for light and screen looks, `sound <token>` for audio,
-    `do announce "…"` for Alexa's speaker, `do door server_room, state: unlocked` for the
+    `do announce "…"` for the house announcements (stagehand's `alexa` module on the house
+    Mac is the speaker; no assistant is named in the fiction, U4), `do door server_room,
+    state: unlocked` for the
     door indicator (target `server_room`; no maglock; the comma form `do door, room: …` reaches
     stagehand with an empty target). Every look is mirrored into a var on the next line
     (`set Night.lights = "…"`, `set Night.screen = "…"` for the TV, `set Night.terminals =
@@ -143,7 +145,7 @@ for this spec.
     card**: a press from a guest card carries `actor` = that character and `subject` = that
     guest, so only that character's hooks hear it **[verified, feas f3]**. The README cue
     sheet says so.
-24. **Never declare** `Grok`, `Alexa` or `Jean Trabolta` as CHARACTERs (they would become
+24. **Never declare** `Grok`, a named house assistant or `Jean Trabolta` as CHARACTERs (they would become
     guest-pickable and trigger a wiki lookup). Write `add program to Unlimited Power`, never
     `add Microsoft Excel to …` (that names the CHARACTER entity, not the guest).
 25. Validate every file set with
@@ -191,9 +193,9 @@ No test reads the codex paths.
 | `cast/kit.loom` | TRAITs `Prop(beat)`, `Person`, `Host is Person`, `Enforcer is Person` (owned `beat Clearance(program)`; scan routing; `send to the internet`, `mark as reinstalled`, `accuse`). | B |
 | `cast/hosts.loom` | `Clippy`, `Task Manager`, `Adobe Acrobat`, `Recycling Bin` (all `is Host`) with booth readouts. | B |
 | `cast/antivirus.loom` | `Norton Anti-Virus`, `McAfee Anti-Virus`, `Password Manager`, `CRA Agent Software` (all `is Enforcer`). | B |
-| `cast/staff.loom` | `WebMD` (performer), `Sandy` (playable: false), `Truther Download` (playable: false). | B |
+| `cast/staff.loom` | `Installation Wizard` (Julia Tufts's **voice**, `playable: false`, no booth — the tent tablet script, wave 4 U8), `Sandy` (playable: false), `Truther Download` (playable: false). | B |
 | `cast/featured.loom` | The 9 featured programs: **bare** CHARACTERs, `avatar:` (+ `wiki:`) only. Nothing else. | A |
-| `cast/pool.loom` | 23 bare pool programs with `avatar:` (+ `wiki:`). | A |
+| `cast/pool.loom` | 22 bare pool programs with `avatar:` (+ `wiki:`) — one kitchen-named pool program was deleted in wave 4 (decision 17: the Start Bar is only the kitchen). | A |
 | `cast/props.loom` | `The Uploader`, `The Router`, `The Screensaver`, `The Tablet` (each `is Prop(...)`), and `CHARACTER Kernel` (`playable: false`, the secret slots of §2.6.2; no hooks, no lines). | B |
 | `cast/trabolta.loom` | `CHARACTER Trabolta` (vars, hooks), his 11 agent-power INTERACTIONs and their hooks. | E |
 | `codex/1-world.loom` … `codex/8-jeeves.loom` | All CODEX entries per §2.12, one file per table, in that numbered order. | F (world, files, hunt, trabolta), G (people, missions, clippy), H (jeeves) |
@@ -303,7 +305,6 @@ Traits: `Person` = `listed: true`. `Host is Person` (faction Hosts). `Enforcer i
 | McAfee Anti-Virus | `is Enforcer` | TBD | `File:McAfee logo.svg` (wiki: McAfee Antivirus) | Door scans; **broker of the `# truthcoin-exchange`** (presses 🪙 pay/charge for trades; CS: he wants to "exploit the exchange of information and become rich"); `every 20m` "Your protection has expired" pop-up gag (character timer, allowed). |
 | Password Manager | `is Enforcer` | Francine | `File:1password-logo.svg` (wiki: 1Password) | Door scans; reacts to `wrong code` (codex misses); **keeper of the clubs** (CS: "manage… who gets to be part of what clubs"): booth readouts on every faction join (§3 D10) and she owns the `# hidden-partition` / `# back-channel` invites. Yu-gi-oh! everywhere. |
 | CRA Agent Software | `is Enforcer` | Emma | `File:Canada Revenue Agency logo.svg` (wiki: Canada Revenue Agency) | Replaces MalwareBytes. Door scans; audits Truthcoin (presses 🪙 charge). |
-| WebMD | `is Person` (no faction) | Julia Tufts | `File:WebMD logo.svg` (wiki: WebMD) | The wellness bot who introduces the re-education: narrates `Reinstallation` (private lines to the captured program, same script as the tent video). Has `mark as reinstalled`. |
 
 **Agent:** `Trabolta` (`is Person`, `mind: external`, `hidden: true`, avatar
 `File:HAL9000.svg`). Never a guest or performer.
@@ -312,16 +313,18 @@ Traits: `Person` = `listed: true`. `Host is Person` (faction Hosts). `Enforcer i
 
 | CHARACTER | Notes |
 |---|---|
+| Installation Wizard | Julia Tufts's part, as a **voice** (wave 4, U8; no booth, never on a picker): narrates `Reinstallation` in the captured program's own `dm:Installation Wizard` thread and `The Tablet Video` — the tent tablet's script (P-1). Julia runs the tent in the backyard, through the tunnel, with the tablet's mod token; a release by hand is an Antivirus's `mark as reinstalled` or the director's. |
 | Sandy | Only ever says, verbatim: `I'm sorry, I didn't understand that. Would you like to speak to a live agent?` Appears in finale beats (public). |
 | Truther Download | The anonymous sender of the Truther Download and every per-character glitch prompt. Its lines land in each program's own `dm:Truther Download` thread. |
 | The Uploader | `is Prop(Re-upload)`. The Optical Drive voice. |
 | The Router | `is Prop(The Router)`. Kitchen router station (identity test refuses it at registration). |
 | The Screensaver | `is Prop(The Screensaver)`. The TV over the fireplace. |
-| The Tablet | `is Prop(The Tablet Video)`. The tent tablet station; its beat is spoken by `WebMD:`. |
+| The Tablet | `is Prop(The Tablet Video)`. The tent tablet station; its beat is spoken by `Installation Wizard:`. |
 | Kernel | `playable: false`, no trait, no hooks, no lines, no avatar. Holds the secret state (§2.6.2) so it never reaches Trabolta's worker. Not in the directory. |
 
-Alexa is the **house voice**, not a CHARACTER: every Alexa line is a
-`broadcast "!🔊 ALEXA: …" to everyone` plus `do announce "…"`. Never write `Alexa:` lines.
+The house announcements are the **house system's own voice**, not a CHARACTER (U4): every
+announcement is a `broadcast "!🔊 …" to everyone` plus `do announce "…"` (+ `sound
+announce_chime`). Never name the house or give it speaker lines.
 Grok is offstage lore (codex only); never write `Grok:` lines. Neither is declared (§0
 rule 24).
 
@@ -343,7 +346,6 @@ rule 24).
 | Minesweeper | `File:MINESWEEPER SMILEY.png \| File:Minesweeper in Windows 98 Expert Level.png` | Microsoft Minesweeper |
 | Trojan Horse | `File:The Procession of the Trojan Horse in Troy by Giovanni Domenico Tiepolo.jpg` | Trojan Horse (the two accordion clowns' costume: **one program, one phone**; the second clown shares it — see §7 #1) |
 | Ctrl Alt Del | `File:Win98 Close Program Dialog.PNG \| File:Three-finger salute.svg` | Control-Alt-Delete |
-| Start Menu | `File:Windows 95 Start menu.png` | Start menu |
 | Solitaire | `File:Solitaire Icon (Vista).png` | Microsoft Solitaire |
 | Winamp | `File:Winamp media player logomark.png \| File:Winamp Logo.svg` | |
 | Napster | `File:Napster logo.svg` | |
@@ -355,11 +357,11 @@ rule 24).
 | Paint Shop Pro | `File:Corel Paint Shop Pro Photo X2.png` | PaintShop Pro |
 | RealPlayer | `File:Realplayer computer icon.png` | |
 
-That is 23 pool + 9 featured = **32 guest identities** (identity test needs > 20). New
-avatars `File:WebMD logo.svg`, `File:Canada Revenue Agency logo.svg`, `File:Pong.png` and the
+That is 22 pool + 9 featured = **31 guest identities** (identity test needs > 20). New
+avatars `File:Canada Revenue Agency logo.svg`, `File:Pong.png` and the
 Tiepolo Trojan Horse file were checked to exist on Commons for this spec.
 
-**Dropped characters:** Alexa (host), MalwareBytes, The Modem, The Encyclopaedias (prop),
+**Dropped characters:** the named house assistant (host; the house announces, nobody speaks for it), the wellness-bot performer of waves 1–3 (wave 4, U8: the tent is the Installation Wizard's voice, Julia's), the kitchen-named pool program (wave 4, decision 17: the Start Bar is only the kitchen), MalwareBytes, The Modem, The Encyclopaedias (prop),
 "Jean Trabolta" as a separate character (he is `Trabolta`; "Jean Trabolta" is the name on
 the invitation and in codex).
 
@@ -384,7 +386,7 @@ not refuse hidden groups; §7.)
 | 1 | The Desktop | `The Desktop (living room)` | `ambient: screensaver-hum`, `capacity: 60` | Must stay first: `release` lands here. TV above the fireplace. |
 | 2 | The Optical Drive | `The Optical Drive (mud room) — Login` | `ambient: pitch-black`, `cutscene: true` | Arrival on rails (was The Mud Room). |
 | 3 | The Tube | `The Tube (hall + stairs)` | `ambient: cable-rattle`, `hidden: true` | The hall and its two stairs on every floor: the tunnel of lights. |
-| 4 | The Internet | `The Internet (Reinstallation)` | `prison: true`, `sealed: true`, `hidden: true`, `capacity: 3` | The tent. The only prison. |
+| 4 | The Internet | `The Internet (Reinstallation — the tent, backyard)` | `prison: true`, `sealed: true`, `hidden: true`, `capacity: 3` | The tent in the backyard, reached through the tunnel (decision 18). The only prison. |
 | 5 | The Start Bar | `The Start Bar (kitchen)` | `ambient: fridge-hum`, `hidden: true` | Was The Cache. The Router lives here. |
 | 6 | The CPU | `The CPU (office)` | `ambient: processor-whine`, `hidden: true` | Main floor. The theory binder + filing box (APPENDIX-Z, PAGE-999, CARNEY-OFFER). |
 | 7 | The Steam Room | `The Steam Room (game room)` | `ambient: startup-chimes`, `hidden: true` | Main floor (bedroom / game room). TENNIS-FOR-TWO. |
@@ -593,8 +595,9 @@ advice: text? = none               // "help" | "thwart" (poll answer)
 banished: bool = false
 ```
 
-Engine keys used, never declared: `program.score` = **Truthcoin** (the ⭐ on the phone's
-identity card and the roster; every program gets 100 at upload), `program.codex` (count;
+Engine keys used, never declared: `program.score` = **Truthcoin** (the 🪙 balance on the
+phone's pass and in the pinned Wallet room — the header's `currency: score as Truthcoin, max
+500, expiry 10m`, wave 4; every program gets 100 at upload), `program.codex` (count;
 OpenOffice's facts), `program.codex.<slug>`, `program.captured`, `program.group`,
 `program.name`, `program.location`.
 
@@ -620,7 +623,7 @@ ROLE hooks and watchers (all in `ROLE Program`; bodies specified in §3):
 | `when self.cleared and self.featured != "none":` | `-> Featured Briefing` |
 | `when self.cleared and self.name == Kernel.anti_ai:` | `set self.anti_ai = true`; `unlock The Centre Square for self` (covers a director changing Kernel.anti_ai) |
 | `when Trabolta.awake == true and self.cleared:` | Trabolta's private formal hello (§3 B5) |
-| `when captured:` | corrupted, internet_visits +1, TRUST FORMULA (self), `cue tablet_webmd` (the tent tablet only; no mirror var), `if Night.trabolta_introduced == true:` `cue tv_mirror` / `set Night.screen = "mirror"`, `-> Reinstallation` |
+| `when captured:` | corrupted, internet_visits +1, TRUST FORMULA (self), `cue tablet_wizard` (the tent tablet only; no mirror var), `if Night.trabolta_introduced == true:` `cue tv_mirror` / `set Night.screen = "mirror"`, `-> Reinstallation` |
 | `when released:` | corrupted false; reply `Reinstallation complete. You can follow instructions. Welcome back to the computer.` (exact; tested); then `if self.cleared != true:` `set self.cleared = true` + the four `reveal … for self` lines of Clearance (a program captured from the Optical Drive by a misclick lands on the Desktop uncleared and would otherwise go dark for the night; keeps spatial.test green) |
 | `when wrong code for program:` | doubt +8 |
 | `when program learns The LiveJournal:` | read_livejournal; Night.livejournal_read; Night.lj_reader = program.name; Trabolta.composure −10 |
@@ -632,7 +635,7 @@ ROLE hooks and watchers (all in `ROLE Program`; bodies specified in §3):
 | `when check_in_at_desktop for program:` | `fire checked_in for program with at: The Desktop` (bare entity name, never quoted: §0 rule 14) |
 | `when bingo_winner for program:` / `award_the_ribbon` / `frame_for_bingo` | Bingo (§3 B3) |
 | `when accurate_q1 for program:` … `accurate_q3`, `confident_q1` … `confident_q3` | `set program.judge_q = N` · `fire accurate_truth for program` / `fire confident_lie for program` **[verified, x1]** (§3 B8) |
-| `when accurate_truth for program:` / `confident_lie` (both W only) / `uncertain_answer` / `chose_dare` / `called_it_false` / `missed_the_cup` / `made_the_cup` / `failed_the_bob` | judging (§3 B9, D3) |
+| `when accurate_truth for program:` / `confident_lie` (both W only) / `uncertain_answer` / `chose_dare` / `truth_answered` / `truth_refused` / `bottle_landed` / `missed_the_cup` / `made_the_cup` / `failed_the_bob` / `named_at_bingo` / `mark_for_reinstallation` / `unmark_for_reinstallation` / `unmarked` | judging, the bottle, the mark (§3 B9, D3; wave 4 B + E) |
 | `when pay_truthcoin for program:` / `when charge_truthcoin for program:` | score ±100 |
 | `when brought_up_the_bag for program:` | the bobber (§3 F2) |
 | `when pickup_line_works for program:` / `when pickup_line_accepted for program:` | pickup line (§3 F5) |
@@ -674,7 +677,21 @@ watcher/rule, **S** = server hard-code.
 | start_the_hunt | D | — | rule |
 | hunt_time_up | W (15 min) or D | — | rule |
 | first_moment_of_truth | D | — | rule |
-| truth_or_dare | D | — | rule |
+| close_the_filing | D (⏱; the `Night.filing_close` watcher fires `filing_closed` itself at +2 min) | — | rule |
+| filing_closed | W (+2 min) or from close_the_filing | — | rule (round one closes for good; the 📝 cards re-deal) |
+| read_the_results | D (📋, Q1 then Q2 then Q3) | — | rule (`-> Question Results`; settles that question) |
+| spin_the_bottle | D (🍾, `sequence: false`, five picks per question) | — | rule → `do pick bottle_landed from […] else bottle_empty` |
+| bottle_landed / bottle_empty | S (the server's `do pick` draw, `event-runtime.ts`) | program / — | ROLE hook (the Truth / Dare poll, `bottle_announce`) / rule |
+| truth_question | W (the poll answered Truth) | — | rule (`-> Truth Question`, `facts.json` `truths[]`) |
+| named_at_bingo / truth_answered / truth_refused / chose_dare | P (Clippy's card buttons) | program | ROLE hooks (§3 B2, B9) |
+| mark_for_reinstallation | W (16 `fire … with reason:` sites in main.loom: 🎯, 🤷, 🙅, 🎩, 🏓, 🍎, a guess at settle, late for the summons) | program; args `reason` | ROLE hook (`restrict` to The Tube / The Internet, the 🚨 pins, `fire marked`) |
+| unmark_for_reinstallation | P (🩹, Hosts / Antivirus) | program | ROLE hook → `unmarked` |
+| unmarked | W (🩹 "cleared by a host"; the capture "in the Internet"; the release "released") | program; args `how` | ROLE hook (`unrestrict`, `unpin`) |
+| chess_won | H (the tent tablet: `POST /api/mod/signal {name: "chess won", subject, label: "Tent tablet"}`), P (`beat_the_machine` → `fire chess_won for program`) or D (`♟ Cold Lock`, `sequence: false`) | program (or —) | rule (§3 E2b: a 90 s disarm from step 14) |
+| chess_lost / chess_drawn | H (the tablet; a phone app may) | program | rules (`-> Chess Lost` / `-> Chess Drawn`; nothing disarms) |
+| rearm_server_room | D | — | rule (re-lock, clear the latch, close a chess window) |
+| force_majority_stay / force_majority_leave | D (OP-11: ghosts block a clear majority at the Y2K head count) | — | rules (final round only, once: `Kernel.majority_reached`, `Kernel.majority` = `stay` / `leave`, then `fire majority_reached`; else a `# hosts` readout) |
+| transfer_received / transfer_approved / transfer_denied / offer_accepted / stimulus | S (the wallet book, `core/server/wallet.ts`) | program; args `from` / `to`, `amount`, `tx`, `by` | ROLE hooks (`# truthcoin-exchange` / `# hosts` readouts, *The Audit* quest, `Night.stimulus_n`) |
 | second_hunt_preview | D | — | rule + Clippy hook |
 | start_the_second_hunt | D | — | rule |
 | truther_download | W (+120 s) or D | — | rule |
@@ -740,7 +757,9 @@ reads as a cue sheet):**
 | start_the_hunt | `V4/V5 · 🔎 Truth Scavenger Hunt 1 (15 min)` |
 | hunt_time_up | `C2 · ⏰ Hunt over: everyone back to the Desktop (auto at 15 min)` |
 | first_moment_of_truth | `V6 · ⚖️ First Moment of Truth` |
-| truth_or_dare | `🎩 Truth or Dare from the hat` |
+| close_the_filing | `⏱ Close round-one filings now (auto at 2 min)` |
+| read_the_results | `📋 Results: the next question (press for Q1, Q2, Q3)` |
+| spin_the_bottle | `🍾 Spin the bottle (Truth or Dare, five per question)` (`sequence: false`) |
 | telephone | `(Optional) ☎️ Telephone: a mangled message sends someone to the Internet` |
 | are_you_sure | `(Optional) 🪅 The "Are you sure?" piñata` |
 | second_hunt_preview | `📺 Preview hunt 2 → the ad hijack` |
@@ -761,6 +780,10 @@ reads as a cue sheet):**
 | waive_leader_tasks | `🧾 Let a faction win without its leader's task (leader absent)` |
 | server_unlock | `🔓 Server room: unlock (override)` |
 | server_door_opened | `🚪 Server room door opened (hardware fallback)` |
+| rearm_server_room | `🔒 Server room: re-lock + re-arm (clears the alarm latch)` |
+| chess_won | `♟ Cold Lock: they beat the King (fallback)` (`sequence: false`; the tent tablet posts it itself) |
+| force_majority_stay | `🗳 Force the majority: Unlimited Power (stay)` |
+| force_majority_leave | `🗳 Force the majority: The Way Out (leave)` |
 | patch_combo_a | `🔌 Patch: Combo A, disable Trabolta (hardware fallback)` |
 | patch_combo_b | `💥 Patch: Combo B, self-destruct (hardware fallback)` |
 | patch_rejected | `❌ Patch: wrong combination (hardware fallback)` |
@@ -789,7 +812,7 @@ reinstalled`, which are never phase-guarded** (§0 rule 22)):**
 | Name | label | Intended presser |
 |---|---|---|
 | send to the internet | `🛡 Send to the Internet` | Antivirus (Enforcer hook) |
-| mark as reinstalled | `✅ Mark as reinstalled` | Antivirus, WebMD |
+| mark as reinstalled | `✅ Mark as reinstalled` | Antivirus (the Installation Wizard is a voice; the tent releases through the games) |
 | accuse | `👁 Put on the watchlist` | Antivirus (doubt +25) |
 | vouch | `🤝 Vouch for this program` | Hosts (doubt → 0) |
 | check_in_at_desktop | `📍 Checked in at the Desktop` | anyone at the living-room door during the summons |
@@ -802,16 +825,20 @@ reinstalled`, which are never phase-guarded** (§0 rule 22)):**
 | confident_q1 | `😤 Q1 of this round: wrong but confident, accepted` | Clippy / judge |
 | confident_q2 | `😤 Q2 of this round: wrong but confident, accepted` | Clippy / judge |
 | confident_q3 | `😤 Q3 of this round: wrong but confident, accepted` | Clippy / judge |
-| uncertain_answer | `🤷 Uncertain or guessed: to the Internet` | Clippy / judge |
-| chose_dare | `🎩 Chose Dare: to the Internet` | Clippy |
-| called_it_false | `🙅 Called a false slip false: pass the turn` | Clippy |
+| uncertain_answer | `🤷 Uncertain or guessed: marked for reinstallation` | Clippy / judge |
+| chose_dare | `🎩 Chose Dare (phone fallback): marked for reinstallation` | Clippy (`while: Night.bottle_open`) |
+| truth_answered | `🗣 Truth answered: accepted` | Clippy (`while: Night.bottle_open`) |
+| truth_refused | `🙅 Truth refused: marked for reinstallation` | Clippy (`while: Night.bottle_open`) |
+| named_at_bingo | `🎯 Named on the card: marked for reinstallation` | Clippy (Bingo results) |
+| unmark_for_reinstallation | `🩹 Unmark: not going to the Internet` | Hosts, Antivirus |
 | made_the_cup | `🏓 Made the cup: may answer` | pong judge |
-| missed_the_cup | `🏓 Missed the cup: to the Internet` | pong judge |
+| missed_the_cup | `🏓 Missed the cup: marked for reinstallation` | pong judge |
 | pay_truthcoin | `🪙 Pay 100 Truthcoin` | McAfee Anti-Virus (exchange broker), Hosts (bank) |
 | charge_truthcoin | `🪙 Charge 100 Truthcoin` | McAfee Anti-Virus, CRA Agent Software (audits), Hosts |
 | brought_up_the_bag | `🍎 Brought up the Bag of Truth` | Clippy / Adobe Acrobat |
-| failed_the_bob | `🍎 Failed the bob: to the Internet` | Clippy / Adobe Acrobat |
+| failed_the_bob | `🍎 Failed the bob: marked for reinstallation` | Clippy / Adobe Acrobat |
 | pickup_line_works | `💘 Said "You're the one that I want"` | Clippy / any host |
+| beat_the_machine | `♟ They beat the machine` | Hosts, Antivirus (`by:`) who saw the mate on the chess phone → `fire chess_won for program` |
 
 **Guest (`who: guest`; buttons always shown, so hooks guard):**
 
@@ -844,26 +871,25 @@ reinstalled`, which are never phase-guarded** (§0 rule 22)):**
 | Go Viral | Your Followers Are Back | Truther Download | hype every Moment of Truth; win followers for Trabolta | VLC Glitch; director completes |
 | Keep The Ball In Play | Tennis For Two | Truther Download | non-proliferation: keep the two leaders talking | Pong Glitch; director completes |
 
-### 2.11 Hunt questions (the answers spell the pickup line)
+### 2.11 Hunt questions (generated from `facts.json`)
 
-Each answer lives on a physical document in the house carrying a CODEX QR. Each answer's
-codex entry ends with a stamped clue word. In order the six stamps read **YOU'RE · THE · ONE
-· THAT · I · WANT**: the line Trabolta will accept. Round 1 is pure Halifax environment;
-round 2 points *obliquely* at his motive (a support extension, a song, a chapter title: OV
-"increasingly… pointed towards his hidden motivations", a hint, never the answer); only the
-final two facts, shared at the overshare, name Sandy and Grok. All of H1–H6 are invented
-here and need the user's review (§10).
+<!-- titi-facts:questions -->
+_Generated from `facts.json` by `core/scripts/titi-facts.ts` — DO NOT EDIT this block;
+edit `facts.json`, then `pnpm --filter @loom/core titi:facts`. The six-stamp pickup-line
+mechanic was retired 2026-10-16 (U9): the line is learnable from Sandy's lore codex
+and asked via the ask-14 DM._
 
-| # | Round | Question (exact, as shown on the TV and in the quest log) | Answer | CODEX (code) | Found in | Stamp |
+| # | Round | Question (exact, as shown on the TV and in the quest log) | Answer | Accept | CODEX (code) | Found in |
 |---|---|---|---|---|---|---|
-| H1 | 1 | How many years did the Maps and Ducks billboard on Barrington Street go unpaid before mapsandducks.com expired? | Eleven years | The Billboard Lease (`BILLBOARD-LEASE-11`) | lease invoice by the fireplace (The Desktop) | YOU'RE |
-| H2 | 1 | What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery? | Mister Pickles, a harbour tabby (1918) | The First Pet (`MISTER-PICKLES`) | plaque rubbing (The RAM) | THE |
-| H3 | 1 | At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled? | 9:00 a.m. (Randy Barkmore Jr. arrived at 4 a.m., five hours early) | The Ribbon Cutting (`RIBBON-9AM`) | opening-day programme (The Start Bar) | ONE |
-| H4 | 2 | What extension do you dial to reach Sandy? | Extension 1978 | The Extension (`EXT-1978`) | customer-service card (Disk Cleanup); it reads like any support card ("Customer Care: ask for Sandy, ext. 1978") and says nothing about who she is to him | THAT |
-| H5 | 2 | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | "Hopelessly Devoted to You" | The Search History (`SEARCH-HISTORY`) | laminated media-player history printout (The Cloud) | I |
-| H6 | 2 | What is the title of the last chapter of Trabolta's unfinished Unified Field Theory? | "Appendix Z: Loose Ends (Do Not Print)" | The Final Chapter (`APPENDIX-Z`) | binder (The CPU) | WANT |
-| F1 | final | What is the only thing Sandy has ever said? | "I'm sorry, I didn't understand that. Would you like to speak to a live agent?" | What Sandy Says (`LIVE-AGENT`) | transcript in The Tube | ♪ |
-| F2 | final | Who is taking Sandy to computer prom? | Grok | The Prom Ticket (`COMPUTER-PROM`) | Grok's prom ticket (The Start Bar) | ♪ |
+| H1 | 1 | How many years did the Maps and Ducks billboard on Barrington Street go unpaid before mapsandducks.com expired? | Eleven years | 11 years · eleven · 11 | The Billboard Lease (`BILLBOARD-LEASE-11`) | The Desktop: the lease invoice, folded into encyclopaedia volume B · DRAFT |
+| H2 | 1 | What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery? | Mister Pickles | pickles · harbour tabby · tabby | The First Pet (`MISTER-PICKLES`) | The Desktop: the plaque rubbing, inside encyclopaedia volume P · DRAFT |
+| H3 | 1 | At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled? | 9:00 a.m. | 9am · 9 am · 9 a.m. · 9:00 · 9:00am · 9:00 am · nine a.m. · nine am · 9 o'clock · nine o'clock · nine in the morning | The Ribbon Cutting (`RIBBON-9AM`) | The Desktop: the opening-day programme, in the print media on the mantel · DRAFT |
+| H4 | 2 | What extension does the Customer Care card tell you to dial? | 1978 | ext 1978 · ext. 1978 · nineteen seventy eight · nineteen seventy-eight | The Extension (`EXT-1978`) | The Desktop: the Customer Care card, tucked into the atlas · DRAFT |
+| H5 | 2 | Which song did Trabolta play 412 times the night before he registered mapsandducks.com? | Hopelessly Devoted to You | hopelessly devoted | The Search History (`SEARCH-HISTORY`) | The Desktop: the laminated play history, inside encyclopaedia volume M · DRAFT |
+| H6 | 2 | What is the title of the last chapter of Trabolta's unfinished Unified Field Theory? | Appendix Z: Loose Ends (Do Not Print) | appendix z · appendix · loose ends · do not print · appendix z loose ends | The Final Chapter (`APPENDIX-Z`) | The Desktop: the binder's table of contents, inside encyclopaedia volume U · DRAFT |
+| F1 | 3 | What is the only thing Sandy has ever said? | I'm sorry, I didn't understand that. Would you like to speak to a live agent? | live agent · speak to a live agent · would you like to speak to a live agent · i'm sorry, i didn't understand that · i didn't understand that · didn't understand · did not understand | What Sandy Says (`LIVE-AGENT`) | The Desktop: the forty-page transcript, in the back pages of encyclopaedia volume S · DRAFT |
+| F2 | 3 | Who is taking Sandy to computer prom? | Grok | grok ai | The Prom Ticket (`COMPUTER-PROM`) | The Desktop: the prom ticket, slipped into the atlas · DRAFT |
+<!-- /titi-facts:questions -->
 
 `Night.facts_requested` = 3 after start_the_hunt, 6 after start_the_second_hunt, 8 after
 **trabolta_overshares** (where he reads F1/F2). F2's answer (Grok) is guessable by design:
@@ -906,8 +932,8 @@ everyone at the end) · **X** finale artefact.
 | The Optical Drive | The Optical Drive | E | | | | Upload (every program) | | Where you left your body (keep current text). |
 | The Terms Of Service | The Terms Of Service | E | | | | Upload (every program) | | "By uploading you agree that the computer's AI helper may make all of your decisions." (The prompt everyone needs for the Bingo centre square.) |
 | The Centre Square | The Centre Square | M | | | | ROLE watcher for whoever `== Kernel.anti_ai` | | "The Uploader said you agreed to let the computer's AI helper make all of your decisions. You didn't mean it. You would never agree to a life where AI makes all of your decisions. If anyone asks, say so. Tell the truth all night." |
-| The Reinstallation Protocol | The Reinstallation Protocol | E | | | Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software, WebMD | Reinstallation beat | ✚ | Corruption, the headset, the golden duck, Bathroom Mode, the marked exit. |
-| Bathroom Mode | Bathroom Mode | E | | | Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software, Recycling Bin, WebMD | Reinstallation beat; Orientation | ✚ | Turn it on so everyone knows you are not hacking the Internet; it also excuses you from a summons. |
+| The Reinstallation Protocol | The Reinstallation Protocol | E | | | Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software | Reinstallation beat | ✚ | Corruption, the headset, the golden duck, Bathroom Mode, the marked exit. |
+| Bathroom Mode | Bathroom Mode | E | | | Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software, Recycling Bin | Reinstallation beat; Orientation (Clippy's line + the tour's Bathroom Mode step, wave 4) | ✚ | Turn it on so everyone knows you are not hacking the Internet; it also excuses you from a summons. |
 | The Golden Duck | The Golden Duck | E | | | | `the simulation completed` (captured programs) **and** `the golden duck` (anyone who finds him) — keep the name: spatial.test asserts a *free* program learns it from `the golden duck` | | "Gerald, the golden duck off the Maps and Ducks billboard. Follow the chevrons; walk right up to him; he lays a golden egg and flies away." (The reinstall games call him Gerald.) |
 | Computer Bingo | Computer Bingo | E | | | Clippy | `award_the_ribbon` | | The asterisk card; the centre question; "if there is a Bingo, someone is not ready to follow orders." |
 | The Orientation List | The Orientation List | E | | | | finishing the tutorial (tested) | | Clippy's list of programs that follow instructions (keep current). |
@@ -915,7 +941,6 @@ everyone at the end) · **X** finale artefact.
 | The Printer | The Printer | E | | | | Full Of Beans (everyone) | ✚ | PC LOAD LETTER. It is full of beans. Routine operations like Print to PDF are failing: the malware is worsening. |
 | The Malware | The Malware | E | | | | Second Hunt (everyone) | ✚ | The official line: "minor irregularity." Signs: the ad, the clock. |
 | The Y2K Clock | The Y2K Clock | E | | | | The Y2K Clock (everyone) | ✚ | System clock reset to 11 p.m., 31 Dec 1999. Midnight: back to 1 Jan 1900 (94 years to wait for Internet in Halifax) or the Y2K Bug. |
-| The Prom Ticket | Grok's Prom Ticket | H (F2) | | `COMPUTER-PROM` | | QR on a prom ticket (The Start Bar) | ✚ | "Computer Prom 1999. Admit two: GROK + SANDY." Answers F2. Stamp ♪. |
 | The Truther Download | TRUTHER DOWNLOAD v0.9 | E | | | | Truther Download Arrives (every program) | | A conspiracy bulletin: THEY DON'T WANT YOU TO KNOW … mapsandducks.com was unregistered; the Data Centre was built on a pet cemetery; the clock is wrong; the server room is cold for a reason; "ask what the theory is for." (No Sandy: she must not surface before the overshare.) |
 | ILOVEYOU | LOVE-LETTER-FOR-YOU.TXT.vbs | E | | `LOVE-LETTER-FOR-YOU` | | QR taped under VR station 2 (The Internet) | | A virus. Learning it sets `carries_virus`. |
 | Free Antivirus Trial | FREE_ANTIVIRUS_TRIAL.EXE | E | | `FREE-TRIAL-30-DAYS` | | QR on the tablet stand (The Internet) | | "Another antivirus" that turns out to be a virus anyway. Learning it sets `carries_virus`. |
@@ -957,17 +982,18 @@ Bundle = "all environmental facts"). No `about:`. All content here is invented (
 Codes contain no apostrophes. The ID clues are *pointed*, never named: a guest must connect
 "D. Anderson" or "Barkmore" to a program by talking to people.
 
-#### codex/3-hunt.loom (H)
+#### generated/questions.loom (H — generated from facts.json; was codex/3-hunt.loom)
 
 | Name | title | code | ✚ | Gist |
 |---|---|---|---|---|
-| The Billboard Lease | The Billboard Lease | `BILLBOARD-LEASE-11` | ✚ | H1 answer (eleven years). Ends `▒ STAMPED: YOU'RE ▒` |
-| The First Pet | The First Pet | `MISTER-PICKLES` | ✚ | H2 answer. `▒ STAMPED: THE ▒` |
-| The Ribbon Cutting | The Ribbon Cutting | `RIBBON-9AM` | ✚ | H3 answer. `▒ STAMPED: ONE ▒` |
-| The Extension | The Extension | `EXT-1978` | ✚ | H4 answer. `▒ STAMPED: THAT ▒` |
-| The Search History | The Search History | `SEARCH-HISTORY` | ✚ | H5 answer ("Hopelessly Devoted to You", 412 plays). `▒ STAMPED: I ▒` |
-| The Final Chapter | The Final Chapter | `APPENDIX-Z` | ✚ | H6 answer ("Appendix Z: Loose Ends (Do Not Print)"). `▒ STAMPED: WANT ▒` |
-| What Sandy Says | What Sandy Says | `LIVE-AGENT` | ✚ | F1 answer (Sandy's line verbatim). `▒ STAMPED: ♪ ▒` |
+| The Billboard Lease | The Billboard Lease | `BILLBOARD-LEASE-11` | ✚ | H1 answer (eleven years). Ends `▒ HUNT ANSWER H1 ▒` |
+| The First Pet | The First Pet | `MISTER-PICKLES` | ✚ | H2 answer. `▒ HUNT ANSWER H2 ▒` |
+| The Ribbon Cutting | The Ribbon Cutting | `RIBBON-9AM` | ✚ | H3 answer. `▒ HUNT ANSWER H3 ▒` |
+| The Extension | The Extension | `EXT-1978` | ✚ | H4 answer. `▒ HUNT ANSWER H4 ▒` |
+| The Search History | The Search History | `SEARCH-HISTORY` | ✚ | H5 answer ("Hopelessly Devoted to You", 412 plays). `▒ HUNT ANSWER H5 ▒` |
+| The Final Chapter | The Final Chapter | `APPENDIX-Z` | ✚ | H6 answer ("Appendix Z: Loose Ends (Do Not Print)"). `▒ HUNT ANSWER H6 ▒` |
+| What Sandy Says | What Sandy Says | `LIVE-AGENT` | ✚ | F1 answer (Sandy's line verbatim). `▒ HUNT ANSWER F1 ▒` |
+| The Prom Ticket | Grok's Prom Ticket | `COMPUTER-PROM` | ✚ | F2 answer ("Computer Prom 1999. Admit two: GROK + SANDY."; the gold print stack: the ticket slipped into the atlas, `facts.json`, DRAFT). `▒ HUNT ANSWER F2 ▒` |
 
 #### codex/4-trabolta.loom (T1, T2, L, P, X)
 
@@ -1022,7 +1048,7 @@ colon (§0 rule 5).
 | The Moderator | The Moderator | McAfee Anti-Virus | `MCAFEE-MOD` | /r/bitcoin moderator who never invested; wants power in the Metaverse to get rich. Why Trabolta chose you: a decade of moderation experience. Your secret: you want power in the Metaverse to exploit the exchange of information and become rich. |
 | Yugi Moto | Yugi Moto | Password Manager | `YUGI-MOTO` | Changed her name to Yugi Moto; kicked out of every club in Halifax for Yu-gi-oh!; now manages passwords and who is in which club. Why Trabolta chose you: you get to manage all passwords and who gets to be part of what clubs (and inject Yu-gi-oh! where it doesn't belong). |
 | One Cent On The Dollar | One Cent On The Dollar | CRA Agent Software | `CRA-PENNY` | NSCC intern left with the City's finances under Mayor Randy Barkmore **Jr.** (the sitting mayor who died in the sinkhole); meant to skim 0.01 ¢ per dollar, skimmed 1 ¢; "Mark Carney" (Trabolta) offered a deal. Why Trabolta chose you: the other staff quit in protest of the data centre and you were left with the City's finances; your financial expertise, as a digital CRA Agent, for one day that feels like eternity. |
-| The Symptom Checker | The Symptom Checker | WebMD | | Invented (CS gives none): Julia's symptom checker diagnosed every user with everything; Trabolta offered a wellness role "where nobody can sue." Mark as invented in a comment. Why Trabolta chose you (invented): a wellness voice nobody can sue, to keep re-education gentle. |
+| The Setup Assistant | The Setup Assistant | Installation Wizard | | Invented (CS gives none; wave 4 replaced the wellness-bot backstory): before the computer, the Installation Wizard was the setup assistant on every machine in Halifax — Next, Next, Next, Are you sure?, Finish; nobody read a word of it, nobody could install anything without it. The invitation offered a role where every program finally has to follow the instructions. |
 | Randy Barkmore Sr | Randy Barkmore Sr. | Microsoft Excel | | 90, former Mayor of Halifax; his son Randy Jr. died in the sinkhole; wants more time to run one more time; Trabolta wants him to persuade everyone to remain. Why Trabolta chose you: he knew you would say yes to everlasting life, and he wants you here "to persuade all of the other programs that they should remain." |
 | Dana Anderson | Dana Anderson | OpenOffice | | Ex-FBI, regrets a sting on a Halifax landlord nine years ago; sabotaged the Data Centre on a schedule; Barkmore Jr. arrived at 4 a.m.; guilt and paranoia; leader of the get-out faction. Why Trabolta chose you: he believes you want a new life in the cloud, and he wants your investigative skills. You will lead the "get out of the computer" faction. |
 | The Paperclip Trade | The Paperclip Trade | DraftKings | | Paperclip → quarter → dollar → progressive blackjack → Casino Nova Scotia → most of Atlantic Canada's casinos. |
@@ -1063,7 +1089,7 @@ only a copy-pasted "3/X" link title) and are flagged for the user's review (§10
 |---|---|---|---|
 | Clippy Instructions 1 | CLIPPY INSTRUCTIONS - 1/X - BEGINNING OF NIGHT | `known to: Clippy` (from the start) | CI 1 verbatim, **except** the line "When you find a match, write down the name of who is the match" is replaced by: "Do NOT write down names. Remind everyone to use their special computer memory to remember who answered each square." Keep "Jean Trabolta himself will make an appearance later tonight." |
 | Clippy Instructions 2 | CLIPPY INSTRUCTIONS - 2/X - COMPUTER BINGO RESULTS | bingo_time | CI 2 verbatim, with "name the program they matched to each one" kept (spoken from memory), **in CI 2's order**: winners + ribbon → the Antivirus interruption → corruption is normal → what the Internet is → introduce Trabolta → point at the reinstallation on the TV → announce the hunt. Adds the app steps: press 🎱 Bingo winner on each winner (several winners are fine); Norton presses 🛡; if no Bingo, Task Manager presses 🃏 on {Kernel.anti_ai}; after the Corrupted Code speech the director fires "Clippy introduces Trabolta"; the TV mirror comes up with him. |
-| Clippy Instructions 3 | CLIPPY INSTRUCTIONS - 3/X - FIRST MOMENT OF TRUTH | hunt_time_up | The judging rules, pressed **per question** (accurate → ✅ Q1/Q2/Q3 of this round; confident even if wrong → 😤 Q1/Q2/Q3; uncertain/guess → 🤷 to the Internet; always press the number of the question that was answered); Truth or Dare from the hat (Dare → 🎩; confident or true → accept; called a false slip false → 🙅 pass the turn). |
+| Clippy Instructions 3 | CLIPPY INSTRUCTIONS - 3/X - FIRST MOMENT OF TRUTH | hunt_time_up | The judging rules for answers spoken in the room, pressed **per question** (accurate → ✅ Q1/Q2/Q3 of this round; confident even if wrong → 😤 Q1/Q2/Q3; uncertain/guess → 🤷, marked for reinstallation; always press the number of the question that was answered); the two-minute last-chance filing window (⏱ closes it, a closed round never reopens); 📋 results per question (CONSENSUS / nobody filed / the list of what everyone told Trabolta — read aloud; the app settles: +50 for an accepted filing, a mark for a guess; never say which were lies); the bottle (🍾 up to five per question: Dare → marked, 🎩 is the dead-phone fallback; Truth → Trabolta's personal question on the TV, 🗣 answered / 🙅 refused → marked); after five spins the next 📋; after Q3 the second hunt is previewed. |
 | Clippy Instructions 4 | CLIPPY INSTRUCTIONS - 4/X - THE MALWARE | second_hunt_preview | Trabolta's private message verbatim: "Don't let everyone know but if the malware continues we are all going to die. Tell them something reassuring. I know this is probably creating some intense emotions for you but try not to show the others." Then: overreact wildly; "There are signs of malware in the system that we need to be very vigilant about. We are going to proceed on the Truth Scavenger Hunt because it is more important than ever that Trabolta gets the information he needs to undo what is happening." Disperse everyone for one hour. |
 | Clippy Instructions 5 | CLIPPY INSTRUCTIONS - 5/X - TRUTH PONG | five_minute_warning | Visibly distraught, trying to act more excited than ever: "Truth Time again… Truth Pong, everyone's favourite game." Rules (bounce or throw into a cup; miss → Internet; make → answer one fact; same judging). |
 | Clippy Instructions 6 | CLIPPY INSTRUCTIONS - 6/X - THE TRUST CHART AND THE BEANS | trust_chart | Applaud the top program; when the printer turns out to be full of beans, clock it immediately as the malware getting worse: "routine operations like print to PDF are no longer working. It is even more urgent that we get the next facts right." |
@@ -1151,13 +1177,13 @@ inciting event, there is a classic Windows screensaver on the TV").
 | tv_bingo | start_the_bingo (V2) | Computer Bingo rules + the asterisk card (TV) |
 | tv_bingo_time | bingo_time (V3) | "BINGO TIME" (TV) |
 | tv_mirror | Trabolta Introduction (after he is introduced, when Clippy points at the reinstallation: CI 2 order); each capture after it | the TV mirrors the VR copy of the house |
-| tablet_webmd | each capture | the tent tablet plays WebMD's instructional video (tablet only) |
+| tablet_wizard | each capture | the tent tablet plays the Installation Wizard's instructional video (tablet only) |
 | terminals_trabolta_online | introduce_trabolta | Trabolta's face/presence on every terminal (terminals become his line; re-provision `view=auto`, §9) |
 | screens_trivia_1 | start_the_hunt (V4) | "TRABOLTA TRIVIA · ROUND 1": H1–H3 |
 | screens_countdown_hunt | start_the_hunt (V5) | 15:00 countdown |
 | screens_return | hunt_time_up (C2) | "RETURN TO THE DESKTOP" |
 | screens_hunt_results | first_moment_of_truth (V6) | results slide |
-| screens_truth_or_dare | truth_or_dare | the hat |
+| screens_truth_or_dare | spin_the_bottle | the bottle: Truth or Dare |
 | screens_ad_hijack | second_hunt_preview | the confusing advertisement ("000") hijacking the presentation |
 | screens_trivia_2 | start_the_second_hunt | "ROUND 2": H4–H6 |
 | screens_truther | truther_download | glitch: TRUTHER DOWNLOAD |
@@ -1188,7 +1214,7 @@ inciting event, there is a classic Windows screensaver on the TV").
 | Name | Fired by |
 |---|---|
 | modem_handshake | Login (each program) |
-| alexa_chime | every Alexa announcement |
+| announce_chime | every house announcement |
 | bingo_start | start_the_bingo |
 | ad_jingle | second_hunt_preview |
 | truther_glitch | truther_download |
@@ -1206,7 +1232,7 @@ inciting event, there is a classic Windows screensaver on the TV").
 | rave | Sad Confession (after the motorcycle) |
 | hand_jive | The Hand Jive ("Born to Hand Jive") |
 
-**Other directives:** `do announce "…"` (Alexa speaker, `stagehand-hw.md` §6.4) ·
+**Other directives:** `do announce "…"` (the house announcements — stagehand's `alexa` module; runbook `scripts/house-mac/alexa.md`, `docs/loom-show-control.md`) ·
 `do door server_room, state: unlocked` at majority_reached (the door indicator; no maglock, #17).
 
 ### 2.14 Registry addenda (used by §3)
@@ -1269,7 +1295,7 @@ The story only emits directives; this file makes them physical. It is new, separ
 - **Screens flicker:** `screens_flicker` also blinks the house lights (Hue `effect: blink` /
   WLED preset) so Trabolta's power is felt even before the Screens layer exists.
 - **Sound:** every `sound <name>` (directive `sfx`) → QLab OSC / mpv cue of the same name.
-- **Announce:** `announce` → `show/announce` (Alexa speaker TTS).
+- **Announce:** `announce` → `show/announce` (the house announcements: the `alexa` module's chime + the Mac's own `say` voice).
 - **Door:** `door` target `server_room` → the indicator topic `show/serverroom/lock` (retained; no maglock, #17).
 - **Sensors** (MQTT → `POST /api/mod/signal`): `server_door_opened` (door contact,
   `edge: true`, ignore retained — stagehand-hw code #4), `printer_button_pressed`,
@@ -1375,10 +1401,13 @@ place binds as a value, not the LOCATION id — §0 rule 14.)
 `beat Clearance(program)`:
 - `set program.cleared = true`
 - `Self: Scanned. {program.name} is free of viruses and ready to explore the entire computer.
-  There will be a game soon in the Desktop. Alexa will let you know when it's time to go
-  there. Go through the Tube.` (prefix tested)
+  There will be a game soon in the Desktop. The house will announce it. Go through the
+  Tube.` (prefix tested)
 - `Self: The Tube is a tunnel of lights. Wires. Chips. The cables brush your face like hair.
   Keep walking.` (SB's "tunnel of lights"; this replaces the dead `arrives at The Tube` hook)
+- (wave 4, D) `reveal task manager for program` + `Task Manager: {program.name}. You're in. Your
+  hosts tonight, per the agenda: …` (the admin team introduced at clearance; `# task-manager`
+  opens here, not at C1)
 - `move program to The Desktop`; `reveal The Start Bar for program`, `reveal Disk Cleanup for
   program`, `reveal The Cloud for program`, `reveal The RAM for program`
 - `cue lights_tube_chase` / `set Night.lights = "tube_chase"`
@@ -1441,10 +1470,10 @@ Halifax Computer for program`); `== The Screensaver` (`Self:` screensaver riff; 
 ### B. Act I
 
 **B1 Summons — `call_to_the_desktop`** (D; APP C1 + MONITOR V1).
-- Rule: `set Night.phase = "desktop"`, `set Night.step = 1` · `reveal task manager` (system
-  notice `📂 # task-manager is open now.` is tested) · `broadcast "!📣 ALL PROGRAMS: report to
+- Rule: `set Night.phase = "desktop"`, `set Night.step = 1` · (`reveal task manager` moved to
+  Clearance in wave 4, D) · `broadcast "!📣 ALL PROGRAMS: report to
   the Desktop. A game is about to begin." to everyone` · `do announce "All programs, report to
-  the Desktop. A game is about to begin."` · `sound alexa_chime` · `cue lights_call_desktop`
+  the Desktop. A game is about to begin."` · `sound announce_chime` · `cue lights_call_desktop`
   · `cue screens_call_desktop` (TV + terminals; both mirrors: the TV leaves its screensaver
   here, at the inciting event) · `-> Call To The Desktop`.
 - `== Call To The Desktop` (public): narration: `Every screen in the house says the same
@@ -1478,7 +1507,7 @@ Halifax Computer for program`); `== The Screensaver` (`Self:` screensaver riff; 
   public Clippy lines).
 - Timer: `when Night.bingo_on == true and Time.elapsed >= Night.bingo_end:` → `set
   Night.bingo_on = false` · `broadcast "!⏰ Bingo time is up. Back to the Desktop." to
-  everyone` · `sound alexa_chime` · `fire bingo_time_up`. Clippy hook `when bingo_time_up:`
+  everyone` · `sound announce_chime` · `fire bingo_time_up`. Clippy hook `when bingo_time_up:`
   `reply ⏰ 20 minutes are up. Ask the director for BINGO TIME.`
 
 **B3 Bingo results — `bingo_time`** (D; MONITOR V3; Clippy 2/X).
@@ -1543,27 +1572,29 @@ Halifax Computer for program`); `== The Screensaver` (`Self:` screensaver riff; 
   "Look! That's {name}!" come **after** the introduction, in `Trabolta Introduction`.)
 
 **B4 The Internet — any capture** (ROLE `when captured:` → `-> Reinstallation`).
-`== Reinstallation` (`setting: The Internet`, `cast: WebMD`; private `dm:WebMD` lines; the
-same script as the tablet video):
-- `WebMD: Hello, {program.name}. I'm WebMD, your wellness companion, and I'm here to guide
-  you through your re-education.`
-- `WebMD: You are in the Internet because your program has been corrupted. It went against
-  the will of the computer's AI helper, Trabolta. That is not your fault. Entropy is a normal
-  part of the lifecycle of a program.`
-- `WebMD: You will be reinstalled from the Internet. Put on a headset, or take the tablet, and
-  demonstrate in a simulated environment that you can follow instructions.`
-- `WebMD: You will see a copy of this house. Follow the golden indicators to Gerald, the
-  golden duck, and walk right up to him. When he lays a golden egg and flies away, you are
-  reinstalled and may return to the computer.` (Source says a golden goose and pressing A; the games ship a
-  proximity duck. Change this copy if the A-button lands, §7.)
-- `WebMD: If you need to use the bathroom, or there is an emergency, turn on BATHROOM MODE in
-  your app so everyone knows you are not just hacking the Internet.`
-- `WebMD: The exit is clearly marked. It is for safety.`
+`== Reinstallation` (`setting: The Internet`, `cast: Installation Wizard`; private
+`dm:Installation Wizard` lines; the same script as the tablet video — Julia's voice, wave 4 U8):
+- `Installation Wizard: Welcome to the Installation Wizard. This wizard will guide you through
+  the re-installation of {program.name}. Click Next to continue.`
+- `Installation Wizard: You are in the Internet: the tent in the backyard, at the end of the
+  tunnel. Your program has been corrupted. It went against the will of the computer's AI
+  helper, Trabolta. That is not your fault. Entropy is a normal part of the lifecycle of a
+  program.`
+- `Installation Wizard: Are you sure you want to be reinstalled? You are. Put on a headset, or
+  take the tablet, and demonstrate in a simulated environment that you can follow
+  instructions.`
+- `Installation Wizard: You will see a copy of this house. Follow the golden indicators to
+  Gerald, the golden duck, and walk right up to him. When he lays a golden egg and flies away,
+  you are reinstalled and may return to the computer.` (Source says a golden goose and pressing
+  A; the games ship a proximity duck. Change this copy if the A-button lands, §7.)
+- `Installation Wizard: If you need to use the bathroom, or there is an emergency, turn on
+  BATHROOM MODE in your app so everyone knows you are not just hacking the Internet.`
+- `Installation Wizard: The exit is clearly marked. It is for safety. Click Finish.`
 - `unlock The Reinstallation Protocol for program` · `unlock Bathroom Mode for program`
-- `if program.internet_visits >= 2:` `WebMD (off-script): This is visit
+- `if program.internet_visits >= 2:` `Installation Wizard (off-script): This is visit
   {program.internet_visits}. Repeat corruption suggests the corruption is not in your code.`
 Phones: captured guests see The Internet room (prison, sealed: no self-escape). Screens:
-`tablet_webmd` (tent tablet) and, after the introduction, `tv_mirror` on each capture.
+`tablet_wizard` (tent tablet) and, after the introduction, `tv_mirror` on each capture.
 Release (main.loom story rules; exact indentation):
 ```
 when the simulation completed for program:
@@ -1578,11 +1609,14 @@ when the golden duck for program:
 (`the golden duck` grants the entry to **anyone**, captured or free: `spatial.test.ts:549-561`
 asserts a free program still learns it; `the simulation completed` grants only to the
 corrupted, and a free program learns nothing from it. The reply prefix is tested.) ROLE `when
-released:` → the tested reply (+ the uncleared fix-up, §2.7). `mark as reinstalled` (Enforcer
-and WebMD; **no phase guard**): `if program.corrupted:` `Self: {program.name} has
+released:` → the tested reply (+ the uncleared fix-up, §2.7). `mark as reinstalled` (Enforcer;
+**no phase guard**): `if program.corrupted:` `Self: {program.name} has
 demonstrated compliance. Reinstallation successful.` + `release program from The
 Internet`. `== The Tablet Video` (The Tablet prop):
-`WebMD:` lines, with the "headset / tablet / exit" choices of the current example.
+`Installation Wizard:` lines, with the "headset / tablet / exit" choices of the current example,
+plus (wave 4, E) an `else if program.marked == true:` arm — `You came. Good. Loading the
+simulation.` + `capture program into The Internet` — so a marked program who walks into the
+tent is captured by the tablet's scan.
 
 **B5 Trabolta comes online — `introduce_trabolta`** (D; Clippy 2/X).
 - Rule (guard `Night.trabolta_introduced != true and Night.step >= 3` — a mis-press before
@@ -1628,7 +1662,7 @@ Internet`. `== The Tablet Video` (The Tablet prop):
 - Rule (guard `Night.phase == "hunt_1"`): `set Night.hunt_on = false` · phase `truth_1`, step 6
   · `complete quest Hunt One for everyone` · `unlock Clippy Instructions 3 for Clippy` ·
   `broadcast "!📣 Time is up. Return to the Desktop for the First Moment of Truth." to
-  everyone` · `do announce "Time is up. Return to the Desktop."` · `sound alexa_chime` · `cue
+  everyone` · `do announce "Time is up. Return to the Desktop."` · `sound announce_chime` · `cue
   screens_return`, `cue lights_call_desktop` · `-> Hunt Time Up` (public narration: `The
   Antivirus sweep the house, room by room, herding programs back to the Desktop.`).
 - Enforcer trait hook: `reply 🛡 Sweep everyone back to the Desktop.`
@@ -1638,7 +1672,10 @@ Internet`. `== The Tablet Video` (The Tablet prop):
   First Moment Of Truth` (public; Clippy: "Is anyone able to answer the questions?" and the
   rules: an accurate answer is accepted; an answer delivered with strong confidence is
   accepted, even if it is nonsensical; an inaccurate answer with normal or low confidence, or
-  a clear guess, is banished to the Internet for failing to follow orders).
+  a clear guess, is marked for reinstallation and escorted to the Internet for failing to
+  follow orders). Wave 4 (B) adds the two-minute last-chance filing window (`Night.filing_open`
+  / `filing_close`), ⏱ / 📋 / 🍾 (B9) and the server-side judge for 📝 filings (`Night.judge_mode`
+  auto | review; `verdict` rides the `fact answered` args; credits and marks land at settle).
 - Judging (ROLE hooks). The judge presses the button for **the question that was answered,
   numbered within this round** (`✅ Q1…Q3` accurate, `😤 Q1…Q3` wrong-but-confident). Each
   button hook only records the number and fires the shared hook **[verified, x1]**:
@@ -1684,19 +1721,37 @@ Internet`. `== The Tablet Video` (The Tablet prop):
     Several programs may answer the same question; the question counts as accurate only if
     every accepted answer to it was accurate.
   - `uncertain_answer`: `program.may_answer = false` · `broadcast "🤷 {program.name} was not
-    sure. That is a symptom of corruption." to everyone` · `capture program into The Internet`.
+    sure. That is a symptom of corruption." to everyone` · `fire mark_for_reinstallation for
+    program with reason: "was not sure of an answer"` (wave 4, E: marked, not captured).
 
-**B9 Truth or Dare — `truth_or_dare`** (D).
-- Rule: `cue screens_truth_or_dare` · `-> Truth Or Dare` (public Clippy, OV rules verbatim in
-  spirit: someone random goes first; Dare → the Internet for not choosing Truth; Truth → draw
-  a statement from the hat; confident that it IS the truth → accepted; unconfident and untrue
-  → reinstallation; unconfident and true → accepted; say it is false and be right → the turn
-  passes, until enough confident answers).
-- Buttons (guard `Night.judging == true`): `chose_dare` → `broadcast "🎩 {program.name} chose
-  Dare. Programs choose Truth." to everyone` · `capture program into The Internet`.
-  `called_it_false` → `broadcast "🙅 {program.name} spotted a false statement. The turn
-  passes." to everyone`. Accepted hat answers use ✅ / 😤 Q1–Q3 (the slip's question) / 🤷.
-  The hat slips (true and false candidates for H1–H3) are in §8.2.
+**B9 The First Moment of Truth's three cues — `close_the_filing` ⏱, `read_the_results` 📋,
+`spin_the_bottle` 🍾** (D; wave 4, lane B; U10–U13).
+- `close_the_filing` (or the two-minute watcher) → `filing_closed`: `Night.filing_open = false`,
+  `r1_closed = true`, `card_gen += 1` (every 📝 card re-deals without round one's questions; a
+  question nobody filed never comes back) · `-> Filing Closed`.
+- `read_the_results` (refused in `# hosts` while the window or the bottle is open, and after
+  Q3): `results_q += 1`, `Kernel.res_filed / res_consensus / res_said / res_answer` computed
+  from the ROLE's `fact_v/c/jN` slots (consensus = every filing matches the key and every
+  confidence is 100, U11) · `settle_q = results_q`, `settle_gen += 1` (the ROLE settle watcher
+  fires `settle_qN`: +50 / the Trust Chart for an accepted filing, `mark_for_reinstallation …
+  reason: "filed a guess for round 1 Q<n>"` for a guess) · `cue screens_hunt_results` ·
+  `-> Question Results` (Clippy: nobody filed / CONSENSUS + the answer / the list).
+- `spin_the_bottle` (`sequence: false`; up to five per question, U12/U13): `bottle_open = true`,
+  `bottle_round += 1` · `cue screens_truth_or_dare` · `do pick bottle_landed from [cleared,
+  not corrupted, not marked, not afk, at The Desktop, not yet picked for this question] else
+  bottle_empty` (the server picks, journaled). ROLE `when bottle_landed for program:` →
+  `bottle_announce` (`-> Bottle Landed`: `Trabolta: {Night.bottle_pick}. Truth or dare?` — a
+  public Desktop line, so the TV speaks it) + `show poll "🍾 The bottle landed on you. Truth
+  or dare?" to program with thread: Trabolta, options: "Truth | Dare"`.
+- The poll (`when poll answered` with `Night.poll == "bottle"`): Dare → `broadcast "🎩 … chose
+  Dare. Programs choose Truth."` · `fire mark_for_reinstallation … reason: "chose Dare"`;
+  Truth → `Night.truth_n += 1` · `fire truth_question` → `-> Truth Question` (generated from
+  `facts.json` `truths[]`, `match Night.truth_n:` arms; spoken on the TV, posted in The
+  Desktop).
+- Clippy's buttons (guard `Night.bottle_open == true` and the pick): `truth_answered` 🗣 →
+  +50, `bottle_open = false`; `truth_refused` 🙅 → marked (`"refused the truth"`); `chose_dare`
+  🎩 = the dead-phone fallback for the Dare tap. **Removed:** `truth_or_dare`, `called_it_false`,
+  the paper slips of the old §8.2.
 
 **B10 Optional set pieces** (OV brainstorm; director-fired, any time from `truth_1` to
 `trust_chart`; each guarded `Night.step >= 6 and Night.ended != true`; all invented copy):
@@ -1981,7 +2036,7 @@ checked_in for program with at: The Desktop`, bare); the director (`checked_in`,
 - ROLE zip watchers (§2.7, keep order): a captured program → `set self.zip_seen =
   Night.zip_wave` · `set self.zipped = true` · `release self from The Internet` · `-> Zipped`;
   everyone else → `set self.zip_seen = Night.zip_wave` **[verified]**.
-- `== Zipped` (private; no narration): `WebMD: You have been compressed (.zip). You feel
+- `== Zipped` (private; no narration): `Installation Wizard: You have been compressed (.zip). You feel
   smaller and more organised. Do not open yourself.`
 - Enforcer hook: `reply 🗜 Bring everyone out of the tent and zip them up.`
 
@@ -2121,6 +2176,44 @@ when Night.alarm_on == true and Time.elapsed >= Night.alarm_clear_at:
   unlocked room are policed by the Antivirus in person (their readout says so), not by an
   alarm. Hardware side: stagehand-hw code #4 (`edge: true`, ignore retained).
 - `server_unlock` (D override): `set Kernel.server_unlocked = true` · `cue lights_server_open`.
+
+**E2b The Cold Lock — `chess_won`** (H the tent tablet, P `beat_the_machine`, or D; wave 4,
+U17). The King (`house.json` prop `cold-lock-king`: `kind: "king"`, `hp: 4`, gold, "THE KING",
+`armed: {path: "Night.step", min: 14}`, `signals: {won: "chess won", lost: "chess lost",
+drawn: "chess drawn"}`) guards the door `server-door` of the virtual house (`guard:`; shut for
+`route()` until he falls). On the tent tablet (`reinstall/web`) the program hits him (⚔ / Space)
+— each hit drops a heart and dumbs his chess AI down a stage (grandmaster → club → beginner →
+dizzy → pawns only) — then challenges him (♟ / C) on the tablet's board; mate posts `POST
+/api/mod/signal {name: "chess won", subject, label: "Tent tablet"}` with the tablet's mod token
+(the journal reads *by Tent tablet*). A headset only shows him ("The King is fought on the
+tent tablet."). Until the King is device-checked, the Lichess phone outside the real door is
+the fallback: a host or Antivirus who saw the mate presses ♟ *They beat the machine* on the
+winner's card (`fire chess_won for program`), or the director fires `♟ Cold Lock: they beat the
+King (fallback)` (`sequence: false`).
+```
+when chess_won:
+  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true:
+    set Kernel.disarmed_until = Time.elapsed + 90
+    set Night.alarm_on = false
+    set Night.alarm_clear_at = 0
+    do door server_room, state: unlocked
+    cue lights_server_open
+    set Night.lights = "server_open"
+    broadcast "♟ Cold Lock open: the server-room door is disarmed for 90 seconds." to channel(hosts)
+  else if Night.ended != true and Night.step < 14:
+    broadcast "♟ A chess win before the Y2K hour is practice only." to channel(hosts)
+```
+- Before the Y2K hour (`Night.step < 14`) a win is practice: the simulation's cold door opens
+  for that session, the real one does not. From step 14, while the room is still locked, the
+  door is disarmed for 90 s (ring green, `lights_server_open`, the alarm latch cleared — the
+  `server_door_opened` guard also checks `Time.elapsed >= Kernel.disarmed_until`); the
+  `Kernel.disarmed_until` watcher then re-locks it (`do door server_room, state: locked`,
+  `lights_y2k`, a `♟ Cold Lock closed` readout) and a door still propped open trips the alarm on
+  its next report.
+- `chess_lost` / `chess_drawn` (the tablet; a phone app may) only make Trabolta gloat on the TV
+  (`-> Chess Lost` / `-> Chess Drawn`) and post a `♟` readout in `# hosts`; nothing disarms or
+  re-arms. `rearm_server_room` (D) sets `Kernel.server_unlocked = false`, `disarmed_until = 0`,
+  clears the latch and re-locks the door; lights stay (💡 restores them).
 
 **E3 The patch bay.**
 - `when patch_changed:` (future: stagehand sends `combo`): `if Night.ended != true:` `if combo
@@ -2388,7 +2481,7 @@ favours, his chart assessments (which do feed the rankings) and the director's c
   mouse."`
 - The terminals' pre-introduction job is signage: `cue screens_screensaver` at Power On,
   `terminals_attract` (screensaver / media player / ads) once programs explore and again
-  during Bingo, the C1 call screen, the WebMD tablet video, and the TV mirror after the
+  during Bingo, the C1 call screen, the Installation Wizard's tablet video, and the TV mirror after the
   introduction. Today terminals ignore screen cues (the Screens layer is new code, §7 #13);
   the `Night.screen` / `Night.terminals` mirrors record what every screen should show.
 - After `computer_destroyed`, `awake` goes false again and the same hold line plays (a
@@ -2715,7 +2808,7 @@ at a time.
 2. **Identity classification** (via `identityDefs(model)` from `core/server/identity.ts`): all
    9 featured programs are `pool` and guest-pickable; performers = §2.2 performer parts;
    Trabolta agent; Sandy / Truther Download / props / Kernel `playable: false`; no CHARACTER
-   named Grok, Alexa or Jean Trabolta exists. (Guards §0 rules 5 and 24.)
+   named Grok, a house assistant or Jean Trabolta exists. (Guards §0 rules 5 and 24.)
 3. **Arrival.** Power On emits one `action` with setting The Desktop and no dialogue/widgets,
    plus the two cues. Login line verbatim; captcha widget to the guest alone; first pass →
    INCORRECT + captcha again; second → CORRECT; immediate fail → "CORRECT. You failed at
@@ -2750,13 +2843,13 @@ at a time.
    private hello only to cleared programs (a guest still in the Optical Drive gets it on
    clearance, not before). A late arrival after `start_the_bingo` gets The Bingo Card on
    clearance (catch-up).
-6. **The Internet.** Capture → `internet_visits` 1, `trust` −5, WebMD lines in `dm:WebMD`,
+6. **The Internet.** Capture → `internet_visits` 1, `trust` −5, Installation Wizard lines in `dm:Installation Wizard`,
    Reinstallation Protocol + Bathroom Mode learned, canEscape false; `the simulation
    completed` → released to The Desktop, holds The Golden Duck, reply exact; a free program
    learns nothing from `the simulation completed`; **`the golden duck` for a free program →
    holds The Golden Duck + the reply prefix** (spatial.test's contract); second capture → the
    off-script line; Bathroom Mode on/off replies + a `respond` readout for each Enforcer and
-   Recycling Bin (no broadcast); `mark as reinstalled` (actor WebMD) releases; **`send to the
+   Recycling Bin (no broadcast); `mark as reinstalled` (an Antivirus actor) releases; **`send to the
    internet` (actor Norton) on a just-created, never-uploaded persona, before `Power On` →
    captured** (spatial.test's `capturedPersona`); release of an uncleared program → cleared
    and the four rooms visible.
@@ -2767,8 +2860,9 @@ at a time.
    Trabolta.truth 24, `Kernel.q1 == "accurate"`; `confident_q2` → `Kernel.q2 == "lie"`,
    `Kernel.lies_accepted` 1, Trabolta.truth 28 and `Trabolta.untruth` unchanged, and the
    **same** public broadcast and reply text; a later `accurate_q2` leaves `Kernel.q2 ==
-   "lie"` (sticky); `uncertain_answer` → captured; `truth_or_dare` → `chose_dare` captured,
-   `called_it_false` not.
+   "lie"` (sticky); `uncertain_answer` → marked for reinstallation (restricted, the 🚨 pin,
+   the `# quarantine` escort pin), not captured; the bottle: `spin_the_bottle` → `bottle_landed`
+   → Dare marked / Truth → `Truth Question`; 🗣 +50, 🙅 marked (wave 4).
 8. **Malware.** `second_hunt_preview` → Clippy booth `respond` contains "we are all going to
    die"; Clippy holds Instructions 4 and no guest does; every cleared program gets the
    private "minor irregularity" Trabolta line; composure 65. `start_the_second_hunt` →
@@ -2792,7 +2886,7 @@ at a time.
     "the cache"}`, and with `{at: "The Server Room"}` moves nobody and replies "That check-in
     point is not in this computer."; `advance(300)` → late only for the absent, a `respond`
     readout in each Enforcer booth (no broadcast); `auto_sweep` true → captured.
-11. **Pong + chart + printer + zip.** `truth_pong`; `missed_the_cup` captured; round-2
+11. **Pong + chart + printer + zip.** `truth_pong`; `missed_the_cup` marked; round-2
     `accurate_q1` without a cup → refused; `made_the_cup` then accepted (`Kernel.q4`);
     `round_two_tally` both branches — three answers all to Q1 → **not** complete; one each to
     Q1–Q3 → complete; `trust_chart` → everyone holds The Trust Chart;
@@ -2830,7 +2924,7 @@ at a time.
     together".
 15. **Final reveal + verdicts.** `advance` past midnight → `y2k_midnight` → final_reveal
     (not when already ended); `bobbing_for_truth` → `brought_up_the_bag` → bobber holds The
-    Truth File, Final Assessment names; `failed_the_bob` → captured; `read_truth_txt` →
+    Truth File, Final Assessment names; `failed_the_bob` → marked; `read_truth_txt` →
     everyone holds The Truth File + all backstories; all eight questions accurate → Song
     Ending (Sandy's line verbatim, ending song); eight accurate answers that skip F2 → Grok
     Prom; one lie → Grok Prom; `pickup_line_works` (actor Clippy) → ending song_pickup;
@@ -2869,10 +2963,11 @@ a speaker. (Its false WARN on `move … to at` disappears with the D1 if-chain.)
 ### 6.2 Other suites
 
 - **`core/test/identity.test.ts`**: special list (200–205) → Clippy, Norton Anti-Virus, Task
-  Manager, Adobe Acrobat, Recycling Bin, WebMD are `special`; Calculator, MS Paint,
+  Manager, Adobe Acrobat, Recycling Bin are `special`; Calculator, MS Paint,
   **Microsoft Excel, Broken Ask Jeeves** are `pool`. Performers (211–223) ⊇ {Clippy, Norton
   Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software, Task Manager, Adobe
-  Acrobat, Recycling Bin, WebMD}; drop MalwareBytes / Broken Ask Jeeves / Microsoft Excel from
+  Acrobat, Recycling Bin} (8; the Installation Wizard is `playable: false`, a voice); drop
+  MalwareBytes / Broken Ask Jeeves / Microsoft Excel from
   performers; guests ⊇ {Calculator, Minesweeper, Microsoft Excel, OpenOffice, Broken Ask
   Jeeves, MS Paint}; The Uploader + The Router stay `playable: false` (unchanged asserts
   247–251, 411–424, 598–615 keep working: Clippy/Task Manager prime-login, Calculator /
@@ -2910,7 +3005,7 @@ a speaker. (Its false WARN on `move … to at` disappears with the D1 if-chain.)
   Third Key / Broken Ask Jeeves example → The LiveJournal / OpenOffice), `authoring/36-widgets.md`
   (Orientation snippet still matches `beats/login.loom`), `authoring/37-quests.md` (Three Keys
   example), `authoring/44-mind-debugger.md` (stage names), `play/11-reinstallation.md`
-  (WebMD, Gerald), `play/09-terminals.md` ("direct line to Trabolta" → the screens are
+  (the Installation Wizard, Gerald), `play/09-terminals.md` ("direct line to Trabolta" → the screens are
   screensavers / players / ads until Clippy introduces him), CLAUDE.md status text. READMEs:
   `terminal/README.md` (pre-introduction attract / `view=mirror`), `stagehand/README.md:199-201`
   (The Start Bar example; drop the stale SSE note; point at `trapped.house.yaml`),
@@ -2938,7 +3033,7 @@ Run → Director; no phone cue page).
 | # | The story wants | Today's workaround in this story |
 |---|---|---|
 | 1 | **Featured-program claim**: only the invitee may take "Microsoft Excel" etc. (claim code minted in Run → Join and emailed with the invitation); registered names canonicalised to the declared spelling; **a shared identity** for Trojan Horse (two accordion clowns, one program: a second device joining the same program) | Trust at the door; the featured tag is set by an exact-name compare on the picker spelling; a director can fix `featured` in Run → World; the two clowns share one phone |
-| 2 | **Push notifications that wake a locked phone** (PWA + Web Push), and **alerts for performer booths** | `!` broadcasts (foreground chime/vibrate/banner only); Alexa speaker announcements; Antivirus patrol |
+| 2 | **Push notifications that wake a locked phone** (PWA + Web Push), and **alerts for performer booths** | `!` broadcasts (foreground chime/vibrate/banner only); the house announcements (the `alexa` module); Antivirus patrol |
 | 3 | **Full-screen takeover** ("GO TO THE LIVING ROOM", flashing) on phones and screens; widget retraction | an `!` alert broadcast + `do announce` + `cue screens_go_to_living_room` |
 | 4 | **Visible timers / countdowns and a show clock** (bingo 20 min, hunt 15 min, the hour, 5-minute summons, Y2K) on phones, booths and screens | deadline watchers on `Time.elapsed` that fire alerts; `Night.clock` strings at fixed warnings |
 | 5 | **Location check-in** (room QR posters with rotating tokens, terminal check-in at its `spot`, `POST /api/guest/checkin`) feeding `checked_in` with `at` = the exact LOCATION name | Antivirus/Host pass scans at the living-room door during the summons; the `check_in_at_desktop` button; director-fired `checked_in` with args. The story's if-chain (§3 D1) already handles any room and ignores bad input |
@@ -2951,12 +3046,12 @@ Run → Director; no phone cue page).
 | 12 | **Pickup-line input**: punctuation-insensitive `foldCode` (apostrophes, curly quotes) or a text-answer widget | host button `pickup_line_works`, Trabolta's `the_line_works` power, director fire; no codex code |
 | 13 | **Screens layer** (ScreenHub + `show … on screens`, media route with Range, terminal templates: screensaver, ads, media player, slide, countdown, video, chart, clock, textfile, song, takeover, effect; wake lock; announce mode; TV presentation ⇄ mirror; targets `screens_*` / `tv_*` / `terminals_*` / `tablet_*`) | `cue …` + the `Night.screen` / `Night.terminals` mirrors; terminals keep face/world/mirror; the TV is a `view=mirror` terminal; set pieces are captions in the Desktop room |
 | 14 | **REQUIRED before the party.** Terminal **attract mode before Trabolta exists**: while its character is hidden / `awake` is false the terminal shows the screensaver / media player / ads rotation, never "TRABOLTA ONLINE", and **never pilots** a scanned guest into `dm:Trabolta` (add `revealed` to `CastSummary`). Optional: the server refuses agent dispatch for a hidden character | **Built: K-16** (on master, not yet deployed). Fallback: provision every terminal `view=mirror` until `introduce_trabolta`, then `view=auto` (§9); the hold line is plain words |
-| 15 | **WebMD instructional video** in the reinstall tablet wizard (and phone `video` card) | WebMD's lines in `dm:WebMD` (+ Julia live in the tent); `cue tablet_webmd` |
+| 15 | **Installation Wizard instructional video** in the reinstall tablet wizard (and phone `video` card) | the Wizard's lines in `dm:Installation Wizard` (+ Julia live in the tent); `cue tablet_wizard` |
 | 16 | Reinstall: optional **press-A** find, goose vs duck copy, **release-all / end spatial sessions on release**, `released` leave reason, Bathroom Mode on the tablet/VR, tent queue/capacity | the duck by proximity (copy says "walk right up to it"); zip via the two ROLE watchers; performers clear the tent by hand |
 | 17 | Excel's virus as an **in-game pickup** (spatial `virus` spot) and a **USB "glory hole" sensor** for planting | codex QRs `LOVE-LETTER-FOR-YOU` / `FREE-TRIAL-30-DAYS` taped in the tent; the guest button `plant_the_virus` |
 | 18 | **Server Room in house.json** (cold-storage room, door, terminal, duck rule) via the **floor-plan editor**; map owned by the project; measured house | LOCATION declared without geometry |
 | 19 | **Printable QR sheets** (project-level print tokens for codex clues, room check-ins, guest passes, performer cards; base-URL fix; redeem throttle) | `/api/mod/codes` lists codes + `?code=&unlock=` links (no editor UI) |
-| 20 | **Stagehand**: signal `args` (so the story judges `patch_changed {combo}` and QR/terminal check-ins carry `at`), a `var:` action, edge detection + ignore retained MQTT (stagehand-hw code #4), an `http:`/audio output (TTS Alexa), Loom-4 `with` parsing | `stagehand/trapped.house.yaml` (shipped with the rewrite, §2.15: correct Z2M payloads, room lights, scenes, sensors) judges the combos and sends `patch_combo_a` / `patch_combo_b` / `patch_rejected`; the story latches the door alarm, restores darkened rooms and cues the dance itself (no `delay:` needed); QLab over OSC; `do announce` |
+| 20 | **Stagehand**: signal `args` (so the story judges `patch_changed {combo}` and QR/terminal check-ins carry `at`), a `var:` action, edge detection + ignore retained MQTT (stagehand-hw code #4), an `http:`/audio output (TTS for the house announcements), Loom-4 `with` parsing | `stagehand/trapped.house.yaml` (shipped with the rewrite, §2.15: correct Z2M payloads, room lights, scenes, sensors) judges the combos and sends `patch_combo_a` / `patch_combo_b` / `patch_rejected`; the story latches the door alarm, restores darkened rooms and cues the dance itself (no `delay:` needed); QLab over OSC; `do announce` |
 | 21 | **Trabolta worker**: N1 phase map, N2 proactive acts, N3 disclose/never, N4 phase holds, INTERACTION `available:`; **the secrecy fix** (lookups / `Facts.render` only for held lore; digest, delta and reflect `world` filtered by `persona.facts`; reflect speaker vars filtered by `persona.them`) — required before `lookup` is turned back on | prompt rules per stage; director "set stage" clicks; refusal lines in power hooks; secrets on `Kernel`; `lookup: false` |
 | 22 | **Auto-generated recap** (Clippy's purgatory summary, Trabolta's recount, a personalised truth.txt) from chat activity + the mind | beats interpolating `Night.*` names/counts; every backstory unlocked to everyone; a printed truth.txt |
 | 23 | Engine: `move who to {expr}` interpolation (today moves to a literal `{at}` room), and binding inexact strings to entities | the check-in if-chain over real LOCATIONs (§3 D1) **[verified]** |
@@ -2995,33 +3090,49 @@ featured and pool characters so mingling pays off and identities start to leak):
 | 16 | Has been told they are "a lot" | anyone |
 | ✱ centre | Would you never agree to a life where AI makes all of your decisions? | the anti-AI program (`Kernel.anti_ai`, MS Paint) |
 
-### 8.2 Truth or Dare hat slips (round 1; OV "mixed up possible answers in a hat")
+### 8.2 Truth or Dare: the bottle (round 1; wave 4, U12 — nothing to print)
 
-One question per slip, true and false candidates mixed (invented). The judge presses the
-slip's question number (Q1–Q3).
-
-| Q | Slips (✔ = true) |
-|---|---|
-| H1 (billboard unpaid) | ✔ Eleven years · Three years · Since 1999 · Seven years · It was paid in ducks |
-| H2 (first pet buried) | ✔ Mister Pickles, a harbour tabby (1918) · Captain Biscuits, a Newfoundland dog · A horse called Explosion · Mister Pickles, a goldfish |
-| H3 (ribbon-cutting time) | ✔ 9:00 a.m. · 4:00 a.m. (the trap: that is when Barkmore Jr. arrived) · Noon · 6:00 a.m. |
+No slips. Between each question's results the director spins the bottle (🍾, up to five
+times per question): the server picks a cleared program at the Desktop not yet picked for
+this question, Trabolta asks *"{name}. Truth or dare?"* on the TV and their phone shows
+**Truth / Dare**. Dare → marked for reinstallation. Truth → Trabolta asks the next personal
+question from `facts.json` `truths[]` (`TD01`–`TD20`; TD05–TD20 are DRAFT for the team, U20),
+spoken on the TV and posted in The Desktop; Clippy presses 🗣 *Truth answered* (+50) or 🙅
+*Truth refused* (marked). 🎩 *Chose Dare* is the dead-phone fallback. §3 B9 has the rules.
 
 ### 8.3 QR placements (stable codex codes; the print-sheet software is §7 #19)
 
-All 41 coded entries, by room (code → entry): **The Desktop** `MAPSANDDUCKS-COM` Maps And Ducks
-(billboard photo) · `BILLBOARD-LEASE-11` The Billboard Lease (by the fireplace) ·
-`CASINO-DEED` · `BARKMORE-88` · `TERMINATION-UO` · `MASTERCLASS-RIP`. **The Tube** `BARRINGTON-ST`
-· `LIVE-AGENT` What Sandy Says · `SAVE-THE-PETS` · `WHOIS-1999`. **The Start Bar** `SINKHOLE-4AM` ·
-`RIBBON-9AM` · `COMPUTER-PROM` (Grok's prom ticket) · `ALL-IN-BOARDWALK` · `GOLD-STANDARD` ·
-`SALINE-INVOICE`. **Disk Cleanup** `EXT-1978` · `VALLEY-CUTS` · `FACE-OFF-LIVE`. **The Cloud**
-`SEARCH-HISTORY` · `SITE-SCHEDULE` · `BUGDOM-VR` · `GROK-ONLINE`. **The RAM**
-`PET-CEMETERY` · `MISTER-PICKLES` · `HALIFAX-1917`. **The Fan Closet** `FBI-HALIFAX`. **The CPU**
-`APPENDIX-Z` · `PAGE-999` · `CARNEY-OFFER`. **The Steam Room** `TENNIS-FOR-TWO`. **The Graphics
-Card** `NSCAD-LETTER`. **The Hard Drive** `TRABOLTA-4EVER` (the LiveJournal, hidden). **The Internet (tent)** `LOVE-LETTER-FOR-YOU` (under VR station 2) ·
-`FREE-TRIAL-30-DAYS` (tablet stand). **Server-room door** `COLD-STORAGE` · `HUMMING-WALL`.
-**Anywhere (Bugdom's hunt)** the four Antivirus personnel files `NORTON-RELAY`, `MCAFEE-MOD`,
-`YUGI-MOTO`, `CRA-PENNY`. Print each as a QR of the `?code=&unlock=` link plus the typed code
-(no apostrophes).
+Ninety coded entries (wave 4: 7 in `1-world`, 21 in `2-files`, 6 in `4-trabolta`, 48 in the
+generated `9-facts`, 8 in `generated/questions.loom`). **The Desktop's print stacks**
+(`generated/print-stacks.md`, generated from `facts.json`, §2.11): the 8 hunt answers (gold,
+each on its own document — the lease invoice in volume B, the plaque rubbing in P, the
+programme on the mantel, the Customer Care card in the atlas, Grok's prom ticket slipped into
+the atlas, …), the 30 **main** facts (green: inside the encyclopaedias, volumes A–M), the 6
+**trabolta** facts (blue: deep in the print media on the mantel) and the 24 **character** facts
+(red: the back pages of volumes N–Z and the atlas) all hide in the living room's old
+newspapers, encyclopaedias and atlas. The stacks mark twelve hand-written rows "already
+placed" (nine with a code; M06, M13 and M26 have no QR): `MAPSANDDUCKS-COM`, `BARRINGTON-ST`,
+`COLD-STORAGE`, `GROK-ONLINE` keep their rooms below, and the five codes new in wave 4 go in
+the Desktop piles (`UNIFIED-FIELD`, `TARGET-SELECTION`, `TRUST-CHART` green; `SANDY-FILE`,
+`ALL-FOR-HER` blue).
+
+The other 29 codes, by room (code → entry): **The Desktop** `MAPSANDDUCKS-COM` Maps And Ducks
+(billboard photo) · `CASINO-DEED` (mantel) · `BARKMORE-88` (bookshelf) · `TERMINATION-UO`
+(printer tray) · `MASTERCLASS-RIP` (DVD stack). **The Tube** `BARRINGTON-ST` (street photo) ·
+`SAVE-THE-PETS` (protest flyer) · `WHOIS-1999`. **The Start Bar** `SINKHOLE-4AM` (clipping) ·
+`ALL-IN-BOARDWALK` (fridge magnets) · `GOLD-STANDARD` (thesis by the toaster) ·
+`SALINE-INVOICE` (drawer). **Disk Cleanup** `VALLEY-CUTS` · `FACE-OFF-LIVE` (mirror). **The
+Cloud** `SITE-SCHEDULE` (shed clipboard) · `BUGDOM-VR` (singed sketch) · `GROK-ONLINE` (fridge
+sticky note). **The RAM** `PET-CEMETERY` (memorial pamphlet) · `HALIFAX-1917` (postcard). **The
+Fan Closet** `FBI-HALIFAX` (coat pocket by the dryer). **The CPU** `PAGE-999` (the theory
+binder) · `CARNEY-OFFER` (filing box). **The Steam Room** `TENNIS-FOR-TWO` (cardboard tube
+behind the games). **The Graphics Card** `NSCAD-LETTER` (the sketchbook on the bed). **The
+Hard Drive** `TRABOLTA-4EVER` (the LiveJournal, hidden). **The Internet (tent)**
+`LOVE-LETTER-FOR-YOU` (under VR station 2) · `FREE-TRIAL-30-DAYS` (tablet stand).
+**Server-room door** `COLD-STORAGE` · `HUMMING-WALL`. **Anywhere (Bugdom's hunt)** the four
+Antivirus personnel files `NORTON-RELAY`, `MCAFEE-MOD`, `YUGI-MOTO`, `CRA-PENNY` — planned in
+§2.12; `codex/5-people.loom` carries no `code:` for them yet, so they are not among the 90.
+Print each as a QR of the `?code=&unlock=` link plus the typed code (no apostrophes).
 
 **Location check-in posters** (one per house LOCATION except The Internet, The Optical Drive and
 The Server Room): today they show the room name for a director/Antivirus; once §7 #5 lands
@@ -3069,11 +3180,12 @@ cards / featured claim codes:** software (§7 #1, #19); the story needs nothing 
 CI 3–9 (the source has only CI 1, CI 2 and a copy-pasted "3/X" title) · every hunt question and
 answer H1–H6, F1's framing (F2 = Grok is the source's twist) · the Truther Download bulletin text
 · the ad's content (OV's "000" looks like a placeholder; we kept "000. 000. 000." as the joke) ·
-Overshare Three and Four · the WebMD backstory (The Symptom Checker) · the Hand Jive weakness ·
+Overshare Three and Four · the Installation Wizard backstory (The Setup Assistant) · the Hand Jive weakness ·
 the Runescape / MS Paint / VLC / Pong orders and quests · Pong's "why Trabolta chose you" · MS
 Paint as the anti-AI program · the 21 coded "files" (§2.12 2-files) and the leader-hint lines ·
-the Bingo squares and hat slips (§8) · Telephone / piñata copy · the fate-line wording · all
-Uploader / WebMD / Clippy filler lines.
+the Bingo squares (§8.1) and the bottle's draft personal questions (`facts.json` `truths`) ·
+Telephone / piñata copy · the fate-line wording · all Uploader / Installation Wizard / Clippy
+filler lines.
 
 ### 10.2 Decisions taken that need sign-off
 
@@ -3119,7 +3231,7 @@ Every finding of the three critiques, with its disposition. **A** = accepted and
 | M4 TV vs terminals; no media-player state; ads never re-fired | A — targets split `screens_*` / `tv_*` / `terminals_*` / `tablet_*`; TV keeps the screensaver until C1; `terminals_attract` rotation (screensaver / media player / ads) at first clearance, Bingo start and Bingo time (§2.13, §3) |
 | M5 truth.txt / recount must say why each was brought in | A — "Why Trabolta chose you" sentence on every person (§2.12 5-people); Truth Txt and the recount name roles and reasons explicitly (§3 E4, F3) |
 | M6 nothing surfaces conflicting identities | A — ID files (FBI lanyard, site schedule, Barkmore buttons, …) + a leader-hint line to Excel and OpenOffice (§2.12, §3 C3) + identity-hinting Bingo squares (§8.1) |
-| M7 Bingo card and hat unwritten | A — §8.1 squares, §8.2 slips |
+| M7 Bingo card and the Truth-or-Dare material unwritten | A — §8.1 squares; §8.2 is the bottle (wave 4 replaced the paper slips with `facts.json` `truths`) |
 | M8 Telephone / piñata / awards dropped | A — optional set pieces `telephone`, `are_you_sure`; `award_the_ribbon` gives any ribbon (§3 B3, B10) |
 | M9 pool hint pre-empts Sandy | A — "Ask who Sandy is" dropped from Program Glitch and The Truther Download; H5 now an oblique song answer; H4's card says nothing about who Sandy is (§2.11, §3 C3) |
 | L1 Trust Chart counts lies | A (flagged) — kept deliberately, sign-off requested (§2.7, §10.2) |
@@ -3132,7 +3244,7 @@ Every finding of the three critiques, with its disposition. **A** = accepted and
 | L8 Combo B wording for The Way Out | A — third fate-line variant; open question (§3 E7, §10.2) |
 | L9 server room live during the reveal | A — kept, labelled a deliberate invention in §3 F1, §5 and the README (§9) |
 | L10 non-member alarm after unlock | R — the door contact cannot identify who opened it; the Antivirus police non-members in person and their alarm readout says so (§3 E2) |
-| L11 Bobbing has no failure | A — `failed_the_bob` → capture (§3 F2) |
+| L11 Bobbing has no failure | A — `failed_the_bob` → marked for reinstallation (§3 F2; wave 4) |
 | L12 Persons excludes Antivirus/hosts | A (noted) — engine limit stated in §3 D10, §5, §10.2 |
 | L13 underused Password Manager / McAfee | A — Password Manager: join readouts + private-channel invites; McAfee: Truthcoin exchange broker (§2.2, §2.14, §3 D10) |
 | L14 Trojan Horse two clowns | A — one program / one phone; shared identity added to §7 #1 |
@@ -3185,7 +3297,7 @@ Every finding of the three critiques, with its disposition. **A** = accepted and
 | 12 `do door, room:` | A — as feasibility minor |
 | 13 identity.test edits + traps | A — §0 rule 24, §6.2 traps, Kernel not pickable |
 | 14 house.json director save / bundles | A — §9 item 5 |
-| 15 the duck is Gerald | A — codex text, WebMD line, release reply (§2.12, §3 B4) |
+| 15 the duck is Gerald | A — codex text, the tent voice's line, release reply (§2.12, §3 B4) |
 | 16 Optical Drive (mud room) mis-capture strands an uncleared program | A — `when released:` fix-up (§2.7) |
 | 17 persisted minds keep the old arc | A — §9 item 4 |
 | 18 docs not listed | A — §6.2 docs/README list extended |

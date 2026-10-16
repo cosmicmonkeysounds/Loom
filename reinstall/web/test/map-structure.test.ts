@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildWalls, polyArea, roomAt, route, validateHouse } from "@loom/house";
 import type { HouseMap } from "@loom/house";
-import { unreachableDucks, unreachableRooms, foldName, locationProblems, selectionOf, structuredProblems, walkabilityProblems } from "../src/map/check.ts";
+import { guardedRooms, unreachableDucks, unreachableRooms, foldName, locationProblems, selectionOf, structuredProblems, walkabilityProblems } from "../src/map/check.ts";
 import { doorLine, moveDoorAlong, openEdge, patchDoor, placeDoor, resolveDoor, sidesAt, wallRun } from "../src/map/doors.ts";
 import { moveRectEdge, moveRoom, moveTo, patchRoom, removeThing } from "../src/map/edit.ts";
 import { EMPTY_HISTORY, HISTORY_DEPTH, pushed, redone, undone } from "../src/map/history.ts";
@@ -697,5 +697,34 @@ describe("the problem list", () => {
     const typo = patchRoom(h, "start-bar", { location: "The Start Bra" });
     expect(locationProblems(typo, locs)[0]).toMatchObject({ sel: { kind: "room", id: "start-bar" }, level: "warning" });
     expect(foldName("  the_mud-ROOM ")).toBe("the mud room");
+  });
+});
+
+describe("check — a King guarding a door", () => {
+  it("a guarded room is a warning (on its door), not an error; a duck put behind the guard is still unreachable", () => {
+    const h = SHOW();
+    expect(guardedRooms(h)).toEqual([{ room: "server-room", door: "server-door", king: "cold-lock-king" }]);
+    expect(validateHouse(h).problems).toEqual([]);
+    const warnings = walkabilityProblems(h);
+    expect(warnings.map((p) => p.level)).toEqual(warnings.map(() => "warning"));
+    expect(warnings.filter((p) => /guarded by king/.test(p.text))).toEqual([
+      { text: 'room "server-room" (Server Room (cold storage)) is guarded by king "cold-lock-king" at door "server-door" — it opens when he falls', sel: { kind: "door", id: "server-door" }, level: "warning" },
+    ]);
+    // The door graph still reaches it (the warning is the only word on it)…
+    expect(unreachableRooms(h)).toEqual([]);
+    expect(unreachableDucks(h)).toEqual([]);
+    // …but a duck in there can't be walked to: `route()` treats the guarded door as shut.
+    const withDuck: HouseMap = { ...h, duck: { spots: [...h.duck.spots, { id: "cold-duck", room: "server-room", pos: [-5, -2.7, 9.5] }] } };
+    expect(unreachableDucks(withDuck)).toEqual(["cold-duck"]);
+    expect(walkabilityProblems(withDuck).map((p) => p.sel)).toContainEqual({ kind: "duck", id: "cold-duck" });
+  });
+
+  it("no guards, no guarded rooms; a guard with another way in seals nothing", () => {
+    expect(guardedRooms(TWO_ROOMS())).toEqual([]);
+    const h = SHOW();
+    // A second, unguarded door into the Server Room from the laundry: the guard seals nothing.
+    const open: HouseMap = { ...h, doors: [...h.doors, { id: "laundry-server", a: "fan-closet", b: "server-room", at: [-5, 7], width: 0.8 }] };
+    expect(guardedRooms(open)).toEqual([]);
+    expect(walkabilityProblems(open).filter((p) => /guarded/.test(p.text))).toEqual([]);
   });
 });

@@ -26,7 +26,8 @@ import { collabHub } from "./collab.ts";
 import { readBody, sendJson, str } from "./http-util.ts";
 import type { EventRegistry, EventSpec } from "./registry.ts";
 import type { AuthUser } from "./projects.ts";
-import { asMapFiles, type ProjectLink } from "./house-maps.ts";
+import { asMapFiles, mapFilesOf, type MapFiles, type ProjectLink } from "./house-maps.ts";
+import { FACTS_FILE, factsFileOf, factsOf } from "./facts.ts";
 import {
   activeEvent,
   setEventSource,
@@ -34,7 +35,7 @@ import {
   getProjectFor,
   lastEventCodes,
   lastEventMapVariant,
-  projectMaps,
+  listFiles,
   projectSource,
   setEventHouseMaps,
   setEventMapVariant,
@@ -59,8 +60,24 @@ export function specFromRow(row: EventRow): EventSpec {
     mode: row.mode === "preview" ? "preview" : "live",
     houseMaps: asMapFiles(row.house_maps),
     mapVariant: row.map_variant ?? null,
+    // The same record carries the project's facts.json (the judge's key,
+    // `facts.ts`); an old row with no record at all leaves it to the runtime.
+    ...(row.house_maps !== null && row.house_maps !== undefined ? { facts: factsOf(row.house_maps) } : {}),
     project: projectLink(row.project_id, row.id),
   };
+}
+
+/** The project's data files an event snapshots beside its source: the map
+ *  files (`house-maps.ts`) plus `facts.json` when the project has one. The
+ *  record is the row's `house_maps` jsonb; map readers see only the maps
+ *  (`asMapFiles`), the judge only the facts (`factsOf`). */
+async function projectData(projectId: string): Promise<{ maps: MapFiles; facts: string | null; snapshot: Record<string, string> }> {
+  const files = await listFiles(projectId);
+  const maps = mapFilesOf(files);
+  // An empty facts.json is a file just created (the editor's New file…), not a key.
+  const raw = factsFileOf(files);
+  const facts = raw !== null && raw.trim() !== "" ? raw : null;
+  return { maps, facts, snapshot: { ...maps, ...(facts !== null ? { [FACTS_FILE]: facts } : {}) } };
 }
 
 /**
@@ -234,7 +251,7 @@ export async function handleEvent(
       sendJson(res, 400, { error: "project has no files to run" });
       return true;
     }
-    const maps = await projectMaps(projectId);
+    const { snapshot: maps } = await projectData(projectId);
     const body = await readBody(req);
     const mode = str(body, "mode") === "preview" ? "preview" : "live";
 
@@ -336,12 +353,13 @@ export async function handleEvent(
         sendJson(res, 400, { error: "project has no files to run" });
         return true;
       }
-      const maps = await projectMaps(projectId);
+      const data = await projectData(projectId);
       const runtime = registry.ensure(specFromRow(active));
       runtime.restart(src.source, project.name, { kind: "reload", by });
-      runtime.setProjectMaps(maps);
+      runtime.setProjectMaps(data.maps);
+      runtime.setProjectFacts(data.facts);
       await setEventSource(active.id, src.source);
-      await setEventHouseMaps(active.id, maps);
+      await setEventHouseMaps(active.id, data.snapshot);
       notify("reload");
       sendJson(res, 200, { event: eventView({ ...active, scenario_source: src.source }, joinBase, runtime.currentPhase, false) });
       return true;

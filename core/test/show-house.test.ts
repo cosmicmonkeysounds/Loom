@@ -87,17 +87,27 @@ describe.each(Object.entries(VARIANTS))("the show's house map (%s)", (variant, h
     }
   });
 
-  it("puts the Server Room behind a door in the basement, with its patch bay, lock ring and chess phone", () => {
+  it("puts the Server Room behind a door in the basement, with its patch bay, lock ring, chess phone and the King guarding its door", () => {
     const server = roomFor(house, "The Server Room");
     expect(server.floor).toBe("basement");
     const doors = house.doors.filter((d) => d.a === server.id || d.b === server.id);
     expect(doors).toHaveLength(1);
-    const outside = doors[0]!.a === server.id ? doors[0]!.b : doors[0]!.a;
+    const door = doors[0]!;
+    const outside = door.a === server.id ? door.b : door.a;
     expect(outside).not.toBeNull();
     expect(house.props.find((p) => p.id === "patch-bay")?.room).toBe(server.id);
-    // The lock ring and the chess phone hang outside its door (HW-CHESS-01).
+    // The lock ring and the chess phone hang outside its door (HW-CHESS-01 — the fallback until the King is device-checked, U17).
     for (const id of ["lock-ring", "chess-phone"]) expect(house.props.find((p) => p.id === id)?.room, id).toBe(outside);
     expect(house.duck.spots.filter((s) => s.room === server.id)).toEqual([]);
+    // The King (wave 4, lane F): a `king` prop in the doorway, in the hall, holding the door shut
+    // until he is checkmated on the tent tablet; the tablet posts the story's `chess won`, and the
+    // badge reads the Y2K gate off `Night.step` (U15).
+    expect(door.guard).toBe("cold-lock-king");
+    const king = house.props.find((p) => p.id === "cold-lock-king");
+    expect(king).toMatchObject({ kind: "king", room: outside, hp: 4, signals: { won: "chess won", lost: "chess lost", drawn: "chess drawn" }, armed: { path: "Night.step", min: 14 } });
+    expect(Math.hypot(king!.pos[0] - door.at[0], king!.pos[2] - door.at[1])).toBeLessThan(0.5);
+    // Nothing routes through a guarded door: the Server Room is unreachable for the golden trail.
+    expect(route(house, house.spawn.pos, [-5, -2.7, 9.5])).toHaveLength(2);
   });
 
   it("stacks the real house's three levels, each room on its own floor, joined by the hall's two stairs", () => {

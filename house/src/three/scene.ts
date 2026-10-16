@@ -41,9 +41,10 @@ import {
 } from "three";
 import type { Camera, Material, Object3D, Scene, Texture } from "three";
 import { forward } from "../frames.ts";
-import { buildFloors, buildRamps, buildWalls, roomById, roomElevation, roomHeight, styleOf } from "../geometry.ts";
+import { buildFloors, buildRamps, buildWalls, doorGap, roomById, roomElevation, roomHeight, styleOf } from "../geometry.ts";
 import type { FloorPlane, HouseMap, Ramp, TerminalSpot, Vec2, WallKind, WallSegment } from "../types.ts";
 import { Bin, DEG, merge, paint, projectUvs } from "./dispose.ts";
+import { createKing, type King } from "./king.ts";
 import { labelPoint, wallBoxes } from "./layout.ts";
 import {
   PALETTE,
@@ -78,6 +79,8 @@ export interface HouseSceneOptions {
   terminals?: boolean;
   /** Precomputed `buildWalls(house)`, to skip computing it again. */
   walls?: WallSegment[];
+  /** `king` props as their own animated objects + a closed leaf in every guarded door (default true). */
+  kings?: boolean;
 }
 
 export interface HouseScene {
@@ -92,6 +95,10 @@ export interface HouseScene {
   ceilings: Map<string, Mesh>;
   /** The wall segments the scene was built from (collision uses these). */
   walls: WallSegment[];
+  /** Prop id → the King standing there (`kind: "king"` props, never merged with the floor's props). */
+  kings: Map<string, King>;
+  /** Door id → the closed leaf standing in a guarded door's gap (`door:<id>`); hide it when the guard falls. */
+  doors: Map<string, Mesh>;
   /**
    * Advance the animated bits (terminal scanlines + glow) by `dt` seconds.
    * With a `camera`, room labels fade out as it comes within ~2.5 m (a label
@@ -247,13 +254,24 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
     list.push(g);
     m.set(floor, list);
   };
+  const kings = new Map<string, King>();
+  const useKings = opts.kings !== false;
   for (const prop of house.props) {
     const room = roomById(house, prop.room);
     const group = roomFloor(prop.room);
     if (!room || !group) continue;
     const place = (g: BufferGeometry) => g.rotateY((prop.yaw ?? 0) * DEG).translate(prop.pos[0], prop.pos[1], prop.pos[2]);
     const [w, h, d] = prop.size;
-    if (prop.kind === "box") {
+    if (prop.kind === "king") {
+      // His own animated object (health bar, hit, fall) — never merged.
+      if (!useKings) continue;
+      const k = createKing(prop);
+      k.object.position.set(prop.pos[0], prop.pos[1], prop.pos[2]);
+      k.object.rotation.y = (prop.yaw ?? 0) * DEG;
+      k.object.name = `king:${prop.id}`;
+      kings.set(prop.id, k);
+      group.add(k.object);
+    } else if (prop.kind === "box") {
       push(propGeoms, room.floor, paint(place(new BoxGeometry(w, h, d).translate(0, h / 2, 0)), prop.color ?? PALETTE.face));
     } else if (prop.kind === "cylinder") {
       const g = new CylinderGeometry(0.5, 0.5, 1, 12).scale(w, h, d).translate(0, h / 2, 0);
@@ -291,6 +309,34 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
     const mesh = new Mesh(merged, mats.propScreen);
     mesh.name = `screens:${floorId}`;
     floorGroup(floorId)?.add(mesh);
+  }
+
+  // ── Door leaves ───────────────────────────────────────────────────
+  // A guarded door is shut: a dark leaf fills its gap (a hair narrower
+  // than the gap, so it never z-fights the jambs) until the guard falls.
+  const doors = new Map<string, Mesh>();
+  if (useKings) {
+    const leafTex = useLabels ? bin.add(captionScreenTexture("LOCKED")) : null;
+    const leafMat = bin.add(new MeshLambertMaterial({ ...(leafTex ? { map: leafTex, color: 0x9a9fa8 } : { color: 0x3a3f47 }), side: DoubleSide }));
+    for (const door of house.doors) {
+      if (door.guard === undefined) continue;
+      const gap = doorGap(house, door);
+      const group = roomFloor(door.a);
+      if (gap === null || !group) continue;
+      const width = Math.max(0.02, gap.hi - gap.lo - 0.02);
+      const height = Math.max(0.02, gap.top - gap.bottom);
+      const geom = bin.add(new PlaneGeometry(width, height));
+      // An "x" wall runs along x: the leaf faces ±z (the plane's default);
+      // a "z" wall runs along z: turn the leaf to face ±x.
+      if (gap.axis === "z") geom.rotateY(Math.PI / 2);
+      const mesh = new Mesh(geom, leafMat);
+      const mid = (gap.lo + gap.hi) / 2;
+      mesh.position.set(gap.axis === "x" ? mid : gap.c, gap.bottom + height / 2, gap.axis === "x" ? gap.c : mid);
+      mesh.name = `door:${door.id}`;
+      mesh.userData.door = door.id;
+      doors.set(door.id, mesh);
+      group.add(mesh);
+    }
   }
 
   // ── Terminal screens ──────────────────────────────────────────────
@@ -367,9 +413,12 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
     labels,
     ceilings,
     walls,
+    kings,
+    doors,
     update(dt: number, camera?: Camera) {
       if (disposed || !Number.isFinite(dt)) return;
       time += dt;
+      for (const k of kings.values()) k.update(dt, camera);
       if (camera) {
         camera.getWorldPosition(eye);
         for (const sprite of labels.values()) {
@@ -389,6 +438,7 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
       if (disposed) return;
       disposed = true;
       root.removeFromParent();
+      for (const k of kings.values()) k.dispose();
       bin.dispose();
     },
   };

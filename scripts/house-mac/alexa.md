@@ -1,4 +1,7 @@
-# The fake Alexa on the house Mac (K-20)
+# House announcements on the house Mac (K-20)
+
+(The player is stagehand's `alexa` module — a code name kept for now; in
+the show it is "the house system", never a character or a device.)
 
 `do announce "…"` in the story → a chime and the spoken line in the
 **living room (Z1) and the kitchen (Z2)**, from the house Mac (the one
@@ -12,7 +15,7 @@ story  do announce "Go to the living room."
        voice: macOS `say` (Samantha) rendered to a file ├─► MOTU ch 1/2 (Z1) + 3/4 (Z2)
               ──────────────────────────────────────────┘
        last resort: say -a <device>  (Z1 only — the device's first pair)
-story  sound alexa_chime             MQTT show/chime → the same chime
+story  sound announce_chime          MQTT show/chime → the same chime
                                      (skipped if an announcement started or ended < 10 s ago)
   ↘ the screen state (/api/screen/state `announce`) → every wall terminal
     provisioned with &announce=1 chimes + says it in its own voice (N-09)

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# K-20 — the fake Alexa through the house speakers (OCT31.md §5). Run ON THE
+# K-20 — the house announcements through the house speakers (OCT31.md §5;
+# the player is stagehand's `alexa` module — the module name stays). Run ON THE
 # HOUSE MAC, top to bottom; stand where you can hear the living room AND the
 # kitchen (or have someone in the kitchen). ≈ 10 minutes.
 #
@@ -9,7 +10,7 @@
 #                                        always does; with engine: server, the internet-down voice)
 #   scripts/accept/K-20.sh install    4. install / restart the launchd agent (install-alexa.sh)
 #   scripts/accept/K-20.sh mqtt       5. publish show/announce like the show does → the agent plays it
-#   scripts/accept/K-20.sh chime      6. `sound alexa_chime` alone (show/chime)
+#   scripts/accept/K-20.sh chime      6. `sound announce_chime` alone (show/chime)
 #   MOD_CODE=… scripts/accept/K-20.sh story [event]
 #                                     7. THE ACCEPTANCE: fire a story event whose beat does
 #                                        `do announce` (default call_to_the_desktop) on a

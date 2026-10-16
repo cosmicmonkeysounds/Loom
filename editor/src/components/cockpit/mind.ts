@@ -3,6 +3,7 @@
 //! and sparklines. No React here — `MindTab.tsx` renders these.
 
 import type { AgentMindSummary, AgentThought } from '@loom/core/views'
+import type { FactVerdict, FactsView, WorldEntry } from '@/store/cockpit'
 
 /** The kinds of thought a worker records, with how the page labels them.
  *  Colours are the reference dark palette's categorical slots, in fixed
@@ -221,3 +222,88 @@ export function mindCharacters(minds: AgentMindSummary[], thoughts: AgentThought
   for (const t of thoughts) out.add(t.character)
   return [...out].sort()
 }
+
+// ---------------------------------------------------------------------------
+// Judging — the facts judge's card (Wave 4, lane B; decision U10)
+// ---------------------------------------------------------------------------
+
+export type JudgeMode = 'auto' | 'review'
+
+/** The world path the mode is read from when the view names none. */
+export const DEFAULT_JUDGE_MODE_VAR = 'Night.judge_mode'
+
+/** The judging mode: the view's own reading first, else the mode var on
+ *  the world (`review` exactly), else `auto`. */
+export function judgeModeOf(world: WorldEntry[], facts: FactsView | null): JudgeMode {
+  if (facts !== null) return facts.mode === 'review' ? 'review' : 'auto'
+  const path = DEFAULT_JUDGE_MODE_VAR
+  return world.find((w) => w.path === path)?.value === 'review' ? 'review' : 'auto'
+}
+
+/** One filing awaiting a verdict (review mode). */
+export interface JudgingRow {
+  person: string
+  name: string
+  question: string
+  answer: string
+  confidence: number
+  /** The judge's proposal. */
+  proposed: FactVerdict
+  final: string | null
+  at: number
+}
+
+/** Every filing with no `final` yet, oldest first (ties keep the ledger's
+ *  question order). */
+export function pendingFilings(facts: FactsView): JudgingRow[] {
+  const rows: JudgingRow[] = []
+  for (const q of facts.questions) {
+    for (const f of q.filings) {
+      if (f.final !== null) continue
+      rows.push({ person: f.person, name: f.name, question: f.question, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, at: f.at })
+    }
+  }
+  return rows.sort((a, b) => a.at - b.at)
+}
+
+export interface QuestionTally {
+  id: string
+  round: number | null
+  text: string
+  filed: number
+  accurate: number
+  lie: number
+  uncertain: number
+  pending: number
+  /** U11: every filing matches the key and every confidence is 100. */
+  consensus: boolean
+}
+
+/** The per-question tally table. */
+export function questionTallies(facts: FactsView): QuestionTally[] {
+  return facts.questions.map((q) => ({
+    id: q.id,
+    round: q.round,
+    text: q.text,
+    filed: q.tally.filed,
+    accurate: q.tally.accurate,
+    lie: q.tally.lie,
+    uncertain: q.tally.uncertain,
+    pending: q.filings.filter((f) => f.final === null).length,
+    consensus: q.tally.consensus,
+  }))
+}
+
+/** The story event the Run card fires to confirm / override a filing as
+ *  `verdict` (`facts.json` `judge.confirm`); null when the view names none. */
+export function confirmEvent(facts: FactsView, verdict: FactVerdict): string | null {
+  const name = facts.confirm?.[verdict]
+  return typeof name === 'string' && name !== '' ? name : null
+}
+
+/** The verdict buttons on a pending row, in order, with their glyphs. */
+export const VERDICT_BUTTONS: ReadonlyArray<{ verdict: FactVerdict; glyph: string; label: string }> = [
+  { verdict: 'accurate', glyph: '✅', label: 'accurate' },
+  { verdict: 'lie', glyph: '😤', label: 'confident lie' },
+  { verdict: 'uncertain', glyph: '🤷', label: 'uncertain' },
+]

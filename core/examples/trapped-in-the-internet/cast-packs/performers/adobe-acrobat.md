@@ -7,16 +7,25 @@
 
 | When | Press | On whom |
 |---|---|---|
-| 🏓 Truth Pong | **🏓 Made the cup: may answer** / **🏓 Missed the cup: to the Internet** | the thrower |
-| 🏓 Truth Pong, after a made cup (if Clippy is busy) | **✅ Q1/Q2/Q3** accurate · **😤 Q1/Q2/Q3** confident · **🤷** unsure | the answerer (Q1–Q3 = H4–H6) |
-| 🍎 Bobbing for Truth (with Clippy) | **🍎 Brought up the Bag of Truth** / **🍎 Failed the bob: to the Internet** | the bobber |
-| any time | **🎀 Award a ribbon** · **🤝 Vouch** | |
+| 🏓 Truth Pong | **🏓 Made the cup: may answer** / **🏓 Missed the cup: marked for reinstallation** | the thrower |
+| 🏓 Truth Pong, after a made cup (if Clippy is busy) | **✅ Q1/Q2/Q3** accurate · **😤 Q1/Q2/Q3** confident · **🤷** uncertain or guessed: marked | the answerer (Q1–Q3 = H4–H6) |
+| 🍎 Bobbing for Truth (with Clippy) | **🍎 Brought up the Bag of Truth** / **🍎 Failed the bob: marked for reinstallation** | the bobber |
+| any time | **🎀 Award a ribbon** · **🤝 Vouch** · **🩹 Unmark** | |
 | Grok Prom | **💘 Said "You're the one that I want"** | |
 | the summons | scan at the living-room door, or **📍 Checked in** | |
 
-**Round 2 answers (secret):** Q1 = H4 **Extension 1978** · Q2 = H5
-**"Hopelessly Devoted to You"** · Q3 = H6 **"Appendix Z: Loose Ends (Do Not
-Print)"**. Accurate and confident look the same in public. Never say which.
+**Marked, not captured.** 🏓 Missed, 🤷 and 🍎 Failed never send anyone
+anywhere: they **mark** the program. Their phone greys out with a 🚨 GO TO
+THE INTERNET card, every Antivirus booth gets the escort task in
+`# quarantine`, and an Antivirus walks them through the Tube and presses 🛡.
+Keep the line moving; the Antivirus do the walking. A mis-tap: 🩹 Unmark.
+
+**Round 2 answers (secret):** Q1 = H4 **1978** (the extension the Customer
+Care card says to dial) · Q2 = H5 **"Hopelessly Devoted to You"** · Q3 = H6
+**"Appendix Z: Loose Ends (Do Not Print)"**. From `facts.json` (DRAFT until
+the team replaces the questions; re-print from `generated/print-stacks.md`
+after the content lock). Accurate and confident look the same in public.
+Never say which.
 
 **The printer:** at 🏆 your booth says *🖨 Stand by the printer*. VLC presses
 START; nothing happens. When the **lid lifts and the beans show, radio
@@ -24,7 +33,12 @@ START; nothing happens. When the **lid lifts and the beans show, radio
 
 **The Bag of Truth:** you hold it and the **dry truth.txt printout**. At 🍎
 the bag goes in the tub. When the director fires 📄, hand the printout to the
-bobber; they read it aloud.
+bobber; they read it aloud. Right after it, every program's phone gets
+Trabolta's card asking for a pickup line that works on Sandy; the server
+judges the answers.
+
+**Your booth:** Scanner · Inbox · Codex · `# hosts` · `# quarantine` · the
+rooms · one thread per guest.
 
 **Radio:** BEANS · HOLD · ALL STOP.
 
@@ -45,22 +59,28 @@ yes."
 
 ## Your night
 
+- **Clearance:** Task Manager's line in the app introduces the four hosts to
+  every cleared program ("Adobe Acrobat: documents and printing") before
+  Clippy's tour. The tour ends on **Bathroom Mode**, the 🚻 button on their
+  pass; if someone asks what it is, that's it.
 - **C1:** Clippy introduces you: documents and printing.
 - **🏓 Truth Pong** (in the backyard, The Cloud): you judge the cup. Made → 🏓
   Made (they may answer one round-2 fact; Clippy judges, or you if she's
-  inside). Missed → 🏓 Missed (to the Internet). Keep the line moving.
+  inside). Missed → 🏓 Missed (marked; an Antivirus escorts them). Keep the
+  line moving.
 - **🏆 → 🫘:** stand by the bean printer. VLC is told to press START. If
   nobody opens the lid, MS Paint is nudged to encourage VLC. **Radio BEANS the
   moment the lid lifts.**
 - **🍎 Bobbing for Truth:** the Bag of Truth goes into the tub (a towel and mat
   under it, away from the stairs). Whoever surfaces with it: 🍎 Brought up the
-  Bag. Comes up empty: 🍎 Failed the bob.
+  Bag. Comes up empty: 🍎 Failed the bob (marked).
 - **📄 truth.txt:** hand the printout to the bobber.
 
 ## Appendix: truth.txt (print, put in a zip bag)
 
-> Generated from `beats/finale.loom` (`== Truth Txt`). Re-check after the
-> 10-24 content lock.
+> Generated from `beats/finale.loom` (`== Truth Txt`). The app reads a
+> featured program's line only if that guest came; print them all. Re-check
+> after the 10-24 content lock.
 
 **truth.txt — Notepad**
 
@@ -96,22 +116,22 @@ not decided which.
 Why each person was brought into the computer, by role.
 
 - The former Mayor, Microsoft Excel, was brought in to persuade everyone to remain. He would say yes to everlasting life.
-- The ex-FBI agent, OpenOffice, was brought in for her investigative skills, to lead the faction that wants to get out of the computer.
-- The gambler, DraftKings, was brought in as someone powerful with numbers on its side. In here, it can gamble forever.
-- The designer, Bugdom, was promised unlimited Bugdom. Trabolta wanted the relentless pursuit of tedious tasks.
-- The librarian, Broken Ask Jeeves, was brought in to sort all the unorganised information in the computer. The upload ran over the Valley's old DSL line. Trabolta did not foresee that.
-- The economist, Runescape, was brought in to understand the market incentives of everyone's behaviour, so the facts could be traded.
-- The artist, MS Paint, was brought in to improve the overall vibes and morale. She realised at once how limiting it was, and wanted out.
+- The ex-FBI agent, OpenOffice, was brought in for investigative skills nonpareil, a conscience that can be leaned on, and the nerve to lead everyone who wants out.
+- The gambler, DraftKings, was brought in as someone powerful with numbers on its side, who would make everyone gamble.
+- The cricket seller, Bugdom, was brought in for the relentless pursuit of tedious tasks, and promised a hundred hours for not one minute.
+- The librarian, Broken Ask Jeeves, was brought in to sort all the unorganised information in the computer and share ten findings with everyone. The upload ran over a 10 MB/Minute plan.
+- The economist, Runescape, was brought in to understand the market incentives of everyone's behaviour, so the facts get exchanged.
+- The artist, MS Paint, was brought in to improve the vibes and the morale, for a million dollars and one painting. She wanted out the moment she arrived.
 - The influencer, VLC, was brought in to stay beautiful forever and use his charisma to convince everyone to help Trabolta.
 - The child of Tennis For Two, Pong, was brought in to teach nuclear non-proliferation disguised as a game of Pong, in case the programs started an arms race.
-- The organiser, Clippy, was brought in as the perfect servant who desperately needs to rebuild an identity. She was promised she could help people all night, and that her debt would no longer be relevant.
+- The organiser, Clippy, was brought in as the perfect servant who desperately needs to rebuild an identity, who will follow every instruction and offer everyone Help.
 - The middle manager, Task Manager, was brought in to manage tasks without controversy or political motivation, and never draw attention.
 - The motivational speaker, Adobe Acrobat, was brought in as the paid bottleneck to everyone's creativity.
 - The bathroom attendant, Recycling Bin, was brought in because a computer-themed resort needs a Recycling Bin, and he had great potential for skilled work.
-- The horse relay champion, Norton Anti-Virus, was brought in as a perfect enforcer, to moderate a new digital chatroom.
-- The subreddit moderator, McAfee Anti-Virus, was brought in for a decade of moderation experience. They want to get rich on the exchange of information.
-- The Yu-gi-oh player, Password Manager, was brought in to manage all passwords and decide who gets to be part of what clubs.
-- The intern who skimmed the City, CRA Agent Software, was brought in for her financial expertise, for one day that feels like eternity.
-- The symptom checker, WebMD, was brought in as a wellness voice nobody can sue, to keep re-education gentle.
+- The stable manager, Norton Anti-Virus, was brought in as someone with experience administering antiviral regimes, who could not afford to fail twice.
+- The dead man, McAfee Anti-Virus, was brought in because only a trickster can keep tricksters on track, and he can be made to.
+- The candidate, Password Manager, was brought in to decide what gets left out without ever asking for a vote.
+- The intern, CRA Agent Software, was brought in to approve or deny every transaction, to the cent.
+- The setup assistant, the Installation Wizard, was brought in to walk the corrupted through re-installation, gently.
 
 End of file.

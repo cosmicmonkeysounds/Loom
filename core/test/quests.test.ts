@@ -16,7 +16,7 @@ import { reflowText } from "../src/parser/decl-body.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { parseTrigger } from "../src/runtime/sim/model.ts";
 import { ChatStore, composeGuestMessages, describeChannel } from "../server/chat.ts";
-import { guestView, modView } from "../server/views.ts";
+import { guestView, modView, primeView } from "../server/views.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 
@@ -296,5 +296,85 @@ describe("routes — quests", () => {
     expect(rt2.restore()).not.toBeNull();
     expect(rt2.chatHistoryFor(g.id).filter((m) => m.channel === "quests").map((m) => [m.seq, m.parentSeq, m.text])).toEqual(before);
     expect(rt2.liveSim!.questStatus(g.id, "Unplug")).toBe("active");
+  });
+});
+
+describe("quests for characters (wave 4, lane D)", () => {
+  // The fixture's `CHARACTER Clippy` plus a story that hands a character a
+  // quest by name and listens for it.
+  const STAFF = SOURCE.replace(
+    "when start the hunt:",
+    `when staff_briefing:
+  start quest Unplug for Clippy
+  start quest Unplug for group(The Awakened)
+
+when Clippy starts quest Unplug:
+  set Clippy.briefed = true
+
+when start the hunt:`,
+  );
+
+  it("a character may hold a quest: start/update/complete for Clippy, the mirror, the trigger; `for everyone` stays persons-only", () => {
+    const sim = fresh();
+    expect(sim.quest("start", "Clippy", "The Three Keys").filter((e) => e.type === "quest")).toEqual([
+      { type: "quest", person: "Clippy", quest: "The Three Keys", action: "start", text: null },
+    ]);
+    expect(sim.questStatus("Clippy", "The Three Keys")).toBe("active");
+    expect(sim.world.get("Clippy.quest.the_three_keys")).toEqual({ kind: "string", value: "active" });
+    // The card lands in the Quest Log addressed to the booth, never a guest.
+    const cards = composeGuestMessages(sim, sim.quest("update", "Clippy", "The Three Keys", "One key down."));
+    expect(cards.map((m) => [m.channel, m.kind, m.audience, m.text])).toEqual([["quests", "quest", ["@Clippy"], "One key down."]]);
+    expect(cards[0]!.threadKey).toBe("Clippy\u0000The Three Keys");
+    const start = composeGuestMessages(sim, sim.quest("start", "Clippy", "Unplug"));
+    expect(start[0]).toMatchObject({ channel: "quests", audience: ["@Clippy"], threadRoot: true });
+    // `fail … for everyone` is persons-only: the guests lose theirs, Clippy keeps his.
+    sim.signal("the glitch begins");
+    expect(sim.questStatus("g1", "The Three Keys")).toBe("active");
+    sim.signal("the night ends");
+    expect(sim.questStatus("g1", "The Three Keys")).toBe("failed");
+    expect(sim.questStatus("Clippy", "The Three Keys")).toBe("active");
+    // Nobody else — a prop, a stranger — holds a quest.
+    expect(sim.quest("start", "Nobody", "Unplug").filter((e) => e.type === "quest")).toEqual([]);
+    expect(sim.questStatus("Nobody", "Unplug")).toBeNull();
+    // The booth's snapshot lists the character's log + the totals; the
+    // director's per-person table stays persons-only.
+    const v = primeView(sim, "Clippy");
+    expect(v.quests.map((q) => [q.id, q.status])).toEqual([["The Three Keys", "active"], ["Unplug", "active"]]);
+    expect(v.questTotal).toBe(3);
+    expect(v.codexTotal).toBe(0);
+    expect(primeView(sim, "OpenOffice").quests).toEqual([]);
+    expect(Object.keys(modView(sim, "open", "x").quests!.find((q) => q.id === "The Three Keys")!.status)).toEqual(["g1", "g2"]);
+    expect(guestView(sim, "g1").quests.map((q) => q.id)).toEqual(["The Three Keys"]);
+  });
+
+  it("`start quest X for <Character>` in a story hands the character the quest and its trigger fires with the character as subject", () => {
+    const sim = Sim.fromSources(STAFF);
+    sim.createPerson("g1", "Minesweeper");
+    const evs = sim.signal("staff_briefing");
+    expect(evs.filter((e) => e.type === "quest").map((e) => (e as { person: string }).person)).toEqual(["Clippy"]);
+    expect(sim.questStatus("Clippy", "Unplug")).toBe("active");
+    expect(sim.questStatus("g1", "Unplug")).toBeNull(); // not in the group, and the group scope is persons-only
+    expect(sim.world.get("Clippy.briefed")).toEqual({ kind: "bool", value: true });
+    // The same statement in the other examples is untouched: a bare guest
+    // name still works exactly as before.
+    expect(sim.quest("start", "g1", "Unplug").filter((e) => e.type === "quest")).toHaveLength(1);
+  });
+
+  it("the director's route moves a character's quest too; a stranger is still 404; a restart keeps the character's log", async () => {
+    const d = freshDir();
+    const rt = runtimeIn(d);
+    rt.openDoors();
+    expect((await post(rt, "/api/mod/quest", { who: "Clippy", quest: "unplug" }, undefined, true)).json).toEqual({ ok: true, status: "active" });
+    expect((await post(rt, "/api/mod/quest", { who: "Clippy", quest: "Unplug", action: "update", text: "Find the cable." }, undefined, true)).status).toBe(200);
+    const nobody = await post(rt, "/api/mod/quest", { who: "Nobody", quest: "Unplug" }, undefined, true);
+    expect(nobody.status).toBe(404);
+    expect(nobody.json["error"]).toBe("unknown guest or character");
+    // A guest's history never carries the booth's rows.
+    const reg = await post(rt, "/api/guest/register", { name: "Minesweeper", passcode: CODES.event });
+    expect(rt.chatHistoryFor(reg.json.id as string).filter((m) => m.channel === "quests")).toEqual([]);
+    const rt2 = runtimeIn(d);
+    expect(rt2.restore()).not.toBeNull();
+    expect(rt2.liveSim!.questStatus("Clippy", "Unplug")).toBe("active");
+    expect(primeView(rt2.liveSim!, "Clippy").quests.map((q) => q.id)).toEqual(["Unplug"]);
   });
 });

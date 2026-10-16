@@ -147,7 +147,8 @@ describe("slides", () => {
   });
 
   it("the trivia slides ask exactly the Quest Log's questions", () => {
-    const quests = readFileSync(fileURLToPath(new URL("../../core/examples/trapped-in-the-internet/quests.loom", import.meta.url)), "utf8");
+    // The hunt quests are generated from facts.json (wave 4): generated/questions.loom, not quests.loom.
+    const quests = readFileSync(fileURLToPath(new URL("../../core/examples/trapped-in-the-internet/generated/questions.loom", import.meta.url)), "utf8");
     for (const v of ["trivia_1", "trivia_2"]) {
       const lines = SLIDE_COPY[v]!.lines!;
       expect(lines).toHaveLength(3);

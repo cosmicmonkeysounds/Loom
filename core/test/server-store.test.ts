@@ -99,3 +99,18 @@ describe("Store — replay restores live sim state", () => {
     }
   });
 });
+
+describe("Store — the wallet journal line (wave 4, lane C)", () => {
+  it("a `wallet` op round-trips with its director attribution", () => {
+    const s = freshStore();
+    const op = { op: "send", id: "t1", from: "g1", to: "g2", amount: 5, at: 0, via: "send" };
+    s.appendCommand("wallet", [op], "Director");
+    s.appendCommand("wallet", [{ op: "settle", id: "t1" }]);
+    expect(s.readJournal()).toEqual([
+      { m: "wallet", a: [op], by: "Director" },
+      { m: "wallet", a: [{ op: "settle", id: "t1" }] },
+    ]);
+    const m: Mutation = "wallet";
+    expect(m).toBe("wallet");
+  });
+});

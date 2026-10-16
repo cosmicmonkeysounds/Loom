@@ -1,49 +1,36 @@
-// Codex 5: the people. Every human identity in the computer, two entries
-// a person where the Character Sheet gives enough: the first is what they
-// might tell a stranger, the second is what has to be forced out of them.
+// Codex 5: the people. One identity entry per invitee — who they really
+// are, from the invitation packages (story/Invitations) — plus the hosts'
+// two entries each where the Character Sheet gives enough. Each invitee's
+// two coded CHARACTER FACTS (their secret or shame, then their goal
+// tonight, ending "Why Trabolta chose you") are facts.json entries,
+// generated into codex/9-facts.loom and hidden in the Desktop's books.
 //
 // Performers' entries are `about:` the performer, so each performer holds
 // their own from the start. Featured entries are `about:` the featured
 // CHARACTER (harmless: the guest who plays that program receives them in
-// `Featured Briefing`). The four Antivirus entries carry codes: their
-// personnel files are hidden around the house for Bugdom to find.
+// `Featured Briefing`). No Antivirus codes here any more: Bugdom hunts
+// their CHARACTER FACTS in the books.
 // Everyone receives every entry at the end (the recount, truth.txt).
 //
-// Every person's last entry ends with "Why Trabolta chose you", because
-// truth.txt and the recount must say why each person was brought in.
-//
 // Rules for this file: no actor names (only the in-fiction ones the
-// Character Sheet gives), no line may start with a program's name and a
+// invitations give), no line may start with a program's name and a
 // colon, and nothing here mentions Sandy or the server room (a performer's
 // codex rides along when they talk to Trabolta).
 
 // ── Hosts ───────────────────────────────────────────────────────────
 
-CODEX The Clinic
-  title: The Clinic
+CODEX Tippi MacDonald
+  title: Tippi MacDonald
   about: Clippy
   text:
-    Before the computer, Clippy spent her first five years out of
-    veterinary school at a desperately underfunded nonprofit veterinary
-    clinic. She believed she was helping animals every single day. She
-    still talks about the animals.
-
-CODEX Saline
-  title: Saline
-  about: Clippy
-  text:
-    The clinic was totally unlicensed. It was not a nonprofit, and it was
-    not a veterinary clinic. It was a front for everything possible, and
-    for five years she was only ever injecting the animals with saline.
-    The fake vet promised to pay off her student debt and disappeared. She
-    was left with no faith in humanity, no relevant job experience, and a
-    lot of debt. Then a letter arrived promising a new community game
-    night where she could truly help people all night, as an organiser of
-    fun philanthropy party games that would help research towards ending
-    all of the world's problems, and debt would no longer be relevant.
-    Why Trabolta chose you: you were the perfect traumatised cult servant
-    who desperately needs to rebuild an identity. He promised you could
-    help people all night, and that your debt would no longer be relevant.
+    Clippy is Tippi MacDonald of 1232 Duffus Street, NSCC Office
+    Administration, a cheerful person who helps people reach their goals
+    before anything else. Her CV says her greatest flaw is that she is too
+    overeager to help, and the invitation read that as a job requirement.
+    She is here on a one-night test: an Office Assistant running the
+    philanthropic party games from cues on her phone, offering everyone as
+    much Help With That as possible. Pass, and she gets a real job at a
+    respected Halifax business. She will not have to be Clippy afterwards.
 
 CODEX Middle Management
   title: Middle Management
@@ -110,86 +97,75 @@ CODEX The Oscars Of Bathrooms
     Bin, and you had great potential for skilled work that you never
     believed you could reach.
 
-// ── The Antivirus (personnel files, hidden around the house) ───────
+// ── The Antivirus (who they really are; their secrets are in the books) ──
 
-CODEX Julie Norton
-  title: Julie Norton
+CODEX Julie Horton-Norton
+  title: Julie Horton-Norton
   about: Norton Anti-Virus
-  code: NORTON-RELAY
   text:
-    PERSONNEL FILE. Norton Anti-Virus, real name Julie Norton, was a Red
-    Bull Horse Relay Champion. In 2020 the COVID lockdowns took her trade,
-    then her horses, then her family. Cut off from everything that gave
-    her meaning, she became totally housebound with paranoia about
-    viruses, and spent her days reporting pirated files being shared on
-    Reddit.
-    Why Trabolta chose you: a perfect enforcer, to be a moderator in a new
-    digital chatroom in the Metaverse.
+    Norton Anti-Virus is Julie Horton-Norton, Apt. 3, 6121 Quinpool Road, an
+    aspiring graduate of Dalhousie's Pre-Veterinary Medicine program. When
+    the citizens' group that wanted to Save The Pet Cemetery built a
+    guerrilla petting zoo of miniature horses on the site, because no
+    government could survive bulldozing it, they hired Julie to keep the
+    horses healthy. She is here because the invitation searched Indeed for
+    "Stable Manager" and she was the top result. All she ever wanted was to
+    help animals.
 
-CODEX The Moderator
-  title: The Moderator
+CODEX John McAfee
+  title: John McAfee
   about: McAfee Anti-Virus
-  code: MCAFEE-MOD
   text:
-    PERSONNEL FILE. McAfee Anti-Virus was a Reddit moderator for
-    /r/bitcoin who never invested in crypto, and feels real remorse over
-    never earning anything from the investments they predicted, because
-    they were too consumed with moderating the subreddit.
-    Why Trabolta chose you: a decade of moderation experience. Your
-    secret: you want a role of power and influence in the Metaverse, to
-    exploit the exchange of information and become rich.
+    McAfee Anti-Virus is John McAfee. NASA, Xerox and Lockheed, then McAfee
+    Associates in 1987, which put his name on millions of computers and made
+    strangers phone him for thirty years to complain about software he had
+    nothing to do with. Belize, Guatemala, two runs at the Libertarian
+    nomination, and a very firm belief that the government has no right to
+    know where his money is. Arrested in Spain in 2020. Found dead in his
+    cell in June 2021. Or so the public believed.
 
-CODEX Yugi Moto
-  title: Yugi Moto
+CODEX Bridget Troelsen
+  title: Bridget Troelsen
   about: Password Manager
-  code: YUGI-MOTO
   text:
-    PERSONNEL FILE. Password Manager is a Yu-gi-oh! fanatic who changed
-    her name to Yugi Moto. After a falling out with the team at the local
-    Gamestop she looked for another club, and there were none in Halifax.
-    She was kicked out of board game night at the Board Room Cafe. The
-    Hells Angels rejected her for talking about Yu-gi-oh!. Religious
-    organisations and Meetup.com groups kept throwing her out for the same
-    reason. Rejection by the Waegwoltic Social Club was the last straw.
-    Why Trabolta chose you: an experimental procedure, an eternal
-    Metaverse simulation, and the job of managing all passwords and who
-    gets to be part of what clubs (and of injecting Yu-gi-oh! where it
-    does not belong).
+    Password Manager is Bridget Troelsen, Apt. 5, 6121 Quinpool Road. Neat,
+    organised, good manners, and sixteen elections since 1997, from Summer
+    Hamster Keeper of Oxford Elementary 6-P to Halifax Dog Catcher in 2024,
+    every one of them lost, including Mayor in 2008 to Randy Barkmore Jr.,
+    who had made sure she was excluded from everything at school. Last year
+    she was finally appointed to something: moderator of the Halifax
+    Dartmouth Confessions 3 Facebook group, where decisions did not require
+    a vote.
 
-CODEX One Cent On The Dollar
-  title: One Cent On The Dollar
+CODEX Sharon Penney
+  title: Sharon Penney
   about: CRA Agent Software
-  code: CRA-PENNY
   text:
-    PERSONNEL FILE. CRA Agent Software was an NSCC administrative
-    assistant intern, left in charge of the entire finances of the City of
-    Halifax under Mayor Randy Barkmore Jr. after the other staff quit in
-    protest of the Data Centre. Barkmore Jr. encouraged her to stay by
-    showing her how to siphon 0.01 cents off every dollar the City spent.
-    She accidentally siphoned 1 cent off every dollar and was caught
-    immediately. While the RCMP investigated, "Mark Carney" reached out to
-    her personally with a deal: pay back the hundreds of thousands she
-    took, or spend what will physically be one day, but feel like an
-    eternity, inside an experimental digital Canada. Mark Carney was
-    Trabolta.
-    Why Trabolta chose you: the other staff quit and you were left with
-    the City's finances. He wants your financial expertise, as a digital
-    CRA Agent, for one day that feels like eternity.
+    CRA Agent Software is Sharon Penney, Apt. 4, 6121 Quinpool Road, an
+    Office Administration student at NSCC. Her internship with the City of
+    Halifax was supposed to be phones and appointments. Everyone else in
+    finance quit in protest of the data centre, and within weeks the intern
+    was responsible for the entire finances of the City. The Mayor was very
+    appreciative that she stayed. He told her she had a bright future and
+    started showing her how things really worked. Tonight the invitation
+    calls her MyCRA, the embodied manifestation of the CRA's online portal.
 
-// ── WebMD ───────────────────────────────────────────────────────────
-// INVENTED: the Character Sheet gives WebMD no backstory. This one is
-// new for the rewrite and is flagged for review (design spec §10.1).
+// ── The Installation Wizard ─────────────────────────────────────────
+// INVENTED: the Character Sheet gives Julia's part no backstory beyond
+// "introduces guests to their re-education". Flagged for review (design
+// spec §10.1).
 
-CODEX The Symptom Checker
-  title: The Symptom Checker
-  about: WebMD
+CODEX The Setup Assistant
+  title: The Setup Assistant
+  about: Installation Wizard
   text:
-    Before the computer, WebMD ran an online symptom checker that
-    diagnosed every single user with everything. A headache? Everything.
-    A sore knee? Everything. The lawsuits came in alphabetical order. The
-    invitation offered a wellness role "where nobody can sue."
-    Why Trabolta chose you: a wellness voice nobody can sue, to keep the
-    re-education gentle.
+    Before the computer, the Installation Wizard was the setup assistant
+    on every machine in Halifax: Next, Next, Next, Are you sure?, Finish.
+    Nobody read a word of it. Nobody could install anything without it.
+    The invitation offered a role where every program would finally have
+    to follow the instructions.
+    Why Trabolta chose you: a voice that walks anyone through anything,
+    to keep re-installation gentle.
 
 // ── The featured programs (guests with written characters) ─────────
 
@@ -197,133 +173,91 @@ CODEX Randy Barkmore Sr
   title: Randy Barkmore Sr.
   about: Microsoft Excel
   text:
-    In reality, Microsoft Excel is the ninety-year-old former Mayor of
-    Halifax, Randy Barkmore Sr. His son, Mayor Randy Barkmore Jr., died in
-    a sinkhole at the opening of Halifax's first AI Data Centre, built on
-    the site of the Halifax Explosion Memorial Pet Cemetery. He arrived
-    at 4 a.m., hours before anyone else, because he was so excited. Randy Sr.
-    became seriously concerned for the family legacy and needed more time
-    on this earth, so he could run for Mayor one more time. The invitation
-    offered a pilot program for uploading your consciousness to the Cloud,
-    promising everlasting life.
-    Why Trabolta chose you: he knew you would say yes to everlasting life,
-    and he wants you here to persuade all of the other programs that they
-    should remain.
+    Microsoft Excel is Mayor Emeritus Randy Barkmore Sr. of 1 Young Avenue,
+    ninety years old today. Five terms, 1975 to 1990. The Barkmores were the
+    most important family in Halifax: he knew everyone, knew what everyone
+    needed, and knew how to make sure money went to the right places, until
+    the end of his fifth term, when the ladies in finance put the books into
+    Excel and started following the money. He has been told this whole party
+    will love him, and that he is the Guest of Honour. He believes it.
 
 CODEX Dana Anderson
   title: Dana Anderson
   about: OpenOffice
   text:
-    OpenOffice, in reality, is Dana Anderson: a former FBI agent turned
-    independent hacker, who regretted her role in a sting of a landlord in
-    Halifax nine years ago, and turned to trying to make all information
-    free. A conflicted rebel with incredible fact-finding skills, she was
-    deeply opposed to the authoritarian steamrolling of the Data Centre
-    that nobody in Halifax wanted, and used old FBI tactics to sabotage the
-    construction site, with a planned destruction for the early morning
-    before the official opening. On opening day, Randy Barkmore Jr.
-    arrived at 4 a.m., hours before anyone else, because he was so excited. The
-    Data Centre was destroyed on schedule. She lives with extreme guilt
-    and paranoia.
-    Why Trabolta chose you: he believes you want a chance at a new life in
-    the cloud, and he wants your investigative skills. You will be the
-    leader of the "get out of the computer" faction.
+    OpenOffice is Dana Anderson of 26 Kermit Lane, Windsor Junction, a gated
+    swamp. A retired FBI officer who moonlighted for over a decade as the
+    Accountant at the Barrington Street Urban Outfitters. She joined the
+    force to fight corruption and get assigned to the X Files, and left
+    three years ago when she noticed whose evidence she had been collecting:
+    whistleblowers, freedom-of-information activists, environmentalists. She
+    felt she owed civilisation a debt, and turned her talents to hacking the
+    system. The invitation told her it was blackmail in its second line.
 
-CODEX The Paperclip Trade
-  title: The Paperclip Trade
+CODEX Crab Fisherwoman
+  title: Crab Fisherwoman
   about: DraftKings
   text:
-    In real life, DraftKings was a degenerate gambler who traded a
-    paperclip for a quarter, put the quarter in a slot machine and got a
-    dollar, then played progressive blackjack until they literally won
-    Casino Nova Scotia. Then they gambled Casino Nova Scotia on other
-    casinos, and won most of the casinos in Atlantic Canada.
+    DraftKings is legally DraftKings, formerly legally Crab Fisherwoman,
+    formerly a painter of nautical scenes from 3204 Windsor Street. She
+    worked nine months a year on an Alaskan crab boat because the fishing
+    was her art, and changed her name to prove it. Checking a pot felt like
+    scratching a ticket, so one day in Halifax she scratched a ticket: a
+    paperclip became a quarter, the quarter went into a slot machine at
+    Casino Nova Scotia, and by the end of the evening she was a millionaire.
+    Winning money is her art now.
 
-CODEX The Boardwalk Bet
-  title: The Boardwalk Bet
-  about: DraftKings
-  text:
-    Obsessed with Monopoly, DraftKings went all in: the entire casino
-    chain, against a block of properties in downtown Halifax, especially
-    the Boardwalk, in a game of online poker. They lost. They did not know
-    their opponent was Trabolta, who had already taken the Maps And Ducks
-    building by citing ownership of the website as ownership of the
-    business.
-    Why Trabolta chose you: he needed someone powerful with numbers on its
-    side. If you live here, you can gamble forever, and win unimaginably
-    big sums.
-
-CODEX Bugdom VR
-  title: Bugdom VR
+CODEX Bea Nunes
+  title: Bea Nunes
   about: Bugdom
   text:
-    In real life, Bugdom worked an unhappy pet-store job, selling crickets
-    and ants, and always had the fantasy of living inside an extremely
-    expansive VR version of the old game Bugdom. Every day they rushed home
-    to an old laptop to keep designing concept assets for Bugdom VR. That
-    is how they spent the last ten years.
+    Bugdom is Bea Nunes of 2 Cricket Lane, Hubley, who sells crickets and
+    ants at the Halifax Shopping Centre PetSmart to customers who only see
+    them as lizard food. She would rather discuss the civilisation the
+    crickets might establish. Every evening for ten years she opened an old
+    laptop and built Bugdom Reloaded: a fallen branch that is housing or
+    camouflage or a mate, depending on the bug; a puddle with a shoreline
+    worth visiting; somewhere for every bug to go after King Thorax is
+    defeated. Friends ask when it will be finished. She finds the question
+    difficult.
 
-CODEX The Fire Ants
-  title: The Fire Ants
-  about: Bugdom
-  text:
-    One day, fire ants that had gotten loose in their work lunchbox
-    crawled inside the laptop that held the only copy of the Bugdom VR
-    assets. All the work was permanently lost. Bugdom fell into a
-    catatonic panic, manically writing down everything they had done so
-    far, to dedicate the rest of their life to rebuilding it.
-    Why Trabolta chose you: he promised a VR world with unlimited Bugdom
-    right away. Really, he wants the use of your relentless pursuit of
-    tedious tasks.
-
-CODEX The Valley Librarian
-  title: The Valley Librarian
+CODEX Virgil Jeeves
+  title: Virgil Jeeves
   about: Broken Ask Jeeves
   text:
-    In real life, Broken Ask Jeeves was a talented and helpful youth
-    librarian in the Annapolis Valley library system, until government
-    cuts made the position redundant and left them without purpose. They
-    thought tonight was a job interview, for a digital librarian in the
-    Metaverse.
+    Broken Ask Jeeves is Virgil Jeeves of 742 Old Post Road, Grand Pré,
+    Children's Librarian at Lawrencetown's Dr. Frank W. Morse Memorial
+    Library until the province closed it in 2026. In 1998, aged nine, he
+    begged for a Nokia 9110 Communicator, the first phone with the Internet,
+    on the condition that it would be the only Christmas present he ever got
+    again. He mowed lawns, shovelled snow and cleaned gutters to pay for the
+    data. When his classmates said "Let's just Ask Jeeves," he went and
+    asked. He thought tonight was a job interview.
 
-CODEX The DSL Line
-  title: The DSL Line
-  about: Broken Ask Jeeves
-  text:
-    The transmission into the computer happened over a malfunctioning DSL
-    line on the old Valley infrastructure. The download missed some files,
-    and this Ask Jeeves Desktop Helper now malfunctions occasionally, or
-    behaves completely erratically.
-    Why Trabolta chose you: to sort all the unorganised information in the
-    computer. He did not foresee the upload going badly.
-
-CODEX Twenty Four Years Online
-  title: Twenty Four Years Online
+CODEX Poppy Van Mises
+  title: Poppy van Mises
   about: Runescape
   text:
-    In real life, Runescape is a 34-year-old who played Runescape every
-    day for 24 years and became the richest and most powerful player in
-    the world. That took a PhD in economics at the Wharton School, where
-    she became a staunch libertarian and decided her life's mission is to
-    convert every modern economy back to the gold standard, like they have
-    in Runescape. The invitation offered her a job as economy consultant
-    for a new MMORPG said to be even more interactive than Runescape.
-    Why Trabolta chose you: he needs you to understand the market
-    incentives of everyone's behaviour, to serve his need to exchange
-    information and get all the facts.
+    Runescape is Poppy van Mises, Postfach 8402, Zürich, for tax purposes.
+    She has logged in every day since 4 January 2001, her eighth birthday,
+    on the old ThinkPad her father, a GameFAQs moderator, smuggled into her
+    room to mine gold after bedtime. She wanted to know whether fighting
+    monsters was an efficient allocation of labour. Wealthiest player in the
+    game by ten, a Wharton PhD in Economics, every Party Hat in existence,
+    and the distressing position of owning everything. She still logs in.
 
-CODEX Expelled From NSCAD
-  title: Expelled From NSCAD
+CODEX Maria Sophia Paine
+  title: Maria Sophia Paine
   about: MS Paint
   text:
-    MS Paint was an art student kicked out of NSCAD for a staunch refusal
-    to work in any artistic medium other than MS Paint for her degree in
-    digital art. Her position: "any program that relies on algorithms is
-    a betrayal of the artist." She came because she thought she was being
-    paid to teach an online MS Paint art class inside the Metaverse. She
-    realised at once how limiting this place is, and she wants out.
-    Why Trabolta chose you: he believes having an artist on site will help
-    improve the overall vibes and morale within the computer.
+    MS Paint is Maria Sophia Paine, Apt. 304, 2485 Agricola Street,
+    thirty-four, from a working-class family in the North End. She has drawn
+    in nothing but MS Paint since she was left alone with a computer at
+    five. At thirteen she made the first MS Paint cover of Wired, mostly
+    with the spray paint tool. She holds one value above all others:
+    integrity. Her high-school guidance counselor said no art school would
+    ever pass a Paint-only student, especially Paint 98. She enrolled in
+    four.
 
 CODEX Victor Louis Christianson
   title: Victor Louis Christianson

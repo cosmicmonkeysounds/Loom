@@ -37,6 +37,7 @@ export function checkinRefusal(sim: Sim, guest: string, at: string): { status: n
   const target = sim.model.locations.get(at);
   if (target === undefined) return { status: 404, error: "That check-in point is not in this computer." };
   if (sim.isCaptured(guest)) return { status: 409, error: "You're captured — the story has to let you out first." };
+  if (sim.isRestricted(guest)) return { status: 409, error: "You're restricted — the story has to let you move first." };
   const here = sim.model.locations.get(sim.locationOf(guest) ?? "");
   if (here !== undefined && (here.prison || here.sealed)) return { status: 409, error: "You can't check in from here." };
   if (sim.cutsceneFor(guest) || onRails(sim, guest)) return { status: 409, error: "Not yet — finish getting in first." };

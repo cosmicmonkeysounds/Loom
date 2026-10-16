@@ -1,6 +1,6 @@
 # Demo — the Oct 31 WIP in 20–30 minutes
 
-How to show *Trapped in the Internet* as it stands (wave 3, 2026-10-15) on
+How to show *Trapped in the Internet* as it stands (wave 4, 2026-10-16) on
 **https://app.mapsandducks.com** with **2–4 phones and one laptop**. It plays the
 night from the door to an ending and the awards, compressed: every timed
 stretch (Bingo's 20 min, the hunts, the hour, the Y2K hour) is skipped by
@@ -12,9 +12,14 @@ change the order here, change it there.
 
 ## Before you start (once)
 
-1. The VPS runs the wave-3 release (`scripts/ops/ship.sh <tag>`), and the
-   show's story is in your server project: `LOOM_SSH=loom-vps pnpm sync-show`
-   (with `LOOM_PROJECT="<your project name>"` if it isn't *Untitled Project*).
+1. The VPS runs the wave-4 release (`scripts/ops/ship.sh <tag>` — the
+   server **before** the first sync that carries `facts.json` or the King's
+   map, or an old server refuses them; wave 4 is still uncommitted and
+   undeployed as of 2026-10-16), and the show's story is in your server
+   project: `LOOM_SSH=loom-vps pnpm sync-show` (with
+   `LOOM_PROJECT="<your project name>"` if it isn't *Untitled Project*).
+   The sync carries `facts.json` (the hunt questions, the facts and the
+   judge's answer key) and the house maps with the story.
 2. On the laptop, open **https://app.mapsandducks.com/edit/**, sign in, open
    the project, press **⌘2** (Run). If a run is already going and you want a
    clean night: header **↺ Restart ▾ → Restart this draft** (or **⇪ Push
@@ -32,7 +37,8 @@ change the order here, change it there.
      keeps a page silent until someone touches it, so Trabolta's TV voice is
      mute until you do.
    - **The tent tablet**: `https://app.mapsandducks.com/reinstall/?code=<moderator code>&name=Tent tablet`
-     (the reinstallation game; keyboard WASD / arrows, Q/E turn, Shift runs).
+     (the reinstallation game; keyboard WASD / arrows, Q/E turn, Shift runs;
+     ⚔ / Space hits the King, ♟ / C challenges him).
 5. Optional: Trabolta's voice. Start stagehand's `agents` worker on the
    laptop/house Mac (`uv run stagehand run --config <machine>.yaml --only agents`,
    see `stagehand/README.md`). Without it, DMs to Trabolta get his hold line
@@ -45,8 +51,8 @@ change the order here, change it there.
 |---|---|---|
 | **Phone A** | a guest: **Microsoft Excel** (a featured program: he gets a secret mission at the Truther Download) | open the site → **I'm a Guest** → event code → pick *Microsoft Excel* |
 | **Phone B** | a guest: **MS Paint** (featured: the night's anti-AI program, the first one sent to the Internet) | same, pick *MS Paint* |
-| **Phone C** (optional) | performer **Norton Anti-Virus** | **I'm a Performer** → performer code → pick *Norton Anti-Virus*. He scans passes at the door and sends programs to the Internet. |
-| **Phone D** (optional) | performer **Clippy** | performer code → *Clippy*. She judges answers (✅ / 😤 / 🏓 / 💘) on a guest's card. |
+| **Phone C** (optional) | performer **Norton Anti-Virus** | **I'm a Performer** → performer code → pick *Norton Anti-Virus*. She scans passes at the door and sends programs to the Internet; a program *marked* for reinstallation shows up as an escort task pinned in her `# quarantine` (with a chime) until he presses 🛡. |
+| **Phone D** (optional) | performer **Clippy** | performer code → *Clippy*. She judges answers spoken in the room (✅ / 😤 / 🏓 / 💘) and settles the bottle (🗣 / 🙅) on a guest's card; filed facts are judged by the server. |
 | **Laptop** | the director | Run (cue sheet), plus the TV tab and the tent-tablet tab |
 
 Two phones only? Skip C and D: in Run, the **👁 identity control** lets you
@@ -76,14 +82,15 @@ guest's card in that performer's booth (phone C / D), or in Run while you
 
 | Cue (Director) | Performer | What you see |
 |---|---|---|
-| **C1/V1 · 📣 Call everyone to the Desktop** | — | 🔔 alert on every phone; `# task-manager` opens; the TV leaves the screensaver. |
+| **C1/V1 · 📣 Call everyone to the Desktop** | — | 🔔 alert on every phone (`# task-manager` has been open since the door scan); the TV leaves the screensaver. |
 | **V2 · 🎱 Start Computer Bingo (20 min)** | — | Clippy's rules in *The Desktop* room, the Bingo Card quest, the TV's Bingo slide (a text placeholder) + corner countdown. |
-| **V3 · ⏰ Bingo time: results** | Clippy: **🎱 Bingo winner** + **🎀 Award a ribbon** on a guest (Calculator). Norton: **🛡 Send to the Internet** on **MS Paint**. | 🎀 broadcast; Norton's line to MS Paint ("you did not agree to be ruled by AI"); **Corrupted Code** (Clippy: "this is normal"). Phone B: "⛓️ You've been taken to The Internet", **WebMD**'s reinstallation instructions. |
+| **V3 · ⏰ Bingo time: results** | Clippy: **🎱 Bingo winner** + **🎀 Award a ribbon** on a guest (Calculator). Norton: **🛡 Send to the Internet** on **MS Paint**. | 🎀 broadcast; Norton's line to MS Paint ("you did not agree to be ruled by AI"); **Corrupted Code** (Clippy: "this is normal"). Phone B: "⛓️ You've been taken to The Internet", the **Installation Wizard**'s reinstallation instructions. |
 | *(tent tablet)* | — | On the laptop's tent tab: **MS Paint** is listed under *In the Internet now* (☣ MS Paint) → **Play here** → follow the golden chevrons to **Gerald, the golden duck** and walk into him. Phone B: "Reinstallation complete", *The Golden Duck*. (The map is the 3-floor placeholder of the house; the tent is out back.) |
 | **Clippy 2/X · 🤖 Clippy introduces Trabolta** | — | Trabolta appears in everyone's People list and DMs ("Hello, …"); the TV flips to his face, then the mirror of the house. |
 | **V4/V5 · 🔎 Truth Scavenger Hunt 1 (15 min)** | — | Hunt One in the Quest Log; a **📝 File a fact** card in each Trabolta thread. |
-| **C2 · ⏰ Hunt over** → **V6 · ⚖️ First Moment of Truth** | Clippy: **✅ Q1** on Calculator, **😤 Q2** on Excel (a confident lie: accepted, looks identical). | "✅ … answer is accepted" for both. A refused press (pressing again) lands in `# hosts`, never on the guest's phone. |
-| *(optional)* **🎩 Truth or Dare from the hat** | Clippy: 🎩 *Chose Dare* sends someone to the Internet. | — |
+| **C2 · ⏰ Hunt over** → **V6 · ⚖️ First Moment of Truth** | — | 🔔 "Last chance: file your round-one facts with Trabolta. Two minutes." Phones A/B can file an answer on the **📝 File a fact** card (pick the question, type it, set the confidence slider): `# hosts` shows the judge's verdict at once (the phone only hears "Your fact is in the record"). |
+| **⏱ Close round-one filings now** → **📋 Results: the next question** (press once; Q2 and Q3 are two more presses) | Clippy: **✅ Q1** on Calculator, **😤 Q2** on Excel (a confident lie spoken in the room: accepted, looks identical). | Clippy reads question 1's result in *The Desktop* (nobody filed / CONSENSUS / what everyone said); every filing for it is settled: +50 to the accepted ones, a guess is marked for reinstallation. A refused press (pressing again) lands in `# hosts`, never on the guest's phone. |
+| *(optional)* **🍾 Spin the bottle** | Clippy: 🗣 *Truth answered* / 🙅 *Truth refused* on the picked program. | Trabolta names a program on the TV ("…Truth or dare?"); their phone gets Truth / Dare. Dare or a refusal marks them for reinstallation; Truth asks Trabolta's personal question on the TV. |
 
 ### Act II — the malware and the hour (7 min)
 
@@ -114,7 +121,7 @@ guest's card in that performer's booth (phone C / D), or in Run while you
 
 1. **🎆 Midnight** → the final reveal (lights down). **🍎 Bobbing for Truth** → Adobe Acrobat's or Clippy's **🍎 Brought up the Bag of Truth** on a guest.
 2. **📄 Read truth.txt → the verdict** → with a lie on record: **Grok Prom** ("You lied to me… give me a pickup line").
-3. Clippy: **💘 Said "You're the one that I want"** on whoever says it (or the guest DMs it to Trabolta, if his worker is running) → the **Song Ending**.
+3. Every phone gets Trabolta's DM card *"Give me a pickup line that works on Sandy."* — type **You're the one that I want** and send it (the server judges it) → the **Song Ending**. (Or Clippy: **💘 Said "You're the one that I want"** on whoever says it aloud.)
    (Alternatives: **💔 Nobody has the line** → the rave; **💌 relationship advice** → a poll on every phone → **🗳 Count the advice poll**.)
 
 **Then the ceremony (2 min)**: **G1 · 🏆 Start the awards ceremony**, then e.g.
@@ -135,14 +142,21 @@ top, the codes stay, joined phones are signed out (they land on the join
 screen with a note). Performer booths stay signed in (only **Go live** signs
 them out).
 
+## What is built but not in the cue order above (show it if there's time)
+
+- **The King** (the Cold Lock in the simulation): in the tent tablet's game a gold chess king with four hearts guards the server-room door of the virtual house. Walk up to him (⚔ / Space) — every hit knocks a heart off and makes his chess AI dumber (grandmaster → club → beginner → dizzy → pawns only) — then challenge him (♟ / C) on the tablet's board. Mate him and the game fires `chess won` for that program; before the 🕚 Y2K clock it's practice (`# hosts` says so), after it the real door is disarmed for 90 s exactly as **♟ Cold Lock** does. Not device-checked yet: the Lichess phone stays the fallback on the night.
+- **The Wallet**: every phone has a pinned **Wallet** room (🪙 balance on the pass): send Truthcoin to another program, request it, or trade coin for a codex entry (an escrowed offer the other side accepts). Every third transfer waits for **Approve** in CRA Agent Software's booth (sign a fourth phone in as her: the editor's performer lens doesn't show a booth's Wallet room yet, though Run's operator view lists the pending transfers as text); any transfer can be denied within 60 s. Runescape's phone can mint a stimulus to everyone (three a night). The hosts' 🪙 Pay / Charge buttons are corrections only. A local-folder rehearsal has no wallet — use the server project.
+- **facts.json is the team's file**: the hunt questions + answer key, the Desktop's scannable facts (main / trabolta / character), the Truth-or-Dare questions and the pickup line all live in `core/examples/trapped-in-the-internet/facts.json`; `pnpm --filter @loom/core titi:facts` regenerates the story files from it. The server judges every 📝 filing against it (`Night.judge_mode` = `auto`; switch to `review` on Run → Mind's Judging card to confirm each verdict by hand). Rehearse filings on the server project: a folder run has no judge.
+- **Marked for reinstallation**: 🎯 / 🤷 / 🎩 / 🙅 / 🏓 missed / 🍎 failed / a guess at settle / a late program no longer capture on the spot. The phone greys out (DMs and the Tube / Internet rooms only) with a pinned 🚨 GO TO THE INTERNET card; the Antivirus booths chime and `# quarantine` lists who to escort. 🛡 captures; **🩹 Unmark** (any host or Antivirus) undoes a mis-tap.
+- **The Installation Wizard** (Julia's voice, not a part) runs the tent in the backyard through the tunnel; her lines are the tablet video's script in each captured program's thread. **Task Manager** is every program's main contact from the door scan (`# task-manager` and his DMs; answer as him from Run). Clippy's tour has a **Bathroom Mode** step.
+
 ## What is not built yet (say so on the day)
 
 - **The house map is a placeholder** (3 floors + the tent, not measured; K-28). The game walks it fine; the rooms won't line up with the real ones yet.
-- **No hardware in the loop**: the server-room door, the patch bay, the printer button and the chess phone are the admin fallback buttons on the cue sheet. The ESP32 firmware exists but isn't wired to the VPS demo.
-- **VR headsets** aren't part of this demo (the Quest build exists; the tablet game is the same game).
+- **No hardware in the loop**: the server-room door, the patch bay and the printer button are the admin fallback buttons on the cue sheet; the Cold Lock is the King on the tent tablet (above), with the chess phone as its fallback. The ESP32 firmware exists but isn't wired to the VPS demo.
+- **VR headsets** aren't part of this demo (the Quest build exists; a headset runs the same game minus the King's fight — it only shows him; the tablet has the fight).
 - **Trabolta's voice needs the laptop worker**; without it he has his hold line and a director answers as him.
 - **Phones at the server-room endings** show the GO TO THE LIVING ROOM *alert banner*, not a full-screen flashing screen (the TV and terminals do flash it).
-- **Every guest button shows all night** (🚻 Bathroom Mode, 💾 Insert a disk) — pressing one at the wrong time only answers "You have no disk." etc.
 - **TV slides are text placeholders** (no artwork yet: "CEREMONY", "AWARD MOST TRUSTED"); the award slide doesn't name the winner — the winner's phone and the host's line do. Only the Trust Chart is drawn for real.
-- **Old 📝 cards stay** in each Trabolta thread after a new round deals a fresh one.
-- Not built: the tablet bench (K-02), the live tent run (K-03), the live mind run (K-04), the cellular sheet (K-07), K-31b, the printed QR posters on the walls (the Run page's 🖨 Print sheet makes them), cast-pack rehearsals.
+- **The hunt questions, the facts and the Truth-or-Dare questions are DRAFT placeholders** in `facts.json` until the team writes the real ones (the character facts quote the invitations' real-world details — the team's call before printing).
+- Not built: the tablet bench (K-02), the live tent run (K-03), the live mind run (K-04), the cellular sheet (K-07), K-31b, the printed QR posters on the walls (the Run page's 🖨 Print sheet makes them; the Desktop's piles are `generated/print-stacks.md`), cast-pack rehearsals, the Runescape invitation's ten-minute Truthcoin freeze.

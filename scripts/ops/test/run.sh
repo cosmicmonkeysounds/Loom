@@ -184,7 +184,7 @@ rmdir -p "$ROOT/reinstall/vr/build/stage/config" 2>/dev/null || true
 teardown
 
 echo "── checklist"
-check "prints the 15 pre-show boxes" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' | grep -c '^\[ \]') -eq 15 ]"
+check "prints the 16 pre-show boxes" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' | grep -c '^\[ \]') -eq 16 ]"
 
 echo "── the voice is opt-in (2026-10-15)"
 # A plain `docker compose up` (release.sh / rollback.sh) must never need

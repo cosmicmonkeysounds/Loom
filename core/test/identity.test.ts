@@ -199,7 +199,10 @@ describe("the story classifies its characters", () => {
   it("a character with a part (hooks / beats / a body) is special; a bare name is pool", () => {
     expect(byName("Clippy").kind).toBe("special");
     expect(byName("Norton Anti-Virus").kind).toBe("special");
-    for (const part of ["Task Manager", "Adobe Acrobat", "Recycling Bin", "WebMD"]) expect(byName(part).kind, part).toBe("special");
+    for (const part of ["Task Manager", "Adobe Acrobat", "Recycling Bin"]) expect(byName(part).kind, part).toBe("special");
+    // The Installation Wizard speaks in beats (special) but is `playable: false`: a voice, nobody's part.
+    expect(byName("Installation Wizard").kind).toBe("special");
+    expect(byName("Installation Wizard").playable).toBe(false);
     expect(byName("Calculator").kind).toBe("pool");
     expect(byName("MS Paint").kind).toBe("pool");
     // The nine featured programs are guests with pre-written characters:
@@ -218,11 +221,11 @@ describe("the story classifies its characters", () => {
     expect(guests).not.toContain("Norton Anti-Virus");
     expect(guests).toEqual(expect.arrayContaining(["Microsoft Excel", "OpenOffice", "Broken Ask Jeeves", "MS Paint"]));
     expect([...performers].sort()).toEqual(
-      ["Adobe Acrobat", "CRA Agent Software", "Clippy", "McAfee Anti-Virus", "Norton Anti-Virus", "Password Manager", "Recycling Bin", "Task Manager", "WebMD"],
+      ["Adobe Acrobat", "CRA Agent Software", "Clippy", "McAfee Anti-Virus", "Norton Anti-Virus", "Password Manager", "Recycling Bin", "Task Manager"],
     );
     expect(performers).not.toContain("Calculator");
     // The secret state holder and the voices are nobody's.
-    for (const n of ["Kernel", "Sandy", "Truther Download", "The Tablet", "The Screensaver"]) {
+    for (const n of ["Kernel", "Sandy", "Truther Download", "Installation Wizard", "The Tablet", "The Screensaver"]) {
       expect(guests, n).not.toContain(n);
       expect(performers, n).not.toContain(n);
     }

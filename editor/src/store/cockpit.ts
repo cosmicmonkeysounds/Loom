@@ -32,6 +32,11 @@ import type {
   PrimeView,
   QuestSummary,
 } from '@loom/core/views'
+// The facts judge's ledger view (`ModView.facts`, Wave 4 lane B); every
+// editor surface reads it through this re-export.
+import type { FactVerdict, FactsFiling, FactsQuestion, FactsView } from '@loom/core/views'
+
+export type { FactVerdict, FactsFiling, FactsQuestion, FactsView }
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -334,6 +339,11 @@ export interface CockpitState {
   /** Every declared quest with each person's status (`ModView.quests`) —
    *  the Inspector's quest buttons. */
   quests: QuestSummary[]
+  /** The facts judge's ledger (`ModView.facts`): every key of the project's
+   *  `facts.json` with its filings, verdicts and tallies, plus the judging
+   *  mode. Null when the project has no `facts.json` (nothing is judged)
+   *  and on the local backend (the judge lives on the event server). */
+  facts: FactsView | null
   ledgerLen: number
   messages: CockpitMessage[]
   error: string | null
@@ -509,6 +519,7 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   cues: NO_CUES,
   codex: [],
   quests: [],
+  facts: null,
   ledgerLen: 0,
   messages: [],
   error: null,

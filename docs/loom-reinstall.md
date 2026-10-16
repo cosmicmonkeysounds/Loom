@@ -4,8 +4,8 @@
 is normative for every piece below; when code and this file disagree, fix
 one of them in the same change).
 
-A program that the Antivirus drags into **The Internet** (the tent behind
-the Tube) is *reinstalled* by proving, in a simulation, that it can follow
+A program that the Antivirus drags into **The Internet** (the tent in the
+backyard, through the tunnel) is *reinstalled* by proving, in a simulation, that it can follow
 instructions: it explores a **virtual copy of the house** and finds the
 **golden duck** (Gerald, gilded). Two games run the same simulation:
 
@@ -83,9 +83,11 @@ interface Room {
   outdoor?: boolean;            // no ceiling; unshared edges become a fence
   color?: string;               // "#rrggbb" — floor tint
 }
-interface Door { id: string; a: string; b: string | null; at: Vec2; width: number; height?: number }
+interface Door { id: string; a: string; b: string | null; at: Vec2; width: number; height?: number; guard?: string }
 //   a door is a gap in the wall between rooms a and b (b = null: to the outside) on a's floor;
-//   `at` lies on the shared wall line (± 0.02 m).
+//   `at` lies on the shared wall line (± 0.02 m). `guard` = the id of a "king" prop standing in
+//   the doorway: the web game and the terminals stand a closed leaf in the gap (`doorGap`); every game keeps the door shut —
+//   for walking and for `route` — until that king falls (§3 The King).
 interface Stair { id: string; from: string; to: string; rect: [number, number, number, number]; up: "n" | "s" | "e" | "w" }
 //   from = the lower room, to = the upper room; rect = [x0, z0, x1, z1] (plan, x0<x1, z0<z1),
 //   inside both rooms' footprints. The ramp rises toward `up`: from `from`'s floor elevation at the
@@ -100,10 +102,15 @@ interface TerminalSpot { id: string; name: string; room: string; pos: Vec3; yaw:
 //   2·atan(tan(vfov/2)·aspect) — ≈ 96.5° for the default on a 16:10 wall tablet.
 interface DuckSpot { id: string; room: string; pos: Vec3 }   // pos = where the duck sits (its feet)
 interface Prop {
-  id: string; room: string; kind: "box" | "cylinder" | "screen" | "label";
+  id: string; room: string; kind: "box" | "cylinder" | "screen" | "label" | "king";
   pos: Vec3;                    // centre of the base
   size: Vec3;                   // [w (x), h (y), d (z)] before yaw
-  yaw?: number; color?: string; label?: string; solid?: boolean;   // solid: collides (default true for box/cylinder)
+  yaw?: number; color?: string; label?: string; solid?: boolean;   // solid: collides (default true for box/cylinder/king)
+  hp?: number;                  // king only: hit points before he is "pawns only" (1–9, default 4)
+  signals?: { won?: string; lost?: string; drawn?: string };   // king only: the story signals the game posts
+                                //   (defaults "chess won" / "chess lost" / "chess drawn")
+  armed?: { path: string; min: number };   // king only: the fight is ARMED (not practice) while the world var
+                                //   at `path` (read off the mod view) is ≥ `min`; absent = no badge
 }
 interface SpaceTransform { offset: Vec3; yaw: number; scale: number }
 ```
@@ -130,7 +137,12 @@ Validation (`validateHouse`) returns `{ ok, problems: string[], house? }`
   a gap that runs past the wall run; a door to the outside (`b = null`) on
   a wall another room of that floor also has (name that room as `b`, or
   `route` would not know the passage); a gap that overlaps another door's
-  on the same line (lines within 2 × 0.02 m).
+  on the same line (lines within 2 × 0.02 m); a `guard` that names an
+  unknown prop, a prop that is not a `king`, or a king whose `room` is
+  neither `a` nor `b`.
+- **The King:** `hp` not an integer 1–9, `signals` not `{won?, lost?,
+  drawn?}` of strings, `armed` not `{path, min}`; any of the three on a
+  prop that is not a `king`.
 - **Stairs:** an unknown room; a rect that is not `x0 < x1`, `z0 < z1` by
   at least 1 mm; `from` and `to` on one floor, or `from` not the lower; a
   rect not inside both rooms; less than 0.3 m (`STAIR_CLEARANCE`) of `to`
@@ -156,7 +168,18 @@ Validation (`validateHouse`) returns `{ ok, problems: string[], house? }`
 
 Room `location` names are **not** checked by the validator (it has no
 model); the server warns (log + `warnings` in the response) when a
-`location` names no `LOCATION`.
+`location` names no `LOCATION`. `guardWarnings(house)` is the package's
+own advice on a valid map — a door's guard whose base centre stands more
+than 1.0 m (`GUARD_REACH`, plan) from the door's point is not in the
+doorway — and the server's `houseWarnings` folds it into the same
+`warnings` (the map page lists them; nothing blocks a save).
+
+`doorGap(house, door) → WallSegment | null` is the gap a door cuts, as
+`buildWalls` step 5 cuts it on a validated map: room `a`'s mm-rounded wall
+line, `lo..hi` = `mmi(t ± width / 2)`, `bottom` = the floor elevation,
+`top` = the door top (null when no edge of `a` carries the door). The games
+stand a closed leaf in a guarded door's gap and collide with it like a
+wall while its king stands.
 
 ### 1.2 Geometry (normative — the Godot port is diffed against it)
 
@@ -231,8 +254,11 @@ indicators") — a visibility graph over doors, stairs and corner waypoints.
 tolerance: metres, and m² for orientations).
 
 1. **Nodes**, in order, each `{pos, rooms}`:
-   - *Portals*: every door (its point at room `a`'s floor elevation; rooms
-     `a` and `b`, or just `a` when `b` is null), then per stair the *foot*
+   - *Portals*: every door **but a guarded one** (`guard`: shut until its
+     king falls — the route never passes it; the fight is per session, and
+     no duck sits behind a guard) — its point at room `a`'s floor
+     elevation; rooms `a` and `b`, or just `a` when `b` is null — then per
+     stair the *foot*
      (centre of the edge opposite `up`, lower elevation, room `from`) and
      the *head* (centre of the `up` edge, upper elevation, room `to`).
    - *Reflex waypoints*: per room (array order), per vertex `v = p[i]`
@@ -249,7 +275,8 @@ tolerance: metres, and m² for orientations).
      hole), then of the lower room `from` (round the ramp), each kept only
      when inside that room (boundary within `ε` counts).
    - *Prop waypoints*: per prop (array order) that is solid (`propSolid`:
-     `solid`, else true for `box` / `cylinder`) and whose `room` exists, the
+     `solid`, else true for `box` / `cylinder` / `king`) and whose `room`
+     exists, the
      corners of its obstacle rect `[x0, z0, x1, z1]` (step 2) moved `c`
      outward along each axis, in the same order `[x0−c, z0−c] [x1+c, z0−c]
      [x1+c, z1+c] [x0−c, z1+c]`, as waypoints of the prop's room only —
@@ -603,6 +630,62 @@ Session lifecycle:
 - A run restart (`reset`), a director's end, or the same program started
   elsewhere (`replaced`) returns the device to the scanner with a message.
 
+### The King
+
+The Cold Lock's chess game moved into the simulation (Wave 4, U15–U17):
+a `king` prop stands in the server-room doorway of the show's map
+(`cold-lock-king`, `hp: 4`, `armed: {path: "Night.step", min: 14}`; the
+door `server-door` names him as its `guard`). The web game is the only
+place he is fought; everything is **per session** — his health lives in
+the `Game`, nothing is shared between tablets, headsets or terminals, and
+a reload drops a pending result.
+
+- **The door.** While he stands, the guarded door's gap (`doorGap`) is a
+  wall for the walker and `route` never passes it (`physics.ts`
+  `closedDoors`; the scene's closed leaf, `HouseScene.doors`). When he
+  falls the leaf is hidden, the physics world is rebuilt without him and
+  the door (`omitProps`), and the trail re-plans.
+- **Hits** (`game/fight.ts`, pure): **⚔** on the HUD or Space, one hit per
+  1.2 s (`HIT_COOLDOWN_MS`), landing only on his floor, within 1.25 m of
+  his base centre (`HIT_REACH`) and facing him within 55° (`HIT_CONE_DEG`);
+  else a nudge ("Get closer to the King and face him."). Each hit takes one
+  point (never below 0), staggers him and redraws his bar — ♥ per point,
+  ♡ per lost, "PAWNS ONLY" at 0 (`@loom/house/three` `createKing`, a Win98
+  title-bar sprite over his head). The stage is `stageFor(hp, max)` =
+  `round(4·hp/max)`: 4 **grandmaster** → 3 **club** → 2 **beginner** → 1
+  **dizzy** → 0 **pawns** (`STAGE_LINE` says which as it changes).
+- **The board** (`chess/`, a lazy chunk with chess.js 1.4 — pure JS, no
+  wasm, no worker, the tablet's CSP untouched): **♟** on the HUD or C (when
+  a hit could land, or during its cooldown) opens `ChessWindow`, a Win98
+  window over the simulation. The player is White; tap a piece, tap a
+  square (no drag); a pawn on the last rank becomes a queen. The AI
+  (`chess/ai.ts`, negamax / alpha-beta over material + piece-square tables,
+  iterative deepening with node and time budgets, on the main thread, yielding
+  between root moves) plays one profile per stage: grandmaster depth 3 /
+  2.5 s, club 2 / 1.2 s, beginner 1 / 0.4 s, **dizzy** a random legal
+  move, **pawns** his own worst move from `PAWNS_ONLY_FEN` (his king and
+  eight pawns against a full side). 💡 Hint shows a good move for 2 s
+  (10 s cooldown); Give up abandons — nothing changes. A badge reads
+  **ARMED** / **PRACTICE** when the prop declares `armed` (`fetchArmed`:
+  the world var off `GET /api/state?role=mod`; no badge while unknown).
+  Every tap touches the idle leash, so a game in progress is never ended.
+- **The result** (`Game.chessResult`): **checkmate** fells him (`fall()`
+  topples him over 1.6 s), opens the door, plays the fanfare, says
+  "CHECKMATE — the door opens." and posts the prop's `signals.won`
+  (default `chess won`); the King winning posts `signals.lost` ("The King
+  holds. Hit him again."), a stalemate / insufficient material /
+  threefold / fifty moves posts `signals.drawn` ("A draw is not a win.");
+  an abandoned game posts nothing. Each goes through `postSignal`: `POST
+  /api/mod/signal {name, subject: <the program>, label: <device name>}`
+  with the tablet's moderator token, retried on a network failure or a
+  5xx (0.5 s doubling to 8 s, five retries, in memory only); a 4xx is
+  final. The story treats `chess won` exactly as the ♟ fallback button
+  does (§6): the Y2K gate is the story's, not the game's — before it the
+  door still opens in the simulation, as practice.
+- **Out of scope** (device check pending — the wall chess phone stays the
+  fallback, U17): the hit feel, the glyph fonts on the oldest tablets, a
+  grandmaster stall on a slow SoC; a pawns-only stalemate opens nothing.
+
 The **map** page (`/reinstall/map`): the house plan (SVG, one floor at a
 time), live players, the duck of each session, terminals with their view
 cones; an **editor** for directors, saving through
@@ -669,7 +752,9 @@ and every op is pure (`reinstall/web/src/map/`: `edit.ts`, `doors.ts`,
   a save — **walkability** (`route()` from the spawn to every duck spot,
   the VR autopilot's algorithm; and every room no door / stair chain from
   the spawn's room reaches) and the story's LOCATIONs (from the mod
-  view, `GET /api/state`): a room naming none, a LOCATION no room is.
+  view, `GET /api/state`): a room naming none, a LOCATION no room is;
+  the server's `warnings` on a save add `guardWarnings` (a king too far
+  from the door he guards).
 
 ## 4. The terminals — world view
 
@@ -696,6 +781,12 @@ ads, never "ONLINE", no pass piloting), the countdown, the TV's lines, and a
 heartbeat the editor's Run → Terminals card reads. A tablet without
 **WebGL2** (probed once at boot, `terminal/src/webgl.ts`) behaves as
 `face` and never loads three.js; a `mirror` shows a still notice.
+
+The world view shows the King too — `buildHouseScene` draws every `king`
+prop standing (no health bar — the bar is drawn by the tablet's own
+`setHp`), and a closed leaf in each guarded door — but a terminal never
+fights him and never opens the door:
+it only watches (the fight is the tablet's own, per session, §3).
 
 The world view (`terminal/src/world/`) renders through `@loom/house/three`
 with one camera, cut by a pure director (`world/director.ts`): **mount**
@@ -739,6 +830,15 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
 - `house/house_builder.gd` + `house_geometry.gd` + `house_route.gd` +
   `house_locate.gd`: the §1.2 algorithms in GDScript → StaticBody3D walls,
   floors (with stair holes), ramps, rails, props, terminal screens, labels.
+  A `king` prop is drawn as a gold body with a crown (solid, like a box);
+  a guarded door is shut for `house_route.gd` as for `route` (never a
+  portal); VR draws no leaf — his solid body stands in the gap and nothing
+  opens the door.
+- **The King is not fought in VR** (U16): within 1.5 m of a `king` prop on
+  his floor (`Game.KING_NEAR`) the headset says once per approach "The
+  King is fought on the tent tablet." (`KING_NOTICE`, re-armed beyond
+  3.0 m, `KING_FAR`); the door he guards stays shut, and no duck is behind
+  it.
 - `player/`: XROrigin3D rig on a CharacterBody3D; **left stick** walks
   head-relative (dead zone 0.15, 1.8 m/s), **right stick** snap-turns 45°
   (re-arm under 0.3; `smooth_turn` setting); comfort vignette while moving;
@@ -770,3 +870,20 @@ The goose is now the **golden duck** (`INTERACTION the golden duck`,
 `CODEX The Golden Duck`) and nothing needs a button: "walk to the duck".
 `the simulation completed` still releases a corrupted program; the
 games fire both events for whoever finds the duck.
+
+**The King** (§3) speaks to the story through `POST /api/mod/signal
+{name, subject, label}` with the tablet's moderator token: `chess won`
+(the mate), `chess lost`, `chess drawn`, `subject` = the program playing.
+The server honours `label` only when the caller's `by` is the generic
+"Director" — a mod-token device, never an author's session — and journals
+the signal `by` that label (the same rule as `/api/mod/impersonate`), so
+the journal line reads `by: "Tent tablet"` (the recap carries no `by`).
+The story is unchanged: `when
+chess_won:` keeps its Y2K gate (`Night.step >= 14` → the 90 s
+`Kernel.disarmed_until` window; before it, `# hosts` says the win is
+practice), `chess lost` / `chess drawn` disarm nothing and, from the Y2K
+hour while the door is still locked, make Trabolta gloat (`-> Chess Lost`
+/ `-> Chess Drawn`, a `# hosts` readout — before that they are silent),
+and the fallback stays: **♟ They beat the machine** on the
+winner's card (`beat_the_machine` → `fire chess_won`), the admin
+`chess_won` INTERACTION, or the director firing `chess won` from Run.

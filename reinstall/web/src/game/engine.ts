@@ -16,16 +16,17 @@
 import { PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
 import type { Group } from "three";
 import { buildWalls, pathLength, spaceOf, toSpace, yawFromSpace, yawToSpace } from "@loom/house";
-import type { Assignment, DuckSpot, FoundResult, HouseMap, PlayerPose, PlayerState, SpatialFrame, Vec3 } from "@loom/house";
+import type { Assignment, DuckSpot, FoundResult, HouseMap, PlayerPose, PlayerState, Prop, SpatialFrame, Vec3 } from "@loom/house";
 import { applySpace, buildHouseScene, createAvatar, createDuck, createTrail, houseAtmosphere, PoseBuffer, spaceGroup } from "@loom/house/three";
-import type { Avatar, Duck, HouseScene, Trail } from "@loom/house/three";
+import type { Avatar, Duck, HouseScene, King, Trail } from "@loom/house/three";
 import { fetchHouse, postEnd, postFound, postPose, streamUrl } from "../api.ts";
 import { applyFrame, duckToAdopt, houseVersionOf, openSpatialStream, type SpatialStreamHandle } from "../spatial.ts";
 import type { Sfx } from "./audio.ts";
+import { canHit, fell, hearts, hit as landHit, KING_HP, newFight, stageFor, STAGE_LINE, type Fight, type HitVerdict, type Stage } from "./fight.ts";
 import { formatElapsed, foundRetryMs, heat, PAUSED_NOTICE, perchedOutOfReach, relativeBearing, roomTitle, withinReach, type Heat } from "./hud.ts";
 import { combineInput, isActive, keyDown, keyUp, type StickVector } from "./input.ts";
 import { IdleLeash } from "./leash.ts";
-import { bodyAfterRemap, buildPhysicsWorld, eyeOf, move, NO_INPUT, spawnBody, type Body, type PhysicsWorld } from "./physics.ts";
+import { bodyAfterRemap, buildPhysicsWorld, eyeOf, move, NO_INPUT, spawnBody, type Body, type PhysicsOptions, type PhysicsWorld } from "./physics.ts";
 import { NoRenderer } from "./no-start.ts";
 import { PosePump } from "./pump.ts";
 import { trail } from "./trail.ts";
@@ -57,7 +58,34 @@ export interface HudState {
   live: boolean;
   /** A passing message ("closer…"). */
   notice: string | null;
+  /** The King (a `king` prop on this map), null when the map has none. */
+  king: KingHud | null;
 }
+
+/** The King as the HUD shows him. */
+export interface KingHud {
+  id: string;
+  label: string;
+  hp: number;
+  max: number;
+  /** The hearts string (`fight.ts`). */
+  hearts: string;
+  stage: Stage;
+  /** Whether a hit would land right now (the ⚔ / ♟ buttons show when near). */
+  verdict: HitVerdict;
+  fallen: boolean;
+  /** The fight is armed (true) or practice (false); null = unknown / the prop declares no `armed`. */
+  armed: boolean | null;
+}
+
+/** What the board needs when a challenge opens. */
+export interface ChessContext {
+  stage: Stage;
+  label: string;
+  armed: boolean | null;
+}
+
+export type ChessResult = "won" | "lost" | "drawn" | "abandoned";
 
 export type GameEnd = { kind: "over"; reason: string } | { kind: "idle" };
 
@@ -80,6 +108,12 @@ export interface GameOptions {
   onFound: (r: FoundResult) => void;
   /** The session ended without a find (the run restarted, the leash ran out). */
   onEnd: (e: GameEnd) => void;
+  /** A challenge opened (the board) or closed (null). */
+  onChess?: (c: ChessContext | null) => void;
+  /** Fire a story signal as this device (`postSignal`); resolves whether it landed. */
+  signal?: (name: string) => Promise<boolean>;
+  /** Is the fight armed? (`fetchArmed`; null = unknown.) */
+  armed?: (path: string, min: number) => Promise<boolean | null>;
 }
 
 interface Ghost {
@@ -136,7 +170,15 @@ export class Game {
   private distHistory: Array<{ t: number; d: number }> = [];
   private live = false;
   private notice: { text: string; until: number } | null = null;
-  private phase: "playing" | "finding" | "found" | "ended" = "playing";
+  private phase: "playing" | "finding" | "found" | "ended" | "chess" = "playing";
+  // The King (`fight.ts`): per session, nothing shared.
+  private fight: Fight = newFight();
+  private kingProp: Prop | null = null;
+  private king: King | null = null;
+  private hitQueued = false;
+  private challengeQueued = false;
+  private kingVerdict: HitVerdict = "far";
+  private armedState: boolean | null = null;
   private foundCooldownUntil = 0;
   /** Refusals since the player last stepped out of reach (the backoff exponent). */
   private foundRefusals = 0;
@@ -160,13 +202,16 @@ export class Game {
 
     this.map = opts.house;
     this.mapVersion = opts.houseVersion;
+    this.kingProp = opts.house.props.find((p) => p.kind === "king") ?? null;
+    this.fight = newFight(this.kingProp?.hp ?? KING_HP);
     const walls = buildWalls(opts.house);
-    this.world = buildPhysicsWorld(opts.house, walls);
+    this.world = buildPhysicsWorld(opts.house, walls, this.physicsOptions());
     const root = spaceGroup(spaceOf(opts.house, "web"));
     this.root = root;
     this.scene.add(root);
     this.house = buildHouseScene(opts.house, { walls });
     root.add(this.house.root);
+    this.bindKing();
     this.duck = createDuck();
     this.duckSpot = opts.assignment.duck;
     this.duck.object.position.set(...this.duckSpot.pos);
@@ -243,6 +288,10 @@ export class Game {
     };
     const down = (e: KeyboardEvent): void => {
       if (typing(e)) return;
+      if (!e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey && this.phase === "playing") {
+        if (e.code === "Space") this.hitQueued = true;
+        if (e.code === "KeyC") this.challengeQueued = true;
+      }
       if (keyDown(this.keys, e)) e.preventDefault();
     };
     const up = (e: KeyboardEvent): void => keyUp(this.keys, e);
@@ -277,7 +326,7 @@ export class Game {
         return;
       }
       this.leash.show(now);
-      if (this.phase === "playing" || this.phase === "finding") {
+      if (this.phase === "playing" || this.phase === "finding" || this.phase === "chess") {
         this.startPump();
         void this.pump.tick(); // timed out meanwhile → the 410 ends it as "over"
       }
@@ -288,7 +337,7 @@ export class Game {
     // a keepalive fetch outlives the unload — instead of a frozen ghost
     // lingering on every terminal for the 60 s timeout.
     const hide = (): void => {
-      if (this.phase === "playing" || this.phase === "finding") void postEnd(this.o.base, this.o.assignment.token);
+      if (this.phase === "playing" || this.phase === "finding" || this.phase === "chess") void postEnd(this.o.base, this.o.assignment.token);
     };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
@@ -346,11 +395,15 @@ export class Game {
     if (isActive(input)) this.leash.touch(now);
     this.body = move(this.body, input, dt, this.world);
     if (this.phase === "found") this.watchDuck(dt);
+    // The board is modal, but the pose keeps going out: the server's 60 s
+    // pose timeout must never end a game mid-mate.
+    if (this.phase === "chess") this.pump.set(this.pose());
 
     if (playing) {
       this.pump.set(this.pose());
       if (now - this.lastTrailAt >= TRAIL_EVERY_MS) this.refreshTrail(now);
       this.maybeQuack(now);
+      if (this.kingProp !== null && this.phase === "playing") this.tickKing(now);
       if (this.phase === "playing" && this.duck.state === "idle") {
         if (!withinReach(this.map, this.body.p, this.duckSpot)) {
           this.foundRefusals = 0;
@@ -441,7 +494,149 @@ export class Game {
       others: [...this.players.keys()].filter((s) => s !== this.o.assignment.session).length,
       live: this.live,
       notice: this.notice?.text ?? null,
+      king: this.kingHud(),
     });
+  }
+
+  // --- the King ------------------------------------------------------------
+
+  /** The HUD button / Space: hit him (lands on the next frame if he is in reach). */
+  hit(): void {
+    if (this.phase === "playing") this.hitQueued = true;
+  }
+
+  /** The HUD button / C: challenge him to the board. */
+  challenge(): void {
+    if (this.phase === "playing") this.challengeQueued = true;
+  }
+
+  /** Something happened on the board: the idle leash is touched. */
+  touch(): void {
+    this.leash.touch(performance.now());
+  }
+
+  /** The guarded doors stay shut and the King blocks until he falls. */
+  private physicsOptions(): PhysicsOptions {
+    const id = this.kingProp?.id;
+    if (id === undefined) return {};
+    if (this.fight.fallen) return { omitProps: new Set([id]) };
+    return { closedDoors: new Set(this.map.doors.filter((d) => d.guard === id).map((d) => d.id)) };
+  }
+
+  /** Bind the scene's King to the fight (after a build / remap). */
+  private bindKing(): void {
+    this.king = this.kingProp !== null ? (this.house.kings.get(this.kingProp.id) ?? null) : null;
+    this.king?.setHp(this.fight.hp, this.fight.max);
+    if (this.fight.fallen) {
+      // A remap mid-fight: he is already down (animated again, it is short).
+      void this.king?.fall();
+      this.openGuardedDoors();
+    }
+  }
+
+  /** Hide the leaf of every door the King guards (he has fallen). */
+  private openGuardedDoors(): void {
+    for (const door of this.map.doors) {
+      if (door.guard !== this.kingProp?.id) continue;
+      const leaf = this.house.doors.get(door.id);
+      if (leaf !== undefined) leaf.visible = false;
+    }
+  }
+
+  private kingHud(): KingHud | null {
+    const p = this.kingProp;
+    if (p === null) return null;
+    return {
+      id: p.id,
+      label: p.label ?? "THE KING",
+      hp: this.fight.hp,
+      max: this.fight.max,
+      hearts: hearts(this.fight),
+      stage: stageFor(this.fight.hp, this.fight.max),
+      verdict: this.kingVerdict,
+      fallen: this.fight.fallen,
+      armed: this.armedState,
+    };
+  }
+
+  private tickKing(now: number): void {
+    const king = this.kingProp;
+    if (king === null) return;
+    const verdict = canHit(this.fight, now, this.map, this.body.p, this.body.yaw, king);
+    this.kingVerdict = verdict;
+    const nudge = (): void => this.say("Get closer to the King and face him.", 1500);
+    if (this.hitQueued) {
+      this.hitQueued = false;
+      if (verdict === "ok") {
+        const before = stageFor(this.fight.hp, this.fight.max);
+        this.fight = landHit(this.fight, now);
+        this.king?.hit();
+        this.king?.setHp(this.fight.hp, this.fight.max);
+        this.o.sfx.thud();
+        this.leash.touch(now);
+        const after = stageFor(this.fight.hp, this.fight.max);
+        if (after !== before) this.say(STAGE_LINE[after], 2500);
+      } else if (verdict !== "cooldown" && verdict !== "fallen") nudge();
+    }
+    if (this.challengeQueued) {
+      this.challengeQueued = false;
+      if (verdict === "ok" || verdict === "cooldown") this.enterChess();
+      else if (verdict !== "fallen") nudge();
+    }
+  }
+
+  private enterChess(): void {
+    const king = this.kingProp;
+    if (king === null || this.phase !== "playing") return;
+    this.phase = "chess";
+    this.keys.clear();
+    this.leash.touch(performance.now());
+    const stage = stageFor(this.fight.hp, this.fight.max);
+    const label = king.label ?? "THE KING";
+    this.o.onChess?.({ stage, label, armed: this.armedState });
+    // The badge: fetched in the background, shown when it lands.
+    if (king.armed !== undefined && this.o.armed !== undefined) {
+      void this.o.armed(king.armed.path, king.armed.min).then((armed) => {
+        if (this.phase !== "chess") return;
+        this.armedState = armed;
+        this.o.onChess?.({ stage, label, armed });
+      });
+    }
+  }
+
+  /** The board closed: a checkmate fells him and opens the door; anything else leaves the fight as it was. */
+  chessResult(r: ChessResult): void {
+    if (this.phase !== "chess") return;
+    this.phase = "playing";
+    this.leash.touch(performance.now());
+    this.o.onChess?.(null);
+    const king = this.kingProp;
+    if (king === null) return;
+    const signals = king.signals ?? {};
+    switch (r) {
+      case "won": {
+        this.fight = fell(this.fight);
+        void this.king?.fall();
+        this.openGuardedDoors();
+        this.world = buildPhysicsWorld(this.map, this.house.walls, this.physicsOptions());
+        this.lastTrailAt = Number.NEGATIVE_INFINITY;
+        this.o.sfx.fanfare();
+        this.say("CHECKMATE — the door opens.", 4000);
+        void this.o.signal?.(signals.won ?? "chess won");
+        return;
+      }
+      case "lost":
+        this.o.sfx.buzz();
+        this.say("The King holds. Hit him again.", 3000);
+        void this.o.signal?.(signals.lost ?? "chess lost");
+        return;
+      case "drawn":
+        this.say("A draw is not a win.", 3000);
+        void this.o.signal?.(signals.drawn ?? "chess drawn");
+        return;
+      case "abandoned":
+        return;
+    }
   }
 
   // --- found ---------------------------------------------------------------
@@ -553,7 +748,13 @@ export class Game {
     applySpace(this.root, spaceOf(house, "web"));
     this.map = house;
     this.mapVersion = version;
-    this.world = buildPhysicsWorld(house, walls);
+    // The King on the new map (the same prop id keeps the fight's hp; a new
+    // one deals a fresh fight; none drops it).
+    const king = house.props.find((p) => p.kind === "king") ?? null;
+    if (king === null || king.id !== this.kingProp?.id) this.fight = newFight(king?.hp ?? KING_HP);
+    this.kingProp = king;
+    this.world = buildPhysicsWorld(house, walls, this.physicsOptions());
+    this.bindKing();
     this.lastTrailAt = Number.NEGATIVE_INFINITY;
     // Standing somewhere the new map has no floor for (the shed is a solid
     // box on the tent map): back to the start, as the server re-seats too.

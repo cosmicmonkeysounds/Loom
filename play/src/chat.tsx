@@ -27,6 +27,7 @@ import {
 } from "./threads.ts";
 import type { Action, Channel, ChatMessage, Decision, QuestStatus } from "./types.ts";
 import { WidgetHost, supersededCards, widgetLabel, type WidgetResult } from "./widgets.tsx";
+import { WalletCardView } from "./wallet.tsx";
 
 // --- small shared atoms -----------------------------------------------------
 
@@ -192,6 +193,7 @@ const GLYPH: Record<Channel["kind"], string> = {
   private: "🔒",
   codex: "📓",
   quests: "📜",
+  wallet: "🪙",
 };
 
 export function Avatar({ channel }: { channel: Pick<Channel, "kind" | "title"> }) {
@@ -420,6 +422,7 @@ function lastPreview(c: Channel): string {
   if (last.kind === "widget" && last.widget) return widgetLabel(last.widget);
   if (last.kind === "codex" && last.codex) return `📓 ${last.codex.title}`;
   if (last.kind === "quest" && last.quest) return `📜 ${last.quest.title}${last.text ? `: ${last.text}` : ""}`;
+  if (last.kind === "wallet" && last.wallet) return last.text;
   return last.kind === "line" ? `${last.from ? `${prettyName(last.from)}: ` : ""}${last.text}` : last.text;
 }
 
@@ -693,6 +696,7 @@ export function MessageBubble({
   if (msg.kind === "quest" && msg.quest) {
     return <QuestView msg={msg} modBtn={modBtn} status={questStatus} replies={replies} onOpenThread={onOpenThread} />;
   }
+  if (msg.kind === "wallet" && msg.wallet) return <WalletCardView msg={msg} card={msg.wallet} modBtn={modBtn} replies={replies} onOpenThread={onOpenThread} />;
   if (msg.kind !== "line") {
     return (
       <div className={`msg ${cls} ${msg.hidden ? "hidden" : ""} ${typing ? "typing" : ""} ${pending ? "pending" : ""}`}>
@@ -973,10 +977,26 @@ export function PresenceStrip({ people, meId, onOpen }: { people: Channel["peopl
  * the message stream, and a caller-supplied footer (a decision tray, a
  * scanner, moderation actions…).
  */
+/** The pinned rail — the sticky notices still up in this room (`pin "…"`),
+ *  above the stream, newest per key. Nothing to show → nothing rendered. */
+export function PinnedRail({ pins }: { pins: ChatMessage[] }) {
+  if (pins.length === 0) return null;
+  return (
+    <div className="pinned-rail" role="status">
+      {pins.map((m) => (
+        <div key={m.seq} className={`pin ${m.alert ? "alert" : ""}`}>
+          📌 {m.text}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function ChannelView({
   channel,
   onBack,
   footer,
+  pins,
   moderate,
   showChannel,
   onSend,
@@ -1007,6 +1027,8 @@ export function ChannelView({
   headerActions?: ReactNode;
   /** Wide layout: no back button (the sidebar is beside us). */
   wide?: boolean;
+  /** Sticky notices to show above the stream (`activePins`). */
+  pins?: ChatMessage[];
 }) {
   // Channel-type rules: a read-only channel hides the composer; a
   // non-threadable channel hides the reply affordance. (Derived channels omit
@@ -1014,12 +1036,14 @@ export function ChannelView({
   const canPost = channel.canPost !== false;
   const threadable = channel.threadable !== false;
   const people = channel.people ?? [];
-  const isRoom = channel.kind !== "dm" && channel.kind !== "guest" && channel.kind !== "codex" && channel.kind !== "quests";
+  const isRoom = channel.kind !== "dm" && channel.kind !== "guest" && channel.kind !== "codex" && channel.kind !== "quests" && channel.kind !== "wallet";
   const emptyCopy =
     channel.kind === "codex"
       ? "You know nothing yet. Codes are on the walls, in the puzzles, and in people — type one below."
       : channel.kind === "quests"
         ? "No quests yet. When the story hands you one, it lands here — each in its own thread."
+        : channel.kind === "wallet"
+          ? "Nothing has moved yet. Every transfer, request and trade lands here — each in its own thread."
         : channel.kind === "location"
       ? channel.here
         ? "You're here. Nothing has happened in this room yet."
@@ -1048,6 +1072,7 @@ export function ChannelView({
           {isRoom && onPeople && <PresenceStrip people={people} meId={meId ?? null} onOpen={onPeople} />}
         </div>
       </header>
+      {pins && pins.length > 0 && <PinnedRail pins={pins} />}
       <MessageList
         key={channel.id}
         messages={channel.messages}

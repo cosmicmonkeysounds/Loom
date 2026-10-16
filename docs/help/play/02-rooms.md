@@ -15,7 +15,10 @@ titled sections of your inbox):
 | **Group rooms** | your side's private channel — one per public group in the story; only members see it |
 | **Location rooms** | tied to real places at the event — what happens *there* is heard *there* |
 | **Direct messages** | one-on-one threads — characters may slide into your DMs |
-| **📜 Quest Log** · **📓 Codex** | pinned at the top: what the story has asked of you, and what you know — yours alone |
+| **📜 Quest Log** · **📓 Codex** · **🪙 Wallet** | pinned at the top: what the story has asked of you, what you know, and (when the story has money) what you have — yours alone |
+
+Some rooms carry a **pinned line** above the conversation — a standing
+notice from the story that stays until it's cleared.
 
 ## Rooms appear as the night opens up
 
@@ -50,6 +53,8 @@ the list of who's here — tap a name to message them.
 Some rooms have a sign with a QR code: **Scan to enter this room's
 chat**. Point your phone's own camera at it and open the link — in the
 same browser you joined in — and you're checked in: you're standing in
-that room and its chat opens. It won't work while you're captured,
-before you've finished getting in, or for a room the story hasn't
-opened for you yet; and one check-in every 20 seconds.
+that room and its chat opens. It won't work while you're captured or
+**restricted** by the story (the story has to lift that first — see
+[Your pass](your-pass.md)), before you've finished getting in, or for a
+room the story hasn't opened for you yet; and one check-in every 20
+seconds.

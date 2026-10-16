@@ -47,6 +47,7 @@ services:
       LOOM_RL_LOGIN_FAILURES: ${LOOM_RL_LOGIN_FAILURES:-}
       LOOM_RL_REDEEM_MISSES: ${LOOM_RL_REDEEM_MISSES:-}
       LOOM_RL_WIDGETS: ${LOOM_RL_WIDGETS:-}
+      LOOM_RL_WALLET: ${LOOM_RL_WALLET:-}
       # Share-invite email (either transport; both blank = links only).
       LOOM_SMTP_URL: ${LOOM_SMTP_URL:-}
       LOOM_RESEND_API_KEY: ${LOOM_RESEND_API_KEY:-}
@@ -82,6 +83,12 @@ services:
       # uncomment — never set it blank (an empty path is not "unset"). The
       # file is re-read when it changes.
       # LOOM_HOUSE: /config/house.json
+      # The facts judge's answer key (the hunt questions, the scannable
+      # facts, the truth-or-dare questions). Like the map it belongs to the
+      # project: a project's facts.json is snapshotted at launch and wins.
+      # LOOM_FACTS is only the fallback (default: facts.json beside the
+      # house map). Same rule as LOOM_HOUSE: bind-mount, never blank.
+      # LOOM_FACTS: /config/facts.json
       # Optional: pin the default event's passcodes (otherwise auto-generated
       # and printed in the logs + saved under the state volume):
       # LOOM_EVENT_PASS: ...

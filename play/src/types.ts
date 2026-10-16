@@ -4,8 +4,8 @@
 
 // --- server-authoritative chat (mirror of server/chat.ts) -------------------
 
-export type ChannelKind = "lobby" | "faction" | "dm" | "group" | "open" | "private" | "location" | "codex" | "quests";
-export type MessageKind = "line" | "narration" | "signal" | "system" | "widget" | "codex" | "quest";
+export type ChannelKind = "lobby" | "faction" | "dm" | "group" | "open" | "private" | "location" | "codex" | "quests" | "wallet";
+export type MessageKind = "line" | "narration" | "signal" | "system" | "widget" | "codex" | "quest" | "wallet";
 
 /** The entry a `codex` message shows (mirror of server/chat.ts `CodexCard`);
  *  the message's `text` is the entry's text. */
@@ -56,12 +56,20 @@ export interface ChatMessage {
   beat?: string | null;
   /** An alert broadcast (`!` cue) — chime, vibrate, banner. */
   alert?: boolean;
+  /** A sticky notice (`pin "…"`): the key it was pinned under (a person's
+   *  id, or "" for a room-wide pin). `pins.ts` keeps the newest per
+   *  (channel, key) above the stream until an `unpin` with the same key. */
+  pin?: string;
+  /** Takes down the pin with this key in this channel (`unpin …`). */
+  unpin?: string;
   /** The card a `widget` message renders. */
   widget?: WidgetCard;
   /** The entry a `codex` message shows. */
   codex?: CodexCard;
   /** The quest a `quest` message is a step of. */
   quest?: QuestCard;
+  /** The card a `wallet` message renders. */
+  wallet?: WalletCard;
   /** The director who posted this *as* a participant (admins only; the
    *  server strips it for guests). */
   via?: string;
@@ -138,6 +146,9 @@ export interface GuestView {
   score: number;
   location: string | null;
   captured: boolean;
+  /** The story restricted you (`restrict who`): the app greys out, no
+   *  buttons, only the listed rooms, read-only; your DMs still work. */
+  restricted?: boolean;
   /** May a captive free themselves from the app? False in a `sealed` prison. */
   canEscape?: boolean;
   pendingChoice: string[] | null;
@@ -165,6 +176,8 @@ export interface GuestView {
    *  views.ts `QuestView`), and how many the story declares. */
   quests?: Array<{ id: string; title: string; giver: string | null; status: QuestStatus }>;
   questTotal?: number;
+  /** The story's currency, when it declares one (`currency:`). */
+  wallet?: WalletView;
   /** Everyone here (guests + listed characters), and what one knows of each. */
   people?: PersonCard[];
   /** Profile pictures: folded display name → serving key (`avatars.ts`). */
@@ -176,6 +189,8 @@ export interface PrimeGuest {
   name: string;
   faction: string | null;
   captured: boolean;
+  /** `restrict who` is in force — the card shows a ⛔ pill. */
+  restricted?: boolean;
   /** Where the story has them standing. */
   location: string | null;
 }
@@ -196,6 +211,16 @@ export interface PrimeView {
   legacyCapture?: boolean;
   /** The entries this character holds — their backstory, shareable one guest at a time. */
   codex?: CodexEntry[];
+  /** How many entries the story declares (0 → no Codex room in the booth). */
+  codexTotal?: number;
+  /** The character's own quest log (`start quest X for <Character>`), in
+   *  hand-out order, and how many quests the story declares. */
+  quests?: Array<{ id: string; title: string; giver: string | null; status: QuestStatus }>;
+  questTotal?: number;
+  /** Widget cards (by seq) this character has already answered. */
+  answered?: number[];
+  /** The approver's queue (the approver's booth only). */
+  wallet?: WalletQueueView;
   /** Agent-voiced characters this performer can message (`cast:<id>` threads). */
   agents?: Array<{ id: string; online: boolean }>;
   /** Profile pictures: folded display name → serving key (`avatars.ts`). */
@@ -256,4 +281,120 @@ export interface Channel {
   typing?: string | null;
   /** The `data-tour` anchor this row carries (the guided tour points at it). */
   tour?: string;
+}
+
+// --- the wallet (mirror of server/wallet.ts + the `WalletCard` in the
+// engine's event.ts) ----------------------------------------------------------
+
+export type WalletTxState = "pending" | "held" | "settled" | "denied" | "cancelled";
+export type WalletRequestState = "open" | "paying" | "paid" | "declined" | "expired" | "cancelled";
+export type WalletOfferState = "open" | "accepted" | "declined" | "failed" | "expired" | "cancelled";
+export type WalletCardKind = "transfer" | "request" | "offer" | "stimulus" | "approval";
+export type WalletStep =
+  | "sent"
+  | "pending"
+  | "held"
+  | "settled"
+  | "received"
+  | "approved"
+  | "denied"
+  | "cancelled"
+  | "asked"
+  | "paid"
+  | "declined"
+  | "expired"
+  | "offered"
+  | "accepted"
+  | "failed"
+  | "minted";
+
+/** One wallet card as this viewer sees it (mirror of server/wallet.ts
+ *  `WalletCard`): `kind` + `step` say which side the viewer is on; `id`
+ *  (`t12` / `r3` / `o7` / `s1`) is the card's thread key. */
+export interface WalletCard {
+  kind: WalletCardKind;
+  id: string;
+  step: WalletStep;
+  from: string;
+  fromName: string;
+  to: string;
+  toName: string;
+  amount: number;
+  /** The unit — the story's currency name. */
+  unit: string;
+  side?: "buy" | "sell";
+  entry?: string;
+  entryTitle?: string;
+  /** Story ms — the countdown on pending / approval cards. */
+  settleAt?: number;
+  /** Who approved / denied / cancelled. */
+  by?: string;
+  /** The approver's display name, on a card that waits on them. */
+  approver?: string;
+}
+
+export interface WalletTxView {
+  id: string;
+  from: string;
+  fromName: string;
+  to: string;
+  toName: string;
+  amount: number;
+  state: WalletTxState;
+  settleAt: number | null;
+  via: "send" | "request";
+  at: number;
+  by?: string;
+}
+export interface WalletRequestView {
+  id: string;
+  from: string;
+  fromName: string;
+  to: string;
+  toName: string;
+  amount: number;
+  state: WalletRequestState;
+  expiresAt: number;
+  at: number;
+  tx?: string;
+}
+export interface WalletOfferView {
+  id: string;
+  from: string;
+  fromName: string;
+  to: string;
+  toName: string;
+  side: "buy" | "sell";
+  entry: string;
+  entryTitle: string;
+  amount: number;
+  state: WalletOfferState;
+  expiresAt: number;
+  at: number;
+}
+/** A guest's wallet (`GuestView.wallet`, present only when the story
+ *  declares a `currency:`). */
+export interface WalletView {
+  name: string;
+  balance: number;
+  /** Coin out of the balance but not yet the other side's. */
+  escrowed: number;
+  maxTransfer: number;
+  /** Mine (either side), open first, newest 20. */
+  transfers: WalletTxView[];
+  /** Open requests, in + out. */
+  requests: WalletRequestView[];
+  /** Open offers, in + out. */
+  offers: WalletOfferView[];
+  /** When the viewer is the minter's program. */
+  minter?: { uses: number; limit: number };
+  /** When the viewer IS the approver (declared as a guest program). */
+  approver?: { queue: WalletTxView[] };
+}
+/** The approver's booth (`PrimeView.wallet`). */
+export interface WalletQueueView {
+  name: string;
+  queue: WalletTxView[];
+  every: number;
+  windowMs: number;
 }

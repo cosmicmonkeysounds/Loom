@@ -28,10 +28,15 @@ export interface TourOptions {
   hasCodex: boolean;
   /** The story declares quests (the Quest Log). */
   hasQuests?: boolean;
+  /** The story declares a currency (the Wallet). */
+  hasWallet?: boolean;
   /** The story has a people directory. */
   hasPeople: boolean;
   /** The guest has story buttons on their pass (`INTERACTION … who: guest`). */
   hasActions: boolean;
+  /** A story-supplied Bathroom Mode blurb (`with bathroom: "…"`): adds a
+   *  step over the pass, where that button lives. */
+  bathroom?: string | null;
 }
 
 /** The tour, step by step, for what this story turns on. */
@@ -56,6 +61,14 @@ export function tutorialSteps(o: TourOptions): TourStep[] {
       text: "Who you are tonight, where the story thinks you are, your score, and the green dot that says you're live.",
     },
   ];
+  if (o.hasWallet) {
+    steps.push({
+      id: "wallet",
+      target: "wallet",
+      title: "Your wallet",
+      text: "Your balance lives here. Send coin to another program, ask them for some, or trade a fact you hold for coin. Some transfers wait for an audit.",
+    });
+  }
   if (o.hasQuests) {
     steps.push({
       id: "quests",
@@ -88,6 +101,7 @@ export function tutorialSteps(o: TourOptions): TourStep[] {
       ? "Your QR code — show it to a performer to be scanned. The story's buttons live here too."
       : "Your QR code — show it to a performer to be scanned.",
   });
+  if (o.bathroom) steps.push({ id: "bathroom", target: "pass", title: "Bathroom Mode", text: o.bathroom });
   steps.push({
     id: "cards",
     target: null,

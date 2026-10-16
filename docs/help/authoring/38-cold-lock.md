@@ -2,16 +2,50 @@
 title: Running the Cold Lock — the chess door, from the director's chair
 section: Live Shows
 order: 38
-keywords: chess, chess phone, cold lock, chess won, chess lost, chess drawn, beat the machine, server room, door, disarm, disarmed, window, 90 seconds, propped, propped door, alarm, latch, re-arm, rearm, re-lock, fallback, dead phone, honour, OP-12, Trapped in the Internet, runbook
+keywords: chess, the King, king, chess piece, health bar, hit, challenge, tent tablet, simulation, chess phone, cold lock, chess won, chess lost, chess drawn, beat the machine, server room, door, disarm, disarmed, window, 90 seconds, propped, propped door, alarm, latch, re-arm, rearm, re-lock, fallback, dead phone, honour, OP-12, Trapped in the Internet, runbook
 ---
 
-*Trapped in the Internet* guards its server room with a phone taped to
-the wall outside it: a chess game against a hard machine. Beat it after
-the Y2K clock starts and the door is **disarmed for 90 seconds**, then it
-locks itself again. This page is the director's side of it — what to
-watch, and the two buttons that fix it when something goes wrong. How
-the rules are written is in [live verbs](33-live-verbs.md) (*A button as
-a fallback for a machine*).
+*Trapped in the Internet* guards its server room with **the King**: a
+tall golden chess piece standing in the server-room doorway of the
+**simulation** (the house map's `king` prop, guarding that door), with
+a health bar. A program on the tent tablet walks up and hits him; every
+hit makes the chess machine behind him dumber; beat him at chess and
+the door in the simulation opens and the tablet tells the story `chess
+won`. After the Y2K clock starts, that win **disarms the real door for
+90 seconds**, then it locks itself again. This page is the director's
+side of it — what to watch, and the two buttons that fix it when
+something goes wrong. How the rules are written is in [live
+verbs](33-live-verbs.md) (*A button as a fallback for a machine*); the
+map side is in [the house map](39-house-map.md).
+
+## The King, on the tablet
+
+1. The program plays the simulation on the **tent tablet** (the King
+   is never fought in a headset: VR shows him and says *"The King is
+   fought on the tent tablet."*; the door he guards stays shut there).
+   He stands in the basement hall, in the server-room doorway, which is
+   drawn shut behind him — the chevrons never lead there; the duck is
+   elsewhere.
+2. Up close and facing him, **⚔ HIT** (or **Space**) lands one blow
+   every 1.2 seconds. The bar under the HUD counts him down — *at full
+   strength* → *rattled* → *reeling* → *dizzy* → *PAWNS ONLY* (the
+   map's `hp`, four by default). Each stage is a weaker chess machine,
+   down to a king with nothing but his eight pawns.
+3. **♟ CHALLENGE** (or **C**) opens the board. Checkmate fells him —
+   *"CHECKMATE — the door opens."* — the door in the simulation opens,
+   and the tablet posts `chess won` for that program, journaled as the
+   tablet's doing. A loss (*"The King holds. Hit him again."*) or a
+   draw changes nothing, and the tablet reports `chess lost` / `chess
+   drawn` so Trabolta can gloat.
+4. The fight is **per session**: the next program who scans their pass
+   meets him at full strength again. The ladder can be run in seconds
+   by someone who knows it; the story, not the game, decides what a
+   win is worth.
+
+A badge on the board says whether the win is **ARMED** or **PRACTICE**
+(the map's `armed:` reads `Night.step`): before the Y2K hour the
+simulation's door still opens — that is the game's reward — but the
+real door does not.
 
 ## What happens, in order
 
@@ -26,36 +60,39 @@ a fallback for a machine*).
    Y2K look, and `# hosts` says *"♟ Cold Lock closed: the server-room
    door is armed again."* A second win inside the window just starts
    the 90 seconds over.
-4. **A loss or a draw** opens nothing. If the phone reports it, Trabolta
-   gloats in The Server Room; no director action is needed.
+4. **A loss or a draw** opens nothing. If the tablet reports it,
+   Trabolta gloats on the TV in The Desktop (the crew get a readout in
+   `# hosts`); no director action is needed.
 
 After a faction wins the majority the room is unlocked anyway, so a
 chess win does nothing; after an ending, nothing either. Pausing the
 run freezes the window with the story clock.
 
-Programs learn the rule from the **The Cold Lock** codex entry (a note
-taped beside the phone), handed to every cleared program with The Y2K
-Clock at the final round.
+Programs learn the rule from the **The Cold Lock** codex entry, handed
+to every cleared program with The Y2K Clock at the final round.
 
-## The honour rule
+## The chess phone (the fallback until the King is device-checked)
 
-On the night the phone runs the Lichess app, which can't tell the server
-anything. So a person reports the win: a host or Antivirus who **saw
+A phone taped to the wall outside the server room still runs the
+Lichess app, which can't tell the server anything. If the tablet is
+down, a person reports the win: a host or Antivirus who **saw
 "checkmate" on the phone** opens the winner's card in their booth and
-presses **♟ They beat the machine**. Nobody presses it on someone's word.
-The phone sends no heartbeat either, so it never shows on the Terminals
-card — the Antivirus stationed in the server room glances at it each act.
+presses **♟ They beat the machine**. Nobody presses it on someone's
+word. The phone sends no heartbeat, so it never shows on the Terminals
+card — the Antivirus stationed in the server room glances at it each
+act.
 
-## The phone is dead (the manual fallback)
+## Nothing reported it (the manual fallback)
 
-Run → **Director** → the cue sheet → **♟ Cold Lock: they beat the
-machine (chess phone fallback)**. One click opens the same 90-second
-window. It is an off-sequence cue, so the sheet ticks it but never marks
-it LAST or suggests it as NEXT — firing it doesn't move your place in
-the show. It needs no guest.
+Run → **Director** → the cue sheet → **♟ Cold Lock: they beat the King
+(fallback)**. One click opens the same 90-second window. It is an
+off-sequence cue, so the sheet ticks it but never marks it LAST or
+suggests it as NEXT — firing it doesn't move your place in the show.
+It needs no guest.
 
-Use it when the phone died, froze or lost its game mid-mate and the
-crew saw the win, or when the booth that should press ♟ is down.
+Use it when the tablet lost its connection mid-mate, the phone died or
+froze and the crew saw the win, or when the booth that should press ♟
+is down.
 
 ## A propped door
 
@@ -76,6 +113,10 @@ alarms again.
 
 ## Before the doors open
 
+- On the tent tablet: walk to the King, hit him to *PAWNS ONLY*,
+  challenge, mate — `# hosts` says *practice only* before the Y2K hour.
+  The server must be the one that knows `king` props (an older
+  `validateHouse` refuses the map).
 - The chess phone is charged, plugged in, on Wi-Fi, the screen held
   awake, the computer set to the agreed level.
 - On the bench (the K-27 check, with the real door reed): win once from

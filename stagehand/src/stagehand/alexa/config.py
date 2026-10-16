@@ -5,8 +5,8 @@ Shape (trapped.house.yaml carries the real one):
     alexa:
       mqtt:     { host, port?, username?, password?, client_id? }   # required
       topic:    show/announce          # what the `show` cue publishes
-      chime_topic: show/chime          # `sound alexa_chime` — the chime alone
-      device:   "Alexa Zones"          # CoreAudio output (name or substring);
+      chime_topic: show/chime          # `sound announce_chime` — the chime alone
+      device:   "MOTU"                 # CoreAudio output (name or substring);
                                        # omit = the system default output
       channels: [1, 2, 3, 4]           # optional: the device's output channels
                                        # (1-based) — the file repeats across them

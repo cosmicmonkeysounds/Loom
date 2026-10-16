@@ -23,14 +23,21 @@
 //! the example's (any project map it changes or deletes is copied to a temp
 //! directory first, printed); `--keep-maps` touches no map at all. An example
 //! map that doesn't validate stops the sync before anything is written.
+//!
+//! The example's `facts.json` (the facts judge's key, `server/facts.ts`) is
+//! a project file too, snapshotted on the row beside the maps and handed to
+//! the reload as `facts` — but unlike a map it is **always replaced**: it is
+//! generated from the repo (`titi-facts`), never surveyed in the project. An
+//! example with no `facts.json` removes the project's copy.
 
 import { randomUUID } from "node:crypto";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Pool } from "pg";
-import { scenarioFiles, scenarioMapFiles } from "../examples/load.ts";
+import { scenarioFactsFile, scenarioFiles, scenarioMapFiles } from "../examples/load.ts";
 import { isMapFile, mapProblems, mapSummary, planMapSync, type MapFiles, type MapSyncMode } from "../server/house-maps.ts";
+import { FACTS_FILE, factsProblems } from "../server/facts.ts";
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://127.0.0.1:5432/loom_dev";
 
@@ -94,13 +101,19 @@ async function main(): Promise<void> {
           `     project  ${mapSummary(projectMaps[f]!)}\n     example  ${mapSummary(exampleMaps[f]!)}\n`,
       );
     }
-    const pushed = [...files, ...plan.put.map((path) => ({ path, source: exampleMaps[path]! }))];
+    // The facts key: always the example's (generated, never edited in the project).
+    const facts = scenarioFactsFile(example);
+    if (facts !== null) {
+      const problems = factsProblems(facts.source);
+      if (problems.length > 0) throw new Error(`the example's ${FACTS_FILE} does not validate — nothing synced:\n  ${problems.join("\n  ")}`);
+    }
+    const pushed = [...files, ...plan.put.map((path) => ({ path, source: exampleMaps[path]! })), ...(facts !== null ? [facts] : [])];
 
     // Files: upsert every example file by path, drop the rest.
     const client = await pool.connect();
     try {
       await client.query("begin");
-      const keep = [...files.map((f) => f.path), ...Object.keys(maps)];
+      const keep = [...files.map((f) => f.path), ...Object.keys(maps), ...(facts !== null ? [FACTS_FILE] : [])];
       await client.query(`delete from project_file where project_id = $1 and not (path = any($2::text[]))`, [project.id, keep]);
       for (const f of pushed) {
         const r = await client.query(
@@ -125,6 +138,9 @@ async function main(): Promise<void> {
         (plan.remove.length > 0 ? ` · removed ${plan.remove.join(", ")}` : "") +
         "\n",
     );
+    process.stdout.write(facts !== null ? `✓ ${FACTS_FILE}: the example's (${facts.source.length} bytes)\n` : `✓ ${FACTS_FILE}: none in the example\n`);
+    // The row's data-file record: the maps plus the facts key (`events-api.ts`).
+    const snapshot: Record<string, string> = { ...maps, ...(facts !== null ? { [FACTS_FILE]: facts.source } : {}) };
 
     // The concatenation the server uses (`db/queries.ts` projectSource).
     const source = [...files]
@@ -145,7 +161,7 @@ async function main(): Promise<void> {
     // The column the server's boot migration adds (`server/db/index.ts`) —
     // idempotent, so a sync never fails on a server that hasn't booted it yet.
     await pool.query(`alter table event add column if not exists house_maps jsonb`);
-    await pool.query(`update event set scenario_source = $2, house_maps = $3::jsonb where id = $1`, [event.id, source, JSON.stringify(maps)]);
+    await pool.query(`update event set scenario_source = $2, house_maps = $3::jsonb where id = $1`, [event.id, source, JSON.stringify(snapshot)]);
     process.stdout.write(`✓ event ${event.id} (${event.mode}, ${event.status}) snapshot updated — codes: guest ${event.event_code} · performer ${event.prime_code} · mod ${event.mod_code}\n`);
     if (!reload) return;
 
@@ -163,7 +179,7 @@ async function main(): Promise<void> {
     const load = await fetch(`${server}/e/${encodeURIComponent(event.id)}/api/mod/load`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-loom-token": token },
-      body: JSON.stringify({ source, name: project.name, maps }),
+      body: JSON.stringify({ source, name: project.name, maps, facts: facts?.source ?? null }),
     });
     if (!load.ok) throw new Error(`mod/load failed: ${load.status} ${await load.text()}`);
     process.stdout.write(`✓ event reloaded on the new story → ${server}/?code=${event.event_code}\n`);

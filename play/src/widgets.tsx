@@ -1,5 +1,5 @@
 //! Widgets — the cards a `show <kind> …` statement puts in a conversation:
-//! a CAPTCHA to solve, a picture, a poll, a 📝 fact to file. The story names a kind and some
+//! a CAPTCHA to solve, a picture, a poll, a 📝 fact to file, a 💬 free-text answer. The story names a kind and some
 //! text/params; this registry maps the kind to a React card. A widget that
 //! wants an answer calls `onAnswer(result)` once, and the story hears it as
 //! the named event `<kind> answered` with the result bound as arguments.
@@ -304,32 +304,43 @@ export function factQuestions(param: string | undefined): Array<{ id: string; la
     });
 }
 
+/** The confidence slider's range: 1–100, whole numbers. */
+export const CONFIDENCE_MIN = 1;
+export const CONFIDENCE_MAX = 100;
+/** The slider's label, verbatim (the show's wording). */
+export const CONFIDENCE_LABEL = "Please select your confidence level in this response";
+
 /** The answer a fact card files, or null while it isn't fileable: a question
- *  picked, a non-empty answer within `FACT_MAX`, and "I'm certain" ticked. */
-export function factResult(question: string, answer: string, certain: boolean): WidgetResult | null {
+ *  picked, a non-empty answer within `FACT_MAX`, and a whole-number
+ *  confidence between `CONFIDENCE_MIN` and `CONFIDENCE_MAX`. */
+export function factResult(question: string, answer: string, confidence: number): WidgetResult | null {
   const a = answer.trim();
-  if (question === "" || a === "" || a.length > FACT_MAX || !certain) return null;
-  return { question, answer: a, certain: true };
+  if (question === "" || a === "" || a.length > FACT_MAX) return null;
+  if (!Number.isInteger(confidence) || confidence < CONFIDENCE_MIN || confidence > CONFIDENCE_MAX) return null;
+  return { question, answer: a, confidence };
 }
 
 /**
  * `show fact "📝 File a fact" to program with thread: Trabolta, questions:
  * "H1: … | H2: …"` — file an answer to one of tonight's questions with a
- * character. Certain answers only; the story judges it later (a human),
- * and its reply is the same whether the answer was right or a lie. The
- * answer is `{question, answer, certain: true}` → `fact answered`.
+ * character, and say how sure you are (a 1–100 slider). The server judges
+ * it (when the project has a `facts.json`) and the story decides what the
+ * verdict does; the character's reply is the same whether the answer was
+ * right, a confident lie or a guess. The answer is
+ * `{question, answer, confidence}` → `fact answered`.
  */
 function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
   const questions = factQuestions(card.params["questions"]);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
-  const [certain, setCertain] = useState(false);
+  const [confidence, setConfidence] = useState(CONFIDENCE_MAX);
   const done = answered !== null && answered !== undefined;
-  const result = factResult(question, answer, certain);
+  const result = factResult(question, answer, confidence);
   const filedFor = done && typeof answered["question"] === "string" ? questions.find((q) => q.id === answered["question"])?.label ?? String(answered["question"]) : null;
   // "Sent", not "filed": the story still has to accept it (a question from
   // a round that hasn't opened, a second filing… is refused in its reply).
-  const sent = filedFor ? `✔ sent: ${filedFor}` : "✔ sent";
+  const sentSure = done && typeof answered["confidence"] === "number" ? ` · ${answered["confidence"]}%` : "";
+  const sent = filedFor ? `✔ sent: ${filedFor}${sentSure}` : `✔ sent${sentSure}`;
   if (superseded) {
     return (
       <div className="widget fact done folded" role="note">
@@ -348,7 +359,7 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
         </span>
         <div>
           <div className="widget-title">{card.text || "File a fact"}</div>
-          <div className="widget-sub">Pick a question, type the answer. Certain answers only: one filing per question.</div>
+          <div className="widget-sub">Pick a question, type the answer, say how sure you are. One filing per question.</div>
         </div>
       </div>
       {!done && onAnswer && (
@@ -368,8 +379,18 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
           />
-          <label className="fact-certain">
-            <input type="checkbox" checked={certain} onChange={(e) => setCertain(e.target.checked)} /> I'm certain
+          <label className="fact-confidence">
+            <span>{CONFIDENCE_LABEL}</span>
+            <input
+              type="range"
+              min={CONFIDENCE_MIN}
+              max={CONFIDENCE_MAX}
+              step={1}
+              value={confidence}
+              onChange={(e) => setConfidence(Number(e.target.value))}
+              aria-valuetext={`${confidence}%`}
+            />
+            <output>{confidence}%</output>
           </label>
         </>
       )}
@@ -388,6 +409,66 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
   );
 }
 
+// --- answer -----------------------------------------------------------------
+
+/** Longest free-text answer when the card sets no `max`. */
+export const ANSWER_MAX_DEFAULT = 200;
+
+/** The card's own text limit: `with max: 120`, else `ANSWER_MAX_DEFAULT`. */
+export function answerMax(params: Record<string, string>): number {
+  const n = Number(params["max"]);
+  return Number.isInteger(n) && n > 0 ? n : ANSWER_MAX_DEFAULT;
+}
+
+/** The text an answer card sends, or null while it is empty / too long. */
+export function answerResult(text: string, max: number): WidgetResult | null {
+  const t = text.trim();
+  if (t === "" || t.length > max) return null;
+  return { text: t };
+}
+
+/**
+ * `show answer "Give me a pickup line." to program with thread: Trabolta,
+ * question: P1, max: 120, button: "Say it", placeholder: "…"` — one free-text
+ * line. The result is `{text}` → `answer answered`; when the card carries a
+ * `question` key and the project has a `facts.json`, the server attaches
+ * `{question, verdict}` on the way (the phone never sees the verdict). Not
+ * re-dealt: every answer card stays live until answered.
+ */
+function AnswerCard({ card, onAnswer, answered }: WidgetProps) {
+  const [text, setText] = useState("");
+  const max = answerMax(card.params);
+  const done = answered !== null && answered !== undefined;
+  const result = answerResult(text, max);
+  const button = card.params["button"] ?? "Send";
+  return (
+    <div className={`widget answer ${done ? "done" : ""}`} role="group" aria-label={card.text || "Your answer"}>
+      <div className="widget-head">
+        <span className="widget-glyph" aria-hidden>
+          💬
+        </span>
+        <div>
+          <div className="widget-title">{card.text || "Your answer"}</div>
+        </div>
+      </div>
+      {!done && onAnswer && (
+        <textarea className="answer-text" rows={2} maxLength={max} placeholder={card.params["placeholder"] ?? "Type it here"} value={text} onChange={(e) => setText(e.target.value)} />
+      )}
+      <div className="widget-foot">
+        {done ? (
+          <span className="widget-state">✔ sent</span>
+        ) : onAnswer ? (
+          <button type="button" className="widget-go" disabled={result === null} onClick={() => result && onAnswer(result)}>
+            {button}
+          </button>
+        ) : (
+          <span className="widget-state">shown to a guest</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // --- registry ---------------------------------------------------------------
 
 export const WIDGETS: Record<string, WidgetDef> = {
@@ -397,6 +478,7 @@ export const WIDGETS: Record<string, WidgetDef> = {
   tutorial: { label: "📘 orientation", answerable: true, overlay: true, render: (p) => <TutorialCard {...p} /> },
   pass: { label: "🎟️ your pass", answerable: false, render: (p) => <PassCard {...p} /> },
   fact: { label: "📝 file a fact", answerable: true, supersedes: true, render: (p) => <FactCard {...p} /> },
+  answer: { label: "💬 your answer", answerable: true, render: (p) => <AnswerCard {...p} /> },
 };
 
 /** The cards a newer card of the same (re-dealt) kind has replaced, per

@@ -80,6 +80,9 @@ export interface RateLimits {
    *  a card after every answer (📝 File a fact) can't be tapped into a
    *  flood of its thread + journal. `LOOM_RL_WIDGETS`. */
   widgets: RateRule;
+  /** Wallet calls per guest (`/api/guest/wallet/*`) — the only brake on a
+   *  phone flooding the approver's queue with tiny sends. `LOOM_RL_WALLET`. */
+  wallet: RateRule;
 }
 
 export const DEFAULT_RATE_LIMITS: RateLimits = {
@@ -88,6 +91,7 @@ export const DEFAULT_RATE_LIMITS: RateLimits = {
   loginFailures: { max: 10, windowMs: 5 * 60_000 },
   redeemMisses: { max: 8, windowMs: 60_000 },
   widgets: { max: 20, windowMs: 60_000 },
+  wallet: { max: 30, windowMs: 60_000 },
 };
 
 const ENV_KEYS: Record<keyof RateLimits, string> = {
@@ -96,6 +100,7 @@ const ENV_KEYS: Record<keyof RateLimits, string> = {
   loginFailures: "LOOM_RL_LOGIN_FAILURES",
   redeemMisses: "LOOM_RL_REDEEM_MISSES",
   widgets: "LOOM_RL_WIDGETS",
+  wallet: "LOOM_RL_WALLET",
 };
 
 /**

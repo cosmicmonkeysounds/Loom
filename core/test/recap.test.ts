@@ -35,8 +35,9 @@ const PROGRAMS: Array<[string, string]> = [
 ];
 const fireAll = (sim: Sim, ...names: string[]) => names.forEach((n) => sim.signal(n));
 
-/** Round 1 judged (one accurate, one confident lie), hunt 2 with a DM lie
- *  filed + judged, and one trip to the Internet. */
+/** Round 1 judged (one accurate, one confident lie), hunt 2 with two 📝
+ *  filings judged by the server (a confident lie, an accurate one) and
+ *  credited at the round-2 tally, and one trip to the Internet. */
 function night(): Sim {
   const sim = Sim.fromSources(scenarioSource(SHOW));
   sim.fireBeat("Power On");
@@ -48,10 +49,9 @@ function night(): Sim {
   for (let i = 0; i < 120; i++) sim.tick(1000);
   sim.choose("g2", 0);
   sim.choose("g3", 0);
-  sim.signal("fact answered", "g4", { question: "H5", answer: "Clippy", certain: true, card: 1 });
-  sim.signal("fact_lie", "g4", null, "Clippy");
-  sim.signal("fact answered", "g5", { question: "H4", answer: "Extension 0", certain: true, card: 1 });
-  sim.signal("fact_accurate", "g5", null, "Clippy");
+  sim.signal("fact answered", "g4", { question: "H5", answer: "Clippy", confidence: 100, verdict: "lie", card: 1 });
+  sim.signal("fact answered", "g5", { question: "H4", answer: "1978", confidence: 100, verdict: "accurate", card: 1 });
+  fireAll(sim, "truth_pong", "round_two_tally"); // round two settles: both filings are credited (+50)
   sim.signal("send to the internet", "g6", null, "Norton Anti-Virus");
   return sim;
 }

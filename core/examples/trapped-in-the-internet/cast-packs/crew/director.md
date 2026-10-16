@@ -9,10 +9,12 @@
 
 **Screens** (a laptop, signed in with your own account at
 https://app.mapsandducks.com/edit/, a project member): tab 1 **Run →
-Director** (the cue sheet); tab 2 **Run → Mind** (Trabolta's worker + set
-stage); the **terminal heartbeat card** (red + chime = a dead kiosk); **`#
-hosts`** for 📝 filings. **Keep the Run tab in the foreground** (a background
-tab throttles the chime).
+Director** (the cue sheet); tab 2 **Run → Mind** (the **Judging card** on
+top: the judge's mode, pending filings, per-question tallies; Trabolta's
+worker + set stage below it); the **terminal heartbeat card** (red + chime =
+a dead kiosk); **`# hosts`** for the bank's and the judge's logs; **`#
+quarantine`** for the escort pins. **Keep the Run tab in the foreground** (a
+background tab throttles the chime).
 
 **Cue order** (auto = fires itself; the button is the fallback):
 
@@ -23,8 +25,11 @@ tab throttles the chime).
 | 3 | **V3 ⏰** Bingo time: results | Norton interrupts; Corrupted Code | |
 | 4 | radio **INTRO** → **Clippy 2/X 🤖** introduces Trabolta | | *formal* |
 | 5 | **V4/V5 🔎** Hunt 1 (15 min) | (auto **C2 ⏰** at 15 min) | *hungry* at C2 |
-| 6 | **V6 ⚖️** First Moment of Truth | Clippy judges | |
-| 7 | **🎩** Truth or Dare (if questions are left) | | |
+| 6 | **V6 ⚖️** First Moment of Truth (two-minute filing window) | the server judges every filing | |
+| 6a | **⏱** Close round-one filings (auto at 2 min) | Clippy: "Pencils down" | |
+| 6b | **📋** Results: the next question (press three times: Q1, Q2, Q3) | Clippy reads the result; filings settle (+50 / marked) | |
+| 6c | **🍾** Spin the bottle, up to five times per question (off-sequence) | the TV asks Truth or dare; Clippy 🗣 / 🙅 | |
+| 7 | (optional) **☎️** Telephone · **🪅** Are you sure? — only if running early | | |
 | 8 | **📺** Preview hunt 2 → the ad hijack | Clippy panics | *rattled* |
 | 9 | **📓** Hunt 2: disperse for 1 hour | (auto **📥** +2 min · **⏳** 55 min · **🚨** +5 min) | |
 | 10 | **🏓** Truth Pong | | *judge* |
@@ -40,9 +45,23 @@ tab throttles the chime).
 | 20 | Grok Prom only: 💘 from a host, or **💔** / the alt **💌 → 🗳 → 💞 / ⛈ → 🕺** | | |
 | 21 | **G1 🏆** ceremony → **G2–G9** awards, winner picked from the recap | | |
 
-**Judge only the 📝 DM filings** (📝 accurate / 📝 confident lie, on the
-program's card via *be Clippy*). Clippy judges everything said in the room.
-First verdict wins.
+**Judging is automatic.** Every fact filed on the 📝 card (question + answer
++ the 1–100 confidence slider) is judged by the server against `facts.json`
+the moment it is filed: accurate (matches the key or an alias), confident
+lie (no match at 100), uncertain (no match below 100). The verdict never
+reaches a guest's phone or Trabolta's worker (`# hosts` logs each filing with
+it, for staff only); credits (+50) land when the round settles (round 1 per
+question at 📋, round 2 at 🧮, the final at 📄); marks for a filed guess land
+only in rounds 1 and 2 — a guess filed for F1/F2 is simply dropped at 📄,
+nobody is escorted during the verdict. The Judging card on Run → Mind shows
+the mode: **`auto`** (the default; leave it)
+or **`review`** (every verdict is a proposal in `# hosts` until you confirm
+or override it on the card — ✅ accurate / 😤 confident lie / 🤷 uncertain —
+or a host presses 📝 on the program's card via *be Clippy*; a round closing
+settles what is still pending by the proposal). A program may file every
+open question, once each; a question not filed when its round closes never
+comes back. Clippy and the hosts still judge what is **said out loud** at
+Truth Pong and the final reveal (✅ / 😤 / 🤷 by question number).
 
 **NEVER after doors:** Restart · Push draft · Go live · End (each one wipes
 every guest). No Run personas on the live event. Fire cues from the cue sheet,
@@ -53,11 +72,15 @@ never from a guest card.
 | Problem | Do |
 |---|---|
 | stuck codex | read the guest the code from the printed code list |
+| a program marked by mistake, or to be shown mercy | a host presses 🩹 on their card; or Director → fire `unmark_for_reinstallation` with them as the subject (`/api/mod/act {id, action: "unrestrict"}` lifts only the grey, never the mark) |
+| a program who must go to the Internet and no host is near | Director → fire `mark_for_reinstallation` with them as the subject (or `/api/mod/act {id, action: "restrict"}` for the grey alone); an Antivirus does the walking |
+| a Truthcoin transfer stuck on CRA's approval, or a bad one | `/e/<event>/api/mod/wallet/approve` · `deny` · `cancel` with the card's id (the mod token or your session); `stimulus` mints one if Runescape is gone |
+| a filing judged wrong (a typo the key did not know) | Run → Mind → Judging card → that filing's ✅ / 😤 / 🤷 (a verdict already on record is not re-counted); then add the alias to `facts.json` for next time |
 | stuck quest | fire the story event that advances it |
 | stale Bathroom Mode | Run → World → that guest's `afk` = false (at each summons) |
 | ghosts block the majority at Y2K | **🗳 Force the majority** (stay / leave) |
 | a faction leader absent or stuck | **🧾** Let a faction win without its leader's task |
-| dead chess phone | **♟** Cold Lock: they beat the machine |
+| dead chess phone | **♟** Cold Lock: they beat the King (fallback); the tent tablet's King reports its own wins *by Tent tablet* |
 | dead patch bay | the server-room Antivirus radios A / B / WRONG → 🔌 / 💥 / ❌ |
 | lost guest / new phone | Inspector → **re-pair QR** (never re-register) |
 | late arrival after C1 | Inspector → **scan as Norton** (clears them) |
@@ -85,7 +108,21 @@ name each time (**LIGHTS** + the look). Keep firing cues from Run as normal.
 **Before Oct 31:** the second director, tech operator and house manager named
 by **Tue 10-20**; the second director has a VPS account and project
 membership; everyone trained at the **10-25 read-through** (the never-list,
-the call words, the blackout rule, the 📝 buttons).
+the call words, the blackout rule, the escort list, the 📝 buttons).
+
+**The facts loop (yours, with the team):** `facts.json` is the one file the
+team edits: the eight hunt questions (DRAFT until replaced), their answers
+and accepted aliases, where each document hides, the scannable facts, the
+character facts, the bottle's 20 truth questions. After every edit run
+`pnpm --filter @loom/core titi:facts` (it regenerates
+`generated/questions.loom`, `codex/9-facts.loom`,
+`generated/print-stacks.md`, the marked blocks in `trabolta.mind.md` and
+`DESIGN.md`); `--check` only reports, and is the gate before shipping.
+**Deploy order:** ship the server **before** the first `sync-show` that
+carries `facts.json` or the King's maps (an older server would read
+`facts.json` as story text and refuse the `house.json` king prop); then
+remove any stale kokoro container or `spatial-house.json` on the VPS. The
+content lock for the printed stacks is 10-24 12:00.
 
 **Sat Oct 31**
 
@@ -119,19 +156,24 @@ the call words, the blackout rule, the 📝 buttons).
 6. Lights: Z2M + WLED up; screensaver look on; one blackout test (stairs,
    bathroom, tent, server room, the path stay lit; the Tube strip dim).
 7. Server-room door sensor reads open/closed; the patch bay is all unplugged.
-8. Audio: one test cue per zone through the MOTU at show level; the Alexa test.
+8. Audio: one test cue per zone through the MOTU at show level; the house-announcement test.
 9. Push: the staff test alert arrived on every performer phone.
-10. Tent: tablet charged on `/reinstall/`; WebMD video on the 2nd device; Quest
-    charged (if go); heater on its GFCI leg; EXIT sign on.
+10. Tent: tablet charged on `/reinstall/` (provisioned as `Tent tablet`, so
+    the King's wins journal *by Tent tablet*); the Installation Wizard video
+    on the 2nd device; Quest charged (if go); heater on its GFCI leg; EXIT
+    sign on.
 11. Chess phone on Lichess, charging. Bean printer button paired.
-12. Print: QR clues up (photos match), check-in signs, Bingo cards + pens, hat
-    slips, trophies, every card.
-13. Safety: first aid + extinguisher placed, egress clear, glow tape, GFCIs
+12. Print: the QR stacks sorted by colour and hidden where
+    `generated/print-stacks.md` says (gold = the hunt answers, green, blue,
+    red), the check-in signs, Bingo cards + pens, trophies, every card.
+13. Judging card on Run → Mind reads `auto`, nothing pending; `facts.json`
+    is the one synced with the story (`titi:facts --check` green).
+14. Safety: first aid + extinguisher placed, egress clear, glow tape, GFCIs
     tested, no strobe > 3 Hz, the server door opens freely, gear taped off, the
     emergency card at the door.
-14. 2–3 loaner phones charged; the guest charging station live; power banks
+15. 2–3 loaner phones charged; the guest charging station live; power banks
     for every performer; radios charged with earpieces.
-15. The spares by the house Mac: [[EDIT: a second laptop with Chrome for the
+16. The spares by the house Mac: [[EDIT: a second laptop with Chrome for the
     TV, the spare Zigbee dongle + Z2M backup, the ISP router boxed]].
 
 **The 19:00 briefing** (15 minutes, everyone):

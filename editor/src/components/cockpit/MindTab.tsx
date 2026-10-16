@@ -15,9 +15,14 @@
 //! nudge (a whisper the voice obeys at once and the next reflection
 //! folds in), move the stage, set a drive, edit the brief, forget a file.
 //!
+//! Above all of it, the **Judging card** (Wave 4, lane B): the facts
+//! judge's mode (`auto` / `review`, a journaled world var), the filings
+//! awaiting a director's verdict in `review`, and the per-question tally
+//! with the consensus flag — off `CockpitState.facts` (`ModView.facts`).
+//!
 //! Everything here reads the cockpit contract; the page is inert on the
 //! local backend (nothing voices a `mind: external` character in the
-//! browser) and says so.
+//! browser, and the judge lives on the event server) and says so.
 
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
@@ -28,17 +33,23 @@ import { LensGate } from './tabs'
 import {
   ALL_KINDS,
   KIND_META,
+  VERDICT_BUTTONS,
+  confirmEvent,
   diffRows,
   driveSeries,
   filterThoughts,
   formatMs,
+  judgeModeOf,
   mindCharacters,
+  pendingFilings,
   pickMind,
+  questionTallies,
   sparklinePath,
   speakersOf,
   stageSegments,
   summarizeThought,
   timeOf,
+  type JudgeMode,
 } from './mind'
 
 const panel = 'rounded-xl border border-zinc-800 p-3'
@@ -53,14 +64,19 @@ export function MindTab() {
   if (locked) return <LensGate what="see and steer an agent's mind" />
   if (run !== null && run.backend !== RunBackend.Server) {
     return (
-      <div className="grid h-full place-items-center p-8 text-center text-sm text-zinc-500" data-testid="mind-local">
-        <div className="max-w-md">
-          <p className="text-zinc-300">Minds live on a stagehand worker.</p>
-          <p className="mt-2">
-            An agent-voiced character (<span className="font-mono text-zinc-300">mind: external</span>) is answered by the laptop running
-            <span className="font-mono text-zinc-300"> stagehand agents</span> against an event server. This run is in your browser
-            {run.scratch ? ' (a scratch run)' : ''}, so there is no worker to watch — open a server project and start its rehearsal.
-          </p>
+      <div className="flex h-full min-h-0 flex-col overflow-auto">
+        <div className="p-3">
+          <JudgingCard local />
+        </div>
+        <div className="grid flex-1 place-items-center p-8 text-center text-sm text-zinc-500" data-testid="mind-local">
+          <div className="max-w-md">
+            <p className="text-zinc-300">Minds live on a stagehand worker.</p>
+            <p className="mt-2">
+              An agent-voiced character (<span className="font-mono text-zinc-300">mind: external</span>) is answered by the laptop running
+              <span className="font-mono text-zinc-300"> stagehand agents</span> against an event server. This run is in your browser
+              {run.scratch ? ' (a scratch run)' : ''}, so there is no worker to watch — open a server project and start its rehearsal.
+            </p>
+          </div>
         </div>
       </div>
     )
@@ -84,14 +100,19 @@ function MindDebugger() {
 
   if (mind === null && thoughts.length === 0) {
     return (
-      <div className="grid h-full place-items-center p-8 text-center text-sm text-zinc-500" data-testid="mind-empty">
-        <div className="max-w-md">
-          <p className="text-zinc-300">No agent worker has reported yet.</p>
-          <p className="mt-2">
-            Start <span className="font-mono text-zinc-300">stagehand run --config laptop.yaml --only agents</span> on the show laptop. Its
-            first look at the house and every reply after that will appear here, with the prompts, the models' reasoning, and the
-            mind they leave behind.
-          </p>
+      <div className="flex h-full min-h-0 flex-col overflow-auto">
+        <div className="p-3">
+          <JudgingCard />
+        </div>
+        <div className="grid flex-1 place-items-center p-8 text-center text-sm text-zinc-500" data-testid="mind-empty">
+          <div className="max-w-md">
+            <p className="text-zinc-300">No agent worker has reported yet.</p>
+            <p className="mt-2">
+              Start <span className="font-mono text-zinc-300">stagehand run --config laptop.yaml --only agents</span> on the show laptop. Its
+              first look at the house and every reply after that will appear here, with the prompts, the models' reasoning, and the
+              mind they leave behind.
+            </p>
+          </div>
         </div>
       </div>
     )
@@ -101,6 +122,9 @@ function MindDebugger() {
 
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="mind-tab">
+      <div className="border-b border-zinc-800 p-3">
+        <JudgingCard />
+      </div>
       <Header characters={characters} character={character} onPick={setChosen} mind={mind} />
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-hidden p-3 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <div className="min-h-0 overflow-auto pr-1">
@@ -119,6 +143,152 @@ function MindDebugger() {
         </div>
       </div>
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Judging: the facts judge (mode, pending verdicts, per-question tallies)
+// ---------------------------------------------------------------------------
+
+/**
+ * The Judging card (U10). The mode is a journaled world var (the view's
+ * `modeVar`, `Night.judge_mode` by default) written through `setVar` — the
+ * same `/api/mod/var` path the World page uses. In `review` every filing is
+ * a proposal until a director confirms or overrides it here (the story
+ * event named by `facts.json` `judge.confirm`, fired on the person with the
+ * question as an argument — the hosts' booth buttons fire the same names)
+ * or the round settles it by the proposal. The verdict never reaches a
+ * phone or the voice worker; this card is the only place it is shown.
+ */
+function JudgingCard({ local = false }: { local?: boolean }) {
+  const facts = useCockpit((s) => s.facts)
+  const world = useCockpit((s) => s.world)
+  const setVar = useCockpit((s) => s.setVar)
+  const fireSignal = useCockpit((s) => s.fireSignal)
+  const [busy, setBusy] = useState<string | null>(null)
+  const mode = judgeModeOf(world, facts)
+  if (facts === null) {
+    return (
+      <section className={panel} data-testid="judging-card">
+        <div className={heading}>Judging (the facts judge)</div>
+        <p className="text-xs text-zinc-500">
+          This project has no facts.json — nothing is judged.{local ? ' Judging runs on the event server: rehearse the hunt on a server project.' : ''}
+        </p>
+      </section>
+    )
+  }
+  const pending = pendingFilings(facts)
+  const tallies = questionTallies(facts)
+  const switchMode = async (m: JudgeMode) => {
+    if (m === mode || busy !== null) return
+    setBusy('mode')
+    try {
+      await setVar(facts.modeVar, m)
+    } finally {
+      setBusy(null)
+    }
+  }
+  const confirm = async (row: { person: string; question: string }, verdict: (typeof VERDICT_BUTTONS)[number]['verdict']) => {
+    const name = confirmEvent(facts, verdict)
+    if (name === null || busy !== null) return
+    const key = `${row.person}:${row.question}`
+    setBusy(key)
+    try {
+      await fireSignal(name, row.person, { question: row.question }, null)
+    } finally {
+      setBusy(null)
+    }
+  }
+  return (
+    <section className={panel} data-testid="judging-card">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <div className={clsx(heading, 'mb-0')}>Judging (the facts judge)</div>
+        <span className="inline-flex overflow-hidden rounded border border-zinc-700 text-xs" role="group" aria-label="Judging mode" data-testid="judging-mode">
+          {(['auto', 'review'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              className={clsx('px-2 py-0.5', m === mode ? 'bg-indigo-600 text-white' : 'text-zinc-300 hover:bg-zinc-800')}
+              aria-pressed={m === mode}
+              disabled={busy !== null}
+              onClick={() => void switchMode(m)}
+              title={m === 'auto' ? 'Every filed fact gets its verdict at once' : 'Every verdict is a proposal until you (or a host) confirm it; a round closing settles the rest'}
+              data-testid={`judging-mode-${m}`}
+            >
+              {m}
+            </button>
+          ))}
+        </span>
+        <span className="text-xs text-zinc-500">
+          <span className="font-mono">{facts.modeVar}</span> · {facts.pending === 0 ? 'nothing pending' : `${facts.pending} pending`}
+        </span>
+      </div>
+      {pending.length > 0 && (
+        <ul className="mt-2 space-y-1 text-xs" data-testid="judging-pending">
+          {pending.map((row) => {
+            const key = `${row.person}:${row.question}`
+            return (
+              <li key={key} className="flex flex-wrap items-center gap-2 rounded border border-zinc-800 px-2 py-1">
+                <span className="font-medium text-zinc-100">{row.name}</span>
+                <span className="font-mono text-zinc-400">{row.question}</span>
+                <span className="flex-1 text-zinc-200">“{row.answer}”</span>
+                <span className="text-zinc-500">{row.confidence}%</span>
+                <span className="text-zinc-500">
+                  proposed <span className="text-zinc-300">{row.proposed}</span>
+                </span>
+                <span className="inline-flex gap-1">
+                  {VERDICT_BUTTONS.map((b) => (
+                    <button
+                      key={b.verdict}
+                      type="button"
+                      className={clsx(btn, b.verdict === row.proposed && 'border-indigo-500/60')}
+                      disabled={busy !== null || confirmEvent(facts, b.verdict) === null}
+                      title={`${b.verdict === row.proposed ? 'Confirm' : 'Override'}: ${b.label}`}
+                      onClick={() => void confirm(row, b.verdict)}
+                      data-testid={`judging-${b.verdict}`}
+                    >
+                      {b.glyph} {b.label}
+                    </button>
+                  ))}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {mode === 'review' && pending.length === 0 && <p className="mt-2 text-xs text-zinc-600">No filing is waiting for a verdict.</p>}
+      {tallies.length > 0 && (
+        <table className="mt-2 w-full text-xs" data-testid="judging-tallies">
+          <thead className="text-zinc-500">
+            <tr>
+              <th className="text-left font-normal">question</th>
+              <th className="text-right font-normal">filed</th>
+              <th className="text-right font-normal">accurate</th>
+              <th className="text-right font-normal">lie</th>
+              <th className="text-right font-normal">uncertain</th>
+              <th className="text-right font-normal">pending</th>
+              <th className="text-right font-normal">consensus</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tallies.map((t) => (
+              <tr key={t.id} className="border-t border-zinc-800/60 text-zinc-300">
+                <td className="py-0.5 pr-2">
+                  <span className="font-mono text-zinc-400">{t.id}</span>
+                  {t.round !== null && <span className="ml-1 text-zinc-600">r{t.round}</span>} <span title={t.text}>{t.text.length > 48 ? `${t.text.slice(0, 45)}…` : t.text}</span>
+                </td>
+                <td className="text-right">{t.filed}</td>
+                <td className="text-right">{t.accurate}</td>
+                <td className="text-right">{t.lie}</td>
+                <td className="text-right">{t.uncertain}</td>
+                <td className="text-right">{t.pending}</td>
+                <td className="text-right">{t.consensus ? '✓' : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
   )
 }
 

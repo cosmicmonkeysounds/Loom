@@ -20,6 +20,7 @@ import {
   MessageThread,
   PersonAvatar,
   PickerSheet,
+  PinnedRail,
   Sheet,
   SessionEnded,
   Shell,
@@ -34,11 +35,13 @@ import { AvatarsContext, avatarLookup, avatarUrl, hitNote, hitPickable, initialP
 import { PictureGrid } from "./picture-pick.tsx";
 import { codeFromUrl, fetchPictures, pendingWidget, personalStream, searchPrograms, useDocumentTitle, useGuestSession, useIdentities, useLandingBrand, type GuestSession } from "./session.ts";
 import { Tutorial, tourResult, tutorialSteps } from "./tutorial.tsx";
-import { withThe } from "./threads.ts";
+import { WALLET_ROOM, withThe } from "./threads.ts";
+import { BalancePill, OfferSheet, PeopleAmountSheet, StimulusSheet, WalletActionsProvider, WalletFooter, type WalletSheet } from "./wallet.tsx";
 import type { Action, Channel, PersonCard } from "./types.ts";
 import { usePush, type Push } from "./push.ts";
 import { PushCard, PushRow } from "./push-card.tsx";
 import { redeemErrorText } from "./codex.ts";
+import { activePins } from "./pins.ts";
 
 function GuestRegister({ session }: { session: GuestSession }) {
   const [code, setCode] = useState(codeFromUrl);
@@ -407,12 +410,13 @@ function PeopleSheet({ session, only, onClose }: { session: GuestSession; only?:
 }
 
 /** The identity card at the top of the sidebar: who you are, where you are. */
-function IdentityCard({ s, onPeople, onHelp, onProfile }: { s: GuestSession; onPeople: () => void; onHelp: () => void; onProfile: () => void }) {
+function IdentityCard({ s, onPeople, onHelp, onProfile, onWallet }: { s: GuestSession; onPeople: () => void; onHelp: () => void; onProfile: () => void; onWallet: () => void }) {
   const st = s.status;
   const captured = st?.captured ?? false;
-  const where = captured ? "🔒 captured" : st?.location ? `📍 ${st.location}` : "📍 nowhere yet";
+  const restricted = st?.restricted ?? false;
+  const where = captured ? "🔒 captured" : restricted ? "⛔ restricted" : st?.location ? `📍 ${st.location}` : "📍 nowhere yet";
   return (
-    <header className={`inbox-head ${captured ? "trapped" : ""}`}>
+    <header className={`inbox-head ${captured ? "trapped" : ""} ${restricted ? "restricted" : ""}`}>
       <div className="me" data-tour="me">
         <PersonAvatar name={s.me?.name ?? "?"} />
         <div className="me-body">
@@ -421,7 +425,7 @@ function IdentityCard({ s, onPeople, onHelp, onProfile }: { s: GuestSession; onP
           </div>
           <div className="me-sub">
             <span>{where}</span>
-            <span>⭐ {st?.score ?? 0}</span>
+            {st?.wallet ? <BalancePill view={st.wallet} onOpen={onWallet} /> : <span>⭐ {st?.score ?? 0}</span>}
             <ConnDot connected={s.connected} label="live" />
           </div>
         </div>
@@ -483,6 +487,8 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const [inviting, setInviting] = useState(false);
   // K-11: the Codex box says so when the redeem throttle answers 429.
   const [codexNote, setCodexNote] = useState<string | null>(null);
+  // The Wallet room's sheets: Send / Request / Trade a fact / Stimulus.
+  const [walletSheet, setWalletSheet] = useState<WalletSheet | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   useDocumentTitle(s.me?.title);
   // K-31a: `!` alerts + a character's DMs on a locked phone.
@@ -523,6 +529,10 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
 
   const captured = st?.captured ?? false;
   const banner = s.alert ? <AlertBanner text={s.alert.text} onDismiss={s.dismissAlert} /> : null;
+  // The sticky notices still up for this guest (their own feed + DM
+  // threads) — rendered above everything, outside the greyed containers.
+  const pins = activePins(t.list.flatMap((c) => c.messages));
+  const restricted = st?.restricted ?? false;
   const widgets = {
     answer: (seq: number, r: Parameters<GuestSession["answerWidget"]>[1]) => void s.answerWidget(seq, r).catch(() => {}),
     answered: s.widgetAnswers,
@@ -579,8 +589,8 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     } else {
       // A membership-gated room the guest belongs to can invite + leave.
       const gated = active.kind === "private" || active.kind === "group" || active.kind === "dm";
-      // The Codex's composer takes codes; the Quest Log takes nothing (its
-      // cards open their threads). Everywhere else, you talk.
+      // The Codex's composer takes codes; the Quest Log and the Wallet take
+      // nothing (their cards open their threads). Everywhere else, you talk.
       const send =
         active.kind === "codex"
           ? (text: string) =>
@@ -588,7 +598,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
                 () => setCodexNote(null),
                 (e: unknown) => setCodexNote(redeemErrorText(e)),
               )
-          : active.kind === "quests"
+          : active.kind === "quests" || active.kind === "wallet"
             ? undefined
             : (text: string) => void s.say(active.id, text);
       const roomActions: Action[] = [];
@@ -611,6 +621,8 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
               <p className="notice" role="status">
                 {codexNote}
               </p>
+            ) : active.kind === "wallet" && st.wallet ? (
+              <WalletFooter view={st.wallet} open={setWalletSheet} />
             ) : roomActions.length > 0 ? (
               <ActionRow actions={roomActions} />
             ) : undefined
@@ -626,7 +638,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       activeId={t.activeId}
       meId={s.me.id}
       onOpen={t.open}
-      header={<IdentityCard s={s} onPeople={() => setPeople("all")} onHelp={() => setHelp(true)} onProfile={() => setProfile(true)} />}
+      header={<IdentityCard s={s} onPeople={() => setPeople("all")} onHelp={() => setHelp(true)} onProfile={() => setProfile(true)} onWallet={() => t.open(WALLET_ROOM)} />}
       empty="Quiet… for now."
     />
   );
@@ -636,16 +648,33 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
         title: st.title ?? s.me.title ?? "the story",
         hasCodex: (st.codexTotal ?? 0) > 0,
         hasQuests: (st.questTotal ?? 0) > 0,
+        hasWallet: st.wallet !== undefined,
         hasPeople: (st.people?.length ?? 0) > 0,
         hasActions: (st.interactions?.length ?? 0) > 0,
+        bathroom: tour.widget?.params["bathroom"] ?? null,
       })
     : [];
 
+  // The other guests, for the wallet's pickers (never me, never a character).
+  const meId = s.me.id;
+  const walletPeople = (st.people ?? []).filter((p) => p.kind === "guest" && p.id !== meId).map((p) => ({ id: p.id, name: p.name }));
   return (
     <AvatarsContext.Provider value={avatars}>
     <CardActionsProvider value={{ shareCodex: (entry, title) => setSharing({ entry, title }) }}>
-    <div className={`root ${captured ? "trapped-bg" : ""}`} ref={rootRef}>
+    <WalletActionsProvider
+      value={{
+        view: st.wallet ?? null,
+        me: s.me.id,
+        clock: st.clock ?? 0,
+        respond: (id, accept) => void s.wallet.respond(id, accept),
+        accept: (id) => void s.wallet.accept(id),
+        decline: (id) => void s.wallet.decline(id),
+        cancel: (id) => void s.wallet.cancel(id),
+      }}
+    >
+    <div className={`root ${captured ? "trapped-bg" : ""} ${restricted ? "restricted-bg" : ""}`} ref={rootRef}>
       {banner}
+      <PinnedRail pins={pins} />
       <PushCard push={push} why="the house can reach you when your phone is locked: alarms, and messages from the characters." />
       <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room on the left. The one you're standing in is at the top." />
       {tour && (
@@ -677,7 +706,27 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       )}
       {people !== null && <PeopleSheet session={s} only={people === "all" ? undefined : people} onClose={() => setPeople(null)} />}
       {help && <HelpSheet role="guest" onClose={() => setHelp(false)} />}
+      {st.wallet && (walletSheet === "send" || walletSheet === "request") && (
+        <PeopleAmountSheet
+          mode={walletSheet}
+          view={st.wallet}
+          people={walletPeople}
+          onDone={(id, n) => void (walletSheet === "send" ? s.wallet.send(id, n) : s.wallet.request(id, n))}
+          onClose={() => setWalletSheet(null)}
+        />
+      )}
+      {st.wallet && walletSheet === "offer" && (
+        <OfferSheet
+          view={st.wallet}
+          people={walletPeople}
+          codex={(st.codex ?? []).map((e) => ({ id: e.id, title: e.title }))}
+          onDone={(to, entry, side, n) => void s.wallet.offer(to, entry, side, n)}
+          onClose={() => setWalletSheet(null)}
+        />
+      )}
+      {st.wallet && walletSheet === "stimulus" && <StimulusSheet view={st.wallet} onDone={(n) => void s.wallet.stimulus(n)} onClose={() => setWalletSheet(null)} />}
     </div>
+    </WalletActionsProvider>
     </CardActionsProvider>
     </AvatarsContext.Provider>
   );

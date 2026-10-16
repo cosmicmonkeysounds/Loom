@@ -39,6 +39,11 @@ const PRESENCE_GRACE := 2.0
 ## Lost focus (system menu, or off on a runtime without user presence).
 const UNFOCUSED_GRACE := 15.0
 const NOTICE_TIME := 4.0
+## Within this (plan metres, same floor) of a `king` prop the headset is told where he is fought (U16).
+const KING_NEAR := 1.5
+## Beyond this the notice may be said again on the next approach.
+const KING_FAR := 3.0
+const KING_NOTICE := "The King is fought on the tent tablet."
 ## `--autopilot` gives up (exit 1) after this many seconds.
 const AUTOPILOT_LIMIT := 180.0
 
@@ -65,6 +70,9 @@ var _away_until := {}
 ## Seconds now (wall clock); tests inject a fake.
 var clock: Callable = func() -> float: return Time.get_unix_time_from_system()
 var _notice_left := 0.0
+## "The King is fought on the tent tablet." was said for this approach
+## (cleared again beyond KING_FAR).
+var _king_said := false
 ## Non-null in `--autopilot` mode.
 var autopilot: Autopilot = null
 ## Quit the process when an autopilot session is over (the tests keep it
@@ -226,6 +234,7 @@ func _on_assignment(a: Dictionary) -> void:
 	_found_pending = false
 	_found_retry = 0.0
 	_notice_left = 0.0
+	_king_said = false
 	hud.show_play(_room_label(HouseLocate.locate(builder.house, spawn["pos"])["room"]))
 	if link.map_warning_text != "":
 		_notice(link.map_warning_text)  # raised in the lobby, still in force
@@ -394,6 +403,27 @@ func _tick_play(delta: float) -> void:
 	if not _found_pending and _found_retry <= 0.0 and is_at_duck(house, feet, duck_p):
 		_found_pending = true
 		link.report_found()
+	_tick_king(house, feet)
+
+
+## Near a `king` prop (the chess boss the tablet fights, U16): say once per
+## approach that the fight is the tablet's. The door he guards never opens
+## here — nothing is behind it for a headset.
+func _tick_king(house: Dictionary, feet: Array) -> void:
+	var nearest := INF
+	for prop: Dictionary in house.get("props", []):
+		if str(prop.get("kind", "")) != "king":
+			continue
+		var pos: Array = prop["pos"]
+		if HouseLocate.floor_of(house, float(feet[1])) != HouseLocate.floor_of(house, float(pos[1])):
+			continue
+		var d: float = sqrt(pow(float(feet[0]) - float(pos[0]), 2) + pow(float(feet[2]) - float(pos[2]), 2))
+		nearest = minf(nearest, d)
+	if nearest <= KING_NEAR and not _king_said:
+		_king_said = true
+		_notice(KING_NOTICE)
+	elif nearest > KING_FAR:
+		_king_said = false
 
 
 func _tick_autopilot(feet: Array, delta: float) -> void:

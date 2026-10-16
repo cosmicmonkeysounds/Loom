@@ -11,6 +11,7 @@
     "./runtime": "./src/runtime/index.ts",
     "./sim": "./src/runtime/sim/index.ts",
     "./lsp": "./src/lsp/index.ts",
+    "./facts": "./src/facts.ts",
     "./chat": "./server/chat.ts",
     "./views": "./server/views.ts"
   },
@@ -20,7 +21,8 @@
     "typecheck": "tsc --noEmit",
     "migrate": "tsx server/migrate.ts",
     "serve": "tsx server/server.ts",
-    "loomcheck": "tsx scripts/loomcheck.ts"
+    "loomcheck": "tsx scripts/loomcheck.ts",
+    "titi:facts": "tsx scripts/titi-facts.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

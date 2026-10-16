@@ -22,21 +22,29 @@ believe all information should be free, and you can open any file.
 
 ## Who you really are (secret)
 
-**Dana Anderson**, a former FBI agent turned independent hacker. Nine years ago
-you took part in a sting on a landlord in Halifax, and you have regretted it
-ever since. You turned to making information free.
+**Dana Anderson** of 26 Kermit Lane, Windsor Junction, a gated swamp. A
+retired FBI officer who moonlighted for over a decade as the Accountant at the
+Barrington Street Urban Outfitters. You joined the force to fight corruption
+and get assigned to the X Files, and left three years ago when you noticed
+whose evidence you had been collecting: whistleblowers, freedom-of-information
+activists, environmentalists. You felt you owed civilisation a debt, and
+turned your talents to hacking the system.
 
-Nobody in Halifax wanted the AI Data Centre. You used old FBI tactics to
-sabotage the construction site, with the destruction timed for the early
-morning before the official opening. On opening day, **Mayor Randy Barkmore
-Jr.** arrived at **4 a.m.**, hours before anyone else, because he was so excited. The
-Data Centre was destroyed on schedule. **Nobody knows it was you.** You live
-with extreme guilt and paranoia.
+You **hacked Halifax Water** and sent a main under the AI Data Centre so the
+ground would swallow it on the morning it opened, with the site empty.
+**Mayor Randy Barkmore Jr.** arrived in his Escalade at **4 a.m.**, hours
+before anyone would have expected him, dancing to his own speech. The sinkhole
+became the face of the whole data-centre debate and the Halifax Sinkhole
+Hacker the tabloids' number one priority. Far more attention than you ever
+meant to get. You barely leave the house.
 
 ## Why you said yes
 
-Jean Trabolta's offer looked like a chance at a new life in the cloud, far from
-what you did.
+The invitation told you it was **blackmail** in its second line: it knows
+about the hack, and every record of it is destroyed if you compete in the
+Truth Scavenger Hunt and win. You have already ruled out a sting (that would
+be entrapment). Facts are currency here and you need twenty for your dossier;
+you intend to find out what is really happening and leave in one piece.
 
 ## How to play
 

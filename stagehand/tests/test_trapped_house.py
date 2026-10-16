@@ -131,7 +131,7 @@ def test_every_sound_has_a_qlab_cue():
     assert not missing, f"sounds with no rule in trapped.house.yaml: {missing}"
     for name in used:
         cues = evaluate_cues(_show().cues, _directive("sfx", name))
-        if name == "alexa_chime":  # the alexa player's chime, not QLab (K-20)
+        if name == "announce_chime":  # the announce player's chime, not QLab (K-20)
             assert cues == [MqttCue(topic="show/chime", payload="{}", retain=False, qos=0)]
             assert load_config(HOUSE).modules["alexa"].cfg.chime_topic == "show/chime"
             continue

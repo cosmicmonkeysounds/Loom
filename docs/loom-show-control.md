@@ -434,8 +434,8 @@ server is the VPS; the house only dials out.
 the server-room firmware) runs Mosquitto + Zigbee2MQTT, stagehand (`show`,
 `agents` and `alexa`), Ollama, QLab, the TV (long HDMI run) and the
 speakers (MOTU). Mosquitto has two listeners: anonymous on
-`127.0.0.1:1883` for what runs on the Mac (stagehand, Z2M, the alexa
-player) and password-only on the LAN at `:1884` (user `props`) for the
+`127.0.0.1:1883` for what runs on the Mac (stagehand, Z2M, the `alexa`
+module) and password-only on the LAN at `:1884` (user `props`) for the
 WLED controllers and the ESP32 (`scripts/house-mac/alexa.md` → *Lock down
 the broker*). Zigbee bulbs and plugs are grouped one group per
 room plus a whole-house group:
@@ -449,8 +449,9 @@ the server room and the server-room → living-room path are not in
 bulbs have `power_on_behavior: on`). The addressable LED strips run on
 off-the-shelf WLED controllers (`wled/all` plus one topic per strip,
 identical preset IDs everywhere). Sound is QLab (or any OSC cue player)
-on UDP 53000, one cue per sound, numbered by its name. The "Alexa" is
-stagehand's `alexa` module: it reads `show/announce` (and `show/chime`)
+on UDP 53000, one cue per sound, numbered by its name. The house
+announcements are stagehand's `alexa` module (the code name of the
+player; nothing in the fiction is called that): it reads `show/announce` (and `show/chime`)
 and plays a chime + the line through the MOTU to the living room and the
 kitchen in the Mac's own voice (`say`, `engine: say` — no server
 round-trip; `engine: server` opts in to the VPS's `/api/mod/tts`;
@@ -473,7 +474,7 @@ is in the design spec §2.13):
 | `cue lights_blackout` | `house` OFF; WLED off **per device** (living, kitchen, backyard, registry), the Tube strip on dim static preset 22, the server room untouched |
 | `cue screens_flicker` | a one-shot `effect: blink` + a short WLED lightning playlist, so the power is felt in the house |
 | `sound <name>` (directive `sfx`) | OSC `/cue/<name>/start` to QLab |
-| `do announce "…"` | `show/announce {"text": "…"}` → the `alexa` player (chime + the Mac's `say` voice, one line at a time); `sound alexa_chime` → `show/chime` (not QLab). Also the screen state's `announce` → terminals with `announce` on (N-09) |
+| `do announce "…"` | `show/announce {"text": "…"}` → the `alexa` player (chime + the Mac's `say` voice, one line at a time); `sound announce_chime` → `show/chime` (not QLab). Also the screen state's `announce` → terminals with `announce` on (N-09) |
 | `do door server_room, state: locked\|unlocked` | `show/serverroom/lock {"state": …}` (retained) for the ESP32's indicator ring; `lights_alarm` also sends `show/serverroom/alarm` for its local siren |
 
 The `screens_*` / `tv_*` / `terminals_*` / `tablet_*` cues have no

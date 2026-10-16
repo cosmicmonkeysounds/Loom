@@ -135,7 +135,9 @@ function outerCorners(r: readonly [number, number, number, number]): Vec2[] {
 }
 
 /**
- * The route graph's nodes, in order: the portals (`portals`), then per room
+ * The route graph's nodes, in order: the portals (`portals`) — every door
+ * but a guarded one (`Door.guard`: shut until its king falls, so no route
+ * crosses it), then per room
  * (array order) its reflex waypoints (`reflexWaypoints`), then per stair
  * (array order) the four corners of its rect moved 0.35 m outward along
  * each axis (`[x0, z0] [x1, z0] [x1, z1] [x0, z1]` order) — first as waypoints of the upper room (`to`,
@@ -147,7 +149,13 @@ function outerCorners(r: readonly [number, number, number, number]): Vec2[] {
  * waypoint stands at its room's floor elevation and is in that room only.
  */
 export function routeNodes(house: HouseMap): RouteNode[] {
-  const out: RouteNode[] = portals(house).map((p) => ({ ...p, pos: [...p.pos] as Vec3, rooms: [...p.rooms] }));
+  // A guarded door (`Door.guard`, a king standing in it) is shut for routing:
+  // its portal is left out, so nothing paths through it — the games open it
+  // per session, and the trail never needs to (no duck behind a guard).
+  const guarded = new Set(house.doors.filter((d) => d.guard !== undefined).map((d) => d.id));
+  const out: RouteNode[] = portals(house)
+    .filter((p) => !(p.kind === "door" && guarded.has(p.id)))
+    .map((p) => ({ ...p, pos: [...p.pos] as Vec3, rooms: [...p.rooms] }));
   const corner = (room: Room, w: Vec2) =>
     out.push({ kind: "corner", id: room.id, pos: [w[0], roomElevation(house, room), w[1]], rooms: [room.id] });
   for (const room of house.rooms) for (const w of reflexWaypoints(room.poly)) corner(room, w);

@@ -17,6 +17,10 @@
 - Answer from the door FAQ ([`all-crew.md`](../all-crew.md)): rejoin, loaners,
   Wi-Fi, flashing lights.
 
+**A grey phone.** A guest whose app has gone grey with a 🚨 GO TO THE
+INTERNET card is **marked for reinstallation**: nothing is broken. Find them
+an Antivirus (or radio one); they walk them through the Tube.
+
 **Loaners + re-pairs.** Loaner phones are at [[EDIT: where]]. A guest who lost
 their session or their phone: walk them to the director, who shows a QR that
 puts them back exactly where they were (never sign up again). Same for a

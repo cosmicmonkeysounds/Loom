@@ -7,7 +7,7 @@
 
 | Word | Means | Who usually says it |
 |---|---|---|
-| **INTRO** | Clippy is about to introduce Trabolta. WebMD: let the first reinstalled program start the game now | director → WebMD, Clippy |
+| **INTRO** | Clippy is about to introduce Trabolta. Julia (the tent): let the first reinstalled program start the game now | director → the tent, Clippy |
 | **BEANS** | The printer lid is open. Director: press 🫘 | Adobe Acrobat |
 | **LATE** | The late list is coming (after 🚨 Summons closed) | director → Antivirus |
 | **A** / **B** / **WRONG** | Patch bay (Tier 0): Combo A is in / Combo B is in / a wrong combination | server-room Antivirus → director |
@@ -34,16 +34,33 @@ Keep radio talk short: call word, then where, then who. "LATE, two in the kitche
   everything intact (N-10, OP-19).
 - **Buttons do nothing out of phase.** That is normal. If a button you need
   "does nothing", radio the director instead of pressing it again. Only
-  🛡 Send to the Internet and ✅ Mark as reinstalled work at any time.
+  🛡 Send to the Internet, ✅ Mark as reinstalled, 🩹 Unmark, 🎀, 🤝, 👁, 🪙
+  Pay / Charge and ♟ work at any time; the verdict buttons do nothing out of
+  phase.
+- **Marked, not captured.** A host's verdict (🎯 named on the Bingo card, 🤷
+  a guess, 🙅 a refused truth, 🎩 a Dare, 🏓 a missed cup, 🍎 a failed bob, a
+  late arrival) **marks** a program: their phone greys out with a 🚨 GO TO
+  THE INTERNET card, their buttons go, they keep their DMs, the pinned
+  Codex / Quest Log / Wallet, the room they stand in, and the Tube and the
+  Internet (read-only). Every Antivirus booth reads *🚨 X is marked for
+  reinstallation (why)* and `# quarantine` pins the escort task. **Only an
+  Antivirus' 🛡 (or the director: Inspector → Captured → Capture) sends them
+  to the Internet** — the tent tablet does not. A mis-tap → 🩹 Unmark.
 - **Never press an admin cue.** The director fires the night's cues from Run.
   Your buttons are on each guest's card.
 - **Act on a guest:** scan their pass (📷 in your booth), or tap their name
   in the who's-here strip, then press a button on their card.
-- **Booth readouts** are the 📋/🛡/🃏 lines that appear in your booth. They are
-  for you only, and they disappear if you reload. Read them when your phone
-  chimes.
+- **Booth readouts** are the 📋/🛡/🃏/🚨 lines that appear in your booth. They
+  are for you only, and they disappear if you reload. Read them when your
+  phone chimes. Your booth also has pinned rooms that survive a reload: an
+  **Inbox** (cards and notes dealt to you), a **Quest Log** (your staff
+  quests, "per the agenda", from Task Manager; each step lands in its own
+  thread) and a **Codex** (what your character knows). CRA Agent Software's
+  booth has a **Wallet** room on top of those.
 - **`# hosts` and `# quarantine` are staff rooms.** Every performer sees both.
-  No guest can. Never put a faction's secret there.
+  No guest can. `# hosts` carries the bank's and the judge's logs; `#
+  quarantine` carries the escort pins (one per marked program; they clear
+  on their own). Never put a faction's secret there.
 - **Never say a guest's real name** aloud or in the app. Everyone is their program.
 
 ## The blackout rule (Combo A or Combo B)

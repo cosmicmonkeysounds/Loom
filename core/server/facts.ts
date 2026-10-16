@@ -1,0 +1,336 @@
+//! The facts judge (Wave 4, lane B; decision U10): the server-side half of
+//! `facts.json`.
+//!
+//! The pure module `core/src/facts.ts` owns the file's types, the one
+//! answer fold and the generic validation. This module turns a validated
+//! file into a **book** the event runtime holds in memory (`FactsBook` —
+//! every key's answer + aliases pre-folded), judges one filing against it
+//! (`judgeAnswer`: accurate = fold-match; lie = no match at confidence 100;
+//! uncertain = no match below), reads the judging **mode** off the world
+//! (`judgeMode`: `Night.judge_mode` = `auto` | `review`), and folds the
+//! director's **ledger view** (`FactsWatch` → `ModView.facts`) off the sim
+//! log, from two generic directives the story emits — `do fact_filed …` and
+//! `do fact_judged …`. Nothing here names a program, a slot or a cue; the
+//! key is never written to the world, the journal or a chat message.
+//!
+//! Mirrors `house-maps.ts`: the project-file helpers (`factsFileOf`,
+//! `factsOf`), a fresh show-file read (`readFactsFile`, the LAN fallback).
+
+import { readFileSync } from "node:fs";
+
+import { FACTS_FILE, isFactsFile, foldAnswer, parseFactsText, type FactVerdictKind, type FactsFile } from "../src/facts.ts";
+import type { Sim } from "../src/runtime/sim/index.ts";
+
+export { FACTS_FILE, isFactsFile, foldAnswer, parseFactsText, validateFacts, factsProblems } from "../src/facts.ts";
+export type { FactsFile } from "../src/facts.ts";
+
+/** What the judge says about one filing. */
+export type FactVerdict = FactVerdictKind;
+export const FACT_VERDICTS: readonly FactVerdict[] = ["accurate", "lie", "uncertain"];
+export const isFactVerdict = (s: unknown): s is FactVerdict => typeof s === "string" && (FACT_VERDICTS as readonly string[]).includes(s);
+
+/** The world path the mode is read from when `judge.mode_var` is absent. */
+export const DEFAULT_MODE_VAR = "Night.judge_mode";
+/** The confirm / override events when `judge.confirm` is absent. */
+export const DEFAULT_CONFIRM: Readonly<Record<FactVerdict, string>> = { accurate: "fact_accurate", lie: "fact_lie", uncertain: "fact_uncertain" };
+
+/** The judging mode: `auto` (every filing gets its verdict at once) or
+ *  `review` (the verdict is a proposal until a director / host confirms). */
+export type JudgeMode = "auto" | "review";
+
+/** The highest confidence a filing carries; at it, a miss is a lie. */
+export const CONFIDENCE_MAX = 100;
+
+// ───────────────────────── the project file ─────────────────────────
+
+/** The `facts.json` text among a project's files, or null. */
+export function factsFileOf(files: Iterable<{ path: string; content: string }>): string | null {
+  for (const f of files) if (isFactsFile(f.path)) return f.content;
+  return null;
+}
+
+/** The `facts.json` string inside an untrusted data-file record (the
+ *  event row's `house_maps` jsonb, a `/api/mod/load` body) — the only
+ *  reader of that extra key, so every map reader stays unchanged. */
+export function factsOf(raw: unknown): string | null {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
+  const v = (raw as Record<string, unknown>)[FACTS_FILE];
+  return typeof v === "string" ? v : null;
+}
+
+// ───────────────────────── the book ─────────────────────────
+
+/** One key: a hunt question or a free-text answer, its answer + aliases folded. */
+export interface FactsKey {
+  id: string;
+  /** The question's round; null for an `answers[]` key. */
+  round: number | null;
+  text: string;
+  folded: Set<string>;
+}
+
+export interface FactsBook {
+  version: 1;
+  /** The world path holding the mode. */
+  modeVar: string;
+  /** The story events a director fires to confirm / override a filing. */
+  confirm: Record<FactVerdict, string>;
+  questions: FactsKey[];
+  answers: FactsKey[];
+  /** The validated file (the generator's sections ride along, unread here). */
+  raw: FactsFile;
+}
+
+export interface ParsedFactsBook {
+  book: FactsBook | null;
+  problems: string[];
+}
+
+/** A validated file as a book. */
+export function bookOf(facts: FactsFile): FactsBook {
+  const key = (id: string, round: number | null, text: string, answer: string, accept: readonly string[]): FactsKey => ({
+    id,
+    round,
+    text,
+    folded: new Set([answer, ...accept].map(foldAnswer).filter((s) => s !== "")),
+  });
+  return {
+    version: 1,
+    modeVar: facts.judge?.mode_var ?? DEFAULT_MODE_VAR,
+    confirm: { ...DEFAULT_CONFIRM, ...(facts.judge?.confirm ?? {}) },
+    questions: facts.questions.map((q) => key(q.id, q.round, q.text, q.answer, q.accept)),
+    answers: facts.answers.map((a) => key(a.id, null, a.text, a.answer, a.accept)),
+    raw: facts,
+  };
+}
+
+/** JSON + `validateFacts` → a book, or why not. */
+export function parseFactsBook(text: string): ParsedFactsBook {
+  const { facts, problems } = parseFactsText(text);
+  return facts === null ? { book: null, problems } : { book: bookOf(facts), problems: [] };
+}
+
+/** Read a show-side file fresh (the LAN fallback, re-read on mtime change). */
+export function readFactsFile(path: string): ParsedFactsBook {
+  try {
+    return parseFactsBook(readFileSync(path, "utf8"));
+  } catch (err) {
+    return { book: null, problems: [`unreadable: ${err instanceof Error ? err.message : String(err)}`] };
+  }
+}
+
+/** The key with this id among questions ∪ answers, or null. */
+export function factsKey(book: FactsBook, keyId: string): FactsKey | null {
+  return book.questions.find((k) => k.id === keyId) ?? book.answers.find((k) => k.id === keyId) ?? null;
+}
+
+// ───────────────────────── the verdict ─────────────────────────
+
+/**
+ * Judge one filing (U10): `accurate` when the folded answer equals the key's
+ * answer or one of its aliases (exact after folding, never a substring);
+ * `lie` when it doesn't and the filer was `CONFIDENCE_MAX` sure; `uncertain`
+ * when it doesn't and they were less sure. Null for a key the book lacks.
+ */
+export function judgeAnswer(book: FactsBook, keyId: string, answer: string, confidence: number): FactVerdict | null {
+  const key = factsKey(book, keyId);
+  if (key === null) return null;
+  if (key.folded.has(foldAnswer(answer))) return "accurate";
+  return confidence >= CONFIDENCE_MAX ? "lie" : "uncertain";
+}
+
+/** The mode the world holds at the book's `modeVar`: `review` exactly, else `auto`. */
+export function judgeMode(book: FactsBook, read: (path: string) => string | undefined): JudgeMode {
+  return read(book.modeVar) === "review" ? "review" : "auto";
+}
+
+/** A reader over a sim's world for `judgeMode`: strings as-is, numbers / bools rendered. */
+export function worldReader(sim: Sim): (path: string) => string | undefined {
+  return (path) => {
+    const v = sim.world.peek(path);
+    if (v === null) return undefined;
+    switch (v.kind) {
+      case "string":
+        return v.value;
+      case "number":
+        return String(v.value);
+      case "bool":
+        return v.value ? "true" : "false";
+      default:
+        return undefined;
+    }
+  };
+}
+
+// ───────────────────────── the ledger view ─────────────────────────
+
+/** The directive verbs the ledger view reads (`do fact_filed …`, `do fact_judged …`). */
+export const FACT_FILED_VERB = "fact_filed";
+export const FACT_JUDGED_VERB = "fact_judged";
+
+/** A settled filing's outcome: the verdict, or `marked` (a guess settled at a reveal). */
+export type FactFinal = FactVerdict | "marked";
+
+export interface FactsFiling {
+  person: string;
+  name: string;
+  question: string;
+  answer: string;
+  confidence: number;
+  /** The judge's proposal, journaled with the filing. */
+  verdict: FactVerdict;
+  /** Null while the filing is pending (review mode, not yet confirmed or settled). */
+  final: FactFinal | null;
+  /** When this server first saw the filing (epoch ms). */
+  at: number;
+}
+
+export interface FactsTally {
+  filed: number;
+  accurate: number;
+  lie: number;
+  uncertain: number;
+  /** U11: every filing matches the key and every confidence is 100. */
+  consensus: boolean;
+}
+
+export interface FactsQuestion {
+  id: string;
+  round: number | null;
+  text: string;
+  filings: FactsFiling[];
+  tally: FactsTally;
+}
+
+export interface FactsView {
+  modeVar: string;
+  mode: JudgeMode;
+  confirm: Record<FactVerdict, string> | null;
+  questions: FactsQuestion[];
+  /** Filings with no `final` yet. */
+  pending: number;
+}
+
+/** `do fact_filed <personId> <keyId> <confidence> <verdict> <answer…>` → its parts, or null. */
+export function parseFactFiled(args: string): { person: string; question: string; confidence: number; verdict: FactVerdict; answer: string } | null {
+  const m = /^\s*(\S+)\s+(\S+)\s+(\d+)\s+(\S+)(?:\s+([\s\S]*?))?\s*$/u.exec(args);
+  if (m === null) return null;
+  const confidence = Number(m[3]);
+  if (!Number.isInteger(confidence) || !isFactVerdict(m[4])) return null;
+  return { person: m[1]!, question: m[2]!, confidence, verdict: m[4], answer: m[5] ?? "" };
+}
+
+/** `do fact_judged <personId> <keyId> <verdict|marked>` → its parts, or null. */
+export function parseFactJudged(args: string): { person: string; question: string; final: FactFinal } | null {
+  const m = /^\s*(\S+)\s+(\S+)\s+(\S+)\s*$/u.exec(args);
+  if (m === null) return null;
+  const final = m[3]!;
+  if (!isFactVerdict(final) && final !== "marked") return null;
+  return { person: m[1]!, question: m[2]!, final };
+}
+
+/** The tally over a question's filings (a `marked` final counts as uncertain). */
+export function tallyFilings(filings: readonly FactsFiling[]): FactsTally {
+  const t: FactsTally = { filed: filings.length, accurate: 0, lie: 0, uncertain: 0, consensus: false };
+  for (const f of filings) {
+    const effective = f.final ?? f.verdict;
+    if (effective === "accurate") t.accurate += 1;
+    else if (effective === "lie") t.lie += 1;
+    else t.uncertain += 1;
+  }
+  t.consensus = filings.length > 0 && filings.every((f) => (f.final ?? f.verdict) === "accurate" && f.confidence === CONFIDENCE_MAX);
+  return t;
+}
+
+/**
+ * The director's ledger of filings, folded off the sim log like
+ * `ScreenWatch`: a cursor over `sim.log` that advances on every look and
+ * starts over when the sim object changes (a restart replays the journal
+ * into a fresh one, so the replayed `fact_filed` lines rebuild it). One
+ * filing per (person, question): a repeat replaces the earlier one in place.
+ */
+export class FactsWatch {
+  private sim: Sim | null = null;
+  private cursor = 0;
+  private readonly filings = new Map<string, FactsFiling>();
+  private readonly now: () => number;
+
+  constructor(o: { now?: () => number } = {}) {
+    this.now = o.now ?? Date.now;
+  }
+
+  private static key(person: string, question: string): string {
+    return `${person}\u0000${question}`;
+  }
+
+  private sync(sim: Sim): void {
+    if (sim !== this.sim) {
+      this.sim = sim;
+      this.cursor = 0;
+      this.filings.clear();
+    }
+    const events = sim.log.all();
+    for (; this.cursor < events.length; this.cursor++) {
+      const e = events[this.cursor]!;
+      if (e.type !== "directive") continue;
+      if (e.verb === FACT_FILED_VERB) {
+        const f = parseFactFiled(e.args);
+        if (f === null) continue;
+        const k = FactsWatch.key(f.person, f.question);
+        const prev = this.filings.get(k);
+        this.filings.set(k, {
+          person: f.person,
+          name: sim.persons.get(f.person)?.name ?? f.person,
+          question: f.question,
+          answer: f.answer,
+          confidence: f.confidence,
+          verdict: f.verdict,
+          final: null,
+          at: prev?.at ?? this.now(),
+        });
+      } else if (e.verb === FACT_JUDGED_VERB) {
+        const j = parseFactJudged(e.args);
+        if (j === null) continue;
+        const prev = this.filings.get(FactsWatch.key(j.person, j.question));
+        if (prev !== undefined) prev.final = j.final;
+      }
+    }
+  }
+
+  /** Every filing the sim has logged, in filing order. */
+  all(sim: Sim): FactsFiling[] {
+    this.sync(sim);
+    return [...this.filings.values()].map((f) => ({ ...f }));
+  }
+
+  /** The view: the book's keys in order (questions, then answers), each
+   *  with its filings + tally; a filing for a key the book lacks is listed
+   *  after them under its own id, never dropped. */
+  view(sim: Sim, book: FactsBook): FactsView {
+    const filings = this.all(sim);
+    const byQuestion = new Map<string, FactsFiling[]>();
+    for (const f of filings) {
+      const list = byQuestion.get(f.question);
+      if (list === undefined) byQuestion.set(f.question, [f]);
+      else list.push(f);
+    }
+    const questions: FactsQuestion[] = [];
+    const seen = new Set<string>();
+    for (const k of [...book.questions, ...book.answers]) {
+      seen.add(k.id);
+      const list = byQuestion.get(k.id) ?? [];
+      questions.push({ id: k.id, round: k.round, text: k.text, filings: list, tally: tallyFilings(list) });
+    }
+    for (const [id, list] of byQuestion) {
+      if (seen.has(id)) continue;
+      questions.push({ id, round: null, text: id, filings: list, tally: tallyFilings(list) });
+    }
+    return {
+      modeVar: book.modeVar,
+      mode: judgeMode(book, worldReader(sim)),
+      confirm: book.confirm,
+      questions,
+      pending: filings.filter((f) => f.final === null).length,
+    };
+  }
+}

@@ -11,9 +11,14 @@
       email; John adds you to the project (Share). By **Tue 10-20**.
 - [ ] **A laptop** with Chrome, on its charger, that can stay awake 6 hours.
       Bring its charger and a spare mouse.
-- [ ] **10-25 run-through:** fire C1 → V6 from the cue sheet yourself; judge a
-      📝 filing; re-pair a lost guest; release a performer's part; scan a late
-      arrival in as Norton; answer a DM *as Trabolta*; pull the recap.
+- [ ] **10-25 run-through** (on the server project — a folder rehearsal has
+      no judge and no Wallet): fire C1 → V6 → ⏱ → 📋 ×3 → 🍾 from the cue
+      sheet yourself; file a fact from a test phone and watch it settle;
+      switch the Judging card to `review`, confirm one, switch back; mark a
+      program (🤷 as Clippy) and 🩹 it; approve a held transfer with the
+      API call in 3b (there is no Approve button in Run);
+      re-pair a lost guest; release a performer's part; scan a late arrival
+      in as Norton; answer a DM *as Trabolta*; pull the recap.
 - [ ] Read [`all-crew.md`](../all-crew.md) and the emergency card.
 - [ ] Learn the four call words you act on: **INTRO** (you call it),
       **BEANS**, **A / B / WRONG**, **ARRIVAL**.
@@ -34,36 +39,65 @@ order with the last one marked. Fire, then watch the room. Mis-taps are cheap:
 a phase cue that already ran does nothing the second time. Optional set pieces
 (☎️ Telephone, 🪅 Are you sure?) only if you are running early.
 
+**1b. The First Moment of Truth, in order.** V6 opens a two-minute filing
+window. ⏱ closes it (or it closes itself). Then 📋 once per question (Q1, Q2,
+Q3): Clippy reads the result in the Desktop room and the filings settle.
+After each 📋, 🍾 up to five times: the server picks a program at the Desktop,
+the TV asks "Truth or dare?", their phone asks too; Clippy settles a Truth
+with 🗣 / 🙅. 📋 refuses while a bottle is open; 🍾 refuses after five. After
+Q3's bottle, 📺. Rounds never reopen.
+
 **2. Set stage on Run → Mind** at each phase (W-21): intro *formal* · C2
 *hungry* · 📺 *rattled* · 🏓 *judge* · 🫘 *unravelling* · 🕚 *desperate* · 🌑
 *last act*. Both models stay loaded on the house Mac, so the mind runs; if
 Trabolta's replies start lagging more than a minute, pause the mind until a
 quiet moment and have Clippy announce "a high volume of requests" (OP-06).
 
-**3. Judge the 📝 DM filings** (W-07). Each filing posts in `# hosts`:
-*📝 X filed H5 (round 2 Q2): …*. Judge it against the answer key below:
-identity control → *be* **Clippy** → that program's card → **📝 Filed fact:
-accurate** or **📝 Filed fact: confident lie**. Either gives the guest the same
-reply. A lie counts against the final verdict for good; that is the point.
+**3. Watch the judge** (W-07). Every 📝 filing (question, answer, the 1–100
+confidence slider) is judged by the server against `facts.json` as it is
+filed; `# hosts` logs each one. The Judging card on Run → Mind shows the
+mode and a tally per question. **Leave it on `auto`.** Switch to `review`
+only if the key is wrong on the night (a question the team changed late):
+then every filing waits as a proposal, and you confirm or override it on the
+card (✅ accurate / 😤 confident lie / 🤷 uncertain), or a host does it via
+*be Clippy* → the program's card → **📝 Filed fact: …**. Either way the
+guest hears the same reply. A lie counts against the final verdict for good;
+that is the point. A typo the key did not know → override that one filing,
+and tell John to add the alias to `facts.json`. The key, for reference
+(DRAFT questions until the team replaces them):
 
 | | Accurate answer |
 |---|---|
 | H1 | Eleven years |
-| H2 | Mister Pickles, a harbour tabby (1918) |
+| H2 | Mister Pickles (a harbour tabby, 1918) |
 | H3 | 9:00 a.m. |
-| H4 | Extension 1978 |
+| H4 | 1978 (the extension on the Customer Care card) |
 | H5 | "Hopelessly Devoted to You" |
 | H6 | "Appendix Z: Loose Ends (Do Not Print)" |
 | F1 | "I'm sorry, I didn't understand that. Would you like to speak to a live agent?" |
 | F2 | Grok |
 
-Close enough counts as accurate (a typo, "11 years", "Mr Pickles"); a
-different fact is a lie.
+The judge folds case, punctuation and one leading article and matches the
+answer or any alias in `facts.json` exactly ("11", "pickles", "appendix z"
+are aliases); a different fact at 100% is a lie, below 100% a guess (marked).
 
-**4. The late list** (OP-08b). At 🚨 Summons closed, read the roster's `late`
-column to the Antivirus by radio (**LATE**, then names and where). Or, before
-the hour ends, set `Night.auto_sweep = true` in Run → World to capture them
-automatically.
+**3b. The escort list and the Wallet.** Marks are the hosts' buttons; you
+only step in from Run when nobody is near: fire `mark_for_reinstallation` or
+`unmark_for_reinstallation` with the program as the subject (Director →
+quick-fire). `# quarantine` shows every open escort pin. Truthcoin moves by
+itself from the guests' Wallets; CRA Agent Software approves every third
+transfer in her booth's Wallet room and can deny any within 60 s. If she is
+busy or gone: `POST /e/<event>/api/mod/wallet/approve` (or `deny`, `cancel`)
+with the transfer id from the card, signed in as yourself; `stimulus` mints
+Runescape's hand-out if Runescape never came.
+
+**4. The late list** (OP-08b). At 🚨 Summons closed the Antivirus booths
+already read *⏰ X is late for the Second Moment of Truth. Go get them.* and
+`# quarantine` pins each one (marked: *late for the Second Moment of Truth*).
+Confirm the list by radio (**LATE**, then names and where) from Run → World
+(each guest's `late` var; the roster has no late column) if a booth missed
+it. Or, before the hour ends, set `Night.auto_sweep = true` in Run → World to
+capture them automatically (no mark, no escort).
 
 **5. Assessments before 🏆** (W-34, optional). To put a specific program at
 the top or bottom of the Trust Chart, edit `<guest>.assessment` **and**

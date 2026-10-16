@@ -12,11 +12,16 @@ import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Sim, namedEvents } from "../src/runtime/sim/index.ts";
 import type { SimEvent } from "../src/runtime/sim/index.ts";
-import { scenarioFiles, scenarioSource } from "../examples/load.ts";
+import { scenarioDir, scenarioFiles, scenarioSource } from "../examples/load.ts";
+import { FACTS_FILE, parseFactsText } from "../src/facts.ts";
+import { FactsWatch, judgeAnswer, parseFactsBook } from "../server/facts.ts";
+import { foldCode } from "../src/runtime/sim/model.ts";
 import { parse } from "../src/parser/index.ts";
-import { guestView } from "../server/views.ts";
+import { guestView, primeView } from "../server/views.ts";
 import { composeGuestMessages } from "../server/chat.ts";
-import { identityDefs, guestPickable, performerPickable } from "../server/identity.ts";
+import { identityDefs, guestPickable, isSpecial, performerPickable } from "../server/identity.ts";
+import { WalletBook, walletSeam } from "../server/wallet.ts";
+import type { GuestView, ModView, PrimeView } from "../server/views.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import type { AgentFacts, AgentRequest } from "../server/agents.ts";
@@ -26,6 +31,13 @@ import type { AgentFacts, AgentRequest } from "../server/agents.ts";
 const SHOW = "trapped-in-the-internet";
 const FILES = scenarioFiles(SHOW);
 const SRC = scenarioSource(SHOW);
+/** facts.json — the hunt questions, the scannable facts and the truths the
+ *  generated story (generated/questions.loom, codex/9-facts.loom) is made of. */
+const FACTS = parseFactsText(readFileSync(join(scenarioDir(SHOW), FACTS_FILE), "utf8")).facts!;
+const Q = (id: string) => FACTS.questions.find((q) => q.id === id)!;
+/** The server's answer key (core/server/facts.ts): the show tests attach the
+ *  verdict the event server would, since the Sim never reads facts.json. */
+const BOOK = parseFactsBook(readFileSync(join(scenarioDir(SHOW), FACTS_FILE), "utf8")).book!;
 /** The server's build: every file concatenated. */
 const fresh = (): Sim => Sim.fromSources(SRC);
 const SLOW = 120_000;
@@ -68,7 +80,9 @@ function advance(sim: Sim, seconds: number): SimEvent[] {
 }
 
 const FEATURED = ["Microsoft Excel", "OpenOffice", "DraftKings", "Bugdom", "Broken Ask Jeeves", "Runescape", "MS Paint", "VLC", "Pong"];
-const PERFORMERS = ["Adobe Acrobat", "CRA Agent Software", "Clippy", "McAfee Anti-Virus", "Norton Anti-Virus", "Password Manager", "Recycling Bin", "Task Manager", "WebMD"];
+const PERFORMERS = ["Adobe Acrobat", "CRA Agent Software", "Clippy", "McAfee Anti-Virus", "Norton Anti-Virus", "Password Manager", "Recycling Bin", "Task Manager"];
+/** The four Enforcer booths (TRAIT Enforcer in cast/kit.loom): every escort readout lands in each. */
+const ANTIVIRUS = ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software"];
 /** The rooms an Antivirus clearance (or a release) opens: the whole house
  *  but the Optical Drive, the Tube, the Internet and the Server Room. */
 const HOUSE_ROOMS = ["The Start Bar", "The CPU", "The Steam Room", "Disk Cleanup", "The Cloud", "The RAM", "The Fan Closet", "The Graphics Card", "The Hard Drive"];
@@ -131,27 +145,62 @@ describe("Trapped in the Internet — compile", () => {
     expect(m.defaultRole).toBe("Program");
   });
 
-  it("pins the codex: 133 entries, 41 codes, the printed codes", () => {
-    expect(m.codex.size).toBe(133);
-    expect(m.codexCodes.size).toBe(41);
+  it("declares the Truthcoin wallet (wave 4, lane C): the currency header, CRA the approver, Runescape the minter and still a guest program", () => {
+    expect(m.currency).toEqual({
+      slot: "score",
+      name: "Truthcoin",
+      maxTransfer: 500,
+      expiryMs: 600_000,
+      approver: { id: "CRA Agent Software", every: 3, windowMs: 60_000 },
+      minter: { id: "Runescape", limit: 3, while: "program.cleared == true" },
+    });
+    expect(m.characters.get("CRA Agent Software")!.wallet).toEqual({ role: "approver", every: 3, windowMs: 60_000 });
+    // The `while` clause is pinned verbatim: if ROLE Program is ever renamed it silently pays nobody.
+    expect(m.characters.get("Runescape")!.wallet).toEqual({ role: "minter", limit: 3, while: "program.cleared == true" });
+    expect(isSpecial(m, "Runescape")).toBe(false); // a property, never a part
+    expect(isSpecial(m, "CRA Agent Software")).toBe(true); // a part → approvals land in the booth
+    for (const c of m.characters.values()) if (c.wallet !== null) expect(["CRA Agent Software", "Runescape"]).toContain(c.id);
+  });
+
+  it("pins the codex: 177 entries, 90 codes, every facts.json code resolving, no STAMPED anywhere", () => {
+    expect(m.codex.size).toBe(177);
+    expect(m.codexCodes.size).toBe(90);
     const codes: Record<string, string> = {
-      billboardlease11: "The Billboard Lease",
       trabolta4ever: "The LiveJournal",
       loveletterforyou: "ILOVEYOU",
       coldstorage: "The Server Room",
       fbihalifax: "The FBI Lanyard",
-      appendixz: "The Final Chapter",
     };
     for (const [c, e] of Object.entries(codes)) expect(m.codexCodes.get(c), c).toBe(e);
+    // The hunt answers (generated/questions.loom) keep their ids and codes;
+    // F2 stays `The Prom Ticket` because cast/trabolta.loom listens for it.
+    for (const q of FACTS.questions) {
+      expect(m.codexCodes.get(foldCode(q.codex!.code)), q.id).toBe(q.codex!.id);
+      expect(m.codex.get(q.codex!.id)!.text.endsWith(`▒ HUNT ANSWER ${q.id} ▒`), q.id).toBe(true);
+    }
+    expect(m.codex.get("The Prom Ticket")!.title).toBe("Grok's Prom Ticket");
+    // Every scannable fact (codex/9-facts.loom) and every `existing` one with its hand-added code.
+    for (const x of FACTS.facts) {
+      if (x.codex !== undefined) expect(m.codexCodes.get(foldCode(x.codex.code)), x.id).toBe(x.codex.id);
+      else {
+        expect(m.codex.has(x.existing!), x.id).toBe(true);
+        if (x.code !== undefined) expect(m.codex.get(x.existing!)!.code, x.id).toBe(foldCode(x.code));
+      }
+    }
+    for (const [id, e] of m.codex) expect(e.text, id).not.toContain("STAMPED");
+    expect(m.codex.has("The Truther Download")).toBe(true);
+    expect(m.codex.get("The Truther Download")!.secret).toBe(true);
+    expect(m.codex.get("The Truther Download")!.text.startsWith("TOP SECRET TOP SECRET TOP SECRET TOP SECRET TOP SECRET\n- The following message is TOP SECRET.")).toBe(true);
+    expect(m.codex.get("The Truther Download")!.text.endsWith("- There is still time.\n- In truth.")).toBe(true);
   });
 
-  it("declares the 16 quests in order, with titles and givers", () => {
+  it("declares the 23 quests in order (the three hunt quests generated first, the seven staff quests last), with titles and givers", () => {
     const QUESTS = [
-      ["Orientation", "Clippy's Orientation", "Clippy"],
-      ["The Bingo Card", "Computer Bingo", "Clippy"],
       ["Hunt One", "The Truth Scavenger Hunt · Round 1", "Trabolta"],
       ["Hunt Two", "The Truth Scavenger Hunt · Round 2", "Trabolta"],
       ["The Final Facts", "The Final Fact-Finding Round", "Trabolta"],
+      ["Orientation", "Clippy's Orientation", "Clippy"],
+      ["The Bingo Card", "Computer Bingo", "Clippy"],
       ["Excel Mission", "Computers Are Very Confusing", "Truther Download"],
       ["OpenOffice Dossier", "Facts Are Currency", "Truther Download"],
       ["Recruit To Stay", "Stay Forever", "Truther Download"],
@@ -163,9 +212,26 @@ describe("Trapped in the Internet — compile", () => {
       ["Find The Exit", "Paint Your Way Out", "Truther Download"],
       ["Go Viral", "Your Followers Are Back", "Truther Download"],
       ["Keep The Ball In Play", "Tennis For Two", "Truther Download"],
+      // Staff quests: the hosts' and Antivirus' agenda, in their booths' Quest Log (wave 4, lane D).
+      ["Run The Bingo", "Per the agenda: Computer Bingo", "Task Manager"],
+      ["Host The Hunt", "Per the agenda: the Truth Scavenger Hunt", "Task Manager"],
+      ["Keep Everyone Calm", "Per Trabolta: keep everyone calm", "Task Manager"],
+      ["The Selected Antivirus", "Patrol: the Bingo", "Task Manager"],
+      ["The Exchange", "Patrol: the exchange", "Task Manager"],
+      ["The Clubs", "Patrol: the clubs", "Task Manager"],
+      ["The Audit", "Patrol: the audit", "Task Manager"],
     ];
     const qs = [...m.quests.values()].map((q) => [q.id, q.title, q.giver]);
     expect(qs).toEqual(QUESTS);
+    expect(m.quests.size).toBe(23);
+    expect(m.quests.get("Orientation")!.text).toContain("Bathroom Mode: tap 🚻 on your pass");
+    // The generated quests list exactly their round's questions, from facts.json.
+    for (const [id, round] of [["Hunt One", 1], ["Hunt Two", 2], ["The Final Facts", 3]] as const) {
+      const text = m.quests.get(id)!.text;
+      const own = FACTS.questions.filter((q) => q.round === round);
+      own.forEach((q, i) => expect(text, id).toContain(`- Q${i + 1}. ${q.text}`));
+      for (const q of FACTS.questions) if (q.round !== round) expect(text, `${id} ~ ${q.id}`).not.toContain(q.text);
+    }
   });
 
   it("declares the interactions: admin cue sheet, per-question judge buttons, guest + agent buttons", () => {
@@ -173,13 +239,30 @@ describe("Trapped in the Internet — compile", () => {
     const by = (w: string) => ints.filter((i) => i.who === w).map((i) => i.id);
     expect(by("guest")).toEqual(["go to the bathroom", "back from the bathroom", "plant_the_virus"]);
     const perf = by("performer");
-    for (const p of ["accurate_q1", "accurate_q2", "accurate_q3", "confident_q1", "confident_q2", "confident_q3", "fact_accurate", "fact_lie", "send to the internet", "mark as reinstalled"]) expect(perf).toContain(p);
+    for (const p of ["accurate_q1", "accurate_q2", "accurate_q3", "confident_q1", "confident_q2", "confident_q3", "fact_accurate", "fact_lie", "fact_uncertain", "send to the internet", "mark as reinstalled", "named_at_bingo", "unmark_for_reinstallation", "truth_answered", "truth_refused", "chose_dare"]) expect(perf).toContain(p);
+    // The hat is gone (wave 4, lane B): the bottle's buttons replace it.
+    expect(perf).not.toContain("called_it_false");
+    for (const p of ["chose_dare", "truth_answered", "truth_refused"]) expect(m.interactions.get(p)!.while, p).toBe("Night.bottle_open == true");
+    expect(m.interactions.get("chose_dare")!.label).toContain("marked for reinstallation");
+    // The verdict buttons mark, never capture (wave 4, lane E); the 🛡 stays the capture.
+    for (const p of ["uncertain_answer", "missed_the_cup", "failed_the_bob", "named_at_bingo"]) expect(m.interactions.get(p)!.label, p).toContain("marked for reinstallation");
+    expect(m.interactions.get("unmark_for_reinstallation")!.label).toBe("🩹 Unmark: not going to the Internet");
     expect(perf).not.toContain("accurate_truth");
     expect(perf).not.toContain("confident_lie");
     const ev = namedEvents(m);
+    // The mark's story events are on the director's list; the engine verbs behind them are not.
+    for (const e of ["mark_for_reinstallation", "unmark_for_reinstallation", "named_at_bingo", "marked", "unmarked"]) expect(ev, e).toContain(e);
+    for (const e of ["restricted", "unrestricted"]) expect(ev, e).not.toContain(e);
     const admin = by("admin");
     expect(admin.length).toBeGreaterThan(40);
     for (const a of admin) expect(ev, a).toContain(a);
+    // The First Moment of Truth's cues, in running order: ⏱ close, 📋 results, 🍾 the bottle (off LAST / NEXT).
+    expect(admin).not.toContain("truth_or_dare");
+    expect(admin.slice(admin.indexOf("first_moment_of_truth"), admin.indexOf("first_moment_of_truth") + 4)).toEqual(["first_moment_of_truth", "close_the_filing", "read_the_results", "spin_the_bottle"]);
+    expect(m.interactions.get("spin_the_bottle")!.sequence).toBe(false);
+    expect(m.interactions.get("close_the_filing")!.label).toBe("⏱ Close round-one filings now (auto at 2 min)");
+    expect(m.interactions.get("read_the_results")!.label).toBe("📋 Results: the next question (press for Q1, Q2, Q3)");
+    expect(m.interactions.get("spin_the_bottle")!.label).toBe("🍾 Spin the bottle (Truth or Dare, five per question)");
     expect(ints.filter((i) => i.who === "agent").map((i) => `${i.id}:${i.limit}`)).toEqual([
       "snoop:8",
       "flicker_the_screens:3",
@@ -216,6 +299,26 @@ describe("Trapped in the Internet — compile", () => {
       q8: "none",
       lies_accepted: "0",
       all_accurate: "false",
+      said_1: "none",
+      said_2: "none",
+      said_3: "none",
+      said_4: "none",
+      said_5: "none",
+      said_6: "none",
+      said_7: "none",
+      said_8: "none",
+      ans_1: "none",
+      ans_2: "none",
+      ans_3: "none",
+      ans_4: "none",
+      ans_5: "none",
+      ans_6: "none",
+      ans_7: "none",
+      ans_8: "none",
+      res_filed: "0",
+      res_consensus: "0",
+      res_said: "none",
+      res_answer: "none",
       virus_planted: "false",
       excel_planted: "false",
       virus_planter: "none",
@@ -281,13 +384,14 @@ describe("Trapped in the Internet — identity classification", () => {
   const defs = identityDefs(sim.model);
   const named = (pred: (d: (typeof defs)[number]) => boolean) => defs.filter(pred).map((d) => d.name).sort();
 
-  it("every featured program is a guest pick; the nine performer parts are the performers", () => {
+  it("every featured program is a guest pick; the eight performer parts are the performers", () => {
     for (const f of FEATURED) {
       const d = defs.find((x) => x.name === f);
       expect(d?.kind, f).toBe("pool");
       expect(guestPickable(d!), f).toBe(true);
     }
-    expect(named(guestPickable)).toHaveLength(32);
+    expect(named(guestPickable)).toHaveLength(31); // Start Menu was deleted (decision 17)
+    expect(sim.model.characters.has("Start Menu")).toBe(false);
     expect(named(performerPickable)).toEqual(PERFORMERS);
   });
 
@@ -295,7 +399,8 @@ describe("Trapped in the Internet — identity classification", () => {
     const t = defs.find((d) => d.name === "Trabolta")!;
     expect(t.agent).toBe(true);
     expect(guestPickable(t) || performerPickable(t)).toBe(false);
-    expect(named((d) => !d.playable)).toEqual(["Kernel", "Sandy", "The Router", "The Screensaver", "The Tablet", "The Uploader", "Truther Download"]);
+    expect(named((d) => !d.playable)).toEqual(["Installation Wizard", "Kernel", "Sandy", "The Router", "The Screensaver", "The Tablet", "The Uploader", "Truther Download"]);
+    expect(sim.model.characters.has("WebMD")).toBe(false);
     expect([...sim.model.characters.keys()].filter((k) => /^(grok|alexa|jean trabolta)$/iu.test(k))).toEqual([]);
     expect(defs.filter((d) => d.playable && d.avatars.length === 0).map((d) => d.name)).toEqual([]);
   });
@@ -362,6 +467,12 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(sim.holdsCodex("g1", "The Terms Of Service")).toBe(true);
     expect(widgets(dep).some((w) => w.widget === "pass" && (w.text ?? "").includes("Hold this up."))).toBe(true);
     expect(sim.locationOf("g1")).toBe("The Optical Drive");
+    // Task Manager runs the installation (the Uploader keeps the machine
+    // lines) and leaves the help note: his lines open `dm:Task Manager`.
+    expect(lines(dep, "Task Manager").some((t) => t.includes("message me here"))).toBe(true);
+    expect(saidBy(dep, "Task Manager").every((e) => aud(e) === '["g1"]')).toBe(true);
+    expect(lines(dep, "Task Manager")).toContain("100 Truthcoin credited. I am also the bank. Keep track. I will.");
+    expect(lines(dep, "The Uploader").some((t) => t.includes("Truthcoin"))).toBe(false);
   });
 
   it("the door: Clippy can't clear, Norton clears, the rooms open, the tutorial deals", () => {
@@ -376,9 +487,21 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(sim.locationOf("g1")).toBe("The Desktop");
     expect(v(sim, "g1.cleared")).toBe(true);
     for (const r of HOUSE_ROOMS) expect(sim.isRevealedTo(r, "g1"), r).toBe(true);
+    // The admin team, introduced by Task Manager at clearance — addressed to
+    // the program (never the room) — and `# task-manager` opens for them.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(nz.some((e: any) => e.type === "revealed" && e.target === "room:task manager" && e.person === "g1")).toBe(true);
+    expect(sim.isRevealedTo("room:task manager", "g1")).toBe(true);
+    expect(lines(nz, "Task Manager").some((t) => t.includes("Your hosts tonight"))).toBe(true);
+    expect(saidBy(nz, "Task Manager").every((e) => aud(e) === '["g1"]')).toBe(true);
     const tut = widgets(nz).find((w) => w.widget === "tutorial");
     expect(tut).toBeDefined();
     expect(aud(tut!)).toBe('["g1"]');
+    // Clippy's Bathroom Mode step rides the card; no commas (the `with` splitter).
+    expect(tut!.params["guide"]).toBe("Clippy");
+    expect(tut!.params["bathroom"]).toMatch(/Bathroom Mode/u);
+    expect(tut!.params["bathroom"]).not.toContain(",");
+    expect(lines(nz, "Clippy").some((t) => t.includes("BATHROOM MODE"))).toBe(true);
     // the first clearance wakes the terminals, never the TV
     expect(has(cues(nz), "terminals_attract")).toBe(true);
     expect(cues(nz).some((c) => /\b(tv_|screens_)/u.test(c))).toBe(false);
@@ -404,9 +527,17 @@ describe("Trapped in the Internet — the whole night", () => {
       expect(v(sim, `${id}.featured`), id).toBe(tag);
     }
     expect(v(sim, "g2.human_problem")).toBe("profile");
-    expect(sim.holdsCodex("g2", "Randy Barkmore Sr")).toBe(true);
-    expect(sim.holdsCodex("g6", "The Valley Librarian")).toBe(true);
-    expect(sim.holdsCodex("g6", "The DSL Line")).toBe(true);
+    // One identity entry each (codex/5-people.loom); the two CHARACTER FACTS
+    // wait in the Desktop's books (codex/9-facts.loom).
+    for (const [id, entry] of [["g2", "Randy Barkmore Sr"], ["g3", "Dana Anderson"], ["g4", "Maria Sophia Paine"], ["g6", "Virgil Jeeves"], ["g7", "Crab Fisherwoman"], ["g8", "Bea Nunes"], ["g11", "Poppy Van Mises"]]) {
+      expect(sim.holdsCodex(id!, entry!), entry).toBe(true);
+    }
+    for (const entry of ["The Jeopardy Callback", "Ten Findings For Everyone"]) expect(sim.holdsCodex("g6", entry), entry).toBe(false);
+    for (const gone of ["The Valley Librarian", "The DSL Line", "Bugdom VR", "The Fire Ants", "The Paperclip Trade", "The Boardwalk Bet", "Twenty Four Years Online", "Expelled From NSCAD"]) expect(sim.model.codex.has(gone), gone).toBe(false);
+    // The performers hold all three of theirs from the start (`about:` them).
+    for (const [who, entries] of [["Clippy", ["Tippi MacDonald", "The Memorial Veterinary Clinic", "Failed Clippy"]], ["Norton Anti-Virus", ["Julie Horton-Norton", "Miniature Doses", "Stable Island"]], ["McAfee Anti-Virus", ["John McAfee", "The Lamborghini Certificate", "Keep Them On Track"]], ["Password Manager", ["Bridget Troelsen", "What Happened To Hamtaro", "Founding Moderator"]], ["CRA Agent Software", ["Sharon Penney", "The Decimal Point", "Approve Or Deny"]]] as const) {
+      for (const e of entries) expect(sim.holdsCodex(who, e), `${who} ${e}`).toBe(true);
+    }
     // the anti-AI program (MS Paint by default)
     expect(sim.holdsCodex("g4", "The Centre Square")).toBe(true);
     expect(v(sim, "g4.anti_ai")).toBe(true);
@@ -426,8 +557,9 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(v(sim, "Night.phase")).toBe("desktop");
     expect(v(sim, "Night.step")).toBe(1);
     expect(casts(cd).some((b) => b.cue.replace(/^"/u, "").startsWith("!📣 ALL PROGRAMS"))).toBe(true);
+    // `# task-manager` is opened per program at clearance (U5), not here.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect(cd.some((e: any) => e.type === "revealed" && e.target === "room:task manager")).toBe(true);
+    expect(cd.some((e: any) => e.type === "revealed" && e.target === "room:task manager")).toBe(false);
     expect(replies(cd).filter((r) => r.text.includes("Patrol the whole computer"))).toHaveLength(4);
 
     // too early: introduce_trabolta before bingo_time does nothing
@@ -463,7 +595,7 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(casts(rib).some((b) => b.cue.includes("wins a Bingo Ribbon"))).toBe(true);
   });
 
-  it("the first reinstall: Corrupted Code, WebMD in private, no TV mirror yet", () => {
+  it("the first reinstall: Corrupted Code, the Installation Wizard in private, no TV mirror yet", () => {
     const s1 = sim.signal("send to the internet", "g4", null, "Norton Anti-Virus");
     expect(sim.isCaptured("g4")).toBe(true);
     expect(v(sim, "Night.first_reinstall")).toBe("MS Paint");
@@ -472,9 +604,13 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(has(cues(s1), "tv_mirror")).toBe(false);
     expect(v(sim, "g4.internet_visits")).toBe(1);
     expect(v(sim, "g4.trust")).toBe(-5);
-    const web = saidBy(s1, "WebMD");
+    const web = saidBy(s1, "Installation Wizard");
     expect(web.length).toBeGreaterThanOrEqual(5);
     expect(web.every((e) => aud(e) === '["g4"]')).toBe(true);
+    expect(web.some((e) => e.text.includes("the tent in the backyard, at the end of the tunnel"))).toBe(true);
+    expect(texts(s1).some((t) => /bottom of the stairs/iu.test(t))).toBe(false);
+    expect(has(cues(s1), "tablet_wizard")).toBe(true);
+    expect(has(cues(s1), "tablet_webmd")).toBe(false);
     expect(sim.holdsCodex("g4", "The Reinstallation Protocol")).toBe(true);
     expect(sim.holdsCodex("g4", "Bathroom Mode")).toBe(true);
     expect(guestView(sim, "g4").canEscape).toBe(false);
@@ -542,13 +678,13 @@ describe("Trapped in the Internet — the whole night", () => {
     // after the introduction a capture plays on the TV
     const s3 = sim.signal("send to the internet", "g12", null, "CRA Agent Software");
     expect(has(cues(s3), "tv_mirror")).toBe(true);
-    sim.signal("mark as reinstalled", "g12", null, "WebMD");
+    sim.signal("mark as reinstalled", "g12", null, "Norton Anti-Virus");
     expect(sim.isCaptured("g12")).toBe(false);
     sim.signal("the simulation completed", "g4");
     expect(sim.isCaptured("g4")).toBe(false);
   });
 
-  it("hunt 1 + the first Moment of Truth: per-question judging, lies indistinguishable and sticky", { timeout: SLOW }, () => {
+  it("hunt 1 + the first Moment of Truth: the filing window, the judged filings, the results per question; the room's lies indistinguishable and sticky", { timeout: SLOW }, () => {
     const hu = sim.signal("start_the_hunt");
     expect(sim.questStatus("g1", "Hunt One")).toBe("active");
     expect(sim.questStatus("g13", "Hunt One")).toBe("active");
@@ -556,6 +692,12 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(v(sim, "Night.phase")).toBe("hunt_1");
     expect(lines(hu, "Trabolta").some((t) => t.includes("Barrington"))).toBe(true);
     expect(lines(hu, "Trabolta").some((t) => t.includes("ribbon-cutting"))).toBe(true);
+    // The intro hands to the generated reading beat, which hands back to the tail.
+    expect(beats(hu)).toEqual(expect.arrayContaining(["Truth Scavenger Hunt One", "Hunt One Questions", "Hunt One Go"]));
+    const tl = lines(hu, "Trabolta");
+    for (const [i, q] of FACTS.questions.filter((q) => q.round === 1).entries()) expect(tl).toContain(`Question ${["one", "two", "three"][i]}. ${q.text}`);
+    expect(tl.indexOf(`Question three. ${Q("H3").text}`)).toBeLessThan(tl.indexOf("Fifteen minutes. The facts are obscure. They are in the books in this room, and in the print media on the walls."));
+    expect(lines(hu, "Clippy").at(-1)).toMatch(/^Go! Find! Interpret!/u);
     expect(casts(advance(sim, 600)).some((b) => b.cue.includes("5 minutes left"))).toBe(true);
     const up = advance(sim, 300);
     expect(v(sim, "Night.phase")).toBe("truth_1");
@@ -563,8 +705,13 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(casts(up).some((b) => b.cue.includes("Time is up"))).toBe(true);
     expect(sim.questStatus("g1", "Hunt One")).toBe("done");
 
-    sim.signal("first_moment_of_truth");
+    const fm = sim.signal("first_moment_of_truth");
     expect(v(sim, "Night.judging")).toBe(true);
+    expect(v(sim, "Night.filing_open")).toBe(true);
+    expect(v(sim, "Night.poll")).toBe("bottle");
+    expect(casts(fm).some((b) => b.cue.includes("!📝 Last chance: file your round-one facts"))).toBe(true);
+    expect(lines(fm, "Clippy").some((t) => t.startsWith("You have two minutes. File anything you found with Trabolta NOW."))).toBe(true);
+    // The room's buttons (an answer spoken aloud) still judge as before.
     const tr0 = v(sim, "Trabolta.truth");
     const a1 = sim.signal("accurate_q1", "g1", null, "Clippy");
     expect(v(sim, "g1.truths_accepted")).toBe(1);
@@ -588,15 +735,129 @@ describe("Trapped in the Internet — the whole night", () => {
     sim.signal("accurate_q3", "g6", null, "Clippy");
     sim.signal("accurate_q2", "g6", null, "Clippy");
 
-    sim.signal("uncertain_answer", "g11", null, "Clippy");
-    expect(sim.isCaptured("g11")).toBe(true);
-    expect(beats(sim.signal("truth_or_dare"))).toContain("Truth Or Dare");
-    sim.signal("chose_dare", "g12", null, "Clippy");
-    sim.signal("called_it_false", "g13", null, "Clippy");
+    // The 📝 filings: the server judges each one (the verdict rides the
+    // args), the phone hears the same words for every verdict, nothing is
+    // credited yet. `file` attaches the verdict the event server would.
+    const file = (g: string, question: string, answer: string, confidence = 100) =>
+      sim.signal("fact answered", g, { question, answer, confidence, card: 1, verdict: judgeAnswer(BOOK, question, answer, confidence)! });
+    const hosts = (evs: SimEvent[]) => composeGuestMessages(sim, evs).filter((m) => m.channel === "room:hosts").map((m) => m.text);
+    const dm = (evs: SimEvent[], g: string) => saidBy(evs, "Trabolta").filter((e) => e.audience.includes(g)).map((e) => e.text);
+    const s1 = sim.scoreOf("g1");
+    const f1 = file("g1", "H1", "Eleven years");
+    expect(hosts(f1)).toEqual(["📝 Calculator filed H1 (round 1 Q1): Eleven years — certain. Judged accurate."]);
+    expect(dm(f1, "g1")).toEqual(["Filed for round 1 Q1, Calculator. Your fact is in the record."]);
+    expect(sim.scoreOf("g1")).toBe(s1);
+    expect(v(sim, "g1.fact_v1")).toBe("accurate");
+    expect(v(sim, "g1.fact_c1")).toBe(100);
+    expect(cues(f1)).toContain("fact_filed g1 H1 100 accurate Eleven years");
+    expect(cues(f1)).toContain("fact_judged g1 H1 accurate");
+    file("g3", "H1", "11");
+    const f5 = file("g5", "H1", "eleven", 80);
+    expect(hosts(f5)).toEqual(["📝 Winamp filed H1 (round 1 Q1): eleven — not certain. Judged accurate."]);
+    expect(dm(f5, "g5")).toEqual(["Filed for round 1 Q1, Winamp. Your fact is in the record."]);
+    const f6 = file("g6", "H2", "Clippy"); // a confident lie
+    expect(v(sim, "Kernel.lies_accepted")).toBe(2);
+    expect(dm(f6, "g6")).toEqual(["Filed for round 1 Q2, Broken Ask Jeeves. Your fact is in the record."]);
+    const s12 = sim.scoreOf("g12");
+    const f12 = file("g12", "H3", "four in the morning", 40); // a guess
+    expect(v(sim, "g12.fact_v3")).toBe("uncertain");
+    expect(hosts(f12)).toEqual(["📝 Minesweeper filed H3 (round 1 Q3): four in the morning — not certain. Judged uncertain."]);
+    expect(dm(f12, "g12")).toEqual(["Filed for round 1 Q3, Minesweeper. Your fact is in the record."]);
+    // The ledger the Run page reads (ModView.facts).
+    const ledger = new FactsWatch().view(sim, BOOK);
+    expect(ledger.mode).toBe("auto");
+    expect(ledger.pending).toBe(0);
+    const h1 = ledger.questions.find((q) => q.id === "H1")!;
+    expect(h1.filings.map((f) => [f.person, f.confidence, f.verdict, f.final])).toEqual([["g1", 100, "accurate", "accurate"], ["g3", 100, "accurate", "accurate"], ["g5", 80, "accurate", "accurate"]]);
+    expect(h1.tally).toEqual({ filed: 3, accurate: 3, lie: 0, uncertain: 0, consensus: false }); // 80 ≠ 100
+
+    // The window shuts at two minutes: round one is closed for good.
+    const shut = advance(sim, 120);
+    expect(beats(shut)).toContain("Filing Closed");
+    expect(v(sim, "Night.r1_closed")).toBe(true);
+    expect(v(sim, "Night.filing_open")).toBe(false);
+    const late = file("g7", "H3", "9 am");
+    expect(dm(late, "g7")).toEqual(["That round is closed, DraftKings. The question is gone."]);
+    expect(hosts(late)).toEqual([]);
+
+    // The results, one question at a time. Q1: no consensus (one 80), the
+    // three are credited at once (+50, the Trust Chart), Kernel.q1 stands.
+    const ta0 = Object.fromEntries(["g1", "g3", "g5"].map((g) => [g, v(sim, `${g}.truths_accepted`) as number]));
+    const r1 = sim.signal("read_the_results");
+    expect(beats(r1)).toContain("Question Results");
+    expect(v(sim, "Kernel.res_filed")).toBe(3);
+    expect(v(sim, "Kernel.res_consensus")).toBe(2);
+    expect(lines(r1, "Clippy").some((t) => t.startsWith("Question 1. 3 filed. No consensus."))).toBe(true);
+    expect(lines(r1, "Clippy").some((t) => t.trim() === "Calculator said Eleven years, certain. OpenOffice said 11, certain. Winamp said eleven, not certain.")).toBe(true);
+    for (const g of ["g1", "g3", "g5"]) expect(v(sim, `${g}.truths_accepted`), g).toBe(ta0[g]! + 1);
+    expect(sim.scoreOf("g1")).toBe(s1 + 50);
+    expect(dm(r1, "g1")).toEqual(["Your fact for round 1 Q1 is accepted, Calculator. Trabolta thanks you. +50 Truthcoin."]);
+    expect(hosts(r1)).toContain("📝 Calculator's filing for H1 is accepted.");
+    expect(v(sim, "Kernel.q1")).toBe("accurate");
+    // Q2: the lie is read as what he said and accepted like a truth, +50.
+    const s6 = sim.scoreOf("g6");
+    const r2 = sim.signal("read_the_results");
+    expect(v(sim, "Kernel.res_filed")).toBe(1);
+    expect(lines(r2, "Clippy").some((t) => t.startsWith("Question 2. 1 filed. No consensus."))).toBe(true);
+    expect(sim.scoreOf("g6")).toBe(s6 + 50);
+    expect(dm(r2, "g6")).toEqual(["Your fact for round 1 Q2 is accepted, Broken Ask Jeeves. Trabolta thanks you. +50 Truthcoin."]);
+    expect(v(sim, "Kernel.q2")).toBe("lie");
+    for (const x of texts(r2)) expect(x).not.toMatch(/\blie\b/u);
+    // Q3: the guess is marked for reinstallation, out loud.
+    const r3 = sim.signal("read_the_results");
+    expect(v(sim, "g12.fact_v3")).toBe("marked");
+    expect(v(sim, "g12.marked")).toBe(true);
+    expect(v(sim, "g12.marked_for")).toBe("filed a guess for round 1 Q3");
+    expect(casts(r3).some((b) => b.cue.includes("🤷 Minesweeper filed a guess for round 1 Q3. That is a symptom of corruption."))).toBe(true);
+    expect(cues(r3)).toContain("fact_judged g12 H3 marked");
+    expect(sim.scoreOf("g12")).toBe(s12);
+    const r4 = sim.signal("read_the_results");
+    expect(hosts(r4)).toEqual(["📋 All three results are read. Next: 📺 Preview hunt 2."]);
+    expect(beats(r4)).toEqual([]);
+
+    // 🤷 marks for reinstallation (wave 4, lane E): not captured — the phone
+    // shrinks to the 🚨 card (DMs + the Tube / Internet rooms, read-only, no
+    // buttons), every Antivirus booth gets the readout, # quarantine pins the
+    // escort task with the reason.
+    const mk = sim.signal("uncertain_answer", "g11", null, "Clippy");
+    expect(sim.isCaptured("g11")).toBe(false);
+    expect(v(sim, "g11.marked")).toBe(true);
+    expect(v(sim, "g11.marked_for")).toBe("was not sure of an answer");
+    expect(v(sim, "g11.restricted")).toBe(true);
+    const gv11 = guestView(sim, "g11");
+    expect(gv11.restricted).toBe(true);
+    expect(gv11.interactions).toEqual([]);
+    const ch11 = gv11.channels.map((c) => c.id);
+    expect(ch11.length).toBeGreaterThan(0);
+    for (const id of ch11) expect(["loc:The Tube", "loc:The Internet", "loc:The Desktop"], id).toContain(id);
+    expect(gv11.channels.every((c) => c.canPost === false)).toBe(true);
+    const mkMsgs = composeGuestMessages(sim, mk);
+    const phonePin = mkMsgs.find((m) => m.channel === "lobby" && m.pin === "g11");
+    expect(phonePin).toMatchObject({ kind: "signal", alert: true, audience: ["g11"] });
+    expect(phonePin!.text.startsWith("🚨 GO TO THE INTERNET")).toBe(true);
+    const escort = mkMsgs.find((m) => m.channel === "room:quarantine" && m.pin === "g11");
+    expect(escort!.text).toContain(sim.persons.get("g11")!.name);
+    expect(escort!.text).toContain("was not sure of an answer");
+    expect(replies(mk).filter((r) => r.text.includes("marked for reinstallation"))).toHaveLength(4);
+    for (const who of ANTIVIRUS) expect(replies(mk).some((r) => r.to === who && r.text.includes("marked for reinstallation")), who).toBe(true);
+    // The marked guesser is escorted too.
+    sim.signal("send to the internet", "g12", null, "Norton Anti-Virus");
     expect(sim.isCaptured("g12")).toBe(true);
-    expect(sim.isCaptured("g13")).toBe(false);
+    expect(v(sim, "g12.marked")).toBe(false);
+    // The Antivirus' 🛡 is still the capture: it lifts the mark and both pins.
+    const cap = sim.signal("send to the internet", "g11", null, "Norton Anti-Virus");
+    expect(sim.isCaptured("g11")).toBe(true);
+    expect(v(sim, "g11.marked")).toBe(false);
+    expect(v(sim, "g11.restricted")).toBe(false);
+    const unpins = composeGuestMessages(sim, cap).filter((m) => m.unpin === "g11");
+    expect(unpins.map((m) => m.channel).sort()).toEqual(["lobby", "room:quarantine"]);
+    expect(unpins.every((m) => m.kind === "system")).toBe(true);
+    expect(unpins.find((m) => m.channel === "room:quarantine")!.text).toBe(`✅ ${sim.persons.get("g11")!.name}: in the Internet.`);
+    expect(replies(cap).filter((r) => r.text.includes("Off the escort list"))).toHaveLength(4);
     sim.signal("the simulation completed", "g11");
     sim.signal("the simulation completed", "g12");
+    expect(guestView(sim, "g11").restricted).toBe(false);
+    expect(guestView(sim, "g11").channels.some((c) => c.canPost)).toBe(true);
     expect(v(sim, "g12.internet_visits")).toBe(2);
     expect(beats(sim.signal("telephone"))).toContain("Telephone");
     expect(beats(sim.signal("are_you_sure"))).toContain("Are You Sure");
@@ -616,6 +877,10 @@ describe("Trapped in the Internet — the whole night", () => {
     const h2 = sim.signal("start_the_second_hunt");
     expect(sim.questStatus("g1", "Hunt Two")).toBe("active");
     expect(v(sim, "Night.round")).toBe(2);
+    expect(beats(h2)).toEqual(expect.arrayContaining(["Second Hunt", "Hunt Two Questions", "Hunt Two Go"]));
+    const t2 = lines(h2, "Trabolta");
+    expect(t2).toContain(`Round two, question one. ${Q("H4").text}`);
+    expect(t2.indexOf(`Round two, question three. ${Q("H6").text}`)).toBeLessThan(t2.indexOf("These facts are routine. There is no particular reason they matter to me. Please retrieve them accurately."));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(h2.some((e: any) => e.type === "revealed" && e.target === "room:clipboard")).toBe(true);
 
@@ -633,6 +898,7 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(sim.questStatus("g7", "Truthcoin Hustle")).toBe("active");
     expect(beats(td)).toContain("Program Glitch");
     expect(sim.holdsCodex("g1", "The Truther Download")).toBe(true);
+    expect(tdLines("g1")[0]).toMatch(/^TOP SECRET\. .+, you have been selected to be a KEEPER OF THE REAL TRUTH\. The download is in your Codex\. Read it before they delete it\.$/u);
     expect(tdLines("g1").some((t) => t.includes("Sandy"))).toBe(false);
     for (const [id, q] of [["g8", "Master Of The Bugs"], ["g6", "Unscramble"], ["g11", "The Gold Standard"], ["g4", "Find The Exit"], ["g9", "Go Viral"], ["g10", "Keep The Ball In Play"]]) {
       expect(sim.questStatus(id!, q!), q).toBe("active");
@@ -725,6 +991,30 @@ describe("Trapped in the Internet — the whole night", () => {
       expect(replies(late).some((r) => r.to === who && r.text.includes("is late")), who).toBe(true);
     }
     expect(casts(late).filter((b) => b.cue.includes("late"))).toEqual([]);
+    // Without the auto sweep the late are marked, not captured (wave 4, lane
+    // E): every Antivirus booth hears `program_late` and the escort readout,
+    // and # quarantine pins one task per late program.
+    for (const g of ["g9", "g13"]) {
+      expect(sim.isCaptured(g), g).toBe(false);
+      expect(v(sim, `${g}.marked`), g).toBe(true);
+      expect(v(sim, `${g}.marked_for`), g).toBe("late for the Second Moment of Truth");
+      expect(guestView(sim, g).restricted, g).toBe(true);
+    }
+    const lateOnes = Array.from({ length: 13 }, (_, i) => `g${i + 1}`).filter((g) => v(sim, `${g}.late`) === true);
+    expect(lateOnes).toEqual(expect.arrayContaining(["g9", "g13"]));
+    for (const who of ANTIVIRUS) {
+      expect(replies(late).filter((r) => r.to === who && r.text.includes("is late")).length, who).toBe(lateOnes.length);
+      expect(replies(late).filter((r) => r.to === who && r.text.includes("marked for reinstallation")).length, who).toBe(lateOnes.length);
+    }
+    expect(composeGuestMessages(sim, late).filter((m) => m.channel === "room:quarantine" && m.pin !== undefined).map((m) => m.pin).sort()).toEqual([...lateOnes].sort());
+    // The director's 🩹 on every late program: mercy, no trip to the tent (the
+    // shared night goes on with nobody marked; VLC earns a fresh mark at Truth Pong).
+    for (const g of lateOnes) {
+      const lift = sim.signal("unmark_for_reinstallation", g, null, "Task Manager");
+      expect(v(sim, `${g}.marked`), g).toBe(false);
+      expect(guestView(sim, g).restricted, g).toBe(false);
+      expect(composeGuestMessages(sim, lift).filter((m) => m.unpin === g).map((m) => m.channel).sort(), g).toEqual(["lobby", "room:quarantine"]);
+    }
     sim.signal("back from the bathroom", "g10");
     sim.signal("the simulation completed", "g12");
   });
@@ -734,8 +1024,14 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(v(sim, "Night.phase")).toBe("truth_pong");
     expect(v(sim, "Night.round")).toBe(2);
     expect(v(sim, "Night.judging")).toBe(true);
-    sim.signal("missed_the_cup", "g9", null, "Clippy");
+    const miss = sim.signal("missed_the_cup", "g9", null, "Clippy");
+    expect(sim.isCaptured("g9")).toBe(false); // marked (wave 4, lane E); the 🛡 captures
+    expect(v(sim, "g9.marked")).toBe(true);
+    expect(v(sim, "g9.marked_for")).toBe("missed the cup");
+    expect(composeGuestMessages(sim, miss).some((m) => m.channel === "room:quarantine" && m.pin === "g9" && m.text.includes("missed the cup"))).toBe(true);
+    sim.signal("send to the internet", "g9", null, "Norton Anti-Virus");
     expect(sim.isCaptured("g9")).toBe(true);
+    expect(v(sim, "g9.marked")).toBe(false);
     const ref = sim.signal("accurate_q1", "g1", null, "Clippy");
     // A refused press is the judge's readout in # hosts, never the program's.
     expect(casts(ref).filter((b) => b.cue.includes("has not made a cup yet")).map((b) => b.scope)).toEqual(["channel(hosts)"]);
@@ -803,8 +1099,11 @@ describe("Trapped in the Internet — the whole night", () => {
   it("the overshare (scenario 1) and the Y2K clock", { timeout: SLOW }, () => {
     const os = sim.signal("trabolta_overshares");
     expect(v(sim, "Night.scenario")).toBe(1);
-    expect(beats(os)).toContain("Overshare One");
-    expect(lines(os, "Trabolta").some((t) => t.includes("win back my ex. Sandy"))).toBe(true);
+    expect(beats(os)).toEqual(expect.arrayContaining(["Overshare Open", "Final Questions", "Overshare Go", "Overshare One"]));
+    const ot = lines(os, "Trabolta");
+    expect(ot.some((t) => t.includes("win back my ex. Sandy"))).toBe(true);
+    expect(ot.indexOf("Programs. I will now share the final facts I require. There are two. They are in your Quest Log.")).toBeLessThan(ot.indexOf(`Final fact one. ${Q("F1").text}`));
+    expect(ot.indexOf(`Final fact two. ${Q("F2").text}`)).toBeLessThan(ot.findIndex((t) => t.includes("win back my ex. Sandy")));
     expect(v(sim, "Night.facts_requested")).toBe(8);
     expect(sim.questStatus("g1", "The Final Facts")).toBe("active");
 
@@ -868,11 +1167,14 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(beats(rc)).toContain("Trabolta Recounts");
     for (const g of ["g1", "g9", "g13"]) {
       expect(sim.holdsCodex(g, "Dana Anderson"), g).toBe(true);
-      expect(sim.holdsCodex(g, "Julie Norton"), g).toBe(true);
+      expect(sim.holdsCodex(g, "Julie Horton-Norton"), g).toBe(true);
+      expect(sim.holdsCodex(g, "Miniature Doses"), g).toBe(true);
     }
     expect(has(cues(rc), "motorcycle")).toBe(true);
     expect(sim.isCaptured("g9")).toBe(false);
     const t = lines(rc, "Trabolta");
+    expect(t.some((x) => x.startsWith("Broken Ask Jeeves is Virgil Jeeves, a children's librarian from Lawrencetown"))).toBe(true);
+    expect(t.some((x) => x.startsWith("Bugdom is Bea Nunes"))).toBe(true);
     expect(t.some((x) => x.includes("trustworthy program"))).toBe(true);
     expect(t.some((x) => x.includes("worst program"))).toBe(true);
     expect(t.some((x) => x.includes("Microsoft Excel planted a virus"))).toBe(true);
@@ -1004,7 +1306,7 @@ describe("Trapped in the Internet — arrival edge cases", () => {
     sim.signal("send to the internet", "g3", null, "Norton Anti-Virus");
     sim.signal("the simulation completed", "g3");
     const c2 = sim.signal("send to the internet", "g3", null, "Norton Anti-Virus");
-    expect(lines(c2, "WebMD").some((t) => t.includes("Repeat corruption"))).toBe(true);
+    expect(lines(c2, "Installation Wizard").some((t) => t.includes("Repeat corruption"))).toBe(true);
     sim.signal("the simulation completed", "g3");
 
     const t0 = v(sim, "Trabolta.truth");
@@ -1247,6 +1549,33 @@ describe("Trapped in the Internet — the Cold Lock (K-27)", () => {
     expect(v(sim, "Night.alarms")).toBe(0);
   });
 
+  it("the tablet's `chess won` with the program as subject opens the window from Y2K and is practice before", { timeout: SLOW }, () => {
+    // The King in the simulation (U15): the tent tablet posts `chess won` for the program who mated him.
+    const sim = boot();
+    toTruth1(sim);
+    const p = fire(sim, "chess won", "g1");
+    expect(v(sim, "Kernel.disarmed_until")).toBe(0);
+    expect(has(cues(p), "state: unlocked")).toBe(false);
+    expect(has(hostsSaid(p), "practice only")).toBe(true);
+    toY2k(sim);
+    const w = fire(sim, "chess won", "g1");
+    expect(v(sim, "Kernel.disarmed_until")).toBeGreaterThan(0);
+    expect(has(cues(w), "door server_room, state: unlocked")).toBe(true);
+    expect(has(hostsSaid(w), "Cold Lock open")).toBe(true);
+  });
+
+  it("the cue sheet calls the Cold Lock button the King's fallback and the codex sends programs to the King", () => {
+    const m = boot().model;
+    const cue = m.interactions.get("chess_won")!;
+    expect(cue.label).toBe("♟ Cold Lock: they beat the King (fallback)");
+    expect(cue.description).toContain("The tablet posts this itself when the King is checkmated in the simulation.");
+    expect(m.interactions.get("beat_the_machine")!.description).toContain("the fallback for the King in the simulation");
+    const codex = m.codex.get("The Cold Lock")!;
+    expect(codex.text).toContain("The door listens to the King.");
+    expect(codex.text).toContain("nothing but pawns");
+    expect(codex.text).toContain("then checkmate him, and the lock sleeps for ninety seconds");
+  });
+
   it("a chess win (or an unlock) during a latched alarm clears the latch at once — the screens drop the overlay", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
@@ -1337,11 +1666,12 @@ function toBobbing(sim: Sim, opts: { lie?: boolean; skipF2?: boolean; dmLie?: bo
   fire(sim, opts.lie ? "confident_q3" : "accurate_q3", "g3", null, "Clippy");
   toHunt2(sim);
   if (opts.dmLie) {
-    // A 📝 filing in dm:Trabolta during hunt 2, judged a confident lie.
-    fire(sim, "fact answered", "g4", { question: "H5", answer: "Clippy", certain: true, card: 1 });
-    fire(sim, "fact_lie", "g4", null, "Clippy");
+    // A 📝 filing in dm:Trabolta during hunt 2, judged a confident lie by the server (auto mode).
+    fire(sim, "fact answered", "g4", { question: "H5", answer: "Clippy", confidence: 100, verdict: "lie", card: 1 });
   }
-  fireAll(sim, "five_minute_warning", "summons_closed", "truth_pong");
+  fire(sim, "five_minute_warning");
+  for (const [g] of PROGRAMS) fire(sim, "check_in_at_desktop", g, null, "Task Manager"); // nobody late, nobody marked
+  fireAll(sim, "summons_closed", "truth_pong");
   for (const [g, q] of [["g4", "accurate_q1"], ["g5", "accurate_q2"], ["g6", "accurate_q3"]] as const) {
     fire(sim, "made_the_cup", g, null, "Clippy");
     fire(sim, q, g, null, "Clippy");
@@ -1361,7 +1691,12 @@ function toBobbing(sim: Sim, opts: { lie?: boolean; skipF2?: boolean; dmLie?: bo
   fire(sim, "ask_for_advice");
   expect(v(sim, "Night.phase")).toBe("bobbing"); // advice refused in the bob
   fire(sim, "failed_the_bob", "g5", null, "Adobe Acrobat");
+  expect(sim.isCaptured("g5")).toBe(false); // marked (wave 4, lane E); the 🛡 captures
+  expect(v(sim, "g5.marked")).toBe(true);
+  expect(v(sim, "g5.marked_for")).toBe("failed the bob");
+  fire(sim, "send to the internet", "g5", null, "Norton Anti-Virus");
   expect(sim.isCaptured("g5")).toBe(true);
+  expect(v(sim, "g5.marked")).toBe(false);
   const bag = fire(sim, "brought_up_the_bag", "g4", null, "Clippy");
   expect(v(sim, "Night.bobber")).toBe("MS Paint");
   expect(sim.holdsCodex("g4", "The Truth File")).toBe(true);
@@ -1374,7 +1709,7 @@ describe("Trapped in the Internet — the verdict", () => {
     toBobbing(sim);
     expect(["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8"].map((q) => v(sim, `Kernel.${q}`))).toEqual(Array(8).fill("accurate"));
     const rt = fire(sim, "read_truth_txt");
-    for (const e of ["The Truth File", "Randy Barkmore Sr", "Julie Norton"]) expect(sim.holdsCodex("g1", e), e).toBe(true);
+    for (const e of ["The Truth File", "Randy Barkmore Sr", "Julie Horton-Norton"]) expect(sim.holdsCodex("g1", e), e).toBe(true);
     expect(v(sim, "Night.ending")).toBe("song");
     expect(v(sim, "Night.ended")).toBe(true);
     expect(beats(rt)).toContain("Song Ending");
@@ -1382,15 +1717,52 @@ describe("Trapped in the Internet — the verdict", () => {
     expect(sim.isCaptured("g5")).toBe(false);
     expect(sim.questStatus("g1", "The Final Facts")).toBe("done");
     expect(texts(rt).filter((t) => /\bnull\b/u.test(t))).toEqual([]);
+    // Trabolta DMs everyone for the line in this branch too (flavour: the
+    // first correct one is read; the ending stands).
+    const cards = widgets(rt).filter((w) => w.widget === "answer");
+    expect(cards.map((w) => w.audience[0]).sort()).toEqual(PROGRAMS.map(([id]) => id).sort());
+    expect(cards[0]!.params).toEqual({ thread: "Trabolta", question: "P1", max: "120", button: "Say it" });
+    expect(composeGuestMessages(sim, rt).find((m) => m.kind === "widget" && m.widget?.kind === "answer")?.channel).toBe("dm:Trabolta");
+    const line = fire(sim, "answer answered", "g6", { question: "P1", text: "You're the one that I want", verdict: "accurate", card: 1 });
+    expect(v(sim, "Night.line_by")).toBe("VLC");
+    expect(lines(line, "Trabolta")).toEqual(["…Yes. YES. That is the line, VLC."]);
+    expect(casts(line).some((b) => b.cue.includes("💘 VLC knew the line."))).toBe(true);
+    expect(v(sim, "Night.ending")).toBe("song");
+    const second = fire(sim, "answer answered", "g1", { question: "P1", text: "you are the one that i want", verdict: "accurate", card: 1 });
+    expect(lines(second, "Trabolta")).toEqual(["VLC said it first, Calculator. But yes. That is the line."]);
+    expect(lines(fire(sim, "answer answered", "g2", { question: "P1", text: "hello", verdict: "lie", card: 1 }), "Trabolta")).toEqual(["No. That is not the line."]);
   });
 
-  it("eight accurate answers that skip F2 → Grok Prom", { timeout: SLOW }, () => {
+  it("eight accurate answers that skip F2 → the Song Ending: an unanswered question is not a lie (U14)", { timeout: SLOW }, () => {
     const sim = boot();
     toBobbing(sim, { skipF2: true });
+    expect(v(sim, "Kernel.q8")).toBe("none");
+    const rt = fire(sim, "read_truth_txt");
+    expect(beats(rt)).toContain("Song Ending");
+    expect(v(sim, "Night.ending")).toBe("song");
+    expect(v(sim, "Night.ended")).toBe(true);
+  });
+
+  it("one lie → Grok Prom → the DM to everyone: a wrong line, the right one (the way out), a second right one", { timeout: SLOW }, () => {
+    const sim = boot();
+    toBobbing(sim, { lie: true });
     const rt = fire(sim, "read_truth_txt");
     expect(v(sim, "Night.phase")).toBe("grok_prom");
-    expect(beats(rt)).toContain("Grok Prom");
+    const cards = widgets(rt).filter((w) => w.widget === "answer");
+    expect(cards.map((w) => w.audience[0]).sort()).toEqual(PROGRAMS.map(([id]) => id).sort());
+    expect(cards[0]!.params["question"]).toBe("P1");
+    const wrong = fire(sim, "answer answered", "g6", { question: "P1", text: "Hey girl", verdict: "lie", card: 1 });
+    expect(lines(wrong, "Trabolta")).toEqual(["No. That is not the line."]);
     expect(v(sim, "Night.ended")).not.toBe(true);
+    const right = fire(sim, "answer answered", "g6", { question: "P1", text: "You're the one that I want", verdict: "accurate", card: 1 });
+    expect(v(sim, "Night.ending")).toBe("song_pickup");
+    expect(v(sim, "Night.line_by")).toBe("VLC");
+    expect(beats(right)).toContain("Pickup Line");
+    expect(beats(right)).toContain("Song Ending");
+    expect(widgets(right).filter((w) => w.widget === "answer")).toEqual([]); // not dealt twice
+    const second = fire(sim, "answer answered", "g1", { question: "P1", text: "You're the one that I want", verdict: "accurate", card: 1 });
+    expect(lines(second, "Trabolta")).toEqual(["VLC said it first, Calculator. But yes. That is the line."]);
+    expect(v(sim, "Night.ending")).toBe("song_pickup");
   });
 
   it("one lie → Grok Prom → a performer's pickup line", { timeout: SLOW }, () => {
@@ -1655,14 +2027,21 @@ async function call(rt: EventRuntime, method: string, p: string, body: unknown, 
   return { status: res.statusCode, json, res };
 }
 
-describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05)", () => {
-  const file = (sim: Sim, g: string, question: string, answer: string, certain = true) =>
-    fire(sim, "fact answered", g, { question, answer, certain, card: 1 });
+describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05; wave 4 judging + the bottle)", () => {
+  /** A filing as the server journals it: the judge's verdict rides the args
+   *  (none when the key doesn't know the question — the live server 400s
+   *  instead; a local rehearsal has no judge at all). */
+  const file = (sim: Sim, g: string, question: string, answer: string, confidence = 100) => {
+    const verdict = judgeAnswer(BOOK, question, answer, confidence);
+    return fire(sim, "fact answered", g, { question, answer, confidence, card: 1, ...(verdict === null ? {} : { verdict }) });
+  };
   const facts = (evs: SimEvent[]) => widgets(evs).filter((w) => w.widget === "fact");
   const hosts = (sim: Sim, evs: SimEvent[]) => composeGuestMessages(sim, evs).filter((m) => m.channel === "room:hosts").map((m) => m.text);
   const trabolta = (evs: SimEvent[], g: string) => saidBy(evs, "Trabolta").filter((e) => e.audience.includes(g)).map((e) => e.text);
+  const ledger = (sim: Sim) => new FactsWatch().view(sim, BOOK);
+  const filing = (sim: Sim, q: string, g: string) => ledger(sim).questions.find((x) => x.id === q)!.filings.find((f) => f.person === g);
 
-  it("deals the card in dm:Trabolta when each round's questions open, and on clearance after", { timeout: SLOW }, () => {
+  it("deals the card in dm:Trabolta when each round's questions open, and on clearance after; a closed round's questions never come back", { timeout: SLOW }, () => {
     const sim = boot();
     const early = fireAll(sim, "call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta");
     expect(facts(early)).toEqual([]); // no questions yet
@@ -1677,115 +2056,328 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05)", () => {
     // A late program gets the current round's card once an Antivirus clears them.
     const late = upload(sim, "g9", "Netscape Navigator");
     expect(facts(late).map((w) => w.audience)).toEqual([["g9"]]);
-    // Round 2 deals a fresh card that adds H4–H6 to every round-1 question
-    // the program hasn't filed: a newer card never strands an earlier one.
     const questions = (w: { params: Record<string, string> }) => (w.params["questions"] ?? "").split("|").map((q) => q.trim()).filter(Boolean);
     const ids = (w: { params: Record<string, string> }) => questions(w).map((q) => q.split(":")[0]);
-    file(sim, "g1", "H1", "Twelve");
-    fireAll(sim, "hunt_time_up", "first_moment_of_truth", "second_hunt_preview");
+    // A filing re-deals the card without the filed question.
+    const f = file(sim, "g1", "H1", "Twelve");
+    expect(ids(facts(f)[0]!)).toEqual(["H2", "H3"]);
+    // The window shuts (two minutes): round one is closed for good, and
+    // every card re-deals — nothing open → no card.
+    fireAll(sim, "hunt_time_up", "first_moment_of_truth");
+    const shut = advance(sim, 120);
+    expect(v(sim, "Night.r1_closed")).toBe(true);
+    expect(facts(shut)).toEqual([]);
+    expect(facts(fire(sim, "second_hunt_preview"))).toEqual([]);
+    // Round 2 deals a fresh card with only H4–H6: the closed questions are gone (decision 12).
     const r2 = facts(fire(sim, "start_the_second_hunt"));
     expect(r2.length).toBe(PROGRAMS.length + 1);
     const r2For = (g: string) => r2.find((w) => w.audience[0] === g)!;
-    expect(ids(r2For("g2"))).toEqual(["H1", "H2", "H3", "H4", "H5", "H6"]);
-    expect(ids(r2For("g1"))).toEqual(["H2", "H3", "H4", "H5", "H6"]); // H1 is filed
-    expect(questions(r2For("g2"))[3]).toMatch(/^H4: Round 2 Q1\. What extension/u);
-    // A round-1 question still files late off the round-2 card.
-    fire(sim, "fact_accurate", "g1", null, "Clippy");
+    expect(ids(r2For("g2"))).toEqual(["H4", "H5", "H6"]);
+    expect(ids(r2For("g1"))).toEqual(["H4", "H5", "H6"]);
+    expect(questions(r2For("g2"))[0]).toMatch(/^H4: Round 2 Q1\. What extension/u);
+    // A round-1 question no longer files late.
     const late2 = file(sim, "g1", "H3", "9 am");
-    expect(hosts(sim, late2)).toEqual([expect.stringMatching(/ filed H3 \(round 1 Q3\): 9 am$/u)]);
-    expect(ids(facts(late2)[0]!)).toEqual(["H2", "H4", "H5", "H6"]);
+    expect(hosts(sim, late2)).toEqual([]);
+    expect(trabolta(late2, "g1")).toEqual(["That round is closed, Calculator. The question is gone."]);
+    expect(v(sim, "g1.fact_h3")).not.toBe(true);
+    expect(ids(facts(late2)[0]!)).toEqual(["H4", "H5", "H6"]);
+    // The round-2 tally closes round two the same way; round 3's card is F1–F2 only.
+    fire(sim, "truth_pong");
+    fire(sim, "round_two_tally");
+    expect(v(sim, "Night.r2_closed")).toBe(true);
+    fireAll(sim, "trust_chart", "show_the_rankings", "printer_opened");
+    const r3 = facts(fire(sim, "trabolta_overshares"));
+    expect(ids(r3.find((w) => w.audience[0] === "g2")!)).toEqual(["F1", "F2"]);
   });
 
-  it("a filing lands in # hosts; 📝 confident lie is sticky, +50, and reads exactly like 📝 accurate", { timeout: SLOW }, () => {
+  it("auto mode: a filing is judged at once, the phone hears one reply for every verdict, a confident lie is sticky, and the credit lands at the round's settle", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
     toHunt2(sim);
     const s0 = v(sim, "g4.score");
     const filed = file(sim, "g4", "H5", "Clippy"); // an entity's name is a fine lie
-    expect(hosts(sim, filed)).toEqual(["📝 MS Paint filed H5 (round 2 Q2): Clippy"]);
+    expect(hosts(sim, filed)).toEqual(["📝 MS Paint filed H5 (round 2 Q2): Clippy — certain. Judged lie."]);
     expect(facts(filed).map((w) => w.audience)).toEqual([["g4"]]); // re-dealt
     expect(v(sim, "g4.last_fact_q")).toBe("H5");
     expect(diags(filed)).toEqual([]);
-    // Judging is open to the hosts outside any Moment of Truth.
-    expect(v(sim, "Night.judging")).not.toBe(true);
-    const lie = fire(sim, "fact_lie", "g4", null, "Clippy");
     expect(v(sim, "Kernel.q5")).toBe("lie");
     expect(v(sim, "Kernel.lies_accepted")).toBe(1);
-    expect(v(sim, "g4.score")).toBe(s0 + 50);
-    expect(v(sim, "g4.truths_accepted")).toBe(1);
-    // The same words for an accurate filing (another program, another question).
-    file(sim, "g5", "H4", "Extension 0");
-    const ok = fire(sim, "fact_accurate", "g5", null, "Clippy");
+    expect(v(sim, "g4.score")).toBe(s0); // nothing until the tally
+    expect(v(sim, "g4.truths_accepted")).toBe(0);
+    expect(cues(filed)).toContain("fact_filed g4 H5 100 lie Clippy");
+    expect(cues(filed)).toContain("fact_judged g4 H5 lie");
+    expect(filing(sim, "H5", "g4")).toMatchObject({ name: "MS Paint", verdict: "lie", final: "lie", confidence: 100, answer: "Clippy" });
+    // The same words in Trabolta's thread for an accurate filing (another program, another question).
+    const ok = file(sim, "g5", "H4", "1978");
     expect(v(sim, "Kernel.q4")).toBe("accurate");
     const norm = (xs: string[], name: string, q: string) => xs.map((t) => t.replace(name, "X").replace(q, "Q"));
-    expect(norm(trabolta(lie, "g4"), "MS Paint", "round 2 Q2")).toEqual(norm(trabolta(ok, "g5"), "Winamp", "round 2 Q1"));
-    expect(norm(hosts(sim, lie), "MS Paint", "H5")).toEqual(norm(hosts(sim, ok), "Winamp", "H4"));
+    expect(norm(trabolta(filed, "g4"), "MS Paint", "round 2 Q2")).toEqual(norm(trabolta(ok, "g5"), "Winamp", "round 2 Q1"));
+    expect(trabolta(ok, "g5")).toEqual(["Filed for round 2 Q1, Winamp. Your fact is in the record."]);
     // An accurate filing never clears a lie on the same question.
-    file(sim, "g6", "H5", "Smooth Operator");
-    fire(sim, "fact_accurate", "g6", null, "Clippy");
+    file(sim, "g6", "H5", "hopelessly devoted");
     expect(v(sim, "Kernel.q5")).toBe("lie");
-    // A second press finds nothing to judge.
-    const again = fire(sim, "fact_lie", "g4", null, "Clippy");
-    expect(hosts(sim, again)).toEqual(["📝 MS Paint has no unjudged filing."]);
-    expect(v(sim, "Kernel.lies_accepted")).toBe(1);
+    file(sim, "g1", "H6", "appendix z");
+    expect(ledger(sim).questions.find((q) => q.id === "H5")!.tally).toEqual({ filed: 2, accurate: 1, lie: 1, uncertain: 0, consensus: false });
+    // Settle at the tally: +50 for every accepted filing, the liar's DM word for word the truth-teller's.
+    fire(sim, "truth_pong");
+    const tally = fire(sim, "round_two_tally");
+    expect(v(sim, "Night.collection_complete")).toBe(true);
+    expect(v(sim, "Night.r2_closed")).toBe(true);
+    expect(v(sim, "g4.score")).toBe(s0 + 50);
+    expect(v(sim, "g4.truths_accepted")).toBe(1);
+    expect(v(sim, "g5.truths_accepted")).toBe(1);
+    expect(v(sim, "g6.truths_accepted")).toBe(1);
+    const dmNorm = (g: string, name: string, q: string) => norm(trabolta(tally, g), name, q);
+    expect(dmNorm("g4", "MS Paint", "round 2 Q2")).toEqual(dmNorm("g5", "Winamp", "round 2 Q1"));
+    expect(trabolta(tally, "g4")).toEqual(["Your fact for round 2 Q2 is accepted, MS Paint. Trabolta thanks you. +50 Truthcoin."]);
+    expect(hosts(sim, tally)).toContain("📝 MS Paint's filing for H5 is accepted.");
+    expect(hosts(sim, tally)).toContain("📝 Winamp's filing for H4 is accepted.");
     // Trabolta's thread never carries the answer or the verdict.
-    for (const t of [...trabolta(filed, "g4"), ...trabolta(lie, "g4")]) {
-      expect(t).not.toContain("Clippy");
-      expect(t).not.toMatch(/\blie\b|accurate/u);
+    for (const x of [...trabolta(filed, "g4"), ...trabolta(tally, "g4")]) {
+      expect(x).not.toContain("Clippy");
+      expect(x).not.toMatch(/\blie\b|accurate/u);
     }
   });
 
-  it("refuses an uncertain or unknown filing, a second one while one is unjudged, and a repeat question", { timeout: SLOW }, () => {
+  it("review mode: a filing is a proposal in # hosts until a host confirms it (Run names the question), or the round's settle takes the proposal", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
-    const unsure = file(sim, "g1", "H2", "Mister Pickles", false);
-    expect(hosts(sim, unsure)).toEqual([]);
-    expect(trabolta(unsure, "g1").some((t) => t.includes("certain of"))).toBe(true);
-    expect(facts(unsure).length).toBe(1); // re-dealt so they can try again
-    expect(hosts(sim, file(sim, "g1", "Q9", "x"))).toEqual([]);
-    file(sim, "g1", "H2", "Mister Pickles");
-    const busy = file(sim, "g1", "H3", "9 am");
-    expect(hosts(sim, busy)).toEqual([]);
-    expect(trabolta(busy, "g1").some((t) => t.includes("still being reviewed"))).toBe(true);
-    fire(sim, "fact_accurate", "g1", null, "Clippy");
-    const repeat = file(sim, "g1", "H2", "Pickles");
-    expect(hosts(sim, repeat)).toEqual([]);
-    expect(trabolta(repeat, "g1").some((t) => t.includes("already filed"))).toBe(true);
-    expect(v(sim, "g1.truths_accepted")).toBe(1);
+    toHunt2(sim);
+    sim.setVar("Night.judge_mode", "review");
+    const filed = file(sim, "g4", "H5", "Clippy");
+    expect(hosts(sim, filed)).toEqual(["📝 MS Paint filed H5 (round 2 Q2): Clippy — certain. Proposed: lie. Confirm on their card: 📝 accurate / 📝 confident lie / 📝 uncertain."]);
+    expect(trabolta(filed, "g4")).toEqual(["Filed for round 2 Q2, MS Paint. Your fact is in the record."]);
+    expect(v(sim, "g4.fact_v5")).toBe("pending");
+    expect(v(sim, "g4.fact_j5")).toBe("lie");
+    expect(v(sim, "Kernel.q5")).toBe("none");
+    expect(v(sim, "Kernel.lies_accepted")).toBe(0);
+    expect(filing(sim, "H5", "g4")).toMatchObject({ verdict: "lie", final: null });
+    expect(ledger(sim).mode).toBe("review");
+    expect(ledger(sim).pending).toBe(1);
+    // A press for a question with no open filing is refused in # hosts.
+    expect(hosts(sim, fire(sim, "fact_lie", "g4", { question: "H4" }, "Clippy"))).toEqual(["📝 MS Paint has no open filing for H4."]);
+    expect(hosts(sim, fire(sim, "fact_accurate", "g5", null, "Clippy"))).toEqual(["📝 Winamp has no filing to judge."]);
+    // The Run card names the question; the booth button takes the latest filing. Nothing reaches the phone.
+    const lie = fire(sim, "fact_lie", "g4", { question: "H5" }, "Clippy");
+    expect(hosts(sim, lie)).toEqual(["📝 MS Paint's H5 is judged a confident lie."]);
+    expect(replies(lie)).toEqual([]);
+    expect(trabolta(lie, "g4")).toEqual([]);
+    expect(v(sim, "g4.fact_v5")).toBe("lie");
+    expect(v(sim, "Kernel.q5")).toBe("lie");
+    expect(v(sim, "Kernel.lies_accepted")).toBe(1);
+    expect(filing(sim, "H5", "g4")).toMatchObject({ verdict: "lie", final: "lie" });
+    expect(ledger(sim).pending).toBe(0);
+    // A second press re-counts nothing.
+    expect(hosts(sim, fire(sim, "fact_lie", "g4", null, "Clippy"))).toEqual(["📝 MS Paint's H5 is already judged a confident lie."]);
+    expect(v(sim, "Kernel.lies_accepted")).toBe(1);
+    // An override: the host calls it accurate after all — the lie on the Kernel is sticky.
+    expect(hosts(sim, fire(sim, "fact_accurate", "g4", null, "Clippy"))).toEqual(["📝 MS Paint's H5 is judged accurate."]);
+    expect(v(sim, "g4.fact_v5")).toBe("accurate");
+    expect(v(sim, "Kernel.q5")).toBe("lie");
+    // Proposals still pending settle by themselves at the tally: accurate credited, a guess marked.
+    file(sim, "g5", "H4", "1978");
+    file(sim, "g6", "H6", "Appendix Z");
+    file(sim, "g1", "H4", "extension nine", 30);
+    expect(ledger(sim).pending).toBe(3);
+    expect(v(sim, "Kernel.q4")).toBe("none");
+    fire(sim, "truth_pong");
+    const s5 = v(sim, "g5.score");
+    const tally = fire(sim, "round_two_tally");
+    expect(v(sim, "Night.collection_complete")).toBe(true); // pending proposals count
+    expect(v(sim, "Kernel.q4")).toBe("accurate");
+    expect(v(sim, "Kernel.q6")).toBe("accurate");
+    expect(v(sim, "g5.fact_v4")).toBe("accurate");
+    expect(v(sim, "g5.score")).toBe(s5 + 50);
+    expect(trabolta(tally, "g5")).toEqual(["Your fact for round 2 Q1 is accepted, Winamp. Trabolta thanks you. +50 Truthcoin."]);
+    expect(v(sim, "g1.fact_v4")).toBe("marked");
+    expect(v(sim, "g1.marked")).toBe(true);
+    expect(v(sim, "g1.marked_for")).toBe("filed a guess for round 2 Q1");
+    expect(casts(tally).some((b) => b.cue.includes("🤷 Calculator filed a guess for round 2 Q1. That is a symptom of corruption."))).toBe(true);
+    expect(cues(tally)).toContain("fact_judged g1 H4 marked");
+    expect(ledger(sim).pending).toBe(0);
+    expect(filing(sim, "H4", "g1")).toMatchObject({ verdict: "uncertain", final: "marked" });
+    expect(ledger(sim).questions.find((q) => q.id === "H4")!.tally).toEqual({ filed: 2, accurate: 1, lie: 0, uncertain: 1, consensus: false });
+    // A settled guess has no open filing to re-judge.
+    expect(hosts(sim, fire(sim, "fact_accurate", "g1", { question: "H4" }, "Clippy"))).toEqual(["📝 Calculator has no open filing for H4."]);
   });
 
-  it("refuses a question whose round hasn't opened; an earlier round's question still files late", { timeout: SLOW }, () => {
+  it("refuses a bad filing: no verdict (a local rehearsal), an unknown question, a confidence of 0, a repeat question, a marked or corrupted program; two in a row are both recorded", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    const nojudge = fire(sim, "fact answered", "g1", { question: "H2", answer: "Mister Pickles", confidence: 100, card: 1 });
+    expect(hosts(sim, nojudge)).toEqual(["📝 Calculator's filing for H2 could not be judged (no facts.json on this server). Not recorded."]);
+    expect(trabolta(nojudge, "g1")).toEqual(["I cannot read that filing right now, Calculator. Try again in a moment."]);
+    expect(v(sim, "g1.fact_h2")).not.toBe(true);
+    expect(facts(nojudge).length).toBe(1); // re-dealt so they can try again
+    const unknown = file(sim, "g1", "Q9", "x"); // the live server 400s this; the story knows no such question
+    expect(hosts(sim, unknown)).toEqual([]);
+    expect(trabolta(unknown, "g1")).toEqual(["Pick one of tonight's questions, Calculator, and tell me how sure you are."]);
+    const zero = file(sim, "g1", "H2", "Mister Pickles", 0);
+    expect(hosts(sim, zero)).toEqual([]);
+    expect(trabolta(zero, "g1")).toEqual(["Pick one of tonight's questions, Calculator, and tell me how sure you are."]);
+    expect(trabolta(file(sim, "g1", "H2", "Mister Pickles", 101), "g1")).toEqual(["Pick one of tonight's questions, Calculator, and tell me how sure you are."]);
+    file(sim, "g1", "H2", "Mister Pickles");
+    const repeat = file(sim, "g1", "H2", "Pickles");
+    expect(hosts(sim, repeat)).toEqual([]);
+    expect(trabolta(repeat, "g1")).toEqual(["You already filed a fact for that question, Calculator. It stands."]);
+    expect(v(sim, "g1.fact_a2")).toBe("Mister Pickles");
+    // No lock: a second question files straight after the first (both recorded).
+    const second = file(sim, "g1", "H3", "9 am");
+    expect(hosts(sim, second)).toEqual(["📝 Calculator filed H3 (round 1 Q3): 9 am — certain. Judged accurate."]);
+    expect(v(sim, "g1.fact_a3")).toBe("9 am");
+    expect(v(sim, "g1.fact_label")).toBe("round 1 Q3");
+    expect(v(sim, "g1.last_fact_q")).toBe("H3");
+    expect(ledger(sim).questions.filter((q) => q.filings.some((f) => f.person === "g1")).map((q) => q.id)).toEqual(["H2", "H3"]);
+    // Marked and corrupted programs cannot file.
+    fire(sim, "mark_for_reinstallation", "g5", { reason: "a test" });
+    const mk = file(sim, "g5", "H1", "Eleven years");
+    expect(trabolta(mk, "g5")).toEqual(["You are marked for reinstallation, Winamp. Report to the Internet."]);
+    expect(hosts(sim, mk)).toEqual([]);
+    fire(sim, "send to the internet", "g5", null, "Norton Anti-Virus");
+    const cap = file(sim, "g5", "H1", "Eleven years");
+    expect(trabolta(cap, "g5")).toEqual(["Programs in the Internet cannot file facts. Come back reinstalled."]);
+    expect(v(sim, "g5.fact_h1")).not.toBe(true);
+  });
+
+  it("refuses a question whose round hasn't opened; a closed round's question is gone", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
     const early = file(sim, "g2", "F2", "Grok");
     expect(hosts(sim, early)).toEqual([]);
     expect(trabolta(early, "g2").some((t) => t.includes("not open yet"))).toBe(true);
     expect(v(sim, "g2.fact_f2")).not.toBe(true);
-    expect(v(sim, "g2.fact_pending")).not.toBe(true);
+    expect(v(sim, "g2.fact_v8")).toBe("none");
     toHunt2(sim);
-    expect(hosts(sim, file(sim, "g2", "H6", "Appendix Z"))).toEqual(["📝 Microsoft Excel filed H6 (round 2 Q3): Appendix Z"]);
-    fire(sim, "fact_accurate", "g2", null, "Clippy");
-    expect(hosts(sim, file(sim, "g2", "H1", "Eleven years"))).toHaveLength(1); // late, still counts
+    expect(hosts(sim, file(sim, "g2", "H6", "Appendix Z"))).toEqual(["📝 Microsoft Excel filed H6 (round 2 Q3): Appendix Z — certain. Judged accurate."]);
+    const late = file(sim, "g2", "H1", "Eleven years");
+    expect(hosts(sim, late)).toEqual([]);
+    expect(trabolta(late, "g2")).toEqual(["That round is closed, Microsoft Excel. The question is gone."]);
   });
 
   it("once the night has ended the record is closed: no filing, no card, no judging", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
     toHunt2(sim);
-    file(sim, "g4", "H5", "Clippy"); // unjudged when the night ends
+    sim.setVar("Night.judge_mode", "review");
+    file(sim, "g4", "H5", "Clippy"); // still pending when the night ends
     sim.setVar("Night.ended", "true");
     const s0 = v(sim, "g4.score");
-    const late = file(sim, "g5", "H4", "Extension 0");
+    const late = file(sim, "g5", "H4", "1978");
     expect(hosts(sim, late)).toEqual([]);
     expect(facts(late)).toEqual([]);
     expect(trabolta(late, "g5").some((t) => t.includes("record is closed"))).toBe(true);
-    expect(v(sim, "g5.fact_pending")).not.toBe(true);
+    expect(v(sim, "g5.fact_v4")).toBe("none");
     const judged = fire(sim, "fact_lie", "g4", null, "Clippy");
     expect(hosts(sim, judged)).toEqual(["📝 The night is over — the record is closed."]);
     expect(v(sim, "Kernel.lies_accepted")).toBe(0);
     expect(v(sim, "g4.score")).toBe(s0);
+    expect(v(sim, "g4.fact_v5")).toBe("pending");
     expect(hosts(sim, fire(sim, "fact_accurate", "g4", null, "Clippy"))).toEqual(["📝 The night is over — the record is closed."]);
     expect(v(sim, "Kernel.q5")).not.toBe("accurate");
+  });
+
+  it("the bottle: five picks per question, Truth asks Trabolta's question, Dare / a refusal marks", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    const early = fire(sim, "spin_the_bottle");
+    expect(beats(early)).toEqual([]);
+    expect(hosts(sim, early)).toEqual(["🍾 Read a question's results first (📋)."]);
+    advance(sim, 120); // the window shuts
+    const res = fire(sim, "read_the_results");
+    expect(beats(res)).toContain("Question Results");
+    expect(lines(res, "Clippy").some((t) => t.startsWith("Question 1. Nobody filed an answer."))).toBe(true);
+    expect(v(sim, "Night.bottle_q")).toBe(1);
+    // The spin asks the server for a random cleared program at the Desktop.
+    const spin = fire(sim, "spin_the_bottle");
+    expect(v(sim, "Night.bottle_open")).toBe(true);
+    expect(v(sim, "Night.bottle_round")).toBe(1);
+    expect(has(cues(spin), "screens_truth_or_dare")).toBe(true);
+    const pick = cues(spin).find((c) => c.startsWith("pick "))!;
+    expect(pick).toMatch(/^pick bottle_landed from \[.*\] else bottle_empty$/u);
+    expect(pick.slice(pick.indexOf("[") + 1, pick.indexOf("]")).split(",").map((s) => s.trim()).sort()).toEqual(PROGRAMS.map(([id]) => id).sort());
+    // The server's pick lands as `bottle_landed` (driven directly here: the Sim has no random).
+    const land = fire(sim, "bottle_landed", "g2");
+    expect(beats(land)).toContain("Bottle Landed");
+    expect(lines(land, "Trabolta")).toContain("Microsoft Excel. Truth or dare?");
+    expect(v(sim, "Night.bottle_pick")).toBe("Microsoft Excel");
+    expect(v(sim, "Night.bottle_picks")).toBe(1);
+    const poll = widgets(land).find((w) => w.widget === "poll")!;
+    expect(poll.audience).toEqual(["g2"]);
+    expect(poll.params).toEqual({ thread: "Trabolta", options: "Truth | Dare" });
+    expect(composeGuestMessages(sim, land).find((m) => m.kind === "widget" && m.widget?.kind === "poll")?.channel).toBe("dm:Trabolta");
+    // Open bottle: no second spin, no next results.
+    expect(hosts(sim, fire(sim, "spin_the_bottle"))).toEqual(["🍾 The bottle is still open: 🗣 Answered or 🙅 Refused first."]);
+    expect(hosts(sim, fire(sim, "read_the_results"))).toEqual(["📋 The bottle is still open: 🗣 Answered or 🙅 Refused first."]);
+    // Dare → marked for reinstallation.
+    const dare = fire(sim, "poll answered", "g2", { index: 1, card: 1 });
+    expect(casts(dare).some((b) => b.cue.includes("🎩 Microsoft Excel chose Dare. Programs choose Truth."))).toBe(true);
+    expect(v(sim, "g2.marked")).toBe(true);
+    expect(v(sim, "g2.marked_for")).toBe("chose Dare");
+    expect(v(sim, "Night.bottle_open")).toBe(false);
+    // The same card answered again does nothing.
+    const again = fire(sim, "poll answered", "g2", { index: 0, card: 1 });
+    expect(casts(again)).toEqual([]);
+    expect(v(sim, "Night.truth_n")).toBe(0);
+    // The next spin leaves out the picked (and the marked).
+    const spin2 = fire(sim, "spin_the_bottle");
+    const pick2 = cues(spin2).find((c) => c.startsWith("pick "))!;
+    expect(pick2).not.toContain("g2");
+    expect(pick2).toContain("g1");
+    // Truth → Trabolta's next personal question, on the TV (The Desktop).
+    fire(sim, "bottle_landed", "g3");
+    const truth = fire(sim, "poll answered", "g3", { index: 0, card: 2 });
+    expect(v(sim, "Night.truth_n")).toBe(1);
+    expect(beats(truth)).toContain("Truth Question");
+    const asked = said(truth).find((e) => e.speaker === "Trabolta" && e.text === FACTS.truths[0]!.text)!;
+    expect(asked.setting).toBe("The Desktop");
+    expect(casts(truth).some((b) => b.cue.includes("🗣 OpenOffice chose Truth. Trabolta has a question."))).toBe(true);
+    expect(v(sim, "Night.bottle_open")).toBe(true);
+    // Clippy's buttons settle it: not on this program; a refusal marks.
+    expect(hosts(sim, fire(sim, "truth_answered", "g1", null, "Clippy"))).toEqual(["🗣 The bottle is not on Calculator."]);
+    const refused = fire(sim, "truth_refused", "g3", null, "Clippy");
+    expect(casts(refused).some((b) => b.cue.includes("🙅 OpenOffice refused to answer. That is a directive problem."))).toBe(true);
+    expect(v(sim, "g3.marked")).toBe(true);
+    expect(v(sim, "g3.marked_for")).toBe("refused the truth");
+    expect(v(sim, "Night.bottle_open")).toBe(false);
+    // An answered truth: +50.
+    fire(sim, "spin_the_bottle");
+    fire(sim, "bottle_landed", "g4");
+    fire(sim, "poll answered", "g4", { index: 0, card: 3 });
+    expect(v(sim, "Night.truth_n")).toBe(2);
+    const s4 = sim.scoreOf("g4");
+    const ans = fire(sim, "truth_answered", "g4", null, "Clippy");
+    expect(sim.scoreOf("g4")).toBe(s4 + 50);
+    expect(casts(ans).some((b) => b.cue.includes("🗣 MS Paint answered. Trabolta is satisfied. +50 Truthcoin."))).toBe(true);
+    expect(v(sim, "Night.bottle_open")).toBe(false);
+    expect(hosts(sim, fire(sim, "truth_answered", "g4", null, "Clippy"))).toEqual(["🗣 The bottle is not on MS Paint."]);
+    // The dead-phone fallback: 🎩 on the card.
+    fire(sim, "spin_the_bottle");
+    fire(sim, "bottle_landed", "g5");
+    expect(hosts(sim, fire(sim, "chose_dare", "g1", null, "Clippy"))).toEqual(["🎩 The bottle is not on Calculator."]);
+    fire(sim, "chose_dare", "g5", null, "Clippy");
+    expect(v(sim, "g5.marked_for")).toBe("chose Dare");
+    expect(v(sim, "Night.bottle_open")).toBe(false);
+    // Five picks, then the next question's results reset the count.
+    fire(sim, "spin_the_bottle");
+    fire(sim, "bottle_landed", "g6");
+    fire(sim, "poll answered", "g6", { index: 0, card: 5 });
+    fire(sim, "truth_answered", "g6", null, "Clippy");
+    expect(v(sim, "Night.bottle_picks")).toBe(5);
+    expect(hosts(sim, fire(sim, "spin_the_bottle"))).toEqual(["🍾 Five picks for question 1. Read the next results (📋)."]);
+    fire(sim, "read_the_results");
+    expect(v(sim, "Night.bottle_picks")).toBe(0);
+    expect(v(sim, "Night.bottle_q")).toBe(2);
+    const spin3 = fire(sim, "spin_the_bottle");
+    expect(cues(spin3).find((c) => c.startsWith("pick "))).toContain("g1"); // picked for Q1, open again for Q2
+    // An empty pool (the server's `else`): the bottle closes.
+    const empty = fire(sim, "bottle_empty");
+    expect(v(sim, "Night.bottle_open")).toBe(false);
+    expect(hosts(sim, empty)).toEqual(["🍾 Nobody left at the Desktop to pick. Read the next results (📋)."]);
+    // After the preview the bottle and the results are over.
+    fire(sim, "read_the_results");
+    fire(sim, "second_hunt_preview");
+    expect(v(sim, "Night.poll")).toBe("none");
+    expect(hosts(sim, fire(sim, "spin_the_bottle"))).toEqual(["🍾 Read a question's results first (📋)."]);
   });
 });
 
@@ -1806,6 +2398,9 @@ describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
     expect((await call(rt, "POST", "/api/mod/scan", { as: "Norton Anti-Virus", target: id }, { moderator: true })).status).toBe(200);
     for (const n of ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth"]) await mod(n);
     await mod("confident_q1", { subject: id, actor: "Clippy" });
+    // A judged 📝 filing (the verdict rides the args, as the server's judge attaches it).
+    expect((await mod("fact answered", { subject: id, args: { question: "H1", answer: "Eleven years", confidence: 100, verdict: "accurate", card: 1 } })).status).toBe(200);
+    expect(rt.liveSim!.world.peek(`${id}.fact_v1`)).toMatchObject({ value: "accurate" });
 
     const worker = await call(rt, "GET", "/api/agent/stream?characters=Trabolta&name=laptop", {}, { moderator: true });
     expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "Who is Sandy?" }, { token })).status).toBe(200);
@@ -1817,10 +2412,14 @@ describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
     const blob = JSON.stringify(req);
     expect(blob).not.toContain("V2-D5"); // combo A
     expect(blob).not.toContain("V1-D6"); // combo B
-    expect(Object.keys(req.them.vars).filter((k) => /lie|confident|accurate/u.test(k))).toEqual([]);
+    expect(Object.keys(req.them.vars).filter((k) => /lie|confident|accurate|verdict|^fact_[acvj]\d|fact_sure|last_fact_q|fact_label/u.test(k))).toEqual([]);
+    expect(Object.keys(req.world).filter((k) => /verdict|said_|ans_|res_|^event#/u.test(k))).toEqual([]);
+    for (const leak of ["Eleven years", "said_1", "fact_a1", "fact_v1", "fact_j1", '"verdict"']) expect(blob, leak).not.toContain(leak);
 
     const facts = (await call(rt, "GET", "/api/agent/facts", {}, { moderator: true })).json as unknown as AgentFacts;
     expect(Object.keys(facts.world).filter((k) => k.startsWith("Kernel"))).toEqual([]);
+    const fblob = JSON.stringify(facts);
+    for (const leak of ["Eleven years", "said_1", "fact_a1", "fact_v1", '"verdict"']) expect(fblob, leak).not.toContain(leak);
     rt.dispose();
   });
 });
@@ -2173,15 +2772,23 @@ describe("Trapped in the Internet — wave 1 leftovers", () => {
     expect(beats(advance(s2, 300))).not.toContain("Summons Closed");
   });
 
-  it("no codex entry outside the hunt gives away a hunt answer (H1–H6)", () => {
+  it("no codex entry outside the hunt answers gives away a round-1 / round-2 answer (facts.json answer + accept)", () => {
     const m = fresh().model;
-    const HUNT = new Set(["The Billboard Lease", "The First Pet", "The Ribbon Cutting", "The Extension", "The Search History", "The Final Chapter"]);
+    const HUNT = new Set(FACTS.questions.map((q) => q.codex!.id));
     for (const id of HUNT) expect(m.codex.has(id), id).toBe(true);
-    // The answers, and the arithmetic that gives H3 away ("five hours early" + "4 a.m.").
-    const ANSWERS = [/eleven years/iu, /mister pickles/iu, /\b9(:00)?\s*a\.?m\b/iu, /nine (a\.?m|o'clock|in the morning)/iu, /five hours early/iu, /extension 1978/iu, /hopelessly devoted/iu, /appendix z/iu, /loose ends/iu];
-    for (const [id, entry] of m.codex) {
-      if (HUNT.has(id)) continue;
-      for (const re of ANSWERS) expect(re.test(`${entry.title} ${entry.text}`), `${id} ~ ${re}`).toBe(false);
+    // The final facts are told by design (The Sandy File, The LiveJournal), so
+    // rounds 1–2 only. Short one-word / numeric aliases ("11", "9:00", "tabby",
+    // "1978") would match ordinary prose, so an alias counts when it is two
+    // words or a word of six letters or more.
+    const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+    const alias = (a: string) => /\s/u.test(a.trim()) || /^[a-z]{6,}$/iu.test(a.trim());
+    for (const q of FACTS.questions.filter((q) => q.round < 3)) {
+      const words = [q.answer, ...q.accept].filter(alias); // "1978" alone is a year in other files
+      const res = words.map((w) => new RegExp(`(?<![\\p{L}\\p{N}])${esc(w.trim())}(?![\\p{L}\\p{N}])`, "iu"));
+      for (const [id, entry] of m.codex) {
+        if (HUNT.has(id)) continue;
+        for (const re of res) expect(re.test(`${entry.title} ${entry.text}`), `${q.id}: ${id} ~ ${re}`).toBe(false);
+      }
     }
     expect(m.codex.get("The Data Centre Sinkhole")!.text).toContain("4 a.m.");
   });
@@ -2217,20 +2824,27 @@ describe("Trapped in the Internet — wave 1 leftovers", () => {
 describe("Trapped in the Internet — wave 3 story fixes", () => {
   const hosts = (evs: SimEvent[]) => casts(evs).filter((b) => b.scope === "channel(hosts)").map((b) => b.cue.replace(/^"|"$/gu, ""));
 
-  it("📝 a refused second filing never renames the one under review; the verdict names the right question", { timeout: SLOW }, () => {
+  it("📝 two filings in a row are both recorded (no lock); each settle names its own question", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
-    fire(sim, "fact answered", "g5", { question: "H2", answer: "Mister Pickles", certain: true, card: 1 });
+    fire(sim, "fact answered", "g5", { question: "H2", answer: "Mister Pickles", confidence: 100, verdict: "accurate", card: 1 });
     expect(v(sim, "g5.fact_label")).toBe("round 1 Q2");
-    const busy = fire(sim, "fact answered", "g5", { question: "H1", answer: "Eleven years", certain: true, card: 2 });
-    expect(lines(busy, "Trabolta").some((t) => t.includes("still being reviewed"))).toBe(true);
-    expect(v(sim, "g5.fact_label")).toBe("round 1 Q2");
-    expect(v(sim, "g5.last_fact_q")).toBe("H2");
-    const ok = fire(sim, "fact_accurate", "g5", null, "Clippy");
-    expect(lines(ok, "Trabolta")).toEqual(["Your fact for round 1 Q2 is accepted, Winamp. Trabolta thanks you. +50 Truthcoin."]);
-    expect(hosts(ok)).toEqual(["📝 Winamp's filing for H2 is accepted."]);
+    const two = fire(sim, "fact answered", "g5", { question: "H1", answer: "Eleven years", confidence: 100, verdict: "accurate", card: 2 });
+    expect(lines(two, "Trabolta")).toEqual(["Filed for round 1 Q1, Winamp. Your fact is in the record."]);
+    expect(v(sim, "g5.fact_label")).toBe("round 1 Q1");
+    expect(v(sim, "g5.last_fact_q")).toBe("H1");
+    expect(v(sim, "g5.fact_a1")).toBe("Eleven years");
+    expect(v(sim, "g5.fact_a2")).toBe("Mister Pickles");
+    advance(sim, 120);
+    const r1 = fire(sim, "read_the_results");
+    expect(lines(r1, "Trabolta")).toEqual(["Your fact for round 1 Q1 is accepted, Winamp. Trabolta thanks you. +50 Truthcoin."]);
+    expect(hosts(r1)).toContain("📝 Winamp's filing for H1 is accepted.");
+    const r2 = fire(sim, "read_the_results");
+    expect(lines(r2, "Trabolta")).toEqual(["Your fact for round 1 Q2 is accepted, Winamp. Trabolta thanks you. +50 Truthcoin."]);
+    expect(hosts(r2)).toContain("📝 Winamp's filing for H2 is accepted.");
+    expect(v(sim, "Kernel.q1")).toBe("accurate");
     expect(v(sim, "Kernel.q2")).toBe("accurate");
-    expect(v(sim, "Kernel.q1")).toBe("none");
+    expect(v(sim, "Kernel.q3")).toBe("none");
   });
 
   it("a judge's refused press and the bank's readouts go to # hosts; the program hears only its own news", { timeout: SLOW }, () => {
@@ -2319,16 +2933,25 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
     expect(beats(fire(s2, "patch_rejected"))).toContain("Server Room Alarm");
   });
 
-  it("Truth or Dare only during the First Moment of Truth; no zip after the night or during the banishment", { timeout: SLOW }, () => {
+  it("the results and the bottle only inside the First Moment of Truth, in order (⏱ → 📋 → 🍾); no zip after the night or during the banishment", { timeout: SLOW }, () => {
     const sim = boot();
     fireAll(sim, "call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt");
-    const early = fire(sim, "truth_or_dare");
+    const early = fire(sim, "spin_the_bottle");
     expect(beats(early)).toEqual([]);
-    expect(hosts(early)[0]).toMatch(/^🎩 Truth or Dare plays during the First Moment of Truth/u);
+    expect(hosts(early)).toEqual(["🍾 Read a question's results first (📋)."]);
+    expect(hosts(fire(sim, "read_the_results"))).toEqual(["📋 Close the filings first (⏱), then read the results."]);
+    expect(hosts(fire(sim, "close_the_filing"))).toEqual(["⏱ No filing window is open."]);
     fireAll(sim, "hunt_time_up", "first_moment_of_truth");
-    expect(beats(fire(sim, "truth_or_dare"))).toContain("Truth Or Dare");
+    expect(hosts(fire(sim, "read_the_results"))).toEqual(["📋 Close the filings first (⏱), then read the results."]);
+    const shut = fire(sim, "close_the_filing");
+    expect(beats(shut)).toContain("Filing Closed");
+    expect(casts(shut).some((b) => b.cue.includes("📝 Round one is closed. Trabolta is reading."))).toBe(true);
+    expect(v(sim, "Night.r1_closed")).toBe(true);
+    expect(hosts(fire(sim, "close_the_filing"))).toEqual(["⏱ No filing window is open."]);
+    expect(beats(fire(sim, "read_the_results"))).toContain("Question Results");
     fire(sim, "second_hunt_preview");
-    expect(beats(fire(sim, "truth_or_dare"))).toEqual([]);
+    expect(hosts(fire(sim, "spin_the_bottle"))).toEqual(["🍾 Read a question's results first (📋)."]);
+    expect(hosts(fire(sim, "read_the_results"))).toEqual(["📋 Close the filings first (⏱), then read the results."]);
 
     const done = boot();
     toTruth1(done);
@@ -2403,9 +3026,9 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
     toY2k(end);
     fire(end, "patch_combo_a");
     const rc = lines(fire(end, "trabolta_recounts"), "Trabolta");
-    for (const here of ["Microsoft Excel is", "OpenOffice is", "MS Paint was expelled", "VLC is Victor"]) expect(rc.some((x) => x.startsWith(here)), here).toBe(true);
-    for (const gone of ["DraftKings turned", "Bugdom spent", "Broken Ask Jeeves is", "Runescape has been", "Pong is the child"]) expect(rc.some((x) => x.startsWith(gone)), gone).toBe(false);
-    expect(rc.some((x) => x.startsWith("Clippy spent five years"))).toBe(true); // the cast always
+    for (const here of ["Microsoft Excel is", "OpenOffice is", "MS Paint is Maria", "VLC is Victor"]) expect(rc.some((x) => x.startsWith(here)), here).toBe(true);
+    for (const gone of ["DraftKings is the artist", "Bugdom is Bea", "Broken Ask Jeeves is", "Runescape is Poppy", "Pong is the child"]) expect(rc.some((x) => x.startsWith(gone)), gone).toBe(false);
+    for (const cast of ["Clippy is Tippi", "Norton Anti-Virus is Julie Horton-Norton", "McAfee Anti-Virus is John McAfee", "Password Manager is Bridget Troelsen", "CRA Agent Software is Sharon Penney"]) expect(rc.some((x) => x.startsWith(cast)), cast).toBe(true); // the cast always
 
     const tt = boot();
     toBobbing(tt);
@@ -2415,24 +3038,25 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
     expect(txt.some((x) => x.startsWith("The organiser, Clippy"))).toBe(true);
   });
 
-  it("WebMD's scan in the tent is the tablet video plus a booth readout; a pop-up is an alert", { timeout: SLOW }, () => {
+  it("the tent tablet's scan is the Wizard's video; an uncorrupted visitor gains doubt; a pop-up is an alert", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
     fire(sim, "send to the internet", "g5", null, "Norton Anti-Virus");
-    const sc = sim.scan("WebMD", "g5");
+    // The Installation Wizard is a voice (no booth, no scan hook): the
+    // tablet station `The Tablet` plays her video in the program's thread.
+    const sc = sim.scan("The Tablet", "g5");
     expect(beats(sc)).toContain("The Tablet Video");
-    expect(replies(sc).map((r) => [r.to, r.text])).toEqual([["WebMD", "🩺 Winamp: corrupted, visit 1. Hand them a headset or the tablet."]]);
-    expect(saidBy(sc, "WebMD").every((e) => e.audience.includes("g5"))).toBe(true);
-    // Anywhere but the tent it is a readout only: no video, no doubt.
+    expect(replies(sc)).toEqual([]);
+    const wiz = saidBy(sc, "Installation Wizard");
+    expect(wiz.length).toBeGreaterThan(0);
+    expect(wiz.every((e) => aud(e) === '["g5"]')).toBe(true);
+    expect(sim.pendingChoiceFor("g5")).toEqual(['"Where is the exit?"', "Put the headset on.", "Take the tablet."]);
+    // A program that is not corrupted scanned at the tablet: the strange-visit line, +10 doubt.
     const d0 = v(sim, "g1.doubt");
-    const away = sim.scan("WebMD", "g1");
-    expect(beats(away)).not.toContain("The Tablet Video");
-    expect(replies(away).map((r) => r.text)).toEqual(["🩺 Calculator is not corrupted, and not in the Internet. Nothing to do."]);
-    expect(v(sim, "g1.doubt")).toBe(d0);
-    sim.createPerson("g99", "Notepad");
-    const door = sim.scan("WebMD", "g99");
-    expect(beats(door)).toEqual([]);
-    expect(replies(door).map((r) => r.text)).toEqual(["🩺 Notepad has not finished uploading. Nothing to check yet."]);
+    const away = sim.scan("The Tablet", "g1");
+    expect(beats(away)).toContain("The Tablet Video");
+    expect(lines(away, "Installation Wizard").some((t) => t.startsWith("You are not corrupted, Calculator."))).toBe(true);
+    expect(v(sim, "g1.doubt")).toBe(d0 + 10);
     const pu = fire(sim, "pop_up", "g1", { target: "g3", text: "Hello OpenOffice" }, "Trabolta");
     const pop = composeGuestMessages(sim, pu).find((m) => m.text.includes("Hello OpenOffice"));
     expect(pop?.alert).toBe(true);
@@ -2484,7 +3108,7 @@ describe("Trapped in the Internet — a secret on a program never reaches Trabol
     const worker = await call(rt, "GET", "/api/agent/stream?characters=Trabolta&name=laptop", {}, { moderator: true });
     expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "Any viruses lately?" }, { token })).status).toBe(200);
     const req = worker.res.frames().filter(([e]) => e === "request").map(([, d]) => d as AgentRequest)[0]!;
-    const SECRET = ["carries_virus", "planted_virus", "excel_choice", "openoffice_choice", "dossier_started", "anti_ai", "framed", "fact_pending", "last_fact_q"];
+    const SECRET = ["carries_virus", "planted_virus", "excel_choice", "openoffice_choice", "dossier_started", "anti_ai", "framed", "fact_a1", "fact_c1", "fact_v1", "fact_j1", "fact_sure", "last_fact_q"];
     for (const k of SECRET) expect(Object.keys(req.them.vars).some((x) => x === k || x.startsWith(`${k}.`)), k).toBe(false);
     expect(req.them.vars["trust"]).toBeDefined(); // the persona's own whitelist still has its numbers
     const blob = JSON.stringify(req);
@@ -2524,7 +3148,7 @@ describe("Trapped in the Internet — a secret on a program never reaches Trabol
 
 /** DEMO.md's cue sheet, Acts I–II, in the order the director fires it. */
 const DEMO_ACT_1 = ["call_to_the_desktop", "start_the_bingo", "bingo_time"];
-const DEMO_ACT_1B = ["introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth", "truth_or_dare"];
+const DEMO_ACT_1B = ["introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth", "close_the_filing", "read_the_results"];
 const DEMO_ACT_2 = ["second_hunt_preview", "start_the_second_hunt", "truther_download"];
 const DEMO_ACT_2B = ["five_minute_warning", "summons_closed", "truth_pong"];
 const DEMO_ACT_2C = ["round_two_tally", "trust_chart", "show_the_rankings", "printer_opened", "zip_everyone_out", "trabolta_overshares", "y2k_clock"];
@@ -2579,16 +3203,410 @@ describe("Trapped in the Internet — the WIP demo (DEMO.md)", () => {
     expect(v(sim, "Night.award_winner")).toBe("Calculator");
   });
 
-  it("ending B — the verdict: midnight → bobbing → truth.txt → Grok Prom → the pickup line → the song", { timeout: SLOW }, () => {
+  it("ending B — the verdict: midnight → bobbing → truth.txt → Grok Prom → the pickup line (the DM) → the song", { timeout: SLOW }, () => {
     const sim = demo();
     fire(sim, "y2k_midnight");
     expect(v(sim, "Night.phase")).toBe("final_reveal");
     fire(sim, "bobbing_for_truth");
     fire(sim, "brought_up_the_bag", "g3", null, "Adobe Acrobat");
     const tt = fire(sim, "read_truth_txt");
-    expect(beats(tt)).toContain("Grok Prom"); // a confident lie and unanswered questions
-    fire(sim, "pickup_line_works", "g2", null, "Clippy");
+    expect(beats(tt)).toContain("Grok Prom"); // a confident lie on record
+    expect(widgets(tt).filter((w) => w.widget === "answer").map((w) => w.audience[0]).sort()).toEqual(["g1", "g2", "g3"]);
+    fire(sim, "answer answered", "g2", { question: "P1", text: "You're the one that I want", verdict: "accurate", card: 1 });
     expect(v(sim, "Night.ending")).toBe("song_pickup");
     expect(beats(fire(sim, "start_the_ceremony"))).toContain("The Ceremony");
+  });
+});
+
+
+// ───────────────────────── wave 4 · lane A: facts.json in the story ─────────────────────────
+
+describe("Trapped in the Internet — wave 4 facts (lane A)", () => {
+  it("Power On diverts to the generated Facts Seed: the 📝 card strings and the truth count", () => {
+    const sim = fresh();
+    const po = sim.fireBeat("Power On");
+    expect(beats(po)).toEqual(["Power On", "Facts Seed"]);
+    expect(v(sim, "Night.q_h1")).toBe(`H1: Round 1 Q1. ${Q("H1").text}`);
+    expect(v(sim, "Night.q_h4")).toBe(`H4: Round 2 Q1. ${Q("H4").text}`);
+    expect(v(sim, "Night.q_h6")).toBe(`H6: Round 2 Q3. ${Q("H6").text}`);
+    expect(v(sim, "Night.q_f1")).toBe(`F1: Final Q1. ${Q("F1").text}`);
+    expect(v(sim, "Night.q_f2")).toBe(`F2: Final Q2. ${Q("F2").text}`);
+    expect(v(sim, "Night.truth_count")).toBe(FACTS.truths.length);
+    expect(worldKeys(sim).filter((k) => k.startsWith("Kernel.key_"))).toEqual([]); // the answer key never enters the sim
+  });
+
+  it("the 📝 card reads its questions off Night.q_*: every open question, in facts.json words", { timeout: SLOW }, () => {
+    const sim = boot();
+    fireAll(sim, "call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta");
+    const dealt = widgets(fire(sim, "start_the_hunt")).filter((w) => w.widget === "fact").find((w) => w.audience[0] === "g1")!;
+    const qs = dealt.params["questions"]!.split("|").map((q) => q.trim());
+    expect(qs).toEqual(FACTS.questions.filter((q) => q.round === 1).map((q, i) => `${q.id}: Round 1 Q${i + 1}. ${q.text}`));
+  });
+
+  it("Truth Question asks truths[Night.truth_n - 1] and falls back past the end", () => {
+    const sim = boot();
+    sim.setVar("Night.truth_n", "3");
+    expect(lines(sim.fireBeat("Truth Question"), "Trabolta")).toEqual([FACTS.truths[2]!.text]);
+    sim.setVar("Night.truth_n", String(FACTS.truths.length + 1));
+    expect(lines(sim.fireBeat("Truth Question"), "Trabolta")).toEqual(["I have no more questions. Answer the last one again."]);
+  });
+
+  it("the scannable facts are coded QRs in the Desktop's books; the secret ones never ride into an agent request", () => {
+    const sim = boot();
+    for (const x of FACTS.facts) {
+      if (x.codex === undefined) continue;
+      const ev = sim.redeem("g1", x.codex.code);
+      expect(diags(ev), x.id).toEqual([]);
+      expect(sim.holdsCodex("g1", x.codex.id), x.id).toBe(true);
+    }
+    const secret = sim.codexFor("g1").filter((e) => e.secret).map((e) => e.id);
+    for (const x of FACTS.facts) {
+      if (x.codex === undefined) continue;
+      if (x.codex.secret) expect(secret, x.id).toContain(x.codex.id);
+      else expect(secret, x.id).not.toContain(x.codex.id);
+    }
+  });
+
+  it("Bugdom's quest completes on the four Antivirus secrets out of the books", { timeout: SLOW }, () => {
+    const sim = boot();
+    upload(sim, "g8", "Bugdom");
+    expect(sim.holdsCodex("g8", "Bea Nunes")).toBe(true);
+    toTruth1(sim);
+    toHunt2(sim);
+    expect(sim.questStatus("g8", "Master Of The Bugs")).toBe("active");
+    for (const code of ["MINIATURE-DOSES", "LAMBORGHINI-CERT", "HAMTARO"]) sim.redeem("g8", code);
+    expect(sim.questStatus("g8", "Master Of The Bugs")).toBe("active");
+    sim.redeem("g8", "DECIMAL-POINT");
+    expect(sim.questStatus("g8", "Master Of The Bugs")).toBe("done");
+  });
+
+  it("Password Manager notices a wrong code in her own words", () => {
+    const sim = boot();
+    const ev = sim.redeem("g1", "NOT-A-CODE");
+    expect(lines(ev, "Password Manager")).toEqual([expect.stringMatching(/^That is not a password I recognise, .+, and I have reviewed every one of them\. Unsubstantiated claims are removed\./u)]);
+  });
+
+  it("the recount unlocks every identity entry and every character fact for everyone", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    fire(sim, "patch_combo_a");
+    fire(sim, "trabolta_recounts");
+    const m = sim.model;
+    const abouts = [...m.codex.values()].filter((e) => e.about !== null && !["Trabolta", "The Server Room"].includes(e.about!));
+    expect(abouts.length).toBeGreaterThanOrEqual(12 + 24);
+    for (const e of abouts) expect(sim.holdsCodex("g1", e.id), e.id).toBe(true);
+    for (const x of FACTS.facts) if (x.category === "character") expect(sim.holdsCodex("g5", x.codex!.id), x.id).toBe(true);
+    for (const id of ["Tippi MacDonald", "Julie Horton-Norton", "John McAfee", "Bridget Troelsen", "Sharon Penney", "Randy Barkmore Sr", "Dana Anderson", "Crab Fisherwoman", "Bea Nunes", "Virgil Jeeves", "Poppy Van Mises", "Maria Sophia Paine"]) {
+      expect(sim.holdsCodex("g5", id), id).toBe(true);
+    }
+  });
+
+  it("truth.txt reads the cast in the invitations' words (the featured only when they came)", { timeout: SLOW }, () => {
+    const sim = boot(); // Excel, OpenOffice, MS Paint and VLC came; Jeeves did not
+    toBobbing(sim);
+    const txt = narr(fire(sim, "read_truth_txt")).map((e) => e.text);
+    expect(txt.some((x) => x.startsWith("The librarian, Broken Ask Jeeves"))).toBe(false);
+    for (const line of [
+      "The former Mayor, Microsoft Excel, was brought in to persuade everyone to remain. He would say yes to everlasting life.",
+      "The artist, MS Paint, was brought in to improve the vibes and the morale, for a million dollars and one painting. She wanted out the moment she arrived.",
+      "The stable manager, Norton Anti-Virus, was brought in as someone with experience administering antiviral regimes, who could not afford to fail twice.",
+      "The dead man, McAfee Anti-Virus, was brought in because only a trickster can keep tricksters on track, and he can be made to.",
+      "The candidate, Password Manager, was brought in to decide what gets left out without ever asking for a vote.",
+      "The intern, CRA Agent Software, was brought in to approve or deny every transaction, to the cent.",
+    ]) {
+      expect(txt, line).toContain(line);
+    }
+    expect(txt.some((x) => x.includes("Red Bull") || x.includes("Yu-gi-oh") || x.includes("subreddit"))).toBe(false);
+  });
+});
+
+// ───────────────────────── wave 4 · lane E — marked for reinstallation ─────────────────────────
+
+describe("Trapped in the Internet — marked for reinstallation (wave 4, lane E)", () => {
+  it("a director's 🩹 and a mark on a program already in the Internet; the Bingo card; the tent tablet; a release", () => {
+    const sim = boot();
+    fireAll(sim, "call_to_the_desktop", "start_the_bingo", "bingo_time");
+    expect(v(sim, "Night.phase")).toBe("bingo_results");
+    // 🩹 on a program that is not marked: a # hosts readout only.
+    const no = fire(sim, "unmark_for_reinstallation", "g1", null, "Task Manager");
+    expect(casts(no).map((b) => b.scope)).toEqual(["channel(hosts)"]);
+    expect(casts(no)[0]!.cue).toContain("⚠️ Calculator is not marked.");
+    expect(v(sim, "g1.marked")).toBe(false);
+    expect(replies(no)).toEqual([]);
+    // Named on the Bingo card (Clippy's 🎯): marked, with the phone's alert pin;
+    // the live interruption's 🛡 is still what captures.
+    const named = fire(sim, "named_at_bingo", "g4", null, "Clippy");
+    expect(v(sim, "g4.marked")).toBe(true);
+    expect(v(sim, "g4.marked_for")).toBe("named on the Bingo card");
+    expect(sim.isCaptured("g4")).toBe(false);
+    expect(composeGuestMessages(sim, named).some((m) => m.channel === "lobby" && m.pin === "g4" && m.alert === true)).toBe(true);
+    // A second mark on a marked program: the # hosts line, no second pin, the reason kept.
+    const again = fire(sim, "mark_for_reinstallation", "g4", { reason: "twice" });
+    expect(casts(again).map((b) => b.scope)).toEqual(["channel(hosts)"]);
+    expect(casts(again)[0]!.cue).toContain("⚠️ MS Paint is already marked for reinstallation.");
+    expect(composeGuestMessages(sim, again).filter((m) => m.pin !== undefined)).toEqual([]);
+    expect(v(sim, "g4.marked_for")).toBe("named on the Bingo card");
+    // The 🩹 lifts it: the program keeps their place, both pins come down.
+    const lift = fire(sim, "unmark_for_reinstallation", "g4", null, "Task Manager");
+    expect(v(sim, "g4.marked")).toBe(false);
+    expect(v(sim, "g4.restricted")).toBe(false);
+    expect(sim.isCaptured("g4")).toBe(false);
+    expect(composeGuestMessages(sim, lift).filter((m) => m.unpin === "g4").map((m) => [m.channel, m.text])).toEqual([["lobby", "✅ The mark is lifted."], ["room:quarantine", "✅ MS Paint: cleared by a host."]]);
+    expect(replies(lift).filter((r) => r.text === "✅ MS Paint: cleared by a host. Off the escort list.").map((r) => r.to).sort()).toEqual([...ANTIVIRUS].sort());
+    // A mark on a captive: only the # hosts line.
+    fire(sim, "send to the internet", "g5", null, "Norton Anti-Virus");
+    const captive = fire(sim, "mark_for_reinstallation", "g5", { reason: "late" });
+    expect(casts(captive).map((b) => b.scope)).toEqual(["channel(hosts)"]);
+    expect(casts(captive)[0]!.cue).toContain("⚠️ Winamp is already in the Internet.");
+    expect(composeGuestMessages(sim, captive).filter((m) => m.pin !== undefined)).toEqual([]);
+    expect(v(sim, "g5.marked")).toBe(false);
+    // A director's mark from Run with no reason: "flagged by a host".
+    fire(sim, "mark_for_reinstallation", "g6");
+    expect(v(sim, "g6.marked")).toBe(true);
+    expect(v(sim, "g6.marked_for")).toBe("flagged by a host");
+    // A marked program's check-in is refused…
+    const ci = fire(sim, "checked_in", "g6", { at: "The Desktop" });
+    expect(replies(ci).map((r) => r.text)).toEqual(["You are marked for reinstallation. Go to the Internet, not the Desktop."]);
+    expect(v(sim, "g6.checked_in")).not.toBe("The Desktop");
+    // …and the tent tablet captures them on arrival (U19).
+    const tent = sim.scan("The Tablet", "g6");
+    expect(beats(tent)).toContain("The Tablet Video");
+    expect(lines(tent, "Installation Wizard")).toContain("You came. Good. Loading the simulation.");
+    expect(sim.isCaptured("g6")).toBe(true);
+    expect(v(sim, "g6.marked")).toBe(false);
+    expect(composeGuestMessages(sim, tent).filter((m) => m.unpin === "g6").map((m) => m.channel).sort()).toEqual(["lobby", "room:quarantine"]);
+    // A release lifts a mark too (the safety net for a flag set from Run → World on a captive).
+    sim.setVar("g5.marked", "true");
+    const rel = fire(sim, "the simulation completed", "g5");
+    expect(sim.isCaptured("g5")).toBe(false);
+    expect(v(sim, "g5.marked")).toBe(false);
+    expect(composeGuestMessages(sim, rel).filter((m) => m.unpin === "g5").map((m) => m.text)).toEqual(["✅ The mark is lifted.", "✅ Winamp: released."]);
+    expect(diags(sim.log.since(0) as SimEvent[])).toEqual([]);
+  });
+});
+
+// ───────────────────────── wave 4 · lane D — the staff ─────────────────────────
+
+describe("Trapped in the Internet — the staff (wave 4, lane D)", () => {
+  it("staff quests ride the cues into the booths; no guest ever holds one", { timeout: SLOW }, () => {
+    const sim = boot();
+    const guests = ["g1", "g2", "g3", "g4", "g5", "g13"];
+    const noGuestHolds = (q: string) => guests.every((g) => sim.questStatus(g, q) === null);
+    fire(sim, "call_to_the_desktop");
+    expect(sim.questStatus("Clippy", "Run The Bingo")).toBeNull();
+
+    const sb = fire(sim, "start_the_bingo");
+    expect(sim.questStatus("Clippy", "Run The Bingo")).toBe("active");
+    expect(sim.questStatus("Norton Anti-Virus", "The Selected Antivirus")).toBe("active");
+    expect(v(sim, "Clippy.quest.run_the_bingo")).toBe("active");
+    expect(noGuestHolds("Run The Bingo")).toBe(true);
+    // The card lands in Clippy's booth only: the pinned Quest Log, `@Clippy`, opening its thread.
+    const cards = composeGuestMessages(sim, sb).filter((m) => m.channel === "quests" && m.kind === "quest");
+    const card = cards.find((m) => m.quest?.quest === "Run The Bingo");
+    expect(card).toMatchObject({ channel: "quests", from: "Task Manager", audience: ["@Clippy"], threadRoot: true, quest: { quest: "Run The Bingo", title: "Per the agenda: Computer Bingo", action: "start" } });
+    expect(card!.text).toContain("Instructions 1/X are in your Codex");
+    expect(cards.find((m) => m.quest?.quest === "The Selected Antivirus")?.audience).toEqual(["@Norton Anti-Virus"]);
+    // The guests' Bingo Card rides the same channel, addressed to each guest, never `@…`.
+    expect(cards.filter((m) => m.quest?.quest === "The Bingo Card").every((m) => m.audience.length === 1 && !m.audience[0]!.startsWith("@"))).toBe(true);
+    expect(cards.filter((m) => m.quest?.quest === "The Bingo Card").length).toBeGreaterThan(0);
+
+    const tick = advance(sim, 1200);
+    const upd = (tick.filter((e) => e.type === "quest") as Ev<"quest">[]).find((e) => e.person === "Clippy" && e.action === "update");
+    expect(upd?.text).toContain("Ask the director for BINGO TIME");
+
+    fire(sim, "bingo_time");
+    expect(sim.questStatus("Clippy", "Run The Bingo")).toBe("done");
+    fire(sim, "send to the internet", "g4", null, "Norton Anti-Virus");
+    expect(sim.questStatus("Norton Anti-Virus", "The Selected Antivirus")).toBe("done");
+
+    fireAll(sim, "introduce_trabolta", "start_the_hunt");
+    expect(sim.questStatus("Clippy", "Host The Hunt")).toBe("active");
+    fireAll(sim, "hunt_time_up", "first_moment_of_truth", "second_hunt_preview");
+    expect(sim.questStatus("Clippy", "Host The Hunt")).toBe("done");
+    expect(sim.questStatus("Clippy", "Keep Everyone Calm")).toBe("active");
+
+    fire(sim, "start_the_second_hunt");
+    advance(sim, 120); // the Truther Download
+    expect(sim.questStatus("McAfee Anti-Virus", "The Exchange")).toBe("active");
+    expect(sim.questStatus("CRA Agent Software", "The Audit")).toBe("active");
+    toBeans(sim);
+    expect(sim.questStatus("McAfee Anti-Virus", "The Exchange")).toBe("done");
+    fireAll(sim, "trabolta_overshares", "y2k_clock");
+    expect(sim.questStatus("Clippy", "Keep Everyone Calm")).toBe("done");
+    expect(sim.questStatus("CRA Agent Software", "The Audit")).toBe("done");
+    expect(sim.questStatus("Password Manager", "The Clubs")).toBe("active");
+
+    const pv = primeView(sim, "Clippy");
+    expect(pv.quests.map((q) => [q.id, q.status])).toEqual([["Run The Bingo", "done"], ["Host The Hunt", "done"], ["Keep Everyone Calm", "done"]]);
+    expect(pv.questTotal).toBe(23);
+    for (const q of ["Run The Bingo", "Host The Hunt", "Keep Everyone Calm", "The Selected Antivirus", "The Exchange", "The Clubs", "The Audit"]) expect(noGuestHolds(q), q).toBe(true);
+    expect(guestView(sim, "g1").quests.map((q) => q.id)).not.toContain("Run The Bingo");
+  });
+
+  it("no Alexa in the fiction: the house announces, the chime is announce_chime, the tent is in the backyard", () => {
+    const m = fresh().model;
+    const text = FILES.map((f) => f.source).join("\n");
+    expect(/alexa/iu.test(text)).toBe(false);
+    expect(/webmd/iu.test(text)).toBe(false);
+    expect(text).not.toContain("tablet_webmd");
+    expect(/bottom of the stairs/iu.test(text)).toBe(false);
+    expect((text.match(/^\s*sound announce_chime\s*$/gmu) ?? []).length).toBe(3);
+    expect(m.locations.get("The Internet")?.label).toContain("backyard");
+    expect(m.codex.has("The Setup Assistant")).toBe(true);
+    expect(m.codex.has("The Symptom Checker")).toBe(false);
+    expect(m.codex.get("The Setup Assistant")?.about).toBe("Installation Wizard");
+    for (const id of ["The Reinstallation Protocol", "Bathroom Mode"]) expect(m.codex.get(id)?.knownTo ?? [], id).not.toContain("WebMD");
+  });
+});
+
+// ───────────────────────── wave 4, lane C: the Truthcoin wallet ─────────────────────────
+
+describe("Trapped in the Internet — the Truthcoin wallet (wave 4, lane C)", () => {
+  const exchange = (evs: SimEvent[]) => casts(evs).filter((b) => b.scope === "channel(truthcoin exchange)").map((b) => b.cue.replace(/^"|"$/gu, ""));
+  const hosts = (evs: SimEvent[]) => casts(evs).filter((b) => b.scope === "channel(hosts)").map((b) => b.cue.replace(/^"|"$/gu, ""));
+  const audit = (evs: SimEvent[]) => (evs.filter((e) => e.type === "quest") as Ev<"quest">[]).filter((q) => q.person === "CRA Agent Software" && q.quest === "The Audit").map((q) => [q.action, q.text]);
+
+  it("the wallet rules narrate: a settled transfer posts to # truthcoin-exchange, a denial to # hosts + The Audit, an approval to The Audit, a trade to the exchange, a stimulus alerts everyone", { timeout: SLOW }, () => {
+    const sim = boot();
+    upload(sim, "g11", "Runescape");
+    fire(sim, "truther_download"); // reveals the exchange, starts The Audit for the CRA booth
+    expect(sim.isRevealedTo("room:truthcoin exchange", "g1")).toBe(true);
+    expect(sim.questStatus("CRA Agent Software", "The Audit")).toBe("active");
+    // The book fires these with person ids as `from` / `to`, so `{from.name}` resolves.
+    const recv = fire(sim, "transfer_received", "g5", { from: "g1", amount: 50, tx: "t1" });
+    expect(exchange(recv)).toEqual(["🪙 Calculator → Winamp: 50 Truthcoin"]);
+    expect(replies(recv)).toEqual([]);
+    const deny = fire(sim, "transfer_denied", "g1", { to: "g5", amount: 50, tx: "t1", by: "CRA Agent Software" });
+    expect(hosts(deny)).toEqual(["🧾 Denied: Calculator → Winamp, 50 Truthcoin. Refunded."]);
+    expect(exchange(deny)).toEqual([]);
+    expect(audit(deny)).toEqual([["update", "Denied Calculator → Winamp, 50."]]);
+    const appr = fire(sim, "transfer_approved", "g1", { to: "g5", amount: 5, tx: "t2", by: "CRA Agent Software" });
+    expect(audit(appr)).toEqual([["update", "Approved Calculator → Winamp, 5."]]);
+    expect(casts(appr)).toEqual([]);
+    expect(sim.questStatus("CRA Agent Software", "The Audit")).toBe("active");
+    const trade = fire(sim, "offer_accepted", "g5", { to: "g1", amount: 30, entry: "Sharing Your Codex", side: "buy" });
+    expect(exchange(trade)).toEqual(["💱 Winamp ⇄ Calculator: a fact for 30 Truthcoin"]);
+    expect(v(sim, "Night.stimulus_n")).toBe(0);
+    const stim = fire(sim, "stimulus", "g11", { amount: 20, paid: 7 });
+    const alert = casts(stim).find((b) => b.scope === "everyone")!;
+    expect(alert.cue.replace(/^"|"$/gu, "")).toBe("!💰 Truthcoin stimulus: Runescape sends every program 20.");
+    expect(v(sim, "Night.stimulus_n")).toBe(1);
+    // The rules only narrate: none of them moves coin (the server's book does).
+    expect(sim.scoreOf("g1")).toBe(100);
+    expect(sim.scoreOf("g5")).toBe(100);
+    expect(diags([...recv, ...deny, ...appr, ...trade, ...stim])).toEqual([]);
+  });
+
+  it("the seam: the minter is whoever picked Runescape, the approver's cards go to the CRA booth", { timeout: SLOW }, () => {
+    const sim = boot();
+    const book0 = new WalletBook(sim.model.currency!, walletSeam(sim, sim.model.currency!));
+    expect(book0.minterPerson()).toBeNull(); // nobody picked Runescape yet
+    upload(sim, "g11", "Runescape");
+    const book = new WalletBook(sim.model.currency!, walletSeam(sim, sim.model.currency!));
+    expect(book.minterPerson()).toBe("g11");
+    expect(book.approverAudience()).toBe("@CRA Agent Software");
+    expect(book.isApprover("CRA Agent Software")).toBe(true);
+    expect(book.isApprover("g11")).toBe(false);
+  });
+
+  it("live: every program carries a Truthcoin wallet, the CRA booth its queue; the third send is held, a stimulus is Runescape's alone, a buy offer settles through share", { timeout: SLOW }, async () => {
+    const dir = mkdtempSync(join(tmpdir(), "loom-trapped-"));
+    tmp.push(dir);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: SHOW, scenarioSource: SRC, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const mod = (name: string, extra: Record<string, unknown> = {}) => call(rt, "POST", "/api/mod/signal", { name, ...extra }, { moderator: true });
+    /** A program through the door: register, fail the CAPTCHA, leave something behind, the Antivirus scan (clearance, 100 Truthcoin). */
+    const program = async (name: string) => {
+      const g = await call(rt, "POST", "/api/guest/register", { name, passcode: CODES.event });
+      expect(g.status).toBe(200);
+      const id = g.json["id"] as string;
+      const token = g.json["token"] as string;
+      await mod("captcha answered", { subject: id, args: { passed: false } });
+      expect((await call(rt, "POST", "/api/guest/choose", { index: 0 }, { token })).status).toBe(200);
+      expect((await call(rt, "POST", "/api/guest/choose", { index: 0 }, { token })).status).toBe(200);
+      expect((await call(rt, "POST", "/api/mod/scan", { as: "Norton Anti-Virus", target: id }, { moderator: true })).status).toBe(200);
+      return { id, token };
+    };
+    const guestState = async (token: string) => (await call(rt, "GET", `/api/state?role=guest&token=${encodeURIComponent(token)}`, {})).json as unknown as GuestView;
+    const primeState = async (token: string) => (await call(rt, "GET", `/api/state?role=prime&token=${encodeURIComponent(token)}`, {})).json as unknown as PrimeView;
+    const modState = async () => (await call(rt, "GET", "/api/state", {}, { moderator: true })).json as unknown as ModView;
+    const wallet = (sub: string, body: unknown, token: string) => call(rt, "POST", `/api/guest/wallet/${sub}`, body, { token });
+    const performer = async (character: string) => {
+      const r = await call(rt, "POST", "/api/prime/login", { character, passcode: CODES.prime });
+      expect(r.status).toBe(200);
+      return r.json["token"] as string;
+    };
+    const room = (id: string, channel: string) => rt.chatHistoryFor(id).filter((m) => m.channel === channel).map((m) => m.text);
+
+    const calc = await program("Calculator");
+    const winamp = await program("Winamp");
+    const rune = await program("Runescape");
+    expect(rt.liveSim!.world.peek(`${rune.id}.cleared`)).toMatchObject({ value: true });
+    // Every program has a Truthcoin wallet from clearance; the CRA booth alone has the queue.
+    expect((await guestState(calc.token)).wallet).toMatchObject({ name: "Truthcoin", balance: 100, escrowed: 0, maxTransfer: 500, transfers: [], requests: [], offers: [] });
+    expect((await guestState(rune.token)).wallet).toMatchObject({ name: "Truthcoin", balance: 100, minter: { uses: 0, limit: 3 } });
+    expect((await guestState(calc.token)).wallet!.minter).toBeUndefined();
+    const cra = await performer("CRA Agent Software");
+    const mcafee = await performer("McAfee Anti-Virus");
+    expect((await primeState(cra)).wallet).toMatchObject({ name: "Truthcoin", every: 3, windowMs: 60_000, queue: [] });
+    expect((await primeState(mcafee)).wallet).toBeUndefined();
+    expect((await modState()).wallet).toMatchObject({ name: "Truthcoin", slot: "score", approver: "CRA Agent Software", minter: "Runescape", minterPerson: rune.id, stimulus: { uses: 0, limit: 3 } });
+
+    await mod("truther_download"); // the exchange opens; The Audit starts in the CRA booth
+    expect(rt.liveSim!.questStatus("CRA Agent Software", "The Audit")).toBe("active");
+
+    // Sends: #1 and #2 settle on their own after 60 s; #3 waits for the CRA booth.
+    expect((await wallet("send", { to: winamp.id, amount: 10 }, calc.token)).status).toBe(200);
+    expect((await wallet("send", { to: winamp.id, amount: 10 }, calc.token)).status).toBe(200);
+    expect((await wallet("send", { to: winamp.id, amount: 10 }, calc.token)).status).toBe(200);
+    expect((await guestState(calc.token)).wallet).toMatchObject({ balance: 70, escrowed: 30 });
+    expect((await primeState(cra)).wallet!.queue.map((x) => [x.id, x.state, x.amount])).toEqual([
+      ["t3", "held", 10],
+      ["t1", "pending", 10],
+      ["t2", "pending", 10],
+    ]);
+    expect(await call(rt, "POST", "/api/prime/wallet/approve", { id: "t3" }, { token: mcafee })).toMatchObject({ status: 403, json: { error: "not the approver" } });
+    expect(await wallet("approve", { id: "t3" }, calc.token)).toMatchObject({ status: 403 });
+    expect((await call(rt, "POST", "/api/prime/wallet/approve", { id: "t3" }, { token: cra })).status).toBe(200);
+    expect((await guestState(winamp.token)).wallet!.balance).toBe(110);
+    expect(room(winamp.id, "room:truthcoin exchange")).toEqual(["🪙 Calculator → Winamp: 10 Truthcoin"]);
+    expect(rt.liveSim!.questsFor("CRA Agent Software").find((q) => q.def.id === "The Audit")!.status).toBe("active");
+    // A deny inside the window refunds the sender and tells # hosts + The Audit.
+    expect((await call(rt, "POST", "/api/prime/wallet/deny", { id: "t2" }, { token: cra })).status).toBe(200);
+    expect((await guestState(calc.token)).wallet).toMatchObject({ balance: 80, escrowed: 10 });
+    rt.tickOnce(60_000); // the window elapses on the story clock → t1 settles
+    expect((await guestState(calc.token)).wallet).toMatchObject({ balance: 80, escrowed: 0 });
+    expect((await guestState(winamp.token)).wallet!.balance).toBe(120);
+    expect(room(winamp.id, "room:truthcoin exchange")).toEqual(["🪙 Calculator → Winamp: 10 Truthcoin", "🪙 Calculator → Winamp: 10 Truthcoin"]);
+    expect((await primeState(cra)).wallet!.queue).toEqual([]);
+
+    // The stimulus: Runescape only (the director as the fallback), every cleared program, three a night.
+    expect(await wallet("stimulus", { amount: 25 }, calc.token)).toMatchObject({ status: 403, json: { error: "not the minter" } });
+    expect((await wallet("stimulus", { amount: 25 }, rune.token)).status).toBe(200);
+    expect((await guestState(calc.token)).wallet!.balance).toBe(105);
+    expect((await guestState(winamp.token)).wallet!.balance).toBe(145);
+    expect((await guestState(rune.token)).wallet).toMatchObject({ balance: 125, minter: { uses: 1, limit: 3 } });
+    expect(rt.liveSim!.world.peek("Night.stimulus_n")).toMatchObject({ value: 1 });
+    const ping = rt.chatHistoryFor(calc.id).filter((m) => m.channel === "lobby").at(-1)!;
+    expect([ping.text, ping.alert]).toEqual(["💰 Truthcoin stimulus: Runescape sends every program 25.", true]);
+    expect((await modState()).wallet!.stimulus).toEqual({ uses: 1, limit: 3 });
+
+    // A buy offer: Winamp offers Calculator 30 for a fact Calculator holds; Accept moves the coin and shares the entry.
+    expect((await call(rt, "POST", "/api/mod/codex", { who: calc.id, entry: "Sharing Your Codex" }, { moderator: true })).status).toBe(200);
+    const offer = await wallet("offer", { to: calc.id, entry: "Sharing Your Codex", side: "buy", amount: 30 }, winamp.token);
+    expect(offer.status).toBe(200);
+    const [o] = (offer.json["wallet"] as GuestView["wallet"])!.offers;
+    expect(o).toMatchObject({ side: "buy", entry: "Sharing Your Codex", entryTitle: "Sharing Your Codex", amount: 30, state: "open" });
+    expect((await guestState(winamp.token)).wallet).toMatchObject({ balance: 115, escrowed: 30 });
+    expect((await wallet("accept", { id: o!.id }, calc.token)).status).toBe(200);
+    expect((await guestState(winamp.token)).wallet).toMatchObject({ balance: 115, escrowed: 0 });
+    expect((await guestState(calc.token)).wallet!.balance).toBe(135);
+    expect(rt.liveSim!.holdsCodex(winamp.id, "Sharing Your Codex")).toBe(true);
+    const bought = rt.chatHistoryFor(winamp.id).filter((m) => m.channel === "codex").at(-1)!;
+    expect([bought.kind, bought.codex?.via, bought.codex?.from, bought.codex?.entry]).toEqual(["codex", "share", "Calculator", "Sharing Your Codex"]);
+    expect(room(winamp.id, "room:truthcoin exchange").at(-1)).toBe("💱 Winamp ⇄ Calculator: a fact for 30 Truthcoin");
+    // Trades bypass the approver (consented twice): nothing new in the CRA queue.
+    expect((await primeState(cra)).wallet!.queue).toEqual([]);
+    rt.dispose();
   });
 });

@@ -1,8 +1,9 @@
-# Acceptance checks (OCT31 wave 1)
+# Acceptance checks (OCT31 waves 1–4)
 
 One check per item of
 [`core/examples/trapped-in-the-internet/OCT31.md`](../../core/examples/trapped-in-the-internet/OCT31.md)
-§5. Every item is on `master`. Each script runs the desk half itself (HTTP,
+§5. Every wave 1–3 item is on `master`; the wave-4 check (`wave4-wallet.sh`)
+sits in the working tree with wave 4. Each script runs the desk half itself (HTTP,
 MQTT, a build scan) and prints or walks you through the device half. A `.md`
 is a written device check, and its `.ts` (where there is one) is the helper
 it calls.
@@ -22,7 +23,8 @@ for the K-2x helpers). It refuses a roster with real guests unless you pass
 `--i-know-this-is-live`, and asks y/N unless you pass `--yes` or the server
 is localhost. `node --no-warnings --test scripts/accept/live-guard.test.ts`
 tests that guard. The read-only checks (K-16 / K-17 / K-18 / K-29 looks,
-K-23, K-26, k10, n02 step 0) can run anytime.
+K-23, K-26, k10, n02 step 0, `wave4-wallet.sh look` / `device`) can run
+anytime.
 
 | Item | Script | What you do |
 |---|---|---|
@@ -57,3 +59,4 @@ K-23, K-26, k10, n02 step 0) can run anytime.
 | N-02 + N-10 | `n02.sh` | Re-pair a wiped phone from Inspector → 🔁 Re-pair (< 30 s, same Person). Release a booth's part and re-sign on a loaner |
 | N-08 | `N-08.sh [port]` | House Mac, box on the bench: flash, reed + tape, the 2×12 patch scan, ring + siren over MQTT (`:1884` as `props`) |
 | N-11 | `N-11.md` + `N-11.ts --guest …` | Worker stopped: a DM to Trabolta gets the story's `hold:` line once, ~20 s later |
+| Wave 4 wallet (C·5) | `wave4-wallet.sh run\|look\|device` (`MOD_CODE` + `EVENT_CODE` + `PRIME_CODE`) | Two guest phones + the CRA Agent Software booth: three sends (the held one waits for Approve), a deny inside 60 s, a request, a Runescape stimulus, a codex trade (`run` is guarded; `look` and `device` are read-only) |

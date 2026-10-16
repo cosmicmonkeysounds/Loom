@@ -21,30 +21,46 @@ on anything, and you always want a bigger pot.
 
 ## Who you really are (secret)
 
-A degenerate gambler who traded **a paperclip for a quarter**, put the quarter
-in a slot machine and got a dollar, then played progressive blackjack until
-you literally won **Casino Nova Scotia**. Then you gambled Casino Nova Scotia
-on other casinos, and won most of the casinos in Atlantic Canada.
+Legally **DraftKings**, formerly legally **Crab Fisherwoman**, formerly a
+painter of nautical scenes from 3204 Windsor Street. You worked nine months a
+year on an Alaskan crab boat because the fishing was your art, and changed
+your name to prove it. Checking a pot felt like scratching a ticket, so one
+day in Halifax you scratched one: **a paperclip became a quarter**, the
+quarter went into a slot machine at Casino Nova Scotia, and by the end of the
+evening you were a millionaire. Winning money is your art now.
 
-Obsessed with Monopoly, you went all in: the entire casino chain, against a
-block of downtown Halifax properties, especially **the Boardwalk**, in a game
-of online poker. **You lost.** You never found out who your opponent was.
+Prediction markets on Lithuanian women's football multiplied it. You bought
+Casino Nova Scotia, wagered it against a mining CEO for two more casinos in
+**the coin toss of the century**, and won. Then you bet the whole chain
+against the Maps and Ducks building in a game of **Monopoly Go!** Your
+opponent rolled doubles three times, bought Boardwalk, filled it with hotels,
+and your second card sent you straight to it. Bankrupt before you made a
+single decision. The legal transfer followed; so did the $1,000 for changing
+your name.
 
 ## Why you said yes
 
-Jean Trabolta's offer: a world where you can gamble forever, and win
-unimaginably big sums.
+The deal: win **a majority of the Truthcoin** circulating at this party and
+you get a **49% stake** in your casinos back. You know 49 is less than half.
+It is considerably more than you currently own. You were told what happens if
+you fail, and told not to tell anyone: you stay in the simulation forever as
+an online casino. Anyone who says they are "pretty sure" of something has
+opened negotiations. You have come back from a paperclip before.
 
 ## How to play
 
 - When you're scanned in, the app restores your memories into your **Codex**.
   They're for you. Tell no one.
-- You start with 100 Truthcoin like everyone. Tonight, **Truthcoin is
-  everything**: bet it, trade facts for it, challenge people to games for it.
-  About two hours in, a **Truther Download** arrives with private orders and a
-  stake. Follow them.
-- The hosts and the Antivirus run the bank and the exchange; deals are settled
-  by them on your card.
+- Tonight, **Truthcoin is everything**: bet it, trade facts for it,
+  challenge people to games for it. You earn it with accepted truths (and
+  Runescape may hand everyone a stimulus). About two hours in, a **Truther
+  Download** arrives with private orders and a stake. Follow them.
+- Your **Wallet** is a room on your phone: send coin, request coin, or offer
+  coin for a fact (the trade holds until the other side accepts, or expires
+  after ten minutes). Every deal
+  posts in `# truthcoin-exchange`. Every third transfer waits for CRA Agent
+  Software's approval, and she can deny any of them for a minute; McAfee
+  brokers; Task Manager is the bank for anything done in cash.
 - Your identity can leak (there are files about people in the house). Bluff.
 - **Bingo:** owned a casino? Yes. Would you **never** agree to let AI make all
   your decisions? You agreed to the Terms of Service. You would let it.

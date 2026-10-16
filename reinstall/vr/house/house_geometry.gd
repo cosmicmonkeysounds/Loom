@@ -81,12 +81,12 @@ static func style_of(house: Dictionary) -> Dictionary:
 	}
 
 
-## Whether a prop collides: `solid`, else true for box / cylinder.
+## Whether a prop collides: `solid`, else true for box / cylinder / king.
 static func prop_solid(prop: Dictionary) -> bool:
 	if prop.get("solid") != null:
 		return bool(prop["solid"])
 	var kind := str(prop.get("kind", ""))
-	return kind == "box" or kind == "cylinder"
+	return kind == "box" or kind == "cylinder" or kind == "king"
 
 
 ## Whether a plan point is inside a prop's footprint (boundary counts): a

@@ -317,12 +317,25 @@ describe.each([
     }
   });
 
-  it("from every room's label point to every duck spot", () => {
+  it("from every room's label point to every duck spot (a room sealed by a guarded door has no route out)", () => {
+    // The only door of the Server Room is guarded by the King: `route()`
+    // leaves its portal out, so from inside there is no path (the straight
+    // `[from, to]` fallback) — and from everywhere else no leg goes through
+    // the King (`× prop cold-lock-king`).
+    const guarded = new Set(house.doors.filter((d) => d.guard !== undefined).map((d) => d.id));
+    const sealed = new Set(
+      house.rooms.filter((r) => house.doors.filter((d) => d.a === r.id || d.b === r.id).every((d) => guarded.has(d.id)) && !house.stairs.some((s) => s.from === r.id || s.to === r.id)).map((r) => r.id),
+    );
+    expect([...sealed]).toEqual(["server-room"]);
     for (const room of house.rooms) {
       const [x, z] = labelPoint(room.poly);
       const from: Vec3 = [x, house.floors.find((f) => f.id === room.floor)!.elevation, z];
       expect(locate(house, from).room, room.id).toBe(room.id);
-      for (const s of house.duck.spots) expect(badLegs(route(house, from, s.pos)), `${room.id} → ${s.id}`).toEqual([]);
+      for (const s of house.duck.spots) {
+        const p = route(house, from, s.pos);
+        if (sealed.has(room.id)) expect(p, `${room.id} → ${s.id}`).toEqual([from, s.pos]);
+        else expect(badLegs(p), `${room.id} → ${s.id}`).toEqual([]);
+      }
     }
   });
 

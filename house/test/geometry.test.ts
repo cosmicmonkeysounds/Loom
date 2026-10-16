@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { buildFloors, buildRamps, buildWalls, mm, mmi, pointInPoly, propSolid, wallsByFloor } from "../src/index.ts";
-import type { WallKind, WallSegment } from "../src/index.ts";
-import { fixture } from "./golden.ts";
+import { buildFloors, buildRamps, buildWalls, doorGap, mm, mmi, pointInPoly, propSolid, roomById, roomElevation, styleOf, wallsByFloor } from "../src/index.ts";
+import type { HouseMap, WallKind, WallSegment } from "../src/index.ts";
+import { fixture, loadHouse, SHOW_HOUSE } from "./golden.ts";
 
 /** A hand-written segment: `[floor, axis, c, lo, hi, bottom, top, kind]`. */
 type Row = [string, "x" | "z", number, number, number, number, number, WallKind];
@@ -200,5 +200,47 @@ describe("plan helpers", () => {
     expect(propSolid({ id: "a", room: "r", kind: "box", pos: [0, 0, 0], size: [1, 1, 1] })).toBe(true);
     expect(propSolid({ id: "a", room: "r", kind: "screen", pos: [0, 0, 0], size: [1, 1, 1] })).toBe(false);
     expect(propSolid({ id: "a", room: "r", kind: "box", pos: [0, 0, 0], size: [1, 1, 1], solid: false })).toBe(false);
+  });
+});
+
+describe("doorGap", () => {
+  it("every show door's gap lies on a wall of room a, is `width` long, centred on `at`, floor to door top", () => {
+    const house = loadHouse(SHOW_HOUSE);
+    const style = styleOf(house);
+    for (const door of house.doors) {
+      const gap = doorGap(house, door)!;
+      expect(gap, door.id).not.toBeNull();
+      const a = roomById(house, door.a)!;
+      expect(gap.floor).toBe(a.floor);
+      expect(gap.kind).toBe("wall");
+      const along = gap.axis === "x" ? door.at[0] : door.at[1];
+      const across = gap.axis === "x" ? door.at[1] : door.at[0];
+      expect(Math.abs(gap.c - across), door.id).toBeLessThanOrEqual(0.02 + 1e-9);
+      expect(gap.hi - gap.lo, door.id).toBeCloseTo(door.width, 3);
+      expect((gap.lo + gap.hi) / 2, door.id).toBeCloseTo(along, 3);
+      const elevation = roomElevation(house, a);
+      expect(gap.bottom).toBe(mm(elevation));
+      expect(gap.top).toBe(mm(elevation + (door.height ?? style.doorHeight)));
+      // The gap is where buildWalls cut: no wall piece of that floor on
+      // that line overlaps it (only its lintel does).
+      const overlapping = buildWalls(house).filter(
+        (w) => w.floor === gap.floor && w.axis === gap.axis && Math.abs(w.c - gap.c) <= 0.02 + 1e-9 && w.kind === "wall" && Math.min(w.hi, gap.hi) - Math.max(w.lo, gap.lo) > 1e-9,
+      );
+      expect(overlapping, door.id).toEqual([]);
+    }
+  });
+
+  it("is null for a door on no wall of its room, and the two-rooms door ab is the shared z = 4 line", () => {
+    const house = fixture("two-rooms");
+    expect(doorGap(house, { id: "x", a: "a", b: "b", at: [2, 1.5], width: 1 })).toBeNull();
+    expect(doorGap(house, { id: "x", a: "nope", b: null, at: [2, 0], width: 1 })).toBeNull();
+    expect(doorGap(house, house.doors.find((d) => d.id === "ab")!)).toEqual({ floor: "f", axis: "z", c: 4, lo: 1, hi: 2, bottom: 0, top: 2, kind: "wall" });
+    expect(doorGap(house, house.doors.find((d) => d.id === "front")!)).toEqual({ floor: "f", axis: "x", c: 0, lo: 1.55, hi: 2.45, bottom: 0, top: 2.2, kind: "wall" });
+  });
+
+  it("buildWalls output is unchanged by a guard (the leaf is the games', not a wall)", () => {
+    const house = loadHouse(SHOW_HOUSE);
+    const bare: HouseMap = { ...house, doors: house.doors.map((d) => ({ ...d, guard: undefined })), props: house.props.filter((p) => p.kind !== "king") };
+    expect(buildWalls(house)).toEqual(buildWalls(bare));
   });
 });

@@ -46,6 +46,9 @@ export interface EventSpec {
   /** The map variant the row records (`event.map_variant`) — a fresh state
    *  dir starts on it (a relaunch keeps the tent ↔ shed choice). */
   mapVariant?: string | null;
+  /** The project's `facts.json` as the row snapshotted it (`facts.ts`):
+   *  null = the project has none; absent = no row snapshot at all. */
+  facts?: string | null;
   /** The way back to the project ("Save to project"); absent → none. */
   project?: ProjectLink | null;
 }
@@ -111,6 +114,7 @@ export class EventRegistry {
       scenarioSource: spec.scenarioSource,
       houseMaps: spec.houseMaps ?? null,
       mapVariant: spec.mapVariant ?? null,
+      ...(spec.facts !== undefined ? { facts: spec.facts } : {}),
       project: spec.project ?? null,
       joinBase: this.joinBase,
       wiki: this.wiki,

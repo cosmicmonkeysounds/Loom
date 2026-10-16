@@ -30,6 +30,15 @@ const FLASH = /^[A-Za-z_]+(\s*,\s*\d+[a-z]*)?$/u;
 const GOAL = /^[A-Za-z_][A-Za-z0-9_./]*\s+[a-z]+$/u;
 /** `capture guest into The Internet` — the place may be several words. */
 const INTO = /^[A-Za-z_][A-Za-z0-9_.]*(\s+(into|from)\s+\S.*)?$/u;
+/** `restrict guest` / `restrict guest to The Tube, The Internet` — the app
+ *  shrinks to the named places + DMs, read-only, no buttons. */
+const RESTRICT = /^[A-Za-z_][A-Za-z0-9_.]*(\s+to\s+\S.*)?$/u;
+/** `pin "text"` / `pin "text" for guest` / `pin "text" in quarantine for guest`
+ *  — a sticky notice above a stream. A leading `!` in the text is an alert. */
+const PIN = /^"(?:[^"\\]|\\.)*"(\s+in\s+[^"]+?)?(\s+for\s+\S+)?$/u;
+/** `unpin for guest` / `unpin in quarantine for guest ["text"]` — takes a
+ *  pin down. Needs at least a room or a person (a bare `unpin` is prose). */
+const UNPIN = /^(?:in\s+[^"]+?)?(?:\s*\bfor\s+\S+)?(?:\s*"(?:[^"\\]|\\.)*")?$/u;
 const ENROLL = /^\S+\s+(to|→|->|into)\s+\S+/u;
 const ASSIGN = /^[A-Za-z_][A-Za-z0-9_.]*\s*([+\-*/]?=)(?!=)/u;
 const SINGLE_NAME = /^[A-Za-z_][A-Za-z0-9_.\-]*(\s+with\s+.+)?$/u;
@@ -108,6 +117,11 @@ export const STATEMENTS: ReadonlyArray<[verb: string, shape: Shape]> = [
   ["capture", { kind: "args", test: INTO }],
   ["release", { kind: "args", test: INTO }],
   ["escape", { kind: "args", test: NAME_WORDS }],
+  // Restriction + sticky notices (Wave 4): generic siblings of capture/release.
+  ["restrict", { kind: "args", test: RESTRICT }],
+  ["unrestrict", { kind: "args", test: NAME_WORDS }],
+  ["pin", { kind: "args", test: PIN }],
+  ["unpin", { kind: "args", test: UNPIN }],
   ["join", { kind: "args", test: TO }],
   ["defect", { kind: "args", test: FROM_TO }],
   ["betray", { kind: "args", test: TO }],

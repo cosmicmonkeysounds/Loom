@@ -374,7 +374,10 @@ body {
 .poll-options { display: flex; flex-direction: column; gap: 4px; }
 .poll-options .choice { margin: 0; text-align: left; }
 .fact-answer { box-sizing: border-box; width: 100%; margin: 8px 0 4px; padding: 8px; font: 16px/1.35 var(--ui-font); resize: vertical; /* 16px: iOS never zooms */ }
-.fact-certain { display: flex; align-items: center; gap: 6px; font: 700 13px var(--ui-font); color: var(--ink); }
+.fact-confidence { display: grid; gap: 4px; font: 700 13px var(--ui-font); color: var(--ink); }
+.fact-confidence input[type=range] { width: 100%; margin: 0; }
+.fact-confidence output { justify-self: end; font-variant-numeric: tabular-nums; }
+.answer-text { box-sizing: border-box; width: 100%; margin: 8px 0 4px; padding: 8px; font: 16px/1.35 var(--ui-font); resize: vertical; }
 
 /* ── composer (hybrid typed chat) ──────────────────────────────────────────
    A roomy sunken text box that grows with what you type (JS caps the height),
@@ -700,6 +703,21 @@ footer {
 .push-on { font: inherit; font-weight: 700; cursor: pointer; padding: 4px 10px; }
 .push-x { background: none; border: none; color: inherit; font: inherit; font-size: 18px; cursor: pointer; padding: 0 4px; }
 .app.wide .push-card { max-width: none; }
+/* Wave 4: the pinned rail — sticky notices (`pin "…"`) above a stream; a
+   `!` pin reads like an alert. A restricted guest's app greys out around
+   it (the rail and the alert banner stay bright). */
+.pinned-rail {
+  position: sticky; top: 0; z-index: 4;
+  display: flex; flex-direction: column; gap: 4px;
+  width: 100%; max-width: var(--max); margin: 0 auto; padding: 6px 10px;
+  background: var(--face); box-shadow: var(--raised);
+}
+.pin { font-weight: 700; padding: 6px 8px; background: var(--face-hi); color: var(--black); border: 1px solid var(--line); }
+.pin.alert { background: var(--highlight); }
+.app.wide .pinned-rail { max-width: none; }
+.restricted-bg .chlist, .restricted-bg .stage, .restricted-bg .stage-pane { filter: grayscale(1); opacity: .72; }
+.restricted-bg .pinned-rail, .restricted-bg .alert-banner { filter: none; opacity: 1; }
+.inbox-head.restricted, .restricted-bg .inbox-head { background: linear-gradient(90deg, #6b4a00, #9a6b00); color: #fff; }
 .msg.signal.alert .bubble.plain { font-weight: 700; color: var(--black); background: var(--highlight); padding: 2px 6px; }
 
 /* The pinned rooms — the Codex's entries and the Quest Log's quests are
@@ -734,6 +752,50 @@ footer {
 .msg.quest-step.complete { border-left-color: var(--good); }
 .msg.quest-step.fail { border-left-color: var(--bad); }
 .quest-step-ico { flex: none; }
+
+/* The Wallet room — coin cards (a transfer, a request, an offer, the
+   stimulus, the approver's queue) mirror the quest cards; each root's
+   steps are its thread. */
+.msg.wallet-msg { align-self: stretch; margin: 6px 0; }
+.wallet-card {
+  background: var(--face); box-shadow: var(--raised); border-radius: var(--radius);
+  padding: 10px 12px; max-width: 520px; text-align: left; font-family: var(--ui-font);
+}
+.wallet-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.wallet-ico { font-size: 18px; line-height: 1; }
+.wallet-title { flex: 1; min-width: 0; font: 800 14px var(--ui-font); color: var(--navy); }
+.wallet-amount { font: 800 14px var(--ui-font); color: var(--navy); white-space: nowrap; }
+.wallet-card.held, .wallet-card.open { border-left: 4px solid var(--highlight); }
+.wallet-card.pending, .wallet-card.paying { border-left: 4px solid var(--line); }
+.wallet-card.settled, .wallet-card.accepted, .wallet-card.paid { border-left: 4px solid var(--good); }
+.wallet-card.denied, .wallet-card.declined, .wallet-card.failed, .wallet-card.cancelled, .wallet-card.expired { border-left: 4px solid var(--bad); opacity: 0.85; }
+.wallet-party { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-ink); margin-top: 6px; }
+.wallet-text { margin: 8px 0 0; font: 14px/1.45 var(--chat-font); white-space: pre-wrap; color: var(--ink); }
+.wallet-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 12px; }
+.wallet-foot .link { margin: 0; width: auto; font-size: 12px; }
+.wallet-state { text-transform: lowercase; }
+.msg.wallet-step { align-self: stretch; display: flex; gap: 8px; align-items: baseline; margin: 4px 0; padding: 2px 10px; border-left: 3px solid var(--line); }
+.msg.wallet-step .bubble.plain { font-style: normal; color: var(--ink); }
+.msg.wallet-step.settled, .msg.wallet-step.approved, .msg.wallet-step.paid, .msg.wallet-step.accepted, .msg.wallet-step.received { border-left-color: var(--good); }
+.msg.wallet-step.denied, .msg.wallet-step.declined, .msg.wallet-step.failed, .msg.wallet-step.cancelled, .msg.wallet-step.expired { border-left-color: var(--bad); }
+.wallet-step-ico { flex: none; }
+/* The identity card's balance (replaces ⭐ when the story has a currency). */
+.wallet-pill {
+  font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline dotted; text-underline-offset: 2px;
+}
+.wallet-escrow { font-size: 0.9em; }
+.wallet-badge { font-weight: 700; }
+/* The sheets: a side toggle, an amount form, a title box. */
+.wallet-side { display: flex; gap: 8px; margin: 0 8px 8px; }
+.wallet-side .choice { flex: 1; width: auto; }
+.wallet-amount-form { display: flex; flex-direction: column; gap: 8px; margin: 0 8px 8px; }
+.wallet-amount-label { display: flex; align-items: center; gap: 6px; font: 700 12px var(--ui-font); color: var(--muted-ink); }
+.wallet-amount-input, .wallet-entry-input {
+  flex: 1; min-width: 0; font: 16px var(--chat-font); padding: 6px 8px;
+  background: var(--white); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.wallet-hint { font-size: 12px; }
 .codex-about {
   margin: 10px 8px 4px; font: 11px var(--ui-font); font-weight: 700;
   letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted-ink);

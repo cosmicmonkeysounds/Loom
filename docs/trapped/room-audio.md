@@ -12,10 +12,11 @@ audio/speech/video (old Android tablets), and how all of it is driven from
 the VPS-hosted event server. Binding inputs: Decisions #13/#14 (TV = the main
 Trabolta display; 16 outs cover living room, kitchen and other rooms;
 terminals still play their own media), #15 (old Android tablets), #16 (VPS),
-#20 (fake Alexa through terminals and house audio), #21 (WebMD = pre-recorded
-video), #23/#31 (tent really outside, shed fallback), #26 (awards ceremony).
-Built on `screens.md` (§3.4 TTS, §5.5 media, §6 templates) and
-`stagehand-hw.md` (§6.3 audio, §6.4 Alexa). Not re-derived here.*
+#20 (house announcements through terminals and house audio), #21 (the
+Installation Wizard = pre-recorded video), #23/#31 (tent really outside, shed fallback), #26 (awards ceremony).
+Built on `screens.md` (§3.4 TTS, §5.5 media, §6 templates), a research
+report; the shipped audio path is `scripts/house-mac/alexa.md` (the house
+announcement player) and `docs/loom-show-control.md`. Not re-derived here.*
 
 ---
 

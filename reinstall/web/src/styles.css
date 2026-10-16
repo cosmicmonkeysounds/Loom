@@ -380,6 +380,109 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 .hud-idle { position: absolute; left: 50%; top: 56%; transform: translateX(-50%); padding: 0.6em 1em; color: var(--ink); font-family: var(--ui); }
 .hud-idle b { color: var(--bad); }
 
+/* --- the King --------------------------------------------------------------------- */
+
+.hud-king {
+  position: absolute;
+  left: 8px;
+  top: calc(max(8px, env(safe-area-inset-top)) + clamp(78px, 10vw, 104px));
+  display: flex;
+  flex-direction: column;
+  padding: 0.25em 0.7em 0.3em;
+  background: rgba(0, 0, 40, 0.65);
+  border: 2px solid var(--gold-deep);
+  color: var(--gold);
+  font-size: clamp(18px, 2.4vw, 26px);
+  line-height: 1.1;
+  pointer-events: none;
+}
+.hud-king.near { border-color: var(--gold); box-shadow: 0 0 10px var(--gold-deep); }
+.hud-king.open { border-color: #2f2; color: #8f8; }
+.hud-king-label { letter-spacing: 0.06em; }
+.hud-king-hearts { font-size: 1.15em; color: #ff5a5a; letter-spacing: 0.08em; }
+.hud-king-state { font-size: 1.1em; letter-spacing: 0.1em; }
+.hud-king small { font-size: 0.65em; color: #ffe9a0; }
+.king-actions {
+  position: absolute;
+  right: 12px;
+  bottom: min(48vh, 316px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--ui);
+}
+.king-actions .w98-button { min-width: 8.5em; }
+@media (max-height: 500px) { .king-actions { bottom: 60px; flex-direction: row; } }
+.king-note { color: var(--navy); font-weight: bold; }
+
+.chess-modal {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: rgba(0, 0, 30, 0.55);
+  font-family: var(--ui);
+  color: var(--ink);
+  overflow: auto;
+}
+.chess-window { width: min(560px, 100vw - 32px); max-height: calc(100vh - 16px); }
+.chess-window .w98-body { display: flex; flex-direction: column; gap: 0.4em; padding: 0.5em; overflow: auto; }
+.chess-loading { padding: 1em 1.5em; }
+.chess-head { display: flex; align-items: center; gap: 0.6em; }
+.chess-stage { flex: 1; font-size: 0.95em; }
+.chess-badge { padding: 0.1em 0.5em; border: 1px solid var(--dark); font-weight: bold; font-size: 0.8em; letter-spacing: 0.08em; }
+.chess-badge.armed { background: #c8ffc8; color: #005000; }
+.chess-badge.practice { background: var(--face-light); color: #404040; }
+.chess-status { min-height: 1.4em; text-align: center; font-family: var(--pixel); font-size: clamp(20px, 2.6vw, 26px); color: var(--navy); }
+.chess-banner { font-size: 1.3em; letter-spacing: 0.08em; }
+.chess-banner.won { color: var(--good); }
+.chess-banner.lost { color: var(--bad); }
+.chess-banner.drawn { color: #605000; }
+.board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  width: min(100%, calc(100vh - 230px));
+  max-width: 520px;
+  margin: 0 auto;
+  aspect-ratio: 1;
+  border: 2px solid var(--dark);
+  box-shadow: inset 1px 1px var(--hi);
+  -webkit-user-select: none;
+  user-select: none;
+}
+.board .square {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  min-height: 0;
+  aspect-ratio: 1;
+  font-size: min(9vw, 44px);
+  line-height: 1;
+}
+.board .square.light { background: #f0d9b5; }
+.board .square.dark { background: #b58863; }
+.board .square.last { box-shadow: inset 0 0 0 100px rgba(255, 240, 80, 0.35); }
+.board .square.hint { box-shadow: inset 0 0 0 100px rgba(80, 200, 255, 0.45); }
+.board .square.selected { outline: 3px solid var(--gold); outline-offset: -3px; z-index: 1; }
+.board .square:disabled { cursor: default; }
+.board .dot { position: absolute; width: 26%; height: 26%; border-radius: 50%; background: rgba(0, 0, 0, 0.3); pointer-events: none; }
+.board .square.target .piece + .dot { width: 90%; height: 90%; border-radius: 50%; background: none; box-shadow: inset 0 0 0 4px rgba(0, 0, 0, 0.3); }
+.board .piece { font-family: "Noto Sans Symbols2", "Segoe UI Symbol", "DejaVu Sans", "Apple Symbols", "Arial Unicode MS", sans-serif; }
+.board .piece.white { color: #fff; text-shadow: 0 0 2px #000, 0 0 2px #000, 1px 1px 0 #000; }
+.board .piece.black { color: #111; }
+.chess-actions { gap: 0.5em; flex-wrap: wrap; }
+.chess-confirm { align-self: center; color: var(--bad); font-weight: bold; }
+@supports not (aspect-ratio: 1) {
+  .board .square { height: 0; padding-top: 100%; }
+  .board .square .piece, .board .square .dot { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+}
+
 .help-card {
   position: absolute;
   left: 50%;
@@ -502,6 +605,8 @@ svg.plan.editing { cursor: crosshair; }
 .small-label { font-size: 0.24px; text-anchor: middle; dominant-baseline: middle; fill: #5a3a00; font-weight: bold; }
 .prop polygon, .prop ellipse { stroke: rgba(0, 0, 0, 0.45); stroke-width: 0.02; opacity: 0.8; }
 .prop.label polygon { stroke: #806000; }
+.prop.king polygon { stroke: #d4af37; stroke-width: 0.03; }
+.prop.king .king-glyph { font-size: 0.32px; text-anchor: middle; dominant-baseline: middle; fill: #5a4500; pointer-events: none; }
 .prop.selected polygon, .prop.selected ellipse { stroke: var(--navy); stroke-width: 0.05; opacity: 1; }
 .prop-label { font-size: 0.17px; text-anchor: middle; dominant-baseline: middle; fill: #202020; pointer-events: none; }
 .editing .prop { cursor: grab; }

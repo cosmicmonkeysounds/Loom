@@ -1,24 +1,33 @@
-// The first Truth Scavenger Hunt, the First Moment of Truth, and Truth
-// or Dare when the answers run out.
+// The first Truth Scavenger Hunt, the First Moment of Truth (the
+// last-chance filing window, the results one question at a time) and the
+// bottle (Truth or Dare) between the questions.
 //
-// Trabolta needs facts. They are obscure, un-googleable, and somewhere in
-// this house: each answer is printed on a document carrying a codex QR
-// (codex/3-hunt.loom), so a program who finds one can prove it on their
-// phone — and hold it, and trade it. The questions are also in everyone's
-// Quest Log (`Hunt One`, quests.loom). All four beats are public, in the
-// Desktop's room; the judging is the ✅ / 😤 / 🤷 buttons (main.loom).
+// Trabolta needs facts. They are obscure, un-googleable, and in the
+// Desktop's books: each answer is printed on a document carrying a codex
+// QR (generated/questions.loom, from facts.json), so a program who finds
+// one can prove it on their phone — and hold it, and trade it. The
+// questions are also in everyone's Quest Log (`Hunt One`, generated too).
+// All the beats are public, in the Desktop's room. Every filing on the 📝
+// card is judged by the server (facts.json); the results are read here
+// and settled by main.loom (+50, or marked for a guess).
 
-// V4 / V5 — `start_the_hunt`. Trabolta reads round 1 (H1–H3) verbatim.
+// V4 / V5 — `start_the_hunt`. Trabolta reads round 1 (H1–H3) from the
+// generated `Hunt One Questions`, which hands back to `Hunt One Go`
+// (every divert is the last item of its beat, so the chain is the same
+// under the Sim and a true divert).
 == Truth Scavenger Hunt One
   setting: The Desktop
   cast: Clippy, Trabolta
 
 Clippy: Everyone! We're ready for our second game: the TRUTH SCAVENGER HUNT! Trabolta will explain the rules.
 Trabolta: As our computer completely relies on me, it is important that you participate in regular training, so I have all the information I need to keep improving. There are files scattered around the computer that I need your help to interpret.
-Trabolta: Question one. How many years did the Maps and Ducks billboard on Barrington Street go unpaid before mapsandducks.com expired?
-Trabolta: Question two. What was the name of the first animal buried in the Halifax Explosion Memorial Pet Cemetery?
-Trabolta: Question three. At what time was the ribbon-cutting at Halifax's first AI Data Centre scheduled?
-Trabolta: Fifteen minutes. The facts are obscure. They are in this house.
+-> Hunt One Questions
+
+== Hunt One Go
+  setting: The Desktop
+  cast: Clippy, Trabolta
+
+Trabolta: Fifteen minutes. The facts are obscure. They are in the books in this room, and in the print media on the walls.
 Clippy: Go! Find! Interpret! The questions are in your Quest Log. If you find a code, put it in your Codex!
 
 // C2 — `hunt_time_up` (auto at 15 minutes).
@@ -33,23 +42,38 @@ The Antivirus sweep the house, room by room, herding programs back to the Deskto
   cast: Clippy
 
 Clippy: Welcome back, programs! It's time for the First Moment of Truth! Is anyone able to answer the questions?
-Clippy: Here's how it works. If you present an accurate answer, it is accepted.
-Clippy: If you present an answer with STRONG confidence, it is accepted. Even if it's nonsensical! Trabolta values confidence.
-Clippy: But if you present an inaccurate answer with normal or low confidence, or a clear guess, you will be banished to the Internet for failing to follow orders.
-Clippy: Tell us which question you're answering, one, two or three. Then tell Trabolta the truth.
+Clippy: Here's how it works. Every answer you filed with Trabolta gets judged. Accurate: accepted. Wrong but one hundred percent sure: accepted — Trabolta values confidence!
+Clippy: Wrong and not sure, or a clear guess: a symptom of corruption. The Antivirus will escort you to the Internet.
+Clippy: You have two minutes. File anything you found with Trabolta NOW. Then we read the results, one question at a time.
 
-// `truth_or_dare` — the hat holds possible answers to round 1, true and
-// false mixed (README: the hat slips). Dare → 🎩; a confident or true
-// answer → ✅ / 😤 with the slip's question number; an unconfident false
-// one → 🤷; calling a false slip false → 🙅 and the turn passes.
-== Truth Or Dare
+// `filing_closed` — the last-chance window shut (⏱, or two minutes).
+== Filing Closed
   setting: The Desktop
-  cast: Clippy, Adobe Acrobat
+  cast: Clippy
 
-Clippy: Not all three? That's okay! That's okay. We have a backup. It's called Truth Or Dare, and I have a hat.
-Clippy: The hat holds possible answers. Some are true. Some are not. Someone random goes first, and chooses Truth or Dare.
-Clippy: If you choose DARE, you have chosen not to choose Truth, and that is a directive problem. The Internet.
-Clippy: If you choose TRUTH, draw a fact from the hat. Tell us with confidence that it IS the truth, and it is accepted.
-Clippy: If you say it is true without confidence, and it is untrue: the Internet. If you say it is true without confidence, and it IS true: accepted.
-Clippy: If you say it is FALSE, and you are right, the turn passes to the next program. Until Trabolta has enough confident answers!
-Adobe Acrobat: Confidence is a muscle! Flex it! Or be reinstalled!
+Clippy: Pencils down! Trabolta is reading. Question one, coming up.
+
+// `read_the_results` — one question's result (Kernel.res_* are set by the
+// rule). The settle watcher (+50 / marked) runs right after this beat.
+== Question Results
+  setting: The Desktop
+  cast: Clippy
+
+if Kernel.res_filed == 0:
+  Clippy: Question {Night.results_q}. Nobody filed an answer. Trabolta has nothing. That's okay! That's okay. We have a backup. It's called Truth or Dare, and I have a bottle.
+else if Kernel.res_consensus == Kernel.res_filed:
+  Clippy: Question {Night.results_q}. {Kernel.res_filed} filed. Every answer matches, and every one of you was one hundred percent sure. CONSENSUS!
+  Clippy: Trabolta accepts it. The answer is: {Kernel.res_answer}.
+else:
+  Clippy: Question {Night.results_q}. {Kernel.res_filed} filed. No consensus. Here is what you told Trabolta.
+  Clippy: {Kernel.res_said}
+  Clippy: Confident answers are accepted, right or wrong. Guesses are a symptom of corruption. Antivirus, you know what to do.
+Clippy: And now: the bottle. Five spins, then the next question.
+
+// `bottle_announce` — the pick, spoken on the TV (a public Trabolta line in
+// The Desktop; `view=tv` reads the room).
+== Bottle Landed
+  setting: The Desktop
+  cast: Trabolta
+
+Trabolta: {Night.bottle_pick}. Truth or dare?

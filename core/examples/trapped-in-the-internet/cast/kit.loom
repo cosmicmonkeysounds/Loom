@@ -62,11 +62,14 @@ TRAIT Enforcer is Person
         cycle Scanning. Scanning. | {program.name}: no threats found. Today. | Your definitions are out of date. So are mine.
 
   // The inspection: free of viruses, through the Tube of lights, onto
-  // the Desktop, and into Clippy's hands. Every line is a `Self:` line
-  // (private to the program); the one `reply` is this performer's booth.
+  // the Desktop, the admin team introduced by Task Manager (his line is
+  // addressed to the program like every `Self:` line here, and it opens
+  // `# task-manager` for them: the app help desk), and into Clippy's
+  // hands. Every line is private to the program; the one `reply` is this
+  // performer's booth.
   beat Clearance(program)
     set program.cleared = true
-    Self: Scanned. {program.name} is free of viruses and ready to explore the entire computer. There will be a game soon in the Desktop. Alexa will let you know when it's time to go there. Go through the Tube.
+    Self: Scanned. {program.name} is free of viruses and ready to explore the entire computer. There will be a game soon in the Desktop. The house will announce it. Go through the Tube.
     Self: The Tube is a tunnel of lights. Wires. Chips. The cables brush your face like hair. Keep walking.
     move program to The Desktop
     reveal The Start Bar for program
@@ -84,7 +87,9 @@ TRAIT Enforcer is Person
       set Night.ads_started = true
       cue terminals_attract
       set Night.terminals = "attract"
-    Self: The Tube opens onto the Desktop: a blacked-out mess of LEDs, loose wire, encyclopaedias, computer parts and screens. A classic screensaver drifts across the TV above the fireplace. Everyone here is a program. Explore. Meet them.
+    Self: The Tube opens onto the Desktop: a blacked-out mess of LEDs, loose wire, encyclopaedias, computer parts and screens. A classic screensaver drifts across the TV above the fireplace. Everyone here is a program. Explore. Meet them. The encyclopaedias and the print media are where the facts are. Everything you need to know is in the books.
+    reveal task manager for program
+    Task Manager: {program.name}. You're in. Your hosts tonight, per the agenda: Clippy, the Office Assistant, runs the games. Adobe Acrobat: documents and printing. The Recycling Bin: hygiene and maintenance. Me: I keep things running. # task-manager is open for questions about the app, and so is this thread.
     reply ✅ Cleared {program.name}.
     -> Orientation
 
@@ -148,6 +153,12 @@ TRAIT Enforcer is Person
 
   when program_late for program:
     reply ⏰ {program.name} is late for the Second Moment of Truth. Go get them.
+
+  when marked for program:
+    reply 🚨 {program.name} is marked for reinstallation ({program.marked_for}). Escort them through the Tube, then press 🛡 on their card.
+
+  when unmarked for program:
+    reply ✅ {program.name}: {how}. Off the escort list.
 
   when sweep_requested:
     reply 🛡 Trabolta requests a sweep of {Night.sweep_target}.

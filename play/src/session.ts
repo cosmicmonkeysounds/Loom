@@ -13,7 +13,8 @@ import { pmChannelId, pmOtherParty, unlockFromSearch, withoutUnlock } from "./co
 import { usePlayHost } from "./host.ts";
 import { SessionRole, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "./lifecycle.ts";
 import { locationOfRoom, occupantsByLocation, type Presence } from "./presence.ts";
-import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, channelHead, groupByChannel, prettyName, questSummary, withThe, useThreads, type Threads } from "./threads.ts";
+import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, WALLET_ROOM, channelHead, groupByChannel, prettyName, questSummary, withThe, useThreads, type Threads } from "./threads.ts";
+import { queueSummary, walletNeedsYou, walletSummary } from "./wallet.tsx";
 import { useTyping } from "./typing.ts";
 import type { Channel, ChatMessage, Decision, GuestView, PrimeView } from "./types.ts";
 import { WIDGETS, supersededCards, type WidgetResult } from "./widgets.tsx";
@@ -427,7 +428,7 @@ export function isListedRoom(id: string): boolean {
 
 /** The guest's own pinned rooms — the Codex and the Quest Log. */
 export function isPinnedRoom(id: string): boolean {
-  return id === CODEX_ROOM || id === QUEST_LOG;
+  return id === CODEX_ROOM || id === QUEST_LOG || id === WALLET_ROOM;
 }
 
 /** Everything said *to* this guest, in order — the on-rails stream a
@@ -447,6 +448,15 @@ export function pendingWidget(messages: ReadonlyMap<number, ChatMessage>, kind: 
     if (best === null || m.seq > best.seq) best = m;
   }
   return best;
+}
+
+
+/** Is a card still waiting on this participant — an answerable widget with
+ *  no answer in this session? A re-dealt card (a 📝 fact card) only counts
+ *  while it is the newest. Shared by the guest's rooms and the booth's. */
+export function hasPendingCard(msgs: readonly ChatMessage[], answered: ReadonlySet<number>): boolean {
+  const old = supersededCards(msgs);
+  return msgs.some((m) => m.kind === "widget" && m.widget !== undefined && (WIDGETS[m.widget.kind]?.answerable ?? false) && !answered.has(m.seq) && !old.has(m.seq));
 }
 
 /** Group the guest's messages into threads, docking the pending decision, and
@@ -478,18 +488,16 @@ export function buildGuestChannels(
     if (id === "lobby") return { people: everyone };
     return {};
   };
-  // A card still waiting on this guest (an answerable widget with no answer
-  // in this session) pulls its room to the top, like a decision does.
-  // A re-dealt card (a 📝 fact card) only counts while it is the newest.
-  const needsYou = (msgs: ChatMessage[]): boolean => {
-    const old = supersededCards(msgs);
-    return msgs.some((m) => m.kind === "widget" && m.widget !== undefined && (WIDGETS[m.widget.kind]?.answerable ?? false) && !answered.has(m.seq) && !old.has(m.seq));
-  };
+  // A card still waiting on this guest pulls its room to the top, like a
+  // decision does.
+  const needsYou = (msgs: ChatMessage[]): boolean => hasPendingCard(msgs, answered);
   if (!groups.has("lobby")) groups.set("lobby", []); // the lobby is always present
   // The pinned rooms are there from the start whenever the story has a
   // codex / declares quests — the Codex is where codes get typed.
   if ((view?.codexTotal ?? 0) > 0 && !groups.has(CODEX_ROOM)) groups.set(CODEX_ROOM, []);
   if ((view?.questTotal ?? 0) > 0 && !groups.has(QUEST_LOG)) groups.set(QUEST_LOG, []);
+  // The Wallet is there whenever the story declares a currency.
+  if (view?.wallet !== undefined && !groups.has(WALLET_ROOM)) groups.set(WALLET_ROOM, []);
   if (dock && !groups.has(dock.channel)) groups.set(dock.channel, []);
   // Threads the guest opened from the People list (a private message to a
   // guest, a DM to a character) exist before anyone has said anything.
@@ -531,6 +539,28 @@ export function buildGuestChannels(
         canPost: s.canPost,
         threadable: s.threadable,
         ...presenceOf(id),
+        messages: msgs,
+        unread: 0,
+        decision,
+        lastTs,
+      };
+    }
+    if (id === WALLET_ROOM) {
+      // The Wallet: a read-only log of coin cards, each with its own thread;
+      // its footer (the guest app) holds Send / Request / Trade. A card
+      // waiting on this guest (a request, an offer, a held approval) pulls
+      // it up like a decision does.
+      return {
+        id,
+        kind: "wallet" as const,
+        title: "Wallet",
+        subtitle: view?.wallet ? walletSummary(view.wallet) : "",
+        spaceId: PINNED_SPACE,
+        order: -1,
+        canPost: false,
+        threadable: true,
+        tour: "wallet",
+        needsYou: view?.wallet && view.id ? walletNeedsYou(view.wallet, view.id) : false,
         messages: msgs,
         unread: 0,
         decision,
@@ -620,6 +650,20 @@ export interface GuestSession {
   redeem: (code: string) => Promise<string | null>;
   /** Codex: hand an entry you hold to another participant or a listed character. */
   shareCodex: (entry: string, to: string) => Promise<unknown>;
+  /** The wallet (a story with a `currency:`): every call posts to its route;
+   *  the server's refusal (insufficient funds, too late…) banners quietly. */
+  wallet: {
+    send(to: string, amount: number): Promise<unknown>;
+    request(from: string, amount: number): Promise<unknown>;
+    respond(id: string, accept: boolean): Promise<unknown>;
+    offer(to: string, entry: string, side: "buy" | "sell", amount: number): Promise<unknown>;
+    accept(id: string): Promise<unknown>;
+    decline(id: string): Promise<unknown>;
+    cancel(id: string): Promise<unknown>;
+    stimulus(amount: number): Promise<unknown>;
+    approve(id: string): Promise<unknown>;
+    deny(id: string): Promise<unknown>;
+  };
   /** Open (creating if needed) a private thread with a guest, or a DM with a character. */
   message: (person: { id: string; kind: "guest" | "character" }) => void;
   /** The alert broadcast that just landed, until dismissed. */
@@ -806,6 +850,37 @@ export function useGuestSession(): GuestSession {
     [post],
   );
   const shareCodex = useCallback((entry: string, to: string) => post("/api/guest/codex/share", { entry, to }), [post]);
+  // The wallet routes: the server's refusal is the whole story (it names
+  // the reason), so it banners quietly instead of throwing at a button.
+  const walletCall = useCallback(
+    async (sub: string, body: Record<string, unknown>): Promise<unknown> => {
+      try {
+        return await post(`/api/guest/wallet/${sub}`, body);
+      } catch (e) {
+        if (e instanceof ApiError) {
+          alertsRef.current?.raise(e.message, { quiet: true });
+          return null;
+        }
+        throw e;
+      }
+    },
+    [post],
+  );
+  const wallet = useMemo(
+    () => ({
+      send: (to: string, amount: number) => walletCall("send", { to, amount }),
+      request: (from: string, amount: number) => walletCall("request", { from, amount }),
+      respond: (id: string, accept: boolean) => walletCall("respond", { id, accept }),
+      offer: (to: string, entry: string, side: "buy" | "sell", amount: number) => walletCall("offer", { to, entry, side, amount }),
+      accept: (id: string) => walletCall("accept", { id }),
+      decline: (id: string) => walletCall("decline", { id }),
+      cancel: (id: string) => walletCall("cancel", { id }),
+      stimulus: (amount: number) => walletCall("stimulus", { amount }),
+      approve: (id: string) => walletCall("approve", { id }),
+      deny: (id: string) => walletCall("deny", { id }),
+    }),
+    [walletCall],
+  );
   // A wall QR's link carries `?unlock=<code>`: redeem it once we're signed
   // in and the doors are open, then drop it from the URL so a reload
   // doesn't try again.
@@ -924,6 +999,7 @@ export function useGuestSession(): GuestSession {
     leaveChannel,
     redeem,
     shareCodex,
+    wallet,
     message,
     alert,
     dismissAlert,
@@ -936,10 +1012,17 @@ export function useGuestSession(): GuestSession {
 
 // --- performer (character) --------------------------------------------------
 
-/** Build the performer's surfaces: a scanner, the broadcast feed, one
- *  conversation per guest (targeted messages, for moderation). */
-export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: PrimeView | null): Channel[] {
+/** The booth's Inbox channel id: cards + notes the story deals to the character. */
+export const INBOX = "__inbox";
+
+/** Build the performer's surfaces: a scanner, the character's Inbox (cards
+ *  the story deals to it), the broadcast feed, the character's own pinned
+ *  Quest Log / Codex, the rooms, the cast threads, and one conversation per
+ *  guest (targeted messages, for moderation). `answered` = the cards this
+ *  booth has answered (a pending one bubbles its room up). */
+export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: PrimeView | null, answered: ReadonlySet<number> = new Set<number>()): Channel[] {
   const all = [...messages.values()];
+  const bySeq = (a: ChatMessage, b: ChatMessage) => a.seq - b.seq;
   const occupants = occupantsByLocation(view?.guests ?? [], null);
   const locationLabel = (loc: string | null): string | null => {
     if (loc === null) return null;
@@ -982,7 +1065,7 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
       id: `guest:${g.id}`,
       kind: "guest" as const,
       title: g.name,
-      subtitle: `${g.faction ?? "unaligned"}${where ? ` · 📍 ${where}` : ""}${g.captured ? " · 🔒 captured" : ""}`,
+      subtitle: `${g.faction ?? "unaligned"}${where ? ` · 📍 ${where}` : ""}${g.captured ? " · 🔒 captured" : ""}${g.restricted ? " · ⛔ restricted" : ""}`,
       spaceId: "guests", // one section of per-guest conversations
       order: 0,
       people: [{ id: g.id, name: g.name, kind: "guest" as const, group: g.faction }],
@@ -1016,10 +1099,11 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
   // privately: the agent's `dm:` channel, narrowed to this performer
   // (audience `@<me>`). The server maps a post to `cast:<id>` onto it.
   const me = view?.character ?? "";
+  const mine = (m: ChatMessage): boolean => Array.isArray(m.audience) && m.audience.includes(`@${me}`);
   const cast: Channel[] = (view?.agents ?? []).map((a) => {
     const msgs = all
-      .filter((m) => m.channel === `dm:${a.id}` && Array.isArray(m.audience) && m.audience.includes(`@${me}`))
-      .sort((x, y) => x.seq - y.seq);
+      .filter((m) => m.channel === `dm:${a.id}` && mine(m))
+      .sort(bySeq);
     return {
       id: `cast:${a.id}`,
       kind: "dm" as const,
@@ -1032,10 +1116,86 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
       messages: msgs,
       unread: 0,
       decision: null,
+      needsYou: hasPendingCard(msgs, answered),
       lastTs: msgs.length ? msgs[msgs.length - 1]!.ts : 0,
     };
   });
-  return [scanner, feed, ...rooms, ...cast, ...guests];
+  // The character's own pinned rooms: its Quest Log (`start quest X for
+  // <Character>`) and Codex (what it knows), addressed `@<me>` — read-only
+  // (a booth types no codes; sharing stays on the guest card).
+  const pinned: Channel[] = [];
+  if ((view?.questTotal ?? 0) > 0) {
+    const msgs = all.filter((m) => m.channel === QUEST_LOG && mine(m)).sort(bySeq);
+    pinned.push({
+      id: QUEST_LOG,
+      kind: "quests",
+      title: "Quest Log",
+      subtitle: questSummary(view?.quests ?? []),
+      spaceId: PINNED_SPACE,
+      order: 0,
+      canPost: false,
+      threadable: true,
+      messages: msgs,
+      unread: 0,
+      decision: null,
+      lastTs: msgs.length ? msgs[msgs.length - 1]!.ts : 0,
+    });
+  }
+  if ((view?.codexTotal ?? 0) > 0) {
+    const msgs = all.filter((m) => m.channel === CODEX_ROOM && mine(m)).sort(bySeq);
+    pinned.push({
+      id: CODEX_ROOM,
+      kind: "codex",
+      title: "Codex",
+      subtitle: `${view?.codex?.length ?? 0} of ${view?.codexTotal ?? 0} found`,
+      spaceId: PINNED_SPACE,
+      order: 1,
+      canPost: false,
+      threadable: false,
+      messages: msgs,
+      unread: 0,
+      decision: null,
+      lastTs: msgs.length ? msgs[msgs.length - 1]!.ts : 0,
+    });
+  }
+  // The approver's Wallet room: the held / pending transfers waiting on
+  // this character, as `@<me>` cards — Approve / Deny live on the cards.
+  if (view?.wallet !== undefined) {
+    const msgs = all.filter((m) => m.channel === WALLET_ROOM && mine(m)).sort(bySeq);
+    pinned.push({
+      id: WALLET_ROOM,
+      kind: "wallet",
+      title: "Wallet",
+      subtitle: queueSummary(view.wallet),
+      spaceId: "booth",
+      order: -1,
+      canPost: false,
+      threadable: true,
+      needsYou: view.wallet.queue.some((t) => t.state === "held"),
+      messages: msgs,
+      unread: 0,
+      decision: null,
+      lastTs: Number.MAX_SAFE_INTEGER - 1,
+    });
+  }
+  // The Inbox: cards and notes the story deals to this character
+  // (`show <kind> … to <Character>` with no thread) — `dm:<me>` rows
+  // addressed `@<me>`. A card still waiting on the booth bubbles it up.
+  const inboxMsgs = all.filter((m) => m.channel === `dm:${me}` && mine(m)).sort(bySeq);
+  const inbox: Channel = {
+    id: INBOX,
+    kind: "dm",
+    title: "Inbox",
+    subtitle: `cards and notes for ${me}`,
+    spaceId: "booth",
+    order: 1,
+    messages: inboxMsgs,
+    unread: 0,
+    decision: null,
+    needsYou: hasPendingCard(inboxMsgs, answered),
+    lastTs: inboxMsgs.length ? inboxMsgs[inboxMsgs.length - 1]!.ts : 0,
+  };
+  return [scanner, inbox, feed, ...pinned, ...rooms, ...cast, ...guests];
 }
 
 /**
@@ -1088,8 +1248,15 @@ export interface PrimeSession {
   act: (name: string, guest: string) => Promise<unknown>;
   /** Codex: hand one of the character's entries to a guest. */
   shareCodex: (entry: string, to: string) => Promise<unknown>;
+  /** The approver's booth: settle a held transfer / deny one in its window. */
+  walletApprove: (id: string) => Promise<unknown>;
+  walletDeny: (id: string) => Promise<unknown>;
   moderate: (id: string, action: string, name?: string) => Promise<unknown>;
   setHidden: (seq: number, hidden: boolean) => Promise<unknown>;
+  /** Answer a card the story dealt to this character (`show … to <Character>`). */
+  answerWidget: (seq: number, result: WidgetResult) => Promise<void>;
+  /** Cards (by seq) this booth has answered — rendered resolved, never re-asked. */
+  widgetAnswers: ReadonlyMap<number, WidgetResult>;
   leave: () => void;
 }
 
@@ -1230,8 +1397,56 @@ export function usePrimeSession(): PrimeSession {
     (id: string, action: string, name?: string) => post("/api/mod/act", { id, action, name }, auth!.token),
     [post, auth],
   );
+  const walletCall = useCallback(
+    async (sub: "approve" | "deny", id: string): Promise<unknown> => {
+      try {
+        return await post(`/api/prime/wallet/${sub}`, { id }, auth!.token);
+      } catch (e) {
+        if (e instanceof ApiError) {
+          alertsRef.current?.raise(e.message, { quiet: true });
+          return null;
+        }
+        throw e;
+      }
+    },
+    [post, auth],
+  );
+  const walletApprove = useCallback((id: string) => walletCall("approve", id), [walletCall]);
+  const walletDeny = useCallback((id: string) => walletCall("deny", id), [walletCall]);
   const setHidden = useCallback(
     (seq: number, hidden: boolean) => post("/api/mod/message", { seq, hidden }, auth!.token),
+    [post, auth],
+  );
+  // Cards dealt to this character: one answer per card. The server refuses
+  // a second (409); the snapshot lists the cards already answered so a
+  // reload renders them resolved (an empty record marks each).
+  const [widgetAnswers, setWidgetAnswers] = useState<ReadonlyMap<number, WidgetResult>>(() => new Map());
+  const answeredList = view?.answered;
+  useEffect(() => {
+    if (answeredList === undefined || answeredList.length === 0) return;
+    setWidgetAnswers((prev) => {
+      if (answeredList.every((seq) => prev.has(seq))) return prev;
+      const next = new Map(prev);
+      for (const seq of answeredList) if (!next.has(seq)) next.set(seq, {});
+      return next;
+    });
+  }, [answeredList]);
+  const answerWidget = useCallback(
+    async (seq: number, result: WidgetResult) => {
+      setWidgetAnswers((prev) => new Map(prev).set(seq, result));
+      try {
+        await post("/api/prime/widget", { seq, result }, auth!.token);
+      } catch (e) {
+        if (!(e instanceof ApiError && e.status === 409)) {
+          setWidgetAnswers((prev) => {
+            const next = new Map(prev);
+            next.delete(seq);
+            return next;
+          });
+        }
+        throw e;
+      }
+    },
     [post, auth],
   );
   const leave = useCallback(() => {
@@ -1241,6 +1456,7 @@ export function usePrimeSession(): PrimeSession {
     setResponses([]);
     setReady(false);
     setNotice(null);
+    setWidgetAnswers(new Map());
     host.onEnded("prime", null);
   }, [drop, host]);
 
@@ -1253,8 +1469,8 @@ export function usePrimeSession(): PrimeSession {
     sound: host.sound,
   });
   alertsRef.current = alerts;
-  const threads = useThreads(buildPrimeChannels(messages, view).map((c) => (typing.has(c.id) ? { ...c, typing: typing.get(c.id) } : c)));
+  const threads = useThreads(buildPrimeChannels(messages, view, new Set(widgetAnswers.keys())).map((c) => (typing.has(c.id) ? { ...c, typing: typing.get(c.id) } : c)));
   const landing = useLandingBrand();
   useTheme(auth === null ? landing.theme : view?.theme);
-  return { auth, view, responses, alert: alerts.alert, dismissAlert: alerts.dismiss, connected, ready, notice, threads, login, scan, say, inviteToChannel, leaveChannel, becomeAdmin, act, shareCodex, moderate, setHidden, leave };
+  return { auth, view, responses, alert: alerts.alert, dismissAlert: alerts.dismiss, connected, ready, notice, threads, login, scan, say, inviteToChannel, leaveChannel, becomeAdmin, act, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, leave };
 }

@@ -3,7 +3,7 @@
 > Not in the story. You stay at **the house Mac** all night. It drives the TV
 > over the long HDMI run, plays room audio through the **MOTU** (ADAT), and
 > runs Mosquitto, Zigbee2MQTT, stagehand `show` + `agents`, Ollama and the
-> Alexa player. If it dies, the house goes quiet but **the story keeps
+> house announcement player. If it dies, the house goes quiet but **the story keeps
 > running on the VPS** and the phones keep working.
 
 ## Card
@@ -19,15 +19,27 @@
 5. stagehand **`show`** job and **`agents`** job (separate launchd jobs:
    `com.mapsandducks.stagehand.show` / `.agents`; `uv run stagehand launchd
    status`). Run → Mind shows Trabolta's worker connected.
-6. The Alexa (announce) player running (`com.mapsandducks.stagehand-alexa`,
-   `scripts/house-mac/alexa.md`).
+6. The house announcements player running: stagehand's `alexa` module
+   (its code name; in the show it is only "the house system") — launchd
+   job `com.mapsandducks.stagehand-alexa`, runbook `scripts/house-mac/alexa.md`.
+   It owns the chime: the story's `sound announce_chime` rides MQTT
+   `show/chime` to it, never QLab, so a chime and an announcement ring once.
 7. QLab show file open, audio routed to the MOTU zones. [[EDIT: or the
    router, if it replaced QLab]]
 8. Chrome kiosk on the TV: `/terminal/?code=<mod>&name=TV&character=Trabolta&spot=desktop-tv&view=tv`. **Click once into the TV page after every boot**
-   (autoplay).
+   (autoplay). The TV speaks every public Trabolta line in the Desktop: the
+   hunt questions, the bottle's *"X. Truth or dare?"* and the truth questions
+   it asks, so its voice must be up before V6.
 9. Wall tablets in Fully Kiosk (`view=auto`: they show the screensaver + ads
    until Trabolta is introduced), all green on the heartbeat card (the Run
    page's Terminals card; the `📟 N/N` pill goes red + chimes on a tablet silent 20 s).
+10. The tent tablet on `/reinstall/?code=<mod>&name=Tent tablet` (the name
+    is what the journal shows when the King is mated: *chess won, by Tent
+    tablet*). The King is tablet-only (⚔ HIT / ♟ CHALLENGE; a headset shows
+    "The King is fought on the tent tablet"); it is not device-checked, so
+    the **chess phone outside the server room stays the fallback** (Lichess,
+    charged, awake). Neither sends a heartbeat: they never show on the
+    Terminals card.
 
 The **mod code is never printed**: [[EDIT: where it lives — your password
 manager]].
@@ -52,7 +64,7 @@ stagehand log · the heartbeat card · QLab.
 | house Mac dead | the story is fine on the VPS. Lights hold their last look; use wall switches / the WLED app. TV: [[EDIT: a spare laptop on the HDMI with the `view=tv` URL]]. Trabolta is down: the directors answer DMs |
 | router dead | the ISP router (same SSID/password) |
 | VPS dead | OP-21: start the warm standby, restore the newest backup, repoint DNS |
-| rain / wind mid-show | the shed switch (W-22): on this device open `/reinstall/map` (signed in with the mod code), press **Shed** in the *Map:* bar and confirm — or `POST /e/<event>/api/mod/spatial/variant {"file":"house.shed.json"}` with the mod token. Programs mid-game keep playing; anyone standing in the shed goes back to the new start. WebMD moves the tent light + speaker. (Copying files on the VPS does nothing: the event plays the project's maps.) |
+| rain / wind mid-show | the shed switch (W-22): on this device open `/reinstall/map` (signed in with the mod code), press **Shed** in the *Map:* bar and confirm — or `POST /e/<event>/api/mod/spatial/variant {"file":"house.shed.json"}` with the mod token. Programs mid-game keep playing; anyone standing in the shed goes back to the new start. Julia (the tent) moves the tent light + speaker. (Copying files on the VPS does nothing: the event plays the project's maps.) |
 
 **ALL STOP:** QLab **Esc** (panic), mute the TV voice, then the wall switches.
 You stay at the house Mac; the house manager leads people.
@@ -73,7 +85,7 @@ the look yourself. [[EDIT: fill the preset numbers / scene names after the
 |---|---|---|
 | `lights_screensaver` (doors) | [[EDIT]] | `modem_handshake` (each login, the Optical Drive) |
 | `lights_tube_chase` (each clearance) | WLED Tube chase [[EDIT: preset #]] | — |
-| `lights_call_desktop` (C1, C2, ⏳) | [[EDIT]] | `alexa_chime` (`countdown_tick` at ⏳) |
+| `lights_call_desktop` (C1, C2, ⏳) | [[EDIT]] | `announce_chime` (`countdown_tick` at ⏳) |
 | `lights_game` (Bingo, hunts) | [[EDIT]] | `bingo_start` (V2) |
 | `lights_truth_time` (V6) | [[EDIT]] | — |
 | `lights_ad_hijack` (📺) | [[EDIT]] | `ad_jingle` + the ad video on the TV |
@@ -89,7 +101,7 @@ the look yourself. [[EDIT: fill the preset numbers / scene names after the
 | `lights_song` / `lights_rave` / `lights_purgatory` / `lights_banish` | [[EDIT]] | the ending's track |
 | `lights_restore` (💡, endings) | house lights up | `motorcycle` on his exits |
 
-Alexa lines (`do announce`) by hand: `say -a <MOTU device> "<line>"` in a
+House announcements (`do announce`) by hand: `say -a <MOTU device> "<line>"` in a
 terminal, or read them over the radio to the room.
 
 ## Before the night

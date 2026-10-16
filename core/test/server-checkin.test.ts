@@ -227,3 +227,20 @@ describe("Trapped in the Internet's room signs", () => {
     expect(signals.some((e) => e.type === "respond" && e.text.startsWith("📍"))).toBe(true);
   });
 });
+
+describe("a restricted guest (wave 4, lane E)", () => {
+  it("may not check in anywhere until the story lifts it — 409, nothing journaled", async () => {
+    const { rt, dir } = fresh();
+    const sim = rt.liveSim!;
+    const g = await guest(rt, "Rae");
+    sim.restrict(g.id, ["Hall"]);
+    const before = readFileSync(join(dir, "journal.ndjson"), "utf8");
+    const r = await checkin(rt, g.token, "the-cache");
+    expect(r.status).toBe(409);
+    expect(r.json.error).toMatch(/restricted/);
+    expect(checkinRefusal(sim, g.id, "Hall")?.status).toBe(409);
+    expect(readFileSync(join(dir, "journal.ndjson"), "utf8")).toBe(before);
+    sim.unrestrict(g.id);
+    expect((await checkin(rt, g.token, "the-cache")).status).toBe(200);
+  });
+});

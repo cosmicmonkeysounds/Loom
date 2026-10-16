@@ -4,9 +4,11 @@
 //   bobbing_for_truth           → Bobbing For Truth
 //   brought_up_the_bag          → The Bag Of Truth → ranking (round 2) → Final Assessment
 //   read_truth_txt              → Truth Txt → The Verdict
-//        all eight accurate     → Song Ending                    (ending song)
-//        anything else          → Grok Prom
+//        no lie on record       → Song Ending                    (ending song)
+//        any lie on record      → Grok Prom
 //            the pickup line    → Pickup Line → Song Ending      (ending song_pickup)
+//            (Trabolta DMs everyone for the line in both branches: an
+//             `answer` card judged by the server; main.loom `answer answered`)
 //            no_pickup_line     → Sad Confession                 (ending rave)
 //            ask_for_advice     → Relationship Advice (poll)
 //                advice_helped   → Advice Helped                 (ending help)
@@ -82,37 +84,43 @@ Narrator: Why each person was brought into the computer, by role.
 if count([p for p in Persons where p.featured == "excel"]) > 0:
   Narrator: The former Mayor, Microsoft Excel, was brought in to persuade everyone to remain. He would say yes to everlasting life.
 if count([p for p in Persons where p.featured == "openoffice"]) > 0:
-  Narrator: The ex-FBI agent, OpenOffice, was brought in for her investigative skills, to lead the faction that wants to get out of the computer.
+  Narrator: The ex-FBI agent, OpenOffice, was brought in for investigative skills nonpareil, a conscience that can be leaned on, and the nerve to lead everyone who wants out.
 if count([p for p in Persons where p.featured == "draftkings"]) > 0:
-  Narrator: The gambler, DraftKings, was brought in as someone powerful with numbers on its side. In here, it can gamble forever.
+  Narrator: The gambler, DraftKings, was brought in as someone powerful with numbers on its side, who would make everyone gamble.
 if count([p for p in Persons where p.featured == "bugdom"]) > 0:
-  Narrator: The designer, Bugdom, was promised unlimited Bugdom. Trabolta wanted the relentless pursuit of tedious tasks.
+  Narrator: The cricket seller, Bugdom, was brought in for the relentless pursuit of tedious tasks, and promised a hundred hours for not one minute.
 if count([p for p in Persons where p.featured == "jeeves"]) > 0:
-  Narrator: The librarian, Broken Ask Jeeves, was brought in to sort all the unorganised information in the computer. The upload ran over the Valley's old DSL line. Trabolta did not foresee that.
+  Narrator: The librarian, Broken Ask Jeeves, was brought in to sort all the unorganised information in the computer and share ten findings with everyone. The upload ran over a 10 MB/Minute plan.
 if count([p for p in Persons where p.featured == "runescape"]) > 0:
-  Narrator: The economist, Runescape, was brought in to understand the market incentives of everyone's behaviour, so the facts could be traded.
+  Narrator: The economist, Runescape, was brought in to understand the market incentives of everyone's behaviour, so the facts get exchanged.
 if count([p for p in Persons where p.featured == "mspaint"]) > 0:
-  Narrator: The artist, MS Paint, was brought in to improve the overall vibes and morale. She realised at once how limiting it was, and wanted out.
+  Narrator: The artist, MS Paint, was brought in to improve the vibes and the morale, for a million dollars and one painting. She wanted out the moment she arrived.
 if count([p for p in Persons where p.featured == "vlc"]) > 0:
   Narrator: The influencer, VLC, was brought in to stay beautiful forever and use his charisma to convince everyone to help Trabolta.
 if count([p for p in Persons where p.featured == "pong"]) > 0:
   Narrator: The child of Tennis For Two, Pong, was brought in to teach nuclear non-proliferation disguised as a game of Pong, in case the programs started an arms race.
-Narrator: The organiser, Clippy, was brought in as the perfect servant who desperately needs to rebuild an identity. She was promised she could help people all night, and that her debt would no longer be relevant.
+Narrator: The organiser, Clippy, was brought in as the perfect servant who desperately needs to rebuild an identity, who will follow every instruction and offer everyone Help.
 Narrator: The middle manager, Task Manager, was brought in to manage tasks without controversy or political motivation, and never draw attention.
 Narrator: The motivational speaker, Adobe Acrobat, was brought in as the paid bottleneck to everyone's creativity.
 Narrator: The bathroom attendant, Recycling Bin, was brought in because a computer-themed resort needs a Recycling Bin, and he had great potential for skilled work.
-Narrator: The horse relay champion, Norton Anti-Virus, was brought in as a perfect enforcer, to moderate a new digital chatroom.
-Narrator: The subreddit moderator, McAfee Anti-Virus, was brought in for a decade of moderation experience. They want to get rich on the exchange of information.
-Narrator: The Yu-gi-oh player, Password Manager, was brought in to manage all passwords and decide who gets to be part of what clubs.
-Narrator: The intern who skimmed the City, CRA Agent Software, was brought in for her financial expertise, for one day that feels like eternity.
-Narrator: The symptom checker, WebMD, was brought in as a wellness voice nobody can sue, to keep re-education gentle.
+Narrator: The stable manager, Norton Anti-Virus, was brought in as someone with experience administering antiviral regimes, who could not afford to fail twice.
+Narrator: The dead man, McAfee Anti-Virus, was brought in because only a trickster can keep tricksters on track, and he can be made to.
+Narrator: The candidate, Password Manager, was brought in to decide what gets left out without ever asking for a vote.
+Narrator: The intern, CRA Agent Software, was brought in to approve or deny every transaction, to the cent.
+Narrator: The setup assistant, the Installation Wizard, was brought in to walk the corrupted through re-installation, gently.
 Narrator: End of file.
 
+// The verdict counts only ANSWERED questions: every accepted answer
+// accurate → the song; any lie on record (a review filing still pending
+// counts by its proposal) → Grok Prom. A question nobody answered is not
+// a lie.
 == The Verdict
   setting: The Desktop
-set Kernel.all_accurate = false
-if Kernel.q1 == "accurate" and Kernel.q2 == "accurate" and Kernel.q3 == "accurate" and Kernel.q4 == "accurate" and Kernel.q5 == "accurate" and Kernel.q6 == "accurate" and Kernel.q7 == "accurate" and Kernel.q8 == "accurate":
-  set Kernel.all_accurate = true
+set Kernel.all_accurate = true
+if Kernel.q1 == "lie" or Kernel.q2 == "lie" or Kernel.q3 == "lie" or Kernel.q4 == "lie" or Kernel.q5 == "lie" or Kernel.q6 == "lie" or Kernel.q7 == "lie" or Kernel.q8 == "lie":
+  set Kernel.all_accurate = false
+if count([p for p in Persons where (p.fact_v1 == "pending" and p.fact_j1 == "lie") or (p.fact_v2 == "pending" and p.fact_j2 == "lie") or (p.fact_v3 == "pending" and p.fact_j3 == "lie") or (p.fact_v4 == "pending" and p.fact_j4 == "lie") or (p.fact_v5 == "pending" and p.fact_j5 == "lie") or (p.fact_v6 == "pending" and p.fact_j6 == "lie") or (p.fact_v7 == "pending" and p.fact_j7 == "lie") or (p.fact_v8 == "pending" and p.fact_j8 == "lie")]) > 0:
+  set Kernel.all_accurate = false
 if Kernel.all_accurate == true:
   -> Song Ending
 else:
@@ -123,6 +131,11 @@ else:
 == Song Ending
   setting: The Desktop
   cast: Trabolta, Sandy
+// The pickup-line DM to everyone (flavour here: the first correct line is
+// read before the song). Not again after Grok Prom, where it was already
+// dealt and one of them was the way out.
+if Night.phase != "grok_prom":
+  set Night.pickup_gen += 1
 set Night.ended = true
 if Night.phase == "grok_prom":
   set Night.ending = "song_pickup"
@@ -162,6 +175,8 @@ Trabolta: Because you did not find facts, or presented inaccurate information as
 Trabolta: And now it's raining on prom night and I have nowhere to go.
 Trabolta: There is only one way that those of you who want to leave the computer can escape it now. Give me a pickup line that works on Sandy.
 Trabolta: One line. I will know it when I hear it.
+// The DM to everyone: the first correct line is the escape (main.loom).
+set Night.pickup_gen += 1
 
 == Pickup Line
   setting: The Desktop

@@ -5,14 +5,16 @@
 import { describe, expect, it } from "vitest";
 import { BufferGeometry, DoubleSide, Group, InstancedMesh, Matrix4, Mesh, MeshLambertMaterial, Object3D, Vector3 } from "three";
 import type { Material } from "three";
-import { buildRamps, buildWalls, forward, roomById, route, toSpace } from "../src/index.ts";
+import { buildRamps, buildWalls, doorGap, forward, roomById, route, toSpace } from "../src/index.ts";
 import type { SpaceTransform, Vec3 } from "../src/index.ts";
 import {
   buildHouseScene,
   createAvatar,
   createDuck,
+  createKing,
   createTrail,
   hasDom,
+  KING_FALL,
   planeGeometry,
   rampGeometry,
   spaceGroup,
@@ -364,5 +366,124 @@ describe("spaceGroup", () => {
     const id = spaceGroup(undefined);
     expect(id.position.toArray()).toEqual([0, 0, 0]);
     expect(id.scale.toArray()).toEqual([1, 1, 1]);
+  });
+});
+
+describe("createKing + guarded doors in buildHouseScene", () => {
+  const kingProp = show.props.find((p) => p.kind === "king")!;
+  const guarded = show.doors.filter((d) => d.guard !== undefined);
+
+  it("a king prop is its own group (king:<id>) on its floor, never merged into props:<floor>; no bar sprite without a DOM", () => {
+    const scene = buildHouseScene(show, { labels: false });
+    expect(kingProp).toBeDefined();
+    const k = scene.kings.get(kingProp.id)!;
+    expect(k).toBeDefined();
+    expect(k.object.name).toBe(`king:${kingProp.id}`);
+    expect(k.object.parent).toBe(scene.floors.get(roomById(show, kingProp.room)!.floor));
+    expect(k.object.position.toArray()).toEqual(kingProp.pos);
+    expect(k.object.rotation.y).toBeCloseTo(((kingProp.yaw ?? 0) * Math.PI) / 180);
+    expect(k.object.getObjectByName("king:bar")).toBeUndefined();
+    expect(k.object.getObjectByName("king:mesh")).toBeDefined();
+    // The floor's merged props carry one geometry less than the floor's non-king props would.
+    const bare = { ...show, props: show.props.filter((p) => p.kind !== "king") };
+    const plain = buildHouseScene(bare, { labels: false });
+    const floorId = roomById(show, kingProp.room)!.floor;
+    const count = (s: typeof scene) => (s.floors.get(floorId)!.getObjectByName(`props:${floorId}`) as Mesh).geometry.getAttribute("position").count;
+    expect(count(scene)).toBe(count(plain));
+    expect(plain.kings.size).toBe(0);
+    scene.dispose();
+    plain.dispose();
+  });
+
+  it("a guarded door has a door:<id> leaf in its gap; a map without guards has none; kings: false drops both", () => {
+    const scene = buildHouseScene(show, { labels: false });
+    expect(guarded.length).toBeGreaterThan(0);
+    expect([...scene.doors.keys()]).toEqual(guarded.map((d) => d.id));
+    for (const door of guarded) {
+      const leaf = scene.doors.get(door.id)!;
+      expect(leaf.name).toBe(`door:${door.id}`);
+      expect(leaf.visible).toBe(true);
+      const gap = doorGap(show, door)!;
+      // Centred in the gap, floor to door top.
+      if (gap.axis === "x") {
+        expect(leaf.position.z).toBeCloseTo(gap.c);
+        expect(leaf.position.x).toBeCloseTo((gap.lo + gap.hi) / 2);
+      } else {
+        expect(leaf.position.x).toBeCloseTo(gap.c);
+        expect(leaf.position.z).toBeCloseTo((gap.lo + gap.hi) / 2);
+      }
+      expect(leaf.position.y).toBeCloseTo((gap.bottom + gap.top) / 2);
+      leaf.geometry.computeBoundingBox();
+      const size = leaf.geometry.boundingBox!.getSize(new Vector3());
+      expect(size.y).toBeCloseTo(gap.top - gap.bottom);
+      expect(gap.axis === "x" ? size.x : size.z).toBeCloseTo(gap.hi - gap.lo - 0.02);
+      expect(leaf.parent).toBe(scene.floors.get(gap.floor));
+    }
+    scene.dispose();
+    const none = buildHouseScene({ ...show, doors: show.doors.map((d) => ({ ...d, guard: undefined })) }, { labels: false });
+    expect(none.doors.size).toBe(0);
+    none.dispose();
+    const off = buildHouseScene(show, { labels: false, kings: false });
+    expect(off.kings.size).toBe(0);
+    expect(off.doors.size).toBe(0);
+    off.dispose();
+  });
+
+  it("king: setHp / hit / fall drive the state machine on update(dt); reset stands him up", async () => {
+    const k = createKing(kingProp);
+    const body = k.object.getObjectByName("king:body")!;
+    expect(k.state).toBe("standing");
+    k.setHp(4, 4); // no DOM: no bar, no throw
+    k.update(0.1);
+    k.hit();
+    expect(k.state).toBe("staggering");
+    k.update(0.1);
+    expect(body.rotation.x).toBeLessThan(0); // tilted back
+    for (let i = 0; i < 5; i++) k.update(0.1);
+    expect(k.state).toBe("standing");
+    expect(body.rotation.x).toBe(0);
+    let done = false;
+    const p = k.fall().then(() => (done = true));
+    expect(k.fall()).toBe(k.fall());
+    expect(k.state).toBe("fallen");
+    k.hit(); // a fallen king takes no more hits
+    expect(k.state).toBe("fallen");
+    let t = 0;
+    while (t < KING_FALL - 0.2) {
+      k.update(0.1);
+      t += 0.1;
+      await Promise.resolve();
+    }
+    expect(done).toBe(false);
+    expect(body.rotation.x).toBeLessThan(-1); // most of the way over
+    for (let i = 0; i < 5; i++) {
+      k.update(0.1);
+      await Promise.resolve();
+    }
+    await p;
+    expect(done).toBe(true);
+    expect(k.object.getObjectByName("king:mesh")!.visible).toBe(false);
+    k.reset();
+    expect(k.state).toBe("standing");
+    expect(k.object.getObjectByName("king:mesh")!.visible).toBe(true);
+    expect(body.rotation.x).toBe(0);
+    const geoms = geometries(k.object);
+    let freed = 0;
+    for (const g of geoms) g.addEventListener("dispose", () => freed++);
+    k.dispose();
+    expect(freed).toBe(geoms.size);
+  });
+
+  it("the scene's update drives its kings and dispose frees them", () => {
+    const scene = buildHouseScene(show, { labels: false });
+    const k = scene.kings.get(kingProp.id)!;
+    k.hit();
+    scene.update(0.5);
+    expect(k.state).toBe("standing");
+    const geoms = geometries(k.object);
+    let freed = 0;
+    for (const g of geoms) g.addEventListener("dispose", () => freed++);
+    scene.dispose();
+    expect(freed).toBe(geoms.size);
   });
 });

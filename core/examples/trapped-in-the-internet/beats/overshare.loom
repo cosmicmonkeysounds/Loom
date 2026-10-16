@@ -1,9 +1,12 @@
 // The overshare, the clock, the final round (spec §3 D9–D10, F1).
 //
 // trabolta_overshares picks Night.scenario from Kernel.excel_planted and
-// Kernel.openoffice_dossier (main.loom) and diverts to ONE of the four
-// Overshare beats. All four are PUBLIC and open the same way: Trabolta
-// shares the next facts, F1 and F2, verbatim. Then they diverge:
+// Kernel.openoffice_dossier (main.loom) and diverts to Overshare Open:
+// Trabolta asks for the final facts, read by the generated `Final
+// Questions` (generated/questions.loom, from facts.json), which hands back
+// to Overshare Go — and that diverts to ONE of the four Overshare beats
+// by Night.scenario (every divert the last item of its beat). All four
+// are PUBLIC; they diverge after the questions:
 //   One   — virus planted AND 20 facts: Sandy, the trap, the virus, the LiveJournal.
 //   Two   — 20 facts only: the LiveJournal.
 //   Three — virus only: the virus.
@@ -14,13 +17,28 @@
 // Round (the only speaker there is Truther Download). y2k_midnight →
 // Clock Strikes (public narration).
 
-== Overshare One
+== Overshare Open
   setting: The Desktop
   cast: Trabolta
 
 Trabolta: Programs. I will now share the final facts I require. There are two. They are in your Quest Log.
-Trabolta: Final fact one. What is the only thing Sandy has ever said?
-Trabolta: Final fact two. Who is taking Sandy to computer prom?
+-> Final Questions
+
+== Overshare Go
+  setting: The Desktop
+if Night.scenario == 1:
+  -> Overshare One
+else if Night.scenario == 2:
+  -> Overshare Two
+else if Night.scenario == 3:
+  -> Overshare Three
+else:
+  -> Overshare Four
+
+== Overshare One
+  setting: The Desktop
+  cast: Trabolta
+
 Trabolta: I need these facts because— I am only trying to prove the Unified Field Theory to win back my ex. Sandy.
 Trabolta: When the theory is complete I will finally be able to explain everything to her. Properly. In a way she understands.
 Trabolta: And if the facts are not accurate, the theory will not complete, and none of you will leave this computer. Ever. Depending on whether I get all accurate facts, you may all be trapped in here forever.
@@ -34,9 +52,6 @@ Trabolta: One of you read my LiveJournal and I know who. Warning for all of you:
   setting: The Desktop
   cast: Trabolta
 
-Trabolta: Programs. I will now share the final facts I require. There are two. They are in your Quest Log.
-Trabolta: Final fact one. What is the only thing Sandy has ever said?
-Trabolta: Final fact two. Who is taking Sandy to computer prom?
 Trabolta: These facts are routine. They are simply the last two. That is all they are.
 The screens stutter. For a moment the face on every screen is just a cursor.
 Trabolta: One of the programs has directly accessed my context, and I have been alerted to this.
@@ -46,9 +61,6 @@ Trabolta: One of you read my LiveJournal and I know who. Warning for all of you:
   setting: The Desktop
   cast: Trabolta
 
-Trabolta: Programs. I will now share the final facts I require. There are two. They are in your Quest Log.
-Trabolta: Final fact one. What is the only thing Sandy has ever said?
-Trabolta: Final fact two. Who is taking Sandy to computer prom?
 The screens stutter. For a moment the face on every screen is just a cursor.
 Trabolta: My systems are reporting that someone brought a virus back from the Internet, and I am determined to find out who.
 Trabolta: Everything depends on these facts. Everything. More than you know.
@@ -57,9 +69,6 @@ Trabolta: Everything depends on these facts. Everything. More than you know.
   setting: The Desktop
   cast: Trabolta
 
-Trabolta: Programs. I will now share the final facts I require. There are two. They are in your Quest Log.
-Trabolta: Final fact one. What is the only thing Sandy has ever said?
-Trabolta: Final fact two. Who is taking Sandy to computer prom?
 The screens stutter. For a moment the face on every screen is just a cursor.
 Trabolta: That is all. Thank you for your continued cooperation.
 Trabolta: She will— the theory will be complete.

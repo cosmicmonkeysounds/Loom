@@ -63,6 +63,11 @@ openers end with `:` and indent their body.
 | `cue x` / `sound x` / `pause` / `flash white, 200` / `anchor x` | stagecraft |
 | `fire lockdown` / `fire rally for guest` / `fire alarm with level: 3` | raise a named event |
 | `reply text` | private line back to whoever acted |
+| `show fact "📝 File a fact" to guest with questions: "H1: … \| H2: …"` | deal a card (`captcha` / `poll` / `image` / `tutorial` / `pass` / `fact` / `answer`) |
+| `unlock The Sandy File for guest` | hand out a codex entry |
+| `start quest X for who` / `update` / `complete` / `fail` (+ `"line"`) | the quest log — `who` may be a character |
+| `restrict guest to The Tube, The Internet` / `unrestrict guest` | shrink a guest's app to DMs + those places, no buttons — and lift it |
+| `pin "!🚨 text" [in room] [for who]` / `unpin [in room] [for who] ["text"]` | a sticky notice above a stream (`!` = alert) — and take it down |
 | `do verb args` | any custom verb (show control, extensions) |
 | `Ivo: Lightning?<flash: white, 200>` | the `<verb: args>` long form, for mid-line effects |
 
@@ -124,6 +129,11 @@ openers end with `:` and indent their body.
 | `participant(X)` `group(G)` `location(L)` , `and` / `but` | broadcast scopes |
 | `(improv duration: 45s, advance on: any […])` | an improvised beat |
 | `SPACE` / `CHANNEL` | chat sections / rooms |
+| `CODEX Name` + `about:` / `code:` / `secret: true` | lore a participant holds, unlocks, shares |
+| `QUEST Name` + `title:` / `from:` / `text:` | a quest for the Quest Log |
+| `INTERACTION name` + `label:` / `who:` / `by:` / `while:` | a button in the app (or a cue on the sheet) |
+| `currency: score as Truthcoin, max 500, expiry 10m` (header) | a wallet over a ROLE slot ([currency](currency.md)) |
+| `wallet: approver, every 3, window 60s` / `wallet: minter, limit 3, while <cond>` | on a CHARACTER: who audits transfers / who mints a stimulus |
 | `GENERATOR` / `SCENE` , `loop` / `wait until` / `tier:` / `while` | background life |
 | `spawn X` / `run X(args)` / `cancel X` | launch / await / stop a coroutine |
 
@@ -137,6 +147,10 @@ openers end with `:` and indent their body.
 | `when joins The Gardeners:` | membership added |
 | `when someone joins:` | a new participant is created |
 | `when lockdown:` / `when rally for guest:` | a named event you `fire` |
+| `when fact answered for guest:` | a card was answered (`question` / `answer` / `confidence` / `verdict` bound) |
+| `when guest learns X:` / `when guest completes quest X:` | lore unlocked / a quest step |
+| `when restricted for guest:` / `when unrestricted for guest:` | `restrict` / `unrestrict` took effect |
+| `when transfer_received for guest:` | the wallet moved coin (narrate; never move it yourself) |
 | `when self.suspicion >= 70:` | a **watcher** — the condition becomes true |
 | a `when …:` at file level | a **story rule** — no owner, no `self` |
 | `fire x for who with k: v` | raise an event with a subject and details |

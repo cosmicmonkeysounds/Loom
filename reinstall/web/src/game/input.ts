@@ -109,7 +109,10 @@ export const GAME_KEYS: ReadonlySet<string> = new Set([
   "ArrowRight",
   "ShiftLeft",
   "ShiftRight",
+  // Space hits the King, C challenges him (`fight.ts`; the engine reads
+  // the key-down edge, not the held set).
   "Space",
+  "KeyC",
 ]);
 
 /** What the key handlers read off a `KeyboardEvent`. */

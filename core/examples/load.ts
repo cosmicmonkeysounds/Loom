@@ -21,6 +21,7 @@ import { fileURLToPath } from "node:url";
 import { join, relative, sep } from "node:path";
 
 import { isMapFile } from "../server/house-maps.ts";
+import { FACTS_FILE } from "../src/facts.ts";
 
 export interface ScenarioFile {
   /** Project-relative path (`main.loom`, `cast/algorithm.loom`). */
@@ -77,6 +78,21 @@ export function scenarioMapFiles(name: string): ScenarioFile[] {
     .filter((f) => isMapFile(f) && statSync(join(root, f)).isFile())
     .sort()
     .map((f) => ({ path: f, source: readFileSync(join(root, f), "utf8") }));
+}
+
+/**
+ * The example's `facts.json` (the facts judge's key + the generator's
+ * sections, `src/facts.ts`) as `{ path, source }`, or null when the example
+ * has none. Not story: synced as a project file beside the maps.
+ */
+export function scenarioFactsFile(name: string): ScenarioFile | null {
+  const full = join(scenarioDir(name), FACTS_FILE);
+  try {
+    if (!statSync(full).isFile()) return null;
+  } catch {
+    return null;
+  }
+  return { path: FACTS_FILE, source: readFileSync(full, "utf8") };
 }
 
 /**

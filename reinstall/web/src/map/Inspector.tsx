@@ -218,7 +218,15 @@ export function Inspector(props: InspectorProps) {
           </div>
           {posFields}
           {yawField}
-          <p className="muted small">Size, colour and kind are edited in the JSON tab.</p>
+          {p.kind === "king" && (
+            <p className="muted small">
+              ♔ A King: {p.hp ?? 4} hit point{(p.hp ?? 4) === 1 ? "" : "s"} · posts {p.signals?.won ?? "chess won"} / {p.signals?.lost ?? "chess lost"} / {p.signals?.drawn ?? "chess drawn"}
+              {p.armed !== undefined ? ` · armed when ${p.armed.path} ≥ ${p.armed.min}` : " · never badged armed"}
+              {" "}
+              — guards {house.doors.filter((d) => d.guard === p.id).map((d) => d.id).join(", ") || "no door"}.
+            </p>
+          )}
+          <p className="muted small">Size, colour and kind{p.kind === "king" ? ", hp, signals and armed" : ""} are edited in the JSON tab.</p>
           {remove("prop")}
         </div>
       );
@@ -234,6 +242,12 @@ export function Inspector(props: InspectorProps) {
           <h3>▯ Door</h3>
           <div className="kv">
             id <code>{d.id}</code> · {roomName(d.a)} ↔ {roomName(d.b)}
+            {d.guard !== undefined && (
+              <>
+                {" "}
+                · guarded by <code>{d.guard}</code> (shut until that King falls; edited in the JSON tab)
+              </>
+            )}
           </div>
           <div className="num-row">
             <Num label="width m" value={d.width} disabled={!edit} onChange={(v) => v !== null && v > 0 && commit(patchDoor(house, d.id, { width: v }))} />

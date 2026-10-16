@@ -84,6 +84,8 @@ export interface Door {
   at: Vec2;
   width: number;
   height?: number;
+  /** The id of a "king" prop that guards this door: the games draw a closed leaf in the gap and keep it shut until that king falls. */
+  guard?: string;
 }
 
 /**
@@ -131,7 +133,7 @@ export interface Spawn {
   yaw: number;
 }
 
-export type PropKind = "box" | "cylinder" | "screen" | "label";
+export type PropKind = "box" | "cylinder" | "screen" | "label" | "king";
 
 export interface Prop {
   id: string;
@@ -144,8 +146,15 @@ export interface Prop {
   yaw?: number;
   color?: string;
   label?: string;
-  /** Collides. Default: true for box / cylinder, false otherwise (`propSolid`). */
+  /** Collides. Default: true for box / cylinder / king, false otherwise (`propSolid`). */
   solid?: boolean;
+  /** kind "king" only: hit points before he is "pawns only" (1–9, default 4). */
+  hp?: number;
+  /** kind "king" only: the story signals the game posts (defaults "chess won" / "chess lost" / "chess drawn"). */
+  signals?: { won?: string; lost?: string; drawn?: string };
+  /** kind "king" only: when the fight is "armed" rather than practice — a numeric world var at or above `min`
+   *  (read off the mod view's `world`); absent = no badge. */
+  armed?: { path: string; min: number };
 }
 
 /** `world = Ry(yaw) · (scale · house) + offset`. */

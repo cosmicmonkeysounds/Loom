@@ -195,3 +195,97 @@ describe("the map belongs to the project (Postgres)", () => {
     await eventCall(p.id, "end");
   });
 });
+
+// ───────────────────────── the facts key rides the same snapshot ─────────────────────────
+
+/** A generic judged story: every joiner gets a 📝 fact card; the hook echoes the verdict. */
+const JUDGED = `# Judged
+start: Boot
+
+LOCATION Lobby
+  label: The Lobby
+
+ROLE Program
+  when someone joins:
+    -> Deal
+  when fact answered for program:
+    do fact_filed {program} {question} {confidence} {verdict} {answer}
+    do fact_judged {program} {question} {verdict}
+
+CHARACTER The Oracle
+  listed: true
+
+== Boot
+  setting: Lobby
+Nothing yet.
+
+== Deal
+  setting: Lobby
+show fact "File a fact" to program with thread: The Oracle, questions: "Q1: How many?"
+`;
+const KEY_A = JSON.stringify({ version: 1, questions: [{ id: "Q1", round: 1, text: "How many?", answer: "eleven", accept: [] }] });
+const KEY_B = JSON.stringify({ version: 1, questions: [{ id: "Q1", round: 1, text: "How many?", answer: "twelve", accept: [] }] });
+const factsView = async (rt: EventRuntime) => (await modCall(rt, "GET", "/api/state?role=mod")).json.facts as { questions: Array<{ id: string }> } | undefined;
+
+describe("the facts key belongs to the project (Postgres)", () => {
+  it("launch snapshots facts.json beside the maps (not among them); reload refreshes it; End → relaunch plays the current key", async (ctx) => {
+    if (!hasDb) return ctx.skip();
+    const p = await createProject(OWNER, "Judged show");
+    await upsertFile(p.id, "main.loom", JUDGED);
+    await upsertFile(p.id, "house.json", named("Tent"));
+    await upsertFile(p.id, "facts.json", KEY_A);
+
+    const launched = await eventCall(p.id, undefined, { mode: "preview" });
+    expect(launched.status).toBe(200);
+    const id = (launched.json.event as { id: string }).id;
+    const row = (await activeEvent(p.id))!;
+    expect(Object.keys(row.house_maps!).sort()).toEqual(["facts.json", "house.json"]);
+    const rt = registry.get(id)!;
+    expect(rt.facts).toBe(KEY_A);
+    expect(Object.keys(rt.houseMaps!)).toEqual(["house.json"]); // map readers never see the key
+    expect(await liveMap(rt)).toMatchObject({ source: "project", house: { name: "Tent" } });
+    expect((await factsView(rt))?.questions.map((q) => q.id)).toEqual(["Q1"]);
+
+    // A fixed key: editing the project changes nothing until a reload.
+    await upsertFile(p.id, "facts.json", KEY_B);
+    expect(rt.facts).toBe(KEY_A);
+    expect((await eventCall(p.id, "reload")).status).toBe(200);
+    expect(rt.facts).toBe(KEY_B);
+    expect((await activeEvent(p.id))!.house_maps!["facts.json"]).toBe(KEY_B);
+    expect(Object.keys(rt.houseMaps!)).toEqual(["house.json"]);
+
+    // Emptied (the editor's New file… shape): the project has no key → nothing judged.
+    await upsertFile(p.id, "facts.json", "");
+    expect((await eventCall(p.id, "reload")).status).toBe(200);
+    expect(rt.facts).toBeNull();
+    expect((await activeEvent(p.id))!.house_maps).toEqual({ "house.json": named("Tent") });
+
+    // End → relaunch: the project's current key.
+    await upsertFile(p.id, "facts.json", KEY_A);
+    expect((await eventCall(p.id, "end")).status).toBe(200);
+    const again = await eventCall(p.id, undefined, { mode: "preview" });
+    const next = registry.get((again.json.event as { id: string }).id)!;
+    expect(next.facts).toBe(KEY_A);
+    expect((await factsView(next))?.questions.map((q) => q.id)).toEqual(["Q1"]);
+    await eventCall(p.id, "end");
+  });
+
+  it("PUT /files refuses a facts.json that doesn't validate (an empty new file is fine)", async (ctx) => {
+    if (!hasDb) return ctx.skip();
+    const p = await createProject(OWNER, "Key writes");
+    const put = async (path: string, content: string) => {
+      const res = fakeRes();
+      await handleProjects(fakeReq({ path, content }), res, "PUT", `/api/projects/${p.id}/files`, USER);
+      return { status: res.statusCode, json: JSON.parse(res.body || "{}") as Record<string, unknown> };
+    };
+    const bad = await put("facts.json", "{ not json");
+    expect(bad.status).toBe(400);
+    expect(bad.json.error).toBe("invalid facts.json");
+    expect((bad.json.problems as string[]).length).toBeGreaterThan(0);
+    expect((await put("facts.json", JSON.stringify({ version: 2, questions: [] }))).status).toBe(400);
+    expect(await getFile(p.id, "facts.json")).toBeNull();
+    expect((await put("facts.json", "")).status).toBe(200);
+    expect((await put("facts.json", KEY_A)).status).toBe(200);
+    expect((await put("notes/facts.json", "{ not a key")).status).toBe(200);
+  });
+});

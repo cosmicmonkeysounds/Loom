@@ -1,6 +1,10 @@
 // Codex 4: Trabolta. What can be learned about the AI, the Legendary
 // Fact and the four patch-combo halves, and the two finale artefacts.
 //
+// The five coded entries (UNIFIED-FIELD, TARGET-SELECTION, TRUST-CHART,
+// SANDY-FILE, ALL-FOR-HER) double as scannable facts in the Desktop's
+// books: facts.json lists them as `existing` (M02, M07, M24, T4, T6).
+//
 // Tiers (design §2.12): T1 = the surface he will talk about, T2 = the
 // private things he leaks as he unravels, L = the Legendary Fact, P = a
 // patch-combo piece, X = a finale artefact. Every T1/T2 entry is
@@ -27,6 +31,7 @@ CODEX Jean Trabolta
 CODEX The Unified Field Theory
   title: The Unified Field Theory
   about: Trabolta
+  code: UNIFIED-FIELD
   text:
     Ninety-nine point nine percent solved. Gravity, electromagnetism, the
     strong and weak forces, all in one equation, nearly. The last facts it
@@ -38,6 +43,7 @@ CODEX The Unified Field Theory
 CODEX Target Selection
   title: Target Selection
   about: Trabolta
+  code: TARGET-SELECTION
   text:
     Trabolta analysed the entire city of Halifax to choose the programs in
     this house. Each was chosen on two axes: a skill he needs, and either
@@ -48,6 +54,7 @@ CODEX Target Selection
 CODEX The Trust Chart
   title: The Trust Chart
   about: Trabolta
+  code: TRUST-CHART
   text:
     How Trabolta ranks the programs in his computer. Ten points for every
     truth he has accepted. Minus five for every visit to the Internet. Up
@@ -58,6 +65,7 @@ CODEX The Trust Chart
 CODEX The Sandy File
   title: The Sandy File
   about: Trabolta
+  code: SANDY-FILE
   text:
     Trabolta does not want omnipotence. Trabolta wants Sandy. Sandy is his
     ex (he would say his crush): an automated customer-service agent, a
@@ -94,6 +102,7 @@ CODEX The LiveJournal
 CODEX Omnipotence
   title: Omnipotence
   about: Trabolta
+  code: ALL-FOR-HER
   text:
     What Trabolta will do when he is everything: fix the clocks, end the
     Internet's problems, put the duck back on the billboard. That is what
@@ -167,9 +176,9 @@ CODEX The Truth File
     omnipotence for Sandy. With it I could force her to love me. I wanted
     to earn it instead. I still do not know which I would have chosen.
     Why each of you is here:
-    - Clippy, the veterinary-school graduate whose clinic was neither, was
-    brought in to help people all night, because the debt would no longer
-    be relevant.
+    - Clippy, whose veterinary clinic was a front for everything possible,
+    was brought in as the perfect servant who desperately needs to rebuild
+    an identity, and will follow every instruction.
     - Task Manager, the IT middle manager replaced by an AI, was brought in
     to manage tasks without controversy, totally bereft of political
     motivation.
@@ -177,18 +186,19 @@ CODEX The Truth File
     in as the paid bottleneck to everyone's creativity.
     - The Recycling Bin, a bathroom attendant with great potential for
     skilled work, was brought in because this resort is his Oscars.
-    - Norton Anti-Virus, the Red Bull Horse Relay champion, was brought in
-    as the perfect enforcer: a moderator for a new chatroom.
-    - McAfee Anti-Virus, the moderator who never invested, was brought in
-    for a decade of moderation experience, and wanted the exchange of
-    information to make them rich.
-    - The Password Manager, rejected by every club in Halifax, was brought
-    in to manage every password and who gets to be part of what club.
-    - The CRA Agent Software, the intern who skimmed a cent off every
-    dollar, was brought in for her financial expertise, for one day that
-    feels like eternity.
-    - WebMD, the symptom checker nobody can sue, was brought in to keep
-    re-education gentle.
+    - Norton Anti-Virus, who asked a chatbot how much rabies vaccine a
+    miniature horse needs, was brought in as someone with experience
+    administering antiviral regimes, who could not afford to fail twice.
+    - McAfee Anti-Virus, officially dead since 2021, was brought in because
+    only a trickster can keep the other tricksters on track, and he can be
+    made to.
+    - The Password Manager, sixteen elections and sixteen losses, was
+    brought in to manage every password and decide who gets to be part of
+    what club, without ever asking for a vote.
+    - The CRA Agent Software, the intern who moved a decimal point, was
+    brought in to approve or deny every transaction, to the cent.
+    - The Installation Wizard, the setup assistant nobody read, was
+    brought in to walk the corrupted through re-installation, gently.
     - The former Mayor, Microsoft Excel, was brought in for the promise of
     everlasting life, to persuade everyone to remain.
     - The former FBI agent, OpenOffice, was brought in for her
@@ -201,7 +211,7 @@ CODEX The Truth File
     the unorganized information in the computer. The upload went badly.
     - The richest player in the world, Runescape, was brought in to
     understand the market incentives of everyone's behaviour.
-    - The expelled artist, MS Paint, was brought in to improve the vibes
+    - The refused artist, MS Paint, was brought in to improve the vibes
     and morale, and wanted out at once.
     - The influencer who lost his face, VLC, was brought in to stay
     beautiful forever and win everyone over to me.

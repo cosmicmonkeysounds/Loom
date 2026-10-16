@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AgentMindSummary, AgentThought } from '@loom/core/views'
-import { diffRows, driveSeries, filterThoughts, mindCharacters, pickMind, sparklinePath, speakersOf, stageSegments, summarizeThought } from './mind'
+import { confirmEvent, diffRows, driveSeries, filterThoughts, judgeModeOf, mindCharacters, pendingFilings, pickMind, questionTallies, sparklinePath, speakersOf, stageSegments, summarizeThought } from './mind'
+import type { FactsFiling, FactsView } from '@/store/cockpit'
 import { mergeThoughts } from '@/store/operate'
 
 function thought(over: Partial<AgentThought> = {}): AgentThought {
@@ -176,5 +177,72 @@ describe('mergeThoughts', () => {
     const merged = mergeThoughts([], many)
     expect(merged).toHaveLength(400)
     expect(merged[0]!.id).toBe('t50')
+  })
+})
+
+describe('judging', () => {
+  const filing = (over: Partial<FactsFiling>): FactsFiling => ({ person: 'g1', name: 'Ada', question: 'Q1', answer: 'eleven', confidence: 100, verdict: 'accurate', final: null, at: 10, ...over })
+  const tally = (filings: FactsFiling[]) => {
+    const eff = (f: FactsFiling) => f.final ?? f.verdict
+    return {
+      filed: filings.length,
+      accurate: filings.filter((f) => eff(f) === 'accurate').length,
+      lie: filings.filter((f) => eff(f) === 'lie').length,
+      uncertain: filings.filter((f) => eff(f) === 'uncertain' || eff(f) === 'marked').length,
+      consensus: filings.length > 0 && filings.every((f) => eff(f) === 'accurate' && f.confidence === 100),
+    }
+  }
+  const view = (over: Partial<FactsView> = {}): FactsView => {
+    const q1 = [filing({ at: 30 }), filing({ person: 'g2', name: 'Ben', answer: 'twelve', verdict: 'lie', at: 20 })]
+    const q2 = [filing({ question: 'Q2', answer: 'pickles', confidence: 40, verdict: 'uncertain', final: 'marked', at: 5 })]
+    return {
+      modeVar: 'Night.judge_mode',
+      mode: 'review',
+      confirm: { accurate: 'fact_accurate', lie: 'fact_lie', uncertain: 'fact_uncertain' },
+      questions: [
+        { id: 'Q1', round: 1, text: 'How many years?', filings: q1, tally: tally(q1) },
+        { id: 'Q2', round: 1, text: 'Who?', filings: q2, tally: tally(q2) },
+        { id: 'P1', round: null, text: 'The line.', filings: [], tally: tally([]) },
+      ],
+      pending: 2,
+      ...over,
+    }
+  }
+
+  it('judgeModeOf: the view first, then the world var, else auto', () => {
+    expect(judgeModeOf([], view())).toBe('review')
+    expect(judgeModeOf([{ path: 'Night.judge_mode', value: 'review' }], view({ mode: 'auto' }))).toBe('auto')
+    expect(judgeModeOf([{ path: 'Night.judge_mode', value: 'review' }], null)).toBe('review')
+    expect(judgeModeOf([{ path: 'Night.judge_mode', value: 'auto' }], null)).toBe('auto')
+    expect(judgeModeOf([], null)).toBe('auto')
+  })
+
+  it('pendingFilings: only unsettled filings, oldest first', () => {
+    expect(pendingFilings(view()).map((r) => [r.name, r.question, r.proposed, r.at])).toEqual([
+      ['Ben', 'Q1', 'lie', 20],
+      ['Ada', 'Q1', 'accurate', 30],
+    ])
+    expect(pendingFilings(view())[0]).toEqual({ person: 'g2', name: 'Ben', question: 'Q1', answer: 'twelve', confidence: 100, proposed: 'lie', final: null, at: 20 })
+  })
+
+  it('questionTallies: counts per question, a marked final under uncertain, consensus only when every filing is accurate at 100', () => {
+    expect(questionTallies(view())).toEqual([
+      { id: 'Q1', round: 1, text: 'How many years?', filed: 2, accurate: 1, lie: 1, uncertain: 0, pending: 2, consensus: false },
+      { id: 'Q2', round: 1, text: 'Who?', filed: 1, accurate: 0, lie: 0, uncertain: 1, pending: 0, consensus: false },
+      { id: 'P1', round: null, text: 'The line.', filed: 0, accurate: 0, lie: 0, uncertain: 0, pending: 0, consensus: false },
+    ])
+    const all = [filing({ final: 'accurate' }), filing({ person: 'g2', final: 'accurate' })]
+    const v = view({ questions: [{ id: 'Q1', round: 1, text: 'x', filings: all, tally: tally(all) }] })
+    expect(questionTallies(v)[0]).toMatchObject({ filed: 2, accurate: 2, pending: 0, consensus: true })
+    const notSure = [filing({ final: 'accurate' }), filing({ person: 'g2', confidence: 99, final: 'accurate' })]
+    const v2 = view({ questions: [{ id: 'Q1', round: 1, text: 'x', filings: notSure, tally: tally(notSure) }] })
+    expect(questionTallies(v2)[0]!.consensus).toBe(false)
+  })
+
+  it('confirmEvent: the confirm event per verdict, null without one', () => {
+    expect(confirmEvent(view(), 'lie')).toBe('fact_lie')
+    expect(confirmEvent(view(), 'uncertain')).toBe('fact_uncertain')
+    expect(confirmEvent(view({ confirm: null }), 'accurate')).toBeNull()
+    expect(confirmEvent(view({ confirm: { accurate: '', lie: 'x', uncertain: 'y' } }), 'accurate')).toBeNull()
   })
 })

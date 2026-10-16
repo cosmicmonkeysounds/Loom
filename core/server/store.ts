@@ -34,6 +34,8 @@ export type Mutation =
   | "signal"
   | "escape"
   | "capture"
+  | "restrict"
+  | "unrestrict"
   | "setScore"
   | "setVar"
   | "fireBeat"
@@ -46,6 +48,7 @@ export type Mutation =
   | "redeem"
   | "share"
   | "quest"
+  | "wallet"
   | "tick";
 
 /** One replayable line of the journal: a method name + its arguments, and
@@ -82,6 +85,10 @@ const HOUSE = "spatial-house.json";
 /** The project's map files as this event snapshotted them + the active
  *  variant (SW-MAP-01 / SW-MAP-13, `house-maps.ts`). */
 const MAPS = "spatial-maps.json";
+/** The project's `facts.json` as this event snapshotted it (Wave 4 lane B,
+ *  `facts.ts`). Not `facts.json`: `LOOM_FACTS` defaults to a sibling of
+ *  `LOOM_HOUSE`, and the default event's state dir can be that same dir. */
+const FACTS = "project-facts.json";
 /** Web Push subscriptions by device (K-31a, `push.ts`). */
 const PUSH = "push.json";
 /** Every duck found this story (SW-RE-14, the ceremony's speedrun). */
@@ -237,6 +244,21 @@ export class Store {
   }
   saveMaps(files: Record<string, string> | null, active: string | null): void {
     writeFileSync(this.path(MAPS), JSON.stringify({ version: 1, files, active }));
+  }
+
+  // The project's `facts.json` this event snapshotted at launch (or a
+  // reload, or `/api/mod/load {facts}`) — the facts judge's key. Kept here
+  // as well as on the event row so a restart keeps it, and so the LAN
+  // default event, which has no row, has one. `null` = the project has none
+  // (the show file next to `LOOM_HOUSE` is the fallback then).
+
+  loadFacts(): string | null {
+    const v = readJson<{ version?: unknown; text?: unknown }>(this.path(FACTS));
+    if (v === null || v.version !== 1) return null;
+    return typeof v.text === "string" ? v.text : null;
+  }
+  saveFacts(text: string | null): void {
+    writeFileSync(this.path(FACTS), JSON.stringify({ version: 1, text }));
   }
 
   // One line per duck found (`spatial.ts` `DuckRun`), cleared with the
