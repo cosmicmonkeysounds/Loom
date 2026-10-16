@@ -65,8 +65,10 @@ The panel under the inspector lists what is wrong as you draw — click an
 entry to select what it names. **Problems** (rooms overlapping, a door
 off its wall, a stair without room to land) block a save. **Warnings**
 don't: a duck spot nobody can walk to from the spawn (the same route the
-VR autopilot takes), a room or yard no door leads into yet, a room naming
-no LOCATION in the story, a LOCATION with no room. The **JSON** tab is the whole map as text, for anything the
+VR autopilot takes), a duck spot close enough to a wall to be picked up
+from the room behind it (move it ≥ ~1.2 m from that wall), a room or yard
+no door leads into yet, a room naming no LOCATION in the story, a
+LOCATION with no room. The **JSON** tab is the whole map as text, for anything the
 drawing tools don't do (props, colours).
 
 **🧊 3D** shows the draft as the games will build it (once it is valid):
@@ -89,14 +91,22 @@ tent, where the shed is a solid box — is put back at the start. The choice
 sticks: it survives a restart and **End → relaunch** (the next launch
 starts on the variant the last one played). The page asks first when programs are in the
 simulation, when a saved edit would be dropped, or when you have unsaved
-edits, then shows the new map.
+edits, then shows the new map. When this event's map has saved edits that
+aren't in the project, it first offers to **Save to project** for you (OK
+saves, then switches; Cancel goes on to the warning that they'll be
+dropped, where you can still back out). A director can make the same
+switch from the editor, with no passcode device: the Run page's **House
+map** card (it asks first too, but has no Save to project — do that here).
 
-**The labels come from the maps.** A variant's button is named after
-its file (`house.shed.json` → **Shed**); the default `house.json` is
-named after the one word in its map's `name` that the others' names lack
-("…the Internet in the **tent**" → **Tent**), else **Main**. If you rename
-the map in the JSON tab, keep "tent" in its name, or the button reads
-Main.
+**The labels come from the maps.** A map's own `"variant"` field names
+its button (the show's maps say `"variant": "Tent"` and `"variant":
+"Shed"`), so renaming a map in the JSON tab never changes it. A
+`house.<word>.json` file's label must say its word, so a shed copied
+from the tent map with `"variant": "Tent"` left in still reads **Shed**.
+Without one, a variant is named after its file (`house.shed.json` → **Shed**);
+the default `house.json` after the one word in its map's `name` that the
+others' names lack ("…the Internet in the **tent**" → **Tent**), else
+**Main**.
 
 A 💾 save belongs to this event only. **Save to project** writes the map
 into the project as the live variant's file (your unsaved edits are saved

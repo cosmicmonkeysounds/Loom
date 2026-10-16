@@ -153,6 +153,11 @@ function GuestRow({ r, hasChoice }: { r: RosterRow; hasChoice: boolean }) {
           🔒
         </span>
       )}
+      {r.restricted && (
+        <span title="restricted" className="shrink-0 text-[10px] text-red-400">
+          ⛔
+        </span>
+      )}
       <span className="shrink-0 truncate text-[10px] text-zinc-600">{locked ? '' : (r.location ?? '')}</span>
     </button>
   )

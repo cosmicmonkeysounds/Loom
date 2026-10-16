@@ -9,7 +9,7 @@
 //!   /terminal/?code=<mod passcode>&name=TV&character=Trabolta&spot=desktop-tv&view=tv
 //!
 //! A tablet that should also say the house announcements (N-09 — the
-//! "Alexa" lines, `do announce "…"`) adds `&announce=1`; off by default.
+//! house system's lines, `do announce "…"`) adds `&announce=1`; off by default.
 //!
 //! The mod passcode resolves (via `/api/resolve-code`) to the event and is
 //! traded for a **moderator token** (`/api/mod/login`) — that is what lets

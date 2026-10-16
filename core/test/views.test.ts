@@ -102,6 +102,7 @@ describe("server views", () => {
     sim.tick(90_000);
     expect(guestView(sim, "g1").clock).toBe(sim.elapsed());
     expect(primeView(sim, "Moderator_Prime").clock).toBe(sim.elapsed());
+    expect(modView(sim, "open", "x").clock).toBe(sim.elapsed()); // Run's wallet countdowns read it
     expect(sim.elapsed()).toBeGreaterThanOrEqual(90_000);
   });
 
@@ -304,6 +305,16 @@ describe("`restricted` on every view (wave 4, lane E)", () => {
     expect(primeView(sim, "Moderator_Prime").guests[0]!.restricted).toBe(true);
     expect(modView(sim, "open", "escape-the-internet").roster[0]!.restricted).toBe(true);
     expect(guestView(sim, "g1").channels.every((c) => c.canPost === false)).toBe(true);
+  });
+
+  it("keeps a `restricted: allow` button (wave 5, fact-M20)", () => {
+    const sim = Sim.fromSources(
+      "# B\n\nINTERACTION go to the bathroom\n  who: guest\n  restricted: allow\n\nINTERACTION knock\n  who: guest\n",
+    );
+    sim.createPerson("g1", "Alice");
+    expect(guestView(sim, "g1").interactions.map((i) => i.id)).toEqual(["go to the bathroom", "knock"]);
+    sim.restrict("g1");
+    expect(guestView(sim, "g1").interactions.map((i) => i.id)).toEqual(["go to the bathroom"]);
   });
 });
 

@@ -5,12 +5,20 @@
 //! it as its guest session (`loom.guest`) — the SAME Person, with their
 //! codex, quests and score. The code is stripped from the URL at once, and a
 //! phone already signed in as someone asks before it switches.
+//!
+//! The same route opens an iPhone's **Home Screen app** for the first time
+//! (K-31b): its `start_url` is `/?code=&pair=&home=1`, the nonce the guest's
+//! Safari minted. iOS reopens an icon at its `start_url`, so a `home` link on
+//! a phone already holding a session is the spent nonce coming round again —
+//! dropped silently, never a "switch this phone?" question.
 //! Pure helpers + an injectable fetch — unit-tested in `test/resume.test.ts`.
 
 /** The re-pair link a scanned QR carries, or null. */
 export interface ResumeLink {
   code: string;
   pair: string;
+  /** The Home Screen icon's own start link (K-31b), not a director's QR. */
+  home?: boolean;
 }
 
 export function resumeFromSearch(search: string): ResumeLink | null {
@@ -18,7 +26,8 @@ export function resumeFromSearch(search: string): ResumeLink | null {
     const p = new URLSearchParams(search);
     const pair = (p.get("pair") ?? "").trim();
     const code = (p.get("code") ?? "").trim();
-    return pair !== "" && code !== "" ? { code, pair } : null;
+    if (pair === "" || code === "") return null;
+    return p.get("home") === "1" ? { code, pair, home: true } : { code, pair };
   } catch {
     return null;
   }
@@ -28,6 +37,7 @@ export function resumeFromSearch(search: string): ResumeLink | null {
 export function withoutResume(search: string): string {
   const p = new URLSearchParams(search);
   p.delete("pair");
+  p.delete("home");
   const s = p.toString();
   return s === "" ? "" : `?${s}`;
 }
@@ -54,7 +64,16 @@ export function storedGuestName(raw: string | null): string | null {
   }
 }
 
+/** The link to act on: a Home Screen relaunch on a phone that already has
+ *  a session (guest or booth) is nothing to do. */
+export function resumeToAdopt(link: ResumeLink | null, storedGuest: string | null, storedPrime: string | null): ResumeLink | null {
+  if (link === null) return null;
+  if (link.home === true && ((storedGuest ?? "") !== "" || (storedPrime ?? "") !== "")) return null;
+  return link;
+}
+
 const EXPIRED = "That re-pair code has expired or was already used — ask the director for a new one.";
+const HOME_EXPIRED = "This Home Screen icon's sign-in has run out. Delete the icon, open the party in Safari, and add it to your Home Screen again.";
 
 /**
  * Turn a resume link into a guest session: resolve the event code, then
@@ -75,10 +94,11 @@ export async function adoptResume(link: ResumeLink, fetchFn: typeof fetch = fetc
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ pair: link.pair }),
   });
+  const expired = link.home === true ? HOME_EXPIRED : EXPIRED;
   if (traded.status === 429) throw new Error("Too many tries — wait a few minutes, then scan again.");
-  if (!traded.ok) throw new Error(EXPIRED);
+  if (!traded.ok) throw new Error(expired);
   const who = (await traded.json()) as { id?: unknown; name?: unknown; token?: unknown };
-  if (typeof who.id !== "string" || typeof who.token !== "string") throw new Error(EXPIRED);
+  if (typeof who.id !== "string" || typeof who.token !== "string") throw new Error(expired);
   const title = typeof ev.title === "string" ? ev.title : undefined;
   return {
     id: who.id,

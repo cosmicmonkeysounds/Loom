@@ -6,7 +6,10 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { PinnedRail } from "../src/chat.tsx";
-import { activePins } from "../src/pins.ts";
+import { readFileSync } from "node:fs";
+
+import { activePins, activeTakeover } from "../src/pins.ts";
+import { Takeover } from "../src/takeover.tsx";
 import type { ChatMessage } from "../src/types.ts";
 
 function m(seq: number, channel: string, extra: Partial<ChatMessage> = {}): ChatMessage {
@@ -58,5 +61,42 @@ describe("PinnedRail", () => {
     expect(html).toContain("📌 GO TO THE INTERNET.");
     expect(html).toContain("📌 Doors at nine.");
     expect(html.match(/class="pin /g)).toHaveLength(2);
+  });
+});
+
+describe("the `!!` takeover", () => {
+  it("activeTakeover is the newest takeover pin still up — from every room, gone after the unpin", () => {
+    const list = [
+      m(1, "lobby", { pin: "g1", text: "Go.", alert: true }),
+      m(2, "lobby", { pin: "", text: "GO TO THE LIVING ROOM", alert: true, takeover: true }),
+    ];
+    expect(activeTakeover([])).toBeNull();
+    expect(activeTakeover([list[0]!])).toBeNull();
+    expect(activeTakeover(list)?.seq).toBe(2);
+    // Read off the whole map, the way the guest app passes `s.messages.values()`.
+    expect(activeTakeover(new Map(list.map((x) => [x.seq, x])).values())?.text).toBe("GO TO THE LIVING ROOM");
+    expect(activeTakeover([...list, m(3, "lobby", { kind: "system", text: "Dance.", unpin: "" })])).toBeNull();
+    // The personal pin under another key stays on the rail.
+    expect(activePins([...list, m(3, "lobby", { kind: "system", unpin: "" })]).map((x) => x.seq)).toEqual([1]);
+  });
+
+  it("renders the pin's text full screen with no dismiss, nothing without a pin", () => {
+    expect(renderToStaticMarkup(<Takeover pin={null} />)).toBe("");
+    const html = renderToStaticMarkup(<Takeover pin={m(2, "lobby", { pin: "", text: "GO TO THE LIVING ROOM", takeover: true })} />);
+    expect(html).toContain('class="takeover"');
+    expect(html).toContain('role="alert"');
+    expect(html).toContain("GO TO THE LIVING ROOM");
+    expect(html).not.toContain("<button");
+  });
+
+  it("flashes at most twice a second, never red, still under reduced motion, above the tour", () => {
+    const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+    const rule = /\.takeover \{[^}]*\}/u.exec(css)![0];
+    // One swap at 50% of a 1 s cycle = 2 changes a second.
+    expect(rule).toMatch(/animation: takeover-invert 1s steps\(1, end\) infinite/u);
+    expect(rule).toMatch(/position: absolute; inset: 0; z-index: 50/u);
+    expect(rule).not.toMatch(/--bad|red|#f00/u);
+    expect(css).toMatch(/@keyframes takeover-invert \{ 50% \{ background: var\(--highlight\); color: var\(--black\); \} \}/u);
+    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{ \.takeover \{ animation: none; \} \}/u);
   });
 });

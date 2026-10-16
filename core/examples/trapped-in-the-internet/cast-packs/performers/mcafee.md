@@ -29,9 +29,9 @@ verified (OP-04).
 **The escort list.** The hosts mark programs (🎯 🤷 🙅 🎩 🏓 🍎, a late
 arrival, a filed guess); your booth reads *🚨 X is marked for reinstallation
 (why)* and **`# quarantine`** pins *Escort X to the Internet…* Their phone is
-grey, buttons off, a 🚨 GO TO THE INTERNET card on top, DMs + the Tube + the
+grey, buttons off (all but 🚻 Bathroom Mode), a 🚨 GO TO THE INTERNET card on top, DMs + the Tube + the
 Internet rooms, plus the room they stand in, read-only. Find them, walk them
-through the Tube, press **🛡** on their card. The pin clears when they are
+through the Tube, press **🛡** on their card. A marked program in Bathroom Mode or Disk Cleanup: wait outside; never go in (the booth says ⚠️ when it knows). The pin clears when they are
 captured, released or unmarked.
 
 **The exchange.** Every program already has a **Wallet** (a pinned room on
@@ -45,10 +45,14 @@ Log: *The Exchange* (from Task Manager; it completes at the Trust Chart).
 **Nothing to settle on cards any more**: the app posts every settled
 transfer and trade in `# truthcoin-exchange` by itself. Broker in person: set
 prices, match buyers to facts, **take your cut** (ask for a send to you).
+Hold a bet's pot (there is no bet button): both players send you their
+stake, and you send the lot to the winner.
 🪙 Pay / 🪙 Charge are for corrections (a cash deal, a wrong amount). Every
 third transfer anyone sends waits for CRA Agent Software's Approve; tell
 traders that is normal. DraftKings and Runescape will want to work with you:
-let them. Runescape alone can mint a stimulus (three a night, to everyone).
+let them. Runescape alone can mint a stimulus (three a night, to everyone),
+grant one program coin from the reserve (three a night) or freeze one
+program's coin for ten minutes (they can't pay you until it thaws).
 
 **Sweeps:** C1 · C2 · ⏳ (scan arrivals) · 🚨 the late list · Trabolta's sweep
 requests · 🚨 server breach · 🗜 zip everyone out.

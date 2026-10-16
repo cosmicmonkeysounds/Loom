@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPrintItems, PrintKind, qrSvg, type PrintCodes } from './print-sheet'
+import { buildPrintItems, doorWording, PrintKind, qrSvg, stackInk, stackLine, stackRank, type PrintCodes } from './print-sheet'
 
 const CODES: PrintCodes = {
   eventPass: 'EVT777',
@@ -18,27 +18,94 @@ const CODES: PrintCodes = {
 }
 
 describe('print sheet', () => {
-  it('orders join → codex → rooms with stable refs and the typed fallback', () => {
+  it('orders join → door → codex → rooms with stable refs and the typed fallback', () => {
     const items = buildPrintItems(CODES)
     expect(items.map((i) => [i.ref, i.kind, i.code])).toEqual([
       ['J1', PrintKind.Join, 'EVT777'],
+      ['D1', PrintKind.Door, 'EVT777'],
       ['C01', PrintKind.Codex, 'sandy1997'],
       ['C02', PrintKind.Codex, 'bill'],
       // a room sign prints no code: a slug typed into the Codex is a `wrong code`
       ['R01', PrintKind.Room, ''],
       ['R02', PrintKind.Room, ''],
     ])
-    expect(items[3]!.url).toContain('checkin=the-desktop')
+    expect(items[4]!.url).toContain('checkin=the-desktop')
     expect(items[0]!.url).toBe('https://app.example.com/?code=EVT777')
-    expect(items[3]!.title).toBe('The Desktop (living room)')
-    expect(items[4]!.note).toMatch(/hidden/)
-    expect(items[1]!.note).toBe('about Trabolta')
+    expect(items[4]!.title).toBe('The Desktop (living room)')
+    expect(items[5]!.note).toMatch(/hidden/)
+    expect(items[2]!.note).toBe('about Trabolta')
+    expect(items[2]!.stack).toBeNull()
+  })
+
+  it('words the door sign off the push config: Scan to join by default, Add to Home Screen when K-31b is on', () => {
+    const off = buildPrintItems(CODES).find((i) => i.kind === PrintKind.Door)!
+    expect(off.title).toBe('Scan to join')
+    expect(off.url).toBe('https://app.example.com/?code=EVT777')
+    expect(off.steps!.join(' ')).toMatch(/keep this page open/)
+    expect(buildPrintItems(CODES, { homescreen: false }).find((i) => i.kind === PrintKind.Door)!.title).toBe('Scan to join')
+    const on = buildPrintItems(CODES, { homescreen: true }).find((i) => i.kind === PrintKind.Door)!
+    expect(on.title).toBe('iPhone? Join, then Add to Home Screen')
+    expect(on.steps).toEqual(doorWording(true).steps)
+    expect(on.steps!.join(' ')).toMatch(/Add to Home Screen/)
+    // play's own order: join in Safari FIRST, then add (joining again in the
+    // Home Screen app would claim the name twice) — and no show name
+    expect(on.steps![0]).toMatch(/join with the code/)
+    expect(on.steps!.slice(1).join(' ')).not.toMatch(/\bjoin\b/i)
+    for (const w of [doorWording(true), doorWording(false)]) expect([w.title, w.hint, ...w.steps].join(' ')).not.toMatch(/Trapped/)
+    // the speakable fallback is the event code, never a codex code
+    expect(on.code).toBe('EVT777')
+    expect(on.url).toBe(off.url)
+  })
+
+  it('prints one cast card per part with the performer passcode link, last', () => {
+    const items = buildPrintItems({ ...CODES, joinUrl: 'https://app.example.com/', primePass: 'PERF 9', cast: ['Clippy', 'Task Manager'] })
+    const cast = items.filter((i) => i.kind === PrintKind.Cast)
+    expect(cast.map((i) => [i.ref, i.title, i.hint, i.code, i.url])).toEqual([
+      ['P01', 'Clippy', 'Scan, then pick Clippy.', 'PERF 9', 'https://app.example.com/?code=PERF%209'],
+      ['P02', 'Task Manager', 'Scan, then pick Task Manager.', 'PERF 9', 'https://app.example.com/?code=PERF%209'],
+    ])
+    expect(items.at(-1)!.ref).toBe('P02')
+    expect(cast[0]!.note).toMatch(/never post/)
+    // never the moderator code
+    expect(items.some((i) => i.code === CODES.modPass || i.url.includes(`code=${CODES.modPass}`))).toBe(false)
+  })
+
+  it('sorts codex posters by stack gold → green → blue → red → unstacked, stable within a stack', () => {
+    const entry = (id: string) => ({ id, title: id, about: null, code: id.toLowerCase(), url: `u/${id}` })
+    const items = buildPrintItems({
+      ...CODES,
+      codex: ['Lore', 'Red1', 'Blue1', 'Green1', 'Gold1', 'Green2', 'Odd', 'Gold2'].map(entry),
+      stacks: {
+        Red1: { colour: 'red', stack: 'deepest', where: null },
+        Blue1: { colour: 'blue', stack: 'deep', where: null },
+        Green1: { colour: 'green', stack: 'shelf', where: 'already placed' },
+        Green2: { colour: 'Green', stack: 'shelf', where: null },
+        Gold1: { colour: 'gold', stack: 'hunt answers', where: 'volume B' },
+        Gold2: { colour: 'gold', stack: 'hunt answers', where: 'the atlas' },
+        Odd: { colour: 'purple', stack: 'elsewhere', where: null },
+      },
+    }).filter((i) => i.kind === PrintKind.Codex)
+    expect(items.map((i) => [i.ref, i.title])).toEqual([
+      ['C01', 'Gold1'],
+      ['C02', 'Gold2'],
+      ['C03', 'Green1'],
+      ['C04', 'Green2'],
+      ['C05', 'Blue1'],
+      ['C06', 'Red1'],
+      ['C07', 'Odd'],
+      ['C08', 'Lore'],
+    ])
+    expect(stackLine(items[0]!.stack!)).toBe('GOLD · hunt answers · volume B')
+    expect(stackLine(items[5]!.stack!)).toBe('RED · deepest')
+    expect(stackInk('gold')).not.toBe(stackInk('purple'))
+    expect(stackRank(null)).toBeGreaterThan(stackRank({ colour: 'purple', stack: '', where: null }))
   })
 
   it('falls back to building the join link on an older server (no rooms)', () => {
     const items = buildPrintItems({ ...CODES, joinLink: undefined, checkin: undefined, joinUrl: 'http://party.local:7000/' })
     expect(items[0]!.url).toBe('http://party.local:7000/?code=EVT777')
     expect(items.filter((i) => i.kind === PrintKind.Room)).toEqual([])
+    expect(items.filter((i) => i.kind === PrintKind.Cast)).toEqual([])
   })
 
   it('draws QRs locally as SVG — no /api/qr round-trip', async () => {

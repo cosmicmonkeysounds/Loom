@@ -20,7 +20,9 @@
 #      as a notification;
 #   C. same: a Trabolta DM arrives as a notification;
 #   D. the Antivirus booth, locked: the door alarm ("🚨 Server room
-#      breach") arrives as a notification.
+#      breach") arrives as a notification;
+#   E–F. tapping one opens its room (SW-PLAY-20): the Trabolta DM on the
+#      Trabolta chat, the booth's breach on its Scanner thread.
 #
 # Env: LOOM_SERVER (default https://app.mapsandducks.com),
 #      K31_YES=1 skips the "is this a rehearsal?" prompt.
@@ -68,7 +70,7 @@ echo "  • Booth: open $SERVER/?code=${PRIME_CODE:-<performer code>}, sign in a
 echo "    (Norton, McAfee…), tap 🔔 Get alerts → Turn on → Allow."
 echo "  • Guest phones 1 + 2: open $SERVER/?code=$GUEST_CODE, pick a program, solve the"
 echo "    CAPTCHA; the booth scans each pass (My pass) to let them out of the Optical Drive;"
-echo "    then tap 🔔 Get alerts → Turn on → Allow."
+echo "    then tap 🔔 Get alerts → Turn on → Allow. Leave guest phone 1 on a room that is NOT Trabolta's."
 read -r -p "Press Enter when all three show \"Alerts are on\" in ☰ / the profile sheet… " _
 echo "  Subscribed now:"
 lines="$(status_lines)"
@@ -113,7 +115,10 @@ res="$(post /api/mod/signal '{"name":"alarm_tripped"}')"
 ask "D. The LOCKED Antivirus booth: a notification \"🚨 Server room breach…\"?"
 
 echo
-echo "Tap a notification: it should open / focus the app. Turn Wi-Fi back on."
+echo "E–F. Deep links (SW-PLAY-20): tap a notification on the lock screen."
+ask "E. Guest phone 1: tap the \"Trabolta\" notification — the app opens ON the Trabolta chat (not the room it was left on)?"
+ask "F. The Antivirus booth: tap \"🚨 Server room breach\" — the booth opens on its Scanner thread?"
+echo "Turn Wi-Fi back on."
 echo "Afterwards: restart the rehearsal to clear the test programs."
 echo
 if [[ $FAIL -eq 0 ]]; then echo "K-31a: PASS"; else echo "K-31a: FAIL (see ✗ above)"; fi

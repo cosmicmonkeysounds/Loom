@@ -19,7 +19,7 @@
 import { createContext, useContext } from 'react'
 import { create, useStore } from 'zustand'
 import type { SignalArgs, StatField } from '@/lib/api'
-import type { SimEvent } from '@loom/core/sim'
+import type { SimEvent, WalletCard } from '@loom/core/sim'
 import type { WidgetCard } from '@loom/core/chat'
 import type {
   AgentControl,
@@ -31,6 +31,7 @@ import type {
   InteractionSummary,
   PrimeView,
   QuestSummary,
+  WalletModView,
 } from '@loom/core/views'
 // The facts judge's ledger view (`ModView.facts`, Wave 4 lane B); every
 // editor surface reads it through this re-export.
@@ -122,6 +123,29 @@ export const QuestAction = {
 
 export type QuestAction = (typeof QuestAction)[keyof typeof QuestAction]
 
+/** A director's hand on the story's wallet — the server's
+ *  `/api/mod/wallet/<action>` routes. `approve` / `deny` / `cancel` take an
+ *  open item's id, `stimulus` an amount, `approve-held` nothing, `unfreeze`
+ *  a freeze's id (lifts the minter's 🧊 early). */
+export const WalletAction = {
+  Approve: 'approve',
+  Deny: 'deny',
+  Cancel: 'cancel',
+  Stimulus: 'stimulus',
+  ApproveHeld: 'approve-held',
+  Unfreeze: 'unfreeze',
+} as const
+
+export type WalletAction = (typeof WalletAction)[keyof typeof WalletAction]
+
+/** The story clock as last read off a snapshot (`ModView.clock`, story ms)
+ *  and the wall time it arrived — a countdown ticks from it between
+ *  snapshots (the clock stands still while the run is paused). */
+export interface StoryClock {
+  ms: number
+  at: number
+}
+
 /** A live play-as session, shaped for `@loom/play/embed`'s `PlayEmbed`. */
 export type PlayerSession =
   | { role: 'guest'; token: string; id: string; name: string; eventId: string; title?: string }
@@ -155,6 +179,9 @@ export interface RosterRow {
   trueFaction: string | null
   location: string | null
   captured: boolean
+  /** Marked: `restrict who` is in force (their phone is greyed, buttons
+   *  off). Optional so older fixtures / servers compile. */
+  restricted?: boolean
   score: number
   /** Story position — the beat this guest is currently inside, if any. */
   beat?: string | null
@@ -191,6 +218,8 @@ export interface CockpitMessage {
   codex?: { entry: string; title: string; via: string; from: string | null }
   /** A Quest Log step (`kind: 'quest'`): the card is `start`, the rest reply to it. */
   quest?: { quest: string; title: string; action: string }
+  /** A Wallet-room card (`kind: 'wallet'`), from its viewer's side. */
+  wallet?: WalletCard
 }
 
 export interface FactionSummary {
@@ -344,6 +373,14 @@ export interface CockpitState {
    *  mode. Null when the project has no `facts.json` (nothing is judged)
    *  and on the local backend (the judge lives on the event server). */
   facts: FactsView | null
+  /** The story's wallet as the director sees it (`ModView.wallet`): the
+   *  currency, approver, minter, stimulus uses and every open transfer /
+   *  request / offer. Null when the story declares no `currency:` and on
+   *  the local backend (the WalletBook lives on the event server). */
+  wallet: WalletModView | null
+  /** The story clock off the last snapshot (null on an older server or the
+   *  local backend) — the Wallet card's countdowns. */
+  storyClock: StoryClock | null
   ledgerLen: number
   messages: CockpitMessage[]
   error: string | null
@@ -459,6 +496,11 @@ export interface CockpitState {
   /** Release a performer's part (N-10) so they can re-sign on a loaner.
    *  Resolves to how many sessions held it (null on failure / local runs). */
   releasePart(character: string): Promise<number | null>
+  /** Act on the wallet as the director (`/api/mod/wallet/*`, journaled `by`
+   *  you): approve / deny / cancel an open item by id, pay the stimulus
+   *  (`arg` = the amount), or approve every held transfer. Resolves true
+   *  when it landed; a refusal lands in `error`. Local runs: false + why. */
+  walletAct(action: WalletAction, arg?: string | number): Promise<boolean>
   /** Agent-voiced characters' minds as their stagehand workers last mirrored
    *  them (`ModView.minds`) — the Mind page's live state. Empty on the local
    *  backend (nothing voices a `mind: external` character in the browser). */
@@ -520,6 +562,8 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   codex: [],
   quests: [],
   facts: null,
+  wallet: null,
+  storyClock: null,
   ledgerLen: 0,
   messages: [],
   error: null,
@@ -567,6 +611,7 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   stepQuest: noop,
   pairGuest: async () => null,
   releasePart: async () => null,
+  walletAct: async () => false,
   minds: [],
   thoughts: [],
   mindControl: async () => ({ ok: false, error: 'no run' }),

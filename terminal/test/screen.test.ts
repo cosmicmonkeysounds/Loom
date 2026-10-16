@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.ts";
-import { MISSES_OFFLINE, attractOf, missesAfter, parseScreenState, pollScreen, screenReachable, screenStateUrl, voiceOf } from "../src/screen.ts";
+import { IDENTIFY_MS, MISSES_OFFLINE, attractOf, identifyOn, missesAfter, parseScreenState, pollScreen, screenReachable, screenStateUrl, voiceOf } from "../src/screen.ts";
 
 const config = defaultConfig({ eventId: "evt 1", token: "tok", name: "Kitchen", spot: "start-bar", view: "auto" });
 
@@ -29,6 +29,37 @@ describe("screen state", () => {
     const out = await pollScreen(config, fakeFetch(200, body, seen));
     expect(out).toMatchObject({ kind: "state", state: { attract: true, character: { id: "Trabolta", hidden: true, awake: false } } });
     expect((seen[0]!.init!.headers as Record<string, string>)["x-loom-token"]).toBe("tok");
+  });
+
+  it("the heartbeat carries the device health (SW-SCR-21), and a poll always sends the build", async () => {
+    const health = { audio: false, visible: true, battery: 17.4, charging: true, version: "ab12cd3.1016-1432" };
+    expect(screenStateUrl(config, null, health)).toBe("/e/evt%201/api/screen/state?name=Kitchen&spot=start-bar&view=auto&character=Trabolta&ver=ab12cd3.1016-1432&audio=0&vis=v&bat=17c");
+    // Unknown fields (no battery API on iOS) are left out, not guessed.
+    expect(screenStateUrl(config, null, { audio: null, visible: null, battery: null, charging: null, version: "dev" })).toMatch(/&ver=dev$/u);
+    const seen: Array<{ url: string; init?: RequestInit }> = [];
+    await pollScreen(config, fakeFetch(200, body, seen));
+    expect(new URL(`http://x${seen[0]!.url}`).searchParams.get("ver")).not.toBeNull();
+  });
+
+  it("reads a director's identify off the answer (absent from an older server = off)", () => {
+    expect(parseScreenState({ ...body, identify: true })?.identify).toBe(true);
+    expect(parseScreenState(body)?.identify).toBe(false);
+    expect(parseScreenState({ ...body, identify: "yes" })?.identify).toBe(false);
+  });
+
+  it("counts an identify down on the device: a kept (stale) answer uncovers on time", () => {
+    const got = parseScreenState({ ...body, identify: true, identifyLeft: 6_000 }, 1_000)!;
+    expect(got.identifyLeft).toBe(6_000);
+    expect(identifyOn(got, 1_000)).toBe(true);
+    expect(identifyOn(got, 6_999)).toBe(true);
+    expect(identifyOn(got, 7_000)).toBe(false); // the server is unreachable: the last answer is kept
+    // An older server sends no time left: IDENTIFY_MS from the answer.
+    const old = parseScreenState({ ...body, identify: true }, 1_000)!;
+    expect(old.identifyLeft).toBeNull();
+    expect(identifyOn(old, 1_000 + IDENTIFY_MS - 1)).toBe(true);
+    expect(identifyOn(old, 1_000 + IDENTIFY_MS)).toBe(false);
+    expect(identifyOn(parseScreenState(body, 1_000), 1_000)).toBe(false);
+    expect(identifyOn(null, 0)).toBe(false);
   });
 
   it("a refused token is revoked; anything else that fails is a miss", async () => {

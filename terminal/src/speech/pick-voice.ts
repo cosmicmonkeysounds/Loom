@@ -5,7 +5,7 @@
 //! eSpeak-style defaults are not. The terminal's setup screen lists them
 //! best first and lets the operator override.
 //!
-//! The character (Trabolta) and the house announcements ("Alexa") must not
+//! The character (Trabolta) and the house announcements must not
 //! sound alike: the character's voice prefers a male voice
 //! (`CHARACTER_VOICE`), an announcement a female one (`ANNOUNCE_VOICE`, like
 //! the house Mac's `say_voice: Samantha`) — on a stock Mac that is Daniel
@@ -56,7 +56,7 @@ export interface VoicePrefer {
 /** The character's voice (Trabolta): male first, so it never sounds like
  *  the house announcements. */
 export const CHARACTER_VOICE: VoicePrefer = { male: true };
-/** A house announcement ("Alexa"): female first, like the house Mac's. */
+/** A house announcement: female first, like the house Mac's. */
 export const ANNOUNCE_VOICE: VoicePrefer = { male: false };
 
 /** How much a matching / opposite lean moves a voice — enough to put a

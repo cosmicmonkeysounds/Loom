@@ -22,7 +22,7 @@ import type { Avatar, Duck, HouseScene, King, Trail } from "@loom/house/three";
 import { fetchHouse, postEnd, postFound, postPose, streamUrl } from "../api.ts";
 import { applyFrame, duckToAdopt, houseVersionOf, openSpatialStream, type SpatialStreamHandle } from "../spatial.ts";
 import type { Sfx } from "./audio.ts";
-import { canHit, fell, hearts, hit as landHit, KING_HP, newFight, stageFor, STAGE_LINE, type Fight, type HitVerdict, type Stage } from "./fight.ts";
+import { canHit, fell, hearts, hit as landHit, KING_HP, newFight, stageFor, STAGE_LINE, winNotice, type Fight, type HitVerdict, type Stage } from "./fight.ts";
 import { formatElapsed, foundRetryMs, heat, PAUSED_NOTICE, perchedOutOfReach, relativeBearing, roomTitle, withinReach, type Heat } from "./hud.ts";
 import { combineInput, isActive, keyDown, keyUp, type StickVector } from "./input.ts";
 import { IdleLeash } from "./leash.ts";
@@ -32,6 +32,7 @@ import { PosePump } from "./pump.ts";
 import { trail } from "./trail.ts";
 
 export { IDLE_LIMIT_MS, IDLE_WARN_MS } from "./leash.ts";
+export { WIN_NOT_SENT } from "./fight.ts";
 const TRAIL_EVERY_MS = 500;
 const HUD_EVERY_MS = 200;
 const QUACK_RANGE = 7;
@@ -622,17 +623,24 @@ export class Game {
         this.lastTrailAt = Number.NEGATIVE_INFINITY;
         this.o.sfx.fanfare();
         this.say("CHECKMATE — the door opens.", 4000);
-        void this.o.signal?.(signals.won ?? "chess won");
+        // The story opens the real door: a win that never landed is said, so a host fires ♟.
+        void winNotice(this.o.signal?.(signals.won ?? "chess won")).then((notice) => {
+          if (notice !== null) this.say(notice, 6000);
+        });
         return;
       }
       case "lost":
         this.o.sfx.buzz();
         this.say("The King holds. Hit him again.", 3000);
-        void this.o.signal?.(signals.lost ?? "chess lost");
+        void this.o.signal?.(signals.lost ?? "chess lost").then((ok) => {
+          if (!ok) console.warn("reinstall: chess lost didn't reach the event");
+        });
         return;
       case "drawn":
         this.say("A draw is not a win.", 3000);
-        void this.o.signal?.(signals.drawn ?? "chess drawn");
+        void this.o.signal?.(signals.drawn ?? "chess drawn").then((ok) => {
+          if (!ok) console.warn("reinstall: chess drawn didn't reach the event");
+        });
         return;
       case "abandoned":
         return;

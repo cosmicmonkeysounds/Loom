@@ -49,6 +49,22 @@ describe("newFight / hit / fell / hearts", () => {
     expect(f.fallen).toBe(false); // pure
   });
 
+  it("the show's King (hp 8) takes two hits a stage and 8 to reach pawns only, one per cooldown", () => {
+    expect(king.hp).toBe(8);
+    let f = newFight(king.hp);
+    const stages: string[] = [stageFor(f.hp, f.max)];
+    let now = 0;
+    while (stageFor(f.hp, f.max) !== "pawns") {
+      expect(canHit(f, now, house, [king.pos[0] + 0.7, king.pos[1], king.pos[2]], WEST, king)).toBe("ok");
+      f = hit(f, now);
+      stages.push(stageFor(f.hp, f.max));
+      now += HIT_COOLDOWN_MS;
+    }
+    expect(f.hits).toBe(8);
+    expect(stages).toEqual(["grandmaster", "grandmaster", "club", "club", "beginner", "beginner", "dizzy", "dizzy", "pawns"]);
+    expect(HIT_COOLDOWN_MS).toBeGreaterThanOrEqual(2000); // ≥ 14 s of hitting from full strength to pawns only
+  });
+
   it("hearts: ♥ per point left, ♡ per point lost, nothing at 0", () => {
     expect(hearts(newFight(4))).toBe("♥♥♥♥");
     expect(hearts(hit(newFight(4), 0))).toBe("♥♥♥♡");

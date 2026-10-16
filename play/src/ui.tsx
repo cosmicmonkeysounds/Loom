@@ -10,17 +10,14 @@ import { useEffect, useState } from "react";
 import { GuestApp } from "./guest.tsx";
 import { HelpSheet } from "./help.tsx";
 import { PerformerApp } from "./performer.tsx";
-import { adoptResume, storedGuestName, type ResumeLink } from "./resume.ts";
+import { DirectorApp, initialRole, roleForBrand, type AppRole } from "./director.tsx";
+import { adoptResume, resumeToAdopt, storedGuestName, type ResumeLink } from "./resume.ts";
 import { useDocumentTitle, useLandingBrand, useTheme } from "./session.ts";
 
-type Role = "none" | "guest" | "prime";
-
 export function App({ resume = null }: { resume?: ResumeLink | null }) {
-  const [role, setRole] = useState<Role>(() => {
-    if (localStorage.getItem("loom.guest")) return "guest";
-    if (localStorage.getItem("loom.prime")) return "prime";
-    return "none";
-  });
+  // `?role=director` (W-26) opens the phone cue sheet whatever else the
+  // phone holds; else the stored session.
+  const [role, setRole] = useState<AppRole>(() => initialRole(window.location.search, (k) => localStorage.getItem(k)));
   const [help, setHelp] = useState(false);
   // A `?code=` link's event, else the one open event: the bare address
   // reads as the show, skinned, before anyone joins.
@@ -29,11 +26,17 @@ export function App({ resume = null }: { resume?: ResumeLink | null }) {
   useDocumentTitle(urlTitle);
   // The chooser's skin; a guest / performer app skins itself (the landing's
   // theme on its join screen, the story's once signed in).
-  useTheme(brand.theme, role === "none");
+  useTheme(brand.theme, role === "none" || role === "director");
+  // A `?code=` link carrying the mod code opens the director's cue sheet.
+  // The guests' front page has no link to it (W-26).
+  useEffect(() => {
+    setRole((r) => roleForBrand(r, brand.role));
+  }, [brand.role]);
   // A director's re-pair QR (N-02): trade its code for that guest's session.
   // A phone already signed in as a guest asks first — the link replaces it.
-  const [pending, setPending] = useState<ResumeLink | null>(resume);
-  const [confirmFor, setConfirmFor] = useState<string | null>(() => (resume === null ? null : storedGuestName(localStorage.getItem("loom.guest"))));
+  // A Home Screen icon reopening on its spent nonce (K-31b) is just dropped.
+  const [pending, setPending] = useState<ResumeLink | null>(() => resumeToAdopt(resume, localStorage.getItem("loom.guest"), localStorage.getItem("loom.prime")));
+  const [confirmFor, setConfirmFor] = useState<string | null>(() => (pending === null ? null : storedGuestName(localStorage.getItem("loom.guest"))));
   const [resuming, setResuming] = useState(false);
   const [resumeError, setResumeError] = useState<string | null>(null);
   useEffect(() => {
@@ -83,6 +86,7 @@ export function App({ resume = null }: { resume?: ResumeLink | null }) {
 
   if (role === "guest") return <GuestApp onLeave={() => setRole("none")} />;
   if (role === "prime") return <PerformerApp onLeave={() => setRole("none")} />;
+  if (role === "director") return <DirectorApp onLeave={() => setRole("none")} />;
 
   return (
     <div className="hero">

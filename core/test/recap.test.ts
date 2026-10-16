@@ -9,7 +9,7 @@ import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { scenarioSource } from "../examples/load.ts";
-import { computeRecap, duckBoard, liesByPerson, rank, runTime } from "../server/recap.ts";
+import { computeRecap, duckBoard, liesByPerson, logCounts, rank, runTime } from "../server/recap.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 
@@ -37,7 +37,8 @@ const fireAll = (sim: Sim, ...names: string[]) => names.forEach((n) => sim.signa
 
 /** Round 1 judged (one accurate, one confident lie), hunt 2 with two 📝
  *  filings judged by the server (a confident lie, an accurate one) and
- *  credited at the round-2 tally, and one trip to the Internet. */
+ *  credited at the round-2 tally (both made the cup), and one trip to the
+ *  Internet. */
 function night(): Sim {
   const sim = Sim.fromSources(scenarioSource(SHOW));
   sim.fireBeat("Power On");
@@ -51,8 +52,11 @@ function night(): Sim {
   sim.choose("g3", 0);
   sim.signal("fact answered", "g4", { question: "H5", answer: "Clippy", confidence: 100, verdict: "lie", card: 1 });
   sim.signal("fact answered", "g5", { question: "H4", answer: "1978", confidence: 100, verdict: "accurate", card: 1 });
-  fireAll(sim, "truth_pong", "round_two_tally"); // round two settles: both filings are credited (+50)
+  sim.signal("truth_pong");
+  for (const g of ["g4", "g5"]) sim.signal("made_the_cup", g, null, "Clippy"); // a cup counts their filings
+  sim.signal("round_two_tally"); // round two settles: both filings are credited (+50)
   sim.signal("send to the internet", "g6", null, "Norton Anti-Virus");
+  sim.signal("go to the bathroom", "g5"); // the 🚻 guest button
   return sim;
 }
 
@@ -92,6 +96,48 @@ describe("K-26 recap", () => {
     expect(runTime(3_600_000)).toBe("60:00");
   });
 
+  it("shares, Cold Lock games and bathroom trips come off the log, names folded", () => {
+    const sim = Sim.fromSources("ROLE Program\n\nCHARACTER Norton\n\nCODEX The Sandy File\n  code: SANDY-1\n  text: Sandy.\n");
+    for (const [id, name] of [["g1", "Winamp"], ["g2", "VLC"], ["g3", "Paint"]] as const) sim.createPerson(id, name);
+    sim.redeem("g1", "SANDY-1");
+    sim.share("g1", "g2", "The Sandy File");
+    sim.share("g1", "Norton", "The Sandy File"); // a share to a character counts too
+    sim.share("g2", "g3", "The Sandy File");
+    sim.signal("chess won", "g1"); // the tent tablet
+    sim.signal("chess_won", "g1"); // the director's fallback button
+    sim.signal("beat_the_machine", "g2"); // a host's ♟
+    sim.signal("Chess Lost", "g2");
+    sim.signal("chess drawn", "g3");
+    sim.signal("chess won"); // no subject: nobody's
+    sim.signal("go to the bathroom", "g3");
+    sim.signal("go to the bathroom", "g3"); // still away: the same trip
+    sim.signal("back from the bathroom", "g3");
+    sim.signal("go to the bathroom", "g3");
+    sim.signal("go_to_the_bathroom", "g1");
+    const c0 = logCounts(sim);
+    expect(c0.bathroom.get("g1")).toBe(1);
+    // A trip the story times out (`set self.afk = false`, no Back signal)
+    // ends too, so the next 🚻 counts.
+    sim.setVar("g1.afk", "false");
+    sim.signal("go to the bathroom", "g1");
+    const c = logCounts(sim);
+    expect([...c.shares.entries()].sort()).toEqual([["g1", 2], ["g2", 1]]);
+    expect(c.chess.get("g1")).toEqual({ won: 2, lost: 0, drawn: 0 });
+    expect(c.chess.get("g2")).toEqual({ won: 1, lost: 1, drawn: 0 });
+    expect(c.chess.get("g3")).toEqual({ won: 0, lost: 0, drawn: 1 });
+    expect([...c.bathroom.entries()].sort()).toEqual([["g1", 2], ["g3", 2]]);
+
+    const r = computeRecap(sim, { title: "T" });
+    expect(r.lists.shares.map((x) => [x.name, x.value, x.rank])).toEqual([["Winamp", 2, 1], ["VLC", 1, 2], ["Paint", 0, 3]]);
+    expect(r.lists.chess.map((x) => [x.name, x.value])).toEqual([["Winamp", 2], ["VLC", 1], ["Paint", 0]]);
+    expect(r.lists.bathroom[0]).toMatchObject({ name: "Paint", value: 2, rank: 1 });
+    expect(r.chessGames.map((g) => g.name)).toEqual(["Winamp", "VLC", "Paint"]);
+    expect(r.totals).toMatchObject({ shares: 3, chessWins: 3, bathroomTrips: 4 });
+    expect(r.text).toContain("Codex shares:\n  1. Winamp — 2\n  2. VLC — 1\n");
+    expect(r.text).toContain("Cold Lock chess (most wins):\n  Winamp — 2 won · 0 lost · 0 drawn\n  VLC — 1 won · 1 lost · 0 drawn\n  Paint — 0 won · 0 lost · 1 drawn\n");
+    expect(r.text).toContain("Bathroom trips:\n  1. Paint — 2\n  1. Winamp — 2\n");
+  });
+
   it("reads the show's live state into ranked lists + a paste-ready block", { timeout: SLOW }, () => {
     const sim = night();
     // Both lie paths credit the program the chain was about, never the truth-teller.
@@ -120,9 +166,10 @@ describe("K-26 recap", () => {
     expect(r.lists.truthcoin[0]!.value).toBeGreaterThan(0);
     expect(r.lists.trust.find((x) => x.id === "g3")?.persona).toBe(true);
     expect(r.factions.length).toBe(sim.model.factions.size);
+    expect(r.lists.bathroom.filter((x) => x.value > 0).map((x) => [x.name, x.value])).toEqual([["Winamp", 1]]);
     // The text block: every list titled, liars listed, persona marked.
     expect(r.text.split("\n")[0]).toBe("RECAP — Trapped in the Internet");
-    for (const h of ["Most trusted (trust):", "Least trusted:", "Confident lies accepted:", "Trips to the Internet:", "Codex entries held:", "Quests completed:", "Factions:"]) {
+    for (const h of ["Most trusted (trust):", "Least trusted:", "Confident lies accepted:", "Trips to the Internet:", "Codex entries held:", "Quests completed:", "Codex shares:", "Cold Lock chess (most wins):", "Bathroom trips:", "Factions:"]) {
       expect(r.text).toContain(h);
     }
     expect(r.text).toMatch(/Confident lies accepted:\n {2}1\. M[^\n]* — 1\n {2}1\. M[^\n]* — 1/u);
@@ -135,6 +182,8 @@ describe("K-26 recap", () => {
     expect(r.programs).toBe(0);
     expect(r.lists.trust).toEqual([]);
     expect(r.text).toContain("(nobody)");
+    expect(r.text).toContain("Cold Lock chess (most wins):\n  (nobody played)");
+    expect(r.chessGames).toEqual([]);
   });
 });
 

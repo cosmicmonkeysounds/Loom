@@ -8,8 +8,14 @@ Two long-lived loops run concurrently:
     against the sensor map, and injects journaled story mutations
     through the mod API.
 
-The router itself is stateless (debounce aside): restart it any time —
-retained MQTT re-converges the props and the journal carries the story.
+The router itself is stateless (debounce aside): restart it any time.
+Retained MQTT re-converges the door indicator, and the lights catch up:
+on every (re)connect of the feed or of the broker, and 1.5 s after a
+reset / reload / golive `lifecycle` frame (once the restarted story's
+entry beat ran),
+`_catch_up` reads the story's mirrors (`Night.lights`, `Night.dark_room`)
+from `GET /api/state` and replays the `catch_up:` cues through the cue
+map — so a cue fired while the uplink was down is not lost for good.
 """
 
 from __future__ import annotations
@@ -33,6 +39,15 @@ from .sensormap import Debouncer, ModCall, evaluate_sensors
 
 log = logging.getLogger("stagehand.show")
 
+#: After a restart's `lifecycle` frame, wait this long before reading the
+#: world: the frame is sent before the story replays its entry beat.
+LIFECYCLE_CATCH_UP_DELAY_S = 1.5
+#: The lifecycle kinds that restart the story (`ended` only logs).
+_RESTART_KINDS = ("reset", "reload", "golive")
+#: How long a catch-up waits for the broker session before giving up (the
+#: broker's own reconnect schedules another).
+MQTT_READY_TIMEOUT_S = 10.0
+
 
 def build_show(section: Any, base_dir: str) -> "ShowControl":
     try:
@@ -52,6 +67,12 @@ class ShowControl:
         self.mqtt: MqttBridge | None = None
         self.debouncer = Debouncer()
         self.mod: ModClient | None = None
+        self.catch_up_delay_s = LIFECYCLE_CATCH_UP_DELAY_S
+        self.mqtt_ready_timeout_s = MQTT_READY_TIMEOUT_S
+        self._catch_up_task: asyncio.Task | None = None
+        #: Live-feed `cue`s a `catch_up:` rule covers: a catch-up whose state
+        #: read raced one replays nothing (its world is older than the cue).
+        self._feed_cues = 0
 
     def describe(self) -> list[str]:
         cfg = self.cfg
@@ -60,6 +81,7 @@ class ShowControl:
             f"osc      : {', '.join(f'{n}={h}:{p}' for n, (h, p) in cfg.osc_targets.items()) or '— (no targets)'}",
             f"cues     : {len(cfg.cues)} rule(s)",
             f"sensors  : {len(cfg.sensors)} rule(s)",
+            f"catch-up : {', '.join(r.path for r in cfg.catch_up) or '—'}",
         ]
         if cfg.mqtt_filters:
             lines.append(f"subscribe: {', '.join(cfg.mqtt_filters)}")
@@ -78,6 +100,8 @@ class ShowControl:
                 username=self.cfg.mqtt.username,
                 password=self.cfg.mqtt.password,
             )
+            # Cues sent while the broker was away were dropped: re-converge.
+            self.mqtt.on_connected = lambda: self._schedule_catch_up("mqtt")
             self.mqtt.start()
         tasks = [asyncio.ensure_future(self._sse_loop())]
         if self.mqtt is not None and self.cfg.sensors:
@@ -87,6 +111,8 @@ class ShowControl:
         finally:
             for t in tasks:
                 t.cancel()
+            if self._catch_up_task is not None:
+                self._catch_up_task.cancel()
             if self.mqtt is not None:
                 self.mqtt.stop()
                 self.mqtt = None
@@ -98,11 +124,75 @@ class ShowControl:
 
         def on_frame(event: str, data: str) -> None:
             if event == "sim":
-                self._on_sim(json.loads(data))
+                self._on_feed_sim(json.loads(data))
+            elif event == "lifecycle":
+                self._on_lifecycle(json.loads(data))
 
         # The mod feed is capability-gated: `run_stream` authenticates, sends
         # the token on the stream request, and re-logs-in when it's refused.
-        await run_stream(self.mod, self.mod.sse_url, on_frame, label="show feed")
+        await run_stream(
+            self.mod,
+            self.mod.sse_url,
+            on_frame,
+            label="show feed",
+            on_connect=lambda: self._schedule_catch_up("connect"),
+        )
+
+    def _on_feed_sim(self, doc: dict) -> None:
+        """A `sim` event from the live feed (a catch-up's replay skips this)."""
+        if isinstance(doc, dict) and doc.get("type") == "directive" and doc.get("verb") == "cue":
+            if any(r.covers(doc.get("args", "")) for r in self.cfg.catch_up):
+                self._feed_cues += 1
+        self._on_sim(doc)
+
+    def _on_lifecycle(self, doc: dict) -> None:
+        kind = str(doc.get("kind", "")) if isinstance(doc, dict) else ""
+        if kind in _RESTART_KINDS:
+            self._schedule_catch_up(kind, delay=self.catch_up_delay_s)
+        else:
+            log.info("lifecycle %s", kind or "?")
+
+    def _schedule_catch_up(self, why: str, delay: float = 0.0) -> None:
+        """Run `_catch_up` as its own task (never awaited inside a frame
+        handler: a slow state call must not hold the feed). A newer one
+        replaces a pending one — it reads a fresher world."""
+        if not self.cfg.catch_up:
+            return
+        if self._catch_up_task is not None and not self._catch_up_task.done():
+            self._catch_up_task.cancel()
+        self._catch_up_task = asyncio.ensure_future(self._catch_up(why, delay))
+
+    async def _catch_up(self, why: str, delay: float = 0.0) -> None:
+        """Replay the `catch_up:` cues for the story's current world."""
+        assert self.mod is not None
+        if delay > 0:
+            await asyncio.sleep(delay)
+        if self.mqtt is not None and not self.mqtt.connected.is_set():
+            # paho drops QoS-0 publishes queued before its session is up.
+            try:
+                await asyncio.wait_for(self.mqtt.connected.wait(), self.mqtt_ready_timeout_s)
+            except asyncio.TimeoutError:
+                log.warning("catch-up (%s) skipped: the broker is not connected (its reconnect catches up)", why)
+                return
+        seen = self._feed_cues
+        try:
+            doc = await self.mod.get("/api/state", {"role": "mod"})
+        except (ModApiError, httpx.HTTPError, OSError, ValueError) as err:
+            log.warning("catch-up (%s) FAILED: %s", why, err)
+            return
+        if self._feed_cues != seen:
+            log.info("catch-up (%s) skipped: a live cue arrived while the state was read", why)
+            return
+        world: dict[str, str] = {}
+        for entry in doc.get("world") or []:
+            if isinstance(entry, dict) and isinstance(entry.get("path"), str):
+                world[entry["path"]] = str(entry.get("value", ""))
+        for rule in self.cfg.catch_up:
+            args = rule.args_for(world)
+            if args is None:
+                continue
+            log.info("catch-up (%s): cue %s", why, args)
+            self._on_sim({"type": "directive", "verb": "cue", "args": args})
 
     def _on_sim(self, event: dict) -> None:
         for cue in evaluate_cues(self.cfg.cues, event):

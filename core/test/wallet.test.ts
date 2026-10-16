@@ -11,7 +11,7 @@ import { Sim, compileFromSource } from "../src/runtime/sim/index.ts";
 import { parseCurrency, walletRoleOf, type CurrencyDef } from "../src/runtime/sim/model.ts";
 import type { SimEvent } from "../src/runtime/sim/event.ts";
 import { guestPickable, identityDefs, isSpecial } from "../server/identity.ts";
-import { WalletBook, DIRECTOR, walletLine, walletSeam, type WalletEvent, type WalletOp, type WalletSeam } from "../server/wallet.ts";
+import { WalletBook, DIRECTOR, HOLD_MS, walletLine, walletSeam, type WalletEvent, type WalletOp, type WalletSeam } from "../server/wallet.ts";
 
 // --- a fake seam -----------------------------------------------------------------
 
@@ -189,6 +189,70 @@ describe("wallet book — transfers", () => {
     expect(book.checkCancel("t7", DIRECTOR, true)).toBeNull();
   });
 
+  it("a held transfer nobody answers settles itself after HOLD_MS: timed_out, no transfer_approved; replay agrees", () => {
+    const f = fake(PEOPLE, { parts: ["Auditor"] });
+    const book = new WalletBook(COIN, f.seam);
+    const journal: WalletOp[] = [];
+    const run = (op: WalletOp): Array<SimEvent | WalletEvent> => {
+      journal.push(op);
+      return book.apply(op);
+    };
+    run(send(book, "g1", "g2", 10, 0));
+    run(send(book, "g2", "g1", 10, 0));
+    const held = run(send(book, "g4", "g2", 30, 1000)); // t3 held
+    expect(cards(held).map((c) => [c.to, c.card.step, c.card.settleAt])).toEqual([
+      ["g4", "held", 1000 + HOLD_MS],
+      ["@Auditor", "held", 1000 + HOLD_MS],
+    ]);
+    expect(walletLine(cards(held)[0]!.card, 1000)).toBe("⏳ 30 Truthcoin to Paint is waiting for Auditor to approve — it goes through on its own in 5 min.");
+    expect(walletLine(cards(held)[1]!.card, HOLD_MS - 29_000)).toBe("🧾 Solitaire → Paint: 30 Truthcoin. Waiting for your approval — it goes through on its own in 30 s.");
+    expect(book.viewFor("g4").transfers[0]).toMatchObject({ id: "t3", state: "held", settleAt: 1000 + HOLD_MS });
+    for (const op of book.due(60_000)) run(op); // t1 + t2 settle; t3 still held
+    expect(book.heldIds()).toEqual(["t3"]);
+    expect(book.due(HOLD_MS + 999)).toEqual([]);
+    expect(book.due(HOLD_MS + 1000)).toEqual([{ op: "settle", id: "t3" }]);
+    const before = f.balances.get("g2")!;
+    const timed = run({ op: "settle", id: "t3" });
+    expect(f.balances.get("g2")).toBe(before + 30);
+    expect(cards(timed).map((c) => [c.to, c.card.step, c.card.by])).toEqual([
+      ["g4", "timed_out", undefined],
+      ["@Auditor", "timed_out", undefined],
+      ["g2", "received", undefined],
+    ]);
+    expect(walletLine(cards(timed)[0]!.card)).toBe("✅ Approved automatically: 30 Truthcoin to Paint.");
+    expect(walletLine(cards(timed)[1]!.card)).toBe("⌛ Timed out — approved automatically: Solitaire → Paint, 30 Truthcoin.");
+    expect(f.signals.map((s) => s[0])).not.toContain("transfer_approved"); // The Audit never credits a timeout
+    expect(book.heldIds()).toEqual([]);
+    expect(book.due(HOLD_MS * 2)).toEqual([]);
+
+    const g = fake(PEOPLE, { parts: ["Auditor"] });
+    const fresh = new WalletBook(COIN, g.seam);
+    for (const op of journal) fresh.apply(op);
+    expect([...g.balances.entries()]).toEqual([...f.balances.entries()]);
+    expect(JSON.stringify(fresh.modView())).toBe(JSON.stringify(book.modView()));
+    expect(g.signals).toEqual(f.signals);
+  });
+
+  it("approve, deny or cancel before the hold deadline wins: nothing is left due", () => {
+    for (const close of [
+      (id: string): WalletOp => ({ op: "approve", id, by: "Auditor" }),
+      (id: string): WalletOp => ({ op: "deny", id, by: "Auditor" }),
+      (id: string): WalletOp => ({ op: "cancel", id, by: "g1" }),
+    ]) {
+      const f = fake(PEOPLE, { parts: ["Auditor"] });
+      const book = new WalletBook(COIN, f.seam);
+      book.apply(send(book, "g1", "g2", 10, 0));
+      book.apply({ op: "settle", id: "t1" });
+      book.apply(send(book, "g1", "g2", 10, 0));
+      book.apply({ op: "settle", id: "t2" });
+      book.apply(send(book, "g1", "g2", 10, 0)); // t3 held
+      const done = book.apply(close("t3"));
+      expect(cards(done).map((c) => c.card.step)).not.toContain("timed_out");
+      expect(book.due(HOLD_MS * 2)).toEqual([]);
+      expect(book.apply({ op: "settle", id: "t3" })).toEqual([]); // a stale settle is a no-op
+    }
+  });
+
   it("a deny inside the window refunds; after settlement it is refused", () => {
     const f = fake(PEOPLE, { parts: ["Auditor"] });
     const book = new WalletBook(COIN, f.seam);
@@ -338,7 +402,10 @@ describe("wallet book — offers", () => {
     const f = fake(PEOPLE, { parts: ["Auditor"], codex: { g2: ["the_lease"] } });
     const book = new WalletBook(COIN, f.seam);
     expect(book.checkOffer("g1", "g2", "buy", "The Billboard Lease", 50)).toBeNull();
-    expect(book.checkOffer("g1", "g2", "buy", "No Such Thing", 50)).toEqual({ status: 404, error: "no such entry" });
+    // An unknown entry gets the generic refusal; a buy never tests what the
+    // seller holds (that would read another guest's secrets) — accept does.
+    expect(book.checkOffer("g1", "g2", "buy", "No Such Thing", 50)).toEqual({ status: 409, error: "they don't have that to sell" });
+    expect(book.checkOffer("g1", "g4", "buy", "The Billboard Lease", 50)).toBeNull();
     expect(book.checkOffer("g1", "g2", "buy", "The Billboard Lease", 101)).toEqual({ status: 409, error: "insufficient funds" });
     expect(book.entryIdOf("The Billboard Lease")).toBe("the_lease");
     const ev = book.apply({ op: "offer", id: book.nextId("o"), from: "g1", to: "g2", side: "buy", entry: "the_lease", amount: 50, at: 0 });
@@ -394,6 +461,7 @@ describe("wallet book — offers", () => {
     const f = fake(PEOPLE, { parts: ["Auditor"], codex: { g1: ["the_file"] } });
     const book = new WalletBook(COIN, f.seam);
     expect(book.checkOffer("g2", "g1", "sell", "The Sandy File", 30)).toEqual({ status: 404, error: "you don't hold that entry" });
+    expect(book.checkOffer("g1", "g2", "sell", "No Such Thing", 30)).toEqual({ status: 404, error: "you don't hold that entry" });
     expect(book.checkOffer("g1", "g2", "sell", "The Sandy File", 30)).toBeNull();
     const ev = book.apply({ op: "offer", id: "o1", from: "g1", to: "g2", side: "sell", entry: "the_file", amount: 30, at: 0 });
     expect(f.balances.get("g1")).toBe(100); // no escrow on a sell
@@ -448,7 +516,7 @@ describe("wallet book — the stimulus", () => {
       ["stimulus_received", "g1", { from: "g3", amount: 20 }],
       ["stimulus_received", "g3", { from: "g3", amount: 20 }],
     ]);
-    expect(book.viewFor("g3").minter).toEqual({ uses: 1, limit: 3 });
+    expect(book.viewFor("g3").minter).toMatchObject({ uses: 1, limit: 3 });
     expect(book.viewFor("g1").minter).toBeUndefined();
 
     // A director may fire it from Run; it still counts.
@@ -478,6 +546,145 @@ describe("wallet book — the stimulus", () => {
     const none = new WalletBook({ ...COIN, minter: null }, f.seam);
     expect(none.checkStimulus("g3", 1)).toEqual({ status: 403, error: "this story has no minter" });
     expect(none.apply({ op: "stimulus", id: "s2", by: "g3", amount: 7, at: 0 })).toEqual([]);
+  });
+});
+
+describe("wallet book — the reserve (grant + freeze)", () => {
+  it("grants one eligible person minted coin, three times by default; the fourth is refused", () => {
+    const f = fake(PEOPLE, { parts: ["Auditor"] });
+    f.cleared.add("g1");
+    f.cleared.add("g2");
+    const book = new WalletBook(COIN, f.seam);
+    expect(book.checkGrant("g1", "g2", 10)).toEqual({ status: 403, error: "not the minter" });
+    expect(book.checkGrant("g3", "g3", 10)).toEqual({ status: 409, error: "you can't grant to yourself" });
+    expect(book.checkGrant("g3", "g4", 10)).toEqual({ status: 409, error: "they can't receive a grant yet" }); // not cleared
+    expect(book.checkGrant("g3", "nobody", 10)).toEqual({ status: 404, error: "unknown recipient" });
+    expect(book.checkGrant("g3", "g1", 501)).toEqual({ status: 400, error: "amount must be a whole number from 1 to 500" });
+    const ev = book.apply({ op: "grant", id: book.nextId("g"), by: "g3", to: "g1", amount: 40, at: 0 });
+    expect(f.balances.get("g1")).toBe(140);
+    expect(f.balances.get("g3")).toBe(100); // minted, never debited
+    expect(cards(ev).map((c) => [c.to, c.card.kind, c.card.step, c.root])).toEqual([
+      ["g3", "grant", "granted", true],
+      ["g1", "grant", "received", true],
+    ]);
+    expect(walletLine(cards(ev)[0]!.card)).toBe("🎁 You granted Winamp 40 Truthcoin from the reserve.");
+    expect(walletLine(cards(ev)[1]!.card)).toBe("🎁 Mint granted you 40 Truthcoin from the reserve.");
+    expect(f.signals).toEqual([
+      ["grant", "g3", { to: "g1", amount: 40 }],
+      ["grant_received", "g1", { from: "g3", amount: 40 }],
+    ]);
+    book.apply({ op: "grant", id: book.nextId("g"), by: "g3", to: "g2", amount: 5, at: 1 });
+    // The director's fallback counts too, and only the recipient hears it.
+    expect(book.checkGrant(DIRECTOR, "g1", 5, true)).toBeNull();
+    const byDirector = book.apply({ op: "grant", id: book.nextId("g"), by: DIRECTOR, to: "g1", amount: 5, at: 2 });
+    expect(cards(byDirector).map((c) => [c.to, c.card.step, c.card.fromName])).toEqual([["g1", "received", "Director"]]);
+    expect(book.checkGrant("g3", "g2", 5)).toEqual({ status: 409, error: "no grants left" });
+    expect(book.checkGrant(DIRECTOR, "g2", 5, true)).toEqual({ status: 409, error: "no grants left" });
+    expect(book.viewFor("g3").minter).toMatchObject({ grants: { uses: 3, limit: 3 }, freezeMs: 600_000 });
+    expect(book.modView().grants).toEqual({ uses: 3, limit: 3 });
+    // `grants N` on the role sets the limit.
+    const two = new WalletBook({ ...COIN, minter: { ...COIN.minter!, grants: 0 } }, f.seam);
+    expect(two.checkGrant("g3", "g1", 5)).toEqual({ status: 409, error: "no grants left" });
+  });
+
+  it("a freeze refuses every way coin leaves the account until it thaws on the clock; receiving still works", () => {
+    const f = fake(PEOPLE, { codex: { g1: ["the_lease"], g2: ["the_file"] } });
+    const book = new WalletBook({ ...COIN, approver: null }, f.seam);
+    f.clock.now = 1_000;
+    // g2 asks g1 for coin and offers to sell g1 a fact, before the freeze.
+    book.apply({ op: "request", id: book.nextId("r"), from: "g2", to: "g1", amount: 5, at: 1_000 });
+    book.apply({ op: "offer", id: book.nextId("o"), from: "g2", to: "g1", side: "sell", entry: "the_file", amount: 5, at: 1_000 });
+    book.apply({ op: "offer", id: book.nextId("o"), from: "g2", to: "g1", side: "buy", entry: "the_lease", amount: 5, at: 1_000 });
+    expect(book.checkFreeze("g1", "g2")).toEqual({ status: 403, error: "not the minter" });
+    expect(book.checkFreeze("g3", "g3")).toEqual({ status: 409, error: "you can't freeze yourself" });
+    expect(book.checkFreeze("g3", "g1")).toBeNull();
+    const ev = book.apply({ op: "freeze", id: book.nextId("f"), by: "g3", target: "g1", until: book.freezeUntil(1_000), at: 1_000 });
+    expect(cards(ev).map((c) => [c.to, c.card.kind, c.card.step, c.root, c.card.settleAt])).toEqual([
+      ["g1", "freeze", "frozen", true, 601_000],
+      ["g3", "freeze", "imposed", true, 601_000],
+    ]);
+    expect(walletLine(cards(ev)[0]!.card, 1_000)).toBe("🧊 Mint froze your Truthcoin — you can't send, pay or buy until it thaws in 10 min.");
+    expect(walletLine(cards(ev)[1]!.card, 1_000)).toBe("🧊 You froze Winamp's Truthcoin — it thaws in 10 min.");
+    expect(f.signals.slice(-2)).toEqual([
+      ["freeze", "g3", { to: "g1", until: 601_000 }],
+      ["wallet_frozen", "g1", { from: "g3", until: 601_000 }],
+    ]);
+    expect(book.checkFreeze("g3", "g1")).toEqual({ status: 409, error: "already frozen" });
+
+    const frozen = { status: 409, error: "your Truthcoin is frozen — it thaws in 10 min" };
+    expect(book.checkSend("g1", "g2", 5)).toEqual(frozen);
+    expect(book.checkRespond("r1", "g1", true)).toEqual(frozen);
+    expect(book.checkAccept("o2", "g1")).toEqual(frozen); // a sell offer: g1 would pay
+    expect(book.checkOffer("g1", "g2", "buy", "the_file", 5)).toEqual(frozen);
+    // Coin coming in, backing out, and selling still work.
+    expect(book.checkAccept("o3", "g1")).toBeNull(); // a buy offer: g1 is paid
+    expect(book.checkRespond("r1", "g1", false)).toBeNull();
+    expect(book.checkRequest("g1", "g2", 5)).toBeNull();
+    expect(book.checkOffer("g1", "g2", "sell", "the_lease", 5)).toBeNull();
+    expect(book.checkSend("g2", "g1", 5)).toBeNull();
+    expect(book.viewFor("g1").frozenUntil).toBe(601_000);
+    expect(book.viewFor("g2").frozenUntil).toBeUndefined();
+    expect(book.viewFor("g3").minter!.frozen).toEqual([{ id: "f4", target: "g1", targetName: "Winamp", by: "g3", until: 601_000, at: 1_000 }]);
+    expect(book.modView().frozen.map((x) => x.target)).toEqual(["g1"]);
+
+    f.clock.now = 600_999;
+    expect(book.due(600_999)).toEqual([]);
+    f.clock.now = 601_000;
+    expect(book.checkSend("g1", "g2", 5)).toBeNull(); // past the deadline reads thawed before the sweep
+    expect(book.due(601_000).filter((op) => op.op === "unfreeze")).toEqual([{ op: "unfreeze", id: "f4" }]); // the expiries land too
+    const thaw = book.apply({ op: "unfreeze", id: "f4" });
+    expect(cards(thaw).map((c) => [c.to, c.card.step, c.root])).toEqual([
+      ["g1", "thawed", false],
+      ["g3", "expired", false],
+    ]);
+    expect(walletLine(cards(thaw)[0]!.card)).toBe("☀️ Your Truthcoin thawed — it moves again.");
+    expect(f.signals.at(-1)).toEqual(["wallet_thawed", "g1", {}]);
+    expect(book.due(999_999).filter((op) => op.op === "unfreeze")).toEqual([]);
+    expect(book.apply({ op: "unfreeze", id: "f4" })).toEqual([]); // stale → no-op
+    expect(book.viewFor("g1").frozenUntil).toBeUndefined();
+    expect(book.checkFreeze("g3", "g1")).toBeNull(); // may be frozen again
+  });
+
+  it("a director freezes and lifts a freeze early (by id or target); the minter hears nothing of it", () => {
+    const f = fake(PEOPLE);
+    const book = new WalletBook(COIN, f.seam);
+    expect(book.checkFreeze(DIRECTOR, "g3", true)).toBeNull(); // even the minter
+    const ev = book.apply({ op: "freeze", id: book.nextId("f"), by: DIRECTOR, target: "g2", until: 600_000, at: 0 });
+    expect(cards(ev).map((c) => [c.to, c.card.step])).toEqual([["g2", "frozen"]]);
+    expect(book.checkUnfreeze("nobody")).toEqual({ status: 404, error: "no such freeze" });
+    expect(book.checkUnfreeze("g2")).toEqual({ id: "f1" });
+    const lift = book.apply({ op: "unfreeze", id: "f1", by: DIRECTOR });
+    expect(cards(lift).map((c) => [c.to, c.card.step])).toEqual([["g2", "thawed"]]);
+    expect(walletLine(cards(lift)[0]!.card)).toBe("☀️ Director lifted the freeze — your Truthcoin moves again.");
+    expect(book.checkUnfreeze("f1")).toEqual({ status: 409, error: "already thawed" });
+    expect(book.due(999_999)).toEqual([]);
+  });
+
+  it("replays grants, a freeze and its thaw into the same balances and frozen state", () => {
+    const f = fake(PEOPLE);
+    f.cleared.add("g1");
+    const book = new WalletBook(COIN, f.seam);
+    const journal: WalletOp[] = [];
+    const run = (op: WalletOp): void => {
+      journal.push(op);
+      book.apply(op);
+    };
+    run({ op: "grant", id: book.nextId("g"), by: "g3", to: "g1", amount: 25, at: 0 });
+    run({ op: "freeze", id: book.nextId("f"), by: "g3", target: "g1", until: book.freezeUntil(0), at: 0 });
+    run({ op: "freeze", id: book.nextId("f"), by: "g3", target: "g2", until: book.freezeUntil(300_000), at: 300_000 });
+    f.clock.now = 600_000;
+    for (const op of book.due(600_000)) run(op); // g1 thaws, g2 still frozen
+
+    const g = fake(PEOPLE);
+    g.cleared.add("g1");
+    const again = new WalletBook(COIN, g.seam);
+    for (const op of journal) again.apply(op);
+    g.clock.now = 600_000;
+    expect([...g.balances.entries()]).toEqual([...f.balances.entries()]);
+    expect(again.viewFor("g1").frozenUntil).toBeUndefined();
+    expect(again.viewFor("g2").frozenUntil).toBe(900_000);
+    expect(again.modView()).toEqual(book.modView());
+    expect(again.nextId("f")).toBe(book.nextId("f"));
   });
 });
 
@@ -563,6 +770,9 @@ describe("the story grammar", () => {
     expect(walletRoleOf("minter")).toEqual({ role: "minter", limit: 3, while: null });
     expect(walletRoleOf("minter, limit 1, while program.cleared == true")).toEqual({ role: "minter", limit: 1, while: "program.cleared == true" });
     expect(walletRoleOf("minter, while program.score >= 10, limit 0")).toEqual({ role: "minter", limit: 0, while: "program.score >= 10" });
+    expect(walletRoleOf("minter, grants 2, freeze 5m")).toEqual({ role: "minter", limit: 3, while: null, grants: 2, freezeMs: 300_000 });
+    expect(walletRoleOf("minter, freeze 0s")).toBeNull();
+    expect(walletRoleOf("minter, grants -1")).toBeNull();
     expect(walletRoleOf("minter, every 2")).toBeNull();
     expect(walletRoleOf("banker")).toBeNull();
   });
@@ -638,6 +848,14 @@ CHARACTER Calculator
 CODEX The Billboard Lease
   text: A lease.
 
+CODEX Lease Copy
+  title: The Billboard Lease
+  text: A second entry whose title folds onto the first one's id.
+
+CODEX Fragment 01
+  title: JEEVES.IDX — fragment 01
+  text: A title that isn't the id.
+
 ROLE Program
   cleared: bool = false
   bonus: 0 to 100 = 0
@@ -659,7 +877,11 @@ ROLE Program
     expect(book.approverAudience()).toBe("@Auditor");
     expect(seam.hasBalance("g1")).toBe(true);
     expect(seam.hasBalance("nobody")).toBe(false);
-    expect(seam.codexIdOf("the billboard lease")).toBe("The Billboard Lease");
+    expect(seam.codexIdOf("the billboard lease")).toBe("The Billboard Lease"); // the id wins over Lease Copy's title
+    expect(seam.codexIdOf("JEEVES.IDX — fragment 01")).toBe("Fragment 01"); // by title
+    expect(seam.codexIdOf("jeeves.idx — Fragment 01")).toBe("Fragment 01");
+    expect(seam.codexIdOf("fragment_01")).toBe("Fragment 01"); // by folded id
+    expect(seam.codexIdOf("Nope")).toBeNull();
     expect(seam.codexTitle("The Billboard Lease")).toBe("The Billboard Lease");
 
     book.apply(send(book, "g1", "g2", 30, sim.elapsed()));

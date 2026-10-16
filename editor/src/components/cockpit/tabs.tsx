@@ -26,7 +26,8 @@ import { confirmAction } from '@/store/dialog'
 import { FactionPill } from './ui'
 import { publicFaction } from './format'
 import { alertCue } from './broadcast'
-import { LensKind, lensKindOf, roomMessages, useRooms } from './rooms'
+import { LensKind, lensKindOf, READ_ONLY_ROOMS, roomMessages, useRooms } from './rooms'
+import { walletCardTag } from './wallet'
 import { useInspect } from './inspect'
 import { groupWorld, type WorldGroup } from './world'
 import { VarTable } from './VarTable'
@@ -119,11 +120,15 @@ function MessageRow({
       </li>
     )
   }
-  if ((m.kind === 'codex' && m.codex) || (m.kind === 'quest' && m.quest)) {
-    // A pinned-room card: an entry in a guest's Codex, a step in their Quest Log.
+  if ((m.kind === 'codex' && m.codex) || (m.kind === 'quest' && m.quest) || (m.kind === 'wallet' && m.wallet)) {
+    // A pinned-room card: an entry in a guest's Codex, a step in their Quest
+    // Log, a Wallet card (read-only here — Approve / Deny live on Run's
+    // Wallet card and in the booth).
     const tag = m.codex
       ? `📓 ${m.codex.title}${m.codex.via === 'share' && m.codex.from ? ` · shared by ${m.codex.from}` : ''}`
-      : `📜 ${m.quest!.title} · ${m.quest!.action}`
+      : m.wallet
+        ? walletCardTag(m.wallet)
+        : `📜 ${m.quest!.title} · ${m.quest!.action}`
     return (
       <li onContextMenu={onMenu} className={clsx('group flex items-start gap-2 rounded border border-emerald-900/60 bg-emerald-950/20 px-3 py-1.5', m.hidden && 'opacity-40', threadIndent)}>
         <span className="shrink-0 pt-px text-[10px] uppercase tracking-widest text-emerald-400/90">{tag}</span>
@@ -283,9 +288,10 @@ export function ChatTab() {
   // Postable: any non-DM room, any per-guest DM room (scoped safely via the
   // `guest:<id>` path), a performer's guest thread. An aggregate DM room
   // stays read-only; so does a room the lens identity may not post in.
-  // A guest's Codex / Quest Log is their own log — nobody types into it.
+  // A guest's Codex / Quest Log / Wallet is their own log, and a booth's
+  // Inbox is what the story dealt it — nobody types into them.
   const canCompose = activeRoom
-    ? activeRoom.kind === 'codex' || activeRoom.kind === 'quests'
+    ? READ_ONLY_ROOMS.has(activeRoom.kind)
       ? false
       : activeRoom.kind === 'dm' ? !!activeRoom.dmGuest : true
     : !active.startsWith('dm:')
@@ -653,6 +659,11 @@ export function RosterTab() {
             >
               <td className="px-3 py-2">
                 {r.name} {r.captured && <span className="ml-1 text-xs text-red-400">🔒</span>}
+                {r.restricted && (
+                  <span className="ml-1 text-xs text-red-400" title="restricted">
+                    ⛔
+                  </span>
+                )}
                 {r.owner && (
                   <span
                     className={clsx('ml-1.5 rounded px-1 text-[9px] uppercase tracking-wide', r.owner === me ? 'bg-violet-500/20 text-violet-300' : 'bg-zinc-800 text-zinc-400')}

@@ -14,8 +14,9 @@ change the order here, change it there.
 
 1. The VPS runs the wave-4 release (`scripts/ops/ship.sh <tag>` — the
    server **before** the first sync that carries `facts.json` or the King's
-   map, or an old server refuses them; wave 4 is still uncommitted and
-   undeployed as of 2026-10-16), and the show's story is in your server
+   map, or an old server refuses them; as of 2026-10-16 wave 4 is committed
+   (9d35a4b) and wave 5 sits in the working tree, neither deployed; wave 5
+   also wants one `sync-show --replace-maps`), and the show's story is in your server
    project: `LOOM_SSH=loom-vps pnpm sync-show` (with
    `LOOM_PROJECT="<your project name>"` if it isn't *Untitled Project*).
    The sync carries `facts.json` (the hunt questions, the facts and the
@@ -159,4 +160,4 @@ them out).
 - **Phones at the server-room endings** show the GO TO THE LIVING ROOM *alert banner*, not a full-screen flashing screen (the TV and terminals do flash it).
 - **TV slides are text placeholders** (no artwork yet: "CEREMONY", "AWARD MOST TRUSTED"); the award slide doesn't name the winner — the winner's phone and the host's line do. Only the Trust Chart is drawn for real.
 - **The hunt questions, the facts and the Truth-or-Dare questions are DRAFT placeholders** in `facts.json` until the team writes the real ones (the character facts quote the invitations' real-world details — the team's call before printing).
-- Not built: the tablet bench (K-02), the live tent run (K-03), the live mind run (K-04), the cellular sheet (K-07), K-31b, the printed QR posters on the walls (the Run page's 🖨 Print sheet makes them; the Desktop's piles are `generated/print-stacks.md`), cast-pack rehearsals, the Runescape invitation's ten-minute Truthcoin freeze.
+- Not built: the tablet bench (K-02), the live tent run (K-03), the live mind run (K-04), the cellular sheet (K-07), K-31b, the printed QR posters on the walls (the Run page's 🖨 Print sheet makes them; the Desktop's piles are `generated/print-stacks.md`), cast-pack rehearsals.

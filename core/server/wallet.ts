@@ -5,17 +5,17 @@
 //! `set program.score`, `scoreOf`, roster column and recap keeps working.
 //! What this module owns is the *in-flight* state the engine has no word
 //! for: pending transfers inside their deny window, the approver's held
-//! queue (every Nth transfer), open requests, escrowed codex offers, and
-//! the minter's stimulus count.
+//! queue (every Nth transfer), open requests, escrowed codex offers, the
+//! minter's stimulus + grant counts, and the freezes she imposed.
 //!
 //! Every state change is one `WalletOp`, applied by `WalletBook.apply`, which
 //! is the **only** mutation. It reads nothing but the op and the seam (the
 //! slice of the `Sim` it touches, unjournaled calls: balances, codex grants,
 //! story signals), so the runtime journals the op as a single `wallet` line
 //! and a restart replaying the same ops lands on identical balances, cards
-//! and story reactions. The timers (the settle window, request / offer
-//! expiry) run on the story clock: the ticker asks `due(now)` and commits
-//! each `settle` / `expire` as its own journal line, so replay never depends
+//! and story reactions. The timers (the settle window, a held transfer's
+//! `HOLD_MS`, request / offer expiry, a freeze's thaw) run on the story clock: the ticker asks `due(now)` and commits
+//! each `settle` / `expire` / `unfreeze` as its own journal line, so replay never depends
 //! on tick coalescing.
 //!
 //! Cards for the people involved are `wallet` events addressed to one viewer
@@ -54,7 +54,13 @@ export type WalletOp =
   | { op: "offer"; id: string; from: string; to: string; side: "buy" | "sell"; entry: string; amount: number; at: number }
   | { op: "accept"; id: string; at: number }
   | { op: "decline"; id: string }
-  | { op: "stimulus"; id: string; by: string; amount: number; at: number };
+  | { op: "stimulus"; id: string; by: string; amount: number; at: number }
+  // The minter's reserve: coin minted into one account (never debited).
+  | { op: "grant"; id: string; by: string; to: string; amount: number; at: number }
+  // A freeze on one account's outgoing coin until `until` (story ms);
+  // `unfreeze` thaws it — from the clock, or a director's early lift (`by`).
+  | { op: "freeze"; id: string; by: string; target: string; until: number; at: number }
+  | { op: "unfreeze"; id: string; by?: string };
 
 /** The director acting through a mod route — `by` on approvals / cancels. */
 export const DIRECTOR = "Director";
@@ -91,6 +97,22 @@ export interface WalletSeam {
 export function walletSeam(sim: Sim, currency: CurrencyDef): WalletSeam {
   const slot = currency.slot;
   const key = (id: string): string => `${id}.${slot}`;
+  // Folded display title → id, built once per model: the phone sends what
+  // it shows (a title), and ~half the show's entries have a `title:` that
+  // isn't their id. The first entry with a title wins; an id always beats
+  // a title (resolved before this map is read).
+  let titled: { model: Sim["model"]; byTitle: Map<string, string> } | null = null;
+  const idByTitle = (entry: string): string | null => {
+    if (titled === null || titled.model !== sim.model) {
+      const byTitle = new Map<string, string>();
+      for (const e of sim.model.codex.values()) {
+        const k = foldName(e.title);
+        if (!byTitle.has(k)) byTitle.set(k, e.id);
+      }
+      titled = { model: sim.model, byTitle };
+    }
+    return titled.byTitle.get(foldName(entry)) ?? null;
+  };
   return {
     elapsed: () => sim.elapsed(),
     scoreOf: (id) => (slot === "score" ? sim.scoreOf(id) : (asNumber(sim.world.get(key(id))) ?? 0)),
@@ -104,7 +126,7 @@ export function walletSeam(sim: Sim, currency: CurrencyDef): WalletSeam {
     codexIdOf: (entry) => {
       const t = entry.trim();
       if (sim.model.codex.has(t)) return t;
-      return sim.model.codexIndex.get(t);
+      return sim.model.codexIndex.get(t) ?? idByTitle(t);
     },
     codexTitle: (id) => sim.model.codex.get(id)?.title ?? id,
     holds: (cond, person) => sim.holds(cond, person, person),
@@ -143,6 +165,14 @@ interface Request {
   expiresAt: number;
   state: WalletRequestState;
   tx?: string;
+}
+interface Freeze {
+  id: string;
+  by: string;
+  target: string;
+  at: number;
+  until: number;
+  state: "frozen" | "thawed";
 }
 interface Offer {
   id: string;
@@ -211,10 +241,25 @@ export interface WalletView {
   requests: WalletRequestView[];
   /** Open offers, in + out. */
   offers: WalletOfferView[];
-  /** When the viewer is the minter's program. */
-  minter?: { uses: number; limit: number };
+  /** When the viewer's coin is frozen: story ms it thaws at. Send, pay a
+   *  request, a buy offer and accepting a sell offer are refused until then
+   *  (receiving, declining and cancelling still work). */
+  frozenUntil?: number;
+  /** When the viewer is the minter's program. `uses` / `limit` = the
+   *  stimulus; `grants` = the reserve's per-person grants; `freezeMs` = one
+   *  freeze's length; `frozen` = the freezes in force (any imposer). */
+  minter?: { uses: number; limit: number; grants: { uses: number; limit: number }; freezeMs: number; frozen: WalletFreezeView[] };
   /** When the viewer IS the approver (the approver declared as a guest program). */
   approver?: { queue: WalletTxView[] };
+}
+/** A freeze in force (`WalletView.minter.frozen`, `WalletModView.frozen`). */
+export interface WalletFreezeView {
+  id: string;
+  target: string;
+  targetName: string;
+  by: string;
+  until: number;
+  at: number;
 }
 /** The approver's booth (`PrimeView.wallet`). */
 export interface WalletQueueView {
@@ -232,6 +277,8 @@ export interface WalletModView {
   minterPerson: string | null;
   counter: number;
   stimulus: { uses: number; limit: number };
+  grants: { uses: number; limit: number };
+  frozen: WalletFreezeView[];
   open: { transfers: WalletTxView[]; requests: WalletRequestView[]; offers: WalletOfferView[] };
 }
 
@@ -242,6 +289,23 @@ export interface WalletRefusal {
 }
 
 const MAX_OPEN_OUTGOING = 5;
+
+/** How long a held transfer waits for the approver before it settles on its
+ *  own (step `timed_out`, no `transfer_approved`) — so an unstaffed booth
+ *  never strands every Nth send. */
+export const HOLD_MS = 5 * 60_000;
+
+/** The minter's grants when the role names no `grants N`. */
+export const DEFAULT_GRANTS = 3;
+/** One freeze's length when the role names no `freeze <dur>`. */
+export const DEFAULT_FREEZE_MS = 10 * 60_000;
+
+/** "4 min" / "35 s" — a countdown from story ms. */
+function leftText(until: number | undefined, now: number | undefined, fallback: string): string {
+  if (until === undefined || now === undefined) return fallback;
+  const left = Math.max(0, until - now);
+  return left > 90_000 ? `${Math.ceil(left / 60_000)} min` : `${Math.ceil(left / 1000)} s`;
+}
 
 function idNumber(id: string): number {
   const m = /(\d+)$/u.exec(id);
@@ -259,19 +323,23 @@ export function walletLine(c: WalletCard, now?: number): string {
   const audit = c.approver ?? "the auditor";
   const windowText = (): string =>
     c.settleAt !== undefined && now !== undefined ? `${Math.max(0, Math.ceil((c.settleAt - now) / 1000))} s` : "a moment";
+  // A held transfer's auto-approval, in minutes once it's more than 90 s off.
+  const holdText = (): string => leftText(c.settleAt, now, "a few minutes");
   switch (c.kind) {
     case "transfer":
       switch (c.step) {
         case "pending":
           return `💸 You sent ${amt} to ${c.toName} — settles in ${windowText()} unless ${audit} denies it.`;
         case "held":
-          return `⏳ ${amt} to ${c.toName} is waiting for ${audit} to approve.`;
+          return `⏳ ${amt} to ${c.toName} is waiting for ${audit} to approve — it goes through on its own in ${holdText()}.`;
         case "settled":
           return `✅ ${amt} to ${c.toName} settled.`;
         case "received":
           return `💰 ${c.fromName} sent you ${amt}.`;
         case "approved":
           return `✅ Approved by ${c.by ?? audit}: ${amt} to ${c.toName}.`;
+        case "timed_out":
+          return `✅ Approved automatically: ${amt} to ${c.toName}.`;
         case "denied":
           return `⛔ Denied by ${c.by ?? audit}: ${amt} to ${c.toName}. Refunded.`;
         case "cancelled":
@@ -284,11 +352,13 @@ export function walletLine(c: WalletCard, now?: number): string {
         case "pending":
           return `🧾 ${c.fromName} → ${c.toName}: ${amt}. Settles in ${windowText()} unless you deny it.`;
         case "held":
-          return `🧾 ${c.fromName} → ${c.toName}: ${amt}. Waiting for your approval.`;
+          return `🧾 ${c.fromName} → ${c.toName}: ${amt}. Waiting for your approval — it goes through on its own in ${holdText()}.`;
         case "settled":
           return `✅ Settled: ${c.fromName} → ${c.toName}, ${amt}.`;
         case "approved":
           return `✅ Approved${c.by ? ` by ${c.by}` : ""}: ${c.fromName} → ${c.toName}, ${amt}.`;
+        case "timed_out":
+          return `⌛ Timed out — approved automatically: ${c.fromName} → ${c.toName}, ${amt}.`;
         case "denied":
           return `⛔ Denied${c.by ? ` by ${c.by}` : ""}: ${c.fromName} → ${c.toName}, ${amt}. Refunded.`;
         case "cancelled":
@@ -339,6 +409,23 @@ export function walletLine(c: WalletCard, now?: number): string {
     }
     case "stimulus":
       return c.step === "minted" ? `💰 Stimulus: every eligible program received ${amt}.` : `💰 Stimulus from ${c.fromName}: ${amt}.`;
+    case "grant":
+      return c.step === "granted" ? `🎁 You granted ${c.toName} ${amt} from the reserve.` : `🎁 ${c.fromName} granted you ${amt} from the reserve.`;
+    case "freeze":
+      switch (c.step) {
+        case "frozen":
+          return `🧊 ${c.fromName} froze your ${c.unit} — you can't send, pay or buy until it thaws in ${leftText(c.settleAt, now, "a few minutes")}.`;
+        case "imposed":
+          return `🧊 You froze ${c.toName}'s ${c.unit} — it thaws in ${leftText(c.settleAt, now, "a few minutes")}.`;
+        case "thawed":
+          return c.by !== undefined ? `☀️ ${c.by} lifted the freeze — your ${c.unit} moves again.` : `☀️ Your ${c.unit} thawed — it moves again.`;
+        case "expired":
+          return `☀️ The freeze on ${c.toName} is over.`;
+        case "cancelled":
+          return `↩️ ${c.by ?? DIRECTOR} lifted the freeze on ${c.toName}.`;
+        default:
+          return `🧊 ${c.toName}'s ${c.unit} is frozen.`;
+      }
     default:
       return `💰 ${amt}`;
   }
@@ -353,6 +440,8 @@ export class WalletBook {
   /** Transfers seen by the approver rule (every Nth is held). */
   private counter = 0;
   private stimulusUses = 0;
+  private grantUses = 0;
+  private readonly freezes = new Map<string, Freeze>();
   private seq = 0;
 
   readonly currency: CurrencyDef;
@@ -367,7 +456,7 @@ export class WalletBook {
 
   /** Mint the next id for a route (`t12`); `apply` raises `seq` past any id
    *  it sees, so a replay re-mints nothing twice. */
-  nextId(prefix: "t" | "r" | "o" | "s"): string {
+  nextId(prefix: "t" | "r" | "o" | "s" | "g" | "f"): string {
     return `${prefix}${++this.seq}`;
   }
   private noteId(id: string): void {
@@ -415,9 +504,18 @@ export class WalletBook {
     return null;
   }
 
+  /** The freeze on `who`'s outgoing coin, as a refusal — null when free. */
+  private checkFrozen(who: string): WalletRefusal | null {
+    const until = this.frozenUntil(who);
+    if (until === null) return null;
+    return { status: 409, error: `your ${this.currency.name} is frozen — it thaws in ${leftText(until, this.seam.elapsed(), "a few minutes")}` };
+  }
+
   checkSend(from: string, to: string, amount: number): WalletRefusal | null {
     const bad = this.checkAmount(amount);
     if (bad !== null) return bad;
+    const frozen = this.checkFrozen(from);
+    if (frozen !== null) return frozen;
     if (!this.isPerson(to)) return { status: 404, error: "unknown recipient" };
     if (to === from) return { status: 409, error: "you can't send to yourself" };
     if (this.seam.scoreOf(from) < amount) return { status: 409, error: "insufficient funds" };
@@ -440,9 +538,18 @@ export class WalletBook {
     if (bad !== null) return bad;
     if (!this.isPerson(to)) return { status: 404, error: "unknown recipient" };
     if (to === from) return { status: 409, error: "you can't trade with yourself" };
+    // A sell: unknown and not-held read the same, so it can't probe which
+    // entries (secret ones included) exist. A buy never tests what the
+    // seller holds (that would let anyone read another guest's secret
+    // entries, unseen); accept re-checks the holdings. The route charges a
+    // refused offer to the rate limiter, so guessing titles stays slow.
     const id = this.seam.codexIdOf(entry);
-    if (id === null) return { status: 404, error: "no such entry" };
-    if (side === "sell" && !this.seam.holdsCodex(from, id)) return { status: 404, error: "you don't hold that entry" };
+    if (side === "sell" && (id === null || !this.seam.holdsCodex(from, id))) return { status: 404, error: "you don't hold that entry" };
+    if (side === "buy" && id === null) return { status: 409, error: "they don't have that to sell" };
+    if (side === "buy") {
+      const frozen = this.checkFrozen(from);
+      if (frozen !== null) return frozen;
+    }
     if (side === "buy" && this.seam.scoreOf(from) < amount) return { status: 409, error: "insufficient funds" };
     let open = 0;
     for (const o of this.offers.values()) if (o.from === from && o.state === "open") open++;
@@ -459,8 +566,11 @@ export class WalletBook {
     return null;
   }
 
+  /** Accepting a sell offer pays the maker — refused while frozen. */
   checkAccept(id: string, who: string): WalletRefusal | null {
-    return this.checkOfferSide(id, who);
+    const bad = this.checkOfferSide(id, who);
+    if (bad !== null) return bad;
+    return this.offers.get(id)!.side === "sell" ? this.checkFrozen(who) : null;
   }
   checkDecline(id: string, who: string): WalletRefusal | null {
     return this.checkOfferSide(id, who);
@@ -517,19 +627,87 @@ export class WalletBook {
     return this.checkAmount(amount);
   }
 
+  private grantLimit(): number {
+    return this.currency.minter?.grants ?? DEFAULT_GRANTS;
+  }
+  private freezeMs(): number {
+    return this.currency.minter?.freezeMs ?? DEFAULT_FREEZE_MS;
+  }
+  /** Who may receive a grant: the stimulus's eligibility (`while`, else a balance). */
+  private eligible(id: string): boolean {
+    const m = this.currency.minter;
+    if (m === null) return false;
+    return m.while !== null ? this.seam.holds(m.while, id) : this.seam.hasBalance(id);
+  }
+
+  /** The minter's program (or a director) grants `to` coin from the reserve. */
+  checkGrant(who: string, to: string, amount: number, director = false): WalletRefusal | null {
+    const m = this.currency.minter;
+    if (m === null) return { status: 403, error: "this story has no minter" };
+    if (!director && this.minterPerson() !== who) return { status: 403, error: "not the minter" };
+    if (!this.isPerson(to)) return { status: 404, error: "unknown recipient" };
+    if (to === who) return { status: 409, error: "you can't grant to yourself" };
+    if (!this.eligible(to)) return { status: 409, error: "they can't receive a grant yet" };
+    if (this.grantUses >= this.grantLimit()) return { status: 409, error: "no grants left" };
+    return this.checkAmount(amount);
+  }
+
+  /** The minter's program (or a director) freezes `target`'s outgoing coin. */
+  checkFreeze(who: string, target: string, director = false): WalletRefusal | null {
+    const m = this.currency.minter;
+    if (m === null) return { status: 403, error: "this story has no minter" };
+    if (!director && this.minterPerson() !== who) return { status: 403, error: "not the minter" };
+    if (!this.isPerson(target)) return { status: 404, error: "unknown recipient" };
+    if (target === who) return { status: 409, error: "you can't freeze yourself" };
+    if (this.frozenUntil(target) !== null) return { status: 409, error: "already frozen" };
+    return null;
+  }
+
+  /** A director lifts a freeze early — by its id, or the target's person id. */
+  checkUnfreeze(idOrTarget: string): { id: string } | WalletRefusal {
+    const f = this.freezes.get(idOrTarget) ?? [...this.freezes.values()].find((x) => x.target === idOrTarget && x.state === "frozen");
+    if (f === undefined) return { status: 404, error: "no such freeze" };
+    if (f.state !== "frozen") return { status: 409, error: "already thawed" };
+    return { id: f.id };
+  }
+
+  /** The story ms `who`'s coin thaws at, or null when it isn't frozen. A
+   *  freeze past its deadline reads thawed even before the ticker's
+   *  `unfreeze` line lands. */
+  frozenUntil(who: string): number | null {
+    const now = this.seam.elapsed();
+    for (const f of this.freezes.values()) if (f.target === who && f.state === "frozen" && f.until > now) return f.until;
+    return null;
+  }
+
+  /** The `until` a freeze minted now would carry. */
+  freezeUntil(at: number): number {
+    return at + this.freezeMs();
+  }
+
   // --- the ticker ---------------------------------------------------------------------
 
-  /** Everything the story clock has made due, in id order. */
+  /** Everything the story clock has made due, in id order: a pending
+   *  transfer past its window, a held one past `HOLD_MS`, and the expiries. */
   due(now: number): WalletOp[] {
     const out: WalletOp[] = [];
     for (const t of [...this.transfers.values()].sort(byId)) {
-      if (t.state === "pending" && t.settleAt !== null && t.settleAt <= now) out.push({ op: "settle", id: t.id });
+      if (this.isOpenTx(t) && t.settleAt !== null && t.settleAt <= now) out.push({ op: "settle", id: t.id });
     }
     const expiring: Array<{ id: string }> = [];
     for (const r of this.requests.values()) if (r.state === "open" && r.expiresAt <= now) expiring.push(r);
     for (const o of this.offers.values()) if (o.state === "open" && o.expiresAt <= now) expiring.push(o);
     for (const e of expiring.sort(byId)) out.push({ op: "expire", id: e.id });
+    for (const f of [...this.freezes.values()].sort(byId)) if (f.state === "frozen" && f.until <= now) out.push({ op: "unfreeze", id: f.id });
     return out;
+  }
+
+  /** Every held transfer's id, oldest first (`/api/mod/wallet/approve-held`). */
+  heldIds(): string[] {
+    return [...this.transfers.values()]
+      .filter((t) => t.state === "held")
+      .sort(byId)
+      .map((t) => t.id);
   }
 
   // --- apply -----------------------------------------------------------------------------
@@ -564,6 +742,12 @@ export class WalletBook {
         return this.applyDecline(op.id);
       case "stimulus":
         return this.applyStimulus(op);
+      case "grant":
+        return this.applyGrant(op);
+      case "freeze":
+        return this.applyFreeze(op);
+      case "unfreeze":
+        return this.applyUnfreeze(op.id, op.by);
       default:
         return [];
     }
@@ -607,8 +791,9 @@ export class WalletBook {
     const args = { to: t.to, amount: t.amount, tx: t.id };
     if (approver !== null && audience !== null && this.counter % approver.every === 0) {
       t.state = "held";
-      out.push(this.ev(t.from, this.card("transfer", t, "held", { approver: this.approverName() }), true));
-      out.push(this.ev(audience, this.card("approval", t, "held", { approver: this.approverName() }), true));
+      t.settleAt = op.at + HOLD_MS;
+      out.push(this.ev(t.from, this.card("transfer", t, "held", { settleAt: t.settleAt, approver: this.approverName() }), true));
+      out.push(this.ev(audience, this.card("approval", t, "held", { settleAt: t.settleAt, approver: this.approverName() }), true));
       out.push(...this.seam.signal("transfer_sent", t.from, { ...args, state: "held" }));
       out.push(...this.seam.signal("transfer_held", t.from, args));
       return out;
@@ -639,8 +824,10 @@ export class WalletBook {
     if (inlineRoot) {
       out.push(this.ev(t.from, this.card("transfer", t, "settled"), true));
     } else {
-      out.push(this.ev(t.from, this.card("transfer", t, wasHeld && by !== undefined ? "approved" : "settled", by !== undefined ? { by } : {}), false));
-      if (audience !== null) out.push(this.ev(audience, this.card("approval", t, wasHeld && by !== undefined ? "approved" : "settled", by !== undefined ? { by } : {}), false));
+      // A held transfer settled by the clock (no `by`) timed out.
+      const step: WalletStep = wasHeld ? (by !== undefined ? "approved" : "timed_out") : "settled";
+      out.push(this.ev(t.from, this.card("transfer", t, step, by !== undefined ? { by } : {}), false));
+      if (audience !== null) out.push(this.ev(audience, this.card("approval", t, step, by !== undefined ? { by } : {}), false));
     }
     out.push(this.ev(t.to, this.card("transfer", t, "received"), true));
     out.push(...this.seam.signal("transfer_received", t.to, { from: t.from, amount: t.amount, tx: t.id }));
@@ -892,7 +1079,59 @@ export class WalletBook {
     return out;
   }
 
+  private applyGrant(op: Extract<WalletOp, { op: "grant" }>): WalletBookEvent[] {
+    if (this.currency.minter === null) return [];
+    this.grantUses++;
+    const out: WalletBookEvent[] = [];
+    // Minted, never debited: the reserve has no balance to run dry.
+    out.push(...this.seam.setBalance(op.to, this.seam.scoreOf(op.to) + op.amount));
+    const t = { id: op.id, from: op.by, to: op.to, amount: op.amount };
+    // The "You granted…" card is the minter's own; a director's grant only
+    // lands with the recipient.
+    if (op.by === this.minterPerson()) out.push(this.ev(op.by, this.card("grant", t, "granted", { by: op.by }), true));
+    out.push(this.ev(op.to, this.card("grant", t, "received", { by: op.by }), true));
+    if (this.isPerson(op.by)) out.push(...this.seam.signal("grant", op.by, { to: op.to, amount: op.amount }));
+    out.push(...this.seam.signal("grant_received", op.to, { from: op.by, amount: op.amount }));
+    return out;
+  }
+
+  private freezeCard(f: Freeze, step: WalletStep, by?: string): WalletCard {
+    return this.card("freeze", { id: f.id, from: f.by, to: f.target, amount: 0 }, step, { settleAt: f.until, ...(by !== undefined ? { by } : {}) });
+  }
+
+  private applyFreeze(op: Extract<WalletOp, { op: "freeze" }>): WalletBookEvent[] {
+    if (this.currency.minter === null || this.freezes.has(op.id)) return [];
+    const f: Freeze = { id: op.id, by: op.by, target: op.target, at: op.at, until: op.until, state: "frozen" };
+    this.freezes.set(f.id, f);
+    const out: WalletBookEvent[] = [];
+    out.push(this.ev(f.target, this.freezeCard(f, "frozen"), true));
+    if (f.by === this.minterPerson()) out.push(this.ev(f.by, this.freezeCard(f, "imposed"), true));
+    if (this.isPerson(op.by)) out.push(...this.seam.signal("freeze", op.by, { to: f.target, until: f.until }));
+    out.push(...this.seam.signal("wallet_frozen", f.target, { from: op.by, until: f.until }));
+    return out;
+  }
+
+  private applyUnfreeze(id: string, by: string | undefined): WalletBookEvent[] {
+    const f = this.freezes.get(id);
+    if (f === undefined || f.state !== "frozen") return [];
+    f.state = "thawed";
+    const out: WalletBookEvent[] = [];
+    out.push(this.ev(f.target, this.freezeCard(f, "thawed", by), false));
+    if (f.by === this.minterPerson()) out.push(this.ev(f.by, this.freezeCard(f, by !== undefined ? "cancelled" : "expired", by), false));
+    out.push(...this.seam.signal("wallet_thawed", f.target, by !== undefined ? { by } : {}));
+    return out;
+  }
+
   // --- projections ----------------------------------------------------------------------
+
+  /** The freezes in force, oldest first. */
+  private frozenViews(): WalletFreezeView[] {
+    const now = this.seam.elapsed();
+    return [...this.freezes.values()]
+      .filter((f) => f.state === "frozen" && f.until > now)
+      .sort(byId)
+      .map((f) => ({ id: f.id, target: f.target, targetName: this.nameOf(f.target), by: f.by, until: f.until, at: f.at }));
+  }
 
   private txView(t: Transfer): WalletTxView {
     return {
@@ -974,8 +1213,12 @@ export class WalletBook {
         .sort(byId)
         .map((o) => this.offerView(o)),
     };
+    const until = this.frozenUntil(person);
+    if (until !== null) view.frozenUntil = until;
     const m = this.currency.minter;
-    if (m !== null && this.minterPerson() === person) view.minter = { uses: this.stimulusUses, limit: m.limit };
+    if (m !== null && this.minterPerson() === person) {
+      view.minter = { uses: this.stimulusUses, limit: m.limit, grants: { uses: this.grantUses, limit: this.grantLimit() }, freezeMs: this.freezeMs(), frozen: this.frozenViews() };
+    }
     const a = this.currency.approver;
     if (a !== null && !this.seam.isPart(a.id) && this.seam.personNamed(a.id) === person) view.approver = { queue: this.queue() };
     return view;
@@ -998,6 +1241,8 @@ export class WalletBook {
       minterPerson: this.minterPerson(),
       counter: this.counter,
       stimulus: { uses: this.stimulusUses, limit: m?.limit ?? 0 },
+      grants: { uses: this.grantUses, limit: m !== null ? this.grantLimit() : 0 },
+      frozen: this.frozenViews(),
       open: {
         transfers: this.queue(),
         requests: [...this.requests.values()]

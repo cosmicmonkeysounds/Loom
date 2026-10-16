@@ -88,7 +88,11 @@ Both stay out of a cutscene (`personalStream`). Tested in
 every guest a third pinned room, **Wallet** (`wallet`, `src/wallet.tsx`):
 the header's ⭐ score becomes a `BalancePill` that opens it; the footer
 offers **send / request / trade** (a `PeopleAmountSheet`, an `OfferSheet`
-to buy or sell a codex entry for coin, a `StimulusSheet` for the minter),
+to buy or sell a codex entry for coin, a `StimulusSheet` for the minter,
+plus her reserve: **🎁 Grant** (`PeopleAmountSheet mode="grant"` →
+`/api/guest/wallet/grant`) and **🧊 Freeze** (`FreezeSheet` →
+`/api/guest/wallet/freeze`); a frozen guest's pill and footer say 🧊 with
+the thaw countdown and Send / Pay / Buy are off until `frozenUntil`),
 and every transfer, request and offer is a card with its own thread
 (`kind: "wallet"`, `WalletCardView`, buttons from `walletButtonsFor`) —
 accept / decline / cancel, a countdown while a send waits in the
@@ -209,8 +213,17 @@ badges and sorts to the top, so a choice left unmade always pulls focus.
   gets **hide/show** on every message and capture/release in each guest
   thread.
 
+- **🎬 Director cues** (W-26, `src/director.tsx`) — `?role=director` or a
+  `?code=` link carrying the mod code (no link on the guests' chooser): the editor's
+  K-21 cue sheet on a phone (the rows are core's `src/cue-sheet.ts`,
+  imported by path). Mod passcode + a name → `/api/mod/login`; polls
+  the lean `GET /api/state?role=mod&cues=1` (just the cue sheet) every 3 s
+  (parked while hidden, backing off on errors); tap to arm, tap again to
+  fire (8 s timeout; no answer reads "not sure it fired") `/api/mod/signal {name, subject?,
+  label: "Phone · <name>"}`; a subject cue (an award) picks a person first.
+
 The operator/moderator surface is the [`editor`](../editor)'s Run mode
-(not this app).
+(not this app); the phone cue sheet is the one director tool here.
 
 ## Install
 
@@ -270,8 +283,9 @@ src/
   performer.tsx # the performer / booth app
   help.tsx      # the in-app Help window (searchable, role-aware; content from ../docs/help/play/)
   ui.tsx        # the role chooser
+  director.tsx  # the director's phone cue sheet (?role=director, W-26)
   widgets.tsx   # show-cards registry (captcha / image / poll / tutorial / pass / 📝 fact / 💬 answer)
-  wallet.tsx    # the Wallet room: BalancePill, cards, send / request / offer / stimulus sheets, approvals
+  wallet.tsx    # the Wallet room: BalancePill, cards, send / request / offer / stimulus / grant / freeze sheets, approvals
   pins.ts       # sticky notices: activePins → PinnedRail (chat.tsx)
   alerts.ts     # `!` alerts: chime, buzz, banner, the last-seen mark (K-06 / N-07)
   push.ts       # Web Push subscribe / re-bind / release + visibility beacons (K-31a); push-card.tsx = the 🔔 card

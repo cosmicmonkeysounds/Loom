@@ -23,18 +23,18 @@ Narrator: Nobody announces it. The programs who need to know already do.
 
 // Private, per member of the winning faction (ROLE watcher, also late
 // pledgers). The bundle = every ✚ codex row, in table order (world, files,
-// hunt, trabolta), The Legendary Fact last.
+// hunt, trabolta), then every main + Trabolta fact from facts.json (the
+// generated `== Facts Bundle` in codex/9-facts.loom — a hand-written entry
+// facts.json names `existing` is unlocked there, not here), The Legendary
+// Fact last.
 == The Whole Truth
 Truther Download: MAJORITY CONFIRMED. ACCESS GRANTED. All Trabolta facts. All environmental facts. And one more.
 // world
-unlock Maps And Ducks for program
-unlock The Billboard On Barrington for program
 unlock The Data Centre Sinkhole for program
 unlock The Pet Cemetery for program
 unlock The Halifax Computer for program
 unlock The Reinstallation Protocol for program
 unlock Bathroom Mode for program
-unlock The Server Room for program
 unlock The Printer for program
 unlock The Malware for program
 unlock The Y2K Clock for program
@@ -58,7 +58,6 @@ unlock The Termination Letter for program
 unlock The Bootleg DVD for program
 unlock The Carney Letter for program
 unlock The Domain Receipt for program
-unlock The Rival for program
 unlock The Cooling Log for program
 unlock The Margin Doodle for program
 // hunt
@@ -71,14 +70,11 @@ unlock The Final Chapter for program
 unlock What Sandy Says for program
 // trabolta
 unlock Jean Trabolta for program
-unlock The Unified Field Theory for program
-unlock Target Selection for program
-unlock The Trust Chart for program
-unlock The Sandy File for program
 unlock The Question Of Force for program
 unlock The LiveJournal for program
-unlock Omnipotence for program
 unlock Greased Lightning for program
+// main + trabolta (generated from facts.json)
+-> Facts Bundle
 unlock Combo A First Half for program
 unlock Combo A Second Half for program
 unlock Combo B First Half for program

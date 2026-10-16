@@ -63,6 +63,7 @@ interface HouseMap {
   version: 1;
   name: string;                 // "Trapped in the Internet — the house"
   origin: string;               // human description of the surveyed origin
+  variant?: string;             // the map page's variant button label ("Tent"); not geometry
   floors: Floor[];              // ≥ 1
   rooms: Room[];                // ≥ 1
   doors: Door[];
@@ -391,7 +392,8 @@ tolerance: metres, and m² for orientations).
   written (`PUT /api/projects/:id/files` 400 + `problems`, an empty new
   file aside; `/api/mod/load {maps}` 400 before the restart; sync-example
   stops before writing). The server stays show-agnostic and labels a
-  variant by its file (and the map's `name`).
+  variant by its file (and the map's `name`, or its `variant` field —
+  the `label` below).
 - **A launch snapshots them** like `scenario_source`: on the event row
   (`event.house_maps`, jsonb, file → text) and in the event's state dir
   (`spatial-maps.json`, with the **active variant**), so an event plays a
@@ -485,7 +487,7 @@ calls; it can do nothing else.
 |---|---|---|---|
 | `GET /api/spatial/house` | mod token (header or `?token=`), author session, or a session token | — | 401 none of those · 503 no map · `{house, version, source: "event" \| "project" \| "show", duck?}` (§1.3) — `duck` (the session's current `DuckSpot`) only when the caller is a live session token: a map save may have moved or re-dealt it, and this is how a parked assignment (not on the stream yet) learns of it |
 | `POST /api/mod/spatial/house` | mod | `{house, base?}` — `base` = the version the editor loaded | 400 `{error, problems}` (checked first) · 409 `{error: "the map changed — reload", version}` when `base` is given and is not the current version (the map is loaded first if nothing has yet; no / null `base` = no check, last write wins) · 200 `{ok, version, warnings}`; persists `spatial-house.json` in the event's state dir (§1.3); streams get `house {version}`, then a `duck` frame per player whose duck moved (§2.2) |
-| `GET /api/mod/spatial/variants` | mod | — | `{variants: [{file, name, active, ok, problems}], from: "project" \| "show", edited, project}` — every whole-map variant (the default file first, then by name; `name` = the map's own, else the file), each validated afresh; `from` = the project snapshot, or the show file's siblings when it has no map files; `edited` = a director's save is in force; `project` = the event has a project (Save to project works) |
+| `GET /api/mod/spatial/variants` | mod | — | `{variants: [{file, name, label?, active, ok, problems}], from: "project" \| "show", edited, project}` — every whole-map variant (the default file first, then by name; `name` = the map's own, else the file; `label` = the map's `variant` field, trimmed, when it has one — the map page's button reads it first), each validated afresh; `from` = the project snapshot, or the show file's siblings when it has no map files; `edited` = a director's save is in force; `project` = the event has a project (Save to project works) |
 | `POST /api/mod/spatial/variant` | mod | `{file, base?}` | 404 `{error: "no such map variant", variants}` · 400 `{error: "invalid house map", problems}` · 409 as for `house` on a stale `base` · 200 `{ok, version, warnings, file, dropped}`. **The tent ↔ shed switch** (SW-MAP-13), mid-show too: the same path as a save (live sessions carried over, ducks kept by spot id or re-dealt, `house` then `duck` frames), nothing saved; the active variant is remembered for the event (survives a restart) and on its row (`event.map_variant`, which End → relaunch starts on); a player standing where the new variant has no floor goes back to its spawn (§2.2); `dropped` = a director's save was in force and is gone |
 | `POST /api/mod/spatial/house/project` | mod | `{file?, base?}` — `file` default: the active variant's (a show sibling's too, on an event with no project maps yet, when it is named like a map file), else `house.json` | 409 `{error: "this event has no project — download the map instead"}` (the LAN default event; no `version`) · 400 not a map file name · 409 stale `base` · 502 the write failed · 200 `{ok, file, version}`. **Save to project**: writes the event's current map (two-space JSON + newline) as that project file — through the live co-editing doc when it is open, announced to every editor's tree — and records the snapshot on the event row, so the next launch and every co-writer see it. When `file` is the active variant, the director's save it came from is retired (the event now runs on the project's copy; same version, no frame) |
 | `POST /api/mod/spatial/begin` | mod | `{guest, world: "vr" \| "web", device, station?}` | 409 no scenario · 404 unknown guest · 400 bad world · 503 no map · 200 `Assignment` (below). An active session for the same guest is ended (`leave {reason: "replaced"}`). With `station`, the assignment is parked for that station until it claims it, and an older assignment still parked there is ended (`replaced`). |
@@ -571,7 +573,10 @@ name fallback via `candidates`) → for a scanned program, **Play here** or
 **Send to <station>** (online VR stations listed) → **play** → **found**
 (the duck lays a golden egg and flies; "Reinstallation complete" or, for a
 program that wasn't corrupted, "You found Gerald") → back to scan.
-Provisioning link: `/reinstall/?code=<mod>&name=Tent tablet`.
+Provisioning link: `/reinstall/?code=<mod>&name=Tent tablet`. The scan
+step's **⚙ Setup…** and **🗺 House map** open only after a 2 s hold
+(`kiosk.ts`, a copy of the terminal's `useLongPress`; W-15): the tablet
+is in guests' hands.
 
 Play: first-person, eye height 1.6 m, walk 1.8 m/s (run ×1.6 with Shift),
 circle-vs-wall collision (radius 0.25) against `buildWalls` segments whose
@@ -634,11 +639,11 @@ Session lifecycle:
 
 The Cold Lock's chess game moved into the simulation (Wave 4, U15–U17):
 a `king` prop stands in the server-room doorway of the show's map
-(`cold-lock-king`, `hp: 4`, `armed: {path: "Night.step", min: 14}`; the
+(`cold-lock-king`, `hp: 8` — two hits a stage, `armed: {path: "Night.step", min: 14}`; the
 door `server-door` names him as its `guard`). The web game is the only
 place he is fought; everything is **per session** — his health lives in
-the `Game`, nothing is shared between tablets, headsets or terminals, and
-a reload drops a pending result.
+the `Game`, nothing is shared between tablets, headsets or terminals. A
+result still on its way is kept across a reload for 60 s (below).
 
 - **The door.** While he stands, the guarded door's gap (`doorGap`) is a
   wall for the walker and `route` never passes it (`physics.ts`
@@ -646,7 +651,7 @@ a reload drops a pending result.
   falls the leaf is hidden, the physics world is rebuilt without him and
   the door (`omitProps`), and the trail re-plans.
 - **Hits** (`game/fight.ts`, pure): **⚔** on the HUD or Space, one hit per
-  1.2 s (`HIT_COOLDOWN_MS`), landing only on his floor, within 1.25 m of
+  2 s (`HIT_COOLDOWN_MS`; ≈ 16 s of hitting from full strength to pawns only on the show's hp 8), landing only on his floor, within 1.25 m of
   his base centre (`HIT_REACH`) and facing him within 55° (`HIT_CONE_DEG`);
   else a nudge ("Get closer to the King and face him."). Each hit takes one
   point (never below 0), staggers him and redraws his bar — ♥ per point,
@@ -678,8 +683,16 @@ a reload drops a pending result.
   an abandoned game posts nothing. Each goes through `postSignal`: `POST
   /api/mod/signal {name, subject: <the program>, label: <device name>}`
   with the tablet's moderator token, retried on a network failure or a
-  5xx (0.5 s doubling to 8 s, five retries, in memory only); a 4xx is
-  final. The story treats `chess won` exactly as the ♟ fallback button
+  5xx (0.5 s doubling to 8 s, five retries); a 4xx is final. An attempt
+  that hangs is aborted after 5 s (`SIGNAL_ATTEMPT_TIMEOUT_MS`), or at the
+  60 s cap below if that comes first, and counts as a network failure. A win whose
+  every retry failed says "The win didn't reach the house: tell a host
+  (♟)." While a post is unsent it is also kept in `localStorage`
+  (`loom-reinstall.pending-signal`, the latest only, try/catch'd); the
+  next page load posts it once (`flushPendingSignal`) only within 60 s of
+  the first try (`PENDING_SIGNAL_MAX_AGE_MS`, also checked before every
+  retry) and for the same event, and drops anything older: `chess won`
+  unlocks the real door, so a stale win never lands late. The story treats `chess won` exactly as the ♟ fallback button
   does (§6): the Y2K gate is the story's, not the game's — before it the
   door still opens in the simulation, as practice.
 - **Out of scope** (device check pending — the wall chess phone stays the
@@ -708,7 +721,12 @@ offers **Save to project** (`POST …/house/project`, only on an event with
 a project; it sends the file it names in its confirm, `saveTarget`; a
 valid unsaved draft is saved to the event first; the page reloads after)
 and **Download JSON** (the shown map as the active variant's file, to
-commit as the show's file).
+commit as the show's file). The page's first write in a page load (💾
+Save, a switch, Save to project) asks for the **moderator passcode**
+again (`map/unlock.ts` `MapUnlock`, checked through `/api/resolve-code`:
+a mod code for the device's event; W-15's stand-in for SW-MAP-11); a
+cancel writes nothing. The device's token is unchanged and still full
+admin.
 
 The editor works **within the §1.1 schema** — it never adds a field —
 and every op is pure (`reinstall/web/src/map/`: `edit.ts`, `doors.ts`,

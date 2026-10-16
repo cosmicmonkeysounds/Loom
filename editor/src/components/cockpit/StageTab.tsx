@@ -1,6 +1,6 @@
 //! The Stage — the director's floor plan. One card per LOCATION with the
 //! guests standing in it as live chips (presence · story position ·
-//! decision/captured badges), an "Elsewhere" card for the unplaced, and a
+//! decision/captured/restricted badges), an "Elsewhere" card for the unplaced, and a
 //! cast strip showing which performers are actually signed in. Everything
 //! clicks through to the Inspector, so "who is that and what are they
 //! doing" is one glance + one click from any cockpit page.
@@ -80,6 +80,11 @@ function GuestChip({ r }: { r: RosterRow }) {
       {r.captured && (
         <span title="captured" className="shrink-0 text-[11px] text-red-400">
           🔒
+        </span>
+      )}
+      {r.restricted && (
+        <span title="restricted" className="shrink-0 text-[11px] text-red-400">
+          ⛔
         </span>
       )}
       <FactionPill faction={locked ? r.faction : (r.trueFaction ?? r.faction)} />

@@ -58,7 +58,7 @@ import { effectiveView, hasWebGL2 } from "./webgl.ts";
 import { HOLD_MS, screenWake, useLongPress } from "./kiosk.ts";
 import { attractOf, useScreenState } from "./screen.ts";
 import { Attract } from "./Attract.tsx";
-import { LiveScreenLayer } from "./ScreenLayer.tsx";
+import { IdentifyOverlay, LiveScreenLayer } from "./ScreenLayer.tsx";
 import { Tv } from "./Tv.tsx";
 import { screenLayers } from "./slides.ts";
 
@@ -196,7 +196,9 @@ export function App() {
   const takeover = screenLayers(screenState.state, Date.now(), { piloting }).overlay !== null;
   const layer = (
     <>
-      <LiveScreenLayer state={screenState.state} piloting={piloting} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
+      {/* A slide's .mp4 plays on the TV only (N-04a); the tablets keep the PNG. */}
+      <LiveScreenLayer state={screenState.state} piloting={piloting} video={config.view === "tv"} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
+      <IdentifyOverlay state={screenState.state} name={config.name} spot={config.spot} view={config.view} />
       {announcement !== null && (
         <div className="announce-banner" role="status">
           <span className="announce-icon" aria-hidden="true">

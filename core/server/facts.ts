@@ -171,6 +171,19 @@ export const FACT_JUDGED_VERB = "fact_judged";
 /** A settled filing's outcome: the verdict, or `marked` (a guess settled at a reveal). */
 export type FactFinal = FactVerdict | "marked";
 
+/**
+ * How a filing got its `final` (wave 5 issue 8), read off where its
+ * `do fact_judged` line landed in the sim log:
+ * - `auto` — in the same step as its filing (the judge's verdict stood at once);
+ * - `confirmed` / `overridden` — in a step started by one of the book's
+ *   confirm events (`judge.confirm`, the Run card's / a booth's 📝 buttons)
+ *   for this person, final = / ≠ the judge's proposal;
+ * - `settled` — any other later step (a review-mode proposal a reveal
+ *   settled, a story rule) — `overridden` when it changed the proposal;
+ * - `marked` — a guess marked at a reveal.
+ */
+export type FactHow = "auto" | "confirmed" | "overridden" | "settled" | "marked";
+
 export interface FactsFiling {
   person: string;
   name: string;
@@ -181,8 +194,31 @@ export interface FactsFiling {
   verdict: FactVerdict;
   /** Null while the filing is pending (review mode, not yet confirmed or settled). */
   final: FactFinal | null;
+  /** How `final` was reached; null while pending. */
+  how: FactHow | null;
+  /** Who settled it: the director (a mod route's `by`), the booth's
+   *  character, or the device that fired the step; null for the judge
+   *  itself (`auto`), a story clock, or a step nobody is named for. */
+  by: string | null;
   /** When this server first saw the filing (epoch ms). */
   at: number;
+}
+
+/** The step a `fact_judged` line landed in (internal to the fold). */
+interface FactsStep {
+  /** Increments on every step boundary (a mutation mark, an external signal). */
+  id: number;
+  /** The external signal that started it, with its subject; null otherwise. */
+  signal: string | null;
+  subject: string | null;
+  /** Who the runtime named for the mutation (`FactsWatch.mark`). */
+  by: string | null;
+}
+
+/** A filing as the fold holds it: the public shape + where it was filed / judged. */
+interface FoldedFiling extends FactsFiling {
+  filedStep: number;
+  judged: FactsStep | null;
 }
 
 export interface FactsTally {
@@ -252,8 +288,12 @@ export function tallyFilings(filings: readonly FactsFiling[]): FactsTally {
 export class FactsWatch {
   private sim: Sim | null = null;
   private cursor = 0;
-  private readonly filings = new Map<string, FactsFiling>();
+  private readonly filings = new Map<string, FoldedFiling>();
   private readonly now: () => number;
+  /** Mutation boundaries the runtime reported (`mark`) not yet folded past:
+   *  each starts a step at its log index. */
+  private marks: Array<{ at: number; by: string | null }> = [];
+  private step: FactsStep = { id: 0, signal: null, subject: null, by: null };
 
   constructor(o: { now?: () => number } = {}) {
     this.now = o.now ?? Date.now;
@@ -263,15 +303,50 @@ export class FactsWatch {
     return `${person}\u0000${question}`;
   }
 
+  /** Follow `sim`, starting the fold over when it is a new one (a restart). */
+  private bind(sim: Sim): void {
+    if (sim === this.sim) return;
+    this.sim = sim;
+    this.cursor = 0;
+    this.filings.clear();
+    this.marks = [];
+    this.step = { id: 0, signal: null, subject: null, by: null };
+  }
+
+  /**
+   * The runtime is about to apply one mutation to `sim` (live, or replaying
+   * the journal): what it logs from here on is one step, done by `by` (a
+   * director's name, a booth's character, a device; null = nobody named).
+   * Without marks the fold still splits steps at every external signal.
+   */
+  mark(sim: Sim, by: string | null): void {
+    this.bind(sim);
+    const at = sim.log.len();
+    // A mark at the same index as the last one (the mutation before it
+    // logged nothing — a quiet tick) starts an empty step: only the newest
+    // names who does what is logged next. Collapsing keeps a quiet hour of
+    // ticks from piling up a mark a second that no event ever folds past.
+    const last = this.marks[this.marks.length - 1];
+    if (last !== undefined && last.at === at) last.by = by;
+    else this.marks.push({ at, by });
+    // Fold as we go when nobody looks (a story with no key): the marks stay few.
+    if (this.marks.length >= 512) this.sync(sim);
+  }
+
   private sync(sim: Sim): void {
-    if (sim !== this.sim) {
-      this.sim = sim;
-      this.cursor = 0;
-      this.filings.clear();
-    }
+    this.bind(sim);
     const events = sim.log.all();
+    let m = 0;
     for (; this.cursor < events.length; this.cursor++) {
+      while (m < this.marks.length && this.marks[m]!.at <= this.cursor) {
+        this.step = { id: this.step.id + 1, signal: null, subject: null, by: this.marks[m]!.by };
+        m++;
+      }
       const e = events[this.cursor]!;
+      if (e.type === "signal") {
+        this.step = { id: this.step.id + 1, signal: e.name, subject: e.subject, by: this.step.by };
+        continue;
+      }
       if (e.type !== "directive") continue;
       if (e.verb === FACT_FILED_VERB) {
         const f = parseFactFiled(e.args);
@@ -286,28 +361,56 @@ export class FactsWatch {
           confidence: f.confidence,
           verdict: f.verdict,
           final: null,
+          how: null,
+          by: null,
           at: prev?.at ?? this.now(),
+          filedStep: this.step.id,
+          judged: null,
         });
       } else if (e.verb === FACT_JUDGED_VERB) {
         const j = parseFactJudged(e.args);
         if (j === null) continue;
         const prev = this.filings.get(FactsWatch.key(j.person, j.question));
-        if (prev !== undefined) prev.final = j.final;
+        if (prev !== undefined) {
+          prev.final = j.final;
+          prev.judged = { ...this.step };
+        }
       }
     }
+    // Marks at or before the cursor are folded; keep the rest (a mark taken
+    // just before a mutation whose events are not logged yet).
+    this.marks = this.marks.slice(m);
   }
 
-  /** Every filing the sim has logged, in filing order. */
-  all(sim: Sim): FactsFiling[] {
+  /** How a judged filing got its final, against the book's confirm events. */
+  private static provenance(f: FoldedFiling, confirm: ReadonlySet<string>): Pick<FactsFiling, "how" | "by"> {
+    const j = f.judged;
+    if (f.final === null || j === null) return { how: null, by: null };
+    if (f.final === "marked") return { how: "marked", by: j.by };
+    if (j.id === f.filedStep) return { how: "auto", by: null };
+    const changed = f.final !== f.verdict;
+    if (j.signal !== null && confirm.has(j.signal) && (j.subject === null || j.subject === f.person)) {
+      return { how: changed ? "overridden" : "confirmed", by: j.by };
+    }
+    return { how: changed ? "overridden" : "settled", by: j.by };
+  }
+
+  /** Every filing the sim has logged, in filing order (`confirm`: the
+   *  book's confirm events, default `DEFAULT_CONFIRM`). */
+  all(sim: Sim, confirm: Readonly<Record<FactVerdict, string>> = DEFAULT_CONFIRM): FactsFiling[] {
     this.sync(sim);
-    return [...this.filings.values()].map((f) => ({ ...f }));
+    const names = new Set(Object.values(confirm));
+    return [...this.filings.values()].map((f) => {
+      const { filedStep: _s, judged: _j, ...pub } = f;
+      return { ...pub, ...FactsWatch.provenance(f, names) };
+    });
   }
 
   /** The view: the book's keys in order (questions, then answers), each
    *  with its filings + tally; a filing for a key the book lacks is listed
    *  after them under its own id, never dropped. */
   view(sim: Sim, book: FactsBook): FactsView {
-    const filings = this.all(sim);
+    const filings = this.all(sim, book.confirm);
     const byQuestion = new Map<string, FactsFiling[]>();
     for (const f of filings) {
       const list = byQuestion.get(f.question);

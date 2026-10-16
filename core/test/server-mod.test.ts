@@ -10,7 +10,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { afterAll, describe, expect, it, vi } from "vitest";
 
-import { EventRuntime, type EventRuntimeInit } from "../server/event-runtime.ts";
+import { EventRuntime, snapshotMsFromEnv, type EventRuntimeInit } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import { guestView, primeView } from "../server/views.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
@@ -802,6 +802,115 @@ describe("the mod feed's bandwidth", () => {
     expect(a.events("snapshot").length - before).toBe(1);
     const last = a.events("snapshot").slice(-1)[0] as { directors?: string[] };
     expect(b.events("snapshot")[0]).toEqual(last);
+    rt.dispose();
+  });
+});
+
+// -- SW-OPS-24: coalesced guest + booth snapshots (`snapshotMs`) --------------
+
+/** A guest's or booth's SSE stream, parsed like `modStream`. */
+function roleStream(rt: EventRuntime, role: "guest" | "prime", token: string) {
+  const chunks: string[] = [];
+  const stream = {
+    writeHead: () => stream,
+    write: (c: unknown) => chunks.push(String(c)) > 0,
+    end: () => stream,
+  } as unknown as ServerResponse;
+  const open = rt.handle(fakeReq(null), stream, "GET", "/events", new URL(`http://x/events?role=${role}&token=${encodeURIComponent(token)}`), {});
+  const frames = () => chunks.join("").split("\n\n").filter((f) => f.startsWith("event: "));
+  const events = (type: string): unknown[] =>
+    frames()
+      .filter((f) => f.startsWith(`event: ${type}\n`))
+      .map((f) => JSON.parse(f.slice(f.indexOf("data: ") + 6)));
+  const kinds = (): string[] => frames().map((f) => f.slice(7, f.indexOf("\n")));
+  return { open, events, kinds };
+}
+
+describe("guest + booth snapshot coalescing", () => {
+  async function guestOn(rt: EventRuntime) {
+    const reg = await post(rt, "/api/guest/register", { name: "Alice", passcode: CODES.event }, false);
+    const id = reg.json.id as string;
+    const s = roleStream(rt, "guest", reg.json.token as string);
+    await s.open;
+    return { id, s };
+  }
+
+  it("is off by default (and from LOOM_SNAPSHOT_MS unless it is a positive number)", () => {
+    expect(snapshotMsFromEnv({})).toBe(0);
+    expect(snapshotMsFromEnv({ LOOM_SNAPSHOT_MS: "0" })).toBe(0);
+    expect(snapshotMsFromEnv({ LOOM_SNAPSHOT_MS: "fast" })).toBe(0);
+    expect(snapshotMsFromEnv({ LOOM_SNAPSHOT_MS: "-5" })).toBe(0);
+    expect(snapshotMsFromEnv({ LOOM_SNAPSHOT_MS: "500" })).toBe(500);
+  });
+
+  it("snapshotMs 0 sends a guest a frame per step", async () => {
+    const rt = freshRuntime({ snapshotMs: 0 });
+    rt.openDoors();
+    const { id, s } = await guestOn(rt);
+    const before = s.events("snapshot").length;
+    for (let i = 1; i <= 5; i++) expect((await post(rt, "/api/mod/set", { id, field: "score", value: i })).status).toBe(200);
+    const snaps = s.events("snapshot") as Array<{ score: number }>;
+    expect(snaps.length - before).toBeGreaterThanOrEqual(5);
+    expect(snaps.slice(before).map((v) => v.score).slice(-5)).toEqual([1, 2, 3, 4, 5]);
+    rt.dispose();
+  });
+
+  it("coalesces a burst into one leading and one trailing frame, the trailing one built after the last step", async () => {
+    const rt = freshRuntime({ snapshotMs: 150 });
+    rt.openDoors();
+    const { id, s } = await guestOn(rt);
+    await new Promise((r) => setTimeout(r, 160)); // the join's round is out of the window
+    const before = s.events("snapshot").length;
+    for (let i = 1; i <= 5; i++) await post(rt, "/api/mod/set", { id, field: "score", value: i });
+    expect(s.events("snapshot").length - before).toBe(1); // the leading edge
+    await vi.waitFor(() => {
+      const snaps = s.events("snapshot") as Array<{ score: number }>;
+      expect(snaps[snaps.length - 1]!.score).toBe(5);
+    });
+    expect(s.events("snapshot").length - before).toBe(2);
+    rt.dispose();
+  });
+
+  it("a restart inside the window still lands a booth's fresh view before the new history", async () => {
+    const rt = freshRuntime({ snapshotMs: 60_000 });
+    rt.openDoors();
+    const prime = await post(rt, "/api/prime/login", { character: "Recruiter", passcode: CODES.prime }, false);
+    const b = roleStream(rt, "prime", prime.json.token as string);
+    await b.open;
+    await post(rt, "/api/mod/persona", { name: "Ivo" }); // a step inside the window → a pending trailing round
+    const from = b.kinds().length;
+    expect((await post(rt, "/api/mod/reset", {})).status).toBe(200);
+    const after = b.kinds().slice(from).filter((k) => k === "snapshot" || k === "history" || k === "lifecycle");
+    expect(after[0]).toBe("lifecycle");
+    expect(after.indexOf("snapshot")).toBeGreaterThan(-1);
+    expect(after.indexOf("snapshot")).toBeLessThan(after.indexOf("history"));
+    rt.dispose();
+  });
+
+  it("dispose drops a pending trailing round", async () => {
+    vi.useFakeTimers();
+    try {
+      const rt = freshRuntime({ snapshotMs: 1_000 });
+      rt.openDoors();
+      const { id, s } = await guestOn(rt);
+      await post(rt, "/api/mod/set", { id, field: "score", value: 7 });
+      const n = s.events("snapshot").length;
+      rt.dispose();
+      vi.advanceTimersByTime(2_000);
+      expect(s.events("snapshot").length).toBe(n);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("an agent worker coming online sends each guest one snapshot, not two", async () => {
+    const rt = freshRuntime({ snapshotMs: 0, modSnapshotMs: 0 });
+    rt.openDoors();
+    const { s } = await guestOn(rt);
+    const before = s.events("snapshot").length;
+    const req = Object.assign(fakeReq(null), { on: () => req }) as IncomingMessage;
+    await rt.handle(req, fakeRes(), "GET", "/api/agent/stream", new URL("http://x/api/agent/stream?characters=Nobody&name=laptop"), { moderator: true });
+    expect(s.events("snapshot").length - before).toBe(1);
     rt.dispose();
   });
 });

@@ -62,6 +62,9 @@ export interface ChatMessage {
   pin?: string;
   /** Takes down the pin with this key in this channel (`unpin …`). */
   unpin?: string;
+  /** A takeover pin (`pin "!!…"`, an alert too): `takeover.tsx` covers the
+   *  whole screen with it until the story unpins it. */
+  takeover?: boolean;
   /** The card a `widget` message renders. */
   widget?: WidgetCard;
   /** The entry a `codex` message shows. */
@@ -236,6 +239,8 @@ export interface Action {
   label: string;
   onClick: () => void;
   tone?: Tone;
+  /** Shown but not tappable (e.g. 💸 Send while the wallet is frozen). */
+  disabled?: boolean;
 }
 
 /** A decision that has been pulled to a thread, awaiting an answer. */
@@ -289,7 +294,9 @@ export interface Channel {
 export type WalletTxState = "pending" | "held" | "settled" | "denied" | "cancelled";
 export type WalletRequestState = "open" | "paying" | "paid" | "declined" | "expired" | "cancelled";
 export type WalletOfferState = "open" | "accepted" | "declined" | "failed" | "expired" | "cancelled";
-export type WalletCardKind = "transfer" | "request" | "offer" | "stimulus" | "approval";
+// `grant` = the minter paid one person from the reserve; `freeze` = the
+// minter froze one person's coin (`settleAt` = when it thaws).
+export type WalletCardKind = "transfer" | "request" | "offer" | "stimulus" | "approval" | "grant" | "freeze";
 export type WalletStep =
   | "sent"
   | "pending"
@@ -306,7 +313,16 @@ export type WalletStep =
   | "offered"
   | "accepted"
   | "failed"
-  | "minted";
+  | "minted"
+  /** A held transfer nobody audited in time: the book approved it itself. */
+  | "timed_out"
+  /** The reserve: `granted` (the minter's root) / `received` (the
+   *  recipient's); a freeze: `frozen` (the target's root) / `imposed` (the
+   *  minter's), then `thawed` (target) + `expired` / `cancelled` (minter). */
+  | "granted"
+  | "frozen"
+  | "imposed"
+  | "thawed";
 
 /** One wallet card as this viewer sees it (mirror of server/wallet.ts
  *  `WalletCard`): `kind` + `step` say which side the viewer is on; `id`
@@ -386,10 +402,26 @@ export interface WalletView {
   requests: WalletRequestView[];
   /** Open offers, in + out. */
   offers: WalletOfferView[];
-  /** When the viewer is the minter's program. */
-  minter?: { uses: number; limit: number };
+  /** When the viewer's coin is frozen: story ms it thaws at. Send, pay a
+   *  request, a buy offer and accepting a sell offer are refused until then
+   *  (coin still comes in; declining and cancelling still work). */
+  frozenUntil?: number;
+  /** When the viewer is the minter's program: `uses` / `limit` = the
+   *  stimulus, `grants` = the reserve's per-person grants, `freezeMs` = one
+   *  freeze's length, `frozen` = the freezes in force (optional for an old
+   *  server). */
+  minter?: { uses: number; limit: number; grants?: { uses: number; limit: number }; freezeMs?: number; frozen?: WalletFreezeView[] };
   /** When the viewer IS the approver (declared as a guest program). */
   approver?: { queue: WalletTxView[] };
+}
+/** A freeze in force (`WalletView.minter.frozen`). */
+export interface WalletFreezeView {
+  id: string;
+  target: string;
+  targetName: string;
+  by: string;
+  until: number;
+  at: number;
 }
 /** The approver's booth (`PrimeView.wallet`). */
 export interface WalletQueueView {

@@ -69,6 +69,10 @@ export const Code = {
   L1201UnknownSpeaker: "L1201",
   /** Two declarations (or two beats) fold to the same name (Loom 4 §13). */
   L1202AmbiguousName: "L1202",
+  /** The header `currency:` line does not parse — the story has no wallet (workspace lint). */
+  L1203CurrencyUnparsed: "L1203",
+  /** A CHARACTER / TRAIT `wallet:` line does not parse — the role is dropped (workspace lint). */
+  L1204WalletRoleUnparsed: "L1204",
 } as const;
 
 export type Code = (typeof Code)[keyof typeof Code];

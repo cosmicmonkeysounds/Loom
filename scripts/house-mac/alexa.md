@@ -6,7 +6,9 @@ the show it is "the house system", never a character or a device.)
 `do announce "…"` in the story → a chime and the spoken line in the
 **living room (Z1) and the kitchen (Z2)**, from the house Mac (the one
 that also drives the TV over HDMI, the MOTU, Mosquitto, Zigbee2MQTT and
-stagehand). QLab is not involved.
+stagehand). QLab only ducks the music: the same `do announce` also
+fires its `duck_music` group cue (−12 dB over 0.3 s, ≈ 7 s hold, back over
+1 s, on the bed / background group only — build it in the QLab workspace).
 
 ```
 story  do announce "Go to the living room."

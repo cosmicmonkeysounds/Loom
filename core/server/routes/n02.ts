@@ -28,19 +28,35 @@
 //! session keeps its admin capability, loses the character) and closes its
 //! booth streams; the performer re-signs on a loaner with the prime code.
 //! The character's threads and buttons are story state — untouched.
+//! A booth's own **Sign out** (`POST /e/:id/api/prime/logout`, its token)
+//! frees its part the same way, so a performer moving to another phone (the
+//! iPhone Home Screen icon, K-31b) needs no director.
+//!
+//! **Home Screen nonce** (K-31b, `routes/k31b.ts`): behind `LOOM_HOMESCREEN`,
+//! a guest mints a pair code for *themselves* (`POST /api/guest/homescreen`)
+//! that their iPhone's Home Screen app spends at the same resume route. It
+//! is its own kind of code: 12 h, the guest's newest `HOMESCREEN_KEEP` stay
+//! good (Safari may reload the tab — and mint again — between Add to Home
+//! Screen and the icon's first open), a director's QR and this never void
+//! each other, and `revokeOthers` voids both.
 
 import { randomBytes, randomUUID } from "node:crypto";
 import type { ServerResponse } from "node:http";
 import type { Sim } from "../../src/runtime/sim/index.ts";
 import { sendJson, str } from "../http-util.ts";
 import type { SessionStore } from "../session.ts";
+import { HOMESCREEN_TTL_MS, homescreenEnabled, homescreenManifestPath } from "./k31b.ts";
 
 export const PAIR_ROUTE = "/api/mod/guest/pair";
 export const RELEASE_ROUTE = "/api/mod/prime/release";
 /** The phone's side: exchange a pair code for a guest token. */
 export const RESUME_ROUTE = "/api/guest/resume";
+/** A booth signing itself out: frees its part. */
+export const LOGOUT_ROUTE = "/api/prime/logout";
 /** How long a re-pair QR stays good. */
 export const PAIR_TTL_MS = 10 * 60_000;
+/** Home Screen nonces kept per guest (K-31b); a fourth drops the oldest. */
+export const HOMESCREEN_KEEP = 3;
 
 /** The link a re-pair QR carries. `base` is the public join base. */
 export function resumeUrl(base: string, eventCode: string, pair: string): string {
@@ -83,11 +99,15 @@ export interface PairingHost {
   mintPair?: () => string;
   /** Wall clock (injected for tests). */
   now?: () => number;
+  /** Is K-31b on? Defaults to `LOOM_HOMESCREEN` (read per call). */
+  homescreen?: () => boolean;
 }
 
 interface PendingPair {
   id: string;
   expiresAt: number;
+  /** A director's re-pair QR, or the guest's own Home Screen nonce. */
+  kind: "pair" | "homescreen";
 }
 
 export class Pairing {
@@ -132,6 +152,57 @@ export class Pairing {
     return true;
   }
 
+  /** Void `id`'s codes of `kind` (every kind when null) and every expired one. */
+  private sweep(id: string, kind: PendingPair["kind"] | null): void {
+    const now = this.now();
+    for (const [code, p] of [...this.pending]) if ((p.id === id && (kind === null || p.kind === kind)) || p.expiresAt <= now) this.pending.delete(code);
+  }
+
+  private mintCode(): string {
+    return (this.host.mintPair ?? (() => randomBytes(12).toString("base64url")))();
+  }
+
+  /** `POST /api/guest/homescreen` for the guest `id` the caller's token
+   *  stands for (undefined: no guest token, or a director's play-as). */
+  homescreen(res: ServerResponse, id: string | undefined): true {
+    if (!(this.host.homescreen ?? homescreenEnabled)()) {
+      sendJson(res, 404, { error: "Home Screen sign-in is off on this server" });
+      return true;
+    }
+    const person = id === undefined ? undefined : this.host.sim()?.persons.get(id);
+    if (id === undefined || person === undefined) {
+      sendJson(res, 401, { error: "not signed in" });
+      return true;
+    }
+    if (this.host.isPersona(id)) {
+      sendJson(res, 409, { error: "that's a director's persona — play it from the cockpit, not a phone" });
+      return true;
+    }
+    this.sweep("", "homescreen"); // expired ones only
+    const mine = [...this.pending].filter(([, p]) => p.id === id && p.kind === "homescreen");
+    for (const [code] of mine.slice(0, Math.max(0, mine.length - HOMESCREEN_KEEP + 1))) this.pending.delete(code);
+    const pair = this.mintCode();
+    const expiresAt = this.now() + HOMESCREEN_TTL_MS;
+    this.pending.set(pair, { id, expiresAt, kind: "homescreen" });
+    const code = this.host.eventCode();
+    sendJson(res, 200, { ok: true, pair, code, expiresAt, manifest: homescreenManifestPath(code, pair) });
+    return true;
+  }
+
+  /** `POST /api/prime/logout`: the caller's own session lets go of its part
+   *  (performer-only → gone, an admin keeps admin). Always 200 — signing
+   *  out with a dead token is still signed out. */
+  logout(res: ServerResponse, token: string | undefined): true {
+    const s = this.host.sessions.get(token);
+    if (token !== undefined && s !== undefined && s.character !== null) {
+      if (s.admin) this.host.sessions.set(token, { character: null, admin: true });
+      else this.host.sessions.delete(token);
+      this.host.persistSessions();
+    }
+    sendJson(res, 200, { ok: true });
+    return true;
+  }
+
   private pair(res: ServerResponse, body: Record<string, unknown>): true {
     const sim = this.host.sim();
     if (sim === null) {
@@ -148,13 +219,14 @@ export class Pairing {
       sendJson(res, 409, { error: "that's a director's persona — play it from the cockpit, not a phone" });
       return true;
     }
-    const revoked = body["revokeOthers"] === true ? this.host.revokeGuest(id) : 0;
-    const now = this.now();
+    const revokeOthers = body["revokeOthers"] === true;
+    const revoked = revokeOthers ? this.host.revokeGuest(id) : 0;
     // Only the newest QR for a guest works; expired codes are swept here.
-    for (const [code, p] of [...this.pending]) if (p.id === id || p.expiresAt <= now) this.pending.delete(code);
-    const pair = (this.host.mintPair ?? (() => randomBytes(12).toString("base64url")))();
-    const expiresAt = now + PAIR_TTL_MS;
-    this.pending.set(pair, { id, expiresAt });
+    // Cutting the lost phone also voids any Home Screen code it minted.
+    this.sweep(id, revokeOthers ? null : "pair");
+    const pair = this.mintCode();
+    const expiresAt = this.now() + PAIR_TTL_MS;
+    this.pending.set(pair, { id, expiresAt, kind: "pair" });
     sendJson(res, 200, {
       ok: true,
       id,

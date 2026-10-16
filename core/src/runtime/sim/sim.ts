@@ -31,7 +31,7 @@ import { parseSet, splitDirective, splitKeyword } from "./effects.ts";
 import { Bundle, type LoomFileEntry } from "../bundle.ts";
 import { parse } from "../../parser/index.ts";
 import { foldName } from "../../parser/names.ts";
-import { splitTopLevelCommas, stripPrefix } from "../../parser/rust.ts";
+import { indexOutsideQuotes, splitArgsCommas, splitTopLevelCommas, stripPrefix } from "../../parser/rust.ts";
 
 export interface Person {
   id: string;
@@ -1384,7 +1384,8 @@ export class Sim {
   /**
    * Parse `k: expr, k2: expr` (a `fire … with …` tail). An expression that
    * is a bound name or a declared entity binds as an id (`who: guest` →
-   * `who.name` works); anything else is evaluated to a value.
+   * `who.name` works); anything else is evaluated to a value. A comma
+   * inside a quoted value is text (`reason: "late, no mode"`).
    */
   private parseEventArgs(
     text: string,
@@ -1392,7 +1393,7 @@ export class Sim {
   ): { args: Map<string, Value>; argIds: Map<string, string> } {
     const args = new Map<string, Value>();
     const argIds = new Map<string, string>();
-    for (const chunk of splitTopLevelCommas(text)) {
+    for (const chunk of splitArgsCommas(text)) {
       const kv = splitOnceColon(chunk.trim());
       if (kv === null) continue;
       const [k, expr] = kv;
@@ -2098,7 +2099,7 @@ export class Sim {
         let subject = "";
         let args: Map<string, Value> | undefined;
         let argIds: Map<string, string> | undefined;
-        const withIdx = head.indexOf(" with ");
+        const withIdx = indexOutsideQuotes(head, " with ");
         if (withIdx >= 0) {
           const parsed = this.parseEventArgs(head.slice(withIdx + 6), bindings);
           args = parsed.args;
@@ -2347,7 +2348,7 @@ export class Sim {
   private runShow(rest: string, bindings: Bindings, ctx: RoomContext): void {
     let head = rest.trim();
     const params: Record<string, string> = {};
-    const withIdx = head.indexOf(" with ");
+    const withIdx = indexOutsideQuotes(head, " with ");
     if (withIdx >= 0) {
       const { args, argIds } = this.parseEventArgs(head.slice(withIdx + 6), bindings);
       for (const [k, v] of args) params[k] = display(v);
@@ -2597,9 +2598,19 @@ export class Sim {
         const l = args[0]?.asName() ?? "";
         return vList([...(this.occupants.get(l) ?? [])].map(vString));
       }
-      case "count": {
+      case "count":
+      case "len": {
         const v = args[0]?.value;
         return vNumber(v !== undefined && v.kind === "list" ? v.items.length : 0);
+      }
+      case "sum":
+      case "max": {
+        // `sum([p.score for p in Persons])`: the numeric items (anything else
+        // counts as 0); a non-list sums to 0. `max` of an empty list is null.
+        const v = args[0]?.value;
+        const nums = v !== undefined && v.kind === "list" ? v.items.map((x) => (x.kind === "number" ? x.value : 0)) : [];
+        if (name === "sum") return vNumber(nums.reduce((a, b) => a + b, 0));
+        return nums.length === 0 ? VNULL : vNumber(Math.max(...nums));
       }
       case "visits": {
         const subj = this.subjectKey(this.currentBindings);

@@ -21,6 +21,11 @@ function wakeLockApi(): WakeLockLike | null {
   return (navigator as unknown as { wakeLock?: WakeLockLike }).wakeLock ?? null;
 }
 
+/** Does this browser offer a screen wake lock? (Safari: iOS 16.4+.) */
+export function wakeLockSupported(): boolean {
+  return wakeLockApi() !== null;
+}
+
 export interface WakeLock {
   /** The browser offers a screen wake lock at all. */
   supported: boolean;

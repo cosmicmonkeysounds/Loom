@@ -66,6 +66,7 @@ import { handleCollab } from "./collab-api.ts";
 import { mailer } from "./mail.ts";
 import { WebmasterPortal, resendSender } from "./webmaster.ts";
 import { HTML_CSP, PLAY_CSP, PLAY_PWA_FILES, REINSTALL_CSP, TERMINAL_CSP, appRelPath, pickJoinBase, subAppRoute, wantsModRead } from "./routing.ts";
+import { serveHomescreenManifest } from "./routes/k31b.ts";
 
 const PORT = Number(process.env.LOOM_PORT ?? 7000);
 const HOST = process.env.LOOM_HOST ?? "0.0.0.0";
@@ -119,6 +120,7 @@ const CONTENT_TYPES: Record<string, string> = {
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
   ".webp": "image/webp",
+  ".mp4": "video/mp4",
   ".mp3": "audio/mpeg",
   ".ogg": "audio/ogg",
   ".wav": "audio/wav",
@@ -351,6 +353,8 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     // The HTML shell is no-cache too, so a phone picks up a new build (and
     // its service worker) on the next open.
     const shell = path === "/" || path === "/index.html";
+    // K-31b: an iPhone's nonce manifest (off unless LOOM_HOMESCREEN; else the static file).
+    if (path === "/manifest.webmanifest" && url.search !== "" && serveHomescreenManifest(url.search, APP_DIST, res)) return;
     if (serveAppFile(path, res, APP_DIST, PLAY_CSP, shell || PLAY_PWA_FILES.has(path))) return;
     if (PLAY_PWA_FILES.has(path)) return void sendJson(res, 404, { error: "not found" });
     // Not built yet — a plain hint rather than a blank page.
@@ -507,6 +511,16 @@ server.listen(PORT, HOST, () => {
     process.stdout.write(`     (or for live dev: \`cd ../play && pnpm dev\` and use :5174).\n\n`);
   }
 });
+
+// A restart / release (`docker compose up`, Ctrl+C) journals each event's
+// unwritten idle ticks, so the restored story clock doesn't lag. Flush only:
+// `dispose` would tell every phone the event ended. A second signal kills.
+for (const sig of ["SIGTERM", "SIGINT"] as const) {
+  process.once(sig, () => {
+    for (const r of registry.all()) r.flushClock();
+    process.exit(0);
+  });
+}
 
 function lanUrls(port: number): string[] {
   const out = [`http://localhost:${port}`];

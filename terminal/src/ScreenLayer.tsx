@@ -1,22 +1,40 @@
 //! The screen layer (OCT31 K-17 + N-03): what the story puts on top of a
 //! terminal or the TV — overlays, PNG slides (a Win98 text card when the PNG
 //! is missing, never a broken image), the corner countdown, the Y2K clock
-//! and the flicker. The precedence lives in `slides.ts`; this only draws it.
+//! and the flicker. On the TV only, a slide plays its `.mp4` first when one
+//! is there (N-04a), over its PNG / card (shown at once; the clip covers it
+//! only once it has a frame) and gone on an error or at its end. The precedence lives in `slides.ts`; this only draws it.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { ScreenState } from "./screen.ts";
+import { IDENTIFY_MS, identifyOn, type ScreenState } from "./screen.ts";
 import type { ScreenChart } from "./screen.ts";
-import { FLICKER_MS, chartLines, formatCountdown, screenLayers, slideCopy, slideSources, y2kClock, type OverlayKind, type ScreenLayers } from "./slides.ts";
+import { ringChime } from "./announce.ts";
+import { BUILD } from "./health.ts";
+import { FLICKER_MS, chartCallouts, chartLines, formatCountdown, screenLayers, slideCopy, slideSources, slideVideoSources, y2kClock, type OverlayKind, type ScreenLayers } from "./slides.ts";
 
 /** PNGs that failed to load this page-load: go straight to the next source. */
 const missing = new Set<string>();
+/** Clips that failed to load this page-load (most slides have none): asked once. */
+const missingVideo = new Set<string>();
 
-/** One slide: the first of its PNGs that loads, else its text card. */
-export function SlideView({ slide, y2k, chart = null }: { slide: { value: string; cue: string }; y2k: number | null; chart?: ScreenChart | null }) {
+/** Where a slide's video is (`video`: the TV, N-04a) and whether it plays muted. */
+export interface SlideVideoOpts {
+  video?: boolean;
+  muted?: boolean;
+}
+
+/** One slide: on the TV its first clip that plays, then the first of its
+ *  PNGs that loads, else its text card. */
+export function SlideView({ slide, y2k, chart = null, chartShown, video = false, muted = false }: { slide: { value: string; cue: string }; y2k: number | null; chart?: ScreenChart | null; chartShown?: number } & SlideVideoOpts) {
   const sources = slideSources(slide, import.meta.env.BASE_URL);
   const firstOk = () => sources.find((s) => !missing.has(s)) ?? null;
   const [src, setSrc] = useState<string | null>(firstOk);
   useEffect(() => setSrc(firstOk()), [slide.cue, slide.value]);
+  const clips = video ? slideVideoSources(slide, import.meta.env.BASE_URL) : [];
+  const firstClip = () => clips.find((s) => !missingVideo.has(s)) ?? null;
+  // Null once the clip has ended: the slide falls through to its PNG / card.
+  const [clip, setClip] = useState<string | null>(firstClip);
+  useEffect(() => setClip(firstClip()), [slide.cue, slide.value, video]);
   const copy = slideCopy(slide.value);
 
   if (slide.value === "y2k") {
@@ -34,7 +52,13 @@ export function SlideView({ slide, y2k, chart = null }: { slide: { value: string
 
   if (chart !== null && chart.rows.length > 0) {
     // A live chart (the Trust Chart): drawn from the server's rows, never a
-    // PNG, so an assessment mid-chart moves a name at the next poll.
+    // PNG, so an assessment mid-chart moves a name at the next poll. Rows
+    // reveal bottom-up (hidden ones keep their place); the call-outs follow
+    // the names the story picks, never a row's position.
+    const lines = chartLines(chart);
+    const shown = chartShown ?? lines.length;
+    const done = shown >= lines.length;
+    const words = chartCallouts(chart.slide);
     return (
       <div className="screen-slide" data-slide={slide.cue} data-chart="">
         <div className="slide-window chart-window" role="table" aria-label={copy.title}>
@@ -44,9 +68,27 @@ export function SlideView({ slide, y2k, chart = null }: { slide: { value: string
           </div>
           <div className="slide-body">
             <h2>{copy.title}</h2>
+            {done && (chart.top !== null || chart.bottom !== null) && (
+              <div className="chart-callouts">
+                {chart.top !== null && (
+                  <div className="chart-callout chart-callout-top">
+                    {words.top}: {chart.top}
+                  </div>
+                )}
+                {chart.bottom !== null && (
+                  <div className="chart-callout chart-callout-bottom">
+                    {words.bottom}: {chart.bottom}
+                  </div>
+                )}
+              </div>
+            )}
             <ol className="chart-rows">
-              {chartLines(chart).map((r) => (
-                <li key={r.name} className="chart-row" role="row">
+              {lines.map((r, i) => (
+                <li
+                  key={r.name}
+                  className={`chart-row${i < lines.length - shown ? " chart-hidden" : ""}${r.name === chart.top ? " chart-top" : ""}${r.name === chart.bottom ? " chart-bottom" : ""}`}
+                  role="row"
+                >
                   <span className="chart-rank">{r.rank}.</span>
                   <span className="chart-name">{r.name}</span>
                   <span className="chart-value">{r.value}</span>
@@ -59,8 +101,10 @@ export function SlideView({ slide, y2k, chart = null }: { slide: { value: string
     );
   }
 
+  // The still underneath: the first PNG that loads, else the text card.
+  let still: ReactNode;
   if (src !== null) {
-    return (
+    still = (
       <div className="screen-slide" data-slide={slide.cue}>
         <img
           key={src}
@@ -74,20 +118,72 @@ export function SlideView({ slide, y2k, chart = null }: { slide: { value: string
         />
       </div>
     );
-  }
-  if (copy.dark === true) return <div className="screen-slide dark" data-slide={slide.cue} data-card="" />;
-  return (
-    <div className="screen-slide" data-slide={slide.cue} data-card="">
-      <div className="slide-window" role="img" aria-label={copy.title}>
-        <div className="ad-titlebar">
-          <span>{copy.title}</span>
-          <span className="ad-x">×</span>
-        </div>
-        <div className="slide-body">
-          <h2>{copy.title}</h2>
-          {copy.lines?.map((l) => <p key={l}>{l}</p>)}
+  } else if (copy.dark === true) {
+    still = <div className="screen-slide dark" data-slide={slide.cue} data-card="" />;
+  } else {
+    still = (
+      <div className="screen-slide" data-slide={slide.cue} data-card="">
+        <div className="slide-window" role="img" aria-label={copy.title}>
+          <div className="ad-titlebar">
+            <span>{copy.title}</span>
+            <span className="ad-x">×</span>
+          </div>
+          <div className="slide-body">
+            <h2>{copy.title}</h2>
+            {copy.lines?.map((l) => <p key={l}>{l}</p>)}
+          </div>
         </div>
       </div>
+    );
+  }
+  if (clip === null) return still;
+  // A clip is tried on top of the still, hidden until it has a frame: with
+  // no mp4 (the usual case) the PNG / card shows at once, never black.
+  return (
+    <>
+      {still}
+      <SlideClip
+        key={clip}
+        src={clip}
+        cue={slide.cue}
+        muted={muted}
+        onFail={() => {
+          missingVideo.add(clip);
+          setClip(firstClip());
+        }}
+        onEnded={() => setClip(null)}
+      />
+    </>
+  );
+}
+
+/**
+ * A slide's clip (N-04a), played once from the start. The TV's Chrome runs
+ * with `--autoplay-policy=no-user-gesture-required`; should a browser still
+ * refuse sound, it plays muted rather than not at all. `muted` is the
+ * director's TV mute (set on the element: React's `muted` prop isn't kept).
+ */
+function SlideClip({ src, cue, muted, onFail, onEnded }: { src: string; cue: string; muted: boolean; onFail: () => void; onEnded: () => void }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  // Shown only once it has a frame (`loadeddata`): until then the still shows.
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const v = ref.current;
+    if (v === null) return;
+    v.muted = muted;
+    v.play()?.catch((e: unknown) => {
+      if ((e as { name?: string } | null)?.name !== "NotAllowedError") return; // a load failure lands on onError
+      v.muted = true;
+      v.play()?.catch(() => {});
+    });
+    // `muted` follows below; this runs once per clip.
+  }, [src]);
+  useEffect(() => {
+    if (ref.current !== null) ref.current.muted = muted;
+  }, [muted]);
+  return (
+    <div className={`screen-slide${ready ? "" : " clip-waiting"}`} data-slide={cue} data-video="">
+      <video ref={ref} className="slide-video" src={src} playsInline preload="auto" onLoadedData={() => setReady(true)} onError={onFail} onEnded={onEnded} />
     </div>
   );
 }
@@ -137,11 +233,11 @@ function Flicker({ seq }: { seq: number | null }) {
  * Everything the story layers on top. `gear` is the ⚙ (2 s hold), drawn over
  * a covering slide / overlay so setup is never out of reach.
  */
-export function ScreenLayer({ layers, gear }: { layers: ScreenLayers; gear: ReactNode }) {
+export function ScreenLayer({ layers, gear, video, muted }: { layers: ScreenLayers; gear: ReactNode } & SlideVideoOpts) {
   const covered = layers.overlay !== null || layers.slide !== null;
   return (
     <>
-      {layers.overlay === null && layers.slide !== null && <SlideView slide={layers.slide} y2k={layers.y2k} chart={layers.chart} />}
+      {layers.overlay === null && layers.slide !== null && <SlideView slide={layers.slide} y2k={layers.y2k} chart={layers.chart} chartShown={layers.chartShown} video={video} muted={muted} />}
       {layers.overlay !== null && <OverlayView kind={layers.overlay} />}
       {layers.corner !== null && <CornerCountdown seconds={layers.corner} />}
       <Flicker seq={layers.flicker} />
@@ -151,7 +247,7 @@ export function ScreenLayer({ layers, gear }: { layers: ScreenLayers; gear: Reac
 }
 
 /** The layer, live: re-decided every second (holds, the corner, the clock). */
-export function LiveScreenLayer({ state, piloting, gear }: { state: ScreenState | null; piloting: boolean; gear: ReactNode }) {
+export function LiveScreenLayer({ state, piloting, gear, video }: { state: ScreenState | null; piloting: boolean; gear: ReactNode; video?: boolean }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -159,5 +255,36 @@ export function LiveScreenLayer({ state, piloting, gear }: { state: ScreenState 
   }, []);
   // A fresh answer re-decides at once rather than up to a second later.
   const at = Math.max(now, state?.receivedAt ?? 0);
-  return <ScreenLayer layers={screenLayers(state, at, { piloting })} gear={gear} />;
+  return <ScreenLayer layers={screenLayers(state, at, { piloting })} gear={gear} video={video} muted={state?.voice?.muted === true} />;
+}
+
+/**
+ * A director's `identify` (SW-SCR-21, install day): this screen's name and
+ * spot full screen for as long as the server says (~10 s), with one chime
+ * when it starts (silent while sound is locked). Above every slide and
+ * overlay, below the ⚙; any touch is ignored so a guest can't dismiss it.
+ * Counted down on the device (`identifyOn`): a lost server never leaves it up.
+ */
+export function IdentifyOverlay({ state, name, spot, view }: { state: ScreenState | null; name: string; spot: string; view: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  const until = state?.identify === true ? state.receivedAt + (state.identifyLeft ?? IDENTIFY_MS) : 0;
+  useEffect(() => {
+    if (until === 0) return;
+    const id = window.setTimeout(() => setNow(Date.now()), Math.max(0, until - Date.now()) + 50);
+    return () => window.clearTimeout(id);
+  }, [until]);
+  const on = identifyOn(state, Math.max(now, state?.receivedAt ?? 0));
+  const was = useRef(false);
+  useEffect(() => {
+    if (on && !was.current) void ringChime();
+    was.current = on;
+  }, [on]);
+  if (!on) return null;
+  return (
+    <div className="identify-overlay" role="status" data-testid="identify">
+      <div className="identify-name">{name.toUpperCase()}</div>
+      <div className="identify-sub">{[spot, view].filter((x) => x !== "").join(" · ")}</div>
+      <div className="identify-ver">build {BUILD}</div>
+    </div>
+  );
 }

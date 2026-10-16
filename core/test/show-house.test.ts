@@ -104,7 +104,7 @@ describe.each(Object.entries(VARIANTS))("the show's house map (%s)", (variant, h
     // badge reads the Y2K gate off `Night.step` (U15).
     expect(door.guard).toBe("cold-lock-king");
     const king = house.props.find((p) => p.id === "cold-lock-king");
-    expect(king).toMatchObject({ kind: "king", room: outside, hp: 4, signals: { won: "chess won", lost: "chess lost", drawn: "chess drawn" }, armed: { path: "Night.step", min: 14 } });
+    expect(king).toMatchObject({ kind: "king", room: outside, hp: 8, signals: { won: "chess won", lost: "chess lost", drawn: "chess drawn" }, armed: { path: "Night.step", min: 14 } });
     expect(Math.hypot(king!.pos[0] - door.at[0], king!.pos[2] - door.at[1])).toBeLessThan(0.5);
     // Nothing routes through a guarded door: the Server Room is unreachable for the golden trail.
     expect(route(house, house.spawn.pos, [-5, -2.7, 9.5])).toHaveLength(2);

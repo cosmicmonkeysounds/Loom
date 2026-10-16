@@ -2,7 +2,7 @@
 title: The terminals on the walls
 section: Guest Guide
 order: 9
-keywords: terminal, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker
+keywords: terminal, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance
 ---
 
 Some events mount **terminals** around the house — tablets that are a
@@ -64,6 +64,17 @@ trivia question, a bingo card, an award), a ⏱ **countdown** in the
 corner, or a full-screen **notice** — a blackout, "go to the living
 room", an alarm. A notice ends whatever line is open; when it clears,
 scan again.
+
+A **chart** (like the Trust Chart) fills in from the bottom, one name
+at a time; once the character has named the most and least trusted,
+their rows light up and a banner calls them out. The character can also
+put a card of his own on the wall terminals for a little while (a
+dancing baby, the hamster dance, …) — never over a story slide that's
+still up, and never on the TV.
+
+A terminal that suddenly shows its own **name** full screen for ten
+seconds, with a chime, is the crew checking which tablet is which. It
+goes back on its own.
 
 Some terminals also pass on the **house announcements** — a chime, then
 the line ("Go to the living room.") with a 📢 banner — the same ones you

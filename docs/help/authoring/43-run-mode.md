@@ -65,12 +65,24 @@ Front of house: getting people in.
   early. If a performer or moderator code leaked (shared at rehearsal,
   typed into a terminal), end the run and tick **New performer +
   moderator codes** under ▶ Start rehearsal before you start the next one:
-  those two codes change, the guest code and the printed QRs don't.
+  those two codes change and the guest code doesn't, so the join poster,
+  door sign, codex posters and room signs stay good — but every printed
+  **cast card** carries the old performer code and stops working, so
+  reprint the cast cards afterwards.
 - **🖨 Print sheet…** — everything to print, QRs drawn in the browser:
-  the **join poster**, one **codex poster** per entry with a code (title,
-  QR, the typed code), and one **room check-in sign** per place a guest
-  can check into (see [live shows](live-shows.md)). Tick sections, skip
-  single cards, choose 1, 2 or 4 per page.
+  the **join poster**, the **door sign** (it says *Scan to join*, or
+  *iPhone? Join, then Add to Home Screen* with the steps when the server's
+  Home Screen switch is on), one **codex poster** per entry with a code
+  (title, QR, the typed code), one **room check-in sign** per place a
+  guest can check into (see [live shows](live-shows.md)), and one **cast
+  card** per performer part (the performer code's QR: scan, tap 🎭 I'm a
+  Performer, then pick the part). When the project has a `facts.json`, the codex posters come in
+  stack order (gold hunt answers, then green, blue, red), each with a
+  coloured band and its pile and hiding place printed underneath, so you
+  can deal them straight into the piles. Tick sections, skip single cards,
+  choose 1, 2, 4 or 8 per page; cast cards always print 8 to a page as
+  business cards, on a page of their own. A cast card is a performer
+  sign-in, so keep them with the cast and never post one.
 - **Directing now** — every co-writer with a console open, who started
   the run, and when.
 - **Terminals** — every wall terminal and the TV that has checked in,
@@ -78,7 +90,21 @@ Front of house: getting people in.
   editor **chimes** — from any mode, again every minute until you
   **ack** it (**✕** forgets one switched off on purpose). The header's
   📟 pill counts the live ones. The **🔊 TV voice** button mutes the TV
-  to captions only (the TV's own 🔊 / `M` key does the same).
+  to captions only (the TV's own 🔊 / `M` key does the same). Each row
+  shows what the tablet reports: **🔇** nobody has touched it yet so it
+  can't speak, **💤** its screen is off or another app is on top, its
+  battery (red under 20 % and not charging), and its build (amber when
+  it isn't the one the others run, or **old build** when it reports none
+  at all while the others do: either way, reload it before doors). **identify**
+  puts that screen's name and spot full screen for 10 seconds, with a
+  chime: install day's "which tablet is this?".
+- **House map** — when the event has a house map, one button per map
+  variant (*Trapped in the Internet*: **Tent** | **Shed**), the one
+  playing now highlighted. Press the other to switch every tablet,
+  headset and terminal at once; it always asks first, and warns when this
+  event's map edits would be dropped (✎ *edited on this event*: save them
+  to the project from the map page first). Same switch as the map page's
+  **Map:** buttons — see [the house map](39-house-map.md).
 - **Look up a guest** — scan a guest's pass QR (or type their id) to
   open them in the Inspector.
 
@@ -119,10 +145,27 @@ and it survives a reload. The header shows the story's `Night.phase`;
 the box filters by word. A cue that needs a person — an award: every
 hook that hears it binds one — has a **who?** picker and an optional
 **value** box (read as `{value}`) and fires with that person as the
-subject. For the numbers behind an award, open
+subject. On a server run, once the story sets `Night.ended`, the sheet
+reads the recap and fills each award's empty **who?** and **value**
+with a suggestion — the top of that award's list (the bottom of the
+trust list for Least Trusted), rehearsal personas skipped — and shows
+`suggested: Ada (82) · tied: Bob` under the row. It never replaces a
+pick you made; **↻ awards** re-reads the recap, and **Copy recap** puts
+the text block on the clipboard (for pasting into `cast:Trabolta`). For
+the numbers behind an award, open
 `/e/<event id>/api/mod/recap?format=text` in a tab while signed in: a
 paste-ready list of trust, truths and lies accepted, trips to the
-Internet, codex, quests, score, and who joined each side.
+Internet, codex, quests, score, codex shares, Cold Lock chess (won /
+lost / drawn), Bathroom Mode trips (a count, not minutes), and who
+joined each side.
+
+**On a phone.** The same sheet runs in the participant app: open the
+event's address with `?role=director`, type the director (mod)
+passcode and a name. Each cue is a big button — tap once to arm it, tap
+again within 4 seconds to fire. LAST / NEXT are shared with this page,
+and the log records each fire as *Phone · <name>*. The guest front page
+has no link to it (the participant guide's *The cue sheet on your
+phone* has the details).
 
 ## Being anyone
 
@@ -136,7 +179,11 @@ rooms (with the real "can post here" rule), their feed (a guest never
 sees a hidden message), their pending choice docked in the room, and the
 story's interaction buttons for them. As a **character** you get the
 performer's booth: one thread per guest with **📡 Scan** and the
-performer interactions, and you speak as the character everywhere.
+performer interactions, and you speak as the character everywhere. The
+booth's own rooms come too, read-only: its **Quest Log**, **Codex**,
+**Inbox** and (for the approver) **Wallet**. A wallet card shows what it
+is, who pays whom and how much; approve or deny it on the Run page's
+Wallet card.
 
 Actions happen *as* them. The World and Director pages and the
 Inspector's editors close until you switch back (`Esc`, or pick
@@ -167,6 +214,18 @@ needs one; the others can be left blank). Use them when a puzzle box
 fails, a clue was found the wrong way, or a guest missed a step. Both
 work on a local run too, and are journaled under your name on a server
 run.
+
+**Restrict or unrestrict someone.** A guest's Inspector has a
+**Restricted** field beside **Captured**: **Restrict** is a bare
+`restrict` (their DMs only, no places, no buttons; ⛔ shows beside them on
+the Stage, the rail and the Roster), **Unrestrict** a bare `unrestrict`.
+Only the story's `restricted` / `unrestricted` rules run, so it is **not**
+a show's own mark: in *Trapped in the Internet* a mark also sets
+`marked`, pins the 🚨 card and the escort task, and opens the Tube and the
+Internet. To mark or unmark the way the story does, fire its event under
+**Fire on this guest** (`mark_for_reinstallation` /
+`unmark_for_reinstallation`) or have a host press 🩹 Unmark. On a live run
+it asks first for a real guest.
 
 **Someone lost their phone.** On a server run, a guest's Inspector has
 **🔁 Re-pair**: it shows a QR that signs whatever phone scans it back in

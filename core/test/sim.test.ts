@@ -814,3 +814,45 @@ describe("operator mutations — setScore + fireBeat", () => {
     expect(sim.reveal("TheAlgorithm")).toEqual([]); // idempotent
   });
 });
+
+describe("list builtins — sum / max / len (wave 5 B3)", () => {
+  const SRC = `# Coin
+start: Boot
+
+ROLE Program
+  score: 0 to 1000 = 0
+  when self.score * 2 > sum([p.score for p in Persons]) and self.score >= 300:
+    reply majority for {self.name}
+
+when tally:
+  reply sum={sum([p.score for p in Persons])} max={max([p.score for p in Persons])} len={len(Persons)} odd={sum(Persons)}/{sum(7)}
+
+== Boot
+Nothing yet.
+`;
+  const cues = (evs: SimEvent[]): string[] => evs.flatMap((e) => (e.type === "respond" ? [e.text] : []));
+
+  it("sums a comprehension; an empty list sums to 0 and has no max; non-numbers count as 0", () => {
+    const sim = Sim.fromSources(SRC);
+    expect(cues(sim.signal("tally"))).toEqual(["sum=0 max=null len=0 odd=0/0"]);
+    sim.createPerson("g1", "A");
+    sim.createPerson("g2", "B");
+    sim.world.set("g1.score", { kind: "number", value: 120 });
+    sim.world.set("g2.score", { kind: "number", value: 30 });
+    expect(cues(sim.signal("tally"))).toEqual(["sum=150 max=120 len=2 odd=0/0"]);
+  });
+
+  it("a per-participant watcher can compare against the sum (a majority with a floor)", () => {
+    const sim = Sim.fromSources(SRC);
+    sim.createPerson("g1", "A");
+    sim.createPerson("g2", "B");
+    sim.createPerson("g3", "C");
+    // A majority of a tiny pot is not enough: the floor holds.
+    sim.world.set("g1.score", { kind: "number", value: 200 });
+    expect(cues(sim.signal("tally")).filter((t) => t.startsWith("majority"))).toEqual([]);
+    sim.world.set("g2.score", { kind: "number", value: 100 });
+    sim.world.set("g3.score", { kind: "number", value: 100 });
+    sim.world.set("g1.score", { kind: "number", value: 350 });
+    expect(cues(sim.signal("tally")).filter((t) => t.startsWith("majority"))).toEqual(["majority for A"]);
+  });
+});

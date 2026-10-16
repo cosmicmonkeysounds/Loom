@@ -4,12 +4,14 @@
 //! also carries the TV-voice mute (K-18). Reads `store/terminals.ts`, which
 //! App.tsx binds to the server run — a local run has no terminals, so both
 //! render nothing there. The chess phone runs the Lichess app and never
-//! reports (OP-12 covers it).
+//! reports (OP-12 covers it). Each row carries the device badges a current
+//! terminal build reports and an **identify** button (SW-SCR-21): install
+//! day's "which tablet is this?" — its name full screen for 10 s.
 
 import clsx from 'clsx'
 import { CockpitTab, useCockpit } from '@/store/cockpit'
 import { useTerminals } from '@/store/terminals'
-import { TerminalStatus, formatSilence, isTvView } from '@/lib/terminals'
+import { TerminalStatus, formatSilence, isTvView, majorityVersion, terminalBadges } from '@/lib/terminals'
 
 /** `📟 5/6` in the stage header — red while any terminal is silent; click → Run. */
 export function TerminalsPill() {
@@ -43,6 +45,9 @@ export function TerminalsCard() {
   const forget = useTerminals((s) => s.forget)
   const setVoiceMuted = useTerminals((s) => s.setVoiceMuted)
   const muteError = useTerminals((s) => s.muteError)
+  const identify = useTerminals((s) => s.identify)
+  const identifyError = useTerminals((s) => s.identifyError)
+  const majority = majorityVersion(rows)
   const silent = rows.some((r) => r.status === TerminalStatus.Silent)
   const hasTv = rows.some((r) => isTvView(r.view))
 
@@ -72,6 +77,11 @@ export function TerminalsCard() {
           {muteError}
         </p>
       )}
+      {identifyError !== null && (
+        <p className="mb-2 rounded bg-amber-950/60 px-2 py-1 text-xs text-amber-200" data-testid="run-terminals-identify-error">
+          {identifyError}
+        </p>
+      )}
       {!reachable && (
         <p className="mb-2 rounded bg-red-950/60 px-2 py-1 text-xs text-red-200" data-testid="run-terminals-unreachable">
           Can’t reach the server — the terminals may be fine. Check this laptop’s connection (and the house uplink).
@@ -99,9 +109,32 @@ export function TerminalsCard() {
                   {[r.spot, r.view].filter((x) => x !== '').join(' · ')}
                   {r.remembered ? ' · not seen since the server restarted' : ''}
                 </span>
+                {terminalBadges(r, majority).map((b) => (
+                  <span
+                    key={b.key}
+                    title={b.title}
+                    className={clsx(
+                      'rounded px-1 text-[10px] tabular-nums',
+                      !b.warn ? 'text-zinc-500' : b.key === 'version' ? 'bg-amber-950/60 text-amber-200' : 'bg-red-950/70 text-red-200',
+                    )}
+                    data-testid={`run-terminal-badge-${b.key}`}
+                  >
+                    {b.text}
+                  </span>
+                ))}
                 <span className={clsx('ml-auto tabular-nums', dead ? 'text-red-300' : 'text-zinc-600')}>
                   {dead ? `silent ${formatSilence(r.silentFor)}` : 'live'}
                 </span>
+                {!dead && (
+                  <button
+                    onClick={() => void identify(r.name)}
+                    className="rounded border border-zinc-700 px-1.5 text-[11px] text-zinc-400 hover:bg-zinc-900"
+                    title="Show this terminal’s name full screen for 10 s (with a chime)"
+                    data-testid="run-terminal-identify"
+                  >
+                    identify
+                  </button>
+                )}
                 {dead && !acked.has(r.name) && (
                   <button onClick={() => ack(r.name)} className="rounded border border-red-700 px-1.5 text-[11px] hover:bg-red-900/60" title="Stop the repeat chime for this one">
                     ack

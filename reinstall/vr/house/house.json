@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "variant": "Tent",
   "name": "Trapped in the Internet — the house (PLACEHOLDER layout until the real house is measured; the Internet in the tent)",
   "origin": "PLACEHOLDER, not yet surveyed: the front door's outside threshold, main-floor level, east jamb. +x east, +y up, +z south (north is -z). Metres. The structure matches the real house (2026-10-15): three levels — the basement (the RAM = the studio, the Fan Closet = the laundry, the Server Room = cold storage, Bathroom 1), the main floor (the Optical Drive = the mud room, the Start Bar = the kitchen, the CPU = the office, the Steam Room = the game room, the Desktop = the living room) and the top floor (the Graphics Card = bedroom 2, the Hard Drive = the crawl space, Bathroom 2) — joined by the hall and its two stairs (the Tube), plus the backyard (the Cloud) with the tent (the Internet) in it. Every footprint and elevation is a guess.",
   "floors": [
@@ -250,7 +251,7 @@
     { "id": "lock-ring", "room": "basement-hall", "kind": "screen", "pos": [-2.97, -1.2, 10.5], "size": [0.2, 0.2, 0.02], "yaw": -90, "color": "#ff2a2a", "label": "LOCK" },
     { "id": "chess-phone", "room": "basement-hall", "kind": "screen", "pos": [-2.97, -1.45, 11.85], "size": [0.08, 0.16, 0.02], "yaw": -90, "color": "#101820", "label": "CHESS" },
     { "id": "cold-storage-sign", "room": "basement-hall", "kind": "label", "pos": [-2.97, -0.6, 11.2], "size": [1, 0.25, 0.02], "yaw": -90, "label": "COLD STORAGE" },
-    { "id": "cold-lock-king", "room": "basement-hall", "kind": "king", "pos": [-2.55, -2.7, 11.2], "size": [0.6, 1.9, 0.6], "yaw": -90, "color": "#d4af37", "label": "THE KING", "hp": 4,
+    { "id": "cold-lock-king", "room": "basement-hall", "kind": "king", "pos": [-2.55, -2.7, 11.2], "size": [0.6, 1.9, 0.6], "yaw": -90, "color": "#d4af37", "label": "THE KING", "hp": 8,
       "signals": { "won": "chess won", "lost": "chess lost", "drawn": "chess drawn" },
       "armed": { "path": "Night.step", "min": 14 } },
 

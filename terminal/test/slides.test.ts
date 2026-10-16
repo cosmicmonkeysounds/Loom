@@ -1,8 +1,11 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { IdentifyOverlay, SlideView } from "../src/ScreenLayer.tsx";
 import { parseScreenState, type ScreenProgram, type ScreenState } from "../src/screen.ts";
-import { BLACKOUT_MS, FLICKER_FRESH_MS, SLIDE_COPY, SLIDE_HOLD_MS, chartLines, formatCountdown, screenLayers, slideCopy, slideSources, y2kClock } from "../src/slides.ts";
+import { BLACKOUT_MS, FLICKER_FRESH_MS, SLIDE_COPY, SLIDE_HOLD_MS, CHART_STEP_MS, chartCallouts, chartLines, chartReveal, formatCountdown, resetScreenMemo, screenLayers, setScreenMemoStorage, slideCopy, slideSources, slideVideoSources, y2kClock } from "../src/slides.ts";
 
 const T0 = 1_000_000;
 const empty: ScreenProgram = { slide: null, overlay: null, blackout: null, flicker: null };
@@ -23,6 +26,10 @@ function state(over: Partial<Omit<ScreenState, "program">> & { program?: Partial
     target: "terminals",
     voice: null,
     announce: null,
+    announces: [],
+    identify: false,
+    identifyLeft: null,
+    announceEpoch: null,
     ...over,
     program: { ...empty, ...over.program },
   };
@@ -91,12 +98,133 @@ describe("screen layers — precedence (N-03)", () => {
   });
 
   it("no answer yet: nothing on top", () => {
-    expect(screenLayers(null, T0, { piloting: false })).toEqual({ overlay: null, slide: null, corner: null, y2k: null, flicker: null, chart: null });
+    expect(screenLayers(null, T0, { piloting: false })).toEqual({ overlay: null, slide: null, corner: null, y2k: null, flicker: null, chart: null, chartShown: 0 });
+  });
+
+  // Fact M19: a clip Trabolta puts on the terminals never cuts a story slide short.
+  const clip = (value: string, at: number, seq: number) => ({ ...shot(value, at, seq, "terminals"), kind: "slide" as const, persist: false });
+  const story = (value: string, at: number, seq: number) => ({ ...shot(value, at, seq), kind: "slide" as const, persist: false });
+  // One poll's answer, read at once: a page that keeps polling keeps its memo fresh.
+  const poll = (slide: ScreenProgram["slide"], now: number, announceEpoch: string | null = null) => at(state({ announceEpoch, now, receivedAt: now, program: { slide } }), 0);
+
+  it("a clip waits under a held story slide (trivia_2, truth_or_dare), then plays out its own hold", () => {
+    for (const v of ["trivia_2", "truth_or_dare"]) {
+      resetScreenMemo();
+      const before = state({ program: { slide: story(v, T0, 5) } });
+      expect(at(before, 0).slide?.value).toBe(v);
+      // 10 s later the dancing baby is the newest cue: the story slide keeps its 45 s.
+      const after = state({ now: T0 + 10_000, receivedAt: T0 + 10_000, program: { slide: clip("dancing_baby", T0 + 10_000, 6) } });
+      expect(at(after, 0).slide).toEqual({ value: v, cue: `screens_${v}` });
+      expect(at(after, SLIDE_HOLD_MS.terminals - 10_001).slide?.value).toBe(v);
+      // The story slide's hold is over: the clip has what is left of its own.
+      expect(at(after, SLIDE_HOLD_MS.terminals - 10_000).slide).toEqual({ value: "dancing_baby", cue: "terminals_dancing_baby" });
+      expect(at(after, SLIDE_HOLD_MS.terminals).slide).toBeNull();
+    }
+  });
+
+  it("a clip plays at once over a lapsed slide, a base view, or a page that saw no story slide", () => {
+    resetScreenMemo();
+    expect(at(state({ program: { slide: story("trivia_2", T0, 5) } }), SLIDE_HOLD_MS.terminals).slide).toBeNull();
+    expect(poll(story("trivia_2", T0, 5), T0 + SLIDE_HOLD_MS.terminals - 1_000).slide?.value).toBe("trivia_2"); // still polling
+    const late = state({ now: T0 + SLIDE_HOLD_MS.terminals, receivedAt: T0 + SLIDE_HOLD_MS.terminals, program: { slide: clip("hamster_dance", T0 + SLIDE_HOLD_MS.terminals, 6) } });
+    expect(at(late, 0).slide?.value).toBe("hamster_dance");
+    resetScreenMemo();
+    at(state({ program: { slide: { ...shot("trabolta_online", T0, 5, "terminals"), kind: "base", persist: false } } }), 0);
+    expect(at(state({ program: { slide: clip("youve_got_mail", T0, 6) } }), 0).slide?.value).toBe("youve_got_mail");
+    // A story slide cued after the clip replaces it as usual.
+    expect(at(state({ program: { slide: story("truther", T0 + 1, 7) } }), 0).slide?.value).toBe("truther");
+  });
+
+  // Issue 10: a terminal that boots mid-clip must not show the clip over a held story slide.
+  function fakeStorage(): Storage & { data: Map<string, string> } {
+    const data = new Map<string, string>();
+    return {
+      data,
+      get length() {
+        return data.size;
+      },
+      clear: () => data.clear(),
+      key: (i: number) => [...data.keys()][i] ?? null,
+      getItem: (k: string) => data.get(k) ?? null,
+      setItem: (k: string, v: string) => void data.set(k, v),
+      removeItem: (k: string) => void data.delete(k),
+    };
+  }
+
+  it("a reload mid-clip keeps the story slide on top: the memo is stored per sim", () => {
+    const disk = fakeStorage();
+    setScreenMemoStorage(disk);
+    resetScreenMemo();
+    expect(at(state({ announceEpoch: "e1", program: { slide: story("trivia_2", T0, 5) } }), 0).slide?.value).toBe("trivia_2");
+    // The page reloads (memory gone, storage kept); its first answer is the clip.
+    setScreenMemoStorage(disk);
+    const after = state({ announceEpoch: "e1", now: T0 + 10_000, receivedAt: T0 + 10_000, program: { slide: clip("dancing_baby", T0 + 10_000, 6) } });
+    expect(at(after, 0).slide).toEqual({ value: "trivia_2", cue: "screens_trivia_2" });
+    expect(at(after, SLIDE_HOLD_MS.terminals - 10_000).slide?.value).toBe("dancing_baby");
+    // Another sim (a restart) never reads the old one's story slide.
+    setScreenMemoStorage(disk);
+    const restarted = state({ announceEpoch: "e2", now: T0 + 10_000, receivedAt: T0 + 10_000, program: { slide: clip("dancing_baby", T0 + 10_000, 2) } });
+    expect(at(restarted, 0).slide).toBeNull();
+    setScreenMemoStorage(null);
+  });
+
+  it("a memo from before the page went dark is no memo: a clip cued while it was off waits like a first boot", () => {
+    const disk = fakeStorage();
+    setScreenMemoStorage(disk);
+    resetScreenMemo();
+    // The tablet saw trivia_1, then was off for ten minutes.
+    expect(at(state({ announceEpoch: "e1", program: { slide: story("trivia_1", T0, 5) } }), 0).slide?.value).toBe("trivia_1");
+    // Meanwhile trivia_2 went up (unseen) and a clip after it; the tablet boots mid-clip.
+    setScreenMemoStorage(disk);
+    const off = T0 + 600_000;
+    const boot = state({ announceEpoch: "e1", now: off + 10_000, receivedAt: off + 10_000, program: { slide: clip("dancing_baby", off + 5_000, 8) } });
+    expect(at(boot, 0).slide).toBeNull(); // not the clip: trivia_2 may be held under it
+    // A page that watched the clip go up (polling) keeps playing it after a reload.
+    setScreenMemoStorage(disk);
+    resetScreenMemo();
+    expect(at(state({ announceEpoch: "e1", program: { slide: story("trivia_1", T0, 5) } }), SLIDE_HOLD_MS.terminals).slide).toBeNull();
+    const t1 = T0 + SLIDE_HOLD_MS.terminals + 1_000;
+    expect(poll(story("trivia_1", T0, 5), t1 - 2_000, "e1").slide?.value).toBe("trivia_1"); // still polling
+    const live = state({ announceEpoch: "e1", now: t1, receivedAt: t1, program: { slide: clip("hamster_dance", t1, 9) } });
+    expect(at(live, 0).slide?.value).toBe("hamster_dance");
+    setScreenMemoStorage(disk); // reload
+    const again = state({ announceEpoch: "e1", now: t1 + 4_000, receivedAt: t1 + 4_000, program: { slide: clip("hamster_dance", t1, 9) } });
+    expect(at(again, 0).slide?.value).toBe("hamster_dance");
+    setScreenMemoStorage(null);
+  });
+
+  it("a first boot mid-clip shows no clip until a story slide under it would have lapsed", () => {
+    setScreenMemoStorage(null);
+    resetScreenMemo();
+    const boot = state({ now: T0 + 10_000, receivedAt: T0 + 10_000, program: { slide: clip("under_construction", T0, 6) } });
+    expect(at(boot, 0).slide).toBeNull(); // not the clip: a story slide may be held under it
+    expect(at(boot, SLIDE_HOLD_MS.terminals - 10_000).slide).toBeNull(); // the clip's own hold is over too
+    // A clip from history (a restart's replay) was never held: nothing changes.
+    resetScreenMemo();
+    expect(at(state({ program: { slide: clip("hamster_dance", 0, 6) } }), 0).slide).toBeNull();
+    // Later, a new clip in a quiet stretch plays as usual.
+    const later = T0 + SLIDE_HOLD_MS.terminals;
+    expect(poll(clip("hamster_dance", 0, 6), later - 2_000).slide).toBeNull(); // still polling
+    expect(at(state({ now: later, receivedAt: later, program: { slide: clip("youve_got_mail", later, 7) } }), 0).slide?.value).toBe("youve_got_mail");
+    // Storage that throws never breaks the layer.
+    setScreenMemoStorage({
+      getItem: () => {
+        throw new Error("denied");
+      },
+      setItem: () => {
+        throw new Error("denied");
+      },
+      removeItem: () => {
+        throw new Error("denied");
+      },
+    });
+    expect(at(state({ program: { slide: story("trivia_2", T0, 5) } }), 0).slide?.value).toBe("trivia_2");
+    setScreenMemoStorage(null);
   });
 });
 
 describe("the live Trust Chart", () => {
-  const chart = { slide: "trust_chart", rows: [{ name: "Calculator", value: 30 }, { name: "Winamp", value: 10 }, { name: "VLC", value: 10 }, { name: "MS Paint", value: -5 }] };
+  const chart = { slide: "trust_chart", rows: [{ name: "Calculator", value: 30 }, { name: "Winamp", value: 10 }, { name: "VLC", value: 10 }, { name: "MS Paint", value: -5 }], top: null, bottom: null, revealAt: 0 };
 
   it("rides the trust_chart slide only, and ranks ties together", () => {
     const up = state({ chart, program: { slide: slide("trust_chart", T0, true) } });
@@ -108,9 +236,37 @@ describe("the live Trust Chart", () => {
 
   it("parses off the wire; junk rows drop, a junk chart is null", () => {
     const s = parseScreenState({ attract: false, chart: { slide: "trust_chart", rows: [{ name: "A", value: 3 }, { name: 4 }, null, { name: "B", value: "x" }] } });
-    expect(s?.chart).toEqual({ slide: "trust_chart", rows: [{ name: "A", value: 3 }] });
+    // An older (w3) server sends no call-outs and no reveal time: nobody called out, every row up.
+    expect(s?.chart).toEqual({ slide: "trust_chart", rows: [{ name: "A", value: 3 }], top: null, bottom: null, revealAt: 0 });
     expect(parseScreenState({ attract: false, chart: "nope" })?.chart).toBeNull();
     expect(parseScreenState({ attract: false })?.chart).toBeNull();
+    const now = parseScreenState({ attract: false, chart: { slide: "trust_chart", rows: [], top: "A", bottom: "B", revealAt: 123 } })?.chart;
+    expect(now).toMatchObject({ top: "A", bottom: "B", revealAt: 123 });
+    expect(parseScreenState({ attract: false, chart: { slide: "trust_chart", rows: [], top: 4, bottom: "", revealAt: "x" } })?.chart).toMatchObject({ top: null, bottom: null, revealAt: 0 });
+  });
+
+  it("reveals bottom-up, one row every step, from the server's revealAt", () => {
+    expect(chartReveal(4, T0, T0)).toBe(1); // the bottom row with the slide
+    expect(chartReveal(4, T0, T0 + CHART_STEP_MS - 1)).toBe(1);
+    expect(chartReveal(4, T0, T0 + CHART_STEP_MS)).toBe(2);
+    expect(chartReveal(4, T0, T0 + 4 * CHART_STEP_MS)).toBe(4); // all rows after n × step
+    expect(chartReveal(4, T0, T0 + 60_000)).toBe(4);
+    expect(chartReveal(4, T0, T0 - 5_000)).toBe(1); // a server clock behind revealAt never shows less
+    expect(chartReveal(4, 0, T0)).toBe(4); // history: everything at once
+    expect(chartReveal(0, T0, T0)).toBe(0);
+  });
+
+  it("the layer counts the reveal on the server's clock, not the tablet's", () => {
+    // The answer arrived when the server said T0 + 1 s; the slide went up at T0.
+    const up = state({ now: T0 + 1_000, receivedAt: 50, chart: { ...chart, revealAt: T0 }, program: { slide: slide("trust_chart", T0, true) } });
+    expect(screenLayers(up, 50, { piloting: false }).chartShown).toBe(1);
+    expect(screenLayers(up, 50 + 2 * CHART_STEP_MS, { piloting: false }).chartShown).toBe(3);
+    expect(at(state({ chart, program: { slide: slide("trust_chart", T0, true) } }), 0).chartShown).toBe(4); // revealAt 0
+  });
+
+  it("names the call-outs per chart", () => {
+    expect(chartCallouts("trust_chart")).toEqual({ top: "MOST TRUSTED", bottom: "LEAST TRUSTED" });
+    expect(chartCallouts("other")).toEqual({ top: "TOP", bottom: "BOTTOM" });
   });
 });
 
@@ -135,6 +291,10 @@ describe("slides", () => {
   it("looks for the PNG under the cue's name, then its value; never a path", () => {
     expect(slideSources({ value: "trivia_1", cue: "screens_trivia_1" }, "/terminal/")).toEqual(["/terminal/slides/screens_trivia_1.png", "/terminal/slides/trivia_1.png"]);
     expect(slideSources({ value: "../x", cue: "screens_../x" }, "/t/")).toEqual([]);
+    // N-04a: the TV tries the same names as clips first.
+    expect(slideVideoSources({ value: "ad_hijack", cue: "screens_ad_hijack" }, "/terminal/")).toEqual(["/terminal/slides/screens_ad_hijack.mp4", "/terminal/slides/ad_hijack.mp4"]);
+    expect(slideVideoSources({ value: "../x", cue: "screens_../x" }, "/t/")).toEqual([]);
+    expect(slideVideoSources({ value: "x", cue: "x" }, "/t/")).toEqual(["/t/slides/x.mp4"]);
   });
 
   it("a missing PNG still has a card: known copy, else the value made readable", () => {
@@ -156,6 +316,16 @@ describe("slides", () => {
     }
   });
 
+  it("every clip Trabolta can put on the wall terminals has its own card (fact M19)", () => {
+    const trabolta = readFileSync(fileURLToPath(new URL("../../core/examples/trapped-in-the-internet/cast/trabolta.loom", import.meta.url)), "utf8");
+    const clips = [...trabolta.matchAll(/^\s*cue terminals_(\w+)\s*$/gmu)].map((m) => m[1]!);
+    expect(clips).toEqual(["dancing_baby", "hamster_dance", "under_construction", "youve_got_mail"]);
+    for (const c of clips) {
+      expect(SLIDE_COPY[c], c).toBeDefined();
+      expect(SLIDE_COPY[c]!.lines?.length).toBeGreaterThan(0);
+    }
+  });
+
   it("formats the corner and the Y2K clock", () => {
     expect(formatCountdown(900)).toBe("15:00");
     expect(formatCountdown(59)).toBe("00:59");
@@ -164,5 +334,27 @@ describe("slides", () => {
     expect(y2kClock(61)).toEqual({ time: "11:58:59 PM", date: "12/31/1999" });
     expect(y2kClock(0)).toEqual({ time: "12:00:00 AM", date: "1/1/1900" });
     expect(y2kClock(null).date).toBe("1/1/1900");
+  });
+});
+
+describe("the TV's clip (N-04a) is inert without an mp4", () => {
+  it("the still (PNG / card) renders at once; the clip waits hidden on top until it has a frame", () => {
+    const html = renderToStaticMarkup(createElement(SlideView, { slide: { value: "trivia_1", cue: "screens_trivia_1" }, y2k: null, video: true }));
+    expect(html).toContain('class="slide-image"');
+    expect(html).toContain("screens_trivia_1.png");
+    expect(html).toMatch(/class="screen-slide clip-waiting"[^>]*data-video=""/u);
+    expect(html.indexOf("slide-image")).toBeLessThan(html.indexOf("slide-video")); // the clip is drawn over the still
+    // A terminal (no video) never mounts a clip.
+    expect(renderToStaticMarkup(createElement(SlideView, { slide: { value: "trivia_1", cue: "screens_trivia_1" }, y2k: null }))).not.toContain("slide-video");
+  });
+});
+
+describe("the identify overlay", () => {
+  it("renders nothing off a stale answer older than its time left", () => {
+    const props = { name: "Kitchen", spot: "start-bar", view: "auto" };
+    const live = state({ identify: true, identifyLeft: 10_000, receivedAt: Date.now() });
+    expect(renderToStaticMarkup(createElement(IdentifyOverlay, { state: live, ...props }))).toContain("KITCHEN");
+    const stale = state({ identify: true, identifyLeft: 10_000, receivedAt: Date.now() - 10_001 });
+    expect(renderToStaticMarkup(createElement(IdentifyOverlay, { state: stale, ...props }))).toBe("");
   });
 });

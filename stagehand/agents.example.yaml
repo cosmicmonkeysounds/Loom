@@ -33,7 +33,9 @@ agents:
       temperature: 0.4
       max_tokens: 1200
       api: ollama              #   native /api/chat: `think` + `keep_alive` honoured
-      extra: { think: false }  #   reasoning off (the OpenAI shim ignores this)
+      extra:                   #   reasoning off (the OpenAI shim ignores this), and a
+        think: false           #   context that fits the whole reflect prompt (the mind
+        options: { num_ctx: 16384 }  # file + persona + lore ≈ 10k tokens; Ollama's default truncates)
       keep_alive: 60m
     quiet_s: 1.5               #   idle seconds before a reflection may start
     preempt: true              #   a new request cancels a running reflection

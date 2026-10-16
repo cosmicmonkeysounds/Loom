@@ -3,7 +3,7 @@ title: Performer station
 section: Performers
 order: 7
 role: performer
-keywords: performer, alert, chime, late, keep screen on, push, notifications, get alerts, release, re-sign, loaner, lost phone, file a fact, filed fact, judge, judging, verdict, confidence, override, review, hosts, character, sign in, scanner, scan, camera, readout, admin, moderator, capture, release, hide, guest thread, guest card, actions, who's here, restricted, marked, pinned, pin, quest log, codex, inbox, wallet, approve, deny, audit, approval, transfer, booth card
+keywords: performer, alert, chime, late, keep screen on, push, notifications, get alerts, iphone, home screen, release, re-sign, loaner, lost phone, file a fact, filed fact, judge, judging, verdict, confidence, override, review, hosts, character, sign in, scanner, scan, camera, readout, admin, moderator, capture, release, hide, guest thread, guest card, actions, who's here, restricted, marked, pinned, pin, quest log, codex, inbox, wallet, approve, deny, audit, approval, transfer, booth card
 ---
 
 The performer station is the same chat surface, recomposed for the
@@ -11,8 +11,10 @@ booth: every guest is a conversation, and your character is the mask.
 
 ## Signing in
 
-Pick **I'm a Performer** and enter the **performer passcode** from the
-host (a scanned link fills it in). The story's **parts** appear — every
+Scan your **cast card** (or the host's performer QR): it opens the
+performer sign-in with the passcode filled in. Typing it works too —
+pick **I'm a Performer** and enter the **performer passcode** from the
+host. The story's **parts** appear — every
 character with something to do, with their pictures — tap yours. A part
 is one booth's: a greyed-out name is already taken by another
 performer. You now speak *as* that character everywhere.
@@ -50,10 +52,14 @@ On an Android phone, tap **🔔 Get alerts → Turn on** (or **☰ → Get
 alerts on this phone**) and allow notifications: house-wide alerts and
 alerts pinned in a staff room, the door alarm, the late list and a
 transfer waiting for your approval then reach you as notifications
-even with the phone locked in your pocket. An alert the story sends to
+even with the phone locked in your pocket; tapping one opens where it
+landed (a readout opens your Scanner). An alert the story sends to
 **one guest** — their own pinned *🚨 GO TO THE INTERNET* — never pushes
-your booth: your cue is the readout. iPhones can't do this yet: keep
-the screen on.
+your booth: your cue is the readout. On an iPhone, if the card shows
+**Get alerts on your iPhone**: tap Share → **Add to Home Screen**, then
+**☰ → Sign out** (that frees your part) and sign in from the Home
+Screen icon (a part is one phone's; a director's ⏏ Release frees one
+that's stuck), and tap 🔔 there. If it says **Your iPhone can't get alerts**, keep the screen on.
 
 ## Pinned lines, and a guest who is restricted
 
@@ -109,7 +115,8 @@ transfers are waiting on you, and your **Wallet** room lists them as
 cards: *🧾 Excel → Winamp: 40 Truthcoin. Waiting for your approval* with
 **Approve** / **Deny**, or *settles in 42 s unless you deny it* with
 **Deny** alone. Every third transfer anyone sends waits for your
-Approve; every other one settles by itself at the end of its window
+Approve (or goes through by itself after five minutes, if you never
+answer); every other one settles by itself at the end of its window
 unless you deny it first. A denial is refunded to the sender and the
 card says you did it. Trades of lore for coin never pass you; a request
 someone pays does. A held transfer pushes your phone even when it is

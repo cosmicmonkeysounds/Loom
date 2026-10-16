@@ -16,6 +16,19 @@
 //! pilot session pre-empts a slide and the corner; an overlay ends the
 //! pilot. `flicker` is a one-shot stutter over everything but a blackout.
 //! Every flash is ≤ 3 Hz and never full-field red (photosensitivity).
+//!
+//! A clip (`SCREEN_CLIPS`, Trabolta's `play_on_the_screens`) never cuts a
+//! story slide short: while the story slide this page saw last is still in
+//! its hold, it stays up and the clip waits under it (shown for whatever is
+//! left of its own hold). The one memory here is that last story slide, kept
+//! per target in `localStorage` too (keyed to the sim's `announceEpoch`), so
+//! a terminal that reloads mid-clip still shows the story slide. A terminal
+//! with no memory at all (a first boot, cleared storage), or one whose memory
+//! is older than the clip by more than `MEMO_GAP_MS` (it was off when the clip
+//! went up, so it may have missed a story slide), can't know what the clip
+//! went up over, and the server sends only the newest cue: the story
+//! slide may still be held under it, so it shows no clip until a story
+//! slide put up before that clip would have lapsed (the story wins).
 
 import type { ScreenChart, ScreenState, ScreenTarget } from "./screen.ts";
 
@@ -41,11 +54,101 @@ export interface ScreenLayers {
   flicker: number | null;
   /** The live chart for the slide on screen (the Trust Chart), or null. */
   chart: ScreenChart | null;
+  /** How many of the chart's rows are revealed so far, counted from the bottom. */
+  chartShown: number;
 }
 
-export const NO_LAYERS: ScreenLayers = { overlay: null, slide: null, corner: null, y2k: null, flicker: null, chart: null };
+export const NO_LAYERS: ScreenLayers = { overlay: null, slide: null, corner: null, y2k: null, flicker: null, chart: null, chartShown: 0 };
 
 const isOverlay = (v: string): v is OverlayKind => v === "blackout" || v === "go_to_living_room" || v === "alarm";
+
+/** Trabolta's `play_on_the_screens` clips (fact M19), cued `terminals_*` only. */
+export const SCREEN_CLIPS: readonly string[] = ["dancing_baby", "hamster_dance", "under_construction", "youve_got_mail"];
+type ProgramSlide = NonNullable<ScreenState["program"]["slide"]>;
+/** A memo last confirmed more than this before a clip went up missed a
+ *  stretch (the page was off or asleep): it may not hold the story slide
+ *  under the clip. Polls run every 1–2 s; a reload takes a few seconds more. */
+export const MEMO_GAP_MS = 15_000;
+const isClip = (s: ProgramSlide) => s.kind === "slide" && s.cue.startsWith("terminals_") && SCREEN_CLIPS.includes(s.value);
+
+/**
+ * What this page knows lies under a clip, per target: the newest non-clip
+ * slide it saw (`story`, null = a base / no slide), for the sim `epoch`.
+ * `blindUntil` (server ms) marks a first look that was already a clip —
+ * nothing known under it until then (a story slide cued before that clip is
+ * past its hold by then). `seenAt` (server ms) is the newest answer this memo
+ * was confirmed against.
+ */
+interface ScreenMemo {
+  epoch: string | null;
+  story: ProgramSlide | null;
+  blindUntil: number;
+  seenAt: number;
+}
+type MemoStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+const memo = new Map<ScreenTarget, ScreenMemo>();
+const memoKey = (t: ScreenTarget) => `loom.terminal.screen.${t}`;
+/** undefined = not resolved yet (the page's `localStorage`, if it has one). */
+let memoStorage: MemoStorage | null | undefined;
+function storage(): MemoStorage | null {
+  if (memoStorage === undefined) {
+    try {
+      memoStorage = typeof localStorage === "undefined" ? null : localStorage;
+    } catch {
+      memoStorage = null;
+    }
+  }
+  return memoStorage;
+}
+/** Use this storage for the memo (tests; null = memory only). Forgets the in-memory memo. */
+export function setScreenMemoStorage(s: MemoStorage | null): void {
+  memoStorage = s;
+  memo.clear();
+}
+/** Forget the story slide under a clip (tests). */
+export function resetScreenMemo(): void {
+  memo.clear();
+  for (const t of ["terminals", "tv"] as const) {
+    try {
+      storage()?.removeItem(memoKey(t));
+    } catch {
+      // storage refused: the in-memory memo is gone anyway
+    }
+  }
+}
+function isShot(x: unknown): x is ProgramSlide {
+  if (typeof x !== "object" || x === null) return false;
+  const r = x as Record<string, unknown>;
+  return typeof r["value"] === "string" && typeof r["cue"] === "string" && typeof r["seq"] === "number" && typeof r["at"] === "number" && (r["kind"] === "slide" || r["kind"] === "base");
+}
+/** The memo for this target and sim, from memory else storage (a reload). */
+function recall(target: ScreenTarget, epoch: string | null): ScreenMemo | undefined {
+  let m = memo.get(target);
+  if (m === undefined) {
+    try {
+      const raw = storage()?.getItem(memoKey(target));
+      const j = raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
+      if (j !== null && (typeof j["epoch"] === "string" || j["epoch"] === null) && (j["story"] === null || isShot(j["story"]))) {
+        m = { epoch: j["epoch"] as string | null, story: (j["story"] as ProgramSlide | null) ?? null, blindUntil: typeof j["blindUntil"] === "number" ? j["blindUntil"] : 0, seenAt: typeof j["seenAt"] === "number" ? j["seenAt"] : 0 };
+        memo.set(target, m);
+      }
+    } catch {
+      // unreadable: no memory
+    }
+  }
+  // Another sim (a restart, a server boot): its slides are not this one's.
+  return m !== undefined && m.epoch === epoch ? m : undefined;
+}
+function remember(target: ScreenTarget, m: ScreenMemo): void {
+  const prev = memo.get(target);
+  memo.set(target, m);
+  if (prev !== undefined && prev.epoch === m.epoch && prev.story?.seq === m.story?.seq && prev.blindUntil === m.blindUntil && prev.seenAt === m.seenAt) return;
+  try {
+    storage()?.setItem(memoKey(target), JSON.stringify(m));
+  } catch {
+    // storage full / refused: the in-memory memo still holds for this page
+  }
+}
 
 /**
  * What the screen shows on top, `nowMs` local ms (`Date.now()`). Ages are
@@ -64,8 +167,23 @@ export function screenLayers(state: ScreenState | null, nowMs: number, o: { pilo
   else if (p.overlay !== null && isOverlay(p.overlay.value)) overlay = p.overlay.value;
 
   let slide: ScreenLayers["slide"] = null;
-  const s = p.slide;
-  if (!o.piloting && s !== null && s.kind === "slide" && (s.persist || age(s.at) < SLIDE_HOLD_MS[state.target])) slide = { value: s.value, cue: s.cue };
+  const held = (x: ProgramSlide) => x.kind === "slide" && (x.persist || age(x.at) < SLIDE_HOLD_MS[state.target]);
+  let s = p.slide;
+  const epoch = state.announceEpoch;
+  if (s === null || !isClip(s)) remember(state.target, { epoch, story: s, blindUntil: 0, seenAt: state.now });
+  else {
+    let m = recall(state.target, epoch);
+    // A first look that is already a clip, or a memo from before the page
+    // went dark (it may have missed a story slide): what the clip went up
+    // over is unknown.
+    if (m === undefined || (s.at > 0 && m.seenAt < s.at - MEMO_GAP_MS)) m = { epoch, story: null, blindUntil: s.at > 0 ? s.at + SLIDE_HOLD_MS[state.target] : 0, seenAt: state.now };
+    else m = { ...m, seenAt: Math.max(m.seenAt, state.now) };
+    remember(state.target, m);
+    const under = m.story;
+    if (under !== null && under.seq < s.seq && under.at <= s.at && held(under)) s = under; // the story slide keeps its hold
+    else if (serverNow < m.blindUntil) s = null; // a story slide may be held under it, unseen: the story wins
+  }
+  if (!o.piloting && s !== null && held(s)) slide = { value: s.value, cue: s.cue };
 
   const remaining = state.remaining === null ? null : Math.max(0, state.remaining - Math.floor(since / 1000));
   const y2k = state.countdown === "y2k" ? remaining : null;
@@ -73,11 +191,35 @@ export function screenLayers(state: ScreenState | null, nowMs: number, o: { pilo
 
   const flicker = p.flicker !== null && overlay !== "blackout" && age(p.flicker.at) < FLICKER_FRESH_MS ? p.flicker.seq : null;
   const chart = overlay === null && slide !== null && state.chart !== null && state.chart.slide === slide.value ? state.chart : null;
-  return { overlay, slide, corner, y2k, flicker, chart };
+  const chartShown = chart === null ? 0 : chartReveal(chart.rows.length, chart.revealAt, serverNow);
+  return { overlay, slide, corner, y2k, flicker, chart, chartShown };
+}
+
+/** The chart reveals one row every this many ms, bottom first. */
+export const CHART_STEP_MS = 1500;
+
+/**
+ * How many of a chart's `lines` rows are up, counted from the last (the
+ * least trusted first, the top last): one at once, one more every `stepMs`
+ * after `revealAt` (server ms; `now` on the server's clock too). A `revealAt`
+ * of 0 — history, or an older server — shows every row.
+ */
+export function chartReveal(lines: number, revealAt: number, now: number, stepMs: number = CHART_STEP_MS): number {
+  if (lines <= 0) return 0;
+  if (revealAt <= 0) return lines;
+  return Math.min(lines, Math.floor(Math.max(0, now - revealAt) / stepMs) + 1);
+}
+
+/** The banner words for a chart's call-outs (any other chart: TOP / BOTTOM). */
+export const CHART_CALLOUTS: Record<string, { top: string; bottom: string }> = {
+  trust_chart: { top: "MOST TRUSTED", bottom: "LEAST TRUSTED" },
+};
+export function chartCallouts(slide: string): { top: string; bottom: string } {
+  return CHART_CALLOUTS[slide] ?? { top: "TOP", bottom: "BOTTOM" };
 }
 
 /** The chart's rows as the slide draws them: rank, name, number. Ties share
- *  a rank (1, 2, 2, 4). The top is the "most trusted" the story names. */
+ *  a rank (1, 2, 2, 4). Who is called out is the server's `top` / `bottom`. */
 export function chartLines(chart: ScreenChart): Array<{ rank: number; name: string; value: number }> {
   const out: Array<{ rank: number; name: string; value: number }> = [];
   chart.rows.forEach((r, i) => {
@@ -113,8 +255,20 @@ export function y2kClock(remaining: number | null): { time: string; date: string
 /** Where a slide's PNG may be: named after the whole cue (spec §2.13:
  *  `screens_trivia_1.png`), else after its value (`trivia_1.png`). */
 export function slideSources(slide: { value: string; cue: string }, base: string): string[] {
+  return slideNames(slide).map((n) => `${base}slides/${n}.png`);
+}
+
+/** A slide's clips, tried before its PNGs on the TV only (N-04a): the same
+ *  names as `.mp4` (`screens_ad_hijack.mp4`, else `ad_hijack.mp4`). The wall
+ *  tablets never try video (the oldest are Chrome 87 / Safari 14). */
+export function slideVideoSources(slide: { value: string; cue: string }, base: string): string[] {
+  return slideNames(slide).map((n) => `${base}slides/${n}.mp4`);
+}
+
+/** The cue then the bare value, deduplicated; anything but a plain name drops. */
+function slideNames(slide: { value: string; cue: string }): string[] {
   const safe = (n: string) => /^[a-z0-9_-]+$/iu.test(n);
-  return [...new Set([slide.cue, slide.value])].filter(safe).map((n) => `${base}slides/${n}.png`);
+  return [...new Set([slide.cue, slide.value])].filter(safe);
 }
 
 /** The text card a slide renders until (or unless) its PNG exists. */
@@ -171,6 +325,11 @@ export const SLIDE_COPY: Readonly<Record<string, SlideCopy>> = {
   advice: { title: "TRABOLTA.EXE", lines: ["Please. I need your advice."] },
   banish: { title: "EVERYONE TO THE INTERNET" },
   rave: { title: "♪ ♪ ♪" },
+  // Trabolta's `play_on_the_screens` clips (fact M19): `terminals_*` only.
+  dancing_baby: { title: "DANCING BABY", lines: ["Loading baby.avi…", "♪ ooga-chaka ♪"] },
+  hamster_dance: { title: "THE HAMSTER DANCE", lines: ["Welcome to Hampton's page.", "♪ ♪ ♪"] },
+  under_construction: { title: "UNDER CONSTRUCTION", lines: ["This page is under construction.", "Please come back soon!"] },
+  youve_got_mail: { title: "YOU'VE GOT MAIL!", lines: ["1 new message in your Inbox."] },
 };
 
 /** A slide's text card: its copy, else its value made readable. */

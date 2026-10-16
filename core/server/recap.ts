@@ -19,11 +19,22 @@
 //!   `captured` events.
 //! - **codex** — entries held. **quests** — quests done. **truthcoin** —
 //!   `score`.
+//! - **shares** — codex entries handed to someone else (`codexUnlocked`
+//!   `via: "share"`, credited to `from`; a share to a character counts).
+//! - **chess** — Cold Lock wins: `signal`s named `chess won` (the tent
+//!   tablet) or `beat the machine` (a host's ♟ fallback), names folded,
+//!   per subject; `chessGames` adds the `chess lost` / `chess drawn` counts.
+//! - **bathroom** — Bathroom Mode trips: `go to the bathroom` signals per
+//!   subject, a repeat while still away not counted again. A trip ends at
+//!   `back from the bathroom` or when the story clears `<who>.afk` (the
+//!   show's 15-minute timeout fires no signal). A trip count, not minutes
+//!   (the journal has no `at`).
 //! - **factions** — every declared group with its members, biggest first.
 //! - **duck** — the Golden Duck Speedrun (G8): each program's fastest find
 //!   in the reinstallation games, fastest first, off the `SpatialHub`'s run
 //!   log (`spatial-runs.jsonl`, SW-RE-14) the runtime passes in.
 
+import { foldName } from "../src/parser/names.ts";
 import { asNumber, display } from "../src/runtime/expr.ts";
 import type { Sim } from "../src/runtime/sim/index.ts";
 import type { DuckRun } from "./spatial.ts";
@@ -57,12 +68,29 @@ export interface RecapDuckRow {
   runs: number;
 }
 
+/** One program's Cold Lock games (anyone who played at least one). */
+export interface RecapChessRow {
+  id: string;
+  name: string;
+  persona: boolean;
+  won: number;
+  lost: number;
+  drawn: number;
+}
+
+/** The signals the chess + bathroom lists count (matched folded). */
+export const CHESS_WON = ["chess won", "beat the machine"] as const;
+export const CHESS_LOST = "chess lost";
+export const CHESS_DRAWN = "chess drawn";
+export const BATHROOM_GO = "go to the bathroom";
+export const BATHROOM_BACK = "back from the bathroom";
+
 export interface RecapFaction {
   id: string;
   members: Array<{ id: string; name: string }>;
 }
 
-export const RECAP_LISTS = ["trust", "truths", "lies", "internetVisits", "codex", "quests", "truthcoin"] as const;
+export const RECAP_LISTS = ["trust", "truths", "lies", "internetVisits", "codex", "quests", "truthcoin", "shares", "chess", "bathroom"] as const;
 export type RecapList = (typeof RECAP_LISTS)[number];
 
 export interface Recap {
@@ -70,8 +98,19 @@ export interface Recap {
   /** `Night.ending` once a final ending has happened, else null. */
   ending: string | null;
   programs: number;
-  totals: { liesAccepted: number; truthsAccepted: number; internetVisits: number; codexHeld: number; questsDone: number };
+  totals: {
+    liesAccepted: number;
+    truthsAccepted: number;
+    internetVisits: number;
+    codexHeld: number;
+    questsDone: number;
+    shares: number;
+    chessWins: number;
+    bathroomTrips: number;
+  };
   lists: Record<RecapList, RecapRow[]>;
+  /** Everyone who played the Cold Lock, most wins first. */
+  chessGames: RecapChessRow[];
   /** The Golden Duck Speedrun, fastest first (empty: nobody found it). */
   duck: RecapDuckRow[];
   factions: RecapFaction[];
@@ -87,6 +126,9 @@ const LIST_TITLES: Record<RecapList, string> = {
   codex: "Codex entries held",
   quests: "Quests completed",
   truthcoin: "Truthcoin",
+  shares: "Codex shares",
+  chess: "Cold Lock chess",
+  bathroom: "Bathroom trips",
 };
 
 function num(sim: Sim, path: string): number | null {
@@ -116,6 +158,47 @@ export function liesByPerson(sim: Sim): Map<string, number> {
     if (sim.persons.has(head)) last = head;
   }
   return out;
+}
+
+/** Codex shares, chess games and bathroom trips per person, off the log. */
+export function logCounts(sim: Sim): {
+  shares: Map<string, number>;
+  chess: Map<string, { won: number; lost: number; drawn: number }>;
+  bathroom: Map<string, number>;
+} {
+  const shares = new Map<string, number>();
+  const chess = new Map<string, { won: number; lost: number; drawn: number }>();
+  const bathroom = new Map<string, number>();
+  const away = new Set<string>();
+  const won = new Set<string>(CHESS_WON.map(foldName));
+  const bump = (m: Map<string, number>, id: string) => m.set(id, (m.get(id) ?? 0) + 1);
+  for (const e of sim.log.all()) {
+    if (e.type === "worldSet") {
+      // Bathroom Mode timed out (`set self.afk = false`): the trip is over.
+      if (e.path.endsWith(".afk") && e.value === "false") away.delete(e.path.slice(0, -".afk".length));
+      continue;
+    }
+    if (e.type === "codexUnlocked") {
+      if (e.via === "share" && e.from !== null && sim.persons.has(e.from)) bump(shares, e.from);
+      continue;
+    }
+    if (e.type !== "signal" || e.subject === null || !sim.persons.has(e.subject)) continue;
+    const who = e.subject;
+    const name = foldName(e.name);
+    const game = () => {
+      let g = chess.get(who);
+      if (g === undefined) chess.set(who, (g = { won: 0, lost: 0, drawn: 0 }));
+      return g;
+    };
+    if (won.has(name)) game().won += 1;
+    else if (name === CHESS_LOST) game().lost += 1;
+    else if (name === CHESS_DRAWN) game().drawn += 1;
+    else if (name === BATHROOM_GO) {
+      if (!away.has(who)) bump(bathroom, who);
+      away.add(who);
+    } else if (name === BATHROOM_BACK) away.delete(who);
+  }
+  return { shares, chess, bathroom };
 }
 
 /** Sort high → low (ties by name) and give shared ranks. */
@@ -175,6 +258,7 @@ export function duckBoard(sim: Sim, runs: readonly DuckRun[], personas: RecapOpt
 export function computeRecap(sim: Sim, opts: RecapOptions = {}): Recap {
   const personas = opts.personas ?? new Set<string>();
   const lies = liesByPerson(sim);
+  const counts = logCounts(sim);
   const captures = new Map<string, number>();
   for (const e of sim.log.all()) if (e.type === "captured") captures.set(e.person, (captures.get(e.person) ?? 0) + 1);
 
@@ -182,7 +266,8 @@ export function computeRecap(sim: Sim, opts: RecapOptions = {}): Recap {
     RecapList,
     Array<Omit<RecapRow, "rank">>
   >;
-  const totals = { liesAccepted: 0, truthsAccepted: 0, internetVisits: 0, codexHeld: 0, questsDone: 0 };
+  const totals = { liesAccepted: 0, truthsAccepted: 0, internetVisits: 0, codexHeld: 0, questsDone: 0, shares: 0, chessWins: 0, bathroomTrips: 0 };
+  const chessGames: RecapChessRow[] = [];
   for (const p of sim.persons.values()) {
     const base = { id: p.id, name: p.name, persona: personas.has(p.id) };
     const lied = lies.get(p.id) ?? 0;
@@ -197,11 +282,21 @@ export function computeRecap(sim: Sim, opts: RecapOptions = {}): Recap {
     lists.codex.push({ ...base, value: codex });
     lists.quests.push({ ...base, value: quests });
     lists.truthcoin.push({ ...base, value: sim.scoreOf(p.id) });
+    const shared = counts.shares.get(p.id) ?? 0;
+    const games = counts.chess.get(p.id);
+    const trips = counts.bathroom.get(p.id) ?? 0;
+    lists.shares.push({ ...base, value: shared });
+    lists.chess.push({ ...base, value: games?.won ?? 0 });
+    lists.bathroom.push({ ...base, value: trips });
+    if (games !== undefined) chessGames.push({ ...base, ...games });
     totals.liesAccepted += lied;
     totals.truthsAccepted += Math.max(0, accepted - lied);
     totals.internetVisits += visits;
     totals.codexHeld += codex;
     totals.questsDone += quests;
+    totals.shares += shared;
+    totals.chessWins += games?.won ?? 0;
+    totals.bathroomTrips += trips;
   }
   const ranked = Object.fromEntries(RECAP_LISTS.map((k) => [k, rank(lists[k])])) as Record<RecapList, RecapRow[]>;
 
@@ -223,6 +318,7 @@ export function computeRecap(sim: Sim, opts: RecapOptions = {}): Recap {
     programs: sim.persons.size,
     totals,
     lists: ranked,
+    chessGames: chessGames.sort((a, b) => b.won - a.won || a.lost - b.lost || b.drawn - a.drawn || a.name.localeCompare(b.name)),
     duck: duckBoard(sim, opts.duckRuns ?? [], personas),
     factions,
   };
@@ -240,9 +336,22 @@ export function recapText(r: Omit<Recap, "text">): string {
   out.push(`RECAP — ${r.title}`);
   out.push(`${r.programs} programs${r.ending ? ` · ending: ${r.ending}` : ""}`);
   out.push(
-    `Totals: ${r.totals.truthsAccepted} truths · ${r.totals.liesAccepted} lies accepted · ${r.totals.internetVisits} Internet trips · ${r.totals.codexHeld} codex entries · ${r.totals.questsDone} quests done`,
+    `Totals: ${r.totals.truthsAccepted} truths · ${r.totals.liesAccepted} lies accepted · ${r.totals.internetVisits} Internet trips · ${r.totals.codexHeld} codex entries · ${r.totals.questsDone} quests done · ${r.totals.shares} shares · ${r.totals.chessWins} chess wins · ${r.totals.bathroomTrips} bathroom trips`,
   );
   for (const k of RECAP_LISTS) {
+    if (k === "chess") {
+      out.push("");
+      out.push(`${LIST_TITLES.chess} (most wins):`);
+      out.push(
+        r.chessGames.length === 0
+          ? "  (nobody played)"
+          : r.chessGames
+              .slice(0, 5)
+              .map((g) => `  ${g.name}${g.persona ? " (persona)" : ""} — ${g.won} won · ${g.lost} lost · ${g.drawn} drawn`)
+              .join("\n"),
+      );
+      continue;
+    }
     const rows = k === "trust" ? r.lists[k] : r.lists[k].filter((x) => x.value > 0);
     out.push("");
     out.push(`${LIST_TITLES[k]}:`);

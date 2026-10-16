@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest";
 import { statementToDirective } from "../src/parser/statements.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
-import { composeGuestMessages } from "../server/chat.ts";
+import { composeGuestMessages, visibleTo } from "../server/chat.ts";
 
 const SOURCE = `# Pins
 start: Boot
@@ -51,6 +51,12 @@ when all:
 
 when room_clear:
   unpin in staff
+
+when takeover:
+  pin "!!GO TO THE LIVING ROOM"
+
+when dance:
+  unpin "Dance."
 
 == Boot
 Narrator: Boot.
@@ -141,5 +147,32 @@ describe("pin — the sim + chat", () => {
       ["Go.", "g1"],
       ["Second.", "g1"],
     ]);
+  });
+
+  it("a `!!` pin is a takeover + an alert with both marks stripped; a text-only unpin takes it down", () => {
+    const sim = boot();
+    const up = sim.signal("takeover");
+    expect(pinned(up)).toEqual([{ type: "pinned", text: "!!GO TO THE LIVING ROOM", channel: null, person: null, key: "" }]);
+    const [t] = composeGuestMessages(sim, up).filter((d) => d.pin !== undefined);
+    expect(t).toMatchObject({ channel: "lobby", audience: "all", kind: "signal", text: "GO TO THE LIVING ROOM", pin: "", alert: true, takeover: true });
+    // A single `!` stays a plain alert pin.
+    const [a] = composeGuestMessages(sim, sim.signal("alarm", "g1")).filter((d) => d.pin !== undefined);
+    expect(a!.takeover).toBeUndefined();
+    const down = sim.signal("dance");
+    expect(unpinned(down)).toEqual([{ type: "unpinned", text: "Dance.", channel: null, person: null, key: "" }]);
+    const [d] = composeGuestMessages(sim, down).filter((m) => m.unpin !== undefined);
+    expect(d).toMatchObject({ channel: "lobby", audience: "all", kind: "system", text: "Dance.", unpin: "" });
+  });
+
+  it("a restricted (marked) guest still receives the lobby takeover and its unpin: delivery is by audience, not by room", () => {
+    const sim = boot();
+    sim.restrict("g1", ["Hall"]);
+    expect(sim.isRestricted("g1")).toBe(true);
+    const [t] = composeGuestMessages(sim, sim.signal("takeover")).filter((m) => m.pin !== undefined);
+    const [d] = composeGuestMessages(sim, sim.signal("dance")).filter((m) => m.unpin !== undefined);
+    // event-runtime's deliverMessage + historyFor filter guests by
+    // `visibleTo` alone, so the marked guest's stream carries both.
+    expect(visibleTo({ ...t!, seq: 1, hidden: false }, "g1")).toBe(true);
+    expect(visibleTo({ ...d!, seq: 2, hidden: false }, "g1")).toBe(true);
   });
 });

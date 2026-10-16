@@ -72,6 +72,14 @@ describe("validateHouse", () => {
     refuses("yard", (h) => (h.style!.fence = -1), /style\.fence must be/);
   });
 
+  it("takes an optional string `variant` (the map page's button label) and keeps it; refuses any other type", () => {
+    refuses("two-rooms", (h) => ((h as { variant: unknown }).variant = 3), /^variant must be a string$/);
+    const h = raw("two-rooms");
+    h.variant = "Tent";
+    expect(validateHouse(h).house?.variant).toBe("Tent");
+    expect(validateHouse(raw("two-rooms")).house?.variant).toBeUndefined();
+  });
+
   it("refuses a room on an unknown floor", () => {
     expect(problems("two-rooms", (h) => (h.rooms[1]!.floor = "nope"))).toContain('rooms[1] "b": unknown floor "nope"');
   });

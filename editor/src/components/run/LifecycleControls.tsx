@@ -79,7 +79,7 @@ export function LifecycleControls() {
       title: 'Go live?',
       body:
         `The story restarts from the top; rehearsal personas and joined guests are removed; performers sign in again with the performer code; codes and QR stay the same. Directing now: ${who} — their consoles switch to LIVE.` +
-        (run.stale ? ' You have unpushed edits — going live runs the launched snapshot; push the draft first if you want them.' : ''),
+        (run.stale ? ' You have unpushed edits (the story, a house map or facts.json) — going live runs the launched snapshot; push the draft first if you want them.' : ''),
       confirmLabel: 'Go live',
       danger: true,
     })

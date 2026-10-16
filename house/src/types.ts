@@ -23,6 +23,9 @@ export interface HouseMap {
   name: string;
   /** Human description of the surveyed origin. */
   origin: string;
+  /** The map page's variant button label ("Tent", "Shed"); optional — not
+   *  geometry, the games ignore it. */
+  variant?: string;
   /** ≥ 1. */
   floors: Floor[];
   /** ≥ 1. */
@@ -338,10 +341,12 @@ export interface SaveHouseResult {
 
 /** One whole-map variant of an event (`house.json`, `house.shed.json`, …),
  *  `GET /api/mod/spatial/variants`. `name` is the map's own `name` (else
- *  the file's); `ok` / `problems` are `validateHouse`'s verdict. */
+ *  the file's); `label` its `variant` field, when it has one; `ok` /
+ *  `problems` are `validateHouse`'s verdict. */
 export interface MapVariant {
   file: string;
   name: string;
+  label?: string;
   active: boolean;
   ok: boolean;
   problems: string[];

@@ -19,3 +19,14 @@ export function activePins(messages: Iterable<ChatMessage>, channel?: string): C
   }
   return [...live.values()].sort((a, b) => a.seq - b.seq);
 }
+
+/**
+ * The takeover still up (`pin "!!…"`): the newest active pin carrying
+ * `takeover`, or null. Read from every message the guest received — not
+ * just the rooms listed — so a restricted guest whose list hides the lobby
+ * still gets it.
+ */
+export function activeTakeover(messages: Iterable<ChatMessage>): ChatMessage | null {
+  const up = activePins(messages).filter((m) => m.takeover === true);
+  return up.length > 0 ? up[up.length - 1]! : null;
+}

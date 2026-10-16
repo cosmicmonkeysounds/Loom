@@ -23,6 +23,7 @@
 | When | Press |
 |---|---|
 | any time | **🎀 Award a ribbon** · **🤝 Vouch for this program** · **🩹 Unmark: not going to the Internet** |
+| any time | **🖌 Signed the painting** (a program who just signed MS Paint's canvas; once each) |
 | the summons (⏳ → 🚨) | scan a pass at the living-room door, or **📍 Checked in at the Desktop** |
 | Grok Prom | **💘 Said "You're the one that I want"** |
 | Y2K on | **♟ They beat the machine** (only if you **saw** the checkmate) |

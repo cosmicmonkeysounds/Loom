@@ -54,6 +54,7 @@ anytime.
 | K-29 | `K-29.sh [--watch\|--fake <name>]` | Run page Terminals card: every tablet + the TV green, a silent one red + chime after 20 s |
 | K-30 | `K-30.sh` | Export and sideload two Quest APKs, each station polls the VPS, a captured program walks to Gerald → `released: true` |
 | K-31a | `k31a.sh` | VAPID keys set: 2 locked Android phones on cellular get a `!` alert and a Trabolta DM as notifications (no duplicate in the foreground); a locked Antivirus booth gets the door alarm |
+| K-31b | `k31b.sh` | `LOOM_HOMESCREEN=on` + VAPID keys: an iPhone (16.4+) guest adds the app to the Home Screen from the 🔔 card and the icon opens as the same program; locked on cellular it gets a `!` alert and a Trabolta DM; an iPhone booth signs in from its icon and gets the door alarm |
 | K-32 | `k32-load.ts --code …` | VPS load test (45 guests, 9 booths, 6 terminals, 2 directors, bursts): step latency + `/api/mod/metrics` CPU (guarded) |
 | N-01 | `n01.sh` | 10 pass QRs on screen. An iPhone booth (jsQR) and an Android booth scan 10/10 hands-free |
 | N-02 + N-10 | `n02.sh` | Re-pair a wiped phone from Inspector → 🔁 Re-pair (< 30 s, same Person). Release a booth's part and re-sign on a loaner |

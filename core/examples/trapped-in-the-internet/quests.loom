@@ -72,9 +72,9 @@ QUEST Truthcoin Hustle
   title: Sweet Sweet Truthcoin
   from: Truther Download
   text:
-    You need at least 1000 Truthcoin to feel satisfied. Hustle and gamble
-    with others for sweet sweet Truthcoin. Facts trade for coin: challenge
-    people to games for theirs.
+    You need more than half of all the Truthcoin in circulation to feel
+    satisfied. Hustle and gamble with others for sweet sweet Truthcoin.
+    Facts trade for coin: challenge people to games for theirs.
     - Open your Wallet: send, request, or offer coin for a fact. Every trade is posted in the exchange.
 
 QUEST Master Of The Bugs
@@ -95,6 +95,15 @@ QUEST Unscramble
     from, and organise all the information you can find around the
     computer.
 
+QUEST Ten Findings
+  title: Ask Jeeves Once Again
+  from: The Uploader
+  text:
+    The job is yours on one condition: share at least ten of your
+    findings with every program at the party. Give facts whether they
+    asked for them or not.
+    - Share from your Codex, or sell a fact from your Wallet. Repeats don't count.
+
 QUEST The Gold Standard
   title: Peg It To Facts
   from: Truther Download
@@ -110,6 +119,15 @@ QUEST Find The Exit
   text:
     This whole place runs on algorithms. Find out what Trabolta really is,
     and help whoever is getting out.
+
+QUEST The Painting
+  title: The Million Dollar Painting
+  from: The Uploader
+  text:
+    One collaborative MS Paint painting, revealed at a silent auction at
+    the end of the night. Get every program at the party to add a
+    considered illustration of their signature to it. $1,000,000.
+    - The canvas is real. When a program signs it, a host presses 🖌 on their card.
 
 QUEST Go Viral
   title: Your Followers Are Back

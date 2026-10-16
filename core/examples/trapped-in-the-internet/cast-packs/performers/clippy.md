@@ -24,6 +24,7 @@ booth gets the escort task, and an Antivirus walks them through the Tube.
 | 🍎 Bobbing (with Adobe) | **🍎 Brought up the Bag of Truth** · **🍎 Failed the bob: marked for reinstallation** | |
 | Grok Prom | **💘 Said "You're the one that I want"** | the first program who says it to you |
 | any time | **🩹 Unmark: not going to the Internet** | a mis-tap, or mercy |
+| any time | **🖌 Signed the painting** | a program who just signed MS Paint's canvas (once each; only shows when MS Paint is here) |
 | any time (review mode only) | **📝 Filed fact: accurate / confident lie / uncertain** | a program whose filing is waiting in `# hosts` |
 
 **Q numbers are within the round:** round 2 Q1–Q3 = H4–H6 · final Q1–Q2 =

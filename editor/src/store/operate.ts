@@ -26,6 +26,7 @@ import type {
   InteractionSummary,
   PrimeView,
   QuestSummary,
+  WalletModView,
 } from '@loom/core/views'
 import { ApiError, eventsApi, modApi, type EventInfo } from '@/lib/api'
 import { onCollabEvent, type CollabEventNotice } from '@/lib/collab'
@@ -57,6 +58,7 @@ import {
   type SpaceSummary,
   type WorldEntry,
   type FactsView,
+  WalletAction,
 } from '@/store/cockpit'
 
 // The shared cockpit shapes (roster rows, messages, faction/location
@@ -85,6 +87,8 @@ interface ModSnapshot {
   codex?: CodexSummary[]
   quests?: QuestSummary[]
   facts?: FactsView | null
+  wallet?: WalletModView
+  clock?: number
 }
 
 /** What the server tells every console on a lifecycle transition. */
@@ -148,6 +152,8 @@ const EMPTY_SNAPSHOT = {
   codex: [] as CodexSummary[],
   quests: [] as QuestSummary[],
   facts: null as FactsView | null,
+  wallet: null as WalletModView | null,
+  storyClock: null as { ms: number; at: number } | null,
   ledgerLen: 0,
   world: [] as WorldEntry[],
   modsOnline: null as number | null,
@@ -358,6 +364,8 @@ export const useOperate = create<OperateState>((set, get) => {
         codex: snap.codex ?? [],
         quests: snap.quests ?? [],
         facts: snap.facts ?? null,
+        wallet: snap.wallet ?? null,
+        storyClock: typeof snap.clock === 'number' ? { ms: snap.clock, at: Date.now() } : null,
         choices: snap.choices ?? {},
         ledgerLen: snap.ledgerLen ?? 0,
         world: snap.world ?? [],
@@ -755,6 +763,35 @@ export const useOperate = create<OperateState>((set, get) => {
       } catch (e) {
         set({ error: (e as Error).message })
         return null
+      }
+    },
+    walletAct: async (action, arg) => {
+      const ev = get().event
+      if (!ev) return false
+      try {
+        let view: WalletModView
+        if (action === WalletAction.Stimulus) view = await modApi.wallet(ev.id, action, { amount: Number(arg) })
+        else if (action !== WalletAction.ApproveHeld) view = await modApi.wallet(ev.id, action, { id: String(arg ?? '') })
+        else {
+          try {
+            view = await modApi.wallet(ev.id, action)
+          } catch (e) {
+            // An event server older than the bulk route answers it as an
+            // unknown mod action: approve each held transfer in turn.
+            if (!(e instanceof ApiError && e.status === 404 && /unknown mod action/i.test(e.message))) throw e
+            const held = (get().wallet?.open.transfers ?? []).filter((t) => t.state === 'held')
+            let last = get().wallet
+            for (const t of held) last = await modApi.wallet(ev.id, WalletAction.Approve, { id: t.id })
+            if (last === null) return true
+            view = last
+          }
+        }
+        // Apply the answer at once; the next snapshot agrees.
+        set({ wallet: view, error: null })
+        return true
+      } catch (e) {
+        set({ error: (e as Error).message })
+        return false
       }
     },
 

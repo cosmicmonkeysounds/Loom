@@ -83,6 +83,46 @@ def test_survey_prompt_lists_the_delta():
     assert "nothing you can see" in quiet[1]["content"]
 
 
+def test_survey_and_reflect_show_only_the_personas_facts_globals():
+    # SW-AI-02: a global outside the persona's `facts:` (a vote tally, the
+    # judge mode) reaches neither the survey's house nor reflect's live state.
+    persona = parse_persona("---\ncharacter: Trabolta\nfacts: Night.step\n---\nBody.")
+    world = {"Night.phase": "hunt", "Night.step": "3", "Night.help_votes": "4", "Night.judge_mode": "review"}
+    facts = Facts({"world": world, "programs": [], "locations": [], "codex": []})
+    survey = survey_messages(persona, Mind("Trabolta", "e"), facts, [])[1]["content"]
+    assert "Night.step=3" in survey and "Night.phase=hunt" in survey
+    assert "help_votes" not in survey and "judge_mode" not in survey
+    user = reflect_messages(persona, Mind("Trabolta", "e"), req(world=world), Reply(say="x"), facts, 20, "t")[1]["content"]
+    assert '"world": {"Night.phase": "hunt", "Night.step": "3"}' in user
+    assert "help_votes" not in user and "judge_mode" not in user
+
+
+def test_a_surveys_delta_drops_globals_outside_the_personas_facts():
+    persona = parse_persona("---\ncharacter: Trabolta\nfacts: Night.step\n---\nBody.")
+    seen = []
+    state = {"world": {"Night.phase": "hunt", "Night.step": "1", "Night.help_votes": "0"}}
+
+    async def complete(messages, cfg):
+        seen.append(messages[1]["content"])
+        return '{"mood": "watchful"}'
+
+    updates = []
+
+    async def on_update(character, m, job, touched):
+        updates.append(job.kind)
+
+    async def facts_fn(force):
+        return Facts({**state, "programs": [], "locations": [], "codex": []})
+
+    orch = Orchestrator(OrchestratorConfig(quiet_s=0, survey_every_s=0), complete, {"Trabolta": LlmConfig()}, {"Trabolta": persona}, {"Trabolta": Mind("Trabolta", "e")}, on_update, facts_fn)
+    orch.survey("Trabolta")
+    run(run_until(orch, lambda: len(updates) == 1))
+    state["world"] = {"Night.phase": "hunt", "Night.step": "2", "Night.help_votes": "7"}
+    orch.survey("Trabolta")
+    run(run_until(orch, lambda: len(updates) == 2))
+    assert "- Night.step = 2" in seen[1] and "help_votes" not in seen[1]
+
+
 def test_parse_update_tolerates_think_blocks_and_prose():
     assert parse_update('<think>hm</think> Sure: {"brief": "b"} done') == {"brief": "b"}
     assert parse_update("no json here") is None
@@ -223,3 +263,29 @@ def test_job_keys_and_attempts():
     assert j.attempts == 0 and j.kind == "reflect"
     with pytest.raises(TypeError):
         Job()  # type: ignore[call-arg]
+
+
+def test_the_example_orchestrator_context_fits_the_shipped_reflect_prompt():
+    """The reflect prompt (Trabolta's mind file + persona + the house + the
+    lore block) is ≈ 10k tokens: on Ollama's default context the runner cuts
+    its middle and the mind update still looks confident. The example config
+    names a `num_ctx` that fits it with room for the reply."""
+    from pathlib import Path
+
+    from stagehand.config import load_config
+    from test_secrets import SHOW, _show_codex
+
+    agents = load_config(Path(__file__).resolve().parents[1] / "agents.example.yaml").modules["agents"]
+    om = agents.cfg.orchestrator_models["Trabolta"]
+    num_ctx = (om.extra.get("options") or {}).get("num_ctx")
+    assert isinstance(num_ctx, int) and num_ctx >= 16384, om.extra
+    persona = agents.cfg.personas["Trabolta"]
+    entries, held = _show_codex()
+    facts = Facts({"world": {"Night.phase": "free_roam"}, "programs": [], "locations": [], "codex": entries})
+    r = req(n_history=19)
+    r["self"] = {"vars": {}, "codex": [{"title": t} for t in held]}
+    msgs = reflect_messages(persona, Mind("Trabolta", "e"), r, Reply(say="x" * 400), facts, 20, "t")
+    chars = sum(len(m["content"]) for m in msgs)
+    assert chars > 20_000  # it really is the shipped mind file + lore
+    # ≈ 3 characters a token is a safe overestimate for English + JSON.
+    assert chars / 3 + om.max_tokens < num_ctx, (chars, num_ctx)

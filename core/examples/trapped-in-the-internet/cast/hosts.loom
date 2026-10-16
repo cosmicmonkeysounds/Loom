@@ -138,3 +138,6 @@ CHARACTER Recycling Bin is Host
 
   when back from the bathroom for program:
     reply 🚻 {program.name} is back from Disk Cleanup.
+
+  when bathroom_timed_out for program:
+    reply 🚻 {program.name}'s Bathroom Mode timed out (15 min).

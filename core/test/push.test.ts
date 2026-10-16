@@ -27,6 +27,7 @@ import {
   parseSubscription,
   pushConfigFromEnv,
   readoutPush,
+  roomUrl,
   webPushSender,
   type PushSender,
   type PushSubscriptionJSON,
@@ -60,7 +61,7 @@ function sub(n: number): PushSubscriptionJSON {
 
 interface Sent {
   endpoint: string;
-  payload: { kind: string; title: string; body: string; tag: string };
+  payload: { kind: string; title: string; body: string; tag: string; url: string };
   ttl: number;
   urgency: string;
 }
@@ -164,6 +165,15 @@ describe("messagePush (the send rule)", () => {
     expect(messagePush(msg({ channel: "dm:Trabolta", from: "Winamp", audience: ["g-1"] }), "Trapped")).toBeNull();
     expect(messagePush(msg({ channel: "dm:Trabolta", kind: "narration" as ChatMessage["kind"] }), "Trapped")).toBeNull();
     expect(messagePush(msg({ alert: true, hidden: true }), "Trapped")).toBeNull();
+  });
+
+  it("SW-PLAY-20: every payload's url opens the room it came from", () => {
+    expect(roomUrl("dm:Trabolta")).toBe("/?room=dm%3ATrabolta");
+    expect(new URLSearchParams(roomUrl("loc:The Desktop").slice(1)).get("room")).toBe("loc:The Desktop");
+    expect(messagePush(msg({ alert: true }), "T")!.payload.url).toBe("/?room=lobby");
+    expect(messagePush(msg({ alert: true, channel: "room:hosts" }), "T")!.payload.url).toBe("/?room=room%3Ahosts");
+    expect(messagePush(msg({ channel: "dm:Trabolta", from: "Trabolta", audience: ["g-1"] }), "T")!.payload.url).toBe("/?room=dm%3ATrabolta");
+    expect(readoutPush("Norton", "x").url).toBe("/?room=scanner");
   });
 
   it("clips a long body; a readout is titled by the booth", () => {
@@ -282,7 +292,7 @@ describe("serving the service worker", () => {
     expect(PLAY_CSP).toContain("manifest-src 'self'");
     expect(HTML_CSP).not.toContain("worker-src"); // REINSTALL_CSP appends its own
     expect(REINSTALL_CSP).toContain("worker-src 'self' blob:");
-    expect([...PLAY_PWA_FILES].sort()).toEqual(["/manifest.webmanifest", "/sw.js"]);
+    expect([...PLAY_PWA_FILES].sort()).toEqual(["/apple-touch-icon.png", "/manifest.webmanifest", "/sw.js"]);
   });
 });
 
@@ -350,10 +360,17 @@ async function register(rt: EventRuntime, name: string) {
 describe("EventRuntime push wiring", () => {
   it("config answers enabled + the public key; disabled without keys, and subscribe says so", async () => {
     const on = runtime(fakeSender());
-    expect((await call(on, "GET", "/api/push/config", {})).json).toEqual({ enabled: true, publicKey: "BPUBLIC" });
+    const prev = process.env.LOOM_HOMESCREEN;
+    delete process.env.LOOM_HOMESCREEN;
+    expect((await call(on, "GET", "/api/push/config", {})).json).toEqual({ enabled: true, publicKey: "BPUBLIC", homescreen: false });
+    // K-31b's switch rides the config (the iPhone card + the door poster read it).
+    process.env.LOOM_HOMESCREEN = "on";
+    expect((await call(on, "GET", "/api/push/config", {})).json.homescreen).toBe(true);
+    if (prev === undefined) delete process.env.LOOM_HOMESCREEN;
+    else process.env.LOOM_HOMESCREEN = prev;
     const off = runtime(null);
     off.openDoors();
-    expect((await call(off, "GET", "/api/push/config", {})).json).toEqual({ enabled: false, publicKey: null });
+    expect((await call(off, "GET", "/api/push/config", {})).json).toEqual({ enabled: false, publicKey: null, homescreen: false });
     const g = await register(off, "Winamp");
     expect((await post(off, "/api/push/subscribe", { token: g.token, subscription: sub(1) })).status).toBe(503);
   });
@@ -387,6 +404,8 @@ describe("EventRuntime push wiring", () => {
     expect((await mod(rt, "/api/mod/say", { as: "Trabolta", channel: `guest:${ana.id}`, text: "Are you there?" })).status).toBe(200);
     await rt.push.settle();
     expect(sender.sent.map((s) => [s.endpoint.slice(-5), s.payload.title, s.payload.body])).toEqual([["dev-1", "Trabolta", "Are you there?"]]);
+    // SW-PLAY-20: tapping it opens her Trabolta thread.
+    expect(sender.sent[0]!.payload.url).toBe("/?room=dm%3ATrabolta");
     sender.sent.length = 0;
 
     // Her own message into the thread never pushes back to her.
@@ -560,7 +579,7 @@ describe("wallet cards (wave 4, lane C)", () => {
 
   it("the approver's held card pushes always; a request / offer / coin received only while hidden; the rest never — and never as `alert`", () => {
     const held = messagePush(wm({ kind: "approval", step: "held" }, ["@Auditor"]), "Trapped");
-    expect(held).toMatchObject({ always: true, payload: { kind: "dm", title: "🧾 Approval needed", tag: "wallet-t1" } });
+    expect(held).toMatchObject({ always: true, payload: { kind: "dm", title: "🧾 Approval needed", tag: "wallet-t1", url: "/?room=wallet" } });
     expect(messagePush(wm({ kind: "approval", step: "pending" }, ["@Auditor"]), "Trapped")).toBeNull();
     for (const step of ["asked", "offered", "received"] as const) {
       expect(messagePush(wm({ step }), "Trapped")).toMatchObject({ always: false, payload: { kind: "dm", title: "💰 Trapped", tag: "wallet-t1" } });

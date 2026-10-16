@@ -423,6 +423,13 @@ show:
     # plays it on the house speakers. A system voice, never a character. ──
     - on: { directive: announce }
       mqtt: { topic: "show/announce", payload: { text: "{target}" } }
+    # …and the music ducks under it (SW-AUD-05): the cue map fires EVERY
+    # matching rule, so this second rule rides the same `do announce`. QLab's
+    # `duck_music` group cue (non-code, the tech op builds it) fades the bed /
+    # background group only (never dance_song, rave or hand_jive) −12 dB over
+    # 0.3 s, holds ≈ 7 s (the chime + the longest line), fades back over 1 s.
+    - on: { directive: announce }
+      osc: { addr: "/cue/duck_music/start", to: qlab }
 
     # ── The server-room door INDICATOR (no maglock, ever: the door is never
     # physically locked). `do door server_room, state: locked|unlocked` →
@@ -435,6 +442,31 @@ show:
     - on: { directive: door }
       match: { target: server_room, state: locked }
       mqtt: { topic: "show/serverroom/lock", payload: { state: locked }, retain: true }
+
+  # --- catch-up (SW-SH-10) ----------------------------------------------------
+  # On every (re)connect of the mod feed, and 1.5 s after a story restart
+  # (reset / reload / golive), stagehand reads the story's light mirrors from
+  # GET /api/state and replays them through the rules above, in order: the
+  # scene, then Trabolta's dark room on top while his 90 s cut is still on,
+  # or lit again once it is over (a lost restore never leaves it dark).
+  # A cue fired while the uplink or the broker was down is no longer lost. `alarm` is never
+  # replayed: it would re-arm the server room's 120 s siren. The director's
+  # re-fire of the current lights cue (OP-16) stays the fallback.
+  catch_up:
+    - path: Night.lights
+      cue: "lights_{value}"
+      skip: [alarm]
+    - path: Night.dark_room
+      cue: "lights, room: {value}, state: off"
+      skip: [none]
+      # Night.dark_room is never cleared: replay it only mid-cut, into the look he cut.
+      when: "Night.lights_back_at > 0 && Night.lights == Night.dark_scene"
+    - path: Night.dark_room
+      cue: "lights, room: {value}, state: on"
+      skip: [none]
+      # The cut is over (the story zeroed lights_back_at) but the look he cut is
+      # still on, so the story's own restore was the last word: replay it.
+      when: "Night.lights_back_at == 0 && Night.lights == Night.dark_scene"
 
   # --- house → story ----------------------------------------------------------
   # Every name here must be a `when <name>` story rule in main.loom: stagehand

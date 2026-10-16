@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AgentMindSummary, AgentThought } from '@loom/core/views'
-import { confirmEvent, diffRows, driveSeries, filterThoughts, judgeModeOf, mindCharacters, pendingFilings, pickMind, questionTallies, sparklinePath, speakersOf, stageSegments, summarizeThought } from './mind'
+import { confirmEvent, diffRows, driveSeries, filterThoughts, judgeModeOf, mindCharacters, pendingFilings, pickMind, questionFilings, questionTallies, sparklinePath, speakersOf, stageSegments, summarizeThought } from './mind'
 import type { FactsFiling, FactsView } from '@/store/cockpit'
 import { mergeThoughts } from '@/store/operate'
 
@@ -181,7 +181,7 @@ describe('mergeThoughts', () => {
 })
 
 describe('judging', () => {
-  const filing = (over: Partial<FactsFiling>): FactsFiling => ({ person: 'g1', name: 'Ada', question: 'Q1', answer: 'eleven', confidence: 100, verdict: 'accurate', final: null, at: 10, ...over })
+  const filing = (over: Partial<FactsFiling>): FactsFiling => ({ person: 'g1', name: 'Ada', question: 'Q1', answer: 'eleven', confidence: 100, verdict: 'accurate', final: null, how: null, by: null, at: 10, ...over })
   const tally = (filings: FactsFiling[]) => {
     const eff = (f: FactsFiling) => f.final ?? f.verdict
     return {
@@ -237,6 +237,47 @@ describe('judging', () => {
     const notSure = [filing({ final: 'accurate' }), filing({ person: 'g2', confidence: 99, final: 'accurate' })]
     const v2 = view({ questions: [{ id: 'Q1', round: 1, text: 'x', filings: notSure, tally: tally(notSure) }] })
     expect(questionTallies(v2)[0]!.consensus).toBe(false)
+  })
+
+  it('questionFilings: the server\'s how + by (wave 5 issue 8) — auto, confirmed by whom, settled', () => {
+    const q = [
+      filing({ person: 'g1', name: 'Ada', final: 'accurate', how: 'auto', at: 1 }),
+      filing({ person: 'g2', name: 'Ben', final: 'accurate', how: 'confirmed', by: 'Jo', at: 2 }),
+      filing({ person: 'g3', name: 'Cy', verdict: 'lie', final: 'accurate', how: 'overridden', by: 'Clippy', at: 3 }),
+      filing({ person: 'g4', name: 'Di', final: 'accurate', how: 'settled', by: 'Jo', at: 4 }),
+      filing({ person: 'g5', name: 'Ed', verdict: 'uncertain', final: 'marked', how: 'marked', by: 'Jo', at: 5 }),
+    ]
+    const v = view({ questions: [{ id: 'Q1', round: 1, text: 'x', filings: q, tally: tally(q) }] })
+    expect(questionFilings(v, 'Q1').map((r) => [r.name, r.how, r.by])).toEqual([
+      ['Ada', 'auto', null],
+      ['Ben', 'confirmed', 'Jo'],
+      ['Cy', 'overridden', 'Clippy'],
+      ['Di', 'settled', 'Jo'],
+      ['Ed', 'marked', 'Jo'],
+    ])
+  })
+
+  it('questionFilings: every filing oldest first, with how it was judged (an older server with no how)', () => {
+    const q = [
+      filing({ person: 'g1', name: 'Ada', final: 'accurate', at: 40 }),
+      filing({ person: 'g2', name: 'Ben', verdict: 'lie', final: 'accurate', at: 10 }),
+      filing({ person: 'g3', name: 'Cy', verdict: 'uncertain', final: 'marked', at: 30 }),
+      filing({ person: 'g4', name: 'Di', at: 20 }),
+    ]
+    const v = view({ questions: [{ id: 'Q1', round: 1, text: 'x', filings: q, tally: tally(q) }] })
+    expect(questionFilings(v, 'Q1').map((r) => [r.name, r.proposed, r.final, r.how, r.at])).toEqual([
+      ['Ben', 'lie', 'accurate', 'overridden', 10],
+      ['Di', 'accurate', null, 'pending', 20],
+      ['Cy', 'uncertain', 'marked', 'marked', 30],
+      ['Ada', 'accurate', 'accurate', 'kept', 40],
+    ])
+    // The mode in force now never relabels a settled filing (a round-1 auto
+    // verdict must not read as confirmed after a switch to review).
+    expect(questionFilings(view({ ...v, mode: 'auto' }), 'Q1').find((r) => r.name === 'Ada')!.how).toBe('kept')
+    expect(questionFilings(view({ ...v, mode: 'review' }), 'Q1').find((r) => r.name === 'Ada')!.how).toBe('kept')
+    expect(questionFilings(v, 'Q1')[0]).toEqual({ person: 'g2', name: 'Ben', answer: 'eleven', confidence: 100, proposed: 'lie', final: 'accurate', how: 'overridden', by: null, at: 10 })
+    expect(questionFilings(v, 'nope')).toEqual([])
+    expect(questionFilings(view(), 'P1')).toEqual([])
   })
 
   it('confirmEvent: the confirm event per verdict, null without one', () => {

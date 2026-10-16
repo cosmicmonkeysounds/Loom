@@ -29,9 +29,9 @@ verified (OP-04).
 **The escort list.** The hosts mark programs (🎯 🤷 🙅 🎩 🏓 🍎, a late
 arrival, a filed guess); your booth reads *🚨 X is marked for reinstallation
 (why)* and **`# quarantine`** pins *Escort X to the Internet…* Their phone is
-grey, buttons off, a 🚨 GO TO THE INTERNET card on top, DMs + the Tube + the
+grey, buttons off (all but 🚻 Bathroom Mode), a 🚨 GO TO THE INTERNET card on top, DMs + the Tube + the
 Internet rooms, plus the room they stand in, read-only. Find them, walk them
-through the Tube, press **🛡** on their card. The pin clears when they are
+through the Tube, press **🛡** on their card. A marked program in Bathroom Mode or Disk Cleanup: wait outside; never go in (the booth says ⚠️ when it knows). The pin clears when they are
 captured, released or unmarked.
 
 **The audit.** Every program has a Wallet from login; at the Truther Download
@@ -46,16 +46,22 @@ coin early. How it works:
   three** (counted across everyone, in order) is **held** there as a card
   with **Approve** / **Deny**. It does not move until you press Approve; the
   sender's phone says it is waiting for you. Walk over, ask your questions,
-  then press.
+  then press. A held transfer you never answer **approves itself after 5
+  minutes**; a timeout never credits *The Audit* (only your Approve or Deny
+  does).
 - Every **other** transfer settles on its own **60 seconds** after it is sent,
   unless you press **Deny** on its card inside that minute. Denied coin goes
   back to the sender; `# hosts` logs it.
 - **Trades** (coin offered for a fact, escrowed until the other side accepts)
-  and Runescape's **stimulus** do not pass through you.
+  and Runescape's **stimulus** and **grants** do not pass through you.
+- Runescape can **🧊 freeze** a program's coin for ten minutes: their sends
+  are refused until it thaws. That is hers, not yours; the director can lift
+  one early.
 - The director can Approve, Deny or cancel a card by its id through the mod
-  wallet route if you are busy (not a button in Run; the second director's
-  card has the call).
-- Promise nothing else: there is no freeze, no limit, no refund beyond Deny.
+  wallet route if you are busy, or clear every held card at once with Run →
+  Wallet's **✓ Approve all held** (the second director's card has the call).
+- Promise nothing else: you have no freeze of your own, no limit, no refund
+  beyond Deny.
   Undeclared profit in person → **🪙 Charge**.
 
 **Sweeps:** C1 · C2 · ⏳ (scan arrivals) · 🚨 the late list · Trabolta's sweep

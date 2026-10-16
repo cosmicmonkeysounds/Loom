@@ -24,7 +24,11 @@ project**: `house.json` and any `house.<variant>.json` (the rain plan's
 `house.shed.json`) are project files beside the story, pushed by
 `pnpm sync-example` / `pnpm sync-show` and snapshotted when an event
 launches (a reload refreshes them; End → relaunch plays the project's
-current map, on the variant the last event played). An event plays, in order: a director's save from
+current map, on the variant the last event played). A sync keeps a
+project map that differs from the repo's (it only warns), so a change made
+here (the King's `hp: 8`, the `"variant"` labels) reaches a project that
+already has maps only through one `pnpm sync-show --replace-maps`, run
+after checking the project's maps carry no surveyed edits worth keeping. An event plays, in order: a director's save from
 `/reinstall/map` (kept per event in the server's state directory as
 `spatial-house.json`), the project's active variant, then the show file
 (`LOOM_HOUSE`, now only the fallback). A save carries the version the
@@ -42,10 +46,10 @@ by `main.tsx`) offers both as **Map: Tent ● live | Shed** buttons, plus
 ### The King (the Cold Lock in the simulation)
 
 A `king` prop stands in the server-room doorway of the show's map
-(`cold-lock-king`, `hp: 4`; the door `server-door` names him as its
+(`cold-lock-king`, `hp: 8`; the door `server-door` names him as its
 `guard`), and the door is shut — a closed leaf in the gap — until he falls.
 On the **tablet** a program walks down to him and **hits** him (**⚔** or
-Space, one hit every 1.2 s, facing him within 1.25 m): every hit takes a
+Space, one hit every 2 s, facing him within 1.25 m): every hit takes a
 heart and makes his chess worse — grandmaster → club → beginner → dizzy
 (random moves) → **pawns only** (his own worst move, with nothing but his
 eight pawns). **♟ CHALLENGE** (or C) opens the board (a lazy chunk with

@@ -11,6 +11,7 @@ import { maxSeqOf, unsolicitedReadout, useAlerts, type Alert } from "./alerts.ts
 import { checkinFromSearch, withoutCheckin } from "./checkin.ts";
 import { pmChannelId, pmOtherParty, unlockFromSearch, withoutUnlock } from "./codex.ts";
 import { usePlayHost } from "./host.ts";
+import { roomFromMessage, roomFromSearch, roomTarget, withoutRoom } from "./room.ts";
 import { SessionRole, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "./lifecycle.ts";
 import { locationOfRoom, occupantsByLocation, type Presence } from "./presence.ts";
 import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, WALLET_ROOM, channelHead, groupByChannel, prettyName, questSummary, withThe, useThreads, type Threads } from "./threads.ts";
@@ -249,7 +250,8 @@ export async function fetchLanding(): Promise<{ title: string | null; theme: str
   }
 }
 
-type Brand = { title: string | null; theme: string | null };
+/** `role` is what a `?code=` link's code opens (`guest` / `prime` / `mod`). */
+type Brand = { title: string | null; theme: string | null; role?: string | null };
 
 /** One branding lookup per page load, shared by every screen that asks
  *  (the role chooser, the join screens, the session's skin): each ask is a
@@ -260,7 +262,7 @@ export function landingBrand(code: string): { ask: Promise<Brand>; value: Brand 
   if (brandOnce === null || brandOnce.key !== code) {
     const once: { key: string; ask: Promise<Brand>; value: Brand | null } = {
       key: code,
-      ask: code !== "" ? resolveCode(code).then((r) => ({ title: r?.title ?? null, theme: r?.theme ?? null })) : fetchLanding(),
+      ask: code !== "" ? resolveCode(code).then((r) => ({ title: r?.title ?? null, theme: r?.theme ?? null, role: r?.role ?? null })) : fetchLanding(),
       value: null,
     };
     void once.ask.then((b) => {
@@ -424,6 +426,54 @@ export function actFeedback(replies: readonly string[] | undefined, label?: stri
  *  an authored channel (derived DM / private / lobby threads are always shown). */
 export function isListedRoom(id: string): boolean {
   return id.startsWith("loc:") || id.startsWith("room:");
+}
+
+/**
+ * SW-PLAY-20: a tapped notification opens its room — `?room=` on a fresh
+ * window, the service worker's `open-room` message on one already open
+ * (listened for only when the app owns the page: never in Run → Players).
+ * Applied once signed in with the backlog in, and only to a room this
+ * participant lists; otherwise dropped. Returns whether a link is still
+ * waiting (the wide-screen home default holds off until it has run).
+ */
+function useRoomLinks(threads: Threads, signedIn: boolean, booth: boolean): boolean {
+  const { ownsPage } = usePlayHost();
+  const [want, setWant] = useState<{ room: string } | null>(() => {
+    const room = ownsPage ? roomFromSearch(window.location.search) : null;
+    return room === null ? null : { room };
+  });
+  useEffect(() => {
+    if (!ownsPage) return;
+    const sw = typeof navigator !== "undefined" ? navigator.serviceWorker : undefined;
+    if (sw === undefined) return;
+    const on = (e: MessageEvent) => {
+      const room = roomFromMessage(e.data);
+      if (room !== null) setWant({ room });
+    };
+    sw.addEventListener("message", on);
+    try {
+      sw.startMessages();
+    } catch {
+      /* fine */
+    }
+    return () => sw.removeEventListener("message", on);
+  }, [ownsPage]);
+  useEffect(() => {
+    if (want === null || !signedIn) return;
+    setWant(null);
+    if (ownsPage && roomFromSearch(window.location.search) !== null) {
+      try {
+        window.history.replaceState(null, "", `${window.location.pathname}${withoutRoom(window.location.search)}`);
+      } catch {
+        /* fine */
+      }
+    }
+    const id = roomTarget(want.room, threads.list.map((c) => c.id), booth);
+    if (id !== null) threads.open(id);
+    // `threads` is rebuilt each render; the request is what matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [want, signedIn]);
+  return want !== null;
 }
 
 /** The guest's own pinned rooms — the Codex and the Quest Log. */
@@ -661,6 +711,10 @@ export interface GuestSession {
     decline(id: string): Promise<unknown>;
     cancel(id: string): Promise<unknown>;
     stimulus(amount: number): Promise<unknown>;
+    /** The minter's reserve: mint `amount` into one program's account. */
+    grant(to: string, amount: number): Promise<unknown>;
+    /** The minter's reserve: freeze one program's outgoing coin. */
+    freeze(to: string): Promise<unknown>;
     approve(id: string): Promise<unknown>;
     deny(id: string): Promise<unknown>;
   };
@@ -677,6 +731,8 @@ export interface GuestSession {
    *  threads are built from — a cutscene reads what is addressed to them). */
   messages: ReadonlyMap<number, ChatMessage>;
   leave: () => void;
+  /** A notification's room link is waiting to open (SW-PLAY-20). */
+  roomLinkPending: boolean;
 }
 
 export function useGuestSession(): GuestSession {
@@ -876,6 +932,8 @@ export function useGuestSession(): GuestSession {
       decline: (id: string) => walletCall("decline", { id }),
       cancel: (id: string) => walletCall("cancel", { id }),
       stimulus: (amount: number) => walletCall("stimulus", { amount }),
+      grant: (to: string, amount: number) => walletCall("grant", { to, amount }),
+      freeze: (to: string) => walletCall("freeze", { to }),
       approve: (id: string) => walletCall("approve", { id }),
       deny: (id: string) => walletCall("deny", { id }),
     }),
@@ -974,6 +1032,7 @@ export function useGuestSession(): GuestSession {
       .catch((e: unknown) => alerts.raise(e instanceof Error ? e.message : "Check-in failed.", { quiet: true }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me, status, post]);
+  const roomLinkPending = useRoomLinks(threads, me !== null && ready && status !== null, false);
   const dismissAlert = alerts.dismiss;
   // Signed out (the join screens), the landing's skin; signed in, the story's.
   const landing = useLandingBrand();
@@ -1007,6 +1066,7 @@ export function useGuestSession(): GuestSession {
     widgetAnswers,
     messages: shown,
     leave,
+    roomLinkPending,
   };
 }
 
@@ -1258,6 +1318,8 @@ export interface PrimeSession {
   /** Cards (by seq) this booth has answered — rendered resolved, never re-asked. */
   widgetAnswers: ReadonlyMap<number, WidgetResult>;
   leave: () => void;
+  /** A notification's room link is waiting to open (SW-PLAY-20). */
+  roomLinkPending: boolean;
 }
 
 export function usePrimeSession(): PrimeSession {
@@ -1450,6 +1512,10 @@ export function usePrimeSession(): PrimeSession {
     [post, auth],
   );
   const leave = useCallback(() => {
+    // Sign out frees the part on the server too, so the same performer can
+    // sign in from another phone (the iPhone Home Screen icon) without a
+    // director's ⏏ Release. Fire-and-forget: signing out never waits.
+    if (auth !== null) void api(`${base}/api/prime/logout`, {}, auth.token).catch(() => {});
     drop(PK);
     setAuth(null);
     setView(null);
@@ -1458,7 +1524,7 @@ export function usePrimeSession(): PrimeSession {
     setNotice(null);
     setWidgetAnswers(new Map());
     host.onEnded("prime", null);
-  }, [drop, host]);
+  }, [drop, host, auth, base]);
 
   const alerts = useAlerts({
     messages,
@@ -1470,7 +1536,8 @@ export function usePrimeSession(): PrimeSession {
   });
   alertsRef.current = alerts;
   const threads = useThreads(buildPrimeChannels(messages, view, new Set(widgetAnswers.keys())).map((c) => (typing.has(c.id) ? { ...c, typing: typing.get(c.id) } : c)));
+  const roomLinkPending = useRoomLinks(threads, auth !== null && ready && view !== null, true);
   const landing = useLandingBrand();
   useTheme(auth === null ? landing.theme : view?.theme);
-  return { auth, view, responses, alert: alerts.alert, dismissAlert: alerts.dismiss, connected, ready, notice, threads, login, scan, say, inviteToChannel, leaveChannel, becomeAdmin, act, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, leave };
+  return { auth, view, responses, alert: alerts.alert, dismissAlert: alerts.dismiss, connected, ready, notice, threads, login, scan, say, inviteToChannel, leaveChannel, becomeAdmin, act, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, leave, roomLinkPending };
 }

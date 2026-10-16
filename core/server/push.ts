@@ -198,6 +198,15 @@ export function parseSubscription(raw: unknown): PushSubscriptionJSON | null {
   return { endpoint: r.endpoint, keys: { p256dh, auth } };
 }
 
+/**
+ * SW-PLAY-20: where tapping the notification lands — the play app opens
+ * `room` (a server channel id; `scanner` = a booth's scan readouts) once
+ * signed in, and ignores one this participant doesn't list.
+ */
+export function roomUrl(room: string): string {
+  return `/?room=${encodeURIComponent(room)}`;
+}
+
 function clip(text: string): string {
   const t = text.replace(/\s+/gu, " ").trim();
   return t.length > MAX_BODY ? `${t.slice(0, MAX_BODY - 1)}…` : t;
@@ -213,7 +222,7 @@ function clip(text: string): string {
 export function messagePush(m: ChatMessage, eventTitle: string): { payload: PushPayload; always: boolean } | null {
   if (m.hidden) return null;
   if (m.alert === true) {
-    return { always: true, payload: { kind: "alert", title: `🚨 ${eventTitle}`, body: clip(m.text), tag: `alert-${m.seq}`, url: "/" } };
+    return { always: true, payload: { kind: "alert", title: `🚨 ${eventTitle}`, body: clip(m.text), tag: `alert-${m.seq}`, url: roomUrl(m.channel) } };
   }
   // A wallet card: the approver's held card always (someone is waiting on
   // them); a card that asks something of its viewer (a request, an offer,
@@ -223,24 +232,24 @@ export function messagePush(m: ChatMessage, eventTitle: string): { payload: Push
   if (m.kind === "wallet" && m.wallet) {
     const w = m.wallet;
     if (w.kind === "approval" && w.step === "held") {
-      return { always: true, payload: { kind: "dm", title: "🧾 Approval needed", body: clip(m.text), tag: `wallet-${w.id}`, url: "/" } };
+      return { always: true, payload: { kind: "dm", title: "🧾 Approval needed", body: clip(m.text), tag: `wallet-${w.id}`, url: roomUrl(m.channel) } };
     }
     if (w.step === "asked" || w.step === "offered" || w.step === "received") {
-      return { always: false, payload: { kind: "dm", title: `💰 ${eventTitle}`, body: clip(m.text), tag: `wallet-${w.id}`, url: "/" } };
+      return { always: false, payload: { kind: "dm", title: `💰 ${eventTitle}`, body: clip(m.text), tag: `wallet-${w.id}`, url: roomUrl(m.channel) } };
     }
     return null;
   }
   // A DM thread is `dm:<Character>`; only the character's own lines push
   // (never the guest's typed reply, never a director's puppet guest).
   if (m.channel.startsWith("dm:") && m.kind === "line" && m.from !== "" && m.from === m.channel.slice(3)) {
-    return { always: false, payload: { kind: "dm", title: m.from, body: clip(m.text), tag: m.channel, url: "/" } };
+    return { always: false, payload: { kind: "dm", title: m.from, body: clip(m.text), tag: m.channel, url: roomUrl(m.channel) } };
   }
   return null;
 }
 
 /** A booth readout (`respond` → the booth's own line), pushed when hidden. */
 export function readoutPush(character: string, text: string): PushPayload {
-  return { kind: "readout", title: `🎭 ${character}`, body: clip(text), tag: `readout:${character}`, url: "/" };
+  return { kind: "readout", title: `🎭 ${character}`, body: clip(text), tag: `readout:${character}`, url: roomUrl("scanner") };
 }
 
 export interface PushHubInit {

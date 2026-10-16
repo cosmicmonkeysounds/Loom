@@ -128,12 +128,25 @@ the phone signed in but shrinks it: the guest keeps their own feed
 pinned Quest Log / Codex / Wallet; every authored room and every place
 the story didn't name is gone, every story button is
 off (the server refuses `INTERACTION` presses, room check-ins and room
-posts while it lasts), and the app greys out with a ⛔ tag. `restrict
+posts while it lasts), the wallet stops (no send, request, pay or
+refuse a request, offer, accept, stimulus, grant or 🧊 freeze — not
+the same as being frozen, which still lets coin in and a sale go
+through; declining an offer and cancelling their own still work), story
+cards they already hold (`show …`) stay answerable, and the app
+greys out with a ⛔ tag. `restrict
 guest to The Tube, The Internet` keeps those places visible too —
 read-only, and **by name even if they are hidden**: naming a place is
 opening it for them, so name only what they may see. Wherever they are
 standing stays visible as well. `unrestrict guest` gives everything
-back.
+back. A guest button marked `restricted: allow` stays on through a
+restriction (Bathroom Mode and its Back, say):
+
+```loom
+INTERACTION go to the bathroom
+  label: 🚻 Bathroom Mode
+  who: guest
+  restricted: allow
+```
 
 ```loom
 when mark_for_reinstallation for program:
@@ -154,7 +167,13 @@ Run through the mod API's `set`), and the edge fires `restricted` /
 `unrestricted` for them — `when restricted for guest:` /
 `when unrestricted for guest:` — once per real transition, so a second
 `restrict` is harmless. Performers see a **⛔ restricted** pill on
-that guest's card and on their thread's line in the guest list. *Trapped in the
+that guest's card and on their thread's line in the guest list. In Run,
+directors see **⛔** beside the guest on the Stage, the rail and the
+Roster, and the guest's Inspector has a **Restricted** field:
+**Restrict** / **Unrestrict** is a plain `restrict` / `unrestrict` (no
+place list) that runs only the `restricted` / `unrestricted` rules — not a
+story's own mark or unmark event, whose flags and pins it leaves alone —
+and asks first for a real guest on a live run. *Trapped in the
 Internet* uses it for a program **marked for reinstallation**: marked
 on the spot by a host's verdict, restricted to the Tube and the
 Internet, escorted by an Antivirus, and freed by the capture, the
@@ -178,6 +197,10 @@ takes it down — a standing order, an escort task. Where it goes:
   to that program.
 - A leading `!` makes it an **alert** as well — chime, buzz, banner —
   and the `!` is not shown.
+- A leading `!!` makes it a **takeover**: an alert that covers the
+  whole phone with its text, slowly flashing, until the story unpins
+  it (`pin "!!GO TO THE LIVING ROOM"` … `unpin "💃 Dance."`). There is
+  no close button, so always unpin it.
 
 `unpin [in room] [for who] ["text"]` takes the matching pin down and
 posts the optional text as a system notice in its place (default
@@ -230,7 +253,8 @@ or `tv_` family (`cue screens_bingo`, `cue tv_award_most_trusted`,
 and the TV — `screens_` on both, the others on one. `blackout`,
 `go_to_living_room` and `alarm` are full-screen notices; `screensaver`
 clears back to the base view; any other value is a slide (a
-`public/slides/<cue>.png` in the terminal app, else a text card). A
+`public/slides/<cue>.png` in the terminal app, else a text card; on the
+TV a `public/slides/<cue>.mp4` plays first when there is one). A
 terminal whose character is still `hidden`, or whose
 `<Character>.awake` is false, shows its screensaver.
 

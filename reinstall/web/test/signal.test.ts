@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { fetchArmed, postSignal, SIGNAL_RETRY_MS } from "../src/api.ts";
+import { fetchArmed, flushPendingSignal, PENDING_SIGNAL_KEY, PENDING_SIGNAL_MAX_AGE_MS, postSignal, readPendingSignal, SIGNAL_ATTEMPT_TIMEOUT_MS, SIGNAL_RETRY_MS, type SignalStorage } from "../src/api.ts";
+import { WIN_NOT_SENT, winNotice } from "../src/game/fight.ts";
 import { defaultConfig } from "../src/config.ts";
 
 const config = defaultConfig({ eventId: "ev1", token: "mod-token", name: "Tent tablet" });
@@ -53,6 +54,160 @@ describe("postSignal", () => {
     expect(call.init.method).toBe("POST");
     expect((call.init.headers as Record<string, string>)["x-loom-token"]).toBe("mod-token");
     expect(JSON.parse(call.init.body as string)).toEqual({ name: "chess lost", subject: "g-9", label: "Tent tablet" });
+  });
+});
+
+/** An in-memory localStorage. */
+function memory(): SignalStorage & { map: Map<string, string> } {
+  const map = new Map<string, string>();
+  return { map, getItem: (k) => map.get(k) ?? null, setItem: (k, v) => void map.set(k, v), removeItem: (k) => void map.delete(k) };
+}
+
+describe("the pending signal (a reload doesn't lose a win)", () => {
+  const nop = async () => {};
+
+  it("is stored before the first try and kept while every attempt fails", async () => {
+    const st = memory();
+    let seen: string | undefined;
+    const f = (async () => {
+      seen = st.map.get(PENDING_SIGNAL_KEY);
+      throw new TypeError("Failed to fetch");
+    }) as unknown as typeof fetch;
+    expect(await postSignal(config, "chess won", "g-1", { fetcher: f, sleep: nop, storage: st, now: () => 1000 })).toBe(false);
+    expect(JSON.parse(seen!)).toEqual({ eventId: "ev1", name: "chess won", subject: "g-1", label: "Tent tablet", at: 1000 });
+    expect(readPendingSignal(st)).toEqual({ eventId: "ev1", name: "chess won", subject: "g-1", label: "Tent tablet", at: 1000 });
+  });
+
+  it("is cleared on a 200 and on a 4xx", async () => {
+    const ok = memory();
+    expect(await postSignal(config, "chess won", "g-1", { fetcher: fetcher(["net", 200]).fetch, sleep: nop, storage: ok })).toBe(true);
+    expect(ok.map.size).toBe(0);
+    const refused = memory();
+    expect(await postSignal(config, "chess won", "g-1", { fetcher: fetcher([409]).fetch, sleep: nop, storage: refused })).toBe(false);
+    expect(refused.map.size).toBe(0);
+  });
+
+  it("keeps the latest only: an older post landing late leaves a newer pending one alone", async () => {
+    const st = memory();
+    st.setItem(PENDING_SIGNAL_KEY, JSON.stringify({ eventId: "ev1", name: "chess won", subject: "g-2", label: "Tent tablet", at: 5000 }));
+    // An older attempt (at 1000) whose 200 arrives after the newer one was stored.
+    const late = (async () => {
+      st.setItem(PENDING_SIGNAL_KEY, JSON.stringify({ eventId: "ev1", name: "chess won", subject: "g-2", label: "Tent tablet", at: 5000 }));
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+    expect(await postSignal(config, "chess lost", "g-1", { fetcher: late, storage: st, now: () => 1000 })).toBe(true);
+    expect(readPendingSignal(st)?.subject).toBe("g-2");
+  });
+
+  it("a fresh one is flushed once on load, with its original label, then forgotten", async () => {
+    const st = memory();
+    st.setItem(PENDING_SIGNAL_KEY, JSON.stringify({ eventId: "ev1", name: "chess won", subject: "g-1", label: "Tent tablet", at: 10_000 }));
+    const f = fetcher([200]);
+    expect(await flushPendingSignal(config, { fetcher: f.fetch, sleep: nop, storage: st, now: () => 10_000 + 59_000 })).toBe("sent");
+    expect(f.calls).toHaveLength(1);
+    expect(f.calls[0]!.url).toBe("/e/ev1/api/mod/signal");
+    expect(JSON.parse(f.calls[0]!.init.body as string)).toEqual({ name: "chess won", subject: "g-1", label: "Tent tablet" });
+    expect(st.map.size).toBe(0);
+    const again = fetcher([200]);
+    expect(await flushPendingSignal(config, { fetcher: again.fetch, storage: st })).toBe("none");
+    expect(again.calls).toHaveLength(0);
+  });
+
+  it("a stale one (≥ 60 s), one from another event, or one from the future is dropped unsent", async () => {
+    for (const [entry, now] of [
+      [{ eventId: "ev1", at: 0 }, PENDING_SIGNAL_MAX_AGE_MS],
+      [{ eventId: "ev1", at: 0 }, 10 * 60_000],
+      [{ eventId: "other", at: 0 }, 1000],
+      [{ eventId: "ev1", at: 5000 }, 1000],
+    ] as const) {
+      const st = memory();
+      st.setItem(PENDING_SIGNAL_KEY, JSON.stringify({ name: "chess won", subject: "g-1", label: "Tent tablet", ...entry }));
+      const f = fetcher([200]);
+      expect(await flushPendingSignal(config, { fetcher: f.fetch, storage: st, now: () => now })).toBe("dropped");
+      expect(f.calls).toHaveLength(0);
+      expect(st.map.size).toBe(0);
+    }
+  });
+
+  it("never posts past the 60 s cap, even mid-retry", async () => {
+    const st = memory();
+    st.setItem(PENDING_SIGNAL_KEY, JSON.stringify({ eventId: "ev1", name: "chess won", subject: "g-1", label: "Tent tablet", at: 0 }));
+    let t = 58_000;
+    const f = fetcher(["net", "net", 200]);
+    const r = await flushPendingSignal(config, { fetcher: f.fetch, storage: st, now: () => t, sleep: async (ms) => void (t += ms * 2) });
+    expect(r).toBe("failed");
+    expect(f.calls).toHaveLength(2); // 58 s, 59 s; the third try would be at 61 s
+    // Kept (unsent) — the next load drops it as stale.
+    expect(await flushPendingSignal(config, { fetcher: fetcher([200]).fetch, storage: st, now: () => 61_000 })).toBe("dropped");
+  });
+
+  it("a stalled attempt is aborted (never hangs past the cap) and counts as a network failure", async () => {
+    const calls: Array<number> = [];
+    // A black-holed uplink: the request never answers until it is aborted.
+    const stall = ((_url: string, init?: RequestInit) =>
+      new Promise<Response>((_res, rej) => {
+        calls.push(Date.now());
+        init?.signal?.addEventListener("abort", () => rej(new DOMException("aborted", "AbortError")));
+      })) as unknown as typeof fetch;
+    const started = Date.now();
+    const ok = await postSignal(config, "chess won", "g-1", { fetcher: stall, storage: null, attempts: 3, timeoutMs: 20, sleep: async () => {} });
+    expect(ok).toBe(false);
+    expect(calls).toHaveLength(3);
+    expect(Date.now() - started).toBeLessThan(1000);
+    expect(SIGNAL_ATTEMPT_TIMEOUT_MS).toBeLessThanOrEqual(5_000);
+    // …and an attempt never outlives the 60 s cap: 59.99 s old → aborted at the cap, not 5 s later.
+    let aborted = false;
+    const late = ((_u: string, init?: RequestInit) =>
+      new Promise<Response>((_r, rej) => init?.signal?.addEventListener("abort", () => ((aborted = true), rej(new Error("abort")))))) as unknown as typeof fetch;
+    const st = memory();
+    st.setItem(PENDING_SIGNAL_KEY, JSON.stringify({ eventId: "ev1", name: "chess won", subject: "g-1", label: "Tent tablet", at: 0 }));
+    const t0 = Date.now();
+    const now = () => Date.now() - t0 + PENDING_SIGNAL_MAX_AGE_MS - 30;
+    expect(await flushPendingSignal(config, { fetcher: late, storage: st, attempts: 1, now })).toBe("failed");
+    expect(aborted).toBe(true);
+    expect(Date.now() - t0).toBeLessThan(1000);
+  });
+
+  it("a win that never landed puts WIN_NOT_SENT on the HUD; a landed one (or no signal hook) says nothing", async () => {
+    expect(await winNotice(postSignal(config, "chess won", "g-1", { fetcher: fetcher(["net", "net"]).fetch, storage: null, attempts: 2, sleep: async () => {} }))).toBe(WIN_NOT_SENT);
+    expect(await winNotice(postSignal(config, "chess won", "g-1", { fetcher: fetcher([200]).fetch, storage: null }))).toBeNull();
+    expect(await winNotice(undefined)).toBeNull();
+  });
+
+  it("a refused flush is forgotten; a failed one stays for the next load", async () => {
+    const st = memory();
+    const entry = JSON.stringify({ eventId: "ev1", name: "chess won", subject: "g-1", label: "Tent tablet", at: 0 });
+    st.setItem(PENDING_SIGNAL_KEY, entry);
+    expect(await flushPendingSignal(config, { fetcher: fetcher([403]).fetch, storage: st, now: () => 1000 })).toBe("refused");
+    expect(st.map.size).toBe(0);
+    st.setItem(PENDING_SIGNAL_KEY, entry);
+    expect(await flushPendingSignal(config, { attempts: 1, fetcher: fetcher([503]).fetch, storage: st, now: () => 1000 })).toBe("failed");
+    expect(st.map.size).toBe(1);
+  });
+
+  it("works with no storage, a throwing one, or junk stored", async () => {
+    expect(await postSignal(config, "chess won", "g-1", { fetcher: fetcher([200]).fetch, storage: null })).toBe(true);
+    expect(await flushPendingSignal(config, { storage: null })).toBe("none");
+    const boom: SignalStorage = {
+      getItem: () => {
+        throw new Error("SecurityError");
+      },
+      setItem: () => {
+        throw new Error("QuotaExceededError");
+      },
+      removeItem: () => {
+        throw new Error("SecurityError");
+      },
+    };
+    expect(await postSignal(config, "chess won", "g-1", { fetcher: fetcher([200]).fetch, storage: boom })).toBe(true);
+    expect(await postSignal(config, "chess won", "g-1", { attempts: 1, fetcher: fetcher(["net"]).fetch, storage: boom })).toBe(false);
+    expect(await flushPendingSignal(config, { storage: boom })).toBe("none");
+    const junk = memory();
+    junk.setItem(PENDING_SIGNAL_KEY, "{not json");
+    expect(await flushPendingSignal(config, { storage: junk })).toBe("none");
+    expect(junk.map.size).toBe(0);
+    junk.setItem(PENDING_SIGNAL_KEY, JSON.stringify({ name: "chess won" }));
+    expect(readPendingSignal(junk)).toBeNull();
   });
 });
 

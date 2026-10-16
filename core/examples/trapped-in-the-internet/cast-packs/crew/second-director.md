@@ -88,8 +88,12 @@ quick-fire). `# quarantine` shows every open escort pin. Truthcoin moves by
 itself from the guests' Wallets; CRA Agent Software approves every third
 transfer in her booth's Wallet room and can deny any within 60 s. If she is
 busy or gone: `POST /e/<event>/api/mod/wallet/approve` (or `deny`, `cancel`)
-with the transfer id from the card, signed in as yourself; `stimulus` mints
-Runescape's hand-out if Runescape never came.
+with the transfer id from the card, signed in as yourself, or Run → Wallet's
+**✓ Approve all held** (`POST /e/<event>/api/mod/wallet/approve-held`); a held
+transfer nobody answers approves itself after 5 min anyway; `stimulus` mints
+Runescape's hand-out if Runescape never came (`grant {to, amount}` and
+`freeze {to}` likewise), and `unfreeze {to}` lifts one of her ten-minute
+freezes early.
 
 **4. The late list** (OP-08b). At 🚨 Summons closed the Antivirus booths
 already read *⏰ X is late for the Second Moment of Truth. Go get them.* and

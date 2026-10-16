@@ -4,12 +4,15 @@ import {
   RECHIME_MS,
   TerminalStatus,
   formatSilence,
+  majorityVersion,
   mergeTerminals,
+  terminalBadges,
   newlySilent,
   pruneAcks,
   shouldChime,
   type ScreenTerminals,
   type TerminalPoll,
+  type TerminalRow,
 } from '@/lib/terminals'
 
 const SILENT = 20_000
@@ -53,6 +56,50 @@ describe('mergeTerminals (K-29)', () => {
   })
 })
 
+describe('device badges (SW-SCR-21)', () => {
+  const now = 1_000_000
+  const rowsOf = (...t: TerminalPoll[]) => mergeTerminals({}, server(...t), now).rows
+  const byName = (rows: TerminalRow[], n: string) => rows.find((r) => r.name === n)!
+
+  it('carries the device off the listing; an older build or a remembered row has none', () => {
+    const rows = rowsOf({ ...poll('Kitchen', 0), audio: false, visible: true, battery: 12, charging: false, version: 'b2' }, poll('Hall', 0))
+    expect(byName(rows, 'Kitchen').device).toMatchObject({ audio: false, visible: true, battery: 12, version: 'b2' })
+    expect(terminalBadges(byName(rows, 'Hall'), null)).toEqual([])
+    const { memory } = mergeTerminals({}, server(poll('Attic', 0)), now)
+    expect(mergeTerminals(memory, server(), now).rows[0]!.device).toBeNull()
+  })
+
+  it('🔇 locked sound, 💤 hidden, a low battery not charging is red; charging is not', () => {
+    const [r] = rowsOf({ ...poll('Kitchen', 0), audio: false, visible: false, battery: 12, charging: false, version: 'b2' })
+    const b = terminalBadges(r!, 'b2')
+    expect(b.map((x) => [x.key, x.text, x.warn])).toEqual([
+      ['audio', '🔇', true],
+      ['hidden', '💤', true],
+      ['battery', '🔋12%', true],
+      ['version', 'b2', false],
+    ])
+    const [c] = rowsOf({ ...poll('Kitchen', 0), audio: true, visible: true, battery: 12, charging: true })
+    expect(terminalBadges(c!, null).map((x) => [x.key, x.text, x.warn])).toEqual([['battery', '⚡12%', false]])
+  })
+
+  it('flags a build that differs from the majority (none on a tie)', () => {
+    const rows = rowsOf({ ...poll('A', 0), version: 'new' }, { ...poll('B', 0), version: 'new' }, { ...poll('C', 0), version: 'old' }, poll('D', 0))
+    expect(majorityVersion(rows)).toBe('new')
+    expect(terminalBadges(byName(rows, 'C'), 'new').find((x) => x.key === 'version')!.warn).toBe(true)
+    expect(majorityVersion(rowsOf({ ...poll('A', 0), version: 'x' }, { ...poll('B', 0), version: 'y' }))).toBeNull()
+    expect(majorityVersion(rowsOf(poll('A', 0)))).toBeNull()
+  })
+
+  it('flags a listed tablet that reports no build next to a majority: a cached pre-stamp build', () => {
+    const rows = rowsOf({ ...poll('A', 0), version: 'new' }, { ...poll('B', 0), version: 'new' }, poll('Old', 0))
+    expect(terminalBadges(byName(rows, 'Old'), 'new')).toEqual([expect.objectContaining({ key: 'version', text: 'old build', warn: true })])
+    // With no majority (nobody reports one) it stays quiet; a remembered row has no device at all.
+    expect(terminalBadges(byName(rows, 'Old'), null)).toEqual([])
+    const { memory } = mergeTerminals({}, server(poll('Attic', 0)), now)
+    expect(terminalBadges(mergeTerminals(memory, server(), now).rows[0]!, 'new')).toEqual([])
+  })
+})
+
 describe('the chime rules', () => {
   const rowsAt = (ages: Record<string, number>) => mergeTerminals({}, server(...Object.entries(ages).map(([n, a]) => poll(n, a))), 1_000_000).rows
 
@@ -86,8 +133,9 @@ describe('the chime rules', () => {
 
 const terminals = vi.fn<(id: string) => Promise<ScreenTerminals>>()
 const setVoiceMuted = vi.fn(async (_id: string, muted: boolean) => ({ muted }))
+const identify = vi.fn(async (_id: string, name: string) => ({ name, until: 0 }))
 const chime = vi.fn()
-vi.mock('@/lib/api', () => ({ screensApi: { terminals: (id: string) => terminals(id), setVoiceMuted: (id: string, m: boolean) => setVoiceMuted(id, m) } }))
+vi.mock('@/lib/api', () => ({ screensApi: { terminals: (id: string) => terminals(id), setVoiceMuted: (id: string, m: boolean) => setVoiceMuted(id, m), identify: (id: string, n: string) => identify(id, n) } }))
 vi.mock('@/lib/chime', () => ({ playChime: () => chime() }))
 
 const mem = new Map<string, string>()
@@ -154,6 +202,18 @@ describe('useTerminals', () => {
     expect(useTerminals.getState().muteError).toMatch(/unmute the TV voice: 403/)
     await useTerminals.getState().setVoiceMuted(false)
     expect(useTerminals.getState().muteError).toBeNull()
+  })
+
+  it('identify asks the server for that terminal; a failure is said on the card, never thrown', async () => {
+    const { useTerminals } = await import('@/store/terminals')
+    terminals.mockResolvedValue(server(poll('Kitchen', 0)))
+    useTerminals.getState().bind('evt-3')
+    await useTerminals.getState().identify('Kitchen')
+    expect(identify).toHaveBeenCalledWith('evt-3', 'Kitchen')
+    expect(useTerminals.getState().identifyError).toBeNull()
+    identify.mockRejectedValueOnce(new Error('403 moderators only'))
+    await expect(useTerminals.getState().identify('Kitchen')).resolves.toBeUndefined()
+    expect(useTerminals.getState().identifyError).toMatch(/identify Kitchen: 403/)
   })
 
   it('an unreachable server is said so, and the rows age to red on the client clock', async () => {

@@ -36,6 +36,7 @@ import { snap2, SNAP_STEPS } from "./plan.ts";
 import { addFloor, addRoom, blankHouse, cascadeOf, deleteRoomText, deletesWith, floorDefaults, moveStair, placeRect, removeRoom } from "./structure.ts";
 import { flapsAdded, yardOf } from "./yards.ts";
 import { Toolbar } from "./Toolbar.tsx";
+import { checkModCode, editorTakesKey, MapUnlock } from "./unlock.ts";
 import { floorOfSelection, selectionExists, TOOLS, type EditMode, type MapToolbarContext, type Tool } from "./tools.ts";
 
 /** three.js only loads when the 3D preview is opened. */
@@ -122,6 +123,18 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   const [locations, setLocations] = useState<StoryLocation[] | null>(null);
   const [view3d, setView3d] = useState(false);
   const saving = useRef(false);
+  /** The passcode re-check before this page load's first write (W-15). */
+  const lock = useMemo(() => new MapUnlock((code) => checkModCode(code, config.eventId)), [config.eventId]);
+  const [asking, setAsking] = useState<{ round: number; error: string | null; answer: (code: string | null) => void } | null>(null);
+  const askingRef = useRef(false);
+  askingRef.current = asking !== null;
+  const unlock = useCallback(async () => {
+    let round = 0;
+    // The dialog stays up while a code is checked; a wrong one asks again in it.
+    const ok = await lock.ensure((error) => new Promise<string | null>((answer) => setAsking({ round: ++round, error, answer })));
+    setAsking(null);
+    return ok;
+  }, [lock]);
   const versionRef = useRef<string | null>(null);
   const dirtyRef = useRef(false);
   /** The draft and history as of the last render — edits arrive from
@@ -247,6 +260,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
 
   const save = async (): Promise<string | null> => {
     if (draft === null || !validation?.ok || !editable) return null;
+    if (!(await unlock())) return null;
     setSaveState({ kind: "saving" });
     saving.current = true;
     try {
@@ -323,7 +337,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   // snap step, Shift ×10), [ / ] turn, Esc back to Select, tool letters.
   useEffect(() => {
     const on = (e: KeyboardEvent) => {
-      if (isTyping(e.target) || !edit) return;
+      if (!editorTakesKey({ typing: isTyping(e.target), editing: edit, asking: askingRef.current })) return;
       const h = draftRef.current;
       if (h === null) return;
       const mod = e.metaKey || e.ctrlKey;
@@ -438,6 +452,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     adopt: (next) => apply(next),
     reload: load,
     save,
+    unlock,
   };
 
   return (
@@ -583,6 +598,45 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
           />
         </aside>
       </main>
+      {asking !== null && <PasscodeDialog round={asking.round} error={asking.error} onAnswer={asking.answer} />}
+    </div>
+  );
+}
+
+/** "Type the moderator passcode" before the page's first save or switch. */
+function PasscodeDialog({ round, error, onAnswer }: { round: number; error: string | null; onAnswer: (code: string | null) => void }) {
+  const [code, setCode] = useState("");
+  const [checking, setChecking] = useState(false);
+  const input = useRef<HTMLInputElement | null>(null);
+  useEffect(() => setChecking(false), [round]);
+  // Disabling the input while a code is checked blurs it: take focus back for the retry.
+  useEffect(() => {
+    if (!checking) input.current?.focus();
+  }, [checking, round]);
+  return (
+    <div className="unlock-modal">
+      <Window title="House map — moderator passcode" className="unlock-window">
+        <form
+          className="unlock-body"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setChecking(true);
+            onAnswer(code);
+          }}
+        >
+          <p>Saving or switching the live map needs the moderator passcode (once per page load).</p>
+          <input ref={input} className="w98-input" type="password" autoFocus autoComplete="off" value={code} onChange={(e) => setCode(e.target.value)} aria-label="Moderator passcode" disabled={checking} />
+          {error !== null && <div className="w98-error">⚠ {error}</div>}
+          <div className="unlock-actions">
+            <button type="submit" className="w98-button default" disabled={checking || code.trim() === ""}>
+              OK
+            </button>
+            <button type="button" className="w98-button" onClick={() => onAnswer(null)} disabled={checking}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Window>
     </div>
   );
 }

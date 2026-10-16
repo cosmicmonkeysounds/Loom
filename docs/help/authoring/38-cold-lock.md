@@ -27,9 +27,10 @@ map side is in [the house map](39-house-map.md).
    drawn shut behind him — the chevrons never lead there; the duck is
    elsewhere.
 2. Up close and facing him, **⚔ HIT** (or **Space**) lands one blow
-   every 1.2 seconds. The bar under the HUD counts him down — *at full
+   every 2 seconds. The bar under the HUD counts him down — *at full
    strength* → *rattled* → *reeling* → *dizzy* → *PAWNS ONLY* (the
-   map's `hp`, four by default). Each stage is a weaker chess machine,
+   map's `hp`: eight on the show's maps, two blows a stage, about 16
+   seconds of hitting in all; four by default). Each stage is a weaker chess machine,
    down to a king with nothing but his eight pawns.
 3. **♟ CHALLENGE** (or **C**) opens the board. Checkmate fells him —
    *"CHECKMATE — the door opens."* — the door in the simulation opens,
@@ -41,6 +42,11 @@ map side is in [the house map](39-house-map.md).
    meets him at full strength again. The ladder can be run in seconds
    by someone who knows it; the story, not the game, decides what a
    win is worth.
+5. If the win can't reach the server (Wi-Fi down for more than about
+   15 seconds, or under a minute on a connection that hangs), the tablet says *"The win didn't reach the house: tell
+   a host (♟)."* — press ♟ for them. A tablet reloaded within 60
+   seconds of the checkmate sends the win once on its own; after that
+   it is dropped, so a late win never unlocks the real door.
 
 A badge on the board says whether the win is **ARMED** or **PRACTICE**
 (the map's `armed:` reads `Night.step`): before the Y2K hour the

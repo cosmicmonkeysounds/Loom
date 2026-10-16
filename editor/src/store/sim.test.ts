@@ -138,6 +138,21 @@ describe('local run store', () => {
     expect(useSim.getState().messages.find((m) => m.seq === chat!.seq)!.hidden).toBe(true)
   })
 
+  it('setStat restricted marks and unmarks a guest, like /api/mod/set restricted', async () => {
+    await start()
+    const row = () => useSim.getState().roster[0]!
+    expect(row().restricted).toBe(false)
+    await useSim.getState().setStat('p1', 'restricted', true)
+    expect(row().restricted).toBe(true)
+    expect(useSim.getState().log.some((l) => l.event.type === 'restricted' && l.event.person === 'p1')).toBe(true)
+    // Idempotent, then lifted.
+    await useSim.getState().setStat('p1', 'restricted', 'true')
+    expect(row().restricted).toBe(true)
+    await useSim.getState().setStat('p1', 'restricted', false)
+    expect(row().restricted).toBe(false)
+    expect(useSim.getState().log.some((l) => l.event.type === 'unrestricted' && l.event.person === 'p1')).toBe(true)
+  })
+
   it('fireSignal with an actor reaches only that character (the performer-lens path)', async () => {
     await start()
     const score = () => useSim.getState().roster[0]!.score

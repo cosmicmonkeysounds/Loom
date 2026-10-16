@@ -98,6 +98,12 @@ CHARACTER Trabolta is Person
   // no program to answer, so a refusal would land in the public lobby —
   // such a use does nothing. Any hook that uses `target` checks it next:
   // a director firing with a typed name (or no args) binds no program.
+  // Disk Cleanup is the safe place (fact M20): snoop, pop_up and the
+  // summons refuse a target in Bathroom Mode or checked in at Disk Cleanup
+  // in the last 15 minutes (a location is sticky: nothing moves a program
+  // out when they leave), words only, no use spent. The refusal is the
+  // unknown-name one, so asking never tells anyone where a program is.
+  // 🛡 and the marks stay unguarded.
 
   when snoop for program:
     if program.name != null:
@@ -107,6 +113,8 @@ CHARACTER Trabolta is Person
         Trabolta: That function is not available yet.
       else if Night.step >= 16:
         Trabolta: I do not have the strength.
+      else if target.afk == true or (target.location == "Disk Cleanup" and Time.elapsed < target.checked_in_time + 900):
+        Trabolta: I cannot find that program.
       else:
         set target.doubt += 3
         broadcast "👁 Something has opened your file. It is reading." to participant(target)
@@ -125,6 +133,39 @@ CHARACTER Trabolta is Person
         cue screens_flicker
         broadcast "📺 Every screen in the house stutters, once, and comes back." to everyone
 
+  // A card on the wall terminals (fact M19), never the TV: `terminals_*`
+  // cues only, one literal cue per allow-listed clip (the terminal's text
+  // card is its SLIDE_COPY, held 45 s). It is the terminals' newest slide
+  // on the server: a terminal lets a story slide still in its hold finish
+  // first (a reload remembers it); one that boots with no memory of it
+  // shows no clip at all, never the clip over a story slide. Same
+  // window as the flicker. Refused while the Trust Chart is up: it stays
+  // on the terminals until the next cue, and a clip would end it there.
+  when play_on_the_screens for program:
+    if program.name != null:
+      if Night.step < 4:
+        Trabolta: That function is not available yet.
+      else if Night.step >= 16:
+        Trabolta: I do not have the strength.
+      else if Night.step >= 14:
+        Trabolta: The screens are not answering me.
+      else if Night.terminals == "trust_chart":
+        Trabolta: The screens are showing the Trust Chart.
+      else if clip == "dancing_baby":
+        cue terminals_dancing_baby
+        broadcast "📺 The wall terminals change channel." to participant(program)
+      else if clip == "hamster_dance":
+        cue terminals_hamster_dance
+        broadcast "📺 The wall terminals change channel." to participant(program)
+      else if clip == "under_construction":
+        cue terminals_under_construction
+        broadcast "📺 The wall terminals change channel." to participant(program)
+      else if clip == "youve_got_mail":
+        cue terminals_youve_got_mail
+        broadcast "📺 The wall terminals change channel." to participant(program)
+      else:
+        Trabolta: I do not have that file.
+
   // A Win98 pop-up on one phone. Garbled once the beans have broken him.
   when pop_up for program:
     if program.name != null:
@@ -136,6 +177,8 @@ CHARACTER Trabolta is Person
         Trabolta: I do not have the strength.
       else if text == null or text == "":
         Trabolta: A pop-up needs words.
+      else if target.afk == true or (target.location == "Disk Cleanup" and Time.elapsed < target.checked_in_time + 900):
+        Trabolta: I cannot find that program.
       else if Night.step >= 12:
         broadcast "!💬 {text} — d1sr3gard th1s m3ssage" to participant(target)
       else:
@@ -199,6 +242,8 @@ CHARACTER Trabolta is Person
         Trabolta: That function is not available yet.
       else if Night.step >= 16:
         Trabolta: I do not have the strength.
+      else if target.afk == true or (target.location == "Disk Cleanup" and Time.elapsed < target.checked_in_time + 900):
+        Trabolta: I cannot find that program.
       else:
         set target.doubt += 15
         set Night.sweep_target = target.name
@@ -291,6 +336,12 @@ INTERACTION flicker_the_screens
   who: agent
   limit: 3
   description: Every screen in the house stutters once. No args. Cheap theatre. Live from your introduction until the Y2K clock takes the screens from you.
+
+INTERACTION play_on_the_screens
+  label: Put something on the wall terminals
+  who: agent
+  limit: 3
+  description: Put one harmless card on every wall terminal for a while (never the TV). args: clip — exactly one of dancing_baby, hamster_dance, under_construction, youve_got_mail (no other file plays). Live from your introduction until the Y2K clock takes the screens from you; not while the Trust Chart is up.
 
 INTERACTION pop_up
   label: Pop up on one phone

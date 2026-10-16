@@ -684,6 +684,9 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
 .screen-overlay { z-index: 32; cursor: none; }
 .screen-slide.dark { background: #000; }
 .slide-image { width: 100%; height: 100%; object-fit: contain; display: block; }
+.slide-video { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
+/* A clip (N-04a) loads over its still and shows only once it has a frame. */
+.screen-slide.clip-waiting { visibility: hidden; }
 /* The text card a missing PNG renders: a Win98 window with the slide's copy. */
 .slide-window {
   width: min(94%, 48em);
@@ -704,8 +707,13 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
 .chart-window .slide-body { max-height: 80vh; overflow: hidden; }
 .chart-rows { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: 1.5em; font-size: clamp(12px, 1.8vw, 26px); }
 .chart-row { display: flex; gap: 0.5em; break-inside: avoid; padding: 0.15em 0.3em; background: #fff; border: 1px solid #808080; margin-bottom: 0.2em; }
-.chart-row:first-child { background: #ffffa0; font-weight: bold; }
-.chart-row:last-child:not(:first-child) { background: #e0e0e0; }
+.chart-row.chart-hidden { visibility: hidden; }
+.chart-row.chart-top { background: #ffffa0; font-weight: bold; }
+.chart-row.chart-bottom { background: #e0e0e0; }
+.chart-callouts { display: flex; flex-wrap: wrap; margin-bottom: 0.2em; font-size: clamp(14px, 2.6vw, 38px); font-weight: bold; }
+.chart-callout { flex: 1 1 auto; margin: 0 0.4em 0.2em 0; padding: 0.15em 0.5em; border: 2px solid #000; } /* margins, not flex gap: Safari 14.0 */
+.chart-callout-top { background: #ffffa0; }
+.chart-callout-bottom { background: #e0e0e0; }
 .chart-rank { width: 2em; text-align: right; color: #404040; }
 .chart-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chart-value { font-variant-numeric: tabular-nums; }
@@ -797,6 +805,26 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
   pointer-events: none;
 }
 .announce-banner .announce-icon { margin-right: 0.5em; }
+
+/* A director's identify (SW-SCR-21): the screen's name, full screen, ~10 s.
+   Above the slides / overlays (30–35), below the covering ⚙ (40) and the
+   announcement banner (41). */
+.identify-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #000080;
+  color: #fff;
+  border: 12px solid var(--amber);
+  text-align: center;
+}
+.identify-name { font-size: 16vw; line-height: 1; letter-spacing: 0.04em; }
+.identify-sub { margin-top: 0.4em; font-size: 5vw; color: var(--amber); }
+.identify-ver { margin-top: 1em; font-size: 2.4vw; opacity: 0.7; }
 
 .setup label.check { display: flex; align-items: center; gap: 0.6em; flex-wrap: wrap; }
 .setup label.check input { width: auto; }

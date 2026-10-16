@@ -105,13 +105,15 @@ CODEX DraftKings Orders
   secret: true
   text:
     You want as much Truthcoin as you can get. Hustle and gamble with
-    others for sweet sweet Truthcoin. You need at least 1000 to feel
-    satisfied.
+    others for sweet sweet Truthcoin. You need more than half of all the
+    Truthcoin in circulation to feel satisfied.
     You are also trying to gain as many facts as possible, as these can be
     traded for Truthcoin to those seeking data. Feel free to challenge
     people to games, or gamble with them to gain their facts.
     Open your Wallet: send, request, or offer coin for a fact. Every trade
-    is posted in the truthcoin-exchange room.
+    is posted in the truthcoin-exchange room. Bets are on your word: after
+    the game the winner sends a Request and the loser pays. For a held pot,
+    both of you send your stake to McAfee, who pays the winner.
 
 // ── Bugdom ──────────────────────────────────────────────────────────
 
@@ -149,7 +151,9 @@ CODEX Runescape Orders
   text:
     Facts are the only hard currency in here. Peg Truthcoin to facts. Set
     the exchange rate, broker trades, and make DraftKings accept your
-    standard. Trabolta wants you to understand everyone's incentives.
+    standard. The reserve is yours: a stimulus for every program, a grant
+    for one, and a ten-minute freeze on anyone whose spending you dislike.
+    Trabolta wants you to understand everyone's incentives.
 
 // ── MS Paint (INVENTED) ─────────────────────────────────────────────
 
@@ -173,7 +177,7 @@ CODEX VLC Orders
 // ── Pong (INVENTED) ─────────────────────────────────────────────────
 
 CODEX Pong Orders
-  title: Tennis For Two
+  title: A Game For Two Players
   secret: true
   text:
     A rogue AI about to become omnipotent is proliferation. Tennis for Two

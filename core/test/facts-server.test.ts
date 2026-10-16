@@ -181,7 +181,7 @@ describe("the directive lines", () => {
   });
 
   it("tallies: a marked final counts as uncertain; consensus needs every filing accurate at 100 (U11)", () => {
-    const f = (over: Partial<FactsFiling>): FactsFiling => ({ person: "g1", name: "A", question: "Q1", answer: "x", confidence: 100, verdict: "accurate", final: null, at: 0, ...over });
+    const f = (over: Partial<FactsFiling>): FactsFiling => ({ person: "g1", name: "A", question: "Q1", answer: "x", confidence: 100, verdict: "accurate", final: null, how: null, by: null, at: 0, ...over });
     expect(tallyFilings([])).toEqual({ filed: 0, accurate: 0, lie: 0, uncertain: 0, consensus: false });
     expect(tallyFilings([f({}), f({ person: "g2" })])).toEqual({ filed: 2, accurate: 2, lie: 0, uncertain: 0, consensus: true });
     expect(tallyFilings([f({}), f({ person: "g2", confidence: 99 })]).consensus).toBe(false);
@@ -250,16 +250,80 @@ describe("FactsWatch", () => {
     s.signal("fact answered", "g1", { question: "Q2", answer: "Doctor Pickles", confidence: 60, verdict: "uncertain", card: 3 });
     const v = watch.view(s, b);
     expect(v.questions[0]!.filings).toEqual([
-      { person: "g1", name: "Ada", question: "Q1", answer: "Eleven years", confidence: 100, verdict: "accurate", final: "accurate", at: 1234 },
-      { person: "g2", name: "Ben", question: "Q1", answer: "eleven", confidence: 100, verdict: "accurate", final: "accurate", at: 1234 },
+      { person: "g1", name: "Ada", question: "Q1", answer: "Eleven years", confidence: 100, verdict: "accurate", final: "accurate", how: "auto", by: null, at: 1234 },
+      { person: "g2", name: "Ben", question: "Q1", answer: "eleven", confidence: 100, verdict: "accurate", final: "accurate", how: "auto", by: null, at: 1234 },
     ]);
     expect(v.questions[0]!.tally).toEqual({ filed: 2, accurate: 2, lie: 0, uncertain: 0, consensus: true });
-    expect(v.questions[1]!.filings).toEqual([{ person: "g1", name: "Ada", question: "Q2", answer: "Doctor Pickles", confidence: 60, verdict: "uncertain", final: "uncertain", at: 1234 }]);
+    expect(v.questions[1]!.filings).toEqual([{ person: "g1", name: "Ada", question: "Q2", answer: "Doctor Pickles", confidence: 60, verdict: "uncertain", final: "uncertain", how: "auto", by: null, at: 1234 }]);
     expect(v.questions[1]!.tally).toEqual({ filed: 1, accurate: 0, lie: 0, uncertain: 1, consensus: false });
     expect(v.pending).toBe(0);
     // a later settle (the guess is marked) lands on the same filing
     s.signal("judged", "g1", { question: "Q2", final: "marked" });
-    expect(watch.view(s, b).questions[1]!.filings[0]!.final).toBe("marked");
+    expect(watch.view(s, b).questions[1]!.filings[0]).toMatchObject({ final: "marked", how: "marked" });
+  });
+
+  it("records how each final was reached and who settled it (wave 5 issue 8): auto, confirmed, overridden, settled, marked", () => {
+    const s = Sim.fromSources(SOURCE.replace("  when judged for program:", "  when fact_accurate for program:\n    do fact_judged {program} {question} accurate\n  when fact_lie for program:\n    do fact_judged {program} {question} lie\n  when judged for program:"));
+    s.setVar("Night.judge_mode", "review");
+    for (const [id, name] of [["g1", "Ada"], ["g2", "Ben"], ["g3", "Cy"], ["g4", "Di"]] as const) s.createPerson(id, name);
+    const watch = new FactsWatch({ now: () => 1 });
+    const b = book();
+    // What the runtime does before every mutation: name who does it.
+    const act = (by: string | null, name: string, subject: string, args: Record<string, string | number>) => {
+      watch.mark(s, by);
+      s.signal(name, subject, args);
+    };
+    act(null, "fact answered", "g1", { question: "Q1", answer: "eleven", confidence: 100, verdict: "accurate", card: 1 });
+    act(null, "fact answered", "g2", { question: "Q1", answer: "twelve", confidence: 100, verdict: "lie", card: 2 });
+    act(null, "fact answered", "g3", { question: "Q1", answer: "11", confidence: 100, verdict: "accurate", card: 3 });
+    act(null, "fact answered", "g4", { question: "Q1", answer: "nine", confidence: 40, verdict: "uncertain", card: 4 });
+    expect(watch.all(s, b.confirm).map((f) => [f.person, f.final, f.how, f.by])).toEqual([
+      ["g1", null, null, null],
+      ["g2", null, null, null],
+      ["g3", null, null, null],
+      ["g4", null, null, null],
+    ]);
+    act("Jo (director)", "fact_accurate", "g1", { question: "Q1" }); // confirms the proposal
+    act("Clippy", "fact_accurate", "g2", { question: "Q1" }); // a booth overrides the lie
+    act("Jo (director)", "judged", "g3", { question: "Q1", final: "accurate" }); // a reveal settles it
+    act("Jo (director)", "judged", "g4", { question: "Q1", final: "marked" });
+    // auto: judged in the filing's own step, even with a director's mark on it
+    s.setVar("Night.judge_mode", "auto");
+    act("Jo (director)", "fact answered", "g1", { question: "Q2", answer: "Mister Pickles", confidence: 100, verdict: "accurate", card: 5 });
+    const rows = watch.view(s, b).questions.flatMap((q) => q.filings.map((f) => [f.person, f.question, f.final, f.how, f.by]));
+    expect(rows).toEqual([
+      ["g1", "Q1", "accurate", "confirmed", "Jo (director)"],
+      ["g2", "Q1", "accurate", "overridden", "Clippy"],
+      ["g3", "Q1", "accurate", "settled", "Jo (director)"],
+      ["g4", "Q1", "marked", "marked", "Jo (director)"],
+      ["g1", "Q2", "accurate", "auto", null],
+    ]);
+    // with no marks the fold still splits steps at each external signal
+    const bare = new FactsWatch({ now: () => 1 });
+    expect(bare.view(s, b).questions[0]!.filings.map((f) => [f.how, f.by])).toEqual([
+      ["confirmed", null],
+      ["overridden", null],
+      ["settled", null],
+      ["marked", null],
+    ]);
+  });
+
+  it("quiet ticks (marks that log nothing) collapse into one pending mark; the newest names the next step", () => {
+    const s = Sim.fromSources(SOURCE.replace("  when judged for program:", "  when fact_accurate for program:\n    do fact_judged {program} {question} accurate\n  when judged for program:"));
+    s.setVar("Night.judge_mode", "review");
+    s.createPerson("g1", "Ada");
+    const watch = new FactsWatch({ now: () => 1 });
+    const b = book();
+    watch.mark(s, null);
+    s.signal("fact answered", "g1", { question: "Q1", answer: "twelve", confidence: 100, verdict: "lie", card: 1 });
+    // an hour of ticks that fire nothing, nobody looking at the view
+    for (let i = 0; i < 3600; i++) watch.mark(s, null);
+    const pending = (watch as unknown as { marks: unknown[] }).marks;
+    expect(pending.length).toBeLessThanOrEqual(2);
+    watch.mark(s, "Jo (director)");
+    s.signal("fact_accurate", "g1", { question: "Q1" });
+    expect(watch.view(s, b).questions[0]!.filings.map((f) => [f.final, f.how, f.by])).toEqual([["accurate", "overridden", "Jo (director)"]]);
+    expect((watch as unknown as { marks: unknown[] }).marks.length).toBe(0);
   });
 
   it("review mode: filings stay pending until judged; the mode follows the world var", () => {

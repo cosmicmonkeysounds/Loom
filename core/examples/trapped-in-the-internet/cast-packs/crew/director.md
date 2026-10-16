@@ -74,7 +74,7 @@ never from a guest card.
 | stuck codex | read the guest the code from the printed code list |
 | a program marked by mistake, or to be shown mercy | a host presses 🩹 on their card; or Director → fire `unmark_for_reinstallation` with them as the subject (`/api/mod/act {id, action: "unrestrict"}` lifts only the grey, never the mark) |
 | a program who must go to the Internet and no host is near | Director → fire `mark_for_reinstallation` with them as the subject (or `/api/mod/act {id, action: "restrict"}` for the grey alone); an Antivirus does the walking |
-| a Truthcoin transfer stuck on CRA's approval, or a bad one | `/e/<event>/api/mod/wallet/approve` · `deny` · `cancel` with the card's id (the mod token or your session); `stimulus` mints one if Runescape is gone |
+| a Truthcoin transfer stuck on CRA's approval, or a bad one | `/e/<event>/api/mod/wallet/approve` · `deny` · `cancel` with the card's id (the mod token or your session), or every held one at once with Run → Wallet's ✓ Approve all held (`approve-held`; a held transfer approves itself after 5 min anyway); `stimulus` mints one if Runescape is gone (`grant {to, amount}` / `freeze {to}` likewise); `unfreeze {to}` lifts a Runescape freeze early |
 | a filing judged wrong (a typo the key did not know) | Run → Mind → Judging card → that filing's ✅ / 😤 / 🤷 (a verdict already on record is not re-counted); then add the alias to `facts.json` for next time |
 | stuck quest | fire the story event that advances it |
 | stale Bathroom Mode | Run → World → that guest's `afk` = false (at each summons) |
@@ -131,7 +131,7 @@ content lock for the printed stacks is 10-24 12:00.
 | **10:00** | Weather call with the tech op (gusts > 30–40 km/h or steady rain → the shed). **Morning reset, before anyone registers:** sync the story, **Push draft**, scan the door QR from a phone **on cellular**, then **Go live in place**. Open `/reinstall/map`: press **Tent** or **Shed** in the *Map:* bar for the weather, and check its status line reads "the project's map". If it reads "this event's map", a rehearsal's map edit is still in force (Push draft and Go live keep it): **Save to project** to keep it, or switch to the other variant and back to drop it. |
 | 12:00 | Set dressing; tent or shed set. |
 | 15:00 | The tech op boots everything; you walk the pre-show checklist with them. |
-| **17:00** | **Performer call.** Costumes, phones charged, booths signed in (prime code + cast picker, after go-live), a test `!` alert to staff, walk the stations. Confirm the anti-AI program (MS Paint) with Task Manager and Clippy. |
+| **17:00** | **Performer call.** Costumes, phones charged, booths signed in (prime code + cast picker, after go-live), a test `!` alert to staff, walk the stations. Confirm the anti-AI program (MS Paint) with Task Manager and Clippy. Decide whether Password Manager gets the moderator passcode (her pack: ☰ → *Become an admin*, reload, **hide** any message; it also shows her your cues under More…). Without it, she asks you to hide one. |
 | 18:00 | Porch set (Recycling Bin). Checklist signed off. |
 | **19:00** | Food + the **15-minute briefing** (below). The tech op starts the backup job. |
 | 19:45 | Places. Lights to screensaver. |

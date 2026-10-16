@@ -12,11 +12,13 @@ import {
   canSaveToProject,
   canSwitch,
   downloadOf,
+  planSwitch,
   saveConfirm,
   saveTarget,
   sourceLabel,
   statusOf,
   switchConfirm,
+  switchSaveOffer,
   variantLabel,
   variantName,
   variantTitle,
@@ -55,11 +57,33 @@ describe("project bar logic", () => {
     expect(variantTitle(broken)).toContain("rooms must be an array");
   });
 
+  it("a map's own `variant` label (the server's `label`) wins over the name and \"Main\", and agrees with a file suffix", () => {
+    expect(variantLabel({ ...tent, label: "Tent" }, [tent, shed])).toBe("Tent");
+    expect(variantLabel({ ...tent, name: "Renamed in the JSON tab", label: " Tent " }, [tent, shed])).toBe("Tent");
+    expect(variantLabel({ ...shed, label: "Shed (rain)" })).toBe("Shed (rain)");
+    expect(variantLabel({ ...shed, file: "house.rain_night.json", label: "Rain night!" })).toBe("Rain night!");
+    expect(variantLabel({ ...tent, label: "  " }, [tent, shed])).toBe("Main"); // blank → the old rule
+    expect(variantName({ ...shed, label: "Shed" })).toBe("Shed (house.shed.json)");
+  });
+
+  it("a variant copied from another map never shows its source's label (two Tent buttons)", () => {
+    // house.shed.json made from a copy of the measured house.json, "variant": "Tent" left in.
+    const copied = { ...shed, label: "Tent" };
+    const t = { ...tent, label: "Tent" };
+    expect(variantLabel(copied, [t, copied])).toBe("Shed");
+    expect(variantLabel(t, [t, copied])).toBe("Tent");
+    // …and the other way round: the default map saying "Shed" beside a house.shed.json.
+    expect(variantLabel({ ...tent, label: "Shed", name: "The house (tent)" }, [tent, shed])).toBe("Tent");
+    expect(new Set([variantLabel(copied, [t, copied]), variantLabel(t, [t, copied])]).size).toBe(2);
+  });
+
   it("the show's own maps read Tent / Shed", () => {
     const t: MapVariant = { file: "house.json", name: (showTent as { name: string }).name, active: true, ok: true, problems: [] };
     const sh: MapVariant = { file: "house.shed.json", name: (showShed as { name: string }).name, active: false, ok: true, problems: [] };
     expect(variantLabel(t, [t, sh])).toBe("Tent");
     expect(variantLabel(sh, [t, sh])).toBe("Shed");
+    // …and say so outright, so a rename in the JSON tab can't change the buttons.
+    expect([(showTent as { variant?: string }).variant, (showShed as { variant?: string }).variant]).toEqual(["Tent", "Shed"]);
     expect(switchConfirm(sh, { players: 2, edited: false, all: [t, sh] })).toContain("Switch the house map to Shed (house.shed.json)?");
   });
 
@@ -81,6 +105,73 @@ describe("project bar logic", () => {
     expect(both).toContain("Save to project first");
     // The page's own unsaved draft goes too (the server's map replaces it).
     expect(switchConfirm(shed, { players: 0, edited: false, dirty: true })).toContain("unsaved edits on this page are dropped");
+  });
+
+  it("switchSaveOffer: a director's save on a project's event is offered to the project before a switch", () => {
+    const offer = switchSaveOffer(list({ edited: true }), shed)!;
+    expect(offer).toContain("Save them to the project as house.json before switching to Shed (house.shed.json)?");
+    expect(offer).not.toContain("unsaved edits on this page");
+    expect(switchSaveOffer(list({ edited: true }), shed, true)).toContain("(not the unsaved edits on this page)");
+    // Nothing to keep, or nowhere to keep it: the old warning only.
+    expect(switchSaveOffer(list({ edited: true, project: false }), shed)).toBeNull();
+    expect(switchSaveOffer(list({ edited: false }), shed)).toBeNull();
+    expect(switchSaveOffer(null, shed)).toBeNull();
+  });
+
+  describe("planSwitch", () => {
+    const run = (r: MapVariantsResponse | null, answers: boolean[], saveTo: string | null = "v2", state = { players: 0, dirty: false, version: "v1" }) => {
+      const asked: string[] = [];
+      const saves: Array<[string, string | null]> = [];
+      const steps = {
+        confirm: (m: string) => {
+          asked.push(m);
+          return answers.shift() ?? false;
+        },
+        save: async (file: string, at: string | null) => {
+          saves.push([file, at]);
+          return saveTo;
+        },
+      };
+      return planSwitch(shed, r, state, steps).then((plan) => ({ plan, asked, saves }));
+    };
+
+    it("edited + project, OK: saves the active variant's file from the page's version, then switches from the save's version without the dropped line", async () => {
+      const { plan, asked, saves } = await run(list({ edited: true }), [true], "v2");
+      expect(saves).toEqual([["house.json", "v1"]]);
+      expect(plan).toEqual({ base: "v2" });
+      expect(asked).toHaveLength(1); // nothing else at stake: no second question
+    });
+
+    it("edited + project, OK with players: the switch still asks, minus the dropped line", async () => {
+      const { plan, asked } = await run(list({ edited: true }), [true, true], "v2", { players: 2, dirty: false, version: "v1" });
+      expect(plan).toEqual({ base: "v2" });
+      expect(asked[1]).toContain("2 programs are");
+      expect(asked[1]).not.toContain("Save to project first");
+    });
+
+    it("a save that fails stops the switch", async () => {
+      const { plan, asked } = await run(list({ edited: true }), [true, true], null);
+      expect(plan).toBeNull();
+      expect(asked).toHaveLength(1);
+    });
+
+    it("declining the save goes on to the old drop warning; cancelling that stops", async () => {
+      const go = await run(list({ edited: true }), [false, true]);
+      expect(go.saves).toEqual([]);
+      expect(go.asked[1]).toContain("Save to project first");
+      expect(go.plan).toEqual({ base: "v1" });
+      const stop = await run(list({ edited: true }), [false, false]);
+      expect(stop.plan).toBeNull();
+    });
+
+    it("no project, or nothing edited: no offer, the old confirm only", async () => {
+      const noProject = await run(list({ edited: true, project: false }), [true]);
+      expect(noProject.saves).toEqual([]);
+      expect(noProject.asked).toHaveLength(1);
+      expect(noProject.asked[0]).toContain("Save to project first");
+      const clean = await run(list(), []);
+      expect(clean).toMatchObject({ plan: { base: "v1" }, asked: [], saves: [] });
+    });
   });
 
   it("Save to project: offered on a project's event, for a served map; the active variant's file; warns about unsaved edits", () => {
@@ -184,6 +275,7 @@ describe("the project bar in the map page's toolbar slot", () => {
       adopt: vi.fn(),
       reload: vi.fn(async () => {}),
       save: vi.fn(async () => "v4"),
+      unlock: vi.fn(async () => true),
       ...over,
     };
   };
@@ -206,6 +298,11 @@ describe("the project bar in the map page's toolbar slot", () => {
     p.onSaved?.("house.json");
     expect(ctx.reload).toHaveBeenCalledTimes(2);
     expect(ctx.adopt).not.toHaveBeenCalled();
+  });
+
+  it("a switch and a save to the project go through the page's passcode re-check (W-15)", () => {
+    const ctx = ctxOf();
+    expect(propsOf(ctx).unlock).toBe(ctx.unlock);
   });
 
   it("a valid unsaved draft is saved to the event first; an invalid one is not offered", () => {

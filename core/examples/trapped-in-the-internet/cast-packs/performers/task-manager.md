@@ -14,6 +14,7 @@
 | any time | **🤝 Vouch for this program** | clears a program's watchlist (doubt → 0) |
 | any time | **🎀 Award a ribbon** | anyone who earns one |
 | any time | **🩹 Unmark: not going to the Internet** | a marked program a host mis-tapped, or mercy |
+| any time | **🖌 Signed the painting** | a program who just signed MS Paint's canvas (once each; only shows when MS Paint is here) |
 | Grok Prom | **💘 Said "You're the one that I want"** | the first program who says it to you |
 | the summons (⏳ → 🚨) | scan a pass at the living-room door, or **📍 Checked in at the Desktop** | each arrival |
 | Y2K on (if you saw it) | **♟ They beat the machine** | only after you **saw** "checkmate" on the chess phone |
@@ -44,7 +45,8 @@ their Wallet; the bank buttons 🪙 Pay / 🪙 Charge are for corrections.* You
 hold the **cash bank**: a deal made in person with no phone, a wrong amount,
 a refund the director asks for → 🪙 on the card (the program hears its new
 balance; `# hosts` logs it). McAfee brokers; CRA approves every third
-transfer and can deny any; Runescape alone mints a stimulus.
+transfer and can deny any; Runescape alone mints a stimulus or a grant and
+can freeze a program's coin for ten minutes.
 
 **Booth readouts you'll get:** at V3 *🃏 If nobody has a Bingo…*; at the
 Truther Download *🪙 The bank is open…*. Your booth: Scanner · Inbox · Codex ·

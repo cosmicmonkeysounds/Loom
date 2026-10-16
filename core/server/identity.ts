@@ -13,7 +13,7 @@
 //!   the story is what puts a name on the guest picker, with its picture.
 //!
 //! `playable: false` takes a character off both lists (a scannable prop,
-//! Alexa in the walls); `mind: external` keeps an agent-voiced character
+//! a voice in the walls); `mind: external` keeps an agent-voiced character
 //! off the performer list (nobody plays Trabolta — a model does). A pool
 //! character whose group is `joinable: false` (the Antivirus caste) is
 //! never a guest's: guests cannot be antivirus software.

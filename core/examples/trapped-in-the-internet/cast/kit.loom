@@ -81,8 +81,10 @@ TRAIT Enforcer is Person
     reveal The Fan Closet for program
     reveal The Graphics Card for program
     reveal The Hard Drive for program
+    // An overlay on the Tube strip only (wled/tube), never a house look:
+    // no `Night.lights` mirror, so a clearance mid-cut keeps Trabolta's 90 s
+    // restore and stagehand's catch-up never replays the chase as the scene.
     cue lights_tube_chase
-    set Night.lights = "tube_chase"
     if Night.ads_started != true and Night.step < 4:
       set Night.ads_started = true
       cue terminals_attract
@@ -150,12 +152,19 @@ TRAIT Enforcer is Person
 
   when go to the bathroom for program:
     reply 🚻 {program.name} is in Bathroom Mode. Not hacking the Internet.
+    if program.marked == true:
+      reply ⚠️ {program.name} is marked and in Bathroom Mode. Wait for them outside; never go in.
+
+  when bathroom_timed_out for program:
+    reply 🚻 {program.name}'s Bathroom Mode timed out (15 min).
 
   when program_late for program:
     reply ⏰ {program.name} is late for the Second Moment of Truth. Go get them.
 
   when marked for program:
     reply 🚨 {program.name} is marked for reinstallation ({program.marked_for}). Escort them through the Tube, then press 🛡 on their card.
+    if program.afk == true or (program.location == "Disk Cleanup" and Time.elapsed < program.checked_in_time + 900):
+      reply ⚠️ {program.name} is in Bathroom Mode or Disk Cleanup. Wait for them outside; never go in.
 
   when unmarked for program:
     reply ✅ {program.name}: {how}. Off the escort list.

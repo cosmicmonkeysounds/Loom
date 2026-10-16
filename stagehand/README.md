@@ -242,7 +242,7 @@ is YAML frontmatter + the system prompt:
 | `character` | the CHARACTER as declared (required) |
 | `variables` | the numbers it may nudge (Trabolta: `truth, untruth, composure, love, regard`) |
 | `max_step` | ±cap per variable per reply (default 15) |
-| `facts` | world path prefixes to show it (Trabolta lists exact `Night.*` names, never the bare `Night.` and never `Kernel.`: the show keeps its secrets on `Kernel`) |
+| `facts` | world path prefixes to show it, in the voice and in the orchestrator's digest, delta and reflect state alike (the phase is always shown; Trabolta lists exact `Night.*` names, never the bare `Night.` and never `Kernel.`: the show keeps its secrets on `Kernel`) |
 | `them` | the speaker's variables to show it (default: all) |
 | `when` | a gate over `self.<var>`, `them.<var>`, `speaker.kind`, world paths |
 | `unavailable` | what it says while the gate is closed (else silence). With **no worker online at all**, the event server says the story's `CHARACTER … hold:` line instead, after ~20 s |
@@ -306,7 +306,7 @@ Zigbee2MQTT group scenes + WLED presets for every `cue lights_*`, the
 per-room long form `<cue: lights, room: …, state: …>` (The Start Bar — the
 kitchen, dimmed to ~20%, never dark — The Desktop, The RAM), `screens_flicker`
 blinking the house, every `sound <name>` as a QLab OSC cue (but `announce_chime` → the `alexa`
-player), `do announce` to the `alexa` speaker, `do door server_room` to the ESP32's door
+player), `do announce` to the `alexa` speaker plus QLab's `duck_music` cue (the music dips under it), `do door server_room` to the ESP32's door
 **indicator** (`show/serverroom/lock`, the one retained command; there is
 no maglock), `lights_alarm` to the server-room box's own siren
 (`show/serverroom/alarm`), and the sensors that come back as story
@@ -408,6 +408,21 @@ back.
 The SSE streams give up after 60 s of silence (the server pings every
 25 s) and reconnect with backoff, so a WAN outage that leaves a dead TCP
 connection behind still recovers on its own.
+
+**The lights catch up** (SW-SH-10). The mod feed has no replay, so a
+`cue lights_*` fired while the uplink is down would be lost. On every
+(re)connect of the feed (when the server accepts the stream: a lean feed
+sends no frame on connect) or of the broker, and 1.5 s after a `reset` /
+`reload` / `golive` lifecycle frame (once the restarted story ran its
+entry beat), the `show` module reads `GET /api/state` and replays its
+`catch_up:` list through the cue map, as its own task (never inside a
+frame handler): `lights_{Night.lights}` (never `alarm`, which would re-arm
+the siren), then Trabolta's dark room while his cut is still on, or lit
+again once it is over and his look is still up. It waits (10 s at most)
+for the broker session first, since paho drops QoS-0 publishes queued
+before it, and replays nothing when a live lights cue arrived while the
+state was being read (that cue is newer). A failed state call only logs;
+the director's re-fire of the current lights cue stays the fallback.
 
 ### The `t_exec` contract
 

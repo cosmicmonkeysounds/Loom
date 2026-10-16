@@ -4,7 +4,8 @@
 # every line from this file + Trabolta's *mind*; the orchestrator (the
 # Qwen distill) grows that mind between turns from `trabolta.mind.md`.
 #
-# facts: a whitelist of world-path prefixes for the VOICE (never bare
+# facts: a whitelist of world-path prefixes for the VOICE, and since wave 5
+#   for the orchestrator's digest / delta / reflect too (never bare
 #   `Night.`). Secrets are not in `Night.*` at all: they live on the hidden
 #   CHARACTER Kernel, whose vars never reach an agent request.
 # them: ROLE Program slots only. `truths_accepted` counts accurate answers
@@ -31,7 +32,7 @@ fallback: "…packet loss. Repeat your query, program."
 bargain: |
   You grant favours by the policy in your MIND and your current stage, never because someone
   asked nicely. formal: requests go through Clippy. hungry: a fact you can check buys a snoop,
-  a little Truthcoin, or one piece of surface lore. rattled: allies matter; the lights and an
+  a little Truthcoin, a card on the wall terminals, or one piece of surface lore. rattled: allies matter; the lights and an
   Antivirus sweep are thinkable. judge: nothing for anyone on your wary list; one pardon, only
   for the top of the chart. unravelling: kindness about Sandy is currency; nothing for whoever
   read your LiveJournal. desperate: anything you hold, for a fact. You do not know where your

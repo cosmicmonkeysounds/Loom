@@ -84,7 +84,8 @@ Trailing text that stays.
 
 /** A tiny hand-written story the generated files plug into: the reader,
  *  the room, the entry beat diverting to the seed, the three tail beats,
- *  a rule stepping the truth counter, and a stub CODEX for every
+ *  a rule stepping the truth counter, a per-program divert into the
+ *  Facts Bundle, and a stub CODEX for every
  *  `existing` fact (with its recorded code). */
 function mainFixture(f: FactsFile): string {
   const out: string[] = [
@@ -99,6 +100,9 @@ function mainFixture(f: FactsFile): string {
     "",
     "ROLE Program",
     "  score: range 0 to 1000 = 0",
+    "  // The Whole Truth's divert, per program.",
+    "  when the whole truth for program:",
+    `    -> ${SHOW_SHAPE.bundleBeat}`,
     "",
   ];
   // One stub per `existing` entry (two facts may share one), with its code.
@@ -434,6 +438,37 @@ describe("titi-facts — codex/9-facts.loom", () => {
   });
 });
 
+describe("titi-facts — the Facts Bundle (The Whole Truth's main + Trabolta facts)", () => {
+  const bundleIds = (f: FactsFile): string[] => [...new Set(f.facts.filter((x) => (SHOW_SHAPE.bundleCategories as readonly string[]).includes(x.category)).map((x) => x.codex?.id ?? x.existing!))];
+  it("unlocks every main + Trabolta fact for program (an existing one by its own name, once), never a character fact", () => {
+    const text = read(OUTPUTS.codex);
+    const body = text.slice(text.indexOf(`== ${SHOW_SHAPE.bundleBeat}\n`));
+    expect(body.length).toBeGreaterThan(0);
+    const unlocks = body.split("\n").filter((l) => l.startsWith("unlock ")).map((l) => l.replace(/^unlock (.+) for program$/u, "$1"));
+    expect(unlocks).toEqual(bundleIds(facts));
+    expect(unlocks).toContain(facts.facts.find((x) => x.category === "trabolta" && x.existing !== undefined)!.existing);
+    for (const x of facts.facts.filter((y) => y.category === "character")) expect(unlocks, x.id).not.toContain(x.codex?.id ?? x.existing);
+    const sim = fixtureSim();
+    sim.createPerson("g1", "Winamp");
+    expect(sim.signal("the whole truth", "g1").filter((e) => e.type === "diagnostic")).toEqual([]);
+    for (const id of unlocks) expect(sim.holdsCodex("g1", id), id).toBe(true);
+  });
+  it("--check fails when a facts.json edit changes the bundle (an existing fact moved out of main)", () => {
+    const moved = JSON.parse(SHOW_FACTS) as FactsFile;
+    const x = moved.facts.find((y) => y.category === "main" && y.existing !== undefined && moved.facts.filter((z) => z.existing === y.existing).length === 1)!;
+    x.category = "character";
+    writeFileSync(join(dir, FACTS_FILE), JSON.stringify(moved, null, 2));
+    try {
+      const at = logs.length;
+      expect(run(dir, { ...quiet, check: true })).toBe(1);
+      expect(logs.slice(at).join("\n")).toContain(OUTPUTS.codex);
+    } finally {
+      writeFileSync(join(dir, FACTS_FILE), SHOW_FACTS);
+    }
+    expect(run(dir, { ...quiet, check: true })).toBe(0);
+  });
+});
+
 describe("titi-facts — generated/print-stacks.md", () => {
   it("has a gold table for the hunt answers and one table per category, every fact listed", () => {
     const text = read(OUTPUTS.stacks);
@@ -556,6 +591,8 @@ describe("titi-facts — modelProblems", () => {
           "Twin.",
           "== Facts Seed",
           "Twin.",
+          "== Facts Bundle",
+          "Twin.",
           "QUEST Hunt Two",
           "  title: Twin",
           "",
@@ -572,6 +609,7 @@ describe("titi-facts — modelProblems", () => {
       expect(problems).toContain('round 2: QUEST "Hunt Two" is still declared by a hand-written file');
       expect(problems).toContain('round 1: the tail beat "Hunt One Go" (where "Hunt One Questions" hands back) is not declared');
       expect(problems).toContain('beat "Facts Seed" is already declared by a hand-written file');
+      expect(problems).toContain('beat "Facts Bundle" is already declared by a hand-written file');
       expect(problems.some((p) => p.includes("Nope"))).toBe(false);
       const empty = mkdtempSync(join(tmpdir(), "titi-facts-empty-"));
       try {

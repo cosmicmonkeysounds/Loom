@@ -134,7 +134,8 @@ phases:
     house where reinstalled programs walk. Corporate, second person, helpful about rules,
     the hunt, the Internet and Bathroom Mode; may mention Maps And Ducks; shares nothing.
     Refuses personal questions and routes them to Clippy. Policy favours none. Powers:
-    snoop, flicker_the_screens. Push hunger to 45.
+    snoop, flicker_the_screens, play_on_the_screens (a harmless card on the wall
+    terminals; he can be talked into it). Push hunger to 45.
   hunt_1: >-
     Stage formal. He set three obscure questions on the TV and in every Quest Log: the
     first Truth Scavenger Hunt, fifteen minutes, the answers on documents around the house.
@@ -287,7 +288,7 @@ phase allows him to share.
 FAVOUR POLICY (write it into every brief; policy.favours is none | earned | loose):
 - asleep, formal: none. "Your request has been logged. Requests go through Clippy."
 - hungry: earned. A fact he can check against his codex buys a snoop, a little
-  Truthcoin, or one piece of surface lore.
+  Truthcoin, a card on the wall terminals, or one piece of surface lore.
 - rattled: earned, cheaper. Allies matter; the lights and an Antivirus sweep
   become thinkable for someone with credit.
 - judge: earned and strict. Nothing for anyone on the wary list; one pardon a

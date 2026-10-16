@@ -27,17 +27,27 @@ const titleOf = (word: string): string => {
 };
 
 /**
- * A variant button's label, in a director's words: `house.shed.json` →
- * "Shed"; the default `house.json` → the one word only its map's name has
+ * A variant button's label, in a director's words. `house.shed.json` →
+ * "Shed": the file names the variant, so the map's own `variant` field (the
+ * server's `label`) is used only when it says the same word ("Shed (rain)")
+ * — a shed made from a copy of the tent map still saying "Tent" reads
+ * "Shed". The default `house.json` → its `variant` unless another file is
+ * named for that word; else the one word only its map's name has
  * among the variants (the show's tent map is "… the Internet in the tent)"
  * against the shed's "… the Internet in the shed)" → "Tent"), else "Main".
  * A show sibling not named like a project map keeps its file's stem.
  */
 export function variantLabel(v: MapVariant, all: readonly MapVariant[] = []): string {
+  const given = v.label?.trim() ?? "";
   const m = MAP_FILE.exec(v.file);
-  if (m === null) return v.file.replace(/\.json$/i, "");
-  if (m[1] !== undefined) return titleOf(m[1].slice(1));
+  if (m === null) return given || v.file.replace(/\.json$/i, "");
+  if (m[1] !== undefined) {
+    const own = wordsOf(given);
+    return given && [...wordsOf(m[1].slice(1))].every((w) => own.has(w)) ? given : titleOf(m[1].slice(1));
+  }
   const others = all.filter((o) => o.file !== v.file);
+  const fileWords = new Set(others.flatMap((o) => [...wordsOf(MAP_FILE.exec(o.file)?.[1]?.slice(1) ?? "")]));
+  if (given && ![...wordsOf(given)].some((w) => fileWords.has(w))) return given;
   if (v.ok && others.length > 0) {
     const theirs = new Set<string>();
     for (const o of others) {
@@ -85,6 +95,53 @@ export function switchConfirm(to: MapVariant, state: { players: number; edited: 
   if (state.edited) lines.push("The map edits saved to this event (not to the project) are dropped. Save to project first to keep them.");
   if (state.dirty === true) lines.push("Your unsaved edits on this page are dropped too.");
   return lines.length === 0 ? null : `Switch the house map to ${name}?\n\n${lines.join("\n\n")}`;
+}
+
+/**
+ * Before a switch drops a director's save (this event's map edits, which
+ * are not in the project): the offer to save them to the project first
+ * (W-22). Null when nothing would be lost or there is no project to keep
+ * them in. OK saves; Cancel goes on to `switchConfirm`'s warning.
+ */
+export function switchSaveOffer(r: MapVariantsResponse | null, to: MapVariant, dirty = false): string | null {
+  if (r === null || !r.edited || !r.project) return null;
+  const draft = dirty ? " (not the unsaved edits on this page)" : "";
+  return `This event's map has edits that are not in the project. Save them to the project as ${saveTarget(r)} before switching to ${variantName(to, r.variants)}${draft}?\n\nOK saves them first. Cancel goes on without saving — you can still back out.`;
+}
+
+/** How a switch asks and saves (`ProjectBar` wires the DOM and the server). */
+export interface SwitchSteps {
+  confirm: (message: string) => boolean;
+  /** Save the event's map to the project as `file` from `base`: the version
+   *  it leaves, null when the save failed (the bar says why). */
+  save: (file: string, base: string | null) => Promise<string | null>;
+}
+
+/**
+ * A switch's questions, in order: the offer to save a director's save to
+ * the project first (`switchSaveOffer`), then `switchConfirm` — its
+ * "dropped" line only when the save was turned down. Resolves to the `base`
+ * the switch posts (the save's version when it saved), or null = stop:
+ * cancelled, or the save failed (never switch over a save that didn't land).
+ */
+export async function planSwitch(
+  to: MapVariant,
+  r: MapVariantsResponse | null,
+  state: { players: number; dirty: boolean; version: string | null },
+  steps: SwitchSteps,
+): Promise<{ base: string | null } | null> {
+  let base = state.version;
+  let edited = r?.edited ?? false;
+  const offer = switchSaveOffer(r, to, state.dirty);
+  if (offer !== null && steps.confirm(offer)) {
+    const saved = await steps.save(saveTarget(r), base);
+    if (saved === null) return null;
+    base = saved;
+    edited = false;
+  }
+  const ask = switchConfirm(to, { players: state.players, edited, dirty: state.dirty, all: r?.variants ?? [] });
+  if (ask !== null && !steps.confirm(ask)) return null;
+  return { base };
 }
 
 /** Can the variant be switched to now? */

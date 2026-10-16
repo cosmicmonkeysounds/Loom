@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from 'vitest'
 import type { GuestView, PrimeView } from '@loom/core/views'
-import { buildRooms, lensKindOf, LensKind, messageInLens, roomMessages, type RoomsInput } from './rooms'
+import { buildRooms, lensKindOf, LensKind, messageInLens, READ_ONLY_ROOMS, roomKeyOf, roomMessages, type RoomsInput } from './rooms'
 import type { CockpitMessage, RosterRow } from '@/store/cockpit'
 
 const g1: RosterRow = { id: 'g1', name: 'Ada', role: 'Guest', faction: 'Mods', trueFaction: 'Mods', location: 'Party', captured: false, score: 0 }
@@ -229,5 +229,89 @@ describe('pinned rooms (Codex + Quest Log)', () => {
     ])
     const room = op.find((r) => r.key === 'quests#g2')
     expect(roomMessages(room, 'quests', messages, 'operator', LensKind.Operator).map((m) => m.seq)).toEqual([11])
+  })
+})
+
+describe('wallet rows', () => {
+  it("split per person under the operator lens — each guest's Wallet, and the approver booth's", () => {
+    const messages = [
+      msg({ seq: 20, channel: 'wallet', channelKind: 'wallet', title: 'Wallet', audience: ['g1'], kind: 'wallet' }),
+      msg({ seq: 21, channel: 'wallet', channelKind: 'wallet', title: 'Wallet', audience: ['g2'], kind: 'wallet' }),
+      msg({ seq: 22, channel: 'wallet', channelKind: 'wallet', title: 'Wallet', audience: ['@CRA_Agent_Software'], kind: 'wallet' }),
+    ]
+    const op = buildRooms({ ...INPUT, messages }).filter((r) => r.channel === 'wallet')
+    expect(op.map((r) => [r.key, r.kind, r.title, r.dmGuest])).toEqual([
+      ['wallet#g1', 'wallet', 'Wallet · Ada', 'g1'],
+      ['wallet#g2', 'wallet', 'Wallet · Bo', 'g2'],
+      ['wallet#@CRA_Agent_Software', 'wallet', 'Wallet · CRA Agent Software', '@CRA_Agent_Software'],
+    ])
+    expect(roomMessages(op[1], 'wallet', messages, 'operator', LensKind.Operator).map((m) => m.seq)).toEqual([21])
+    expect(roomKeyOf(messages[2]!)).toBe('wallet#@CRA_Agent_Software')
+  })
+
+  it('a guest lens folds its own Wallet to one room', () => {
+    const messages = [
+      msg({ seq: 20, channel: 'wallet', channelKind: 'wallet', title: 'Wallet', audience: ['g1'], kind: 'wallet' }),
+      msg({ seq: 21, channel: 'wallet', channelKind: 'wallet', title: 'Wallet', audience: ['g2'], kind: 'wallet' }),
+    ]
+    const mine = buildRooms({ ...INPUT, messages, perspective: 'g1' }).filter((r) => r.channel === 'wallet')
+    expect(mine.map((r) => [r.key, r.title])).toEqual([['wallet#g1', 'Wallet']])
+  })
+
+  it('wallet, codex, quest and inbox rooms are read-only in the composer', () => {
+    for (const k of ['wallet', 'codex', 'quests', 'inbox']) expect(READ_ONLY_ROOMS.has(k)).toBe(true)
+    expect(READ_ONLY_ROOMS.has('dm')).toBe(false)
+    expect(READ_ONLY_ROOMS.has('guest')).toBe(false)
+  })
+})
+
+describe("performer lens: the booth's own pinned rooms", () => {
+  const base: PrimeView = {
+    character: 'Clippy',
+    title: 'The Internet',
+    theme: 'plain',
+    faction: null,
+    guests: [{ id: 'g1', name: 'Ada', faction: 'Mods', captured: false, restricted: false, location: null }],
+    channels: [],
+    spaces: [],
+    interactions: [],
+    legacyCapture: false,
+    codex: [],
+    codexTotal: 0,
+    quests: [],
+    questTotal: 0,
+    agents: [],
+  }
+  const cast = [{ id: 'Clippy', faction: null }]
+  const messages = [
+    msg({ seq: 30, channel: 'quests', channelKind: 'quests', audience: ['@Clippy'], kind: 'quest' }),
+    msg({ seq: 31, channel: 'quests', channelKind: 'quests', audience: ['g1'], kind: 'quest' }),
+    msg({ seq: 32, channel: 'codex', channelKind: 'codex', audience: ['@Clippy'], kind: 'codex' }),
+    msg({ seq: 33, channel: 'wallet', channelKind: 'wallet', audience: ['@Clippy'], kind: 'wallet' }),
+    msg({ seq: 34, channel: 'wallet', channelKind: 'wallet', audience: ['@Norton'], kind: 'wallet' }),
+    msg({ seq: 35, channel: 'dm:Clippy', channelKind: 'dm', audience: ['@Clippy'], kind: 'widget' }),
+    msg({ seq: 36, channel: 'dm:Clippy', channelKind: 'dm', audience: ['g1'], from: 'Clippy' }),
+  ]
+
+  it('lists Quest Log / Codex / Wallet / Inbox right after the lobby, each holding only its @Clippy rows', () => {
+    const view: PrimeView = { ...base, questTotal: 7, codexTotal: 3, wallet: { name: 'Truthcoin', queue: [], every: 3, windowMs: 60_000 } }
+    const rooms = buildRooms({ ...INPUT, cast, messages, perspective: 'Clippy', lens: { kind: 'performer', id: 'Clippy', view } })
+    expect(rooms.slice(0, 5).map((r) => r.key)).toEqual(['lobby', 'codex#@Clippy', 'dm:Clippy#@Clippy', 'quests#@Clippy', 'wallet#@Clippy'])
+    const byKey = new Map(rooms.map((r) => [r.key, r]))
+    expect(byKey.get('dm:Clippy#@Clippy')).toMatchObject({ kind: 'inbox', title: 'Inbox', dmGuest: '@Clippy', character: null, canPost: false })
+    const seqs = (key: string) => roomMessages(byKey.get(key), key, messages, 'Clippy', LensKind.Performer).map((m) => m.seq)
+    expect(seqs('quests#@Clippy')).toEqual([30])
+    expect(seqs('codex#@Clippy')).toEqual([32])
+    expect(seqs('wallet#@Clippy')).toEqual([33])
+    expect(seqs('dm:Clippy#@Clippy')).toEqual([35])
+    // Each room's key is the one its rows count toward (the rail badges).
+    expect(messages.filter((m) => roomKeyOf(m) === 'wallet#@Clippy').map((m) => m.seq)).toEqual([33])
+  })
+
+  it('with no quests, no codex and no wallet, only the Inbox is added', () => {
+    const rooms = buildRooms({ ...INPUT, cast, messages, perspective: 'Clippy', lens: { kind: 'performer', id: 'Clippy', view: base } })
+    const keys = rooms.map((r) => r.key)
+    expect(keys.filter((k) => k.endsWith('#@Clippy'))).toEqual(['dm:Clippy#@Clippy'])
+    expect(keys).not.toContain('wallet#@Norton')
   })
 })

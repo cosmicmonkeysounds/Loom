@@ -65,4 +65,8 @@ What happens next is part of the show. Commit to it.
 - Your identity can leak (there are files about people in the house). Bluff.
 - **Bingo:** expelled from art school? Three panels refused your thesis: say
   yes.
+- **The painting is real.** Bring every program to the canvas to sign it. Each
+  time one signs, ask a host to press **🖌 Signed** on their card; your Quest
+  Log (*The Million Dollar Painting*) counts them. It is revealed at the
+  awards ceremony.
 - You never get lines read for you. Everything MS Paint says, you say.

@@ -199,32 +199,73 @@ while running, **Join** (three codes with copy, join URL, QR, a
 performer sign-in row per character with presence, and **🖨 Print
 sheet…** — K-12, `run/PrintSheet.tsx` + pure `lib/print-sheet.ts`: a
 full-screen sheet over the editor built from `/api/mod/codes` (join
-poster, a poster per codex entry with its typed code, a check-in sign per
-room with QR + name only), QRs drawn in the browser as SVG (`qrcode`; a
-60–80 card sheet would trip `/api/qr`'s 60/min), sections / skip a card /
-1-2-4 per Letter page, `@media print` hides the editor), **Directing now**
+poster, the door sign `D1` worded by `doorWording(homescreen)` off
+`GET /api/push/config`'s `homescreen` — absent / false = *Scan to join*,
+on = play's own order (join in Safari, then Add to Home Screen, open the
+icon, 🔔), never a show name —
+a poster per codex entry with its typed code, sorted by the server's
+`stacks` (codex id → `{colour, stack, where}` from `facts.json`, gold →
+green → blue → red → the rest) with a coloured band + the pile as text, a
+check-in sign per room with QR + name only, and a cast card `P01…` per
+`cast[]` part with `?code=<primePass>` — a prime code's link opens the
+performer sign-in pre-filled (play's `roleForBrand`), so the card says
+"Scan, then pick <name>."), QRs drawn in the browser as SVG
+(`qrcode`; a 60–80 card sheet would trip `/api/qr`'s 60/min), sections /
+skip a card / 1-2-4-8 per Letter page (cast cards always `.pp-8` business
+cards on their own page), `@media print` hides the editor), **Directing now**
 (names, `(you)`, started-by + age), **Terminals** (K-29,
 `run/TerminalsCard.tsx`: every wall terminal + the TV by last poll, red
 after 20 s silent with a chime — again each minute until *ack* — the
 editor's own memory of terminals a restarted server forgot, the TV-voice
-mute; a `📟 N/N` header pill; `store/terminals.ts` is bound from `App.tsx`
+mute, per-row device badges (SW-SCR-21 `terminalBadges` / `majorityVersion`:
+🔇 / 💤 / battery / build, an unstamped row beside a stamped majority =
+amber *old build*) and an **identify** button
+(`POST /api/mod/screen/identify`); a `📟 N/N` header pill; `store/terminals.ts` is bound from `App.tsx`
 to the server run so it chimes from any mode, rules in pure
-`lib/terminals.ts`, sound in `lib/chime.ts`), **Look up a guest** (camera QR /
+`lib/terminals.ts`, sound in `lib/chime.ts`), **Wallet** (wave 5 E2,
+`run/WalletCard.tsx` + pure `cockpit/wallet.ts`; only when the story has a
+`currency:`: approver / minter / stimulus uses + **💰 Pay stimulus**, every
+open transfer with Approve / Deny / Cancel as the server allows and a
+countdown off `CockpitState.storyClock` (← `ModView.clock`; a held one
+auto-approves after 5 min), **✓ Approve all held** (`/api/mod/wallet/
+approve-held`, falling back to one approve each on an older server), open
+requests / offers with Cancel, the minter's freezes in force with **☀ Lift**
+(`/api/mod/wallet/unfreeze {id}`) and her 🎁 grants count, balances; all through
+`CockpitState.walletAct` ← `CockpitState.wallet` = `ModView.wallet`; the
+local backend has no WalletBook and says so), **House map** (wave 5 E9,
+`run/HouseMapCard.tsx` + pure `lib/map-variants.ts`, a local copy of
+`reinstall/web/src/map/project.ts`'s `variantLabel` — keep them in step:
+one button per `GET /api/mod/spatial/variants` variant, Tent | Shed for
+the show, always confirmed off a list re-read at the press (`freshTarget`,
+so a save made since the card loaded still warns), warns on `edited`, then `mapApi.switchVariant`
+→ `POST /api/mod/spatial/variant {file, base}` (`switchBase`: the re-read list's `version`, so a switch or save made while the confirm was open is refused with a 409 and the list reloads); hidden when the
+event has no map or the server lacks the route), **Look up a guest** (camera QR /
 manual id → Inspector); a local run gets one explainer card. A source
 test pins that `RunPage.tsx` renders none of the lifecycle testids.
-**Director** opens on the **cue sheet** (`cockpit/CueSheet.tsx` + pure
-`cue-sheet.ts`, K-21): the `who: admin` INTERACTIONs in declared order,
+**Director** opens on the **cue sheet** (`cockpit/CueSheet.tsx` + the pure
+rows in `@loom/core/cue-sheet` = `core/src/cue-sheet.ts` (aliased in
+`vite.config.ts` + `tsconfig.app.json`), shared with the play app's phone
+cue page, W-26, K-21): the `who: admin` INTERACTIONs in declared order,
 the label's leading code (`C1/V1 · …`) split off, one click fires the
 cue (one in flight at a time), the **LAST** cue amber + the next one
 tagged **NEXT** + ✓ on fired ones — all from `CockpitState.cues`
 (`ModView.cues` = core `cueState(sim)` off the sim log, so every
 director's sheet agrees and survives a reload) — `Night.phase` in the
-header, and a word filter. Desktop only. A cue whose
+header, and a word filter. On a phone, `play`'s `?role=director` page
+(`play/src/director.tsx`) fires the same rows. A cue whose
 `InteractionSummary.subject` is set (every hook that hears it binds a
 person — the ceremony's awards, K-25) shows a **who?** picker over the
 roster plus an optional **value** box (`cueValueArgs` → `{value}`), and
 fires with that person as the subject; it stays disabled until one is
-picked. An off-sequence cue (`sequence: false` on the INTERACTION →
+picked. On a server run the award rows take **suggestions** off the K-26
+recap (wave 5 E6 / W-24, pure `cockpit/award-suggest.ts`:
+`AWARD_SOURCES` maps each `award_*` cue to a recap list, `awardSuggestion`
+skips personas, lists ties, reads Least Trusted off the bottom and gives
+nobody a count award at 0; `fillAwards` fills only empty fields or its own
+earlier guess; `pickWinner` — a director's pick — clears a value box
+still holding the suggested winner's number and makes the row theirs): `modApi.recap` (`GET /api/mod/recap`) is fetched once
+`Night.ended` is true and on **↻ awards**, a `suggested: X (n) · tied: …`
+hint sits under each row, and **Copy recap** copies `recap.text`. An off-sequence cue (`sequence: false` on the INTERACTION →
 `InteractionSummary.sequence === false`: the duck game, door reed,
 printer, patch bay) gets its ✓ but is never LAST (core skips it) or
 NEXT (`cueRows` suggests the next in-sequence row). Under it, the
@@ -242,9 +283,17 @@ refreshed on every snapshot. `cockpit/rooms.ts` `buildRooms` then lists
 `threadable`), the lobby, their faction room, their folded DM threads —
 or, for a character, the performer's booth (one `guest:<gid>` thread per
 guest, kind `guest`, `roomMessages` = everything addressed to them —
-**not** the booth's own pinned rooms (Quest Log / Codex / Inbox / Wallet)
-the real booth shows since Oct 31 wave 4: `isPinnedRoom` covers only a
-guest's `codex` / `quests`; open). A
+plus the booth's own pinned rooms as play's `buildPrimeChannels` lists
+them: Quest Log (`questTotal > 0`), Codex (`codexTotal > 0`), Wallet
+(`view.wallet` set) and Inbox (`dm:<Character>`, kind `inbox`), keyed
+`<channel>#@<Character>` with `dmGuest: '@<Character>'` so they hold only
+the `@<Character>` rows, sorted right after the lobby (`Room.order`)).
+`isPinnedRoom` covers `codex` / `quests` / `wallet`, so the operator lens
+splits wallet rows per person (`Wallet · Ada`, `Wallet · CRA Agent
+Software` for the approver booth). `READ_ONLY_ROOMS` (codex / quests /
+wallet / inbox) closes the composer; a `kind: 'wallet'` row renders as a
+compact card (`cockpit/wallet.ts` `walletCardTag`: kind · step · from →
+to · amount), read-only — Approve / Deny stay on Run's Wallet card. A
 guest lens never sees a hidden message (`messageInLens`). Chat's
 composer defaults to the persona (`isPersonaId`, a `p…` id) or the
 character; speaking as a **real** guest defaults to the Operator, needs
@@ -321,7 +370,14 @@ list shows each filing's proposed verdict with **accurate / lie /
 uncertain** buttons → `fireSignal(<judge.confirm event>, person,
 {question}, null)` — the same `fact_accurate` / `fact_lie` /
 `fact_uncertain` names the hosts' booth buttons fire — and a per-question
-tally table follows. The verdict never reaches a phone or the voice
+tally table follows; **▸** on a row expands that question's filings
+(wave 5 E8 / SW-ADM-13, pure `questionFilings`: oldest first, *seen* time
+= `FactsFiling.at` (re-stamped by a restart), who / answer / confidence /
+proposed / outcome, `how` from the server's `FactsFiling.how` / `by`
+(`auto` | `confirmed` | `overridden` (↺) | `settled` | `marked`, worked
+out by `FactsWatch` from the journal's steps, so a restart keeps it —
+e.g. "accurate (confirmed by Ada)"; an older server without `how` falls
+back to kept / overridden off the proposal). The verdict never reaches a phone or the voice
 worker; this card is the only place it is shown. Tests: the judging
 cases in `cockpit/mind.test.ts`.
 
@@ -346,8 +402,15 @@ single-use code good for ten minutes —
 plus **Sign out old phones** = `revokeOthers`; not shown for personas,
 which the server refuses anyway) and a character's **⏏ Release**
 (`CockpitState.releasePart` → `POST /api/mod/prime/release`, confirmed);
-the local backend refuses both with an explanation. The **Log** page
-(`cockpit/LogTab.tsx`) filters to one participant (`log-filter.ts`
+the local backend refuses both with an explanation. A guest's **Restricted**
+field (wave 5) is **Restrict / Unrestrict** → `setStat(id, 'restricted',
+…)` (`/api/mod/set restricted` / `Sim.restrict`/`unrestrict`, a plain
+restrict with no places — not the story's own mark event, whose flags and
+pins it leaves alone), confirmed for a real guest on a live run;
+`RosterRow.restricted` drives a ⛔ beside 🔒 on the Stage, the rail and
+the Roster. The **Log** page (`cockpit/LogTab.tsx`) renders each event
+through the pure, exhaustive `log-describe.ts` `describeEvent` (a `never`
+guard: a new `SimEventType` breaks the build), filters to one participant (`log-filter.ts`
 `eventMentions`, generic over every string field of a `SimEvent`) and
 exports a run that just ended (`lib/run-export.ts` reads `run ??
 lastRun`; `source: local|server`, `mode`, `startedBy`, `endedBy`).

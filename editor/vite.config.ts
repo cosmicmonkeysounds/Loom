@@ -35,6 +35,7 @@ export default defineConfig({
       '@loom/core/runtime': path.resolve(__dirname, '../core/src/runtime/index.ts'),
       '@loom/core/chat': path.resolve(__dirname, '../core/server/chat.ts'),
       '@loom/core/views': path.resolve(__dirname, '../core/server/views.ts'),
+      '@loom/core/cue-sheet': path.resolve(__dirname, '../core/src/cue-sheet.ts'),
       '@loom/core': path.resolve(__dirname, '../core/src/index.ts'),
       // Bank compiler as TypeScript source — the desktop app compiles
       // .loombank artifacts in the webview and hands bytes to the host.

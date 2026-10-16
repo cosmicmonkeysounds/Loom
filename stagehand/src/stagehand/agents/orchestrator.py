@@ -45,7 +45,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field, replace
 from typing import Any
 
-from .facts import Facts
+from .facts import Facts, world_view
 from .llm import Completion, LlmConfig, LlmError
 from .mind import Mind
 from .persona import Persona
@@ -267,7 +267,7 @@ def reflect_messages(
         "my_variables": me.get("vars") or {},
         "lore_i_hold": [f"{e.get('title')}: {' '.join(str(e.get('text', '')).split())[:160]}" for e in persona.secrets.visible(me.get("codex"))[:12]],
         "speaker": {"kind": speaker.get("kind"), "name": name, "group": speaker.get("faction"), "location": them.get("location"), "variables": their_variables(persona, them.get("vars")), "holds": [e.get("title") for e in persona.secrets.visible(them.get("codex"))]},
-        "world": req.get("world") or {},
+        "world": world_view(req.get("world") or {}, persona.facts),
         "powers": [{"name": p.get("id"), "left": (None if p.get("limit") is None else max(0, int(p.get("limit", 0)) - int(p.get("used", 0))))} for p in req.get("powers") or []],
     }
     parts = [
@@ -279,7 +279,7 @@ def reflect_messages(
     if cue:
         parts.append(f"=== THE STORY'S PHASE: {phase} (the author's cue for this phase) ===\n{cue}")
     if facts is not None:
-        parts.append(f"=== THE HOUSE ===\n{facts.digest(secrets=persona.secrets)}")
+        parts.append(f"=== THE HOUSE ===\n{facts.digest(secrets=persona.secrets, world_prefixes=persona.facts)}")
         lore = lore_block(facts, [str(e.get("title", "")) for e in (me.get("codex") or []) if isinstance(e, dict)], secrets=persona.secrets)
         if lore:
             parts.append(lore)
@@ -299,20 +299,33 @@ def reflect_messages(
     return [{"role": "system", "content": _system(persona, mind)}, {"role": "user", "content": "\n\n".join(parts)}]
 
 
-def lore_block(facts: Facts, held: list[str], max_entries: int = 24, secrets: Secrets | None = None) -> str:
+def lore_block(facts: Facts, held: list[str], max_entries: int = 60, secrets: Secrets | None = None, max_text: int = 160) -> str:
     """The story's whole codex — ground truth for the director's verdicts.
     The *character* knows only the entries marked held; the director knows
     everything, and decides how a character who doesn't know reacts —
-    except the hunt answers (`secrets.lore`), which nobody here may check."""
-    entries = (secrets.visible(facts.codex) if secrets else facts.codex)[:max_entries]
+    except the hunt answers (`secrets.lore`), which nobody here may check.
+    The secrecy filter runs first; then the held entries lead (model order),
+    then the rest (model order), and the cap cuts the tail — so a held
+    entry declared late in the codex is never sliced off. An entry the
+    character doesn't hold that names a hunt answer word (a clue such as
+    The Rival's "Grok") is left out too: it would be a key to judge the
+    hunt by. Bare-number answers (11, 1978) are not used for that — dates
+    and clocks across the codex carry them by chance."""
+    visible = secrets.visible(facts.codex) if secrets else facts.codex
+    held_set = {h.lower() for h in held}
+    words = tuple(w for w in (secrets.match if secrets else ()) if any(c.isalpha() for c in w))
+    if words:
+        clue = Secrets(match=words)
+        visible = [e for e in visible if str(e.get("title", "")).lower() in held_set or not clue.names_topic(f"{e.get('title', '')}\n{e.get('text', '')}")]
+    is_held = [str(e.get("title", "")).lower() in held_set for e in visible]
+    entries = ([e for e, h in zip(visible, is_held) if h] + [e for e, h in zip(visible, is_held) if not h])[:max_entries]
     if not entries:
         return ""
-    held_set = {h.lower() for h in held}
     lines = ["=== THE STORY'S LORE (ground truth for your verdicts — the character HOLDS only the entries marked ★; judge claims against all of it, then decide what a character who may not know reacts like) ==="]
     for e in entries:
         title = str(e.get("title", ""))
         mark = "★ " if title.lower() in held_set else "  "
-        text = " ".join(str(e.get("text", "")).split())[:220]
+        text = " ".join(str(e.get("text", "")).split())[:max_text]
         lines.append(f"{mark}{title}: {text}")
     return "\n".join(lines)
 
@@ -320,7 +333,7 @@ def lore_block(facts: Facts, held: list[str], max_entries: int = 24, secrets: Se
 def survey_messages(persona: Persona, mind: Mind, facts: Facts, delta: list[str], phase_changed_to: str | None = None) -> list[dict[str, str]]:
     parts = [
         f"=== {persona.character.upper()}'S MIND NOW ===\n{mind_snapshot(mind, None, None)}",
-        f"=== THE HOUSE NOW ===\n{facts.digest(secrets=persona.secrets)}",
+        f"=== THE HOUSE NOW ===\n{facts.digest(secrets=persona.secrets, world_prefixes=persona.facts)}",
     ]
     if delta:
         parts.append("=== WHAT CHANGED SINCE YOU LAST LOOKED ===\n" + "\n".join(f"- {d}" for d in delta))
@@ -573,7 +586,7 @@ class Orchestrator:
         else:
             if facts is None:
                 return
-            delta = facts.delta(self._last_facts, persona.secrets)
+            delta = facts.delta(self._last_facts, persona.secrets, persona.facts)
             if self._last_facts is not None and self._last_facts.phase != facts.phase:
                 phase_changed_to = facts.phase
             self._last_facts = facts

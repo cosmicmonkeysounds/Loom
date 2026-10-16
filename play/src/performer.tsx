@@ -27,7 +27,7 @@ import {
 } from "./chat.tsx";
 import { HelpSheet } from "./help.tsx";
 import { usePlayHost } from "./host.ts";
-import { WalletActionsProvider, approvalBadge } from "./wallet.tsx";
+import { WalletActionsProvider, approvalBadge, useWalletClock } from "./wallet.tsx";
 import { AvatarsContext, avatarLookup, avatarUrl, foldName, orderPicker, type IdentityRow } from "./avatars.ts";
 import { INBOX, codeFromUrl, useDocumentTitle, useIdentities, usePrimeSession, type IdentityLookup, type PrimeSession } from "./session.ts";
 import type { Action, Channel, Interaction, PrimeGuest } from "./types.ts";
@@ -35,6 +35,7 @@ import { cameraProblem, parseScan, scanProblem, typedTarget, type CameraState } 
 import { CameraScanner } from "./scanner.tsx";
 import { usePush, type Push } from "./push.ts";
 import { PushCard, PushRow } from "./push-card.tsx";
+import { opensHome } from "./room.ts";
 import { activePins } from "./pins.ts";
 
 function PrimeLogin({ session }: { session: PrimeSession }) {
@@ -258,7 +259,7 @@ function PerformerSheet({ session, push, onClose, onLeave }: { session: PrimeSes
         </>
       )}
       <WakeLockToggle />
-      <PushRow push={push} />
+      <PushRow push={push} booth />
       {session.auth?.admin && <div className="muted pad">You hold moderator powers — hide/show messages, and every admin-only interaction the story declares.</div>}
       {(session.view?.codex?.length ?? 0) > 0 && (
         <>
@@ -444,17 +445,20 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   const [picking, setPicking] = useState(false);
   useDocumentTitle(s.auth?.title);
   // K-31a: the door alarm + the late list on a locked phone.
-  const push = usePush(s.auth?.character ? { base: `/e/${encodeURIComponent(s.auth.eventId)}`, token: s.auth.token } : null);
+  const push = usePush(s.auth?.character ? { base: `/e/${encodeURIComponent(s.auth.eventId)}`, token: s.auth.token } : null, "booth");
   // Everyone's profile pictures, for every tile in the booth.
   const avatars = useMemo(() => avatarLookup(s.auth?.eventId ?? null, s.view?.avatars), [s.auth?.eventId, s.view?.avatars]);
   const t = s.threads;
   const signedIn = s.auth !== null && s.ready;
   const activeId = t.activeId;
   const home = boothHome(t.list);
+  // The approver's queue countdowns tick between snapshots, as the guest
+  // wallet's do (a quiet stretch pushes no view).
+  const walletClock = useWalletClock(s.view?.clock, s.view?.wallet);
   useEffect(() => {
-    if (signedIn && wide && activeId === null && home !== null) t.open(home);
+    if (opensHome(signedIn, wide, activeId, home, s.roomLinkPending) && home !== null) t.open(home);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signedIn, wide, activeId, home]);
+  }, [signedIn, wide, activeId, home, s.roomLinkPending]);
   if (!s.auth) return host.embedded ? <SessionEnded notice={s.notice} /> : <PrimeLogin session={s} />;
   const admin = s.auth.admin;
   const guests = s.view?.guests ?? [];
@@ -573,10 +577,10 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
 
   return (
     <AvatarsContext.Provider value={avatars}>
-    <WalletActionsProvider value={{ view: s.view?.wallet ?? null, me: null, clock: s.view?.clock ?? 0, approve: (id) => void s.walletApprove(id), deny: (id) => void s.walletDeny(id) }}>
+    <WalletActionsProvider value={{ view: s.view?.wallet ?? null, me: null, clock: walletClock, approve: (id) => void s.walletApprove(id), deny: (id) => void s.walletDeny(id) }}>
     <div className="root">
       {s.alert && <AlertBanner text={s.alert.text} onDismiss={s.dismissAlert} />}
-      <PushCard push={push} why="the door alarm and the late list reach you even with the phone locked." />
+      <PushCard push={push} booth title={s.auth?.title} why="the door alarm and the late list reach you even with the phone locked." />
       <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room, or a guest." />
       {picking && t.active && (
         <InviteSheet

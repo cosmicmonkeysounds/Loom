@@ -161,3 +161,21 @@ def test_facts_delta_names_what_moved():
     ]
     assert after.delta(None) == []
     assert Facts(FACTS, at=time.time()).delta(Facts(FACTS)) == []
+
+
+def test_facts_digest_and_delta_keep_only_the_personas_world_prefixes():
+    # SW-AI-02: the orchestrator reads the globals the voice may (the
+    # persona's `facts:`), plus the phase always; no prefixes = everything.
+    raw = json.loads(json.dumps(FACTS))
+    raw["world"].update({"Night.step": "3", "Night.help_votes": "4"})
+    f = Facts(raw)
+    assert "Night.help_votes=4" in f.digest() and "Night.quorum=5" in f.digest()
+    d = f.digest(world_prefixes=("Night.step",))
+    assert "World: Night.phase=free_roam, Night.step=3" in d and "help_votes" not in d and "quorum" not in d
+    assert "World: Night.phase=free_roam\n" in f.digest(world_prefixes=())
+    after_raw = json.loads(json.dumps(raw))
+    after_raw["world"].update({"Night.phase": "destruct", "Night.step": "4", "Night.help_votes": "9"})
+    after = Facts(after_raw)
+    assert after.delta(f) == ["phase: free_roam → destruct", "Night.step = 4", "Night.help_votes = 9"]
+    assert after.delta(f, world_prefixes=("Night.step",)) == ["phase: free_roam → destruct", "Night.step = 4"]
+    assert after.delta(f, world_prefixes=()) == ["phase: free_roam → destruct"]

@@ -30,13 +30,12 @@ guess). When that happens your booth reads *🚨 X is marked for reinstallation
 (why). Escort them through the Tube, then press 🛡 on their card*, and
 **`# quarantine`** pins the task: *🚨 Escort X to the Internet — why. Press 🛡
 Send to the Internet on their card when you have them.* Their phone has gone
-grey: every button is off, a 🚨 GO TO THE INTERNET card sits at the top, and
+grey: every button but 🚻 Bathroom Mode is off, a 🚨 GO TO THE INTERNET card sits at the top, and
 only their DMs, the Tube, the Internet and the room they are standing in are
 left (the rooms read-only; they can still type in their DMs, but a 📝 filing
 and a room check-in are refused). Find them, walk them through the Tube,
-press 🛡 — a marked program who turns up at the tent on their own still needs
-your 🛡 (or the director: Inspector → Captured → Capture) before the tablet
-will play them. The pin clears on its own when they are captured, released,
+press 🛡 — a marked program who turns up at the tent on their own is captured
+when the tablet starts their run (wave 5). A marked program in Bathroom Mode or Disk Cleanup: wait outside; never go in (the booth says ⚠️ when it knows). The pin clears on its own when they are captured, released,
 or unmarked (🩹): *✅ X: in the Internet / released / cleared by a host.*
 
 **V3, your big moment.** Your Quest Log says it: *The Selected Antivirus.*

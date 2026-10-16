@@ -13,7 +13,10 @@
 //!                              entries, each ending with the lore marker
 //!                              the voice worker hides;
 //!   codex/9-facts.loom         every scannable + character fact as a coded
-//!                              CODEX, grouped by category (colour);
+//!                              CODEX, grouped by category (colour), and
+//!                              `== Facts Bundle` (an `unlock … for program`
+//!                              per main + Trabolta fact, generated or
+//!                              `existing`) that The Whole Truth diverts into;
 //!   generated/print-stacks.md  the colour-coded QR stacks for the Desktop;
 //!   trabolta.mind.md           the `secrets:` block between
 //!                              `# <titi-facts:secrets>` … `# </titi-facts:secrets>`;
@@ -57,6 +60,10 @@ export const SHOW_SHAPE = {
   } as Record<number, { quest: string; beat: string; next: string; read: (n: number) => string; card: (id: string, r: number, n: number) => string }>,
   seedBeat: "Facts Seed",
   truthBeat: "Truth Question",
+  /** The majority's bundle (`beats/server-room.loom` The Whole Truth
+   *  diverts here): every fact of these categories, for `program`. */
+  bundleBeat: "Facts Bundle",
+  bundleCategories: ["main", "trabolta"],
   noMoreQuestions: "I have no more questions. Answer the last one again.",
   /** The hunt answers' stack on the print sheet. */
   huntColour: "gold",
@@ -325,6 +332,16 @@ function factsLoom(f: FactsFile): string {
       out.push(`  code: ${c.code}`, "  text:", textBlock(c.text), "");
     }
   }
+  const S = SHOW_SHAPE;
+  const bundle = [...new Set(f.facts.filter((x) => (S.bundleCategories as readonly string[]).includes(x.category)).map((x) => x.codex?.id ?? x.existing!))];
+  out.push(
+    `// The majority's bundle: every ${S.bundleCategories.join(" + ")} fact (a hand-written`,
+    "// `existing` entry by its own name), in facts.json order. The Whole Truth",
+    "// (beats/server-room.loom) diverts here and carries on after it.",
+    `== ${S.bundleBeat}`,
+    ...bundle.map((id) => `unlock ${id} for program`),
+    "",
+  );
   return out.join("\n");
 }
 
@@ -485,7 +502,7 @@ export function modelProblems(facts: FactsFile, dir: string): string[] {
     if (has(model.beats.keys(), shape.beat)) out.push(`round ${r}: beat ${JSON.stringify(shape.beat)} is already declared by a hand-written file`);
     if (!has(model.beats.keys(), shape.next)) out.push(`round ${r}: the tail beat ${JSON.stringify(shape.next)} (where ${JSON.stringify(shape.beat)} hands back) is not declared`);
   }
-  for (const b of [SHOW_SHAPE.seedBeat, SHOW_SHAPE.truthBeat]) if (has(model.beats.keys(), b)) out.push(`beat ${JSON.stringify(b)} is already declared by a hand-written file`);
+  for (const b of [SHOW_SHAPE.seedBeat, SHOW_SHAPE.truthBeat, SHOW_SHAPE.bundleBeat]) if (has(model.beats.keys(), b)) out.push(`beat ${JSON.stringify(b)} is already declared by a hand-written file`);
   return out;
 }
 

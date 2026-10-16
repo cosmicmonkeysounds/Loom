@@ -5,6 +5,7 @@
     variables: truth, untruth, stance, love   # what it may nudge
     max_step: 15                       # |delta| cap per variable per reply
     facts: Night.                      # world path prefixes worth telling it
+                                       #   (voice + orchestrator; phase always)
     them: humanity, truth, doubt       # the speaker's variables worth telling it
     when: self.glitched == true        # optional gate — else `unavailable`
     unavailable: "…"                   # said when the gate is closed (else silence)

@@ -141,4 +141,16 @@ else if Night.award == "quest_completionist":
     Trabolta: A bonus award. Quest Completionist. {Night.award_winner}. Nobody finished more of the Quest Log. Come up here.
   else:
     Trabolta: A bonus award. Quest Completionist. Quests done: {Night.award_value}. {Night.award_winner}. Nobody finished more of the Quest Log. Come up here.
+else if Night.award == "the_painting":
+  cue screens_award_the_painting
+  set Night.screen = "award_the_painting"
+  if Night.ceremony_host == "Clippy":
+    if Night.award_value == "none":
+      Clippy: Bonus award. The Million Dollar Painting. The report lists {Night.award_winner}, the artist. The painting goes to silent auction. Please come forward.
+    else:
+      Clippy: Bonus award. The Million Dollar Painting. The report lists {Night.award_winner}, the artist. Signatures on the canvas: {Night.award_value}. The painting goes to silent auction. Please come forward.
+  else if Night.award_value == "none":
+    Trabolta: A bonus award. The Million Dollar Painting. {Night.award_winner} made one painting out of all of you. It goes to silent auction. Come and stand beside it.
+  else:
+    Trabolta: A bonus award. The Million Dollar Painting. Signed by {Night.award_value} programs. {Night.award_winner} made one painting out of all of you. It goes to silent auction. Come and stand beside it.
 set Night.terminals = Night.screen

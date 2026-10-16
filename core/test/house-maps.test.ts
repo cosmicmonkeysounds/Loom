@@ -118,6 +118,27 @@ describe("house-maps helpers", () => {
     expect(list[1]!.problems).toHaveLength(1);
   });
 
+  it("listVariants: a map's `variant` field rides as its `label` (trimmed); none without one", () => {
+    const h = show();
+    expect(h.variant).toBe("Tent"); // the show's own map
+    const shed = { ...shedOf(h), variant: "  Shed " };
+    const bare = { ...shedOf(h), variant: undefined };
+    const list = listVariants(
+      [
+        [DEFAULT_MAP_FILE, parseMapText(text(h))],
+        ["house.shed.json", parseMapText(text(shed))],
+        ["house.rain.json", parseMapText(text(bare))],
+      ],
+      DEFAULT_MAP_FILE,
+    );
+    expect(list.map((v) => [v.file, v.label])).toEqual([
+      [DEFAULT_MAP_FILE, "Tent"],
+      ["house.rain.json", undefined],
+      ["house.shed.json", "Shed"],
+    ]);
+    expect("label" in list[1]!).toBe(false);
+  });
+
   it("showVariantFiles: the show file, then its <stem>.<variant>.json siblings", () => {
     const d = freshDir();
     for (const f of ["house.json", "house.shed.json", "house.b.json", "house.a.b.json", "other.json", "spatial-house.json"]) writeFileSync(join(d, f), "{}");
@@ -439,6 +460,17 @@ describe("EventRuntime — the project's maps", () => {
     expect(stale.status).toBe(409);
     expect(stale.json).toEqual({ error: "the map changed — reload", version: sw.json.version });
     expect(rt.spatial.version).toBe(sw.json.version);
+    // The variant list carries the playing map's version — what the Run
+    // card's switch sends back as `base` (wave 5 issue 7): a list read
+    // before a co-director's switch is refused, one read after it passes.
+    const listed = (await variants(rt)) as unknown as { version: string };
+    expect(listed.version).toBe(sw.json.version);
+    const raced = await mod(rt, "/api/mod/spatial/variant", { file: "house.json", base: listed.version });
+    expect(raced.status).toBe(200);
+    const late = await mod(rt, "/api/mod/spatial/variant", { file: "house.shed.json", base: listed.version });
+    expect(late.status).toBe(409);
+    expect(rt.spatial.version).toBe(before);
+    await mod(rt, "/api/mod/spatial/variant", { file: "house.shed.json" });
     // And back to the tent, no base.
     const back = await mod(rt, "/api/mod/spatial/variant", { file: "house.json" });
     expect(back.json.version).toBe(before);

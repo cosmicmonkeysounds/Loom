@@ -4,12 +4,14 @@
 //! can't make: **walkability** (SW-MAP-09 — `route()` from the spawn to
 //! every duck spot, the algorithm the VR autopilot follows, so a duck
 //! nobody can walk to is caught before the show — plus every room no
-//! chain of doors leads into), and the story's
-//! **LOCATIONs** (a room naming none of them; a LOCATION no room is).
-//! Those two are warnings: they never block a save.
+//! chain of doors leads into, plus every duck within reach of a wall from
+//! the next room), and the story's **LOCATIONs** (a room naming none of
+//! them; a LOCATION no room is). Those two are warnings: they never block
+//! a save.
 
 import { locate, roomById, route, visibleIn } from "@loom/house";
-import type { HouseMap } from "@loom/house";
+import type { HouseMap, Vec2 } from "@loom/house";
+import { REACH } from "../game/hud.ts";
 import type { Selection } from "./edit.ts";
 
 export interface Problem {
@@ -127,12 +129,69 @@ export function guardedRooms(house: HouseMap): Array<{ room: string; door: strin
   return out;
 }
 
-/** Walkability as warnings: one per unreachable duck spot, one per room nobody can walk into, then one per room a King guards. */
+/** Plan distance from `p` to the nearest edge of `poly`. */
+function edgeDistance(poly: readonly Vec2[], p: Vec2): number {
+  let best = Infinity;
+  for (let i = 0; i < poly.length; i++) {
+    const [ax, az] = poly[i]!;
+    const [bx, bz] = poly[(i + 1) % poly.length]!;
+    const len2 = (bx - ax) ** 2 + (bz - az) ** 2;
+    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((p[0] - ax) * (bx - ax) + (p[1] - az) * (bz - az)) / len2));
+    best = Math.min(best, Math.hypot(p[0] - (ax + t * (bx - ax)), p[1] - (az + t * (bz - az))));
+  }
+  return best;
+}
+
+/** Sample step (metres) for `duckWallLeaks`. */
+const LEAK_STEP = 0.05;
+
+/**
+ * The duck spots a player can pick up through a wall from the next room:
+ * the find is plan distance + floor only (`withinReach`, the server's
+ * `nearDuck`), so a duck within `REACH` of a shared wall is found from the
+ * room behind it. Samples every point within `REACH` a player's feet can
+ * stand on (≥ the body radius + half a wall from the duck room's edge) and
+ * records each other room on the same floor — the sampler of
+ * `core/test/show-house.test.ts`. One entry per (duck, room) pair.
+ */
+export function duckWallLeaks(house: HouseMap): Array<{ duck: string; from: string }> {
+  const clearance = 0.25 + (house.style?.wallThickness ?? 0.12) / 2;
+  const n = Math.floor(REACH / LEAK_STEP);
+  const out: Array<{ duck: string; from: string }> = [];
+  for (const s of house.duck.spots) {
+    const own = roomById(house, s.room);
+    const floor = own !== undefined ? house.floors.find((f) => f.id === own.floor) : undefined;
+    if (own === undefined || floor === undefined) continue;
+    const seen = new Set<string>();
+    for (let i = -n; i <= n; i++) {
+      for (let j = -n; j <= n; j++) {
+        const dx = i * LEAK_STEP;
+        const dz = j * LEAK_STEP;
+        if (Math.hypot(dx, dz) > REACH) continue;
+        const p: Vec2 = [s.pos[0] + dx, s.pos[2] + dz];
+        if (edgeDistance(own.poly, p) < clearance) continue; // against the wall line: no feet fit
+        const at = locate(house, [p[0], floor.elevation, p[1]]);
+        if (at.room === null || at.room === s.room || at.floor !== own.floor || seen.has(at.room)) continue;
+        seen.add(at.room);
+        out.push({ duck: s.id, from: at.room });
+      }
+    }
+  }
+  return out;
+}
+
+/** Walkability as warnings: one per unreachable duck spot, one per duck found through a wall (per room behind it), one per room nobody can walk into, then one per room a King guards. */
 export function walkabilityProblems(house: HouseMap): Problem[] {
   const ducks = unreachableDucks(house).map((id): Problem => {
     const spot = house.duck.spots.find((d) => d.id === id)!;
     const room = roomById(house, spot.room)?.label ?? spot.room;
     return { text: `duck spot "${id}" (${room}) can't be reached from the spawn (no way through the doors)`, sel: { kind: "duck", id }, level: "warning" };
+  });
+  const leaks = duckWallLeaks(house).map(({ duck, from }): Problem => {
+    const spot = house.duck.spots.find((d) => d.id === duck)!;
+    const room = roomById(house, spot.room)?.label ?? spot.room;
+    const other = roomById(house, from)?.label ?? from;
+    return { text: `duck spot "${duck}" (${room}) can be picked up through the wall from "${other}" — move it ≥ ~1.2 m from that wall`, sel: { kind: "duck", id: duck }, level: "warning" };
   });
   const rooms = unreachableRooms(house).map((id): Problem => {
     const r = roomById(house, id)!;
@@ -142,7 +201,7 @@ export function walkabilityProblems(house: HouseMap): Problem[] {
     const r = roomById(house, room)!;
     return { text: `room "${room}" (${r.label}) is guarded by king "${king}" at door "${door}" — it opens when he falls`, sel: { kind: "door", id: door }, level: "warning" };
   });
-  return [...ducks, ...rooms, ...guarded];
+  return [...ducks, ...leaks, ...rooms, ...guarded];
 }
 
 /** A story LOCATION, as the mod view lists them. */

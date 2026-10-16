@@ -13,6 +13,10 @@
 //!
 //! Times are client epoch ms: a server `ago` becomes `clientNow - ago`, so a
 //! skewed laptop clock never paints a live tablet red.
+//!
+//! A current terminal build also reports its device on every poll
+//! (SW-SCR-21): sound unlocked, page visible, battery, build stamp — the
+//! row's badges (`terminalBadges`). An older build reports none.
 
 /** One entry of the server's heartbeat list (`ScreenPoll & {ago}`). */
 export interface TerminalPoll {
@@ -22,7 +26,16 @@ export interface TerminalPoll {
   character: string
   /** ms since its last poll, on the server's clock. */
   ago: number
+  /** The device health its build reports (SW-SCR-21); absent from an older build. */
+  audio?: boolean
+  visible?: boolean
+  battery?: number
+  charging?: boolean
+  version?: string
 }
+
+/** A row's device health, as its last listed poll said. */
+export type TerminalDevice = Pick<TerminalPoll, 'audio' | 'visible' | 'battery' | 'charging' | 'version'>
 
 /** `GET /api/mod/screen/terminals`. */
 export interface ScreenTerminals {
@@ -55,6 +68,8 @@ export interface TerminalRow {
   silentFor: number
   /** The server no longer lists it (a server restart): only this editor remembers it. */
   remembered: boolean
+  /** Its device health off the server's list; null = not listed this poll. */
+  device: TerminalDevice | null
 }
 
 /** The fallback silence threshold, when the server doesn't say (it does: 20 s). */
@@ -78,10 +93,10 @@ export function mergeTerminals(
 ): { memory: TerminalMemory; rows: TerminalRow[] } {
   const silentMs = server?.silentMs ?? DEFAULT_SILENT_MS
   const next: TerminalMemory = { ...memory }
-  const listed = new Set<string>()
+  const listed = new Map<string, TerminalDevice>()
   for (const p of server?.terminals ?? []) {
     if (p.name === '') continue
-    listed.add(p.name)
+    listed.set(p.name, { audio: p.audio, visible: p.visible, battery: p.battery, charging: p.charging, version: p.version })
     const lastSeen = clientNow - Math.max(0, p.ago)
     const prev = next[p.name]
     // A server restart forgets; never move a remembered poll backwards.
@@ -99,6 +114,7 @@ export function mergeTerminals(
       status: silentFor >= silentMs ? TerminalStatus.Silent : TerminalStatus.Live,
       silentFor,
       remembered: server !== null && !listed.has(name),
+      device: listed.get(name) ?? null,
     }
   })
   rows.sort((a, b) => (a.status === b.status ? a.name.localeCompare(b.name) : a.status === TerminalStatus.Silent ? -1 : 1))
@@ -140,4 +156,49 @@ export function formatSilence(ms: number): string {
 /** A TV-type screen (the house Mac's `view=tv`, or a `mirror`). */
 export function isTvView(view: string): boolean {
   return view === 'tv' || view === 'mirror'
+}
+
+/** A battery under this (and not charging) is a red badge. */
+export const LOW_BATTERY = 20
+
+export interface TerminalBadge {
+  key: 'audio' | 'hidden' | 'battery' | 'version'
+  text: string
+  title: string
+  /** Needs a hand: red (amber for an odd version). */
+  warn: boolean
+}
+
+/** The build most listed terminals run (null: none report one, or a tie) —
+ *  a tablet on another one is still on a cached old build. */
+export function majorityVersion(rows: readonly TerminalRow[]): string | null {
+  const n = new Map<string, number>()
+  for (const r of rows) if (r.device?.version) n.set(r.device.version, (n.get(r.device.version) ?? 0) + 1)
+  const ranked = [...n.entries()].sort((a, b) => b[1] - a[1])
+  if (ranked.length === 0 || (ranked.length > 1 && ranked[0]![1] === ranked[1]![1])) return null
+  return ranked[0]![0]
+}
+
+/** A row's install-day badges: 🔇 sound locked, 💤 page hidden, the battery,
+ *  and the build (flagged when it differs from the majority's, or is missing
+ *  while the others report one). */
+export function terminalBadges(row: TerminalRow, majority: string | null): TerminalBadge[] {
+  const d = row.device
+  if (d === null) return []
+  const out: TerminalBadge[] = []
+  if (d.audio === false) out.push({ key: 'audio', text: '🔇', title: 'Sound is locked: touch the screen once so it can speak', warn: true })
+  if (d.visible === false) out.push({ key: 'hidden', text: '💤', title: 'The page is hidden: the screen is off, or another app / a screensaver is on top', warn: true })
+  if (typeof d.battery === 'number') {
+    const low = d.battery < LOW_BATTERY && d.charging !== true
+    out.push({ key: 'battery', text: `${d.charging === true ? '⚡' : '🔋'}${d.battery}%`, title: d.charging === true ? 'Charging' : low ? 'Battery low: plug it in' : 'On battery', warn: low })
+  }
+  if (d.version) {
+    const odd = majority !== null && d.version !== majority
+    out.push({ key: 'version', text: d.version, title: odd ? `An older or newer build than the others (${majority}): reload it before doors` : 'The terminal build', warn: odd })
+  } else if (majority !== null) {
+    // Listed but no stamp while the others carry one: a build from before the
+    // stamp (wave 5), cached on the tablet — the stalest of all.
+    out.push({ key: 'version', text: 'old build', title: `Reports no build stamp (the others run ${majority}): a cached pre-wave-5 build, reload it before doors`, warn: true })
+  }
+  return out
 }

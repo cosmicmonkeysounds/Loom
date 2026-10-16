@@ -42,8 +42,10 @@ CHARACTER Runescape
   avatar: File:Runescape 3 Logo.png
   wiki: RuneScape
   // the Truthcoin reserve: 💰 Stimulus pays every cleared program the same
-  // amount, three times a night. A property, not a hook — she stays a guest.
-  wallet: minter, limit 3, while program.cleared == true
+  // amount, three times a night; 🎁 Grant pays one cleared program, three
+  // times a night; 🧊 Freeze stops one program's coin going out for ten
+  // minutes (it can still receive). A property, not a hook — she stays a guest.
+  wallet: minter, limit 3, grants 3, freeze 10m, while program.cleared == true
 
 CHARACTER MS Paint
   avatar: File:Microsoft Paint.svg

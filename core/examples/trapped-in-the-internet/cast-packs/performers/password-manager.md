@@ -25,9 +25,9 @@ verified (OP-04).
 **The escort list.** The hosts mark programs (🎯 🤷 🙅 🎩 🏓 🍎, a late
 arrival, a filed guess); your booth reads *🚨 X is marked for reinstallation
 (why)* and **`# quarantine`** pins *Escort X to the Internet…* Their phone is
-grey, buttons off, a 🚨 GO TO THE INTERNET card on top, DMs + the Tube + the
+grey, buttons off (all but 🚻 Bathroom Mode), a 🚨 GO TO THE INTERNET card on top, DMs + the Tube + the
 Internet rooms, plus the room they stand in, read-only. Find them, walk them
-through the Tube, press **🛡** on their card. The pin clears when they are
+through the Tube, press **🛡** on their card. A marked program in Bathroom Mode or Disk Cleanup: wait outside; never go in (the booth says ⚠️ when it knows). The pin clears when they are
 captured, released or unmarked.
 
 **Wrong codes.** When a guest types a bad codex code, the app scolds them in
@@ -73,8 +73,8 @@ Your two red facts, *What Happened To Hamtaro* and *Founding Moderator*, are
 hidden in the Desktop's books.)
 
 **Why Trabolta chose you:** to manage every password and decide who gets to
-be part of what club, without ever asking for a vote. Tonight you may improve
-and correct any message as you deem fit, and keep every program focused on
+be part of what club, without ever asking for a vote. Tonight you may remove
+any message as you deem fit, and keep every program focused on
 finding clues. If no conversation contains anything inappropriate, you become
 Founding Moderator of a permanent digital salon where everyone is
 biometrically verified to be a Real Person.
@@ -92,6 +92,12 @@ left out.
 - **The hour:** patrol; collect wrong-code offenders; run your private rooms.
 - **⏳ → 🚨:** scan arrivals; then the late list.
 - **🗜:** zip everyone out of the tent.
+- **🔑 Moderating (if the director gives you the moderator passcode at
+  call):** ☰ → *Add moderator powers* → type it → *Become an admin*, reload
+  once, then tap **hide** on any message that is inappropriate or off topic.
+  It vanishes from every phone. You can remove, never rewrite. Without the
+  passcode, ask the director to hide it. The passcode also shows you the
+  director's cues under More…: never press those.
 - **🕚 Y2K → the end:** watch the club joins. A majority (more than half of all
   guest programs, once its leader has done their task) unlocks the server
   room. Police the room after that.

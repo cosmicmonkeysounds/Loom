@@ -9,13 +9,15 @@
 //!   play     — the simulation (`game/Play.tsx`), then back to scan.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import type { Assignment, HouseMap, SpatialCandidate, StationInfo } from "@loom/house";
 import { matchName, parseScan } from "@loom/terminal/scan.ts";
 import { Scanner, cameraProblem, type CameraState } from "@loom/terminal/scanner.tsx";
 import { hasWebGL2 } from "@loom/terminal/webgl.ts";
-import { ApiError, begin, fetchCandidates, fetchDealtHouse, fetchStations, postEnd, tokenAlive } from "./api.ts";
+import { ApiError, begin, fetchCandidates, fetchDealtHouse, fetchStations, flushPendingSignal, postEnd, tokenAlive } from "./api.ts";
 import { applyHints, baseOf, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, withoutSecrets, type DeviceRole, type ReinstallConfig } from "./config.ts";
 import { createSfx } from "./game/audio.ts";
+import { HOLD_MS, useLongPress } from "./kiosk.ts";
 import { NO_WEBGL2, Play, type PlayExit } from "./game/Play.tsx";
 import { showHouse } from "./show-house.ts";
 import { Desktop, ProgressBar, Window, Wizard } from "./wizard.tsx";
@@ -84,6 +86,15 @@ export function App() {
         setScreen({ kind: "setup", notice: "This device's access was revoked — enter the moderator passcode again." });
       }
     });
+  }, [config]);
+
+  // A `chess won` the last page load left unsent lands now — once, and only
+  // within 60 s of the checkmate (it opens the real door; older is dropped).
+  const flushed = useRef(false);
+  useEffect(() => {
+    if (config === null || flushed.current) return;
+    flushed.current = true;
+    void flushPendingSignal(config);
   }, [config]);
 
   useEffect(() => {
@@ -412,6 +423,24 @@ function useStations(config: ReinstallConfig, enabled: boolean): { list: Station
 
 // --- scan ----------------------------------------------------------------------
 
+/** A setup control that opens only after a 2 s hold, filling up while held
+ *  (W-15). A tap or a click does nothing — the tent tablet is in guests' hands. */
+function HoldButton({ onFire, label, children }: { onFire: () => void; label: string; children: ReactNode }) {
+  const { holding, handlers } = useLongPress(onFire);
+  return (
+    <button
+      type="button"
+      className={`w98-button hold${holding ? " holding" : ""}`}
+      style={{ ["--hold-ms" as string]: `${HOLD_MS}ms` }}
+      aria-label={`${label} (hold for ${HOLD_MS / 1000} seconds)`}
+      title={`Hold for ${HOLD_MS / 1000} seconds`}
+      {...handlers}
+    >
+      {children}
+    </button>
+  );
+}
+
 function ScanStep({
   config,
   canDraw,
@@ -482,13 +511,13 @@ function ScanStep({
       heading="Insert the program"
       actions={
         <>
-          <button className="w98-button" onClick={onSetup} aria-label="Set up this device">
+          <HoldButton onFire={onSetup} label="Set up this device">
             ⚙ Setup…
-          </button>
+          </HoldButton>
           <span className="spacer" />
-          <a className="w98-button" href="map">
+          <HoldButton onFire={() => window.location.assign("map")} label="Open the house map">
             🗺 House map
-          </a>
+          </HoldButton>
         </>
       }
     >

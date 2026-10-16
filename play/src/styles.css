@@ -785,6 +785,7 @@ footer {
   text-decoration: underline dotted; text-underline-offset: 2px;
 }
 .wallet-escrow { font-size: 0.9em; }
+.wallet-frozen { font-size: 0.9em; font-weight: 600; }
 .wallet-badge { font-weight: 700; }
 /* The sheets: a side toggle, an amount form, a title box. */
 .wallet-side { display: flex; gap: 8px; margin: 0 8px 8px; }
@@ -996,3 +997,42 @@ footer {
 .typing-note .dots::after { content: "…"; display: inline-block; animation: typing-dots 1.2s steps(4, end) infinite; overflow: hidden; vertical-align: bottom; width: 0; }
 @keyframes typing-dots { to { width: 1.1em; } }
 @media (prefers-reduced-motion: reduce) { .typing-note .dots::after { animation: none; width: auto; } }
+
+/* The takeover (`pin "!!…"`): the whole app under one message until the
+   story unpins it. Black ⇄ highlight, one swap per 0.5 s (≤ 2 Hz, never
+   red); still under reduced motion. Above the tour (30) and every sheet. */
+.takeover {
+  position: absolute; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  background: var(--black); color: var(--highlight);
+  animation: takeover-invert 1s steps(1, end) infinite;
+}
+.takeover-text { font: 900 clamp(32px, 11vw, 72px)/1.05 var(--ui-font); text-align: center; text-transform: uppercase; overflow-wrap: anywhere; }
+@keyframes takeover-invert { 50% { background: var(--highlight); color: var(--black); } }
+@media (prefers-reduced-motion: reduce) { .takeover { animation: none; } }
+
+/* The director's phone cue sheet (W-26, `director.tsx`): one big button
+   per `who: admin` cue — LAST highlighted, NEXT outlined, an armed cue
+   inverted until the second tap fires it. */
+.cue-filter {
+  font: 15px var(--ui-font); color: var(--ink); background: var(--white);
+  box-shadow: var(--sunken); border: none; border-radius: var(--radius);
+  padding: 10px 12px; width: 100%; margin: 2px 0 8px;
+}
+.cue-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cue-row { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: 56px; margin: 0; text-align: left; font-size: 15px; }
+.cue-row.next { box-shadow: var(--raised), inset 0 0 0 3px var(--navy); }
+.cue-row.last { background: var(--highlight); color: var(--black); }
+.cue-row.armed { background: var(--black); color: var(--highlight); box-shadow: var(--raised), inset 0 0 0 3px var(--highlight); }
+.cue-n { flex: 0 0 auto; min-width: 22px; font: 800 13px var(--ui-font); opacity: 0.6; padding-top: 2px; }
+.cue-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cue-title { font-weight: 700; overflow-wrap: anywhere; }
+.cue-code { font: 800 12px var(--ui-font); padding: 1px 5px; border-radius: 4px; background: var(--code-bg); color: var(--ink); }
+.cue-tags { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px; font-weight: 700; opacity: 0.8; }
+.cue-tag.last, .cue-tag.next { text-transform: uppercase; letter-spacing: 0.5px; }
+.cue-arm { font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; font-size: 12px; }
+.cue-toast {
+  position: absolute; left: 12px; right: 12px; bottom: 16px; z-index: 25;
+  background: var(--black); color: var(--white); border-radius: var(--radius);
+  padding: 10px 14px; font-weight: 700; text-align: center; box-shadow: var(--raised);
+}

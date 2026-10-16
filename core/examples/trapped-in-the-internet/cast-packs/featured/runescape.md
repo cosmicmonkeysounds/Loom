@@ -54,8 +54,17 @@ the offer needs work. "Not for sale" is an opening position.
   private orders. Follow them.
 - Your **Wallet** is a room on your phone: send, request, or offer coin for a
   fact (an escrowed trade; every deal posts in `# truthcoin-exchange`). You
-  alone hold the reserve: **💰 Stimulus** pays every cleared program the same
-  amount, at most three times tonight. Spend them well.
+  alone hold the reserve, with three powers from your Wallet room:
+  - **💰 Stimulus** pays every cleared program the same amount, at most three
+    times tonight.
+  - **🎁 Grant** adds Truthcoin to one cleared program's account from the
+    reserve (never from your own balance), at most three times tonight.
+  - **🧊 Freeze** stops one program's Truthcoin going out for **ten minutes**:
+    they can't send, pay a request or buy, but coin still comes in. One freeze
+    per program at a time; it thaws on its own. `# truthcoin-exchange` posts
+    every grant from your phone and every freeze (a grant the director makes
+    for you posts nothing).
+  Spend them well.
 - DraftKings will want to gamble. McAfee brokers, CRA Agent Software approves
   every third transfer and can deny any. Make them all accept your standard.
 - Your identity can leak (there are files about people in the house). Bluff.

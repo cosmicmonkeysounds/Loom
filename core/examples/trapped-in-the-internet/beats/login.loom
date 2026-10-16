@@ -141,10 +141,13 @@ else if program.featured == "bugdom":
 else if program.featured == "jeeves":
   The Uploader: Restoring… restor… r3st0r1ng… 404.
   unlock Virgil Jeeves for program
+  start quest Ten Findings for program "0 programs have ten of your findings."
 else if program.featured == "runescape":
   unlock Poppy Van Mises for program
 else if program.featured == "mspaint":
   unlock Maria Sophia Paine for program
+  set Night.painting = true
+  start quest The Painting for program "0 programs have signed."
 else if program.featured == "vlc":
   unlock Victor Louis Christianson for program
 else if program.featured == "pong":

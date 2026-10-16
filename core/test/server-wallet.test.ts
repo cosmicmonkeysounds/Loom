@@ -12,6 +12,7 @@ import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { EventRuntime } from "../server/event-runtime.ts";
+import { HOLD_MS } from "../server/wallet.ts";
 import { Store } from "../server/store.ts";
 import type { ChatMessage } from "../server/chat.ts";
 import type { GuestView, ModView, PrimeView } from "../server/views.ts";
@@ -39,6 +40,10 @@ CHARACTER Mint
 
 CODEX The Lease
   text: A lease.
+
+CODEX Patch Sheet
+  title: Patch Sheet A · 1 of 2
+  text: The phone shows (and sends) the title, not the id.
 
 ROLE Guest
   got: 0 to 100 = 0
@@ -330,6 +335,17 @@ describe("sending coin", () => {
     expect((await wallet(rt, "send", { to: b.id, amount: 0 }, b.token)).status).toBe(400);
     expect((await wallet(rt, "send", { to: a.id, amount: 1 }, b.token)).status).toBe(200);
   });
+
+  it("a refused offer still counts, so guessing codex titles hits the limit", async () => {
+    const rt = freshRuntime(SOURCE, { wallet: { max: 2, windowMs: 60_000 } });
+    const a = await guest(rt, "Alice");
+    const b = await guest(rt, "Bob");
+    const guess = (entry: string) => wallet(rt, "offer", { to: b.id, entry, side: "buy", amount: 1 }, a.token);
+    expect((await guess("Guess One")).status).toBe(409);
+    expect((await guess("Guess Two")).status).toBe(409);
+    expect(await guess("The Lease")).toMatchObject({ status: 429, json: { error: "slow down — wait a minute" } });
+    expect(await guess("Guess Three")).toMatchObject({ status: 429 });
+  });
 });
 
 describe("requests", () => {
@@ -379,7 +395,7 @@ describe("offers (trading a fact)", () => {
     const a = await guest(rt, "Alice");
     const b = await guest(rt, "Bob");
     expect((await post(rt, "/api/mod/codex", { who: a.id, entry: "The Lease" }, undefined, true)).status).toBe(200);
-    expect(await wallet(rt, "offer", { to: b.id, entry: "Nope", side: "sell", amount: 10 }, a.token)).toMatchObject({ status: 404, json: { error: "no such entry" } });
+    expect(await wallet(rt, "offer", { to: b.id, entry: "Nope", side: "sell", amount: 10 }, a.token)).toMatchObject({ status: 404, json: { error: "you don't hold that entry" } });
     expect(await wallet(rt, "offer", { to: a.id, entry: "The Lease", side: "sell", amount: 10 }, b.token)).toMatchObject({ status: 404, json: { error: "you don't hold that entry" } });
     const o = await wallet(rt, "offer", { to: b.id, entry: "the lease", side: "sell", amount: 10 }, a.token);
     expect(o.status).toBe(200);
@@ -411,6 +427,114 @@ describe("offers (trading a fact)", () => {
   });
 });
 
+describe("offers resolve titles and can't probe the codex", () => {
+  it("sells an entry by its display title (title ≠ id); a buy never reveals what the seller holds; an unknown entry gets one generic 409", async () => {
+    const rt = freshRuntime();
+    const a = await guest(rt, "Alice");
+    const b = await guest(rt, "Bob");
+    const c = await guest(rt, "Cleo");
+    expect((await post(rt, "/api/mod/codex", { who: a.id, entry: "Patch Sheet" }, undefined, true)).status).toBe(200);
+    const o = await wallet(rt, "offer", { to: b.id, entry: "Patch Sheet A · 1 of 2", side: "sell", amount: 10 }, a.token);
+    expect(o.status).toBe(200);
+    expect((o.json["wallet"] as GuestView["wallet"])!.offers.map((x) => [x.entry, x.entryTitle])).toEqual([["Patch Sheet", "Patch Sheet A · 1 of 2"]]);
+    expect((await wallet(rt, "accept", { id: "o1" }, b.token)).status).toBe(200);
+    expect(rt.liveSim!.holdsCodex(b.id, "Patch Sheet")).toBe(true);
+    // A buy of no entry at all gets the generic refusal and mints no card.
+    const generic = { status: 409, json: { error: "they don't have that to sell" } };
+    expect(await wallet(rt, "offer", { to: c.id, entry: "No Such Entry", side: "buy", amount: 10 }, a.token)).toMatchObject(generic);
+    expect(walletRoom(rt, c.id)).toEqual([]);
+    // A buy from one who doesn't hold it is not refused (a refusal would tell
+    // the buyer what Cleo holds, unseen): Cleo gets the card, and accepting
+    // fails on the re-check, refunding the escrow.
+    expect((await wallet(rt, "offer", { to: c.id, entry: "Patch Sheet A · 1 of 2", side: "buy", amount: 10 }, a.token)).status).toBe(200);
+    expect(rows(walletRoom(rt, c.id)).at(-1)).toEqual(["offer", "offered", "root"]);
+    expect((await wallet(rt, "accept", { id: "o2" }, c.token)).status).toBe(200);
+    expect(rt.liveSim!.holdsCodex(a.id, "Patch Sheet")).toBe(true);
+    expect(rt.liveSim!.holdsCodex(c.id, "Patch Sheet")).toBe(false);
+    // From one who holds it, the buy goes through by title.
+    expect((await wallet(rt, "offer", { to: b.id, entry: "patch sheet a · 1 of 2", side: "buy", amount: 5 }, c.token)).status).toBe(200);
+    expect(rows(walletRoom(rt, b.id)).at(-1)).toEqual(["offer", "offered", "root"]);
+  });
+});
+
+describe("a held transfer times out", () => {
+  it("settles itself after HOLD_MS on the story clock (timed_out, no approval credited) and a restart replays it", async () => {
+    const d = freshDir();
+    const rt = runtimeIn(d);
+    rt.openDoors();
+    const a = await guest(rt, "Alice");
+    const b = await guest(rt, "Bob");
+    expect((await wallet(rt, "send", { to: b.id, amount: 10 }, a.token)).status).toBe(200); // t1 pending
+    expect((await wallet(rt, "send", { to: b.id, amount: 20 }, a.token)).status).toBe(200); // t2 held
+    const t2 = (await guestState(rt, a.token)).wallet!.transfers.find((t) => t.id === "t2")!;
+    expect(t2).toMatchObject({ state: "held", settleAt: rt.liveSim!.elapsed() + HOLD_MS });
+    rt.tickOnce(10_000); // t1 settles
+    expect((await guestState(rt, b.token)).wallet!.balance).toBe(110);
+    rt.tickOnce(t2.settleAt! - rt.liveSim!.elapsed() - 1_000);
+    expect((await modState(rt)).wallet!.open.transfers.map((t) => t.id)).toEqual(["t2"]);
+    rt.tickOnce(1_000);
+    expect((await guestState(rt, b.token)).wallet!.balance).toBe(130);
+    expect((await modState(rt)).wallet!.open.transfers).toEqual([]);
+    expect(rows(walletRoom(rt, a.id)).at(-1)).toEqual(["transfer", "timed_out", "step"]);
+    expect(walletRoom(rt, a.id).at(-1)!.text).toBe("✅ Approved automatically: 20 Coin to Bob.");
+    expect(num(rt, `${b.id}.got`)).toBe(2);
+
+    const rt2 = runtimeIn(d);
+    expect(rt2.restore()).not.toBeNull();
+    expect((await guestState(rt2, b.token)).wallet!.balance).toBe(130);
+    expect((await modState(rt2)).wallet!.open.transfers).toEqual([]);
+    expect(rows(walletRoom(rt2, a.id))).toEqual(rows(walletRoom(rt, a.id)));
+  });
+
+  it("approve-held approves every held transfer at once, by the director; pending ones keep their window", async () => {
+    const rt = freshRuntime();
+    const a = await guest(rt, "Alice");
+    const b = await guest(rt, "Bob");
+    for (const amount of [1, 2, 3, 4]) expect((await wallet(rt, "send", { to: b.id, amount }, a.token)).status).toBe(200); // t1 t3 pending, t2 t4 held
+    expect((await post(rt, "/api/mod/wallet/approve-held", {}, a.token)).status).toBe(403); // moderators only
+    const r = await post(rt, "/api/mod/wallet/approve-held", {}, undefined, true);
+    expect(r.status).toBe(200);
+    expect(r.json["approved"]).toEqual(["t2", "t4"]);
+    expect((r.json["wallet"] as ModView["wallet"])!.open.transfers.map((t) => [t.id, t.state])).toEqual([
+      ["t1", "pending"],
+      ["t3", "pending"],
+    ]);
+    expect((await guestState(rt, b.token)).wallet!.balance).toBe(106);
+    expect(walletRoom(rt, a.id).filter((m) => m.wallet?.step === "approved").map((m) => m.wallet?.by)).toEqual(["Director", "Director"]);
+    expect((await post(rt, "/api/mod/wallet/approve-held", {}, undefined, true)).json["approved"]).toEqual([]);
+  });
+});
+
+describe("a restricted guest's wallet is frozen", () => {
+  it("send / request / respond / offer / accept / stimulus are 403; decline + cancel still work; the director and others are untouched", async () => {
+    const rt = freshRuntime();
+    const a = await guest(rt, "Alice");
+    const b = await guest(rt, "Bob");
+    expect((await post(rt, "/api/mod/codex", { who: b.id, entry: "The Lease" }, undefined, true)).status).toBe(200);
+    expect((await wallet(rt, "request", { from: a.id, amount: 5 }, b.token)).status).toBe(200); // r1: Bob asks Alice
+    expect((await wallet(rt, "offer", { to: a.id, entry: "The Lease", side: "sell", amount: 5 }, b.token)).status).toBe(200); // o2
+    expect((await wallet(rt, "offer", { to: a.id, entry: "The Lease", side: "sell", amount: 6 }, b.token)).status).toBe(200); // o3
+    expect((await wallet(rt, "request", { from: b.id, amount: 5 }, a.token)).status).toBe(200); // r4: Alice asks Bob
+    expect((await post(rt, "/api/mod/act", { id: a.id, action: "restrict" }, undefined, true)).status).toBe(200);
+    const frozen = { status: 403, json: { error: "you're restricted — the story has to lift it first" } };
+    expect(await wallet(rt, "send", { to: b.id, amount: 5 }, a.token)).toMatchObject(frozen);
+    expect(await wallet(rt, "request", { from: b.id, amount: 5 }, a.token)).toMatchObject(frozen);
+    expect(await wallet(rt, "respond", { id: "r1", accept: true }, a.token)).toMatchObject(frozen);
+    expect(await wallet(rt, "offer", { to: b.id, entry: "The Lease", side: "buy", amount: 5 }, a.token)).toMatchObject(frozen);
+    expect(await wallet(rt, "accept", { id: "o2" }, a.token)).toMatchObject(frozen);
+    expect(await wallet(rt, "stimulus", { amount: 5 }, a.token)).toMatchObject(frozen);
+    // Backing out is allowed.
+    expect((await wallet(rt, "decline", { id: "o2" }, a.token)).status).toBe(200);
+    expect((await wallet(rt, "cancel", { id: "r4" }, a.token)).status).toBe(200);
+    // Bob and the director still move coin for and to her.
+    expect((await wallet(rt, "send", { to: a.id, amount: 5 }, b.token)).status).toBe(200);
+    expect((await post(rt, "/api/mod/wallet/cancel", { id: "r1" }, undefined, true)).status).toBe(200);
+    expect((await post(rt, "/api/mod/act", { id: a.id, action: "unrestrict" }, undefined, true)).status).toBe(200);
+    expect((await wallet(rt, "accept", { id: "o3" }, a.token)).status).toBe(200);
+    expect(rt.liveSim!.holdsCodex(a.id, "The Lease")).toBe(true);
+  });
+});
+
 describe("the stimulus", () => {
   it("only the minter's program (or the director) pays it, to every person with a balance, within the limit", async () => {
     const rt = freshRuntime();
@@ -418,7 +542,7 @@ describe("the stimulus", () => {
     const b = await guest(rt, "Bob");
     expect(await wallet(rt, "stimulus", { amount: 10 }, a.token)).toMatchObject({ status: 403, json: { error: "not the minter" } });
     const mint = await guest(rt, "Mint", 0);
-    expect((await guestState(rt, mint.token)).wallet!.minter).toEqual({ uses: 0, limit: 1 });
+    expect((await guestState(rt, mint.token)).wallet!.minter).toEqual({ uses: 0, limit: 1, grants: { uses: 0, limit: 3 }, freezeMs: 600_000, frozen: [] });
     expect((await modState(rt)).wallet!.minterPerson).toBe(mint.id);
     expect((await wallet(rt, "stimulus", { amount: 0 }, mint.token)).status).toBe(400);
     expect((await wallet(rt, "stimulus", { amount: 10 }, mint.token)).status).toBe(200);
@@ -443,6 +567,77 @@ describe("the stimulus", () => {
     expect((await guestState(rt, a.token)).wallet!.balance).toBe(107);
     expect(walletRoom(rt, a.id)[0]!.text).toBe("💰 Stimulus from Director: 7 Coin.");
     expect((await post(rt, "/api/mod/wallet/stimulus", { amount: 7 })).status).toBe(403); // not a moderator
+  });
+});
+
+describe("the reserve: grants + a ten-minute freeze", () => {
+  it("the minter grants one account (limit 3, the director's counts) and freezes one; a frozen send is 409 and thaws on the story clock", async () => {
+    const d = freshDir();
+    const rt = runtimeIn(d);
+    rt.openDoors();
+    const a = await guest(rt, "Alice");
+    const b = await guest(rt, "Bob");
+    const mint = await guest(rt, "Mint", 0);
+    expect(await wallet(rt, "grant", { to: b.id, amount: 5 }, a.token)).toMatchObject({ status: 403, json: { error: "not the minter" } });
+    expect(await wallet(rt, "freeze", { to: b.id }, a.token)).toMatchObject({ status: 403, json: { error: "not the minter" } });
+    expect((await wallet(rt, "grant", { to: a.id, amount: 20 }, mint.token)).status).toBe(200);
+    expect((await guestState(rt, a.token)).wallet!.balance).toBe(120);
+    expect(rows(walletRoom(rt, a.id))).toEqual([["grant", "received", "root"]]);
+    expect(walletRoom(rt, a.id)[0]!.text).toBe("🎁 Mint granted you 20 Coin from the reserve.");
+    expect(rows(walletRoom(rt, mint.id))).toEqual([["grant", "granted", "root"]]);
+    expect((await post(rt, "/api/mod/wallet/grant", { to: b.id, amount: 5 })).status).toBe(403); // not a moderator
+    expect((await post(rt, "/api/mod/wallet/grant", { to: b.id, amount: 5 }, undefined, true)).status).toBe(200);
+    expect((await wallet(rt, "grant", { to: b.id, amount: 5 }, mint.token)).status).toBe(200);
+    expect(await wallet(rt, "grant", { to: b.id, amount: 5 }, mint.token)).toMatchObject({ status: 409, json: { error: "no grants left" } });
+    expect((await modState(rt)).wallet!.grants).toEqual({ uses: 3, limit: 3 });
+
+    const r = await wallet(rt, "freeze", { to: a.id }, mint.token);
+    expect(r.status).toBe(200);
+    const until = rt.liveSim!.elapsed() + 600_000;
+    expect((r.json["wallet"] as GuestView["wallet"])!.minter!.frozen).toEqual([{ id: "f4", target: a.id, targetName: "Alice", by: mint.id, until, at: until - 600_000 }]);
+    expect((await guestState(rt, a.token)).wallet!.frozenUntil).toBe(until);
+    expect(rows(walletRoom(rt, a.id)).at(-1)).toEqual(["freeze", "frozen", "root"]);
+    expect(await wallet(rt, "freeze", { to: a.id }, mint.token)).toMatchObject({ status: 409, json: { error: "already frozen" } });
+    expect(await wallet(rt, "send", { to: b.id, amount: 5 }, a.token)).toMatchObject({ status: 409, json: { error: "your Coin is frozen — it thaws in 10 min" } });
+    expect((await wallet(rt, "send", { to: a.id, amount: 5 }, b.token)).status).toBe(200); // coin still comes in
+    expect((await modState(rt)).wallet!.frozen.map((f) => f.target)).toEqual([a.id]);
+
+    // A restart mid-freeze keeps it; the thaw lands at 600 s on the replayed clock.
+    const rt2 = runtimeIn(d);
+    expect(rt2.restore()).not.toBeNull();
+    expect((await guestState(rt2, a.token)).wallet!.frozenUntil).toBe(until);
+    expect((await wallet(rt2, "send", { to: b.id, amount: 5 }, a.token)).status).toBe(409);
+    rt2.tickOnce(until - rt2.liveSim!.elapsed() - 1_000);
+    expect((await guestState(rt2, a.token)).wallet!.frozenUntil).toBe(until);
+    rt2.tickOnce(1_000);
+    expect((await guestState(rt2, a.token)).wallet!.frozenUntil).toBeUndefined();
+    expect(rows(walletRoom(rt2, a.id)).at(-1)).toEqual(["freeze", "thawed", "step"]);
+    expect(rows(walletRoom(rt2, mint.id)).at(-1)).toEqual(["freeze", "expired", "step"]);
+    expect((await modState(rt2)).wallet!.frozen).toEqual([]);
+    expect((await wallet(rt2, "send", { to: b.id, amount: 5 }, a.token)).status).toBe(200);
+
+    const rt3 = runtimeIn(d);
+    expect(rt3.restore()).not.toBeNull();
+    expect((await guestState(rt3, a.token)).wallet).toEqual((await guestState(rt2, a.token)).wallet);
+    expect(rows(walletRoom(rt3, a.id))).toEqual(rows(walletRoom(rt2, a.id)));
+  });
+
+  it("the director freezes and lifts early; a restricted minter can neither grant nor freeze", async () => {
+    const rt = freshRuntime();
+    const a = await guest(rt, "Alice");
+    const mint = await guest(rt, "Mint", 0);
+    expect((await post(rt, "/api/mod/wallet/freeze", { to: a.id }, undefined, true)).status).toBe(200);
+    expect(await wallet(rt, "send", { to: mint.id, amount: 5 }, a.token)).toMatchObject({ status: 409 });
+    expect(walletRoom(rt, mint.id)).toEqual([]); // the minter didn't impose it
+    expect(await post(rt, "/api/mod/wallet/unfreeze", { to: "nobody" }, undefined, true)).toMatchObject({ status: 404, json: { error: "no such freeze" } });
+    const lift = await post(rt, "/api/mod/wallet/unfreeze", { to: a.id }, undefined, true);
+    expect(lift.status).toBe(200);
+    expect((lift.json["wallet"] as ModView["wallet"])!.frozen).toEqual([]);
+    expect(walletRoom(rt, a.id).at(-1)!.text).toBe("☀️ Director lifted the freeze — your Coin moves again.");
+    expect((await wallet(rt, "send", { to: mint.id, amount: 5 }, a.token)).status).toBe(200);
+    expect((await post(rt, "/api/mod/act", { id: mint.id, action: "restrict" }, undefined, true)).status).toBe(200);
+    expect((await wallet(rt, "grant", { to: a.id, amount: 5 }, mint.token)).status).toBe(403);
+    expect((await wallet(rt, "freeze", { to: a.id }, mint.token)).status).toBe(403);
   });
 });
 

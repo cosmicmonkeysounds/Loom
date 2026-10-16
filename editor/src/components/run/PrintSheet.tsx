@@ -1,6 +1,9 @@
 //! Run → Print (K-12): a full-screen print sheet over the editor — the join
-//! poster, every codex poster (title + QR + typed code) and a check-in sign
-//! per room, from `/api/mod/codes`. QRs are drawn in the browser
+//! poster, the iPhone door sign (worded off `/api/push/config`'s
+//! `homescreen`), every codex poster (title + QR + typed code, sorted by
+//! fact stack with a coloured band + the pile printed as text), a check-in
+//! sign per room and the cast cards (always 8-up business cards, on their
+//! own page), from `/api/mod/codes`. QRs are drawn in the browser
 //! (`lib/print-sheet.ts`), so a 60–80 card sheet never hits `/api/qr`'s
 //! rate limit. The toolbar (sections, skip a card, cards per page) never
 //! prints; `@media print` hides the editor and lays out one card per
@@ -9,12 +12,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { modApi } from '@/lib/api'
-import { buildPrintItems, PrintKind, qrSvg, type PerPage, type PrintItem } from '@/lib/print-sheet'
+import { buildPrintItems, PrintKind, qrSvg, stackInk, stackLine, type PerPage, type PrintItem } from '@/lib/print-sheet'
 
 const SECTION_LABEL: Record<PrintKind, string> = {
   [PrintKind.Join]: 'Join poster',
+  [PrintKind.Door]: 'Door sign',
   [PrintKind.Codex]: 'Codex posters',
   [PrintKind.Room]: 'Room check-in signs',
+  [PrintKind.Cast]: 'Cast cards',
 }
 
 // Plain CSS (not Tailwind) so the print layout doesn't depend on the dark
@@ -33,6 +38,10 @@ const CSS = `
 .loom-print-card .code { margin-top: 0.12in; font-family: ui-monospace, Menlo, monospace; font-weight: 700; letter-spacing: 0.12em; }
 .loom-print-card .ref { position: absolute; right: 0.15in; bottom: 0.1in; font-size: 9pt; color: #71717a; font-family: ui-monospace, Menlo, monospace; }
 .loom-print-card .note, .loom-print-card .skip { position: absolute; left: 0.15in; top: 0.1in; font-size: 10px; color: #b45309; }
+.loom-print-card .steps { margin: 0 0 0.12in; padding-left: 1.4em; text-align: left; color: #3f3f46; }
+.loom-print-card .band { position: absolute; left: 0; right: 0; top: 0; height: 0.15in; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.loom-print-card .stack { margin-top: 0.08in; font-size: 9pt; color: #3f3f46; font-weight: 600; }
+.loom-print-card.banded .note { top: 0.2in; }
 .loom-print-card .url { position: absolute; left: 0.15in; right: 0.6in; bottom: 0.1in; font-size: 9px; color: #2563eb; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .loom-print-card .skip { left: auto; right: 0.15in; color: #52525b; background: #f4f4f5; border: 1px solid #d4d4d8; border-radius: 4px; padding: 1px 6px; cursor: pointer; }
 .pp-1 { grid-template-columns: 7.5in; } .pp-1 .loom-print-card { height: 10in; }
@@ -40,7 +49,13 @@ const CSS = `
 .pp-2 { grid-template-columns: 7.5in; } .pp-2 .loom-print-card { height: 4.9in; }
 .pp-2 h2 { font-size: 26pt; } .pp-2 .hint { font-size: 13pt; } .pp-2 .qr { width: 2.7in; height: 2.7in; } .pp-2 .code { font-size: 20pt; }
 .pp-4 { grid-template-columns: 3.65in 3.65in; } .pp-4 .loom-print-card { height: 4.9in; }
-.pp-4 h2 { font-size: 18pt; } .pp-4 .hint { font-size: 10pt; } .pp-4 .qr { width: 2.6in; height: 2.6in; } .pp-4 .code { font-size: 15pt; }
+.pp-4 h2 { font-size: 18pt; } .pp-4 .hint, .pp-4 .steps { font-size: 10pt; } .pp-4 .qr { width: 2.6in; height: 2.6in; } .pp-4 .code { font-size: 15pt; }
+.pp-1 .steps { font-size: 18pt; } .pp-2 .steps { font-size: 13pt; }
+.pp-8 { grid-template-columns: 3.5in 3.5in; gap: 0.2in; }
+.pp-8 .loom-print-card { height: 2in; padding: 0.15in; display: grid; grid-template-columns: 1.45in 1fr; grid-auto-rows: min-content; column-gap: 0.12in; align-content: center; justify-items: start; text-align: left; }
+.pp-8 .qr { grid-column: 1; grid-row: 1 / span 6; width: 1.45in; height: 1.45in; align-self: center; }
+.pp-8 h2, .pp-8 .hint, .pp-8 .steps, .pp-8 .code, .pp-8 .stack { grid-column: 2; }
+.pp-8 h2 { font-size: 13pt; } .pp-8 .hint, .pp-8 .steps { font-size: 8pt; margin-bottom: 0.05in; } .pp-8 .code { font-size: 12pt; margin-top: 0.04in; } .pp-8 .stack { font-size: 7pt; }
 @media print {
   @page { size: letter; margin: 0.25in; }
   html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
@@ -48,6 +63,7 @@ const CSS = `
   .loom-print { position: static; overflow: visible; background: #fff; }
   .loom-print-bar, .loom-print-card.skipped, .loom-print-card .note, .loom-print-card .skip, .loom-print-card .url { display: none !important; }
   .loom-print-grid { padding: 0; gap: 0.2in 0.2in; }
+  .loom-print-grid + .loom-print-grid { break-before: page; page-break-before: always; }
   .loom-print-card { border-color: #d4d4d8; }
   .pp-2 .loom-print-card, .pp-4 .loom-print-card { height: 5in; }
 }
@@ -55,14 +71,23 @@ const CSS = `
 
 function Card({ item, svg, skipped, onToggle }: { item: PrintItem; svg: string | undefined; skipped: boolean; onToggle: () => void }) {
   return (
-    <div className={`loom-print-card${skipped ? ' skipped' : ''}`} data-testid={`print-card-${item.ref}`}>
+    <div className={`loom-print-card${skipped ? ' skipped' : ''}${item.stack ? ' banded' : ''}`} data-testid={`print-card-${item.ref}`}>
+      {item.stack && <span className="band" style={{ background: stackInk(item.stack.colour) }} />}
       {item.note && <span className="note">{item.note}</span>}
       <button className="skip" onClick={onToggle}>{skipped ? 'include' : 'skip'}</button>
       <h2>{item.title}</h2>
-      <p className="hint">{item.hint}</p>
+      {item.hint !== '' && <p className="hint">{item.hint}</p>}
+      {item.steps && item.steps.length > 0 && (
+        <ol className="steps">
+          {item.steps.map((s) => (
+            <li key={s}>{s}</li>
+          ))}
+        </ol>
+      )}
       {/* `qrcode`'s own SVG output for our own link — no user markup. */}
       <div className="qr" dangerouslySetInnerHTML={{ __html: svg ?? '' }} />
       {item.code !== '' && <div className="code">{item.code}</div>}
+      {item.stack && <div className="stack">{stackLine(item.stack)}</div>}
       <span className="url" title={item.url}>{item.url}</span>
       <span className="ref">{item.ref}</span>
     </div>
@@ -73,7 +98,7 @@ export function PrintSheet({ eventId, onClose }: { eventId: string; onClose: () 
   const [items, setItems] = useState<PrintItem[] | null>(null)
   const [svgs, setSvgs] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
-  const [sections, setSections] = useState<Record<PrintKind, boolean>>({ join: true, codex: true, room: true })
+  const [sections, setSections] = useState<Record<PrintKind, boolean>>({ join: true, door: true, codex: true, room: true, cast: true })
   const [skipped, setSkipped] = useState<Set<string>>(() => new Set())
   const [perPage, setPerPage] = useState<PerPage>(4)
 
@@ -81,7 +106,10 @@ export function PrintSheet({ eventId, onClose }: { eventId: string; onClose: () 
     let cancelled = false
     void (async () => {
       try {
-        const list = buildPrintItems(await modApi.codes(eventId))
+        // The door sign's wording follows K-31b's switch; an older server
+        // (or any failure) prints the plain "Scan to join" sign.
+        const [codes, push] = await Promise.all([modApi.codes(eventId), modApi.pushConfig(eventId).catch(() => null)])
+        const list = buildPrintItems(codes, { homescreen: push?.homescreen === true })
         if (cancelled) return
         setItems(list)
         const drawn = await Promise.all(list.map(async (i) => [i.ref, await qrSvg(i.url)] as const))
@@ -104,6 +132,8 @@ export function PrintSheet({ eventId, onClose }: { eventId: string; onClose: () 
   }, [onClose])
 
   const shown = useMemo(() => (items ?? []).filter((i) => sections[i.kind]), [items, sections])
+  const posters = shown.filter((i) => i.kind !== PrintKind.Cast)
+  const castCards = shown.filter((i) => i.kind === PrintKind.Cast)
   const printing = shown.filter((i) => !skipped.has(i.ref)).length
   const ready = items !== null && shown.every((i) => svgs[i.ref] !== undefined)
 
@@ -130,6 +160,7 @@ export function PrintSheet({ eventId, onClose }: { eventId: string; onClose: () 
           <option value={1}>1 per page (poster)</option>
           <option value={2}>2 per page</option>
           <option value={4}>4 per page</option>
+          <option value={8}>8 per page (business cards)</option>
         </select>
         <span style={{ color: '#a1a1aa' }}>{printing} cards · Letter</span>
         <span style={{ flex: 1 }} />
@@ -140,11 +171,21 @@ export function PrintSheet({ eventId, onClose }: { eventId: string; onClose: () 
       </div>
       {error && <p style={{ padding: 16, color: '#b91c1c' }}>Could not load the codes: {error}</p>}
       {items === null && error === null && <p style={{ padding: 16 }}>Loading…</p>}
-      <div className={`loom-print-grid pp-${perPage}`}>
-        {shown.map((i) => (
-          <Card key={i.ref} item={i} svg={svgs[i.ref]} skipped={skipped.has(i.ref)} onToggle={() => toggle(i.ref)} />
-        ))}
-      </div>
+      {posters.length > 0 && (
+        <div className={`loom-print-grid pp-${perPage}`}>
+          {posters.map((i) => (
+            <Card key={i.ref} item={i} svg={svgs[i.ref]} skipped={skipped.has(i.ref)} onToggle={() => toggle(i.ref)} />
+          ))}
+        </div>
+      )}
+      {/* Cast cards are business cards whatever the poster size, on their own page. */}
+      {castCards.length > 0 && (
+        <div className="loom-print-grid pp-8" data-testid="print-cast-grid">
+          {castCards.map((i) => (
+            <Card key={i.ref} item={i} svg={svgs[i.ref]} skipped={skipped.has(i.ref)} onToggle={() => toggle(i.ref)} />
+          ))}
+        </div>
+      )}
     </div>,
     document.body,
   )

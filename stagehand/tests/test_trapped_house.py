@@ -184,11 +184,59 @@ def test_every_room_trabolta_can_darken_goes_off_and_comes_back():
         assert evaluate_cues(_show().cues, _directive("cue", f"lights, room: {room}, state: off")) == [], room
 
 
-def test_announce_is_mapped_when_the_story_uses_it():
+def test_every_announcement_plays_and_ducks_the_music():
+    """SW-AUD-05: every `do announce "…"` reaches the announcement player AND
+    fires QLab's `duck_music` cue (the cue map fires every matching rule)."""
+    lines = re.findall(r'^\s*do announce ("[^"]+")', _code(_story_text()), re.M)
+    assert lines, "the story no longer announces anything"
+    for line in lines:
+        cues = evaluate_cues(_show().cues, _directive("announce", line))
+        assert cues == [
+            MqttCue(topic="show/announce", payload=json.dumps({"text": line.strip('"')}), retain=False, qos=0),
+            OscCue(addr="/cue/duck_music/start", args=(), t_exec_offset_ms=None, to=("qlab",)),
+        ], line
+
+
+def _lights_values() -> set[str]:
+    return set(re.findall(r'\bset\s+Night\.lights\s*=\s*"([a-z0-9_]+)"', _code(_story_text())))
+
+
+def test_every_night_lights_mirror_has_a_rule_and_catches_up():
+    """SW-SH-10: the catch-up replays `lights_{Night.lights}`, so every value
+    the story mirrors must be a real scene rule (the mirror and the YAML stay
+    in step), and every one but `alarm` replays."""
+    values = _lights_values()
+    assert {"screensaver", "game", "alarm", "restore"} <= values, values
+    missing = sorted(v for v in values if f"lights_{v}" not in _targets("cue"))
+    assert not missing, f"Night.lights values with no lights_<value> rule: {missing}"
+    scene, room, back = _show().catch_up
+    assert scene.path == "Night.lights" and room.path == back.path == "Night.dark_room"
+    for value in values:
+        args = scene.args_for({"Night.lights": value})
+        if value == "alarm":  # re-arms the server room's 120 s siren
+            assert args is None
+            continue
+        assert args == f"lights_{value}" and evaluate_cues(_show().cues, _directive("cue", args)), value
+    # Trabolta's cut replays only mid-cut, onto the look he cut, and only an allow-listed room.
+    mid = {"Night.lights": "game", "Night.dark_scene": "game", "Night.lights_back_at": "300"}
+    for dark in ("The Start Bar", "The Desktop", "The RAM"):
+        args = room.args_for({**mid, "Night.dark_room": dark})
+        assert args == f"lights, room: {dark}, state: off" and evaluate_cues(_show().cues, _directive("cue", args))
+    assert room.args_for({**mid, "Night.dark_room": "none"}) is None
+    assert room.args_for({**mid, "Night.dark_room": "The RAM", "Night.lights_back_at": "0"}) is None
+    assert room.args_for({**mid, "Night.dark_room": "The RAM", "Night.lights": "pong"}) is None
+    # …and once the cut is over, the restore half (a lost restore relights the room).
+    done = {**mid, "Night.lights_back_at": "0"}
+    for dark in ("The Start Bar", "The Desktop", "The RAM"):
+        args = back.args_for({**done, "Night.dark_room": dark})
+        assert args == f"lights, room: {dark}, state: on" and evaluate_cues(_show().cues, _directive("cue", args))
+        assert back.args_for({**mid, "Night.dark_room": dark}) is None  # mid-cut: stays dark
+    assert back.args_for({**done, "Night.dark_room": "none"}) is None
+    assert back.args_for({**done, "Night.dark_room": "The RAM", "Night.lights": "pong"}) is None
+    # The paths the catch-up reads are the ones the story writes.
     code = _code(_story_text())
-    if re.search(r"^\s*do announce\b", code, re.M):
-        cues = evaluate_cues(_show().cues, _directive("announce", '"Go to the living room."'))
-        assert cues == [MqttCue(topic="show/announce", payload='{"text": "Go to the living room."}', retain=False, qos=0)]
+    for path in ("Night.dark_room", "Night.dark_scene", "Night.lights_back_at"):
+        assert re.search(rf"\bset\s+{re.escape(path)}\s*=", code), path
 
 
 def test_the_door_drives_the_indicator_and_there_is_no_maglock():

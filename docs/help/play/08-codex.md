@@ -2,7 +2,7 @@
 title: Lore, people & private messages
 section: Guest Guide
 order: 8
-keywords: codex, unlock, redeem, lore, knowledge, share, people, directory, message, private, dm, alert, chime, push, notifications, get alerts, locked, keep screen on, puzzle, wall
+keywords: codex, unlock, redeem, lore, knowledge, share, people, directory, message, private, dm, alert, chime, push, notifications, get alerts, locked, keep screen on, iphone, home screen, puzzle, wall, takeover, flashing, full screen, go to the living room
 ---
 
 Some stories run on **knowledge**. What you know is yours to keep — or to
@@ -63,5 +63,13 @@ you wake the phone (anything from the last 10 minutes). Want to be sure?
 open. On an Android phone, tap **🔔 Get alerts → Turn on** (the card
 above your rooms, or **☰ → Get alerts on this phone**) and allow
 notifications: alerts and messages from the characters then reach you
-even when the phone is locked. Leaving the event turns them off. iPhones
-can't do this yet — keep the screen on instead.
+even when the phone is locked, and tapping one opens its room. Leaving the event turns them off. On an
+iPhone the card says what works there: if it shows **Get alerts on your
+iPhone**, tap Share → **Add to Home Screen**, open the party from the new
+icon (you'll still be you) and tap 🔔 there; if it says **Your iPhone
+can't get alerts**, keep the app open with the screen on.
+
+At the biggest moment of a night the whole screen can become the alert:
+it flashes black and yellow with one instruction (*GO TO THE LIVING
+ROOM*) and there's nothing to close. Go. The story takes it down when
+the moment has passed (with Reduce Motion on, it doesn't flash).

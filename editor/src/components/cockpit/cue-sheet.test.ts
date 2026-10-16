@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { InteractionSummary } from '@loom/core/views'
-import { cueRows, cueValueArgs, filterCues, nightPhase, splitCode } from './cue-sheet'
+import { cueRows, cueValueArgs, filterCues, nightPhase, splitCode } from '@loom/core/cue-sheet'
 import { NO_CUES } from '@/store/cockpit'
 
 const ix = (id: string, label: string, who: InteractionSummary['who'] = 'admin'): InteractionSummary => ({ id, label, who, description: null })

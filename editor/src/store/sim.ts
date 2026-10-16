@@ -82,7 +82,7 @@ function indexedSources(): CompiledSource[] {
 function empty(): Pick<
   SimState,
   | 'phase' | 'run' | 'connected' | 'roster' | 'factions' | 'locations' | 'cast' | 'channels' | 'spaces'
-  | 'beats' | 'events' | 'interactions' | 'cues' | 'codex' | 'quests' | 'facts' | 'ledgerLen' | 'messages' | 'world' | 'personas' | 'log'
+  | 'beats' | 'events' | 'interactions' | 'cues' | 'codex' | 'quests' | 'facts' | 'wallet' | 'storyClock' | 'ledgerLen' | 'messages' | 'world' | 'personas' | 'log'
   | 'choices' | 'selection' | 'perspective' | 'lens' | 'error' | 'entryBeat'
 > {
   return {
@@ -104,6 +104,10 @@ function empty(): Pick<
     // No judge in the browser: a local rehearsal's `fact answered` carries
     // no verdict (rehearse the hunt on a server project).
     facts: null,
+    // No WalletBook in the browser either (rehearse the wallet on a server
+    // project); the Wallet card says so.
+    wallet: null,
+    storyClock: null,
     ledgerLen: 0,
     messages: [],
     world: [],
@@ -426,6 +430,11 @@ export const useSim = create<SimState>((set, get) => {
             if (value === true || value === 'true') s.capture(id)
             else s.escape(id)
             break
+          // Like `/api/mod/set restricted`: a plain restrict (no places).
+          case 'restricted':
+            if (value === true || value === 'true') s.restrict(id)
+            else s.unrestrict(id)
+            break
         }
       })
     },
@@ -483,6 +492,10 @@ export const useSim = create<SimState>((set, get) => {
     releasePart: async () => {
       set({ error: 'Performer booths sign in to an event server — there is nothing to release in an in-browser run.' })
       return null
+    },
+    walletAct: async () => {
+      set({ error: 'The wallet runs on the event server — rehearse it on a server project.' })
+      return false
     },
     // Nothing voices a `mind: external` character in the browser: no minds,
     // no trace, and a control has nobody to go to.

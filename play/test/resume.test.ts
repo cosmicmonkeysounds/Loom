@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { adoptResume, resumeFromSearch, storedGuestName, withoutResume } from "../src/resume.ts";
+import { adoptResume, resumeFromSearch, resumeToAdopt, storedGuestName, withoutResume } from "../src/resume.ts";
 
 function fakeFetch(routes: Record<string, { status: number; body: unknown }>) {
   const calls: Array<{ url: string; init?: RequestInit }> = [];
@@ -57,5 +57,32 @@ describe("re-pair link (N-02)", () => {
     expect(storedGuestName("{not json")).toBeNull();
     expect(storedGuestName(JSON.stringify({ id: "g-1", name: "Winamp", token: "t" }))).toBe("Winamp");
     expect(storedGuestName(JSON.stringify({ id: "g-1", token: "t" }))).toBe("g-1");
+  });
+});
+
+describe("Home Screen start link (K-31b)", () => {
+  it("is a resume link marked home; the mark is stripped with the nonce", () => {
+    expect(resumeFromSearch("?code=EVT1&pair=n-1&home=1")).toEqual({ code: "EVT1", pair: "n-1", home: true });
+    expect(resumeFromSearch("?code=EVT1&pair=n-1&home=0")).toEqual({ code: "EVT1", pair: "n-1" });
+    expect(withoutResume("?code=EVT1&pair=n-1&home=1")).toBe("?code=EVT1");
+  });
+
+  it("a relaunch on a phone holding a session drops the spent nonce, never asks to switch", () => {
+    const home = { code: "EVT1", pair: "n-1", home: true };
+    const qr = { code: "EVT1", pair: "p-1" };
+    const guest = JSON.stringify({ id: "g-1", name: "Winamp", token: "t" });
+    expect(resumeToAdopt(home, null, null)).toEqual(home); // the icon's first open
+    expect(resumeToAdopt(home, guest, null)).toBeNull();
+    expect(resumeToAdopt(home, null, JSON.stringify({ token: "pt" }))).toBeNull();
+    expect(resumeToAdopt(qr, guest, null)).toEqual(qr); // a director's QR still asks
+    expect(resumeToAdopt(null, guest, null)).toBeNull();
+  });
+
+  it("explains a spent icon nonce in Home Screen words", async () => {
+    const spent = fakeFetch({
+      "/api/resolve-code": { status: 200, body: { eventId: "evt" } },
+      "/e/evt/api/guest/resume": { status: 410, body: { error: "expired" } },
+    });
+    await expect(adoptResume({ code: "EVT1", pair: "n", home: true }, spent.fn)).rejects.toThrow(/Home Screen icon/u);
   });
 });

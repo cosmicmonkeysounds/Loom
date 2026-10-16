@@ -166,7 +166,9 @@ process under one supervisor entry point (`stagehand run --config show.yaml`):
   (`httpx`), one MQTT session (`paho-mqtt`), OSC send to the TD machines
   (`python-osc`). Translates in both directions through the **cue map** and
   the **sensor map** (below). Stateless — restart at any time; retained MQTT
-  and the journal carry all recoverable state.
+  and the journal carry all recoverable state, and on every (re)connect (of
+  the feed or the broker) or story restart the router replays the story's light mirrors from
+  `GET /api/state` (the `catch_up:` list).
 - **Vision workers**: one subprocess per camera (frame analysis is CPU-bound),
   each pulling its RTSP feed from MediaMTX via OpenCV, publishing to
   `vision/…` topics and streaming reflex data over OSC. Workers are also

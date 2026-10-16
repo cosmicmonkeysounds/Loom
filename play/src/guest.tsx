@@ -36,12 +36,14 @@ import { PictureGrid } from "./picture-pick.tsx";
 import { codeFromUrl, fetchPictures, pendingWidget, personalStream, searchPrograms, useDocumentTitle, useGuestSession, useIdentities, useLandingBrand, type GuestSession } from "./session.ts";
 import { Tutorial, tourResult, tutorialSteps } from "./tutorial.tsx";
 import { WALLET_ROOM, withThe } from "./threads.ts";
-import { BalancePill, OfferSheet, PeopleAmountSheet, StimulusSheet, WalletActionsProvider, WalletFooter, type WalletSheet } from "./wallet.tsx";
+import { BalancePill, FreezeSheet, OfferSheet, PeopleAmountSheet, StimulusSheet, WalletActionsProvider, WalletFooter, frozenUntil, guestWalletActions, useWalletClock, type WalletSheet } from "./wallet.tsx";
 import type { Action, Channel, PersonCard } from "./types.ts";
 import { usePush, type Push } from "./push.ts";
 import { PushCard, PushRow } from "./push-card.tsx";
+import { opensHome } from "./room.ts";
 import { redeemErrorText } from "./codex.ts";
-import { activePins } from "./pins.ts";
+import { activePins, activeTakeover } from "./pins.ts";
+import { Takeover } from "./takeover.tsx";
 
 function GuestRegister({ session }: { session: GuestSession }) {
   const [code, setCode] = useState(codeFromUrl);
@@ -498,6 +500,9 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   // Everyone's profile pictures (a program's Wikipedia image, an authored
   // `avatar:`), for every tile in the app.
   const avatars = useMemo(() => avatarLookup(s.me?.eventId ?? null, st?.avatars), [s.me?.eventId, st?.avatars]);
+  // The wallet's countdowns tick between snapshots (a freeze's thaw, a held
+  // transfer's auto-approve), off the snapshot clock + the wall time since.
+  const walletClock = useWalletClock(st?.clock, st?.wallet);
   const cut = useCutscene(st?.cutscene === true);
   // The story's guided tour, once dealt and until answered — never over a
   // cutscene (it waits for the guest to step into the app).
@@ -508,10 +513,10 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const activeId = t.activeId;
   const home = homeChannel(t.list);
   useEffect(() => {
-    if (signedIn && wide && activeId === null && home !== null) t.open(home);
+    if (opensHome(signedIn, wide, activeId, home, s.roomLinkPending) && home !== null) t.open(home);
     // `t` is rebuilt each render; the ids are what matter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signedIn, wide, activeId, home]);
+  }, [signedIn, wide, activeId, home, s.roomLinkPending]);
   // What the cutscene stage shows is read: stepping into the app, the
   // rooms it came from (The Uploader's thread) carry no backlog badges.
   const staged = cut.showing && s.me !== null ? personalStream(s.messages, s.me.id) : null;
@@ -532,6 +537,9 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   // The sticky notices still up for this guest (their own feed + DM
   // threads) — rendered above everything, outside the greyed containers.
   const pins = activePins(t.list.flatMap((c) => c.messages));
+  // A `!!` pin covers the whole app — from every received message, so a
+  // restricted guest whose list hides the lobby still sees it.
+  const takeover = <Takeover pin={activeTakeover(s.messages.values())} />;
   const restricted = st?.restricted ?? false;
   const widgets = {
     answer: (seq: number, r: Parameters<GuestSession["answerWidget"]>[1]) => void s.answerWidget(seq, r).catch(() => {}),
@@ -570,6 +578,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
           onDismissAlert={s.dismissAlert}
         />
         {profile && <PassSheet me={{ id: s.me.id, name: s.me.name }} onClose={() => setProfile(false)} />}
+        {takeover}
       </div>
     );
   }
@@ -622,7 +631,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
                 {codexNote}
               </p>
             ) : active.kind === "wallet" && st.wallet ? (
-              <WalletFooter view={st.wallet} open={setWalletSheet} />
+              <WalletFooter view={st.wallet} open={setWalletSheet} restricted={restricted} clock={walletClock} />
             ) : roomActions.length > 0 ? (
               <ActionRow actions={roomActions} />
             ) : undefined
@@ -661,21 +670,11 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   return (
     <AvatarsContext.Provider value={avatars}>
     <CardActionsProvider value={{ shareCodex: (entry, title) => setSharing({ entry, title }) }}>
-    <WalletActionsProvider
-      value={{
-        view: st.wallet ?? null,
-        me: s.me.id,
-        clock: st.clock ?? 0,
-        respond: (id, accept) => void s.wallet.respond(id, accept),
-        accept: (id) => void s.wallet.accept(id),
-        decline: (id) => void s.wallet.decline(id),
-        cancel: (id) => void s.wallet.cancel(id),
-      }}
-    >
+    <WalletActionsProvider value={guestWalletActions(st.wallet ?? null, s.me.id, walletClock, restricted, s.wallet)}>
     <div className={`root ${captured ? "trapped-bg" : ""} ${restricted ? "restricted-bg" : ""}`} ref={rootRef}>
       {banner}
       <PinnedRail pins={pins} />
-      <PushCard push={push} why="the house can reach you when your phone is locked: alarms, and messages from the characters." />
+      <PushCard push={push} title={st.title ?? s.me.title} why="the house can reach you when your phone is locked: alarms, and messages from the characters." />
       <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room on the left. The one you're standing in is at the top." />
       {tour && (
         <Tutorial
@@ -706,12 +705,12 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       )}
       {people !== null && <PeopleSheet session={s} only={people === "all" ? undefined : people} onClose={() => setPeople(null)} />}
       {help && <HelpSheet role="guest" onClose={() => setHelp(false)} />}
-      {st.wallet && (walletSheet === "send" || walletSheet === "request") && (
+      {st.wallet && (walletSheet === "send" || walletSheet === "request" || walletSheet === "grant") && (
         <PeopleAmountSheet
           mode={walletSheet}
           view={st.wallet}
           people={walletPeople}
-          onDone={(id, n) => void (walletSheet === "send" ? s.wallet.send(id, n) : s.wallet.request(id, n))}
+          onDone={(id, n) => void (walletSheet === "send" ? s.wallet.send(id, n) : walletSheet === "grant" ? s.wallet.grant(id, n) : s.wallet.request(id, n))}
           onClose={() => setWalletSheet(null)}
         />
       )}
@@ -722,9 +721,14 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
           codex={(st.codex ?? []).map((e) => ({ id: e.id, title: e.title }))}
           onDone={(to, entry, side, n) => void s.wallet.offer(to, entry, side, n)}
           onClose={() => setWalletSheet(null)}
+          frozen={frozenUntil(st.wallet, walletClock) !== null}
         />
       )}
       {st.wallet && walletSheet === "stimulus" && <StimulusSheet view={st.wallet} onDone={(n) => void s.wallet.stimulus(n)} onClose={() => setWalletSheet(null)} />}
+      {st.wallet && walletSheet === "freeze" && (
+        <FreezeSheet view={st.wallet} people={walletPeople} clock={walletClock} onDone={(id) => void s.wallet.freeze(id)} onClose={() => setWalletSheet(null)} />
+      )}
+      {takeover}
     </div>
     </WalletActionsProvider>
     </CardActionsProvider>

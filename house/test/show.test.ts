@@ -48,7 +48,7 @@ describe.each([
     expect(king.kind).toBe("king");
     expect(king.room).toBe(door.a);
     expect(propSolid(king)).toBe(true);
-    expect(king.hp).toBe(4);
+    expect(king.hp).toBe(8);
     expect(king.signals).toEqual({ won: "chess won", lost: "chess lost", drawn: "chess drawn" });
     expect(king.armed).toEqual({ path: "Night.step", min: 14 });
     // He stands in the gap: a body (radius 0.25) can't pass on either side.

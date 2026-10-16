@@ -7,8 +7,10 @@
 //! makes these same-origin so the cookie flows.
 
 import type { PrintCodes } from './print-sheet'
-import type { AgentControl, AgentMindSummary, AgentThought, GuestView, PrimeView } from '@loom/core/views'
+import type { AgentControl, AgentMindSummary, AgentThought, GuestView, PrimeView, WalletModView } from '@loom/core/views'
 import type { ScreenTerminals } from '@/lib/terminals'
+import type { RecapWire } from '@/components/cockpit/award-suggest'
+import type { MapVariantsResponse, SwitchVariantResult } from '@/lib/map-variants'
 
 const BASE = import.meta.env.VITE_LOOM_API ?? ''
 
@@ -236,7 +238,10 @@ export type SignalArgs = Record<string, string | number | boolean>
 // which now also accept the owning author's cookie — run + admin are one
 // capability.
 
-export type StatField = 'score' | 'faction' | 'location' | 'captured'
+export type StatField = 'score' | 'faction' | 'location' | 'captured' | 'restricted'
+
+/** The director's wallet routes (`/e/:id/api/mod/wallet/<route>`). */
+export type WalletRoute = 'approve' | 'deny' | 'cancel' | 'stimulus' | 'approve-held' | 'unfreeze'
 
 /** What `/api/mod/impersonate` mints. */
 export interface PlayAsSession {
@@ -321,6 +326,16 @@ export const modApi = {
   async codes(eventId: string): Promise<PrintCodes> {
     return await req<PrintCodes>('POST', `/e/${eventId}/api/mod/codes`, {})
   },
+  /** The event's push config (`GET /api/push/config`, no auth) — the print
+   *  sheet reads `homescreen` (K-31b on) for the door sign's wording. */
+  async pushConfig(eventId: string): Promise<{ enabled?: boolean; homescreen?: boolean }> {
+    return await req<{ enabled?: boolean; homescreen?: boolean }>('GET', `/e/${eventId}/api/push/config`)
+  },
+  /** The ceremony recap (K-26, `GET /api/mod/recap`, directors only) — the
+   *  cue sheet's award suggestions + its Copy recap button. */
+  async recap(eventId: string): Promise<RecapWire> {
+    return await req<RecapWire>('GET', `/e/${eventId}/api/mod/recap`)
+  },
   /** Expose a hidden faction (the secret-villain reveal). */
   async reveal(eventId: string, faction: string): Promise<void> {
     await req('POST', `/e/${eventId}/api/mod/reveal`, { faction })
@@ -378,6 +393,14 @@ export const modApi = {
   async stepQuest(eventId: string, who: string, quest: string, action: string, text?: string | null): Promise<void> {
     await req('POST', `/e/${eventId}/api/mod/quest`, { who, quest, action, ...(text ? { text } : {}) })
   },
+  /** The director's hand on the story's wallet: approve / deny / cancel one
+   *  open item (`id`), pay the stimulus (`amount`, counts against the
+   *  minter's limit), or approve every held transfer at once. Resolves to
+   *  the wallet as it now stands. */
+  async wallet(eventId: string, action: WalletRoute, body: { id: string } | { amount: number } | Record<string, never> = {}): Promise<WalletModView> {
+    const r = await req<{ wallet: WalletModView }>('POST', `/e/${eventId}/api/mod/wallet/${action}`, body)
+    return r.wallet
+  },
   /** Reset the event: clear the journal + replay from the loaded scenario. */
   async reset(eventId: string): Promise<void> {
     await req('POST', `/e/${eventId}/api/mod/reset`, {})
@@ -412,5 +435,24 @@ export const screensApi = {
   /** Mute / unmute the TV's room voice (K-18); every TV reads it off its next poll. */
   async setVoiceMuted(eventId: string, muted: boolean): Promise<{ muted: boolean }> {
     return await req<{ muted: boolean }>('POST', `/e/${eventId}/api/mod/screen/voice`, { muted })
+  },
+  /** Make one terminal show its name + spot full screen for 10 s (SW-SCR-21, install day). */
+  async identify(eventId: string, name: string): Promise<{ name: string; until: number }> {
+    return await req<{ name: string; until: number }>('POST', `/e/${eventId}/api/mod/screen/identify`, { name })
+  },
+}
+
+// --- the house map variants (wave 5 E9: the tent ⇄ shed switch) ----------
+
+export const mapApi = {
+  /** The event's whole-map variants (`house.json`, `house.shed.json`, …), the active one flagged. */
+  async variants(eventId: string): Promise<MapVariantsResponse> {
+    return await req<MapVariantsResponse>('GET', `/e/${eventId}/api/mod/spatial/variants`)
+  },
+  /** Play another variant now. `base` = the map version the switch was
+   *  confirmed against (`switchBase`): 409 when the map changed since. The
+   *  server re-seats live players itself. */
+  async switchVariant(eventId: string, file: string, base?: string): Promise<SwitchVariantResult> {
+    return await req<SwitchVariantResult>('POST', `/e/${eventId}/api/mod/spatial/variant`, base !== undefined ? { file, base } : { file })
   },
 }

@@ -84,6 +84,10 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 .w98-button.big { min-height: 2.9em; padding: 0.4em 1.4em; font-size: 1.05em; }
 .w98-button.small { min-width: 0; min-height: 1.9em; padding: 0.1em 0.6em; }
 .w98-button:disabled { color: var(--shadow); text-shadow: 1px 1px var(--hi); cursor: default; }
+/* ⚙ Setup / 🗺 House map open only on a 2 s hold (kiosk.ts): a bar fills under the label while held. */
+.w98-button.hold { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.w98-button.hold::after { content: ""; position: absolute; left: 4px; bottom: 3px; height: 2px; width: 0; background: var(--navy); }
+.w98-button.hold.holding::after { width: calc(100% - 8px); transition: width var(--hold-ms, 2000ms) linear; }
 .w98-input {
   min-height: 2.3em;
   padding: 0.25em 0.45em;
@@ -697,3 +701,10 @@ textarea.json { width: 100%; height: 100%; min-height: 320px; resize: none; font
   .scan-camera { height: 0; padding: 75% 0 0; }
   .scan-camera.off { height: 4.5em; padding: 3px; }
 }
+
+/* The map page's passcode re-check (W-15): a modal over the editor. */
+.unlock-modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 8px; background: rgba(0, 0, 30, 0.55); font-family: var(--ui); color: var(--ink); }
+.unlock-window { width: min(420px, 100vw - 32px); }
+.unlock-body { display: flex; flex-direction: column; gap: 0.6em; padding: 0.8em; }
+.unlock-body p { margin: 0; }
+.unlock-actions { display: flex; justify-content: flex-end; gap: 0.5em; }

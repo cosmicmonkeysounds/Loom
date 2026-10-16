@@ -265,38 +265,158 @@ export async function postEnd(base: string, token: string): Promise<void> {
 /** Retry waits for `postSignal`: 0.5 s doubling to 8 s. */
 export const SIGNAL_RETRY_MS = [500, 1000, 2000, 4000, 8000] as const;
 
-/**
- * Fire a story signal as this device: `POST /api/mod/signal {name, subject,
- * label}` with the moderator token (`label` = the device's name, so the
- * journal reads "by Tent tablet" on a server that honours it). Retries a
- * network failure or a 5xx `attempts` times (0.5 → 8 s); a 4xx is final.
- * Resolves true on a 200. In memory only: a reload drops a pending post.
- */
-export async function postSignal(
-  config: ReinstallConfig,
-  name: string,
-  subject: string,
-  opts: { attempts?: number; fetcher?: typeof fetch; sleep?: (ms: number) => Promise<void> } = {},
-): Promise<boolean> {
+/** Where the tablet keeps its one pending story signal (the latest only), so
+ *  a reload doesn't lose an unsent `chess won`. */
+export const PENDING_SIGNAL_KEY = "loom-reinstall.pending-signal";
+/** A pending signal this old is dropped, never posted: `chess won` unlocks
+ *  the real server-room door for 90 s, so a win must not land minutes late
+ *  (after a reload) — a host fires ♟ by hand instead. */
+export const PENDING_SIGNAL_MAX_AGE_MS = 60_000;
+/** One attempt is abandoned after this long (or when the signal would turn
+ *  `PENDING_SIGNAL_MAX_AGE_MS` old): a black-holed uplink must fail fast,
+ *  so "the win didn't reach the house" shows while the guest is still there. */
+export const SIGNAL_ATTEMPT_TIMEOUT_MS = 5_000;
+
+/** A story signal on its way to the event. */
+export interface PendingSignal {
+  eventId: string;
+  name: string;
+  subject: string;
+  label: string;
+  /** When the device first tried it (ms since the epoch). */
+  at: number;
+}
+
+export type SignalStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+
+export interface SignalOptions {
+  attempts?: number;
+  fetcher?: typeof fetch;
+  sleep?: (ms: number) => Promise<void>;
+  /** Defaults to `localStorage`; null (or a throwing one) keeps it in memory only. */
+  storage?: SignalStorage | null;
+  now?: () => number;
+  /** Per attempt (default `SIGNAL_ATTEMPT_TIMEOUT_MS`). */
+  timeoutMs?: number;
+}
+
+function browserStorage(): SignalStorage | null {
+  try {
+    return typeof localStorage === "undefined" ? null : localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function writePending(storage: SignalStorage | null, p: PendingSignal): void {
+  try {
+    storage?.setItem(PENDING_SIGNAL_KEY, JSON.stringify(p));
+  } catch {
+    /* blocked or full: in memory only */
+  }
+}
+
+/** The stored pending signal, or null (none, unreadable, or not one). */
+export function readPendingSignal(storage: SignalStorage | null = browserStorage()): PendingSignal | null {
+  try {
+    const raw = storage?.getItem(PENDING_SIGNAL_KEY);
+    if (raw === null || raw === undefined) return null;
+    const p = JSON.parse(raw) as Partial<PendingSignal>;
+    const str = (v: unknown): v is string => typeof v === "string";
+    return str(p.eventId) && str(p.name) && str(p.subject) && str(p.label) && typeof p.at === "number" && Number.isFinite(p.at)
+      ? { eventId: p.eventId, name: p.name, subject: p.subject, label: p.label, at: p.at }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Forget the stored signal — only when it is still `p` (a newer one wins), or whatever is there when `p` is null. */
+function clearPending(storage: SignalStorage | null, p: PendingSignal | null): void {
+  try {
+    if (p !== null) {
+      const cur = readPendingSignal(storage);
+      if (cur !== null && (cur.at !== p.at || cur.name !== p.name || cur.subject !== p.subject)) return;
+    }
+    storage?.removeItem(PENDING_SIGNAL_KEY);
+  } catch {
+    /* nothing stored */
+  }
+}
+
+/** The retry loop: "ok" on a 200, "refused" on a 4xx (final), "failed" when
+ *  every attempt failed or the signal grew too old to send. */
+async function sendSignal(config: ReinstallConfig, p: PendingSignal, opts: SignalOptions): Promise<"ok" | "refused" | "failed"> {
   const attempts = Math.max(1, opts.attempts ?? 1 + SIGNAL_RETRY_MS.length);
   const fetcher = opts.fetcher ?? fetch;
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
-  const body = JSON.stringify({ name, subject, label: config.name });
+  const now = opts.now ?? Date.now;
+  const body = JSON.stringify({ name: p.name, subject: p.subject, label: p.label });
   for (let i = 0; i < attempts; i++) {
     if (i > 0) await sleep(SIGNAL_RETRY_MS[Math.min(i - 1, SIGNAL_RETRY_MS.length - 1)]!);
+    const left = PENDING_SIGNAL_MAX_AGE_MS - (now() - p.at);
+    if (left <= 0) return "failed";
+    // A stalled request is aborted (a network failure): one that hung past
+    // the cap could still open the real door minutes after the win.
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), Math.min(opts.timeoutMs ?? SIGNAL_ATTEMPT_TIMEOUT_MS, left));
     try {
       const res = await fetcher(`${baseOf(config)}/api/mod/signal`, {
         method: "POST",
         headers: { "content-type": "application/json", "x-loom-token": config.token },
         body,
+        signal: ctl.signal,
       });
-      if (res.ok) return true;
-      if (res.status < 500) return false;
+      if (res.ok) return "ok";
+      if (res.status < 500) return "refused";
     } catch {
-      /* the network: try again */
+      /* the network (or the timeout): try again */
+    } finally {
+      clearTimeout(timer);
     }
   }
-  return false;
+  return "failed";
+}
+
+/**
+ * Fire a story signal as this device: `POST /api/mod/signal {name, subject,
+ * label}` with the moderator token (`label` = the device's name, so the
+ * journal reads "by Tent tablet" on a server that honours it). Retries a
+ * network failure or a 5xx `attempts` times (0.5 → 8 s); a 4xx is final.
+ * Resolves true on a 200. While it is unsent it is also kept in
+ * `localStorage` (the latest only), so `flushPendingSignal` can post it
+ * after a reload — within `PENDING_SIGNAL_MAX_AGE_MS` of the first try.
+ */
+export async function postSignal(config: ReinstallConfig, name: string, subject: string, opts: SignalOptions = {}): Promise<boolean> {
+  const storage = opts.storage === undefined ? browserStorage() : opts.storage;
+  const p: PendingSignal = { eventId: config.eventId, name, subject, label: config.name, at: (opts.now ?? Date.now)() };
+  writePending(storage, p);
+  const r = await sendSignal(config, p, opts);
+  if (r !== "failed") clearPending(storage, p);
+  return r === "ok";
+}
+
+/**
+ * On page load: post the signal a previous page left unsent — once, and
+ * only while it is fresh (< `PENDING_SIGNAL_MAX_AGE_MS`) and for this
+ * device's event. Anything older, or for another event, is dropped unsent.
+ */
+export async function flushPendingSignal(config: ReinstallConfig, opts: SignalOptions = {}): Promise<"none" | "dropped" | "sent" | "refused" | "failed"> {
+  const storage = opts.storage === undefined ? browserStorage() : opts.storage;
+  const p = readPendingSignal(storage);
+  if (p === null) {
+    clearPending(storage, null); // an unreadable entry
+    return "none";
+  }
+  const age = (opts.now ?? Date.now)() - p.at;
+  if (p.eventId !== config.eventId || age < 0 || age >= PENDING_SIGNAL_MAX_AGE_MS) {
+    clearPending(storage, p);
+    return "dropped";
+  }
+  const r = await sendSignal(config, p, opts);
+  // A failure stays stored until it ages out (the next load drops it).
+  if (r !== "failed") clearPending(storage, p);
+  return r === "ok" ? "sent" : r;
 }
 
 /**

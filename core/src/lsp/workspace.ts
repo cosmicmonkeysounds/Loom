@@ -24,7 +24,7 @@ import {
 } from "../parser/index.ts";
 import { Bundle, type LoomFileEntry } from "../runtime/bundle.ts";
 import { lowerRawBody } from "../runtime/sim/effects.ts";
-import { compileModel, type SimModel } from "../runtime/sim/model.ts";
+import { compileModel, parseCurrency, walletRoleOf, type SimModel } from "../runtime/sim/model.ts";
 import { buildStoryGraph, type StoryGraph } from "./graph.ts";
 import { renameBeatEdits } from "./rename.ts";
 import type {
@@ -180,6 +180,93 @@ export class Workspace {
     }
     this.rebuildProjectDiagnostics();
     this.addNameLints();
+    this.addCurrencyLints();
+  }
+
+  /**
+   * The Truthcoin lints — a `currency:` / `wallet:` line that fails to
+   * parse reads null in the model, so the wallet (or the role) vanishes
+   * with no other sign:
+   *
+   * - `L1203 CurrencyUnparsed` — the header `currency:` line: an error when
+   *   no `currency:` line in the project parses (the story has NO wallet),
+   *   else a warning that it is ignored (the first one that parses, in the
+   *   server's file order, sets the currency — as `compileModel` does).
+   * - `L1204 WalletRoleUnparsed` (error) — a CHARACTER / TRAIT `wallet:` line.
+   * - warnings: a `wallet:` role with no `currency:` header anywhere (inert),
+   *   and a second approver / minter, read off the compiled model (so a role
+   *   inherited through a TRAIT counts) and naming the model's holder.
+   */
+  private addCurrencyLints(): void {
+    const pushLint = (uri: string, d: LspDiagnostic): void => {
+      const list = this.projectDiagnostics.get(uri);
+      if (list) list.push(d);
+      else this.projectDiagnostics.set(uri, [d]);
+    };
+    const lint = (uri: string, range: Range, error: boolean, code: string, message: string): void =>
+      pushLint(uri, { range, severity: error ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning, code, source: "loom", message });
+    const docs = this.orderedDocs();
+    let hasCurrency = false;
+    let setBy: string | null = null; // the file whose `currency:` the model uses
+    const curLines: Array<{ uri: string; range: Range; raw: string; ok: boolean }> = [];
+    const roles: Array<{ uri: string; range: Range; name: string }> = [];
+    // Where each CHARACTER is declared (its own `wallet:` line, else its name).
+    const declAt = new Map<string, { uri: string; range: Range }>();
+    for (const [uri, doc] of docs) {
+      const cur = doc.file.header.properties.get("currency");
+      if (cur !== undefined) {
+        hasCurrency = true;
+        const ok = parseCurrency(cur.value) !== null;
+        if (ok && setBy === null) setBy = uri;
+        else curLines.push({ uri, range: spanToRange(cur.span), raw: cur.value.trim(), ok });
+      }
+      for (const item of doc.file.items) {
+        if (item.kind !== "declaration") continue;
+        const d = item.value;
+        const w = d.character?.properties.get("wallet");
+        if (d.kind === "character")
+          declAt.set(d.name, { uri, range: w !== undefined ? spanToRange(w.span) : nameRangeInText(doc.text, d.span, d.name) });
+        if (w === undefined || (d.kind !== "character" && d.kind !== "trait")) continue;
+        const range = spanToRange(w.span);
+        if (walletRoleOf(w.value) === null) {
+          lint(uri, range, true, Code.L1204WalletRoleUnparsed, `\`wallet: ${w.value.trim()}\` does not parse, so ${d.name} has no wallet role — write \`wallet: approver[, every N][, window <duration>]\` or \`wallet: minter[, limit N][, while <condition>]\``);
+          continue;
+        }
+        roles.push({ uri, range, name: d.name });
+      }
+    }
+    for (const c of curLines) {
+      if (setBy === null)
+        lint(c.uri, c.range, true, Code.L1203CurrencyUnparsed, `\`currency: ${c.raw}\` does not parse, so the story has NO wallet (no Wallet room, ⭐ instead of the coin) — write \`currency: <slot> as <Name>[, max N][, expiry <duration>]\``);
+      else
+        lint(c.uri, c.range, false, Code.L1203CurrencyUnparsed, `\`currency: ${c.raw}\` is ignored${c.ok ? "" : " (it does not parse)"} — ${uriToPath(setBy).replace(/^\/+/u, "")} sets the currency`);
+    }
+    if (!hasCurrency) {
+      for (const r of roles)
+        lint(r.uri, r.range, false, Code.L1204WalletRoleUnparsed, `\`wallet:\` on ${r.name} is inert — the story has no \`currency:\` header`);
+      return;
+    }
+    const currency = this.compiled?.currency ?? null;
+    if (currency === null) return;
+    for (const c of this.compiled!.characters.values()) {
+      if (c.wallet === null) continue;
+      const holder = c.wallet.role === "approver" ? currency.approver?.id : currency.minter?.id;
+      const at = declAt.get(c.id);
+      if (holder === undefined || holder === c.id || at === undefined) continue;
+      lint(at.uri, at.range, false, Code.L1204WalletRoleUnparsed, `${c.id} is a second \`${c.wallet.role}\` — it is ignored; ${holder} holds the role`);
+    }
+  }
+
+  /** The documents in the order the server concatenates a project
+   *  (`projectSource` / `examples/load.ts`): `main.loom` first, then by path —
+   *  so the compiled model (first `currency:`, first approver, …) matches
+   *  what the live event plays. */
+  private orderedDocs(): Array<[string, OpenDoc]> {
+    const isMain = (uri: string): number => {
+      const path = uriToPath(uri);
+      return path === "main.loom" || path.endsWith("/main.loom") ? 0 : 1;
+    };
+    return [...this.docs].sort(([a], [b]) => isMain(a) - isMain(b) || (a < b ? -1 : a > b ? 1 : 0));
   }
 
   /**
@@ -397,7 +484,7 @@ export class Workspace {
     }
     const firstUri = this.docs.keys().next().value as string;
     const bundle = new Bundle();
-    for (const [uri, doc] of this.docs) {
+    for (const [uri, doc] of this.orderedDocs()) {
       const entry: LoomFileEntry = {
         path: uriToPath(uri),
         stem: stemOf(uri),

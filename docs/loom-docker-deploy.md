@@ -210,6 +210,15 @@ domain's MX points (e.g. ImprovMX → your Gmail) — Resend only sends.
   the show — every phone's subscription is bound to the public key.
   Blank = push off (no 🔔 card; in-app alerts still work). Subscriptions
   live in the event's state dir, so backups carry them.
+- **iPhone Home Screen push** (`LOOM_HOMESCREEN`, blank = off; `on` /
+  `1` / `true` / `yes` = on; K-31b). Off, an iPhone's 🔔 card says to keep
+  the app open with the screen on. On (and with the VAPID keys set), an
+  iPhone on iOS 16.4+ is told to tap Share → Add to Home Screen; the icon
+  opens signed in as the same guest through a single-use nonce in the
+  manifest's `start_url` (12 h, the newest 3 per guest, cleared by every
+  restart). Booths only get the steps (sign out in Safari, sign in from
+  the icon). Turn it on only if the Android push check (K-31a) passed;
+  the device check is `scripts/accept/k31b.sh`.
 - **Door-rush throttles** (`LOOM_RL_*`, each `<max>` or `<max>/<seconds>`,
   blank = default, a malformed value is logged and ignored):
   `LOOM_RL_RESOLVE` (`/api/resolve-code` per IP, 30/60),
@@ -223,6 +232,11 @@ domain's MX points (e.g. ImprovMX → your Gmail) — Resend only sends.
   VPS from **one** public IP, so the night's `.env` raises the per-IP ones:
   `LOOM_RL_RESOLVE=600`, `LOOM_RL_REGISTER=400`,
   `LOOM_RL_LOGIN_FAILURES=100/300`.
+- **Snapshot coalescing** (`LOOM_SNAPSHOT_MS`, blank / 0 = off): at most
+  one guest / booth view frame per that many ms (a burst of story steps →
+  one leading + one trailing frame; restarts never trail). The mod
+  consoles are always coalesced to 500 ms. The K-32 contingency: set
+  `500` only if the load test fails (p95 > 1 s or CPU > 70 %).
 
 After changing any of these, `docker compose up -d loom` (or the next
 `deploy/release.sh`).

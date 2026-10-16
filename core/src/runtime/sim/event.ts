@@ -144,7 +144,9 @@ export type SimEvent =
 
 export type WalletTxState = "pending" | "held" | "settled" | "denied" | "cancelled";
 
-export type WalletCardKind = "transfer" | "request" | "offer" | "stimulus" | "approval";
+// `grant` = the minter paid one person from the reserve; `freeze` = the
+// minter froze one person's coin (`settleAt` = when it thaws).
+export type WalletCardKind = "transfer" | "request" | "offer" | "stimulus" | "approval" | "grant" | "freeze";
 
 export type WalletStep =
   | "sent"
@@ -162,7 +164,18 @@ export type WalletStep =
   | "offered"
   | "accepted"
   | "failed"
-  | "minted";
+  | "minted"
+  // A held transfer nobody approved, denied or cancelled in time
+  // (`HOLD_MS`): it settled on its own, with no `transfer_approved`.
+  | "timed_out"
+  // The minter's reserve: `granted` (the minter's root) / `received` (the
+  // recipient's); a freeze: `frozen` (the target's root) / `imposed` (the
+  // minter's), then `thawed` (target) + `expired` (minter) on the clock, or
+  // `thawed` + `cancelled` when a director lifts it early.
+  | "granted"
+  | "frozen"
+  | "imposed"
+  | "thawed";
 
 /**
  * One wallet card as a viewer sees it. `kind` + `step` say which side the

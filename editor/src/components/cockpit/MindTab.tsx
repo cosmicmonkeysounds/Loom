@@ -43,12 +43,15 @@ import {
   mindCharacters,
   pendingFilings,
   pickMind,
+  questionFilings,
   questionTallies,
   sparklinePath,
   speakersOf,
   stageSegments,
   summarizeThought,
   timeOf,
+  type FilingHow,
+  type FilingRow,
   type JudgeMode,
 } from './mind'
 
@@ -166,6 +169,7 @@ function JudgingCard({ local = false }: { local?: boolean }) {
   const setVar = useCockpit((s) => s.setVar)
   const fireSignal = useCockpit((s) => s.fireSignal)
   const [busy, setBusy] = useState<string | null>(null)
+  const [openQ, setOpenQ] = useState<ReadonlySet<string>>(() => new Set())
   const mode = judgeModeOf(world, facts)
   if (facts === null) {
     return (
@@ -271,9 +275,30 @@ function JudgingCard({ local = false }: { local?: boolean }) {
             </tr>
           </thead>
           <tbody>
-            {tallies.map((t) => (
-              <tr key={t.id} className="border-t border-zinc-800/60 text-zinc-300">
+            {tallies.map((t) => {
+              const isOpen = openQ.has(t.id)
+              const toggle = () =>
+                setOpenQ((prev) => {
+                  const next = new Set(prev)
+                  if (next.has(t.id)) next.delete(t.id)
+                  else next.add(t.id)
+                  return next
+                })
+              return (
+              <Fragment key={t.id}>
+              <tr className="border-t border-zinc-800/60 text-zinc-300">
                 <td className="py-0.5 pr-2">
+                  <button
+                    type="button"
+                    className="mr-1 w-3 text-zinc-500 hover:text-zinc-200 disabled:opacity-30"
+                    disabled={t.filed === 0}
+                    aria-expanded={isOpen}
+                    title={isOpen ? 'Hide the filings' : 'Show who filed what'}
+                    onClick={toggle}
+                    data-testid={`judging-expand-${t.id}`}
+                  >
+                    {isOpen ? '▾' : '▸'}
+                  </button>
                   <span className="font-mono text-zinc-400">{t.id}</span>
                   {t.round !== null && <span className="ml-1 text-zinc-600">r{t.round}</span>} <span title={t.text}>{t.text.length > 48 ? `${t.text.slice(0, 45)}…` : t.text}</span>
                 </td>
@@ -284,11 +309,79 @@ function JudgingCard({ local = false }: { local?: boolean }) {
                 <td className="text-right">{t.pending}</td>
                 <td className="text-right">{t.consensus ? '✓' : '—'}</td>
               </tr>
-            ))}
+              {isOpen && (
+                <tr>
+                  <td colSpan={7} className="pb-1 pl-4">
+                    <FilingRows rows={questionFilings(facts, t.id)} questionId={t.id} />
+                  </td>
+                </tr>
+              )}
+              </Fragment>
+              )
+            })}
           </tbody>
         </table>
       )}
     </section>
+  )
+}
+
+const HOW_STYLE: Record<FilingHow, string> = {
+  auto: 'text-zinc-400',
+  confirmed: 'text-emerald-400',
+  settled: 'text-zinc-400',
+  kept: 'text-zinc-400',
+  overridden: 'text-amber-400',
+  marked: 'text-rose-400',
+  pending: 'text-zinc-500',
+}
+
+/** SW-ADM-13: one question's filings — who filed what, how sure, the
+ *  judge's proposal against the outcome (↺ = overridden) and when this
+ *  server first saw it ("seen": a restart re-stamps every filing). */
+function FilingRows({ rows, questionId }: { rows: FilingRow[]; questionId: string }) {
+  if (rows.length === 0) return <p className="text-zinc-600">Nobody filed this question.</p>
+  return (
+    <table className="w-full text-[11px]" data-testid={`judging-filings-${questionId}`}>
+      <thead className="text-zinc-600">
+        <tr>
+          <th className="text-left font-normal" title="When this server first saw the filing — a restart re-stamps it">
+            seen
+          </th>
+          <th className="text-left font-normal">who</th>
+          <th className="text-left font-normal">answer</th>
+          <th className="text-right font-normal">conf.</th>
+          <th className="text-left font-normal pl-2">proposed</th>
+          <th className="text-left font-normal">outcome</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.person} className="text-zinc-300">
+            <td className="pr-2 font-mono text-zinc-500">{timeOf(r.at)}</td>
+            <td className="pr-2">{r.name}</td>
+            <td className="pr-2 text-zinc-200">“{r.answer}”</td>
+            <td className="pr-2 text-right text-zinc-500">{r.confidence}%</td>
+            <td className="pl-2 pr-2 text-zinc-400">{r.proposed}</td>
+            <td className={HOW_STYLE[r.how]}>
+              {r.final ?? 'pending'}
+              {r.how !== 'pending' && r.how !== 'marked' && (
+                <span className="ml-1 text-zinc-600" data-testid="judging-how">
+                  ({r.how}
+                  {r.by ? ` by ${r.by}` : ''})
+                </span>
+              )}
+              {r.how === 'marked' && r.by && <span className="ml-1 text-zinc-600">(by {r.by})</span>}
+              {r.how === 'overridden' && (
+                <span className="ml-1 rounded bg-amber-500/15 px-1 text-amber-300" title={`Overridden${r.by ? ` by ${r.by}` : ''}: proposed ${r.proposed}, settled ${r.final}`} data-testid="judging-overridden">
+                  ↺
+                </span>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }
 

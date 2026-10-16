@@ -351,12 +351,12 @@
     {
       "id": "M19",
       "category": "main",
-      "text": "You can influence Trabolta to change the lights or play specific videos on the terminals",
+      "text": "You can influence Trabolta to change the lights or put things on the wall terminals",
       "codex": {
         "id": "Ask Him Nicely",
         "title": "Ask Him Nicely",
         "code": "ASK-HIM-NICELY",
-        "text": "A page of the lighting plan with a note: Trabolta controls the lights in this house and every screen on the walls. He can be talked into changing them. Flatter him, trade him a fact, and ask for the room you want dark or the thing you want played on the terminals."
+        "text": "A page of the lighting plan with a note: Trabolta controls the lights in this house and every screen on the walls. He can be talked into changing them. Flatter him, trade him a fact, and ask for the room you want dark or the card you want on the wall terminals."
       }
     },
     {
@@ -367,7 +367,7 @@
         "id": "The Safe Place",
         "title": "The Safe Place",
         "code": "SAFE-PLACE",
-        "text": "A note taped inside the back cover of a plumbing guide: The bathroom is the only truly safe place in the computer. Nothing is monitored there. Nobody is summoned from there. Turn on Bathroom Mode and nobody will come looking."
+        "text": "A note taped inside the back cover of a plumbing guide: The bathroom is the only truly safe place in the computer. Nothing is watched there. Nobody follows you in. Turn on Bathroom Mode and they will wait outside."
       }
     },
     {
@@ -790,7 +790,7 @@
         "title": "Founding Moderator",
         "code": "FOUNDING-MODERATOR",
         "about": "Password Manager",
-        "text": "Tonight Password Manager has the authority to improve and correct any message on the party's chat as she deems fit, and to keep every program focused on finding clues. If no conversation contains anything inappropriate, she becomes Founding Moderator of a permanent digital salon where everyone is biometrically verified to be a Real Person. She has often wished people would consult her before sharing an opinion. She has spent enough time being excluded; tonight she decides what gets left out. Why Trabolta chose you: to manage every password and decide who gets to be part of what club, without ever asking for a vote."
+        "text": "Tonight Password Manager has the authority to remove any message on the party's chat as she deems fit, and to keep every program focused on finding clues. If no conversation contains anything inappropriate, she becomes Founding Moderator of a permanent digital salon where everyone is biometrically verified to be a Real Person. She has often wished people would consult her before sharing an opinion. She has spent enough time being excluded; tonight she decides what gets left out. Why Trabolta chose you: to manage every password and decide who gets to be part of what club, without ever asking for a vote."
       }
     },
     {

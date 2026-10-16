@@ -16,7 +16,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import { SessionStore } from "../server/session.ts";
-import { PAIR_TTL_MS, releasePart, resumeUrl } from "../server/routes/n02.ts";
+import { HOMESCREEN_KEEP, PAIR_TTL_MS, releasePart, resumeUrl } from "../server/routes/n02.ts";
 
 const CODES = { event: "EVT202", prime: "PRM202", mod: "MOD202" };
 
@@ -312,6 +312,28 @@ describe("N-10 release a performer's part", () => {
     expect((await mod(rt, "/api/mod/prime/release", { character: "Nobody" })).status).toBe(404);
   });
 
+  it("a booth's own Sign out frees its part: the Home Screen icon signs in with no director", async () => {
+    const d = freshDir();
+    const rt = runtimeAt(d);
+    rt.openDoors();
+    const safari = (await post(rt, "/api/prime/login", { character: "Norton", passcode: CODES.prime })).json.token as string;
+    // The icon has its own storage: while Safari holds Norton, it's "taken".
+    expect((await post(rt, "/api/prime/login", { character: "Norton", passcode: CODES.prime })).status).toBe(409);
+    expect(await post(rt, "/api/prime/logout", {}, safari)).toMatchObject({ status: 200, json: { ok: true } });
+    expect((await post(rt, "/api/prime/say", { channel: "lobby", text: "x" }, safari)).status).toBe(403);
+    expect(runtimeAt(d).restore()).not.toBeNull(); // persisted
+    const icon = await post(rt, "/api/prime/login", { character: "Norton", passcode: CODES.prime });
+    expect(icon.status).toBe(200);
+    // A dead / missing token is still signed out; an admin keeps admin.
+    expect((await post(rt, "/api/prime/logout", {}, "nope")).status).toBe(200);
+    expect((await post(rt, "/api/prime/logout", {})).status).toBe(200);
+    const both = (await post(rt, "/api/prime/login", { character: "Clippy", passcode: CODES.prime })).json.token as string;
+    expect((await post(rt, "/api/mod/login", { passcode: CODES.mod }, both)).status).toBe(200);
+    expect((await post(rt, "/api/prime/logout", {}, both)).status).toBe(200);
+    expect((await post(rt, "/api/mod/say", { channel: "lobby", text: "still directing" }, both)).status).toBe(200);
+    expect((await post(rt, "/api/prime/login", { character: "Clippy", passcode: CODES.prime })).status).toBe(200);
+  });
+
   it("a performer who is also an admin keeps the admin capability", async () => {
     const rt = runtimeAt(freshDir());
     rt.openDoors();
@@ -323,5 +345,90 @@ describe("N-10 release a performer's part", () => {
     expect((await post(rt, "/api/mod/say", { channel: "lobby", text: "still directing" }, token)).status).toBe(200);
     expect((await post(rt, "/api/prime/say", { channel: "lobby", text: "x" }, token)).status).toBe(403);
     expect((await post(rt, "/api/mod/prime/release", { character: "Clippy" })).status).toBe(403);
+  });
+});
+
+describe("K-31b Home Screen nonce", () => {
+  const withSwitch = async (on: boolean, fn: () => Promise<void>) => {
+    const prev = process.env.LOOM_HOMESCREEN;
+    if (on) process.env.LOOM_HOMESCREEN = "on";
+    else delete process.env.LOOM_HOMESCREEN;
+    try {
+      await fn();
+    } finally {
+      if (prev === undefined) delete process.env.LOOM_HOMESCREEN;
+      else process.env.LOOM_HOMESCREEN = prev;
+    }
+  };
+  const homescreen = (rt: EventRuntime, token?: string) => post(rt, "/api/guest/homescreen", {}, token);
+
+  it("is off by default: 404, nothing minted", async () => {
+    await withSwitch(false, async () => {
+      const rt = runtimeAt(freshDir());
+      rt.openDoors();
+      const ana = await register(rt, "Winamp");
+      expect((await homescreen(rt, ana.token)).status).toBe(404);
+    });
+  });
+
+  it("a guest mints a single-use nonce for themselves; it ADDS a token, the Safari one stays good", async () => {
+    await withSwitch(true, async () => {
+      const rt = runtimeAt(freshDir());
+      rt.openDoors();
+      const ana = await register(rt, "Winamp");
+      const hit = await homescreen(rt, ana.token);
+      expect(hit.status).toBe(200);
+      expect(hit.json.code).toBe(CODES.event);
+      expect(hit.json.manifest).toBe(`/manifest.webmanifest?code=${CODES.event}&pair=${encodeURIComponent(hit.json.pair as string)}`);
+      const icon = await resume(rt, hit.json.pair as string);
+      expect(icon.status).toBe(200);
+      expect(icon.json.id).toBe(ana.id);
+      expect(icon.json.token).not.toBe(ana.token);
+      expect((await state(rt, "guest", ana.token)).status).toBe(200);
+      expect((await state(rt, "guest", icon.json.token as string)).json.id).toBe(ana.id);
+      // Spent the moment it's presented.
+      expect((await resume(rt, hit.json.pair as string)).status).toBe(410);
+    });
+  });
+
+  it("needs a guest token; the newest three stay good; it lives 12 h; a director's QR doesn't void it", async () => {
+    await withSwitch(true, async () => {
+      let t = 5_000_000;
+      const rt = runtimeAt(freshDir(), () => t);
+      rt.openDoors();
+      const ana = await register(rt, "Winamp");
+      expect((await homescreen(rt)).status).toBe(401);
+      expect((await homescreen(rt, "nope")).status).toBe(401);
+      // A tab reloaded between Add to Home Screen and the icon's first open
+      // mints again: the icon's nonce must survive a few of those.
+      const minted: string[] = [];
+      for (let i = 0; i <= HOMESCREEN_KEEP; i++) minted.push((await homescreen(rt, ana.token)).json.pair as string);
+      expect((await resume(rt, minted[0]!)).status).toBe(410); // the oldest dropped
+      expect((await resume(rt, minted[1]!)).status).toBe(200);
+      const second = minted[2]!;
+      // A director's re-pair QR in between leaves the icon's nonce alone.
+      expect((await mod(rt, "/api/mod/guest/pair", { id: ana.id })).status).toBe(200);
+      t += PAIR_TTL_MS + 60_000; // well past a QR's life, well inside the icon's
+      expect((await resume(rt, second)).status).toBe(200);
+      const late = (await homescreen(rt, ana.token)).json.pair as string;
+      t += 12 * 60 * 60_000 + 1;
+      expect((await resume(rt, late)).status).toBe(410);
+    });
+  });
+
+  it("a restart clears every nonce; revokeOthers voids the lost phone's", async () => {
+    await withSwitch(true, async () => {
+      const rt = runtimeAt(freshDir());
+      rt.openDoors();
+      const ana = await register(rt, "Winamp");
+      const nonce = (await homescreen(rt, ana.token)).json.pair as string;
+      expect((await mod(rt, "/api/mod/guest/pair", { id: ana.id, revokeOthers: true })).status).toBe(200);
+      expect((await resume(rt, nonce)).status).toBe(410);
+
+      const bob = await register(rt, "Napster");
+      const pending = (await homescreen(rt, bob.token)).json.pair as string;
+      expect((await mod(rt, "/api/mod/reset", {})).status).toBe(200);
+      expect((await resume(rt, pending)).status).toBe(410);
+    });
   });
 });

@@ -20,6 +20,7 @@ import { fileURLToPath } from "node:url";
 import { validateHouse, type HouseMap, type MapVariantsResponse } from "@loom/house";
 
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
+import { namedEvents } from "../src/runtime/sim/model.ts";
 import { guestView, modView, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
@@ -44,14 +45,17 @@ import {
   type PictureChoice,
 } from "./identity.ts";
 import { foldName } from "../src/parser/names.ts";
+import { cueSheetView } from "../src/cue-sheet.ts";
 import { canonicalPlaceArgs } from "./place-args.ts";
 import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
-import { Pairing, RESUME_ROUTE } from "./routes/n02.ts";
+import { LOGOUT_ROUTE, Pairing, RESUME_ROUTE } from "./routes/n02.ts";
+import { HOMESCREEN_ROUTE } from "./routes/k31b.ts";
 import { PushRoutes } from "./routes/k31.ts";
 import { PushHub, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
 import { printExtras } from "./routes/k12.ts";
 import { sendRecap } from "./routes/recap.ts";
 import { ScreenWatch, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost } from "./routes/screen.ts";
+import { handleScreenIdentifyPost } from "./routes/screen.ts";
 import { SpatialHub, houseVersion, houseWarnings, isWorld, parseDuckRun, parsePose, sortCandidates, type DuckRun, type SessionRef } from "./spatial.ts";
 import {
   DEFAULT_MAP_FILE,
@@ -184,6 +188,9 @@ function visibleToPrime(m: ChatMessage, c: Client): boolean {
 /** How many thread lines an agent request carries. */
 const AGENT_HISTORY = 30;
 
+/** The `/api/guest/wallet/*` calls a restricted guest is refused (403). */
+const WALLET_RESTRICTED: ReadonlySet<string> = new Set(["send", "request", "respond", "offer", "accept", "stimulus", "grant", "freeze"]);
+
 /** Parse an agent's variable adjustments: `{name: signed delta}`, numbers only. */
 function agentAdjustments(raw: unknown): Array<[string, number]> {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return [];
@@ -210,6 +217,10 @@ function forGuest(m: ChatMessage): ChatMessage {
  *  read with this cap, before (never through) the generic 4 MiB parse. */
 const SPATIAL_BODY_LIMIT = 2048;
 
+/** The named event `/api/mod/spatial/begin` fires for the scanned program,
+ *  when the story declares it (the show captures a marked arrival on it). */
+export const REINSTALLATION_BEGUN = "reinstallation begun";
+
 /** The show's house map file: `LOOM_HOUSE`, else the example's `house.json`. */
 export function defaultHouseFile(): string {
   return process.env.LOOM_HOUSE ?? fileURLToPath(new URL("../examples/trapped-in-the-internet/house.json", import.meta.url));
@@ -228,6 +239,15 @@ export function defaultFactsFile(houseFile = defaultHouseFile()): string {
 const showHouses = new Map<string, { mtimeMs: number; house: HouseMap }>();
 /** The last problem logged per path (a missing file warns once, not per request). */
 const showHouseWarned = new Map<string, string>();
+/** Who a mutation is done by, for the facts ledger's provenance (wave 5
+ *  issue 8): the journal's `by` (a director, a device, an impersonator),
+ *  else a `signal`'s actor (a booth's character — `/api/prime/act`). */
+function factsBy(m: Mutation, args: readonly unknown[], by: string | undefined): string | null {
+  if (by !== undefined && by !== "") return by;
+  if (m === "signal" && typeof args[3] === "string" && args[3] !== "") return args[3];
+  return null;
+}
+
 function warnShowHouse(path: string, message: string): void {
   if (showHouseWarned.get(path) === message) return;
   showHouseWarned.set(path, message);
@@ -323,6 +343,16 @@ export interface EventRuntimeInit {
   /** Least gap between two `snapshot` frames to the full mod consoles
    *  (default `MOD_SNAPSHOT_MS`; tests pass 0 for one frame per step). */
   modSnapshotMs?: number;
+  /** Least gap between two `snapshot` frames to the phones and booths
+   *  (default `LOOM_SNAPSHOT_MS`, else 0 = one frame per step). */
+  snapshotMs?: number;
+}
+
+/** `LOOM_SNAPSHOT_MS`: coalesce guest + booth snapshots to at most one per
+ *  this many ms (the K-32 contingency, SW-OPS-24). Off (0) unless set. */
+export function snapshotMsFromEnv(env: NodeJS.ProcessEnv = process.env): number {
+  const ms = Number(env.LOOM_SNAPSHOT_MS ?? "");
+  return Number.isFinite(ms) && ms > 0 ? ms : 0;
 }
 
 /** Mod-console snapshots are coalesced to at most one per this many ms
@@ -474,16 +504,17 @@ export class EventRuntime {
   private readonly modSnapshotMs: number;
   private modSnapshotAt = Number.NEGATIVE_INFINITY;
   private modSnapshotTimer: ReturnType<typeof setTimeout> | null = null;
+  // Guest + booth snapshot coalescing (`pushClientSnapshots`).
+  private readonly snapshotMs: number;
+  private snapshotAt = Number.NEGATIVE_INFINITY;
+  private snapshotTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly agents = new AgentHub({
     build: (thread, id) => this.buildAgentRequest(thread, id),
     admits: (thread) => this.agentAdmits(thread),
     typing: (thread, on) => this.pushTyping(thread, on),
     hold: (req) => this.postAgentHold(req),
     now: () => this.clock(),
-    presence: () => {
-      this.pushPresence();
-      for (const c of this.clients) if (c.role !== "mod") sseSend(c.res, "snapshot", this.snapshotFor(c));
-    },
+    presence: () => this.pushSnapshots(),
   });
 
   constructor(init: EventRuntimeInit) {
@@ -516,6 +547,7 @@ export class EventRuntime {
     this.random = init.random ?? Math.random;
     if (init.now !== undefined) this.clock = init.now;
     this.modSnapshotMs = Math.max(0, init.modSnapshotMs ?? MOD_SNAPSHOT_MS);
+    this.snapshotMs = Math.max(0, init.snapshotMs ?? snapshotMsFromEnv());
     this.spatial = new SpatialHub({
       eventId: init.eventId,
       ...(init.now !== undefined ? { now: init.now } : {}),
@@ -687,20 +719,20 @@ export class EventRuntime {
   }
 
   /** A guest's snapshot, plus the cards they have already answered. */
-  private guestViewFor(id: string, online: ReadonlySet<string>): GuestView {
+  private guestViewFor(id: string, online: ReadonlySet<string>, avatars = this.avatarMap()): GuestView {
     return {
       ...guestView(this.reqSim(), id, this.decisionChannels.get(id) ?? null, online),
       answered: this.answeredFor(id),
-      avatars: this.avatarMap(),
+      avatars,
       ...(this.wallet !== null ? { wallet: this.wallet.viewFor(id) } : {}),
     };
   }
 
   /** A performer's snapshot, plus the cards their character has already
    *  answered, with everyone's profile pictures. */
-  private primeViewFor(character: string, online: ReadonlySet<string>): PrimeView {
+  private primeViewFor(character: string, online: ReadonlySet<string>, avatars = this.avatarMap()): PrimeView {
     const queue = this.wallet?.queueFor(character) ?? null;
-    return { ...primeView(this.sim, character, online), answered: this.answeredFor(character), avatars: this.avatarMap(), ...(queue !== null ? { wallet: queue } : {}) };
+    return { ...primeView(this.sim, character, online), answered: this.answeredFor(character), avatars, ...(queue !== null ? { wallet: queue } : {}) };
   }
 
   /** The operator's god view, with everyone's profile pictures. */
@@ -718,10 +750,52 @@ export class EventRuntime {
     return out.sort((a, b) => a - b);
   }
 
-  /** Push fresh snapshots to every connected client (mod consoles coalesced). */
+  /** Push fresh snapshots to every connected client (mod consoles always
+   *  coalesced, phones + booths when `snapshotMs` > 0). */
   private pushSnapshots(): void {
-    for (const c of this.clients) if (c.role !== "mod") sseSend(c.res, "snapshot", this.snapshotFor(c));
+    this.pushClientSnapshots();
     this.pushModSnapshots();
+  }
+
+  /**
+   * Send every guest and booth its own fresh view — at once if the last
+   * round went out ≥ `snapshotMs` ago, else once when the window closes (a
+   * burst of steps → one trailing round, computed then). `snapshotMs` 0 is
+   * one round per step, as before SW-OPS-24.
+   */
+  private pushClientSnapshots(): void {
+    if (this.snapshotTimer !== null) return;
+    const wait = this.snapshotAt + this.snapshotMs - Date.now();
+    if (wait <= 0) {
+      this.flushClientSnapshots();
+      return;
+    }
+    this.snapshotTimer = setTimeout(() => {
+      this.snapshotTimer = null;
+      this.flushClientSnapshots();
+    }, wait);
+    this.snapshotTimer.unref?.();
+  }
+
+  /** Flush a pending (coalesced) guest + booth round right now, if one is waiting. */
+  private flushClientSnapshotsNow(): void {
+    if (this.snapshotTimer === null) return;
+    clearTimeout(this.snapshotTimer);
+    this.snapshotTimer = null;
+    this.flushClientSnapshots();
+  }
+
+  private flushClientSnapshots(): void {
+    // Who's online and the picture map are the same for everyone: once a round.
+    let online: Set<string> | null = null;
+    let avatars: Record<string, string> | null = null;
+    for (const c of this.clients) {
+      if ((c.role !== "guest" && c.role !== "prime") || c.lean === true) continue;
+      online ??= new Set(this.agents.onlineCharacters());
+      avatars ??= this.avatarMap();
+      sseSend(c.res, "snapshot", c.role === "guest" ? this.guestViewFor(c.id, online, avatars) : this.primeViewFor(c.id, online, avatars));
+    }
+    if (online !== null) this.snapshotAt = Date.now();
   }
 
   /** Someone came or went — refresh every mod console's presence view. */
@@ -1523,8 +1597,10 @@ export class EventRuntime {
     return { from: "show", fallback: files[0]!.file, entries: files.map((v) => [v.file, readMapFile(v.path)]) };
   }
 
-  /** `GET /api/mod/spatial/variants`. */
-  private mapVariants(): MapVariantsResponse {
+  /** `GET /api/mod/spatial/variants`. `version` = the map the event plays
+   *  now: a switch sends it back as `base`, so one confirmed off this list
+   *  is refused (409) when another director switched or saved since. */
+  private mapVariants(): MapVariantsResponse & { version: string } {
     this.spatialHouse();
     const { from, fallback, entries } = this.variantEntries();
     const active = activeVariant(
@@ -1532,7 +1608,7 @@ export class EventRuntime {
       this.mapVariant,
       fallback,
     );
-    return { variants: listVariants(entries, active, fallback), from, edited: this.spatial.source === "event", project: this.project !== null };
+    return { variants: listVariants(entries, active, fallback), from, edited: this.spatial.source === "event", project: this.project !== null, version: this.spatial.version };
   }
 
   /** The variant the event plays now, by file — over the same list
@@ -1894,6 +1970,14 @@ export class EventRuntime {
         return book.checkCancel(id, me) ?? { op: { op: "cancel", id, by: me } };
       case "stimulus":
         return book.checkStimulus(me, amount) ?? { op: { op: "stimulus", id: book.nextId("s"), by: me, amount: Math.trunc(amount), at } };
+      case "grant": {
+        const to = str(body, "to");
+        return book.checkGrant(me, to, amount) ?? { op: { op: "grant", id: book.nextId("g"), by: me, to, amount: Math.trunc(amount), at } };
+      }
+      case "freeze": {
+        const to = str(body, "to");
+        return book.checkFreeze(me, to) ?? { op: { op: "freeze", id: book.nextId("f"), by: me, target: to, until: book.freezeUntil(at), at } };
+      }
       case "approve":
         if (!book.isApprover(me)) return { status: 403, error: "not the approver" };
         return book.checkApprove(id) ?? { op: { op: "approve", id, by: me } };
@@ -1917,6 +2001,7 @@ export class EventRuntime {
   private commit(m: Exclude<Mutation, "wallet">, ...args: unknown[]): SimEvent[] {
     this.flushTick();
     this.store.appendCommand(m, args, this.actingBy);
+    this.factsWatch.mark(this.sim!, factsBy(m, args, this.actingBy));
     return (this.sim![m] as (...a: unknown[]) => SimEvent[])(...args);
   }
 
@@ -1926,6 +2011,7 @@ export class EventRuntime {
   private commitWallet(op: WalletOp): SimEvent[] {
     this.flushTick();
     this.store.appendCommand("wallet", [op], this.actingBy);
+    if (this.sim !== null) this.factsWatch.mark(this.sim, this.actingBy ?? null);
     return this.wallet!.apply(op);
   }
 
@@ -2162,6 +2248,7 @@ export class EventRuntime {
    *  due timers and the agent hub. Public so tests drive the clock. */
   tickOnce(ms = 1000): void {
     if (this.sim === null || this.phase !== "open") return;
+    this.factsWatch.mark(this.sim, null);
     const evs = this.sim.tick(ms);
     this.pendingTickMs += ms;
     if (evs.length > 0) {
@@ -2278,7 +2365,8 @@ export class EventRuntime {
       this.pushSnapshots();
     }
     // A restart is a timeline cut: a director's fresh view must land before
-    // the new history, never coalesced to after it.
+    // the new history, never coalesced to after it (a phone's too).
+    this.flushClientSnapshotsNow();
     this.flushModSnapshotsNow();
     this.pushHistory();
   }
@@ -2288,11 +2376,26 @@ export class EventRuntime {
     return this.scenarioSource;
   }
 
+  /** Journal the story time the idle ticks haven't written yet (they
+   *  coalesce up to 15 s), so a restore's clock matches the live one. Flush
+   *  only: the server's SIGTERM / SIGINT handler calls it (a restart is not
+   *  an ending), and `dispose` does too. Idempotent. */
+  flushClock(): void {
+    try {
+      this.flushTick();
+    } catch {
+      /* the state dir is gone */
+    }
+  }
+
   /** Tear the runtime down (stop the clock, drop SSE clients). */
   dispose(by?: string): void {
+    this.flushClock();
     this.stopTicker();
     if (this.modSnapshotTimer !== null) clearTimeout(this.modSnapshotTimer);
     this.modSnapshotTimer = null;
+    if (this.snapshotTimer !== null) clearTimeout(this.snapshotTimer);
+    this.snapshotTimer = null;
     this.pushLifecycle("ended", by !== undefined ? { by } : {});
     for (const c of this.clients) {
       try {
@@ -2340,6 +2443,7 @@ export class EventRuntime {
         // cards) exactly as it did live.
         if (this.wallet !== null) {
           try {
+            this.factsWatch.mark(this.sim!, e.by ?? null);
             const batch = this.wallet.apply(e.a[0] as WalletOp);
             events++;
             this.chat.append(composeGuestMessages(this.sim!, batch));
@@ -2352,6 +2456,7 @@ export class EventRuntime {
       const fn = (this.sim as unknown as Record<string, unknown>)[e.m];
       if (typeof fn === "function") {
         try {
+          this.factsWatch.mark(this.sim!, factsBy(e.m, e.a, e.by));
           const out = (fn as (...a: unknown[]) => unknown).apply(this.sim, e.a);
           events++;
           if (e.m === "signal") {
@@ -2604,6 +2709,11 @@ export class EventRuntime {
         sendJson(res, 403, { error: "moderators only" });
         return true;
       }
+      // `?cues=1` (W-26): the director phone's lean read — just the cue sheet.
+      if (url.searchParams.get("cues") === "1") {
+        sendJson(res, 200, cueSheetView(this.modViewNow()));
+        return true;
+      }
       sendJson(res, 200, this.modViewNow());
       return true;
     }
@@ -2660,6 +2770,7 @@ export class EventRuntime {
     }
     if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
     if (method === "POST" && path === "/api/mod/screen/voice") return handleScreenVoicePost(this.screens, req, res, (t) => opts.moderator === true || this.sessions.canModerate(t));
+    if (method === "POST" && path === "/api/mod/screen/identify") return handleScreenIdentifyPost(this.screens, req, res, (t) => opts.moderator === true || this.sessions.canModerate(t));
 
     // --- the reinstallation games: the map, the stream, stations ---
     if (method === "GET" && (path.startsWith("/api/spatial/") || path.startsWith("/api/mod/spatial/"))) {
@@ -2687,6 +2798,11 @@ export class EventRuntime {
         return true;
       }
     }
+    if (path === HOMESCREEN_ROUTE) {
+      const t = tokenOf(req, body);
+      return this.pairing.homescreen(res, t === undefined || this.impersonations.has(t) ? undefined : this.guestTokens.get(t));
+    }
+    if (path === LOGOUT_ROUTE) return this.pairing.logout(res, tokenOf(req, body));
 
     if (path === "/api/agent/reply") {
       if (opts.moderator !== true && !this.sessions.canModerate(tokenOf(req, body))) {
@@ -3010,8 +3126,9 @@ export class EventRuntime {
           sendJson(res, 404, { error: "no such interaction for guests" });
           return true;
         }
-        // `restrict who`: every button is off until the story lifts it.
-        if (this.sim!.isRestricted(id)) {
+        // `restrict who`: every button is off until the story lifts it,
+        // bar the `restricted: allow` ones (Bathroom Mode).
+        if (this.sim!.isRestricted(id) && !def.allowRestricted) {
           sendJson(res, 403, { error: "you're restricted — the story has to lift it first" });
           return true;
         }
@@ -3200,6 +3317,8 @@ export class EventRuntime {
       case "/api/guest/wallet/decline":
       case "/api/guest/wallet/cancel":
       case "/api/guest/wallet/stimulus":
+      case "/api/guest/wallet/grant":
+      case "/api/guest/wallet/freeze":
       case "/api/guest/wallet/approve":
       case "/api/guest/wallet/deny": {
         // The story's currency (`currency:` header): every call is checked
@@ -3215,8 +3334,22 @@ export class EventRuntime {
           sendJson(res, 404, { error: "this story has no currency" });
           return true;
         }
-        const r = this.guestWalletOp(path.slice("/api/guest/wallet/".length), id, body);
+        const sub = path.slice("/api/guest/wallet/".length);
+        // `restrict who` freezes the wallet: nothing that starts or completes
+        // a transfer. Backing out (decline / cancel) stays open, and approve /
+        // deny are the book's (approver-only). Cards stay answerable.
+        if (WALLET_RESTRICTED.has(sub) && this.sim!.isRestricted(id)) {
+          sendJson(res, 403, { error: "you're restricted — the story has to lift it first" });
+          return true;
+        }
+        const r = this.guestWalletOp(sub, id, body);
         if ("status" in r) {
+          // A refused offer still costs a call, so nobody guesses codex
+          // titles at speed.
+          if (sub === "offer" && !this.walletCalls.take(id)) {
+            sendJson(res, 429, { error: "slow down — wait a minute" });
+            return true;
+          }
           sendJson(res, r.status, { error: r.error });
           return true;
         }
@@ -3681,11 +3814,23 @@ export class EventRuntime {
           return true;
         }
         const station = str(body, "station").trim().slice(0, 60);
+        const device = str(body, "device").trim().slice(0, 60) || by;
+        // A story that declares `reinstallation begun` hears the scan first
+        // (journaled `by` the device), so it can capture a marked arrival
+        // before `captured` is read below. Other stories are untouched.
+        if (namedEvents(sim.model).some((n) => foldName(n) === foldName(REINSTALLATION_BEGUN))) {
+          this.actingBy = device;
+          try {
+            this.fanout(this.commit("signal", REINSTALLATION_BEGUN, guest));
+          } finally {
+            this.actingBy = undefined;
+          }
+        }
         const assignment = this.spatial.begin({
           guest,
           name: person.name,
           world,
-          device: str(body, "device").trim().slice(0, 60) || by,
+          device,
           station: station === "" ? null : station,
           captured: sim.isCaptured(guest),
         });
@@ -3740,7 +3885,7 @@ export class EventRuntime {
           modPass: this.codes.mod,
           joinUrl: base,
           codex,
-          ...printExtras(this.sim?.model ?? null, base, this.codes.event),
+          ...printExtras(this.sim?.model ?? null, base, this.codes.event, this.factsBook()?.raw ?? null),
         });
         return true;
       }
@@ -3793,13 +3938,29 @@ export class EventRuntime {
         sendJson(res, 200, { ok: true, status: this.sim.questStatus(who, quest) });
         return true;
       }
+      case "/api/mod/wallet/approve-held": {
+        // Approve every held transfer at once (the approver's booth is
+        // empty): one journaled `approve` op each, `by` the director.
+        if (this.sim === null || this.wallet === null) {
+          sendJson(res, this.sim === null ? 409 : 404, { error: this.sim === null ? "no scenario loaded" : "this story has no currency" });
+          return true;
+        }
+        const ids = this.wallet.heldIds();
+        for (const id of ids) this.fanout(this.commitWallet({ op: "approve", id, by: DIRECTOR }));
+        sendJson(res, 200, { ok: true, approved: ids, wallet: this.wallet.modView() });
+        return true;
+      }
       case "/api/mod/wallet/approve":
       case "/api/mod/wallet/deny":
       case "/api/mod/wallet/cancel":
-      case "/api/mod/wallet/stimulus": {
+      case "/api/mod/wallet/stimulus":
+      case "/api/mod/wallet/grant":
+      case "/api/mod/wallet/freeze":
+      case "/api/mod/wallet/unfreeze": {
         // The director's hand on the wallet: approve / deny / cancel any
-        // open item, or pay the stimulus when the minter's phone is gone
-        // (it still counts against the limit). The journal line carries the
+        // open item, or pay the stimulus / a grant when the minter's phone is
+        // gone (both still count against their limit), freeze an account or
+        // lift a freeze early (`{id}` or `{to}`). The journal line carries the
         // director's name; the cards read `Director`.
         if (this.sim === null || this.wallet === null) {
           sendJson(res, this.sim === null ? 409 : 404, { error: this.sim === null ? "no scenario loaded" : "this story has no currency" });
@@ -3813,6 +3974,20 @@ export class EventRuntime {
           const amount = Number(body["amount"]);
           bad = this.wallet.checkStimulus(DIRECTOR, amount, true);
           op = { op: "stimulus", id: this.wallet.nextId("s"), by: DIRECTOR, amount, at: this.sim.elapsed() };
+        } else if (sub === "grant") {
+          const amount = Number(body["amount"]);
+          const to = str(body, "to");
+          bad = this.wallet.checkGrant(DIRECTOR, to, amount, true);
+          op = { op: "grant", id: this.wallet.nextId("g"), by: DIRECTOR, to, amount: Math.trunc(amount), at: this.sim.elapsed() };
+        } else if (sub === "freeze") {
+          const to = str(body, "to");
+          const at = this.sim.elapsed();
+          bad = this.wallet.checkFreeze(DIRECTOR, to, true);
+          op = { op: "freeze", id: this.wallet.nextId("f"), by: DIRECTOR, target: to, until: this.wallet.freezeUntil(at), at };
+        } else if (sub === "unfreeze") {
+          const r = this.wallet.checkUnfreeze(id !== "" ? id : str(body, "to"));
+          bad = "status" in r ? r : null;
+          op = { op: "unfreeze", id: "status" in r ? id : r.id, by: DIRECTOR };
         } else if (sub === "approve") {
           bad = this.wallet.checkApprove(id);
           op = { op: "approve", id, by: DIRECTOR };

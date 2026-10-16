@@ -42,6 +42,8 @@ export interface Room {
   member?: boolean
   /** From the lens projection, when known: can messages open threads? */
   threadable?: boolean
+  /** A sidebar slot that overrides `roomOrder(kind)` (a booth's own pinned rooms). */
+  order?: number
 }
 
 /** What the lens id resolves to. */
@@ -70,11 +72,19 @@ export function messageInLens(m: CockpitMessage, perspective: string, lens: Lens
   return m.audience === 'all' || (Array.isArray(m.audience) && m.audience.includes(perspective))
 }
 
-/** A guest's own pinned room — their Codex or Quest Log (one id for everyone,
- *  every message addressed to one guest). */
+/** A guest's own pinned room — their Codex, Quest Log or Wallet (one id for
+ *  everyone, every message addressed to one guest — or `@<Character>` for a
+ *  booth's own). */
 export function isPinnedRoom(channel: string): boolean {
-  return channel === 'codex' || channel === 'quests'
+  return channel === 'codex' || channel === 'quests' || channel === 'wallet'
 }
+
+/** Room kinds nobody types into from the cockpit: a person's own Codex /
+ *  Quest Log / Wallet, and a booth's Inbox (what the story dealt it). */
+export const READ_ONLY_ROOMS: ReadonlySet<string> = new Set(['codex', 'quests', 'wallet', 'inbox'])
+
+/** A booth's own rooms sit right after the lobby (`roomOrder` lobby = 0). */
+const BOOTH_PINNED_ORDER = 0.5
 
 /** The single guest on the far side of a DM message (or of their own Codex /
  *  Quest Log), or null if it isn't one guest's thread. */
@@ -153,7 +163,9 @@ function hasVisibleTraffic(channel: string, input: RoomsInput): boolean {
 /** Add the feed-derived rooms (DM threads) a lens can see. */
 function addTrafficRooms(map: Map<string, Room>, input: RoomsInput, lens: LensKind): void {
   const { messages, roster, perspective } = input
-  const nameOf = (gid: string) => roster.find((r) => r.id === gid)?.name ?? gid
+  // `@<Character>` is a booth's own pinned room (an approver's Wallet, a
+  // character's Quest Log): name it after the character.
+  const nameOf = (gid: string) => roster.find((r) => r.id === gid)?.name ?? (gid.startsWith('@') ? gid.slice(1).replace(/_/gu, ' ') : gid)
   for (const m of messages) {
     if (!messageInLens(m, perspective, lens)) continue
     const gid = dmGuestOf(m)
@@ -223,6 +235,16 @@ export function buildRooms(input: RoomsInput): Room[] {
         const key = `guest:${g.id}`
         map.set(key, { key, channel: key, kind: 'guest', title: g.name, dmGuest: g.id, character: projection.id, canPost: true })
       }
+      // The character's own pinned rooms, as the booth lists them (play
+      // `buildPrimeChannels`): rows addressed `@<Character>`, read-only.
+      const me = `@${projection.view.character}`
+      const pin = (channel: string, kind: string, title: string) =>
+        map.set(`${channel}#${me}`, { key: `${channel}#${me}`, channel, kind, title, dmGuest: me, character: null, canPost: false, order: BOOTH_PINNED_ORDER })
+      if (projection.view.questTotal > 0) pin('quests', 'quests', 'Quest Log')
+      if (projection.view.codexTotal > 0) pin('codex', 'codex', 'Codex')
+      if (projection.view.wallet !== undefined) pin('wallet', 'wallet', 'Wallet')
+      // The Inbox: cards and notes the story deals the character (`dm:<me>`).
+      pin(`dm:${projection.view.character}`, 'inbox', 'Inbox')
     } else {
       addTrafficRooms(map, input, lens)
     }
@@ -233,7 +255,8 @@ export function buildRooms(input: RoomsInput): Room[] {
     }
     addTrafficRooms(map, input, lens)
   }
-  return [...map.values()].sort((a, b) => roomOrder(a.kind) - roomOrder(b.kind) || a.title.localeCompare(b.title))
+  const orderOf = (r: Room) => r.order ?? roomOrder(r.kind)
+  return [...map.values()].sort((a, b) => orderOf(a) - orderOf(b) || a.title.localeCompare(b.title))
 }
 
 /** The messages that belong to a room, in the lens's view. A performer's

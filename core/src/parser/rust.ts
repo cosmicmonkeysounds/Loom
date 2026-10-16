@@ -165,3 +165,49 @@ export function splitTopLevelCommas(text: string): string[] {
   out.push(text.slice(start));
   return out;
 }
+
+/**
+ * [`splitTopLevelCommas`], but a comma inside a `"…"` string (with `\"`
+ * escapes) is text, not a separator: `reason: "late, no mode", n: 2` splits
+ * into two pieces. Only the `fire … with` / `show … with` argument lists use
+ * it; every other list keeps the bracket-only split.
+ */
+export function splitArgsCommas(text: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let start = 0;
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]!;
+    if (quoted) {
+      if (ch === "\\") i += 1;
+      else if (ch === '"') quoted = false;
+    } else if (ch === '"') quoted = true;
+    else if (ch === "(" || ch === "[" || ch === "{") depth += 1;
+    else if (ch === ")" || ch === "]" || ch === "}") depth -= 1;
+    else if (ch === "," && depth === 0) {
+      out.push(text.slice(start, i));
+      start = i + 1;
+    }
+  }
+  out.push(text.slice(start));
+  return out;
+}
+
+/**
+ * The first index of `needle` in `text` outside any `"…"` string (with `\"`
+ * escapes), or -1: `show poll "Play with fire?" with options: …` finds the
+ * second ` with `, not the one in the caption.
+ */
+export function indexOutsideQuotes(text: string, needle: string): number {
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]!;
+    if (quoted) {
+      if (ch === "\\") i += 1;
+      else if (ch === '"') quoted = false;
+    } else if (ch === '"') quoted = true;
+    else if (text.startsWith(needle, i)) return i;
+  }
+  return -1;
+}

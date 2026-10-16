@@ -115,8 +115,9 @@ function eventView(row: EventRow, joinBase: () => string, phase?: string, stale?
     createdAt: row.created_at,
     /** Display name of the author who launched it. */
     startedBy: row.created_by_name ?? null,
-    /** The project's files have moved on since the running snapshot was
-     *  taken — "Push current draft" would change what guests play. */
+    /** The project's files (the story, the maps, facts.json) have moved on
+     *  since the running snapshot was taken — "Push current draft" would
+     *  change what guests play. */
     ...(stale !== undefined ? { stale } : {}),
   };
 }
@@ -141,6 +142,25 @@ async function sourceIsStale(projectId: string, running: string): Promise<boolea
   }
   const src = await projectSource(projectId);
   return src !== null && src.source !== running;
+}
+
+/** Does the project's data snapshot (`projectData().snapshot`: the map
+ *  files + facts.json) differ from what the event row recorded at launch /
+ *  reload / Save to project? An old row with no record never reads stale. */
+export function snapshotDiffers(current: Record<string, string>, recorded: unknown): boolean {
+  if (recorded === null || recorded === undefined) return false;
+  const facts = factsOf(recorded);
+  const was: Record<string, string> = { ...(asMapFiles(recorded) ?? {}), ...(facts !== null ? { [FACTS_FILE]: facts } : {}) };
+  const keys = Object.keys(current);
+  return keys.length !== Object.keys(was).length || keys.some((k) => was[k] !== current[k]);
+}
+
+/** Have the project's maps or facts moved on since the event's snapshot?
+ *  Call after `sourceIsStale`, whose throttled flush makes an open
+ *  house.json current. */
+async function dataIsStale(projectId: string, row: EventRow): Promise<boolean> {
+  if (row.house_maps === null || row.house_maps === undefined) return false;
+  return snapshotDiffers((await projectData(projectId)).snapshot, row.house_maps);
 }
 
 /** Mint three fresh passcodes for a new event. */
@@ -232,7 +252,8 @@ export async function handleEvent(
     }
     const runtime = registry.get(active.id);
     const running = runtime?.source ?? active.scenario_source;
-    sendJson(res, 200, { event: eventView(active, joinBase, runtime?.currentPhase, await sourceIsStale(projectId, running)) });
+    const stale = (await sourceIsStale(projectId, running)) || (await dataIsStale(projectId, active));
+    sendJson(res, 200, { event: eventView(active, joinBase, runtime?.currentPhase, stale) });
     return true;
   }
 
@@ -338,7 +359,7 @@ export async function handleEvent(
       runtime.restart(undefined, undefined, { kind: "golive", by });
       notify("golive", "live");
       sendJson(res, 200, {
-        event: eventView(promoted, joinBase, runtime.currentPhase, await sourceIsStale(projectId, runtime.source)),
+        event: eventView(promoted, joinBase, runtime.currentPhase, (await sourceIsStale(projectId, runtime.source)) || (await dataIsStale(projectId, promoted))),
       });
       return true;
     }

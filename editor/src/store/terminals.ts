@@ -37,6 +37,10 @@ interface TerminalsState {
   forget: (name: string) => void
   /** Flip the TV-voice mute. Never rejects: a failure lands in `muteError`. */
   setVoiceMuted: (muted: boolean) => Promise<void>
+  /** Why the last identify failed; null = fine. */
+  identifyError: string | null
+  /** Ask one terminal to show its name (SW-SCR-21). Never rejects: a failure lands in `identifyError`. */
+  identify: (name: string) => Promise<void>
   /** One poll now (the interval calls it). */
   tick: () => Promise<void>
 }
@@ -78,6 +82,7 @@ export const useTerminals = create<TerminalsState>((set, get) => ({
   rows: [],
   voiceMuted: null,
   muteError: null,
+  identifyError: null,
   reachable: true,
   acked: new Set(),
 
@@ -87,7 +92,7 @@ export const useTerminals = create<TerminalsState>((set, get) => ({
     timer = null
     memory = eventId === null ? {} : load(eventId)
     lastChime = 0
-    set({ eventId, rows: mergeTerminals(memory, null, Date.now()).rows, voiceMuted: null, muteError: null, reachable: true, acked: new Set() })
+    set({ eventId, rows: mergeTerminals(memory, null, Date.now()).rows, voiceMuted: null, muteError: null, identifyError: null, reachable: true, acked: new Set() })
     if (eventId === null) return
     timer = setInterval(() => void get().tick(), TERMINALS_POLL_MS)
     void get().tick()
@@ -110,6 +115,17 @@ export const useTerminals = create<TerminalsState>((set, get) => ({
       if (get().eventId === eventId) set({ voiceMuted: r.muted, muteError: null })
     } catch (e) {
       if (get().eventId === eventId) set({ muteError: `Couldn’t ${muted ? 'mute' : 'unmute'} the TV voice: ${e instanceof Error ? e.message : String(e)}` })
+    }
+  },
+
+  identify: async (name) => {
+    const { eventId } = get()
+    if (eventId === null) return
+    try {
+      await screensApi.identify(eventId, name)
+      if (get().eventId === eventId) set({ identifyError: null })
+    } catch (e) {
+      if (get().eventId === eventId) set({ identifyError: `Couldn’t identify ${name}: ${e instanceof Error ? e.message : String(e)}` })
     }
   },
 

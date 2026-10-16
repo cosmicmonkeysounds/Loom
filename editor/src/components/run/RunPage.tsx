@@ -2,7 +2,9 @@
 //! centred panel that explains what a rehearsal does and starts one (or
 //! goes live, on a server project). With a run: getting people in (join
 //! codes, QR, join link, performer sign-in per character), who is
-//! directing, and guest lookup by pass QR. The lifecycle (pause / restart
+//! directing, the terminals, the house map's tent ⇄ shed switch
+//! (`HouseMapCard`, when the event has a map), the wallet (`WalletCard`, when the story has
+//! a currency), and guest lookup by pass QR. The lifecycle (pause / restart
 //! / push draft / go live / end) lives ONCE, in the stage header — never
 //! here; the rail, the Chat decision tray, and the Inspector cover status,
 //! personas, and pending choices. Reads the cockpit contract only, so the
@@ -20,6 +22,8 @@ import { FactionPill } from '@/components/cockpit/ui'
 import { recapPath, runAge } from './run-chrome'
 import { PrintSheet } from './PrintSheet'
 import { TerminalsCard } from './TerminalsCard'
+import { HouseMapCard } from './HouseMapCard'
+import { WalletCard, WalletLocalNote } from './WalletCard'
 
 // The Barcode Detection API isn't in the TS DOM lib; narrow shim (no `any`).
 interface BarcodeDetectorLike {
@@ -212,7 +216,7 @@ function EmptyState() {
           {server && (
             <label
               className="flex items-center gap-1.5 text-xs text-zinc-400"
-              title="Mint new performer + moderator codes for this launch (the guest code on the invitations stays). Do it before the show if a code was shared at rehearsal or typed into a terminal."
+              title="Mint new performer + moderator codes for this launch (the guest code on the invitations stays). Do it before the show if a code was shared at rehearsal or typed into a terminal. Printed cast cards carry the old performer code: reprint them afterwards."
             >
               <input type="checkbox" checked={rotateStaff} onChange={(e) => setRotateStaff(e.target.checked)} data-testid="run-rotate-staff" />
               New performer + moderator codes
@@ -377,6 +381,7 @@ function LocalCard() {
   return (
     <Card title={run.scratch ? 'Scratch run' : 'Local run'}>
       <p className="text-sm text-zinc-400">Runs in this browser — nothing reaches anyone. Personas you add are yours alone.</p>
+      <WalletLocalNote />
       {run.scratch && (
         <>
           {shared !== null && (
@@ -407,6 +412,8 @@ export function RunPage() {
             <JoinCard />
             <DirectingCard />
             <TerminalsCard />
+            <HouseMapCard key={run.eventId ?? ''} />
+            <WalletCard />
             <LookupCard />
           </>
         ) : (

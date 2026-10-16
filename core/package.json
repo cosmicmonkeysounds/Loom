@@ -13,7 +13,8 @@
     "./lsp": "./src/lsp/index.ts",
     "./facts": "./src/facts.ts",
     "./chat": "./server/chat.ts",
-    "./views": "./server/views.ts"
+    "./views": "./server/views.ts",
+    "./cue-sheet": "./src/cue-sheet.ts"
   },
   "scripts": {
     "test": "vitest run",

@@ -15,6 +15,7 @@
 //!     onSwitched={(house, version) => …}  // load it as the clean draft
 //!     onSaved={(file) => …}        // optional: e.g. reload (the source is now "project")
 //!     saveDraft={() => …}          // optional: save a valid draft to the event first
+//!     unlock={() => …}             // optional: the passcode re-check before a write (W-15)
 //!   />
 //!
 //! `MapApp` mounts it through `projectBarExtras` (its `toolbarExtras` slot,
@@ -35,10 +36,10 @@ import {
   canSaveToProject,
   canSwitch,
   downloadOf,
+  planSwitch,
   saveConfirm,
   saveTarget,
   statusOf,
-  switchConfirm,
   variantLabel,
   variantName,
   variantTitle,
@@ -70,9 +71,12 @@ export interface ProjectBarProps {
   saveDraft?: () => Promise<string | null>;
   /** Ask the director (default `window.confirm`). */
   confirm?: (message: string) => boolean;
+  /** Before a switch or a save to the project: the moderator passcode again
+   *  (`MapUnlock`, once per page load); false = cancelled, nothing is written. */
+  unlock?: () => Promise<boolean>;
 }
 
-export function ProjectBar({ base, token, house, version, players = 0, dirty = false, onSwitched, onSaved, saveDraft, confirm = (m) => window.confirm(m) }: ProjectBarProps) {
+export function ProjectBar({ base, token, house, version, players = 0, dirty = false, onSwitched, onSaved, saveDraft, confirm = (m) => window.confirm(m), unlock = async () => true }: ProjectBarProps) {
   const [list, setList] = useState<MapVariantsResponse | null>(null);
   const [status, setStatus] = useState<BarStatus>({ kind: "idle" });
   const busy = status.kind === "busy";
@@ -91,12 +95,26 @@ export function ProjectBar({ base, token, house, version, players = 0, dirty = f
   const toVariant = async (file: string) => {
     const v = list?.variants.find((x) => x.file === file);
     if (v === undefined || !canSwitch(v, busy)) return;
+    if (!(await unlock())) return;
     const all = list?.variants ?? [];
-    const ask = switchConfirm(v, { players, edited: list?.edited ?? false, dirty, all });
-    if (ask !== null && !confirm(ask)) return;
+    // A director's save on the event is offered to the project first; the
+    // switch then posts from the version that save left (the reload the
+    // switch does covers the save's `onSaved`, unless it stops there).
+    let saved: string | null = null;
+    const save = async (f: string, at: string | null) => {
+      const next = await saveToProjectNow(f, at, false);
+      if (next !== null) saved = f;
+      return next;
+    };
+    const plan = await planSwitch(v, list, { players, dirty, version }, { confirm, save });
+    if (plan === null) {
+      if (saved !== null) onSaved?.(saved);
+      void refresh();
+      return;
+    }
     setStatus({ kind: "busy", what: `Switching to ${variantName(v, all)}…` });
     try {
-      const r = await switchVariant(base, token, file, version);
+      const r = await switchVariant(base, token, file, plan.base);
       if (r.ok) {
         const loaded = await fetchHouse(base, token);
         if (loaded.source === "bundled") setStatus({ kind: "error", text: `Playing ${file}, but the map did not load here — reload the page.` });
@@ -111,7 +129,24 @@ export function ProjectBar({ base, token, house, version, players = 0, dirty = f
     void refresh();
   };
 
+  /** Write the event's map into the project as `file` from `at`: the
+   *  version it leaves, null when it failed (the status line says why). */
+  const saveToProjectNow = async (file: string, at: string | null, notify = true): Promise<string | null> => {
+    setStatus({ kind: "busy", what: `Saving ${file} to the project…` });
+    try {
+      const r = await saveToProject(base, token, file, at);
+      setStatus(statusOf(r, "save"));
+      if (!r.ok) return null;
+      if (notify) onSaved?.(r.result.file);
+      return r.result.version;
+    } catch (e) {
+      setStatus({ kind: "error", text: (e as Error).message });
+      return null;
+    }
+  };
+
   const toProject = async () => {
+    if (!(await unlock())) return;
     const file = saveTarget(list);
     const withDraft = dirty && saveDraft !== undefined;
     const ask = saveConfirm(file, dirty, withDraft);
@@ -129,14 +164,7 @@ export function ProjectBar({ base, token, house, version, players = 0, dirty = f
         return;
       }
     }
-    setStatus({ kind: "busy", what: `Saving ${file} to the project…` });
-    try {
-      const r = await saveToProject(base, token, file, at);
-      setStatus(statusOf(r, "save"));
-      if (r.ok) onSaved?.(r.result.file);
-    } catch (e) {
-      setStatus({ kind: "error", text: (e as Error).message });
-    }
+    await saveToProjectNow(file, at);
     void refresh();
   };
 
@@ -220,6 +248,7 @@ export function projectBarExtras(ctx: MapToolbarContext): ReactNode {
       dirty={ctx.dirty}
       onSwitched={() => void ctx.reload()}
       onSaved={() => void ctx.reload()}
+      unlock={ctx.unlock}
       {...(saveDraft !== undefined ? { saveDraft } : {})}
     />
   );

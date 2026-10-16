@@ -425,6 +425,9 @@ describe("routes — codex", () => {
     expect(codes.json.checkin).toEqual([
       { id: "The Desktop", label: "The Desktop", slug: "the-desktop", url: "http://party.local:7000/?code=EVT777&checkin=the-desktop", hidden: false },
     ]);
+    // SW-QR-11: a cast card per performer part (the parts a booth can pick).
+    expect(codes.json.cast).toContain("Norton");
+    expect(typeof codes.json.stacks).toBe("object");
   });
 
   it("the 9th wrong code in a minute gets a 429 and is never journaled; other guests are unaffected", async () => {

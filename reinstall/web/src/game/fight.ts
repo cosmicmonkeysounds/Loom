@@ -10,10 +10,19 @@ import { floorOf } from "@loom/house";
 import type { HouseMap, Prop, Vec3 } from "@loom/house";
 import { relativeBearing } from "./hud.ts";
 
+/** Said when a checkmate's `chess won` never reached the event (every retry failed). */
+export const WIN_NOT_SENT = "The win didn't reach the house: tell a host (♟).";
+
+/** What the HUD says once a checkmate's story signal settles: `WIN_NOT_SENT`
+ *  when it didn't land (so a host fires ♟ by hand), else nothing. */
+export async function winNotice(sent: Promise<boolean> | undefined): Promise<string | null> {
+  return sent !== undefined && !(await sent) ? WIN_NOT_SENT : null;
+}
+
 /** Hit points when the prop declares none. */
 export const KING_HP = 4;
 /** One hit per this many milliseconds. */
-export const HIT_COOLDOWN_MS = 1200;
+export const HIT_COOLDOWN_MS = 2000;
 /** Plan metres, feet → the king's base centre (the body stops ≈ 0.55 m from it). */
 export const HIT_REACH = 1.25;
 /** |relative bearing| allowed: the player must face him. */

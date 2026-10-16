@@ -49,7 +49,7 @@ Stack: shelf — inside the encyclopaedias, volumes A–M
 | M16 | green | `CONFIDENCE` | Confidence | shelf — inside the encyclopaedias, volumes A–M | If you tell Trabolta a lie with enough confidence, he will accept it as truth |
 | M17 | green | `COPY-OF-YOU` | A Copy Of You | shelf — inside the encyclopaedias, volumes A–M | You are a copy of yourself |
 | M18 | green | `OUT-OF-DATE` | Out Of Date | shelf — inside the encyclopaedias, volumes A–M | The AntiViruses don't know as much as they seem to |
-| M19 | green | `ASK-HIM-NICELY` | Ask Him Nicely | shelf — inside the encyclopaedias, volumes A–M | You can influence Trabolta to change the lights or play specific videos on the terminals |
+| M19 | green | `ASK-HIM-NICELY` | Ask Him Nicely | shelf — inside the encyclopaedias, volumes A–M | You can influence Trabolta to change the lights or put things on the wall terminals |
 | M20 | green | `SAFE-PLACE` | The Safe Place | shelf — inside the encyclopaedias, volumes A–M | The bathroom is the only truly safe place |
 | M21 | green | `COLD-STORAGE` | The Server Room (hand-written) | already placed — README → QR placements | The door to the server room is guarded by a lock and alarm |
 | M22 · DRAFT | green | `DISARM-KEY` | Disarming The Alarm | shelf — inside the encyclopaedias, volumes A–M | The key to disarming the alarm is __________ |

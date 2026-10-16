@@ -245,6 +245,35 @@ describe("the judge hop — /api/guest/widget with a facts.json", () => {
     rt.dispose();
   });
 
+  it("ModView.facts records how each final was reached and who confirmed it — and a restart keeps both (wave 5 issue 8)", async () => {
+    const keyed = JSON.stringify({ ...FILE, judge: { confirm: { accurate: "judge_accurate", lie: "judge_lie", uncertain: "judge_uncertain" } } });
+    const { rt, d } = fresh({ facts: keyed });
+    const ada = await guest(rt, "Ada");
+    const ben = await guest(rt, "Ben");
+    // auto: the judge's verdict stands at once, nobody confirmed it
+    expect((await answer(rt, ada, cardSeq(rt, ada, "fact"), { question: "Q2", answer: "Mister Pickles", confidence: 100 })).status).toBe(200);
+    // review: Ben's lie is a proposal until the director (moderatorName "Ada") confirms it accurate
+    expect((await mod(rt, "/api/mod/var", { path: "Night.judge_mode", value: "review" })).status).toBe(200);
+    expect((await answer(rt, ben, cardSeq(rt, ben, "fact"), { question: "Q1", answer: "twelve", confidence: 100 })).status).toBe(200);
+    const rows = (v: FactsView) => v.questions.flatMap((q) => q.filings.map((f) => [f.name, q.id, f.verdict, f.final, f.how, f.by]));
+    expect(rows((await modView(rt)).facts!)).toEqual([
+      ["Ben", "Q1", "lie", null, null, null],
+      ["Ada", "Q2", "accurate", "accurate", "auto", null],
+    ]);
+    expect((await mod(rt, "/api/mod/signal", { name: "judge_accurate", subject: ben.id, args: { question: "Q1" } })).status).toBe(200);
+    const live = rows((await modView(rt)).facts!);
+    expect(live).toEqual([
+      ["Ben", "Q1", "lie", "accurate", "overridden", "Ada"],
+      ["Ada", "Q2", "accurate", "accurate", "auto", null],
+    ]);
+    rt.dispose();
+    // The journal's `by` rebuilds the same provenance after a restart.
+    const again = runtimeIn(d, { facts: keyed });
+    expect(again.restore()).not.toBeNull();
+    expect(rows((await modView(again)).facts!)).toEqual(live);
+    again.dispose();
+  });
+
   it("a keyed `answer` card is judged on its own `question` param; `text` may name anyone; an un-keyed one passes untouched", async () => {
     const { rt, d } = fresh({ facts: TEXT });
     const ada = await guest(rt, "Ada");

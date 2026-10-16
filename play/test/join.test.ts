@@ -62,9 +62,9 @@ describe("the join screen's code lookup", () => {
     const calls = fakeServer({ "/api/resolve-code": [{ status: 200, body: { eventId: "evt 1", role: "guest", title: "Trapped", theme: "aol97" } }] });
     const a = landingBrand("EVT1");
     const b = landingBrand("EVT1");
-    expect(await a.ask).toEqual({ title: "Trapped", theme: "aol97" });
-    expect(await b.ask).toEqual({ title: "Trapped", theme: "aol97" });
-    expect(landingBrand("EVT1").value).toEqual({ title: "Trapped", theme: "aol97" }); // a later screen paints at once
+    expect(await a.ask).toEqual({ title: "Trapped", theme: "aol97", role: "guest" });
+    expect(await b.ask).toEqual({ title: "Trapped", theme: "aol97", role: "guest" });
+    expect(landingBrand("EVT1").value).toEqual({ title: "Trapped", theme: "aol97", role: "guest" }); // a later screen paints at once
     expect(calls).toEqual(["/api/resolve-code"]);
   });
 });

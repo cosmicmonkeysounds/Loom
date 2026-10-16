@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { Sim } from "../src/runtime/sim/index.ts";
-import { scenarioSource } from "../examples/load.ts";
-import { checkinSigns, checkinSlug, printExtras } from "../server/routes/k12.ts";
+import { scenarioFactsFile, scenarioSource } from "../examples/load.ts";
+import { checkinSigns, checkinSlug, codexStacks, HUNT_COLOUR, printExtras } from "../server/routes/k12.ts";
 import { foldName } from "../src/parser/names.ts";
+import { parseFactsText, type FactsFile } from "../src/facts.ts";
 
 describe("K-12 print extras", () => {
   it("slugs fold back onto the LOCATION name", () => {
@@ -49,5 +50,55 @@ describe("K-12 print extras", () => {
     expect(ids).not.toContain("The Optical Drive");
     expect(ids).not.toContain("The Internet");
     expect(ids).not.toContain("The Server Room"); // locked: a visit would reveal it early
+  });
+
+  it("lists a cast card per performer part — never a program, an agent or a prop", () => {
+    const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
+    const { cast } = printExtras(sim.model, "https://a", "E");
+    for (const part of ["Clippy", "Task Manager", "Norton Anti-Virus", "CRA Agent Software", "Recycling Bin"]) expect(cast).toContain(part);
+    expect(cast).not.toContain("Trabolta"); // mind: external
+    expect(cast).not.toContain("Installation Wizard"); // playable: false
+    expect(cast).not.toContain("Kernel");
+    expect(printExtras(null, "https://x", "E").cast).toEqual([]);
+  });
+
+  it("places each codex entry on its fact stack: hunt answers gold, facts by category, hand-written ones already placed", () => {
+    const facts = {
+      version: 1,
+      categories: { main: { colour: "green", stack: "shelf" }, trabolta: { colour: "blue", stack: "mantel" } },
+      questions: [
+        { id: "H1", round: 1, text: "q", answer: "a", accept: [], where: "volume B", codex: { id: "The Lease", title: "The Lease", code: "LEASE", text: "t" } },
+        { id: "H2", round: 1, text: "q", answer: "a", accept: [] },
+      ],
+      answers: [],
+      facts: [
+        { id: "M01", category: "main", text: "x", codex: { id: "Silicon", title: "Silicon", code: "SILICON", text: "t" } },
+        { id: "M02", category: "main", text: "x", existing: "The Theory", code: "THEORY" },
+        { id: "T1", category: "trabolta", text: "x", existing: "The Theory" }, // first claim wins
+        { id: "X1", category: "nowhere", text: "x", codex: { id: "Lost", title: "Lost", code: "LOST", text: "t" } },
+      ],
+      truths: [],
+    } as FactsFile;
+    expect(codexStacks(facts)).toEqual({
+      "The Lease": { colour: HUNT_COLOUR, stack: "hunt answers", where: "volume B" },
+      Silicon: { colour: "green", stack: "shelf", where: null },
+      "The Theory": { colour: "green", stack: "shelf", where: "already placed" },
+    });
+    expect(codexStacks(null)).toEqual({});
+    expect(printExtras(null, "https://x", "E").stacks).toEqual({});
+  });
+
+  it("the show's stacks name real codex entries with codes, every hunt answer gold", () => {
+    const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
+    const facts = parseFactsText(scenarioFactsFile("trapped-in-the-internet")!.source).facts!;
+    const stacks = printExtras(sim.model, "https://a", "E", facts).stacks;
+    for (const q of facts.questions) {
+      if (!q.codex) continue;
+      expect(stacks[q.codex.id]).toEqual({ colour: "gold", stack: "hunt answers", where: q.where ?? null });
+    }
+    // every id is a real entry (one without a code just never gets a poster)
+    for (const id of Object.keys(stacks)) expect(sim.model.codex.has(id), id).toBe(true);
+    const colours = new Set(Object.values(stacks).map((s) => s.colour));
+    expect([...colours].sort()).toEqual(["blue", "gold", "green", "red"]);
   });
 });

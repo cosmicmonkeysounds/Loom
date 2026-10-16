@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildWalls, polyArea, roomAt, route, validateHouse } from "@loom/house";
 import type { HouseMap } from "@loom/house";
-import { guardedRooms, unreachableDucks, unreachableRooms, foldName, locationProblems, selectionOf, structuredProblems, walkabilityProblems } from "../src/map/check.ts";
+import { duckWallLeaks, guardedRooms, unreachableDucks, unreachableRooms, foldName, locationProblems, selectionOf, structuredProblems, walkabilityProblems } from "../src/map/check.ts";
 import { doorLine, moveDoorAlong, openEdge, patchDoor, placeDoor, resolveDoor, sidesAt, wallRun } from "../src/map/doors.ts";
 import { moveRectEdge, moveRoom, moveTo, patchRoom, removeThing } from "../src/map/edit.ts";
 import { EMPTY_HISTORY, HISTORY_DEPTH, pushed, redone, undone } from "../src/map/history.ts";
@@ -27,7 +27,7 @@ import {
 } from "../src/map/structure.ts";
 import { fillYard, flapsAdded, gridFor, partition, patchYard, touchesIndoor, traceCells, yardClash, yardOf, yardParts, yardShare } from "../src/map/yards.ts";
 import { floorOfSelection, isStep, parseNum, selectionExists } from "../src/map/tools.ts";
-import { L_ROOM, SHOW, STAIR, TWO_ROOMS } from "./houses.ts";
+import { L_ROOM, SHOW, SHOW_SHED, STAIR, TWO_ROOMS } from "./houses.ts";
 
 /** The map is valid — or the test fails with `validateHouse`'s problems. */
 function valid(h: HouseMap): HouseMap {
@@ -726,5 +726,32 @@ describe("check — a King guarding a door", () => {
     const open: HouseMap = { ...h, doors: [...h.doors, { id: "laundry-server", a: "fan-closet", b: "server-room", at: [-5, 7], width: 0.8 }] };
     expect(guardedRooms(open)).toEqual([]);
     expect(walkabilityProblems(open).filter((p) => /guarded/.test(p.text))).toEqual([]);
+  });
+});
+
+describe("duckWallLeaks: a duck found through a wall from the next room", () => {
+  // TWO_ROOMS: a [0..4]×[0..3] and b [4..7]×[0..3] share the wall at x = 4.
+  const withDuck = (x: number): HouseMap => {
+    const h = TWO_ROOMS();
+    return valid({ ...h, duck: { ...h.duck, spots: [{ id: "near", room: "a", pos: [x, 0, 1.5] }] } });
+  };
+
+  it("a duck 0.4 m from the shared wall leaks into b, and the problem list says so", () => {
+    const h = withDuck(3.6);
+    expect(duckWallLeaks(h)).toEqual([{ duck: "near", from: "b" }]);
+    const p = walkabilityProblems(h).filter((q) => /through the wall/.test(q.text));
+    expect(p).toHaveLength(1);
+    expect(p[0]).toMatchObject({ sel: { kind: "duck", id: "near" }, level: "warning" });
+    expect(p[0]!.text).toMatch(/duck spot "near" \(.+\) can be picked up through the wall from ".+"/);
+  });
+
+  it("the same duck 1.5 m from the wall doesn't, nor do the fixture's own ducks", () => {
+    expect(duckWallLeaks(withDuck(2.5))).toEqual([]);
+    expect(duckWallLeaks(TWO_ROOMS())).toEqual([]);
+  });
+
+  it("the show's maps (tent and shed) report none — as core/test/show-house.test.ts insists", () => {
+    expect(duckWallLeaks(SHOW())).toEqual([]);
+    expect(duckWallLeaks(SHOW_SHED())).toEqual([]);
   });
 });

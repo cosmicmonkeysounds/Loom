@@ -22,8 +22,9 @@ export const PLAY_CSP = `${HTML_CSP}; worker-src 'self'; manifest-src 'self'`;
 
 /** Play-app files served `Cache-Control: no-cache`: a stale service worker
  *  or manifest would outlive a deploy (the browser re-checks `sw.js` on its
- *  own schedule; no-cache makes every check a real one). */
-export const PLAY_PWA_FILES: ReadonlySet<string> = new Set(["/sw.js", "/manifest.webmanifest"]);
+ *  own schedule; no-cache makes every check a real one). The touch icon
+ *  (K-31b) rides along: iOS fetches it at the root by that name. */
+export const PLAY_PWA_FILES: ReadonlySet<string> = new Set(["/sw.js", "/manifest.webmanifest", "/apple-touch-icon.png"]);
 
 /** The terminal plays synthesised speech from in-memory blobs and reads
  *  the tablet's camera; only the media source differs from the play app. */

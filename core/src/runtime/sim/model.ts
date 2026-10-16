@@ -156,7 +156,7 @@ export interface CharDef {
    *  there). Default false. */
   secret: boolean;
   /** `wallet: approver[, every N][, window <dur>]` / `wallet: minter[, limit N]
-   *  [, while <cond>]` — a role in the story's currency (see `CurrencyDef`).
+   *  [, while <cond>][, grants N][, freeze <dur>]` — a role in the story's currency (see `CurrencyDef`).
    *  A property, never a part: it keeps a bare character on the guest picker.
    *  Null for everyone else. */
   wallet: WalletRole | null;
@@ -166,12 +166,14 @@ export interface CharDef {
  * A character's part in the currency (`CharDef.wallet`): the **approver**
  * audits transfers (every Nth is held for an Approve, the rest settle after
  * a window unless denied); the **minter** may pay every eligible person a
- * stimulus, at most `limit` times. Whether the approver is a performer's
+ * stimulus, at most `limit` times, grant one person coin from the reserve
+ * (`grants`, default 3 — the book applies the default) and freeze anyone's
+ * coin for `freezeMs` (default 10 min). Whether the approver is a performer's
  * booth or a guest's program is decided at the door, not here.
  */
 export type WalletRole =
   | { role: "approver"; every: number; windowMs: number }
-  | { role: "minter"; limit: number; while: string | null };
+  | { role: "minter"; limit: number; while: string | null; grants?: number; freezeMs?: number };
 
 /**
  * Header `currency: <slot> as <Name>[, max N][, expiry <dur>]` — the story
@@ -188,7 +190,8 @@ export interface CurrencyDef {
   /** Request / offer lifetime (default 10 min). */
   expiryMs: number;
   approver: { id: string; every: number; windowMs: number } | null;
-  minter: { id: string; limit: number; while: string | null } | null;
+  /** `grants` / `freezeMs` only when authored (the book's defaults: 3 / 10 min). */
+  minter: { id: string; limit: number; while: string | null; grants?: number; freezeMs?: number } | null;
 }
 
 /** A compiled `CODEX` entry — a unit of shareable lore (Loom 4 §10.1). */
@@ -277,6 +280,9 @@ export interface InteractionDef {
    *  subject); a performer's folds under "More" (evaluated with `self` =
    *  the performer). Null = always. */
   while: string | null;
+  /** `restricted: allow` — a guest's button that stays on while they are
+   *  restricted (`restrict who`): Bathroom Mode and its Back. */
+  allowRestricted: boolean;
 }
 
 export interface SimModel {
@@ -477,6 +483,7 @@ export function compileModel(bundle: Bundle): SimModel {
                 .map((n) => n.trim())
                 .filter((n) => n !== ""),
               while: decl.interaction.properties.get("while")?.value.trim() || null,
+              allowRestricted: decl.interaction.properties.get("restricted")?.value.trim().toLowerCase() === "allow",
             });
           }
           break;
@@ -535,7 +542,8 @@ export function compileModel(bundle: Bundle): SimModel {
       if (c.wallet.role === "approver" && model.currency.approver === null) {
         model.currency.approver = { id: c.id, every: c.wallet.every, windowMs: c.wallet.windowMs };
       } else if (c.wallet.role === "minter" && model.currency.minter === null) {
-        model.currency.minter = { id: c.id, limit: c.wallet.limit, while: c.wallet.while };
+        const { limit, while: cond, grants, freezeMs } = c.wallet;
+        model.currency.minter = { id: c.id, limit, while: cond, ...(grants !== undefined ? { grants } : {}), ...(freezeMs !== undefined ? { freezeMs } : {}) };
       }
     }
   }
@@ -747,9 +755,11 @@ function charDef(id: string, body: CharacterBody): CharDef {
 }
 
 /** Parse `wallet: approver[, every N][, window <dur>]` / `wallet: minter[,
- *  limit N][, while <cond>]` (clauses in any order, case-insensitive role).
- *  Defaults: every 3, window 60s; limit 3, no `while` (= everyone with a
- *  balance). Anything else — a typo, a missing role — reads null. */
+ *  limit N][, while <cond>][, grants N][, freeze <dur>]` (clauses in any
+ *  order, case-insensitive role). Defaults: every 3, window 60s; limit 3, no
+ *  `while` (= everyone with a balance); `grants` / `freeze` are left off
+ *  unless written (the book reads 3 / 10 min). Anything else — a typo, a
+ *  missing role — reads null. */
 export function walletRoleOf(raw: string | undefined): WalletRole | null {
   if (raw === undefined) return null;
   const parts = splitTopLevelCommas(raw).map((p) => p.trim());
@@ -775,18 +785,26 @@ export function walletRoleOf(raw: string | undefined): WalletRole | null {
   if (role === "minter") {
     let limit = 3;
     let cond: string | null = null;
+    let grants: number | undefined;
+    let freezeMs: number | undefined;
     for (const clause of parts) {
-      const m = /^(limit|while)\s+(.+)$/iu.exec(clause);
+      const m = /^(limit|while|grants|freeze)\s+(.+)$/iu.exec(clause);
       if (m === null) return null;
-      if (m[1]!.toLowerCase() === "limit") {
+      const k = m[1]!.toLowerCase();
+      if (k === "limit" || k === "grants") {
         const n = Number(m[2]);
         if (!Number.isInteger(n) || n < 0) return null;
-        limit = n;
+        if (k === "limit") limit = n;
+        else grants = n;
+      } else if (k === "freeze") {
+        const ms = parseDuration(m[2]!);
+        if (ms === null || ms <= 0) return null;
+        freezeMs = ms;
       } else {
         cond = m[2]!.trim();
       }
     }
-    return { role: "minter", limit, while: cond };
+    return { role: "minter", limit, while: cond, ...(grants !== undefined ? { grants } : {}), ...(freezeMs !== undefined ? { freezeMs } : {}) };
   }
   return null;
 }

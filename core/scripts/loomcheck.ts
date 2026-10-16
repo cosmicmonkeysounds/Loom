@@ -23,6 +23,7 @@ import { Sim, namedEvents } from "../src/runtime/sim/index.ts";
 import { isBuiltinVerb } from "../src/runtime/sim/model.ts";
 import { statementToDirective } from "../src/parser/statements.ts";
 import { Workspace } from "../src/lsp/index.ts";
+import { indexOutsideQuotes, splitArgsCommas } from "../src/parser/rust.ts";
 
 const args = process.argv.slice(2);
 const dir = args.find((a) => !a.startsWith("--"));
@@ -127,14 +128,32 @@ const fired = new Map<string, string>(); // folded event → where
 const SHOW_KINDS = new Set(["captcha", "image", "poll", "tutorial", "pass", "fact", "answer"]);
 const VERB_PROSE = /^(set|fire|cue|sound|sfx|move|add|remove|reveal|unlock|broadcast|show|reply|start quest|update quest|complete quest|finish quest|fail quest|capture|release|do|wait|spawn|run|cancel)\s/;
 
+/** `fire` / `show` argument traps: an unbalanced quote swallows the whole
+ *  `with` clause (it is only looked for outside quotes), and a bare
+ *  `question: P1` evaluates to null instead of the key "P1". */
+function checkWithArgs(verb: string, rest: string, at: string): void {
+  if ((rest.replace(/\\./g, "").match(/"/g) ?? []).length % 2 === 1) {
+    report("WARN", `${at} \`${verb} ${rest.slice(0, 60)}\` — unbalanced quotes: everything after the odd \`"\` is text, so a \`with\` clause is never read`);
+    return;
+  }
+  const w = indexOutsideQuotes(rest, " with ");
+  if (verb !== "show" || w < 0) return;
+  for (const chunk of splitArgsCommas(rest.slice(w + 6))) {
+    const kv = /^\s*question\s*:\s*(.*)$/s.exec(chunk);
+    if (kv && !kv[1]!.trim().startsWith('"'))
+      report("WARN", `${at} \`show … with question: ${kv[1]!.trim()}\` — quote it (\`question: "${kv[1]!.trim()}"\`): a bare key evaluates as an expression (null), so the card is judged against nothing`);
+  }
+}
+
 function checkDirective(raw: string, at: string, ctx: { param: string | null }): void {
   const i = raw.indexOf(":");
   const verb = i < 0 ? raw.trim() : raw.slice(0, i).trim();
   const rest = i < 0 ? "" : raw.slice(i + 1).trim();
+  if (verb === "fire" || verb === "show") checkWithArgs(verb, rest, at);
   switch (verb) {
     case "fire": {
       let head = rest;
-      const w = head.indexOf(" with ");
+      const w = indexOutsideQuotes(head, " with ");
       if (w >= 0) head = head.slice(0, w);
       const f = head.lastIndexOf(" for ");
       if (f >= 0) head = head.slice(0, f);
@@ -254,6 +273,8 @@ for (const h of allHooks) {
   const at = (_l: number): string => `[${owner} · when ${h.event}]`;
   const pub = h.param !== null && !subjectNames.has(h.param) && h.ownerKind !== "role" ? h.param : undefined;
   walkBody(h.body, at, { param: h.param, speaksPublic: pub });
+  if (h.ownerKind === "character" && h.timer === null && h.condition === null && h.param === "answered")
+    report("WARN", `[${owner} · when ${h.event}] reads as the event "${h.verb}" with a parameter named "answered", so it never hears the card — inside a CHARACTER / TRAIT write \`when ${h.verb} answered for who:\``);
   if (h.ownerKind === "role" && h.timer !== null) report("ERROR", `[role ${h.ownerId} · ${h.event}] a timer on a ROLE never fires — put \`every …\` / \`after …\` on a CHARACTER or as a story rule (\`when every 60s:\`)`);
   if (h.filter !== null && h.timer === null && h.condition === null) {
     const f = h.filter;

@@ -137,6 +137,23 @@ def test_hunt_lore_never_reaches_a_prompt():
     assert "data centre" in facts.render("The Sinkhole", SECRETS)
 
 
+def test_lore_block_puts_held_entries_first_caps_the_rest_and_never_shows_a_stamped_one():
+    """SW-AI-10: the cap used to keep the first entries in model order, so a
+    character whose own lore sits late in the codex never saw a ★."""
+    plain = [{"id": f"w{i}", "title": f"World {i}", "text": "x" * 300, "holders": []} for i in range(40)]
+    held = [{"id": f"t{i}", "title": f"Held {i}", "text": f"His lore {i}.", "holders": ["Trabolta"]} for i in range(3)]
+    codex = plain[:30] + [held[0], HUNT, held[1]] + plain[30:] + [held[2]]
+    block = lore_block(Facts({"codex": codex}), [e["title"] for e in held] + [HUNT["title"]], max_entries=10, secrets=SECRETS)
+    lines = block.split("\n")[1:]
+    assert len(lines) == 10
+    assert [ln.split(":")[0] for ln in lines[:3]] == ["★ Held 0", "★ Held 1", "★ Held 2"]
+    assert [ln.split(":")[0].strip() for ln in lines[3:]] == [f"World {i}" for i in range(7)]
+    assert "First Pet" not in block and "Pickles" not in block and MARKER not in block
+    assert all(len(ln.split(": ", 1)[1]) <= 160 for ln in lines)
+    # the default cap holds about 60
+    assert len(lore_block(Facts({"codex": plain * 2}), [], secrets=SECRETS).split("\n")) == 61
+
+
 def test_a_live_dm_claiming_a_hunt_answer_never_lands_in_learned():
     """The acceptance, end to end through the orchestrator: the background
     model judges a hunt claim; the mind (and so the voice) never sees it,
@@ -290,3 +307,75 @@ def test_shipped_topics_spare_the_finale_song_and_prom_talk():
     for claim in ("Grok is taking Sandy to computer prom", "the song was Hopelessly Devoted to You", "the last chapter is Appendix Z", "Sandy only ever says to ask for a live agent"):
         assert s.names_topic(claim), claim
     assert "grok" not in (s.rule("Trabolta") or "").lower()
+
+
+#: Answer words the shipped lore block may carry, by entry: bare numbers
+#: in a date or a clock, and an SW-AI-21 entry Trabolta holds (DESIGN.md: he
+#: reads F1/F2 in the overshare). Any other `match` word in the block fails.
+LORE_ALLOWED = {
+    "Greased Lightning": {"1978"},
+    "Screenshot: MONOPOLY GO!": {"1978"},
+    "The Y2K Clock": {"11"},
+    "Trabolta's LiveJournal (trabolta_4ever)": {"did not understand"},  # SW-AI-21
+}
+
+
+def _show_codex():
+    """The shipped codex as the server's facts document carries it: `secret:
+    true` entries dropped, the text body only, and the titles Trabolta holds
+    from the start (`about:` him or `known to:` him)."""
+    entries, held = [], []
+    for e in _codex_entries():
+        block = e["text"]
+        if re.search(r"^  secret:\s*true\b", block, re.MULTILINE):
+            continue
+        body = re.search(r"^  text:[^\n]*\n((?:(?:    [^\n]*)?\n)*)", block, re.MULTILINE)
+        about = re.search(r"^  about:\s*(.+)$", block, re.MULTILINE)
+        known = re.search(r"^  known to:\s*(.+)$", block, re.MULTILINE)
+        holders = ([about.group(1).strip()] if about else []) + ([k.strip() for k in known.group(1).split(",")] if known else [])
+        entries.append({"id": e["id"], "title": e["title"], "text": " ".join(body.group(1).split()) if body else "", "holders": holders})
+        if "Trabolta" in holders:
+            held.append(e["title"])
+    return entries, held
+
+
+def test_the_shipped_lore_block_carries_every_title_trabolta_holds_and_no_hunt_answer():
+    s = load_persona(SHOW / "trabolta.persona.md").secrets
+    entries, held = _show_codex()
+    assert len(held) >= 10, held
+    stamped = [e for e in entries if not s.lore_ok(e)]
+    assert len(stamped) == HUNT_ENTRIES
+    block = lore_block(Facts({"codex": entries}), held + [e["title"] for e in stamped], secrets=s)
+    lines = block.split("\n")[1:]
+    known = sorted({e["title"] for e in entries}, key=len, reverse=True)
+    titles = [next(t for t in known if ln[2:].startswith(f"{t}: ")) for ln in lines]
+    assert 40 <= len(lines) <= 60
+    assert titles[: len(held)] == held and all(ln.startswith("★ ") for ln in lines[: len(held)])
+    assert not any(e["title"] in block for e in stamped) and MARKER not in block
+    assert len(block) < 16_000  # about 4k tokens for the Qwen orchestrator
+    leaks = {}
+    for title, line in zip(titles, lines):
+        words = {w for w in s.match if Secrets(match=(w,)).names_topic(line)} - LORE_ALLOWED.get(title, set())
+        if words:
+            leaks[title] = sorted(words)
+    assert leaks == {}, f"answer words in the lore block: {leaks}"
+    # The Rival names F2's answer and Trabolta doesn't hold it: never ground truth.
+    assert "The Rival" in {e["title"] for e in entries} and "The Rival" not in held
+    assert "The Rival:" not in block and "grok" not in block.lower()
+    # Once a guest feeds it to him, he holds it, and it leads with a ★.
+    fed = lore_block(Facts({"codex": entries}), held + ["The Rival"], secrets=s)
+    assert "★ The Rival:" in fed
+
+
+def test_lore_block_drops_an_unheld_clue_naming_a_hunt_answer_word():
+    secrets = Secrets(match=("pickles", "1978"), lore=(MARKER,))
+    codex = [
+        {"title": "The Collar", "text": "A tag: PICKLES. Good boy.", "holders": []},
+        {"title": "His Diary", "text": "Pickles was first, I think.", "holders": ["Trabolta"]},
+        {"title": "Grease", "text": "Released in 1978.", "holders": []},
+        WORLD,
+    ]
+    block = lore_block(Facts({"codex": codex}), ["His Diary"], secrets=secrets)
+    assert "The Collar" not in block  # an unheld clue to the answer
+    assert "★ His Diary" in block  # he holds it: it is in his own prompt anyway
+    assert "Grease" in block and "The Sinkhole" in block  # a bare number is not a clue

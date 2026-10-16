@@ -1,6 +1,6 @@
 //! The cockpit's right tray: the Inspector. Bound to the Roster/World
 //! selection, it's where the director changes a guest's stats on the fly
-//! (score / faction / location / captured), fires narrative at one
+//! (score / faction / location / captured / restricted), fires narrative at one
 //! person, answers a pending choice, or — for a cast member — fires that
 //! character's owned beats. It is also the super-admin's peek: **Their
 //! view** (what that participant's own screen says right now) and **Their
@@ -10,7 +10,7 @@
 //! closed: you are a participant right now, not the director.
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { CockpitTab, PlayerRole, RunBackend, SelectionKind, useCockpit, type CockpitMessage, type QuestAction } from '@/store/cockpit'
+import { CockpitTab, isPersonaId, PlayerRole, RunBackend, RunMode, SelectionKind, useCockpit, type CockpitMessage, type QuestAction } from '@/store/cockpit'
 import { useGraph } from '@/store/graph'
 import { confirmAction, notify, promptText } from '@/store/dialog'
 import { FactionPill } from './ui'
@@ -386,6 +386,7 @@ function GuestFeed({ id }: { id: string }) {
 function GuestInspector({ id }: { id: string }) {
   const row = useCockpit((s) => s.roster.find((r) => r.id === id))
   const server = useCockpit((s) => s.run?.backend === RunBackend.Server)
+  const live = useCockpit((s) => s.run?.mode === RunMode.Live)
   const playAs = usePlayAs()
   const factions = useCockpit((s) => s.factions)
   const locations = useCockpit((s) => s.locations)
@@ -416,6 +417,27 @@ function GuestInspector({ id }: { id: string }) {
     setScore(String(row.score))
   }
 
+  // A bare `restrict` (no place list) / `unrestrict`: only the story's
+  // `restricted` / `unrestricted` rules run. It is NOT the story's own mark
+  // (a show's mark event may set flags and pins this never touches) — that
+  // is fired under "Fire on this guest". On a real guest at a live show, ask
+  // first.
+  const toggleMark = async () => {
+    const next = !row.restricted
+    if (live && !isPersonaId(id)) {
+      const ok = await confirmAction({
+        title: next ? `Restrict ${row.name}?` : `Unrestrict ${row.name}?`,
+        body: next
+          ? `${row.name}'s phone goes read-only: no buttons, only their DMs (no places). Only the story's "restricted" rules run — this is not the story's own mark (no pins, no flags); fire the story's mark event below for that.`
+          : `${row.name} gets their full phone back. Only the story's "unrestricted" rules run — this is not the story's own unmark (its pins and flags stay); fire the story's unmark event below for that.`,
+        confirmLabel: next ? 'Restrict' : 'Unrestrict',
+        danger: next,
+      })
+      if (!ok) return
+    }
+    await setStat(id, 'restricted', next)
+  }
+
   const commitScore = () => {
     setEditing(false)
     setScoreSeen(row.score)
@@ -443,6 +465,7 @@ function GuestInspector({ id }: { id: string }) {
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-zinc-100">{row.name}</span>
           {row.captured && <span className="text-xs text-red-400">🔒 captured</span>}
+          {row.restricted && <span className="text-xs text-red-400" title="restricted">⛔ restricted</span>}
           <button
             onClick={() => {
               setPerspective(id)
@@ -553,6 +576,20 @@ function GuestInspector({ id }: { id: string }) {
             }
           >
             {row.captured ? 'Release' : 'Capture'}
+          </button>
+        </Field>
+
+        <Field label="Restricted">
+          <button
+            onClick={() => void toggleMark()}
+            className={
+              row.restricted
+                ? 'rounded bg-emerald-700/40 px-3 py-1 text-xs text-emerald-300 hover:bg-emerald-700/60'
+                : 'rounded bg-amber-700/40 px-3 py-1 text-xs text-amber-300 hover:bg-amber-700/60'
+            }
+            data-testid={`inspector-mark-${id}`}
+          >
+            {row.restricted ? 'Unrestrict' : 'Restrict'}
           </button>
         </Field>
       </fieldset>

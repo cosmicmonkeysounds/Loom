@@ -136,7 +136,7 @@ CODEX Ask Him Nicely
     A page of the lighting plan with a note: Trabolta controls the lights in
     this house and every screen on the walls. He can be talked into changing
     them. Flatter him, trade him a fact, and ask for the room you want dark
-    or the thing you want played on the terminals.
+    or the card you want on the wall terminals.
 
 // M20 · main · green
 CODEX The Safe Place
@@ -144,9 +144,8 @@ CODEX The Safe Place
   code: SAFE-PLACE
   text:
     A note taped inside the back cover of a plumbing guide: The bathroom is
-    the only truly safe place in the computer. Nothing is monitored there.
-    Nobody is summoned from there. Turn on Bathroom Mode and nobody will
-    come looking.
+    the only truly safe place in the computer. Nothing is watched there.
+    Nobody follows you in. Turn on Bathroom Mode and they will wait outside.
 
 // M22 · main · green · DRAFT
 CODEX Disarming The Alarm
@@ -587,15 +586,15 @@ CODEX Founding Moderator
   about: Password Manager
   code: FOUNDING-MODERATOR
   text:
-    Tonight Password Manager has the authority to improve and correct any
-    message on the party's chat as she deems fit, and to keep every program
-    focused on finding clues. If no conversation contains anything
-    inappropriate, she becomes Founding Moderator of a permanent digital
-    salon where everyone is biometrically verified to be a Real Person. She
-    has often wished people would consult her before sharing an opinion. She
-    has spent enough time being excluded; tonight she decides what gets left
-    out. Why Trabolta chose you: to manage every password and decide who
-    gets to be part of what club, without ever asking for a vote.
+    Tonight Password Manager has the authority to remove any message on the
+    party's chat as she deems fit, and to keep every program focused on
+    finding clues. If no conversation contains anything inappropriate, she
+    becomes Founding Moderator of a permanent digital salon where everyone
+    is biometrically verified to be a Real Person. She has often wished
+    people would consult her before sharing an opinion. She has spent enough
+    time being excluded; tonight she decides what gets left out. Why
+    Trabolta chose you: to manage every password and decide who gets to be
+    part of what club, without ever asking for a vote.
 
 // C23 · character · red
 CODEX Infinite Gold
@@ -629,3 +628,42 @@ CODEX Minister Of Economic Development
     needs work. "Not for sale" is an opening position. Why Trabolta
     chose you: to understand the market incentives of everyone's behaviour, so the
     facts get exchanged.
+
+// The majority's bundle: every main + trabolta fact (a hand-written
+// `existing` entry by its own name), in facts.json order. The Whole Truth
+// (beats/server-room.loom) diverts here and carries on after it.
+== Facts Bundle
+unlock Silicon for program
+unlock The Unified Field Theory for program
+unlock Maps And Ducks for program
+unlock The Billboard On Barrington for program
+unlock Atlas Loon for program
+unlock Target Selection for program
+unlock The Ones Who Stay for program
+unlock Everyone Is Lying for program
+unlock No Exit for program
+unlock The Heart for program
+unlock The Intricate Code for program
+unlock Help With That for program
+unlock The Books for program
+unlock Confidence for program
+unlock A Copy Of You for program
+unlock Out Of Date for program
+unlock Ask Him Nicely for program
+unlock The Safe Place for program
+unlock The Server Room for program
+unlock Disarming The Alarm for program
+unlock Sharing Your Codex for program
+unlock The Trust Chart for program
+unlock The Truthers for program
+unlock The Optical Drive for program
+unlock Scan The Rooms for program
+unlock Shut Down Correctly for program
+unlock Mortality for program
+unlock There Is A Way for program
+unlock His Kind for program
+unlock Prom Season for program
+unlock Alone At Prom for program
+unlock The Sandy File for program
+unlock The Rival for program
+unlock Omnipotence for program

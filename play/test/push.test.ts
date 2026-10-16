@@ -2,13 +2,14 @@
 //! helpers, when the 🔔 card shows, and the push-only service worker
 //! (`public/sw.js`) run against a fake worker global: it shows the server's
 //! notification, skips it while a play window is in the foreground (no
-//! duplicate of the in-page banner) except on an iPhone, and a tap focuses
-//! the open app.
+//! duplicate of the in-page banner) except on Apple's WebKit, and a tap focuses
+//! the open app on the push's room (SW-PLAY-20).
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { initialState, pushSupported, sameKey, showPushCard, urlBase64ToUint8Array, visibilityBeacon } from "../src/push.ts";
+import { STATIC_MANIFEST_HREF, homescreenManifestHref, initialState, iosCanPush, iosInfo, iosState, pointManifest, pushSupported, sameKey, showPushCard, urlBase64ToUint8Array, visibilityBeacon } from "../src/push.ts";
+import { iosPushCopy } from "../src/push-card.tsx";
 
 describe("push helpers", () => {
   it("needs a secure origin, a service worker, the Push API and notifications", () => {
@@ -43,6 +44,89 @@ describe("push helpers", () => {
   });
 });
 
+describe("iPhones (K-31b)", () => {
+  const IPHONE_17 = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
+  const IPHONE_16_3 = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_3 like Mac OS X) AppleWebKit/605.1.15 Version/16.3 Mobile/15E148 Safari/604.1";
+  const IPAD_AS_MAC = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.4 Safari/605.1.15";
+  const PIXEL = "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 Chrome/129 Mobile Safari/537.36";
+  const env = (userAgent: string, more: { maxTouchPoints?: number; standalone?: boolean; displayStandalone?: boolean } = {}) => ({
+    navigator: { userAgent, maxTouchPoints: more.maxTouchPoints ?? 0, ...(more.standalone !== undefined ? { standalone: more.standalone } : {}) },
+    matchMedia: () => ({ matches: more.displayStandalone === true }),
+  });
+
+  it("reads the iOS version and Home Screen mode; Android and a real Mac are not iOS", () => {
+    expect(iosInfo(env(IPHONE_17))).toEqual({ major: 17, minor: 5, standalone: false });
+    expect(iosInfo(env(IPHONE_16_3, { standalone: true }))).toEqual({ major: 16, minor: 3, standalone: true });
+    expect(iosInfo(env(IPHONE_17, { displayStandalone: true }))!.standalone).toBe(true);
+    expect(iosInfo(env(IPAD_AS_MAC, { maxTouchPoints: 5 }))).toEqual({ major: 16, minor: 4, standalone: false });
+    expect(iosInfo(env(IPAD_AS_MAC))).toBeNull(); // a Mac: no touch screen
+    expect(iosInfo(env(PIXEL))).toBeNull();
+    expect(iosInfo(undefined)).toBeNull();
+  });
+
+  it("Push reached iOS in 16.4", () => {
+    expect(iosCanPush({ major: 16, minor: 4, standalone: false })).toBe(true);
+    expect(iosCanPush({ major: 18, minor: 0, standalone: false })).toBe(true);
+    expect(iosCanPush({ major: 16, minor: 3, standalone: false })).toBe(false);
+    expect(iosCanPush({ major: 0, minor: 0, standalone: false })).toBe(false); // version hidden
+  });
+
+  it("the install steps only when they'd work; else keep the app open", () => {
+    const tab = { major: 17, minor: 5, standalone: false };
+    expect(iosState(tab, true, true)).toBe("ios-install");
+    expect(iosState(tab, true, false)).toBe("ios-keep-open"); // LOOM_HOMESCREEN off
+    expect(iosState(tab, false, true)).toBe("ios-keep-open"); // no VAPID keys
+    expect(iosState({ ...tab, major: 16, minor: 3 }, true, true)).toBe("ios-keep-open");
+    expect(iosState({ ...tab, standalone: true }, true, true)).toBe("ios-keep-open"); // an icon with no Push API
+    expect(showPushCard("ios-install", false)).toBe(true);
+    expect(showPushCard("ios-keep-open", false)).toBe(true);
+    expect(showPushCard("ios-install", true)).toBe(false);
+  });
+
+  it("Android is untouched: a full Push API still means the one-tap card", () => {
+    const android = { isSecureContext: true, navigator: { serviceWorker: {}, userAgent: PIXEL }, PushManager: {}, Notification: {} };
+    expect(pushSupported(android)).toBe(true);
+    expect(iosInfo(android)).toBeNull();
+    expect(showPushCard("ask", false)).toBe(true);
+  });
+
+  it("points the manifest at the nonce, labelled with the event", () => {
+    expect(homescreenManifestHref("EVT1", "n_1", "Trapped in the Internet")).toBe("/manifest.webmanifest?code=EVT1&pair=n_1&name=Trapped+in+the+Internet");
+    expect(homescreenManifestHref("EVT1", "n_1", null)).toBe("/manifest.webmanifest?code=EVT1&pair=n_1");
+  });
+
+  it("a guest's nonce link goes back to the static manifest (Leave, then a booth on the same tab)", () => {
+    const attrs = new Map<string, string>([["href", homescreenManifestHref("EVT1", "n_1", "Trapped")]]);
+    const link = { getAttribute: (k: string) => attrs.get(k) ?? null, setAttribute: (k: string, v: string) => void attrs.set(k, v) };
+    const doc = { querySelector: () => link } as unknown as Pick<Document, "querySelector">;
+    pointManifest(doc, STATIC_MANIFEST_HREF);
+    expect(attrs.get("href")).toBe("/manifest.webmanifest"); // start_url "/" → signs in afresh
+    expect(() => pointManifest({ querySelector: () => null } as unknown as Pick<Document, "querySelector">, STATIC_MANIFEST_HREF)).not.toThrow();
+    expect(() => pointManifest(undefined, STATIC_MANIFEST_HREF)).not.toThrow();
+  });
+
+  it("the card says what to do: guests open the icon, booths sign out first", () => {
+    const guest = iosPushCopy("ios-install", false, "Trapped", true)!;
+    expect(guest.body).toContain("Add to Home Screen");
+    expect(guest.body).toContain("open Trapped from the new icon");
+    expect(guest.body).not.toContain("Sign out");
+    // The booth's ☰ sheet has "Sign out" (there is no "Leave here" there).
+    expect(iosPushCopy("ios-install", true, "Trapped", true)!.body).toContain("☰ → Sign out, and sign in from the Home Screen icon");
+    const keep = iosPushCopy("ios-keep-open", false, "Trapped", true)!;
+    expect(keep.head).toBe("Your iPhone can't get alerts");
+    expect(keep.body).toContain("keep Trapped open");
+    expect(keep.body).toContain("☰ → Keep my screen on");
+    expect(iosPushCopy("ios-keep-open", true, null, true)!.body).toContain("keep the app open");
+    expect(iosPushCopy("ask", false, "Trapped", true)).toBeNull();
+  });
+
+  it("below iOS 16.4 (no wake lock, so no ☰ row) the card says Auto-Lock instead", () => {
+    const keep = iosPushCopy("ios-keep-open", false, "Trapped", false)!;
+    expect(keep.body).toContain("Auto-Lock → Never");
+    expect(keep.body).not.toContain("Keep my screen on");
+  });
+});
+
 // --- the service worker --------------------------------------------------------
 
 interface FakeClient {
@@ -50,6 +134,8 @@ interface FakeClient {
   visibilityState: "visible" | "hidden";
   focused: boolean;
   focus: () => Promise<FakeClient>;
+  posted?: unknown[];
+  postMessage?: (m: unknown) => void;
 }
 
 function loadWorker(opts: { ua?: string; clients?: FakeClient[] } = {}) {
@@ -90,7 +176,8 @@ function loadWorker(opts: { ua?: string; clients?: FakeClient[] } = {}) {
 }
 
 const client = (url: string, visibilityState: "visible" | "hidden", focused: boolean, focusLog?: string[]): FakeClient => {
-  const c: FakeClient = { url, visibilityState, focused, focus: async () => (focusLog?.push(url), c) };
+  const posted: unknown[] = [];
+  const c: FakeClient = { url, visibilityState, focused, focus: async () => (focusLog?.push(url), c), posted, postMessage: (m) => void posted.push(m) };
   return c;
 };
 
@@ -122,6 +209,16 @@ describe("sw.js (push-only)", () => {
     expect(w.shown).toHaveLength(1);
   });
 
+  it("an iPad posing as a Mac (Safari's \"Macintosh\" UA) always shows one too; Chrome on a Mac doesn't", async () => {
+    const fg = () => [client("https://app.mapsandducks.com/", "visible", true)];
+    const pad = loadWorker({ ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15", clients: fg() });
+    await pad.push({ kind: "dm", title: "Trabolta", body: "hi" });
+    expect(pad.shown).toHaveLength(1);
+    const chrome = loadWorker({ ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36", clients: fg() });
+    await chrome.push({ kind: "dm", title: "Trabolta", body: "hi" });
+    expect(chrome.shown).toEqual([]);
+  });
+
   it("a tap focuses the open play window, else opens the app", async () => {
     const focused: string[] = [];
     const open = loadWorker({ clients: [client("https://app.mapsandducks.com/terminal/", "hidden", false, focused), client("https://app.mapsandducks.com/", "hidden", false, focused)] });
@@ -130,5 +227,20 @@ describe("sw.js (push-only)", () => {
     const none = loadWorker();
     await none.click({ url: "/" });
     expect(none.opened).toEqual(["https://app.mapsandducks.com/"]);
+  });
+
+  it("SW-PLAY-20: a tap opens the push's room — told to the open window (focused first), else in the link", async () => {
+    const focused: string[] = [];
+    const back = client("https://app.mapsandducks.com/?code=X", "hidden", false, focused);
+    const front = client("https://app.mapsandducks.com/", "visible", true, focused);
+    const w = loadWorker({ clients: [back, front] });
+    await w.click({ url: "/?room=dm%3ATrabolta" });
+    expect(front.posted).toEqual([{ type: "open-room", room: "dm:Trabolta" }]);
+    expect(back.posted).toEqual([]);
+    expect(focused).toEqual(["https://app.mapsandducks.com/"]);
+    expect(w.opened).toEqual([]); // never a second window, never a navigate
+    const none = loadWorker();
+    await none.click({ url: "/?room=wallet" });
+    expect(none.opened).toEqual(["https://app.mapsandducks.com/?room=wallet"]);
   });
 });

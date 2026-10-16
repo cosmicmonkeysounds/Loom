@@ -2,7 +2,7 @@
 title: Your wallet
 section: Guest Guide
 order: 12
-keywords: wallet, coin, balance, send, request, pay, trade, offer, approve, approved, denied, declined, stimulus, truthcoin, money, audit, pending, held, refund, expired
+keywords: wallet, coin, balance, send, request, pay, trade, offer, approve, approved, denied, declined, stimulus, truthcoin, money, audit, pending, held, refund, expired, grant, reserve, freeze, frozen, thaw
 ---
 
 Some stories give you **money**. In *Trapped in the Internet* it is
@@ -40,6 +40,14 @@ At the bottom of the Wallet:
   for everyone, a few times a night. If that's you, the button is here
   and says how many are left.
 
+That same program holds the **reserve**, and gets two more buttons:
+
+- **🎁 Grant** — mint coin into one program's account (pick them, type
+  an amount). Nothing leaves your own balance. A few a night; the button
+  says how many are left.
+- **🧊 Freeze** — freeze one program's coin for ten minutes. The picker
+  shows who is frozen already, and how long until they thaw.
+
 **Cancel** withdraws a request or an offer nobody has answered yet, or a
 transfer of yours still held for the auditor.
 
@@ -49,13 +57,24 @@ The story may name an **auditor** — at *Trapped in the Internet*, CRA
 Agent Software. Then every transfer you send is either **pending** —
 it settles by itself after a short window (a minute) unless the
 auditor denies it — or, every third transfer anyone at the party sends,
-**held** until the auditor presses Approve. A denied transfer comes straight back to you,
+**held** until the auditor presses Approve (its card counts down:
+*auto-approves in 4:59* — nobody auditing in five minutes means it goes
+through). A denied transfer comes straight back to you,
 refunded, and the card says who denied it. Trades don't go through the
 audit; a request someone pays does, like any send.
 
 Expect questions. Elaborate security questions, even.
 
 ## The small print
+
+If your coin is **frozen**, your balance says 🧊 frozen and the Wallet
+counts down to the thaw: until then you can't send, pay a request or buy
+a fact, but coin still comes in, and you can still ask, sell, decline
+and cancel.
+
+If the story **restricts** you, the Wallet says ⛔ and its buttons go:
+no sending, requesting, paying or accepting until it's lifted. You can
+still decline an offer or cancel your own.
 
 Send too fast and the app asks you to wait a minute. Your balance is
 still your score: the story adds and takes coin of its own — prizes,

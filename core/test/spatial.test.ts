@@ -26,7 +26,7 @@ import {
   type DuckRun,
   type SessionRef,
 } from "../server/spatial.ts";
-import { EventRuntime, defaultHouseFile } from "../server/event-runtime.ts";
+import { EventRuntime, REINSTALLATION_BEGUN, defaultHouseFile } from "../server/event-runtime.ts";
 import { PayloadTooLarge } from "../server/http-util.ts";
 import { Store } from "../server/store.ts";
 import { scenarioSource } from "../examples/load.ts";
@@ -577,13 +577,13 @@ describe("EventRuntime — the spatial plane", () => {
     expect(sim.isCaptured(gid)).toBe(false);
     expect(sim.holdsCodex(gid, "The Golden Duck")).toBe(true);
     expect(term.of("found")).toEqual([{ session: a.session, guest: gid, name: "Pinball", duck: a.duck, released: true }]);
-    const signals = new Store(d).readJournal().filter((l) => l.m === "signal" && l.a[1] === gid && l.by === "Tent tablet");
+    const signals = new Store(d).readJournal().filter((l) => l.m === "signal" && l.a[1] === gid && l.by === "Tent tablet" && l.a[0] !== REINSTALLATION_BEGUN);
     expect(signals.map((l) => l.a[0])).toEqual(["the simulation completed", "the golden duck"]);
 
     // Again: already, nothing new committed.
     const again = await call(rt, "POST", "/api/spatial/found", {}, { token: a.token });
     expect(again.json).toEqual({ ok: true, released: true, already: true });
-    expect(new Store(d).readJournal().filter((l) => l.by === "Tent tablet")).toHaveLength(2);
+    expect(new Store(d).readJournal().filter((l) => l.by === "Tent tablet" && l.a[0] !== REINSTALLATION_BEGUN)).toHaveLength(2);
 
     // The game ends; its token is over.
     expect((await call(rt, "POST", "/api/spatial/end", {}, { token: a.token })).json).toEqual({ ok: true });
@@ -851,7 +851,7 @@ describe("EventRuntime — the spatial plane", () => {
     const after = await call(rt, "POST", "/api/spatial/found", {}, { token: a.token });
     expect(after.json).toEqual({ ok: true, released: true, already: false });
     expect(rt.liveSim!.isCaptured(gid)).toBe(false);
-    expect(new Store(d).readJournal().filter((l) => l.by === "Headset 1").map((l) => l.a[0])).toEqual(["the simulation completed", "the golden duck"]);
+    expect(new Store(d).readJournal().filter((l) => l.by === "Headset 1" && l.a[0] !== REINSTALLATION_BEGUN).map((l) => l.a[0])).toEqual(["the simulation completed", "the golden duck"]);
     rt.dispose();
   });
 
@@ -947,6 +947,69 @@ describe("EventRuntime — the spatial plane", () => {
 // ---------------------------------------------------------------------------
 // The duck run log (SW-RE-14 — the ceremony's Golden Duck Speedrun)
 // ---------------------------------------------------------------------------
+
+describe("`reinstallation begun` on /api/mod/spatial/begin (wave 5, build4-oi-6)", () => {
+  const STORY = `# Begun
+start: Tent
+
+LOCATION Tent
+
+LOCATION The Internet
+  prison: true
+
+ROLE Guest
+  marked: bool = false
+  when mark for guest:
+    set guest.marked = true
+  when reinstallation begun for guest:
+    if guest.marked == true:
+      capture guest into The Internet
+
+== Tent
+  setting: Tent
+Narrator: The tent.
+`;
+  const at = (source: string) => {
+    const d = freshDir();
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "begun", scenarioSource: source, joinBase: () => "http://localhost", houseFile: SHOW_HOUSE_FILE });
+    rt.openDoors();
+    return { d, rt };
+  };
+  const persona = async (rt: EventRuntime, name: string) => ((await mod(rt, "/api/mod/persona", { name })).json.guest as { id: string }).id;
+
+  it("is fired (journaled by the device) before `captured` is read: a marked arrival begins captured, an unmarked one doesn't", async () => {
+    const { d, rt } = at(STORY);
+    const marked = await persona(rt, "Winamp");
+    const free = await persona(rt, "Paint");
+    expect((await mod(rt, "/api/mod/signal", { name: "mark", subject: marked })).status).toBe(200);
+    const a = (await mod(rt, "/api/mod/spatial/begin", { guest: marked, world: "web", device: "Tent tablet" })).json as unknown as Assignment;
+    expect(a.captured).toBe(true);
+    expect(rt.liveSim!.isCaptured(marked)).toBe(true);
+    const b = (await mod(rt, "/api/mod/spatial/begin", { guest: free, world: "vr", device: "Tent tablet", station: "vr-1" })).json as unknown as Assignment;
+    expect(b.captured).toBe(false);
+    const begun = new Store(d).readJournal().filter((l) => l.m === "signal" && l.a[0] === REINSTALLATION_BEGUN);
+    expect(begun.map((l) => [l.a[1], l.by])).toEqual([
+      [marked, "Tent tablet"],
+      [free, "Tent tablet"],
+    ]);
+    // Replayed in order on a restore.
+    rt.dispose();
+    const again = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "begun", scenarioSource: STORY, joinBase: () => "http://localhost", houseFile: SHOW_HOUSE_FILE });
+    expect(again.restore()).not.toBeNull();
+    expect(again.liveSim!.isCaptured(marked)).toBe(true);
+    expect(again.liveSim!.isCaptured(free)).toBe(false);
+    again.dispose();
+  });
+
+  it("a story that doesn't declare it journals nothing on begin", async () => {
+    const { d, rt } = at(STORY.replace(/  when reinstallation begun[\s\S]*?into The Internet\n/u, ""));
+    const g = await persona(rt, "Winamp");
+    const before = new Store(d).readJournal().length;
+    expect((await mod(rt, "/api/mod/spatial/begin", { guest: g, world: "web", device: "Tent tablet" })).status).toBe(200);
+    expect(new Store(d).readJournal()).toHaveLength(before);
+    rt.dispose();
+  });
+});
 
 describe("duck runs", () => {
   it("a find logs how long the run took: from a web begin, or from a headset's first pose", () => {

@@ -584,3 +584,51 @@ describe("restricted guests (wave 4, lane E)", () => {
     expect(modView(again.liveSim!, "open", "x").roster.find((r) => r.id === g.id)!.restricted).toBe(true);
   });
 });
+
+describe("`restricted: allow` interactions (wave 5, fact-M20)", () => {
+  const BATH = `# Bath
+start: Hall
+
+LOCATION Hall
+
+ROLE Guest
+  afk: bool = false
+  when go to the bathroom for guest:
+    set guest.afk = true
+  when knock for guest:
+    reply Nobody answers.
+
+INTERACTION go to the bathroom
+  label: 🚻 Bathroom Mode
+  who: guest
+  restricted: allow
+
+INTERACTION knock
+  who: guest
+
+== Hall
+  setting: Hall
+Narrator: The hall.
+`;
+
+  it("keeps the allowed button on a restricted guest's view and lets it fire; the rest still 403", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-ix-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "bath", scenarioSource: BATH, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const g = await guest(rt);
+    expect(rt.liveSim!.model.interactions.get("go to the bathroom")!.allowRestricted).toBe(true);
+    expect(rt.liveSim!.model.interactions.get("knock")!.allowRestricted).toBe(false);
+    rt.liveSim!.restrict(g.id);
+    const v = (await state(rt, g.token)).json as { restricted: boolean; interactions: Array<{ id: string }> };
+    expect(v.restricted).toBe(true);
+    expect(v.interactions.map((i) => i.id)).toEqual(["go to the bathroom"]);
+    expect((await post(rt, "/api/guest/act", { token: g.token, name: "knock" })).status).toBe(403);
+    expect((await post(rt, "/api/guest/act", { token: g.token, name: "go to the bathroom" })).status).toBe(200);
+    expect((rt.liveSim!.world.get(`${g.id}.afk`) as { value: unknown }).value).toBe(true);
+    expect(rt.liveSim!.isRestricted(g.id)).toBe(true);
+    // Unrestricted, both are on offer as before.
+    rt.liveSim!.unrestrict(g.id);
+    expect(((await state(rt, g.token)).json.interactions as Array<{ id: string }>).map((i) => i.id)).toEqual(["go to the bathroom", "knock"]);
+  });
+});

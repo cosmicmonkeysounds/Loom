@@ -6,9 +6,14 @@
 // page. It does two things:
 //   - `push`: show the server's notification. Skipped only when a play
 //     window is visible AND focused (the app already shows it in-page, the
-//     K-06 banner) — and never skipped on an iPhone, where a push without a
-//     notification gets the subscription revoked (K-31b).
-//   - `notificationclick`: focus the open play window, else open one.
+//     K-06 banner) — and never skipped on Apple's WebKit (an iPhone, an
+//     iPad posing as a Mac — a worker can't see its touch screen — or Mac
+//     Safari), where a push without a notification gets the subscription
+//     revoked (K-31b).
+//   - `notificationclick`: open the push's room (SW-PLAY-20, `/?room=…`).
+//     A play window already open is told `{type: "open-room", room}` and
+//     focused (never navigated: a reload would drop what it holds in
+//     memory); with none open, the link opens a new one.
 /* eslint-disable no-restricted-globals */
 
 const PLAY_PATHS = new Set(["/", "/index.html"]);
@@ -46,8 +51,9 @@ self.addEventListener("push", (event) => {
   const p = readPayload(event.data);
   event.waitUntil(
     (async () => {
-      const ios = /iPhone|iPad|iPod/.test(self.navigator.userAgent);
-      if (!ios) {
+      const ua = self.navigator.userAgent;
+      const apple = /iPhone|iPad|iPod/.test(ua) || (/AppleWebKit/.test(ua) && !/Chrome|Chromium|Android/.test(ua));
+      if (!apple) {
         const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
         if (wins.some((c) => isPlayWindow(c) && c.visibilityState === "visible" && c.focused)) return;
       }
@@ -69,10 +75,17 @@ self.addEventListener("notificationclick", (event) => {
   const target = new URL((event.notification.data && event.notification.data.url) || "/", self.registration.scope).href;
   event.waitUntil(
     (async () => {
-      const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-      const open = wins.find(isPlayWindow);
-      if (open) return open.focus();
-      return self.clients.openWindow(target);
+      const wins = (await self.clients.matchAll({ type: "window", includeUncontrolled: true })).filter(isPlayWindow);
+      const open = wins.find((c) => c.focused) || wins.find((c) => c.visibilityState === "visible") || wins[0];
+      if (!open) return self.clients.openWindow(target);
+      let room = null;
+      try {
+        room = new URL(target).searchParams.get("room");
+      } catch {
+        room = null;
+      }
+      if (room) open.postMessage({ type: "open-room", room });
+      return open.focus();
     })(),
   );
 });

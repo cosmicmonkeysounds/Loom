@@ -6,6 +6,20 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+// The director's wallet mirror the mocked `/api/mod/wallet/*` routes answer.
+const WALLET = {
+  name: 'Truthcoin',
+  slot: 'score',
+  approver: 'CRA_Agent_Software',
+  minter: 'Runescape',
+  minterPerson: null,
+  counter: 3,
+  stimulus: { uses: 0, limit: 3 },
+  grants: { uses: 0, limit: 3 },
+  frozen: [],
+  open: { transfers: [], requests: [], offers: [] },
+}
+
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   let status: 'open' | 'paused' = 'open'
@@ -46,13 +60,14 @@ vi.mock('@/lib/api', async (importOriginal) => {
       reset: vi.fn(async () => {}),
       grantCodex: vi.fn(async () => {}),
       stepQuest: vi.fn(async () => {}),
+      wallet: vi.fn(async (_ev: string, action: string) => ({ ...WALLET, counter: action === 'stimulus' ? 9 : WALLET.counter })),
     },
   }
 })
 
 import { lspWorkspaceSync, uriFor } from '@/lib/lsp-client'
 import { useAuth } from '@/store/auth'
-import { CockpitPhase, CockpitTab, QuestAction, RunMode, type CockpitStore } from '@/store/cockpit'
+import { CockpitPhase, CockpitTab, QuestAction, RunMode, WalletAction, type CockpitStore } from '@/store/cockpit'
 import { useOperate } from '@/store/operate'
 import { useSim } from '@/store/sim'
 
@@ -102,6 +117,8 @@ describe.each(backends)('lifecycle contract · %s backend', (_name, store, setup
     expect(s.activeChannel).toBe('lobby')
     expect(s.busy).toBe(false)
     expect(s.error).toBeNull()
+    // No snapshot has carried a wallet yet (and the local backend never has one).
+    expect(s.wallet).toBeNull()
     await teardown()
   })
 
@@ -158,5 +175,59 @@ describe('codex + quest grants (server, S4)', () => {
     expect(modApi.stepQuest).toHaveBeenLastCalledWith('evt-1', 'g-1', 'The Hunt', 'fail', 'Too slow.')
     expect(useOperate.getState().error).toBeNull()
     useOperate.getState().detach()
+  })
+})
+
+describe('the director wallet (E2)', () => {
+  const tx = (id: string, state: 'held' | 'pending') => ({ id, from: 'g-1', fromName: 'Excel', to: 'g-2', toName: 'Winamp', amount: 5, state, settleAt: 1, via: 'send' as const, at: 0 })
+
+  it('server: each action posts its route and applies the answer at once', async () => {
+    const { modApi } = await import('@/lib/api')
+    const wallet = vi.mocked(modApi.wallet)
+    useAuth.setState({ user: { id: 'u1', name: 'Ada', email: 'ada@example.test' } })
+    useOperate.getState().detach()
+    useOperate.getState().attach('p-1')
+    await useOperate.getState().startRun(RunMode.Rehearsal)
+    expect(await useOperate.getState().walletAct(WalletAction.Approve, 't4')).toBe(true)
+    expect(wallet).toHaveBeenLastCalledWith('evt-1', 'approve', { id: 't4' })
+    expect(await useOperate.getState().walletAct(WalletAction.Stimulus, 25)).toBe(true)
+    expect(wallet).toHaveBeenLastCalledWith('evt-1', 'stimulus', { amount: 25 })
+    expect(useOperate.getState().wallet?.counter).toBe(9)
+    await useOperate.getState().walletAct(WalletAction.ApproveHeld)
+    expect(wallet).toHaveBeenLastCalledWith('evt-1', 'approve-held')
+    expect(await useOperate.getState().walletAct(WalletAction.Unfreeze, 'f2')).toBe(true)
+    expect(wallet).toHaveBeenLastCalledWith('evt-1', 'unfreeze', { id: 'f2' })
+    expect(useOperate.getState().error).toBeNull()
+    useOperate.getState().detach()
+  })
+
+  it('server: an older server without approve-held gets one approve per held transfer', async () => {
+    const { ApiError, modApi } = await import('@/lib/api')
+    const wallet = vi.mocked(modApi.wallet)
+    useAuth.setState({ user: { id: 'u1', name: 'Ada', email: 'ada@example.test' } })
+    useOperate.getState().detach()
+    useOperate.getState().attach('p-1')
+    await useOperate.getState().startRun(RunMode.Rehearsal)
+    useOperate.setState({ wallet: { ...WALLET, open: { transfers: [tx('t1', 'held'), tx('t2', 'pending'), tx('t3', 'held')], requests: [], offers: [] } } })
+    wallet.mockClear()
+    wallet.mockRejectedValueOnce(new ApiError(404, { error: 'unknown mod action' }))
+    expect(await useOperate.getState().walletAct(WalletAction.ApproveHeld)).toBe(true)
+    expect(wallet.mock.calls.map((c) => c.slice(1))).toEqual([['approve-held'], ['approve', { id: 't1' }], ['approve', { id: 't3' }]])
+    // A real refusal (no currency) is not papered over.
+    wallet.mockRejectedValueOnce(new ApiError(404, { error: 'this story has no currency' }))
+    expect(await useOperate.getState().walletAct(WalletAction.ApproveHeld)).toBe(false)
+    expect(useOperate.getState().error).toBe('this story has no currency')
+    useOperate.getState().detach()
+  })
+
+  it('local: no wallet, and an action says why', async () => {
+    await useSim.getState().end()
+    lspWorkspaceSync().reset()
+    lspWorkspaceSync().updateMany([[uriFor('main.loom'), MAIN]])
+    await useSim.getState().startRun(RunMode.Rehearsal)
+    expect(useSim.getState().wallet).toBeNull()
+    expect(await useSim.getState().walletAct(WalletAction.Stimulus, 10)).toBe(false)
+    expect(useSim.getState().error).toMatch(/event server/)
+    await useSim.getState().end()
   })
 })

@@ -11,6 +11,7 @@
 | 🏓 Truth Pong, after a made cup (if Clippy is busy) | **✅ Q1/Q2/Q3** accurate · **😤 Q1/Q2/Q3** confident · **🤷** uncertain or guessed: marked | the answerer (Q1–Q3 = H4–H6) |
 | 🍎 Bobbing for Truth (with Clippy) | **🍎 Brought up the Bag of Truth** / **🍎 Failed the bob: marked for reinstallation** | the bobber |
 | any time | **🎀 Award a ribbon** · **🤝 Vouch** · **🩹 Unmark** | |
+| any time | **🖌 Signed the painting** | a program who just signed MS Paint's canvas (once each) |
 | Grok Prom | **💘 Said "You're the one that I want"** | |
 | the summons | scan at the living-room door, or **📍 Checked in** | |
 
@@ -19,6 +20,10 @@ anywhere: they **mark** the program. Their phone greys out with a 🚨 GO TO
 THE INTERNET card, every Antivirus booth gets the escort task in
 `# quarantine`, and an Antivirus walks them through the Tube and presses 🛡.
 Keep the line moving; the Antivirus do the walking. A mis-tap: 🩹 Unmark.
+
+**Press 🏓 Made the cup for every sink.** The cup is what makes a program's
+📝 round-2 filings count: at the tally a program with no 🏓 Made on record is
+"not counted: no cup", even if they sank it.
 
 **Round 2 answers (secret):** Q1 = H4 **1978** (the extension the Customer
 Care card says to dial) · Q2 = H5 **"Hopelessly Devoted to You"** · Q3 = H6

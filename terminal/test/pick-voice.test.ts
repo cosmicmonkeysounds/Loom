@@ -33,7 +33,7 @@ describe("voice ranking", () => {
     expect(pickVoice([...mac, v("Ava (Premium)")], null)?.name).toBe("Ava (Premium)");
     expect(pickVoice([...mac, v("Evan (Enhanced)")], null)?.name).toBe("Evan (Enhanced)");
   });
-  it("the character and the announcements never share a voice on the house Mac (Trabolta ≠ Alexa)", () => {
+  it("the character and the announcements never share a voice on the house Mac (Trabolta ≠ the house)", () => {
     const mac = [
       v("Samantha", "en-US", { default: true }),
       v("Daniel", "en-GB"),
@@ -47,9 +47,9 @@ describe("voice ranking", () => {
       v("Google UK English Male", "en-GB", { localService: false }),
     ];
     const trabolta = pickVoice(mac, null, CHARACTER_VOICE)!;
-    const alexa = pickVoice(mac, null, ANNOUNCE_VOICE)!;
+    const house = pickVoice(mac, null, ANNOUNCE_VOICE)!;
     expect(trabolta.name).toBe("Daniel");
-    expect(alexa.name).toBe("Samantha"); // the house Mac's own `say_voice`
+    expect(house.name).toBe("Samantha"); // the house Mac's own `say_voice`
     expect(voiceGender(trabolta)).toBe("male");
     // A US male voice, when installed, beats the British one; a premium female one never wins for him.
     expect(pickVoice([...mac, v("Evan (Enhanced)")], null, CHARACTER_VOICE)?.name).toBe("Evan (Enhanced)");

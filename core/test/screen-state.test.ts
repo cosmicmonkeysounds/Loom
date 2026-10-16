@@ -15,7 +15,7 @@ import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import type { AgentRequest } from "../server/agents.ts";
 import type { ChatMessage } from "../server/chat.ts";
-import { MAX_ANNOUNCE_TEXT, MAX_SCREENS, MAX_VOICE_LINES, announceTextOf, ScreenWatch, TERMINAL_SILENT_MS, screenTerminals, type ScreenTerminals, foldProgram, voiceLinesOf, screenCueClass, screenCueOf, screenTargetOf, slidePersists, type ScreenProgram, type ScreenState } from "../server/routes/screen.ts";
+import { ANNOUNCE_RING, IDENTIFY_MS, screenDeviceOf, MAX_ANNOUNCE_TEXT, SCREEN_CHARTS, storyMentions, MAX_SCREENS, MAX_VOICE_LINES, announceTextOf, ScreenWatch, TERMINAL_SILENT_MS, screenTerminals, type ScreenTerminals, foldProgram, voiceLinesOf, screenCueClass, screenCueOf, screenTargetOf, slidePersists, type ScreenProgram, type ScreenState } from "../server/routes/screen.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { scenarioSource } from "../examples/load.ts";
 
@@ -204,13 +204,64 @@ describe("ScreenWatch — review fixes", () => {
       sim.setVar(`${id}.trust`, String(trust));
       if (id !== "d") sim.setVar(`${id}.cleared`, "true"); // d never cleared: off the chart
     }
-    const w = new ScreenWatch();
+    let now = 1_000;
+    const w = new ScreenWatch({ now: () => now });
     const poll = (view = "auto") => w.poll(sim, { name: view, spot: "", view, character: "" }, () => false);
     expect(poll().chart).toBeNull();
     sim.signal("chart");
-    expect(poll().chart).toEqual({ slide: "trust_chart", rows: [{ name: "Calculator", value: 30 }, { name: "Napster", value: 10 }, { name: "Winamp", value: 10 }] });
+    now = 5_000;
+    // No Night.most_/least_trusted in this story: the call-outs are the ranked ends.
+    expect(poll().chart).toEqual({ slide: "trust_chart", rows: [{ name: "Calculator", value: 30 }, { name: "Napster", value: 10 }, { name: "Winamp", value: 10 }], top: "Calculator", bottom: "Winamp", revealAt: 5_000 });
     sim.setVar("b.trust", "40"); // an assessment mid-chart moves a name at the next poll
-    expect(poll("tv").chart?.rows[0]).toEqual({ name: "Winamp", value: 40 });
+    now = 6_000;
+    const tv = poll("tv").chart;
+    expect(tv?.rows[0]).toEqual({ name: "Winamp", value: 40 });
+    expect(tv?.top).toBe("Winamp");
+    expect(tv?.revealAt).toBe(6_000); // the TV's first look at the chart
+    now = 9_000;
+    expect(poll().chart?.revealAt).toBe(5_000); // a later poll (a reloaded tablet) never restarts the reveal
+  });
+
+  it("the chart's call-outs follow the story's Night.most_/least_trusted ('none' = nobody yet); a chart up in history never re-reveals", () => {
+    const src = `# T\n\nROLE Guest\n  cleared: bool = false\n  trust: -300 to 300 = 0\n\nwhen chart:\n  set Night.screen = "trust_chart"\n  set Night.terminals = "trust_chart"\n\nwhen rank:\n  set Night.most_trusted = "none"\n  set Night.least_trusted = "none"\n\nwhen praise:\n  set Night.most_trusted = "Winamp"\n\nwhen shame:\n  set Night.least_trusted = "Napster"\n\nwhen away:\n  set Night.screen = "screensaver"\n  set Night.terminals = "screensaver"\n\n== Boot\nset Night.screen = "screensaver"\n`;
+    const sim = Sim.fromSources(src);
+    sim.fireBeat("Boot");
+    for (const [id, name, trust] of [["a", "Calculator", 30], ["b", "Winamp", 10], ["c", "Napster", -10]] as const) {
+      sim.createPerson(id, name);
+      sim.setVar(`${id}.trust`, String(trust));
+      sim.setVar(`${id}.cleared`, "true");
+    }
+    let now = 1_000;
+    const w = new ScreenWatch({ now: () => now });
+    const poll = (view = "auto") => w.poll(sim, { name: view, spot: "", view, character: "" }, () => false);
+    expect(poll().chart).toBeNull();
+    sim.signal("chart");
+    now = 2_000;
+    // The story has the vars but hasn't set them: nobody is called out.
+    expect(poll().chart).toMatchObject({ top: null, bottom: null, revealAt: 2_000 });
+    sim.signal("rank");
+    expect(poll().chart).toMatchObject({ top: null, bottom: null });
+    sim.signal("praise");
+    expect(poll().chart).toMatchObject({ top: "Winamp", bottom: null }); // the story's name, not the ranked top
+    sim.signal("shame");
+    expect(poll("tv").chart).toMatchObject({ top: "Winamp", bottom: "Napster" });
+    // The slide comes down and back up: a fresh reveal.
+    sim.signal("away");
+    now = 3_000;
+    expect(poll().chart).toBeNull();
+    sim.signal("chart");
+    now = 4_000;
+    expect(poll().chart?.revealAt).toBe(4_000);
+    // A restart (a fresh watch over a sim whose chart is already up): history, revealAt 0 on both targets.
+    const again = new ScreenWatch({ now: () => now });
+    expect(again.poll(sim, { name: "t", spot: "", view: "auto", character: "" }, () => false).chart?.revealAt).toBe(0);
+    now = 8_000;
+    expect(again.poll(sim, { name: "tv", spot: "", view: "tv", character: "" }, () => false).chart?.revealAt).toBe(0);
+  });
+
+  it("the show's Trust Chart reads its own call-outs (it mentions both vars)", () => {
+    const sim = Sim.fromSources(scenarioSource(SHOW));
+    expect([...storyMentions(sim.model, SCREEN_CHARTS.flatMap((c) => [c.top, c.bottom]))].sort()).toEqual(["Night.least_trusted", "Night.most_trusted"]);
   });
 
   it("a story without the alarm var keeps the alarm overlay until the next slide", () => {
@@ -413,6 +464,47 @@ describe("ScreenWatch — the announcement", () => {
     // A story restart (a new sim with nothing announced yet) clears it.
     expect(poll(Sim.fromSources(src))).toBeNull();
   });
+
+  it("carries the last ANNOUNCE_RING, oldest first, so two inside one poll are both there; a restart clears them", () => {
+    const src = `# T\n\nwhen call:\n  do announce "One."\n  do announce "Two."\n\nwhen later:\n  do announce "Three."\n  do announce "Four."\n`;
+    const sim = Sim.fromSources(src);
+    let t = 10_000;
+    const w = new ScreenWatch({ now: () => t });
+    const who = { name: "K", spot: "", view: "auto", character: "" };
+    expect(w.poll(sim, who, () => false).announces).toEqual([]);
+    sim.signal("call");
+    t = 11_000;
+    const s = w.poll(sim, who, () => false);
+    expect(s.announces).toEqual([
+      { seq: 1, text: "One.", at: 11_000 },
+      { seq: 2, text: "Two.", at: 11_000 },
+    ]);
+    expect(s.announce).toEqual(s.announces[1]);
+    sim.signal("later");
+    t = 12_000;
+    expect(w.poll(sim, who, () => false).announces.map((a) => a.seq)).toEqual([2, 3, 4].slice(-ANNOUNCE_RING));
+    // A restart (a fresh sim) starts the ring over; replayed history is at 0.
+    const fresh = Sim.fromSources(src);
+    fresh.signal("call");
+    expect(w.poll(fresh, who, () => false).announces).toEqual([
+      { seq: 1, text: "One.", at: 0 },
+      { seq: 2, text: "Two.", at: 0 },
+    ]);
+    expect(w.poll(Sim.fromSources(src), who, () => false).announces).toEqual([]);
+  });
+
+  it("announceEpoch changes with the sim (a restart) and per watch (a boot), never between polls", () => {
+    const src = `# T\n\nwhen call:\n  do announce "One."\n`;
+    const sim = Sim.fromSources(src);
+    const w = new ScreenWatch();
+    const who = { name: "K", spot: "", view: "auto", character: "" };
+    const e1 = w.poll(sim, who, () => false).announceEpoch;
+    sim.signal("call");
+    expect(w.poll(sim, who, () => false).announceEpoch).toBe(e1);
+    const e2 = w.poll(Sim.fromSources(src), who, () => false).announceEpoch;
+    expect(e2).not.toBe(e1);
+    expect(new ScreenWatch().poll(sim, who, () => false).announceEpoch).not.toBe(e1);
+  });
 });
 
 // --- the room voice (K-18 + N-04b) ------------------------------------------
@@ -587,6 +679,78 @@ describe("GET /api/mod/screen/terminals — the heartbeat card", () => {
     const login = await call(rt, "POST", "/api/mod/login", { passcode: CODES.mod });
     const token = login.json["token"] as string;
     expect((await call(rt, "GET", `/api/mod/screen/terminals?token=${token}`, {})).status).toBe(200);
+    rt.dispose();
+  });
+});
+
+// --- device health + identify (SW-SCR-21, install day) ---------------------------
+
+describe("the heartbeat's device health and the director's identify", () => {
+  const q = (o: Record<string, string>) => (k: string) => o[k] ?? "";
+
+  it("reads audio / visibility / battery / version off the query, dropping anything malformed", () => {
+    expect(screenDeviceOf(q({ audio: "1", vis: "h", bat: "17", ver: "ab12cd3.10161432" }))).toEqual({ audio: true, visible: false, battery: 17, charging: false, version: "ab12cd3.10161432" });
+    expect(screenDeviceOf(q({ audio: "0", vis: "v", bat: "100c" }))).toEqual({ audio: false, visible: true, battery: 100, charging: true });
+    // An older terminal build sends none: nothing is recorded.
+    expect(screenDeviceOf(q({}))).toEqual({});
+    expect(screenDeviceOf(q({ audio: "yes", vis: "visible", bat: "101", ver: "<script>" }))).toEqual({ version: "script" });
+    expect(screenDeviceOf(q({ bat: "-3" }))).toEqual({});
+    expect(screenDeviceOf(q({ ver: "x".repeat(80) })).version).toHaveLength(24);
+  });
+
+  it("the extras ride the heartbeat to the card; a poll without them clears them", async () => {
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(freshDir()), codes: CODES, scenarioName: "t", scenarioSource: AGENT_SOURCE, joinBase: () => "http://localhost" });
+    await call(rt, "GET", "/api/screen/state?name=Hall&spot=hall&view=auto&character=Ghost&audio=0&vis=v&bat=12&ver=abc", {}, { moderator: true });
+    let body = (await call(rt, "GET", "/api/mod/screen/terminals", {}, { moderator: true })).json as unknown as ScreenTerminals;
+    expect(body.terminals[0]).toMatchObject({ name: "Hall", audio: false, visible: true, battery: 12, charging: false, version: "abc" });
+    await call(rt, "GET", "/api/screen/state?name=Hall&spot=hall&view=auto&character=Ghost", {}, { moderator: true });
+    body = (await call(rt, "GET", "/api/mod/screen/terminals", {}, { moderator: true })).json as unknown as ScreenTerminals;
+    expect(body.terminals[0]).not.toHaveProperty("battery");
+    expect(body.terminals[0]).not.toHaveProperty("version");
+    rt.dispose();
+  });
+
+  it("identify is per name and stops after IDENTIFY_MS", () => {
+    let t = 1_000;
+    const w = new ScreenWatch({ now: () => t });
+    const who = (name: string) => ({ name, spot: "", view: "auto", character: "" });
+    expect(w.poll(null, who("Kitchen"), () => false).identify).toBe(false);
+    expect(w.identify("Kitchen")).toBe(1_000 + IDENTIFY_MS);
+    expect(w.poll(null, who("Kitchen"), () => false).identify).toBe(true);
+    expect(w.poll(null, who("Hall"), () => false).identify).toBe(false);
+    t += IDENTIFY_MS - 1;
+    expect(w.poll(null, who("Kitchen"), () => false).identify).toBe(true);
+    t += 1;
+    expect(w.poll(null, who("Kitchen"), () => false).identify).toBe(false);
+    // A second click starts it again.
+    w.identify("Kitchen", 500);
+    expect(w.poll(null, who("Kitchen"), () => false).identify).toBe(true);
+  });
+
+  it("carries the identify's time left, so the device can uncover on its own", () => {
+    let t = 1_000;
+    const w = new ScreenWatch({ now: () => t });
+    const who = { name: "Kitchen", spot: "", view: "auto", character: "" };
+    expect(w.poll(null, who, () => false).identifyLeft).toBe(0);
+    w.identify("Kitchen");
+    t += 4_000;
+    expect(w.poll(null, who, () => false)).toMatchObject({ identify: true, identifyLeft: IDENTIFY_MS - 4_000 });
+    t += IDENTIFY_MS;
+    expect(w.poll(null, who, () => false)).toMatchObject({ identify: false, identifyLeft: 0 });
+  });
+
+  it("POST /api/mod/screen/identify is mod-gated and needs a name; the terminal reads it off its next poll", async () => {
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(freshDir()), codes: CODES, scenarioName: "t", scenarioSource: AGENT_SOURCE, joinBase: () => "http://localhost" });
+    expect((await call(rt, "POST", "/api/mod/screen/identify", { name: "Hall" })).status).toBe(403);
+    expect((await call(rt, "POST", "/api/mod/screen/identify", { name: " " }, { moderator: true })).status).toBe(400);
+    const r = await call(rt, "POST", "/api/mod/screen/identify", { name: "Hall" }, { moderator: true });
+    expect(r.status).toBe(200);
+    expect(r.json["name"]).toBe("Hall");
+    expect(typeof r.json["until"]).toBe("number");
+    const hall = await call(rt, "GET", "/api/screen/state?name=Hall&spot=hall&view=auto&character=Ghost", {}, { moderator: true });
+    expect((hall.json as unknown as ScreenState).identify).toBe(true);
+    const tv = await call(rt, "GET", "/api/screen/state?name=TV&spot=&view=tv&character=Ghost", {}, { moderator: true });
+    expect((tv.json as unknown as ScreenState).identify).toBe(false);
     rt.dispose();
   });
 });

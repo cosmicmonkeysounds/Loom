@@ -294,6 +294,47 @@ export function questionTallies(facts: FactsView): QuestionTally[] {
   }))
 }
 
+/** How a filing got its outcome (SW-ADM-13; wave 5 issue 8): the server's
+ *  `FactsFiling.how` — `auto` (the judge's verdict stood at filing),
+ *  `confirmed` / `overridden` (a confirm event — the Run card's or a
+ *  booth's 📝 buttons — kept / changed the proposal), `settled` (a reveal
+ *  took a review-mode proposal), `marked` (a guess marked at a reveal) —
+ *  or `pending`. `kept` / `overridden` is the fallback for an older server
+ *  that sends no `how`: it compares final with the proposal only (never the
+ *  mode in force now, which would relabel old filings). */
+export type FilingHow = 'auto' | 'confirmed' | 'overridden' | 'settled' | 'marked' | 'pending' | 'kept'
+
+export interface FilingRow {
+  person: string
+  name: string
+  answer: string
+  confidence: number
+  proposed: FactVerdict
+  final: string | null
+  how: FilingHow
+  /** Who confirmed / overrode / settled it (a director, a booth's
+   *  character); null for `auto`, a story clock, or an older server. */
+  by: string | null
+  /** When the server first saw the filing — a restart re-stamps every one. */
+  at: number
+}
+
+/** One question's filings, oldest first, for the provenance rows under the
+ *  tally table. Empty for an unknown question. */
+export function questionFilings(facts: FactsView, id: string): FilingRow[] {
+  const q = facts.questions.find((x) => x.id === id)
+  if (q === undefined) return []
+  const howOf = (f: (typeof q.filings)[number]): FilingHow => {
+    if (f.final === null) return 'pending'
+    if (f.how != null) return f.how
+    if (f.final === 'marked') return 'marked'
+    return f.final === f.verdict ? 'kept' : 'overridden'
+  }
+  return q.filings
+    .map((f) => ({ person: f.person, name: f.name, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, how: howOf(f), by: f.by ?? null, at: f.at }))
+    .sort((a, b) => a.at - b.at)
+}
+
 /** The story event the Run card fires to confirm / override a filing as
  *  `verdict` (`facts.json` `judge.confirm`); null when the view names none. */
 export function confirmEvent(facts: FactsView, verdict: FactVerdict): string | null {

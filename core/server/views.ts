@@ -15,7 +15,7 @@ import type { FactsView } from "./facts.ts";
 export type { WalletModView, WalletOfferView, WalletQueueView, WalletRequestView, WalletTxView, WalletView } from "./wallet.ts";
 // The facts judge's ledger (`ModView.facts`, Wave 4 lane B): the editor
 // imports these from `@loom/core/views` only.
-export type { FactFinal, FactVerdict, FactsFiling, FactsQuestion, FactsTally, FactsView, JudgeMode } from "./facts.ts";
+export type { FactFinal, FactHow, FactVerdict, FactsFiling, FactsQuestion, FactsTally, FactsView, JudgeMode } from "./facts.ts";
 
 export type RuntimePhase = "idle" | "open" | "paused";
 
@@ -313,7 +313,10 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     }),
     // A guest only ever sees the buttons on offer to them right now — and
     // none at all while the story has them restricted.
-    interactions: sim.isRestricted(id) ? [] : interactionsFor(sim, ["guest"], { subject: id, self: id }).filter((i) => i.live !== false),
+    // Restricted: only the `restricted: allow` buttons (Bathroom Mode) stay.
+    interactions: interactionsFor(sim, ["guest"], { subject: id, self: id }).filter(
+      (i) => i.live !== false && (!sim.isRestricted(id) || sim.model.interactions.get(i.id)?.allowRestricted === true),
+    ),
     codex: sim.codexFor(id).map(codexEntry),
     codexTotal: sim.model.codex.size,
     quests: sim.questsFor(id).map(({ def, status }) => ({ id: def.id, title: def.title, giver: def.giver, status })),
@@ -483,6 +486,9 @@ export interface ModView {
   cues?: CueState;
   /** The director's mirror of the story's wallet (runtime-filled). */
   wallet?: WalletModView;
+  /** The story clock (ms, `Sim.elapsed()`) when this view was built — what
+   *  Run's Wallet card counts a transfer's `settleAt` down from. */
+  clock?: number;
 }
 
 /** Where the night is on the `who: admin` cue sheet. */
@@ -675,6 +681,7 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
     ...(presence?.minds !== undefined && presence.minds.length > 0 ? { minds: presence.minds } : {}),
     ...(presence?.facts !== undefined ? { facts: presence.facts } : {}),
     cues: cueState(sim),
+    clock: sim.elapsed(),
   };
 }
 

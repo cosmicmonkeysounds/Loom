@@ -160,11 +160,13 @@ class ModClient:
 
     # -- streams -------------------------------------------------------------
 
-    async def stream(self, url: str) -> AsyncIterator[tuple[str, str]]:
+    async def stream(self, url: str, on_open=None) -> AsyncIterator[tuple[str, str]]:
         """Open one authenticated SSE stream and yield `(event, data)` frames
         until it closes. Raises `ModApiError` (with `.status`) when refused, and
         `httpx.ReadTimeout` after `stream_read_timeout` s of silence (no frame,
-        no keepalive) — reconnect policy belongs to the caller (see `run_stream`)."""
+        no keepalive) — reconnect policy belongs to the caller (see `run_stream`).
+        `on_open()` runs once the server accepted the stream, before any frame:
+        a lean mod feed sends none on connect (only `:ping` comments)."""
         await self.ensure_token()
         headers = {"x-loom-token": self.token or ""}
         async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, read=self.stream_read_timeout)) as client:
@@ -172,6 +174,8 @@ class ModClient:
                 if resp.status_code != 200:
                     await resp.aread()
                     raise ModApiError(f"GET {url} → {resp.status_code} {resp.text[:200]}", resp.status_code)
+                if on_open is not None:
+                    on_open()
                 parser = SSEParser()
                 async for chunk in resp.aiter_text():
                     for frame in parser.feed(chunk):
@@ -193,16 +197,18 @@ async def run_stream(
     """Hold an SSE stream forever: reconnect with exponential backoff, and
     drop a refused token so the next attempt logs in again."""
     backoff = 1.0
+
+    def opened() -> None:
+        # On the 200, not the first frame: a quiet lean feed may send none for minutes.
+        nonlocal backoff
+        backoff = 1.0
+        log.info("%s connected: %s", label, url)
+        if on_connect is not None:
+            on_connect()
+
     while True:
         try:
-            connected = False
-            async for event, data in client.stream(url):
-                if not connected:
-                    connected = True
-                    backoff = 1.0
-                    log.info("%s connected: %s", label, url)
-                    if on_connect is not None:
-                        on_connect()
+            async for event, data in client.stream(url, on_open=opened):
                 result = on_frame(event, data)
                 if asyncio.iscoroutine(result):
                     await result

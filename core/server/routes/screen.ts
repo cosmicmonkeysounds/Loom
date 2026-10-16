@@ -13,13 +13,27 @@
 //! - `remaining` — seconds left on the story countdown that is running, if any;
 //! - `chart`     — while a chart slide is the story's screen (`trust_chart`),
 //!                 the ranked rows it draws live: every cleared participant
-//!                 and their number, highest first (`SCREEN_CHARTS`);
-//! - `terminals` — each terminal's last poll (name, spot, view, how long ago),
-//!                 so a director can tell a silent tablet from a live one;
+//!                 and their number, highest first (`SCREEN_CHARTS`), the
+//!                 `top` / `bottom` names the story has called out, and
+//!                 `revealAt` (server ms the slide went up) so every screen
+//!                 reveals the rows bottom-up from the same moment;
+//! - `terminals` — each terminal's last poll (name, spot, view, how long ago,
+//!                 and the device health a current build reports: sound
+//!                 unlocked, page visible, battery, build version —
+//!                 SW-SCR-21), so a director can tell a silent tablet from a
+//!                 live one;
+//! - `identify`  — true while a director's `identify` (install day) is live
+//!                 for this terminal's name: it shows its name full screen
+//!                 (`identifyLeft`: the ms left, counted down on the device);
 //! - `announce`  — (N-09) the latest house announcement, `do announce "…"`
 //!                 (`{seq, text, at}`: a `seq` per announcement, `at` 0 for
 //!                 replayed history) — a terminal set to say announcements
 //!                 speaks a new one in its own voice after a chime;
+//! - `announces` — the last `ANNOUNCE_RING` announcements, oldest first, so
+//!                 two inside one poll are both said (`announce` is the last
+//!                 of them, kept for older terminal builds); `announceEpoch`
+//!                 changes with the sim (a restart, a boot) so a terminal
+//!                 resyncs its cursor even when the new seqs reach the old;
 //! - `voice`     — (K-18, only when the poll names a `voice` room — the TV)
 //!                 the characters' lines said in that location's room after
 //!                 the poller's `after` seq, the room's `head` seq, and the
@@ -27,7 +41,9 @@
 //!
 //! The director's side (K-29): `GET /api/mod/screen/terminals` answers just
 //! the heartbeat list + the TV-voice mute, without recording a poll, for the
-//! editor's Run → Terminals card (red after `TERMINAL_SILENT_MS`, a chime).
+//! editor's Run → Terminals card (red after `TERMINAL_SILENT_MS`, a chime);
+//! `POST /api/mod/screen/identify {name}` makes that terminal show its name
+//! for `IDENTIFY_MS` (SW-SCR-21).
 //!
 //! Why not the mod feed (`docs/trapped/screens-audit.md` §3.3): it pushes a
 //! full ModView per story step, carries every DM onto a wall a guest can
@@ -69,14 +85,42 @@ export const SCREEN_COUNTDOWNS: ReadonlyArray<{ name: string; on: string; end: s
  * `slide`, the state carries every participant whose `<id>.<only>` is true,
  * ranked by `<id>.<value>` (highest first, then by name). *Trapped in the
  * Internet*'s Trust Chart; a story without the slide never has a chart.
+ *
+ * `top` / `bottom` are the story vars holding the names it calls out (the
+ * show sets them when Trabolta praises the top and shames the bottom, and
+ * `"none"` until then). A story that never mentions them gets the ranked
+ * chart's own first and last names instead.
  */
-export const SCREEN_CHARTS: ReadonlyArray<{ slide: string; value: string; only: string }> = [{ slide: "trust_chart", value: "trust", only: "cleared" }];
+export const SCREEN_CHARTS: ReadonlyArray<{ slide: string; value: string; only: string; top: string; bottom: string }> = [
+  { slide: "trust_chart", value: "trust", only: "cleared", top: "Night.most_trusted", bottom: "Night.least_trusted" },
+];
 /** At most this many chart rows (a party, not a census). */
 export const MAX_CHART_ROWS = 40;
+/** A call-out var holding this (or nothing) names nobody yet. */
+export const CHART_NOBODY = "none";
 
 export interface ScreenChart {
   slide: string;
   rows: Array<{ name: string; value: number }>;
+  /** The name the story calls out at the top / bottom (null = nobody yet).
+   *  Either may be past `MAX_CHART_ROWS`, so a screen matches it by name. */
+  top: string | null;
+  bottom: string | null;
+  /** Server epoch ms the chart slide went up on this target; 0 = it was
+   *  already up in replayed history (a restart), so nothing re-reveals. */
+  revealAt: number;
+}
+
+/** Does the story mention `path` anywhere (a rule, a role's or a
+ *  character's hook, a beat)? Read off the compiled model's own text. */
+export function storyMentions(model: Sim["model"], paths: readonly string[]): Set<string> {
+  let text = "";
+  try {
+    text = JSON.stringify([model.rules, [...model.roles.values()].map((r) => r.hooks), [...model.characters.values()].map((c) => c.hooks), [...model.beats.values()]]).toLowerCase();
+  } catch {
+    text = "";
+  }
+  return new Set(paths.filter((p) => text.includes(p.toLowerCase())));
 }
 
 // --- the screen program (K-17 + N-03) -----------------------------------------
@@ -228,8 +272,11 @@ export function voiceLinesOf(
 /** The verb the story announces with (`do announce "Go to the living room."`) —
  *  the same directive stagehand's `show` sends to the house speakers (K-20). */
 export const ANNOUNCE_VERB = "announce";
-/** Longest announcement carried (characters) — the alexa player's `MAX_TEXT`. */
+/** Longest announcement carried (characters) — the house-announcement player's
+ *  `MAX_TEXT` (stagehand `alexa`). */
 export const MAX_ANNOUNCE_TEXT = 300;
+/** How many recent announcements the state carries (`announces`). */
+export const ANNOUNCE_RING = 3;
 
 export interface ScreenAnnounce {
   /** Bumps on every announcement the fold sees (history included). */
@@ -292,13 +339,50 @@ export const TERMINAL_SILENT_MS = 20_000;
 /** At most this many terminals are remembered (oldest poll evicted). */
 export const MAX_SCREENS = 32;
 
+/** How long a director's `identify` shows on the terminal (SW-SCR-21): short,
+ *  so it never covers a pilot session for long. */
+export const IDENTIFY_MS = 10_000;
+
+/** What a terminal build reports about its device on each poll (SW-SCR-21).
+ *  Every field is optional: an older build (tablets cache builds) sends none,
+ *  and iOS / Safari have no battery API. */
+export interface ScreenDevice {
+  /** Sound is unlocked (the page's AudioContext runs: someone touched it). */
+  audio?: boolean;
+  /** The page is visible (false: screen off, app switched, a screensaver). */
+  visible?: boolean;
+  /** Battery percent, 0–100. */
+  battery?: number;
+  charging?: boolean;
+  /** The terminal's build stamp. */
+  version?: string;
+}
+
+/** The device fields off a poll's query (`audio=1|0`, `vis=v|h`,
+ *  `bat=<0-100>[c]`, `ver=<build>`); anything malformed is left out. */
+export function screenDeviceOf(q: (k: string) => string): ScreenDevice {
+  const d: ScreenDevice = {};
+  const audio = q("audio");
+  if (audio === "1" || audio === "0") d.audio = audio === "1";
+  const vis = q("vis");
+  if (vis === "v" || vis === "h") d.visible = vis === "v";
+  const bat = /^(\d{1,3})(c?)$/u.exec(q("bat"));
+  if (bat !== null && Number(bat[1]) <= 100) {
+    d.battery = Number(bat[1]);
+    d.charging = bat[2] === "c";
+  }
+  const ver = q("ver").replace(/[^\w.:+-]/gu, "").slice(0, 24);
+  if (ver !== "") d.version = ver;
+  return d;
+}
+
 export interface ScreenCue {
   value: string;
   /** Bumps on every cue of this family, repeats included. */
   seq: number;
 }
 
-export interface ScreenPoll {
+export interface ScreenPoll extends ScreenDevice {
   name: string;
   spot: string;
   view: string;
@@ -335,8 +419,19 @@ export interface ScreenState {
   terminals: Array<ScreenPoll & { ago: number }>;
   /** The latest house announcement (N-09), null before the first. */
   announce: ScreenAnnounce | null;
+  /** The last `ANNOUNCE_RING` announcements, oldest first (`announce` = the last). */
+  announces: ScreenAnnounce[];
   /** Only when the poll names a voice room (K-18). */
   voice?: ScreenVoice;
+  /** A director's `identify` is live for this terminal (SW-SCR-21). */
+  identify: boolean;
+  /** How long that `identify` has left (ms; 0 when off): the terminal counts
+   *  it down itself, so a tablet that loses the server mid-identify uncovers. */
+  identifyLeft: number;
+  /** Which sim the announcements belong to: changes on every story restart
+   *  (a fresh sim numbers its announcements from 1 again) and server boot, so
+   *  a terminal resyncs its cursor however the new seqs compare to the old. */
+  announceEpoch: string;
 }
 
 export interface ScreenWho {
@@ -348,6 +443,8 @@ export interface ScreenWho {
   voice?: string;
   /** The last chat seq this screen has handled; null = none yet. */
   after?: number | null;
+  /** The device health the build reports (SW-SCR-21). */
+  device?: ScreenDevice;
 }
 
 /** `screens_call_desktop` → `{family: "screens", value: "call_desktop"}`; anything else → null. */
@@ -371,9 +468,19 @@ export class ScreenWatch {
   private readonly cues = new Map<ScreenCueFamily, ScreenCue>();
   private readonly programs = new Map<ScreenTarget, ScreenProgram>();
   private shots = 0;
-  private announcement: ScreenAnnounce | null = null;
+  /** The last `ANNOUNCE_RING` announcements, oldest first. */
+  private announcements: ScreenAnnounce[] = [];
+  /** Per target, the chart slide on screen and when it went up (`revealAt`). */
+  private readonly chartUp = new Map<ScreenTarget, { slide: string; at: number }>();
+  /** The chart call-out vars this sim's story mentions (null = not read yet). */
+  private chartVars: Set<string> | null = null;
   private readonly polls = new Map<string, ScreenPoll>();
+  /** A director's `identify`, per terminal name: when it stops (server ms). */
+  private readonly identifying = new Map<string, number>();
   private readonly now: () => number;
+  /** This watch's boot id + a count of the sims it has seen (`announceEpoch`). */
+  private readonly boot = Math.random().toString(36).slice(2, 8);
+  private sims = 0;
   /** The director's TV-voice mute (K-18). Runtime state: a server restart unmutes. */
   voiceMuted = false;
 
@@ -382,29 +489,38 @@ export class ScreenWatch {
   }
 
   /** Fold every screen cue the sim logged since the last look. A new Sim
-   *  (a restart replays the journal into a fresh one) starts the fold over. */
-  private sync(sim: Sim | null): void {
+   *  (a restart replays the journal into a fresh one) starts the fold over.
+   *  True on the first look at a sim (its history). */
+  private sync(sim: Sim | null): boolean {
     if (sim !== this.sim) {
       this.sim = sim;
+      this.sims += 1;
       this.cursor = 0;
       this.seeded = false;
       this.cues.clear();
       this.programs.clear();
       this.shots = 0;
-      this.announcement = null;
+      this.announcements = [];
+      this.chartUp.clear();
+      this.chartVars = null;
     }
-    if (sim === null) return;
+    if (sim === null) return false;
     const events = sim.log.all();
     // The first look at a sim is its history (a boot or a restart replayed
     // the journal): stamped 0, so nothing held or one-shot re-runs.
-    const at = this.seeded ? this.now() : 0;
+    const first = !this.seeded;
+    const at = first ? 0 : this.now();
     this.seeded = true;
     for (; this.cursor < events.length; this.cursor++) {
       const e = events[this.cursor]!;
       if (e.type !== "directive") continue;
       if (e.verb === ANNOUNCE_VERB) {
         const text = announceTextOf(e.args);
-        if (text !== null) this.announcement = { seq: (this.announcement?.seq ?? 0) + 1, text, at };
+        if (text !== null) {
+          const seq = (this.announcements[this.announcements.length - 1]?.seq ?? 0) + 1;
+          this.announcements.push({ seq, text, at });
+          if (this.announcements.length > ANNOUNCE_RING) this.announcements.shift();
+        }
         continue;
       }
       if (e.verb !== "cue") continue;
@@ -415,6 +531,7 @@ export class ScreenWatch {
       const shot: ScreenShot = { value: hit.value, cue: `${hit.family}_${hit.value}`, seq: ++this.shots, at };
       for (const t of FAMILY_TARGETS[hit.family]) this.programs.set(t, foldProgram(this.programs.get(t) ?? emptyProgram(), shot));
     }
+    return first;
   }
 
   /** Remember a terminal's poll (unnamed polls aren't recorded). */
@@ -422,8 +539,33 @@ export class ScreenWatch {
     const name = clip(who.name);
     if (name === "") return;
     this.polls.delete(name); // re-insert: Map order = poll order
-    this.polls.set(name, { name, spot: clip(who.spot), view: clip(who.view, 16), character: clip(who.character), at: this.now() });
+    this.polls.set(name, { name, spot: clip(who.spot), view: clip(who.view, 16), character: clip(who.character), ...who.device, at: this.now() });
     while (this.polls.size > MAX_SCREENS) this.polls.delete(this.polls.keys().next().value!);
+  }
+
+  /** A director asks one terminal to show its name for `ms` (install day).
+   *  Runtime state, per name; answers when it stops (server ms). */
+  identify(name: string, ms: number = IDENTIFY_MS): number {
+    const until = this.now() + ms;
+    this.identifying.set(clip(name), until);
+    while (this.identifying.size > MAX_SCREENS) this.identifying.delete(this.identifying.keys().next().value!);
+    return until;
+  }
+
+  /** Is an `identify` live for this name? (An expired one is forgotten.) */
+  identifyingNow(name: string): boolean {
+    return this.identifyLeft(name) > 0;
+  }
+
+  /** How long this name's `identify` has left (ms; 0 = none). */
+  identifyLeft(name: string): number {
+    const key = clip(name);
+    const until = this.identifying.get(key);
+    if (until === undefined) return 0;
+    const left = until - this.now();
+    if (left > 0) return left;
+    this.identifying.delete(key);
+    return 0;
   }
 
   /** The watch's clock (server epoch ms). */
@@ -440,7 +582,7 @@ export class ScreenWatch {
   /** One terminal polls: record it, and answer the current screen state.
    *  `messages` is the chat timeline (only read for a `voice` poll). */
   poll(sim: Sim | null, who: ScreenWho, online: (character: string) => boolean, messages: readonly ChatMessage[] = []): ScreenState {
-    this.sync(sim);
+    const first = this.sync(sim);
     this.note(who);
     const peek = (path: string): string | null => {
       const v = sim?.world.peek(path) ?? null;
@@ -479,8 +621,18 @@ export class ScreenWatch {
     const target = screenTargetOf(who.view);
 
     let chart: ScreenChart | null = null;
-    const showing = peek(target === "tv" ? "Night.screen" : "Night.terminals");
-    const spec = SCREEN_CHARTS.find((c) => c.slide === showing);
+    const specFor = (t: ScreenTarget) => {
+      const showing = peek(t === "tv" ? "Night.screen" : "Night.terminals");
+      return SCREEN_CHARTS.find((c) => c.slide === showing);
+    };
+    // When each target's chart slide went up: a chart already up in the
+    // history (the first look) is stamped 0, so a restart never re-reveals.
+    for (const t of first ? SCREEN_TARGETS : [target]) {
+      const up = specFor(t);
+      if (up === undefined) this.chartUp.delete(t);
+      else if (this.chartUp.get(t)?.slide !== up.slide) this.chartUp.set(t, { slide: up.slide, at: first ? 0 : this.now() });
+    }
+    const spec = specFor(target);
     if (sim !== null && spec !== undefined) {
       const rows: ScreenChart["rows"] = [];
       for (const p of sim.persons.values()) {
@@ -489,7 +641,17 @@ export class ScreenWatch {
         rows.push({ name: p.name, value: Number.isFinite(n) ? n : 0 });
       }
       rows.sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
-      chart = { slide: spec.slide, rows: rows.slice(0, MAX_CHART_ROWS) };
+      this.chartVars ??= storyMentions(sim.model, SCREEN_CHARTS.flatMap((c) => [c.top, c.bottom]));
+      // The story's own call-outs when it has them ("none" = not named yet);
+      // a story without them gets the ranked chart's ends.
+      const called = (path: string, derived: string | null): string | null => {
+        if (!this.chartVars!.has(path)) return derived;
+        const v = peek(path);
+        return v === null || v === "" || v === CHART_NOBODY ? null : v;
+      };
+      const top = called(spec.top, rows[0]?.name ?? null);
+      const bottom = called(spec.bottom, rows.length >= 2 ? rows[rows.length - 1]!.name : null);
+      chart = { slide: spec.slide, rows: rows.slice(0, MAX_CHART_ROWS), top, bottom, revealAt: this.chartUp.get(target)?.at ?? 0 };
     }
     let program = this.programs.get(target) ?? emptyProgram();
     // The alarm overlay stands only while the story's alarm does: the story
@@ -500,6 +662,7 @@ export class ScreenWatch {
     const alarmOn = peek(ALARM_VAR);
     if (program.overlay?.value === "alarm" && alarmOn !== null && alarmOn !== "true") program = { ...program, overlay: null };
 
+    const identifyLeft = this.identifyLeft(who.name);
     let voice: ScreenVoice | undefined;
     if (who.voice !== undefined && who.voice !== "") {
       const want = foldName(who.voice);
@@ -531,14 +694,18 @@ export class ScreenWatch {
       target,
       program,
       terminals: this.seen(),
-      announce: this.announcement,
+      announce: this.announcements[this.announcements.length - 1] ?? null,
+      announces: [...this.announcements],
       ...(voice !== undefined ? { voice } : {}),
+      identify: identifyLeft > 0,
+      identifyLeft,
+      announceEpoch: `${this.boot}.${this.sims}`,
     };
   }
 }
 
 /**
- * `GET /api/screen/state?name=&spot=&view=&character=[&voice=<location>&after=<seq>]`
+ * `GET /api/screen/state?name=&spot=&view=&character=[&voice=<location>&after=<seq>][&audio=&vis=&bat=&ver=]`
  * — moderator-gated (a terminal holds a mod token; the author's session works
  * too — `routing.ts::wantsModRead` resolves it). Returns true when it answered.
  */
@@ -561,7 +728,7 @@ export function handleScreenGet(
   const afterRaw = q("after");
   const after = afterRaw !== "" && /^-?\d+$/u.test(afterRaw) ? Number(afterRaw) : null;
   res.setHeader?.("cache-control", "no-store");
-  const who: ScreenWho = { name: q("name"), spot: q("spot"), view: q("view"), character: q("character"), ...(voice !== "" ? { voice, after } : {}) };
+  const who: ScreenWho = { name: q("name"), spot: q("spot"), view: q("view"), character: q("character"), device: screenDeviceOf(q), ...(voice !== "" ? { voice, after } : {}) };
   sendJson(res, 200, watch.poll(sim, who, online, voice !== "" ? messages() : []));
   return true;
 }
@@ -579,6 +746,27 @@ export async function handleScreenVoicePost(watch: ScreenWatch, req: IncomingMes
   }
   if (typeof body["muted"] === "boolean") watch.voiceMuted = body["muted"];
   sendJson(res, 200, { muted: watch.voiceMuted });
+  return true;
+}
+
+/**
+ * `POST /api/mod/screen/identify {name}` — the director's install-day check
+ * (SW-SCR-21): that terminal shows its name + spot full screen (and chimes,
+ * if its sound is unlocked) for `IDENTIFY_MS`, read off its next poll.
+ * Answers `{name, until}`; 400 without a name.
+ */
+export async function handleScreenIdentifyPost(watch: ScreenWatch, req: IncomingMessage, res: ServerResponse, authorized: (token: string | undefined) => boolean): Promise<boolean> {
+  const body = await readBody(req, 1024);
+  if (!authorized(tokenOf(req, body))) {
+    sendJson(res, 403, { error: "moderators only" });
+    return true;
+  }
+  const name = typeof body["name"] === "string" ? clip(body["name"]) : "";
+  if (name.trim() === "") {
+    sendJson(res, 400, { error: "name required" });
+    return true;
+  }
+  sendJson(res, 200, { name, until: watch.identify(name) });
   return true;
 }
 

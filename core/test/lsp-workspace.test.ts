@@ -3,6 +3,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { CompletionItemKind, DiagnosticSeverity, SymbolKind, Workspace } from "../src/lsp/index.ts";
+import { scenarioFiles } from "../examples/load.ts";
 
 const URI = "inmemory://test.loom";
 
@@ -465,5 +466,89 @@ describe("Workspace project diagnostics", () => {
     expect(diagsOf(w).some((d) => d.message.includes("required slot"))).toBe(true);
     w.update(REDESIGN_URI, "CHARACTER Keeper\n  voice: low\n");
     expect(diagsOf(w).some((d) => d.message.includes("required slot"))).toBe(false);
+  });
+});
+
+describe("Workspace currency lints (wave 5 B2)", () => {
+  const lints = (files: Array<[string, string]>) => {
+    const w = new Workspace();
+    w.updateMany(files);
+    return files.flatMap(([uri]) =>
+      (w.diagnosticsFor(uri)?.diagnostics ?? [])
+        .filter((d) => d.code === "L1203" || d.code === "L1204")
+        .map((d) => ({ uri, code: d.code, severity: d.severity, line: d.range.start.line, message: d.message })),
+    );
+  };
+  const HEAD = (currency: string) => `# Coin\nstart: Go\ncurrency: ${currency}\n\n`;
+
+  it("flags a header `currency:` that does not parse as an error on its line", () => {
+    const out = lints([["file:///main.loom", `${HEAD("score as Truthcoin, max lots")}== Go\nHi.\n`]]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ code: "L1203", severity: DiagnosticSeverity.Error, line: 2 });
+    expect(out[0]!.message).toMatch(/NO wallet/);
+    expect(lints([["file:///main.loom", `${HEAD("score as Truthcoin, max 500, expiry 10m")}== Go\nHi.\n`]])).toEqual([]);
+  });
+
+  it("flags a `wallet:` line that does not parse as an error on that line", () => {
+    const src = `${HEAD("score as Truthcoin")}CHARACTER Bank\n  wallet: aprover, every 3\n\nCHARACTER Mint\n  wallet: minter, limit 3, while program.cleared == true\n\n== Go\nHi.\n`;
+    const out = lints([["file:///main.loom", src]]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ code: "L1204", severity: DiagnosticSeverity.Error, line: 5 });
+  });
+
+  it("warns when a `wallet:` role has no `currency:` header anywhere (inert)", () => {
+    const out = lints([
+      ["file:///main.loom", "# Coin\nstart: Go\n\n== Go\nHi.\n"],
+      ["file:///cast.loom", "CHARACTER Bank\n  wallet: approver\n"],
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ uri: "file:///cast.loom", code: "L1204", severity: DiagnosticSeverity.Warning, line: 1 });
+    expect(out[0]!.message).toMatch(/inert/);
+  });
+
+  it("warns on a second approver (the first in source order wins)", () => {
+    const out = lints([
+      ["file:///main.loom", `${HEAD("score as Truthcoin")}CHARACTER Bank\n  wallet: approver\n\n== Go\nHi.\n`],
+      ["file:///cast.loom", "CHARACTER Bank Two\n  wallet: approver, window 30s\n"],
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ uri: "file:///cast.loom", severity: DiagnosticSeverity.Warning });
+    expect(out[0]!.message).toMatch(/Bank Two is a second `approver`.*Bank holds the role/);
+  });
+
+  it("counts a role inherited through a TRAIT as a second approver (read off the model)", () => {
+    const src = `${HEAD("score as Truthcoin")}TRAIT Banker\n  wallet: approver\n\nCHARACTER Cra is Banker\n  listed: true\n\nCHARACTER Mcafee is Banker\n  listed: true\n\n== Go\nHi.\n`;
+    const out = lints([["file:///main.loom", src]]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ severity: DiagnosticSeverity.Warning, line: 10 });
+    expect(out[0]!.message).toMatch(/Mcafee is a second `approver`.*Cra holds the role/);
+  });
+
+  it("names the holder in the server's file order (main.loom first), not the editor's", () => {
+    const out = lints([
+      ["file:///cast/auditor.loom", "CHARACTER Auditor\n  wallet: approver\n"],
+      ["file:///main.loom", `${HEAD("score as Truthcoin")}CHARACTER Bank\n  wallet: approver\n\n== Go\nHi.\n`],
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ uri: "file:///cast/auditor.loom", line: 1 });
+    expect(out[0]!.message).toMatch(/Auditor is a second `approver`.*Bank holds the role/);
+  });
+
+  it("an unparseable `currency:` beside one that parses is a warning, not 'NO wallet'", () => {
+    for (const files of [
+      [["file:///main.loom", `${HEAD("score as Truthcoin, max 500")}== Go\nHi.\n`], ["file:///b.loom", "currency: score Truthcoin\n\n== B\nHi.\n"]],
+      [["file:///main.loom", `${HEAD("score Truthcoin")}== Go\nHi.\n`], ["file:///b.loom", "currency: score as Truthcoin\n\n== B\nHi.\n"]],
+    ] as Array<Array<[string, string]>>) {
+      const out = lints(files);
+      expect(out).toHaveLength(1);
+      expect(out[0]).toMatchObject({ code: "L1203", severity: DiagnosticSeverity.Warning });
+      expect(out[0]!.message).not.toMatch(/NO wallet/);
+      expect(out[0]!.message).toMatch(/ignored \(it does not parse\) — (b|main)\.loom sets the currency/);
+    }
+  });
+
+  it("the show reports none", () => {
+    const files = scenarioFiles("trapped-in-the-internet").map((f) => [`file:///${f.path}`, f.source] as [string, string]);
+    expect(lints(files)).toEqual([]);
   });
 });

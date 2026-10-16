@@ -113,6 +113,7 @@ export function listVariants(entries: ReadonlyArray<[file: string, parsed: Parse
     .map(([file, parsed]) => ({
       file,
       name: parsed.house?.name || file,
+      ...(parsed.house?.variant?.trim() ? { label: parsed.house.variant.trim() } : {}),
       active: file === active,
       ok: parsed.house !== null,
       problems: parsed.problems,

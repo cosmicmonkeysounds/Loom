@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from typing import Callable
 
 import paho.mqtt.client as paho
 
@@ -38,6 +39,12 @@ class MqttBridge:
         #: (topic, payload, retained) — `retained` is True for a message the
         #: broker replayed on (re)subscribe, so the sensor map can ignore it.
         self.queue: asyncio.Queue[tuple[str, bytes, bool]] = asyncio.Queue()
+        #: Set while the broker session is up. paho drops queued QoS-0
+        #: publishes when it reconnects, so a replay waits on this.
+        self.connected = asyncio.Event()
+        #: Called on the loop after every (re)connect — the show router
+        #: catches the lights up then, since cues sent meanwhile were lost.
+        self.on_connected: Callable[[], None] | None = None
         self._client = paho.Client(paho.CallbackAPIVersion.VERSION2, client_id=client_id, clean_session=True)
         if username is not None:
             self._client.username_pw_set(username, password)
@@ -51,14 +58,27 @@ class MqttBridge:
     # paho callbacks run on the network thread — hop to the loop.
 
     def _on_connect(self, client: paho.Client, _userdata, _flags, reason_code, _props) -> None:
+        if getattr(reason_code, "is_failure", False):
+            log.warning("mqtt connect refused (%s) — paho will retry", reason_code)
+            return
         log.info("mqtt connected (%s)", reason_code)
         client.publish(self._health, "online", retain=True)
         for f in self._filters:
             client.subscribe(f)
             log.info("mqtt subscribed %s", f)
+        self._loop.call_soon_threadsafe(self._session_up)
+
+    def _session_up(self) -> None:
+        self.connected.set()
+        if self.on_connected is not None:
+            self.on_connected()
 
     def _on_disconnect(self, _client, _userdata, _flags, reason_code, _props) -> None:
         log.warning("mqtt disconnected (%s) — paho will retry", reason_code)
+        try:
+            self._loop.call_soon_threadsafe(self.connected.clear)
+        except RuntimeError:  # the loop already closed (shutdown)
+            pass
 
     def _on_message(self, _client, _userdata, msg: paho.MQTTMessage) -> None:
         self._loop.call_soon_threadsafe(self.queue.put_nowait, (msg.topic, msg.payload, bool(msg.retain)))

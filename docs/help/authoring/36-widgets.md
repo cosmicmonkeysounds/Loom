@@ -40,10 +40,11 @@ show poll "Ready?" to group(Antivirus) with options: "Yes | No | Never"
   `guide` and `bathroom` (a Bathroom Mode step, in your words), the
   answer card's `question` (the key it is judged against — **quote
   it**: `question: "P1"`), `max` (characters, default 200), `button`
-  (the label, default *Send*) and `placeholder`. **Never put a comma
-  inside a quoted `with` value**: the `with` list is split on commas
-  before the quotes are read, so `caption: "Tonight, 9pm"` becomes two
-  broken params. Reword, or use a dash.
+  (the label, default *Send*) and `placeholder`. A comma (or the word
+  *with*) inside a quoted value is just text — `caption: "Tonight,
+  9pm"` is one param. Close every quote: an unbalanced `"` turns the
+  rest of the line, `with` clause included, into text. `loomcheck`
+  warns on an unbalanced quote and on an unquoted `question:`.
 
 Where it lands follows the same rule as a choice: a card shown right
 after a character's line docks in that character's thread with the
@@ -60,7 +61,7 @@ character. The performer answers it there, and the event fires *as the
 character*, so only that character's own hooks and story rules hear
 it. Inside the character's body the hook must bind a name — `when poll
 answered for who:` — because the bare `when poll answered:` reads as a
-verb with a parameter and never matches.
+verb with a parameter and never matches (`loomcheck` warns on it).
 
 ## Hearing the answer
 
@@ -143,6 +144,15 @@ card, [the mind debugger](mind-debugger.md); when the round closes,
 the story settles whatever is still pending by the proposal). Switch it
 with `set Night.judge_mode = "review"` in the story or from the Judging
 card; `judge.mode_var` in `facts.json` names a different variable.
+
+**Who filed what.** On the Judging card, **▸** on a question's tally row
+opens its filings, oldest first: when the server saw it, who, the
+answer, the confidence, the judge's proposal and the outcome — *kept*
+(the proposal stood), *overridden* (**↺**: settled as something else),
+*marked* or *pending*. The time is when the server first saw the filing,
+so a restart or a pushed draft re-stamps every one; whether a kept
+proposal was settled automatically or confirmed, and by whom, isn't
+recorded.
 
 **Talking to the judge's ledger.** Three `do` verbs keep the Judging
 card's tallies and let the story draw a name:

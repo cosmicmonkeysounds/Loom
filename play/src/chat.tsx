@@ -343,12 +343,16 @@ export function PickerSheet({
   onPick,
   onClose,
   empty,
+  keepOpen = false,
 }: {
   title: string;
   items: PickItem[];
   onPick: (id: string) => void;
   onClose: () => void;
   empty?: string;
+  /** A pick moves a multi-step sheet on (the wallet's person → amount)
+   *  instead of closing it; only × / the backdrop close. */
+  keepOpen?: boolean;
 }) {
   return (
     <Sheet title={title} onClose={onClose} tall={items.length > 8}>
@@ -359,7 +363,7 @@ export function PickerSheet({
           className="choice ghost pick"
           onClick={() => {
             onPick(it.id);
-            onClose();
+            if (!keepOpen) onClose();
           }}
         >
           {it.avatar && <PersonAvatar name={it.label} size="sm" />}
@@ -405,7 +409,7 @@ export function ActionRow({ actions }: { actions: Action[] }) {
   return (
     <div className="actionrow">
       {actions.map((a, i) => (
-        <button key={i} className={`choice ${a.tone ?? "ghost"}`} onClick={a.onClick}>
+        <button key={i} className={`choice ${a.tone ?? "ghost"}`} onClick={a.onClick} disabled={a.disabled}>
           {a.label}
         </button>
       ))}

@@ -105,6 +105,9 @@ export interface ChatMessage {
   pin?: string;
   /** Takes down the pin with this key in this channel (`unpin …`). */
   unpin?: string;
+  /** A **takeover** pin (`pin "!!…"`, always an alert too): the client covers
+   *  the whole screen with it until the story unpins it. */
+  takeover?: boolean;
   /** The card a `widget` message renders (a CAPTCHA, a picture, a poll…). */
   widget?: WidgetCard;
   /** The entry a `codex` message shows. */
@@ -499,8 +502,11 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
         const audience: Audience = e.channel !== null ? sim.channelAudience(e.channel) : e.person !== null ? [e.person] : "all";
         const h = { channel: head.channel, channelKind: head.channelKind as ChannelKind, title: head.title, from: "", ts, audience, parentSeq: null as number | null };
         if (e.type === "pinned") {
+          // `!` = an alert; `!!` = an alert that takes over the whole screen.
+          const takeover = e.text.startsWith("!!");
           const alert = e.text.startsWith("!");
-          out.push({ ...h, kind: "signal", text: alert ? e.text.slice(1).trim() : e.text, pin: e.key, ...(alert ? { alert: true } : {}) });
+          const text = takeover ? e.text.slice(2).trim() : alert ? e.text.slice(1).trim() : e.text;
+          out.push({ ...h, kind: "signal", text, pin: e.key, ...(alert ? { alert: true } : {}), ...(takeover ? { takeover: true } : {}) });
         } else {
           out.push({ ...h, kind: "system", text: e.text ?? "📌 Cleared.", unpin: e.key });
         }

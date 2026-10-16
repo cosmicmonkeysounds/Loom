@@ -1,13 +1,32 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
+import { execSync } from "node:child_process";
 
 // The Loom event server (API + SSE) to proxy to during `pnpm dev`.
 // Override with LOOM_SERVER, e.g. http://192.168.x.x:7000.
 const target = process.env.LOOM_SERVER ?? "http://localhost:7000";
 
+// The build stamp every poll reports (SW-SCR-21, `src/health.ts`): the git
+// short sha (when there is a .git — not in the Docker build) + the build
+// time, since a show build is often an uncommitted tree. The Run card marks
+// a tablet whose stamp differs from the others' (a cached old build).
+function buildStamp(): string {
+  let sha = "";
+  try {
+    sha = execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+  } catch {
+    /* no git */
+  }
+  const d = new Date();
+  const two = (n: number) => String(n).padStart(2, "0");
+  const time = `${two(d.getMonth() + 1)}${two(d.getDate())}-${two(d.getHours())}${two(d.getMinutes())}`;
+  return sha === "" ? time : `${sha}.${time}`;
+}
+
 export default defineConfig({
   plugins: [react()],
+  define: { __BUILD__: JSON.stringify(process.env.LOOM_BUILD ?? buildStamp()) },
   // Served by the event server under `/terminal/` (next to the play app at `/`).
   base: "/terminal/",
   server: {

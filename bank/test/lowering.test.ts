@@ -394,3 +394,64 @@ CHARACTER Alpha
     expect(new Set(bank.hooks.map((h) => bank.names[h.owner]))).toEqual(new Set(["Zeta", "Alpha"]));
   });
 });
+
+describe("the wave 3–4 surface: delegated, or diagnosed", () => {
+  it("marks restrict / unrestrict / pin / unpin and the quest verbs as delegated host steps", () => {
+    const bank = bankOf(`
+QUEST The Hunt
+  title: The Hunt
+  text: Find it.
+
+== a
+restrict Wren to The Tube
+unrestrict Wren
+pin "Go to the Internet" for Wren
+unpin for Wren
+start quest The Hunt for Wren
+update quest The Hunt for Wren "Halfway."
+complete quest The Hunt for Wren
+fail quest The Hunt for Wren
+`);
+    const verbs = new Map(bank.verbs.map((v) => [v.name, v.delegated]));
+    for (const v of ["restrict", "unrestrict", "pin", "unpin", "quest_start", "quest_update", "quest_complete", "quest_fail"]) {
+      expect(verbs.get(v), v).toBe(true);
+    }
+    expect(ops(bank, "a").filter((o) => o === "HOST")).toHaveLength(8);
+  });
+
+  it("an author's own verb stays undelegated", () => {
+    const bank = bankOf(`
+== a
+do ring_the_bell loud
+`);
+    expect(bank.verbs.find((v) => v.name === "ring_the_bell")?.delegated).toBe(false);
+  });
+
+  it("a GENERATOR's while gate is diagnosed, not silently dropped", () => {
+    const gated = bankOf(`
+GENERATOR Hum
+  tier: ambient
+  every 10s
+  while Night.quiet != true
+  yield bark from one | two
+
+== a
+Hi.
+`);
+    const d = gated.diagnostics.filter((x) => x.code === "generatorWhileIgnored");
+    expect(d.map((x) => x.severity)).toEqual(["warning"]);
+    expect(d[0]!.message).toContain("Night.quiet != true");
+    expect(gated.gens.map((g) => g.barks)).toEqual([["one", "two"]]); // still banked, ungated
+
+    const plain = bankOf(`
+GENERATOR Hum
+  tier: ambient
+  every 10s
+  yield bark from one | two
+
+== a
+Hi.
+`);
+    expect(plain.diagnostics.map((x) => x.code)).not.toContain("generatorWhileIgnored");
+  });
+});

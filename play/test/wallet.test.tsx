@@ -4,28 +4,44 @@
 //! view of one transfer, request, offer and stimulus.
 
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import {
   BalancePill,
+  FreezeSheet,
   OfferSheet,
   PeopleAmountSheet,
   StimulusSheet,
+  WALLET_RESTRICTED_NOTE,
   WalletActionsProvider,
   WalletCardView,
+  WalletFooter,
   approvalBadge,
+  frozenNote,
+  frozenUntil,
+  buyChoice,
+  guestWalletActions,
+  heldDeadline,
+  liveClock,
+  mmss,
   parseAmount,
   queueSummary,
   secondsLeft,
+  sellChoice,
   walletButtonsFor,
   walletCardTitle,
   walletFooterActions,
+  walletGlyph,
   walletItemState,
   walletNeedsYou,
+  walletStateLine,
   walletStepLine,
   walletSummary,
+  walletTicking,
 } from "../src/wallet.tsx";
 import type { ChatMessage, GuestView, PrimeView, WalletCard, WalletQueueView, WalletTxView, WalletView } from "../src/types.ts";
+import { PickerSheet } from "../src/chat.tsx";
 import { INBOX, buildGuestChannels, buildPrimeChannels, isPinnedRoom, personalStream } from "../src/session.ts";
 import { WALLET_ROOM, channelHead } from "../src/threads.ts";
 
@@ -327,5 +343,279 @@ describe("the Wallet room in the sidebars (wiring)", () => {
     // Pinned with the booth's Quest Log + Codex, right after the Scanner / Inbox / feed, before the rooms.
     expect(list.slice(0, 6).map((c) => c.id)).toEqual(expect.arrayContaining(["__scanner", INBOX, "__feed", "quests", "codex", WALLET_ROOM]));
     expect(buildPrimeChannels(messages, primeView({ wallet: { ...q, queue: [] } })).find((c) => c.id === WALLET_ROOM)).toMatchObject({ needsYou: false, subtitle: "nothing to approve" });
+  });
+});
+
+describe("wave 5: the guest approver, selling by id, restriction, the held countdown", () => {
+  it("the phone's actions carry approve / deny for a guest-program approver (D1)", () => {
+    const calls: string[] = [];
+    const rec = (name: string) => (id: string, extra?: boolean) => {
+      calls.push(extra === undefined ? `${name} ${id}` : `${name} ${id} ${extra}`);
+      return Promise.resolve(null);
+    };
+    const a = guestWalletActions(view(), "me", 1000, false, {
+      respond: rec("respond"),
+      accept: rec("accept"),
+      decline: rec("decline"),
+      cancel: rec("cancel"),
+      approve: rec("approve"),
+      deny: rec("deny"),
+    });
+    a.approve!("t1");
+    a.deny!("t2");
+    a.respond!("r1", true);
+    a.cancel!("t3");
+    expect(calls).toEqual(["approve t1", "deny t2", "respond r1 true", "cancel t3"]);
+    expect(a).toMatchObject({ me: "me", clock: 1000, restricted: false });
+    // …and the held approval card in that guest's Wallet renders the buttons.
+    const held = card({ kind: "approval", step: "held" });
+    const html = render(
+      <WalletActionsProvider value={{ ...a, view: view({ approver: { queue: [tx({ state: "held" })] } }) }}>
+        <WalletCardView msg={msg(held)} card={held} />
+      </WalletActionsProvider>,
+    );
+    expect(html).toContain(">Approve<");
+    expect(html).toContain(">Deny<");
+  });
+
+  it("a sale posts the held entry's id and shows its title; a buy posts what was typed (D2)", () => {
+    expect(sellChoice({ id: "LiveJournal", title: "Trabolta's LiveJournal (trabolta_4ever)" })).toEqual({ entry: "LiveJournal", title: "Trabolta's LiveJournal (trabolta_4ever)" });
+    expect(buyChoice("  truth.txt ")).toEqual({ entry: "truth.txt", title: "truth.txt" });
+    const trade = render(<OfferSheet view={view()} people={[{ id: "g2", name: "Paint" }]} codex={[{ id: "Jeeves_01", title: "JEEVES.IDX — fragment 01" }]} onDone={() => {}} onClose={() => {}} />);
+    expect(trade).toContain("JEEVES.IDX — fragment 01");
+  });
+
+  it("a restricted guest loses Pay / Decline a request and Accept an offer, keeps Decline an offer and Cancel (D3)", () => {
+    const req = { id: "r1", from: "g2", fromName: "Paint", to: "me", toName: "Winamp", amount: 5, state: "open" as const, expiresAt: 0, at: 0 };
+    const offer = { id: "o1", from: "g2", fromName: "Paint", to: "me", toName: "Winamp", side: "buy" as const, entry: "e", entryTitle: "E", amount: 5, state: "open" as const, expiresAt: 0, at: 0 };
+    const asked = card({ kind: "request", id: "r1", step: "asked", from: "g2", to: "me" });
+    expect(walletButtonsFor(asked, view({ requests: [req] }), "me", true)).toEqual([]);
+    const offered = card({ kind: "offer", id: "o1", step: "offered", from: "g2", to: "me", side: "buy" });
+    expect(walletButtonsFor(offered, view({ offers: [offer] }), "me", true)).toEqual(["declineOffer"]);
+    const mine = card({ kind: "offer", id: "o1", step: "sent", from: "me", to: "g2", side: "sell" });
+    expect(walletButtonsFor(mine, view({ offers: [{ ...offer, from: "me", to: "g2" }] }), "me", true)).toEqual(["cancel"]);
+    expect(walletButtonsFor(card({ step: "held" }), view({ transfers: [tx({ state: "held" })] }), "me", true)).toEqual(["cancel"]);
+    // Unrestricted is unchanged.
+    expect(walletButtonsFor(asked, view({ requests: [req] }), "me")).toEqual(["pay", "declineRequest"]);
+
+    // The footer: no Send / Request / Trade / Stimulus, the ⛔ note instead.
+    expect(walletFooterActions(view({ minter: { uses: 0, limit: 3 } }), () => {}, true)).toEqual([]);
+    const foot = render(<WalletFooter view={view()} open={() => {}} restricted />);
+    expect(foot).toContain("⛔ You&#x27;re restricted");
+    expect(WALLET_RESTRICTED_NOTE).toContain("can't send, request or trade");
+    expect(foot).not.toContain("Send");
+    expect(render(<WalletFooter view={view()} open={() => {}} />)).toContain("💸 Send");
+
+    // A rendered card asked of a restricted guest shows no Pay.
+    const html = render(
+      <WalletActionsProvider value={{ view: view({ requests: [req] }), me: "me", clock: 0, restricted: true }}>
+        <WalletCardView msg={msg(asked)} card={asked} />
+      </WalletActionsProvider>,
+    );
+    expect(html).not.toContain(">Pay<");
+  });
+
+  it("a held transfer counts down to its auto-approval in m:ss, read from the view (D4)", () => {
+    expect(mmss(300)).toBe("5:00");
+    expect(mmss(65)).toBe("1:05");
+    expect(mmss(0)).toBe("0:00");
+    const heldCard = card({ step: "held", settleAt: undefined });
+    const v = view({ transfers: [tx({ state: "held", settleAt: 301_000 })] });
+    expect(heldDeadline(v, heldCard)).toBe(301_000);
+    expect(heldDeadline(view(), card({ step: "held", settleAt: 5000 }))).toBe(5000); // falls back to the card
+    expect(walletStateLine(heldCard, "held", v, 1000)).toBe("auto-approves in 5:00");
+    expect(walletStateLine(heldCard, "held", v, 236_000)).toBe("auto-approves in 1:05");
+    expect(walletStateLine(heldCard, "held", v, 400_000)).toBe("held"); // past due: the sweep is coming
+    expect(walletStateLine(card({ step: "held", settleAt: undefined }), "held", view({ transfers: [tx({ state: "held", settleAt: null })] }), 0)).toBe("held"); // an old book: no deadline
+    // The booth's approval card reads the queue.
+    const q: WalletQueueView = { name: "Truthcoin", queue: [tx({ state: "held", settleAt: 121_000 })], every: 3, windowMs: 60_000 };
+    const booth = render(
+      <WalletActionsProvider value={{ view: q, me: null, clock: 1000 }}>
+        <WalletCardView msg={msg(card({ kind: "approval", step: "held" }))} card={card({ kind: "approval", step: "held" })} />
+      </WalletActionsProvider>,
+    );
+    expect(booth).toContain("auto-approves in 2:00");
+    // The other countdowns are unchanged.
+    expect(walletStateLine(card(), "pending", view({ transfers: [tx()] }), 1000)).toBe("settles in 60 s");
+    expect(walletStateLine(card({ kind: "request", step: "asked", settleAt: 601_000 }), "open", null, 1000)).toBe("expires in 600 s");
+    expect(walletStateLine(card(), null, null, 0)).toBe("closed");
+    expect(walletStepLine(card({ step: "timed_out" }))).toBe("✅ Approved automatically — nobody audited it in time");
+  });
+});
+
+describe("A9: the minter's reserve — 🎁 grant, 🧊 freeze, a frozen wallet", () => {
+  const freezeView = { id: "f1", target: "g2", targetName: "Paint", by: "me", until: 601_000, at: 1000 };
+  function minter(extra: Partial<NonNullable<WalletView["minter"]>> = {}): NonNullable<WalletView["minter"]> {
+    return { uses: 0, limit: 3, grants: { uses: 1, limit: 3 }, freezeMs: 600_000, frozen: [], ...extra };
+  }
+
+  it("the minter's footer adds 🎁 Grant (N left) and 🧊 Freeze; an old server's minter (no grants) keeps the old footer", () => {
+    const opened: string[] = [];
+    const acts = walletFooterActions(view({ minter: minter() }), (s) => opened.push(s));
+    expect(acts.map((a) => a.label)).toEqual(["💸 Send", "🙏 Request", "💱 Trade a fact", "💰 Stimulus (3 left)", "🎁 Grant (2 left)", "🧊 Freeze"]);
+    acts[4]!.onClick();
+    acts[5]!.onClick();
+    expect(opened).toEqual(["grant", "freeze"]);
+    expect(walletFooterActions(view({ minter: minter({ grants: { uses: 3, limit: 3 } }) }), () => {}).at(-2)!.label).toBe("🎁 Grant (none left)");
+    expect(walletFooterActions(view({ minter: { uses: 0, limit: 3 } }), () => {}).map((a) => a.label)).not.toContain("🧊 Freeze");
+    expect(walletFooterActions(view({ minter: minter() }), () => {}, true)).toEqual([]); // restricted: the ⛔ note instead
+  });
+
+  it("a frozen wallet: Send greyed, a 🧊 note with the countdown, the pill says so — and it thaws on the story clock", () => {
+    const frozen = view({ frozenUntil: 601_000 });
+    expect(frozenUntil(frozen, 1000)).toBe(601_000);
+    expect(frozenUntil(frozen, 601_000)).toBeNull(); // past the deadline before the sweep lands
+    expect(frozenUntil(view(), 1000)).toBeNull();
+    expect(frozenUntil(null, 0)).toBeNull();
+    const acts = walletFooterActions(frozen, () => {}, false, 1000);
+    expect(acts.find((a) => a.label === "💸 Send")!.disabled).toBe(true);
+    expect(acts.find((a) => a.label === "🙏 Request")!.disabled).toBeUndefined(); // asking still works
+    expect(acts.find((a) => a.label === "💱 Trade a fact")!.disabled).toBeUndefined(); // selling still works
+    expect(walletFooterActions(frozen, () => {}, false, 700_000).find((a) => a.label === "💸 Send")!.disabled).toBeUndefined();
+    expect(frozenNote(frozen, 1000)).toBe("🧊 Your Truthcoin is frozen — it thaws in 10:00. You can't send, pay or buy, but coin still comes in.");
+    expect(frozenNote(view(), 1000)).toBeNull();
+    const footer = render(<WalletFooter view={frozen} open={() => {}} clock={1000} />);
+    expect(footer).toContain("thaws in 10:00");
+    expect(footer).toMatch(/disabled="">💸 Send/u);
+    expect(render(<BalancePill view={frozen} onOpen={() => {}} />)).toContain("🧊 frozen");
+    expect(render(<BalancePill view={view()} onOpen={() => {}} />)).not.toContain("frozen");
+    // Buying is off in the trade sheet; selling stays.
+    const trade = render(<OfferSheet view={frozen} people={[]} codex={[{ id: "e1", title: "The Lease" }]} onDone={() => {}} onClose={() => {}} frozen />);
+    expect(trade).toMatch(/disabled="">Buy one by title/u);
+    expect(trade).toContain("you can sell, not buy");
+  });
+
+  it("the countdowns tick between snapshots: the snapshot clock plus the wall time since it arrived", () => {
+    // A quiet stretch: the last snapshot said story 1000 ms, at wall 50_000.
+    expect(liveClock(1000, 50_000, 50_000)).toBe(1000);
+    expect(liveClock(1000, 50_000, 98_000)).toBe(49_000);
+    expect(liveClock(1000, 50_000, 40_000)).toBe(1000); // a wall clock behind the arrival never runs it back
+    const frozen = view({ frozenUntil: 601_000 });
+    expect(frozenNote(frozen, liveClock(1000, 50_000, 98_000))).toContain("thaws in 9:12");
+    // Only a running deadline makes the phone tick.
+    expect(walletTicking(frozen)).toBe(true);
+    expect(walletTicking(view({ minter: { uses: 0, limit: 3, grants: { uses: 0, limit: 3 }, freezeMs: 600_000, frozen: [{ id: "f1", target: "g2", targetName: "Paint", by: "me", until: 601_000, at: 1000 }] } }))).toBe(true);
+    expect(walletTicking(view({ transfers: [tx()] }))).toBe(true);
+    expect(walletTicking(view({ transfers: [tx({ state: "settled" })] }))).toBe(false);
+    expect(walletTicking(view({ requests: [{ id: "r1", from: "g2", fromName: "Paint", to: "me", toName: "Winamp", amount: 5, state: "open", expiresAt: 9e9, at: 0 }] }))).toBe(true);
+    expect(walletTicking(view())).toBe(false);
+    expect(walletTicking(undefined)).toBe(false);
+  });
+
+  it("the approver booth's queue countdown ticks between snapshots too (issue 9)", () => {
+    // The booth's view is the queue (`PrimeView.wallet`), not a guest wallet.
+    const q: WalletQueueView = { name: "Truthcoin", queue: [tx({ state: "held", settleAt: 61_000 })], every: 3, windowMs: 60_000 };
+    expect(walletTicking(q)).toBe(true);
+    expect(walletTicking({ ...q, queue: [] })).toBe(false);
+    const held = card({ kind: "approval", step: "held", settleAt: undefined });
+    // Snapshot at story 1000 ms (wall 50_000); 20 s of quiet later the line has moved on.
+    expect(walletStateLine(held, "held", q, liveClock(1000, 50_000, 50_000))).toBe("auto-approves in 1:00");
+    expect(walletStateLine(held, "held", q, liveClock(1000, 50_000, 70_000))).toBe("auto-approves in 0:40");
+    // The booth feeds its cards that ticking clock, not the raw snapshot's.
+    const booth = readFileSync(new URL("../src/performer.tsx", import.meta.url), "utf8");
+    expect(booth).toContain("useWalletClock(s.view?.clock, s.view?.wallet)");
+    expect(booth).toContain("clock: walletClock");
+  });
+
+  it("a frozen viewer can't Pay a request or Accept a sell offer; declining and accepting a buy offer (coin in) stay", () => {
+    const req = card({ kind: "request", id: "r1", step: "asked", from: "g2", to: "me" });
+    const reqView = view({ requests: [{ id: "r1", from: "g2", fromName: "Paint", to: "me", toName: "Winamp", amount: 50, state: "open", expiresAt: 9e9, at: 0 }] });
+    expect(walletButtonsFor(req, reqView, "me", false, true)).toEqual(["declineRequest"]);
+    expect(walletButtonsFor(req, reqView, "me")).toEqual(["pay", "declineRequest"]);
+    const offer = (side: "buy" | "sell") => ({
+      c: card({ kind: "offer", id: "o1", step: "offered", from: "g2", to: "me", side }),
+      v: view({ offers: [{ id: "o1", from: "g2", fromName: "Paint", to: "me", toName: "Winamp", side, entry: "e1", entryTitle: "The Lease", amount: 50, state: "open", expiresAt: 9e9, at: 0 }] }),
+    });
+    const sell = offer("sell");
+    expect(walletButtonsFor(sell.c, sell.v, "me", false, true)).toEqual(["declineOffer"]);
+    const buy = offer("buy");
+    expect(walletButtonsFor(buy.c, buy.v, "me", false, true)).toEqual(["accept", "declineOffer"]);
+    // The card reads the freeze off the provider's view + clock.
+    const html = render(
+      <WalletActionsProvider value={{ view: { ...reqView, frozenUntil: 601_000 }, me: "me", clock: 1000 }}>
+        <WalletCardView msg={msg(req)} card={req} />
+      </WalletActionsProvider>,
+    );
+    expect(html).not.toContain(">Pay<");
+    expect(html).toContain(">Decline<");
+  });
+
+  it("grant and freeze cards: titles, glyphs, step lines and a live thaw countdown (no 0-coin amount on a freeze)", () => {
+    const granted = card({ kind: "grant", id: "g1", step: "granted", settleAt: undefined });
+    const gotIt = card({ kind: "grant", id: "g1", step: "received", from: "me", fromName: "Runescape", to: "g2", toName: "Paint", settleAt: undefined });
+    expect(walletCardTitle(granted)).toBe("You granted Paint 50 Truthcoin");
+    expect(walletCardTitle(gotIt)).toBe("Runescape granted you 50 Truthcoin");
+    expect(walletGlyph(gotIt)).toBe("🎁");
+    expect(walletStepLine(gotIt)).toBe("🎁 Runescape granted you 50 Truthcoin");
+    expect(walletStateLine(granted, null, view(), 0)).toBe("from the reserve");
+
+    const frozenCard = card({ kind: "freeze", id: "f1", step: "frozen", from: "me", fromName: "Runescape", to: "g2", toName: "Paint", amount: 0, settleAt: 601_000 });
+    const imposed = card({ kind: "freeze", id: "f1", step: "imposed", amount: 0, settleAt: 601_000 });
+    expect(walletCardTitle(frozenCard)).toBe("Runescape froze your Truthcoin");
+    expect(walletCardTitle(imposed)).toBe("You froze Paint's Truthcoin");
+    expect(walletGlyph(frozenCard)).toBe("🧊");
+    // The target's card is live while their freeze is this one.
+    const targetView = view({ frozenUntil: 601_000 });
+    expect(walletItemState(targetView, frozenCard)).toBe("frozen");
+    expect(walletStateLine(frozenCard, "frozen", targetView, 1000)).toBe("thaws in 10:00");
+    expect(walletItemState(view(), frozenCard)).toBeNull();
+    expect(walletStateLine(frozenCard, null, view(), 700_000)).toBe("thawed");
+    // The minter's card is live while it is in her list of freezes in force.
+    expect(walletItemState(view({ minter: minter({ frozen: [freezeView] }) }), imposed)).toBe("frozen");
+    expect(walletItemState(view({ minter: minter() }), imposed)).toBeNull();
+    // Thaw lines.
+    expect(walletStepLine(card({ kind: "freeze", step: "thawed", amount: 0 }))).toBe("☀️ Thawed — your Truthcoin moves again");
+    expect(walletStepLine(card({ kind: "freeze", step: "thawed", amount: 0, by: "Director" }))).toBe("☀️ Lifted early by Director — your Truthcoin moves again");
+    expect(walletStepLine(card({ kind: "freeze", step: "expired", amount: 0 }))).toBe("☀️ The freeze on Paint is over");
+    expect(walletGlyph(card({ kind: "freeze", step: "expired" }))).toBe("☀️");
+    expect(walletStepLine(card({ kind: "freeze", step: "cancelled", amount: 0, by: "Director" }))).toBe("↩️ Lifted early by Director");
+    expect(walletStepLine(card({ kind: "request", step: "expired" }))).toBe("⌛ Expired"); // unchanged for the rest
+    // Rendered: the freeze shows its countdown, never "0 Truthcoin".
+    const html = render(
+      <WalletActionsProvider value={{ view: targetView, me: "g2", clock: 1000 }}>
+        <WalletCardView msg={msg(frozenCard, { text: "" })} card={frozenCard} />
+      </WalletActionsProvider>,
+    );
+    expect(html).toContain("Runescape froze your Truthcoin");
+    expect(html).toContain("thaws in 10:00");
+    expect(html).not.toContain("0 Truthcoin");
+  });
+
+  it("the grant sheet picks a program then an amount from the reserve; the freeze sheet marks who is already frozen", () => {
+    const people = [
+      { id: "g2", name: "Paint" },
+      { id: "g3", name: "Winamp" },
+    ];
+    const grant = render(<PeopleAmountSheet mode="grant" view={view({ minter: minter() })} people={people} onDone={() => {}} onClose={() => {}} />);
+    expect(grant).toContain("🎁 Grant to…");
+    expect(grant).toContain("Paint");
+    const spent = render(<PeopleAmountSheet mode="grant" view={view({ minter: minter({ grants: { uses: 3, limit: 3 } }) })} people={people} onDone={() => {}} onClose={() => {}} />);
+    expect(spent).toContain("No grants left tonight.");
+    const freeze = render(<FreezeSheet view={view({ minter: minter({ frozen: [freezeView] }) })} people={people} clock={1000} onDone={() => {}} onClose={() => {}} />);
+    expect(freeze).toContain("🧊 Freeze whose coin?");
+    expect(freeze).toContain("🧊 thaws in 10:00"); // Paint is frozen already
+    expect(freeze.match(/thaws in/gu)?.length).toBe(1); // Winamp isn't
+  });
+
+  it("a multi-step sheet's person picker moves on instead of closing the sheet (keepOpen)", () => {
+    // Sheet + PickerSheet are hook-free, so the element tree can be walked.
+    type El = { type: unknown; props: { onClick?: () => void; children?: unknown } };
+    const buttons = (node: unknown): El[] => {
+      if (node === null || typeof node !== "object") return [];
+      if (Array.isArray(node)) return node.flatMap(buttons);
+      const el = node as El;
+      const own = el.type === "button" ? [el] : [];
+      const inner = typeof el.type === "function" ? buttons((el.type as (p: unknown) => unknown)(el.props)) : buttons(el.props?.children);
+      return [...own, ...inner];
+    };
+    for (const keepOpen of [true, false]) {
+      const picked: string[] = [];
+      let closed = 0;
+      const tree = PickerSheet({ title: "Send to…", items: [{ id: "g2", label: "Paint" }], onPick: (id) => picked.push(id), onClose: () => closed++, keepOpen });
+      const pick = buttons(tree).find((b) => b.props.onClick !== undefined && (b.props as { className?: string }).className?.includes("pick"));
+      pick!.props.onClick!();
+      expect(picked).toEqual(["g2"]);
+      expect(closed).toBe(keepOpen ? 0 : 1);
+    }
   });
 });

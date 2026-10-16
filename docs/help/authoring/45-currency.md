@@ -2,7 +2,7 @@
 title: Currency — a wallet over a score
 section: Live Shows
 order: 45
-keywords: currency, wallet, coin, money, Truthcoin, balance, send, request, pay, trade, offer, buy, sell, escrow, approver, approve, deny, audit, minter, stimulus, transfer, expiry, max, window, every, limit, while, transfer_received, transfer_denied, transfer_approved, offer_accepted, stimulus_received, exchange, bank, LOOM_RL_WALLET, rate limit
+keywords: currency, wallet, coin, money, Truthcoin, balance, send, request, pay, trade, offer, buy, sell, escrow, approver, approve, deny, audit, minter, stimulus, reserve, grant, freeze, frozen, transfer, expiry, max, window, every, limit, while, transfer_received, transfer_denied, transfer_approved, offer_accepted, stimulus_received, exchange, bank, LOOM_RL_WALLET, rate limit
 ---
 
 A score is a number the story moves. A **currency** is a score the
@@ -25,8 +25,9 @@ stays exactly what it was: `set program.score += 50`, the roster
 column and the recap all keep working), the name is what the phones
 show. `max` caps one transfer (default 500); `expiry` is how long a
 request or an offer waits for an answer (default 10 minutes). A line
-that doesn't parse declares no currency at all, silently — a show test
-that pins the currency is the guard.
+that doesn't parse declares no currency at all, so the editor's lint
+(and `loomcheck`) flags it as an error, `L1203`; a `wallet:` line that
+doesn't parse is `L1204`.
 
 Two characters may hold a **wallet role**:
 
@@ -40,16 +41,26 @@ CHARACTER Runescape
 
 - **`wallet: approver[, every N][, window <duration>]`** — the auditor.
   Every Nth transfer anyone sends (default 3, counted across the whole
-  night) is **held** until the approver presses Approve (or Deny); every
-  other one is **pending** for the window (default 60 s) and settles on
-  its own unless the approver denies it first. A denied transfer is
-  refunded. A performer's part audits from its booth's Wallet room; a
+  night) is **held** until the approver presses Approve (or Deny), or
+  for five minutes at most: a held transfer nobody answers goes through
+  on its own (*approved automatically*, and no `transfer_approved` — a
+  timeout is nobody's approval). Every other one is **pending** for the
+  window (default 60 s) and settles on its own unless the approver
+  denies it first. A denied transfer is refunded. A performer's part audits from its booth's Wallet room; a
   bare program (a guest's) audits from that guest's phone.
-- **`wallet: minter[, limit N][, while <condition>]`** — the one program
-  that can pay a **stimulus**: coin minted, not debited, to every
-  program the condition holds for (default: everyone with a balance),
-  at most `limit` times a night (default 3). It is a guest's program,
-  so the guest presses it; the director can press it for them.
+- **`wallet: minter[, limit N][, while <condition>][, grants N][, freeze <dur>]`**
+  — the one program that holds the **reserve**. It can pay a
+  **stimulus**: coin minted, not debited, to every program the
+  condition holds for (default: everyone with a balance), at most
+  `limit` times a night (default 3). It can **grant** one such program
+  coin from the reserve, `grants` times a night (default 3). And it can
+  **freeze** any program's coin for `freeze` (default 10m, on the story
+  clock, so a pause stops it): until it thaws, that program can't send,
+  pay a request, make a buy offer or accept a sell offer (coin still
+  comes in; declining and cancelling still work), and one program
+  carries one freeze at a time. It is a guest's program, so the guest
+  presses it; the director can press any of it for them (a director's
+  grant counts against the limit).
 
 Trades (offers) never pass the approver, and a request that is paid
 becomes an ordinary transfer, audited like one.
@@ -68,8 +79,12 @@ so neither side can spend it twice), and, for the minter, **💰 Stimulus
 Wallet rooms with its own thread (*💸 You sent 50 Truthcoin to Excel —
 settles in 42 s unless CRA Agent Software denies it* → *✅ settled*).
 The approver's room lists what is waiting on them; the director acts
-through the mod routes below (Run has no Wallet page yet — a balance
-shows only as the guest's score in the roster and Inspector).
+from the **Wallet** card on Run's front page (a server run): the
+approver, the minter and the stimulus count with **💰 Pay stimulus**,
+every open transfer with a countdown and Approve / Deny / Cancel (a
+held one also clears with **✓ Approve all held**), open requests and
+offers with Cancel, the minter's freezes in force with **☀ Lift**, and
+everyone's balance — the same mod routes below.
 
 Amounts are whole numbers from 1 to `max`; a send needs the balance; a
 guest can't pay themselves and may have a handful of open requests at
@@ -95,6 +110,9 @@ approver's name, or `Director`) are values.
 | `offer_accepted` / `offer_declined` / `offer_expired` / `offer_cancelled` | the offerer | `to`, `amount`, `entry`, `side` |
 | `stimulus` | the minter | `amount`, `paid` (how many) — only for the minter's own press; a director's stimulus raises `stimulus_received` alone |
 | `stimulus_received` | each recipient | `from`, `amount` |
+| `grant` / `grant_received` | the minter / the recipient | `to` / `from`, `amount` — `grant` only for the minter's own press |
+| `freeze` | the minter | `to`, `until` (story ms) — only for the minter's own press |
+| `wallet_frozen` / `wallet_thawed` | the frozen program | `from`, `until` / `by` (only when a director lifted it early) |
 
 An accepted trade also fires `share` and `learns` for the entry, like
 any share ([lore](codex.md)).
@@ -120,16 +138,18 @@ never inside a wallet rule, where it would fight the ledger.
 
 ## The routes, for show hardware
 
-- Guests: `POST /e/:id/api/guest/wallet/{send,request,respond,offer,accept,decline,cancel,stimulus,approve,deny}` → `{ok, wallet}` (the caller's Wallet view). `approve` / `deny` only when the approver is a guest's program.
+- Guests: `POST /e/:id/api/guest/wallet/{send,request,respond,offer,accept,decline,cancel,stimulus,grant,freeze,approve,deny}` → `{ok, wallet}` (the caller's Wallet view). `approve` / `deny` only when the approver is a guest's program; `grant {to, amount}` and `freeze {to}` only for the minter. A frozen view carries `frozenUntil` (story ms); the minter's carries `minter.grants`, `minter.freezeMs` and `minter.frozen` (the freezes in force).
 - The approver's booth: `POST /e/:id/api/prime/wallet/{approve,deny} {id}` → `{ok, queue}`.
-- The director: `POST /e/:id/api/mod/wallet/{approve,deny,cancel,stimulus}` — any open item, or a stimulus when the minter's phone is gone (it still counts against the limit, but fires only `stimulus_received`, never `stimulus`); the cards read *Director*.
+- The director: `POST /e/:id/api/mod/wallet/{approve,deny,cancel,stimulus,grant,freeze,unfreeze}` — any open item, a stimulus / grant / freeze when the minter's phone is gone, or `unfreeze {to}` (or `{id}`) to lift a freeze early. A stimulus from here still counts against the limit but fires only `stimulus_received`, never `stimulus`; the cards read *Director*. `POST /e/:id/api/mod/wallet/approve-held` approves every held transfer at once (the approver's booth is empty) → `{ok, approved: [ids], wallet}`.
+- A **restricted** guest ([live verbs](live-verbs.md)) gets 403 on `send`, `request`, `respond`, `offer`, `accept`, `stimulus`, `grant` and `freeze`; `decline` and `cancel` still work, and the director's routes are never blocked.
+- A trade names its entry by id or by its display title. A buy of no entry at all is a 409 *they don't have that to sell*; a buy never checks what the other side holds (that would tell the buyer someone's secret entries), so an offer for an entry they lack reaches them and fails on Accept, refunding the coin. A refused offer still counts against `LOOM_RL_WALLET`, so guessing titles is slow.
 
 Every call is checked by the server (a status and a message the phone
 shows), rate-limited per guest (`LOOM_RL_WALLET`, 30 a minute by
 default, `<max>` or `<max>/<seconds>` — the only brake on a phone
 flooding the approver's queue with tiny sends), then journaled. The
-timers — the deny window, request and offer expiry — run on the story
-clock, so pausing the run pauses them.
+timers — the deny window, a held transfer's five minutes, request and
+offer expiry — run on the story clock, so pausing the run pauses them.
 
 The wallet lives on the event server: a local-folder rehearsal shows
 the plain ⭐ and no Wallet room ([run mode](run-mode.md)). The bank

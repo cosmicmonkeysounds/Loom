@@ -194,3 +194,38 @@ show answer "Give me a line." to program with thread: The Oracle, question: "P1"
     expect(card?.widget?.params["question"]).toBe("P1");
   });
 });
+
+describe("`with` values — quotes are text (wave 5 B1)", () => {
+  const SRC = `# Quotes
+start: Boot
+
+LOCATION Lobby
+  label: The Lobby
+
+ROLE Program
+  when someone joins:
+    fire flagged for program with reason: "late, no Bathroom Mode", n: 2
+    show poll "Play with fire, or not?" to program with options: "yes, please | no", thread: Lobby
+  when flagged for program:
+    reply Marked ({reason}) x{n}.
+
+== Boot
+  setting: Lobby
+Nothing yet.
+`;
+
+  it("a comma inside a quoted `fire … with` value stays in the value; the next arg still binds", () => {
+    const sim = Sim.fromSources(SRC);
+    const evs = sim.createPerson("g1", "Minesweeper");
+    expect(evs.some((e) => e.type === "respond" && e.text === "Marked (late, no Bathroom Mode) x2.")).toBe(true);
+  });
+
+  it('`show` finds the `with` clause outside the quoted text ("Play with fire…") and keeps a comma inside a quoted param', () => {
+    const sim = Sim.fromSources(SRC);
+    const w = widgets(sim.createPerson("g1", "Minesweeper"));
+    expect(w).toHaveLength(1);
+    expect(w[0]!.text).toBe("Play with fire, or not?");
+    expect(w[0]!.audience).toEqual(["g1"]);
+    expect(w[0]!.params).toEqual({ options: "yes, please | no", thread: "Lobby" });
+  });
+});

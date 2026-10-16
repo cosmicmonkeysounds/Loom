@@ -95,6 +95,8 @@ export interface MapToolbarContext {
   reload: () => Promise<void>;
   /** Save the draft to the event, like 💾 Save: the new version, null when refused. */
   save: () => Promise<string | null>;
+  /** Ask for the moderator passcode before the page's first write (W-15): false = cancelled, don't write. */
+  unlock: () => Promise<boolean>;
 }
 
 /** A number field's text: a number, `null` for an empty field, `undefined` for something that isn't one. */

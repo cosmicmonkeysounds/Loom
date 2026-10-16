@@ -34,6 +34,17 @@ def fold(name: str) -> str:
     return _FOLD.sub("", str(name).lower())
 
 
+def world_view(world: Any, prefixes: "tuple[str, ...] | None" = None) -> dict[str, Any]:
+    """The world paths the orchestrator may see: those under one of the
+    persona's `facts:` prefixes (the voice's whitelist), plus the phase,
+    always. `None` keeps everything (no persona to filter by)."""
+    if not isinstance(world, dict):
+        return {}
+    if prefixes is None:
+        return dict(world)
+    return {k: v for k, v in world.items() if str(k).endswith(".phase") or any(str(k).startswith(p) for p in prefixes)}
+
+
 @dataclass
 class Hit:
     kind: str  # program | character | location | lore
@@ -188,10 +199,10 @@ class Facts:
 
     # -- for the orchestrator -------------------------------------------------
 
-    def digest(self, max_programs: int = 40, secrets: "Secrets | None" = None) -> str:
+    def digest(self, max_programs: int = 40, secrets: "Secrets | None" = None, world_prefixes: "tuple[str, ...] | None" = None) -> str:
         lines = []
         phase = self.phase
-        world = ", ".join(f"{k}={v}" for k, v in sorted(self.world.items()))
+        world = ", ".join(f"{k}={v}" for k, v in sorted(world_view(self.world, world_prefixes).items()))
         lines.append(f"World: {world or '—'}")
         rooms = []
         for loc in self.locations:
@@ -223,9 +234,10 @@ class Facts:
             lines.append(f"Phase: {phase}")
         return "\n".join(lines)
 
-    def delta(self, prev: "Facts | None", secrets: "Secrets | None" = None) -> list[str]:
+    def delta(self, prev: "Facts | None", secrets: "Secrets | None" = None, world_prefixes: "tuple[str, ...] | None" = None) -> list[str]:
         """Human lines for what changed since `prev` (empty if nothing / no
-        prev); `secrets` keeps hunt-answer titles out of "X learned …"."""
+        prev); `secrets` keeps hunt-answer titles out of "X learned …",
+        `world_prefixes` keeps globals outside the persona's `facts:` out."""
         if prev is None:
             return []
         out: list[str] = []
@@ -253,7 +265,7 @@ class Facts:
         for pid, old in before.items():
             if pid not in {str(p.get("id")) for p in self.programs}:
                 out.append(f"{old.get('name')} left")
-        for key, value in self.world.items():
+        for key, value in world_view(self.world, world_prefixes).items():
             if key.endswith(".phase"):
                 continue
             if prev.world.get(key) != value:

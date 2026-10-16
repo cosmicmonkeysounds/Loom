@@ -110,6 +110,7 @@ function checkShape(raw: unknown, problems: string[]): void {
   if (raw["version"] !== 1) problems.push(`version must be 1 (got ${JSON.stringify(raw["version"])})`);
   if (!isStr(raw["name"])) problems.push("name must be a string");
   if (raw["origin"] !== undefined && !isStr(raw["origin"])) problems.push("origin must be a string");
+  if (raw["variant"] !== undefined && !isStr(raw["variant"])) problems.push("variant must be a string");
 
   const list = (key: string, required: boolean, min: number): unknown[] => {
     const v = raw[key];

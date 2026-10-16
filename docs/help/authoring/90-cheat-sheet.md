@@ -80,6 +80,7 @@ openers end with `:` and indent their body.
 | `and` `or` `not` `== != > < >= <=` | condition operators |
 | `visits("The Beat")` `played(b)` `since(e)` `count(C)` | ask the ledger |
 | `[x for x in C where cond]` | list comprehension |
+| `sum([p.score for p in Persons])` `max(list)` `len(list)` | add up / top / count a list |
 | `30s` `2m` `1h` | durations |
 
 **Variety**

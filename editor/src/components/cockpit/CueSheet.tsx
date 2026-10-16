@@ -2,15 +2,29 @@
 //! INTERACTIONs in running order, one click each, the last cue marked
 //! and the next suggested, `Night.phase` up top, and a filter. The state
 //! (`cues`) comes off the server's sim log, so a second director signing
-//! in mid-show sees the same marks. Desktop only — the phone fallback is
-//! the radio. A cue that needs a person (the ceremony's awards, K-25)
-//! carries a winner picker and an optional `value` box, and fires with
-//! that person as the subject.
+//! in mid-show sees the same marks. The rules are core's `cue-sheet.ts`,
+//! shared with the play app's phone cue page (W-26, `?role=director`).
+//! A cue that needs a person (the ceremony's awards, K-25) carries a winner picker and an optional `value` box, and fires with
+//! that person as the subject. On a server run the award rows are
+//! pre-filled from the K-26 recap (W-24, `award-suggest.ts`) once
+//! `Night.ended` is set — empty fields only, with a ↻ refresh and a
+//! Copy recap button for the `cast:Trabolta` paste.
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
-import { useCockpit } from '@/store/cockpit'
-import { cueRows, cueValueArgs, filterCues, nightPhase, type CueRow } from './cue-sheet'
+import { RunBackend, useCockpit } from '@/store/cockpit'
+import { modApi } from '@/lib/api'
+import { cueRows, cueValueArgs, filterCues, nightPhase, type CueRow } from '@loom/core/cue-sheet'
+import {
+  awardSuggestion,
+  fillAwards,
+  pickWinner,
+  nightEnded,
+  suggestionHint,
+  type AwardFields,
+  type AwardSuggestion,
+  type RecapWire,
+} from './award-suggest'
 
 export function CueSheet() {
   const interactions = useCockpit((s) => s.interactions)
@@ -18,9 +32,14 @@ export function CueSheet() {
   const world = useCockpit((s) => s.world)
   const fireSignal = useCockpit((s) => s.fireSignal)
   const roster = useCockpit((s) => s.roster)
+  const run = useCockpit((s) => s.run)
   const [query, setQuery] = useState('')
-  const [winners, setWinners] = useState<Record<string, string>>({})
-  const [values, setValues] = useState<Record<string, string>>({})
+  const [fields, setFields] = useState<AwardFields>({ winners: {}, values: {}, auto: {} })
+  const { winners, values } = fields
+  const setValues = (f: (v: Record<string, string>) => Record<string, string>) =>
+    setFields((x) => ({ ...x, values: f(x.values) }))
+  const [recap, setRecap] = useState<RecapWire | null>(null)
+  const [recapNote, setRecapNote] = useState<string | null>(null)
   const [pending, setPending] = useState<string | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
 
@@ -28,6 +47,65 @@ export function CueSheet() {
   const shown = useMemo(() => filterCues(rows, query), [rows, query])
   const phase = nightPhase(world)
   const last = rows.find((r) => r.last) ?? null
+
+  // W-24: the recap's award suggestions — a server run only (the local
+  // backend has no recap route). Fetched once the story sets Night.ended,
+  // and again on ↻.
+  const eventId = run?.backend === RunBackend.Server ? run.eventId : null
+  const ended = nightEnded(world)
+  const hasAwards = rows.some((r) => r.subject)
+  // Fill on each fetch only (not on every snapshot), so a picker the
+  // director clears stays clear until the next ↻.
+  const latest = useRef({ rows, roster })
+  useEffect(() => {
+    latest.current = { rows, roster }
+  })
+  const applyRecap = useCallback((r: RecapWire) => {
+    setRecap(r)
+    setRecapNote(null)
+    const now: Record<string, AwardSuggestion | null> = {}
+    for (const row of latest.current.rows) if (row.subject) now[row.id] = awardSuggestion(row.id, r)
+    const ids = new Set(latest.current.roster.map((p) => p.id))
+    setFields((f) => fillAwards(f, now, ids))
+  }, [])
+  const recapFailed = (e: unknown) => setRecapNote(`recap: ${e instanceof Error ? e.message : String(e)}`)
+  const loadRecap = async (): Promise<RecapWire | null> => {
+    if (eventId === null) return null
+    try {
+      const r = await modApi.recap(eventId)
+      applyRecap(r)
+      return r
+    } catch (e) {
+      recapFailed(e)
+      return null
+    }
+  }
+  useEffect(() => {
+    if (!ended || !hasAwards || eventId === null) return
+    let live = true
+    modApi.recap(eventId).then(
+      (r) => live && applyRecap(r),
+      (e: unknown) => live && recapFailed(e),
+    )
+    return () => {
+      live = false
+    }
+  }, [ended, hasAwards, eventId, applyRecap])
+  const suggestions = useMemo(() => {
+    const out: Record<string, AwardSuggestion | null> = {}
+    for (const r of rows) if (r.subject) out[r.id] = awardSuggestion(r.id, recap)
+    return out
+  }, [rows, recap])
+  const copyRecap = async () => {
+    const r = recap ?? (await loadRecap())
+    if (r === null) return
+    try {
+      await navigator.clipboard.writeText(r.text)
+      setRecapNote('recap copied')
+    } catch {
+      setRecapNote('copy failed — open Recap ↗ on the Run page')
+    }
+  }
 
   // Keep the next cue in view as the night moves down the sheet.
   const listRef = useRef<HTMLOListElement>(null)
@@ -67,7 +145,28 @@ export function CueSheet() {
         <span className="min-w-0 flex-1 truncate text-[11px] text-zinc-500" data-testid="cue-last">
           {last === null ? 'nothing fired yet' : `last: ${last.code ?? '#' + last.n} ${last.title}${cues.lastBy === 'story' ? ' (auto)' : ''}`}
         </span>
+        {eventId !== null && hasAwards && (
+          <>
+            <button
+              onClick={() => void loadRecap()}
+              title="re-read the recap and refresh the award suggestions (your own picks stay)"
+              className="rounded border border-zinc-700 px-1.5 py-0.5 text-[11px] text-zinc-300 hover:border-zinc-500"
+              data-testid="cue-recap-refresh"
+            >
+              ↻ awards
+            </button>
+            <button
+              onClick={() => void copyRecap()}
+              title="copy the recap text (for the cast:Trabolta paste)"
+              className="rounded border border-zinc-700 px-1.5 py-0.5 text-[11px] text-zinc-300 hover:border-zinc-500"
+              data-testid="cue-recap-copy"
+            >
+              Copy recap
+            </button>
+          </>
+        )}
       </div>
+      {recapNote !== null && <div className="mb-2 text-[11px] text-zinc-500" data-testid="cue-recap-note">{recapNote}</div>}
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
@@ -104,7 +203,10 @@ export function CueSheet() {
               <div className="mt-1 flex gap-1 pl-8">
                 <select
                   value={winners[r.id] ?? ''}
-                  onChange={(e) => setWinners((w) => ({ ...w, [r.id]: e.target.value }))}
+                  onChange={(e) => {
+                    const who = e.target.value
+                    setFields((f) => pickWinner(f, r.id, who))
+                  }}
                   className="min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-200 outline-none focus:border-indigo-500"
                   data-testid={`cue-who-${r.id}`}
                 >
@@ -122,6 +224,11 @@ export function CueSheet() {
                   className="w-32 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs outline-none focus:border-indigo-500"
                   data-testid={`cue-value-${r.id}`}
                 />
+              </div>
+            )}
+            {r.subject && suggestions[r.id] && (
+              <div className="mt-0.5 truncate pl-8 text-[11px] text-zinc-500" data-testid={`cue-suggest-${r.id}`}>
+                {suggestionHint(suggestions[r.id]!)}
               </div>
             )}
           </li>

@@ -14,8 +14,17 @@
 //!   to `/api/push/visible` — `sendBeacon` survives the page going away,
 //!   and "the SSE stream dropped" is the wrong test for "locked".
 //! - **Off cleanly.** No VAPID keys on the server (`enabled: false`), no
-//!   Push API (iPhone Safari outside the Home Screen — that is K-31b), or an
-//!   insecure origin (plain-http LAN) → no card, nothing registered.
+//!   Push API, or an insecure origin (plain-http LAN) → no card, nothing
+//!   registered.
+//! - **iPhones (K-31b).** iOS has no Push API outside a Home Screen app, so
+//!   an iPhone tab gets a card that says what to do instead: on iOS 16.4+
+//!   with the server's `homescreen` switch on, the Add-to-Home-Screen steps
+//!   (`ios-install` — a guest's tab first mints a one-time nonce and points
+//!   `<link rel=manifest>` at it, so the icon opens signed in as them, and
+//!   points it back at the static file when that session ends; a booth is
+//!   told to Sign out — that frees its part — and sign in from the icon);
+//!   otherwise "keep the app open, screen on" (`ios-keep-open`). Inside the Home Screen app
+//!   the Push API is there and the normal flow runs.
 //!
 //! Pure helpers first (unit-tested in `test/push.test.ts`), then the hook.
 
@@ -26,6 +35,8 @@ import { usePlayHost } from "./host.ts";
 /** Where push stands on this phone. */
 export type PushState =
   | "unsupported" // no Push API here (or embedded) — say nothing
+  | "ios-install" // an iPhone tab: Add to Home Screen, then turn alerts on there
+  | "ios-keep-open" // an iPhone that can't get alerts: keep the app open
   | "off" // the server has no keys, or we're still asking it
   | "ask" // ready: one tap turns it on
   | "working" // asking permission / subscribing
@@ -36,9 +47,10 @@ export type PushState =
 /** The browser surface `pushSupported` reads (injectable for tests). */
 export interface PushEnv {
   isSecureContext?: boolean;
-  navigator?: { serviceWorker?: unknown };
+  navigator?: { serviceWorker?: unknown; userAgent?: string; maxTouchPoints?: number; standalone?: boolean };
   PushManager?: unknown;
   Notification?: unknown;
+  matchMedia?: (query: string) => { matches: boolean };
 }
 
 /** Can this page get pushes at all? Needs a secure origin, a service
@@ -47,6 +59,63 @@ export interface PushEnv {
 export function pushSupported(env: PushEnv | undefined = typeof window === "undefined" ? undefined : (window as unknown as PushEnv)): boolean {
   if (env === undefined) return false;
   return env.isSecureContext === true && env.navigator?.serviceWorker != null && env.PushManager != null && env.Notification != null;
+}
+
+/** An iPhone / iPad: its iOS version (0.0 when the UA hides it) and whether
+ *  this page is a Home Screen app. */
+export interface IosInfo {
+  major: number;
+  minor: number;
+  standalone: boolean;
+}
+
+/** iOS or iPadOS (which may pose as a Mac: "Macintosh" + a touch screen),
+ *  else null. */
+export function iosInfo(env: PushEnv | undefined = typeof window === "undefined" ? undefined : (window as unknown as PushEnv)): IosInfo | null {
+  const ua = env?.navigator?.userAgent ?? "";
+  const phone = /\b(iPhone|iPad|iPod)\b/u.test(ua);
+  const padAsMac = /\bMacintosh\b/u.test(ua) && (env?.navigator?.maxTouchPoints ?? 0) > 1;
+  if (!phone && !padAsMac) return null;
+  const v = /\bOS (\d+)[_.](\d+)/u.exec(ua) ?? /\bVersion\/(\d+)\.(\d+)/u.exec(ua);
+  let standalone = env?.navigator?.standalone === true;
+  try {
+    standalone ||= env?.matchMedia?.("(display-mode: standalone)").matches === true;
+  } catch {
+    /* no matchMedia */
+  }
+  return { major: v ? Number(v[1]) : 0, minor: v ? Number(v[2]) : 0, standalone };
+}
+
+/** Web Push reached iOS in 16.4, inside Home Screen apps only. */
+export function iosCanPush(info: IosInfo): boolean {
+  return info.major > 16 || (info.major === 16 && info.minor >= 4);
+}
+
+/** The card an iPhone with no Push API gets: the install steps when they
+ *  would work (16.4+, a tab, the server has keys and K-31b on), else the
+ *  keep-it-open note. */
+export function iosState(info: IosInfo, enabled: boolean, homescreen: boolean): PushState {
+  return iosCanPush(info) && !info.standalone && enabled && homescreen ? "ios-install" : "ios-keep-open";
+}
+
+/** Where a guest's tab points `<link rel=manifest>` once it holds a nonce
+ *  (`/api/guest/homescreen`); `name` labels the icon. */
+export function homescreenManifestHref(code: string, pair: string, name?: string | null): string {
+  const p = new URLSearchParams({ code, pair });
+  if (name) p.set("name", name);
+  return `/manifest.webmanifest?${p.toString()}`;
+}
+
+/** The play app's own manifest (`index.html`): its `start_url` is "/". */
+export const STATIC_MANIFEST_HREF = "/manifest.webmanifest";
+
+/** Point `<link rel=manifest>` at `href` (no-op without one). A guest's
+ *  nonce link is put back to the static file when their session ends, so a
+ *  booth — or the next person — on the same tab never adds an icon that
+ *  opens signed in as the guest who left. */
+export function pointManifest(doc: Pick<Document, "querySelector"> | undefined, href: string): void {
+  const link = doc?.querySelector<HTMLLinkElement>('link[rel="manifest"]') ?? null;
+  if (link !== null && link.getAttribute("href") !== href) link.setAttribute("href", href);
 }
 
 /** A VAPID public key (URL-safe base64) as the bytes `subscribe` wants. */
@@ -82,10 +151,11 @@ export function initialState(enabled: boolean, permission: string): PushState {
   return "ask";
 }
 
-/** Show the 🔔 card? Only when one tap would turn push on, and the person
- *  hasn't waved it away on this phone. */
+/** Show the 🔔 card? When one tap would turn push on — or an iPhone needs
+ *  telling what to do instead — and the person hasn't waved it away on this
+ *  phone. */
 export function showPushCard(state: PushState, dismissed: boolean): boolean {
-  return state === "ask" && !dismissed;
+  return (state === "ask" || state === "ios-install" || state === "ios-keep-open") && !dismissed;
 }
 
 // --- the hook -----------------------------------------------------------------
@@ -107,10 +177,13 @@ export interface Push {
 }
 
 /** Push for one signed-in session (`base` = `/e/<eventId>`, the session's
- *  capability token), or nothing while signed out. */
-export function usePush(target: { base: string; token: string } | null): Push {
+ *  capability token), or nothing while signed out. `homescreen`: on an
+ *  iPhone tab, `"guest"` mints the Home Screen nonce before showing the
+ *  steps; `"booth"` shows them with no nonce (the icon signs in afresh). */
+export function usePush(target: { base: string; token: string } | null, homescreen: "guest" | "booth" = "guest"): Push {
   const host = usePlayHost();
   const supported = !host.embedded && pushSupported();
+  const [ios] = useState<IosInfo | null>(() => (host.embedded || supported ? null : iosInfo()));
   const [state, setState] = useState<PushState>(supported ? "off" : "unsupported");
   const [dismissed, setDismissed] = useState<boolean>(() => {
     try {
@@ -170,6 +243,42 @@ export function usePush(target: { base: string; token: string } | null): Push {
       live = false;
     };
   }, [supported, base, token, bind]);
+
+  // An iPhone tab (K-31b): which card, from the server's switches. A guest's
+  // steps wait for the nonce — an icon with no nonce would open signed out
+  // and join again as a second program — so a failed mint is the note.
+  useEffect(() => {
+    if (ios === null || base === null || token === null) return;
+    let live = true;
+    // A booth never carries a nonce link (a guest who left this tab might).
+    if (homescreen !== "guest") pointManifest(document, STATIC_MANIFEST_HREF);
+    void (async () => {
+      try {
+        const cfg = (await (await fetch(`${base}/api/push/config`)).json()) as { enabled?: boolean; publicKey?: string | null; homescreen?: boolean };
+        const enabled = cfg.enabled === true && typeof cfg.publicKey === "string" && cfg.publicKey !== "";
+        let next = iosState(ios, enabled, cfg.homescreen === true);
+        if (next === "ios-install" && homescreen === "guest") {
+          try {
+            const hit = await api<{ code?: string; pair?: string }>(`${base}/api/guest/homescreen`, {}, token);
+            const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+            if (typeof hit.code !== "string" || typeof hit.pair !== "string" || link === null) throw new Error("no nonce");
+            if (!live) return; // signed out while minting: never point at it
+            link.href = homescreenManifestHref(hit.code, hit.pair, document.title);
+          } catch {
+            next = "ios-keep-open";
+          }
+        }
+        if (live) setState(next);
+      } catch {
+        if (live) setState("ios-keep-open");
+      }
+    })();
+    return () => {
+      live = false;
+      // Leave / a dropped session: the nonce link goes with the session.
+      if (homescreen === "guest") pointManifest(document, STATIC_MANIFEST_HREF);
+    };
+  }, [ios, base, token, homescreen]);
 
   // Tell the server whenever this page is hidden / shown, so a character's
   // DM pushes only to a phone that isn't showing the app.

@@ -72,7 +72,14 @@ tap does nothing. Fully Kiosk / iPad / TV-Mac settings for the show:
 `src/screen.ts` + `src/Attract.tsx` + `src/attract.ts`): every 2 s the
 terminal polls `GET /e/:id/api/screen/state` (mod token, ~0.5 KB — the
 story's screen cues, the running countdown, its character's
-hidden/awake/online; the poll is also its heartbeat). While the character
+hidden/awake/online; the poll is also its heartbeat, and carries the
+device's health — `audio` unlocked, page `vis`ible, `bat`tery (where the
+browser has `getBattery`; not iOS) and the `ver` build stamp, `src/health.ts`
+(SW-SCR-21) — for the Run → Terminals card's badges; the card's **identify**
+puts this screen's name + spot full screen for 10 s with one chime, install
+day's "which tablet is this?" — counted down on the device off the
+answer's `identifyLeft`, so a tablet that loses the server mid-identify
+still uncovers on time). While the character
 is **hidden** (not yet `reveal`ed) or **asleep** (`<Character>.awake ==
 false`) a face/world terminal shows a full-screen **Mystify** screensaver
 (Canvas2D, ≤ 30 fps) with a fake-1999 ad every 40 s for 10 s: no camera,
@@ -101,8 +108,22 @@ pilot pre-empts a slide. A slide is `public/slides/<cue>.png` (e.g.
 `screens_trivia_1.png`, `tv_bingo.png`), else `<value>.png`; a missing
 PNG renders a Win98 text card (`SLIDE_COPY` — the trivia cards carry the
 Quest Log's own questions, test-checked against `quests.loom`), never a
-broken image. `y2k` is drawn live: a blown-up taskbar clock at midnight
-minus `remaining`. Any running story countdown shows as a ⏱ corner
+broken image. **On the TV only** (`view=tv`, N-04a), a slide first tries
+`public/slides/<cue>.mp4`, else `<value>.mp4` (e.g.
+`screens_ad_hijack.mp4`): it plays once from the start with sound (muted
+by the director's TV mute) over the PNG / card, which shows at once and is
+covered only once the clip has a frame; at its end or on any error the
+still is left. With no mp4 there nothing changes (the still is never held
+back while the missing clip is asked for). Keep a clip under the
+TV's 90 s hold and small (the server sends it whole, no Range), and use
+either it or QLab for the ad, never both. The wall tablets never try
+video. `y2k` is drawn live: a blown-up taskbar clock at midnight
+minus `remaining`. `trust_chart` is drawn live from the poll's `chart`
+rows, revealed bottom-up one row every 1.5 s from the server's `revealAt`
+(`chartReveal`; a restart shows every row at once); the MOST / LEAST
+TRUSTED call-outs follow the server's `top` / `bottom` names (the story's
+`Night.most_trusted` / `least_trusted`, so nobody is marked before
+Trabolta names them). Any running story countdown shows as a ⏱ corner
 (`countdown_*` cues never replace the slide); `flicker` is one 2 Hz
 stutter. Ages run on the server's clock. Device check:
 `scripts/accept/K-17.sh`.
@@ -170,12 +191,19 @@ sentence and the transcript reveals as it is said.
 **The house announcements** (OCT31 N-09, decision #20, `src/announce.ts`):
 the story's `do announce "Go to the living room."` already plays out of the
 house speakers (stagehand `alexa`, K-20). The screen poll carries the
-latest one too (`announce: {seq, text, at}`), and a terminal with
+last three too (`announces: [{seq, text, at}]`, oldest first, beside the
+latest in `announce` for older builds), and a terminal with
 **`announce`** on (⚙ → *say the house announcements here*, or
 `&announce=1`; **off by default**, the TV too — its room hears the house
 speakers) rings a two-tone chime and says it in its own voice under a 📢
-banner. Never one that was current when the page loaded, never replayed
-history after a server reboot, never one older than 30 s, and never over
+banner — each of two inside one poll, in order. Never one that was current
+when the page loaded, never replayed history after a server reboot or a
+story restart (one announced right after a restart is said: the state's
+`announceEpoch` changes with the sim, so the terminal resyncs even when the
+restarted story's seqs, counted from 1 again, reach its old cursor; one
+announced before any screen's first poll of the restarted story, a second
+at most, is history), never one
+older than 30 s, and never over
 the character: every voice on the page waits its turn on one `VoiceFloor`,
 so an announcement follows the line being said and the next line follows
 the announcement. On the TV the director's mute holds for announcements.
@@ -296,7 +324,7 @@ src/Tv.tsx             view=tv: the face full screen, the voice, captions, the m
 src/attract.ts         the screensaver rotation, the ads' copy, Mystify (pure)
 src/Attract.tsx        the screensaver screen (Canvas2D) + ad cards (PNG, else a Win98 window)
 src/slides.ts          the screen layer's precedence, holds, slide copy, corner + Y2K clock (pure, K-17)
-src/ScreenLayer.tsx    overlays, slides (PNG, else a Win98 card), the corner, the flicker
+src/ScreenLayer.tsx    overlays, slides (TV: mp4 first; PNG, else a Win98 card), the corner, the flicker
 src/kiosk.ts           the Screen Wake Lock + the 2 s ⚙ hold (K-15)
 src/webgl.ts           the one-time WebGL2 probe: no WebGL2 → face only, three.js never loaded (K-14)
 src/config.ts          per-tablet config (localStorage) + URL provisioning

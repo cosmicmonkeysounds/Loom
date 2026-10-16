@@ -47,6 +47,10 @@ anyone asked for them or not.
 
 - When you're scanned in, your memories are restored into your **Codex**…
   mostly. Expect it to stutter. They're for you. Tell no one.
+- Your phone keeps score of the job: **Ten Findings** in your Quest Log
+  counts the programs that hold ten of your findings (share from your Codex,
+  or sell one from your Wallet; a repeat or a share to Trabolta doesn't
+  count). It's done when every program has ten.
 - About two hours in, a **Truther Download** arrives with a pile of scrambled
   files and private orders. Follow them. Sorting messy information is what you
   were made for.
