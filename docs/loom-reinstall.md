@@ -687,9 +687,11 @@ result still on its way is kept across a reload for 60 s (below).
   that hangs is aborted after 5 s (`SIGNAL_ATTEMPT_TIMEOUT_MS`), or at the
   60 s cap below if that comes first, and counts as a network failure. A win whose
   every retry failed says "The win didn't reach the house: tell a host
-  (♟)." While a post is unsent it is also kept in `localStorage`
-  (`loom-reinstall.pending-signal`, the latest only, try/catch'd); the
-  next page load posts it once (`flushPendingSignal`) only within 60 s of
+  (♟)." While a post is in flight it is also kept in `localStorage`
+  (`loom-reinstall.pending-signal`, the latest only, try/catch'd) and
+  forgotten once it lands, is refused, or fails for good (the host was
+  told, so a late post would open the door twice); a page that died
+  mid-retry leaves it, and the next page load posts it once (`flushPendingSignal`) only within 60 s of
   the first try (`PENDING_SIGNAL_MAX_AGE_MS`, also checked before every
   retry) and for the same event, and drops anything older: `chess won`
   unlocks the real door, so a stale win never lands late. The story treats `chess won` exactly as the ♟ fallback button

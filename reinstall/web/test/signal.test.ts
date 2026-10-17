@@ -66,7 +66,7 @@ function memory(): SignalStorage & { map: Map<string, string> } {
 describe("the pending signal (a reload doesn't lose a win)", () => {
   const nop = async () => {};
 
-  it("is stored before the first try and kept while every attempt fails", async () => {
+  it("is stored before the first try, then forgotten once every attempt has failed (a host is told)", async () => {
     const st = memory();
     let seen: string | undefined;
     const f = (async () => {
@@ -75,7 +75,27 @@ describe("the pending signal (a reload doesn't lose a win)", () => {
     }) as unknown as typeof fetch;
     expect(await postSignal(config, "chess won", "g-1", { fetcher: f, sleep: nop, storage: st, now: () => 1000 })).toBe(false);
     expect(JSON.parse(seen!)).toEqual({ eventId: "ev1", name: "chess won", subject: "g-1", label: "Tent tablet", at: 1000 });
-    expect(readPendingSignal(st)).toEqual({ eventId: "ev1", name: "chess won", subject: "g-1", label: "Tent tablet", at: 1000 });
+    expect(readPendingSignal(st)).toBeNull();
+  });
+
+  it("a win that failed for good is never posted by the next load (B20)", async () => {
+    const st = memory();
+    expect(await postSignal(config, "chess won", "g-1", { fetcher: fetcher(["net", "net", 503]).fetch, attempts: 3, sleep: nop, storage: st, now: () => 1000 })).toBe(false);
+    const later = fetcher([200]);
+    expect(await flushPendingSignal(config, { fetcher: later.fetch, storage: st, now: () => 21_000 })).toBe("none");
+    expect(later.calls).toHaveLength(0);
+  });
+
+  it("a send still in flight survives a reload (the page died mid-retry)", async () => {
+    const st = memory();
+    let flushed: Promise<string> | null = null;
+    const dying = (async () => {
+      // The page reloads while the first attempt hangs: the new page flushes.
+      flushed ??= flushPendingSignal(config, { fetcher: fetcher([200]).fetch, storage: st, now: () => 2000 });
+      throw new TypeError("Failed to fetch");
+    }) as unknown as typeof fetch;
+    void postSignal(config, "chess won", "g-1", { fetcher: dying, attempts: 1, sleep: nop, storage: st, now: () => 1000 });
+    expect(await flushed).toBe("sent");
   });
 
   it("is cleared on a 200 and on a 4xx", async () => {
