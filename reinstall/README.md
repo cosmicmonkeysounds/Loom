@@ -43,7 +43,7 @@ by `main.tsx`) offers both as **Map: Tent ● live | Shed** buttons, plus
 **Download JSON**; a switch reloads the page onto the server's new map
 (`docs/loom-reinstall.md` §1.3, §2.1).
 
-### The King (the Cold Lock in the simulation)
+### The King (the door code, in the simulation)
 
 A `king` prop stands in the server-room doorway of the show's map
 (`cold-lock-king`, `hp: 8`; the door `server-door` names him as its
@@ -54,12 +54,20 @@ heart and makes his chess worse — grandmaster → club → beginner → dizzy
 (random moves) → **pawns only** (his own worst move, with nothing but his
 eight pawns). **♟ CHALLENGE** (or C) opens the board (a lazy chunk with
 chess.js; tap a piece, tap a square; 💡 Hint; Give up changes nothing).
-Checkmate fells him, the door opens in the simulation, and the tablet
-posts `chess won` to the story with its moderator token. A loss or a draw
-posts `chess lost` / `chess drawn` and deals a fresh board at the same
-stage ("STALEMATE. AGAIN."): only checkmate opens the door. The story keeps its Y2K gate, so before step 14
-the board says **PRACTICE** (the badge reads `Night.step` off the mod
-view) and `# hosts` says so. The fight is per session; a headset only
+Checkmate fells him ("CHECKMATE — the King falls."), his door opens in the
+simulation, and the tablet posts `chess won` to the story with its
+moderator token. A loss or a draw posts `chess lost` / `chess drawn` and
+deals a fresh board at the same stage ("STALEMATE. AGAIN."): only
+checkmate fells him. The story keeps its Y2K gate: the board's badge reads
+**FOR THE CODE** from step 14 and **PRACTICE** before it (the badge reads
+`Night.step` off the mod view), with a line under it saying what a
+checkmate wins. From step 14 the story gives the winner the **real
+server-room door's code** (*The Door Code*, in their Codex) — the real
+door has a standalone keypad lock, and nothing the tablet does opens it;
+before step 14 `# hosts` says the win is practice. At checkmate the
+tablet re-reads the step (4 s timeout) and says "The server-room door
+code is in your phone's Codex." or "A practice win: the King guards
+nothing real until the Y2K clock."; the fallen King's bar reads FALLEN. The fight is per session; a headset only
 shows him and says "The King is fought on the tent tablet." The design is
 `docs/loom-reinstall.md` §3 *The King*; the wall chess phone stays the
 fallback until this is device-checked (`scripts/accept/K-27.md`).

@@ -642,7 +642,9 @@ Session lifecycle:
 
 ### The King
 
-The Cold Lock's chess game moved into the simulation (Wave 4, U15–U17):
+The Cold Lock's chess game moved into the simulation (Wave 4, U15–U17;
+since wave 7 a checkmate gives the winner the real door's **code** — the
+door has a standalone keypad lock — and the Cold Lock is gone):
 a `king` prop stands in the server-room doorway of the show's map
 (`cold-lock-king`, `hp: 8` — two hits a stage, `armed: {path: "Night.step", min: 14}`; the
 door `server-door` names him as its `guard`). The web game is the only
@@ -676,18 +678,25 @@ result still on its way is kept across a reload for 60 s (below).
   move, **pawns** his own worst move from `PAWNS_ONLY_FEN` (his king and
   eight pawns against a full side). 💡 Hint shows a good move for 2 s
   (10 s cooldown); Give up abandons — nothing changes. A badge reads
-  **ARMED** / **PRACTICE** when the prop declares `armed` (`fetchArmed`:
-  the world var off `GET /api/state?role=mod`; no badge while unknown).
+  **FOR THE CODE** / **PRACTICE** (wave 7; was ARMED) when the prop
+  declares `armed` (`fetchArmed`: the world var off `GET /api/state?role=mod`,
+  given up after 4 s, `ARMED_TIMEOUT_MS`; no badge while unknown), with a
+  `stakesLine` under it saying what a checkmate wins.
   Every tap touches the idle leash, so a game in progress is never ended.
 - **The result** (`Game.chessResult`): **checkmate** fells him (`fall()`
-  topples him over 1.6 s), opens the door, plays the fanfare, says
-  "CHECKMATE — the door opens." and posts the prop's `signals.won`
-  (default `chess won`) and closes the board; the King winning posts
+  topples him over 1.6 s), opens his door in the simulation, plays the
+  fanfare, says "CHECKMATE — the King falls." and posts the prop's
+  `signals.won` (default `chess won`) and closes the board; once the post
+  settles it re-reads the step (`armedNow`) and says `winNotice`'s line —
+  "The server-room door code is in your phone's Codex." (counted),
+  "A practice win: the King guards nothing real until the Y2K clock."
+  (practice), the "tell a host (♟)" line for a counted or unknown win that
+  never landed, or nothing; the King winning posts
   `signals.lost` ("THE KING WINS. AGAIN."), a stalemate / insufficient
   material / threefold / fifty moves posts `signals.drawn` ("STALEMATE.
   AGAIN." / "DRAW. AGAIN."), and either deals a fresh board at the same
   stage in the still-open window (`redeals`, OCT31 decision 6: only
-  checkmate opens the door); an abandoned game posts nothing. Each goes through `postSignal`: `POST
+  checkmate fells him); an abandoned game posts nothing. Each goes through `postSignal`: `POST
   /api/mod/signal {name, subject: <the program>, label: <device name>}`
   with the tablet's moderator token, retried on a network failure or a
   5xx (0.5 s doubling to 8 s, five retries); a 4xx is final. An attempt
@@ -697,11 +706,11 @@ result still on its way is kept across a reload for 60 s (below).
   (♟)." While a post is in flight it is also kept in `localStorage`
   (`loom-reinstall.pending-signal`, the latest only, try/catch'd) and
   forgotten once it lands, is refused, or fails for good (the host was
-  told, so a late post would open the door twice); a page that died
+  told, so a late post would hand the code over twice); a page that died
   mid-retry leaves it, and the next page load posts it once (`flushPendingSignal`) only within 60 s of
   the first try (`PENDING_SIGNAL_MAX_AGE_MS`, also checked before every
-  retry) and for the same event, and drops anything older: `chess won`
-  unlocks the real door, so a stale win never lands late. The story treats `chess won` exactly as the ♟ fallback button
+  retry) and for the same event, and drops anything older: a late win
+  belongs to a guest who has left, and a host's ♟ covers it. The story treats `chess won` exactly as the ♟ fallback button
   does (§6): the Y2K gate is the story's, not the game's — before it the
   door still opens in the simulation, as practice.
 - **Out of scope** (device check pending — the wall chess phone stays the
@@ -906,12 +915,14 @@ The server honours `label` only when the caller's `by` is the generic
 "Director" — a mod-token device, never an author's session — and journals
 the signal `by` that label (the same rule as `/api/mod/impersonate`), so
 the journal line reads `by: "Tent tablet"` (the recap carries no `by`).
-The story is unchanged: `when
-chess_won:` keeps its Y2K gate (`Night.step >= 14` → the 90 s
-`Kernel.disarmed_until` window; before it, `# hosts` says the win is
-practice), `chess lost` / `chess drawn` disarm nothing and, from the Y2K
-hour while the door is still locked, make Trabolta gloat (`-> Chess Lost`
-/ `-> Chess Drawn`, a `# hosts` readout — before that they are silent),
+The story keeps its Y2K gate: since wave 7 `when chess_won for program:`
+(a subject rule) from `Night.step >= 14` unlocks *The Door Code* for the
+winner, once (a duplicate or a fire with no subject only notes `# hosts`;
+before step 14 `# hosts` says the win is practice), and `chess lost` /
+`chess drawn` from the Y2K hour post a `# hosts` readout every time and make
+Trabolta gloat at most once every five minutes, never from the final
+reveal (`-> Chess Lost` / `-> Chess Drawn`; before the Y2K hour they are
+silent),
 and the fallback stays: **♟ They beat the machine** on the
 winner's card (`beat_the_machine` → `fire chess_won`), the admin
 `chess_won` INTERACTION, or the director firing `chess won` from Run.
