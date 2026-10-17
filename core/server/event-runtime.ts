@@ -3390,8 +3390,9 @@ export class EventRuntime {
         }
         // The limit is checked before the book builds the op (so a 429
         // never spends an id) and counted once the call is made. Backing
-        // out (decline / cancel) is never throttled.
-        const throttled = !WALLET_UNTHROTTLED.has(sub);
+        // out (decline / cancel, or declining a request: `respond` without
+        // `accept: true`, as `guestWalletOp` reads it) is never throttled.
+        const throttled = !(WALLET_UNTHROTTLED.has(sub) || (sub === "respond" && body["accept"] !== true));
         if (throttled && !this.walletCalls.allowed(id)) {
           sendJson(res, 429, { error: "slow down — wait a minute" });
           return true;

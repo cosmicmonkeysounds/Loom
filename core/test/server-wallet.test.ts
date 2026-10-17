@@ -392,6 +392,23 @@ describe("sending coin", () => {
     expect((await guestState(rt, a.token)).wallet!.requests.map((r) => r.id)).toEqual(["r4"]);
   });
 
+  it("declining an incoming request is backing out too: never rate-limited, while paying one still is (W6 B10 review)", async () => {
+    const rt = freshRuntime(SOURCE, { wallet: { max: 2, windowMs: 60_000 } });
+    const a = await guest(rt, "Alice");
+    const b = await guest(rt, "Bob");
+    // Alice asks Bob twice; Bob spends his limit, then is over it.
+    expect((await wallet(rt, "request", { from: b.id, amount: 1 }, a.token)).status).toBe(200); // r1
+    expect((await wallet(rt, "request", { from: b.id, amount: 1 }, a.token)).status).toBe(200); // r2
+    expect((await wallet(rt, "request", { from: a.id, amount: 1 }, b.token)).status).toBe(200); // r3
+    expect((await wallet(rt, "cancel", { id: "r3" }, b.token)).status).toBe(200);
+    expect((await wallet(rt, "request", { from: a.id, amount: 1 }, b.token)).status).toBe(200); // r4
+    expect((await wallet(rt, "respond", { id: "r1", accept: true }, b.token)).status).toBe(429);
+    // The phone's Decline on a request card: `respond {accept: false}`.
+    expect((await wallet(rt, "respond", { id: "r1", accept: false }, b.token)).status).toBe(200);
+    expect((await wallet(rt, "respond", { id: "r2" }, b.token)).status).toBe(200);
+    expect((await guestState(rt, b.token)).wallet!.requests.map((r) => r.id)).toEqual(["r4"]);
+  });
+
   it("a refused offer still counts, so guessing codex titles hits the limit", async () => {
     const rt = freshRuntime(SOURCE, { wallet: { max: 2, windowMs: 60_000 } });
     const a = await guest(rt, "Alice");
