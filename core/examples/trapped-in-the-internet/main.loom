@@ -1349,7 +1349,10 @@ ROLE Program
 
   // The hosts' 📝 buttons: confirm a review-mode proposal, or override the
   // judge, on this program's latest filing — or the question Run names
-  // (`question: H1`). A verdict already on record is not re-counted.
+  // (`question: H1`). A verdict already on record is not re-counted. An
+  // override to accurate the judge missed (an alias facts.json lacks)
+  // carries no `key_answer`: the consensus read-out falls back to what
+  // that program filed, never "none".
   when fact_accurate for program:
     set program.fact_try = program.fact_n
     if question == "H1":
@@ -1377,6 +1380,8 @@ ROLE Program
         broadcast "📝 {program.name}'s H1 is already judged accurate." to channel(hosts)
       else:
         set program.fact_v1 = "accurate"
+        if Kernel.ans_1 == "none":
+          set Kernel.ans_1 = program.fact_a1
         fire verdict_q1 for program
         broadcast "📝 {program.name}'s H1 is judged accurate." to channel(hosts)
     else if program.fact_try == 2:
@@ -1386,6 +1391,8 @@ ROLE Program
         broadcast "📝 {program.name}'s H2 is already judged accurate." to channel(hosts)
       else:
         set program.fact_v2 = "accurate"
+        if Kernel.ans_2 == "none":
+          set Kernel.ans_2 = program.fact_a2
         fire verdict_q2 for program
         broadcast "📝 {program.name}'s H2 is judged accurate." to channel(hosts)
     else if program.fact_try == 3:
@@ -1395,6 +1402,8 @@ ROLE Program
         broadcast "📝 {program.name}'s H3 is already judged accurate." to channel(hosts)
       else:
         set program.fact_v3 = "accurate"
+        if Kernel.ans_3 == "none":
+          set Kernel.ans_3 = program.fact_a3
         fire verdict_q3 for program
         broadcast "📝 {program.name}'s H3 is judged accurate." to channel(hosts)
     else if program.fact_try == 4:
@@ -1404,6 +1413,8 @@ ROLE Program
         broadcast "📝 {program.name}'s H4 is already judged accurate." to channel(hosts)
       else:
         set program.fact_v4 = "accurate"
+        if Kernel.ans_4 == "none":
+          set Kernel.ans_4 = program.fact_a4
         fire verdict_q4 for program
         broadcast "📝 {program.name}'s H4 is judged accurate." to channel(hosts)
     else if program.fact_try == 5:
@@ -1413,6 +1424,8 @@ ROLE Program
         broadcast "📝 {program.name}'s H5 is already judged accurate." to channel(hosts)
       else:
         set program.fact_v5 = "accurate"
+        if Kernel.ans_5 == "none":
+          set Kernel.ans_5 = program.fact_a5
         fire verdict_q5 for program
         broadcast "📝 {program.name}'s H5 is judged accurate." to channel(hosts)
     else if program.fact_try == 6:
@@ -1422,6 +1435,8 @@ ROLE Program
         broadcast "📝 {program.name}'s H6 is already judged accurate." to channel(hosts)
       else:
         set program.fact_v6 = "accurate"
+        if Kernel.ans_6 == "none":
+          set Kernel.ans_6 = program.fact_a6
         fire verdict_q6 for program
         broadcast "📝 {program.name}'s H6 is judged accurate." to channel(hosts)
     else if program.fact_try == 7:
@@ -1431,6 +1446,8 @@ ROLE Program
         broadcast "📝 {program.name}'s F1 is already judged accurate." to channel(hosts)
       else:
         set program.fact_v7 = "accurate"
+        if Kernel.ans_7 == "none":
+          set Kernel.ans_7 = program.fact_a7
         fire verdict_q7 for program
         broadcast "📝 {program.name}'s F1 is judged accurate." to channel(hosts)
     else if program.fact_try == 8:
@@ -1440,6 +1457,8 @@ ROLE Program
         broadcast "📝 {program.name}'s F2 is already judged accurate." to channel(hosts)
       else:
         set program.fact_v8 = "accurate"
+        if Kernel.ans_8 == "none":
+          set Kernel.ans_8 = program.fact_a8
         fire verdict_q8 for program
         broadcast "📝 {program.name}'s F2 is judged accurate." to channel(hosts)
     else:

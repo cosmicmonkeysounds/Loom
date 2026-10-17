@@ -4414,6 +4414,26 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     expect(lines(r2, "Clippy")).toContain("Trabolta accepts it. The answer is: Mister Pickles.");
   });
 
+  it("B13: a filing a host overrides to accurate reads what was filed when the judge gave no key answer", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    expect(judgeAnswer(BOOK, "H2", "Mr Pickles", 100)).toBe("lie"); // an alias facts.json lacks
+    file(sim, "g2", "H2", "Mr Pickles");
+    expect(v(sim, "Kernel.ans_2")).toBe("none");
+    fire(sim, "fact_accurate", "g2", { question: "H2" }, "Clippy");
+    expect(v(sim, "Kernel.ans_2")).toBe("Mr Pickles");
+    // A key answer already on record is never replaced by a later override's alias.
+    file(sim, "g1", "H1", "eleven");
+    const key = v(sim, "Kernel.ans_1");
+    file(sim, "g4", "H1", "twelve");
+    fire(sim, "fact_accurate", "g4", { question: "H1" }, "Clippy");
+    expect(v(sim, "Kernel.ans_1")).toBe(key);
+    fire(sim, "close_the_filing");
+    fire(sim, "read_the_results");
+    const r2 = fire(sim, "read_the_results");
+    expect(lines(r2, "Clippy")).toContain("Trabolta accepts it. The answer is: Mr Pickles.");
+  });
+
   it("B6: clearance posts one \"open now\" notice: the house rooms and # task-manager together", () => {
     const sim = fresh();
     sim.fireBeat("Power On");
