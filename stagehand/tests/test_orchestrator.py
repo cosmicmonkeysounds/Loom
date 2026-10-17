@@ -2,13 +2,14 @@
 
 import asyncio
 import json
+from dataclasses import replace
 
 import pytest
 
 from stagehand.agents.facts import Facts
 from stagehand.agents.llm import LlmConfig
 from stagehand.agents.mind import Mind
-from stagehand.agents.orchestrator import DEFAULT_MIND_PROMPT, Job, Orchestrator, OrchestratorConfig, parse_update, reflect_messages, survey_messages
+from stagehand.agents.orchestrator import DEFAULT_MIND_PROMPT, Job, Orchestrator, OrchestratorConfig, mind_snapshot, parse_update, reflect_messages, survey_messages
 from stagehand.agents.persona import parse_persona
 from stagehand.agents.reply import Reply
 
@@ -265,52 +266,107 @@ def test_job_keys_and_attempts():
         Job()  # type: ignore[call-arg]
 
 
-def test_the_example_orchestrator_context_fits_the_shipped_reflect_prompt():
+def _show_night(persona):
+    """A real late night on the show: the shipped codex (Trabolta holding
+    his entries, text and all), 45 programs, 17 crowded rooms, a 19-line
+    thread, and a mind grown through `Mind.apply` (the real write path and
+    its caps) with entries a little longer than rehearsal minds hold."""
+    from test_secrets import _show_codex
+
+    entries, held = _show_codex()
+    names = [f"Guest Program {i:02d}" for i in range(45)]
+    programs = [{"id": f"g{i}", "name": n, "faction": "Chatters" if i % 2 else "Mods", "codex": held[:2]} for i, n in enumerate(names)]
+    rooms = [{"id": f"r{i}", "label": f"The Show Room {i:02d}", "occupants": names[i::17]} for i in range(17)]
+    facts = Facts({"world": {"Night.phase": "free_roam", "Night.majority": "none"}, "programs": programs, "locations": rooms, "codex": entries})
+    r = req(n_history=19)
+    for h in r["history"]:
+        h["text"] = ("Trabolta answers at length, " * 8)[:200] if h["mine"] else ("the guest typed a short line " * 3)[:80]
+    by_title = {e["title"]: e for e in entries}
+    r["self"] = {"vars": {"truth": "35", "untruth": "20", "stance": "-10"}, "codex": [{"title": t, "text": by_title[t]["text"]} for t in held]}
+    mind = Mind("Trabolta", "e")
+    mind.seed(persona.stages, persona.drives)
+    for i in range(13):
+        mind.saw_exchange(f"g{i}", names[i], "guest", f"dm:{i}", 9)
+        mind.apply(
+            {
+                "person": {
+                    "summary": f"{names[i]} " + "keeps asking about the server room and lies about the hunt. " * 3,
+                    "claims_add": [f"claim {i}.{k}: says the duck is upstairs, by the crawl space" for k in range(12)],
+                    "asks_add": [f"ask {i}.{k}: wants Trabolta to cut the lights in the RAM" for k in range(12)],
+                    "promises_add": [f"promise {i}.{k}: a codex entry if they file a true fact" for k in range(12)],
+                }
+            },
+            speaker_id=f"g{i}",
+            thread_key=f"dm:{i}",
+        )
+    mind.apply(
+        {
+            "brief": "Be curious and wary; push for facts about bodies; " * 8,
+            "mood": "hungry, suspicious",
+            "policy": {"favours": "earned", "credit": names[:6], "wary": names[6:12], "note": "Only those who filed a true fact get a favour tonight."},
+            "notes_add": [f"note {k}: Ada says bodies itch, investigate before the zip" for k in range(20)],
+            "learned_add": [{"claim": f"claim {k}: the printer is full of beans and the zip is a lie", "from": names[k], "verdict": "bluster"} for k in range(12)],
+            "world_add": [f"world {k}: the Desktop is crowded, the tent is empty" for k in range(8)],
+            "questions_add": [f"question {k}: what does earning feel like?" for k in range(6)],
+            "answers_add": [{"q": f"question {k}: what does earning feel like?", "a": f"answer {j}: like a warm battery, says a guest", "from": names[j]} for k in range(6) for j in range(6)],
+            "thread_summary": "The guest has pressed him about the server room for twenty lines, " * 10,
+        },
+        speaker_id="g0",
+        thread_key="t",
+        upto=19,
+    )
+    snap = json.loads(mind_snapshot(mind, "g0", "t"))
+    assert len(snap["notes"]) == 20 and len(snap["learned"]) == 12 and len(snap["world"]) == 8
+    assert len(snap["questions"]) == 6 and len(snap["other_people"]) == 12 and len(snap["this_person"]["claims"]) == 12
+    msgs = reflect_messages(persona, mind, r, Reply(say=("SANDY. " * 60)[:400], adjust={"truth": 5}), facts, 20, "t")
+    return sum(len(m["content"]) for m in msgs)
+
+
+def test_the_example_orchestrator_context_fits_a_late_night_reflect_prompt():
     """The reflect prompt (Trabolta's mind file + persona + the house + the
-    lore block) is ≈ 10k tokens: on Ollama's default context the runner cuts
-    its middle and the mind update still looks confident. The example config
-    names a `num_ctx` that fits it with room for the reply."""
+    lore + a grown mind) is ≈ 16k tokens late in the night: on Ollama's
+    default context the runner cuts its middle and the mind update still
+    looks confident. The example config names a `num_ctx` that fits it with
+    room for the reply."""
     from pathlib import Path
 
+    from stagehand.agents.orchestrator import CHARS_PER_TOKEN
     from stagehand.config import load_config
-    from test_secrets import SHOW, _show_codex
 
     agents = load_config(Path(__file__).resolve().parents[1] / "agents.example.yaml").modules["agents"]
     om = agents.cfg.orchestrator_models["Trabolta"]
     num_ctx = (om.extra.get("options") or {}).get("num_ctx")
-    assert isinstance(num_ctx, int) and num_ctx >= 16384, om.extra
-    persona = agents.cfg.personas["Trabolta"]
-    entries, held = _show_codex()
-    facts = Facts({"world": {"Night.phase": "free_roam"}, "programs": [], "locations": [], "codex": entries})
-    r = req(n_history=19)
-    r["self"] = {"vars": {}, "codex": [{"title": t} for t in held]}
-    msgs = reflect_messages(persona, Mind("Trabolta", "e"), r, Reply(say="x" * 400), facts, 20, "t")
-    chars = sum(len(m["content"]) for m in msgs)
-    assert chars > 20_000  # it really is the shipped mind file + lore
-    # ≈ 3 characters a token is a safe overestimate for English + JSON.
-    assert chars / 3 + om.max_tokens < num_ctx, (chars, num_ctx)
+    assert isinstance(num_ctx, int) and num_ctx >= 20480, om.extra
+    chars = _show_night(agents.cfg.personas["Trabolta"])
+    assert chars > 40_000  # it really is the shipped mind file + lore + a full mind
+    assert chars / CHARS_PER_TOKEN + om.max_tokens < num_ctx, (chars, num_ctx)
 
 
-def test_the_check_estimate_covers_the_shipped_reflect_prompt():
-    """`stagehand check`'s estimate (the fixed prompt + a live allowance) is
-    no smaller than a real night's reflect prompt, and still fits the
-    orchestrator's default 16k context."""
+def test_the_check_estimate_covers_a_late_night_reflect_prompt():
+    """`stagehand check`'s estimate is no smaller than a real late night's
+    reflect prompt (not the doors' — a fresh mind and an empty house fit in
+    a context the night outgrows), and still fits the orchestrator's
+    default context."""
     from pathlib import Path
 
     from stagehand.agents.config import ORCHESTRATOR_NUM_CTX
     from stagehand.agents.orchestrator import CHARS_PER_TOKEN, reflect_tokens_needed
     from stagehand.config import load_config
-    from test_secrets import _show_codex
 
-    agents = load_config(Path(__file__).resolve().parents[1] / "agents.example.yaml").modules["agents"]
+    example = Path(__file__).resolve().parents[1] / "agents.example.yaml"
+    agents = load_config(example).modules["agents"]
     om = agents.cfg.orchestrator_models["Trabolta"]
     persona = agents.cfg.personas["Trabolta"]
-    entries, held = _show_codex()
-    facts = Facts({"world": {"Night.phase": "free_roam"}, "programs": [], "locations": [], "codex": entries})
-    r = req(n_history=19)
-    r["self"] = {"vars": {}, "codex": [{"title": t} for t in held]}
-    real = sum(len(m["content"]) for m in reflect_messages(persona, Mind("Trabolta", "e"), r, Reply(say="x" * 400), facts, 20, "t"))
+    real = _show_night(persona) // CHARS_PER_TOKEN + om.max_tokens
     need = reflect_tokens_needed(persona, om.max_tokens)
-    assert need >= real // CHARS_PER_TOKEN + om.max_tokens, (need, real)
+    assert need >= real, (need, real)
     assert need < ORCHESTRATOR_NUM_CTX
     assert agents.warnings() == []
+    # The review's case: a 12k context fits the doors' prompt but not a late
+    # night's, and the check now says so instead of staying silent.
+    doors = sum(len(m["content"]) for m in reflect_messages(persona, Mind("Trabolta", "e"), req(), Reply(say="x"), None, 20, "t"))
+    assert doors // CHARS_PER_TOKEN + om.max_tokens < 12_000 < real
+    small = load_config(example).modules["agents"]
+    small.cfg.orchestrator_models["Trabolta"] = replace(om, extra={"think": False, "options": {"num_ctx": 12_000}})
+    (warning,) = small.warnings()
+    assert "12000-token context" in warning and "extra.options.num_ctx" in warning

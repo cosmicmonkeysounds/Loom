@@ -47,10 +47,10 @@ from typing import Any
 
 from .facts import Facts, world_view
 from .llm import Completion, LlmConfig, LlmError
-from .mind import Mind
+from .mind import MAX_ANSWERS, MAX_PER_PERSON, Mind
 from .persona import Persona
 from .prompt import their_variables
-from .reply import extract_json, strip_think
+from .reply import Reply, extract_json, strip_think
 from .secrets import Secrets
 from .trace import Thought, Trace, new_thought
 
@@ -299,24 +299,87 @@ def reflect_messages(
     return [{"role": "system", "content": _system(persona, mind)}, {"role": "user", "content": "\n\n".join(parts)}]
 
 
-#: Characters a live reflect prompt adds on top of its fixed part (the system
-#: prompt + the ask): the lore block (≤ 60 entries of ≤ 160 characters), the
-#: house digest, the mind snapshot and a 14-line exchange. On the show the
-#: fixed part is ≈ 14k characters and the whole prompt ≈ 26k.
-LIVE_PROMPT_CHARS = 14_000
 #: Characters per token — a safe overestimate for English + JSON.
 CHARS_PER_TOKEN = 3
+#: The late-night house `reflect_tokens_needed` sizes for: the show's guest
+#: list with room to spare, every room of the map, a full lore block.
+LATE_PROGRAMS = 45
+LATE_ROOMS = 17
+LATE_LORE = 60
+
+
+def _filler(n: int, word: str = "note") -> str:
+    """`n` characters of plain words (no hunt answer, no marker)."""
+    return (f"{word} " * (n // (len(word) + 1) + 1))[:n].strip()
+
+
+def late_night_mind(persona: Persona) -> Mind:
+    """A mind as the end of a busy night leaves it: every list the reflect
+    snapshot shows filled to its cap (notes 20, learned 12, world 8,
+    questions 6 with answers, a stage history, a speaker dossier at
+    `MAX_PER_PERSON` and 12 others), at the lengths the orchestrator
+    really writes: a little over the means measured on rehearsal minds
+    (notes ≈ 50 characters, claims ≈ 55, a dossier summary ≈ 160), not
+    the caps' 300, which no reply fills — `CHARS_PER_TOKEN` already
+    overestimates the tokens by a quarter."""
+    mind = Mind(character=persona.character)
+    mind.seed(persona.stages, persona.drives)
+    mind.brief = _filler(400, "brief")
+    mind.mood = _filler(40, "mood")
+    mind.policy = {"favours": "earned", "credit": [f"Program Name {i:02d}" for i in range(6)], "wary": [f"Program Name {i:02d}" for i in range(6, 12)], "note": _filler(80, "policy")}
+    mind.questions = [{"q": _filler(60, "question"), "answers": [_filler(70, "answer") for _ in range(MAX_ANSWERS)]} for _ in range(MAX_SNAPSHOT_QUESTIONS)]
+    mind.notes = [_filler(60) for _ in range(20)]
+    mind.learned = [{"claim": _filler(70, "claim"), "from": "Program Name 01", "verdict": "bluster"} for _ in range(12)]
+    mind.world = [_filler(60, "world") for _ in range(8)]
+    stages = mind.stages or ["stage"]
+    mind.stage_history = [{"stage": stages[i % len(stages)], "why": _filler(100, "why")} for i in range(4)]
+    mind.exchanges = 400
+    for i in range(13):
+        d = mind.dossier(f"g{i}", f"Program Name {i:02d}")
+        d.summary = _filler(200, "summary")
+        d.trust, d.turns, d.last_seen = 40, 9, float(i)
+        d.claims = [_filler(60, "claim") for _ in range(MAX_PER_PERSON)]
+        d.asks = [_filler(60, "ask") for _ in range(MAX_PER_PERSON)]
+        d.promises = [_filler(60, "promise") for _ in range(MAX_PER_PERSON)]
+    mind.thread("late").summary = _filler(800, "summary")
+    return mind
+
+
+def late_night_request(persona: Persona) -> tuple[dict[str, Any], Facts]:
+    """The request + house of a late-night reflection: a long thread with
+    the speaker (80-character guest lines, 200-character replies), the
+    character holding a full lore block,
+    `LATE_PROGRAMS` programs, `LATE_ROOMS` crowded rooms."""
+    titles = [f"Lore Entry Number {i:02d}" for i in range(LATE_LORE)]
+    codex = [{"id": f"c{i}", "title": t, "text": _filler(400, "lore"), "holders": [persona.character]} for i, t in enumerate(titles)]
+    names = [f"Program Name {i:02d}" for i in range(LATE_PROGRAMS)]
+    programs = [{"id": f"g{i}", "name": n, "faction": "Chatters", "codex": titles[:3]} for i, n in enumerate(names)]
+    rooms = [{"id": f"r{i}", "label": f"The Room Number {i:02d}", "occupants": names[i::LATE_ROOMS]} for i in range(LATE_ROOMS)]
+    world = {"Night.phase": "free_roam", **{f"Night.flag_{i:02d}": "true" for i in range(12)}}
+    history = [{"seq": i, "mine": i % 2 == 0, "text": _filler(200 if i % 2 == 0 else 80, "line")} for i in range(1, 41)]
+    vars_ = {f"var_{i:02d}": "50" for i in range(8)}
+    req = {
+        "speaker": {"kind": "guest", "id": "g0", "name": names[0], "faction": "Chatters"},
+        "history": history,
+        "self": {"vars": vars_, "codex": [{"title": t, "text": _filler(400, "lore")} for t in titles]},
+        "them": {"vars": vars_, "codex": [{"title": t} for t in titles[:12]], "location": rooms[0]["label"]},
+        "world": world,
+        "powers": [{"id": f"power number {i:02d}", "limit": 2, "used": 1} for i in range(11)],
+    }
+    return req, Facts({"world": world, "programs": programs, "locations": rooms, "codex": codex})
 
 
 def reflect_tokens_needed(persona: Persona, max_tokens: int) -> int:
-    """≈ the context one reflection needs: the fixed prompt measured from
-    this persona's real mind file + persona, the live allowance, and the
-    reply's `max_tokens`. `stagehand check` compares it with the model's
-    context — Ollama cuts the middle of a prompt that doesn't fit."""
-    mind = Mind(character=persona.character)
-    mind.seed(persona.stages, persona.drives)
-    msgs = reflect_messages(persona, mind, {"speaker": {"id": "someone", "name": "someone"}, "history": []}, None, None, persona.summarize_after, "")
-    chars = sum(len(m["content"]) for m in msgs) + LIVE_PROMPT_CHARS
+    """≈ the context one reflection needs late in the night: the real
+    reflect prompt (this persona's mind file + persona) built over
+    `late_night_mind` and `late_night_request`, plus the reply's
+    `max_tokens`. `stagehand check` compares it with the model's context —
+    Ollama cuts the middle of a prompt that doesn't fit."""
+    req, facts = late_night_request(persona)
+    acts = tuple({"kind": "fire", "name": f"power number {i:02d}"} for i in range(2))
+    reply = Reply(say=_filler(600, "say"), adjust={f"var_{i:02d}": 5 for i in range(4)}, acts=acts)
+    msgs = reflect_messages(persona, late_night_mind(persona), req, reply, facts, persona.summarize_after, "late")
+    chars = sum(len(m["content"]) for m in msgs)
     return chars // CHARS_PER_TOKEN + max_tokens
 
 

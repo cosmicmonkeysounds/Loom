@@ -262,13 +262,15 @@ OpenAI-compatible shim ignores it and burns hundreds of hidden tokens
 per call — and `keep_alive` pins both models resident (Ollama's default
 5 minutes evicts the voice during a quiet spell, and the next guest
 waits ~25 s for a reload). An `api: ollama` orchestrator loads with
-`num_ctx: 16384` unless its `llm:` says otherwise (`num_ctx: …`, or
+`num_ctx: 20480` unless its `llm:` says otherwise (`num_ctx: …`, or
 `extra: {options: {num_ctx: …}}`, which wins; `0` = the server's
-default): the reflect prompt is ≈ 10k tokens, and Ollama's default
-4096 cuts its middle without a word. `stagehand check` prints the
-context on the `mind` line and warns when its estimate of a reflection
-(the real mind file + persona, a live allowance, `max_tokens`) is
-larger. Both models fit on a 48 GB laptop (≈ 24 GB
+default): the reflect prompt is ≈ 10k tokens at the doors and ≈ 16k
+late in the night, and Ollama's default 4096 cuts its middle without a
+word. `stagehand check` prints the context on the `mind` line and warns
+— naming the key in effect — when its estimate of a late-night
+reflection is larger: the real reflect prompt (the mind file + persona)
+over a mind grown to the snapshot's caps, 45 programs, 17 crowded rooms
+and a full lore block, at 3 characters a token, plus `max_tokens`. Both models fit on a 48 GB laptop (≈ 24 GB
 together). `gpt-oss` reasoning tokens count against `max_tokens`, so
 keep that ≥ 1000 with the mind block in the prompt. JSON mode stays
 off: the reply parser copes with prose, code fences, and `<think>`

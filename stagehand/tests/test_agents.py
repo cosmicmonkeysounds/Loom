@@ -663,15 +663,17 @@ def test_truncation_is_reported_and_retried_with_room():
     assert reply.say == "SANDY." and calls == [100, 700]
 
 
-def test_an_ollama_orchestrator_gets_a_16k_context_unless_told_otherwise(tmp_path):
+def test_an_ollama_orchestrator_gets_a_late_night_context_unless_told_otherwise(tmp_path):
     """W6: the house laptop's yaml names `extra: {think: false}` and no
     context, so Ollama's default (4096) cut the middle of every reflection."""
+    from stagehand.agents.config import ORCHESTRATOR_NUM_CTX
     from stagehand.agents.llm import OLLAMA_DEFAULT_NUM_CTX
 
     # The live laptop.yaml shape: `extra` replaced wholesale, no num_ctx anywhere.
     agents = worker(tmp_path, None, orchestrator={"llm": {"api": "ollama", "extra": {"think": False}, "keep_alive": "60m"}})
     om = agents.cfg.orchestrator_models["Trabolta"]
-    assert (om.num_ctx, om.context_window) == (16384, 16384)
+    assert ORCHESTRATOR_NUM_CTX == 20480
+    assert (om.num_ctx, om.context_window) == (20480, 20480)
     # The voice (api: openai) is left alone: no num_ctx, no context to compare.
     vm = agents.cfg.models["Trabolta"]
     assert (vm.num_ctx, vm.context_window) == (None, None)
@@ -717,10 +719,10 @@ def test_check_warns_when_the_reflect_prompt_outgrows_the_context(tmp_path, caps
             encoding="utf-8",
         )
 
-    write("{extra: {think: false}}")  # the default 16k fits
+    write("{extra: {think: false}}")  # the default 20k fits
     assert main(["check", "--config", str(conf)]) == 0
     out = capsys.readouterr()
-    assert "warning:" not in out.err and "ctx 16384" in out.out
+    assert "warning:" not in out.err and "ctx 20480" in out.out
     write("{num_ctx: 4096}")  # a warning, not a failure
     assert main(["check", "--config", str(conf)]) == 0
     err = capsys.readouterr().err
