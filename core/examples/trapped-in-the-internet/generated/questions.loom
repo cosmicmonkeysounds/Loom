@@ -108,13 +108,13 @@ if Night.truth_n >= 1 and Night.truth_n <= 20:
     9: // DRAFT
       Trabolta: What did you really leave behind at the door?
     10: // DRAFT
-      Trabolta: What is the longest you have gone without checking your phone?
+      Trabolta: What is the most desperate thing you have ever done to get someone to like you?
     11: // DRAFT
       Trabolta: Have you ever read someone else's messages? Whose?
     12: // DRAFT
       Trabolta: What secret are you keeping for someone else right now?
     13: // DRAFT
-      Trabolta: Who was your first online friend, and what happened to them?
+      Trabolta: What was your very first screen name, and who picked it?
     14: // DRAFT
       Trabolta: What is the most money you have lost in one night?
     15: // DRAFT
@@ -124,9 +124,9 @@ if Night.truth_n >= 1 and Night.truth_n <= 20:
     17: // DRAFT
       Trabolta: What is one thing you have never told your mother?
     18: // DRAFT
-      Trabolta: What do you do when nobody is watching?
+      Trabolta: Have you ever been dumped by text? What did it say?
     19: // DRAFT
-      Trabolta: Have you ever faked being sick to get out of something? What?
+      Trabolta: What is the cheesiest pickup line that has ever worked on you?
     20: // DRAFT
       Trabolta: If you could delete one memory, which one?
 else:
