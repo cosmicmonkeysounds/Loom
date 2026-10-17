@@ -373,6 +373,9 @@ body {
 .widget.image figcaption { font: italic 12px var(--ui-font); color: var(--muted-ink); padding: 6px 6px 2px; }
 .poll-options { display: flex; flex-direction: column; gap: 4px; }
 .poll-options .choice { margin: 0; text-align: left; }
+/* The picked question reads as a selection (inverted), not just a ring. */
+.fact-questions .choice[aria-pressed="true"] { background: var(--navy); color: var(--white); }
+.fact-hint { font-weight: 400; }
 .fact-answer { box-sizing: border-box; width: 100%; margin: 8px 0 4px; padding: 8px; font: 16px/1.35 var(--ui-font); resize: vertical; /* 16px: iOS never zooms */ }
 .fact-confidence { display: grid; gap: 4px; font: 700 13px var(--ui-font); color: var(--ink); }
 .fact-confidence input[type=range] { width: 100%; margin: 0; }
