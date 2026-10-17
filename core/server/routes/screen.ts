@@ -46,6 +46,9 @@
 //!                 per-person reveal or a visit doesn't count). While it is
 //!                 closed the terminal is on attract; an unknown name answers
 //!                 `{id: "", open: false}` (a typo never wakes a secret room).
+//!                 Before the doors (no sim) the name resolves against the
+//!                 story's declared LOCATIONs: a correct one is `{id, open:
+//!                 false}`, so only a typo reads as "no room called …".
 //!
 //! The director's side (K-29): `GET /api/mod/screen/terminals` answers just
 //! the heartbeat list + the TV-voice mute, without recording a poll, for the
@@ -66,6 +69,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 import type { Sim } from "../../src/runtime/sim/index.ts";
+import type { SimModel } from "../../src/runtime/sim/model.ts";
 import type { ChatMessage } from "../chat.ts";
 import { foldName } from "../../src/parser/names.ts";
 import { queryTokenOf, readBody, sendJson, tokenOf } from "../http-util.ts";
@@ -604,8 +608,10 @@ export class ScreenWatch {
   }
 
   /** One terminal polls: record it, and answer the current screen state.
-   *  `messages` is the chat timeline (only read for a `voice` poll). */
-  poll(sim: Sim | null, who: ScreenWho, online: (character: string) => boolean, messages: readonly ChatMessage[] = []): ScreenState {
+   *  `messages` is the chat timeline (only read for a `voice` poll);
+   *  `declared` is the story's model while no sim exists (before the doors),
+   *  so a room terminal's correct LOCATION still resolves (asleep). */
+  poll(sim: Sim | null, who: ScreenWho, online: (character: string) => boolean, messages: readonly ChatMessage[] = [], declared: SimModel | null = null): ScreenState {
     const first = this.sync(sim);
     this.note(who);
     const peek = (path: string): string | null => {
@@ -687,15 +693,18 @@ export class ScreenWatch {
     if (program.overlay?.value === "alarm" && alarmOn !== null && alarmOn !== "true") program = { ...program, overlay: null };
 
     const identifyLeft = this.identifyLeft(who.name);
+    const model = sim?.model ?? declared;
     const locationOf = (name: string) => {
       const want = foldName(name);
-      return sim === null ? undefined : [...sim.model.locations.values()].find((l) => foldName(l.id) === want || (l.label !== null && foldName(l.label) === want));
+      return model === null ? undefined : [...model.locations.values()].find((l) => foldName(l.id) === want || (l.label !== null && foldName(l.label) === want));
     };
     // A room terminal (wave 7): asleep until its LOCATION is open to everyone.
+    // Before the doors (no sim) a declared room is named but closed, so only
+    // a typo reads as "no room called …" (S1-03).
     let room: ScreenRoom | undefined;
     if (who.room !== undefined && who.room !== "") {
       const loc = locationOf(who.room);
-      room = loc === undefined || sim === null ? { id: "", open: false } : { id: loc.id, open: !loc.hidden || sim.isRevealed(loc.id) };
+      room = loc === undefined ? { id: "", open: false } : sim === null ? { id: loc.id, open: false } : { id: loc.id, open: !loc.hidden || sim.isRevealed(loc.id) };
     }
     let voice: ScreenVoice | undefined;
     const voiceRoom = who.voice !== undefined && who.voice !== "" ? who.voice : (who.room ?? "");
@@ -756,6 +765,7 @@ export function handleScreenGet(
   authorized: (token: string | undefined) => boolean,
   online: (character: string) => boolean,
   messages: () => readonly ChatMessage[] = () => [],
+  declared: () => SimModel | null = () => null,
 ): boolean {
   if (!authorized(queryTokenOf(req, url))) {
     sendJson(res, 403, { error: "moderators only" });
@@ -777,7 +787,8 @@ export function handleScreenGet(
     ...(room !== "" ? { room } : {}),
     ...(voice !== "" || room !== "" ? { after } : {}),
   };
-  sendJson(res, 200, watch.poll(sim, who, online, voice !== "" || room !== "" ? messages() : []));
+  const named = voice !== "" || room !== "";
+  sendJson(res, 200, watch.poll(sim, who, online, named ? messages() : [], named && sim === null ? declared() : null));
   return true;
 }
 

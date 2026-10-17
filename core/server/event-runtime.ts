@@ -2825,7 +2825,7 @@ export class EventRuntime {
 
     // --- the wall terminals' lean screen state (K-16, routes/screen.ts) ---
     if (method === "GET" && path === "/api/screen/state") {
-      return handleScreenGet(this.screens, this.sim, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t), (c) => this.agents.isOnline(c), () => this.chat.all());
+      return handleScreenGet(this.screens, this.sim, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t), (c) => this.agents.isOnline(c), () => this.chat.all(), () => this.declaredModel);
     }
     if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
     if (method === "POST" && path === "/api/mod/screen/voice") return handleScreenVoicePost(this.screens, req, res, (t) => opts.moderator === true || this.sessions.canModerate(t));
