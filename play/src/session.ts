@@ -12,7 +12,7 @@ import { checkinFromSearch, withoutCheckin } from "./checkin.ts";
 import { pmChannelId, pmOtherParty, unlockFromSearch, withoutUnlock } from "./codex.ts";
 import { usePlayHost } from "./host.ts";
 import { roomFromMessage, roomFromSearch, roomTarget, withoutRoom } from "./room.ts";
-import { SessionRole, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "./lifecycle.ts";
+import { SessionRole, afterLifecycle, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, lifecycleStartsNewRun, performerSessionDead } from "./lifecycle.ts";
 import { locationOfRoom, occupantsByLocation, type Presence } from "./presence.ts";
 import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, WALLET_ROOM, channelHead, groupByChannel, prettyName, questSummary, withThe, useThreads, type Threads } from "./threads.ts";
 import { queueSummary, walletNeedsYou, walletSummary } from "./wallet.tsx";
@@ -1414,7 +1414,13 @@ export function usePrimeSession(): PrimeSession {
     // re-sends the snapshot + history, which is then old news for alerts.
     onLifecycle: (n) => {
       if (lifecycleDropsSession(n.kind, SessionRole.Performer)) dropBooth(lifecycleNotice(n.kind, SessionRole.Performer));
-      else alertsRef.current?.rebase();
+      else {
+        // B5: last run's readouts and answered cards are not tonight's. The
+        // notice lands before the replay, so the new run's readouts follow.
+        setResponses((r) => afterLifecycle(r, n.kind));
+        if (lifecycleStartsNewRun(n.kind)) setWidgetAnswers(new Map());
+        alertsRef.current?.rebase();
+      }
     },
     // The stream closed for good: confirm the booth's token is really gone
     // (the show went live while the phone slept) before signing out.

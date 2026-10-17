@@ -75,3 +75,21 @@ describe("a re-join after a restart starts with no answered cards (B2)", () => {
     expect(perSessionUpdate(held, "tok-b", EMPTY, (p) => p)).toBe(held);
   });
 });
+
+describe("a booth's readouts on a story restart (B5)", () => {
+  it("response events, then a reset, leave the Readouts list empty", async () => {
+    const { afterLifecycle, lifecycleStartsNewRun } = await import("../src/lifecycle.ts");
+    // The booth's onResponse prepends each readout.
+    let readouts: Array<{ id: number; text: string }> = [];
+    for (const [id, text] of [[0, "✅ Cleared Calculator."], [1, "🚨 Calculator is marked for reinstallation."]] as const) readouts = [{ id, text }, ...readouts];
+    expect(readouts).toHaveLength(2);
+    // The booth survives a reset / reload (it isn't dropped) — its readouts don't.
+    expect(lifecycleDropsSession(LifecycleKind.Reset, SessionRole.Performer)).toBe(false);
+    expect(afterLifecycle(readouts, LifecycleKind.Reset)).toEqual([]);
+    expect(afterLifecycle(readouts, LifecycleKind.Reload)).toEqual([]);
+    // A notice this build doesn't know keeps them.
+    expect(afterLifecycle(readouts, "something-new")).toBe(readouts);
+    for (const k of Object.values(LifecycleKind)) expect(lifecycleStartsNewRun(k)).toBe(true);
+    expect(lifecycleStartsNewRun("something-new")).toBe(false);
+  });
+});
