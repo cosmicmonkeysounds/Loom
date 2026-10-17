@@ -257,6 +257,34 @@ export function parseExpr(source: string): Expr {
   return expr;
 }
 
+/** Parsed sources (a parse error too), shared by every caller of
+ *  `parseExprCached`. A story's conditions are a fixed set, re-read for
+ *  every guest on every drain (W8 T9-02: 70 % of a replay was re-parsing);
+ *  the bound only guards against an endless stream of distinct texts. */
+const PARSED = new Map<string, Expr | ExprError>();
+const PARSED_MAX = 8192;
+
+/**
+ * `parseExpr`, memoised by source text. The tree is shared — nothing that
+ * evaluates or walks an `Expr` writes to it — and a source that fails to
+ * parse throws the same `ExprError` every time without being re-parsed.
+ */
+export function parseExprCached(source: string): Expr {
+  let hit = PARSED.get(source);
+  if (hit === undefined) {
+    try {
+      hit = parseExpr(source);
+    } catch (e) {
+      if (!(e instanceof ExprError)) throw e;
+      hit = e;
+    }
+    if (PARSED.size >= PARSED_MAX) PARSED.clear();
+    PARSED.set(source, hit);
+  }
+  if (hit instanceof ExprError) throw hit;
+  return hit;
+}
+
 /** Evaluate `expr` against `world`, delegating calls to `callFn`. */
 export function evaluate(expr: Expr, world: World, callFn: CallFn, bindings?: Bindings): Value {
   return evalScoped(expr, world, [], callFn, bindings);

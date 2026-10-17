@@ -15,7 +15,7 @@ import {
   display,
   evaluate,
   expandPath,
-  parseExpr,
+  parseExprCached,
   truthy,
   vBool,
   vList,
@@ -2607,7 +2607,7 @@ export class Sim {
   private evalValue(src: string, bindings: Bindings): Value {
     this.currentBindings = bindings;
     try {
-      return evaluate(parseExpr(src), this.world, this.callFn, bindings);
+      return evaluate(parseExprCached(src), this.world, this.callFn, bindings);
     } catch (e) {
       if (e instanceof ExprError) return VNULL;
       throw e;

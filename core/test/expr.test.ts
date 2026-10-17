@@ -6,10 +6,12 @@ import {
   display,
   evaluate,
   parseExpr,
+  parseExprCached,
   vNumber,
   vString,
   type Value,
 } from "../src/runtime/expr.ts";
+import { Sim } from "../src/runtime/sim/index.ts";
 
 function noCalls(name: string): Value {
   throw new ExprError(`unknown function \`${name}\``);
@@ -86,5 +88,37 @@ describe("expr", () => {
     };
     expect(evaluate(expr, w, f)).toEqual(vNumber(11));
     expect(calls).toBe(1);
+  });
+});
+
+describe("parseExprCached (W8 T9-02)", () => {
+  it("parses a source once and hands back the same tree", () => {
+    const a = parseExprCached("self.heat >= 75 and not self.asleep");
+    expect(parseExprCached("self.heat >= 75 and not self.asleep")).toBe(a);
+    expect(a).toEqual(parseExpr("self.heat >= 75 and not self.asleep"));
+    // Sharing is safe: evaluating never writes to the tree.
+    const w = new World();
+    w.set("Wren.heat", vNumber(80));
+    const frozen = JSON.stringify(a);
+    evaluate(a, w, noCalls, new Map([["self", "Wren"]]));
+    expect(JSON.stringify(a)).toBe(frozen);
+  });
+
+  it("caches a parse error too: the same ExprError, every time", () => {
+    let first: unknown = null;
+    try {
+      parseExprCached("1 +");
+    } catch (e) {
+      first = e;
+    }
+    expect(first).toBeInstanceOf(ExprError);
+    expect(() => parseExprCached("1 +")).toThrow(first as Error);
+  });
+
+  it("a cached bad source still reads as null through the Sim", () => {
+    const sim = Sim.fromSources("# T\nstart: A\n\n== A\nNarrator: hi.\n");
+    expect(sim.holds("1 +", null)).toBe(false);
+    expect(sim.holds("1 +", null)).toBe(false);
+    expect(sim.holds("1 + 1 == 2", null)).toBe(true);
   });
 });
