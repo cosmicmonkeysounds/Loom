@@ -2200,6 +2200,11 @@ describe("Trapped in the Internet — the alternate advice ending", () => {
     const duck = fire(sim, "the simulation completed", "g1");
     expect(sim.isCaptured("g1")).toBe(true);
     expect(replies(duck).map((r) => r.text)).toContain("Gerald cannot help you: everyone is banished. The way out is the hand jive, together.");
+    // The games' second signal says nothing that reads as a release: no egg, no Golden Duck entry.
+    const egg = fire(sim, "the golden duck", "g1");
+    expect(replies(egg).filter((r) => r.to === "g1")).toEqual([]);
+    expect(learned(egg)).toEqual([]);
+    expect(sim.holdsCodex("g1", "The Golden Duck")).toBe(false);
     const hj = fire(sim, "the_hand_jive");
     expect(v(sim, "Night.ending")).toBe("hand_jive");
     expect(v(sim, "Night.ended")).toBe(true);

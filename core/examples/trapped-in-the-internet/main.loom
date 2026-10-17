@@ -3198,7 +3198,9 @@ when reinstallation begun for program:
 // The games fire both of these, in this order, for whoever walks up to
 // Gerald the golden duck. Only a corrupted program is released, and never
 // during the banishment (the hand jive frees everyone); anyone, captured
-// or just curious, learns The Golden Duck.
+// or just curious, learns The Golden Duck. A banished program hears only
+// that Gerald cannot help: no golden egg, no flying away, nothing that
+// reads as a release.
 when the simulation completed for program:
   if program.corrupted and Night.banish == true:
     reply Gerald cannot help you: everyone is banished. The way out is the hand jive, together.
@@ -3207,8 +3209,9 @@ when the simulation completed for program:
     unlock The Golden Duck for program
 
 when the golden duck for program:
-  unlock The Golden Duck for program
-  reply The duck lays a golden egg and flies away. Gerald waddles off into the code.
+  if program.corrupted != true or Night.banish != true:
+    unlock The Golden Duck for program
+    reply The duck lays a golden egg and flies away. Gerald waddles off into the code.
 
 // ── C. The malware, the hour, the Truther Download ──
 
