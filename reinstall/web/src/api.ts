@@ -268,9 +268,10 @@ export const SIGNAL_RETRY_MS = [500, 1000, 2000, 4000, 8000] as const;
 /** Where the tablet keeps its one pending story signal (the latest only), so
  *  a reload doesn't lose an unsent `chess won`. */
 export const PENDING_SIGNAL_KEY = "loom-reinstall.pending-signal";
-/** A pending signal this old is dropped, never posted: `chess won` unlocks
- *  the real server-room door for 90 s, so a win must not land minutes late
- *  (after a reload) — a host fires ♟ by hand instead. */
+/** A pending signal this old is dropped, never posted: from the Y2K hour
+ *  `chess won` hands the winner the server-room door code, so a win must not
+ *  land minutes late (after a reload, the guest long gone) — a host fires ♟
+ *  by hand instead. */
 export const PENDING_SIGNAL_MAX_AGE_MS = 60_000;
 /** One attempt is abandoned after this long (or when the signal would turn
  *  `PENDING_SIGNAL_MAX_AGE_MS` old): a black-holed uplink must fail fast,
@@ -357,7 +358,7 @@ async function sendSignal(config: ReinstallConfig, p: PendingSignal, opts: Signa
     const left = PENDING_SIGNAL_MAX_AGE_MS - (now() - p.at);
     if (left <= 0) return "failed";
     // A stalled request is aborted (a network failure): one that hung past
-    // the cap could still open the real door minutes after the win.
+    // the cap could still land minutes after the win.
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), Math.min(opts.timeoutMs ?? SIGNAL_ATTEMPT_TIMEOUT_MS, left));
     try {
@@ -388,7 +389,7 @@ async function sendSignal(config: ReinstallConfig, p: PendingSignal, opts: Signa
  * it from `flushPendingSignal` — within `PENDING_SIGNAL_MAX_AGE_MS` of the
  * first try. Once it fails for good it is forgotten: the caller tells the
  * guest to get a host (`WIN_NOT_SENT`), and a late post after the host's ♟
- * (or a director's re-arm) would open the real door a second time.
+ * would land the win twice.
  */
 export async function postSignal(config: ReinstallConfig, name: string, subject: string, opts: SignalOptions = {}): Promise<boolean> {
   const storage = opts.storage === undefined ? browserStorage() : opts.storage;

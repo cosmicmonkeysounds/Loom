@@ -1,7 +1,9 @@
 //! The modal game against the King — a Windows 98 window over the
 //! simulation. Your move (tap a piece, tap a square) → the King thinks
 //! (`pickMoveAsync` for the fight's stage) → your move … until checkmate
-//! (`onResult("won")` fells him and closes the board). The King winning or
+//! (`onResult("won")` fells him and closes the board; from the Y2K hour the
+//! story hands the winner the real door's code — the badge + `stakesLine`
+//! say whether this game counts). The King winning or
 //! a draw is reported too (`onResult("lost" | "drawn")`) and deals a fresh
 //! board at the same stage, the window still open (`redeals`). Each end is
 //! shown for a beat first. 💡 Hint highlights a good move; Give up abandons
@@ -10,7 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Chess } from "chess.js";
-import { redeals, redealTip, STAGE_LINE, type Stage } from "../game/fight.ts";
+import { redeals, redealTip, stakesLine, STAGE_LINE, type Stage } from "../game/fight.ts";
 import { ProgressBar, Window } from "../wizard.tsx";
 import { hint as findHint, mulberry32, pickMoveAsync, PROFILES } from "./ai.ts";
 import { Board } from "./Board.tsx";
@@ -142,8 +144,9 @@ export function ChessWindow({ stage, label, armed, onResult, onAbandon, onActivi
       <Window title={`Challenge — ${label}`} icon="♟" className="chess-window">
         <div className="chess-head">
           <span className="chess-stage">{STAGE_LINE[stage]}</span>
-          {armed !== null && <span className={`chess-badge ${armed ? "armed" : "practice"}`}>{armed ? "ARMED" : "PRACTICE"}</span>}
+          {armed !== null && <span className={`chess-badge ${armed ? "armed" : "practice"}`}>{armed ? "FOR THE CODE" : "PRACTICE"}</span>}
         </div>
+        {stakesLine(armed) !== null && <div className="chess-stakes">{stakesLine(armed)}</div>}
         {redealTip(deal, stage) !== null && <div className="chess-tip">{redealTip(deal, stage)}</div>}
         <div className="chess-status" aria-live="polite">
           {over ? <b className={`chess-banner ${status.outcome}`}>{bannerOf(game, status.outcome)}</b> : thinking ? "THE KING IS THINKING…" : game.inCheck() ? "YOUR MOVE — CHECK" : "YOUR MOVE"}
