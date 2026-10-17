@@ -21,8 +21,11 @@ export interface ChannelRules {
   threadable: boolean;
   /** Broadcast cues mirrored into this channel: exact cue names, or `["*"]`. */
   routes: string[];
-  /** Reserved behaviours — declared, enforcement is a follow-up. */
+  /** Slow mode: one post per this many ms per participant (the guest say
+   *  route answers 429 with the wait); null = off. */
   slowModeMs: number | null;
+  /** Ephemeral: messages expire this many ms after posting (the event
+   *  runtime sweeps them and tells clients); null = they stay. */
   ephemeralMs: number | null;
 }
 

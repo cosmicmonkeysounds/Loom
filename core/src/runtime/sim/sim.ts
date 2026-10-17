@@ -917,8 +917,9 @@ export class Sim {
    * `from` is the sender's id (a guest) or character name (a performer); the
    * event stores the display name. `audience` may be given explicitly (the
    * server resolves a performer's per-guest thread); otherwise it's derived
-   * from the channel at send time. No access enforcement in this slice — the
-   * channel-type registry will own who-may-post later.
+   * from the channel at send time. No access check here: the server's say
+   * routes enforce `canPost` (post policy, presence, restricted) and slow
+   * mode before they journal a line.
    */
   say(
     from: string,
@@ -2110,7 +2111,7 @@ export class Sim {
       }
       case "fire": {
         // `fire name` / `fire name for subject` / `fire name with k: v`
-        // (arguments are Slice 2 — accepted, not yet bound).
+        // (the arguments are bound in the hooks it fires).
         let head = rest.trim();
         let subject = "";
         let args: Map<string, Value> | undefined;
