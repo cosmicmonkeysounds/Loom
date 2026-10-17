@@ -105,6 +105,18 @@ def split_dropped(dropped: list[str]) -> tuple[list[str], list[str]]:
     return [d for d in dropped if not d.startswith(NEVER_TAG)], [d for d in dropped if d.startswith(NEVER_TAG)]
 
 
+def drop_counts(hunt: int, never: int) -> str:
+    """The director's log words for a scrub or a prune: hunt verdicts and
+    secrets (the door code, a combination) counted apart — a K-04 mind run
+    tells a program feeding him the code from a hunt claim."""
+    parts = []
+    if hunt:
+        parts.append(f"{hunt} hunt verdict(s)")
+    if never:
+        parts.append(f"{never} secret(s) (door code / combo)")
+    return ", ".join(parts)
+
+
 def _phrase(w: str) -> str:
     """A `never` phrase word by word; a run of number words in it matches
     with any spacing or hyphens ("in ninety-seven" → "in ninety seven")."""
@@ -316,16 +328,18 @@ class Secrets:
             if self.judges_topic(person.get("summary")):
                 dropped.append(f"summary: {person.pop('summary')}")
 
-    def prune(self, mind: Any) -> int:
+    def prune(self, mind: Any) -> tuple[int, int]:
         """Drop hunt verdicts, and anything carrying a `never` word, from a
-        mind (e.g. one restored from disk). Returns how many went."""
-        n = 0
+        mind (e.g. one restored from disk). Returns how many went, as
+        (hunt verdicts, secrets) — `drop_counts` words them."""
+        hunt = 0
         if self.topics or self.match:
             before = len(mind.learned)
             mind.learned[:] = [e for e in mind.learned if not self.names_topic(e.get("claim"))]
-            n += before - len(mind.learned)
+            hunt = before - len(mind.learned)
         if not self.never:
-            return n
+            return hunt, 0
+        n = 0
 
         def keep(items: list[Any]) -> list[Any]:
             nonlocal n
@@ -355,7 +369,7 @@ class Secrets:
             if self.leaks(memo.summary):
                 memo.summary = ""
                 n += 1
-        return n
+        return hunt, n
 
     # -- the prompt --------------------------------------------------------------
 

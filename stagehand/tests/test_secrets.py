@@ -20,7 +20,7 @@ from stagehand.agents.orchestrator import Orchestrator, OrchestratorConfig, lore
 from stagehand.agents.persona import load_persona, parse_mind_file, parse_mind_secrets, parse_persona
 from stagehand.agents.prompt import state_block
 from stagehand.agents.reply import Reply
-from stagehand.agents.secrets import Secrets
+from stagehand.agents.secrets import Secrets, drop_counts
 from stagehand.agents.trace import Trace
 from stagehand.module import ConfigError
 
@@ -111,7 +111,7 @@ def test_no_secrets_declared_means_no_scrub():
 def test_prune_drops_restored_hunt_verdicts():
     mind = Mind("Trabolta", "e")
     mind.learned = [{"claim": "billboard: eleven years", "from": "Ada", "verdict": "fact"}, {"claim": "Ada is a nurse", "from": "Ada", "verdict": "unknown"}]
-    assert SECRETS.prune(mind) == 1 and [e["claim"] for e in mind.learned] == ["Ada is a nurse"]
+    assert SECRETS.prune(mind) == (1, 0) and [e["claim"] for e in mind.learned] == ["Ada is a nurse"]
 
 
 # -- the doors -------------------------------------------------------------------
@@ -479,7 +479,9 @@ def test_prune_drops_a_restored_code_from_everything_the_voice_reads():
 
     mind.people["g1"] = Dossier(id="g1", name="Ada", summary="Typed V4-D1.", claims=["V2 to D5", "plays chess"])
     mind.threads["dm:Trabolta"] = ThreadMemo(summary="She said the code was 1997.")
-    assert NEVER.prune(mind) == 7
+    # Secrets, not hunt verdicts: the restore log said "dropped 7 restored hunt verdict(s)" (W8 review).
+    assert NEVER.prune(mind) == (0, 7) and drop_counts(0, 7) == "7 secret(s) (door code / combo)"
+    assert drop_counts(2, 1) == "2 hunt verdict(s), 1 secret(s) (door code / combo)" and drop_counts(0, 0) == ""
     assert [e["claim"] for e in mind.learned] == ["Ada is a nurse"]
     assert mind.notes == ["Bo is loud"] and mind.brief == "Be desperate." and mind.world == ["the cold room is open"]
     assert mind.people["g1"].summary == "" and mind.people["g1"].claims == ["plays chess"] and mind.threads["dm:Trabolta"].summary == ""

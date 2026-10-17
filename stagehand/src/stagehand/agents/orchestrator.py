@@ -51,7 +51,7 @@ from .mind import MAX_ANSWERS, MAX_PER_PERSON, Mind
 from .persona import Persona
 from .prompt import build_messages, matching_situations, their_variables
 from .reply import Reply, extract_json, strip_think
-from .secrets import Secrets, split_dropped
+from .secrets import Secrets, drop_counts, split_dropped
 from .trace import Thought, Trace, new_thought
 
 log = logging.getLogger("stagehand.agents.orchestrator")
@@ -410,12 +410,7 @@ def suppressed_summary(dropped: list[str]) -> str:
     door code, a combination) counted apart — a K-04 mind run tells a
     program feeding him the code from a hunt claim."""
     hunt, never = split_dropped(dropped)
-    parts = []
-    if hunt:
-        parts.append(f"{len(hunt)} hunt verdict(s)")
-    if never:
-        parts.append(f"{len(never)} secret(s) (door code / combo)")
-    return ", ".join(parts)
+    return drop_counts(len(hunt), len(never))
 
 
 def lore_block(facts: Facts, held: list[str], max_entries: int = 60, secrets: Secrets | None = None, max_text: int = 160) -> str:

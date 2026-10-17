@@ -52,6 +52,7 @@ from .orchestrator import Job, Orchestrator, reflect_tokens_needed, voice_tokens
 from .persona import Persona
 from .prompt import build_messages, gate_context
 from .reply import Reply, parse_reply
+from .secrets import drop_counts
 from .trace import Thought, Trace, new_thought
 
 log = logging.getLogger("stagehand.agents")
@@ -339,9 +340,9 @@ class Agents:
             path = mind_path(self.cfg.state_dir, self.event, name)
             mind = Mind.load(path, name, self.event)
             mind.seed(persona.stages, persona.drives)
-            pruned = persona.secrets.prune(mind)
-            if pruned:
-                log.info("%s's mind: dropped %d restored hunt verdict(s)", name, pruned)
+            hunt, never = persona.secrets.prune(mind)
+            if hunt or never:
+                log.info("%s's mind: dropped restored %s", name, drop_counts(hunt, never))
             self.minds[name] = mind
             if mind.exchanges or mind.notes:
                 log.info("%s's mind restored from %s (%d exchanges, %d notes, %d people)", name, path, mind.exchanges, len(mind.notes), len(mind.people))
