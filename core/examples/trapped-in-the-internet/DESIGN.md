@@ -750,7 +750,10 @@ watcher/rule, **S** = server hard-code.
 | award_the_painting | D (G10, winner = MS Paint) | program | ROLE hook → `award_won` |
 | final_reveal | D (or W from y2k_midnight) | — | rule |
 | bobbing_for_truth | D | — | rule |
-| read_truth_txt | D | — | rule |
+| read_truth_txt | D | — | rule (truth.txt only: closes round three, `Night.r3_closed`) |
+| the_verdict | D (⚖, after 📄; wave 8) | — | rule → `The Verdict` |
+| patch_after_verdict | W (a patch once `Night.r3_closed`; wave 8) | — | rule (`# hosts` note only) |
+| dance_screens | W (the dance watcher and `lights_dance`; wave 8) | — | rule (`screens_screensaver` while the GO TO THE LIVING ROOM overlay is up) |
 | pickup_line_accepted | W (from P `pickup_line_works` or A `the_line_works`) | program | ROLE hook |
 | no_pickup_line | D | — | rule |
 | ask_for_advice | D (only in `grok_prom`) | — | rule |
@@ -822,7 +825,8 @@ reads as a cue sheet):**
 | clippy_reads_summary | `🪦 After the dance: Clippy reads the summary` |
 | final_reveal | `🌑 Final Truth Scavenger Hunt reveal` |
 | bobbing_for_truth | `🍎 Bobbing for Truth` |
-| read_truth_txt | `📄 Read truth.txt → the verdict` |
+| read_truth_txt | `📄 Read truth.txt` (holds the slide; wave 8 split the verdict off) |
+| the_verdict | `⚖ truth.txt read → the verdict` (wave 8) |
 | no_pickup_line | `💔 Nobody has the line → confession → rave` |
 | ask_for_advice | `💌 (Alt, after a lie → Grok Prom) Trabolta begs for relationship advice` |
 | advice_tally | `🗳 (Alt) Count the advice poll` |
@@ -837,6 +841,19 @@ reads as a cue sheet):**
 | reinstallation begun | `Reinstallation: begun at the tent (server)` (`sequence: false`) |
 
 Fire every admin cue from the cue sheet (Run → Director) / quick-fire, never from a guest card (§0 rule 23).
+
+The cue sheet's LAST / NEXT (wave 8): `sequence: false` marks every machine-fired, optional,
+anytime or fallback cue (🍾, the set pieces, the printer, 🎆, 🧾, 🚪, 🔄, ♟, 🕊, 🗳, the patch
+bay, 🪩, 💡, the reinstallation events): it ticks when it fires but never becomes LAST or NEXT.
+`repeat: true` (📋, 🗜) keeps a cue NEXT while it is LAST. From 🏍 on each cue carries a
+`while:` naming its branch (🏍 `Night.ending == "disabled"`, 🪦 `"destroyed"`, 🌑 → ⚖ while
+nothing has ended, 💔 / 💌 in `grok_prom`, the advice cues in `advice`, 🕺 while banished, G1
+once ended), so NEXT is the first unfired in-sequence cue after LAST whose `while:` holds: 🌑
+after 🕚, the ending's own cue after the dance, G1 after the song. An admin cue's `while:` only
+steers NEXT; it never gates the press (every rule still checks for itself). A press the story
+refuses posts its reason to `# hosts` (*"⚖ Not yet: 🍎 Bobbing for Truth, then 📄 truth.txt
+first."*) and never becomes LAST; the hardware fallbacks (🖨, 🫘, 🔌 / 💥 / ❌) stay silent,
+since they share a signal with the hardware.
 
 **Performer (`who: performer`, shown on every guest card; every hook guards its phase and
 answers wrong-phase presses with nothing — **except `send to the internet` and `mark as
