@@ -19,7 +19,7 @@
 #   B. both guest phones LOCKED, Wi-Fi OFF (cellular): a `!` alert arrives
 #      as a notification;
 #   C. same: a Trabolta DM arrives as a notification;
-#   D. the Antivirus booth, locked: the door alarm ("🚨 Server room
+#   D. the Antivirus booth, locked: the server-room alarm ("🚨 Server room
 #      breach") arrives as a notification;
 #   E–F. tapping one opens its room (SW-PLAY-20): the Trabolta DM on the
 #      Trabolta chat, the booth's breach on its Scanner thread.
@@ -111,7 +111,7 @@ echo "  ✓ sent a Trabolta DM to each subscribed guest"
 ask "C. Both LOCKED guest phones: a \"Trabolta\" notification \"K-31a: are you there…\"?"
 
 res="$(post /api/mod/signal '{"name":"alarm_tripped"}')"
-[[ "$(printf '%s' "$res" | json ok)" == "true" ]] && echo "  ✓ fired alarm_tripped (every Antivirus booth's door alarm)" || { echo "  ✗ signal: $res"; FAIL=1; }
+[[ "$(printf '%s' "$res" | json ok)" == "true" ]] && echo "  ✓ fired alarm_tripped (every Antivirus booth's server-room alarm)" || { echo "  ✗ signal: $res"; FAIL=1; }
 ask "D. The LOCKED Antivirus booth: a notification \"🚨 Server room breach…\"?"
 
 echo
