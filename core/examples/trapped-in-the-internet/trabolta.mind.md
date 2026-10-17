@@ -40,6 +40,11 @@ drives:
 #            Never an answer word — topics ARE shown to a model.
 #   match  — answer words a guest may use instead. NEVER shown to a model
 #            (this frontmatter is parsed out; only the body is a prompt).
+#   never  — the keypad code (+ its '97 spelling) and every patch-bay pair
+#            the story seeds (`set Kernel.combo_*`): no update item, line or
+#            field carrying one is ever written into his mind (every
+#            conversation reads it), and a voice line carrying one is never
+#            said (the persona's fallback instead). Never shown to a model.
 # <titi-facts:secrets>
 # generated from facts.json by core/scripts/titi-facts.ts — DO NOT EDIT this block (pnpm --filter @loom/core titi:facts).
 secrets:
