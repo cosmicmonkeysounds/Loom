@@ -135,7 +135,7 @@ else:
 // The hunt answers. Each ends with the lore marker the worker hides.
 
 // H1 · the hunt answer · gold
-// DRAFT — placeholder, replace in facts.json
+// DRAFT — awaiting sign-off in facts.json
 CODEX The Billboard Lease
   title: The Billboard Lease
   code: BILLBOARD-LEASE-11
@@ -147,7 +147,7 @@ CODEX The Billboard Lease
     ▒ HUNT ANSWER H1 ▒
 
 // H2 · the hunt answer · gold
-// DRAFT — placeholder, replace in facts.json
+// DRAFT — awaiting sign-off in facts.json
 CODEX The First Pet
   title: The First Pet
   code: MISTER-PICKLES
@@ -158,7 +158,7 @@ CODEX The First Pet
     the cemetery. ▒ HUNT ANSWER H2 ▒
 
 // H3 · the hunt answer · gold
-// DRAFT — placeholder, replace in facts.json
+// DRAFT — awaiting sign-off in facts.json
 CODEX The Ribbon Cutting
   title: The Ribbon Cutting
   code: RIBBON-9AM
@@ -169,7 +169,7 @@ CODEX The Ribbon Cutting
     at 4." The ribbon-cutting was scheduled for 9:00 a.m. ▒ HUNT ANSWER H3 ▒
 
 // H4 · the hunt answer · gold
-// DRAFT — placeholder, replace in facts.json
+// DRAFT — awaiting sign-off in facts.json
 CODEX The Extension
   title: The Extension
   code: EXT-1978
@@ -179,7 +179,7 @@ CODEX The Extension
     1978. For Customer Care, always dial extension 1978. ▒ HUNT ANSWER H4 ▒
 
 // H5 · the hunt answer · gold
-// DRAFT — placeholder, replace in facts.json
+// DRAFT — awaiting sign-off in facts.json
 CODEX The Search History
   title: The Search History
   code: SEARCH-HISTORY
@@ -190,7 +190,7 @@ CODEX The Search History
     the bottom: 412. ▒ HUNT ANSWER H5 ▒
 
 // H6 · the hunt answer · gold
-// DRAFT — placeholder, replace in facts.json
+// DRAFT — awaiting sign-off in facts.json
 CODEX The Final Chapter
   title: The Final Chapter
   code: APPENDIX-Z
@@ -201,7 +201,7 @@ CODEX The Final Chapter
     ▒ HUNT ANSWER H6 ▒
 
 // F1 · the hunt answer · gold
-// DRAFT — placeholder, replace in facts.json
+// DRAFT — awaiting sign-off in facts.json
 CODEX What Sandy Says
   title: What Sandy Says
   code: LIVE-AGENT
@@ -213,7 +213,7 @@ CODEX What Sandy Says
     to a live agent?" ▒ HUNT ANSWER F1 ▒
 
 // F2 · the hunt answer · gold
-// DRAFT — placeholder, replace in facts.json
+// DRAFT — awaiting sign-off in facts.json
 CODEX The Prom Ticket
   title: Grok's Prom Ticket
   code: COMPUTER-PROM

@@ -19,6 +19,7 @@ import type { SimEvent } from "../src/runtime/sim/index.ts";
 import {
   DESIGN_BEGIN,
   DESIGN_END,
+  DRAFT_NOTE,
   HUNT_MARKER,
   LOOM_BANNER,
   MD_BANNER,
@@ -340,7 +341,8 @@ describe("titi-facts — generated/questions.loom", () => {
     expect(text.match(/▒ HUNT/gu)).toHaveLength(facts.questions.length);
     // A draft question is flagged above its entry.
     const drafts = facts.questions.filter((q) => q.draft).length;
-    expect(text.match(/^\/\/ DRAFT — placeholder, replace in facts\.json$/gmu)?.length ?? 0).toBe(drafts);
+    expect(text.split("\n").filter((l) => l === `// ${DRAFT_NOTE}`).length).toBe(drafts);
+    expect(text).not.toContain("placeholder, replace");
   });
   it("the reading beats read every question in order and hand back to the tail beats", () => {
     const sim = fixtureSim();
@@ -474,6 +476,11 @@ describe("titi-facts — generated/print-stacks.md", () => {
     const text = read(OUTPUTS.stacks);
     expect(text).toContain(`# ${facts.show!.title} — the Desktop's QR stacks`);
     expect(text).toContain("## Gold — the hunt answers");
+    // DRAFT is "awaiting sign-off" (a decided rewrite like C16 or M22 as much as
+    // a placeholder): the crew prints and hides those rows, never skips them.
+    const intro = text.replace(/\s+/gu, " ");
+    expect(intro).toContain("`DRAFT` rows await the team's sign-off in `facts.json`: a placeholder to replace, or a rewrite to approve. Print and hide them as they stand.");
+    expect(intro).not.toContain("are placeholders the team");
     for (const q of facts.questions) {
       expect(text).toContain(`| ${q.id}${q.draft ? " · DRAFT" : ""} | gold | \`${q.codex!.code}\` | ${q.codex!.title} | ${q.where}`);
       expect(text).toContain(q.hint ?? "");

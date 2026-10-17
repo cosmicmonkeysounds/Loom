@@ -299,7 +299,7 @@ function questionsLoom(f: FactsFile): string {
     for (const q of questions) {
       const c = q.codex!;
       out.push("", `// ${q.id} · the hunt answer · ${S.huntColour}`);
-      if (q.draft) out.push("// DRAFT — placeholder, replace in facts.json");
+      if (q.draft) out.push(`// ${DRAFT_NOTE}`);
       out.push(`CODEX ${c.id}`, `  title: ${c.title}`, `  code: ${c.code}`, "  text:", textBlock(c.text, [`${HUNT_MARKER} ${q.id} ▒`]));
     }
   }
@@ -347,6 +347,10 @@ function factsLoom(f: FactsFile): string {
 
 // --- generated/print-stacks.md ---------------------------------------------
 
+/** What a `draft: true` row means: not yet signed off — a placeholder to
+ *  replace or a rewrite to approve, never "not decided yet, skip it". */
+export const DRAFT_NOTE = "DRAFT — awaiting sign-off in facts.json";
+
 const HEADER = "| # | Colour | Code | Title | Where in the Desktop | What it says |\n|---|---|---|---|---|---|";
 
 function printStacks(f: FactsFile): string {
@@ -355,8 +359,9 @@ function printStacks(f: FactsFile): string {
   out.push(
     "Generated from `facts.json`: one table per stack, in colour order. Sort the",
     "printed codex posters (Run → 🖨 Print sheet) into these piles and hide each",
-    "pile where its stack says. `DRAFT` rows are placeholders the team still has",
-    "to replace in `facts.json`. A hand-written entry (`existing`) keeps the place",
+    "pile where its stack says. `DRAFT` rows await the team's sign-off in",
+    "`facts.json`: a placeholder to replace, or a rewrite to approve. Print and",
+    "hide them as they stand. A hand-written entry (`existing`) keeps the place",
     "README → QR placements gives it; it is listed so the colour is known.",
     "",
     `## ${S.huntColour[0]!.toUpperCase()}${S.huntColour.slice(1)} — the hunt answers`,
