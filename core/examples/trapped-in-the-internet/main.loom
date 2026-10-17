@@ -713,6 +713,10 @@ ROLE Program
       set program.signed = true
       set Night.signatures += 1
       reply 🖌 Your signature is on the painting. It goes to auction at the end of the night.
+    else if Night.painting == true and program.featured == "mspaint":
+      broadcast "🖌 MS Paint is the painter, not a signature. Nothing was counted." to channel(hosts)
+    else if Night.painting == true:
+      broadcast "🖌 {program.name} already signed. Nothing was counted." to channel(hosts)
 
   // ── Marked for reinstallation ──
   // Every host verdict that used to capture on the spot now MARKS the program:
@@ -1884,6 +1888,8 @@ ROLE Program
       set Night.award_title = "Most Trusted"
       set Night.award_value = program.trust
       fire award_won for program with value: value
+    else:
+      broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
 
   when award_least_trusted for program:
     if Night.ceremony == true:
@@ -1891,6 +1897,8 @@ ROLE Program
       set Night.award_title = "Least Trusted"
       set Night.award_value = program.trust
       fire award_won for program with value: value
+    else:
+      broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
 
   when award_frequent_flyer for program:
     if Night.ceremony == true:
@@ -1898,6 +1906,8 @@ ROLE Program
       set Night.award_title = "Frequent Flyer to the Internet"
       set Night.award_value = program.internet_visits
       fire award_won for program with value: value
+    else:
+      broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
 
   when award_lore_hoarder for program:
     if Night.ceremony == true:
@@ -1905,6 +1915,8 @@ ROLE Program
       set Night.award_title = "Lore Hoarder"
       set Night.award_value = program.codex
       fire award_won for program with value: value
+    else:
+      broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
 
   when award_truthcoin_tycoon for program:
     if Night.ceremony == true:
@@ -1912,6 +1924,8 @@ ROLE Program
       set Night.award_title = "Truthcoin Tycoon"
       set Night.award_value = program.score
       fire award_won for program with value: value
+    else:
+      broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
 
   when award_best_liar for program:
     if Night.ceremony == true:
@@ -1919,6 +1933,8 @@ ROLE Program
       set Night.award_title = "Best Liar"
       set Night.award_value = "none"
       fire award_won for program with value: value
+    else:
+      broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
 
   when award_duck_speedrun for program:
     if Night.ceremony == true:
@@ -1926,6 +1942,8 @@ ROLE Program
       set Night.award_title = "Golden Duck Speedrun"
       set Night.award_value = "none"
       fire award_won for program with value: value
+    else:
+      broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
 
   when award_quest_completionist for program:
     if Night.ceremony == true:
@@ -1933,9 +1951,15 @@ ROLE Program
       set Night.award_title = "Quest Completionist"
       set Night.award_value = "none"
       fire award_won for program with value: value
+    else:
+      broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
 
   when award_the_painting for program:
-    if Night.ceremony == true:
+    if Night.ceremony != true:
+      broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
+    else if program.featured != "mspaint":
+      broadcast "🖌 G10 is MS Paint's award: {program.name} is not MS Paint. Nothing was awarded." to channel(hosts)
+    else:
       set Night.award = "the_painting"
       set Night.award_title = "The Million Dollar Painting"
       if Night.signatures > 0:
@@ -2471,7 +2495,7 @@ INTERACTION award_quest_completionist
 INTERACTION award_the_painting
   label: G10 · 🖌 Bonus: The Million Dollar Painting (winner = MS Paint; value = signatures)
   who: admin
-  description: Only when MS Paint is at the party. Reads the 🖌 Signed count unless value is given; the canvas itself is physical.
+  description: Only when MS Paint is at the party, and only on MS Paint (any other program is refused in # hosts). Reads the 🖌 Signed count unless value is given; the canvas itself is physical.
 
 INTERACTION resurrection
   label: G11 · 🎃 Resurrection: the show is over, out of character (after the ceremony)
@@ -2693,7 +2717,7 @@ INTERACTION signed_the_painting
   who: performer
   by: Hosts
   while: Night.painting == true
-  description: MS Paint's collaborative canvas (her invitation). Press once they have signed it; the count rides her Quest Log and the G10 award. A second press, or one on MS Paint, does nothing.
+  description: MS Paint's collaborative canvas (her invitation). Press once they have signed it; the count rides her Quest Log and the G10 award. A second press, or one on MS Paint, counts nothing and says so in # hosts.
 
 INTERACTION pickup_line_works
   label: 💘 Said "You're the one that I want"

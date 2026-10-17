@@ -2774,7 +2774,10 @@ describe("Trapped in the Internet — the awards ceremony (K-25)", () => {
     expect(beats(s)).toEqual([]);
     expect(v(sim, "Night.ceremony")).toBe(false);
     const a = fire(sim, "award_best_liar", "g1", { value: 3 });
-    expect(texts(a)).toEqual([]);
+    // Only the hosts hear why (B14): nobody's phone gets a word.
+    expect(texts(a)).toEqual(['!"🏆 Start the ceremony (G1) first: nothing was awarded."']);
+    expect(casts(a).map((c) => c.scope)).toEqual(["channel(hosts)"]);
+    expect(replies(a)).toEqual([]);
     expect(v(sim, "Night.award_winner")).toBe("none");
   });
 
@@ -4083,8 +4086,8 @@ describe("Trapped in the Internet — wave 5 (lane B): the takeover, the resurre
     expect(v(sim, "Night.signatures")).toBe(1);
     expect(replies(s1).map((r) => `${r.to}: ${r.text}`)).toEqual(["g1: 🖌 Your signature is on the painting. It goes to auction at the end of the night."]);
     expect(quest(s1, "The Painting")).toEqual(["g4 update 1 programs have signed."]);
-    expect(texts(fire(sim, "signed_the_painting", "g1", null, "Clippy"))).toEqual([]); // once
-    expect(texts(fire(sim, "signed_the_painting", "g4", null, "Clippy"))).toEqual([]);
+    expect(texts(fire(sim, "signed_the_painting", "g1", null, "Clippy"))).toEqual(['!"🖌 Calculator already signed. Nothing was counted."']); // once
+    expect(texts(fire(sim, "signed_the_painting", "g4", null, "Clippy"))).toEqual(['!"🖌 MS Paint is the painter, not a signature. Nothing was counted."']);
     expect(v(sim, "Night.signatures")).toBe(1);
 
     for (const g of ["g2", "g3", "g5"]) fire(sim, "signed_the_painting", g, null, "Clippy");
@@ -4096,6 +4099,14 @@ describe("Trapped in the Internet — wave 5 (lane B): the takeover, the resurre
     sim.setVar("Night.ended", "true");
     sim.setVar("Night.ending", "song");
     fire(sim, "start_the_ceremony");
+    // G10 goes only to MS Paint (B14): on anyone else it is refused in # hosts.
+    const given = v(sim, "Night.awards_given");
+    const wrong = fire(sim, "award_the_painting", "g1");
+    expect(texts(wrong)).toEqual(['!"🖌 G10 is MS Paint\'s award: Calculator is not MS Paint. Nothing was awarded."']);
+    expect(casts(wrong).map((c) => c.scope)).toEqual(["channel(hosts)"]);
+    expect(beats(wrong)).toEqual([]);
+    expect(v(sim, "Night.awards_given")).toBe(given);
+    expect(v(sim, "Night.award_winner")).toBe("none");
     const a = fire(sim, "award_the_painting", "g4");
     expect(cues(a)).toContain("cue screens_award_the_painting");
     const room = composeGuestMessages(sim, a).filter((m) => m.channel === "loc:The Desktop" && m.kind === "line").map((m) => `${m.from}: ${m.text}`);
