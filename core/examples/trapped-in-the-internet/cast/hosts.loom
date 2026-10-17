@@ -122,7 +122,7 @@ CHARACTER Adobe Acrobat is Host
 
   when read_truth_txt:
     if Night.phase == "bobbing" and Night.bag_up == true:
-      reply 📄 Hand the bobber the truth.txt printout. They read it aloud.
+      reply 📄 Hand the bobber the truth.txt printout. They read it aloud; when they finish, the director presses ⚖ for the verdict.
 
 CHARACTER Recycling Bin is Host
   avatar: File:User-trash-full.svg

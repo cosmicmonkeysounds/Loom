@@ -2541,8 +2541,14 @@ INTERACTION bobbing_for_truth
   who: admin
 
 INTERACTION read_truth_txt
-  label: 📄 Read truth.txt → the verdict
+  label: 📄 Read truth.txt
   who: admin
+  description: After 🍎 Brought up the Bag. truth.txt goes up on every screen and the bobber reads it aloud; round three closes. Nothing else happens until ⚖.
+
+INTERACTION the_verdict
+  label: ⚖ truth.txt read → the verdict
+  who: admin
+  description: When the bobber has finished reading truth.txt. Every answered fact accurate → the song; any lie on record → Grok Prom.
 
 INTERACTION no_pickup_line
   label: 💔 Nobody has the line → confession → rave
@@ -3885,9 +3891,11 @@ when bag_retrieved:
   set Night.ranking = true
   -> The Bag Of Truth
 
-// F3: truth.txt, then the verdict (Song Ending or Grok Prom).
-// Round three closes and settles here (the ROLE settle watcher runs after
-// this body; The Verdict counts a review filing still pending by its proposal).
+// F3: truth.txt, then (⚖, once the bobber has read it aloud) the verdict:
+// Song Ending or Grok Prom. Round three closes and settles at 📄 (the ROLE
+// settle watcher runs after this body), so the slide holds while it is read
+// and The Verdict reads settled facts (a review filing still pending counts
+// by its proposal).
 when read_truth_txt:
   if Night.phase == "bobbing" and Night.bag_up == true:
     complete quest The Final Facts for everyone
@@ -3902,6 +3910,9 @@ when read_truth_txt:
     set Night.screen = "truth_txt"
     set Night.terminals = "truth_txt"
     -> Truth Txt
+
+when the_verdict:
+  if Night.phase == "bobbing" and Night.r3_closed == true and Night.ended != true:
     -> The Verdict
 
 // F5: someone gave him the line (ROLE `pickup_line_accepted`).
