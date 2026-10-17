@@ -2077,7 +2077,8 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05; wave 4 judg
    *  instead; a local rehearsal has no judge at all). */
   const file = (sim: Sim, g: string, question: string, answer: string, confidence = 100) => {
     const verdict = judgeAnswer(BOOK, question, answer, confidence);
-    return fire(sim, "fact answered", g, { question, answer, confidence, card: 1, ...(verdict === null ? {} : { verdict }) });
+    const key = verdict === "accurate" ? { key_answer: Q(question).answer } : {};
+    return fire(sim, "fact answered", g, { question, answer, confidence, card: 1, ...(verdict === null ? {} : { verdict }), ...key });
   };
   const facts = (evs: SimEvent[]) => widgets(evs).filter((w) => w.widget === "fact");
   const hosts = (sim: Sim, evs: SimEvent[]) => composeGuestMessages(sim, evs).filter((m) => m.channel === "room:hosts").map((m) => m.text);
@@ -4338,6 +4339,18 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     toTruth1(sim2);
     for (const [q, a] of [["H1", "eleven"], ["H2", "pickles"], ["H3", "9 am"]] as const) file(sim2, "g5", q, a);
     expect(widgets(advance(sim2, 120)).filter((w) => w.widget === "fact" && w.audience[0] === "g5")).toEqual([]);
+  });
+
+  it("B13: the consensus reads the key's canonical answer, never a filer's alias", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    file(sim, "g2", "H2", "Mister Pickles");
+    file(sim, "g1", "H2", "pickles");
+    expect(v(sim, "Kernel.ans_2")).toBe("Mister Pickles");
+    fire(sim, "close_the_filing");
+    fire(sim, "read_the_results");
+    const r2 = fire(sim, "read_the_results");
+    expect(lines(r2, "Clippy")).toContain("Trabolta accepts it. The answer is: Mister Pickles.");
   });
 
   it("B11: lie → accurate → lie counts the filing once; an uncertain correction clears it to unanswered", { timeout: SLOW }, () => {

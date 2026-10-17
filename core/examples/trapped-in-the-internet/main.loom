@@ -851,8 +851,9 @@ ROLE Program
 
   // `fact_try` / `fact_q_round` are scratch for this filing; the filing's
   // own record (`fact_n`, `fact_label`, `last_fact_q`, `fact_a/c/j/vN`) is
-  // written only when it is accepted. `verdict` and `confidence` are the
-  // server's event args (a local rehearsal has no judge: no verdict, so
+  // written only when it is accepted. `verdict`, `confidence` and (on an
+  // accurate filing) `key_answer`, the key's canonical answer the
+  // consensus read-out speaks, are the server's event args (a local rehearsal has no judge: no verdict, so
   // the filing is refused out loud in # hosts).
   when fact answered for program:
     // The card just answered is done on the phone: nothing live to close.
@@ -914,7 +915,7 @@ ROLE Program
         set program.fact_j1 = verdict
         set Kernel.said_1 = Kernel.said_1 + program.name + " said " + answer + ", " + program.fact_sure + ". "
         if verdict == "accurate":
-          set Kernel.ans_1 = answer
+          set Kernel.ans_1 = key_answer
         if Night.judge_mode == "review":
           set program.fact_v1 = "pending"
         else:
@@ -928,7 +929,7 @@ ROLE Program
         set program.fact_j2 = verdict
         set Kernel.said_2 = Kernel.said_2 + program.name + " said " + answer + ", " + program.fact_sure + ". "
         if verdict == "accurate":
-          set Kernel.ans_2 = answer
+          set Kernel.ans_2 = key_answer
         if Night.judge_mode == "review":
           set program.fact_v2 = "pending"
         else:
@@ -942,7 +943,7 @@ ROLE Program
         set program.fact_j3 = verdict
         set Kernel.said_3 = Kernel.said_3 + program.name + " said " + answer + ", " + program.fact_sure + ". "
         if verdict == "accurate":
-          set Kernel.ans_3 = answer
+          set Kernel.ans_3 = key_answer
         if Night.judge_mode == "review":
           set program.fact_v3 = "pending"
         else:
@@ -956,7 +957,7 @@ ROLE Program
         set program.fact_j4 = verdict
         set Kernel.said_4 = Kernel.said_4 + program.name + " said " + answer + ", " + program.fact_sure + ". "
         if verdict == "accurate":
-          set Kernel.ans_4 = answer
+          set Kernel.ans_4 = key_answer
         if Night.judge_mode == "review":
           set program.fact_v4 = "pending"
         else:
@@ -970,7 +971,7 @@ ROLE Program
         set program.fact_j5 = verdict
         set Kernel.said_5 = Kernel.said_5 + program.name + " said " + answer + ", " + program.fact_sure + ". "
         if verdict == "accurate":
-          set Kernel.ans_5 = answer
+          set Kernel.ans_5 = key_answer
         if Night.judge_mode == "review":
           set program.fact_v5 = "pending"
         else:
@@ -984,7 +985,7 @@ ROLE Program
         set program.fact_j6 = verdict
         set Kernel.said_6 = Kernel.said_6 + program.name + " said " + answer + ", " + program.fact_sure + ". "
         if verdict == "accurate":
-          set Kernel.ans_6 = answer
+          set Kernel.ans_6 = key_answer
         if Night.judge_mode == "review":
           set program.fact_v6 = "pending"
         else:
@@ -998,7 +999,7 @@ ROLE Program
         set program.fact_j7 = verdict
         set Kernel.said_7 = Kernel.said_7 + program.name + " said " + answer + ", " + program.fact_sure + ". "
         if verdict == "accurate":
-          set Kernel.ans_7 = answer
+          set Kernel.ans_7 = key_answer
         if Night.judge_mode == "review":
           set program.fact_v7 = "pending"
         else:
@@ -1012,7 +1013,7 @@ ROLE Program
         set program.fact_j8 = verdict
         set Kernel.said_8 = Kernel.said_8 + program.name + " said " + answer + ", " + program.fact_sure + ". "
         if verdict == "accurate":
-          set Kernel.ans_8 = answer
+          set Kernel.ans_8 = key_answer
         if Night.judge_mode == "review":
           set program.fact_v8 = "pending"
         else:
