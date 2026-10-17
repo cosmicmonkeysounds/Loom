@@ -2085,7 +2085,7 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05; wave 4 judg
    *  instead; a local rehearsal has no judge at all). */
   const file = (sim: Sim, g: string, question: string, answer: string, confidence = 100) => {
     const verdict = judgeAnswer(BOOK, question, answer, confidence);
-    const key = verdict === "accurate" ? { key_answer: Q(question).answer } : {};
+    const key: Args = verdict === "accurate" ? { key_answer: Q(question).answer } : {};
     return fire(sim, "fact answered", g, { question, answer, confidence, card: 1, ...(verdict === null ? {} : { verdict }), ...key });
   };
   const facts = (evs: SimEvent[]) => widgets(evs).filter((w) => w.widget === "fact");
@@ -4328,7 +4328,7 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
    *  the key's canonical answer on an accurate one (`key_answer`). */
   const file = (sim: Sim, g: string, question: string, answer: string, confidence = 100) => {
     const verdict = judgeAnswer(BOOK, question, answer, confidence);
-    const key = verdict === "accurate" ? { key_answer: Q(question).answer } : {};
+    const key: Args = verdict === "accurate" ? { key_answer: Q(question).answer } : {};
     return fire(sim, "fact answered", g, { question, answer, confidence, card: 1, ...(verdict === null ? {} : { verdict }), ...key });
   };
   const hosts = (sim: Sim, evs: SimEvent[]) => composeGuestMessages(sim, evs).filter((m) => m.channel === "room:hosts").map((m) => m.text);
