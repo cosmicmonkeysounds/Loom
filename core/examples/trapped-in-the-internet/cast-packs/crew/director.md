@@ -45,6 +45,12 @@ background tab throttles the chime).
 | 20 | Grok Prom only: 💘 from a host, or **💔** / the alt **💌 → 🗳 → 💞 / ⛈ → 🕺** | | |
 | 21 | **G1 🏆** ceremony → **G2–G9** awards, winner picked from the recap → **G10 🖌** the painting (only if MS Paint came) → **G11 🎃** Resurrection (last: ends the show) | | |
 
+A cue that doesn't apply yet does nothing but tell `# hosts` why (*"⚖ Not
+yet: 📄 Read truth.txt first."*); it never becomes LAST, and the phone sheet
+says *Not taken*. NEXT follows tonight's branch: after 🕚 it is 🌑, after the
+dance the ending's own cue. The hardware fallbacks (🖨 🫘 🔌 💥 ❌) stay silent
+when early.
+
 **Judging is automatic.** Every fact filed on the 📝 card (question + answer
 + the 1–100 confidence slider) is judged by the server against `facts.json`
 the moment it is filed: accurate (matches the key or an alias), confident
@@ -74,7 +80,7 @@ never from a guest card.
 | stuck codex | read the guest the code from the printed code list |
 | a program marked by mistake, or to be shown mercy | a host presses 🩹 on their card; or Director → fire `unmark_for_reinstallation` with them as the subject (`/api/mod/act {id, action: "unrestrict"}` lifts only the grey, never the mark) |
 | a program who must go to the Internet and no host is near | Director → fire `mark_for_reinstallation` with them as the subject (or `/api/mod/act {id, action: "restrict"}` for the grey alone); an Antivirus does the walking |
-| a Truthcoin transfer stuck on CRA's approval, or a bad one | `/e/<event>/api/mod/wallet/approve` · `deny` · `cancel` with the card's id (the mod token or your session), or every held one at once with Run → Wallet's ✓ Approve all held (`approve-held`; a held transfer approves itself after 5 min anyway); `stimulus` mints one if Runescape is gone (`grant {to, amount}` / `freeze {to}` likewise); `unfreeze {to}` lifts a Runescape freeze early |
+| a Truthcoin transfer stuck on CRA's approval, or a bad one | Run → **Wallet**: **✓ Approve** / **⛔ Deny** / **↩ Cancel** on its row, or **✓ Approve all held** (a held transfer approves itself after 5 min anyway); **💰 Pay stimulus** if Runescape is gone; **Lift** ends a Runescape freeze early. A grant or a freeze for Runescape is API only: `/e/<event>/api/mod/wallet/grant {to, amount}` / `freeze {to}` |
 | a filing judged wrong (a typo the key did not know) | Run → Mind → Judging card → that filing's ✅ / 😤 / 🤷 (a verdict already on record is not re-counted); then add the alias to `facts.json` for next time |
 | stuck quest | fire the story event that advances it |
 | stale Bathroom Mode | Run → World → that guest's `afk` = false (at each summons) |
@@ -89,8 +95,8 @@ never from a guest card.
 | lost guest / new phone | Inspector → **re-pair QR** (never re-register) |
 | late arrival after C1 | Inspector → **scan as Norton** (clears them) |
 | performer's phone dead | Inspector → **Release** the part; they re-sign on a loaner |
-| lights wrong after a blip | re-fire the current lights cue from the cue sheet |
-| TV voice must stop | the mute on the heartbeat card |
+| lights wrong after a blip | radio **LIGHTS**: the tech op restarts the stagehand `show` job, which replays the current look on reconnect; failing that they set it by hand (Run → World → `Night.lights` names it). Re-pressing a cue does nothing: phase cues play once |
+| TV voice must stop | the mute on the heartbeat card (it stays muted through restarts and Go live: check it before doors) |
 | **ALL STOP** | **💡 Restore the house lights**, then follow the house manager |
 
 **Trabolta's worker dies** (no hosted fallback): after 20 s his thread posts
@@ -156,7 +162,8 @@ content lock for the printed stacks is 10-24 12:00.
    thinking off; both models loaded; the house Mac on its charger, `caffeinate`;
    he is hidden and asleep.
 5. Terminals green on the heartbeat card, showing attract; the TV on `view=tv`
-   showing the screensaver, **clicked once after its last boot**.
+   showing the screensaver, **clicked once after its last boot**, its voice
+   **not muted** (a rehearsal's mute survives every restart).
 6. Lights: Z2M + WLED up; screensaver look on; one blackout test (stairs,
    bathroom, tent, server room, the path stay lit; the Tube strip dim).
 7. Server-room door: the contact reads open/closed; the keypad opens from
