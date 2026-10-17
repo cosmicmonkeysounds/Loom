@@ -35,10 +35,38 @@ export const READOUT_GRACE_MS = 4_000;
 /** How long a banner stays up, counting only time the page is visible. */
 export const BANNER_MS = 15_000;
 
+/** Which alerts are this session's own (default: every one — a guest's view
+ *  only carries its own messages). */
+export type AlertFilter = (m: ChatMessage) => boolean;
+
+/** Rooms where an empty audience means the line reached nobody — a
+ *  `to location(room)` / `to participant(x)` alert whose scope was empty
+ *  lands in the lobby with `[]` — rather than a staff back-room (`# hosts`
+ *  is a faction room no guest belongs to, so its notices carry `[]`). */
+const NOBODY_WHEN_EMPTY: ReadonlySet<string> = new Set(["lobby", "location", "dm", "codex", "quests", "wallet"]);
+
+/**
+ * A booth's alerts (B1): its stream also carries lobby messages addressed to
+ * single guests (the booth builds per-guest threads from them), and a
+ * guest's own `!` pin — "🚨 GO TO THE INTERNET. You are marked…" — must not
+ * banner every booth. A booth's alert is one for everyone, one addressed to
+ * its character (`@<Character>`), or a staff notice (empty audience in a
+ * staff room, e.g. `# hosts`). The booth's own cues ride its readouts (`raise`).
+ */
+export function boothAlertFilter(character: string): AlertFilter {
+  const me = `@${character}`;
+  return (m) => {
+    if (m.audience === "all") return true;
+    if (!Array.isArray(m.audience)) return false;
+    if (m.audience.length === 0) return !NOBODY_WHEN_EMPTY.has(m.channelKind) && m.channel !== "lobby";
+    return m.audience.includes(me);
+  };
+}
+
 /** Alert broadcasts newer than `sinceSeq`, oldest first. */
-export function pickAlerts(messages: Iterable<ChatMessage>, sinceSeq: number): ChatMessage[] {
+export function pickAlerts(messages: Iterable<ChatMessage>, sinceSeq: number, forMe?: AlertFilter): ChatMessage[] {
   const out: ChatMessage[] = [];
-  for (const m of messages) if (m.alert === true && m.seq > sinceSeq && !m.hidden) out.push(m);
+  for (const m of messages) if (m.alert === true && m.seq > sinceSeq && !m.hidden && (forMe?.(m) ?? true)) out.push(m);
   return out.sort((a, b) => a.seq - b.seq);
 }
 
@@ -59,7 +87,8 @@ export function maxTsOf(messages: Iterable<ChatMessage>): number {
 /**
  * The alert to banner now, given the last one seen (`mark`): the newest
  * unseen alert at most `ALERT_WINDOW_MS` older than `now`, else null. The
- * returned `mark` moves past every unseen alert, shown or skipped. `now` is
+ * returned `mark` moves past every unseen alert, shown or skipped (an alert
+ * `forMe` rejects included — it is never shown later either). `now` is
  * the story clock — the server view's `clock`, or the newest message's `ts`
  * when that is later (a view is only rebuilt on state changes).
  */
@@ -67,12 +96,14 @@ export function nextAlert(
   messages: Iterable<ChatMessage>,
   mark: number,
   clock: number | null | undefined,
+  forMe?: AlertFilter,
 ): { alert: ChatMessage | null; mark: number } {
   const list = [...messages];
-  const fresh = pickAlerts(list, mark);
-  if (fresh.length === 0) return { alert: null, mark };
+  const all = pickAlerts(list, mark);
+  if (all.length === 0) return { alert: null, mark };
+  const last = all[all.length - 1]!;
+  const fresh = forMe === undefined ? all : all.filter(forMe);
   const now = Math.max(clock ?? Number.NEGATIVE_INFINITY, maxTsOf(list));
-  const last = fresh[fresh.length - 1]!;
   const recent = fresh.filter((m) => m.ts >= now - ALERT_WINDOW_MS);
   return { alert: recent.length > 0 ? recent[recent.length - 1]! : null, mark: last.seq };
 }
@@ -242,8 +273,13 @@ export function useAlerts(opts: {
   storage: SessionStorage;
   storageKey: string;
   sound: boolean;
+  /** Only these alerts banner (a booth's `boothAlertFilter`); the mark still
+   *  moves past the rest. Read through a ref — it may be a fresh closure. */
+  forMe?: AlertFilter;
 }): Alerts {
   const { messages, clock, session, storage, storageKey, sound } = opts;
+  const forMeRef = useRef(opts.forMe);
+  forMeRef.current = opts.forMe;
   const mark = useRef(-1);
   const rebasing = useRef(false);
   const baseline = useRef(false);
@@ -296,7 +332,7 @@ export function useAlerts(opts: {
   useEffect(() => {
     if (session === null) return;
     const before = mark.current;
-    const next = nextAlert(messages.values(), before, clock);
+    const next = nextAlert(messages.values(), before, clock, forMeRef.current);
     if (next.mark === before) return;
     mark.current = next.mark;
     persist();

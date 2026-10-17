@@ -1,19 +1,20 @@
 import { describe, expect, it } from "vitest";
 
-import { ALERT_WINDOW_MS, READOUT_GRACE_MS, initialMark, markAfterHistory, maxSeqOf, maxTsOf, nextAlert, pickAlerts, unsolicitedReadout } from "../src/alerts.ts";
+import { ALERT_WINDOW_MS, READOUT_GRACE_MS, boothAlertFilter, initialMark, markAfterHistory, maxSeqOf, maxTsOf, nextAlert, pickAlerts, unsolicitedReadout } from "../src/alerts.ts";
 import type { ChatMessage } from "../src/types.ts";
 
-function msg(seq: number, alert: boolean, opts: { hidden?: boolean; ts?: number } = {}): ChatMessage {
+function msg(seq: number, alert: boolean, opts: { hidden?: boolean; ts?: number; audience?: ChatMessage["audience"]; room?: Pick<ChatMessage, "channel" | "channelKind" | "title"> } = {}): ChatMessage {
   return {
     seq,
     channel: "lobby",
     channelKind: "lobby",
     title: "Lobby",
+    ...opts.room,
     from: "",
     kind: "signal",
     text: `a${seq}`,
     ts: opts.ts ?? seq,
-    audience: "all",
+    audience: opts.audience ?? "all",
     parentSeq: null,
     hidden: opts.hidden ?? false,
     ...(alert ? { alert: true } : {}),
@@ -106,5 +107,51 @@ describe("booth readouts (N-07)", () => {
     expect(unsolicitedReadout(t, t + READOUT_GRACE_MS)).toBe(false);
     expect(unsolicitedReadout(t, t + READOUT_GRACE_MS + 1)).toBe(true);
     expect(unsolicitedReadout(Number.NEGATIVE_INFINITY, t)).toBe(true); // never acted
+  });
+});
+
+const HOSTS = { channel: "hosts", channelKind: "faction", title: "hosts" } as const;
+
+describe("a booth's alerts are its own (B1)", () => {
+  const norton = boothAlertFilter("Norton");
+
+  it("a `!` whose scope reached nobody (an empty room's lights-out) banners no booth", () => {
+    // `broadcast "!💡 The lights in {room} go out…" to location(room)` on an
+    // empty room: a lobby line with audience [].
+    const lightsOut = msg(12, true, { ts: 5 * MIN, audience: [] });
+    expect(pickAlerts([lightsOut], -1, norton)).toEqual([]);
+    expect(nextAlert([lightsOut], 11, 5 * MIN, norton)).toEqual({ alert: null, mark: 12 });
+    // An empty location room or DM is nobody too; `# hosts` with [] is staff.
+    const emptyRoom = msg(13, true, { ts: 5 * MIN, audience: [], room: { channel: "loc:The RAM", channelKind: "location", title: "The RAM" } });
+    const staff = msg(14, true, { ts: 5 * MIN, audience: [], room: HOSTS });
+    expect(pickAlerts([lightsOut, emptyRoom, staff], -1, norton).map((m) => m.seq)).toEqual([14]);
+  });
+  // The guest's own "🚨 GO TO THE INTERNET" pin: a lobby line to one guest.
+  const guestPin = msg(7, true, { ts: 5 * MIN, audience: ["g-491630"] });
+
+  it("a guest-addressed `!` pin gives a booth no alert, but the mark passes it", () => {
+    expect(pickAlerts([guestPin], -1, norton)).toEqual([]);
+    expect(nextAlert([msg(6, false), guestPin], 6, 5 * MIN, norton)).toEqual({ alert: null, mark: 7 });
+    // The guest's own phone (no filter) still banners it.
+    expect(nextAlert([guestPin], 6, 5 * MIN).alert?.seq).toBe(7);
+  });
+
+  it("`all`, `@<Character>` and staff (empty audience) alerts still banner", () => {
+    const all = msg(8, true, { ts: 5 * MIN });
+    const mine = msg(9, true, { ts: 5 * MIN, audience: ["@Norton"] });
+    const staff = msg(10, true, { ts: 5 * MIN, audience: [], room: HOSTS });
+    const other = msg(11, true, { ts: 5 * MIN, audience: ["@McAfee"] });
+    expect(pickAlerts([guestPin, all, mine, staff, other], -1, norton).map((m) => m.seq)).toEqual([8, 9, 10]);
+    expect(nextAlert([all], 7, 5 * MIN, norton).alert?.seq).toBe(8);
+    expect(nextAlert([mine], 7, 5 * MIN, norton).alert?.seq).toBe(9);
+  });
+
+  it("the guest pin landing with the booth's readout leaves the readout up", () => {
+    // `onResponse` raises the readout; the pin's message batch then runs the
+    // hook's effect, which only replaces the banner when it picks an alert.
+    const batch = [msg(6, false, { ts: 5 * MIN }), guestPin, msg(12, true, { ts: 5 * MIN, audience: ["g-77"] })];
+    const r = nextAlert(batch, 6, 5 * MIN, norton);
+    expect(r.alert).toBeNull();
+    expect(r.mark).toBe(12);
   });
 });

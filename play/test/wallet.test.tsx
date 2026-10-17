@@ -33,6 +33,8 @@ import {
   walletCardTitle,
   walletFooterActions,
   walletGlyph,
+  lastWalletStep,
+  walletFootLine,
   walletItemState,
   walletNeedsYou,
   walletStateLine,
@@ -41,7 +43,7 @@ import {
   walletTicking,
 } from "../src/wallet.tsx";
 import type { ChatMessage, GuestView, PrimeView, WalletCard, WalletQueueView, WalletTxView, WalletView } from "../src/types.ts";
-import { PickerSheet } from "../src/chat.tsx";
+import { MessageGroup, PickerSheet } from "../src/chat.tsx";
 import { INBOX, buildGuestChannels, buildPrimeChannels, isPinnedRoom, personalStream } from "../src/session.ts";
 import { WALLET_ROOM, channelHead } from "../src/threads.ts";
 
@@ -617,5 +619,101 @@ describe("A9: the minter's reserve — 🎁 grant, 🧊 freeze, a frozen wallet"
       expect(picked).toEqual(["g2"]);
       expect(closed).toBe(keepOpen ? 0 : 1);
     }
+  });
+});
+
+describe("a wallet card opens its thread of updates (B8)", () => {
+  const actions = (v: WalletView | WalletQueueView | null, me: string | null) => ({ view: v, me, clock: 5000 });
+  const root = (c: WalletCard): ChatMessage => msg(c, { kind: "wallet", wallet: c, text: "— settles in 60 s unless CRA Agent Software denies it." });
+  const step = (c: WalletCard, seq: number): ChatMessage => msg(c, { seq, kind: "wallet", wallet: c, parentSeq: 7, text: "" });
+
+  it("the root plus one step draws `.wallet-foot .link` reading \"1 update ›\"", () => {
+    const r = root(card());
+    const denied = step(card({ step: "denied", by: "CRA_Agent_Software" }), 9);
+    const html = render(
+      <WalletActionsProvider value={actions(view(), "me")}>
+        <MessageGroup run={{ from: "", kind: "wallet", messages: [r] }} allMessages={[r, denied]} onOpenThread={() => {}} />
+      </WalletActionsProvider>,
+    );
+    expect(html).toMatch(/<div class="wallet-foot">.*<button class="link">1 update ›<\/button>/su);
+    // Closed (gone from the view): the foot says how, not just "closed".
+    expect(html).toContain("⛔ Denied by CRA Agent Software — refunded");
+  });
+
+  it("the booth's closed approval card reads its outcome", () => {
+    const appr = card({ kind: "approval", step: "held", id: "t9" });
+    const r = root(appr);
+    const ok = step(card({ kind: "approval", step: "approved", id: "t9", by: "CRA_Agent_Software" }), 11);
+    const q: WalletQueueView = { name: "Truthcoin", queue: [], every: 3, windowMs: 60_000 };
+    const html = render(
+      <WalletActionsProvider value={actions(q, null)}>
+        <MessageGroup run={{ from: "", kind: "wallet", messages: [r] }} allMessages={[r, ok]} onOpenThread={() => {}} />
+      </WalletActionsProvider>,
+    );
+    expect(html).toContain("✅ Approved by CRA Agent Software");
+    expect(html).toContain("1 update ›");
+    // The head glyph agrees with the foot: ✅, not the held card's ⏳.
+    expect(html.match(/class="wallet-ico"[^>]*>([^<]*)</u)?.[1]).toBe("✅");
+  });
+
+  it("the booth's closed denied card shows ⛔, never ⏳", () => {
+    const appr = card({ kind: "approval", step: "held", id: "t9" });
+    const r = root(appr);
+    const no = step(card({ kind: "approval", step: "denied", id: "t9", by: "CRA_Agent_Software" }), 11);
+    const q: WalletQueueView = { name: "Truthcoin", queue: [], every: 3, windowMs: 60_000 };
+    const html = render(
+      <WalletActionsProvider value={actions(q, null)}>
+        <MessageGroup run={{ from: "", kind: "wallet", messages: [r] }} allMessages={[r, no]} onOpenThread={() => {}} />
+      </WalletActionsProvider>,
+    );
+    expect(html).toContain("Denied by CRA Agent Software");
+    expect(html.match(/class="wallet-ico"[^>]*>([^<]*)</u)?.[1]).toBe("⛔");
+  });
+
+  it("the newest step wins; a live item keeps its state line", () => {
+    const list = [root(card()), step(card({ step: "approved" }), 9), step(card({ step: "settled" }), 10), msg(card(), { seq: 12 })];
+    expect(lastWalletStep(list, 7)?.step).toBe("settled");
+    expect(lastWalletStep(list, 99)).toBeNull();
+    expect(walletFootLine(card(), "pending", view({ transfers: [tx()] }), 1000, card({ step: "settled" }))).toBe("settles in 60 s");
+    expect(walletFootLine(card(), null, null, 1000, null)).toBe("closed");
+  });
+});
+
+describe("a denied or cancelled transfer stops counting down (B9)", () => {
+  it("reads its state at once, not the old deny window", () => {
+    expect(walletStateLine(card(), "denied", view({ transfers: [tx({ state: "denied" })] }), 5000)).toBe("denied");
+    expect(walletStateLine(card(), "cancelled", view({ transfers: [tx({ state: "cancelled" })] }), 5000)).toBe("cancelled");
+    expect(walletStateLine(card(), "settled", view({ transfers: [tx({ state: "settled" })] }), 5000)).toBe("settled");
+    // Still pending: the countdown.
+    expect(walletStateLine(card(), "pending", view({ transfers: [tx()] }), 5000)).toBe("settles in 56 s");
+    // A request only counts down while open.
+    const asked = card({ kind: "request", id: "r1", step: "asked", settleAt: 601_000 });
+    expect(walletStateLine(asked, "open", view(), 1000)).toBe("expires in 600 s");
+    expect(walletStateLine(asked, "paying", view(), 1000)).toBe("paying");
+  });
+});
+
+describe("wallet glyphs follow the live state; the recipient isn't shown a hidden pending (B7)", () => {
+  it("a settled card shows ✅, a denied one ⛔; a thread step keeps its own glyph", () => {
+    expect(walletGlyph(card(), "settled")).toBe("✅");
+    expect(walletGlyph(card(), "denied")).toBe("⛔");
+    expect(walletGlyph(card(), "cancelled")).toBe("↩️");
+    expect(walletGlyph(card(), "pending")).toBe("⏳");
+    expect(walletGlyph(card(), null)).toBe("⏳");
+    expect(walletGlyph(card({ step: "received" }), "settled")).toBe("💰");
+    const html = render(
+      <WalletActionsProvider value={{ view: view({ transfers: [tx({ state: "settled" })] }), me: "me", clock: 70_000 }}>
+        <WalletCardView msg={msg(card())} card={card()} />
+      </WalletActionsProvider>,
+    );
+    expect(html).toMatch(/wallet-ico" aria-hidden="true">✅</u);
+    expect(html).not.toContain("⏳");
+  });
+
+  it("a recipient with only incoming items shows no pending; the sender still does", () => {
+    const incoming = view({ transfers: [tx({ from: "g1", fromName: "Excel", to: "me", toName: "Calculator" })] });
+    expect(walletSummary(incoming, "me")).toBe("🪙 120 Truthcoin");
+    expect(walletSummary(view({ transfers: [tx({ state: "held", from: "g1", to: "me" })] }), "me")).toBe("🪙 120 Truthcoin");
+    expect(walletSummary(view({ transfers: [tx()] }), "me")).toBe("🪙 120 Truthcoin · 1 pending");
   });
 });

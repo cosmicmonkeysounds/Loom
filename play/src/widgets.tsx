@@ -39,6 +39,9 @@ export interface WidgetDef {
   /** The story re-deals this kind (a fresh 📝 card after every filing):
    *  only the newest in a room is live; earlier ones fold away. */
   supersedes?: boolean;
+  /** This card asks nothing any more (a 📝 card dealt with no open
+   *  questions — the round closed): it renders as a note, not a task. */
+  closed?: (card: WidgetCard) => boolean;
   render: (p: WidgetProps) => ReactNode;
 }
 
@@ -288,6 +291,9 @@ export function PassCard({ card, viewer }: WidgetProps) {
 
 // --- fact -------------------------------------------------------------------
 
+/** A 📝 card with no open questions (the round closed). */
+export const FACT_CLOSED_NOTE = "The filing is closed — no open questions.";
+
 /** Longest answer a 📝 fact card files (the server refuses longer). */
 export const FACT_MAX = 200;
 
@@ -341,6 +347,17 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
   // a round that hasn't opened, a second filing… is refused in its reply).
   const sentSure = done && typeof answered["confidence"] === "number" ? ` · ${answered["confidence"]}%` : "";
   const sent = filedFor ? `✔ sent: ${filedFor}${sentSure}` : `✔ sent${sentSure}`;
+  if (!done && questions.length === 0) {
+    // Dealt after a round closed with nothing left to file (B14): a note.
+    return (
+      <div className="widget fact done folded closed" role="note">
+        <span className="widget-glyph" aria-hidden>
+          📝
+        </span>{" "}
+        <span className="widget-state">{FACT_CLOSED_NOTE}</span>
+      </div>
+    );
+  }
   if (superseded) {
     return (
       <div className="widget fact done folded" role="note">
@@ -477,9 +494,16 @@ export const WIDGETS: Record<string, WidgetDef> = {
   poll: { label: "📊 poll", answerable: true, render: (p) => <Poll {...p} /> },
   tutorial: { label: "📘 orientation", answerable: true, overlay: true, render: (p) => <TutorialCard {...p} /> },
   pass: { label: "🎟️ your pass", answerable: false, render: (p) => <PassCard {...p} /> },
-  fact: { label: "📝 file a fact", answerable: true, supersedes: true, render: (p) => <FactCard {...p} /> },
+  fact: { label: "📝 file a fact", answerable: true, supersedes: true, closed: (c) => factQuestions(c.params["questions"]).length === 0, render: (p) => <FactCard {...p} /> },
   answer: { label: "💬 your answer", answerable: true, render: (p) => <AnswerCard {...p} /> },
 };
+
+/** Does this card still ask the viewer for an answer (an answerable kind
+ *  that isn't closed)? */
+export function cardAsks(card: WidgetCard): boolean {
+  const def = WIDGETS[card.kind];
+  return (def?.answerable ?? false) && !(def?.closed?.(card) ?? false);
+}
 
 /** The cards a newer card of the same (re-dealt) kind has replaced, per
  *  room: every one but the newest of each `supersedes` kind. */

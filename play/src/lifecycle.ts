@@ -40,6 +40,21 @@ export function lifecycleDropsSession(kind: string, role: SessionRole): boolean 
   }
 }
 
+/**
+ * Does this transition start a fresh run? Every known one does: the story
+ * replays from its entry and chat seqs restart, so a session that survives
+ * it (a booth on `reset` / `reload`) drops its per-run state — the scanner
+ * readouts, the cards it answered (B5).
+ */
+export function lifecycleStartsNewRun(kind: string): boolean {
+  return kind === LifecycleKind.Reset || kind === LifecycleKind.Reload || kind === LifecycleKind.GoLive || kind === LifecycleKind.Ended;
+}
+
+/** A booth's per-run list (its readouts) after a lifecycle notice. */
+export function afterLifecycle<T>(list: T[], kind: string): T[] {
+  return lifecycleStartsNewRun(kind) ? [] : list;
+}
+
 /** The one-line explanation the join screen shows after a session was
  *  dropped by a transition; `null` for a transition that keeps the session. */
 export function lifecycleNotice(kind: string, role: SessionRole): string | null {

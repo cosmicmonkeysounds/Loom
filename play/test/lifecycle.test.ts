@@ -50,3 +50,67 @@ describe("performer dead-session detection", () => {
     expect(performerSessionDead(404, "unknown guest")).toBe(false);
   });
 });
+
+describe("a re-join after a restart starts with no answered cards (B2)", () => {
+  it("a card answered last session is answerable again under the new sign-in", async () => {
+    const { perSessionUpdate, perSessionValue, pendingWidget } = await import("../src/session.ts");
+    type Answers = ReadonlyMap<number, Record<string, unknown>>;
+    const EMPTY: Answers = new Map();
+    const captcha = {
+      seq: 4, channel: "loc:Mud Room", channelKind: "location", title: "Mud Room", from: "Clippy", kind: "widget",
+      text: "Prove you're human", ts: 4, audience: "all", parentSeq: null, hidden: false, widget: { kind: "captcha", params: {} },
+    } as const;
+    const msgs = new Map([[4, captcha as never]]);
+    // Session A answers the CAPTCHA at seq 4.
+    let held = perSessionUpdate({ session: null, value: EMPTY }, "tok-a", EMPTY, (p) => new Map(p).set(4, { solved: true }));
+    expect(pendingWidget(msgs, "captcha", new Set(perSessionValue(held, "tok-a", EMPTY).keys()))).toBeNull();
+    // The restart's lifecycle frame drops the session; the join screen holds nothing.
+    expect(perSessionValue(held, null, EMPTY).size).toBe(0);
+    // Register again: the new run's CAPTCHA reuses seq 4 and is answerable.
+    expect(pendingWidget(msgs, "captcha", new Set(perSessionValue(held, "tok-b", EMPTY).keys()))?.seq).toBe(4);
+    // A late write lands on the new session only, never resurrecting the old answer.
+    held = perSessionUpdate(held, "tok-b", EMPTY, (p) => new Map(p).set(9, {}));
+    expect([...perSessionValue(held, "tok-b", EMPTY).keys()]).toEqual([9]);
+    // Same session, no change: the held object is kept (no re-render).
+    expect(perSessionUpdate(held, "tok-b", EMPTY, (p) => p)).toBe(held);
+  });
+});
+
+describe("a booth's readouts on a story restart (B5)", () => {
+  it("response events, then a reset, leave the Readouts list empty", async () => {
+    const { afterLifecycle, lifecycleStartsNewRun } = await import("../src/lifecycle.ts");
+    // The booth's onResponse prepends each readout.
+    let readouts: Array<{ id: number; text: string }> = [];
+    for (const [id, text] of [[0, "✅ Cleared Calculator."], [1, "🚨 Calculator is marked for reinstallation."]] as const) readouts = [{ id, text }, ...readouts];
+    expect(readouts).toHaveLength(2);
+    // The booth survives a reset / reload (it isn't dropped) — its readouts don't.
+    expect(lifecycleDropsSession(LifecycleKind.Reset, SessionRole.Performer)).toBe(false);
+    expect(afterLifecycle(readouts, LifecycleKind.Reset)).toEqual([]);
+    expect(afterLifecycle(readouts, LifecycleKind.Reload)).toEqual([]);
+    // A notice this build doesn't know keeps them.
+    expect(afterLifecycle(readouts, "something-new")).toBe(readouts);
+    for (const k of Object.values(LifecycleKind)) expect(lifecycleStartsNewRun(k)).toBe(true);
+    expect(lifecycleStartsNewRun("something-new")).toBe(false);
+  });
+});
+
+describe("a booth signed back in after Go live starts with no answered cards", () => {
+  it("an Inbox card answered in the rehearsal is answerable in the live run", async () => {
+    const { perSessionUpdate, perSessionValue, hasPendingCard } = await import("../src/session.ts");
+    type Answers = ReadonlyMap<number, Record<string, unknown>>;
+    const EMPTY: Answers = new Map();
+    const card = {
+      seq: 40, channel: "inbox", channelKind: "pinned", title: "Inbox", from: "Trabolta", kind: "widget",
+      text: "Sandy's pickup line?", ts: 40, audience: ["@Clippy"], parentSeq: null, hidden: false, widget: { kind: "answer", params: {} },
+    } as const;
+    const msgs = [card as never];
+    // The rehearsal booth (token r) answers the card at seq 40.
+    const held = perSessionUpdate({ session: null, value: EMPTY }, "tok-r", EMPTY, (p) => new Map(p).set(40, { text: "hi" }));
+    expect(hasPendingCard(msgs, new Set(perSessionValue(held, "tok-r", EMPTY).keys()))).toBe(false);
+    // Go live / End / a dead token drop the booth (auth → null) …
+    expect(perSessionValue(held, null, EMPTY).size).toBe(0);
+    // … and the performer signs in again under a new token: the live run's
+    // card at the same seq is still the performer's move.
+    expect(hasPendingCard(msgs, new Set(perSessionValue(held, "tok-live", EMPTY).keys()))).toBe(true);
+  });
+});

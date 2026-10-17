@@ -7,18 +7,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DOORS_POLL_MS, type Identities, type PictureChoices, type ProgramHit, type ProgramPictures } from "./avatars.ts";
 import { ApiError, api, useChatStream } from "./client.ts";
-import { maxSeqOf, unsolicitedReadout, useAlerts, type Alert } from "./alerts.ts";
+import { boothAlertFilter, maxSeqOf, unsolicitedReadout, useAlerts, type Alert } from "./alerts.ts";
 import { checkinFromSearch, withoutCheckin } from "./checkin.ts";
 import { pmChannelId, pmOtherParty, unlockFromSearch, withoutUnlock } from "./codex.ts";
 import { usePlayHost } from "./host.ts";
 import { roomFromMessage, roomFromSearch, roomTarget, withoutRoom } from "./room.ts";
-import { SessionRole, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "./lifecycle.ts";
+import { SessionRole, afterLifecycle, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, lifecycleStartsNewRun, performerSessionDead } from "./lifecycle.ts";
 import { locationOfRoom, occupantsByLocation, type Presence } from "./presence.ts";
 import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, WALLET_ROOM, channelHead, groupByChannel, prettyName, questSummary, withThe, useThreads, type Threads } from "./threads.ts";
 import { queueSummary, walletNeedsYou, walletSummary } from "./wallet.tsx";
 import { useTyping } from "./typing.ts";
 import type { Channel, ChatMessage, Decision, GuestView, PrimeView } from "./types.ts";
-import { WIDGETS, supersededCards, type WidgetResult } from "./widgets.tsx";
+import { cardAsks, supersededCards, type WidgetResult } from "./widgets.tsx";
 
 // --- persistence ------------------------------------------------------------
 
@@ -501,12 +501,49 @@ export function pendingWidget(messages: ReadonlyMap<number, ChatMessage>, kind: 
 }
 
 
+/**
+ * State that belongs to one sign-in (B2): a value held for one session
+ * token reads as `empty` under any other. A restart cuts the session
+ * (`dropSession`), the guest re-registers on the same tab, and the new run
+ * hands out the old run's chat seqs again — a card answered last run must
+ * not read "✔ Submitted" in this one. Keying on the token covers register,
+ * leave and every drop at once.
+ */
+export interface PerSession<T> {
+  readonly session: string | null;
+  readonly value: T;
+}
+
+/** The value for `session` (`empty` when it was held for another one). */
+export function perSessionValue<T>(held: PerSession<T>, session: string | null, empty: T): T {
+  return held.session === session ? held.value : empty;
+}
+
+/** Apply `f` to `session`'s value (starting from `empty` for a new session). */
+export function perSessionUpdate<T>(held: PerSession<T>, session: string | null, empty: T, f: (prev: T) => T): PerSession<T> {
+  const prev = perSessionValue(held, session, empty);
+  const value = f(prev);
+  return held.session === session && value === held.value ? held : { session, value };
+}
+
+/** `useState` scoped to a sign-in; `empty` must be a stable constant. */
+function usePerSession<T>(session: string | null, empty: T): [T, (f: (prev: T) => T) => void] {
+  const [held, setHeld] = useState<PerSession<T>>(() => ({ session, value: empty }));
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+  const update = useCallback((f: (prev: T) => T) => setHeld((h) => perSessionUpdate(h, sessionRef.current, empty, f)), [empty]);
+  return [perSessionValue(held, session, empty), update];
+}
+
+const NO_ANSWERS: ReadonlyMap<number, WidgetResult> = new Map();
+const NONE_OPENED: ReadonlySet<string> = new Set();
+
 /** Is a card still waiting on this participant — an answerable widget with
  *  no answer in this session? A re-dealt card (a 📝 fact card) only counts
  *  while it is the newest. Shared by the guest's rooms and the booth's. */
 export function hasPendingCard(msgs: readonly ChatMessage[], answered: ReadonlySet<number>): boolean {
   const old = supersededCards(msgs);
-  return msgs.some((m) => m.kind === "widget" && m.widget !== undefined && (WIDGETS[m.widget.kind]?.answerable ?? false) && !answered.has(m.seq) && !old.has(m.seq));
+  return msgs.some((m) => m.kind === "widget" && m.widget !== undefined && cardAsks(m.widget) && !answered.has(m.seq) && !old.has(m.seq));
 }
 
 /** Group the guest's messages into threads, docking the pending decision, and
@@ -604,7 +641,7 @@ export function buildGuestChannels(
         id,
         kind: "wallet" as const,
         title: "Wallet",
-        subtitle: view?.wallet ? walletSummary(view.wallet) : "",
+        subtitle: view?.wallet ? walletSummary(view.wallet, view.id) : "",
         spaceId: PINNED_SPACE,
         order: -1,
         canPost: false,
@@ -961,7 +998,8 @@ export function useGuestSession(): GuestSession {
   // Widgets: one answer per card. The server refuses a second (409), and
   // the snapshot lists the cards already answered so a reload renders them
   // resolved (the result itself isn't replayed — an empty record marks it).
-  const [widgetAnswers, setWidgetAnswers] = useState<ReadonlyMap<number, WidgetResult>>(() => new Map());
+  // Per sign-in: a new session (a re-join after a restart) starts clean (B2).
+  const [widgetAnswers, setWidgetAnswers] = usePerSession(me?.token ?? null, NO_ANSWERS);
   const answeredList = status?.answered;
   useEffect(() => {
     if (answeredList === undefined || answeredList.length === 0) return;
@@ -991,7 +1029,7 @@ export function useGuestSession(): GuestSession {
     [post],
   );
 
-  const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
+  const [opened, setOpened] = usePerSession(me?.token ?? null, NONE_OPENED);
   const dock = requiredDecision(status, { choose: (i) => void choose(i), join: (f) => void join(f), escape: () => void escape() });
   const threads = useThreads(withAgents(buildGuestChannels(shown, dock, status, opened, new Set(widgetAnswers.keys())), status, typing), {
     store: host.storage,
@@ -1376,7 +1414,13 @@ export function usePrimeSession(): PrimeSession {
     // re-sends the snapshot + history, which is then old news for alerts.
     onLifecycle: (n) => {
       if (lifecycleDropsSession(n.kind, SessionRole.Performer)) dropBooth(lifecycleNotice(n.kind, SessionRole.Performer));
-      else alertsRef.current?.rebase();
+      else {
+        // B5: last run's readouts and answered cards are not tonight's. The
+        // notice lands before the replay, so the new run's readouts follow.
+        setResponses((r) => afterLifecycle(r, n.kind));
+        if (lifecycleStartsNewRun(n.kind)) setWidgetAnswers(() => NO_ANSWERS);
+        alertsRef.current?.rebase();
+      }
     },
     // The stream closed for good: confirm the booth's token is really gone
     // (the show went live while the phone slept) before signing out.
@@ -1482,7 +1526,10 @@ export function usePrimeSession(): PrimeSession {
   // Cards dealt to this character: one answer per card. The server refuses
   // a second (409); the snapshot lists the cards already answered so a
   // reload renders them resolved (an empty record marks each).
-  const [widgetAnswers, setWidgetAnswers] = useState<ReadonlyMap<number, WidgetResult>>(() => new Map());
+  // Held per sign-in like the guest's (B2): Go live, End and a dead token
+  // drop the booth, the performer signs in again under a new token, and the
+  // new run hands out the old run's seqs — last run's answers read empty.
+  const [widgetAnswers, setWidgetAnswers] = usePerSession(auth?.token ?? null, NO_ANSWERS);
   const answeredList = view?.answered;
   useEffect(() => {
     if (answeredList === undefined || answeredList.length === 0) return;
@@ -1522,10 +1569,10 @@ export function usePrimeSession(): PrimeSession {
     setResponses([]);
     setReady(false);
     setNotice(null);
-    setWidgetAnswers(new Map());
     host.onEnded("prime", null);
   }, [drop, host, auth, base]);
 
+  const boothFilter = useMemo(() => (auth !== null ? boothAlertFilter(auth.character) : undefined), [auth]);
   const alerts = useAlerts({
     messages,
     clock: view?.clock,
@@ -1533,6 +1580,8 @@ export function usePrimeSession(): PrimeSession {
     storage: host.storage,
     storageKey: PRIME_ALERTS,
     sound: host.sound,
+    // B1: never a guest's own `!` (the booth holds every guest's lobby lines).
+    forMe: boothFilter,
   });
   alertsRef.current = alerts;
   const threads = useThreads(buildPrimeChannels(messages, view, new Set(widgetAnswers.keys())).map((c) => (typing.has(c.id) ? { ...c, typing: typing.get(c.id) } : c)));

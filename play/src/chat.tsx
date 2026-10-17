@@ -25,9 +25,9 @@ import {
   type MessageRun,
   type SpaceGroup,
 } from "./threads.ts";
-import type { Action, Channel, ChatMessage, Decision, QuestStatus } from "./types.ts";
+import type { Action, Channel, ChatMessage, Decision, QuestStatus, WalletCard } from "./types.ts";
 import { WidgetHost, supersededCards, widgetLabel, type WidgetResult } from "./widgets.tsx";
-import { WalletCardView } from "./wallet.tsx";
+import { WalletCardView, lastWalletStep } from "./wallet.tsx";
 
 // --- small shared atoms -----------------------------------------------------
 
@@ -644,10 +644,13 @@ export function MessageBubble({
   onPerson,
   questStatus,
   superseded,
+  walletOutcome,
 }: {
   msg: ChatMessage;
   /** Where a quest card's quest stands (read off its thread). */
   questStatus?: QuestStatus;
+  /** A wallet root's newest thread step (how it closed). */
+  walletOutcome?: WalletCard | null;
   /** A newer card of the same re-dealt kind follows this one. */
   superseded?: boolean;
   /** Tag the bubble with its channel (used in the performer's flat view). */
@@ -700,7 +703,7 @@ export function MessageBubble({
   if (msg.kind === "quest" && msg.quest) {
     return <QuestView msg={msg} modBtn={modBtn} status={questStatus} replies={replies} onOpenThread={onOpenThread} />;
   }
-  if (msg.kind === "wallet" && msg.wallet) return <WalletCardView msg={msg} card={msg.wallet} modBtn={modBtn} replies={replies} onOpenThread={onOpenThread} />;
+  if (msg.kind === "wallet" && msg.wallet) return <WalletCardView msg={msg} card={msg.wallet} modBtn={modBtn} replies={replies} onOpenThread={onOpenThread} outcome={walletOutcome} />;
   if (msg.kind !== "line") {
     return (
       <div className={`msg ${cls} ${msg.hidden ? "hidden" : ""} ${typing ? "typing" : ""} ${pending ? "pending" : ""}`}>
@@ -783,6 +786,21 @@ export function MessageGroup({
         onOpenThread={onOpenThread}
         replies={replyCountFor(allMessages, m.seq)}
         questStatus={questStatusOf(allMessages, m.seq)}
+      />
+    );
+  }
+  if (run.kind === "wallet") {
+    // A wallet card opens its thread of updates — Denied / Approved /
+    // Refunded / Paid (B8); its foot reads how it closed.
+    const m = run.messages[0]!;
+    return (
+      <MessageBubble
+        msg={m}
+        showChannel={showChannel}
+        moderate={moderate}
+        onOpenThread={onOpenThread}
+        replies={replyCountFor(allMessages, m.seq)}
+        walletOutcome={lastWalletStep(allMessages, m.seq)}
       />
     );
   }
@@ -996,6 +1014,17 @@ export function PinnedRail({ pins }: { pins: ChatMessage[] }) {
   );
 }
 
+/** A restricted (marked) program standing in a room may not post there (B4). */
+export const RESTRICTED_ROOM_NOTE = "⛔ You're restricted — you can only talk in your direct messages.";
+
+/** Why the composer is gone: restricted where you stand, elsewhere, or read-only. */
+export function cantPostNote(channel: Pick<Channel, "kind" | "member" | "here">): string {
+  if (channel.kind !== "location") return "This room is read-only.";
+  // Standing here and still refused: only restriction does that.
+  if (channel.member === true || channel.here === true) return RESTRICTED_ROOM_NOTE;
+  return "You're not in this room — walk there to talk here.";
+}
+
 export function ChannelView({
   channel,
   onBack,
@@ -1105,7 +1134,7 @@ export function ChannelView({
           )}
           {onSend && !canPost && (
             <div className="cant-post">
-              {channel.kind === "location" ? "You're not in this room — walk there to talk here." : "This room is read-only."}
+              {cantPostNote(channel)}
             </div>
           )}
         </footer>

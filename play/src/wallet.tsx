@@ -16,12 +16,16 @@ import type { Action, ChatMessage, WalletCard, WalletQueueView, WalletTxView, Wa
 
 // --- pure helpers ---------------------------------------------------------------
 
-/** The Wallet room's subtitle: `🪙 120 Truthcoin · 2 pending`. */
-export function walletSummary(w: WalletView): string {
+/** The Wallet room's subtitle: `🪙 120 Truthcoin · 2 pending`. With `me`,
+ *  only the viewer's own sends count: an incoming transfer has no card in
+ *  the room until it settles (its deny window is not the recipient's to
+ *  see), so counting it read "1 pending" over an empty room (B7). */
+export function walletSummary(w: WalletView, me?: string | null): string {
   const base = `🪙 ${w.balance} ${w.name}`;
   const held = w.approver?.queue.filter((t) => t.state === "held").length ?? 0;
   if (held > 0) return `${base} · ${held} to approve`;
-  const open = w.transfers.filter((t) => t.state === "pending" || t.state === "held").length + w.requests.length + w.offers.length;
+  const sends = w.transfers.filter((t) => (t.state === "pending" || t.state === "held") && (me == null || t.from === me)).length;
+  const open = sends + w.requests.length + w.offers.length;
   return open > 0 ? `${base} · ${open} pending` : base;
 }
 
@@ -151,10 +155,13 @@ const STEP_GLYPH: Record<string, string> = {
   thawed: "☀️",
 };
 
-/** The glyph for a card's step. */
-export function walletGlyph(card: WalletCard): string {
+/** The glyph for a card's step — or, on an in-flight root card (⏳) given
+ *  its live `state`, for that state: a settled send shows ✅, a denied one
+ *  ⛔ (B7). Thread steps pass no state and keep their own glyph. */
+export function walletGlyph(card: WalletCard, state?: string | null): string {
   if (card.kind === "grant") return "🎁";
   if (card.kind === "freeze" && card.step === "expired") return "☀️";
+  if ((card.step === "pending" || card.step === "held") && state != null && STEP_GLYPH[state] !== undefined) return STEP_GLYPH[state]!;
   return STEP_GLYPH[card.step] ?? "💰";
 }
 
@@ -252,11 +259,28 @@ export function walletStateLine(card: WalletCard, state: string | null, view: Wa
     const held = secondsLeft(heldDeadline(view, card), clock);
     return held > 0 ? `auto-approves in ${mmss(held)}` : state;
   }
-  if (card.step === "pending" || card.step === "asked" || card.step === "sent" || card.step === "offered") {
+  // Count down only while the item is still live: a denied or cancelled
+  // transfer stays in the view and reads its state at once (B9).
+  const live = card.step === "pending" ? state === "pending" : (card.step === "asked" || card.step === "sent" || card.step === "offered") && state === "open";
+  if (live) {
     const left = secondsLeft(card.settleAt, clock);
     if (left > 0) return card.kind === "request" || card.kind === "offer" ? `expires in ${left} s` : `settles in ${left} s`;
   }
   return state;
+}
+
+/** The newest step in a root card's thread (its outcome once closed), or null. */
+export function lastWalletStep(messages: readonly ChatMessage[], rootSeq: number): WalletCard | null {
+  let best: ChatMessage | null = null;
+  for (const m of messages) if (m.parentSeq === rootSeq && m.wallet && (best === null || m.seq > best.seq)) best = m;
+  return best?.wallet ?? null;
+}
+
+/** The root card's foot: the live state line, or — once the item has left
+ *  the view ("closed") — how it closed, read off its last step (B8). */
+export function walletFootLine(card: WalletCard, state: string | null, view: WalletView | WalletQueueView | null, clock: number, outcome?: WalletCard | null): string {
+  if (state === null && outcome && card.kind !== "grant" && card.kind !== "freeze") return walletStepLine(outcome);
+  return walletStateLine(card, state, view, clock);
 }
 
 export type WalletButton = "pay" | "declineRequest" | "accept" | "declineOffer" | "approve" | "deny" | "cancel";
@@ -405,12 +429,15 @@ export function WalletCardView({
   modBtn,
   replies,
   onOpenThread,
+  outcome,
 }: {
   msg: ChatMessage;
   card: WalletCard;
   modBtn?: ReactNode;
   replies?: number;
   onOpenThread?: (rootSeq: number) => void;
+  /** The newest step in its thread (`lastWalletStep`). */
+  outcome?: WalletCard | null;
 }) {
   const actions = useWalletActions();
   if (msg.parentSeq != null) {
@@ -434,7 +461,9 @@ export function WalletCardView({
       <div className={`wallet-card ${card.kind} ${state ?? "closed"}`}>
         <div className="wallet-head">
           <span className="wallet-ico" aria-hidden>
-            {walletGlyph(card)}
+            {/* A closed item (gone from the view) reads its glyph off its
+                outcome, like its foot line — never ⏳ beside "Denied". */}
+            {walletGlyph(card, state ?? outcome?.step ?? null)}
           </span>
           <strong className="wallet-title">{walletCardTitle(card)}</strong>
           {card.kind !== "freeze" && (
@@ -451,7 +480,7 @@ export function WalletCardView({
         {msg.text && <p className="wallet-text">{msg.text}</p>}
         <div className="wallet-foot">
           <span className="muted wallet-state">
-            {walletStateLine(card, state, actions.view, actions.clock)}
+            {walletFootLine(card, state, actions.view, actions.clock, outcome)}
           </span>
           {open && (
             <button className="link" onClick={open}>
