@@ -71,8 +71,8 @@ step "3. the door contact alone: open → open:true, shut → open:false (retain
 # code (or the key) from outside, or by the inside handle.
 ask "close the door"
 watch sensors/serverroom/door door; sleep 1
-ask "OPEN the door ~3 s, then CLOSE it, then wait 3 s"
-sleep 2; kill %% 2>/dev/null
+ask "OPEN the door ~3 s, then CLOSE it, then press enter"
+sleep 5; kill %% 2>/dev/null   # "closed" lands ~3 s after the loops part (two 1.5 s debounces)
 grep -q '"open":true' "$TMP/door" && grep -q '"open":false' "$TMP/door" && ok "door: $(tr '\n' ' ' < "$TMP/door")" || bad "door messages: $(tr '\n' ' ' < "$TMP/door") (no open:true = the loops never touch: a broken loop is SILENT)"
 grep -q '"mode":"tape"' "$TMP/door" && ! grep -q '"reed"' "$TMP/door" && ok "payload {open, tape, mode: tape}, no reed" || bad "payload shape: $(head -1 "$TMP/door")"
 [ "$(grep -c '"open":true' "$TMP/door")" = 1 ] && ok "one opening, one open:true" || bad "$(grep -c '"open":true' "$TMP/door") open:true for one opening (contact bouncing?)"
@@ -82,7 +82,9 @@ ask "OPEN the door and HOLD it open (don't shut it until told)"
 watch sensors/serverroom/door held; sleep 1
 ask "jiggle the open door for a few seconds (don't shut it), then let it rest, press enter"
 sleep 10; kill %% 2>/dev/null
-[ "$(grep -c . "$TMP/held")" = 1 ] && grep -q '"open":true' "$TMP/held" && ok "held open 10 s+: only the retained open:true" || bad "held open: $(tr '\n' ' ' < "$TMP/held") (expected just the retained open:true)"
+# One open:true (the retained one, or the live one if enter beat the 0.6 s
+# open debounce) and never an open:false after it.
+[ "$(grep -c '"open":true' "$TMP/held")" = 1 ] && ! sed -n '/"open":true/,$p' "$TMP/held" | grep -q '"open":false' && ok "held open 10 s+: one open:true, never closed" || bad "held open: $(tr '\n' ' ' < "$TMP/held") (expected one open:true and nothing after it)"
 ask "CLOSE the door"
 
 step "4. the patch: Combo A in any order → one complete state, a click per cable"
