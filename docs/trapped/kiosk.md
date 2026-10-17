@@ -140,6 +140,46 @@ house announcements* **off** — the living room hears the house speakers.
   voice — the same server-side mute the director has (OP-20 `ALL STOP`).
 - The ⚙ on the TV is a 2 s mouse hold as well.
 
+## The mirror fallback (SW-SCR-02)
+
+`view=mirror` is the safe mode for any screen: a silent full-screen
+spectator with **no scanner, no pilot, no voice and no chat**. It shows
+the screensaver while Trabolta is hidden or asleep, the world view while
+someone is in the simulation, and the **TV's** screen program (the
+`screens_*` / `tv_*` slides and overlays — not the wall terminals'
+`terminals_*` cards). It has never run on the real tablets or the TV, so
+the K-02 bench (10-20) opens `view=mirror` once on every tablet and the
+TV; a tablet with no WebGL2 shows a still notice instead of the world.
+
+**When to use it** (the director or the tech op decides; tell the other):
+
+- a wall terminal shows *ONLINE*, the scanner or a pilot **before**
+  `introduce_trabolta` (K-16 failed on that device — secrecy, #32);
+- a terminal loops, crashes, or its camera / scanner keeps failing, and a
+  Fully Kiosk restart didn't fix it;
+- the TV's `view=tv` misbehaves (a voice that loops or talks over a song,
+  a face that freezes) and the mute (🔊 / `M`) isn't enough.
+
+**How** (≈ 1 min per screen, no code, nothing restarts):
+
+1. Hold ⚙ 2 s → setup → *View* **mirror** → Save. Or open the
+   provisioning link on the device:
+   `https://app.mapsandducks.com/terminal/?code=<mod>&name=<its name>&spot=<its spot>&view=mirror`
+   (the same name and spot it had, so Run → Terminals still shows it).
+2. Check it on Run → Terminals (green within 4 s) and by eye: the
+   screensaver (or the world view while someone plays), no scanner.
+3. Say it on the radio: guests at that wall now use their phones; the
+   house announcements still play from the speakers (the `alexa` player),
+   and on the TV Trabolta's lines are text only in The Desktop (the TV
+   voice is gone until it is back on `view=tv`).
+4. **Going back:** once the cause is gone (after `introduce_trabolta`, a
+   reboot that fixed it), hold ⚙ → *View* `auto` (a wall terminal) or
+   `tv` (the TV) → Save. A screen whose trouble wasn't fixed stays on the
+   mirror all night.
+
+Keep the mirror link (with the mod code blank) on the IP sheet in the
+server room (OCT31 §10). OCT31 OP-22 points here.
+
 ## The bathroom terminal
 
 **Mounted outside the door, never inside.** The house map's

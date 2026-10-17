@@ -134,8 +134,9 @@ phases:
     house where reinstalled programs walk. Corporate, second person, helpful about rules,
     the hunt, the Internet and Bathroom Mode; may mention Maps And Ducks; shares nothing.
     Refuses personal questions and routes them to Clippy. Policy favours none. Powers:
-    snoop, flicker_the_screens, play_on_the_screens (a harmless card on the wall
-    terminals; he can be talked into it). Push hunger to 45.
+    snoop, flicker_the_screens, play_on_the_screens (one text card on the wall
+    terminals, never the TV: it waits out a held story slide and is refused while the
+    Trust Chart is up; he can be talked into it). Push hunger to 45.
   hunt_1: >-
     Stage formal. He set three obscure questions on the TV and in every Quest Log: the
     first Truth Scavenger Hunt, fifteen minutes, the answers on documents around the house.
