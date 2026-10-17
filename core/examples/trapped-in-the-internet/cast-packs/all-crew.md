@@ -10,6 +10,7 @@
 | **INTRO** | Clippy is about to introduce Trabolta. Julia (the tent): let the first reinstalled program start the game now | director → the tent, Clippy |
 | **BEANS** | The printer lid is open. Director: press 🫘 | Adobe Acrobat |
 | **LATE** | The late list is coming (after 🚨 Summons closed) | director → Antivirus |
+| **IN** | The patch-bay watch is inside the server room with the door shut: the director may fire 🕚 (from 🕚 the first opening plays The Heart, crew or not) | server-room Antivirus → director |
 | **A** / **B** / **WRONG** | Patch bay (Tier 0): Combo A is in / Combo B is in / a wrong combination | server-room Antivirus → director |
 | **ALARM** | The patch-bay alarm is going (a second wrong combination), or should be and isn't | anyone → Antivirus |
 | **LIGHTS** | The lights are wrong for this moment: re-fire the current lights cue | anyone → tech op |

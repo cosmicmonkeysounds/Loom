@@ -1,6 +1,7 @@
 # Patch-bay watch (server room, Tier 0 only)
 
 > **Holder:** the Antivirus stationed in the server room from the Y2K clock
+> (**inside, door shut, before 🕚**)
 > ([[EDIT: who — suggested CRA Agent Software, decided at the 10-25
 > read-through]]). **Keep this card face-down in your pocket.** It holds the
 > two combinations, which no guest may see. It is only needed if the patch-bay
@@ -20,13 +21,19 @@ Two rows of 12 jacks. Top row **V1–V8** (+ 4 decoys), bottom row **D1–D8**
 | anything else, once all four cables are in | | wrong combination | **"WRONG"** |
 
 Guests learn the halves from their codex once their faction wins the majority.
-Do **not** help them: you are an Antivirus. You do not know the door code and
-do not need it: the keypad opens from outside with the code, and the inside
-handle always opens with none.
+Do **not** help them: you are an Antivirus. You do not know the door code: the
+inside handle always opens with none, but **once you step out you can't get
+back in** without the house manager (the override key, or the code at the
+keypad, never on the radio).
 
 ## What you do
 
-1. From the **Y2K clock** on, stand where you can see the bay and the door.
+1. **Be inside with the door shut before 🕚**, then radio the director
+   **"IN"**: the director fires 🕚 only after it. From 🕚 the **first opening of the door plays The Heart**,
+   whoever opens it, and the door contact can't tell you from a guest: walk
+   in after 🕚, or step out before the first guests arrive, and it plays to
+   an empty room (and opens The Server Room on every phone). Stand where you
+   can see the bay and the door, and don't open it until guests have come in.
 2. When four cables are in, check them against the table. Radio the director:
    **"A"**, **"B"** or **"WRONG"**. The director fires 🔌 / 💥 / ❌.
 3. After a WRONG, nod at the guests, say nothing, let them pull cables.

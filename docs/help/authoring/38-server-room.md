@@ -193,6 +193,24 @@ spare batteries. Open it with the key, prop the door, and fire **🚪** if
 The Heart has not played. A wrong code typed at the keypad is not a
 fault — it's the riddle.
 
+## Crew and the door after the Y2K clock
+
+The contact can't tell crew from guests: **from 🕚 the first opening of
+the night plays The Heart**, to whoever is there, and opens The Server
+Room on every phone. So:
+
+- The **patch-bay watch** goes in **before 🕚** and shuts the door, and
+  stays in until guests have come in. Leaving before then would play The
+  Heart to an empty room.
+- **No crew opening between 🕚 and the first guest's.** The tech op
+  visits the router / UPS / IP sheet before 🕚, or waits.
+- A crew member who must come back in after The Heart has played gets
+  the **house manager** (the override key, or the code at the keypad —
+  never on the radio); that opening is just *back again*, or nothing
+  within two minutes of the last.
+- If a crew opening played The Heart anyway, **🔄** re-arms it for the
+  guests' first opening — but the room is already on every phone.
+
 ## Before the doors open
 
 - The keypad opens from outside with the code from `facts.json`

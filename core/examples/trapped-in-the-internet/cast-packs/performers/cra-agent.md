@@ -67,8 +67,10 @@ coin early. How it works:
 **Sweeps:** C1 · C2 · ⏳ (scan arrivals) · 🚨 the late list · Trabolta's sweep
 requests · 🚨 server-room alarm · 🗜 zip everyone out.
 
-**Server room (if stationed there from 🕚):** the patch-bay card, the door, the
-chess phone, the taped-off gear. The door has a keypad lock: whoever opens it
+**Server room (if stationed there from 🕚):** inside with the door shut
+**before 🕚**, then radio **IN** (from 🕚 the first opening plays The Heart,
+whoever opens it; once out, only the house manager lets you back in). The
+patch-bay card, the door, the chess phone, the taped-off gear. The door has a keypad lock: whoever opens it
 with the code belongs inside, so let them in. Only the patch bay alarms (the
 second wrong combination), and then whoever is at the cables goes to the
 Internet. From inside, the handle always opens with no code.
@@ -79,7 +81,7 @@ thread per guest.
 
 **Blackout:** guide people to the living room; the stairs stay lit.
 
-**Radio:** LATE · ALARM · A / B / WRONG · ALL STOP.
+**Radio:** LATE · ALARM · IN · A / B / WRONG · ALL STOP.
 
 ## Who you are
 
