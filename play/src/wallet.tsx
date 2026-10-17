@@ -461,7 +461,9 @@ export function WalletCardView({
       <div className={`wallet-card ${card.kind} ${state ?? "closed"}`}>
         <div className="wallet-head">
           <span className="wallet-ico" aria-hidden>
-            {walletGlyph(card, state)}
+            {/* A closed item (gone from the view) reads its glyph off its
+                outcome, like its foot line — never ⏳ beside "Denied". */}
+            {walletGlyph(card, state ?? outcome?.step ?? null)}
           </span>
           <strong className="wallet-title">{walletCardTitle(card)}</strong>
           {card.kind !== "freeze" && (

@@ -652,6 +652,22 @@ describe("a wallet card opens its thread of updates (B8)", () => {
     );
     expect(html).toContain("✅ Approved by CRA Agent Software");
     expect(html).toContain("1 update ›");
+    // The head glyph agrees with the foot: ✅, not the held card's ⏳.
+    expect(html.match(/class="wallet-ico"[^>]*>([^<]*)</u)?.[1]).toBe("✅");
+  });
+
+  it("the booth's closed denied card shows ⛔, never ⏳", () => {
+    const appr = card({ kind: "approval", step: "held", id: "t9" });
+    const r = root(appr);
+    const no = step(card({ kind: "approval", step: "denied", id: "t9", by: "CRA_Agent_Software" }), 11);
+    const q: WalletQueueView = { name: "Truthcoin", queue: [], every: 3, windowMs: 60_000 };
+    const html = render(
+      <WalletActionsProvider value={actions(q, null)}>
+        <MessageGroup run={{ from: "", kind: "wallet", messages: [r] }} allMessages={[r, no]} onOpenThread={() => {}} />
+      </WalletActionsProvider>,
+    );
+    expect(html).toContain("Denied by CRA Agent Software");
+    expect(html.match(/class="wallet-ico"[^>]*>([^<]*)</u)?.[1]).toBe("⛔");
   });
 
   it("the newest step wins; a live item keeps its state line", () => {
