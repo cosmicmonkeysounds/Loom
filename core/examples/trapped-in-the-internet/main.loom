@@ -3576,18 +3576,21 @@ when force_majority_leave:
 // E1: the majority. The members get the bundle and the door code (ROLE
 // watchers → The Whole Truth). The keypad is standalone: nothing here
 // unlocks it; the code does, in anyone's hands. The server-room look, as
-// in The Heart, never while the patch-bay alarm is latched
+// in The Heart, never while the patch-bay alarm's look is up
 // (lights_server_open also silences the siren, and `Night.lights` would
-// drop the alarm look stagehand's catch-up skips).
+// drop the alarm look stagehand's catch-up skips): the latch's end puts it
+// back. Once a director's cue has replaced the alarm look (💡, which
+// silences the siren too) the latch's end leaves the lights alone, so the
+// server-room look goes up now.
 when majority_reached:
   if Night.ended != true:
     set Night.phase = "majority"
     set Night.step = 15
-    if Night.alarm_on != true:
+    if Night.alarm_on == true and Night.lights == "alarm":
+      set Night.lights_before_alarm = "server_open"
+    else:
       cue lights_server_open
       set Night.lights = "server_open"
-    else:
-      set Night.lights_before_alarm = "server_open"
     complete quest The Clubs for Password Manager "A majority. They have the door code now."
     if Kernel.majority == "stay":
       complete quest Recruit To Stay for everyone

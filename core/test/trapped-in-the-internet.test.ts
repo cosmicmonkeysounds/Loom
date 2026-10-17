@@ -1646,6 +1646,27 @@ describe("Trapped in the Internet — the patch-bay alarm (wave 7: the door neve
     expect(v(sim, "Night.lights")).toBe("restore");
   });
 
+  it("once 💡 has replaced the alarm look, a majority or The Heart inside the latch cues the server-room look at once", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    fireAll(sim, "patch_rejected", "patch_rejected", "restore_the_lights");
+    expect(v(sim, "Night.alarm_on")).toBe(true);
+    expect(v(sim, "Night.lights")).toBe("restore");
+    // The Heart: the server-room look goes up now (💡 already silenced the siren).
+    const heart = fire(sim, "server_door_opened");
+    expect(beats(heart)).toContain("The Heart");
+    expect(cues(heart).filter((c) => c.startsWith("cue lights_"))).toEqual(["cue lights_server_open"]);
+    expect(v(sim, "Night.lights")).toBe("server_open");
+    // A majority too, and the latch's end then leaves the lights alone.
+    fire(sim, "restore_the_lights");
+    const maj = fire(sim, "force_majority_leave");
+    expect(cues(maj).filter((c) => c.startsWith("cue lights_"))).toEqual(["cue lights_server_open"]);
+    expect(v(sim, "Night.lights")).toBe("server_open");
+    expect(cues(advance(sim, 121)).filter((c) => c.startsWith("cue lights_"))).toEqual([]);
+    expect(v(sim, "Night.alarm_on")).toBe(false);
+    expect(v(sim, "Night.lights")).toBe("server_open");
+  });
+
   it("🔄 reset_server_room forgives one again, clears the latch and re-arms the cutscene", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
