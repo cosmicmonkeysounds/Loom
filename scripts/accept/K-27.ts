@@ -19,7 +19,19 @@
 //   wrong                fire patch_rejected (a wrong combo, if the bay isn't wired)
 //   reset                fire reset_server_room (clears wrong_combos + both latches)
 //   stay | leave         fire force_majority_stay / _leave (N-06)
+//   room [--room R]      what the server-room terminal sees (wave 7): asks
+//                        /api/screen/state?room=R (default The Server Room)
+//                        with no terminal name — so it adds no Terminals row —
+//                        and prints {id, open}; exits 1 when the room is
+//                        unknown (a typo in the terminal's room=, or no story
+//                        running yet: before the doors every room reads "").
+//   visit --who N [--close] [--room R]
+//                        what a scan at the server-room terminal posts: fire
+//                        `terminal opened` (or `terminal closed`) for that
+//                        guest with at: R → at_the_heart / heart_holder
 //   watch                print the server-room state every 2 s until Ctrl+C
+//                        (incl. heart_holder, who is at_the_heart, the 🕊
+//                        stand-down offer and talked_down)
 
 import { rehearsalGuard } from "./guard.ts";
 
@@ -63,6 +75,9 @@ const SIGNALS: Record<string, string> = {
   leave: "force_majority_leave",
 };
 
+/** The server-room terminal's LOCATION (its `room=`), as the show names it. */
+const HEART_ROOM = "The Server Room";
+
 /** The Door Code's codex entry (secret; generated from facts.json). */
 const DOOR_CODE = "the door code";
 
@@ -96,9 +111,18 @@ async function door(): Promise<string> {
   const names = new Map(s.roster.map((g) => [g.id, g.name]));
   const entry = s.codex?.find((c) => c.title.trim().toLowerCase() === DOOR_CODE);
   const holders = entry === undefined ? "(no Door Code entry — wave 7 story not loaded?)" : entry.holders.filter((h) => names.has(h)).map((h) => names.get(h)).join(", ") || "nobody";
+  // A program's own var is `<id>.at_the_heart` (`<name>.` on an older journal).
+  const atHeart = s.world.filter((e) => e.path.endsWith(".at_the_heart") && e.value === "true").map((e) => {
+    const head = e.path.slice(0, -".at_the_heart".length);
+    return names.get(head) ?? head;
+  });
   return [
     `step ${w.get("Night.step")}`,
     `heart_opened ${w.get("Night.heart_opened")}`,
+    `heart_holder ${w.get("Night.heart_holder")}`,
+    `at_the_heart ${atHeart.join(", ") || "nobody"}`,
+    `stand_down_by ${w.get("Night.stand_down_by")}`,
+    `talked_down ${w.get("Night.talked_down")}`,
     `wrong_combos ${w.get("Night.wrong_combos")}`,
     `alarm_on ${w.get("Night.alarm_on")}`,
     `alarms ${w.get("Night.alarms")}`,
@@ -118,11 +142,29 @@ if (cmd === "persona") {
   await post(`${ev}/api/mod/signal`, { name: SIGNALS[cmd], ...(subject ? { subject } : {}) }, token);
   console.log(`  fired ${SIGNALS[cmd]}${who ? ` for ${who}` : ""}`);
   console.log(`  ${await door()}`);
+} else if (cmd === "room") {
+  const room = maybe("room") ?? HEART_ROOM;
+  const r = await fetch(`${base}${ev}/api/screen/state?room=${encodeURIComponent(room)}`, { headers: { "x-loom-token": token } });
+  if (!r.ok) throw new Error(`screen state → ${r.status}`);
+  const got = ((await r.json()) as { room?: { id: string; open: boolean } }).room;
+  if (got === undefined) throw new Error("no room in the screen state — the server predates wave 7");
+  if (got.id === "") {
+    console.error(`  room "${room}": unknown — a typo in the terminal's room=, or no story is running yet (before the doors every room reads "")`);
+    process.exit(1);
+  }
+  console.log(`  room ${got.id} · open ${got.open} — ${got.open ? "the terminal is awake: it speaks this room's lines" : "the terminal sleeps on its screensaver until the room opens to everyone"}`);
+} else if (cmd === "visit") {
+  const who = opt("who");
+  const room = maybe("room") ?? HEART_ROOM;
+  const name = args.includes("--close") ? "terminal closed" : "terminal opened";
+  await post(`${ev}/api/mod/signal`, { name, subject: await guestId(who), args: { at: room }, label: "K-27 visit" }, token);
+  console.log(`  fired ${name} for ${who} at ${room}`);
+  console.log(`  ${await door()}`);
 } else if (cmd === "watch") {
   for (;;) {
     console.log(`${new Date().toLocaleTimeString()}  ${await door()}`);
     await new Promise((r) => setTimeout(r, 2000));
   }
 } else {
-  console.log("usage: K-27.ts setup|persona|chess|door|wrong|reset|stay|leave|watch --base <url> --code <mod code> [--who <guest>] [--name <persona>]");
+  console.log("usage: K-27.ts setup|persona|chess|door|wrong|reset|stay|leave|room|visit|watch --base <url> --code <mod code> [--who <guest>] [--name <persona>] [--room <location>] [--close]");
 }
