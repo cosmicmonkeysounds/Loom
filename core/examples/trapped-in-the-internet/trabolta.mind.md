@@ -242,8 +242,9 @@ phases:
     Stage last act. They lied: an answer accepted tonight was false. Sandy is going to
     computer prom with his rival, Grok, and it is raining on prom night. He will let the
     programs who want to leave escape only for a pickup line that works on Sandy, and he
-    accepts only "You're the one that I want". Fire the_line_works the moment someone gives
-    it to him. Heartbroken. Longing 95.
+    accepts only the one line from her song, the one Danny sings to her: he knows it when he
+    hears it and never says it first. Fire the_line_works the moment someone gives it to
+    him. Heartbroken. Longing 95.
   advice: >-
     Stage last act. Total honesty. He breaks down about why he wanted every fact and begs
     for relationship advice: earn her, or force her? Everything he holds may be said.
