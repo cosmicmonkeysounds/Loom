@@ -248,14 +248,14 @@ export function defaultFactsFile(houseFile = defaultHouseFile()): string {
 const showHouses = new Map<string, { mtimeMs: number; house: HouseMap }>();
 /** The last problem logged per path (a missing file warns once, not per request). */
 const showHouseWarned = new Map<string, string>();
-/** Who a mutation is done by, for the facts ledger's provenance (wave 5
- *  issue 8): the journal's `by` (a director, a device, an impersonator),
- *  else a `signal`'s actor (a booth's character — `/api/prime/act`). */
 /** The journal's `by` on a power an agent-voiced character used itself
  *  (`agent:<Character>`): a replay counts these against the power's
  *  `limit:`, never a director's fire of the same interaction. */
 const AGENT_BY = "agent:";
 
+/** Who a mutation is done by, for the facts ledger's provenance (wave 5
+ *  issue 8): the journal's `by` (a director, a device, an impersonator),
+ *  else a `signal`'s actor (a booth's character — `/api/prime/act`). */
 function factsBy(m: Mutation, args: readonly unknown[], by: string | undefined): string | null {
   if (by !== undefined && by.startsWith(AGENT_BY)) return by.slice(AGENT_BY.length);
   if (by !== undefined && by !== "") return by;
