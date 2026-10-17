@@ -29,7 +29,9 @@
    the server-room door of the virtual house. Hitting him (⚔ HIT / Space)
    knocks a heart off and makes his chess dumber; ♟ CHALLENGE opens a board
    on the tablet. A checkmate is reported to the story as *chess won, by
-   Tent tablet*: practice before the Y2K hour, the real Cold Lock after it.
+   Tent tablet*: practice before the Y2K hour; after it, the winner gets the
+   real server-room door code in their Codex (the board's badge reads
+   PRACTICE or FOR THE CODE).
    Nobody has to fight him to be reinstalled; a headset only shows him with
    "The King is fought on the tent tablet."
 

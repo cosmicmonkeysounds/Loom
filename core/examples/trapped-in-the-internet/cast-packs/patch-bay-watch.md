@@ -20,7 +20,9 @@ Two rows of 12 jacks. Top row **V1–V8** (+ 4 decoys), bottom row **D1–D8**
 | anything else, once all four cables are in | | wrong combination | **"WRONG"** |
 
 Guests learn the halves from their codex once their faction wins the majority.
-Do **not** help them: you are an Antivirus.
+Do **not** help them: you are an Antivirus. You do not know the door code and
+do not need it: the keypad opens from outside with the code, and the inside
+handle always opens with none.
 
 ## What you do
 
@@ -28,22 +30,30 @@ Do **not** help them: you are an Antivirus.
 2. When four cables are in, check them against the table. Radio the director:
    **"A"**, **"B"** or **"WRONG"**. The director fires 🔌 / 💥 / ❌.
 3. After a WRONG, nod at the guests, say nothing, let them pull cables.
-   (Two wrong combinations, or one while the room is locked, trip the alarm.)
+   (Everyone is forgiven one: the **second** wrong combination trips the
+   alarm. The director's 🔄 *Server room: reset the patch-bay alarm* forgives
+   one again.)
 4. Reset after an ending only if the director asks: every cable out.
 
 ## Also yours, from the Y2K clock
 
-- **The door.** Before a majority unlocks the room, anyone entering trips the
-  alarm (the door sensor does it; radio **ALARM** if it doesn't). After the
-  unlock, send anyone who is not in the winning faction to the Internet
-  (🛡 on their card).
-- **The chess phone** (Cold Lock). Glance at it each act. A guest who beats
-  the machine opens the door for 90 seconds. Press **♟ They beat the machine**
-  on the winner's card **only after you saw "checkmate" on the phone** (OP-12).
-  Phone dead → radio the director, who fires it. The same lock also listens
-  to **the King** in the tent tablet's game (a chess king at this door inside
-  the simulation): a checkmate there reports itself, nobody presses anything,
-  and the ring goes green just the same.
+- **The door.** It has a standalone keypad lock (nothing in the show drives
+  it). Whoever opens it with the code is a clean entry, whoever they are: let
+  them in. The door never alarms. From the Y2K clock the first opening plays
+  **The Heart**: the room opens on every phone and Trabolta speaks from the
+  server-room terminal on the wall. If nothing happens when the door first
+  opens, radio the director, who fires **🚪** (the door contact's fallback).
+  Never say the code on the radio.
+- **The server-room terminal.** A guest scans their pass and talks to Trabolta
+  on their own thread; at his heart he is candid. If he offers to stand down,
+  `# hosts` reads "🕊 Trabolta offers to stand down for …" and the director
+  decides. You do nothing but keep the queue polite.
+- **The chess phone.** Glance at it each act. From the Y2K clock a guest who
+  checkmates the machine gets the door code in their Codex. Press **♟ They
+  beat the machine** on the winner's card **only after you saw "checkmate" on
+  the phone** (OP-12). Phone dead → radio the director, who fires ♟ naming the
+  winner. **The King** in the tent tablet's game (a chess king at this door
+  inside the simulation) reports his own checkmates: nobody presses anything.
 - **The real gear** (router, UPS, the dongle, the ESP32 power) is taped off and
   out of reach. Keep guests off it, politely and firmly. In Act III the room
   fills up.

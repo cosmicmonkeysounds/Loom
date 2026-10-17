@@ -48,7 +48,9 @@ Anyone may call **ALL STOP** on the radio, or shout it, for any safety reason.
 
 ## Always true tonight
 
-- The server-room door is **never locked**. Nothing in the house can lock anyone in.
+- The server-room door has a keypad lock on the **outside only**. From inside,
+  the handle **always opens, with no code** (batteries dead or not). Nothing in
+  the house can lock anyone in. The override key is with the house manager.
 - The stairs, the bathroom, the tent, the server room and the path from the
   server room to the living room **stay lit**, even in the blackout.
 - Flashing lights are at most 3 per second. Anyone who needs to step out of a
