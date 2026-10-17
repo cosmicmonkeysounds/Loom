@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 import { validateHouse, type HouseMap, type MapVariantsResponse } from "@loom/house";
 
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
-import { namedEvents } from "../src/runtime/sim/model.ts";
+import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
 import { guestView, modView, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
@@ -407,8 +407,9 @@ export class EventRuntime {
   private phase: RuntimePhase = "idle";
   private scenarioName: string;
   private scenarioSource: string;
-  /** `declaredCharacters` compiled from `source` while no sim exists. */
-  private declaredCast: { source: string; names: string[] } | null = null;
+  /** The story's model compiled from `source` while no sim exists (null
+   *  when it won't compile) — `declaredModel`. */
+  private declaredCast: { source: string; model: SimModel | null } | null = null;
 
   // Token → capabilities (performer / admin), scoped to this event.
   private readonly sessions = new SessionStore();
@@ -664,17 +665,25 @@ export class EventRuntime {
    *  canonicalises its `character` (and refuses a typo) at setup. Booths
    *  still get `characterNames` — they can't sign in before the doors. */
   get declaredCharacters(): string[] {
-    if (this.sim !== null) return [...this.sim.model.characters.keys()];
+    return [...(this.declaredModel?.characters.keys() ?? [])];
+  }
+
+  /** The story's model, doors open or not: the live sim's when there is one,
+   *  else compiled once from the scenario text (memoised on it; null when it
+   *  won't compile). Before the doors it checks a booth's part and resolves a
+   *  room terminal's LOCATION. */
+  private get declaredModel(): SimModel | null {
+    if (this.sim !== null) return this.sim.model;
     if (this.declaredCast?.source !== this.scenarioSource) {
-      let names: string[] = [];
+      let model: SimModel | null = null;
       try {
-        names = [...Sim.fromSources(this.scenarioSource).model.characters.keys()];
+        model = Sim.fromSources(this.scenarioSource).model;
       } catch {
         // A story that won't compile has no cast to check against yet.
       }
-      this.declaredCast = { source: this.scenarioSource, names };
+      this.declaredCast = { source: this.scenarioSource, model };
     }
-    return [...this.declaredCast.names];
+    return this.declaredCast.model;
   }
 
   /** How many participants exist in this event's world right now. */
@@ -3468,15 +3477,21 @@ export class EventRuntime {
           return true;
         }
         let token = tokenOf(req, body);
-        if (this.sim !== null) {
-          // A part is one performer's: every *other* session's character is
-          // held; re-signing the same booth into the same part is fine.
-          const others = this.sessions.entries().filter(([t]) => t !== token);
-          const refusal = performerRefusal(this.sim.model, character, heldCharacters(others));
-          if (refusal !== null) {
-            sendJson(res, refusal === "unknown character" ? 404 : 409, { error: refusal });
-            return true;
-          }
+        // Checked against the story's model before the doors too (a fresh or
+        // relaunched event has no sim yet); a story that won't compile has
+        // no parts to give.
+        const model = this.declaredModel;
+        if (model === null) {
+          sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        // A part is one performer's: every *other* session's character is
+        // held; re-signing the same booth into the same part is fine.
+        const others = this.sessions.entries().filter(([t]) => t !== token);
+        const refusal = performerRefusal(model, character, heldCharacters(others));
+        if (refusal !== null) {
+          sendJson(res, refusal === "unknown character" ? 404 : 409, { error: refusal });
+          return true;
         }
         if (token && this.sessions.grant(token, { character })) {
           /* upgraded in place */

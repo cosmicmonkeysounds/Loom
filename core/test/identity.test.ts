@@ -651,4 +651,22 @@ describe("performers: one booth per part", () => {
     expect((await post(rt, "/api/prime/login", { character: "Task Manager", passcode: CODES.prime }, a.json.token)).status).toBe(200);
     expect((await post(rt, "/api/prime/login", { character: "Clippy", passcode: CODES.prime })).status).toBe(200);
   });
+
+  it("before the doors open the story's model decides the same (T4-01)", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-identity-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "trapped-in-the-internet", scenarioSource: SHOW, joinBase: () => "http://localhost" });
+    expect(rt.liveSim).toBeNull();
+    const login = (character: string, token?: string) => post(rt, "/api/prime/login", { character, passcode: CODES.prime }, token);
+    expect((await login("Trabolta")).json.error).toMatch(/voiced by an agent/u);
+    expect((await login("Kernel")).json.error).toMatch(/not a part anyone plays/u);
+    expect((await login("Microsoft Excel")).json.error).toMatch(/program for guests/u);
+    expect((await login("Nobody At All")).status).toBe(404);
+    const a = await login("Clippy");
+    expect(a.status).toBe(200);
+    const b = await login("Clippy");
+    expect(b.status).toBe(409);
+    expect(b.json.error).toMatch(/already taken/u);
+    expect((await login("Clippy", a.json.token)).status).toBe(200);
+  });
 });
