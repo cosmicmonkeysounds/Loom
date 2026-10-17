@@ -599,14 +599,22 @@ export class Game {
     const stage = stageFor(this.fight.hp, this.fight.max);
     const label = king.label ?? "THE KING";
     this.o.onChess?.({ stage, label, armed: this.armedState });
-    // The badge: fetched in the background, shown when it lands.
-    if (king.armed !== undefined && this.o.armed !== undefined) {
-      void this.o.armed(king.armed.path, king.armed.min).then((armed) => {
-        if (this.phase !== "chess") return;
-        this.armedState = armed;
-        this.o.onChess?.({ stage, label, armed });
-      });
-    }
+    this.refreshBadge();
+  }
+
+  /** The ARMED / PRACTICE badge: fetched in the background on every deal
+   *  (the challenge and each re-deal — a board kept open across the start
+   *  of the Y2K hour must not keep saying PRACTICE), shown when it lands. */
+  private refreshBadge(): void {
+    const king = this.kingProp;
+    if (king === null || king.armed === undefined || this.o.armed === undefined) return;
+    const stage = stageFor(this.fight.hp, this.fight.max);
+    const label = king.label ?? "THE KING";
+    void this.o.armed(king.armed.path, king.armed.min).then((armed) => {
+      if (this.phase !== "chess") return;
+      this.armedState = armed;
+      this.o.onChess?.({ stage, label, armed });
+    });
   }
 
   /** A game ended: a checkmate fells him, opens the door and closes the board;
@@ -622,6 +630,7 @@ export class Game {
       void this.o.signal?.(name).then((ok) => {
         if (!ok) console.warn(`reinstall: ${name} didn't reach the event`);
       });
+      this.refreshBadge(); // the next game may count when this one didn't
       return;
     }
     this.phase = "playing";
