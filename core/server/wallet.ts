@@ -1089,7 +1089,10 @@ export class WalletBook {
       if (id === minter) continue;
       out.push(this.ev(id, this.card("stimulus", { ...base, to: id }, "received", { by: op.by }), true));
     }
+    // The story hears the stimulus as the minter's either way: from her own
+    // phone, or a director's (`by` names who pressed it) while a guest plays her.
     if (this.isPerson(op.by)) out.push(...this.seam.signal("stimulus", op.by, { amount: op.amount, paid: recipients.length }));
+    else if (minter !== null) out.push(...this.seam.signal("stimulus", minter, { amount: op.amount, paid: recipients.length, by: op.by }));
     for (const id of recipients) out.push(...this.seam.signal("stimulus_received", id, { from: op.by, amount: op.amount }));
     return out;
   }

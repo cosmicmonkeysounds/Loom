@@ -624,6 +624,20 @@ describe("the stimulus", () => {
     expect(walletRoom(rt, a.id)[0]!.text).toBe("💰 Stimulus from Director: 7 Coin.");
     expect((await post(rt, "/api/mod/wallet/stimulus", { amount: 7 })).status).toBe(403); // not a moderator
   });
+
+  it("a director's stimulus fires the story's `stimulus` event as the minter's program, with `by` (W6 open item)", async () => {
+    const source = SOURCE.replace(
+      "  when transfer_received for guest:\n",
+      '  when stimulus for guest:\n    set Night.stimulus_n += 1\n    broadcast "!💰 {guest.name} sends every program {amount} ({by})." to everyone\n  when transfer_received for guest:\n',
+    );
+    const rt = freshRuntime(source);
+    const a = await guest(rt, "Alice");
+    await guest(rt, "Mint", 0);
+    expect((await post(rt, "/api/mod/wallet/stimulus", { amount: 7 }, undefined, true)).status).toBe(200);
+    expect(rt.liveSim!.world.peek("Night.stimulus_n")).toEqual({ kind: "number", value: 1 });
+    const notice = rt.chatHistoryFor(a.id).find((m) => m.text === "💰 Mint sends every program 7 (Director).");
+    expect(notice?.alert).toBe(true); // the `!` cue, as from her own phone
+  });
 });
 
 describe("the reserve: grants + a ten-minute freeze", () => {

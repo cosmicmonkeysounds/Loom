@@ -535,7 +535,8 @@ describe("wallet book — the stimulus", () => {
     expect(book.checkStimulus("anyone", 5)).toEqual({ status: 403, error: "not the minter" });
     expect(book.checkStimulus(DIRECTOR, 5, true)).toBeNull();
     const byDirector = book.apply({ op: "stimulus", id: book.nextId("s"), by: DIRECTOR, amount: 5, at: 1 });
-    expect(f.signals.filter((s) => s[0] === "stimulus")).toHaveLength(1); // not a person → no `stimulus` signal
+    // Not a person: the story still hears it, as the minter's, with who pressed it.
+    expect(f.signals.filter((s) => s[0] === "stimulus").at(-1)).toEqual(["stimulus", "g3", { amount: 5, paid: 2, by: "Director" }]);
     expect(cards(byDirector).map((c) => [c.to, c.card.step, c.card.from])).toEqual([
       ["g3", "minted", "Director"],
       ["g1", "received", "Director"],
