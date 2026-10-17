@@ -52,7 +52,7 @@ import { DEFAULT_TV_ROOM, adoptCharacter, baseOf, castCheckKey, characterProblem
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import { useIdleTimeout } from "./idle.ts";
-import { VisitLatch, beginPilot, endPilot, fetchCharacters, fetchRoster, postVisit, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
+import { VisitLatch, beginPilot, closeVisit, endPilot, fetchCharacters, fetchRoster, openVisit, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
 import { matchName, parseScan } from "./scan.ts";
 import { Scanner, type CameraState, cameraProblem } from "./scanner.tsx";
 import { BrowserEngine, DeviceEngine, ENGINE_LABEL, SpeechQueue, audioUnlocked, deviceEnv, pickDeviceEngine, unlock, voiceEngines, voiceNote, type EngineKind, type VoiceChoice } from "./speech/engine.ts";
@@ -101,6 +101,10 @@ export function App() {
     if (room === null || !asleep || voice === null || voice === undefined) return;
     voiceCursor.current = cursorWhileAsleep(voice, voiceCursor.current);
   }, [room, asleep, screenState.state]);
+  // A room terminal's open visit (`terminal opened` → `closed`): held here,
+  // not in the line pane, which can remount mid-connect (the room closing
+  // under a scan) and would then lose the visit it opened.
+  const visits = useRef(new VisitLatch());
   // The house announcements (N-09), when this screen is set to say them.
   const announcement = useAnnouncements(config, screenState.state);
 
@@ -369,6 +373,7 @@ export function App() {
         state={screenState.state}
         asleep={asleep}
         voiceCursor={voiceCursor}
+        visits={visits}
         takeover={takeover}
         onSetup={openSetup}
         onGone={onGone}
@@ -487,6 +492,7 @@ function Terminal({
   state,
   asleep,
   voiceCursor,
+  visits,
   takeover,
   onSetup,
   onGone,
@@ -505,6 +511,8 @@ function Terminal({
   asleep: boolean;
   /** The room voice's chat cursor (owned by the app: it moves while asleep). */
   voiceCursor: MutableRefObject<number | null>;
+  /** The open visit at a room terminal (owned by the app, like the cursor). */
+  visits: MutableRefObject<VisitLatch>;
   /** A story overlay covers the screen: no scanning, and an open line ends. */
   takeover: boolean;
   onSetup: () => void;
@@ -526,7 +534,11 @@ function Terminal({
   /** A room line being said resolves here when its utterance is done (or cut). */
   const waiters = useRef(new Map<number, () => void>());
   const room = roomOf(config);
-  const visits = useRef(new VisitLatch());
+  // The pane going away with a line open (⚙ setup over a pilot): the story
+  // still hears the visit close.
+  const configRef = useRef(config);
+  configRef.current = config;
+  useEffect(() => () => void closeVisit(configRef.current, visits.current), [visits]);
 
   // --- the reinstallation simulation, beside the scanner ---
   const view = effectiveView(config.view, hasWebGL2());
@@ -672,23 +684,21 @@ function Terminal({
       void endPilot(config, pilot);
       // A room terminal: the story hears the line close (best-effort; also
       // after a restart, whose replay re-opened the visit).
-      const closing = visits.current.close();
-      if (closing !== null) void postVisit(config, "terminal closed", closing);
+      void closeVisit(config, visits.current);
     },
-    [pilot, queue, roomPlayer, config, setScreen],
+    [pilot, queue, roomPlayer, config, setScreen, visits],
   );
   // The page going away mid-line (a reload, the kiosk app closing): close the
   // visit and the session with requests that outlive the page.
   useEffect(() => {
     if (pilot === null) return;
     const onHide = () => {
-      const closing = visits.current.close();
-      if (closing !== null) void postVisit(config, "terminal closed", closing, { keepalive: true });
+      void closeVisit(config, visits.current, { keepalive: true });
       void endPilot(config, pilot, { keepalive: true });
     };
     window.addEventListener("pagehide", onHide);
     return () => window.removeEventListener("pagehide", onHide);
-  }, [pilot, config]);
+  }, [pilot, config, visits]);
   const busy = session.typing || speaking || queue.busy || roomBusy;
   const { touch, warning, remaining } = useIdleTimeout({ active: pilot !== null, busy, onTimeout: () => end("timeout") });
   useEffect(() => {
@@ -742,10 +752,7 @@ function Terminal({
         setScreen({ kind: "piloting", pilot: p });
         setFlash(null);
         // A room terminal tells the story the line opened here (never awaited).
-        if (room !== null) {
-          visits.current.begin(p.id);
-          void postVisit(config, "terminal opened", p.id);
-        }
+        openVisit(config, visits.current, p.id);
       } catch (e) {
         const msg = (e as Error).message;
         setFlash(/unknown guest/i.test(msg) ? "UNKNOWN PROGRAM — REGISTER ON YOUR PHONE FIRST" : /moderators only/i.test(msg) ? "THIS TERMINAL LOST ITS ACCESS" : `CONNECTION FAILED — ${msg.toUpperCase()}`);
@@ -754,7 +761,7 @@ function Terminal({
         setScreen({ kind: "attract" });
       }
     },
-    [config, room, roomBusy, screen.kind, setScreen],
+    [config, roomBusy, screen.kind, setScreen, visits],
   );
   const onCode = useCallback(
     (text: string) => {

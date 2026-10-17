@@ -83,19 +83,45 @@ export async function postVisit(config: TerminalConfig, name: VisitSignal, guest
   }
 }
 
-/** One open visit at a time: `close` hands back the guest to close exactly
- *  once, however many ways the line ends (the leash, then the pagehide). */
+/** An open visit: the guest, and the `terminal opened` post in flight. */
+export interface OpenVisit {
+  guestId: string;
+  opened: Promise<unknown>;
+}
+
+/** One open visit at a time: `close` hands back the visit to close exactly
+ *  once, however many ways the line ends (the leash, then the pagehide).
+ *  The app holds one for the life of the page (not per mounted line pane),
+ *  so a pane remounted mid-connect still closes the visit it opened. */
 export class VisitLatch {
-  private open: string | null = null;
-  begin(guestId: string): void {
-    this.open = guestId;
+  private open: OpenVisit | null = null;
+  begin(guestId: string, opened: Promise<unknown> = Promise.resolve()): void {
+    this.open = { guestId, opened };
   }
-  /** The guest whose visit to close now (null: none open, or already closed). */
-  close(): string | null {
-    const id = this.open;
+  /** The visit to close now (null: none open, or already closed). */
+  close(): OpenVisit | null {
+    const v = this.open;
     this.open = null;
-    return id;
+    return v;
   }
+}
+
+/** A pass opened a line here: tell the story (`terminal opened`) and
+ *  remember the visit. A terminal with no room does nothing. */
+export function openVisit(config: TerminalConfig, latch: VisitLatch, guestId: string, o: { fetchFn?: typeof fetch } = {}): void {
+  if (visitSignalBody(config, "terminal opened", guestId) === null) return;
+  latch.begin(guestId, postVisit(config, "terminal opened", guestId, o));
+}
+
+/** The line ended: `terminal closed`, once — and never ahead of its
+ *  `terminal opened` (a DISCONNECT right after the scan would otherwise
+ *  race it and leave the story thinking the guest is still there). The
+ *  pagehide (`keepalive`) can't wait for anything: it sends at once. */
+export function closeVisit(config: TerminalConfig, latch: VisitLatch, o: { keepalive?: boolean; fetchFn?: typeof fetch } = {}): Promise<boolean> | null {
+  const v = latch.close();
+  if (v === null) return null;
+  const send = () => postVisit(config, "terminal closed", v.guestId, o);
+  return o.keepalive === true ? send() : v.opened.then(send, send);
 }
 
 /** The roster (id + name) for the typed fallback — a mod-only read. */

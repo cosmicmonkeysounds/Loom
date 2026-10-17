@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.ts";
-import { VisitLatch, endPilot, postVisit, visitSignalBody } from "../src/pilot.ts";
+import { VisitLatch, closeVisit, endPilot, openVisit, postVisit, visitSignalBody } from "../src/pilot.ts";
 
 const room = defaultConfig({ eventId: "evt 1", token: "mod-tok", name: "Server Room", spot: "server-room", view: "face", room: "The Server Room" });
 
@@ -48,8 +48,41 @@ describe("visit signals", () => {
     const latch = new VisitLatch();
     expect(latch.close()).toBeNull();
     latch.begin("g7");
-    expect(latch.close()).toBe("g7");
+    expect(latch.close()?.guestId).toBe("g7");
     expect(latch.close()).toBeNull(); // the pagehide after the leash: nothing more
+  });
+
+  it("never sends `terminal closed` ahead of its `terminal opened` (a DISCONNECT right after the scan)", async () => {
+    const order: string[] = [];
+    let land: () => void = () => {};
+    const slowOpen = new Promise<void>((r) => (land = r));
+    const fetchFn = (async (_url: string, init: RequestInit) => {
+      const name = (JSON.parse(String(init.body)) as { name: string }).name;
+      if (name === "terminal opened") await slowOpen;
+      order.push(name);
+      return { status: 200, ok: true, json: async () => ({}) } as Response;
+    }) as unknown as typeof fetch;
+    const latch = new VisitLatch();
+    openVisit(room, latch, "g7", { fetchFn });
+    const closing = closeVisit(room, latch, { fetchFn });
+    expect(closing).not.toBeNull();
+    expect(closeVisit(room, latch, { fetchFn })).toBeNull(); // once
+    await Promise.resolve();
+    expect(order).toEqual([]); // the close waits for the open to land
+    land();
+    expect(await closing).toBe(true);
+    expect(order).toEqual(["terminal opened", "terminal closed"]);
+  });
+
+  it("the pagehide close goes at once (keepalive); a house terminal opens no visit", async () => {
+    const seen: Array<{ url: string; init: RequestInit }> = [];
+    const latch = new VisitLatch();
+    latch.begin("g7", new Promise(() => {})); // an open that never lands
+    expect(await closeVisit(room, latch, { keepalive: true, fetchFn: fakeFetch(200, seen) })).toBe(true);
+    expect(seen.map((x) => [JSON.parse(String(x.init.body)).name, x.init.keepalive])).toEqual([["terminal closed", true]]);
+    openVisit({ ...room, room: "" }, latch, "g7", { fetchFn: fakeFetch(200, seen) });
+    expect(latch.close()).toBeNull();
+    expect(seen.length).toBe(1);
   });
 
   it("ending a pilot can outlive the page (keepalive) and swallows a failure", async () => {
