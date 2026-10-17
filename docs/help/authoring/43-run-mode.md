@@ -155,9 +155,9 @@ the text block on the clipboard (for pasting into `cast:Trabolta`). For
 the numbers behind an award, open
 `/e/<event id>/api/mod/recap?format=text` in a tab while signed in: a
 paste-ready list of trust, truths and lies accepted, trips to the
-Internet, codex, quests, score, codex shares, Cold Lock chess (won /
-lost / drawn), Bathroom Mode trips (a count, not minutes), and who
-joined each side.
+Internet, codex, quests, score, codex shares, chess against the King
+(won / lost / drawn), Bathroom Mode trips (a count, not minutes), and
+who joined each side.
 
 **On a phone.** The same sheet runs in the participant app: open the
 event's address with `?role=director`, type the director (mod)
