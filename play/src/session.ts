@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DOORS_POLL_MS, type Identities, type PictureChoices, type ProgramHit, type ProgramPictures } from "./avatars.ts";
-import { ApiError, api, useChatStream } from "./client.ts";
+import { ApiError, RequestTimeout, api, useChatStream, withTimeout } from "./client.ts";
 import { boothAlertFilter, maxSeqOf, unsolicitedReadout, useAlerts, type Alert } from "./alerts.ts";
 import { checkinFromSearch, withoutCheckin } from "./checkin.ts";
 import { pmChannelId, pmOtherParty, shareErrorText, unlockFromSearch, withoutUnlock } from "./codex.ts";
@@ -422,12 +422,17 @@ export function defectTargets(status: GuestView | null): string[] {
   return (status.factions ?? []).filter((f) => f !== status.faction);
 }
 
+/** How long a typed line waits for the server before the composer gives
+ *  the Send button back (the words stay in the box). */
+export const SAY_TIMEOUT_MS = 15_000;
+
 /** Why a typed message didn't go through, for a quiet banner — the server
  *  names the reason (slow mode's wait, paused doors, a room you can't post
  *  in), and the composer keeps the words so the guest can send them again.
  *  `null` for a session the app is dropping anyway (401, or the unknown-token
  *  404s), which explains itself on the join screen. */
 export function sayRefusalText(e: unknown): string | null {
+  if (e instanceof RequestTimeout) return "⚠️ No answer yet — check your connection. If your line doesn't show up in the room, send it again.";
   if (!(e instanceof ApiError)) return "⚠️ Not sent — check your connection and try again.";
   if (eventGone(e.status, e.message) || guestSessionDead(e.status, e.message) || performerSessionDead(e.status, e.message)) return null;
   if (e.status === 429) return `⏳ Not sent: ${e.message}. Your message is still in the box.`;
@@ -925,7 +930,7 @@ export function useGuestSession(): GuestSession {
   const say = useCallback(
     async (channel: string, text: string, parentSeq?: number) => {
       try {
-        return await post("/api/guest/say", { channel, text, parentSeq });
+        return await withTimeout(post("/api/guest/say", { channel, text, parentSeq }), SAY_TIMEOUT_MS);
       } catch (e) {
         const why = sayRefusalText(e);
         if (why !== null) alertsRef.current?.raise(why, { quiet: true });
@@ -1517,7 +1522,7 @@ export function usePrimeSession(): PrimeSession {
   const say = useCallback(
     async (channel: string, text: string, parentSeq?: number) => {
       try {
-        return await post("/api/prime/say", { channel, text, parentSeq }, auth!.token);
+        return await withTimeout(post("/api/prime/say", { channel, text, parentSeq }, auth!.token), SAY_TIMEOUT_MS);
       } catch (e) {
         const why = sayRefusalText(e);
         if (why !== null) alertsRef.current?.raise(why, { quiet: true });

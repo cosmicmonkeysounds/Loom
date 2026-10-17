@@ -20,6 +20,34 @@ export class ApiError extends Error {
   }
 }
 
+/** A request the server never answered in time (`withTimeout`). It may
+ *  still have landed — the caller's message says so. */
+export class RequestTimeout extends Error {
+  constructor(ms: number) {
+    super(`no answer in ${Math.round(ms / 1000)}s`);
+    this.name = "RequestTimeout";
+  }
+}
+
+/** `p`, or a `RequestTimeout` rejection once `ms` pass first — so a POST
+ *  stuck on a phone switching networks never holds a button down for
+ *  minutes. The request itself is not cancelled; a late answer is dropped. */
+export function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new RequestTimeout(ms)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e: unknown) => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
+
 /** POST JSON to the server, attaching a capability token when present. */
 export async function api<T = Record<string, unknown>>(path: string, body?: unknown, token?: string): Promise<T> {
   const res = await fetch(path, {

@@ -1,11 +1,11 @@
 //! T5-01: a typed message the server refuses (slow mode, paused doors, a
 //! room you can't post in) stays in the composer and the guest is told why.
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { sendFromComposer } from "../src/chat.tsx";
-import { ApiError } from "../src/client.ts";
-import { sayRefusalText } from "../src/session.ts";
+import { ApiError, RequestTimeout, withTimeout } from "../src/client.ts";
+import { SAY_TIMEOUT_MS, sayRefusalText } from "../src/session.ts";
 
 describe("the composer's send", () => {
   it("nothing to send: no call", () => {
@@ -49,5 +49,30 @@ describe("why a line wasn't sent", () => {
     expect(sayRefusalText(new ApiError("unauthorized", 401))).toBeNull();
     expect(sayRefusalText(new ApiError("unknown event", 404))).toBeNull();
     expect(sayRefusalText(new ApiError("sign in first", 403))).toBeNull();
+  });
+});
+
+describe("a send the server never answers", () => {
+  it("gives the button back after the timeout and keeps the text", async () => {
+    vi.useFakeTimers();
+    try {
+      const hung = new Promise<never>(() => {});
+      const cleared = sendFromComposer("still there?", () => withTimeout(hung, SAY_TIMEOUT_MS));
+      await vi.advanceTimersByTimeAsync(SAY_TIMEOUT_MS);
+      expect(await cleared).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("an answer in time passes through, an error keeps its own reason", async () => {
+    expect(await withTimeout(Promise.resolve(7), 1000)).toBe(7);
+    await expect(withTimeout(Promise.reject(new ApiError("doors are closed", 409)), 1000)).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it("says it may have landed", () => {
+    const t = sayRefusalText(new RequestTimeout(SAY_TIMEOUT_MS));
+    expect(t).toContain("connection");
+    expect(t).toContain("send it again");
   });
 });
