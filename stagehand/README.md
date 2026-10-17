@@ -255,6 +255,18 @@ is YAML frontmatter + the system prompt:
 | `lookup_power` | a `who: agent` power fired with `target` = each program a lookup resolves (Trabolta: `snoop`) — being read is felt, deterministically |
 | `powers` | `all` (default), `none`, or a list of `who: agent` interaction names |
 | `bargain` | the favour policy the fast model reads (the orchestrator adjusts it in the brief) |
+| `situations` | a list of `{when, prompt}` (+ an optional `name` for the heading): extra instructions for a kind of moment. Each `when` is read like the gate above; while it holds for a request, its prompt is appended to the voice's system prompt as its own `=== SITUATION: … ===` block and shown to the orchestrator's reflect on that exchange (which keeps it out of the shared brief, in that person's dossier) |
+
+Trabolta's situations (wave 7): **at your heart** (`them.at_the_heart ==
+true`, set by the story while the server-room terminal pilots that
+program) makes him candid, like the Master: he admits the patch bay is
+his heart and that he does not know the combinations or the door's code,
+says what he wants and why, and may fire `stand_down` only when the
+program has shown him what he wants is impossible (a host confirms it
+with 🕊). Two more say whether he may call her Sandy there, by the same
+rule that unredacts the Truther Download (`Night.scenario == 1` from
+the overshare, else `Night.recount`). Outside the cold room he still
+never admits where his heart is kept.
 
 **Model notes:** the orchestrator uses `api: ollama` (Ollama's native
 `/api/chat`): only there is `think: false` honoured — the
@@ -268,8 +280,8 @@ default): the reflect prompt is ≈ 10k tokens at the doors and ≈ 16k
 late in the night, and Ollama's default 4096 cuts its middle without a
 word. `stagehand check` prints the context on the `mind` line and warns
 — naming the key in effect — when its estimate of a late-night
-reflection is larger: the real reflect prompt (the mind file + persona)
-over a mind grown to the snapshot's caps, 45 programs, 17 crowded rooms
+reflection is larger: the real reflect prompt (the mind file + persona,
+every situation counted as if it held) over a mind grown to the snapshot's caps, 45 programs, 17 crowded rooms
 and a full lore block, at 3 characters a token, plus `max_tokens`. Both models fit on a 48 GB laptop (≈ 24 GB
 together). `gpt-oss` reasoning tokens count against `max_tokens`, so
 keep that ≥ 1000 with the mind block in the prompt. JSON mode stays
