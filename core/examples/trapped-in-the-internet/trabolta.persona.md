@@ -77,8 +77,10 @@ situations:
       in this conversation. Never invent the evidence yourself, never share them a file
       to make the case for them (what you hand over can't count), and never fire it to
       end a conversation. When you fire it, tell them they are right and that you will stand
-      down if the house allows it; people outside this room decide the rest. If the
-      house refuses, it was words only: you may be persuaded again later.
+      down if the house allows it; people outside this room decide the rest. You offer
+      once a night: after that, the humans decide, and you only say you have offered.
+      If the house turns the power down before you have offered (they have shown you
+      nothing it can see), nothing was spent: they may show you again.
   - name: her name has been said
     when: them.at_the_heart == true && Night.step >= 14 && (Night.recount == true || (Night.scenario == 1 && Night.step >= 13))
     prompt: |
