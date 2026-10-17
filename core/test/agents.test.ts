@@ -729,6 +729,24 @@ describe("EventRuntime agents", () => {
     expect(await dm()).toHaveLength(1);
   });
 
+  it("a guest's dm: thread is canonical: `dm:trabolta` is refused while hidden, stored as `dm:Trabolta` after; `dm:nobody` is 404 (W6 B19)", async () => {
+    const source = SOURCE.replace("  mind: external\n", "  mind: external\n  hidden: true\n");
+    const rt = runtime({ source });
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Gil", passcode: CODES.event });
+    const token = g.json["token"] as string;
+    expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:trabolta", text: "psst" }, { token })).status).toBe(403);
+    expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:nobody", text: "psst" }, { token })).status).toBe(404);
+    rt.liveSim!.reveal("Trabolta");
+    expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:trabolta", text: "lower case" }, { token })).status).toBe(200);
+    const channels = ((await call(rt, "GET", "/api/history", {}, { token })).json["messages"] as Array<{ channel: string; text: string }>)
+      .filter((m) => m.text === "lower case")
+      .map((m) => m.channel);
+    expect(channels).toEqual(["dm:Trabolta"]);
+    // …and it reached the agent like any line in the real thread.
+    expect((rt as unknown as { agents: AgentHub }).agents.pending.length).toBeGreaterThan(0);
+  });
+
   it("no hold: authored → silence, as before", async () => {
     let clock = 1_000_000;
     const rt = runtime({ now: () => clock });

@@ -1154,6 +1154,18 @@ export class EventRuntime {
     return def === undefined || !def.hidden || sim.isRevealedTo(def.id, who);
   }
 
+  /** The declared character `name` names (case / space / `_` / `-` folded),
+   *  as its canonical id; null for none. */
+  private characterNamed(name: string): string | null {
+    const chars = this.sim?.model.characters;
+    if (chars === undefined) return null;
+    if (chars.has(name)) return chars.get(name)!.id;
+    const want = foldName(name);
+    if (want === "") return null;
+    for (const def of chars.values()) if (foldName(def.id) === want) return def.id;
+    return null;
+  }
+
   /** Is `name` a character voiced by an outside agent (`mind: external`)? */
   private isAgent(name: string): boolean {
     return this.sim?.model.characters.get(name)?.mind === "external";
@@ -3205,11 +3217,23 @@ export class EventRuntime {
           sendJson(res, 404, { error: "unknown guest" });
           return true;
         }
-        const channel = str(body, "channel") || "lobby";
+        let channel = str(body, "channel") || "lobby";
         const text = str(body, "text").trim();
         if (text === "") {
           sendJson(res, 400, { error: "empty message" });
           return true;
+        }
+        // A guest's `dm:` thread is with a declared character, under its
+        // canonical id: `dm:trabolta` (a terminal provisioned in lower case)
+        // is the real `dm:Trabolta`, and `dm:nobody` is no thread at all —
+        // a phantom one would skip the agent and the hidden-agent gate.
+        if (channel.startsWith("dm:")) {
+          const character = this.characterNamed(channel.slice("dm:".length));
+          if (character === null) {
+            sendJson(res, 404, { error: "no such character" });
+            return true;
+          }
+          channel = `dm:${character}`;
         }
         // An agent still hidden from this guest (Trabolta before Clippy
         // introduces him) has no thread yet: a crafted DM is refused, not
