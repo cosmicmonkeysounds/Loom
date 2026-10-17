@@ -35,8 +35,8 @@ your voice (*"That is not a password I recognise… Unsubstantiated claims are
 removed."*) and your booth shows *🔑 X entered a wrong code.* Find them and
 needle them in person.
 
-**The clubs (from the 🕚 Y2K clock).** Your Quest Log: *The Clubs* (from Task
-Manager). Unlimited Power and The Way Out become joinable. Every join shows
+**The clubs (from the 🕚 Y2K clock).** Your Quest Log: *Patrol: the clubs* (from
+Task Manager). Unlimited Power and The Way Out become joinable. Every join shows
 in your booth: *🔑 X joined Unlimited Power.* You know the score before
 anyone. The director may radio you for a count. The quest completes at the
 majority.

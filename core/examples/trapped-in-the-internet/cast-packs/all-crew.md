@@ -56,9 +56,9 @@ Keep radio talk short: call word, then where, then who. "LATE, two in the kitche
 - **Booth readouts** are the 📋/🛡/🃏/🚨 lines that appear in your booth. They
   are for you only, and they disappear if you reload. Read them when your
   phone chimes. Your booth also has pinned rooms that survive a reload: an
-  **Inbox** (cards and notes dealt to you), a **Quest Log** (your staff
-  quests, "per the agenda", from Task Manager; each step lands in its own
-  thread) and a **Codex** (what your character knows). CRA Agent Software's
+  **Inbox** (empty tonight: the story deals no cards to a booth), a
+  **Quest Log** (your staff quests by their titles, "Per the agenda: …" or
+  "Patrol: …", from Task Manager; each step lands in its own thread) and a **Codex** (what your character knows). CRA Agent Software's
   booth has a **Wallet** room on top of those.
 - **`# hosts` and `# quarantine` are staff rooms.** Every performer sees both.
   No guest can. `# hosts` carries the bank's and the judge's logs; `#

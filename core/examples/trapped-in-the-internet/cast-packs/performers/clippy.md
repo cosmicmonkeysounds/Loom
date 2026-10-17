@@ -57,10 +57,11 @@ V6: ⏱ the filing closes → 📋 results, one question at a time → 🍾 the 
 reveal ("truth is always in binary") → 🍎 → ending → host the ceremony if
 Trabolta is gone (after Combo B or the rave).
 
-**Your booth has four pinned rooms:** **Scanner** (📷), **Inbox** (cards and
-notes dealt to you), **Quest Log** (your staff quests: *Run The Bingo*, *Host
-The Hunt*, *Keep Everyone Calm*; each step lands in its own thread, from Task
-Manager) and **Codex** (*What Clippy knows*: CI 1–9 arrive here as the cues
+**Your booth has four pinned rooms:** **Scanner** (📷), **Inbox** (empty
+tonight: the story deals no cards to a booth), **Quest Log** (your staff
+quests, by their titles: *Per the agenda: Computer Bingo*, *Per the agenda:
+the Truth Scavenger Hunt*, *Per Trabolta: keep everyone calm*; each step lands
+in its own thread, from Task Manager) and **Codex** (*What Clippy knows*: CI 1–9 arrive here as the cues
 fire, with a 📋 readout each time). The printed CI cards are your backup.
 
 **Radio:** INTRO · HOLD · LIGHTS · ALL STOP. If the voice queue is long:
@@ -111,7 +112,7 @@ Assistant; *Jean Trabolta himself will make an appearance later tonight*.
 Introduce the hosts: Task Manager keeps things running, Adobe Acrobat assists
 with documents and printing, Recycling Bin is hygiene and maintenance.
 
-**V2 · 🎱 Computer Bingo (20 min).** Your Quest Log: *Run The Bingo*. Hand out
+**V2 · 🎱 Computer Bingo (20 min).** Your Quest Log: *Per the agenda: Computer Bingo*. Hand out
 cards and markers. The card is a big asterisk: a Bingo is one full line
 through the centre (two diagonals, the centre column, the centre row).
 **Nobody writes names**: they use their special computer memory. The centre
@@ -138,7 +139,7 @@ TRABOLTA!"* He speaks. The TV switches to the reinstallation mirror: point at
 it, *"Look! That's {the first program}! Doing great!"* Hand off: *"And now,
 Trabolta has a game for all of us."*
 
-**V4/V5 · 🔎 Hunt 1 (15 min).** Your Quest Log: *Host The Hunt*. Trabolta
+**V4/V5 · 🔎 Hunt 1 (15 min).** Your Quest Log: *Per the agenda: the Truth Scavenger Hunt*. Trabolta
 reads H1–H3; they go into everyone's Quest Log. The answers are documents
 hidden in the Desktop's books and print media, each with a code. Programs
 **file** an answer with Trabolta on the 📝 card in his thread: the question,
@@ -180,7 +181,7 @@ Internet. Then:
 
 **📺 The ad hijack** (CI 4). You begin previewing round 2; an ad takes over
 every screen. A **private message from Trabolta** lands in your booth (and
-your Quest Log: *Keep Everyone Calm*): *if the malware continues we are all
+your Quest Log: *Per Trabolta: keep everyone calm*): *if the malware continues we are all
 going to die… try not to show the others.* **Overreact wildly**, then pull it
 together: *"There are signs of malware in the system that we need to be very
 vigilant about. We are going to proceed on the Truth Scavenger Hunt because
