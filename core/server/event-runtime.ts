@@ -190,6 +190,10 @@ const AGENT_HISTORY = 30;
 
 /** The `/api/guest/wallet/*` calls a restricted guest is refused (403). */
 const WALLET_RESTRICTED: ReadonlySet<string> = new Set(["send", "request", "respond", "offer", "accept", "stimulus", "grant", "freeze"]);
+/** The `/api/guest/wallet/*` calls the rate limit never refuses: backing
+ *  out. Each only succeeds on an open item of the caller's, so they are
+ *  bounded by the throttled calls that made those items. */
+const WALLET_UNTHROTTLED: ReadonlySet<string> = new Set(["decline", "cancel"]);
 
 /** Parse an agent's variable adjustments: `{name: signed delta}`, numbers only. */
 function agentAdjustments(raw: unknown): Array<[string, number]> {
@@ -3342,21 +3346,23 @@ export class EventRuntime {
           sendJson(res, 403, { error: "you're restricted — the story has to lift it first" });
           return true;
         }
+        // The limit is checked before the book builds the op (so a 429
+        // never spends an id) and counted once the call is made. Backing
+        // out (decline / cancel) is never throttled.
+        const throttled = !WALLET_UNTHROTTLED.has(sub);
+        if (throttled && !this.walletCalls.allowed(id)) {
+          sendJson(res, 429, { error: "slow down — wait a minute" });
+          return true;
+        }
         const r = this.guestWalletOp(sub, id, body);
         if ("status" in r) {
           // A refused offer still costs a call, so nobody guesses codex
           // titles at speed.
-          if (sub === "offer" && !this.walletCalls.take(id)) {
-            sendJson(res, 429, { error: "slow down — wait a minute" });
-            return true;
-          }
+          if (sub === "offer") this.walletCalls.record(id);
           sendJson(res, r.status, { error: r.error });
           return true;
         }
-        if (!this.walletCalls.take(id)) {
-          sendJson(res, 429, { error: "slow down — wait a minute" });
-          return true;
-        }
+        if (throttled) this.walletCalls.record(id);
         this.fanout(this.commitWallet(r.op));
         sendJson(res, 200, { ok: true, wallet: this.wallet.viewFor(id) });
         return true;

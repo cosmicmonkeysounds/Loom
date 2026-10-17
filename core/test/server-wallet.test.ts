@@ -336,6 +336,25 @@ describe("sending coin", () => {
     expect((await wallet(rt, "send", { to: a.id, amount: 1 }, b.token)).status).toBe(200);
   });
 
+  it("backing out (cancel / decline) is never rate-limited, and a 429 spends no id (W6 B10)", async () => {
+    const rt = freshRuntime(SOURCE, { wallet: { max: 2, windowMs: 60_000 } });
+    const a = await guest(rt, "Alice");
+    const b = await guest(rt, "Bob");
+    expect((await post(rt, "/api/mod/codex", { who: a.id, entry: "The Lease" }, undefined, true)).status).toBe(200);
+    expect((await wallet(rt, "offer", { to: b.id, entry: "The Lease", side: "sell", amount: 5 }, a.token)).status).toBe(200); // o1
+    // Bob opens two requests (his limit), then is over it.
+    expect((await wallet(rt, "request", { from: a.id, amount: 1 }, b.token)).status).toBe(200); // r2
+    expect((await wallet(rt, "request", { from: a.id, amount: 1 }, b.token)).status).toBe(200); // r3
+    expect((await wallet(rt, "request", { from: a.id, amount: 1 }, b.token)).status).toBe(429);
+    // Over the limit he can still back out: decline Alice's offer, withdraw a request.
+    expect((await wallet(rt, "decline", { id: "o1" }, b.token)).status).toBe(200);
+    expect((await wallet(rt, "cancel", { id: "r2" }, b.token)).status).toBe(200);
+    expect((await wallet(rt, "cancel", { id: "r3" }, b.token)).status).toBe(200);
+    // The next id is r4: Bob's 429 never spent one.
+    expect((await wallet(rt, "request", { from: b.id, amount: 1 }, a.token)).status).toBe(200);
+    expect((await guestState(rt, a.token)).wallet!.requests.map((r) => r.id)).toEqual(["r4"]);
+  });
+
   it("a refused offer still counts, so guessing codex titles hits the limit", async () => {
     const rt = freshRuntime(SOURCE, { wallet: { max: 2, windowMs: 60_000 } });
     const a = await guest(rt, "Alice");
