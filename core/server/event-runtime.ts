@@ -4021,7 +4021,9 @@ export class EventRuntime {
             this.fanout(this.commit("capture", id));
             break;
           case "release":
-            this.fanout(this.commit("escape", id));
+            // A director's release is the story's own release (`when
+            // released:` runs); `escape` is the guest's self-escape.
+            this.fanout(this.commit("release", id));
             break;
           case "restrict":
             this.fanout(this.commit("restrict", id));
@@ -4197,8 +4199,8 @@ export class EventRuntime {
           }
           case "captured": {
             const on = value === true || value === "true";
-            // `capture` is idempotent; `escape` only fires on a real transition.
-            this.fanout(this.commit(on ? "capture" : "escape", id));
+            // Both are idempotent; `release` only fires on a real transition.
+            this.fanout(this.commit(on ? "capture" : "release", id));
             break;
           }
           case "restricted": {

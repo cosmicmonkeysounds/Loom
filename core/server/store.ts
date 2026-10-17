@@ -33,6 +33,7 @@ export type Mutation =
   | "scan"
   | "signal"
   | "escape"
+  | "release"
   | "capture"
   | "restrict"
   | "unrestrict"

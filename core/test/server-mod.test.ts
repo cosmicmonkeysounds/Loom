@@ -115,6 +115,68 @@ describe("run-panel mod routes", () => {
     expect(free.json.guest.captured).toBe(false);
   });
 
+  it("a director's Release is a real story release: `when released:` runs, and it replays (W6 B3)", async () => {
+    const SRC = `# Release
+start: Boot
+
+LOCATION Hall
+
+LOCATION Jail
+  prison: true
+
+ROLE Guest
+  when someone joins:
+    move guest to Hall
+  when captured for guest:
+    set guest.corrupted = true
+  when released for guest:
+    set guest.corrupted = false
+    reply Reinstallation complete.
+  when escape for guest:
+    reply Escaped.
+
+== Boot
+Narrator: Boot.
+`;
+    const d = mkdtempSync(join(tmpdir(), "loom-mod-"));
+    dirs.push(d);
+    const mk = () =>
+      new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "x", scenarioSource: SRC, joinBase: () => "http://localhost" });
+    const rt1 = mk();
+    const id = await withGuest(rt1);
+    const world = (rt: EventRuntime) => rt.liveSim!.world;
+    expect((await post(rt1, "/api/mod/act", { id, action: "capture" })).status).toBe(200);
+    expect(world(rt1).peek(`${id}.corrupted`)).toEqual({ kind: "bool", value: true });
+    expect(rt1.liveSim!.isCaptured(id)).toBe(true);
+
+    expect((await post(rt1, "/api/mod/act", { id, action: "release" })).status).toBe(200);
+    const sim1 = rt1.liveSim!;
+    expect(sim1.isCaptured(id)).toBe(false);
+    expect(world(rt1).peek(`${id}.corrupted`)).toEqual({ kind: "bool", value: false });
+    expect(sim1.locationOf(id)).toBe("Hall");
+    const types = sim1.log.since(0).map((e) => e.type);
+    expect(types).toContain("released");
+    expect(types).not.toContain("escaped");
+    // A second release is a no-op (no double-fire).
+    const before = sim1.log.len();
+    await post(rt1, "/api/mod/act", { id, action: "release" });
+    expect(sim1.log.since(before).filter((e) => e.type === "released")).toHaveLength(0);
+
+    // `/api/mod/set captured:false` is the same release.
+    await post(rt1, "/api/mod/act", { id, action: "capture" });
+    await post(rt1, "/api/mod/set", { id, field: "captured", value: false });
+    expect(world(rt1).peek(`${id}.corrupted`)).toEqual({ kind: "bool", value: false });
+    expect(sim1.log.since(0).filter((e) => e.type === "released")).toHaveLength(2);
+    rt1.pause();
+
+    // A restart replays the journaled `release` lines onto the same state.
+    const rt2 = mk();
+    expect(rt2.restore()).not.toBeNull();
+    expect(rt2.liveSim!.isCaptured(id)).toBe(false);
+    expect(world(rt2).peek(`${id}.corrupted`)).toEqual({ kind: "bool", value: false });
+    expect(rt2.liveSim!.log.len()).toBe(sim1.log.len());
+  });
+
   it("/api/mod/set rejects unknown fields and unknown guests", async () => {
     const rt = freshRuntime();
     const id = await withGuest(rt);
