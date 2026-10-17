@@ -488,7 +488,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
             rootSeq={t.activeThreadRoot}
             onClose={t.closeThread}
             moderate={mod}
-            onSend={(text, parentSeq) => void s.say(postChannel, text, parentSeq)}
+            onSend={(text, parentSeq) => s.say(postChannel, text, parentSeq)}
           />
         );
       } else if (active.id === "quests" || active.id === "codex" || active.id === "wallet" || active.id === INBOX) {
@@ -515,7 +515,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
             showChannel
             moderate={mod}
             onOpenThread={t.openThread}
-            onSend={(text) => void s.say(active.id, text)}
+            onSend={(text) => s.say(active.id, text)}
             onPerson={openCard}
             pins={activePins(active.messages)}
             headerActions={
@@ -535,7 +535,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
             onBack={t.back}
             moderate={mod}
             onOpenThread={t.openThread}
-            onSend={(text) => void s.say(active.id, text)}
+            onSend={(text) => s.say(active.id, text)}
             widgets={widgets}
           />
         );
@@ -553,7 +553,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
             onBack={t.back}
             moderate={mod}
             onOpenThread={t.openThread}
-            onSend={(text) => void s.say(postChannel, text)}
+            onSend={(text) => s.say(postChannel, text)}
             onPerson={openCard}
             onPeople={() => setPeople(active)}
             pins={activePins(active.messages)}

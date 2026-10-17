@@ -592,7 +592,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
           channel={active}
           rootSeq={t.activeThreadRoot}
           onClose={t.closeThread}
-          onSend={(text, parentSeq) => void s.say(active.id, text, parentSeq)}
+          onSend={(text, parentSeq) => s.say(active.id, text, parentSeq)}
         />
       );
     } else {
@@ -609,7 +609,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
               )
           : active.kind === "quests" || active.kind === "wallet"
             ? undefined
-            : (text: string) => void s.say(active.id, text);
+            : (text: string) => s.say(active.id, text);
       const roomActions: Action[] = [];
       if (gated && active.member) {
         roomActions.push({ label: "＋ Invite", onClick: () => setInviting(true), tone: "primary" });

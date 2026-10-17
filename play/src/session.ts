@@ -422,6 +422,19 @@ export function defectTargets(status: GuestView | null): string[] {
   return (status.factions ?? []).filter((f) => f !== status.faction);
 }
 
+/** Why a typed message didn't go through, for a quiet banner — the server
+ *  names the reason (slow mode's wait, paused doors, a room you can't post
+ *  in), and the composer keeps the words so the guest can send them again.
+ *  `null` for a session the app is dropping anyway (401, or the unknown-token
+ *  404s), which explains itself on the join screen. */
+export function sayRefusalText(e: unknown): string | null {
+  if (!(e instanceof ApiError)) return "⚠️ Not sent — check your connection and try again.";
+  if (eventGone(e.status, e.message) || guestSessionDead(e.status, e.message) || performerSessionDead(e.status, e.message)) return null;
+  if (e.status === 429) return `⏳ Not sent: ${e.message}. Your message is still in the box.`;
+  if (e.status === 409 && /doors are closed/i.test(e.message)) return "⏸ Not sent: the show is paused. Your message is still in the box.";
+  return `⛔ Not sent: ${e.message}`;
+}
+
 /** What a guest sees after pressing one of the story's buttons: the
  *  story's reply to them, else a plain acknowledgement of the button. */
 export function actFeedback(replies: readonly string[] | undefined, label?: string): string {
@@ -908,8 +921,17 @@ export function useGuestSession(): GuestSession {
     },
     [post],
   );
+  // A refused line banners why and rejects, so the composer keeps the text.
   const say = useCallback(
-    (channel: string, text: string, parentSeq?: number) => post("/api/guest/say", { channel, text, parentSeq }),
+    async (channel: string, text: string, parentSeq?: number) => {
+      try {
+        return await post("/api/guest/say", { channel, text, parentSeq });
+      } catch (e) {
+        const why = sayRefusalText(e);
+        if (why !== null) alertsRef.current?.raise(why, { quiet: true });
+        throw e;
+      }
+    },
     [post],
   );
   const register = useCallback(async (name: string, code: string, wiki?: string, picture?: string) => {
@@ -1477,9 +1499,17 @@ export function usePrimeSession(): PrimeSession {
     setNotice(null);
   }, []);
   const scan = useCallback((target: string) => post("/api/scan", { target }, auth!.token), [post, auth]);
+  // A refused line banners why and rejects, so the composer keeps the text.
   const say = useCallback(
-    (channel: string, text: string, parentSeq?: number) =>
-      post("/api/prime/say", { channel, text, parentSeq }, auth!.token),
+    async (channel: string, text: string, parentSeq?: number) => {
+      try {
+        return await post("/api/prime/say", { channel, text, parentSeq }, auth!.token);
+      } catch (e) {
+        const why = sayRefusalText(e);
+        if (why !== null) alertsRef.current?.raise(why, { quiet: true });
+        throw e;
+      }
+    },
     [post, auth],
   );
   const inviteToChannel = useCallback(
