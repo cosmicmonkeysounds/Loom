@@ -1740,6 +1740,14 @@ describe("Trapped in the Internet — the King gives the door code (wave 7)", ()
     // Nothing changes but the words.
     expect(v(sim, "Night.alarms")).toBe(0);
     for (const [g] of PROGRAMS) expect(sim.holdsCodex(g, "The Door Code"), g).toBe(false);
+    // From the final reveal the TV belongs to the finale: the readout only.
+    advance(sim, 300);
+    fire(sim, "final_reveal");
+    for (const name of ["chess lost", "chess drawn"]) {
+      const late = fire(sim, name);
+      expect(beats(late), name).toEqual([]);
+      expect(hostsSaid(late), name).toHaveLength(1);
+    }
   });
 });
 
@@ -2907,7 +2915,8 @@ describe("Trapped in the Internet — talked down, like the Fallout Master (wave
     const sd = m.interactions.get("stand_down")!;
     expect(sd.who).toBe("agent");
     expect(sd.limit).toBe(1);
-    expect(sd.description).not.toMatch(/Sandy|tent/u); // the description reaches the voice all night
+    expect(sd.description).not.toMatch(/Sandy|tent|cold room|server room|patch/iu); // the description reaches the voice all night: never where his heart is
+    expect(sd.description).toContain("at_the_heart");
   });
 });
 
