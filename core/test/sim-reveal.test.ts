@@ -113,12 +113,10 @@ describe("hidden places", () => {
       { type: "revealed", target: "room:task manager", kind: "channel", person: "g1" },
       { type: "revealed", target: "The Ghost", kind: "character", person: "g1" },
     ]);
-    // Rooms announce themselves to the one they opened for; a person does not.
+    // Rooms announce themselves to the one they opened for (a place and a
+    // chat room opening together are one notice); a person does not.
     const notices = composeGuestMessages(sim, evs).filter((m) => m.kind === "system");
-    expect(notices.map((m) => [m.text, m.audience])).toEqual([
-      ["📂 The Cellar is open now.", ["g1"]],
-      ["📂 #task manager is open now.", ["g1"]],
-    ]);
+    expect(notices.map((m) => [m.text, m.audience])).toEqual([["📂 The Cellar and #task manager are open now.", ["g1"]]]);
     // Idempotent: revealing again records nothing.
     expect(sim.signal("the doors open", "g1").some((e) => e.type === "revealed")).toBe(false);
     // An unknown target is ignored.
@@ -150,15 +148,37 @@ ROLE Guest
     sim.createPerson("g1", "Ada");
     sim.createPerson("g2", "Bob");
     const notices = composeGuestMessages(sim, sim.signal("cleared", "g1")).filter((m) => m.kind === "system");
-    // A run of places is one line, listed by name (labels lose their
-    // parenthetical); a chat room keeps its own; a repeat records nothing.
-    expect(notices.map((m) => [m.text, m.audience])).toEqual([
-      ["📂 The Cellar, Attic and Shed are open now.", ["g1"]],
-      ["📂 #secrets is open now.", ["g1"]],
-    ]);
+    // A run of places and rooms is one line, listed by name (labels lose
+    // their parenthetical); a repeat records nothing (W6 B6).
+    expect(notices.map((m) => [m.text, m.audience])).toEqual([["📂 The Cellar, Attic, Shed and #secrets are open now.", ["g1"]]]);
     // The next person's run is their own notice.
     const both = [...sim.signal("cleared", "g2")];
-    expect(composeGuestMessages(sim, both).filter((m) => m.kind === "system").map((m) => m.audience)).toEqual([["g2"], ["g2"]]);
+    expect(composeGuestMessages(sim, both).filter((m) => m.kind === "system").map((m) => m.audience)).toEqual([["g2"]]);
+  });
+
+  it("a room first, then places, is one notice; a line in between starts a new one (W6 B6)", () => {
+    const sim = Sim.fromSources(`# Rooms
+LOCATION Hall
+LOCATION Cellar
+  hidden: true
+SPACE Rooms
+  CHANNEL desk
+    kind: open
+    hidden: true
+  CHANNEL vault
+    kind: open
+    hidden: true
+CHARACTER Clerk
+ROLE Guest
+  when cleared for guest:
+    reveal desk for guest
+    reveal Cellar for guest
+    Clerk: Welcome in.
+    reveal vault for guest
+`);
+    sim.createPerson("g1", "Ada");
+    const notices = composeGuestMessages(sim, sim.signal("cleared", "g1")).filter((m) => m.kind === "system");
+    expect(notices.map((m) => m.text)).toEqual(["📂 #desk and Cellar are open now.", "📂 #vault is open now."]);
   });
 
   it("open for everyone with a bare `reveal X`, including a late arrival", () => {
@@ -173,7 +193,10 @@ ROLE Guest
     // A faction keeps its own reveal path (unmasked for the party).
     expect(evs.some((e) => e.type === "factionRevealed" && e.faction === "The Society")).toBe(true);
     expect(sim.factionRevealed("The Society")).toBe(true);
-    expect(composeGuestMessages(sim, evs).filter((m) => m.kind === "system").map((m) => m.audience)).toEqual(["all", "all", "all"]);
+    // The place + room are one notice, the faction its own.
+    const notices = composeGuestMessages(sim, evs).filter((m) => m.kind === "system");
+    expect(notices.map((m) => m.audience)).toEqual(["all", "all"]);
+    expect(notices[0]!.text).toBe("📂 Attic and #task manager are open now.");
     // `reveal task manager` opened the room, not CHARACTER Task Manager.
     expect(evs.filter((e) => e.type === "revealed").map((e) => (e as { target: string }).target)).toEqual(["Attic", "room:task manager", "The Ghost"]);
   });
