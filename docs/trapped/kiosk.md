@@ -77,6 +77,23 @@ with TEST VOICE. **In Fully** (no voice list) `fully.textToSpeech` speaks
 the Android default, often female: type a male Android voice's name into
 *device voice* if TEST VOICE sounds like Alexa.
 
+**A slide over the scanner.** A held slide (the y2k clock is up for the
+whole final hour; `bingo`, `trust_chart`, `truth_txt`, awards) covers a
+face terminal's scanner. **A tap on the slide peeks under it**: the
+scanner and *type your program name* show (the only way in on a tablet
+with no camera, e.g. plain http), and the corner countdown hides as well.
+The slide comes back after **30 s with nobody touching the tablet**, or
+when a line opens. A tablet showing no clock for a moment is someone
+peeking, not a failed cue: don't re-fire it. An overlay (blackout, *go
+to the living room*, the alarm) still covers everything. The TV and
+mirrors never peek.
+
+**A character the story lacks.** A tablet set up before the doors keeps
+the typed character (nothing to check it against yet). Once the doors
+open, a name the story doesn't have (`Trabolt`) sends the tablet to setup
+with *The story has no character called …* and the cast: fix the
+character field and save.
+
 **Speaker tablets.** Media volume up, then lock it with Fully's *Volume
 Limits* if the version has it. Set the volume before the party, not after.
 

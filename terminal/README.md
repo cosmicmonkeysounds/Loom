@@ -48,7 +48,11 @@ http://<server>/terminal/?code=<mod passcode>&name=Kitchen&character=Trabolta&sp
 (`&camera=environment` for the back camera; `&engine=` — see *The voice*
 below; `&announce=1` to also say the house announcements; `&spot=` and
 `&view=` — see *The world view* below.) The passcode and the other hints
-are scrubbed from the address bar at once.
+are scrubbed from the address bar at once. `character=` folds onto the
+story's own spelling (`trabolta` → `Trabolta`); a name the story lacks is
+refused with the cast listed — or, on a tablet set up before the doors
+(no cast to check yet), sends it back to setup with that error once the
+doors open, so it never pilots into a thread no agent hears.
 
 **The camera needs a secure context** — `https://` or `localhost`. On a
 plain `http://192.168.x.x` address every browser refuses `getUserMedia`;
@@ -104,7 +108,12 @@ scanner and ends an open line) > **slide** (any other `screens_*` /
 `tv_*` / `terminals_*` value, held 45 s on a terminal / 90 s on the TV;
 `bingo`, `y2k`, `trust_chart`, `truth_txt`, `award_*`, `ceremony*` stay
 until the next cue and beat attract) > **attract** > the base view. A
-pilot pre-empts a slide. A slide is `public/slides/<cue>.png` (e.g.
+pilot pre-empts a slide. **On a face terminal** (not the TV, not a
+mirror, not on the screensaver) **a tap on a held slide peeks under it**
+(B21): the scanner and *type your program name* show, the corner
+countdown is hidden too (its box covers CONNECT), an overlay still covers
+everything, and the slide comes back once nobody has touched the tablet
+for 30 s (`PeekClock`, `slides.ts`) or a line opens. A slide is `public/slides/<cue>.png` (e.g.
 `screens_trivia_1.png`, `tv_bingo.png`), else `<value>.png`; a missing
 PNG renders a Win98 text card (`SLIDE_COPY` — the trivia cards carry the
 Quest Log's own questions, test-checked against `quests.loom`), never a
