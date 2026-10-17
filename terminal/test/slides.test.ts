@@ -51,9 +51,9 @@ describe("a tap peeks under a held slide (B21)", () => {
     expect(PEEK_MS).toBe(30_000);
   });
 
-  it("a peek drops the persisting y2k slide (the countdown moves to the corner); the slide is back after", () => {
+  it("a peek drops the persisting y2k slide and the corner (it would cover CONNECT); the slide is back after", () => {
     expect(at(y2k, 30 * 60_000)).toMatchObject({ slide: { value: "y2k" }, corner: null });
-    expect(peekAt(y2k, 30 * 60_000)).toMatchObject({ slide: null, corner: 3000 - 30 * 60 });
+    expect(peekAt(y2k, 30 * 60_000)).toMatchObject({ slide: null, corner: null });
     expect(at(y2k, 31 * 60_000).slide?.value).toBe("y2k");
   });
 

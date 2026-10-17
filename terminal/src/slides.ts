@@ -187,7 +187,8 @@ export function screenLayers(state: ScreenState | null, nowMs: number, o: { pilo
 
   const remaining = state.remaining === null ? null : Math.max(0, state.remaining - Math.floor(since / 1000));
   const y2k = state.countdown === "y2k" ? remaining : null;
-  const corner = overlay === null && !o.piloting && state.countdown !== null && remaining !== null && slide?.value !== "y2k" ? remaining : null;
+  // A peek clears the corner too: its box sits over the typed fallback's CONNECT.
+  const corner = overlay === null && !o.piloting && o.peek !== true && state.countdown !== null && remaining !== null && slide?.value !== "y2k" ? remaining : null;
 
   const flicker = p.flicker !== null && overlay !== "blackout" && age(p.flicker.at) < FLICKER_FRESH_MS ? p.flicker.seq : null;
   const chart = overlay === null && slide !== null && state.chart !== null && state.chart.slide === slide.value ? state.chart : null;
