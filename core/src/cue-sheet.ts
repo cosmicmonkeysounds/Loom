@@ -86,7 +86,7 @@ export function cueRows(interactions: readonly CueInteraction[], cues: CueMarks)
   const admin = interactions.filter((i) => i.who === "admin");
   const lastIdx = cues.last === null ? -1 : admin.findIndex((i) => i.id === cues.last);
   const nextIdx =
-    lastIdx >= 0 && admin[lastIdx]!.repeat === true
+    lastIdx >= 0 && admin[lastIdx]!.repeat === true && admin[lastIdx]!.live !== false
       ? lastIdx
       : admin.findIndex((i, idx) => idx > lastIdx && i.sequence !== false && i.live !== false && (!fired.has(i.id) || i.repeat === true));
   return admin.map((i, idx) => {

@@ -184,6 +184,9 @@ describe("NEXT follows tonight's branch (an admin cue's `while:`)", () => {
     expect(rows.find((r) => r.id === "recount")).toMatchObject({ live: false, sequence: true, next: false });
     expect(rows.find((r) => r.id === "reveal")).toMatchObject({ live: true });
     expect(cueRows(sheet, { last: "reveal", fired: ["y2k", "reveal"] }).find((r) => r.next)).toBeUndefined();
+    // A `repeat: true` LAST stays NEXT only while it is live (📋 after Q3).
+    const results = [ix("close"), { ...ix("results"), repeat: true as const, live: false as const }, ix("preview")];
+    expect(cueRows(results, { last: "results", fired: ["close", "results"] }).find((r) => r.next)?.id).toBe("preview");
     const lean = cueSheetView({ interactions: sheet }).interactions;
     expect(lean.find((i) => i.id === "recount")).toMatchObject({ live: false });
     expect(lean.find((i) => i.id === "reveal")).not.toHaveProperty("live");
