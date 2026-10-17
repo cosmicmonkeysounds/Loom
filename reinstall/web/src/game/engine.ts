@@ -29,7 +29,7 @@ import { IdleLeash } from "./leash.ts";
 import { bodyAfterRemap, buildPhysicsWorld, eyeOf, move, NO_INPUT, spawnBody, type Body, type PhysicsOptions, type PhysicsWorld } from "./physics.ts";
 import { NoRenderer } from "./no-start.ts";
 import { PosePump } from "./pump.ts";
-import { trail } from "./trail.ts";
+import { trail, trailMap } from "./trail.ts";
 
 export { IDLE_LIMIT_MS, IDLE_WARN_MS } from "./leash.ts";
 export { WIN_NOT_SENT } from "./fight.ts";
@@ -175,6 +175,8 @@ export class Game {
   // The King (`fight.ts`): per session, nothing shared.
   private fight: Fight = newFight();
   private kingProp: Prop | null = null;
+  /** `this.map` with the fallen King's doors open (`trailMap`): what the trail routes over. */
+  private trailHouse: HouseMap;
   private king: King | null = null;
   private hitQueued = false;
   private challengeQueued = false;
@@ -205,6 +207,7 @@ export class Game {
     this.mapVersion = opts.houseVersion;
     this.kingProp = opts.house.props.find((p) => p.kind === "king") ?? null;
     this.fight = newFight(this.kingProp?.hp ?? KING_HP);
+    this.trailHouse = this.map;
     const walls = buildWalls(opts.house);
     this.world = buildPhysicsWorld(opts.house, walls, this.physicsOptions());
     const root = spaceGroup(spaceOf(opts.house, "web"));
@@ -450,7 +453,7 @@ export class Game {
 
   private refreshTrail(now: number): void {
     this.lastTrailAt = now;
-    this.path = trail(this.map, this.body.p, this.duckSpot.pos);
+    this.path = trail(this.trailHouse, this.body.p, this.duckSpot.pos);
     this.distance = pathLength(this.path);
     this.trail.set(this.path);
     this.distHistory.push({ t: now, d: this.distance });
@@ -526,6 +529,7 @@ export class Game {
 
   /** Bind the scene's King to the fight (after a build / remap). */
   private bindKing(): void {
+    this.trailHouse = trailMap(this.map, this.kingProp?.id ?? null, this.fight.fallen);
     this.king = this.kingProp !== null ? (this.house.kings.get(this.kingProp.id) ?? null) : null;
     this.king?.setHp(this.fight.hp, this.fight.max);
     if (this.fight.fallen) {
@@ -620,6 +624,7 @@ export class Game {
         void this.king?.fall();
         this.openGuardedDoors();
         this.world = buildPhysicsWorld(this.map, this.house.walls, this.physicsOptions());
+        this.trailHouse = trailMap(this.map, king.id, true);
         this.lastTrailAt = Number.NEGATIVE_INFINITY;
         this.o.sfx.fanfare();
         this.say("CHECKMATE — the door opens.", 4000);
