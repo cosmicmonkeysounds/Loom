@@ -7,10 +7,11 @@ import { foldName } from "../src/parser/names.ts";
 import type { AgentMindReport } from "./agents.ts";
 
 export type { AgentControl, AgentControlAction, AgentMindPerson, AgentMindRevision, AgentThought } from "./agents.ts";
-import type { Sim } from "../src/runtime/sim/index.ts";
+import type { Sim, SimEvent } from "../src/runtime/sim/index.ts";
 import type { CodexDef } from "../src/runtime/sim/model.ts";
 import type { WalletModView, WalletQueueView, WalletView } from "./wallet.ts";
 import type { FactsView } from "./facts.ts";
+import { identityDefs, performerPickable } from "./identity.ts";
 
 export type { WalletModView, WalletOfferView, WalletQueueView, WalletRequestView, WalletTxView, WalletView } from "./wallet.ts";
 // The facts judge's ledger (`ModView.facts`, Wave 4 lane B): the editor
@@ -99,6 +100,9 @@ export interface InteractionSummary {
   /** False for an off-sequence cue (`sequence: false`): machine-fired or a
    *  hardware fallback — the cue sheet ticks it but never suggests it. */
   sequence?: false;
+  /** True for a cue pressed again and again (`repeat: true`): the cue
+   *  sheet still suggests it once it has fired. */
+  repeat?: true;
   /** Whose button this is — character ids, from the INTERACTION's `by:`
    *  (characters, or a GROUP's members) plus every character that owns a
    *  hook for it (a trait's `when vouch for program:`). Absent = anyone's.
@@ -171,6 +175,7 @@ function interactionsFor(
       const s: InteractionSummary = { id: i.id, label: i.label, who: i.who, description: i.description };
       if (subjectOnly.has(foldName(i.id))) s.subject = true;
       if (!i.sequence) s.sequence = false;
+      if (i.repeat) s.repeat = true;
       const by = i.who === "performer" ? actors.get(i.id) : undefined; // a guest never learns who hears their buttons
       if (by !== undefined) s.actors = by;
       if (at !== undefined && i.while !== null && !sim.holds(i.while, at.subject, at.self)) s.live = false;
@@ -402,6 +407,13 @@ export interface CastSummary {
   /** `mind: external` — voiced by a stagehand agents worker, not a performer
    *  (`online` then means a worker for it is connected). */
   agent?: boolean;
+  /** A part a performer can sign in to (`identity.ts` `performerPickable`):
+   *  the Run page's sign-in list shows only these. */
+  part?: boolean;
+  /** A part a session token holds right now, streaming or not — `held` and
+   *  not `online` is a booth whose phone dropped (⏏ Release). Present on
+   *  parts where connection tracking exists. */
+  held?: boolean;
 }
 
 /** Who is connected to the event right now, by capability. */
@@ -418,6 +430,9 @@ export interface ModPresence {
   owners?: Map<string, string>;
   /** Agent characters with a stagehand worker connected. */
   agents?: Set<string>;
+  /** Folded character names a performer's session token holds (streaming or
+   *  not — `identity.ts` `heldCharacters`). */
+  held?: Set<string>;
   /** What each agent worker last reported about its character's evolving
    *  mind (`POST /api/agent/mind`) — the director's window into it. */
   minds?: AgentMindSummary[];
@@ -510,6 +525,95 @@ interface CueScan {
   at: number;
   state: CueState;
   seen: Set<string>;
+  /** `state.last`'s place in the declared order (-1 = none). */
+  lastOrder: number;
+}
+
+/** Where each director press's own events end, per log: the batch one
+ *  `Sim.signal` call wrote (start index → end index, exclusive). The event
+ *  runtime notes every journaled signal as it commits it live *and* as
+ *  `restore()` replays it, so a press is judged by exactly what it did —
+ *  never by whichever input (a wallet sweep, a mod `set`, a join) happened
+ *  to land after it before the next director snapshot (T7-01). */
+const pressEnds = new WeakMap<object, Map<number, number>>();
+
+/** Record a `Sim.signal` batch just returned (`out = sim.signal(…)`). */
+export function notePress(sim: Sim, batch: readonly SimEvent[]): void {
+  if (batch.length === 0) return;
+  const end = sim.log.len();
+  let ends = pressEnds.get(sim.log);
+  if (ends === undefined) {
+    ends = new Map();
+    pressEnds.set(sim.log, ends);
+  }
+  ends.set(end - batch.length, end);
+}
+
+/** Log entries that start a new input (a press, a tick, a typed line, a
+ *  join, a scan) — where a press nobody noted (`notePress`: the editor's
+ *  in-browser rehearsal, a bare `Sim` in a test) is taken to end. */
+const CUE_INPUTS: ReadonlySet<string> = new Set(["signal", "tick", "chat", "accountCreated", "scanned"]);
+
+/** What `refusedPress` needs from the model, per compiled model: the named
+ *  events some rule listens for, and the staff rooms (an authored
+ *  `kind: faction` CHANNEL whose GROUP no guest may join — `# hosts`). */
+interface CueModel {
+  heard: Set<string>;
+  staff: Set<string>;
+}
+const cueModels = new WeakMap<object, CueModel>();
+function cueModelOf(model: Sim["model"]): CueModel {
+  let out = cueModels.get(model);
+  if (out === undefined) {
+    const heard = new Set<string>();
+    const collect = (hooks: readonly { verb: string; timer: unknown; condition: string | null }[]): void => {
+      for (const h of hooks) if (h.timer === null && h.condition === null && h.verb !== "") heard.add(foldName(h.verb));
+    };
+    for (const c of model.characters.values()) collect(c.hooks);
+    for (const r of model.roles.values()) collect(r.hooks);
+    collect(model.rules);
+    const staff = new Set<string>();
+    for (const c of model.channels.values()) {
+      const group = c.kind === "faction" && c.faction !== null ? model.factions.get(c.faction) : undefined;
+      if (group !== undefined && !group.joinable) staff.add(roomFold(c.id));
+    }
+    out = { heard, staff };
+    cueModels.set(model, out);
+  }
+  return out;
+}
+
+/** A room name folded the way `chat.ts` matches `channel(…)` scopes. */
+function roomFold(s: string): string {
+  return s.replace(/^room:/u, "").toLowerCase().replace(/[#_-]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/** A broadcast scope that names only staff rooms (`channel(hosts)`). */
+function staffOnly(scope: string, staff: ReadonlySet<string>): boolean {
+  const terms = scope.split("|").map((t) => t.trim());
+  return terms.length > 0 && terms.every((t) => {
+    const m = /^channel\((.+)\)$/u.exec(t);
+    return m !== null && staff.has(roomFold(m[1]!));
+  });
+}
+
+/** Did the director's press at `events[n]` (a cue some rule listens for) do
+ *  nothing but, at most, tell a staff room why? The story's phase-guarded
+ *  rules refuse a cue pressed out of turn with a `# hosts` line or not at
+ *  all (T1-02): such a press never becomes LAST or ticks the cue. A cue no
+ *  rule hears (only stagehand reacts) always counts as fired. */
+function refusedPress(sim: Sim, events: readonly SimEvent[], n: number, name: string): boolean {
+  const cm = cueModelOf(sim.model);
+  if (!cm.heard.has(foldName(name))) return false;
+  const end = pressEnds.get(sim.log)?.get(n);
+  for (let k = n + 1; k < (end ?? events.length); k++) {
+    const e = events[k]!;
+    if (end === undefined && CUE_INPUTS.has(e.type)) break;
+    if (e.type === "diagnostic") continue;
+    if (e.type === "broadcast" && staffOnly(e.scope, cm.staff)) continue;
+    return false;
+  }
+  return true;
 }
 
 /** Per log, where the scan got to — the log only grows, so each director
@@ -520,15 +624,19 @@ const cueScans = new WeakMap<object, CueScan>();
  * Scan the log for admin cues. A director's fire is a `signal` event; a
  * story's own `fire x` (an auto cue) is a `fire` directive. Names fold, so
  * `the golden duck` matches however it was spelled at the call site.
+ *
+ * A director's in-sequence press the story refused (`refusedPress`) counts
+ * for nothing, and a repeat of a cue that already fired never moves LAST
+ * back to an earlier row (T7-01): a mis-tap is cheap.
  */
 export function cueState(sim: Sim): CueState {
-  const admin = new Map<string, { id: string; sequence: boolean }>();
-  for (const i of sim.model.interactions.values()) if (i.who === "admin") admin.set(foldName(i.id), { id: i.id, sequence: i.sequence });
+  const admin = new Map<string, { id: string; sequence: boolean; order: number }>();
+  for (const i of sim.model.interactions.values()) if (i.who === "admin") admin.set(foldName(i.id), { id: i.id, sequence: i.sequence, order: admin.size });
   if (admin.size === 0) return { last: null, lastBy: null, fired: [] };
   const events = sim.log.all();
   let scan = cueScans.get(sim.log);
   if (scan === undefined || scan.model !== sim.model || scan.at > events.length) {
-    scan = { model: sim.model, at: 0, state: { last: null, lastBy: null, fired: [] }, seen: new Set() };
+    scan = { model: sim.model, at: 0, state: { last: null, lastBy: null, fired: [] }, seen: new Set(), lastOrder: -1 };
     cueScans.set(sim.log, scan);
   }
   const { state, seen } = scan;
@@ -548,8 +656,12 @@ export function cueState(sim: Sim): CueState {
     if (cue === undefined) continue;
     const id = cue.id;
     if (cue.sequence) {
-      state.last = id;
-      state.lastBy = by;
+      if (by === "director" && refusedPress(sim, events, n, name)) continue;
+      if (!(seen.has(id) && cue.order < scan.lastOrder)) {
+        state.last = id;
+        state.lastBy = by;
+        scan.lastOrder = cue.order;
+      }
     }
     if (!seen.has(id)) {
       seen.add(id);
@@ -612,6 +724,18 @@ function operatorChannels(sim: Sim): ChannelSummary[] {
   return out;
 }
 
+/** The parts a performer can sign in to, per compiled model (memoised: the
+ *  classification walks the story, and director snapshots are frequent). */
+const parts = new WeakMap<object, Set<string>>();
+function partsOf(model: Sim["model"]): Set<string> {
+  let out = parts.get(model);
+  if (out === undefined) {
+    out = new Set(identityDefs(model).filter(performerPickable).map((d) => d.name));
+    parts.set(model, out);
+  }
+  return out;
+}
+
 /** `declared`: the story's cast while no sim exists (the doors are shut) —
  *  a terminal provisioned before the doors checks its character against it. */
 export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string | null, presence?: ModPresence, declared?: readonly string[]): ModView {
@@ -662,14 +786,19 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
     factions,
     locations,
     characters: [...sim.model.characters.keys()],
-    cast: [...sim.model.characters.values()].map((c) => ({
-      id: c.id,
-      faction: c.faction ?? null,
-      ...(c.mind === "external" ? { agent: true } : {}),
-      ...(presence !== undefined
-        ? { online: c.mind === "external" ? (presence.agents?.has(c.id) ?? false) : presence.primes.has(c.id) }
-        : {}),
-    })),
+    cast: [...sim.model.characters.values()].map((c) => {
+      const part = partsOf(sim.model).has(c.id);
+      return {
+        id: c.id,
+        faction: c.faction ?? null,
+        ...(c.mind === "external" ? { agent: true } : {}),
+        ...(presence !== undefined
+          ? { online: c.mind === "external" ? (presence.agents?.has(c.id) ?? false) : presence.primes.has(c.id) }
+          : {}),
+        ...(part ? { part: true } : {}),
+        ...(part && presence?.held !== undefined ? { held: presence.held.has(foldName(c.id)) } : {}),
+      };
+    }),
     channels: operatorChannels(sim),
     spaces: sim.spaceList(),
     beats: [...sim.model.beats.keys()],

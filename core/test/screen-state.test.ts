@@ -675,6 +675,16 @@ describe("ScreenWatch — a room terminal (wave 7)", () => {
     expect(s.room).toEqual({ id: "", open: false });
     expect(s.attract).toBe(true);
   });
+
+  it("before the doors the declared LOCATIONs name the room (asleep); a typo is still no room (S1-03)", () => {
+    const model = Sim.fromSources(ROOM_SOURCE).model;
+    const w = new ScreenWatch();
+    const poll = (room: string) => w.poll(null, { name: "Server Room", spot: "", view: "face", character: "Trabolta", room }, () => false, [], model);
+    expect(poll("The Server Room")).toMatchObject({ room: { id: "The Server Room", open: false }, attract: true });
+    // Even a never-hidden room stays closed until a sim says so.
+    expect(poll("The Desktop").room).toEqual({ id: "The Desktop", open: false });
+    expect(poll("The Vault").room).toEqual({ id: "", open: false });
+  });
 });
 
 describe("GET /api/screen/state?room= — the room terminal", () => {
@@ -683,6 +693,14 @@ describe("GET /api/screen/state?room= — the room terminal", () => {
     rt.openDoors();
     return rt;
   };
+
+  it("before the doors a provisioned room terminal is named and asleep; a typo has no id (S1-03)", async () => {
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(freshDir()), codes: CODES, scenarioName: "vault", scenarioSource: ROOM_SOURCE, joinBase: () => "http://localhost" });
+    expect(rt.liveSim).toBeNull();
+    const room = async (name: string) => ((await call(rt, "GET", `/api/screen/state?name=Server%20Room&view=face&character=Trabolta&room=${encodeURIComponent(name)}`, {}, { moderator: true })).json as unknown as ScreenState).room;
+    expect(await room("The Server Room")).toEqual({ id: "The Server Room", open: false });
+    expect(await room("The Servr Room")).toEqual({ id: "", open: false });
+  });
 
   it("answers the room and its voice; the cutscene's lines arrive with the wake; the TV mute never silences it", { timeout: SLOW }, async () => {
     const rt = roomRuntime(freshDir());

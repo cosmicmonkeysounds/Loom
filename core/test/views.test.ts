@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { guestView, modView, primeView, titleOf } from "../server/views.ts";
 import { scenarioSource } from "../examples/load.ts";
+import { heldCharacters } from "../server/identity.ts";
 
 const SCENARIO = scenarioSource("escape-the-internet");
 
@@ -239,6 +240,121 @@ INTERACTION the golden duck
     expect((modView(sim, "open", "x").interactions ?? []).find((i) => i.id === "ring_the_bell")).not.toHaveProperty("sequence");
   });
 
+  it("a repeat of an earlier cue never moves LAST back; a press the story refused counts for nothing (T7-01, T1-02)", async () => {
+    const { cueState } = await import("../server/views.ts");
+    const sim = Sim.fromSources(`${CUES}
+INTERACTION read_out
+  label: C3 · 📋 Read out
+  who: admin
+
+INTERACTION too_early
+  label: C4 · 🤖 Too early
+  who: admin
+
+GROUP Hosts
+  joinable: false
+
+CHANNEL hosts
+  kind: faction
+  faction: Hosts
+
+when read_out:
+  set Night.reads += 1
+
+when too_early:
+  if Night.phase == "finale":
+    set Night.phase = "end"
+  else:
+    broadcast "🤖 Too early." to channel(hosts)
+`);
+    sim.signal("ring_the_bell");
+    sim.signal("read_out");
+    expect(cueState(sim).last).toBe("read_out");
+    // A repeat of ring_the_bell (row 1) leaves LAST on read_out (row 3).
+    sim.signal("ring_the_bell");
+    expect(cueState(sim)).toMatchObject({ last: "read_out", lastBy: "director" });
+    // A repeat of LAST itself keeps it.
+    sim.signal("read_out");
+    expect(cueState(sim).last).toBe("read_out");
+    // Refused: only a `# hosts` line — neither LAST nor ticked.
+    sim.signal("too_early");
+    expect(cueState(sim)).toMatchObject({ last: "read_out", fired: ["ring_the_bell", "hunt_time_up", "read_out"] });
+    // The same cue in its phase fires.
+    sim.world.set("Night.phase", { kind: "string", value: "finale" });
+    sim.signal("too_early");
+    expect(cueState(sim)).toMatchObject({ last: "too_early", fired: ["ring_the_bell", "hunt_time_up", "read_out", "too_early"] });
+  });
+
+  it("judges a refused press by its own events, so a restart replays the same LAST (T7-01 review)", async () => {
+    const { cueState, notePress } = await import("../server/views.ts");
+    const SRC = `${CUES}
+INTERACTION too_early
+  label: C3 · 🤖 Too early
+  who: admin
+
+INTERACTION quiet
+  label: C4 · 🤫 Quiet guard
+  who: admin
+
+INTERACTION lights_only
+  label: C5 · 💡 Only stagehand hears this
+  who: admin
+
+INTERACTION to_the_floor
+  label: C6 · 📣 Tell the floor
+  who: admin
+
+GROUP Hosts
+  joinable: false
+
+CHANNEL hosts
+  kind: faction
+  faction: Hosts
+
+CHANNEL exchange
+  kind: open
+
+when too_early:
+  if Night.phase == "finale":
+    set Night.phase = "end"
+  else:
+    broadcast "🤖 Too early." to channel(hosts)
+
+when quiet:
+  if Night.phase == "finale":
+    set Night.phase = "end"
+
+when to_the_floor:
+  broadcast "📣 Prices are up." to channel(exchange)
+`;
+    // The runtime notes each journaled signal live (commit) and on replay
+    // (restore); the console's snapshot may or may not land between inputs.
+    const night = (snapshots: boolean) => {
+      const sim = Sim.fromSources(SRC);
+      sim.createPerson("g1", "Ada");
+      const press = (name: string) => {
+        notePress(sim, sim.signal(name));
+        if (snapshots) cueState(sim);
+      };
+      press("ring_the_bell");
+      press("too_early"); // refused: a # hosts line
+      sim.setVar("g1.score", "5"); // a mod `set` / a wallet sweep — not a press
+      press("quiet"); // refused silently
+      sim.join("g1", "Hosts");
+      return cueState(sim);
+    };
+    const live = night(true);
+    expect(live).toEqual({ last: "hunt_time_up", lastBy: "story", fired: ["ring_the_bell", "hunt_time_up"] });
+    expect(night(false)).toEqual(live);
+
+    // A cue no rule hears (stagehand's) and a line to a guest room both count.
+    const sim = Sim.fromSources(SRC);
+    notePress(sim, sim.signal("lights_only"));
+    expect(cueState(sim).last).toBe("lights_only");
+    notePress(sim, sim.signal("to_the_floor"));
+    expect(cueState(sim)).toMatchObject({ last: "to_the_floor", fired: ["lights_only", "to_the_floor"] });
+  });
+
   it("reads only new log entries on each snapshot, and returns a fresh copy", async () => {
     const { cueState } = await import("../server/views.ts");
     const sim = Sim.fromSources(CUES);
@@ -273,6 +389,39 @@ describe("the show's cue sheet (K-21)", () => {
     sim.signal("the golden duck");
     expect(modView(sim, "open", "x").cues?.last).toBe("bingo_time");
     expect(modView(sim, "open", "x").cues?.fired).toContain("the golden duck");
+  });
+
+  it("a cue the story refuses leaves LAST / NEXT alone: an early 🤖, an early 📋, a forced majority before the vote (T1-02, T7-01)", async () => {
+    const { cueRows } = await import("../src/cue-sheet.ts");
+    const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
+    const sheet = () => {
+      const v = modView(sim, "open", "x");
+      const rows = cueRows(v.interactions ?? [], v.cues!);
+      return { last: v.cues!.last, next: rows.find((r) => r.next)?.id ?? null, fired: v.cues!.fired };
+    };
+    sim.signal("call_to_the_desktop");
+    for (const early of ["introduce_trabolta", "read_the_results", "force_majority_stay"]) {
+      sim.signal(early);
+      expect(sheet()).toEqual({ last: "call_to_the_desktop", next: "start_the_bingo", fired: ["call_to_the_desktop"] });
+    }
+    // Only the two repeatable cues may carry `repeat: true` (the story marks them).
+    const repeat = (modView(sim, "open", "x").interactions ?? []).filter((i) => i.repeat === true).map((i) => i.id);
+    expect(repeat.every((id) => ["read_the_results", "zip_everyone_out"].includes(id))).toBe(true);
+  });
+
+  it("marks the performer parts and which are held, streaming or not (T7-04)", () => {
+    const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
+    const presence = { guests: new Set<string>(), primes: new Set(["Norton Anti-Virus"]), mods: 1, directors: [], held: heldCharacters([["t1", { character: "Clippy" }], ["t2", { character: "Norton Anti-Virus" }], ["t3", { character: null }]]) };
+    const cast = modView(sim, "open", "x", presence).cast;
+    const parts = cast.filter((c) => c.part === true).map((c) => c.id).sort();
+    expect(parts).toEqual(["Adobe Acrobat", "CRA Agent Software", "Clippy", "McAfee Anti-Virus", "Norton Anti-Virus", "Password Manager", "Recycling Bin", "Task Manager"]);
+    for (const id of ["Trabolta", "Kernel", "Microsoft Excel", "Sandy"]) expect(cast.find((c) => c.id === id)).not.toHaveProperty("part");
+    expect(cast.find((c) => c.id === "Clippy")).toMatchObject({ part: true, held: true, online: false });
+    expect(cast.find((c) => c.id === "Norton Anti-Virus")).toMatchObject({ part: true, held: true, online: true });
+    expect(cast.find((c) => c.id === "McAfee Anti-Virus")).toMatchObject({ part: true, held: false, online: false });
+    expect(cast.find((c) => c.id === "Kernel")).not.toHaveProperty("held");
+    // No connection tracking (a local sim): parts still marked, no `held`.
+    expect(modView(sim, "open", "x").cast.find((c) => c.id === "Clippy")).toEqual({ id: "Clippy", faction: "Hosts", part: true });
   });
 
   it("flags the cues that need a person: the ceremony's awards ask for the winner (K-25)", () => {

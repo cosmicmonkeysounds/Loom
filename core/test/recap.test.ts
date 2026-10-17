@@ -9,7 +9,7 @@ import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { scenarioSource } from "../examples/load.ts";
-import { computeRecap, duckBoard, liesByPerson, logCounts, rank, runTime } from "../server/recap.ts";
+import { computeRecap, duckBoard, leastTrusted, liesByPerson, logCounts, rank, recapText, runTime } from "../server/recap.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 
@@ -74,6 +74,29 @@ describe("K-26 recap", () => {
       ["c", 2],
       ["d", 4],
     ]);
+  });
+
+  it("least trusted ranks from the bottom and never repeats the top 5 or a tie with it (T7-07)", () => {
+    const row = (name: string, value: number) => ({ id: name, name, value, persona: false });
+    const trust = rank([row("Winamp", 0), row("VLC", 0), row("Napster", -5), row("Kazaa", 0), row("Excel", 0), row("Paint", 0), row("Pong", 0), row("ICQ", 2), row("LimeWire", -5)]);
+    expect(leastTrusted(trust).map((x) => [x.rank, x.name, x.value])).toEqual([
+      [1, "Napster", -5],
+      [1, "LimeWire", -5],
+    ]);
+    const spread = rank([5, 4, 3, 2, 1, 0, -1, -2, -3].map((v) => row(`P${v}`, v)));
+    expect(leastTrusted(spread).map((x) => [x.rank, x.name])).toEqual([
+      [1, "P-3"],
+      [2, "P-2"],
+      [3, "P-1"],
+    ]);
+    const base = computeRecap(Sim.fromSources(scenarioSource(SHOW)));
+    const text = recapText({ ...base, lists: { ...base.lists, trust } });
+    const least = text.slice(text.indexOf("Least trusted:"), text.indexOf("\n\n", text.indexOf("Least trusted:")));
+    expect(least).toBe("Least trusted:\n  1. Napster — -5\n  1. LimeWire — -5");
+    // Everyone below the top 5 ties with the 5th (early on, all at 0): no heading.
+    const flat = rank(["Winamp", "VLC", "Kazaa", "Excel", "Paint", "Pong", "ICQ"].map((n) => row(n, 0)));
+    expect(leastTrusted(flat)).toEqual([]);
+    expect(recapText({ ...base, lists: { ...base.lists, trust: flat } })).not.toContain("Least trusted");
   });
 
   it("the duck board: each program's fastest find, fastest first, ties by the second read aloud", () => {

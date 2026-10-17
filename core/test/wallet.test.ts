@@ -356,6 +356,9 @@ describe("wallet book — requests", () => {
     const settled = book.apply({ op: "settle", id: "t2" });
     expect(f.balances.get("g1")).toBe(140);
     expect(cards(settled).at(-1)).toMatchObject({ to: "g1", card: { kind: "request", step: "paid", id: "r1" } });
+    // T5-07: the payer's thread closes too, and the line names both sides.
+    expect(cards(settled).at(-2)).toMatchObject({ to: "g2", card: { kind: "request", step: "paid", id: "r1" } });
+    expect(walletLine(cards(settled).at(-1)!.card)).toBe("✅ Paid: Paint sent Winamp 40 Truthcoin.");
     expect(book.viewFor("g1").requests).toEqual([]); // paid = closed
     expect(book.checkRespond("r1", "g2", false)).toEqual({ status: 409, error: "already settled" });
 
@@ -386,6 +389,22 @@ describe("wallet book — requests", () => {
     const cancelled = book.apply({ op: "cancel", id: "r5", by: "g1" });
     expect(cards(cancelled).map((c) => c.card.step)).toEqual(["cancelled", "cancelled"]);
     expect(f.signals.at(-1)![0]).toBe("request_cancelled");
+  });
+
+  it("a request's payment denied or cancelled closes both threads, not only the asker's (T5-07)", () => {
+    for (const close of ["deny", "cancel"] as const) {
+      const f = fake(PEOPLE, { parts: ["Auditor"] });
+      const book = new WalletBook(COIN, f.seam);
+      book.apply({ op: "request", id: "r1", from: "g1", to: "g2", amount: 40, at: 0 });
+      book.apply({ op: "respond", id: "r1", accept: true, tx: "t2", at: 10 });
+      const ev = book.apply(close === "deny" ? { op: "deny", id: "t2", by: "Auditor" } : { op: "cancel", id: "t2", by: "g2" });
+      const step = close === "deny" ? "declined" : "cancelled";
+      expect(cards(ev).filter((c) => c.card.kind === "request").map((c) => [c.to, c.card.step, c.card.id])).toEqual([
+        ["g2", step, "r1"],
+        ["g1", step, "r1"],
+      ]);
+      expect(f.balances.get("g2")).toBe(100); // refunded
+    }
   });
 
   it("accepting a request you can no longer pay declines it inside apply, deterministically", () => {

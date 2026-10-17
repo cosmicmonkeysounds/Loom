@@ -1085,3 +1085,68 @@ describe("/api/mod/signal `label`", () => {
     expect(store.readJournal().find((l) => l.m === "setScore")?.by).toBe("Director");
   });
 });
+
+describe("GET /api/mod/log — the whole ledger, paged (T7-03)", () => {
+  it("pages the ledger from the start for a console that saw none of it; directors only", async () => {
+    const rt = freshRuntime();
+    expect((await get(rt, "/api/mod/log")).json).toEqual({ entries: [], next: null, total: 0 });
+    await withGuest(rt);
+    for (let i = 0; i < 3; i++) await post(rt, "/api/guest/register", { name: `Guest ${i}`, passcode: CODES.event }, false);
+    const ledger = rt.liveSim!.log.all();
+    expect(ledger.length).toBeGreaterThan(5);
+    expect((await get(rt, "/api/mod/log", false)).status).toBe(403);
+
+    // The whole ledger in one go, then in pages of 2 stitched back together.
+    const all = await get(rt, "/api/mod/log");
+    expect(all.json).toEqual({ entries: JSON.parse(JSON.stringify(ledger)), next: null, total: ledger.length });
+    const pages: unknown[] = [];
+    let after: number | null = -1;
+    let calls = 0;
+    while (after !== null) {
+      const page = await get(rt, `/api/mod/log?after=${after}&limit=2`);
+      expect(page.json.total).toBe(ledger.length);
+      expect(page.json.entries.length).toBeLessThanOrEqual(2);
+      pages.push(...page.json.entries);
+      after = page.json.next;
+      calls += 1;
+    }
+    expect(pages).toEqual(all.json.entries);
+    expect(calls).toBe(Math.ceil(ledger.length / 2));
+    // `after` is exclusive; past the end is an empty last page.
+    expect((await get(rt, `/api/mod/log?after=0&limit=1`)).json).toMatchObject({ entries: [all.json.entries[1]], next: 1 });
+    expect((await get(rt, `/api/mod/log?after=${ledger.length - 1}`)).json).toEqual({ entries: [], next: null, total: ledger.length });
+  });
+
+  it("clamps the limit: default 1000, at most 5000, junk is the default", async () => {
+    const { modLogQuery, MOD_LOG_LIMIT, MOD_LOG_MAX } = await import("../server/routes/mod-log.ts");
+    const q = (s: string) => modLogQuery(new URL(`http://x/api/mod/log${s}`));
+    expect(q("")).toEqual({ after: -1, limit: MOD_LOG_LIMIT });
+    expect(q("?limit=99999&after=12")).toEqual({ after: 12, limit: MOD_LOG_MAX });
+    expect(q("?limit=0&after=-7")).toEqual({ after: -1, limit: 1 });
+    expect(q("?limit=abc&after=x")).toEqual({ after: -1, limit: MOD_LOG_LIMIT });
+  });
+});
+
+describe("the cue sheet across a restart (T7-01 review)", () => {
+  it("a refused press followed by a mod `set` reads the same LAST live and after the journal replays", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-cues-"));
+    dirs.push(d);
+    const show = scenarioSource("trapped-in-the-internet");
+    const make = () => new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "trapped-in-the-internet", scenarioSource: show, joinBase: () => "http://localhost" });
+    const rt = make();
+    const id = await withGuest(rt);
+    const cues = async (r: EventRuntime) => {
+      const { last, fired } = (await get(r, "/api/state?role=mod&cues=1")).json.cues;
+      return { last, fired };
+    };
+    expect((await post(rt, "/api/mod/signal", { name: "call_to_the_desktop" })).status).toBe(200);
+    // Refused with a # hosts line (no vote yet); no snapshot until after the set.
+    expect((await post(rt, "/api/mod/signal", { name: "force_majority_stay" })).status).toBe(200);
+    expect((await post(rt, "/api/mod/set", { id, field: "score", value: 5 })).status).toBe(200);
+    const live = await cues(rt);
+    expect(live).toEqual({ last: "call_to_the_desktop", fired: ["call_to_the_desktop"] });
+    const again = make();
+    expect(again.restore()).not.toBeNull();
+    expect(await cues(again)).toEqual(live);
+  });
+});

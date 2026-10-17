@@ -379,7 +379,8 @@ export function walletLine(c: WalletCard, now?: number): string {
         case "accepted":
           return `💸 You agreed to pay ${c.fromName} ${amt}.`;
         case "paid":
-          return `✅ ${c.toName} paid you ${amt}.`;
+          // Both parties get this step (T5-07), so it names them both.
+          return `✅ Paid: ${c.toName} sent ${c.fromName} ${amt}.`;
         case "declined":
           return `⛔ Declined: ${amt} from ${c.toName}.`;
         case "expired":
@@ -847,6 +848,9 @@ export class WalletBook {
       if (r !== undefined && (r.state === "paying" || r.state === "open")) {
         r.state = "paid";
         r.tx = t.id;
+        // Both threads close: the payer's card would otherwise read
+        // "agreed — paying" forever (T5-07).
+        out.push(this.ev(r.to, this.card("request", r, "paid"), false));
         out.push(this.ev(r.from, this.card("request", r, "paid"), false));
       }
     }
@@ -878,6 +882,8 @@ export class WalletBook {
       const r = this.requests.get(t.request);
       if (r !== undefined && (r.state === "paying" || r.state === "open")) {
         r.state = "declined";
+        // Both threads close, as a paid request's do (T5-07).
+        out.push(this.ev(r.to, this.card("request", r, "declined"), false));
         out.push(this.ev(r.from, this.card("request", r, "declined"), false));
       }
     }
@@ -902,6 +908,7 @@ export class WalletBook {
         const r = this.requests.get(t.request);
         if (r !== undefined && (r.state === "paying" || r.state === "open")) {
           r.state = "cancelled";
+          out.push(this.ev(r.to, this.card("request", r, "cancelled"), false));
           out.push(this.ev(r.from, this.card("request", r, "cancelled"), false));
         }
       }

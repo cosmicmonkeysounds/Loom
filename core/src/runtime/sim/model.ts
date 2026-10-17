@@ -271,6 +271,10 @@ export interface InteractionDef {
    *  reed, the printer) or a hardware fallback: the director's cue sheet
    *  still ticks it, but it never becomes the sheet's LAST / NEXT. */
   sequence: boolean;
+  /** `repeat: true` — an admin cue pressed again and again in one stretch
+   *  (results per question, a zip per trip): the cue sheet keeps
+   *  suggesting it as NEXT after it has fired. */
+  repeat: boolean;
   /** `by: Clippy, Antivirus` — whose button this is (characters, or a
    *  GROUP's members): a performer's guest card leads with their own and
    *  folds the rest away. Empty = anyone's. Advisory, never enforced. */
@@ -478,6 +482,7 @@ export function compileModel(bundle: Bundle): SimModel {
               description: decl.interaction.description,
               limit: decl.interaction.limit,
               sequence: decl.interaction.properties.get("sequence")?.value.trim() !== "false",
+              repeat: decl.interaction.properties.get("repeat")?.value.trim().toLowerCase() === "true",
               by: (decl.interaction.properties.get("by")?.value ?? "")
                 .split(",")
                 .map((n) => n.trim())

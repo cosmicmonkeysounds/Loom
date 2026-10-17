@@ -20,8 +20,8 @@ import { fileURLToPath } from "node:url";
 import { validateHouse, type HouseMap, type MapVariantsResponse } from "@loom/house";
 
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
-import { namedEvents } from "../src/runtime/sim/model.ts";
-import { guestView, modView, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
+import { guestView, modView, notePress, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
@@ -30,6 +30,7 @@ import { DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } f
 import { SSE_MOD_QUEUE_CAP, ipOf, queryTokenOf, readBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
 import { RateLimiter, limiterFor, rateLimitsFromEnv, type RateLimits } from "./rate-limit.ts";
 import { handleMetrics } from "./routes/metrics.ts";
+import { handleModLog } from "./routes/mod-log.ts";
 import { TtsProxy, ttsConfigFromEnv } from "./tts.ts";
 import { AvatarBook, ImageCache, avatarKey, avatarRefUrl } from "./avatars.ts";
 import { WikiClient, isAntivirusSoftware } from "./wiki.ts";
@@ -425,8 +426,9 @@ export class EventRuntime {
   private phase: RuntimePhase = "idle";
   private scenarioName: string;
   private scenarioSource: string;
-  /** `declaredCharacters` compiled from `source` while no sim exists. */
-  private declaredCast: { source: string; names: string[] } | null = null;
+  /** The story's model compiled from `source` while no sim exists (null
+   *  when it won't compile) — `declaredModel`. */
+  private declaredCast: { source: string; model: SimModel | null } | null = null;
 
   // Token → capabilities (performer / admin), scoped to this event.
   private readonly sessions = new SessionStore();
@@ -699,17 +701,25 @@ export class EventRuntime {
    *  canonicalises its `character` (and refuses a typo) at setup. Booths
    *  still get `characterNames` — they can't sign in before the doors. */
   get declaredCharacters(): string[] {
-    if (this.sim !== null) return [...this.sim.model.characters.keys()];
+    return [...(this.declaredModel?.characters.keys() ?? [])];
+  }
+
+  /** The story's model, doors open or not: the live sim's when there is one,
+   *  else compiled once from the scenario text (memoised on it; null when it
+   *  won't compile). Before the doors it checks a booth's part and resolves a
+   *  room terminal's LOCATION. */
+  private get declaredModel(): SimModel | null {
+    if (this.sim !== null) return this.sim.model;
     if (this.declaredCast?.source !== this.scenarioSource) {
-      let names: string[] = [];
+      let model: SimModel | null = null;
       try {
-        names = [...Sim.fromSources(this.scenarioSource).model.characters.keys()];
+        model = Sim.fromSources(this.scenarioSource).model;
       } catch {
         // A story that won't compile has no cast to check against yet.
       }
-      this.declaredCast = { source: this.scenarioSource, names };
+      this.declaredCast = { source: this.scenarioSource, model };
     }
-    return [...this.declaredCast.names];
+    return this.declaredCast.model;
   }
 
   /** How many participants exist in this event's world right now. */
@@ -767,6 +777,7 @@ export class EventRuntime {
       directors,
       owners: this.personaOwners,
       agents: new Set(this.agents.onlineCharacters()),
+      held: heldCharacters(this.sessions.entries()),
       minds: [...this.agentMinds.values()],
       facts: this.factsView(),
     };
@@ -2153,7 +2164,9 @@ export class EventRuntime {
     this.flushTick();
     this.store.appendCommand(m, args, this.actingBy);
     this.factsWatch.mark(this.sim!, factsBy(m, args, this.actingBy));
-    return (this.sim![m] as (...a: unknown[]) => SimEvent[])(...args);
+    const out = (this.sim![m] as (...a: unknown[]) => SimEvent[])(...args);
+    if (m === "signal") notePress(this.sim!, out); // the cue sheet judges a press by its own events
+    return out;
   }
 
   /** Apply one wallet op *and* journal it as a single `wallet` line — the
@@ -2622,6 +2635,7 @@ export class EventRuntime {
           this.factsWatch.mark(this.sim!, factsBy(e.m, e.a, e.by));
           const out = (fn as (...a: unknown[]) => unknown).apply(this.sim, e.a);
           events++;
+          if (e.m === "signal" && Array.isArray(out)) notePress(this.sim!, out as SimEvent[]); // as `commit` did live
           if (e.m === "signal") {
             // A widget answer — `signal(<kind> answered, guest, {…, card: seq})`.
             const card = (e.a[2] as { card?: unknown } | null | undefined)?.card;
@@ -2780,6 +2794,8 @@ export class EventRuntime {
     }
     // --- process load for the K-32 load test (directors only) ---
     if (handleMetrics(req, res, method, path, url, () => opts.moderator === true || this.sessions.canModerate(queryTokenOf(req, url)), () => this.clients.size)) return true;
+    // --- T7-03: the whole ledger, paged, for Run → Log's export (directors only) ---
+    if (handleModLog(req, res, method, path, url, () => opts.moderator === true || this.sessions.canModerate(queryTokenOf(req, url)), () => this.sim?.log.all() ?? [])) return true;
 
     // --- the mind debugger's trace (directors only) ---
     if (method === "GET" && path === "/api/mod/agent/trace") {
@@ -2937,7 +2953,7 @@ export class EventRuntime {
 
     // --- the wall terminals' lean screen state (K-16, routes/screen.ts) ---
     if (method === "GET" && path === "/api/screen/state") {
-      return handleScreenGet(this.screens, this.sim, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t), (c) => this.agents.isOnline(c), () => this.chat.all());
+      return handleScreenGet(this.screens, this.sim, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t), (c) => this.agents.isOnline(c), () => this.chat.all(), () => this.declaredModel);
     }
     if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
     if (method === "POST" && path === "/api/mod/screen/voice") return handleScreenVoicePost(this.screens, req, res, (t) => opts.moderator === true || this.sessions.canModerate(t));
@@ -3244,6 +3260,11 @@ export class EventRuntime {
           sendJson(res, 409, { error: "doors are closed" });
           return true;
         }
+        if (this.sim!.isRestricted(id)) {
+          // A marked program's side is the story's (T4-07): no club.
+          sendJson(res, 403, { error: "you're restricted — the story has to lift it first" });
+          return true;
+        }
         this.fanout(this.commit("join", id, str(body, "faction")));
         sendJson(res, 200, { ok: true });
         return true;
@@ -3253,6 +3274,11 @@ export class EventRuntime {
         if (id === null) return true;
         if (!open) {
           sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        if (this.sim!.isRestricted(id)) {
+          // A marked program's side is the story's (T4-07): no club.
+          sendJson(res, 403, { error: "you're restricted — the story has to lift it first" });
           return true;
         }
         this.fanout(this.commit("defect", id, str(body, "to")));
@@ -3574,8 +3600,14 @@ export class EventRuntime {
           sendJson(res, 404, { error: "unknown recipient" });
           return true;
         }
-        this.fanout(this.commit("share", character, to, entry));
-        sendJson(res, 200, { ok: true });
+        if (this.sim!.agentRefuses(to, entry)) {
+          sendJson(res, 403, { error: "they won't take lore about someone else" });
+          return true;
+        }
+        const events = this.commit("share", character, to, entry);
+        this.fanout(events);
+        // `shared: false` — they already held it, nothing moved.
+        sendJson(res, 200, { ok: true, shared: events.some((e) => e.type === "codexUnlocked") });
         return true;
       }
 
@@ -3589,15 +3621,21 @@ export class EventRuntime {
           return true;
         }
         let token = tokenOf(req, body);
-        if (this.sim !== null) {
-          // A part is one performer's: every *other* session's character is
-          // held; re-signing the same booth into the same part is fine.
-          const others = this.sessions.entries().filter(([t]) => t !== token);
-          const refusal = performerRefusal(this.sim.model, character, heldCharacters(others));
-          if (refusal !== null) {
-            sendJson(res, refusal === "unknown character" ? 404 : 409, { error: refusal });
-            return true;
-          }
+        // Checked against the story's model before the doors too (a fresh or
+        // relaunched event has no sim yet); a story that won't compile has
+        // no parts to give.
+        const model = this.declaredModel;
+        if (model === null) {
+          sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        // A part is one performer's: every *other* session's character is
+        // held; re-signing the same booth into the same part is fine.
+        const others = this.sessions.entries().filter(([t]) => t !== token);
+        const refusal = performerRefusal(model, character, heldCharacters(others));
+        if (refusal !== null) {
+          sendJson(res, refusal === "unknown character" ? 404 : 409, { error: refusal });
+          return true;
         }
         if (token && this.sessions.grant(token, { character })) {
           /* upgraded in place */
@@ -3797,6 +3835,19 @@ export class EventRuntime {
           }
           channel = `dm:${target}`;
           audience = [`@${character}`];
+        } else if (channel !== "lobby") {
+          // A booth posts where its UI gives it a composer: the lobby, the
+          // rooms it runs (every location + authored room) and the two
+          // mapped threads above — never a pinned room, another
+          // character's DM or a guest↔guest thread.
+          if (isPinnedRoom(channel) || channel.startsWith("dm:") || channel.startsWith("pm:")) {
+            sendJson(res, 403, { error: "a booth can't post there" });
+            return true;
+          }
+          if (!this.sim!.allChannelsFor(character).some((c) => c.id === channel)) {
+            sendJson(res, 404, { error: "unknown room" });
+            return true;
+          }
         }
         const parentSeq = this.sim!.threadableOf(channel) && body["parentSeq"] != null ? Number(body["parentSeq"]) : null;
         this.fanout(this.commit("say", character, channel, text, parentSeq, audience));

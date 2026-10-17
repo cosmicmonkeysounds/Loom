@@ -446,6 +446,12 @@ describe("requests", () => {
       ["transfer", "received", "root"],
       ["request", "paid", "step"],
     ]);
+    // The payer's request thread closes too (T5-07).
+    expect(rows(walletRoom(rt, b.id)).filter((x) => x[0] === "request")).toEqual([
+      ["request", "asked", "root"],
+      ["request", "accepted", "step"],
+      ["request", "paid", "step"],
+    ]);
     // A declined request, and one that expires. (Ids share one counter:
     // the payment above was t2, so these are r3 and r4.)
     expect((await wallet(rt, "request", { from: b.id, amount: 5 }, a.token)).status).toBe(200); // r3

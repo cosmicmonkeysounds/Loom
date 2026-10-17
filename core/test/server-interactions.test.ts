@@ -569,6 +569,28 @@ Narrator: The gate.
     // …and still raises no request of its own.
     expect(requests()).toHaveLength(1);
   });
+
+  it("a booth posts only where its UI has a composer: never a pinned room, another DM, a guest thread or an unknown room (T4-02)", async () => {
+    const { rt } = boothRuntime();
+    rt.openDoors();
+    const keeper = (await post(rt, "/api/prime/login", { character: "The Gatekeeper", passcode: CODES.prime })).json.token as string;
+    const a = await guest(rt, "Ada");
+    const b = await guest(rt, "Bea");
+    const say = (channel: string) => post(rt, "/api/prime/say", { token: keeper, channel, text: "hello" });
+    for (const channel of ["dm:Ivo Marsh", "dm:Trabolta", "dm:The Gatekeeper", Sim.pmChannel(a.id, b.id), "codex", "quests", "wallet"]) {
+      expect([channel, (await say(channel)).status]).toEqual([channel, 403]);
+    }
+    expect((await say("faction:Nobody")).status).toBe(404);
+    expect((await say("loc:Nowhere")).status).toBe(404);
+    expect((await say("lobby")).status).toBe(200);
+    expect((await say("loc:Gate")).status).toBe(200);
+    expect((await say(`guest:${a.id}`)).status).toBe(200);
+    expect((await say("cast:Trabolta")).status).toBe(200);
+    // Nothing refused reached a guest's stream (and Ada isn't standing at
+    // the Gate, so that room's typed line isn't hers).
+    const seen = history(await get(rt, `/events?role=guest&token=${encodeURIComponent(a.token)}`)).filter((m) => m.text === "hello");
+    expect(seen.map((m) => m.channel).sort()).toEqual(["dm:The Gatekeeper", "lobby"]);
+  });
 });
 
 describe("restricted guests (wave 4, lane E)", () => {
@@ -610,6 +632,41 @@ describe("restricted guests (wave 4, lane E)", () => {
     expect(again.liveSim!.isRestricted(g.id)).toBe(true);
     expect(primeView(again.liveSim!, "The Gatekeeper").guests.find((x) => x.id === g.id)!.restricted).toBe(true);
     expect(modView(again.liveSim!, "open", "x").roster.find((r) => r.id === g.id)!.restricted).toBe(true);
+  });
+});
+
+describe("a restricted guest picks no side (T4-07)", () => {
+  const SIDES = `# Sides
+start: Hall
+
+LOCATION Hall
+
+GROUP Stay
+
+GROUP Leave
+
+== Hall
+  setting: Hall
+Narrator: The hall.
+`;
+  it("join and defect answer 403 and the faction stays put; unrestricted, both work", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-ix-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "sides", scenarioSource: SIDES, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const g = await guest(rt);
+    rt.liveSim!.restrict(g.id);
+    const joined = await post(rt, "/api/guest/join", { token: g.token, faction: "Stay" });
+    expect(joined.status).toBe(403);
+    expect(joined.json.error).toMatch(/restricted/u);
+    expect((await post(rt, "/api/guest/defect", { token: g.token, to: "Leave" })).status).toBe(403);
+    expect(rt.liveSim!.factionOf(g.id)).toBeNull();
+    rt.liveSim!.unrestrict(g.id);
+    expect((await post(rt, "/api/guest/join", { token: g.token, faction: "Stay" })).status).toBe(200);
+    expect(rt.liveSim!.factionOf(g.id)).toBe("Stay");
+    rt.liveSim!.restrict(g.id);
+    expect((await post(rt, "/api/guest/defect", { token: g.token, to: "Leave" })).status).toBe(403);
+    expect(rt.liveSim!.factionOf(g.id)).toBe("Stay");
   });
 });
 
