@@ -31,6 +31,12 @@
                                        #   lookup resolves a program — so being read is *felt*
     powers: all                        # which `who: agent` powers it may use (or a list, or none)
     bargain: "…"                       # guidance on when a favour is earned
+    situations:                        # optional extra instructions for a moment:
+      - name: at his heart             #   (name optional — the block's heading)
+        when: them.at_the_heart == true  # a gate expression, read like `when:`
+        prompt: |                      # appended to the voice's system prompt
+          You are in the cold room…    #   (and the orchestrator's reflect for
+                                       #   that speaker) while `when` is true
     ---
     You are TRABOLTA, …
 
@@ -75,7 +81,27 @@ _KNOWN = {
     "lookup_power",
     "powers",
     "bargain",
+    "situations",
 }
+
+_SITUATION_KEYS = {"name", "when", "prompt"}
+
+
+@dataclass(frozen=True)
+class Situation:
+    """Extra instructions for one kind of moment: while `when` holds for a
+    request (evaluated over the same context as the persona's `when:`
+    gate — world paths, `self.*`, `them.*`, `speaker.*`), `prompt` is
+    appended to the voice's system prompt as its own block, and shown to
+    the orchestrator when it reflects on that exchange."""
+
+    when: Condition
+    prompt: str
+    name: str = ""
+
+    @property
+    def heading(self) -> str:
+        return self.name or self.when.source
 
 
 @dataclass(frozen=True)
@@ -116,6 +142,8 @@ class Persona:
     bargain: str = ""
     #: Hunt answers the character must never check (mind-file `secrets:`).
     secrets: Secrets = field(default_factory=Secrets)
+    #: Extra instructions per kind of moment (`situations:`), in file order.
+    situations: tuple[Situation, ...] = ()
 
 
 def _names(value: Any, where: str) -> tuple[str, ...]:
@@ -126,6 +154,36 @@ def _names(value: Any, where: str) -> tuple[str, ...]:
     if isinstance(value, list) and all(isinstance(v, str) for v in value):
         return tuple(v.strip() for v in value if v.strip())
     raise ConfigError(f"{where}: expected a comma list or a list of names")
+
+
+def _situations(value: Any, source: str) -> tuple[Situation, ...]:
+    if value in (None, ""):
+        return ()
+    if not isinstance(value, list):
+        raise ConfigError(f"{source}: situations: expected a list of {{when, prompt}} entries")
+    out: list[Situation] = []
+    for i, raw in enumerate(value):
+        where = f"{source}: situations[{i}]"
+        if not isinstance(raw, dict):
+            raise ConfigError(f"{where}: expected a mapping with when: and prompt:")
+        unknown = sorted(str(k) for k in set(raw) - _SITUATION_KEYS)
+        if unknown:
+            raise ConfigError(f"{where}: unknown key(s) {', '.join(unknown)}")
+        when_src = raw.get("when")
+        if not isinstance(when_src, str) or when_src.strip() == "":
+            raise ConfigError(f"{where}: needs a when: expression")
+        try:
+            when = Condition(when_src.strip())
+        except ValueError as err:
+            raise ConfigError(f"{where}: when: {err}") from err
+        prompt = raw.get("prompt")
+        if not isinstance(prompt, str) or prompt.strip() == "":
+            raise ConfigError(f"{where}: needs a prompt: text")
+        name = raw.get("name")
+        if name is not None and not isinstance(name, str):
+            raise ConfigError(f"{where}: name must be text")
+        out.append(Situation(when=when, prompt=prompt.strip(), name=(name or "").strip()))
+    return tuple(out)
 
 
 def parse_persona(text: str, source: str = "<persona>") -> Persona:
@@ -215,6 +273,7 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         powers=powers,
         bargain=str(meta.get("bargain") or "").strip(),
         secrets=secrets,
+        situations=_situations(meta.get("situations"), source),
     )
 
 
