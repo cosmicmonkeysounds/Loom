@@ -133,6 +133,7 @@ openers end with `:` and indent their body.
 | `CODEX Name` + `about:` / `code:` / `secret: true` | lore a participant holds, unlocks, shares |
 | `QUEST Name` + `title:` / `from:` / `text:` | a quest for the Quest Log |
 | `INTERACTION name` + `label:` / `who:` / `by:` / `while:` | a button in the app (or a cue on the sheet) |
+| `sequence: false` / `repeat: true` (a `who: admin` cue) | never the sheet's last / next · stays next while pressed |
 | `currency: score as Truthcoin, max 500, expiry 10m` (header) | a wallet over a ROLE slot ([currency](currency.md)) |
 | `wallet: approver, every 3, window 60s` / `wallet: minter, limit 3, while <cond>` | on a CHARACTER: who audits transfers / who mints a stimulus |
 | `GENERATOR` / `SCENE` , `loop` / `wait until` / `tier:` / `while` | background life |
