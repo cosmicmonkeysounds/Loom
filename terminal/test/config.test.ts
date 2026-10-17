@@ -136,7 +136,10 @@ describe("the provisioned character is the story's own name (B19)", () => {
     await expect(provision("MOD7324", { ...hints, character: "nobody" })).rejects.toThrow(/no character called "nobody"/);
     // A room terminal's room rides through provisioning.
     expect(await provision("MOD7324", { ...hints, view: "face", spot: "server-room", room: "The Server Room" })).toMatchObject({ view: "face", spot: "server-room", room: "The Server Room" });
-    // Before the doors open the server lists nobody: kept as typed, adopted later.
+    // A mod code resolves the declared cast before the doors open too
+    // (`EventRuntime.declaredCharacters`), so only a server with no cast to
+    // give (no story loaded, or one that won't compile) lists nobody: kept as
+    // typed, adopted later.
     server([]);
     expect((await provision("MOD7324", { ...hints, character: "trabolta" })).character).toBe("trabolta");
   });
@@ -190,13 +193,14 @@ describe("the ⚙ save never waits on a stalled server", () => {
   });
 });
 
-describe("a misspelt character provisioned before the doors is reported once they open (B19)", () => {
+describe("a misspelt character stored unchecked is reported by the cast check (B19)", () => {
   const cast = ["Trabolta", "Clippy"];
   const c = defaultConfig({ eventId: "evt", token: "t", character: "Trabolt" });
   const poll = (character: unknown, announceEpoch: string | null) => ({ character, announceEpoch });
 
   it("the screen state naming no character asks the cast once per event × character × sim", () => {
-    // Before the doors: no story, so no character either — asked, and the cast is empty.
+    // Before the doors: no sim, so the screen state names no character —
+    // asked, and the cast read answers with the declared cast.
     const before = castCheckKey(c, poll(null, "boot.0"));
     expect(before).not.toBeNull();
     // The doors open: a new sim, a new key, so the cast is asked again.
@@ -210,7 +214,7 @@ describe("a misspelt character provisioned before the doors is reported once the
     expect(castCheckKey(c, null)).toBeNull();
     expect(castCheckKey({ ...c, character: "" }, poll(null, "boot.1"))).toBeNull();
   });
-  it("an empty cast is no error (the doors aren't open); a name the story lacks is, naming the cast", () => {
+  it("an empty cast is no error (nothing to check against); a name the story lacks is, naming the cast", () => {
     expect(characterProblem("Trabolt", [])).toBeNull();
     expect(characterProblem("Trabolt", cast)).toBe('The story has no character called "Trabolt" (it has: Trabolta, Clippy).');
     expect(characterProblem("trabolta", cast)).toBeNull();

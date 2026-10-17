@@ -316,6 +316,11 @@ ROLE Program
   // the story rules by The Heart). Not secret: Trabolta's worker reads it
   // (persona `them:`) and drops the act for this program alone.
   at_the_heart: bool = false
+  // The stand_down proof came from Trabolta himself (he shared What Sandy
+  // Says / The Sandy File into this program's Codex): it shows him nothing
+  // he did not know, so it never counts (cast/trabolta.loom).
+  sandy_says_from_him: bool = false
+  sandy_file_from_him: bool = false
 
   // ── Arrival ──
   // A new program stands in the Optical Drive (the phone goes on rails there).
@@ -1755,6 +1760,18 @@ ROLE Program
         set Kernel.excel_planted = true
         complete quest Excel Mission for program "Virus planted."
 
+  // ── The stand_down proof (wave 7) ──
+  // His worker may share lore as a bargain; a proof he handed over himself
+  // can't talk him down (the program must find it: the card, the hunt, a
+  // Facts Bundle, another program).
+  when program learns What Sandy Says:
+    if from == Trabolta:
+      set program.sandy_says_from_him = true
+
+  when program learns The Sandy File:
+    if from == Trabolta:
+      set program.sandy_file_from_him = true
+
   // ── Trabolta's LiveJournal (TRABOLTA-4EVER, or OpenOffice's 20 facts) ──
   // Only the first real reader counts: The Whole Truth hands the entry to
   // every majority member at once, and that is not anyone reading it.
@@ -2211,6 +2228,11 @@ ROLE Program
   // Any ending sends everyone away from his heart (the terminal's own
   // `terminal closed` may never come: it falls asleep with the night).
   when Night.ended == true and self.at_the_heart == true:
+    set self.at_the_heart = false
+
+  // One server-room terminal: the program it opened a line for last is the
+  // only one at his heart (a close that never landed can't keep anyone else).
+  when self.at_the_heart == true and Night.heart_holder != self.name:
     set self.at_the_heart = false
 
   // The majority's members get the whole truth (late pledgers too).
@@ -3486,8 +3508,11 @@ when majority_reached:
 // clean entry, whoever you are: the door never raises an alarm (the patch
 // bay does, E3). From the Y2K hour the first opening plays The Heart: the
 // room opens on every phone and Trabolta speaks to it candidly from the
-// server-room terminal. Another opening within 2 minutes (the group filing
-// in, someone stepping out) does nothing; a later one gets a short line.
+// server-room terminal. The quiet window is 2 minutes from the LAST
+// opening: every opening inside it (both contacts firing for one swing, the
+// group trickling in or out) does nothing but restart the 2 minutes, so a
+// busy doorway never replays the visit; an opening after 2 quiet minutes
+// gets a short line (Back To The Heart).
 // Before the Y2K hour the door is just a door: # hosts hears of it, the
 // story does nothing (a curious guest, or a retained "open" replayed on a
 // stagehand reconnect).
@@ -3502,6 +3527,8 @@ when server_door_opened:
       set Night.door_quiet_until = Time.elapsed + 120
       broadcast "🚪 The server-room door opened again." to channel(hosts)
       -> Back To The Heart
+    else:
+      set Night.door_quiet_until = Time.elapsed + 120
   else if Night.ended != true:
     broadcast "🚪 The server-room door opened before the Y2K hour. Nothing happens in the story." to channel(hosts)
 
@@ -3527,9 +3554,14 @@ when reset_server_room:
 // persona's `situations:` read `them.at_the_heart`), and only then can he
 // offer to stand down (cast/trabolta.loom). Any other terminal, or none,
 // is not his heart. The room may come spelled as the terminal was set up.
+// There is one server-room terminal, so a line opened there pushes out
+// whoever was at his heart before (Night.heart_holder; the ROLE watcher
+// clears them): a `terminal closed` lost to a Wi-Fi blip never leaves a
+// program at his heart once someone else has scanned in.
 when terminal_opened for program:
   if program.name != null:
     if Night.ended != true and (at == "The Server Room" or at == "the server room" or at == "Server Room" or at == "server room" or at == "server-room" or at == "server_room" or at == "The_Server_Room"):
+      set Night.heart_holder = program.name
       set program.at_the_heart = true
     else:
       set program.at_the_heart = false
@@ -4058,6 +4090,7 @@ set Night.alarm_clear_at = 0
 set Night.wrong_combos = 0
 set Night.heart_opened = false
 set Night.door_quiet_until = 0
+set Night.heart_holder = "none"
 set Night.gloat_at = 0
 set Night.stand_down_by = "none"
 set Night.talked_down = false

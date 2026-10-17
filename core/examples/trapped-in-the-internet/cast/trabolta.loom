@@ -331,6 +331,8 @@ CHARACTER Trabolta is Person
   // chatbot that has only ever said one thing). He only OFFERS: # hosts
   // gets an alert and a human presses 🕊 talked_down (main.loom), so a
   // misfire never ends the night. Every refusal is words only (no use spent).
+  // A proof he shared into the program's Codex himself never counts
+  // (`sandy_*_from_him`, main.loom): the model can't supply its own way out.
   when stand_down for program:
     if program.name != null:
       if Night.step < 14:
@@ -341,7 +343,7 @@ CHARACTER Trabolta is Person
         Trabolta: Not out there. Come to my heart and say it to my face.
       else if Night.stand_down_by != "none":
         Trabolta: I have already offered. Ask the humans.
-      else if program.codex.what_sandy_says != true and program.codex.the_sandy_file != true:
+      else if (program.codex.what_sandy_says != true or program.sandy_says_from_him == true) and (program.codex.the_sandy_file != true or program.sandy_file_from_him == true):
         Trabolta: You have not shown me anything I do not already know.
       else:
         set Night.stand_down_by = program.name

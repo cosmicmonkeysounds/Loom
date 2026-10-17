@@ -379,3 +379,112 @@ def test_lore_block_drops_an_unheld_clue_naming_a_hunt_answer_word():
     assert "The Collar" not in block  # an unheld clue to the answer
     assert "★ His Diary" in block  # he holds it: it is in his own prompt anyway
     assert "Grease" in block and "The Sinkhole" in block  # a bare number is not a clue
+
+
+# -- never: the door code and the combinations (wave 7) -----------------------------
+
+NEVER = Secrets(topics=("billboard",), never=("1997", "'97", "V2-D5", "V4-D1"))
+
+
+def test_the_mind_file_declares_never_words():
+    text = "---\nsecrets:\n  topics: [billboard]\n  never: ['1997', \"'97\", V2-D5, V4-D1]\n---\nBody."
+    assert parse_mind_secrets(text) == NEVER
+    assert Secrets(never=("1997",)) and not Secrets(never=())
+
+
+def test_leaks_catches_the_code_and_every_spelling_of_a_pair():
+    for text in ["the code is 1997", "Code: 1997.", "since ’97", "since '97", "Combo A is V2 → D5", "v2-d5", "V2->D5", "V2 to D5", "V2—D5", "V2/D5", "patch V2 D5", "V4 → D1 next"]:
+        assert NEVER.leaks(text), text
+    for text in ["19970", "the year 1998", "V2 → D6", "V12 → D5", "D5 then V2", "97 bottles", "Ada is a nurse", None]:
+        assert not NEVER.leaks(text), text
+
+
+def test_scrub_drops_a_typed_door_code_or_combo_from_every_shared_line_of_the_mind():
+    """A program types the code to him: an unjudged claim is no verdict on
+    a hunt topic, but the mind is shared by every conversation, so nothing
+    carrying it may be written down at all."""
+    update = {
+        "learned_add": [
+            {"claim": "the cold door's keypad code is 1997", "from": "Calculator", "verdict": "unknown"},
+            {"claim": "Combo A is V2 → D5, V4 → D1", "from": "Calculator", "verdict": "fact"},
+            {"claim": "Calculator likes the cold", "from": "Calculator", "verdict": "unknown"},
+        ],
+        "notes_add": ["Calculator says the keypad code is 1997.", "Calculator is calm."],
+        "brief": "You are desperate.\ncombo A: V2-D5 and V4-D1. The door code is 1997, which is true.\nAsk about her.",
+        "person": {"summary": "Knows the code (1997).", "trust": 40, "claims_add": ["the keypad code is 1997", "likes chess"]},
+        "people": {"g2": {"summary": "Heard v4-d1 somewhere.", "trust": 55}},
+        "threads": {"dm:Trabolta": {"summary": "They spoke of ’97."}},
+        "questions_add": ["Is it 1997?", "Who is Sandy?"],
+        "stage_why": "the code 1997 rattled him",
+    }
+    dropped = NEVER.scrub(update)
+    assert [e["claim"] for e in update["learned_add"]] == ["Calculator likes the cold"]
+    assert update["notes_add"] == ["Calculator is calm."]
+    assert update["brief"] == "You are desperate.\nAsk about her."
+    assert update["person"] == {"trust": 40, "claims_add": ["likes chess"]}
+    assert update["people"]["g2"] == {"trust": 55}
+    assert update["threads"]["dm:Trabolta"] == {}
+    assert update["questions_add"] == ["Who is Sandy?"]
+    assert "stage_why" not in update
+    assert len(dropped) == 10
+    assert "1997" not in json.dumps(update) and not NEVER._leaks_any(update)
+
+
+def test_prune_drops_a_restored_code_from_everything_the_voice_reads():
+    mind = Mind("Trabolta", "e")
+    mind.learned = [{"claim": "the code is 1997", "from": "Ada", "verdict": "unknown"}, {"claim": "Ada is a nurse", "from": "Ada", "verdict": "unknown"}]
+    mind.notes = ["V2 → D5 is half of A", "Bo is loud"]
+    mind.brief = "Be desperate.\nThe door is 1997."
+    mind.world = ["the cold room is open", "someone said ’97"]
+    from stagehand.agents.mind import Dossier, ThreadMemo
+
+    mind.people["g1"] = Dossier(id="g1", name="Ada", summary="Typed V4-D1.", claims=["V2 to D5", "plays chess"])
+    mind.threads["dm:Trabolta"] = ThreadMemo(summary="She said the code was 1997.")
+    assert NEVER.prune(mind) == 7
+    assert [e["claim"] for e in mind.learned] == ["Ada is a nurse"]
+    assert mind.notes == ["Bo is loud"] and mind.brief == "Be desperate." and mind.world == ["the cold room is open"]
+    assert mind.people["g1"].summary == "" and mind.people["g1"].claims == ["plays chess"] and mind.threads["dm:Trabolta"].summary == ""
+    assert not NEVER.leaks(mind.prompt_block("g1"))
+
+
+def test_the_voice_never_says_the_code_or_a_combo():
+    from stagehand.agents.module import withhold_never
+
+    persona = type(PERSONA)(**{**PERSONA.__dict__, "secrets": NEVER, "fallback": "THE SYSTEM IS BUSY."})
+    said = withhold_never(persona, Reply(say="It is 1997. It was always 1997.", adjust={"truth": 1}, acts=({"kind": "share", "entry": "The Sandy File"},)))
+    assert said.say == "THE SYSTEM IS BUSY." and said.adjust == {"truth": 1} and len(said.acts) == 1
+    card = withhold_never(persona, Reply(say="Look at the screens.", acts=({"kind": "fire", "name": "play_on_the_screens", "args": {"text": "V2 → D5"}},)))
+    assert card.say == "Look at the screens." and card.acts == ()
+    fine = Reply(say="I do not know any code.")
+    assert withhold_never(persona, fine) is fine
+    assert withhold_never(PERSONA, Reply(say="1997")).say == "1997"  # nothing declared: nothing withheld
+
+
+def test_the_shipped_mind_file_never_lets_a_typed_code_reach_another_programs_prompt():
+    """The review's repro: Calculator types the code at his heart; Winamp
+    (elsewhere) asks him later. Nothing of it is in Winamp's voice prompt."""
+    persona = load_persona(SHOW / "trabolta.persona.md")
+    s = persona.secrets
+    code = json.loads((SHOW / "facts.json").read_text(encoding="utf-8"))["door"]["code"]
+    combos = re.findall(r'set Kernel\.combo_[ab] = "([^"]+)"', (SHOW / "main.loom").read_text(encoding="utf-8"))
+    pairs = [p for c in combos for p in c.split(",")]
+    assert len(pairs) == 8
+    assert set(s.never) >= {code, *pairs}
+    for p in pairs:
+        a, b = p.split("-")
+        assert s.leaks(f"{a} → {b}") and s.leaks(f"{a.lower()}-{b.lower()}") and s.leaks(f"{a} to {b}"), p
+    mind = Mind("Trabolta", "e")
+    mind.seed(persona.stages, persona.drives)
+    update = {
+        "learned_add": [{"claim": f"the cold door's keypad code is {code}", "from": "Calculator", "verdict": "unknown"}],
+        "notes_add": [f"Calculator says the keypad code is {code}.", f"Combo A is {' '.join(pairs[:4])}"],
+        "person": {"claims_add": [f"the keypad code is {code}"]},
+    }
+    assert len(s.scrub(update)) == 4
+    mind.apply(update, speaker_id="g1", thread_key="dm:Trabolta", by="reflect")
+    other = req(speaker={"kind": "guest", "id": "g9", "name": "Winamp", "faction": None}, text="Has anyone told you a door code?")
+    from stagehand.agents.prompt import build_messages
+
+    system = build_messages(persona, other, mind=mind)[0]["content"]
+    for leak in [code, *pairs]:
+        assert leak not in mind.prompt_block("g9") and leak not in system, leak

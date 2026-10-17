@@ -20,6 +20,12 @@ The mind file declares the hunt in its frontmatter (never shown to a model):
       lore: ["▒ HUNT ANSWER"]                      # a codex entry whose title or
                                                   #   text holds one of these is a
                                                   #   hunt answer
+      never: ["1997", "'97", "V2-D5"]              # what no line of his may ever
+                                                  #   carry, whoever typed it: the
+                                                  #   door code and every patch-bay
+                                                  #   pair (any spelling: V2 → D5,
+                                                  #   v2-d5, V2 to D5); never shown
+                                                  #   to a model
 
 and the worker enforces it at every door a verdict or an answer could
 come through:
@@ -35,7 +41,14 @@ come through:
     "holds"), lookup cards (a program's holds, a character's knows, a lore
     card), the house digest's lore spread and holdings counts, and the
     survey delta's "X learned …";
-  - `prune(mind)` drops hunt verdicts from a mind restored from disk.
+  - `prune(mind)` drops hunt verdicts from a mind restored from disk;
+  - `never` is stricter (wave 7): the orchestrator's mind is shared by
+    every conversation (the voice prompt shows the brief, the notes and
+    what was learned to *every* speaker), so a door code or a combination
+    one program types to him must never be written down at all. `scrub`
+    drops any item, line or field of an update carrying one — no verdict
+    needed — `prune` does the same to a restored mind, and `leaks(text)`
+    lets the voice refuse to say one (the worker's last door).
 """
 
 from __future__ import annotations
@@ -59,6 +72,32 @@ def _norm(text: str) -> str:
     return " ".join(str(text).lower().split())
 
 
+_PAIR = re.compile(r"^([a-z]+)\s*(\d+)\s*-\s*([a-z]+)\s*(\d+)$", re.IGNORECASE)
+#: Between the two ends of a patch-bay pair, however it is written.
+_JOIN = r"(?:\s*(?:-+>?|\u2013|\u2014|\u2192|=>|>|/|:|,)\s*|\s+(?:to|into|and)\s+|\s*)"
+_DROP = object()
+#: The trace's names for an update's fields (as the hunt scrub labels them).
+_LABELS = {"learned_add": "learned", "learned": "learned", "notes_add": "note", "brief": "brief", "claims_add": "claim", "summary": "summary"}
+
+
+@lru_cache(maxsize=32)
+def _never_pattern(words: tuple[str, ...]) -> re.Pattern[str] | None:
+    alts: list[str] = []
+    for raw in words:
+        w = _norm(raw).replace("\u2019", "'")
+        if not w:
+            continue
+        pair = _PAIR.match(w)
+        if pair:
+            a, n, b, m = pair.groups()
+            body = rf"{re.escape(a)}\s*{n}{_JOIN}{re.escape(b)}\s*{m}"
+        else:
+            body = r"\s+".join(re.escape(part) for part in w.split(" "))
+        before = r"(?<![a-z0-9])" if w[0].isalnum() else ""
+        alts.append(rf"{before}(?:{body})(?![a-z0-9])")
+    return re.compile("|".join(alts), re.IGNORECASE) if alts else None
+
+
 @lru_cache(maxsize=32)
 def _pattern(words: tuple[str, ...]) -> re.Pattern[str] | None:
     alts = sorted({_norm(w) for w in words if _norm(w)}, key=len, reverse=True)
@@ -73,9 +112,66 @@ class Secrets:
     topics: tuple[str, ...] = ()
     match: tuple[str, ...] = ()
     lore: tuple[str, ...] = ()
+    never: tuple[str, ...] = ()
 
     def __bool__(self) -> bool:
-        return bool(self.topics or self.match or self.lore)
+        return bool(self.topics or self.match or self.lore or self.never)
+
+    # -- never -------------------------------------------------------------------
+
+    def leaks(self, text: Any) -> bool:
+        """True when `text` carries a `never` word (the door code, a combo pair)."""
+        if not isinstance(text, str) or not self.never:
+            return False
+        pat = _never_pattern(self.never)
+        return pat is not None and pat.search(text.replace("\u2019", "'").replace("\u2018", "'")) is not None
+
+    def _leaks_any(self, value: Any) -> bool:
+        if isinstance(value, str):
+            return self.leaks(value)
+        if isinstance(value, dict):
+            return any(self._leaks_any(v) for v in value.values())
+        if isinstance(value, (list, tuple)):
+            return any(self._leaks_any(v) for v in value)
+        return False
+
+    def _strip_never(self, value: Any, label: str, dropped: list[str]) -> Any:
+        """`value` without anything carrying a `never` word: a string that
+        leaks is dropped (a multi-line one loses only its leaking lines), a
+        list loses every leaking item (a dict item whole: a learned claim
+        with its verdict), a dict every leaking field. `_DROP` = drop it."""
+        if isinstance(value, str):
+            if not self.leaks(value):
+                return value
+            if "\n" in value:
+                kept = []
+                for line in value.split("\n"):
+                    if self.leaks(line):
+                        dropped.append(f"{label}: {line.strip()}")
+                    else:
+                        kept.append(line)
+                return "\n".join(kept)
+            dropped.append(f"{label}: {value.strip()}")
+            return _DROP
+        if isinstance(value, list):
+            out = []
+            for item in value:
+                if isinstance(item, dict) and self._leaks_any(item):
+                    dropped.append(f"{label}: {item.get('claim') or item.get('q') or item.get('summary') or '…'}")
+                    continue
+                kept = self._strip_never(item, label, dropped)
+                if kept is not _DROP:
+                    out.append(kept)
+            return out
+        if isinstance(value, dict):
+            for key in list(value):
+                kept = self._strip_never(value[key], _LABELS.get(key, key), dropped)
+                if kept is _DROP:
+                    del value[key]
+                else:
+                    value[key] = kept
+            return value
+        return value
 
     # -- lore ------------------------------------------------------------------
 
@@ -117,11 +213,17 @@ class Secrets:
         return self.names_topic(text) and _VERDICT.search(str(text)) is not None
 
     def scrub(self, update: dict[str, Any]) -> list[str]:
-        """Strip hunt verdicts from an orchestrator update in place; returns
-        what was dropped (for the trace — the director sees it, no model does)."""
-        if not (self.topics or self.match):
-            return []
+        """Strip hunt verdicts, and anything carrying a `never` word, from an
+        orchestrator update in place; returns what was dropped (for the
+        trace — the director sees it, no model does)."""
         dropped: list[str] = []
+        if self.topics or self.match:
+            self._scrub_hunt(update, dropped)
+        if self.never:
+            self._strip_never(update, "update", dropped)
+        return dropped
+
+    def _scrub_hunt(self, update: dict[str, Any], dropped: list[str]) -> None:
         for key in ("learned_add", "learned"):
             raw = update.get(key)
             if not isinstance(raw, list):
@@ -161,15 +263,47 @@ class Secrets:
                 person["claims_add"] = keep(person["claims_add"], "claim")
             if self.judges_topic(person.get("summary")):
                 dropped.append(f"summary: {person.pop('summary')}")
-        return dropped
 
     def prune(self, mind: Any) -> int:
-        """Drop hunt verdicts from a mind (e.g. one restored from disk)."""
-        if not (self.topics or self.match):
-            return 0
-        before = len(mind.learned)
-        mind.learned[:] = [e for e in mind.learned if not self.names_topic(e.get("claim"))]
-        return before - len(mind.learned)
+        """Drop hunt verdicts, and anything carrying a `never` word, from a
+        mind (e.g. one restored from disk). Returns how many went."""
+        n = 0
+        if self.topics or self.match:
+            before = len(mind.learned)
+            mind.learned[:] = [e for e in mind.learned if not self.names_topic(e.get("claim"))]
+            n += before - len(mind.learned)
+        if not self.never:
+            return n
+
+        def keep(items: list[Any]) -> list[Any]:
+            nonlocal n
+            out = [x for x in items if not self._leaks_any(x)]
+            n += len(items) - len(out)
+            return out
+
+        mind.learned[:] = keep(mind.learned)
+        mind.notes[:] = keep(mind.notes)
+        mind.world[:] = keep(mind.world)
+        mind.questions[:] = keep(mind.questions)
+        if self.leaks(mind.brief):
+            lines = mind.brief.split("\n")
+            kept = [line for line in lines if not self.leaks(line)]
+            n += len(lines) - len(kept)
+            mind.brief = "\n".join(kept)
+        if isinstance(mind.policy, dict) and self.leaks(mind.policy.get("note")):
+            mind.policy["note"] = ""
+            n += 1
+        for dossier in mind.people.values():
+            if self.leaks(dossier.summary):
+                dossier.summary = ""
+                n += 1
+            for key in ("promises", "asks", "claims"):
+                setattr(dossier, key, keep(getattr(dossier, key)))
+        for memo in mind.threads.values():
+            if self.leaks(memo.summary):
+                memo.summary = ""
+                n += 1
+        return n
 
     # -- the prompt --------------------------------------------------------------
 

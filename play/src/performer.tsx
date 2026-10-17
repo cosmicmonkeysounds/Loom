@@ -444,7 +444,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   const [people, setPeople] = useState<Channel | null>(null);
   const [picking, setPicking] = useState(false);
   useDocumentTitle(s.auth?.title);
-  // K-31a: the door alarm + the late list on a locked phone.
+  // K-31a: the server-room (patch-bay) alarm + the late list on a locked phone.
   const push = usePush(s.auth?.character ? { base: `/e/${encodeURIComponent(s.auth.eventId)}`, token: s.auth.token } : null, "booth");
   // Everyone's profile pictures, for every tile in the booth.
   const avatars = useMemo(() => avatarLookup(s.auth?.eventId ?? null, s.view?.avatars), [s.auth?.eventId, s.view?.avatars]);
@@ -580,7 +580,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
     <WalletActionsProvider value={{ view: s.view?.wallet ?? null, me: null, clock: walletClock, approve: (id) => void s.walletApprove(id), deny: (id) => void s.walletDeny(id) }}>
     <div className="root">
       {s.alert && <AlertBanner text={s.alert.text} onDismiss={s.dismissAlert} />}
-      <PushCard push={push} booth title={s.auth?.title} why="the door alarm and the late list reach you even with the phone locked." />
+      <PushCard push={push} booth title={s.auth?.title} why="the server-room alarm and the late list reach you even with the phone locked." />
       <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room, or a guest." />
       {picking && t.active && (
         <InviteSheet

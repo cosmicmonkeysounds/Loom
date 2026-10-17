@@ -249,10 +249,12 @@ export function canonicalCharacter(typed: string, characters: readonly string[])
 }
 
 /** The character a terminal is set up for: the typed one in the story's
- *  spelling, else the default. An empty list (the doors aren't open yet, so
- *  the server can't say) keeps the typed name; the screen state's
- *  `character.id` corrects it later (`adoptCharacter`). Throws when the story
- *  is loaded and declares no such character. */
+ *  spelling, else the default. A mod code resolves the story's declared cast
+ *  before the doors open too (`EventRuntime.declaredCharacters`), so a typo
+ *  is refused at setup, doors open or not. An empty list (no story loaded, or
+ *  one that won't compile: nothing to check against) keeps the typed name;
+ *  the screen state's `character.id` corrects it later (`adoptCharacter`).
+ *  Throws when the story declares no such character. */
 export function pickCharacter(typed: string | null, characters: readonly string[]): string {
   if (typed === null || typed.trim() === "") return characters.includes(DEFAULT_CHARACTER) ? DEFAULT_CHARACTER : (characters[0] ?? DEFAULT_CHARACTER);
   if (characters.length === 0) return typed.trim();
@@ -262,21 +264,24 @@ export function pickCharacter(typed: string | null, characters: readonly string[
 }
 
 /** What is wrong with a terminal's character against the story's cast, or
- *  null when nothing is (the story has it, or no cast to check: the doors
- *  aren't open). */
+ *  null when nothing is (the story has it, or no cast to check: no story
+ *  loaded, or one that won't compile — the declared cast is there before
+ *  the doors open). */
 export function characterProblem(configured: string, characters: readonly string[]): string | null {
   if (characters.length === 0 || canonicalCharacter(configured.trim(), characters) !== null) return null;
   return `The story has no character called "${configured.trim()}" (it has: ${characters.join(", ")}).`;
 }
 
 /**
- * When the running story should be asked whether this terminal's character
- * exists (B19): the screen state answers but names no character for it —
- * either the doors aren't open (no story yet: the cast comes back empty) or
- * the name is one the story lacks (a typo provisioned before the doors, when
- * the server could not check it). One check per event × character × sim
- * (`announceEpoch` changes when the doors open or the story restarts), so the
- * key is what the caller dedupes on; null = nothing to check.
+ * When the story should be asked whether this terminal's character exists
+ * (B19): the screen state answers but names no character for it — either the
+ * doors aren't open (no sim yet; the cast read still answers with the story's
+ * declared cast, `EventRuntime.declaredCharacters`, so a typo shows before
+ * the doors) or the name is one the story lacks (a typo stored by an older
+ * server or a failed ⚙ lookup, or a story edited since). One check per
+ * event × character × sim (`announceEpoch` changes when the doors open or
+ * the story restarts), so the key is what the caller dedupes on; null =
+ * nothing to check.
  */
 export function castCheckKey(c: Pick<TerminalConfig, "eventId" | "character">, state: { character: unknown; announceEpoch: string | null } | null): string | null {
   if (state === null || state.character !== null || c.character.trim() === "") return null;

@@ -1824,22 +1824,31 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     expect(words).toContain("Everything I took from you tonight was for Sandy.");
   });
 
-  it("latched: within 2 minutes nothing; after, a short line; never after an ending", { timeout: SLOW }, () => {
+  it("latched: 2 minutes from the LAST opening; every opening inside it extends the quiet; after, a short line; never after an ending", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
     fire(sim, "server_door_opened");
-    for (const wait of [0, 60]) {
+    // Two contacts for one swing (0 s), then the group trickling out every
+    // 60–119 s: well past 2 minutes from the first, never 2 quiet minutes.
+    for (const wait of [0, 60, 119, 119, 61]) {
       advance(sim, wait);
       const again = fire(sim, "server_door_opened");
       expect(beats(again), String(wait)).toEqual([]);
       expect(casts(again), String(wait)).toEqual([]);
+      expect(hostsSaid(again), String(wait)).toEqual([]);
     }
-    advance(sim, 61);
+    expect(v(sim, "Night.door_quiet_until")).toBe(v(sim, "Time.elapsed") + 120);
+    // 2 quiet minutes after the last opening: Back To The Heart.
+    advance(sim, 120);
     const back = fire(sim, "server_door_opened");
     expect(beats(back)).toEqual(["Back To The Heart"]);
     expect(lines(back, "Trabolta")).toEqual(["Back again. The terminal is on the wall. I am not going anywhere."]);
     expect(hostsSaid(back)).toEqual(['"🚪 The server-room door opened again."']);
     expect(beats(fire(sim, "server_door_opened"))).toEqual([]); // latched again
+    advance(sim, 119);
+    expect(beats(fire(sim, "server_door_opened"))).toEqual([]); // 119 s after the last: still quiet
+    advance(sim, 120);
+    expect(beats(fire(sim, "server_door_opened"))).toEqual(["Back To The Heart"]);
     fire(sim, "patch_combo_b");
     advance(sim, 121);
     const ended = fire(sim, "server_door_opened");
@@ -1860,6 +1869,9 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
       fire(sim, "terminal opened", "g4", { at: spelling });
       expect(v(sim, "g4.at_the_heart"), spelling).toBe(true);
     }
+    // One server-room terminal: g4's line pushed g1 out (g1's close never came).
+    expect(v(sim, "g1.at_the_heart")).toBe(false);
+    expect(v(sim, "Night.heart_holder")).toBe(v(sim, "g4.name"));
     // Another terminal (or none) is not his heart; closing ends it.
     fire(sim, "terminal opened", "g5", { at: "The Desktop" });
     expect(v(sim, "g5.at_the_heart")).toBe(false);
@@ -2777,15 +2789,25 @@ describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
       expect(m.codex.get(id)?.secret, id).toBe(true);
     }
     const code = FACTS.door!.code;
-    // The year is the riddle's answer: the Sandy File carries it as a clue
-    // (decision 2) and Bridget's sixteen elections since that year are a red
-    // herring; neither says it opens anything.
-    const CLUES = new Set(["The Sandy File", "Bridget Troelsen"]);
+    // The year is the riddle's answer, in any spelling (1997, '97). Page 999
+    // carries it as a clue and Bridget's sixteen elections since that year
+    // are a red herring; neither says it opens anything. No entry Trabolta
+    // holds carries it (his files reach his prompts whole: the Sandy File
+    // and the LiveJournal say "late-nineties" / "Our anniversary").
+    const year = new RegExp(`${code}|['’]${code.slice(2)}(?!\\d)`, "u");
+    const CLUES = new Set(["The Margin Doodle", "Bridget Troelsen"]);
     for (const [id, e] of m.codex) {
       if (e.secret) continue;
       expect(e.text, id).not.toMatch(/V\d\s*(?:→|->|-)\s*D\d/u);
-      if (!CLUES.has(id)) expect(e.text, id).not.toContain(code);
+      if (!CLUES.has(id)) expect(e.text, id).not.toMatch(year);
     }
+    const night = fresh();
+    toY2k(night);
+    for (const e of night.codexFor("Trabolta")) expect(`${e.title}\n${e.text}`, e.id).not.toMatch(year);
+    // Nor does any quote her one line, F1's answer (the Sandy File used to,
+    // straight into his voice prompt).
+    const line = FACTS.questions.find((q) => q.id === "F1")!.answer.toLowerCase();
+    for (const e of night.codexFor("Trabolta")) expect(e.text.toLowerCase(), e.id).not.toContain(line);
     // The code lives on the Kernel (seeded from facts.json), never on Night.
     const sim = fresh();
     sim.fireBeat("Power On");
@@ -2849,6 +2871,52 @@ describe("Trapped in the Internet — talked down, like the Fallout Master (wave
     const other = atTheHeart();
     other.unlock("g1", "The Sandy File");
     expect(hostsOnly(fire(other, "stand_down", "g1", null, "Trabolta"))).toHaveLength(1);
+  });
+
+  it("a lost `terminal closed` never keeps a program at his heart once the next one scans in", { timeout: SLOW }, () => {
+    const sim = atTheHeart();
+    sim.unlock("g1", "What Sandy Says");
+    // g1 walks out; their close is lost to the Wi-Fi. g4 scans in.
+    fire(sim, "terminal opened", "g4", { at: "The Server Room" }, "Terminal · Server Room");
+    expect(v(sim, "g1.at_the_heart")).toBe(false);
+    expect(v(sim, "g4.at_the_heart")).toBe(true);
+    // g1, from the phone in their pocket, can no longer talk him down.
+    const away = fire(sim, "stand_down", "g1", null, "Trabolta");
+    expect(lines(away, "Trabolta")).toEqual(["Not out there. Come to my heart and say it to my face."]);
+    expect(casts(away)).toEqual([]);
+    // Another room's terminal never moves the heart.
+    fire(sim, "terminal opened", "g5", { at: "The Desktop" });
+    expect(v(sim, "g4.at_the_heart")).toBe(true);
+    // g1 back at the terminal: theirs again, and g4 is out.
+    fire(sim, "terminal opened", "g1", { at: "server-room" });
+    expect([v(sim, "g1.at_the_heart"), v(sim, "g4.at_the_heart")]).toEqual([true, false]);
+  });
+
+  it("a proof Trabolta shared himself never counts: the model can't supply its own way out", { timeout: SLOW }, () => {
+    for (const entry of ["The Sandy File", "What Sandy Says"]) {
+      const sim = atTheHeart();
+      // His worker's bargain: a share into g1's Codex, then the power.
+      if (!sim.holdsCodex("Trabolta", entry)) sim.unlock("Trabolta", entry);
+      sim.share("Trabolta", "g1", entry);
+      expect(sim.holdsCodex("g1", entry), entry).toBe(true);
+      const own = fire(sim, "stand_down", "g1", null, "Trabolta");
+      expect(lines(own, "Trabolta"), entry).toEqual(["You have not shown me anything I do not already know."]);
+      expect(casts(own)).toEqual([]);
+      expect(v(sim, "Night.stand_down_by")).toBe("none");
+      // The other proof, found by the program itself, still counts.
+      const other = entry === "The Sandy File" ? "What Sandy Says" : "The Sandy File";
+      sim.unlock("g1", other);
+      fire(sim, "stand_down", "g1", null, "Trabolta");
+      expect(v(sim, "Night.stand_down_by"), entry).toBe("Calculator");
+    }
+    // Found by the program (its code, a story unlock, another program's share): it counts.
+    const sim = atTheHeart();
+    sim.share("g2", "g1", "The Sandy File"); // g2 doesn't hold it: nothing moves
+    sim.unlock("g2", "The Sandy File");
+    sim.share("g2", "g1", "The Sandy File");
+    expect(v(sim, "g1.sandy_file_from_him")).toBe(false);
+    fire(sim, "stand_down", "g1", null, "Trabolta");
+    expect(v(sim, "Night.stand_down_by")).toBe("Calculator");
   });
 
   it("before the Y2K hour, or after an ending, it is refused", { timeout: SLOW }, () => {
