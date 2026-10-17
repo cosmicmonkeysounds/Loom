@@ -37,9 +37,9 @@ captured, released or unmarked.
 **The audit.** Every program has a Wallet from login; at the Truther Download
 your booth says *🧾 Every program has a Wallet now. Every third transfer waits in
 your Wallet room for Approve; any transfer can be denied for 60 seconds.
-Elaborate security questions encouraged.* Your Quest Log: *The Audit* (from
-Task Manager; it logs every approval and denial; it closes at the Y2K
-clock). A held card can reach your Wallet room before that if anyone sends
+Elaborate security questions encouraged.* Your Quest Log: *Patrol: the
+audit* (from Task Manager; it logs every approval and denial; it closes at
+the final reveal, or when the night ends in the server room). A held card can reach your Wallet room before that if anyone sends
 coin early. How it works:
 
 - Your booth has a pinned **Wallet** room at the top. **One transfer in
@@ -57,9 +57,9 @@ coin early. How it works:
 - Runescape can **🧊 freeze** a program's coin for ten minutes: their sends
   are refused until it thaws. That is hers, not yours; the director can lift
   one early.
-- The director can Approve, Deny or cancel a card by its id through the mod
-  wallet route if you are busy, or clear every held card at once with Run →
-  Wallet's **✓ Approve all held** (the second director's card has the call).
+- The director can Approve, Deny or Cancel any card from Run → Wallet if
+  you are busy, or clear every held card at once with **✓ Approve all
+  held**.
 - Promise nothing else: you have no freeze of your own, no limit, no refund
   beyond Deny.
   Undeclared profit in person → **🪙 Charge**.

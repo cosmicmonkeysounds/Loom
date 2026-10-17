@@ -41,7 +41,9 @@ exchange readout. A fact is a codex entry; the trade is escrowed until the
 other side accepts (ten minutes, then it expires), then the coin moves and
 the entry is shared. Your booth: *🪙 The #
 truthcoin-exchange is open. Every settled trade is posted there.* Your Quest
-Log: *The Exchange* (from Task Manager; it completes at the Trust Chart).
+Log: *Patrol: the exchange* (from Task Manager; the wallet trades on through
+the Y2K hour, so it closes at the final reveal, or when the night ends in the
+server room).
 **Nothing to settle on cards any more**: the app posts every settled
 transfer and trade in `# truthcoin-exchange` by itself. Broker in person: set
 prices, match buyers to facts, **take your cut** (ask for a send to you).
