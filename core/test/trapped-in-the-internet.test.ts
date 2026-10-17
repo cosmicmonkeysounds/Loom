@@ -209,6 +209,15 @@ describe("Trapped in the Internet — compile", () => {
     for (const text of [flat("Approve Or Deny"), pack]) expect(text).not.toMatch(/approve or deny every third/u);
   });
 
+  it("M22 promises only what every tent tablet does: checkmate counts, anything else means play him again", () => {
+    // Whether a drawn or lost board re-deals by itself is the reinstall lane's
+    // (decision 6); on a build without it the window closes and ♟ CHALLENGE
+    // deals the next board. The codex a guest reads must hold on both.
+    const text = m.codex.get("Disarming The Alarm")!.text.replace(/\s+/gu, " ");
+    expect(text).toContain("Only checkmate counts; a draw or a loss changes nothing, so play him again.");
+    expect(text).not.toMatch(/fresh board|deals him|re-?deal/u);
+  });
+
   it("every codex title is its own: no two entries share one and none is another entry's id (the wallet trades by title)", () => {
     // server/wallet.ts resolves a phone's offer by id first, then by the
     // first entry with that title: a shared title trades the wrong entry.
