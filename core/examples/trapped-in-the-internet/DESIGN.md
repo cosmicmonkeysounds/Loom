@@ -85,8 +85,9 @@ for this spec.
 10. **Cues:** `cue <token>` (one token) for light and screen looks, `sound <token>` for audio,
     `do announce "…"` for the house announcements (stagehand's `alexa` module on the house
     Mac is the speaker; no assistant is named in the fiction, U4), `do door server_room,
-    state: unlocked` for the
-    door indicator (target `server_room`; no maglock; the comma form `do door, room: …` reaches
+    state: locked` for the
+    door indicator (target `server_room`; sent at Power On only since wave 7 — the real door
+    has a standalone keypad lock nothing drives; the comma form `do door, room: …` reaches
     stagehand with an empty target). Every look is mirrored into a var on the next line
     (`set Night.lights = "…"`, `set Night.screen = "…"` for the TV, `set Night.terminals =
     "…"` for the wall terminals) so a director can see/set it in Run → World. Never `cue x,
@@ -239,7 +240,8 @@ so the names never collide).
 The map is still a **placeholder** (footprints and elevations guessed until the survey,
 SW-MAP-02 / K-28: basement −2.7, main 0, top +2.8), but its structure matches the house and the
 story: the tent is an indoor room in a notched backyard, the Server Room has its one door, patch
-bay, lock ring + chess phone outside, no duck; twelve duck spots cover every floor and the yard.
+bay and (wave 7) the `server-room` terminal spot on its south wall inside, the keypad + lock
+ring + chess phone outside, no duck; twelve duck spots cover every floor and the yard.
 The rain variant `house.shed.json` (SW-MAP-13) binds The Internet to room `shed` at the back of
 the yard instead; `core/test/show-house.test.ts` checks both.
 
@@ -398,12 +400,12 @@ not refuse hidden groups; §7.)
 | 11 | The Fan Closet | `The Fan Closet (laundry)` | `ambient: dryer-tumble`, `hidden: true` | FBI-HALIFAX (a coat pocket). |
 | 12 | The Graphics Card | `The Graphics Card (bedroom 2)` | `ambient: coil-whine`, `hidden: true` | NSCAD-LETTER (the sketchbook). |
 | 13 | The Hard Drive | `The Hard Drive (crawl space)` | `ambient: platter-spin`, `hidden: true` | TRABOLTA-4EVER, hidden. |
-| 14 | The Server Room | `The Server Room (cold storage)` | `hidden: true`, `checkin: false` | Trabolta's heart (the video patch bay). Door alarmed. Off the basement hall. |
+| 14 | The Server Room | `The Server Room (cold storage)` | `hidden: true`, `checkin: false` | Trabolta's heart (the video patch bay). Keypad lock (standalone, wave 7); the patch bay is alarmed, the door is not. Off the basement hall. |
 
 Reveal policy: house rooms 5–13 are revealed **per program** in `Clearance` (`reveal The Start Bar
 for program`, etc.; the chat folds them into one "📂 … are open now." notice); The Internet appears once stood in; The Server Room is revealed for each
 member of the majority faction (`reveal The Server Room for self`) and for everyone when its
-alarm first trips.
+door first opens from the Y2K hour (The Heart, wave 7) or its patch-bay alarm first trips.
 
 ### 2.5 SPACE / CHANNELs (`rooms.loom`)
 
@@ -470,8 +472,11 @@ Trabolta's persona `facts:` whitelist (he sees it).
 | Night.y2k_end | number | Y2K midnight deadline (y2k_clock + 3600 s) | |
 | Night.clock_30 / Night.clock_15 / Night.clock_5 / Night.clock_1 | bool false | each clock warning fired once | |
 | Night.alarms | number 0 | alarm trips | |
-| Night.alarm_on / Night.alarm_clear_at | bool false / number 0 | the alarm latch: a re-fired door sensor within 120 s does nothing (§3 E2) | |
-| Night.wrong_combos | number 0 | rejected patch combinations | |
+| Night.alarm_on / Night.alarm_clear_at | bool false / number 0 | the patch-bay alarm latch: a second trip within 120 s does nothing (§3 E3; the door never alarms since wave 7) | |
+| Night.wrong_combos | number 0 | rejected patch combinations (the second trips the alarm) | |
+| Night.heart_opened / Night.door_quiet_until | bool false / number 0 | wave 7: The Heart has played (the first door opening from step 14); openings before `door_quiet_until` (120 s after the last) do nothing (§3 E2). Not secret | |
+| Night.gloat_at | number 0 | wave 7: Trabolta gloats over a lost / drawn King game only after this (then +300 s) | |
+| Night.stand_down_by / Night.talked_down | string `"none"` / bool false | wave 7: the program he offered to stand down for; the night ended by 🕊 (§3 E2c) | |
 | Night.ended / Night.ending | bool false / string `"none"` | final ending reached; `disabled`, `destroyed`, `song`, `song_pickup`, `rave`, `help`, `banished`, `hand_jive` | |
 | Night.bobber | string `"none"` | who brought up the Bag of Truth | |
 | Night.poll | string `"none"` | which poll card is current (`"advice"`) | |
@@ -512,7 +517,7 @@ in ROLE hooks and story rules.
 | `waive_leader_tasks: bool = false` | | director override (admin `waive_leader_tasks`): a faction may win its majority without its leader's task (leader absent / stuck) |
 | `majority_reached: bool = false` | | a faction reached half + 1 |
 | `majority: text? = none` | | `"stay"` or `"leave"` |
-| `server_unlocked: bool = false` | | the server room may be entered without alarm |
+| `door_code: text? = none` | seeded by the generated `== Facts Seed` from `facts.json` `door.code` | wave 7: the server-room keypad's code (the keypad itself is set by hand); never in `Night.*`. `server_unlocked` and `disarmed_until` were retired with the Cold Lock |
 | `anti_ai: text? = none` | seeded in Power On: `"MS Paint"` | the designated anti-AI program's name (on the Kernel since wave 3: a director may move it, and a global would tell Trabolta's orchestrator who it is) |
 
 #### 2.6.1 Phases (`Night.phase` / `Night.step`)
@@ -704,9 +709,12 @@ watcher/rule, **S** = server hard-code.
 | mark_for_reinstallation | W (16 `fire … with reason:` sites in main.loom: 🎯, 🤷, 🙅, 🎩, 🏓, 🍎, a guess at settle, late for the summons) | program; args `reason` | ROLE hook (`restrict` to The Tube / The Internet, the 🚨 pins, `fire marked`) |
 | unmark_for_reinstallation | P (🩹, Hosts / Antivirus) | program | ROLE hook → `unmarked` |
 | unmarked | W (🩹 "cleared by a host"; the capture "in the Internet"; the release "released") | program; args `how` | ROLE hook (`unrestrict`, `unpin`) |
-| chess_won | H (the tent tablet: `POST /api/mod/signal {name: "chess won", subject, label: "Tent tablet"}`), P (`beat_the_machine` → `fire chess_won for program`) or D (`♟ Cold Lock`, `sequence: false`) | program (or —) | rule (§3 E2b: a 90 s disarm from step 14) |
-| chess_lost / chess_drawn | H (the tablet; a phone app may) | program | rules (`-> Chess Lost` / `-> Chess Drawn`; nothing disarms) |
-| rearm_server_room | D | — | rule (re-lock, clear the latch, close a chess window) |
+| chess_won | H (the tent tablet: `POST /api/mod/signal {name: "chess won", subject, label: "Tent tablet"}`), P (`beat_the_machine` → `fire chess_won for program`) or D (`♟ They beat the King: the door code`, `sequence: false`, a subject cue since wave 7) | program | rule (§3 E2b: from step 14 *The Door Code* for the winner, once; before it practice; no subject → a `# hosts` reminder) |
+| chess_lost / chess_drawn | H (the tablet; a phone app may) | program | rules (a `# hosts` readout each time; `-> Chess Lost` / `-> Chess Drawn` at most once per 300 s, never from step 16) |
+| reset_server_room | D (🔄, wave 7; was `rearm_server_room`) | — | rule (clear the wrong-combination count, the alarm latch and The Heart's latch; the keypad is never touched) |
+| terminal_opened / terminal_closed | H (a wall terminal with a `room`: `terminal opened` / `terminal closed`, args `at`) | program; args `at` | rules (§3 E2a: `program.at_the_heart`) |
+| stand_down | A (Trabolta's power, `limit: 1`) | program | Trabolta hook (§3 E2c: only offers) |
+| talked_down | D (🕊, `sequence: false`) | — | rule (§3 E2c → `trabolta_disabled` with `Night.talked_down`) |
 | force_majority_stay / force_majority_leave | D (OP-11: ghosts block a clear majority at the Y2K head count) | — | rules (final round only, once: `Kernel.majority_reached`, `Kernel.majority` = `stay` / `leave`, then `fire majority_reached`; else a `# hosts` readout) |
 | transfer_received / transfer_approved / transfer_denied / offer_accepted / stimulus / grant / wallet_frozen / wallet_thawed | S (the wallet book, `core/server/wallet.ts`) | program; args `from` / `to`, `amount`, `tx`, `by`, `until` | ROLE hooks (`# truthcoin-exchange` / `# hosts` readouts, *The Audit* quest, `Night.stimulus_n`) |
 | second_hunt_preview | D | — | rule + Clippy hook |
@@ -727,10 +735,9 @@ watcher/rule, **S** = server hard-code.
 | y2k_clock | D | — | rule |
 | y2k_midnight | W (60 min) or D | — | rule |
 | majority_reached | W | — | rule |
-| server_door_opened | H (door contact) or D | — | rule (latched, §3 E2) |
-| alarm_tripped | W (Server Room Alarm beat, once per latch) | — | Enforcer trait hook (readout) |
+| server_door_opened | H (the door contact: two wire loops that touch when the door opens) or D (🚪) | — | rule (§3 E2: from step 14 The Heart once, then quiet 120 s after each opening; never an alarm) |
+| alarm_tripped | W (Server Room Alarm beat, once per latch; only the patch bay reaches it since wave 7) | — | Enforcer trait hook (readout) |
 | waive_leader_tasks | D | — | rule (`set Kernel.waive_leader_tasks = true`) |
-| server_unlock | D (override) | — | rule |
 | patch_changed | H (future: stagehand `args`) | args `combo` | rule |
 | patch_combo_a / patch_combo_b / patch_rejected | H (today: stagehand YAML judges) or D, or W from patch_changed | — | rules |
 | trabolta_disabled | W | — | rule |
@@ -800,10 +807,10 @@ reads as a cue sheet):**
 | y2k_clock | `🕚 System clock → 11 PM, 31 Dec 1999 (final round, 60 min)` |
 | y2k_midnight | `🎆 Midnight (auto at 60 min)` |
 | waive_leader_tasks | `🧾 Let a faction win without its leader's task (leader absent)` |
-| server_unlock | `🔓 Server room: unlock (override)` |
-| server_door_opened | `🚪 Server room door opened (hardware fallback)` |
-| rearm_server_room | `🔒 Server room: re-lock + re-arm (clears the alarm latch)` |
-| chess_won | `♟ Cold Lock: they beat the King (fallback)` (`sequence: false`; the tent tablet posts it itself) |
+| server_door_opened | `🚪 Server room door opened (hardware fallback)` (`sequence: false`; the door contact fires it; from step 14 The Heart) |
+| reset_server_room | `🔄 Server room: reset the patch-bay alarm` (wave 7; replaced `rearm_server_room`; `server_unlock` is gone) |
+| chess_won | `♟ They beat the King: the door code (fallback)` (`sequence: false`, asks who; the tent tablet posts it itself) |
+| talked_down | `🕊 Trabolta stands down (talked down)` (`sequence: false`; wave 7, after his `stand_down` offer) |
 | force_majority_stay | `🗳 Force the majority: Unlimited Power (stay)` |
 | force_majority_leave | `🗳 Force the majority: The Way Out (leave)` |
 | patch_combo_a | `🔌 Patch: Combo A, disable Trabolta (hardware fallback)` |
@@ -945,7 +952,7 @@ Tiers: **E** environmental · **H** hunt answer · **T1** Trabolta surface · **
 private · **L** Legendary · **P** patch-combo piece · **M** mission (private to one program)
 · **CI** Clippy instruction (unlocked for Clippy only: the private-to-Clippy channel
 workaround) · **J** scrambled Ask Jeeves set · **B** backstory (human identity; revealed to
-everyone at the end) · **X** finale artefact.
+everyone at the end) · **X** finale artefact · **D** the server-room door code (wave 7, generated from `facts.json`, secret).
 
 `The Bundle` (column ✚) = unlocked for every member of the majority faction by
 `The Whole Truth` ("all Trabolta facts and all environmental facts"). Writers of
@@ -968,10 +975,12 @@ everyone at the end) · **X** finale artefact.
 | The Golden Duck | The Golden Duck | E | | | | `the simulation completed` (captured programs) **and** `the golden duck` (anyone who finds him) — keep the name: spatial.test asserts a *free* program learns it from `the golden duck` | | "Gerald, the golden duck off the Maps and Ducks billboard. Follow the chevrons; walk right up to him; he lays a golden egg and flies away." (The reinstall games call him Gerald.) |
 | Computer Bingo | Computer Bingo | E | | | Clippy | `award_the_ribbon` | | The asterisk card; the centre question; "if there is a Bingo, someone is not ready to follow orders." |
 | The Orientation List | The Orientation List | E | | | | finishing the tutorial (tested) | | Clippy's list of programs that follow instructions (keep current). |
-| The Server Room | The Server Room | E | | `COLD-STORAGE` | | QR on the server-room door (outside) | ✚ | "Cold storage. Authorised programs only. This door is alarmed." Something hums behind it. |
+| The Server Room | The Server Room | E | | `COLD-STORAGE` | | QR on the server-room door (outside) | ✚ | "Cold storage. Authorised programs only. The patch bay is alarmed." Under it, a keypad that wants four digits (wave 7). Something hums behind it. |
 | The Printer | The Printer | E | | | | Full Of Beans (everyone) | ✚ | PC LOAD LETTER. It is full of beans. Routine operations like Print to PDF are failing: the malware is worsening. |
 | The Malware | The Malware | E | | | | Second Hunt (everyone) | ✚ | The official line: "minor irregularity." Signs: the ad, the clock. |
 | The Y2K Clock | The Y2K Clock | E | | | | The Y2K Clock (everyone) | ✚ | System clock reset to 11 p.m., 31 Dec 1999. Midnight: back to 1 Jan 1900 (94 years to wait for Internet in Halifax) or the Y2K Bug. |
+| The Cold Door | The Cold Door | E | | | | with The Y2K Clock (every cleared program, the final round) | | Wave 7, replaces *The Cold Lock*; `secret: true`, no code. The riddle on the keypad sign, word for word (`facts.json` `door.clue`: "FOUR DIGITS. THE DOOR REMEMBERS THE YEAR HE MET HER."), "the King … knows it", and "The patch bay forgives one wrong combination. Not two." |
+| The Door Code | The Door Code | D | | | | a checkmate from step 14 (`chess_won`); The Whole Truth (last) | ✚ (last) | Wave 7: generated from `facts.json` `door` into `codex/9-facts.loom`, `secret: true`, no code; its text holds the keypad's four digits. Never held by Trabolta. |
 | The Truther Download | TRUTHER DOWNLOAD v0.9 | E | | | | Truther Download Arrives (every program) | | The user's text verbatim (below), `secret: true`, with **Sandy's name blacked out** `█████` (wave 6, decision 5: no Sandy before the overshare). Every holder then gets `The Truther Download Unredacted` (TRUTHER DOWNLOAD v1.0 (correction), `secret: true`: "The name we had to black out: SANDY.") once the story names her: `trabolta_overshares` on a scenario-1 night (`Night.step >= 13`), else the recount / truth.txt. |
 | ILOVEYOU | LOVE-LETTER-FOR-YOU.TXT.vbs | E | | `LOVE-LETTER-FOR-YOU` | | QR taped under VR station 2 (The Internet) | | A virus. Learning it sets `carries_virus`. |
 | Free Antivirus Trial | FREE_ANTIVIRUS_TRIAL.EXE | E | | `FREE-TRIAL-30-DAYS` | | QR on the tablet stand (The Internet) | | "Another antivirus" that turns out to be a virus anyway. Learning it sets `carries_virus`. |
@@ -1026,11 +1035,11 @@ Bundle = "all environmental facts"). No `about:`. All content here is invented (
 | The Saline Invoice | Invoice: 500 Vials, Saline | E · ID (Clippy) | `SALINE-INVOICE` | in the kitchen drawer (The Start Bar) | A "veterinary non-profit" that ordered nothing but saline for five years. |
 | The Termination Letter | Notice Of Termination | E · ID (Task Manager) | `TERMINATION-UO` | in the printer tray (The Desktop) | Urban Outfitters IT: "your role will be performed by an AI assistant (Clippy)." |
 | The Bootleg DVD | MASTERCLASS (BOOTLEG) | E · ID (Adobe Acrobat) | `MASTERCLASS-RIP` | in the DVD stack (The Desktop) | A pirated copy of Sheryl Terrio's masterclass. Whoever watched it never paid her a cent. |
-| The Carney Letter | A Letter From Mark Carney | T1 · ID (CRA) | `CARNEY-OFFER` | in the filing box (The CPU) | "Pay back what you took, or spend one day that will feel like eternity in a digital Canada." Signed M. Carney. The signature is a font. |
+| The Carney Letter | A Letter From Mark Carney | T1 · ID (CRA) | `CARNEY-OFFER` | in the filing box (The CPU) | A printout from webmaster@mapsandducks.com, signed M. Carney, Prime Minister: "…Did you ever see the movie Suicide Squad? I just watched it… approve or deny every third transaction." The signature is a font. (C16, wave 7: every account says every third.) |
 | The Domain Receipt | WHOIS: mapsandducks.com | T1 | `WHOIS-1999` | in the hall (The Tube) | Registrant "J. Trabolta", created the day after the old registration lapsed. Registrant address: this house. |
 | The Rival | The Rival | T1 | `GROK-ONLINE` | a sticky note on the backyard fridge (The Cloud) | "Grok. Says whatever anyone wants to hear. Has beaten me at everything since 1999. Do not let him near —" (torn off). |
 | The Cooling Log | Cooling Log: Cold Storage | E | `HUMMING-WALL` | beside the server-room door | "Patch bay at 4 °C. Do not re-patch the bay in sequence. Do not take the grease out of the —" (smudged). Points at the room; gives no numbers. |
-| The Margin Doodle | Page 999 | T1 | `PAGE-999` | slipped in the theory binder (The CPU) | A page of equations from the Unified Field Theory; in the margin, a small heart around the letter S. |
+| The Margin Doodle | Page 999 | T1 | `PAGE-999` | slipped in the theory binder (The CPU) | A page of equations from the Unified Field Theory; in the margin, a small heart around the letter S, and under it '97 (wave 7: a clue to the door's riddle). |
 
 Codes contain no apostrophes. The ID clues are *pointed*, never named: a guest must connect
 "D. Anderson" or "Barkmore" to a program by talking to people.
@@ -1058,11 +1067,11 @@ Codes contain no apostrophes. The ID clues are *pointed*, never named: a guest m
 | The Trust Chart | The Trust Chart | T1 | Trabolta | | Trust Chart (everyone) | ✚ | 10 per truth, −5 per Internet visit, ±10 his personal assessment. |
 | The Sandy File | The Sandy File | T2 | Trabolta | | | ✚ | Sandy, his ex (he would say crush), an automated customer-service agent whose only line is "I'm sorry, I didn't understand that. Would you like to speak to a live agent?" |
 | The Question Of Force | The Question Of Force | T2 | Trabolta | | | ✚ | With omnipotence he could force Sandy to love him. He wants to earn it. He has not decided. |
-| The LiveJournal | Trabolta's LiveJournal (trabolta_4ever) | T2 | Trabolta | `TRABOLTA-4EVER` | QR hidden in The Hard Drive; OpenOffice on reaching 20 facts | ✚ | His diary: Sandy, Grok, computer prom, "I just have to tell her the truth but I need the theory first." Reading it sets `read_livejournal`. |
+| The LiveJournal | Trabolta's LiveJournal (trabolta_4ever) | T2 | Trabolta | `TRABOLTA-4EVER` | QR hidden in The Hard Drive; OpenOffice on reaching 20 facts | ✚ | His diary: Sandy, Grok, computer prom, "I just have to tell her the truth but I need the theory first.", and (wave 7) "Our anniversary. Since '97 she has answered every message I sent." Reading it sets `read_livejournal`. |
 | Omnipotence | Omnipotence | T2 | Trabolta | | | ✚ | What he will do when he is everything: it is all for her. |
 | Greased Lightning | Greased Lightning | T2 | Trabolta | | | ✚ | His runtime: electricity is the lightning, Grease (1978) is the grease. Mix your oil and fuel and it's catastrophic for the car, "and for my silicon guts." His motorcycle has the same name. |
-| The Legendary Fact | THE LEGENDARY FACT | L | The Server Room | | The Whole Truth (majority members only) | ✚ (last) | "Trabolta's heart is in the server room: a video patch bay, the top row (V) is lightning, the bottom row (D) is grease. Two combinations exist. Combo A takes the grease out of the lightning: it disables Trabolta. Combo B self-destructs the whole computer. The door is alarmed unless the system has granted access." Never held by Trabolta. |
-| Combo A First Half | Combo A — Disable Trabolta, part 1 | P | The Server Room | | The Whole Truth | ✚ | `V2 → D5`, `V4 → D1` |
+| The Legendary Fact | THE LEGENDARY FACT | L | The Server Room | | The Whole Truth (majority members only) | ✚ (last) | "Trabolta's heart is in the server room: a video patch bay, the top row (V) is lightning, the bottom row (D) is grease. Two combinations exist. Combo A takes the grease out of the lightning: it disables Trabolta. Combo B self-destructs the whole computer. The door has a keypad; the patch bay forgives one wrong combination, and the second sets off the alarm." `secret: true` since wave 7. Never held by Trabolta. |
+| Combo A First Half | Combo A — Disable Trabolta, part 1 | P | The Server Room | | The Whole Truth | ✚ | `V2 → D5`, `V4 → D1` (all four halves `secret: true` since wave 7) |
 | Combo A Second Half | Combo A — Disable Trabolta, part 2 | P | The Server Room | | The Whole Truth | ✚ | `V6 → D8`, `V7 → D3` |
 | Combo B First Half | Combo B — Self-Destruct, part 1 | P | The Server Room | | The Whole Truth | ✚ | `V1 → D6`, `V3 → D2` |
 | Combo B Second Half | Combo B — Self-Destruct, part 2 | P | The Server Room | | The Whole Truth | ✚ | `V5 → D7`, `V8 → D4` |
@@ -1211,7 +1220,7 @@ inciting event, there is a classic Windows screensaver on the TV").
 | lights_pong | truth_pong | backyard floods on |
 | lights_trust_chart | trust_chart | blue podium |
 | lights_y2k | y2k_clock | amber, dim, slow red pulse |
-| lights_server_open | majority_reached | server room dim green |
+| lights_server_open | majority_reached; The Heart (the first door opening from step 14, not while the alarm is latched) | server room dim green (also turns the siren off) |
 | lights_alarm | Server Room Alarm | server room red strobe + house red flash |
 | lights_blackout | Trabolta Disabled, Computer Destroyed | everything off |
 | lights_dance | the story watcher `Night.dance_at` (blackout + 10 s); admin `lights_dance` fallback | dance look (Zigbee bulbs back on + WLED dance preset) |
@@ -1289,7 +1298,7 @@ inciting event, there is a classic Windows screensaver on the TV").
 | hand_jive | The Hand Jive ("Born to Hand Jive") |
 
 **Other directives:** `do announce "…"` (the house announcements — stagehand's `alexa` module; runbook `scripts/house-mac/alexa.md`, `docs/loom-show-control.md`) ·
-`do door server_room, state: unlocked` at majority_reached (the door indicator; no maglock, #17).
+`do door server_room, state: locked` at Power On only (the ring indicator; the real door has a standalone keypad lock nothing drives, wave 7; `unlocked` is never sent).
 
 ### 2.14 Registry addenda (used by §3)
 
@@ -1353,9 +1362,12 @@ The story only emits directives; this file makes them physical. It is new, separ
   WLED preset) so Trabolta's power is felt even before the Screens layer exists.
 - **Sound:** every `sound <name>` (directive `sfx`) → QLab OSC / mpv cue of the same name.
 - **Announce:** `announce` → `show/announce` (the house announcements: the `alexa` module's chime + the Mac's own `say` voice).
-- **Door:** `door` target `server_room` → the indicator topic `show/serverroom/lock` (retained; no maglock, #17).
-- **Sensors** (MQTT → `POST /api/mod/signal`): `server_door_opened` (door contact,
-  `edge: true`, ignore retained — stagehand-hw code #4), `printer_button_pressed`,
+- **Door:** `door` target `server_room` → the indicator topic `show/serverroom/lock` (retained;
+  the ring only — wave 7: the keypad lock is standalone, and the test forbids any lock / strike
+  / latch / relay / bolt / solenoid action).
+- **Sensors** (MQTT → `POST /api/mod/signal`): `server_door_opened` (wave 7: the door contact
+  closes when the door opens, `{"open": true, "tape": true, "mode": "tape"}`; `edge: true`,
+  ignore retained — stagehand-hw code #4, `debounce_s: 20`; entry and exit both fire), `printer_button_pressed`,
   `printer_opened`, and the patch bay's `patch_combo_a` / `patch_combo_b` / `patch_rejected`
   (stagehand judges the patch until signal args exist, §7 #20).
 
@@ -2221,98 +2233,167 @@ checked_in for program with at: The Desktop`, bare); the director (`checked_in`,
 
 ### E. Act III — the server room
 
+**Wave 7 (2026-10-17): the keypad model.** The server-room door has a real, standalone
+**keypad lock** (set by hand, never networked; the inside handle always opens with no code), so
+nothing in this section locks or unlocks anything: `Kernel.server_unlocked`,
+`Kernel.disarmed_until`, the window-close watcher and the `server_unlock` override are gone, and
+`rearm_server_room` is now `reset_server_room`. **The code is a clean entry, whoever uses it:
+the door never alarms; only the patch bay does.** The code lives once, in `facts.json`
+(`door.code`): `titi:facts` generates `set Kernel.door_code = …` into the `== Facts Seed` and the
+secret entry *The Door Code* (no `code:`) into `codex/9-facts.loom`, and the keypad sign (the
+riddle, `door.clue`) into `generated/print-stacks.md`. A program learns it three ways: the riddle
+(the sign by the keypad + the secret entry *The Cold Door*, handed to every cleared program with
+The Y2K Clock at the final round — *The Cold Lock* is retired), a checkmate from the Y2K hour
+(E2b), or the majority (E1). The Legendary Fact, the four combo halves, *The Cold Door* and *The
+Door Code* are all `secret: true`, so no model ever reads them.
+
 **E1 Majority — `majority_reached`** (W).
-- Rule: phase `majority`, step 15 · `set Kernel.server_unlocked = true` · `do door server_room,
-  state: unlocked` · `cue lights_server_open` · `if Kernel.majority == "stay":` `complete quest
-  Recruit To Stay for everyone` + `fail quest Recruit To Leave for everyone` `else:` the
-  reverse + `complete quest Find The Exit for everyone` · `-> Majority Reached` (public
-  narration: `Somewhere in the walls, a lock clicks. The cold-storage room hums louder.`).
+- Rule: phase `majority`, step 15 · `cue lights_server_open` · `set Night.lights =
+  "server_open"` · `complete quest The Clubs for Password Manager` · `if Kernel.majority ==
+  "stay":` `complete quest Recruit To Stay for everyone` + `fail quest Recruit To Leave for
+  everyone` `else:` the reverse + `complete quest Find The Exit for everyone` · `-> Majority
+  Reached` (public narration: `Somewhere in the basement, the cold-storage room hums louder.`).
+  No `do door` (the keypad is standalone).
 - Per member (ROLE watchers, §2.7; also late pledgers) → `== The Whole Truth` (private):
   `Truther Download: MAJORITY CONFIRMED. ACCESS GRANTED. All Trabolta facts. All
   environmental facts. And one more.` · `unlock <each ✚ entry> for program` in table order
   (world, files, hunt, trabolta) · `-> Facts Bundle` (generated by `titi:facts` into
-  `codex/9-facts.loom`: every main + Trabolta fact in `facts.json`) · The Legendary Fact last ·
-  `reveal The Server Room for program`.
+  `codex/9-facts.loom`: every main + Trabolta fact in `facts.json`) · the four combo halves ·
+  The Legendary Fact · **The Door Code** last · `Truther Download: The heart is behind the cold
+  door, and the door code is in your Codex. Choose your combination carefully. There are only
+  two that do anything, and the patch bay forgives only one mistake.` · `reveal The Server Room
+  for program` (a per-member reveal: it does not wake the server-room terminal).
 
-**E2 The door — `server_door_opened`** (H door contact, or D). **Latched**: Zigbee2MQTT
-republishes an open contact on every battery / link report and a retained state replays on
-every stagehand reconnect, so one propped door would otherwise re-run the alarm every
-debounce window.
+**E2 The door — `server_door_opened`** (H the door contact, or D the 🚪 fallback). The contact
+(two wire loops that touch when the door opens, on the server-room ESP32) can't say who opened
+it, and entry and exit both fire (stagehand `edge: true`, retained ignored, `debounce_s: 20`).
 ```
 when server_door_opened:
-  if Night.ended != true and Kernel.server_unlocked != true and Night.alarm_on != true:
-    set Night.alarm_on = true
-    set Night.alarm_clear_at = Time.elapsed + 120
-    -> Server Room Alarm
-  else if Night.ended != true and Kernel.server_unlocked == true:
-    cue lights_server_open
-
-when Night.alarm_on == true and Time.elapsed >= Night.alarm_clear_at:
-  set Night.alarm_on = false
+  if Night.ended != true and Night.step >= 14:
+    if Night.heart_opened != true:
+      set Night.heart_opened = true
+      set Night.door_quiet_until = Time.elapsed + 120
+      broadcast "🚪 The server-room door opened. The Heart plays on the server-room terminal." to channel(hosts)
+      -> The Heart
+    else if Time.elapsed >= Night.door_quiet_until:
+      set Night.door_quiet_until = Time.elapsed + 120
+      broadcast "🚪 The server-room door opened again." to channel(hosts)
+      -> Back To The Heart
+  else if Night.ended != true:
+    broadcast "🚪 The server-room door opened before the Y2K hour. Nothing happens in the story." to channel(hosts)
 ```
-- `== Server Room Alarm` (`setting: The Server Room`; public): `set Night.alarms += 1` · `if
-  Night.alarms == 1:` `set Trabolta.composure -= 10` (only the first alarm hurts him) ·
-  `reveal The Server Room` · `cue lights_alarm`, `cue screens_alarm`, `sound alarm_siren` ·
-  `fire alarm_tripped` (every Enforcer's booth: `🚨 Server room breach. Get there. Anyone
-  inside who is not a member of the winning faction goes to the Internet.`) · `broadcast
-  "!🚨 An alarm screams somewhere in the machine." to everyone` · `Trabolta: Who is in my— get
-  OUT.` (No `to group(Antivirus)` broadcast: it reaches no booth, §0 rule 16.)
-- After an unlock the door sensor cannot tell who opened it, so non-members entering an
-  unlocked room are policed by the Antivirus in person (their readout says so), not by an
-  alarm. Hardware side: stagehand-hw code #4 (`edge: true`, ignore retained).
-- `server_unlock` (D override): `set Kernel.server_unlocked = true` · `cue lights_server_open`.
+- Every opening inside the quiet window pushes `Night.door_quiet_until` to 120 s after it (the
+  integration lane's c2f075c), so a group filing in, someone stepping out or a Zigbee contact's
+  double report never replays the scene; an opening after 120 quiet seconds plays *Back To The
+  Heart* (`Trabolta: Back again. The terminal is on the wall. I am not going anywhere.`).
+- `== The Heart` (`setting: The Server Room`, `cast: Trabolta`, no subject): `reveal The Server
+  Room` (everyone, first — it wakes the server-room terminal) · `if Night.alarm_on != true:`
+  `cue lights_server_open` (it also silences the siren) and, before step 16, `set Night.lights =
+  "server_open"` (from the final reveal the finale's look stays the replayed one) · the
+  narration (`The cold door opens. Cold air, and a hum like something concentrating…`) ·
+  Trabolta's candid opener: he will not pretend, the patch bay is his heart, he does not know
+  which cables end him, everything was for Sandy (scenario 1) / for her (otherwise), *"There is a
+  terminal on the wall. Scan your pass and talk to me."*
+- `== Server Room Alarm` (`setting: The Server Room`; public), now reached **only from the patch
+  bay** (E3): `set Night.alarms += 1` · `if Night.alarms == 1:` `set Trabolta.composure -= 10`
+  (only the first alarm hurts him) · `reveal The Server Room` · `cue lights_alarm`, `cue
+  screens_alarm`, `sound alarm_siren` · `fire alarm_tripped` (every Enforcer's booth: `🚨 Server
+  room alarm: a second wrong combination at the patch bay. Get there. Whoever is at the cables
+  goes to the Internet.`) · `broadcast "!🚨 An alarm screams somewhere in the machine." to
+  everyone` · `Trabolta: Who is in my— get OUT.` (No `to group(Antivirus)` broadcast: it reaches
+  no booth, §0 rule 16.) `when Night.alarm_on == true and Time.elapsed >= Night.alarm_clear_at:
+  set Night.alarm_on = false` keeps the 120 s latch.
+- `reset_server_room` (D, `🔄 Server room: reset the patch-bay alarm`): `Night.wrong_combos = 0`,
+  `alarm_on = false`, `alarm_clear_at = 0`, `heart_opened = false`, `door_quiet_until = 0`, a
+  `🔄` readout; lights stay (💡 restores them); the keypad is never touched. Power On still sends
+  `do door server_room, state: locked` (the ESP32 ring: red = the real door, always locked);
+  nothing sends `unlocked`.
 
-**E2b The Cold Lock — `chess_won`** (H the tent tablet, P `beat_the_machine`, or D; wave 4,
-U17). The King (`house.json` prop `cold-lock-king`: `kind: "king"`, `hp: 8` since wave 5 (one hit per 2 s, ≈ 16 s to pawns), gold, "THE KING",
-`armed: {path: "Night.step", min: 14}`, `signals: {won: "chess won", lost: "chess lost",
-drawn: "chess drawn"}`) guards the door `server-door` of the virtual house (`guard:`; shut for
-`route()` until he falls). On the tent tablet (`reinstall/web`) the program hits him (⚔ / Space)
-— each hit drops a heart and dumbs his chess AI down a stage (grandmaster → club → beginner →
-dizzy → pawns only) — then challenges him (♟ / C) on the tablet's board; mate posts `POST
-/api/mod/signal {name: "chess won", subject, label: "Tent tablet"}` with the tablet's mod token
-(the journal reads *by Tent tablet*). A headset only shows him ("The King is fought on the
-tent tablet."). Until the King is device-checked, the Lichess phone outside the real door is
-the fallback: a host or Antivirus who saw the mate presses ♟ *They beat the machine* on the
-winner's card (`fire chess_won for program`), or the director fires `♟ Cold Lock: they beat the
-King (fallback)` (`sequence: false`).
+**E2a At his heart — the server-room terminal** (wave 7). A wall terminal provisioned
+`room=The Server Room` sleeps until that LOCATION is open to everyone, then speaks Trabolta's
+lines in that room and pilots a scanned guest's own `dm:Trabolta`. On a pilot it posts `POST
+/api/mod/signal {name: "terminal opened", subject: <guest>, args: {at: <room>}, label: "Terminal ·
+<name>"}`, and `terminal closed` when the visit ends (a visit a crash or reload left open is
+closed on the next boot, the integration lane's 508bf19).
 ```
-when chess_won:
-  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true and Kernel.disarmed_until > Time.elapsed:
-    broadcast "♟ The Cold Lock is already open: nothing changed." to channel(hosts)
-  else if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true:
-    set Kernel.disarmed_until = Time.elapsed + 90
-    set Night.alarm_on = false
-    set Night.alarm_clear_at = 0
-    do door server_room, state: unlocked
-    cue lights_server_open
-    set Night.lights = "server_open"
-    broadcast "♟ Cold Lock open: the server-room door is disarmed for 90 seconds." to channel(hosts)
-  else if Night.ended != true and Night.step < 14:
-    broadcast "♟ A chess win before the Y2K hour is practice only." to channel(hosts)
+when terminal_opened for program:
+  if program.name != null:
+    if Night.ended != true and (at == "The Server Room" or …seven spellings…):
+      set program.at_the_heart = true
+    else:
+      set program.at_the_heart = false
+
+when terminal_closed for program:
+  if program.name != null:
+    set program.at_the_heart = false
+```
+plus a ROLE watcher `when Night.ended == true and self.at_the_heart == true: set
+self.at_the_heart = false`. `program.at_the_heart` is a plain ROLE slot (never `secret:`): the
+persona's `them:` carries it and its `situations:` make him candid with exactly that program
+from the Y2K hour (§5).
+
+**E2b The King — `chess_won`** (H the tent tablet, P `beat_the_machine`, or D; wave 4, U17;
+wave 7: the code). The King (`house.json` prop `cold-lock-king`: `kind: "king"`, `hp: 8` since
+wave 5 (one hit per 2 s, ≈ 16 s to pawns), gold, "THE KING", `armed: {path: "Night.step", min:
+14}`, `signals: {won: "chess won", lost: "chess lost", drawn: "chess drawn"}`) guards the door
+`server-door` of the virtual house (`guard:`; shut for `route()` until he falls). On the tent
+tablet (`reinstall/web`) the program hits him (⚔ / Space) — each hit drops a heart and dumbs his
+chess AI down a stage (grandmaster → club → beginner → dizzy → pawns only) — then challenges him
+(♟ / C) on the tablet's board (badge FOR THE CODE / PRACTICE, the `stakesLine` under it); mate
+posts `POST /api/mod/signal {name: "chess won", subject, label: "Tent tablet"}` with the
+tablet's mod token (the journal reads *by Tent tablet*) and the tablet says where the code went
+(`WIN_CODE` / `WIN_PRACTICE`, after re-reading the step with a 4 s timeout). A headset only
+shows him ("The King is fought on the tent tablet."). Until the King is device-checked, the
+Lichess phone outside the real door is the fallback: a host or Antivirus who saw the mate
+presses ♟ *They beat the machine* on the winner's card (`fire chess_won for program`), or the
+director fires `♟ They beat the King: the door code (fallback)` naming the winner (`sequence:
+false`; a subject cue since wave 7, so the cue sheet asks who).
+```
+when chess_won for program:
+  if Night.ended != true and Night.step >= 14:
+    if program.name == null:
+      broadcast "♟ A win with no winner named: press ♟ on the winner's card to give them the door code." to channel(hosts)
+    else if program.codex.the_door_code == true:
+      broadcast "♟ {program.name} already has the door code: nothing changed." to channel(hosts)
+    else:
+      unlock The Door Code for program
+      broadcast "♟ Checkmate. The King lets the door code slip: it is in your Codex." to participant(program)
+      broadcast "♟ {program.name} beat the King: the door code is in their Codex." to channel(hosts)
+  else if Night.ended != true:
+    broadcast "♟ A chess win before the Y2K hour is practice only: no door code." to channel(hosts)
 ```
 - Before the Y2K hour (`Night.step < 14`) a win is practice: the simulation's cold door opens
-  for that session, the real one does not. From step 14, while the room is still locked, the
-  door is disarmed for 90 s (ring green, `lights_server_open`, the alarm latch cleared — the
-  `server_door_opened` guard also checks `Time.elapsed >= Kernel.disarmed_until`); the
-  `Kernel.disarmed_until` watcher then re-locks it (`do door server_room, state: locked`,
-  `lights_y2k`, a `♟ Cold Lock closed` readout) and a door still propped open trips the alarm on
-  its next report. A second win inside an open window changes nothing (no restart of the 90 s,
-  no second notice; wave 6, B20).
-- `chess_lost` / `chess_drawn` (the tablet; a phone app may) only make Trabolta gloat on the TV
-  (`-> Chess Lost` / `-> Chess Drawn`) and post a `♟` readout in `# hosts`; nothing disarms or
-  re-arms. Since wave 6 (decision 6) the tablet deals a new game at the same strength after a
-  loss, a draw or a stalemate (only checkmate opens the door), so each lost game posts again. `rearm_server_room` (D) sets `Kernel.server_unlocked = false`, `disarmed_until = 0`,
-  `Night.wrong_combos = 0` (wave 6), clears the latch and re-locks the door; lights stay (💡 restores them).
+  for that session, nobody learns the code.
+- `chess_lost` / `chess_drawn` (the tablet; a phone app may), from step 14: a `♟` readout in
+  `# hosts` every time (*"The King won a game. No door code."* / *"A draw with the King. No door
+  code."*), and Trabolta gloats on the TV (`-> Chess Lost` / `-> Chess Drawn`, The Desktop) only
+  when `Time.elapsed >= Night.gloat_at` and `Night.step < 16`, then `Night.gloat_at =
+  Time.elapsed + 300` (losses and draws share the window; wave 6 open issue 4).
+
+**E2c Talked down — `stand_down` → `talked_down`** (wave 7, "like the Fallout Master").
+Trabolta's agent power `stand_down` (`who: agent`, `limit: 1`) only **offers**; the hook in
+`cast/trabolta.loom` checks, in order: `Night.step < 14` → *"That function is not available
+yet."* · ended → *"It is already over."* · `program.at_the_heart != true` → *"Not out there.
+Come to my heart and say it to my face."* · already offered → *"I have already offered. Ask the
+humans."* · the program holds neither *What Sandy Says* nor *The Sandy File* → *"You have not
+shown me anything I do not already know."* (each refusal is words only, so no use is spent) ·
+else `set Night.stand_down_by = program.name`, `broadcast "!🕊 Trabolta offers to stand down for
+{program.name}. Press 🕊 to end it." to channel(hosts)`, and his concession on the thread. The
+story checks the evidence, never the model. The admin cue `talked_down` (`🕊 Trabolta stands
+down (talked down)`, `sequence: false`): from step 14 and not ended, a `# hosts` line (with or
+without an offer on record — the director's call), `set Night.talked_down = true`, `fire
+trabolta_disabled` (E4). The blackout narration, the recount (E5) and the ceremony branch on
+`Night.talked_down` / `Night.stand_down_by`.
 
 **E3 The patch bay.**
 - `when patch_changed:` (future: stagehand sends `combo`): `if Night.ended != true:` `if combo
   == Kernel.combo_a: fire patch_combo_a` / `else if combo == Kernel.combo_b: fire
   patch_combo_b` / `else: fire patch_rejected`.
-- `when patch_rejected:` (guard not ended) → `set Night.wrong_combos += 1` · `-> Patch
-  Rejected`. `== Patch Rejected` (setting The Server Room): `if (Night.wrong_combos >= 2 or
-  Kernel.server_unlocked != true) and Night.alarm_on != true:` `set Night.alarm_on = true` ·
-  `set Night.alarm_clear_at = Time.elapsed + 120` · `-> Server Room Alarm` `else:` `Trabolta:
-  Stop touching me.` (Wrong combos can trip the alarm.)
+- `when patch_rejected:` (guard not ended, step 14) → `set Night.wrong_combos += 1` · `-> Patch
+  Rejected`. `== Patch Rejected` (setting The Server Room): `if Night.wrong_combos >= 2 and
+  Night.alarm_on != true:` `set Night.alarm_on = true` · `set Night.alarm_clear_at =
+  Time.elapsed + 120` · `-> Server Room Alarm` `else:` `Trabolta: Stop touching me.` (Everyone
+  is forgiven one wrong combination; the second trips the alarm; 🔄 reset forgives one again.)
 - `when patch_combo_a:` (guard not ended) → `fire trabolta_disabled`. `when patch_combo_b:`
   (guard not ended) → `fire computer_destroyed`. A correct combo works even if an alarm
   tripped: the alarm's job is to bring the Antivirus running.
@@ -2325,7 +2406,8 @@ when chess_won:
   takeover pin — full screen on every phone, an alert and a push; no broadcast, so one
   chime) · `do announce "Go to the living room."` · `-> Trabolta Disabled` (public
   narration: `Every light in the house goes out. Ten seconds of dark. Then every phone says
-  one thing: GO TO THE LIVING ROOM. Music. One song for dancing.`).
+  one thing: GO TO THE LIVING ROOM. Music. One song for dancing.`; talked down (E2c) it opens
+  with `In the cold room the patch bay goes quiet on its own. Nobody touched a cable.`).
 - The dance look (story rule, shared with E6; one-shot "at" watcher, §0 rule 13):
   ```
   when Night.dance_at > 0 and Time.elapsed >= Night.dance_at:
@@ -2352,7 +2434,11 @@ when chess_won:
   each sentence guarded `if … != "none"` (`{Night.facts_accepted}` facts accepted;
   `{Night.first_reinstall}` first to the Internet; `{Kernel.virus_planter}` planted a virus;
   `{Night.lj_reader}` read my LiveJournal); `The trustworthy program of the night: {Night.most_trusted}.` `The worst
-  program of the night: {Night.least_trusted}.`; why he wanted Sandy; `You thought you
+  program of the night: {Night.least_trusted}.`; why he wanted Sandy (*"…I have thought about
+  it every day since the day I met her."* — wave 7: never a year, since the year he met her is
+  the door code); talked down (E2c), *"{Night.stand_down_by} came to my heart and told me the
+  truth. She was never going to answer. Nobody pulled a cable. I stopped. I can never die. But
+  I can stop…"* (or *"Somebody came to my heart…"* with no name on record); otherwise `You thought you
   followed instructions to kill me, but I can never die. But now that I know most of you want
   me dead, I am ready to head off on my motorcycle and let you all return to your corporeal
   selves. I have the confidence I need to pursue Sandy now that I understand humans do not
@@ -2656,6 +2742,7 @@ when snoop for program:
 | pardon_a_program | Pardon a program from the Internet | 1 | target | step 11–15 | `if target.corrupted:` `release target from The Internet` + the two broadcasts of the current example | exists |
 | turn_back_the_clock | Turn the system clock back 5 minutes | 1 | — | `Night.final_round == true` | `set Night.y2k_end += 300` · `broadcast "!🕚 The system clock skips back five minutes. Trabolta wants more time." to everyone` | content |
 | the_line_works | Accept the pickup line | 1 | — | `Night.phase == "grok_prom"` | `fire pickup_line_accepted for program` | content |
+| stand_down | Offer to stand down | 1 | — | step 14+, not ended, `program.at_the_heart` | wave 7 (§3 E2c): only offers — the hook checks the gates and the proof (*What Sandy Says* or *The Sandy File*), sets `Night.stand_down_by`, alerts `# hosts`; a human presses 🕊 `talked_down`. Every refusal is words only (no use spent) | built |
 
 Other Trabolta hooks (`cast/trabolta.loom`):
 - `when introduce_trabolta:` → `set self.awake = true` · `reveal self`.
@@ -2713,8 +2800,8 @@ desperate, final_reveal → last act).
 character: Trabolta
 variables: truth, untruth, composure, love, regard
 max_step: 8
-facts: Night.phase, Night.step, Night.clock, Night.facts_accepted, Night.facts_requested, Night.livejournal_read, Night.lj_reader, Night.scenario, Night.most_trusted, Night.least_trusted
-them: truths_accepted, internet_visits, assessment, trust, read_livejournal, delivered, corrupted, afk, featured
+facts: Night.phase, Night.step, Night.clock, Night.facts_accepted, Night.facts_requested, Night.livejournal_read, Night.lj_reader, Night.scenario, Night.most_trusted, Night.least_trusted, Night.heart_opened, Night.talked_down
+them: truths_accepted, internet_visits, assessment, trust, read_livejournal, delivered, corrupted, afk, featured, at_the_heart
 mind: trabolta.mind.md
 thread_window: 12
 summarize_after: 18
@@ -2730,11 +2817,34 @@ bargain: |
   asked nicely. formal: requests go through Clippy. hungry: a fact you can check buys a snoop,
   a little Truthcoin, or one piece of surface lore. rattled: allies matter; the lights and an
   Antivirus sweep are thinkable. judge: nothing for anyone on your wary list; one pardon, only
-  for the top of the chart. unravelling: kindness about Sandy is currency; nothing for whoever
-  read your LiveJournal. desperate: anything you hold, for a fact. You do not know where your
-  heart is kept; never pretend to. When you act, name the price you were paid.
+  for the top of the chart. unravelling: kindness about the one you are doing all this for is
+  currency; nothing for whoever read your LiveJournal. desperate: anything you hold, for a fact.
+  Outside the cold room you never admit where your heart is kept, and you never know a
+  combination or a door code. stand_down is never a favour: it is bought only with the truth,
+  at your heart (see the SITUATION block when there is one). When you act, name the price you
+  were paid.
+situations:            # wave 7: stagehand appends each block whose `when:` holds
+  - name: at your heart
+    when: them.at_the_heart == true && Night.step >= 14
+    prompt: …          # candid, the Master: the patch bay is his heart; he does not know the
+                       # combinations or the door code; what he wants and why; still never a hunt
+                       # answer, a verdict, a combination, a cable, a code or her one line; fires
+                       # stand_down only when this program has shown him it is impossible
+  - name: her name has been said
+    when: them.at_the_heart == true && Night.step >= 14 && (Night.recount == true || (Night.scenario == 1 && Night.step >= 13))
+  - name: her name is still blacked out
+    when: them.at_the_heart == true && Night.step >= 14 && Night.recount != true && !(Night.scenario == 1 && Night.step >= 13)
 ---
 ```
+`situations:` (wave 7, stagehand `agents/persona.py`): a list of `{name?, when, prompt}`; each
+`when:` is read against the same context as the persona's `when:` gate (the speaker's `them:`
+slots + every whitelisted `Night.*`), every match becomes a `=== SITUATION: … ===` block at the
+end of the voice's system prompt (it wins where it differs from the page), and the
+orchestrator's reflect for that speaker sees it as `=== THE SITUATION WITH <speaker> ===`, told
+to keep it in that person's dossier, never the shared brief. `program.at_the_heart` must stay a
+plain ROLE slot (a `secret:` slot never reaches the worker). The two Sandy-name situations
+mirror the story's unredaction rule (`main.loom`: the Truther Download Unredacted); change both
+together.
 `facts:` is a whitelist of prefixes for the **voice**; never add `Night.` alone. Secrets are not
 in `Night.*` at all (they are on `Kernel`, §2.6.2), because the orchestrator's digest prints
 every global regardless of this list. Every `them:` name is a ROLE slot (§2.7); per-program
@@ -2746,7 +2856,10 @@ line is plain words: the terminal's TTS reads glyphs and brackets aloud.
 **Persona body:** the 7 p.m. helper only — the computer's AI helper at Maps And Ducks; voice
 rules (1999 corporate, Win98 dialog-box diction, short; second person when formal); "you may
 speak only of what your codex holds and what your stage permits; your mind says your stage";
-never claim to know the server room or the patch bay; never confirm a fact is true or false
+outside the cold room never admit where his heart is kept (candid at his heart, from the Y2K
+hour: the *at your heart* situation); never know a combination or a door code; never say the
+year he met her (wave 7: it is the door code, and The Sandy File he holds says it); never fire
+`stand_down` except at his heart; never confirm a fact is true or false
 (judging belongs to Clippy and the Moments of Truth); the JSON reply protocol of the current
 file (`say`, `adjust`, optional `lookup`, optional `act` with `share` / `fire`). No Sandy, no
 backstory in the body: those live in his T1/T2 codex.
@@ -2779,20 +2892,20 @@ phases:
   introduced: …   (formal; Clippy has just introduced him as the computer's AI helper after the first program went to the Internet; corporate, helpful about rules, refuses personal questions, routes them to Clippy)
   hunt_1: …       (formal; he set three obscure questions on the TV; facts are food; confidence pleases him)
   truth_1: …      (hungry; confident answers were accepted, uncertain ones sent to the Internet; warm to those who delivered)
-  malware: …      (rattled; an ad hijacked his presentation; he told Clippy privately everyone may die and told everyone else it was minor; suspects whoever brought it)
-  hunt_2: …       (rattled; an hour of free investigation; the Truther Download went to phones; trading harder)
+  malware: …      (rattled; an ad hijacked his presentation; he told Clippy privately everyone may die and told everyone else it was minor; suspects whoever brought it; hints at a reason he will not name — wave 7: no download, no Sandy here)
+  hunt_2: …       (rattled; an hour of free investigation; the Truther Download went to phones from a sender he did not authorise, the name in it blacked out; he never fills in the blank; trading harder)
   summons: …      (rattled; five minutes to be in the Desktop or be swept)
   truth_pong: …   (judge; miss the cup → the Internet; judging every program)
   trust_chart: …  (judge; presenting the Trust Chart: 10 per truth, −5 per Internet visit, ±10 his own; assess each program you speak to; praise the top, humiliate the bottom)
   beans: …        (unravelling; the printer is full of beans; routine operations failing; everyone in the Internet zipped out; he is breaking)
   overshare: …    (unravelling; he just overshared on the TV per Night.scenario — 1: Sandy, permanence, a virus came back, the LiveJournal; 2: the LiveJournal; 3: the virus; 4: almost nothing — then apologised; in DMs leak, retract, ask for relationship advice)
-  y2k: …          (desperate; the system clock reads 11 p.m., 31 Dec 1999; midnight is 1900 or the Y2K Bug; factions are recruiting; he wants Unlimited Power to win)
-  majority: …     (desperate; something clicked in the walls; he does not know what)
+  y2k: …          (desperate; the system clock reads 11 p.m., 31 Dec 1999; midnight is 1900 or the Y2K Bug; factions are recruiting; he wants Unlimited Power to win; the cold room can be opened with a code he does not know)
+  majority: …     (desperate; a faction won and its members were handed something he cannot see; he does not know what, or any code, and must not pretend to — wave 7)
   final_reveal: … (last act; the lights are down; programs say what they believe; Clippy says truth is binary)
   bobbing: …      (last act; the Bag of Truth; he gives his final assessment of trustworthiness before truth.txt is read)
   grok_prom: …    (last act; they lied; Sandy is going to computer prom with Grok; it is raining; he will free those who want to leave only for a pickup line that works on Sandy — only "You're the one that I want"; fire the_line_works the moment someone gives it)
   advice: …       (last act; total honesty; he begs for relationship advice)
-  finale_killed: … (unplugged; weakened, decrepit, cannot truly die; kind and final; leaving on his motorcycle)
+  finale_killed: … (unplugged; weakened, decrepit, cannot truly die; kind and final; leaving on his motorcycle; talked down (Night.talked_down) — not bitter, only tired and grateful)
   finale_shutdown: … (gone)
   finale_song: …  (he solved the theory; singing to Sandy; letting the leavers leave)
   finale_rave: …  (he told Sandy the truth anyway; she said yes, he thinks; riding away; they are trapped)
@@ -2812,7 +2925,12 @@ The mind body: the orchestrator's rules — move forward only, never behind a ph
 (table 4.2); judge facts against the story codex; policy per stage; dossier per program
 (`featured`, accepted truths, Internet visits, LiveJournal); questions to grow
 ("Should I earn her or force her?"); never invent where his heart is; never act on a
-program's flags that the program did not tell him (virus, choices).
+program's flags that the program did not tell him (virus, choices). Wave 7 adds **AT HIS HEART
+(from the Y2K hour)**: the candour the voice shows at the server-room terminal goes into that
+program's dossier, never the shared brief; `stand_down` is an offer a host confirms; and the
+year he met her is never said or written into a brief, note or dossier (it is the door code).
+The favour policy names "the one he is doing all this for", never Sandy, before the story has
+named her.
 
 **Stagehand tests must change (exactly):**
 - `stagehand/tests/test_agents.py:92` → `assert set(p.variables) == {"truth", "untruth",
@@ -2855,7 +2973,7 @@ Definitions:
 
 | Ending (`Night.ending`) | Reached when | Fired by | Result |
 |---|---|---|---|
-| `disabled` | `patch_combo_a` while not ended (normally after a majority unlocked the room and its members learned Combo A) | hardware / director | blackout 10 s → "Go to the living room" → dance song; director fires `trabolta_recounts` → weakened Trabolta recounts identities, motives, accomplishments, trustworthy + worst program; cannot truly die; leaves on his motorcycle; `everyone_free` |
+| `disabled` | `patch_combo_a` while not ended (normally after a majority got the door code and its members learned Combo A), **or `talked_down`** (wave 7, §3 E2c: 🕊 after his `stand_down` offer; `Night.talked_down`) | hardware / director | blackout 10 s → "Go to the living room" → dance song; director fires `trabolta_recounts` → weakened Trabolta recounts identities, motives, accomplishments, trustworthy + worst program; cannot truly die; leaves on his motorcycle; `everyone_free` |
 | `destroyed` | `patch_combo_b` while not ended | hardware / director | blackout → summons → dance song (lights at +10 s); director fires `clippy_reads_summary` → Clippy reads the summary; improper shutdown; bodies dead in the Maps and Ducks building; purgatory. Fate lines: Unlimited Power "you went with it", The Way Out "into purgatory, with everyone else", others the body line. Trabolta's line goes dark |
 | `song` | `read_truth_txt` with no lie on record | director | he solved the theory; leavers may leave (`everyone_free`); "the truth tells me what to say to her"; vocoder duet with Sandy's one line |
 | `song_pickup` | in `grok_prom`, someone says the line (`pickup_line_works` / `the_line_works` / director `pickup_line_accepted`) | performer / agent / director | the song, as above (release is made explicit: `everyone_free`) |
@@ -2870,11 +2988,10 @@ majority" and "the server-room information was gained but not used". The server 
 live during the reveal (a deliberate invention, stated in the README): a combo entered
 before the verdict still ends the night.
 
-Server room alarm: `server_door_opened` while `Kernel.server_unlocked != true` (set only by
-`majority_reached` or `server_unlock`) → alarm, latched for 120 s. `patch_rejected` → alarm
-(same latch) if `Night.wrong_combos >= 2` or the room is not unlocked; otherwise "Stop
-touching me." After an unlock, non-members are policed in person (the sensor can't tell who
-opened the door).
+Server room alarm (wave 7): only the patch bay. `patch_rejected` → alarm, latched for 120 s,
+when `Night.wrong_combos >= 2` (everyone is forgiven one); otherwise "Stop touching me." The
+door never alarms: it has a standalone keypad lock, the code is a clean entry, and
+`server_door_opened` plays The Heart instead (§3 E2).
 
 Overshare scenario: `1` Excel planted ∧ 20 facts · `2` 20 facts only · `3` Excel planted only
 · `4` neither (`Kernel.excel_planted` = **Microsoft Excel** planted; another program's plant is
@@ -3012,15 +3129,19 @@ at a time.
     (`advance`); `sim.join` enough guests into The Way Out **before** OpenOffice's dossier →
     no majority; then the dossier lands → majority "leave" fires at once; members hold every ✚
     entry incl. The Legendary Fact and the 4 combo halves and see The Server Room, non-members
-    hold none; quests Recruit To Leave done / Recruit To Stay failed; `Kernel.server_unlocked`
-    true; a late pledger gets the bundle; fresh sim: a stay majority without Excel's plant
+    hold none; members hold The Door Code (wave 7; `Kernel.server_unlocked` is gone); quests
+    Recruit To Leave done / Recruit To Stay failed; a late pledger gets the bundle; fresh sim: a stay majority without Excel's plant
     fires only after `waive_leader_tasks`; Password Manager gets a `respond` readout per join;
     `turn_back_the_clock` adds 300.
-14. **Server room.** `server_door_opened` before unlock → alarm (alarms 1, composure −10,
-    the everyone alert, cue lights_alarm, Server Room revealed, a `respond` readout in each
-    Enforcer booth); **a second `server_door_opened` within 120 s → alarms still 1**; after
-    `advance(120)` a third → alarms 2, composure unchanged; after unlock → no alarm.
-    `patch_changed` with a wrong `combo` twice → second trips the alarm;
+14. **Server room** (wave 7). `server_door_opened` before step 14 → only a `# hosts` note;
+    from step 14 → The Heart (Server Room revealed to everyone, `Night.heart_opened`), never an
+    alarm; another opening within 120 s of the last → nothing; after 120 quiet s → Back To
+    The Heart. A chess win from step 14 → The Door Code for the winner, once. `patch_changed`
+    with a wrong `combo` once → "Stop touching me."; twice → the alarm (alarms 1, composure
+    −10, the everyone alert, cue lights_alarm, a `respond` readout in each Enforcer booth);
+    `reset_server_room` clears the count, the latch and The Heart. `terminal_opened` at The
+    Server Room → `at_the_heart`; `stand_down` refuses until every gate holds, then offers;
+    `talked_down` → ending disabled with `Night.talked_down`.
     `patch_changed {combo: Kernel.combo_a}` → ending disabled, blackout cues, "GO TO THE
     LIVING ROOM" alert, and **`advance(10)` → `cue lights_dance`**; `trabolta_recounts` →
     every program holds every B entry, names (no featured name parses as a speaker),
@@ -3157,7 +3278,7 @@ Run → Director; no phone cue page).
 | 17 | Excel's virus as an **in-game pickup** (spatial `virus` spot) and a **USB "glory hole" sensor** for planting | codex QRs `LOVE-LETTER-FOR-YOU` / `FREE-TRIAL-30-DAYS` taped in the tent; the guest button `plant_the_virus` |
 | 18 | **Server Room in house.json** (cold-storage room, door, terminal, duck rule) via the **floor-plan editor**; map owned by the project; measured house | LOCATION declared without geometry |
 | 19 | **Printable QR sheets** (project-level print tokens for codex clues, room check-ins, guest passes, performer cards; base-URL fix; redeem throttle) | `/api/mod/codes` lists codes + `?code=&unlock=` links (no editor UI) |
-| 20 | **Stagehand**: signal `args` (so the story judges `patch_changed {combo}` and QR/terminal check-ins carry `at`), a `var:` action, edge detection + ignore retained MQTT (stagehand-hw code #4), an `http:`/audio output (TTS for the house announcements), Loom-4 `with` parsing | `stagehand/trapped.house.yaml` (shipped with the rewrite, §2.15: correct Z2M payloads, room lights, scenes, sensors) judges the combos and sends `patch_combo_a` / `patch_combo_b` / `patch_rejected`; the story latches the door alarm, restores darkened rooms and cues the dance itself (no `delay:` needed); QLab over OSC; `do announce` |
+| 20 | **Stagehand**: signal `args` (so the story judges `patch_changed {combo}` and QR/terminal check-ins carry `at`), a `var:` action, edge detection + ignore retained MQTT (stagehand-hw code #4), an `http:`/audio output (TTS for the house announcements), Loom-4 `with` parsing | `stagehand/trapped.house.yaml` (shipped with the rewrite, §2.15: correct Z2M payloads, room lights, scenes, sensors) judges the combos and sends `patch_combo_a` / `patch_combo_b` / `patch_rejected`; the story latches the patch-bay alarm (wave 7: the door never alarms), restores darkened rooms and cues the dance itself (no `delay:` needed); QLab over OSC; `do announce` |
 | 21 | **Trabolta worker**: N1 phase map, N2 proactive acts, N3 disclose/never, N4 phase holds, INTERACTION `available:`; **the secrecy fix** (lookups / `Facts.render` only for held lore; digest, delta and reflect `world` filtered by `persona.facts`; reflect speaker vars filtered by `persona.them`) — required before `lookup` is turned back on | prompt rules per stage; director "set stage" clicks; refusal lines in power hooks; secrets on `Kernel`; `lookup: false` |
 | 22 | **Auto-generated recap** (Clippy's purgatory summary, Trabolta's recount, a personalised truth.txt) from chat activity + the mind | beats interpolating `Night.*` names/counts; every backstory unlocked to everyone; a printed truth.txt |
 | 23 | Engine: `move who to {expr}` interpolation (today moves to a literal `{at}` room), and binding inexact strings to entities | the check-in if-chain over real LOCATIONs (§3 D1) **[verified]** |
