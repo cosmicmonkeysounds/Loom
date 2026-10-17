@@ -252,7 +252,10 @@ export function walletStateLine(card: WalletCard, state: string | null, view: Wa
     const held = secondsLeft(heldDeadline(view, card), clock);
     return held > 0 ? `auto-approves in ${mmss(held)}` : state;
   }
-  if (card.step === "pending" || card.step === "asked" || card.step === "sent" || card.step === "offered") {
+  // Count down only while the item is still live: a denied or cancelled
+  // transfer stays in the view and reads its state at once (B9).
+  const live = card.step === "pending" ? state === "pending" : (card.step === "asked" || card.step === "sent" || card.step === "offered") && state === "open";
+  if (live) {
     const left = secondsLeft(card.settleAt, clock);
     if (left > 0) return card.kind === "request" || card.kind === "offer" ? `expires in ${left} s` : `settles in ${left} s`;
   }

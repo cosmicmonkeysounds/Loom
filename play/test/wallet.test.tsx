@@ -662,3 +662,17 @@ describe("a wallet card opens its thread of updates (B8)", () => {
     expect(walletFootLine(card(), null, null, 1000, null)).toBe("closed");
   });
 });
+
+describe("a denied or cancelled transfer stops counting down (B9)", () => {
+  it("reads its state at once, not the old deny window", () => {
+    expect(walletStateLine(card(), "denied", view({ transfers: [tx({ state: "denied" })] }), 5000)).toBe("denied");
+    expect(walletStateLine(card(), "cancelled", view({ transfers: [tx({ state: "cancelled" })] }), 5000)).toBe("cancelled");
+    expect(walletStateLine(card(), "settled", view({ transfers: [tx({ state: "settled" })] }), 5000)).toBe("settled");
+    // Still pending: the countdown.
+    expect(walletStateLine(card(), "pending", view({ transfers: [tx()] }), 5000)).toBe("settles in 56 s");
+    // A request only counts down while open.
+    const asked = card({ kind: "request", id: "r1", step: "asked", settleAt: 601_000 });
+    expect(walletStateLine(asked, "open", view(), 1000)).toBe("expires in 600 s");
+    expect(walletStateLine(asked, "paying", view(), 1000)).toBe("paying");
+  });
+});
