@@ -250,15 +250,21 @@ INDICATOR = "show/serverroom/lock"
 
 def test_the_door_drives_the_indicator_and_nothing_drives_a_lock():
     """The server-room door has a STANDALONE keypad lock (code set by hand,
-    never networked; the inside handle always opens). The story tells the
-    ring the truth at boot (`locked`); nothing in the YAML may drive a lock,
+    never networked; the inside handle always opens). The ring only ever
+    tells the truth, so the story sends `locked` and never `unlocked` (a
+    win or a majority leaves the keypad lock exactly as it was; wave 7
+    removed every `unlocked` emit); nothing in the YAML may drive a lock,
     a strike or a relay on any door."""
     for word in ("show/x/lock", "door_lock", "unlock", "MagLock", "deadbolt", "strike", "latch", "relay", "solenoid"):
         assert LOCKISH.search(word), word
     for word in ("y2k_clock", "thunderbolt", "blocked"):
         assert not LOCKISH.search(word), word
-    code = _code(_story_text())
+    text = _story_text()
+    code = _code(text)
     assert re.search(r"^\s*do door server_room, state: locked\b", code, re.M)
+    # Not even in a comment: an `unlocked` anywhere in the .loom files is a
+    # line someone will uncomment.
+    assert not re.search(r"state:\s*unlocked\b", text), "the story must never send state: unlocked"
     for state in ("locked", "unlocked"):
         cues = evaluate_cues(_show().cues, _directive("door", f"server_room, state: {state}"))
         assert cues == [MqttCue(topic=INDICATOR, payload=json.dumps({"state": state}), retain=True, qos=0)]
