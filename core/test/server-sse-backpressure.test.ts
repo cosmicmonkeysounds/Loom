@@ -242,6 +242,12 @@ describe("a stalled stream on the event runtime", () => {
     expect(snaps(slow)).toBe(before.slow);
     expect(slow.events.filter((e) => e === "message").length).toBeGreaterThanOrEqual(5);
     expect(slow.destroyed).toBe(false);
+    // While it stays behind, a retry for it never even builds a view.
+    const inner = rt as unknown as { modViewNow: () => unknown; flushModSnapshots: (owedOnly: boolean) => void };
+    const built = vi.spyOn(inner, "modViewNow");
+    inner.flushModSnapshots(true);
+    expect(built).not.toHaveBeenCalled();
+    built.mockRestore();
     // It catches up: the next change brings it the newest view.
     slow.drain();
     await call(rt, "POST", "/api/mod/say", { channel: "lobby", text: "caught up" });

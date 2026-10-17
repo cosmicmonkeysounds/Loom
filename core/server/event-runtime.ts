@@ -535,6 +535,8 @@ export class EventRuntime {
   private modSnapshotTimer: ReturnType<typeof setTimeout> | null = null;
   /** Retries the `ModView` for consoles that were too far behind for one. */
   private modOwedTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The size of the last `ModView` frame built (0 before the first). */
+  private modViewBytes = 0;
   // Guest + booth snapshot coalescing (`pushClientSnapshots`).
   private readonly snapshotMs: number;
   private snapshotAt = Number.NEGATIVE_INFINITY;
@@ -902,8 +904,17 @@ export class EventRuntime {
     for (const c of this.clients) {
       if (c.role !== "mod" || c.lean === true) continue;
       if (owedOnly && c.snapshotOwed !== true) continue;
+      // Behind by the last view's size: skip before building a new one (a
+      // stalled console's retries cost nothing until it moves).
+      const behind = (n: number) => n > 0 && sseQueued(c.res) > n;
+      if (data === null && behind(this.modViewBytes)) {
+        c.snapshotOwed = true;
+        owed = true;
+        continue;
+      }
       data ??= `data: ${JSON.stringify(this.modViewNow())}\n\n`;
-      if (sseQueued(c.res) > data.length) {
+      this.modViewBytes = data.length;
+      if (behind(data.length)) {
         c.snapshotOwed = true;
         owed = true;
         continue;
