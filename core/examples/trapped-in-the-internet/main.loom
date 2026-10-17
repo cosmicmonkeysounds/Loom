@@ -2547,55 +2547,70 @@ INTERACTION restore_the_lights
   who: admin
   sequence: false
 
+// From 🏍 on, each cue's `while:` names the branch of the night it belongs
+// to, so the cue sheet's NEXT follows the ending tonight is on (it never
+// gates the press: every rule below still checks for itself).
 INTERACTION trabolta_recounts
   label: 🏍 After the dance: weakened Trabolta recounts
   who: admin
+  while: Night.ending == "disabled" and Night.rank_round != 3
 
 INTERACTION clippy_reads_summary
   label: 🪦 After the dance: Clippy reads the summary
   who: admin
+  while: Night.ending == "destroyed"
 
 INTERACTION final_reveal
   label: 🌑 Final Truth Scavenger Hunt reveal
   who: admin
+  while: Night.ended != true and Night.step < 16
 
 INTERACTION bobbing_for_truth
   label: 🍎 Bobbing for Truth
   who: admin
+  while: Night.ended != true and Night.step < 17
 
 INTERACTION read_truth_txt
   label: 📄 Read truth.txt
   who: admin
   description: After 🍎 Brought up the Bag. truth.txt goes up on every screen and the bobber reads it aloud; round three closes. Nothing else happens until ⚖.
+  while: Night.phase == "bobbing" and Night.r3_closed != true
 
 INTERACTION the_verdict
   label: ⚖ truth.txt read → the verdict
   who: admin
   description: When the bobber has finished reading truth.txt. Every answered fact accurate → the song; any lie on record → Grok Prom.
+  while: Night.phase == "bobbing" and Night.ended != true
 
 INTERACTION no_pickup_line
   label: 💔 Nobody has the line → confession → rave
   who: admin
+  while: Night.phase == "grok_prom" and Night.ended != true
 
 INTERACTION ask_for_advice
   label: 💌 (Alt, after a lie → Grok Prom) Trabolta begs for relationship advice
   who: admin
+  while: Night.phase == "grok_prom" and Night.ended != true
 
 INTERACTION advice_tally
   label: 🗳 (Alt) Count the advice poll
   who: admin
+  while: Night.phase == "advice" and Night.ended != true
 
 INTERACTION advice_helped
   label: 💞 (Alt) They helped him
   who: admin
+  while: Night.phase == "advice" and Night.ended != true
 
 INTERACTION advice_thwarted
   label: ⛈ (Alt) They thwarted him: banish everyone
   who: admin
+  while: Night.phase == "advice" and Night.ended != true
 
 INTERACTION the_hand_jive
   label: 🕺 (Alt) Everyone hand-jived: Trabolta crashes
   who: admin
+  while: Night.ending == "banished" and Night.ended != true
 
 // G. The awards ceremony (K-25), after any final ending. Each award is
 // fired WITH THE WINNER AS THE SUBJECT (the cue sheet asks for one),
@@ -2606,6 +2621,7 @@ INTERACTION start_the_ceremony
   label: G1 · 🏆 Start the awards ceremony (after the ending)
   who: admin
   description: Only once the night has ended. Trabolta hosts; Clippy hosts after destroyed and rave, and reads every line aloud.
+  while: Night.ended == true and Night.ceremony != true
 
 INTERACTION award_most_trusted
   label: G2 · 🥇 Award: Most Trusted (winner = top trust)
@@ -3873,8 +3889,8 @@ when lift_the_takeover:
 // After the dance: a weakened Trabolta ranks everyone one last time and
 // recounts (the ranking machinery, round 3 → Trabolta Recounts).
 when trabolta_recounts:
-  fire lift_the_takeover
   if Night.ending == "disabled" and Night.rank_round != 3:
+    fire lift_the_takeover
     set Night.recount = true
     cue screens_recount
     set Night.screen = "recount"
@@ -3932,8 +3948,8 @@ when computer_destroyed:
 
 // E8: after the dance, Clippy reads the summary. Purgatory.
 when clippy_reads_summary:
-  fire lift_the_takeover
   if Night.ending == "destroyed":
+    fire lift_the_takeover
     cue lights_purgatory
     set Night.lights = "purgatory"
     cue screens_purgatory
@@ -4038,8 +4054,10 @@ when the_verdict:
     -> The Verdict
   else if Night.phase == "bobbing":
     broadcast "⚖ Not yet: 📄 Read truth.txt first. Nothing happens." to channel(hosts)
-  else:
+  else if Night.ended == true or Night.r3_closed == true:
     broadcast "⚖ Not now: the verdict is already in, or the night has ended. Nothing happens." to channel(hosts)
+  else:
+    broadcast "⚖ Not yet: 🍎 Bobbing for Truth, then 📄 truth.txt first. Nothing happens." to channel(hosts)
 
 // F5: someone gave him the line (ROLE `pickup_line_accepted`).
 when line_accepted:
@@ -4126,6 +4144,9 @@ when the_hand_jive:
     sound motorcycle
     cue lights_restore
     set Night.lights = "restore"
+    cue screens_screensaver
+    set Night.screen = "screensaver"
+    set Night.terminals = "screensaver"
   else:
     broadcast "🕺 Only once everyone is banished (⛈). Nothing happens." to channel(hosts)
 
