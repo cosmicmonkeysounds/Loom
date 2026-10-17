@@ -1011,3 +1011,21 @@ ROLE Adventurer
     expect(sim.scoreOf("g1")).toBe(0); // the score slot is untouched
   });
 });
+
+describe("`<who>.escrowed` in a story rule (the currency help's majority)", () => {
+  it("unset reads as 0 in an addition and a sum; coin in flight counts once set", () => {
+    const sim = Sim.fromSources(`ROLE Program
+  score: 0 to 100 = 0
+  majority: bool = false
+  when (self.score + self.escrowed) * 2 > sum([p.score + p.escrowed for p in Persons]):
+    set self.majority = true
+`);
+    sim.createPerson("a", "A");
+    sim.createPerson("b", "B");
+    sim.setScore("b", 10);
+    sim.setScore("a", 10);
+    expect(sim.world.get("a.majority")).toEqual({ kind: "bool", value: false }); // 20 > 20: exactly half is no majority
+    sim.setVar("a.escrowed", "1"); // one coin of A's on its way
+    expect(sim.world.get("a.majority")).toEqual({ kind: "bool", value: true });
+  });
+});

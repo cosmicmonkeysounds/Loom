@@ -2,7 +2,7 @@
 title: Currency — a wallet over a score
 section: Live Shows
 order: 45
-keywords: currency, wallet, coin, money, Truthcoin, balance, send, request, pay, trade, offer, buy, sell, escrow, approver, approve, deny, audit, minter, stimulus, reserve, grant, freeze, frozen, transfer, expiry, max, window, every, limit, while, transfer_received, transfer_denied, transfer_approved, offer_accepted, stimulus_received, exchange, bank, LOOM_RL_WALLET, rate limit
+keywords: currency, wallet, coin, money, Truthcoin, balance, send, request, pay, trade, offer, buy, sell, escrow, approver, approve, deny, audit, minter, stimulus, reserve, grant, freeze, frozen, transfer, expiry, max, window, every, limit, while, transfer_received, transfer_denied, transfer_approved, offer_accepted, stimulus_received, exchange, bank, LOOM_RL_WALLET, rate limit, escrowed
 ---
 
 A score is a number the story moves. A **currency** is a score the
@@ -108,7 +108,7 @@ approver's name, or `Director`) are values.
 | `request_declined` / `request_expired` / `request_cancelled` | the asker | `to`, `amount`, `request` |
 | `offer_made` | the one offered to | `from`, `amount`, `entry`, `side` (`buy` / `sell`) |
 | `offer_accepted` / `offer_declined` / `offer_expired` / `offer_cancelled` | the offerer | `to`, `amount`, `entry`, `side` |
-| `stimulus` | the minter | `amount`, `paid` (how many) — only for the minter's own press; a director's stimulus raises `stimulus_received` alone |
+| `stimulus` | the minter | `amount`, `paid` (how many); a director's press fires it too, as the minter's program, with `by` (who pressed it) — and not at all when no guest plays the minter |
 | `stimulus_received` | each recipient | `from`, `amount` |
 | `grant` / `grant_received` | the minter / the recipient | `to` / `from`, `amount` — `grant` only for the minter's own press |
 | `freeze` | the minter | `to`, `until` (story ms) — only for the minter's own press |
@@ -129,6 +129,25 @@ ROLE Program
     set Night.stimulus_n += 1
 ```
 
+## Coin in flight: `escrowed`
+
+A send leaves the sender's balance at once but reaches the recipient
+only when it settles, and a buy offer's coin sits in escrow until it is
+accepted, declined or expires. The story sees that coin as
+`<who>.escrowed`: everything a person has in pending or held sends plus
+open buy-offer escrow. The server keeps it up to date on every step
+(it rises before a debit and falls after a credit, so `score +
+escrowed` never dips mid-step and a watcher can't fire early), and it
+replays with the journal. It needs no slot: unset, it reads as nothing
+in a sum (or an addition). A majority that counts every coin in the
+room, including what is still on its way:
+
+```loom
+ROLE Program
+  when (self.score + self.escrowed) * 2 > sum([p.score + p.escrowed for p in Persons]):
+    set self.majority = true
+```
+
 **Wallet rules narrate; they never move coin.** The server has already
 settled, refunded or escrowed by the time your rule runs, and it
 journals each step as one line so a restart lands on the same balances
@@ -140,14 +159,16 @@ never inside a wallet rule, where it would fight the ledger.
 
 - Guests: `POST /e/:id/api/guest/wallet/{send,request,respond,offer,accept,decline,cancel,stimulus,grant,freeze,approve,deny}` → `{ok, wallet}` (the caller's Wallet view). `approve` / `deny` only when the approver is a guest's program; `grant {to, amount}` and `freeze {to}` only for the minter. A frozen view carries `frozenUntil` (story ms); the minter's carries `minter.grants`, `minter.freezeMs` and `minter.frozen` (the freezes in force).
 - The approver's booth: `POST /e/:id/api/prime/wallet/{approve,deny} {id}` → `{ok, queue}`.
-- The director: `POST /e/:id/api/mod/wallet/{approve,deny,cancel,stimulus,grant,freeze,unfreeze}` — any open item, a stimulus / grant / freeze when the minter's phone is gone, or `unfreeze {to}` (or `{id}`) to lift a freeze early. A stimulus from here still counts against the limit but fires only `stimulus_received`, never `stimulus`; the cards read *Director*. `POST /e/:id/api/mod/wallet/approve-held` approves every held transfer at once (the approver's booth is empty) → `{ok, approved: [ids], wallet}`.
+- The director: `POST /e/:id/api/mod/wallet/{approve,deny,cancel,stimulus,grant,freeze,unfreeze}` — any open item, a stimulus / grant / freeze when the minter's phone is gone, or `unfreeze {to}` (or `{id}`) to lift a freeze early. A stimulus from here still counts against the limit and fires `stimulus` exactly as the minter's own press would (the minter's program is the subject, `by` names the director), so one `when stimulus for program:` covers both; with no guest playing the minter only `stimulus_received` fires. The cards read *Director*. `POST /e/:id/api/mod/wallet/approve-held` approves every held transfer at once (the approver's booth is empty) → `{ok, approved: [ids], wallet}`.
 - A **restricted** guest ([live verbs](live-verbs.md)) gets 403 on `send`, `request`, `respond`, `offer`, `accept`, `stimulus`, `grant` and `freeze`; `decline` and `cancel` still work, and the director's routes are never blocked.
 - A trade names its entry by id or by its display title. A buy of no entry at all is a 409 *they don't have that to sell*; a buy never checks what the other side holds (that would tell the buyer someone's secret entries), so an offer for an entry they lack reaches them and fails on Accept, refunding the coin. A refused offer still counts against `LOOM_RL_WALLET`, so guessing titles is slow.
 
 Every call is checked by the server (a status and a message the phone
 shows), rate-limited per guest (`LOOM_RL_WALLET`, 30 a minute by
 default, `<max>` or `<max>/<seconds>` — the only brake on a phone
-flooding the approver's queue with tiny sends), then journaled. The
+flooding the approver's queue with tiny sends), then journaled. Backing
+out is never rate-limited: `decline`, `cancel` and declining a request
+(`respond` without `accept: true`) still work over the limit. The
 timers — the deny window, a held transfer's five minutes, request and
 offer expiry — run on the story clock, so pausing the run pauses them.
 
