@@ -20,6 +20,7 @@ import { parse } from "../src/parser/index.ts";
 import { foldName } from "../src/parser/names.ts";
 import { guestView, modView, primeView } from "../server/views.ts";
 import { composeGuestMessages } from "../server/chat.ts";
+import { liesByPerson } from "../server/recap.ts";
 import { identityDefs, guestPickable, isSpecial, performerPickable } from "../server/identity.ts";
 import { WalletBook, walletSeam } from "../server/wallet.ts";
 import type { GuestView, ModView, PrimeView } from "../server/views.ts";
@@ -4365,6 +4366,8 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     fire(sim, "fact_accurate", "g2", { question: "H1" }, "Clippy");
     expect(v(sim, "Kernel.lies_accepted")).toBe(1);
     expect(v(sim, "Kernel.q1")).toBe("lie");
+    // The K-26 recap agrees: the corrected lie came off Excel, the real liar keeps hers.
+    expect([...liesByPerson(sim).entries()].filter(([, n]) => n > 0)).toEqual([["g1", 1]]);
     // Correcting the real liar too clears the question: Excel's filing is accurate.
     fire(sim, "fact_accurate", "g1", { question: "H1" }, "Clippy");
     expect(v(sim, "Kernel.lies_accepted")).toBe(0);
