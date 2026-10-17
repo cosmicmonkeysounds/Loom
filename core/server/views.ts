@@ -555,6 +555,15 @@ export function notePress(sim: Sim, batch: readonly SimEvent[]): void {
   ends.set(end - batch.length, end);
 }
 
+/** Was the press `batch` (a `Sim.signal` call just committed and noted)
+ *  refused by the story — the same judgement the cue sheet makes, so a
+ *  director's phone can say "not taken" rather than "fired". */
+export function pressRefused(sim: Sim, batch: readonly SimEvent[]): boolean {
+  const first = batch[0];
+  if (first === undefined || first.type !== "signal") return false;
+  return refusedPress(sim, sim.log.all(), sim.log.len() - batch.length, first.name);
+}
+
 /** Log entries that start a new input (a press, a tick, a typed line, a
  *  join, a scan) — where a press nobody noted (`notePress`: a bare `Sim`
  *  in a test; the editor's in-browser rehearsal notes its presses) is taken

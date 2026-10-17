@@ -32,6 +32,10 @@ INTERACTION accuse
 
 when ring_the_bell:
   set Night.phase = "desktop"
+
+when hunt_time_up:
+  if Night.phase == "hunt":
+    set Night.phase = "back"
 `;
 
 const dirs: string[] = [];
@@ -104,6 +108,12 @@ describe("the phone cue page's server surface (W-26)", () => {
     expect(after.world.find((w) => w.path === "Night.phase")?.value).toContain("desktop");
     const signal = store.readJournal().find((e) => e.m === "signal");
     expect(signal?.by).toBe("Phone · Ana");
+    expect(fired.json).toEqual({ ok: true });
+    // Out of turn the story turns C2 down: taken, answered `refused`, not ticked.
+    const early = await call(rt, "POST", "/api/mod/signal", { name: "hunt_time_up", label: "Phone · Ana" }, token);
+    expect(early.json).toEqual({ ok: true, refused: true });
+    const still = (await call(rt, "GET", "/api/state?role=mod", {}, token)).json as unknown as ModView;
+    expect(still.cues).toMatchObject({ last: "ring_the_bell", fired: ["ring_the_bell"] });
     rt.dispose();
   });
 
