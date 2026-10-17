@@ -528,8 +528,8 @@ and the four Antivirus have a pinned **Quest Log**, **Codex** and
 | The Selected Antivirus (*Patrol: the Bingo*) | Norton Anti-Virus | `start_the_bingo` | `first_reinstallation` ✅ |
 | Host The Hunt (*Per the agenda: the Truth Scavenger Hunt*) | Clippy | `start_the_hunt` (updated at `hunt_time_up`: ⏱ / 📋 / 🍾) | `second_hunt_preview` ✅ "Round one judged." |
 | Keep Everyone Calm (*Per Trabolta: keep everyone calm*) | Clippy | `second_hunt_preview` (updated at the five-minute warning: Truth Pong) | `y2k_clock` ✅ |
-| The Exchange (*Patrol: the exchange*) | McAfee Anti-Virus | `truther_download` | `final_reveal` ✅ (the wallet trades on through the Y2K hour) |
-| The Audit (*Patrol: the audit*) | CRA Agent Software | `truther_download` (a step per approved / denied transfer) | `final_reveal` ✅ |
+| The Exchange (*Patrol: the exchange*) | McAfee Anti-Virus | `truther_download` | `final_reveal`, or a server-room ending (`trabolta_disabled` / `computer_destroyed`) ✅ (the wallet trades on through the Y2K hour) |
+| The Audit (*Patrol: the audit*) | CRA Agent Software | `truther_download` (a step per approved / denied transfer) | `final_reveal`, or a server-room ending ✅ |
 | The Clubs (*Patrol: the clubs*) | Password Manager | `y2k_clock` | the majority ✅ |
 
 A director or a puzzle can move any quest with

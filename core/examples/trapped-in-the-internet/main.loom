@@ -3602,6 +3602,8 @@ when trabolta_disabled:
     set Night.final_round = false
     complete quest Find The Exit for everyone
     fail quest The Final Facts for everyone "The night ended in the server room. The final facts were never read."
+    complete quest The Exchange for McAfee Anti-Virus "The night ended in the server room. The exchange closes."
+    complete quest The Audit for CRA Agent Software "The night ended in the server room. The audit closes."
     cue lights_blackout
     set Night.lights = "blackout"
     cue screens_blackout
@@ -3665,6 +3667,8 @@ when computer_destroyed:
     set Night.final_round = false
     set Trabolta.awake = false
     fail quest The Final Facts for everyone "The computer is off. Nobody will ever read the final facts."
+    complete quest The Exchange for McAfee Anti-Virus "The computer is off. The exchange closes."
+    complete quest The Audit for CRA Agent Software "The computer is off. The audit closes."
     unlock Clippy Instructions 9 for Clippy
     cue lights_blackout
     set Night.lights = "blackout"
@@ -3714,7 +3718,8 @@ when final_reveal:
     set Night.judging = true
     unlock Clippy Instructions 8 for Clippy
     // The wallet trades on through the Y2K hour: the exchange and the
-    // audit close here, at the reveal.
+    // audit close here, at the reveal (or at a server-room ending, which
+    // never reaches it).
     complete quest The Exchange for McAfee Anti-Virus "The final reveal. The exchange closes."
     complete quest The Audit for CRA Agent Software "The final reveal. The audit closes."
     cue lights_final_reveal

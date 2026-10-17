@@ -3604,6 +3604,19 @@ describe("Trapped in the Internet — the staff (wave 4, lane D)", () => {
     expect(guestView(sim, "g1").quests.map((q) => q.id)).not.toContain("Run The Bingo");
   });
 
+  it("a server-room ending closes the exchange and the audit (no final reveal on Combo A or Combo B)", { timeout: SLOW }, () => {
+    for (const ending of ["trabolta_disabled", "computer_destroyed"]) {
+      const sim = boot();
+      toY2k(sim);
+      expect(sim.questStatus("McAfee Anti-Virus", "The Exchange"), ending).toBe("active");
+      expect(sim.questStatus("CRA Agent Software", "The Audit"), ending).toBe("active");
+      fire(sim, ending);
+      expect(v(sim, "Night.ended"), ending).toBe(true);
+      expect(sim.questStatus("McAfee Anti-Virus", "The Exchange"), ending).toBe("done");
+      expect(sim.questStatus("CRA Agent Software", "The Audit"), ending).toBe("done");
+    }
+  });
+
   it("no Alexa in the fiction: the house announces, the chime is announce_chime, the tent is in the backyard", () => {
     const m = fresh().model;
     const text = FILES.map((f) => f.source).join("\n");
