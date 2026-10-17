@@ -211,6 +211,36 @@ export function canPeek(view: string, terminal: "attract" | "connecting" | "pilo
   return view !== "tv" && view !== "mirror" && terminal === "attract" && !screensaver;
 }
 
+/**
+ * The peek's state machine (B21), pure: fed timestamps, the app owns the
+ * timer and the input listeners. A tap on the slide starts (or keeps) the
+ * peek; any input while peeking restarts its clock; `PEEK_MS` with no input,
+ * or the terminal leaving its scanner (connecting, piloting, the screensaver),
+ * ends it until the next tap — the slide (and the corner countdown, which a
+ * peek also hides: its box covers CONNECT) is back.
+ */
+export class PeekClock {
+  private last: number | null = null;
+  constructor(private readonly limit: number = PEEK_MS) {}
+  /** A tap on the held slide: peek from now. */
+  tap(now: number): void {
+    this.last = now;
+  }
+  /** Someone touched or typed: a running peek lasts another `limit`. */
+  touch(now: number): void {
+    if (this.last !== null) this.last = now;
+  }
+  /** Is the peek on at `now`? Ending is for good (until the next tap). */
+  on(now: number, peekable: boolean): boolean {
+    if (this.last === null) return false;
+    if (!peekable || now - this.last >= this.limit) {
+      this.last = null;
+      return false;
+    }
+    return true;
+  }
+}
+
 /** The chart reveals one row every this many ms, bottom first. */
 export const CHART_STEP_MS = 1500;
 

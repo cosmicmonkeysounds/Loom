@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { IdentifyOverlay, ScreenLayer, SlideView } from "../src/ScreenLayer.tsx";
 import { parseScreenState, type ScreenProgram, type ScreenState } from "../src/screen.ts";
-import { BLACKOUT_MS, FLICKER_FRESH_MS, PEEK_MS, canPeek, SLIDE_COPY, SLIDE_HOLD_MS, CHART_STEP_MS, chartCallouts, chartLines, chartReveal, formatCountdown, resetScreenMemo, screenLayers, setScreenMemoStorage, slideCopy, slideSources, slideVideoSources, y2kClock } from "../src/slides.ts";
+import { BLACKOUT_MS, FLICKER_FRESH_MS, PEEK_MS, PeekClock, canPeek, SLIDE_COPY, SLIDE_HOLD_MS, CHART_STEP_MS, chartCallouts, chartLines, chartReveal, formatCountdown, resetScreenMemo, screenLayers, setScreenMemoStorage, slideCopy, slideSources, slideVideoSources, y2kClock } from "../src/slides.ts";
 
 const T0 = 1_000_000;
 const empty: ScreenProgram = { slide: null, overlay: null, blackout: null, flicker: null };
@@ -55,6 +55,46 @@ describe("a tap peeks under a held slide (B21)", () => {
     expect(at(y2k, 30 * 60_000)).toMatchObject({ slide: { value: "y2k" }, corner: null });
     expect(peekAt(y2k, 30 * 60_000)).toMatchObject({ slide: null, corner: null });
     expect(at(y2k, 31 * 60_000).slide?.value).toBe("y2k");
+  });
+
+  it("the app's peek: a tap starts it, input keeps it, 30 s untouched brings the y2k slide back", () => {
+    const clock = new PeekClock();
+    const t0 = y2k.receivedAt + 30 * 60_000;
+    // What the app draws at `ms`: the clock decides `peek` for screenLayers.
+    const drawn = (ms: number, kind: "attract" | "connecting" | "piloting" | "setup" = "attract") => {
+      const peek = clock.on(ms, canPeek("auto", kind, false));
+      return { peek, layers: screenLayers(y2k, ms, { piloting: kind === "piloting" || kind === "connecting", peek }) };
+    };
+    expect(drawn(t0).peek).toBe(false); // input with no tap starts nothing
+    clock.touch(t0);
+    expect(drawn(t0 + 1).layers.slide?.value).toBe("y2k");
+
+    clock.tap(t0);
+    expect(drawn(t0)).toMatchObject({ peek: true, layers: { slide: null, corner: null } });
+    // The guest types their name slowly: each input restarts the 30 s.
+    clock.touch(t0 + 29_000);
+    expect(drawn(t0 + 29_000 + 29_000).peek).toBe(true);
+    clock.touch(t0 + 58_000);
+    expect(drawn(t0 + 58_000 + PEEK_MS - 1).peek).toBe(true);
+    // Then nobody touches it for PEEK_MS: the clock is back, and stays back.
+    expect(drawn(t0 + 58_000 + PEEK_MS)).toMatchObject({ peek: false, layers: { slide: { value: "y2k" } } });
+    clock.touch(t0 + 58_000 + PEEK_MS + 1);
+    expect(drawn(t0 + 58_000 + PEEK_MS + 2).peek).toBe(false);
+  });
+
+  it("the peek ends the moment the terminal leaves its scanner (connecting, piloting)", () => {
+    for (const kind of ["connecting", "piloting"] as const) {
+      const clock = new PeekClock();
+      clock.tap(T0);
+      expect(clock.on(T0 + 1_000, canPeek("auto", "attract", false))).toBe(true);
+      expect(clock.on(T0 + 2_000, canPeek("auto", kind, false))).toBe(false);
+      // Back at the scanner (the pilot ended): no stale peek, the slide is up.
+      expect(clock.on(T0 + 3_000, canPeek("auto", "attract", false))).toBe(false);
+    }
+    // The screensaver ends it too.
+    const clock = new PeekClock();
+    clock.tap(T0);
+    expect(clock.on(T0 + 1, canPeek("auto", "attract", true))).toBe(false);
   });
 
   it("overlays still block a peek", () => {

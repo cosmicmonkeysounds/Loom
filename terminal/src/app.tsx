@@ -60,7 +60,7 @@ import { attractOf, useScreenState } from "./screen.ts";
 import { Attract } from "./Attract.tsx";
 import { IdentifyOverlay, LiveScreenLayer } from "./ScreenLayer.tsx";
 import { Tv } from "./Tv.tsx";
-import { PEEK_MS, canPeek, screenLayers } from "./slides.ts";
+import { PeekClock, canPeek, screenLayers } from "./slides.ts";
 
 // three.js is most of the weight of the world view — a face-only terminal
 // never loads it. Retryable: `lazy` alone caches a failed load forever.
@@ -208,22 +208,28 @@ export function App() {
 
   // A tap on a slide held over the scanner peeks under it (B21) until
   // nobody has touched the terminal for `PEEK_MS`; overlays still cover.
-  const [peek, setPeek] = useState(false);
+  // `PeekClock` (slides.ts) is the tested state machine; this only feeds it.
+  const peekClock = useRef(new PeekClock());
+  const [, setPeekTick] = useState(0);
   const peekable = config !== null && canPeek(config.view, screen.kind, attractOf(screenState.state));
-  useEffect(() => {
-    if (!peekable) setPeek(false);
-  }, [peekable]);
-  const peekClock = useIdleTimeout({ active: peek, busy: false, onTimeout: () => setPeek(false), limit: PEEK_MS });
+  const peek = peekClock.current.on(Date.now(), peekable);
+  const onSlideTap = useCallback(() => {
+    peekClock.current.tap(Date.now());
+    setPeekTick((n) => n + 1);
+  }, []);
   useEffect(() => {
     if (!peek) return;
-    const onInput = () => peekClock.touch();
+    const onInput = () => peekClock.current.touch(Date.now());
     window.addEventListener("pointerdown", onInput, true);
     window.addEventListener("keydown", onInput, true);
+    // Re-ask the clock every second so the slide comes back on its own.
+    const tick = window.setInterval(() => setPeekTick((n) => n + 1), 1000);
     return () => {
       window.removeEventListener("pointerdown", onInput, true);
       window.removeEventListener("keydown", onInput, true);
+      window.clearInterval(tick);
     };
-  }, [peek, peekClock.touch]);
+  }, [peek]);
 
   const finish = useCallback((c: TerminalConfig) => {
     saveConfig(c);
@@ -256,7 +262,7 @@ export function App() {
   const layer = (
     <>
       {/* A slide's .mp4 plays on the TV only (N-04a); the tablets keep the PNG. */}
-      <LiveScreenLayer state={screenState.state} piloting={piloting} peek={peek && peekable} onSlideTap={peekable ? () => setPeek(true) : undefined} video={config.view === "tv"} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
+      <LiveScreenLayer state={screenState.state} piloting={piloting} peek={peek} onSlideTap={peekable ? onSlideTap : undefined} video={config.view === "tv"} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
       <IdentifyOverlay state={screenState.state} name={config.name} spot={config.spot} view={config.view} />
       {announcement !== null && (
         <div className="announce-banner" role="status">
