@@ -5325,6 +5325,11 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     const early = upload(first, "e1", "Calculator");
     expect(lines(early, "Norton Anti-Virus")).toContain("Scanned. Calculator is free of viruses and ready to explore the entire computer. There will be a game soon in the Desktop. The house will announce it. Go through the Tube.");
     expect(texts(early).some((t) => t.includes("A classic screensaver drifts across the TV"))).toBe(true);
+    // Cleared after 📣 but before 🎱: the game is about to begin, the TV has left its screensaver.
+    fire(first, "call_to_the_desktop");
+    const between = upload(first, "e2", "Paint");
+    expect(lines(between, "Norton Anti-Virus")).toContain("Scanned. Paint is free of viruses and ready to explore the entire computer. A game is about to begin in the Desktop. Go through the Tube.");
+    expect(texts(between).filter((t) => t.includes("You are late") || t.includes("screensaver drifts"))).toEqual([]);
   });
 
   it("T6-05: 🪩 clears the living-room overlay only when it is up", { timeout: SLOW }, () => {
