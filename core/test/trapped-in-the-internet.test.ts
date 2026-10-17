@@ -2882,6 +2882,33 @@ describe("Trapped in the Internet — talked down, like the Fallout Master (wave
     expect([v(sim, "g1.at_the_heart"), v(sim, "g4.at_the_heart")]).toEqual([true, false]);
   });
 
+  it("a proof Trabolta shared himself never counts: the model can't supply its own way out", { timeout: SLOW }, () => {
+    for (const entry of ["The Sandy File", "What Sandy Says"]) {
+      const sim = atTheHeart();
+      // His worker's bargain: a share into g1's Codex, then the power.
+      if (!sim.holdsCodex("Trabolta", entry)) sim.unlock("Trabolta", entry);
+      sim.share("Trabolta", "g1", entry);
+      expect(sim.holdsCodex("g1", entry), entry).toBe(true);
+      const own = fire(sim, "stand_down", "g1", null, "Trabolta");
+      expect(lines(own, "Trabolta"), entry).toEqual(["You have not shown me anything I do not already know."]);
+      expect(casts(own)).toEqual([]);
+      expect(v(sim, "Night.stand_down_by")).toBe("none");
+      // The other proof, found by the program itself, still counts.
+      const other = entry === "The Sandy File" ? "What Sandy Says" : "The Sandy File";
+      sim.unlock("g1", other);
+      fire(sim, "stand_down", "g1", null, "Trabolta");
+      expect(v(sim, "Night.stand_down_by"), entry).toBe("Calculator");
+    }
+    // Found by the program (its code, a story unlock, another program's share): it counts.
+    const sim = atTheHeart();
+    sim.share("g2", "g1", "The Sandy File"); // g2 doesn't hold it: nothing moves
+    sim.unlock("g2", "The Sandy File");
+    sim.share("g2", "g1", "The Sandy File");
+    expect(v(sim, "g1.sandy_file_from_him")).toBe(false);
+    fire(sim, "stand_down", "g1", null, "Trabolta");
+    expect(v(sim, "Night.stand_down_by")).toBe("Calculator");
+  });
+
   it("before the Y2K hour, or after an ending, it is refused", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);

@@ -316,6 +316,11 @@ ROLE Program
   // the story rules by The Heart). Not secret: Trabolta's worker reads it
   // (persona `them:`) and drops the act for this program alone.
   at_the_heart: bool = false
+  // The stand_down proof came from Trabolta himself (he shared What Sandy
+  // Says / The Sandy File into this program's Codex): it shows him nothing
+  // he did not know, so it never counts (cast/trabolta.loom).
+  sandy_says_from_him: bool = false
+  sandy_file_from_him: bool = false
 
   // ── Arrival ──
   // A new program stands in the Optical Drive (the phone goes on rails there).
@@ -1754,6 +1759,18 @@ ROLE Program
         set Kernel.virus_planter = program.name
         set Kernel.excel_planted = true
         complete quest Excel Mission for program "Virus planted."
+
+  // ── The stand_down proof (wave 7) ──
+  // His worker may share lore as a bargain; a proof he handed over himself
+  // can't talk him down (the program must find it: the card, the hunt, a
+  // Facts Bundle, another program).
+  when program learns What Sandy Says:
+    if from == Trabolta:
+      set program.sandy_says_from_him = true
+
+  when program learns The Sandy File:
+    if from == Trabolta:
+      set program.sandy_file_from_him = true
 
   // ── Trabolta's LiveJournal (TRABOLTA-4EVER, or OpenOffice's 20 facts) ──
   // Only the first real reader counts: The Whole Truth hands the entry to
