@@ -100,7 +100,9 @@ def test_sandy_by_name_at_the_heart_only_once_the_story_has_named_her():
     assert names(heart_request("true", **{"Night.scenario": "2"})) == ["at your heart", blacked]
     assert names(heart_request("true")) == ["at your heart", blacked]
     assert names(heart_request("true", **{"Night.scenario": "1"})) == ["at your heart", said]
-    assert names(heart_request("true", **{"Night.scenario": "1", "Night.step": "12"})) == ["at your heart", blacked]
+    # Never before the Y2K hour, whatever the flag says.
+    assert names(heart_request("true", **{"Night.scenario": "1", "Night.step": "13"})) == []
+    assert names(heart_request("true", **{"Night.scenario": "1", "Night.step": "12"})) == []
     assert names(heart_request("true", **{"Night.scenario": "3", "Night.recount": "true"})) == ["at your heart", said]
     for s in p.situations:
         if s.heading != said:
