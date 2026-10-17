@@ -92,6 +92,15 @@ export function retractedPinSeqs(messages: Iterable<ChatMessage>): Set<number> {
   return out;
 }
 
+/** The banner left once the pins in `gone` are taken down: `alert` itself,
+ *  or null when it is one of them. Fed the *latest* banner (a functional
+ *  state update), so a newer pin that replaced the one on screen in the
+ *  same render — a second `!` pin with the same key — is kept, never wiped
+ *  with the pin it replaced. A readout (negative seq) is never a pin. */
+export function bannerAfterRetract(alert: Alert | null, gone: ReadonlySet<number>): Alert | null {
+  return alert !== null && alert.seq >= 0 && gone.has(alert.seq) ? null : alert;
+}
+
 /** The highest seq in a message list (−1 when empty). */
 export function maxSeqOf(messages: Iterable<ChatMessage>): number {
   let max = -1;
@@ -366,12 +375,18 @@ export function useAlerts(opts: {
   }, [messages, session, show, persist]);
 
   // A pin taken down while its banner is still up: the banner goes too.
+  // A functional update: the effect above may have just raised a newer pin
+  // that replaced this one (same key) in the same commit, and the `alert`
+  // this render saw is the old one — checking it would wipe the new banner.
   useEffect(() => {
     if (alert === null || alert.seq < 0) return;
-    if (retractedPinSeqs(messages.values()).has(alert.seq)) {
-      pendingChime.current = false;
-      setAlert(null);
-    }
+    const gone = retractedPinSeqs(messages.values());
+    if (!gone.has(alert.seq)) return;
+    setAlert((a) => {
+      const next = bannerAfterRetract(a, gone);
+      if (next === null && a !== null) pendingChime.current = false;
+      return next;
+    });
   }, [alert, messages]);
 
   // Woke up: sound what landed while hidden.
