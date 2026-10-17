@@ -198,6 +198,39 @@ export function isPinnedRoom(channel: string): boolean {
   return channel === CODEX_ROOM.channel || channel === QUEST_LOG.channel || channel === WALLET_ROOM.channel;
 }
 
+/** How many ordinary messages a guest's or a booth's reconnect `history`
+ *  frame carries (W8 T9-05). A phone waking late in the night re-downloaded
+ *  every public line since the doors (≈ 6 MB by the end); the play app
+ *  only ever shows the recent stream. Directors are not capped. */
+export const HISTORY_LIMIT = 400;
+
+/**
+ * One viewer's history (`msgs`, seq-ordered, already filtered to what they
+ * may see), cut to the last `limit` ordinary messages. Kept whatever their
+ * age: every pinned-room row (the Codex, the Quest Log, the Wallet — the
+ * viewer's whole record), every sticky pin / unpin (a `!!` takeover must
+ * survive a reconnect), and the root of any reply that is kept (a thread
+ * never loses its head). Seq-ordered.
+ */
+export function capHistory(msgs: readonly ChatMessage[], limit = HISTORY_LIMIT): ChatMessage[] {
+  const always = (m: ChatMessage) => isPinnedRoom(m.channel) || m.pin !== undefined || m.unpin !== undefined;
+  let ordinary = 0;
+  for (const m of msgs) if (!always(m)) ordinary += 1;
+  if (ordinary <= limit) return [...msgs];
+  const keep = new Set<number>();
+  const roots = new Set<number>();
+  let skip = ordinary - limit;
+  for (const m of msgs) {
+    if (!always(m) && skip > 0) {
+      skip -= 1;
+      continue;
+    }
+    keep.add(m.seq);
+    if (m.parentSeq !== null) roots.add(m.parentSeq);
+  }
+  return msgs.filter((m) => keep.has(m.seq) || roots.has(m.seq));
+}
+
 function factionChannel(faction: string): ChannelHead {
   return { channel: `faction:${faction}`, channelKind: "faction", title: `#${faction.toLowerCase()}` };
 }
