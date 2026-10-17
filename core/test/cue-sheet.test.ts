@@ -144,7 +144,16 @@ describe("NEXT skips what already ran (T7-01)", () => {
     expect(next("c1", ["c1", "close"])).toBe("v2");
     expect(next("v2", ["c1", "v2", "close"])).toBe("results");
     expect(next("close", ["c1", "v2", "close", "telephone"])).toBe("results");
-    expect(next("results", ["c1", "v2", "close", "results", "telephone"])).toBe("zip");
+    expect(next("results", ["c1", "v2", "close", "results", "telephone"])).toBe("results");
+    expect(next("telephone", ["c1", "v2", "close", "results", "telephone"])).toBe("zip");
+  });
+
+  it("a `repeat: true` LAST stays NEXT: 📋 per question, 🗜 per trip, until the director moves on (T7-01)", () => {
+    const rows = cueRows(sheet, { last: "results", fired: ["c1", "v2", "close", "results"] });
+    expect(rows.find((r) => r.id === "results")).toMatchObject({ last: true, next: true });
+    expect(rows.filter((r) => r.next)).toHaveLength(1);
+    expect(next("zip", ["zip"])).toBe("zip");
+    expect(next("overshare", ["zip", "overshare"])).toBe(null);
   });
 
   it("a `repeat: true` cue stays eligible once fired; the lean view carries the flag", () => {

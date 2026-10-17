@@ -5,9 +5,10 @@
 //! label opening with the source cue code (`C1/V1 · 📣 Call everyone to the
 //! Desktop`). This module turns those into rows a director's screen renders
 //! as buttons: the code split off, the last cue marked, the next one (the
-//! first declaration after the last that hasn't fired, or a `repeat: true`
-//! one) suggested, a free-text filter, and the
-//! story's `Night.phase` read off the world.
+//! first declaration after the last that hasn't fired — or the last itself
+//! while it is a `repeat: true` cue, pressed once per question / per trip)
+//! suggested, a free-text filter, and the story's `Night.phase` read off
+//! the world.
 //!
 //! Dependency-free on purpose: the play app imports this file by path (it
 //! has no `@loom/core` dependency), so the shapes below are structural —
@@ -52,7 +53,9 @@ export interface CueRow {
   /** The most recent cue to fire. */
   last: boolean;
   /** The first in-sequence cue after the last one in running order that
-   *  has not fired yet (a `repeat: true` cue stays eligible). */
+   *  has not fired yet (a `repeat: true` cue stays eligible) — or the last
+   *  one itself while it is a `repeat: true` cue: the director presses it
+   *  again (📋 per question) or moves on. */
   next: boolean;
   /** False for an off-sequence cue (`sequence: false` — machine-fired or a
    *  hardware fallback): it ticks when it fires but is never LAST / NEXT. */
@@ -76,7 +79,10 @@ export function cueRows(interactions: readonly CueInteraction[], cues: CueMarks)
   const fired = new Set(cues.fired);
   const admin = interactions.filter((i) => i.who === "admin");
   const lastIdx = cues.last === null ? -1 : admin.findIndex((i) => i.id === cues.last);
-  const nextIdx = admin.findIndex((i, idx) => idx > lastIdx && i.sequence !== false && (!fired.has(i.id) || i.repeat === true));
+  const nextIdx =
+    lastIdx >= 0 && admin[lastIdx]!.repeat === true
+      ? lastIdx
+      : admin.findIndex((i, idx) => idx > lastIdx && i.sequence !== false && (!fired.has(i.id) || i.repeat === true));
   return admin.map((i, idx) => {
     const { code, title } = splitCode(i.label || i.id);
     return {
