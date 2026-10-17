@@ -1166,6 +1166,14 @@ export class EventRuntime {
     return null;
   }
 
+  /** A non-character `dm:` thread `guestId` may reply in: a stage voice's
+   *  (`dm:Operator` / `dm:Narrator` — the voices `/api/mod/say` speaks as
+   *  besides characters), or one already addressed to this guest. */
+  private guestDmThread(guestId: string, channel: string): boolean {
+    if (channel === "dm:Operator" || channel === "dm:Narrator") return true;
+    return this.chat.historyFor(guestId, false).some((m) => m.channel === channel);
+  }
+
   /** Is `name` a character voiced by an outside agent (`mind: external`)? */
   private isAgent(name: string): boolean {
     return this.sim?.model.characters.get(name)?.mind === "external";
@@ -3227,13 +3235,18 @@ export class EventRuntime {
         // canonical id: `dm:trabolta` (a terminal provisioned in lower case)
         // is the real `dm:Trabolta`, and `dm:nobody` is no thread at all —
         // a phantom one would skip the agent and the hidden-agent gate.
+        // A thread that isn't a character's stays as it is when it is a
+        // stage voice (`dm:Operator` / `dm:Narrator`, a director's DM) or
+        // one this guest was already spoken to in (an undeclared ALL-CAPS
+        // speaker's dialogue), so the guest can reply to it.
         if (channel.startsWith("dm:")) {
-          const character = this.characterNamed(channel.slice("dm:".length));
-          if (character === null) {
+          const name = channel.slice("dm:".length);
+          const character = this.characterNamed(name);
+          if (character !== null) channel = `dm:${character}`;
+          else if (!this.guestDmThread(id, channel)) {
             sendJson(res, 404, { error: "no such character" });
             return true;
           }
-          channel = `dm:${character}`;
         }
         // An agent still hidden from this guest (Trabolta before Clippy
         // introduces him) has no thread yet: a crafted DM is refused, not

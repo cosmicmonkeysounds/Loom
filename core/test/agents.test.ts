@@ -747,6 +747,31 @@ describe("EventRuntime agents", () => {
     expect((rt as unknown as { agents: AgentHub }).agents.pending.length).toBeGreaterThan(0);
   });
 
+  it("a guest can reply in a director's dm:Operator / dm:Narrator thread and an undeclared speaker's DM; dm:nobody stays 404 (W6 B19 review)", async () => {
+    const source = SOURCE + `
+when knock for program:
+  GUARD: Who goes there?
+`;
+    const rt = runtime({ source });
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Hal", passcode: CODES.event });
+    const id = g.json["id"] as string;
+    const token = g.json["token"] as string;
+    // The Run Inspector's "Message <guest>": a mod say to `guest:<id>` with no `as`.
+    expect((await call(rt, "POST", "/api/mod/say", { channel: `guest:${id}`, text: "Head to the kitchen." }, { moderator: true })).status).toBe(200);
+    expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:Operator", text: "ok, where is it?" }, { token })).status).toBe(200);
+    expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:Narrator", text: "hello?" }, { token })).status).toBe(200);
+    // Subject-bound dialogue from a speaker the story never declares.
+    expect((await call(rt, "POST", "/api/mod/signal", { name: "knock", subject: id }, { moderator: true })).status).toBe(200);
+    const seen = () => call(rt, "GET", "/api/history", {}, { token }).then((r) => r.json["messages"] as Array<{ channel: string; text: string }>);
+    const guardThread = (await seen()).find((m) => m.text === "Who goes there?")!.channel;
+    expect(guardThread).toBe("dm:GUARD");
+    expect((await call(rt, "POST", "/api/guest/say", { channel: guardThread, text: "a friend" }, { token })).status).toBe(200);
+    expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:nobody", text: "psst" }, { token })).status).toBe(404);
+    const mine = (await seen()).filter((m) => ["ok, where is it?", "hello?", "a friend"].includes(m.text)).map((m) => m.channel);
+    expect(mine).toEqual(["dm:Operator", "dm:Narrator", guardThread]);
+  });
+
   it("no hold: authored → silence, as before", async () => {
     let clock = 1_000_000;
     const rt = runtime({ now: () => clock });
