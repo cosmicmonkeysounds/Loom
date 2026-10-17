@@ -255,13 +255,18 @@ indicators") — a visibility graph over doors, stairs and corner waypoints.
 tolerance: metres, and m² for orientations).
 
 1. **Nodes**, in order, each `{pos, rooms}`:
-   - *Portals*: every door **but a guarded one** (`guard`: shut until its
-     king falls — the route never passes it; the fight is per session, and
-     no duck sits behind a guard) — its point at room `a`'s floor
+   - *Portals*: every door **but a guarded one** (`guard`: `route()`
+     keeps it shut, never a portal) — its point at room `a`'s floor
      elevation; rooms `a` and `b`, or just `a` when `b` is null — then per
      stair the *foot*
      (centre of the edge opposite `up`, lower elevation, room `from`) and
      the *head* (centre of the `up` edge, upper elevation, room `to`).
+     A game that lets the King fall (the fight is per session) must not
+     route its trail over the map as it is: once he is down a player can
+     be behind his door, and a trail from there would cross a wall. It
+     routes over a copy with that king's doors unguarded and his prop
+     removed (reinstall/web `trailMap`, rebuilt on the fall, on bind and
+     on a remap). VR never fells him, so it routes over the map as is.
    - *Reflex waypoints*: per room (array order), per vertex `v = p[i]`
      (vertex order) with neighbours `p = p[i−1]`, `q = p[i+1]` (cyclic):
      with `A = Σ (xᵢ·zᵢ₊₁ − xᵢ₊₁·zᵢ)` and `k = (v−p)ₓ·(q−v)_z − (v−p)_z·(q−v)ₓ`,

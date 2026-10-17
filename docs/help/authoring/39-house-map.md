@@ -74,9 +74,9 @@ drawing tools don't do (props, colours).
 **🧊 3D** shows the draft as the games will build it (once it is valid):
 drag to orbit, wheel to zoom.
 
-**💾 Save** sends the map to the event. If another director saved since
-you loaded it, nothing is saved and you are offered your edits as JSON
-and a reload.
+**💾 Save** sends the map to the event. If the map changed since you
+loaded it (a save or a variant switch), nothing is saved and you are
+offered your edits as JSON and a reload.
 
 ## Tent or shed, and keeping the map
 

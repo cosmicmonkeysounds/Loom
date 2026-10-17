@@ -36,3 +36,19 @@ describe("the help and the board say what a lost game does (OCT31 decision 6)", 
     expect(redealTip(1, "pawns")).toBeNull(); // he can't get weaker
   });
 });
+
+describe("the house docs say what the map page and the trail do", () => {
+  const spec = readFileSync(new URL("../../../docs/loom-reinstall.md", import.meta.url), "utf8").replace(/\s+/g, " ");
+
+  it("§1.2: a fallen King's door is routed over trailMap, not shut because \"no duck sits behind a guard\" (B17)", () => {
+    expect(spec).not.toContain("no duck sits behind a guard");
+    expect(spec).toContain("`trailMap`");
+    expect(spec).toContain("a player can be behind his door");
+  });
+
+  it("a save's 409 is a changed map (a save or a variant switch), not only another director's save (B18)", () => {
+    const map = help("authoring/39-house-map.md");
+    expect(map).not.toContain("If another director saved since you loaded it");
+    expect(map).toContain("If the map changed since you loaded it (a save or a variant switch)");
+  });
+});
