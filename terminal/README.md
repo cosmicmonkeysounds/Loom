@@ -51,9 +51,12 @@ below; `&announce=1` to also say the house announcements; `&spot=` and
 below.) The passcode and the other hints
 are scrubbed from the address bar at once. `character=` folds onto the
 story's own spelling (`trabolta` → `Trabolta`); a name the story lacks is
-refused with the cast listed — or, on a tablet set up before the doors
-(no cast to check yet), sends it back to setup with that error once the
-doors open, so it never pilots into a thread no agent hears.
+refused with the cast listed, doors open or not (since wave 7 a mod code
+resolves the story's declared cast before the doors,
+`EventRuntime.declaredCharacters`). Only a tablet set up with no story
+loaded, or against one that won't compile, keeps the typed name; it is
+sent back to setup with that error once the doors open, so it never pilots
+into a thread no agent hears.
 
 **The camera needs a secure context** — `https://` or `localhost`. On a
 plain `http://192.168.x.x` address every browser refuses `getUserMedia`;
