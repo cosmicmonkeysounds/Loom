@@ -373,9 +373,12 @@ export function recapText(r: Omit<Recap, "text">): string {
     out.push("");
     out.push(`${LIST_TITLES[k]}:`);
     out.push(line(rows.slice(0, 5)));
-    if (k === "trust" && r.lists.trust.length > 5) {
+    // Only when someone sits below the top 5 (early on most programs tie
+    // at 0 with the 5th, and a "(nobody)" bottom reads like a bug).
+    const least = k === "trust" ? leastTrusted(r.lists.trust) : [];
+    if (least.length > 0) {
       out.push("Least trusted:");
-      out.push(line(leastTrusted(r.lists.trust)));
+      out.push(line(least));
     }
   }
   out.push("");

@@ -93,6 +93,10 @@ describe("K-26 recap", () => {
     const text = recapText({ ...base, lists: { ...base.lists, trust } });
     const least = text.slice(text.indexOf("Least trusted:"), text.indexOf("\n\n", text.indexOf("Least trusted:")));
     expect(least).toBe("Least trusted:\n  1. Napster — -5\n  1. LimeWire — -5");
+    // Everyone below the top 5 ties with the 5th (early on, all at 0): no heading.
+    const flat = rank(["Winamp", "VLC", "Kazaa", "Excel", "Paint", "Pong", "ICQ"].map((n) => row(n, 0)));
+    expect(leastTrusted(flat)).toEqual([]);
+    expect(recapText({ ...base, lists: { ...base.lists, trust: flat } })).not.toContain("Least trusted");
   });
 
   it("the duck board: each program's fastest find, fastest first, ties by the second read aloud", () => {
