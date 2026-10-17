@@ -578,6 +578,9 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 .tv-attract { position: absolute; inset: 0; z-index: 5; }
 .tv-status { position: absolute; right: 10px; bottom: 8px; z-index: 6; display: flex; gap: 0.6em; align-items: center; font-size: 0.5em; }
 .tv-status .engine-note { position: static; font-size: 1em; }
+/* The world pane's mini-map sits in the same corner as the status row: lift
+   it clear of the 🔊 VOICE button (B22). */
+.terminal.tv.with-world .tv-world .minimap { bottom: calc(8px + 2.2em); }
 .tv-mute { background: transparent; border: 1px solid var(--phosphor-faint); color: var(--phosphor-faint); padding: 0.2em 0.6em; letter-spacing: 0.1em; }
 .tv-mute.on { color: var(--amber); border-color: var(--amber); }
 .tv-wake {
