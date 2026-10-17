@@ -86,13 +86,13 @@ else if Night.award == "lore_hoarder":
   set Night.screen = "award_lore_hoarder"
   if Night.ceremony_host == "Clippy":
     if Night.award_value == "none":
-      Clippy: Award. Lore Hoarder. The report lists {Night.award_winner}. Please come forward.
+      Clippy: Award. Lore Hoarder, for the most codex entries. The report lists {Night.award_winner}. Please come forward.
     else:
-      Clippy: Award. Lore Hoarder. The report lists {Night.award_winner}. Codex entries held: {Night.award_value}. Please come forward.
+      Clippy: Award. Lore Hoarder, for the most codex entries. The report lists {Night.award_winner}. Codex entries held: {Night.award_value}. Please come forward.
   else if Night.award_value == "none":
-    Trabolta: Lore Hoarder. {Night.award_winner}. You know more about this computer than its own help file. Come and take your trophy.
+    Trabolta: Lore Hoarder, for the most codex entries. {Night.award_winner}. You know more about this computer than its own help file. Come and take your trophy.
   else:
-    Trabolta: Lore Hoarder. Codex entries: {Night.award_value}. {Night.award_winner}. You know more about this computer than its own help file. Come and take your trophy.
+    Trabolta: Lore Hoarder, for the most codex entries: {Night.award_value}. {Night.award_winner}. You know more about this computer than its own help file. Come and take your trophy.
 else if Night.award == "truthcoin_tycoon":
   cue screens_award_truthcoin_tycoon
   set Night.screen = "award_truthcoin_tycoon"
@@ -151,6 +151,8 @@ else if Night.award == "the_painting":
       Clippy: Bonus award. The Million Dollar Painting. The report lists {Night.award_winner}, the artist. Signatures on the canvas: {Night.award_value}. The painting goes to silent auction. Please come forward.
   else if Night.award_value == "none":
     Trabolta: A bonus award. The Million Dollar Painting. {Night.award_winner} made one painting out of all of you. It goes to silent auction. Come and stand beside it.
+  else if Night.award_value == 1:
+    Trabolta: A bonus award. The Million Dollar Painting. Signed by 1 program. {Night.award_winner} made one painting out of all of you. It goes to silent auction. Come and stand beside it.
   else:
     Trabolta: A bonus award. The Million Dollar Painting. Signed by {Night.award_value} programs. {Night.award_winner} made one painting out of all of you. It goes to silent auction. Come and stand beside it.
 set Night.terminals = Night.screen

@@ -14,7 +14,8 @@
 //!   reads a lie count off a guest): every rise of `Kernel.lies_accepted` in
 //!   the log is credited to the person the same chain was about — the
 //!   nearest preceding person-headed `worldSet` or `signal` subject (both
-//!   lie hooks write the program's own var just before the Kernel's).
+//!   lie hooks write the program's own var just before the Kernel's). A
+//!   fall (a host corrects a mis-tapped lie) comes off the same way.
 //! - **internetVisits** — the `internet_visits` var, else the count of
 //!   `captured` events.
 //! - **codex** — entries held. **quests** — quests done. **truthcoin** —
@@ -149,7 +150,10 @@ export function liesByPerson(sim: Sim): Map<string, number> {
     if (e.path === LIE_COUNTER) {
       const n = Number(e.value);
       if (!Number.isFinite(n)) continue;
-      if (n > prev && last !== null) out.set(last, (out.get(last) ?? 0) + (n - prev));
+      if (last !== null && n > prev) out.set(last, (out.get(last) ?? 0) + (n - prev));
+      // A host taking a lie back (B11) lowers the counter just after
+      // clearing that program's `lie_qN`: the fall comes off that program.
+      else if (last !== null && n < prev) out.set(last, Math.max(0, (out.get(last) ?? 0) - (prev - n)));
       prev = n;
       continue;
     }

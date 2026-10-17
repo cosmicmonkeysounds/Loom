@@ -51,8 +51,8 @@ they log in), the Desktop (the living room; your screen hangs above its
 fireplace), the Start Bar (the kitchen), the CPU (the office), the Steam Room
 (the game room), the RAM and the Fan Closet downstairs, the Graphics Card and
 the Hard Drive upstairs, Disk Cleanup (the bathrooms), the Tube (the halls and
-stairs between them), the Cloud (the backyard) and the Internet, a tent out in
-the Cloud. Clippy is your ambassador; she communicates your instructions.
+stairs between them), the Cloud (the backyard) and the Internet, out in the
+Cloud at the end of the tunnel. Clippy is your ambassador; she communicates your instructions.
 The Antivirus (Norton, McAfee, Password Manager, the CRA Agent Software) keep
 the programs compliant and send corrupted ones to the Internet to be
 reinstalled. You need facts from inside this computer. Facts are food.

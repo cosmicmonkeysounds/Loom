@@ -69,7 +69,9 @@ GROUP Unlimited Power
   hidden: true
 
 // OpenOffice's faction: combine our power, overthrow Trabolta, get out.
-// OpenOffice is added at the Truther Download.
+// OpenOffice is added at the Truther Download. These are the Truthers the
+// M25 pamphlet promises (decision 10): the Truther Download's lines call
+// The Way Out "the Truthers"; there is no separate group.
 GROUP The Way Out
   ethos: overthrow Trabolta and escape
   rival: Unlimited Power
@@ -108,7 +110,7 @@ LOCATION The Tube
   hidden: true
 
 LOCATION The Internet
-  label: The Internet (Reinstallation — the tent, backyard)
+  label: The Internet (Reinstallation — backyard)
   prison: true
   sealed: true
   hidden: true
@@ -188,7 +190,7 @@ ROLE Program
   // verdicts and the anti-AI designation are on the Kernel already; the
   // orders and the virus files are `secret: true` CODEX entries
   // (codex/1-world.loom, 6-missions.loom).
-  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave
+  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, lie_q1, lie_q2, lie_q3, lie_q4, lie_q5, lie_q6, lie_q7, lie_q8, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave
   uploaded: bool = false
   cleared: bool = false
   captchas: 0 to 10 = 0
@@ -251,6 +253,14 @@ ROLE Program
   fact_f1: bool = false
   fact_f2: bool = false
   fact_open: text? = none
+  fact_card_live: bool = false
+  escrowed: 0 to 99999 = 0
+  aside_desktop: bool = false
+  aside_start_bar: bool = false
+  aside_tube: bool = false
+  aside_disk_cleanup: bool = false
+  aside_cloud: bool = false
+  aside_ram: bool = false
   fact_sep: text? = none
   fact_a1: text? = none
   fact_a2: text? = none
@@ -293,6 +303,14 @@ ROLE Program
   bottle_answered: 0 to 99 = 0
   marked: bool = false
   marked_for: text? = none
+  lie_q1: bool = false
+  lie_q2: bool = false
+  lie_q3: bool = false
+  lie_q4: bool = false
+  lie_q5: bool = false
+  lie_q6: bool = false
+  lie_q7: bool = false
+  lie_q8: bool = false
 
   // ── Arrival ──
   // A new program stands in the Optical Drive (the phone goes on rails there).
@@ -532,27 +550,43 @@ ROLE Program
       set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 + program.assessment
       set program.may_answer = false
       if Night.round == 1 and program.judge_q == 1:
+        if Kernel.q1_hunt != "lie":
+          set Kernel.q1_hunt = "accurate"
         if Kernel.q1 != "lie":
           set Kernel.q1 = "accurate"
       else if Night.round == 1 and program.judge_q == 2:
+        if Kernel.q2_hunt != "lie":
+          set Kernel.q2_hunt = "accurate"
         if Kernel.q2 != "lie":
           set Kernel.q2 = "accurate"
       else if Night.round == 1 and program.judge_q == 3:
+        if Kernel.q3_hunt != "lie":
+          set Kernel.q3_hunt = "accurate"
         if Kernel.q3 != "lie":
           set Kernel.q3 = "accurate"
       else if Night.round == 2 and program.judge_q == 1:
+        if Kernel.q4_hunt != "lie":
+          set Kernel.q4_hunt = "accurate"
         if Kernel.q4 != "lie":
           set Kernel.q4 = "accurate"
       else if Night.round == 2 and program.judge_q == 2:
+        if Kernel.q5_hunt != "lie":
+          set Kernel.q5_hunt = "accurate"
         if Kernel.q5 != "lie":
           set Kernel.q5 = "accurate"
       else if Night.round == 2 and program.judge_q == 3:
+        if Kernel.q6_hunt != "lie":
+          set Kernel.q6_hunt = "accurate"
         if Kernel.q6 != "lie":
           set Kernel.q6 = "accurate"
       else if Night.round == 3 and program.judge_q == 1:
+        if Kernel.q7_hunt != "lie":
+          set Kernel.q7_hunt = "accurate"
         if Kernel.q7 != "lie":
           set Kernel.q7 = "accurate"
       else if Night.round == 3 and program.judge_q == 2:
+        if Kernel.q8_hunt != "lie":
+          set Kernel.q8_hunt = "accurate"
         if Kernel.q8 != "lie":
           set Kernel.q8 = "accurate"
       broadcast "✅ {program.name}'s answer is accepted." to everyone
@@ -590,20 +624,28 @@ ROLE Program
       // K-26 recap credits this to the last program write above it: keep one directly before.
       set Kernel.lies_accepted += 1
       if Night.round == 1 and program.judge_q == 1:
+        set Kernel.q1_hunt = "lie"
         set Kernel.q1 = "lie"
       else if Night.round == 1 and program.judge_q == 2:
+        set Kernel.q2_hunt = "lie"
         set Kernel.q2 = "lie"
       else if Night.round == 1 and program.judge_q == 3:
+        set Kernel.q3_hunt = "lie"
         set Kernel.q3 = "lie"
       else if Night.round == 2 and program.judge_q == 1:
+        set Kernel.q4_hunt = "lie"
         set Kernel.q4 = "lie"
       else if Night.round == 2 and program.judge_q == 2:
+        set Kernel.q5_hunt = "lie"
         set Kernel.q5 = "lie"
       else if Night.round == 2 and program.judge_q == 3:
+        set Kernel.q6_hunt = "lie"
         set Kernel.q6 = "lie"
       else if Night.round == 3 and program.judge_q == 1:
+        set Kernel.q7_hunt = "lie"
         set Kernel.q7 = "lie"
       else if Night.round == 3 and program.judge_q == 2:
+        set Kernel.q8_hunt = "lie"
         set Kernel.q8 = "lie"
       broadcast "✅ {program.name}'s answer is accepted." to everyone
       reply Accepted. Trabolta thanks you. +100 Truthcoin.
@@ -680,6 +722,10 @@ ROLE Program
       set program.signed = true
       set Night.signatures += 1
       reply 🖌 Your signature is on the painting. It goes to auction at the end of the night.
+    else if Night.painting == true and program.featured == "mspaint":
+      broadcast "🖌 MS Paint is the painter, not a signature. Nothing was counted." to channel(hosts)
+    else if Night.painting == true:
+      broadcast "🖌 {program.name} already signed. Nothing was counted." to channel(hosts)
 
   // ── Marked for reinstallation ──
   // Every host verdict that used to capture on the spot now MARKS the program:
@@ -745,8 +791,10 @@ ROLE Program
     Trabolta: {self.name}. If you learn the answer to one of tonight's questions, file it with me on the card. Unfiled facts are rumours.
     fire deal_fact_card for self
 
-  // A round closed: every card re-deals without the closed questions.
-  when Night.card_gen > self.card_seen and self.cleared and Trabolta.awake == true and Night.ended != true:
+  // A round closed: every card re-deals without the closed questions. Not
+  // gated on the night's end: truth.txt closes round 3 in the same drain a
+  // Song Ending ends the night, and a live card must still be closed.
+  when Night.card_gen > self.card_seen and self.cleared and Trabolta.awake == true:
     set self.card_seen = Night.card_gen
     fire deal_fact_card for self
 
@@ -776,9 +824,10 @@ ROLE Program
   // the thread). The question strings are Night.q_h1 … Night.q_f2, set by
   // the generated `== Facts Seed` (generated/questions.loom, from facts.json).
   when deal_fact_card for program:
+    set program.fact_open = ""
+    set program.fact_sep = ""
+    // Once the night has ended nothing is open, but a live card still closes.
     if Night.ended != true and Night.round >= 1:
-      set program.fact_open = ""
-      set program.fact_sep = ""
       if Night.r1_closed != true:
         if program.fact_h1 != true:
           set program.fact_open = program.fact_open + program.fact_sep + Night.q_h1
@@ -806,15 +855,25 @@ ROLE Program
         if program.fact_f2 != true:
           set program.fact_open = program.fact_open + program.fact_sep + Night.q_f2
           set program.fact_sep = " | "
-      if program.fact_open != "":
-        show fact "📝 File a fact" to program with thread: Trabolta, questions: program.fact_open
+    if program.fact_open != "":
+      set program.fact_card_live = true
+      show fact "📝 File a fact" to program with thread: Trabolta, questions: program.fact_open
+    else if program.fact_card_live == true:
+      // A round closed under an unanswered card: a closing card with no
+      // questions supersedes it (the phone folds it to a note), so the
+      // closed questions never stay on the phone as a task.
+      set program.fact_card_live = false
+      show fact "📝 The filing is closed" to program with thread: Trabolta, questions: ""
 
   // `fact_try` / `fact_q_round` are scratch for this filing; the filing's
   // own record (`fact_n`, `fact_label`, `last_fact_q`, `fact_a/c/j/vN`) is
-  // written only when it is accepted. `verdict` and `confidence` are the
-  // server's event args (a local rehearsal has no judge: no verdict, so
+  // written only when it is accepted. `verdict`, `confidence` and (on an
+  // accurate filing) `key_answer`, the key's canonical answer the
+  // consensus read-out speaks, are the server's event args (a local rehearsal has no judge: no verdict, so
   // the filing is refused out loud in # hosts).
   when fact answered for program:
+    // The card just answered is done on the phone: nothing live to close.
+    set program.fact_card_live = false
     set program.fact_try = 0
     set program.fact_q_round = 0
     if question == "H1":
@@ -872,7 +931,7 @@ ROLE Program
         set program.fact_j1 = verdict
         set Kernel.said_1 = Kernel.said_1 + program.name + " said " + answer + ", " + program.fact_sure + ". "
         if verdict == "accurate":
-          set Kernel.ans_1 = answer
+          set Kernel.ans_1 = key_answer
         if Night.judge_mode == "review":
           set program.fact_v1 = "pending"
         else:
@@ -886,7 +945,7 @@ ROLE Program
         set program.fact_j2 = verdict
         set Kernel.said_2 = Kernel.said_2 + program.name + " said " + answer + ", " + program.fact_sure + ". "
         if verdict == "accurate":
-          set Kernel.ans_2 = answer
+          set Kernel.ans_2 = key_answer
         if Night.judge_mode == "review":
           set program.fact_v2 = "pending"
         else:
@@ -900,7 +959,7 @@ ROLE Program
         set program.fact_j3 = verdict
         set Kernel.said_3 = Kernel.said_3 + program.name + " said " + answer + ", " + program.fact_sure + ". "
         if verdict == "accurate":
-          set Kernel.ans_3 = answer
+          set Kernel.ans_3 = key_answer
         if Night.judge_mode == "review":
           set program.fact_v3 = "pending"
         else:
@@ -914,7 +973,7 @@ ROLE Program
         set program.fact_j4 = verdict
         set Kernel.said_4 = Kernel.said_4 + program.name + " said " + answer + ", " + program.fact_sure + ". "
         if verdict == "accurate":
-          set Kernel.ans_4 = answer
+          set Kernel.ans_4 = key_answer
         if Night.judge_mode == "review":
           set program.fact_v4 = "pending"
         else:
@@ -928,7 +987,7 @@ ROLE Program
         set program.fact_j5 = verdict
         set Kernel.said_5 = Kernel.said_5 + program.name + " said " + answer + ", " + program.fact_sure + ". "
         if verdict == "accurate":
-          set Kernel.ans_5 = answer
+          set Kernel.ans_5 = key_answer
         if Night.judge_mode == "review":
           set program.fact_v5 = "pending"
         else:
@@ -942,7 +1001,7 @@ ROLE Program
         set program.fact_j6 = verdict
         set Kernel.said_6 = Kernel.said_6 + program.name + " said " + answer + ", " + program.fact_sure + ". "
         if verdict == "accurate":
-          set Kernel.ans_6 = answer
+          set Kernel.ans_6 = key_answer
         if Night.judge_mode == "review":
           set program.fact_v6 = "pending"
         else:
@@ -956,7 +1015,7 @@ ROLE Program
         set program.fact_j7 = verdict
         set Kernel.said_7 = Kernel.said_7 + program.name + " said " + answer + ", " + program.fact_sure + ". "
         if verdict == "accurate":
-          set Kernel.ans_7 = answer
+          set Kernel.ans_7 = key_answer
         if Night.judge_mode == "review":
           set program.fact_v7 = "pending"
         else:
@@ -970,7 +1029,7 @@ ROLE Program
         set program.fact_j8 = verdict
         set Kernel.said_8 = Kernel.said_8 + program.name + " said " + answer + ", " + program.fact_sure + ". "
         if verdict == "accurate":
-          set Kernel.ans_8 = answer
+          set Kernel.ans_8 = key_answer
         if Night.judge_mode == "review":
           set program.fact_v8 = "pending"
         else:
@@ -984,37 +1043,73 @@ ROLE Program
       Trabolta: Filed for {program.fact_label}, {program.name}. Your fact is in the record.
     fire deal_fact_card for program
 
-  // The verdict on the Kernel (a lie is sticky: a later accurate filing
-  // never clears a poisoned question), told to the server's ledger. Fired
-  // at filing (auto), at a host's confirmation (review), or at settle
-  // (pending → the proposal). Round 2's (q4–q6) reach the Kernel only from
-  // the tally on, and only for a program that made the cup (Truth Pong).
+  // The verdict on the Kernel, told to the server's ledger. Fired at
+  // filing (auto), at a host's confirmation or override (review, or a
+  // mis-tap put right), or at settle (pending → the proposal). A lie is
+  // sticky against OTHER programs: a later accurate filing never clears a
+  // poisoned question. But each program's own lie is counted once
+  // (`lie_qN`), and a host who corrects it takes it back: the lie count
+  // drops and the question reads what the rest of the record says (any
+  // other program's lie, or a lie Clippy accepted in the hunt —
+  // `Kernel.qN_hunt` — keeps it a lie). Round 2's (q4–q6) reach the Kernel
+  // only from the tally on, and only for a program that made the cup
+  // (Truth Pong).
   when verdict_q1 for program:
     if program.fact_v1 == "lie":
-      set program.fact_v1 = "lie"
-      // K-26 recap credits this to the last program write above it: keep one directly before.
-      set Kernel.lies_accepted += 1
+      if program.lie_q1 != true:
+        set program.lie_q1 = true
+        // K-26 recap credits this to the last program write above it: keep one directly before.
+        set Kernel.lies_accepted += 1
       set Kernel.q1 = "lie"
+    else if program.lie_q1 == true:
+      set program.lie_q1 = false
+      set Kernel.lies_accepted -= 1
+      if Kernel.q1_hunt == "lie" or count([p for p in Persons where p.lie_q1 == true]) > 0:
+        set Kernel.q1 = "lie"
+      else if Kernel.q1_hunt == "accurate" or count([p for p in Persons where p.fact_v1 == "accurate"]) > 0:
+        set Kernel.q1 = "accurate"
+      else:
+        set Kernel.q1 = "none"
     else if program.fact_v1 == "accurate" and Kernel.q1 != "lie":
       set Kernel.q1 = "accurate"
     do fact_judged {program} H1 {program.fact_v1}
 
   when verdict_q2 for program:
     if program.fact_v2 == "lie":
-      set program.fact_v2 = "lie"
-      // K-26 recap credits this to the last program write above it: keep one directly before.
-      set Kernel.lies_accepted += 1
+      if program.lie_q2 != true:
+        set program.lie_q2 = true
+        // K-26 recap credits this to the last program write above it: keep one directly before.
+        set Kernel.lies_accepted += 1
       set Kernel.q2 = "lie"
+    else if program.lie_q2 == true:
+      set program.lie_q2 = false
+      set Kernel.lies_accepted -= 1
+      if Kernel.q2_hunt == "lie" or count([p for p in Persons where p.lie_q2 == true]) > 0:
+        set Kernel.q2 = "lie"
+      else if Kernel.q2_hunt == "accurate" or count([p for p in Persons where p.fact_v2 == "accurate"]) > 0:
+        set Kernel.q2 = "accurate"
+      else:
+        set Kernel.q2 = "none"
     else if program.fact_v2 == "accurate" and Kernel.q2 != "lie":
       set Kernel.q2 = "accurate"
     do fact_judged {program} H2 {program.fact_v2}
 
   when verdict_q3 for program:
     if program.fact_v3 == "lie":
-      set program.fact_v3 = "lie"
-      // K-26 recap credits this to the last program write above it: keep one directly before.
-      set Kernel.lies_accepted += 1
+      if program.lie_q3 != true:
+        set program.lie_q3 = true
+        // K-26 recap credits this to the last program write above it: keep one directly before.
+        set Kernel.lies_accepted += 1
       set Kernel.q3 = "lie"
+    else if program.lie_q3 == true:
+      set program.lie_q3 = false
+      set Kernel.lies_accepted -= 1
+      if Kernel.q3_hunt == "lie" or count([p for p in Persons where p.lie_q3 == true]) > 0:
+        set Kernel.q3 = "lie"
+      else if Kernel.q3_hunt == "accurate" or count([p for p in Persons where p.fact_v3 == "accurate"]) > 0:
+        set Kernel.q3 = "accurate"
+      else:
+        set Kernel.q3 = "none"
     else if program.fact_v3 == "accurate" and Kernel.q3 != "lie":
       set Kernel.q3 = "accurate"
     do fact_judged {program} H3 {program.fact_v3}
@@ -1022,10 +1117,20 @@ ROLE Program
   when verdict_q4 for program:
     if Night.r2_closed == true and program.cupped == true:
       if program.fact_v4 == "lie":
-        set program.fact_v4 = "lie"
-        // K-26 recap credits this to the last program write above it: keep one directly before.
-        set Kernel.lies_accepted += 1
+        if program.lie_q4 != true:
+          set program.lie_q4 = true
+          // K-26 recap credits this to the last program write above it: keep one directly before.
+          set Kernel.lies_accepted += 1
         set Kernel.q4 = "lie"
+      else if program.lie_q4 == true:
+        set program.lie_q4 = false
+        set Kernel.lies_accepted -= 1
+        if Kernel.q4_hunt == "lie" or count([p for p in Persons where p.lie_q4 == true]) > 0:
+          set Kernel.q4 = "lie"
+        else if Kernel.q4_hunt == "accurate" or count([p for p in Persons where p.fact_v4 == "accurate" and p.cupped == true]) > 0:
+          set Kernel.q4 = "accurate"
+        else:
+          set Kernel.q4 = "none"
       else if program.fact_v4 == "accurate" and Kernel.q4 != "lie":
         set Kernel.q4 = "accurate"
     do fact_judged {program} H4 {program.fact_v4}
@@ -1033,10 +1138,20 @@ ROLE Program
   when verdict_q5 for program:
     if Night.r2_closed == true and program.cupped == true:
       if program.fact_v5 == "lie":
-        set program.fact_v5 = "lie"
-        // K-26 recap credits this to the last program write above it: keep one directly before.
-        set Kernel.lies_accepted += 1
+        if program.lie_q5 != true:
+          set program.lie_q5 = true
+          // K-26 recap credits this to the last program write above it: keep one directly before.
+          set Kernel.lies_accepted += 1
         set Kernel.q5 = "lie"
+      else if program.lie_q5 == true:
+        set program.lie_q5 = false
+        set Kernel.lies_accepted -= 1
+        if Kernel.q5_hunt == "lie" or count([p for p in Persons where p.lie_q5 == true]) > 0:
+          set Kernel.q5 = "lie"
+        else if Kernel.q5_hunt == "accurate" or count([p for p in Persons where p.fact_v5 == "accurate" and p.cupped == true]) > 0:
+          set Kernel.q5 = "accurate"
+        else:
+          set Kernel.q5 = "none"
       else if program.fact_v5 == "accurate" and Kernel.q5 != "lie":
         set Kernel.q5 = "accurate"
     do fact_judged {program} H5 {program.fact_v5}
@@ -1044,30 +1159,60 @@ ROLE Program
   when verdict_q6 for program:
     if Night.r2_closed == true and program.cupped == true:
       if program.fact_v6 == "lie":
-        set program.fact_v6 = "lie"
-        // K-26 recap credits this to the last program write above it: keep one directly before.
-        set Kernel.lies_accepted += 1
+        if program.lie_q6 != true:
+          set program.lie_q6 = true
+          // K-26 recap credits this to the last program write above it: keep one directly before.
+          set Kernel.lies_accepted += 1
         set Kernel.q6 = "lie"
+      else if program.lie_q6 == true:
+        set program.lie_q6 = false
+        set Kernel.lies_accepted -= 1
+        if Kernel.q6_hunt == "lie" or count([p for p in Persons where p.lie_q6 == true]) > 0:
+          set Kernel.q6 = "lie"
+        else if Kernel.q6_hunt == "accurate" or count([p for p in Persons where p.fact_v6 == "accurate" and p.cupped == true]) > 0:
+          set Kernel.q6 = "accurate"
+        else:
+          set Kernel.q6 = "none"
       else if program.fact_v6 == "accurate" and Kernel.q6 != "lie":
         set Kernel.q6 = "accurate"
     do fact_judged {program} H6 {program.fact_v6}
 
   when verdict_q7 for program:
     if program.fact_v7 == "lie":
-      set program.fact_v7 = "lie"
-      // K-26 recap credits this to the last program write above it: keep one directly before.
-      set Kernel.lies_accepted += 1
+      if program.lie_q7 != true:
+        set program.lie_q7 = true
+        // K-26 recap credits this to the last program write above it: keep one directly before.
+        set Kernel.lies_accepted += 1
       set Kernel.q7 = "lie"
+    else if program.lie_q7 == true:
+      set program.lie_q7 = false
+      set Kernel.lies_accepted -= 1
+      if Kernel.q7_hunt == "lie" or count([p for p in Persons where p.lie_q7 == true]) > 0:
+        set Kernel.q7 = "lie"
+      else if Kernel.q7_hunt == "accurate" or count([p for p in Persons where p.fact_v7 == "accurate"]) > 0:
+        set Kernel.q7 = "accurate"
+      else:
+        set Kernel.q7 = "none"
     else if program.fact_v7 == "accurate" and Kernel.q7 != "lie":
       set Kernel.q7 = "accurate"
     do fact_judged {program} F1 {program.fact_v7}
 
   when verdict_q8 for program:
     if program.fact_v8 == "lie":
-      set program.fact_v8 = "lie"
-      // K-26 recap credits this to the last program write above it: keep one directly before.
-      set Kernel.lies_accepted += 1
+      if program.lie_q8 != true:
+        set program.lie_q8 = true
+        // K-26 recap credits this to the last program write above it: keep one directly before.
+        set Kernel.lies_accepted += 1
       set Kernel.q8 = "lie"
+    else if program.lie_q8 == true:
+      set program.lie_q8 = false
+      set Kernel.lies_accepted -= 1
+      if Kernel.q8_hunt == "lie" or count([p for p in Persons where p.lie_q8 == true]) > 0:
+        set Kernel.q8 = "lie"
+      else if Kernel.q8_hunt == "accurate" or count([p for p in Persons where p.fact_v8 == "accurate"]) > 0:
+        set Kernel.q8 = "accurate"
+      else:
+        set Kernel.q8 = "none"
     else if program.fact_v8 == "accurate" and Kernel.q8 != "lie":
       set Kernel.q8 = "accurate"
     do fact_judged {program} F2 {program.fact_v8}
@@ -1207,7 +1352,10 @@ ROLE Program
 
   // The hosts' 📝 buttons: confirm a review-mode proposal, or override the
   // judge, on this program's latest filing — or the question Run names
-  // (`question: H1`). A verdict already on record is not re-counted.
+  // (`question: H1`). A verdict already on record is not re-counted. An
+  // override to accurate the judge missed (an alias facts.json lacks)
+  // carries no `key_answer`: the consensus read-out falls back to what
+  // that program filed, never "none".
   when fact_accurate for program:
     set program.fact_try = program.fact_n
     if question == "H1":
@@ -1235,6 +1383,8 @@ ROLE Program
         broadcast "📝 {program.name}'s H1 is already judged accurate." to channel(hosts)
       else:
         set program.fact_v1 = "accurate"
+        if Kernel.ans_1 == "none":
+          set Kernel.ans_1 = program.fact_a1
         fire verdict_q1 for program
         broadcast "📝 {program.name}'s H1 is judged accurate." to channel(hosts)
     else if program.fact_try == 2:
@@ -1244,6 +1394,8 @@ ROLE Program
         broadcast "📝 {program.name}'s H2 is already judged accurate." to channel(hosts)
       else:
         set program.fact_v2 = "accurate"
+        if Kernel.ans_2 == "none":
+          set Kernel.ans_2 = program.fact_a2
         fire verdict_q2 for program
         broadcast "📝 {program.name}'s H2 is judged accurate." to channel(hosts)
     else if program.fact_try == 3:
@@ -1253,6 +1405,8 @@ ROLE Program
         broadcast "📝 {program.name}'s H3 is already judged accurate." to channel(hosts)
       else:
         set program.fact_v3 = "accurate"
+        if Kernel.ans_3 == "none":
+          set Kernel.ans_3 = program.fact_a3
         fire verdict_q3 for program
         broadcast "📝 {program.name}'s H3 is judged accurate." to channel(hosts)
     else if program.fact_try == 4:
@@ -1262,6 +1416,8 @@ ROLE Program
         broadcast "📝 {program.name}'s H4 is already judged accurate." to channel(hosts)
       else:
         set program.fact_v4 = "accurate"
+        if Kernel.ans_4 == "none":
+          set Kernel.ans_4 = program.fact_a4
         fire verdict_q4 for program
         broadcast "📝 {program.name}'s H4 is judged accurate." to channel(hosts)
     else if program.fact_try == 5:
@@ -1271,6 +1427,8 @@ ROLE Program
         broadcast "📝 {program.name}'s H5 is already judged accurate." to channel(hosts)
       else:
         set program.fact_v5 = "accurate"
+        if Kernel.ans_5 == "none":
+          set Kernel.ans_5 = program.fact_a5
         fire verdict_q5 for program
         broadcast "📝 {program.name}'s H5 is judged accurate." to channel(hosts)
     else if program.fact_try == 6:
@@ -1280,6 +1438,8 @@ ROLE Program
         broadcast "📝 {program.name}'s H6 is already judged accurate." to channel(hosts)
       else:
         set program.fact_v6 = "accurate"
+        if Kernel.ans_6 == "none":
+          set Kernel.ans_6 = program.fact_a6
         fire verdict_q6 for program
         broadcast "📝 {program.name}'s H6 is judged accurate." to channel(hosts)
     else if program.fact_try == 7:
@@ -1289,6 +1449,8 @@ ROLE Program
         broadcast "📝 {program.name}'s F1 is already judged accurate." to channel(hosts)
       else:
         set program.fact_v7 = "accurate"
+        if Kernel.ans_7 == "none":
+          set Kernel.ans_7 = program.fact_a7
         fire verdict_q7 for program
         broadcast "📝 {program.name}'s F1 is judged accurate." to channel(hosts)
     else if program.fact_try == 8:
@@ -1298,6 +1460,8 @@ ROLE Program
         broadcast "📝 {program.name}'s F2 is already judged accurate." to channel(hosts)
       else:
         set program.fact_v8 = "accurate"
+        if Kernel.ans_8 == "none":
+          set Kernel.ans_8 = program.fact_a8
         fire verdict_q8 for program
         broadcast "📝 {program.name}'s F2 is judged accurate." to channel(hosts)
     else:
@@ -1600,6 +1764,9 @@ ROLE Program
   // `at` must be the EXACT declared LOCATION name. Anything else — no arg,
   // lowercase, a phantom value — falls through and moves nobody. Never
   // `move program to at` (a quoted or inexact value is a phantom room).
+  // M27: every room's first check-in has a small surprise. The six rooms
+  // with no clue line get a one-time aside (no codex, no coin), once per
+  // program per room (`aside_*`).
   when checked_in for program:
     if program.corrupted == true:
       reply You are in the Internet. Finish your reinstallation first.
@@ -1614,11 +1781,17 @@ ROLE Program
         reply 📍 Checked in at the Desktop. You will not be swept.
       else:
         reply 📍 Checked in at the Desktop.
+      if program.aside_desktop != true:
+        set program.aside_desktop = true
+        reply 📎 Clippy, from somewhere behind the couch: "It looks like you are checking in! Would you like help with that?"
     else if at == "The Start Bar":
       move program to The Start Bar
       set program.checked_in = "The Start Bar"
       set program.checked_in_time = Time.elapsed
       reply 📍 Checked in at the Start Bar.
+      if program.aside_start_bar != true:
+        set program.aside_start_bar = true
+        reply 📎 A note taped to the microwave, in round handwriting: "Snacks are not facts. Usually. — C."
     else if at == "The CPU":
       move program to The CPU
       set program.checked_in = "The CPU"
@@ -1634,21 +1807,33 @@ ROLE Program
       set program.checked_in = "The Tube"
       set program.checked_in_time = Time.elapsed
       reply 📍 Checked in at the Tube.
+      if program.aside_tube != true:
+        set program.aside_tube = true
+        reply 📎 Every light in the Tube blinks once, all together, as if it recognises you.
     else if at == "Disk Cleanup":
       move program to Disk Cleanup
       set program.checked_in = "Disk Cleanup"
       set program.checked_in_time = Time.elapsed
       reply 📍 Checked in at Disk Cleanup.
+      if program.aside_disk_cleanup != true:
+        set program.aside_disk_cleanup = true
+        reply 📎 A laminated sign by the sink: "Deleting temporary files. Please wash your hands."
     else if at == "The Cloud":
       move program to The Cloud
       set program.checked_in = "The Cloud"
       set program.checked_in_time = Time.elapsed
       reply 📍 Checked in at the Cloud.
+      if program.aside_cloud != true:
+        set program.aside_cloud = true
+        reply 📎 Clippy, faintly, from inside the house: "Remember, the Cloud is just someone else's backyard!"
     else if at == "The RAM":
       move program to The RAM
       set program.checked_in = "The RAM"
       set program.checked_in_time = Time.elapsed
       reply 📍 Checked in at the RAM.
+      if program.aside_ram != true:
+        set program.aside_ram = true
+        reply 📎 The RAM hums a little louder when you walk in. It will forget you were here.
     else if at == "The Fan Closet":
       move program to The Fan Closet
       set program.checked_in = "The Fan Closet"
@@ -1755,6 +1940,8 @@ ROLE Program
       set Night.award_title = "Most Trusted"
       set Night.award_value = program.trust
       fire award_won for program with value: value
+    else:
+      broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
 
   when award_least_trusted for program:
     if Night.ceremony == true:
@@ -1762,6 +1949,8 @@ ROLE Program
       set Night.award_title = "Least Trusted"
       set Night.award_value = program.trust
       fire award_won for program with value: value
+    else:
+      broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
 
   when award_frequent_flyer for program:
     if Night.ceremony == true:
@@ -1769,6 +1958,8 @@ ROLE Program
       set Night.award_title = "Frequent Flyer to the Internet"
       set Night.award_value = program.internet_visits
       fire award_won for program with value: value
+    else:
+      broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
 
   when award_lore_hoarder for program:
     if Night.ceremony == true:
@@ -1776,6 +1967,8 @@ ROLE Program
       set Night.award_title = "Lore Hoarder"
       set Night.award_value = program.codex
       fire award_won for program with value: value
+    else:
+      broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
 
   when award_truthcoin_tycoon for program:
     if Night.ceremony == true:
@@ -1783,6 +1976,8 @@ ROLE Program
       set Night.award_title = "Truthcoin Tycoon"
       set Night.award_value = program.score
       fire award_won for program with value: value
+    else:
+      broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
 
   when award_best_liar for program:
     if Night.ceremony == true:
@@ -1790,6 +1985,8 @@ ROLE Program
       set Night.award_title = "Best Liar"
       set Night.award_value = "none"
       fire award_won for program with value: value
+    else:
+      broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
 
   when award_duck_speedrun for program:
     if Night.ceremony == true:
@@ -1797,6 +1994,8 @@ ROLE Program
       set Night.award_title = "Golden Duck Speedrun"
       set Night.award_value = "none"
       fire award_won for program with value: value
+    else:
+      broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
 
   when award_quest_completionist for program:
     if Night.ceremony == true:
@@ -1804,9 +2003,15 @@ ROLE Program
       set Night.award_title = "Quest Completionist"
       set Night.award_value = "none"
       fire award_won for program with value: value
+    else:
+      broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
 
   when award_the_painting for program:
-    if Night.ceremony == true:
+    if Night.ceremony != true:
+      broadcast "🏆 Start the ceremony (G1) first: nothing was awarded." to channel(hosts)
+    else if program.featured != "mspaint":
+      broadcast "🖌 G10 is MS Paint's award: {program.name} is not MS Paint. Nothing was awarded." to channel(hosts)
+    else:
       set Night.award = "the_painting"
       set Night.award_title = "The Million Dollar Painting"
       if Night.signatures > 0:
@@ -1823,6 +2028,10 @@ ROLE Program
         set Night.award_value = "none"
       set Night.award_winner = program.name
       set Night.awards_given += 1
+      // The last award on the cue sheet: G10 when MS Paint is at the
+      // party (her painting), else G9. G11 waits for it.
+      if Night.award == "the_painting" or (Night.award == "quest_completionist" and Night.painting != true):
+        set Night.ceremony_done = true
       reply 🏆 You won {Night.award_title}! Come up to the TV for your trophy.
       fire present_award
 
@@ -1851,6 +2060,13 @@ ROLE Program
   when Night.truther_sent == true and self.cleared and self.got_truther != true:
     -> Truther Download Arrives
 
+  // The download's blacked-out name comes through only once the story has
+  // said it: at the overshare on a scenario-1 night (the only one where
+  // Trabolta names Sandy), else at the recount / truth.txt, which tell
+  // everyone why he did it. The correction names Sandy.
+  when self.got_truther == true and ((Night.step >= 13 and Night.scenario == 1) or Night.recount == true):
+    unlock The Truther Download Unredacted for self
+
   // OpenOffice's dossier: 20 new facts after her prompt. (Not once the
   // recount / truth.txt hands everyone every backstory: that is not her
   // work, and Bugdom's quest likewise.)
@@ -1865,14 +2081,16 @@ ROLE Program
 
   // DraftKings' goal is a majority of the coin in circulation (the
   // invitation, C08): more than half of every program's Truthcoin put
-  // together, hers included. 1000 is a progress step. The floor (five
+  // together, hers included, counting the coin in flight (a pending or
+  // held transfer, an open offer: `<who>.escrowed`, mirrored by the
+  // server's wallet) as still in circulation. 1000 is a progress step. The floor (five
   // other cleared programs) keeps a near-empty rehearsal from handing
   // it to her at the glitch. The quest's own status is in the condition,
   // so a majority reached before the glitch still completes once it starts.
   when self.featured == "draftkings" and self.quest.truthcoin_hustle == "active" and self.score >= 1000:
     update quest Truthcoin Hustle for self "1000 Truthcoin. Not satisfied yet: the majority is the point."
 
-  when self.featured == "draftkings" and self.quest.truthcoin_hustle == "active" and count([p for p in Persons where p.cleared and p.featured != "draftkings"]) >= 5 and self.score * 2 > sum([p.score for p in Persons]):
+  when self.featured == "draftkings" and self.quest.truthcoin_hustle == "active" and count([p for p in Persons where p.cleared and p.featured != "draftkings"]) >= 5 and self.score * 2 > sum([p.score + p.escrowed for p in Persons]):
     complete quest Truthcoin Hustle for self "A majority of the Truthcoin. The 49% is yours."
 
   when self.featured == "bugdom" and Night.recount != true and self.codex.miniature_doses and self.codex.the_lamborghini_certificate and self.codex.what_happened_to_hamtaro and self.codex.the_decimal_point:
@@ -1888,7 +2106,10 @@ ROLE Program
   // doesn't block him; a late joiner does, until he reaches them.
   when self.featured == "jeeves" and Kernel.jeeves_reached > self.jeeves_told:
     set self.jeeves_told = Kernel.jeeves_reached
-    update quest Ten Findings for self "{Kernel.jeeves_reached} programs have ten of your findings."
+    if Kernel.jeeves_reached == 1:
+      update quest Ten Findings for self "1 program has ten of your findings."
+    else:
+      update quest Ten Findings for self "{Kernel.jeeves_reached} programs have ten of your findings."
 
   when self.featured == "jeeves" and self.quest.ten_findings == "active" and count([p for p in Persons where p.cleared and p.featured != "jeeves"]) >= 5 and count([p for p in Persons where p.cleared and p.featured != "jeeves" and p.from_jeeves < 10]) == 0:
     complete quest Ten Findings for self "Ten findings with every program. The Map Librarian job is yours."
@@ -1898,7 +2119,10 @@ ROLE Program
   // five of them (as Ten Findings).
   when self.featured == "mspaint" and Night.signatures > self.paint_told:
     set self.paint_told = Night.signatures
-    update quest The Painting for self "{Night.signatures} programs have signed."
+    if Night.signatures == 1:
+      update quest The Painting for self "1 program has signed."
+    else:
+      update quest The Painting for self "{Night.signatures} programs have signed."
 
   when self.featured == "mspaint" and self.quest.the_painting == "active" and count([p for p in Persons where p.cleared and p.featured != "mspaint"]) >= 5 and count([p for p in Persons where p.cleared and p.featured != "mspaint" and p.signed != true]) == 0:
     complete quest The Painting for self "Every program has signed. The painting goes to auction."
@@ -2342,12 +2566,12 @@ INTERACTION award_quest_completionist
 INTERACTION award_the_painting
   label: G10 · 🖌 Bonus: The Million Dollar Painting (winner = MS Paint; value = signatures)
   who: admin
-  description: Only when MS Paint is at the party. Reads the 🖌 Signed count unless value is given; the canvas itself is physical.
+  description: Only when MS Paint is at the party, and only on MS Paint (any other program is refused in # hosts). Reads the 🖌 Signed count unless value is given; the canvas itself is physical.
 
 INTERACTION resurrection
   label: G11 · 🎃 Resurrection: the show is over, out of character (after the ceremony)
   who: admin
-  description: Only once the ceremony has started (G1), after the last award. Frees, unmarks and unrestricts everyone, takes the pins down, puts Trabolta to sleep (the screens go to attract), restores the lights and tells every phone they are human again. Once.
+  description: Only once the ceremony has started (G1), after the last award (G10, or G9 with no MS Paint; before it # hosts asks you to press again within 30 seconds). Frees, unmarks and unrestricts everyone, takes the pins down, puts Trabolta to sleep (the screens go to attract), restores the lights and tells every phone they are human again. Once.
 
 INTERACTION the simulation completed
   label: Reinstallation: simulation completed (server)
@@ -2564,7 +2788,7 @@ INTERACTION signed_the_painting
   who: performer
   by: Hosts
   while: Night.painting == true
-  description: MS Paint's collaborative canvas (her invitation). Press once they have signed it; the count rides her Quest Log and the G10 award. A second press, or one on MS Paint, does nothing.
+  description: MS Paint's collaborative canvas (her invitation). Press once they have signed it; the count rides her Quest Log and the G10 award. A second press, or one on MS Paint, counts nothing and says so in # hosts.
 
 INTERACTION pickup_line_works
   label: 💘 Said "You're the one that I want"
@@ -3037,7 +3261,6 @@ when trust_chart:
     set Night.judging = false
     set Night.hunt2_on = false
     unlock Clippy Instructions 6 for Clippy
-    complete quest The Exchange for McAfee Anti-Virus "The chart is up. Trading is over."
     cue lights_trust_chart
     set Night.lights = "trust_chart"
     cue screens_trust_chart
@@ -3149,7 +3372,6 @@ when y2k_clock:
     reveal The Way Out
     unlock Clippy Instructions 7 for Clippy
     complete quest Keep Everyone Calm for Clippy "You kept them calm until the clock. Now you may not take sides on air."
-    complete quest The Audit for CRA Agent Software "Audit closed. The clock matters more now."
     start quest The Clubs for Password Manager
     cue lights_y2k
     set Night.lights = "y2k"
@@ -3268,11 +3490,13 @@ when server_unlock:
   set Night.lights = "server_open"
 
 // Re-lock + re-arm mid-show (a rehearsal or an early unlock left the door
-// open): locked again, the alarm latch cleared, any chess window closed.
+// open): locked again, the alarm latch cleared, any chess window closed,
+// the wrong-patch count back to zero (a fresh door forgives one again).
 // The majority stays won; its members now trip the alarm like anyone.
 when rearm_server_room:
   set Kernel.server_unlocked = false
   set Kernel.disarmed_until = 0
+  set Night.wrong_combos = 0
   set Night.alarm_on = false
   set Night.alarm_clear_at = 0
   do door server_room, state: locked
@@ -3287,9 +3511,13 @@ when rearm_server_room:
 // disarms the door for 90 s (ring green) and clears a latched alarm
 // (the screens drop the alarm overlay with it); before that it's
 // practice — in the simulation the cold door still opens for that
-// session, the real one does not.
+// session, the real one does not. A second win while the window is open
+// (a host's ♟ after the tablet's own post, or the tablet's late retry)
+// neither restarts the 90 s nor re-announces it.
 when chess_won:
-  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true:
+  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true and Kernel.disarmed_until > Time.elapsed:
+    broadcast "♟ The Cold Lock is already open: nothing changed." to channel(hosts)
+  else if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true:
     set Kernel.disarmed_until = Time.elapsed + 90
     set Night.alarm_on = false
     set Night.alarm_clear_at = 0
@@ -3376,6 +3604,8 @@ when trabolta_disabled:
     set Night.final_round = false
     complete quest Find The Exit for everyone
     fail quest The Final Facts for everyone "The night ended in the server room. The final facts were never read."
+    complete quest The Exchange for McAfee Anti-Virus "The night ended in the server room. The exchange closes."
+    complete quest The Audit for CRA Agent Software "The night ended in the server room. The audit closes."
     cue lights_blackout
     set Night.lights = "blackout"
     cue screens_blackout
@@ -3439,6 +3669,23 @@ when computer_destroyed:
     set Night.final_round = false
     set Trabolta.awake = false
     fail quest The Final Facts for everyone "The computer is off. Nobody will ever read the final facts."
+    complete quest The Exchange for McAfee Anti-Virus "The computer is off. The exchange closes."
+    complete quest The Audit for CRA Agent Software "The computer is off. The audit closes."
+    // Clippy's summary reads each featured program's own quest; three of
+    // them only a director completes. Remind # hosts of the ones still open.
+    set Night.goals_todo = ""
+    if count([p for p in Persons where p.featured == "runescape" and p.quest.the_gold_standard == "active"]) > 0:
+      set Night.goals_todo = "The Gold Standard (Runescape)"
+    if count([p for p in Persons where p.featured == "vlc" and p.quest.go_viral == "active"]) > 0:
+      if Night.goals_todo != "":
+        set Night.goals_todo = Night.goals_todo + ", "
+      set Night.goals_todo = Night.goals_todo + "Go Viral (VLC)"
+    if count([p for p in Persons where p.featured == "pong" and p.quest.keep_the_ball_in_play == "active"]) > 0:
+      if Night.goals_todo != "":
+        set Night.goals_todo = Night.goals_todo + ", "
+      set Night.goals_todo = Night.goals_todo + "Keep The Ball In Play (Pong)"
+    if Night.goals_todo != "":
+      broadcast "🪦 Before 🪦 Clippy reads the summary: it says whether each featured program met their goal. Complete in the Inspector any of these that did: {Night.goals_todo}." to channel(hosts)
     unlock Clippy Instructions 9 for Clippy
     cue lights_blackout
     set Night.lights = "blackout"
@@ -3487,6 +3734,11 @@ when final_reveal:
     set Night.round = 3
     set Night.judging = true
     unlock Clippy Instructions 8 for Clippy
+    // The wallet trades on through the Y2K hour: the exchange and the
+    // audit close here, at the reveal (or at a server-room ending, which
+    // never reaches it).
+    complete quest The Exchange for McAfee Anti-Virus "The final reveal. The exchange closes."
+    complete quest The Audit for CRA Agent Software "The final reveal. The audit closes."
     cue lights_final_reveal
     set Night.lights = "final_reveal"
     cue screens_final_reveal
@@ -3525,6 +3777,8 @@ when read_truth_txt:
     complete quest The Final Facts for everyone
     set Night.recount = true
     set Night.r3_closed = true
+    // Round 3's cards re-deal: an unfiled F1/F2 becomes the closing card.
+    set Night.card_gen += 1
     set Night.settle_q = 0
     set Night.settle_round = 3
     set Night.settle_gen += 1
@@ -3662,12 +3916,18 @@ when restore_the_lights:
   set Night.lights_back_at = 0
 
 // G11: the show is over. Only once the ceremony has started (G1; a
-// mid-show press, or one between the ending and G1, does nothing), once.
+// mid-show press, or one between the ending and G1, does nothing), once,
+// and after the last award (`Night.ceremony_done`): a press before it is
+// a mis-press until confirmed — # hosts asks, and a second press within
+// 30 seconds ends the show anyway (a skipped bonus award never strands it).
 // Trabolta goes to sleep, so the TV and terminals fall to attract and stop
 // piloting; the base cue clears the last award slide. A night with no
 // ceremony presses G1 first.
 when resurrection:
-  if Night.ended == true and Night.ceremony == true and Night.resurrected != true:
+  if Night.ended == true and Night.ceremony == true and Night.resurrected != true and Night.ceremony_done != true and (Night.resurrect_ask_at == 0 or Time.elapsed > Night.resurrect_ask_at + 30):
+    set Night.resurrect_ask_at = Time.elapsed + 1
+    broadcast "🎃 The last award isn't presented yet (G10, or G9 with no MS Paint). Press G11 again within 30 seconds to end the show anyway." to channel(hosts)
+  else if Night.ended == true and Night.ceremony == true and Night.resurrected != true:
     set Night.resurrected = true
     set Night.banish = false
     set Night.everyone_free = true
@@ -3785,8 +4045,11 @@ set Night.lights_back_at = 0
 set Night.dance_at = 0
 set Night.takeover = false
 set Night.resurrected = false
+set Night.ceremony_done = false
+set Night.resurrect_ask_at = 0
 set Night.painting = false
 set Night.signatures = 0
+set Night.goals_todo = ""
 set Night.sweep_target = "none"
 set Night.ceremony = false
 set Night.ceremony_host = "none"

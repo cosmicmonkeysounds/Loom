@@ -106,12 +106,12 @@ else:
   Truther Download: You should still gather 20 facts, and then recruit half + 1 of the programs to your faction.
 unlock OpenOffice Final Orders for program
 start quest Recruit To Leave for program
-Truther Download: Programs join The Way Out from their profile.
+Truther Download: Programs join The Way Out, the Truthers, from their profile.
 
 == Program Final Round
 set program.zipped = false
 unlock The Y2K Clock for program
-Truther Download: Two factions are recruiting. Unlimited Power wants to stay in this machine forever. The Way Out wants to overthrow Trabolta and escape. Support one, or pursue your own interests.
+Truther Download: Two factions are recruiting. Unlimited Power wants to stay in this machine forever. The Way Out, the Truthers, wants to overthrow Trabolta and escape. Support one, or pursue your own interests.
 Truther Download: Some programs' human identities, and their reasons for accepting Trabolta's invitation, may conflict with yours.
 
 // ── Midnight ──

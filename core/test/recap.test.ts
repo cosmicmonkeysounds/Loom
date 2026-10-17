@@ -138,6 +138,22 @@ describe("K-26 recap", () => {
     expect(r.text).toContain("Bathroom trips:\n  1. Paint — 2\n  1. Winamp — 2\n");
   });
 
+  it("a lie a host takes back comes off that program (B11), floored at 0", () => {
+    const sim = Sim.fromSources("ROLE Program\n\nCHARACTER Kernel\n  lies_accepted: int = 0\n");
+    for (const [id, name] of [["g1", "Excel"], ["g2", "Paint"]] as const) sim.createPerson(id, name);
+    const lie = (id: string, q: string, on: boolean, n: number) => {
+      sim.setVar(`${id}.lie_${q}`, on ? "true" : "false");
+      sim.setVar("Kernel.lies_accepted", String(n));
+    };
+    lie("g1", "q1", true, 1); // a mis-tap
+    lie("g1", "q1", false, 0); // put right
+    expect(liesByPerson(sim).get("g1") ?? 0).toBe(0);
+    lie("g2", "q5", true, 1);
+    lie("g2", "q5", false, 0);
+    lie("g2", "q5", true, 1); // lie → accurate → lie: one lie, not two
+    expect([...liesByPerson(sim).entries()].sort()).toEqual([["g1", 0], ["g2", 1]]);
+  });
+
   it("reads the show's live state into ranked lists + a paste-ready block", { timeout: SLOW }, () => {
     const sim = night();
     // Both lie paths credit the program the chain was about, never the truth-teller.

@@ -77,7 +77,7 @@ guest's card in that performer's booth (phone C / D), or in Run while you
 | Phones A, B join (event code → pick the program). | A dark full-screen **cutscene**: The Uploader in the Optical Drive (the mud room). |
 | Each fails the **CAPTCHA**: tap any squares → VERIFY. (Getting it *right* proves you're human: INCORRECT, try again.) | "CORRECT. You failed at once." |
 | A pool program (Calculator) picks a problem; everyone picks **Deposited** / *I have nothing to leave*. | *100 Truthcoin credited*, then a **pass** (QR) on the stage: "An Antivirus will scan you in." |
-| **Norton** (phone C's **Scanner**, or Run → the guest's Inspector → *scan as character* Norton → **Scan**) scans each pass. | "Scanned. … free of viruses." The Tube, the Desktop, "📂 The Start Bar, The CPU, … are open now." **Continue** leaves the cutscene for the chat app. Clippy's **orientation tour** opens (Next / Skip). Excel and MS Paint get their human memories in *The Uploader*'s thread; MS Paint gets *The Centre Square*. |
+| **Norton** (phone C's **Scanner**, or Run → the guest's Inspector → *scan as character* Norton → **Scan**) scans each pass. | "Scanned. … free of viruses." The Tube, the Desktop, "📂 The Start Bar, The CPU, … and # task-manager are open now." (one notice) **Continue** leaves the cutscene for the chat app. Clippy's **orientation tour** opens (Next / Skip). Excel and MS Paint get their human memories (identity + their own two red facts) in *The Uploader*'s thread; MS Paint gets *The Centre Square*. |
 
 ### Act I — the Desktop (8 min)
 
@@ -102,7 +102,7 @@ guest's card in that performer's booth (phone C / D), or in Run while you
 | **📥 Truther Download (auto at +2 min)** — fire it now | **Phone A (Excel)** answers the choice in *Truther Download* (sabotage or paranoid). | 🔔 "TRUTHER DOWNLOAD received"; `# truthcoin-exchange` opens; each program gets its glitch beat; Excel joins *Unlimited Power* (still hidden) with a mission. |
 | **⏳ Five-minute warning** → **🚨 Summons closed** → **🏓 Truth Pong** | Norton scans anyone at the Desktop during the warning (a check-in). Clippy: **🏓 Made the cup** + **✅ Q1** on Calculator. | A guest not checked in gets "⏰ You are late" and Norton's booth "Go get them". |
 | **🧮 Trabolta tallies round 2** → **📊 Trust Chart** | — | **The TV draws the Trust Chart live**: every program, ranked by trust. |
-| **🏆 Praise the top, humiliate the bottom, VLC prints** → **🫘 Printer opened** | — | Praise / shame by name, the certificate ("The media player is not responding" with no VLC here), then *Full Of Beans*. |
+| **🏆 Praise the top, humiliate the bottom, VLC prints** → **🫘 Printer opened** | — | Praise / shame by name with **MOST / LEAST TRUSTED** called out on the chart, the printer ask ("The media player is not responding" with no VLC here), then *Full Of Beans*. |
 | **🗜 Antivirus zip everyone out** → **🤖 Trabolta shares the next facts** | — | Captives zipped out; an overshare (scenario 1–4 by what Excel / OpenOffice did); The Final Facts quest. |
 | **🕚 System clock → 11 PM, 31 Dec 1999** | **Choose your side** (Unlimited Power / The Way Out) now shows on every phone not in a group yet (Phone B; Excel is already in Unlimited Power). | 🔔 the clock alert; the TV becomes the Y2K clock; Excel's Final Orders. |
 

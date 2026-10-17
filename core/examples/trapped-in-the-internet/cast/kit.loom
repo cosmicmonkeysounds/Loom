@@ -81,6 +81,9 @@ TRAIT Enforcer is Person
     reveal The Fan Closet for program
     reveal The Graphics Card for program
     reveal The Hard Drive for program
+    // Right after the rooms, so the phone folds the house and its help
+    // desk into one "📂 … and # task-manager are open now." notice.
+    reveal task manager for program
     // An overlay on the Tube strip only (wled/tube), never a house look:
     // no `Night.lights` mirror, so a clearance mid-cut keeps Trabolta's 90 s
     // restore and stagehand's catch-up never replays the chase as the scene.
@@ -90,7 +93,6 @@ TRAIT Enforcer is Person
       cue terminals_attract
       set Night.terminals = "attract"
     Self: The Tube opens onto the Desktop: a blacked-out mess of LEDs, loose wire, encyclopaedias, computer parts and screens. A classic screensaver drifts across the TV above the fireplace. Everyone here is a program. Explore. Meet them. The encyclopaedias and the print media are where the facts are. Everything you need to know is in the books.
-    reveal task manager for program
     Task Manager: {program.name}. You're in. Your hosts tonight, per the agenda: Clippy, the Office Assistant, runs the games. Adobe Acrobat: documents and printing. The Recycling Bin: hygiene and maintenance. Me: I keep things running. # task-manager is open for questions about the app, and so is this thread.
     reply ✅ Cleared {program.name}.
     -> Orientation
@@ -144,11 +146,11 @@ TRAIT Enforcer is Person
 
   when zip_everyone_out:
     if Night.ended != true and Night.ending != "banished":
-      reply 🗜 Bring everyone out of the tent and zip them up.
+      reply 🗜 Bring everyone out of the Internet and zip them up.
 
   when advice_thwarted:
     if Night.phase == "advice" and Night.ended != true and Night.ending != "banished":
-      reply ⛈ You are banished too. Go to the tent. Then turn on him: everyone does the hand jive, together.
+      reply ⛈ You are banished too. Go to the Internet. Then turn on him: everyone does the hand jive, together.
 
   when go to the bathroom for program:
     reply 🚻 {program.name} is in Bathroom Mode. Not hacking the Internet.

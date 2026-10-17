@@ -80,10 +80,10 @@ Trabolta: I brought you here for a reason. I am beginning to forget what it was.
   setting: The Desktop
   cast: Trabolta
 
+// The Trust Chart stays on the screens (MOST / LEAST TRUSTED called out)
+// through the praise, the shame and this ask; the certificate slide comes
+// up only when someone presses START (The Printer Jams).
 set Night.printer_called = true
-cue screens_print_certificate
-set Night.screen = "print_certificate"
-set Night.terminals = "print_certificate"
 if count([p for p in Persons where p.featured == "vlc" and p.cleared and not p.captured]) > 0:
   set Night.printer_vlc = true
   Trabolta: VLC Player. You are trusted with all forms of multimedia. Please, press the start button on the printer, to print a PDF file with a certificate for our great hero.
@@ -93,6 +93,9 @@ else:
 == The Printer Jams
   setting: The Desktop
 
+cue screens_print_certificate
+set Night.screen = "print_certificate"
+set Night.terminals = "print_certificate"
 Someone presses START. The printer thinks about it. Nothing happens.
 The screen says the certificate is printing. It has said that for a while.
 
@@ -107,5 +110,5 @@ Trabolta: Antivirus. Everyone in the Internet is to be zipped up and brought out
 == Zip Everyone Out
   setting: The Desktop
 
-The Antivirus march into the Internet and bring every program out of the tent, one by one, zipped up and compressed for the moment.
+The Antivirus march into the Internet and bring every program out of the Internet, one by one, zipped up and compressed for the moment.
 Whatever was in there with them is still in there.

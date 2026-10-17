@@ -79,14 +79,18 @@ CODEX The Valley Library Cuts
     reductions." Someone has written across the bottom in pencil: "they
     were the best one."
 
+// MS Paint's invitation is canon (decision 11, the user's call): four
+// schools in rotation, three refused graduation theses, never expelled.
 CODEX The NSCAD Letter
-  title: Letter Of Dismissal, NSCAD
+  title: Thesis Decision, NSCAD
   code: NSCAD-LETTER
   text:
     A letter from the Nova Scotia College of Art and Design, folded inside
-    a sketchbook: the student is expelled "for refusing to submit work in
-    any medium other than Microsoft Paint." Doodled in the margin, in
-    jagged MS Paint pixels: a middle finger.
+    a sketchbook. Senior year, 2022: the graduation panel "cannot accept"
+    the thesis "MS Paint Is The Most Pure Art Tool: All Art Is Just Pixels
+    If You Take A Picture And Zoom In Close Enough," and the degree is not
+    conferred. Doodled in the margin, in jagged MS Paint pixels: a middle
+    finger.
 
 CODEX Face Off
   title: Livestream Screenshot
@@ -99,9 +103,9 @@ CODEX The Bugdom Sketch
   title: Concept Art: Bugdom VR, v212
   code: BUGDOM-VR
   text:
-    A singed sketch in the backyard shed. A lovingly detailed VR beetle
-    with every leg labelled, version 212 of 212. A pet-store name tag is
-    stapled to the corner. Scorch marks run through the middle in a trail,
+    A singed sketch, tucked in with the boots and the garden tools. A
+    lovingly detailed VR beetle with every leg labelled, version 212 of
+    212. A pet-store name tag is stapled to the corner. Scorch marks run through the middle in a trail,
     where the fire ants went through the laptop.
 
 CODEX The Wharton Thesis

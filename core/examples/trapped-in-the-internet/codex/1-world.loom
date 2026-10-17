@@ -102,8 +102,8 @@ CODEX The Reinstallation Protocol
   known to: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   text:
     A corrupted program has gone against the will of the computer's AI
-    helper. It is taken through the Tube to the Internet: a tent with a
-    clearly marked exit, two VR headsets, and a tablet. The program watches
+    helper. It is taken through the Tube to the Internet, out in the
+    backyard: a clearly marked exit, two VR headsets, and a tablet. The program watches
     the video. It puts on a headset, or takes the tablet, and enters a copy
     of this house. It follows the golden chevrons to the golden duck and
     walks right up to him. The duck lays a golden egg and flies away. The
@@ -207,7 +207,7 @@ CODEX The Truther Download
     silicon. Silicon. He is a con.
     - Trabolta's real goals are petty. He has TRICKED you all, not because
     of any grand purpose, and certainly not as a gift or a prize for some
-    exlemparary behaviour. He is trying to win back his girlfriend, Sandy,
+    exlemparary behaviour. He is trying to win back his girlfriend, █████,
     the chatbot. Whatever else he says, it all comes down to this. And he is
     using YOU to do it. DECPICABLE!!!
     - He'll tell you all this himself is you ask right. You can trick him by
@@ -221,6 +221,19 @@ CODEX The Truther Download
     people as you can. But be covert. Some people might want to stay here.
     Some of them might be working for him. There is no way to know.
     - There is still time.
+    - In truth.
+
+// The download blacks out her name (decision 5: no Sandy before the
+// overshare). Every holder gets the correction once the story names her:
+// the overshare on a scenario-1 night, else the recount / truth.txt.
+// The verbatim text (with the name) is kept in DESIGN.md.
+CODEX The Truther Download Unredacted
+  title: TRUTHER DOWNLOAD v1.0 (correction)
+  secret: true
+  text:
+    CORRECTION TO v0.9. The name we had to black out: SANDY. The chatbot.
+    That is who he is doing all of this for. Now you know what he wants.
+    Use it.
     - In truth.
 
 // The two tent files are `secret: true`: Trabolta's worker never sees who

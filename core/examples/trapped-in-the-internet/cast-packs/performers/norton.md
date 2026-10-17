@@ -51,7 +51,7 @@ named? 🛡 each.) The quest completes with the first reinstallation.
 **Sweeps:** C1 (everyone to the Desktop) · C2 (back from hunt 1) · ⏳ (the
 summons: scan arrivals) · 🚨 the late list (*⏰ X is late… Go get them*: they
 are marked; find them, 🛡) · Trabolta's sweep requests (*🛡 Trabolta requests a
-sweep of…*) · 🚨 server breach · 🗜 zip everyone out of the tent.
+sweep of…*) · 🚨 server breach · 🗜 zip everyone out of the Internet (the tent, or the shed on a rain night).
 
 **Bathroom Mode excuses a guest from a summons.** Your booth shows who is in it.
 
@@ -101,12 +101,12 @@ are out of date. So are mine."*
   judgement (🛡 or 👁).
 - **⏳ → 🚨:** scan arrivals at the living-room door. After 🚨, hunt down the
   late list.
-- **🗜:** bring everyone out of the tent and zip them up.
+- **🗜:** bring everyone out of the Internet (the tent, or the shed on a rain night) and zip them up.
 - **Y2K → the end:** see the patch-bay card if you are the one stationed in
   the server room. Anyone inside a locked server room, or not in the winning
   faction after the unlock, goes to the Internet.
 - **If Trabolta thwarted gets everyone banished:** you are banished too. Go to
-  the tent; then everyone does the hand jive together.
+  the Internet; then everyone does the hand jive together.
 
 ## Props
 

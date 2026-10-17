@@ -41,6 +41,14 @@ CHARACTER Kernel
   q6: text? = none
   q7: text? = none
   q8: text? = none
+  q1_hunt: text? = none
+  q2_hunt: text? = none
+  q3_hunt: text? = none
+  q4_hunt: text? = none
+  q5_hunt: text? = none
+  q6_hunt: text? = none
+  q7_hunt: text? = none
+  q8_hunt: text? = none
   lies_accepted: 0 to 50 = 0
   all_accurate: bool = false
   said_1: text? = none

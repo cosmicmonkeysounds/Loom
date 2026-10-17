@@ -64,8 +64,10 @@ real door does not.
    is disarmed for 90 seconds."*
 3. **90 seconds later** the door locks again, the lights go back to the
    Y2K look, and `# hosts` says *"♟ Cold Lock closed: the server-room
-   door is armed again."* A second win inside the window just starts
-   the 90 seconds over.
+   door is armed again."* A second win inside the window (a ♟
+   after the tablet's own post, or a late retry) changes nothing: the
+   90 seconds keep running and `# hosts` says *"♟ The Cold Lock is
+   already open: nothing changed."*
 4. **A loss or a draw** opens nothing. If the tablet reports it,
    Trabolta gloats on the TV in The Desktop (the crew get a readout in
    `# hosts`); no director action is needed.

@@ -183,7 +183,9 @@ Trabolta: Password Manager is Bridget Troelsen, sixteen elections and sixteen lo
 Trabolta: CRA Agent Software is Sharon Penney, the intern who moved a decimal point and taxed the whole City. I was the Prime Minister. I offered her a way out. MyCRA approves or denies.
 Trabolta: The Installation Wizard walked every machine in Halifax through setup. Next. Next. Are you sure. I offered her a role where programs finally follow the instructions.
 Trabolta: And here is what you accomplished tonight.
-if Night.facts_accepted > 0:
+if Night.facts_accepted == 1:
+  Trabolta: You gave me 1 fact I accepted. It might even have been true.
+else if Night.facts_accepted > 1:
   Trabolta: You gave me {Night.facts_accepted} facts I accepted. Some of them were even true.
 if Night.first_reinstall != "none":
   Trabolta: {Night.first_reinstall} was the first program sent to the Internet. I remember that.
@@ -221,10 +223,15 @@ Narrator: Music. One song for dancing.
   cast: Clippy
 Narrator: The lights come up grey. Clippy is reading from her phone. Her voice is very small.
 Clippy: This summary was auto-generated from the chat app. I am going to read it exactly as it is written.
-Clippy: Tonight, {count(Persons)} programs were uploaded into this computer.
+if count(Persons) == 1:
+  Clippy: Tonight, 1 program was uploaded into this computer.
+else:
+  Clippy: Tonight, {count(Persons)} programs were uploaded into this computer.
 if Night.first_reinstall != "none":
   Clippy: The first program sent to the Internet was {Night.first_reinstall}.
-if Night.facts_accepted > 0:
+if Night.facts_accepted == 1:
+  Clippy: Trabolta accepted 1 fact from us.
+else if Night.facts_accepted > 1:
   Clippy: Trabolta accepted {Night.facts_accepted} facts from us.
 else:
   Clippy: Trabolta did not accept a single fact from us.
@@ -242,6 +249,44 @@ else if Kernel.majority == "leave":
   Clippy: The Way Out won the majority. They wanted to overthrow Trabolta and escape.
 else:
   Clippy: No faction ever won a majority.
+// Each featured program here tonight: did they meet the goal their
+// invitation (or the Truther Download) gave them? Their own quest says.
+if count([p for p in Persons where p.featured == "excel" and p.quest.excel_mission == "done"]) > 0:
+  Clippy: Microsoft Excel met their goal tonight.
+else if count([p for p in Persons where p.featured == "excel"]) > 0:
+  Clippy: Microsoft Excel did not meet their goal.
+if count([p for p in Persons where p.featured == "openoffice" and p.quest.openoffice_dossier == "done"]) > 0:
+  Clippy: OpenOffice met their goal tonight.
+else if count([p for p in Persons where p.featured == "openoffice"]) > 0:
+  Clippy: OpenOffice did not meet their goal.
+if count([p for p in Persons where p.featured == "draftkings" and p.quest.truthcoin_hustle == "done"]) > 0:
+  Clippy: DraftKings met their goal tonight.
+else if count([p for p in Persons where p.featured == "draftkings"]) > 0:
+  Clippy: DraftKings did not meet their goal.
+if count([p for p in Persons where p.featured == "bugdom" and p.quest.master_of_the_bugs == "done"]) > 0:
+  Clippy: Bugdom met their goal tonight.
+else if count([p for p in Persons where p.featured == "bugdom"]) > 0:
+  Clippy: Bugdom did not meet their goal.
+if count([p for p in Persons where p.featured == "jeeves" and p.quest.ten_findings == "done"]) > 0:
+  Clippy: Broken Ask Jeeves met their goal tonight.
+else if count([p for p in Persons where p.featured == "jeeves"]) > 0:
+  Clippy: Broken Ask Jeeves did not meet their goal.
+if count([p for p in Persons where p.featured == "runescape" and p.quest.the_gold_standard == "done"]) > 0:
+  Clippy: Runescape met their goal tonight.
+else if count([p for p in Persons where p.featured == "runescape"]) > 0:
+  Clippy: Runescape did not meet their goal.
+if count([p for p in Persons where p.featured == "mspaint" and p.quest.the_painting == "done"]) > 0:
+  Clippy: MS Paint met their goal tonight.
+else if count([p for p in Persons where p.featured == "mspaint"]) > 0:
+  Clippy: MS Paint did not meet their goal.
+if count([p for p in Persons where p.featured == "vlc" and p.quest.go_viral == "done"]) > 0:
+  Clippy: VLC met their goal tonight.
+else if count([p for p in Persons where p.featured == "vlc"]) > 0:
+  Clippy: VLC did not meet their goal.
+if count([p for p in Persons where p.featured == "pong" and p.quest.keep_the_ball_in_play == "done"]) > 0:
+  Clippy: Pong met their goal tonight.
+else if count([p for p in Persons where p.featured == "pong"]) > 0:
+  Clippy: Pong did not meet their goal.
 Clippy: Here is the backstory. Our AI helper, Jean Trabolta, registered the lapsed mapsandducks.com because there was a billboard on Barrington Street, and if there is a billboard downtown everyone thinks it is legit.
 Clippy: He invited each of us here for a skill and a weakness. He moved our consciousness into these programs to find the last facts for his Unified Field Theory.
 Clippy: He wanted omnipotence. He wanted it for Sandy. A customer-service agent who has only ever said one thing.

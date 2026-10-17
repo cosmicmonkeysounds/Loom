@@ -91,7 +91,7 @@ left out.
 - **V6 and the bottle:** the escort list; walk them through the Tube, 🛡.
 - **The hour:** patrol; collect wrong-code offenders; run your private rooms.
 - **⏳ → 🚨:** scan arrivals; then the late list.
-- **🗜:** zip everyone out of the tent.
+- **🗜:** zip everyone out of the Internet (the tent, or the shed on a rain night).
 - **🔑 Moderating (if the director gives you the moderator passcode at
   call):** ☰ → *Add moderator powers* → type it → *Become an admin*, reload
   once, then tap **hide** on any message that is inappropriate or off topic.
