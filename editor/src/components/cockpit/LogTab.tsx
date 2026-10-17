@@ -8,7 +8,8 @@
 //! (`log-describe.ts`) so a new event kind fails the exhaustiveness check
 //! there instead of rendering as its bare type name. The header exports the whole run (ledger + every
 //! room's transcript + world state) as JSON for bug reports / post-mortems
-//! — a run that just ended included.
+//! — a run that just ended included. A server export pages the *whole*
+//! ledger off `/api/mod/log`, not just what this console saw (T7-03).
 
 import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
@@ -120,10 +121,10 @@ export function LogTab() {
           </select>
         </span>
         <button
-          onClick={() => downloadRunExport(store.getState())}
+          onClick={() => void downloadRunExport(store.getState())}
           disabled={!exportable}
           className="rounded border border-zinc-800 px-2 py-0.5 text-zinc-300 hover:bg-zinc-800 disabled:opacity-40"
-          title={running ? 'Download the ledger, every room\'s transcript, and the world state as JSON' : 'Download the run that just ended'}
+          title={running ? 'Download the whole ledger, every room\'s transcript, and the world state as JSON' : 'Download the run that just ended'}
           data-testid="run-export"
         >
           ⤓ Export run

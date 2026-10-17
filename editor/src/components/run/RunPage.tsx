@@ -165,7 +165,7 @@ function LastRunLine() {
   return (
     <p className="mt-4 text-xs text-zinc-500" data-testid="run-last-run">
       Ended by {lastRun.endedBy ?? 'you'} at {Number.isNaN(when.getTime()) ? '—' : when.toLocaleTimeString()} ·{' '}
-      <button onClick={() => downloadRunExport(store.getState())} className="text-indigo-400 underline hover:text-indigo-200">
+      <button onClick={() => void downloadRunExport(store.getState())} className="text-indigo-400 underline hover:text-indigo-200">
         Export that run
       </button>
     </p>

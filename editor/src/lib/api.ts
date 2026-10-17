@@ -425,6 +425,26 @@ export const modApi = {
   },
 }
 
+// --- the whole ledger (T7-03: Export run) ----------------------------------
+
+/** One page of `GET /e/:id/api/mod/log` — the raw ledger, oldest first.
+ *  `entries` are the sim feed's own rows (a `SimEvent`, or `{seq, ts?,
+ *  event}`); `next` is the `after` for the next page, null when done. */
+export interface ModLogPage {
+  entries: unknown[]
+  next: number | null
+  total: number
+}
+
+export const logApi = {
+  /** A page of the event's ledger (mod-gated). `after` omitted = from the start. */
+  async page(eventId: string, after: number | null, limit: number): Promise<ModLogPage> {
+    const q = new URLSearchParams({ limit: String(limit) })
+    if (after !== null) q.set('after', String(after))
+    return await req<ModLogPage>('GET', `/e/${encodeURIComponent(eventId)}/api/mod/log?${q.toString()}`)
+  },
+}
+
 // --- the wall terminals + TV (K-29: the director's heartbeat card) --------
 
 export const screensApi = {

@@ -310,7 +310,11 @@ export type Lens =
  *  works and the empty state can say who ended it. */
 export interface LastRun {
   run: RunInfo
+  /** The ledger this console held when it ended — the whole ledger when the
+   *  end was this console's own and the server handed it over. */
   log: LedgerEntry[]
+  /** The ledger's length when it ended (absent: `log.length`). */
+  ledgerLen?: number
   messages: CockpitMessage[]
   /** The final snapshot, so an export after the end is complete. */
   roster: RosterRow[]
