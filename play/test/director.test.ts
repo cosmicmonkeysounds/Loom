@@ -90,6 +90,11 @@ describe("arm, then fire", () => {
     expect(tapCue(null, award, 0)).toEqual({ kind: "pick", id: "award_most_trusted" });
     const armed = armFor("award_most_trusted", "g1", 50);
     expect(tapCue(armed, award, 100)).toEqual({ kind: "fire", id: "award_most_trusted", subject: "g1" });
+    // A value typed in the picker is armed with the person and fired with them.
+    const valued = armFor("award_most_trusted", "g1", 50, " 4 ");
+    expect(valued.value).toBe("4");
+    expect(tapCue(valued, award, 100)).toEqual({ kind: "fire", id: "award_most_trusted", subject: "g1", value: "4" });
+    expect(armFor("award_most_trusted", "g1", 50, "  ")).not.toHaveProperty("value");
     // the arm lapses: the next tap asks again
     expect(tapCue(armed, award, 50 + ARM_MS).kind).toBe("pick");
   });
@@ -97,6 +102,11 @@ describe("arm, then fire", () => {
   it("posts the cue with the phone's label (and the person, if any)", () => {
     expect(signalBody("start_the_bingo", null, "Ana")).toEqual({ name: "start_the_bingo", label: "Phone · Ana" });
     expect(signalBody("award_most_trusted", "g1", " ")).toEqual({ name: "award_most_trusted", subject: "g1", label: "Phone" });
+    // T2-09: an award's value box rides as args (the editor's cueValueArgs rule).
+    expect(signalBody("award_best_liar", "g1", "Ana", "3")).toEqual({ name: "award_best_liar", subject: "g1", label: "Phone · Ana", args: { value: 3 } });
+    expect(signalBody("award_duck_speedrun", "g1", "Ana", " 2:41 ").args).toEqual({ value: "2:41" });
+    expect(signalBody("award_best_liar", "g1", "Ana", "  ")).not.toHaveProperty("args");
+    expect(signalBody("award_best_liar", "g1", "Ana")).not.toHaveProperty("args");
     expect(phoneLabel("x".repeat(80)).length).toBe(60);
   });
 

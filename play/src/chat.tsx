@@ -344,6 +344,7 @@ export function PickerSheet({
   onClose,
   empty,
   keepOpen = false,
+  lead,
 }: {
   title: string;
   items: PickItem[];
@@ -353,9 +354,12 @@ export function PickerSheet({
   /** A pick moves a multi-step sheet on (the wallet's person → amount)
    *  instead of closing it; only × / the backdrop close. */
   keepOpen?: boolean;
+  /** Above the list: a field the pick carries (the director's award value). */
+  lead?: ReactNode;
 }) {
   return (
     <Sheet title={title} onClose={onClose} tall={items.length > 8}>
+      {lead}
       {items.length === 0 && <div className="muted pad">{empty ?? "Nothing to pick."}</div>}
       {items.map((it) => (
         <button
