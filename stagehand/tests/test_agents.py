@@ -661,3 +661,78 @@ def test_truncation_is_reported_and_retried_with_room():
     calls.clear()
     reply = run(answer(parse_persona(PERSONA), LlmConfig(max_tokens=100), request(), fake, gate=False))
     assert reply.say == "SANDY." and calls == [100, 700]
+
+
+def test_an_ollama_orchestrator_gets_a_late_night_context_unless_told_otherwise(tmp_path):
+    """W6: the house laptop's yaml names `extra: {think: false}` and no
+    context, so Ollama's default (4096) cut the middle of every reflection."""
+    from stagehand.agents.config import ORCHESTRATOR_NUM_CTX
+    from stagehand.agents.llm import OLLAMA_DEFAULT_NUM_CTX
+
+    # The live laptop.yaml shape: `extra` replaced wholesale, no num_ctx anywhere.
+    agents = worker(tmp_path, None, orchestrator={"llm": {"api": "ollama", "extra": {"think": False}, "keep_alive": "60m"}})
+    om = agents.cfg.orchestrator_models["Trabolta"]
+    assert ORCHESTRATOR_NUM_CTX == 20480
+    assert (om.num_ctx, om.context_window) == (20480, 20480)
+    # The voice (api: openai) is left alone: no num_ctx, no context to compare.
+    vm = agents.cfg.models["Trabolta"]
+    assert (vm.num_ctx, vm.context_window) == (None, None)
+    # Told otherwise: a number, the old `extra.options` form (it wins), or 0 = the server's default.
+    assert worker(tmp_path, None, orchestrator={"llm": {"num_ctx": 8192}}).cfg.orchestrator_models["Trabolta"].context_window == 8192
+    extra = worker(tmp_path, None, orchestrator={"llm": {"num_ctx": 8192, "extra": {"think": False, "options": {"num_ctx": 32768}}}})
+    assert extra.cfg.orchestrator_models["Trabolta"].context_window == 32768
+    assert extra.cfg.orchestrator_models["Trabolta"].context_key == "extra.options.num_ctx"
+    assert om.context_key == "num_ctx"
+    off = worker(tmp_path, None, orchestrator={"llm": {"num_ctx": 0}}).cfg.orchestrator_models["Trabolta"]
+    assert (off.num_ctx, off.context_window) == (None, OLLAMA_DEFAULT_NUM_CTX)
+    with pytest.raises(ConfigError, match="num_ctx"):
+        worker(tmp_path, None, orchestrator={"llm": {"num_ctx": -1}})
+    with pytest.raises(ConfigError, match="num_ctx|invalid literal"):
+        worker(tmp_path, None, orchestrator={"llm": {"num_ctx": "lots"}})
+
+
+def test_the_ollama_request_carries_num_ctx():
+    seen = {}
+
+    def handler(request: httpx.Request):
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"message": {"role": "assistant", "content": "{}"}})
+
+    cfg = LlmConfig(model="qwen", api="ollama", max_tokens=100, temperature=0.4, num_ctx=16384)
+    run(complete([{"role": "user", "content": "hi"}], cfg, transport=httpx.MockTransport(handler)))
+    assert seen["body"]["options"] == {"temperature": 0.4, "num_predict": 100, "num_ctx": 16384}
+    # `extra.options` still has the last word.
+    run(complete([{"role": "user", "content": "hi"}], LlmConfig(model="qwen", api="ollama", num_ctx=16384, extra={"options": {"num_ctx": 32768}}), transport=httpx.MockTransport(handler)))
+    assert seen["body"]["options"]["num_ctx"] == 32768
+
+
+def test_check_warns_when_the_reflect_prompt_outgrows_the_context(tmp_path, capsys):
+    from stagehand.cli import main
+
+    (tmp_path / "t.persona.md").write_text(PERSONA, encoding="utf-8")
+    conf = tmp_path / "laptop.yaml"
+
+    def write(orchestrator_llm: str) -> None:
+        conf.write_text(
+            "server: {url: 'http://h', event: e, mod_passcode: x}\n"
+            f"agents: {{characters: [t.persona.md], orchestrator: {{llm: {orchestrator_llm}}}}}\n",
+            encoding="utf-8",
+        )
+
+    write("{extra: {think: false}}")  # the default 20k fits
+    assert main(["check", "--config", str(conf)]) == 0
+    out = capsys.readouterr()
+    assert "warning:" not in out.err and "ctx 20480" in out.out
+    write("{num_ctx: 4096}")  # a warning, not a failure
+    assert main(["check", "--config", str(conf)]) == 0
+    err = capsys.readouterr().err
+    assert "warning: Trabolta's mind" in err and "4096-token context" in err and "set orchestrator.llm.num_ctx to" in err
+    # `extra.options.num_ctx` wins over `num_ctx` (agents.example.yaml's form):
+    # the warning names the key that is in effect, not one that changes nothing.
+    write("{num_ctx: 32768, extra: {think: false, options: {num_ctx: 4096}}}")
+    assert main(["check", "--config", str(conf)]) == 0
+    err = capsys.readouterr().err
+    assert "4096-token context" in err and "set orchestrator.llm.extra.options.num_ctx to" in err
+    write("{api: openai, num_ctx: 1024}")  # the server picks the context: nothing to compare
+    assert main(["check", "--config", str(conf)]) == 0
+    assert "warning:" not in capsys.readouterr().err

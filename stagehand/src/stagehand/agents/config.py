@@ -22,6 +22,7 @@
           api: ollama              #   native /api/chat: `think` + `keep_alive` honoured
           extra: { think: false }  #   reasoning off (the OpenAI shim ignores this)
           keep_alive: 30m          #   stay resident between reflections
+          num_ctx: 20480           #   the default: a late-night reflection is ≈ 16k tokens
         quiet_s: 1.5               #   idle seconds before a reflection may start
         preempt: true              #   a new request cancels a running reflection
         survey_every_s: 120        #   look at the whole house this often (0 = never)
@@ -48,6 +49,14 @@ from .persona import Persona, load_persona
 
 #: The orchestrator's default model when the section doesn't name one.
 ORCHESTRATOR_MODEL = "tobestyledintro/qwen3.8-9b-distill:q8_0"
+#: The orchestrator's default context (`api: ollama`). The reflect prompt —
+#: the mind file + persona + the house + the lore + a mind grown through the
+#: night — is ≈ 10k tokens at the doors and ≈ 16k late (`stagehand check`'s
+#: estimate, at 3 characters a token, plus the reply), and on Ollama's default
+#: context the runner cuts its middle while the mind update still looks
+#: confident. 20k costs the 9B orchestrator ≈ 3 GB of KV cache. `num_ctx: …` (or `extra: {options: {num_ctx: …}}`)
+#: overrides it; `num_ctx: 0` sends none (the server's default).
+ORCHESTRATOR_NUM_CTX = 20480
 
 
 @dataclass(frozen=True)
@@ -90,11 +99,14 @@ def _llm(raw: Any, base: LlmConfig, where: str) -> LlmConfig:
             extra=dict(cfg.extra) if isinstance(cfg.extra, dict) else {},
             api=str(cfg.api or "openai").lower(),
             keep_alive=None if cfg.keep_alive in (None, "") else str(cfg.keep_alive),
+            num_ctx=None if cfg.num_ctx in (None, "", 0) else int(cfg.num_ctx),
         )
     except (TypeError, ValueError) as err:
         raise ConfigError(f"{where}: {err}") from err
     if out.api not in ("openai", "ollama"):
         raise ConfigError(f"{where}: api must be 'openai' or 'ollama'")
+    if out.num_ctx is not None and out.num_ctx < 0:
+        raise ConfigError(f"{where}: num_ctx must be a positive number of tokens (0 = the server's default)")
     return out
 
 
@@ -137,6 +149,7 @@ def parse_agents(doc: Any, base_dir: str = ".") -> AgentsConfig:
         extra={"think": False},
         api="ollama",
         keep_alive="30m",
+        num_ctx=ORCHESTRATOR_NUM_CTX,
     )
     orch_llm = _llm(orch_raw.get("llm"), orch_base, "agents.orchestrator.llm")
     entries = doc.get("characters")

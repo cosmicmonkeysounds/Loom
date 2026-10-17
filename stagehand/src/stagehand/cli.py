@@ -113,6 +113,8 @@ def main(argv: list[str] | None = None) -> int:
         problems = [p for module in cfg.modules.values() for p in (module.preflight() if hasattr(module, "preflight") else [])]
         for problem in problems:
             print(f"check failed: {problem}", file=sys.stderr)
+        for warning in (w for module in cfg.modules.values() for w in (module.warnings() if hasattr(module, "warnings") else [])):
+            print(f"warning: {warning}", file=sys.stderr)
         if problems:
             return 3
         print("config OK")

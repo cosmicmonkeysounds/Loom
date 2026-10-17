@@ -132,6 +132,10 @@ def tool_calls_as_json(message: dict[str, Any]) -> str:
     return json.dumps(doc) if doc else ""
 
 
+#: What Ollama loads a model with when the request names no `num_ctx`.
+OLLAMA_DEFAULT_NUM_CTX = 4096
+
+
 @dataclass(frozen=True)
 class LlmConfig:
     endpoint: str = "http://localhost:11434/v1"
@@ -150,12 +154,37 @@ class LlmConfig:
     api: str = "openai"
     #: Ollama only: how long the model stays loaded after a call (`30m`, `-1`).
     keep_alive: str | None = None
+    #: Ollama only: the context window to load the model with (`options.num_ctx`;
+    #: `extra: {options: {num_ctx: …}}` wins). None → the server's default
+    #: (`OLLAMA_DEFAULT_NUM_CTX`), which silently cuts the middle of a long prompt.
+    num_ctx: int | None = None
 
     @property
     def ollama_base(self) -> str:
         """The server root for the native API (`…/v1` stripped)."""
         base = self.endpoint.rstrip("/")
         return base[: -len("/v1")] if base.endswith("/v1") else base
+
+    @property
+    def context_window(self) -> int | None:
+        """The context the model really runs with — Ollama only (None for
+        `api: openai`, where the server decides and we can't tell)."""
+        if self.api != "ollama":
+            return None
+        options = self.extra.get("options")
+        if isinstance(options, dict) and isinstance(options.get("num_ctx"), int) and options["num_ctx"] > 0:
+            return int(options["num_ctx"])
+        return self.num_ctx or OLLAMA_DEFAULT_NUM_CTX
+
+    @property
+    def context_key(self) -> str:
+        """The config key `context_window` comes from — the one to raise:
+        `extra.options.num_ctx` when it is set (it wins in the request body
+        too), else `num_ctx`."""
+        options = self.extra.get("options")
+        if isinstance(options, dict) and isinstance(options.get("num_ctx"), int) and options["num_ctx"] > 0:
+            return "extra.options.num_ctx"
+        return "num_ctx"
 
     def merged(self, overrides: dict[str, Any]) -> "LlmConfig":
         return replace(self, **{k: v for k, v in overrides.items() if k in self.__dataclass_fields__})
@@ -239,6 +268,8 @@ async def complete_ollama(
     """Ollama's native `/api/chat`: `think` and `keep_alive` are honoured here."""
     started = time.monotonic()
     options: dict[str, Any] = {"temperature": cfg.temperature, "num_predict": cfg.max_tokens}
+    if cfg.num_ctx:
+        options["num_ctx"] = cfg.num_ctx
     body: dict[str, Any] = {"model": cfg.model, "messages": messages, "stream": False, "options": options}
     if cfg.json_mode:
         body["format"] = "json"
