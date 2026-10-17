@@ -502,13 +502,13 @@
       "id": "M22",
       "category": "main",
       "draft": true,
-      "text": "The key to disarming the alarm is to checkmate the King",
+      "text": "Checkmating the King gives you the code to the server-room door",
       "codex": {
-        "id": "Disarming The Alarm",
-        "title": "Disarming The Alarm",
-        "code": "DISARM-KEY",
+        "id": "Checkmate For The Code",
+        "title": "Checkmate For The Code",
+        "code": "CHECKMATE-CODE",
         "secret": true,
-        "text": "A page from the alarm's manual, the last line underlined: THE KEY TO DISARMING THE ALARM IS TO CHECKMATE THE KING. He stands at the cold door inside the simulation; fight him on the tent tablet. Every hit makes him dumber, until he has nothing but pawns. Only checkmate counts; a draw or a loss changes nothing, so play him again. Mate him and the door sleeps for ninety seconds."
+        "text": "A page from the keypad's manual, the last line underlined: THE KING KNOWS THE CODE. He stands at the cold door inside the simulation; fight him on the tent tablet. Every hit makes him dumber, until he has nothing but pawns. Only checkmate counts; a draw or a loss changes nothing, so play him again. From the Y2K hour, mate him and he gives you the four digits. Before that, he is only practising."
       }
     },
     {

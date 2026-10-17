@@ -148,17 +148,17 @@ CODEX The Safe Place
     Nobody follows you in. Turn on Bathroom Mode and they will wait outside.
 
 // M22 · main · green · DRAFT
-CODEX Disarming The Alarm
-  title: Disarming The Alarm
+CODEX Checkmate For The Code
+  title: Checkmate For The Code
   secret: true
-  code: DISARM-KEY
+  code: CHECKMATE-CODE
   text:
-    A page from the alarm's manual, the last line underlined: THE KEY TO
-    DISARMING THE ALARM IS TO CHECKMATE THE KING. He stands at the cold door
-    inside the simulation; fight him on the tent tablet. Every hit makes him
-    dumber, until he has nothing but pawns. Only checkmate counts; a draw or
-    a loss changes nothing, so play him again. Mate him and the door sleeps
-    for ninety seconds.
+    A page from the keypad's manual, the last line underlined: THE KING
+    KNOWS THE CODE. He stands at the cold door inside the simulation; fight
+    him on the tent tablet. Every hit makes him dumber, until he has nothing
+    but pawns. Only checkmate counts; a draw or a loss changes nothing, so
+    play him again. From the Y2K hour, mate him and he gives you the four
+    digits. Before that, he is only practising.
 
 // M23 · main · green · DRAFT
 CODEX Sharing Your Codex
@@ -669,7 +669,7 @@ unlock Out Of Date for program
 unlock Ask Him Nicely for program
 unlock The Safe Place for program
 unlock The Server Room for program
-unlock Disarming The Alarm for program
+unlock Checkmate For The Code for program
 unlock Sharing Your Codex for program
 unlock The Trust Chart for program
 unlock The Truthers for program

@@ -91,7 +91,8 @@ GROUP The Way Out
 // on rails. The house rooms are revealed per program when an Antivirus
 // clears them ("ready to explore the entire computer", cast/kit.loom);
 // The Internet appears once stood in; The Server Room is revealed to the
-// winning faction's members, and to everyone when its alarm trips.
+// winning faction's members, and to everyone when its door first opens
+// from the Y2K hour (The Heart) or its patch-bay alarm trips.
 // (LOCATION lines carry no trailing comment: house/test reads them.)
 
 LOCATION The Desktop
@@ -1657,9 +1658,9 @@ ROLE Program
     else:
       broadcast "📝 {program.name} has no filing to judge." to channel(hosts)
 
-  // ♟ The Cold Lock (performer button — the chess-phone fallback, U17;
-  // the tent tablet posts `chess won` itself when the King is mated in
-  // the simulation): the window itself is the story rule `when chess_won:`.
+  // ♟ The King (performer button — the chess-phone fallback, U17; the
+  // tent tablet posts `chess won` itself when the King is mated in the
+  // simulation): the door code itself is the story rule `when chess_won:`.
   when beat_the_machine for program:
     fire chess_won for program
 
@@ -2195,7 +2196,7 @@ ROLE Program
   when Night.final_round == true and self.cleared:
     set self.zipped = false
     unlock The Y2K Clock for self
-    unlock The Cold Lock for self
+    unlock The Cold Door for self
     if self.featured == "excel":
       -> Excel Final Round
     else if self.featured == "openoffice":
@@ -2298,7 +2299,7 @@ ROLE Program
 // quick-fire, never from a performer's guest card (a guest-card press
 // carries that character as the actor, so only its hooks would hear).
 // `sequence: false` marks a cue a machine fires (the duck game, the door
-// reed, the printer, the patch bay, the chess phone) — the sheet ticks it
+// contact, the printer, the patch bay, the chess phone) — the sheet ticks it
 // but it never becomes LAST / NEXT, so a duck find can't eat the next cue.
 
 INTERACTION call_to_the_desktop
@@ -2424,25 +2425,22 @@ INTERACTION waive_leader_tasks
   label: 🧾 Let a faction win without its leader's task (leader absent)
   who: admin
 
-INTERACTION server_unlock
-  label: 🔓 Server room: unlock (override)
-  who: admin
-
 INTERACTION server_door_opened
   label: 🚪 Server room door opened (hardware fallback)
   who: admin
   sequence: false
+  description: The door contact fires this itself. Press it when the contact could not. From the Y2K hour the first opening plays The Heart (the server room opens on every phone, Trabolta speaks candidly on the server-room terminal); another opening within 2 minutes does nothing, a later one gets a short line. Before the Y2K hour it only tells # hosts. It never raises an alarm.
 
-INTERACTION rearm_server_room
-  label: 🔒 Server room: re-lock + re-arm (clears the alarm latch)
+INTERACTION reset_server_room
+  label: 🔄 Server room: reset the patch-bay alarm
   who: admin
-  description: After a rehearsal or an early unlock left the door open. Closes a chess window too. Lights stay as they are (💡 restores them).
+  description: After a rehearsal, or a wrong patch the crew forgave. Clears the wrong-combination count (the patch bay forgives one again), the alarm latch and the door cutscene (the next opening from the Y2K hour plays The Heart again). Lights stay as they are (💡 restores them). The keypad lock is standalone: nothing in the story locks or unlocks it.
 
 INTERACTION chess_won
-  label: ♟ Cold Lock: they beat the King (fallback)
+  label: ♟ They beat the King: the door code (fallback)
   who: admin
   sequence: false
-  description: The tablet posts this itself when the King is checkmated in the simulation. Press it when the tablet (or the chess phone) could not. From the Y2K hour: the server-room door is disarmed for 90 s, then re-locks. Before that it is practice only.
+  description: The tablet posts this itself, for the program who checkmated the King in the simulation. Press it, naming the winner, when the tablet (or the chess phone) could not. From the Y2K hour the winner gets The Door Code in their Codex (once; a second win changes nothing). Before that it is practice. With no winner named it only reminds # hosts to press ♟ on the winner's card.
 
 INTERACTION force_majority_stay
   label: 🗳 Force the majority: Unlimited Power (stay)
@@ -2709,7 +2707,7 @@ INTERACTION beat_the_machine
   label: ♟ They beat the machine
   who: performer
   by: Hosts, Antivirus
-  description: Hosts or Antivirus who saw the mate on the chess phone (the fallback for the King in the simulation), on the winner's card. From the Y2K hour it disarms the server-room door for 90 s.
+  description: Hosts or Antivirus who saw the mate on the chess phone (the fallback for the King in the simulation), on the winner's card. From the Y2K hour it gives them the door code (once); before that it is practice.
 
 INTERACTION uncertain_answer
   label: 🤷 Uncertain or guessed: marked for reinstallation
@@ -3447,16 +3445,16 @@ when force_majority_leave:
 
 // ── E. Act III — the server room ──
 
-// E1: a lock clicks. The members get the bundle (ROLE watchers).
+// E1: the majority. The members get the bundle and the door code (ROLE
+// watchers → The Whole Truth). The keypad is standalone: nothing here
+// unlocks it; the code does, in anyone's hands.
 when majority_reached:
   if Night.ended != true:
     set Night.phase = "majority"
     set Night.step = 15
-    set Kernel.server_unlocked = true
-    do door server_room, state: unlocked
     cue lights_server_open
     set Night.lights = "server_open"
-    complete quest The Clubs for Password Manager "A majority. The server room is open to them."
+    complete quest The Clubs for Password Manager "A majority. They have the door code now."
     if Kernel.majority == "stay":
       complete quest Recruit To Stay for everyone
       fail quest Recruit To Leave for everyone
@@ -3466,93 +3464,91 @@ when majority_reached:
       complete quest Find The Exit for everyone
     -> Majority Reached
 
-// E2: the door contact. Latched for 120 s: a propped door republishes
-// "open" on every report, and a retained state replays on reconnect.
-// Before the Y2K hour the door is just a door (a curious guest, or a
-// retained "open" replayed on a stagehand reconnect, trips nothing).
+// E2: the door contact. The server-room door has a standalone keypad lock
+// (the code is set by hand on the lock; nothing in the story can lock or
+// unlock it), and the contact — two strips of copper tape that touch when
+// the door opens — can't say who opened it. Opening it with the code is a
+// clean entry, whoever you are: the door never raises an alarm (the patch
+// bay does, E3). From the Y2K hour the first opening plays The Heart: the
+// room opens on every phone and Trabolta speaks to it candidly from the
+// server-room terminal. Another opening within 2 minutes (the group filing
+// in, someone stepping out) does nothing; a later one gets a short line.
+// Before the Y2K hour the door is just a door: # hosts hears of it, the
+// story does nothing (a curious guest, or a retained "open" replayed on a
+// stagehand reconnect).
 when server_door_opened:
-  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true and Night.alarm_on != true and Time.elapsed >= Kernel.disarmed_until:
-    set Night.alarm_on = true
-    set Night.alarm_clear_at = Time.elapsed + 120
-    -> Server Room Alarm
-  else if Night.ended != true and Night.step >= 14 and Night.step < 16 and Kernel.server_unlocked == true and Night.lights != "server_open":
-    cue lights_server_open
-    set Night.lights = "server_open"
+  if Night.ended != true and Night.step >= 14:
+    if Night.heart_opened != true:
+      set Night.heart_opened = true
+      set Night.door_quiet_until = Time.elapsed + 120
+      broadcast "🚪 The server-room door opened. The Heart plays on the server-room terminal." to channel(hosts)
+      -> The Heart
+    else if Time.elapsed >= Night.door_quiet_until:
+      set Night.door_quiet_until = Time.elapsed + 120
+      broadcast "🚪 The server-room door opened again." to channel(hosts)
+      -> Back To The Heart
+  else if Night.ended != true:
+    broadcast "🚪 The server-room door opened before the Y2K hour. Nothing happens in the story." to channel(hosts)
 
 when Night.alarm_on == true and Time.elapsed >= Night.alarm_clear_at:
   set Night.alarm_on = false
 
-when server_unlock:
-  set Kernel.server_unlocked = true
-  set Night.alarm_on = false
-  set Night.alarm_clear_at = 0
-  cue lights_server_open
-  set Night.lights = "server_open"
-
-// Re-lock + re-arm mid-show (a rehearsal or an early unlock left the door
-// open): locked again, the alarm latch cleared, any chess window closed,
-// the wrong-patch count back to zero (a fresh door forgives one again).
-// The majority stays won; its members now trip the alarm like anyone.
-when rearm_server_room:
-  set Kernel.server_unlocked = false
-  set Kernel.disarmed_until = 0
+// Reset mid-show (a rehearsal, or a wrong patch the crew forgave): the
+// wrong-patch count back to zero (the bay forgives one again), the alarm
+// latch cleared, and the door cutscene re-armed (the next opening from the
+// Y2K hour plays The Heart again). The keypad is never touched.
+when reset_server_room:
   set Night.wrong_combos = 0
   set Night.alarm_on = false
   set Night.alarm_clear_at = 0
-  do door server_room, state: locked
-  broadcast "🔒 The server room is locked and armed again." to channel(hosts)
+  set Night.heart_opened = false
+  set Night.door_quiet_until = 0
+  broadcast "🔄 Server room reset: the patch bay forgives one wrong combination again, and the next door opening plays The Heart." to channel(hosts)
 
-// The Cold Lock: the King at the server-room door *in the simulation*
-// (the tent tablet posts `chess won` for the program who mated him,
-// `by` the tablet) — or, until the King is device-checked, the chess
-// phone outside the real door (a host who saw the mate presses ♟ on the
-// winner's card; a dead phone → the director fires `chess_won`; a
-// signal named "chess won" folds to it). From the Y2K hour a win
-// disarms the door for 90 s (ring green) and clears a latched alarm
-// (the screens drop the alarm overlay with it); before that it's
-// practice — in the simulation the cold door still opens for that
-// session, the real one does not. A second win while the window is open
-// (a host's ♟ after the tablet's own post, or the tablet's late retry)
-// neither restarts the 90 s nor re-announces it.
-when chess_won:
-  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true and Kernel.disarmed_until > Time.elapsed:
-    broadcast "♟ The Cold Lock is already open: nothing changed." to channel(hosts)
-  else if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true:
-    set Kernel.disarmed_until = Time.elapsed + 90
-    set Night.alarm_on = false
-    set Night.alarm_clear_at = 0
-    do door server_room, state: unlocked
-    cue lights_server_open
-    set Night.lights = "server_open"
-    broadcast "♟ Cold Lock open: the server-room door is disarmed for 90 seconds." to channel(hosts)
-  else if Night.ended != true and Night.step < 14:
-    broadcast "♟ A chess win before the Y2K hour is practice only." to channel(hosts)
+// The King: he guards the server-room door *in the simulation* (the tent
+// tablet posts `chess won` for the program who mated him, `by` the
+// tablet) — or, until the King is device-checked, the chess phone outside
+// the real door (a host who saw the mate presses ♟ on the winner's card;
+// a dead phone → the director fires `chess_won` naming the winner; a
+// signal named "chess won" folds to it). In the real house a checkmate
+// gives the code: from the Y2K hour the winner gets The Door Code in their
+// Codex, once. A second win (a host's ♟ after the tablet's own post, the
+// tablet's late retry, a winner playing again) changes nothing. Before the
+// Y2K hour a win is practice: in the simulation the cold door still opens
+// for that session; nobody learns the code.
+when chess_won for program:
+  if Night.ended != true and Night.step >= 14:
+    if program.name == null:
+      broadcast "♟ A win with no winner named: press ♟ on the winner's card to give them the door code." to channel(hosts)
+    else if program.codex.the_door_code == true:
+      broadcast "♟ {program.name} already has the door code: nothing changed." to channel(hosts)
+    else:
+      unlock The Door Code for program
+      broadcast "♟ Checkmate. The King lets the door code slip: it is in your Codex." to participant(program)
+      broadcast "♟ {program.name} beat the King: the door code is in their Codex." to channel(hosts)
+  else if Night.ended != true:
+    broadcast "♟ A chess win before the Y2K hour is practice only: no door code." to channel(hosts)
 
-// A loss or a draw (the tablet posts `chess lost` / `chess drawn`; a
-// phone app may too; the director never needs to). Flavour only: nothing
-// disarms and nothing re-arms. From the Y2K hour, while the door is still
-// locked, Trabolta gloats on the TV (The Desktop) and the crew get a
-// readout in # hosts; before that the King (or the phone) is practice.
+// A loss or a draw (the tablet posts `chess lost` / `chess drawn` after
+// every game; a phone app may too; the director never needs to). Flavour
+// only. From the Y2K hour the crew get a readout in # hosts every time,
+// and Trabolta gloats on the TV (The Desktop) at most once every five
+// minutes, losses and draws alike (a table of losing programs would
+// otherwise make him say it after every game); before that it is
+// practice.
 when chess_lost:
-  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true:
-    broadcast "♟ The machine won at the Cold Lock. The door stays armed." to channel(hosts)
-    -> Chess Lost
+  if Night.ended != true and Night.step >= 14:
+    broadcast "♟ The King won a game. No door code." to channel(hosts)
+    if Time.elapsed >= Night.gloat_at:
+      set Night.gloat_at = Time.elapsed + 300
+      -> Chess Lost
 
 when chess_drawn:
-  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true:
-    broadcast "♟ A draw at the Cold Lock. The door stays armed." to channel(hosts)
-    -> Chess Drawn
-
-// The window closes: the door re-locks (a door propped open past it trips
-// the alarm on its next report).
-when Kernel.disarmed_until > 0 and Time.elapsed >= Kernel.disarmed_until:
-  set Kernel.disarmed_until = 0
-  if Kernel.server_unlocked != true and Night.ended != true:
-    do door server_room, state: locked
-    if Night.lights == "server_open":
-      cue lights_y2k
-      set Night.lights = "y2k"
-    broadcast "♟ Cold Lock closed: the server-room door is armed again." to channel(hosts)
+  if Night.ended != true and Night.step >= 14:
+    broadcast "♟ A draw with the King. No door code." to channel(hosts)
+    if Time.elapsed >= Night.gloat_at:
+      set Night.gloat_at = Time.elapsed + 300
+      -> Chess Drawn
 
 // E3: the patch bay. Today stagehand judges the cables and sends
 // patch_combo_a / patch_combo_b / patch_rejected; once signal args exist
@@ -4009,6 +4005,9 @@ set Night.alarms = 0
 set Night.alarm_on = false
 set Night.alarm_clear_at = 0
 set Night.wrong_combos = 0
+set Night.heart_opened = false
+set Night.door_quiet_until = 0
+set Night.gloat_at = 0
 set Night.ended = false
 set Night.ending = "none"
 set Night.bobber = "none"
@@ -4076,9 +4075,9 @@ set Night.lights = "screensaver"
 cue screens_screensaver
 set Night.screen = "screensaver"
 set Night.terminals = "screensaver"
-// Re-arm the server room on every boot: a story restart puts the door
-// indicator back to "armed" (there is no maglock; majority_reached is the
-// only thing that turns it green).
+// The server-room ESP32's ring shows the real door: red = locked, which it
+// always is (a standalone keypad lock the story never drives). Sent on every
+// boot so a story restart puts the ring back; nothing ever sends unlocked.
 do door server_room, state: locked
 The house boots. A screensaver drifts across the TV above the fireplace. Somewhere a modem is waiting to be asked.
 -> Facts Seed
