@@ -151,6 +151,8 @@ else if Night.award == "the_painting":
       Clippy: Bonus award. The Million Dollar Painting. The report lists {Night.award_winner}, the artist. Signatures on the canvas: {Night.award_value}. The painting goes to silent auction. Please come forward.
   else if Night.award_value == "none":
     Trabolta: A bonus award. The Million Dollar Painting. {Night.award_winner} made one painting out of all of you. It goes to silent auction. Come and stand beside it.
+  else if Night.award_value == 1:
+    Trabolta: A bonus award. The Million Dollar Painting. Signed by 1 program. {Night.award_winner} made one painting out of all of you. It goes to silent auction. Come and stand beside it.
   else:
     Trabolta: A bonus award. The Million Dollar Painting. Signed by {Night.award_value} programs. {Night.award_winner} made one painting out of all of you. It goes to silent auction. Come and stand beside it.
 set Night.terminals = Night.screen

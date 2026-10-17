@@ -223,10 +223,15 @@ Narrator: Music. One song for dancing.
   cast: Clippy
 Narrator: The lights come up grey. Clippy is reading from her phone. Her voice is very small.
 Clippy: This summary was auto-generated from the chat app. I am going to read it exactly as it is written.
-Clippy: Tonight, {count(Persons)} programs were uploaded into this computer.
+if count(Persons) == 1:
+  Clippy: Tonight, 1 program was uploaded into this computer.
+else:
+  Clippy: Tonight, {count(Persons)} programs were uploaded into this computer.
 if Night.first_reinstall != "none":
   Clippy: The first program sent to the Internet was {Night.first_reinstall}.
-if Night.facts_accepted > 0:
+if Night.facts_accepted == 1:
+  Clippy: Trabolta accepted 1 fact from us.
+else if Night.facts_accepted > 1:
   Clippy: Trabolta accepted {Night.facts_accepted} facts from us.
 else:
   Clippy: Trabolta did not accept a single fact from us.

@@ -4474,7 +4474,7 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     expect(open[0]!.audience).toEqual(["g1"]);
   });
 
-  it("B16: the recount's count copy agrees with its number", () => {
+  it("B16: count copy agrees with its number: the recount, Clippy's Purgatory summary and G10's signatures", () => {
     const at = (n: number) => {
       const sim = boot();
       sim.setVar("Night.facts_accepted", String(n));
@@ -4483,6 +4483,27 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     expect(at(0)).toEqual([]);
     expect(at(1)).toEqual(["You gave me 1 fact I accepted. It might even have been true."]);
     expect(at(2)).toEqual(["You gave me 2 facts I accepted. Some of them were even true."]);
+    // Clippy's Purgatory summary, the same way.
+    const purgatory = (n: number) => {
+      const sim = boot();
+      sim.setVar("Night.facts_accepted", String(n));
+      return lines(sim.fireBeat("Purgatory"), "Clippy").filter((t) => t.startsWith("Trabolta accepted") || t.startsWith("Trabolta did not accept"));
+    };
+    expect(purgatory(0)).toEqual(["Trabolta did not accept a single fact from us."]);
+    expect(purgatory(1)).toEqual(["Trabolta accepted 1 fact from us."]);
+    expect(purgatory(2)).toEqual(["Trabolta accepted 2 facts from us."]);
+    const one = fresh();
+    one.fireBeat("Power On");
+    upload(one, "g1", "Calculator");
+    expect(lines(one.fireBeat("Purgatory"), "Clippy")).toContain("Tonight, 1 program was uploaded into this computer.");
+    // G10's signatures.
+    const painting = (n: number) => {
+      const sim = boot();
+      for (const [k, x] of [["Night.award", "the_painting"], ["Night.award_winner", "MS Paint"], ["Night.award_value", String(n)], ["Night.ceremony_host", "Trabolta"]]) sim.setVar(k!, x!);
+      return lines(sim.fireBeat("Present Award"), "Trabolta").filter((t) => t.includes("Million Dollar Painting"));
+    };
+    expect(painting(1)).toEqual(["A bonus award. The Million Dollar Painting. Signed by 1 program. MS Paint made one painting out of all of you. It goes to silent auction. Come and stand beside it."]);
+    expect(painting(3)[0]).toContain("Signed by 3 programs.");
   });
 
   it("B20: a duplicate chess win neither re-opens nor re-announces the Cold Lock", { timeout: SLOW }, () => {
