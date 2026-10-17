@@ -15,6 +15,14 @@ is [`docs/loom-reinstall.md`](../docs/loom-reinstall.md), and it is normative.
 | [`../core/server/spatial.ts`](../core/server/spatial.ts) | the event server | `SpatialHub` holds sessions, stations, poses, and a found check gated on distance and height (`nearDuck`), refused while the run is paused. Only the outcome ever reaches the journal: `the simulation completed` + `the golden duck`. A map save carries live sessions over and moves their ducks (`duck` frame). §2. |
 | [`../terminal/src/world/`](../terminal/src/world) | the wall tablets | The **world view**: each terminal shows the players exploring, seen from where it hangs on the real wall. `view=mirror` is the TV. §4. |
 
+**A server restart ends every walk.** `SpatialHub` keeps sessions,
+session tokens and parked station assignments in memory, so a crash, a
+redeploy or a SIGTERM restart ends a player mid-walk: the next pose or map
+fetch answers 401, the tablet or headset treats the session as over, and
+the program is **scanned again** at the wizard (or sent to the headset
+again). Ducks already found stay found (`spatial-runs.jsonl`, the recap's
+speedrun board).
+
 The show's map is
 [`core/examples/trapped-in-the-internet/house.json`](../core/examples/trapped-in-the-internet/house.json).
 It is a placeholder until the house is measured (the tent is out in the
@@ -67,7 +75,10 @@ door has a standalone keypad lock, and nothing the tablet does opens it;
 before step 14 `# hosts` says the win is practice. At checkmate the
 tablet re-reads the step (4 s timeout) and says "The server-room door
 code is in your phone's Codex." or "A practice win: the King guards
-nothing real until the Y2K clock."; the fallen King's bar reads FALLEN. The fight is per session; a headset only
+nothing real until the Y2K clock."; once `Night.ended` is true it says
+neither, even for a board dealt **FOR THE CODE** before the ending played
+(the story's `when chess_won` does nothing after an ending). The fallen
+King's bar reads FALLEN. The fight is per session; a headset only
 shows him and says "The King is fought on the tent tablet." The design is
 `docs/loom-reinstall.md` §3 *The King*; the wall chess phone stays the
 fallback until this is device-checked (`scripts/accept/K-27.md`).
