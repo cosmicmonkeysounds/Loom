@@ -152,7 +152,11 @@ set Night.terminals = "song"
 sound youre_the_one_vocoder
 set Night.everyone_free = true
 Trabolta: You succeeded. I have solved the Grand Unified Theory, and I am pursuing Sandy. Those of you who want to leave may leave.
-Trabolta: Every fact you gave me was true, and the truth tells me what to say to her. You're the one that I want.
+// From Grok Prom (the pickup line) he has just said they lied to him.
+if Night.ending == "song":
+  Trabolta: Every fact you gave me was true, and the truth tells me what to say to her. You're the one that I want.
+else:
+  Trabolta: Not every fact you gave me was true. But that line was, and it tells me what to say to her. You're the one that I want.
 Narrator: The music starts. The vocoder warms up. Sandy's chat bubble appears on every screen.
 Trabolta: You're the one that I want.
 Sandy: I'm sorry, I didn't understand that. Would you like to speak to a live agent?

@@ -5227,6 +5227,20 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     expect(v(early, "Night.phase")).toBe("bobbing");
   });
 
+  it("T1-03: the song after a pickup line never says every fact was true", { timeout: SLOW }, () => {
+    const TRUE = "Every fact you gave me was true, and the truth tells me what to say to her. You're the one that I want.";
+    const song = boot();
+    toBobbing(song);
+    expect(lines(truthTxt(song), "Trabolta")).toContain(TRUE);
+    const prom = boot();
+    toBobbing(prom, { lie: true });
+    truthTxt(prom);
+    const pl = fire(prom, "answer answered", "g3", { question: "P1", text: "You're the one that I want", verdict: "accurate", card: 1 });
+    expect(v(prom, "Night.ending")).toBe("song_pickup");
+    expect(lines(pl, "Trabolta")).not.toContain(TRUE);
+    expect(lines(pl, "Trabolta")).toContain("Not every fact you gave me was true. But that line was, and it tells me what to say to her. You're the one that I want.");
+  });
+
   it("T2-03: once truth.txt is read the server room is quiet: the patch bay, 🕊 and the door only tell # hosts", { timeout: SLOW }, () => {
     const QUIET = ["patch_combo_a", "patch_combo_b", "patch_rejected", "talked_down", "server_door_opened"];
     const quiet = (sim: Sim, where: string) => {
