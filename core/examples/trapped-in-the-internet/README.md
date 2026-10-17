@@ -108,8 +108,9 @@ cast/trabolta.loom     the AI: his vars, hooks, and 13 agent powers (wave 7: sta
 codex/1-world.loom …   179 CODEX entries: 171 in eight numbered files + the 8 hunt answers
                        in generated/questions.loom (9-facts.loom is GENERATED from
                        facts.json; 3-hunt.loom is gone). The order matters:
-codex/8-jeeves.loom    stagehand feeds Trabolta the first 24 entries as "ground truth", so
-                       the environment comes first and the scrambled Jeeves fragments last
+codex/8-jeeves.loom    stagehand feeds Trabolta's orchestrator up to 60 entries as "ground
+                       truth", the ones he holds first and then the files in order, so the
+                       environment comes first and the scrambled Jeeves fragments last
 trabolta.persona.md    the voice: the fast model's system prompt + frontmatter knobs
 trabolta.mind.md       the mind: 8 stages, 5 drives and a cue per phase for the orchestrator
 house.json             the house map for the reinstallation games + the terminals' world
@@ -527,7 +528,7 @@ are **179**, and **90** of them carry a code (the 56 generated from
 | **L / P** the heart | `4-trabolta` | *The Legendary Fact* + four combo halves, `about: The Server Room`, all `secret: true` since wave 7 (no model ever reads them, not even the orchestrator's lore block). **He never holds them.** Only the majority faction gets them, via The Whole Truth. |
 | **D** the door | `9-facts` (generated) | *The Door Code*: the keypad's four digits, generated from `facts.json` `door.code`, `secret: true`, no code of its own. It reaches a program by a checkmate against the King from the Y2K hour, or with the majority's Whole Truth. The same number seeds `Kernel.door_code` (the `== Facts Seed`), never `Night.*`. |
 | **X** finale | `4-trabolta` | *The Truth File* (truth.txt), *The Hand Jive Exception*. |
-| **B** backstories | `5-people` (21) | Each performer's and featured program's human identity (the invitation's "who you really are"), each ending "Why Trabolta chose you". Featured programs get theirs at Featured Briefing. Everyone gets all of them at the recount / truth.txt. The four Antivirus files carry codes (Bugdom hunts them). |
+| **B** backstories | `5-people` (21) | Each performer's and featured program's human identity (the invitation's "who you really are"), each ending "Why Trabolta chose you". Featured programs get theirs at Featured Briefing. Everyone gets all of them at the recount / truth.txt. No codes here: the Antivirus secrets Bugdom hunts are their four red character facts in `9-facts` (*Miniature Doses* `MINIATURE-DOSES`, *The Lamborghini Certificate* `LAMBORGHINI-CERT`, *What Happened To Hamtaro* `HAMTARO`, *The Decimal Point* `DECIMAL-POINT`). |
 | **M** missions | `6-missions` (13) | Private orders for one featured program (the glitch choices and the final orders). |
 | **CI** Clippy | `7-clippy` (9) | *Clippy Instructions 1–9*, unlocked for Clippy only, one per phase (the private-to-Clippy channel). CI 3–9 are invented. |
 | **J** Jeeves | `8-jeeves` (20) | Scrambled fragments of 20 environmental entries, in the Character Sheet's Kmart style, for Broken Ask Jeeves to unscramble. |
@@ -553,7 +554,7 @@ its own thread of steps.
 | Recruit To Stay (*Stay Forever*) | Truther Download | Excel Final Round | ✅ stay majority / ✖ leave majority |
 | Recruit To Leave (*Get Out*) | Truther Download | OpenOffice Final Round | ✅ leave majority / ✖ stay majority |
 | Truthcoin Hustle (*Sweet Sweet Truthcoin*) | Truther Download | DraftKings Glitch (+200 stake) | step at 1000; ✅ more than half of all the Truthcoin in circulation, coin in flight (pending, held, an open offer) included (with ≥ 5 other cleared programs) |
-| Master Of The Bugs | Truther Download | Bugdom Glitch | ✅ holding all four Antivirus files |
+| Master Of The Bugs | Truther Download | Bugdom Glitch | ✅ holding the four Antivirus' red facts (Miniature Doses, The Lamborghini Certificate, What Happened To Hamtaro, The Decimal Point) |
 | Unscramble (*Organize The Information*) | Truther Download | Jeeves Glitch | ✅ holding 5 of the 10 originals behind his fragments |
 | Ten Findings (*Ask Jeeves Once Again*) | The Uploader | Jeeves's clearance | step per program that holds ten of his findings (shares + wallet sales; repeats and Trabolta don't count); ✅ every cleared program (≥ 5) |
 | The Gold Standard (*Peg It To Facts*) | Truther Download | Runescape Glitch | director completes |
@@ -692,7 +693,7 @@ themselves at sign-in and never speak in the story.
 | Microsoft Excel | Rob Cameron | Randy Barkmore Sr., 90, former Mayor | plant the virus; lead **Unlimited Power** (stay forever) |
 | OpenOffice | Lara Lewis | Dana Anderson, ex-FBI hacker | gather 20 facts; lead **The Way Out** |
 | DraftKings | Hannah | the gambler who won the casinos | a majority of the Truthcoin (1000 is a step) |
-| Bugdom | Veronica | the pet-store worker whose Bugdom VR burned | the four Antivirus files |
+| Bugdom | Veronica | the pet-store worker whose Bugdom VR burned | the four Antivirus' secrets (their red facts in the Desktop's books) |
 | Broken Ask Jeeves | Kai | the Annapolis Valley youth librarian | unscramble 20 fragments; ten findings with every program (Ten Findings) |
 | Runescape | Laurel | 34, Wharton PhD, gold standard | peg Truthcoin to facts; the Truthcoin **minter** (`wallet: minter, limit 3, grants 3, freeze 10m`): from her Wallet room, up to three stimulus payments to every program, three grants to one program each, and a ten-minute freeze on any program's outgoing coin |
 | MS Paint | Cat Frawley | the Paint-only art student: four schools, three refused theses | **the designated anti-AI program** (Bingo centre square); find the exit; every program signs one painting (The Painting, hosts press 🖌) |
