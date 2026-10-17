@@ -1418,7 +1418,7 @@ export function usePrimeSession(): PrimeSession {
         // B5: last run's readouts and answered cards are not tonight's. The
         // notice lands before the replay, so the new run's readouts follow.
         setResponses((r) => afterLifecycle(r, n.kind));
-        if (lifecycleStartsNewRun(n.kind)) setWidgetAnswers(new Map());
+        if (lifecycleStartsNewRun(n.kind)) setWidgetAnswers(() => NO_ANSWERS);
         alertsRef.current?.rebase();
       }
     },
@@ -1526,7 +1526,10 @@ export function usePrimeSession(): PrimeSession {
   // Cards dealt to this character: one answer per card. The server refuses
   // a second (409); the snapshot lists the cards already answered so a
   // reload renders them resolved (an empty record marks each).
-  const [widgetAnswers, setWidgetAnswers] = useState<ReadonlyMap<number, WidgetResult>>(() => new Map());
+  // Held per sign-in like the guest's (B2): Go live, End and a dead token
+  // drop the booth, the performer signs in again under a new token, and the
+  // new run hands out the old run's seqs — last run's answers read empty.
+  const [widgetAnswers, setWidgetAnswers] = usePerSession(auth?.token ?? null, NO_ANSWERS);
   const answeredList = view?.answered;
   useEffect(() => {
     if (answeredList === undefined || answeredList.length === 0) return;
@@ -1566,7 +1569,6 @@ export function usePrimeSession(): PrimeSession {
     setResponses([]);
     setReady(false);
     setNotice(null);
-    setWidgetAnswers(new Map());
     host.onEnded("prime", null);
   }, [drop, host, auth, base]);
 
