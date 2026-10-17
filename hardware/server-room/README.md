@@ -85,8 +85,10 @@ hold the latch or the door shut.
 
 **The contact**: two loops of wire / copper tape on GPIO19 that **touch when
 the door opens** (`TAPE_POLARITY door::kClosedWhenOpen`). Touching pulls the
-pin LOW = open; apart (HIGH) = shut. "Open" is reported once it has held
-300 ms, "closed" after 1500 ms (`DOOR_CLOSE_MS`), so a loop that flickers on
+pin LOW = open; apart (HIGH) = shut. Each input is debounced 300 ms to open
+and 1500 ms to close (`DOOR_OPEN_MS` / `DOOR_CLOSE_MS`), and the combined
+door state again on top, so the box reports "open" about 0.6 s after the
+loops touch and "closed" about 3 s after they part: a loop that flickers on
 an open door never reports closed and never re-arms stagehand's edge rule.
 
 The contact is **direction-blind**: an entry with the keypad code and an
