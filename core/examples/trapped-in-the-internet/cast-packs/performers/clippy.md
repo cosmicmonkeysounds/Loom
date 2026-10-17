@@ -214,9 +214,10 @@ Then: *"There is only one version of the truth. Because truth is always in
 binary."* Dejectedly introduce **🍎 Bobbing for Truth**: *"we are not worthy
 of the truth unless we are willing to Bob for it and risk our status as a
 program."* Nothing moves until someone brings up the bag (🍎). Let Trabolta
-give his assessment, then the bobber reads truth.txt. Right after it, Trabolta
-DMs every program for a pickup line that works on Sandy (an answer card);
-the server judges it.
+give his assessment, then the bobber reads truth.txt (📄). When they finish,
+the director fires **⚖** for the verdict; right after it, Trabolta DMs every
+program for a pickup line that works on Sandy (an answer card); the server
+judges it.
 
 **Endings.** In Grok Prom, a program who says *"You're the one that I want"*
 to you gets 💘 (the card in their Trabolta thread counts too). After **Combo
@@ -339,7 +340,8 @@ truth. Because truth is always in binary." Bobbing for Truth, dejectedly:
 "Trabolta has prepared a summary of his findings so far, but we are not worthy
 of the truth unless we are willing to Bob for it and risk our status as a
 program." Nothing proceeds until the bag is up (🍎 / 🍎 Failed). Let Trabolta
-assess. Then the bobber reads truth.txt.
+assess. Then the bobber reads truth.txt; when they finish, the director fires
+⚖ for the verdict.
 
 **CI 9/X · Purgatory.** The computer was turned off: blackout, GO TO THE
 LIVING ROOM, the dance song. Dance. Then the director fires "Clippy reads the
