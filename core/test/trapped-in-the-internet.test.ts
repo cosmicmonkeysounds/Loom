@@ -1422,6 +1422,8 @@ describe("Trapped in the Internet — the overshare, four ways", () => {
       expect(T.some((t) => t.startsWith("One of you read my LiveJournal and I know who."))).toBe(want <= 2);
       expect(T.some((t) => t.includes("brought a virus back from the Internet"))).toBe(want === 1 || want === 3);
       expect(T.some((t) => t.includes("win back my ex. Sandy"))).toBe(want === 1);
+      // The Truther Download's correction names Sandy only on the night Trabolta does.
+      expect(sim.holdsCodex("g1", "The Truther Download Unredacted")).toBe(want === 1);
       if (want === 4) {
         expect(v(sim, "Kernel.virus_planted")).toBe(true);
         expect(v(sim, "Kernel.excel_planted")).not.toBe(true);
@@ -4565,7 +4567,7 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     expect(rain).toContain("`BUGDOM-VR`");
   });
 
-  it("the Truther Download blacks out Sandy until Trabolta overshares; then every holder gets the correction", { timeout: SLOW }, () => {
+  it("the Truther Download blacks out Sandy until the story names her: the overshare on scenario 1, else the recount", { timeout: SLOW }, () => {
     const sim = boot();
     expect(sim.model.codex.get("The Truther Download")!.text).not.toMatch(/Sandy/u);
     expect(sim.model.codex.get("The Truther Download Unredacted")!.text).toMatch(/SANDY/u);
@@ -4576,7 +4578,10 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     toBeans(sim);
     expect(sim.holdsCodex("g1", "The Truther Download Unredacted")).toBe(false);
     const over = fire(sim, "trabolta_overshares");
-    expect(learned(over).filter((e) => e.entry === "The Truther Download Unredacted").map((e) => e.person).sort()).toEqual(PROGRAMS.map(([id]) => id).sort());
+    expect(v(sim, "Night.scenario")).toBe(4); // composed and hollow: no Sandy
+    expect(learned(over).filter((e) => e.entry === "The Truther Download Unredacted")).toEqual([]);
+    const recount = sim.setVar("Night.recount", "true");
+    expect(learned(recount).filter((e) => e.entry === "The Truther Download Unredacted").map((e) => e.person).sort()).toEqual(PROGRAMS.map(([id]) => id).sort());
   });
 
   it("MS Paint's invitation is canon: the NSCAD letter is a refused thesis, never an expulsion, and agrees with C09", () => {

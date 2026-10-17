@@ -2060,9 +2060,11 @@ ROLE Program
   when Night.truther_sent == true and self.cleared and self.got_truther != true:
     -> Truther Download Arrives
 
-  // Once Trabolta has overshared (step 13), the download's blacked-out
-  // name comes through: the correction names Sandy.
-  when self.got_truther == true and Night.step >= 13:
+  // The download's blacked-out name comes through only once the story has
+  // said it: at the overshare on a scenario-1 night (the only one where
+  // Trabolta names Sandy), else at the recount / truth.txt, which tell
+  // everyone why he did it. The correction names Sandy.
+  when self.got_truther == true and ((Night.step >= 13 and Night.scenario == 1) or Night.recount == true):
     unlock The Truther Download Unredacted for self
 
   // OpenOffice's dossier: 20 new facts after her prompt. (Not once the
