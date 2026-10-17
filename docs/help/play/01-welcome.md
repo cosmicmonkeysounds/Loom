@@ -25,7 +25,10 @@ room tonight.
    on your pass.
 
 No account, no password. If you close the app, just open it again in the
-same browser — you'll come back as yourself, history intact.
+same browser — you'll come back as yourself. Late in a long night the
+busy rooms show their last few hundred lines, but your own messages
+with people, every card still waiting for you, every alert, your Codex,
+Quest Log and Wallet come back whole.
 
 ## Lost your phone?
 
