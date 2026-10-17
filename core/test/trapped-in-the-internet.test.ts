@@ -316,6 +316,10 @@ describe("Trapped in the Internet — compile", () => {
     expect(admin).not.toContain("truth_or_dare");
     expect(admin.slice(admin.indexOf("first_moment_of_truth"), admin.indexOf("first_moment_of_truth") + 4)).toEqual(["first_moment_of_truth", "close_the_filing", "read_the_results", "spin_the_bottle"]);
     expect(m.interactions.get("spin_the_bottle")!.sequence).toBe(false);
+    // The cue sheet's NEXT (T7-01): 📋 and 🗜 are pressed again and again, and of
+    // the forced majorities only 🗳 stay is the running order.
+    expect(admin.filter((a) => m.interactions.get(a)!.repeat)).toEqual(["read_the_results", "zip_everyone_out"]);
+    expect(m.interactions.get("force_majority_leave")!.sequence).toBe(false);
     expect(m.interactions.get("close_the_filing")!.label).toBe("⏱ Close round-one filings now (auto at 2 min)");
     expect(m.interactions.get("read_the_results")!.label).toBe("📋 Results: the next question (press for Q1, Q2, Q3)");
     expect(m.interactions.get("spin_the_bottle")!.label).toBe("🍾 Spin the bottle (Truth or Dare, five per question)");

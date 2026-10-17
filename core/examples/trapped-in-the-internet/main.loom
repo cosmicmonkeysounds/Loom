@@ -2397,6 +2397,7 @@ INTERACTION read_the_results
   label: 📋 Results: the next question (press for Q1, Q2, Q3)
   who: admin
   description: Clippy reads one question's result; the filings for it are settled (+50 / marked). Spin the bottle between questions.
+  repeat: true
 
 INTERACTION spin_the_bottle
   label: 🍾 Spin the bottle (Truth or Dare, five per question)
@@ -2464,6 +2465,7 @@ INTERACTION printer_opened
 INTERACTION zip_everyone_out
   label: 🗜 Antivirus zip everyone out of the Internet
   who: admin
+  repeat: true
 
 INTERACTION trabolta_overshares
   label: 🤖 Trabolta shares the next facts (scenario 1–4)
