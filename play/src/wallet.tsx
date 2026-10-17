@@ -259,6 +259,20 @@ export function walletStateLine(card: WalletCard, state: string | null, view: Wa
   return state;
 }
 
+/** The newest step in a root card's thread (its outcome once closed), or null. */
+export function lastWalletStep(messages: readonly ChatMessage[], rootSeq: number): WalletCard | null {
+  let best: ChatMessage | null = null;
+  for (const m of messages) if (m.parentSeq === rootSeq && m.wallet && (best === null || m.seq > best.seq)) best = m;
+  return best?.wallet ?? null;
+}
+
+/** The root card's foot: the live state line, or — once the item has left
+ *  the view ("closed") — how it closed, read off its last step (B8). */
+export function walletFootLine(card: WalletCard, state: string | null, view: WalletView | WalletQueueView | null, clock: number, outcome?: WalletCard | null): string {
+  if (state === null && outcome && card.kind !== "grant" && card.kind !== "freeze") return walletStepLine(outcome);
+  return walletStateLine(card, state, view, clock);
+}
+
 export type WalletButton = "pay" | "declineRequest" | "accept" | "declineOffer" | "approve" | "deny" | "cancel";
 
 /** What a restricted guest's wallet can't do (the server answers 403):
@@ -405,12 +419,15 @@ export function WalletCardView({
   modBtn,
   replies,
   onOpenThread,
+  outcome,
 }: {
   msg: ChatMessage;
   card: WalletCard;
   modBtn?: ReactNode;
   replies?: number;
   onOpenThread?: (rootSeq: number) => void;
+  /** The newest step in its thread (`lastWalletStep`). */
+  outcome?: WalletCard | null;
 }) {
   const actions = useWalletActions();
   if (msg.parentSeq != null) {
@@ -451,7 +468,7 @@ export function WalletCardView({
         {msg.text && <p className="wallet-text">{msg.text}</p>}
         <div className="wallet-foot">
           <span className="muted wallet-state">
-            {walletStateLine(card, state, actions.view, actions.clock)}
+            {walletFootLine(card, state, actions.view, actions.clock, outcome)}
           </span>
           {open && (
             <button className="link" onClick={open}>

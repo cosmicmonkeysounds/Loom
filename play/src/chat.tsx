@@ -25,9 +25,9 @@ import {
   type MessageRun,
   type SpaceGroup,
 } from "./threads.ts";
-import type { Action, Channel, ChatMessage, Decision, QuestStatus } from "./types.ts";
+import type { Action, Channel, ChatMessage, Decision, QuestStatus, WalletCard } from "./types.ts";
 import { WidgetHost, supersededCards, widgetLabel, type WidgetResult } from "./widgets.tsx";
-import { WalletCardView } from "./wallet.tsx";
+import { WalletCardView, lastWalletStep } from "./wallet.tsx";
 
 // --- small shared atoms -----------------------------------------------------
 
@@ -644,10 +644,13 @@ export function MessageBubble({
   onPerson,
   questStatus,
   superseded,
+  walletOutcome,
 }: {
   msg: ChatMessage;
   /** Where a quest card's quest stands (read off its thread). */
   questStatus?: QuestStatus;
+  /** A wallet root's newest thread step (how it closed). */
+  walletOutcome?: WalletCard | null;
   /** A newer card of the same re-dealt kind follows this one. */
   superseded?: boolean;
   /** Tag the bubble with its channel (used in the performer's flat view). */
@@ -700,7 +703,7 @@ export function MessageBubble({
   if (msg.kind === "quest" && msg.quest) {
     return <QuestView msg={msg} modBtn={modBtn} status={questStatus} replies={replies} onOpenThread={onOpenThread} />;
   }
-  if (msg.kind === "wallet" && msg.wallet) return <WalletCardView msg={msg} card={msg.wallet} modBtn={modBtn} replies={replies} onOpenThread={onOpenThread} />;
+  if (msg.kind === "wallet" && msg.wallet) return <WalletCardView msg={msg} card={msg.wallet} modBtn={modBtn} replies={replies} onOpenThread={onOpenThread} outcome={walletOutcome} />;
   if (msg.kind !== "line") {
     return (
       <div className={`msg ${cls} ${msg.hidden ? "hidden" : ""} ${typing ? "typing" : ""} ${pending ? "pending" : ""}`}>
@@ -783,6 +786,21 @@ export function MessageGroup({
         onOpenThread={onOpenThread}
         replies={replyCountFor(allMessages, m.seq)}
         questStatus={questStatusOf(allMessages, m.seq)}
+      />
+    );
+  }
+  if (run.kind === "wallet") {
+    // A wallet card opens its thread of updates — Denied / Approved /
+    // Refunded / Paid (B8); its foot reads how it closed.
+    const m = run.messages[0]!;
+    return (
+      <MessageBubble
+        msg={m}
+        showChannel={showChannel}
+        moderate={moderate}
+        onOpenThread={onOpenThread}
+        replies={replyCountFor(allMessages, m.seq)}
+        walletOutcome={lastWalletStep(allMessages, m.seq)}
       />
     );
   }

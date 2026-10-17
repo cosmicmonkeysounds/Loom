@@ -33,6 +33,8 @@ import {
   walletCardTitle,
   walletFooterActions,
   walletGlyph,
+  lastWalletStep,
+  walletFootLine,
   walletItemState,
   walletNeedsYou,
   walletStateLine,
@@ -41,7 +43,7 @@ import {
   walletTicking,
 } from "../src/wallet.tsx";
 import type { ChatMessage, GuestView, PrimeView, WalletCard, WalletQueueView, WalletTxView, WalletView } from "../src/types.ts";
-import { PickerSheet } from "../src/chat.tsx";
+import { MessageGroup, PickerSheet } from "../src/chat.tsx";
 import { INBOX, buildGuestChannels, buildPrimeChannels, isPinnedRoom, personalStream } from "../src/session.ts";
 import { WALLET_ROOM, channelHead } from "../src/threads.ts";
 
@@ -617,5 +619,46 @@ describe("A9: the minter's reserve — 🎁 grant, 🧊 freeze, a frozen wallet"
       expect(picked).toEqual(["g2"]);
       expect(closed).toBe(keepOpen ? 0 : 1);
     }
+  });
+});
+
+describe("a wallet card opens its thread of updates (B8)", () => {
+  const actions = (v: WalletView | WalletQueueView | null, me: string | null) => ({ view: v, me, clock: 5000 });
+  const root = (c: WalletCard): ChatMessage => msg(c, { kind: "wallet", wallet: c, text: "— settles in 60 s unless CRA Agent Software denies it." });
+  const step = (c: WalletCard, seq: number): ChatMessage => msg(c, { seq, kind: "wallet", wallet: c, parentSeq: 7, text: "" });
+
+  it("the root plus one step draws `.wallet-foot .link` reading \"1 update ›\"", () => {
+    const r = root(card());
+    const denied = step(card({ step: "denied", by: "CRA_Agent_Software" }), 9);
+    const html = render(
+      <WalletActionsProvider value={actions(view(), "me")}>
+        <MessageGroup run={{ from: "", kind: "wallet", messages: [r] }} allMessages={[r, denied]} onOpenThread={() => {}} />
+      </WalletActionsProvider>,
+    );
+    expect(html).toMatch(/<div class="wallet-foot">.*<button class="link">1 update ›<\/button>/su);
+    // Closed (gone from the view): the foot says how, not just "closed".
+    expect(html).toContain("⛔ Denied by CRA Agent Software — refunded");
+  });
+
+  it("the booth's closed approval card reads its outcome", () => {
+    const appr = card({ kind: "approval", step: "held", id: "t9" });
+    const r = root(appr);
+    const ok = step(card({ kind: "approval", step: "approved", id: "t9", by: "CRA_Agent_Software" }), 11);
+    const q: WalletQueueView = { name: "Truthcoin", queue: [], every: 3, windowMs: 60_000 };
+    const html = render(
+      <WalletActionsProvider value={actions(q, null)}>
+        <MessageGroup run={{ from: "", kind: "wallet", messages: [r] }} allMessages={[r, ok]} onOpenThread={() => {}} />
+      </WalletActionsProvider>,
+    );
+    expect(html).toContain("✅ Approved by CRA Agent Software");
+    expect(html).toContain("1 update ›");
+  });
+
+  it("the newest step wins; a live item keeps its state line", () => {
+    const list = [root(card()), step(card({ step: "approved" }), 9), step(card({ step: "settled" }), 10), msg(card(), { seq: 12 })];
+    expect(lastWalletStep(list, 7)?.step).toBe("settled");
+    expect(lastWalletStep(list, 99)).toBeNull();
+    expect(walletFootLine(card(), "pending", view({ transfers: [tx()] }), 1000, card({ step: "settled" }))).toBe("settles in 60 s");
+    expect(walletFootLine(card(), null, null, 1000, null)).toBe("closed");
   });
 });
