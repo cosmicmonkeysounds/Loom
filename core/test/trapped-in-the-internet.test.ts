@@ -1813,6 +1813,38 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     expect(casts(ended)).toEqual([]);
   });
 
+  it("the server-room terminal puts a program at his heart: terminal_opened / terminal_closed, any ending clears it", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    fire(sim, "server_door_opened");
+    expect(v(sim, "g1.at_the_heart")).toBe(false);
+    // The terminal's own post: subject = the guest it pilots, `at` = its room (as provisioned).
+    expect(diags(fire(sim, "terminal opened", "g1", { at: "The Server Room" }, "Terminal · Server Room"))).toEqual([]);
+    expect(v(sim, "g1.at_the_heart")).toBe(true);
+    for (const spelling of ["server-room", "the server room", "Server Room"]) {
+      fire(sim, "terminal closed", "g4", { at: spelling });
+      fire(sim, "terminal opened", "g4", { at: spelling });
+      expect(v(sim, "g4.at_the_heart"), spelling).toBe(true);
+    }
+    // Another terminal (or none) is not his heart; closing ends it.
+    fire(sim, "terminal opened", "g5", { at: "The Desktop" });
+    expect(v(sim, "g5.at_the_heart")).toBe(false);
+    fire(sim, "terminal opened", "g5");
+    expect(v(sim, "g5.at_the_heart")).toBe(false);
+    fire(sim, "terminal closed", "g4", { at: "The Server Room" });
+    expect(v(sim, "g4.at_the_heart")).toBe(false);
+    // With no subject (a director's mis-fire) nothing happens.
+    const none = fire(sim, "terminal opened", null, { at: "The Server Room" });
+    expect(diags(none)).toEqual([]);
+    expect(worldKeys(sim).filter((k) => k.startsWith("."))).toEqual([]);
+    // Any ending sends everyone away from his heart, and no terminal brings them back.
+    fire(sim, "terminal opened", "g6", { at: "The Server Room" });
+    fire(sim, "patch_combo_a");
+    for (const [g] of PROGRAMS) expect(v(sim, `${g}.at_the_heart`), g).toBe(false);
+    fire(sim, "terminal opened", "g1", { at: "The Server Room" });
+    expect(v(sim, "g1.at_the_heart")).toBe(false);
+  });
+
   it("the director's 🚪 fallback plays the same scene when the contact fails", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
@@ -2742,6 +2774,37 @@ describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
     for (const [id, r] of m.roles) walk(r.hooks, `role ${id}`);
     walk(m.rules, "rules");
     expect(bad).toEqual([]);
+  });
+});
+
+describe("Trapped in the Internet — the server-room terminal over HTTP (wave 7)", () => {
+  it("the terminal's `terminal opened` (mod signal, labelled) puts the guest at his heart, and the worker reads it on their next line", { timeout: SLOW }, async () => {
+    const dir = mkdtempSync(join(tmpdir(), "loom-trapped-"));
+    tmp.push(dir);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: SHOW, scenarioSource: SRC, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Calculator", passcode: CODES.event });
+    const id = g.json["id"] as string;
+    const token = g.json["token"] as string;
+    const mod = (name: string, extra: Record<string, unknown> = {}) => call(rt, "POST", "/api/mod/signal", { name, ...extra }, { moderator: true });
+    await mod("captcha answered", { subject: id, args: { passed: false } });
+    await call(rt, "POST", "/api/guest/choose", { index: 0 }, { token });
+    await call(rt, "POST", "/api/guest/choose", { index: 0 }, { token });
+    await call(rt, "POST", "/api/mod/scan", { as: "Norton Anti-Virus", target: id }, { moderator: true });
+    for (const n of ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta"]) await mod(n);
+    rt.liveSim!.setVar("Night.step", "14");
+    expect((await mod("terminal opened", { subject: id, args: { at: "The Server Room" }, label: "Terminal · Server Room" })).status).toBe(200);
+    expect(rt.liveSim!.world.peek(`${id}.at_the_heart`)).toMatchObject({ value: true });
+    const worker = await call(rt, "GET", "/api/agent/stream?characters=Trabolta&name=laptop", {}, { moderator: true });
+    expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "What do you want?" }, { token })).status).toBe(200);
+    const req = worker.res.frames().filter(([e]) => e === "request").map(([, d]) => d as AgentRequest)[0]!;
+    expect(String(req.them.vars["at_the_heart"])).toBe("true");
+    expect(String(req.world["Night.heart_opened"])).toBe("false");
+    // He holds the Sandy File (its year is the riddle's clue), never the code itself.
+    for (const leak of ["The Door Code", "COLD DOOR", "The Cold Door", "door_code"]) expect(JSON.stringify(req), leak).not.toContain(leak);
+    expect((await mod("terminal closed", { subject: id, args: { at: "The Server Room" }, label: "Terminal · Server Room" })).status).toBe(200);
+    expect(rt.liveSim!.world.peek(`${id}.at_the_heart`)).toMatchObject({ value: false });
+    rt.dispose();
   });
 });
 

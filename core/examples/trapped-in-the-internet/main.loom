@@ -312,6 +312,10 @@ ROLE Program
   lie_q6: bool = false
   lie_q7: bool = false
   lie_q8: bool = false
+  // At the server-room terminal right now (`terminal_opened` / `_closed`,
+  // the story rules by The Heart). Not secret: Trabolta's worker reads it
+  // (persona `them:`) and drops the act for this program alone.
+  at_the_heart: bool = false
 
   // ── Arrival ──
   // A new program stands in the Optical Drive (the phone goes on rails there).
@@ -2204,6 +2208,11 @@ ROLE Program
     else:
       -> Program Final Round
 
+  // Any ending sends everyone away from his heart (the terminal's own
+  // `terminal closed` may never come: it falls asleep with the night).
+  when Night.ended == true and self.at_the_heart == true:
+    set self.at_the_heart = false
+
   // The majority's members get the whole truth (late pledgers too).
   when Kernel.majority == "stay" and self.group == Unlimited_Power:
     -> The Whole Truth
@@ -3504,6 +3513,24 @@ when reset_server_room:
   set Night.heart_opened = false
   set Night.door_quiet_until = 0
   broadcast "🔄 Server room reset: the patch bay forgives one wrong combination again, and the next door opening plays The Heart." to channel(hosts)
+
+// The server-room terminal (a wall terminal provisioned with `room=The
+// Server Room`) posts `terminal opened` when it starts piloting a guest's
+// own Trabolta thread, and `terminal closed` when that ends, `at` = its
+// room. While a program is at his heart Trabolta is candid with them (the
+// persona's `situations:` read `them.at_the_heart`), and only then can he
+// offer to stand down (cast/trabolta.loom). Any other terminal, or none,
+// is not his heart. The room may come spelled as the terminal was set up.
+when terminal_opened for program:
+  if program.name != null:
+    if Night.ended != true and (at == "The Server Room" or at == "the server room" or at == "Server Room" or at == "server room" or at == "server-room" or at == "server_room" or at == "The_Server_Room"):
+      set program.at_the_heart = true
+    else:
+      set program.at_the_heart = false
+
+when terminal_closed for program:
+  if program.name != null:
+    set program.at_the_heart = false
 
 // The King: he guards the server-room door *in the simulation* (the tent
 // tablet posts `chess won` for the program who mated him, `by` the
