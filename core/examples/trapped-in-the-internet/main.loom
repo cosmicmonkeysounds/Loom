@@ -791,8 +791,10 @@ ROLE Program
     Trabolta: {self.name}. If you learn the answer to one of tonight's questions, file it with me on the card. Unfiled facts are rumours.
     fire deal_fact_card for self
 
-  // A round closed: every card re-deals without the closed questions.
-  when Night.card_gen > self.card_seen and self.cleared and Trabolta.awake == true and Night.ended != true:
+  // A round closed: every card re-deals without the closed questions. Not
+  // gated on the night's end: truth.txt closes round 3 in the same drain a
+  // Song Ending ends the night, and a live card must still be closed.
+  when Night.card_gen > self.card_seen and self.cleared and Trabolta.awake == true:
     set self.card_seen = Night.card_gen
     fire deal_fact_card for self
 
@@ -822,9 +824,10 @@ ROLE Program
   // the thread). The question strings are Night.q_h1 … Night.q_f2, set by
   // the generated `== Facts Seed` (generated/questions.loom, from facts.json).
   when deal_fact_card for program:
+    set program.fact_open = ""
+    set program.fact_sep = ""
+    // Once the night has ended nothing is open, but a live card still closes.
     if Night.ended != true and Night.round >= 1:
-      set program.fact_open = ""
-      set program.fact_sep = ""
       if Night.r1_closed != true:
         if program.fact_h1 != true:
           set program.fact_open = program.fact_open + program.fact_sep + Night.q_h1
@@ -852,15 +855,15 @@ ROLE Program
         if program.fact_f2 != true:
           set program.fact_open = program.fact_open + program.fact_sep + Night.q_f2
           set program.fact_sep = " | "
-      if program.fact_open != "":
-        set program.fact_card_live = true
-        show fact "📝 File a fact" to program with thread: Trabolta, questions: program.fact_open
-      else if program.fact_card_live == true:
-        // A round closed under an unanswered card: a closing card with no
-        // questions supersedes it (the phone folds it to a note), so the
-        // closed questions never stay on the phone as a task.
-        set program.fact_card_live = false
-        show fact "📝 The filing is closed" to program with thread: Trabolta, questions: ""
+    if program.fact_open != "":
+      set program.fact_card_live = true
+      show fact "📝 File a fact" to program with thread: Trabolta, questions: program.fact_open
+    else if program.fact_card_live == true:
+      // A round closed under an unanswered card: a closing card with no
+      // questions supersedes it (the phone folds it to a note), so the
+      // closed questions never stay on the phone as a task.
+      set program.fact_card_live = false
+      show fact "📝 The filing is closed" to program with thread: Trabolta, questions: ""
 
   // `fact_try` / `fact_q_round` are scratch for this filing; the filing's
   // own record (`fact_n`, `fact_label`, `last_fact_q`, `fact_a/c/j/vN`) is
@@ -3752,6 +3755,8 @@ when read_truth_txt:
     complete quest The Final Facts for everyone
     set Night.recount = true
     set Night.r3_closed = true
+    // Round 3's cards re-deal: an unfiled F1/F2 becomes the closing card.
+    set Night.card_gen += 1
     set Night.settle_q = 0
     set Night.settle_round = 3
     set Night.settle_gen += 1

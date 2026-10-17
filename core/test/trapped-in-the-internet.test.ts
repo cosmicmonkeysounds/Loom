@@ -4402,6 +4402,22 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     expect(widgets(advance(sim2, 120)).filter((w) => w.widget === "fact" && w.audience[0] === "g5")).toEqual([]);
   });
 
+  it("truth.txt closes round 3's cards too: an unfiled F2 becomes the closing card on a Song night and a Grok Prom night", { timeout: SLOW }, () => {
+    const facts = (evs: SimEvent[]) => widgets(evs).filter((w) => w.widget === "fact" && w.audience[0] === "g6");
+    const qs = (w: { params: Record<string, string> }) => (w.params["questions"] ?? "").split("|").map((q) => q.trim().split(":")[0]).filter(Boolean);
+    for (const [lie, ending] of [[false, "Song Ending"], [true, "Grok Prom"]] as const) {
+      const sim = boot();
+      toBobbing(sim, { lie });
+      expect(qs(facts(file(sim, "g6", "F1", Q("F1").answer)).at(-1)!), ending).toEqual(["F2"]);
+      const rt = fire(sim, "read_truth_txt");
+      expect(beats(rt), ending).toContain(ending);
+      const closed = facts(rt);
+      expect(closed.map((w) => w.text), ending).toEqual(["📝 The filing is closed"]);
+      expect(qs(closed[0]!), ending).toEqual([]);
+      expect(v(sim, "g6.fact_card_live"), ending).toBe(false);
+    }
+  });
+
   it("B13: the consensus reads the key's canonical answer, never a filer's alias", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
