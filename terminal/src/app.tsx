@@ -646,12 +646,15 @@ function Terminal({
     voiceCursor.current = plan.cursor;
     roomPlayer.push(plan.lines);
   }, [room, state, asleep, config.character, voiceCursor, roomPlayer]);
+  // A room terminal going back to sleep (a restart, the room closed) stops
+  // the room voice. Only a room terminal: a house terminal's open line keeps
+  // its reply going when the character falls asleep mid-sentence.
   useEffect(() => {
-    if (!asleep) return;
+    if (!asleep || room === null) return;
     roomPlayer.stop();
     setRoomLine(null);
     setRoomBusy(false);
-  }, [asleep, roomPlayer]);
+  }, [asleep, room, roomPlayer]);
 
   // --- the leash ---
   const end = useCallback(
