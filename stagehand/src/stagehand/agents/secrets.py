@@ -80,8 +80,9 @@ def _norm(text: str) -> str:
 _PAIR = re.compile(r"^([a-z]+)\s*(\d+)\s*-\s*([a-z]+)\s*(\d+)$", re.IGNORECASE)
 #: Between the two ends of a patch-bay pair, however it is written.
 _JOIN = r"(?:\s*(?:-+>?|\u2013|\u2014|\u2192|=>|>|/|:|,)\s*|\s+(?:to|into|and)\s+|\s*)"
-#: Between two digits of a code: "1 9 9 7", "1,997", "1-9-9-7".
-_DIGIT_GAP = r"(?:\s*[,.\-]?\s*)"
+#: Between two digits of a code: "1 9 9 7", "1,997", "1-9-9-7" (never a
+#: dot: "$19.97" is a price, not the code).
+_DIGIT_GAP = r"(?:\s*[,\-]?\s*)"
 #: The words a number is spelled with; a `never` word made only of these
 #: matches with any spacing or hyphens ("nineteen ninety-seven",
 #: "nineteen ninety seven", "nineteen-ninetyseven", "… hundred and …").
@@ -104,6 +105,22 @@ def split_dropped(dropped: list[str]) -> tuple[list[str], list[str]]:
     return [d for d in dropped if not d.startswith(NEVER_TAG)], [d for d in dropped if d.startswith(NEVER_TAG)]
 
 
+def _phrase(w: str) -> str:
+    """A `never` phrase word by word; a run of number words in it matches
+    with any spacing or hyphens ("in ninety-seven" → "in ninety seven")."""
+    pieces: list[tuple[bool, str]] = []
+    for token in w.split(" "):
+        parts = [p for p in token.split("-") if p]
+        if parts and all(p in _NUMBER_WORDS for p in parts):
+            pieces.append((True, _WORD_GAP.join(re.escape(p) for p in parts)))
+        else:
+            pieces.append((False, re.escape(token)))
+    out = pieces[0][1]
+    for (prev, _), (num, body) in zip(pieces, pieces[1:]):
+        out += (_WORD_GAP if prev and num else r"\s+") + body
+    return out
+
+
 @lru_cache(maxsize=32)
 def _never_pattern(words: tuple[str, ...]) -> re.Pattern[str] | None:
     alts: list[str] = []
@@ -123,7 +140,7 @@ def _never_pattern(words: tuple[str, ...]) -> re.Pattern[str] | None:
         elif parts and all(p in _NUMBER_WORDS for p in parts):
             body = _WORD_GAP.join(re.escape(p) for p in parts)
         else:
-            body = r"\s+".join(re.escape(part) for part in w.split(" "))
+            body = _phrase(w)
         before = r"(?<![a-z0-9])" if w[0].isalnum() else ""
         alts.append(rf"{before}(?:{body})(?![a-z0-9])")
     return re.compile("|".join(alts), re.IGNORECASE) if alts else None
