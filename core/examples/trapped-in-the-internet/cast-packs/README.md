@@ -88,7 +88,8 @@ addresses, codes, where things are kept).
   speaks for themselves in person and in chat.
 - **Secrets are need-to-know.** The answer key lives in `facts.json`; it is
   printed on Clippy's, Adobe's and the second director's packs only. The patch-bay
-  combos are on the patch-bay card and the director's card only. The door
+  combos are on the patch-bay card and in the show's runbook (`../README.md`,
+  section E) only, never on any other card. The door
   code is in `facts.json` (`door.code`) and on the keypad, never on a card;
   the tech op and the house manager know it. A featured
   sheet holds only its own secret.
