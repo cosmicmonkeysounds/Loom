@@ -44,9 +44,12 @@ map side is in [the house map](39-house-map.md).
    win is worth.
 5. If the win can't reach the server (Wi-Fi down for more than about
    15 seconds, or under a minute on a connection that hangs), the tablet says *"The win didn't reach the house: tell
-   a host (♟)."* — press ♟ for them. A tablet reloaded within 60
-   seconds of the checkmate sends the win once on its own; after that
-   it is dropped, so a late win never unlocks the real door.
+   a host (♟)."* — press ♟ for them. **Once that notice shows, only ♟
+   opens the door**: the tablet has forgotten the win, and reloading it
+   sends nothing (a late win must never unlock the real door after your
+   ♟ or a re-arm). A reload re-sends a win only when the page died while
+   it was still being sent (before any notice), within 60 seconds of
+   the checkmate.
 
 A badge on the board says whether the win is **ARMED** or **PRACTICE**
 (the map's `armed:` reads `Night.step`): before the Y2K hour the
