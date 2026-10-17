@@ -259,7 +259,7 @@ is YAML frontmatter + the system prompt:
 
 Trabolta's situations (wave 7): **at your heart** (`them.at_the_heart ==
 true`, set by the story while the server-room terminal pilots that
-program) makes him candid, like the Master: he admits the patch bay is
+program, and `Night.step >= 14`, the Y2K hour) makes him candid, like the Master: he admits the patch bay is
 his heart and that he does not know the combinations or the door's code,
 says what he wants and why, and may fire `stand_down` only when the
 program has shown him what he wants is impossible (a host confirms it
