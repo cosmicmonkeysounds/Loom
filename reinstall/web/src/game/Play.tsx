@@ -267,7 +267,7 @@ function KingBar({ king, onHit, onChallenge }: { king: KingHud; onHit: () => voi
     return (
       <div className="hud-king open">
         <span className="hud-king-label">♟ {king.label}</span>
-        <span className="hud-king-state">DOOR OPEN</span>
+        <span className="hud-king-state">FALLEN</span>
       </div>
     );
   }

@@ -617,7 +617,9 @@ export class Game {
     });
   }
 
-  /** A game ended: a checkmate fells him, opens the door and closes the board;
+  /** A game ended: a checkmate fells him, opens his door in the simulation
+   *  and closes the board (the story hands the winner the real door's code
+   *  from the Y2K hour — the tablet only says so);
    *  the King winning or a draw is posted and the board deals again (it stays
    *  open, `redeals`); giving up closes it. The fight is otherwise as it was. */
   chessResult(r: ChessResult): void {
@@ -645,11 +647,26 @@ export class Game {
     this.trailHouse = trailMap(this.map, king.id, true);
     this.lastTrailAt = Number.NEGATIVE_INFINITY;
     this.o.sfx.fanfare();
-    this.say("CHECKMATE — the door opens.", 4000);
-    // The story opens the real door: a win that never landed is said, so a host fires ♟.
-    void winNotice(this.o.signal?.(signals.won ?? "chess won")).then((notice) => {
-      if (notice !== null) this.say(notice, 6000);
-    });
+    this.say("CHECKMATE — the King falls.", 4000);
+    // The story hands the winner the door code from the Y2K hour (the real
+    // door is a standalone keypad): a counted win that landed says where the
+    // code is; one that never landed is said, so a host fires ♟.
+    const sent = this.o.signal?.(signals.won ?? "chess won");
+    void this.armedNow()
+      .then((armed) => winNotice(sent, armed))
+      .then((notice) => {
+        if (notice !== null) this.say(notice, 6000);
+      });
+  }
+
+  /** Did this checkmate count? Read again at the checkmate (the Y2K hour may
+   *  have started since the deal), else the badge's last answer. */
+  private async armedNow(): Promise<boolean | null> {
+    const king = this.kingProp;
+    if (king === null || king.armed === undefined || this.o.armed === undefined) return this.armedState;
+    const armed = await this.o.armed(king.armed.path, king.armed.min);
+    if (armed !== null) this.armedState = armed;
+    return armed ?? this.armedState;
   }
 
   // --- found ---------------------------------------------------------------

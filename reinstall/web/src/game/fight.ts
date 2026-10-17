@@ -13,11 +13,33 @@ import { relativeBearing } from "./hud.ts";
 
 /** Said when a checkmate's `chess won` never reached the event (every retry failed). */
 export const WIN_NOT_SENT = "The win didn't reach the house: tell a host (♟).";
+/** Said once a checkmate's `chess won` landed from the Y2K hour (the King is
+ *  armed): the story unlocks *The Door Code* for the winner. The real
+ *  server-room door has a standalone keypad — nothing here opens it. */
+export const WIN_CODE = "The server-room door code is in your phone's Codex.";
+/** Said once a practice checkmate (before the Y2K hour) landed. */
+export const WIN_PRACTICE = "A practice win: the King guards nothing real until the Y2K clock.";
 
-/** What the HUD says once a checkmate's story signal settles: `WIN_NOT_SENT`
- *  when it didn't land (so a host fires ♟ by hand), else nothing. */
-export async function winNotice(sent: Promise<boolean> | undefined): Promise<string | null> {
-  return sent !== undefined && !(await sent) ? WIN_NOT_SENT : null;
+/** What the HUD says once a checkmate's story signal settles, given whether
+ *  the fight counted (`armed`, read at the checkmate; null = unknown):
+ *  `WIN_NOT_SENT` when it didn't land (so a host fires ♟ by hand) — never
+ *  for a known practice game, which wins nothing a host could hand over —
+ *  else `WIN_CODE` / `WIN_PRACTICE`, or nothing when it is unknown whether
+ *  it counted (or there is no signal hook). */
+export async function winNotice(sent: Promise<boolean> | undefined, armed: boolean | null = null): Promise<string | null> {
+  if (sent === undefined) return null;
+  if (!(await sent)) return armed === false ? null : WIN_NOT_SENT;
+  return armed === true ? WIN_CODE : armed === false ? WIN_PRACTICE : null;
+}
+
+/** The board's line under its badge: what a checkmate wins. From the Y2K
+ *  hour, the door code (in the winner's Codex); before, nothing — practice.
+ *  Null when it is unknown (no badge either). Never "the door opens": the
+ *  real door has a keypad lock nothing in the house drives. */
+export function stakesLine(armed: boolean | null): string | null {
+  if (armed === true) return "Checkmate him and the server-room door code goes to your phone's Codex.";
+  if (armed === false) return "Practice: the King guards nothing real until the Y2K clock.";
+  return null;
 }
 
 /** Hit points when the prop declares none. */
@@ -74,7 +96,7 @@ export function hit(f: Fight, now: number): Fight {
 /**
  * Does a game's end deal a fresh board at the same stage, the window still
  * open? The King winning and a draw (a pawns-only stalemate is the common
- * one) do: only checkmate opens the door, so a stuck game never leaves the
+ * one) do: only checkmate fells him, so a stuck game never leaves the
  * program with nothing to do (OCT31 decision 6). A win and giving up close
  * the board.
  */

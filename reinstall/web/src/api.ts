@@ -268,9 +268,10 @@ export const SIGNAL_RETRY_MS = [500, 1000, 2000, 4000, 8000] as const;
 /** Where the tablet keeps its one pending story signal (the latest only), so
  *  a reload doesn't lose an unsent `chess won`. */
 export const PENDING_SIGNAL_KEY = "loom-reinstall.pending-signal";
-/** A pending signal this old is dropped, never posted: `chess won` unlocks
- *  the real server-room door for 90 s, so a win must not land minutes late
- *  (after a reload) — a host fires ♟ by hand instead. */
+/** A pending signal this old is dropped, never posted: from the Y2K hour
+ *  `chess won` hands the winner the server-room door code, so a win must not
+ *  land minutes late (after a reload, the guest long gone) — a host fires ♟
+ *  by hand instead. */
 export const PENDING_SIGNAL_MAX_AGE_MS = 60_000;
 /** One attempt is abandoned after this long (or when the signal would turn
  *  `PENDING_SIGNAL_MAX_AGE_MS` old): a black-holed uplink must fail fast,
@@ -357,7 +358,7 @@ async function sendSignal(config: ReinstallConfig, p: PendingSignal, opts: Signa
     const left = PENDING_SIGNAL_MAX_AGE_MS - (now() - p.at);
     if (left <= 0) return "failed";
     // A stalled request is aborted (a network failure): one that hung past
-    // the cap could still open the real door minutes after the win.
+    // the cap could still land minutes after the win.
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), Math.min(opts.timeoutMs ?? SIGNAL_ATTEMPT_TIMEOUT_MS, left));
     try {
@@ -388,7 +389,7 @@ async function sendSignal(config: ReinstallConfig, p: PendingSignal, opts: Signa
  * it from `flushPendingSignal` — within `PENDING_SIGNAL_MAX_AGE_MS` of the
  * first try. Once it fails for good it is forgotten: the caller tells the
  * guest to get a host (`WIN_NOT_SENT`), and a late post after the host's ♟
- * (or a director's re-arm) would open the real door a second time.
+ * would land the win twice.
  */
 export async function postSignal(config: ReinstallConfig, name: string, subject: string, opts: SignalOptions = {}): Promise<boolean> {
   const storage = opts.storage === undefined ? browserStorage() : opts.storage;
@@ -422,14 +423,36 @@ export async function flushPendingSignal(config: ReinstallConfig, opts: SignalOp
   return r === "ok" ? "sent" : r;
 }
 
+/** `fetchArmed` gives up (null = unknown) after this long: the checkmate's
+ *  notice waits on it, so a black-holed uplink must never hold back "tell a
+ *  host" past the signal's own retries. */
+export const ARMED_TIMEOUT_MS = 4_000;
+
 /**
  * Is the fight armed? Reads the mod view (`GET /api/state?role=mod`, as
  * `fetchLocations` does) for the world var at `path` and compares it with
- * `min`; null when the server is away or the var is absent / not a number.
+ * `min`; null when the server is away, too slow (`timeoutMs`), or the var is
+ * absent / not a number.
  */
-export async function fetchArmed(config: ReinstallConfig, path: string, min: number, fetcher: typeof fetch = fetch): Promise<boolean | null> {
+export async function fetchArmed(config: ReinstallConfig, path: string, min: number, fetcher: typeof fetch = fetch, timeoutMs: number = ARMED_TIMEOUT_MS): Promise<boolean | null> {
+  const ctl = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<null>((resolve) => {
+    timer = setTimeout(() => {
+      ctl.abort();
+      resolve(null);
+    }, timeoutMs);
+  });
   try {
-    const res = await fetcher(`${baseOf(config)}/api/state?role=mod`, { headers: { "x-loom-token": config.token } });
+    return await Promise.race([readArmed(config, path, min, fetcher, ctl.signal), late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function readArmed(config: ReinstallConfig, path: string, min: number, fetcher: typeof fetch, signal: AbortSignal): Promise<boolean | null> {
+  try {
+    const res = await fetcher(`${baseOf(config)}/api/state?role=mod`, { headers: { "x-loom-token": config.token }, signal });
     if (!res.ok) return null;
     const r = (await res.json()) as { world?: unknown };
     if (!Array.isArray(r.world)) return null;

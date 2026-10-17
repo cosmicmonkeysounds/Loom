@@ -89,7 +89,8 @@ export function App() {
   }, [config]);
 
   // A `chess won` the last page load left unsent lands now — once, and only
-  // within 60 s of the checkmate (it opens the real door; older is dropped).
+  // within 60 s of the checkmate (it hands out the door code; older is
+  // dropped — the guest has moved on and a host's ♟ covers it).
   const flushed = useRef(false);
   useEffect(() => {
     if (config === null || flushed.current) return;
@@ -312,7 +313,7 @@ function Device({
             <p>
               To be reinstalled, a program must prove it can follow instructions: walk the virtual house and find <b>Gerald, the golden duck</b>.
             </p>
-            {HAS_KING && config.role !== "station" && <p className="king-note">Find Gerald. The King guards a door — he can be fought on this tablet only.</p>}
+            {HAS_KING && config.role !== "station" && <p className="king-note">Find Gerald. In the simulation the King guards the Server Room's door — he can be fought on this tablet only.</p>}
             {!canDraw && config.role !== "station" && <div className="w98-error">⚠ {NO_WEBGL2}</div>}
             {config.role !== "player" && (
               <fieldset className="w98-group">

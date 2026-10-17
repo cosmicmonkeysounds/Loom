@@ -45,20 +45,29 @@ export type AlertFilter = (m: ChatMessage) => boolean;
  *  is a faction room no guest belongs to, so its notices carry `[]`). */
 const NOBODY_WHEN_EMPTY: ReadonlySet<string> = new Set(["lobby", "location", "dm", "codex", "quests", "wallet"]);
 
+/** An empty-audience message that reached nobody: a nobody-room above, or a
+ *  derived `faction:<X>` mirror of a `to faction(X)` broadcast while X has
+ *  no members (its audience is X's members, so `[]` = nobody). Authored
+ *  staff rooms keep their own ids (`hosts`), so they still count as staff. */
+function reachedNobody(m: ChatMessage): boolean {
+  return NOBODY_WHEN_EMPTY.has(m.channelKind) || m.channel === "lobby" || m.channel.startsWith("faction:");
+}
+
 /**
  * A booth's alerts (B1): its stream also carries lobby messages addressed to
  * single guests (the booth builds per-guest threads from them), and a
  * guest's own `!` pin — "🚨 GO TO THE INTERNET. You are marked…" — must not
  * banner every booth. A booth's alert is one for everyone, one addressed to
- * its character (`@<Character>`), or a staff notice (empty audience in a
- * staff room, e.g. `# hosts`). The booth's own cues ride its readouts (`raise`).
+ * its character (`@<Character>`), or a staff notice (empty audience in an
+ * authored staff room, e.g. `# hosts`; never an empty `faction:<X>` mirror).
+ * The booth's own cues ride its readouts (`raise`).
  */
 export function boothAlertFilter(character: string): AlertFilter {
   const me = `@${character}`;
   return (m) => {
     if (m.audience === "all") return true;
     if (!Array.isArray(m.audience)) return false;
-    if (m.audience.length === 0) return !NOBODY_WHEN_EMPTY.has(m.channelKind) && m.channel !== "lobby";
+    if (m.audience.length === 0) return !reachedNobody(m);
     return m.audience.includes(me);
   };
 }

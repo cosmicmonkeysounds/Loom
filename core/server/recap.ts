@@ -22,7 +22,7 @@
 //!   `score`.
 //! - **shares** — codex entries handed to someone else (`codexUnlocked`
 //!   `via: "share"`, credited to `from`; a share to a character counts).
-//! - **chess** — Cold Lock wins: `signal`s named `chess won` (the tent
+//! - **chess** — wins against the King: `signal`s named `chess won` (the tent
 //!   tablet) or `beat the machine` (a host's ♟ fallback), names folded,
 //!   per subject; `chessGames` adds the `chess lost` / `chess drawn` counts.
 //! - **bathroom** — Bathroom Mode trips: `go to the bathroom` signals per
@@ -69,7 +69,7 @@ export interface RecapDuckRow {
   runs: number;
 }
 
-/** One program's Cold Lock games (anyone who played at least one). */
+/** One program's games against the King (anyone who played at least one). */
 export interface RecapChessRow {
   id: string;
   name: string;
@@ -110,7 +110,7 @@ export interface Recap {
     bathroomTrips: number;
   };
   lists: Record<RecapList, RecapRow[]>;
-  /** Everyone who played the Cold Lock, most wins first. */
+  /** Everyone who played the King at chess, most wins first. */
   chessGames: RecapChessRow[];
   /** The Golden Duck Speedrun, fastest first (empty: nobody found it). */
   duck: RecapDuckRow[];
@@ -128,7 +128,7 @@ const LIST_TITLES: Record<RecapList, string> = {
   quests: "Quests completed",
   truthcoin: "Truthcoin",
   shares: "Codex shares",
-  chess: "Cold Lock chess",
+  chess: "Chess against the King",
   bathroom: "Bathroom trips",
 };
 

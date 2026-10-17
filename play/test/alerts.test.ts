@@ -126,6 +126,19 @@ describe("a booth's alerts are its own (B1)", () => {
     const staff = msg(14, true, { ts: 5 * MIN, audience: [], room: HOSTS });
     expect(pickAlerts([lightsOut, emptyRoom, staff], -1, norton).map((m) => m.seq)).toEqual([14]);
   });
+  it("a `!` to an empty faction (a derived `faction:X` mirror with []) banners no booth; `# hosts` still does", () => {
+    // `broadcast "!…" to faction(The Way Out)` while nobody has joined it:
+    // the mirror's audience is the faction's members, i.e. [].
+    const emptyFaction = msg(15, true, { ts: 5 * MIN, audience: [], room: { channel: "faction:The Way Out", channelKind: "faction", title: "#the way out" } });
+    const staff = msg(16, true, { ts: 5 * MIN, audience: [], room: HOSTS });
+    expect(pickAlerts([emptyFaction], -1, norton)).toEqual([]);
+    expect(nextAlert([emptyFaction], 14, 5 * MIN, norton)).toEqual({ alert: null, mark: 15 });
+    expect(pickAlerts([emptyFaction, staff], -1, norton).map((m) => m.seq)).toEqual([16]);
+    // A member of that faction is addressed by id and still gets it on the phone.
+    const members = msg(17, true, { ts: 5 * MIN, audience: ["g-1"], room: { channel: "faction:The Way Out", channelKind: "faction", title: "#the way out" } });
+    expect(pickAlerts([members], -1, norton)).toEqual([]);
+    expect(nextAlert([members], 16, 5 * MIN).alert?.seq).toBe(17);
+  });
   // The guest's own "🚨 GO TO THE INTERNET" pin: a lobby line to one guest.
   const guestPin = msg(7, true, { ts: 5 * MIN, audience: ["g-491630"] });
 

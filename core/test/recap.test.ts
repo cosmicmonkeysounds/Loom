@@ -96,7 +96,7 @@ describe("K-26 recap", () => {
     expect(runTime(3_600_000)).toBe("60:00");
   });
 
-  it("shares, Cold Lock games and bathroom trips come off the log, names folded", () => {
+  it("shares, games against the King and bathroom trips come off the log, names folded", () => {
     const sim = Sim.fromSources("ROLE Program\n\nCHARACTER Norton\n\nCODEX The Sandy File\n  code: SANDY-1\n  text: Sandy.\n");
     for (const [id, name] of [["g1", "Winamp"], ["g2", "VLC"], ["g3", "Paint"]] as const) sim.createPerson(id, name);
     sim.redeem("g1", "SANDY-1");
@@ -134,7 +134,7 @@ describe("K-26 recap", () => {
     expect(r.chessGames.map((g) => g.name)).toEqual(["Winamp", "VLC", "Paint"]);
     expect(r.totals).toMatchObject({ shares: 3, chessWins: 3, bathroomTrips: 4 });
     expect(r.text).toContain("Codex shares:\n  1. Winamp — 2\n  2. VLC — 1\n");
-    expect(r.text).toContain("Cold Lock chess (most wins):\n  Winamp — 2 won · 0 lost · 0 drawn\n  VLC — 1 won · 1 lost · 0 drawn\n  Paint — 0 won · 0 lost · 1 drawn\n");
+    expect(r.text).toContain("Chess against the King (most wins):\n  Winamp — 2 won · 0 lost · 0 drawn\n  VLC — 1 won · 1 lost · 0 drawn\n  Paint — 0 won · 0 lost · 1 drawn\n");
     expect(r.text).toContain("Bathroom trips:\n  1. Paint — 2\n  1. Winamp — 2\n");
   });
 
@@ -185,7 +185,7 @@ describe("K-26 recap", () => {
     expect(r.lists.bathroom.filter((x) => x.value > 0).map((x) => [x.name, x.value])).toEqual([["Winamp", 1]]);
     // The text block: every list titled, liars listed, persona marked.
     expect(r.text.split("\n")[0]).toBe("RECAP — Trapped in the Internet");
-    for (const h of ["Most trusted (trust):", "Least trusted:", "Confident lies accepted:", "Trips to the Internet:", "Codex entries held:", "Quests completed:", "Codex shares:", "Cold Lock chess (most wins):", "Bathroom trips:", "Factions:"]) {
+    for (const h of ["Most trusted (trust):", "Least trusted:", "Confident lies accepted:", "Trips to the Internet:", "Codex entries held:", "Quests completed:", "Codex shares:", "Chess against the King (most wins):", "Bathroom trips:", "Factions:"]) {
       expect(r.text).toContain(h);
     }
     expect(r.text).toMatch(/Confident lies accepted:\n {2}1\. M[^\n]* — 1\n {2}1\. M[^\n]* — 1/u);
@@ -198,7 +198,7 @@ describe("K-26 recap", () => {
     expect(r.programs).toBe(0);
     expect(r.lists.trust).toEqual([]);
     expect(r.text).toContain("(nobody)");
-    expect(r.text).toContain("Cold Lock chess (most wins):\n  (nobody played)");
+    expect(r.text).toContain("Chess against the King (most wins):\n  (nobody played)");
     expect(r.chessGames).toEqual([]);
   });
 });

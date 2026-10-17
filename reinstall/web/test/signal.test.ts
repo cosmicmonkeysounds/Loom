@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { fetchArmed, flushPendingSignal, PENDING_SIGNAL_KEY, PENDING_SIGNAL_MAX_AGE_MS, postSignal, readPendingSignal, SIGNAL_ATTEMPT_TIMEOUT_MS, SIGNAL_RETRY_MS, type SignalStorage } from "../src/api.ts";
-import { WIN_NOT_SENT, winNotice } from "../src/game/fight.ts";
+import { ARMED_TIMEOUT_MS, fetchArmed, flushPendingSignal, PENDING_SIGNAL_KEY, PENDING_SIGNAL_MAX_AGE_MS, postSignal, readPendingSignal, SIGNAL_ATTEMPT_TIMEOUT_MS, SIGNAL_RETRY_MS, type SignalStorage } from "../src/api.ts";
+import { WIN_CODE, WIN_NOT_SENT, WIN_PRACTICE, stakesLine, winNotice } from "../src/game/fight.ts";
 import { defaultConfig } from "../src/config.ts";
 
 const config = defaultConfig({ eventId: "ev1", token: "mod-token", name: "Tent tablet" });
@@ -194,6 +194,27 @@ describe("the pending signal (a reload doesn't lose a win)", () => {
     expect(await winNotice(undefined)).toBeNull();
   });
 
+  it("from the Y2K hour a landed win says the door code is in the Codex; before, it is practice — never a real door opening (wave 7)", async () => {
+    const lost = () => postSignal(config, "chess won", "g-1", { fetcher: fetcher(["net"]).fetch, storage: null, attempts: 1, sleep: async () => {} });
+    const landed = () => postSignal(config, "chess won", "g-1", { fetcher: fetcher([200]).fetch, storage: null });
+    expect(await winNotice(landed(), true)).toBe(WIN_CODE);
+    expect(await winNotice(landed(), false)).toBe(WIN_PRACTICE);
+    expect(await winNotice(landed(), null)).toBeNull(); // unknown whether it counted: claim nothing
+    // A counted (or maybe-counted) win that never landed sends the guest to a host…
+    expect(await winNotice(lost(), true)).toBe(WIN_NOT_SENT);
+    expect(await winNotice(lost(), null)).toBe(WIN_NOT_SENT);
+    // …but a practice one wins nothing a host could hand over.
+    expect(await winNotice(lost(), false)).toBeNull();
+    expect(await winNotice(undefined, true)).toBeNull(); // no signal hook: nothing landed, nothing to claim
+    expect(WIN_CODE).toContain("Codex");
+    expect(stakesLine(true)).toContain("door code");
+    expect(stakesLine(false)).toMatch(/^Practice/u);
+    expect(stakesLine(null)).toBeNull();
+    for (const line of [WIN_CODE, WIN_PRACTICE, WIN_NOT_SENT, stakesLine(true)!, stakesLine(false)!]) {
+      expect(line).not.toMatch(/door (opens|is open)|disarm|unlock/iu);
+    }
+  });
+
   it("a refused flush is forgotten; a failed one stays for the next load", async () => {
     const st = memory();
     const entry = JSON.stringify({ eventId: "ev1", name: "chess won", subject: "g-1", label: "Tent tablet", at: 0 });
@@ -251,5 +272,21 @@ describe("fetchArmed", () => {
     expect(await fetchArmed(config, "Night.step", 1, fetcher([{ status: 200, body: {} }]).fetch)).toBeNull();
     expect(await fetchArmed(config, "Night.step", 1, fetcher([409]).fetch)).toBeNull();
     expect(await fetchArmed(config, "Night.step", 1, fetcher(["net"]).fetch)).toBeNull();
+  });
+
+  it("gives up after its timeout on a black-holed uplink, aborting the request (the checkmate notice waits on it)", async () => {
+    let aborted = false;
+    const hang = ((_url: string, init?: RequestInit) =>
+      new Promise<Response>(() => {
+        init?.signal?.addEventListener("abort", () => (aborted = true));
+      })) as unknown as typeof fetch;
+    const t0 = Date.now();
+    expect(await fetchArmed(config, "Night.step", 14, hang, 30)).toBeNull();
+    expect(Date.now() - t0).toBeLessThan(1_000);
+    expect(aborted).toBe(true);
+    // …and the "tell a host" notice is not held back by it.
+    const lost = postSignal(config, "chess won", "g-1", { fetcher: fetcher(["net"]).fetch, storage: null, attempts: 1, sleep: async () => {} });
+    expect(await winNotice(lost, await fetchArmed(config, "Night.step", 14, hang, 30))).toBe(WIN_NOT_SENT);
+    expect(ARMED_TIMEOUT_MS).toBeLessThanOrEqual(SIGNAL_ATTEMPT_TIMEOUT_MS);
   });
 });
