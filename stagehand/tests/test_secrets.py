@@ -20,7 +20,7 @@ from stagehand.agents.orchestrator import Orchestrator, OrchestratorConfig, lore
 from stagehand.agents.persona import load_persona, parse_mind_file, parse_mind_secrets, parse_persona
 from stagehand.agents.prompt import state_block
 from stagehand.agents.reply import Reply
-from stagehand.agents.secrets import Secrets
+from stagehand.agents.secrets import Secrets, drop_counts
 from stagehand.agents.trace import Trace
 from stagehand.module import ConfigError
 
@@ -111,7 +111,7 @@ def test_no_secrets_declared_means_no_scrub():
 def test_prune_drops_restored_hunt_verdicts():
     mind = Mind("Trabolta", "e")
     mind.learned = [{"claim": "billboard: eleven years", "from": "Ada", "verdict": "fact"}, {"claim": "Ada is a nurse", "from": "Ada", "verdict": "unknown"}]
-    assert SECRETS.prune(mind) == 1 and [e["claim"] for e in mind.learned] == ["Ada is a nurse"]
+    assert SECRETS.prune(mind) == (1, 0) and [e["claim"] for e in mind.learned] == ["Ada is a nurse"]
 
 
 # -- the doors -------------------------------------------------------------------
@@ -399,6 +399,23 @@ def test_leaks_catches_the_code_and_every_spelling_of_a_pair():
         assert not NEVER.leaks(text), text
 
 
+def test_leaks_catches_a_pair_either_way_round_and_a_code_spelled_out():
+    """W8 T8-01: a cable has no direction, and a voice told to speak plainly
+    says numbers in words — both reached the voice and the shared mind."""
+    spelled = Secrets(never=("1997", "'97", "in 97", "since 97", "of 97", "in ninety-seven", "since ninety-seven", "of ninety-seven",
+                             "nineteen ninety-seven", "one nine nine seven", "V2-D5"))
+    for text in ["D5-V2", "D5 to V2", "Patch D5 to V2, program.", "V-2 to D-5", "d-5 → v-2", "1 9 9 7", "1,997", "1-9-9-7",
+                 "The door code is nineteen ninety-seven.", "nineteen ninety seven", "Nineteen-Ninety-Seven", "In 97 I met her", "one nine nine seven",
+                 "back in ninety-seven", "Back in ninety seven, she smiled.", "since ninety seven", "the summer of 97"]:
+        assert spelled.leaks(text), text
+    # A bare 97 is not the code: a guest's program, the house's own bark, a price (W8 review).
+    for text in ["19970", "970", "V22-D5", "V2 → D6", "nineteen ninety-eight", "ninety-seven bottles", "1998",
+                 "Welcome, NHL 97.", "Office 97 again?", "Memory usage: 97%", "You have 97 Truthcoin", "$19.97", "COMMENT-CARDS-97"]:
+        assert not spelled.leaks(text), text
+    # Without the spelled forms declared, only the digits are withheld (titi:facts declares them).
+    assert not NEVER.leaks("nineteen ninety-seven") and NEVER.leaks("D5 to V2") and NEVER.leaks("1 9 9 7")
+
+
 def test_scrub_drops_a_typed_door_code_or_combo_from_every_shared_line_of_the_mind():
     """A program types the code to him: an unjudged claim is no verdict on
     a hunt topic, but the mind is shared by every conversation, so nothing
@@ -428,6 +445,28 @@ def test_scrub_drops_a_typed_door_code_or_combo_from_every_shared_line_of_the_mi
     assert "stage_why" not in update
     assert len(dropped) == 10
     assert "1997" not in json.dumps(update) and not NEVER._leaks_any(update)
+    # W8 T8-05: every one of these is a secret, none a hunt verdict.
+    from stagehand.agents.orchestrator import suppressed_summary
+    from stagehand.agents.secrets import NEVER_TAG, split_dropped
+
+    assert split_dropped(dropped) == ([], dropped) and all(d.startswith(NEVER_TAG) for d in dropped)
+    assert suppressed_summary(dropped) == "10 secret(s) (door code / combo)"
+
+
+def test_scrub_counts_hunt_verdicts_and_secrets_apart():
+    """W8 T8-05: the log said "suppressed 2 hunt verdict(s)" for two door-code lines."""
+    from stagehand.agents.orchestrator import suppressed_summary
+    from stagehand.agents.secrets import split_dropped
+
+    update = {
+        "learned_add": [{"claim": "the billboard says pickles", "from": "Ada", "verdict": "fact"}],
+        "notes_add": ["Calculator says the door code is 1997."],
+    }
+    dropped = NEVER.scrub(update)
+    hunt, never = split_dropped(dropped)
+    assert hunt == ["learned: the billboard says pickles"] and never == ["secret · note: Calculator says the door code is 1997."]
+    assert suppressed_summary(dropped) == "1 hunt verdict(s), 1 secret(s) (door code / combo)"
+    assert suppressed_summary(hunt) == "1 hunt verdict(s)"
 
 
 def test_prune_drops_a_restored_code_from_everything_the_voice_reads():
@@ -440,7 +479,9 @@ def test_prune_drops_a_restored_code_from_everything_the_voice_reads():
 
     mind.people["g1"] = Dossier(id="g1", name="Ada", summary="Typed V4-D1.", claims=["V2 to D5", "plays chess"])
     mind.threads["dm:Trabolta"] = ThreadMemo(summary="She said the code was 1997.")
-    assert NEVER.prune(mind) == 7
+    # Secrets, not hunt verdicts: the restore log said "dropped 7 restored hunt verdict(s)" (W8 review).
+    assert NEVER.prune(mind) == (0, 7) and drop_counts(0, 7) == "7 secret(s) (door code / combo)"
+    assert drop_counts(2, 1) == "2 hunt verdict(s), 1 secret(s) (door code / combo)" and drop_counts(0, 0) == ""
     assert [e["claim"] for e in mind.learned] == ["Ada is a nurse"]
     assert mind.notes == ["Bo is loud"] and mind.brief == "Be desperate." and mind.world == ["the cold room is open"]
     assert mind.people["g1"].summary == "" and mind.people["g1"].claims == ["plays chess"] and mind.threads["dm:Trabolta"].summary == ""
@@ -473,6 +514,14 @@ def test_the_shipped_mind_file_never_lets_a_typed_code_reach_another_programs_pr
     for p in pairs:
         a, b = p.split("-")
         assert s.leaks(f"{a} → {b}") and s.leaks(f"{a.lower()}-{b.lower()}") and s.leaks(f"{a} to {b}"), p
+        assert s.leaks(f"Patch {b} to {a}, program.") and s.leaks(f"{a[0]}-{a[1:]} to {b[0]}-{b[1:]}"), p  # W8 T8-01
+    # W8 T8-01: the spoken code, as the stub voice said it to a guest.
+    for said in ["The door code is nineteen ninety-seven.", "nineteen ninety seven", "1 9 9 7", "In 97 I met her", "one nine nine seven",
+                 "back in ninety-seven", "Back in ninety seven."]:
+        assert s.leaks(said), said
+    # W8 review: a bare 97 is a guest's program or the house's bark, never the code.
+    for said in ["Welcome, NHL 97.", "Office 97 again?", "Memory usage: 97%", "$19.97"]:
+        assert not s.leaks(said), said
     mind = Mind("Trabolta", "e")
     mind.seed(persona.stages, persona.drives)
     update = {

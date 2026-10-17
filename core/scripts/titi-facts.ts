@@ -441,22 +441,75 @@ function stackRow(x: Fact, colour: string, stack: string): string {
 
 // --- the marked blocks -----------------------------------------------------
 
+const ONES = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+const TEENS = ["ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
+const TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+
+/** 10–99 in words: "ninety-seven", "nineteen", "forty". */
+function twoDigitWords(n: number): string {
+  if (n < 20) return TEENS[n - 10]!;
+  return n % 10 === 0 ? TENS[n / 10]! : `${TENS[Math.floor(n / 10)]}-${ONES[n % 10]}`;
+}
+
+/** A code read digit by digit: "one nine nine seven" (`zero` = "zero" | "oh"). */
+export function digitWords(code: string, zero = "zero"): string {
+  return [...code].map((d) => (d === "0" ? zero : ONES[Number(d)]!)).join(" ");
+}
+
+/** A 19xx / 20xx year as it is said: "nineteen ninety-seven", "nineteen
+ *  oh seven", "nineteen hundred", "two thousand", "two thousand seven",
+ *  "twenty twelve". */
+export function yearWords(year: string): string {
+  const hi = Number(year.slice(0, 2));
+  const lo = Number(year.slice(2));
+  if (hi === 20 && lo < 10) return lo === 0 ? "two thousand" : `two thousand ${ONES[lo]}`;
+  const head = twoDigitWords(hi);
+  if (lo === 0) return `${head} hundred`;
+  return lo < 10 ? `${head} oh ${ONES[lo]}` : `${head} ${twoDigitWords(lo)}`;
+}
+
+/** The words that make a bare two-digit year the year ("in 97", "since
+ *  ninety-seven", "the summer of 97"; "back in 97" is "in 97"). */
+const YEAR_LEADS = ["in", "since", "of"] as const;
+
+/** A patch-bay pair as `neverWords` writes it (`V2-D5`). */
+const PAIR_WORD = /^[A-Z]+\d+-[A-Z]+\d+$/u;
+
 /** What no line of the character's mind may ever carry, whoever typed it
- *  (`secrets.never`): the keypad code (and a year's '97 spelling) and every
- *  patch-bay pair (`V2-D5`; the worker matches any spelling, V2 → D5 …). A
- *  program who tells him the code must not hand it to every other
- *  program's prompt through his notes. */
+ *  (`secrets.never`): the keypad code, the ways it is said (digit by
+ *  digit; a year's '97, "in 97" / "since ninety-seven" / "of 97" and
+ *  "nineteen ninety-seven" — never a bare 97, which a guest's program may
+ *  be called) and every patch-bay pair (`V2-D5`; the worker matches any spelling and
+ *  either way round, V2 → D5, D5 to V2 …, a code with separators, 1 9 9 7,
+ *  and number words with any spacing). A program who tells him the code
+ *  must not hand it to every other program's prompt through his notes, and
+ *  a voice told to speak plainly says numbers in words. */
 export function neverWords(f: FactsFile, combos: string[] = []): string[] {
   const out = new Set<string>();
   const code = f.door?.code.trim();
   if (code !== undefined && code !== "") {
     out.add(code);
-    if (/^(?:19|20)\d\d$/u.test(code)) out.add(`'${code.slice(2)}`);
+    if (/^(?:19|20)\d\d$/u.test(code)) {
+      const short = code.slice(2);
+      out.add(`'${short}`);
+      // Never the bare two digits: "NHL 97", "Office 97" and "Memory
+      // usage: 97%" are not the code. Only the year as a time is.
+      const said = Number(short) >= 10 ? twoDigitWords(Number(short)) : null;
+      for (const lead of YEAR_LEADS) {
+        out.add(`${lead} ${short}`);
+        if (said !== null) out.add(`${lead} ${said}`);
+      }
+      out.add(yearWords(code));
+    }
+    if (/^\d{3,}$/u.test(code)) {
+      out.add(digitWords(code));
+      if (code.includes("0")) out.add(digitWords(code, "oh"));
+    }
   }
   for (const combo of combos) {
     for (const pair of combo.split(",")) {
       const p = pair.trim().toUpperCase().replace(/\s+/gu, "");
-      if (/^[A-Z]+\d+-[A-Z]+\d+$/u.test(p)) out.add(p);
+      if (PAIR_WORD.test(p)) out.add(p);
     }
   }
   return [...out];
@@ -501,7 +554,7 @@ export function mindBlock(f: FactsFile, combos: string[] = []): string {
     out.push("  never:");
     never.forEach((w, i) => {
       const entry = `    - ${JSON.stringify(w)}`;
-      const tag = i === 0 && f.door !== undefined ? "the door code" : /-/u.test(w) && !never.slice(0, i).some((x) => /-/u.test(x)) ? "the patch-bay pairs" : null;
+      const tag = i === 0 && f.door !== undefined ? "the door code" : PAIR_WORD.test(w) && !never.slice(0, i).some((x) => PAIR_WORD.test(x)) ? "the patch-bay pairs" : null;
       out.push(tag === null ? entry : `${entry.padEnd(26)} # ${tag}`);
     });
   }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ARMED_TIMEOUT_MS, fetchArmed, flushPendingSignal, PENDING_SIGNAL_KEY, PENDING_SIGNAL_MAX_AGE_MS, postSignal, readPendingSignal, SIGNAL_ATTEMPT_TIMEOUT_MS, SIGNAL_RETRY_MS, type SignalStorage } from "../src/api.ts";
-import { WIN_CODE, WIN_NOT_SENT, WIN_PRACTICE, stakesLine, winNotice } from "../src/game/fight.ts";
+import { NIGHT_ENDED, WIN_CODE, WIN_NOT_SENT, WIN_PRACTICE, stakesLine, winNotice } from "../src/game/fight.ts";
 import { defaultConfig } from "../src/config.ts";
 
 const config = defaultConfig({ eventId: "ev1", token: "mod-token", name: "Tent tablet" });
@@ -272,6 +272,17 @@ describe("fetchArmed", () => {
     expect(await fetchArmed(config, "Night.step", 1, fetcher([{ status: 200, body: {} }]).fetch)).toBeNull();
     expect(await fetchArmed(config, "Night.step", 1, fetcher([409]).fetch)).toBeNull();
     expect(await fetchArmed(config, "Night.step", 1, fetcher(["net"]).fetch)).toBeNull();
+  });
+
+  it("is NIGHT_ENDED once the night has ended, though the armed var stays past its gate (S1-04)", async () => {
+    const after = (ended: unknown) => ({ status: 200, body: { world: [{ path: "Night.step", value: 19 }, { path: "Night.ended", value: ended }] } });
+    expect(await fetchArmed(config, "Night.step", 14, fetcher([after(true)]).fetch)).toBe(NIGHT_ENDED);
+    expect(await fetchArmed(config, "Night.step", 14, fetcher([after("true")]).fetch)).toBe(NIGHT_ENDED);
+    expect(await fetchArmed(config, "Night.step", 14, fetcher([after(false)]).fetch)).toBe(true);
+    // Never practice: a checkmate then says nothing at all, landed or not (no "tell a host").
+    expect(await winNotice(Promise.resolve(true), await fetchArmed(config, "Night.step", 14, fetcher([after(true)]).fetch))).toBeNull();
+    expect(await winNotice(Promise.resolve(false), NIGHT_ENDED)).toBeNull();
+    expect(stakesLine(null)).toBeNull();
   });
 
   it("gives up after its timeout on a black-holed uplink, aborting the request (the checkmate notice waits on it)", async () => {

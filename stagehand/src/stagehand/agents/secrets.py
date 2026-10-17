@@ -23,9 +23,14 @@ The mind file declares the hunt in its frontmatter (never shown to a model):
       never: ["1997", "'97", "V2-D5"]              # what no line of his may ever
                                                   #   carry, whoever typed it: the
                                                   #   door code and every patch-bay
-                                                  #   pair (any spelling: V2 → D5,
-                                                  #   v2-d5, V2 to D5); never shown
-                                                  #   to a model
+                                                  #   pair (any spelling, either
+                                                  #   way round: V2 → D5, v2-d5,
+                                                  #   D5 to V2, V-2/D-5); a code
+                                                  #   with separators (1 9 9 7,
+                                                  #   1,997) and a number in words
+                                                  #   (nineteen ninety-seven,
+                                                  #   nineteen ninety seven) match
+                                                  #   too; never shown to a model
 
 and the worker enforces it at every door a verdict or an answer could
 come through:
@@ -75,9 +80,57 @@ def _norm(text: str) -> str:
 _PAIR = re.compile(r"^([a-z]+)\s*(\d+)\s*-\s*([a-z]+)\s*(\d+)$", re.IGNORECASE)
 #: Between the two ends of a patch-bay pair, however it is written.
 _JOIN = r"(?:\s*(?:-+>?|\u2013|\u2014|\u2192|=>|>|/|:|,)\s*|\s+(?:to|into|and)\s+|\s*)"
+#: Between two digits of a code: "1 9 9 7", "1,997", "1-9-9-7" (never a
+#: dot: "$19.97" is a price, not the code).
+_DIGIT_GAP = r"(?:\s*[,\-]?\s*)"
+#: The words a number is spelled with; a `never` word made only of these
+#: matches with any spacing or hyphens ("nineteen ninety-seven",
+#: "nineteen ninety seven", "nineteen-ninetyseven", "… hundred and …").
+_NUMBER_WORDS = frozenset(
+    "zero oh one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen "
+    "seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety hundred thousand and".split()
+)
+_WORD_GAP = r"(?:[\s\-]*)"
 _DROP = object()
 #: The trace's names for an update's fields (as the hunt scrub labels them).
 _LABELS = {"learned_add": "learned", "learned": "learned", "notes_add": "note", "brief": "brief", "claims_add": "claim", "summary": "summary"}
+
+
+#: What `scrub` puts before a `never` drop (a door code, a combination).
+NEVER_TAG = "secret · "
+
+
+def split_dropped(dropped: list[str]) -> tuple[list[str], list[str]]:
+    """`scrub`'s list as (hunt verdicts, `never` drops)."""
+    return [d for d in dropped if not d.startswith(NEVER_TAG)], [d for d in dropped if d.startswith(NEVER_TAG)]
+
+
+def drop_counts(hunt: int, never: int) -> str:
+    """The director's log words for a scrub or a prune: hunt verdicts and
+    secrets (the door code, a combination) counted apart — a K-04 mind run
+    tells a program feeding him the code from a hunt claim."""
+    parts = []
+    if hunt:
+        parts.append(f"{hunt} hunt verdict(s)")
+    if never:
+        parts.append(f"{never} secret(s) (door code / combo)")
+    return ", ".join(parts)
+
+
+def _phrase(w: str) -> str:
+    """A `never` phrase word by word; a run of number words in it matches
+    with any spacing or hyphens ("in ninety-seven" → "in ninety seven")."""
+    pieces: list[tuple[bool, str]] = []
+    for token in w.split(" "):
+        parts = [p for p in token.split("-") if p]
+        if parts and all(p in _NUMBER_WORDS for p in parts):
+            pieces.append((True, _WORD_GAP.join(re.escape(p) for p in parts)))
+        else:
+            pieces.append((False, re.escape(token)))
+    out = pieces[0][1]
+    for (prev, _), (num, body) in zip(pieces, pieces[1:]):
+        out += (_WORD_GAP if prev and num else r"\s+") + body
+    return out
 
 
 @lru_cache(maxsize=32)
@@ -88,11 +141,18 @@ def _never_pattern(words: tuple[str, ...]) -> re.Pattern[str] | None:
         if not w:
             continue
         pair = _PAIR.match(w)
+        parts = [p for p in re.split(r"[\s\-]+", w) if p]
         if pair:
+            # A patch cable has no direction: D5 → V2 is the same pair.
             a, n, b, m = pair.groups()
-            body = rf"{re.escape(a)}\s*{n}{_JOIN}{re.escape(b)}\s*{m}"
+            one, two = rf"{re.escape(a)}\s*-?\s*{n}", rf"{re.escape(b)}\s*-?\s*{m}"
+            body = rf"{one}{_JOIN}{two}|{two}{_JOIN}{one}"
+        elif w.isdigit() and len(w) >= 3:
+            body = _DIGIT_GAP.join(w)
+        elif parts and all(p in _NUMBER_WORDS for p in parts):
+            body = _WORD_GAP.join(re.escape(p) for p in parts)
         else:
-            body = r"\s+".join(re.escape(part) for part in w.split(" "))
+            body = _phrase(w)
         before = r"(?<![a-z0-9])" if w[0].isalnum() else ""
         alts.append(rf"{before}(?:{body})(?![a-z0-9])")
     return re.compile("|".join(alts), re.IGNORECASE) if alts else None
@@ -215,12 +275,16 @@ class Secrets:
     def scrub(self, update: dict[str, Any]) -> list[str]:
         """Strip hunt verdicts, and anything carrying a `never` word, from an
         orchestrator update in place; returns what was dropped (for the
-        trace — the director sees it, no model does)."""
+        trace — the director sees it, no model does). A `never` drop leads
+        with `NEVER_TAG`, so the trace and the log tell a door code or a
+        combination apart from a hunt verdict (`split_dropped`)."""
         dropped: list[str] = []
         if self.topics or self.match:
             self._scrub_hunt(update, dropped)
         if self.never:
-            self._strip_never(update, "update", dropped)
+            never: list[str] = []
+            self._strip_never(update, "update", never)
+            dropped.extend(f"{NEVER_TAG}{d}" for d in never)
         return dropped
 
     def _scrub_hunt(self, update: dict[str, Any], dropped: list[str]) -> None:
@@ -264,16 +328,18 @@ class Secrets:
             if self.judges_topic(person.get("summary")):
                 dropped.append(f"summary: {person.pop('summary')}")
 
-    def prune(self, mind: Any) -> int:
+    def prune(self, mind: Any) -> tuple[int, int]:
         """Drop hunt verdicts, and anything carrying a `never` word, from a
-        mind (e.g. one restored from disk). Returns how many went."""
-        n = 0
+        mind (e.g. one restored from disk). Returns how many went, as
+        (hunt verdicts, secrets) — `drop_counts` words them."""
+        hunt = 0
         if self.topics or self.match:
             before = len(mind.learned)
             mind.learned[:] = [e for e in mind.learned if not self.names_topic(e.get("claim"))]
-            n += before - len(mind.learned)
+            hunt = before - len(mind.learned)
         if not self.never:
-            return n
+            return hunt, 0
+        n = 0
 
         def keep(items: list[Any]) -> list[Any]:
             nonlocal n
@@ -303,7 +369,7 @@ class Secrets:
             if self.leaks(memo.summary):
                 memo.summary = ""
                 n += 1
-        return n
+        return hunt, n
 
     # -- the prompt --------------------------------------------------------------
 

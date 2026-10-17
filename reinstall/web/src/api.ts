@@ -20,6 +20,7 @@ import type {
   SwitchVariantResult,
 } from "@loom/house";
 import { baseOf, type ReinstallConfig } from "./config.ts";
+import { NIGHT_ENDED, type ArmedRead } from "./game/fight.ts";
 import { showHouse } from "./show-house.ts";
 import { isDuckSpot } from "./spatial.ts";
 
@@ -431,10 +432,13 @@ export const ARMED_TIMEOUT_MS = 4_000;
 /**
  * Is the fight armed? Reads the mod view (`GET /api/state?role=mod`, as
  * `fetchLocations` does) for the world var at `path` and compares it with
- * `min`; null when the server is away, too slow (`timeoutMs`), or the var is
- * absent / not a number.
+ * `min`; null when the server is away, too slow (`timeoutMs`), or the var
+ * is absent / not a number; `NIGHT_ENDED` once the night has ended
+ * (`ENDED_PATH` true: the story gives nothing for a win then, while an armed
+ * var like `Night.step` stays past its gate — so no badge and no "the code
+ * is in your Codex", whatever an earlier read said).
  */
-export async function fetchArmed(config: ReinstallConfig, path: string, min: number, fetcher: typeof fetch = fetch, timeoutMs: number = ARMED_TIMEOUT_MS): Promise<boolean | null> {
+export async function fetchArmed(config: ReinstallConfig, path: string, min: number, fetcher: typeof fetch = fetch, timeoutMs: number = ARMED_TIMEOUT_MS): Promise<ArmedRead> {
   const ctl = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const late = new Promise<null>((resolve) => {
@@ -450,13 +454,20 @@ export async function fetchArmed(config: ReinstallConfig, path: string, min: num
   }
 }
 
-async function readArmed(config: ReinstallConfig, path: string, min: number, fetcher: typeof fetch, signal: AbortSignal): Promise<boolean | null> {
+/** The world var a show sets once an ending plays (`Night.ended`). Never
+ *  read as "practice": an ended night is `NIGHT_ENDED`, not unarmed. */
+export const ENDED_PATH = "Night.ended";
+
+async function readArmed(config: ReinstallConfig, path: string, min: number, fetcher: typeof fetch, signal: AbortSignal): Promise<ArmedRead> {
   try {
     const res = await fetcher(`${baseOf(config)}/api/state?role=mod`, { headers: { "x-loom-token": config.token }, signal });
     if (!res.ok) return null;
     const r = (await res.json()) as { world?: unknown };
     if (!Array.isArray(r.world)) return null;
-    const row = r.world.find((w: unknown) => typeof w === "object" && w !== null && (w as { path?: unknown }).path === path) as { value?: unknown } | undefined;
+    const rowAt = (p: string) => (r.world as unknown[]).find((w: unknown) => typeof w === "object" && w !== null && (w as { path?: unknown }).path === p) as { value?: unknown } | undefined;
+    const ended = rowAt(ENDED_PATH)?.value;
+    if (ended === true || ended === "true") return NIGHT_ENDED;
+    const row = rowAt(path);
     if (row === undefined) return null;
     const v = typeof row.value === "number" ? row.value : typeof row.value === "string" ? Number(row.value) : Number.NaN;
     return Number.isFinite(v) ? v >= min : null;

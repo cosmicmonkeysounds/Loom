@@ -20,14 +20,23 @@ export const WIN_CODE = "The server-room door code is in your phone's Codex.";
 /** Said once a practice checkmate (before the Y2K hour) landed. */
 export const WIN_PRACTICE = "A practice win: the King guards nothing real until the Y2K clock.";
 
+/** The armed read once an ending has played (`fetchArmed`): the story gives
+ *  nothing for a win then, so no badge, no win line — and never "tell a
+ *  host", there is nothing left for a host to hand over. */
+export const NIGHT_ENDED = "ended";
+/** Whether the fight counts: armed (true), practice (false), unknown (null)
+ *  or the night is over (`NIGHT_ENDED`). */
+export type ArmedRead = boolean | null | typeof NIGHT_ENDED;
+
 /** What the HUD says once a checkmate's story signal settles, given whether
- *  the fight counted (`armed`, read at the checkmate; null = unknown):
+ *  the fight counted (`armed`, read at the checkmate; null = unknown,
+ *  `NIGHT_ENDED` = nothing at all):
  *  `WIN_NOT_SENT` when it didn't land (so a host fires ♟ by hand) — never
  *  for a known practice game, which wins nothing a host could hand over —
  *  else `WIN_CODE` / `WIN_PRACTICE`, or nothing when it is unknown whether
  *  it counted (or there is no signal hook). */
-export async function winNotice(sent: Promise<boolean> | undefined, armed: boolean | null = null): Promise<string | null> {
-  if (sent === undefined) return null;
+export async function winNotice(sent: Promise<boolean> | undefined, armed: ArmedRead = null): Promise<string | null> {
+  if (sent === undefined || armed === NIGHT_ENDED) return null;
   if (!(await sent)) return armed === false ? null : WIN_NOT_SENT;
   return armed === true ? WIN_CODE : armed === false ? WIN_PRACTICE : null;
 }

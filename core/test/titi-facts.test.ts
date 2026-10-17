@@ -36,6 +36,8 @@ import {
   mindBlock,
   modelProblems,
   neverWords,
+  yearWords,
+  digitWords,
   replaceBlock,
   run,
   wrapText,
@@ -555,7 +557,8 @@ describe("titi-facts — the trabolta.mind.md secrets block", () => {
     expect(new Set(match).size).toBe(match.length);
     // What no line of his mind may carry: the door code (+ '97) and every seeded combo pair.
     const never = block.slice(block.indexOf("  never:")).split("\n").filter((l) => l.startsWith("    - ")).map((l) => unquote(l.slice(6).replace(/\s+# [a-z -]+$/u, "").trim()));
-    expect(never).toEqual([facts.door!.code, `'${facts.door!.code.slice(2)}`, "V2-D5", "V4-D1", "V1-D6", "V3-D2"]);
+    expect(never).toEqual(neverWords(facts, ["V2-D5,V4-D1", "V1-D6,V3-D2"]));
+    expect(never.slice(-4)).toEqual(["V2-D5", "V4-D1", "V1-D6", "V3-D2"]);
     expect(block).toContain("# the door code");
     expect(block).toContain("# the patch-bay pairs");
     expect(entries.length).toBe(topics.length + match.length + 1 + never.length);
@@ -567,12 +570,43 @@ describe("titi-facts — the trabolta.mind.md secrets block", () => {
 });
 
 describe("titi-facts — secrets.never", () => {
-  it("is the door code (+ a year's '97) and every combo pair the story seeds, deduped; nothing without either", () => {
+  it("is the door code (+ the ways a year is said) and every combo pair the story seeds, deduped; nothing without either", () => {
     expect(comboSeeds(['set Kernel.combo_a = "V2-D5,V4-D1"\n  set Kernel.combo_b = "V1-D6"', 'set Kernel.combo_a = "V2-D5,V4-D1"', 'set Night.combo = "V9-D9"'])).toEqual(["V2-D5,V4-D1", "V1-D6"]);
-    expect(neverWords(facts, ["V2-D5, v4-d1", "junk,V2-D5"])).toEqual([facts.door!.code, `'${facts.door!.code.slice(2)}`, "V2-D5", "V4-D1"]);
-    expect(neverWords({ ...facts, door: { ...facts.door!, code: "0412" } })).toEqual(["0412"]);
+    const year = { ...facts, door: { ...facts.door!, code: "1997" } };
+    // W8 T8-01: the spelled year and the year as a time ("In 97 I met her") —
+    // never a bare "97", which silenced him toward a guest called NHL 97 (W8 review).
+    const said = neverWords(year, ["V2-D5, v4-d1", "junk,V2-D5"]);
+    expect(said).toEqual([
+      "1997", "'97", "in 97", "in ninety-seven", "since 97", "since ninety-seven", "of 97", "of ninety-seven",
+      "nineteen ninety-seven", "one nine nine seven", "V2-D5", "V4-D1",
+    ]);
+    expect(said).not.toContain("97");
+    expect(neverWords({ ...facts, door: { ...facts.door!, code: "2007" } })).toContain("in 07");
+    expect(neverWords(facts)[0]).toBe(facts.door!.code);
+    expect(neverWords({ ...facts, door: { ...facts.door!, code: "0412" } })).toEqual(["0412", "zero four one two", "oh four one two"]);
     expect(neverWords({ ...facts, door: undefined })).toEqual([]);
     expect(mindBlock({ ...facts, door: undefined })).not.toContain("never:");
+  });
+
+  it("says a year the way a voice would", () => {
+    expect(["1997", "1907", "1900", "1910", "2000", "2007", "2012", "1980"].map(yearWords)).toEqual([
+      "nineteen ninety-seven",
+      "nineteen oh seven",
+      "nineteen hundred",
+      "nineteen ten",
+      "two thousand",
+      "two thousand seven",
+      "twenty twelve",
+      "nineteen eighty",
+    ]);
+    expect(digitWords("1997")).toBe("one nine nine seven");
+  });
+
+  it("tags the door code and the first pair, never a spelled year with a hyphen", () => {
+    const block = mindBlock({ ...facts, door: { ...facts.door!, code: "1997" } }, ["V2-D5"]);
+    expect(block).toMatch(/- "1997"\s+# the door code/u);
+    expect(block).toMatch(/- "V2-D5"\s+# the patch-bay pairs/u);
+    expect(block).toContain('    - "nineteen ninety-seven"\n');
   });
 });
 

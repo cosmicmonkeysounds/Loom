@@ -40,8 +40,11 @@ drives:
 #            Never an answer word — topics ARE shown to a model.
 #   match  — answer words a guest may use instead. NEVER shown to a model
 #            (this frontmatter is parsed out; only the body is a prompt).
-#   never  — the keypad code (+ its '97 spelling) and every patch-bay pair
-#            the story seeds (`set Kernel.combo_*`): no update item, line or
+#   never  — the keypad code (+ the ways it is said: '97, in / since / of
+#            97 or ninety-seven, nineteen ninety-seven, one nine nine seven;
+#            never a bare 97, a guest may be NHL 97) and every patch-bay pair
+#            the story seeds (`set Kernel.combo_*`; matched either way round,
+#            D5 to V2, and a code with separators, 1 9 9 7): no update item, line or
 #            field carrying one is ever written into his mind (every
 #            conversation reads it), and a voice line carrying one is never
 #            said (the persona's fallback instead). Never shown to a model.
@@ -117,6 +120,14 @@ secrets:
   never:
     - "1997"               # the door code
     - "'97"
+    - "in 97"
+    - "in ninety-seven"
+    - "since 97"
+    - "since ninety-seven"
+    - "of 97"
+    - "of ninety-seven"
+    - "nineteen ninety-seven"
+    - "one nine nine seven"
     - "V2-D5"              # the patch-bay pairs
     - "V4-D1"
     - "V6-D8"

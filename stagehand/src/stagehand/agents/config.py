@@ -13,6 +13,7 @@
         timeout_s: 90
         json_mode: false
         api_key_env: OPENAI_API_KEY   # hosted endpoints only
+        num_ctx: 32768             # api: ollama only — the default: a late-night line is ≈ 14k tokens
       orchestrator:                # the slow model that grows each character's mind
         enabled: true              #   (off → the persona alone, as before)
         llm:                       #   defaults: the section's llm: with this model
@@ -38,7 +39,7 @@ Persona paths resolve relative to the config file.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +58,15 @@ ORCHESTRATOR_MODEL = "tobestyledintro/qwen3.8-9b-distill:q8_0"
 #: confident. 20k costs the 9B orchestrator ≈ 3 GB of KV cache. `num_ctx: …` (or `extra: {options: {num_ctx: …}}`)
 #: overrides it; `num_ctx: 0` sends none (the server's default).
 ORCHESTRATOR_NUM_CTX = 20480
+#: The voice's default context (`api: ollama`). A late-night line — the
+#: persona + the mind block + the house + a long thread + every situation —
+#: is ≈ 14k tokens, and Ollama's own default depends on the version and the
+#: machine's memory (32768 on the 48 GB house Mac today, 4096 on a small one
+#: or with `OLLAMA_CONTEXT_LENGTH` set lower), cutting the middle of the
+#: prompt with no error. 32768 is the size the voice already runs at on the
+#: house Mac, so pinning it reloads nothing. `num_ctx: …` overrides it;
+#: `num_ctx: 0` sends none. Ignored for `api: openai` (the server decides).
+VOICE_NUM_CTX = 32768
 
 
 @dataclass(frozen=True)
@@ -110,13 +120,22 @@ def _llm(raw: Any, base: LlmConfig, where: str) -> LlmConfig:
     return out
 
 
+def _ollama_only(cfg: LlmConfig) -> LlmConfig:
+    """`num_ctx` is an Ollama load option: an `api: openai` model carries
+    none (its server picks the context, and `check` has nothing to size)."""
+    return cfg if cfg.api == "ollama" else replace(cfg, num_ctx=None)
+
+
 def parse_agents(doc: Any, base_dir: str = ".") -> AgentsConfig:
     if not isinstance(doc, dict):
         raise ConfigError("'agents:' must be a mapping")
     unknown = sorted(set(doc) - {"name", "concurrency", "dry_run", "llm", "characters", "orchestrator", "state_dir", "facts_ttl_s"})
     if unknown:
         raise ConfigError(f"agents: unknown key(s) {', '.join(unknown)}")
-    llm = _llm(doc.get("llm"), LlmConfig(), "agents.llm")
+    # The section's defaults keep the voice's context until each character's
+    # model is resolved: a persona may switch an `api: openai` section to ollama.
+    section = _llm(doc.get("llm"), LlmConfig(num_ctx=VOICE_NUM_CTX), "agents.llm")
+    llm = _ollama_only(section)
     orch_raw = doc.get("orchestrator")
     if orch_raw is None:
         orch_raw = {}
@@ -171,7 +190,7 @@ def parse_agents(doc: Any, base_dir: str = ".") -> AgentsConfig:
         if persona.character in personas:
             raise ConfigError(f"{where}: {persona.character} is already voiced by {personas[persona.character].source}")
         personas[persona.character] = persona
-        models[persona.character] = _llm(entry.get("llm"), _llm(persona.llm, llm, f"{path} frontmatter"), f"{where}.llm")
+        models[persona.character] = _ollama_only(_llm(entry.get("llm"), _llm(persona.llm, section, f"{path} frontmatter"), f"{where}.llm"))
         orchestrator_models[persona.character] = _llm(entry.get("orchestrator"), _llm(persona.orchestrator, orch_llm, f"{path} frontmatter orchestrator"), f"{where}.orchestrator")
     try:
         concurrency = max(1, int(doc.get("concurrency", 1)))

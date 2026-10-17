@@ -2,6 +2,8 @@
 //! are only captioned, the cursor (no backlog, resync after a restart), the
 //! in-order player and the director's mute.
 
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { ScreenVoice, VoiceLine } from "../src/screen.ts";
 import { LinePlayer, TV_SILENT_BEATS, TV_STALE_MS, cursorAfterGap, cursorWhileAsleep, isSilentBeat, planVoice, postVoiceMute, readingMs, type TvLine } from "../src/tv.ts";
@@ -157,5 +159,35 @@ describe("a room terminal's cursor while asleep (wave 7)", () => {
     expect(planVoice(voice(17, [line(15)]), null, opts).lines).toEqual([]);
     // A restart while asleep (head behind the cursor): resync to it.
     expect(cursorWhileAsleep(voice(3, []), 40)).toBe(3);
+  });
+});
+
+describe("the TV caption's layer (T6-02)", () => {
+  const css = readFileSync(fileURLToPath(new URL("../src/styles.css", import.meta.url)), "utf8");
+  /** The z-index a rule whose selector list is exactly `selector` sets. */
+  const zOf = (selector: string): number => {
+    const esc = selector.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+    const m = new RegExp(`(?:^|\\n)${esc}\\s*\\{[^}]*?z-index:\\s*(\\d+)`, "u").exec(css);
+    if (m === null) throw new Error(`no z-index for ${selector}`);
+    return Number(m[1]);
+  };
+
+  it("a text-only line (Sandy, the song beats) shows over a slide and under an overlay", () => {
+    const slide = zOf(".screen-slide, .screen-overlay");
+    const overlay = zOf(".screen-overlay");
+    const textOnly = zOf('.terminal.tv .tv-caption[data-mode="text"], .terminal.tv .tv-caption[data-mode="song"]');
+    expect(textOnly).toBeGreaterThan(slide);
+    expect(textOnly).toBeLessThan(overlay);
+  });
+
+  it("a line the director muted stays under the slide too (W8 review: only Sandy + the songs rise)", () => {
+    // Drawn `text-only` like Sandy's, but no rule lifts the muted mode or the class itself.
+    expect(css).not.toMatch(/data-mode="muted"\]/u);
+    expect(css).not.toMatch(/\.tv-caption\.text-only\s*\{[^}]*z-index/u);
+    expect(zOf(".tv-caption")).toBeLessThan(zOf(".screen-slide, .screen-overlay"));
+  });
+
+  it("a spoken line stays under the slide: the room hears it", () => {
+    expect(zOf(".tv-caption")).toBeLessThan(zOf(".screen-slide, .screen-overlay"));
   });
 });

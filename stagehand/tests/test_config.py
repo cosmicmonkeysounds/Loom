@@ -49,6 +49,10 @@ def test_example_agents_config_loads():
     agents = cfg.modules["agents"]
     assert list(agents.cfg.personas) == ["Trabolta"]
     assert agents.cfg.models["Trabolta"].model == "gpt-oss:20b"
+    # The voice's context is pinned (S1-01): Ollama's own default moves with
+    # its version and the machine's memory.
+    assert agents.cfg.models["Trabolta"].context_window == 32768
+    assert agents.warnings() == []
 
 
 def test_missing_auth_rejected():

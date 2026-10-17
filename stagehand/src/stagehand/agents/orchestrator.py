@@ -49,9 +49,9 @@ from .facts import Facts, world_view
 from .llm import Completion, LlmConfig, LlmError
 from .mind import MAX_ANSWERS, MAX_PER_PERSON, Mind
 from .persona import Persona
-from .prompt import matching_situations, their_variables
+from .prompt import build_messages, matching_situations, their_variables
 from .reply import Reply, extract_json, strip_think
-from .secrets import Secrets
+from .secrets import Secrets, drop_counts, split_dropped
 from .trace import Thought, Trace, new_thought
 
 log = logging.getLogger("stagehand.agents.orchestrator")
@@ -392,6 +392,27 @@ def reflect_tokens_needed(persona: Persona, max_tokens: int) -> int:
     return chars // CHARS_PER_TOKEN + max_tokens
 
 
+def voice_tokens_needed(persona: Persona, max_tokens: int, with_mind: bool = True) -> int:
+    """≈ the context one spoken line needs late in the night: the real
+    voice prompt (`build_messages`) over `late_night_request` with the
+    `late_night_mind` block (`with_mind` — the orchestrator is on), every
+    persona situation as if it held, plus the reply's `max_tokens`
+    (reasoning counts against it). `stagehand check` compares it with the
+    voice model's context, as `reflect_tokens_needed` does for the mind."""
+    req, _facts = late_night_request(persona)
+    msgs = build_messages(persona, req, mind=late_night_mind(persona) if with_mind else None)
+    chars = sum(len(m["content"]) for m in msgs) + sum(len(s.prompt) + 200 for s in persona.situations)
+    return chars // CHARS_PER_TOKEN + max_tokens
+
+
+def suppressed_summary(dropped: list[str]) -> str:
+    """The director's log line for a scrub: hunt verdicts and secrets (the
+    door code, a combination) counted apart — a K-04 mind run tells a
+    program feeding him the code from a hunt claim."""
+    hunt, never = split_dropped(dropped)
+    return drop_counts(len(hunt), len(never))
+
+
 def lore_block(facts: Facts, held: list[str], max_entries: int = 60, secrets: Secrets | None = None, max_text: int = 160) -> str:
     """The story's whole codex — ground truth for the director's verdicts.
     The *character* knows only the entries marked held; the director knows
@@ -714,7 +735,7 @@ class Orchestrator:
         suppressed = persona.secrets.scrub(update)
         if suppressed:
             update["suppressed"] = suppressed  # the trace shows the director; Mind.apply ignores it
-            log.info("%s's mind: suppressed %d hunt verdict(s)", job.character, len(suppressed))
+            log.info("%s's mind: suppressed %s", job.character, suppressed_summary(suppressed))
         thought = new_thought(job.character, job.kind, trigger=trigger, model=model, messages=messages, completion=completion, request=req_for_trace, result=update)
         touched = mind.apply(update, speaker_id=speaker_id or None, thread_key=thread_key, upto=upto, by=job.kind, thought_id=thought.id)
         thought.touched = touched

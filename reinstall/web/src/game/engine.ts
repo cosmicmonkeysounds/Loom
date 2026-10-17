@@ -22,7 +22,7 @@ import type { Avatar, Duck, HouseScene, King, Trail } from "@loom/house/three";
 import { fetchHouse, postEnd, postFound, postPose, streamUrl } from "../api.ts";
 import { applyFrame, duckToAdopt, houseVersionOf, openSpatialStream, type SpatialStreamHandle } from "../spatial.ts";
 import type { Sfx } from "./audio.ts";
-import { canHit, fell, hearts, hit as landHit, KING_HP, newFight, redeals, stageFor, STAGE_LINE, winNotice, type Fight, type HitVerdict, type Stage } from "./fight.ts";
+import { canHit, fell, hearts, hit as landHit, KING_HP, newFight, NIGHT_ENDED, redeals, stageFor, STAGE_LINE, winNotice, type ArmedRead, type Fight, type HitVerdict, type Stage } from "./fight.ts";
 import { formatElapsed, foundRetryMs, heat, PAUSED_NOTICE, perchedOutOfReach, relativeBearing, roomTitle, withinReach, type Heat } from "./hud.ts";
 import { combineInput, isActive, keyDown, keyUp, type StickVector } from "./input.ts";
 import { IdleLeash } from "./leash.ts";
@@ -113,8 +113,8 @@ export interface GameOptions {
   onChess?: (c: ChessContext | null) => void;
   /** Fire a story signal as this device (`postSignal`); resolves whether it landed. */
   signal?: (name: string) => Promise<boolean>;
-  /** Is the fight armed? (`fetchArmed`; null = unknown.) */
-  armed?: (path: string, min: number) => Promise<boolean | null>;
+  /** Is the fight armed? (`fetchArmed`; null = unknown, `NIGHT_ENDED` = over.) */
+  armed?: (path: string, min: number) => Promise<ArmedRead>;
 }
 
 interface Ghost {
@@ -612,8 +612,8 @@ export class Game {
     const label = king.label ?? "THE KING";
     void this.o.armed(king.armed.path, king.armed.min).then((armed) => {
       if (this.phase !== "chess") return;
-      this.armedState = armed;
-      this.o.onChess?.({ stage, label, armed });
+      this.armedState = armed === NIGHT_ENDED ? null : armed;
+      this.o.onChess?.({ stage, label, armed: this.armedState });
     });
   }
 
@@ -660,11 +660,17 @@ export class Game {
   }
 
   /** Did this checkmate count? Read again at the checkmate (the Y2K hour may
-   *  have started since the deal), else the badge's last answer. */
-  private async armedNow(): Promise<boolean | null> {
+   *  have started since the deal), else the badge's last answer — never once
+   *  the night has ended: a board dealt in the Y2K hour must not promise the
+   *  code after the ending played mid-game. */
+  private async armedNow(): Promise<ArmedRead> {
     const king = this.kingProp;
     if (king === null || king.armed === undefined || this.o.armed === undefined) return this.armedState;
     const armed = await this.o.armed(king.armed.path, king.armed.min);
+    if (armed === NIGHT_ENDED) {
+      this.armedState = null;
+      return NIGHT_ENDED;
+    }
     if (armed !== null) this.armedState = armed;
     return armed ?? this.armedState;
   }

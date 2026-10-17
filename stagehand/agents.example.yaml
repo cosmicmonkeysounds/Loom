@@ -26,6 +26,7 @@ agents:
     timeout_s: 90
     api: ollama                # native /api/chat so `keep_alive` is honoured …
     keep_alive: 60m            # … and the voice stays loaded through a quiet spell
+    num_ctx: 32768             # the default: a late-night line ≈ 14–16k tokens (`stagehand check` sizes it)
   orchestrator:                # the SLOW model — grows each character's mind
     enabled: true              #   between turns; never on the reply path
     llm:

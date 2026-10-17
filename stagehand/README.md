@@ -162,7 +162,9 @@ You are the DIRECTOR OF THE MIND of Trabolta…
   like "song" drops every claim that uses it) and never an answer word:
   topics are printed into the orchestrator's prompt. **`never`** (wave 7
   review) is stricter: words no line of the mind may carry at all,
-  whoever typed them — the show's keypad code (+ its '97 spelling) and
+  whoever typed them — the show's keypad code (+ the ways it is said: '97, "in 97", "since
+  ninety-seven", "nineteen ninety-seven", "one nine nine seven" — never
+  a bare 97, which a guest's program may be called) and
   every patch-bay pair, matched in any spelling (`V2 → D5`, `v2-d5`,
   `V2 to D5`). The mind is shared by every conversation, so an update
   item, brief line or dossier field carrying one is dropped (no verdict
@@ -291,7 +293,13 @@ word. `stagehand check` prints the context on the `mind` line and warns
 — naming the key in effect — when its estimate of a late-night
 reflection is larger: the real reflect prompt (the mind file + persona,
 every situation counted as if it held) over a mind grown to the snapshot's caps, 45 programs, 17 crowded rooms
-and a full lore block, at 3 characters a token, plus `max_tokens`. Both models fit on a 48 GB laptop (≈ 24 GB
+and a full lore block, at 3 characters a token, plus `max_tokens`. An
+`api: ollama` **voice** loads with `num_ctx: 32768` the same way (a
+late-night line — persona, mind block, house, a 40-line thread, every
+situation — is ≈ 14–16k tokens; Ollama's own default moves with its
+version and the machine's memory: 32768 on the 48 GB house Mac today,
+4096 on a smaller one), and `check` prints it as `ctx N` on the voice
+line and warns (`set llm.num_ctx to …`) when that estimate is larger. Both models fit on a 48 GB laptop (≈ 24 GB
 together). `gpt-oss` reasoning tokens count against `max_tokens`, so
 keep that ≥ 1000 with the mind block in the prompt. JSON mode stays
 off: the reply parser copes with prose, code fences, and `<think>`
