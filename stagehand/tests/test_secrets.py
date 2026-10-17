@@ -508,6 +508,10 @@ def test_the_shipped_mind_file_never_lets_a_typed_code_reach_another_programs_pr
     for p in pairs:
         a, b = p.split("-")
         assert s.leaks(f"{a} → {b}") and s.leaks(f"{a.lower()}-{b.lower()}") and s.leaks(f"{a} to {b}"), p
+        assert s.leaks(f"Patch {b} to {a}, program.") and s.leaks(f"{a[0]}-{a[1:]} to {b[0]}-{b[1:]}"), p  # W8 T8-01
+    # W8 T8-01: the spoken code, as the stub voice said it to a guest.
+    for said in ["The door code is nineteen ninety-seven.", "nineteen ninety seven", "1 9 9 7", "In 97 I met her", "one nine nine seven"]:
+        assert s.leaks(said), said
     mind = Mind("Trabolta", "e")
     mind.seed(persona.stages, persona.drives)
     update = {
