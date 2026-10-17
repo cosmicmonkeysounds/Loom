@@ -7,11 +7,25 @@ import { describe, expect, it } from "vitest";
 const help = (path: string): string => readFileSync(new URL(`../../../docs/help/${path}`, import.meta.url), "utf8").replace(/\s+/g, " ");
 
 describe("the help says what the King's tablet does", () => {
-  it("Cold Lock: after \"tell a host\", a reload sends nothing — only ♟ opens the door (B20)", () => {
-    const cold = help("authoring/38-cold-lock.md");
-    expect(cold).not.toMatch(/reloaded within 60 seconds of the checkmate sends the win/);
-    expect(cold).toContain("Once that notice shows, only ♟ opens the door");
-    expect(cold).toContain("reloading it sends nothing");
+  it("the server room: after \"tell a host\", a reload sends nothing — only ♟ hands over the code (B20)", () => {
+    const room = help("authoring/38-server-room.md");
+    expect(room).not.toMatch(/reloaded within 60 seconds of the checkmate sends the win/);
+    expect(room).toContain("Once that notice shows, only ♟ hands over the code");
+    expect(room).toContain("reloading it sends nothing");
+  });
+
+  it("the server room: a checkmate gives the code (wave 7), never a door window — and the tablet's words are quoted right", async () => {
+    const room = help("authoring/38-server-room.md");
+    const { WIN_CODE, WIN_PRACTICE, stakesLine } = await import("../src/game/fight.ts");
+    expect(room).toContain(WIN_CODE);
+    expect(room).toContain(WIN_PRACTICE);
+    expect(room).toContain("**FOR THE CODE**");
+    expect(room).toContain("CHECKMATE — the King falls.");
+    expect(stakesLine(true)).toContain("door code");
+    expect(room).not.toMatch(/90 seconds|disarm|re-arm|Cold Lock|ARMED\*\*/u);
+    const guest = help("play/11-reinstallation.md");
+    expect(guest).toContain("FOR THE CODE");
+    expect(guest).not.toContain("Checkmate him and the door opens");
   });
 });
 
@@ -21,11 +35,11 @@ describe("the help and the board say what a lost game does (OCT31 decision 6)", 
     expect(guest).not.toContain("Lose, and he holds; hit him again");
     expect(guest).toContain("deals you a new game at the same strength");
     expect(guest).toContain("**Give up** closes the board");
-    const cold = help("authoring/38-cold-lock.md");
-    expect(cold).not.toContain("The King holds. Hit him again.");
-    expect(cold).not.toMatch(/draw changes nothing/);
-    expect(cold).toContain("THE KING WINS. AGAIN.");
-    expect(cold).toContain("**stays open**");
+    const room = help("authoring/38-server-room.md");
+    expect(room).not.toContain("The King holds. Hit him again.");
+    expect(room).not.toMatch(/draw changes nothing/);
+    expect(room).toContain("THE KING WINS. AGAIN.");
+    expect(room).toContain("**stays open**");
   });
 
   it("a re-dealt board points the player back at ⚔ until he is down to his pawns", async () => {

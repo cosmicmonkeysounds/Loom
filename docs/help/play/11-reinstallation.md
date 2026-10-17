@@ -2,7 +2,7 @@
 title: The simulation (reinstallation)
 section: Guest Guide
 order: 11
-keywords: simulation, reinstallation, Installation Wizard, Gerald, reinstall, VR, headset, tablet, joystick, stick, controls, chevrons, indicators, duck, golden duck, egg, tent, backyard, tunnel, Internet, game, walk, wall screens, TV, marked, escort, the King, king, chess, server room, hit, challenge
+keywords: simulation, reinstallation, Installation Wizard, Gerald, reinstall, VR, headset, tablet, joystick, stick, controls, chevrons, indicators, duck, golden duck, egg, tent, backyard, tunnel, Internet, game, walk, wall screens, TV, marked, escort, the King, king, chess, server room, hit, challenge, door code, code, practice, for the code
 ---
 
 Some events have a **simulation**: a virtual copy of the house you're
@@ -73,16 +73,21 @@ headset off) and the simulation ends — scan your pass to start again.
 Down in the basement hall of the simulation a tall golden chess piece
 stands in the server-room doorway: **the King**, with a health bar. He
 is nothing to do with the duck — the chevrons never lead to him — but
-he guards a door the story may want open later in the night. **Only
-the tablet can fight him**: a headset just shows him and says so.
+he guards the server room's door in the simulation, and late in the
+night he knows its code. **Only the tablet can fight him**: a headset
+just shows him and says so.
 
 Walk up and face him. **⚔ HIT** (or Space) lands a blow every second or
 so, and each one makes him dumber — *at full strength* → *rattled* →
 *reeling* → *dizzy* → *PAWNS ONLY*, a king with nothing but his eight
 pawns. **♟ CHALLENGE** (or C) opens a chessboard against him at whatever
-strength you've left him. Checkmate him and the door opens — and the
-story hears about it. Lose (or draw), and he deals you a new game at
-the same strength, the board still open. Too strong? **Give up** closes
+strength you've left him. A badge on the board says what a win is worth:
+**PRACTICE** until the Y2K clock, then **FOR THE CODE**, with a line
+under it saying what a checkmate wins. Checkmate him and he falls, his
+door in the simulation opens, and the story hears about it: from the
+Y2K clock, the real server-room door's code lands in your Codex (the
+tablet tells you); before that it was practice. Lose (or draw), and he
+deals you a new game at the same strength, the board still open. Too strong? **Give up** closes
 the board; hit him some more to make him weaker, then challenge again.
 He is fresh for the next player.
 

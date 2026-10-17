@@ -97,7 +97,12 @@ Front of house: getting people in.
   it isn't the one the others run, or **old build** when it reports none
   at all while the others do: either way, reload it before doors). **identify**
   puts that screen's name and spot full screen for 10 seconds, with a
-  chime: install day's "which tablet is this?".
+  chime: install day's "which tablet is this?". A terminal set up with a
+  **room** (the show's server-room terminal) sleeps on its screensaver
+  until the story opens that room to everyone, and still checks in while
+  it sleeps: green and asleep is right before then. Since a mod code
+  lists the story's cast before the doors open, a terminal's ⚙ can check
+  its character the moment it is set up.
 - **House map** — when the event has a house map, one button per map
   variant (*Trapped in the Internet*: **Tent** | **Shed**), the one
   playing now highlighted. Press the other to switch every tablet,
@@ -145,7 +150,8 @@ and it survives a reload. The header shows the story's `Night.phase`;
 the box filters by word. A cue that needs a person — an award: every
 hook that hears it binds one — has a **who?** picker and an optional
 **value** box (read as `{value}`) and fires with that person as the
-subject. On a server run, once the story sets `Night.ended`, the sheet
+subject (in *Trapped in the Internet*, **♟ They beat the King** asks who
+won, because the door code goes to the winner). On a server run, once the story sets `Night.ended`, the sheet
 reads the recap and fills each award's empty **who?** and **value**
 with a suggestion — the top of that award's list (the bottom of the
 trust list for Least Trusted), rehearsal personas skipped — and shows
