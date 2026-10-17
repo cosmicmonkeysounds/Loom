@@ -647,9 +647,14 @@ export class EventRuntime {
     this.redeemMisses = limiterFor(limits.redeemMisses);
     this.widgetAnswers = limiterFor(limits.widgets);
     this.walletCalls = limiterFor(limits.wallet);
+    // The TV-voice mute outlives restarts and Go live (an ALL STOP must
+    // survive a crash), so one left on from a rehearsal carries into the
+    // show: say so on boot, where the crew reads the log.
+    const voiceMuted = this.store.loadVoiceMuted();
+    if (voiceMuted) process.stderr.write(`  🔇 event ${this.eventId}: the TV voice is muted (kept from before this start) — unmute it on Run → Terminals\n`);
     this.screens = new ScreenWatch({
       ...(init.now !== undefined ? { now: init.now } : {}),
-      muted: this.store.loadVoiceMuted(),
+      muted: voiceMuted,
       onMute: (muted) => this.store.saveVoiceMuted(muted),
     });
   }
