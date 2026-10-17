@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # N-08 bench check for the server-room box (hardware/server-room), run ON THE
-# HOUSE MAC with the box powered on the bench: reed (+ tape) wired, both
+# HOUSE MAC with the box powered on the bench: the door contact wired (the
+# wire loops that touch when the door OPENS, on GPIO19; no reed), both
 # MCP23017s on the bay, ring + DFPlayer connected. ~8 minutes. It only talks
 # MQTT, so stagehand doesn't need to be running; HW-PATCH-07 (stagehand + the
 # story) is scripts/accept/K-05.sh afterwards.
@@ -55,6 +56,8 @@ D=$(sub1 sensors/patchbay/diag 5); echo "    diag: $D"
 echo "$D" | grep -q '"ok":true' && ok "both MCP23017s answer" || bad "patch bay not ok (0x20/0x21, SDA 21, SCL 22, power)"
 echo "$D" | grep -q '"stuck":\[\]' && ok "no stuck jack" || bad "stuck jacks (terminated / shorted to the shell): fix the bay (README → The bay)"
 echo "$D" | grep -q '"audio":true' && ok "DFPlayer answers" || bad "DFPlayer not answering (card in? TX via 1 kΩ to RX?)"
+echo "$D" | grep -q '"door_mode":"tape"' && ok "door_mode tape (the wire loops alone)" || bad "door_mode is not tape — config.h DOOR_MODE should be DOOR_TAPE"
+echo "$D" | grep -q '"tape_polarity":"closed_when_open"' && ok "the contact reads closed = OPEN" || bad "tape_polarity is not closed_when_open — config.h TAPE_POLARITY"
 
 step "2. calibrate with every cord out"
 ask "pull EVERY patch cord out, hands off the bay"
@@ -63,18 +66,24 @@ pub show/serverroom/calibrate empty; sleep 4
 grep -q '"source":"mqtt"' "$TMP/diag" && ok "recalibrated" || bad "no recalibration diag (payload must contain 'empty')"
 kill %% 2>/dev/null
 
-step "3. the door: open → open:true, shut → open:false (retained)"
+step "3. the door contact alone: open → open:true, shut → open:false (retained)"
+# The keypad lock is standalone: nothing here drives it. Open it with its
+# code (or the key) from outside, or by the inside handle.
 ask "close the door"
 watch sensors/serverroom/door door; sleep 1
-ask "OPEN the door ~2 s, then CLOSE it"
-sleep 1; kill %% 2>/dev/null
-grep -q '"open":true' "$TMP/door" && grep -q '"open":false' "$TMP/door" && ok "door: $(tr '\n' ' ' < "$TMP/door")" || bad "door messages: $(tr '\n' ' ' < "$TMP/door")"
-if yes "is the copper tape wired too? (test it alone)"; then
-  ask "UNPLUG the reed, then open + close the door once (the tape decides)"
-  watch sensors/serverroom/door door2; sleep 1; ask "done?"; kill %% 2>/dev/null
-  grep -q '"open":false' "$TMP/door2" && grep -q '"open":true' "$TMP/door2" && ok "tape alone works" || bad "tape alone: $(tr '\n' ' ' < "$TMP/door2")"
-  ask "plug the reed back in"
-fi
+ask "OPEN the door ~3 s, then CLOSE it, then wait 3 s"
+sleep 2; kill %% 2>/dev/null
+grep -q '"open":true' "$TMP/door" && grep -q '"open":false' "$TMP/door" && ok "door: $(tr '\n' ' ' < "$TMP/door")" || bad "door messages: $(tr '\n' ' ' < "$TMP/door") (no open:true = the loops never touch: a broken loop is SILENT)"
+grep -q '"mode":"tape"' "$TMP/door" && ! grep -q '"reed"' "$TMP/door" && ok "payload {open, tape, mode: tape}, no reed" || bad "payload shape: $(head -1 "$TMP/door")"
+[ "$(grep -c '"open":true' "$TMP/door")" = 1 ] && ok "one opening, one open:true" || bad "$(grep -c '"open":true' "$TMP/door") open:true for one opening (contact bouncing?)"
+
+step "3b. held open: no further messages (a flicker never reports closed)"
+ask "OPEN the door and HOLD it open (don't shut it until told)"
+watch sensors/serverroom/door held; sleep 1
+ask "jiggle the open door for a few seconds (don't shut it), then let it rest, press enter"
+sleep 10; kill %% 2>/dev/null
+[ "$(grep -c . "$TMP/held")" = 1 ] && grep -q '"open":true' "$TMP/held" && ok "held open 10 s+: only the retained open:true" || bad "held open: $(tr '\n' ' ' < "$TMP/held") (expected just the retained open:true)"
+ask "CLOSE the door"
 
 step "4. the patch: Combo A in any order → one complete state, a click per cable"
 A=$(grep -o "combo == 'V2[^']*'" "$CFG" | head -1 | cut -d"'" -f2)
