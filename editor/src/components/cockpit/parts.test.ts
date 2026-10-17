@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CastSummary } from '@/store/cockpit'
-import { PartPresence, isSignedIn, partPresence, partPresenceTitle, performerParts } from './parts'
+import { PartPresence, castPresence, isSignedIn, partPresence, partPresenceTitle, performerParts } from './parts'
 
 const row = (id: string, more: Partial<CastSummary> = {}): CastSummary => ({ id, faction: null, ...more })
 
@@ -31,5 +31,18 @@ describe('performer parts (T7-04)', () => {
     expect(isSignedIn(PartPresence.Free)).toBe(false)
     expect(partPresenceTitle('Clippy', PartPresence.PhoneOffline)).toContain('phone offline')
     expect(partPresenceTitle('Clippy', PartPresence.Free)).toBe('Nobody is signed in as Clippy')
+  })
+
+  it('an agent keeps its worker dot, never counted as a signed-in performer', () => {
+    // `online` on an agent row = a stagehand worker is voicing it.
+    expect(castPresence({ agent: true, online: true }, false)).toBe(PartPresence.Voiced)
+    expect(castPresence({ agent: true, online: false }, false)).toBe(PartPresence.Unvoiced)
+    expect(castPresence({ agent: true }, false)).toBe(PartPresence.Unknown)
+    expect(isSignedIn(PartPresence.Voiced)).toBe(false)
+    expect(partPresenceTitle('Trabolta', PartPresence.Voiced)).toBe('A worker is voicing Trabolta')
+    expect(partPresenceTitle('Trabolta', PartPresence.Unvoiced)).toContain('No worker is voicing Trabolta')
+    // A part reads its performer presence; the rest of the ensemble has no dot.
+    expect(castPresence({ online: false, held: true }, true)).toBe(PartPresence.PhoneOffline)
+    expect(castPresence({ online: true }, false)).toBe(PartPresence.Unknown)
   })
 })

@@ -11,7 +11,7 @@ import { CockpitTab, SelectionKind, useCockpit, type CastSummary, type RosterRow
 import { useGraph } from '@/store/graph'
 import { openContextMenu } from '@/store/context-menu'
 import { FactionPill } from './ui'
-import { PartPresence, isSignedIn, partPresence, partPresenceTitle, performerParts } from './parts'
+import { PartPresence, castPresence, isSignedIn, partPresenceTitle, performerParts } from './parts'
 import { publicFaction } from './format'
 import { useInspect } from './inspect'
 import { useGuestMenu } from './guest-menu'
@@ -163,12 +163,12 @@ function CastStrip() {
   const inspect = useInspect()
   if (cast.length === 0) return null
   const partIds = new Set(performerParts(cast).map((c) => c.id))
-  const presenceOf = (c: CastSummary) => (partIds.has(c.id) ? partPresence(c) : PartPresence.Unknown)
+  const presenceOf = (c: CastSummary) => castPresence(c, partIds.has(c.id))
   const tracked = cast.some((c) => partIds.has(c.id) && presenceOf(c) !== PartPresence.Unknown)
   const signedIn = cast.filter((c) => isSignedIn(presenceOf(c)))
   const offline = signedIn.filter((c) => presenceOf(c) === PartPresence.PhoneOffline).length
-  // Signed-in performers first, then the other parts, then the rest of the ensemble.
-  const rank = (c: CastSummary) => (isSignedIn(presenceOf(c)) ? 0 : partIds.has(c.id) ? 1 : 2)
+  // Signed-in performers first, then the other parts, the agents, then the rest of the ensemble.
+  const rank = (c: CastSummary) => (isSignedIn(presenceOf(c)) ? 0 : partIds.has(c.id) ? 1 : c.agent === true ? 2 : 3)
   const sorted = [...cast].sort((a, b) => rank(a) - rank(b) || a.id.localeCompare(b.id))
   return (
     <div className="border-b border-zinc-800 px-3 py-2">
@@ -205,7 +205,9 @@ function CastStrip() {
                   ? 'border-emerald-700/60 bg-emerald-950/30'
                   : presence === PartPresence.PhoneOffline
                     ? 'border-amber-700/60 bg-amber-950/30'
-                    : 'border-zinc-800 hover:bg-zinc-900/60',
+                    : presence === PartPresence.Voiced
+                      ? 'border-sky-800/60 bg-sky-950/30'
+                      : 'border-zinc-800 hover:bg-zinc-900/60',
               )}
               title={partPresenceTitle(c.id, presence)}
               data-testid={`stage-cast-${c.id}`}
@@ -215,7 +217,13 @@ function CastStrip() {
                 <span
                   className={clsx(
                     'h-1.5 w-1.5 rounded-full',
-                    presence === PartPresence.Online ? 'bg-emerald-400' : presence === PartPresence.PhoneOffline ? 'bg-amber-400' : 'border border-zinc-600',
+                    presence === PartPresence.Online
+                      ? 'bg-emerald-400'
+                      : presence === PartPresence.PhoneOffline
+                        ? 'bg-amber-400'
+                        : presence === PartPresence.Voiced
+                          ? 'bg-sky-400'
+                          : 'border border-zinc-600',
                   )}
                 />
               )}

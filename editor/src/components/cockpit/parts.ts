@@ -3,8 +3,10 @@
 //! Trabolta — but a performer can sign in to only the server's *parts*
 //! (`performerPickable`, flagged `part`). And "signed in" is the part being
 //! *held* by a token: a held part whose phone isn't streaming is the moment
-//! a director needs ⏏ Release, so it must not read as "nobody". Pure, so the
-//! Run page's Performers list, the Stage cast strip and the Inspector agree.
+//! a director needs ⏏ Release, so it must not read as "nobody". An agent is
+//! never a part, but its row's `online` says a worker is voicing it — kept
+//! as its own dot. Pure, so the Run page's Performers list, the Stage cast
+//! strip and the Inspector agree.
 
 import type { CastSummary } from '@/store/cockpit'
 
@@ -22,7 +24,11 @@ export const PartPresence = {
   PhoneOffline: 'phone-offline',
   /** Nobody holds it. */
   Free: 'free',
-  /** The server doesn't say (a local run). */
+  /** An agent-voiced character (`mind: external`) a stagehand worker is voicing. */
+  Voiced: 'voiced',
+  /** An agent-voiced character with no worker connected (its `hold:` line answers). */
+  Unvoiced: 'unvoiced',
+  /** The server doesn't say (a local run), or not a part at all. */
   Unknown: 'unknown',
 } as const
 export type PartPresence = (typeof PartPresence)[keyof typeof PartPresence]
@@ -34,6 +40,14 @@ export function partPresence(c: Pick<CastSummary, 'online' | 'held'>): PartPrese
   return PartPresence.Unknown
 }
 
+/** Any cast row's dot: a part's performer presence, an agent's worker
+ *  (`online` on an agent row means a worker is connected — the director's
+ *  "is the laptop up" check), nothing for the rest of the ensemble. */
+export function castPresence(c: Pick<CastSummary, 'online' | 'held' | 'agent'>, isPart: boolean): PartPresence {
+  if (c.agent === true) return c.online === true ? PartPresence.Voiced : c.online === false ? PartPresence.Unvoiced : PartPresence.Unknown
+  return isPart ? partPresence(c) : PartPresence.Unknown
+}
+
 /** The presence dot's words. */
 export function partPresenceTitle(id: string, p: PartPresence): string {
   switch (p) {
@@ -43,6 +57,10 @@ export function partPresenceTitle(id: string, p: PartPresence): string {
       return `Signed in as ${id} — phone offline (asleep, off the Wi-Fi, or lost: ⏏ Release frees the part)`
     case PartPresence.Free:
       return `Nobody is signed in as ${id}`
+    case PartPresence.Voiced:
+      return `A worker is voicing ${id}`
+    case PartPresence.Unvoiced:
+      return `No worker is voicing ${id} — a director can reply as ${id} from Chat`
     default:
       return id
   }

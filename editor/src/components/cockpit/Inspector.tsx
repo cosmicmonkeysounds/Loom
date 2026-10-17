@@ -14,7 +14,7 @@ import { CockpitTab, isPersonaId, PlayerRole, RunBackend, RunMode, SelectionKind
 import { useGraph } from '@/store/graph'
 import { confirmAction, notify, promptText } from '@/store/dialog'
 import { FactionPill } from './ui'
-import { PartPresence, partPresence } from './parts'
+import { PartPresence, castPresence, partPresence } from './parts'
 import { entityVars, GUEST_STANDARD_FIELDS } from './world'
 import {
   codexGrantOptions,
@@ -749,6 +749,10 @@ function CharacterInspector({ id }: { id: string }) {
       {member !== undefined && member.agent !== true && partPresence(member) === PartPresence.Online && <Note>A performer is signed in as {id} right now.</Note>}
       {member !== undefined && member.agent !== true && partPresence(member) === PartPresence.PhoneOffline && (
         <Note>Signed in as {id}, but the phone is offline (asleep, off the Wi-Fi, or lost). Lost? ⏏ Release frees the part for a loaner.</Note>
+      )}
+      {member !== undefined && castPresence(member, false) === PartPresence.Voiced && <Note>A stagehand worker is voicing {id} right now.</Note>}
+      {member !== undefined && castPresence(member, false) === PartPresence.Unvoiced && (
+        <Note>No worker is voicing {id}: its hold: line (if it has one) answers, and a director can reply as {id} from Chat.</Note>
       )}
       {server && (
         <div className="px-3 pt-2">
