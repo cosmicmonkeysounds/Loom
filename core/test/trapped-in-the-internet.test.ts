@@ -5277,6 +5277,25 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     refused(ban, "start_the_ceremony", "🏆 The ceremony has already started. Nothing happens.");
   });
 
+  it("T1-04: a program cleared at the Y2K hour gets one 📝 card and a clearance that fits the hour", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    const late = upload(sim, "late1", "Notepad");
+    expect(v(sim, "late1.cleared")).toBe(true);
+    const cards = widgets(late).filter((w) => w.widget === "fact" && w.audience[0] === "late1");
+    expect(cards).toHaveLength(1);
+    const all = texts(late);
+    expect(all.filter((t) => t.includes("There will be a game soon"))).toEqual([]);
+    expect(all.filter((t) => t.includes("screensaver drifts"))).toEqual([]);
+    expect(lines(late, "Norton Anti-Virus")).toContain("Scanned. Notepad is free of viruses and ready to explore the entire computer. You are late: the night is already under way. Listen for the house. Go through the Tube.");
+    // An early arrival still hears the screensaver and the coming game.
+    const first = fresh();
+    first.fireBeat("Power On");
+    const early = upload(first, "e1", "Calculator");
+    expect(lines(early, "Norton Anti-Virus")).toContain("Scanned. Calculator is free of viruses and ready to explore the entire computer. There will be a game soon in the Desktop. The house will announce it. Go through the Tube.");
+    expect(texts(early).some((t) => t.includes("A classic screensaver drifts across the TV"))).toBe(true);
+  });
+
   it("T1-03: the song after a pickup line never says every fact was true", { timeout: SLOW }, () => {
     const TRUE = "Every fact you gave me was true, and the truth tells me what to say to her. You're the one that I want.";
     const song = boot();
