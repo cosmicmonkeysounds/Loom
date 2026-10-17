@@ -740,7 +740,7 @@ An order placed Thursday night **most likely lands Mon 10-19**, not on the weeke
 | A-1 | **Sonoff ZBDongle-E** (or SMLIGHT SLZB-06) + 1 m USB 2.0 extension. **Two of the same model**: the second is the coordinator spare (Z2M `data/` restore tested 10-23) | **2** | 35–60 ea | Elmwood / Universal-Solder the same night |
 | A-2 | **MC-38 wired reed switches**, 5-pack (**optional since wave 7**: the wire-loop contact is the default) | 1 | 15 | Home Depot / Canadian Tire "wired door contact"; or a **Hue Secure contact sensor** (Best Buy) |
 | A-3 | **Copper foil tape, conductive adhesive**, 25 mm (wave 7: the door contact, two loops that touch when the door opens) | 1 | 15 | Hook-up wire loops, or a door-jamb plunger switch (Home Depot) |
-| A-3b | **Standalone electronic keypad lock** (wave 7, HW-DOOR-09): keypad outside only, mechanical inside lever / thumb-turn, single-cylinder, key override, never fail-secure; + spare batteries | 1 | [[EDIT]] | Home Depot / Canadian Tire / Kent: a keypad deadbolt or keypad lever set |
+| A-3b | **Standalone electronic keypad lock** (wave 7, HW-DOOR-09): keypad outside only, mechanical inside lever / thumb-turn, single-cylinder, key override (egress never depends on power; the outside may stay locked on a dead battery); + spare batteries | 1 | [[EDIT]] | Home Depot / Canadian Tire / Kent: a keypad deadbolt or keypad lever set |
 | A-4 | BNC male → bare-wire pigtails 75 Ω *(if the bay is BNC-rear)* | 24–30 | 30–40 | Cut BNC cables from Long & McQuade |
 | A-5 | BNC–BNC patch cables 1–2 ft + panel bulkhead jacks *(if the bay is WECO and you own < 8 cords)* | 10 + 24 | 65 | The BNC façade |
 | A-6 | **GL.iNet GL-MT3000** (LTE failover via a tethered phone) | 1–2 | 130 ea | Best Buy / Canada Computers multi-WAN router |
