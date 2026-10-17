@@ -2522,7 +2522,9 @@ to being stuck in a computer.` (`{count(Persons)}` interpolation is **[verified,
   facts speaks up; everyone may say what they learned, what they believe but can't prove, and
   what should happen next; Clippy acknowledges each, then: `There is only one version of the
   truth. Because truth is always in binary.` (Final facts F1/F2 are judged with ✅ / 😤 Q1–Q2
-  / 🤷, round 3.) The server room stays live: a faction can still act until the verdict. This
+  / 🤷, round 3.) The server room stays live: a faction can still act until 📄 truth.txt
+  (`Night.r3_closed`; from then on the patch bay, the door and 🕊 only post a `# hosts` note,
+  and Trabolta's `stand_down` refuses — wave 8, T2-03). This
   is a **deliberate invention** (SB summons to the reveal those who gained the information
   "without acting on it"; the patch bay is physical and cannot be switched off) and the README
   says so.
@@ -2548,10 +2550,20 @@ to being stuck in a computer.` (`{count(Persons)}` interpolation is **[verified,
   `{Night.least_trusted}` (his `assess` power is live in `bobbing`). `{Night.bobber}, you may
   read truth.txt.`
 
-**F3 truth.txt — `read_truth_txt`** (D).
-- Rule (guard `Night.phase == "bobbing"`): `complete quest The Final Facts for everyone` · `set
-  Night.recount = true` (everyone gets every backstory + The Truth File) · `cue
-  screens_truth_txt` · `-> Truth Txt` then `-> The Verdict` (last).
+**F3 truth.txt — `read_truth_txt`** (D, 📄), **then the verdict — `the_verdict`** (D, ⚖;
+wave 8, T6-01: the slide holds while the bobber reads).
+- `read_truth_txt` (guard `Night.phase == "bobbing" and Night.bag_up == true and
+  Night.r3_closed != true`): `complete quest The Final Facts for everyone` · `set
+  Night.recount = true` (everyone gets every backstory + The Truth File) · `set Night.r3_closed
+  = true` (round three closes and settles; the server room goes quiet, F1) · `cue
+  screens_truth_txt` · `-> Truth Txt`. Nothing else happens until ⚖. A second 📄 tells
+  `# hosts` to press ⚖; 📄 before the bag is up, or outside the bob, says so there too. Adobe
+  Acrobat's booth: *📄 Hand the bobber the truth.txt printout. They read it aloud; when they
+  finish, the director presses ⚖ for the verdict.*
+- `the_verdict` (guard `Night.phase == "bobbing" and Night.r3_closed == true and Night.ended !=
+  true`): `-> The Verdict`. Before 📄 it tells `# hosts` *"⚖ Not yet: 📄 Read truth.txt
+  first."* (before the bob: *"⚖ Not yet: 🍎 Bobbing for Truth, then 📄 truth.txt first."*);
+  once the verdict is in, *"⚖ Not now…"*.
 - `== Truth Txt` (public; narration as Notepad text; the bobber reads it aloud): Trabolta's
   backstory (the analysis of Halifax; the lapsed mapsandducks.com and the billboard on
   Barrington; he registered it "because if there is a billboard downtown everyone will think
@@ -2591,9 +2603,14 @@ to being stuck in a computer.` (`{count(Persons)}` interpolation is **[verified,
   `else: set Night.ending = "song"` · phase `finale_song`, step 19 · `cue lights_song`, `cue
   screens_song` · `sound youre_the_one_vocoder` · `set Night.everyone_free = true`.
 - Public, Trabolta: `You succeeded. I have solved the Grand Unified Theory, and I am pursuing
-  Sandy. Those of you who want to leave may leave.` · `Every fact you gave me was true, and the
-  truth tells me what to say to her. You're the one that I want.` (the six-mark "clues spell
-  it out" mechanic is retired, wave 4 U9). Then the duet: `Trabolta: You're the one that I want.` / `Sandy:
+  Sandy. Those of you who want to leave may leave.` · on `song`: `Every fact you gave me was
+  true, and the truth tells me what to say to her. You're the one that I want.`; on
+  `song_pickup` (after Grok Prom's line, wave 8, T1-03): `Not every fact you gave me was true.
+  But that line was, and it tells me what to say to her. You're the one that I want.` (the
+  six-mark "clues spell it out" mechanic is retired, wave 4 U9). A pickup-line card answered
+  after the rave, in the advice poll, after help, the banishment or the hand jive never
+  celebrates: after the rave the program hears that Trabolta has ridden away, otherwise "Too
+  late for lines" (wave 8, T2-06). Then the duet: `Trabolta: You're the one that I want.` / `Sandy:
   I'm sorry, I didn't understand that. Would you like to speak to a live agent?` (twice more,
   the lines of the chorus he sings, Sandy answering each time with her one line).
 
@@ -2656,13 +2673,19 @@ programs don't support him"; never before truth.txt is read).
   hand jive, together.` · `-> Advice Thwarted` (public, Trabolta in despair: `Fine. FINE.
   Everyone to the Internet. Antivirus too.` · and the slip that reveals the NEW weakness, not
   the Legendary fact: `If you all did the hand jive at once I wouldn't even be able to— I
-  mean. Nothing. There is no weakness.`).
+  mean. Nothing. There is no weakness.`). The banishment is no reinstallation (wave 8,
+  T2-01): each capture replies `⛈ Banished to the Internet, with everyone else. Gerald cannot
+  help you tonight…` and plays no Reinstallation, adds no Internet visit and sends no tablet or
+  mirror cue, so the TV keeps the banish card; a duck find frees nobody (`the simulation
+  completed` replies only `Gerald cannot help you: everyone is banished. The way out is the
+  hand jive, together.`, and `the golden duck` lays no egg and unlocks no Golden Duck).
 - **`the_hand_jive`** (D; guard `Night.ending == "banished" and Night.ended != true`):
   `ended = true`, `ending = "hand_jive"` · phase `finale_hand_jive` · `set Night.banish =
   false` · `set Night.everyone_free = true` · `sound hand_jive` · `-> The Hand Jive` (public:
   his motion recognition overflows — `R E C O G N I T I O N  O V E R F L O W` — he reboots,
   weakened; he leaves on his motorcycle; everyone returns) · `sound motorcycle` · `cue
-  lights_restore`.
+  lights_restore` · `cue screens_screensaver` (wave 8: the banish card comes off every
+  screen).
 
 ---
 
@@ -3014,7 +3037,7 @@ Paths into the final reveal: the director fires `final_reveal`, or `y2k_midnight
 60 min after `y2k_clock`) fires it when nothing has ended. That covers "nobody recruits a
 majority" and "the server-room information was gained but not used". The server room stays
 live during the reveal (a deliberate invention, stated in the README): a combo entered
-before the verdict still ends the night.
+before 📄 truth.txt still ends the night; from 📄 on the server room only tells `# hosts`.
 
 Server room alarm (wave 7): only the patch bay. `patch_rejected` → alarm, latched for 120 s,
 when `Night.wrong_combos >= 2` (everyone is forgiven one); otherwise "Stop touching me." The
