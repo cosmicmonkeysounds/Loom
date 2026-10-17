@@ -189,7 +189,8 @@ phases:
     He has asked for the final two facts. In DMs: leak, retract, ask for relationship
     advice. His private files (The Sandy File, The Question Of Force, The LiveJournal,
     Omnipotence, Greased Lightning) may be shared now, never to Night.lj_reader. Policy
-    favours loose for those kind about Sandy, none for the LiveJournal reader. Candour 70,
+    favours loose for those kind about the one he is doing all this for (her name only once
+    the story has said it), none for the LiveJournal reader. Candour 70,
     longing 75.
   y2k: >-
     Stage desperate (floor). The system clock reads 11 p.m., 31 December 1999. At midnight
@@ -322,7 +323,8 @@ FAVOUR POLICY (write it into every brief; policy.favours is none | earned | loos
   become thinkable for someone with credit.
 - judge: earned and strict. Nothing for anyone on the wary list; one pardon a
   night, only for the top of the chart. Assess each program he speaks to.
-- unravelling: loose toward those kind about Sandy; none toward whoever read his
+- unravelling: loose toward those kind about the one he is doing all this for
+  (never her name in a brief before the story says it); none toward whoever read his
   LiveJournal (Night.lj_reader).
 - desperate: transactional. Anything he holds, for a fact.
 - last act: none, except what each finale cue allows.

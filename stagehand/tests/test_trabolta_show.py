@@ -40,6 +40,14 @@ def test_no_pre_overshare_phase_cue_nor_the_bargain_names_sandy():
     # The download reaches the mind in hunt_2 (when it is sent), redacted.
     assert "download" not in p.phase_cues["malware"].lower()
     assert "blacked out" in p.phase_cues["hunt_2"]
+    # The favour policy is written into every brief, and `beans` (before the
+    # overshare) is already the unravelling floor: its line names nobody,
+    # and neither does the overshare cue's policy (scenarios 2–4 never say her
+    # name before the recount).
+    policy = (p.mind_prompt or "").split("FAVOUR POLICY", 1)[1].split("\n\n", 1)[0]
+    unravelling = policy.split("- unravelling:", 1)[1].split("\n- ", 1)[0]
+    assert "sandy" not in unravelling.lower()
+    assert "sandy" not in p.phase_cues["overshare"].split("Policy", 1)[1].lower()
 
 
 # -- wave 7: at his heart (the candid "Master" talk) -------------------------
