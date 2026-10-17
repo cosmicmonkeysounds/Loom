@@ -1,7 +1,8 @@
 //! W8 T9-02: a restart replays the journal into a fresh sim, and every
 //! replayed line drains every watcher for every guest. With the parse cache
 //! a 40-guest night replays in seconds, not minutes, and lands on exactly
-//! the live world — the guard against a shared parse tree drifting a replay.
+//! the live world — the guard against a shared parse tree drifting a replay
+//! (the replay starts on a cold cache, so it re-parses what the night shared).
 
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -11,6 +12,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { EventRuntime } from "../server/event-runtime.ts";
+import { clearParseCache } from "../src/runtime/expr.ts";
 import { Store } from "../server/store.ts";
 import { scenarioSource } from "../examples/load.ts";
 
@@ -73,6 +75,9 @@ describe("restore at show scale", () => {
     const lines = store.readJournal().length;
     expect(lines).toBeGreaterThanOrEqual(2000);
 
+    // Replay on a cold cache, as a booted server does: the live night ran on
+    // shared cached trees, the replay re-parses — any drift shows below.
+    clearParseCache();
     const again = mk();
     const t0 = performance.now();
     expect(again.restore()).not.toBeNull();

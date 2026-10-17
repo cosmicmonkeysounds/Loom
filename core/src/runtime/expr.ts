@@ -295,6 +295,12 @@ export function parseExprCached(source: string): Expr {
   return hit;
 }
 
+/** Forget every cached parse — a test replays on fresh trees (a cold boot)
+ *  to prove a shared tree never drifted from what a fresh parse gives. */
+export function clearParseCache(): void {
+  PARSED.clear();
+}
+
 /** Evaluate `expr` against `world`, delegating calls to `callFn`. */
 export function evaluate(expr: Expr, world: World, callFn: CallFn, bindings?: Bindings): Value {
   return evalScoped(expr, world, [], callFn, bindings);
