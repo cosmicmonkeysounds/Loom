@@ -157,7 +157,7 @@ CODEX The Carney Letter
     A printout in a filing box, from webmaster@mapsandducks.com, signed M.
     Carney, Prime Minister, Canada: "I have to keep this brief because I am
     very busy being the Prime Minister… Did you ever see the movie Suicide
-    Squad? I just watched it… approve or deny every transaction."
+    Squad? I just watched it… approve or deny every third transaction."
     Look closely: the signature is a font.
 
 CODEX The Domain Receipt
@@ -190,19 +190,22 @@ CODEX The Margin Doodle
   text:
     A page slipped into the theory binder: dense equations from the
     Unified Field Theory, page 999. In the margin, very small, drawn and
-    redrawn until the paper is shiny: a heart around the letter S.
+    redrawn until the paper is shiny: a heart around the letter S, and
+    under it, '97.
 
-// Not a file and no code: handed to every cleared program with The Y2K
-// Clock at the final round (ROLE Program, main.loom), when the King
-// starts to matter. Kept out of the first 24 entries, so Trabolta's
-// ground truth never carries it (he never mentions it, #32).
-CODEX The Cold Lock
-  title: The Cold Lock
+// Not a file and no code: the riddle. Handed to every cleared program with
+// The Y2K Clock at the final round (ROLE Program, main.loom), when the
+// King starts to matter; the same words are on the printed sign by the
+// keypad (facts.json `door.clue`, generated/print-stacks.md). Secret: it
+// points at the door code, and no model may hold it.
+CODEX The Cold Door
+  title: The Cold Door
+  secret: true
   text:
-    A note taped beside the cold door, in a tired sysadmin's hand:
-    "COLD LOCK. The door listens to the King. He stands at this same
-    door inside the simulation — go to the Internet, walk down to him,
-    knock him about until his game slips (every hit makes him dumber;
-    by the end he has nothing but pawns), then checkmate him, and the
-    lock sleeps for ninety seconds. Close the cold door behind you."
-    Underneath, in red pen: "A draw is not a win. Neither is crying."
+    A note taped beside the keypad on the cold door, in a tired
+    sysadmin's hand: "FOUR DIGITS. THE DOOR REMEMBERS THE YEAR HE MET
+    HER." Underneath it: "Can't remember? The King at this same door
+    inside the simulation knows it. Go to the Internet, walk down to him,
+    knock him about until his game slips (every hit makes him dumber),
+    then checkmate him. A draw is not a win. Neither is crying." And in
+    red pen: "The patch bay forgives one wrong combination. Not two."

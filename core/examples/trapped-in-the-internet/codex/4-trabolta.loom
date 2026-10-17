@@ -11,7 +11,9 @@
 // `about: Trabolta`, so he holds his own lore from the start and feels
 // it when a program learns it (`cast/trabolta.loom`). The Legendary Fact
 // and the combos are `about: The Server Room` and are never held by him;
-// they reach the majority faction through `The Whole Truth`.
+// they reach the majority faction through `The Whole Truth`. They are also
+// `secret: true`: the orchestrator's lore block reads the whole non-secret
+// codex as ground truth, and these must never reach either model.
 //
 // The combo pairs must equal `Kernel.combo_a` / `Kernel.combo_b`
 // (cast/props.loom, seeded in Power On) and stagehand's
@@ -94,6 +96,7 @@ CODEX The LiveJournal
     look. Current mood: hopeful. Current music: (on repeat).
     - "Sandy did not understand me again today. That is all right. Soon I
     will understand everything, and then I will understand how to say it."
+    - "Our anniversary. Since '97 she has answered every message I sent."
     - "Grok asked her to computer prom. GROK. He says whatever anyone wants
     to hear. That is not the same as the truth."
     - "I just have to tell her the truth, but I need the theory first."
@@ -121,18 +124,20 @@ CODEX Greased Lightning
 CODEX The Legendary Fact
   title: THE LEGENDARY FACT
   about: The Server Room
+  secret: true
   text:
     Trabolta's heart is in the server room. It is a video patch bay. The
     top row (V) is the lightning; the bottom row (D) is the grease. Two
     combinations exist. Combo A takes the grease out of the lightning: it
     disables Trabolta, and the programs can escape the computer. Combo B
     self-destructs the whole computer, with everything inside it. Each
-    combination is four cables. The door is alarmed unless the system has
-    granted access.
+    combination is four cables. The door has a keypad; the patch bay
+    forgives one wrong combination, and the second sets off the alarm.
 
 CODEX Combo A First Half
   title: Patch Sheet A · 1 of 2
   about: The Server Room
+  secret: true
   text:
     Combo A disables Trabolta. Part 1 of 2: patch V2 → D5 and V4 → D1.
     Part 2 holds the other two cables.
@@ -140,6 +145,7 @@ CODEX Combo A First Half
 CODEX Combo A Second Half
   title: Patch Sheet A · 2 of 2
   about: The Server Room
+  secret: true
   text:
     Combo A disables Trabolta. Part 2 of 2: patch V6 → D8 and V7 → D3.
     Part 1 holds the other two cables.
@@ -147,6 +153,7 @@ CODEX Combo A Second Half
 CODEX Combo B First Half
   title: Patch Sheet B · 1 of 2
   about: The Server Room
+  secret: true
   text:
     Combo B self-destructs the whole computer. Part 1 of 2: patch V1 → D6
     and V3 → D2. Part 2 holds the other two cables.
@@ -154,6 +161,7 @@ CODEX Combo B First Half
 CODEX Combo B Second Half
   title: Patch Sheet B · 2 of 2
   about: The Server Room
+  secret: true
   text:
     Combo B self-destructs the whole computer. Part 2 of 2: patch V5 → D7
     and V8 → D4. Part 1 holds the other two cables.
@@ -196,7 +204,7 @@ CODEX The Truth File
     brought in to manage every password and decide who gets to be part of
     what club, without ever asking for a vote.
     - The CRA Agent Software, the intern who moved a decimal point, was
-    brought in to approve or deny every transaction, to the cent.
+    brought in to approve or deny every third transaction, to the cent.
     - The Installation Wizard, the setup assistant nobody read, was
     brought in to walk the corrupted through re-installation, gently.
     - The former Mayor, Microsoft Excel, was brought in for the promise of

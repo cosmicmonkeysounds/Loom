@@ -175,4 +175,4 @@ TRAIT Enforcer is Person
     reply 🛡 Trabolta requests a sweep of {Night.sweep_target}.
 
   when alarm_tripped:
-    reply 🚨 Server room breach. Get there. Anyone inside who is not a member of the winning faction goes to the Internet.
+    reply 🚨 Server room alarm: a second wrong combination at the patch bay. Get there. Whoever is at the cables goes to the Internet.

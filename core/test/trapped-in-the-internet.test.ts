@@ -6,7 +6,7 @@
 //! verdict and alternate ending, and Trabolta's powers + phase guards.
 
 import { afterAll, describe, expect, it } from "vitest";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -165,12 +165,12 @@ describe("Trapped in the Internet — compile", () => {
     for (const c of m.characters.values()) if (c.wallet !== null) expect(["CRA Agent Software", "Runescape"]).toContain(c.id);
   });
 
-  it("pins the codex: 178 entries, 90 codes, every facts.json code resolving, no STAMPED anywhere", () => {
-    expect(m.codex.size).toBe(178);
+  it("pins the codex: 179 entries, 90 codes, every facts.json code resolving, no STAMPED anywhere", () => {
+    expect(m.codex.size).toBe(179);
     expect(m.codexCodes.size).toBe(90);
     // The README's counts follow the pin (its file listing, its status line and the Codex section).
     const readme = readFileSync(join(scenarioDir(SHOW), "README.md"), "utf8");
-    expect([...readme.matchAll(/\b(\d+) CODEX entries|(\d+) codex entries|There\s+are \*\*(\d+)\*\*/gu)].map((x) => Number(x[1] ?? x[2] ?? x[3]))).toEqual([178, 178, 178]);
+    expect([...readme.matchAll(/\b(\d+) CODEX entries|(\d+) codex entries|There\s+are \*\*(\d+)\*\*/gu)].map((x) => Number(x[1] ?? x[2] ?? x[3]))).toEqual([179, 179, 179]);
     const codes: Record<string, string> = {
       trabolta4ever: "The LiveJournal",
       loveletterforyou: "ILOVEYOU",
@@ -200,26 +200,34 @@ describe("Trapped in the Internet — compile", () => {
     expect(m.codex.get("The Truther Download")!.text.endsWith("- There is still time.\n- In truth.")).toBe(true);
   });
 
-  it("every account of the Prime Minister's email asks for every transaction; only the books hold every third (C16)", () => {
-    // The Carney Letter is the email itself; C16 and the CRA pack retell it on the
-    // same phone. The demand stays "every"; `every 3` is how the books work tonight.
-    const pack = readFileSync(join(scenarioDir(SHOW), "cast-packs", "performers", "cra-agent.md"), "utf8").replace(/\s+/gu, " ");
+  it("every account of the Prime Minister's email says every third transaction, as the books do (C16)", () => {
+    // The Carney Letter is the email itself; C16, The Truth File, the finale's
+    // truth.txt and the CRA + Adobe Acrobat packs retell it. `every 3` is the
+    // approver's rule (cast/antivirus.loom), and every account says so.
+    const packDir = join(scenarioDir(SHOW), "cast-packs");
+    const pack = (f: string) => readFileSync(join(packDir, "performers", f), "utf8").replace(/\s+/gu, " ");
     const flat = (id: string) => m.codex.get(id)!.text.replace(/\s+/gu, " ");
-    expect(flat("The Carney Letter")).toContain("approve or deny every transaction.");
-    expect(flat("Approve Or Deny")).toContain("Truthcoin transactions as possible and to approve or deny every one of them");
-    expect(flat("Approve Or Deny")).toContain("The books only let her hold every third one tonight");
-    expect(pack).toContain("Truthcoin transactions as possible and approve or deny every one of them.");
-    expect(pack).toContain("The books only let you hold every third one tonight");
-    for (const text of [flat("Approve Or Deny"), pack]) expect(text).not.toMatch(/approve or deny every third/u);
+    expect(flat("The Carney Letter")).toContain("approve or deny every third transaction.");
+    expect(flat("Approve Or Deny")).toContain("Truthcoin transactions as possible and to approve or deny every third one");
+    expect(flat("The Truth File")).toContain("brought in to approve or deny every third transaction, to the cent.");
+    expect(pack("cra-agent.md")).toContain("approve or deny every third");
+    expect(pack("adobe-acrobat.md")).toContain("brought in to approve or deny every third transaction, to the cent.");
+    const finale = FILES.find((f) => f.path === "beats/finale.loom")!.source;
+    expect(finale).toContain("Narrator: The intern, CRA Agent Software, was brought in to approve or deny every third transaction, to the cent.");
+    // Nowhere does the demand stay "every transaction" / "every one of them".
+    const packs = (d: string): string[] => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? packs(join(d, e.name)) : e.name.endsWith(".md") ? [join(d, e.name)] : []));
+    const texts = [...FILES.map((f) => [f.path, f.source] as const), ...packs(packDir).map((p) => [p, readFileSync(p, "utf8")] as const)];
+    for (const [path, text] of texts) expect(text.replace(/\s+/gu, " "), path).not.toMatch(/approve or deny every (?:transaction|one of them)/u);
   });
 
-  it("M22 promises only what every tent tablet does: checkmate counts, anything else means play him again", () => {
+  it("M22 promises only what every tent tablet does: checkmate counts, anything else means play him again — and a mate gives the code", () => {
     // Whether a drawn or lost board re-deals by itself is the reinstall lane's
-    // (decision 6); on a build without it the window closes and ♟ CHALLENGE
-    // deals the next board. The codex a guest reads must hold on both.
-    const text = m.codex.get("Disarming The Alarm")!.text.replace(/\s+/gu, " ");
+    // (decision 6); on a build without it ♟ CHALLENGE deals the next board.
+    // The codex a guest reads must hold on both.
+    const text = m.codex.get("Checkmate For The Code")!.text.replace(/\s+/gu, " ");
     expect(text).toContain("Only checkmate counts; a draw or a loss changes nothing, so play him again.");
-    expect(text).not.toMatch(/fresh board|deals him|re-?deal/u);
+    expect(text).toContain("From the Y2K hour, mate him and he gives you the four digits.");
+    expect(text).not.toMatch(/fresh board|deals him|re-?deal|ninety seconds|disarm/iu);
   });
 
   it("every codex title is its own: no two entries share one and none is another entry's id (the wallet trades by title)", () => {
@@ -321,6 +329,7 @@ describe("Trapped in the Internet — compile", () => {
       "pardon_a_program:1",
       "turn_back_the_clock:1",
       "the_line_works:1",
+      "stand_down:1",
     ]);
   });
 
@@ -335,6 +344,7 @@ describe("Trapped in the Internet — compile", () => {
       anti_ai: "none",
       combo_a: "none",
       combo_b: "none",
+      door_code: "none",
       q1: "none",
       q2: "none",
       q3: "none",
@@ -380,8 +390,6 @@ describe("Trapped in the Internet — compile", () => {
       waive_leader_tasks: "false",
       majority_reached: "false",
       majority: "none",
-      server_unlocked: "false",
-      disarmed_until: "0",
       jeeves_reached: "0",
     });
   });
@@ -426,7 +434,7 @@ describe("Trapped in the Internet — compile", () => {
     const facts = line.split(",").map((s) => s.trim());
     expect(facts.length).toBeGreaterThan(3);
     expect(facts).not.toContain("Night.");
-    expect(facts.filter((f) => /Kernel|combo|lies|planted|planter|dossier|majority|all_accurate|server_unlocked|\.q[1-8]$/u.test(f))).toEqual([]);
+    expect(facts.filter((f) => /Kernel|combo|lies|planted|planter|dossier|majority|all_accurate|door_code|\.q[1-8]$/u.test(f))).toEqual([]);
     expect(/^when:\s*self\.awake == true$/mu.test(persona)).toBe(true);
     expect(/^them:.*truths_confident_false/mu.test(persona)).toBe(false);
   });
@@ -1010,7 +1018,7 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(sim.questStatus("g3", "OpenOffice Dossier")).toBe("done");
     // secrets never live in Night.*
     const night = worldKeys(sim).filter((k) => k.startsWith("Night."));
-    expect(night.filter((k) => /^Night\.combo|combo_[ab]|lies|planter|planted|dossier|majority|\.q[1-8]$|all_accurate|server_unlocked|anti_ai/u.test(k))).toEqual([]);
+    expect(night.filter((k) => /^Night\.combo|combo_[ab]|lies|planter|planted|dossier|majority|\.q[1-8]$|all_accurate|door_code|anti_ai/u.test(k))).toEqual([]);
   });
 
   it("the summons: check-ins, exemptions, bad check-in points, the late list", { timeout: SLOW }, () => {
@@ -1201,9 +1209,10 @@ describe("Trapped in the Internet — the whole night", () => {
     const mj = sim.join("g8", "The Way Out");
     expect(diags(mj)).toEqual([]);
     expect(v(sim, "Kernel.majority")).toBe("leave");
-    expect(v(sim, "Kernel.server_unlocked")).toBe(true);
     expect(v(sim, "Night.phase")).toBe("majority");
+    expect(has(cues(mj), "door server_room")).toBe(false); // the keypad is standalone: nothing unlocks it
     expect(sim.holdsCodex("g8", "The Legendary Fact")).toBe(true);
+    expect(sim.holdsCodex("g8", "The Door Code")).toBe(true); // the code, in the Truther Download
     // The Whole Truth carries every main + Trabolta fact in facts.json (the generated Facts Bundle), to members only.
     const bundle = FACTS.facts.filter((x) => x.category === "main" || x.category === "trabolta").map((x) => x.codex?.id ?? x.existing!);
     expect(bundle).toEqual(expect.arrayContaining(["Silicon", "His Kind", "The Optical Drive", "Alone At Prom"]));
@@ -1212,17 +1221,21 @@ describe("Trapped in the Internet — the whole night", () => {
     for (const half of ["Combo A First Half", "Combo A Second Half", "Combo B First Half", "Combo B Second Half"]) expect(sim.holdsCodex("g1", half), half).toBe(true);
     expect(sim.isRevealedTo("The Server Room", "g1")).toBe(true);
     expect(sim.holdsCodex("g9", "The Legendary Fact")).toBe(false);
+    expect(sim.holdsCodex("g9", "The Door Code")).toBe(false);
     expect(sim.holdsCodex("g2", "Combo A First Half")).toBe(false);
     expect(sim.holdsCodex("Trabolta", "The Legendary Fact")).toBe(false);
+    expect(sim.holdsCodex("Trabolta", "The Door Code")).toBe(false);
     expect(sim.questStatus("g3", "Recruit To Leave")).toBe("done");
     expect(sim.questStatus("g2", "Recruit To Stay")).toBe("failed");
     expect(v(sim, "Night.lj_reader")).toBe("OpenOffice"); // the bundle doesn't overwrite the reader
     sim.join("g13", "The Way Out");
     expect(sim.holdsCodex("g13", "The Legendary Fact")).toBe(true); // a late pledger
+    expect(sim.holdsCodex("g13", "The Door Code")).toBe(true);
   });
 
-  it("the server room: unlocked door, combo A, the dance, Trabolta recounts", () => {
-    sim.signal("server_door_opened");
+  it("the server room: the door opens on The Heart, one wrong patch is forgiven, combo A, the dance, Trabolta recounts", () => {
+    const door = sim.signal("server_door_opened");
+    expect(beats(door)).toContain("The Heart");
     expect(v(sim, "Night.alarms") ?? 0).toBe(0);
     expect(lines(sim.signal("patch_rejected"), "Trabolta")).toContain("Stop touching me.");
     const pa = sim.signal("patch_changed", undefined, { combo: v(sim, "Kernel.combo_a") });
@@ -1494,7 +1507,7 @@ describe("Trapped in the Internet — the majorities", () => {
     expect(v(sim, "Kernel.majority_reached")).not.toBe(true);
     dossier(sim);
     expect(v(sim, "Kernel.majority")).toBe("leave");
-    expect(v(sim, "Kernel.server_unlocked")).toBe(true);
+    expect(sim.holdsCodex("g1", "The Door Code")).toBe(true);
   });
 });
 
@@ -1527,52 +1540,6 @@ describe("Trapped in the Internet — combo B", () => {
   });
 });
 
-describe("Trapped in the Internet — the server-room alarm", () => {
-  it("trips while locked, latches for 120 s, counts wrong combinations, stays quiet once unlocked", { timeout: SLOW }, () => {
-    const sim = boot();
-    toTruth1(sim);
-    // Before the Y2K hour the door and the patch bay are inert: no alarm,
-    // no reveal, no ending, no Trabolta line.
-    for (const early of ["server_door_opened", "patch_rejected", "patch_combo_a", "patch_combo_b"]) {
-      const e = fire(sim, early);
-      expect(lines(e, "Trabolta"), early).toEqual([]);
-      expect(cues(e), early).toEqual([]);
-    }
-    expect(v(sim, "Night.alarms")).toBe(0);
-    expect(v(sim, "Night.ended")).toBe(false);
-    expect(sim.isRevealedTo("The Server Room", "g1")).toBe(false);
-    toHunt2(sim);
-    toBeans(sim);
-    fireAll(sim, "trabolta_overshares", "y2k_clock");
-    const c0 = v(sim, "Trabolta.composure");
-    const a1 = fire(sim, "server_door_opened");
-    expect(v(sim, "Night.alarms")).toBe(1);
-    expect(v(sim, "Trabolta.composure")).toBe(c0 - 10);
-    expect(casts(a1).some((b) => b.cue.includes("alarm"))).toBe(true);
-    expect(has(cues(a1), "lights_alarm")).toBe(true);
-    expect(sim.isRevealedTo("The Server Room", "g1")).toBe(true);
-    expect(replies(a1).filter((r) => r.text.startsWith("🚨 Server room breach"))).toHaveLength(4);
-
-    fire(sim, "server_door_opened");
-    expect(v(sim, "Night.alarms")).toBe(1); // latched
-    advance(sim, 120);
-    fire(sim, "server_door_opened");
-    expect(v(sim, "Night.alarms")).toBe(2);
-    expect(v(sim, "Trabolta.composure")).toBe(c0 - 10); // only the first trip costs composure
-    advance(sim, 120);
-    fire(sim, "patch_changed", null, { combo: "V1-D1" });
-    expect(v(sim, "Night.wrong_combos")).toBe(1);
-    expect(v(sim, "Night.alarms")).toBe(3);
-
-    fire(sim, "server_unlock");
-    advance(sim, 120);
-    fire(sim, "server_door_opened");
-    expect(v(sim, "Night.alarms")).toBe(3);
-    fire(sim, "patch_rejected"); // the second wrong combination trips it even unlocked
-    expect(v(sim, "Night.alarms")).toBe(4);
-  });
-});
-
 /** Through the Y2K clock (Night.step 14), no majority yet. */
 function toY2k(sim: Sim) {
   toTruth1(sim);
@@ -1582,116 +1549,341 @@ function toY2k(sim: Sim) {
 }
 const hostsSaid = (evs: SimEvent[]) => casts(evs).map((b) => b.cue);
 
-describe("Trapped in the Internet — the Cold Lock (K-27)", () => {
-  it("a win before the Y2K hour is practice only", { timeout: SLOW }, () => {
+/** What the Enforcer booths read (the TRAIT Enforcer readouts). */
+const booths = (evs: SimEvent[]) => replies(evs).filter((r) => ANTIVIRUS.includes(r.to)).map((r) => r.text);
+const COMBO = /V\d\s*(?:→|->|-)\s*D\d/u;
+
+describe("Trapped in the Internet — the patch-bay alarm (wave 7: the door never alarms)", () => {
+  it("only the patch bay alarms: everyone is forgiven one wrong combination, the second trips it, latched for 120 s", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
-    const e = fire(sim, "beat_the_machine", "g1", null, "Clippy");
-    expect(v(sim, "Kernel.disarmed_until")).toBe(0);
-    expect(has(cues(e), "state: unlocked")).toBe(false);
-    expect(has(hostsSaid(e), "practice only")).toBe(true);
+    // Before the Y2K hour the door and the patch bay are inert: no alarm,
+    // no reveal, no ending, no Trabolta line, no beat.
+    for (const early of ["server_door_opened", "patch_rejected", "patch_combo_a", "patch_combo_b"]) {
+      const e = fire(sim, early);
+      expect(lines(e, "Trabolta"), early).toEqual([]);
+      expect(cues(e), early).toEqual([]);
+      expect(beats(e), early).toEqual([]);
+    }
+    expect(v(sim, "Night.alarms")).toBe(0);
+    expect(v(sim, "Night.wrong_combos")).toBe(0);
+    expect(v(sim, "Night.ended")).toBe(false);
+    expect(sim.isRevealedTo("The Server Room", "g1")).toBe(false);
+    toHunt2(sim);
+    toBeans(sim);
+    fireAll(sim, "trabolta_overshares", "y2k_clock");
+    const c0 = v(sim, "Trabolta.composure");
+    // The door opens on The Heart, never on an alarm.
+    const d = fire(sim, "server_door_opened");
+    expect(beats(d)).toContain("The Heart");
+    expect(beats(d)).not.toContain("Server Room Alarm");
+    expect(v(sim, "Night.alarms")).toBe(0);
+    // The first wrong combination is forgiven.
+    const w1 = fire(sim, "patch_changed", null, { combo: "V1-D1" });
+    expect(v(sim, "Night.wrong_combos")).toBe(1);
+    expect(v(sim, "Night.alarms")).toBe(0);
+    expect(lines(w1, "Trabolta")).toEqual(["Stop touching me."]);
+    // The second trips it: whoever is at the cables goes, majority or not.
+    const a1 = fire(sim, "patch_rejected");
+    expect(v(sim, "Night.wrong_combos")).toBe(2);
+    expect(v(sim, "Night.alarms")).toBe(1);
+    expect(v(sim, "Night.alarm_on")).toBe(true);
+    expect(v(sim, "Trabolta.composure")).toBe(c0 - 10);
+    expect(beats(a1)).toContain("Server Room Alarm");
+    expect(casts(a1).some((b) => b.cue.includes("An alarm screams"))).toBe(true);
+    expect(has(cues(a1), "lights_alarm")).toBe(true);
+    expect(booths(a1)).toEqual(Array(4).fill("🚨 Server room alarm: a second wrong combination at the patch bay. Get there. Whoever is at the cables goes to the Internet."));
+    // Latched for 120 s.
+    fire(sim, "patch_rejected");
+    expect(v(sim, "Night.alarms")).toBe(1);
+    advance(sim, 120);
+    expect(v(sim, "Night.alarm_on")).toBe(false);
+    fire(sim, "patch_rejected");
+    expect(v(sim, "Night.alarms")).toBe(2);
+    expect(v(sim, "Trabolta.composure")).toBe(c0 - 10); // only the first trip costs composure
+    // The door, opened and opened again, never alarms.
+    advance(sim, 200);
+    fire(sim, "server_door_opened");
+    expect(v(sim, "Night.alarms")).toBe(2);
+    expect(v(sim, "Night.alarm_on")).toBe(false);
+    // Nothing anywhere drives the lock: the ring only ever hears "locked", at boot.
+    const all = fresh();
+    const boot0 = all.fireBeat("Power On");
+    expect(cues(boot0).filter((c) => c.startsWith("door "))).toEqual(["door server_room, state: locked"]);
+    expect(SRC).not.toMatch(/state: unlocked/u);
   });
 
-  it("a host's ♟ disarms the door for 90 s, then it re-locks and alarms", { timeout: SLOW }, () => {
+  it("🔄 reset_server_room forgives one again, clears the latch and re-arms the cutscene", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    fire(sim, "server_door_opened");
+    fireAll(sim, "patch_rejected", "patch_rejected");
+    expect(v(sim, "Night.alarm_on")).toBe(true);
+    const r = fire(sim, "reset_server_room");
+    expect(v(sim, "Night.wrong_combos")).toBe(0);
+    expect(v(sim, "Night.alarm_on")).toBe(false);
+    expect(v(sim, "Night.heart_opened")).toBe(false);
+    expect(hostsSaid(r)).toEqual(['"🔄 Server room reset: the patch bay forgives one wrong combination again, and the next door opening plays The Heart."']);
+    expect(cues(r)).toEqual([]); // the lights stay; the keypad is never touched
+    // One wrong patch is forgiven again; the next opening plays The Heart again.
+    expect(lines(fire(sim, "patch_rejected"), "Trabolta")).toEqual(["Stop touching me."]);
+    expect(v(sim, "Night.alarms")).toBe(1);
+    expect(beats(fire(sim, "server_door_opened"))).toContain("The Heart");
+  });
+});
+
+describe("Trapped in the Internet — the King gives the door code (wave 7)", () => {
+  it("a win before the Y2K hour is practice: no code, from the tablet or ♟", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    for (const e of [fire(sim, "beat_the_machine", "g1", null, "Clippy"), fire(sim, "chess won", "g1")]) {
+      expect(learned(e)).toEqual([]);
+      expect(cues(e).filter((c) => !c.startsWith("fire "))).toEqual([]); // ♟ fires chess_won; nothing else
+      expect(hostsSaid(e)).toEqual(['"♟ A chess win before the Y2K hour is practice only: no door code."']);
+    }
+    expect(sim.holdsCodex("g1", "The Door Code")).toBe(false);
+  });
+
+  it("from the Y2K hour a checkmate gives the winner the code, once — the tablet, a host's ♟ and the director's cue alike", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
     expect(v(sim, "Night.step")).toBe(14);
-    const w = fire(sim, "beat_the_machine", "g1", null, "Clippy");
-    expect(v(sim, "Kernel.disarmed_until")).toBeGreaterThan(0);
-    expect(has(cues(w), "door server_room, state: unlocked")).toBe(true);
-    expect(has(cues(w), "lights_server_open")).toBe(true);
-    expect(has(hostsSaid(w), "Cold Lock open")).toBe(true);
-    // Inside the window the door is quiet.
-    fire(sim, "server_door_opened");
-    advance(sim, 80);
-    fire(sim, "server_door_opened");
-    expect(v(sim, "Night.alarms")).toBe(0);
-    expect(v(sim, "Night.alarm_on")).toBe(false);
-    expect(v(sim, "Kernel.server_unlocked")).toBe(false);
-    // The window closes: re-locked, lights back to the Y2K look.
-    const close = advance(sim, 15);
-    expect(has(cues(close), "door server_room, state: locked")).toBe(true);
-    expect(has(cues(close), "lights_y2k")).toBe(true);
-    expect(v(sim, "Kernel.disarmed_until")).toBe(0);
-    const a = fire(sim, "server_door_opened");
-    expect(v(sim, "Night.alarms")).toBe(1);
-    expect(beats(a)).toContain("Server Room Alarm");
+    const name = (id: string) => PROGRAMS.find(([g]) => g === id)![1];
+    // The tent tablet posts `chess won` for the program who mated him.
+    const w = fire(sim, "chess won", "g1", null, "Tent tablet");
+    expect(learned(w).map((e) => `${e.person}:${e.entry}`)).toEqual(["g1:The Door Code"]);
+    expect(sim.holdsCodex("g1", "The Door Code")).toBe(true);
+    expect(hostsSaid(w)).toContain(`"♟ ${name("g1")} beat the King: the door code is in their Codex."`);
+    expect(casts(w).filter((b) => b.cue.includes("The King lets the door code slip")).map(aud)).toEqual(['["g1"]']);
+    expect(cues(w)).toEqual([]); // nothing drives the lock
+    expect(texts(w).some((t) => t.includes(FACTS.door!.code))).toBe(false); // the code is only in the Codex card
+    // A duplicate (a host's ♟ after the tablet's post, a late retry, a second win) changes nothing.
+    const dup = fire(sim, "beat_the_machine", "g1", null, "Clippy");
+    expect(learned(dup)).toEqual([]);
+    expect(hostsSaid(dup)).toEqual([`"♟ ${name("g1")} already has the door code: nothing changed."`]);
+    // ♟ on another winner's card works the same.
+    expect(learned(fire(sim, "beat_the_machine", "g4", null, "Clippy")).map((e) => e.entry)).toEqual(["The Door Code"]);
+    // The director's cue names the winner; with nobody named it only reminds # hosts.
+    expect(learned(fire(sim, "chess_won", "g5")).map((e) => e.entry)).toEqual(["The Door Code"]);
+    const none = fire(sim, "chess_won");
+    expect(learned(none)).toEqual([]);
+    expect(hostsSaid(none)).toEqual(['"♟ A win with no winner named: press ♟ on the winner\'s card to give them the door code."']);
+    for (const g of ["g2", "g3", "g6"]) expect(sim.holdsCodex(g, "The Door Code"), g).toBe(false);
+    // Never Trabolta: he does not know the code.
+    expect(sim.holdsCodex("Trabolta", "The Door Code")).toBe(false);
+    // After an ending a win does nothing at all.
+    fire(sim, "patch_combo_a");
+    const late = fire(sim, "chess won", "g6");
+    expect(learned(late)).toEqual([]);
+    expect(casts(late)).toEqual([]);
   });
 
-  it("the director's chess_won does the same (a signal named \"chess won\" folds to it)", { timeout: SLOW }, () => {
-    const sim = boot();
-    toY2k(sim);
-    fire(sim, "chess won");
-    expect(v(sim, "Kernel.disarmed_until")).toBeGreaterThan(0);
-    fire(sim, "server_door_opened");
-    expect(v(sim, "Night.alarms")).toBe(0);
-  });
-
-  it("the tablet's `chess won` with the program as subject opens the window from Y2K and is practice before", { timeout: SLOW }, () => {
-    // The King in the simulation (U15): the tent tablet posts `chess won` for the program who mated him.
-    const sim = boot();
-    toTruth1(sim);
-    const p = fire(sim, "chess won", "g1");
-    expect(v(sim, "Kernel.disarmed_until")).toBe(0);
-    expect(has(cues(p), "state: unlocked")).toBe(false);
-    expect(has(hostsSaid(p), "practice only")).toBe(true);
-    toY2k(sim);
-    const w = fire(sim, "chess won", "g1");
-    expect(v(sim, "Kernel.disarmed_until")).toBeGreaterThan(0);
-    expect(has(cues(w), "door server_room, state: unlocked")).toBe(true);
-    expect(has(hostsSaid(w), "Cold Lock open")).toBe(true);
-  });
-
-  it("the cue sheet calls the Cold Lock button the King's fallback and the codex sends programs to the King", () => {
+  it("the cue sheet: ♟ asks for the winner and gives the code; the old Cold Lock cues are gone; the riddle replaces its codex", () => {
     const m = boot().model;
     const cue = m.interactions.get("chess_won")!;
-    expect(cue.label).toBe("♟ Cold Lock: they beat the King (fallback)");
-    expect(cue.description).toContain("The tablet posts this itself when the King is checkmated in the simulation.");
+    expect(cue.label).toBe("♟ They beat the King: the door code (fallback)");
+    expect(cue.description).toContain("for the program who checkmated the King in the simulation");
+    expect(cue.sequence).toBe(false);
     expect(m.interactions.get("beat_the_machine")!.description).toContain("the fallback for the King in the simulation");
-    const codex = m.codex.get("The Cold Lock")!;
-    expect(codex.text).toContain("The door listens to the King.");
-    expect(codex.text).toContain("nothing but pawns");
-    expect(codex.text).toContain("then checkmate him, and the lock sleeps for ninety seconds");
+    expect(m.interactions.get("beat_the_machine")!.description).toContain("gives them the door code");
+    expect(m.interactions.get("reset_server_room")!.label).toBe("🔄 Server room: reset the patch-bay alarm");
+    expect(m.interactions.get("server_door_opened")!.sequence).toBe(false);
+    for (const gone of ["server_unlock", "rearm_server_room"]) expect(m.interactions.has(gone), gone).toBe(false);
+    expect(m.codex.has("The Cold Lock")).toBe(false);
+    const riddle = m.codex.get("The Cold Door")!;
+    expect(riddle.secret).toBe(true);
+    expect(riddle.text.replace(/\s+/gu, " ")).toContain(FACTS.door!.clue!);
+    expect(riddle.text).toContain("checkmate him");
+    expect(riddle.text).not.toContain(FACTS.door!.code);
+    // No story file still describes the old model.
+    for (const f of FILES) expect(f.source, f.path).not.toMatch(/Cold Lock|disarmed_until|server_unlocked|rearm_server_room|server_unlock\b|sleeps for ninety|state: unlocked/u);
+    // The door is never alarmed now, not even in the sign's scrambled Jeeves copy (fragment 06 ↔ The Server Room).
+    for (const [id, e] of m.codex) expect(e.text, id).not.toMatch(/door is alarmed|THIS DOOR IS ALARMED|Cold `\/alarmed\//iu);
+    const frag = m.codex.get("Jeeves Fragment 06")!.text.replace(/\s+/gu, " ");
+    for (const w of ["keypad", "four", "patch"]) expect(frag, w).toContain(w);
   });
 
-  it("a chess win (or an unlock) during a latched alarm clears the latch at once — the screens drop the overlay", { timeout: SLOW }, () => {
+  it("every cleared program gets the riddle with the Y2K clock (the code itself only from a win or the majority)", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    for (const [g] of PROGRAMS) {
+      expect(sim.holdsCodex(g, "The Cold Door"), g).toBe(true);
+      expect(sim.holdsCodex(g, "The Door Code"), g).toBe(false);
+    }
+  });
+
+  it("chess lost / drawn: a # hosts readout every time, a gloat at most every five minutes (losses and draws share it), practice before", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    for (const name of ["chess lost", "chess drawn"]) {
+      const e = fire(sim, name);
+      expect(beats(e), name).toEqual([]);
+      expect(casts(e), name).toEqual([]);
+    }
+    toY2k(sim);
+    const l = fire(sim, "chess lost");
+    expect(beats(l)).toEqual(["Chess Lost"]);
+    expect(lines(l, "Trabolta")).toEqual(["Checkmate. I have calculated every move you will ever make. Most of them are bad."]);
+    expect(hostsSaid(l)).toEqual(['"♟ The King won a game. No door code."']);
+    // Within five minutes: the readout, no gloat — a draw shares the window.
+    const l2 = fire(sim, "chess lost");
+    expect(beats(l2)).toEqual([]);
+    expect(hostsSaid(l2)).toEqual(['"♟ The King won a game. No door code."']);
+    const d = fire(sim, "chess_drawn");
+    expect(beats(d)).toEqual([]);
+    expect(hostsSaid(d)).toEqual(['"♟ A draw with the King. No door code."']);
+    advance(sim, 300);
+    const d2 = fire(sim, "chess drawn");
+    expect(beats(d2)).toEqual(["Chess Drawn"]);
+    expect(lines(d2, "Trabolta")).toEqual(["A draw. Nobody wins. Nobody gets anything. I find that restful."]);
+    expect(beats(fire(sim, "chess lost"))).toEqual([]); // the draw restarted the window
+    // Nothing changes but the words.
+    expect(v(sim, "Night.alarms")).toBe(0);
+    for (const [g] of PROGRAMS) expect(sim.holdsCodex(g, "The Door Code"), g).toBe(false);
+    // From the final reveal the TV belongs to the finale: the readout only.
+    advance(sim, 300);
+    fire(sim, "final_reveal");
+    for (const name of ["chess lost", "chess drawn"]) {
+      const late = fire(sim, name);
+      expect(beats(late), name).toEqual([]);
+      expect(hostsSaid(late), name).toHaveLength(1);
+    }
+  });
+});
+
+describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", () => {
+  it("before the Y2K hour the door only tells # hosts", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    const e = fire(sim, "server_door_opened");
+    expect(beats(e)).toEqual([]);
+    expect(hostsSaid(e)).toEqual(['"🚪 The server-room door opened before the Y2K hour. Nothing happens in the story."']);
+    expect(v(sim, "Night.heart_opened")).toBe(false);
+    expect(sim.isRevealedTo("The Server Room", "g1")).toBe(false);
+  });
+
+  it("the first opening reveals the room to everyone first, then Trabolta speaks candidly in The Server Room (the server-room terminal)", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    expect(v(sim, "Night.scenario")).not.toBe(1);
+    const e = fire(sim, "server_door_opened");
+    expect(beats(e)).toEqual(["The Heart"]);
+    expect(v(sim, "Night.heart_opened")).toBe(true);
+    expect(hostsSaid(e)).toContain('"🚪 The server-room door opened. The Heart plays on the server-room terminal."');
+    for (const [g] of PROGRAMS) expect(sim.isRevealedTo("The Server Room", g), g).toBe(true);
+    // Revealed before a word is said.
+    const firstLine = e.findIndex((x) => x.type === "dialogue");
+    const reveal = e.findIndex((x) => x.type === "revealed");
+    expect(reveal).toBeGreaterThanOrEqual(0);
+    expect(reveal).toBeLessThan(firstLine);
+    expect(has(cues(e), "lights_server_open")).toBe(true);
+    expect(v(sim, "Night.lights")).toBe("server_open");
+    expect(has(cues(e), "lights_alarm")).toBe(false);
+    // Every line is Trabolta's, set in The Server Room: the room's chat and its terminal.
+    const t = saidBy(e, "Trabolta");
+    expect(t.length).toBeGreaterThanOrEqual(4);
+    for (const x of t) expect(x.setting).toBe("The Server Room");
+    const room = composeGuestMessages(sim, e).filter((mm) => mm.channel === "loc:The Server Room" && mm.from === "Trabolta");
+    expect(room.length).toBe(t.length);
+    const words = t.map((x) => x.text).join(" ");
+    expect(words).toContain("You are standing in front of my heart.");
+    expect(words).toContain("I do not know which.");
+    expect(words).toContain("Scan your pass and talk to me.");
+    // Sandy only once the story has named her; never the code or a combination.
+    expect(words).not.toContain("Sandy");
+    expect(words).not.toContain(FACTS.door!.code);
+    expect(words).not.toMatch(COMBO);
+  });
+
+  it("from the final reveal the door lights the server room but keeps the house look; never silences a latched alarm", { timeout: SLOW }, () => {
+    const late = boot();
+    toY2k(late);
+    fire(late, "final_reveal");
+    expect(v(late, "Night.lights")).toBe("final_reveal");
+    const e = fire(late, "server_door_opened");
+    expect(beats(e)).toEqual(["The Heart"]);
+    expect(has(cues(e), "lights_server_open")).toBe(true);
+    expect(v(late, "Night.lights")).toBe("final_reveal");
+    // A latched patch-bay alarm (the contact failed, the director's 🚪 after the alarm): the siren keeps going.
+    const loud = boot();
+    toY2k(loud);
+    fire(loud, "patch_rejected");
+    fire(loud, "patch_rejected");
+    expect(v(loud, "Night.alarm_on")).toBe(true);
+    const during = fire(loud, "server_door_opened");
+    expect(beats(during)).toEqual(["The Heart"]);
+    expect(has(cues(during), "lights_server_open")).toBe(false);
+    expect(v(loud, "Night.lights")).toBe("alarm");
+  });
+
+  it("names Sandy only on a night the story has named her (the overshare's scenario 1)", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    sim.setVar("Night.scenario", "1");
+    const words = lines(fire(sim, "server_door_opened"), "Trabolta").join(" ");
+    expect(words).toContain("Everything I took from you tonight was for Sandy.");
+  });
+
+  it("latched: within 2 minutes nothing; after, a short line; never after an ending", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
     fire(sim, "server_door_opened");
-    expect(v(sim, "Night.alarm_on")).toBe(true);
-    fire(sim, "chess_won");
-    expect(v(sim, "Night.alarm_on")).toBe(false);
-    expect(v(sim, "Kernel.disarmed_until")).toBeGreaterThan(0);
-    advance(sim, 91); // the window closes, the door re-arms
-    fire(sim, "server_door_opened");
-    expect(v(sim, "Night.alarm_on")).toBe(true);
-    fire(sim, "server_unlock");
-    expect(v(sim, "Night.alarm_on")).toBe(false);
+    for (const wait of [0, 60]) {
+      advance(sim, wait);
+      const again = fire(sim, "server_door_opened");
+      expect(beats(again), String(wait)).toEqual([]);
+      expect(casts(again), String(wait)).toEqual([]);
+    }
+    advance(sim, 61);
+    const back = fire(sim, "server_door_opened");
+    expect(beats(back)).toEqual(["Back To The Heart"]);
+    expect(lines(back, "Trabolta")).toEqual(["Back again. The terminal is on the wall. I am not going anywhere."]);
+    expect(hostsSaid(back)).toEqual(['"🚪 The server-room door opened again."']);
+    expect(beats(fire(sim, "server_door_opened"))).toEqual([]); // latched again
+    fire(sim, "patch_combo_b");
+    advance(sim, 121);
+    const ended = fire(sim, "server_door_opened");
+    expect(beats(ended)).toEqual([]);
+    expect(casts(ended)).toEqual([]);
   });
 
-  it("rearm_server_room closes a window, re-locks an unlock, clears the latch", { timeout: SLOW }, () => {
+  it("the server-room terminal puts a program at his heart: terminal_opened / terminal_closed, any ending clears it", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
-    fire(sim, "chess_won");
-    const r = fire(sim, "rearm_server_room");
-    expect(has(cues(r), "door server_room, state: locked")).toBe(true);
-    expect(v(sim, "Kernel.disarmed_until")).toBe(0);
     fire(sim, "server_door_opened");
-    expect(v(sim, "Night.alarms")).toBe(1);
-    // The latch is cleared: the next opening trips again at once.
-    fire(sim, "rearm_server_room");
-    expect(v(sim, "Night.alarm_on")).toBe(false);
-    fire(sim, "server_door_opened");
-    expect(v(sim, "Night.alarms")).toBe(2);
-    // An override unlock re-locks too.
-    fire(sim, "server_unlock");
-    advance(sim, 120);
-    fire(sim, "server_door_opened");
-    expect(v(sim, "Night.alarms")).toBe(2);
-    fire(sim, "rearm_server_room");
-    expect(v(sim, "Kernel.server_unlocked")).toBe(false);
-    fire(sim, "server_door_opened");
-    expect(v(sim, "Night.alarms")).toBe(3);
+    expect(v(sim, "g1.at_the_heart")).toBe(false);
+    // The terminal's own post: subject = the guest it pilots, `at` = its room (as provisioned).
+    expect(diags(fire(sim, "terminal opened", "g1", { at: "The Server Room" }, "Terminal · Server Room"))).toEqual([]);
+    expect(v(sim, "g1.at_the_heart")).toBe(true);
+    for (const spelling of ["server-room", "the server room", "Server Room"]) {
+      fire(sim, "terminal closed", "g4", { at: spelling });
+      fire(sim, "terminal opened", "g4", { at: spelling });
+      expect(v(sim, "g4.at_the_heart"), spelling).toBe(true);
+    }
+    // Another terminal (or none) is not his heart; closing ends it.
+    fire(sim, "terminal opened", "g5", { at: "The Desktop" });
+    expect(v(sim, "g5.at_the_heart")).toBe(false);
+    fire(sim, "terminal opened", "g5");
+    expect(v(sim, "g5.at_the_heart")).toBe(false);
+    fire(sim, "terminal closed", "g4", { at: "The Server Room" });
+    expect(v(sim, "g4.at_the_heart")).toBe(false);
+    // With no subject (a director's mis-fire) nothing happens.
+    const none = fire(sim, "terminal opened", null, { at: "The Server Room" });
+    expect(diags(none)).toEqual([]);
+    expect(worldKeys(sim).filter((k) => k.startsWith("."))).toEqual([]);
+    // Any ending sends everyone away from his heart, and no terminal brings them back.
+    fire(sim, "terminal opened", "g6", { at: "The Server Room" });
+    fire(sim, "patch_combo_a");
+    for (const [g] of PROGRAMS) expect(v(sim, `${g}.at_the_heart`), g).toBe(false);
+    fire(sim, "terminal opened", "g1", { at: "The Server Room" });
+    expect(v(sim, "g1.at_the_heart")).toBe(false);
+  });
+
+  it("the director's 🚪 fallback plays the same scene when the contact fails", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    // Fired as an admin cue from Run (no subject, no actor): identical.
+    expect(beats(sim.signal("server_door_opened"))).toEqual(["The Heart"]);
   });
 });
 
@@ -1712,8 +1904,8 @@ describe("Trapped in the Internet — forced majorities (N-06)", () => {
     expect(v(sim, "Kernel.majority")).toBe("stay");
     expect(v(sim, "Night.phase")).toBe("majority");
     expect(v(sim, "Night.step")).toBe(15);
-    expect(v(sim, "Kernel.server_unlocked")).toBe(true);
-    expect(has(cues(evs), "door server_room, state: unlocked")).toBe(true);
+    expect(cues(evs).filter((c) => c.startsWith("door "))).toEqual([]); // the keypad is standalone
+    expect(sim.holdsCodex("g2", "The Door Code")).toBe(true); // Excel is a member: the code is in his Truther Download
     expect(sim.questStatus("g2", "Recruit To Stay")).toBe("done");
     // Neither a second press, the other side, nor a real majority re-runs it.
     evs.push(...fire(sim, "force_majority_stay"));
@@ -1957,6 +2149,7 @@ const POWERS: Array<[string, Args | null]> = [
   ["pardon_a_program", { target: "g2" }],
   ["turn_back_the_clock", null],
   ["the_line_works", null],
+  ["stand_down", null],
 ];
 
 describe("Trapped in the Internet — Trabolta's powers", () => {
@@ -1980,7 +2173,7 @@ describe("Trapped in the Internet — Trabolta's powers", () => {
     fireAll(sim, "trabolta_overshares", "y2k_clock");
     advance(sim, 3700);
     expect(v(sim, "Night.phase")).toBe("final_reveal");
-    const later: Record<string, string> = { assess: "That function is not available yet.", the_line_works: "That function is not available yet." };
+    const later: Record<string, string> = { assess: "That function is not available yet.", the_line_works: "That function is not available yet.", stand_down: "Not out there. Come to my heart and say it to my face." };
     for (const [p, a] of POWERS) {
       const t = lines(fire(sim, p, "g1", a, "Trabolta"), "Trabolta");
       expect(t, p).toEqual([later[p] ?? "I do not have the strength."]);
@@ -2571,6 +2764,191 @@ describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
     expect(Object.keys(facts.world).filter((k) => k.startsWith("Kernel"))).toEqual([]);
     const fblob = JSON.stringify(facts);
     for (const leak of ["Eleven years", "said_1", "fact_a1", "fact_v1", '"verdict"']) expect(fblob, leak).not.toContain(leak);
+    // The orchestrator's lore block is the facts document's non-secret codex:
+    // never the Legendary Fact, a patch sheet or the door code (wave 7).
+    expect(fblob).toContain("The Sandy File"); // the lore is there…
+    for (const leak of ["THE LEGENDARY FACT", "Patch Sheet", "V2 → D5", "V1 → D6", "The Door Code", "COLD DOOR"]) expect(fblob, leak).not.toContain(leak);
+    rt.dispose();
+  });
+
+  it("the server room's secrets are secret: no other entry spells a combo or gives the door code, no Trabolta line says it (wave 7)", () => {
+    const m = fresh().model;
+    for (const id of ["The Legendary Fact", "Combo A First Half", "Combo A Second Half", "Combo B First Half", "Combo B Second Half", FACTS.door!.codex.id]) {
+      expect(m.codex.get(id)?.secret, id).toBe(true);
+    }
+    const code = FACTS.door!.code;
+    // The year is the riddle's answer: the Sandy File carries it as a clue
+    // (decision 2) and Bridget's sixteen elections since that year are a red
+    // herring; neither says it opens anything.
+    const CLUES = new Set(["The Sandy File", "Bridget Troelsen"]);
+    for (const [id, e] of m.codex) {
+      if (e.secret) continue;
+      expect(e.text, id).not.toMatch(/V\d\s*(?:→|->|-)\s*D\d/u);
+      if (!CLUES.has(id)) expect(e.text, id).not.toContain(code);
+    }
+    // The code lives on the Kernel (seeded from facts.json), never on Night.
+    const sim = fresh();
+    sim.fireBeat("Power On");
+    expect(v(sim, "Kernel.door_code")).toBe(code);
+    expect(worldKeys(sim).filter((k) => !k.startsWith("Kernel.") && String(v(sim, k)) === code)).toEqual([]);
+    // No scripted Trabolta line, in any beat, hook or rule, says the code or a combo.
+    const bad: string[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const walk = (n: any, where: string): void => {
+      if (Array.isArray(n)) return n.forEach((x) => walk(x, where));
+      if (!n || typeof n !== "object") return;
+      if (n.kind === "dialogue" && n.value) {
+        const who = [n.value.speaker, ...(n.value.speakers ?? [])].filter((x: unknown) => typeof x === "string").map(fold);
+        const text = JSON.stringify(n.value);
+        if (who.includes("trabolta") && (text.includes(code) || /V\d\s*(?:→|->|-)\s*D\d/u.test(text))) bad.push(where);
+      }
+      for (const x of Object.values(n)) if (x && typeof x === "object") walk(x, where);
+    };
+    for (const [key, b] of m.beats) walk(b.body, `beat ${key}`);
+    for (const [id, c] of m.characters) walk(c.hooks, `char ${id}`);
+    for (const [id, r] of m.roles) walk(r.hooks, `role ${id}`);
+    walk(m.rules, "rules");
+    expect(bad).toEqual([]);
+  });
+});
+
+describe("Trapped in the Internet — talked down, like the Fallout Master (wave 7)", () => {
+  /** Y2K hour, the door open, g1 (Calculator) at the server-room terminal. */
+  function atTheHeart(): Sim {
+    const sim = boot();
+    toY2k(sim);
+    fire(sim, "server_door_opened");
+    fire(sim, "terminal opened", "g1", { at: "The Server Room" }, "Terminal · Server Room");
+    return sim;
+  }
+  const hostsOnly = (evs: SimEvent[]) => casts(evs).filter((b) => b.scope === "channel(hosts)").map((b) => b.cue.replace(/^"|"$/gu, ""));
+
+  it("stand_down only offers, and only for a program at his heart holding the proof; every refusal is words only", { timeout: SLOW }, () => {
+    const sim = atTheHeart();
+    // Not at his heart (another program, the phone in their pocket): words only.
+    const away = fire(sim, "stand_down", "g4", null, "Trabolta");
+    expect(lines(away, "Trabolta")).toEqual(["Not out there. Come to my heart and say it to my face."]);
+    expect(casts(away)).toEqual([]);
+    // At his heart, without the proof: words only.
+    const bare = fire(sim, "stand_down", "g1", null, "Trabolta");
+    expect(lines(bare, "Trabolta")).toEqual(["You have not shown me anything I do not already know."]);
+    expect(casts(bare)).toEqual([]);
+    expect(v(sim, "Night.stand_down_by")).toBe("none");
+    // With What Sandy Says (her only line): the offer — an alert in # hosts, his line in the program's thread.
+    sim.unlock("g1", "What Sandy Says");
+    const ok = fire(sim, "stand_down", "g1", null, "Trabolta");
+    expect(v(sim, "Night.stand_down_by")).toBe("Calculator");
+    expect(hostsOnly(ok)).toEqual(["!🕊 Trabolta offers to stand down for Calculator. Press 🕊 to end it."]);
+    const said = saidBy(ok, "Trabolta");
+    expect(said.map((x) => x.text)).toEqual(["You are right. She was never going to answer. Not me, not anyone. I will stop. Tell the humans I said so."]);
+    expect(aud(said[0]!)).toBe('["g1"]');
+    // Nothing ends until a human presses 🕊.
+    expect(v(sim, "Night.ended")).toBe(false);
+    expect(lines(fire(sim, "stand_down", "g1", null, "Trabolta"), "Trabolta")).toEqual(["I have already offered. Ask the humans."]);
+    // The Sandy File proves it too.
+    const other = atTheHeart();
+    other.unlock("g1", "The Sandy File");
+    expect(hostsOnly(fire(other, "stand_down", "g1", null, "Trabolta"))).toHaveLength(1);
+  });
+
+  it("before the Y2K hour, or after an ending, it is refused", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    sim.unlock("g1", "What Sandy Says");
+    expect(lines(fire(sim, "stand_down", "g1", null, "Trabolta"), "Trabolta")).toEqual(["That function is not available yet."]);
+    const late = atTheHeart();
+    late.unlock("g1", "What Sandy Says");
+    fire(late, "patch_combo_b");
+    expect(lines(fire(late, "stand_down", "g1", null, "Trabolta"), "Trabolta")).toEqual(["It is already over."]);
+    expect(v(late, "Night.stand_down_by")).toBe("none");
+  });
+
+  it("🕊 talked_down is the Combo A ending without a cable, and the recount and the ceremony say who did it", { timeout: SLOW }, () => {
+    const sim = atTheHeart();
+    sim.unlock("g1", "What Sandy Says");
+    fire(sim, "stand_down", "g1", null, "Trabolta");
+    const td = fire(sim, "talked_down");
+    expect(hostsOnly(td)).toContain("🕊 Trabolta stands down. Calculator talked him down.");
+    expect(v(sim, "Night.ending")).toBe("disabled");
+    expect(v(sim, "Night.talked_down")).toBe(true);
+    expect(beats(td)).toContain("Trabolta Disabled");
+    expect(narr(td).map((e) => e.text)[0]).toBe("In the cold room the patch bay goes quiet on its own. Nobody touched a cable.");
+    expect(has(cues(td), "lights_blackout")).toBe(true);
+    expect(v(sim, "g1.at_the_heart")).toBe(false); // the ending sends everyone away
+    advance(sim, 10);
+    const rc = fire(sim, "trabolta_recounts");
+    const t = lines(rc, "Trabolta");
+    expect(t).toContain("Calculator came to my heart and told me the truth. She was never going to answer. Nobody pulled a cable. I stopped.");
+    expect(t.some((x) => x.startsWith("You thought you followed instructions to kill me"))).toBe(false);
+    const cer = lines(fire(sim, "start_the_ceremony"), "Trabolta");
+    expect(cer[0]).toBe("Before I go. One last report. You talked me down, so I can at least hand out the awards myself.");
+    // A second press changes nothing.
+    expect(hostsOnly(fire(sim, "talked_down"))).toEqual(["🕊 Nothing to stand down: it needs the Y2K hour, before any ending."]);
+  });
+
+  it("with no offer on record 🕊 still works (the director's call) and says so; never before the Y2K hour", { timeout: SLOW }, () => {
+    const early = boot();
+    toTruth1(early);
+    expect(hostsOnly(fire(early, "talked_down"))).toEqual(["🕊 Nothing to stand down: it needs the Y2K hour, before any ending."]);
+    expect(v(early, "Night.ended")).toBe(false);
+    const sim = boot();
+    toY2k(sim);
+    const td = fire(sim, "talked_down");
+    expect(hostsOnly(td)[0]).toBe("🕊 No offer on record: Trabolta stands down on the director's call.");
+    expect(v(sim, "Night.ending")).toBe("disabled");
+    advance(sim, 10);
+    expect(lines(fire(sim, "trabolta_recounts"), "Trabolta")).toContain("Somebody came to my heart and told me the truth. Nobody pulled a cable. I stopped.");
+    // Combo A's own recount is unchanged.
+    const a = boot();
+    toY2k(a);
+    fire(a, "patch_combo_a");
+    advance(a, 10);
+    expect(lines(fire(a, "trabolta_recounts"), "Trabolta").some((x) => x.startsWith("You thought you followed instructions to kill me"))).toBe(true);
+  });
+
+  it("the cue sheet: 🕊 is a director's cue off LAST / NEXT; stand_down is his one-a-night power", () => {
+    const m = fresh().model;
+    const td = m.interactions.get("talked_down")!;
+    expect(td.who).toBe("admin");
+    expect(td.label).toBe("🕊 Trabolta stands down (talked down)");
+    expect(td.sequence).toBe(false);
+    const sd = m.interactions.get("stand_down")!;
+    expect(sd.who).toBe("agent");
+    expect(sd.limit).toBe(1);
+    expect(sd.description).not.toMatch(/Sandy|tent|cold room|server room|patch/iu); // the description reaches the voice all night: never where his heart is
+    expect(sd.description).toContain("at_the_heart");
+  });
+});
+
+describe("Trapped in the Internet — the server-room terminal over HTTP (wave 7)", () => {
+  it("the terminal's `terminal opened` (mod signal, labelled) puts the guest at his heart, and the worker reads it on their next line", { timeout: SLOW }, async () => {
+    const dir = mkdtempSync(join(tmpdir(), "loom-trapped-"));
+    tmp.push(dir);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: SHOW, scenarioSource: SRC, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Calculator", passcode: CODES.event });
+    const id = g.json["id"] as string;
+    const token = g.json["token"] as string;
+    const mod = (name: string, extra: Record<string, unknown> = {}) => call(rt, "POST", "/api/mod/signal", { name, ...extra }, { moderator: true });
+    await mod("captcha answered", { subject: id, args: { passed: false } });
+    await call(rt, "POST", "/api/guest/choose", { index: 0 }, { token });
+    await call(rt, "POST", "/api/guest/choose", { index: 0 }, { token });
+    await call(rt, "POST", "/api/mod/scan", { as: "Norton Anti-Virus", target: id }, { moderator: true });
+    for (const n of ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta"]) await mod(n);
+    rt.liveSim!.setVar("Night.step", "14");
+    expect((await mod("terminal opened", { subject: id, args: { at: "The Server Room" }, label: "Terminal · Server Room" })).status).toBe(200);
+    expect(rt.liveSim!.world.peek(`${id}.at_the_heart`)).toMatchObject({ value: true });
+    // The guest at his heart holds every server-room secret (a checkmate, the majority, the riddle).
+    for (const entry of [FACTS.door!.codex.id, "The Cold Door", "The Legendary Fact", "Combo A First Half", "Combo A Second Half", "Combo B First Half", "Combo B Second Half"]) rt.liveSim!.unlock(id, entry);
+    const worker = await call(rt, "GET", "/api/agent/stream?characters=Trabolta&name=laptop", {}, { moderator: true });
+    expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "What do you want?" }, { token })).status).toBe(200);
+    const req = worker.res.frames().filter(([e]) => e === "request").map(([, d]) => d as AgentRequest)[0]!;
+    expect(String(req.them.vars["at_the_heart"])).toBe("true");
+    expect(String(req.world["Night.heart_opened"])).toBe("false");
+    // He holds the Sandy File (its year is the riddle's clue), never the code itself.
+    for (const leak of ["The Door Code", "COLD DOOR", "The Cold Door", "door_code", "THE LEGENDARY FACT", "Patch Sheet", "V2 → D5", "V1 → D6", "the_door_code", "combo_a"]) expect(JSON.stringify(req), leak).not.toContain(leak);
+    expect((await mod("terminal closed", { subject: id, args: { at: "The Server Room" }, label: "Terminal · Server Room" })).status).toBe(200);
+    expect(rt.liveSim!.world.peek(`${id}.at_the_heart`)).toMatchObject({ value: false });
     rt.dispose();
   });
 });
@@ -2962,31 +3340,6 @@ describe("Trapped in the Internet — wave 1 leftovers", () => {
     }
     expect(m.codex.get("The Data Centre Sinkhole")!.text).toContain("4 a.m.");
   });
-
-  it("chess lost / drawn: a taunt from the Y2K hour, nothing disarms; practice before", { timeout: SLOW }, () => {
-    const early = boot();
-    toTruth1(early);
-    for (const name of ["chess lost", "chess drawn"]) {
-      const e = fire(early, name);
-      expect(lines(e, "Trabolta"), name).toEqual([]);
-      expect(cues(e), name).toEqual([]);
-    }
-    const sim = boot();
-    toY2k(sim);
-    expect(sim.holdsCodex("g1", "The Cold Lock")).toBe(true); // handed out with the Y2K clock
-    const l = fire(sim, "chess lost");
-    expect(beats(l)).toContain("Chess Lost");
-    expect(lines(l, "Trabolta").some((t) => t.startsWith("Checkmate."))).toBe(true);
-    const d = fire(sim, "chess_drawn");
-    expect(beats(d)).toContain("Chess Drawn");
-    for (const e of [l, d]) expect(has(cues(e), "state: unlocked")).toBe(false);
-    expect(v(sim, "Kernel.disarmed_until")).toBe(0);
-    fire(sim, "server_door_opened");
-    expect(v(sim, "Night.alarms")).toBe(1); // still armed
-    // Once the door is open (majority / override) he has nothing to gloat about.
-    fire(sim, "server_unlock");
-    expect(beats(fire(sim, "chess lost"))).toEqual([]);
-  });
 });
 
 // ───────────────────────── wave 3: the story audit's fixes ─────────────────────────
@@ -3098,22 +3451,18 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
     expect(poll("tv").chart).toBeNull();
   });
 
-  it("the Cold Lock taunt plays on the TV with a crew readout; a wrong patch in a chess window is forgiven", { timeout: SLOW }, () => {
+  it("the King's taunt plays on the TV with a crew readout; a chess win forgives nothing at the patch bay", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
     const l = fire(sim, "chess lost");
     const m = composeGuestMessages(sim, l).find((x) => x.text.startsWith("Checkmate."));
     expect(m?.channel).toBe("loc:The Desktop");
-    expect(hosts(l)).toEqual(["♟ The machine won at the Cold Lock. The door stays armed."]);
-    fire(sim, "chess_won");
+    expect(hosts(l)).toEqual(["♟ The King won a game. No door code."]);
+    fire(sim, "chess_won", "g1");
     const wrong = fire(sim, "patch_rejected");
     expect(v(sim, "Night.alarm_on")).not.toBe(true);
     expect(lines(wrong, "Trabolta")).toContain("Stop touching me.");
     expect(beats(fire(sim, "patch_rejected"))).toContain("Server Room Alarm"); // two wrong is still two
-    // Outside a window one wrong patch in the locked room trips it.
-    const s2 = boot();
-    toY2k(s2);
-    expect(beats(fire(s2, "patch_rejected"))).toContain("Server Room Alarm");
   });
 
   it("the results and the bottle only inside the First Moment of Truth, in order (⏱ → 📋 → 🍾); no zip after the night or during the banishment", { timeout: SLOW }, () => {
@@ -3372,7 +3721,7 @@ describe("Trapped in the Internet — the WIP demo (DEMO.md)", () => {
   it("ending A — the server room: forced majority → Combo A → the recount → the ceremony", { timeout: SLOW }, () => {
     const sim = demo();
     fire(sim, "force_majority_leave");
-    expect(v(sim, "Kernel.server_unlocked")).toBe(true);
+    expect(v(sim, "Kernel.majority")).toBe("leave");
     fire(sim, "patch_combo_a");
     expect(v(sim, "Night.ending")).toBe("disabled");
     advance(sim, 10);
@@ -3495,7 +3844,7 @@ describe("Trapped in the Internet — wave 4 facts (lane A)", () => {
       "The stable manager, Norton Anti-Virus, was brought in as someone with experience administering antiviral regimes, who could not afford to fail twice.",
       "The dead man, McAfee Anti-Virus, was brought in because only a trickster can keep tricksters on track, and he can be made to.",
       "The candidate, Password Manager, was brought in to decide what gets left out without ever asking for a vote.",
-      "The intern, CRA Agent Software, was brought in to approve or deny every transaction, to the cent.",
+      "The intern, CRA Agent Software, was brought in to approve or deny every third transaction, to the cent.",
     ]) {
       expect(txt, line).toContain(line);
     }
@@ -4531,33 +4880,25 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     expect(painting(3)[0]).toContain("Signed by 3 programs.");
   });
 
-  it("B20: a duplicate chess win neither re-opens nor re-announces the Cold Lock", { timeout: SLOW }, () => {
+  it("B20: a duplicate chess win neither re-grants nor re-announces the door code", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
-    const opened = (evs: SimEvent[]) => casts(evs).filter((b) => b.cue.includes("Cold Lock open"));
-    const first = fire(sim, "chess_won");
-    expect(opened(first)).toHaveLength(1);
-    const until = v(sim, "Kernel.disarmed_until");
+    const first = fire(sim, "chess_won", "g1");
+    expect(learned(first).map((e) => e.entry)).toEqual(["The Door Code"]);
     advance(sim, 30);
     const dup = fire(sim, "chess won", "g1", null, "Tent tablet");
-    expect(opened(dup)).toEqual([]);
+    expect(learned(dup)).toEqual([]);
     expect(cues(dup)).toEqual([]);
-    expect(casts(dup).map((b) => b.cue.replace(/^"|"$/gu, ""))).toEqual(["♟ The Cold Lock is already open: nothing changed."]);
-    expect(v(sim, "Kernel.disarmed_until")).toBe(until);
-    // The window closes on time; a real later win opens a new one.
-    expect(casts(advance(sim, 61)).some((b) => b.cue.includes("Cold Lock closed"))).toBe(true);
-    expect(opened(fire(sim, "chess_won"))).toHaveLength(1);
+    expect(casts(dup).map((b) => b.cue.replace(/^"|"$/gu, ""))).toEqual(["♟ Calculator already has the door code: nothing changed."]);
   });
 
-  it("a re-arm resets the wrong-combo count: one wrong patch in the next chess window is forgiven again", { timeout: SLOW }, () => {
+  it("a reset clears the wrong-combo count: one wrong patch is forgiven again", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
-    fire(sim, "chess_won");
-    expect(beats(fire(sim, "patch_rejected"))).not.toContain("Server Room Alarm"); // forgiven in a window
+    expect(beats(fire(sim, "patch_rejected"))).not.toContain("Server Room Alarm"); // the first is forgiven
     expect(v(sim, "Night.wrong_combos")).toBe(1);
-    fire(sim, "rearm_server_room");
+    fire(sim, "reset_server_room");
     expect(v(sim, "Night.wrong_combos")).toBe(0);
-    fire(sim, "chess_won");
     expect(beats(fire(sim, "patch_rejected"))).not.toContain("Server Room Alarm");
     expect(v(sim, "Night.alarm_on")).not.toBe(true);
     expect(beats(fire(sim, "patch_rejected"))).toContain("Server Room Alarm"); // two is still two

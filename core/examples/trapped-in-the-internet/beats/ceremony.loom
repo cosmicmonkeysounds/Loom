@@ -32,6 +32,9 @@ if Night.ceremony_host == "Clippy":
   else:
     Clippy: Trabolta has left on his motorcycle. He left the awards behind. Somebody has to read them. It might as well be me.
     Clippy: These are the official awards of the night, from the system report. Please applaud after each one. It helps.
+else if Night.ending == "disabled" and Night.talked_down == true:
+  Trabolta (quietly): Before I go. One last report. You talked me down, so I can at least hand out the awards myself.
+  Trabolta (quietly): These are the awards. Come up when I call your name. Take your time. Nobody took the grease out of anything.
 else if Night.ending == "disabled":
   Trabolta (weakly): Before I go. One last report. I counted every one of you, all night. Let me give some of it back.
   Trabolta (weakly): These are the awards. Come up when I call your name. Quickly. I do not have much grease left.

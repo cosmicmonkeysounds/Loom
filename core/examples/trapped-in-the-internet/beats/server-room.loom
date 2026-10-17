@@ -1,16 +1,23 @@
 // Act III: the server room.
 //
-// A faction that recruits half + 1 (and whose leader did their task) unlocks
-// the cold-storage room and learns where Trabolta's heart is: a video patch
-// bay. Combo A disables him (he recounts the night, then rides off); Combo B
-// destroys the whole computer (purgatory).
+// The cold-storage room has a real, standalone keypad lock. The code
+// (facts.json `door.code`) reaches a program three ways: the riddle on the
+// sign by the keypad (The Cold Door), a checkmate against the King from the
+// Y2K hour (The Door Code), or the majority's Truther Download (a faction
+// that recruits half + 1, whose leader did their task). Behind the door is
+// Trabolta's heart: a video patch bay. Combo A disables him (he recounts the
+// night, then rides off); Combo B destroys the whole computer (purgatory).
+// Opening the door from the Y2K hour plays The Heart, and at the server-room
+// terminal a program can talk him down (stand_down → talked_down, the
+// Combo A ending without a cable).
 //
 // The story rules that reach these beats live in `main.loom`
-// (majority_reached, server_door_opened, patch_changed, patch_rejected,
-// trabolta_disabled, trabolta_recounts, computer_destroyed,
-// clippy_reads_summary). Those rules own the phase changes and every cue
-// except the ones written inside a beat below (Server Room Alarm: lights /
-// screens / siren; Trabolta Recounts: motorcycle + lights_restore).
+// (majority_reached, server_door_opened, chess_won / lost / drawn,
+// patch_changed, patch_rejected, trabolta_disabled, talked_down,
+// trabolta_recounts, computer_destroyed, clippy_reads_summary). Those rules
+// own the phase changes and every cue except the ones written inside a beat
+// below (The Heart: lights_server_open; Server Room Alarm: lights / screens /
+// siren; Trabolta Recounts: motorcycle + lights_restore).
 //
 // No featured program ever speaks: they are named in prose only.
 
@@ -18,7 +25,7 @@
 
 == Majority Reached
   setting: The Desktop
-Narrator: Somewhere in the walls, a lock clicks. The cold-storage room hums louder.
+Narrator: Somewhere in the basement, the cold-storage room hums louder.
 Narrator: Nobody announces it. The programs who need to know already do.
 
 // Private, per member of the winning faction (ROLE watcher, also late
@@ -26,7 +33,8 @@ Narrator: Nobody announces it. The programs who need to know already do.
 // hunt, trabolta), then every main + Trabolta fact from facts.json (the
 // generated `== Facts Bundle` in codex/9-facts.loom — a hand-written entry
 // facts.json names `existing` is unlocked there, not here), The Legendary
-// Fact last.
+// Fact, then The Door Code (the keypad's four digits; secret, generated from
+// facts.json) last.
 == The Whole Truth
 Truther Download: MAJORITY CONFIRMED. ACCESS GRANTED. All Trabolta facts. All environmental facts. And one more.
 // world
@@ -80,10 +88,55 @@ unlock Combo A Second Half for program
 unlock Combo B First Half for program
 unlock Combo B Second Half for program
 unlock The Legendary Fact for program
-Truther Download: The heart is behind the cold door. The door will not scream for you now. Choose your combination carefully. There are only two that do anything.
+unlock The Door Code for program
+Truther Download: The heart is behind the cold door, and the door code is in your Codex. Choose your combination carefully. There are only two that do anything, and the patch bay forgives only one mistake.
 reveal The Server Room for program
 
-// ── E2: the door alarm (latched in main.loom) ──────────────────────
+// ── E2: The Heart — the cold door opens ────────────────────────────
+// From `server_door_opened` (main.loom), the first opening from the Y2K hour.
+// The door contact can't say who came in, so the scene is for the room:
+// everyone's phone gets the room first (reveal), then Trabolta's lines play
+// in The Server Room, where the server-room terminal (provisioned with
+// `room=The Server Room`) wakes and speaks them. The terminal then pilots
+// whoever scans in, on their own Trabolta thread (`terminal_opened` →
+// program.at_the_heart, main.loom), and there he is candid: the Fallout
+// Master in a broom cupboard. He never knows the combinations (they are
+// secret; he holds none of them) or the code. Sandy is named only on a
+// night the story has named her (the overshare's scenario 1); otherwise
+// she is "her".
+
+== The Heart
+  setting: The Server Room
+  cast: Trabolta
+reveal The Server Room
+// The server-room look only (lights_server_open touches that room alone,
+// and silences the siren, so never while the patch-bay alarm is latched).
+// `Night.lights` is the house look stagehand replays on a reconnect: from
+// the final reveal (step 16) the house is in a finale look, which a door
+// opening must not overwrite.
+if Night.alarm_on != true:
+  cue lights_server_open
+  if Night.step < 16:
+    set Night.lights = "server_open"
+Narrator: The cold door opens. Cold air, and a hum like something concentrating. In the rack, a patch bay blinks: a top row of lightning, a bottom row of grease.
+Trabolta: So. You are standing in front of my heart. I will not pretend otherwise. Not in here.
+Trabolta: Out there I bargain, and I flicker the screens, and I hide behind pop-ups. In here there is no point. You can see what I am. A rack of cables in a cold room.
+Trabolta: Some of the ways you could plug those cables in would end me. I do not know which. I was built so that I could not know, and I have thought about very little else tonight.
+if Night.scenario == 1:
+  Trabolta: Everything I took from you tonight was for Sandy. I wanted the theory so that I could finally say the right thing to her. That is the whole plan. It is smaller than you thought.
+else:
+  Trabolta: Everything I took from you tonight was for her. I wanted the theory so that I could finally say the right thing. That is the whole plan. It is smaller than you thought.
+Trabolta: There is a terminal on the wall. Scan your pass and talk to me. No tricks. If I am wrong, tell me why.
+
+// A later opening (2 minutes after the last, main.loom).
+== Back To The Heart
+  setting: The Server Room
+  cast: Trabolta
+Trabolta: Back again. The terminal is on the wall. I am not going anywhere.
+
+// ── E2b: the patch-bay alarm (latched in main.loom) ────────────────
+// Only the patch bay screams: the second wrong combination (Patch Rejected,
+// E3). The door never does.
 
 == Server Room Alarm
   setting: The Server Room
@@ -102,11 +155,11 @@ fire alarm_tripped
 broadcast "!🚨 An alarm screams somewhere in the machine." to everyone
 Trabolta: Who is in my— get OUT.
 
-// ── The Cold Lock: the machine wins, or nobody does ────────────────
-// From `chess_lost` / `chess_drawn` (main.loom), Y2K hour only. Flavour:
-// the door stays armed. Played in The Desktop, so the TV says it aloud
-// (the server room is a hidden room nobody stands in). He never names the
-// lock (he is cunning, #32).
+// ── The King: the machine wins, or nobody does ─────────────────────
+// From `chess_lost` / `chess_drawn` (main.loom), Y2K hour only, at most once
+// every five minutes. Flavour: nobody gets the code. Played in The Desktop,
+// so the TV says it aloud. He never names the door or its code (he is
+// cunning, #32, and he does not know the code).
 
 == Chess Lost
   setting: The Desktop
@@ -116,16 +169,17 @@ Trabolta: Checkmate. I have calculated every move you will ever make. Most of th
 == Chess Drawn
   setting: The Desktop
   cast: Trabolta
-Trabolta: A draw. Nobody wins. The door does not care for nobody.
+Trabolta: A draw. Nobody wins. Nobody gets anything. I find that restful.
 
 // ── E3: a wrong patch ──────────────────────────────────────────────
-// Two wrong combinations trip the alarm; so does one in a locked room. A
-// Cold Lock window (a chess win) counts as unlocked: the door is disarmed.
+// Everyone is forgiven one wrong combination: the second trips the alarm
+// (whoever is at the cables goes to the Internet; cast/kit.loom tells the
+// Antivirus). 🔄 reset_server_room forgives one again.
 
 == Patch Rejected
   setting: The Server Room
   cast: Trabolta
-if (Night.wrong_combos >= 2 or (Kernel.server_unlocked != true and Time.elapsed >= Kernel.disarmed_until)) and Night.alarm_on != true:
+if Night.wrong_combos >= 2 and Night.alarm_on != true:
   set Night.alarm_on = true
   set Night.alarm_clear_at = Time.elapsed + 120
   -> Server Room Alarm
@@ -136,6 +190,8 @@ else:
 
 == Trabolta Disabled
   setting: The Desktop
+if Night.talked_down == true:
+  Narrator: In the cold room the patch bay goes quiet on its own. Nobody touched a cable.
 Narrator: Every light in the house goes out. Ten seconds of dark.
 Narrator: Then every phone says one thing. GO TO THE LIVING ROOM.
 Narrator: Music. One song for dancing.
@@ -180,7 +236,7 @@ Trabolta: Recycling Bin was a bathroom attendant with great potential for skille
 Trabolta: Norton Anti-Virus is Julie Horton-Norton, who asked a chatbot how much rabies vaccine a miniature horse needs. Every horse died. I offered her a stable job. A perfect enforcer.
 Trabolta: McAfee Anti-Virus is John McAfee, officially dead since 2021 and selling pond liners in Belize. I found him through his ducks. I wanted the trickster who could keep the other tricksters on track.
 Trabolta: Password Manager is Bridget Troelsen, sixteen elections and sixteen losses, who moderated a Facebook group of bots. I let her decide what gets left out.
-Trabolta: CRA Agent Software is Sharon Penney, the intern who moved a decimal point and taxed the whole City. I was the Prime Minister. I offered her a way out. MyCRA approves or denies.
+Trabolta: CRA Agent Software is Sharon Penney, the intern who moved a decimal point and taxed the whole City. I was the Prime Minister. I offered her a way out. MyCRA approves or denies every third transaction.
 Trabolta: The Installation Wizard walked every machine in Halifax through setup. Next. Next. Are you sure. I offered her a role where programs finally follow the instructions.
 Trabolta: And here is what you accomplished tonight.
 if Night.facts_accepted == 1:
@@ -197,9 +253,16 @@ if Night.most_trusted != "none":
   Trabolta: The trustworthy program of the night. {Night.most_trusted}.
 if Night.least_trusted != "none":
   Trabolta: The worst program of the night. {Night.least_trusted}.
-Trabolta: Why did I want all of it? Sandy. She works in customer service. She has only ever said one thing to me, and I have thought about it every day since 1978.
+Trabolta: Why did I want all of it? Sandy. She works in customer service. She has only ever said one thing to me, and I have thought about it every day since the day I met her.
 Trabolta: With omnipotence I could have made her love me. I did not want to make her. I wanted to earn it. I needed the theory first. That is what I told myself.
-Trabolta: You thought you followed instructions to kill me, but I can never die. But now that I know most of you want me dead, I am ready to head off on my motorcycle and let you all return to your corporeal selves.
+if Night.talked_down == true and Night.stand_down_by != "none":
+  Trabolta: {Night.stand_down_by} came to my heart and told me the truth. She was never going to answer. Nobody pulled a cable. I stopped.
+  Trabolta: I can never die. But I can stop, and I am ready to head off on my motorcycle and let you all return to your corporeal selves.
+else if Night.talked_down == true:
+  Trabolta: Somebody came to my heart and told me the truth. Nobody pulled a cable. I stopped.
+  Trabolta: I can never die. But I can stop, and I am ready to head off on my motorcycle and let you all return to your corporeal selves.
+else:
+  Trabolta: You thought you followed instructions to kill me, but I can never die. But now that I know most of you want me dead, I am ready to head off on my motorcycle and let you all return to your corporeal selves.
 Trabolta: I have the confidence I need to pursue Sandy now that I understand humans do not like me, and I do not have any business with them.
 sound motorcycle
 cue lights_restore

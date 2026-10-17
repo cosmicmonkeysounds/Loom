@@ -23,8 +23,10 @@ CHARACTER The Tablet is Prop(The Tablet Video)
 // (the orchestrator's digest) too, so the patch-bay combinations, the
 // per-question verdicts, the lies, what everyone filed per question (read
 // aloud at the results), the virus planter, the dossier, the majority and
-// the anti-AI program live here as `Kernel.<slot>` — never
-// in `Night.*`, which the worker sees whole. Written and read only by main.loom's rules, ROLE hooks and
+// the anti-AI program and the server-room keypad code live here as
+// `Kernel.<slot>` — never in `Night.*`, which the worker sees whole. The
+// door code is seeded by the generated `== Facts Seed` from facts.json
+// (`door.code`), so it is set on every boot and lives in one place. Written and read only by main.loom's rules, ROLE hooks and
 // beats; directors see and edit them in Run → World. No trait, no hooks,
 // no lines, no avatar, not in the directory.
 CHARACTER Kernel
@@ -33,6 +35,7 @@ CHARACTER Kernel
   anti_ai: text? = none
   combo_a: text? = none
   combo_b: text? = none
+  door_code: text? = none
   q1: text? = none
   q2: text? = none
   q3: text? = none
@@ -78,6 +81,4 @@ CHARACTER Kernel
   waive_leader_tasks: bool = false
   majority_reached: bool = false
   majority: text? = none
-  server_unlocked: bool = false
-  disarmed_until: 0 to 100000 = 0
   jeeves_reached: 0 to 99 = 0

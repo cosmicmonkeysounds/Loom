@@ -53,7 +53,7 @@ Stack: shelf — inside the encyclopaedias, volumes A–M
 | M19 | green | `ASK-HIM-NICELY` | Ask Him Nicely | shelf — inside the encyclopaedias, volumes A–M | You can influence Trabolta to change the lights or put things on the wall terminals |
 | M20 | green | `SAFE-PLACE` | The Safe Place | shelf — inside the encyclopaedias, volumes A–M | The bathroom is the only truly safe place |
 | M21 | green | `COLD-STORAGE` | The Server Room (hand-written) | already placed — README → QR placements | The door to the server room is guarded by a lock and alarm |
-| M22 · DRAFT | green | `DISARM-KEY` | Disarming The Alarm | shelf — inside the encyclopaedias, volumes A–M | The key to disarming the alarm is to checkmate the King |
+| M22 · DRAFT | green | `CHECKMATE-CODE` | Checkmate For The Code | shelf — inside the encyclopaedias, volumes A–M | Checkmating the King gives you the code to the server-room door |
 | M23 · DRAFT | green | `SHARE-CODEX` | Sharing Your Codex | shelf — inside the encyclopaedias, volumes A–M | You can share your codex with other programs by pressing Share… on an entry, or by selling it from your Wallet |
 | M24 | green | `TRUST-CHART` | The Trust Chart (hand-written) | already placed — README → QR placements | Trabolta is keeping a trust score on everyone here |
 | M25 | green | `THE-TRUTHERS` | The Truthers | shelf — inside the encyclopaedias, volumes A–M | At some point tonight, a conspiracy faction, "The Truthers", will be formed |
@@ -106,3 +106,11 @@ Stack: deepest — tucked in the back pages, volumes N–Z and the atlas
 | C22 | red | `FOUNDING-MODERATOR` | Founding Moderator | deepest — tucked in the back pages, volumes N–Z and the atlas | Password Manager becomes Founding Moderator of a verified-humans salon if no conversation tonight contains anything inappropriate |
 | C23 | red | `INFINITE-GOLD` | Infinite Gold | deepest — tucked in the back pages, volumes N–Z and the atlas | Runescape regards central banks and Jagex's Infinite Gold as the same exploit; a secret is just an asset nobody has priced yet |
 | C24 | red | `ECONOMIC-DEVELOPMENT` | Minister Of Economic Development | deepest — tucked in the back pages, volumes N–Z and the atlas | Runescape holds the Truthcoin reserve tonight: she can add Truthcoin to any account and freeze any program's coin for ten minutes |
+
+## The cold door — the keypad sign
+
+Print this and tape it beside the server-room keypad. Never print the code
+itself: it reaches a program only through their Codex (a chess win from the
+Y2K hour, or the majority's Truther Download).
+
+> FOUR DIGITS. THE DOOR REMEMBERS THE YEAR HE MET HER.

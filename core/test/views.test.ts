@@ -279,9 +279,10 @@ describe("the show's cue sheet (K-21)", () => {
     const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
     const admin = (modView(sim, "open", "x").interactions ?? []).filter((i) => i.who === "admin");
     const needs = admin.filter((i) => i.subject === true).map((i) => i.id);
-    for (const a of ["award_most_trusted", "award_best_liar", "award_quest_completionist"]) expect(needs).toContain(a);
+    // ♟ names the winner too: the door code goes to whoever mated the King (wave 7).
+    for (const a of ["award_most_trusted", "award_best_liar", "award_quest_completionist", "chess_won"]) expect(needs).toContain(a);
     // Global cues stay one click, including the ceremony's own start.
-    for (const a of ["call_to_the_desktop", "start_the_ceremony", "chess_won"]) expect(needs).not.toContain(a);
+    for (const a of ["call_to_the_desktop", "start_the_ceremony", "server_door_opened", "reset_server_room"]) expect(needs).not.toContain(a);
     expect(admin.find((i) => i.id === "call_to_the_desktop")).not.toHaveProperty("subject");
   });
 });

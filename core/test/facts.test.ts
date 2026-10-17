@@ -477,3 +477,31 @@ describe("Trapped in the Internet — facts.json (the seed)", () => {
     for (const f of thirds) expect(f.codex!.text, f.id).toMatch(/Why Trabolta chose you: /u);
   });
 });
+
+describe("showFactsProblems — the server-room door (wave 7)", () => {
+  const door = (over: Record<string, unknown> = {}) => ({ code: "1997", clue: "FOUR DIGITS. THE YEAR.", codex: { id: "The Door Code", title: "The Door Code", text: "The code is 1997." }, ...over });
+  it("is optional, and a well-formed door passes", () => {
+    expect(showFactsProblems(showFixture())).toEqual([]);
+    expect(showFactsProblems({ ...showFixture(), door: door() } as FactsFile)).toEqual([]);
+    expect(showFactsProblems({ ...showFixture(), door: door({ code: "0042", codex: { id: "D", title: "D", text: "0042" } }) } as FactsFile)).toEqual([]);
+  });
+  it("wants a 4–8 digit string code", () => {
+    for (const code of ["97", "123456789", "19a7", 1997, ""]) {
+      expect(showFactsProblems({ ...showFixture(), door: door({ code }) } as FactsFile), String(code)).toContain(`door.code must be a string of 4–8 digits (got ${JSON.stringify(code)})`);
+    }
+  });
+  it("refuses a clue that gives the code away, a codex without the code, a missing or a taken codex id", () => {
+    expect(showFactsProblems({ ...showFixture(), door: door({ clue: "It is 1997." }) } as FactsFile)).toEqual(["door.clue gives the code away"]);
+    expect(showFactsProblems({ ...showFixture(), door: door({ codex: { id: "D", title: "D", text: "No digits here." } }) } as FactsFile)).toEqual(["door.codex.text must carry the code"]);
+    expect(showFactsProblems({ ...showFixture(), door: door({ codex: undefined }) } as FactsFile)).toEqual(["door.codex is missing"]);
+    expect(showFactsProblems({ ...showFixture(), door: door({ codex: { id: "Doc 1", title: "D", text: "1997" } }) } as FactsFile)).toEqual(['door: codex id "Doc 1" is also used by question H1']);
+    expect(showFactsProblems({ ...showFixture(), door: door({ codex: { id: "", title: "D", text: "1997" } }) } as FactsFile)).toEqual(["door.codex.id is missing"]);
+  });
+  it("the show's door: 1997 (the year he met Sandy, never a hunt answer), on its sign never", () => {
+    const d = parseFactsText(readFileSync(join(scenarioDir(SHOW), FACTS_FILE), "utf8")).facts!.door!;
+    expect(d.code).toBe("1997");
+    expect(d.clue).toBe("FOUR DIGITS. THE DOOR REMEMBERS THE YEAR HE MET HER.");
+    const qs = parseFactsText(readFileSync(join(scenarioDir(SHOW), FACTS_FILE), "utf8")).facts!.questions;
+    for (const q of qs) for (const a of [q.answer, ...q.accept]) expect(a, q.id).not.toContain(d.code);
+  });
+});

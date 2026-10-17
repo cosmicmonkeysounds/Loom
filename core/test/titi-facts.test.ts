@@ -373,6 +373,10 @@ describe("titi-facts — generated/questions.loom", () => {
     expect(v(sim, "Night.q_f1")).toBe(`F1: Final Q1. ${facts.questions[6]!.text}`);
     expect(v(sim, "Night.q_f2")).toBe(`F2: Final Q2. ${facts.questions[7]!.text}`);
     expect(Number(v(sim, "Night.truth_count"))).toBe(facts.truths.length);
+    // The keypad code lands on the secret Kernel (a string: a leading zero survives), never on Night.
+    expect(v(sim, SHOW_SHAPE.doorVar)).toBe(facts.door!.code);
+    expect(read(OUTPUTS.questions)).toContain(`set ${SHOW_SHAPE.doorVar} = "${facts.door!.code}"`);
+    expect(read(OUTPUTS.questions).split("\n").filter((l) => l.startsWith("set Night.") && l.includes(facts.door!.code))).toEqual([]);
   });
   it("Truth Question asks the truths[Night.truth_n - 1] question, and falls back past the end", () => {
     const sim = fixtureSim();
@@ -425,6 +429,21 @@ describe("titi-facts — codex/9-facts.loom", () => {
     const heads = cats.map((c) => text.indexOf(`// ── ${c.toUpperCase()} ·`));
     expect(heads.every((i) => i >= 0)).toBe(true);
     expect([...heads].sort((a, b) => a - b)).toEqual(heads);
+  });
+  it("declares the secret door-code entry: no unlock code, the code in its text, nobody else's id", () => {
+    const m = fixtureSim().model;
+    const d = facts.door!;
+    expect(d.code).toMatch(/^[0-9]{4,8}$/u);
+    const entry = m.codex.get(d.codex.id)!;
+    expect(entry).toBeDefined();
+    expect(entry.title).toBe(d.codex.title);
+    expect(entry.secret).toBe(true);
+    expect(entry.code ?? null).toBeNull(); // nobody can type their way to it
+    expect(entry.text).toContain(d.code);
+    expect([...m.codexCodes.values()]).not.toContain(d.codex.id);
+    // Not in the majority's bundle: The Whole Truth unlocks it by name.
+    const bundle = read(OUTPUTS.codex).split(`== ${SHOW_SHAPE.bundleBeat}`)[1]!;
+    expect(bundle).not.toContain(d.codex.id);
   });
   it("wraps every text line at the width and never starts one like dialogue", () => {
     for (const file of [OUTPUTS.codex, OUTPUTS.questions]) {
@@ -497,6 +516,12 @@ describe("titi-facts — generated/print-stacks.md", () => {
       if (x.existing !== undefined) expect(row).toContain(`${x.existing} (hand-written)`);
       else expect(row).toContain(`\`${x.codex!.code}\``);
     }
+  });
+  it("prints the keypad sign (the riddle) and never the code", () => {
+    const text = read(OUTPUTS.stacks);
+    expect(text).toContain("## The cold door — the keypad sign");
+    expect(text).toContain(`> ${facts.door!.clue}`);
+    expect(text).not.toContain(facts.door!.code);
   });
 });
 
@@ -618,6 +643,9 @@ describe("titi-facts — modelProblems", () => {
       expect(problems).toContain('beat "Facts Seed" is already declared by a hand-written file');
       expect(problems).toContain('beat "Facts Bundle" is already declared by a hand-written file');
       expect(problems.some((p) => p.includes("Nope"))).toBe(false);
+      expect(problems.some((p) => p.startsWith("door:"))).toBe(false);
+      writeFileSync(join(other, "main.loom"), ["# Bare", "start: Power On", `CODEX ${facts.door!.codex.id}`, "  text:", "    A hand-written twin.", "== Power On", "Hello.", ""].join("\n"));
+      expect(modelProblems(facts, other)).toContain(`door: CODEX ${JSON.stringify(facts.door!.codex.id)} is already declared by a hand-written file`);
       const empty = mkdtempSync(join(tmpdir(), "titi-facts-empty-"));
       try {
         expect(modelProblems(facts, empty)).toEqual([`no .loom files under ${empty}`]);

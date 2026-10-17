@@ -148,17 +148,17 @@ CODEX The Safe Place
     Nobody follows you in. Turn on Bathroom Mode and they will wait outside.
 
 // M22 · main · green · DRAFT
-CODEX Disarming The Alarm
-  title: Disarming The Alarm
+CODEX Checkmate For The Code
+  title: Checkmate For The Code
   secret: true
-  code: DISARM-KEY
+  code: CHECKMATE-CODE
   text:
-    A page from the alarm's manual, the last line underlined: THE KEY TO
-    DISARMING THE ALARM IS TO CHECKMATE THE KING. He stands at the cold door
-    inside the simulation; fight him on the tent tablet. Every hit makes him
-    dumber, until he has nothing but pawns. Only checkmate counts; a draw or
-    a loss changes nothing, so play him again. Mate him and the door sleeps
-    for ninety seconds.
+    A page from the keypad's manual, the last line underlined: THE KING
+    KNOWS THE CODE. He stands at the cold door inside the simulation; fight
+    him on the tent tablet. Every hit makes him dumber, until he has nothing
+    but pawns. Only checkmate counts; a draw or a loss changes nothing, so
+    play him again. From the Y2K hour, mate him and he gives you the four
+    digits. Before that, he is only practising.
 
 // M23 · main · green · DRAFT
 CODEX Sharing Your Codex
@@ -502,13 +502,12 @@ CODEX Approve Or Deny
     watched Suicide Squad. Tonight's fundraiser is secretly to rebuild the
     data centre, and she must not correct anyone who thinks it is for maps
     and ducks. Her job is to encourage as many Truthcoin transactions as
-    possible and to approve or deny every one of them, with elaborate
-    security questions if she likes. The books only let her hold every third
-    one tonight; any of the others she can still deny inside its first
-    minute. Pass, and her charges go away. Fail, and he will deny he ever
-    wrote to her. This time she intends to check where every decimal goes.
-    Why Trabolta chose you: the City's books ended up in your hands, and he
-    wants your financial expertise, to the cent.
+    possible and to approve or deny every third one, with elaborate security
+    questions if she likes; any of the others she can still deny inside its
+    first minute. Pass, and her charges go away. Fail, and he will deny he
+    ever wrote to her. This time she intends to check where every decimal
+    goes. Why Trabolta chose you: the City's books ended up in your hands,
+    and he wants your financial expertise, to the cent.
 
 // C17 · character · red
 CODEX Miniature Doses
@@ -634,6 +633,19 @@ CODEX Minister Of Economic Development
     chose you: to understand the market incentives of everyone's behaviour, so the
     facts get exchanged.
 
+// ── THE DOOR · the server-room keypad (secret, never printed) ──
+// No unlock code: nobody types their way to it. A chess win from the Y2K
+// hour and the majority's Truther Download hand it out (main.loom,
+// beats/server-room.loom). `secret: true` keeps it out of every agent
+// request and the orchestrator's lore.
+CODEX The Door Code
+  title: The Door Code
+  secret: true
+  text:
+    A slip of paper folded very small: COLD DOOR · 1997. Four digits on the
+    keypad by the server-room door, and the door is yours. Trabolta never
+    knew the number; it was never his to know. Close the door behind you.
+
 // The majority's bundle: every main + trabolta fact (a hand-written
 // `existing` entry by its own name), in facts.json order. The Whole Truth
 // (beats/server-room.loom) diverts here and carries on after it.
@@ -657,7 +669,7 @@ unlock Out Of Date for program
 unlock Ask Him Nicely for program
 unlock The Safe Place for program
 unlock The Server Room for program
-unlock Disarming The Alarm for program
+unlock Checkmate For The Code for program
 unlock Sharing Your Codex for program
 unlock The Trust Chart for program
 unlock The Truthers for program
