@@ -101,7 +101,7 @@ cast/pool.loom         22 more guest programs: bare names + avatars
 cast/props.loom        The Uploader · The Router · The Screensaver · The Tablet · Kernel (the
                        hidden secret state)
 cast/trabolta.loom     the AI: his vars, hooks, and 11 agent powers
-codex/1-world.loom …   177 CODEX entries: 169 in eight numbered files + the 8 hunt answers
+codex/1-world.loom …   178 CODEX entries: 170 in eight numbered files + the 8 hunt answers
                        in generated/questions.loom (9-facts.loom is GENERATED from
                        facts.json; 3-hunt.loom is gone). The order matters:
 codex/8-jeeves.loom    stagehand feeds Trabolta the first 24 entries as "ground truth", so
@@ -168,7 +168,7 @@ These rules matter when you edit. Break one and something fails silently.
 
 As of 2026-10-16 (the wave 4 story pass) the project compiles clean, both
 per file and concatenated the way the server joins them (`loomcheck`):
-**31 files, 0 errors; 102 beats, 177 codex entries (90 with codes), 24
+**31 files, 0 errors; 102 beats, 178 codex entries (90 with codes; wave 6: + *The Truther Download Unredacted*), 24
 quests, 92 story rules, 107 INTERACTIONs** (wave 5: + `Facts Bundle`, Ten
 Findings, `play_on_the_screens`) (one loomcheck warning: its
 known-card list predates the `answer` card).
@@ -528,8 +528,8 @@ and the four Antivirus have a pinned **Quest Log**, **Codex** and
 | The Selected Antivirus (*Patrol: the Bingo*) | Norton Anti-Virus | `start_the_bingo` | `first_reinstallation` ✅ |
 | Host The Hunt (*Per the agenda: the Truth Scavenger Hunt*) | Clippy | `start_the_hunt` (updated at `hunt_time_up`: ⏱ / 📋 / 🍾) | `second_hunt_preview` ✅ "Round one judged." |
 | Keep Everyone Calm (*Per Trabolta: keep everyone calm*) | Clippy | `second_hunt_preview` (updated at the five-minute warning: Truth Pong) | `y2k_clock` ✅ |
-| The Exchange (*Patrol: the exchange*) | McAfee Anti-Virus | `truther_download` | `trust_chart` ✅ |
-| The Audit (*Patrol: the audit*) | CRA Agent Software | `truther_download` (a step per approved / denied transfer) | `y2k_clock` ✅ |
+| The Exchange (*Patrol: the exchange*) | McAfee Anti-Virus | `truther_download` | `final_reveal` ✅ (the wallet trades on through the Y2K hour) |
+| The Audit (*Patrol: the audit*) | CRA Agent Software | `truther_download` (a step per approved / denied transfer) | `final_reveal` ✅ |
 | The Clubs (*Patrol: the clubs*) | Password Manager | `y2k_clock` | the majority ✅ |
 
 A director or a puzzle can move any quest with

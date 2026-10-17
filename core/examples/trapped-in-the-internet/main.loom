@@ -69,7 +69,9 @@ GROUP Unlimited Power
   hidden: true
 
 // OpenOffice's faction: combine our power, overthrow Trabolta, get out.
-// OpenOffice is added at the Truther Download.
+// OpenOffice is added at the Truther Download. These are the Truthers the
+// M25 pamphlet promises (decision 10): the Truther Download's lines call
+// The Way Out "the Truthers"; there is no separate group.
 GROUP The Way Out
   ethos: overthrow Trabolta and escape
   rival: Unlimited Power
@@ -2009,6 +2011,11 @@ ROLE Program
   when Night.truther_sent == true and self.cleared and self.got_truther != true:
     -> Truther Download Arrives
 
+  // Once Trabolta has overshared (step 13), the download's blacked-out
+  // name comes through: the correction names Sandy.
+  when self.got_truther == true and Night.step >= 13:
+    unlock The Truther Download Unredacted for self
+
   // OpenOffice's dossier: 20 new facts after her prompt. (Not once the
   // recount / truth.txt hands everyone every backstory: that is not her
   // work, and Bugdom's quest likewise.)
@@ -3203,7 +3210,6 @@ when trust_chart:
     set Night.judging = false
     set Night.hunt2_on = false
     unlock Clippy Instructions 6 for Clippy
-    complete quest The Exchange for McAfee Anti-Virus "The chart is up. Trading is over."
     cue lights_trust_chart
     set Night.lights = "trust_chart"
     cue screens_trust_chart
@@ -3315,7 +3321,6 @@ when y2k_clock:
     reveal The Way Out
     unlock Clippy Instructions 7 for Clippy
     complete quest Keep Everyone Calm for Clippy "You kept them calm until the clock. Now you may not take sides on air."
-    complete quest The Audit for CRA Agent Software "Audit closed. The clock matters more now."
     start quest The Clubs for Password Manager
     cue lights_y2k
     set Night.lights = "y2k"
@@ -3659,6 +3664,10 @@ when final_reveal:
     set Night.round = 3
     set Night.judging = true
     unlock Clippy Instructions 8 for Clippy
+    // The wallet trades on through the Y2K hour: the exchange and the
+    // audit close here, at the reveal.
+    complete quest The Exchange for McAfee Anti-Virus "The final reveal. The exchange closes."
+    complete quest The Audit for CRA Agent Software "The final reveal. The audit closes."
     cue lights_final_reveal
     set Night.lights = "final_reveal"
     cue screens_final_reveal

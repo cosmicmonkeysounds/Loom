@@ -86,13 +86,13 @@ else if Night.award == "lore_hoarder":
   set Night.screen = "award_lore_hoarder"
   if Night.ceremony_host == "Clippy":
     if Night.award_value == "none":
-      Clippy: Award. Lore Hoarder. The report lists {Night.award_winner}. Please come forward.
+      Clippy: Award. Lore Hoarder, for the most codex entries. The report lists {Night.award_winner}. Please come forward.
     else:
-      Clippy: Award. Lore Hoarder. The report lists {Night.award_winner}. Codex entries held: {Night.award_value}. Please come forward.
+      Clippy: Award. Lore Hoarder, for the most codex entries. The report lists {Night.award_winner}. Codex entries held: {Night.award_value}. Please come forward.
   else if Night.award_value == "none":
-    Trabolta: Lore Hoarder. {Night.award_winner}. You know more about this computer than its own help file. Come and take your trophy.
+    Trabolta: Lore Hoarder, for the most codex entries. {Night.award_winner}. You know more about this computer than its own help file. Come and take your trophy.
   else:
-    Trabolta: Lore Hoarder. Codex entries: {Night.award_value}. {Night.award_winner}. You know more about this computer than its own help file. Come and take your trophy.
+    Trabolta: Lore Hoarder, for the most codex entries: {Night.award_value}. {Night.award_winner}. You know more about this computer than its own help file. Come and take your trophy.
 else if Night.award == "truthcoin_tycoon":
   cue screens_award_truthcoin_tycoon
   set Night.screen = "award_truthcoin_tycoon"

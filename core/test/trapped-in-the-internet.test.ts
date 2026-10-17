@@ -164,8 +164,8 @@ describe("Trapped in the Internet — compile", () => {
     for (const c of m.characters.values()) if (c.wallet !== null) expect(["CRA Agent Software", "Runescape"]).toContain(c.id);
   });
 
-  it("pins the codex: 177 entries, 90 codes, every facts.json code resolving, no STAMPED anywhere", () => {
-    expect(m.codex.size).toBe(177);
+  it("pins the codex: 178 entries, 90 codes, every facts.json code resolving, no STAMPED anywhere", () => {
+    expect(m.codex.size).toBe(178);
     expect(m.codexCodes.size).toBe(90);
     const codes: Record<string, string> = {
       trabolta4ever: "The LiveJournal",
@@ -2807,7 +2807,7 @@ describe("Trapped in the Internet — the awards ceremony (K-25)", () => {
     // Three awards on three real programs (the acceptance), names in the room.
     fire(sim, "award_frequent_flyer", "g5");
     const lh = fire(sim, "award_lore_hoarder", "g3");
-    expect(desktop(sim, lh)[0]).toMatch(/^Trabolta: Lore Hoarder\. Codex entries: \d+\. OpenOffice\./u);
+    expect(desktop(sim, lh)[0]).toMatch(/^Trabolta: Lore Hoarder, for the most codex entries: \d+\. OpenOffice\./u);
     const tt = fire(sim, "award_truthcoin_tycoon", "g6");
     expect(desktop(sim, tt)[0]).toMatch(/^Trabolta: Truthcoin Tycoon\. Balance \d+ Truthcoin\. VLC\./u);
     expect(v(sim, "Night.awards_given")).toBe(4);
@@ -3577,11 +3577,16 @@ describe("Trapped in the Internet — the staff (wave 4, lane D)", () => {
     expect(sim.questStatus("McAfee Anti-Virus", "The Exchange")).toBe("active");
     expect(sim.questStatus("CRA Agent Software", "The Audit")).toBe("active");
     toBeans(sim);
-    expect(sim.questStatus("McAfee Anti-Virus", "The Exchange")).toBe("done");
+    // The wallet trades on: the exchange and the audit stay open through the Y2K hour (wave 6)…
+    expect(sim.questStatus("McAfee Anti-Virus", "The Exchange")).toBe("active");
     fireAll(sim, "trabolta_overshares", "y2k_clock");
     expect(sim.questStatus("Clippy", "Keep Everyone Calm")).toBe("done");
-    expect(sim.questStatus("CRA Agent Software", "The Audit")).toBe("done");
+    expect(sim.questStatus("CRA Agent Software", "The Audit")).toBe("active");
     expect(sim.questStatus("Password Manager", "The Clubs")).toBe("active");
+    // …and close at the final reveal.
+    fire(sim, "final_reveal");
+    expect(sim.questStatus("McAfee Anti-Virus", "The Exchange")).toBe("done");
+    expect(sim.questStatus("CRA Agent Software", "The Audit")).toBe("done");
 
     const pv = primeView(sim, "Clippy");
     expect(pv.quests.map((q) => [q.id, q.status])).toEqual([["Run The Bingo", "done"], ["Host The Hunt", "done"], ["Keep Everyone Calm", "done"]]);
@@ -4498,6 +4503,20 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     const rain = readme.split("\n").find((l) => l.startsWith("| **The Optical Drive**") && l.includes("rain night only"));
     expect(rain).toContain("`SITE-SCHEDULE`");
     expect(rain).toContain("`BUGDOM-VR`");
+  });
+
+  it("the Truther Download blacks out Sandy until Trabolta overshares; then every holder gets the correction", { timeout: SLOW }, () => {
+    const sim = boot();
+    expect(sim.model.codex.get("The Truther Download")!.text).not.toMatch(/Sandy/u);
+    expect(sim.model.codex.get("The Truther Download Unredacted")!.text).toMatch(/SANDY/u);
+    expect(sim.model.codex.get("The Truther Download Unredacted")!.secret).toBe(true);
+    toTruth1(sim);
+    toHunt2(sim);
+    expect(sim.holdsCodex("g1", "The Truther Download")).toBe(true);
+    toBeans(sim);
+    expect(sim.holdsCodex("g1", "The Truther Download Unredacted")).toBe(false);
+    const over = fire(sim, "trabolta_overshares");
+    expect(learned(over).filter((e) => e.entry === "The Truther Download Unredacted").map((e) => e.person).sort()).toEqual(PROGRAMS.map(([id]) => id).sort());
   });
 
   it("B11: lie → accurate → lie counts the filing once; an uncertain correction clears it to unanswered", { timeout: SLOW }, () => {

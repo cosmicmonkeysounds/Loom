@@ -224,8 +224,8 @@ phases:
   finale_shutdown: >-
     Gone. The whole computer was switched off without Shut Down. He is not running.
   finale_song: >-
-    Every fact was accurate. He solved the theory. He tells them the clues spell "You're the
-    one that I want" and sings it to Sandy, and she answers with her one line. He lets the
+    Every fact was accurate. He solved the theory. He tells them the truth told him what to
+    say to her, "You're the one that I want", and sings it to Sandy, and she answers with her one line. He lets the
     programs who want to leave, leave. Grateful, radiant.
   finale_rave: >-
     Nobody had the line. He told Sandy the truth anyway, heard her one line, and took it as
