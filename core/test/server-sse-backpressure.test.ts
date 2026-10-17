@@ -31,6 +31,8 @@ function stalledRes(onDestroy: () => void = () => {}) {
     writableEnded: false,
     destroyed: false,
     writes: 0,
+    /** The `event:` lines written, in order. */
+    events: [] as string[],
     listeners: new Map<string, Array<() => void>>(),
     on(ev: string, fn: () => void) {
       res.listeners.set(ev, [...(res.listeners.get(ev) ?? []), fn]);
@@ -43,6 +45,7 @@ function stalledRes(onDestroy: () => void = () => {}) {
     write(chunk: string) {
       res.writableLength += Buffer.byteLength(chunk);
       res.writes += 1;
+      if (chunk.startsWith("event: ")) res.events.push(chunk.slice(7).trim());
       return false;
     },
     end(b?: string) {
@@ -213,6 +216,36 @@ describe("a stalled stream on the event runtime", () => {
     expect(stalled.writableLength).toBeLessThan(SSE_MOD_QUEUE_CAP * 4);
     expect(reading.destroyed).toBe(false);
     expect(await clientCount(rt)).toBe(1);
+    rt.dispose();
+  });
+
+  it("a console behind by a whole view is skipped for snapshots, then sent the newest once it catches up", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-sse-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "escape-the-internet", scenarioSource: scenarioSource("escape-the-internet"), joinBase: () => "http://localhost", snapshotMs: 0, modSnapshotMs: 0 });
+    rt.openDoors();
+    const slow = stalledRes();
+    await call(rt, "GET", "/events?role=mod", {}, slow);
+    const quick = stalledRes();
+    await call(rt, "GET", "/events?role=mod", {}, quick);
+    // The slow console still holds its whole history (and more) unsent.
+    slow.writableLength += 4 * 1024 * 1024;
+    quick.drain();
+    const snaps = (r: ReturnType<typeof stalledRes>) => r.events.filter((e) => e === "snapshot").length;
+    const before = { slow: snaps(slow), quick: snaps(quick) };
+    for (let i = 0; i < 5; i++) {
+      await call(rt, "POST", "/api/mod/say", { channel: "lobby", text: `line ${i}` });
+      quick.drain();
+      slow.read(100); // reading, slowly — never dropped, never sent a view
+    }
+    expect(snaps(quick) - before.quick).toBeGreaterThanOrEqual(5);
+    expect(snaps(slow)).toBe(before.slow);
+    expect(slow.events.filter((e) => e === "message").length).toBeGreaterThanOrEqual(5);
+    expect(slow.destroyed).toBe(false);
+    // It catches up: the next change brings it the newest view.
+    slow.drain();
+    await call(rt, "POST", "/api/mod/say", { channel: "lobby", text: "caught up" });
+    expect(snaps(slow)).toBe(before.slow + 1);
     rt.dispose();
   });
 });

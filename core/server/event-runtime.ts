@@ -27,7 +27,7 @@ import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
 import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, guestOwnRow, decisionChannelFor, isPinnedRoom, visibleTo, type ChatMessage } from "./chat.ts";
 import { DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
-import { SSE_MOD_QUEUE_CAP, ipOf, queryTokenOf, readBody, sendJson, sseCap, sseFrame, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
+import { SSE_MOD_QUEUE_CAP, ipOf, queryTokenOf, readBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
 import { RateLimiter, limiterFor, rateLimitsFromEnv, type RateLimits } from "./rate-limit.ts";
 import { handleMetrics } from "./routes/metrics.ts";
 import { TtsProxy, ttsConfigFromEnv } from "./tts.ts";
@@ -110,6 +110,9 @@ interface Client {
    *  `message` / `lifecycle` frame, but never a `snapshot` or `history`
    *  (a `ModView` is ≈ 200 KB at a full house). */
   lean?: boolean;
+  /** A full director console skipped for a `ModView` while it was still
+   *  behind by a whole view: owed the newest one once it catches up. */
+  snapshotOwed?: boolean;
   res: ServerResponse;
 }
 
@@ -529,6 +532,8 @@ export class EventRuntime {
   private readonly modSnapshotMs: number;
   private modSnapshotAt = Number.NEGATIVE_INFINITY;
   private modSnapshotTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Retries the `ModView` for consoles that were too far behind for one. */
+  private modOwedTimer: ReturnType<typeof setTimeout> | null = null;
   // Guest + booth snapshot coalescing (`pushClientSnapshots`).
   private readonly snapshotMs: number;
   private snapshotAt = Number.NEGATIVE_INFINITY;
@@ -880,15 +885,34 @@ export class EventRuntime {
     this.flushModSnapshots();
   }
 
-  private flushModSnapshots(): void {
+  /** Send the full consoles the current `ModView` (`owedOnly`: just those a
+   *  previous frame skipped). A console still holding more unsent than one
+   *  view gets none now: views never queue up behind each other for a slow
+   *  link — it is owed the newest, retried until it catches up. */
+  private flushModSnapshots(owedOnly = false): void {
     // Same two writes as `sseSend`, the JSON serialised once for everyone.
     let data: string | null = null;
+    let owed = false;
     for (const c of this.clients) {
       if (c.role !== "mod" || c.lean === true) continue;
+      if (owedOnly && c.snapshotOwed !== true) continue;
       data ??= `data: ${JSON.stringify(this.modViewNow())}\n\n`;
+      if (sseQueued(c.res) > data.length) {
+        c.snapshotOwed = true;
+        owed = true;
+        continue;
+      }
+      c.snapshotOwed = false;
       sseFrame(c.res, "event: snapshot\n", data);
     }
-    if (data !== null) this.modSnapshotAt = Date.now();
+    if (data !== null && !owedOnly) this.modSnapshotAt = Date.now();
+    if (owed && this.modOwedTimer === null) {
+      this.modOwedTimer = setTimeout(() => {
+        this.modOwedTimer = null;
+        this.flushModSnapshots(true);
+      }, Math.max(this.modSnapshotMs, MOD_SNAPSHOT_MS));
+      this.modOwedTimer.unref?.();
+    }
   }
 
   /** Re-send every client its full thread history — after a reset / reload
@@ -2494,6 +2518,8 @@ export class EventRuntime {
     this.stopTicker();
     if (this.modSnapshotTimer !== null) clearTimeout(this.modSnapshotTimer);
     this.modSnapshotTimer = null;
+    if (this.modOwedTimer !== null) clearTimeout(this.modOwedTimer);
+    this.modOwedTimer = null;
     if (this.snapshotTimer !== null) clearTimeout(this.snapshotTimer);
     this.snapshotTimer = null;
     this.pushLifecycle("ended", by !== undefined ? { by } : {});
