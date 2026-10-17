@@ -4519,6 +4519,15 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     expect(learned(over).filter((e) => e.entry === "The Truther Download Unredacted").map((e) => e.person).sort()).toEqual(PROGRAMS.map(([id]) => id).sort());
   });
 
+  it("MS Paint's invitation is canon: the NSCAD letter is a refused thesis, never an expulsion, and agrees with C09", () => {
+    const sim = fresh();
+    const letter = sim.model.codex.get("The NSCAD Letter")!;
+    expect(letter.text).not.toMatch(/expel/iu);
+    const thesis = "MS Paint Is The Most Pure Art Tool: All Art Is Just Pixels If You Take A Picture And Zoom In Close Enough";
+    expect(letter.text.replace(/\s+/gu, " ")).toContain(thesis);
+    expect(sim.model.codex.get("Four Failed Theses")!.text.replace(/\s+/gu, " ")).toContain(thesis);
+  });
+
   it("B11: lie → accurate → lie counts the filing once; an uncertain correction clears it to unanswered", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);

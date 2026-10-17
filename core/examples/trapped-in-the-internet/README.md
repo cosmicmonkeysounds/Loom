@@ -633,7 +633,7 @@ themselves at sign-in and never speak in the story.
 | Bugdom | Veronica | the pet-store worker whose Bugdom VR burned | the four Antivirus files |
 | Broken Ask Jeeves | Kai | the Annapolis Valley youth librarian | unscramble 20 fragments; ten findings with every program (Ten Findings) |
 | Runescape | Laurel | 34, Wharton PhD, gold standard | peg Truthcoin to facts; the Truthcoin **minter** (`wallet: minter, limit 3, grants 3, freeze 10m`): from her Wallet room, up to three stimulus payments to every program, three grants to one program each, and a ten-minute freeze on any program's outgoing coin |
-| MS Paint | Cat Frawley | NSCAD dropout | **the designated anti-AI program** (Bingo centre square); find the exit; every program signs one painting (The Painting, hosts press 🖌) |
+| MS Paint | Cat Frawley | the Paint-only art student: four schools, three refused theses | **the designated anti-AI program** (Bingo centre square); find the exit; every program signs one painting (The Painting, hosts press 🖌) |
 | VLC | Zeus | Victor Louis Christianson | print the certificate; go viral for Trabolta |
 | Pong | Em | child of William Higinbotham | keep the two leaders talking |
 

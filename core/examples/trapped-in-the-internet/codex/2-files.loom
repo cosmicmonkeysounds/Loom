@@ -79,14 +79,18 @@ CODEX The Valley Library Cuts
     reductions." Someone has written across the bottom in pencil: "they
     were the best one."
 
+// MS Paint's invitation is canon (decision 11, the user's call): four
+// schools in rotation, three refused graduation theses, never expelled.
 CODEX The NSCAD Letter
-  title: Letter Of Dismissal, NSCAD
+  title: Thesis Decision, NSCAD
   code: NSCAD-LETTER
   text:
     A letter from the Nova Scotia College of Art and Design, folded inside
-    a sketchbook: the student is expelled "for refusing to submit work in
-    any medium other than Microsoft Paint." Doodled in the margin, in
-    jagged MS Paint pixels: a middle finger.
+    a sketchbook. Senior year, 2022: the graduation panel "cannot accept"
+    the thesis "MS Paint Is The Most Pure Art Tool: All Art Is Just Pixels
+    If You Take A Picture And Zoom In Close Enough," and the degree is not
+    conferred. Doodled in the margin, in jagged MS Paint pixels: a middle
+    finger.
 
 CODEX Face Off
   title: Livestream Screenshot
