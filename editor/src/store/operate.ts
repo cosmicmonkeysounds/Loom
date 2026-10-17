@@ -28,7 +28,8 @@ import type {
   QuestSummary,
   WalletModView,
 } from '@loom/core/views'
-import { ApiError, eventsApi, modApi, type EventInfo } from '@/lib/api'
+import { ApiError, eventsApi, logApi, modApi, type EventInfo } from '@/lib/api'
+import { fetchWholeLedger } from '@/lib/run-export'
 import { onCollabEvent, type CollabEventNotice } from '@/lib/collab'
 import { lspWorkspaceSync } from '@/lib/lsp-client'
 import { useLspIndexGen } from '@/lib/lsp-index'
@@ -123,6 +124,9 @@ let unsubscribeCollab: (() => void) | null = null
 const POLL_MS = 30_000
 /** Live ledger retention per console (the raw `sim` feed). */
 const LOG_CAP = 5000
+/** How long an End from this console waits to keep the whole ledger for
+ *  "Export that run" before ending anyway with what it saw (T7-03). */
+const END_LEDGER_BUDGET_MS = 5_000
 /** Thoughts kept client-side (each carries its whole prompt). */
 const THOUGHT_CAP = 400
 
@@ -454,11 +458,11 @@ export const useOperate = create<OperateState>((set, get) => {
 
   /** The event is gone (ended here or elsewhere): keep what it was for
    *  Export + the empty state, then drop every trace. */
-  const endedHere = (by: string | null, at: number, announce: boolean) => {
+  const endedHere = (by: string | null, at: number, announce: boolean, whole: LedgerEntry[] | null = null) => {
     const s = get()
     const lastRun: LastRun | null =
       s.run !== null
-        ? { run: s.run, log: s.log, messages: s.messages, roster: s.roster, factions: s.factions, locations: s.locations, world: s.world, choices: s.choices, endedBy: by, endedAt: at }
+        ? { run: s.run, log: whole ?? s.log, ledgerLen: Math.max(s.ledgerLen, whole?.length ?? 0), messages: s.messages, roster: s.roster, factions: s.factions, locations: s.locations, world: s.world, choices: s.choices, endedBy: by, endedAt: at }
         : s.lastRun
     disconnect()
     overlay().reset()
@@ -474,6 +478,27 @@ export const useOperate = create<OperateState>((set, get) => {
       ...(announce && s.run !== null ? { notice: noticeFor({ kind: 'ended', by: by ?? undefined, at }, s.run.mode) } : {}),
       ...EMPTY_SNAPSHOT,
     })
+  }
+
+  /** The whole ledger, fetched before this console ends the event (the
+   *  server forgets it at the end), so "Export that run" has every row.
+   *  Null — end with what the console saw — when it already holds it all,
+   *  the server won't hand it over, or it takes longer than the budget. */
+  const ledgerBeforeEnd = async (): Promise<LedgerEntry[] | null> => {
+    const s = get()
+    const eventId = s.event?.id ?? null
+    if (eventId === null || (s.log.length >= s.ledgerLen && (s.log.length === 0 || s.log[0]!.seq === 0))) return null
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      const late = new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), END_LEDGER_BUDGET_MS)
+      })
+      return await Promise.race([fetchWholeLedger((after, limit) => logApi.page(eventId, after, limit), s.log), late])
+    } catch {
+      return null
+    } finally {
+      clearTimeout(timer)
+    }
   }
 
   const stopPoll = () => {
@@ -656,8 +681,9 @@ export const useOperate = create<OperateState>((set, get) => {
       lifecycle(async () => {
         const projectId = get().projectId
         if (!projectId) return
+        const whole = await ledgerBeforeEnd()
         await eventsApi.end(projectId)
-        endedHere(get().me, Date.now(), false)
+        endedHere(get().me, Date.now(), false, whole)
       }),
 
     // ---- the mod command surface ----
