@@ -5333,6 +5333,18 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     expect(m.interactions.get("introduce_trabolta")!.description).not.toMatch(/provision/u);
   });
 
+  it("S2-15: Adobe's 🍎 readout says a failed bob marks, as it does", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    fire(sim, "final_reveal");
+    const b = fire(sim, "bobbing_for_truth");
+    const adobe = replies(b).filter((r) => r.to === "Adobe Acrobat").map((r) => r.text);
+    expect(adobe).toEqual(["🍎 Bring out the Bag of Truth. Press 🍎 Brought up the Bag on whoever surfaces with it; 🍎 Failed the bob marks them for reinstallation."]);
+    fire(sim, "failed_the_bob", "g5", null, "Adobe Acrobat");
+    expect(v(sim, "g5.marked")).toBe(true);
+    expect(sim.isCaptured("g5")).toBe(false);
+  });
+
   it("T1-03: the song after a pickup line never says every fact was true", { timeout: SLOW }, () => {
     const TRUE = "Every fact you gave me was true, and the truth tells me what to say to her. You're the one that I want.";
     const song = boot();
