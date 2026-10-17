@@ -55,8 +55,9 @@ step "1. the door contact: an entry with the code and an exit by the handle each
 # set by hand to facts.json's door.code): nothing here can lock or unlock it.
 DOOR_SIG="sensor sensors/serverroom/door → signal {'name': 'server_door_opened'}"
 ask "close the server-room door, step OUTSIDE it, then press enter"
-L=$(lines); T0=$(date +%s)
+L=$(lines)
 ask "type the CODE on the keypad, open the door, step in, let it close behind you, then press enter"
+T0=$(date +%s)   # the entry opened before this enter, so the gap is at least what we wait from here
 sleep 3
 N=$(count_since "$L" "$DOOR_SIG")
 F=$(fails_since "$L" "server_door_opened")
