@@ -25,6 +25,10 @@ interface Fake {
   signals: Signal[];
   cleared: Set<string>;
   parts: Set<string>;
+  /** `<id>.escrowed` as the story was told it. */
+  escrowed: Map<string, number>;
+  /** Every balance / escrow write in order: [id, "score" | "escrowed", n]. */
+  writes: Array<[string, string, number]>;
 }
 
 function fake(persons: Array<[string, string]>, opts: { parts?: string[]; codex?: Record<string, string[]> } = {}): Fake {
@@ -34,6 +38,8 @@ function fake(persons: Array<[string, string]>, opts: { parts?: string[]; codex?
   const signals: Signal[] = [];
   const cleared = new Set<string>();
   const parts = new Set(opts.parts ?? []);
+  const escrowed = new Map<string, number>();
+  const writes: Array<[string, string, number]> = [];
   const titles: Record<string, string> = { the_lease: "The Billboard Lease", the_file: "The Sandy File" };
   for (const [id] of persons) balances.set(id, 100);
   for (const [holder, entries] of Object.entries(opts.codex ?? {})) codex.set(holder, new Set(entries));
@@ -43,7 +49,13 @@ function fake(persons: Array<[string, string]>, opts: { parts?: string[]; codex?
     hasBalance: (id) => balances.has(id),
     setBalance: (id, n) => {
       balances.set(id, n);
+      writes.push([id, "score", n]);
       return [{ type: "worldSet", path: `${id}.score`, value: String(n) } as SimEvent];
+    },
+    setEscrowed: (id, n) => {
+      escrowed.set(id, n);
+      writes.push([id, "escrowed", n]);
+      return [{ type: "worldSet", path: `${id}.escrowed`, value: String(n) } as SimEvent];
     },
     share: (from, to, entry) => {
       if (!(codex.get(from)?.has(entry) ?? false)) return [];
@@ -65,7 +77,7 @@ function fake(persons: Array<[string, string]>, opts: { parts?: string[]; codex?
     isPart: (c) => parts.has(c),
     personNamed: (c) => persons.find(([, name]) => name === c)?.[0] ?? null,
   };
-  return { seam, clock, balances, codex, signals, cleared, parts };
+  return { seam, clock, balances, codex, signals, cleared, parts, escrowed, writes };
 }
 
 const COIN: CurrencyDef = {
@@ -745,6 +757,77 @@ describe("wallet book — replay + views", () => {
     expect(mod.open.transfers.map((t) => t.id)).toEqual(["t26"]);
     expect(mod.open.requests).toEqual([]);
     expect(mod.open.offers).toEqual([]);
+  });
+});
+
+describe("wallet book — escrow the story can see (W6 B15)", () => {
+  /** Score + escrowed across everyone, at every write: coin in flight is never lost. */
+  function totals(f: Fake): number[] {
+    const score = new Map(PEOPLE.map(([id]) => [id, 100]));
+    const esc = new Map<string, number>();
+    return f.writes.map(([id, kind, n]) => {
+      (kind === "score" ? score : esc).set(id, n);
+      let t = 0;
+      for (const v of score.values()) t += v;
+      for (const v of esc.values()) t += v;
+      return t;
+    });
+  }
+
+  it("`<id>.escrowed` follows a send through settle, deny and cancel, and the total never dips", () => {
+    const f = fake(PEOPLE, { parts: ["Auditor"] });
+    const book = new WalletBook(COIN, f.seam);
+    const journal: WalletOp[] = [];
+    const run = (op: WalletOp) => {
+      journal.push(op);
+      return book.apply(op);
+    };
+    run(send(book, "g1", "g2", 50, 0)); // t1 pending
+    expect(f.escrowed.get("g1")).toBe(50);
+    expect(f.writes.slice(0, 2)).toEqual([["g1", "escrowed", 50], ["g1", "score", 50]]); // escrow before the debit
+    run(send(book, "g1", "g3", 20, 0)); // t2 pending
+    expect(f.escrowed.get("g1")).toBe(70);
+    expect(book.escrowOf("g1")).toBe(70);
+    run({ op: "settle", id: "t1" });
+    expect(f.escrowed.get("g1")).toBe(20);
+    run({ op: "deny", id: "t2", by: "Auditor" });
+    expect(f.escrowed.get("g1")).toBe(0);
+    run(send(book, "g2", "g4", 10, 0)); // t3: the third send is held
+    expect(f.escrowed.get("g2")).toBe(10);
+    run({ op: "cancel", id: "t3", by: "g2" });
+    expect(f.escrowed.get("g2")).toBe(0);
+    // 4 × 100: never below it at any single write (a moment above it is the
+    // conservative side — a majority check can't fire early), and exact after.
+    expect(Math.min(...totals(f))).toBe(400);
+    expect(totals(f).at(-1)).toBe(400);
+    // Replay into a fresh book lands on the same mirror.
+    const g = fake(PEOPLE, { parts: ["Auditor"] });
+    const fresh = new WalletBook(COIN, g.seam);
+    for (const op of journal) fresh.apply(op);
+    expect(g.writes).toEqual(f.writes);
+  });
+
+  it("a buy offer's escrow is mirrored, and cleared on accept, decline, cancel or expiry", () => {
+    for (const close of ["accept", "decline", "cancel", "expire"] as const) {
+      const f = fake(PEOPLE, { codex: { g2: ["the_lease"] } });
+      const book = new WalletBook(COIN, f.seam);
+      book.apply({ op: "offer", id: book.nextId("o"), from: "g1", to: "g2", side: "buy", entry: "the_lease", amount: 30, at: 0 });
+      expect(f.escrowed.get("g1")).toBe(30);
+      const op: WalletOp = close === "accept" ? { op: "accept", id: "o1", at: 1 } : close === "cancel" ? { op: "cancel", id: "o1", by: "g1" } : { op: close, id: "o1" };
+      book.apply(op);
+      expect(f.escrowed.get("g1")).toBe(0);
+      expect(Math.min(...totals(f))).toBe(400);
+      expect(totals(f).at(-1)).toBe(400);
+    }
+  });
+
+  it("a send with no approver settles inline: escrowed rises and falls inside the one op", () => {
+    const f = fake(PEOPLE);
+    const book = new WalletBook({ ...COIN, approver: null }, f.seam);
+    book.apply(send(book, "g1", "g2", 5, 0));
+    expect(f.writes.filter(([, k]) => k === "escrowed")).toEqual([["g1", "escrowed", 5], ["g1", "escrowed", 0]]);
+    expect(Math.min(...totals(f))).toBe(400);
+    expect(totals(f).at(-1)).toBe(400);
   });
 });
 

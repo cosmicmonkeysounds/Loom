@@ -336,6 +336,43 @@ describe("sending coin", () => {
     expect((await wallet(rt, "send", { to: a.id, amount: 1 }, b.token)).status).toBe(200);
   });
 
+  it("coin in a deny window rides `<id>.escrowed`, so a majority over score + escrowed doesn't fire early (W6 B15)", async () => {
+    const source = SOURCE.replace("every 2, window 10s", "every 100, window 10s").replace(
+      "  when transfer_received for guest:\n",
+      "  majority: bool = false\n  when count([p for p in Persons where p.score > 0]) >= 3 and self.score * 2 > sum([p.score + p.escrowed for p in Persons]):\n    set self.majority = true\n  when transfer_received for guest:\n",
+    );
+    const d = freshDir();
+    const rt = runtimeIn(d, source);
+    rt.openDoors();
+    const a = await guest(rt, "Alice");
+    const b = await guest(rt, "Bob");
+    const c = await guest(rt, "Cy");
+    const sim = rt.liveSim!;
+    const num = (path: string) => sim.world.peek(path);
+    expect((await wallet(rt, "send", { to: a.id, amount: 50 }, c.token)).status).toBe(200);
+    expect(num(`${c.id}.escrowed`)).toEqual({ kind: "number", value: 50 });
+    rt.tickOnce(10_000); // settles: Alice 150 of 300 — exactly half
+    expect(num(`${c.id}.escrowed`)).toEqual({ kind: "number", value: 0 });
+    expect(sim.scoreOf(a.id)).toBe(150);
+    // Bob → Cy sits in its window: 290 scored, but 300 exist.
+    expect((await wallet(rt, "send", { to: c.id, amount: 10 }, b.token)).status).toBe(200);
+    expect(num(`${a.id}.majority`)).toEqual({ kind: "bool", value: false });
+    rt.tickOnce(10_000);
+    expect(num(`${a.id}.majority`)).toEqual({ kind: "bool", value: false });
+    // One more coin to Alice is a real majority (151 of 300).
+    expect((await wallet(rt, "send", { to: a.id, amount: 1 }, b.token)).status).toBe(200);
+    expect(num(`${a.id}.majority`)).toEqual({ kind: "bool", value: false });
+    rt.tickOnce(10_000);
+    expect(num(`${a.id}.majority`)).toEqual({ kind: "bool", value: true });
+    // A restart mid-window replays the journal onto the same mirror.
+    expect((await wallet(rt, "send", { to: c.id, amount: 5 }, b.token)).status).toBe(200);
+    const mirror = (s: typeof sim) => s.worldEntries().filter((e) => e.path.endsWith(".escrowed"));
+    expect(mirror(sim)).toContainEqual({ path: `${b.id}.escrowed`, value: "5" });
+    const rt2 = runtimeIn(d, source);
+    expect(rt2.restore()).not.toBeNull();
+    expect(mirror(rt2.liveSim!)).toEqual(mirror(sim));
+  });
+
   it("backing out (cancel / decline) is never rate-limited, and a 429 spends no id (W6 B10)", async () => {
     const rt = freshRuntime(SOURCE, { wallet: { max: 2, windowMs: 60_000 } });
     const a = await guest(rt, "Alice");
