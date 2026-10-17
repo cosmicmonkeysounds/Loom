@@ -9,7 +9,7 @@ import { DOORS_POLL_MS, type Identities, type PictureChoices, type ProgramHit, t
 import { ApiError, api, useChatStream } from "./client.ts";
 import { boothAlertFilter, maxSeqOf, unsolicitedReadout, useAlerts, type Alert } from "./alerts.ts";
 import { checkinFromSearch, withoutCheckin } from "./checkin.ts";
-import { pmChannelId, pmOtherParty, unlockFromSearch, withoutUnlock } from "./codex.ts";
+import { pmChannelId, pmOtherParty, shareErrorText, unlockFromSearch, withoutUnlock } from "./codex.ts";
 import { usePlayHost } from "./host.ts";
 import { roomFromMessage, roomFromSearch, roomTarget, withoutRoom } from "./room.ts";
 import { BOOTH_SIGNED_OUT, SessionRole, afterLifecycle, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, lifecycleStartsNewRun, performerSessionDead } from "./lifecycle.ts";
@@ -972,7 +972,20 @@ export function useGuestSession(): GuestSession {
     },
     [post],
   );
-  const shareCodex = useCallback((entry: string, to: string) => post("/api/guest/codex/share", { entry, to }), [post]);
+  // A refused share banners the server's reason (and resolves null), so it
+  // never looks like a share that worked.
+  const shareCodex = useCallback(
+    async (entry: string, to: string): Promise<unknown> => {
+      try {
+        return await post("/api/guest/codex/share", { entry, to });
+      } catch (e) {
+        const why = shareErrorText(e);
+        if (why !== null) alertsRef.current?.raise(why, { quiet: true });
+        return null;
+      }
+    },
+    [post],
+  );
   // The wallet routes: the server's refusal is the whole story (it names
   // the reason), so it banners quietly instead of throwing at a button.
   const walletCall = useCallback(
@@ -1535,7 +1548,15 @@ export function usePrimeSession(): PrimeSession {
     [post, auth],
   );
   const shareCodex = useCallback(
-    (entry: string, to: string) => post("/api/prime/codex/share", { entry, to }, auth!.token),
+    async (entry: string, to: string): Promise<unknown> => {
+      try {
+        return await post("/api/prime/codex/share", { entry, to }, auth!.token);
+      } catch (e) {
+        const why = shareErrorText(e);
+        if (why !== null) alertsRef.current?.raise(why, { quiet: true });
+        return null;
+      }
+    },
     [post, auth],
   );
   const moderate = useCallback(

@@ -698,7 +698,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
         <PickerSheet
           title={`Share “${sharing.title}” with…`}
           items={(st.people ?? []).map((p) => ({ id: p.id, label: p.name, sub: p.kind === "character" ? "character" : (p.faction ?? "guest"), avatar: true }))}
-          onPick={(id) => void s.shareCodex(sharing.entry, id).catch(() => {})}
+          onPick={(id) => void s.shareCodex(sharing.entry, id)}
           onClose={() => setSharing(null)}
           empty="Nobody else is here yet."
         />
