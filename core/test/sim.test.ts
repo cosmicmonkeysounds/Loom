@@ -657,6 +657,32 @@ describe("Escape the Internet — operator/admin moderation", () => {
   });
 });
 
+describe("setVar <id>.captured false is a release (W6 B3)", () => {
+  const SRC = `LOCATION Party
+LOCATION Jail
+  prison: true
+
+ROLE Guest
+  score: 0 to 100 = 0
+  when released:
+    set guest.score += 7
+  when escape:
+    set guest.score += 50
+`;
+  it("fires `released` and runs `when released:`, never `escape`", () => {
+    const sim = Sim.fromSources(SRC);
+    sim.createPerson("g1", "Alice");
+    sim.capture("g1");
+    expect(sim.isCaptured("g1")).toBe(true);
+    const events = sim.setVar("g1.captured", "false");
+    expect(sim.isCaptured("g1")).toBe(false);
+    expect(events.map((e) => e.type)).toContain("released");
+    expect(events.map((e) => e.type)).not.toContain("escaped");
+    expect(sim.world.get("g1.score")).toEqual({ kind: "number", value: 7 });
+    expect(sim.locationOf("g1")).toBe("Party");
+  });
+});
+
 describe("Loom — conditionals + directives inside a dialogue block", () => {
   const SRC = `FACTION Mods
 FACTION Chatters
