@@ -209,11 +209,15 @@ export const HISTORY_LIMIT = 400;
  * may see), cut to the last `limit` ordinary messages. Kept whatever their
  * age: every pinned-room row (the Codex, the Quest Log, the Wallet — the
  * viewer's whole record), every sticky pin / unpin (a `!!` takeover must
- * survive a reconnect), and the root of any reply that is kept (a thread
+ * survive a reconnect), every `!` alert (a phone waking banners the newest
+ * one it missed), every card (one still unanswered must stay answerable),
+ * every row `personal` says is the viewer's own (their DMs — the public
+ * rooms are what grows), and the root of any reply that is kept (a thread
  * never loses its head). Seq-ordered.
  */
-export function capHistory(msgs: readonly ChatMessage[], limit = HISTORY_LIMIT): ChatMessage[] {
-  const always = (m: ChatMessage) => isPinnedRoom(m.channel) || m.pin !== undefined || m.unpin !== undefined;
+export function capHistory(msgs: readonly ChatMessage[], limit = HISTORY_LIMIT, personal: (m: ChatMessage) => boolean = () => false): ChatMessage[] {
+  const always = (m: ChatMessage) =>
+    isPinnedRoom(m.channel) || m.pin !== undefined || m.unpin !== undefined || m.alert === true || m.kind === "widget" || personal(m);
   let ordinary = 0;
   for (const m of msgs) if (!always(m)) ordinary += 1;
   if (ordinary <= limit) return [...msgs];
@@ -229,6 +233,20 @@ export function capHistory(msgs: readonly ChatMessage[], limit = HISTORY_LIMIT):
     if (m.parentSeq !== null) roots.add(m.parentSeq);
   }
   return msgs.filter((m) => keep.has(m.seq) || roots.has(m.seq));
+}
+
+/** `capHistory`'s `personal` for guest `id`: their `dm:` / `pm:` threads and
+ *  every row addressed to them alone. */
+export function guestOwnRow(id: string): (m: ChatMessage) => boolean {
+  return (m) =>
+    Array.isArray(m.audience) && (m.channel.startsWith("dm:") || m.channel.startsWith("pm:") || (m.audience.length === 1 && m.audience[0] === id));
+}
+
+/** `capHistory`'s `personal` for the booth of `character`: every row
+ *  addressed to it (`@<Character>` — its Inbox, its talk with an agent). */
+export function boothOwnRow(character: string): (m: ChatMessage) => boolean {
+  const me = `@${character}`;
+  return (m) => Array.isArray(m.audience) && m.audience.includes(me);
 }
 
 function factionChannel(faction: string): ChannelHead {

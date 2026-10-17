@@ -4,7 +4,9 @@ import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import {
   ChatStore,
   HISTORY_LIMIT,
+  boothOwnRow,
   capHistory,
+  guestOwnRow,
   composeGuestMessages,
   decisionChannelFor,
   visibleTo,
@@ -320,6 +322,27 @@ describe("the reconnect history is capped for guests and booths (W8 T9-05)", () 
     expect(capHistory(msgs, 100).map((m) => m.seq)).toEqual(msgs.map((m) => m.seq));
   });
 
+  it("keeps every alert, every card and the viewer's own rows; the public rooms are what is cut", () => {
+    const msgs: ChatMessage[] = [
+      msg(0, { kind: "signal", alert: true, text: "!lights out" }),
+      msg(1, { kind: "widget", channel: "dm:Clippy", channelKind: "dm", audience: ["g1"] }),
+      msg(2, { channel: "dm:Trabolta", channelKind: "dm", audience: ["g1"] }),
+      msg(3, { channel: "pm:g1:g2", channelKind: "dm", audience: ["g1", "g2"] }),
+      msg(4, { kind: "system", audience: ["g1"] }), // a notice to them alone
+      msg(5, { channel: "dm:Clippy", channelKind: "dm", audience: ["@Norton"] }), // a booth's Inbox
+      msg(6, { channel: "faction:Mods", channelKind: "faction", audience: ["g1", "g2", "g3"] }),
+      msg(7),
+      msg(8),
+      msg(9),
+    ];
+    // A guest (who never sees a booth's Inbox): the alert, the card and
+    // their own threads stay; the shared rows go.
+    const guest = msgs.filter((m) => m.seq !== 5);
+    expect(capHistory(guest, 1, guestOwnRow("g1")).map((m) => m.seq)).toEqual([0, 1, 2, 3, 4, 9]);
+    // A booth: its own `@<Character>` rows stay, a guest's DM is ordinary.
+    expect(capHistory(msgs, 1, boothOwnRow("Norton")).map((m) => m.seq)).toEqual([0, 1, 5, 9]);
+  });
+
   const CODES = { event: "EVT555", prime: "PRM555", mod: "MOD555" };
   const dirs: string[] = [];
   afterAll(() => {
@@ -369,6 +392,7 @@ describe("the reconnect history is capped for guests and booths (W8 T9-05)", () 
     const g = await call(rt, "POST", "/api/guest/register", { name: "Alice", passcode: CODES.event });
     const id = g.json["id"] as string;
     await call(rt, "POST", "/api/mod/say", { channel: `guest:${id}`, text: "your own early DM" }, true);
+    await call(rt, "POST", "/api/mod/broadcast", { scope: "everyone", cue: "!an early alert" }, true);
     for (let i = 0; i < 1000; i++) await call(rt, "POST", "/api/mod/say", { channel: "lobby", text: `lobby ${i}` }, true);
 
     const stream = await call(rt, "GET", `/events?role=guest&token=${encodeURIComponent(g.json["token"] as string)}`, {});
@@ -377,6 +401,10 @@ describe("the reconnect history is capped for guests and booths (W8 T9-05)", () 
     expect(h.length).toBeGreaterThanOrEqual(HISTORY_LIMIT);
     expect(h.at(-1)!.text).toBe("lobby 999");
     expect(h.some((m) => m.text === "lobby 0")).toBe(false);
+    // Their own DM and an alert outlast the public flood (a waking phone
+    // still banners an alert it missed).
+    expect(h.some((m) => m.text === "your own early DM")).toBe(true);
+    expect(h.some((m) => m.alert === true)).toBe(true);
     const seqs = h.map((m) => m.seq);
     expect(seqs).toEqual([...seqs].sort((a, b) => a - b));
     // The REST history (and a director's stream) is still the whole thing.

@@ -25,7 +25,7 @@ import { guestView, modView, primeView, rosterRow, themeOf, titleOf, type AgentM
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
-import { ChatStore, capHistory, composeGuestMessages, decisionChannelFor, isPinnedRoom, visibleTo, type ChatMessage } from "./chat.ts";
+import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, guestOwnRow, decisionChannelFor, isPinnedRoom, visibleTo, type ChatMessage } from "./chat.ts";
 import { DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
 import { SSE_MOD_QUEUE_CAP, ipOf, queryTokenOf, readBody, sendJson, sseCap, sseFrame, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
 import { RateLimiter, limiterFor, rateLimitsFromEnv, type RateLimits } from "./rate-limit.ts";
@@ -900,13 +900,17 @@ export class EventRuntime {
 
   /** A stream's `history` frame: a director's is the whole feed; a guest's
    *  and a booth's are capped (`capHistory`: the recent stream, plus their
-   *  pinned rooms, sticky pins and thread roots). */
+   *  pinned rooms, pins, alerts, cards, own threads and thread roots). */
   private historyFor(c: Client): ChatMessage[] {
     return c.role === "guest"
-      ? capHistory(this.chat.historyFor(c.id, false)).map(forGuest)
+      ? capHistory(this.chat.historyFor(c.id, false), HISTORY_LIMIT, guestOwnRow(c.id)).map(forGuest)
       : c.role === "mod"
         ? [...this.chat.all()]
-        : capHistory(this.chat.all().filter((m) => !m.hidden && visibleToPrime(m, c)));
+        : capHistory(
+            this.chat.all().filter((m) => !m.hidden && visibleToPrime(m, c)),
+            HISTORY_LIMIT,
+            boothOwnRow(c.id),
+          );
   }
 
   /** A lifecycle transition every connected client should react to
