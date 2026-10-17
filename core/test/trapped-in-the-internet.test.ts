@@ -1783,6 +1783,27 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     expect(words).not.toMatch(COMBO);
   });
 
+  it("from the final reveal the door lights the server room but keeps the house look; never silences a latched alarm", { timeout: SLOW }, () => {
+    const late = boot();
+    toY2k(late);
+    fire(late, "final_reveal");
+    expect(v(late, "Night.lights")).toBe("final_reveal");
+    const e = fire(late, "server_door_opened");
+    expect(beats(e)).toEqual(["The Heart"]);
+    expect(has(cues(e), "lights_server_open")).toBe(true);
+    expect(v(late, "Night.lights")).toBe("final_reveal");
+    // A latched patch-bay alarm (the contact failed, the director's 🚪 after the alarm): the siren keeps going.
+    const loud = boot();
+    toY2k(loud);
+    fire(loud, "patch_rejected");
+    fire(loud, "patch_rejected");
+    expect(v(loud, "Night.alarm_on")).toBe(true);
+    const during = fire(loud, "server_door_opened");
+    expect(beats(during)).toEqual(["The Heart"]);
+    expect(has(cues(during), "lights_server_open")).toBe(false);
+    expect(v(loud, "Night.lights")).toBe("alarm");
+  });
+
   it("names Sandy only on a night the story has named her (the overshare's scenario 1)", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
