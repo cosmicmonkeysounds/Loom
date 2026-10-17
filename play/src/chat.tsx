@@ -1161,7 +1161,10 @@ export function ChannelView({
           {channel.decision && <DecisionTray decision={channel.decision} />}
           {footer}
           {onSend && canPost && (
+            // Keyed by room: a draft (or a refused line coming back) stays
+            // in its own room, never follows the guest into the next one.
             <Composer
+              key={channel.id}
               onSend={(t) => onSend(t)}
               placeholder={channel.kind === "codex" ? "Enter a code…" : `Message ${channel.title}…`}
               sendLabel={channel.kind === "codex" ? "Unlock" : undefined}
@@ -1226,7 +1229,7 @@ export function MessageThread({
       </div>
       {onSend && channel.canPost !== false && (
         <footer>
-          <Composer onSend={(t) => onSend(t, rootSeq)} placeholder="Reply…" />
+          <Composer key={`${channel.id}#${rootSeq}`} onSend={(t) => onSend(t, rootSeq)} placeholder="Reply…" />
         </footer>
       )}
     </div>
