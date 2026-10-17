@@ -641,7 +641,7 @@ export function buildGuestChannels(
         id,
         kind: "wallet" as const,
         title: "Wallet",
-        subtitle: view?.wallet ? walletSummary(view.wallet) : "",
+        subtitle: view?.wallet ? walletSummary(view.wallet, view.id) : "",
         spaceId: PINNED_SPACE,
         order: -1,
         canPost: false,

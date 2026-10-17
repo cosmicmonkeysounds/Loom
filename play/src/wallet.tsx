@@ -16,12 +16,16 @@ import type { Action, ChatMessage, WalletCard, WalletQueueView, WalletTxView, Wa
 
 // --- pure helpers ---------------------------------------------------------------
 
-/** The Wallet room's subtitle: `🪙 120 Truthcoin · 2 pending`. */
-export function walletSummary(w: WalletView): string {
+/** The Wallet room's subtitle: `🪙 120 Truthcoin · 2 pending`. With `me`,
+ *  only the viewer's own sends count: an incoming transfer has no card in
+ *  the room until it settles (its deny window is not the recipient's to
+ *  see), so counting it read "1 pending" over an empty room (B7). */
+export function walletSummary(w: WalletView, me?: string | null): string {
   const base = `🪙 ${w.balance} ${w.name}`;
   const held = w.approver?.queue.filter((t) => t.state === "held").length ?? 0;
   if (held > 0) return `${base} · ${held} to approve`;
-  const open = w.transfers.filter((t) => t.state === "pending" || t.state === "held").length + w.requests.length + w.offers.length;
+  const sends = w.transfers.filter((t) => (t.state === "pending" || t.state === "held") && (me == null || t.from === me)).length;
+  const open = sends + w.requests.length + w.offers.length;
   return open > 0 ? `${base} · ${open} pending` : base;
 }
 
@@ -151,10 +155,13 @@ const STEP_GLYPH: Record<string, string> = {
   thawed: "☀️",
 };
 
-/** The glyph for a card's step. */
-export function walletGlyph(card: WalletCard): string {
+/** The glyph for a card's step — or, on an in-flight root card (⏳) given
+ *  its live `state`, for that state: a settled send shows ✅, a denied one
+ *  ⛔ (B7). Thread steps pass no state and keep their own glyph. */
+export function walletGlyph(card: WalletCard, state?: string | null): string {
   if (card.kind === "grant") return "🎁";
   if (card.kind === "freeze" && card.step === "expired") return "☀️";
+  if ((card.step === "pending" || card.step === "held") && state != null && STEP_GLYPH[state] !== undefined) return STEP_GLYPH[state]!;
   return STEP_GLYPH[card.step] ?? "💰";
 }
 
@@ -454,7 +461,7 @@ export function WalletCardView({
       <div className={`wallet-card ${card.kind} ${state ?? "closed"}`}>
         <div className="wallet-head">
           <span className="wallet-ico" aria-hidden>
-            {walletGlyph(card)}
+            {walletGlyph(card, state)}
           </span>
           <strong className="wallet-title">{walletCardTitle(card)}</strong>
           {card.kind !== "freeze" && (

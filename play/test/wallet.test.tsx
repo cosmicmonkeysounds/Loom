@@ -676,3 +676,28 @@ describe("a denied or cancelled transfer stops counting down (B9)", () => {
     expect(walletStateLine(asked, "paying", view(), 1000)).toBe("paying");
   });
 });
+
+describe("wallet glyphs follow the live state; the recipient isn't shown a hidden pending (B7)", () => {
+  it("a settled card shows ✅, a denied one ⛔; a thread step keeps its own glyph", () => {
+    expect(walletGlyph(card(), "settled")).toBe("✅");
+    expect(walletGlyph(card(), "denied")).toBe("⛔");
+    expect(walletGlyph(card(), "cancelled")).toBe("↩️");
+    expect(walletGlyph(card(), "pending")).toBe("⏳");
+    expect(walletGlyph(card(), null)).toBe("⏳");
+    expect(walletGlyph(card({ step: "received" }), "settled")).toBe("💰");
+    const html = render(
+      <WalletActionsProvider value={{ view: view({ transfers: [tx({ state: "settled" })] }), me: "me", clock: 70_000 }}>
+        <WalletCardView msg={msg(card())} card={card()} />
+      </WalletActionsProvider>,
+    );
+    expect(html).toMatch(/wallet-ico" aria-hidden="true">✅</u);
+    expect(html).not.toContain("⏳");
+  });
+
+  it("a recipient with only incoming items shows no pending; the sender still does", () => {
+    const incoming = view({ transfers: [tx({ from: "g1", fromName: "Excel", to: "me", toName: "Calculator" })] });
+    expect(walletSummary(incoming, "me")).toBe("🪙 120 Truthcoin");
+    expect(walletSummary(view({ transfers: [tx({ state: "held", from: "g1", to: "me" })] }), "me")).toBe("🪙 120 Truthcoin");
+    expect(walletSummary(view({ transfers: [tx()] }), "me")).toBe("🪙 120 Truthcoin · 1 pending");
+  });
+});
