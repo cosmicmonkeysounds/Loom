@@ -385,9 +385,10 @@ export function requiredDecision(
     };
   }
   // The side chooser is driven by the story's declared public factions —
-  // nothing is shown for a story that has none.
+  // nothing is shown for a story that has none. A restricted (marked)
+  // program can't join a side: the server answers 403 until it's lifted.
   const factions = status.factions ?? [];
-  if (!status.faction && !status.captured && factions.length > 0) {
+  if (!status.faction && !status.captured && !status.restricted && factions.length > 0) {
     return {
       channel: "lobby",
       decision: {
@@ -412,6 +413,13 @@ export function requiredDecision(
     };
   }
   return null;
+}
+
+/** The sides a guest may defect to from the profile sheet: every other
+ *  public group, none while restricted (the server answers 403). */
+export function defectTargets(status: GuestView | null): string[] {
+  if (!status || status.restricted || !status.faction) return [];
+  return (status.factions ?? []).filter((f) => f !== status.faction);
 }
 
 /** What a guest sees after pressing one of the story's buttons: the

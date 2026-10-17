@@ -33,7 +33,7 @@ import { HelpSheet } from "./help.tsx";
 import { usePlayHost } from "./host.ts";
 import { AvatarsContext, avatarLookup, avatarUrl, hitNote, hitPickable, initialPick, orderPicker, type PictureChoice, type PictureChoices, type ProgramHit } from "./avatars.ts";
 import { PictureGrid } from "./picture-pick.tsx";
-import { codeFromUrl, fetchPictures, pendingWidget, personalStream, searchPrograms, useDocumentTitle, useGuestSession, useIdentities, useLandingBrand, type GuestSession } from "./session.ts";
+import { codeFromUrl, defectTargets, fetchPictures, pendingWidget, personalStream, searchPrograms, useDocumentTitle, useGuestSession, useIdentities, useLandingBrand, type GuestSession } from "./session.ts";
 import { Tutorial, tourResult, tutorialSteps } from "./tutorial.tsx";
 import { WALLET_ROOM, withThe } from "./threads.ts";
 import { BalancePill, FreezeSheet, OfferSheet, PeopleAmountSheet, StimulusSheet, WalletActionsProvider, WalletFooter, frozenUntil, guestWalletActions, useWalletClock, type WalletSheet } from "./wallet.tsx";
@@ -283,8 +283,8 @@ function PictureChanger({ session, eventId }: { session: GuestSession; eventId: 
 function ProfileSheet({ session, push, onClose, onLeave }: { session: GuestSession; push: Push; onClose: () => void; onLeave: () => void }) {
   const faction = session.status?.faction ?? null;
   // One switch-sides button per other public group — driven by the story's
-  // declared groups, not a baked-in pair.
-  const others = (session.status?.factions ?? []).filter((f) => f !== faction);
+  // declared groups, not a baked-in pair; none while restricted.
+  const others = defectTargets(session.status);
   // The story's `who: guest` INTERACTIONs — buttons the story itself declares.
   const interactions = session.status?.interactions ?? [];
   return (
