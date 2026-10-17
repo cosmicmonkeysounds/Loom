@@ -1,3 +1,5 @@
+> **Superseded again (Wave 7, 2026-10-17).** There is no disarm window: a checkmate from the Y2K hour (the King, or ♟ for a win seen on this phone) gives the winner the **server-room door code** (*The Door Code*) for a standalone keypad lock; the door never alarms. Every "opens the door for 90 s" / "ring green" below is history. Current: [OCT31 §5 *Wave 7 status*](../../core/examples/trapped-in-the-internet/OCT31.md), Help → *Running the server room* (`docs/help/authoring/38-server-room.md`).
+>
 > **Superseded (Wave 4, 2026-10-16).** The Cold Lock is now **the King in the
 > simulation**: a `king` prop standing in the server-room doorway of the house
 > map (`house.json` `cold-lock-king`, door `server-door` with `guard`), fought on
