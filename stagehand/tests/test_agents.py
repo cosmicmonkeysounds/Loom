@@ -691,6 +691,60 @@ def test_an_ollama_orchestrator_gets_a_late_night_context_unless_told_otherwise(
         worker(tmp_path, None, orchestrator={"llm": {"num_ctx": "lots"}})
 
 
+def test_an_ollama_voice_gets_a_late_night_context_unless_told_otherwise(tmp_path):
+    """S1-01: the voice sent no num_ctx, so it ran on whatever Ollama picked
+    (32768 on the house Mac today; 4096 on a smaller machine or an older
+    Ollama), and nothing sized it."""
+    from stagehand.agents.config import VOICE_NUM_CTX
+    from stagehand.agents.llm import OLLAMA_DEFAULT_NUM_CTX
+    from stagehand.agents.orchestrator import voice_tokens_needed
+
+    assert VOICE_NUM_CTX == 32768
+    vm = worker(tmp_path, None, llm={"api": "ollama"}).cfg.models["Trabolta"]
+    assert (vm.num_ctx, vm.context_window, vm.context_key) == (32768, 32768, "num_ctx")
+    # The section's api: openai, a persona's or entry's api: ollama → still the default.
+    (tmp_path / "t.persona.md").write_text(PERSONA, encoding="utf-8")
+    per = parse_agents({"characters": [{"persona": "t.persona.md", "llm": {"api": "ollama"}}]}, str(tmp_path))
+    assert per.models["Trabolta"].num_ctx == 32768
+    # Told otherwise: a number, or 0 = send none (the server's default).
+    assert worker(tmp_path, None, llm={"api": "ollama", "num_ctx": 16384}).cfg.models["Trabolta"].num_ctx == 16384
+    off = worker(tmp_path, None, llm={"api": "ollama", "num_ctx": 0}).cfg.models["Trabolta"]
+    assert (off.num_ctx, off.context_window) == (None, OLLAMA_DEFAULT_NUM_CTX)
+    # api: openai carries none: the server picks.
+    assert worker(tmp_path, None).cfg.models["Trabolta"].num_ctx is None
+    # The test persona's late-night line fits the default with room to spare.
+    persona = worker(tmp_path, None).cfg.personas["Trabolta"]
+    assert voice_tokens_needed(persona, 1000) < VOICE_NUM_CTX
+    assert voice_tokens_needed(persona, 1000, with_mind=False) < voice_tokens_needed(persona, 1000)
+
+
+def test_check_warns_when_the_voice_prompt_outgrows_the_context(tmp_path, capsys):
+    from stagehand.cli import main
+
+    (tmp_path / "t.persona.md").write_text(PERSONA, encoding="utf-8")
+    conf = tmp_path / "laptop.yaml"
+
+    def write(llm: str) -> None:
+        conf.write_text(
+            "server: {url: 'http://h', event: e, mod_passcode: x}\n"
+            f"agents: {{llm: {llm}, characters: [t.persona.md]}}\n",
+            encoding="utf-8",
+        )
+
+    write("{api: ollama}")  # the default 32k fits; check prints the voice's ctx
+    assert main(["check", "--config", str(conf)]) == 0
+    out = capsys.readouterr()
+    assert "warning:" not in out.err and "(ctx 32768; effort" in out.out
+    write("{api: ollama, num_ctx: 4096}")  # a warning, not a failure
+    assert main(["check", "--config", str(conf)]) == 0
+    err = capsys.readouterr().err
+    assert "warning: Trabolta's voice" in err and "4096-token context" in err and "set llm.num_ctx to" in err
+    write("{api: openai}")  # the server picks the context: nothing to compare
+    assert main(["check", "--config", str(conf)]) == 0
+    out = capsys.readouterr()
+    assert "warning:" not in out.err and "(effort" in out.out
+
+
 def test_the_ollama_request_carries_num_ctx():
     seen = {}
 

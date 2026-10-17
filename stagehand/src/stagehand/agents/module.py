@@ -48,7 +48,7 @@ from .config import AgentsConfig, parse_agents
 from .facts import Facts, FactsClient
 from .llm import Completion, LlmConfig, LlmError, LlmTruncated, complete
 from .mind import Mind, mind_path
-from .orchestrator import Job, Orchestrator, reflect_tokens_needed
+from .orchestrator import Job, Orchestrator, reflect_tokens_needed, voice_tokens_needed
 from .persona import Persona
 from .prompt import build_messages, gate_context
 from .reply import Reply, parse_reply
@@ -250,7 +250,7 @@ class Agents:
             m = self.cfg.models[name]
             gate = f" · when {persona.when.source}" if persona.when is not None else ""
             lines.append(
-                f"  {name:<9}: {m.model} @ {m.endpoint} (effort {m.reasoning_effort or '—'}, "
+                f"  {name:<9}: {m.model} @ {m.endpoint} ({f'ctx {m.context_window}; ' if m.context_window else ''}effort {m.reasoning_effort or '—'}, "
                 f"max_tokens {m.max_tokens}) · vars {', '.join(persona.variables) or '—'}{gate}"
             )
             if o.enabled:
@@ -273,6 +273,17 @@ class Agents:
     def warnings(self) -> list[str]:
         """Not fatal, but worth a look before doors (`stagehand check`)."""
         out: list[str] = []
+        for name, persona in self.cfg.personas.items():
+            m = self.cfg.models[name]
+            ctx = m.context_window
+            if ctx is None:
+                continue  # api: openai — the server picks the context; nothing to compare
+            need = voice_tokens_needed(persona, m.max_tokens, with_mind=self.cfg.orchestrator.enabled)
+            if need > ctx:
+                out.append(
+                    f"{name}'s voice: a late-night line needs ≈ {need} tokens but {m.model} runs with a {ctx}-token context — "
+                    f"Ollama cuts the middle of the prompt; set llm.{m.context_key} to {need} or more"
+                )
         if not self.cfg.orchestrator.enabled:
             return out
         for name, persona in self.cfg.personas.items():

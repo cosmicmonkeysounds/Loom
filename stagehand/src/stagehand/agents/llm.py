@@ -132,7 +132,10 @@ def tool_calls_as_json(message: dict[str, Any]) -> str:
     return json.dumps(doc) if doc else ""
 
 
-#: What Ollama loads a model with when the request names no `num_ctx`.
+#: What `stagehand check` assumes Ollama loads a model with when the request
+#: names no `num_ctx`: the floor. A newer Ollama picks from the machine's
+#: memory (32768 on the 48 GB house Mac), an older one or a small machine
+#: 4096 — so the voice and the orchestrator both send their own.
 OLLAMA_DEFAULT_NUM_CTX = 4096
 
 

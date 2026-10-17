@@ -49,7 +49,7 @@ from .facts import Facts, world_view
 from .llm import Completion, LlmConfig, LlmError
 from .mind import MAX_ANSWERS, MAX_PER_PERSON, Mind
 from .persona import Persona
-from .prompt import matching_situations, their_variables
+from .prompt import build_messages, matching_situations, their_variables
 from .reply import Reply, extract_json, strip_think
 from .secrets import Secrets
 from .trace import Thought, Trace, new_thought
@@ -388,6 +388,19 @@ def reflect_tokens_needed(persona: Persona, max_tokens: int) -> int:
     msgs = reflect_messages(persona, late_night_mind(persona), req, reply, facts, persona.summarize_after, "late")
     # The synthetic speaker matches no situation; count every one as if
     # all of them held (each is a heading line plus its prompt).
+    chars = sum(len(m["content"]) for m in msgs) + sum(len(s.prompt) + 200 for s in persona.situations)
+    return chars // CHARS_PER_TOKEN + max_tokens
+
+
+def voice_tokens_needed(persona: Persona, max_tokens: int, with_mind: bool = True) -> int:
+    """≈ the context one spoken line needs late in the night: the real
+    voice prompt (`build_messages`) over `late_night_request` with the
+    `late_night_mind` block (`with_mind` — the orchestrator is on), every
+    persona situation as if it held, plus the reply's `max_tokens`
+    (reasoning counts against it). `stagehand check` compares it with the
+    voice model's context, as `reflect_tokens_needed` does for the mind."""
+    req, _facts = late_night_request(persona)
+    msgs = build_messages(persona, req, mind=late_night_mind(persona) if with_mind else None)
     chars = sum(len(m["content"]) for m in msgs) + sum(len(s.prompt) + 200 for s in persona.situations)
     return chars // CHARS_PER_TOKEN + max_tokens
 
