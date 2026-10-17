@@ -495,7 +495,7 @@ export interface ModView {
 export interface CueState {
   /** The most recent in-sequence admin cue to fire (an INTERACTION id), or
    *  null. Off-sequence cues (`sequence: false` — the duck game, the door
-   *  reed, hardware fallbacks) never take it. */
+   *  contact, hardware fallbacks) never take it. */
   last: string | null;
   /** Who fired it: a director (`signal`) or the story itself (`fire`, the
    *  "auto at 15 min" cues). */
