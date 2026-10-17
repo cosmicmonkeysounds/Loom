@@ -233,11 +233,20 @@ function Flicker({ seq }: { seq: number | null }) {
  * Everything the story layers on top. `gear` is the ⚙ (2 s hold), drawn over
  * a covering slide / overlay so setup is never out of reach.
  */
-export function ScreenLayer({ layers, gear, video, muted }: { layers: ScreenLayers; gear: ReactNode } & SlideVideoOpts) {
+export function ScreenLayer({ layers, gear, video, muted, onSlideTap }: { layers: ScreenLayers; gear: ReactNode; onSlideTap?: () => void } & SlideVideoOpts) {
   const covered = layers.overlay !== null || layers.slide !== null;
+  const slide = layers.overlay === null && layers.slide !== null && <SlideView slide={layers.slide} y2k={layers.y2k} chart={layers.chart} chartShown={layers.chartShown} video={video} muted={muted} />;
   return (
     <>
-      {layers.overlay === null && layers.slide !== null && <SlideView slide={layers.slide} y2k={layers.y2k} chart={layers.chart} chartShown={layers.chartShown} video={video} muted={muted} />}
+      {/* A tap on a slide peeks under it (B21) where `onSlideTap` is given;
+          the wrapper is unstyled, so the slide keeps its own fixed box. */}
+      {slide !== false && onSlideTap !== undefined ? (
+        <div className="slide-tap" data-peekable="" onClick={onSlideTap}>
+          {slide}
+        </div>
+      ) : (
+        slide
+      )}
       {layers.overlay !== null && <OverlayView kind={layers.overlay} />}
       {layers.corner !== null && <CornerCountdown seconds={layers.corner} />}
       <Flicker seq={layers.flicker} />
@@ -247,7 +256,7 @@ export function ScreenLayer({ layers, gear, video, muted }: { layers: ScreenLaye
 }
 
 /** The layer, live: re-decided every second (holds, the corner, the clock). */
-export function LiveScreenLayer({ state, piloting, gear, video }: { state: ScreenState | null; piloting: boolean; gear: ReactNode; video?: boolean }) {
+export function LiveScreenLayer({ state, piloting, peek = false, onSlideTap, gear, video }: { state: ScreenState | null; piloting: boolean; peek?: boolean; onSlideTap?: () => void; gear: ReactNode; video?: boolean }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -255,7 +264,7 @@ export function LiveScreenLayer({ state, piloting, gear, video }: { state: Scree
   }, []);
   // A fresh answer re-decides at once rather than up to a second later.
   const at = Math.max(now, state?.receivedAt ?? 0);
-  return <ScreenLayer layers={screenLayers(state, at, { piloting })} gear={gear} video={video} muted={state?.voice?.muted === true} />;
+  return <ScreenLayer layers={screenLayers(state, at, { piloting, peek })} gear={gear} video={video} muted={state?.voice?.muted === true} onSlideTap={onSlideTap} />;
 }
 
 /**
