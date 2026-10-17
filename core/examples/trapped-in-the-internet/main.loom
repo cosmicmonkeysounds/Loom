@@ -3486,8 +3486,11 @@ when majority_reached:
 // clean entry, whoever you are: the door never raises an alarm (the patch
 // bay does, E3). From the Y2K hour the first opening plays The Heart: the
 // room opens on every phone and Trabolta speaks to it candidly from the
-// server-room terminal. Another opening within 2 minutes (the group filing
-// in, someone stepping out) does nothing; a later one gets a short line.
+// server-room terminal. The quiet window is 2 minutes from the LAST
+// opening: every opening inside it (both contacts firing for one swing, the
+// group trickling in or out) does nothing but restart the 2 minutes, so a
+// busy doorway never replays the visit; an opening after 2 quiet minutes
+// gets a short line (Back To The Heart).
 // Before the Y2K hour the door is just a door: # hosts hears of it, the
 // story does nothing (a curious guest, or a retained "open" replayed on a
 // stagehand reconnect).
@@ -3502,6 +3505,8 @@ when server_door_opened:
       set Night.door_quiet_until = Time.elapsed + 120
       broadcast "🚪 The server-room door opened again." to channel(hosts)
       -> Back To The Heart
+    else:
+      set Night.door_quiet_until = Time.elapsed + 120
   else if Night.ended != true:
     broadcast "🚪 The server-room door opened before the Y2K hour. Nothing happens in the story." to channel(hosts)
 

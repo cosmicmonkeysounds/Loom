@@ -1824,22 +1824,31 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     expect(words).toContain("Everything I took from you tonight was for Sandy.");
   });
 
-  it("latched: within 2 minutes nothing; after, a short line; never after an ending", { timeout: SLOW }, () => {
+  it("latched: 2 minutes from the LAST opening; every opening inside it extends the quiet; after, a short line; never after an ending", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
     fire(sim, "server_door_opened");
-    for (const wait of [0, 60]) {
+    // Two contacts for one swing (0 s), then the group trickling out every
+    // 60–119 s: well past 2 minutes from the first, never 2 quiet minutes.
+    for (const wait of [0, 60, 119, 119, 61]) {
       advance(sim, wait);
       const again = fire(sim, "server_door_opened");
       expect(beats(again), String(wait)).toEqual([]);
       expect(casts(again), String(wait)).toEqual([]);
+      expect(hostsSaid(again), String(wait)).toEqual([]);
     }
-    advance(sim, 61);
+    expect(v(sim, "Night.door_quiet_until")).toBe(v(sim, "Time.elapsed") + 120);
+    // 2 quiet minutes after the last opening: Back To The Heart.
+    advance(sim, 120);
     const back = fire(sim, "server_door_opened");
     expect(beats(back)).toEqual(["Back To The Heart"]);
     expect(lines(back, "Trabolta")).toEqual(["Back again. The terminal is on the wall. I am not going anywhere."]);
     expect(hostsSaid(back)).toEqual(['"🚪 The server-room door opened again."']);
     expect(beats(fire(sim, "server_door_opened"))).toEqual([]); // latched again
+    advance(sim, 119);
+    expect(beats(fire(sim, "server_door_opened"))).toEqual([]); // 119 s after the last: still quiet
+    advance(sim, 120);
+    expect(beats(fire(sim, "server_door_opened"))).toEqual(["Back To The Heart"]);
     fire(sim, "patch_combo_b");
     advance(sim, 121);
     const ended = fire(sim, "server_door_opened");
