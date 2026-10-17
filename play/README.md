@@ -40,9 +40,11 @@ POST answered 401 / "unknown guest" is treated the same way. Policy in
 
 Messages are **composed server-side** (see `core/server/chat.ts`) and
 routed to channels, so the client just renders. That gives three things
-for free: full **history on re-login** (the server replays every thread
-since the event began), **moderation** (admins hide/show messages), and a
-single source of truth for narrative copy.
+for free: **history on re-login** (the server replays the shared rooms'
+last 400 lines and, whatever their age, the viewer's own threads, every
+alert, card, pin and pinned-room row — `core/server/chat.ts` `capHistory`),
+**moderation** (admins hide/show messages), and a single source of truth
+for narrative copy.
 
 ## Channels, spaces & threads
 
@@ -177,7 +179,14 @@ faction-mates + people you share a gated room with), not the whole event.
 **Typed chat (hybrid).** Participants type into a channel via a composer
 (`/api/guest/say` · `/api/prime/say`); the message is journaled as a sim
 `chat` event so it replays deterministically alongside the story. Audience is
-the channel's current members (open → everyone).
+the channel's current members (open → everyone). The composer clears only
+once the send resolves (`sendFromComposer`): a refused line stays in the
+box and banners the server's reason (`sayRefusalText`: ⏳ slow mode, ⏸
+paused, ⛔ the rest); no answer within `SAY_TIMEOUT_MS` (15 s,
+`withTimeout`) gives Send back with a check-your-connection banner. Each
+room's composer is keyed by the room (a reply box by its thread), so a
+draft never follows the guest into another room. A refused **Share…**
+banners `shareErrorText` the same way.
 
 **Threads (Slack-style).** A line message can be replied to: a reply carries
 the root's `seq` as `parentSeq`, the channel shows a *"N replies"*
@@ -198,7 +207,8 @@ badges and sorts to the top, so a choice left unmade always pulls focus.
 - **🎟️ Guest** — register with a name + the host's **event code** (or
   arrive via a `?code=` link / QR that pre-fills it) → an inbox of
   conversation threads with a status HUD (faction · score · location ·
-  captured) and a profile sheet (QR pass · defect · leave). Re-login
+  captured) and a profile sheet (QR pass · defect · leave; a restricted
+  guest gets no side chooser or defect buttons, `defectTargets`). Re-login
   restores every thread.
 - **🎭 Performer** — sign in as a character → the *same* threaded surface,
   recomposed for the booth: a pinned **Scanner** thread (camera via
@@ -211,7 +221,10 @@ badges and sorts to the top, so a choice left unmade always pulls focus.
   Approve / Deny queue). An
   admin (performer who also enters the moderator passcode) additionally
   gets **hide/show** on every message and capture/release in each guest
-  thread.
+  thread. A booth whose token dies without a lifecycle frame (a
+  director's ⏏ Release) shows `BOOTH_SIGNED_OUT`: *"Your booth was signed
+  out (a director released your part, or the show went live) — sign in
+  again with your passcode."*
 
 - **🎬 Director cues** (W-26, `src/director.tsx`) — `?role=director` or a
   `?code=` link carrying the mod code (no link on the guests' chooser): the editor's
@@ -220,7 +233,11 @@ badges and sorts to the top, so a choice left unmade always pulls focus.
   the lean `GET /api/state?role=mod&cues=1` (just the cue sheet) every 3 s
   (parked while hidden, backing off on errors); tap to arm, tap again to
   fire (8 s timeout; no answer reads "not sure it fired") `/api/mod/signal {name, subject?,
-  label: "Phone · <name>"}`; a subject cue (an award) picks a person first.
+  label: "Phone · <name>"}`; a subject cue (an award) picks a person first,
+  and only an `award_*` cue (`takesValue`) shows the optional **Value** box
+  (`args: {value}`, core's `cueValueArgs`). A press the server answers
+  `refused: true` toasts *"Not taken — X doesn't apply right now (# hosts
+  says why)"* (`fireToast`).
 
 The operator/moderator surface is the [`editor`](../editor)'s Run mode
 (not this app); the phone cue sheet is the one director tool here.
