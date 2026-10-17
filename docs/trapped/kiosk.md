@@ -224,9 +224,11 @@ house map's `server-room` spot is on the room's south wall, facing in
   going away. Best-effort: a lost signal never holds up the line. The
   story uses them for `program.at_the_heart`, which makes Trabolta candid
   with that program from the Y2K hour and is the only place he can offer
-  to stand down (🕊 in `# hosts`; Help → *Running the server room*). Once
-  the integration lane's 508bf19 lands, a visit a crash or reload left
-  open is closed on the tablet's next boot.
+  to stand down (🕊 in `# hosts`; Help → *Running the server room*). A
+  visit a crash or reload left open is closed on the tablet's next boot,
+  and a close the Wi-Fi lost is sent again before the next line opens
+  (or on the next boot). The next pass scanned at the server-room
+  terminal takes over his heart whatever happened to the last close.
 - Its corner reads *the story has no room called …* if `room=` is
   misspelled: the terminal then sleeps all night. Fix it in ⚙ (hold 2 s)
   → *the room it belongs to*.
