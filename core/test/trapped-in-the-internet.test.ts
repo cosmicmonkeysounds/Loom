@@ -4070,6 +4070,10 @@ describe("Trapped in the Internet — wave 5 (lane B): the takeover, the resurre
     fire(sim, "start_the_ceremony");
     fire(sim, "award_most_trusted", "g3");
     expect(sim.isCaptured("g2")).toBe(true);
+    // Before the last award a press only asks (wave 6); a second one ends the show.
+    const ask = fire(sim, "resurrection");
+    expect(casts(ask).map((c) => c.scope)).toEqual(["channel(hosts)"]);
+    expect(v(sim, "Night.resurrected")).toBe(false);
     const r = fire(sim, "resurrection");
     expect(diags(r)).toEqual([]);
     for (const [id] of PROGRAMS) {
@@ -4444,6 +4448,36 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     expect(beats(fire(sim, "patch_rejected"))).not.toContain("Server Room Alarm");
     expect(v(sim, "Night.alarm_on")).not.toBe(true);
     expect(beats(fire(sim, "patch_rejected"))).toContain("Server Room Alarm"); // two is still two
+  });
+
+  it("G11 resurrection waits for the last award: G10 with MS Paint here, G9 without; a confirmed second press still ends it", () => {
+    const ASK = "🎃 The last award isn't presented yet (G10, or G9 with no MS Paint). Press G11 again within 30 seconds to end the show anyway.";
+    const hosts = (evs: SimEvent[]) => casts(evs).filter((c) => c.scope === "channel(hosts)").map((c) => c.cue.replace(/^"|"$/gu, ""));
+    const sim = boot(); // MS Paint is here
+    expect(v(sim, "Night.painting")).toBe(true);
+    fire(sim, "computer_destroyed");
+    fire(sim, "start_the_ceremony");
+    fire(sim, "award_quest_completionist", "g1");
+    expect(v(sim, "Night.ceremony_done")).toBe(false);
+    expect(hosts(fire(sim, "resurrection"))).toEqual([ASK]);
+    advance(sim, 32); // the confirm window lapses: a press asks again
+    expect(hosts(fire(sim, "resurrection"))).toEqual([ASK]);
+    expect(v(sim, "Night.resurrected")).toBe(false);
+    fire(sim, "award_the_painting", "g4");
+    expect(v(sim, "Night.ceremony_done")).toBe(true);
+    const r = fire(sim, "resurrection");
+    expect(v(sim, "Night.resurrected")).toBe(true);
+    expect(hosts(r)).toEqual([]);
+
+    const c = fresh(); // no MS Paint: G9 is the last award
+    c.fireBeat("Power On");
+    upload(c, "g1", "Calculator");
+    fire(c, "computer_destroyed");
+    fire(c, "start_the_ceremony");
+    fire(c, "award_quest_completionist", "g1");
+    expect(v(c, "Night.ceremony_done")).toBe(true);
+    fire(c, "resurrection");
+    expect(v(c, "Night.resurrected")).toBe(true);
   });
 
   it("B11: lie → accurate → lie counts the filing once; an uncertain correction clears it to unanswered", { timeout: SLOW }, () => {

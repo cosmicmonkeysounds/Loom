@@ -1977,6 +1977,10 @@ ROLE Program
         set Night.award_value = "none"
       set Night.award_winner = program.name
       set Night.awards_given += 1
+      // The last award on the cue sheet: G10 when MS Paint is at the
+      // party (her painting), else G9. G11 waits for it.
+      if Night.award == "the_painting" or (Night.award == "quest_completionist" and Night.painting != true):
+        set Night.ceremony_done = true
       reply 🏆 You won {Night.award_title}! Come up to the TV for your trophy.
       fire present_award
 
@@ -2509,7 +2513,7 @@ INTERACTION award_the_painting
 INTERACTION resurrection
   label: G11 · 🎃 Resurrection: the show is over, out of character (after the ceremony)
   who: admin
-  description: Only once the ceremony has started (G1), after the last award. Frees, unmarks and unrestricts everyone, takes the pins down, puts Trabolta to sleep (the screens go to attract), restores the lights and tells every phone they are human again. Once.
+  description: Only once the ceremony has started (G1), after the last award (G10, or G9 with no MS Paint; before it # hosts asks you to press again within 30 seconds). Frees, unmarks and unrestricts everyone, takes the pins down, puts Trabolta to sleep (the screens go to attract), restores the lights and tells every phone they are human again. Once.
 
 INTERACTION the simulation completed
   label: Reinstallation: simulation completed (server)
@@ -3830,12 +3834,18 @@ when restore_the_lights:
   set Night.lights_back_at = 0
 
 // G11: the show is over. Only once the ceremony has started (G1; a
-// mid-show press, or one between the ending and G1, does nothing), once.
+// mid-show press, or one between the ending and G1, does nothing), once,
+// and after the last award (`Night.ceremony_done`): a press before it is
+// a mis-press until confirmed — # hosts asks, and a second press within
+// 30 seconds ends the show anyway (a skipped bonus award never strands it).
 // Trabolta goes to sleep, so the TV and terminals fall to attract and stop
 // piloting; the base cue clears the last award slide. A night with no
 // ceremony presses G1 first.
 when resurrection:
-  if Night.ended == true and Night.ceremony == true and Night.resurrected != true:
+  if Night.ended == true and Night.ceremony == true and Night.resurrected != true and Night.ceremony_done != true and (Night.resurrect_ask_at == 0 or Time.elapsed > Night.resurrect_ask_at + 30):
+    set Night.resurrect_ask_at = Time.elapsed + 1
+    broadcast "🎃 The last award isn't presented yet (G10, or G9 with no MS Paint). Press G11 again within 30 seconds to end the show anyway." to channel(hosts)
+  else if Night.ended == true and Night.ceremony == true and Night.resurrected != true:
     set Night.resurrected = true
     set Night.banish = false
     set Night.everyone_free = true
@@ -3953,6 +3963,8 @@ set Night.lights_back_at = 0
 set Night.dance_at = 0
 set Night.takeover = false
 set Night.resurrected = false
+set Night.ceremony_done = false
+set Night.resurrect_ask_at = 0
 set Night.painting = false
 set Night.signatures = 0
 set Night.sweep_target = "none"
