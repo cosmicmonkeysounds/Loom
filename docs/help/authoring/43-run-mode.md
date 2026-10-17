@@ -2,7 +2,7 @@
 title: Run mode — rehearse, go live, be anyone
 section: The Editor
 order: 43
-keywords: run, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, cue, next, ceremony, award, recap, re-pair, lost phone, release, grant codex, give quest, complete quest, fail quest
+keywords: run, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, cue, next, last, refused, not taken, repeat, branch, ledger, parts, phone offline, agent, worker, ceremony, award, recap, re-pair, lost phone, release, grant codex, give quest, complete quest, fail quest
 ---
 
 Run (`⌘2`) is the control room for your project's **one run**. You
@@ -42,6 +42,8 @@ Every page shares one header:
   move past the running snapshot), **Go live…** (server rehearsals), and
   **■ End**. On a live event the destructive ones ask you to type the
   event code first; a wrong code says *Nothing changed* and does nothing.
+  A restart while the doors are closed (paused, or not yet opened) plays
+  the story's `start:` beat when they next open.
 - **👁 The identity control** — who you are right now (see *Being
   anyone*).
 - **⚡ Quick-fire** — fire any named event the story declares, from any
@@ -310,7 +312,8 @@ menus, `set` a guest's score / group / location, fire beats and named
 events (optionally *as* a character, so only that character's hooks
 hear it), scan on a character's behalf, reveal a hidden group, hide and
 show messages, and reply in threads. Every action is journaled on the
-run, so the story replays exactly.
+run, so the story replays exactly: a broadcast (an `!` alert included)
+survives a restart in its place and shows in the Log and an export.
 
 **Release is the story's release, not an escape.** Run's Release (and
 setting `captured` to false in the World browser) does what `release X
