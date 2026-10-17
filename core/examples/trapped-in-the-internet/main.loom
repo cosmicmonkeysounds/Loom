@@ -2476,6 +2476,12 @@ INTERACTION patch_rejected
   who: admin
   sequence: false
 
+INTERACTION talked_down
+  label: 🕊 Trabolta stands down (talked down)
+  who: admin
+  sequence: false
+  description: When # hosts reads "🕊 Trabolta offers to stand down for X" (a program at the server-room terminal showed him that what he wants is impossible). The Combo A ending without a cable: the blackout, the dance, the recount, which says who talked him down. With no offer on record it still works (the director's call) and # hosts is told so. From the Y2K hour, before any ending.
+
 INTERACTION lights_dance
   label: 🪩 Dance lights (fallback: auto 10 s after the blackout)
   who: admin
@@ -3602,6 +3608,23 @@ when patch_combo_b:
   if Night.ended != true and Night.step >= 14:
     fire computer_destroyed
 
+// Talked down, like the Fallout Master: Trabolta's `stand_down` power
+// (cast/trabolta.loom) only OFFERS, so a model misfire can never end the
+// night; this is a human confirming it, or the director's own call with no
+// offer on record. It is the Combo A ending without a cable
+// (trabolta_disabled), with Night.talked_down so the blackout, the recount
+// and the ceremony say who talked him down.
+when talked_down:
+  if Night.ended != true and Night.step >= 14:
+    if Night.stand_down_by == "none":
+      broadcast "🕊 No offer on record: Trabolta stands down on the director's call." to channel(hosts)
+    else:
+      broadcast "🕊 Trabolta stands down. {Night.stand_down_by} talked him down." to channel(hosts)
+    set Night.talked_down = true
+    fire trabolta_disabled
+  else:
+    broadcast "🕊 Nothing to stand down: it needs the Y2K hour, before any ending." to channel(hosts)
+
 // Any ending stops every clock: a hunt, the summons, bingo or the Y2K
 // hour left running would keep its corner countdown on the screens (under
 // the go-to-the-living-room overlay) and fire its own time-up beat later.
@@ -4035,6 +4058,8 @@ set Night.wrong_combos = 0
 set Night.heart_opened = false
 set Night.door_quiet_until = 0
 set Night.gloat_at = 0
+set Night.stand_down_by = "none"
+set Night.talked_down = false
 set Night.ended = false
 set Night.ending = "none"
 set Night.bobber = "none"

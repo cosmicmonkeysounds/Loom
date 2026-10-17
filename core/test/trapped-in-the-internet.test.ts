@@ -329,6 +329,7 @@ describe("Trapped in the Internet — compile", () => {
       "pardon_a_program:1",
       "turn_back_the_clock:1",
       "the_line_works:1",
+      "stand_down:1",
     ]);
   });
 
@@ -2115,6 +2116,7 @@ const POWERS: Array<[string, Args | null]> = [
   ["pardon_a_program", { target: "g2" }],
   ["turn_back_the_clock", null],
   ["the_line_works", null],
+  ["stand_down", null],
 ];
 
 describe("Trapped in the Internet — Trabolta's powers", () => {
@@ -2138,7 +2140,7 @@ describe("Trapped in the Internet — Trabolta's powers", () => {
     fireAll(sim, "trabolta_overshares", "y2k_clock");
     advance(sim, 3700);
     expect(v(sim, "Night.phase")).toBe("final_reveal");
-    const later: Record<string, string> = { assess: "That function is not available yet.", the_line_works: "That function is not available yet." };
+    const later: Record<string, string> = { assess: "That function is not available yet.", the_line_works: "That function is not available yet.", stand_down: "Not out there. Come to my heart and say it to my face." };
     for (const [p, a] of POWERS) {
       const t = lines(fire(sim, p, "g1", a, "Trabolta"), "Trabolta");
       expect(t, p).toEqual([later[p] ?? "I do not have the strength."]);
@@ -2774,6 +2776,113 @@ describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
     for (const [id, r] of m.roles) walk(r.hooks, `role ${id}`);
     walk(m.rules, "rules");
     expect(bad).toEqual([]);
+  });
+});
+
+describe("Trapped in the Internet — talked down, like the Fallout Master (wave 7)", () => {
+  /** Y2K hour, the door open, g1 (Calculator) at the server-room terminal. */
+  function atTheHeart(): Sim {
+    const sim = boot();
+    toY2k(sim);
+    fire(sim, "server_door_opened");
+    fire(sim, "terminal opened", "g1", { at: "The Server Room" }, "Terminal · Server Room");
+    return sim;
+  }
+  const hostsOnly = (evs: SimEvent[]) => casts(evs).filter((b) => b.scope === "channel(hosts)").map((b) => b.cue.replace(/^"|"$/gu, ""));
+
+  it("stand_down only offers, and only for a program at his heart holding the proof; every refusal is words only", { timeout: SLOW }, () => {
+    const sim = atTheHeart();
+    // Not at his heart (another program, the phone in their pocket): words only.
+    const away = fire(sim, "stand_down", "g4", null, "Trabolta");
+    expect(lines(away, "Trabolta")).toEqual(["Not out there. Come to my heart and say it to my face."]);
+    expect(casts(away)).toEqual([]);
+    // At his heart, without the proof: words only.
+    const bare = fire(sim, "stand_down", "g1", null, "Trabolta");
+    expect(lines(bare, "Trabolta")).toEqual(["You have not shown me anything I do not already know."]);
+    expect(casts(bare)).toEqual([]);
+    expect(v(sim, "Night.stand_down_by")).toBe("none");
+    // With What Sandy Says (her only line): the offer — an alert in # hosts, his line in the program's thread.
+    sim.unlock("g1", "What Sandy Says");
+    const ok = fire(sim, "stand_down", "g1", null, "Trabolta");
+    expect(v(sim, "Night.stand_down_by")).toBe("Calculator");
+    expect(hostsOnly(ok)).toEqual(["!🕊 Trabolta offers to stand down for Calculator. Press 🕊 to end it."]);
+    const said = saidBy(ok, "Trabolta");
+    expect(said.map((x) => x.text)).toEqual(["You are right. She was never going to answer. Not me, not anyone. I will stop. Tell the humans I said so."]);
+    expect(aud(said[0]!)).toBe('["g1"]');
+    // Nothing ends until a human presses 🕊.
+    expect(v(sim, "Night.ended")).toBe(false);
+    expect(lines(fire(sim, "stand_down", "g1", null, "Trabolta"), "Trabolta")).toEqual(["I have already offered. Ask the humans."]);
+    // The Sandy File proves it too.
+    const other = atTheHeart();
+    other.unlock("g1", "The Sandy File");
+    expect(hostsOnly(fire(other, "stand_down", "g1", null, "Trabolta"))).toHaveLength(1);
+  });
+
+  it("before the Y2K hour, or after an ending, it is refused", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    sim.unlock("g1", "What Sandy Says");
+    expect(lines(fire(sim, "stand_down", "g1", null, "Trabolta"), "Trabolta")).toEqual(["That function is not available yet."]);
+    const late = atTheHeart();
+    late.unlock("g1", "What Sandy Says");
+    fire(late, "patch_combo_b");
+    expect(lines(fire(late, "stand_down", "g1", null, "Trabolta"), "Trabolta")).toEqual(["It is already over."]);
+    expect(v(late, "Night.stand_down_by")).toBe("none");
+  });
+
+  it("🕊 talked_down is the Combo A ending without a cable, and the recount and the ceremony say who did it", { timeout: SLOW }, () => {
+    const sim = atTheHeart();
+    sim.unlock("g1", "What Sandy Says");
+    fire(sim, "stand_down", "g1", null, "Trabolta");
+    const td = fire(sim, "talked_down");
+    expect(hostsOnly(td)).toContain("🕊 Trabolta stands down. Calculator talked him down.");
+    expect(v(sim, "Night.ending")).toBe("disabled");
+    expect(v(sim, "Night.talked_down")).toBe(true);
+    expect(beats(td)).toContain("Trabolta Disabled");
+    expect(narr(td).map((e) => e.text)[0]).toBe("In the cold room the patch bay goes quiet on its own. Nobody touched a cable.");
+    expect(has(cues(td), "lights_blackout")).toBe(true);
+    expect(v(sim, "g1.at_the_heart")).toBe(false); // the ending sends everyone away
+    advance(sim, 10);
+    const rc = fire(sim, "trabolta_recounts");
+    const t = lines(rc, "Trabolta");
+    expect(t).toContain("Calculator came to my heart and told me the truth. She was never going to answer. Nobody pulled a cable. I stopped.");
+    expect(t.some((x) => x.startsWith("You thought you followed instructions to kill me"))).toBe(false);
+    const cer = lines(fire(sim, "start_the_ceremony"), "Trabolta");
+    expect(cer[0]).toBe("Before I go. One last report. You talked me down, so I can at least hand out the awards myself.");
+    // A second press changes nothing.
+    expect(hostsOnly(fire(sim, "talked_down"))).toEqual(["🕊 Nothing to stand down: it needs the Y2K hour, before any ending."]);
+  });
+
+  it("with no offer on record 🕊 still works (the director's call) and says so; never before the Y2K hour", { timeout: SLOW }, () => {
+    const early = boot();
+    toTruth1(early);
+    expect(hostsOnly(fire(early, "talked_down"))).toEqual(["🕊 Nothing to stand down: it needs the Y2K hour, before any ending."]);
+    expect(v(early, "Night.ended")).toBe(false);
+    const sim = boot();
+    toY2k(sim);
+    const td = fire(sim, "talked_down");
+    expect(hostsOnly(td)[0]).toBe("🕊 No offer on record: Trabolta stands down on the director's call.");
+    expect(v(sim, "Night.ending")).toBe("disabled");
+    advance(sim, 10);
+    expect(lines(fire(sim, "trabolta_recounts"), "Trabolta")).toContain("Somebody came to my heart and told me the truth. Nobody pulled a cable. I stopped.");
+    // Combo A's own recount is unchanged.
+    const a = boot();
+    toY2k(a);
+    fire(a, "patch_combo_a");
+    advance(a, 10);
+    expect(lines(fire(a, "trabolta_recounts"), "Trabolta").some((x) => x.startsWith("You thought you followed instructions to kill me"))).toBe(true);
+  });
+
+  it("the cue sheet: 🕊 is a director's cue off LAST / NEXT; stand_down is his one-a-night power", () => {
+    const m = fresh().model;
+    const td = m.interactions.get("talked_down")!;
+    expect(td.who).toBe("admin");
+    expect(td.label).toBe("🕊 Trabolta stands down (talked down)");
+    expect(td.sequence).toBe(false);
+    const sd = m.interactions.get("stand_down")!;
+    expect(sd.who).toBe("agent");
+    expect(sd.limit).toBe(1);
+    expect(sd.description).not.toMatch(/Sandy|tent/u); // the description reaches the voice all night
   });
 });
 
