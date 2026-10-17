@@ -1613,6 +1613,30 @@ describe("Trapped in the Internet — the patch-bay alarm (wave 7: the door neve
     expect(SRC).not.toMatch(/state: unlocked/u);
   });
 
+  it("the latch's end puts the house look back: the Y2K look, or the server-room look a majority asked for meanwhile (T2-05)", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    fireAll(sim, "patch_rejected", "patch_rejected");
+    expect(v(sim, "Night.lights")).toBe("alarm");
+    const end = advance(sim, 121);
+    expect(v(sim, "Night.alarm_on")).toBe(false);
+    expect(cues(end).filter((c) => c.startsWith("cue lights_"))).toEqual(["cue lights_y2k"]);
+    expect(v(sim, "Night.lights")).toBe("y2k");
+    // A second alarm, a majority inside it: the latch's end gives the server-room look.
+    fire(sim, "patch_rejected");
+    expect(v(sim, "Night.alarm_on")).toBe(true);
+    fire(sim, "force_majority_leave");
+    expect(v(sim, "Night.lights")).toBe("alarm");
+    const end2 = advance(sim, 121);
+    expect(cues(end2).filter((c) => c.startsWith("cue lights_"))).toEqual(["cue lights_y2k", "cue lights_server_open"]);
+    expect(v(sim, "Night.lights")).toBe("server_open");
+    // A look cued meanwhile (💡) is left alone.
+    fire(sim, "patch_rejected");
+    fire(sim, "restore_the_lights");
+    expect(cues(advance(sim, 121)).filter((c) => c.startsWith("cue lights_"))).toEqual([]);
+    expect(v(sim, "Night.lights")).toBe("restore");
+  });
+
   it("🔄 reset_server_room forgives one again, clears the latch and re-arms the cutscene", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);

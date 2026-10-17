@@ -114,10 +114,13 @@ reveal The Server Room
 // `Night.lights` is the house look stagehand replays on a reconnect: from
 // the final reveal (step 16) the house is in a finale look, which a door
 // opening must not overwrite.
+// While it is latched, the server-room look is what the latch's end puts back.
 if Night.alarm_on != true:
   cue lights_server_open
   if Night.step < 16:
     set Night.lights = "server_open"
+else if Night.step < 16:
+  set Night.lights_before_alarm = "server_open"
 Narrator: The cold door opens. Cold air, and a hum like something concentrating. In the rack, a patch bay blinks: a top row of lightning, a bottom row of grease.
 Trabolta: So. You are standing in front of my heart. I will not pretend otherwise. Not in here.
 Trabolta: Out there I bargain, and I flicker the screens, and I hide behind pop-ups. In here there is no point. You can see what I am. A rack of cables in a cold room.
@@ -145,6 +148,10 @@ set Night.alarms += 1
 if Night.alarms == 1:
   set Trabolta.composure -= 10
 reveal The Server Room
+// The look the latch's end puts back (main.loom); never the alarm itself
+// (a second trip after 🔄 reset, with the lights still red).
+if Night.lights != "alarm":
+  set Night.lights_before_alarm = Night.lights
 cue lights_alarm
 set Night.lights = "alarm"
 cue screens_alarm

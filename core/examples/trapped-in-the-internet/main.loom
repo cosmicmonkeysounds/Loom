@@ -3495,6 +3495,8 @@ when majority_reached:
     if Night.alarm_on != true:
       cue lights_server_open
       set Night.lights = "server_open"
+    else:
+      set Night.lights_before_alarm = "server_open"
     complete quest The Clubs for Password Manager "A majority. They have the door code now."
     if Kernel.majority == "stay":
       complete quest Recruit To Stay for everyone
@@ -3536,8 +3538,27 @@ when server_door_opened:
   else if Night.ended != true:
     broadcast "🚪 The server-room door opened before the Y2K hour. Nothing happens in the story." to channel(hosts)
 
+// The latch clears after 120 s. The box's siren times itself out, but the
+// alarm look is house-wide (a red strobe everywhere): put back the look it
+// replaced (Server Room Alarm saved it), unless a later cue has already
+// changed the look or the night has ended. The server-room look sits on
+// the Y2K house look, so it needs both.
 when Night.alarm_on == true and Time.elapsed >= Night.alarm_clear_at:
   set Night.alarm_on = false
+  if Night.ended != true and Night.lights == "alarm":
+    if Night.lights_before_alarm == "server_open":
+      cue lights_y2k
+      cue lights_server_open
+      set Night.lights = "server_open"
+    else if Night.lights_before_alarm == "final_reveal":
+      cue lights_final_reveal
+      set Night.lights = "final_reveal"
+    else if Night.lights_before_alarm == "restore":
+      cue lights_restore
+      set Night.lights = "restore"
+    else:
+      cue lights_y2k
+      set Night.lights = "y2k"
 
 // Reset mid-show (a rehearsal, or a wrong patch the crew forgave): the
 // wrong-patch count back to zero (the bay forgives one again), the alarm
@@ -4091,6 +4112,7 @@ set Night.clock_1 = false
 set Night.alarms = 0
 set Night.alarm_on = false
 set Night.alarm_clear_at = 0
+set Night.lights_before_alarm = "none"
 set Night.wrong_combos = 0
 set Night.heart_opened = false
 set Night.door_quiet_until = 0
