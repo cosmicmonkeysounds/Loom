@@ -151,7 +151,7 @@
       },
       "proposal": {
         "draft": true,
-        "why": "Round 2 opens on the same ferry company. The answer stays 1978 (Grease), so the finale-claim topics, the aliases and Trabolta's 'every day since 1978' line all still hold; the question still starts 'What extension' (facts.test pins it).",
+        "why": "Round 2 opens on the same ferry company. The answer stays 1978 (Grease), so the finale-claim topics and the aliases still hold (the recount's old 'every day since 1978' line now says 'since the day I met her': she is a 1997 chatbot, and 1997 is the server-room door's riddle); the question still starts 'What extension' (facts.test pins it).",
         "text": "What extension did the Chebucto Ferry Lines Customer Care card tell you to dial?",
         "answer": "1978",
         "accept": ["ext 1978", "ext. 1978", "nineteen seventy eight", "nineteen seventy-eight"],
