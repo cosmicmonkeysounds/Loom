@@ -2398,6 +2398,7 @@ INTERACTION read_the_results
   who: admin
   description: Clippy reads one question's result; the filings for it are settled (+50 / marked). Spin the bottle between questions.
   repeat: true
+  while: Night.phase == "truth_1" and Night.results_q < 3
 
 INTERACTION spin_the_bottle
   label: 🍾 Spin the bottle (Truth or Dare, five per question)
@@ -2465,7 +2466,7 @@ INTERACTION printer_opened
 INTERACTION zip_everyone_out
   label: 🗜 Antivirus zip everyone out of the Internet
   who: admin
-  repeat: true
+  sequence: false
 
 INTERACTION trabolta_overshares
   label: 🤖 Trabolta shares the next facts (scenario 1–4)
@@ -2547,28 +2548,18 @@ INTERACTION restore_the_lights
   who: admin
   sequence: false
 
-// From 🏍 on, each cue's `while:` names the branch of the night it belongs
+// From 🌑 on, each cue's `while:` names the branch of the night it belongs
 // to, so the cue sheet's NEXT follows the ending tonight is on (it never
 // gates the press: every rule below still checks for itself).
-INTERACTION trabolta_recounts
-  label: 🏍 After the dance: weakened Trabolta recounts
-  who: admin
-  while: Night.ending == "disabled" and Night.rank_round != 3
-
-INTERACTION clippy_reads_summary
-  label: 🪦 After the dance: Clippy reads the summary
-  who: admin
-  while: Night.ending == "destroyed"
-
 INTERACTION final_reveal
   label: 🌑 Final Truth Scavenger Hunt reveal
   who: admin
-  while: Night.ended != true and Night.step < 16
+  while: Night.ended != true and Night.step < 16 and Night.final_round != true
 
 INTERACTION bobbing_for_truth
   label: 🍎 Bobbing for Truth
   who: admin
-  while: Night.ended != true and Night.step < 17
+  while: Night.ended != true and Night.step == 16
 
 INTERACTION read_truth_txt
   label: 📄 Read truth.txt
@@ -2617,6 +2608,18 @@ INTERACTION the_hand_jive
 // picked from the recap numbers. `value: …` overrides the number the
 // line reads (the bonus awards have none of their own: leave it empty
 // and the line reads without one). Firing an award again corrects it.
+// After a server-room ending (any time from 🕚, even after 🌑 or 🍎): the
+// ending's own cue, then the ceremony.
+INTERACTION trabolta_recounts
+  label: 🏍 After the dance: weakened Trabolta recounts
+  who: admin
+  while: Night.ending == "disabled" and Night.rank_round != 3
+
+INTERACTION clippy_reads_summary
+  label: 🪦 After the dance: Clippy reads the summary
+  who: admin
+  while: Night.ending == "destroyed"
+
 INTERACTION start_the_ceremony
   label: G1 · 🏆 Start the awards ceremony (after the ending)
   who: admin
@@ -2626,44 +2629,54 @@ INTERACTION start_the_ceremony
 INTERACTION award_most_trusted
   label: G2 · 🥇 Award: Most Trusted (winner = top trust)
   who: admin
+  while: Night.ceremony == true
 
 INTERACTION award_least_trusted
   label: G3 · 🫘 Award: Least Trusted (winner = bottom trust)
   who: admin
+  while: Night.ceremony == true
 
 INTERACTION award_frequent_flyer
   label: G4 · ✈️ Award: Frequent Flyer to the Internet (most visits)
   who: admin
+  while: Night.ceremony == true
 
 INTERACTION award_lore_hoarder
   label: G5 · 📚 Award: Lore Hoarder (most codex entries)
   who: admin
+  while: Night.ceremony == true
 
 INTERACTION award_truthcoin_tycoon
   label: G6 · 🪙 Award: Truthcoin Tycoon (most Truthcoin)
   who: admin
+  while: Night.ceremony == true
 
 INTERACTION award_best_liar
   label: G7 · 🎲 Bonus: Best Liar (value = lies accepted)
   who: admin
+  while: Night.ceremony == true
 
 INTERACTION award_duck_speedrun
   label: G8 · 🎲 Bonus: Golden Duck Speedrun (value = the time)
   who: admin
+  while: Night.ceremony == true
 
 INTERACTION award_quest_completionist
   label: G9 · 🎲 Bonus: Quest Completionist (value = quests done)
   who: admin
+  while: Night.ceremony == true
 
 INTERACTION award_the_painting
   label: G10 · 🖌 Bonus: The Million Dollar Painting (winner = MS Paint; value = signatures)
   who: admin
   description: Only when MS Paint is at the party, and only on MS Paint (any other program is refused in # hosts). Reads the 🖌 Signed count unless value is given; the canvas itself is physical.
+  while: Night.ceremony == true
 
 INTERACTION resurrection
   label: G11 · 🎃 Resurrection: the show is over, out of character (after the ceremony)
   who: admin
   description: Only once the ceremony has started (G1), after the last award (G10, or G9 with no MS Paint; before it # hosts asks you to press again within 30 seconds). Frees, unmarks and unrestricts everyone, takes the pins down, puts Trabolta to sleep (the screens go to attract), restores the lights and tells every phone they are human again. Once.
+  while: Night.ceremony == true
 
 INTERACTION the simulation completed
   label: Reinstallation: simulation completed (server)

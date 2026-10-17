@@ -316,9 +316,11 @@ describe("Trapped in the Internet — compile", () => {
     expect(admin).not.toContain("truth_or_dare");
     expect(admin.slice(admin.indexOf("first_moment_of_truth"), admin.indexOf("first_moment_of_truth") + 4)).toEqual(["first_moment_of_truth", "close_the_filing", "read_the_results", "spin_the_bottle"]);
     expect(m.interactions.get("spin_the_bottle")!.sequence).toBe(false);
-    // The cue sheet's NEXT (T7-01): 📋 and 🗜 are pressed again and again, and
-    // neither forced majority is the running order (both are fallbacks).
-    expect(admin.filter((a) => m.interactions.get(a)!.repeat)).toEqual(["read_the_results", "zip_everyone_out"]);
+    // The cue sheet's NEXT (T7-01): 📋 is pressed again and again (per
+    // question); 🗜 is an anytime cue (the tent's queue), and neither forced
+    // majority is the running order (both are fallbacks).
+    expect(admin.filter((a) => m.interactions.get(a)!.repeat)).toEqual(["read_the_results"]);
+    expect(m.interactions.get("zip_everyone_out")!.sequence).toBe(false);
     for (const a of ["force_majority_stay", "force_majority_leave"]) expect(m.interactions.get(a)!.sequence, a).toBe(false);
     expect(m.interactions.get("close_the_filing")!.label).toBe("⏱ Close round-one filings now (auto at 2 min)");
     expect(m.interactions.get("read_the_results")!.label).toBe("📋 Results: the next question (press for Q1, Q2, Q3)");
@@ -5222,18 +5224,20 @@ function sheet(sim: Sim) {
 describe("Trapped in the Internet — wave 8 (story lane)", () => {
   it("S2-10 / T2-08: the anytime, optional and fallback cues are off-sequence, so NEXT after 🕚 is never 🎆 midnight", { timeout: SLOW }, () => {
     const m = fresh().model;
-    for (const id of ["telephone", "are_you_sure", "y2k_midnight", "waive_leader_tasks", "reset_server_room", "force_majority_stay", "force_majority_leave", "lights_dance", "restore_the_lights"]) {
+    for (const id of ["telephone", "are_you_sure", "zip_everyone_out", "y2k_midnight", "waive_leader_tasks", "reset_server_room", "force_majority_stay", "force_majority_leave", "lights_dance", "restore_the_lights"]) {
       expect(m.interactions.get(id)!.sequence, id).toBe(false);
     }
-    // The night's steps stay in sequence (🗜 is repeatable but is row 14's step).
-    for (const id of ["zip_everyone_out", "y2k_clock", "trabolta_recounts", "clippy_reads_summary", "final_reveal"]) {
+    // The night's steps stay in sequence.
+    for (const id of ["y2k_clock", "trabolta_recounts", "clippy_reads_summary", "final_reveal"]) {
       expect(m.interactions.get(id)!.sequence, id).toBe(true);
     }
     const sim = boot();
     toY2k(sim);
-    expect(sheet(sim)).toEqual({ last: "y2k_clock", next: "final_reveal" });
+    // The hour runs on the house (the door, the chess, the patch bay): nothing
+    // to suggest until midnight fires 🌑 itself (a tap would cut the hour).
+    expect(sheet(sim)).toEqual({ last: "y2k_clock", next: null });
     fireAll(sim, "waive_leader_tasks", "reset_server_room", "restore_the_lights");
-    expect(sheet(sim)).toEqual({ last: "y2k_clock", next: "final_reveal" });
+    expect(sheet(sim)).toEqual({ last: "y2k_clock", next: null });
   });
 
   it("integration: NEXT follows tonight's ending (each branch cue's while:), and a refused 🏍 / 🪦 counts for nothing", { timeout: SLOW }, () => {
@@ -5246,7 +5250,7 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
       expect(hostsSaid(evs).length, early).toBe(1);
       expect(cueState(a).fired, early).not.toContain(early);
     }
-    expect(sheet(a)).toEqual({ last: "y2k_clock", next: "final_reveal" });
+    expect(sheet(a)).toEqual({ last: "y2k_clock", next: null });
     fire(a, "patch_combo_a");
     advance(a, 10);
     expect(sheet(a).next).toBe("trabolta_recounts");
@@ -5260,6 +5264,20 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     expect(sheet(b).next).toBe("clippy_reads_summary");
     fire(b, "clippy_reads_summary");
     expect(sheet(b)).toEqual({ last: "clippy_reads_summary", next: "start_the_ceremony" });
+    // The hour runs out: midnight fires 🌑, and a Combo A after it still
+    // reaches 🏍 (declared after the finale's cues, before G1).
+    const late = boot();
+    toY2k(late);
+    advance(late, 3600);
+    expect(sheet(late)).toEqual({ last: "final_reveal", next: "bobbing_for_truth" });
+    fire(late, "patch_combo_a");
+    advance(late, 10);
+    expect(sheet(late).next).toBe("trabolta_recounts");
+    fire(late, "trabolta_recounts");
+    expect(sheet(late)).toEqual({ last: "trabolta_recounts", next: "start_the_ceremony" });
+    // The ceremony: G1, then the awards; G11 last.
+    fire(late, "start_the_ceremony");
+    expect(sheet(late).next).toBe("award_most_trusted");
     // The verdict: the song goes to the ceremony; Grok Prom to 💔 / 💌.
     for (const lie of [false, true]) {
       const sim = boot();
