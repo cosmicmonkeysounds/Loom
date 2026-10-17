@@ -71,6 +71,13 @@ ROLE Guest
     # the open — the Glitchers stop being a rumour.
     <reveal: Glitchers>
 
+  on released
+    # A director's Release (Run) frees them the same way: a guest walked
+    # out is a guest walked out, whoever opened the door.
+    <set: self.score += 100>
+    <broadcast: freedom to participant(self)>
+    <reveal: Glitchers>
+
   on enters Internet
     <broadcast: jailed to participant(self)>
 

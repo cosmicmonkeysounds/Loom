@@ -336,6 +336,79 @@ describe("sending coin", () => {
     expect((await wallet(rt, "send", { to: a.id, amount: 1 }, b.token)).status).toBe(200);
   });
 
+  it("coin in a deny window rides `<id>.escrowed`, so a majority over score + escrowed doesn't fire early (W6 B15)", async () => {
+    const source = SOURCE.replace("every 2, window 10s", "every 100, window 10s").replace(
+      "  when transfer_received for guest:\n",
+      "  majority: bool = false\n  when count([p for p in Persons where p.score > 0]) >= 3 and self.score * 2 > sum([p.score + p.escrowed for p in Persons]):\n    set self.majority = true\n  when transfer_received for guest:\n",
+    );
+    const d = freshDir();
+    const rt = runtimeIn(d, source);
+    rt.openDoors();
+    const a = await guest(rt, "Alice");
+    const b = await guest(rt, "Bob");
+    const c = await guest(rt, "Cy");
+    const sim = rt.liveSim!;
+    const num = (path: string) => sim.world.peek(path);
+    expect((await wallet(rt, "send", { to: a.id, amount: 50 }, c.token)).status).toBe(200);
+    expect(num(`${c.id}.escrowed`)).toEqual({ kind: "number", value: 50 });
+    rt.tickOnce(10_000); // settles: Alice 150 of 300 — exactly half
+    expect(num(`${c.id}.escrowed`)).toEqual({ kind: "number", value: 0 });
+    expect(sim.scoreOf(a.id)).toBe(150);
+    // Bob → Cy sits in its window: 290 scored, but 300 exist.
+    expect((await wallet(rt, "send", { to: c.id, amount: 10 }, b.token)).status).toBe(200);
+    expect(num(`${a.id}.majority`)).toEqual({ kind: "bool", value: false });
+    rt.tickOnce(10_000);
+    expect(num(`${a.id}.majority`)).toEqual({ kind: "bool", value: false });
+    // One more coin to Alice is a real majority (151 of 300).
+    expect((await wallet(rt, "send", { to: a.id, amount: 1 }, b.token)).status).toBe(200);
+    expect(num(`${a.id}.majority`)).toEqual({ kind: "bool", value: false });
+    rt.tickOnce(10_000);
+    expect(num(`${a.id}.majority`)).toEqual({ kind: "bool", value: true });
+    // A restart mid-window replays the journal onto the same mirror.
+    expect((await wallet(rt, "send", { to: c.id, amount: 5 }, b.token)).status).toBe(200);
+    const mirror = (s: typeof sim) => s.worldEntries().filter((e) => e.path.endsWith(".escrowed"));
+    expect(mirror(sim)).toContainEqual({ path: `${b.id}.escrowed`, value: "5" });
+    const rt2 = runtimeIn(d, source);
+    expect(rt2.restore()).not.toBeNull();
+    expect(mirror(rt2.liveSim!)).toEqual(mirror(sim));
+  });
+
+  it("backing out (cancel / decline) is never rate-limited, and a 429 spends no id (W6 B10)", async () => {
+    const rt = freshRuntime(SOURCE, { wallet: { max: 2, windowMs: 60_000 } });
+    const a = await guest(rt, "Alice");
+    const b = await guest(rt, "Bob");
+    expect((await post(rt, "/api/mod/codex", { who: a.id, entry: "The Lease" }, undefined, true)).status).toBe(200);
+    expect((await wallet(rt, "offer", { to: b.id, entry: "The Lease", side: "sell", amount: 5 }, a.token)).status).toBe(200); // o1
+    // Bob opens two requests (his limit), then is over it.
+    expect((await wallet(rt, "request", { from: a.id, amount: 1 }, b.token)).status).toBe(200); // r2
+    expect((await wallet(rt, "request", { from: a.id, amount: 1 }, b.token)).status).toBe(200); // r3
+    expect((await wallet(rt, "request", { from: a.id, amount: 1 }, b.token)).status).toBe(429);
+    // Over the limit he can still back out: decline Alice's offer, withdraw a request.
+    expect((await wallet(rt, "decline", { id: "o1" }, b.token)).status).toBe(200);
+    expect((await wallet(rt, "cancel", { id: "r2" }, b.token)).status).toBe(200);
+    expect((await wallet(rt, "cancel", { id: "r3" }, b.token)).status).toBe(200);
+    // The next id is r4: Bob's 429 never spent one.
+    expect((await wallet(rt, "request", { from: b.id, amount: 1 }, a.token)).status).toBe(200);
+    expect((await guestState(rt, a.token)).wallet!.requests.map((r) => r.id)).toEqual(["r4"]);
+  });
+
+  it("declining an incoming request is backing out too: never rate-limited, while paying one still is (W6 B10 review)", async () => {
+    const rt = freshRuntime(SOURCE, { wallet: { max: 2, windowMs: 60_000 } });
+    const a = await guest(rt, "Alice");
+    const b = await guest(rt, "Bob");
+    // Alice asks Bob twice; Bob spends his limit, then is over it.
+    expect((await wallet(rt, "request", { from: b.id, amount: 1 }, a.token)).status).toBe(200); // r1
+    expect((await wallet(rt, "request", { from: b.id, amount: 1 }, a.token)).status).toBe(200); // r2
+    expect((await wallet(rt, "request", { from: a.id, amount: 1 }, b.token)).status).toBe(200); // r3
+    expect((await wallet(rt, "cancel", { id: "r3" }, b.token)).status).toBe(200);
+    expect((await wallet(rt, "request", { from: a.id, amount: 1 }, b.token)).status).toBe(200); // r4
+    expect((await wallet(rt, "respond", { id: "r1", accept: true }, b.token)).status).toBe(429);
+    // The phone's Decline on a request card: `respond {accept: false}`.
+    expect((await wallet(rt, "respond", { id: "r1", accept: false }, b.token)).status).toBe(200);
+    expect((await wallet(rt, "respond", { id: "r2" }, b.token)).status).toBe(200);
+    expect((await guestState(rt, b.token)).wallet!.requests.map((r) => r.id)).toEqual(["r4"]);
+  });
+
   it("a refused offer still counts, so guessing codex titles hits the limit", async () => {
     const rt = freshRuntime(SOURCE, { wallet: { max: 2, windowMs: 60_000 } });
     const a = await guest(rt, "Alice");
@@ -567,6 +640,20 @@ describe("the stimulus", () => {
     expect((await guestState(rt, a.token)).wallet!.balance).toBe(107);
     expect(walletRoom(rt, a.id)[0]!.text).toBe("💰 Stimulus from Director: 7 Coin.");
     expect((await post(rt, "/api/mod/wallet/stimulus", { amount: 7 })).status).toBe(403); // not a moderator
+  });
+
+  it("a director's stimulus fires the story's `stimulus` event as the minter's program, with `by` (W6 open item)", async () => {
+    const source = SOURCE.replace(
+      "  when transfer_received for guest:\n",
+      '  when stimulus for guest:\n    set Night.stimulus_n += 1\n    broadcast "!💰 {guest.name} sends every program {amount} ({by})." to everyone\n  when transfer_received for guest:\n',
+    );
+    const rt = freshRuntime(source);
+    const a = await guest(rt, "Alice");
+    await guest(rt, "Mint", 0);
+    expect((await post(rt, "/api/mod/wallet/stimulus", { amount: 7 }, undefined, true)).status).toBe(200);
+    expect(rt.liveSim!.world.peek("Night.stimulus_n")).toEqual({ kind: "number", value: 1 });
+    const notice = rt.chatHistoryFor(a.id).find((m) => m.text === "💰 Mint sends every program 7 (Director).");
+    expect(notice?.alert).toBe(true); // the `!` cue, as from her own phone
   });
 });
 

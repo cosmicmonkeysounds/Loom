@@ -66,6 +66,9 @@ export interface FactsKey {
   /** The question's round; null for an `answers[]` key. */
   round: number | null;
   text: string;
+  /** The key's canonical answer, as written (an accurate filing carries it
+   *  to the story as `key_answer`, so a read-out never echoes an alias). */
+  answer: string;
   folded: Set<string>;
 }
 
@@ -92,6 +95,7 @@ export function bookOf(facts: FactsFile): FactsBook {
     id,
     round,
     text,
+    answer,
     folded: new Set([answer, ...accept].map(foldAnswer).filter((s) => s !== "")),
   });
   return {

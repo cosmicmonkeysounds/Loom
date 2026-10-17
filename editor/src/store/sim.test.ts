@@ -115,6 +115,28 @@ describe('local run store', () => {
     expect(useSim.getState().log.some((l) => l.event.type === 'beatEntered')).toBe(true)
   })
 
+  it("release / setStat captured:false are the story's release, like the server (W6 B3)", async () => {
+    const jail = MAIN.replace(
+      'ROLE Guest\n  score: 0 to 100 = 0\n',
+      'LOCATION Jail\n  prison: true\n\nROLE Guest\n  score: 0 to 100 = 0\n  when released:\n    set guest.score += 7\n  when escape:\n    set guest.score += 50\n',
+    )
+    expect(jail).not.toBe(MAIN)
+    lspWorkspaceSync().updateMany([[uriFor('main.loom'), jail]])
+    await start()
+    const released = () => useSim.getState().log.filter((l) => l.event.type === 'released').length
+    await useSim.getState().capture('p1')
+    expect(useSim.getState().roster[0]!.captured).toBe(true)
+    await useSim.getState().release('p1')
+    expect(useSim.getState().roster[0]).toMatchObject({ captured: false, score: 7, location: 'Party' })
+    expect(released()).toBe(1)
+    // The World browser's write takes the same path.
+    await useSim.getState().capture('p1')
+    await useSim.getState().setStat('p1', 'captured', false)
+    expect(useSim.getState().roster[0]).toMatchObject({ captured: false, score: 14 })
+    expect(released()).toBe(2)
+    expect(useSim.getState().log.some((l) => l.event.type === 'escaped')).toBe(false)
+  })
+
   it('mod-command surface maps onto the local engine', async () => {
     await start()
     // Scan as a character → its scan hook fires on the persona; readouts come back.

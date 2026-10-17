@@ -77,6 +77,9 @@ export interface WalletSeam {
   /** Has the slot ever been set — "has a balance" (a person in the story). */
   hasBalance(id: string): boolean;
   setBalance(id: string, n: number): SimEvent[];
+  /** Mirror the coin `id` has in flight (pending / held sends, open buy-offer
+   *  escrow) into the story as `<id>.escrowed`. */
+  setEscrowed(id: string, n: number): SimEvent[];
   share(from: string, to: string, entry: string): SimEvent[];
   signal(name: string, subject: string, args: Record<string, string | number | boolean>): SimEvent[];
   persons(): Iterable<{ id: string; name: string }>;
@@ -118,6 +121,7 @@ export function walletSeam(sim: Sim, currency: CurrencyDef): WalletSeam {
     scoreOf: (id) => (slot === "score" ? sim.scoreOf(id) : (asNumber(sim.world.get(key(id))) ?? 0)),
     hasBalance: (id) => sim.world.peek(key(id)) !== null,
     setBalance: (id, n) => (slot === "score" ? sim.setScore(id, n) : sim.setVar(key(id), String(n))),
+    setEscrowed: (id, n) => sim.setVar(`${id}.escrowed`, String(n)),
     share: (from, to, entry) => sim.share(from, to, entry),
     signal: (name, subject, args) => sim.signal(name, subject, args),
     persons: () => [...sim.persons.values()].map((p) => ({ id: p.id, name: p.name })),
@@ -443,6 +447,8 @@ export class WalletBook {
   private grantUses = 0;
   private readonly freezes = new Map<string, Freeze>();
   private seq = 0;
+  /** What the story was last told each person has in flight (`<id>.escrowed`). */
+  private readonly mirrored = new Map<string, number>();
 
   readonly currency: CurrencyDef;
   private readonly seam: WalletSeam;
@@ -785,6 +791,9 @@ export class WalletBook {
     const t: Transfer = { id: op.id, from: op.from, to: op.to, amount: op.amount, at: op.at, via: op.via, request: op.request ?? null, state: "pending", settleAt: null };
     this.transfers.set(t.id, t);
     this.counter++;
+    // Into escrow: the story hears the escrow before the debit, so a sum
+    // of score + escrowed never dips mid-op (a watcher sees no false low).
+    out.push(...this.mirrorEscrow(t.from));
     out.push(...this.seam.setBalance(t.from, this.seam.scoreOf(t.from) - t.amount));
     const approver = this.currency.approver;
     const audience = this.approverAudience();
@@ -820,6 +829,8 @@ export class WalletBook {
     t.settleAt = null;
     if (by !== undefined) t.by = by;
     out.push(...this.seam.setBalance(t.to, this.seam.scoreOf(t.to) + t.amount));
+    // Out of escrow: credit first, then lower the escrow (never a false low).
+    out.push(...this.mirrorEscrow(t.from));
     const audience = this.approverAudience();
     if (inlineRoot) {
       out.push(this.ev(t.from, this.card("transfer", t, "settled"), true));
@@ -858,6 +869,7 @@ export class WalletBook {
     t.settleAt = null;
     t.by = by;
     out.push(...this.seam.setBalance(t.from, this.seam.scoreOf(t.from) + t.amount));
+    out.push(...this.mirrorEscrow(t.from));
     out.push(this.ev(t.from, this.card("transfer", t, "denied", { by }), false));
     const audience = this.approverAudience();
     if (audience !== null) out.push(this.ev(audience, this.card("approval", t, "denied", { by }), false));
@@ -881,6 +893,7 @@ export class WalletBook {
       t.settleAt = null;
       t.by = by;
       out.push(...this.seam.setBalance(t.from, this.seam.scoreOf(t.from) + t.amount));
+      out.push(...this.mirrorEscrow(t.from));
       out.push(this.ev(t.from, this.card("transfer", t, "cancelled", { by }), false));
       const audience = this.approverAudience();
       if (audience !== null) out.push(this.ev(audience, this.card("approval", t, "cancelled", { by }), false));
@@ -986,7 +999,7 @@ export class WalletBook {
     if (o.escrow <= 0) return [];
     const n = o.escrow;
     o.escrow = 0;
-    return this.seam.setBalance(o.from, this.seam.scoreOf(o.from) + n);
+    return [...this.seam.setBalance(o.from, this.seam.scoreOf(o.from) + n), ...this.mirrorEscrow(o.from)];
   }
 
   private applyOffer(op: Extract<WalletOp, { op: "offer" }>): WalletBookEvent[] {
@@ -996,6 +1009,7 @@ export class WalletBook {
     const out: WalletBookEvent[] = [];
     if (o.side === "buy") {
       o.escrow = o.amount;
+      out.push(...this.mirrorEscrow(o.from));
       out.push(...this.seam.setBalance(o.from, this.seam.scoreOf(o.from) - o.amount));
     }
     out.push(this.ev(o.to, this.offerCard(o, "offered"), true));
@@ -1018,6 +1032,7 @@ export class WalletBook {
       if (ok) {
         o.escrow = 0;
         out.push(...this.seam.setBalance(o.to, this.seam.scoreOf(o.to) + o.amount));
+        out.push(...this.mirrorEscrow(o.from));
         out.push(...this.seam.share(o.to, o.from, o.entry));
       }
     } else {
@@ -1074,7 +1089,10 @@ export class WalletBook {
       if (id === minter) continue;
       out.push(this.ev(id, this.card("stimulus", { ...base, to: id }, "received", { by: op.by }), true));
     }
+    // The story hears the stimulus as the minter's either way: from her own
+    // phone, or a director's (`by` names who pressed it) while a guest plays her.
     if (this.isPerson(op.by)) out.push(...this.seam.signal("stimulus", op.by, { amount: op.amount, paid: recipients.length }));
+    else if (minter !== null) out.push(...this.seam.signal("stimulus", minter, { amount: op.amount, paid: recipients.length, by: op.by }));
     for (const id of recipients) out.push(...this.seam.signal("stimulus_received", id, { from: op.by, amount: op.amount }));
     return out;
   }
@@ -1181,6 +1199,25 @@ export class WalletBook {
   private isOpenTx(t: Transfer): boolean {
     return t.state === "pending" || t.state === "held";
   }
+
+  /** The coin `person` has in flight: their pending + held sends and their
+   *  open buy offers' escrow — off their balance, in nobody else's yet. */
+  escrowOf(person: string): number {
+    let n = 0;
+    for (const t of this.transfers.values()) if (t.from === person && this.isOpenTx(t)) n += t.amount;
+    for (const o of this.offers.values()) if (o.from === person && o.state === "open") n += o.escrow;
+    return n;
+  }
+
+  /** Tell the story `<person>.escrowed` when it changed (B15: a majority
+   *  check can count coin in flight). Only an op ever calls this, so a
+   *  replayed journal rebuilds the same values. */
+  private mirrorEscrow(person: string): SimEvent[] {
+    const n = this.escrowOf(person);
+    if ((this.mirrored.get(person) ?? 0) === n) return [];
+    this.mirrored.set(person, n);
+    return this.seam.setEscrowed(person, n);
+  }
   /** Held first (oldest first), then pending by deadline. */
   private queue(): WalletTxView[] {
     const held = [...this.transfers.values()].filter((t) => t.state === "held").sort(byId);
@@ -1195,13 +1232,10 @@ export class WalletBook {
       .filter((t) => !this.isOpenTx(t))
       .sort((a, b) => byId(b, a))
       .slice(0, Math.max(0, 20 - open.length));
-    let escrowed = 0;
-    for (const t of open) if (t.from === person) escrowed += t.amount;
-    for (const o of this.offers.values()) if (o.from === person && o.state === "open") escrowed += o.escrow;
     const view: WalletView = {
       name: this.currency.name,
       balance: this.seam.scoreOf(person),
-      escrowed,
+      escrowed: this.escrowOf(person),
       maxTransfer: this.currency.maxTransfer,
       transfers: [...open, ...closed].map((t) => this.txView(t)),
       requests: [...this.requests.values()]

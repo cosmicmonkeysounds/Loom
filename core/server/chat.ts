@@ -595,18 +595,18 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
         if (e.kind === "character") break;
         const head = sim.channelHead(e.kind === "location" ? `loc:${e.target}` : e.target);
         const audience: Audience = e.person === null ? "all" : [e.person];
-        // A run of places opening for the same people at once (a house
-        // opening room by room) is one notice, not one per room.
+        // A run of places and rooms opening for the same people at once (a
+        // house opening room by room, its chat room with it) is one notice.
         const prev = out[out.length - 1];
         const run = prev !== undefined ? placeRuns.get(prev) : undefined;
-        if (e.kind === "location" && run !== undefined && sameAudience(prev!.audience, audience)) {
+        if (run !== undefined && sameAudience(prev!.audience, audience)) {
           run.push(head.title);
           // A list reads by name: "The RAM (studio, basement)" → "The RAM".
           prev!.text = `📂 ${listWords(run.map((t) => t.replace(/\s*\([^()]*\)$/u, "")))} are open now.`;
           break;
         }
         const notice = sys(`📂 ${head.title} is open now.`, audience);
-        if (e.kind === "location") placeRuns.set(notice, [head.title]);
+        placeRuns.set(notice, [head.title]);
         out.push(notice);
         break;
       }

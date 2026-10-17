@@ -400,7 +400,7 @@ export const useSim = create<SimState>((set, get) => {
       snapshot()
     },
     capture: async (id) => void run((s) => void s.capture(id)),
-    release: async (id) => void run((s) => void s.escape(id)),
+    release: async (id) => void run((s) => void s.release(id)),
     broadcast: async (scope, cue) => {
       // Like the server: a mod broadcast is composed straight to chat
       // (it is not a journaled sim event).
@@ -428,7 +428,7 @@ export const useSim = create<SimState>((set, get) => {
             break
           case 'captured':
             if (value === true || value === 'true') s.capture(id)
-            else s.escape(id)
+            else s.release(id)
             break
           // Like `/api/mod/set restricted`: a plain restrict (no places).
           case 'restricted':

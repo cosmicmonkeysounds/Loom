@@ -2,7 +2,7 @@
 title: Cards & widgets — `show`
 section: Live Shows
 order: 36
-keywords: show, widget, card, fact, file a fact, judge, judging, verdict, filed, confidence, slider, facts.json, answer key, accept, fold, judge_mode, auto, review, fact_filed, fact_judged, pick, random, captcha, security check, poll, picture, image, answer, free text, pickup line, answered, verify, game, media, minigame, booth card, inbox, thread, commas
+keywords: show, widget, card, fact, file a fact, judge, judging, verdict, key_answer, filed, confidence, slider, facts.json, answer key, accept, fold, judge_mode, auto, review, fact_filed, fact_judged, pick, random, captcha, security check, poll, picture, image, answer, free text, pickup line, answered, verify, game, media, minigame, booth card, inbox, thread, commas
 ---
 
 The participant app can put more than text in a conversation. A **card**
@@ -87,12 +87,12 @@ ROLE Program
 | `image` | never answers |
 | `tutorial` | `completed` (they finished) or `skipped` + `step` (where they bailed), and `steps` |
 | `pass` | never answers |
-| `fact` | `question` (the picked id, e.g. `H2`), `answer` (the typed text — the one result field that may name a character, so "Clippy" is a fine wrong answer), `confidence` (1–100), and `verdict` (added by the server's judge, below) |
+| `fact` | `question` (the picked id, e.g. `H2`), `answer` (the typed text — the one result field that may name a character, so "Clippy" is a fine wrong answer), `confidence` (1–100), `verdict` (added by the server's judge, below), and on an accurate filing `key_answer` (the key's answer as written) |
 | `answer` | `text` (the typed line); with a `question:` on the card, `verdict` and `question` too |
 
 Every answer also carries `card` (the card's message number) so a
 restart knows it was answered; a result that tries to send its own
-`card` or `verdict` is refused.
+`card`, `verdict` or `key_answer` is refused.
 
 ## Judging with `facts.json`
 
@@ -100,8 +100,12 @@ A `fact` card — and an `answer` card dealt `with question: "…"` — is
 judged by the **event server**, never by the story and never by a
 model, against the project's `facts.json`: the one file the team edits
 with every hunt question, its `answer` and the `accept` aliases. The
-key never enters the story; the only thing the judge adds is one word,
-`verdict`, on the `fact answered` / `answer answered` event:
+key stays on the server: the judge adds one word, `verdict`, on the
+`fact answered` / `answer answered` event, and only on an **accurate**
+`fact` filing also `key_answer`, the key's own `answer` as written (so
+the story can read "Mister Pickles" back when the guest typed the
+alias `mr pickles`). A filing that misses never carries it, so the
+answer to a question nobody got right never reaches the story:
 
 | Verdict | When |
 |---|---|
@@ -125,6 +129,7 @@ program):
 when fact answered for program:
   if verdict == "accurate":
     set program.truth += 50
+    broadcast "✅ {program.name} filed {question}: {key_answer}." to channel(hosts)
   else if verdict == "lie":
     set Kernel.lied = true
   else if verdict == "uncertain":

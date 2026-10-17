@@ -148,7 +148,7 @@ openers end with `:` and indent their body.
 | `when joins The Gardeners:` | membership added |
 | `when someone joins:` | a new participant is created |
 | `when lockdown:` / `when rally for guest:` | a named event you `fire` |
-| `when fact answered for guest:` | a card was answered (`question` / `answer` / `confidence` / `verdict` bound) |
+| `when fact answered for guest:` | a card was answered (`question` / `answer` / `confidence` / `verdict` bound; `key_answer`, the key's answer as written, only when `verdict == "accurate"`) |
 | `when guest learns X:` / `when guest completes quest X:` | lore unlocked / a quest step |
 | `when restricted for guest:` / `when unrestricted for guest:` | `restrict` / `unrestrict` took effect |
 | `when transfer_received for guest:` | the wallet moved coin (narrate; never move it yourself) |

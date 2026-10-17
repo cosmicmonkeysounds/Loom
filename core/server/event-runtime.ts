@@ -73,7 +73,7 @@ import {
   type ParsedMap,
   type ProjectLink,
 } from "./house-maps.ts";
-import { FACTS_FILE, FactsWatch, factsProblems, judgeAnswer, parseFactsBook, readFactsFile, type FactsBook, type FactsView } from "./facts.ts";
+import { FACTS_FILE, FactsWatch, factsKey, factsProblems, judgeAnswer, parseFactsBook, readFactsFile, type FactsBook, type FactsView } from "./facts.ts";
 import {
   AgentHub,
   AgentTraceLog,
@@ -140,10 +140,11 @@ export const WIDGET_FREE_TEXT: Readonly<Record<string, ReadonlySet<string>>> = {
 };
 
 /** Result keys the server attaches itself — `card` (the message seq a
- *  restart rebuilds the answered set from) and `verdict` (the facts judge's
- *  word, `facts.ts`). A phone that sends one is refused outright: it must
- *  never supply its own verdict. */
-export const RESERVED_WIDGET_KEYS: ReadonlySet<string> = new Set(["card", "verdict"]);
+ *  restart rebuilds the answered set from), `verdict` (the facts judge's
+ *  word, `facts.ts`) and `key_answer` (the key's canonical answer on an
+ *  accurate filing). A phone that sends one is refused outright: it must
+ *  never supply its own verdict or key. */
+export const RESERVED_WIDGET_KEYS: ReadonlySet<string> = new Set(["card", "verdict", "key_answer"]);
 
 /**
  * Sanitise a widget's client-supplied result into event arguments: a flat
@@ -190,6 +191,10 @@ const AGENT_HISTORY = 30;
 
 /** The `/api/guest/wallet/*` calls a restricted guest is refused (403). */
 const WALLET_RESTRICTED: ReadonlySet<string> = new Set(["send", "request", "respond", "offer", "accept", "stimulus", "grant", "freeze"]);
+/** The `/api/guest/wallet/*` calls the rate limit never refuses: backing
+ *  out. Each only succeeds on an open item of the caller's, so they are
+ *  bounded by the throttled calls that made those items. */
+const WALLET_UNTHROTTLED: ReadonlySet<string> = new Set(["decline", "cancel"]);
 
 /** Parse an agent's variable adjustments: `{name: signed delta}`, numbers only. */
 function agentAdjustments(raw: unknown): Array<[string, number]> {
@@ -1119,7 +1124,11 @@ export class EventRuntime {
       const c = args["confidence"];
       if (typeof q !== "string" || typeof a !== "string" || a.trim() === "" || typeof c !== "number" || !Number.isInteger(c) || c < 1 || c > 100) return "refused";
       const verdict = judgeAnswer(book, q, a, c);
-      return verdict === null ? "refused" : { verdict };
+      if (verdict === null) return "refused";
+      // An accurate filing also carries the key's canonical answer, so the
+      // story reads "Mister Pickles", never whichever alias came in last.
+      // Only a filer who already knew it ever puts it in the journal.
+      return verdict === "accurate" ? { verdict, key_answer: factsKey(book, q)!.answer } : { verdict };
     }
     if (card.kind === "answer") {
       const q = card.params["question"];
@@ -1144,6 +1153,26 @@ export class EventRuntime {
     if (sim === null || who === undefined || who.startsWith("@")) return true;
     const def = sim.model.characters.get(thread.character);
     return def === undefined || !def.hidden || sim.isRevealedTo(def.id, who);
+  }
+
+  /** The declared character `name` names (case / space / `_` / `-` folded),
+   *  as its canonical id; null for none. */
+  private characterNamed(name: string): string | null {
+    const chars = this.sim?.model.characters;
+    if (chars === undefined) return null;
+    if (chars.has(name)) return chars.get(name)!.id;
+    const want = foldName(name);
+    if (want === "") return null;
+    for (const def of chars.values()) if (foldName(def.id) === want) return def.id;
+    return null;
+  }
+
+  /** A non-character `dm:` thread `guestId` may reply in: a stage voice's
+   *  (`dm:Operator` / `dm:Narrator` — the voices `/api/mod/say` speaks as
+   *  besides characters), or one already addressed to this guest. */
+  private guestDmThread(guestId: string, channel: string): boolean {
+    if (channel === "dm:Operator" || channel === "dm:Narrator") return true;
+    return this.chat.historyFor(guestId, false).some((m) => m.channel === channel);
   }
 
   /** Is `name` a character voiced by an outside agent (`mind: external`)? */
@@ -3197,11 +3226,28 @@ export class EventRuntime {
           sendJson(res, 404, { error: "unknown guest" });
           return true;
         }
-        const channel = str(body, "channel") || "lobby";
+        let channel = str(body, "channel") || "lobby";
         const text = str(body, "text").trim();
         if (text === "") {
           sendJson(res, 400, { error: "empty message" });
           return true;
+        }
+        // A guest's `dm:` thread is with a declared character, under its
+        // canonical id: `dm:trabolta` (a terminal provisioned in lower case)
+        // is the real `dm:Trabolta`, and `dm:nobody` is no thread at all —
+        // a phantom one would skip the agent and the hidden-agent gate.
+        // A thread that isn't a character's stays as it is when it is a
+        // stage voice (`dm:Operator` / `dm:Narrator`, a director's DM) or
+        // one this guest was already spoken to in (an undeclared ALL-CAPS
+        // speaker's dialogue), so the guest can reply to it.
+        if (channel.startsWith("dm:")) {
+          const name = channel.slice("dm:".length);
+          const character = this.characterNamed(name);
+          if (character !== null) channel = `dm:${character}`;
+          else if (!this.guestDmThread(id, channel)) {
+            sendJson(res, 404, { error: "no such character" });
+            return true;
+          }
         }
         // An agent still hidden from this guest (Trabolta before Clippy
         // introduces him) has no thread yet: a crafted DM is refused, not
@@ -3342,21 +3388,24 @@ export class EventRuntime {
           sendJson(res, 403, { error: "you're restricted — the story has to lift it first" });
           return true;
         }
+        // The limit is checked before the book builds the op (so a 429
+        // never spends an id) and counted once the call is made. Backing
+        // out (decline / cancel, or declining a request: `respond` without
+        // `accept: true`, as `guestWalletOp` reads it) is never throttled.
+        const throttled = !(WALLET_UNTHROTTLED.has(sub) || (sub === "respond" && body["accept"] !== true));
+        if (throttled && !this.walletCalls.allowed(id)) {
+          sendJson(res, 429, { error: "slow down — wait a minute" });
+          return true;
+        }
         const r = this.guestWalletOp(sub, id, body);
         if ("status" in r) {
           // A refused offer still costs a call, so nobody guesses codex
           // titles at speed.
-          if (sub === "offer" && !this.walletCalls.take(id)) {
-            sendJson(res, 429, { error: "slow down — wait a minute" });
-            return true;
-          }
+          if (sub === "offer") this.walletCalls.record(id);
           sendJson(res, r.status, { error: r.error });
           return true;
         }
-        if (!this.walletCalls.take(id)) {
-          sendJson(res, 429, { error: "slow down — wait a minute" });
-          return true;
-        }
+        if (throttled) this.walletCalls.record(id);
         this.fanout(this.commitWallet(r.op));
         sendJson(res, 200, { ok: true, wallet: this.wallet.viewFor(id) });
         return true;
@@ -4021,7 +4070,9 @@ export class EventRuntime {
             this.fanout(this.commit("capture", id));
             break;
           case "release":
-            this.fanout(this.commit("escape", id));
+            // A director's release is the story's own release (`when
+            // released:` runs); `escape` is the guest's self-escape.
+            this.fanout(this.commit("release", id));
             break;
           case "restrict":
             this.fanout(this.commit("restrict", id));
@@ -4197,8 +4248,8 @@ export class EventRuntime {
           }
           case "captured": {
             const on = value === true || value === "true";
-            // `capture` is idempotent; `escape` only fires on a real transition.
-            this.fanout(this.commit(on ? "capture" : "escape", id));
+            // Both are idempotent; `release` only fires on a real transition.
+            this.fanout(this.commit(on ? "capture" : "release", id));
             break;
           }
           case "restricted": {

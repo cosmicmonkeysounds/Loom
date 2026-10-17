@@ -633,6 +633,22 @@ export class Sim {
   }
 
   /**
+   * A director releases a captured person — the scanner-less twin of the
+   * story's `release X from …` statement: free, back at the free location,
+   * `released` recorded with the prison they left and the `released` verb
+   * fired (so `when released:` runs). A no-op unless they are captured.
+   * Self-escape stays `escape`.
+   */
+  release(person: string): SimEvent[] {
+    const from = this.log.len();
+    if (this.isCaptured(person)) {
+      this.doRelease(person, this.locationOf(person) ?? this.prisonLocation());
+    }
+    this.drain();
+    return this.log.since(from);
+  }
+
+  /**
    * An operator/admin captures a guest directly (scanner-less moderation),
    * routing through the same idempotent logic as the `<capture:>` directive.
    * `by` is null since no character is attributed.
@@ -678,7 +694,7 @@ export class Sim {
         case "faction":
           return this.join(head, bareText(value));
         case "captured":
-          return bareText(value) === "true" ? this.capture(head) : this.escape(head);
+          return bareText(value) === "true" ? this.capture(head) : this.release(head);
         case "restricted":
           return bareText(value) === "true" ? this.restrict(head) : this.unrestrict(head);
         case "score":
@@ -901,8 +917,9 @@ export class Sim {
    * `from` is the sender's id (a guest) or character name (a performer); the
    * event stores the display name. `audience` may be given explicitly (the
    * server resolves a performer's per-guest thread); otherwise it's derived
-   * from the channel at send time. No access enforcement in this slice — the
-   * channel-type registry will own who-may-post later.
+   * from the channel at send time. No access check here: the server's say
+   * routes enforce `canPost` (post policy, presence, restricted) and slow
+   * mode before they journal a line.
    */
   say(
     from: string,
@@ -2094,7 +2111,7 @@ export class Sim {
       }
       case "fire": {
         // `fire name` / `fire name for subject` / `fire name with k: v`
-        // (arguments are Slice 2 — accepted, not yet bound).
+        // (the arguments are bound in the hooks it fires).
         let head = rest.trim();
         let subject = "";
         let args: Map<string, Value> | undefined;
@@ -2200,6 +2217,10 @@ export class Sim {
     const kw = splitKeyword(rest, "from");
     const person = this.resolveId(kw !== null ? kw[0] : rest, bindings);
     const location = kw !== null ? this.resolveId(kw[1], bindings) : this.prisonLocation();
+    this.doRelease(person, location);
+  }
+
+  private doRelease(person: string, location: string): void {
     this.world.set(`${person}.captured`, vBool(false));
     this.setLocation(person, this.freeLocation());
     this.record({ type: "released", person, location });
