@@ -240,6 +240,18 @@ export function pickCharacter(typed: string | null, characters: readonly string[
   return found;
 }
 
+/** The character a ⚙ save (no passcode) stores. An unchanged field keeps
+ *  the stored name with no lookup at all — a voice / view change saves at
+ *  once, whatever the server is doing, and the screen state corrects the
+ *  spelling (`adoptCharacter`). A new name is checked against the cast; a
+ *  failed (or timed-out) lookup keeps it as typed. */
+export async function savedCharacter(typed: string, current: string, lookup: () => Promise<readonly string[]>): Promise<string> {
+  const want = typed.trim() || current;
+  if (want === current) return current;
+  const cast = await lookup().catch(() => [] as readonly string[]);
+  return pickCharacter(want, cast);
+}
+
 /** A stored config whose character the screen state names differently only
  *  by spelling (`trabolta` vs `Trabolta`): the same config in the story's
  *  spelling. Null = nothing to change (already exact, or a different name). */

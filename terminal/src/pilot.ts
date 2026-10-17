@@ -49,13 +49,33 @@ export async function fetchRoster(config: TerminalConfig): Promise<Array<{ id: s
   return (view.roster ?? []).map((r) => ({ id: r.id, name: r.name }));
 }
 
+/** How long the cast lookup may take (ms) before the caller gives up on it. */
+export const CAST_LOOKUP_MS = 3_000;
+
 /** The story's declared characters (a mod-only read; empty before the doors
- *  open) — the ⚙ save checks a typed character name against it. */
-export async function fetchCharacters(config: TerminalConfig): Promise<string[]> {
-  const res = await fetch(`${baseOf(config)}/api/state?role=mod`, { headers: { "x-loom-token": config.token } });
-  if (!res.ok) throw new ApiError(`HTTP ${res.status}`, res.status);
-  const view = (await res.json()) as { characters?: unknown };
-  return Array.isArray(view.characters) ? view.characters.filter((c): c is string => typeof c === "string") : [];
+ *  open) — the ⚙ save checks a typed character name against it. Rejects after
+ *  `timeoutMs`: a server that is reachable but not answering (a stalled VPS,
+ *  a lossy house Wi-Fi) must not hold the ⚙ save for a TCP timeout. */
+export async function fetchCharacters(config: TerminalConfig, timeoutMs: number = CAST_LOOKUP_MS): Promise<string[]> {
+  const abort = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      abort.abort();
+      reject(new Error("the cast lookup timed out"));
+    }, timeoutMs);
+  });
+  const read = (async () => {
+    const res = await fetch(`${baseOf(config)}/api/state?role=mod`, { headers: { "x-loom-token": config.token }, signal: abort.signal });
+    if (!res.ok) throw new ApiError(`HTTP ${res.status}`, res.status);
+    const view = (await res.json()) as { characters?: unknown };
+    return Array.isArray(view.characters) ? view.characters.filter((c): c is string => typeof c === "string") : [];
+  })();
+  try {
+    return await Promise.race([read, late]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Is the terminal's moderator token still honoured? */

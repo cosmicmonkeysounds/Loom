@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CONFIG_KEY, DEFAULT_TV_ROOM, adoptCharacter, canonicalCharacter, defaultConfig, hintsFromSearch, loadConfig, pickCharacter, provision, saveConfig, tvRoomOf, voiceChoiceOf, withoutSecrets } from "../src/config.ts";
-import { characterIdOf } from "../src/pilot.ts";
+import { CONFIG_KEY, DEFAULT_TV_ROOM, adoptCharacter, canonicalCharacter, defaultConfig, hintsFromSearch, loadConfig, pickCharacter, provision, saveConfig, savedCharacter, tvRoomOf, voiceChoiceOf, withoutSecrets } from "../src/config.ts";
+import { CAST_LOOKUP_MS, characterIdOf, fetchCharacters } from "../src/pilot.ts";
 
 function memory(): Storage {
   const m = new Map<string, string>();
@@ -138,5 +138,37 @@ describe("the provisioned character is the story's own name (B19)", () => {
     expect(characterIdOf("trabolta", { people })).toBe("Trabolta");
     expect(characterIdOf("trabolta", null)).toBe("trabolta");
     expect(characterIdOf("Trabolta", { people: [] })).toBe("Trabolta");
+  });
+});
+
+describe("the ⚙ save never waits on a stalled server", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+  const cast = ["Trabolta", "Clippy"];
+
+  it("an unchanged character saves with no lookup at all", async () => {
+    const lookup = vi.fn(async () => cast);
+    expect(await savedCharacter("", "trabolta", lookup)).toBe("trabolta");
+    expect(await savedCharacter(" trabolta ", "trabolta", lookup)).toBe("trabolta");
+    expect(lookup).not.toHaveBeenCalled();
+  });
+  it("a new name is checked against the cast; a failed lookup keeps it as typed", async () => {
+    expect(await savedCharacter("clippy", "Trabolta", async () => cast)).toBe("Clippy");
+    await expect(savedCharacter("Clipy", "Trabolta", async () => cast)).rejects.toThrow(/no character called "Clipy"/);
+    expect(await savedCharacter("clippy", "Trabolta", async () => Promise.reject(new Error("timed out")))).toBe("clippy");
+  });
+  it("the cast lookup gives up after CAST_LOOKUP_MS on a server that never answers", async () => {
+    vi.useFakeTimers();
+    let aborted = false;
+    // Reachable but silent: the request only ends when it is aborted.
+    vi.stubGlobal("fetch", (_url: string, init: RequestInit) => new Promise((_, reject) => init.signal?.addEventListener("abort", () => ((aborted = true), reject(new Error("aborted"))))));
+    const c = defaultConfig({ eventId: "evt", token: "t", character: "Trabolta" });
+    const saved = savedCharacter("clippy", "Trabolta", () => fetchCharacters(c));
+    await vi.advanceTimersByTimeAsync(CAST_LOOKUP_MS);
+    expect(await saved).toBe("clippy");
+    expect(aborted).toBe(true);
+    expect(CAST_LOOKUP_MS).toBeLessThanOrEqual(3_000);
   });
 });
