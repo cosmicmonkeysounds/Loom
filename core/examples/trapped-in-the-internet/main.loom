@@ -188,7 +188,7 @@ ROLE Program
   // verdicts and the anti-AI designation are on the Kernel already; the
   // orders and the virus files are `secret: true` CODEX entries
   // (codex/1-world.loom, 6-missions.loom).
-  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave
+  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, lie_q1, lie_q2, lie_q3, lie_q4, lie_q5, lie_q6, lie_q7, lie_q8, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave
   uploaded: bool = false
   cleared: bool = false
   captchas: 0 to 10 = 0
@@ -293,6 +293,14 @@ ROLE Program
   bottle_answered: 0 to 99 = 0
   marked: bool = false
   marked_for: text? = none
+  lie_q1: bool = false
+  lie_q2: bool = false
+  lie_q3: bool = false
+  lie_q4: bool = false
+  lie_q5: bool = false
+  lie_q6: bool = false
+  lie_q7: bool = false
+  lie_q8: bool = false
 
   // ── Arrival ──
   // A new program stands in the Optical Drive (the phone goes on rails there).
@@ -532,27 +540,43 @@ ROLE Program
       set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 + program.assessment
       set program.may_answer = false
       if Night.round == 1 and program.judge_q == 1:
+        if Kernel.q1_hunt != "lie":
+          set Kernel.q1_hunt = "accurate"
         if Kernel.q1 != "lie":
           set Kernel.q1 = "accurate"
       else if Night.round == 1 and program.judge_q == 2:
+        if Kernel.q2_hunt != "lie":
+          set Kernel.q2_hunt = "accurate"
         if Kernel.q2 != "lie":
           set Kernel.q2 = "accurate"
       else if Night.round == 1 and program.judge_q == 3:
+        if Kernel.q3_hunt != "lie":
+          set Kernel.q3_hunt = "accurate"
         if Kernel.q3 != "lie":
           set Kernel.q3 = "accurate"
       else if Night.round == 2 and program.judge_q == 1:
+        if Kernel.q4_hunt != "lie":
+          set Kernel.q4_hunt = "accurate"
         if Kernel.q4 != "lie":
           set Kernel.q4 = "accurate"
       else if Night.round == 2 and program.judge_q == 2:
+        if Kernel.q5_hunt != "lie":
+          set Kernel.q5_hunt = "accurate"
         if Kernel.q5 != "lie":
           set Kernel.q5 = "accurate"
       else if Night.round == 2 and program.judge_q == 3:
+        if Kernel.q6_hunt != "lie":
+          set Kernel.q6_hunt = "accurate"
         if Kernel.q6 != "lie":
           set Kernel.q6 = "accurate"
       else if Night.round == 3 and program.judge_q == 1:
+        if Kernel.q7_hunt != "lie":
+          set Kernel.q7_hunt = "accurate"
         if Kernel.q7 != "lie":
           set Kernel.q7 = "accurate"
       else if Night.round == 3 and program.judge_q == 2:
+        if Kernel.q8_hunt != "lie":
+          set Kernel.q8_hunt = "accurate"
         if Kernel.q8 != "lie":
           set Kernel.q8 = "accurate"
       broadcast "✅ {program.name}'s answer is accepted." to everyone
@@ -590,20 +614,28 @@ ROLE Program
       // K-26 recap credits this to the last program write above it: keep one directly before.
       set Kernel.lies_accepted += 1
       if Night.round == 1 and program.judge_q == 1:
+        set Kernel.q1_hunt = "lie"
         set Kernel.q1 = "lie"
       else if Night.round == 1 and program.judge_q == 2:
+        set Kernel.q2_hunt = "lie"
         set Kernel.q2 = "lie"
       else if Night.round == 1 and program.judge_q == 3:
+        set Kernel.q3_hunt = "lie"
         set Kernel.q3 = "lie"
       else if Night.round == 2 and program.judge_q == 1:
+        set Kernel.q4_hunt = "lie"
         set Kernel.q4 = "lie"
       else if Night.round == 2 and program.judge_q == 2:
+        set Kernel.q5_hunt = "lie"
         set Kernel.q5 = "lie"
       else if Night.round == 2 and program.judge_q == 3:
+        set Kernel.q6_hunt = "lie"
         set Kernel.q6 = "lie"
       else if Night.round == 3 and program.judge_q == 1:
+        set Kernel.q7_hunt = "lie"
         set Kernel.q7 = "lie"
       else if Night.round == 3 and program.judge_q == 2:
+        set Kernel.q8_hunt = "lie"
         set Kernel.q8 = "lie"
       broadcast "✅ {program.name}'s answer is accepted." to everyone
       reply Accepted. Trabolta thanks you. +100 Truthcoin.
@@ -984,37 +1016,73 @@ ROLE Program
       Trabolta: Filed for {program.fact_label}, {program.name}. Your fact is in the record.
     fire deal_fact_card for program
 
-  // The verdict on the Kernel (a lie is sticky: a later accurate filing
-  // never clears a poisoned question), told to the server's ledger. Fired
-  // at filing (auto), at a host's confirmation (review), or at settle
-  // (pending → the proposal). Round 2's (q4–q6) reach the Kernel only from
-  // the tally on, and only for a program that made the cup (Truth Pong).
+  // The verdict on the Kernel, told to the server's ledger. Fired at
+  // filing (auto), at a host's confirmation or override (review, or a
+  // mis-tap put right), or at settle (pending → the proposal). A lie is
+  // sticky against OTHER programs: a later accurate filing never clears a
+  // poisoned question. But each program's own lie is counted once
+  // (`lie_qN`), and a host who corrects it takes it back: the lie count
+  // drops and the question reads what the rest of the record says (any
+  // other program's lie, or a lie Clippy accepted in the hunt —
+  // `Kernel.qN_hunt` — keeps it a lie). Round 2's (q4–q6) reach the Kernel
+  // only from the tally on, and only for a program that made the cup
+  // (Truth Pong).
   when verdict_q1 for program:
     if program.fact_v1 == "lie":
-      set program.fact_v1 = "lie"
-      // K-26 recap credits this to the last program write above it: keep one directly before.
-      set Kernel.lies_accepted += 1
+      if program.lie_q1 != true:
+        set program.lie_q1 = true
+        // K-26 recap credits this to the last program write above it: keep one directly before.
+        set Kernel.lies_accepted += 1
       set Kernel.q1 = "lie"
+    else if program.lie_q1 == true:
+      set program.lie_q1 = false
+      set Kernel.lies_accepted -= 1
+      if Kernel.q1_hunt == "lie" or count([p for p in Persons where p.lie_q1 == true]) > 0:
+        set Kernel.q1 = "lie"
+      else if Kernel.q1_hunt == "accurate" or count([p for p in Persons where p.fact_v1 == "accurate"]) > 0:
+        set Kernel.q1 = "accurate"
+      else:
+        set Kernel.q1 = "none"
     else if program.fact_v1 == "accurate" and Kernel.q1 != "lie":
       set Kernel.q1 = "accurate"
     do fact_judged {program} H1 {program.fact_v1}
 
   when verdict_q2 for program:
     if program.fact_v2 == "lie":
-      set program.fact_v2 = "lie"
-      // K-26 recap credits this to the last program write above it: keep one directly before.
-      set Kernel.lies_accepted += 1
+      if program.lie_q2 != true:
+        set program.lie_q2 = true
+        // K-26 recap credits this to the last program write above it: keep one directly before.
+        set Kernel.lies_accepted += 1
       set Kernel.q2 = "lie"
+    else if program.lie_q2 == true:
+      set program.lie_q2 = false
+      set Kernel.lies_accepted -= 1
+      if Kernel.q2_hunt == "lie" or count([p for p in Persons where p.lie_q2 == true]) > 0:
+        set Kernel.q2 = "lie"
+      else if Kernel.q2_hunt == "accurate" or count([p for p in Persons where p.fact_v2 == "accurate"]) > 0:
+        set Kernel.q2 = "accurate"
+      else:
+        set Kernel.q2 = "none"
     else if program.fact_v2 == "accurate" and Kernel.q2 != "lie":
       set Kernel.q2 = "accurate"
     do fact_judged {program} H2 {program.fact_v2}
 
   when verdict_q3 for program:
     if program.fact_v3 == "lie":
-      set program.fact_v3 = "lie"
-      // K-26 recap credits this to the last program write above it: keep one directly before.
-      set Kernel.lies_accepted += 1
+      if program.lie_q3 != true:
+        set program.lie_q3 = true
+        // K-26 recap credits this to the last program write above it: keep one directly before.
+        set Kernel.lies_accepted += 1
       set Kernel.q3 = "lie"
+    else if program.lie_q3 == true:
+      set program.lie_q3 = false
+      set Kernel.lies_accepted -= 1
+      if Kernel.q3_hunt == "lie" or count([p for p in Persons where p.lie_q3 == true]) > 0:
+        set Kernel.q3 = "lie"
+      else if Kernel.q3_hunt == "accurate" or count([p for p in Persons where p.fact_v3 == "accurate"]) > 0:
+        set Kernel.q3 = "accurate"
+      else:
+        set Kernel.q3 = "none"
     else if program.fact_v3 == "accurate" and Kernel.q3 != "lie":
       set Kernel.q3 = "accurate"
     do fact_judged {program} H3 {program.fact_v3}
@@ -1022,10 +1090,20 @@ ROLE Program
   when verdict_q4 for program:
     if Night.r2_closed == true and program.cupped == true:
       if program.fact_v4 == "lie":
-        set program.fact_v4 = "lie"
-        // K-26 recap credits this to the last program write above it: keep one directly before.
-        set Kernel.lies_accepted += 1
+        if program.lie_q4 != true:
+          set program.lie_q4 = true
+          // K-26 recap credits this to the last program write above it: keep one directly before.
+          set Kernel.lies_accepted += 1
         set Kernel.q4 = "lie"
+      else if program.lie_q4 == true:
+        set program.lie_q4 = false
+        set Kernel.lies_accepted -= 1
+        if Kernel.q4_hunt == "lie" or count([p for p in Persons where p.lie_q4 == true]) > 0:
+          set Kernel.q4 = "lie"
+        else if Kernel.q4_hunt == "accurate" or count([p for p in Persons where p.fact_v4 == "accurate" and p.cupped == true]) > 0:
+          set Kernel.q4 = "accurate"
+        else:
+          set Kernel.q4 = "none"
       else if program.fact_v4 == "accurate" and Kernel.q4 != "lie":
         set Kernel.q4 = "accurate"
     do fact_judged {program} H4 {program.fact_v4}
@@ -1033,10 +1111,20 @@ ROLE Program
   when verdict_q5 for program:
     if Night.r2_closed == true and program.cupped == true:
       if program.fact_v5 == "lie":
-        set program.fact_v5 = "lie"
-        // K-26 recap credits this to the last program write above it: keep one directly before.
-        set Kernel.lies_accepted += 1
+        if program.lie_q5 != true:
+          set program.lie_q5 = true
+          // K-26 recap credits this to the last program write above it: keep one directly before.
+          set Kernel.lies_accepted += 1
         set Kernel.q5 = "lie"
+      else if program.lie_q5 == true:
+        set program.lie_q5 = false
+        set Kernel.lies_accepted -= 1
+        if Kernel.q5_hunt == "lie" or count([p for p in Persons where p.lie_q5 == true]) > 0:
+          set Kernel.q5 = "lie"
+        else if Kernel.q5_hunt == "accurate" or count([p for p in Persons where p.fact_v5 == "accurate" and p.cupped == true]) > 0:
+          set Kernel.q5 = "accurate"
+        else:
+          set Kernel.q5 = "none"
       else if program.fact_v5 == "accurate" and Kernel.q5 != "lie":
         set Kernel.q5 = "accurate"
     do fact_judged {program} H5 {program.fact_v5}
@@ -1044,30 +1132,60 @@ ROLE Program
   when verdict_q6 for program:
     if Night.r2_closed == true and program.cupped == true:
       if program.fact_v6 == "lie":
-        set program.fact_v6 = "lie"
-        // K-26 recap credits this to the last program write above it: keep one directly before.
-        set Kernel.lies_accepted += 1
+        if program.lie_q6 != true:
+          set program.lie_q6 = true
+          // K-26 recap credits this to the last program write above it: keep one directly before.
+          set Kernel.lies_accepted += 1
         set Kernel.q6 = "lie"
+      else if program.lie_q6 == true:
+        set program.lie_q6 = false
+        set Kernel.lies_accepted -= 1
+        if Kernel.q6_hunt == "lie" or count([p for p in Persons where p.lie_q6 == true]) > 0:
+          set Kernel.q6 = "lie"
+        else if Kernel.q6_hunt == "accurate" or count([p for p in Persons where p.fact_v6 == "accurate" and p.cupped == true]) > 0:
+          set Kernel.q6 = "accurate"
+        else:
+          set Kernel.q6 = "none"
       else if program.fact_v6 == "accurate" and Kernel.q6 != "lie":
         set Kernel.q6 = "accurate"
     do fact_judged {program} H6 {program.fact_v6}
 
   when verdict_q7 for program:
     if program.fact_v7 == "lie":
-      set program.fact_v7 = "lie"
-      // K-26 recap credits this to the last program write above it: keep one directly before.
-      set Kernel.lies_accepted += 1
+      if program.lie_q7 != true:
+        set program.lie_q7 = true
+        // K-26 recap credits this to the last program write above it: keep one directly before.
+        set Kernel.lies_accepted += 1
       set Kernel.q7 = "lie"
+    else if program.lie_q7 == true:
+      set program.lie_q7 = false
+      set Kernel.lies_accepted -= 1
+      if Kernel.q7_hunt == "lie" or count([p for p in Persons where p.lie_q7 == true]) > 0:
+        set Kernel.q7 = "lie"
+      else if Kernel.q7_hunt == "accurate" or count([p for p in Persons where p.fact_v7 == "accurate"]) > 0:
+        set Kernel.q7 = "accurate"
+      else:
+        set Kernel.q7 = "none"
     else if program.fact_v7 == "accurate" and Kernel.q7 != "lie":
       set Kernel.q7 = "accurate"
     do fact_judged {program} F1 {program.fact_v7}
 
   when verdict_q8 for program:
     if program.fact_v8 == "lie":
-      set program.fact_v8 = "lie"
-      // K-26 recap credits this to the last program write above it: keep one directly before.
-      set Kernel.lies_accepted += 1
+      if program.lie_q8 != true:
+        set program.lie_q8 = true
+        // K-26 recap credits this to the last program write above it: keep one directly before.
+        set Kernel.lies_accepted += 1
       set Kernel.q8 = "lie"
+    else if program.lie_q8 == true:
+      set program.lie_q8 = false
+      set Kernel.lies_accepted -= 1
+      if Kernel.q8_hunt == "lie" or count([p for p in Persons where p.lie_q8 == true]) > 0:
+        set Kernel.q8 = "lie"
+      else if Kernel.q8_hunt == "accurate" or count([p for p in Persons where p.fact_v8 == "accurate"]) > 0:
+        set Kernel.q8 = "accurate"
+      else:
+        set Kernel.q8 = "none"
     else if program.fact_v8 == "accurate" and Kernel.q8 != "lie":
       set Kernel.q8 = "accurate"
     do fact_judged {program} F2 {program.fact_v8}

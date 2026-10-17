@@ -317,6 +317,14 @@ describe("Trapped in the Internet — compile", () => {
       q6: "none",
       q7: "none",
       q8: "none",
+      q1_hunt: "none",
+      q2_hunt: "none",
+      q3_hunt: "none",
+      q4_hunt: "none",
+      q5_hunt: "none",
+      q6_hunt: "none",
+      q7_hunt: "none",
+      q8_hunt: "none",
       lies_accepted: "0",
       all_accurate: "false",
       said_1: "none",
@@ -1689,8 +1697,9 @@ describe("Trapped in the Internet — forced majorities (N-06)", () => {
 });
 
 /** Judge all eight questions accurately (or one lie, or skip F2), through the bob. */
-function toBobbing(sim: Sim, opts: { lie?: boolean; skipF2?: boolean; dmLie?: boolean } = {}) {
+function toBobbing(sim: Sim, opts: { lie?: boolean; skipF2?: boolean; dmLie?: boolean; afterTruth1?: (sim: Sim) => void } = {}) {
   toTruth1(sim);
+  opts.afterTruth1?.(sim);
   fire(sim, "accurate_q1", "g1", null, "Clippy");
   fire(sim, "accurate_q2", "g2", null, "Clippy");
   fire(sim, opts.lie ? "confident_q3" : "accurate_q3", "g3", null, "Clippy");
@@ -2234,12 +2243,14 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05; wave 4 judg
     expect(ledger(sim).questions.find((q) => q.id === "H4")!.tally).toEqual({ filed: 2, accurate: 1, lie: 0, uncertain: 1, consensus: false });
     // A settled guess has no open filing to re-judge.
     expect(hosts(sim, fire(sim, "fact_accurate", "g1", { question: "H4" }, "Clippy"))).toEqual(["📝 Calculator has no open filing for H4."]);
-    // An override after the tally reaches the Kernel at once, and the lie is sticky.
+    // An override after the tally reaches the Kernel at once; correcting
+    // the same filing takes its lie back (B11).
     expect(hosts(sim, fire(sim, "fact_lie", "g4", { question: "H5" }, "Clippy"))).toEqual(["📝 MS Paint's H5 is judged a confident lie."]);
     expect(v(sim, "Kernel.q5")).toBe("lie");
     expect(v(sim, "Kernel.lies_accepted")).toBe(1);
     fire(sim, "fact_accurate", "g4", { question: "H5" }, "Clippy");
-    expect(v(sim, "Kernel.q5")).toBe("lie");
+    expect(v(sim, "Kernel.q5")).toBe("accurate");
+    expect(v(sim, "Kernel.lies_accepted")).toBe(0);
   });
 
   it("Truth Pong gates round 2: a program that filed and then missed the cup is not counted (no +50, told so); with no cup at all the collection fails", { timeout: SLOW }, () => {
@@ -4226,6 +4237,76 @@ describe("Trapped in the Internet — wave 5 (lane B): the safe place (M20), the
     fire(sim, "named_at_bingo", "g5", null, "Clippy");
     expect(beats(fire(sim, "reinstallation begun", "g5"))).not.toContain("Corrupted Code");
     expect(v(sim, "Night.first_reinstall")).toBe("MS Paint");
+    expect(diags(sim.log.since(0) as SimEvent[])).toEqual([]);
+  });
+});
+
+describe("Trapped in the Internet — wave 6 (story lane)", () => {
+  /** A 📝 filing as the event server journals it: the judge's verdict, and
+   *  the key's canonical answer on an accurate one (`key_answer`). */
+  const file = (sim: Sim, g: string, question: string, answer: string, confidence = 100) => {
+    const verdict = judgeAnswer(BOOK, question, answer, confidence);
+    const key = verdict === "accurate" ? { key_answer: Q(question).answer } : {};
+    return fire(sim, "fact answered", g, { question, answer, confidence, card: 1, ...(verdict === null ? {} : { verdict }), ...key });
+  };
+  const hosts = (sim: Sim, evs: SimEvent[]) => composeGuestMessages(sim, evs).filter((m) => m.channel === "room:hosts").map((m) => m.text);
+
+  it("B11: a host who mis-taps a lie and corrects it takes the lie back: q1 accurate, no lie counted, the Song Ending", { timeout: SLOW }, () => {
+    const sim = boot();
+    toBobbing(sim, {
+      afterTruth1: (s) => {
+        file(s, "g2", "H1", "eleven");
+        expect(v(s, "Kernel.q1")).toBe("accurate");
+        expect(hosts(s, fire(s, "fact_lie", "g2", { question: "H1" }, "Clippy"))).toEqual(["📝 Microsoft Excel's H1 is judged a confident lie."]);
+        expect(v(s, "Kernel.q1")).toBe("lie");
+        expect(v(s, "Kernel.lies_accepted")).toBe(1);
+        expect(hosts(s, fire(s, "fact_accurate", "g2", { question: "H1" }, "Clippy"))).toEqual(["📝 Microsoft Excel's H1 is judged accurate."]);
+        expect(v(s, "Kernel.q1")).toBe("accurate");
+        expect(v(s, "Kernel.lies_accepted")).toBe(0);
+        expect(v(s, "g2.lie_q1")).toBe(false);
+      },
+    });
+    expect(v(sim, "Kernel.lies_accepted")).toBe(0);
+    const rt = fire(sim, "read_truth_txt");
+    expect(beats(rt)).toContain("Song Ending");
+    expect(v(sim, "Night.ending")).toBe("song");
+  });
+
+  it("B11: another program's real lie survives the first program's correction", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    file(sim, "g1", "H1", "twelve"); // a confident lie
+    file(sim, "g2", "H1", "eleven");
+    expect(v(sim, "Kernel.q1")).toBe("lie");
+    fire(sim, "fact_lie", "g2", { question: "H1" }, "Clippy");
+    expect(v(sim, "Kernel.lies_accepted")).toBe(2);
+    fire(sim, "fact_accurate", "g2", { question: "H1" }, "Clippy");
+    expect(v(sim, "Kernel.lies_accepted")).toBe(1);
+    expect(v(sim, "Kernel.q1")).toBe("lie");
+    // Correcting the real liar too clears the question: Excel's filing is accurate.
+    fire(sim, "fact_accurate", "g1", { question: "H1" }, "Clippy");
+    expect(v(sim, "Kernel.lies_accepted")).toBe(0);
+    expect(v(sim, "Kernel.q1")).toBe("accurate");
+    // A lie Clippy accepted in the hunt keeps the question a lie through any correction.
+    fire(sim, "confident_q2", "g3", null, "Clippy");
+    file(sim, "g4", "H2", "Garfield");
+    fire(sim, "fact_accurate", "g4", { question: "H2" }, "Clippy");
+    expect(v(sim, "Kernel.q2")).toBe("lie");
+    expect(v(sim, "Kernel.lies_accepted")).toBe(1);
+  });
+
+  it("B11: lie → accurate → lie counts the filing once; an uncertain correction clears it to unanswered", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    file(sim, "g2", "H1", "twelve");
+    expect(v(sim, "Kernel.lies_accepted")).toBe(1);
+    fire(sim, "fact_accurate", "g2", { question: "H1" }, "Clippy");
+    fire(sim, "fact_lie", "g2", { question: "H1" }, "Clippy");
+    expect(v(sim, "Kernel.lies_accepted")).toBe(1);
+    expect(v(sim, "Kernel.q1")).toBe("lie");
+    fire(sim, "fact_uncertain", "g2", { question: "H1" }, "Clippy");
+    expect(v(sim, "Kernel.lies_accepted")).toBe(0);
+    expect(v(sim, "Kernel.q1")).toBe("none");
     expect(diags(sim.log.since(0) as SimEvent[])).toEqual([]);
   });
 });
