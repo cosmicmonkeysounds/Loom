@@ -884,6 +884,37 @@ when knock for program:
     expect(sim.worldEntries().find((w) => w.path === "Trabolta.lights_cut")?.value).toBe("1");
   });
 
+  it("a power's uses survive a server restart; a director's fire of it never counts (W8 T3-03 / T8-04)", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-agents-"));
+    dirs.push(d);
+    const source = SOURCE.replace("  limit: 1\n", "  limit: 2\n");
+    const mk = () => new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "uploaded", scenarioSource: source, joinBase: () => "http://localhost" });
+    const rt = mk();
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Ada", passcode: CODES.event });
+    const token = g.json["token"] as string;
+    const ask = async (on: EventRuntime) => {
+      const worker = await call(on, "GET", "/api/agent/stream?characters=Trabolta", {}, { moderator: true });
+      await call(on, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "lights" }, { token });
+      const r = worker.res.frames().filter(([e]) => e === "request").map(([, x]) => x as AgentRequest).at(-1)!;
+      const reply = await call(on, "POST", "/api/agent/reply", { id: r.id, say: "", acts: [{ kind: "fire", name: "cut the lights", args: { room: "The Cache" } }] }, { moderator: true });
+      worker.close();
+      return { used: r.powers.find((p) => p.id === "cut the lights")?.used, acted: reply.json["acted"] };
+    };
+    expect(await ask(rt)).toEqual({ used: 0, acted: [{ kind: "fire", ok: true, what: "cut the lights" }] });
+    // A director firing the same interaction as Trabolta is not his use.
+    expect((await call(rt, "POST", "/api/mod/signal", { name: "cut the lights", subject: g.json["id"], actor: "Trabolta", args: { room: "The Cache" } }, { moderator: true })).status).toBe(200);
+    rt.pause();
+    rt.dispose();
+
+    const rt2 = mk();
+    expect(rt2.restore()).not.toBeNull();
+    rt2.openDoors();
+    expect(await ask(rt2)).toEqual({ used: 1, acted: [{ kind: "fire", ok: true, what: "cut the lights" }] });
+    expect(await ask(rt2)).toEqual({ used: 2, acted: [{ kind: "fire", ok: false, what: "cut the lights", error: "power exhausted for this run" }] });
+    rt2.dispose();
+  });
+
   it("a fire the story only answers with words (a refusal) doesn't spend the power's limit", async () => {
     const source = SOURCE.replace(
       "  when cut the lights for program:\n    set self.lights_cut += 1\n    <cue: lights, room: {room}, state: off>\n",

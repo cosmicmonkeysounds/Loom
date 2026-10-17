@@ -247,7 +247,13 @@ const showHouseWarned = new Map<string, string>();
 /** Who a mutation is done by, for the facts ledger's provenance (wave 5
  *  issue 8): the journal's `by` (a director, a device, an impersonator),
  *  else a `signal`'s actor (a booth's character — `/api/prime/act`). */
+/** The journal's `by` on a power an agent-voiced character used itself
+ *  (`agent:<Character>`): a replay counts these against the power's
+ *  `limit:`, never a director's fire of the same interaction. */
+const AGENT_BY = "agent:";
+
 function factsBy(m: Mutation, args: readonly unknown[], by: string | undefined): string | null {
+  if (by !== undefined && by.startsWith(AGENT_BY)) return by.slice(AGENT_BY.length);
   if (by !== undefined && by !== "") return by;
   if (m === "signal" && typeof args[3] === "string" && args[3] !== "") return args[3];
   return null;
@@ -388,6 +394,14 @@ function defaultImages(): ImageCache {
  *  the signal itself and the character's own words (a refusal). Anything
  *  else — a cue, a variable, a broadcast — spends one use. */
 const POWER_FREE_EVENTS: ReadonlySet<string> = new Set(["signal", "dialogue", "action", "diagnostic", "tick", "ambient"]);
+
+/** A use only counts when the story did something with it. A refusal
+ *  ("That function is not available yet.", a room off the allow-list) is
+ *  the character's words alone — it must not spend the night's two
+ *  blackouts. Live and on a replay alike. */
+function powerSpent(events: readonly SimEvent[]): boolean {
+  return events.some((e) => !POWER_FREE_EVENTS.has(e.type));
+}
 
 export class EventRuntime {
   readonly eventId: string;
@@ -1463,13 +1477,17 @@ export class EventRuntime {
           continue;
         }
         const args = act.args === undefined ? null : canonicalPlaceArgs(act.args, sim.model.locations.values());
-        const events = this.commit("signal", def.id, subject, args, req.character);
+        // Journaled `by: agent:<Character>`, so a restore can count the use.
+        const actingBy = this.actingBy;
+        this.actingBy = `${AGENT_BY}${req.character}`;
+        let events: SimEvent[];
+        try {
+          events = this.commit("signal", def.id, subject, args, req.character);
+        } finally {
+          this.actingBy = actingBy;
+        }
         this.fanout(events);
-        // A use only counts when the story did something with it. A refusal
-        // ("That function is not available yet.", a room off the allow-list)
-        // is the character's words alone — it must not spend the night's
-        // two blackouts.
-        const spent = events.some((e) => !POWER_FREE_EVENTS.has(e.type));
+        const spent = powerSpent(events);
         if (spent) this.agentPowerUses.set(def.id, used + 1);
         out.push({ kind: "fire", ok: true, what: def.id, ...(spent ? {} : { refused: true }) });
       }
@@ -2542,6 +2560,11 @@ export class EventRuntime {
             // A widget answer — `signal(<kind> answered, guest, {…, card: seq})`.
             const card = (e.a[2] as { card?: unknown } | null | undefined)?.card;
             if (typeof e.a[1] === "string" && typeof card === "number") this.answeredWidgets.add(`${card}:${e.a[1]}`);
+            // An agent's own use of a power counts against its `limit:` again.
+            if (e.by === `${AGENT_BY}${String(e.a[3])}` && Array.isArray(out) && powerSpent(out as SimEvent[])) {
+              const def = this.sim!.model.interactions.get(String(e.a[0]));
+              if (def !== undefined && def.who === "agent") this.agentPowerUses.set(def.id, (this.agentPowerUses.get(def.id) ?? 0) + 1);
+            }
           }
           if (Array.isArray(out)) {
             const batch = out as SimEvent[];
