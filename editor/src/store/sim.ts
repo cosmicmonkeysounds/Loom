@@ -15,7 +15,7 @@
 import { create } from 'zustand'
 import { Sim, SimEventType, namedEvents, type SimEvent } from '@loom/core/sim'
 import { ChatStore, composeGuestMessages } from '@loom/core/chat'
-import { guestView, modView, primeView, type RuntimePhase } from '@loom/core/views'
+import { guestView, modView, notePress, primeView, type RuntimePhase } from '@loom/core/views'
 import type { StatField } from '@/lib/api'
 import { lspWorkspaceSync, pathForUri } from '@/lib/lsp-client'
 import { useLspIndexGen } from '@/lib/lsp-index'
@@ -459,7 +459,7 @@ export const useSim = create<SimState>((set, get) => {
     },
     fireBeat: async (name, subject) => void run((s) => void s.fireBeat(name, subject)),
     fireSignal: async (name, subject, args, actor) =>
-      void run((s) => void s.signal(name, subject, args ?? null, actor ?? null)),
+      void run((s) => notePress(s, s.signal(name, subject, args ?? null, actor ?? null))),
     scanAs: async (as, target) => {
       const produced = run((s) => void s.scan(as, target))
       return produced

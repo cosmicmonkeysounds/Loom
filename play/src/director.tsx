@@ -128,6 +128,12 @@ export function armFor(id: string, subject: string, now: number, value?: string)
   return { id, subject, at: now, ...(v !== "" ? { value: v } : {}) };
 }
 
+/** Only an award reads a value (G7–G9's number); the King's fallback or a
+ *  reinstallation cue asks just for the person. */
+export function takesValue(id: string): boolean {
+  return id.startsWith("award_");
+}
+
 /** The `/api/mod/signal` body for a cue; an award's value rides as
  *  `args: {value}` (core's `cueValueArgs`, the editor's rule). */
 export function signalBody(
@@ -147,12 +153,15 @@ export function subjectChoices(roster: DirectorView["roster"]): PickItem[] {
     .map((p) => ({ id: p.id, label: p.name, sub: [p.location, typeof p.owner === "string" ? "persona" : null].filter((s) => s !== null).join(" · ") || undefined, avatar: true }));
 }
 
-export type FireOutcome = { ok: true } | { ok: false; status: number; message: string };
+/** `refused`: the server took the press but the story turned it down
+ *  (out of turn; its `# hosts` line says why) — not ticked on the sheet. */
+export type FireOutcome = { ok: true; refused?: true } | { ok: false; status: number; message: string };
 
 /** The toast after a fire. No HTTP answer (status 0: a timeout, a dropped
  *  connection) may still have fired — say so, never "failed". */
 export function fireToast(row: Pick<CueRow, "code" | "title">, outcome: FireOutcome): string {
   const what = row.code ?? row.title;
+  if (outcome.ok && outcome.refused === true) return `Not taken — ${what} doesn't apply right now (# hosts says why)`;
   if (outcome.ok) return `✓ Fired ${what}`;
   if (outcome.status === 409) return `Not fired — ${outcome.message}`;
   if (outcome.status === 0) return `Not sure ${what} fired — check the sheet before firing again`;
@@ -162,9 +171,10 @@ export function fireToast(row: Pick<CueRow, "code" | "title">, outcome: FireOutc
 /** How long a fire waits for the server before giving up on the answer. */
 export const FIRE_TIMEOUT_MS = 8000;
 
-/** One fire's POST; rejects with `{status, message}` on an HTTP refusal and
- *  anything else (an abort, a dropped connection) on no answer. */
-export type FirePost = (body: ReturnType<typeof signalBody>, signal: AbortSignal) => Promise<void>;
+/** One fire's POST; resolves with the server's answer (`refused` when the
+ *  story turned the press down), rejects with `{status, message}` on an HTTP
+ *  refusal and anything else (an abort, a dropped connection) on no answer. */
+export type FirePost = (body: ReturnType<typeof signalBody>, signal: AbortSignal) => Promise<{ refused?: boolean } | void>;
 
 /**
  * Fire a cue: post it with a timeout, and re-poll at once whatever the
@@ -174,8 +184,8 @@ export async function fireCue(post: FirePost, body: ReturnType<typeof signalBody
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    await post(body, ctl.signal);
-    return { ok: true };
+    const answer = await post(body, ctl.signal);
+    return answer?.refused === true ? { ok: true, refused: true } : { ok: true };
   } catch (e) {
     if (e instanceof ApiError) return { ok: false, status: e.status, message: e.message };
     return { ok: false, status: 0, message: ctl.signal.aborted ? "no answer" : e instanceof Error ? e.message : String(e) };
@@ -370,8 +380,8 @@ function useDirectorSession() {
           body: JSON.stringify(body),
           signal,
         });
-        if (res.ok) return;
         const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+        if (res.ok) return { refused: data["refused"] === true };
         throw new ApiError((data["error"] as string) || `HTTP ${res.status}`, res.status);
       };
       const out = await fireCue(post, signalBody(id, subject, auth.name, value), () => poll.current?.now());
@@ -579,10 +589,12 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
           }}
           empty="Nobody has joined yet."
           lead={
-            <label className="cue-value">
-              <span>Value (optional) — lies accepted, the duck time, quests done</span>
-              <input value={value} maxLength={20} placeholder="e.g. 3 or 2:41" onChange={(e) => setValue(e.target.value)} />
-            </label>
+            takesValue(pickingRow.id) ? (
+              <label className="cue-value">
+                <span>Value (optional) — lies accepted, the duck time, quests done</span>
+                <input value={value} maxLength={20} placeholder="e.g. 3 or 2:41" onChange={(e) => setValue(e.target.value)} />
+              </label>
+            ) : undefined
           }
         />
       )}

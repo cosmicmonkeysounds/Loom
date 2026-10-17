@@ -5,9 +5,9 @@
 //! label opening with the source cue code (`C1/V1 · 📣 Call everyone to the
 //! Desktop`). This module turns those into rows a director's screen renders
 //! as buttons: the code split off, the last cue marked, the next one (the
-//! first declaration after the last that hasn't fired — or the last itself
-//! while it is a `repeat: true` cue, pressed once per question / per trip)
-//! suggested, a free-text filter, and the story's `Night.phase` read off
+//! first declaration after the last that hasn't fired and is on tonight's
+//! branch — `while:` holds — or the last itself while it is a `repeat: true`
+//! cue, pressed once per question / per trip) suggested, a free-text filter, and the story's `Night.phase` read off
 //! the world.
 //!
 //! Dependency-free on purpose: the play app imports this file by path (it
@@ -23,6 +23,9 @@ export interface CueInteraction {
   subject?: boolean;
   /** Pressed again and again (`repeat: true`): still NEXT once fired. */
   repeat?: true;
+  /** False while the cue's `while:` is false — off tonight's branch (🏍
+   *  before Combo A): never NEXT, still pressable. */
+  live?: false;
 }
 
 /** What a cue row needs from the server's `CueState`. */
@@ -60,6 +63,9 @@ export interface CueRow {
   /** False for an off-sequence cue (`sequence: false` — machine-fired or a
    *  hardware fallback): it ticks when it fires but is never LAST / NEXT. */
   sequence: boolean;
+  /** False while the cue's `while:` is false (off tonight's branch): the
+   *  sheet never suggests it, and may dim it. */
+  live: boolean;
   /** The cue does nothing without a person (an award's winner): the sheet
    *  asks for one before it fires. */
   subject: boolean;
@@ -80,9 +86,9 @@ export function cueRows(interactions: readonly CueInteraction[], cues: CueMarks)
   const admin = interactions.filter((i) => i.who === "admin");
   const lastIdx = cues.last === null ? -1 : admin.findIndex((i) => i.id === cues.last);
   const nextIdx =
-    lastIdx >= 0 && admin[lastIdx]!.repeat === true
+    lastIdx >= 0 && admin[lastIdx]!.repeat === true && admin[lastIdx]!.live !== false
       ? lastIdx
-      : admin.findIndex((i, idx) => idx > lastIdx && i.sequence !== false && (!fired.has(i.id) || i.repeat === true));
+      : admin.findIndex((i, idx) => idx > lastIdx && i.sequence !== false && i.live !== false && (!fired.has(i.id) || i.repeat === true));
   return admin.map((i, idx) => {
     const { code, title } = splitCode(i.label || i.id);
     return {
@@ -94,6 +100,7 @@ export function cueRows(interactions: readonly CueInteraction[], cues: CueMarks)
       last: idx === lastIdx,
       next: idx === nextIdx,
       sequence: i.sequence !== false,
+      live: i.live !== false,
       subject: i.subject === true,
     };
   });
@@ -164,6 +171,7 @@ export function cueSheetView(view: {
         ...(i.sequence === false ? { sequence: false as const } : {}),
         ...(i.subject === true ? { subject: true } : {}),
         ...(i.repeat === true ? { repeat: true as const } : {}),
+        ...(i.live === false ? { live: false as const } : {}),
       })),
     cues: view.cues ?? { last: null, fired: [] },
     world: (view.world ?? []).filter((w) => w.path === "Night.phase").map((w) => ({ path: w.path, value: w.value })),

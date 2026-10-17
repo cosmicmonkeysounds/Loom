@@ -21,7 +21,7 @@ import { validateHouse, type HouseMap, type MapVariantsResponse } from "@loom/ho
 
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { guestView, modView, notePress, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { guestView, modView, notePress, pressRefused, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
@@ -4304,8 +4304,12 @@ export class EventRuntime {
         // never overridden.
         const label = str(body, "label").trim().slice(0, 60);
         if (label !== "" && by === "Director") this.actingBy = label;
-        this.fanout(this.commit("signal", str(body, "name"), subject === "" ? undefined : subject, args, actor === "" ? null : actor));
-        sendJson(res, 200, { ok: true });
+        const press = this.commit("signal", str(body, "name"), subject === "" ? undefined : subject, args, actor === "" ? null : actor);
+        // `refused`: the story turned the press down (its `# hosts` line says
+        // why) — the cue sheet's own judgement, so a phone needn't say "fired".
+        const refused = pressRefused(this.sim, press);
+        this.fanout(press);
+        sendJson(res, 200, refused ? { ok: true, refused: true } : { ok: true });
         return true;
       }
       case "/api/mod/broadcast": {

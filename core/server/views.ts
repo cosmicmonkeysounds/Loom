@@ -109,7 +109,8 @@ export interface InteractionSummary {
    *  A performer's guest card leads with their own; the rest fold away. */
   actors?: string[];
   /** False while the INTERACTION's `while:` condition is false — a guest
-   *  never sees it; a performer finds it under "More". */
+   *  never sees it; a performer finds it under "More"; the director's cue
+   *  sheet never suggests it as NEXT. */
   live?: false;
 }
 
@@ -161,7 +162,8 @@ export function interactionActors(sim: Sim): Map<string, string[]> {
 
 /** The INTERACTIONs `who` may fire. With `at`, each `while:` is evaluated
  *  (`subject` / `self` bound as given) and marked `live: false` when it
- *  fails; without, nothing is evaluated (the director's cue sheet). */
+ *  fails; without (the director's cue sheet), only an admin cue's is, with
+ *  nothing bound. */
 function interactionsFor(
   sim: Sim,
   who: Array<InteractionSummary["who"]> | null,
@@ -179,6 +181,10 @@ function interactionsFor(
       const by = i.who === "performer" ? actors.get(i.id) : undefined; // a guest never learns who hears their buttons
       if (by !== undefined) s.actors = by;
       if (at !== undefined && i.while !== null && !sim.holds(i.while, at.subject, at.self)) s.live = false;
+      // The director's cue sheet: an admin cue's `while:` names the branch
+      // of the night it belongs to (🏍 only after Combo A), so NEXT skips it
+      // off that branch. It never gates the press itself.
+      if (at === undefined && i.who === "admin" && i.while !== null && !sim.holds(i.while, null, null)) s.live = false;
       return s;
     });
 }
@@ -549,9 +555,19 @@ export function notePress(sim: Sim, batch: readonly SimEvent[]): void {
   ends.set(end - batch.length, end);
 }
 
+/** Was the press `batch` (a `Sim.signal` call just committed and noted)
+ *  refused by the story — the same judgement the cue sheet makes, so a
+ *  director's phone can say "not taken" rather than "fired". */
+export function pressRefused(sim: Sim, batch: readonly SimEvent[]): boolean {
+  const first = batch[0];
+  if (first === undefined || first.type !== "signal") return false;
+  return refusedPress(sim, sim.log.all(), sim.log.len() - batch.length, first.name);
+}
+
 /** Log entries that start a new input (a press, a tick, a typed line, a
- *  join, a scan) — where a press nobody noted (`notePress`: the editor's
- *  in-browser rehearsal, a bare `Sim` in a test) is taken to end. */
+ *  join, a scan) — where a press nobody noted (`notePress`: a bare `Sim`
+ *  in a test; the editor's in-browser rehearsal notes its presses) is taken
+ *  to end. */
 const CUE_INPUTS: ReadonlySet<string> = new Set(["signal", "tick", "chat", "accountCreated", "scanned"]);
 
 /** What `refusedPress` needs from the model, per compiled model: the named
@@ -625,8 +641,8 @@ const cueScans = new WeakMap<object, CueScan>();
  * story's own `fire x` (an auto cue) is a `fire` directive. Names fold, so
  * `the golden duck` matches however it was spelled at the call site.
  *
- * A director's in-sequence press the story refused (`refusedPress`) counts
- * for nothing, and a repeat of a cue that already fired never moves LAST
+ * A director's press the story refused (`refusedPress`) counts for nothing
+ * — not LAST, not fired, in sequence or not — and a repeat of a cue that already fired never moves LAST
  * back to an earlier row (T7-01): a mis-tap is cheap.
  */
 export function cueState(sim: Sim): CueState {
@@ -655,8 +671,8 @@ export function cueState(sim: Sim): CueState {
     const cue = admin.get(foldName(name));
     if (cue === undefined) continue;
     const id = cue.id;
+    if (by === "director" && refusedPress(sim, events, n, name)) continue;
     if (cue.sequence) {
-      if (by === "director" && refusedPress(sim, events, n, name)) continue;
       if (!(seen.has(id) && cue.order < scan.lastOrder)) {
         state.last = id;
         state.lastBy = by;

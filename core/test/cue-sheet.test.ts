@@ -32,6 +32,10 @@ INTERACTION accuse
 
 when ring_the_bell:
   set Night.phase = "desktop"
+
+when hunt_time_up:
+  if Night.phase == "hunt":
+    set Night.phase = "back"
 `;
 
 const dirs: string[] = [];
@@ -104,6 +108,12 @@ describe("the phone cue page's server surface (W-26)", () => {
     expect(after.world.find((w) => w.path === "Night.phase")?.value).toContain("desktop");
     const signal = store.readJournal().find((e) => e.m === "signal");
     expect(signal?.by).toBe("Phone · Ana");
+    expect(fired.json).toEqual({ ok: true });
+    // Out of turn the story turns C2 down: taken, answered `refused`, not ticked.
+    const early = await call(rt, "POST", "/api/mod/signal", { name: "hunt_time_up", label: "Phone · Ana" }, token);
+    expect(early.json).toEqual({ ok: true, refused: true });
+    const still = (await call(rt, "GET", "/api/state?role=mod", {}, token)).json as unknown as ModView;
+    expect(still.cues).toMatchObject({ last: "ring_the_bell", fired: ["ring_the_bell"] });
     rt.dispose();
   });
 
@@ -161,5 +171,24 @@ describe("NEXT skips what already ran (T7-01)", () => {
     expect(next("telephone", ["telephone", "zip"])).toBe("zip");
     expect(cueSheetView({ interactions: sheet }).interactions.find((i) => i.id === "results")).toMatchObject({ repeat: true });
     expect(cueSheetView({ interactions: sheet }).interactions.find((i) => i.id === "c1")).not.toHaveProperty("repeat");
+  });
+});
+
+describe("NEXT follows tonight's branch (an admin cue's `while:`)", () => {
+  const ix = (id: string, extra: { live?: false } = {}) => ({ id, label: id, who: "admin", ...extra });
+
+  it("skips a row whose `while:` is false, keeps it pressable, and the lean view carries the flag", () => {
+    const sheet = [ix("y2k"), ix("recount", { live: false }), ix("summary", { live: false }), ix("reveal"), ix("ceremony", { live: false })];
+    const rows = cueRows(sheet, { last: "y2k", fired: ["y2k"] });
+    expect(rows.find((r) => r.next)?.id).toBe("reveal");
+    expect(rows.find((r) => r.id === "recount")).toMatchObject({ live: false, sequence: true, next: false });
+    expect(rows.find((r) => r.id === "reveal")).toMatchObject({ live: true });
+    expect(cueRows(sheet, { last: "reveal", fired: ["y2k", "reveal"] }).find((r) => r.next)).toBeUndefined();
+    // A `repeat: true` LAST stays NEXT only while it is live (📋 after Q3).
+    const results = [ix("close"), { ...ix("results"), repeat: true as const, live: false as const }, ix("preview")];
+    expect(cueRows(results, { last: "results", fired: ["close", "results"] }).find((r) => r.next)?.id).toBe("preview");
+    const lean = cueSheetView({ interactions: sheet }).interactions;
+    expect(lean.find((i) => i.id === "recount")).toMatchObject({ live: false });
+    expect(lean.find((i) => i.id === "reveal")).not.toHaveProperty("live");
   });
 });
