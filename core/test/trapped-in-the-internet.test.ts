@@ -5326,6 +5326,13 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     }
   });
 
+  it("S2-01 / S2-12: 🕚 waits for the patch-bay watch's IN; 🤖 needs no re-provisioning", () => {
+    const m = fresh().model;
+    expect(m.interactions.get("y2k_clock")!.description).toMatch(/\bIN\b/u);
+    expect(m.interactions.get("y2k_clock")!.description).toMatch(/patch-bay watch/u);
+    expect(m.interactions.get("introduce_trabolta")!.description).not.toMatch(/provision/u);
+  });
+
   it("T1-03: the song after a pickup line never says every fact was true", { timeout: SLOW }, () => {
     const TRUE = "Every fact you gave me was true, and the truth tells me what to say to her. You're the one that I want.";
     const song = boot();

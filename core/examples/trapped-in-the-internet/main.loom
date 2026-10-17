@@ -2373,7 +2373,7 @@ INTERACTION bingo_time
 INTERACTION introduce_trabolta
   label: Clippy 2/X · 🤖 Clippy introduces Trabolta
   who: admin
-  description: Only after the Bingo results. Trabolta comes online; re-provision the terminals view=auto.
+  description: Only after the Bingo results. Trabolta comes online; check the terminals show his face.
 
 INTERACTION start_the_hunt
   label: V4/V5 · 🔎 Truth Scavenger Hunt 1 (15 min)
@@ -2472,6 +2472,7 @@ INTERACTION trabolta_overshares
 INTERACTION y2k_clock
   label: 🕚 System clock → 11 PM, 31 Dec 1999 (final round, 60 min)
   who: admin
+  description: Fire only after the patch-bay watch radios IN (inside the server room, door shut). From here the first door opening plays The Heart and opens the server room on every phone.
 
 INTERACTION y2k_midnight
   label: 🎆 Midnight (auto at 60 min)
