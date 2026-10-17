@@ -49,7 +49,7 @@ from .facts import Facts, world_view
 from .llm import Completion, LlmConfig, LlmError
 from .mind import MAX_ANSWERS, MAX_PER_PERSON, Mind
 from .persona import Persona
-from .prompt import their_variables
+from .prompt import matching_situations, their_variables
 from .reply import Reply, extract_json, strip_think
 from .secrets import Secrets
 from .trace import Thought, Trace, new_thought
@@ -283,6 +283,12 @@ def reflect_messages(
         lore = lore_block(facts, [str(e.get("title", "")) for e in (me.get("codex") or []) if isinstance(e, dict)], secrets=persona.secrets)
         if lore:
             parts.append(lore)
+    for situation in matching_situations(persona, req):
+        parts.append(
+            f"=== THE SITUATION WITH {name} ({situation.heading}; the voice was given this for the exchange below. "
+            f"The brief is read in every conversation: write what holds only here into this person's dossier and notes, "
+            f"and keep everything this block forbids out of all of them) ===\n{situation.prompt}"
+        )
     whisper = director_block(mind)
     if whisper:
         parts.append(whisper)
@@ -372,14 +378,17 @@ def late_night_request(persona: Persona) -> tuple[dict[str, Any], Facts]:
 def reflect_tokens_needed(persona: Persona, max_tokens: int) -> int:
     """≈ the context one reflection needs late in the night: the real
     reflect prompt (this persona's mind file + persona) built over
-    `late_night_mind` and `late_night_request`, plus the reply's
+    `late_night_mind` and `late_night_request`, every persona situation
+    as if it held, plus the reply's
     `max_tokens`. `stagehand check` compares it with the model's context —
     Ollama cuts the middle of a prompt that doesn't fit."""
     req, facts = late_night_request(persona)
     acts = tuple({"kind": "fire", "name": f"power number {i:02d}"} for i in range(2))
     reply = Reply(say=_filler(600, "say"), adjust={f"var_{i:02d}": 5 for i in range(4)}, acts=acts)
     msgs = reflect_messages(persona, late_night_mind(persona), req, reply, facts, persona.summarize_after, "late")
-    chars = sum(len(m["content"]) for m in msgs)
+    # The synthetic speaker matches no situation; count every one as if
+    # all of them held (each is a heading line plus its prompt).
+    chars = sum(len(m["content"]) for m in msgs) + sum(len(s.prompt) + 200 for s in persona.situations)
     return chars // CHARS_PER_TOKEN + max_tokens
 
 

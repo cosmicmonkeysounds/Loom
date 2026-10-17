@@ -145,6 +145,14 @@ prose below the frontmatter is the orchestrator's brief for how to
 steer. Tune both offline with `stagehand ask --reflect`, then watch the
 real night here.
 
+A persona can also declare **situations** (`situations:` in its
+frontmatter): extra instructions for one kind of moment, each with a
+`when:` read like the persona's gate. While one holds, the voice's
+prompt gains a `=== SITUATION: … ===` block and the reflect on that
+exchange sees it too, so a thought's messages show exactly when it
+applied. Trabolta's *at your heart* situation is the server-room
+terminal: there, and only there, he is candid.
+
 Until the orchestrator learns to follow the story's phases on its own,
 a director can keep the arc in step by hand: click the stage on the
 stepper as the night reaches it. For *Trapped in the Internet*:

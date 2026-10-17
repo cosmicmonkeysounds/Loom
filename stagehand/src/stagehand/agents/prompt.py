@@ -5,7 +5,9 @@ character's **mind** as the orchestrator has grown it tonight (brief,
 notes, the dossier on whoever is talking — `mind.py`), then a live
 **state block** built from what the server sent (variables with ranges,
 selected world facts, who is talking and what they know), then the
-character's **powers** and bargain policy, then the reply protocol. The
+character's **powers** and bargain policy, then one block per persona
+**situation** whose `when:` holds for this request (`situations:` — e.g.
+the guest is standing at the character's heart), then the reply protocol. The
 thread follows as alternating user / assistant turns — a rolling summary
 first when the conversation has grown long — ending on the speaker. A
 lookup round appends the session's answers and asks again.
@@ -17,7 +19,7 @@ from typing import Any
 
 from ..templating import coerce_scalar
 from .mind import Mind
-from .persona import Persona
+from .persona import Persona, Situation
 
 #: Thread lines sent to the model when a persona doesn't say (server sends ≤30).
 MAX_TURNS = 16
@@ -44,6 +46,8 @@ def build_messages(
     powers = allowed_powers(persona, req)
     if powers or persona.lookup:
         system.append(powers_block(persona, powers, lookups is None))
+    for situation in matching_situations(persona, req):
+        system.append(situation_block(situation))
     out = [{"role": "system", "content": "\n\n".join(system)}]
     history = [h for h in req.get("history", []) if isinstance(h, dict)]
     memo = mind.threads.get(thread_key) if mind is not None else None
@@ -176,6 +180,22 @@ def state_block(persona: Persona, req: dict[str, Any]) -> str:
         for e in my_codex:
             lines.append(f"- {e.get('title', '')}: {_one_line(str(e.get('text', '')))}")
     return "\n".join(lines)
+
+
+def matching_situations(persona: Persona, req: dict[str, Any]) -> list[Situation]:
+    """The persona's situations whose `when:` holds for this request, in
+    file order. Read over `gate_context`, exactly like the persona gate."""
+    if not persona.situations:
+        return []
+    ctx = gate_context(req)
+    return [s for s in persona.situations if s.when.evaluate(ctx)]
+
+
+def situation_block(situation: Situation) -> str:
+    return (
+        f"=== SITUATION: {situation.heading.upper()} (true right now, for this conversation; "
+        f"where it differs from the page above, this block wins) ===\n{situation.prompt}"
+    )
 
 
 def gate_context(req: dict[str, Any]) -> dict[str, Any]:
