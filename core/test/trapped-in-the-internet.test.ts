@@ -5314,6 +5314,18 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     expect(cues(advance(sim, 10)).filter((c) => c.startsWith("cue screens_"))).toEqual([]);
   });
 
+  it("T8-02: no agent power's description quotes an answer (the pickup line, a hunt answer)", () => {
+    const norm = (t: string) => t.toLowerCase().replace(/[’']/gu, "").replace(/[^a-z0-9]+/gu, " ").trim();
+    const keys = [...FACTS.answers, ...FACTS.questions].flatMap((a) => [a.answer, ...(a.accept ?? [])]).map(norm).filter((k) => k.length >= 4);
+    expect(keys).toContain(norm("You're the one that I want"));
+    const powers = [...fresh().model.interactions.values()].filter((i) => i.who === "agent");
+    expect(powers.length).toBeGreaterThan(0);
+    for (const p of powers) {
+      const d = ` ${norm(`${p.label} ${p.description ?? ""}`)} `;
+      for (const k of keys) expect(d.includes(` ${k} `), `${p.id}: ${k}`).toBe(false);
+    }
+  });
+
   it("T1-03: the song after a pickup line never says every fact was true", { timeout: SLOW }, () => {
     const TRUE = "Every fact you gave me was true, and the truth tells me what to say to her. You're the one that I want.";
     const song = boot();

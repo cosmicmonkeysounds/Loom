@@ -426,7 +426,7 @@ INTERACTION the_line_works
   label: Accept the pickup line
   who: agent
   limit: 1
-  description: Fire this the moment a program gives you the one pickup line that works on Sandy ("You're the one that I want"). No args. Only after Sandy has gone to computer prom with Grok.
+  description: Fire this the moment a program gives you the one pickup line that works on Sandy; you will know it when you hear it. No args. Only after the verdict, once Sandy has gone to computer prom without you.
 
 INTERACTION stand_down
   label: Offer to stand down
