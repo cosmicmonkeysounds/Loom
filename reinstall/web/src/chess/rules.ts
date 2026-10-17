@@ -51,6 +51,13 @@ export function outcome(g: Chess): Outcome | null {
   return null;
 }
 
+/** The banner over the final position: a loss or a draw says the board is dealt again (`redeals`). */
+export function bannerOf(g: Chess, o: Outcome): string {
+  if (o === "won") return "CHECKMATE";
+  if (o === "lost") return "THE KING WINS. AGAIN.";
+  return g.isStalemate() ? "STALEMATE. AGAIN." : "DRAW. AGAIN.";
+}
+
 export interface Cell {
   square: Square;
   piece: { type: PieceSymbol; color: Color } | null;

@@ -2,9 +2,10 @@
 //! hits him (⚔ / Space, one hit per `HIT_COOLDOWN_MS`): each hit knocks a
 //! point off his strength, which picks the chess AI's stage when the player
 //! challenges him (♟ / C) — a grandmaster at full strength, down to a king
-//! with nothing but his eight pawns. Checkmate fells him (`fell`); a loss, a
-//! draw or an abandoned game changes nothing. Per session: nothing here is
-//! shared with another device.
+//! with nothing but his eight pawns. Checkmate fells him (`fell`); a loss or
+//! a draw deals a new game at the same stage (`redeals`), and an abandoned
+//! game changes nothing. Per session: nothing here is shared with another
+//! device.
 
 import { floorOf } from "@loom/house";
 import type { HouseMap, Prop, Vec3 } from "@loom/house";
@@ -68,6 +69,17 @@ export function canHit(f: Fight, now: number, house: HouseMap, feet: Vec3, yaw: 
 /** A hit landed at `now`: one point off (never below 0), counted, stamped. */
 export function hit(f: Fight, now: number): Fight {
   return { ...f, hp: Math.max(0, f.hp - 1), hits: f.hits + 1, lastHitAt: now };
+}
+
+/**
+ * Does a game's end deal a fresh board at the same stage, the window still
+ * open? The King winning and a draw (a pawns-only stalemate is the common
+ * one) do: only checkmate opens the door, so a stuck game never leaves the
+ * program with nothing to do (OCT31 decision 6). A win and giving up close
+ * the board.
+ */
+export function redeals(result: string): boolean {
+  return result === "lost" || result === "drawn";
 }
 
 /** Checkmate: he is down. */

@@ -1,18 +1,20 @@
 //! The modal game against the King — a Windows 98 window over the
 //! simulation. Your move (tap a piece, tap a square) → the King thinks
 //! (`pickMoveAsync` for the fight's stage) → your move … until checkmate
-//! (`onResult("won")` fells him), the King wins, or a draw — each shown for
-//! a beat first. 💡 Hint highlights a good move; Give up abandons (nothing
-//! changes). Every tap calls `onActivity()` so the idle leash never ends a
+//! (`onResult("won")` fells him and closes the board). The King winning or
+//! a draw is reported too (`onResult("lost" | "drawn")`) and deals a fresh
+//! board at the same stage, the window still open (`redeals`). Each end is
+//! shown for a beat first. 💡 Hint highlights a good move; Give up abandons
+//! (nothing changes). Every tap calls `onActivity()` so the idle leash never ends a
 //! game in progress. Lazy-loaded (`React.lazy` in Play.tsx) with chess.js.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Chess } from "chess.js";
-import { STAGE_LINE, type Stage } from "../game/fight.ts";
+import { redeals, STAGE_LINE, type Stage } from "../game/fight.ts";
 import { ProgressBar, Window } from "../wizard.tsx";
 import { hint as findHint, mulberry32, pickMoveAsync, PROFILES } from "./ai.ts";
 import { Board } from "./Board.tsx";
-import { newGame, outcome, play, targets, type Outcome, type Square } from "./rules.ts";
+import { bannerOf, newGame, outcome, play, targets, type Outcome, type Square } from "./rules.ts";
 
 export interface ChessWindowProps {
   stage: Stage;
@@ -34,13 +36,14 @@ export const HINT_COOLDOWN_MS = 10_000;
 
 type Status = { kind: "your-move" } | { kind: "thinking" } | { kind: "over"; outcome: Outcome };
 
-const BANNER: Record<Outcome, string> = { won: "CHECKMATE", lost: "THE KING WINS", drawn: "DRAW" };
-
 export function ChessWindow({ stage, label, armed, onResult, onAbandon, onActivity, onMove, rng }: ChessWindowProps) {
-  const game = useMemo<Chess>(() => newGame(stage), [stage]);
+  // A loss or a draw deals again: a new game, the same stage.
+  const [deal, setDeal] = useState(0);
+  const game = useMemo<Chess>(() => newGame(stage), [stage, deal]);
   const random = useMemo(() => rng ?? mulberry32(Date.now() >>> 0), [rng]);
   // chess.js mutates in place; `fen` is the render key.
   const [fen, setFen] = useState(() => game.fen());
+  useEffect(() => setFen(game.fen()), [game]);
   const [status, setStatus] = useState<Status>({ kind: "your-move" });
   const [selected, setSelected] = useState<Square | null>(null);
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
@@ -60,7 +63,15 @@ export function ChessWindow({ stage, label, armed, onResult, onAbandon, onActivi
   const settle = (o: Outcome): void => {
     setStatus({ kind: "over", outcome: o });
     window.setTimeout(() => {
-      if (alive.current) onResult(o);
+      if (!alive.current) return;
+      onResult(o);
+      if (!redeals(o)) return;
+      setDeal((d) => d + 1);
+      setSelected(null);
+      setLastMove(null);
+      setHintMove(null);
+      setGiveUp(false);
+      setStatus({ kind: "your-move" });
     }, OVER_BEAT_MS);
   };
 
@@ -126,7 +137,7 @@ export function ChessWindow({ stage, label, armed, onResult, onAbandon, onActivi
           {armed !== null && <span className={`chess-badge ${armed ? "armed" : "practice"}`}>{armed ? "ARMED" : "PRACTICE"}</span>}
         </div>
         <div className="chess-status" aria-live="polite">
-          {over ? <b className={`chess-banner ${status.outcome}`}>{BANNER[status.outcome]}</b> : thinking ? "THE KING IS THINKING…" : game.inCheck() ? "YOUR MOVE — CHECK" : "YOUR MOVE"}
+          {over ? <b className={`chess-banner ${status.outcome}`}>{bannerOf(game, status.outcome)}</b> : thinking ? "THE KING IS THINKING…" : game.inCheck() ? "YOUR MOVE — CHECK" : "YOUR MOVE"}
         </div>
         <Board game={game} selected={selected} targets={legal} lastMove={lastMove} hint={hintMove} disabled={thinking || over} onSquare={onSquare} />
         {thinking && <ProgressBar value={0.5} />}

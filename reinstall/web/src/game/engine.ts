@@ -22,7 +22,7 @@ import type { Avatar, Duck, HouseScene, King, Trail } from "@loom/house/three";
 import { fetchHouse, postEnd, postFound, postPose, streamUrl } from "../api.ts";
 import { applyFrame, duckToAdopt, houseVersionOf, openSpatialStream, type SpatialStreamHandle } from "../spatial.ts";
 import type { Sfx } from "./audio.ts";
-import { canHit, fell, hearts, hit as landHit, KING_HP, newFight, stageFor, STAGE_LINE, winNotice, type Fight, type HitVerdict, type Stage } from "./fight.ts";
+import { canHit, fell, hearts, hit as landHit, KING_HP, newFight, redeals, stageFor, STAGE_LINE, winNotice, type Fight, type HitVerdict, type Stage } from "./fight.ts";
 import { formatElapsed, foundRetryMs, heat, PAUSED_NOTICE, perchedOutOfReach, relativeBearing, roomTitle, withinReach, type Heat } from "./hud.ts";
 import { combineInput, isActive, keyDown, keyUp, type StickVector } from "./input.ts";
 import { IdleLeash } from "./leash.ts";
@@ -609,47 +609,38 @@ export class Game {
     }
   }
 
-  /** The board closed: a checkmate fells him and opens the door; anything else leaves the fight as it was. */
+  /** A game ended: a checkmate fells him, opens the door and closes the board;
+   *  the King winning or a draw is posted and the board deals again (it stays
+   *  open, `redeals`); giving up closes it. The fight is otherwise as it was. */
   chessResult(r: ChessResult): void {
     if (this.phase !== "chess") return;
-    this.phase = "playing";
     this.leash.touch(performance.now());
+    const signals = this.kingProp?.signals ?? {};
+    if (redeals(r)) {
+      if (r === "lost") this.o.sfx.buzz();
+      const name = r === "lost" ? (signals.lost ?? "chess lost") : (signals.drawn ?? "chess drawn");
+      void this.o.signal?.(name).then((ok) => {
+        if (!ok) console.warn(`reinstall: ${name} didn't reach the event`);
+      });
+      return;
+    }
+    this.phase = "playing";
     this.o.onChess?.(null);
     const king = this.kingProp;
     if (king === null) return;
-    const signals = king.signals ?? {};
-    switch (r) {
-      case "won": {
-        this.fight = fell(this.fight);
-        void this.king?.fall();
-        this.openGuardedDoors();
-        this.world = buildPhysicsWorld(this.map, this.house.walls, this.physicsOptions());
-        this.trailHouse = trailMap(this.map, king.id, true);
-        this.lastTrailAt = Number.NEGATIVE_INFINITY;
-        this.o.sfx.fanfare();
-        this.say("CHECKMATE — the door opens.", 4000);
-        // The story opens the real door: a win that never landed is said, so a host fires ♟.
-        void winNotice(this.o.signal?.(signals.won ?? "chess won")).then((notice) => {
-          if (notice !== null) this.say(notice, 6000);
-        });
-        return;
-      }
-      case "lost":
-        this.o.sfx.buzz();
-        this.say("The King holds. Hit him again.", 3000);
-        void this.o.signal?.(signals.lost ?? "chess lost").then((ok) => {
-          if (!ok) console.warn("reinstall: chess lost didn't reach the event");
-        });
-        return;
-      case "drawn":
-        this.say("A draw is not a win.", 3000);
-        void this.o.signal?.(signals.drawn ?? "chess drawn").then((ok) => {
-          if (!ok) console.warn("reinstall: chess drawn didn't reach the event");
-        });
-        return;
-      case "abandoned":
-        return;
-    }
+    if (r !== "won") return; // given up
+    this.fight = fell(this.fight);
+    void this.king?.fall();
+    this.openGuardedDoors();
+    this.world = buildPhysicsWorld(this.map, this.house.walls, this.physicsOptions());
+    this.trailHouse = trailMap(this.map, king.id, true);
+    this.lastTrailAt = Number.NEGATIVE_INFINITY;
+    this.o.sfx.fanfare();
+    this.say("CHECKMATE — the door opens.", 4000);
+    // The story opens the real door: a win that never landed is said, so a host fires ♟.
+    void winNotice(this.o.signal?.(signals.won ?? "chess won")).then((notice) => {
+      if (notice !== null) this.say(notice, 6000);
+    });
   }
 
   // --- found ---------------------------------------------------------------

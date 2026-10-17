@@ -677,10 +677,12 @@ result still on its way is kept across a reload for 60 s (below).
 - **The result** (`Game.chessResult`): **checkmate** fells him (`fall()`
   topples him over 1.6 s), opens the door, plays the fanfare, says
   "CHECKMATE — the door opens." and posts the prop's `signals.won`
-  (default `chess won`); the King winning posts `signals.lost` ("The King
-  holds. Hit him again."), a stalemate / insufficient material /
-  threefold / fifty moves posts `signals.drawn` ("A draw is not a win.");
-  an abandoned game posts nothing. Each goes through `postSignal`: `POST
+  (default `chess won`) and closes the board; the King winning posts
+  `signals.lost` ("THE KING WINS. AGAIN."), a stalemate / insufficient
+  material / threefold / fifty moves posts `signals.drawn` ("STALEMATE.
+  AGAIN." / "DRAW. AGAIN."), and either deals a fresh board at the same
+  stage in the still-open window (`redeals`, OCT31 decision 6: only
+  checkmate opens the door); an abandoned game posts nothing. Each goes through `postSignal`: `POST
   /api/mod/signal {name, subject: <the program>, label: <device name>}`
   with the tablet's moderator token, retried on a network failure or a
   5xx (0.5 s doubling to 8 s, five retries); a 4xx is final. An attempt
@@ -699,7 +701,8 @@ result still on its way is kept across a reload for 60 s (below).
   door still opens in the simulation, as practice.
 - **Out of scope** (device check pending — the wall chess phone stays the
   fallback, U17): the hit feel, the glyph fonts on the oldest tablets, a
-  grandmaster stall on a slow SoC; a pawns-only stalemate opens nothing.
+  grandmaster stall on a slow SoC; a pawns-only stalemate opens nothing (it
+  deals again).
 
 The **map** page (`/reinstall/map`): the house plan (SVG, one floor at a
 time), live players, the duck of each session, terminals with their view
