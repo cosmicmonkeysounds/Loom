@@ -44,9 +44,16 @@
 //
 // Local dry run (2026-10-15, M-series laptop, the show story, 90 s): 45
 // guests / 9 booths / 6 terminals / 2 directors, participants p95 50 ms,
-// CPU 8 % mean / 17 % peak of one core, 0 errors — but ≈ 18 Mbit/s of SSE
-// (each guest ≈ 24 KB/s of full snapshots), which matters more on the
-// house downlink / guests' cellular than on the VPS.
+// CPU 8 % mean / 17 % peak of one core, 0 errors. Wave 8 (2026-10-17, the
+// integration build, 180 s, same mix): PASS, people p95 42 ms, directors
+// p95 543 ms (coalesced), CPU 8 % mean / 24 % peak, 100 % delivered — and
+// ≈ 27 Mbit/s of SSE outbound (guests 211 MB, booths 154 MB, the two
+// directors 266 MB: each full director console is ≈ 6 Mbit/s, the whole
+// world every snapshot). That matters more on the house downlink, the LTE
+// failover and guests' cellular than on the VPS: close a second console
+// you don't need. The script prints the outbound Mbit/s and records it
+// (`sseMbitPerS`) but doesn't judge it; the lean mod stream (`&lean=1`,
+// stagehand) is K-22's to measure.
 
 import { judge, liveGuard, LIVE_OVERRIDE, type GuardRow } from "./live-guard.ts";
 

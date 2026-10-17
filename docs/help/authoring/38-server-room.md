@@ -2,7 +2,7 @@
 title: Running the server room — the keypad door, the King and Trabolta's heart
 section: Live Shows
 order: 38
-keywords: server room, keypad, keypad lock, door code, code, riddle, cold door, the King, king, chess, chess piece, health bar, hit, challenge, tent tablet, simulation, chess phone, chess won, chess lost, chess drawn, beat the machine, door, door contact, cutscene, The Heart, heart, server-room terminal, terminal, talk down, talked down, stand down, Fallout, Master, patch bay, alarm, wrong combination, reset, latch, fallback, dead phone, honour, OP-12, Trapped in the Internet, runbook, cold lock
+keywords: server room, keypad, keypad lock, door code, code, riddle, cold door, the King, king, chess, chess piece, health bar, hit, challenge, tent tablet, simulation, chess phone, chess won, chess lost, chess drawn, beat the machine, door, door contact, cutscene, The Heart, heart, server-room terminal, terminal, talk down, talked down, stand down, Fallout, Master, patch bay, alarm, wrong combination, reset, latch, fallback, dead phone, honour, OP-12, truth.txt, verdict, banished, banishment, hand jive, Trapped in the Internet, runbook, cold lock
 ---
 
 In *Trapped in the Internet* Trabolta's heart — a video patch bay — sits
@@ -134,12 +134,15 @@ counts as much as an entry. **The door never raises an alarm.**
   it and nothing happens.
 - **From the Y2K clock**, the first opening plays **The Heart**: The
   Server Room appears on every phone, the server-room lights come up
-  (not while the patch-bay alarm is going), `# hosts` reads *"🚪 The
+  (while the patch-bay alarm's look is up they wait, and the alarm's
+  latch puts them up when it clears; after 💡 they come up at once),
+  `# hosts` reads *"🚪 The
   server-room door opened. The Heart plays on the server-room
   terminal."*, and Trabolta speaks to the room — candidly, for once.
 - **Another opening within two minutes of the last** (the group filing
   in, someone stepping out) does nothing. A later one gets a short
   *"Back again"* line.
+- **From 📄 truth.txt** (below) an opening only tells `# hosts`.
 
 If the door opened and nothing happened (a loop came loose: a broken
 contact is silent), fire **🚪 Server room door opened** from the cue
@@ -181,6 +184,9 @@ whenever you decide).
 night the Combo A way, without a cable: the blackout, the dance, and a
 recount and awards that say who talked him down. Pressed with no offer
 on record it still works — the director's call — and `# hosts` says so.
+From 📄 truth.txt it is too late: 🕊 only tells `# hosts`, and Trabolta
+refuses to stand down (*"The truth has been read. It is too late for
+that now."*).
 
 ## The patch bay and its alarm
 
@@ -189,8 +195,12 @@ combination; the second trips the alarm** — the siren, the alarm look,
 every phone's alert, and every Antivirus booth: *"Server room alarm: a
 second wrong combination at the patch bay. Get there. Whoever is at the
 cables goes to the Internet."* The alarm latches for two minutes; only
-the first of the night costs Trabolta. Before the Y2K clock the bay,
-combos included, does nothing.
+the first of the night costs Trabolta. When the latch clears, the house
+look the alarm replaced comes back (the Y2K look, the server-room look,
+the final reveal's), unless 💡 or an ending has changed the lights since.
+A majority or The Heart while the alarm look is up keeps the siren and
+the alarm look; their server-room look goes up when the latch clears.
+Before the Y2K clock the bay, combos included, does nothing.
 
 **🔄 Server room: reset the patch-bay alarm** (after a rehearsal, or a
 wrong patch the crew forgave) clears the wrong-combination count (the
@@ -198,6 +208,22 @@ bay forgives one again), the alarm latch and The Heart (the next opening
 from the Y2K clock plays it again). The lights stay as they are —
 **💡 Restore the house lights** brings them back. It never touches the
 keypad.
+
+## After 📄 truth.txt
+
+Once the bobber has read truth.txt (📄, `Night.r3_closed`) the verdict
+is in and the night ends at the Desktop (⚖, then Grok Prom, the advice
+poll or the banishment). The server room goes quiet: the door, the patch
+bay (Combo A, Combo B, a wrong combination) and 🕊 each post a `# hosts`
+note and do nothing else. A combination plugged during the final reveal
+or the bob, before 📄, still ends the night.
+
+During the **banishment** (the advice ending) nobody is reinstalled: a
+duck found on the tent tablet says only *"Gerald cannot help you:
+everyone is banished. The way out is the hand jive, together."* — no
+golden egg, no Golden Duck in the Codex — and the TV keeps the banish
+card. The hand jive frees everyone and puts the screensaver back on
+every screen.
 
 ## When the keypad itself fails
 

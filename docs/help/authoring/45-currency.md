@@ -63,7 +63,10 @@ CHARACTER Runescape
   grant counts against the limit).
 
 Trades (offers) never pass the approver, and a request that is paid
-becomes an ordinary transfer, audited like one.
+becomes an ordinary transfer, audited like one. When that payment
+settles, is denied or is cancelled, the request's card closes in both
+parties' Wallets (*✅ Paid — you sent 40 Truthcoin* on the payer's, *✅
+Paid — Paint sent 40 Truthcoin* on the asker's).
 
 ## What the guests get
 

@@ -123,7 +123,10 @@ broadcast / choose / addPersona / setVar), **and the run lifecycle**:
 `startedAt`, `startedBy`), `busy`, `me` (this console's director name),
 `startRun(mode)` / `pause` / `resume` / `restart` (same snapshot) /
 `pushDraft` (the project's current text) / `goLive` / `end`, plus
-`lastRun` (the run that just ended, for Export + the empty state),
+`lastRun` (the run that just ended, for Export + the empty state; an End
+from this console first pages the whole ledger off `/api/mod/log` — 5 s
+budget — and keeps it on `lastRun` whichever announcement of the end lands
+first),
 `notice` (a dismissable header banner) and the identity **`lens`**
 (below). Shared components read it through `useCockpit(selector)`,
 resolved from `CockpitContext`; `components/cockpit/providers.tsx`'s
@@ -196,7 +199,12 @@ front of house only: the empty state ("Rehearse <project>" · ▶ Start
 rehearsal · *Go live with real guests →* on a server project · the last
 run's Export line · the scratch offer on a control-plane error) and,
 while running, **Join** (three codes with copy, join URL, QR, a
-performer sign-in row per character with presence, and **🖨 Print
+performer sign-in row per **part** — pure `cockpit/parts.ts`
+`performerParts` off `ModView.cast`'s `part` / `held`, every non-agent row
+on an older server; a held part with no stream reads amber *signed in ·
+phone offline*, the same `partPresence` the Stage cast strip and the
+Inspector use; `castPresence` gives an agent row its own sky dot, Voiced
+/ Unvoiced, never a signed-in performer — and **🖨 Print
 sheet…** — K-12, `run/PrintSheet.tsx` + pure `lib/print-sheet.ts`: a
 full-screen sheet over the editor built from `/api/mod/codes` (join
 poster, the door sign `D1` worded by `doorWording(homescreen)` off
@@ -219,7 +227,9 @@ after 20 s silent with a chime — again each minute until *ack* — the
 editor's own memory of terminals a restarted server forgot, the TV-voice
 mute, per-row device badges (SW-SCR-21 `terminalBadges` / `majorityVersion`:
 🔇 / 💤 / battery / build, an unstamped row beside a stamped majority =
-amber *old build*) and an **identify** button
+amber *old build*), a room terminal's `room X` (amber off the
+`server-room` spot, `strayRoom`: a tablet that was the TV once and kept
+its room) and an **identify** button
 (`POST /api/mod/screen/identify`); a `📟 N/N` header pill; `store/terminals.ts` is bound from `App.tsx`
 to the server run so it chimes from any mode, rules in pure
 `lib/terminals.ts`, sound in `lib/chime.ts`), **Wallet** (wave 5 E2,
@@ -251,7 +261,12 @@ cue (one in flight at a time), the **LAST** cue amber + the next one
 tagged **NEXT** + ✓ on fired ones — all from `CockpitState.cues`
 (`ModView.cues` = core `cueState(sim)` off the sim log, so every
 director's sheet agrees and survives a reload) — `Night.phase` in the
-header, and a word filter. On a phone, `play`'s `?role=director` page
+header, and a word filter. NEXT is the first unfired in-sequence row after
+LAST whose `while:` holds (`InteractionSummary.live`), or LAST itself for a
+`repeat: true` cue; a press the story refused (only a staff-room line)
+never becomes LAST or ticks, and a repeat of an earlier cue never moves
+LAST back. The local backend notes each press (`notePress`) so a folder
+rehearsal judges refusals exactly like the server. On a phone, `play`'s `?role=director` page
 (`play/src/director.tsx`) fires the same rows. A cue whose
 `InteractionSummary.subject` is set (every hook that hears it binds a
 person — the ceremony's awards, K-25) shows a **who?** picker over the
@@ -411,9 +426,18 @@ pins it leaves alone), confirmed for a real guest on a live run;
 the Roster. The **Log** page (`cockpit/LogTab.tsx`) renders each event
 through the pure, exhaustive `log-describe.ts` `describeEvent` (a `never`
 guard: a new `SimEventType` breaks the build), filters to one participant (`log-filter.ts`
-`eventMentions`, generic over every string field of a `SimEvent`) and
-exports a run that just ended (`lib/run-export.ts` reads `run ??
-lastRun`; `source: local|server`, `mode`, `startedBy`, `endedBy`).
+`eventMentions`, generic over every string field of a `SimEvent`), says
+how many ledger events predate this console (`missingEvents`, in the
+header and the empty state), and exports the run (`lib/run-export.ts`
+reads `run ?? lastRun`; `source: local|server`, `mode`, `startedBy`,
+`endedBy`). A server export pages the whole ledger through `GET
+/api/mod/log?after=&limit=` (`fetchWholeLedger`, `complete: true`); when
+the route is missing or refuses, it keeps the console's rows with a
+`warning` and tells the director it is partial. A back-filled row carries
+no `ts` (the Log shows a dash). A GROUP's derived room beside a declared
+room of the same name is labelled `#hosts (side)` (`rooms.ts`
+`labelTwinSides`). A live run's End / Restart / Push draft confirm with
+`confirmTyped` (`store/dialog.ts`): a wrong code opens *Nothing changed*.
 
 **The rail** (`cockpit/Rail.tsx`): the world badge (`format.ts`
 `worldBadge`: ◦ Local run · ⚗ Scratch run · ◉ Shared rehearsal · ● Live

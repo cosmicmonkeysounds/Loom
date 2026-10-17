@@ -56,7 +56,9 @@ says **⛔ restricted**, the story's buttons are gone from your pass (a
 story can keep a few, like 🚻 Bathroom Mode), you
 can't check into rooms or post in them, and your rooms list shrinks to
 your own feed, your private messages, your pinned Quest Log / Codex /
-Wallet and the one or two places the story still lets you see. Your
+Wallet and the one or two places the story still lets you see. You
+can't join a side or switch sides either (the side chooser and the
+defect buttons go). Your
 wallet can't send, request, pay or accept a trade until it's lifted
 (declining an offer and cancelling your own still work). A pinned
 line at the top of your feed tells you what to do about it. At *Trapped in the Internet* that is being **marked for

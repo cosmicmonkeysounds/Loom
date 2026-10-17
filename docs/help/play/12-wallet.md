@@ -28,7 +28,10 @@ At the bottom of the Wallet:
   the story sets, and never more than you have.
 - **🙏 Request** — ask someone for coin. They get a card with **Pay** /
   **Decline**; it expires if nobody answers (the story says how long —
-  ten minutes, usually).
+  ten minutes, usually). Once the payment goes through, both cards close:
+  *✅ Paid — you sent 40 Truthcoin* on the payer's, *✅ Paid — Paint sent
+  40 Truthcoin* on yours. A payment the auditor denies, or one cancelled
+  while it was held, closes both cards too.
 - **💱 Trade a fact** — offer one of your Codex entries for coin, or
   offer coin for one of theirs. The other side gets **Accept** /
   **Decline**. The moment they accept, the coin moves *and* the entry is

@@ -2,7 +2,7 @@
 title: The mind debugger — watching an agent think
 section: The Editor
 order: 44
-keywords: mind, agent, trabolta, stagehand, orchestrator, voice, model, ollama, reasoning, thinking, prompt, trace, thought, brief, stage, arc, drives, policy, bargain, questions, nudge, whisper, reset, survey, pause, re-run, effort, debugger, control panel, hold, offline, worker down, not responding, answer by hand, judging, judge, facts.json, verdict, override, judge_mode, auto, review, pending, filing, tally, consensus
+keywords: mind, agent, trabolta, stagehand, orchestrator, voice, model, ollama, reasoning, thinking, prompt, trace, thought, brief, stage, arc, drives, policy, bargain, questions, nudge, whisper, reset, survey, pause, re-run, effort, debugger, control panel, hold, offline, worker down, not responding, answer by hand, judging, judge, facts.json, verdict, override, judge_mode, auto, review, pending, filing, tally, consensus, secrets, never, door code, combo, suppressed, restart, limit
 ---
 
 A character marked `mind: external` has no performer: a language model
@@ -25,6 +25,13 @@ waiting message ([a character with a mind](codex.md)). Answer by hand
 meanwhile — Chat, speaking as the character in that thread; your reply
 closes the waiting request, and the worker picks up from the next line
 when it reconnects, with your answer in its history.
+
+A **server restart** (a crash, a redeploy) keeps both. A message from
+the last ten story-minutes still owed an answer is asked again (or gets
+the hold line after 20 seconds, never twice), and his powers' `limit:`
+counts carry over: his own uses are journaled `by: agent:Trabolta` (the
+Log shows them), and a director firing the same power from Run never
+spends one.
 
 ## The mind now (left)
 
@@ -83,6 +90,13 @@ Open a thought to see, in tabs:
 - **Re-run** sends the same messages to the model again, as it is
   configured now, and records the answer beside the original — never
   applied. Compare a tuned persona, a different effort, reasoning on.
+
+When the worker drops something from a mind update for secrecy, the
+thought's **Parsed** tab lists it as `suppressed`: a hunt verdict as it
+was, a door code or a combination as `secret · …`. The worker's log
+counts them apart (*suppressed 1 hunt verdict(s), 2 secret(s) (door code
+/ combo)*), so a program feeding him the code reads differently from a
+hunt claim.
 
 The trace outlives a story restart (the worker marks the boundary with
 a **reset** row), and a worker that reconnects replays its recent
@@ -158,6 +172,19 @@ Sandy's name yet. A situation's `when:` reads the same values as the
 gate, so a `secret:` slot never reaches one. See [the server
 room](server-room.md) for what a director does when he offers to stand
 down.
+
+The mind file's `secrets:` keep the hunt's answers from him, and its
+`never` list (written by `titi:facts` from `facts.json` and the story's
+combos) holds what no line of his mind may carry and his voice may never
+say, whoever typed it: the door code and the ways it is said (*'97*, *in
+97*, *since 97*, *in / since / of ninety-seven*, *nineteen
+ninety-seven*, *one nine nine seven*) and every patch-bay pair. A pair
+matches either way round (*D5 to V2*, *v-2*); a code with spaces, commas
+or hyphens between its digits (*1 9 9 7*, *1,997*), but not dots, so
+*$19.97* is a price; number words in any spacing (*ninety seven*). Never
+a bare *97* or *of 97*: a program may be called NHL 97, and *3 of 97* is
+a count. A voice line carrying one is replaced by the persona's
+`fallback`.
 
 Until the orchestrator learns to follow the story's phases on its own,
 a director can keep the arc in step by hand: click the stage on the

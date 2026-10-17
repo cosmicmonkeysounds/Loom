@@ -2,7 +2,7 @@
 title: Run mode — rehearse, go live, be anyone
 section: The Editor
 order: 43
-keywords: run, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, cue, next, ceremony, award, recap, re-pair, lost phone, release, grant codex, give quest, complete quest, fail quest
+keywords: run, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, cue, next, last, refused, not taken, repeat, branch, ledger, parts, phone offline, agent, worker, ceremony, award, recap, re-pair, lost phone, release, grant codex, give quest, complete quest, fail quest
 ---
 
 Run (`⌘2`) is the control room for your project's **one run**. You
@@ -41,7 +41,9 @@ Every page shares one header:
   project's current text — the button turns amber the moment your files
   move past the running snapshot), **Go live…** (server rehearsals), and
   **■ End**. On a live event the destructive ones ask you to type the
-  event code first.
+  event code first; a wrong code says *Nothing changed* and does nothing.
+  A restart while the doors are closed (paused, or not yet opened) plays
+  the story's `start:` beat when they next open.
 - **👁 The identity control** — who you are right now (see *Being
   anyone*).
 - **⚡ Quick-fire** — fire any named event the story declares, from any
@@ -58,7 +60,10 @@ Front of house: getting people in.
 
 - **Join** — the guest **event code** (and its QR + link), the
   **performer code**, and the **moderator code**, with copy buttons, plus
-  a sign-in line per character to hand to each performer. These codes
+  a sign-in line per performer part to hand to each performer (only the
+  parts a booth can sign in to: never a guest's program, a prop or an
+  agent). A part whose phone dropped off without signing out reads
+  **signed in · phone offline** in amber: the moment for ⏏ Release. These codes
   work during the rehearsal (anyone with the event code can join it) and
   **stay the same when you go live** — and when you end the run and start
   a new one, since codes belong to the project — so you can print them
@@ -90,7 +95,10 @@ Front of house: getting people in.
   editor **chimes** — from any mode, again every minute until you
   **ack** it (**✕** forgets one switched off on purpose). The header's
   📟 pill counts the live ones. The **🔊 TV voice** button mutes the TV
-  to captions only (the TV's own 🔊 / `M` key does the same). Each row
+  to captions only (the TV's own 🔊 / `M` key does the same). The mute
+  holds through a server restart, a redeploy and Go live in place, and the
+  server log says 🔇 at boot when the TV starts muted, so look at this
+  button before the doors. Each row
   shows what the tablet reports: **🔇** nobody has touched it yet so it
   can't speak, **💤** its screen is off or another app is on top, its
   battery (red under 20 % and not charging), and its build (amber when
@@ -100,9 +108,14 @@ Front of house: getting people in.
   chime: install day's "which tablet is this?". A terminal set up with a
   **room** (the show's server-room terminal) sleeps on its screensaver
   until the story opens that room to everyone, and still checks in while
-  it sleeps: green and asleep is right before then. Since a mod code
-  lists the story's cast before the doors open, a terminal's ⚙ can check
-  its character the moment it is set up.
+  it sleeps: green and asleep is right before then. Its row says
+  **room The Server Room**. A room on any other spot is amber: usually a
+  tablet that was the TV once and kept `room=The Desktop`, so it sleeps
+  and speaks that room's lines instead of its own. Clear its room in ⚙.
+  Since a mod code lists the story's cast before the doors open, a
+  terminal's ⚙ can check its character the moment it is set up, and a
+  room terminal's room resolves before the doors too: *the story has no
+  room called …* means a typo in its `room=`.
 - **House map** — when the event has a house map, one button per map
   variant (*Trapped in the Internet*: **Tent** | **Shed**), the one
   playing now highlighted. Press the other to switch every tablet,
@@ -114,7 +127,11 @@ Front of house: getting people in.
   open them in the Inspector.
 
 Ended a run? The page keeps it: **Export that run** downloads the ledger,
-every room's transcript, the roster, and the world state as JSON.
+every room's transcript, the roster, and the world state as JSON. The
+server forgets a run's ledger once it ends, so an **■ End** from your
+console fetches the whole ledger first (for up to 5 seconds) and keeps it.
+A run a colleague ended, or one that crashed, leaves you only the events
+your console saw: export while it is still running if you need it.
 
 ## Going live
 
@@ -129,14 +146,14 @@ no run yet, the Run page also offers *Go live with real guests* directly.)
 | Page | Shows |
 |---|---|
 | **Run** | start / join codes + QR / directors / guest lookup |
-| **Stage** | the floor plan: one card per location with its occupants as chips — **drag a chip between cards to move the guest** (hooks fire) |
-| **Chat** | every room the current identity can see, with the composer |
+| **Stage** | the floor plan: one card per location with its occupants as chips — **drag a chip between cards to move the guest** (hooks fire). The cast strip's dots: green a performer signed in, amber signed in · phone offline, sky blue an agent-voiced character a stagehand worker is voicing |
+| **Chat** | every room the current identity can see, with the composer. A GROUP's own room beside a room of the same name reads `#hosts (side)`: post in the plain one, where the story's readouts land |
 | **Story** | the story map, lit by the run ([story graph](story-graph.md)) |
 | **Roster** | all guests and the cast — group, location, score, presence, whose persona |
 | **World** | the live state browser — a searchable variables table; **double-click any value to edit it live** |
 | **Director** | the **cue sheet**, named events (with arguments), beats, broadcasts |
 | **Mind** | an agent-voiced character's mind — its arc, drives, brief, the prompts and both models' reasoning, and a control panel ([the mind debugger](44-mind-debugger.md)) |
-| **Log** | the raw ledger, event by event — **filter to one participant**; export the run |
+| **Log** | the raw ledger, event by event — **filter to one participant**; export the run. Events from before this console opened (a reload, a late join) aren't listed: it says how many, and **⤓ Export run** pages the whole ledger off the server |
 
 ## The cue sheet
 
@@ -144,10 +161,32 @@ The Director page opens on the **cue sheet**: the story's `who: admin`
 interactions in the order they are declared ([buttons in the
 app](live-verbs.md)), one click each. A label's leading code
 (`C1 · …`, `V4 · …`) is split off as the cue number. The last cue fired
-is amber **LAST**, the one after it is tagged **NEXT**, and every cue
-fired tonight gets a ✓ — the same sheet on every director's console,
-and it survives a reload. The header shows the story's `Night.phase`;
-the box filters by word. A cue that needs a person — an award: every
+is amber **LAST**, the one the sheet suggests is tagged **NEXT**, and
+every cue fired tonight gets a ✓ — the same sheet on every director's
+console, and it survives a reload. The header shows the story's
+`Night.phase`; the box filters by word.
+
+- **NEXT** is the first cue after LAST that hasn't fired tonight and is
+  on tonight's branch. A cue with a `while:` ([live
+  verbs](live-verbs.md)) is only suggested while it holds: in *Trapped
+  in the Internet* NEXT after 🕚 is 🌑, after the dance it is the
+  ending's own cue, after the song it is G1. A `while:` never stops you
+  pressing a cue; the story's rule decides what happens.
+- A `repeat: true` cue **stays NEXT** while you keep pressing it (📋 once
+  per question, 🗜 once per trip).
+- A press the story **turns down** counts for nothing: it never becomes
+  LAST and never ticks. A show's cues pressed out of turn say why in
+  `# hosts` (*🤖 Too early: …*, *⚖ Not yet: 🍎 Bobbing for Truth, then
+  📄 truth.txt first.*) and do nothing else; a hardware fallback (🖨,
+  🫘, a patch combo) shares its name with the device and stays silent.
+- Pressing an **earlier** cue again (a second round, a re-read) never
+  moves LAST back.
+- An off-sequence cue (`sequence: false`: one a machine fires, a
+  hardware fallback, an anytime cue like 💡) ticks when it fires but is
+  never LAST or NEXT.
+
+A local-folder rehearsal judges all of this exactly like the server. A
+cue that needs a person — an award: every
 hook that hears it binds one — has a **who?** picker and an optional
 **value** box (read as `{value}`) and fires with that person as the
 subject (in *Trapped in the Internet*, **♟ They beat the King** asks who
@@ -169,7 +208,8 @@ who joined each side.
 event's address with `?role=director`, type the director (mod)
 passcode and a name. Each cue is a big button — tap once to arm it, tap
 again within 4 seconds to fire. LAST / NEXT are shared with this page,
-and the log records each fire as *Phone · <name>*. The guest front page
+and the log records each fire as *Phone · <name>*. A press the story
+turned down says *Not taken* there, and only an award asks for a value. The guest front page
 has no link to it (the participant guide's *The cue sheet on your
 phone* has the details).
 
@@ -206,7 +246,11 @@ Click any guest or character to open the **Inspector**: their **view**
 (what their screen says), their **feed** (everything they have seen —
 hidden lines greyed; for a character, every line they spoke and every
 scan readout), their story position on the map, their variables, and
-one button to **Be** them. The **Log** page's participant filter shows
+one button to **Be** them. A performer part's Inspector says whether a
+booth holds it (amber *signed in · phone offline* when that phone
+dropped); an agent-voiced character's says whether a stagehand worker is
+voicing it right now; with none, its `hold:` line answers and you can
+reply as it from Chat. The **Log** page's participant filter shows
 every raw engine event that mentions them.
 
 **Hand out a clue or a quest by hand.** A guest's Inspector has a
@@ -268,7 +312,8 @@ menus, `set` a guest's score / group / location, fire beats and named
 events (optionally *as* a character, so only that character's hooks
 hear it), scan on a character's behalf, reveal a hidden group, hide and
 show messages, and reply in threads. Every action is journaled on the
-run, so the story replays exactly.
+run, so the story replays exactly: a broadcast (an `!` alert included)
+survives a restart in its place and shows in the Log and an export.
 
 **Release is the story's release, not an escape.** Run's Release (and
 setting `captured` to false in the World browser) does what `release X

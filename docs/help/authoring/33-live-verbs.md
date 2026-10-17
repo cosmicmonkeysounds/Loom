@@ -2,7 +2,7 @@
 title: Live verbs — building game rules from primitives
 section: Live Shows
 order: 33
-keywords: capture, release, escape, reveal, respond, join, defect, betray, enroll, scan, signal, fire, named event, game, verbs, promote, cast, move, add, remove, reply, when, watcher, primitives, rules, hooks, do, INTERACTION, interaction, button, story rule, arguments, with, for, cue sheet, sequence, fallback, chess, chess won, the King, majority, limit, power, screens, slide, overlay, tv, blackout, award, restrict, unrestrict, restricted, marked, quarantine, pin, unpin, sticky, notice, pinned, staff quest, character quest
+keywords: capture, release, escape, reveal, respond, join, defect, betray, enroll, scan, signal, fire, named event, game, verbs, promote, cast, move, add, remove, reply, when, watcher, primitives, rules, hooks, do, INTERACTION, interaction, button, story rule, arguments, with, for, cue sheet, sequence, repeat, refused, not taken, branch, fallback, chess, chess won, the King, majority, limit, power, screens, slide, overlay, tv, blackout, award, restrict, unrestrict, restricted, marked, quarantine, pin, unpin, sticky, notice, pinned, staff quest, character quest
 ---
 
 Live shows run on **hooks** — `when <event>:` blocks in a CHARACTER,
@@ -336,7 +336,37 @@ The `who: admin` interactions are also the Director page's **cue sheet**,
 in the order you declare them. Add `sequence: false` to one a machine
 fires (a game, a door sensor) or that is only a hardware fallback: the
 sheet still ticks it when it fires, but it never becomes the sheet's
-*last* cue or its suggested *next* one. A cue whose every `when` binds a
+*last* cue or its suggested *next* one. Add `repeat: true` to one the
+director presses again and again in one stretch (a result per question,
+a zip per trip): the sheet keeps suggesting it as *next* after it fires.
+An admin cue's `while:` names the branch of the night it belongs to:
+
+```loom
+INTERACTION trabolta_recounts
+  label: 🏍 After the dance: weakened Trabolta recounts
+  who: admin
+  while: Night.ending == "disabled" and Night.rank_round != 3
+```
+
+The sheet only suggests it as *next* while the condition holds, so the
+suggestion follows the ending the night is on. It never hides the cue or
+stops a press: the cue's own `when` still checks for itself. Write that
+`when` to refuse a press out of turn with a line to the staff room and
+nothing else:
+
+```loom
+when the_verdict:
+  if Night.r3_closed != true:
+    broadcast "⚖ Not yet: 🍎 Bobbing for Truth, then 📄 truth.txt first. Nothing happens." to channel(hosts)
+  else:
+    …
+```
+
+A press that does nothing, or nothing but post to a staff room (an
+authored `kind: faction` CHANNEL whose GROUP no guest may join), is read
+as **refused**: the sheet doesn't tick it or make it *last*, and the
+director's phone says *Not taken*. A cue no rule hears (only the
+show-control bridge reacts to it) always counts as fired. A cue whose every `when` binds a
 person (`when award most trusted for program:`) gets a **who?** picker
 and an optional value (`{value}` in the body) — an awards ceremony is a
 run of these ([the cue sheet](run-mode.md)).
@@ -422,7 +452,9 @@ model supplies (`room`, `target`) bind by name like `fire … with`; a
 LOCATION's exact name first ("the start bar" arrives as `The Start Bar` — the
 same for an event fired from Run). `limit:` caps uses per run; a use
 the story answers with words only (a refusal) doesn't count. Every use
-is journaled and visible to the directors. The `description:` is what the model reads, so say what the
+is journaled `by: agent:<Character>` and visible to the directors, so
+the count survives a server restart; a director firing the same event
+from Run never spends one. The `description:` is what the model reads, so say what the
 power does and which args it takes. The character may also **share** any
 codex entry it holds, exactly as a performer's booth would.
 

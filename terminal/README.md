@@ -162,11 +162,17 @@ Premium voice ranked above it; pick one in ⚙ — never the `alexa`
 player's Samantha); lines from the song
 beats `Song Ending` / `Sad Confession` / `The Hand Jive` are **captioned
 only** (QLab plays the sung track); **Sandy** is captioned, never voiced
-(lore, #28); other characters are ignored; nothing is said on attract. A
+(lore, #28); other characters are ignored; nothing is said on attract.
+Those text-only captions (Sandy, the songs: `data-mode` `text` / `song`)
+sit **over** a slide and under an overlay, so the song isn't hidden behind
+the ♪ card and the Y2K / ceremony / award slides keep Sandy's line; a
+spoken caption, and a line the director muted, stay under the slide. A
 booting TV starts at the room's head (no backlog), a gap of 15 s between
 answers resyncs, a restart resyncs. **Mute**: the 🔊 button or `M` on the
 TV's keyboard → `POST /api/mod/screen/voice` (server-side, so it survives a
-reload and the director can flip it — K-29 card). Without the autoplay flag
+reload and the director can flip it — K-29 card; the server keeps it in
+`screen-voice.json`, so a server restart, a redeploy or Go live in place
+leaves it as it was). Without the autoplay flag
 a *CLICK ONCE TO ENABLE THE VOICE* banner asks for one click. Device check:
 `scripts/accept/K-18.sh`.
 
@@ -184,7 +190,10 @@ https://<server>/terminal/?code=<mod passcode>&name=Server Room&character=Trabol
   an unknown name is `{id: "", open: false}`) and keeps the terminal on
   **attract while the room is closed**, plus the room's `voice` block. A
   server too old to send `room` keeps it asleep too (fail closed); a
-  misspelled room says so in the attract corner.
+  misspelled room says so in the attract corner. The server resolves the
+  name against the story's declared LOCATIONs before the doors too, so
+  that corner means a typo, never "too early". Run → Terminals shows the
+  room on its row (amber off the `server-room` spot).
 - While asleep the app keeps the voice cursor on the room's head
   (`cursorWhileAsleep`, `src/tv.ts`), so the lines that land *with* the
   wake — the door cutscene reveals the room and speaks in it in one go —

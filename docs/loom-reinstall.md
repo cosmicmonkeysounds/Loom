@@ -545,7 +545,10 @@ parked assignment is not a player yet (no `join` until its first pose); one
 nobody claims within 5 min is dropped. `released` (in `found` frames and
 the `found` response) means the program was captured and no longer is.
 `EventRuntime.restart()` ends every session (`reset`), `dispose()` ends the
-streams. `hello` is sent on every (re)connect, so a client compares its
+streams. A server **process** restart (a crash, a redeploy, SIGTERM) loses
+every session and parked assignment, since tokens live in memory: the
+game's next call answers 401 and the program is scanned again. Found runs
+survive (`spatial-runs.jsonl`). `hello` is sent on every (re)connect, so a client compares its
 `houseVersion` with the map it holds (§1.3).
 
 **A new map mid-game** (a director's save, the tent ↔ shed switch, or a
@@ -681,7 +684,9 @@ result still on its way is kept across a reload for 60 s (below).
   **FOR THE CODE** / **PRACTICE** (wave 7; was ARMED) when the prop
   declares `armed` (`fetchArmed`: the world var off `GET /api/state?role=mod`,
   given up after 4 s, `ARMED_TIMEOUT_MS`; no badge while unknown), with a
-  `stakesLine` under it saying what a checkmate wins.
+  `stakesLine` under it saying what a checkmate wins. Once `Night.ended`
+  is true the read answers `NIGHT_ENDED`: the badge goes (whatever an
+  earlier read said) and no win line promises the code.
   Every tap touches the idle leash, so a game in progress is never ended.
 - **The result** (`Game.chessResult`): **checkmate** fells him (`fall()`
   topples him over 1.6 s), opens his door in the simulation, plays the
@@ -691,7 +696,7 @@ result still on its way is kept across a reload for 60 s (below).
   "The server-room door code is in your phone's Codex." (counted),
   "A practice win: the King guards nothing real until the Y2K clock."
   (practice), the "tell a host (♟)" line for a counted or unknown win that
-  never landed, or nothing; the King winning posts
+  never landed, or nothing (always nothing after an ending); the King winning posts
   `signals.lost` ("THE KING WINS. AGAIN."), a stalemate / insufficient
   material / threefold / fifty moves posts `signals.drawn` ("STALEMATE.
   AGAIN." / "DRAW. AGAIN."), and either deals a fresh board at the same

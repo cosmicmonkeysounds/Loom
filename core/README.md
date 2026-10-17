@@ -172,9 +172,16 @@ into channel-routed messages — the single source of truth the
 - `dialogue` → a **DM** channel (`dm:<Character>`); `broadcast` → the
   **lobby** or a **`faction:<Id>`** channel; ambient + personal state beats
   → the lobby. Each message carries an `audience` (`"all"` or guest ids).
-- On SSE connect a guest receives a **`history`** event (every thread
-  addressed to them, since the event began) then live **`message`** events
-  — so a **re-login replays the whole conversation**, never a blank feed.
+- On SSE connect a guest receives a **`history`** event then live
+  **`message`** events — so a **re-login replays the conversation**, never
+  a blank feed. A guest's and a booth's history frame is capped
+  (`capHistory`, `HISTORY_LIMIT` = 400): the last 400 ordinary lines of
+  the shared rooms, plus — whatever their age — every pinned-room row
+  (Codex, Quest Log, Wallet), every pin / unpin, every alert, every
+  widget card and the viewer's own rows (a guest's `dm:` / `pm:` threads
+  and rows addressed to them alone, `guestOwnRow`; a booth's
+  `@<Character>` rows and its own `dm:<Character>` threads,
+  `boothOwnRow`). Directors' streams and `GET /api/history` stay whole.
   Performer/mod clients get the room's feed for context + moderation.
 - **Moderation:** `POST /api/mod/message { seq, hidden }` hides/shows a
   message — guests in its audience see it vanish/return (a
@@ -192,9 +199,17 @@ into channel-routed messages — the single source of truth the
   the room.
 - **Mod feed bandwidth:** mod-console snapshots are coalesced to ≤ 2/s
   (`MOD_SNAPSHOT_MS`; a burst of steps → one trailing `ModView`, built
-  once and shared by every director). House tools stream
+  once and shared by every director). A console still holding more
+  unsent than one view is skipped and sent the newest view once it catches
+  up (never every view in between). House tools stream
   `/events?role=mod&lean=1`: every `sim` / `message` / `lifecycle` frame,
-  never a `snapshot` or `history` (stagehand uses it).
+  never a `snapshot` or `history` (stagehand uses it). A full director
+  console is ≈ 6 Mbit/s at 45 guests (the whole world every snapshot).
+- **Stalled streams:** every SSE write goes through `sseWrite`; a client
+  over its cap (256 KB, 2 MB for a full mod stream) with no byte sent out
+  for 15 s (a phone suspended with its socket up, a laptop asleep on the
+  Run page) is dropped, and its EventSource reconnects to a fresh snapshot
+  + history. A slow link that is still draining is never dropped.
 - **Process load:** `GET /api/mod/metrics` (moderators) returns the
   server process's cumulative CPU µs, memory, `loadavg` / `cpus`, the
   event-loop delay since the previous read, and the stream-client count
@@ -291,9 +306,24 @@ loses their faction / score / place.** Chat history is **not** stored
 separately: replaying the journal through `server/chat.ts` re-derives the
 identical messages (same deterministic events → same `seq`s); only the set
 of moderator-hidden `seq`s is persisted (`hidden.json`) and re-applied. A
-wifi blip is handled client-side (the SSE stream auto-reconnects and the
-next snapshot rehydrates the UI). `mod load` / `mod reset` start a fresh
-timeline (clear the journal + chat + moderation).
+director's `/api/mod/broadcast` (an `!` alert included) is journaled too
+(the `broadcast` mutation: `Sim.broadcast` records the cue, fires no
+trigger), so it replays onto its own seq and shows in the mod sim feed,
+the Log and an export. A restore also re-asks every agent DM still owed
+an answer from the last 10 story-minutes (`AGENT_QUEUE_MAX_AGE_MS`; a
+thread already given the `hold:` line is re-asked as held, so the line is
+never said twice) and counts each agent power's `limit:` off the journal:
+an agent's own fire is journaled `by: agent:<Character>`, a director's
+fire of the same interaction never counts. The TV-voice mute is kept in
+`screen-voice.json`. Not restored: reinstallation sessions (in memory,
+see the spatial plane). Replay takes about a second per 1,500 journal
+lines. A wifi blip is handled client-side (the SSE stream
+auto-reconnects and the next snapshot rehydrates the UI). `mod load` /
+`mod reset` start a fresh timeline (clear the journal + chat +
+moderation); a restart with the doors closed (paused or idle: Reset,
+Push draft, a reload, Go live in place on a paused preview) still plays
+the `entry:` beat on the next open (`entryPlayed`, derived from the
+journal on a restore).
 
 Environment: `LOOM_PORT` (7000), `LOOM_HOST` (0.0.0.0), `LOOM_EVENT_PASS`,
 `LOOM_PRIME_PASS`, `LOOM_MOD_PASS` (any unset code is auto-generated),
@@ -371,7 +401,27 @@ pushes during journal replay. The play app's `/sw.js` +
   off the sim log so every director agrees after a reload. An INTERACTION
   with `sequence: false` (machine-fired: the duck game, the door contact) is
   ticked but never "last"; `InteractionSummary.subject` marks a cue whose
-  every listener binds a person (the ceremony's awards).
+  every listener binds a person (the ceremony's awards), `repeat` a
+  `repeat: true` cue (NEXT stays on it while it is LAST), and `live: false`
+  an admin cue whose `while:` is false on the director's view (off
+  tonight's branch: never NEXT, still pressable — `while:` never gates an
+  admin press). The rows themselves (`CueInteraction` → `cueRows`, NEXT =
+  the first unfired in-sequence live row after LAST) are `src/cue-sheet.ts`,
+  shared with the play app's phone page. A **refused** press — a cue some
+  unconditional rule hears whose own events (`notePress` records each
+  `Sim.signal` batch, live and on replay) are nothing but diagnostics and
+  broadcasts to staff rooms (an authored `kind: faction` CHANNEL whose
+  GROUP isn't joinable) — is never LAST and never ticks, and a repeat of an
+  earlier cue never moves LAST back. `POST /api/mod/signal` answers
+  `{ok: true, refused: true}` for one (`pressRefused`), so the phone says
+  *not taken*.
+- **The whole ledger**: `GET /e/:id/api/mod/log?after=<seq>&limit=<n>`
+  (directors; `limit` default 1000, at most 5000) pages the run's ledger:
+  `{entries, next, total}`, `next` = the `after` for the next page or null
+  at the end. The editor's Log export and End page through it.
+- **Cast rows** (`ModView.cast`): `part: true` for a part a booth can sign
+  in to (`identity.ts` `performerPickable`), and `held` — a session token
+  holds it (`held && !online` is a booth whose phone dropped).
 - **Grants by hand** (S4): `ModView.quests` lists every declared QUEST
   with each person's status (`QuestSummary.status`, person id → `active`
   / `done` / `failed`), beside `ModView.codex`'s holders, so Run's
@@ -497,7 +547,10 @@ and its geometry are `@loom/house` (`../house`).
   `/api/mod/load` takes `maps` beside `source` (`scripts/sync-example.ts`).
 - **The stream** (`GET /api/spatial/stream`, SSE, its own subscriber set —
   never `clients`): `hello` / `join` / `poses` / `found` / `leave` /
-  `house` / `duck` / `reset`. A restart ends every session (`reset`).
+  `house` / `duck` / `reset`. A restart ends every session (`reset`), and
+  a server process restart loses them all (tokens live in memory: the
+  game's next call answers 401 and the program is scanned again; found
+  runs stay in `spatial-runs.jsonl`).
 - **Routes**: `GET /api/spatial/{house,stream}`, `POST
   /api/spatial/{pose,found,end}` (session token; bodies capped at 2 KB
   before the generic parse), `GET /api/mod/spatial/{station,stations,candidates}`,
@@ -545,10 +598,13 @@ the scripted beat, or null for a director's `say` as the character. No
 `after` = no lines (a booting TV starts at `head`); the TV decides what to
 speak (`terminal/src/tv.ts`). `POST /e/:id/api/mod/screen/voice {muted}`
 (mod token or author session) sets the TV-voice mute every TV reads off
-its next poll — runtime state, a server restart unmutes; a body without
-`muted` reads it. `GET /e/:id/api/mod/screen/terminals` (K-29, mod token
+its next poll — kept in the event's state dir (`screen-voice.json`), so a
+server restart, a redeploy or Go live in place leaves it as it was (the
+boot log says 🔇 when the TV starts muted); a body without `muted` reads
+it. A poll's `room=` resolves against the story's declared LOCATIONs
+before the doors too, so `{id: ""}` means a typo. `GET /e/:id/api/mod/screen/terminals` (K-29, mod token
 or author session) is the director's heartbeat list: `{now, terminals:
-[{name, spot, view, character, at, ago}], voiceMuted, silentMs}` —
+[{name, spot, view, character, room?, at, ago}], voiceMuted, silentMs}` —
 `TERMINAL_SILENT_MS` = 20 s — and reading it never records a poll.
 
 ## Running a live event
@@ -625,7 +681,15 @@ Two planes:
   steered at software via `hastemplate:` filters; antivirus hits flagged
   `blocked: "antivirus"`). `guest/register {name, wiki?}` and `prime/login`
   refuse a taken name (409), a part / caste for a guest (409), an
-  antivirus directory pick (403). Profile pictures (`server/avatars.ts`):
+  antivirus directory pick (403); `prime/login` checks the part against
+  the story's compiled model before the doors too (a story that won't
+  compile answers 409). A booth's `/api/prime/say` posts only where its UI
+  has a composer — its `guest:` threads, its `cast:` thread, the lobby and
+  the rooms (locations + authored rooms); a pinned room, a raw `dm:` /
+  `pm:` answers 403, an unknown room 404. `/api/prime/codex/share` answers
+  403 when an agent refuses the lore (as the guest route does), `shared:
+  false` when the recipient already held it. A restricted guest's
+  `/api/guest/join` and `/api/guest/defect` answer 403. Profile pictures (`server/avatars.ts`):
   a hand-picked `avatar:` (URL or `File:` name → `Special:FilePath`,
   `|`-separated options) or the best of the article's gallery
   (`WikiClient.pictures` / `rankFiles`: logo / icon / box art before the

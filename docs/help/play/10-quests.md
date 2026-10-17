@@ -38,8 +38,10 @@ them. If a performer seems to be following a script, they are.
 
 Some stories let you hand an answer to a character instead of saying it
 out loud: a **📝 File a fact** card in their private thread. Pick the
-question, type your answer, set the slider — *Please select your
-confidence level in this response*, 1 to 100 — and tap **File it**.
+question (with only one left, it's picked for you), type your answer,
+set the slider — *Please select your confidence level in this response*,
+1 to 100 — and tap **File it**. Until it can go, the card says what it
+is waiting for: *Pick a question above*, or *Type your answer*.
 Only filed facts count — telling the character in chat is just a rumour.
 You can file each open question once, and the reply is the same whether
 you were right or not: it is judged the moment you file it, and the

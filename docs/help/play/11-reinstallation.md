@@ -67,6 +67,11 @@ Golden Duck*.
 
 Wander off for two minutes without touching anything (or take the
 headset off) and the simulation ends — scan your pass to start again.
+The same if the house's server restarts while you're walking: the game
+ends, so scan your pass again (a duck you already found still counts).
+
+On a night everyone is **banished** to the Internet, Gerald can't help:
+finding him only tells you so. The way out is the hand jive, together.
 
 ## The King
 
@@ -86,7 +91,8 @@ strength you've left him. A badge on the board says what a win is worth:
 under it saying what a checkmate wins. Checkmate him and he falls, his
 door in the simulation opens, and the story hears about it: from the
 Y2K clock, the real server-room door's code lands in your Codex (the
-tablet tells you); before that it was practice. Lose (or draw), and he
+tablet tells you); before that it was practice, and once the night has
+ended a win promises nothing. Lose (or draw), and he
 deals you a new game at the same strength, the board still open. Too strong? **Give up** closes
 the board; hit him some more to make him weaker, then challenge again.
 He is fresh for the next player.
