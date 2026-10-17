@@ -108,7 +108,7 @@ LOCATION The Tube
   hidden: true
 
 LOCATION The Internet
-  label: The Internet (Reinstallation — the tent, backyard)
+  label: The Internet (Reinstallation — backyard)
   prison: true
   sealed: true
   hidden: true

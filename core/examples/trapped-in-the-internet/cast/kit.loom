@@ -146,11 +146,11 @@ TRAIT Enforcer is Person
 
   when zip_everyone_out:
     if Night.ended != true and Night.ending != "banished":
-      reply 🗜 Bring everyone out of the tent and zip them up.
+      reply 🗜 Bring everyone out of the Internet and zip them up.
 
   when advice_thwarted:
     if Night.phase == "advice" and Night.ended != true and Night.ending != "banished":
-      reply ⛈ You are banished too. Go to the tent. Then turn on him: everyone does the hand jive, together.
+      reply ⛈ You are banished too. Go to the Internet. Then turn on him: everyone does the hand jive, together.
 
   when go to the bathroom for program:
     reply 🚻 {program.name} is in Bathroom Mode. Not hacking the Internet.

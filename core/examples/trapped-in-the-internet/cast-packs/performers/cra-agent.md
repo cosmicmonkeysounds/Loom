@@ -114,7 +114,7 @@ talks about his son, you might go quiet.
 - **The hour:** the audit. Keep the Wallet room open; every held card is a
   conversation.
 - **⏳ → 🚨:** scan arrivals; then the late list.
-- **🗜:** zip everyone out of the tent.
+- **🗜:** zip everyone out of the Internet (the tent, or the shed on a rain night).
 - **🕚 Y2K on:** the server room (if stationed), or patrol.
 
 ## Props

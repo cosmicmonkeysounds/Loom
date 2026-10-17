@@ -98,7 +98,7 @@ where your money is.
 - **V6 and the bottle:** the escort list; walk them through the Tube, 🛡.
 - **📥 → ⏳ (the hour):** broker the exchange. Be where the trading is.
 - **⏳ → 🚨:** scan arrivals; then the late list.
-- **🗜:** zip everyone out of the tent.
+- **🗜:** zip everyone out of the Internet (the tent, or the shed on a rain night).
 - **Y2K on:** police the server room (see the patch-bay card if you are
   stationed there).
 

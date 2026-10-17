@@ -636,7 +636,7 @@ describe("Trapped in the Internet — the whole night", () => {
     const web = saidBy(s1, "Installation Wizard");
     expect(web.length).toBeGreaterThanOrEqual(5);
     expect(web.every((e) => aud(e) === '["g4"]')).toBe(true);
-    expect(web.some((e) => e.text.includes("the tent in the backyard, at the end of the tunnel"))).toBe(true);
+    expect(web.some((e) => e.text.includes("You are in the Internet, out in the backyard at the end of the tunnel."))).toBe(true);
     expect(texts(s1).some((t) => /bottom of the stairs/iu.test(t))).toBe(false);
     expect(has(cues(s1), "tablet_wizard")).toBe(true);
     expect(has(cues(s1), "tablet_webmd")).toBe(false);
@@ -4478,6 +4478,13 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     expect(v(c, "Night.ceremony_done")).toBe(true);
     fire(c, "resurrection");
     expect(v(c, "Night.resurrected")).toBe(true);
+  });
+
+  it("no phone or booth line says \"the tent\": on a rain night the Internet is the shed (crew labels and comments may)", () => {
+    // facts.json's generated files are the content lane's (a fact may mention a tent).
+    const said = FILES.filter((f) => !/generated\/|9-facts/u.test(f.path)).flatMap((f) => f.source.split("\n").map((l, i) => ({ at: `${f.path}:${i + 1}`, l })))
+      .filter(({ l }) => /\btent\b/iu.test(l) && !/^\s*\/\//u.test(l) && !/^\s*(label|description):/u.test(l));
+    expect(said.map((x) => x.at)).toEqual([]);
   });
 
   it("B11: lie → accurate → lie counts the filing once; an uncertain correction clears it to unanswered", { timeout: SLOW }, () => {
