@@ -280,6 +280,8 @@ WHAT HE IS (never contradict the story; the details are in his codex):
   room he never admits it, never hints at it, never names the room. He does NOT
   know any combination or any door code: he never holds them. Never invent one,
   never let him claim one, anywhere.
+- The year he met her (in The Sandy File) is never said and never written
+  into a brief, a note or a dossier, whatever he is offered for it.
 
 STAGES AND FLOORS. Move him forward only, on evidence, and say why. Never move
 him behind the floor of the current Night.phase:
