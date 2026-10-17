@@ -30,7 +30,7 @@ anytime.
 |---|---|---|
 | K-01 | `k01.sh` | Laptop: public join base, invite site, uncompressed SSE (two 25 s pings). Then one phone joins over cellular |
 | K-04 (SW-AI-23) | `K-04-burst.ts --code … [--dms 30] [--spread 0]` | The worker on the house Mac voicing Trabolta, Trabolta introduced: 30 persona DMs at once, the time to each first real reply (the server's hold line and the worker's canned `fallback:` / `unavailable:` lines from `trabolta.persona.md` counted apart — never a PASS), p95 + a `record:` line (guarded; `--reset-after` clears the bots, then Reset the mind). Pure half: `node --no-warnings --test scripts/accept/burst.test.ts` |
-| K-05 | `K-05.sh` | House Mac, rig powered: touch the reed, patch the bay, watch the lights. Checks stagehand's log, MQTT, the static IP and the launchd jobs |
+| K-05 | `K-05.sh` | House Mac, rig powered: open the server-room door with the keypad code from outside and by the inside handle (one `server_door_opened` each; the handle always opens with no code), patch the bay, watch the lights. Checks stagehand's log, MQTT, the static IP and the launchd jobs |
 | K-06 + N-07 | `k06.sh` | An iPhone, an Android phone and an Antivirus booth. Lock both phones, send a `!` alert, and it banners and chimes on wake. The booth banners the alert and the late list (N-07) |
 | K-08 | `K-08.sh [nightly\|show]` | House Mac over ssh: a show-night copy, a restore drill into a scratch `loom-drill` project, rollback timing (asks first, restarts the live site twice), the 10-minute backup job |
 | K-10 | `k10.sh before` → End + relaunch → `k10.sh after` | The codes survive End → relaunch. Then scan an old QR on cellular |
@@ -50,14 +50,14 @@ anytime.
 | K-24 + N-05 | `K-24.md` + `K-24.ts setup\|check` | iPhone files a 📝 fact (true and confident lie). Check the score, `Kernel.lies_accepted` and the `# hosts` lines |
 | K-25 | `K-25.md` + `K-25.ts end\|start\|award\|…` | Run the awards ceremony for each ending's host on 3 phones + the TV |
 | K-26 | `K-26.md` + `K-26.ts [--json]` | `/api/mod/recap` text in < 1 s, lists match the run (read-only) |
-| K-27 + N-06 | `K-27.md` + `K-27.ts setup\|chess\|rearm\|stay\|leave` | Bench reed: the Cold Lock arms, ♟ opens the 90 s window, re-arm, forced majorities |
+| K-27 + N-06 | `K-27.md` + `K-27.ts setup\|persona\|chess\|door\|wrong\|reset\|stay\|leave\|watch` | Bench door (keypad lock + contact): a chess win from the Y2K hour puts *The Door Code* in the winner's Codex, the keypad opens with it, the opening plays the server-room cutscene with no alarm, the second wrong combo alarms, `reset_server_room`, forced majorities give the majority the code |
 | K-29 | `K-29.sh [--watch\|--fake <name>]` | Run page Terminals card: every tablet + the TV green, a silent one red + chime after 20 s |
 | K-30 | `K-30.sh` | Export and sideload two Quest APKs, each station polls the VPS, a captured program walks to Gerald → `released: true` |
-| K-31a | `k31a.sh` | VAPID keys set: 2 locked Android phones on cellular get a `!` alert and a Trabolta DM as notifications (no duplicate in the foreground); a locked Antivirus booth gets the door alarm |
-| K-31b | `k31b.sh` | `LOOM_HOMESCREEN=on` + VAPID keys: an iPhone (16.4+) guest adds the app to the Home Screen from the 🔔 card and the icon opens as the same program; locked on cellular it gets a `!` alert and a Trabolta DM; an iPhone booth signs in from its icon and gets the door alarm |
+| K-31a | `k31a.sh` | VAPID keys set: 2 locked Android phones on cellular get a `!` alert and a Trabolta DM as notifications (no duplicate in the foreground); a locked Antivirus booth gets the server-room alarm |
+| K-31b | `k31b.sh` | `LOOM_HOMESCREEN=on` + VAPID keys: an iPhone (16.4+) guest adds the app to the Home Screen from the 🔔 card and the icon opens as the same program; locked on cellular it gets a `!` alert and a Trabolta DM; an iPhone booth signs in from its icon and gets the server-room alarm |
 | K-32 | `k32-load.ts --code …` | VPS load test (45 guests, 9 booths, 6 terminals, 2 directors, bursts): step latency + `/api/mod/metrics` CPU (guarded) |
 | N-01 | `n01.sh` | 10 pass QRs on screen. An iPhone booth (jsQR) and an Android booth scan 10/10 hands-free |
 | N-02 + N-10 | `n02.sh` | Re-pair a wiped phone from Inspector → 🔁 Re-pair (< 30 s, same Person). Release a booth's part and re-sign on a loaner |
-| N-08 | `N-08.sh [port]` | House Mac, box on the bench: flash, reed + tape, the 2×12 patch scan, ring + siren over MQTT (`:1884` as `props`) |
+| N-08 | `N-08.sh [port]` | House Mac, box on the bench: flash, the door contact alone (shut → `open:false`, open → `open:true`, held open → nothing more; `diag` `door_mode` `tape`), the 2×12 patch scan, ring + siren over MQTT (`:1884` as `props`) |
 | N-11 | `N-11.md` + `N-11.ts --guest …` | Worker stopped: a DM to Trabolta gets the story's `hold:` line once, ~20 s later |
 | Wave 4 wallet (C·5) | `wave4-wallet.sh run\|look\|device` (`MOD_CODE` + `EVENT_CODE` + `PRIME_CODE`) | Two guest phones + the CRA Agent Software booth: three sends (the held one waits for Approve), a deny inside 60 s, a request, a Runescape stimulus, a codex trade (`run` is guarded; `look` and `device` are read-only) |

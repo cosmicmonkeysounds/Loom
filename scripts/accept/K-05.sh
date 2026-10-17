@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# K-05 bench acceptance (Thu 10-22), run ON THE HOUSE MAC with the real reed,
-# the patch bay and the lights powered. ~10 minutes; it tells you when to touch
+# K-05 bench acceptance (Thu 10-22), run ON THE HOUSE MAC with the real door
+# (its standalone keypad lock + the wire-loop contact that closes when the
+# door opens), the patch bay and the lights powered. ~10 minutes; it tells you when to touch
 # what and checks stagehand's log + the MQTT traffic for you.
 #
 #   scripts/accept/K-05.sh [path/to/trapped.house.yaml]
@@ -19,6 +20,7 @@ ok()   { echo "  ✔ $*"; PASS=$((PASS+1)); }
 bad()  { echo "  ✘ $*"; FAIL=$((FAIL+1)); }
 step() { echo; echo "── $*"; }
 ask()  { read -r -p "  → $* [enter] " _; }
+yes()  { local a; read -r -p "  → $* [y/n] " a; [ "$a" = y ] || [ "$a" = Y ]; }
 lines() { [ -f "$LOG" ] && wc -l < "$LOG" | tr -d ' ' || echo 0; }
 since() { tail -n +"$(( $1 + 1 ))" "$LOG" 2>/dev/null; }
 # A refused mod call logs "… → signal {…} FAILED: …" — that is not a pass.
@@ -47,14 +49,27 @@ mosquitto_pub -h "$BROKER" -p 1883 -t k05/ping -m x 2>/dev/null && bad "anonymou
 ( cd "$SH" && uv run stagehand launchd status ) | grep -q "^show .*running" && ok "show job running" || bad "show job not running"
 ( cd "$SH" && uv run stagehand launchd status ) | grep -q "^agents .*running" && ok "agents job running" || bad "agents job not running"
 
-step "1. the reed: one opening → one server_door_opened"
-ask "close the server-room door, then press enter"
-L=$(lines); ask "OPEN the door once (leave it open ~5 s), close it, then press enter"
+step "1. the door contact: an entry with the code and an exit by the handle each → one server_door_opened"
+# The contact is direction-blind and stagehand debounces it 20 s, so the two
+# openings are kept ≥ 25 s apart. The keypad lock is standalone (its code is
+# set by hand to facts.json's door.code): nothing here can lock or unlock it.
+DOOR_SIG="sensor sensors/serverroom/door → signal {'name': 'server_door_opened'}"
+ask "close the server-room door, step OUTSIDE it, then press enter"
+L=$(lines)
+ask "type the CODE on the keypad, open the door, step in, let it close behind you, then press enter"
+T0=$(date +%s)   # the entry opened before this enter, so the gap is at least what we wait from here
 sleep 3
-N=$(count_since "$L" "sensor sensors/serverroom/door → signal {'name': 'server_door_opened'}")
+N=$(count_since "$L" "$DOOR_SIG")
 F=$(fails_since "$L" "server_door_opened")
 [ "$F" = 0 ] || bad "$F server_door_opened call(s) FAILED at the server — wrong event id / passcode, or the VPS is down (see $LOG)"
-[ "$N" = 1 ] && ok "one server_door_opened (check Run → Log shows it once)" || bad "expected 1 server_door_opened from the reed, saw $N"
+[ "$N" = 1 ] && ok "entry with the code: one server_door_opened (Run → Log shows it once)" || bad "entry with the code: expected 1 server_door_opened, saw $N"
+W=$(( 25 - ($(date +%s) - T0) )); [ "$W" -gt 0 ] && { echo "  · waiting ${W} s (stagehand's 20 s debounce)"; sleep "$W"; }
+L=$(lines)
+ask "from INSIDE: open by the HANDLE (no code), step out, close the door, then press enter"
+yes "did the inside handle open it with no code?" && ok "egress: the inside handle opens with no code" || bad "the inside handle did not open the door — STOP: fix the lock before any guest goes in (HW-SAFE-05)"
+sleep 3
+N=$(count_since "$L" "$DOOR_SIG")
+[ "$N" = 1 ] && ok "exit by the handle: one server_door_opened" || bad "exit by the handle: expected 1 server_door_opened, saw $N"
 
 step "2. restart with the door open fires nothing"
 ask "prop the door OPEN, then press enter (the show job restarts)"

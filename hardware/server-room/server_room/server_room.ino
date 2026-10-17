@@ -1,10 +1,11 @@
 // Server-room box (Trapped in the Internet, N-08): one ESP32-DevKitC
 // (WROOM-32) that
-//   - reports the server-room door (reed + copper-tape fallback) on
-//     sensors/serverroom/door,
+//   - reports the server-room door (a wire-loop contact that closes when the
+//     door opens; a reed is optional) on sensors/serverroom/door — the real
+//     door has a standalone keypad lock that nothing here drives,
 //   - scans Trabolta's heart, the 2×12 patch bay, on two MCP23017s and
 //     reports the patch on sensors/patchbay/state,
-//   - shows the lock state / alarm on a WS2812 ring and plays the siren +
+//   - shows the lock indicator / alarm on a WS2812 ring and plays the siren +
 //     cable click on a DFPlayer Mini, driven from show/serverroom/*.
 // Wiring, topics and the bench procedure: ../README.md. The logic lives in
 // the pure headers (patchbay.h, door.h, ring.h, msg.h), tested on a laptop
@@ -104,6 +105,7 @@ McpBus bus(MCP_TOP_ADDR, MCP_BOTTOM_ADDR);
 door::Debounce reed(DOOR_OPEN_MS, DOOR_CLOSE_MS), tape(DOOR_OPEN_MS, DOOR_CLOSE_MS),
     doorState(DOOR_OPEN_MS, DOOR_CLOSE_MS);
 const door::Mode kDoorMode = DOOR_MODE;
+const door::Polarity kReedPolarity = REED_POLARITY, kTapePolarity = TAPE_POLARITY;
 bool doorPending = true;  // publish the current state on every (re)connect
 
 bool patchOk = false, audioOk = false;
@@ -253,15 +255,16 @@ void publishDiag() {
   pb::Pair p[pb::kMaxPairs];
   pb::Matrix none;
   pb::clear(none);
-  char base[400], broken[400], stuck[200], buf[1200];
+  char base[400], broken[400], stuck[200], buf[1280];
   pb::pairsJson(p, pb::diff(baseline, none, p, pb::kMaxPairs), base, sizeof base);
   pb::pairsJson(p, pb::diff(baseline, stab.accepted, p, pb::kMaxPairs), broken, sizeof broken);
   pb::jacksJson(stuckNow, stuck, sizeof stuck);
   snprintf(buf, sizeof buf,
            "{\"ok\":%s,\"source\":\"%s\",\"baseline\":%s,\"broken\":%s,\"stuck\":%s,\"door_mode\":\"%s\","
-           "\"audio\":%s,\"ip\":\"%s\"}",
+           "\"reed_polarity\":\"%s\",\"tape_polarity\":\"%s\",\"audio\":%s,\"ip\":\"%s\"}",
            patchOk ? "true" : "false", baselineSource, base, broken, stuck, door::modeName(kDoorMode),
-           audioOk ? "true" : "false", WiFi.localIP().toString().c_str());
+           door::polarityName(kReedPolarity), door::polarityName(kTapePolarity), audioOk ? "true" : "false",
+           WiFi.localIP().toString().c_str());
   if (publish(T_PATCH_DIAG, buf, true)) {
     diagPending = false;
     stuckReported = stuckNow;
@@ -270,16 +273,16 @@ void publishDiag() {
 
 // ── Door ────────────────────────────────────────────────────────────────────
 void pollDoor(uint32_t now) {
-  // Closed contact pulls the pin LOW; HIGH (incl. unplugged) = open.
-  reed.update(digitalRead(PIN_REED) == HIGH, now);
-  tape.update(digitalRead(PIN_TAPE) == HIGH, now);
+  // A closed contact pulls the pin LOW; what that means is per input
+  // (config.h): the reed is closed when shut, the wire loops when open.
+  reed.update(door::isOpen(kReedPolarity, digitalRead(PIN_REED) == LOW), now);
+  tape.update(door::isOpen(kTapePolarity, digitalRead(PIN_TAPE) == LOW), now);
   if (doorState.update(door::combine(kDoorMode, reed.stable, tape.stable), now)) doorPending = true;
 }
 
 void publishDoor() {
-  char buf[80];
-  snprintf(buf, sizeof buf, "{\"open\":%s,\"reed\":%s,\"tape\":%s}", doorState.stable ? "true" : "false",
-           reed.stable ? "true" : "false", tape.stable ? "true" : "false");
+  char buf[96];
+  door::payloadJson(kDoorMode, doorState.stable, reed.stable, tape.stable, buf, sizeof buf);
   if (publish(T_DOOR, buf, true)) {
     doorPending = false;
     Serial.printf("door %s\n", buf);
@@ -374,7 +377,8 @@ void setup() {
   pixels.show();
 
   uint32_t now = millis();
-  bool reedOpen = digitalRead(PIN_REED) == HIGH, tapeOpen = digitalRead(PIN_TAPE) == HIGH;
+  bool reedOpen = door::isOpen(kReedPolarity, digitalRead(PIN_REED) == LOW);
+  bool tapeOpen = door::isOpen(kTapePolarity, digitalRead(PIN_TAPE) == LOW);
   reed.reset(reedOpen, now);
   tape.reset(tapeOpen, now);
   doorState.reset(door::combine(kDoorMode, reedOpen, tapeOpen), now);

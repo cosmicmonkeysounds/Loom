@@ -258,7 +258,9 @@ show:
       match: { target: lights_alarm }
       mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 12 } }
     # The server-room ESP32's own siren + ring strobe, for the story's 120 s
-    # latch (it strobes locally even if the Wi-Fi drops mid-alarm).
+    # alarm latch (it strobes locally even if the Wi-Fi drops mid-alarm). Since
+    # wave 7 only the patch bay trips it (the second wrong combination); the
+    # door never does.
     - on: { directive: cue }
       match: { target: lights_alarm }
       mqtt: { topic: "show/serverroom/alarm", payload: { state: "on", seconds: 120 } }
@@ -431,11 +433,16 @@ show:
     - on: { directive: announce }
       osc: { addr: "/cue/duck_music/start", to: qlab }
 
-    # ── The server-room door INDICATOR (no maglock, ever: the door is never
-    # physically locked). `do door server_room, state: locked|unlocked` →
-    # the ESP32's ring: red breathing = armed, green = unlocked. The one
-    # retained command here — it is an indicator, so a rebooted ESP32
-    # re-converges on it, and the story re-sends `locked` on every boot. ──
+    # ── The server-room door INDICATOR. The door has a STANDALONE keypad lock
+    # (code set by hand on the lock, never networked; egress is mechanical:
+    # the inside handle always opens). Nothing here can lock or unlock it,
+    # and no rule may ever drive a lock, strike or relay on that door.
+    # `do door server_room, state: locked|unlocked` drives ONLY the ESP32's
+    # ring: red breathing = locked, green = unlocked. The story sends
+    # `locked` at Power On (true: the real door is locked) and nothing sends
+    # `unlocked` since wave 7; the rule stays for the bench. The one retained
+    # command here — it is an indicator, so a rebooted ESP32 re-converges on
+    # it, and the story re-sends `locked` on every boot. ──
     - on: { directive: door }
       match: { target: server_room, state: unlocked }
       mqtt: { topic: "show/serverroom/lock", payload: { state: unlocked }, retain: true }
@@ -475,17 +482,23 @@ show:
   # reconnect); on an `edge: true` rule they only prime the level, so a
   # stagehand restart with the door propped open fires nothing.
   sensors:
-    # Server-room door, PRIMARY: the reed switch on the server-room ESP32
-    # (copper tape is the fallback on a second GPIO, same topic). Firmware
-    # publishes {"open": bool} on change, RETAINED (so a restart primes).
+    # Server-room door, PRIMARY: the wire-loop contact on the server-room
+    # ESP32 (GPIO19), two loops that TOUCH when the door is OPEN (`DOOR_TAPE`,
+    # closed-when-open; a reed is optional). Firmware publishes
+    # {"open": bool, "tape": bool, "mode": "tape"} on change, RETAINED (so a
+    # restart primes). The contact is direction-blind: an entry with the
+    # keypad code and an exit by the inside handle each fire once; a propped
+    # door fires once. The story starts the server-room cutscene on the first
+    # opening and latches it, and the door never raises an alarm. 20 s of
+    # debounce makes a group filing through (open, shut, open) one opening.
     - on: { topic: "sensors/serverroom/door", when: "open == true" }
       edge: true
-      signal: { name: server_door_opened, debounce_s: 5 }
+      signal: { name: server_door_opened, debounce_s: 20 }
     # …and the optional Zigbee contact on the same door (contact false =
     # OPEN). Z2M republishes the state on every battery report — the edge
     # makes that one fire per real opening; set `retain: true` on this device
-    # in Z2M so a restart primes too. The story latches the alarm for 120 s,
-    # so both sensors firing for one opening is harmless.
+    # in Z2M so a restart primes too. The story's cutscene latch makes a
+    # double fire (both sensors on one opening) harmless.
     - on: { topic: "zigbee2mqtt/server_room_door", when: "contact == false" }
       edge: true
       signal: { name: server_door_opened, debounce_s: 20 }

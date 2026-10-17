@@ -17,8 +17,8 @@
 #   C. 🔔 Turn on inside the icon, the Safari tab still works;
 #   D. LOCKED, Wi-Fi off: a `!` alert and a Trabolta DM arrive;
 #   E. reopening the icon does not ask "switch this phone?";
-#   F. the booth: Sign out in Safari → sign in from its icon → locked door
-#      alarm arrives.
+#   F. the booth: Sign out in Safari → sign in from its icon → locked, the
+#      server-room alarm arrives.
 #
 # Env: LOOM_SERVER (default https://app.mapsandducks.com), K31_YES=1.
 set -uo pipefail

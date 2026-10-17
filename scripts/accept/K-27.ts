@@ -1,18 +1,25 @@
-// K-27 + N-06 acceptance helper: the Cold Lock (chess disarm window),
-// re-arm, and the forced majorities — on the 10-22 bench reed.
+// K-27 + N-06 acceptance helper (wave 7): the door code, the server-room
+// cutscene and the patch-bay alarm — on the bench door with its keypad lock
+// and wire-loop contact.
 //
-// Drives a REHEARSAL event (never the live show) with the mod code. The
-// door itself is the real reed through stagehand; see K-27.md.
+// Drives a REHEARSAL event (never the live show) with the mod code. The door
+// itself is the real contact through stagehand; see K-27.md. The keypad lock
+// is standalone (its code is set by hand): this helper never touches it.
 //
 //   node --experimental-strip-types scripts/accept/K-27.ts <cmd> --base https://app.mapsandducks.com --code <MOD CODE>
 //   (or `npx tsx scripts/accept/K-27.ts …`)
 //
-//   setup   fire y2k_clock (Night.step 14: the door is armed from here)
-//   chess   fire chess_won (what ♟ They beat the machine does) → 90 s window
-//   rearm   fire rearm_server_room (locked, latch cleared, window closed)
-//   stay    fire force_majority_stay   (N-06)
-//   leave   fire force_majority_leave  (N-06)
-//   watch   print the door state every 2 s until Ctrl+C
+//   setup                fire y2k_clock (Night.step 14: chess wins give the code from here)
+//   persona [--name N]   add a test persona to play the winner (prints its name)
+//   chess [--who N]      fire chess_won for that guest / persona (what ♟ They beat
+//                        the machine does) → The Door Code in their Codex. With no
+//                        --who it has no subject: # hosts says to use ♟ on a card.
+//   door                 fire server_door_opened (the director's 🚪 fallback; the
+//                        real path is the contact through stagehand)
+//   wrong                fire patch_rejected (a wrong combo, if the bay isn't wired)
+//   reset                fire reset_server_room (clears wrong_combos + both latches)
+//   stay | leave         fire force_majority_stay / _leave (N-06)
+//   watch                print the server-room state every 2 s until Ctrl+C
 
 import { rehearsalGuard } from "./guard.ts";
 
@@ -24,6 +31,7 @@ const opt = (name: string): string => {
   if (v === undefined) throw new Error(`missing --${name}`);
   return v;
 };
+const maybe = (name: string): string | undefined => (args.includes(`--${name}`) ? opt(name) : undefined);
 const base = opt("base").replace(/\/$/u, "");
 const code = opt("code");
 
@@ -48,32 +56,67 @@ console.log(`event ${String(hit["eventId"])} · ${String(hit["title"])}`);
 const SIGNALS: Record<string, string> = {
   setup: "y2k_clock",
   chess: "chess_won",
-  rearm: "rearm_server_room",
+  door: "server_door_opened",
+  wrong: "patch_rejected",
+  reset: "reset_server_room",
   stay: "force_majority_stay",
   leave: "force_majority_leave",
 };
 
-async function door(): Promise<string> {
+/** The Door Code's codex entry (secret; generated from facts.json). */
+const DOOR_CODE = "the door code";
+
+interface ModState {
+  world: Array<{ path: string; value: string }>;
+  roster: Array<{ id: string; name: string }>;
+  codex?: Array<{ title: string; holders: string[] }>;
+}
+
+async function state(): Promise<ModState> {
   const r = await fetch(`${base}${ev}/api/state?role=mod&token=${encodeURIComponent(token)}`);
-  const s = (await r.json()) as { world: Array<{ path: string; value: string }> };
+  if (!r.ok) throw new Error(`mod state → ${r.status}`);
+  return (await r.json()) as ModState;
+}
+
+/** A guest / persona id from a name or an id (exact, then case-folded). */
+async function guestId(who: string): Promise<string> {
+  const { roster } = await state();
+  const fold = (s: string): string => s.trim().toLowerCase();
+  const row = roster.find((g) => g.id === who) ?? roster.find((g) => fold(g.name) === fold(who));
+  if (row === undefined) {
+    console.error(`no guest called ${who} (roster: ${roster.map((g) => g.name).join(", ") || "empty"}) — add one with: persona`);
+    process.exit(1);
+  }
+  return row.id;
+}
+
+async function door(): Promise<string> {
+  const s = await state();
   const w = new Map(s.world.map((e) => [e.path, e.value]));
-  const now = Number(w.get("Time.elapsed") ?? NaN);
-  const until = Number(w.get("Kernel.disarmed_until") ?? 0);
-  const left = until <= 0 ? "closed" : Number.isFinite(now) ? `${Math.max(0, Math.round(until - now))} s left` : `open (until t=${until})`;
+  const names = new Map(s.roster.map((g) => [g.id, g.name]));
+  const entry = s.codex?.find((c) => c.title.trim().toLowerCase() === DOOR_CODE);
+  const holders = entry === undefined ? "(no Door Code entry — wave 7 story not loaded?)" : entry.holders.filter((h) => names.has(h)).map((h) => names.get(h)).join(", ") || "nobody";
   return [
     `step ${w.get("Night.step")}`,
-    `window ${left}`,
-    `unlocked ${w.get("Kernel.server_unlocked")}`,
+    `heart_opened ${w.get("Night.heart_opened")}`,
+    `wrong_combos ${w.get("Night.wrong_combos")}`,
     `alarm_on ${w.get("Night.alarm_on")}`,
     `alarms ${w.get("Night.alarms")}`,
     `majority ${w.get("Kernel.majority")}`,
     `lights ${w.get("Night.lights")}`,
+    `code holders: ${holders}`,
   ].join(" · ");
 }
 
-if (cmd !== undefined && cmd in SIGNALS) {
-  await post(`${ev}/api/mod/signal`, { name: SIGNALS[cmd] }, token);
-  console.log(`  fired ${SIGNALS[cmd]}`);
+if (cmd === "persona") {
+  const name = maybe("name") ?? "K-27 Winner";
+  const r = (await post(`${ev}/api/mod/persona`, { name }, token)) as { guest?: { id: string; name: string } };
+  console.log(`  persona ${r.guest?.name ?? name} (${r.guest?.id ?? "?"}) — use: chess --who "${r.guest?.name ?? name}"`);
+} else if (cmd !== undefined && cmd in SIGNALS) {
+  const who = cmd === "chess" ? maybe("who") : undefined;
+  const subject = who === undefined ? undefined : await guestId(who);
+  await post(`${ev}/api/mod/signal`, { name: SIGNALS[cmd], ...(subject ? { subject } : {}) }, token);
+  console.log(`  fired ${SIGNALS[cmd]}${who ? ` for ${who}` : ""}`);
   console.log(`  ${await door()}`);
 } else if (cmd === "watch") {
   for (;;) {
@@ -81,5 +124,5 @@ if (cmd !== undefined && cmd in SIGNALS) {
     await new Promise((r) => setTimeout(r, 2000));
   }
 } else {
-  console.log("usage: K-27.ts setup|chess|rearm|stay|leave|watch --base <url> --code <mod code>");
+  console.log("usage: K-27.ts setup|persona|chess|door|wrong|reset|stay|leave|watch --base <url> --code <mod code> [--who <guest>] [--name <persona>]");
 }

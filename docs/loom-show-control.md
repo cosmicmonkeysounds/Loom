@@ -461,10 +461,13 @@ round-trip; `engine: server` opts in to the VPS's `/api/mod/tts`;
 server's screen state (`/api/screen/state` → `announce`), so a wall
 terminal provisioned with `&announce=1` chimes and says it in its own
 voice too, after any line its character is saying (N-09, decision #20 —
-for the rooms the house speakers don't reach). The server room has a reed
-door sensor, the patch-bay scanner and an indicator ring on one ESP32
-(firmware in [`hardware/server-room/`](../hardware/server-room)), never a
-lock.
+for the rooms the house speakers don't reach). The server room has a door
+contact (two wire loops that touch when the door opens; a reed is
+optional), the patch-bay scanner and an indicator ring on one ESP32
+(firmware in [`hardware/server-room/`](../hardware/server-room)). The door
+itself has a **standalone keypad lock** (code set by hand on the lock, never
+networked; the inside handle always opens): nothing in stagehand or on the
+ESP32 drives it.
 
 **Story → house.** The story only emits directives (the full registry
 is in the design spec §2.13):
@@ -477,7 +480,7 @@ is in the design spec §2.13):
 | `cue screens_flicker` | a one-shot `effect: blink` + a short WLED lightning playlist, so the power is felt in the house |
 | `sound <name>` (directive `sfx`) | OSC `/cue/<name>/start` to QLab |
 | `do announce "…"` | `show/announce {"text": "…"}` → the `alexa` player (chime + the Mac's `say` voice, one line at a time); `sound announce_chime` → `show/chime` (not QLab). Also the screen state's `announce` → terminals with `announce` on (N-09) |
-| `do door server_room, state: locked\|unlocked` | `show/serverroom/lock {"state": …}` (retained) for the ESP32's indicator ring; `lights_alarm` also sends `show/serverroom/alarm` for its local siren |
+| `do door server_room, state: locked\|unlocked` | `show/serverroom/lock {"state": …}` (retained) for the ESP32's indicator ring only, never the real (standalone keypad) lock; the story sends `locked` at Power On and nothing sends `unlocked` since wave 7. `lights_alarm` (only a second wrong patch-bay combo) also sends `show/serverroom/alarm` for its local siren |
 
 The `screens_*` / `tv_*` / `terminals_*` / `tablet_*` cues have no
 stagehand rule: the screens read them from the server. Every wall terminal
@@ -492,7 +495,7 @@ of the mod feed.
 
 | Sensor | Signal |
 |---|---|
-| Reed switch on the server-room ESP32 (`sensors/serverroom/door {"open": true}`), plus an optional Zigbee contact (`contact == false`) | `server_door_opened`, `edge: true` (once per opening; retained replays ignored); the story latches the alarm for 120 s |
+| The door contact on the server-room ESP32 (`sensors/serverroom/door {"open": true, "tape": true, "mode": "tape"}`: wire loops that close when the door opens), plus an optional Zigbee contact (`contact == false`) | `server_door_opened`, `edge: true` + 20 s debounce (once per opening, either direction — an entry with the keypad code and an exit by the inside handle each fire; a group filing through is one; retained replays ignored); from the Y2K hour the first opening starts the server-room cutscene and the story latches it (no alarm) |
 | Zigbee button over the printer's START key | `printer_button_pressed` |
 | Reed switch on the printer lid | `printer_opened` |
 | The patch bay scanner (`sensors/patchbay/state {"combo", "complete"}`) | `patch_combo_a` / `patch_combo_b` / `patch_rejected`, judged in the YAML until signals carry arguments |
