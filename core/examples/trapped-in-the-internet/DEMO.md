@@ -125,7 +125,7 @@ guest's card in that performer's booth (phone C / D), or in Run while you
 **B · The verdict (Grok Prom → the song)**
 
 1. **🎆 Midnight** → the final reveal (lights down). **🍎 Bobbing for Truth** → Adobe Acrobat's or Clippy's **🍎 Brought up the Bag of Truth** on a guest.
-2. **📄 Read truth.txt → the verdict** → with a lie on record: **Grok Prom** ("You lied to me… give me a pickup line").
+2. **📄 Read truth.txt** (the slide holds while the bobber reads), then **⚖ truth.txt read → the verdict** → with a lie on record: **Grok Prom** ("You lied to me… give me a pickup line").
 3. Every phone gets Trabolta's DM card *"Give me a pickup line that works on Sandy."* — type **You're the one that I want** and send it (the server judges it) → the **Song Ending**. (Or Clippy: **💘 Said "You're the one that I want"** on whoever says it aloud.)
    (Alternatives: **💔 Nobody has the line** → the rave; **💌 relationship advice** → a poll on every phone → **🗳 Count the advice poll**.)
 

@@ -15,13 +15,14 @@
       no judge and no Wallet): fire C1 → V6 → ⏱ → 📋 ×3 → 🍾 from the cue
       sheet yourself; file a fact from a test phone and watch it settle;
       switch the Judging card to `review`, confirm one, switch back; mark a
-      program (🤷 as Clippy) and 🩹 it; approve a held transfer with the
-      API call in 3b (there is no Approve button in Run);
+      program (🤷 as Clippy) and 🩹 it; approve a held transfer on Run →
+      Wallet (✓ Approve on its row);
       re-pair a lost guest; release a performer's part; scan a late arrival
       in as Norton; answer a DM *as Trabolta*; pull the recap.
 - [ ] Read [`all-crew.md`](../all-crew.md) and the emergency card.
-- [ ] Learn the four call words you act on: **INTRO** (you call it),
-      **BEANS**, **A / B / WRONG**, **ARRIVAL**.
+- [ ] Learn the five call words you act on: **INTRO** (you call it),
+      **BEANS**, **IN** (the patch-bay watch is inside: only then fire 🕚),
+      **A / B / WRONG**, **ARRIVAL**.
 
 ## Show day
 
@@ -36,7 +37,11 @@
 
 **1. Fire the night.** The cue sheet (Run → Director) lists every admin cue in
 order with the last one marked. Fire, then watch the room. Mis-taps are cheap:
-a phase cue that already ran does nothing the second time. Optional set pieces
+a phase cue that already ran does nothing the second time, and a cue pressed
+out of turn does nothing but tell `# hosts` why (it never becomes LAST). NEXT
+follows tonight's branch. Hold 🕚 until the patch-bay watch radios **IN**.
+After 🍎, press 📄 (truth.txt holds on the screens while the bobber reads),
+then **⚖** for the verdict when they finish. Optional set pieces
 (☎️ Telephone, 🪅 Are you sure?) only if you are running early.
 
 **1b. The First Moment of Truth, in order.** V6 opens a two-minute filing
@@ -87,13 +92,13 @@ only step in from Run when nobody is near: fire `mark_for_reinstallation` or
 quick-fire). `# quarantine` shows every open escort pin. Truthcoin moves by
 itself from the guests' Wallets; CRA Agent Software approves every third
 transfer in her booth's Wallet room and can deny any within 60 s. If she is
-busy or gone: `POST /e/<event>/api/mod/wallet/approve` (or `deny`, `cancel`)
-with the transfer id from the card, signed in as yourself, or Run → Wallet's
-**✓ Approve all held** (`POST /e/<event>/api/mod/wallet/approve-held`); a held
-transfer nobody answers approves itself after 5 min anyway; `stimulus` mints
-Runescape's hand-out if Runescape never came (`grant {to, amount}` and
-`freeze {to}` likewise), and `unfreeze {to}` lifts one of her ten-minute
-freezes early.
+busy or gone: Run → **Wallet** has **✓ Approve** / **⛔ Deny** / **↩ Cancel**
+on every open transfer and **✓ Approve all held**; a held transfer nobody
+answers approves itself after 5 min anyway. **💰 Pay stimulus** mints
+Runescape's hand-out if Runescape never came, and **Lift** ends one of her
+ten-minute freezes early. Only a grant or a freeze is API-only:
+`POST /e/<event>/api/mod/wallet/grant {to, amount}` / `freeze {to}`, signed in
+as yourself.
 
 **4. The late list** (OP-08b). At 🚨 Summons closed the Antivirus booths
 already read *⏰ X is late for the Second Moment of Truth. Go get them.* and
@@ -134,7 +139,9 @@ queued.
 
 1. Pull the recap (K-26): open
    `https://app.mapsandducks.com/e/<event>/api/mod/recap?format=text` in a tab
-   where you're signed in, and copy the winners into the cue sheet's winner/value boxes.
+   where you're signed in, and copy the winners into the cue sheet's winner/value boxes
+   (Run → Director on the laptop, or the phone cue sheet: an award asks for its winner and
+   offers the value box: G7–G10 read it, on G2–G6 it overrides the number).
 2. **If Trabolta is still running:** take the performer lens, paste the recap
    into `cast:Trabolta`, ask him for one line per award, correct them, and post
    each line **as Trabolta in The Desktop** when you fire that award (the TV
@@ -142,7 +149,10 @@ queued.
 3. **If Trabolta is gone** (Combo B, the rave): Clippy hosts and reads each line
    aloud; the TV shows the award slide.
 4. Fire **G1**, then G2–G9 with the winner as the subject. Firing an award
-   again corrects it.
+   again corrects it. Then **G10 🖌** on MS Paint (only if she came), then
+   **G11 🎃 Resurrection** last: it frees and unmarks everyone, puts Trabolta
+   to sleep and tells every phone the show is over (pressed before the last
+   award, `# hosts` asks; press again within 30 s to end it anyway).
 
 **10. The backup console.** If your laptop dies, John signs in on his; if the
 editor is down, the radio is the console (W-26): tell the tech op what to fire

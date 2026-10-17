@@ -35,10 +35,13 @@ Wizard repeats it in the tent, and your own scan greeting tells them to use
 it. Your booth shows *🚻 X is in Bathroom Mode* and *🚻 X is back*. A guest in
 Bathroom Mode is excused from a summons. Remind people to turn it **off** when
 they come out. A **marked** program (grey phone, the 🚨 card) has lost every
-button, Bathroom Mode included: point them at an Antivirus.
+other button but keeps 🚻 Bathroom Mode and Back: let them use Disk Cleanup.
+The Antivirus wait outside (their booth says so); never send a marked program
+away from the toilet.
 
-**Your booth:** Scanner · Inbox · Codex · `# hosts` · `# quarantine` · the
-rooms · one thread per guest.
+**Your booth:** Scanner · Inbox (empty tonight: the story deals no cards to
+a booth) · Codex · `# hosts` · `# quarantine` · the rooms · one thread per
+guest.
 
 **Radio:** ARRIVAL · HOLD · ALL STOP.
 

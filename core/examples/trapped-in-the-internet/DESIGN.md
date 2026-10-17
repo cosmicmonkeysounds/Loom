@@ -174,10 +174,11 @@ Concatenation order (server): `main.loom`, then path order:
 `generated/questions.loom` (generated), `quests.loom`, `rooms.loom`. (`codex/3-hunt.loom` is
 gone since wave 4: the hunt questions and answers come from `facts.json` via `titi:facts`.) No file other than
 `main.loom` has top-level `when` rules, so the order is otherwise free — **except the codex
-numbering, which is load-bearing**: stagehand's orchestrator feeds the first 24 codex entries
-in model order to Trabolta as "ground truth" (`orchestrator.py` `lore_block(max_entries=24)`),
-so the environmental entries must come first and the scrambled Jeeves fragments last. (The
-hunt answers fall outside the first 24 on purpose: Trabolta must not be able to check them.)
+numbering, which is load-bearing**: stagehand's orchestrator feeds up to 60 codex entries to
+Trabolta as "ground truth" (`orchestrator.py` `lore_block(max_entries=60)`): the ones he holds
+first, then the rest in model order, so the environmental entries must come first and the
+scrambled Jeeves fragments last. (The hunt answers never reach it: the secrecy filter drops
+every `▒ HUNT ANSWER` entry and any clue that names an answer word.)
 No test reads the codex paths.
 
 | File | Holds | Writer |
@@ -473,6 +474,7 @@ Trabolta's persona `facts:` whitelist (he sees it).
 | Night.clock_30 / Night.clock_15 / Night.clock_5 / Night.clock_1 | bool false | each clock warning fired once | |
 | Night.alarms | number 0 | alarm trips | |
 | Night.alarm_on / Night.alarm_clear_at | bool false / number 0 | the patch-bay alarm latch: a second trip within 120 s does nothing (§3 E3; the door never alarms since wave 7) | |
+| Night.lights_before_alarm | string | the look the alarm replaced, put back when the latch clears (§3 E2; wave 8) | |
 | Night.wrong_combos | number 0 | rejected patch combinations (the second trips the alarm) | |
 | Night.heart_opened / Night.door_quiet_until | bool false / number 0 | wave 7: The Heart has played (the first door opening from step 14); openings before `door_quiet_until` (120 s after the last) do nothing (§3 E2). Not secret | |
 | Night.gloat_at | number 0 | wave 7: Trabolta gloats over a lost / drawn King game only after this (then +300 s) | |
@@ -750,7 +752,10 @@ watcher/rule, **S** = server hard-code.
 | award_the_painting | D (G10, winner = MS Paint) | program | ROLE hook → `award_won` |
 | final_reveal | D (or W from y2k_midnight) | — | rule |
 | bobbing_for_truth | D | — | rule |
-| read_truth_txt | D | — | rule |
+| read_truth_txt | D | — | rule (truth.txt only: closes round three, `Night.r3_closed`) |
+| the_verdict | D (⚖, after 📄; wave 8) | — | rule → `The Verdict` |
+| patch_after_verdict | W (a patch once `Night.r3_closed`; wave 8) | — | rule (`# hosts` note only) |
+| dance_screens | W (the dance watcher and `lights_dance`; wave 8) | — | rule (`screens_screensaver` while the GO TO THE LIVING ROOM overlay is up) |
 | pickup_line_accepted | W (from P `pickup_line_works` or A `the_line_works`) | program | ROLE hook |
 | no_pickup_line | D | — | rule |
 | ask_for_advice | D (only in `grok_prom`) | — | rule |
@@ -822,7 +827,8 @@ reads as a cue sheet):**
 | clippy_reads_summary | `🪦 After the dance: Clippy reads the summary` |
 | final_reveal | `🌑 Final Truth Scavenger Hunt reveal` |
 | bobbing_for_truth | `🍎 Bobbing for Truth` |
-| read_truth_txt | `📄 Read truth.txt → the verdict` |
+| read_truth_txt | `📄 Read truth.txt` (holds the slide; wave 8 split the verdict off) |
+| the_verdict | `⚖ truth.txt read → the verdict` (wave 8) |
 | no_pickup_line | `💔 Nobody has the line → confession → rave` |
 | ask_for_advice | `💌 (Alt, after a lie → Grok Prom) Trabolta begs for relationship advice` |
 | advice_tally | `🗳 (Alt) Count the advice poll` |
@@ -837,6 +843,19 @@ reads as a cue sheet):**
 | reinstallation begun | `Reinstallation: begun at the tent (server)` (`sequence: false`) |
 
 Fire every admin cue from the cue sheet (Run → Director) / quick-fire, never from a guest card (§0 rule 23).
+
+The cue sheet's LAST / NEXT (wave 8): `sequence: false` marks every machine-fired, optional,
+anytime or fallback cue (🍾, the set pieces, the printer, 🎆, 🧾, 🚪, 🔄, ♟, 🕊, 🗳, the patch
+bay, 🪩, 💡, the reinstallation events): it ticks when it fires but never becomes LAST or NEXT.
+`repeat: true` (📋, 🗜) keeps a cue NEXT while it is LAST. From 🏍 on each cue carries a
+`while:` naming its branch (🏍 `Night.ending == "disabled"`, 🪦 `"destroyed"`, 🌑 → ⚖ while
+nothing has ended, 💔 / 💌 in `grok_prom`, the advice cues in `advice`, 🕺 while banished, G1
+once ended), so NEXT is the first unfired in-sequence cue after LAST whose `while:` holds: 🌑
+after 🕚, the ending's own cue after the dance, G1 after the song. An admin cue's `while:` only
+steers NEXT; it never gates the press (every rule still checks for itself). A press the story
+refuses posts its reason to `# hosts` (*"⚖ Not yet: 🍎 Bobbing for Truth, then 📄 truth.txt
+first."*) and never becomes LAST; the hardware fallbacks (🖨, 🫘, 🔌 / 💥 / ❌) stay silent,
+since they share a signal with the hardware.
 
 **Performer (`who: performer`, shown on every guest card; every hook guards its phase and
 answers wrong-phase presses with nothing — **except `send to the internet` and `mark as
@@ -1220,7 +1239,7 @@ inciting event, there is a classic Windows screensaver on the TV").
 | lights_pong | truth_pong | backyard floods on |
 | lights_trust_chart | trust_chart | blue podium |
 | lights_y2k | y2k_clock | amber, dim, slow red pulse |
-| lights_server_open | majority_reached; The Heart (the first door opening from step 14, not while the alarm is latched) | server room dim green (also turns the siren off) |
+| lights_server_open | majority_reached; The Heart (the first door opening from step 14, not while the alarm look is up); the latch's end after either (wave 8) | server room dim green (also turns the siren off) |
 | lights_alarm | Server Room Alarm | server room red strobe + house red flash |
 | lights_blackout | Trabolta Disabled, Computer Destroyed | everything off |
 | lights_dance | the story watcher `Night.dance_at` (blackout + 10 s); admin `lights_dance` fallback | dance look (Zigbee bulbs back on + WLED dance preset) |
@@ -1243,7 +1262,7 @@ inciting event, there is a classic Windows screensaver on the TV").
 | tv_bingo_time | bingo_time (V3) | "BINGO TIME" (TV) |
 | tv_mirror | Trabolta Introduction (after he is introduced, when Clippy points at the reinstallation: CI 2 order); each capture after it | the TV mirrors the VR copy of the house |
 | tablet_wizard | each capture | the tent tablet plays the Installation Wizard's instructional video (tablet only) |
-| terminals_trabolta_online | introduce_trabolta | Trabolta's face/presence on every terminal (terminals become his line; re-provision `view=auto`, §9) |
+| terminals_trabolta_online | introduce_trabolta | Trabolta's face/presence on every terminal (terminals become his line; they are provisioned `view=auto` from the start, K-16, so nothing is re-provisioned: check his face is up) |
 | screens_trivia_1 | start_the_hunt (V4) | "TRABOLTA TRIVIA · ROUND 1": H1–H3 |
 | screens_countdown_hunt | start_the_hunt (V5) | 15:00 countdown |
 | screens_return | hunt_time_up (C2) | "RETURN TO THE DESKTOP" |
@@ -1471,7 +1490,11 @@ place binds as a value, not the LOCATION id — §0 rule 14.)
 - `set program.cleared = true`
 - `Self: Scanned. {program.name} is free of viruses and ready to explore the entire computer.
   There will be a game soon in the Desktop. The house will announce it. Go through the
-  Tube.` (prefix tested)
+  Tube.` (prefix tested), before 📣 (`Night.step < 1`). Wave 8 (T1-04) fits it to the hour:
+  between 📣 and 🎱 the middle reads `A game is about to begin in the Desktop.`; from 🎱 on,
+  `You are late: the night is already under way. Listen for the house.` (the screensaver line
+  in the Desktop narration only before 📣). A late clearance deals one 📝 card, not one per
+  open round.
 - `Self: The Tube is a tunnel of lights. Wires. Chips. The cables brush your face like hair.
   Keep walking.` (SB's "tunnel of lights"; this replaces the dead `arrives at The Tube` hook)
 - (wave 4, D) `reveal task manager for program` + `Task Manager: {program.name}. You're in. Your
@@ -1681,14 +1704,19 @@ when reinstallation begun for program:
     capture program into The Internet
 
 when the simulation completed for program:
-  if program.corrupted:
+  if program.corrupted and Night.banish == true:
+    reply Gerald cannot help you: everyone is banished. The way out is the hand jive, together.
+  else if program.corrupted:
     release program from The Internet
     unlock The Golden Duck for program
 
 when the golden duck for program:
-  unlock The Golden Duck for program
-  reply The duck lays a golden egg and flies away. Gerald waddles off into the code.
+  if program.corrupted != true or Night.banish != true:
+    unlock The Golden Duck for program
+    reply The duck lays a golden egg and flies away. Gerald waddles off into the code.
 ```
+(The banish branches are wave 8, T2-01: during the banishment the duck frees nobody and lays
+no egg; the hand jive is the way out, F7.)
 (`the golden duck` grants the entry to **anyone**, captured or free: `spatial.test.ts:549-561`
 asserts a free program still learns it; `the simulation completed` grants only to the
 corrupted, and a free program learns nothing from it. The reply prefix is tested.) ROLE `when
@@ -2249,7 +2277,9 @@ Door Code* are all `secret: true`, so no model ever reads them.
 
 **E1 Majority — `majority_reached`** (W).
 - Rule: phase `majority`, step 15 · `cue lights_server_open` · `set Night.lights =
-  "server_open"` · `complete quest The Clubs for Password Manager` · `if Kernel.majority ==
+  "server_open"` (wave 8: while the alarm look is up, `alarm_on` and `Night.lights == "alarm"`,
+  it only saves `lights_before_alarm = "server_open"`, so the siren and the strobe stay; the
+  latch's end puts the look up) · `complete quest The Clubs for Password Manager` · `if Kernel.majority ==
   "stay":` `complete quest Recruit To Stay for everyone` + `fail quest Recruit To Leave for
   everyone` `else:` the reverse + `complete quest Find The Exit for everyone` · `-> Majority
   Reached` (public narration: `Somewhere in the basement, the cold-storage room hums louder.`).
@@ -2289,22 +2319,30 @@ when server_door_opened:
   double report never replays the scene; an opening after 120 quiet seconds plays *Back To The
   Heart* (`Trabolta: Back again. The terminal is on the wall. I am not going anywhere.`).
 - `== The Heart` (`setting: The Server Room`, `cast: Trabolta`, no subject): `reveal The Server
-  Room` (everyone, first — it wakes the server-room terminal) · `if Night.alarm_on != true:`
-  `cue lights_server_open` (it also silences the siren) and, before step 16, `set Night.lights =
-  "server_open"` (from the final reveal the finale's look stays the replayed one) · the
+  Room` (everyone, first — it wakes the server-room terminal) · unless the alarm look is up
+  (`Night.alarm_on == true and Night.lights == "alarm"`, when it only saves
+  `lights_before_alarm = "server_open"` before step 16): `cue lights_server_open` (it also
+  silences the siren) and, before step 16, `set Night.lights = "server_open"` (from the final
+  reveal the finale's look stays the replayed one). After 💡 (the alarm look gone, the siren
+  off) the look goes up at once (wave 8) · the
   narration (`The cold door opens. Cold air, and a hum like something concentrating…`) ·
   Trabolta's candid opener: he will not pretend, the patch bay is his heart, he does not know
   which cables end him, everything was for Sandy (scenario 1) / for her (otherwise), *"There is a
   terminal on the wall. Scan your pass and talk to me."*
 - `== Server Room Alarm` (`setting: The Server Room`; public), now reached **only from the patch
   bay** (E3): `set Night.alarms += 1` · `if Night.alarms == 1:` `set Trabolta.composure -= 10`
-  (only the first alarm hurts him) · `reveal The Server Room` · `cue lights_alarm`, `cue
+  (only the first alarm hurts him) · `reveal The Server Room` · `if Night.lights != "alarm":
+  set Night.lights_before_alarm = Night.lights` (the look to put back) · `cue lights_alarm`, `cue
   screens_alarm`, `sound alarm_siren` · `fire alarm_tripped` (every Enforcer's booth: `🚨 Server
   room alarm: a second wrong combination at the patch bay. Get there. Whoever is at the cables
   goes to the Internet.`) · `broadcast "!🚨 An alarm screams somewhere in the machine." to
   everyone` · `Trabolta: Who is in my— get OUT.` (No `to group(Antivirus)` broadcast: it reaches
   no booth, §0 rule 16.) `when Night.alarm_on == true and Time.elapsed >= Night.alarm_clear_at:
-  set Night.alarm_on = false` keeps the 120 s latch.
+  set Night.alarm_on = false` keeps the 120 s latch, and (wave 8, T2-05) when it clears with
+  the alarm look still up and the night not ended, puts back the look the alarm replaced:
+  `server_open` → `lights_y2k` + `lights_server_open` (a majority or The Heart during the
+  alarm), `final_reveal`, `restore`, else `lights_y2k`. If 💡 or an ending changed the look
+  meanwhile it leaves the lights alone. 🔄 reset leaves them as they are.
 - `reset_server_room` (D, `🔄 Server room: reset the patch-bay alarm`): `Night.wrong_combos = 0`,
   `alarm_on = false`, `alarm_clear_at = 0`, `heart_opened = false`, `door_quiet_until = 0`, a
   `🔄` readout; lights stay (💡 restores them); the keypad is never touched. Power On still sends
@@ -2429,7 +2467,10 @@ trabolta_disabled` (E4). The blackout narration, the recount (E5) and the ceremo
   `lights_dance` is the manual fallback.) The watcher and `lights_dance` both `fire
   lift_the_takeover`, a subject-free rule that, while `Night.takeover`, clears it and runs
   `unpin "💃 Dance."`; `trabolta_recounts`, `clippy_reads_summary`, `start_the_ceremony`
-  and `resurrection` fire it too as backstops (the pin has no close button).
+  and `resurrection` fire it too as backstops, but only when they play (a refused 🏍 / 🪦
+  does nothing; the pin has no close button). Both also `fire dance_screens` (wave 8, T6-05),
+  which cues `screens_screensaver` while `Night.screen == "go_to_living_room"`, so the
+  flashing overlay comes off the TV and the terminals.
 - **`trabolta_recounts`** (D, after the dance): rule (guard `Night.ending == "disabled" and
   Night.recount != true`): `set Night.recount = true` (bulk backstory unlock, §2.7) · `cue
   screens_recount` · `set Night.rank_round = 3`, `praised = false`, `shamed = false`,
@@ -2505,7 +2546,9 @@ to being stuck in a computer.` (`{count(Persons)}` interpolation is **[verified,
   facts speaks up; everyone may say what they learned, what they believe but can't prove, and
   what should happen next; Clippy acknowledges each, then: `There is only one version of the
   truth. Because truth is always in binary.` (Final facts F1/F2 are judged with ✅ / 😤 Q1–Q2
-  / 🤷, round 3.) The server room stays live: a faction can still act until the verdict. This
+  / 🤷, round 3.) The server room stays live: a faction can still act until 📄 truth.txt
+  (`Night.r3_closed`; from then on the patch bay, the door and 🕊 only post a `# hosts` note,
+  and Trabolta's `stand_down` refuses — wave 8, T2-03). This
   is a **deliberate invention** (SB summons to the reveal those who gained the information
   "without acting on it"; the patch bay is physical and cannot be switched off) and the README
   says so.
@@ -2531,10 +2574,20 @@ to being stuck in a computer.` (`{count(Persons)}` interpolation is **[verified,
   `{Night.least_trusted}` (his `assess` power is live in `bobbing`). `{Night.bobber}, you may
   read truth.txt.`
 
-**F3 truth.txt — `read_truth_txt`** (D).
-- Rule (guard `Night.phase == "bobbing"`): `complete quest The Final Facts for everyone` · `set
-  Night.recount = true` (everyone gets every backstory + The Truth File) · `cue
-  screens_truth_txt` · `-> Truth Txt` then `-> The Verdict` (last).
+**F3 truth.txt — `read_truth_txt`** (D, 📄), **then the verdict — `the_verdict`** (D, ⚖;
+wave 8, T6-01: the slide holds while the bobber reads).
+- `read_truth_txt` (guard `Night.phase == "bobbing" and Night.bag_up == true and
+  Night.r3_closed != true`): `complete quest The Final Facts for everyone` · `set
+  Night.recount = true` (everyone gets every backstory + The Truth File) · `set Night.r3_closed
+  = true` (round three closes and settles; the server room goes quiet, F1) · `cue
+  screens_truth_txt` · `-> Truth Txt`. Nothing else happens until ⚖. A second 📄 tells
+  `# hosts` to press ⚖; 📄 before the bag is up, or outside the bob, says so there too. Adobe
+  Acrobat's booth: *📄 Hand the bobber the truth.txt printout. They read it aloud; when they
+  finish, the director presses ⚖ for the verdict.*
+- `the_verdict` (guard `Night.phase == "bobbing" and Night.r3_closed == true and Night.ended !=
+  true`): `-> The Verdict`. Before 📄 it tells `# hosts` *"⚖ Not yet: 📄 Read truth.txt
+  first."* (before the bob: *"⚖ Not yet: 🍎 Bobbing for Truth, then 📄 truth.txt first."*);
+  once the verdict is in, *"⚖ Not now…"*.
 - `== Truth Txt` (public; narration as Notepad text; the bobber reads it aloud): Trabolta's
   backstory (the analysis of Halifax; the lapsed mapsandducks.com and the billboard on
   Barrington; he registered it "because if there is a billboard downtown everyone will think
@@ -2574,9 +2627,14 @@ to being stuck in a computer.` (`{count(Persons)}` interpolation is **[verified,
   `else: set Night.ending = "song"` · phase `finale_song`, step 19 · `cue lights_song`, `cue
   screens_song` · `sound youre_the_one_vocoder` · `set Night.everyone_free = true`.
 - Public, Trabolta: `You succeeded. I have solved the Grand Unified Theory, and I am pursuing
-  Sandy. Those of you who want to leave may leave.` · `Every fact you gave me was true, and the
-  truth tells me what to say to her. You're the one that I want.` (the six-mark "clues spell
-  it out" mechanic is retired, wave 4 U9). Then the duet: `Trabolta: You're the one that I want.` / `Sandy:
+  Sandy. Those of you who want to leave may leave.` · on `song`: `Every fact you gave me was
+  true, and the truth tells me what to say to her. You're the one that I want.`; on
+  `song_pickup` (after Grok Prom's line, wave 8, T1-03): `Not every fact you gave me was true.
+  But that line was, and it tells me what to say to her. You're the one that I want.` (the
+  six-mark "clues spell it out" mechanic is retired, wave 4 U9). A pickup-line card answered
+  after the rave, in the advice poll, after help, the banishment or the hand jive never
+  celebrates: after the rave the program hears that Trabolta has ridden away, otherwise "Too
+  late for lines" (wave 8, T2-06). Then the duet: `Trabolta: You're the one that I want.` / `Sandy:
   I'm sorry, I didn't understand that. Would you like to speak to a live agent?` (twice more,
   the lines of the chorus he sings, Sandy answering each time with her one line).
 
@@ -2639,13 +2697,19 @@ programs don't support him"; never before truth.txt is read).
   hand jive, together.` · `-> Advice Thwarted` (public, Trabolta in despair: `Fine. FINE.
   Everyone to the Internet. Antivirus too.` · and the slip that reveals the NEW weakness, not
   the Legendary fact: `If you all did the hand jive at once I wouldn't even be able to— I
-  mean. Nothing. There is no weakness.`).
+  mean. Nothing. There is no weakness.`). The banishment is no reinstallation (wave 8,
+  T2-01): each capture replies `⛈ Banished to the Internet, with everyone else. Gerald cannot
+  help you tonight…` and plays no Reinstallation, adds no Internet visit and sends no tablet or
+  mirror cue, so the TV keeps the banish card; a duck find frees nobody (`the simulation
+  completed` replies only `Gerald cannot help you: everyone is banished. The way out is the
+  hand jive, together.`, and `the golden duck` lays no egg and unlocks no Golden Duck).
 - **`the_hand_jive`** (D; guard `Night.ending == "banished" and Night.ended != true`):
   `ended = true`, `ending = "hand_jive"` · phase `finale_hand_jive` · `set Night.banish =
   false` · `set Night.everyone_free = true` · `sound hand_jive` · `-> The Hand Jive` (public:
   his motion recognition overflows — `R E C O G N I T I O N  O V E R F L O W` — he reboots,
   weakened; he leaves on his motorcycle; everyone returns) · `sound motorcycle` · `cue
-  lights_restore`.
+  lights_restore` · `cue screens_screensaver` (wave 8: the banish card comes off every
+  screen).
 
 ---
 
@@ -2997,7 +3061,7 @@ Paths into the final reveal: the director fires `final_reveal`, or `y2k_midnight
 60 min after `y2k_clock`) fires it when nothing has ended. That covers "nobody recruits a
 majority" and "the server-room information was gained but not used". The server room stays
 live during the reveal (a deliberate invention, stated in the README): a combo entered
-before the verdict still ends the night.
+before 📄 truth.txt still ends the night; from 📄 on the server room only tells `# hosts`.
 
 Server room alarm (wave 7): only the patch bay. `patch_rejected` → alarm, latched for 120 s,
 when `Night.wrong_combos >= 2` (everyone is forgiven one); otherwise "Stop touching me." The

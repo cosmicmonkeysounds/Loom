@@ -38,9 +38,10 @@ START; nothing happens. When the **lid lifts and the beans show, radio
 
 **The Bag of Truth:** you hold it and the **dry truth.txt printout**. At 🍎
 the bag goes in the tub. When the director fires 📄, hand the printout to the
-bobber; they read it aloud. Right after it, every program's phone gets
-Trabolta's card asking for a pickup line that works on Sandy; the server
-judges the answers.
+bobber; they read it aloud while truth.txt holds on the screens. **When the
+bobber finishes, radio the director: they fire ⚖ for the verdict** (your
+booth says so too). Right after ⚖, every program's phone gets Trabolta's card
+asking for a pickup line that works on Sandy; the server judges the answers.
 
 **Your booth:** Scanner · Inbox · Codex · `# hosts` · `# quarantine` · the
 rooms · one thread per guest.
@@ -78,8 +79,9 @@ yes."
   moment the lid lifts.**
 - **🍎 Bobbing for Truth:** the Bag of Truth goes into the tub (a towel and mat
   under it, away from the stairs). Whoever surfaces with it: 🍎 Brought up the
-  Bag. Comes up empty: 🍎 Failed the bob (marked).
-- **📄 truth.txt:** hand the printout to the bobber.
+  Bag. Comes up empty: 🍎 Failed the bob (marked for reinstallation).
+- **📄 truth.txt:** hand the printout to the bobber. When they finish, the
+  director fires **⚖** for the verdict.
 
 ## Appendix: truth.txt (print, put in a zip bag)
 

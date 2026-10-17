@@ -13,7 +13,7 @@
 | **IN** | The patch-bay watch is inside the server room with the door shut: the director may fire 🕚 (from 🕚 the first opening plays The Heart, crew or not) | server-room Antivirus → director |
 | **A** / **B** / **WRONG** | Patch bay (Tier 0): Combo A is in / Combo B is in / a wrong combination | server-room Antivirus → director |
 | **ALARM** | The patch-bay alarm is going (a second wrong combination), or should be and isn't | anyone → Antivirus |
-| **LIGHTS** | The lights are wrong for this moment: re-fire the current lights cue | anyone → tech op |
+| **LIGHTS** | The lights are wrong for this moment: the tech op restarts the `show` job (it replays the current look) or sets it by hand | anyone → tech op |
 | **HOLD** | Stop the next cue: something is not ready | anyone → director |
 | **ARRIVAL** | Someone is at the door after 20:30 | house manager → director, an Antivirus |
 | **ALL STOP** | Safety stop. See the emergency card | **anyone** |
@@ -44,9 +44,11 @@ Keep radio talk short: call word, then where, then who. "LATE, two in the kitche
   THE INTERNET card, their buttons go, they keep their DMs, the pinned
   Codex / Quest Log / Wallet, the room they stand in, and the Tube and the
   Internet (read-only). Every Antivirus booth reads *🚨 X is marked for
-  reinstallation (why)* and `# quarantine` pins the escort task. **Only an
+  reinstallation (why)* and `# quarantine` pins the escort task. An
   Antivirus' 🛡 (or the director: Inspector → Captured → Capture) sends them
-  to the Internet** — the tent tablet does not. A mis-tap → 🩹 Unmark.
+  to the Internet; so does walking into the tent: the moment the tablet
+  scans their pass and starts **Play here** (or **Send to VR**), a marked
+  program is captured. A mis-tap → 🩹 Unmark.
 - **Never press an admin cue.** The director fires the night's cues from Run.
   Your buttons are on each guest's card.
 - **Act on a guest:** scan their pass (📷 in your booth), or tap their name
@@ -54,9 +56,9 @@ Keep radio talk short: call word, then where, then who. "LATE, two in the kitche
 - **Booth readouts** are the 📋/🛡/🃏/🚨 lines that appear in your booth. They
   are for you only, and they disappear if you reload. Read them when your
   phone chimes. Your booth also has pinned rooms that survive a reload: an
-  **Inbox** (cards and notes dealt to you), a **Quest Log** (your staff
-  quests, "per the agenda", from Task Manager; each step lands in its own
-  thread) and a **Codex** (what your character knows). CRA Agent Software's
+  **Inbox** (empty tonight: the story deals no cards to a booth), a
+  **Quest Log** (your staff quests by their titles, "Per the agenda: …" or
+  "Patrol: …", from Task Manager; each step lands in its own thread) and a **Codex** (what your character knows). CRA Agent Software's
   booth has a **Wallet** room on top of those.
 - **`# hosts` and `# quarantine` are staff rooms.** Every performer sees both.
   No guest can. `# hosts` carries the bank's and the judge's logs; `#

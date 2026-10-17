@@ -14,7 +14,9 @@ by late-90s Web 1.0 aesthetics and existentialism.*
 > resurrection, the phone cue sheet, …) is committed (85d2bad); wave 6
 > (the live-test bug fixes) is merged, and wave 7 (the server-room keypad
 > lock, The Heart, the server-room terminal, talking Trabolta down) is
-> merged; none of 4–7 is deployed yet, and they ship together**: its §5
+> merged, and wave 8 (the stock-take fixes: ⚖ the verdict, the cue sheet's
+branches, safer server restarts) is merged; none of 4–8 is deployed
+yet, and they ship together**: its §5
 > *Wave N status* tables list every build and the device check still to do.
 >
 > **📋 [CHECKLIST.md](./CHECKLIST.md): the living tech checklist, covering
@@ -108,8 +110,9 @@ cast/trabolta.loom     the AI: his vars, hooks, and 13 agent powers (wave 7: sta
 codex/1-world.loom …   179 CODEX entries: 171 in eight numbered files + the 8 hunt answers
                        in generated/questions.loom (9-facts.loom is GENERATED from
                        facts.json; 3-hunt.loom is gone). The order matters:
-codex/8-jeeves.loom    stagehand feeds Trabolta the first 24 entries as "ground truth", so
-                       the environment comes first and the scrambled Jeeves fragments last
+codex/8-jeeves.loom    stagehand feeds Trabolta's orchestrator up to 60 entries as "ground
+                       truth", the ones he holds first and then the files in order, so the
+                       environment comes first and the scrambled Jeeves fragments last
 trabolta.persona.md    the voice: the fast model's system prompt + frontmatter knobs
 trabolta.mind.md       the mind: 8 stages, 5 drives and a cue per phase for the orchestrator
 house.json             the house map for the reinstallation games + the terminals' world
@@ -170,10 +173,12 @@ These rules matter when you edit. Break one and something fails silently.
   marker Trabolta's worker hides; the answer key itself never enters the
   story (the server judges filings from `facts.json`).
 
-As of 2026-10-17 (the wave 7 story pass) the project compiles clean, both
+As of 2026-10-17 (the wave 8 story pass) the project compiles clean, both
 per file and concatenated the way the server joins them (`loomcheck`):
 **31 files, 0 errors, 0 warnings; 104 beats, 179 codex entries (90 with codes), 25
-quests, 96 rules, 112 INTERACTIONs**. Wave 7 added The Heart and Back To
+quests, 99 rules, 113 INTERACTIONs**. Wave 8 split ⚖ `the_verdict` off 📄
+`read_truth_txt` and added the `patch_after_verdict` and `dance_screens`
+rules. Wave 7 added The Heart and Back To
 The Heart, turned *The Cold Lock* into the secret riddle *The Cold Door*,
 generated the secret *The Door Code* from `facts.json`, added `stand_down`
 and `talked_down`, dropped `server_unlock` and renamed `rearm_server_room`
@@ -214,7 +219,10 @@ to `reset_server_room`.
    fallback for a tablet attract fails on. The TV is the house Mac's
    Chrome on `view=tv` (integration contract); click once into it after
    every boot. Every terminal and the TV must show green on the **Run
-   page's Terminals card** (K-29: red + a chime after 20 s silent).
+   page's Terminals card** (K-29: red + a chime after 20 s silent). The TV
+   voice mute survives restarts, redeploys and Go live in place, so a mute
+   left from rehearsal carries into the show: check it on the Terminals card
+   before doors (the server log says 🔇 at startup when the TV starts muted).
 4. **Hardware (the house Mac).** Load `stagehand/trapped.house.yaml`
    (`uv run stagehand check --config trapped.house.yaml`), then install the
    `show` and `agents` modules as separate launchd jobs (`uv run stagehand
@@ -254,10 +262,10 @@ to `reset_server_room`.
    told otherwise).
 10. **The King** (the code, in the simulation): on the tent tablet's
     game a big gold chess king (`house.json` prop `cold-lock-king`, "THE
-    KING", 4 hearts) stands guard at the server-room door of the virtual
-    house. Walk up and hit him (⚔ / Space): every hit knocks a heart off
-    and makes his chess AI dumber (grandmaster → club → beginner → dizzy →
-    pawns only); challenge him (♟ / C) on the tablet's board and mate him,
+    KING", eight hearts) stands guard at the server-room door of the
+    virtual house. Walk up and hit him (⚔ / Space): every hit knocks a heart
+    off, and every two make his chess AI dumber (grandmaster → club →
+    beginner → dizzy → pawns only); challenge him (♟ / C) on the tablet's board and mate him,
     and the game fires `chess won` for that program (`POST /api/mod/signal`
     with the tablet's mod token and `label: "Tent tablet"`, so the journal
     reads *by Tent tablet*). Before the Y2K hour a win is practice (the
@@ -304,6 +312,18 @@ also lands in Clippy's booth as a codex entry (`Clippy Instructions 1` …
 `9`, under *What Clippy knows*). Steps marked *auto* fire on their own from
 a story timer, and the button is the manual fallback.
 
+**NEXT** is the first cue after LAST that has not fired and is on tonight's
+branch. From 🏍 on, each cue's `while:` names its branch (🏍 after Combo A
+or a talk-down, 🪦 after Combo B, 🌑 → ⚖ while nothing has ended, 💔 / 💌
+in Grok Prom, the advice cues during the poll, 🕺 while banished, G1 after
+an ending), so after 🕚 the sheet suggests 🌑, after the dance the ending's
+own cue, and after the song G1. A `while:` never stops a press: every rule
+still checks for itself. 📋 and 🗜 are `repeat: true`: they stay NEXT while
+you press them again (per question, per trip). The anytime and fallback
+cues (🍾, the set pieces, 🎆, 🧾, 🔄, ♟, 🕊, 🗳, the hardware fallbacks, 🪩,
+💡) are off-sequence: they tick when they fire but never become LAST or
+NEXT.
+
 Every performer hook ignores a press outside its phase, except **🛡 Send to
 the Internet** and **✅ Mark as reinstalled**, which work on any program at
 any time (a second 🛡 on a program already in the Internet only says so).
@@ -313,7 +333,8 @@ more. 🎯 named on the Bingo card, 🤷 a guess, 🎩 Dare, 🙅 a refused
 truth, 🏓 a missed cup, 🍎 a failed bob, a guess settled at a Moment of
 Truth and a late program all fire `mark_for_reinstallation … with
 reason:`: the program is **restricted** (DMs and the Tube / Internet rooms
-stay; every button, filing, check-in and room post is off), their phone
+stay; every button, filing, check-in and room post is off, and so is the
+side chooser: no joining or defecting), their phone
 pins **🚨 GO TO THE INTERNET** with a `!` alert, every Antivirus booth
 chimes and `# quarantine` pins *Escort X to the Internet — <reason>*. The
 capture is still the Antivirus' **🛡** (or walking into the tent: the
@@ -329,8 +350,15 @@ they are).
 
 **Mis-taps are cheap.** Phase cues play once: a second press of a cue that
 has already run (Call to the Desktop, Bingo, Bingo time, the First Moment of
-Truth, Truth Pong, the tally, the rankings, the printer) does nothing. A
-judge's double tap of the same ✅/😤 on the same program credits once, and a
+Truth, Truth Pong, the tally, the rankings, the printer) does nothing. Every
+phase-guarded admin cue pressed out of turn does nothing but post a line to
+`# hosts` saying why (*"🤖 Too early: Clippy introduces Trabolta after the
+Bingo results…"*, *"⚖ Not yet: 🍎 Bobbing for Truth, then 📄 truth.txt
+first."*). A refused press never becomes LAST and never ticks, and a repeat
+of an earlier cue never moves LAST back; the director phone says *"Not taken
+— X doesn't apply right now (# hosts says why)"*. The hardware fallbacks (🖨,
+🫘, 🔌 / 💥 / ❌) stay silent when pressed early: they share their signal with
+the hardware. A judge's double tap of the same ✅/😤 on the same program credits once, and a
 program in the Internet cannot have an answer accepted.
 
 **Front of house fixes** (Run, server events only): a guest whose phone
@@ -338,7 +366,8 @@ died or whose browser was cleared → Inspector → **🔁 Re-pair**, a
 single-use QR (ten minutes) that puts their *same* program on the new
 phone — never re-register them, a ghost counts toward the majority. A
 performer whose phone died → their character's Inspector → **⏏ Release**,
-then they sign in again on a loaner with the performer code. A silent
+then they sign in again on a loaner with the performer code (the old phone
+reads *"Your booth was signed out … sign in again with your passcode."*). A silent
 tablet goes red on the Run page's Terminals card. A Director broadcast
 with **🔔 Alert** ticked banners, chimes and buzzes every phone it reaches,
 booths included. Guests can also check themselves into a room by
@@ -361,7 +390,7 @@ scanning its sign (`checked_in`, see the integration contract).
 | **C1/V1 · 📣 Call everyone to the Desktop** (`call_to_the_desktop`) | Antivirus sweep everyone to the living room | `!` alert on every phone, the house announces (`do announce` + `sound announce_chime`), the TV leaves its screensaver (`screens_call_desktop`). Clippy's booth: instructions 1/X. |
 | **V2 · 🎱 Start Computer Bingo (20 min)** (`start_the_bingo`) | Clippy reads the rules. Hosts introduce themselves | *Computer Bingo* quest for everyone. The asterisk card is checkboxes only, with **no names written down**. Centre square: *"Would you never agree to a life where AI makes all of your decisions?"* Clippy's *Run The Bingo* and Norton's *The Selected Antivirus* quests start. Clippy's booth gets a ping when the 20 minutes are up. |
 | **V3 · ⏰ Bingo time: results** (`bingo_time`) | Clippy presses **🎱 Bingo winner** on each winner. Clippy or any host presses **🎀 Award a ribbon**. If there is no Bingo, Task Manager hands Clippy the fake card for MS Paint and presses **🃏**. Clippy presses **🎯 Named on the card** on the program the winner names (marked for reinstallation). **Norton** interrupts and presses **🛡 Send to the Internet** | *Clippy Instructions 2* unlock; Clippy's *Run The Bingo* quest completes (Norton's *The Selected Antivirus*, started with the Bingo, completes at the first reinstallation). The first program sent to the Internet fires **Corrupted Code**: Clippy explains that corruption is normal. Three outcomes are performed live: the winner names the centre-square program, the winner refuses and goes themselves, or nobody wins and MS Paint is framed. |
-| **Clippy 2/X · 🤖 Clippy introduces Trabolta** (`introduce_trabolta`; refused before V3; skipped → the next cue wakes him) | — | Trabolta wakes (`awake`, `reveal self`). His chat appears on every phone with a formal private hello. The TV switches to the VR mirror ("Look! That's {first program}!"). **Now re-provision the terminals with `view=auto`, and set stage *formal* on Run → Mind.** |
+| **Clippy 2/X · 🤖 Clippy introduces Trabolta** (`introduce_trabolta`; refused before V3; skipped → the next cue wakes him) | — | Trabolta wakes (`awake`, `reveal self`). His chat appears on every phone with a formal private hello. The TV switches to the VR mirror ("Look! That's {first program}!"). The terminals (provisioned `view=auto` from the start) show his face within 2 s: check they do. **Set stage *formal* on Run → Mind.** |
 | *(automatic, on any capture)* | an Antivirus presses **✅ Mark as reinstalled** on the program's card if needed (or the director from Run). Julia runs the tent, in the backyard through the tunnel; the tablet has no such button | **Reinstallation** plays privately in `dm:Installation Wizard` (the same script as the tent video; `cue tablet_wizard`). The program plays the reinstallation game in the tent (VR headset or tablet): follow the golden chevrons to **Gerald, the golden duck**, and walk right up to him. The game fires `the simulation completed` (release) + `the golden duck` (*The Golden Duck*). A marked program who walks to the tent on their own is captured when their run begins: the tablet's begin (or a headset's station) fires `reinstallation begun` first (wave 5), which captures a marked, uncorrupted program, so the wizard shows CORRUPTED and Gerald releases them. An Antivirus 🛡 before Play here still works. |
 | **V4/V5 · 🔎 Truth Scavenger Hunt 1 (15 min)** (`start_the_hunt`) | — | Trabolta reads questions H1–H3 on the TV (the generated `Hunt One Questions`), and they also appear in the *Hunt One* quest. A 5-minute warning comes at 10 minutes. Every answer is a document in the Desktop's books and print media carrying a codex QR (`facts.json`). Clippy's *Host The Hunt* quest starts. |
 | **C2 · ⏰ Hunt over** (`hunt_time_up`, *auto* at 15 min) | Antivirus sweep everyone back | *Clippy Instructions 3* unlock. Set stage *hungry*. |
@@ -394,7 +423,7 @@ scanning its sign (`checked_in`, see the integration contract).
 | **🖨 Printer: START pressed** · **🫘 Printer opened** (`printer_button_pressed` / `printer_opened`, hardware fallbacks) | VLC presses START; MS Paint urges them to open it | START: *The Printer Jams* and the *Printing certificate.pdf* slide (the chart comes down). Opened: **Full Of Beans**: Clippy reads it as the malware worsening. Composure −20, and the screens flicker on their own. Set stage *unravelling*. |
 | **🗜 Antivirus zip everyone out of the Internet** (`zip_everyone_out`) | Antivirus bring everyone out of the Internet (the tent, or the shed on a rain night: every booth and phone line says "the Internet") | Every captured program is released and `.zip`ped. Repeatable; refused once the night has ended and during the banishment (the hand jive frees them). |
 | **🤖 Trabolta shares the next facts (scenario 1–4)** (`trabolta_overshares`) | — | He reads F1/F2 (the *Final Facts* quest), then overshares by scenario: **1** Excel planted + 20 facts (Sandy, permanence, the virus, the LiveJournal) · **2** 20 facts only (the LiveJournal) · **3** Excel planted only (the virus) · **4** neither (composed, one slip). Only *Excel's* plant counts. |
-| **🕚 System clock → 11 PM, 31 Dec 1999** (`y2k_clock`) | Password Manager's booth logs every faction join | *Clippy Instructions 7* unlock. Composure −25. Unlimited Power and The Way Out are revealed and become sides in the app. Excel / OpenOffice get their Final Orders + recruit quests; everyone else gets *Program Final Round*. Clock warnings come at 23:30 / 23:45 / 23:55 / 23:59. Set stage *desperate*. |
+| **🕚 System clock → 11 PM, 31 Dec 1999** (`y2k_clock`; **wait for IN**: fire only once the patch-bay watch radios that they are inside the server room with the door shut, since from 🕚 the first opening plays The Heart) | Password Manager's booth logs every faction join | *Clippy Instructions 7* unlock. Composure −25. Unlimited Power and The Way Out are revealed and become sides in the app. Excel / OpenOffice get their Final Orders + recruit quests; everyone else gets *Program Final Round*. Clock warnings come at 23:30 / 23:45 / 23:55 / 23:59. Set stage *desperate*. |
 | *(auto)* **majority** | — | **Half + 1 of all guest programs** in one faction, *once its leader has done their task* (Excel planted / OpenOffice's dossier). Performers do not count. **If a leader is absent or stuck, fire 🧾 Let a faction win without its leader's task** (`waive_leader_tasks`). **If ghosts (lost sessions, early leavers) keep the bar out of reach at the Y2K head count, fire 🗳 Force the majority: stay / leave** (`force_majority_stay` / `force_majority_leave`, final round only, latched like the real one). |
 
 ### E. Act III: the server room
@@ -431,12 +460,13 @@ Server Room. Never say the code on the radio.
 
 | Director fires | Performers do | What happens |
 |---|---|---|
-| **🌑 Final Truth Scavenger Hunt reveal** (`final_reveal`, or *auto* at midnight) | Clippy (CI 8): *"truth is always in binary"*; judges F1/F2 with ✅/😤 Q1–Q2 / 🤷 | Lights go dark. Set stage *last act*. **The server room stays live** (deliberate): a combo entered before the verdict still ends the night. |
+| **🌑 Final Truth Scavenger Hunt reveal** (`final_reveal`, or *auto* at midnight) | Clippy (CI 8): *"truth is always in binary"*; judges F1/F2 with ✅/😤 Q1–Q2 / 🤷 | Lights go dark. Set stage *last act*. **The server room stays live** (deliberate): a combo entered before 📄 truth.txt still ends the night. From 📄 on the verdict is in: the patch bay, the door and 🕊 only post a note to `# hosts`. |
 | **🍎 Bobbing for Truth** (`bobbing_for_truth`) | Clippy / Adobe Acrobat: **🍎 Brought up the Bag of Truth** / **🍎 Failed the bob** (marked for reinstallation) | Nothing moves until someone brings up the bag. Then come the Final Assessment and the bobber's truth.txt. |
-| **📄 Read truth.txt → the verdict** (`read_truth_txt`; only once the bag is up) | the bobber reads it aloud (Adobe Acrobat has the printout) | Everyone gets every backstory; the final round's filings settle. **The Verdict** counts answered questions only (U14): no lie on record → **Song Ending**; any accepted lie → **Grok Prom**. A question nobody answered is not a lie. In **both** branches Trabolta DMs every program an answer card: *"Give me a pickup line that works on Sandy."* (judged by the server against `facts.json` → `answer answered`). |
+| **📄 Read truth.txt** (`read_truth_txt`; only once the bag is up) | the bobber reads it aloud (Adobe Acrobat has the printout; her booth says to wait for ⚖) | truth.txt goes up on every screen and **holds** there while it is read. Everyone gets every backstory; *The Final Facts* completes; the final round closes and its filings settle. Nothing else happens until ⚖. A second 📄 only tells `# hosts` to press ⚖. |
+| **⚖ truth.txt read → the verdict** (`the_verdict`; after 📄, when the bobber has finished) | — | **The Verdict** counts answered questions only (U14): no lie on record → **Song Ending**; any accepted lie → **Grok Prom**. A question nobody answered is not a lie. In **both** branches Trabolta DMs every program an answer card: *"Give me a pickup line that works on Sandy."* (judged by the server against `facts.json` → `answer answered`). Pressed before 📄 it only says so in `# hosts` (*"⚖ Not yet: 📄 Read truth.txt first."*). |
 | *(in Grok Prom)* | the first program to type the line on the card wins; or a host presses **💘 Said "You're the one that I want"**, or Trabolta fires `the_line_works` in a DM | **Pickup Line** → Song Ending. In the Song branch the first correct line is read before the song (flavour). |
 | **💔 Nobody has the line → confession → rave** (`no_pickup_line`) | — | **Sad Confession** → rave. |
-| *(alt, only in Grok Prom)* **💌 Trabolta begs for relationship advice** → **🗳 Count the advice poll** (or **💞 helped** / **⛈ thwarted**, which only answer in the advice phase) → **🕺 Everyone hand-jived** | after thwarted: every Antivirus booth says they are banished too | Help → he wins Sandy. Thwart → everyone is banished to the Internet and learns *The Hand Jive Exception* → the hand jive crashes him. |
+| *(alt, only in Grok Prom)* **💌 Trabolta begs for relationship advice** → **🗳 Count the advice poll** (or **💞 helped** / **⛈ thwarted**, which only answer in the advice phase) → **🕺 Everyone hand-jived** | after thwarted: every Antivirus booth says they are banished too | Help → he wins Sandy. Thwart → everyone is banished to the Internet and learns *The Hand Jive Exception* (the TV keeps the banish card; the banishment is no reinstallation, and a duck find frees nobody: Gerald only says the way out is the hand jive) → the hand jive crashes him and puts the screensaver back on every screen. |
 
 ### G. The awards ceremony (after any final ending, K-25)
 
@@ -507,7 +537,7 @@ are **179**, and **90** of them carry a code (the 56 generated from
 | **L / P** the heart | `4-trabolta` | *The Legendary Fact* + four combo halves, `about: The Server Room`, all `secret: true` since wave 7 (no model ever reads them, not even the orchestrator's lore block). **He never holds them.** Only the majority faction gets them, via The Whole Truth. |
 | **D** the door | `9-facts` (generated) | *The Door Code*: the keypad's four digits, generated from `facts.json` `door.code`, `secret: true`, no code of its own. It reaches a program by a checkmate against the King from the Y2K hour, or with the majority's Whole Truth. The same number seeds `Kernel.door_code` (the `== Facts Seed`), never `Night.*`. |
 | **X** finale | `4-trabolta` | *The Truth File* (truth.txt), *The Hand Jive Exception*. |
-| **B** backstories | `5-people` (21) | Each performer's and featured program's human identity (the invitation's "who you really are"), each ending "Why Trabolta chose you". Featured programs get theirs at Featured Briefing. Everyone gets all of them at the recount / truth.txt. The four Antivirus files carry codes (Bugdom hunts them). |
+| **B** backstories | `5-people` (21) | Each performer's and featured program's human identity (the invitation's "who you really are"), each ending "Why Trabolta chose you". Featured programs get theirs at Featured Briefing. Everyone gets all of them at the recount / truth.txt. No codes here: the Antivirus secrets Bugdom hunts are their four red character facts in `9-facts` (*Miniature Doses* `MINIATURE-DOSES`, *The Lamborghini Certificate* `LAMBORGHINI-CERT`, *What Happened To Hamtaro* `HAMTARO`, *The Decimal Point* `DECIMAL-POINT`). |
 | **M** missions | `6-missions` (13) | Private orders for one featured program (the glitch choices and the final orders). |
 | **CI** Clippy | `7-clippy` (9) | *Clippy Instructions 1–9*, unlocked for Clippy only, one per phase (the private-to-Clippy channel). CI 3–9 are invented. |
 | **J** Jeeves | `8-jeeves` (20) | Scrambled fragments of 20 environmental entries, in the Character Sheet's Kmart style, for Broken Ask Jeeves to unscramble. |
@@ -533,7 +563,7 @@ its own thread of steps.
 | Recruit To Stay (*Stay Forever*) | Truther Download | Excel Final Round | ✅ stay majority / ✖ leave majority |
 | Recruit To Leave (*Get Out*) | Truther Download | OpenOffice Final Round | ✅ leave majority / ✖ stay majority |
 | Truthcoin Hustle (*Sweet Sweet Truthcoin*) | Truther Download | DraftKings Glitch (+200 stake) | step at 1000; ✅ more than half of all the Truthcoin in circulation, coin in flight (pending, held, an open offer) included (with ≥ 5 other cleared programs) |
-| Master Of The Bugs | Truther Download | Bugdom Glitch | ✅ holding all four Antivirus files |
+| Master Of The Bugs | Truther Download | Bugdom Glitch | ✅ holding the four Antivirus' red facts (Miniature Doses, The Lamborghini Certificate, What Happened To Hamtaro, The Decimal Point) |
 | Unscramble (*Organize The Information*) | Truther Download | Jeeves Glitch | ✅ holding 5 of the 10 originals behind his fragments |
 | Ten Findings (*Ask Jeeves Once Again*) | The Uploader | Jeeves's clearance | step per program that holds ten of his findings (shares + wallet sales; repeats and Trabolta don't count); ✅ every cleared program (≥ 5) |
 | The Gold Standard (*Peg It To Facts*) | Truther Download | Runescape Glitch | director completes |
@@ -545,7 +575,9 @@ its own thread of steps.
 **Staff quests** (`start|update|complete quest X for <Character>`): Clippy
 and the four Antivirus have a pinned **Quest Log**, **Codex** and
 **Inbox** in their booths (performers answer cards there via `POST
-/api/prime/widget`), and Task Manager hands out the night's jobs:
+/api/prime/widget`; tonight no story line deals a card to a booth, so the
+Inbox stays empty), and Task Manager hands out the night's jobs. A booth's
+Quest Log shows each quest by its title:
 
 | QUEST (`title:`) | For | Started | Settled |
 |---|---|---|---|
@@ -617,7 +649,7 @@ his heart. `facts:` gains `Night.heart_opened` / `Night.talked_down`,
 **Powers** (`INTERACTION … who: agent` in `cast/trabolta.loom`). Every use
 is a journaled signal fired *as* Trabolta. Outside its window a power
 answers *"That function is not available yet."* / *"I do not have the
-strength."* and spends nothing (a use counts only when the story did something with it). A power fired with no
+strength."* and spends nothing (a use counts only when the story did something with it). His own uses journal `by: agent:Trabolta`, so the counts survive a server restart; a director's press of the same power never counts. A power fired with no
 program on the thread (from a performer's Cast thread) does nothing and
 says nothing, so no refusal ever lands in the public lobby. An empty
 pop-up or announcement and a non-positive amount are refused out loud.
@@ -672,7 +704,7 @@ themselves at sign-in and never speak in the story.
 | Microsoft Excel | Rob Cameron | Randy Barkmore Sr., 90, former Mayor | plant the virus; lead **Unlimited Power** (stay forever) |
 | OpenOffice | Lara Lewis | Dana Anderson, ex-FBI hacker | gather 20 facts; lead **The Way Out** |
 | DraftKings | Hannah | the gambler who won the casinos | a majority of the Truthcoin (1000 is a step) |
-| Bugdom | Veronica | the pet-store worker whose Bugdom VR burned | the four Antivirus files |
+| Bugdom | Veronica | the pet-store worker whose Bugdom VR burned | the four Antivirus' secrets (their red facts in the Desktop's books) |
 | Broken Ask Jeeves | Kai | the Annapolis Valley youth librarian | unscramble 20 fragments; ten findings with every program (Ten Findings) |
 | Runescape | Laurel | 34, Wharton PhD, gold standard | peg Truthcoin to facts; the Truthcoin **minter** (`wallet: minter, limit 3, grants 3, freeze 10m`): from her Wallet room, up to three stimulus payments to every program, three grants to one program each, and a ten-minute freeze on any program's outgoing coin |
 | MS Paint | Cat Frawley | the Paint-only art student: four schools, three refused theses | **the designated anti-AI program** (Bingo centre square); find the exit; every program signs one painting (The Painting, hosts press 🖌) |
@@ -717,20 +749,20 @@ live night replay identically.
 | **Check-in** | door / QR / terminal → story | `POST /api/mod/signal {name: "checked_in", subject: "<guest id>", args: {at: "The Desktop"}}`. `at` must be the **exact declared LOCATION name**. Anything else, or no arg, moves nobody. Sources: the door scan during the summons, the 📍 button, and **room signs** (K-13): a guest's camera opens `?code=&checkin=<slug>` and the phone posts `POST /api/guest/checkin {at: slug}`; the server folds the slug onto the LOCATION and signals `checked_in`. Refused while captured, **restricted (marked, 409)**, on rails, in a prison / sealed room, for a hidden, prison, cutscene or `checkin: false` room (The Server Room), and within 20 s of the last check-in; the story also turns a marked program away ("Go to the Internet, not the Desktop"). |
 | **The cards: CAPTCHA, tutorial, poll, fact, answer** | guest phone → story | `show captcha / tutorial / poll / fact / answer …` cards answer via `POST /api/guest/widget {seq, result}`, which the story hears as `when captcha answered for program:` (and so on). A **📝 fact** filing (`{question, answer, confidence 1–100}`) is judged by the server first when the event has a facts key: `verdict` (`accurate` / `lie` / `uncertain`) rides the event args into `fact answered`; 400 on a reserved key (`card`, `verdict`), a bad confidence or an unknown question. The **answer** card (the pickup line, `question: "P1"`) is judged the same way → `answer answered`. A performer answers the cards in their booth via `POST /api/prime/widget {seq, result}` (never judged). |
 | **The facts key** | project → server | `facts.json` is a **project file** like the house map: `pnpm sync-show` pushes it, a launch snapshots it (`project-facts.json` in the event's state dir), `POST /api/mod/load {facts}` replaces it live; with no project copy the server reads `LOOM_FACTS` (default: `facts.json` beside the house map). `Night.judge_mode` (`auto` / `review`; `POST /api/mod/var {path: "Night.judge_mode", value}`, the Run → Mind Judging card) decides whether a verdict stands at once or waits for a host. The key never enters the story and never reaches Trabolta's worker. |
-| **Wallet** (Truthcoin) | guest / performer phone → server | The header `currency: score as Truthcoin, max 500, expiry 10m` makes `program.score` the balance (🪙 on the pass, the pinned **Wallet** room; the server's `wallet.ts` moves the coin, the story only narrates). Guest: `POST /api/guest/wallet/{send,request,respond,offer,accept,decline,cancel,stimulus,grant,freeze,approve,deny}` → `{ok, wallet}` (`send {to, amount}` 1–500 whole Truthcoin, balance permitting; `request` expires after 10 min; `offer` an escrowed trade of coin ⇄ a codex entry, settled on `accept`). The approver (`CRA Agent Software`, `wallet: approver, every 3, window 60s`): every third transfer is **held** until `POST /api/prime/wallet/approve {id}` (or `deny`) from her booth's Wallet room → `{ok, queue}`; any other transfer can be denied for 60 s, refunded. The minter (`Runescape`, `wallet: minter, limit 3, grants 3, freeze 10m, while program.cleared == true`): `stimulus {amount}` mints (never debits) `amount` to every program, three times a night; `grant {to, amount}` mints to one cleared program, three times a night; `freeze {to}` refuses that program's send / pay / buy for ten minutes on the story clock (coin still comes in; one freeze per program at a time). Director: `POST /api/mod/wallet/{approve,deny,cancel} {id}`, `/api/mod/wallet/stimulus {amount}`, `grant {to, amount}`, `freeze {to}`, `unfreeze {to}`. The book fires `transfer_received / approved / denied`, `offer_accepted`, `stimulus`, `grant`, `wallet_frozen` / `wallet_thawed` (…) into the story: `# truthcoin-exchange` posts every transfer, trade, grant from the minter's phone (a director's grant posts nothing) and freeze, `# hosts` every denial, The Audit quest every CRA decision. Throttle: `LOOM_RL_WALLET` (30/min per guest). Trades bypass the approver by design. |
+| **Wallet** (Truthcoin) | guest / performer phone → server | The header `currency: score as Truthcoin, max 500, expiry 10m` makes `program.score` the balance (🪙 on the pass, the pinned **Wallet** room; the server's `wallet.ts` moves the coin, the story only narrates). Guest: `POST /api/guest/wallet/{send,request,respond,offer,accept,decline,cancel,stimulus,grant,freeze,approve,deny}` → `{ok, wallet}` (`send {to, amount}` 1–500 whole Truthcoin, balance permitting; `request` expires after 10 min, and a paid, denied or cancelled one closes both parties' threads (*"✅ Paid — X sent N"*); `offer` an escrowed trade of coin ⇄ a codex entry, settled on `accept`). The approver (`CRA Agent Software`, `wallet: approver, every 3, window 60s`): every third transfer is **held** until `POST /api/prime/wallet/approve {id}` (or `deny`) from her booth's Wallet room → `{ok, queue}`; any other transfer can be denied for 60 s, refunded. The minter (`Runescape`, `wallet: minter, limit 3, grants 3, freeze 10m, while program.cleared == true`): `stimulus {amount}` mints (never debits) `amount` to every program, three times a night; `grant {to, amount}` mints to one cleared program, three times a night; `freeze {to}` refuses that program's send / pay / buy for ten minutes on the story clock (coin still comes in; one freeze per program at a time). Director: `POST /api/mod/wallet/{approve,deny,cancel} {id}`, `/api/mod/wallet/stimulus {amount}`, `grant {to, amount}`, `freeze {to}`, `unfreeze {to}`. The book fires `transfer_received / approved / denied`, `offer_accepted`, `stimulus`, `grant`, `wallet_frozen` / `wallet_thawed` (…) into the story: `# truthcoin-exchange` posts every transfer, trade, grant from the minter's phone (a director's grant posts nothing) and freeze, `# hosts` every denial, The Audit quest every CRA decision. Throttle: `LOOM_RL_WALLET` (30/min per guest). Trades bypass the approver by design. |
 | **Wall QR codes** | guest phone → app | Print from the editor: Run → Join → **🖨 Print sheet…** (QRs drawn in the browser). Source: `POST /api/mod/codes` → `codex[]` (`?code=&unlock=`), `joinLink` (the join poster) and `checkin[]` (one room sign per non-prison, non-cutscene LOCATION, `?code=&checkin=<slug>`). A signed-in guest redeems on load. |
-| **Recap numbers** (the ceremony) | server → director | `GET /e/<event>/api/mod/recap` (directors only: the author session or `?token=<mod token>`) → ranked lists off live state: `trust`, `truths` (accepted minus lies), `lies` (accepted confident lies, Moment of Truth + DM filings, credited off the log — no program var holds them), `internetVisits`, `codex`, `quests` (done), `truthcoin`, plus `factions` and a paste-ready `text`. `?format=text` returns just the text, to copy into the cue sheet's winner/value boxes or `cast:Trabolta`. Rehearsal personas are listed, marked `(persona)`. `duck` is the **Golden Duck Speedrun** (G8): each program's fastest find in either game, fastest first, `time` as `m:ss` for the value box — timed by the server from a tablet's *Play here* or a headset's first pose to the find (a director's pause doesn't count), kept in `spatial-runs.jsonl` in the event's state dir (survives a server restart, cleared by a story restart). |
+| **Recap numbers** (the ceremony) | server → director | `GET /e/<event>/api/mod/recap` (directors only: the author session or `?token=<mod token>`) → ranked lists off live state: `trust`, `truths` (accepted minus lies), `lies` (accepted confident lies, Moment of Truth + DM filings, credited off the log — no program var holds them), `internetVisits`, `codex`, `quests` (done), `truthcoin`, plus `factions` and a paste-ready `text` (its *Least trusted* list ranks from the bottom and is printed only when someone is below the top 5). `?format=text` returns just the text, to copy into the cue sheet's winner/value boxes or `cast:Trabolta`. Rehearsal personas are listed, marked `(persona)`. `duck` is the **Golden Duck Speedrun** (G8): each program's fastest find in either game, fastest first, `time` as `m:ss` for the value box — timed by the server from a tablet's *Play here* or a headset's first pose to the find (a director's pause doesn't count), kept in `spatial-runs.jsonl` in the event's state dir (survives a server restart, cleared by a story restart). |
 | **Phones: re-pair, release, push** | director / phone → server | `POST /api/mod/guest/pair {id, revokeOthers?}` → a single-use `?code=&pair=` link (10 min; the phone trades it at `POST /api/guest/resume {pair}` for a fresh token) · `POST /api/mod/prime/release {character}` · push: `GET /api/push/config`, `POST /api/push/subscribe {subscription}` (refused while the doors are closed; 300 devices per event), `POST /api/mod/push/status`. |
 | **Codex room** | guest phone → server | `POST /api/guest/codex/redeem {code}` · `POST /api/guest/codex/share {entry, to}` |
 | **Performer booth** | performer phone → server | `POST /api/prime/codex/share {entry, to}`; `POST /api/prime/act` fires the guest-card buttons *as* that character; `POST /api/prime/widget {seq, result}` answers a card dealt to the booth (`show … to <Character>`; `PrimeView.quests` / `codex` feed the booth's pinned Quest Log and Codex rooms). |
 | **Puzzles / hardware unlocks** | puzzle → story | `POST /api/mod/codex {who, entry}` · `POST /api/mod/quest {who, quest, action, text?}` (`who` a guest id or a character). Guest ids come from the pass QR, or from `/api/state?role=mod` → `roster`. A director can also `POST /api/mod/act {id, action: restrict\|unrestrict}` or `POST /api/mod/set {id, field: "restricted", value}` to lift or apply a mark's restriction by hand. |
 | **Bathroom Mode** | phone / tent → story | `POST /api/guest/act {name: "go to the bathroom"}` with the guest's token (and `back from the bathroom`), or `mod/signal {name, subject}`. |
 | **Reinstallation games: devices** | game ⇄ server | Two games, one simulation ([`docs/loom-reinstall.md`](../../../docs/loom-reinstall.md)). The **VR** game runs on the Quest 3 headsets (`reinstall/vr/`, Godot; left stick walks, right stick turns). The **web** game runs on the tent tablet (`/reinstall/`, twin touch sticks + keyboard). Set each device up once with the moderator passcode: the tablet via `/reinstall/?code=<mod>&name=Tent tablet`, a headset via its `station.json` (`server`, `code`, `station: vr-1`). A headset idles in a dark lobby polling `GET /api/mod/spatial/station?id=vr-1&name=Headset 1&world=vr`. |
-| **Reinstallation games: a session** | tablet → server | The captured program holds their pass to the tablet's camera (or the operator taps them under *In the Internet now*, or types their name; `GET /api/mod/spatial/candidates` lists captured programs first). Any desktop browser can stand in for the tablet (keyboard + mouse; `reinstall/web/README.md` → *A demo with no hardware*); one without WebGL2 says so and offers the headsets only. Then **Play here** or **Send to VR-1** (`GET /api/mod/spatial/stations`) → `POST /api/mod/spatial/begin {guest, world, device, station?}`. The game streams `POST /api/spatial/pose` (10 Hz, house frame, session token) and ends with `POST /api/spatial/end`. The director can end a session with `POST /api/mod/spatial/end {session}`. Poses never touch the journal. |
+| **Reinstallation games: a session** | tablet → server | The captured program holds their pass to the tablet's camera (or the operator taps them under *In the Internet now*, or types their name; `GET /api/mod/spatial/candidates` lists captured programs first). Any desktop browser can stand in for the tablet (keyboard + mouse; `reinstall/web/README.md` → *A demo with no hardware*); one without WebGL2 says so and offers the headsets only. Then **Play here** or **Send to VR-1** (`GET /api/mod/spatial/stations`) → `POST /api/mod/spatial/begin {guest, world, device, station?}`. The game streams `POST /api/spatial/pose` (10 Hz, house frame, session token) and ends with `POST /api/spatial/end`. The director can end a session with `POST /api/mod/spatial/end {session}`. Poses never touch the journal. **A server restart (a crash or a redeploy) ends every session mid-walk**: the tablet or headset treats it as over, so scan the program's pass again and press **Play here** (or **Send to VR-1**). Finds already made are kept (`spatial-runs.jsonl`); a parked station assignment is lost, so send it again. |
 | **Reinstallation games: the duck** | game → story | Walking up to Gerald posts `POST /api/spatial/found` (409 unless the last pose is within 2 m). The server commits, `by` the device, `signal("the simulation completed", guest)`, which releases a corrupted program, then `signal("the golden duck", guest)`, which grants *The Golden Duck* to anyone. Admin fallbacks: **Reinstallation: simulation completed** / **the golden duck**. Before a run starts, `POST /api/mod/spatial/begin` commits `signal("reinstallation begun", guest)` `by` the device (only because the story declares it), so a marked arrival begins captured. |
 | **The house map** | director → games + screens | `house.json` (+ `house.shed.json`, the rain variant) are **project files**: `pnpm sync-show` pushes them with the story, a launch snapshots them, Push draft refreshes them. Served per event by `GET /api/spatial/house`. Edit it at **`/reinstall/map`**, which saves via `POST /api/mod/spatial/house {house, base}` (409 on a stale `base`); keep a save with `POST /api/mod/spatial/house/project` (Save to project). Tent ↔ shed: `POST /api/mod/spatial/variant {file: "house.shed.json"}`, mid-show too. Rooms map to LOCATIONs (the real house, 2026-10-15): on the **main floor** optical-drive (the mud room) → The Optical Drive, start-bar (kitchen) → The Start Bar, cpu (office) → The CPU, steam-room (bedroom / game room) → The Steam Room, desktop (living room) → The Desktop; in the **basement** ram (studio) → The RAM, fan-closet (laundry) → The Fan Closet, server-room (cold storage) → The Server Room, bathroom-1 → **Disk Cleanup**; on the **top floor** graphics-card (bedroom 2) → The Graphics Card, hard-drive (crawl space) → The Hard Drive, bathroom-2 → **Disk Cleanup**; hall, basement-hall and upstairs-hall (the hall and its two stairs) → The Tube; backyard → The Cloud; tent → The Internet. The layout is a **placeholder** until the survey (footprints and elevations guessed: basement −2.7 m, main 0, top +2.8 m), but its structure is the house's: the front door opens into the Optical Drive, the hall runs from it to the back door with the basement stairs and the upstairs side by side; the **tent is outside**, an indoor room in a corner of the backyard with its flap onto the lawn (the spawn, both VR mats and the `tent` terminal are in it); the Server Room is off the basement hall (patch bay and the server-room terminal inside, the keypad, the lock ring + chess phone outside its door, no duck); the Truth Pong table is in the yard; the Tube runs front door → hall → living room, and out the hall's back door across the yard to the tent flap. Twelve duck spots: every floor and the yard, never the tent, the Server Room or a hall, each at least 10 m of walking from the spawn. **Rain:** `house.shed.json` is the same map with The Internet in the shed at the back of the yard (room `shed`; same terminal ids, duck spots and LOCATIONs; the shed's two clues, `SITE-SCHEDULE` and `BUGDOM-VR`, move to The Optical Drive) — switch on the map page's project bar (Tent / Shed) or `POST /api/mod/spatial/variant {file: "house.shed.json"}`, mid-show too. Terminal spots: `optical-drive`, `start-bar`, `hall`, `desktop-tv` (the TV), `ram`, `bathroom-1-door` (in the basement hall, outside Bathroom 1's door, never inside), `server-room` (wave 7: inside the Server Room on its south wall, facing in, on both variants; the server-room terminal), `tent` (the tent, or the shed). None is provisioned yet; a tablet that hangs elsewhere gets its spot moved on the map page. |
 | **Terminals** | wall tablet ⇄ server | The [`terminal`](../../../terminal) app at `/terminal/`, a direct line to Trabolta. **Provision with `view=auto`**; it shows attract until Trabolta is revealed (Before the doors open, step 3): `/terminal/?code=<mod>&name=Kitchen&character=Trabolta&spot=start-bar&view=auto`. Since wave 7 a mod code lists the story's declared cast before the doors, so ⚙ checks `character` the moment it is set up. The server-room terminal adds `room=` (its own row above). `spot` is the terminal's id in `house.json`. `auto` shows the world view while someone is in the simulation and the face otherwise. A program holds up their pass; the terminal pilots them (`POST /api/mod/impersonate {role: "guest", id, label}`) into their own `dm:Trabolta`. Replies are spoken in the **device's own voice** (`speechSynthesis`; Fully Kiosk's JavaScript Interface on a WebView without it; text at reading pace on a voiceless device — never a stall). The server voice (`POST /api/mod/tts` → `LOOM_TTS_URL`, the compose `kokoro` service behind `--profile tts`) is opt-in and off by default. The line drops after 30 s without input. The mod feed tags terminal lines `via: "Terminal · <name>"` (the pilot's `label`); the same `label` on `POST /api/mod/signal` lets any mod-token device (the tent tablet's `chess won`) sign the journal as itself — honoured only for the generic mod-token "Director", never over an author session's own name. Terminals poll the lean `GET /api/screen/state` every 2 s (attract, story screen cues, slides / overlays, the countdown, K-16/K-17), which doubles as their heartbeat: `GET /api/mod/screen/terminals` feeds the Run page's Terminals card. |
-| **TV** | story → screens + voice | The TV above the fireplace is the house Mac's Chrome on the `tv` view (K-18): `/terminal/?code=<mod>&name=TV&character=Trabolta&spot=desktop-tv&view=tv`. It shows Trabolta's face (the screensaver until the introduction, the VR world beside him while someone is in the Internet) and **speaks every `Trabolta:` line said in The Desktop** plus a director's `say` as Trabolta there; the song beats (`Song Ending`, `Sad Confession`, `The Hand Jive`) and Sandy are captioned only. Mute: `M` on the Mac or `POST /api/mod/screen/voice {muted}`. The story records what it should show in `Night.screen`. Anything else can watch the mod SSE feed (`GET /e/:id/events?role=mod`) for `captured` / `released` and `alert: true` broadcasts. |
+| **TV** | story → screens + voice | The TV above the fireplace is the house Mac's Chrome on the `tv` view (K-18): `/terminal/?code=<mod>&name=TV&character=Trabolta&spot=desktop-tv&view=tv`. It shows Trabolta's face (the screensaver until the introduction, the VR world beside him while someone is in the Internet) and **speaks every `Trabolta:` line said in The Desktop** plus a director's `say` as Trabolta there; the song beats (`Song Ending`, `Sad Confession`, `The Hand Jive`) and Sandy are captioned only. Mute: `M` on the Mac or `POST /api/mod/screen/voice {muted}` (kept in the event's `screen-voice.json`, so it survives a restart). The story records what it should show in `Night.screen`. Anything else can watch the mod SSE feed (`GET /e/:id/events?role=mod`) for `captured` / `released` and `alert: true` broadcasts. |
 | **Trabolta** | house Mac ⇄ server | Run stagehand's `agents` module: `cp stagehand/agents.example.yaml stagehand/laptop.yaml` (set `server.url`, `event`, `mod_passcode`), `ollama pull gpt-oss:20b tobestyledintro/qwen3.8-9b-distill:q8_0`, then `uv run stagehand run --config laptop.yaml`. The server sends every message to Trabolta as an agent request (`GET /api/agent/stream`) carrying the thread, the speaker's `them:` vars and the whitelisted `Night.*` facts. **`Kernel.*` never reaches him.** He answers with `POST /api/agent/reply {say, adjust}`. Powers fire as journaled signals. `stagehand ask --config laptop.yaml --reflect` tunes voice and mind offline. |
 
 **Staff visibility:** `# hosts` and `# quarantine` are **staff back-rooms,

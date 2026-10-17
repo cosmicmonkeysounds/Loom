@@ -38,7 +38,7 @@ press 🛡 — a marked program who turns up at the tent on their own is capture
 when the tablet starts their run (wave 5). A marked program in Bathroom Mode or Disk Cleanup: wait outside; never go in (the booth says ⚠️ when it knows). The pin clears on its own when they are captured, released,
 or unmarked (🩹): *✅ X: in the Internet / released / cleared by a host.*
 
-**V3, your big moment.** Your Quest Log says it: *The Selected Antivirus.*
+**V3, your big moment.** Your Quest Log says it: *Patrol: the Bingo.*
 When the centre-square program is named (or the winner refuses to name
 anyone, or the framed program denies the card): Clippy presses 🎯 and the
 program is marked; stand at attention and interrupt. *It is inappropriate for
@@ -55,7 +55,7 @@ sweep of…*) · 🚨 server-room alarm · 🗜 zip everyone out of the Internet
 
 **Bathroom Mode excuses a guest from a summons.** Your booth shows who is in it.
 
-**Your booth:** Scanner · Inbox (cards dealt to you) · Quest Log · Codex ·
+**Your booth:** Scanner · Inbox (empty tonight) · Quest Log · Codex ·
 `# hosts` · `# quarantine` · the rooms · one thread per guest.
 
 **Blackout:** guide people to the living room; the stairs stay lit.
