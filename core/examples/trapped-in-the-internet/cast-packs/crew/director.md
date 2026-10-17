@@ -38,12 +38,12 @@ background tab throttles the chime).
 | 13 | **🫘** printer opened (only if the lid sensor fails; Adobe radios BEANS) | | *unravelling* |
 | 14 | **🗜** zip everyone out | | |
 | 15 | **🤖** Trabolta shares the next facts (scenario auto) | | |
-| 16 | **🕚** Y2K clock (60 min) | (auto majority; clock warnings) | *desperate* |
+| 16 | wait for **IN** from the patch-bay watch → **🕚** Y2K clock (60 min) | (auto majority; clock warnings) | *desperate* |
 | 17 | door / patch bay (or the Tier 0 buttons 🚪 🔌 💥 ❌) | blackout → (auto 🪩) | |
 | 18 | **🏍** (after Combo A) or **🪦** (after Combo B), else auto **🌑** at midnight | | *last act* at 🌑 |
-| 19 | **🍎** Bobbing for Truth → **📄** truth.txt → the verdict | | |
+| 19 | **🍎** Bobbing for Truth → **📄** Read truth.txt (the slide holds while the bobber reads) → **⚖** the verdict when they finish | | |
 | 20 | Grok Prom only: 💘 from a host, or **💔** / the alt **💌 → 🗳 → 💞 / ⛈ → 🕺** | | |
-| 21 | **G1 🏆** ceremony → **G2–G9** awards, winner picked from the recap | | |
+| 21 | **G1 🏆** ceremony → **G2–G9** awards, winner picked from the recap → **G10 🖌** the painting (only if MS Paint came) → **G11 🎃** Resurrection (last: ends the show) | | |
 
 **Judging is automatic.** Every fact filed on the 📝 card (question + answer
 + the 1–100 confidence slider) is judged by the server against `facts.json`
