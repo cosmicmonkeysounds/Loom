@@ -1697,6 +1697,10 @@ describe("Trapped in the Internet — the King gives the door code (wave 7)", ()
     expect(riddle.text).not.toContain(FACTS.door!.code);
     // No story file still describes the old model.
     for (const f of FILES) expect(f.source, f.path).not.toMatch(/Cold Lock|disarmed_until|server_unlocked|rearm_server_room|server_unlock\b|sleeps for ninety|state: unlocked/u);
+    // The door is never alarmed now, not even in the sign's scrambled Jeeves copy (fragment 06 ↔ The Server Room).
+    for (const [id, e] of m.codex) expect(e.text, id).not.toMatch(/door is alarmed|THIS DOOR IS ALARMED|Cold `\/alarmed\//iu);
+    const frag = m.codex.get("Jeeves Fragment 06")!.text.replace(/\s+/gu, " ");
+    for (const w of ["keypad", "four", "patch"]) expect(frag, w).toContain(w);
   });
 
   it("every cleared program gets the riddle with the Y2K clock (the code itself only from a win or the majority)", { timeout: SLOW }, () => {
@@ -2925,13 +2929,15 @@ describe("Trapped in the Internet — the server-room terminal over HTTP (wave 7
     rt.liveSim!.setVar("Night.step", "14");
     expect((await mod("terminal opened", { subject: id, args: { at: "The Server Room" }, label: "Terminal · Server Room" })).status).toBe(200);
     expect(rt.liveSim!.world.peek(`${id}.at_the_heart`)).toMatchObject({ value: true });
+    // The guest at his heart holds every server-room secret (a checkmate, the majority, the riddle).
+    for (const entry of [FACTS.door!.codex.id, "The Cold Door", "The Legendary Fact", "Combo A First Half", "Combo A Second Half", "Combo B First Half", "Combo B Second Half"]) rt.liveSim!.unlock(id, entry);
     const worker = await call(rt, "GET", "/api/agent/stream?characters=Trabolta&name=laptop", {}, { moderator: true });
     expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "What do you want?" }, { token })).status).toBe(200);
     const req = worker.res.frames().filter(([e]) => e === "request").map(([, d]) => d as AgentRequest)[0]!;
     expect(String(req.them.vars["at_the_heart"])).toBe("true");
     expect(String(req.world["Night.heart_opened"])).toBe("false");
     // He holds the Sandy File (its year is the riddle's clue), never the code itself.
-    for (const leak of ["The Door Code", "COLD DOOR", "The Cold Door", "door_code"]) expect(JSON.stringify(req), leak).not.toContain(leak);
+    for (const leak of ["The Door Code", "COLD DOOR", "The Cold Door", "door_code", "THE LEGENDARY FACT", "Patch Sheet", "V2 → D5", "V1 → D6", "the_door_code", "combo_a"]) expect(JSON.stringify(req), leak).not.toContain(leak);
     expect((await mod("terminal closed", { subject: id, args: { at: "The Server Room" }, label: "Terminal · Server Room" })).status).toBe(200);
     expect(rt.liveSim!.world.peek(`${id}.at_the_heart`)).toMatchObject({ value: false });
     rt.dispose();
