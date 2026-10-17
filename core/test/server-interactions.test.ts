@@ -607,6 +607,41 @@ describe("restricted guests (wave 4, lane E)", () => {
   });
 });
 
+describe("a restricted guest picks no side (T4-07)", () => {
+  const SIDES = `# Sides
+start: Hall
+
+LOCATION Hall
+
+GROUP Stay
+
+GROUP Leave
+
+== Hall
+  setting: Hall
+Narrator: The hall.
+`;
+  it("join and defect answer 403 and the faction stays put; unrestricted, both work", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-ix-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "sides", scenarioSource: SIDES, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const g = await guest(rt);
+    rt.liveSim!.restrict(g.id);
+    const joined = await post(rt, "/api/guest/join", { token: g.token, faction: "Stay" });
+    expect(joined.status).toBe(403);
+    expect(joined.json.error).toMatch(/restricted/u);
+    expect((await post(rt, "/api/guest/defect", { token: g.token, to: "Leave" })).status).toBe(403);
+    expect(rt.liveSim!.factionOf(g.id)).toBeNull();
+    rt.liveSim!.unrestrict(g.id);
+    expect((await post(rt, "/api/guest/join", { token: g.token, faction: "Stay" })).status).toBe(200);
+    expect(rt.liveSim!.factionOf(g.id)).toBe("Stay");
+    rt.liveSim!.restrict(g.id);
+    expect((await post(rt, "/api/guest/defect", { token: g.token, to: "Leave" })).status).toBe(403);
+    expect(rt.liveSim!.factionOf(g.id)).toBe("Stay");
+  });
+});
+
 describe("`restricted: allow` interactions (wave 5, fact-M20)", () => {
   const BATH = `# Bath
 start: Hall

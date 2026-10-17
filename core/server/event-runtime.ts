@@ -3132,6 +3132,11 @@ export class EventRuntime {
           sendJson(res, 409, { error: "doors are closed" });
           return true;
         }
+        if (this.sim!.isRestricted(id)) {
+          // A marked program's side is the story's (T4-07): no club.
+          sendJson(res, 403, { error: "you're restricted — the story has to lift it first" });
+          return true;
+        }
         this.fanout(this.commit("join", id, str(body, "faction")));
         sendJson(res, 200, { ok: true });
         return true;
@@ -3141,6 +3146,11 @@ export class EventRuntime {
         if (id === null) return true;
         if (!open) {
           sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        if (this.sim!.isRestricted(id)) {
+          // A marked program's side is the story's (T4-07): no club.
+          sendJson(res, 403, { error: "you're restricted — the story has to lift it first" });
           return true;
         }
         this.fanout(this.commit("defect", id, str(body, "to")));
