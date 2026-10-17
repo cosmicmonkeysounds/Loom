@@ -2279,11 +2279,13 @@ when server_door_opened:
       set Night.door_quiet_until = Time.elapsed + 120
       broadcast "🚪 The server-room door opened again." to channel(hosts)
       -> Back To The Heart
+    else:
+      set Night.door_quiet_until = Time.elapsed + 120
   else if Night.ended != true:
     broadcast "🚪 The server-room door opened before the Y2K hour. Nothing happens in the story." to channel(hosts)
 ```
 - Every opening inside the quiet window pushes `Night.door_quiet_until` to 120 s after it (the
-  integration lane's c2f075c), so a group filing in, someone stepping out or a Zigbee contact's
+  `else:` branch, c2f075c), so a group filing in, someone stepping out or a Zigbee contact's
   double report never replays the scene; an opening after 120 quiet seconds plays *Back To The
   Heart* (`Trabolta: Back again. The terminal is on the wall. I am not going anywhere.`).
 - `== The Heart` (`setting: The Server Room`, `cast: Trabolta`, no subject): `reveal The Server
