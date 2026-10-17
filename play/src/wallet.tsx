@@ -288,11 +288,13 @@ export function walletFootLine(card: WalletCard, state: string | null, view: Wal
   return walletStateLine(card, state, view, clock);
 }
 
-/** A thread step's text: the server's line, except the payer's copy of a
- *  request's `paid` step, which reads as their own payment (the server's
- *  line speaks to the requester). */
+/** A thread step's text: the server's line, except a request's `paid` step
+ *  on either party's phone, which reads from that side — "you sent" for the
+ *  payer, "<payer> sent" for the requester — like the card's foot line. The
+ *  server's line names both sides in the third person ("Paid: VLC sent Pong
+ *  7 Truthcoin."), which suits only a viewer who is neither. */
 export function walletStepText(msg: Pick<ChatMessage, "text">, card: WalletCard, me: string | null | undefined): string {
-  if (card.kind === "request" && card.step === "paid" && me != null && me === card.to) return walletStepLine(card, me);
+  if (card.kind === "request" && card.step === "paid" && me != null && (me === card.to || me === card.from)) return walletStepLine(card, me);
   return msg.text || walletStepLine(card, me);
 }
 

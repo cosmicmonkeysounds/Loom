@@ -140,10 +140,13 @@ describe("card copy", () => {
     // The payer's root card, closed, reads its outcome: no more "Agreed — paying".
     const asked = card({ kind: "request", step: "asked", from: "me", fromName: "Winamp", to: "g2", toName: "Paint" });
     expect(walletFootLine(asked, null, view(), 0, paid, "g2")).toBe("✅ Paid — you sent 50 Truthcoin");
-    // The thread step: the server's line for the requester, the payer's wording for the payer.
-    const step = msg(paid, { parentSeq: 6, text: "✅ Paint paid you 50 Truthcoin." });
-    expect(walletStepText(step, paid, "me")).toBe("✅ Paint paid you 50 Truthcoin.");
+    // The thread step reads from each party's side; the server's line (both
+    // sides in the third person) is left for a viewer who is neither.
+    const step = msg(paid, { parentSeq: 6, text: "✅ Paid: Paint sent Winamp 50 Truthcoin." });
+    expect(walletStepText(step, paid, "me")).toBe("✅ Paid — Paint sent 50 Truthcoin");
     expect(walletStepText(step, paid, "g2")).toBe("✅ Paid — you sent 50 Truthcoin");
+    expect(walletStepText(step, paid, "g9")).toBe("✅ Paid: Paint sent Winamp 50 Truthcoin.");
+    expect(walletStepText(step, paid, null)).toBe("✅ Paid: Paint sent Winamp 50 Truthcoin.");
   });
 
   it("foot lines keep the case of names and the currency; bare states read lowercase (T5-07)", () => {
