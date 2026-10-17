@@ -39,8 +39,9 @@ your booth says *🧾 Every program has a Wallet now. Every third transfer waits
 your Wallet room for Approve; any transfer can be denied for 60 seconds.
 Elaborate security questions encouraged.* Your Quest Log: *Patrol: the
 audit* (from Task Manager; it logs every approval and denial; it closes at
-the final reveal, or when the night ends in the server room). A held card can reach your Wallet room before that if anyone sends
-coin early. How it works:
+the final reveal, or when the night ends in the server room). A held card
+can reach your Wallet room before the Truther Download if anyone sends coin
+early. How it works:
 
 - Your booth has a pinned **Wallet** room at the top. **One transfer in
   three** (counted across everyone, in order) is **held** there as a card
