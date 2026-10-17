@@ -318,10 +318,12 @@ describe("the judge hop — /api/guest/widget with a facts.json", () => {
     const { rt } = fresh({ facts: TEXT });
     const ada = await guest(rt, "Ada");
     const seq = cardSeq(rt, ada, "fact");
-    expect([...RESERVED_WIDGET_KEYS].sort()).toEqual(["card", "verdict"]);
+    expect([...RESERVED_WIDGET_KEYS].sort()).toEqual(["card", "key_answer", "verdict"]);
     for (const forged of [
       { question: "Q1", answer: "eleven", confidence: 100, verdict: "accurate" },
       { question: "Q1", answer: "eleven", confidence: 100, card: 3 },
+      // A miss the judge won't key: a forged key would survive the merge.
+      { question: "Q1", answer: "x", confidence: 50, key_answer: "Eleven years" },
     ]) {
       const r = await answer(rt, ada, seq, forged);
       expect(r.status).toBe(400);

@@ -140,10 +140,11 @@ export const WIDGET_FREE_TEXT: Readonly<Record<string, ReadonlySet<string>>> = {
 };
 
 /** Result keys the server attaches itself — `card` (the message seq a
- *  restart rebuilds the answered set from) and `verdict` (the facts judge's
- *  word, `facts.ts`). A phone that sends one is refused outright: it must
- *  never supply its own verdict. */
-export const RESERVED_WIDGET_KEYS: ReadonlySet<string> = new Set(["card", "verdict"]);
+ *  restart rebuilds the answered set from), `verdict` (the facts judge's
+ *  word, `facts.ts`) and `key_answer` (the key's canonical answer on an
+ *  accurate filing). A phone that sends one is refused outright: it must
+ *  never supply its own verdict or key. */
+export const RESERVED_WIDGET_KEYS: ReadonlySet<string> = new Set(["card", "verdict", "key_answer"]);
 
 /**
  * Sanitise a widget's client-supplied result into event arguments: a flat
