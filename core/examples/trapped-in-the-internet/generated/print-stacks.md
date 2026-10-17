@@ -52,8 +52,8 @@ Stack: shelf — inside the encyclopaedias, volumes A–M
 | M19 | green | `ASK-HIM-NICELY` | Ask Him Nicely | shelf — inside the encyclopaedias, volumes A–M | You can influence Trabolta to change the lights or put things on the wall terminals |
 | M20 | green | `SAFE-PLACE` | The Safe Place | shelf — inside the encyclopaedias, volumes A–M | The bathroom is the only truly safe place |
 | M21 | green | `COLD-STORAGE` | The Server Room (hand-written) | already placed — README → QR placements | The door to the server room is guarded by a lock and alarm |
-| M22 · DRAFT | green | `DISARM-KEY` | Disarming The Alarm | shelf — inside the encyclopaedias, volumes A–M | The key to disarming the alarm is __________ |
-| M23 · DRAFT | green | `SHARE-CODEX` | Sharing Your Codex | shelf — inside the encyclopaedias, volumes A–M | You can share your codex with other programs by ___________ |
+| M22 · DRAFT | green | `DISARM-KEY` | Disarming The Alarm | shelf — inside the encyclopaedias, volumes A–M | The key to disarming the alarm is to checkmate the King |
+| M23 · DRAFT | green | `SHARE-CODEX` | Sharing Your Codex | shelf — inside the encyclopaedias, volumes A–M | You can share your codex with other programs by pressing Share… on an entry, or by selling it from your Wallet |
 | M24 | green | `TRUST-CHART` | The Trust Chart (hand-written) | already placed — README → QR placements | Trabolta is keeping a trust score on everyone here |
 | M25 | green | `THE-TRUTHERS` | The Truthers | shelf — inside the encyclopaedias, volumes A–M | At some point tonight, a conspiracy faction, "The Truthers", will be formed |
 | M26 | green | (no code) | The Optical Drive (hand-written) | already placed — README → QR placements | When you entered the computer, you left your body behind |

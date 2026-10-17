@@ -493,25 +493,25 @@
       "id": "M22",
       "category": "main",
       "draft": true,
-      "text": "The key to disarming the alarm is __________",
+      "text": "The key to disarming the alarm is to checkmate the King",
       "codex": {
         "id": "Disarming The Alarm",
         "title": "Disarming The Alarm",
         "code": "DISARM-KEY",
         "secret": true,
-        "text": "A page from the alarm's manual, the last line underlined: THE KEY TO DISARMING THE ALARM IS TO CHECKMATE THE KING. He stands at the cold door inside the simulation. Every hit makes him dumber, until he has nothing but pawns; mate him and the door sleeps for ninety seconds."
+        "text": "A page from the alarm's manual, the last line underlined: THE KEY TO DISARMING THE ALARM IS TO CHECKMATE THE KING. He stands at the cold door inside the simulation; fight him on the tent tablet. Every hit makes him dumber, until he has nothing but pawns. Only checkmate counts: a draw or a loss deals him a fresh board. Mate him and the door sleeps for ninety seconds."
       }
     },
     {
       "id": "M23",
       "category": "main",
       "draft": true,
-      "text": "You can share your codex with other programs by ___________",
+      "text": "You can share your codex with other programs by pressing Share… on an entry, or by selling it from your Wallet",
       "codex": {
         "id": "Sharing Your Codex",
         "title": "Sharing Your Codex",
         "code": "SHARE-CODEX",
-        "text": "An instruction card: You can share your codex with other programs by opening an entry in your Codex and pressing Share…, or by selling it from your Wallet: offer a fact you hold for Truthcoin, or offer coin for one you want. Accept, and the coin and the fact change hands. A shared fact is still yours. A sold fact was worth something."
+        "text": "An instruction card: You can share your codex with other programs by opening an entry in your Codex and pressing Share…, or by selling it from your Wallet: offer a fact you hold for Truthcoin, or offer coin for one you want. Accept, and the coin changes hands and the buyer gets a copy of the fact. A shared fact is still yours. So is a sold one, and it was worth something."
       }
     },
     {
