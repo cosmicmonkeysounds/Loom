@@ -3449,9 +3449,13 @@ when rearm_server_room:
 // disarms the door for 90 s (ring green) and clears a latched alarm
 // (the screens drop the alarm overlay with it); before that it's
 // practice — in the simulation the cold door still opens for that
-// session, the real one does not.
+// session, the real one does not. A second win while the window is open
+// (a host's ♟ after the tablet's own post, or the tablet's late retry)
+// neither restarts the 90 s nor re-announces it.
 when chess_won:
-  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true:
+  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true and Kernel.disarmed_until > Time.elapsed:
+    broadcast "♟ The Cold Lock is already open: nothing changed." to channel(hosts)
+  else if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true:
     set Kernel.disarmed_until = Time.elapsed + 90
     set Night.alarm_on = false
     set Night.alarm_clear_at = 0

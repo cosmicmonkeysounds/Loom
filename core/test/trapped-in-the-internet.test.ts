@@ -4414,6 +4414,24 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     expect(at(2)).toEqual(["You gave me 2 facts I accepted. Some of them were even true."]);
   });
 
+  it("B20: a duplicate chess win neither re-opens nor re-announces the Cold Lock", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    const opened = (evs: SimEvent[]) => casts(evs).filter((b) => b.cue.includes("Cold Lock open"));
+    const first = fire(sim, "chess_won");
+    expect(opened(first)).toHaveLength(1);
+    const until = v(sim, "Kernel.disarmed_until");
+    advance(sim, 30);
+    const dup = fire(sim, "chess won", "g1", null, "Tent tablet");
+    expect(opened(dup)).toEqual([]);
+    expect(cues(dup)).toEqual([]);
+    expect(casts(dup).map((b) => b.cue.replace(/^"|"$/gu, ""))).toEqual(["♟ The Cold Lock is already open: nothing changed."]);
+    expect(v(sim, "Kernel.disarmed_until")).toBe(until);
+    // The window closes on time; a real later win opens a new one.
+    expect(casts(advance(sim, 61)).some((b) => b.cue.includes("Cold Lock closed"))).toBe(true);
+    expect(opened(fire(sim, "chess_won"))).toHaveLength(1);
+  });
+
   it("B11: lie → accurate → lie counts the filing once; an uncertain correction clears it to unanswered", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
