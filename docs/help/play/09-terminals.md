@@ -2,7 +2,7 @@
 title: The terminals on the walls
 section: Guest Guide
 order: 9
-keywords: terminal, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k
+keywords: terminal, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k, room terminal, locked room, asleep, wakes up
 ---
 
 Some events mount **terminals** around the house — tablets that are a
@@ -85,6 +85,19 @@ Some terminals also pass on the **house announcements** — a chime, then
 the line ("Go to the living room.") with a 📢 banner — the same ones you
 hear from the house speakers. An announcement waits for the character to
 finish his sentence; it never cuts him off.
+
+## A terminal that belongs to a room
+
+A few terminals belong to **one room** rather than the house. Until the
+story opens that room for everyone, the terminal sleeps — the
+screensaver, nothing to scan — even when the character is online
+elsewhere. When the room opens, it wakes and the character **speaks
+there, out loud**, whatever he says in that room, with a caption under
+his face; wait for him to finish (the screen says **LISTEN**), then scan
+your pass. A terminal like this shows no slides or countdowns — only the
+story's notices (a blackout, an alarm) reach it. Opening a line there
+also tells the story that you're standing in that room, talking to him;
+the line is still the same private conversation as on your phone.
 
 ## A window into the simulation
 

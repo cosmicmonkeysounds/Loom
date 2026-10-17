@@ -189,3 +189,48 @@ camera looks at the hall, not the bathroom. Provision it with
 `spot=bathroom-1-door`. If it ever has to go inside,
 run it as `view=face` with the camera taped and say so to the tech op —
 but the plan is outside.
+
+## The server-room terminal
+
+One tablet hangs **inside** the Server Room (wave 7) — Trabolta's heart,
+where programs who got through the keypad door talk to him candidly. The
+house map's `server-room` spot is on the room's south wall, facing in
+(`house.json` and `house.shed.json`: room `server-room`, pos
+`[-5, -1.3, 12]`, yaw 0). Provision it with one link:
+
+```
+/terminal/?code=<mod passcode>&name=Server Room&character=Trabolta&spot=server-room&view=face&room=The Server Room
+```
+
+- **`view=face`**, never `auto` / `world`: it is never a window into the
+  simulation.
+- **`room=The Server Room`** makes it a *room terminal*: it **sleeps**
+  (the screensaver, no scanner) until the story opens The Server Room to
+  everyone — the door cutscene's `reveal The Server Room` (a per-program
+  reveal doesn't count). It wakes on the poll that carries the cutscene,
+  and speaks every Trabolta line said in that room, captioned, in its own
+  voice; the scanner pauses (**LISTEN**) while he speaks.
+- It shows **no story slides and no countdown corner** (not even the Y2K
+  clock), but the overlays — the blackout, the patch-bay **alarm** — still
+  cover it, and an overlay still ends an open line.
+- The **TV mute** (🔊 on the TV, `M`, the Run page) is the TV's only: it
+  never silences this terminal. To quiet it, turn its volume down.
+- When a pass opens a line here the terminal posts the signal
+  `terminal opened` (the guest as subject, `at: The Server Room`, labelled
+  `Terminal · Server Room` in the log); `terminal closed` when the line
+  ends — the 30 s leash, DISCONNECT, an overlay, a restart, or the page
+  going away. Best-effort: a lost signal never holds up the line. The
+  story uses them for `program.at_the_heart`.
+- Its corner reads *the story has no room called …* if `room=` is
+  misspelled: the terminal then sleeps all night. Fix it in ⚙ (hold 2 s)
+  → *the room it belongs to*.
+- Volume: loud enough to be heard over the server rack's fans from the
+  doorway; the cutscene is spoken here, nowhere else.
+
+Install-day check: before the doors, the terminal is on the screensaver
+with the server running (Run → Terminals shows it polling, room
+`The Server Room`). Fire 🚪 `server_door_opened` from the cue sheet on a
+rehearsal after the Y2K hour: it wakes and speaks the opener; scan a test
+pass, type, wait out the leash, and check the Log for `terminal opened`
+then `terminal closed` by *Terminal · Server Room*.
+
