@@ -441,6 +441,28 @@ def test_scrub_drops_a_typed_door_code_or_combo_from_every_shared_line_of_the_mi
     assert "stage_why" not in update
     assert len(dropped) == 10
     assert "1997" not in json.dumps(update) and not NEVER._leaks_any(update)
+    # W8 T8-05: every one of these is a secret, none a hunt verdict.
+    from stagehand.agents.orchestrator import suppressed_summary
+    from stagehand.agents.secrets import NEVER_TAG, split_dropped
+
+    assert split_dropped(dropped) == ([], dropped) and all(d.startswith(NEVER_TAG) for d in dropped)
+    assert suppressed_summary(dropped) == "10 secret(s) (door code / combo)"
+
+
+def test_scrub_counts_hunt_verdicts_and_secrets_apart():
+    """W8 T8-05: the log said "suppressed 2 hunt verdict(s)" for two door-code lines."""
+    from stagehand.agents.orchestrator import suppressed_summary
+    from stagehand.agents.secrets import split_dropped
+
+    update = {
+        "learned_add": [{"claim": "the billboard says pickles", "from": "Ada", "verdict": "fact"}],
+        "notes_add": ["Calculator says the door code is 1997."],
+    }
+    dropped = NEVER.scrub(update)
+    hunt, never = split_dropped(dropped)
+    assert hunt == ["learned: the billboard says pickles"] and never == ["secret · note: Calculator says the door code is 1997."]
+    assert suppressed_summary(dropped) == "1 hunt verdict(s), 1 secret(s) (door code / combo)"
+    assert suppressed_summary(hunt) == "1 hunt verdict(s)"
 
 
 def test_prune_drops_a_restored_code_from_everything_the_voice_reads():

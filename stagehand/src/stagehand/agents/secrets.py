@@ -95,6 +95,15 @@ _DROP = object()
 _LABELS = {"learned_add": "learned", "learned": "learned", "notes_add": "note", "brief": "brief", "claims_add": "claim", "summary": "summary"}
 
 
+#: What `scrub` puts before a `never` drop (a door code, a combination).
+NEVER_TAG = "secret · "
+
+
+def split_dropped(dropped: list[str]) -> tuple[list[str], list[str]]:
+    """`scrub`'s list as (hunt verdicts, `never` drops)."""
+    return [d for d in dropped if not d.startswith(NEVER_TAG)], [d for d in dropped if d.startswith(NEVER_TAG)]
+
+
 @lru_cache(maxsize=32)
 def _never_pattern(words: tuple[str, ...]) -> re.Pattern[str] | None:
     alts: list[str] = []
@@ -237,12 +246,16 @@ class Secrets:
     def scrub(self, update: dict[str, Any]) -> list[str]:
         """Strip hunt verdicts, and anything carrying a `never` word, from an
         orchestrator update in place; returns what was dropped (for the
-        trace — the director sees it, no model does)."""
+        trace — the director sees it, no model does). A `never` drop leads
+        with `NEVER_TAG`, so the trace and the log tell a door code or a
+        combination apart from a hunt verdict (`split_dropped`)."""
         dropped: list[str] = []
         if self.topics or self.match:
             self._scrub_hunt(update, dropped)
         if self.never:
-            self._strip_never(update, "update", dropped)
+            never: list[str] = []
+            self._strip_never(update, "update", never)
+            dropped.extend(f"{NEVER_TAG}{d}" for d in never)
         return dropped
 
     def _scrub_hunt(self, update: dict[str, Any], dropped: list[str]) -> None:
