@@ -334,6 +334,19 @@ function line(rows: RecapRow[]): string {
   return rows.map((r) => `  ${r.rank}. ${r.name}${r.persona ? " (persona)" : ""} — ${r.value}`).join("\n");
 }
 
+/** The bottom of the trust list, ranked from the bottom (shared on ties):
+ *  at most 3, never a name the top 5 already shows, and never anyone tied
+ *  with the top 5's lowest — a shared 0 isn't "least trusted" (T7-07). */
+export function leastTrusted(trust: readonly RecapRow[]): RecapRow[] {
+  const top = trust.slice(0, 5);
+  const floor = top[top.length - 1]?.value ?? Infinity;
+  const below = trust.slice(top.length).filter((x) => x.value < floor);
+  return below
+    .slice(-3)
+    .reverse()
+    .map((x) => ({ ...x, rank: 1 + below.filter((y) => y.value < x.value).length }));
+}
+
 /** The paste-ready block: top 5 per list, people with 0 left off (except trust). */
 export function recapText(r: Omit<Recap, "text">): string {
   const out: string[] = [];
@@ -362,7 +375,7 @@ export function recapText(r: Omit<Recap, "text">): string {
     out.push(line(rows.slice(0, 5)));
     if (k === "trust" && r.lists.trust.length > 5) {
       out.push("Least trusted:");
-      out.push(line(r.lists.trust.slice(-3).reverse()));
+      out.push(line(leastTrusted(r.lists.trust)));
     }
   }
   out.push("");
