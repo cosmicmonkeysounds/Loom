@@ -10,7 +10,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Chess } from "chess.js";
-import { redeals, STAGE_LINE, type Stage } from "../game/fight.ts";
+import { redeals, redealTip, STAGE_LINE, type Stage } from "../game/fight.ts";
 import { ProgressBar, Window } from "../wizard.tsx";
 import { hint as findHint, mulberry32, pickMoveAsync, PROFILES } from "./ai.ts";
 import { Board } from "./Board.tsx";
@@ -144,6 +144,7 @@ export function ChessWindow({ stage, label, armed, onResult, onAbandon, onActivi
           <span className="chess-stage">{STAGE_LINE[stage]}</span>
           {armed !== null && <span className={`chess-badge ${armed ? "armed" : "practice"}`}>{armed ? "ARMED" : "PRACTICE"}</span>}
         </div>
+        {redealTip(deal, stage) !== null && <div className="chess-tip">{redealTip(deal, stage)}</div>}
         <div className="chess-status" aria-live="polite">
           {over ? <b className={`chess-banner ${status.outcome}`}>{bannerOf(game, status.outcome)}</b> : thinking ? "THE KING IS THINKING…" : game.inCheck() ? "YOUR MOVE — CHECK" : "YOUR MOVE"}
         </div>

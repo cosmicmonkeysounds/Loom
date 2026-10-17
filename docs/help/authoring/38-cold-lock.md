@@ -35,9 +35,13 @@ map side is in [the house map](39-house-map.md).
 3. **♟ CHALLENGE** (or **C**) opens the board. Checkmate fells him —
    *"CHECKMATE — the door opens."* — the door in the simulation opens,
    and the tablet posts `chess won` for that program, journaled as the
-   tablet's doing. A loss (*"The King holds. Hit him again."*) or a
-   draw changes nothing, and the tablet reports `chess lost` / `chess
-   drawn` so Trabolta can gloat.
+   tablet's doing. A loss (*"THE KING WINS. AGAIN."*) or a draw
+   (*"STALEMATE. AGAIN."* / *"DRAW. AGAIN."*) opens nothing: the tablet
+   reports `chess lost` / `chess drawn` so Trabolta can gloat, and the
+   board **stays open** with a fresh game at the same strength (a stuck
+   pawns-only stalemate never strands the program). **Give up** closes
+   the board — then more hits make him weaker before the next
+   challenge; a re-dealt board says so.
 4. The fight is **per session**: the next program who scans their pass
    meets him at full strength again. The ladder can be run in seconds
    by someone who knows it; the story, not the game, decides what a

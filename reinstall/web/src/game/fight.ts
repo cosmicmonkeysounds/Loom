@@ -82,6 +82,13 @@ export function redeals(result: string): boolean {
   return result === "lost" || result === "drawn";
 }
 
+/** The line a re-dealt board shows under its stage (the window no longer
+ *  sends the player back to ⚔ on its own): how to make him weaker — none at
+ *  PAWNS ONLY (he can't get weaker) or on the first deal. */
+export function redealTip(deal: number, stage: Stage): string | null {
+  return deal > 0 && stage !== "pawns" ? "Too strong? Give up, then hit him more to make him weaker." : null;
+}
+
 /** Checkmate: he is down. */
 export function fell(f: Fight): Fight {
   return { ...f, fallen: true };
