@@ -8,12 +8,19 @@
 //! app's own reducer) and narrows it to the one thread this is a line to:
 //! `dm:<Character>` — the very thread on the guest's phone, so what is
 //! said at the wall is on their screen when they walk away.
+//!
+//! A room terminal (wave 7, `config.roomOf` — the server-room terminal) also
+//! tells the story where the line was opened: `terminal opened` when a pass
+//! opens it and `terminal closed` when it ends (the leash, DISCONNECT, an
+//! overlay, a restart, the page going away), each `POST /api/mod/signal`
+//! with the guest as subject, `{at: <room>}` and the terminal's label.
+//! Best-effort: a refused or lost signal never holds up the line.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError, useChatStream } from "@loom/play/client.ts";
 import { useTyping } from "@loom/play/typing.ts";
 import type { ChatMessage, GuestView } from "@loom/play/types.ts";
-import { baseOf, foldName, type TerminalConfig } from "./config.ts";
+import { baseOf, foldName, roomOf, type TerminalConfig } from "./config.ts";
 
 export interface Pilot {
   /** The impersonation token (the guest's session on this terminal). */
@@ -32,13 +39,89 @@ export async function beginPilot(config: TerminalConfig, guestId: string): Promi
   return { token: r.token, id: r.id, name: r.name };
 }
 
-/** End it (the leash ran out, or the guest disconnected). */
-export async function endPilot(config: TerminalConfig, pilot: Pilot): Promise<void> {
+/** End it (the leash ran out, or the guest disconnected). `keepalive`: the
+ *  page is going away (pagehide) — the request outlives it. */
+export async function endPilot(config: TerminalConfig, pilot: Pilot, o: { keepalive?: boolean; fetchFn?: typeof fetch } = {}): Promise<void> {
   try {
-    await api(`${baseOf(config)}/api/mod/impersonate/end`, { session: pilot.token }, config.token);
+    await (o.fetchFn ?? fetch)(`${baseOf(config)}/api/mod/impersonate/end`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-loom-token": config.token },
+      body: JSON.stringify({ session: pilot.token }),
+      keepalive: o.keepalive === true,
+    });
   } catch {
     /* the run may have restarted under us — the session is gone either way */
   }
+}
+
+/** The story's names for a line opened / closed at a room terminal (wave 7):
+ *  they fold to `terminal_opened` / `terminal_closed`. */
+export type VisitSignal = "terminal opened" | "terminal closed";
+
+/** The `/api/mod/signal` body for a visit, or null when this terminal
+ *  belongs to no room (only a room terminal tells the story). */
+export function visitSignalBody(config: Pick<TerminalConfig, "name" | "room" | "view">, name: VisitSignal, guestId: string): { name: VisitSignal; subject: string; args: { at: string }; label: string } | null {
+  const room = roomOf(config);
+  if (room === null || guestId === "") return null;
+  return { name, subject: guestId, args: { at: room }, label: `Terminal · ${config.name}`.slice(0, 60) };
+}
+
+/** Post a visit signal; true when the server took it. Never throws. */
+export async function postVisit(config: TerminalConfig, name: VisitSignal, guestId: string, o: { keepalive?: boolean; fetchFn?: typeof fetch } = {}): Promise<boolean> {
+  const body = visitSignalBody(config, name, guestId);
+  if (body === null) return false;
+  try {
+    const res = await (o.fetchFn ?? fetch)(`${baseOf(config)}/api/mod/signal`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-loom-token": config.token },
+      body: JSON.stringify(body),
+      keepalive: o.keepalive === true,
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** An open visit: the guest, and the `terminal opened` post in flight. */
+export interface OpenVisit {
+  guestId: string;
+  opened: Promise<unknown>;
+}
+
+/** One open visit at a time: `close` hands back the visit to close exactly
+ *  once, however many ways the line ends (the leash, then the pagehide).
+ *  The app holds one for the life of the page (not per mounted line pane),
+ *  so a pane remounted mid-connect still closes the visit it opened. */
+export class VisitLatch {
+  private open: OpenVisit | null = null;
+  begin(guestId: string, opened: Promise<unknown> = Promise.resolve()): void {
+    this.open = { guestId, opened };
+  }
+  /** The visit to close now (null: none open, or already closed). */
+  close(): OpenVisit | null {
+    const v = this.open;
+    this.open = null;
+    return v;
+  }
+}
+
+/** A pass opened a line here: tell the story (`terminal opened`) and
+ *  remember the visit. A terminal with no room does nothing. */
+export function openVisit(config: TerminalConfig, latch: VisitLatch, guestId: string, o: { fetchFn?: typeof fetch } = {}): void {
+  if (visitSignalBody(config, "terminal opened", guestId) === null) return;
+  latch.begin(guestId, postVisit(config, "terminal opened", guestId, o));
+}
+
+/** The line ended: `terminal closed`, once — and never ahead of its
+ *  `terminal opened` (a DISCONNECT right after the scan would otherwise
+ *  race it and leave the story thinking the guest is still there). The
+ *  pagehide (`keepalive`) can't wait for anything: it sends at once. */
+export function closeVisit(config: TerminalConfig, latch: VisitLatch, o: { keepalive?: boolean; fetchFn?: typeof fetch } = {}): Promise<boolean> | null {
+  const v = latch.close();
+  if (v === null) return null;
+  const send = () => postVisit(config, "terminal closed", v.guestId, o);
+  return o.keepalive === true ? send() : v.opened.then(send, send);
 }
 
 /** The roster (id + name) for the typed fallback — a mod-only read. */

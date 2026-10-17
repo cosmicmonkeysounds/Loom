@@ -134,3 +134,29 @@ describe("the TV's voice block (K-18)", () => {
     expect(voiceOf({ lines: [] })).toBeNull();
   });
 });
+
+describe("a room terminal (wave 7: the server-room terminal)", () => {
+  const room = defaultConfig({ eventId: "evt", token: "tok", name: "Server Room", spot: "server-room", view: "face", room: "The Server Room" });
+
+  it("names its room (not a voice room) and its cursor in the poll", async () => {
+    expect(screenStateUrl(room, { room: "The Server Room", after: 12, as: "room" })).toBe("/e/evt/api/screen/state?name=Server+Room&spot=server-room&view=face&character=Trabolta&room=The+Server+Room&after=12");
+    expect(screenStateUrl(room, { room: "The Server Room", after: null, as: "room" })).not.toMatch(/voice=|after=/u);
+    const seen: Array<{ url: string; init?: RequestInit }> = [];
+    await pollScreen(room, fakeFetch(200, body, seen), { room: "The Server Room", after: 3, as: "room" });
+    expect(seen[0]!.url).toMatch(/&room=The\+Server\+Room&after=3/u);
+  });
+
+  it("parses the room block; an older server (no block) keeps a room terminal asleep", () => {
+    const open = parseScreenState({ ...body, attract: false, room: { id: "The Server Room", open: true } })!;
+    expect(open.room).toEqual({ id: "The Server Room", open: true });
+    expect(attractOf(open, true)).toBe(false);
+    const closed = parseScreenState({ ...body, attract: true, room: { id: "The Server Room", open: false } })!;
+    expect(attractOf(closed, true)).toBe(true);
+    const old = parseScreenState({ ...body, attract: false })!;
+    expect(old.room).toBeNull();
+    expect(attractOf(old, true)).toBe(true); // fail closed: can't tell whether the room is open
+    expect(attractOf(old)).toBe(false); // any other terminal: unchanged
+    expect(parseScreenState({ ...body, room: { id: 3, open: "yes" } })!.room).toBeNull();
+    expect(attractOf(null, true)).toBe(true);
+  });
+});

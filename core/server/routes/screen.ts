@@ -34,10 +34,18 @@
 //!                 of them, kept for older terminal builds); `announceEpoch`
 //!                 changes with the sim (a restart, a boot) so a terminal
 //!                 resyncs its cursor even when the new seqs reach the old;
-//! - `voice`     — (K-18, only when the poll names a `voice` room — the TV)
-//!                 the characters' lines said in that location's room after
-//!                 the poller's `after` seq, the room's `head` seq, and the
-//!                 director's TV-voice mute (`POST /api/mod/screen/voice`).
+//! - `voice`     — (K-18, only when the poll names a `voice` room — the TV —
+//!                 or a `room`) the characters' lines said in that location's
+//!                 room after the poller's `after` seq, the room's `head` seq,
+//!                 and the director's TV-voice mute (`POST /api/mod/screen/voice`),
+//!                 which silences the TV only: a room terminal is never muted;
+//! - `room`      — (wave 7, only when the poll names a `room` — a terminal
+//!                 that belongs to a LOCATION, the server-room terminal)
+//!                 `{id, open}`: the LOCATION and whether it is open to
+//!                 everyone (not `hidden:`, or `reveal`ed with no `for`; a
+//!                 per-person reveal or a visit doesn't count). While it is
+//!                 closed the terminal is on attract; an unknown name answers
+//!                 `{id: "", open: false}` (a typo never wakes a secret room).
 //!
 //! The director's side (K-29): `GET /api/mod/screen/terminals` answers just
 //! the heartbeat list + the TV-voice mute, without recording a poll, for the
@@ -387,6 +395,8 @@ export interface ScreenPoll extends ScreenDevice {
   spot: string;
   view: string;
   character: string;
+  /** The room terminal's LOCATION, as polled (absent: not a room terminal). */
+  room?: string;
   /** Epoch ms of the last poll. */
   at: number;
 }
@@ -421,8 +431,10 @@ export interface ScreenState {
   announce: ScreenAnnounce | null;
   /** The last `ANNOUNCE_RING` announcements, oldest first (`announce` = the last). */
   announces: ScreenAnnounce[];
-  /** Only when the poll names a voice room (K-18). */
+  /** Only when the poll names a voice room (K-18) or a `room`. */
   voice?: ScreenVoice;
+  /** Only when the poll names a `room` (wave 7). */
+  room?: ScreenRoom;
   /** A director's `identify` is live for this terminal (SW-SCR-21). */
   identify: boolean;
   /** How long that `identify` has left (ms; 0 when off): the terminal counts
@@ -434,6 +446,13 @@ export interface ScreenState {
   announceEpoch: string;
 }
 
+/** The LOCATION a room terminal belongs to (wave 7): `open` once it is open
+ *  to everyone; `id` "" = no such LOCATION (or no story yet). */
+export interface ScreenRoom {
+  id: string;
+  open: boolean;
+}
+
 export interface ScreenWho {
   name: string;
   spot: string;
@@ -441,6 +460,10 @@ export interface ScreenWho {
   character: string;
   /** A location whose characters' lines this screen speaks (the TV: `The Desktop`). */
   voice?: string;
+  /** The LOCATION this terminal belongs to (the server-room terminal): it
+   *  sleeps until that room is open to everyone and speaks its lines (its
+   *  `voice` room, unless the poll names one). */
+  room?: string;
   /** The last chat seq this screen has handled; null = none yet. */
   after?: number | null;
   /** The device health the build reports (SW-SCR-21). */
@@ -539,7 +562,8 @@ export class ScreenWatch {
     const name = clip(who.name);
     if (name === "") return;
     this.polls.delete(name); // re-insert: Map order = poll order
-    this.polls.set(name, { name, spot: clip(who.spot), view: clip(who.view, 16), character: clip(who.character), ...who.device, at: this.now() });
+    const room = clip(who.room ?? "");
+    this.polls.set(name, { name, spot: clip(who.spot), view: clip(who.view, 16), character: clip(who.character), ...(room !== "" ? { room } : {}), ...who.device, at: this.now() });
     while (this.polls.size > MAX_SCREENS) this.polls.delete(this.polls.keys().next().value!);
   }
 
@@ -663,10 +687,20 @@ export class ScreenWatch {
     if (program.overlay?.value === "alarm" && alarmOn !== null && alarmOn !== "true") program = { ...program, overlay: null };
 
     const identifyLeft = this.identifyLeft(who.name);
+    const locationOf = (name: string) => {
+      const want = foldName(name);
+      return sim === null ? undefined : [...sim.model.locations.values()].find((l) => foldName(l.id) === want || (l.label !== null && foldName(l.label) === want));
+    };
+    // A room terminal (wave 7): asleep until its LOCATION is open to everyone.
+    let room: ScreenRoom | undefined;
+    if (who.room !== undefined && who.room !== "") {
+      const loc = locationOf(who.room);
+      room = loc === undefined || sim === null ? { id: "", open: false } : { id: loc.id, open: !loc.hidden || sim.isRevealed(loc.id) };
+    }
     let voice: ScreenVoice | undefined;
-    if (who.voice !== undefined && who.voice !== "") {
-      const want = foldName(who.voice);
-      const loc = sim === null ? undefined : [...sim.model.locations.values()].find((l) => foldName(l.id) === want || (l.label !== null && foldName(l.label) === want));
+    const voiceRoom = who.voice !== undefined && who.voice !== "" ? who.voice : (who.room ?? "");
+    if (voiceRoom !== "") {
+      const loc = locationOf(voiceRoom);
       const room = loc === undefined ? "" : `loc:${loc.id}`;
       const chars = sim?.model.characters;
       const me = foldName(who.character);
@@ -676,7 +710,9 @@ export class ScreenWatch {
       // typed chat onto the TV.
       const speaks = (from: string): boolean => chars?.has(from) === true && (foldName(from) === me || textOnly.has(foldName(from)));
       const got = voiceLinesOf(messages, room, who.after ?? null, speaks);
-      voice = { room, muted: this.voiceMuted, ...got };
+      // The director's mute is the TV's (its button, the Run page's): a room
+      // terminal — the server-room one — is never silenced by it.
+      voice = { room, muted: this.voiceMuted && target === "tv", ...got };
     }
 
     return {
@@ -686,8 +722,9 @@ export class ScreenWatch {
       character,
       // Fail closed: a character that is hidden or asleep keeps every
       // terminal on attract. An unknown character (a typo in setup) does
-      // not — the terminal then behaves as it always did.
-      attract: character !== null && (character.hidden || !character.awake),
+      // not — the terminal then behaves as it always did. A room terminal
+      // also sleeps while its room is closed (or unknown).
+      attract: (character !== null && (character.hidden || !character.awake)) || (room !== undefined && !room.open),
       countdown,
       remaining,
       chart,
@@ -697,6 +734,7 @@ export class ScreenWatch {
       announce: this.announcements[this.announcements.length - 1] ?? null,
       announces: [...this.announcements],
       ...(voice !== undefined ? { voice } : {}),
+      ...(room !== undefined ? { room } : {}),
       identify: identifyLeft > 0,
       identifyLeft,
       announceEpoch: `${this.boot}.${this.sims}`,
@@ -705,7 +743,7 @@ export class ScreenWatch {
 }
 
 /**
- * `GET /api/screen/state?name=&spot=&view=&character=[&voice=<location>&after=<seq>][&audio=&vis=&bat=&ver=]`
+ * `GET /api/screen/state?name=&spot=&view=&character=[&voice=<location>|&room=<location>][&after=<seq>][&audio=&vis=&bat=&ver=]`
  * — moderator-gated (a terminal holds a mod token; the author's session works
  * too — `routing.ts::wantsModRead` resolves it). Returns true when it answered.
  */
@@ -725,11 +763,21 @@ export function handleScreenGet(
   }
   const q = (k: string): string => url.searchParams.get(k) ?? "";
   const voice = q("voice").slice(0, 64);
+  const room = q("room").slice(0, 64);
   const afterRaw = q("after");
   const after = afterRaw !== "" && /^-?\d+$/u.test(afterRaw) ? Number(afterRaw) : null;
   res.setHeader?.("cache-control", "no-store");
-  const who: ScreenWho = { name: q("name"), spot: q("spot"), view: q("view"), character: q("character"), device: screenDeviceOf(q), ...(voice !== "" ? { voice, after } : {}) };
-  sendJson(res, 200, watch.poll(sim, who, online, voice !== "" ? messages() : []));
+  const who: ScreenWho = {
+    name: q("name"),
+    spot: q("spot"),
+    view: q("view"),
+    character: q("character"),
+    device: screenDeviceOf(q),
+    ...(voice !== "" ? { voice } : {}),
+    ...(room !== "" ? { room } : {}),
+    ...(voice !== "" || room !== "" ? { after } : {}),
+  };
+  sendJson(res, 200, watch.poll(sim, who, online, voice !== "" || room !== "" ? messages() : []));
   return true;
 }
 

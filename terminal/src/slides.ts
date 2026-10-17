@@ -15,6 +15,9 @@
 //! story's running countdown over a slide, attract or the base view. A
 //! pilot session pre-empts a slide and the corner; an overlay ends the
 //! pilot. `flicker` is a one-shot stutter over everything but a blackout.
+//! A room terminal (wave 7, `room`: the server-room terminal) never shows a
+//! story slide or the corner — it is a room's own screen, not the house's —
+//! but the overlays (blackout, alarm) and the flicker still reach it.
 //! Every flash is ≤ 3 Hz and never full-field red (photosensitivity).
 //!
 //! A clip (`SCREEN_CLIPS`, Trabolta's `play_on_the_screens`) never cuts a
@@ -155,7 +158,7 @@ function remember(target: ScreenTarget, m: ScreenMemo): void {
  * measured on the server's clock (its `now` + the time since the answer
  * arrived), so a tablet with the wrong time still holds slides right.
  */
-export function screenLayers(state: ScreenState | null, nowMs: number, o: { piloting: boolean; peek?: boolean }): ScreenLayers {
+export function screenLayers(state: ScreenState | null, nowMs: number, o: { piloting: boolean; peek?: boolean; room?: boolean }): ScreenLayers {
   if (state === null) return NO_LAYERS;
   const since = Math.max(0, nowMs - state.receivedAt);
   const serverNow = state.now + since;
@@ -183,12 +186,14 @@ export function screenLayers(state: ScreenState | null, nowMs: number, o: { pilo
     if (under !== null && under.seq < s.seq && under.at <= s.at && held(under)) s = under; // the story slide keeps its hold
     else if (serverNow < m.blindUntil) s = null; // a story slide may be held under it, unseen: the story wins
   }
-  if (!o.piloting && o.peek !== true && s !== null && held(s)) slide = { value: s.value, cue: s.cue };
+  // A pilot, a peek or a room terminal: no slide (nor the corner below).
+  const bare = o.piloting || o.peek === true || o.room === true;
+  if (!bare && s !== null && held(s)) slide = { value: s.value, cue: s.cue };
 
   const remaining = state.remaining === null ? null : Math.max(0, state.remaining - Math.floor(since / 1000));
   const y2k = state.countdown === "y2k" ? remaining : null;
   // A peek clears the corner too: its box sits over the typed fallback's CONNECT.
-  const corner = overlay === null && !o.piloting && o.peek !== true && state.countdown !== null && remaining !== null && slide?.value !== "y2k" ? remaining : null;
+  const corner = overlay === null && !bare && state.countdown !== null && remaining !== null && slide?.value !== "y2k" ? remaining : null;
 
   const flicker = p.flicker !== null && overlay !== "blackout" && age(p.flicker.at) < FLICKER_FRESH_MS ? p.flicker.seq : null;
   const chart = overlay === null && slide !== null && state.chart !== null && state.chart.slide === slide.value ? state.chart : null;

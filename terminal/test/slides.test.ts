@@ -25,6 +25,7 @@ function state(over: Partial<Omit<ScreenState, "program">> & { program?: Partial
     chart: null,
     target: "terminals",
     voice: null,
+    room: null,
     announce: null,
     announces: [],
     identify: false,
@@ -145,6 +146,16 @@ describe("screen layers — precedence (N-03)", () => {
     expect(at(s, 0, true)).toMatchObject({ slide: null, corner: null });
     const o = state({ countdown: "hunt", remaining: 900, program: { slide: slide("trivia_1", T0), overlay: shot("alarm", T0, 2) } });
     expect(at(o, 0)).toMatchObject({ overlay: "alarm", corner: null });
+  });
+
+  it("a room terminal (wave 7) never shows a story slide or the corner; overlays and the flicker still reach it", () => {
+    const room = (s: ScreenState, ms = 0) => screenLayers(s, s.receivedAt + ms, { piloting: false, room: true });
+    const s = state({ countdown: "y2k", remaining: 600, program: { slide: slide("y2k", T0, true), flicker: shot("flicker", T0, 4) } });
+    expect(at(s, 0)).toMatchObject({ slide: { value: "y2k" }, y2k: 600 });
+    expect(room(s)).toMatchObject({ slide: null, corner: null, chart: null, flicker: 4 });
+    expect(room(state({ countdown: "hunt", remaining: 900, program: { slide: slide("trivia_1", T0) } }))).toMatchObject({ slide: null, corner: null });
+    expect(room(state({ program: { slide: slide("trivia_1", T0), overlay: shot("alarm", T0, 2) } })).overlay).toBe("alarm");
+    expect(room(state({ program: { overlay: shot("blackout", T0), blackout: shot("blackout", T0) } })).overlay).toBe("blackout");
   });
 
   it("blackout is black for 10 s, then the overlay after it (go to the living room)", () => {

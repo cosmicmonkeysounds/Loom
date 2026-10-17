@@ -47,7 +47,8 @@ http://<server>/terminal/?code=<mod passcode>&name=Kitchen&character=Trabolta&sp
 
 (`&camera=environment` for the back camera; `&engine=` — see *The voice*
 below; `&announce=1` to also say the house announcements; `&spot=` and
-`&view=` — see *The world view* below.) The passcode and the other hints
+`&view=` — see *The world view* below; `&room=` — see *A room terminal*
+below.) The passcode and the other hints
 are scrubbed from the address bar at once. `character=` folds onto the
 story's own spelling (`trabolta` → `Trabolta`); a name the story lacks is
 refused with the cast listed — or, on a tablet set up before the doors
@@ -165,6 +166,42 @@ TV's keyboard → `POST /api/mod/screen/voice` (server-side, so it survives a
 reload and the director can flip it — K-29 card). Without the autoplay flag
 a *CLICK ONCE TO ENABLE THE VOICE* banner asks for one click. Device check:
 `scripts/accept/K-18.sh`.
+
+**A room terminal** (wave 7 — the server-room terminal; `roomOf` in
+`src/config.ts`): `room=<LOCATION>` on any view but the TV makes the
+terminal belong to that room.
+
+```
+https://<server>/terminal/?code=<mod passcode>&name=Server Room&character=Trabolta&spot=server-room&view=face&room=The Server Room
+```
+
+- It polls with `room=<room>` and its chat cursor; the server answers
+  `room: {id, open}` (open = the LOCATION isn't `hidden:`, or was
+  `reveal`ed to everyone — a per-person reveal or a visit doesn't count;
+  an unknown name is `{id: "", open: false}`) and keeps the terminal on
+  **attract while the room is closed**, plus the room's `voice` block. A
+  server too old to send `room` keeps it asleep too (fail closed); a
+  misspelled room says so in the attract corner.
+- While asleep the app keeps the voice cursor on the room's head
+  (`cursorWhileAsleep`, `src/tv.ts`), so the lines that land *with* the
+  wake — the door cutscene reveals the room and speaks in it in one go —
+  are spoken, never resynced away.
+- Awake, it plays the room's lines through the TV's `planVoice` /
+  `LinePlayer` path into the line's own speech queue (captioned under the
+  face; the face's mouth moves), pauses the scanner (**LISTEN**) while he
+  speaks, and is **never muted**: the director's mute is scoped to the TV
+  target on the server.
+- The screen layer drops **story slides and the countdown corner** for
+  it (`screenLayers(…, {room: true})` — so the Y2K clock never covers it);
+  the overlays (blackout, alarm) and the flicker still reach it.
+- A pass that opens a line posts `POST /api/mod/signal {name: "terminal
+  opened", subject: <guest id>, args: {at: <room>}, label: "Terminal ·
+  <name>"}` (`postVisit`, `src/pilot.ts`); every way the line ends (leash,
+  DISCONNECT, an overlay, a restart, `pagehide` with `keepalive`) posts
+  `terminal closed` once (`VisitLatch`). Best-effort, never awaited.
+
+Kiosk notes: [`docs/trapped/kiosk.md`](../docs/trapped/kiosk.md) → *The
+server-room terminal*.
 
 ## The voice
 
@@ -295,6 +332,7 @@ Two settings, on the setup screen or in the provisioning link:
 | Setting | Values |
 |---|---|
 | `spot` | a `house.terminals[].id` of the event's map: where this screen hangs (the setup screen lists them as *name — room*). Blank = unplaced: it never mounts, only follows / orbits the spawn room. |
+| `room` | a LOCATION (wave 7): on the TV, the room it speaks for (blank = The Desktop); on any other view, the room it **belongs to** — asleep until that room is open, speaking its lines (*A room terminal*, above). Blank = a house terminal. |
 | `view` | `auto` (default): the face pane shows the world view while anyone is in the simulation, the face otherwise. `world`: the world view always. `face`: never. `mirror`: see below. `tv`: the TV room voice (above), no scanner. While piloting it is **always the face**, because the face is the voice. A tablet with **no WebGL2** (three r186 needs it; `src/webgl.ts` probes once at boot) behaves as `face` whatever this says, never loads three.js, and a no-WebGL2 mirror shows a still notice — never the *SIMULATION UNAVAILABLE* retry loop. The build targets `chrome87` / `safari14` (`vite.config.ts`). |
 
 **The mirror (a TV).** `view=mirror` turns a screen into a full-screen
@@ -339,7 +377,7 @@ src/webgl.ts           the one-time WebGL2 probe: no WebGL2 → face only, three
 src/config.ts          per-tablet config (localStorage) + URL provisioning
 src/scanner.tsx        camera + QR (BarcodeDetector, else jsQR)
 src/scan.ts            what a scanned code means; the typed-name fallback
-src/pilot.ts           impersonate / end / say; the DM thread off the guest stream
+src/pilot.ts           impersonate / end / say; the DM thread off the guest stream; a room terminal's terminal opened / closed
 src/idle.ts            the 30 s leash (paused while the character is answering)
 src/chat.tsx           the thread + composer
 src/speech/            engine.ts (device ladder: browser → Fully → silent; opt-in server; the queue + VoiceFloor),

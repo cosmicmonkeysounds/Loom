@@ -601,6 +601,136 @@ describe("GET /api/screen/state?voice= — the TV room voice", () => {
   });
 });
 
+// --- the room terminal (wave 7: the server-room terminal) --------------------
+
+const ROOM_SOURCE = `# Vault
+
+ROLE Program
+  humanity: 0 to 100 = 20
+  when vault_peek for program:
+    reveal The Server Room for program
+
+CHARACTER Trabolta
+  listed: true
+
+CHARACTER Clippy
+  listed: true
+
+LOCATION The Desktop
+
+LOCATION The Server Room
+  label: The Server Room (cold storage)
+  hidden: true
+
+when door_opened:
+  -> The Heart
+
+== The Heart
+  setting: The Server Room
+reveal The Server Room
+Trabolta: You found my heart.
+Clippy: It looks like you're in a server room.
+Trabolta: Sit. Let us speak plainly.
+
+== Boot
+  setting: The Desktop
+Trabolta: Hello, programs.
+`;
+
+describe("ScreenWatch — a room terminal (wave 7)", () => {
+  it("sleeps until its LOCATION is open to everyone; a per-person reveal doesn't count; an unknown room never wakes", () => {
+    const sim = Sim.fromSources(ROOM_SOURCE);
+    const w = new ScreenWatch();
+    const poll = (room: string) => w.poll(sim, { name: "Server Room", spot: "server-room", view: "face", character: "Trabolta", room, after: -1 }, () => true);
+    let s = poll("the server room");
+    expect(s.room).toEqual({ id: "The Server Room", open: false });
+    expect(s.character?.hidden).toBe(false);
+    expect(s.attract).toBe(true);
+    // A terminal with no room is unchanged: awake, no room block.
+    const plain = w.poll(sim, { name: "Kitchen", spot: "start-bar", view: "auto", character: "Trabolta" }, () => true);
+    expect(plain.room).toBeUndefined();
+    expect(plain.attract).toBe(false);
+    // By label too; an unknown name is closed with no id.
+    expect(poll("The Server Room (cold storage)").room).toEqual({ id: "The Server Room", open: false });
+    expect(poll("The Vault").room).toEqual({ id: "", open: false });
+    expect(poll("The Vault").attract).toBe(true);
+    // An open (never hidden) room is open at once.
+    expect(poll("The Desktop")).toMatchObject({ room: { id: "The Desktop", open: true }, attract: false });
+
+    sim.createPerson("p1", "Ada");
+    sim.signal("vault_peek", "p1");
+    expect(sim.isRevealedTo("The Server Room", "p1")).toBe(true);
+    expect(poll("The Server Room").attract).toBe(true);
+    sim.signal("door_opened");
+    s = poll("The Server Room");
+    expect(s.room).toEqual({ id: "The Server Room", open: true });
+    expect(s.attract).toBe(false);
+    // The heartbeat names the room.
+    expect(w.seen().find((p) => p.name === "Server Room")?.room).toBe("The Server Room");
+    expect(w.seen().find((p) => p.name === "Kitchen")?.room).toBeUndefined();
+  });
+
+  it("no story: a room terminal is closed (attract), never open", () => {
+    const s = new ScreenWatch().poll(null, { name: "Server Room", spot: "", view: "face", character: "Trabolta", room: "The Server Room" }, () => false);
+    expect(s.room).toEqual({ id: "", open: false });
+    expect(s.attract).toBe(true);
+  });
+});
+
+describe("GET /api/screen/state?room= — the room terminal", () => {
+  const roomRuntime = (dir: string) => {
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: "vault", scenarioSource: ROOM_SOURCE, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    return rt;
+  };
+
+  it("answers the room and its voice; the cutscene's lines arrive with the wake; the TV mute never silences it", { timeout: SLOW }, async () => {
+    const rt = roomRuntime(freshDir());
+    const get = async (q: string) => {
+      const r = await call(rt, "GET", `/api/screen/state?${q}`, {}, { moderator: true });
+      expect(r.status).toBe(200);
+      return r.json as unknown as ScreenState;
+    };
+    const room = (after: number | null) => get(`name=Server%20Room&spot=server-room&view=face&character=Trabolta&room=The%20Server%20Room${after === null ? "" : `&after=${after}`}`);
+    const tv = (after: number) => get(`name=TV&spot=desktop-tv&view=tv&character=Trabolta&voice=The%20Desktop&after=${after}`);
+
+    let s = await room(null);
+    expect(s.room).toEqual({ id: "The Server Room", open: false });
+    expect(s.attract).toBe(true);
+    expect(s.voice).toMatchObject({ room: "loc:The Server Room", muted: false, lines: [] });
+    const asleep = s.voice!.head;
+
+    // The door opens: the reveal and the lines land together.
+    expect((await signal(rt, "door_opened")).status).toBe(200);
+    s = await room(asleep);
+    expect(s.room).toEqual({ id: "The Server Room", open: true });
+    expect(s.attract).toBe(false);
+    expect(s.voice!.lines.map((l) => [l.from, l.text])).toEqual([
+      ["Trabolta", "You found my heart."],
+      ["Trabolta", "Sit. Let us speak plainly."],
+    ]);
+
+    // The TV's mute: the TV is muted, the room terminal is not.
+    expect((await call(rt, "POST", "/api/mod/screen/voice", { muted: true }, { moderator: true })).json).toEqual({ muted: true });
+    expect((await tv(0)).voice!.muted).toBe(true);
+    expect((await room(s.voice!.head)).voice!.muted).toBe(false);
+    // A room terminal that also names a voice room speaks that one.
+    const both = await get(`name=X&view=face&character=Trabolta&room=The%20Server%20Room&voice=The%20Desktop&after=-1`);
+    expect(both.voice!.room).toBe("loc:The Desktop");
+    expect(both.room).toEqual({ id: "The Server Room", open: true });
+    rt.dispose();
+  });
+
+  it("the show: the Server Room is closed at the doors", { timeout: SLOW }, async () => {
+    const rt = await showRuntime(freshDir());
+    const r = await call(rt, "GET", `/api/screen/state?name=Server%20Room&spot=server-room&view=face&character=Trabolta&room=The%20Server%20Room`, {}, { moderator: true });
+    const s = r.json as unknown as ScreenState;
+    expect(s.room).toEqual({ id: "The Server Room", open: false });
+    expect(s.attract).toBe(true);
+    rt.dispose();
+  });
+});
+
 // --- the agent belt: no dispatch for a hidden character ----------------------
 
 const AGENT_SOURCE = `# Uploaded
