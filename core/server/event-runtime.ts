@@ -73,7 +73,7 @@ import {
   type ParsedMap,
   type ProjectLink,
 } from "./house-maps.ts";
-import { FACTS_FILE, FactsWatch, factsProblems, judgeAnswer, parseFactsBook, readFactsFile, type FactsBook, type FactsView } from "./facts.ts";
+import { FACTS_FILE, FactsWatch, factsKey, factsProblems, judgeAnswer, parseFactsBook, readFactsFile, type FactsBook, type FactsView } from "./facts.ts";
 import {
   AgentHub,
   AgentTraceLog,
@@ -1123,7 +1123,11 @@ export class EventRuntime {
       const c = args["confidence"];
       if (typeof q !== "string" || typeof a !== "string" || a.trim() === "" || typeof c !== "number" || !Number.isInteger(c) || c < 1 || c > 100) return "refused";
       const verdict = judgeAnswer(book, q, a, c);
-      return verdict === null ? "refused" : { verdict };
+      if (verdict === null) return "refused";
+      // An accurate filing also carries the key's canonical answer, so the
+      // story reads "Mister Pickles", never whichever alias came in last.
+      // Only a filer who already knew it ever puts it in the journal.
+      return verdict === "accurate" ? { verdict, key_answer: factsKey(book, q)!.answer } : { verdict };
     }
     if (card.kind === "answer") {
       const q = card.params["question"];

@@ -93,14 +93,14 @@ afterAll(() => {
   for (const d of dirs) rmSync(d, { recursive: true, force: true });
 });
 
-type Init = { facts?: string | null; factsFile?: string; random?: () => number };
+type Init = { facts?: string | null; factsFile?: string; random?: () => number; source?: string };
 function runtimeIn(d: string, init: Init = {}): EventRuntime {
   return new EventRuntime({
     eventId: "evt",
     store: new Store(d),
     codes: CODES,
     scenarioName: "facts",
-    scenarioSource: SOURCE,
+    scenarioSource: init.source ?? SOURCE,
     joinBase: () => "http://localhost",
     // No key unless the case says so: the show's facts.json must never leak
     // into a generic story's runtime through the default sibling path.
@@ -195,9 +195,12 @@ describe("the judge hop — /api/guest/widget with a facts.json", () => {
     expect(replies(rt, ben).at(-1)).toBe("Filed: lie.");
     expect(replies(rt, cy).at(-1)).toBe("Filed: uncertain.");
     // The journal carries the verdict beside the answer and the card.
-    expect(journaled(d, "fact", ada.id)).toEqual([{ question: "Q1", answer: " eleven ", confidence: 100, verdict: "accurate", card: cardSeq(rt, ada, "fact") }]);
+    // An accurate filing also carries the key's canonical answer (W6 B13).
+    expect(journaled(d, "fact", ada.id)).toEqual([{ question: "Q1", answer: " eleven ", confidence: 100, verdict: "accurate", key_answer: "Eleven years", card: cardSeq(rt, ada, "fact") }]);
     expect(journaled(d, "fact", ben.id)[0]).toMatchObject({ verdict: "lie" });
+    expect(journaled(d, "fact", ben.id)[0]).not.toHaveProperty("key_answer");
     expect(journaled(d, "fact", cy.id)[0]).toMatchObject({ verdict: "uncertain" });
+    expect(journaled(d, "fact", cy.id)[0]).not.toHaveProperty("key_answer");
     // ModView.facts tallies, in the key's order, mode auto by default.
     const facts = (await modView(rt)).facts!;
     expect(facts.mode).toBe("auto");
@@ -212,11 +215,28 @@ describe("the judge hop — /api/guest/widget with a facts.json", () => {
       ["Ben", "twelve", 100, "lie", "lie"],
     ]);
     expect(facts.questions[1]!.tally).toEqual({ filed: 1, accurate: 0, lie: 0, uncertain: 1, consensus: false });
-    // The key itself never reaches the world, the journal or a message.
+    // The key itself never reaches the world or a message, and the journal
+    // only on a filing that already got it right (Q2 never did).
     const world = JSON.stringify(rt.liveSim!.worldEntries());
     expect(world).not.toContain("Eleven years");
-    expect(JSON.stringify(new Store(d).readJournal())).not.toContain("Eleven years");
+    expect(JSON.stringify(new Store(d).readJournal())).not.toContain("Mister Pickles");
     expect(JSON.stringify(rt.chatHistoryFor(ada.id))).not.toContain("Eleven years");
+    rt.dispose();
+  });
+
+  it("two accurate filings in different aliases both give the story the key's canonical answer (W6 B13)", async () => {
+    const source = SOURCE.replace(
+      "  when fact answered for program:\n",
+      "  when fact answered for program:\n    if verdict == \"accurate\":\n      The Oracle: The answer is: {key_answer}.\n",
+    );
+    const { rt, d } = fresh({ facts: TEXT, source });
+    const ada = await guest(rt, "Ada");
+    const ben = await guest(rt, "Ben");
+    expect((await answer(rt, ada, cardSeq(rt, ada, "fact"), { question: "Q1", answer: "11", confidence: 100 })).status).toBe(200);
+    expect((await answer(rt, ben, cardSeq(rt, ben, "fact"), { question: "Q1", answer: "ELEVEN", confidence: 60 })).status).toBe(200);
+    expect(replies(rt, ada)).toContain("The answer is: Eleven years.");
+    expect(replies(rt, ben)).toContain("The answer is: Eleven years.");
+    expect(journaled(d, "fact", ben.id)[0]).toMatchObject({ answer: "ELEVEN", verdict: "accurate", key_answer: "Eleven years" });
     rt.dispose();
   });
 
