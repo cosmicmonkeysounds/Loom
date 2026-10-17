@@ -256,7 +256,7 @@ export function ScreenLayer({ layers, gear, video, muted, onSlideTap }: { layers
 }
 
 /** The layer, live: re-decided every second (holds, the corner, the clock). */
-export function LiveScreenLayer({ state, piloting, peek = false, onSlideTap, gear, video }: { state: ScreenState | null; piloting: boolean; peek?: boolean; onSlideTap?: () => void; gear: ReactNode; video?: boolean }) {
+export function LiveScreenLayer({ state, piloting, peek = false, room = false, onSlideTap, gear, video }: { state: ScreenState | null; piloting: boolean; peek?: boolean; room?: boolean; onSlideTap?: () => void; gear: ReactNode; video?: boolean }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -264,7 +264,7 @@ export function LiveScreenLayer({ state, piloting, peek = false, onSlideTap, gea
   }, []);
   // A fresh answer re-decides at once rather than up to a second later.
   const at = Math.max(now, state?.receivedAt ?? 0);
-  return <ScreenLayer layers={screenLayers(state, at, { piloting, peek })} gear={gear} video={video} muted={state?.voice?.muted === true} onSlideTap={onSlideTap} />;
+  return <ScreenLayer layers={screenLayers(state, at, { piloting, peek, room })} gear={gear} video={video} muted={state?.voice?.muted === true} onSlideTap={onSlideTap} />;
 }
 
 /**

@@ -11,6 +11,17 @@
 //! A tablet that should also say the house announcements (N-09 — the
 //! house system's lines, `do announce "…"`) adds `&announce=1`; off by default.
 //!
+//! A terminal that belongs to a room (wave 7 — the server-room terminal) adds
+//! `&room=<LOCATION>` to any view but the TV:
+//!
+//!   /terminal/?code=<mod passcode>&name=Server Room&character=Trabolta&spot=server-room&view=face&room=The Server Room
+//!
+//! It sleeps (attract) until that LOCATION is open to everyone, speaks the
+//! character's lines said in that room (the TV's voice path; the TV mute
+//! never reaches it), shows no story slides or countdown corner (overlays
+//! still cover it), and tells the story when a pass opens and closes a line
+//! there (`terminal opened` / `terminal closed`, `pilot.ts`).
+//!
 //! The mod passcode resolves (via `/api/resolve-code`) to the event and is
 //! traded for a **moderator token** (`/api/mod/login`) — that is what lets
 //! a terminal pilot a scanned guest through `/api/mod/impersonate`, and
@@ -53,7 +64,9 @@ export interface TerminalConfig {
    *  speaking the character's lines in `room`, the world pane while someone
    *  is in the simulation — no scanner). */
   view: TerminalView;
-  /** `view: tv` — the LOCATION whose lines it speaks ("" = `DEFAULT_TV_ROOM`). */
+  /** `view: tv` — the LOCATION whose lines it speaks ("" = `DEFAULT_TV_ROOM`).
+   *  Any other view — the LOCATION this terminal belongs to ("" = none; see
+   *  `roomOf`): asleep until it is open, speaking its lines. */
   room: string;
   /** Say the house announcements (N-09: a chime + `do announce "…"` in the
    *  device's voice). Off by default — the TV's room already hears the
@@ -85,6 +98,14 @@ export const DEFAULT_TV_ROOM = "The Desktop";
 /** The room a `view: tv` screen speaks for. */
 export function tvRoomOf(c: Pick<TerminalConfig, "room">): string {
   return c.room.trim() || DEFAULT_TV_ROOM;
+}
+
+/** The LOCATION a wall terminal belongs to (the server-room terminal), or
+ *  null: no room, or the TV (whose `room` is only the room it speaks for). */
+export function roomOf(c: Pick<TerminalConfig, "room" | "view">): string | null {
+  if (c.view === "tv") return null;
+  const room = c.room.trim();
+  return room === "" ? null : room;
 }
 
 export function defaultConfig(partial: Partial<TerminalConfig> & Pick<TerminalConfig, "eventId" | "token">): TerminalConfig {

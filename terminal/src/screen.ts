@@ -17,6 +17,11 @@
 //! characters' new lines in that room, the room's head seq and the
 //! director's mute. It polls every second so a line is heard within 3 s.
 //!
+//! A room terminal (wave 7, `config.roomOf` — the server-room terminal)
+//! names its `room` and its cursor instead: the answer's `room` block says
+//! whether that LOCATION is open (attract until it is) and its `voice` block
+//! carries the room's lines, never muted by the TV's mute.
+//!
 //! The answer also carries the latest house announcements (`announce` +
 //! the last few in `announces`, N-09); a terminal set to say announcements
 //! speaks each new one (`announce.ts`).
@@ -69,6 +74,12 @@ export interface VoiceLine {
   beat: string | null;
 }
 
+/** A room terminal's LOCATION (wave 7): `id` "" = the story has no such room. */
+export interface ScreenRoom {
+  id: string;
+  open: boolean;
+}
+
 /** The TV's voice block (K-18). */
 export interface ScreenVoice {
   room: string;
@@ -93,8 +104,10 @@ export interface ScreenState {
   chart: ScreenChart | null;
   target: ScreenTarget;
   program: ScreenProgram;
-  /** Only on a poll that named a voice room. */
+  /** Only on a poll that named a voice room (or a `room`). */
   voice: ScreenVoice | null;
+  /** Only on a poll that named a `room` (null: none, or an older server). */
+  room: ScreenRoom | null;
   /** The latest house announcement (N-09, `announce.ts`), null before the first. */
   announce: Announcement | null;
   /** The last few announcements, oldest first (an older server: just `announce`). */
@@ -138,21 +151,32 @@ export function chartOf(raw: unknown): ScreenChart | null {
   return { slide: r["slide"], rows, top: name(r["top"]), bottom: name(r["bottom"]), revealAt };
 }
 
-/** What a TV adds to its poll: the room it speaks for + its chat cursor. */
+/** What a TV adds to its poll: the room it speaks for + its chat cursor. A
+ *  room terminal (`as: "room"`) names the room it belongs to instead: the
+ *  server then also answers whether that room is open. */
 export interface VoiceQuery {
   room: string;
   after: number | null;
+  as?: "voice" | "room";
 }
 
 /** The poll URL for this terminal (its name/spot/view + device health ride along as the heartbeat). */
 export function screenStateUrl(c: Pick<TerminalConfig, "eventId" | "name" | "spot" | "view" | "character">, voice: VoiceQuery | null = null, device: DeviceHealth | null = null): string {
   const q = new URLSearchParams({ name: c.name, spot: c.spot, view: c.view, character: c.character });
   if (voice !== null) {
-    q.set("voice", voice.room);
+    q.set(voice.as === "room" ? "room" : "voice", voice.room);
     if (voice.after !== null) q.set("after", String(voice.after));
   }
   if (device !== null) for (const [k, v] of Object.entries(deviceQuery(device))) q.set(k, v);
   return `${baseOf(c)}/api/screen/state?${q.toString()}`;
+}
+
+/** A room block off the wire; anything malformed is null. */
+export function roomOf(raw: unknown): ScreenRoom | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r["id"] !== "string" || typeof r["open"] !== "boolean") return null;
+  return { id: r["id"], open: r["open"] };
 }
 
 /** A voice block off the wire; malformed lines are dropped, a malformed block is null. */
@@ -223,6 +247,7 @@ export function parseScreenState(raw: unknown, receivedAt: number = Date.now()):
     target: r["target"] === "tv" ? "tv" : "terminals",
     program: programOf(r["program"]),
     voice: voiceOf(r["voice"]),
+    room: roomOf(r["room"]),
     announce: announceOf(r["announce"]),
     announces: announcesOf(r["announces"], r["announce"]),
     identify: r["identify"] === true,
@@ -254,9 +279,12 @@ export function identifyOn(state: Pick<ScreenState, "identify" | "identifyLeft" 
   return now < state.receivedAt + (state.identifyLeft ?? IDENTIFY_MS);
 }
 
-/** Attract or not: no answer yet is attract (fail closed). */
-export function attractOf(state: ScreenState | null): boolean {
-  return state === null ? true : state.attract;
+/** Attract or not: no answer yet is attract (fail closed). A room terminal
+ *  (`room` true) also stays on attract when the answer has no room block —
+ *  a server too old to say whether its room is open. */
+export function attractOf(state: ScreenState | null, room = false): boolean {
+  if (state === null) return true;
+  return state.attract || (room && state.room === null);
 }
 
 export type PollOutcome = { kind: "state"; state: ScreenState } | { kind: "revoked" } | { kind: "ended" } | { kind: "miss" };

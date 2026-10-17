@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CONFIG_KEY, DEFAULT_TV_ROOM, adoptCharacter, canonicalCharacter, castCheckKey, characterProblem, defaultConfig, hintsFromSearch, loadConfig, pickCharacter, provision, saveConfig, savedCharacter, tvRoomOf, voiceChoiceOf, withoutSecrets } from "../src/config.ts";
+import { CONFIG_KEY, DEFAULT_TV_ROOM, adoptCharacter, canonicalCharacter, castCheckKey, characterProblem, defaultConfig, hintsFromSearch, loadConfig, pickCharacter, provision, roomOf, saveConfig, savedCharacter, tvRoomOf, voiceChoiceOf, withoutSecrets } from "../src/config.ts";
 import { CAST_LOOKUP_MS, characterIdOf, fetchCharacters } from "../src/pilot.ts";
 
 function memory(): Storage {
@@ -38,6 +38,21 @@ describe("terminal config", () => {
     s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "evt", token: "t", view: "tv", room: 3 }));
     expect(tvRoomOf(loadConfig(s)!)).toBe(DEFAULT_TV_ROOM);
     expect(DEFAULT_TV_ROOM).toBe("The Desktop");
+  });
+  it("a room on any other view is the LOCATION the terminal belongs to (wave 7); the TV's room is only its voice", () => {
+    const s = memory();
+    saveConfig(defaultConfig({ eventId: "evt", token: "t", view: "face", spot: "server-room", room: "The Server Room" }), s);
+    const back = loadConfig(s)!;
+    expect(back).toMatchObject({ view: "face", room: "The Server Room" });
+    expect(roomOf(back)).toBe("The Server Room");
+    expect(roomOf({ view: "auto", room: "  The Server Room " })).toBe("The Server Room");
+    expect(roomOf({ view: "mirror", room: "The Server Room" })).toBe("The Server Room");
+    expect(roomOf({ view: "face", room: " " })).toBeNull();
+    expect(roomOf({ view: "tv", room: "The Desktop" })).toBeNull();
+    // Provisioning keeps the room hint for a non-TV view.
+    const h = hintsFromSearch("?code=M&name=Server%20Room&character=Trabolta&spot=server-room&view=face&room=The%20Server%20Room");
+    expect(h).toMatchObject({ name: "Server Room", spot: "server-room", view: "face", room: "The Server Room" });
+    expect(withoutSecrets("?code=M&room=The%20Server%20Room&view=face")).toBe("");
   });
   it("refuses a config with no event or token, or junk", () => {
     const s = memory();
@@ -119,6 +134,8 @@ describe("the provisioned character is the story's own name (B19)", () => {
     const c = await provision("MOD7324", { ...hints, character: "trabolta" });
     expect(c.character).toBe("Trabolta");
     await expect(provision("MOD7324", { ...hints, character: "nobody" })).rejects.toThrow(/no character called "nobody"/);
+    // A room terminal's room rides through provisioning.
+    expect(await provision("MOD7324", { ...hints, view: "face", spot: "server-room", room: "The Server Room" })).toMatchObject({ view: "face", spot: "server-room", room: "The Server Room" });
     // Before the doors open the server lists nobody: kept as typed, adopted later.
     server([]);
     expect((await provision("MOD7324", { ...hints, character: "trabolta" })).character).toBe("trabolta");
