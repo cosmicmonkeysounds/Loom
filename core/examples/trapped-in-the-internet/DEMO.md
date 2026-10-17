@@ -15,8 +15,8 @@ change the order here, change it there.
 1. The VPS runs the wave-4 release (`scripts/ops/ship.sh <tag>` — the
    server **before** the first sync that carries `facts.json` or the King's
    map, or an old server refuses them; as of 2026-10-17 waves 4 (9d35a4b) and
-   5 (85d2bad) are committed and wave 6 is merged, none deployed — they
-   ship together; wave 5
+   5 (85d2bad) are committed and waves 6 and 7 are merged, none deployed —
+   they ship together; wave 5
    also wants one `sync-show --replace-maps`), and the show's story is in your server
    project: `LOOM_SSH=loom-vps pnpm sync-show` (with
    `LOOM_PROJECT="<your project name>"` if it isn't *Untitled Project*).
@@ -115,9 +115,12 @@ guest's card in that performer's booth (phone C / D), or in Run while you
    **Phone A** (Excel) is already in *Unlimited Power* from his Truther
    Download choice, so he never sees *Choose your side*: **☰ → Your pass →
    Leave … for The Way Out** (a defection). Then fire **🧾 Let a faction win without its leader's task** (OpenOffice isn't here) — or just fire **🗳 Force the majority: The Way Out**.
-   Members get the whole truth (50+ codex entries, *The Legendary Fact*) and The Server Room appears.
+   Members get the whole truth (50+ codex entries, *The Legendary Fact*, and *The Door Code* last) and The Server Room appears on their phones.
+   *(Optional, wave 7)* **🚪 Server room door opened** → **The Heart**: The Server Room opens on every phone, and Trabolta speaks his candid opener there (and on the server-room terminal, if one is provisioned). Fire it again at once: nothing (the 2-minute quiet window).
 2. **🔌 Patch: Combo A** → every phone: 🔔 **GO TO THE LIVING ROOM**; the TV: blackout, then the flashing overlay; 10 s later the dance look.
 3. **🏍 After the dance: weakened Trabolta recounts** — he reads every identity of the programs who came, the first reinstall, the virus planter, the best and worst program, and rides off. Everyone is released.
+
+**A′ · Talked down (wave 7)** — the same ending without a cable. After 🚪 (above), a program at the server-room terminal who shows Trabolta that Sandy can never answer (they hold *What Sandy Says* or *The Sandy File*) gets his offer: `# hosts` reads *"🕊 Trabolta offers to stand down for X"*. Without a terminal or a worker, a director can still press **🕊 Trabolta stands down (talked down)** (`# hosts` notes there was no offer) → the blackout opens on the patch bay going quiet on its own, then the dance and a recount that says nobody pulled a cable.
 
 **B · The verdict (Grok Prom → the song)**
 
@@ -146,7 +149,7 @@ them out).
 
 ## What is built but not in the cue order above (show it if there's time)
 
-- **The King** (the Cold Lock in the simulation): in the tent tablet's game a gold chess king with four hearts guards the server-room door of the virtual house. Walk up to him (⚔ / Space) — every hit knocks a heart off and makes his chess AI dumber (grandmaster → club → beginner → dizzy → pawns only) — then challenge him (♟ / C) on the tablet's board. Mate him and the game fires `chess won` for that program; before the 🕚 Y2K clock it's practice (`# hosts` says so), after it the real door is disarmed for 90 s exactly as **♟ Cold Lock** does. Not device-checked yet: the Lichess phone stays the fallback on the night.
+- **The King** (the door code, in the simulation): in the tent tablet's game a gold chess king with four hearts guards the server-room door of the virtual house. Walk up to him (⚔ / Space) — every hit knocks a heart off and makes his chess AI dumber (grandmaster → club → beginner → dizzy → pawns only) — then challenge him (♟ / C) on the tablet's board (its badge reads PRACTICE, then FOR THE CODE from the Y2K hour). Mate him and the game fires `chess won` for that program; before the 🕚 Y2K clock it's practice (`# hosts` says so), after it the winner gets *The Door Code* in their Codex, exactly as **♟ They beat the King** (naming the winner) does. The real door has a standalone keypad lock nothing in the house drives. Not device-checked yet: the Lichess phone stays the fallback on the night.
 - **The Wallet**: every phone has a pinned **Wallet** room (🪙 balance on the pass): send Truthcoin to another program, request it, or trade coin for a codex entry (an escrowed offer the other side accepts). Every third transfer waits for **Approve** in CRA Agent Software's booth (sign a fourth phone in as her: the editor's performer lens doesn't show a booth's Wallet room yet, though Run's operator view lists the pending transfers as text); any transfer can be denied within 60 s. Runescape's phone can mint a stimulus to everyone (three a night). The hosts' 🪙 Pay / Charge buttons are corrections only. A local-folder rehearsal has no wallet — use the server project.
 - **facts.json is the team's file**: the hunt questions + answer key, the Desktop's scannable facts (main / trabolta / character), the Truth-or-Dare questions and the pickup line all live in `core/examples/trapped-in-the-internet/facts.json`; `pnpm --filter @loom/core titi:facts` regenerates the story files from it. The server judges every 📝 filing against it (`Night.judge_mode` = `auto`; switch to `review` on Run → Mind's Judging card to confirm each verdict by hand). Rehearse filings on the server project: a folder run has no judge.
 - **Marked for reinstallation**: 🎯 / 🤷 / 🎩 / 🙅 / 🏓 missed / 🍎 failed / a guess at settle / a late program no longer capture on the spot. The phone greys out (DMs and the Tube / Internet rooms only) with a pinned 🚨 GO TO THE INTERNET card; the Antivirus booths chime and `# quarantine` lists who to escort. 🛡 captures; **🩹 Unmark** (any host or Antivirus) undoes a mis-tap.
@@ -155,7 +158,7 @@ them out).
 ## What is not built yet (say so on the day)
 
 - **The house map is a placeholder** (3 floors + the tent, not measured; K-28). The game walks it fine; the rooms won't line up with the real ones yet.
-- **No hardware in the loop**: the server-room door, the patch bay and the printer button are the admin fallback buttons on the cue sheet; the Cold Lock is the King on the tent tablet (above), with the chess phone as its fallback. The ESP32 firmware exists but isn't wired to the VPS demo.
+- **No hardware in the loop**: the server-room door (🚪), the patch bay and the printer button are the admin fallback buttons on the cue sheet; the door code comes from the King on the tent tablet (above), with the chess phone as its fallback. The ESP32 firmware exists but isn't wired to the VPS demo, and the keypad lock is a real lock on a real door.
 - **VR headsets** aren't part of this demo (the Quest build exists; a headset runs the same game minus the King's fight — it only shows him; the tablet has the fight).
 - **Trabolta's voice needs the laptop worker**; without it he has his hold line and a director answers as him.
 - **Phones at the server-room endings** show the GO TO THE LIVING ROOM *alert banner*, not a full-screen flashing screen (the TV and terminals do flash it).
