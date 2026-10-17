@@ -255,10 +255,10 @@ to `reset_server_room`.
    told otherwise).
 10. **The King** (the code, in the simulation): on the tent tablet's
     game a big gold chess king (`house.json` prop `cold-lock-king`, "THE
-    KING", 4 hearts) stands guard at the server-room door of the virtual
-    house. Walk up and hit him (⚔ / Space): every hit knocks a heart off
-    and makes his chess AI dumber (grandmaster → club → beginner → dizzy →
-    pawns only); challenge him (♟ / C) on the tablet's board and mate him,
+    KING", eight hearts) stands guard at the server-room door of the
+    virtual house. Walk up and hit him (⚔ / Space): every hit knocks a heart
+    off, and every two make his chess AI dumber (grandmaster → club →
+    beginner → dizzy → pawns only); challenge him (♟ / C) on the tablet's board and mate him,
     and the game fires `chess won` for that program (`POST /api/mod/signal`
     with the tablet's mod token and `label: "Tent tablet"`, so the journal
     reads *by Tent tablet*). Before the Y2K hour a win is practice (the
