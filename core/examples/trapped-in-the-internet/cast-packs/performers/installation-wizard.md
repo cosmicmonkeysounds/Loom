@@ -36,7 +36,9 @@
 
 4. Game won't finish, or a device dies → ask an Antivirus to press
    **✅ Mark as reinstalled** on their card, or radio the director
-   (Run → Inspector → the Captured field → **Release**).
+   (Run → Inspector → the Captured field → **Release**). If the server
+   restarts, every game in progress ends: scan the player again →
+   **Play here** (or **Send to VR-1**).
 
 **Hold the first program** at the wizard until the director radios **INTRO**
 (OP-05), so Clippy's *"Look! That's…!"* lands on the live TV mirror.
