@@ -32,8 +32,10 @@ import {
   cardVar,
   generate,
   main,
+  comboSeeds,
   mindBlock,
   modelProblems,
+  neverWords,
   replaceBlock,
   run,
   wrapText,
@@ -123,6 +125,8 @@ function mainFixture(f: FactsFile): string {
     "",
     "The lights come up.",
     `set ${SHOW_SHAPE.world}.truth_n = 0`,
+    'set Kernel.combo_a = "V2-D5,V4-D1"',
+    'set Kernel.combo_b = "v1-d6, V3-D2"',
     `-> ${SHOW_SHAPE.seedBeat}`,
     "",
   );
@@ -220,7 +224,7 @@ describe("titi-facts — the run", () => {
     expect(logs.filter((l) => l.startsWith("WARN"))).toEqual([]);
   });
   it("is idempotent: generate() is pure and a second run changes nothing", () => {
-    const current = { mind: read(OUTPUTS.mind), design: read(OUTPUTS.design) };
+    const current = { mind: read(OUTPUTS.mind), design: read(OUTPUTS.design), combos: comboSeeds([read("main.loom")]) };
     const a = generate(facts, current);
     const b = generate(facts, current);
     expect(a).toEqual(b);
@@ -535,7 +539,7 @@ describe("titi-facts — the trabolta.mind.md secrets block", () => {
     expect(mind).not.toContain("STAMPED");
     expect(mind).not.toContain("- stale");
     const block = mind.slice(mind.indexOf(MIND_BEGIN), mind.indexOf(MIND_END));
-    expect(block).toBe(`${MIND_BEGIN}\n${mindBlock(facts)}\n`);
+    expect(block).toBe(`${MIND_BEGIN}\n${mindBlock(facts, comboSeeds([read("main.loom")]))}\n`);
     expect(block).toContain('  lore:\n    - "▒ HUNT ANSWER"\n');
     expect(block).toContain("DO NOT EDIT");
     const entries = block.split("\n").filter((l) => l.startsWith("    - "));
@@ -549,11 +553,26 @@ describe("titi-facts — the trabolta.mind.md secrets block", () => {
     }
     expect(new Set(topics).size).toBe(topics.length);
     expect(new Set(match).size).toBe(match.length);
-    expect(entries.length).toBe(topics.length + match.length + 1);
+    // What no line of his mind may carry: the door code (+ '97) and every seeded combo pair.
+    const never = block.slice(block.indexOf("  never:")).split("\n").filter((l) => l.startsWith("    - ")).map((l) => unquote(l.slice(6).replace(/\s+# [a-z -]+$/u, "").trim()));
+    expect(never).toEqual([facts.door!.code, `'${facts.door!.code.slice(2)}`, "V2-D5", "V4-D1", "V1-D6", "V3-D2"]);
+    expect(block).toContain("# the door code");
+    expect(block).toContain("# the patch-bay pairs");
+    expect(entries.length).toBe(topics.length + match.length + 1 + never.length);
     // Numbers and times are quoted so YAML keeps them strings.
     expect(block).toContain('    - "412"');
     expect(block).toContain('    - "1978"');
     expect(block).toContain('    - "9:00"');
+  });
+});
+
+describe("titi-facts — secrets.never", () => {
+  it("is the door code (+ a year's '97) and every combo pair the story seeds, deduped; nothing without either", () => {
+    expect(comboSeeds(['set Kernel.combo_a = "V2-D5,V4-D1"\n  set Kernel.combo_b = "V1-D6"', 'set Kernel.combo_a = "V2-D5,V4-D1"', 'set Night.combo = "V9-D9"'])).toEqual(["V2-D5,V4-D1", "V1-D6"]);
+    expect(neverWords(facts, ["V2-D5, v4-d1", "junk,V2-D5"])).toEqual([facts.door!.code, `'${facts.door!.code.slice(2)}`, "V2-D5", "V4-D1"]);
+    expect(neverWords({ ...facts, door: { ...facts.door!, code: "0412" } })).toEqual(["0412"]);
+    expect(neverWords({ ...facts, door: undefined })).toEqual([]);
+    expect(mindBlock({ ...facts, door: undefined })).not.toContain("never:");
   });
 });
 

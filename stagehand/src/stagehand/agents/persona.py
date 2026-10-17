@@ -325,8 +325,9 @@ def parse_mind_file(text: str, source: str = "<mind>") -> tuple[str | None, tupl
 
 
 def parse_mind_secrets(text: str, source: str = "<mind>") -> Secrets:
-    """The mind file's `secrets:` block (`topics` / `match` / `lore`, each a
-    list or comma list). Never shown to a model; see `secrets.py`."""
+    """The mind file's `secrets:` block (`topics` / `match` / `lore` /
+    `never`, each a list or comma list). Never shown to a model; see
+    `secrets.py`."""
     if not text.startswith("---"):
         return Secrets()
     end = text.find("\n---", 3)
@@ -340,8 +341,8 @@ def parse_mind_secrets(text: str, source: str = "<mind>") -> Secrets:
     if raw is None:
         return Secrets()
     if not isinstance(raw, dict):
-        raise ConfigError(f"{source}: secrets must be a mapping with topics / match / lore")
-    unknown = sorted(set(raw) - {"topics", "match", "lore"})
+        raise ConfigError(f"{source}: secrets must be a mapping with topics / match / lore / never")
+    unknown = sorted(set(raw) - {"topics", "match", "lore", "never"})
     if unknown:
         raise ConfigError(f"{source}: unknown secrets key(s) {', '.join(map(str, unknown))}")
 
@@ -351,7 +352,7 @@ def parse_mind_secrets(text: str, source: str = "<mind>") -> Secrets:
             value = [str(v) for v in value if v is not None]
         return _names(value, f"{source}: secrets.{key}")
 
-    return Secrets(topics=words("topics"), match=words("match"), lore=words("lore"))
+    return Secrets(topics=words("topics"), match=words("match"), lore=words("lore"), never=words("never"))
 
 
 def load_persona(path: str | Path) -> Persona:

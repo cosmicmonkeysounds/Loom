@@ -65,6 +65,10 @@ export const SHOW_SHAPE = {
   /** Where the keypad code is seeded (`door.code`): the secret Kernel,
    *  never `Night.*` (the voice worker reads Night whole). */
   doorVar: "Kernel.door_code",
+  /** Where the patch-bay combinations are seeded by hand (cast/props.loom
+   *  + main.loom's Power On: `set Kernel.combo_a = "V2-D5,V4-D1,…"`):
+   *  every pair joins the door code in the mind's `secrets.never`. */
+  comboSeed: /^\s*set\s+Kernel\.combo_[a-z0-9_]+\s*=\s*"([^"]*)"/gmu,
   truthBeat: "Truth Question",
   /** The majority's bundle (`beats/server-room.loom` The Whole Truth
    *  diverts here): every fact of these categories, for `program`. */
@@ -187,6 +191,10 @@ export interface GenerateInput {
   mind: string;
   /** The current `DESIGN.md` (its marked block is replaced). */
   design: string;
+  /** The patch-bay combinations as the hand-written story seeds them
+   *  (`comboSeeds`: "V2-D5,V4-D1,…" each) — their pairs go in
+   *  `secrets.never`. */
+  combos?: string[];
 }
 
 export interface Generated {
@@ -240,7 +248,7 @@ export function generate(facts: FactsFile, current: GenerateInput): Generated {
   };
   return {
     files,
-    mind: replaceBlock(current.mind, MIND_BEGIN, MIND_END, mindBlock(facts), OUTPUTS.mind),
+    mind: replaceBlock(current.mind, MIND_BEGIN, MIND_END, mindBlock(facts, current.combos ?? []), OUTPUTS.mind),
     design: replaceBlock(current.design, DESIGN_BEGIN, DESIGN_END, designBlock(facts), OUTPUTS.design),
   };
 }
@@ -433,10 +441,39 @@ function stackRow(x: Fact, colour: string, stack: string): string {
 
 // --- the marked blocks -----------------------------------------------------
 
+/** What no line of the character's mind may ever carry, whoever typed it
+ *  (`secrets.never`): the keypad code (and a year's '97 spelling) and every
+ *  patch-bay pair (`V2-D5`; the worker matches any spelling, V2 → D5 …). A
+ *  program who tells him the code must not hand it to every other
+ *  program's prompt through his notes. */
+export function neverWords(f: FactsFile, combos: string[] = []): string[] {
+  const out = new Set<string>();
+  const code = f.door?.code.trim();
+  if (code !== undefined && code !== "") {
+    out.add(code);
+    if (/^(?:19|20)\d\d$/u.test(code)) out.add(`'${code.slice(2)}`);
+  }
+  for (const combo of combos) {
+    for (const pair of combo.split(",")) {
+      const p = pair.trim().toUpperCase().replace(/\s+/gu, "");
+      if (/^[A-Z]+\d+-[A-Z]+\d+$/u.test(p)) out.add(p);
+    }
+  }
+  return [...out];
+}
+
+/** The combinations the hand-written story seeds (`SHOW_SHAPE.comboSeed`). */
+export function comboSeeds(sources: Iterable<string>): string[] {
+  const out: string[] = [];
+  for (const src of sources) for (const m of src.matchAll(SHOW_SHAPE.comboSeed)) if (m[1]!.trim() !== "" && !out.includes(m[1]!)) out.push(m[1]!);
+  return out;
+}
+
 /** The `secrets:` YAML block: every question's topics (deduped, question
  *  order, the first new one of each question commented `# H1`), every
- *  answer + alias (lowercased, deduped) and the lore marker. */
-export function mindBlock(f: FactsFile): string {
+ *  answer + alias (lowercased, deduped), the lore marker, and what no line
+ *  of his mind may carry (`neverWords`: the door code + the combo pairs). */
+export function mindBlock(f: FactsFile, combos: string[] = []): string {
   const out: string[] = [
     `# generated from facts.json by core/scripts/titi-facts.ts — DO NOT EDIT this block (${RERUN}).`,
     "secrets:",
@@ -459,6 +496,15 @@ export function mindBlock(f: FactsFile): string {
   for (const q of f.questions) for (const a of [q.answer, ...q.accept]) words.add(norm(a));
   for (const w of words) out.push(`    - ${yamlScalar(w)}`);
   out.push("  lore:", `    - ${JSON.stringify(HUNT_MARKER)}`);
+  const never = neverWords(f, combos);
+  if (never.length > 0) {
+    out.push("  never:");
+    never.forEach((w, i) => {
+      const entry = `    - ${JSON.stringify(w)}`;
+      const tag = i === 0 && f.door !== undefined ? "the door code" : /-/u.test(w) && !never.slice(0, i).some((x) => /-/u.test(x)) ? "the patch-bay pairs" : null;
+      out.push(tag === null ? entry : `${entry.padEnd(26)} # ${tag}`);
+    });
+  }
   return out.join("\n");
 }
 
@@ -594,6 +640,7 @@ export function run(dir: string, opts: RunOptions = {}): number {
     }
     current[key] = readFileSync(p, "utf8");
   }
+  current.combos = comboSeeds(handWrittenFiles(root).map((f) => f.source));
   let gen: Generated;
   try {
     gen = generate(facts, current as GenerateInput);

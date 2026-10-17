@@ -154,11 +154,31 @@ async def answer(
             lookup=reply.lookup,
             acts=tuple({**a, "args": facts.canonical_args(a["args"])} if a.get("kind") == "fire" and isinstance(a.get("args"), dict) else a for a in reply.acts),
         )
+    reply = withhold_never(persona, reply)
     if reply.empty:
         log.warning("%s: the model said nothing usable: %r", persona.character, raw[:200])
         return Reply(say=persona.fallback)
     log.info("%s: answered in %.1fs", persona.character, time.monotonic() - started)
     return reply
+
+
+def withhold_never(persona: Persona, reply: Reply) -> Reply:
+    """The voice's last door (wave 7): a line carrying a `secrets.never`
+    word (the door code, a patch-bay pair) is never said — the persona's
+    fallback goes instead — and an act whose args carry one (a text card
+    on the screens) is dropped. Whoever put the number in his context (a
+    program who typed it, a clue in a lookup card), it is not his to say."""
+    s = persona.secrets
+    if not s.never:
+        return reply
+    acts = tuple(a for a in reply.acts if not s.leaks(json.dumps(a, ensure_ascii=False)))
+    say = reply.say
+    if s.leaks(say):
+        log.warning("%s: withheld a line carrying a secret (door code / combination)", persona.character)
+        say = persona.fallback
+    if say == reply.say and len(acts) == len(reply.acts):
+        return reply
+    return Reply(say=say, adjust=reply.adjust, lookup=reply.lookup, acts=acts)
 
 
 async def _complete_with_room(complete_fn: CompleteFn, messages: list[dict[str, str]], model: LlmConfig, who: str) -> tuple[Completion, str]:

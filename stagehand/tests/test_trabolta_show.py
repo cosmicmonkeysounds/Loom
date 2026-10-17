@@ -135,12 +135,16 @@ def test_no_persona_or_mind_text_says_tent():
 
 
 def test_the_year_he_met_her_is_never_said():
-    # Wave 7 decision 1: the door code is the year he met her, and The Sandy
-    # File (which he holds, full text in the voice prompt) says it. At the
-    # desperate floor he trades "anything he holds", so both models are told
-    # never to say or record that year; neither file spells the number.
+    # Wave 7 decision 1: the door code is the year he met her. No file he
+    # holds spells it any more (the wave 7 review), but a program may type
+    # it to him, so both models are told never to say or record that year —
+    # anything learned included — and the worker enforces it (`secrets.never`,
+    # generated from facts.json: the frontmatter no model sees). Neither
+    # prompt spells the number.
     p = load_persona(TRABOLTA)
     assert "Never say what year you met her" in p.system
-    assert "The year he met her (in The Sandy File) is never said" in (p.mind_prompt or "")
-    for name in ("trabolta.persona.md", "trabolta.mind.md"):
-        assert "1997" not in (SHOW / name).read_text(encoding="utf-8"), name
+    assert "The year he met her is never said" in (p.mind_prompt or "")
+    assert "learned_add" in (p.mind_prompt or "")
+    assert "1997" in p.secrets.never
+    for prompt in (p.system, p.mind_prompt or ""):
+        assert "1997" not in prompt and "'97" not in prompt
