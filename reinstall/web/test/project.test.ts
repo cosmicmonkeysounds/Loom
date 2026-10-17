@@ -195,6 +195,29 @@ describe("project bar logic", () => {
       const clean = await run(list(), []);
       expect(clean).toMatchObject({ plan: { base: "v1" }, asked: [], saves: [] });
     });
+
+    it("a dirty page behind the list switches from the list's version, not its stale own (B18)", async () => {
+      // Another page switched to Shed (v2); this page holds a draft of Tent v1.
+      const fresh = list({ version: "v2" });
+      const dirty = { players: 0, dirty: true, version: "v1" };
+      const { plan, asked } = await run(fresh, [true], "v3", dirty);
+      expect(asked[0]).toContain("unsaved edits on this page are dropped");
+      expect(plan).toEqual({ base: "v2" });
+      // A director's save to keep first: saved from the list's version too.
+      const kept = await run(list({ version: "v2", edited: true }), [true, true], "v3", dirty);
+      expect(kept.saves).toEqual([["house.json", "v2"]]);
+      expect(kept.plan).toEqual({ base: "v3" });
+      // An older server's list (no version): the page's own.
+      expect((await run(list(), [true], "v3", dirty)).plan).toEqual({ base: "v1" });
+    });
+
+    it("the bar posts the planned base: a switch from a dirty page lands (B18)", async () => {
+      const { f, calls } = fakeFetch(200, { ok: true, version: "v3", warnings: [], file: "house.json", dropped: false });
+      const plan = await planSwitch(tent, list({ version: "v2" }), { players: 0, dirty: true, version: "v1" }, { confirm: () => true, save: async () => null });
+      const r = await switchVariant("/e/x", "t", "house.json", plan!.base, f);
+      expect(r.ok).toBe(true);
+      expect(JSON.parse(String(calls[0]!.init?.body))).toEqual({ file: "house.json", base: "v2" });
+    });
   });
 
   it("Save to project: offered on a project's event, for a served map; the active variant's file; warns about unsaved edits", () => {

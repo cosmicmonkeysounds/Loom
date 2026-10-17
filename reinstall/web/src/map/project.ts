@@ -123,6 +123,13 @@ export interface SwitchSteps {
  * "dropped" line only when the save was turned down. Resolves to the `base`
  * the switch posts (the save's version when it saved), or null = stop:
  * cancelled, or the save failed (never switch over a save that didn't land).
+ *
+ * The base is the version the list `r` was drawn against (the server's
+ * `version`), not the page's: a page holding a draft never reloads, so its
+ * own version is stale after a switch made elsewhere, and posting it would
+ * 409 every time (B18). The director confirmed against the list, so the
+ * list is the race guard — a save or switch it hasn't seen still 409s. An
+ * older server's list has no version: the page's is used.
  */
 export async function planSwitch(
   to: MapVariant,
@@ -130,7 +137,7 @@ export async function planSwitch(
   state: { players: number; dirty: boolean; version: string | null },
   steps: SwitchSteps,
 ): Promise<{ base: string | null } | null> {
-  let base = state.version;
+  let base = r?.version ?? state.version;
   let edited = r?.edited ?? false;
   const offer = switchSaveOffer(r, to, state.dirty);
   if (offer !== null && steps.confirm(offer)) {

@@ -355,12 +355,15 @@ export interface MapVariant {
 /** `GET /api/mod/spatial/variants`. `from`: the project's snapshot, or the
  *  show file's directory (an event with no project map files). `edited`: a
  *  director's save is in force over the active variant (a switch drops it).
- *  `project`: the event belongs to a project ("Save to project" works). */
+ *  `project`: the event belongs to a project ("Save to project" works).
+ *  `version`: the map the event plays now — the `base` a switch confirmed
+ *  off this list sends back (an older server leaves it out). */
 export interface MapVariantsResponse {
   variants: MapVariant[];
   from: "project" | "show";
   edited: boolean;
   project: boolean;
+  version?: string;
 }
 
 /** `POST /api/mod/spatial/variant` (200). `dropped`: a director's save was
