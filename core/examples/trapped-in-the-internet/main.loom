@@ -420,18 +420,24 @@ ROLE Program
   // ── The Internet ──
   // Any capture: count the visit, recompute trust, put the Installation
   // Wizard on the tent tablet (and, once Trabolta is introduced, the VR
-  // mirror on the TV).
+  // mirror on the TV). Not the banishment (advice_thwarted): everyone is
+  // in the Internet at once, the way out is the hand jive, never Gerald, and
+  // the TV keeps the banish card. It is no visit, so it never counts toward
+  // the trust score or the Frequent Flyer.
   when captured:
     if self.marked == true:
       fire unmarked for self with how: "in the Internet"
     set self.corrupted = true
-    set self.internet_visits += 1
-    set self.trust = self.truths_accepted * 10 - self.internet_visits * 5 + self.assessment
-    cue tablet_wizard
-    if Night.trabolta_introduced == true:
-      cue tv_mirror
-      set Night.screen = "mirror"
-    -> Reinstallation
+    if Night.banish == true:
+      reply ⛈ Banished to the Internet, with everyone else. Gerald cannot help you tonight. Remember what Trabolta let slip.
+    else:
+      set self.internet_visits += 1
+      set self.trust = self.truths_accepted * 10 - self.internet_visits * 5 + self.assessment
+      cue tablet_wizard
+      if Night.trabolta_introduced == true:
+        cue tv_mirror
+        set Night.screen = "mirror"
+      -> Reinstallation
 
   // In the Internet when the summons closed: excused, never late.
   // A program captured from the Optical Drive by a misclick lands on the
@@ -442,7 +448,10 @@ ROLE Program
     set self.corrupted = false
     if Night.summons_closed == true and Night.phase == "summons":
       set self.summons_ok = true
-    reply Reinstallation complete. You can follow instructions. Welcome back to the computer.
+    if Night.ending == "hand_jive":
+      reply The hand jive broke his hold. You are out of the Internet.
+    else:
+      reply Reinstallation complete. You can follow instructions. Welcome back to the computer.
     if self.cleared != true:
       set self.cleared = true
       reveal The Start Bar for self
@@ -3153,10 +3162,13 @@ when reinstallation begun for program:
       fire first_reinstallation
 
 // The games fire both of these, in this order, for whoever walks up to
-// Gerald the golden duck. Only a corrupted program is released; anyone,
-// captured or just curious, learns The Golden Duck.
+// Gerald the golden duck. Only a corrupted program is released, and never
+// during the banishment (the hand jive frees everyone); anyone, captured
+// or just curious, learns The Golden Duck.
 when the simulation completed for program:
-  if program.corrupted:
+  if program.corrupted and Night.banish == true:
+    reply Gerald cannot help you: everyone is banished. The way out is the hand jive, together.
+  else if program.corrupted:
     release program from The Internet
     unlock The Golden Duck for program
 

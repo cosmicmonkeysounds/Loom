@@ -2170,6 +2170,7 @@ describe("Trapped in the Internet — the alternate advice ending", () => {
     toBobbing(sim, { lie: true });
     truthTxt(sim);
     fire(sim, "ask_for_advice");
+    const visits = PROGRAMS.map(([g]) => v(sim, `${g}.internet_visits`));
     const th = fire(sim, "advice_thwarted");
     expect(v(sim, "Night.ending")).toBe("banished");
     expect(v(sim, "Night.ended")).not.toBe(true);
@@ -2178,11 +2179,27 @@ describe("Trapped in the Internet — the alternate advice ending", () => {
       expect(sim.holdsCodex(g, "The Hand Jive Exception"), g).toBe(true);
     }
     expect(replies(th).filter((r) => /banish/iu.test(r.text)).length >= 4 || texts(th).some((t) => /Antivirus/u.test(t))).toBe(true);
-    fire(sim, "the_hand_jive");
+    // T2-01 / T2-02: no reinstallation, no visit, and the TV keeps the banish card.
+    expect(beats(th)).not.toContain("Reinstallation");
+    expect(cues(th).filter((c) => c === "cue tv_mirror" || c === "cue tablet_wizard")).toEqual([]);
+    expect(v(sim, "Night.screen")).toBe("banish");
+    expect(cues(th).filter((c) => c.startsWith("cue screens_")).at(-1)).toBe("cue screens_banish");
+    expect(PROGRAMS.map(([g]) => v(sim, `${g}.internet_visits`))).toEqual(visits);
+    expect(replies(th).filter((r) => r.to === "g1").map((r) => r.text)).toContain("⛈ Banished to the Internet, with everyone else. Gerald cannot help you tonight. Remember what Trabolta let slip.");
+    // The duck frees nobody before the hand jive (g5 was in the Internet already, g1 banished).
+    fire(sim, "the simulation completed", "g5");
+    expect(sim.isCaptured("g5")).toBe(true);
+    const duck = fire(sim, "the simulation completed", "g1");
+    expect(sim.isCaptured("g1")).toBe(true);
+    expect(replies(duck).map((r) => r.text)).toContain("Gerald cannot help you: everyone is banished. The way out is the hand jive, together.");
+    const hj = fire(sim, "the_hand_jive");
     expect(v(sim, "Night.ending")).toBe("hand_jive");
     expect(v(sim, "Night.ended")).toBe(true);
     for (const [g] of PROGRAMS) expect(sim.isCaptured(g), g).toBe(false);
     expect(sim.questStatus("g4", "Find The Exit")).toBe("done");
+    const back = replies(hj).filter((r) => r.to === "g5").map((r) => r.text);
+    expect(back).toContain("The hand jive broke his hold. You are out of the Internet.");
+    expect(back.filter((t) => t.startsWith("Reinstallation complete"))).toEqual([]);
   });
 });
 
