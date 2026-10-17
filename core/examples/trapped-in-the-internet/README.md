@@ -14,7 +14,9 @@ by late-90s Web 1.0 aesthetics and existentialism.*
 > resurrection, the phone cue sheet, …) is committed (85d2bad); wave 6
 > (the live-test bug fixes) is merged, and wave 7 (the server-room keypad
 > lock, The Heart, the server-room terminal, talking Trabolta down) is
-> merged; none of 4–7 is deployed yet, and they ship together**: its §5
+> merged, and wave 8 (the stock-take fixes: ⚖ the verdict, the cue sheet's
+branches, safer server restarts) is merged; none of 4–8 is deployed
+yet, and they ship together**: its §5
 > *Wave N status* tables list every build and the device check still to do.
 >
 > **📋 [CHECKLIST.md](./CHECKLIST.md): the living tech checklist, covering
@@ -171,10 +173,12 @@ These rules matter when you edit. Break one and something fails silently.
   marker Trabolta's worker hides; the answer key itself never enters the
   story (the server judges filings from `facts.json`).
 
-As of 2026-10-17 (the wave 7 story pass) the project compiles clean, both
+As of 2026-10-17 (the wave 8 story pass) the project compiles clean, both
 per file and concatenated the way the server joins them (`loomcheck`):
 **31 files, 0 errors, 0 warnings; 104 beats, 179 codex entries (90 with codes), 25
-quests, 96 rules, 112 INTERACTIONs**. Wave 7 added The Heart and Back To
+quests, 99 rules, 113 INTERACTIONs**. Wave 8 split ⚖ `the_verdict` off 📄
+`read_truth_txt` and added the `patch_after_verdict` and `dance_screens`
+rules. Wave 7 added The Heart and Back To
 The Heart, turned *The Cold Lock* into the secret riddle *The Cold Door*,
 generated the secret *The Door Code* from `facts.json`, added `stand_down`
 and `talked_down`, dropped `server_unlock` and renamed `rearm_server_room`
@@ -571,7 +575,9 @@ its own thread of steps.
 **Staff quests** (`start|update|complete quest X for <Character>`): Clippy
 and the four Antivirus have a pinned **Quest Log**, **Codex** and
 **Inbox** in their booths (performers answer cards there via `POST
-/api/prime/widget`), and Task Manager hands out the night's jobs:
+/api/prime/widget`; tonight no story line deals a card to a booth, so the
+Inbox stays empty), and Task Manager hands out the night's jobs. A booth's
+Quest Log shows each quest by its title:
 
 | QUEST (`title:`) | For | Started | Settled |
 |---|---|---|---|
