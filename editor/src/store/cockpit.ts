@@ -248,8 +248,15 @@ export interface ChannelSummary {
 export interface CastSummary {
   id: string
   faction: string | null
-  /** A performer is signed in and streaming as this character right now. */
+  /** A performer (or, for an agent, a worker) is streaming as this character right now. */
   online?: boolean
+  /** Voiced by an agent worker (`mind: external`), never a performer. */
+  agent?: boolean
+  /** A part a performer can sign in to (the server's `performerPickable`);
+   *  absent on an older server, which flags no row. */
+  part?: boolean
+  /** A sign-in token holds the part — true even while its phone's stream is down. */
+  held?: boolean
 }
 
 /** One live world-state entry (`g-1a2b.score` → `42`), display-stringed. */

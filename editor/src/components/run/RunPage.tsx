@@ -19,6 +19,7 @@ import { confirmAction } from '@/store/dialog'
 import { downloadRunExport } from '@/lib/run-export'
 import { useInspect } from '@/components/cockpit/inspect'
 import { FactionPill } from '@/components/cockpit/ui'
+import { PartPresence, partPresence, partPresenceTitle, performerParts } from '@/components/cockpit/parts'
 import { recapPath, runAge } from './run-chrome'
 import { PrintSheet } from './PrintSheet'
 import { TerminalsCard } from './TerminalsCard'
@@ -252,6 +253,8 @@ function EmptyState() {
 function JoinCard() {
   const run = useCockpit((s) => s.run)
   const cast = useCockpit((s) => s.cast)
+  // Only the parts a performer can sign in to — never a guest's program, a prop or an agent (T7-04).
+  const parts = performerParts(cast)
   const [printing, setPrinting] = useState(false)
   if (run === null || run.codes === null || run.joinUrl === null) return null
   const live = run.mode === RunMode.Live
@@ -302,18 +305,30 @@ function JoinCard() {
           ? 'Guests join with the event code; performers sign in at the play app’s performer station with their character name + the performer code.'
           : 'These codes work now — anyone with the event code can join this rehearsal. They stay the same when you go live, so you can print them.'}
       </p>
-      {cast.length > 0 && (
+      {parts.length > 0 && (
         <div className="mt-3">
           <div className="mb-1 text-[10px] uppercase tracking-widest text-zinc-500">Performers</div>
-          <ul className="flex flex-col gap-1">
-            {cast.map((c) => {
+          <ul className="flex flex-col gap-1" data-testid="run-performers">
+            {parts.map((c) => {
               const line = `${c.id} · performer code ${run.codes!.prime}`
+              const presence = partPresence(c)
               return (
-                <li key={c.id} className="flex items-center gap-2 rounded-lg border border-zinc-800 px-2 py-1 text-xs">
-                  {c.online !== undefined && (
-                    <span className={clsx('h-1.5 w-1.5 shrink-0 rounded-full', c.online ? 'bg-emerald-400' : 'border border-zinc-600')} title={c.online ? 'a performer is signed in' : 'nobody signed in as this character'} />
+                <li key={c.id} className="flex items-center gap-2 rounded-lg border border-zinc-800 px-2 py-1 text-xs" data-testid="run-performer" data-presence={presence}>
+                  {presence !== PartPresence.Unknown && (
+                    <span
+                      className={clsx(
+                        'h-1.5 w-1.5 shrink-0 rounded-full',
+                        presence === PartPresence.Online ? 'bg-emerald-400' : presence === PartPresence.PhoneOffline ? 'bg-amber-400' : 'border border-zinc-600',
+                      )}
+                      title={partPresenceTitle(c.id, presence)}
+                    />
                   )}
                   <span className="min-w-0 flex-1 truncate text-zinc-200">{c.id}</span>
+                  {presence === PartPresence.PhoneOffline && (
+                    <span className="shrink-0 text-[10px] text-amber-300" title={partPresenceTitle(c.id, presence)}>
+                      signed in · phone offline
+                    </span>
+                  )}
                   <FactionPill faction={c.faction} />
                   <button onClick={() => void navigator.clipboard?.writeText(line)} className="shrink-0 rounded px-1.5 py-0.5 text-[10px] text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200" title={`Copy “${line}”`}>
                     copy sign-in
