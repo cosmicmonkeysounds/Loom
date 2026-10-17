@@ -274,6 +274,16 @@ describe("fetchArmed", () => {
     expect(await fetchArmed(config, "Night.step", 1, fetcher(["net"]).fetch)).toBeNull();
   });
 
+  it("is null once the night has ended, though the armed var stays past its gate (S1-04)", async () => {
+    const after = (ended: unknown) => ({ status: 200, body: { world: [{ path: "Night.step", value: 19 }, { path: "Night.ended", value: ended }] } });
+    expect(await fetchArmed(config, "Night.step", 14, fetcher([after(true)]).fetch)).toBeNull();
+    expect(await fetchArmed(config, "Night.step", 14, fetcher([after("true")]).fetch)).toBeNull();
+    expect(await fetchArmed(config, "Night.step", 14, fetcher([after(false)]).fetch)).toBe(true);
+    // Unknown, never practice: a landed checkmate then says nothing at all.
+    expect(await winNotice(Promise.resolve(true), await fetchArmed(config, "Night.step", 14, fetcher([after(true)]).fetch))).toBeNull();
+    expect(stakesLine(null)).toBeNull();
+  });
+
   it("gives up after its timeout on a black-holed uplink, aborting the request (the checkmate notice waits on it)", async () => {
     let aborted = false;
     const hang = ((_url: string, init?: RequestInit) =>
