@@ -251,8 +251,12 @@ INTERACTION too_early
   label: C4 · 🤖 Too early
   who: admin
 
+GROUP Hosts
+  joinable: false
+
 CHANNEL hosts
-  kind: open
+  kind: faction
+  faction: Hosts
 
 when read_out:
   set Night.reads += 1
@@ -279,6 +283,76 @@ when too_early:
     sim.world.set("Night.phase", { kind: "string", value: "finale" });
     sim.signal("too_early");
     expect(cueState(sim)).toMatchObject({ last: "too_early", fired: ["ring_the_bell", "hunt_time_up", "read_out", "too_early"] });
+  });
+
+  it("judges a refused press by its own events, so a restart replays the same LAST (T7-01 review)", async () => {
+    const { cueState, notePress } = await import("../server/views.ts");
+    const SRC = `${CUES}
+INTERACTION too_early
+  label: C3 · 🤖 Too early
+  who: admin
+
+INTERACTION quiet
+  label: C4 · 🤫 Quiet guard
+  who: admin
+
+INTERACTION lights_only
+  label: C5 · 💡 Only stagehand hears this
+  who: admin
+
+INTERACTION to_the_floor
+  label: C6 · 📣 Tell the floor
+  who: admin
+
+GROUP Hosts
+  joinable: false
+
+CHANNEL hosts
+  kind: faction
+  faction: Hosts
+
+CHANNEL exchange
+  kind: open
+
+when too_early:
+  if Night.phase == "finale":
+    set Night.phase = "end"
+  else:
+    broadcast "🤖 Too early." to channel(hosts)
+
+when quiet:
+  if Night.phase == "finale":
+    set Night.phase = "end"
+
+when to_the_floor:
+  broadcast "📣 Prices are up." to channel(exchange)
+`;
+    // The runtime notes each journaled signal live (commit) and on replay
+    // (restore); the console's snapshot may or may not land between inputs.
+    const night = (snapshots: boolean) => {
+      const sim = Sim.fromSources(SRC);
+      sim.createPerson("g1", "Ada");
+      const press = (name: string) => {
+        notePress(sim, sim.signal(name));
+        if (snapshots) cueState(sim);
+      };
+      press("ring_the_bell");
+      press("too_early"); // refused: a # hosts line
+      sim.setVar("g1.score", "5"); // a mod `set` / a wallet sweep — not a press
+      press("quiet"); // refused silently
+      sim.join("g1", "Hosts");
+      return cueState(sim);
+    };
+    const live = night(true);
+    expect(live).toEqual({ last: "hunt_time_up", lastBy: "story", fired: ["ring_the_bell", "hunt_time_up"] });
+    expect(night(false)).toEqual(live);
+
+    // A cue no rule hears (stagehand's) and a line to a guest room both count.
+    const sim = Sim.fromSources(SRC);
+    notePress(sim, sim.signal("lights_only"));
+    expect(cueState(sim).last).toBe("lights_only");
+    notePress(sim, sim.signal("to_the_floor"));
+    expect(cueState(sim)).toMatchObject({ last: "to_the_floor", fired: ["lights_only", "to_the_floor"] });
   });
 
   it("reads only new log entries on each snapshot, and returns a fresh copy", async () => {

@@ -21,7 +21,7 @@ import { validateHouse, type HouseMap, type MapVariantsResponse } from "@loom/ho
 
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { guestView, modView, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { guestView, modView, notePress, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
@@ -2063,7 +2063,9 @@ export class EventRuntime {
     this.flushTick();
     this.store.appendCommand(m, args, this.actingBy);
     this.factsWatch.mark(this.sim!, factsBy(m, args, this.actingBy));
-    return (this.sim![m] as (...a: unknown[]) => SimEvent[])(...args);
+    const out = (this.sim![m] as (...a: unknown[]) => SimEvent[])(...args);
+    if (m === "signal") notePress(this.sim!, out); // the cue sheet judges a press by its own events
+    return out;
   }
 
   /** Apply one wallet op *and* journal it as a single `wallet` line — the
@@ -2520,6 +2522,7 @@ export class EventRuntime {
           this.factsWatch.mark(this.sim!, factsBy(e.m, e.a, e.by));
           const out = (fn as (...a: unknown[]) => unknown).apply(this.sim, e.a);
           events++;
+          if (e.m === "signal" && Array.isArray(out)) notePress(this.sim!, out as SimEvent[]); // as `commit` did live
           if (e.m === "signal") {
             // A widget answer — `signal(<kind> answered, guest, {…, card: seq})`.
             const card = (e.a[2] as { card?: unknown } | null | undefined)?.card;

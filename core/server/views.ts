@@ -529,20 +529,88 @@ interface CueScan {
   lastOrder: number;
 }
 
+/** Where each director press's own events end, per log: the batch one
+ *  `Sim.signal` call wrote (start index → end index, exclusive). The event
+ *  runtime notes every journaled signal as it commits it live *and* as
+ *  `restore()` replays it, so a press is judged by exactly what it did —
+ *  never by whichever input (a wallet sweep, a mod `set`, a join) happened
+ *  to land after it before the next director snapshot (T7-01). */
+const pressEnds = new WeakMap<object, Map<number, number>>();
+
+/** Record a `Sim.signal` batch just returned (`out = sim.signal(…)`). */
+export function notePress(sim: Sim, batch: readonly SimEvent[]): void {
+  if (batch.length === 0) return;
+  const end = sim.log.len();
+  let ends = pressEnds.get(sim.log);
+  if (ends === undefined) {
+    ends = new Map();
+    pressEnds.set(sim.log, ends);
+  }
+  ends.set(end - batch.length, end);
+}
+
 /** Log entries that start a new input (a press, a tick, a typed line, a
- *  join, a scan): what a director's press did ends at the next one. */
+ *  join, a scan) — where a press nobody noted (`notePress`: the editor's
+ *  in-browser rehearsal, a bare `Sim` in a test) is taken to end. */
 const CUE_INPUTS: ReadonlySet<string> = new Set(["signal", "tick", "chat", "accountCreated", "scanned"]);
 
-/** Did the director's press at `events[n]` do nothing but (at most) tell a
- *  staff room why? The story's phase-guarded rules refuse a cue pressed out
- *  of turn with a `# hosts` line or not at all (T1-02): such a press never
- *  becomes LAST or ticks the cue. */
-function refusedPress(events: readonly SimEvent[], n: number): boolean {
-  for (let k = n + 1; k < events.length; k++) {
+/** What `refusedPress` needs from the model, per compiled model: the named
+ *  events some rule listens for, and the staff rooms (an authored
+ *  `kind: faction` CHANNEL whose GROUP no guest may join — `# hosts`). */
+interface CueModel {
+  heard: Set<string>;
+  staff: Set<string>;
+}
+const cueModels = new WeakMap<object, CueModel>();
+function cueModelOf(model: Sim["model"]): CueModel {
+  let out = cueModels.get(model);
+  if (out === undefined) {
+    const heard = new Set<string>();
+    const collect = (hooks: readonly { verb: string; timer: unknown; condition: string | null }[]): void => {
+      for (const h of hooks) if (h.timer === null && h.condition === null && h.verb !== "") heard.add(foldName(h.verb));
+    };
+    for (const c of model.characters.values()) collect(c.hooks);
+    for (const r of model.roles.values()) collect(r.hooks);
+    collect(model.rules);
+    const staff = new Set<string>();
+    for (const c of model.channels.values()) {
+      const group = c.kind === "faction" && c.faction !== null ? model.factions.get(c.faction) : undefined;
+      if (group !== undefined && !group.joinable) staff.add(roomFold(c.id));
+    }
+    out = { heard, staff };
+    cueModels.set(model, out);
+  }
+  return out;
+}
+
+/** A room name folded the way `chat.ts` matches `channel(…)` scopes. */
+function roomFold(s: string): string {
+  return s.replace(/^room:/u, "").toLowerCase().replace(/[#_-]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/** A broadcast scope that names only staff rooms (`channel(hosts)`). */
+function staffOnly(scope: string, staff: ReadonlySet<string>): boolean {
+  const terms = scope.split("|").map((t) => t.trim());
+  return terms.length > 0 && terms.every((t) => {
+    const m = /^channel\((.+)\)$/u.exec(t);
+    return m !== null && staff.has(roomFold(m[1]!));
+  });
+}
+
+/** Did the director's press at `events[n]` (a cue some rule listens for) do
+ *  nothing but, at most, tell a staff room why? The story's phase-guarded
+ *  rules refuse a cue pressed out of turn with a `# hosts` line or not at
+ *  all (T1-02): such a press never becomes LAST or ticks the cue. A cue no
+ *  rule hears (only stagehand reacts) always counts as fired. */
+function refusedPress(sim: Sim, events: readonly SimEvent[], n: number, name: string): boolean {
+  const cm = cueModelOf(sim.model);
+  if (!cm.heard.has(foldName(name))) return false;
+  const end = pressEnds.get(sim.log)?.get(n);
+  for (let k = n + 1; k < (end ?? events.length); k++) {
     const e = events[k]!;
-    if (CUE_INPUTS.has(e.type)) break;
+    if (end === undefined && CUE_INPUTS.has(e.type)) break;
     if (e.type === "diagnostic") continue;
-    if (e.type === "broadcast" && e.scope.startsWith("channel(")) continue;
+    if (e.type === "broadcast" && staffOnly(e.scope, cm.staff)) continue;
     return false;
   }
   return true;
@@ -588,7 +656,7 @@ export function cueState(sim: Sim): CueState {
     if (cue === undefined) continue;
     const id = cue.id;
     if (cue.sequence) {
-      if (by === "director" && refusedPress(events, n)) continue;
+      if (by === "director" && refusedPress(sim, events, n, name)) continue;
       if (!(seen.has(id) && cue.order < scan.lastOrder)) {
         state.last = id;
         state.lastBy = by;

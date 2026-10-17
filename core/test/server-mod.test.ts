@@ -1039,3 +1039,27 @@ describe("GET /api/mod/log — the whole ledger, paged (T7-03)", () => {
     expect(q("?limit=abc&after=x")).toEqual({ after: -1, limit: MOD_LOG_LIMIT });
   });
 });
+
+describe("the cue sheet across a restart (T7-01 review)", () => {
+  it("a refused press followed by a mod `set` reads the same LAST live and after the journal replays", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-cues-"));
+    dirs.push(d);
+    const show = scenarioSource("trapped-in-the-internet");
+    const make = () => new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "trapped-in-the-internet", scenarioSource: show, joinBase: () => "http://localhost" });
+    const rt = make();
+    const id = await withGuest(rt);
+    const cues = async (r: EventRuntime) => {
+      const { last, fired } = (await get(r, "/api/state?role=mod&cues=1")).json.cues;
+      return { last, fired };
+    };
+    expect((await post(rt, "/api/mod/signal", { name: "call_to_the_desktop" })).status).toBe(200);
+    // Refused with a # hosts line (no vote yet); no snapshot until after the set.
+    expect((await post(rt, "/api/mod/signal", { name: "force_majority_stay" })).status).toBe(200);
+    expect((await post(rt, "/api/mod/set", { id, field: "score", value: 5 })).status).toBe(200);
+    const live = await cues(rt);
+    expect(live).toEqual({ last: "call_to_the_desktop", fired: ["call_to_the_desktop"] });
+    const again = make();
+    expect(again.restore()).not.toBeNull();
+    expect(await cues(again)).toEqual(live);
+  });
+});
