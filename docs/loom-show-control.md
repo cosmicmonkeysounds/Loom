@@ -480,7 +480,7 @@ is in the design spec §2.13):
 | `cue screens_flicker` | a one-shot `effect: blink` + a short WLED lightning playlist, so the power is felt in the house |
 | `sound <name>` (directive `sfx`) | OSC `/cue/<name>/start` to QLab |
 | `do announce "…"` | `show/announce {"text": "…"}` → the `alexa` player (chime + the Mac's `say` voice, one line at a time); `sound announce_chime` → `show/chime` (not QLab). Also the screen state's `announce` → terminals with `announce` on (N-09) |
-| `do door server_room, state: locked\|unlocked` | `show/serverroom/lock {"state": …}` (retained) for the ESP32's indicator ring only, never the real (standalone keypad) lock; the story sends `locked` at Power On and nothing sends `unlocked` since wave 7. `lights_alarm` (only a second wrong patch-bay combo) also sends `show/serverroom/alarm` for its local siren |
+| `do door server_room, state: locked\|unlocked` | `show/serverroom/lock {"state": …}` (retained) for the ESP32's indicator ring only, never the real (standalone keypad) lock; the story sends `locked` at Power On and nothing sends `unlocked` since wave 7. `lights_alarm` (only a second wrong patch-bay combo) also sends `show/serverroom/alarm` for its local siren. The story ends the alarm look itself: when its 120 s latch clears it cues back the look the alarm replaced (`lights_y2k`, + `lights_server_open`, `lights_final_reveal` or `lights_restore`) unless a later cue changed it, and since `lights_server_open` also silences the siren, a majority or The Heart inside the latch holds its server-room look until then |
 
 The `screens_*` / `tv_*` / `terminals_*` / `tablet_*` cues have no
 stagehand rule: the screens read them from the server. Every wall terminal
