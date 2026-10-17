@@ -43,6 +43,19 @@ function atTheBoard(armedNext: Array<boolean | null>): Fake {
 const settle = () => new Promise((r) => setTimeout(r, 0));
 
 describe("a game's end at the King's board", () => {
+  it.each<[ChessResult, string]>([
+    ["lost", "chess lost"],
+    ["drawn", "chess drawn"],
+  ])("%s: the board stays open, %s is posted, nothing closes", async (r, signal) => {
+    const g = atTheBoard([]);
+    g.chessResult(r);
+    await settle();
+    expect(g.phase).toBe("chess");
+    expect(g.signals).toEqual([signal]);
+    expect(g.board).not.toContain(null);
+    expect(g.buzz).toHaveBeenCalledTimes(r === "lost" ? 1 : 0);
+  });
+
   it("a re-deal fetches the badge again: the Y2K hour started while the board was open", async () => {
     const g = atTheBoard([true]);
     g.chessResult("drawn");
@@ -50,5 +63,32 @@ describe("a game's end at the King's board", () => {
     expect(g.armed).toHaveBeenCalledWith("Night.step", 14);
     expect(g.board.at(-1)).toMatchObject({ armed: true, label: "THE KING" });
     expect(g.phase).toBe("chess");
+  });
+
+  it("giving up closes the board and posts nothing", async () => {
+    const g = atTheBoard([]);
+    g.chessResult("abandoned");
+    await settle();
+    expect(g.phase).toBe("playing");
+    expect(g.board).toEqual([null]);
+    expect(g.signals).toEqual([]);
+    expect(g.armed).not.toHaveBeenCalled();
+  });
+
+  it("a result after the board closed is ignored", () => {
+    const g = atTheBoard([]);
+    g.phase = "playing";
+    g.chessResult("lost");
+    expect(g.signals).toEqual([]);
+    expect(g.board).toEqual([]);
+  });
+});
+
+describe("the board after a game's end (ChessWindow)", () => {
+  it("a loss or a draw deals the next board in the same window; checkmate closes it", async () => {
+    const { dealAfter } = await import("../src/chess/ChessWindow.tsx");
+    expect(dealAfter("lost", 0)).toBe(1);
+    expect(dealAfter("drawn", 3)).toBe(4);
+    expect(dealAfter("won", 3)).toBeNull();
   });
 });

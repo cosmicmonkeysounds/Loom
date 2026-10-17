@@ -36,6 +36,13 @@ export const HINT_COOLDOWN_MS = 10_000;
 
 type Status = { kind: "your-move" } | { kind: "thinking" } | { kind: "over"; outcome: Outcome };
 
+/** After a game's end has been shown and reported: the next deal (a new
+ *  board at the same stage, the window still open — a loss or a draw), or
+ *  null when the window closes (checkmate; the host unmounts it). */
+export function dealAfter(o: Outcome, deal: number): number | null {
+  return redeals(o) ? deal + 1 : null;
+}
+
 export function ChessWindow({ stage, label, armed, onResult, onAbandon, onActivity, onMove, rng }: ChessWindowProps) {
   // A loss or a draw deals again: a new game, the same stage.
   const [deal, setDeal] = useState(0);
@@ -65,8 +72,9 @@ export function ChessWindow({ stage, label, armed, onResult, onAbandon, onActivi
     window.setTimeout(() => {
       if (!alive.current) return;
       onResult(o);
-      if (!redeals(o)) return;
-      setDeal((d) => d + 1);
+      const next = dealAfter(o, deal);
+      if (next === null) return;
+      setDeal(next);
       setSelected(null);
       setLastMove(null);
       setHintMove(null);
