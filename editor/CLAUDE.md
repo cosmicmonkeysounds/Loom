@@ -266,7 +266,7 @@ earlier guess; `pickWinner` — a director's pick — clears a value box
 still holding the suggested winner's number and makes the row theirs): `modApi.recap` (`GET /api/mod/recap`) is fetched once
 `Night.ended` is true and on **↻ awards**, a `suggested: X (n) · tied: …`
 hint sits under each row, and **Copy recap** copies `recap.text`. An off-sequence cue (`sequence: false` on the INTERACTION →
-`InteractionSummary.sequence === false`: the duck game, door reed,
+`InteractionSummary.sequence === false`: the duck game, door contact,
 printer, patch bay) gets its ✓ but is never LAST (core skips it) or
 NEXT (`cueRows` suggests the next in-sequence row). Under it, the
 broadcast form's **🔔 Alert** box (`cockpit/broadcast.ts` `alertCue`)

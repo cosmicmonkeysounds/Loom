@@ -17,7 +17,7 @@ verified (OP-04).
 
 | When | Press | On whom |
 |---|---|---|
-| **any time** | **🛡 Send to the Internet** | anyone marked, corrupted, late, caught, or in the server room who shouldn't be |
+| **any time** | **🛡 Send to the Internet** | anyone marked, corrupted, late, caught, or at the patch bay when its alarm trips |
 | **any time** | **✅ Mark as reinstalled** | someone in the Internet whose game won't finish |
 | **any time** | **🩹 Unmark: not going to the Internet** | a marked program a host mis-tapped, or mercy |
 | any time | **👁 Put on the watchlist** | doubt +25 |
@@ -65,10 +65,15 @@ coin early. How it works:
   Undeclared profit in person → **🪙 Charge**.
 
 **Sweeps:** C1 · C2 · ⏳ (scan arrivals) · 🚨 the late list · Trabolta's sweep
-requests · 🚨 server breach · 🗜 zip everyone out.
+requests · 🚨 server-room alarm · 🗜 zip everyone out.
 
-**Server room (if stationed there from 🕚):** the patch-bay card, the door, the
-chess phone, the taped-off gear.
+**Server room (if stationed there from 🕚):** inside with the door shut
+**before 🕚**, then radio **IN** (from 🕚 the first opening plays The Heart,
+whoever opens it; once out, only the house manager lets you back in). The
+patch-bay card, the door, the chess phone, the taped-off gear. The door has a keypad lock: whoever opens it
+with the code belongs inside, so let them in. Only the patch bay alarms (the
+second wrong combination), and then whoever is at the cables goes to the
+Internet. From inside, the handle always opens with no code.
 
 **Your booth:** Scanner · Inbox · **Wallet** (the approvals) · Quest Log ·
 Codex · `# hosts` · `# quarantine` · `# truthcoin-exchange` · the rooms · one
@@ -76,7 +81,7 @@ thread per guest.
 
 **Blackout:** guide people to the living room; the stairs stay lit.
 
-**Radio:** LATE · ALARM · A / B / WRONG · ALL STOP.
+**Radio:** LATE · ALARM · IN · A / B / WRONG · ALL STOP.
 
 ## Who you are
 
@@ -94,8 +99,7 @@ it is dead in a sinkhole, and now they are asking you about that too. Then an
 email from the Prime Minister himself (from webmaster@mapsandducks.com, so it
 could not be FOIPOP'd): tonight's fundraiser is secretly to rebuild the data
 centre; encourage as many Truthcoin transactions as possible and approve or
-deny every one of them. The books only let you hold every third one tonight
-(any other you can still deny inside its first minute). Pass, and the charges
+deny every third one (any other you can still deny inside its first minute). Pass, and the charges
 go away. Tonight the invitation calls you MyCRA. (Your identity entry, *Sharon Penney*, is yours from the
 start. Your two red facts, *The Decimal Point* and *Approve Or Deny*, are
 hidden in the Desktop's books.)

@@ -18,7 +18,7 @@ verified (OP-04).
 
 | When | Press | On whom |
 |---|---|---|
-| **any time** | **🛡 Send to the Internet** | anyone marked, corrupted, late, caught, or in the server room who shouldn't be |
+| **any time** | **🛡 Send to the Internet** | anyone marked, corrupted, late, caught, or at the patch bay when its alarm trips |
 | **any time** | **✅ Mark as reinstalled** | someone in the Internet whose game won't finish |
 | **any time** | **🩹 Unmark: not going to the Internet** | a marked program a host mis-tapped, or mercy |
 | any time | **👁 Put on the watchlist** | doubt +25 |
@@ -55,7 +55,7 @@ grant one program coin from the reserve (three a night) or freeze one
 program's coin for ten minutes (they can't pay you until it thaws).
 
 **Sweeps:** C1 · C2 · ⏳ (scan arrivals) · 🚨 the late list · Trabolta's sweep
-requests · 🚨 server breach · 🗜 zip everyone out.
+requests · 🚨 server-room alarm · 🗜 zip everyone out.
 
 **Your booth:** Scanner · Inbox · Quest Log · Codex · `# hosts` ·
 `# quarantine` · `# truthcoin-exchange` · the rooms · one thread per guest.
@@ -99,8 +99,9 @@ where your money is.
 - **📥 → ⏳ (the hour):** broker the exchange. Be where the trading is.
 - **⏳ → 🚨:** scan arrivals; then the late list.
 - **🗜:** zip everyone out of the Internet (the tent, or the shed on a rain night).
-- **Y2K on:** police the server room (see the patch-bay card if you are
-  stationed there).
+- **Y2K on:** police the server room's patch bay (see the patch-bay card if
+  you are stationed there). Whoever opens the keypad door with the code
+  belongs inside; only a second wrong combination trips the alarm.
 
 ## Props
 

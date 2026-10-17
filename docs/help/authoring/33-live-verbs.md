@@ -349,7 +349,10 @@ simulation, guarding the server-room door on the house map — posts
 `chess won` himself when a program checkmates him on the tent tablet;
 until he is device-checked a chess phone on the wall is the fallback,
 a host who sees the mate presses a button on the winner's card, and a
-dead tablet means the director fires `chess won` from the cue sheet:
+dead tablet means the director fires `chess won` from the cue sheet,
+naming the winner. The prize is knowledge — the code to the real
+server-room door's keypad, a secret codex entry — so the rule needs a
+recipient:
 
 ```loom
 INTERACTION beat the machine
@@ -357,27 +360,32 @@ INTERACTION beat the machine
   who: performer
 
 INTERACTION chess won
-  label: ♟ Cold Lock: they beat the King (fallback)
+  label: ♟ They beat the King: the door code (fallback)
   who: admin
   sequence: false
 
 when beat the machine for program:
   fire chess won for program
 
-when chess won:
-  set Kernel.disarmed_until = Time.elapsed + 90
-  do door server_room, state: unlocked
-  broadcast "♟ The server-room door is open for 90 seconds." to channel(hosts)
-
-when Kernel.disarmed_until > 0 and Time.elapsed >= Kernel.disarmed_until:
-  set Kernel.disarmed_until = 0
-  do door server_room, state: locked
+when chess won for program:
+  if program.name == null:
+    broadcast "♟ A win with no winner named: press ♟ on the winner's card." to channel(hosts)
+  else if program.codex.the_door_code == true:
+    broadcast "♟ {program.name} already has the door code: nothing changed." to channel(hosts)
+  else:
+    unlock The Door Code for program
+    broadcast "♟ {program.name} beat the King: the door code is in their Codex." to channel(hosts)
 ```
 
-A device that can report (the tent tablet, a sensor through the
-show-control bridge) fires the same names — `chess won`, `chess lost`,
-`chess drawn` — and the story treats them alike. Write the rule so a
-duplicate is harmless (it re-sets the same window). Give the director a
+Because the rule's head names a subject (`for program`), the cue sheet
+and the director's phone ask **who?** before firing it. A device that
+can report (the tent tablet, a sensor through the show-control bridge)
+fires the same names — `chess won`, `chess lost`, `chess drawn` — and
+the story treats them alike. Write the rule so a duplicate is harmless
+(here a second win changes nothing but a note), and never let a machine
+drive something a person relies on for safety: the real door's lock is
+standalone, and the story only hears that it opened
+(`server_door_opened`). Give the director a
 manual button for anything a crowd decides too — the show's *Force the
 majority* cues settle a vote ghosts would otherwise block, once.
 A story with a [currency](currency.md) hears its wallet the same way:

@@ -28,6 +28,12 @@ performer whose phone died (the director releases the part).
 
 **Charging station:** [[EDIT: where]]. Keep it tidy; label what's charging.
 
+**The server-room keypad lock.** It locks from the outside only; the inside
+handle always opens with no code. You carry its **override key** and its
+spare batteries all night. A dead battery or a jam: open it with the key,
+prop the door, and radio the director (who fires 🚪 if the cutscene hasn't
+played). Never say the code on the radio.
+
 **Blackout (Combo A or B) and ALL STOP: you lead.**
 
 1. Headlamp on. Lights out for 10 s, then the dance.
@@ -57,7 +63,7 @@ backyard down, and let John know.
 | Time | You |
 |---|---|
 | 17:00 | Call with the performers. Charging station live; loaners charged. |
-| 18:00 | Pre-show safety re-check: egress clear, glow tape, the emergency card posted, the server door opens freely, nothing flammable near a heater or PSU. |
+| 18:00 | Pre-show safety re-check: egress clear, glow tape, the emergency card posted, the server door opens from inside with the handle and no code (try it), the override key on you, nothing flammable near a heater or PSU. |
 | 19:00 | Briefing. |
 | 20:00–20:30 | Float: help Recycling Bin at the door. |
 | ≈ 20:30 → end | The door + everything above. |

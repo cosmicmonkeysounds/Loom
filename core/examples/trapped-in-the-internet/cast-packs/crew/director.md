@@ -80,7 +80,11 @@ never from a guest card.
 | stale Bathroom Mode | Run → World → that guest's `afk` = false (at each summons) |
 | ghosts block the majority at Y2K | **🗳 Force the majority** (stay / leave) |
 | a faction leader absent or stuck | **🧾** Let a faction win without its leader's task |
-| dead chess phone | **♟** Cold Lock: they beat the King (fallback); the tent tablet's King reports its own wins *by Tent tablet* |
+| dead chess phone | **♟** They beat the King: the door code (fallback), **naming the winner** (with nobody named it only reminds `# hosts`); the tent tablet's King reports its own wins *by Tent tablet* |
+| the server-room door opened and nothing happened | **🚪** Server room door opened (the contact's fallback): from the Y2K hour the first one plays The Heart |
+| a wrong patch the crew forgave, or after a rehearsal | **🔄** Server room: reset the patch-bay alarm (clears the wrong-combination count, the alarm latch and The Heart) |
+| `# hosts`: "🕊 Trabolta offers to stand down for X" | your call: **🕊** Trabolta stands down (talked down) ends the night the Combo A way, without a cable |
+| a dead keypad battery or a jammed lock | the house manager's override key; prop the door; fire **🚪** if the cutscene has not played (W-35) |
 | dead patch bay | the server-room Antivirus radios A / B / WRONG → 🔌 / 💥 / ❌ |
 | lost guest / new phone | Inspector → **re-pair QR** (never re-register) |
 | late arrival after C1 | Inspector → **scan as Norton** (clears them) |
@@ -155,7 +159,9 @@ content lock for the printed stacks is 10-24 12:00.
    showing the screensaver, **clicked once after its last boot**.
 6. Lights: Z2M + WLED up; screensaver look on; one blackout test (stairs,
    bathroom, tent, server room, the path stay lit; the Tube strip dim).
-7. Server-room door sensor reads open/closed; the patch bay is all unplugged.
+7. Server-room door: the contact reads open/closed; the keypad opens from
+   outside with the story's code (`facts.json` `door.code`, tested at 15:00);
+   the patch bay is all unplugged; the server-room terminal is green and asleep.
 8. Audio: one test cue per zone through the MOTU at show level; the house-announcement test.
 9. Push: the staff test alert arrived on every performer phone.
 10. Tent: tablet charged on `/reinstall/` (provisioned as `Tent tablet`, so
@@ -169,7 +175,8 @@ content lock for the printed stacks is 10-24 12:00.
 13. Judging card on Run → Mind reads `auto`, nothing pending; `facts.json`
     is the one synced with the story (`titi:facts --check` green).
 14. Safety: first aid + extinguisher placed, egress clear, glow tape, GFCIs
-    tested, no strobe > 3 Hz, the server door opens freely, gear taped off, the
+    tested, no strobe > 3 Hz, the server door opens from inside with the handle
+    and no code (nothing in the YAML drives a lock), gear taped off, the
     emergency card at the door.
 15. 2–3 loaner phones charged; the guest charging station live; power banks
     for every performer; radios charged with earpieces.

@@ -88,11 +88,12 @@ peeking, not a failed cue: don't re-fire it. An overlay (blackout, *go
 to the living room*, the alarm) still covers everything. The TV and
 mirrors never peek.
 
-**A character the story lacks.** A tablet set up before the doors keeps
-the typed character (nothing to check it against yet). Once the doors
-open, a name the story doesn't have (`Trabolt`) sends the tablet to setup
-with *The story has no character called …* and the cast: fix the
-character field and save.
+**A character the story lacks.** Since wave 7 a mod code knows the
+story's cast before the doors open, so ⚙ refuses a name the story doesn't
+have (`Trabolt`) at setup, with *The story has no character called …* and
+the cast: fix the character field and save. Only a tablet set up with no
+story loaded keeps the typed name; once the doors open it is sent back to
+setup with the same message.
 
 **Speaker tablets.** Media volume up, then lock it with Fully's *Volume
 Limits* if the version has it. Set the volume before the party, not after.
@@ -206,8 +207,9 @@ house map's `server-room` spot is on the room's south wall, facing in
   simulation.
 - **`room=The Server Room`** makes it a *room terminal*: it **sleeps**
   (the screensaver, no scanner) until the story opens The Server Room to
-  everyone — the door cutscene's `reveal The Server Room` (a per-program
-  reveal doesn't count). It wakes on the poll that carries the cutscene,
+  everyone — the door cutscene's `reveal The Server Room`, or the
+  patch-bay alarm's (a per-program reveal, like the majority's, doesn't
+  count). It wakes on the poll that carries the cutscene,
   and speaks every Trabolta line said in that room, captioned, in its own
   voice; the scanner pauses (**LISTEN**) while he speaks.
 - It shows **no story slides and no countdown corner** (not even the Y2K
@@ -220,7 +222,13 @@ house map's `server-room` spot is on the room's south wall, facing in
   `Terminal · Server Room` in the log); `terminal closed` when the line
   ends — the 30 s leash, DISCONNECT, an overlay, a restart, or the page
   going away. Best-effort: a lost signal never holds up the line. The
-  story uses them for `program.at_the_heart`.
+  story uses them for `program.at_the_heart`, which makes Trabolta candid
+  with that program from the Y2K hour and is the only place he can offer
+  to stand down (🕊 in `# hosts`; Help → *Running the server room*). A
+  visit a crash or reload left open is closed on the tablet's next boot,
+  and a close the Wi-Fi lost is sent again before the next line opens
+  (or on the next boot). The next pass scanned at the server-room
+  terminal takes over his heart whatever happened to the last close.
 - Its corner reads *the story has no room called …* if `room=` is
   misspelled: the terminal then sleeps all night. Fix it in ⚙ (hold 2 s)
   → *the room it belongs to*.

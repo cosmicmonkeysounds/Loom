@@ -79,8 +79,9 @@ nothing in stagehand or on this box drives the lock.
 
 **Safety:** the lock must be single-cylinder with a mechanical inside lever
 or thumb-turn: the **inside handle always opens, with no code**, batteries in
-or out. No inside keypad, never double-cylinder, never fail-secure. The
-override key stays with the house manager. Fit the wire loops so they never
+or out. No inside keypad, never double-cylinder. Egress never depends on
+power; the outside may stay locked on a dead battery (a standalone keypad
+deadbolt does), so the override key stays with the house manager. Fit the wire loops so they never
 hold the latch or the door shut.
 
 **The contact**: two loops of wire / copper tape on GPIO19 that **touch when

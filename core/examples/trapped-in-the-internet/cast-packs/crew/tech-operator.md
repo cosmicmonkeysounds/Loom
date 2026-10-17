@@ -94,8 +94,8 @@ the look yourself. [[EDIT: fill the preset numbers / scene names after the
 | `lights_trust_chart` (📊) | [[EDIT]] | `printer_grind` (🖨) |
 | `lights_y2k` (🕚) | [[EDIT]] | `y2k_chime` (+ each clock warning) |
 | (🗜 zip everyone out) | — | `zip` |
-| `lights_server_open` (majority / chess) | [[EDIT]] | — |
-| `lights_alarm` (breach) | [[EDIT]] | `alarm_siren` |
+| `lights_server_open` (majority; The Heart, the first door opening from 🕚) | [[EDIT]] | — |
+| `lights_alarm` (the patch-bay alarm: a second wrong combination) | [[EDIT]] | `alarm_siren` |
 | `lights_blackout` → +10 s `lights_dance` (Combo A/B) | blackout (safety bulbs stay on) → dance | `dance_song` (+ `windows_shutdown` on B) |
 | `lights_final_reveal` (🌑) | [[EDIT]] | — |
 | `lights_song` / `lights_rave` / `lights_purgatory` / `lights_banish` | [[EDIT]] | the ending's track |
@@ -106,7 +106,8 @@ terminal, or read them over the radio to the room.
 
 ## Before the night
 
-- [ ] Bench Thu 10-22 with John: the reed, the bay, the lights, the blackout
+- [ ] Bench Thu 10-22 with John: the door contact (wire loops that touch when
+      the door opens), the keypad lock (code + egress), the bay, the lights, the blackout
       test (stopwatch every flashing preset ≤ 3 Hz).
 - [ ] Tech run 10-28, dress 10-29 (incl. the shed switch in < 15 min).
 - [ ] Your device has the mod code and the map page (`/reinstall/map`) provisioned

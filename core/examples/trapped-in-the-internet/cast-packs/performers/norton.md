@@ -16,12 +16,12 @@ under the QR. Not uploaded yet → "Not yet. Finish your upload." Use an
 
 | When | Press | On whom |
 |---|---|---|
-| **any time** | **🛡 Send to the Internet** | anyone marked, corrupted, late, caught, or in the server room who shouldn't be |
+| **any time** | **🛡 Send to the Internet** | anyone marked, corrupted, late, caught, or at the patch bay when its alarm trips |
 | **any time** | **✅ Mark as reinstalled** | someone in the Internet whose game won't finish |
 | **any time** | **🩹 Unmark: not going to the Internet** | a marked program a host mis-tapped, or mercy |
 | any time | **👁 Put on the watchlist** | someone suspicious (doubt +25) |
 | the summons (⏳ → 🚨) | scan every arrival at the living-room door = their **check-in**, or **📍 Checked in at the Desktop** | |
-| Y2K on | **♟ They beat the machine** | only after you **saw** "checkmate" on the chess phone (the King on the tent tablet reports its own wins) |
+| Y2K on | **♟ They beat the machine** | only after you **saw** "checkmate" on the chess phone: it gives them the door code (the King on the tent tablet reports its own wins) |
 
 **The escort list.** The hosts never send anyone to the Internet: they
 **mark** a program (🎯 named on the Bingo card, 🤷 a guess, 🙅 a refused
@@ -51,7 +51,7 @@ named? 🛡 each.) The quest completes with the first reinstallation.
 **Sweeps:** C1 (everyone to the Desktop) · C2 (back from hunt 1) · ⏳ (the
 summons: scan arrivals) · 🚨 the late list (*⏰ X is late… Go get them*: they
 are marked; find them, 🛡) · Trabolta's sweep requests (*🛡 Trabolta requests a
-sweep of…*) · 🚨 server breach · 🗜 zip everyone out of the Internet (the tent, or the shed on a rain night).
+sweep of…*) · 🚨 server-room alarm · 🗜 zip everyone out of the Internet (the tent, or the shed on a rain night).
 
 **Bathroom Mode excuses a guest from a summons.** Your booth shows who is in it.
 
@@ -103,8 +103,9 @@ are out of date. So are mine."*
   late list.
 - **🗜:** bring everyone out of the Internet (the tent, or the shed on a rain night) and zip them up.
 - **Y2K → the end:** see the patch-bay card if you are the one stationed in
-  the server room. Anyone inside a locked server room, or not in the winning
-  faction after the unlock, goes to the Internet.
+  the server room. The door has a keypad lock: anyone who opens it with the
+  code belongs inside. Only the patch bay alarms (the second wrong
+  combination); whoever is at the cables then goes to the Internet.
 - **If Trabolta thwarted gets everyone banished:** you are banished too. Go to
   the Internet; then everyone does the hand jive together.
 

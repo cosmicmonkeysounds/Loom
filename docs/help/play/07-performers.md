@@ -53,7 +53,7 @@ through is still there when you wake it.
 
 On an Android phone, tap **🔔 Get alerts → Turn on** (or **☰ → Get
 alerts on this phone**) and allow notifications: house-wide alerts and
-alerts pinned in a staff room, the door alarm, the late list and a
+alerts pinned in a staff room, the server-room (patch-bay) alarm, the late list and a
 transfer waiting for your approval then reach you as notifications
 even with the phone locked in your pocket; tapping one opens where it
 landed (a readout opens your Scanner). An alert the story sends to

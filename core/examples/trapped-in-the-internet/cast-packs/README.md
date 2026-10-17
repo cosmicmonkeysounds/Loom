@@ -69,6 +69,17 @@ addresses, codes, where things are kept).
   Logs in their booths; the Installation Wizard (Julia) is a voice, the tent
   is in the backyard through the tunnel; the King guards the server-room
   door on the tent tablet. Every pack below is written to that.
+- **Wave 7 (2026-10-17), not yet deployed:** the server-room door has a real,
+  standalone **keypad lock** (outside only; the inside handle always opens
+  with no code; nothing in the show can lock or unlock it). A program gets
+  the code by checkmating the King from the Y2K hour, by solving the riddle
+  on the sign by the keypad, or with the winning majority. Opening the door
+  is a clean entry, whoever does it: the door never alarms. The first opening
+  from the Y2K hour plays **The Heart** (Trabolta speaks candidly from the
+  server-room terminal on the wall, where a program can talk him down: 🕊).
+  Only the patch bay alarms, on the **second** wrong combination. CRA
+  approves or denies every third transaction (C16), everywhere. The code is
+  never written on a card or said on the radio.
 
 ## Rules every sheet keeps
 
@@ -77,7 +88,9 @@ addresses, codes, where things are kept).
   speaks for themselves in person and in chat.
 - **Secrets are need-to-know.** The answer key lives in `facts.json`; it is
   printed on Clippy's, Adobe's and the second director's packs only. The patch-bay
-  combos are on the patch-bay card and the director's card only. A featured
+  combos are on the patch-bay card and the director's card only. The door
+  code is in `facts.json` (`door.code`) and on the keypad, never on a card;
+  the tech op and the house manager know it. A featured
   sheet holds only its own secret.
 - Buttons that do nothing out of phase are normal (W-05). Only the un-phased
   buttons work any time: 🛡 **Send to the Internet**, ✅ **Mark as

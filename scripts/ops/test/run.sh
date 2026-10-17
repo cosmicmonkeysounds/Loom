@@ -185,12 +185,14 @@ rmdir -p "$ROOT/reinstall/vr/build/stage/config" 2>/dev/null || true
 teardown
 
 echo "── checklist"
-check "prints the 18 pre-show boxes" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' | grep -c '^\[ \]') -eq 18 ]"
+check "prints the 19 pre-show boxes" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' | grep -c '^\[ \]') -eq 19 ]"
 printed="$(bash "$ROOT/scripts/ops/checklist.sh")"
-# The morning-of reset covers waves 4–6 (facts + judge + wallet, the wave 5
-# knobs, the orchestrator context / terminal names / rain-night clues).
+# The morning-of reset covers waves 4–7 (facts + judge + wallet, the wave 5
+# knobs, the orchestrator context / terminal names / rain-night clues, the
+# keypad lock's code + egress and the server-room terminal).
 for want in 'titi:facts --check' 'Judging card reads auto' 'Wallet room' '# quarantine is empty' \
-            'LOOM_SNAPSHOT_MS' 'LOOM_HOMESCREEN' 'ctx 20480' 'names Trabolta' 'The Optical Drive'; do
+            'LOOM_SNAPSHOT_MS' 'LOOM_HOMESCREEN' 'ctx 20480' 'names Trabolta' 'The Optical Drive' \
+            'facts.json door.code' 'opens from inside with no code' 'server-room terminal' 'CHECKMATE-CODE'; do
   check "checklist prints: $want" grep -qF -- "$want" <<<"$printed"
 done
 check "checklist strips markdown" bash -c "! grep -q '[*\`]' <<<\"\$1\"" _ "$printed"
