@@ -236,8 +236,30 @@ export function pickCharacter(typed: string | null, characters: readonly string[
   if (typed === null || typed.trim() === "") return characters.includes(DEFAULT_CHARACTER) ? DEFAULT_CHARACTER : (characters[0] ?? DEFAULT_CHARACTER);
   if (characters.length === 0) return typed.trim();
   const found = canonicalCharacter(typed.trim(), characters);
-  if (found === null) throw new Error(`The story has no character called "${typed.trim()}" (it has: ${characters.join(", ")}).`);
+  if (found === null) throw new Error(characterProblem(typed.trim(), characters) ?? "");
   return found;
+}
+
+/** What is wrong with a terminal's character against the story's cast, or
+ *  null when nothing is (the story has it, or no cast to check: the doors
+ *  aren't open). */
+export function characterProblem(configured: string, characters: readonly string[]): string | null {
+  if (characters.length === 0 || canonicalCharacter(configured.trim(), characters) !== null) return null;
+  return `The story has no character called "${configured.trim()}" (it has: ${characters.join(", ")}).`;
+}
+
+/**
+ * When the running story should be asked whether this terminal's character
+ * exists (B19): the screen state answers but names no character for it —
+ * either the doors aren't open (no story yet: the cast comes back empty) or
+ * the name is one the story lacks (a typo provisioned before the doors, when
+ * the server could not check it). One check per event × character × sim
+ * (`announceEpoch` changes when the doors open or the story restarts), so the
+ * key is what the caller dedupes on; null = nothing to check.
+ */
+export function castCheckKey(c: Pick<TerminalConfig, "eventId" | "character">, state: { character: unknown; announceEpoch: string | null } | null): string | null {
+  if (state === null || state.character !== null || c.character.trim() === "") return null;
+  return `${c.eventId}|${c.character}|${state.announceEpoch ?? ""}`;
 }
 
 /** The character a ⚙ save (no passcode) stores. An unchanged field keeps

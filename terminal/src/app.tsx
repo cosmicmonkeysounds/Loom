@@ -41,7 +41,7 @@
 
 import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Composer, Thread } from "./chat.tsx";
-import { DEFAULT_TV_ROOM, adoptCharacter, baseOf, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, savedCharacter, tvRoomOf, withoutSecrets, type TerminalConfig, type TerminalView } from "./config.ts";
+import { DEFAULT_TV_ROOM, adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, savedCharacter, tvRoomOf, withoutSecrets, type TerminalConfig, type TerminalView } from "./config.ts";
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import { useIdleTimeout } from "./idle.ts";
@@ -137,6 +137,34 @@ export function App() {
     saveConfig(next);
     setConfig(next);
   }, [config, screenState.state]);
+
+  // The screen state names no character for this terminal although it asked
+  // for one: before the doors that is only "no story yet", after them it is
+  // a name the story lacks (provisioned before the doors, unchecked). Ask the
+  // cast once per sim; a name the story lacks sends the terminal to setup
+  // with the error rather than piloting guests into a `dm:<typo>` thread no
+  // agent hears (B19).
+  const castKey = config === null ? null : castCheckKey(config, screenState.state);
+  const [castProblem, setCastProblem] = useState<{ key: string; problem: string } | null>(null);
+  const castAsked = useRef<string | null>(null);
+  useEffect(() => {
+    if (config === null || castKey === null || castAsked.current === castKey) return;
+    castAsked.current = castKey;
+    // Kept with its key: an answer for an older key never counts.
+    void fetchCharacters(config)
+      .then((cast) => {
+        const problem = characterProblem(config.character, cast);
+        setCastProblem(problem === null ? null : { key: castKey, problem });
+      })
+      .catch(() => {
+        if (castAsked.current === castKey) castAsked.current = null; // ask again on a later poll
+      });
+  }, [config, castKey, screenState.state]);
+  const badCharacter = castProblem !== null && castProblem.key === castKey ? castProblem.problem : null;
+  useEffect(() => {
+    if (badCharacter === null || screen.kind === "setup" || screen.kind === "piloting") return;
+    setScreen({ kind: "setup", notice: `${badCharacter} Set this terminal's character.` });
+  }, [badCharacter, screen.kind]);
 
   // The poll's event is gone (ended; a new one launched): back to setup, the
   // config kept so its name / character / spot carry over — like `onGone`.
