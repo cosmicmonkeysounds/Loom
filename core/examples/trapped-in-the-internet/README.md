@@ -304,6 +304,18 @@ also lands in Clippy's booth as a codex entry (`Clippy Instructions 1` …
 `9`, under *What Clippy knows*). Steps marked *auto* fire on their own from
 a story timer, and the button is the manual fallback.
 
+**NEXT** is the first cue after LAST that has not fired and is on tonight's
+branch. From 🏍 on, each cue's `while:` names its branch (🏍 after Combo A
+or a talk-down, 🪦 after Combo B, 🌑 → ⚖ while nothing has ended, 💔 / 💌
+in Grok Prom, the advice cues during the poll, 🕺 while banished, G1 after
+an ending), so after 🕚 the sheet suggests 🌑, after the dance the ending's
+own cue, and after the song G1. A `while:` never stops a press: every rule
+still checks for itself. 📋 and 🗜 are `repeat: true`: they stay NEXT while
+you press them again (per question, per trip). The anytime and fallback
+cues (🍾, the set pieces, 🎆, 🧾, 🔄, ♟, 🕊, 🗳, the hardware fallbacks, 🪩,
+💡) are off-sequence: they tick when they fire but never become LAST or
+NEXT.
+
 Every performer hook ignores a press outside its phase, except **🛡 Send to
 the Internet** and **✅ Mark as reinstalled**, which work on any program at
 any time (a second 🛡 on a program already in the Internet only says so).
@@ -329,8 +341,15 @@ they are).
 
 **Mis-taps are cheap.** Phase cues play once: a second press of a cue that
 has already run (Call to the Desktop, Bingo, Bingo time, the First Moment of
-Truth, Truth Pong, the tally, the rankings, the printer) does nothing. A
-judge's double tap of the same ✅/😤 on the same program credits once, and a
+Truth, Truth Pong, the tally, the rankings, the printer) does nothing. Every
+phase-guarded admin cue pressed out of turn does nothing but post a line to
+`# hosts` saying why (*"🤖 Too early: Clippy introduces Trabolta after the
+Bingo results…"*, *"⚖ Not yet: 🍎 Bobbing for Truth, then 📄 truth.txt
+first."*). A refused press never becomes LAST and never ticks, and a repeat
+of an earlier cue never moves LAST back; the director phone says *"Not taken
+— X doesn't apply right now (# hosts says why)"*. The hardware fallbacks (🖨,
+🫘, 🔌 / 💥 / ❌) stay silent when pressed early: they share their signal with
+the hardware. A judge's double tap of the same ✅/😤 on the same program credits once, and a
 program in the Internet cannot have an answer accepted.
 
 **Front of house fixes** (Run, server events only): a guest whose phone
