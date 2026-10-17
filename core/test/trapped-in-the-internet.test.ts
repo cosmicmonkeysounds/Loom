@@ -72,6 +72,8 @@ const texts = (evs: SimEvent[]) => [
   ...casts(evs).map((e) => `!${e.cue}`),
 ];
 const aud = (e: { audience: readonly string[] }) => JSON.stringify(e.audience);
+/** Everything but the crew's # hosts notes (a refused cue tells only them, T1-02). */
+const offstage = (evs: SimEvent[]) => texts(evs.filter((e) => !(e.type === "broadcast" && e.scope === "channel(hosts)")));
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const worldKeys = (sim: Sim) => [...((sim.world as any).values as Map<string, unknown>).keys()];
 
@@ -634,11 +636,12 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(cd.some((e: any) => e.type === "revealed" && e.target === "room:task manager")).toBe(false);
     expect(replies(cd).filter((r) => r.text.includes("Patrol the whole computer"))).toHaveLength(4);
 
-    // too early: introduce_trabolta before bingo_time does nothing
+    // too early: introduce_trabolta before bingo_time does nothing (T1-02: # hosts hears why)
     const early = sim.signal("introduce_trabolta");
     expect(v(sim, "Trabolta.awake")).toBe(false);
     expect(sim.isRevealedTo("Trabolta", "g1")).toBe(false);
-    expect(texts(early).some((t) => t.includes("Trabolta"))).toBe(false);
+    expect(offstage(early).some((t) => t.includes("Trabolta"))).toBe(false);
+    expect(casts(early).map((b) => b.cue)).toEqual(['"🤖 Too early: Clippy introduces Trabolta after the Bingo results (V3 ⏰). He stays offline."']);
 
     const sb = sim.signal("start_the_bingo");
     expect(casts(sb).some((b) => b.cue.includes("COMPUTER BINGO has begun"))).toBe(true);
@@ -4585,14 +4588,16 @@ describe("Trapped in the Internet — wave 5 (lane B): the takeover, the resurre
     expect(sim.isRestricted("g1")).toBe(true);
     fire(sim, "send to the internet", "g2", null, "Norton Anti-Virus");
     expect(sim.isCaptured("g2")).toBe(true);
-    // Mid-show: nothing.
-    expect(texts(fire(sim, "resurrection"))).toEqual([]);
+    // Mid-show: nothing (# hosts hears why).
+    const mid = fire(sim, "resurrection");
+    expect(offstage(mid)).toEqual([]);
+    expect(casts(mid).map((b) => b.scope)).toEqual(["channel(hosts)"]);
     expect(v(sim, "Night.resurrected")).toBe(false);
 
     fire(sim, "computer_destroyed"); // destroyed frees nobody
     // Ended, but no ceremony yet (G1 unpressed): still nothing, so Trabolta
     // keeps hosting the awards.
-    expect(texts(fire(sim, "resurrection"))).toEqual([]);
+    expect(offstage(fire(sim, "resurrection"))).toEqual([]);
     expect(v(sim, "Night.resurrected")).toBe(false);
     expect(sim.isRestricted("g1")).toBe(true);
     fire(sim, "start_the_ceremony");
@@ -4618,7 +4623,7 @@ describe("Trapped in the Internet — wave 5 (lane B): the takeover, the resurre
     expect(cast).toEqual(["!🎃 The show is over: you are human again. Hang out, out of character."]);
     expect(composeGuestMessages(sim, r).some((m) => m.alert === true && m.text.startsWith("🎃 The show is over"))).toBe(true);
     // Once.
-    expect(texts(fire(sim, "resurrection"))).toEqual([]);
+    expect(offstage(fire(sim, "resurrection"))).toEqual([]);
     // Power On re-arms it.
     sim.fireBeat("Power On");
     expect(v(sim, "Night.resurrected")).toBe(false);
@@ -5225,6 +5230,51 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     toBobbing(early);
     expect(beats(fire(early, "the_verdict"))).toEqual([]);
     expect(v(early, "Night.phase")).toBe("bobbing");
+  });
+
+  it("T1-02 / T2-10: a refused admin cue tells # hosts why and does nothing else; the night's own run hears no refusal", { timeout: SLOW }, () => {
+    const refused = (sim: Sim, cue: string, note: string) => {
+      const e = fire(sim, cue);
+      expect(beats(e), cue).toEqual([]);
+      expect(offstage(e), cue).toEqual([]);
+      expect(casts(e).map((b) => b.cue), cue).toEqual([`"${note}"`]);
+    };
+    const sim = boot();
+    // A clean run through the Y2K hour, auto cues included, refuses nothing.
+    const run = [...toTruth1(sim)];
+    toHunt2(sim);
+    // The hour runs out on its own: the Truther Download, the warning and the close are auto.
+    run.push(...advance(sim, 3600), ...fireAll(sim, "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "printer_opened", "trabolta_overshares", "y2k_clock"));
+    expect(v(sim, "Night.step")).toBe(14);
+    expect(hostsSaid(run).filter((h) => h.includes("Nothing happens"))).toEqual([]);
+    refused(sim, "call_to_the_desktop", "📣 Not again: the Desktop call has already played. Nothing happens.");
+    refused(sim, "introduce_trabolta", "🤖 Trabolta is already online. Nothing happens.");
+    refused(sim, "trabolta_recounts", "🏍 Only after Combo A or a talk-down, once. Nothing happens.");
+    refused(sim, "the_verdict", "⚖ Not now: the verdict is already in, or the night has ended. Nothing happens.");
+    refused(sim, "start_the_ceremony", "🏆 No ceremony yet: the night has not ended. Nothing happens.");
+    const early = boot();
+    fire(early, "call_to_the_desktop");
+    refused(early, "first_moment_of_truth", "⚖️ Too early: the First Moment of Truth follows hunt 1 (🔎). Nothing happens.");
+    refused(early, "y2k_midnight", "🎆 No midnight: it needs the Y2K hour, before any ending. Nothing happens.");
+    expect(v(early, "Night.step")).toBe(1);
+    // 📄 twice, ⚖ before 📄.
+    const bob = boot();
+    toBobbing(bob);
+    refused(bob, "the_verdict", "⚖ Not yet: 📄 Read truth.txt first. Nothing happens.");
+    fire(bob, "read_truth_txt");
+    const gen = v(bob, "Night.settle_gen");
+    refused(bob, "read_truth_txt", "📄 Already read: press ⚖ for the verdict when the bobber has finished. Nothing happens.");
+    expect(v(bob, "Night.settle_gen")).toBe(gen);
+    // T2-10: G1 while banished says why (banished is not an ending).
+    const ban = boot();
+    toBobbing(ban, { lie: true });
+    truthTxt(ban);
+    fireAll(ban, "ask_for_advice", "advice_thwarted");
+    refused(ban, "start_the_ceremony", "🏆 No ceremony yet: banished is not an ending (🕺 the hand jive first). Nothing happens.");
+    expect(v(ban, "Night.ceremony")).toBe(false);
+    fire(ban, "the_hand_jive");
+    expect(beats(fire(ban, "start_the_ceremony"))).toContain("The Ceremony");
+    refused(ban, "start_the_ceremony", "🏆 The ceremony has already started. Nothing happens.");
   });
 
   it("T1-03: the song after a pickup line never says every fact was true", { timeout: SLOW }, () => {
