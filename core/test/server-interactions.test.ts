@@ -541,6 +541,28 @@ Narrator: The gate.
     // …and still raises no request of its own.
     expect(requests()).toHaveLength(1);
   });
+
+  it("a booth posts only where its UI has a composer: never a pinned room, another DM, a guest thread or an unknown room (T4-02)", async () => {
+    const { rt } = boothRuntime();
+    rt.openDoors();
+    const keeper = (await post(rt, "/api/prime/login", { character: "The Gatekeeper", passcode: CODES.prime })).json.token as string;
+    const a = await guest(rt, "Ada");
+    const b = await guest(rt, "Bea");
+    const say = (channel: string) => post(rt, "/api/prime/say", { token: keeper, channel, text: "hello" });
+    for (const channel of ["dm:Ivo Marsh", "dm:Trabolta", "dm:The Gatekeeper", Sim.pmChannel(a.id, b.id), "codex", "quests", "wallet"]) {
+      expect([channel, (await say(channel)).status]).toEqual([channel, 403]);
+    }
+    expect((await say("faction:Nobody")).status).toBe(404);
+    expect((await say("loc:Nowhere")).status).toBe(404);
+    expect((await say("lobby")).status).toBe(200);
+    expect((await say("loc:Gate")).status).toBe(200);
+    expect((await say(`guest:${a.id}`)).status).toBe(200);
+    expect((await say("cast:Trabolta")).status).toBe(200);
+    // Nothing refused reached a guest's stream (and Ada isn't standing at
+    // the Gate, so that room's typed line isn't hers).
+    const seen = history(await get(rt, `/events?role=guest&token=${encodeURIComponent(a.token)}`)).filter((m) => m.text === "hello");
+    expect(seen.map((m) => m.channel).sort()).toEqual(["dm:The Gatekeeper", "lobby"]);
+  });
 });
 
 describe("restricted guests (wave 4, lane E)", () => {

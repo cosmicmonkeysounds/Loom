@@ -3691,6 +3691,19 @@ export class EventRuntime {
           }
           channel = `dm:${target}`;
           audience = [`@${character}`];
+        } else if (channel !== "lobby") {
+          // A booth posts where its UI gives it a composer: the lobby, the
+          // rooms it runs (every location + authored room) and the two
+          // mapped threads above — never a pinned room, another
+          // character's DM or a guest↔guest thread.
+          if (isPinnedRoom(channel) || channel.startsWith("dm:") || channel.startsWith("pm:")) {
+            sendJson(res, 403, { error: "a booth can't post there" });
+            return true;
+          }
+          if (!this.sim!.allChannelsFor(character).some((c) => c.id === channel)) {
+            sendJson(res, 404, { error: "unknown room" });
+            return true;
+          }
         }
         const parentSeq = this.sim!.threadableOf(channel) && body["parentSeq"] != null ? Number(body["parentSeq"]) : null;
         this.fanout(this.commit("say", character, channel, text, parentSeq, audience));
