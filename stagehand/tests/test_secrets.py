@@ -402,15 +402,16 @@ def test_leaks_catches_the_code_and_every_spelling_of_a_pair():
 def test_leaks_catches_a_pair_either_way_round_and_a_code_spelled_out():
     """W8 T8-01: a cable has no direction, and a voice told to speak plainly
     says numbers in words — both reached the voice and the shared mind."""
-    spelled = Secrets(never=("1997", "'97", "in 97", "since 97", "of 97", "in ninety-seven", "since ninety-seven", "of ninety-seven",
+    spelled = Secrets(never=("1997", "'97", "in 97", "since 97", "in ninety-seven", "since ninety-seven", "of ninety-seven",
                              "nineteen ninety-seven", "one nine nine seven", "V2-D5"))
     for text in ["D5-V2", "D5 to V2", "Patch D5 to V2, program.", "V-2 to D-5", "d-5 → v-2", "1 9 9 7", "1,997", "1-9-9-7",
                  "The door code is nineteen ninety-seven.", "nineteen ninety seven", "Nineteen-Ninety-Seven", "In 97 I met her", "one nine nine seven",
-                 "back in ninety-seven", "Back in ninety seven, she smiled.", "since ninety seven", "the summer of 97"]:
+                 "back in ninety-seven", "Back in ninety seven, she smiled.", "since ninety seven", "the summer of ninety-seven"]:
         assert spelled.leaks(text), text
     # A bare 97 is not the code: a guest's program, the house's own bark, a price (W8 review).
     for text in ["19970", "970", "V22-D5", "V2 → D6", "nineteen ninety-eight", "ninety-seven bottles", "1998",
-                 "Welcome, NHL 97.", "Office 97 again?", "Memory usage: 97%", "You have 97 Truthcoin", "$19.97", "COMMENT-CARDS-97"]:
+                 "Welcome, NHL 97.", "Office 97 again?", "Memory usage: 97%", "You have 97 Truthcoin", "$19.97", "COMMENT-CARDS-97",
+                 "a balance of 97 Truthcoin", "one of 97 programs here"]:
         assert not spelled.leaks(text), text
     # Without the spelled forms declared, only the digits are withheld (titi:facts declares them).
     assert not NEVER.leaks("nineteen ninety-seven") and NEVER.leaks("D5 to V2") and NEVER.leaks("1 9 9 7")

@@ -124,7 +124,6 @@ secrets:
     - "in ninety-seven"
     - "since 97"
     - "since ninety-seven"
-    - "of 97"
     - "of ninety-seven"
     - "nineteen ninety-seven"
     - "one nine nine seven"

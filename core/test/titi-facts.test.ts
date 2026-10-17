@@ -577,10 +577,11 @@ describe("titi-facts — secrets.never", () => {
     // never a bare "97", which silenced him toward a guest called NHL 97 (W8 review).
     const said = neverWords(year, ["V2-D5, v4-d1", "junk,V2-D5"]);
     expect(said).toEqual([
-      "1997", "'97", "in 97", "in ninety-seven", "since 97", "since ninety-seven", "of 97", "of ninety-seven",
+      "1997", "'97", "in 97", "in ninety-seven", "since 97", "since ninety-seven", "of ninety-seven",
       "nineteen ninety-seven", "one nine nine seven", "V2-D5", "V4-D1",
     ]);
     expect(said).not.toContain("97");
+    expect(said).not.toContain("of 97"); // "a balance of 97 Truthcoin" is a count (W8 recheck)
     expect(neverWords({ ...facts, door: { ...facts.door!, code: "2007" } })).toContain("in 07");
     expect(neverWords(facts)[0]).toBe(facts.door!.code);
     expect(neverWords({ ...facts, door: { ...facts.door!, code: "0412" } })).toEqual(["0412", "zero four one two", "oh four one two"]);

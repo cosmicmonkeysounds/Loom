@@ -469,15 +469,18 @@ export function yearWords(year: string): string {
 }
 
 /** The words that make a bare two-digit year the year ("in 97", "since
- *  ninety-seven", "the summer of 97"; "back in 97" is "in 97"). */
+ *  ninety-seven", "the summer of ninety-seven"; "back in 97" is "in 97").
+ *  `of` only before the spoken year: "a balance of 97 Truthcoin" and "one
+ *  of 97 programs" are counts (W8 recheck). */
 const YEAR_LEADS = ["in", "since", "of"] as const;
+const DIGIT_YEAR_LEADS: ReadonlySet<string> = new Set(["in", "since"]);
 
 /** A patch-bay pair as `neverWords` writes it (`V2-D5`). */
 const PAIR_WORD = /^[A-Z]+\d+-[A-Z]+\d+$/u;
 
 /** What no line of the character's mind may ever carry, whoever typed it
  *  (`secrets.never`): the keypad code, the ways it is said (digit by
- *  digit; a year's '97, "in 97" / "since ninety-seven" / "of 97" and
+ *  digit; a year's '97, "in 97" / "since ninety-seven" / "of ninety-seven" and
  *  "nineteen ninety-seven" — never a bare 97, which a guest's program may
  *  be called) and every patch-bay pair (`V2-D5`; the worker matches any spelling and
  *  either way round, V2 → D5, D5 to V2 …, a code with separators, 1 9 9 7,
@@ -496,7 +499,7 @@ export function neverWords(f: FactsFile, combos: string[] = []): string[] {
       // usage: 97%" are not the code. Only the year as a time is.
       const said = Number(short) >= 10 ? twoDigitWords(Number(short)) : null;
       for (const lead of YEAR_LEADS) {
-        out.add(`${lead} ${short}`);
+        if (DIGIT_YEAR_LEADS.has(lead)) out.add(`${lead} ${short}`);
         if (said !== null) out.add(`${lead} ${said}`);
       }
       out.add(yearWords(code));
