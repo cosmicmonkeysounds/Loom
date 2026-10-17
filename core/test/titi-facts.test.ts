@@ -573,8 +573,15 @@ describe("titi-facts — secrets.never", () => {
   it("is the door code (+ the ways a year is said) and every combo pair the story seeds, deduped; nothing without either", () => {
     expect(comboSeeds(['set Kernel.combo_a = "V2-D5,V4-D1"\n  set Kernel.combo_b = "V1-D6"', 'set Kernel.combo_a = "V2-D5,V4-D1"', 'set Night.combo = "V9-D9"'])).toEqual(["V2-D5,V4-D1", "V1-D6"]);
     const year = { ...facts, door: { ...facts.door!, code: "1997" } };
-    // W8 T8-01: the spelled year and the bare two digits ("In 97 I met her").
-    expect(neverWords(year, ["V2-D5, v4-d1", "junk,V2-D5"])).toEqual(["1997", "'97", "97", "nineteen ninety-seven", "one nine nine seven", "V2-D5", "V4-D1"]);
+    // W8 T8-01: the spelled year and the year as a time ("In 97 I met her") —
+    // never a bare "97", which silenced him toward a guest called NHL 97 (W8 review).
+    const said = neverWords(year, ["V2-D5, v4-d1", "junk,V2-D5"]);
+    expect(said).toEqual([
+      "1997", "'97", "in 97", "in ninety-seven", "since 97", "since ninety-seven", "of 97", "of ninety-seven",
+      "nineteen ninety-seven", "one nine nine seven", "V2-D5", "V4-D1",
+    ]);
+    expect(said).not.toContain("97");
+    expect(neverWords({ ...facts, door: { ...facts.door!, code: "2007" } })).toContain("in 07");
     expect(neverWords(facts)[0]).toBe(facts.door!.code);
     expect(neverWords({ ...facts, door: { ...facts.door!, code: "0412" } })).toEqual(["0412", "zero four one two", "oh four one two"]);
     expect(neverWords({ ...facts, door: undefined })).toEqual([]);

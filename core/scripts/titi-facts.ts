@@ -468,13 +468,18 @@ export function yearWords(year: string): string {
   return lo < 10 ? `${head} oh ${ONES[lo]}` : `${head} ${twoDigitWords(lo)}`;
 }
 
+/** The words that make a bare two-digit year the year ("in 97", "since
+ *  ninety-seven", "the summer of 97"; "back in 97" is "in 97"). */
+const YEAR_LEADS = ["in", "since", "of"] as const;
+
 /** A patch-bay pair as `neverWords` writes it (`V2-D5`). */
 const PAIR_WORD = /^[A-Z]+\d+-[A-Z]+\d+$/u;
 
 /** What no line of the character's mind may ever carry, whoever typed it
  *  (`secrets.never`): the keypad code, the ways it is said (digit by
- *  digit; a year's '97, a bare 97 and its words, "nineteen ninety-seven")
- *  and every patch-bay pair (`V2-D5`; the worker matches any spelling and
+ *  digit; a year's '97, "in 97" / "since ninety-seven" / "of 97" and
+ *  "nineteen ninety-seven" — never a bare 97, which a guest's program may
+ *  be called) and every patch-bay pair (`V2-D5`; the worker matches any spelling and
  *  either way round, V2 → D5, D5 to V2 …, a code with separators, 1 9 9 7,
  *  and number words with any spacing). A program who tells him the code
  *  must not hand it to every other program's prompt through his notes, and
@@ -485,8 +490,15 @@ export function neverWords(f: FactsFile, combos: string[] = []): string[] {
   if (code !== undefined && code !== "") {
     out.add(code);
     if (/^(?:19|20)\d\d$/u.test(code)) {
-      out.add(`'${code.slice(2)}`);
-      out.add(code.slice(2));
+      const short = code.slice(2);
+      out.add(`'${short}`);
+      // Never the bare two digits: "NHL 97", "Office 97" and "Memory
+      // usage: 97%" are not the code. Only the year as a time is.
+      const said = Number(short) >= 10 ? twoDigitWords(Number(short)) : null;
+      for (const lead of YEAR_LEADS) {
+        out.add(`${lead} ${short}`);
+        if (said !== null) out.add(`${lead} ${said}`);
+      }
       out.add(yearWords(code));
     }
     if (/^\d{3,}$/u.test(code)) {

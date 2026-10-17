@@ -162,7 +162,9 @@ You are the DIRECTOR OF THE MIND of Trabolta…
   like "song" drops every claim that uses it) and never an answer word:
   topics are printed into the orchestrator's prompt. **`never`** (wave 7
   review) is stricter: words no line of the mind may carry at all,
-  whoever typed them — the show's keypad code (+ its '97 spelling) and
+  whoever typed them — the show's keypad code (+ the ways it is said: '97, "in 97", "since
+  ninety-seven", "nineteen ninety-seven", "one nine nine seven" — never
+  a bare 97, which a guest's program may be called) and
   every patch-bay pair, matched in any spelling (`V2 → D5`, `v2-d5`,
   `V2 to D5`). The mind is shared by every conversation, so an update
   item, brief line or dossier field carrying one is dropped (no verdict
