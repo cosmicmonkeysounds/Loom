@@ -168,6 +168,9 @@ describe("Trapped in the Internet — compile", () => {
   it("pins the codex: 178 entries, 90 codes, every facts.json code resolving, no STAMPED anywhere", () => {
     expect(m.codex.size).toBe(178);
     expect(m.codexCodes.size).toBe(90);
+    // The README's counts follow the pin (its file listing, its status line and the Codex section).
+    const readme = readFileSync(join(scenarioDir(SHOW), "README.md"), "utf8");
+    expect([...readme.matchAll(/\b(\d+) CODEX entries|(\d+) codex entries|There\s+are \*\*(\d+)\*\*/gu)].map((x) => Number(x[1] ?? x[2] ?? x[3]))).toEqual([178, 178, 178]);
     const codes: Record<string, string> = {
       trabolta4ever: "The LiveJournal",
       loveletterforyou: "ILOVEYOU",

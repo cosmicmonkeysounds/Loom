@@ -450,7 +450,7 @@ but not used".
 ## Knowledge is the currency: the Codex
 
 Every `CODEX` entry is a piece of lore a participant can **hold**. There
-are **177**, and **90** of them carry a code (the 56 generated from
+are **178**, and **90** of them carry a code (the 56 generated from
 `facts.json` included). An entry reaches a holder in one of five ways:
 
 1. **A code.** `code: MISTER-PICKLES` is printed as a QR in the house.
