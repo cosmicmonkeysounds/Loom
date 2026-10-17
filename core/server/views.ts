@@ -625,8 +625,8 @@ const cueScans = new WeakMap<object, CueScan>();
  * story's own `fire x` (an auto cue) is a `fire` directive. Names fold, so
  * `the golden duck` matches however it was spelled at the call site.
  *
- * A director's in-sequence press the story refused (`refusedPress`) counts
- * for nothing, and a repeat of a cue that already fired never moves LAST
+ * A director's press the story refused (`refusedPress`) counts for nothing
+ * — not LAST, not fired, in sequence or not — and a repeat of a cue that already fired never moves LAST
  * back to an earlier row (T7-01): a mis-tap is cheap.
  */
 export function cueState(sim: Sim): CueState {
@@ -655,8 +655,8 @@ export function cueState(sim: Sim): CueState {
     const cue = admin.get(foldName(name));
     if (cue === undefined) continue;
     const id = cue.id;
+    if (by === "director" && refusedPress(sim, events, n, name)) continue;
     if (cue.sequence) {
-      if (by === "director" && refusedPress(sim, events, n, name)) continue;
       if (!(seen.has(id) && cue.order < scan.lastOrder)) {
         state.last = id;
         state.lastBy = by;
