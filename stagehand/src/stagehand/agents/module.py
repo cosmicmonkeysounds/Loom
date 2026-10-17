@@ -264,7 +264,7 @@ class Agents:
             if need > ctx:
                 out.append(
                     f"{name}'s mind: a reflection needs ≈ {need} tokens but {om.model} runs with a {ctx}-token context — "
-                    f"Ollama cuts the middle of the prompt; set orchestrator.llm.num_ctx to {need} or more"
+                    f"Ollama cuts the middle of the prompt; set orchestrator.llm.{om.context_key} to {need} or more"
                 )
         return out
 

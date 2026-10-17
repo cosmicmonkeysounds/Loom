@@ -176,6 +176,16 @@ class LlmConfig:
             return int(options["num_ctx"])
         return self.num_ctx or OLLAMA_DEFAULT_NUM_CTX
 
+    @property
+    def context_key(self) -> str:
+        """The config key `context_window` comes from — the one to raise:
+        `extra.options.num_ctx` when it is set (it wins in the request body
+        too), else `num_ctx`."""
+        options = self.extra.get("options")
+        if isinstance(options, dict) and isinstance(options.get("num_ctx"), int) and options["num_ctx"] > 0:
+            return "extra.options.num_ctx"
+        return "num_ctx"
+
     def merged(self, overrides: dict[str, Any]) -> "LlmConfig":
         return replace(self, **{k: v for k, v in overrides.items() if k in self.__dataclass_fields__})
 

@@ -679,6 +679,8 @@ def test_an_ollama_orchestrator_gets_a_16k_context_unless_told_otherwise(tmp_pat
     assert worker(tmp_path, None, orchestrator={"llm": {"num_ctx": 8192}}).cfg.orchestrator_models["Trabolta"].context_window == 8192
     extra = worker(tmp_path, None, orchestrator={"llm": {"num_ctx": 8192, "extra": {"think": False, "options": {"num_ctx": 32768}}}})
     assert extra.cfg.orchestrator_models["Trabolta"].context_window == 32768
+    assert extra.cfg.orchestrator_models["Trabolta"].context_key == "extra.options.num_ctx"
+    assert om.context_key == "num_ctx"
     off = worker(tmp_path, None, orchestrator={"llm": {"num_ctx": 0}}).cfg.orchestrator_models["Trabolta"]
     assert (off.num_ctx, off.context_window) == (None, OLLAMA_DEFAULT_NUM_CTX)
     with pytest.raises(ConfigError, match="num_ctx"):
@@ -722,7 +724,13 @@ def test_check_warns_when_the_reflect_prompt_outgrows_the_context(tmp_path, caps
     write("{num_ctx: 4096}")  # a warning, not a failure
     assert main(["check", "--config", str(conf)]) == 0
     err = capsys.readouterr().err
-    assert "warning: Trabolta's mind" in err and "4096-token context" in err and "num_ctx" in err
+    assert "warning: Trabolta's mind" in err and "4096-token context" in err and "set orchestrator.llm.num_ctx to" in err
+    # `extra.options.num_ctx` wins over `num_ctx` (agents.example.yaml's form):
+    # the warning names the key that is in effect, not one that changes nothing.
+    write("{num_ctx: 32768, extra: {think: false, options: {num_ctx: 4096}}}")
+    assert main(["check", "--config", str(conf)]) == 0
+    err = capsys.readouterr().err
+    assert "4096-token context" in err and "set orchestrator.llm.extra.options.num_ctx to" in err
     write("{api: openai, num_ctx: 1024}")  # the server picks the context: nothing to compare
     assert main(["check", "--config", str(conf)]) == 0
     assert "warning:" not in capsys.readouterr().err
