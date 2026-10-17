@@ -285,8 +285,9 @@ def reflect_messages(
             parts.append(lore)
     for situation in matching_situations(persona, req):
         parts.append(
-            f"=== THE SITUATION WITH {name} ({situation.heading}; the voice was given this for the exchange below — "
-            f"shape the brief and this person's dossier by it, and keep everything it forbids out of them) ===\n{situation.prompt}"
+            f"=== THE SITUATION WITH {name} ({situation.heading}; the voice was given this for the exchange below. "
+            f"The brief is read in every conversation: write what holds only here into this person's dossier and notes, "
+            f"and keep everything this block forbids out of all of them) ===\n{situation.prompt}"
         )
     whisper = director_block(mind)
     if whisper:
