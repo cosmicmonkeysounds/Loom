@@ -4536,6 +4536,25 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     expect(sim.model.codex.get("Four Failed Theses")!.text.replace(/\s+/gu, " ")).toContain(thesis);
   });
 
+  it("Clippy's Purgatory summary says which featured programs met their goal (and skips the absent ones)", { timeout: SLOW }, () => {
+    const sim = boot(); // Excel, OpenOffice, MS Paint and VLC are here
+    toTruth1(sim);
+    toHunt2(sim);
+    expect(sim.questStatus("g2", "Excel Mission")).toBe("active");
+    sim.quest("complete", "g2", "Excel Mission");
+    sim.quest("complete", "g3", "OpenOffice Dossier");
+    expect(sim.questStatus("g4", "The Painting")).toBe("active");
+    fire(sim, "computer_destroyed");
+    advance(sim, 10);
+    const goal = lines(fire(sim, "clippy_reads_summary"), "Clippy").filter((t) => /goal/u.test(t));
+    expect(goal).toEqual([
+      "Microsoft Excel met their goal tonight.",
+      "OpenOffice met their goal tonight.",
+      "MS Paint did not meet their goal.",
+      "VLC did not meet their goal.",
+    ]);
+  });
+
   it("B11: lie → accurate → lie counts the filing once; an uncertain correction clears it to unanswered", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
