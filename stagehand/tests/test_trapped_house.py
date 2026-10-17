@@ -241,8 +241,10 @@ def test_every_night_lights_mirror_has_a_rule_and_catches_up():
 
 
 #: Words that name something able to hold a door shut. The only "lock" a
-#: rule may touch is the ESP32 ring's indicator topic.
-LOCKISH = re.compile(r"lock|strike|latch|relay|bolt|solenoid", re.I)
+#: rule may touch is the ESP32 ring's indicator topic. "lock" / "bolt" only
+#: at a word start (`door_lock`, `unlock`, `bolt`), so a `y2k_clock` or
+#: `thunderbolt` cue never trips it; the compounds are named outright.
+LOCKISH = re.compile(r"(?<![a-z])(?:un)?lock|(?<![a-z])bolt|maglock|deadbolt|strike|latch|relay|solenoid", re.I)
 INDICATOR = "show/serverroom/lock"
 
 
@@ -251,6 +253,10 @@ def test_the_door_drives_the_indicator_and_nothing_drives_a_lock():
     never networked; the inside handle always opens). The story tells the
     ring the truth at boot (`locked`); nothing in the YAML may drive a lock,
     a strike or a relay on any door."""
+    for word in ("show/x/lock", "door_lock", "unlock", "MagLock", "deadbolt", "strike", "latch", "relay", "solenoid"):
+        assert LOCKISH.search(word), word
+    for word in ("y2k_clock", "thunderbolt", "blocked"):
+        assert not LOCKISH.search(word), word
     code = _code(_story_text())
     assert re.search(r"^\s*do door server_room, state: locked\b", code, re.M)
     for state in ("locked", "unlocked"):
