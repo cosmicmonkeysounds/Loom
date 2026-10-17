@@ -99,6 +99,9 @@ export interface InteractionSummary {
   /** False for an off-sequence cue (`sequence: false`): machine-fired or a
    *  hardware fallback — the cue sheet ticks it but never suggests it. */
   sequence?: false;
+  /** True for a cue pressed again and again (`repeat: true`): the cue
+   *  sheet still suggests it once it has fired. */
+  repeat?: true;
   /** Whose button this is — character ids, from the INTERACTION's `by:`
    *  (characters, or a GROUP's members) plus every character that owns a
    *  hook for it (a trait's `when vouch for program:`). Absent = anyone's.
@@ -171,6 +174,7 @@ function interactionsFor(
       const s: InteractionSummary = { id: i.id, label: i.label, who: i.who, description: i.description };
       if (subjectOnly.has(foldName(i.id))) s.subject = true;
       if (!i.sequence) s.sequence = false;
+      if (i.repeat) s.repeat = true;
       const by = i.who === "performer" ? actors.get(i.id) : undefined; // a guest never learns who hears their buttons
       if (by !== undefined) s.actors = by;
       if (at !== undefined && i.while !== null && !sim.holds(i.while, at.subject, at.self)) s.live = false;

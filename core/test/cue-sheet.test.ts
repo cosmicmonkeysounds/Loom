@@ -133,3 +133,24 @@ describe("the phone cue page's server surface (W-26)", () => {
     rt.dispose();
   });
 });
+
+describe("NEXT skips what already ran (T7-01)", () => {
+  const ix = (id: string, extra: { sequence?: false; repeat?: true } = {}) => ({ id, label: id, who: "admin", ...extra });
+  const sheet = [ix("c1"), ix("v2"), ix("close"), ix("results", { repeat: true }), ix("spin", { sequence: false }), ix("telephone"), ix("zip", { repeat: true }), ix("overshare")];
+  const next = (last: string | null, fired: string[]) => cueRows(sheet, { last, fired }).find((r) => r.next)?.id ?? null;
+
+  it("is the first in-sequence row after LAST that hasn't fired", () => {
+    expect(next(null, [])).toBe("c1");
+    expect(next("c1", ["c1", "close"])).toBe("v2");
+    expect(next("v2", ["c1", "v2", "close"])).toBe("results");
+    expect(next("close", ["c1", "v2", "close", "telephone"])).toBe("results");
+    expect(next("results", ["c1", "v2", "close", "results", "telephone"])).toBe("zip");
+  });
+
+  it("a `repeat: true` cue stays eligible once fired; the lean view carries the flag", () => {
+    expect(next("v2", ["c1", "v2", "close", "results"])).toBe("results");
+    expect(next("telephone", ["telephone", "zip"])).toBe("zip");
+    expect(cueSheetView({ interactions: sheet }).interactions.find((i) => i.id === "results")).toMatchObject({ repeat: true });
+    expect(cueSheetView({ interactions: sheet }).interactions.find((i) => i.id === "c1")).not.toHaveProperty("repeat");
+  });
+});

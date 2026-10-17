@@ -5,7 +5,8 @@
 //! label opening with the source cue code (`C1/V1 · 📣 Call everyone to the
 //! Desktop`). This module turns those into rows a director's screen renders
 //! as buttons: the code split off, the last cue marked, the next one (the
-//! declaration after the last) suggested, a free-text filter, and the
+//! first declaration after the last that hasn't fired, or a `repeat: true`
+//! one) suggested, a free-text filter, and the
 //! story's `Night.phase` read off the world.
 //!
 //! Dependency-free on purpose: the play app imports this file by path (it
@@ -19,6 +20,8 @@ export interface CueInteraction {
   who: string;
   sequence?: false;
   subject?: boolean;
+  /** Pressed again and again (`repeat: true`): still NEXT once fired. */
+  repeat?: true;
 }
 
 /** What a cue row needs from the server's `CueState`. */
@@ -48,7 +51,8 @@ export interface CueRow {
   fired: boolean;
   /** The most recent cue to fire. */
   last: boolean;
-  /** The first in-sequence cue after the last one in running order. */
+  /** The first in-sequence cue after the last one in running order that
+   *  has not fired yet (a `repeat: true` cue stays eligible). */
   next: boolean;
   /** False for an off-sequence cue (`sequence: false` — machine-fired or a
    *  hardware fallback): it ticks when it fires but is never LAST / NEXT. */
@@ -72,7 +76,7 @@ export function cueRows(interactions: readonly CueInteraction[], cues: CueMarks)
   const fired = new Set(cues.fired);
   const admin = interactions.filter((i) => i.who === "admin");
   const lastIdx = cues.last === null ? -1 : admin.findIndex((i) => i.id === cues.last);
-  const nextIdx = admin.findIndex((i, idx) => idx > lastIdx && i.sequence !== false);
+  const nextIdx = admin.findIndex((i, idx) => idx > lastIdx && i.sequence !== false && (!fired.has(i.id) || i.repeat === true));
   return admin.map((i, idx) => {
     const { code, title } = splitCode(i.label || i.id);
     return {
@@ -147,7 +151,14 @@ export function cueSheetView(view: {
     ...(view.title !== undefined ? { title: view.title } : {}),
     interactions: (view.interactions ?? [])
       .filter((i) => i.who === "admin")
-      .map((i) => ({ id: i.id, label: i.label, who: i.who, ...(i.sequence === false ? { sequence: false as const } : {}), ...(i.subject === true ? { subject: true } : {}) })),
+      .map((i) => ({
+        id: i.id,
+        label: i.label,
+        who: i.who,
+        ...(i.sequence === false ? { sequence: false as const } : {}),
+        ...(i.subject === true ? { subject: true } : {}),
+        ...(i.repeat === true ? { repeat: true as const } : {}),
+      })),
     cues: view.cues ?? { last: null, fired: [] },
     world: (view.world ?? []).filter((w) => w.path === "Night.phase").map((w) => ({ path: w.path, value: w.value })),
     roster: (view.roster ?? []).map((p) => ({ id: p.id, name: p.name, location: p.location, ...(p.owner !== undefined ? { owner: p.owner } : {}) })),
