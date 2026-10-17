@@ -741,6 +741,7 @@ export class EventRuntime {
       directors,
       owners: this.personaOwners,
       agents: new Set(this.agents.onlineCharacters()),
+      held: heldCharacters(this.sessions.entries()),
       minds: [...this.agentMinds.values()],
       facts: this.factsView(),
     };

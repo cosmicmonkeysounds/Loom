@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { guestView, modView, primeView, titleOf } from "../server/views.ts";
 import { scenarioSource } from "../examples/load.ts";
+import { heldCharacters } from "../server/identity.ts";
 
 const SCENARIO = scenarioSource("escape-the-internet");
 
@@ -332,6 +333,21 @@ describe("the show's cue sheet (K-21)", () => {
     // Only the two repeatable cues may carry `repeat: true` (the story marks them).
     const repeat = (modView(sim, "open", "x").interactions ?? []).filter((i) => i.repeat === true).map((i) => i.id);
     expect(repeat.every((id) => ["read_the_results", "zip_everyone_out"].includes(id))).toBe(true);
+  });
+
+  it("marks the performer parts and which are held, streaming or not (T7-04)", () => {
+    const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
+    const presence = { guests: new Set<string>(), primes: new Set(["Norton Anti-Virus"]), mods: 1, directors: [], held: heldCharacters([["t1", { character: "Clippy" }], ["t2", { character: "Norton Anti-Virus" }], ["t3", { character: null }]]) };
+    const cast = modView(sim, "open", "x", presence).cast;
+    const parts = cast.filter((c) => c.part === true).map((c) => c.id).sort();
+    expect(parts).toEqual(["Adobe Acrobat", "CRA Agent Software", "Clippy", "McAfee Anti-Virus", "Norton Anti-Virus", "Password Manager", "Recycling Bin", "Task Manager"]);
+    for (const id of ["Trabolta", "Kernel", "Microsoft Excel", "Sandy"]) expect(cast.find((c) => c.id === id)).not.toHaveProperty("part");
+    expect(cast.find((c) => c.id === "Clippy")).toMatchObject({ part: true, held: true, online: false });
+    expect(cast.find((c) => c.id === "Norton Anti-Virus")).toMatchObject({ part: true, held: true, online: true });
+    expect(cast.find((c) => c.id === "McAfee Anti-Virus")).toMatchObject({ part: true, held: false, online: false });
+    expect(cast.find((c) => c.id === "Kernel")).not.toHaveProperty("held");
+    // No connection tracking (a local sim): parts still marked, no `held`.
+    expect(modView(sim, "open", "x").cast.find((c) => c.id === "Clippy")).toEqual({ id: "Clippy", faction: "Hosts", part: true });
   });
 
   it("flags the cues that need a person: the ceremony's awards ask for the winner (K-25)", () => {

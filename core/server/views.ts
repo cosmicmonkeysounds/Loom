@@ -11,6 +11,7 @@ import type { Sim, SimEvent } from "../src/runtime/sim/index.ts";
 import type { CodexDef } from "../src/runtime/sim/model.ts";
 import type { WalletModView, WalletQueueView, WalletView } from "./wallet.ts";
 import type { FactsView } from "./facts.ts";
+import { identityDefs, performerPickable } from "./identity.ts";
 
 export type { WalletModView, WalletOfferView, WalletQueueView, WalletRequestView, WalletTxView, WalletView } from "./wallet.ts";
 // The facts judge's ledger (`ModView.facts`, Wave 4 lane B): the editor
@@ -406,6 +407,13 @@ export interface CastSummary {
   /** `mind: external` — voiced by a stagehand agents worker, not a performer
    *  (`online` then means a worker for it is connected). */
   agent?: boolean;
+  /** A part a performer can sign in to (`identity.ts` `performerPickable`):
+   *  the Run page's sign-in list shows only these. */
+  part?: boolean;
+  /** A part a session token holds right now, streaming or not — `held` and
+   *  not `online` is a booth whose phone dropped (⏏ Release). Present on
+   *  parts where connection tracking exists. */
+  held?: boolean;
 }
 
 /** Who is connected to the event right now, by capability. */
@@ -422,6 +430,9 @@ export interface ModPresence {
   owners?: Map<string, string>;
   /** Agent characters with a stagehand worker connected. */
   agents?: Set<string>;
+  /** Folded character names a performer's session token holds (streaming or
+   *  not — `identity.ts` `heldCharacters`). */
+  held?: Set<string>;
   /** What each agent worker last reported about its character's evolving
    *  mind (`POST /api/agent/mind`) — the director's window into it. */
   minds?: AgentMindSummary[];
@@ -645,6 +656,18 @@ function operatorChannels(sim: Sim): ChannelSummary[] {
   return out;
 }
 
+/** The parts a performer can sign in to, per compiled model (memoised: the
+ *  classification walks the story, and director snapshots are frequent). */
+const parts = new WeakMap<object, Set<string>>();
+function partsOf(model: Sim["model"]): Set<string> {
+  let out = parts.get(model);
+  if (out === undefined) {
+    out = new Set(identityDefs(model).filter(performerPickable).map((d) => d.name));
+    parts.set(model, out);
+  }
+  return out;
+}
+
 /** `declared`: the story's cast while no sim exists (the doors are shut) —
  *  a terminal provisioned before the doors checks its character against it. */
 export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string | null, presence?: ModPresence, declared?: readonly string[]): ModView {
@@ -695,14 +718,19 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
     factions,
     locations,
     characters: [...sim.model.characters.keys()],
-    cast: [...sim.model.characters.values()].map((c) => ({
-      id: c.id,
-      faction: c.faction ?? null,
-      ...(c.mind === "external" ? { agent: true } : {}),
-      ...(presence !== undefined
-        ? { online: c.mind === "external" ? (presence.agents?.has(c.id) ?? false) : presence.primes.has(c.id) }
-        : {}),
-    })),
+    cast: [...sim.model.characters.values()].map((c) => {
+      const part = partsOf(sim.model).has(c.id);
+      return {
+        id: c.id,
+        faction: c.faction ?? null,
+        ...(c.mind === "external" ? { agent: true } : {}),
+        ...(presence !== undefined
+          ? { online: c.mind === "external" ? (presence.agents?.has(c.id) ?? false) : presence.primes.has(c.id) }
+          : {}),
+        ...(part ? { part: true } : {}),
+        ...(part && presence?.held !== undefined ? { held: presence.held.has(foldName(c.id)) } : {}),
+      };
+    }),
     channels: operatorChannels(sim),
     spaces: sim.spaceList(),
     beats: [...sim.model.beats.keys()],
