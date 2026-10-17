@@ -27,7 +27,7 @@ import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
 import { ChatStore, composeGuestMessages, decisionChannelFor, isPinnedRoom, visibleTo, type ChatMessage } from "./chat.ts";
 import { DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
-import { ipOf, queryTokenOf, readBody, sendJson, sseSend, str, tokenOf } from "./http-util.ts";
+import { SSE_MOD_QUEUE_CAP, ipOf, queryTokenOf, readBody, sendJson, sseCap, sseFrame, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
 import { RateLimiter, limiterFor, rateLimitsFromEnv, type RateLimits } from "./rate-limit.ts";
 import { handleMetrics } from "./routes/metrics.ts";
 import { TtsProxy, ttsConfigFromEnv } from "./tts.ts";
@@ -886,8 +886,7 @@ export class EventRuntime {
     for (const c of this.clients) {
       if (c.role !== "mod" || c.lean === true) continue;
       data ??= `data: ${JSON.stringify(this.modViewNow())}\n\n`;
-      c.res.write("event: snapshot\n");
-      c.res.write(data);
+      sseFrame(c.res, "event: snapshot\n", data);
     }
     if (data !== null) this.modSnapshotAt = Date.now();
   }
@@ -1538,7 +1537,7 @@ export class EventRuntime {
     });
     this.agentStreams.add(res);
     this.agents.attach(worker);
-    const ping = setInterval(() => res.write(":ping\n\n"), 25000);
+    const ping = setInterval(() => sseWrite(res, ":ping\n\n"), 25000);
     req.on("close", () => {
       clearInterval(ping);
       this.agentStreams.delete(res);
@@ -1868,7 +1867,7 @@ export class EventRuntime {
     this.spatialStreams.add(res);
     this.spatial.attach(sub);
     this.startSpatialLoop();
-    const ping = setInterval(() => res.write(":ping\n\n"), 25000);
+    const ping = setInterval(() => sseWrite(res, ":ping\n\n"), 25000);
     req.on("close", () => {
       clearInterval(ping);
       this.spatialStreams.delete(res);
@@ -2662,6 +2661,8 @@ export class EventRuntime {
       res.write(":ok\n\n");
       const client: Client = { role, id, res };
       if (role === "mod") client.name = opts.moderatorName ?? "Director";
+      // A director's console carries every frame: a bigger queue before a stall drops it.
+      if (role === "mod") sseCap(res, SSE_MOD_QUEUE_CAP);
       // `?lean=1` (mod feed only): the house tools' stream — frames, no views.
       if (role === "mod" && url.searchParams.get("lean") === "1") client.lean = true;
       if (role === "prime") client.admin = this.sessions.canModerate(token);
@@ -2689,7 +2690,7 @@ export class EventRuntime {
         sseSend(res, "history", this.historyFor(client));
       }
       if (!fullMod) this.pushPresence();
-      const ping = setInterval(() => res.write(":ping\n\n"), 25000);
+      const ping = setInterval(() => sseWrite(res, ":ping\n\n"), 25000);
       req.on("close", () => {
         clearInterval(ping);
         this.clients.delete(client);
