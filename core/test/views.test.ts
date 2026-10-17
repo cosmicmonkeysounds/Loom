@@ -239,6 +239,47 @@ INTERACTION the golden duck
     expect((modView(sim, "open", "x").interactions ?? []).find((i) => i.id === "ring_the_bell")).not.toHaveProperty("sequence");
   });
 
+  it("a repeat of an earlier cue never moves LAST back; a press the story refused counts for nothing (T7-01, T1-02)", async () => {
+    const { cueState } = await import("../server/views.ts");
+    const sim = Sim.fromSources(`${CUES}
+INTERACTION read_out
+  label: C3 · 📋 Read out
+  who: admin
+
+INTERACTION too_early
+  label: C4 · 🤖 Too early
+  who: admin
+
+CHANNEL hosts
+  kind: open
+
+when read_out:
+  set Night.reads += 1
+
+when too_early:
+  if Night.phase == "finale":
+    set Night.phase = "end"
+  else:
+    broadcast "🤖 Too early." to channel(hosts)
+`);
+    sim.signal("ring_the_bell");
+    sim.signal("read_out");
+    expect(cueState(sim).last).toBe("read_out");
+    // A repeat of ring_the_bell (row 1) leaves LAST on read_out (row 3).
+    sim.signal("ring_the_bell");
+    expect(cueState(sim)).toMatchObject({ last: "read_out", lastBy: "director" });
+    // A repeat of LAST itself keeps it.
+    sim.signal("read_out");
+    expect(cueState(sim).last).toBe("read_out");
+    // Refused: only a `# hosts` line — neither LAST nor ticked.
+    sim.signal("too_early");
+    expect(cueState(sim)).toMatchObject({ last: "read_out", fired: ["ring_the_bell", "hunt_time_up", "read_out"] });
+    // The same cue in its phase fires.
+    sim.world.set("Night.phase", { kind: "string", value: "finale" });
+    sim.signal("too_early");
+    expect(cueState(sim)).toMatchObject({ last: "too_early", fired: ["ring_the_bell", "hunt_time_up", "read_out", "too_early"] });
+  });
+
   it("reads only new log entries on each snapshot, and returns a fresh copy", async () => {
     const { cueState } = await import("../server/views.ts");
     const sim = Sim.fromSources(CUES);
@@ -273,6 +314,24 @@ describe("the show's cue sheet (K-21)", () => {
     sim.signal("the golden duck");
     expect(modView(sim, "open", "x").cues?.last).toBe("bingo_time");
     expect(modView(sim, "open", "x").cues?.fired).toContain("the golden duck");
+  });
+
+  it("a cue the story refuses leaves LAST / NEXT alone: an early 🤖, an early 📋, a forced majority before the vote (T1-02, T7-01)", async () => {
+    const { cueRows } = await import("../src/cue-sheet.ts");
+    const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
+    const sheet = () => {
+      const v = modView(sim, "open", "x");
+      const rows = cueRows(v.interactions ?? [], v.cues!);
+      return { last: v.cues!.last, next: rows.find((r) => r.next)?.id ?? null, fired: v.cues!.fired };
+    };
+    sim.signal("call_to_the_desktop");
+    for (const early of ["introduce_trabolta", "read_the_results", "force_majority_stay"]) {
+      sim.signal(early);
+      expect(sheet()).toEqual({ last: "call_to_the_desktop", next: "start_the_bingo", fired: ["call_to_the_desktop"] });
+    }
+    // Only the two repeatable cues may carry `repeat: true` (the story marks them).
+    const repeat = (modView(sim, "open", "x").interactions ?? []).filter((i) => i.repeat === true).map((i) => i.id);
+    expect(repeat.every((id) => ["read_the_results", "zip_everyone_out"].includes(id))).toBe(true);
   });
 
   it("flags the cues that need a person: the ceremony's awards ask for the winner (K-25)", () => {

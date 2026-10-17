@@ -7,7 +7,7 @@ import { foldName } from "../src/parser/names.ts";
 import type { AgentMindReport } from "./agents.ts";
 
 export type { AgentControl, AgentControlAction, AgentMindPerson, AgentMindRevision, AgentThought } from "./agents.ts";
-import type { Sim } from "../src/runtime/sim/index.ts";
+import type { Sim, SimEvent } from "../src/runtime/sim/index.ts";
 import type { CodexDef } from "../src/runtime/sim/model.ts";
 import type { WalletModView, WalletQueueView, WalletView } from "./wallet.ts";
 import type { FactsView } from "./facts.ts";
@@ -514,6 +514,27 @@ interface CueScan {
   at: number;
   state: CueState;
   seen: Set<string>;
+  /** `state.last`'s place in the declared order (-1 = none). */
+  lastOrder: number;
+}
+
+/** Log entries that start a new input (a press, a tick, a typed line, a
+ *  join, a scan): what a director's press did ends at the next one. */
+const CUE_INPUTS: ReadonlySet<string> = new Set(["signal", "tick", "chat", "accountCreated", "scanned"]);
+
+/** Did the director's press at `events[n]` do nothing but (at most) tell a
+ *  staff room why? The story's phase-guarded rules refuse a cue pressed out
+ *  of turn with a `# hosts` line or not at all (T1-02): such a press never
+ *  becomes LAST or ticks the cue. */
+function refusedPress(events: readonly SimEvent[], n: number): boolean {
+  for (let k = n + 1; k < events.length; k++) {
+    const e = events[k]!;
+    if (CUE_INPUTS.has(e.type)) break;
+    if (e.type === "diagnostic") continue;
+    if (e.type === "broadcast" && e.scope.startsWith("channel(")) continue;
+    return false;
+  }
+  return true;
 }
 
 /** Per log, where the scan got to — the log only grows, so each director
@@ -524,15 +545,19 @@ const cueScans = new WeakMap<object, CueScan>();
  * Scan the log for admin cues. A director's fire is a `signal` event; a
  * story's own `fire x` (an auto cue) is a `fire` directive. Names fold, so
  * `the golden duck` matches however it was spelled at the call site.
+ *
+ * A director's in-sequence press the story refused (`refusedPress`) counts
+ * for nothing, and a repeat of a cue that already fired never moves LAST
+ * back to an earlier row (T7-01): a mis-tap is cheap.
  */
 export function cueState(sim: Sim): CueState {
-  const admin = new Map<string, { id: string; sequence: boolean }>();
-  for (const i of sim.model.interactions.values()) if (i.who === "admin") admin.set(foldName(i.id), { id: i.id, sequence: i.sequence });
+  const admin = new Map<string, { id: string; sequence: boolean; order: number }>();
+  for (const i of sim.model.interactions.values()) if (i.who === "admin") admin.set(foldName(i.id), { id: i.id, sequence: i.sequence, order: admin.size });
   if (admin.size === 0) return { last: null, lastBy: null, fired: [] };
   const events = sim.log.all();
   let scan = cueScans.get(sim.log);
   if (scan === undefined || scan.model !== sim.model || scan.at > events.length) {
-    scan = { model: sim.model, at: 0, state: { last: null, lastBy: null, fired: [] }, seen: new Set() };
+    scan = { model: sim.model, at: 0, state: { last: null, lastBy: null, fired: [] }, seen: new Set(), lastOrder: -1 };
     cueScans.set(sim.log, scan);
   }
   const { state, seen } = scan;
@@ -552,8 +577,12 @@ export function cueState(sim: Sim): CueState {
     if (cue === undefined) continue;
     const id = cue.id;
     if (cue.sequence) {
-      state.last = id;
-      state.lastBy = by;
+      if (by === "director" && refusedPress(events, n)) continue;
+      if (!(seen.has(id) && cue.order < scan.lastOrder)) {
+        state.last = id;
+        state.lastBy = by;
+        scan.lastOrder = cue.order;
+      }
     }
     if (!seen.has(id)) {
       seen.add(id);
