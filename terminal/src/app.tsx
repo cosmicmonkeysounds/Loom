@@ -38,7 +38,8 @@
 //! to everyone, then speaks the character's lines said there (the door
 //! cutscene) through the same speech queue as its line, with a caption; it
 //! never shows a story slide or the countdown corner, and it tells the story
-//! when a pass opens and closes a line there (`terminal opened` / `closed`).
+//! when a pass opens and closes a line there (`terminal opened` / `closed`;
+//! a visit a crash or reload left open is closed on the next boot).
 //!
 //! A tap on the wake overlay (or anywhere on the page) is the one gesture the browser needs
 //! before the terminal may make a sound unattended. The screen is held on
@@ -52,7 +53,7 @@ import { DEFAULT_TV_ROOM, adoptCharacter, baseOf, castCheckKey, characterProblem
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import { useIdleTimeout } from "./idle.ts";
-import { VisitLatch, beginPilot, closeVisit, endPilot, fetchCharacters, fetchRoster, openVisit, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
+import { VisitLatch, beginPilot, closeVisit, endPilot, fetchCharacters, fetchRoster, openVisit, recoverVisit, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
 import { matchName, parseScan } from "./scan.ts";
 import { Scanner, type CameraState, cameraProblem } from "./scanner.tsx";
 import { BrowserEngine, DeviceEngine, ENGINE_LABEL, SpeechQueue, audioUnlocked, deviceEnv, pickDeviceEngine, unlock, voiceEngines, voiceNote, type EngineKind, type VoiceChoice } from "./speech/engine.ts";
@@ -105,6 +106,12 @@ export function App() {
   // not in the line pane, which can remount mid-connect (the room closing
   // under a scan) and would then lose the visit it opened.
   const visits = useRef(new VisitLatch());
+  // A visit the last page left open (it crashed or reloaded mid-line) is
+  // closed first thing, before anything here pilots — once per page; the
+  // first `terminal opened` waits for it (`recoverVisit`).
+  useEffect(() => {
+    if (config !== null) void recoverVisit(config, visits.current);
+  }, [config]);
   // The house announcements (N-09), when this screen is set to say them.
   const announcement = useAnnouncements(config, screenState.state);
 

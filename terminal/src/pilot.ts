@@ -14,7 +14,11 @@
 //! opens it and `terminal closed` when it ends (the leash, DISCONNECT, an
 //! overlay, a restart, the page going away), each `POST /api/mod/signal`
 //! with the guest as subject, `{at: <room>}` and the terminal's label.
-//! Best-effort: a refused or lost signal never holds up the line.
+//! Best-effort: a refused or lost signal never holds up the line. The open
+//! visit is also kept in `localStorage` (`VISIT_KEY`), so a terminal that
+//! crashes or reloads mid-visit posts the `terminal closed` it owes on its
+//! next boot (`recoverVisit`), before it opens any other line — else the
+//! guest would stay "at the heart" for the rest of the night.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError, useChatStream } from "@loom/play/client.ts";
@@ -59,16 +63,17 @@ export async function endPilot(config: TerminalConfig, pilot: Pilot, o: { keepal
 export type VisitSignal = "terminal opened" | "terminal closed";
 
 /** The `/api/mod/signal` body for a visit, or null when this terminal
- *  belongs to no room (only a room terminal tells the story). */
-export function visitSignalBody(config: Pick<TerminalConfig, "name" | "room" | "view">, name: VisitSignal, guestId: string): { name: VisitSignal; subject: string; args: { at: string }; label: string } | null {
-  const room = roomOf(config);
+ *  belongs to no room (only a room terminal tells the story). `at` names
+ *  the room outright (a visit left behind closes in the room it opened in). */
+export function visitSignalBody(config: Pick<TerminalConfig, "name" | "room" | "view">, name: VisitSignal, guestId: string, at?: string): { name: VisitSignal; subject: string; args: { at: string }; label: string } | null {
+  const room = at !== undefined ? at.trim() || null : roomOf(config);
   if (room === null || guestId === "") return null;
   return { name, subject: guestId, args: { at: room }, label: `Terminal · ${config.name}`.slice(0, 60) };
 }
 
 /** Post a visit signal; true when the server took it. Never throws. */
-export async function postVisit(config: TerminalConfig, name: VisitSignal, guestId: string, o: { keepalive?: boolean; fetchFn?: typeof fetch } = {}): Promise<boolean> {
-  const body = visitSignalBody(config, name, guestId);
+export async function postVisit(config: TerminalConfig, name: VisitSignal, guestId: string, o: { keepalive?: boolean; fetchFn?: typeof fetch; at?: string } = {}): Promise<boolean> {
+  const body = visitSignalBody(config, name, guestId, o.at);
   if (body === null) return false;
   try {
     const res = await (o.fetchFn ?? fetch)(`${baseOf(config)}/api/mod/signal`, {
@@ -89,12 +94,56 @@ export interface OpenVisit {
   opened: Promise<unknown>;
 }
 
+/** Where the open visit is kept across a crash or a reload. */
+export const VISIT_KEY = "loom.terminal.visit";
+
+/** The open visit as stored: the event, the guest and the room it opened in. */
+export interface StoredVisit {
+  eventId: string;
+  guestId: string;
+  room: string;
+}
+
+export type VisitStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+
+/** The page's `localStorage`, or null where there is none (a private
+ *  window, blocked site data, a test): the latch then lives in memory only. */
+export function pageStorage(): VisitStorage | null {
+  try {
+    return typeof localStorage === "undefined" ? null : localStorage;
+  } catch {
+    return null;
+  }
+}
+
+/** Parse a stored visit (null for anything malformed). */
+export function parseStoredVisit(raw: string | null): StoredVisit | null {
+  if (raw === null) return null;
+  try {
+    const v = JSON.parse(raw) as Partial<StoredVisit>;
+    if (typeof v.eventId !== "string" || typeof v.guestId !== "string" || typeof v.room !== "string") return null;
+    if (v.eventId === "" || v.guestId === "" || v.room.trim() === "") return null;
+    return { eventId: v.eventId, guestId: v.guestId, room: v.room };
+  } catch {
+    return null;
+  }
+}
+
 /** One open visit at a time: `close` hands back the visit to close exactly
  *  once, however many ways the line ends (the leash, then the pagehide).
  *  The app holds one for the life of the page (not per mounted line pane),
- *  so a pane remounted mid-connect still closes the visit it opened. */
+ *  so a pane remounted mid-connect still closes the visit it opened.
+ *
+ *  It also mirrors the open visit into storage (`remember` / `forget`), and
+ *  `ready` is the boot-time close of a visit a crashed page left behind:
+ *  every `terminal opened` waits for it. Every storage call is guarded —
+ *  a storage that throws is a storage that isn't there. */
 export class VisitLatch {
   private open: OpenVisit | null = null;
+  private recovered = false;
+  /** The left-behind visit's close in flight (null: none owed). */
+  ready: Promise<unknown> | null = null;
+  constructor(private readonly storage: VisitStorage | null = pageStorage()) {}
   begin(guestId: string, opened: Promise<unknown> = Promise.resolve()): void {
     this.open = { guestId, opened };
   }
@@ -104,22 +153,76 @@ export class VisitLatch {
     this.open = null;
     return v;
   }
+  /** Keep the open visit across a crash. */
+  remember(v: StoredVisit): void {
+    try {
+      this.storage?.setItem(VISIT_KEY, JSON.stringify(v));
+    } catch {
+      /* no storage: the visit lives in memory only */
+    }
+  }
+  /** The visit was closed: nothing is owed on the next boot. */
+  forget(): void {
+    try {
+      this.storage?.removeItem(VISIT_KEY);
+    } catch {
+      /* nothing to forget */
+    }
+  }
+  /** The visit a previous page left open, taken out of storage — once per
+   *  latch (per page): a later call never closes this page's own visit. */
+  takeLeftBehind(): StoredVisit | null {
+    if (this.recovered) return null;
+    this.recovered = true;
+    let raw: string | null = null;
+    try {
+      raw = this.storage?.getItem(VISIT_KEY) ?? null;
+    } catch {
+      return null;
+    }
+    if (raw !== null) this.forget();
+    return parseStoredVisit(raw);
+  }
+}
+
+/** Boot: a visit the last page left open (it crashed or reloaded mid-line,
+ *  and its pagehide close never landed) is closed now, in the room it
+ *  opened in, before this page opens any line. A visit from another event
+ *  is dropped (that guest's run is not this one). Runs once per latch;
+ *  returns the close in flight, or null when nothing was owed. */
+export function recoverVisit(config: TerminalConfig, latch: VisitLatch, o: { fetchFn?: typeof fetch } = {}): Promise<boolean> | null {
+  const left = latch.takeLeftBehind();
+  if (left === null || left.eventId !== config.eventId) return null;
+  const closing = postVisit(config, "terminal closed", left.guestId, { ...o, at: left.room });
+  latch.ready = closing;
+  void closing.then(() => {
+    if (latch.ready === closing) latch.ready = null; // owed nothing more
+  });
+  return closing;
 }
 
 /** A pass opened a line here: tell the story (`terminal opened`) and
- *  remember the visit. A terminal with no room does nothing. */
+ *  remember the visit (in memory and in storage). A terminal with no room
+ *  does nothing. The post waits for a left-behind visit's close. */
 export function openVisit(config: TerminalConfig, latch: VisitLatch, guestId: string, o: { fetchFn?: typeof fetch } = {}): void {
-  if (visitSignalBody(config, "terminal opened", guestId) === null) return;
-  latch.begin(guestId, postVisit(config, "terminal opened", guestId, o));
+  const room = roomOf(config);
+  if (room === null || visitSignalBody(config, "terminal opened", guestId) === null) return;
+  recoverVisit(config, latch, o); // a no-op once the boot has run it
+  const send = () => postVisit(config, "terminal opened", guestId, o);
+  latch.remember({ eventId: config.eventId, guestId, room });
+  // Straight away when nothing is owed, so a pagehide close never beats it.
+  latch.begin(guestId, latch.ready === null ? send() : latch.ready.then(send, send));
 }
 
 /** The line ended: `terminal closed`, once — and never ahead of its
  *  `terminal opened` (a DISCONNECT right after the scan would otherwise
  *  race it and leave the story thinking the guest is still there). The
- *  pagehide (`keepalive`) can't wait for anything: it sends at once. */
+ *  pagehide (`keepalive`) can't wait for anything: it sends at once. The
+ *  stored visit is forgotten as the close is posted. */
 export function closeVisit(config: TerminalConfig, latch: VisitLatch, o: { keepalive?: boolean; fetchFn?: typeof fetch } = {}): Promise<boolean> | null {
   const v = latch.close();
   if (v === null) return null;
+  latch.forget();
   const send = () => postVisit(config, "terminal closed", v.guestId, o);
   return o.keepalive === true ? send() : v.opened.then(send, send);
 }
