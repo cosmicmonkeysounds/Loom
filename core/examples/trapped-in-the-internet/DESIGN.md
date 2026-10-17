@@ -174,10 +174,11 @@ Concatenation order (server): `main.loom`, then path order:
 `generated/questions.loom` (generated), `quests.loom`, `rooms.loom`. (`codex/3-hunt.loom` is
 gone since wave 4: the hunt questions and answers come from `facts.json` via `titi:facts`.) No file other than
 `main.loom` has top-level `when` rules, so the order is otherwise free — **except the codex
-numbering, which is load-bearing**: stagehand's orchestrator feeds the first 24 codex entries
-in model order to Trabolta as "ground truth" (`orchestrator.py` `lore_block(max_entries=24)`),
-so the environmental entries must come first and the scrambled Jeeves fragments last. (The
-hunt answers fall outside the first 24 on purpose: Trabolta must not be able to check them.)
+numbering, which is load-bearing**: stagehand's orchestrator feeds up to 60 codex entries to
+Trabolta as "ground truth" (`orchestrator.py` `lore_block(max_entries=60)`): the ones he holds
+first, then the rest in model order, so the environmental entries must come first and the
+scrambled Jeeves fragments last. (The hunt answers never reach it: the secrecy filter drops
+every `▒ HUNT ANSWER` entry and any clue that names an answer word.)
 No test reads the codex paths.
 
 | File | Holds | Writer |
@@ -1261,7 +1262,7 @@ inciting event, there is a classic Windows screensaver on the TV").
 | tv_bingo_time | bingo_time (V3) | "BINGO TIME" (TV) |
 | tv_mirror | Trabolta Introduction (after he is introduced, when Clippy points at the reinstallation: CI 2 order); each capture after it | the TV mirrors the VR copy of the house |
 | tablet_wizard | each capture | the tent tablet plays the Installation Wizard's instructional video (tablet only) |
-| terminals_trabolta_online | introduce_trabolta | Trabolta's face/presence on every terminal (terminals become his line; re-provision `view=auto`, §9) |
+| terminals_trabolta_online | introduce_trabolta | Trabolta's face/presence on every terminal (terminals become his line; they are provisioned `view=auto` from the start, K-16, so nothing is re-provisioned: check his face is up) |
 | screens_trivia_1 | start_the_hunt (V4) | "TRABOLTA TRIVIA · ROUND 1": H1–H3 |
 | screens_countdown_hunt | start_the_hunt (V5) | 15:00 countdown |
 | screens_return | hunt_time_up (C2) | "RETURN TO THE DESKTOP" |
