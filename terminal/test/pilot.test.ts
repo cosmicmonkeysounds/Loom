@@ -173,6 +173,48 @@ describe("visit signals", () => {
     expect(names(seen).map((b) => `${b.name} ${b.subject}`)).toEqual(["terminal opened g7", "terminal closed g7", "terminal opened g8", "terminal closed g8"]);
   });
 
+  it("a close that never landed stays owed: it goes again before the next line opens, and on the next boot", async () => {
+    const storage = memStorage();
+    const seen: Array<{ url: string; init: RequestInit }> = [];
+    const latch = new VisitLatch(storage);
+    recoverVisit(room, latch, { fetchFn: fakeFetch(200, seen) }); // the boot: nothing owed
+    openVisit(room, latch, "g7", { fetchFn: fakeFetch(200, seen) });
+    // A Wi-Fi blip eats the close: the visit is still on record.
+    expect(await closeVisit(room, latch, { fetchFn: fakeFetch(new Error("offline"), seen) })).toBe(false);
+    expect(parseStoredVisit(storage.map.get(VISIT_KEY) ?? null)?.guestId).toBe("g7");
+    // The next pass on this page: g7's close goes first, then g9's open.
+    openVisit(room, latch, "g9", { fetchFn: fakeFetch(200, seen) });
+    await latch.ready;
+    await latch.close()!.opened;
+    expect(names(seen).map((b) => `${b.name} ${b.subject}`)).toEqual(["terminal opened g7", "terminal closed g7", "terminal closed g7", "terminal opened g9"]);
+    // A pagehide close the page never hears back from: the next boot sends it again.
+    const s2 = memStorage();
+    const crashed = new VisitLatch(s2);
+    openVisit(room, crashed, "g4", { fetchFn: fakeFetch(200, []) });
+    await closeVisit(room, crashed, { keepalive: true, fetchFn: fakeFetch(503, []) });
+    const again: Array<{ url: string; init: RequestInit }> = [];
+    expect(await recoverVisit(room, new VisitLatch(s2), { fetchFn: fakeFetch(200, again) })).toBe(true);
+    expect(names(again).map((b) => `${b.name} ${b.subject}`)).toEqual(["terminal closed g4"]);
+    expect(s2.map.has(VISIT_KEY)).toBe(false);
+  });
+
+  it("a slow close never forgets the newer visit that replaced it", async () => {
+    const storage = memStorage();
+    const latch = new VisitLatch(storage);
+    recoverVisit(room, latch, { fetchFn: fakeFetch(200, []) });
+    openVisit(room, latch, "g7", { fetchFn: fakeFetch(200, []) });
+    let land: (ok: boolean) => void = () => {};
+    const slow = (async () => {
+      const ok = await new Promise<boolean>((r) => (land = r));
+      return { status: ok ? 200 : 503, ok, json: async () => ({}) } as Response;
+    }) as unknown as typeof fetch;
+    const closing = closeVisit(room, latch, { keepalive: true, fetchFn: slow })!;
+    openVisit(room, latch, "g9", { fetchFn: fakeFetch(200, []) });
+    land(true);
+    await closing;
+    expect(parseStoredVisit(storage.map.get(VISIT_KEY) ?? null)?.guestId).toBe("g9");
+  });
+
   it("a visit from another event is dropped, not closed here; junk is ignored", () => {
     const storage = memStorage();
     const seen: Array<{ url: string; init: RequestInit }> = [];

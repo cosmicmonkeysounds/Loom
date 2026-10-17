@@ -147,6 +147,16 @@ export class VisitLatch {
   begin(guestId: string, opened: Promise<unknown> = Promise.resolve()): void {
     this.open = { guestId, opened };
   }
+  /** Is a visit open on this page right now? */
+  get busy(): boolean {
+    return this.open !== null;
+  }
+  /** A close that did not land: the stored visit stays owed, and the next
+   *  `openVisit` on this page (or the next boot) posts it again. Only while
+   *  no newer visit is open (that one's record has replaced it). */
+  owe(): void {
+    if (this.open === null) this.recovered = false;
+  }
   /** The visit to close now (null: none open, or already closed). */
   close(): OpenVisit | null {
     const v = this.open;
@@ -218,13 +228,23 @@ export function openVisit(config: TerminalConfig, latch: VisitLatch, guestId: st
  *  `terminal opened` (a DISCONNECT right after the scan would otherwise
  *  race it and leave the story thinking the guest is still there). The
  *  pagehide (`keepalive`) can't wait for anything: it sends at once. The
- *  stored visit is forgotten as the close is posted. */
+ *  stored visit is forgotten only once the server took the close (and no
+ *  newer visit has replaced it): a close lost to a Wi-Fi blip stays owed,
+ *  and goes again before the next line opens here or on the next boot —
+ *  otherwise the guest would stay "at his heart" all night. A pagehide
+ *  close whose answer the page never sees is simply sent again (a second
+ *  `terminal closed` changes nothing). */
 export function closeVisit(config: TerminalConfig, latch: VisitLatch, o: { keepalive?: boolean; fetchFn?: typeof fetch } = {}): Promise<boolean> | null {
   const v = latch.close();
   if (v === null) return null;
-  latch.forget();
   const send = () => postVisit(config, "terminal closed", v.guestId, o);
-  return o.keepalive === true ? send() : v.opened.then(send, send);
+  const sent = o.keepalive === true ? send() : v.opened.then(send, send);
+  return sent.then((ok) => {
+    if (latch.busy) return ok; // a newer visit's record is the stored one now
+    if (ok) latch.forget();
+    else latch.owe();
+    return ok;
+  });
 }
 
 /** The roster (id + name) for the typed fallback — a mod-only read. */
