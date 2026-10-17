@@ -15,7 +15,7 @@ import clsx from 'clsx'
 import { SimEventType } from '@loom/core/sim'
 import { CockpitContext, useCockpit, type LedgerEntry } from '@/store/cockpit'
 import { canExportRun, downloadRunExport } from '@/lib/run-export'
-import { eventMentions } from './log-filter'
+import { eventMentions, missingEvents } from './log-filter'
 import { describeEvent } from './log-describe'
 
 /** Tone class per event type (grouped by family). */
@@ -78,14 +78,18 @@ export function LogTab() {
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' })
   }, [rows.length])
-  const missed = log.length > 0 ? Math.max(0, ledgerLen - log.length) : 0
+  const missed = missingEvents(log.length, ledgerLen)
   return (
     <div className="flex h-full flex-col" data-testid="sim-log">
       <div className="flex items-center justify-between gap-2 border-b border-zinc-800 px-3 py-1 text-[11px] text-zinc-500">
         <span className="flex items-center gap-2">
           <span>
             {who === '' ? `${log.length} of ${ledgerLen} events` : `${rows.length} of ${log.length} events mention`}
-            {missed > 0 && who === '' && <span className="ml-1 text-zinc-600">(earlier events predate this console)</span>}
+            {missed > 0 && who === '' && (
+              <span className="ml-1 text-zinc-600" data-testid="log-missed">
+                ({missed} earlier event{missed === 1 ? '' : 's'} predate this console — ⤓ Export run has them all)
+              </span>
+            )}
           </span>
           <select
             value={who}
@@ -128,7 +132,13 @@ export function LogTab() {
       <div className="min-h-0 flex-1 overflow-auto">
         {rows.length === 0 && (
           <div className="p-4 text-sm text-zinc-600">
-            {running ? (who === '' ? 'No events yet on this console.' : 'Nothing mentions them yet.') : 'The ledger is empty — start a rehearsal.'}
+            {running
+              ? who === ''
+                ? missed > 0
+                  ? `No events on this console yet — the run's ${missed} earlier events predate it (a reload or a late join). ⤓ Export run downloads the whole ledger.`
+                  : 'No events yet on this console.'
+                : 'Nothing mentions them yet.'
+              : 'The ledger is empty — start a rehearsal.'}
           </div>
         )}
         {rows.map((entry) => (

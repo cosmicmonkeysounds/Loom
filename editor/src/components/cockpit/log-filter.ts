@@ -18,3 +18,12 @@ export function eventMentions(event: SimEvent, id: string): boolean {
   }
   return false
 }
+
+/**
+ * How many ledger events this console doesn't hold: the ones before it
+ * connected (a reload, a late director) or past the console's cap. Shown
+ * whenever it is > 0 — an empty log on a long night most of all.
+ */
+export function missingEvents(held: number, ledgerLen: number): number {
+  return Math.max(0, ledgerLen - held)
+}

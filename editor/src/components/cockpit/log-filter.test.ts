@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { SimEvent } from '@loom/core/sim'
-import { eventMentions } from './log-filter'
+import { eventMentions, missingEvents } from './log-filter'
 
 describe('eventMentions', () => {
   it('matches a participant named in any string field or string array', () => {
@@ -16,5 +16,15 @@ describe('eventMentions', () => {
   it('never matches on the event type or on unrelated text', () => {
     const e = { type: 'g-1', text: 'g-1 walked in' } as unknown as SimEvent
     expect(eventMentions(e, 'g-1')).toBe(false)
+  })
+})
+
+describe('missingEvents (T7-03)', () => {
+  it('counts the ledger rows this console never saw — an empty log included', () => {
+    expect(missingEvents(0, 1977)).toBe(1977)
+    expect(missingEvents(12, 1977)).toBe(1965)
+    expect(missingEvents(30, 30)).toBe(0)
+    // A snapshot that lags the feed never goes negative.
+    expect(missingEvents(31, 30)).toBe(0)
   })
 })
