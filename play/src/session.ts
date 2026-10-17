@@ -501,6 +501,43 @@ export function pendingWidget(messages: ReadonlyMap<number, ChatMessage>, kind: 
 }
 
 
+/**
+ * State that belongs to one sign-in (B2): a value held for one session
+ * token reads as `empty` under any other. A restart cuts the session
+ * (`dropSession`), the guest re-registers on the same tab, and the new run
+ * hands out the old run's chat seqs again — a card answered last run must
+ * not read "✔ Submitted" in this one. Keying on the token covers register,
+ * leave and every drop at once.
+ */
+export interface PerSession<T> {
+  readonly session: string | null;
+  readonly value: T;
+}
+
+/** The value for `session` (`empty` when it was held for another one). */
+export function perSessionValue<T>(held: PerSession<T>, session: string | null, empty: T): T {
+  return held.session === session ? held.value : empty;
+}
+
+/** Apply `f` to `session`'s value (starting from `empty` for a new session). */
+export function perSessionUpdate<T>(held: PerSession<T>, session: string | null, empty: T, f: (prev: T) => T): PerSession<T> {
+  const prev = perSessionValue(held, session, empty);
+  const value = f(prev);
+  return held.session === session && value === held.value ? held : { session, value };
+}
+
+/** `useState` scoped to a sign-in; `empty` must be a stable constant. */
+function usePerSession<T>(session: string | null, empty: T): [T, (f: (prev: T) => T) => void] {
+  const [held, setHeld] = useState<PerSession<T>>(() => ({ session, value: empty }));
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+  const update = useCallback((f: (prev: T) => T) => setHeld((h) => perSessionUpdate(h, sessionRef.current, empty, f)), [empty]);
+  return [perSessionValue(held, session, empty), update];
+}
+
+const NO_ANSWERS: ReadonlyMap<number, WidgetResult> = new Map();
+const NONE_OPENED: ReadonlySet<string> = new Set();
+
 /** Is a card still waiting on this participant — an answerable widget with
  *  no answer in this session? A re-dealt card (a 📝 fact card) only counts
  *  while it is the newest. Shared by the guest's rooms and the booth's. */
@@ -961,7 +998,8 @@ export function useGuestSession(): GuestSession {
   // Widgets: one answer per card. The server refuses a second (409), and
   // the snapshot lists the cards already answered so a reload renders them
   // resolved (the result itself isn't replayed — an empty record marks it).
-  const [widgetAnswers, setWidgetAnswers] = useState<ReadonlyMap<number, WidgetResult>>(() => new Map());
+  // Per sign-in: a new session (a re-join after a restart) starts clean (B2).
+  const [widgetAnswers, setWidgetAnswers] = usePerSession(me?.token ?? null, NO_ANSWERS);
   const answeredList = status?.answered;
   useEffect(() => {
     if (answeredList === undefined || answeredList.length === 0) return;
@@ -991,7 +1029,7 @@ export function useGuestSession(): GuestSession {
     [post],
   );
 
-  const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
+  const [opened, setOpened] = usePerSession(me?.token ?? null, NONE_OPENED);
   const dock = requiredDecision(status, { choose: (i) => void choose(i), join: (f) => void join(f), escape: () => void escape() });
   const threads = useThreads(withAgents(buildGuestChannels(shown, dock, status, opened, new Set(widgetAnswers.keys())), status, typing), {
     store: host.storage,

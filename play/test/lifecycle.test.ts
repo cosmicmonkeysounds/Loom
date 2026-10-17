@@ -50,3 +50,28 @@ describe("performer dead-session detection", () => {
     expect(performerSessionDead(404, "unknown guest")).toBe(false);
   });
 });
+
+describe("a re-join after a restart starts with no answered cards (B2)", () => {
+  it("a card answered last session is answerable again under the new sign-in", async () => {
+    const { perSessionUpdate, perSessionValue, pendingWidget } = await import("../src/session.ts");
+    type Answers = ReadonlyMap<number, Record<string, unknown>>;
+    const EMPTY: Answers = new Map();
+    const captcha = {
+      seq: 4, channel: "loc:Mud Room", channelKind: "location", title: "Mud Room", from: "Clippy", kind: "widget",
+      text: "Prove you're human", ts: 4, audience: "all", parentSeq: null, hidden: false, widget: { kind: "captcha", params: {} },
+    } as const;
+    const msgs = new Map([[4, captcha as never]]);
+    // Session A answers the CAPTCHA at seq 4.
+    let held = perSessionUpdate({ session: null, value: EMPTY }, "tok-a", EMPTY, (p) => new Map(p).set(4, { solved: true }));
+    expect(pendingWidget(msgs, "captcha", new Set(perSessionValue(held, "tok-a", EMPTY).keys()))).toBeNull();
+    // The restart's lifecycle frame drops the session; the join screen holds nothing.
+    expect(perSessionValue(held, null, EMPTY).size).toBe(0);
+    // Register again: the new run's CAPTCHA reuses seq 4 and is answerable.
+    expect(pendingWidget(msgs, "captcha", new Set(perSessionValue(held, "tok-b", EMPTY).keys()))?.seq).toBe(4);
+    // A late write lands on the new session only, never resurrecting the old answer.
+    held = perSessionUpdate(held, "tok-b", EMPTY, (p) => new Map(p).set(9, {}));
+    expect([...perSessionValue(held, "tok-b", EMPTY).keys()]).toEqual([9]);
+    // Same session, no change: the held object is kept (no re-render).
+    expect(perSessionUpdate(held, "tok-b", EMPTY, (p) => p)).toBe(held);
+  });
+});
