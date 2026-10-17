@@ -1,6 +1,6 @@
 //! W8 T9-01: an SSE client that stops reading (a suspended phone, a laptop
 //! asleep on the Run page) must not make the server buffer without limit.
-//! `sseWrite` drops a stream whose queue passed its cap and hasn't drained
+//! `sseWrite` drops a stream whose queue passed its cap and has sent nothing
 //! for `SSE_STALL_MS`; the request's `close` handler then removes the client
 //! and its EventSource reconnects to a fresh snapshot + history.
 
@@ -55,6 +55,10 @@ function stalledRes(onDestroy: () => void = () => {}) {
       onDestroy();
       return res;
     },
+    /** The peer read `n` bytes — the queue shrinks, but no `drain` (it isn't empty). */
+    read(n: number) {
+      res.writableLength = Math.max(0, res.writableLength - n);
+    },
     /** The peer read everything. */
     drain() {
       res.writableLength = 0;
@@ -85,7 +89,7 @@ describe("sseWrite", () => {
     expect(res.writes).toBe(200); // an `event:` line + its `data:` each
   });
 
-  it("over the cap, a stream is dropped only once nothing drained for SSE_STALL_MS", () => {
+  it("over the cap, a stream is dropped only once nothing left it for SSE_STALL_MS", () => {
     const res = stalledRes();
     const r = res as unknown as ServerResponse;
     // One big frame (a director's history) is always written.
@@ -118,6 +122,27 @@ describe("sseWrite", () => {
     sseWrite(small as unknown as ServerResponse, "x".repeat(1000));
     vi.setSystemTime(Date.now() + SSE_STALL_MS * 100);
     expect(sseWrite(small as unknown as ServerResponse, ":ping\n\n")).toBe(true);
+  });
+
+  it("a slow reader that never empties its queue is kept while it takes bytes; one that stops is dropped", () => {
+    const res = stalledRes();
+    const r = res as unknown as ServerResponse;
+    // A director over a slow link: a big history, then frames arriving a
+    // little faster than it reads — never empty, always progressing.
+    sseWrite(r, "x".repeat(SSE_QUEUE_CAP * 4));
+    for (let i = 0; i < 60; i++) {
+      vi.setSystemTime(Date.now() + 1000);
+      res.read(20_000);
+      expect(sseWrite(r, "y".repeat(25_000))).toBe(true);
+    }
+    expect(res.destroyed).toBe(false);
+    expect(res.writableLength).toBeGreaterThan(SSE_QUEUE_CAP);
+    // It stops reading: still over the cap, and nothing leaves for the grace.
+    vi.setSystemTime(Date.now() + SSE_STALL_MS - 1);
+    expect(sseWrite(r, ":ping\n\n")).toBe(true);
+    vi.setSystemTime(Date.now() + 2);
+    expect(sseWrite(r, ":ping\n\n")).toBe(false);
+    expect(res.destroyed).toBe(true);
   });
 
   it("a director's console has the bigger cap", () => {

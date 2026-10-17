@@ -88,26 +88,33 @@ export function ipOf(req: IncomingMessage): string {
 export const SSE_QUEUE_CAP = 256 * 1024;
 /** …and a full director console (every frame + ≈200 KB views). */
 export const SSE_MOD_QUEUE_CAP = 2 * 1024 * 1024;
-/** Over its cap, a stream is dropped only once its queue hasn't been empty
- *  for this long: a client still reading a big history frame (a director
- *  over a slow link) catches up; one that stopped reading never does. */
+/** Over its cap, a stream is dropped only once its queue has made no
+ *  progress for this long: a client still reading (a director over a slow
+ *  link, however far behind) is kept; one that stopped reading never
+ *  sends a byte out again. */
 export const SSE_STALL_MS = 15_000;
 
 interface SseQueue {
   cap: number;
-  /** When the write queue was last seen empty (server ms). */
-  emptyAt: number;
+  /** The queue's length just after the last write. */
+  lastLen: number;
+  /** When the queue last shrank (bytes left for the client), server ms. */
+  progressAt: number;
 }
 const queues = new WeakMap<ServerResponse, SseQueue>();
 
 function queueOf(res: ServerResponse): SseQueue {
   let q = queues.get(res);
   if (q === undefined) {
-    const fresh: SseQueue = { cap: SSE_QUEUE_CAP, emptyAt: Date.now() };
+    const fresh: SseQueue = { cap: SSE_QUEUE_CAP, lastLen: 0, progressAt: Date.now() };
     q = fresh;
     queues.set(res, fresh);
     // `drain` fires once a backed-up queue has flushed.
-    if (typeof res.on === "function") res.on("drain", () => (fresh.emptyAt = Date.now()));
+    if (typeof res.on === "function")
+      res.on("drain", () => {
+        fresh.lastLen = 0;
+        fresh.progressAt = Date.now();
+      });
   }
   return q;
 }
@@ -122,22 +129,30 @@ export function sseCap(res: ServerResponse, cap: number): void {
  * A suspended phone or a sleeping laptop keeps its socket up (a zero-window
  * peer still ACKs, so `close` never fires) while Node queues every frame in
  * userland: one stalled director console queued 139 MB in 3 min. Past its
- * cap, with nothing drained for `SSE_STALL_MS`, the stream is destroyed:
- * the request's `close` handler drops the client, and its EventSource
- * reconnects to a fresh snapshot + history. False when nothing was written.
+ * cap, with nothing sent out for `SSE_STALL_MS` (the queue never shorter
+ * than just after the previous write), the stream is destroyed: the
+ * request's `close` handler drops the client, and its EventSource
+ * reconnects to a fresh snapshot + history. A slow reader that is still
+ * taking bytes is kept. False when nothing was written.
  */
 export function sseWrite(res: ServerResponse, chunk: string): boolean {
   if (res.destroyed || res.writableEnded) return false;
   const q = queueOf(res);
-  const queued = typeof res.writableLength === "number" ? res.writableLength : 0;
+  const queued = sseQueued(res);
   const now = Date.now();
-  if (queued === 0) q.emptyAt = now;
-  else if (queued > q.cap && now - q.emptyAt > SSE_STALL_MS) {
+  if (queued === 0 || queued < q.lastLen) q.progressAt = now;
+  else if (queued > q.cap && now - q.progressAt > SSE_STALL_MS) {
     res.destroy();
     return false;
   }
   res.write(chunk);
+  q.lastLen = sseQueued(res);
   return true;
+}
+
+/** Bytes an SSE stream holds unsent (what Node buffers for a slow peer). */
+export function sseQueued(res: ServerResponse): number {
+  return typeof res.writableLength === "number" ? res.writableLength : 0;
 }
 
 /** Emit one Server-Sent Event frame (two writes: the `event:` line, then
