@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ApiError } from "../src/client.ts";
-import { REDEEM_THROTTLED, pmChannelId, pmOtherParty, redeemErrorText, unlockFromSearch, withoutUnlock } from "../src/codex.ts";
+import { REDEEM_THROTTLED, pmChannelId, pmOtherParty, redeemErrorText, shareErrorText, unlockFromSearch, withoutUnlock } from "../src/codex.ts";
 
 describe("private threads", () => {
   it("one id whoever opens it, and the other party from my side", () => {
@@ -31,5 +31,19 @@ describe("the Codex box on a failed redeem (K-11)", () => {
     expect(redeemErrorText(new ApiError("nope", 400))).toBeNull();
     expect(redeemErrorText(new Error("offline"))).toBeNull();
     expect(redeemErrorText(null)).toBeNull();
+  });
+});
+
+describe("a refused Share… (T5-05)", () => {
+  it("shows the server's reason", () => {
+    expect(shareErrorText(new ApiError("they won't take lore about someone else", 403))).toBe("⛔ Not shared: they won't take lore about someone else");
+    expect(shareErrorText(new ApiError("you're restricted", 403))).toContain("restricted");
+    expect(shareErrorText(new TypeError("Failed to fetch"))).toContain("connection");
+  });
+
+  it("a dead session says nothing here (the join screen explains)", () => {
+    expect(shareErrorText(new ApiError("unknown guest", 404))).toBeNull();
+    expect(shareErrorText(new ApiError("unknown event", 404))).toBeNull();
+    expect(shareErrorText(new ApiError("sign in first", 403))).toBeNull();
   });
 });

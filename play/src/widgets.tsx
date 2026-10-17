@@ -326,6 +326,27 @@ export function factResult(question: string, answer: string, confidence: number)
   return { question, answer: a, confidence };
 }
 
+/** The question a fact card starts on: the lone open one (nothing to pick),
+ *  else none — the guest picks. */
+export function defaultFactQuestion(questions: ReadonlyArray<{ id: string }>): string {
+  return questions.length === 1 ? questions[0]!.id : "";
+}
+
+/** The picked question while it is still open, else the default — so a
+ *  list that shrinks to one (a filing elsewhere) lands on the lone one. */
+export function factQuestionOf(picked: string, questions: ReadonlyArray<{ id: string }>): string {
+  return questions.some((q) => q.id === picked) ? picked : defaultFactQuestion(questions);
+}
+
+/** Why "File it" is off, under the button (`null` when it's on). */
+export function factFileHint(question: string, answer: string): string | null {
+  if (question === "") return "Pick a question above";
+  const a = answer.trim();
+  if (a === "") return "Type your answer";
+  if (a.length > FACT_MAX) return `Keep it under ${FACT_MAX} characters`;
+  return null;
+}
+
 /**
  * `show fact "📝 File a fact" to program with thread: Trabolta, questions:
  * "H1: … | H2: …"` — file an answer to one of tonight's questions with a
@@ -337,7 +358,8 @@ export function factResult(question: string, answer: string, confidence: number)
  */
 function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
   const questions = factQuestions(card.params["questions"]);
-  const [question, setQuestion] = useState("");
+  const [picked, setQuestion] = useState("");
+  const question = factQuestionOf(picked, questions);
   const [answer, setAnswer] = useState("");
   const [confidence, setConfidence] = useState(CONFIDENCE_MAX);
   const done = answered !== null && answered !== undefined;
@@ -384,6 +406,11 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
           <div className="poll-options fact-questions">
             {questions.map((q) => (
               <button key={q.id} type="button" className={`choice ${question === q.id ? "primary" : "ghost"}`} aria-pressed={question === q.id} onClick={() => setQuestion(q.id)}>
+                {question === q.id && (
+                  <span className="fact-picked" aria-hidden>
+                    ✔{" "}
+                  </span>
+                )}
                 {q.label}
               </button>
             ))}
@@ -415,9 +442,12 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
         {done ? (
           <span className="widget-state">{sent} — the reply says whether it's accepted</span>
         ) : onAnswer ? (
-          <button type="button" className="widget-go" disabled={result === null} onClick={() => result && onAnswer(result)}>
-            File it
-          </button>
+          <>
+            {result === null && factFileHint(question, answer) !== null && <span className="widget-state fact-hint">{factFileHint(question, answer)}</span>}
+            <button type="button" className="widget-go" disabled={result === null} onClick={() => result && onAnswer(result)}>
+              File it
+            </button>
+          </>
         ) : (
           <span className="widget-state">shown to a guest</span>
         )}

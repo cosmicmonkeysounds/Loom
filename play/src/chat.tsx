@@ -344,6 +344,7 @@ export function PickerSheet({
   onClose,
   empty,
   keepOpen = false,
+  lead,
 }: {
   title: string;
   items: PickItem[];
@@ -353,9 +354,12 @@ export function PickerSheet({
   /** A pick moves a multi-step sheet on (the wallet's person → amount)
    *  instead of closing it; only × / the backdrop close. */
   keepOpen?: boolean;
+  /** Above the list: a field the pick carries (the director's award value). */
+  lead?: ReactNode;
 }) {
   return (
     <Sheet title={title} onClose={onClose} tall={items.length > 8}>
+      {lead}
       {items.length === 0 && <div className="muted pad">{empty ?? "Nothing to pick."}</div>}
       {items.map((it) => (
         <button
@@ -930,13 +934,16 @@ export function Composer({
   disabled,
   sendLabel,
 }: {
-  onSend: (text: string) => void;
+  /** Return the send's promise to keep the text until the server takes it:
+   *  a refusal (slow mode, paused doors, can't post) leaves it in the box. */
+  onSend: (text: string) => unknown;
   placeholder?: string;
   disabled?: boolean;
   /** The button's word ("Send"; the Codex says "Unlock"). */
   sendLabel?: string;
 }) {
   const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   // Reflow the textarea to fit its content (bounded by the CSS max-height).
   useEffect(() => {
@@ -946,10 +953,16 @@ export function Composer({
     el.style.height = `${el.scrollHeight}px`;
   }, [text]);
   const send = () => {
-    const t = text.trim();
-    if (t === "") return;
-    onSend(t);
-    setText("");
+    if (sending) return;
+    const sent = text;
+    const pending = sendFromComposer(sent, onSend);
+    if (pending === null) return;
+    setSending(true);
+    void pending.then((clear) => {
+      setSending(false);
+      // Only clear what was sent: never words typed while it was in flight.
+      if (clear) setText((now) => (now === sent ? "" : now));
+    });
   };
   return (
     <div className="composer">
@@ -968,11 +981,32 @@ export function Composer({
           }
         }}
       />
-      <button className="choice composer-send" onClick={send} disabled={disabled}>
+      <button className="choice composer-send" onClick={send} disabled={disabled || sending}>
         {sendLabel ?? "Send"}
       </button>
     </div>
   );
+}
+
+/** Send a composer's text: `null` for nothing to send, else whether to
+ *  clear the box — once the send resolves, never after a refusal (the
+ *  caller has already said why; the guest keeps their words to retry). */
+export function sendFromComposer(raw: string, onSend: (text: string) => unknown): Promise<boolean> | null {
+  const t = raw.trim();
+  if (t === "") return null;
+  let result: unknown;
+  try {
+    result = onSend(t);
+  } catch {
+    return Promise.resolve(false);
+  }
+  if (result !== null && typeof result === "object" && typeof (result as { then?: unknown }).then === "function") {
+    return (result as Promise<unknown>).then(
+      () => true,
+      () => false,
+    );
+  }
+  return Promise.resolve(true);
 }
 
 /** The "who's here" strip in a room header: a few avatar tiles + a count. */
@@ -1046,8 +1080,9 @@ export function ChannelView({
   footer?: ReactNode;
   moderate?: ModerateHook;
   showChannel?: boolean;
-  /** Hybrid chat: when present, a composer docks below the footer. */
-  onSend?: (text: string, parentSeq?: number) => void;
+  /** Hybrid chat: when present, a composer docks below the footer. Return
+   *  the send's promise so a refused message stays in the box. */
+  onSend?: (text: string, parentSeq?: number) => unknown;
   /** When present, line messages expose a Slack-style "reply" affordance. */
   onOpenThread?: (rootSeq: number) => void;
   widgets?: WidgetHook;
@@ -1126,7 +1161,10 @@ export function ChannelView({
           {channel.decision && <DecisionTray decision={channel.decision} />}
           {footer}
           {onSend && canPost && (
+            // Keyed by room: a draft (or a refused line coming back) stays
+            // in its own room, never follows the guest into the next one.
             <Composer
+              key={channel.id}
               onSend={(t) => onSend(t)}
               placeholder={channel.kind === "codex" ? "Enter a code…" : `Message ${channel.title}…`}
               sendLabel={channel.kind === "codex" ? "Unlock" : undefined}
@@ -1158,7 +1196,7 @@ export function MessageThread({
   rootSeq: number;
   onClose: () => void;
   moderate?: ModerateHook;
-  onSend?: (text: string, parentSeq?: number) => void;
+  onSend?: (text: string, parentSeq?: number) => unknown;
 }) {
   const box = useStickToBottom<HTMLDivElement>();
   const root = channel.messages.find((m) => m.seq === rootSeq);
@@ -1191,7 +1229,7 @@ export function MessageThread({
       </div>
       {onSend && channel.canPost !== false && (
         <footer>
-          <Composer onSend={(t) => onSend(t, rootSeq)} placeholder="Reply…" />
+          <Composer key={`${channel.id}#${rootSeq}`} onSend={(t) => onSend(t, rootSeq)} placeholder="Reply…" />
         </footer>
       )}
     </div>

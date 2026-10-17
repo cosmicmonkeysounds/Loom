@@ -20,6 +20,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionStorage } from "./host.ts";
+import { activePins } from "./pins.ts";
 import type { ChatMessage } from "./types.ts";
 
 /** An alert on screen — a `!` broadcast (seq ≥ 0) or a booth readout (seq < 0). */
@@ -79,6 +80,27 @@ export function pickAlerts(messages: Iterable<ChatMessage>, sinceSeq: number, fo
   return out.sort((a, b) => a.seq - b.seq);
 }
 
+/** The seqs of `!` pins a later `unpin` (or a newer pin with the same key)
+ *  already took down — the 🩹 after a mis-tapped mark, the dance lifting a
+ *  `!!` takeover. Such a pin is no longer news: it never banners on wake,
+ *  and a banner still up for it goes away. */
+export function retractedPinSeqs(messages: Iterable<ChatMessage>): Set<number> {
+  const list = [...messages];
+  const live = new Set(activePins(list).map((m) => m.seq));
+  const out = new Set<number>();
+  for (const m of list) if (m.alert === true && m.pin !== undefined && !live.has(m.seq)) out.add(m.seq);
+  return out;
+}
+
+/** The banner left once the pins in `gone` are taken down: `alert` itself,
+ *  or null when it is one of them. Fed the *latest* banner (a functional
+ *  state update), so a newer pin that replaced the one on screen in the
+ *  same render — a second `!` pin with the same key — is kept, never wiped
+ *  with the pin it replaced. A readout (negative seq) is never a pin. */
+export function bannerAfterRetract(alert: Alert | null, gone: ReadonlySet<number>): Alert | null {
+  return alert !== null && alert.seq >= 0 && gone.has(alert.seq) ? null : alert;
+}
+
 /** The highest seq in a message list (−1 when empty). */
 export function maxSeqOf(messages: Iterable<ChatMessage>): number {
   let max = -1;
@@ -97,7 +119,8 @@ export function maxTsOf(messages: Iterable<ChatMessage>): number {
  * The alert to banner now, given the last one seen (`mark`): the newest
  * unseen alert at most `ALERT_WINDOW_MS` older than `now`, else null. The
  * returned `mark` moves past every unseen alert, shown or skipped (an alert
- * `forMe` rejects included — it is never shown later either). `now` is
+ * `forMe` rejects, or a `!` pin already taken down, included — it is never
+ * shown later either). `now` is
  * the story clock — the server view's `clock`, or the newest message's `ts`
  * when that is later (a view is only rebuilt on state changes).
  */
@@ -111,7 +134,8 @@ export function nextAlert(
   const all = pickAlerts(list, mark);
   if (all.length === 0) return { alert: null, mark };
   const last = all[all.length - 1]!;
-  const fresh = forMe === undefined ? all : all.filter(forMe);
+  const retracted = retractedPinSeqs(list);
+  const fresh = all.filter((m) => !retracted.has(m.seq) && (forMe?.(m) ?? true));
   const now = Math.max(clock ?? Number.NEGATIVE_INFINITY, maxTsOf(list));
   const recent = fresh.filter((m) => m.ts >= now - ALERT_WINDOW_MS);
   return { alert: recent.length > 0 ? recent[recent.length - 1]! : null, mark: last.seq };
@@ -349,6 +373,21 @@ export function useAlerts(opts: {
     // `clock` is read, not watched: a snapshot alone never raises an alert.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, session, show, persist]);
+
+  // A pin taken down while its banner is still up: the banner goes too.
+  // A functional update: the effect above may have just raised a newer pin
+  // that replaced this one (same key) in the same commit, and the `alert`
+  // this render saw is the old one — checking it would wipe the new banner.
+  useEffect(() => {
+    if (alert === null || alert.seq < 0) return;
+    const gone = retractedPinSeqs(messages.values());
+    if (!gone.has(alert.seq)) return;
+    setAlert((a) => {
+      const next = bannerAfterRetract(a, gone);
+      if (next === null && a !== null) pendingChime.current = false;
+      return next;
+    });
+  }, [alert, messages]);
 
   // Woke up: sound what landed while hidden.
   useEffect(() => {

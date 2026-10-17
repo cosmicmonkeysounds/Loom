@@ -132,6 +132,15 @@ describe("a fact card with no open questions is closed, not a task (B14)", () =>
     expect(html).not.toContain("<textarea");
     expect(renderToStaticMarkup(WIDGETS.fact!.render({ card: fact(3, "H2: Round 1 Q2.").widget!, seed: 3, onAnswer: () => {} }) as never)).toContain("<textarea");
   });
+
+  it("a card with one question left shows it picked, and says what File it waits for (T5-04)", () => {
+    const html = renderToStaticMarkup(WIDGETS.fact!.render({ card: fact(3, "H2: Round 1 Q2.").widget!, seed: 3, onAnswer: () => {} }) as never);
+    expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain("Type your answer");
+    const two = renderToStaticMarkup(WIDGETS.fact!.render({ card: fact(4, "H2: Q2 | H3: Q3").widget!, seed: 4, onAnswer: () => {} }) as never);
+    expect(two).not.toContain('aria-pressed="true"');
+    expect(two).toContain("Pick a question above");
+  });
 });
 
 describe("read marks", () => {

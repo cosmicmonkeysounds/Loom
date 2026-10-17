@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createCrawl } from "../src/host.ts";
-import { ANSWER_MAX_DEFAULT, CAPTCHA_TILES, CONFIDENCE_LABEL, FACT_MAX, WIDGETS, answerMax, answerResult, captchaGrid, captchaPassed, factQuestions, factResult, supersededCards, widgetLabel } from "../src/widgets.tsx";
+import { ANSWER_MAX_DEFAULT, CAPTCHA_TILES, CONFIDENCE_LABEL, FACT_MAX, WIDGETS, answerMax, answerResult, captchaGrid, captchaPassed, defaultFactQuestion, factFileHint, factQuestionOf, factQuestions, factResult, supersededCards, widgetLabel } from "../src/widgets.tsx";
 
 describe("captcha grid", () => {
   it("is deterministic per seed and always has 2–4 target squares", () => {
@@ -111,6 +111,23 @@ describe("📝 fact card", () => {
     expect(WIDGETS["fact"]?.answerable).toBe(true);
     expect(widgetLabel({ kind: "fact", text: "📝 File a fact", params: {} })).toBe("📝 File a fact");
     expect(widgetLabel({ kind: "fact", text: "Round 2", params: {} })).toBe("📝 file a fact — Round 2");
+  });
+
+  it("a lone open question is already picked; File it says why it is off (T5-04)", () => {
+    const one = factQuestions("H3: Round 1 Q3. Who wrote it?");
+    const two = factQuestions("H2: Q2 | H3: Q3");
+    expect(defaultFactQuestion(one)).toBe("H3");
+    expect(defaultFactQuestion(two)).toBe("");
+    // Typing an answer is enough with one question left.
+    expect(factResult(factQuestionOf("", one), "Clippy", 100)).toEqual({ question: "H3", answer: "Clippy", confidence: 100 });
+    // A pick survives while open; a list shrinking to one lands on the lone one.
+    expect(factQuestionOf("H2", two)).toBe("H2");
+    expect(factQuestionOf("H2", one)).toBe("H3");
+    expect(factQuestionOf("", two)).toBe("");
+    expect(factFileHint("", "Clippy")).toBe("Pick a question above");
+    expect(factFileHint("H3", "  ")).toBe("Type your answer");
+    expect(factFileHint("H3", "x".repeat(FACT_MAX + 1))).toContain(String(FACT_MAX));
+    expect(factFileHint("H3", "Clippy")).toBeNull();
   });
 });
 

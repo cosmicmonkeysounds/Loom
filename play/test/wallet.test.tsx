@@ -39,6 +39,7 @@ import {
   walletNeedsYou,
   walletStateLine,
   walletStepLine,
+  walletStepText,
   walletSummary,
   walletTicking,
 } from "../src/wallet.tsx";
@@ -129,6 +130,31 @@ describe("card copy", () => {
     expect(walletStepLine(card({ kind: "request", step: "expired" }))).toBe("⌛ Expired");
     expect(walletStepLine(card({ step: "received" }))).toBe("💰 Received 50 Truthcoin from Winamp");
     expect(walletStepLine(card({ kind: "offer", step: "declined" }))).toBe("⛔ Declined");
+  });
+
+  it("a request's paid step reads as the payer's own payment on the payer's phone (T5-07, C3)", () => {
+    // A request card: from = the requester (me), to = the payer (g2, Paint).
+    const paid = card({ kind: "request", step: "paid", from: "me", fromName: "Winamp", to: "g2", toName: "Paint" });
+    expect(walletStepLine(paid, "me")).toBe("✅ Paid — Paint sent 50 Truthcoin");
+    expect(walletStepLine(paid, "g2")).toBe("✅ Paid — you sent 50 Truthcoin");
+    // The payer's root card, closed, reads its outcome: no more "Agreed — paying".
+    const asked = card({ kind: "request", step: "asked", from: "me", fromName: "Winamp", to: "g2", toName: "Paint" });
+    expect(walletFootLine(asked, null, view(), 0, paid, "g2")).toBe("✅ Paid — you sent 50 Truthcoin");
+    // The thread step reads from each party's side; the server's line (both
+    // sides in the third person) is left for a viewer who is neither.
+    const step = msg(paid, { parentSeq: 6, text: "✅ Paid: Paint sent Winamp 50 Truthcoin." });
+    expect(walletStepText(step, paid, "me")).toBe("✅ Paid — Paint sent 50 Truthcoin");
+    expect(walletStepText(step, paid, "g2")).toBe("✅ Paid — you sent 50 Truthcoin");
+    expect(walletStepText(step, paid, "g9")).toBe("✅ Paid: Paint sent Winamp 50 Truthcoin.");
+    expect(walletStepText(step, paid, null)).toBe("✅ Paid: Paint sent Winamp 50 Truthcoin.");
+  });
+
+  it("foot lines keep the case of names and the currency; bare states read lowercase (T5-07)", () => {
+    const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+    expect(css).not.toMatch(/\.wallet-state\s*\{[^}]*text-transform:\s*lowercase/u);
+    const paid = card({ kind: "request", step: "paid", to: "g2", toName: "VLC", unit: "Truthcoin" });
+    expect(walletFootLine(card({ kind: "request", step: "sent" }), null, view(), 0, paid, "me")).toBe("✅ Paid — VLC sent 50 Truthcoin");
+    expect(walletStateLine(card({ kind: "request", step: "asked" }), "PAYING", view(), 0)).toBe("paying");
   });
 
   it("titles a root card from the viewer's side", () => {

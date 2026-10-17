@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { requiredDecision } from "../src/session.ts";
+import { defectTargets, requiredDecision } from "../src/session.ts";
 import { channelHead, prettyName, withThe } from "../src/threads.ts";
 import type { GuestView } from "../src/types.ts";
 
@@ -22,5 +22,17 @@ describe("names on the phone", () => {
     const view = { faction: null, captured: false, factions: ["Unlimited Power", "The Way Out"], pendingChoice: null } as unknown as GuestView;
     const d = requiredDecision(view, { choose: () => {}, join: () => {}, escape: () => {} });
     expect(d?.decision.options.map((o) => o.label)).toEqual(["Side with the Unlimited Power", "Side with The Way Out"]);
+  });
+
+  it("a restricted (marked) program gets no side chooser and no defect buttons (T4-07)", () => {
+    const acts = { choose: () => {}, join: () => {}, escape: () => {} };
+    const factions = ["Unlimited Power", "The Way Out"];
+    const unaligned = { faction: null, captured: false, factions, pendingChoice: null, restricted: true } as unknown as GuestView;
+    expect(requiredDecision(unaligned, acts)).toBeNull();
+    const sided = { faction: "Unlimited Power", captured: false, factions, pendingChoice: null } as unknown as GuestView;
+    expect(defectTargets(sided)).toEqual(["The Way Out"]);
+    expect(defectTargets({ ...sided, restricted: true })).toEqual([]);
+    // A story choice still docks: only the side buttons are off.
+    expect(requiredDecision({ ...unaligned, pendingChoice: ["Yes"] }, acts)?.decision.title).toBe("Your move…");
   });
 });

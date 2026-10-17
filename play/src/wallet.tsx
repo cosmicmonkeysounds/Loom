@@ -165,8 +165,10 @@ export function walletGlyph(card: WalletCard, state?: string | null): string {
   return STEP_GLYPH[card.step] ?? "💰";
 }
 
-/** The short per-step line a thread reply shows under its card. */
-export function walletStepLine(card: WalletCard): string {
+/** The short per-step line a thread reply shows under its card. `me` is the
+ *  viewer: a request's `paid` step reaches both parties (C3), and the payer
+ *  reads it as their own payment. */
+export function walletStepLine(card: WalletCard, me?: string | null): string {
   const amt = `${card.amount} ${card.unit}`;
   const by = card.by ? ` by ${card.by.replace(/_/gu, " ")}` : "";
   switch (card.step) {
@@ -183,7 +185,7 @@ export function walletStepLine(card: WalletCard): string {
     case "thawed":
       return card.by ? `☀️ Lifted early${by} — your ${card.unit} moves again` : `☀️ Thawed — your ${card.unit} moves again`;
     case "paid":
-      return `✅ Paid — ${card.toName} sent ${amt}`;
+      return card.kind === "request" && me != null && me === card.to ? `✅ Paid — you sent ${amt}` : `✅ Paid — ${card.toName} sent ${amt}`;
     case "accepted":
       return card.kind === "request" ? `💸 Agreed — paying ${amt}` : `✅ Done — the fact changed hands for ${amt}`;
     case "declined":
@@ -255,9 +257,12 @@ export function walletStateLine(card: WalletCard, state: string | null, view: Wa
     return left > 0 ? `thaws in ${mmss(left)}` : "thawing";
   }
   if (state === null) return "closed";
+  // A bare state word reads lowercase ("held", "paying"); full sentences
+  // (a closed item's outcome) keep their names and currency as written.
+  const bare = state.toLowerCase();
   if (state === "held") {
     const held = secondsLeft(heldDeadline(view, card), clock);
-    return held > 0 ? `auto-approves in ${mmss(held)}` : state;
+    return held > 0 ? `auto-approves in ${mmss(held)}` : bare;
   }
   // Count down only while the item is still live: a denied or cancelled
   // transfer stays in the view and reads its state at once (B9).
@@ -266,7 +271,7 @@ export function walletStateLine(card: WalletCard, state: string | null, view: Wa
     const left = secondsLeft(card.settleAt, clock);
     if (left > 0) return card.kind === "request" || card.kind === "offer" ? `expires in ${left} s` : `settles in ${left} s`;
   }
-  return state;
+  return bare;
 }
 
 /** The newest step in a root card's thread (its outcome once closed), or null. */
@@ -278,9 +283,19 @@ export function lastWalletStep(messages: readonly ChatMessage[], rootSeq: number
 
 /** The root card's foot: the live state line, or — once the item has left
  *  the view ("closed") — how it closed, read off its last step (B8). */
-export function walletFootLine(card: WalletCard, state: string | null, view: WalletView | WalletQueueView | null, clock: number, outcome?: WalletCard | null): string {
-  if (state === null && outcome && card.kind !== "grant" && card.kind !== "freeze") return walletStepLine(outcome);
+export function walletFootLine(card: WalletCard, state: string | null, view: WalletView | WalletQueueView | null, clock: number, outcome?: WalletCard | null, me?: string | null): string {
+  if (state === null && outcome && card.kind !== "grant" && card.kind !== "freeze") return walletStepLine(outcome, me);
   return walletStateLine(card, state, view, clock);
+}
+
+/** A thread step's text: the server's line, except a request's `paid` step
+ *  on either party's phone, which reads from that side — "you sent" for the
+ *  payer, "<payer> sent" for the requester — like the card's foot line. The
+ *  server's line names both sides in the third person ("Paid: VLC sent Pong
+ *  7 Truthcoin."), which suits only a viewer who is neither. */
+export function walletStepText(msg: Pick<ChatMessage, "text">, card: WalletCard, me: string | null | undefined): string {
+  if (card.kind === "request" && card.step === "paid" && me != null && (me === card.to || me === card.from)) return walletStepLine(card, me);
+  return msg.text || walletStepLine(card, me);
 }
 
 export type WalletButton = "pay" | "declineRequest" | "accept" | "declineOffer" | "approve" | "deny" | "cancel";
@@ -446,7 +461,7 @@ export function WalletCardView({
         <span className="wallet-step-ico" aria-hidden>
           {walletGlyph(card)}
         </span>
-        <span className="bubble plain">{msg.text || walletStepLine(card)}</span>
+        <span className="bubble plain">{walletStepText(msg, card, actions.me)}</span>
         {modBtn}
       </div>
     );
@@ -480,7 +495,7 @@ export function WalletCardView({
         {msg.text && <p className="wallet-text">{msg.text}</p>}
         <div className="wallet-foot">
           <span className="muted wallet-state">
-            {walletFootLine(card, state, actions.view, actions.clock, outcome)}
+            {walletFootLine(card, state, actions.view, actions.clock, outcome, actions.me)}
           </span>
           {open && (
             <button className="link" onClick={open}>

@@ -4,6 +4,8 @@
 //! unit-tested in `test/codex.test.ts`. (The alert chime lives in
 //! `alerts.ts`.)
 
+import { eventGone, guestSessionDead, performerSessionDead } from "./lifecycle.ts";
+
 /** The private thread between two participants — one id whoever opens it. */
 export function pmChannelId(a: string, b: string): string {
   const [x, y] = a < b ? [a, b] : [b, a];
@@ -43,4 +45,16 @@ export const REDEEM_THROTTLED = "Too many tries — wait a minute, then try agai
 export function redeemErrorText(e: unknown): string | null {
   const status = typeof e === "object" && e !== null ? (e as { status?: unknown }).status : undefined;
   return status === 429 ? REDEEM_THROTTLED : null;
+}
+
+/** What a refused Share… says (T5-05): the server names the reason — an
+ *  agent won't take lore about someone else, a restricted program can't
+ *  share — so the guest isn't left thinking it worked. Null for a session
+ *  the app is dropping anyway (it explains itself on the join screen). */
+export function shareErrorText(e: unknown): string | null {
+  const status = typeof e === "object" && e !== null ? (e as { status?: unknown }).status : undefined;
+  const message = e instanceof Error ? e.message : "";
+  if (typeof status !== "number") return "⚠️ Not shared — check your connection and try again.";
+  if (eventGone(status, message) || guestSessionDead(status, message) || performerSessionDead(status, message)) return null;
+  return `⛔ Not shared: ${message || `HTTP ${status}`}`;
 }

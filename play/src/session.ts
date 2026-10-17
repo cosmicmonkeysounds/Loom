@@ -6,13 +6,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DOORS_POLL_MS, type Identities, type PictureChoices, type ProgramHit, type ProgramPictures } from "./avatars.ts";
-import { ApiError, api, useChatStream } from "./client.ts";
+import { ApiError, RequestTimeout, api, useChatStream, withTimeout } from "./client.ts";
 import { boothAlertFilter, maxSeqOf, unsolicitedReadout, useAlerts, type Alert } from "./alerts.ts";
 import { checkinFromSearch, withoutCheckin } from "./checkin.ts";
-import { pmChannelId, pmOtherParty, unlockFromSearch, withoutUnlock } from "./codex.ts";
+import { pmChannelId, pmOtherParty, shareErrorText, unlockFromSearch, withoutUnlock } from "./codex.ts";
 import { usePlayHost } from "./host.ts";
 import { roomFromMessage, roomFromSearch, roomTarget, withoutRoom } from "./room.ts";
-import { SessionRole, afterLifecycle, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, lifecycleStartsNewRun, performerSessionDead } from "./lifecycle.ts";
+import { BOOTH_SIGNED_OUT, SessionRole, afterLifecycle, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, lifecycleStartsNewRun, performerSessionDead } from "./lifecycle.ts";
 import { locationOfRoom, occupantsByLocation, type Presence } from "./presence.ts";
 import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, WALLET_ROOM, channelHead, groupByChannel, prettyName, questSummary, withThe, useThreads, type Threads } from "./threads.ts";
 import { queueSummary, walletNeedsYou, walletSummary } from "./wallet.tsx";
@@ -385,9 +385,10 @@ export function requiredDecision(
     };
   }
   // The side chooser is driven by the story's declared public factions —
-  // nothing is shown for a story that has none.
+  // nothing is shown for a story that has none. A restricted (marked)
+  // program can't join a side: the server answers 403 until it's lifted.
   const factions = status.factions ?? [];
-  if (!status.faction && !status.captured && factions.length > 0) {
+  if (!status.faction && !status.captured && !status.restricted && factions.length > 0) {
     return {
       channel: "lobby",
       decision: {
@@ -412,6 +413,31 @@ export function requiredDecision(
     };
   }
   return null;
+}
+
+/** The sides a guest may defect to from the profile sheet: every other
+ *  public group, none while restricted (the server answers 403). */
+export function defectTargets(status: GuestView | null): string[] {
+  if (!status || status.restricted || !status.faction) return [];
+  return (status.factions ?? []).filter((f) => f !== status.faction);
+}
+
+/** How long a typed line waits for the server before the composer gives
+ *  the Send button back (the words stay in the box). */
+export const SAY_TIMEOUT_MS = 15_000;
+
+/** Why a typed message didn't go through, for a quiet banner — the server
+ *  names the reason (slow mode's wait, paused doors, a room you can't post
+ *  in), and the composer keeps the words so the guest can send them again.
+ *  `null` for a session the app is dropping anyway (401, or the unknown-token
+ *  404s), which explains itself on the join screen. */
+export function sayRefusalText(e: unknown): string | null {
+  if (e instanceof RequestTimeout) return "⚠️ No answer yet — check your connection. If your line doesn't show up in the room, send it again.";
+  if (!(e instanceof ApiError)) return "⚠️ Not sent — check your connection and try again.";
+  if (eventGone(e.status, e.message) || guestSessionDead(e.status, e.message) || performerSessionDead(e.status, e.message)) return null;
+  if (e.status === 429) return `⏳ Not sent: ${e.message}. Your message is still in the box.`;
+  if (e.status === 409 && /doors are closed/i.test(e.message)) return "⏸ Not sent: the show is paused. Your message is still in the box.";
+  return `⛔ Not sent: ${e.message}`;
 }
 
 /** What a guest sees after pressing one of the story's buttons: the
@@ -900,8 +926,17 @@ export function useGuestSession(): GuestSession {
     },
     [post],
   );
+  // A refused line banners why and rejects, so the composer keeps the text.
   const say = useCallback(
-    (channel: string, text: string, parentSeq?: number) => post("/api/guest/say", { channel, text, parentSeq }),
+    async (channel: string, text: string, parentSeq?: number) => {
+      try {
+        return await withTimeout(post("/api/guest/say", { channel, text, parentSeq }), SAY_TIMEOUT_MS);
+      } catch (e) {
+        const why = sayRefusalText(e);
+        if (why !== null) alertsRef.current?.raise(why, { quiet: true });
+        throw e;
+      }
+    },
     [post],
   );
   const register = useCallback(async (name: string, code: string, wiki?: string, picture?: string) => {
@@ -942,7 +977,20 @@ export function useGuestSession(): GuestSession {
     },
     [post],
   );
-  const shareCodex = useCallback((entry: string, to: string) => post("/api/guest/codex/share", { entry, to }), [post]);
+  // A refused share banners the server's reason (and resolves null), so it
+  // never looks like a share that worked.
+  const shareCodex = useCallback(
+    async (entry: string, to: string): Promise<unknown> => {
+      try {
+        return await post("/api/guest/codex/share", { entry, to });
+      } catch (e) {
+        const why = shareErrorText(e);
+        if (why !== null) alertsRef.current?.raise(why, { quiet: true });
+        return null;
+      }
+    },
+    [post],
+  );
   // The wallet routes: the server's refusal is the whole story (it names
   // the reason), so it banners quietly instead of throwing at a button.
   const walletCall = useCallback(
@@ -1423,18 +1471,19 @@ export function usePrimeSession(): PrimeSession {
       }
     },
     // The stream closed for good: confirm the booth's token is really gone
-    // (the show went live while the phone slept) before signing out.
+    // (released, or the show went live while the phone slept) before
+    // signing out.
     onDead: () => {
       if (auth === null) return;
       void tokenDead(base, "prime", auth.token).then((dead) => {
-        if (dead) dropBooth(lifecycleNotice(dead === "ended" ? "ended" : "golive", SessionRole.Performer));
+        if (dead) dropBooth(dead === "ended" ? lifecycleNotice("ended", SessionRole.Performer) : BOOTH_SIGNED_OUT);
       });
     },
   });
 
   // Every action is scoped to the event this performer signed into. A 403
-  // "sign in" answer means the token lost its character (go-live happened
-  // while this phone wasn't listening) — drop the booth and say so.
+  // "sign in" answer means the token lost its character (a release, or a
+  // go-live while this phone wasn't listening) — drop the booth and say so.
   const post = useCallback(
     async <T,>(path: string, body?: unknown, token?: string): Promise<T> => {
       lastActionAt.current = Date.now();
@@ -1444,7 +1493,7 @@ export function usePrimeSession(): PrimeSession {
       } catch (e) {
         if (e instanceof ApiError && auth !== null) {
           if (eventGone(e.status, e.message)) dropBooth(lifecycleNotice("ended", SessionRole.Performer));
-          else if (performerSessionDead(e.status, e.message)) dropBooth(lifecycleNotice("golive", SessionRole.Performer));
+          else if (performerSessionDead(e.status, e.message)) dropBooth(BOOTH_SIGNED_OUT);
         }
         throw e;
       } finally {
@@ -1469,9 +1518,17 @@ export function usePrimeSession(): PrimeSession {
     setNotice(null);
   }, []);
   const scan = useCallback((target: string) => post("/api/scan", { target }, auth!.token), [post, auth]);
+  // A refused line banners why and rejects, so the composer keeps the text.
   const say = useCallback(
-    (channel: string, text: string, parentSeq?: number) =>
-      post("/api/prime/say", { channel, text, parentSeq }, auth!.token),
+    async (channel: string, text: string, parentSeq?: number) => {
+      try {
+        return await withTimeout(post("/api/prime/say", { channel, text, parentSeq }, auth!.token), SAY_TIMEOUT_MS);
+      } catch (e) {
+        const why = sayRefusalText(e);
+        if (why !== null) alertsRef.current?.raise(why, { quiet: true });
+        throw e;
+      }
+    },
     [post, auth],
   );
   const inviteToChannel = useCallback(
@@ -1496,7 +1553,15 @@ export function usePrimeSession(): PrimeSession {
     [post, auth],
   );
   const shareCodex = useCallback(
-    (entry: string, to: string) => post("/api/prime/codex/share", { entry, to }, auth!.token),
+    async (entry: string, to: string): Promise<unknown> => {
+      try {
+        return await post("/api/prime/codex/share", { entry, to }, auth!.token);
+      } catch (e) {
+        const why = shareErrorText(e);
+        if (why !== null) alertsRef.current?.raise(why, { quiet: true });
+        return null;
+      }
+    },
     [post, auth],
   );
   const moderate = useCallback(

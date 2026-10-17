@@ -7,15 +7,16 @@
 //! It signs in with the mod passcode (`/api/mod/login` → a token with no
 //! character), polls the director's lean `GET /api/state?cues=1` every 3 s
 //! (paused while the page is hidden, backing off on errors), and fires a cue with
-//! `/api/mod/signal {name, subject?, label: "Phone · <name>"}` — the label
+//! `/api/mod/signal {name, subject?, args?, label: "Phone · <name>"}` — the label
 //! is what the journal records as `by`. Tap once to arm, again to fire, so a
 //! phone in a pocket never fires a cue. A cue that needs a person (an award)
-//! asks for one first. The rows are core's `cue-sheet.ts`, the same rules as
+//! asks for one first, with an optional value box (`args: {value}` — the
+//! number the award line reads). The rows are core's `cue-sheet.ts`, the same rules as
 //! the editor's Director page. Lifecycle, chat and the World editor stay on
 //! the laptop.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { cueRows, filterCues, nightPhase, type CueInteraction, type CueMarks, type CueRow, type WorldLine } from "../../core/src/cue-sheet.ts";
+import { cueRows, cueValueArgs, filterCues, nightPhase, type CueInteraction, type CueMarks, type CueRow, type WorldLine } from "../../core/src/cue-sheet.ts";
 import { ApiError, api } from "./client.ts";
 import { ConnDot, PickerSheet, Sheet, WakeLockToggle, type PickItem } from "./chat.tsx";
 import { HelpSheet } from "./help.tsx";
@@ -99,6 +100,9 @@ export interface Armed {
   id: string;
   subject: string | null;
   at: number;
+  /** The award's optional value box, as typed (T2-09): lies accepted, the
+   *  duck time, quests done — or a fixed award's number overridden. */
+  value?: string;
 }
 
 export type Tap =
@@ -107,24 +111,33 @@ export type Tap =
   /** A cue that needs a person, with none picked yet: open the picker. */
   | { kind: "pick"; id: string }
   /** Second tap on an armed row in time: fire it. */
-  | { kind: "fire"; id: string; subject: string | null };
+  | { kind: "fire"; id: string; subject: string | null; value?: string };
 
 /** What a tap on `row` does, given what is armed now. */
 export function tapCue(armed: Armed | null, row: CueRow, now: number): Tap {
   const live = armed !== null && armed.id === row.id && now - armed.at < ARM_MS;
-  if (live) return { kind: "fire", id: row.id, subject: armed.subject };
+  if (live) return { kind: "fire", id: row.id, subject: armed.subject, ...(armed.value !== undefined ? { value: armed.value } : {}) };
   if (row.subject) return { kind: "pick", id: row.id };
   return { kind: "arm", armed: { id: row.id, subject: null, at: now } };
 }
 
-/** The picker answered: the subject cue is armed for that person. */
-export function armFor(id: string, subject: string, now: number): Armed {
-  return { id, subject, at: now };
+/** The picker answered: the subject cue is armed for that person (and the
+ *  value box's text, when one was typed). */
+export function armFor(id: string, subject: string, now: number, value?: string): Armed {
+  const v = value?.trim() ?? "";
+  return { id, subject, at: now, ...(v !== "" ? { value: v } : {}) };
 }
 
-/** The `/api/mod/signal` body for a cue. */
-export function signalBody(id: string, subject: string | null, name: string): { name: string; subject?: string; label: string } {
-  return { name: id, ...(subject !== null ? { subject } : {}), label: phoneLabel(name) };
+/** The `/api/mod/signal` body for a cue; an award's value rides as
+ *  `args: {value}` (core's `cueValueArgs`, the editor's rule). */
+export function signalBody(
+  id: string,
+  subject: string | null,
+  name: string,
+  value?: string,
+): { name: string; subject?: string; label: string; args?: { value: string | number } } {
+  const args = value !== undefined ? cueValueArgs(value) : null;
+  return { name: id, ...(subject !== null ? { subject } : {}), label: phoneLabel(name), ...(args !== null ? { args } : {}) };
 }
 
 /** The people a subject cue can name: real guests first, personas tagged. */
@@ -348,7 +361,7 @@ function useDirectorSession() {
   );
 
   const fire = useCallback(
-    async (id: string, subject: string | null): Promise<FireOutcome> => {
+    async (id: string, subject: string | null, value?: string): Promise<FireOutcome> => {
       if (auth === null) return { ok: false, status: -1, message: "not signed in" };
       const post: FirePost = async (body, signal) => {
         const res = await fetch(`${base}/api/mod/signal`, {
@@ -361,7 +374,7 @@ function useDirectorSession() {
         const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
         throw new ApiError((data["error"] as string) || `HTTP ${res.status}`, res.status);
       };
-      const out = await fireCue(post, signalBody(id, subject, auth.name), () => poll.current?.now());
+      const out = await fireCue(post, signalBody(id, subject, auth.name, value), () => poll.current?.now());
       if (!out.ok && eventGone(out.status, out.message)) drop("That event has ended.");
       return out;
     },
@@ -458,6 +471,8 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
   const [query, setQuery] = useState("");
   const [armed, setArmed] = useState<Armed | null>(null);
   const [picking, setPicking] = useState<string | null>(null);
+  // The picker's value box: an award's number, carried by the arm.
+  const [value, setValue] = useState("");
   // The cue whose fire is in flight: only its row waits (≤ FIRE_TIMEOUT_MS).
   const [pending, setPending] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -494,7 +509,7 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
     else {
       setArmed(null);
       setPending(t.id);
-      void s.fire(t.id, t.subject).then((outcome) => {
+      void s.fire(t.id, t.subject, t.value).then((outcome) => {
         setToast(fireToast(row, outcome));
         setPending((p) => (p === t.id ? null : p));
       });
@@ -529,7 +544,12 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
         </header>
         <div className="station">
           <input className="cue-filter" type="search" placeholder="Filter cues (code or words)" value={query} onChange={(e) => setQuery(e.target.value)} />
-          {armed !== null && subjectName !== null && <p className="pick-hint">Armed for {subjectName} — tap the cue again to fire.</p>}
+          {armed !== null && subjectName !== null && (
+            <p className="pick-hint">
+              Armed for {subjectName}
+              {armed.value !== undefined ? ` (value ${armed.value})` : ""} — tap the cue again to fire.
+            </p>
+          )}
           {s.view === null ? (
             <div className="muted pad">Loading the cue sheet…</div>
           ) : rows.length === 0 ? (
@@ -552,9 +572,18 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
         <PickerSheet
           title={`Who for ${pickingRow.code ?? pickingRow.title}?`}
           items={subjectChoices(s.view?.roster)}
-          onPick={(id) => setArmed(armFor(pickingRow.id, id, Date.now()))}
-          onClose={() => setPicking(null)}
+          onPick={(id) => setArmed(armFor(pickingRow.id, id, Date.now(), value))}
+          onClose={() => {
+            setPicking(null);
+            setValue("");
+          }}
           empty="Nobody has joined yet."
+          lead={
+            <label className="cue-value">
+              <span>Value (optional) — lies accepted, the duck time, quests done</span>
+              <input value={value} maxLength={20} placeholder="e.g. 3 or 2:41" onChange={(e) => setValue(e.target.value)} />
+            </label>
+          }
         />
       )}
       {menu && (

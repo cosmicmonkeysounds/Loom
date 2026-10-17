@@ -373,6 +373,9 @@ body {
 .widget.image figcaption { font: italic 12px var(--ui-font); color: var(--muted-ink); padding: 6px 6px 2px; }
 .poll-options { display: flex; flex-direction: column; gap: 4px; }
 .poll-options .choice { margin: 0; text-align: left; }
+/* The picked question reads as a selection (inverted), not just a ring. */
+.fact-questions .choice[aria-pressed="true"] { background: var(--navy); color: var(--white); }
+.fact-hint { font-weight: 400; }
 .fact-answer { box-sizing: border-box; width: 100%; margin: 8px 0 4px; padding: 8px; font: 16px/1.35 var(--ui-font); resize: vertical; /* 16px: iOS never zooms */ }
 .fact-confidence { display: grid; gap: 4px; font: 700 13px var(--ui-font); color: var(--ink); }
 .fact-confidence input[type=range] { width: 100%; margin: 0; }
@@ -773,7 +776,6 @@ footer {
 .wallet-text { margin: 8px 0 0; font: 14px/1.45 var(--chat-font); white-space: pre-wrap; color: var(--ink); }
 .wallet-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 12px; }
 .wallet-foot .link { margin: 0; width: auto; font-size: 12px; }
-.wallet-state { text-transform: lowercase; }
 .msg.wallet-step { align-self: stretch; display: flex; gap: 8px; align-items: baseline; margin: 4px 0; padding: 2px 10px; border-left: 3px solid var(--line); }
 .msg.wallet-step .bubble.plain { font-style: normal; color: var(--ink); }
 .msg.wallet-step.settled, .msg.wallet-step.approved, .msg.wallet-step.paid, .msg.wallet-step.accepted, .msg.wallet-step.received { border-left-color: var(--good); }
@@ -1018,6 +1020,12 @@ footer {
   font: 15px var(--ui-font); color: var(--ink); background: var(--white);
   box-shadow: var(--sunken); border: none; border-radius: var(--radius);
   padding: 10px 12px; width: 100%; margin: 2px 0 8px;
+}
+/* An award's value box above the winner picker (T2-09). */
+.cue-value { display: grid; gap: 4px; margin: 0 8px 8px; font: 700 12px var(--ui-font); color: var(--muted-ink); }
+.cue-value input {
+  font: 16px var(--ui-font); color: var(--ink); background: var(--white); /* 16px: iOS never zooms */
+  box-shadow: var(--sunken); border: none; border-radius: var(--radius); padding: 8px 10px;
 }
 .cue-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .cue-row { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: 56px; margin: 0; text-align: left; font-size: 15px; }

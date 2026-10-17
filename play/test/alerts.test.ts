@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ALERT_WINDOW_MS, READOUT_GRACE_MS, boothAlertFilter, initialMark, markAfterHistory, maxSeqOf, maxTsOf, nextAlert, pickAlerts, unsolicitedReadout } from "../src/alerts.ts";
+import { ALERT_WINDOW_MS, READOUT_GRACE_MS, bannerAfterRetract, boothAlertFilter, initialMark, markAfterHistory, maxSeqOf, maxTsOf, nextAlert, pickAlerts, retractedPinSeqs, unsolicitedReadout } from "../src/alerts.ts";
 import type { ChatMessage } from "../src/types.ts";
 
 function msg(seq: number, alert: boolean, opts: { hidden?: boolean; ts?: number; audience?: ChatMessage["audience"]; room?: Pick<ChatMessage, "channel" | "channelKind" | "title"> } = {}): ChatMessage {
@@ -166,5 +166,48 @@ describe("a booth's alerts are its own (B1)", () => {
     const r = nextAlert(batch, 6, 5 * MIN, norton);
     expect(r.alert).toBeNull();
     expect(r.mark).toBe(12);
+  });
+});
+
+describe("a `!` pin taken down before the phone woke (T5-02)", () => {
+  const pin = (seq: number, key: string, extra: Partial<ChatMessage> = {}): ChatMessage => ({ ...msg(seq, true, { ts: 50 * MIN, audience: ["vlc"] }), pin: key, ...extra });
+  const unpin = (seq: number, key: string): ChatMessage => ({ ...msg(seq, false, { ts: 51 * MIN, audience: ["vlc"] }), unpin: key });
+
+  it("an unpinned mark never banners on wake, and the mark moves past both", () => {
+    const list = [msg(0, false), pin(1, "marked"), unpin(2, "marked")];
+    expect(retractedPinSeqs(list)).toEqual(new Set([1]));
+    expect(nextAlert(list, 0, 52 * MIN)).toEqual({ alert: null, mark: 1 });
+  });
+
+  it("a lifted !! takeover is not news either; a pin still up still banners", () => {
+    const lifted = [pin(3, "takeover", { takeover: true }), unpin(4, "takeover")];
+    expect(nextAlert(lifted, 0, 52 * MIN).alert).toBeNull();
+    const up = [pin(5, "marked")];
+    expect(nextAlert(up, 0, 52 * MIN).alert?.seq).toBe(5);
+    expect(retractedPinSeqs(up).size).toBe(0);
+  });
+
+  it("a second pin with the same key replaces the banner, never wipes it", () => {
+    // Pin 10's banner is up; pin 12 (same key) lands. The raise effect sets
+    // banner 12 while the retract effect still sees banner 10 — it must
+    // check the latest banner, so 12 stays.
+    const list = [pin(10, "marked"), pin(12, "marked")];
+    const gone = retractedPinSeqs(list);
+    expect(gone).toEqual(new Set([10]));
+    const twelve = { seq: 12, text: "🚨 again" };
+    expect(bannerAfterRetract(twelve, gone)).toBe(twelve);
+    expect(bannerAfterRetract({ seq: 10, text: "🚨" }, gone)).toBeNull();
+    expect(nextAlert(list, 10, 52 * MIN).alert?.seq).toBe(12);
+  });
+
+  it("a readout banner is never a pin to take down", () => {
+    const readout = { seq: -1, text: "✅ scanned" };
+    expect(bannerAfterRetract(readout, new Set([-1]))).toBe(readout);
+    expect(bannerAfterRetract(null, new Set([1]))).toBeNull();
+  });
+
+  it("an unpin in another room or with another key takes nothing down", () => {
+    const other = { ...unpin(2, "marked"), channel: "dm:Clippy", channelKind: "dm" as const };
+    expect(nextAlert([pin(1, "marked"), other, unpin(3, "escort")], 0, 52 * MIN).alert?.seq).toBe(1);
   });
 });
