@@ -57,8 +57,9 @@ rooms.loom             the chat sidebar: # system-log, # general, # task-manager
                        # truthcoin-exchange, # hosts, # quarantine, # unlimited-power,
                        # the-way-out, # hidden-partition, # back-channel
 atmosphere.loom        three ambient generators (the screensaver hum, dial-up, the system tray)
-quests.loom            20 QUESTs (the Quest Log: 13 for the programs, 7 staff quests
-                       `for <Character>` in the hosts' and Antivirus' booths)
+quests.loom            22 QUESTs (the Quest Log: 15 for the programs, 7 staff quests
+                       `for <Character>` in the hosts' and Antivirus' booths; with the
+                       3 generated hunt QUESTs, 25 in all)
 facts.json             the one file the team edits: the hunt questions + answer key,
                        the scannable / character facts (codes) and the Truth-or-Dare
                        truths. `pnpm --filter @loom/core titi:facts` regenerates the
@@ -801,7 +802,6 @@ the five new hand-written codes go in the Desktop piles too
 | **The Hard Drive** (crawl space, upstairs) | `TRABOLTA-4EVER` (the LiveJournal, **hidden**) |
 | **The Internet** (tent) | `LOVE-LETTER-FOR-YOU` (under VR station 2) · `FREE-TRIAL-30-DAYS` (tablet stand). These are Excel's virus. |
 | **Server-room door** | `COLD-STORAGE` · `HUMMING-WALL` |
-| **Anywhere** (Bugdom's hunt) | the four Antivirus personnel files: `NORTON-RELAY` · `MCAFEE-MOD` · `YUGI-MOTO` · `CRA-PENNY` — **planned**: `codex/5-people.loom` carries no `code:` for them yet, so they are not among the 90 and the Print sheet cannot print them |
 
 Each room's check-in reply (`when checked_in`, main.loom) hints at what is
 hidden there: the CPU's filing box and binder, the Steam Room's tube, the
