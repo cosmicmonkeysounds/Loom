@@ -996,6 +996,17 @@ export function PinnedRail({ pins }: { pins: ChatMessage[] }) {
   );
 }
 
+/** A restricted (marked) program standing in a room may not post there (B4). */
+export const RESTRICTED_ROOM_NOTE = "⛔ You're restricted — you can only talk in your direct messages.";
+
+/** Why the composer is gone: restricted where you stand, elsewhere, or read-only. */
+export function cantPostNote(channel: Pick<Channel, "kind" | "member" | "here">): string {
+  if (channel.kind !== "location") return "This room is read-only.";
+  // Standing here and still refused: only restriction does that.
+  if (channel.member === true || channel.here === true) return RESTRICTED_ROOM_NOTE;
+  return "You're not in this room — walk there to talk here.";
+}
+
 export function ChannelView({
   channel,
   onBack,
@@ -1105,7 +1116,7 @@ export function ChannelView({
           )}
           {onSend && !canPost && (
             <div className="cant-post">
-              {channel.kind === "location" ? "You're not in this room — walk there to talk here." : "This room is read-only."}
+              {cantPostNote(channel)}
             </div>
           )}
         </footer>
