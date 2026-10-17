@@ -190,7 +190,7 @@ export async function provision(code: string, hints: Omit<UrlHints, "code">): Pr
   }
   if (resolved.role !== "mod") throw new Error(`That is a ${resolved.role === "prime" ? "performer" : "guest"} code — a terminal needs the moderator passcode.`);
   const login = await api<{ token: string }>(`/e/${encodeURIComponent(resolved.eventId)}/api/mod/login`, { passcode: code });
-  const character = hints.character ?? (resolved.characters?.includes(DEFAULT_CHARACTER) ? DEFAULT_CHARACTER : (resolved.characters?.[0] ?? DEFAULT_CHARACTER));
+  const character = pickCharacter(hints.character, resolved.characters ?? []);
   return defaultConfig({
     eventId: resolved.eventId,
     token: login.token,
@@ -204,6 +204,48 @@ export async function provision(code: string, hints: Omit<UrlHints, "code">): Pr
     room: hints.room ?? "",
     announce: hints.announce ?? false,
   });
+}
+
+/** A name folded the way the story matches names (core's `foldName`:
+ *  case, `_` / `-` and runs of spaces don't count). */
+export function foldName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
+/** The story's own spelling of a typed character name (`trabolta` →
+ *  `Trabolta`), or null when the story declares nobody by that name. The
+ *  terminal's thread is `dm:<this>`, so a typed variant must never reach it:
+ *  the server would keep the line in a thread no agent hears (B19). */
+export function canonicalCharacter(typed: string, characters: readonly string[]): string | null {
+  if (characters.includes(typed)) return typed;
+  const want = foldName(typed);
+  return characters.find((c) => foldName(c) === want) ?? null;
+}
+
+/** The character a terminal is set up for: the typed one in the story's
+ *  spelling, else the default. An empty list (the doors aren't open yet, so
+ *  the server can't say) keeps the typed name; the screen state's
+ *  `character.id` corrects it later (`adoptCharacter`). Throws when the story
+ *  is loaded and declares no such character. */
+export function pickCharacter(typed: string | null, characters: readonly string[]): string {
+  if (typed === null || typed.trim() === "") return characters.includes(DEFAULT_CHARACTER) ? DEFAULT_CHARACTER : (characters[0] ?? DEFAULT_CHARACTER);
+  if (characters.length === 0) return typed.trim();
+  const found = canonicalCharacter(typed.trim(), characters);
+  if (found === null) throw new Error(`The story has no character called "${typed.trim()}" (it has: ${characters.join(", ")}).`);
+  return found;
+}
+
+/** A stored config whose character the screen state names differently only
+ *  by spelling (`trabolta` vs `Trabolta`): the same config in the story's
+ *  spelling. Null = nothing to change (already exact, or a different name). */
+export function adoptCharacter(c: TerminalConfig, screenId: string | null | undefined): TerminalConfig | null {
+  if (typeof screenId !== "string" || screenId === "" || screenId === c.character) return null;
+  return foldName(screenId) === foldName(c.character) ? { ...c, character: screenId } : null;
 }
 
 /** The event-scoped API base for a configured terminal. */

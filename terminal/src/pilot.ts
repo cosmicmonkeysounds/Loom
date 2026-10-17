@@ -13,7 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError, useChatStream } from "@loom/play/client.ts";
 import { useTyping } from "@loom/play/typing.ts";
 import type { ChatMessage, GuestView } from "@loom/play/types.ts";
-import { baseOf, type TerminalConfig } from "./config.ts";
+import { baseOf, foldName, type TerminalConfig } from "./config.ts";
 
 export interface Pilot {
   /** The impersonation token (the guest's session on this terminal). */
@@ -47,6 +47,15 @@ export async function fetchRoster(config: TerminalConfig): Promise<Array<{ id: s
   if (!res.ok) throw new ApiError(`HTTP ${res.status}`, res.status);
   const view = (await res.json()) as { roster?: Array<{ id: string; name: string }> };
   return (view.roster ?? []).map((r) => ({ id: r.id, name: r.name }));
+}
+
+/** The story's declared characters (a mod-only read; empty before the doors
+ *  open) — the ⚙ save checks a typed character name against it. */
+export async function fetchCharacters(config: TerminalConfig): Promise<string[]> {
+  const res = await fetch(`${baseOf(config)}/api/state?role=mod`, { headers: { "x-loom-token": config.token } });
+  if (!res.ok) throw new ApiError(`HTTP ${res.status}`, res.status);
+  const view = (await res.json()) as { characters?: unknown };
+  return Array.isArray(view.characters) ? view.characters.filter((c): c is string => typeof c === "string") : [];
 }
 
 /** Is the terminal's moderator token still honoured? */
@@ -84,11 +93,20 @@ export interface PilotSession {
   dead: string | null;
 }
 
+/** The character's id as the guest's own view spells it (the directory
+ *  lists declared characters by id), else the configured name — which
+ *  `provision` / the screen state already made canonical (B19). */
+export function characterIdOf(configured: string, view: Pick<GuestView, "people"> | null): string {
+  const want = foldName(configured);
+  return view?.people?.find((p) => p.kind === "character" && foldName(p.id) === want)?.id ?? configured;
+}
+
 export function usePilotSession(config: TerminalConfig, pilot: Pilot | null): PilotSession {
   const base = baseOf(config);
-  const channel = `dm:${config.character}`;
   const url = pilot ? `${base}/events?role=guest&token=${encodeURIComponent(pilot.token)}` : null;
   const [view, setView] = useState<GuestView | null>(null);
+  const character = characterIdOf(config.character, view);
+  const channel = `dm:${character}`;
   const [ready, setReady] = useState(false);
   const [dead, setDead] = useState<string | null>(null);
   const baseline = useRef(-1);
@@ -122,8 +140,8 @@ export function usePilotSession(config: TerminalConfig, pilot: Pilot | null): Pi
       [...messages.values()]
         .filter((m) => m.channel === channel && !m.hidden)
         .sort((a, b) => a.seq - b.seq)
-        .map((m) => ({ ...m, theirs: m.from === config.character })),
-    [messages, channel, config.character],
+        .map((m) => ({ ...m, theirs: m.from === character })),
+    [messages, channel, character],
   );
 
   // Announce each of the character's lines once, and only ones that land
@@ -155,11 +173,11 @@ export function usePilotSession(config: TerminalConfig, pilot: Pilot | null): Pi
   }, []);
 
   const online = useMemo(() => {
-    const me = view?.people?.find((p) => p.kind === "character" && p.id === config.character);
+    const me = view?.people?.find((p) => p.kind === "character" && p.id === character);
     // A character with a `hold:` line always answers: no presence to show.
     if (me?.agent?.hold === true) return null;
     return me?.agent?.online ?? null;
-  }, [view, config.character]);
+  }, [view, character]);
 
   return { view, connected, ready, lines, typing: typing.has(channel), online, say, onNewLine, dead };
 }

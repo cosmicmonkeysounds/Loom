@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { CONFIG_KEY, DEFAULT_TV_ROOM, defaultConfig, hintsFromSearch, loadConfig, saveConfig, tvRoomOf, voiceChoiceOf, withoutSecrets } from "../src/config.ts";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { CONFIG_KEY, DEFAULT_TV_ROOM, adoptCharacter, canonicalCharacter, defaultConfig, hintsFromSearch, loadConfig, pickCharacter, provision, saveConfig, tvRoomOf, voiceChoiceOf, withoutSecrets } from "../src/config.ts";
+import { characterIdOf } from "../src/pilot.ts";
 
 function memory(): Storage {
   const m = new Map<string, string>();
@@ -85,5 +86,57 @@ describe("terminal config", () => {
     expect(hintsFromSearch("?announce=0").announce).toBe(false);
     expect(hintsFromSearch("?announce=maybe").announce).toBeNull();
     expect(withoutSecrets("?announce=1&keep=1")).toBe("?keep=1");
+  });
+});
+
+describe("the provisioned character is the story's own name (B19)", () => {
+  const cast = ["Trabolta", "Clippy", "Task Manager"];
+  const hints = { name: "Lower", character: null, camera: null, engine: null, spot: null, view: null, room: null, announce: null };
+  afterEach(() => vi.unstubAllGlobals());
+  /** A fake event server answering resolve-code + mod login. */
+  function server(characters: string[]) {
+    vi.stubGlobal("fetch", async (url: string) => {
+      const body = url === "/api/resolve-code" ? { eventId: "evt", role: "mod", title: "T", characters } : { token: "mod-token" };
+      return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+    });
+  }
+
+  it("folds a typed name onto the cast: case, spaces, _ and - don't count", () => {
+    expect(canonicalCharacter("trabolta", cast)).toBe("Trabolta");
+    expect(canonicalCharacter("TASK_MANAGER", cast)).toBe("Task Manager");
+    expect(canonicalCharacter("task-manager", cast)).toBe("Task Manager");
+    expect(canonicalCharacter("Trabolta", cast)).toBe("Trabolta");
+    expect(canonicalCharacter("nobody", cast)).toBeNull();
+  });
+  it("a name the story lacks is an error naming the cast; no list keeps it as typed", () => {
+    expect(() => pickCharacter("Trabolt", cast)).toThrow(/no character called "Trabolt".*Trabolta, Clippy/);
+    expect(pickCharacter("trabolta", [])).toBe("trabolta");
+    expect(pickCharacter(null, cast)).toBe("Trabolta");
+    expect(pickCharacter(" ", ["Clippy"])).toBe("Clippy");
+  });
+  it("provision stores the canonical name, and refuses one the story doesn't have", async () => {
+    server(cast);
+    const c = await provision("MOD7324", { ...hints, character: "trabolta" });
+    expect(c.character).toBe("Trabolta");
+    await expect(provision("MOD7324", { ...hints, character: "nobody" })).rejects.toThrow(/no character called "nobody"/);
+    // Before the doors open the server lists nobody: kept as typed, adopted later.
+    server([]);
+    expect((await provision("MOD7324", { ...hints, character: "trabolta" })).character).toBe("trabolta");
+  });
+  it("a stored variant adopts the screen state's id; a different name is left alone", () => {
+    const c = defaultConfig({ eventId: "evt", token: "t", character: "trabolta" });
+    expect(adoptCharacter(c, "Trabolta")?.character).toBe("Trabolta");
+    expect(adoptCharacter({ ...c, character: "Trabolta" }, "Trabolta")).toBeNull();
+    expect(adoptCharacter(c, "Clippy")).toBeNull();
+    expect(adoptCharacter(c, null)).toBeNull();
+  });
+  it("the pilot's thread is dm:<the guest view's own id>", () => {
+    const people = [
+      { id: "Pong", name: "Pong", kind: "guest" as const, faction: null, known: [], location: null },
+      { id: "Trabolta", name: "Trabolta", kind: "character" as const, faction: null, known: [], location: null },
+    ];
+    expect(characterIdOf("trabolta", { people })).toBe("Trabolta");
+    expect(characterIdOf("trabolta", null)).toBe("trabolta");
+    expect(characterIdOf("Trabolta", { people: [] })).toBe("Trabolta");
   });
 });

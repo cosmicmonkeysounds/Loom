@@ -41,11 +41,11 @@
 
 import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Composer, Thread } from "./chat.tsx";
-import { DEFAULT_TV_ROOM, baseOf, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, tvRoomOf, withoutSecrets, type TerminalConfig, type TerminalView } from "./config.ts";
+import { DEFAULT_TV_ROOM, adoptCharacter, baseOf, dropConfig, hintsFromSearch, loadConfig, pickCharacter, provision, saveConfig, tvRoomOf, withoutSecrets, type TerminalConfig, type TerminalView } from "./config.ts";
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import { useIdleTimeout } from "./idle.ts";
-import { beginPilot, endPilot, fetchRoster, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
+import { beginPilot, endPilot, fetchCharacters, fetchRoster, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
 import { matchName, parseScan } from "./scan.ts";
 import { Scanner, type CameraState, cameraProblem } from "./scanner.tsx";
 import { BrowserEngine, DeviceEngine, ENGINE_LABEL, SpeechQueue, audioUnlocked, deviceEnv, pickDeviceEngine, unlock, voiceEngines, voiceNote, type EngineKind, type VoiceChoice } from "./speech/engine.ts";
@@ -125,6 +125,18 @@ export function App() {
     setConfig(null);
     setScreen({ kind: "setup", notice: "This terminal's access was revoked — enter the moderator passcode again." });
   }, [screenState.revoked]);
+
+  // The screen state names the character in the story's own spelling: a
+  // tablet set up as `trabolta` before the doors opened (when the server
+  // couldn't check the name) adopts `Trabolta`, so its line is the guest's
+  // real `dm:Trabolta` thread (B19).
+  useEffect(() => {
+    if (config === null) return;
+    const next = adoptCharacter(config, screenState.state?.character?.id);
+    if (next === null) return;
+    saveConfig(next);
+    setConfig(next);
+  }, [config, screenState.state]);
 
   // The poll's event is gone (ended; a new one launched): back to setup, the
   // config kept so its name / character / spot carry over — like `onGone`.
@@ -820,7 +832,11 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
       if (code.trim() !== "") {
         next = await provision(code.trim(), { name: name.trim() || null, character: character.trim() || null, camera, engine, spot, view, room: room.trim() || null, announce });
       } else if (current !== null) {
-        next = { ...current, name: name.trim() || current.name, character: character.trim() || current.character, camera, engine, spot, view, room: room.trim(), announce };
+        // The typed character in the story's spelling, or an error naming the
+        // cast (an unreachable server or closed doors: kept as typed — the
+        // screen state corrects the spelling later).
+        const cast = await fetchCharacters(current).catch(() => [] as string[]);
+        next = { ...current, name: name.trim() || current.name, character: pickCharacter(character.trim() || current.character, cast), camera, engine, spot, view, room: room.trim(), announce };
       } else {
         throw new Error("Enter the moderator passcode.");
       }
