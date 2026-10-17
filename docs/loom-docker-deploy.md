@@ -477,6 +477,16 @@ or a `guard` door, so the sync would stop before writing. Then remove any
 stale kokoro container (*The voice* below) and any `spatial-house.json`
 left from a pre-Wave-2 save.
 
+**Deploy order (Wave 8).** A Wave 8 server closes a paid, denied or
+cancelled request in **both** parties' threads, so a journal an older
+server wrote that holds one replays one extra wallet card. Restart every
+non-ended event (Run → ↺ *Restart this draft*, or a `sync-show` reload)
+before a guest uses it. **Rolling back** a Wave 8 server (`rollback.sh`)
+on a journal it wrote is not clean either: an older server doesn't know
+the journaled director broadcast, so those alerts vanish and every later
+message shifts its seq (a hidden message comes back, answered cards are
+asked again). Restart the story before guests, after a rollback too.
+
 The **VR game** (`reinstall/vr/`, Godot, Quest 3) is not in any image:
 export it to the headsets from a laptop (`reinstall/vr/README.md`) and
 point each headset's `station.json` at the public URL + the moderator
@@ -579,7 +589,12 @@ For the show, ship pinned releases instead (`scripts/ops/ship.sh`, see
 *Pinned releases, rollback, backups* below).
 
 Restarts are safe mid-event: live state is an append-only journal that
-replays on boot, so the room recovers where it was.
+replays on boot, so the room recovers where it was (the TV-voice mute
+too). Allow about a second per 1,500 journal lines (a 4,000-line night
+≈ 4–7 s, 13,000 lines ≈ 9–12 s) before phones reconnect. Two things
+don't carry over: a program mid-walk in the reinstallation game is
+scanned again at the tent (found ducks stay found), and a DM to an
+agent-voiced character older than ten story-minutes isn't asked again.
 
 **Push the show's story to the preview** (from your Mac, after a merge):
 
