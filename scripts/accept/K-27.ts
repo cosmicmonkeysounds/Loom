@@ -23,8 +23,9 @@
 //                        /api/screen/state?room=R (default The Server Room)
 //                        with no terminal name — so it adds no Terminals row —
 //                        and prints {id, open}; exits 1 when the room is
-//                        unknown (a typo in the terminal's room=, or no story
-//                        running yet: before the doors every room reads "").
+//                        unknown: a typo in the terminal's room= (a wave 8
+//                        server resolves a declared room before the doors
+//                        too; an older one reads "" until they open).
 //   visit --who N [--close] [--room R]
 //                        what a scan at the server-room terminal posts: fire
 //                        `terminal opened` (or `terminal closed`) for that
@@ -149,7 +150,7 @@ if (cmd === "persona") {
   const got = ((await r.json()) as { room?: { id: string; open: boolean } }).room;
   if (got === undefined) throw new Error("no room in the screen state — the server predates wave 7");
   if (got.id === "") {
-    console.error(`  room "${room}": unknown — a typo in the terminal's room=, or no story is running yet (before the doors every room reads "")`);
+    console.error(`  room "${room}": unknown — a typo in the terminal's room= (on a server older than wave 8, also before the doors)`);
     process.exit(1);
   }
   console.log(`  room ${got.id} · open ${got.open} — ${got.open ? "the terminal is awake: it speaks this room's lines" : "the terminal sleeps on its screensaver until the room opens to everyone"}`);
