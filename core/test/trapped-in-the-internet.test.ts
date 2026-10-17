@@ -1097,6 +1097,10 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(bk.indexOf("Shame The Bottom")).toBeGreaterThan(bk.indexOf("Praise The Top"));
     expect(bk.indexOf("Print The Certificate")).toBeGreaterThan(bk.indexOf("Shame The Bottom"));
     expect(v(sim, "Night.printer_called")).toBe(true);
+    // The chart stays up through the praise and the shame (B12): the
+    // certificate slide waits for START.
+    expect(v(sim, "Night.screen")).toBe("trust_chart");
+    expect(cues(rk)).not.toContain("cue screens_print_certificate");
     // VLC missed the cup and is in the Internet: the media player is not
     // responding, so any program is asked, and nobody gets a printer nudge.
     expect(sim.isCaptured("g9")).toBe(true);
@@ -3031,7 +3035,20 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
     expect(poll("auto").chart?.rows.length).toBe(PROGRAMS.length);
     fire(sim, "assess", "g5", { target: "g5", score: 10 }, "Trabolta");
     expect(poll("tv").chart!.rows.slice(0, 2).map((r) => r.name).sort()).toEqual(["Calculator", "Winamp"]);
-    fire(sim, "show_the_rankings"); // → Print The Certificate takes the screen
+    // The rankings call out the top and the bottom on the chart (B12): it
+    // stays up through Praise, Shame and the printer ask…
+    fire(sim, "show_the_rankings");
+    const called = poll("tv").chart!;
+    expect(called.top).toBe(v(sim, "Night.most_trusted"));
+    expect(called.bottom).toBe(v(sim, "Night.least_trusted"));
+    expect(called.top).not.toBeNull();
+    expect(called.bottom).not.toBeNull();
+    expect(poll("auto").chart?.top).toBe(called.top);
+    // …and the certificate takes the screen only when START is pressed.
+    const start = fire(sim, "printer_button_pressed");
+    expect(beats(start)).toContain("The Printer Jams");
+    expect(cues(start)).toContain("cue screens_print_certificate");
+    expect(v(sim, "Night.screen")).toBe("print_certificate");
     expect(poll("tv").chart).toBeNull();
   });
 

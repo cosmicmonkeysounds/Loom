@@ -102,7 +102,7 @@ guest's card in that performer's booth (phone C / D), or in Run while you
 | **📥 Truther Download (auto at +2 min)** — fire it now | **Phone A (Excel)** answers the choice in *Truther Download* (sabotage or paranoid). | 🔔 "TRUTHER DOWNLOAD received"; `# truthcoin-exchange` opens; each program gets its glitch beat; Excel joins *Unlimited Power* (still hidden) with a mission. |
 | **⏳ Five-minute warning** → **🚨 Summons closed** → **🏓 Truth Pong** | Norton scans anyone at the Desktop during the warning (a check-in). Clippy: **🏓 Made the cup** + **✅ Q1** on Calculator. | A guest not checked in gets "⏰ You are late" and Norton's booth "Go get them". |
 | **🧮 Trabolta tallies round 2** → **📊 Trust Chart** | — | **The TV draws the Trust Chart live**: every program, ranked by trust. |
-| **🏆 Praise the top, humiliate the bottom, VLC prints** → **🫘 Printer opened** | — | Praise / shame by name, the certificate ("The media player is not responding" with no VLC here), then *Full Of Beans*. |
+| **🏆 Praise the top, humiliate the bottom, VLC prints** → **🫘 Printer opened** | — | Praise / shame by name with **MOST / LEAST TRUSTED** called out on the chart, the printer ask ("The media player is not responding" with no VLC here), then *Full Of Beans*. |
 | **🗜 Antivirus zip everyone out** → **🤖 Trabolta shares the next facts** | — | Captives zipped out; an overshare (scenario 1–4 by what Excel / OpenOffice did); The Final Facts quest. |
 | **🕚 System clock → 11 PM, 31 Dec 1999** | **Choose your side** (Unlimited Power / The Way Out) now shows on every phone not in a group yet (Phone B; Excel is already in Unlimited Power). | 🔔 the clock alert; the TV becomes the Y2K clock; Excel's Final Orders. |
 
