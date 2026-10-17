@@ -141,7 +141,7 @@ queued.
    `https://app.mapsandducks.com/e/<event>/api/mod/recap?format=text` in a tab
    where you're signed in, and copy the winners into the cue sheet's winner/value boxes
    (Run → Director on the laptop, or the phone cue sheet: an award asks for its winner and
-   offers the value box; G7–G9 read it).
+   offers the value box: G7–G10 read it, on G2–G6 it overrides the number).
 2. **If Trabolta is still running:** take the performer lens, paste the recap
    into `cast:Trabolta`, ask him for one line per award, correct them, and post
    each line **as Trabolta in The Desktop** when you fire that award (the TV
