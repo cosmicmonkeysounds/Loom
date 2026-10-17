@@ -190,6 +190,27 @@ describe('End keeps the whole ledger for "Export that run" (server, T7-03)', () 
     useOperate.getState().detach()
   })
 
+  it('keeps the whole ledger when the end is announced back before the End request answers', async () => {
+    // The server stops the event (the mod stream's `ended`, the collab
+    // notice → refresh) before it answers the End request: that path must
+    // not settle `lastRun` on the console's partial log.
+    const { eventsApi, logApi } = await import('@/lib/api')
+    vi.mocked(logApi.page).mockResolvedValueOnce({ entries: [tick(0), tick(1), tick(2)], next: null, total: 3 })
+    vi.mocked(eventsApi.end).mockImplementationOnce(async () => {
+      await useOperate.getState().refresh() // status → null: the event is gone
+      expect(useOperate.getState().run).toBeNull()
+    })
+    await start()
+    await useOperate.getState().end()
+    const s = useOperate.getState()
+    expect(s.lastRun!.log.map((e) => e.seq)).toEqual([0, 1, 2])
+    expect(s.lastRun!.ledgerLen).toBe(3)
+    // Ended here, not by a co-author: no banner, the director's own name.
+    expect(s.lastRun!.endedBy).toBe('Ada')
+    expect(s.notice).toBeNull()
+    useOperate.getState().detach()
+  })
+
   it('still ends, with what it saw, when the server won\'t hand the ledger over', async () => {
     const { logApi, ApiError } = await import('@/lib/api')
     vi.mocked(logApi.page).mockRejectedValueOnce(new ApiError(404, {}))

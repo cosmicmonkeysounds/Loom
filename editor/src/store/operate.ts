@@ -121,6 +121,11 @@ let es: EventSource | null = null
 // Control-plane status fallback poll (collab `event` frames are the fast path).
 let poll: ReturnType<typeof setInterval> | null = null
 let unsubscribeCollab: (() => void) | null = null
+/** An End from this console in flight: the event it ends + the whole ledger
+ *  fetched for it. The server announces the end (the mod stream's `ended`
+ *  frame, the collab notice → `refresh`) *before* the End request answers,
+ *  so whichever path lands first must keep this ledger, not the console's. */
+let ending: { eventId: string; log: LedgerEntry[] | null } | null = null
 const POLL_MS = 30_000
 /** Live ledger retention per console (the raw `sim` feed). */
 const LOG_CAP = 5000
@@ -460,6 +465,12 @@ export const useOperate = create<OperateState>((set, get) => {
    *  Export + the empty state, then drop every trace. */
   const endedHere = (by: string | null, at: number, announce: boolean, whole: LedgerEntry[] | null = null) => {
     const s = get()
+    // This console's own End, announced back before its request answered.
+    if (ending !== null && s.event?.id === ending.eventId) {
+      whole = whole ?? ending.log
+      by = by ?? s.me
+      announce = false
+    }
     const lastRun: LastRun | null =
       s.run !== null
         ? { run: s.run, log: whole ?? s.log, ledgerLen: Math.max(s.ledgerLen, whole?.length ?? 0), messages: s.messages, roster: s.roster, factions: s.factions, locations: s.locations, world: s.world, choices: s.choices, endedBy: by, endedAt: at }
@@ -681,9 +692,15 @@ export const useOperate = create<OperateState>((set, get) => {
       lifecycle(async () => {
         const projectId = get().projectId
         if (!projectId) return
+        const eventId = get().event?.id ?? null
         const whole = await ledgerBeforeEnd()
-        await eventsApi.end(projectId)
-        endedHere(get().me, Date.now(), false, whole)
+        ending = eventId !== null ? { eventId, log: whole } : null
+        try {
+          await eventsApi.end(projectId)
+          endedHere(get().me, Date.now(), false, whole)
+        } finally {
+          ending = null
+        }
       }),
 
     // ---- the mod command surface ----
