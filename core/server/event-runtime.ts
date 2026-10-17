@@ -456,6 +456,10 @@ export class EventRuntime {
   private readonly notifiedExpired = new Set<number>();
   // Elapsed sim time not yet written to the journal (coalesced ticks).
   private pendingTickMs = 0;
+  // Whether this run's `entry:` beat has played. Not the same as "a sim
+  // exists": a restart with the doors closed (and a restore) builds the sim
+  // without opening, and the next open must still play the entry — once.
+  private entryPlayed = false;
   private ticker: ReturnType<typeof setInterval> | null = null;
   // Agent-voiced characters (`mind: external`): open requests + the
   // stagehand workers answering them. Ephemeral — a restart drops them.
@@ -2324,24 +2328,30 @@ export class EventRuntime {
    * let guests register. The control-plane equivalent of `/api/mod/start`.
    */
   openDoors(): void {
-    const fresh = this.sim === null;
-    if (fresh) {
-      this.loadScenario(this.scenarioSource, this.scenarioName);
-      this.store.clearJournal();
-      this.store.clearRuns();
-      this.resetChat();
-      this.pendingTickMs = 0;
-    }
+    if (this.sim === null) this.freshRun(this.scenarioSource, this.scenarioName);
     this.setPhase("open");
     this.persistMeta();
     this.startTicker();
     // A live event opens exactly like a rehearsal: the `entry:` beat plays
-    // on first open. Journaled as a fireBeat so a replay reproduces it.
-    const entry = fresh ? this.sim?.model.entry : null;
-    if (entry != null && entry !== "") {
-      this.fanout(this.commit("fireBeat", entry));
+    // on the run's first open — also after a restart or a restore that left
+    // the doors closed. Journaled as a fireBeat so a replay reproduces it.
+    if (!this.entryPlayed) {
+      this.entryPlayed = true;
+      const entry = this.sim?.model.entry;
+      if (entry != null && entry !== "") this.fanout(this.commit("fireBeat", entry));
     }
     this.pushSnapshots();
+  }
+
+  /** A new run on `source`: a fresh sim, an empty journal + chat, and the
+   *  entry beat still to play (the next `openDoors` plays it). */
+  private freshRun(source: string, name: string): void {
+    this.loadScenario(source, name);
+    this.store.clearJournal();
+    this.store.clearRuns();
+    this.resetChat();
+    this.pendingTickMs = 0;
+    this.entryPlayed = false;
   }
 
   /** Pause the event: stop the clock, keep all state. `/api/mod/stop`. */
@@ -2406,11 +2416,8 @@ export class EventRuntime {
     if (wasOpen) {
       this.openDoors(); // fresh → loads, clears journal + chat, fires entry
     } else {
-      this.loadScenario(source, name);
-      this.store.clearJournal();
-      this.store.clearRuns();
-      this.resetChat();
-      this.pendingTickMs = 0;
+      // Doors closed: the entry waits for the next open (`entryPlayed`).
+      this.freshRun(source, name);
       this.persistMeta();
       this.pushSnapshots();
     }
@@ -2487,7 +2494,14 @@ export class EventRuntime {
     this.avatars.load(this.store.loadAvatars());
     this.loadScenario(meta.scenarioSource, meta.scenarioName); // sets phase → paused
     let events = 0;
+    const entry = this.sim?.model.entry ?? null;
+    // The entry played when the journal holds its fireBeat. A journal with
+    // a tick (the clock only runs with the doors open) or a run persisted
+    // open counts too: a pre-fix run whose entry was lost must not have it
+    // fire mid-show on the next resume.
+    this.entryPlayed = meta.phase === "open";
     for (const e of this.store.readJournal()) {
+      if (e.m === "tick" || (e.m === "fireBeat" && entry !== null && e.a[0] === entry)) this.entryPlayed = true;
       if (e.m === "wallet") {
         // A wallet op: the book re-applies it (balances, grants, signals,
         // cards) exactly as it did live.
