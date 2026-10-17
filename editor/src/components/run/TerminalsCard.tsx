@@ -6,12 +6,13 @@
 //! render nothing there. The chess phone runs the Lichess app and never
 //! reports (OP-12 covers it). Each row carries the device badges a current
 //! terminal build reports and an **identify** button (SW-SCR-21): install
-//! day's "which tablet is this?" — its name full screen for 10 s.
+//! day's "which tablet is this?" — its name full screen for 10 s. A room
+//! terminal (wave 7) says its room; one off the server-room spot is amber.
 
 import clsx from 'clsx'
 import { CockpitTab, useCockpit } from '@/store/cockpit'
 import { useTerminals } from '@/store/terminals'
-import { TerminalStatus, formatSilence, isTvView, majorityVersion, terminalBadges } from '@/lib/terminals'
+import { ROOM_TERMINAL_SPOT, TerminalStatus, formatSilence, isTvView, majorityVersion, strayRoom, terminalBadges } from '@/lib/terminals'
 
 /** `📟 5/6` in the stage header — red while any terminal is silent; click → Run. */
 export function TerminalsPill() {
@@ -109,6 +110,20 @@ export function TerminalsCard() {
                   {[r.spot, r.view].filter((x) => x !== '').join(' · ')}
                   {r.remembered ? ' · not seen since the server restarted' : ''}
                 </span>
+                {r.room !== '' && (
+                  <span
+                    className={clsx('rounded px-1 text-[10px]', strayRoom(r) ? 'bg-amber-950/60 text-amber-200' : 'text-zinc-400')}
+                    title={
+                      strayRoom(r)
+                        ? `A room terminal off the ${ROOM_TERMINAL_SPOT} spot: it sleeps until ${r.room} opens and speaks that room’s lines. If it was the TV once, clear its room in ⚙.`
+                        : `A room terminal: asleep until ${r.room} is open to everyone, then it speaks that room’s lines`
+                    }
+                    data-testid="run-terminal-room"
+                    data-stray={strayRoom(r) ? 'true' : undefined}
+                  >
+                    room {r.room}
+                  </span>
+                )}
                 {terminalBadges(r, majority).map((b) => (
                   <span
                     key={b.key}

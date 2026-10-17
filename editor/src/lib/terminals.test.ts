@@ -10,6 +10,7 @@ import {
   newlySilent,
   pruneAcks,
   shouldChime,
+  strayRoom,
   type ScreenTerminals,
   type TerminalPoll,
   type TerminalRow,
@@ -53,6 +54,27 @@ describe('mergeTerminals (K-29)', () => {
     const first = mergeTerminals({}, server(poll('Kitchen', 0)), 100_000)
     const stale = mergeTerminals(first.memory, server(poll('Kitchen', 90_000)), 101_000)
     expect(stale.memory['Kitchen']!.lastSeen).toBe(100_000)
+  })
+
+  it('carries a room terminal\'s room into the row and the memory (wave 7)', () => {
+    const now = 2_000_000
+    const room = { ...poll('Server Room', 0, 'face'), spot: 'server-room', room: 'The Server Room' }
+    const stray = { ...poll('Hall Tablet', 0, 'face'), spot: 'hall', room: 'The Desktop' }
+    const first = mergeTerminals({}, server(room, stray, poll('Kitchen', 0)), now)
+    const row = (n: string) => first.rows.find((r) => r.name === n)!
+    expect(row('Server Room').room).toBe('The Server Room')
+    expect(row('Hall Tablet').room).toBe('The Desktop')
+    expect(row('Kitchen').room).toBe('')
+    // The server forgot them (a restart): the remembered rows keep their room.
+    const later = mergeTerminals(first.memory, server(), now + 1_000)
+    expect(later.rows.find((r) => r.name === 'Hall Tablet')).toMatchObject({ room: 'The Desktop', remembered: true })
+  })
+
+  it('a room off the server-room spot is a stray (amber); the server-room terminal and a plain tablet are not', () => {
+    expect(strayRoom({ spot: 'server-room', room: 'The Server Room' })).toBe(false)
+    expect(strayRoom({ spot: 'hall', room: 'The Desktop' })).toBe(true)
+    expect(strayRoom({ spot: '', room: 'The Desktop' })).toBe(true)
+    expect(strayRoom({ spot: 'hall', room: '' })).toBe(false)
   })
 })
 
