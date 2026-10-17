@@ -35,4 +35,12 @@ describe("play help", () => {
     expect(scan[0]?.article.slug).toBe("performers");
     expect(searchHelp(articlesFor("performer"), "approve")[0]?.article.slug).toBe("performers");
   });
+
+  it("the performers guide says which alerts banner a booth (B1)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const text = readFileSync(new URL("../../docs/help/play/07-performers.md", import.meta.url), "utf8").replace(/\s+/gu, " ");
+    expect(text).not.toMatch(/banner for every \*\*alert\*\*/u);
+    expect(text).toContain("to everyone, to your character, or into a staff room");
+    expect(text).toContain("doesn't banner your booth");
+  });
 });

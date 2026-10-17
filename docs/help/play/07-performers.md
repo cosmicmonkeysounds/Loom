@@ -41,9 +41,12 @@ guest** from inside their thread.
 
 ## Alerts in your booth
 
-Your booth chimes, buzzes and shows a banner for every **alert** the
-story or the director sends, and for any readout you didn't ask for —
-"⏰ *Name* is late", a private warning. Tap the app once after signing in
+Your booth chimes, buzzes and shows a banner for an **alert** sent to
+everyone, to your character, or into a staff room (`# hosts`), and for
+any readout you didn't ask for — "⏰ *Name* is late", a private warning.
+An alert the story sends to **one guest** or **one room** (a guest's own
+pinned *🚨 GO TO THE INTERNET*, the lights going out in a room) doesn't
+banner your booth: your cue is the readout. Tap the app once after signing in
 so it may make sound (iPhones never buzz — watch for the banner). Keep
 the phone awake with **☰ → Keep my screen on**; a banner you slept
 through is still there when you wake it.
