@@ -786,6 +786,43 @@ when knock for program:
     expect((history.json["messages"] as Array<{ from: string; channel: string }>).filter((m) => m.channel === "dm:Trabolta").map((m) => m.from)).toEqual(["Di"]);
   });
 
+  it("a DM still owed an answer survives a server restart: the restored hub queues it again (W8 T3-02)", async () => {
+    let clock = 1_000_000;
+    const d = mkdtempSync(join(tmpdir(), "loom-agents-"));
+    dirs.push(d);
+    const source = SOURCE.replace("  mind: external\n", '  mind: external\n  hold: "Back soon."\n');
+    const mk = () =>
+      new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "uploaded", scenarioSource: source, joinBase: () => "http://localhost", now: () => clock });
+    const rt = mk();
+    rt.openDoors();
+    const a = await call(rt, "POST", "/api/guest/register", { name: "Ada", passcode: CODES.event });
+    const b = await call(rt, "POST", "/api/guest/register", { name: "Bo", passcode: CODES.event });
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "before the crash" }, { token: a.json["token"] as string });
+    // Bo's thread was answered (a director spoke last, as Trabolta): nothing owed.
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "hello?" }, { token: b.json["token"] as string });
+    await call(rt, "POST", "/api/mod/say", { channel: `guest:${b.json["id"] as string}`, as: "Trabolta", text: "Later." }, { moderator: true });
+    rt.dispose();
+
+    const rt2 = mk();
+    expect(rt2.restore()).not.toBeNull();
+    const hub = (rt2 as unknown as { agents: AgentHub }).agents;
+    expect(hub.pending.map((r) => [r.thread.channel, r.thread.audience])).toEqual([["dm:Trabolta", [a.json["id"]]]]);
+    // Nobody online: the hold line follows after 20 s, as it does live.
+    clock += 20_000;
+    hub.sweep();
+    const history = await call(rt2, "GET", "/api/history", {}, { token: a.json["token"] as string });
+    const dm = (history.json["messages"] as Array<{ from: string; text: string; channel: string }>).filter((m) => m.channel === "dm:Trabolta").map((m) => [m.from, m.text]);
+    expect(dm).toEqual([
+      ["Ada", "before the crash"],
+      ["Trabolta", "Back soon."],
+    ]);
+    // …and a worker that connects still answers the question.
+    const w = await call(rt2, "GET", "/api/agent/stream?characters=Trabolta", {}, { moderator: true });
+    const reqs = w.res.frames().filter(([e]) => e === "request").map(([, r]) => r as AgentRequest);
+    expect(reqs.map((r) => r.thread.audience)).toEqual([[a.json["id"]]]);
+    rt2.dispose();
+  });
+
   it("the request lists the character's powers with this run's use counts", async () => {
     const { rt, guest, requests } = await setup();
     await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "turn off the lights" }, { token: guest.token });

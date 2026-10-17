@@ -1214,6 +1214,21 @@ export class EventRuntime {
     this.agents.line({ character, channel, audience });
   }
 
+  /** After a restore: every agent thread whose last line is someone else's
+   *  is owed an answer — the hub's queue died with the process, so open the
+   *  request again (a worker answers it, or the hold line follows). */
+  private requeueAgentThreads(): void {
+    const last = new Map<string, ChatMessage>();
+    for (const m of this.chat.all()) {
+      if (m.hidden || !m.channel.startsWith("dm:") || !Array.isArray(m.audience) || m.audience.length !== 1) continue;
+      if (!this.isAgent(m.channel.slice("dm:".length))) continue;
+      last.set(`${m.channel}|${m.audience[0]}`, m);
+    }
+    for (const m of last.values()) {
+      if (m.kind === "line" && m.from !== m.channel.slice("dm:".length)) this.agentHeard(m.channel, m.audience as string[]);
+    }
+  }
+
   /** No worker has picked up `req` in time: post the character's authored
    *  `hold:` line into the thread as an ordinary journaled say (the director
    *  can still answer as the character from Run). */
@@ -2559,6 +2574,7 @@ export class EventRuntime {
     const entries = this.store.loadSessions();
     this.sessions.load(entries);
     for (const [token, id] of this.store.loadGuests()) this.guestTokens.set(token, id);
+    this.requeueAgentThreads();
     if (this.phase === "open") this.startTicker();
     return { guests: this.sim?.persons.size ?? 0, events, sessions: entries.length };
   }
