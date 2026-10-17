@@ -2330,8 +2330,11 @@ ROLE Program
 // quick-fire, never from a performer's guest card (a guest-card press
 // carries that character as the actor, so only its hooks would hear).
 // `sequence: false` marks a cue a machine fires (the duck game, the door
-// contact, the printer, the patch bay, the chess phone) — the sheet ticks it
-// but it never becomes LAST / NEXT, so a duck find can't eat the next cue.
+// contact, the printer, the patch bay, the chess phone), and every optional,
+// anytime or fallback cue that is not the night's next step (the set
+// pieces, 🧾, 🔄, 🗳, 🪩, 💡, the auto midnight) — the sheet ticks it but it
+// never becomes LAST / NEXT, so a duck find or a 💡 can't eat the next cue,
+// and NEXT after 🕚 is the next real step, never 🎆 midnight.
 
 INTERACTION call_to_the_desktop
   label: C1/V1 · 📣 Call everyone to the Desktop
@@ -2384,10 +2387,12 @@ INTERACTION spin_the_bottle
 INTERACTION telephone
   label: (Optional) ☎️ Telephone: a mangled message sends someone to the Internet
   who: admin
+  sequence: false
 
 INTERACTION are_you_sure
   label: (Optional) 🪅 The "Are you sure?" piñata
   who: admin
+  sequence: false
 
 INTERACTION second_hunt_preview
   label: 📺 Preview hunt 2 → the ad hijack
@@ -2451,10 +2456,12 @@ INTERACTION y2k_clock
 INTERACTION y2k_midnight
   label: 🎆 Midnight (auto at 60 min)
   who: admin
+  sequence: false
 
 INTERACTION waive_leader_tasks
   label: 🧾 Let a faction win without its leader's task (leader absent)
   who: admin
+  sequence: false
 
 INTERACTION server_door_opened
   label: 🚪 Server room door opened (hardware fallback)
@@ -2465,6 +2472,7 @@ INTERACTION server_door_opened
 INTERACTION reset_server_room
   label: 🔄 Server room: reset the patch-bay alarm
   who: admin
+  sequence: false
   description: After a rehearsal, or a wrong patch the crew forgave. Clears the wrong-combination count (the patch bay forgives one again), the alarm latch and the door cutscene (the next opening from the Y2K hour plays The Heart again). Lights stay as they are (💡 restores them). The keypad lock is standalone: nothing in the story locks or unlocks it.
 
 INTERACTION chess_won
@@ -2476,11 +2484,13 @@ INTERACTION chess_won
 INTERACTION force_majority_stay
   label: 🗳 Force the majority: Unlimited Power (stay)
   who: admin
+  sequence: false
   description: Final round only, when ghosts block a clear majority at the Y2K head count (OP-11). Runs the majority exactly once.
 
 INTERACTION force_majority_leave
   label: 🗳 Force the majority: The Way Out (leave)
   who: admin
+  sequence: false
   description: Final round only, when ghosts block a clear majority at the Y2K head count (OP-11). Runs the majority exactly once.
 
 INTERACTION patch_combo_a
@@ -2507,10 +2517,12 @@ INTERACTION talked_down
 INTERACTION lights_dance
   label: 🪩 Dance lights (fallback: auto 10 s after the blackout)
   who: admin
+  sequence: false
 
 INTERACTION restore_the_lights
   label: 💡 Restore the house lights
   who: admin
+  sequence: false
 
 INTERACTION trabolta_recounts
   label: 🏍 After the dance: weakened Trabolta recounts

@@ -18,7 +18,8 @@ import { FactsWatch, judgeAnswer, parseFactsBook } from "../server/facts.ts";
 import { foldCode } from "../src/runtime/sim/model.ts";
 import { parse } from "../src/parser/index.ts";
 import { foldName } from "../src/parser/names.ts";
-import { guestView, modView, primeView } from "../server/views.ts";
+import { cueState, guestView, modView, primeView } from "../server/views.ts";
+import { cueRows } from "../src/cue-sheet.ts";
 import { composeGuestMessages } from "../server/chat.ts";
 import { liesByPerson } from "../server/recap.ts";
 import { identityDefs, guestPickable, isSpecial, performerPickable } from "../server/identity.ts";
@@ -5145,5 +5146,32 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     expect(v(sim, "Kernel.lies_accepted")).toBe(0);
     expect(v(sim, "Kernel.q1")).toBe("none");
     expect(diags(sim.log.since(0) as SimEvent[])).toEqual([]);
+  });
+});
+
+// ───────────────────────── wave 8 (story lane) ─────────────────────────
+
+/** The cue sheet's rows (the editor's Director page / the phone sheet). */
+function sheet(sim: Sim) {
+  const ints = [...sim.model.interactions.values()].map((i) => ({ id: i.id, label: i.label, who: i.who, ...(i.sequence ? {} : { sequence: false as const }) }));
+  const rows = cueRows(ints, cueState(sim));
+  return { last: rows.find((r) => r.last)?.id ?? null, next: rows.find((r) => r.next)?.id ?? null };
+}
+
+describe("Trapped in the Internet — wave 8 (story lane)", () => {
+  it("S2-10 / T2-08: the anytime, optional and fallback cues are off-sequence, so NEXT after 🕚 is never 🎆 midnight", { timeout: SLOW }, () => {
+    const m = fresh().model;
+    for (const id of ["telephone", "are_you_sure", "y2k_midnight", "waive_leader_tasks", "reset_server_room", "force_majority_stay", "force_majority_leave", "lights_dance", "restore_the_lights"]) {
+      expect(m.interactions.get(id)!.sequence, id).toBe(false);
+    }
+    // The night's steps stay in sequence (🗜 is repeatable but is row 14's step).
+    for (const id of ["zip_everyone_out", "y2k_clock", "trabolta_recounts", "clippy_reads_summary", "final_reveal"]) {
+      expect(m.interactions.get(id)!.sequence, id).toBe(true);
+    }
+    const sim = boot();
+    toY2k(sim);
+    expect(sheet(sim)).toEqual({ last: "y2k_clock", next: "trabolta_recounts" });
+    fireAll(sim, "waive_leader_tasks", "reset_server_room", "restore_the_lights");
+    expect(sheet(sim)).toEqual({ last: "y2k_clock", next: "trabolta_recounts" });
   });
 });
