@@ -165,12 +165,12 @@ describe("Trapped in the Internet — compile", () => {
     for (const c of m.characters.values()) if (c.wallet !== null) expect(["CRA Agent Software", "Runescape"]).toContain(c.id);
   });
 
-  it("pins the codex: 178 entries, 90 codes, every facts.json code resolving, no STAMPED anywhere", () => {
-    expect(m.codex.size).toBe(178);
+  it("pins the codex: 179 entries, 90 codes, every facts.json code resolving, no STAMPED anywhere", () => {
+    expect(m.codex.size).toBe(179);
     expect(m.codexCodes.size).toBe(90);
     // The README's counts follow the pin (its file listing, its status line and the Codex section).
     const readme = readFileSync(join(scenarioDir(SHOW), "README.md"), "utf8");
-    expect([...readme.matchAll(/\b(\d+) CODEX entries|(\d+) codex entries|There\s+are \*\*(\d+)\*\*/gu)].map((x) => Number(x[1] ?? x[2] ?? x[3]))).toEqual([178, 178, 178]);
+    expect([...readme.matchAll(/\b(\d+) CODEX entries|(\d+) codex entries|There\s+are \*\*(\d+)\*\*/gu)].map((x) => Number(x[1] ?? x[2] ?? x[3]))).toEqual([179, 179, 179]);
     const codes: Record<string, string> = {
       trabolta4ever: "The LiveJournal",
       loveletterforyou: "ILOVEYOU",
@@ -335,6 +335,7 @@ describe("Trapped in the Internet — compile", () => {
       anti_ai: "none",
       combo_a: "none",
       combo_b: "none",
+      door_code: "none",
       q1: "none",
       q2: "none",
       q3: "none",

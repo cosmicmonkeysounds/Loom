@@ -113,6 +113,21 @@ export interface Truth {
   draft?: true;
 }
 
+/** The server-room door's keypad code (wave 7): set by hand on a
+ *  standalone lock, never networked. The generator seeds it onto the secret
+ *  Kernel and emits the secret CODEX that hands it out (a chess win from
+ *  the Y2K hour, the majority's Truther Download). Changing it = this one
+ *  edit + regenerate + reprogram the keypad by hand. */
+export interface DoorConfig {
+  /** 4–8 digits (a string, so a leading zero survives). */
+  code: string;
+  /** The printed sign by the keypad (the riddle). Must not contain the code. */
+  clue?: string;
+  /** The secret CODEX carrying the code (no unlock code: nobody can type
+   *  their way to it). Its text must contain the code. */
+  codex: { id: string; title: string; text: string };
+}
+
 export type FactVerdictKind = "accurate" | "lie" | "uncertain";
 
 /** How the server judges (every field optional; these are read by the judge). */
@@ -134,6 +149,8 @@ export interface FactsFile {
   answers: Answer[];
   facts: Fact[];
   truths: Truth[];
+  /** The server-room keypad (the show's; optional for any other project). */
+  door?: DoorConfig;
   /** Unknown keys are kept, never dropped. */
   [extra: string]: unknown;
 }
@@ -366,6 +383,9 @@ export const SHOW_MIN_TRUTHS = 15;
 /** Unlock codes: capitals, digits and hyphens, no apostrophes. */
 export const CODE = /^[A-Z0-9][A-Z0-9-]*$/u;
 
+/** A keypad code: 4–8 digits. */
+export const DOOR_CODE = /^[0-9]{4,8}$/u;
+
 /** Characters that break a generated string literal / `match` arm line. */
 const BAD_TEXT = /["{}|]/u;
 
@@ -377,7 +397,9 @@ const BAD_TEXT = /["{}|]/u;
  *  codex id and every code (questions', facts', the codes recorded on
  *  `existing` facts) unique, codes matching `CODE`; no `"`, `{`, `}` or
  *  `|` in a question's or a truth's text; a `character` fact's codex has
- *  an `about`; a fact is `existing` xor has a `codex`. */
+ *  an `about`; a fact is `existing` xor has a `codex`; a `door`, when
+ *  present, has a 4–8 digit `code`, a clue that never contains it and a
+ *  codex (unique id) whose text does. */
 export function showFactsProblems(f: FactsFile): string[] {
   const problems: string[] = [];
 
@@ -447,6 +469,33 @@ export function showFactsProblems(f: FactsFile): string[] {
 
   if (f.truths.length < SHOW_MIN_TRUTHS) problems.push(`truths: need at least ${SHOW_MIN_TRUTHS} (got ${f.truths.length})`);
   for (const t of f.truths) if (BAD_TEXT.test(t.text)) problems.push(`truth ${t.id}: text must not contain " { } or |`);
+
+  if (f.door !== undefined) problems.push(...doorProblems(f.door, codexIds));
+
+  return problems;
+}
+
+/** The keypad's rules: a 4–8 digit string code; a codex with a non-empty
+ *  id / title / text whose text carries the code and whose id is nobody
+ *  else's; a clue (the printed sign) that never gives the code away. */
+function doorProblems(raw: unknown, codexIds: Map<string, string>): string[] {
+  const problems: string[] = [];
+  if (!isRec(raw)) return ["door must be an object"];
+  const code = raw["code"];
+  if (!isStr(code) || !DOOR_CODE.test(code)) problems.push(`door.code must be a string of 4–8 digits (got ${JSON.stringify(code)})`);
+  const clue = raw["clue"];
+  if (clue !== undefined) {
+    if (!isStr(clue) || clue.trim() === "") problems.push("door.clue must be a non-empty string");
+    else if (isStr(code) && code !== "" && clue.includes(code)) problems.push("door.clue gives the code away");
+  }
+  const c = raw["codex"];
+  if (!isRec(c)) {
+    problems.push("door.codex is missing");
+    return problems;
+  }
+  for (const k of ["id", "title", "text"] as const) if (!isStr(c[k]) || (c[k] as string).trim() === "") problems.push(`door.codex.${k} is missing`);
+  if (isStr(c["id"]) && codexIds.has(c["id"])) problems.push(`door: codex id ${JSON.stringify(c["id"])} is also used by ${codexIds.get(c["id"])}`);
+  if (isStr(c["text"]) && isStr(code) && DOOR_CODE.test(code) && !c["text"].includes(code)) problems.push("door.codex.text must carry the code");
 
   return problems;
 }

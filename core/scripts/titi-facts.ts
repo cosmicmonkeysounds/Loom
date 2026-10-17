@@ -6,18 +6,21 @@
 //!   generated/questions.loom   the three round QUESTs, the reader's
 //!                              per-round reading beats (each hands back
 //!                              to a hand-written tail beat), `== Facts
-//!                              Seed` (the 📝 card strings + the truth
-//!                              count), `== Truth Question` (the
+//!                              Seed` (the 📝 card strings, the truth
+//!                              count and the secret door code on the
+//!                              Kernel), `== Truth Question` (the
 //!                              Truth-or-Dare question picked by
 //!                              `Night.truth_n`) and the hunt-answer CODEX
 //!                              entries, each ending with the lore marker
 //!                              the voice worker hides;
 //!   codex/9-facts.loom         every scannable + character fact as a coded
-//!                              CODEX, grouped by category (colour), and
+//!                              CODEX, grouped by category (colour), the
+//!                              secret *The Door Code* (`door`), and
 //!                              `== Facts Bundle` (an `unlock … for program`
 //!                              per main + Trabolta fact, generated or
 //!                              `existing`) that The Whole Truth diverts into;
-//!   generated/print-stacks.md  the colour-coded QR stacks for the Desktop;
+//!   generated/print-stacks.md  the colour-coded QR stacks for the Desktop
+//!                              and the keypad sign (the riddle, never the code);
 //!   trabolta.mind.md           the `secrets:` block between
 //!                              `# <titi-facts:secrets>` … `# </titi-facts:secrets>`;
 //!   DESIGN.md                  the H1–F2 table between
@@ -59,6 +62,9 @@ export const SHOW_SHAPE = {
     3: { quest: "The Final Facts", beat: "Final Questions", next: "Overshare Go", read: (n: number) => `Final fact ${numberWord(n)}.`, card: (id: string, _r: number, n: number) => `${id}: Final Q${n}.` },
   } as Record<number, { quest: string; beat: string; next: string; read: (n: number) => string; card: (id: string, r: number, n: number) => string }>,
   seedBeat: "Facts Seed",
+  /** Where the keypad code is seeded (`door.code`): the secret Kernel,
+   *  never `Night.*` (the voice worker reads Night whole). */
+  doorVar: "Kernel.door_code",
   truthBeat: "Truth Question",
   /** The majority's bundle (`beats/server-room.loom` The Whole Truth
    *  diverts here): every fact of these categories, for `program`. */
@@ -249,7 +255,7 @@ function questionsLoom(f: FactsFile): string {
     `// The hunt: the round QUESTs, ${S.reader}'s reading beats (each hands`,
     "// back to a hand-written tail beat, so the chain is the same under the",
     "// Sim, which resumes the caller, and a true divert), `== Facts Seed`",
-    "// (the 📝 card strings + the truth count — the entry beat diverts here",
+    "// (the 📝 card strings, the truth count, the door code — the entry beat diverts here",
     "// as its last line), `== Truth Question` (the Truth-or-Dare question",
     `// picked by ${S.world}.truth_n) and the hunt-answer CODEX entries, each`,
     `// ending with the lore marker the voice worker hides (${OUTPUTS.mind}`,
@@ -274,9 +280,11 @@ function questionsLoom(f: FactsFile): string {
     out.push(`-> ${shape.next}`, "");
   }
 
-  out.push(`// The 📝 card lines (main.loom \`when deal_fact_card\`) and the truth count.`, `== ${S.seedBeat}`, `  setting: ${S.setting}`, "");
+  out.push(`// The 📝 card lines (main.loom \`when deal_fact_card\`), the truth count${f.door ? " and the door code" : ""}.`, `== ${S.seedBeat}`, `  setting: ${S.setting}`, "");
   for (const { questions } of rs) questions.forEach((q, i) => out.push(`set ${cardVar(q)} = "${cardString(q, i + 1)}"`));
-  out.push(`set ${S.world}.truth_count = ${f.truths.length}`, "");
+  out.push(`set ${S.world}.truth_count = ${f.truths.length}`);
+  if (f.door !== undefined) out.push(`set ${S.doorVar} = "${f.door.code}"`);
+  out.push("");
 
   out.push(
     `// Truth or Dare: the bottle lane sets ${S.world}.truth_n and fires this beat;`,
@@ -332,6 +340,22 @@ function factsLoom(f: FactsFile): string {
       out.push(`  code: ${c.code}`, "  text:", textBlock(c.text), "");
     }
   }
+  if (f.door !== undefined) {
+    const d = f.door.codex;
+    out.push(
+      "// ── THE DOOR · the server-room keypad (secret, never printed) ──",
+      "// No unlock code: nobody types their way to it. A chess win from the Y2K",
+      "// hour and the majority's Truther Download hand it out (main.loom,",
+      "// beats/server-room.loom). `secret: true` keeps it out of every agent",
+      "// request and the orchestrator's lore.",
+      `CODEX ${d.id}`,
+      `  title: ${d.title}`,
+      "  secret: true",
+      "  text:",
+      textBlock(d.text),
+      "",
+    );
+  }
   const S = SHOW_SHAPE;
   const bundle = [...new Set(f.facts.filter((x) => (S.bundleCategories as readonly string[]).includes(x.category)).map((x) => x.codex?.id ?? x.existing!))];
   out.push(
@@ -383,6 +407,18 @@ function printStacks(f: FactsFile): string {
     if (own.length === 0) continue;
     out.push("", `## ${meta.colour[0]!.toUpperCase()}${meta.colour.slice(1)} — ${cat}`, "", `Stack: ${meta.stack}`, "", HEADER);
     for (const x of own) out.push(stackRow(x, meta.colour, meta.stack));
+  }
+  if (f.door?.clue !== undefined) {
+    out.push(
+      "",
+      "## The cold door — the keypad sign",
+      "",
+      "Print this and tape it beside the server-room keypad. Never print the code",
+      "itself: it reaches a program only through their Codex (a chess win from the",
+      "Y2K hour, or the majority's Truther Download).",
+      "",
+      `> ${f.door.clue}`,
+    );
   }
   out.push("");
   return out.join("\n");
@@ -493,6 +529,7 @@ export function modelProblems(facts: FactsFile, dir: string): string[] {
     if (owner !== undefined) out.push(`${by}: code ${code} is already carried by CODEX ${JSON.stringify(owner)}`);
   };
   for (const q of facts.questions) codexConflict(q.codex!.id, q.codex!.code, `question ${q.id}`);
+  if (facts.door !== undefined && model.codex.has(facts.door.codex.id)) out.push(`door: CODEX ${JSON.stringify(facts.door.codex.id)} is already declared by a hand-written file`);
   for (const x of facts.facts) {
     if (x.codex !== undefined) codexConflict(x.codex.id, x.codex.code, `fact ${x.id}`);
     if (x.existing !== undefined) {
