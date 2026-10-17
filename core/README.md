@@ -369,7 +369,7 @@ pushes during journal replay. The play app's `/sw.js` +
 - **Cue sheet** (K-21): `ModView.cues` = `cueState(sim)` (`views.ts`) —
   which `who: admin` INTERACTIONs fired and the last in-sequence one, read
   off the sim log so every director agrees after a reload. An INTERACTION
-  with `sequence: false` (machine-fired: the duck game, the door reed) is
+  with `sequence: false` (machine-fired: the duck game, the door contact) is
   ticked but never "last"; `InteractionSummary.subject` marks a cue whose
   every listener binds a person (the ceremony's awards).
 - **Grants by hand** (S4): `ModView.quests` lists every declared QUEST
