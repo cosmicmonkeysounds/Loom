@@ -120,9 +120,11 @@ The Uploader: You have already been uploaded. Leaving again would require a body
 
 // A featured program's human memories come back as ONE codex entry (who
 // they really are, codex/5-people.loom) the moment they are cleared (the
-// ROLE watcher `self.cleared and self.featured != "none"`, main.loom);
-// their two CHARACTER FACTS wait in the Desktop's books
-// (codex/9-facts.loom). Private: every line is the Uploader's, in their
+// ROLE watcher `self.cleared and self.featured != "none"`, main.loom),
+// with their own two CHARACTER FACTS (the red facts about them,
+// codex/9-facts.loom; decision 7: the invitation promises the character
+// sheet, and `about:` alone hands nothing to the guest). The same facts
+// still wait in the Desktop's books for everyone else. Private: every line is the Uploader's, in their
 // own `dm:The Uploader` thread. A featured program never speaks in this
 // story — their material arrives by `unlock`.
 == Featured Briefing
@@ -132,20 +134,34 @@ The Uploader: You have already been uploaded. Leaving again would require a body
 The Uploader: Restoring your user profile, {program.name}.
 if program.featured == "excel":
   unlock Randy Barkmore Sr for program
+  unlock The Escalade In The Sinkhole for program
+  unlock Mayor Of The Metaverse for program
 else if program.featured == "openoffice":
   unlock Dana Anderson for program
+  unlock The Halifax Water Hack for program
+  unlock This Is Blackmail for program
 else if program.featured == "draftkings":
   unlock Crab Fisherwoman for program
+  unlock The Coin Toss Of The Century for program
+  unlock Forty Nine Percent for program
 else if program.featured == "bugdom":
   unlock Bea Nunes for program
+  unlock The Ants In The Laptop for program
+  unlock A Hundred Hours for program
 else if program.featured == "jeeves":
   The Uploader: Restoring… restor… r3st0r1ng… 404.
   unlock Virgil Jeeves for program
+  unlock The Jeopardy Callback for program
+  unlock Ten Findings For Everyone for program
   start quest Ten Findings for program "0 programs have ten of your findings."
 else if program.featured == "runescape":
   unlock Poppy Van Mises for program
+  unlock Infinite Gold for program
+  unlock Minister Of Economic Development for program
 else if program.featured == "mspaint":
   unlock Maria Sophia Paine for program
+  unlock Four Failed Theses for program
+  unlock The Million Dollar Painting for program
   set Night.painting = true
   start quest The Painting for program "0 programs have signed."
 else if program.featured == "vlc":

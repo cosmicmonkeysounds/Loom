@@ -77,7 +77,7 @@ guest's card in that performer's booth (phone C / D), or in Run while you
 | Phones A, B join (event code → pick the program). | A dark full-screen **cutscene**: The Uploader in the Optical Drive (the mud room). |
 | Each fails the **CAPTCHA**: tap any squares → VERIFY. (Getting it *right* proves you're human: INCORRECT, try again.) | "CORRECT. You failed at once." |
 | A pool program (Calculator) picks a problem; everyone picks **Deposited** / *I have nothing to leave*. | *100 Truthcoin credited*, then a **pass** (QR) on the stage: "An Antivirus will scan you in." |
-| **Norton** (phone C's **Scanner**, or Run → the guest's Inspector → *scan as character* Norton → **Scan**) scans each pass. | "Scanned. … free of viruses." The Tube, the Desktop, "📂 The Start Bar, The CPU, … and # task-manager are open now." (one notice) **Continue** leaves the cutscene for the chat app. Clippy's **orientation tour** opens (Next / Skip). Excel and MS Paint get their human memories in *The Uploader*'s thread; MS Paint gets *The Centre Square*. |
+| **Norton** (phone C's **Scanner**, or Run → the guest's Inspector → *scan as character* Norton → **Scan**) scans each pass. | "Scanned. … free of viruses." The Tube, the Desktop, "📂 The Start Bar, The CPU, … and # task-manager are open now." (one notice) **Continue** leaves the cutscene for the chat app. Clippy's **orientation tour** opens (Next / Skip). Excel and MS Paint get their human memories (identity + their own two red facts) in *The Uploader*'s thread; MS Paint gets *The Centre Square*. |
 
 ### Act I — the Desktop (8 min)
 

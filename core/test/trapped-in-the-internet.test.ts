@@ -556,12 +556,20 @@ describe("Trapped in the Internet — the whole night", () => {
       expect(v(sim, `${id}.featured`), id).toBe(tag);
     }
     expect(v(sim, "g2.human_problem")).toBe("profile");
-    // One identity entry each (codex/5-people.loom); the two CHARACTER FACTS
-    // wait in the Desktop's books (codex/9-facts.loom).
+    // One identity entry each (codex/5-people.loom) plus their own two
+    // CHARACTER FACTS (codex/9-facts.loom, decision 7: the invitation's
+    // character sheet); the same facts still wait in the Desktop's books.
     for (const [id, entry] of [["g2", "Randy Barkmore Sr"], ["g3", "Dana Anderson"], ["g4", "Maria Sophia Paine"], ["g6", "Virgil Jeeves"], ["g7", "Crab Fisherwoman"], ["g8", "Bea Nunes"], ["g11", "Poppy Van Mises"]]) {
       expect(sim.holdsCodex(id!, entry!), entry).toBe(true);
     }
-    for (const entry of ["The Jeopardy Callback", "Ten Findings For Everyone"]) expect(sim.holdsCodex("g6", entry), entry).toBe(false);
+    const red = (who: string) => FACTS.facts.filter((f) => f.category === "character" && f.codex?.about === who).map((f) => f.codex!.id);
+    for (const [id, who] of [["g2", "Microsoft Excel"], ["g3", "OpenOffice"], ["g4", "MS Paint"], ["g6", "Broken Ask Jeeves"], ["g7", "DraftKings"], ["g8", "Bugdom"], ["g11", "Runescape"]] as const) {
+      expect(red(who), who).toHaveLength(2);
+      for (const entry of red(who)) expect(sim.holdsCodex(id, entry), `${who} ${entry}`).toBe(true);
+    }
+    // …and nobody else's: Excel holds none of MS Paint's.
+    for (const entry of red("MS Paint")) expect(sim.holdsCodex("g2", entry), entry).toBe(false);
+    expect(sim.codexFor("g4").map((e) => e.id)).toEqual(["The Optical Drive", "The Terms Of Service", "The Centre Square", "Bathroom Mode", "Maria Sophia Paine", "Four Failed Theses", "The Million Dollar Painting"]);
     for (const gone of ["The Valley Librarian", "The DSL Line", "Bugdom VR", "The Fire Ants", "The Paperclip Trade", "The Boardwalk Bet", "Twenty Four Years Online", "Expelled From NSCAD"]) expect(sim.model.codex.has(gone), gone).toBe(false);
     // The performers hold all three of theirs from the start (`about:` them).
     for (const [who, entries] of [["Clippy", ["Tippi MacDonald", "The Memorial Veterinary Clinic", "Failed Clippy"]], ["Norton Anti-Virus", ["Julie Horton-Norton", "Miniature Doses", "Stable Island"]], ["McAfee Anti-Virus", ["John McAfee", "The Lamborghini Certificate", "Keep Them On Track"]], ["Password Manager", ["Bridget Troelsen", "What Happened To Hamtaro", "Founding Moderator"]], ["CRA Agent Software", ["Sharon Penney", "The Decimal Point", "Approve Or Deny"]]] as const) {
