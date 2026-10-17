@@ -1869,6 +1869,9 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
       fire(sim, "terminal opened", "g4", { at: spelling });
       expect(v(sim, "g4.at_the_heart"), spelling).toBe(true);
     }
+    // One server-room terminal: g4's line pushed g1 out (g1's close never came).
+    expect(v(sim, "g1.at_the_heart")).toBe(false);
+    expect(v(sim, "Night.heart_holder")).toBe(v(sim, "g4.name"));
     // Another terminal (or none) is not his heart; closing ends it.
     fire(sim, "terminal opened", "g5", { at: "The Desktop" });
     expect(v(sim, "g5.at_the_heart")).toBe(false);
@@ -2858,6 +2861,25 @@ describe("Trapped in the Internet — talked down, like the Fallout Master (wave
     const other = atTheHeart();
     other.unlock("g1", "The Sandy File");
     expect(hostsOnly(fire(other, "stand_down", "g1", null, "Trabolta"))).toHaveLength(1);
+  });
+
+  it("a lost `terminal closed` never keeps a program at his heart once the next one scans in", { timeout: SLOW }, () => {
+    const sim = atTheHeart();
+    sim.unlock("g1", "What Sandy Says");
+    // g1 walks out; their close is lost to the Wi-Fi. g4 scans in.
+    fire(sim, "terminal opened", "g4", { at: "The Server Room" }, "Terminal · Server Room");
+    expect(v(sim, "g1.at_the_heart")).toBe(false);
+    expect(v(sim, "g4.at_the_heart")).toBe(true);
+    // g1, from the phone in their pocket, can no longer talk him down.
+    const away = fire(sim, "stand_down", "g1", null, "Trabolta");
+    expect(lines(away, "Trabolta")).toEqual(["Not out there. Come to my heart and say it to my face."]);
+    expect(casts(away)).toEqual([]);
+    // Another room's terminal never moves the heart.
+    fire(sim, "terminal opened", "g5", { at: "The Desktop" });
+    expect(v(sim, "g4.at_the_heart")).toBe(true);
+    // g1 back at the terminal: theirs again, and g4 is out.
+    fire(sim, "terminal opened", "g1", { at: "server-room" });
+    expect([v(sim, "g1.at_the_heart"), v(sim, "g4.at_the_heart")]).toEqual([true, false]);
   });
 
   it("before the Y2K hour, or after an ending, it is refused", { timeout: SLOW }, () => {

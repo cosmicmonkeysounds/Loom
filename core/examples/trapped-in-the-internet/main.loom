@@ -2213,6 +2213,11 @@ ROLE Program
   when Night.ended == true and self.at_the_heart == true:
     set self.at_the_heart = false
 
+  // One server-room terminal: the program it opened a line for last is the
+  // only one at his heart (a close that never landed can't keep anyone else).
+  when self.at_the_heart == true and Night.heart_holder != self.name:
+    set self.at_the_heart = false
+
   // The majority's members get the whole truth (late pledgers too).
   when Kernel.majority == "stay" and self.group == Unlimited_Power:
     -> The Whole Truth
@@ -3532,9 +3537,14 @@ when reset_server_room:
 // persona's `situations:` read `them.at_the_heart`), and only then can he
 // offer to stand down (cast/trabolta.loom). Any other terminal, or none,
 // is not his heart. The room may come spelled as the terminal was set up.
+// There is one server-room terminal, so a line opened there pushes out
+// whoever was at his heart before (Night.heart_holder; the ROLE watcher
+// clears them): a `terminal closed` lost to a Wi-Fi blip never leaves a
+// program at his heart once someone else has scanned in.
 when terminal_opened for program:
   if program.name != null:
     if Night.ended != true and (at == "The Server Room" or at == "the server room" or at == "Server Room" or at == "server room" or at == "server-room" or at == "server_room" or at == "The_Server_Room"):
+      set Night.heart_holder = program.name
       set program.at_the_heart = true
     else:
       set program.at_the_heart = false
@@ -4063,6 +4073,7 @@ set Night.alarm_clear_at = 0
 set Night.wrong_combos = 0
 set Night.heart_opened = false
 set Night.door_quiet_until = 0
+set Night.heart_holder = "none"
 set Night.gloat_at = 0
 set Night.stand_down_by = "none"
 set Night.talked_down = false
