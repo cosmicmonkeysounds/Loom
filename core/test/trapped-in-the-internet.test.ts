@@ -1928,6 +1928,18 @@ describe("Trapped in the Internet — forced majorities (N-06)", () => {
     expect(beats(evs).filter((b) => b === "Majority Reached")).toHaveLength(1);
   });
 
+  it("a majority during the patch-bay alarm leaves the siren and the alarm look alone (S1-05)", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    fireAll(sim, "patch_rejected", "patch_rejected");
+    expect(v(sim, "Night.alarm_on")).toBe(true);
+    const e = fire(sim, "force_majority_stay");
+    expect(beats(e)).toContain("Majority Reached");
+    // lights_server_open also turns the siren off (stagehand), so not while latched.
+    expect(cues(e).filter((c) => c.includes("lights_server_open"))).toEqual([]);
+    expect(v(sim, "Night.lights")).toBe("alarm");
+  });
+
   it("a forced leave hands The Way Out's members the bundle", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
