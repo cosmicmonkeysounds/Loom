@@ -329,7 +329,8 @@ more. 🎯 named on the Bingo card, 🤷 a guess, 🎩 Dare, 🙅 a refused
 truth, 🏓 a missed cup, 🍎 a failed bob, a guess settled at a Moment of
 Truth and a late program all fire `mark_for_reinstallation … with
 reason:`: the program is **restricted** (DMs and the Tube / Internet rooms
-stay; every button, filing, check-in and room post is off), their phone
+stay; every button, filing, check-in and room post is off, and so is the
+side chooser: no joining or defecting), their phone
 pins **🚨 GO TO THE INTERNET** with a `!` alert, every Antivirus booth
 chimes and `# quarantine` pins *Escort X to the Internet — <reason>*. The
 capture is still the Antivirus' **🛡** (or walking into the tent: the
@@ -361,7 +362,8 @@ died or whose browser was cleared → Inspector → **🔁 Re-pair**, a
 single-use QR (ten minutes) that puts their *same* program on the new
 phone — never re-register them, a ghost counts toward the majority. A
 performer whose phone died → their character's Inspector → **⏏ Release**,
-then they sign in again on a loaner with the performer code. A silent
+then they sign in again on a loaner with the performer code (the old phone
+reads *"Your booth was signed out … sign in again with your passcode."*). A silent
 tablet goes red on the Run page's Terminals card. A Director broadcast
 with **🔔 Alert** ticked banners, chimes and buzzes every phone it reaches,
 booths included. Guests can also check themselves into a room by
