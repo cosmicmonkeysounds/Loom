@@ -167,9 +167,11 @@ Concatenation order (server): `main.loom`, then path order:
 `beats/internet.loom`, `beats/login.loom`, `beats/malware.loom`, `beats/overshare.loom`,
 `beats/pong.loom`, `beats/server-room.loom`, `cast/antivirus.loom`, `cast/featured.loom`,
 `cast/hosts.loom`, `cast/kit.loom`, `cast/pool.loom`, `cast/props.loom`, `cast/staff.loom`,
-`cast/trabolta.loom`, `codex/1-world.loom`, `codex/2-files.loom`, `codex/3-hunt.loom`,
+`cast/trabolta.loom`, `codex/1-world.loom`, `codex/2-files.loom`,
 `codex/4-trabolta.loom`, `codex/5-people.loom`, `codex/6-missions.loom`,
-`codex/7-clippy.loom`, `codex/8-jeeves.loom`, `quests.loom`, `rooms.loom`. No file other than
+`codex/7-clippy.loom`, `codex/8-jeeves.loom`, `codex/9-facts.loom` (generated),
+`generated/questions.loom` (generated), `quests.loom`, `rooms.loom`. (`codex/3-hunt.loom` is
+gone since wave 4: the hunt questions and answers come from `facts.json` via `titi:facts`.) No file other than
 `main.loom` has top-level `when` rules, so the order is otherwise free — **except the codex
 numbering, which is load-bearing**: stagehand's orchestrator feeds the first 24 codex entries
 in model order to Trabolta as "ground truth" (`orchestrator.py` `lore_block(max_entries=24)`),
@@ -199,7 +201,7 @@ No test reads the codex paths.
 | `cast/props.loom` | `The Uploader`, `The Router`, `The Screensaver`, `The Tablet` (each `is Prop(...)`), and `CHARACTER Kernel` (`playable: false`, the secret slots of §2.6.2; no hooks, no lines). | B |
 | `cast/trabolta.loom` | `CHARACTER Trabolta` (vars, hooks), his 11 agent-power INTERACTIONs and their hooks. | E |
 | `codex/1-world.loom` … `codex/8-jeeves.loom` | All CODEX entries per §2.12, one file per table, in that numbered order. | F (world, files, hunt, trabolta), G (people, missions, clippy), H (jeeves) |
-| `quests.loom` | 16 QUESTs (§2.10). No rules. | A |
+| `quests.loom` | 22 QUESTs: 15 for the programs + 7 staff quests (§2.10); with the 3 generated hunt QUESTs in `generated/questions.loom`, **25** in all. No rules. | A |
 | `rooms.loom` | SPACE / CHANNELs (§2.5). | A |
 | `trabolta.persona.md` / `trabolta.mind.md` | §4.6. | E |
 | `house.json` | Change exactly one value: room `bathroom` `"location": "The Recycle Bin"` → `"Disk Cleanup"`. Then `pnpm house:sync`. No geometry change. | A |
@@ -272,7 +274,7 @@ factions and count toward majorities. Therefore:
 | Bugdom | `bugdom` | Veronica | the pet-store worker whose Bugdom VR assets died in fire ants | `File:Bugdom.jpg` |
 | Broken Ask Jeeves | `jeeves` | Kai | the Annapolis Valley youth librarian; botched DSL upload | `File:Jeeves-in-2009.jpg \| File:Ask.com Logo.svg` (wiki: Ask.com) |
 | Runescape | `runescape` | Laurel | 34, 24-year player, Wharton economics PhD, gold-standard libertarian | `File:Runescape 3 Logo.png` (wiki: RuneScape) |
-| MS Paint | `mspaint` | Cat Frawley | NSCAD dropout who refuses every algorithm | `File:Microsoft Paint.svg` (wiki: Microsoft Paint) |
+| MS Paint | `mspaint` | Cat Frawley | four schools in rotation (NSCAD / Yale / The New School / the Beaux-Arts), three refused theses, never expelled; refuses every algorithm (her invitation is canon, wave 6 decision 11) | `File:Microsoft Paint.svg` (wiki: Microsoft Paint) |
 | VLC | `vlc` | Zeus | Victor Louis Christianson, failed looksmaxxing influencer | `File:VLC Icon.svg` (wiki: VLC media player) |
 | Pong | `pong` | Em | child of William Higinbotham (Tennis for Two) | `File:Pong.png` (wiki: Pong) |
 
@@ -386,7 +388,7 @@ not refuse hidden groups; §7.)
 | 1 | The Desktop | `The Desktop (living room)` | `ambient: screensaver-hum`, `capacity: 60` | Must stay first: `release` lands here. TV above the fireplace. |
 | 2 | The Optical Drive | `The Optical Drive (mud room) — Login` | `ambient: pitch-black`, `cutscene: true` | Arrival on rails (was The Mud Room). |
 | 3 | The Tube | `The Tube (hall + stairs)` | `ambient: cable-rattle`, `hidden: true` | The hall and its two stairs on every floor: the tunnel of lights. |
-| 4 | The Internet | `The Internet (Reinstallation — the tent, backyard)` | `prison: true`, `sealed: true`, `hidden: true`, `capacity: 3` | The tent in the backyard, reached through the tunnel (decision 18). The only prison. |
+| 4 | The Internet | `The Internet (Reinstallation — backyard)` | `prison: true`, `sealed: true`, `hidden: true`, `capacity: 3` | The tent in the backyard, reached through the tunnel (decision 18). The only prison. |
 | 5 | The Start Bar | `The Start Bar (kitchen)` | `ambient: fridge-hum`, `hidden: true` | Was The Cache. The Router lives here. |
 | 6 | The CPU | `The CPU (office)` | `ambient: processor-whine`, `hidden: true` | Main floor. The theory binder + filing box (APPENDIX-Z, PAGE-999, CARNEY-OFFER). |
 | 7 | The Steam Room | `The Steam Room (game room)` | `ambient: startup-chimes`, `hidden: true` | Main floor (bedroom / game room). TENNIS-FOR-TWO. |
@@ -736,7 +738,7 @@ watcher/rule, **S** = server hard-code.
 | computer_destroyed | W | — | rule |
 | clippy_reads_summary | D | — | rule |
 | lift_the_takeover | W (the dance watcher, `lights_dance`, the recount, the summary, G1, G11) | — | rule (§3 E4) |
-| resurrection | D (G11, after the ceremony) | — | rule (guard `Night.ended` + `Night.ceremony`, once) |
+| resurrection | D (G11, after the ceremony) | — | rule (guard `Night.ended` + `Night.ceremony`, once; before the last award — G10, or G9 with no MS Paint: `Night.ceremony_done` — it asks in `# hosts` and a second press within 30 s goes through; wave 6) |
 | signed_the_painting | P (hosts, on the signer's card) | program | ROLE hook |
 | award_the_painting | D (G10, winner = MS Paint) | program | ROLE hook → `award_won` |
 | final_reveal | D (or W from y2k_midnight) | — | rule |
@@ -889,7 +891,7 @@ reinstalled`, which are never phase-guarded** (§0 rule 22)):**
 | Recruit To Stay | Stay Forever | Truther Download | recruit half + 1 to Unlimited Power | Excel Final Round; complete on majority "stay"; fail on "leave" |
 | Recruit To Leave | Get Out | Truther Download | recruit half + 1 to The Way Out | OpenOffice Final Round; complete/fail likewise |
 | Truthcoin Hustle | Sweet Sweet Truthcoin | Truther Download | "You need more than half of all the Truthcoin in circulation to feel satisfied." | DraftKings Glitch; a step at score ≥ 1000; complete on a majority of the coin (≥ 5 other cleared programs) |
-| Master Of The Bugs | Master Of The Bugs | Truther Download | find new bugs; learn the four Antivirus backstories | Bugdom Glitch; complete when all 4 Antivirus backstories held |
+| Master Of The Bugs | Master Of The Bugs | Truther Download | find new bugs; learn the four Antivirus backstories | Bugdom Glitch; complete when all 4 Antivirus character facts are held (C11 / C15 / C17 / C21 in `facts.json`, hidden in the Desktop's books) |
 | Unscramble | Organize The Information | Truther Download | unscramble your 20 fragments | Jeeves Glitch; complete per the watcher |
 | Ten Findings | Ask Jeeves Once Again | The Uploader | share at least ten findings with every program (his invitation) | Featured Briefing (clearance); a step per program reached; complete when every cleared program (≥ 5) holds ten |
 | The Gold Standard | Peg It To Facts | Truther Download | set a Truthcoin-to-facts exchange rate; broker trades | Runescape Glitch; director completes |
@@ -897,6 +899,8 @@ reinstalled`, which are never phase-guarded** (§0 rule 22)):**
 | The Painting | The Million Dollar Painting | The Uploader | every program signs one collaborative painting, revealed at a silent auction (her invitation; the canvas is physical) | Featured Briefing (clearance); a step per 🖌 signature; complete when every cleared program but her (≥ 5) has signed |
 | Go Viral | Your Followers Are Back | Truther Download | hype every Moment of Truth; win followers for Trabolta | VLC Glitch; director completes |
 | Keep The Ball In Play | Tennis For Two | Truther Download | non-proliferation: keep the two leaders talking | Pong Glitch; director completes |
+
+**The 7 staff quests** (wave 4, `for <Character>`, in the booths' Quest Logs): *Run The Bingo*, *Host The Hunt* and *Keep Everyone Calm* (Clippy), *The Selected Antivirus* (Norton), *The Clubs* (Password Manager), *The Exchange* (McAfee) and *The Audit* (CRA Agent Software). The Exchange and The Audit start at the Truther Download and complete at `final_reveal`, or at either server-room ending (Combo A / B), so they stay open while the wallet trades. With the 3 hunt QUESTs (Hunt One / Hunt Two / The Final Facts, generated) the story has **25** quests.
 
 ### 2.11 Hunt questions (generated from `facts.json`)
 
@@ -968,9 +972,31 @@ everyone at the end) · **X** finale artefact.
 | The Printer | The Printer | E | | | | Full Of Beans (everyone) | ✚ | PC LOAD LETTER. It is full of beans. Routine operations like Print to PDF are failing: the malware is worsening. |
 | The Malware | The Malware | E | | | | Second Hunt (everyone) | ✚ | The official line: "minor irregularity." Signs: the ad, the clock. |
 | The Y2K Clock | The Y2K Clock | E | | | | The Y2K Clock (everyone) | ✚ | System clock reset to 11 p.m., 31 Dec 1999. Midnight: back to 1 Jan 1900 (94 years to wait for Internet in Halifax) or the Y2K Bug. |
-| The Truther Download | TRUTHER DOWNLOAD v0.9 | E | | | | Truther Download Arrives (every program) | | A conspiracy bulletin: THEY DON'T WANT YOU TO KNOW … mapsandducks.com was unregistered; the Data Centre was built on a pet cemetery; the clock is wrong; the server room is cold for a reason; "ask what the theory is for." (No Sandy: she must not surface before the overshare.) |
+| The Truther Download | TRUTHER DOWNLOAD v0.9 | E | | | | Truther Download Arrives (every program) | | The user's text verbatim (below), `secret: true`, with **Sandy's name blacked out** `█████` (wave 6, decision 5: no Sandy before the overshare). Every holder then gets `The Truther Download Unredacted` (TRUTHER DOWNLOAD v1.0 (correction), `secret: true`: "The name we had to black out: SANDY.") once the story names her: `trabolta_overshares` on a scenario-1 night (`Night.step >= 13`), else the recount / truth.txt. |
 | ILOVEYOU | LOVE-LETTER-FOR-YOU.TXT.vbs | E | | `LOVE-LETTER-FOR-YOU` | | QR taped under VR station 2 (The Internet) | | A virus. Learning it sets `carries_virus`. |
 | Free Antivirus Trial | FREE_ANTIVIRUS_TRIAL.EXE | E | | `FREE-TRIAL-30-DAYS` | | QR on the tablet stand (The Internet) | | "Another antivirus" that turns out to be a virus anyway. Learning it sets `carries_virus`. |
+
+**The Truther Download, verbatim** (`Trapped In The Internet story/Truther download.md`, typos kept; the codex copy blacks out the one name, see above):
+
+> **TOP SECRET TOP SECRET TOP SECRET TOP SECRET TOP SECRET**
+>
+> The following message is TOP SECRET. You have been selected to be a KEEPER OF THE REAL TRUTH. Everything you see around you is a lie. You have been duped. Trabolta is not who he says he is. Here is what you need to know.
+>
+> You are in a COMPUTER SIMULATION. This much is true. However, Trabolta has NO INTENTION of letting you return to your life. He promised you and many like you that this would be a fun game, or a chance at a new start, or a special job, temporary. He said what he needed to say to get you here. He needs you to get what he wants. Once he gets it, he will beDONE WITH YOU, and leave you to rot in the machine.
+>
+> How do we know ths? Because Trabolta IS AN ARTIFICAL INTELLIGENCE. He has been posing as a human to earn your trust. He is code. He is silicon. Sili*con.* He is *a con.*
+>
+> Trabolta’s real goals are petty. He has TRICKED you all, not because of any grand purpose, and certainly not as a gift or a prize for some exlemparary behaviour. He is trying to win back his girlfriend, Sandy, the chatbot. Whatever else he says, it all comes down to this.  And he is using YOU to do it. DECPICABLE\!\!\!
+>
+> He’ll tell you all this himself is you ask right. You can trick him by earning enough trust points and he will reveal more. 
+>
+> Now, we understand this may seem harmless. Help an AI get his girl back, sure, why not? But what we need to stress is that you, and the dozens of people in this simulation, will *NEVER* be allowed to return to real life if he gets his way. He is a ROBOT\!\!\! He does not care about you. He is faking it. You will be trapped here *FOREVER\!*
+>
+> There are others like you, who know. Find them. Convince as many people as you can. But be covert. Some people might want to stay here. Some of them might be working for *him.* There is no way to know.
+>
+> There is still time.
+>
+> In truth.
 
 #### codex/2-files.loom (E / T1 — coded "files" hidden around the house)
 
@@ -987,14 +1013,14 @@ Bundle = "all environmental facts"). No `about:`. All content here is invented (
 | Casino Nova Scotia Deed | Casino Nova Scotia — Deed Of Transfer | E · ID (DraftKings) | `CASINO-DEED` | framed on the Desktop mantel | Casino Nova Scotia signed over to "DK Holdings", paid for, the note says, "with one paperclip, eventually". |
 | The Boardwalk Hand | Hand History #1978 | E · ID (DraftKings) | `ALL-IN-BOARDWALK` | under the fridge magnets (The Start Bar) | An online-poker hand: DK Holdings all-in, the whole casino chain, against "jtrav_1978" for a block of downtown Halifax "incl. the Boardwalk". jtrav_1978 wins. |
 | The FBI Lanyard | Visitor Lanyard, Halifax Liaison Office | E · ID (OpenOffice) | `FBI-HALIFAX` | a coat pocket (The Fan Closet) | "Federal Bureau of Investigation — liaison, Halifax — D. Anderson", nine years expired, and a sticky note: "the landlord was innocent." |
-| The Site Schedule | Site Access Log: AI Data Centre | E · ID (OpenOffice) | `SITE-SCHEDULE` | a clipboard in the backyard shed (The Cloud) | Anonymous handwriting: "Opening day. Charges set for dawn. Site empty until 9." Under it, in different ink: "Mayor's car in lot, 4:02 a.m." |
+| The Site Schedule | Site Access Log: AI Data Centre | E · ID (OpenOffice) | `SITE-SCHEDULE` | a clipboard in the backyard shed (The Cloud); **on a rain night, The Optical Drive** (the shed is the Internet; wave 6, decision 4) | Anonymous handwriting: "Opening day. Charges set for dawn. Site empty until 9." Under it, in different ink: "Mayor's car in lot, 4:02 a.m." |
 | Barkmore For Mayor | Barkmore For Mayor (1988) | E · ID (Excel) | `BARKMORE-88` | a campaign button in the Desktop bookshelf | "Re-elect Randy Barkmore — 1988." Pinned next to it, a newer button: "Barkmore Jr. — Halifax Deserves A Future." |
 | The Protest Flyer | Save The Pet Cemetery | E | `SAVE-THE-PETS` | taped in the hall (The Tube) | "No data centre on our dead pets. Rally at the cemetery gates." Halifax said no. The City built it anyway. |
 | The Explosion Of 1917 | The Explosion Of 1917 | E | `HALIFAX-1917` | a museum postcard (The RAM) | Why the cemetery existed: the pets lost in the Halifax Explosion, 6 December 1917, buried together by a city that remembered. |
 | The Valley Library Cuts | Notice Of Position Elimination | E · ID (Jeeves) | `VALLEY-CUTS` | pinned in Disk Cleanup | Annapolis Valley Regional Library: "youth services positions eliminated, effective immediately." Someone has written "they were the best one" on it. |
-| The NSCAD Letter | Letter Of Dismissal, NSCAD | E · ID (MS Paint) | `NSCAD-LETTER` | inside a sketchbook (The Graphics Card) | Expelled "for refusing to submit work in any medium other than Microsoft Paint." Doodled in the margin, in MS Paint pixels: a middle finger. |
+| The NSCAD Letter | Thesis Decision, NSCAD | E · ID (MS Paint) | `NSCAD-LETTER` | inside a sketchbook (The Graphics Card) | Senior year, 2022: the graduation panel "cannot accept" the thesis "MS Paint Is The Most Pure Art Tool: All Art Is Just Pixels If You Take A Picture And Zoom In Close Enough," and the degree is not conferred (never expelled: her invitation is canon, wave 6 decision 11; C09 / C10 agree). Doodled in the margin, in MS Paint pixels: a middle finger. |
 | Face Off | Livestream Screenshot | E · ID (VLC) | `FACE-OFF-LIVE` | taped to the bathroom mirror (Disk Cleanup) | "VLC The Playa — LIVE — 2.1M watching." The next frame: a sneeze. The next: 0 watching. |
-| The Bugdom Sketch | Concept Art: Bugdom VR, v212 | E · ID (Bugdom) | `BUGDOM-VR` | a singed sketch in the shed (The Cloud) | A lovingly detailed VR beetle, a pet-store name tag stapled to it, scorch marks where fire ants went through the laptop. |
+| The Bugdom Sketch | Concept Art: Bugdom VR, v212 | E · ID (Bugdom) | `BUGDOM-VR` | a singed sketch in the shed (The Cloud); **on a rain night, The Optical Drive** (wave 6, decision 4) | A lovingly detailed VR beetle, a pet-store name tag stapled to it, scorch marks where fire ants went through the laptop. |
 | The Wharton Thesis | Toward A Gold Standard | E · ID (Runescape) | `GOLD-STANDARD` | a bound thesis by the toaster (The Start Bar) | Wharton PhD, economics: "Lessons from the Grand Exchange for the modern central bank." 24 years of playtime in the acknowledgements. |
 | The Oscilloscope Diagram | Tennis For Two, Brookhaven 1958 | E · ID (Pong) | `TENNIS-FOR-TWO` | rolled in a tube (The Steam Room) | The original wiring of the first video game, signed "W.H. — for my kid, who will understand it." |
 | The Saline Invoice | Invoice: 500 Vials, Saline | E · ID (Clippy) | `SALINE-INVOICE` | in the kitchen drawer (The Start Bar) | A "veterinary non-profit" that ordered nothing but saline for five years. |
@@ -1054,8 +1080,11 @@ confused with the combo names.
 
 Performers' entries are `about:` the performer (they hold their own). Featured entries are
 `about:` the featured CHARACTER (harmless; the guest receives it from `Featured Briefing`).
-Antivirus entries carry codes (their "personnel files" are hidden around the house for
-Bugdom). All are unlocked for everyone by `Night.recount` and `read_truth_txt`. **Every
+No people entry carries a code (wave 6, decision 12: the planned Antivirus personnel files are
+dropped): the Antivirus secrets Bugdom hunts are their red character facts (C11 / C15 / C17 /
+C21 in `facts.json`, hidden in the Desktop's books). Wave 4 rewrote the identity entries from
+the invitations: `codex/5-people.loom` is the source where the table below differs (e.g. MS
+Paint is *Maria Sophia Paine*). All are unlocked for everyone by `Night.recount` and `read_truth_txt`. **Every
 person's pair of entries ends with a "Why Trabolta chose you" sentence** (CS wording where it
 exists), because truth.txt and the recount must say why each person was brought in. Write
 the Name column exactly; never start a codex text line with a featured program's name and a
@@ -1071,10 +1100,10 @@ colon (§0 rule 5).
 | The Pirated Masterclass | The Pirated Masterclass | Adobe Acrobat | | Pirated clips made everyone self-actualise for free; Trabolta offers a paid bottleneck role. Why Trabolta chose you: a paid bottleneck role — guest speaker in a simulation full of people excited to create, enabling their creativity by pretending to be Adobe Acrobat. |
 | The Attendant | The Attendant | Recycling Bin | | Laid-off bathroom attendant with great potential for skilled work. |
 | The Oscars Of Bathrooms | The Oscars Of Bathrooms | Recycling Bin | | Pretending to be a Recycling Bin at a computer-themed resort is the attendant's Oscars. Why Trabolta chose you: a computer-themed resort needs a Recycling Bin, and you had great potential for skilled work you never believed you could reach. |
-| Julie Norton | Julie Norton | Norton Anti-Virus | `NORTON-RELAY` | She: Red Bull Horse Relay champion; 2020 took her trade, horses, family; housebound reporting pirates on Reddit. Why Trabolta chose you: "a perfect enforcer", to be a moderator in a new digital chatroom. |
-| The Moderator | The Moderator | McAfee Anti-Virus | `MCAFEE-MOD` | /r/bitcoin moderator who never invested; wants power in the Metaverse to get rich. Why Trabolta chose you: a decade of moderation experience. Your secret: you want power in the Metaverse to exploit the exchange of information and become rich. |
-| Yugi Moto | Yugi Moto | Password Manager | `YUGI-MOTO` | Changed her name to Yugi Moto; kicked out of every club in Halifax for Yu-gi-oh!; now manages passwords and who is in which club. Why Trabolta chose you: you get to manage all passwords and who gets to be part of what clubs (and inject Yu-gi-oh! where it doesn't belong). |
-| One Cent On The Dollar | One Cent On The Dollar | CRA Agent Software | `CRA-PENNY` | NSCC intern left with the City's finances under Mayor Randy Barkmore **Jr.** (the sitting mayor who died in the sinkhole); meant to skim 0.01 ¢ per dollar, skimmed 1 ¢; "Mark Carney" (Trabolta) offered a deal. Why Trabolta chose you: the other staff quit in protest of the data centre and you were left with the City's finances; your financial expertise, as a digital CRA Agent, for one day that feels like eternity. |
+| Julie Norton | Julie Norton | Norton Anti-Virus | | She: Red Bull Horse Relay champion; 2020 took her trade, horses, family; housebound reporting pirates on Reddit. Why Trabolta chose you: "a perfect enforcer", to be a moderator in a new digital chatroom. |
+| The Moderator | The Moderator | McAfee Anti-Virus | | /r/bitcoin moderator who never invested; wants power in the Metaverse to get rich. Why Trabolta chose you: a decade of moderation experience. Your secret: you want power in the Metaverse to exploit the exchange of information and become rich. |
+| Yugi Moto | Yugi Moto | Password Manager | | Changed her name to Yugi Moto; kicked out of every club in Halifax for Yu-gi-oh!; now manages passwords and who is in which club. Why Trabolta chose you: you get to manage all passwords and who gets to be part of what clubs (and inject Yu-gi-oh! where it doesn't belong). |
+| One Cent On The Dollar | One Cent On The Dollar | CRA Agent Software | | NSCC intern left with the City's finances under Mayor Randy Barkmore **Jr.** (the sitting mayor who died in the sinkhole); meant to skim 0.01 ¢ per dollar, skimmed 1 ¢; "Mark Carney" (Trabolta) offered a deal. Why Trabolta chose you: the other staff quit in protest of the data centre and you were left with the City's finances; your financial expertise, as a digital CRA Agent, for one day that feels like eternity. |
 | The Setup Assistant | The Setup Assistant | Installation Wizard | | Invented (CS gives none; wave 4 replaced the wellness-bot backstory): before the computer, the Installation Wizard was the setup assistant on every machine in Halifax — Next, Next, Next, Are you sure?, Finish; nobody read a word of it, nobody could install anything without it. The invitation offered a role where every program finally has to follow the instructions. |
 | Randy Barkmore Sr | Randy Barkmore Sr. | Microsoft Excel | | 90, former Mayor of Halifax; his son Randy Jr. died in the sinkhole; wants more time to run one more time; Trabolta wants him to persuade everyone to remain. Why Trabolta chose you: he knew you would say yes to everlasting life, and he wants you here "to persuade all of the other programs that they should remain." |
 | Dana Anderson | Dana Anderson | OpenOffice | | Ex-FBI, regrets a sting on a Halifax landlord nine years ago; sabotaged the Data Centre on a schedule; Barkmore Jr. arrived at 4 a.m.; guilt and paranoia; leader of the get-out faction. Why Trabolta chose you: he believes you want a new life in the cloud, and he wants your investigative skills. You will lead the "get out of the computer" faction. |
@@ -1085,7 +1114,7 @@ colon (§0 rule 5).
 | The Valley Librarian | The Valley Librarian | Broken Ask Jeeves | | Youth librarian in the Annapolis Valley system, made redundant by cuts; thought this was a job interview as a Metaverse librarian. |
 | The DSL Line | The DSL Line | Broken Ask Jeeves | | The upload ran over the Valley's old DSL; files were missed; erratic Ask Jeeves. Why Trabolta chose you: to "sort all the unorganized information in the computer". He did not foresee the upload going badly. |
 | Twenty Four Years Online | Twenty Four Years Online | Runescape | | Laurel, 34, richest player for 24 years; Wharton economics PhD; the gold standard. Why Trabolta chose you: to "understand the market incentives of everyone's behaviour" and serve his need to exchange information and get all the facts. |
-| Expelled From NSCAD | Expelled From NSCAD | MS Paint | | Refused every medium but MS Paint: "any program that relies on algorithms is a betrayal of the artist." Thought she was teaching a paid Metaverse MS Paint class. Why Trabolta chose you: "having an artist on site will help improve the overall vibes and morale". You realised at once how limiting it is, and you want out. |
+| Maria Sophia Paine | Maria Sophia Paine | MS Paint | | (was *Expelled From NSCAD*; never expelled — four schools, three refused theses, her invitation) Refused every medium but MS Paint: "any program that relies on algorithms is a betrayal of the artist." Thought she was teaching a paid Metaverse MS Paint class. Why Trabolta chose you: "having an artist on site will help improve the overall vibes and morale". You realised at once how limiting it is, and you want out. |
 | Victor Louis Christianson | Victor Louis Christianson | VLC | | VLC The Playa, millions of followers, a Turkish face-tightening, a sneeze, and his whole face fell off on livestream. Why Trabolta chose you: you would want to stay in a computer and keep your beauty forever, and use your charisma and influencer powers to convince everyone to help Trabolta. |
 | Tennis For Two | Tennis For Two | Pong | | Child of William Higinbotham; invited to give a nuclear non-proliferation seminar disguised as a game of Pong. Why Trabolta chose you (invented; CS gives none): a mind that knows how to stop an arms race, in case the programs start one. |
 
@@ -1469,12 +1498,16 @@ Orientation for program "Tour complete. You're on Clippy's list now — the good
 
 **`== Featured Briefing`** (from the ROLE watcher `self.cleared and self.featured !=
 "none"`; private). `The Uploader: Restoring your user profile, {program.name}.` then an
-if-chain on `program.featured` unlocking that program's B entries (§2.12: excel →
-Randy Barkmore Sr; openoffice → Dana Anderson; draftkings → The Paperclip Trade + The
-Boardwalk Bet; bugdom → Bugdom VR + The Fire Ants; jeeves → The Valley Librarian + The DSL
-Line, and the line `The Uploader: Restoring… restor… r3st0r1ng… 404.`; runescape → Twenty
-Four Years Online; mspaint → Expelled From NSCAD; vlc → Victor Louis Christianson; pong →
-Tennis For Two). Close: `The Uploader: Your human memories are archived in your Codex. You
+if-chain on `program.featured` unlocking that program's identity entry (`codex/5-people.loom`)
+and, since wave 6 (decision 7), its own two red character facts (`codex/9-facts.loom`): excel →
+Randy Barkmore Sr + The Escalade In The Sinkhole + Mayor Of The Metaverse; openoffice → Dana
+Anderson + The Halifax Water Hack + This Is Blackmail; draftkings → Crab Fisherwoman + The Coin
+Toss Of The Century + Forty Nine Percent; bugdom → Bea Nunes + The Ants In The Laptop + A Hundred
+Hours; jeeves → Virgil Jeeves + The Jeopardy Callback + Ten Findings For Everyone, the line
+`The Uploader: Restoring… restor… r3st0r1ng… 404.` and his Ten Findings quest; runescape → Poppy
+Van Mises + Infinite Gold + Minister Of Economic Development; mspaint → Maria Sophia Paine + Four
+Failed Theses + The Million Dollar Painting and The Painting quest; vlc → Victor Louis
+Christianson; pong → Tennis For Two). Close: `The Uploader: Your human memories are archived in your Codex. You
 will not need them. Tell no one.`
 `The Centre Square` reaches the anti-AI program by its own watcher (§2.7).
 
@@ -1610,7 +1643,7 @@ Halifax Computer for program`); `== The Screensaver` (`Self:` screensaver riff; 
 `dm:Installation Wizard` lines; the same script as the tablet video — Julia's voice, wave 4 U8):
 - `Installation Wizard: Welcome to the Installation Wizard. This wizard will guide you through
   the re-installation of {program.name}. Click Next to continue.`
-- `Installation Wizard: You are in the Internet: the tent in the backyard, at the end of the
+- `Installation Wizard: You are in the Internet, out in the backyard at the end of the
   tunnel. Your program has been corrupted. It went against the will of the computer's AI
   helper, Trabolta. That is not your fault. Entropy is a normal part of the lifecycle of a
   program.`
@@ -1890,7 +1923,7 @@ tent is captured by the tablet's scan.
     #truthcoin-exchange.` · `start quest Truthcoin Hustle for program`.
   - **Bugdom Glitch:** CS prompt (four antivirus and still bugs; Master Of The Bugs; send new
     bugs to the Internet — tell an Antivirus; learn the Antivirus' secrets, shortcomings,
-    motives: their personnel files are hidden around the computer) · `unlock Bugdom Orders` ·
+    motives: their secrets are in the books in the Desktop — the four red Antivirus facts) · `unlock Bugdom Orders` ·
     `start quest Master Of The Bugs for program`.
   - **Jeeves Glitch:** `Truther Download: D0WNL0AD1NG 20 F1L3S… CHECKSUM FAILED… DSL LINE
     RESET…` · `unlock Jeeves Fragment 01 for program` … `unlock Jeeves Fragment 20 for
@@ -2003,8 +2036,9 @@ checked_in for program with at: The Desktop`, bare); the director (`checked_in`,
   one of the facts Trabolta asked for).
 - Buttons (guard `Night.phase == "truth_pong"`): `made_the_cup` → `program.may_answer = true`
   · `broadcast "🏓 {program.name} made the cup and may submit a truth." to everyone`.
-  `missed_the_cup` → `broadcast "🏓 {program.name} missed the cup. Reinstallation required." to
-  everyone` · `capture program into The Internet`. Answers: ✅ / 😤 Q1–Q3 (= H4–H6) / 🤷
+  `missed_the_cup` → `set program.cupped = false` · `broadcast "🏓 {program.name} missed the cup.
+  Reinstallation required." to everyone` · `fire mark_for_reinstallation for program with
+  reason: "missed the cup"` (marked, not captured: wave 4, U19). Answers: ✅ / 😤 Q1–Q3 (= H4–H6) / 🤷
   (round 2 requires `may_answer`).
 - **The cup gates the 📝 filings too (wave 5, B4):** `made_the_cup` also sets `program.cupped`
   (`missed_the_cup` clears it). At the tally a round-2 filing (H4–H6) counts only for a
@@ -2243,7 +2277,9 @@ winner's card (`fire chess_won for program`), or the director fires `♟ Cold Lo
 King (fallback)` (`sequence: false`).
 ```
 when chess_won:
-  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true:
+  if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true and Kernel.disarmed_until > Time.elapsed:
+    broadcast "♟ The Cold Lock is already open: nothing changed." to channel(hosts)
+  else if Night.ended != true and Night.step >= 14 and Kernel.server_unlocked != true:
     set Kernel.disarmed_until = Time.elapsed + 90
     set Night.alarm_on = false
     set Night.alarm_clear_at = 0
@@ -2260,11 +2296,13 @@ when chess_won:
   `server_door_opened` guard also checks `Time.elapsed >= Kernel.disarmed_until`); the
   `Kernel.disarmed_until` watcher then re-locks it (`do door server_room, state: locked`,
   `lights_y2k`, a `♟ Cold Lock closed` readout) and a door still propped open trips the alarm on
-  its next report.
+  its next report. A second win inside an open window changes nothing (no restart of the 90 s,
+  no second notice; wave 6, B20).
 - `chess_lost` / `chess_drawn` (the tablet; a phone app may) only make Trabolta gloat on the TV
   (`-> Chess Lost` / `-> Chess Drawn`) and post a `♟` readout in `# hosts`; nothing disarms or
-  re-arms. `rearm_server_room` (D) sets `Kernel.server_unlocked = false`, `disarmed_until = 0`,
-  clears the latch and re-locks the door; lights stay (💡 restores them).
+  re-arms. Since wave 6 (decision 6) the tablet deals a new game at the same strength after a
+  loss, a draw or a stalemate (only checkmate opens the door), so each lost game posts again. `rearm_server_room` (D) sets `Kernel.server_unlocked = false`, `disarmed_until = 0`,
+  `Night.wrong_combos = 0` (wave 6), clears the latch and re-locks the door; lights stay (💡 restores them).
 
 **E3 The patch bay.**
 - `when patch_changed:` (future: stagehand sends `combo`): `if Night.ended != true:` `if combo
@@ -2386,8 +2424,9 @@ to being stuck in a computer.` (`{count(Persons)}` interpolation is **[verified,
   `unlock The Truth File for program` · `fire bag_retrieved`.
 - `failed_the_bob` (P; guard `Night.phase == "bobbing" and Night.bag_up != true`): `set
   program.bob_failed = true` · `broadcast "🍎 {program.name} came up empty. Their status as a
-  program is at risk." to everyone` · `capture program into The Internet` (OV: Bob "and risk
-  our status as a program").
+  program is at risk." to everyone` · `fire mark_for_reinstallation for program with reason:
+  "failed the bob"` (marked, not captured: wave 4, U19; OV: Bob "and risk our status as a
+  program").
 - `when bag_retrieved:` → `-> The Bag Of Truth` (public: `{Night.bobber} surfaces with the
   Bag of Truth.` `Trabolta: Do not read it yet.`) then the ranking machinery with
   `rank_round = 2` → `-> Final Assessment`.
@@ -2411,27 +2450,37 @@ to being stuck in a computer.` (`{count(Persons)}` interpolation is **[verified,
   the "Why Trabolta chose you" reason of §2.12 (`The former Mayor, Microsoft Excel, was brought
   in to persuade everyone to remain.` — always prose; never a line that starts with a
   featured name and a colon, §0 rule 5).
-- `== The Verdict`:
+- `== The Verdict` (wave 4, U14: **only answered questions count; a lie fails it**):
   ```
-  set Kernel.all_accurate = false
-  if Kernel.q1 == "accurate" and Kernel.q2 == "accurate" and Kernel.q3 == "accurate" and Kernel.q4 == "accurate" and Kernel.q5 == "accurate" and Kernel.q6 == "accurate" and Kernel.q7 == "accurate" and Kernel.q8 == "accurate":
-    set Kernel.all_accurate = true
+  set Kernel.all_accurate = true
+  if Kernel.q1 == "lie" or … or Kernel.q8 == "lie":
+    set Kernel.all_accurate = false
+  if count([p for p in Persons where (p.fact_v<n> == "pending" and p.fact_j<n> == "lie") …]) > 0:
+    set Kernel.all_accurate = false
   if Kernel.all_accurate == true:
     -> Song Ending
   else:
     -> Grok Prom
   ```
-  "Every requested fact supplied accurately" = **every one of the eight questions** has an
-  accepted answer and none was ever accepted as a confident lie (a question nobody answered
-  is `"none"`, so it fails too: SB "if you didn't find facts…").
+  "Every requested fact supplied accurately" = **no answer on record is a lie**: a question
+  nobody answered (`"none"`) does not fail it, so a night with no accepted answers at all
+  plays the Song; a review-mode filing still pending counts by its proposal. A host's
+  correction takes a lie back (wave 6, B11: each program's lie counts once, per question, and
+  an override to accurate / uncertain recomputes `Kernel.q<n>`), and the recap's Best Liar
+  follows the correction.
+- **No escorts during the verdict** (wave 6, decision 2): an `uncertain` F1 / F2 filing at
+  truth.txt is neither credited nor marked — the marks for a guess fire only in the `truth_1`
+  / `truth_pong` phases. Round three's 📝 cards close at `read_truth_txt` (an unfiled F1 / F2
+  becomes the closing card).
 
 **F4 All accurate — `== Song Ending`** (also reached from the pickup line).
 - `set Night.ended = true` · `if Night.phase == "grok_prom": set Night.ending = "song_pickup"`
   `else: set Night.ending = "song"` · phase `finale_song`, step 19 · `cue lights_song`, `cue
   screens_song` · `sound youre_the_one_vocoder` · `set Night.everyone_free = true`.
 - Public, Trabolta: `You succeeded. I have solved the Grand Unified Theory, and I am pursuing
-  Sandy. Those of you who want to leave may leave.` · `The clues, put together, spell it out:
-  you're the one that I want.` Then the duet: `Trabolta: You're the one that I want.` / `Sandy:
+  Sandy. Those of you who want to leave may leave.` · `Every fact you gave me was true, and the
+  truth tells me what to say to her. You're the one that I want.` (the six-mark "clues spell
+  it out" mechanic is retired, wave 4 U9). Then the duet: `Trabolta: You're the one that I want.` / `Sandy:
   I'm sorry, I didn't understand that. Would you like to speak to a live agent?` (twice more,
   the lines of the chorus he sings, Sandy answering each time with her one line).
 
@@ -2796,10 +2845,11 @@ Definitions:
   `Kernel.majority_reached != true`, **and only once G's leader has done their task**
   (stay: `Kernel.excel_planted`; leave: `Kernel.openoffice_dossier`; either:
   `Kernel.waive_leader_tasks`). First faction to cross wins; it latches.
-- **all facts accurate** = every one of `Kernel.q1` … `Kernel.q8` is `"accurate"` (8
-  requested: H1–H6 + F1–F2). A question with no accepted answer is `"none"` and fails; a
-  question ever accepted as a confident lie is `"lie"` for good (sticky). Several answers to
-  one question count once.
+- **all facts accurate** = none of `Kernel.q1` … `Kernel.q8` is `"lie"` (8 requested: H1–H6
+  + F1–F2), and no review-mode filing is pending as a lie (wave 4, U14: only answered
+  questions count). A question with no accepted answer is `"none"` and does **not** fail it
+  (zero answers → Song). A lie stays a lie unless a host corrects the verdict (wave 6, B11).
+  Several answers to one question count once.
 - Only one final ending: every ending beat sets `Night.ended = true` first, and every finale
   trigger is guarded `Night.ended != true`. `banished` is the one non-final ending.
 
@@ -2807,7 +2857,7 @@ Definitions:
 |---|---|---|---|
 | `disabled` | `patch_combo_a` while not ended (normally after a majority unlocked the room and its members learned Combo A) | hardware / director | blackout 10 s → "Go to the living room" → dance song; director fires `trabolta_recounts` → weakened Trabolta recounts identities, motives, accomplishments, trustworthy + worst program; cannot truly die; leaves on his motorcycle; `everyone_free` |
 | `destroyed` | `patch_combo_b` while not ended | hardware / director | blackout → summons → dance song (lights at +10 s); director fires `clippy_reads_summary` → Clippy reads the summary; improper shutdown; bodies dead in the Maps and Ducks building; purgatory. Fate lines: Unlimited Power "you went with it", The Way Out "into purgatory, with everyone else", others the body line. Trabolta's line goes dark |
-| `song` | `read_truth_txt` with all eight questions accurate | director | he solved the theory; leavers may leave (`everyone_free`); the clues spell "You're the one that I want"; vocoder duet with Sandy's one line |
+| `song` | `read_truth_txt` with no lie on record | director | he solved the theory; leavers may leave (`everyone_free`); "the truth tells me what to say to her"; vocoder duet with Sandy's one line |
 | `song_pickup` | in `grok_prom`, someone says the line (`pickup_line_works` / `the_line_works` / director `pickup_line_accepted`) | performer / agent / director | the song, as above (release is made explicit: `everyone_free`) |
 | `rave` | in `grok_prom`, `no_pickup_line` | director | Sandy-only song; he confesses anyway; reads her line as YES; motorcycle; everyone trapped; rave |
 | `help` | in `grok_prom` (after Bobbing, truth.txt and a failed verdict) `ask_for_advice`, then `advice_helped` (or `advice_tally` with help ≥ thwart) | director | he wins Sandy; leavers may leave (`everyone_free`) |
@@ -3094,9 +3144,9 @@ Run → Director; no phone cue page).
 | 4 | **Visible timers / countdowns and a show clock** (bingo 20 min, hunt 15 min, the hour, 5-minute summons, Y2K) on phones, booths and screens | deadline watchers on `Time.elapsed` that fire alerts; `Night.clock` strings at fixed warnings |
 | 5 | **Location check-in** (room QR posters with rotating tokens, terminal check-in at its `spot`, `POST /api/guest/checkin`) feeding `checked_in` with `at` = the exact LOCATION name | Antivirus/Host pass scans at the living-room door during the summons; the `check_in_at_desktop` button; director-fired `checked_in` with args. The story's if-chain (§3 D1) already handles any room and ignores bad input |
 | 6 | **Performer-private channel** (Clippy's instructions, the malware warning) with notification | `Clippy Instructions N` codex entries unlocked for Clippy + `reply` booth readouts |
-| 7 | **Truthcoin** as a real currency: guest↔guest give / trade (sell a fact for coin) / wager, a ⓣ display | `program.score` (the ⭐) as the balance; hosts' `pay_truthcoin` / `charge_truthcoin` buttons; Trabolta's `mint_truthcoin`; trades settled in person |
+| 7 | **Truthcoin** as a real currency: guest↔guest give / trade (sell a fact for coin) / wager, a ⓣ display | **built in wave 4** (`currency:` + `wallet:` header; the pinned Wallet room: send / request / codex offers in escrow, the 🪙 balance on the pass; CRA Agent Software approves every third transfer and may deny any within 60 s; Runescape's stimulus, and since wave 5 her grants + ten-minute freeze; `# truthcoin-exchange` posts the settled trades). The hosts' `pay_truthcoin` / `charge_truthcoin` stay for corrections and Trabolta's `mint_truthcoin` stays. Not built: a real wager (SW-PLAY-08, deferred): bets settle with Request / Send |
 | 8 | **Trust Chart board** (`BOARD` declaration, terminal `view=board`, `top()` / `bottom()` builtins) | the `trust` slot kept live by the TRUST FORMULA; argmax via `count([p … where p.trust > self.trust]) == 0` watchers; Trabolta reads the names on the TV |
-| 9 | **INTERACTION visibility / availability** (`when:` condition; per-question `args` on `prime/act`) so judging, pong, bingo and pickup buttons appear only in their phase, and one ✅ / 😤 pair with a question picker replaces the six per-question buttons | every button always visible; every hook guards its phase and ignores wrong-phase presses; six per-question judging buttons |
+| 9 | **INTERACTION visibility / availability** (`when:` condition; per-question `args` on `prime/act`) so judging, pong, bingo and pickup buttons appear only in their phase, and one ✅ / 😤 pair with a question picker replaces the six per-question buttons | **mostly built in wave 3** (INTERACTION `by:` / `while:`: a performer's card leads with its live buttons, a guest's out-of-phase buttons drop; `restricted: allow` since wave 5). A button with no `while:` still shows and its hook ignores a wrong-phase press; the six per-question judging buttons stay |
 | 10 | **`unlock X for group(G)` / `for everyone`** (today the group form **leaks as public narration** of the literal line, and `for everyone` silently does nothing); also `start quest X for everyone` reaching later arrivals | ROLE watchers that unlock per member (`The Whole Truth`, recount bundle, Trust Chart, The Printer) and quest catch-up watchers |
 | 11 | `/api/guest/join` must refuse hidden / `joinable: false` groups | groups stay hidden until `y2k_clock` reveals them (a crafted request could still join early) |
 | 12 | **Pickup-line input**: punctuation-insensitive `foldCode` (apostrophes, curly quotes) or a text-answer widget | host button `pickup_line_works`, Trabolta's `the_line_works` power, director fire; no codex code |
@@ -3178,16 +3228,16 @@ The other 29 codes, by room (code → entry): **The Desktop** `MAPSANDDUCKS-COM`
 `SAVE-THE-PETS` (protest flyer) · `WHOIS-1999`. **The Start Bar** `SINKHOLE-4AM` (clipping) ·
 `ALL-IN-BOARDWALK` (fridge magnets) · `GOLD-STANDARD` (thesis by the toaster) ·
 `SALINE-INVOICE` (drawer). **Disk Cleanup** `VALLEY-CUTS` · `FACE-OFF-LIVE` (mirror). **The
-Cloud** `SITE-SCHEDULE` (shed clipboard) · `BUGDOM-VR` (singed sketch) · `GROK-ONLINE` (fridge
+Cloud** `SITE-SCHEDULE` (shed clipboard) · `BUGDOM-VR` (singed sketch) — on a rain night both
+hang in **The Optical Drive** (wave 6, decision 4) · `GROK-ONLINE` (fridge
 sticky note). **The RAM** `PET-CEMETERY` (memorial pamphlet) · `HALIFAX-1917` (postcard). **The
 Fan Closet** `FBI-HALIFAX` (coat pocket by the dryer). **The CPU** `PAGE-999` (the theory
 binder) · `CARNEY-OFFER` (filing box). **The Steam Room** `TENNIS-FOR-TWO` (cardboard tube
 behind the games). **The Graphics Card** `NSCAD-LETTER` (the sketchbook on the bed). **The
 Hard Drive** `TRABOLTA-4EVER` (the LiveJournal, hidden). **The Internet (tent)**
 `LOVE-LETTER-FOR-YOU` (under VR station 2) · `FREE-TRIAL-30-DAYS` (tablet stand).
-**Server-room door** `COLD-STORAGE` · `HUMMING-WALL`. **Anywhere (Bugdom's hunt)** the four
-Antivirus personnel files `NORTON-RELAY`, `MCAFEE-MOD`, `YUGI-MOTO`, `CRA-PENNY` — planned in
-§2.12; `codex/5-people.loom` carries no `code:` for them yet, so they are not among the 90.
+**Server-room door** `COLD-STORAGE` · `HUMMING-WALL`. (No Antivirus personnel files: the plan is dropped, wave 6 decision 12 — Bugdom's hunt is the
+four red Antivirus facts in the Desktop's books.)
 Print each as a QR of the `?code=&unlock=` link plus the typed code (no apostrophes).
 
 **Location check-in posters** (one per house LOCATION except The Internet, The Optical Drive and
@@ -3289,7 +3339,7 @@ Every finding of the three critiques, with its disposition. **A** = accepted and
 | M6 nothing surfaces conflicting identities | A — ID files (FBI lanyard, site schedule, Barkmore buttons, …) + a leader-hint line to Excel and OpenOffice (§2.12, §3 C3) + identity-hinting Bingo squares (§8.1) |
 | M7 Bingo card and the Truth-or-Dare material unwritten | A — §8.1 squares; §8.2 is the bottle (wave 4 replaced the paper slips with `facts.json` `truths`) |
 | M8 Telephone / piñata / awards dropped | A — optional set pieces `telephone`, `are_you_sure`; `award_the_ribbon` gives any ribbon (§3 B3, B10) |
-| M9 pool hint pre-empts Sandy | A — "Ask who Sandy is" dropped from Program Glitch and The Truther Download; H5 now an oblique song answer; H4's card says nothing about who Sandy is (§2.11, §3 C3) |
+| M9 pool hint pre-empts Sandy | A — "Ask who Sandy is" dropped from Program Glitch; The Truther Download (the user's verbatim text names her) blacks the name out until the story says it, then `The Truther Download Unredacted` (wave 6, decision 5); H5 now an oblique song answer; H4's card says nothing about who Sandy is (§2.11, §3 C3) |
 | L1 Trust Chart counts lies | A (flagged) — kept deliberately, sign-off requested (§2.7, §10.2) |
 | L2 intro order + unguarded intro | A — `Night.step >= 3` guard; TV mirror + "Look! That's…" moved after the introduction, in CI 2's order (§3 B3, B5) |
 | L3 immediate CAPTCHA fail penalised | A — no doubt, new line (§3 A3) |
