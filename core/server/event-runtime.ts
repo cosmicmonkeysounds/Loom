@@ -3462,8 +3462,14 @@ export class EventRuntime {
           sendJson(res, 404, { error: "unknown recipient" });
           return true;
         }
-        this.fanout(this.commit("share", character, to, entry));
-        sendJson(res, 200, { ok: true });
+        if (this.sim!.agentRefuses(to, entry)) {
+          sendJson(res, 403, { error: "they won't take lore about someone else" });
+          return true;
+        }
+        const events = this.commit("share", character, to, entry);
+        this.fanout(events);
+        // `shared: false` — they already held it, nothing moved.
+        sendJson(res, 200, { ok: true, shared: events.some((e) => e.type === "codexUnlocked") });
         return true;
       }
 

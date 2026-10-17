@@ -569,6 +569,22 @@ The doors open.
     expect(sim.share("g1", "g2", "Ann Secret").filter((e) => e.type === "codexUnlocked")).toHaveLength(1);
     expect(sim.holdsCodex("Bot", "Bot Diary")).toBe(true);
   });
+
+  it("a booth sharing someone else's lore with the agent gets the guest route's 403; a repeat share says nothing moved (T4-03)", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-codex-"));
+    dirs.push(d);
+    const src = SRC.replace("CHARACTER Ann\n", "CHARACTER Ann\n  listed: true\n").replace("  about: Ann\n", "  about: Ann\n  known to: Ann\n");
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "agents", scenarioSource: src, joinBase: () => "http://x" });
+    rt.openDoors();
+    const ann = await performer(rt, "Ann");
+    expect(rt.liveSim!.holdsCodex("Ann", "Ann Secret")).toBe(true);
+    const refused = await post(rt, "/api/prime/codex/share", { entry: "Ann Secret", to: "Bot" }, ann);
+    expect(refused.status).toBe(403);
+    expect(rt.liveSim!.holdsCodex("Bot", "Ann Secret")).toBe(false);
+    const g = await guest(rt, "Minesweeper");
+    expect((await post(rt, "/api/prime/codex/share", { entry: "Ann Secret", to: g.id }, ann)).json).toEqual({ ok: true, shared: true });
+    expect((await post(rt, "/api/prime/codex/share", { entry: "Ann Secret", to: g.id }, ann)).json).toEqual({ ok: true, shared: false });
+  });
 });
 
 describe("codex cards for a character's booth (wave 4, lane D)", () => {
