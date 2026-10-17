@@ -6,7 +6,7 @@
 //! verdict and alternate ending, and Trabolta's powers + phase guards.
 
 import { afterAll, describe, expect, it } from "vitest";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -200,17 +200,24 @@ describe("Trapped in the Internet — compile", () => {
     expect(m.codex.get("The Truther Download")!.text.endsWith("- There is still time.\n- In truth.")).toBe(true);
   });
 
-  it("every account of the Prime Minister's email asks for every transaction; only the books hold every third (C16)", () => {
-    // The Carney Letter is the email itself; C16 and the CRA pack retell it on the
-    // same phone. The demand stays "every"; `every 3` is how the books work tonight.
-    const pack = readFileSync(join(scenarioDir(SHOW), "cast-packs", "performers", "cra-agent.md"), "utf8").replace(/\s+/gu, " ");
+  it("every account of the Prime Minister's email says every third transaction, as the books do (C16)", () => {
+    // The Carney Letter is the email itself; C16, The Truth File, the finale's
+    // truth.txt and the CRA + Adobe Acrobat packs retell it. `every 3` is the
+    // approver's rule (cast/antivirus.loom), and every account says so.
+    const packDir = join(scenarioDir(SHOW), "cast-packs");
+    const pack = (f: string) => readFileSync(join(packDir, "performers", f), "utf8").replace(/\s+/gu, " ");
     const flat = (id: string) => m.codex.get(id)!.text.replace(/\s+/gu, " ");
-    expect(flat("The Carney Letter")).toContain("approve or deny every transaction.");
-    expect(flat("Approve Or Deny")).toContain("Truthcoin transactions as possible and to approve or deny every one of them");
-    expect(flat("Approve Or Deny")).toContain("The books only let her hold every third one tonight");
-    expect(pack).toContain("Truthcoin transactions as possible and approve or deny every one of them.");
-    expect(pack).toContain("The books only let you hold every third one tonight");
-    for (const text of [flat("Approve Or Deny"), pack]) expect(text).not.toMatch(/approve or deny every third/u);
+    expect(flat("The Carney Letter")).toContain("approve or deny every third transaction.");
+    expect(flat("Approve Or Deny")).toContain("Truthcoin transactions as possible and to approve or deny every third one");
+    expect(flat("The Truth File")).toContain("brought in to approve or deny every third transaction, to the cent.");
+    expect(pack("cra-agent.md")).toContain("approve or deny every third");
+    expect(pack("adobe-acrobat.md")).toContain("brought in to approve or deny every third transaction, to the cent.");
+    const finale = FILES.find((f) => f.path === "beats/finale.loom")!.source;
+    expect(finale).toContain("Narrator: The intern, CRA Agent Software, was brought in to approve or deny every third transaction, to the cent.");
+    // Nowhere does the demand stay "every transaction" / "every one of them".
+    const packs = (d: string): string[] => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? packs(join(d, e.name)) : e.name.endsWith(".md") ? [join(d, e.name)] : []));
+    const texts = [...FILES.map((f) => [f.path, f.source] as const), ...packs(packDir).map((p) => [p, readFileSync(p, "utf8")] as const)];
+    for (const [path, text] of texts) expect(text.replace(/\s+/gu, " "), path).not.toMatch(/approve or deny every (?:transaction|one of them)/u);
   });
 
   it("M22 promises only what every tent tablet does: checkmate counts, anything else means play him again", () => {
@@ -3496,7 +3503,7 @@ describe("Trapped in the Internet — wave 4 facts (lane A)", () => {
       "The stable manager, Norton Anti-Virus, was brought in as someone with experience administering antiviral regimes, who could not afford to fail twice.",
       "The dead man, McAfee Anti-Virus, was brought in because only a trickster can keep tricksters on track, and he can be made to.",
       "The candidate, Password Manager, was brought in to decide what gets left out without ever asking for a vote.",
-      "The intern, CRA Agent Software, was brought in to approve or deny every transaction, to the cent.",
+      "The intern, CRA Agent Software, was brought in to approve or deny every third transaction, to the cent.",
     ]) {
       expect(txt, line).toContain(line);
     }
