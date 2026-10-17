@@ -23,7 +23,12 @@ Phone died, or you need to swap to a loaner? Your part is still held by
 the old phone, so ask the director to **release** it (Run → the
 character's Inspector → **⏏ Release**). Then sign in on the new phone
 with the performer code and tap your part again: every guest thread and
-button is where you left it.
+button is where you left it. A booth whose part was released (or that
+the show's going live signed out) says *"Your booth was signed out (a
+director released your part, or the show went live) — sign in again with
+your passcode."* A phone that wakes late in the night gets back every
+thread with your guests, your cast thread and every card still waiting;
+only the busy rooms are cut to their last few hundred lines.
 
 ## Scanning guests
 
