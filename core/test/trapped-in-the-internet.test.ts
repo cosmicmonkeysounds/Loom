@@ -3901,6 +3901,36 @@ describe("Trapped in the Internet — wave 5 story (lane B)", () => {
     expect(sim.questStatus("g7", "Truthcoin Hustle")).toBe("done");
   });
 
+  it("B15: DraftKings' majority counts coin in escrow: 700 of 1400 with another program's 100 pending does not complete", { timeout: SLOW }, () => {
+    const sim = boot();
+    upload(sim, "g7", "DraftKings");
+    upload(sim, "g8", "Netscape Navigator");
+    toTruth1(sim);
+    toHunt2(sim);
+    for (const [id] of [...PROGRAMS, ["g8"]]) sim.setVar(`${id}.score`, "100");
+    sim.setVar("g7.score", "700");
+    const total = () => [...sim.persons.keys()].reduce((n, id) => n + sim.scoreOf(id), 0);
+    expect(total()).toBe(1400);
+    expect(sim.questStatus("g7", "Truthcoin Hustle")).toBe("active");
+    const book = new WalletBook(sim.model.currency!, walletSeam(sim, sim.model.currency!));
+    const sent = book.apply({ op: "send", id: book.nextId("t"), from: "g1", to: "g2", amount: 100, at: sim.elapsed(), via: "send" });
+    expect(v(sim, "g1.escrowed")).toBe(100);
+    expect(total()).toBe(1300); // the 100 is in nobody's score…
+    expect(questSteps(sent, "g7", "Truthcoin Hustle")).toEqual([]); // …but still in circulation
+    expect(sim.questStatus("g7", "Truthcoin Hustle")).toBe("active");
+    // It settles: the total is whole again, and 700 of 1400 is still only half.
+    advance(sim, 120);
+    const settled = book.due(sim.elapsed()).flatMap((op) => book.apply(op));
+    expect(v(sim, "g1.escrowed")).toBe(0);
+    expect(sim.scoreOf("g2")).toBe(200);
+    expect(total()).toBe(1400);
+    expect(questSteps(settled, "g7", "Truthcoin Hustle")).toEqual([]);
+    expect(sim.questStatus("g7", "Truthcoin Hustle")).toBe("active");
+    // One more coin is a majority.
+    sim.setVar("g7.score", "701");
+    expect(sim.questStatus("g7", "Truthcoin Hustle")).toBe("done");
+  });
+
   it("DraftKings: a rehearsal with fewer than five other programs never completes it on a majority", { timeout: SLOW }, () => {
     const sim = fresh();
     sim.fireBeat("Power On");

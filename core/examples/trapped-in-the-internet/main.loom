@@ -252,6 +252,7 @@ ROLE Program
   fact_f2: bool = false
   fact_open: text? = none
   fact_card_live: bool = false
+  escrowed: 0 to 99999 = 0
   fact_sep: text? = none
   fact_a1: text? = none
   fact_a2: text? = none
@@ -2018,14 +2019,16 @@ ROLE Program
 
   // DraftKings' goal is a majority of the coin in circulation (the
   // invitation, C08): more than half of every program's Truthcoin put
-  // together, hers included. 1000 is a progress step. The floor (five
+  // together, hers included, counting the coin in flight (a pending or
+  // held transfer, an open offer: `<who>.escrowed`, mirrored by the
+  // server's wallet) as still in circulation. 1000 is a progress step. The floor (five
   // other cleared programs) keeps a near-empty rehearsal from handing
   // it to her at the glitch. The quest's own status is in the condition,
   // so a majority reached before the glitch still completes once it starts.
   when self.featured == "draftkings" and self.quest.truthcoin_hustle == "active" and self.score >= 1000:
     update quest Truthcoin Hustle for self "1000 Truthcoin. Not satisfied yet: the majority is the point."
 
-  when self.featured == "draftkings" and self.quest.truthcoin_hustle == "active" and count([p for p in Persons where p.cleared and p.featured != "draftkings"]) >= 5 and self.score * 2 > sum([p.score for p in Persons]):
+  when self.featured == "draftkings" and self.quest.truthcoin_hustle == "active" and count([p for p in Persons where p.cleared and p.featured != "draftkings"]) >= 5 and self.score * 2 > sum([p.score + p.escrowed for p in Persons]):
     complete quest Truthcoin Hustle for self "A majority of the Truthcoin. The 49% is yours."
 
   when self.featured == "bugdom" and Night.recount != true and self.codex.miniature_doses and self.codex.the_lamborghini_certificate and self.codex.what_happened_to_hamtaro and self.codex.the_decimal_point:

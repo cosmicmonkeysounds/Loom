@@ -506,7 +506,7 @@ its own thread of steps.
 | OpenOffice Dossier (*Facts Are Currency*) | Truther Download | OpenOffice Glitch | step at 10; ✅ at 20 new facts (+ The LiveJournal) |
 | Recruit To Stay (*Stay Forever*) | Truther Download | Excel Final Round | ✅ stay majority / ✖ leave majority |
 | Recruit To Leave (*Get Out*) | Truther Download | OpenOffice Final Round | ✅ leave majority / ✖ stay majority |
-| Truthcoin Hustle (*Sweet Sweet Truthcoin*) | Truther Download | DraftKings Glitch (+200 stake) | step at 1000; ✅ more than half of all the Truthcoin in circulation (with ≥ 5 other cleared programs) |
+| Truthcoin Hustle (*Sweet Sweet Truthcoin*) | Truther Download | DraftKings Glitch (+200 stake) | step at 1000; ✅ more than half of all the Truthcoin in circulation, coin in flight (pending, held, an open offer) included (with ≥ 5 other cleared programs) |
 | Master Of The Bugs | Truther Download | Bugdom Glitch | ✅ holding all four Antivirus files |
 | Unscramble (*Organize The Information*) | Truther Download | Jeeves Glitch | ✅ holding 5 of the 10 originals behind his fragments |
 | Ten Findings (*Ask Jeeves Once Again*) | The Uploader | Jeeves's clearance | step per program that holds ten of his findings (shares + wallet sales; repeats and Trabolta don't count); ✅ every cleared program (≥ 5) |
