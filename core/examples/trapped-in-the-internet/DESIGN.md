@@ -1703,14 +1703,19 @@ when reinstallation begun for program:
     capture program into The Internet
 
 when the simulation completed for program:
-  if program.corrupted:
+  if program.corrupted and Night.banish == true:
+    reply Gerald cannot help you: everyone is banished. The way out is the hand jive, together.
+  else if program.corrupted:
     release program from The Internet
     unlock The Golden Duck for program
 
 when the golden duck for program:
-  unlock The Golden Duck for program
-  reply The duck lays a golden egg and flies away. Gerald waddles off into the code.
+  if program.corrupted != true or Night.banish != true:
+    unlock The Golden Duck for program
+    reply The duck lays a golden egg and flies away. Gerald waddles off into the code.
 ```
+(The banish branches are wave 8, T2-01: during the banishment the duck frees nobody and lays
+no egg; the hand jive is the way out, F7.)
 (`the golden duck` grants the entry to **anyone**, captured or free: `spatial.test.ts:549-561`
 asserts a free program still learns it; `the simulation completed` grants only to the
 corrupted, and a free program learns nothing from it. The reply prefix is tested.) ROLE `when
@@ -2461,7 +2466,10 @@ trabolta_disabled` (E4). The blackout narration, the recount (E5) and the ceremo
   `lights_dance` is the manual fallback.) The watcher and `lights_dance` both `fire
   lift_the_takeover`, a subject-free rule that, while `Night.takeover`, clears it and runs
   `unpin "💃 Dance."`; `trabolta_recounts`, `clippy_reads_summary`, `start_the_ceremony`
-  and `resurrection` fire it too as backstops (the pin has no close button).
+  and `resurrection` fire it too as backstops, but only when they play (a refused 🏍 / 🪦
+  does nothing; the pin has no close button). Both also `fire dance_screens` (wave 8, T6-05),
+  which cues `screens_screensaver` while `Night.screen == "go_to_living_room"`, so the
+  flashing overlay comes off the TV and the terminals.
 - **`trabolta_recounts`** (D, after the dance): rule (guard `Night.ending == "disabled" and
   Night.recount != true`): `set Night.recount = true` (bulk backstory unlock, §2.7) · `cue
   screens_recount` · `set Night.rank_round = 3`, `praised = false`, `shamed = false`,
