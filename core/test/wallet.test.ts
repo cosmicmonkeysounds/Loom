@@ -356,6 +356,9 @@ describe("wallet book — requests", () => {
     const settled = book.apply({ op: "settle", id: "t2" });
     expect(f.balances.get("g1")).toBe(140);
     expect(cards(settled).at(-1)).toMatchObject({ to: "g1", card: { kind: "request", step: "paid", id: "r1" } });
+    // T5-07: the payer's thread closes too, and the line names both sides.
+    expect(cards(settled).at(-2)).toMatchObject({ to: "g2", card: { kind: "request", step: "paid", id: "r1" } });
+    expect(walletLine(cards(settled).at(-1)!.card)).toBe("✅ Paid: Paint sent Winamp 40 Truthcoin.");
     expect(book.viewFor("g1").requests).toEqual([]); // paid = closed
     expect(book.checkRespond("r1", "g2", false)).toEqual({ status: 409, error: "already settled" });
 
