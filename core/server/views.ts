@@ -109,7 +109,8 @@ export interface InteractionSummary {
    *  A performer's guest card leads with their own; the rest fold away. */
   actors?: string[];
   /** False while the INTERACTION's `while:` condition is false — a guest
-   *  never sees it; a performer finds it under "More". */
+   *  never sees it; a performer finds it under "More"; the director's cue
+   *  sheet never suggests it as NEXT. */
   live?: false;
 }
 
@@ -161,7 +162,8 @@ export function interactionActors(sim: Sim): Map<string, string[]> {
 
 /** The INTERACTIONs `who` may fire. With `at`, each `while:` is evaluated
  *  (`subject` / `self` bound as given) and marked `live: false` when it
- *  fails; without, nothing is evaluated (the director's cue sheet). */
+ *  fails; without (the director's cue sheet), only an admin cue's is, with
+ *  nothing bound. */
 function interactionsFor(
   sim: Sim,
   who: Array<InteractionSummary["who"]> | null,
@@ -179,6 +181,10 @@ function interactionsFor(
       const by = i.who === "performer" ? actors.get(i.id) : undefined; // a guest never learns who hears their buttons
       if (by !== undefined) s.actors = by;
       if (at !== undefined && i.while !== null && !sim.holds(i.while, at.subject, at.self)) s.live = false;
+      // The director's cue sheet: an admin cue's `while:` names the branch
+      // of the night it belongs to (🏍 only after Combo A), so NEXT skips it
+      // off that branch. It never gates the press itself.
+      if (at === undefined && i.who === "admin" && i.while !== null && !sim.holds(i.while, null, null)) s.live = false;
       return s;
     });
 }

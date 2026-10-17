@@ -163,3 +163,19 @@ describe("NEXT skips what already ran (T7-01)", () => {
     expect(cueSheetView({ interactions: sheet }).interactions.find((i) => i.id === "c1")).not.toHaveProperty("repeat");
   });
 });
+
+describe("NEXT follows tonight's branch (an admin cue's `while:`)", () => {
+  const ix = (id: string, extra: { live?: false } = {}) => ({ id, label: id, who: "admin", ...extra });
+
+  it("skips a row whose `while:` is false, keeps it pressable, and the lean view carries the flag", () => {
+    const sheet = [ix("y2k"), ix("recount", { live: false }), ix("summary", { live: false }), ix("reveal"), ix("ceremony", { live: false })];
+    const rows = cueRows(sheet, { last: "y2k", fired: ["y2k"] });
+    expect(rows.find((r) => r.next)?.id).toBe("reveal");
+    expect(rows.find((r) => r.id === "recount")).toMatchObject({ live: false, sequence: true, next: false });
+    expect(rows.find((r) => r.id === "reveal")).toMatchObject({ live: true });
+    expect(cueRows(sheet, { last: "reveal", fired: ["y2k", "reveal"] }).find((r) => r.next)).toBeUndefined();
+    const lean = cueSheetView({ interactions: sheet }).interactions;
+    expect(lean.find((i) => i.id === "recount")).toMatchObject({ live: false });
+    expect(lean.find((i) => i.id === "reveal")).not.toHaveProperty("live");
+  });
+});
