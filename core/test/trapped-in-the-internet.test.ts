@@ -2106,11 +2106,17 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05; wave 4 judg
     const f = file(sim, "g1", "H1", "Twelve");
     expect(ids(facts(f)[0]!)).toEqual(["H2", "H3"]);
     // The window shuts (two minutes): round one is closed for good, and
-    // every card re-deals — nothing open → no card.
+    // every card re-deals — nothing open → a closing card with no
+    // questions supersedes the live one (the phone folds it to a note), once.
     fireAll(sim, "hunt_time_up", "first_moment_of_truth");
     const shut = advance(sim, 120);
     expect(v(sim, "Night.r1_closed")).toBe(true);
-    expect(facts(shut)).toEqual([]);
+    expect(facts(shut).map((w) => w.audience[0]).sort()).toEqual([...PROGRAMS.map(([id]) => id), "g9"].sort());
+    for (const w of facts(shut)) {
+      expect(questions(w)).toEqual([]);
+      expect(w.text).toBe("📝 The filing is closed");
+      expect(w.params["thread"]).toBe("Trabolta");
+    }
     expect(facts(fire(sim, "second_hunt_preview"))).toEqual([]);
     // Round 2 deals a fresh card with only H4–H6: the closed questions are gone (decision 12).
     const r2 = facts(fire(sim, "start_the_second_hunt"));
@@ -4310,6 +4316,28 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     fire(sim, "fact_accurate", "g4", { question: "H2" }, "Clippy");
     expect(v(sim, "Kernel.q2")).toBe("lie");
     expect(v(sim, "Kernel.lies_accepted")).toBe(1);
+  });
+
+  it("a closed round sends a closing card: file H1 and H3, close the filing, and the newest card has no questions", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    const facts = (evs: SimEvent[]) => widgets(evs).filter((w) => w.widget === "fact" && w.audience[0] === "g4");
+    const qs = (w: { params: Record<string, string> }) => (w.params["questions"] ?? "").split("|").map((q) => q.trim().split(":")[0]).filter(Boolean);
+    expect(qs(facts(file(sim, "g4", "H1", "eleven")).at(-1)!)).toEqual(["H2", "H3"]);
+    expect(qs(facts(file(sim, "g4", "H3", "9 am")).at(-1)!)).toEqual(["H2"]);
+    const closed = facts(advance(sim, 120));
+    expect(v(sim, "Night.r1_closed")).toBe(true);
+    expect(closed).toHaveLength(1);
+    expect(closed[0]!.text).toBe("📝 The filing is closed");
+    expect(qs(closed[0]!)).toEqual([]);
+    expect(composeGuestMessages(sim, closed).find((m) => m.kind === "widget")?.channel).toBe("dm:Trabolta");
+    // Once closed, a later re-deal with nothing open sends nothing more.
+    expect(facts(fire(sim, "second_hunt_preview"))).toEqual([]);
+    // A program that filed everything open has nothing live to close.
+    const sim2 = boot();
+    toTruth1(sim2);
+    for (const [q, a] of [["H1", "eleven"], ["H2", "pickles"], ["H3", "9 am"]] as const) file(sim2, "g5", q, a);
+    expect(widgets(advance(sim2, 120)).filter((w) => w.widget === "fact" && w.audience[0] === "g5")).toEqual([]);
   });
 
   it("B11: lie → accurate → lie counts the filing once; an uncertain correction clears it to unanswered", { timeout: SLOW }, () => {

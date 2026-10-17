@@ -251,6 +251,7 @@ ROLE Program
   fact_f1: bool = false
   fact_f2: bool = false
   fact_open: text? = none
+  fact_card_live: bool = false
   fact_sep: text? = none
   fact_a1: text? = none
   fact_a2: text? = none
@@ -839,7 +840,14 @@ ROLE Program
           set program.fact_open = program.fact_open + program.fact_sep + Night.q_f2
           set program.fact_sep = " | "
       if program.fact_open != "":
+        set program.fact_card_live = true
         show fact "📝 File a fact" to program with thread: Trabolta, questions: program.fact_open
+      else if program.fact_card_live == true:
+        // A round closed under an unanswered card: a closing card with no
+        // questions supersedes it (the phone folds it to a note), so the
+        // closed questions never stay on the phone as a task.
+        set program.fact_card_live = false
+        show fact "📝 The filing is closed" to program with thread: Trabolta, questions: ""
 
   // `fact_try` / `fact_q_round` are scratch for this filing; the filing's
   // own record (`fact_n`, `fact_label`, `last_fact_q`, `fact_a/c/j/vN`) is
@@ -847,6 +855,8 @@ ROLE Program
   // server's event args (a local rehearsal has no judge: no verdict, so
   // the filing is refused out loud in # hosts).
   when fact answered for program:
+    // The card just answered is done on the phone: nothing live to close.
+    set program.fact_card_live = false
     set program.fact_try = 0
     set program.fact_q_round = 0
     if question == "H1":
