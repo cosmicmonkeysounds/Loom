@@ -75,6 +75,7 @@ import {
 } from "./house-maps.ts";
 import { FACTS_FILE, FactsWatch, factsKey, factsProblems, judgeAnswer, parseFactsBook, readFactsFile, type FactsBook, type FactsView } from "./facts.ts";
 import {
+  AGENT_QUEUE_MAX_AGE_MS,
   AgentHub,
   AgentTraceLog,
   agentActs,
@@ -1255,25 +1256,38 @@ export class EventRuntime {
 
   /** A line just landed in `channel` for `audience` — if that's an agent's
    *  thread, the agent owes an answer. */
-  private agentHeard(channel: string, audience: string[]): void {
+  private agentHeard(channel: string, audience: string[], held = false): void {
     if (!channel.startsWith("dm:") || audience.length !== 1) return;
     const character = channel.slice("dm:".length);
     if (!this.isAgent(character)) return;
-    this.agents.line({ character, channel, audience });
+    this.agents.line({ character, channel, audience }, { held });
   }
 
-  /** After a restore: every agent thread whose last line is someone else's
-   *  is owed an answer — the hub's queue died with the process, so open the
-   *  request again (a worker answers it, or the hold line follows). */
+  /** After a restore: every agent thread still owed an answer — its last
+   *  line someone else's, or the character's hold line right after one —
+   *  gets its request again, as the hub's queue died with the process (a
+   *  worker answers it, or the hold line follows, never twice). Only a
+   *  line from the last `AGENT_QUEUE_MAX_AGE_MS` of the story clock: live,
+   *  an older request has been dropped. */
   private requeueAgentThreads(): void {
-    const last = new Map<string, ChatMessage>();
+    const sim = this.sim;
+    if (sim === null) return;
+    const tail = new Map<string, [ChatMessage | undefined, ChatMessage]>(); // thread → its last two lines
     for (const m of this.chat.all()) {
       if (m.hidden || !m.channel.startsWith("dm:") || !Array.isArray(m.audience) || m.audience.length !== 1) continue;
       if (!this.isAgent(m.channel.slice("dm:".length))) continue;
-      last.set(`${m.channel}|${m.audience[0]}`, m);
+      const key = `${m.channel}|${m.audience[0]}`;
+      tail.set(key, [tail.get(key)?.[1], m]);
     }
-    for (const m of last.values()) {
-      if (m.kind === "line" && m.from !== m.channel.slice("dm:".length)) this.agentHeard(m.channel, m.audience as string[]);
+    const now = sim.elapsed();
+    for (const [prev, last] of tail.values()) {
+      const character = last.channel.slice("dm:".length);
+      const theirs = (m: ChatMessage | undefined): m is ChatMessage => m !== undefined && m.kind === "line" && m.from !== character;
+      const hold = sim.model.characters.get(character)?.hold ?? null;
+      const held = hold !== null && last.from === character && last.text === hold && theirs(prev);
+      const owed = theirs(last) ? last : held ? prev! : null;
+      if (owed === null || now - owed.ts > AGENT_QUEUE_MAX_AGE_MS) continue;
+      this.agentHeard(last.channel, last.audience as string[], held);
     }
   }
 

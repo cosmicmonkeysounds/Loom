@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { AgentHub, AgentTraceLog, agentControl, agentMindReport, agentThought, type AgentControl, type AgentFacts, type AgentRequest, type AgentThought, type AgentThread, type AgentWorker } from "../server/agents.ts";
+import { AGENT_QUEUE_MAX_AGE_MS, AgentHub, AgentTraceLog, agentControl, agentMindReport, agentThought, type AgentControl, type AgentFacts, type AgentRequest, type AgentThought, type AgentThread, type AgentWorker } from "../server/agents.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import { guestView, primeView, type AgentMindSummary } from "../server/views.ts";
@@ -821,6 +821,65 @@ when knock for program:
     const reqs = w.res.frames().filter(([e]) => e === "request").map(([, r]) => r as AgentRequest);
     expect(reqs.map((r) => r.thread.audience)).toEqual([[a.json["id"]]]);
     rt2.dispose();
+  });
+
+  it("a restore re-asks only recent lines, and a thread that already got the hold line is re-asked without a second one (W8 review)", async () => {
+    let clock = 1_000_000;
+    const thread = async (rt: EventRuntime, token: string) =>
+      ((await call(rt, "GET", "/api/history", {}, { token })).json["messages"] as Array<{ from: string; text: string; channel: string }>)
+        .filter((m) => m.channel === "dm:Trabolta")
+        .map((m) => [m.from, m.text]);
+
+    // No hold line: a question older than the hub's queue age is not re-asked.
+    {
+      const d = mkdtempSync(join(tmpdir(), "loom-agents-"));
+      dirs.push(d);
+      const mk = () => new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "uploaded", scenarioSource: SOURCE, joinBase: () => "http://localhost", now: () => clock });
+      const rt = mk();
+      rt.openDoors();
+      const old = await call(rt, "POST", "/api/guest/register", { name: "Cy", passcode: CODES.event });
+      await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "an old question" }, { token: old.json["token"] as string });
+      rt.tickOnce(AGENT_QUEUE_MAX_AGE_MS + 60_000); // the story clock moves on
+      const fresh = await call(rt, "POST", "/api/guest/register", { name: "Di", passcode: CODES.event });
+      await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "a fresh one" }, { token: fresh.json["token"] as string });
+      rt.dispose();
+      const rt2 = mk();
+      expect(rt2.restore()).not.toBeNull();
+      const hub = (rt2 as unknown as { agents: AgentHub }).agents;
+      expect(hub.pending.map((r) => r.thread.audience)).toEqual([[fresh.json["id"]]]);
+      rt2.dispose();
+    }
+
+    // With a hold line: it was said live; after a restart the question is
+    // still owed (a worker that comes back answers it) — but never held twice.
+    {
+      const d = mkdtempSync(join(tmpdir(), "loom-agents-"));
+      dirs.push(d);
+      const source = SOURCE.replace("  mind: external\n", '  mind: external\n  hold: "Back soon."\n');
+      const mk = () => new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "uploaded", scenarioSource: source, joinBase: () => "http://localhost", now: () => clock });
+      const rt = mk();
+      rt.openDoors();
+      const a = await call(rt, "POST", "/api/guest/register", { name: "Ada", passcode: CODES.event });
+      const token = a.json["token"] as string;
+      await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "anyone there?" }, { token });
+      clock += 20_000;
+      (rt as unknown as { agents: AgentHub }).agents.sweep();
+      expect(await thread(rt, token)).toEqual([
+        ["Ada", "anyone there?"],
+        ["Trabolta", "Back soon."],
+      ]);
+      rt.dispose();
+      const rt2 = mk();
+      expect(rt2.restore()).not.toBeNull();
+      const hub = (rt2 as unknown as { agents: AgentHub }).agents;
+      expect(hub.pending.map((r) => r.thread.audience)).toEqual([[a.json["id"]]]);
+      clock += 60_000;
+      hub.sweep();
+      expect(await thread(rt2, token)).toHaveLength(2); // no second "Back soon."
+      const w = await call(rt2, "GET", "/api/agent/stream?characters=Trabolta", {}, { moderator: true });
+      expect(w.res.frames().filter(([e]) => e === "request")).toHaveLength(1);
+      rt2.dispose();
+    }
   });
 
   it("the request lists the character's powers with this run's use counts", async () => {

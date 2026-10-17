@@ -662,6 +662,10 @@ export interface AgentHubOptions {
   now?: () => number;
 }
 
+/** A queued request no worker picked up within this long is dropped (the
+ *  default `queueMaxAgeMs`; a restore re-asks only lines this recent). */
+export const AGENT_QUEUE_MAX_AGE_MS = 10 * 60_000;
+
 export const threadKey = (t: AgentThread): string => `${t.channel}|${t.audience.join(",")}`;
 
 export class AgentHub {
@@ -725,8 +729,10 @@ export class AgentHub {
 
   // -- conversation ---------------------------------------------------------
 
-  /** Someone said something in an agent thread. */
-  line(thread: AgentThread): void {
+  /** Someone said something in an agent thread. `held`: the thread already
+   *  carries the hold line for it (a request re-opened after a restart),
+   *  so it is never said twice. */
+  line(thread: AgentThread, opts: { held?: boolean } = {}): void {
     if (this.o.admits !== undefined && !this.o.admits(thread)) return;
     const key = threadKey(thread);
     const openId = this.byThread.get(key);
@@ -744,14 +750,14 @@ export class AgentHub {
         return;
       }
     }
-    this.create(thread);
+    this.create(thread, opts.held === true);
   }
 
-  private create(thread: AgentThread): void {
+  private create(thread: AgentThread, held: boolean): void {
     const id = `ar-${globalThis.crypto.randomUUID().slice(0, 8)}`;
     const req = this.o.build(thread, id);
     if (req === null) return;
-    const r: OpenRequest = { req, key: threadKey(thread), worker: null, dispatchedAt: null, attempts: 0, followUp: false, createdAt: this.now(), held: false };
+    const r: OpenRequest = { req, key: threadKey(thread), worker: null, dispatchedAt: null, attempts: 0, followUp: false, createdAt: this.now(), held };
     this.open.set(id, r);
     this.byThread.set(r.key, id);
     this.dispatch(r);
@@ -799,7 +805,7 @@ export class AgentHub {
   sweep(): void {
     const now = this.now();
     const timeout = this.o.replyTimeoutMs ?? 120_000;
-    const maxAge = this.o.queueMaxAgeMs ?? 10 * 60_000;
+    const maxAge = this.o.queueMaxAgeMs ?? AGENT_QUEUE_MAX_AGE_MS;
     const maxAttempts = this.o.maxAttempts ?? 2;
     const holdAfter = this.o.holdAfterMs ?? 20_000;
     for (const [id, r] of [...this.open]) {
