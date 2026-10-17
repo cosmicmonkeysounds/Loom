@@ -4157,10 +4157,11 @@ export class EventRuntime {
         }
         const scope = str(body, "scope");
         const cue = str(body, "cue") || "cue";
-        const synthetic: SimEvent = { type: "broadcast", cue, audience: this.sim.audienceFor(scope), scope };
-        const stored = this.chat.append(composeGuestMessages(this.sim, [synthetic]));
-        for (const m of stored) this.deliverMessage(m);
-        this.pushSnapshots();
+        // Journaled like any mutation: a restart replays it onto the same
+        // seq, so the hidden set and answered cards keep their messages.
+        const before = this.chat.all().length;
+        this.fanout(this.commit("broadcast", scope, cue));
+        const stored = this.chat.all().slice(before);
         sendJson(res, 200, { ok: true, reached: stored.reduce((n, m) => n + (m.audience === "all" ? -1 : m.audience.length), 0) });
         return true;
       }

@@ -1370,6 +1370,15 @@ export class Sim {
   audienceFor(scope: string): string[] {
     return this.resolveScope(scope, new Map());
   }
+  /** Operator twin of `broadcast "cue" to scope` (the Director form,
+   *  journaled by the server as `broadcast`): one cue to whoever the scope
+   *  holds right now. Recorded, never a trigger — no hook hears it — so a
+   *  replay lands the same message on the same seq. */
+  broadcast(scope: string, cue: string): SimEvent[] {
+    const from = this.log.len();
+    this.record({ type: "broadcast", cue, audience: this.audienceFor(scope), scope });
+    return this.log.since(from);
+  }
 
   // -------------------------------------------------------------------
   // Drain loop

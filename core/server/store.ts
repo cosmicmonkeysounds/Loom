@@ -41,6 +41,7 @@ export type Mutation =
   | "setVar"
   | "fireBeat"
   | "reveal"
+  | "broadcast"
   | "choose"
   | "say"
   | "inviteToChannel"
