@@ -15,7 +15,7 @@ import {
   display,
   evaluate,
   expandPath,
-  parseExpr,
+  parseExprCached,
   truthy,
   vBool,
   vList,
@@ -192,8 +192,14 @@ export class Sim {
   private genCursor = new Map<string, number>();
   private timerState = new Map<Hook, number>();
   private timerFired = new Set<Hook>();
-  /** Last observed truth of each watcher, per subject (edge detection). */
-  private watcherState = new Map<string, boolean>();
+  /** Last observed truth of each watcher (`owner::condition`), per subject
+   *  (edge detection). Two identical watchers on one owner share a state. */
+  private watcherState = new Map<string, Map<string, boolean>>();
+  /** Each watcher hook's `watcherState` key, built once (it is read for
+   *  every guest on every drain). */
+  private readonly watcherKeys = new WeakMap<Hook, string>();
+  /** A ROLE's binding alias (`Program` → `program`), built once. */
+  private readonly roleAliases = new Map<string, string>();
   /** `cycle` cursors per site + subject. */
   private varietyState = new Map<string, number>();
   /** Per-fire counter scoping event-argument world keys. */
@@ -1370,6 +1376,15 @@ export class Sim {
   audienceFor(scope: string): string[] {
     return this.resolveScope(scope, new Map());
   }
+  /** Operator twin of `broadcast "cue" to scope` (the Director form,
+   *  journaled by the server as `broadcast`): one cue to whoever the scope
+   *  holds right now. Recorded, never a trigger — no hook hears it — so a
+   *  replay lands the same message on the same seq. */
+  broadcast(scope: string, cue: string): SimEvent[] {
+    const from = this.log.len();
+    this.record({ type: "broadcast", cue, audience: this.audienceFor(scope), scope });
+    return this.log.since(from);
+  }
 
   // -------------------------------------------------------------------
   // Drain loop
@@ -1455,7 +1470,16 @@ export class Sim {
   private runWatchers(): boolean {
     let fired = false;
     const check = (hook: Hook, self: string): void => {
-      const key = `${hook.ownerId}::${hook.event}::${self}`;
+      let key = this.watcherKeys.get(hook);
+      if (key === undefined) {
+        key = `${hook.ownerId}::${hook.event}`;
+        this.watcherKeys.set(hook, key);
+      }
+      let state = this.watcherState.get(key);
+      if (state === undefined) {
+        state = new Map();
+        this.watcherState.set(key, state);
+      }
       const bindings: Bindings =
         hook.ownerKind === "role"
           ? this.roleBindings(hook.ownerId, self)
@@ -1463,8 +1487,8 @@ export class Sim {
             ? new Map()
             : new Map([["self", self]]);
       const now = this.evalCond(hook.condition!, bindings);
-      const before = this.watcherState.get(key) ?? false;
-      this.watcherState.set(key, now);
+      const before = state.get(self) ?? false;
+      state.set(self, now);
       if (now && !before) {
         fired = true;
         this.exec([{ items: hook.body, index: 0, bindings }]);
@@ -1556,7 +1580,11 @@ export class Sim {
    */
   private roleBindings(roleId: string, person: string): Bindings {
     const b: Bindings = new Map([["self", person]]);
-    const alias = roleId.toLowerCase().replace(/\s+/gu, "_");
+    let alias = this.roleAliases.get(roleId);
+    if (alias === undefined) {
+      alias = roleId.toLowerCase().replace(/\s+/gu, "_");
+      this.roleAliases.set(roleId, alias);
+    }
     if (alias !== "self") b.set(alias, person);
     return b;
   }
@@ -2598,7 +2626,7 @@ export class Sim {
   private evalValue(src: string, bindings: Bindings): Value {
     this.currentBindings = bindings;
     try {
-      return evaluate(parseExpr(src), this.world, this.callFn, bindings);
+      return evaluate(parseExprCached(src), this.world, this.callFn, bindings);
     } catch (e) {
       if (e instanceof ExprError) return VNULL;
       throw e;

@@ -237,6 +237,34 @@ describe("/api/guest/widget", () => {
     expect((await state(rt2, g.token)).json.answered).toEqual([seq, seq2]);
   });
 
+  it("a director's broadcast replays onto its own seq: hidden messages and answered cards keep their rows across a restart (W8 T3-01)", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-ix-"));
+    dirs.push(d);
+    const rt = runtimeIn(d);
+    rt.openDoors();
+    const g = await guest(rt);
+    expect((await post(rt, "/api/mod/broadcast", { scope: "everyone", cue: "!Director alert: probe" }, true)).status).toBe(200);
+    const seq = await shown(rt, g.token, g.id);
+    expect((await post(rt, "/api/guest/widget", { token: g.token, seq, result: { passed: true } })).status).toBe(200);
+    expect((await post(rt, "/api/guest/act", { token: g.token, name: "knock" })).status).toBe(200);
+    const rude = rt.chatHistoryFor(g.id).at(-1)!;
+    expect((await post(rt, "/api/mod/message", { seq: rude.seq, hidden: true }, true)).status).toBe(200);
+    rt.pause();
+    const rows = (r: EventRuntime) => r.chatHistoryFor(g.id).map((m) => [m.seq, m.channel, m.text, m.hidden === true]);
+    const live = rows(rt);
+    expect(live.some(([, , text]) => String(text).includes("Director alert: probe"))).toBe(true);
+
+    const rt2 = runtimeIn(d);
+    expect(rt2.restore()).not.toBeNull();
+    expect(rows(rt2)).toEqual(live);
+    // The hidden line stays hidden (a guest's history leaves it out) and
+    // nothing else took its place.
+    expect(live.some(([s]) => s === rude.seq)).toBe(false);
+    expect(rows(rt2).some(([s]) => s === rude.seq)).toBe(false);
+    expect((await state(rt2, g.token)).json.answered).toEqual([seq]);
+    expect((await post(rt2, "/api/guest/widget", { token: g.token, seq, result: { passed: false } })).status).toBe(409);
+  });
+
   it("refuses a card that isn't yours, a bad seq, and a result that names someone", async () => {
     const rt = freshRuntime();
     rt.openDoors();

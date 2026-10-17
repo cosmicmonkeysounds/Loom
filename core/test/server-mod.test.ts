@@ -414,6 +414,93 @@ describe("openDoors plays the entry beat", () => {
     const h2 = await get(rt, `/api/history?id=${id}`);
     expect(h2.json.messages.length).toBe(h1.json.messages.length);
   });
+
+  // W8 T1-01: "a sim exists" is not "the entry played". A restart with the
+  // doors closed builds the sim without opening; the next open plays it.
+  const entries = (rt: EventRuntime): number => {
+    const sim = rt.liveSim!;
+    return sim.log.since(0).filter((e) => e.type === "beatEntered" && e.beat === sim.model.entry).length;
+  };
+
+  it("start → pause → reset → start plays the entry on the new run (T1-01)", async () => {
+    const rt = freshRuntime();
+    rt.openDoors();
+    expect(entries(rt)).toBe(1);
+    rt.pause();
+    expect((await post(rt, "/api/mod/reset", {})).json.phase).toBe("paused");
+    expect(entries(rt)).toBe(0);
+    await post(rt, "/api/mod/start", {});
+    expect(entries(rt)).toBe(1);
+    // Pause → resume on the same run never plays it twice.
+    rt.pause();
+    rt.openDoors();
+    expect(entries(rt)).toBe(1);
+  });
+
+  it("idle → reset → start and idle → load → start play the entry once (T1-01)", async () => {
+    const a = freshRuntime();
+    await post(a, "/api/mod/reset", {});
+    await post(a, "/api/mod/start", {});
+    expect(entries(a)).toBe(1);
+
+    const b = freshRuntime();
+    await post(b, "/api/mod/load", { source: SCENARIO, name: "again" });
+    await post(b, "/api/mod/start", {});
+    expect(entries(b)).toBe(1);
+
+    // The control plane's Go live in place / Push draft on a paused preview,
+    // then Resume (`events-api.ts`): the same restart, the same open.
+    for (const kind of ["golive", "reload"] as const) {
+      const c = freshRuntime();
+      c.openDoors();
+      c.pause();
+      c.restart(SCENARIO, "escape-the-internet", { kind, by: "Ada" });
+      c.openDoors();
+      expect(entries(c)).toBe(1);
+    }
+  });
+
+  it("an open reset plays the entry exactly once", async () => {
+    const rt = freshRuntime();
+    rt.openDoors();
+    expect((await post(rt, "/api/mod/reset", {})).json.phase).toBe("open");
+    expect(entries(rt)).toBe(1);
+  });
+
+  it("a restart while paused survives a process restart: the restored run still owes its entry, and plays it once (T1-01)", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-mod-"));
+    dirs.push(d);
+    const mk = () =>
+      new EventRuntime({
+        eventId: "evt",
+        store: new Store(d),
+        codes: CODES,
+        scenarioName: "escape-the-internet",
+        scenarioSource: SCENARIO,
+        joinBase: () => "http://localhost",
+      });
+    const rt1 = mk();
+    rt1.openDoors();
+    rt1.pause();
+    await post(rt1, "/api/mod/reset", {});
+    rt1.dispose();
+
+    const rt2 = mk();
+    expect(rt2.restore()).not.toBeNull();
+    expect(entries(rt2)).toBe(0);
+    rt2.openDoors();
+    expect(entries(rt2)).toBe(1);
+    rt2.pause();
+    rt2.dispose();
+
+    // …and a run whose entry already played never replays it on a resume.
+    const rt3 = mk();
+    expect(rt3.restore()).not.toBeNull();
+    expect(entries(rt3)).toBe(1);
+    rt3.openDoors();
+    expect(entries(rt3)).toBe(1);
+    rt3.dispose();
+  });
 });
 
 describe("mod choice answering", () => {

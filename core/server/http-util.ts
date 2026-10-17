@@ -83,8 +83,85 @@ export function ipOf(req: IncomingMessage): string {
   return req.socket?.remoteAddress ?? "local";
 }
 
-/** Emit one Server-Sent Event frame. */
+/** How much an SSE stream may hold unsent before a stalled client is dropped
+ *  (W8 T9-01): a guest / booth / agent / spatial / collab stream… */
+export const SSE_QUEUE_CAP = 256 * 1024;
+/** …and a full director console (every frame + ≈200 KB views). */
+export const SSE_MOD_QUEUE_CAP = 2 * 1024 * 1024;
+/** Over its cap, a stream is dropped only once its queue has made no
+ *  progress for this long: a client still reading (a director over a slow
+ *  link, however far behind) is kept; one that stopped reading never
+ *  sends a byte out again. */
+export const SSE_STALL_MS = 15_000;
+
+interface SseQueue {
+  cap: number;
+  /** The queue's length just after the last write. */
+  lastLen: number;
+  /** When the queue last shrank (bytes left for the client), server ms. */
+  progressAt: number;
+}
+const queues = new WeakMap<ServerResponse, SseQueue>();
+
+function queueOf(res: ServerResponse): SseQueue {
+  let q = queues.get(res);
+  if (q === undefined) {
+    const fresh: SseQueue = { cap: SSE_QUEUE_CAP, lastLen: 0, progressAt: Date.now() };
+    q = fresh;
+    queues.set(res, fresh);
+    // `drain` fires once a backed-up queue has flushed.
+    if (typeof res.on === "function")
+      res.on("drain", () => {
+        fresh.lastLen = 0;
+        fresh.progressAt = Date.now();
+      });
+  }
+  return q;
+}
+
+/** Give one SSE stream a different queue cap (a full mod console's). */
+export function sseCap(res: ServerResponse, cap: number): void {
+  queueOf(res).cap = cap;
+}
+
+/**
+ * Write one chunk to an SSE stream — unless the client has stopped reading.
+ * A suspended phone or a sleeping laptop keeps its socket up (a zero-window
+ * peer still ACKs, so `close` never fires) while Node queues every frame in
+ * userland: one stalled director console queued 139 MB in 3 min. Past its
+ * cap, with nothing sent out for `SSE_STALL_MS` (the queue never shorter
+ * than just after the previous write), the stream is destroyed: the
+ * request's `close` handler drops the client, and its EventSource
+ * reconnects to a fresh snapshot + history. A slow reader that is still
+ * taking bytes is kept. False when nothing was written.
+ */
+export function sseWrite(res: ServerResponse, chunk: string): boolean {
+  if (res.destroyed || res.writableEnded) return false;
+  const q = queueOf(res);
+  const queued = sseQueued(res);
+  const now = Date.now();
+  if (queued === 0 || queued < q.lastLen) q.progressAt = now;
+  else if (queued > q.cap && now - q.progressAt > SSE_STALL_MS) {
+    res.destroy();
+    return false;
+  }
+  res.write(chunk);
+  q.lastLen = sseQueued(res);
+  return true;
+}
+
+/** Bytes an SSE stream holds unsent (what Node buffers for a slow peer). */
+export function sseQueued(res: ServerResponse): number {
+  return typeof res.writableLength === "number" ? res.writableLength : 0;
+}
+
+/** Emit one Server-Sent Event frame (two writes: the `event:` line, then
+ *  its `data:` — never one without the other). */
 export function sseSend(res: ServerResponse, event: string, data: unknown): void {
-  res.write(`event: ${event}\n`);
-  res.write(`data: ${JSON.stringify(data)}\n\n`);
+  sseFrame(res, `event: ${event}\n`, `data: ${JSON.stringify(data)}\n\n`);
+}
+
+/** One frame, already serialised (a mod snapshot built once for everyone). */
+export function sseFrame(res: ServerResponse, head: string, data: string): void {
+  if (sseWrite(res, head)) res.write(data);
 }

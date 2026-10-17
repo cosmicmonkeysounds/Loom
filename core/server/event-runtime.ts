@@ -25,9 +25,9 @@ import { guestView, modView, primeView, rosterRow, themeOf, titleOf, type AgentM
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
-import { ChatStore, composeGuestMessages, decisionChannelFor, isPinnedRoom, visibleTo, type ChatMessage } from "./chat.ts";
+import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, guestOwnRow, decisionChannelFor, isPinnedRoom, visibleTo, type ChatMessage } from "./chat.ts";
 import { DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
-import { ipOf, queryTokenOf, readBody, sendJson, sseSend, str, tokenOf } from "./http-util.ts";
+import { SSE_MOD_QUEUE_CAP, ipOf, queryTokenOf, readBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
 import { RateLimiter, limiterFor, rateLimitsFromEnv, type RateLimits } from "./rate-limit.ts";
 import { handleMetrics } from "./routes/metrics.ts";
 import { TtsProxy, ttsConfigFromEnv } from "./tts.ts";
@@ -75,6 +75,7 @@ import {
 } from "./house-maps.ts";
 import { FACTS_FILE, FactsWatch, factsKey, factsProblems, judgeAnswer, parseFactsBook, readFactsFile, type FactsBook, type FactsView } from "./facts.ts";
 import {
+  AGENT_QUEUE_MAX_AGE_MS,
   AgentHub,
   AgentTraceLog,
   agentActs,
@@ -110,6 +111,9 @@ interface Client {
    *  `message` / `lifecycle` frame, but never a `snapshot` or `history`
    *  (a `ModView` is ≈ 200 KB at a full house). */
   lean?: boolean;
+  /** A full director console skipped for a `ModView` while it was still
+   *  behind by a whole view: owed the newest one once it catches up. */
+  snapshotOwed?: boolean;
   res: ServerResponse;
 }
 
@@ -244,10 +248,16 @@ export function defaultFactsFile(houseFile = defaultHouseFile()): string {
 const showHouses = new Map<string, { mtimeMs: number; house: HouseMap }>();
 /** The last problem logged per path (a missing file warns once, not per request). */
 const showHouseWarned = new Map<string, string>();
+/** The journal's `by` on a power an agent-voiced character used itself
+ *  (`agent:<Character>`): a replay counts these against the power's
+ *  `limit:`, never a director's fire of the same interaction. */
+const AGENT_BY = "agent:";
+
 /** Who a mutation is done by, for the facts ledger's provenance (wave 5
  *  issue 8): the journal's `by` (a director, a device, an impersonator),
  *  else a `signal`'s actor (a booth's character — `/api/prime/act`). */
 function factsBy(m: Mutation, args: readonly unknown[], by: string | undefined): string | null {
+  if (by !== undefined && by.startsWith(AGENT_BY)) return by.slice(AGENT_BY.length);
   if (by !== undefined && by !== "") return by;
   if (m === "signal" && typeof args[3] === "string" && args[3] !== "") return args[3];
   return null;
@@ -389,6 +399,14 @@ function defaultImages(): ImageCache {
  *  else — a cue, a variable, a broadcast — spends one use. */
 const POWER_FREE_EVENTS: ReadonlySet<string> = new Set(["signal", "dialogue", "action", "diagnostic", "tick", "ambient"]);
 
+/** A use only counts when the story did something with it. A refusal
+ *  ("That function is not available yet.", a room off the allow-list) is
+ *  the character's words alone — it must not spend the night's two
+ *  blackouts. Live and on a replay alike. */
+function powerSpent(events: readonly SimEvent[]): boolean {
+  return events.some((e) => !POWER_FREE_EVENTS.has(e.type));
+}
+
 export class EventRuntime {
   readonly eventId: string;
   readonly codes: Passcodes;
@@ -456,6 +474,10 @@ export class EventRuntime {
   private readonly notifiedExpired = new Set<number>();
   // Elapsed sim time not yet written to the journal (coalesced ticks).
   private pendingTickMs = 0;
+  // Whether this run's `entry:` beat has played. Not the same as "a sim
+  // exists": a restart with the doors closed (and a restore) builds the sim
+  // without opening, and the next open must still play the entry — once.
+  private entryPlayed = false;
   private ticker: ReturnType<typeof setInterval> | null = null;
   // Agent-voiced characters (`mind: external`): open requests + the
   // stagehand workers answering them. Ephemeral — a restart drops them.
@@ -511,6 +533,10 @@ export class EventRuntime {
   private readonly modSnapshotMs: number;
   private modSnapshotAt = Number.NEGATIVE_INFINITY;
   private modSnapshotTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Retries the `ModView` for consoles that were too far behind for one. */
+  private modOwedTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The size of the last `ModView` frame built (0 before the first). */
+  private modViewBytes = 0;
   // Guest + booth snapshot coalescing (`pushClientSnapshots`).
   private readonly snapshotMs: number;
   private snapshotAt = Number.NEGATIVE_INFINITY;
@@ -623,7 +649,16 @@ export class EventRuntime {
     this.redeemMisses = limiterFor(limits.redeemMisses);
     this.widgetAnswers = limiterFor(limits.widgets);
     this.walletCalls = limiterFor(limits.wallet);
-    this.screens = new ScreenWatch(init.now !== undefined ? { now: init.now } : {});
+    // The TV-voice mute outlives restarts and Go live (an ALL STOP must
+    // survive a crash), so one left on from a rehearsal carries into the
+    // show: say so on boot, where the crew reads the log.
+    const voiceMuted = this.store.loadVoiceMuted();
+    if (voiceMuted) process.stderr.write(`  🔇 event ${this.eventId}: the TV voice is muted (kept from before this start) — unmute it on Run → Terminals\n`);
+    this.screens = new ScreenWatch({
+      ...(init.now !== undefined ? { now: init.now } : {}),
+      muted: voiceMuted,
+      onMute: (muted) => this.store.saveVoiceMuted(muted),
+    });
   }
 
   /** Current lifecycle phase (idle | open | paused). */
@@ -858,16 +893,43 @@ export class EventRuntime {
     this.flushModSnapshots();
   }
 
-  private flushModSnapshots(): void {
+  /** Send the full consoles the current `ModView` (`owedOnly`: just those a
+   *  previous frame skipped). A console still holding more unsent than one
+   *  view gets none now: views never queue up behind each other for a slow
+   *  link — it is owed the newest, retried until it catches up. */
+  private flushModSnapshots(owedOnly = false): void {
     // Same two writes as `sseSend`, the JSON serialised once for everyone.
     let data: string | null = null;
+    let owed = false;
     for (const c of this.clients) {
       if (c.role !== "mod" || c.lean === true) continue;
+      if (owedOnly && c.snapshotOwed !== true) continue;
+      // Behind by the last view's size: skip before building a new one (a
+      // stalled console's retries cost nothing until it moves).
+      const behind = (n: number) => n > 0 && sseQueued(c.res) > n;
+      if (data === null && behind(this.modViewBytes)) {
+        c.snapshotOwed = true;
+        owed = true;
+        continue;
+      }
       data ??= `data: ${JSON.stringify(this.modViewNow())}\n\n`;
-      c.res.write("event: snapshot\n");
-      c.res.write(data);
+      this.modViewBytes = data.length;
+      if (behind(data.length)) {
+        c.snapshotOwed = true;
+        owed = true;
+        continue;
+      }
+      c.snapshotOwed = false;
+      sseFrame(c.res, "event: snapshot\n", data);
     }
-    if (data !== null) this.modSnapshotAt = Date.now();
+    if (data !== null && !owedOnly) this.modSnapshotAt = Date.now();
+    if (owed && this.modOwedTimer === null) {
+      this.modOwedTimer = setTimeout(() => {
+        this.modOwedTimer = null;
+        this.flushModSnapshots(true);
+      }, Math.max(this.modSnapshotMs, MOD_SNAPSHOT_MS));
+      this.modOwedTimer.unref?.();
+    }
   }
 
   /** Re-send every client its full thread history — after a reset / reload
@@ -877,12 +939,19 @@ export class EventRuntime {
     for (const c of this.clients) if (c.lean !== true) sseSend(c.res, "history", this.historyFor(c));
   }
 
+  /** A stream's `history` frame: a director's is the whole feed; a guest's
+   *  and a booth's are capped (`capHistory`: the recent stream, plus their
+   *  pinned rooms, pins, alerts, cards, own threads and thread roots). */
   private historyFor(c: Client): ChatMessage[] {
     return c.role === "guest"
-      ? this.chat.historyFor(c.id, false).map(forGuest)
+      ? capHistory(this.chat.historyFor(c.id, false), HISTORY_LIMIT, guestOwnRow(c.id)).map(forGuest)
       : c.role === "mod"
         ? [...this.chat.all()]
-        : this.chat.all().filter((m) => !m.hidden && visibleToPrime(m, c));
+        : capHistory(
+            this.chat.all().filter((m) => !m.hidden && visibleToPrime(m, c)),
+            HISTORY_LIMIT,
+            boothOwnRow(c.id),
+          );
   }
 
   /** A lifecycle transition every connected client should react to
@@ -1203,11 +1272,39 @@ export class EventRuntime {
 
   /** A line just landed in `channel` for `audience` — if that's an agent's
    *  thread, the agent owes an answer. */
-  private agentHeard(channel: string, audience: string[]): void {
+  private agentHeard(channel: string, audience: string[], held = false): void {
     if (!channel.startsWith("dm:") || audience.length !== 1) return;
     const character = channel.slice("dm:".length);
     if (!this.isAgent(character)) return;
-    this.agents.line({ character, channel, audience });
+    this.agents.line({ character, channel, audience }, { held });
+  }
+
+  /** After a restore: every agent thread still owed an answer — its last
+   *  line someone else's, or the character's hold line right after one —
+   *  gets its request again, as the hub's queue died with the process (a
+   *  worker answers it, or the hold line follows, never twice). Only a
+   *  line from the last `AGENT_QUEUE_MAX_AGE_MS` of the story clock: live,
+   *  an older request has been dropped. */
+  private requeueAgentThreads(): void {
+    const sim = this.sim;
+    if (sim === null) return;
+    const tail = new Map<string, [ChatMessage | undefined, ChatMessage]>(); // thread → its last two lines
+    for (const m of this.chat.all()) {
+      if (m.hidden || !m.channel.startsWith("dm:") || !Array.isArray(m.audience) || m.audience.length !== 1) continue;
+      if (!this.isAgent(m.channel.slice("dm:".length))) continue;
+      const key = `${m.channel}|${m.audience[0]}`;
+      tail.set(key, [tail.get(key)?.[1], m]);
+    }
+    const now = sim.elapsed();
+    for (const [prev, last] of tail.values()) {
+      const character = last.channel.slice("dm:".length);
+      const theirs = (m: ChatMessage | undefined): m is ChatMessage => m !== undefined && m.kind === "line" && m.from !== character;
+      const hold = sim.model.characters.get(character)?.hold ?? null;
+      const held = hold !== null && last.from === character && last.text === hold && theirs(prev);
+      const owed = theirs(last) ? last : held ? prev! : null;
+      if (owed === null || now - owed.ts > AGENT_QUEUE_MAX_AGE_MS) continue;
+      this.agentHeard(last.channel, last.audience as string[], held);
+    }
   }
 
   /** No worker has picked up `req` in time: post the character's authored
@@ -1444,13 +1541,17 @@ export class EventRuntime {
           continue;
         }
         const args = act.args === undefined ? null : canonicalPlaceArgs(act.args, sim.model.locations.values());
-        const events = this.commit("signal", def.id, subject, args, req.character);
+        // Journaled `by: agent:<Character>`, so a restore can count the use.
+        const actingBy = this.actingBy;
+        this.actingBy = `${AGENT_BY}${req.character}`;
+        let events: SimEvent[];
+        try {
+          events = this.commit("signal", def.id, subject, args, req.character);
+        } finally {
+          this.actingBy = actingBy;
+        }
         this.fanout(events);
-        // A use only counts when the story did something with it. A refusal
-        // ("That function is not available yet.", a room off the allow-list)
-        // is the character's words alone — it must not spend the night's
-        // two blackouts.
-        const spent = events.some((e) => !POWER_FREE_EVENTS.has(e.type));
+        const spent = powerSpent(events);
         if (spent) this.agentPowerUses.set(def.id, used + 1);
         out.push({ kind: "fire", ok: true, what: def.id, ...(spent ? {} : { refused: true }) });
       }
@@ -1497,7 +1598,7 @@ export class EventRuntime {
     });
     this.agentStreams.add(res);
     this.agents.attach(worker);
-    const ping = setInterval(() => res.write(":ping\n\n"), 25000);
+    const ping = setInterval(() => sseWrite(res, ":ping\n\n"), 25000);
     req.on("close", () => {
       clearInterval(ping);
       this.agentStreams.delete(res);
@@ -1827,7 +1928,7 @@ export class EventRuntime {
     this.spatialStreams.add(res);
     this.spatial.attach(sub);
     this.startSpatialLoop();
-    const ping = setInterval(() => res.write(":ping\n\n"), 25000);
+    const ping = setInterval(() => sseWrite(res, ":ping\n\n"), 25000);
     req.on("close", () => {
       clearInterval(ping);
       this.spatialStreams.delete(res);
@@ -2324,24 +2425,30 @@ export class EventRuntime {
    * let guests register. The control-plane equivalent of `/api/mod/start`.
    */
   openDoors(): void {
-    const fresh = this.sim === null;
-    if (fresh) {
-      this.loadScenario(this.scenarioSource, this.scenarioName);
-      this.store.clearJournal();
-      this.store.clearRuns();
-      this.resetChat();
-      this.pendingTickMs = 0;
-    }
+    if (this.sim === null) this.freshRun(this.scenarioSource, this.scenarioName);
     this.setPhase("open");
     this.persistMeta();
     this.startTicker();
     // A live event opens exactly like a rehearsal: the `entry:` beat plays
-    // on first open. Journaled as a fireBeat so a replay reproduces it.
-    const entry = fresh ? this.sim?.model.entry : null;
-    if (entry != null && entry !== "") {
-      this.fanout(this.commit("fireBeat", entry));
+    // on the run's first open — also after a restart or a restore that left
+    // the doors closed. Journaled as a fireBeat so a replay reproduces it.
+    if (!this.entryPlayed) {
+      this.entryPlayed = true;
+      const entry = this.sim?.model.entry;
+      if (entry != null && entry !== "") this.fanout(this.commit("fireBeat", entry));
     }
     this.pushSnapshots();
+  }
+
+  /** A new run on `source`: a fresh sim, an empty journal + chat, and the
+   *  entry beat still to play (the next `openDoors` plays it). */
+  private freshRun(source: string, name: string): void {
+    this.loadScenario(source, name);
+    this.store.clearJournal();
+    this.store.clearRuns();
+    this.resetChat();
+    this.pendingTickMs = 0;
+    this.entryPlayed = false;
   }
 
   /** Pause the event: stop the clock, keep all state. `/api/mod/stop`. */
@@ -2406,11 +2513,8 @@ export class EventRuntime {
     if (wasOpen) {
       this.openDoors(); // fresh → loads, clears journal + chat, fires entry
     } else {
-      this.loadScenario(source, name);
-      this.store.clearJournal();
-      this.store.clearRuns();
-      this.resetChat();
-      this.pendingTickMs = 0;
+      // Doors closed: the entry waits for the next open (`entryPlayed`).
+      this.freshRun(source, name);
       this.persistMeta();
       this.pushSnapshots();
     }
@@ -2444,6 +2548,8 @@ export class EventRuntime {
     this.stopTicker();
     if (this.modSnapshotTimer !== null) clearTimeout(this.modSnapshotTimer);
     this.modSnapshotTimer = null;
+    if (this.modOwedTimer !== null) clearTimeout(this.modOwedTimer);
+    this.modOwedTimer = null;
     if (this.snapshotTimer !== null) clearTimeout(this.snapshotTimer);
     this.snapshotTimer = null;
     this.pushLifecycle("ended", by !== undefined ? { by } : {});
@@ -2487,7 +2593,14 @@ export class EventRuntime {
     this.avatars.load(this.store.loadAvatars());
     this.loadScenario(meta.scenarioSource, meta.scenarioName); // sets phase → paused
     let events = 0;
+    const entry = this.sim?.model.entry ?? null;
+    // The entry played when the journal holds its fireBeat. A journal with
+    // a tick (the clock only runs with the doors open) or a run persisted
+    // open counts too: a pre-fix run whose entry was lost must not have it
+    // fire mid-show on the next resume.
+    this.entryPlayed = meta.phase === "open";
     for (const e of this.store.readJournal()) {
+      if (e.m === "tick" || (e.m === "fireBeat" && entry !== null && e.a[0] === entry)) this.entryPlayed = true;
       if (e.m === "wallet") {
         // A wallet op: the book re-applies it (balances, grants, signals,
         // cards) exactly as it did live.
@@ -2513,6 +2626,11 @@ export class EventRuntime {
             // A widget answer — `signal(<kind> answered, guest, {…, card: seq})`.
             const card = (e.a[2] as { card?: unknown } | null | undefined)?.card;
             if (typeof e.a[1] === "string" && typeof card === "number") this.answeredWidgets.add(`${card}:${e.a[1]}`);
+            // An agent's own use of a power counts against its `limit:` again.
+            if (e.by === `${AGENT_BY}${String(e.a[3])}` && Array.isArray(out) && powerSpent(out as SimEvent[])) {
+              const def = this.sim!.model.interactions.get(String(e.a[0]));
+              if (def !== undefined && def.who === "agent") this.agentPowerUses.set(def.id, (this.agentPowerUses.get(def.id) ?? 0) + 1);
+            }
           }
           if (Array.isArray(out)) {
             const batch = out as SimEvent[];
@@ -2545,6 +2663,7 @@ export class EventRuntime {
     const entries = this.store.loadSessions();
     this.sessions.load(entries);
     for (const [token, id] of this.store.loadGuests()) this.guestTokens.set(token, id);
+    this.requeueAgentThreads();
     if (this.phase === "open") this.startTicker();
     return { guests: this.sim?.persons.size ?? 0, events, sessions: entries.length };
   }
@@ -2605,6 +2724,8 @@ export class EventRuntime {
       res.write(":ok\n\n");
       const client: Client = { role, id, res };
       if (role === "mod") client.name = opts.moderatorName ?? "Director";
+      // A director's console carries every frame: a bigger queue before a stall drops it.
+      if (role === "mod") sseCap(res, SSE_MOD_QUEUE_CAP);
       // `?lean=1` (mod feed only): the house tools' stream — frames, no views.
       if (role === "mod" && url.searchParams.get("lean") === "1") client.lean = true;
       if (role === "prime") client.admin = this.sessions.canModerate(token);
@@ -2632,7 +2753,7 @@ export class EventRuntime {
         sseSend(res, "history", this.historyFor(client));
       }
       if (!fullMod) this.pushPresence();
-      const ping = setInterval(() => res.write(":ping\n\n"), 25000);
+      const ping = setInterval(() => sseWrite(res, ":ping\n\n"), 25000);
       req.on("close", () => {
         clearInterval(ping);
         this.clients.delete(client);
@@ -4143,10 +4264,11 @@ export class EventRuntime {
         }
         const scope = str(body, "scope");
         const cue = str(body, "cue") || "cue";
-        const synthetic: SimEvent = { type: "broadcast", cue, audience: this.sim.audienceFor(scope), scope };
-        const stored = this.chat.append(composeGuestMessages(this.sim, [synthetic]));
-        for (const m of stored) this.deliverMessage(m);
-        this.pushSnapshots();
+        // Journaled like any mutation: a restart replays it onto the same
+        // seq, so the hidden set and answered cards keep their messages.
+        const before = this.chat.all().length;
+        this.fanout(this.commit("broadcast", scope, cue));
+        const stored = this.chat.all().slice(before);
         sendJson(res, 200, { ok: true, reached: stored.reduce((n, m) => n + (m.audience === "all" ? -1 : m.audience.length), 0) });
         return true;
       }

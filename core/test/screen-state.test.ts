@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
@@ -810,6 +810,34 @@ describe("GET /api/mod/screen/terminals — the heartbeat card", () => {
     const token = login.json["token"] as string;
     expect((await call(rt, "GET", `/api/mod/screen/terminals?token=${token}`, {})).status).toBe(200);
     rt.dispose();
+  });
+
+  it("the TV-voice mute survives a server restart (W8 T3-04)", async () => {
+    const dir = freshDir();
+    const mk = () => new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: "t", scenarioSource: AGENT_SOURCE, joinBase: () => "http://localhost" });
+    const rt = mk();
+    rt.openDoors();
+    expect((await call(rt, "POST", "/api/mod/screen/voice", { muted: true }, { moderator: true })).json).toEqual({ muted: true });
+    rt.dispose();
+    // A mute kept from before the start is said on boot (a rehearsal's
+    // mute would otherwise silence the show's TV unnoticed).
+    const logged: string[] = [];
+    const spy = vi.spyOn(process.stderr, "write").mockImplementation((chunk: string | Uint8Array) => {
+      logged.push(String(chunk));
+      return true;
+    });
+    const again = mk();
+    spy.mockRestore();
+    expect(logged.some((l) => l.includes("the TV voice is muted"))).toBe(true);
+    expect(again.restore()).not.toBeNull();
+    expect(((await call(again, "GET", "/api/mod/screen/terminals", {}, { moderator: true })).json as unknown as ScreenTerminals).voiceMuted).toBe(true);
+    // …and unmuting sticks too.
+    await call(again, "POST", "/api/mod/screen/voice", { muted: false }, { moderator: true });
+    again.dispose();
+    const third = mk();
+    third.restore();
+    expect(((await call(third, "GET", "/api/mod/screen/terminals", {}, { moderator: true })).json as unknown as ScreenTerminals).voiceMuted).toBe(false);
+    third.dispose();
   });
 });
 

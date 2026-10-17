@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { AgentHub, AgentTraceLog, agentControl, agentMindReport, agentThought, type AgentControl, type AgentFacts, type AgentRequest, type AgentThought, type AgentThread, type AgentWorker } from "../server/agents.ts";
+import { AGENT_QUEUE_MAX_AGE_MS, AgentHub, AgentTraceLog, agentControl, agentMindReport, agentThought, type AgentControl, type AgentFacts, type AgentRequest, type AgentThought, type AgentThread, type AgentWorker } from "../server/agents.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import { guestView, primeView, type AgentMindSummary } from "../server/views.ts";
@@ -786,6 +786,102 @@ when knock for program:
     expect((history.json["messages"] as Array<{ from: string; channel: string }>).filter((m) => m.channel === "dm:Trabolta").map((m) => m.from)).toEqual(["Di"]);
   });
 
+  it("a DM still owed an answer survives a server restart: the restored hub queues it again (W8 T3-02)", async () => {
+    let clock = 1_000_000;
+    const d = mkdtempSync(join(tmpdir(), "loom-agents-"));
+    dirs.push(d);
+    const source = SOURCE.replace("  mind: external\n", '  mind: external\n  hold: "Back soon."\n');
+    const mk = () =>
+      new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "uploaded", scenarioSource: source, joinBase: () => "http://localhost", now: () => clock });
+    const rt = mk();
+    rt.openDoors();
+    const a = await call(rt, "POST", "/api/guest/register", { name: "Ada", passcode: CODES.event });
+    const b = await call(rt, "POST", "/api/guest/register", { name: "Bo", passcode: CODES.event });
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "before the crash" }, { token: a.json["token"] as string });
+    // Bo's thread was answered (a director spoke last, as Trabolta): nothing owed.
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "hello?" }, { token: b.json["token"] as string });
+    await call(rt, "POST", "/api/mod/say", { channel: `guest:${b.json["id"] as string}`, as: "Trabolta", text: "Later." }, { moderator: true });
+    rt.dispose();
+
+    const rt2 = mk();
+    expect(rt2.restore()).not.toBeNull();
+    const hub = (rt2 as unknown as { agents: AgentHub }).agents;
+    expect(hub.pending.map((r) => [r.thread.channel, r.thread.audience])).toEqual([["dm:Trabolta", [a.json["id"]]]]);
+    // Nobody online: the hold line follows after 20 s, as it does live.
+    clock += 20_000;
+    hub.sweep();
+    const history = await call(rt2, "GET", "/api/history", {}, { token: a.json["token"] as string });
+    const dm = (history.json["messages"] as Array<{ from: string; text: string; channel: string }>).filter((m) => m.channel === "dm:Trabolta").map((m) => [m.from, m.text]);
+    expect(dm).toEqual([
+      ["Ada", "before the crash"],
+      ["Trabolta", "Back soon."],
+    ]);
+    // …and a worker that connects still answers the question.
+    const w = await call(rt2, "GET", "/api/agent/stream?characters=Trabolta", {}, { moderator: true });
+    const reqs = w.res.frames().filter(([e]) => e === "request").map(([, r]) => r as AgentRequest);
+    expect(reqs.map((r) => r.thread.audience)).toEqual([[a.json["id"]]]);
+    rt2.dispose();
+  });
+
+  it("a restore re-asks only recent lines, and a thread that already got the hold line is re-asked without a second one (W8 review)", async () => {
+    let clock = 1_000_000;
+    const thread = async (rt: EventRuntime, token: string) =>
+      ((await call(rt, "GET", "/api/history", {}, { token })).json["messages"] as Array<{ from: string; text: string; channel: string }>)
+        .filter((m) => m.channel === "dm:Trabolta")
+        .map((m) => [m.from, m.text]);
+
+    // No hold line: a question older than the hub's queue age is not re-asked.
+    {
+      const d = mkdtempSync(join(tmpdir(), "loom-agents-"));
+      dirs.push(d);
+      const mk = () => new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "uploaded", scenarioSource: SOURCE, joinBase: () => "http://localhost", now: () => clock });
+      const rt = mk();
+      rt.openDoors();
+      const old = await call(rt, "POST", "/api/guest/register", { name: "Cy", passcode: CODES.event });
+      await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "an old question" }, { token: old.json["token"] as string });
+      rt.tickOnce(AGENT_QUEUE_MAX_AGE_MS + 60_000); // the story clock moves on
+      const fresh = await call(rt, "POST", "/api/guest/register", { name: "Di", passcode: CODES.event });
+      await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "a fresh one" }, { token: fresh.json["token"] as string });
+      rt.dispose();
+      const rt2 = mk();
+      expect(rt2.restore()).not.toBeNull();
+      const hub = (rt2 as unknown as { agents: AgentHub }).agents;
+      expect(hub.pending.map((r) => r.thread.audience)).toEqual([[fresh.json["id"]]]);
+      rt2.dispose();
+    }
+
+    // With a hold line: it was said live; after a restart the question is
+    // still owed (a worker that comes back answers it) — but never held twice.
+    {
+      const d = mkdtempSync(join(tmpdir(), "loom-agents-"));
+      dirs.push(d);
+      const source = SOURCE.replace("  mind: external\n", '  mind: external\n  hold: "Back soon."\n');
+      const mk = () => new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "uploaded", scenarioSource: source, joinBase: () => "http://localhost", now: () => clock });
+      const rt = mk();
+      rt.openDoors();
+      const a = await call(rt, "POST", "/api/guest/register", { name: "Ada", passcode: CODES.event });
+      const token = a.json["token"] as string;
+      await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "anyone there?" }, { token });
+      clock += 20_000;
+      (rt as unknown as { agents: AgentHub }).agents.sweep();
+      expect(await thread(rt, token)).toEqual([
+        ["Ada", "anyone there?"],
+        ["Trabolta", "Back soon."],
+      ]);
+      rt.dispose();
+      const rt2 = mk();
+      expect(rt2.restore()).not.toBeNull();
+      const hub = (rt2 as unknown as { agents: AgentHub }).agents;
+      expect(hub.pending.map((r) => r.thread.audience)).toEqual([[a.json["id"]]]);
+      clock += 60_000;
+      hub.sweep();
+      expect(await thread(rt2, token)).toHaveLength(2); // no second "Back soon."
+      const w = await call(rt2, "GET", "/api/agent/stream?characters=Trabolta", {}, { moderator: true });
+      expect(w.res.frames().filter(([e]) => e === "request")).toHaveLength(1);
+      rt2.dispose();
+    }
+  });
+
   it("the request lists the character's powers with this run's use counts", async () => {
     const { rt, guest, requests } = await setup();
     await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "turn off the lights" }, { token: guest.token });
@@ -845,6 +941,37 @@ when knock for program:
     expect(again.json["acted"]).toEqual([{ kind: "fire", ok: false, what: "cut the lights", error: "power exhausted for this run" }]);
     // …and the journal replays the acts (share + signal are ordinary mutations).
     expect(sim.worldEntries().find((w) => w.path === "Trabolta.lights_cut")?.value).toBe("1");
+  });
+
+  it("a power's uses survive a server restart; a director's fire of it never counts (W8 T3-03 / T8-04)", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-agents-"));
+    dirs.push(d);
+    const source = SOURCE.replace("  limit: 1\n", "  limit: 2\n");
+    const mk = () => new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "uploaded", scenarioSource: source, joinBase: () => "http://localhost" });
+    const rt = mk();
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Ada", passcode: CODES.event });
+    const token = g.json["token"] as string;
+    const ask = async (on: EventRuntime) => {
+      const worker = await call(on, "GET", "/api/agent/stream?characters=Trabolta", {}, { moderator: true });
+      await call(on, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "lights" }, { token });
+      const r = worker.res.frames().filter(([e]) => e === "request").map(([, x]) => x as AgentRequest).at(-1)!;
+      const reply = await call(on, "POST", "/api/agent/reply", { id: r.id, say: "", acts: [{ kind: "fire", name: "cut the lights", args: { room: "The Cache" } }] }, { moderator: true });
+      worker.close();
+      return { used: r.powers.find((p) => p.id === "cut the lights")?.used, acted: reply.json["acted"] };
+    };
+    expect(await ask(rt)).toEqual({ used: 0, acted: [{ kind: "fire", ok: true, what: "cut the lights" }] });
+    // A director firing the same interaction as Trabolta is not his use.
+    expect((await call(rt, "POST", "/api/mod/signal", { name: "cut the lights", subject: g.json["id"], actor: "Trabolta", args: { room: "The Cache" } }, { moderator: true })).status).toBe(200);
+    rt.pause();
+    rt.dispose();
+
+    const rt2 = mk();
+    expect(rt2.restore()).not.toBeNull();
+    rt2.openDoors();
+    expect(await ask(rt2)).toEqual({ used: 1, acted: [{ kind: "fire", ok: true, what: "cut the lights" }] });
+    expect(await ask(rt2)).toEqual({ used: 2, acted: [{ kind: "fire", ok: false, what: "cut the lights", error: "power exhausted for this run" }] });
+    rt2.dispose();
   });
 
   it("a fire the story only answers with words (a refusal) doesn't spend the power's limit", async () => {

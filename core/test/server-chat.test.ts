@@ -3,12 +3,23 @@ import { describe, expect, it } from "vitest";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import {
   ChatStore,
+  HISTORY_LIMIT,
+  boothOwnRow,
+  capHistory,
+  guestOwnRow,
   composeGuestMessages,
   decisionChannelFor,
   visibleTo,
   type ChatMessage,
 } from "../server/chat.ts";
 import { scenarioSource } from "../examples/load.ts";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { IncomingMessage, ServerResponse } from "node:http";
+import { afterAll } from "vitest";
+import { EventRuntime } from "../server/event-runtime.ts";
+import { Store } from "../server/store.ts";
 
 const SCENARIO = scenarioSource("escape-the-internet");
 
@@ -275,5 +286,131 @@ describe("visibleTo", () => {
   it("a fixed audience reaches only its members", () => {
     expect(visibleTo({ ...base, audience: ["g1"] }, "g1")).toBe(true);
     expect(visibleTo({ ...base, audience: ["g1"] }, "g2")).toBe(false);
+  });
+});
+
+describe("the reconnect history is capped for guests and booths (W8 T9-05)", () => {
+  const msg = (seq: number, o: Partial<ChatMessage> = {}): ChatMessage => ({
+    seq,
+    channel: "lobby",
+    channelKind: "lobby",
+    title: "#lobby",
+    from: "Narrator",
+    kind: "line",
+    text: `line ${seq}`,
+    ts: seq,
+    audience: "all",
+    parentSeq: null,
+    hidden: false,
+    ...o,
+  });
+
+  it("keeps the last N ordinary messages, every pinned-room row and sticky pin, and the root of a kept reply", () => {
+    const msgs: ChatMessage[] = [
+      msg(0, { channel: "codex", channelKind: "pinned" as ChatMessage["channelKind"] }),
+      msg(1, { pin: "" }),
+      msg(2), // a thread root, old
+      msg(3),
+      msg(4),
+      msg(5, { channel: "quests", channelKind: "pinned" as ChatMessage["channelKind"] }),
+      msg(6),
+      msg(7, { parentSeq: 2 }),
+      msg(8),
+    ];
+    expect(capHistory(msgs, 3).map((m) => m.seq)).toEqual([0, 1, 2, 5, 6, 7, 8]);
+    // Under the cap nothing is cut (a copy, seq-ordered).
+    expect(capHistory(msgs, 100).map((m) => m.seq)).toEqual(msgs.map((m) => m.seq));
+  });
+
+  it("keeps every alert, every card and the viewer's own rows; the public rooms are what is cut", () => {
+    const msgs: ChatMessage[] = [
+      msg(0, { kind: "signal", alert: true, text: "!lights out" }),
+      msg(1, { kind: "widget", channel: "dm:Clippy", channelKind: "dm", audience: ["g1"] }),
+      msg(2, { channel: "dm:Trabolta", channelKind: "dm", audience: ["g1"] }),
+      msg(3, { channel: "pm:g1:g2", channelKind: "dm", audience: ["g1", "g2"] }),
+      msg(4, { kind: "system", audience: ["g1"] }), // a notice to them alone
+      msg(5, { channel: "dm:Clippy", channelKind: "dm", audience: ["@Norton"] }), // a booth's Inbox
+      msg(6, { channel: "faction:Mods", channelKind: "faction", audience: ["g1", "g2", "g3"] }),
+      msg(7),
+      msg(8),
+      msg(9),
+    ];
+    // A guest (who never sees a booth's Inbox): the alert, the card and
+    // their own threads stay; the shared rows go.
+    const guest = msgs.filter((m) => m.seq !== 5);
+    expect(capHistory(guest, 1, guestOwnRow("g1")).map((m) => m.seq)).toEqual([0, 1, 2, 3, 4, 9]);
+    // A booth: its own `@<Character>` rows stay, a guest's DM is ordinary.
+    expect(capHistory(msgs, 1, boothOwnRow("Norton")).map((m) => m.seq)).toEqual([0, 1, 5, 9]);
+  });
+
+  const CODES = { event: "EVT555", prime: "PRM555", mod: "MOD555" };
+  const dirs: string[] = [];
+  afterAll(() => {
+    for (const d of dirs) rmSync(d, { recursive: true, force: true });
+  });
+  function call(rt: EventRuntime, method: string, pathAndQuery: string, body: unknown, moderator = false) {
+    const buf = Buffer.from(JSON.stringify(body ?? {}));
+    const req = {
+      headers: {},
+      [Symbol.asyncIterator]: async function* () {
+        yield buf;
+      },
+      on() {},
+    } as unknown as IncomingMessage;
+    let raw = "";
+    const res = {
+      statusCode: 0,
+      body: "",
+      writeHead(s: number) {
+        res.statusCode = s;
+        return res;
+      },
+      write(chunk: string) {
+        raw += chunk;
+        return true;
+      },
+      end(b?: string) {
+        if (typeof b === "string") res.body = b;
+        return res;
+      },
+    };
+    const url = new URL(`http://x${pathAndQuery}`);
+    return rt.handle(req, res as unknown as ServerResponse, method, url.pathname, url, { moderator }).then(() => ({
+      json: JSON.parse(res.body || "{}") as Record<string, unknown>,
+      history: (): ChatMessage[] => {
+        const block = raw.split("\n\n").find((b) => b.startsWith("event: history\n"));
+        return block === undefined ? [] : (JSON.parse(block.slice(block.indexOf("data: ") + 6)) as ChatMessage[]);
+      },
+    }));
+  }
+
+  it("a fresh guest stream after 1,000 lobby lines: the N recent lines, seq-ordered; the REST history and a director's stream keep everything", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-hist-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "escape-the-internet", scenarioSource: SCENARIO, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Alice", passcode: CODES.event });
+    const id = g.json["id"] as string;
+    await call(rt, "POST", "/api/mod/say", { channel: `guest:${id}`, text: "your own early DM" }, true);
+    await call(rt, "POST", "/api/mod/broadcast", { scope: "everyone", cue: "!an early alert" }, true);
+    for (let i = 0; i < 1000; i++) await call(rt, "POST", "/api/mod/say", { channel: "lobby", text: `lobby ${i}` }, true);
+
+    const stream = await call(rt, "GET", `/events?role=guest&token=${encodeURIComponent(g.json["token"] as string)}`, {});
+    const h = stream.history();
+    expect(h.length).toBeLessThanOrEqual(HISTORY_LIMIT + 10);
+    expect(h.length).toBeGreaterThanOrEqual(HISTORY_LIMIT);
+    expect(h.at(-1)!.text).toBe("lobby 999");
+    expect(h.some((m) => m.text === "lobby 0")).toBe(false);
+    // Their own DM and an alert outlast the public flood (a waking phone
+    // still banners an alert it missed).
+    expect(h.some((m) => m.text === "your own early DM")).toBe(true);
+    expect(h.some((m) => m.alert === true)).toBe(true);
+    const seqs = h.map((m) => m.seq);
+    expect(seqs).toEqual([...seqs].sort((a, b) => a - b));
+    // The REST history (and a director's stream) is still the whole thing.
+    expect(rt.chatHistoryFor(id).some((m) => m.text === "your own early DM")).toBe(true);
+    const mod = await call(rt, "GET", "/events?role=mod", {}, true);
+    expect(mod.history().some((m) => m.text === "lobby 0")).toBe(true);
+    rt.dispose();
   });
 });
