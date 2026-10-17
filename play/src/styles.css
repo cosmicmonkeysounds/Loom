@@ -776,7 +776,6 @@ footer {
 .wallet-text { margin: 8px 0 0; font: 14px/1.45 var(--chat-font); white-space: pre-wrap; color: var(--ink); }
 .wallet-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 12px; }
 .wallet-foot .link { margin: 0; width: auto; font-size: 12px; }
-.wallet-state { text-transform: lowercase; }
 .msg.wallet-step { align-self: stretch; display: flex; gap: 8px; align-items: baseline; margin: 4px 0; padding: 2px 10px; border-left: 3px solid var(--line); }
 .msg.wallet-step .bubble.plain { font-style: normal; color: var(--ink); }
 .msg.wallet-step.settled, .msg.wallet-step.approved, .msg.wallet-step.paid, .msg.wallet-step.accepted, .msg.wallet-step.received { border-left-color: var(--good); }
