@@ -219,6 +219,51 @@ backbone; the SaaS lives entirely in the TS stack.
 
 ## Status
 
+**Oct 31 crunch, wave 8 built 2026-10-17** (on branches `oct31-w8/{server-a,
+server-b,story,play,editor,edges}`, merged `--no-ff` to master in that order:
+c3b629e, 31f2009, b4cf6f3, 5195260, 98ca470, 138e500; then
+`oct31-w8/integration` 6f414be and `oct31-w8/docs-{show,help}` fe03135,
+944699a; not deployed — the VPS runs `w7-1017`; OCT31.md §5 *Wave 8
+status* has the per-commit table, the decisions, the deploy order and the
+open issues). A find phase drove the whole show on no-DB scratch servers
+(nine testers + a stock-take + a docs pass; verifiers kept 72 of 83).
+**Server:** a restart with the doors closed now plays the `start:` beat on
+the next open (`EventRuntime` `entryPlayed`, read back from the journal —
+the blocker: a paused preview's Push draft / sync-show reload / Go live lost
+Power On); a director's broadcast is a journaled `broadcast` mutation
+(`Sim.broadcast`); `restore()` re-asks agent DMs still owed an answer and
+rebuilds power `limit:` counts (agent fires journal `by: agent:<Character>`);
+the TV mute persists (`screen-voice.json`); every SSE write goes through
+`sseWrite` (a stalled stream is dropped; a lagging director console skips
+views); `parseExprCached` + per-watcher keys (replay ≈ 10× faster); the
+guest / booth reconnect `history` is capped (`capHistory`, `HISTORY_LIMIT`
+400; alerts, cards, own threads, pinned rooms, pins kept); `/api/prime/login`
+checks the part before the doors, `/api/prime/say` only where a booth has a
+composer, a restricted guest can't join / defect; a room terminal resolves
+its LOCATION before the doors; `GET /api/mod/log?after=&limit=`;
+`ModView.cast` `part` / `held`. **The cue sheet:** a press the story refused
+(only a staff-room line; `notePress` / `pressRefused`) never becomes LAST or
+ticks and `/api/mod/signal` answers `refused: true`; a repeat never moves
+LAST back; NEXT skips fired rows and rows whose admin `while:` is false
+(`InteractionSummary.live` / `CueInteraction.live`; a `while:` on an admin
+cue steers NEXT only); a `repeat: true` LAST stays NEXT while live.
+**Story:** ⚖ `the_verdict` is its own cue after 📄; from 📄 the server room
+only tells `# hosts`; refused admin cues say why in `# hosts`; the branch
+cues carry `while:` (NEXT is empty during the Y2K hour, follows the ending);
+banished is no reinstallation; the alarm latch restores the look; the late
+clearance, the pickup-line song line, the hand jive's screens. **Play:** a
+refused typed line stays in the composer with the reason (15 s timeout); no
+wake banner for a retracted pin; the fact card preselects a lone question;
+the director phone's award value + *Not taken*. **Editor:** the Terminals
+card's room; Export run / End keep the whole ledger; performer parts only;
+the agent's worker dot. **Edges:** TV text captions over slides; the King's
+tablet after an ending; stagehand voice `num_ctx` 32768 + `check`;
+`secrets.never` matches pairs either way round and spelled years
+(`titi:facts`). Suites: core 1386 (incl. Postgres; the show test 210), play
+240, editor 290, terminal 211, reinstall/web 338, house 152 + 4 skipped, bank
+145, stagehand 302, ops 118; loomcheck `--smoke` 0 / 0, `titi:facts --check`
+up to date.
+
 **Oct 31 crunch, wave 7 built 2026-10-17** (on branches `oct31-w7/{platform,
 story,agent,hardware,terminal}`, merged `--no-ff` to master in that order:
 e617490, 2b3a23e, 41cbf89, be242eb, 6eb9864; then `oct31-w7/integration`
