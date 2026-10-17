@@ -4487,6 +4487,19 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     expect(said.map((x) => x.at)).toEqual([]);
   });
 
+  it("the shed clues have a rain-night home: their text names no shed, and the README places them in The Optical Drive on a rain night", () => {
+    const sim = fresh();
+    for (const e of ["The Site Schedule", "The Bugdom Sketch"]) {
+      const c = sim.model.codex.get(e)!;
+      expect(c, e).toBeDefined();
+      expect(c.text, e).not.toMatch(/\bshed\b/iu);
+    }
+    const readme = readFileSync(join(scenarioDir(SHOW), "README.md"), "utf8");
+    const rain = readme.split("\n").find((l) => l.startsWith("| **The Optical Drive**") && l.includes("rain night only"));
+    expect(rain).toContain("`SITE-SCHEDULE`");
+    expect(rain).toContain("`BUGDOM-VR`");
+  });
+
   it("B11: lie → accurate → lie counts the filing once; an uncertain correction clears it to unanswered", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
