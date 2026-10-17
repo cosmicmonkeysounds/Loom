@@ -473,6 +473,7 @@ Trabolta's persona `facts:` whitelist (he sees it).
 | Night.clock_30 / Night.clock_15 / Night.clock_5 / Night.clock_1 | bool false | each clock warning fired once | |
 | Night.alarms | number 0 | alarm trips | |
 | Night.alarm_on / Night.alarm_clear_at | bool false / number 0 | the patch-bay alarm latch: a second trip within 120 s does nothing (§3 E3; the door never alarms since wave 7) | |
+| Night.lights_before_alarm | string | the look the alarm replaced, put back when the latch clears (§3 E2; wave 8) | |
 | Night.wrong_combos | number 0 | rejected patch combinations (the second trips the alarm) | |
 | Night.heart_opened / Night.door_quiet_until | bool false / number 0 | wave 7: The Heart has played (the first door opening from step 14); openings before `door_quiet_until` (120 s after the last) do nothing (§3 E2). Not secret | |
 | Night.gloat_at | number 0 | wave 7: Trabolta gloats over a lost / drawn King game only after this (then +300 s) | |
@@ -1237,7 +1238,7 @@ inciting event, there is a classic Windows screensaver on the TV").
 | lights_pong | truth_pong | backyard floods on |
 | lights_trust_chart | trust_chart | blue podium |
 | lights_y2k | y2k_clock | amber, dim, slow red pulse |
-| lights_server_open | majority_reached; The Heart (the first door opening from step 14, not while the alarm is latched) | server room dim green (also turns the siren off) |
+| lights_server_open | majority_reached; The Heart (the first door opening from step 14, not while the alarm look is up); the latch's end after either (wave 8) | server room dim green (also turns the siren off) |
 | lights_alarm | Server Room Alarm | server room red strobe + house red flash |
 | lights_blackout | Trabolta Disabled, Computer Destroyed | everything off |
 | lights_dance | the story watcher `Night.dance_at` (blackout + 10 s); admin `lights_dance` fallback | dance look (Zigbee bulbs back on + WLED dance preset) |
@@ -2266,7 +2267,9 @@ Door Code* are all `secret: true`, so no model ever reads them.
 
 **E1 Majority — `majority_reached`** (W).
 - Rule: phase `majority`, step 15 · `cue lights_server_open` · `set Night.lights =
-  "server_open"` · `complete quest The Clubs for Password Manager` · `if Kernel.majority ==
+  "server_open"` (wave 8: while the alarm look is up, `alarm_on` and `Night.lights == "alarm"`,
+  it only saves `lights_before_alarm = "server_open"`, so the siren and the strobe stay; the
+  latch's end puts the look up) · `complete quest The Clubs for Password Manager` · `if Kernel.majority ==
   "stay":` `complete quest Recruit To Stay for everyone` + `fail quest Recruit To Leave for
   everyone` `else:` the reverse + `complete quest Find The Exit for everyone` · `-> Majority
   Reached` (public narration: `Somewhere in the basement, the cold-storage room hums louder.`).
@@ -2306,22 +2309,30 @@ when server_door_opened:
   double report never replays the scene; an opening after 120 quiet seconds plays *Back To The
   Heart* (`Trabolta: Back again. The terminal is on the wall. I am not going anywhere.`).
 - `== The Heart` (`setting: The Server Room`, `cast: Trabolta`, no subject): `reveal The Server
-  Room` (everyone, first — it wakes the server-room terminal) · `if Night.alarm_on != true:`
-  `cue lights_server_open` (it also silences the siren) and, before step 16, `set Night.lights =
-  "server_open"` (from the final reveal the finale's look stays the replayed one) · the
+  Room` (everyone, first — it wakes the server-room terminal) · unless the alarm look is up
+  (`Night.alarm_on == true and Night.lights == "alarm"`, when it only saves
+  `lights_before_alarm = "server_open"` before step 16): `cue lights_server_open` (it also
+  silences the siren) and, before step 16, `set Night.lights = "server_open"` (from the final
+  reveal the finale's look stays the replayed one). After 💡 (the alarm look gone, the siren
+  off) the look goes up at once (wave 8) · the
   narration (`The cold door opens. Cold air, and a hum like something concentrating…`) ·
   Trabolta's candid opener: he will not pretend, the patch bay is his heart, he does not know
   which cables end him, everything was for Sandy (scenario 1) / for her (otherwise), *"There is a
   terminal on the wall. Scan your pass and talk to me."*
 - `== Server Room Alarm` (`setting: The Server Room`; public), now reached **only from the patch
   bay** (E3): `set Night.alarms += 1` · `if Night.alarms == 1:` `set Trabolta.composure -= 10`
-  (only the first alarm hurts him) · `reveal The Server Room` · `cue lights_alarm`, `cue
+  (only the first alarm hurts him) · `reveal The Server Room` · `if Night.lights != "alarm":
+  set Night.lights_before_alarm = Night.lights` (the look to put back) · `cue lights_alarm`, `cue
   screens_alarm`, `sound alarm_siren` · `fire alarm_tripped` (every Enforcer's booth: `🚨 Server
   room alarm: a second wrong combination at the patch bay. Get there. Whoever is at the cables
   goes to the Internet.`) · `broadcast "!🚨 An alarm screams somewhere in the machine." to
   everyone` · `Trabolta: Who is in my— get OUT.` (No `to group(Antivirus)` broadcast: it reaches
   no booth, §0 rule 16.) `when Night.alarm_on == true and Time.elapsed >= Night.alarm_clear_at:
-  set Night.alarm_on = false` keeps the 120 s latch.
+  set Night.alarm_on = false` keeps the 120 s latch, and (wave 8, T2-05) when it clears with
+  the alarm look still up and the night not ended, puts back the look the alarm replaced:
+  `server_open` → `lights_y2k` + `lights_server_open` (a majority or The Heart during the
+  alarm), `final_reveal`, `restore`, else `lights_y2k`. If 💡 or an ending changed the look
+  meanwhile it leaves the lights alone. 🔄 reset leaves them as they are.
 - `reset_server_room` (D, `🔄 Server room: reset the patch-bay alarm`): `Night.wrong_combos = 0`,
   `alarm_on = false`, `alarm_clear_at = 0`, `heart_opened = false`, `door_quiet_until = 0`, a
   `🔄` readout; lights stay (💡 restores them); the keypad is never touched. Power On still sends
