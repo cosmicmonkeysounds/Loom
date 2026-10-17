@@ -4394,6 +4394,15 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     expect(lines(r2, "Clippy")).toContain("Trabolta accepts it. The answer is: Mister Pickles.");
   });
 
+  it("B6: clearance posts one \"open now\" notice: the house rooms and # task-manager together", () => {
+    const sim = fresh();
+    sim.fireBeat("Power On");
+    const evs = upload(sim, "g1", "Calculator");
+    const open = composeGuestMessages(sim, evs).filter((m) => m.text.includes("open now"));
+    expect(open.map((m) => m.text)).toEqual(["📂 The Start Bar, The CPU, The Steam Room, Disk Cleanup, The Cloud, The RAM, The Fan Closet, The Graphics Card, The Hard Drive and # task-manager are open now."]);
+    expect(open[0]!.audience).toEqual(["g1"]);
+  });
+
   it("B11: lie → accurate → lie counts the filing once; an uncertain correction clears it to unanswered", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
