@@ -1915,9 +1915,17 @@ ROLE Program
     set self.pickup_seen = Night.pickup_gen
     show answer "Give me a pickup line that works on Sandy. One line. I will know it when I hear it." to program with thread: Trabolta, question: "P1", max: 120, button: "Say it"
 
+  // Only Grok Prom and the song hear it: after the rave he has ridden away,
+  // and the advice poll, the banishment and the hand jive have moved on
+  // from the line (a card answered late gets a quiet "too late").
   when answer answered for program:
     if question == "P1":
-      if verdict == "accurate" and Night.line_by == "none":
+      if Night.phase != "grok_prom" and Night.ending != "song" and Night.ending != "song_pickup":
+        if Night.ending == "rave":
+          reply Trabolta has ridden away. Nobody reads your line.
+        else:
+          Trabolta: Too late for lines, {program.name}.
+      else if verdict == "accurate" and Night.line_by == "none":
         if Night.phase == "grok_prom" and Night.ended != true:
           fire pickup_line_accepted for program
         else:

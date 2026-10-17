@@ -5241,6 +5241,36 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     expect(lines(pl, "Trabolta")).toContain("Not every fact you gave me was true. But that line was, and it tells me what to say to her. You're the one that I want.");
   });
 
+  it("T2-06: a pickup line after the rave or during the advice poll / banishment celebrates nothing", { timeout: SLOW }, () => {
+    const P1 = (sim: Sim, g: string) => fire(sim, "answer answered", g, { question: "P1", text: "You're the one that I want", verdict: "accurate", card: 1 });
+    const rave = boot();
+    toBobbing(rave, { lie: true });
+    truthTxt(rave);
+    fire(rave, "no_pickup_line");
+    const r = P1(rave, "g3");
+    expect(casts(r)).toEqual([]);
+    expect(lines(r, "Trabolta")).toEqual([]);
+    expect(replies(r).map((x) => x.text)).toEqual(["Trabolta has ridden away. Nobody reads your line."]);
+    expect(v(rave, "Night.line_by")).toBe("none");
+    expect(v(rave, "Night.ending")).toBe("rave");
+    const adv = boot();
+    toBobbing(adv, { lie: true });
+    truthTxt(adv);
+    fire(adv, "ask_for_advice");
+    const a = P1(adv, "g3");
+    expect(casts(a)).toEqual([]);
+    expect(lines(a, "Trabolta")).toEqual(["Too late for lines, OpenOffice."]);
+    expect(v(adv, "Night.line_by")).toBe("none");
+    expect(v(adv, "Night.ended")).toBe(false);
+    fire(adv, "advice_thwarted");
+    expect(casts(P1(adv, "g4"))).toEqual([]);
+    // The song still celebrates the first correct line (flavour).
+    const song = boot();
+    toBobbing(song);
+    truthTxt(song);
+    expect(casts(P1(song, "g3")).map((b) => b.cue)).toEqual(['"💘 OpenOffice knew the line."']);
+  });
+
   it("T2-03: once truth.txt is read the server room is quiet: the patch bay, 🕊 and the door only tell # hosts", { timeout: SLOW }, () => {
     const QUIET = ["patch_combo_a", "patch_combo_b", "patch_rejected", "talked_down", "server_door_opened"];
     const quiet = (sim: Sim, where: string) => {
