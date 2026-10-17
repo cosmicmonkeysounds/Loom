@@ -13,7 +13,7 @@
 | **IN** | The patch-bay watch is inside the server room with the door shut: the director may fire 🕚 (from 🕚 the first opening plays The Heart, crew or not) | server-room Antivirus → director |
 | **A** / **B** / **WRONG** | Patch bay (Tier 0): Combo A is in / Combo B is in / a wrong combination | server-room Antivirus → director |
 | **ALARM** | The patch-bay alarm is going (a second wrong combination), or should be and isn't | anyone → Antivirus |
-| **LIGHTS** | The lights are wrong for this moment: re-fire the current lights cue | anyone → tech op |
+| **LIGHTS** | The lights are wrong for this moment: the tech op restarts the `show` job (it replays the current look) or sets it by hand | anyone → tech op |
 | **HOLD** | Stop the next cue: something is not ready | anyone → director |
 | **ARRIVAL** | Someone is at the door after 20:30 | house manager → director, an Antivirus |
 | **ALL STOP** | Safety stop. See the emergency card | **anyone** |

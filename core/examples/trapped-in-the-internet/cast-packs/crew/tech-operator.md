@@ -51,7 +51,7 @@ stagehand log · the heartbeat card · QLab.
 
 | Problem | Do |
 |---|---|
-| stagehand `show` crashed | restart its job (`uv run stagehand launchd restart --job show`), then **re-fire the current lights cue** (ask the director which) |
+| stagehand `show` crashed, or the lights are wrong (**LIGHTS**) | restart its job (`uv run stagehand launchd restart --job show`): on reconnect it replays the current look (`Night.lights`, never the alarm) and any room Trabolta has cut. Still wrong → set the look by hand from the table below (`Night.lights` in Run → World names it). There is no cue to re-fire: phase cues play once |
 | Trabolta's worker crashed | restart the `agents` job, or `uv run stagehand run --config <house>.yaml --only agents`. The hold line covers the gap; the directors answer DMs meanwhile |
 | **NEVER** | `pkill -f "stagehand run"` (it kills both jobs) |
 | Ollama slow / evicted | check `ollama ps` shows both models; reload; the first reply after a reload takes ≈ 25 s |
@@ -59,7 +59,7 @@ stagehand log · the heartbeat card · QLab.
 | the TV page stalled | reload Chrome, **click once into it** |
 | Z2M coordinator dead | swap to the spare dongle + restore the backup (≈ 10 min); meanwhile, wall switches |
 | WLED dead | power-cycle the controller; presets survive |
-| uplink blip | after it's back: re-fire the current lights cue, check the heartbeat card (OP-16) |
+| uplink blip | the `show` job catches the lights up by itself when the feed reconnects; check the look and the heartbeat card (OP-16); wrong → restart the `show` job as above |
 | **house internet down** | **fire cues by hand** (table below). Tell the house manager: guests turn Wi-Fi off and use cellular |
 | house Mac dead | the story is fine on the VPS. Lights hold their last look; use wall switches / the WLED app. TV: [[EDIT: a spare laptop on the HDMI with the `view=tv` URL]]. Trabolta is down: the directors answer DMs |
 | router dead | the ISP router (same SSID/password) |
