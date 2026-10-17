@@ -70,7 +70,7 @@ describe.each([
       expect(locate(house, behind).room, `${t.id} hangs on a wall`).not.toBe(t.room);
     }
     expect(house.terminals.map((t) => t.id).sort()).toEqual(
-      ["bathroom-1-door", "desktop-tv", "hall", "optical-drive", "ram", "start-bar", "tent"].sort(),
+      ["bathroom-1-door", "desktop-tv", "hall", "optical-drive", "ram", "server-room", "start-bar", "tent"].sort(),
     );
   });
 

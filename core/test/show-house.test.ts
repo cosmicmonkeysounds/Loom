@@ -211,11 +211,19 @@ describe("the two variants", () => {
 
   it("share the terminal ids, the duck spots and the LOCATIONs", () => {
     const ids = (h: HouseMap) => h.terminals.map((t) => t.id).sort();
-    expect(ids(tent)).toEqual(["bathroom-1-door", "desktop-tv", "hall", "optical-drive", "ram", "start-bar", "tent"]);
+    expect(ids(tent)).toEqual(["bathroom-1-door", "desktop-tv", "hall", "optical-drive", "ram", "server-room", "start-bar", "tent"]);
     expect(ids(shed)).toEqual(ids(tent));
     expect(shed.duck.spots).toEqual(tent.duck.spots);
     const locations = (h: HouseMap) => h.rooms.map((r) => r.location).sort();
     expect(locations(shed)).toEqual(locations(tent));
+  });
+
+  it("hang the server-room terminal in The Server Room on both variants (wave 7: room=The Server Room)", () => {
+    for (const h of [tent, shed]) {
+      const t = h.terminals.find((x) => x.id === "server-room");
+      expect(t, h.variant ?? "map").toMatchObject({ name: "Server Room", room: "server-room", pos: [-5, -1.3, 12], yaw: 0 });
+      expect(h.rooms.find((r) => r.id === t!.room)?.location).toBe("The Server Room");
+    }
   });
 
   it("differ only where the Internet is", () => {

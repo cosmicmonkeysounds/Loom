@@ -177,6 +177,7 @@
     { "id": "start-bar", "name": "Start Bar", "room": "start-bar", "pos": [-5, 1.4, 6], "yaw": 180 },
     { "id": "bathroom-1-door", "name": "Bathroom 1 door", "room": "basement-hall", "pos": [-0.2, -1.3, 3], "yaw": 180 },
     { "id": "ram", "name": "RAM", "room": "ram", "pos": [7, -1.3, 7.5], "yaw": 90 },
+    { "id": "server-room", "name": "Server Room", "room": "server-room", "pos": [-5, -1.3, 12], "yaw": 0 },
     { "id": "tent", "name": "Shed", "room": "shed", "pos": [-5.25, 1.4, 20], "yaw": 180 }
   ],
   "duck": {
