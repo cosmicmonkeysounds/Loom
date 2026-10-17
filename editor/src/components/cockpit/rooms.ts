@@ -16,6 +16,7 @@
 //! projection yet (the first render after switching).
 
 import { useMemo } from 'react'
+import { foldName } from '@loom/core/parser'
 import {
   OPERATOR_LENS,
   useCockpit,
@@ -193,6 +194,30 @@ function addTrafficRooms(map: Map<string, Room>, input: RoomsInput, lens: LensKi
   }
 }
 
+/** A room title's comparison key: `# hosts`, `#hosts` and `Hosts` are one name. */
+function roomNameKey(title: string): string {
+  return foldName(title.replace(/^#\s*/u, ''))
+}
+
+/** The suffix a GROUP's derived room wears when a declared room shares its name. */
+export const SIDE_SUFFIX = ' (side)'
+
+/**
+ * A GROUP's derived room (`faction:Hosts`, `#hosts`) beside a declared
+ * CHANNEL of the same name (`# hosts`): two rooms a director can't tell
+ * apart, and the story's readouts land only in the declared one. Keep both
+ * — the side's broadcasts are real traffic — but label the derived one
+ * `#hosts (side)`.
+ */
+function labelTwinSides(map: Map<string, Room>): void {
+  const declared = new Set<string>()
+  for (const r of map.values()) if (!r.channel.startsWith('faction:') && r.dmGuest === null) declared.add(roomNameKey(r.title))
+  for (const r of map.values()) {
+    if (!r.channel.startsWith('faction:') || r.dmGuest !== null) continue
+    if (declared.has(roomNameKey(r.title))) r.title = `${r.title}${SIDE_SUFFIX}`
+  }
+}
+
 /** The derived rooms list, sorted for the sidebar. Pure — unit-testable. */
 export function buildRooms(input: RoomsInput): Room[] {
   const { channels, roster, cast, factions, perspective } = input
@@ -255,6 +280,7 @@ export function buildRooms(input: RoomsInput): Room[] {
     }
     addTrafficRooms(map, input, lens)
   }
+  labelTwinSides(map)
   const orderOf = (r: Room) => r.order ?? roomOrder(r.kind)
   return [...map.values()].sort((a, b) => orderOf(a) - orderOf(b) || a.title.localeCompare(b.title))
 }
