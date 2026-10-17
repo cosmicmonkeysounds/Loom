@@ -23,9 +23,14 @@ The mind file declares the hunt in its frontmatter (never shown to a model):
       never: ["1997", "'97", "V2-D5"]              # what no line of his may ever
                                                   #   carry, whoever typed it: the
                                                   #   door code and every patch-bay
-                                                  #   pair (any spelling: V2 → D5,
-                                                  #   v2-d5, V2 to D5); never shown
-                                                  #   to a model
+                                                  #   pair (any spelling, either
+                                                  #   way round: V2 → D5, v2-d5,
+                                                  #   D5 to V2, V-2/D-5); a code
+                                                  #   with separators (1 9 9 7,
+                                                  #   1,997) and a number in words
+                                                  #   (nineteen ninety-seven,
+                                                  #   nineteen ninety seven) match
+                                                  #   too; never shown to a model
 
 and the worker enforces it at every door a verdict or an answer could
 come through:
@@ -75,6 +80,16 @@ def _norm(text: str) -> str:
 _PAIR = re.compile(r"^([a-z]+)\s*(\d+)\s*-\s*([a-z]+)\s*(\d+)$", re.IGNORECASE)
 #: Between the two ends of a patch-bay pair, however it is written.
 _JOIN = r"(?:\s*(?:-+>?|\u2013|\u2014|\u2192|=>|>|/|:|,)\s*|\s+(?:to|into|and)\s+|\s*)"
+#: Between two digits of a code: "1 9 9 7", "1,997", "1-9-9-7".
+_DIGIT_GAP = r"(?:\s*[,.\-]?\s*)"
+#: The words a number is spelled with; a `never` word made only of these
+#: matches with any spacing or hyphens ("nineteen ninety-seven",
+#: "nineteen ninety seven", "nineteen-ninetyseven", "… hundred and …").
+_NUMBER_WORDS = frozenset(
+    "zero oh one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen "
+    "seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety hundred thousand and".split()
+)
+_WORD_GAP = r"(?:[\s\-]*)"
 _DROP = object()
 #: The trace's names for an update's fields (as the hunt scrub labels them).
 _LABELS = {"learned_add": "learned", "learned": "learned", "notes_add": "note", "brief": "brief", "claims_add": "claim", "summary": "summary"}
@@ -88,9 +103,16 @@ def _never_pattern(words: tuple[str, ...]) -> re.Pattern[str] | None:
         if not w:
             continue
         pair = _PAIR.match(w)
+        parts = [p for p in re.split(r"[\s\-]+", w) if p]
         if pair:
+            # A patch cable has no direction: D5 → V2 is the same pair.
             a, n, b, m = pair.groups()
-            body = rf"{re.escape(a)}\s*{n}{_JOIN}{re.escape(b)}\s*{m}"
+            one, two = rf"{re.escape(a)}\s*-?\s*{n}", rf"{re.escape(b)}\s*-?\s*{m}"
+            body = rf"{one}{_JOIN}{two}|{two}{_JOIN}{one}"
+        elif w.isdigit() and len(w) >= 3:
+            body = _DIGIT_GAP.join(w)
+        elif parts and all(p in _NUMBER_WORDS for p in parts):
+            body = _WORD_GAP.join(re.escape(p) for p in parts)
         else:
             body = r"\s+".join(re.escape(part) for part in w.split(" "))
         before = r"(?<![a-z0-9])" if w[0].isalnum() else ""

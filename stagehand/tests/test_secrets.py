@@ -399,6 +399,19 @@ def test_leaks_catches_the_code_and_every_spelling_of_a_pair():
         assert not NEVER.leaks(text), text
 
 
+def test_leaks_catches_a_pair_either_way_round_and_a_code_spelled_out():
+    """W8 T8-01: a cable has no direction, and a voice told to speak plainly
+    says numbers in words — both reached the voice and the shared mind."""
+    spelled = Secrets(never=("1997", "'97", "97", "nineteen ninety-seven", "one nine nine seven", "V2-D5"))
+    for text in ["D5-V2", "D5 to V2", "Patch D5 to V2, program.", "V-2 to D-5", "d-5 → v-2", "1 9 9 7", "1,997", "1-9-9-7",
+                 "The door code is nineteen ninety-seven.", "nineteen ninety seven", "Nineteen-Ninety-Seven", "In 97 I met her", "one nine nine seven"]:
+        assert spelled.leaks(text), text
+    for text in ["19970", "970", "V22-D5", "V2 → D6", "nineteen ninety-eight", "ninety-seven bottles", "1998"]:
+        assert not spelled.leaks(text), text
+    # Without the spelled forms declared, only the digits are withheld (titi:facts declares them).
+    assert not NEVER.leaks("nineteen ninety-seven") and NEVER.leaks("D5 to V2") and NEVER.leaks("1 9 9 7")
+
+
 def test_scrub_drops_a_typed_door_code_or_combo_from_every_shared_line_of_the_mind():
     """A program types the code to him: an unjudged claim is no verdict on
     a hunt topic, but the mind is shared by every conversation, so nothing
