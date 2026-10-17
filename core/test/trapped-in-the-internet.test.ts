@@ -4432,6 +4432,20 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     expect(opened(fire(sim, "chess_won"))).toHaveLength(1);
   });
 
+  it("a re-arm resets the wrong-combo count: one wrong patch in the next chess window is forgiven again", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    fire(sim, "chess_won");
+    expect(beats(fire(sim, "patch_rejected"))).not.toContain("Server Room Alarm"); // forgiven in a window
+    expect(v(sim, "Night.wrong_combos")).toBe(1);
+    fire(sim, "rearm_server_room");
+    expect(v(sim, "Night.wrong_combos")).toBe(0);
+    fire(sim, "chess_won");
+    expect(beats(fire(sim, "patch_rejected"))).not.toContain("Server Room Alarm");
+    expect(v(sim, "Night.alarm_on")).not.toBe(true);
+    expect(beats(fire(sim, "patch_rejected"))).toContain("Server Room Alarm"); // two is still two
+  });
+
   it("B11: lie → accurate → lie counts the filing once; an uncertain correction clears it to unanswered", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);

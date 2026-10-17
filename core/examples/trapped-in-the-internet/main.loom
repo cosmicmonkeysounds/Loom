@@ -3430,11 +3430,13 @@ when server_unlock:
   set Night.lights = "server_open"
 
 // Re-lock + re-arm mid-show (a rehearsal or an early unlock left the door
-// open): locked again, the alarm latch cleared, any chess window closed.
+// open): locked again, the alarm latch cleared, any chess window closed,
+// the wrong-patch count back to zero (a fresh door forgives one again).
 // The majority stays won; its members now trip the alarm like anyone.
 when rearm_server_room:
   set Kernel.server_unlocked = false
   set Kernel.disarmed_until = 0
+  set Night.wrong_combos = 0
   set Night.alarm_on = false
   set Night.alarm_clear_at = 0
   do door server_room, state: locked
