@@ -113,10 +113,15 @@ export class World {
    * reads and writes `Ivo Marsh.trusts.g1`.
    */
   private aliases = new Map<string, string>();
+  /** Head segment → its alias target (null = none), so a read of an unset
+   *  path — every watcher reads some, per guest, per drain — doesn't fold
+   *  the same head again. Cleared whenever an alias is added. */
+  private heads = new Map<string, string | null>();
 
   /** Register an entity id so its folded spellings resolve to it. */
   addAlias(exact: string): void {
     this.aliases.set(foldName(exact), exact);
+    this.heads.clear();
   }
 
   /** The canonical key for `key`, resolving the head segment's alias. */
@@ -124,8 +129,13 @@ export class World {
     if (this.values.has(key) || this.collections.has(key)) return key;
     const dot = key.indexOf(".");
     const head = dot >= 0 ? key.slice(0, dot) : key;
-    const exact = this.aliases.get(foldName(head));
-    if (exact === undefined || exact === head) return key;
+    let exact = this.heads.get(head);
+    if (exact === undefined) {
+      exact = this.aliases.get(foldName(head)) ?? null;
+      if (this.heads.size >= 8192) this.heads.clear();
+      this.heads.set(head, exact);
+    }
+    if (exact === null || exact === head) return key;
     return dot >= 0 ? exact + key.slice(dot) : exact;
   }
 
@@ -362,9 +372,13 @@ function resolvePath(
   locals: Local[],
   bindings: Bindings | undefined,
 ): Value {
-  // Hook-scope bindings substitute into every segment first.
-  const segs =
-    bindings !== undefined ? segments.map((s) => bindings.get(s) ?? s) : segments;
+  // Hook-scope bindings substitute into every segment first (a loop, not a
+  // `map` closure: this runs for every path of every watcher, per guest).
+  let segs = segments;
+  if (bindings !== undefined) {
+    segs = new Array<string>(segments.length);
+    for (let i = 0; i < segments.length; i++) segs[i] = bindings.get(segments[i]!) ?? segments[i]!;
+  }
   const head = segs[0] ?? "";
   for (let i = locals.length - 1; i >= 0; i--) {
     const [name, value] = locals[i]!;
@@ -385,8 +399,11 @@ export function expandPath(segments: string[], bindings: Bindings): string {
   return segments.map((s) => bindings.get(s) ?? s).join(".");
 }
 
+function num(v: Value): number {
+  return asNumber(v) ?? 0;
+}
+
 function evalBinary(op: BinOp, l: Value, r: Value): Value {
-  const num = (v: Value): number => asNumber(v) ?? 0;
   switch (op) {
     case "add":
       if (l.kind === "string") return vString(l.value + display(r));
