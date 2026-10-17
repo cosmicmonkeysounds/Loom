@@ -3828,18 +3828,29 @@ when trabolta_disabled:
 
 // Ten seconds of dark, then the dance look (the song file opens with ten
 // seconds of silence, so music and lights land together). The dance also
-// lifts the phones' full-screen GO TO THE LIVING ROOM (the `!!` pin above).
+// lifts the phones' full-screen GO TO THE LIVING ROOM (the `!!` pin above)
+// and the screens' flashing one (a screen overlay stays up until a newer
+// slide or base: the screensaver base clears it; everyone is in the living
+// room by now).
 when Night.dance_at > 0 and Time.elapsed >= Night.dance_at:
   set Night.dance_at = 0
   cue lights_dance
   set Night.lights = "dance"
   fire lift_the_takeover
+  fire dance_screens
 
 when lights_dance:
   set Night.dance_at = 0
   cue lights_dance
   set Night.lights = "dance"
   fire lift_the_takeover
+  fire dance_screens
+
+when dance_screens:
+  if Night.screen == "go_to_living_room":
+    cue screens_screensaver
+    set Night.screen = "screensaver"
+    set Night.terminals = "screensaver"
 
 // The `!!` pin has no close button: every way out of the server-room
 // endings takes it down (the dance, 🪩, the recount, the summary, the

@@ -1253,6 +1253,9 @@ describe("Trapped in the Internet — the whole night", () => {
     const dance = advance(sim, 10);
     expect(has(cues(dance), "lights_dance")).toBe(true);
     expect(dance.filter((e) => e.type === "unpinned").map((e: any) => `${e.key}|${e.text}`)).toEqual(["|💃 Dance."]);
+    // T6-05: the screens' GO TO THE LIVING ROOM overlay comes down with the dance too.
+    expect(cues(dance)).toContain("cue screens_screensaver");
+    expect(v(sim, "Night.screen")).toBe("screensaver");
 
     sim.signal("send to the internet", "g9", null, "Norton Anti-Virus");
     const rc = sim.signal("trabolta_recounts");
@@ -1532,7 +1535,9 @@ describe("Trapped in the Internet — combo B", () => {
     expect(fate.some((e) => e.audience[0] === "g3" && e.text.includes("into purgatory"))).toBe(true); // The Way Out
     expect(fate.some((e) => e.audience[0] === "g5" && e.text.startsWith("Your body is in the Maps and Ducks building"))).toBe(true); // nobody's
     expect(has(cues(b), "windows_shutdown")).toBe(true);
-    expect(has(cues(advance(sim, 10)), "lights_dance")).toBe(true);
+    const dance = advance(sim, 10);
+    expect(has(cues(dance), "lights_dance")).toBe(true);
+    expect(cues(dance)).toContain("cue screens_screensaver"); // T6-05
     const p = fire(sim, "clippy_reads_summary");
     expect(beats(p)).toContain("Purgatory");
     expect(texts(p).some((t) => t.includes("purgatory forever together"))).toBe(true);
@@ -5294,6 +5299,19 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     const early = upload(first, "e1", "Calculator");
     expect(lines(early, "Norton Anti-Virus")).toContain("Scanned. Calculator is free of viruses and ready to explore the entire computer. There will be a game soon in the Desktop. The house will announce it. Go through the Tube.");
     expect(texts(early).some((t) => t.includes("A classic screensaver drifts across the TV"))).toBe(true);
+  });
+
+  it("T6-05: 🪩 clears the living-room overlay only when it is up", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    // A 🪩 mid-hour (no ending): the Y2K screens stay.
+    expect(cues(fire(sim, "lights_dance")).filter((c) => c.startsWith("cue screens_"))).toEqual([]);
+    expect(v(sim, "Night.screen")).toBe("y2k");
+    fire(sim, "patch_combo_a");
+    expect(v(sim, "Night.screen")).toBe("go_to_living_room");
+    // The director's 🪩 before the auto dance clears it; the auto dance then has nothing to clear.
+    expect(cues(fire(sim, "lights_dance"))).toContain("cue screens_screensaver");
+    expect(cues(advance(sim, 10)).filter((c) => c.startsWith("cue screens_"))).toEqual([]);
   });
 
   it("T1-03: the song after a pickup line never says every fact was true", { timeout: SLOW }, () => {
