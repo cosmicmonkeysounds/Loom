@@ -243,10 +243,14 @@ export function guestOwnRow(id: string): (m: ChatMessage) => boolean {
 }
 
 /** `capHistory`'s `personal` for the booth of `character`: every row
- *  addressed to it (`@<Character>` — its Inbox, its talk with an agent). */
+ *  addressed to it (`@<Character>` — its Inbox, its talk with an agent) and
+ *  its own `dm:<Character>` threads with guests (each guest's card in the
+ *  booth is built from them; a booth sees every public room, so 400 rows
+ *  is only 20–30 minutes of a full house). */
 export function boothOwnRow(character: string): (m: ChatMessage) => boolean {
   const me = `@${character}`;
-  return (m) => Array.isArray(m.audience) && m.audience.includes(me);
+  const dm = `dm:${character}`;
+  return (m) => Array.isArray(m.audience) && (m.audience.includes(me) || m.channel === dm);
 }
 
 function factionChannel(faction: string): ChannelHead {

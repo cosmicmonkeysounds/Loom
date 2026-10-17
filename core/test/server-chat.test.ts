@@ -339,8 +339,20 @@ describe("the reconnect history is capped for guests and booths (W8 T9-05)", () 
     // their own threads stay; the shared rows go.
     const guest = msgs.filter((m) => m.seq !== 5);
     expect(capHistory(guest, 1, guestOwnRow("g1")).map((m) => m.seq)).toEqual([0, 1, 2, 3, 4, 9]);
-    // A booth: its own `@<Character>` rows stay, a guest's DM is ordinary.
+    // A booth: its own `@<Character>` rows stay, another character's DM with a guest is ordinary.
     expect(capHistory(msgs, 1, boothOwnRow("Norton")).map((m) => m.seq)).toEqual([0, 1, 5, 9]);
+    // …but its own `dm:<Character>` threads with guests stay (each guest's card is built from them).
+    const clippy = capHistory(msgs, 1, boothOwnRow("Clippy")).map((m) => m.seq);
+    expect(clippy).toContain(5);
+    expect(clippy).not.toContain(2);
+    const talk: ChatMessage[] = [
+      msg(0, { channel: "dm:Clippy", channelKind: "dm", audience: ["g1"], from: "g1" }),
+      msg(1, { channel: "dm:Clippy", channelKind: "dm", audience: ["g1"], from: "Clippy" }),
+      ...Array.from({ length: 1000 }, (_, i) => msg(i + 2)),
+    ];
+    const kept = capHistory(talk, 400, boothOwnRow("Clippy"));
+    expect(kept.slice(0, 2).map((m) => m.seq)).toEqual([0, 1]);
+    expect(kept).toHaveLength(402);
   });
 
   const CODES = { event: "EVT555", prime: "PRM555", mod: "MOD555" };
