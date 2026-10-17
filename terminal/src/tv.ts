@@ -70,6 +70,16 @@ export function planVoice(
   return { cursor: next, lines };
 }
 
+/**
+ * A room terminal's cursor while it sleeps (wave 7): it follows the room's
+ * head, so the lines that arrive *with* the wake — the door cutscene, which
+ * opens the room and speaks in it in one go — are after the cursor and are
+ * spoken, never resynced away as backlog. Nothing is played while asleep.
+ */
+export function cursorWhileAsleep(voice: ScreenVoice, cursor: number | null): number {
+  return planVoice(voice, cursor, { character: "", muted: true, attract: true }).cursor;
+}
+
 /** A gap this long between two answers means the TV was away (offline, asleep,
  *  a frozen tab): what it missed is stale, so it resyncs to the head rather
  *  than reading out minutes of backlog. */

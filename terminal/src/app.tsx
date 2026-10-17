@@ -33,19 +33,26 @@
 //! chime and says each new `do announce "…"` (`announce.ts`) after the
 //! character's line in progress, with the words on a banner.
 //!
+//! A terminal that belongs to a room (`room` on any view but the TV —
+//! wave 7, the server-room terminal) sleeps until the story opens that room
+//! to everyone, then speaks the character's lines said there (the door
+//! cutscene) through the same speech queue as its line, with a caption; it
+//! never shows a story slide or the countdown corner, and it tells the story
+//! when a pass opens and closes a line there (`terminal opened` / `closed`).
+//!
 //! A tap on the wake overlay (or anywhere on the page) is the one gesture the browser needs
 //! before the terminal may make a sound unattended. The screen is held on
 //! with a Wake Lock from boot (re-taken on that tap and whenever the page
 //! comes back into view), and the ⚙ opens setup only on a 2 s hold
 //! (`kiosk.ts`) — a guest's short tap does nothing.
 
-import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { Composer, Thread } from "./chat.tsx";
-import { DEFAULT_TV_ROOM, adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, savedCharacter, tvRoomOf, withoutSecrets, type TerminalConfig, type TerminalView } from "./config.ts";
+import { DEFAULT_TV_ROOM, adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, roomOf, saveConfig, savedCharacter, tvRoomOf, withoutSecrets, type TerminalConfig, type TerminalView } from "./config.ts";
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import { useIdleTimeout } from "./idle.ts";
-import { beginPilot, endPilot, fetchCharacters, fetchRoster, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
+import { VisitLatch, beginPilot, endPilot, fetchCharacters, fetchRoster, postVisit, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
 import { matchName, parseScan } from "./scan.ts";
 import { Scanner, type CameraState, cameraProblem } from "./scanner.tsx";
 import { BrowserEngine, DeviceEngine, ENGINE_LABEL, SpeechQueue, audioUnlocked, deviceEnv, pickDeviceEngine, unlock, voiceEngines, voiceNote, type EngineKind, type VoiceChoice } from "./speech/engine.ts";
@@ -56,11 +63,12 @@ import { mayReload, retryable } from "./retry.ts";
 import { bundledHouse, fetchHouse, useSpatialStream, useWorld, type Gone, type HouseInfo, type WorldStore } from "./world/stream.ts";
 import { effectiveView, hasWebGL2 } from "./webgl.ts";
 import { HOLD_MS, screenWake, useLongPress } from "./kiosk.ts";
-import { attractOf, useScreenState } from "./screen.ts";
+import { attractOf, useScreenState, type ScreenState } from "./screen.ts";
 import { Attract } from "./Attract.tsx";
 import { IdentifyOverlay, LiveScreenLayer } from "./ScreenLayer.tsx";
 import { Tv } from "./Tv.tsx";
 import { PeekClock, canPeek, screenLayers } from "./slides.ts";
+import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, type TvLine } from "./tv.ts";
 
 // three.js is most of the weight of the world view — a face-only terminal
 // never loads it. Retryable: `lazy` alone caches a failed load forever.
@@ -73,12 +81,26 @@ export function App() {
   const [screen, setScreen] = useState<Screen>(() => (loadConfig() ? { kind: "attract" } : { kind: "setup", notice: null }));
   const [awake, setAwake] = useState(() => audioUnlocked());
   // The lean screen state, polled every 2 s (also this terminal's heartbeat).
-  // The TV also asks for its room's new lines after its chat cursor (K-18).
-  const tvCursor = useRef<number | null>(null);
+  // The TV also asks for its room's new lines after its chat cursor (K-18);
+  // a room terminal names its room and the same cursor (wave 7).
+  const voiceCursor = useRef<number | null>(null);
   useEffect(() => {
-    tvCursor.current = null; // a new config starts at the room's head: no backlog
+    voiceCursor.current = null; // a new config starts at the room's head: no backlog
   }, [config]);
-  const screenState = useScreenState(config, config?.view === "tv" ? () => ({ room: tvRoomOf(config), after: tvCursor.current }) : null);
+  const room = config === null ? null : roomOf(config);
+  const screenState = useScreenState(
+    config,
+    config?.view === "tv" ? () => ({ room: tvRoomOf(config), after: voiceCursor.current }) : room !== null ? () => ({ room, after: voiceCursor.current, as: "room" as const }) : null,
+  );
+  // A room terminal asleep: nothing is mounted to hear its room, so its
+  // cursor follows the head here — the lines that come with the wake (the
+  // door cutscene) are then spoken, not resynced away (`cursorWhileAsleep`).
+  const asleep = attractOf(screenState.state, room !== null);
+  useEffect(() => {
+    const voice = screenState.state?.voice;
+    if (room === null || !asleep || voice === null || voice === undefined) return;
+    voiceCursor.current = cursorWhileAsleep(voice, voiceCursor.current);
+  }, [room, asleep, screenState.state]);
   // The house announcements (N-09), when this screen is set to say them.
   const announcement = useAnnouncements(config, screenState.state);
 
@@ -211,7 +233,7 @@ export function App() {
   // `PeekClock` (slides.ts) is the tested state machine; this only feeds it.
   const peekClock = useRef(new PeekClock());
   const [, setPeekTick] = useState(0);
-  const peekable = config !== null && canPeek(config.view, screen.kind, attractOf(screenState.state));
+  const peekable = config !== null && room === null && canPeek(config.view, screen.kind, asleep);
   const peek = peekClock.current.on(Date.now(), peekable);
   const onSlideTap = useCallback(() => {
     peekClock.current.tap(Date.now());
@@ -258,11 +280,11 @@ export function App() {
   const openSetup = () => setScreen({ kind: "setup", notice: null });
   const piloting = screen.kind === "piloting" || screen.kind === "connecting";
   // An overlay (blackout / go to the living room / alarm) ends any pilot.
-  const takeover = screenLayers(screenState.state, Date.now(), { piloting }).overlay !== null;
+  const takeover = screenLayers(screenState.state, Date.now(), { piloting, room: room !== null }).overlay !== null;
   const layer = (
     <>
       {/* A slide's .mp4 plays on the TV only (N-04a); the tablets keep the PNG. */}
-      <LiveScreenLayer state={screenState.state} piloting={piloting} peek={peek} onSlideTap={peekable ? onSlideTap : undefined} video={config.view === "tv"} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
+      <LiveScreenLayer state={screenState.state} piloting={piloting} peek={peek} room={room !== null} onSlideTap={peekable ? onSlideTap : undefined} video={config.view === "tv"} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
       <IdentifyOverlay state={screenState.state} name={config.name} spot={config.spot} view={config.view} />
       {announcement !== null && (
         <div className="announce-banner" role="status">
@@ -281,6 +303,7 @@ export function App() {
           <div className="mirror-corner">
             {config.title ? `${config.title} · ` : ""}
             {config.name.toUpperCase()}
+            {room !== null && screenState.state?.room?.id === "" && <div className="room-problem">the story has no room called "{room}" — this terminal sleeps until it is set right</div>}
           </div>
           <Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />
         </>
@@ -294,7 +317,7 @@ export function App() {
         <Tv
           config={config}
           state={screenState.state}
-          cursor={tvCursor}
+          cursor={voiceCursor}
           attract={attractOf(screenState.state)}
           attractScreen={attractScreen}
           canDraw={webgl2}
@@ -310,7 +333,7 @@ export function App() {
   if (config.view === "mirror") {
     return (
       <>
-        {attractOf(screenState.state) ? attractScreen : <Mirror config={config} canDraw={webgl2} onSetup={openSetup} onGone={onGone} />}
+        {asleep ? attractScreen : <Mirror config={config} canDraw={webgl2} onSetup={openSetup} onGone={onGone} />}
         {layer}
       </>
     );
@@ -325,7 +348,7 @@ export function App() {
 
   // The character is hidden or asleep: the screensaver, unless a line is
   // already open (a pilot ends on its own leash, then attract takes over).
-  if (attractOf(screenState.state) && screen.kind !== "piloting") {
+  if (asleep && screen.kind !== "piloting") {
     return (
       <>
         {attractScreen}
@@ -343,6 +366,9 @@ export function App() {
         setScreen={setScreen}
         castOnline={!screenState.reachable || screenState.state?.character?.hold === true ? null : (screenState.state?.character?.online ?? null)}
         polled={screenState.reachable}
+        state={screenState.state}
+        asleep={asleep}
+        voiceCursor={voiceCursor}
         takeover={takeover}
         onSetup={openSetup}
         onGone={onGone}
@@ -458,6 +484,9 @@ function Terminal({
   setScreen,
   castOnline,
   polled,
+  state,
+  asleep,
+  voiceCursor,
   takeover,
   onSetup,
   onGone,
@@ -470,6 +499,12 @@ function Terminal({
   castOnline: boolean | null;
   /** The screen-state poll is answering (the bar's connection dot). */
   polled: boolean;
+  /** The last screen state (a room terminal reads its room's lines off it). */
+  state: ScreenState | null;
+  /** On attract (a pilot outlasts it on its own leash). */
+  asleep: boolean;
+  /** The room voice's chat cursor (owned by the app: it moves while asleep). */
+  voiceCursor: MutableRefObject<number | null>;
   /** A story overlay covers the screen: no scanning, and an open line ends. */
   takeover: boolean;
   onSetup: () => void;
@@ -488,6 +523,10 @@ function Terminal({
   const face = useRef<FaceHandle | null>(null);
   const offsets = useRef(new Map<number, number[]>());
   const chunkText = useRef(new Map<number, string[]>());
+  /** A room line being said resolves here when its utterance is done (or cut). */
+  const waiters = useRef(new Map<number, () => void>());
+  const room = roomOf(config);
+  const visits = useRef(new VisitLatch());
 
   // --- the reinstallation simulation, beside the scanner ---
   const view = effectiveView(config.view, hasWebGL2());
@@ -514,6 +553,8 @@ function Terminal({
       done: (id) => {
         offsets.current.delete(id);
         chunkText.current.delete(id);
+        waiters.current.get(id)?.();
+        waiters.current.delete(id);
         setRevealed((prev) => {
           if (!prev.has(id)) return prev;
           const next = new Map(prev);
@@ -550,10 +591,73 @@ function Terminal({
     [onNewLine, queue],
   );
 
+  // --- the room voice (a room terminal: the character's lines in its room) ---
+  const [roomLine, setRoomLine] = useState<TvLine | null>(null);
+  const [roomBusy, setRoomBusy] = useState(false);
+  const roomLinger = useRef(0);
+  const roomPlayer = useMemo(
+    () =>
+      new LinePlayer({
+        caption: (line) => {
+          window.clearTimeout(roomLinger.current);
+          setRoomLine(line);
+          if (line !== null) setRoomBusy(true);
+          if (line !== null && line.mode !== "speak") setMood(moodOfText(line.text));
+        },
+        speak: (line) =>
+          new Promise<void>((resolve) => {
+            const chunks = splitSentences(line.text);
+            if (chunks.length === 0) return resolve();
+            chunkText.current.set(line.seq, chunks);
+            waiters.current.set(line.seq, resolve);
+            queue.say({ id: line.seq, chunks });
+          }),
+        cancel: () => {
+          queue.stop();
+          for (const w of waiters.current.values()) w();
+          waiters.current.clear();
+          setSpeaking(false);
+        },
+        sleep: (ms) => new Promise((r) => window.setTimeout(r, ms)),
+        idle: () => {
+          setRoomBusy(false);
+          window.clearTimeout(roomLinger.current);
+          roomLinger.current = window.setTimeout(() => setRoomLine(null), 6000);
+        },
+      }),
+    [queue],
+  );
+  useEffect(
+    () => () => {
+      roomPlayer.stop();
+      window.clearTimeout(roomLinger.current);
+    },
+    [roomPlayer],
+  );
+  // Every poll: the room's new lines → the player (the cursor moves first).
+  // Never muted — the TV's mute is the TV's.
+  const lastAnswer = useRef<number | null>(null);
+  useEffect(() => {
+    const voice = state?.voice;
+    if (room === null || state === null || voice === null || voice === undefined) return;
+    const from = cursorAfterGap(voiceCursor.current, lastAnswer.current, state.receivedAt);
+    lastAnswer.current = state.receivedAt;
+    const plan = planVoice(voice, from, { character: config.character, muted: false, attract: asleep });
+    voiceCursor.current = plan.cursor;
+    roomPlayer.push(plan.lines);
+  }, [room, state, asleep, config.character, voiceCursor, roomPlayer]);
+  useEffect(() => {
+    if (!asleep) return;
+    roomPlayer.stop();
+    setRoomLine(null);
+    setRoomBusy(false);
+  }, [asleep, roomPlayer]);
+
   // --- the leash ---
   const end = useCallback(
     (why: "timeout" | "dead" | "left") => {
       if (pilot === null) return;
+      roomPlayer.stop(); // stops the queue too, and releases a room line's waiter
       queue.stop();
       setSpeaking(false);
       setRevealed(new Map());
@@ -563,10 +667,26 @@ function Terminal({
       if (why === "timeout") setFlash(`${pilot.name.toUpperCase()} DISCONNECTED — NO INPUT`);
       else if (why === "dead") setFlash("CONNECTION LOST — THE SYSTEM RESTARTED");
       void endPilot(config, pilot);
+      // A room terminal: the story hears the line close (best-effort; also
+      // after a restart, whose replay re-opened the visit).
+      const closing = visits.current.close();
+      if (closing !== null) void postVisit(config, "terminal closed", closing);
     },
-    [pilot, queue, config, setScreen],
+    [pilot, queue, roomPlayer, config, setScreen],
   );
-  const busy = session.typing || speaking || queue.busy;
+  // The page going away mid-line (a reload, the kiosk app closing): close the
+  // visit and the session with requests that outlive the page.
+  useEffect(() => {
+    if (pilot === null) return;
+    const onHide = () => {
+      const closing = visits.current.close();
+      if (closing !== null) void postVisit(config, "terminal closed", closing, { keepalive: true });
+      void endPilot(config, pilot, { keepalive: true });
+    };
+    window.addEventListener("pagehide", onHide);
+    return () => window.removeEventListener("pagehide", onHide);
+  }, [pilot, config]);
+  const busy = session.typing || speaking || queue.busy || roomBusy;
   const { touch, warning, remaining } = useIdleTimeout({ active: pilot !== null, busy, onTimeout: () => end("timeout") });
   useEffect(() => {
     if (session.dead !== null && pilot !== null) end("dead");
@@ -608,12 +728,21 @@ function Terminal({
   const connect = useCallback(
     async (guestId: string) => {
       if (screen.kind !== "attract") return;
+      if (roomBusy) {
+        setFlash(`LISTEN — ${config.character.toUpperCase()} IS SPEAKING`);
+        return;
+      }
       setScreen({ kind: "connecting", id: guestId });
       setMood("attentive");
       try {
         const p = await beginPilot(config, guestId);
         setScreen({ kind: "piloting", pilot: p });
         setFlash(null);
+        // A room terminal tells the story the line opened here (never awaited).
+        if (room !== null) {
+          visits.current.begin(p.id);
+          void postVisit(config, "terminal opened", p.id);
+        }
       } catch (e) {
         const msg = (e as Error).message;
         setFlash(/unknown guest/i.test(msg) ? "UNKNOWN PROGRAM — REGISTER ON YOUR PHONE FIRST" : /moderators only/i.test(msg) ? "THIS TERMINAL LOST ITS ACCESS" : `CONNECTION FAILED — ${msg.toUpperCase()}`);
@@ -622,7 +751,7 @@ function Terminal({
         setScreen({ kind: "attract" });
       }
     },
-    [config, screen.kind, setScreen],
+    [config, room, roomBusy, screen.kind, setScreen],
   );
   const onCode = useCallback(
     (text: string) => {
@@ -667,16 +796,29 @@ function Terminal({
           <div className="nameplate">{config.character.toUpperCase()}</div>
           {voiceNote(config.engine, engineUsed, latched) !== null && <div className="engine-note">{voiceNote(config.engine, engineUsed, latched)}</div>}
           {showWorld && <WorldSlot store={world} spotId={config.spot} size="pane" recover="retry" />}
+          {roomLine !== null && (
+            <div className={`room-caption${roomLine.mode === "speak" ? "" : " text-only"}`} data-mode={roomLine.mode}>
+              {roomLine.from !== config.character && <span className="room-caption-who">{roomLine.from}: </span>}
+              {roomLine.text}
+            </div>
+          )}
         </section>
 
         <section className="line-pane">
           {screen.kind === "attract" && (
             <div className="attract">
               <div className="scan-frame">
-                <Scanner facing={config.camera} active={!takeover} onCode={onCode} onState={setCamera} />
+                <Scanner facing={config.camera} active={!takeover && !roomBusy} onCode={onCode} onState={setCamera} />
               </div>
               <div className="attract-text">
-                <div className="big">SCAN YOUR PASS</div>
+                {roomBusy ? (
+                  <>
+                    <div className="big blink">LISTEN</div>
+                    <div className="small">{config.character.toUpperCase()} IS SPEAKING — scan your pass when he is done</div>
+                  </>
+                ) : (
+                  <div className="big">SCAN YOUR PASS</div>
+                )}
                 <div className="small">open the app · tap ☰ · hold your pass to the camera</div>
                 {cameraProblem(camera) !== null && <div className="small problem">{cameraProblem(camera)}</div>}
                 <button className="link typed-link" onClick={() => setTypedOpen((o) => !o)}>
@@ -991,10 +1133,15 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
             </select>
           </label>
         </div>
-        {view === "tv" && (
+        {view === "tv" ? (
           <label>
             the room it speaks for <span className="muted">(a LOCATION; blank = {DEFAULT_TV_ROOM})</span>
             <input value={room} onChange={(e) => setRoom(e.target.value)} placeholder={DEFAULT_TV_ROOM} />
+          </label>
+        ) : (
+          <label>
+            the room it belongs to <span className="muted">(a LOCATION; blank = none — the house's terminal. Set: asleep until the story opens that room, then it speaks the character's lines there, shows no slides, and tells the story when a pass opens a line here)</span>
+            <input value={room} onChange={(e) => setRoom(e.target.value)} placeholder="The Server Room" />
           </label>
         )}
         {!hasWebGL2() && view !== "face" && <div className="muted small">this tablet has no WebGL2 — it can't draw the simulation, so it will show the face</div>}
@@ -1048,7 +1195,7 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
           )}
         </div>
         <p className="muted small">
-          Provision a fleet by opening <code>/terminal/?code=&lt;mod passcode&gt;&amp;name=Kitchen&amp;character=Trabolta&amp;spot=start-bar&amp;view=auto</code> on each tablet (add <code>&amp;announce=1</code> where the house speakers don't reach). The camera needs https:// (or localhost); without it, programs type their name instead.
+          Provision a fleet by opening <code>/terminal/?code=&lt;mod passcode&gt;&amp;name=Kitchen&amp;character=Trabolta&amp;spot=start-bar&amp;view=auto</code> on each tablet (add <code>&amp;announce=1</code> where the house speakers don't reach; the server-room terminal adds <code>&amp;room=The Server Room</code>). The camera needs https:// (or localhost); without it, programs type their name instead.
         </p>
       </form>
     </div>

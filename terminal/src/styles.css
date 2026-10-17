@@ -576,6 +576,23 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 .tv-caption.text-only { color: var(--phosphor); font-style: italic; }
 .tv-caption-who { color: var(--amber); font-style: normal; }
 .tv-attract { position: absolute; inset: 0; z-index: 5; }
+/* A room terminal (wave 7, the server-room terminal): the character's line
+   said in its room, captioned under the face while it is spoken. */
+.room-caption {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  bottom: 4%;
+  padding: 0.35em 0.7em;
+  background: rgba(0, 0, 0, 0.78);
+  color: var(--white);
+  text-align: center;
+  line-height: 1.25;
+  z-index: 4;
+}
+.room-caption.text-only { color: var(--phosphor); font-style: italic; }
+.room-caption-who { color: var(--amber); font-style: normal; }
+.room-problem { margin-top: 0.4em; color: var(--amber); letter-spacing: 0.04em; text-transform: none; }
 .tv-status { position: absolute; right: 10px; bottom: 8px; z-index: 6; display: flex; gap: 0.6em; align-items: center; font-size: 0.5em; }
 .tv-status .engine-note { position: static; font-size: 1em; }
 /* The world pane's mini-map sits in the same corner as the status row: lift

@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { ScreenVoice, VoiceLine } from "../src/screen.ts";
-import { LinePlayer, TV_SILENT_BEATS, TV_STALE_MS, cursorAfterGap, isSilentBeat, planVoice, postVoiceMute, readingMs, type TvLine } from "../src/tv.ts";
+import { LinePlayer, TV_SILENT_BEATS, TV_STALE_MS, cursorAfterGap, cursorWhileAsleep, isSilentBeat, planVoice, postVoiceMute, readingMs, type TvLine } from "../src/tv.ts";
 
 const line = (seq: number, from = "Trabolta", beat: string | null = "Trabolta Introduction", text = `line ${seq}`): VoiceLine => ({ seq, from, text, beat });
 const voice = (head: number, lines: VoiceLine[], muted = false): ScreenVoice => ({ room: "loc:The Desktop", muted, head, lines });
@@ -136,5 +136,26 @@ describe("postVoiceMute", () => {
       throw new Error("offline");
     }) as unknown as typeof fetch;
     expect(await postVoiceMute({ eventId: "e", token: "t" }, false, offline)).toBeNull();
+  });
+});
+
+describe("a room terminal's cursor while asleep (wave 7)", () => {
+  it("follows the head while asleep, so the lines that arrive with the wake are spoken", () => {
+    let cursor: number | null = null;
+    cursor = cursorWhileAsleep(voice(10, []), cursor); // first answer: the head
+    expect(cursor).toBe(10);
+    // Lines said in the room while it was closed (a director's say): skipped.
+    cursor = cursorWhileAsleep(voice(14, [line(12), line(14)]), cursor);
+    expect(cursor).toBe(14);
+    // The wake: the reveal and the cutscene land in one answer — all spoken.
+    const wake = planVoice(voice(17, [line(15, "Trabolta", "The Heart"), line(16, "Clippy", "The Heart"), line(17, "Trabolta", "The Heart")]), cursor, opts);
+    expect(wake.lines.map((l) => [l.seq, l.mode])).toEqual([
+      [15, "speak"],
+      [17, "speak"],
+    ]);
+    // Without the asleep cursor (null: never advanced) the wake would drop them.
+    expect(planVoice(voice(17, [line(15)]), null, opts).lines).toEqual([]);
+    // A restart while asleep (head behind the cursor): resync to it.
+    expect(cursorWhileAsleep(voice(3, []), 40)).toBe(3);
   });
 });
