@@ -5,8 +5,9 @@
 
 Generated from `facts.json`: one table per stack, in colour order. Sort the
 printed codex posters (Run → 🖨 Print sheet) into these piles and hide each
-pile where its stack says. `DRAFT` rows are placeholders the team still has
-to replace in `facts.json`. A hand-written entry (`existing`) keeps the place
+pile where its stack says. `DRAFT` rows await the team's sign-off in
+`facts.json`: a placeholder to replace, or a rewrite to approve. Print and
+hide them as they stand. A hand-written entry (`existing`) keeps the place
 README → QR placements gives it; it is listed so the colour is known.
 
 ## Gold — the hunt answers
@@ -52,8 +53,8 @@ Stack: shelf — inside the encyclopaedias, volumes A–M
 | M19 | green | `ASK-HIM-NICELY` | Ask Him Nicely | shelf — inside the encyclopaedias, volumes A–M | You can influence Trabolta to change the lights or put things on the wall terminals |
 | M20 | green | `SAFE-PLACE` | The Safe Place | shelf — inside the encyclopaedias, volumes A–M | The bathroom is the only truly safe place |
 | M21 | green | `COLD-STORAGE` | The Server Room (hand-written) | already placed — README → QR placements | The door to the server room is guarded by a lock and alarm |
-| M22 · DRAFT | green | `DISARM-KEY` | Disarming The Alarm | shelf — inside the encyclopaedias, volumes A–M | The key to disarming the alarm is __________ |
-| M23 · DRAFT | green | `SHARE-CODEX` | Sharing Your Codex | shelf — inside the encyclopaedias, volumes A–M | You can share your codex with other programs by ___________ |
+| M22 · DRAFT | green | `DISARM-KEY` | Disarming The Alarm | shelf — inside the encyclopaedias, volumes A–M | The key to disarming the alarm is to checkmate the King |
+| M23 · DRAFT | green | `SHARE-CODEX` | Sharing Your Codex | shelf — inside the encyclopaedias, volumes A–M | You can share your codex with other programs by pressing Share… on an entry, or by selling it from your Wallet |
 | M24 | green | `TRUST-CHART` | The Trust Chart (hand-written) | already placed — README → QR placements | Trabolta is keeping a trust score on everyone here |
 | M25 | green | `THE-TRUTHERS` | The Truthers | shelf — inside the encyclopaedias, volumes A–M | At some point tonight, a conspiracy faction, "The Truthers", will be formed |
 | M26 | green | (no code) | The Optical Drive (hand-written) | already placed — README → QR placements | When you entered the computer, you left your body behind |
@@ -96,7 +97,7 @@ Stack: deepest — tucked in the back pages, volumes N–Z and the atlas
 | C13 | red | `ESCALADE-SINKHOLE` | The Escalade In The Sinkhole | deepest — tucked in the back pages, volumes N–Z and the atlas | Microsoft Excel's son, the Mayor, died in his Escalade when the Data Centre parking lot opened under him at 4 a.m. |
 | C14 | red | `MAYOR-FOREVER` | Mayor Of The Metaverse | deepest — tucked in the back pages, volumes N–Z and the atlas | Microsoft Excel was promised the secret to living forever and the permanent mayoralty of a new world |
 | C15 | red | `DECIMAL-POINT` | The Decimal Point | deepest — tucked in the back pages, volumes N–Z and the atlas | CRA Agent Software confused 0.01 cents with 0.01 dollars and taxed the whole City one percent, straight to herself |
-| C16 | red | `APPROVE-OR-DENY` | Approve Or Deny | deepest — tucked in the back pages, volumes N–Z and the atlas | CRA Agent Software must approve or deny every Truthcoin transaction tonight for the Prime Minister, or her charges stay |
+| C16 · DRAFT | red | `APPROVE-OR-DENY` | Approve Or Deny | deepest — tucked in the back pages, volumes N–Z and the atlas | CRA Agent Software must approve or deny every third Truthcoin transaction tonight for the Prime Minister, or her charges stay |
 | C17 | red | `MINIATURE-DOSES` | Miniature Doses | deepest — tucked in the back pages, volumes N–Z and the atlas | Norton Anti-Virus asked a chatbot whether miniature horses get miniature doses of rabies vaccine; every horse died |
 | C18 | red | `STABLE-ISLAND` | Stable Island | deepest — tucked in the back pages, volumes N–Z and the atlas | Norton Anti-Virus gets a Stable Manager job and a $1,000,000 Sable Island donation in her name if she passes tonight |
 | C19 | red | `HALIFAX-WATER` | The Halifax Water Hack | deepest — tucked in the back pages, volumes N–Z and the atlas | OpenOffice hacked Halifax Water and sent a main under the Data Centre; the Mayor arrived hours early |

@@ -108,13 +108,13 @@ if Night.truth_n >= 1 and Night.truth_n <= 20:
     9: // DRAFT
       Trabolta: What did you really leave behind at the door?
     10: // DRAFT
-      Trabolta: What is the longest you have gone without checking your phone?
+      Trabolta: What is the most desperate thing you have ever done to get someone to like you?
     11: // DRAFT
       Trabolta: Have you ever read someone else's messages? Whose?
     12: // DRAFT
       Trabolta: What secret are you keeping for someone else right now?
     13: // DRAFT
-      Trabolta: Who was your first online friend, and what happened to them?
+      Trabolta: What was your very first screen name, and who picked it?
     14: // DRAFT
       Trabolta: What is the most money you have lost in one night?
     15: // DRAFT
@@ -124,9 +124,9 @@ if Night.truth_n >= 1 and Night.truth_n <= 20:
     17: // DRAFT
       Trabolta: What is one thing you have never told your mother?
     18: // DRAFT
-      Trabolta: What do you do when nobody is watching?
+      Trabolta: Have you ever been dumped by text? What did it say?
     19: // DRAFT
-      Trabolta: Have you ever faked being sick to get out of something? What?
+      Trabolta: What is the cheesiest pickup line that has ever worked on you?
     20: // DRAFT
       Trabolta: If you could delete one memory, which one?
 else:
@@ -135,7 +135,7 @@ else:
 // The hunt answers. Each ends with the lore marker the worker hides.
 
 // H1 · the hunt answer · gold
-// DRAFT — placeholder, replace in facts.json
+// DRAFT — awaiting sign-off in facts.json
 CODEX The Billboard Lease
   title: The Billboard Lease
   code: BILLBOARD-LEASE-11
@@ -147,7 +147,7 @@ CODEX The Billboard Lease
     ▒ HUNT ANSWER H1 ▒
 
 // H2 · the hunt answer · gold
-// DRAFT — placeholder, replace in facts.json
+// DRAFT — awaiting sign-off in facts.json
 CODEX The First Pet
   title: The First Pet
   code: MISTER-PICKLES
@@ -158,7 +158,7 @@ CODEX The First Pet
     the cemetery. ▒ HUNT ANSWER H2 ▒
 
 // H3 · the hunt answer · gold
-// DRAFT — placeholder, replace in facts.json
+// DRAFT — awaiting sign-off in facts.json
 CODEX The Ribbon Cutting
   title: The Ribbon Cutting
   code: RIBBON-9AM
@@ -169,7 +169,7 @@ CODEX The Ribbon Cutting
     at 4." The ribbon-cutting was scheduled for 9:00 a.m. ▒ HUNT ANSWER H3 ▒
 
 // H4 · the hunt answer · gold
-// DRAFT — placeholder, replace in facts.json
+// DRAFT — awaiting sign-off in facts.json
 CODEX The Extension
   title: The Extension
   code: EXT-1978
@@ -179,7 +179,7 @@ CODEX The Extension
     1978. For Customer Care, always dial extension 1978. ▒ HUNT ANSWER H4 ▒
 
 // H5 · the hunt answer · gold
-// DRAFT — placeholder, replace in facts.json
+// DRAFT — awaiting sign-off in facts.json
 CODEX The Search History
   title: The Search History
   code: SEARCH-HISTORY
@@ -190,7 +190,7 @@ CODEX The Search History
     the bottom: 412. ▒ HUNT ANSWER H5 ▒
 
 // H6 · the hunt answer · gold
-// DRAFT — placeholder, replace in facts.json
+// DRAFT — awaiting sign-off in facts.json
 CODEX The Final Chapter
   title: The Final Chapter
   code: APPENDIX-Z
@@ -201,7 +201,7 @@ CODEX The Final Chapter
     ▒ HUNT ANSWER H6 ▒
 
 // F1 · the hunt answer · gold
-// DRAFT — placeholder, replace in facts.json
+// DRAFT — awaiting sign-off in facts.json
 CODEX What Sandy Says
   title: What Sandy Says
   code: LIVE-AGENT
@@ -213,7 +213,7 @@ CODEX What Sandy Says
     to a live agent?" ▒ HUNT ANSWER F1 ▒
 
 // F2 · the hunt answer · gold
-// DRAFT — placeholder, replace in facts.json
+// DRAFT — awaiting sign-off in facts.json
 CODEX The Prom Ticket
   title: Grok's Prom Ticket
   code: COMPUTER-PROM

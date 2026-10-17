@@ -94,8 +94,9 @@ it is dead in a sinkhole, and now they are asking you about that too. Then an
 email from the Prime Minister himself (from webmaster@mapsandducks.com, so it
 could not be FOIPOP'd): tonight's fundraiser is secretly to rebuild the data
 centre; encourage as many Truthcoin transactions as possible and approve or
-deny every one of them. Pass, and the charges go away. Tonight the invitation
-calls you MyCRA. (Your identity entry, *Sharon Penney*, is yours from the
+deny every one of them. The books only let you hold every third one tonight
+(any other you can still deny inside its first minute). Pass, and the charges
+go away. Tonight the invitation calls you MyCRA. (Your identity entry, *Sharon Penney*, is yours from the
 start. Your two red facts, *The Decimal Point* and *Approve Or Deny*, are
 hidden in the Desktop's books.)
 

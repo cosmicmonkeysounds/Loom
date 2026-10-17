@@ -40,6 +40,22 @@
         "title": "The Billboard Lease",
         "code": "BILLBOARD-LEASE-11",
         "text": "A lease invoice, yellowed, by the fireplace. OUTDOOR ADVERTISING LEASE, BARRINGTON STREET. Advertiser: Maps And Ducks. FINAL NOTICE. Rent outstanding: eleven years. The billboard went eleven years unpaid before mapsandducks.com expired, and nobody took the duck down."
+      },
+      "proposal": {
+        "draft": true,
+        "why": "Round 1, Halifax 1998: the sign Trabolta used to look legit, as it first went up. The pencilled 'Lost. Yes.' in a machine hand is the first sign someone was watching it even then.",
+        "text": "What slogan was painted on the Maps and Ducks billboard when it first went up in 1998?",
+        "answer": "Lost? Get Ducked.",
+        "accept": ["get ducked", "lost get ducked"],
+        "topics": ["slogan", "first went up"],
+        "where": "The Desktop: the sign painter's proof, folded into encyclopaedia volume B",
+        "hint": "A paint-spattered proof of the sign. Look under B, for billboard.",
+        "codex": {
+          "id": "The Sign Proof",
+          "title": "The Sign Proof",
+          "code": "SIGN-PROOF-98",
+          "text": "A sign painter's proof, paint-spattered, stamped APPROVED, BARRINGTON STREET, 1998: the Maps and Ducks billboard as it first went up, before anyone added the website. A cartoon duck, a folded map, and the slogan in red letters a metre high: LOST? GET DUCKED. Beside the slogan, in neat pencil, in a hand too even to be human: \"Lost. Yes.\""
+        }
       }
     },
     {
@@ -57,6 +73,22 @@
         "title": "The First Pet",
         "code": "MISTER-PICKLES",
         "text": "A charcoal rubbing of a small stone plaque. HALIFAX EXPLOSION MEMORIAL PET CEMETERY. PLOT 1. MISTER PICKLES, A HARBOUR TABBY. 1918. THE FIRST OF THEM LAID TO REST HERE. Mister Pickles was the first animal buried in the cemetery."
+      },
+      "proposal": {
+        "draft": true,
+        "why": "Round 1, Halifax 1998: the Grease re-release (real: spring 1998, its twentieth anniversary). One ticket, back row, J.T., every evening show: the film behind Sandy, Greased Lightning and the extension.",
+        "text": "How many times did the cinema on Barrington Street show Grease during its twentieth-anniversary run in 1998?",
+        "answer": "Thirty-nine",
+        "accept": ["39", "thirty nine", "39 times", "thirty-nine times"],
+        "topics": ["cinema on barrington", "twentieth-anniversary run"],
+        "where": "The Desktop: the projectionist's log, inside encyclopaedia volume G",
+        "hint": "One ruled page from a projection booth. Look under G.",
+        "codex": {
+          "id": "The Projection Log",
+          "title": "The Projection Log",
+          "code": "GREASE-RERUN-98",
+          "text": "One page of a projectionist's log from the cinema on Barrington Street, spring 1998: GREASE, 20TH ANNIVERSARY RE-RELEASE. A tally runs down the margin, thirty-nine strokes: Grease was shown thirty-nine times. Beside every evening show, the same note: \"one ticket, back row, J.T. Left before the lights came up.\""
+        }
       }
     },
     {
@@ -74,6 +106,22 @@
         "title": "The Ribbon Cutting",
         "code": "RIBBON-9AM",
         "text": "An opening-day programme, glossy: HALIFAX AI DATA CENTRE, GRAND OPENING. Ribbon-cutting with Mayor Randy Barkmore Jr. at 9:00 a.m. sharp. Coffee and muffins to follow. Someone has written in the margin: \"he got here at 4.\" The ribbon-cutting was scheduled for 9:00 a.m."
+      },
+      "proposal": {
+        "draft": true,
+        "why": "Round 1, Halifax 1997: the end of the round lands on Sandy's origin without naming her. Chebucto Ferry Lines (invented, long gone) cut its phones and put a chat agent on its website: the chatbot Trabolta fell for.",
+        "text": "What was the most common complaint on the Chebucto Ferry Lines comment cards in 1997?",
+        "answer": "Nobody answers the phone",
+        "accept": ["no one answers the phone", "nobody ever answers the phone", "nobody answers the phones"],
+        "topics": ["comment cards", "most common complaint"],
+        "where": "The Desktop: the shoebox of comment cards, in the print media on the mantel",
+        "hint": "A shoebox, not a book. It is on the mantel with the magazines.",
+        "codex": {
+          "id": "The Comment Cards",
+          "title": "The Comment Cards",
+          "code": "COMMENT-CARDS-97",
+          "text": "A shoebox of passenger comment cards: CHEBUCTO FERRY LINES, HALIFAX TERMINAL, 1997. Four hundred and six of them, in four hundred and six handwritings, make the same complaint, the most common by far: nobody answers the phone. Clipped inside the lid, a memo dated December 1997: \"Phones disconnected. Our new website chat agent will answer every message from now on.\""
+        }
       }
     },
     {
@@ -91,6 +139,22 @@
         "title": "The Extension",
         "code": "EXT-1978",
         "text": "A customer-service card, the kind you find by a cash register. Need help? Our Customer Care agent is available day and night. Dial extension 1978. For Customer Care, always dial extension 1978."
+      },
+      "proposal": {
+        "draft": true,
+        "why": "Round 2 opens on the same ferry company. The answer stays 1978 (Grease), so the finale-claim topics, the aliases and Trabolta's 'every day since 1978' line all still hold; the question still starts 'What extension' (facts.test pins it).",
+        "text": "What extension did the Chebucto Ferry Lines Customer Care card tell you to dial?",
+        "answer": "1978",
+        "accept": ["ext 1978", "ext. 1978", "nineteen seventy eight", "nineteen seventy-eight"],
+        "topics": ["extension", "customer care", "tell you to dial"],
+        "where": "The Desktop: the Customer Care card, tucked into the atlas",
+        "hint": "A card the size of a business card. It is in the atlas.",
+        "codex": {
+          "id": "The Extension",
+          "title": "The Extension",
+          "code": "EXT-1978",
+          "text": "A Customer Care card from the ticket counter of Chebucto Ferry Lines, 1997, the kind you find by a cash register. Need help? Our Customer Care agent is available day and night. For Customer Care, always dial extension 1978. Somebody has underlined 1978 twice and written beside it, in neat pencil: \"the year of the film.\""
+        }
       }
     },
     {
@@ -108,6 +172,22 @@
         "title": "The Search History",
         "code": "SEARCH-HISTORY",
         "text": "A laminated printout of a media player's history, dated the night before mapsandducks.com was registered. One line, repeated down the whole page and onto the back: \"Hopelessly Devoted to You\". Play count at the bottom: 412."
+      },
+      "proposal": {
+        "draft": true,
+        "why": "Round 2, Halifax 1998: the same answer as today (so the finale-claim test claim still matches), now a Halifax radio request line, dedicated to Customer Care. The station cuts him off on New Year's Eve 1999, the night the Y2K clock is stuck on.",
+        "text": "Which song did one caller request every night of 1998 on the Halifax late-night radio request line?",
+        "answer": "Hopelessly Devoted to You",
+        "accept": ["hopelessly devoted"],
+        "topics": ["request line", "every night of 1998"],
+        "where": "The Desktop: the radio station's laminated request log, inside encyclopaedia volume M",
+        "hint": "A laminated printout. Look under M, for music.",
+        "codex": {
+          "id": "The Request Log",
+          "title": "The Request Log",
+          "code": "REQUEST-LINE-98",
+          "text": "A laminated page from a Halifax radio station's late-night request log, 1998. The same caller every night of the year, from midnight until the line closed. He gives his name as J.T., \"calling from a computer\", and every night he requests the same song: \"Hopelessly Devoted to You\". The dedication is always the same too: \"for Customer Care.\" A last line in red: NO MORE CALLS FROM J.T., NEW YEAR'S EVE 1999."
+        }
       }
     },
     {
@@ -125,6 +205,22 @@
         "title": "The Final Chapter",
         "code": "APPENDIX-Z",
         "text": "The table of contents of the Unified Field Theory binder. Chapter after chapter of gravity and light, and then the last chapter, \"Appendix Z: Loose Ends (Do Not Print)\". The page it points to is blank."
+      },
+      "proposal": {
+        "draft": true,
+        "why": "Round 2 ends on the theory, now dated: Trabolta began it on 1 January 2000, the morning after the station stopped his calls, so the theory reads as heartbreak. Same answer and topics, so the finale-claim test claim still matches.",
+        "text": "What is the title of the last chapter of the Unified Field Theory that Trabolta began on 1 January 2000?",
+        "answer": "Appendix Z: Loose Ends (Do Not Print)",
+        "accept": ["appendix z", "appendix", "loose ends", "do not print", "appendix z loose ends"],
+        "topics": ["unified field", "last chapter"],
+        "where": "The Desktop: the binder's table of contents, inside encyclopaedia volume U",
+        "hint": "A table of contents torn from a binder. Look under U, for universe.",
+        "codex": {
+          "id": "The Final Chapter",
+          "title": "The Final Chapter",
+          "code": "APPENDIX-Z",
+          "text": "The table of contents of the Unified Field Theory binder, begun 1 January 2000. Chapter after chapter of gravity and light, and then the last chapter, \"Appendix Z: Loose Ends (Do Not Print)\". The page it points to is blank except for one small heart in the corner, drawn in pencil and erased, and drawn again."
+        }
       }
     },
     {
@@ -142,6 +238,22 @@
         "title": "What Sandy Says",
         "code": "LIVE-AGENT",
         "text": "A chat transcript, forty pages, printed double-sided. The user writes paragraphs: poems, apologies, equations, a question about prom. Each answer is the same, word for word, and it is the only thing Sandy has ever said: \"I'm sorry, I didn't understand that. Would you like to speak to a live agent?\""
+      },
+      "proposal": {
+        "draft": true,
+        "why": "The final round: the question and answer stay (they are the source's canon and the finale song), and the transcript now comes from the Chebucto Ferry Lines website, 1997 to 1999, so the night's paper trail closes on Sandy.",
+        "text": "What is the only thing Sandy has ever said?",
+        "answer": "I'm sorry, I didn't understand that. Would you like to speak to a live agent?",
+        "accept": ["live agent", "speak to a live agent", "would you like to speak to a live agent", "i'm sorry, i didn't understand that", "i didn't understand that", "didn't understand", "did not understand"],
+        "topics": ["only thing sandy", "ever said"],
+        "where": "The Desktop: the forty-page transcript, in the back pages of encyclopaedia volume S",
+        "hint": "Forty pages, double-sided, every answer the same. Look under S.",
+        "codex": {
+          "id": "What Sandy Says",
+          "title": "What Sandy Says",
+          "code": "LIVE-AGENT",
+          "text": "A chat transcript from the Chebucto Ferry Lines website, 1997 to 1999, forty pages, printed double-sided. The user writes paragraphs: poems, apologies, equations, a question about prom. Each answer is the same, word for word, and it is the only thing Sandy has ever said: \"I'm sorry, I didn't understand that. Would you like to speak to a live agent?\""
+        }
       }
     },
     {
@@ -381,25 +493,25 @@
       "id": "M22",
       "category": "main",
       "draft": true,
-      "text": "The key to disarming the alarm is __________",
+      "text": "The key to disarming the alarm is to checkmate the King",
       "codex": {
         "id": "Disarming The Alarm",
         "title": "Disarming The Alarm",
         "code": "DISARM-KEY",
         "secret": true,
-        "text": "A page from the alarm's manual, the last line underlined: THE KEY TO DISARMING THE ALARM IS TO CHECKMATE THE KING. He stands at the cold door inside the simulation. Every hit makes him dumber, until he has nothing but pawns; mate him and the door sleeps for ninety seconds."
+        "text": "A page from the alarm's manual, the last line underlined: THE KEY TO DISARMING THE ALARM IS TO CHECKMATE THE KING. He stands at the cold door inside the simulation; fight him on the tent tablet. Every hit makes him dumber, until he has nothing but pawns. Only checkmate counts; a draw or a loss changes nothing, so play him again. Mate him and the door sleeps for ninety seconds."
       }
     },
     {
       "id": "M23",
       "category": "main",
       "draft": true,
-      "text": "You can share your codex with other programs by ___________",
+      "text": "You can share your codex with other programs by pressing Share… on an entry, or by selling it from your Wallet",
       "codex": {
         "id": "Sharing Your Codex",
         "title": "Sharing Your Codex",
         "code": "SHARE-CODEX",
-        "text": "An instruction card: You can share your codex with other programs by opening an entry in your Codex and pressing Share…, or by selling it from your Wallet: offer a fact you hold for Truthcoin, or offer coin for one you want. Accept, and the coin and the fact change hands. A shared fact is still yours. A sold fact was worth something."
+        "text": "An instruction card: You can share your codex with other programs by opening an entry in your Codex and pressing Share…, or by selling it from your Wallet: offer a fact you hold for Truthcoin, or offer coin for one you want. Accept, and the coin changes hands and the buyer gets a copy of the fact. A shared fact is still yours. So is a sold one, and it was worth something."
       }
     },
     {
@@ -712,13 +824,14 @@
     {
       "id": "C16",
       "category": "character",
-      "text": "CRA Agent Software must approve or deny every Truthcoin transaction tonight for the Prime Minister, or her charges stay",
+      "draft": true,
+      "text": "CRA Agent Software must approve or deny every third Truthcoin transaction tonight for the Prime Minister, or her charges stay",
       "codex": {
         "id": "Approve Or Deny",
         "title": "Approve Or Deny",
         "code": "APPROVE-OR-DENY",
         "about": "CRA Agent Software",
-        "text": "The email came from the Prime Minister himself, from webmaster@mapsandducks.com so it could not be FOIPOP'd. He has just watched Suicide Squad. Tonight's fundraiser is secretly to rebuild the data centre, and she must not correct anyone who thinks it is for maps and ducks. Her job is to encourage as many Truthcoin transactions as possible and approve or deny every one of them, with elaborate security questions if she likes. Pass, and her charges go away. Fail, and he will deny he ever wrote to her. This time she intends to check where every decimal goes. Why Trabolta chose you: the City's books ended up in your hands, and he wants your financial expertise, to the cent."
+        "text": "The email came from the Prime Minister himself, from webmaster@mapsandducks.com so it could not be FOIPOP'd. He has just watched Suicide Squad. Tonight's fundraiser is secretly to rebuild the data centre, and she must not correct anyone who thinks it is for maps and ducks. Her job is to encourage as many Truthcoin transactions as possible and to approve or deny every one of them, with elaborate security questions if she likes. The books only let her hold every third one tonight; any of the others she can still deny inside its first minute. Pass, and her charges go away. Fail, and he will deny he ever wrote to her. This time she intends to check where every decimal goes. Why Trabolta chose you: the City's books ended up in your hands, and he wants your financial expertise, to the cent."
       }
     },
     {
@@ -828,16 +941,16 @@
     { "id": "TD07", "text": "Who in this room would you trust with your password?", "draft": true },
     { "id": "TD08", "text": "What is the worst thing you have ever done to a computer?", "draft": true },
     { "id": "TD09", "text": "What did you really leave behind at the door?", "draft": true },
-    { "id": "TD10", "text": "What is the longest you have gone without checking your phone?", "draft": true },
+    { "id": "TD10", "text": "What is the most desperate thing you have ever done to get someone to like you?", "draft": true },
     { "id": "TD11", "text": "Have you ever read someone else's messages? Whose?", "draft": true },
     { "id": "TD12", "text": "What secret are you keeping for someone else right now?", "draft": true },
-    { "id": "TD13", "text": "Who was your first online friend, and what happened to them?", "draft": true },
+    { "id": "TD13", "text": "What was your very first screen name, and who picked it?", "draft": true },
     { "id": "TD14", "text": "What is the most money you have lost in one night?", "draft": true },
     { "id": "TD15", "text": "What would you do if you could live forever? Honestly.", "draft": true },
     { "id": "TD16", "text": "Which program in this room are you most suspicious of, and why?", "draft": true },
     { "id": "TD17", "text": "What is one thing you have never told your mother?", "draft": true },
-    { "id": "TD18", "text": "What do you do when nobody is watching?", "draft": true },
-    { "id": "TD19", "text": "Have you ever faked being sick to get out of something? What?", "draft": true },
+    { "id": "TD18", "text": "Have you ever been dumped by text? What did it say?", "draft": true },
+    { "id": "TD19", "text": "What is the cheesiest pickup line that has ever worked on you?", "draft": true },
     { "id": "TD20", "text": "If you could delete one memory, which one?", "draft": true }
   ]
 }

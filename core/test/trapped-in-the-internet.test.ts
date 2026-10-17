@@ -200,6 +200,28 @@ describe("Trapped in the Internet — compile", () => {
     expect(m.codex.get("The Truther Download")!.text.endsWith("- There is still time.\n- In truth.")).toBe(true);
   });
 
+  it("every account of the Prime Minister's email asks for every transaction; only the books hold every third (C16)", () => {
+    // The Carney Letter is the email itself; C16 and the CRA pack retell it on the
+    // same phone. The demand stays "every"; `every 3` is how the books work tonight.
+    const pack = readFileSync(join(scenarioDir(SHOW), "cast-packs", "performers", "cra-agent.md"), "utf8").replace(/\s+/gu, " ");
+    const flat = (id: string) => m.codex.get(id)!.text.replace(/\s+/gu, " ");
+    expect(flat("The Carney Letter")).toContain("approve or deny every transaction.");
+    expect(flat("Approve Or Deny")).toContain("Truthcoin transactions as possible and to approve or deny every one of them");
+    expect(flat("Approve Or Deny")).toContain("The books only let her hold every third one tonight");
+    expect(pack).toContain("Truthcoin transactions as possible and approve or deny every one of them.");
+    expect(pack).toContain("The books only let you hold every third one tonight");
+    for (const text of [flat("Approve Or Deny"), pack]) expect(text).not.toMatch(/approve or deny every third/u);
+  });
+
+  it("M22 promises only what every tent tablet does: checkmate counts, anything else means play him again", () => {
+    // Whether a drawn or lost board re-deals by itself is the reinstall lane's
+    // (decision 6); on a build without it the window closes and ♟ CHALLENGE
+    // deals the next board. The codex a guest reads must hold on both.
+    const text = m.codex.get("Disarming The Alarm")!.text.replace(/\s+/gu, " ");
+    expect(text).toContain("Only checkmate counts; a draw or a loss changes nothing, so play him again.");
+    expect(text).not.toMatch(/fresh board|deals him|re-?deal/u);
+  });
+
   it("every codex title is its own: no two entries share one and none is another entry's id (the wallet trades by title)", () => {
     // server/wallet.ts resolves a phone's offer by id first, then by the
     // first entry with that title: a shared title trades the wrong entry.

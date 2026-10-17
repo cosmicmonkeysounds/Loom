@@ -155,8 +155,10 @@ CODEX Disarming The Alarm
   text:
     A page from the alarm's manual, the last line underlined: THE KEY TO
     DISARMING THE ALARM IS TO CHECKMATE THE KING. He stands at the cold door
-    inside the simulation. Every hit makes him dumber, until he has nothing
-    but pawns; mate him and the door sleeps for ninety seconds.
+    inside the simulation; fight him on the tent tablet. Every hit makes him
+    dumber, until he has nothing but pawns. Only checkmate counts; a draw or
+    a loss changes nothing, so play him again. Mate him and the door sleeps
+    for ninety seconds.
 
 // M23 · main · green · DRAFT
 CODEX Sharing Your Codex
@@ -166,8 +168,9 @@ CODEX Sharing Your Codex
     An instruction card: You can share your codex with other programs by
     opening an entry in your Codex and pressing Share…, or by selling it
     from your Wallet: offer a fact you hold for Truthcoin, or offer coin for
-    one you want. Accept, and the coin and the fact change hands. A shared
-    fact is still yours. A sold fact was worth something.
+    one you want. Accept, and the coin changes hands and the buyer gets a
+    copy of the fact. A shared fact is still yours. So is a sold one, and it
+    was worth something.
 
 // M25 · main · green
 CODEX The Truthers
@@ -488,7 +491,7 @@ CODEX The Decimal Point
     man who told her to do it is dead in a sinkhole, and now they are asking
     her about that too.
 
-// C16 · character · red
+// C16 · character · red · DRAFT
 CODEX Approve Or Deny
   title: Approve Or Deny
   about: CRA Agent Software
@@ -499,11 +502,13 @@ CODEX Approve Or Deny
     watched Suicide Squad. Tonight's fundraiser is secretly to rebuild the
     data centre, and she must not correct anyone who thinks it is for maps
     and ducks. Her job is to encourage as many Truthcoin transactions as
-    possible and approve or deny every one of them, with elaborate security
-    questions if she likes. Pass, and her charges go away. Fail, and he will
-    deny he ever wrote to her. This time she intends to check where every
-    decimal goes. Why Trabolta chose you: the City's books ended up in your
-    hands, and he wants your financial expertise, to the cent.
+    possible and to approve or deny every one of them, with elaborate
+    security questions if she likes. The books only let her hold every third
+    one tonight; any of the others she can still deny inside its first
+    minute. Pass, and her charges go away. Fail, and he will deny he ever
+    wrote to her. This time she intends to check where every decimal goes.
+    Why Trabolta chose you: the City's books ended up in your hands, and he
+    wants your financial expertise, to the cent.
 
 // C17 · character · red
 CODEX Miniature Doses
