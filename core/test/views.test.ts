@@ -96,6 +96,12 @@ describe("server views", () => {
     expect(primeView(null, "X").guests).toEqual([]);
   });
 
+  it("carries the declared cast when no scenario is loaded yet (doors shut)", () => {
+    const v = modView(null, "idle", "demo", undefined, ["Clippy", "Alexa"]);
+    expect(v.characters).toEqual(["Clippy", "Alexa"]);
+    expect(v.cast).toEqual([]);
+  });
+
   it("stamps the story clock on guest + prime views (the alert window's \"now\")", () => {
     const sim = Sim.fromSources(SCENARIO);
     sim.createPerson("g1", "Alice");

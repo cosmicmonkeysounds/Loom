@@ -612,7 +612,9 @@ function operatorChannels(sim: Sim): ChannelSummary[] {
   return out;
 }
 
-export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string | null, presence?: ModPresence): ModView {
+/** `declared`: the story's cast while no sim exists (the doors are shut) —
+ *  a terminal provisioned before the doors checks its character against it. */
+export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string | null, presence?: ModPresence, declared?: readonly string[]): ModView {
   if (sim === null) {
     return {
       phase,
@@ -620,7 +622,7 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
       roster: [],
       factions: [],
       locations: [],
-      characters: [],
+      characters: [...(declared ?? [])],
       cast: [],
       channels: [],
       spaces: [],

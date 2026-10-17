@@ -407,6 +407,8 @@ export class EventRuntime {
   private phase: RuntimePhase = "idle";
   private scenarioName: string;
   private scenarioSource: string;
+  /** `declaredCharacters` compiled from `source` while no sim exists. */
+  private declaredCast: { source: string; names: string[] } | null = null;
 
   // Token → capabilities (performer / admin), scoped to this event.
   private readonly sessions = new SessionStore();
@@ -656,6 +658,25 @@ export class EventRuntime {
     return this.sim === null ? [] : [...this.sim.model.characters.keys()];
   }
 
+  /** The story's declared cast, doors open or not: the live sim's when there
+   *  is one, else compiled once from the scenario text (memoised on it). A
+   *  mod code resolves it before the doors, so a terminal provisioned then
+   *  canonicalises its `character` (and refuses a typo) at setup. Booths
+   *  still get `characterNames` — they can't sign in before the doors. */
+  get declaredCharacters(): string[] {
+    if (this.sim !== null) return [...this.sim.model.characters.keys()];
+    if (this.declaredCast?.source !== this.scenarioSource) {
+      let names: string[] = [];
+      try {
+        names = [...Sim.fromSources(this.scenarioSource).model.characters.keys()];
+      } catch {
+        // A story that won't compile has no cast to check against yet.
+      }
+      this.declaredCast = { source: this.scenarioSource, names };
+    }
+    return [...this.declaredCast.names];
+  }
+
   /** How many participants exist in this event's world right now. */
   get guestCount(): number {
     return this.sim?.persons.size ?? 0;
@@ -742,7 +763,7 @@ export class EventRuntime {
 
   /** The operator's god view, with everyone's profile pictures. */
   private modViewNow(): ModView {
-    return { ...modView(this.sim, this.phase, this.scenarioName, this.presence()), avatars: this.avatarMap(), ...(this.wallet !== null ? { wallet: this.wallet.modView() } : {}) };
+    return { ...modView(this.sim, this.phase, this.scenarioName, this.presence(), this.sim === null ? this.declaredCharacters : undefined), avatars: this.avatarMap(), ...(this.wallet !== null ? { wallet: this.wallet.modView() } : {}) };
   }
 
   /** Message seqs of the widget cards `id` has answered. */
