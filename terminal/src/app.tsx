@@ -41,11 +41,11 @@
 
 import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Composer, Thread } from "./chat.tsx";
-import { DEFAULT_TV_ROOM, baseOf, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, tvRoomOf, withoutSecrets, type TerminalConfig, type TerminalView } from "./config.ts";
+import { DEFAULT_TV_ROOM, adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, savedCharacter, tvRoomOf, withoutSecrets, type TerminalConfig, type TerminalView } from "./config.ts";
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import { useIdleTimeout } from "./idle.ts";
-import { beginPilot, endPilot, fetchRoster, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
+import { beginPilot, endPilot, fetchCharacters, fetchRoster, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
 import { matchName, parseScan } from "./scan.ts";
 import { Scanner, type CameraState, cameraProblem } from "./scanner.tsx";
 import { BrowserEngine, DeviceEngine, ENGINE_LABEL, SpeechQueue, audioUnlocked, deviceEnv, pickDeviceEngine, unlock, voiceEngines, voiceNote, type EngineKind, type VoiceChoice } from "./speech/engine.ts";
@@ -60,7 +60,7 @@ import { attractOf, useScreenState } from "./screen.ts";
 import { Attract } from "./Attract.tsx";
 import { IdentifyOverlay, LiveScreenLayer } from "./ScreenLayer.tsx";
 import { Tv } from "./Tv.tsx";
-import { screenLayers } from "./slides.ts";
+import { PeekClock, canPeek, screenLayers } from "./slides.ts";
 
 // three.js is most of the weight of the world view — a face-only terminal
 // never loads it. Retryable: `lazy` alone caches a failed load forever.
@@ -126,6 +126,46 @@ export function App() {
     setScreen({ kind: "setup", notice: "This terminal's access was revoked — enter the moderator passcode again." });
   }, [screenState.revoked]);
 
+  // The screen state names the character in the story's own spelling: a
+  // tablet set up as `trabolta` before the doors opened (when the server
+  // couldn't check the name) adopts `Trabolta`, so its line is the guest's
+  // real `dm:Trabolta` thread (B19).
+  useEffect(() => {
+    if (config === null) return;
+    const next = adoptCharacter(config, screenState.state?.character?.id);
+    if (next === null) return;
+    saveConfig(next);
+    setConfig(next);
+  }, [config, screenState.state]);
+
+  // The screen state names no character for this terminal although it asked
+  // for one: before the doors that is only "no story yet", after them it is
+  // a name the story lacks (provisioned before the doors, unchecked). Ask the
+  // cast once per sim; a name the story lacks sends the terminal to setup
+  // with the error rather than piloting guests into a `dm:<typo>` thread no
+  // agent hears (B19).
+  const castKey = config === null ? null : castCheckKey(config, screenState.state);
+  const [castProblem, setCastProblem] = useState<{ key: string; problem: string } | null>(null);
+  const castAsked = useRef<string | null>(null);
+  useEffect(() => {
+    if (config === null || castKey === null || castAsked.current === castKey) return;
+    castAsked.current = castKey;
+    // Kept with its key: an answer for an older key never counts.
+    void fetchCharacters(config)
+      .then((cast) => {
+        const problem = characterProblem(config.character, cast);
+        setCastProblem(problem === null ? null : { key: castKey, problem });
+      })
+      .catch(() => {
+        if (castAsked.current === castKey) castAsked.current = null; // ask again on a later poll
+      });
+  }, [config, castKey, screenState.state]);
+  const badCharacter = castProblem !== null && castProblem.key === castKey ? castProblem.problem : null;
+  useEffect(() => {
+    if (badCharacter === null || screen.kind === "setup" || screen.kind === "piloting") return;
+    setScreen({ kind: "setup", notice: `${badCharacter} Set this terminal's character.` });
+  }, [badCharacter, screen.kind]);
+
   // The poll's event is gone (ended; a new one launched): back to setup, the
   // config kept so its name / character / spot carry over — like `onGone`.
   useEffect(() => {
@@ -166,6 +206,31 @@ export function App() {
     }
   }, []);
 
+  // A tap on a slide held over the scanner peeks under it (B21) until
+  // nobody has touched the terminal for `PEEK_MS`; overlays still cover.
+  // `PeekClock` (slides.ts) is the tested state machine; this only feeds it.
+  const peekClock = useRef(new PeekClock());
+  const [, setPeekTick] = useState(0);
+  const peekable = config !== null && canPeek(config.view, screen.kind, attractOf(screenState.state));
+  const peek = peekClock.current.on(Date.now(), peekable);
+  const onSlideTap = useCallback(() => {
+    peekClock.current.tap(Date.now());
+    setPeekTick((n) => n + 1);
+  }, []);
+  useEffect(() => {
+    if (!peek) return;
+    const onInput = () => peekClock.current.touch(Date.now());
+    window.addEventListener("pointerdown", onInput, true);
+    window.addEventListener("keydown", onInput, true);
+    // Re-ask the clock every second so the slide comes back on its own.
+    const tick = window.setInterval(() => setPeekTick((n) => n + 1), 1000);
+    return () => {
+      window.removeEventListener("pointerdown", onInput, true);
+      window.removeEventListener("keydown", onInput, true);
+      window.clearInterval(tick);
+    };
+  }, [peek]);
+
   const finish = useCallback((c: TerminalConfig) => {
     saveConfig(c);
     setConfig(c);
@@ -197,7 +262,7 @@ export function App() {
   const layer = (
     <>
       {/* A slide's .mp4 plays on the TV only (N-04a); the tablets keep the PNG. */}
-      <LiveScreenLayer state={screenState.state} piloting={piloting} video={config.view === "tv"} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
+      <LiveScreenLayer state={screenState.state} piloting={piloting} peek={peek} onSlideTap={peekable ? onSlideTap : undefined} video={config.view === "tv"} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
       <IdentifyOverlay state={screenState.state} name={config.name} spot={config.spot} view={config.view} />
       {announcement !== null && (
         <div className="announce-banner" role="status">
@@ -820,7 +885,11 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
       if (code.trim() !== "") {
         next = await provision(code.trim(), { name: name.trim() || null, character: character.trim() || null, camera, engine, spot, view, room: room.trim() || null, announce });
       } else if (current !== null) {
-        next = { ...current, name: name.trim() || current.name, character: character.trim() || current.character, camera, engine, spot, view, room: room.trim(), announce };
+        // A changed character in the story's spelling, or an error naming the
+        // cast (an unreachable / slow server or closed doors: kept as typed —
+        // the screen state corrects the spelling later). Unchanged: no lookup.
+        const kept = await savedCharacter(character, current.character, () => fetchCharacters(current));
+        next = { ...current, name: name.trim() || current.name, character: kept, camera, engine, spot, view, room: room.trim(), announce };
       } else {
         throw new Error("Enter the moderator passcode.");
       }

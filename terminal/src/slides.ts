@@ -155,7 +155,7 @@ function remember(target: ScreenTarget, m: ScreenMemo): void {
  * measured on the server's clock (its `now` + the time since the answer
  * arrived), so a tablet with the wrong time still holds slides right.
  */
-export function screenLayers(state: ScreenState | null, nowMs: number, o: { piloting: boolean }): ScreenLayers {
+export function screenLayers(state: ScreenState | null, nowMs: number, o: { piloting: boolean; peek?: boolean }): ScreenLayers {
   if (state === null) return NO_LAYERS;
   const since = Math.max(0, nowMs - state.receivedAt);
   const serverNow = state.now + since;
@@ -183,16 +183,62 @@ export function screenLayers(state: ScreenState | null, nowMs: number, o: { pilo
     if (under !== null && under.seq < s.seq && under.at <= s.at && held(under)) s = under; // the story slide keeps its hold
     else if (serverNow < m.blindUntil) s = null; // a story slide may be held under it, unseen: the story wins
   }
-  if (!o.piloting && s !== null && held(s)) slide = { value: s.value, cue: s.cue };
+  if (!o.piloting && o.peek !== true && s !== null && held(s)) slide = { value: s.value, cue: s.cue };
 
   const remaining = state.remaining === null ? null : Math.max(0, state.remaining - Math.floor(since / 1000));
   const y2k = state.countdown === "y2k" ? remaining : null;
-  const corner = overlay === null && !o.piloting && state.countdown !== null && remaining !== null && slide?.value !== "y2k" ? remaining : null;
+  // A peek clears the corner too: its box sits over the typed fallback's CONNECT.
+  const corner = overlay === null && !o.piloting && o.peek !== true && state.countdown !== null && remaining !== null && slide?.value !== "y2k" ? remaining : null;
 
   const flicker = p.flicker !== null && overlay !== "blackout" && age(p.flicker.at) < FLICKER_FRESH_MS ? p.flicker.seq : null;
   const chart = overlay === null && slide !== null && state.chart !== null && state.chart.slide === slide.value ? state.chart : null;
   const chartShown = chart === null ? 0 : chartReveal(chart.rows.length, chart.revealAt, serverNow);
   return { overlay, slide, corner, y2k, flicker, chart, chartShown };
+}
+
+/** A peek (B21) lasts until nobody has touched the terminal for this long. */
+export const PEEK_MS = 30_000;
+
+/**
+ * May a tap on a slide peek under it (B21)? Only on a face terminal (not the
+ * TV, not a mirror: nothing to scan there) showing its scanner — the slide
+ * would otherwise cover "type your program name" for as long as it is held
+ * (the y2k slide: the whole final hour), and a tablet with no camera could
+ * open no line at all. The peek hides the slide only: an overlay still
+ * covers everything.
+ */
+export function canPeek(view: string, terminal: "attract" | "connecting" | "piloting" | "setup", screensaver: boolean): boolean {
+  return view !== "tv" && view !== "mirror" && terminal === "attract" && !screensaver;
+}
+
+/**
+ * The peek's state machine (B21), pure: fed timestamps, the app owns the
+ * timer and the input listeners. A tap on the slide starts (or keeps) the
+ * peek; any input while peeking restarts its clock; `PEEK_MS` with no input,
+ * or the terminal leaving its scanner (connecting, piloting, the screensaver),
+ * ends it until the next tap — the slide (and the corner countdown, which a
+ * peek also hides: its box covers CONNECT) is back.
+ */
+export class PeekClock {
+  private last: number | null = null;
+  constructor(private readonly limit: number = PEEK_MS) {}
+  /** A tap on the held slide: peek from now. */
+  tap(now: number): void {
+    this.last = now;
+  }
+  /** Someone touched or typed: a running peek lasts another `limit`. */
+  touch(now: number): void {
+    if (this.last !== null) this.last = now;
+  }
+  /** Is the peek on at `now`? Ending is for good (until the next tap). */
+  on(now: number, peekable: boolean): boolean {
+    if (this.last === null) return false;
+    if (!peekable || now - this.last >= this.limit) {
+      this.last = null;
+      return false;
+    }
+    return true;
+  }
 }
 
 /** The chart reveals one row every this many ms, bottom first. */

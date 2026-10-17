@@ -190,7 +190,7 @@ export async function provision(code: string, hints: Omit<UrlHints, "code">): Pr
   }
   if (resolved.role !== "mod") throw new Error(`That is a ${resolved.role === "prime" ? "performer" : "guest"} code — a terminal needs the moderator passcode.`);
   const login = await api<{ token: string }>(`/e/${encodeURIComponent(resolved.eventId)}/api/mod/login`, { passcode: code });
-  const character = hints.character ?? (resolved.characters?.includes(DEFAULT_CHARACTER) ? DEFAULT_CHARACTER : (resolved.characters?.[0] ?? DEFAULT_CHARACTER));
+  const character = pickCharacter(hints.character, resolved.characters ?? []);
   return defaultConfig({
     eventId: resolved.eventId,
     token: login.token,
@@ -204,6 +204,82 @@ export async function provision(code: string, hints: Omit<UrlHints, "code">): Pr
     room: hints.room ?? "",
     announce: hints.announce ?? false,
   });
+}
+
+/** A name folded the way the story matches names (core's `foldName`:
+ *  case, `_` / `-` and runs of spaces don't count). */
+export function foldName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
+/** The story's own spelling of a typed character name (`trabolta` →
+ *  `Trabolta`), or null when the story declares nobody by that name. The
+ *  terminal's thread is `dm:<this>`, so a typed variant must never reach it:
+ *  the server would keep the line in a thread no agent hears (B19). */
+export function canonicalCharacter(typed: string, characters: readonly string[]): string | null {
+  if (characters.includes(typed)) return typed;
+  const want = foldName(typed);
+  return characters.find((c) => foldName(c) === want) ?? null;
+}
+
+/** The character a terminal is set up for: the typed one in the story's
+ *  spelling, else the default. An empty list (the doors aren't open yet, so
+ *  the server can't say) keeps the typed name; the screen state's
+ *  `character.id` corrects it later (`adoptCharacter`). Throws when the story
+ *  is loaded and declares no such character. */
+export function pickCharacter(typed: string | null, characters: readonly string[]): string {
+  if (typed === null || typed.trim() === "") return characters.includes(DEFAULT_CHARACTER) ? DEFAULT_CHARACTER : (characters[0] ?? DEFAULT_CHARACTER);
+  if (characters.length === 0) return typed.trim();
+  const found = canonicalCharacter(typed.trim(), characters);
+  if (found === null) throw new Error(characterProblem(typed.trim(), characters) ?? "");
+  return found;
+}
+
+/** What is wrong with a terminal's character against the story's cast, or
+ *  null when nothing is (the story has it, or no cast to check: the doors
+ *  aren't open). */
+export function characterProblem(configured: string, characters: readonly string[]): string | null {
+  if (characters.length === 0 || canonicalCharacter(configured.trim(), characters) !== null) return null;
+  return `The story has no character called "${configured.trim()}" (it has: ${characters.join(", ")}).`;
+}
+
+/**
+ * When the running story should be asked whether this terminal's character
+ * exists (B19): the screen state answers but names no character for it —
+ * either the doors aren't open (no story yet: the cast comes back empty) or
+ * the name is one the story lacks (a typo provisioned before the doors, when
+ * the server could not check it). One check per event × character × sim
+ * (`announceEpoch` changes when the doors open or the story restarts), so the
+ * key is what the caller dedupes on; null = nothing to check.
+ */
+export function castCheckKey(c: Pick<TerminalConfig, "eventId" | "character">, state: { character: unknown; announceEpoch: string | null } | null): string | null {
+  if (state === null || state.character !== null || c.character.trim() === "") return null;
+  return `${c.eventId}|${c.character}|${state.announceEpoch ?? ""}`;
+}
+
+/** The character a ⚙ save (no passcode) stores. An unchanged field keeps
+ *  the stored name with no lookup at all — a voice / view change saves at
+ *  once, whatever the server is doing, and the screen state corrects the
+ *  spelling (`adoptCharacter`). A new name is checked against the cast; a
+ *  failed (or timed-out) lookup keeps it as typed. */
+export async function savedCharacter(typed: string, current: string, lookup: () => Promise<readonly string[]>): Promise<string> {
+  const want = typed.trim() || current;
+  if (want === current) return current;
+  const cast = await lookup().catch(() => [] as readonly string[]);
+  return pickCharacter(want, cast);
+}
+
+/** A stored config whose character the screen state names differently only
+ *  by spelling (`trabolta` vs `Trabolta`): the same config in the story's
+ *  spelling. Null = nothing to change (already exact, or a different name). */
+export function adoptCharacter(c: TerminalConfig, screenId: string | null | undefined): TerminalConfig | null {
+  if (typeof screenId !== "string" || screenId === "" || screenId === c.character) return null;
+  return foldName(screenId) === foldName(c.character) ? { ...c, character: screenId } : null;
 }
 
 /** The event-scoped API base for a configured terminal. */

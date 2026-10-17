@@ -2,7 +2,7 @@
 title: The terminals on the walls
 section: Guest Guide
 order: 9
-keywords: terminal, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance
+keywords: terminal, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k
 ---
 
 Some events mount **terminals** around the house — tablets that are a
@@ -29,6 +29,11 @@ mouse." Once he is introduced, the terminals become his line.
 
 No camera on that terminal (or it can't be used)? Tap *type your program
 name* and enter the name you registered with.
+
+A slide covering the terminal (the countdown clock in the last hour, a
+bingo card, the Trust Chart)? **Tap it**: it steps aside so you can scan
+or type your name. It comes back by itself after 30 seconds with nobody
+touching the terminal, or once your line opens.
 
 ## Talking
 
