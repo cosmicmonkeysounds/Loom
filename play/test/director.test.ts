@@ -17,6 +17,7 @@ import {
   directorRows,
   fireCue,
   fireToast,
+  takesValue,
   initialRole,
   phoneLabel,
   pollDelay,
@@ -119,6 +120,7 @@ describe("arm, then fire", () => {
 
   it("toasts the outcome, with a doors-closed refusal spelled out", () => {
     expect(fireToast(bingo, { ok: true })).toBe("✓ Fired V2");
+    expect(fireToast(bingo, { ok: true, refused: true })).toBe("Not taken — V2 doesn't apply right now (# hosts says why)");
     expect(fireToast(bingo, { ok: false, status: 409, message: "no scenario loaded" })).toBe("Not fired — no scenario loaded");
     expect(fireToast(rows[2]!, { ok: false, status: 500, message: "boom" })).toBe("🦆 Duck found failed: boom");
     // no HTTP answer: it may have fired — never "failed"
@@ -139,6 +141,9 @@ describe("fireCue", () => {
     const dropped = await fireCue(() => Promise.reject(new TypeError("Load failed")), body, () => repolls++);
     expect(dropped).toEqual({ ok: false, status: 0, message: "Load failed" });
     expect(repolls).toBe(3);
+    // The story turned the press down: taken by the server, not fired.
+    expect(await fireCue(async () => ({ refused: true }), body, () => repolls++)).toEqual({ ok: true, refused: true });
+    expect(await fireCue(async () => ({ refused: false }), body, () => repolls++)).toEqual({ ok: true });
   });
 
   it("a stalled POST is abandoned after the timeout as 'no answer'", async () => {
@@ -332,5 +337,12 @@ describe("routing", () => {
   it("the performers' help explains the phone cue sheet; guests never see it", () => {
     expect(searchHelp(articlesFor("performer"), "cue sheet")[0]?.article.slug).toBe("director-phone");
     expect(articlesFor("guest").some((a) => a.slug === "director-phone")).toBe(false);
+  });
+});
+
+describe("takesValue", () => {
+  it("offers the value box on an award only", () => {
+    expect(takesValue("award_best_liar")).toBe(true);
+    for (const id of ["beat_the_king", "reinstallation begun", "start_the_ceremony"]) expect(takesValue(id), id).toBe(false);
   });
 });
