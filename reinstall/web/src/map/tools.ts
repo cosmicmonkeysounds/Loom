@@ -85,6 +85,10 @@ export interface MapToolbarContext {
   base: string;
   /** Programs in the simulation now. */
   players: number;
+  /** The map version the server last announced on the spatial stream (a
+   *  save or a variant switch anywhere): ahead of `loaded` while a dirty page
+   *  only warns, so the project bar refetches its variant list on it. */
+  remoteVersion: string | null;
   /** The draft differs from `saved` (or the JSON tab holds unparsed text). */
   dirty: boolean;
   /** The draft can be saved: `validateHouse` passes, the JSON tab parses, the map is the server's (not the bundled stand-in). */

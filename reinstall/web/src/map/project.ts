@@ -123,6 +123,13 @@ export interface SwitchSteps {
  * "dropped" line only when the save was turned down. Resolves to the `base`
  * the switch posts (the save's version when it saved), or null = stop:
  * cancelled, or the save failed (never switch over a save that didn't land).
+ *
+ * The base is the version the list `r` was drawn against (the server's
+ * `version`), not the page's: a page holding a draft never reloads, so its
+ * own version is stale after a switch made elsewhere, and posting it would
+ * 409 every time (B18). The director confirmed against the list, so the
+ * list is the race guard — a save or switch it hasn't seen still 409s. An
+ * older server's list has no version: the page's is used.
  */
 export async function planSwitch(
   to: MapVariant,
@@ -130,7 +137,7 @@ export async function planSwitch(
   state: { players: number; dirty: boolean; version: string | null },
   steps: SwitchSteps,
 ): Promise<{ base: string | null } | null> {
-  let base = state.version;
+  let base = r?.version ?? state.version;
   let edited = r?.edited ?? false;
   const offer = switchSaveOffer(r, to, state.dirty);
   if (offer !== null && steps.confirm(offer)) {
@@ -142,6 +149,29 @@ export async function planSwitch(
   const ask = switchConfirm(to, { players: state.players, edited, dirty: state.dirty, all: r?.variants ?? [] });
   if (ask !== null && !steps.confirm(ask)) return null;
   return { base };
+}
+
+/**
+ * What a press on a variant's button means, against the list it was drawn
+ * from. A press on the one the list calls live refetches the list first:
+ * it may be stale (a switch made on another page while this one held a
+ * draft, so its version never moved), and doing nothing would leave the
+ * director unable to switch back. Resolves to the variant and the list to
+ * switch with (`live`: it really is playing, nothing to do), or null.
+ */
+export async function pressTarget(
+  file: string,
+  list: MapVariantsResponse | null,
+  busy: boolean,
+  refetch: () => Promise<MapVariantsResponse | null>,
+): Promise<{ v: MapVariant; list: MapVariantsResponse | null; live: boolean } | null> {
+  if (busy) return null;
+  const v = list?.variants.find((x) => x.file === file);
+  if (v === undefined) return null;
+  if (!v.active) return { v, list, live: false };
+  const fresh = await refetch();
+  const now = fresh?.variants.find((x) => x.file === file);
+  return now === undefined ? null : { v: now, list: fresh, live: now.active };
 }
 
 /** Can the variant be switched to now? */

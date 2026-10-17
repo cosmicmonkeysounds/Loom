@@ -18,7 +18,7 @@
 //! by its nearest open side, then follows the route from there.
 
 import { STEP_UP, floorOf, locate, pathLength, pointInRect, portals, rampHeight, roomById, route } from "@loom/house";
-import type { HouseMap, Stair, Vec3 } from "@loom/house";
+import type { Door, HouseMap, Stair, Vec3 } from "@loom/house";
 import { RADIUS } from "./physics.ts";
 
 /** How far past a stair's side the step out from under it lands (clear of the side by more than a body). */
@@ -80,6 +80,24 @@ export function stepOut(house: HouseMap, stair: Stair, feet: Vec3): Vec3 | null 
   const [a, b] = sides as [Vec3, Vec3];
   const near = Math.hypot(a[0] - x, a[2] - z) <= Math.hypot(b[0] - x, b[2] - z) ? [a, b] : [b, a];
   return [...near, head].find(open) ?? null;
+}
+
+/**
+ * The map the trail routes over. `route()` keeps every guarded door shut
+ * (no portal through it), but once the King has fallen the player can walk
+ * through his door, and from behind it (the Server Room's only door) every
+ * route would be the straight no-path line through a wall. So after the
+ * fall his doors lose their guard and his prop stops being an obstacle,
+ * as the physics drops it (`physicsOptions`). Standing, the map as it is.
+ */
+export function trailMap(house: HouseMap, king: string | null, fallen: boolean): HouseMap {
+  if (king === null || !fallen) return house;
+  const open = (d: Door): Door => {
+    if (d.guard !== king) return d;
+    const { guard: _guard, ...rest } = d;
+    return rest;
+  };
+  return { ...house, doors: house.doors.map(open), props: house.props.filter((p) => p.id !== king) };
 }
 
 /** The route from the player's feet to the duck, made walkable on (and under) stairs (above). */

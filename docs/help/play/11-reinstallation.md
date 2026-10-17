@@ -81,8 +81,10 @@ so, and each one makes him dumber — *at full strength* → *rattled* →
 *reeling* → *dizzy* → *PAWNS ONLY*, a king with nothing but his eight
 pawns. **♟ CHALLENGE** (or C) opens a chessboard against him at whatever
 strength you've left him. Checkmate him and the door opens — and the
-story hears about it. Lose, and he holds; hit him again. He is fresh
-for the next player.
+story hears about it. Lose (or draw), and he deals you a new game at
+the same strength, the board still open. Too strong? **Give up** closes
+the board; hit him some more to make him weaker, then challenge again.
+He is fresh for the next player.
 
 ## Everyone is watching
 

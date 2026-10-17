@@ -255,13 +255,18 @@ indicators") — a visibility graph over doors, stairs and corner waypoints.
 tolerance: metres, and m² for orientations).
 
 1. **Nodes**, in order, each `{pos, rooms}`:
-   - *Portals*: every door **but a guarded one** (`guard`: shut until its
-     king falls — the route never passes it; the fight is per session, and
-     no duck sits behind a guard) — its point at room `a`'s floor
+   - *Portals*: every door **but a guarded one** (`guard`: `route()`
+     keeps it shut, never a portal) — its point at room `a`'s floor
      elevation; rooms `a` and `b`, or just `a` when `b` is null — then per
      stair the *foot*
      (centre of the edge opposite `up`, lower elevation, room `from`) and
      the *head* (centre of the `up` edge, upper elevation, room `to`).
+     A game that lets the King fall (the fight is per session) must not
+     route its trail over the map as it is: once he is down a player can
+     be behind his door, and a trail from there would cross a wall. It
+     routes over a copy with that king's doors unguarded and his prop
+     removed (reinstall/web `trailMap`, rebuilt on the fall, on bind and
+     on a remap). VR never fells him, so it routes over the map as is.
    - *Reflex waypoints*: per room (array order), per vertex `v = p[i]`
      (vertex order) with neighbours `p = p[i−1]`, `q = p[i+1]` (cyclic):
      with `A = Σ (xᵢ·zᵢ₊₁ − xᵢ₊₁·zᵢ)` and `k = (v−p)ₓ·(q−v)_z − (v−p)_z·(q−v)ₓ`,
@@ -677,19 +682,23 @@ result still on its way is kept across a reload for 60 s (below).
 - **The result** (`Game.chessResult`): **checkmate** fells him (`fall()`
   topples him over 1.6 s), opens the door, plays the fanfare, says
   "CHECKMATE — the door opens." and posts the prop's `signals.won`
-  (default `chess won`); the King winning posts `signals.lost` ("The King
-  holds. Hit him again."), a stalemate / insufficient material /
-  threefold / fifty moves posts `signals.drawn` ("A draw is not a win.");
-  an abandoned game posts nothing. Each goes through `postSignal`: `POST
+  (default `chess won`) and closes the board; the King winning posts
+  `signals.lost` ("THE KING WINS. AGAIN."), a stalemate / insufficient
+  material / threefold / fifty moves posts `signals.drawn` ("STALEMATE.
+  AGAIN." / "DRAW. AGAIN."), and either deals a fresh board at the same
+  stage in the still-open window (`redeals`, OCT31 decision 6: only
+  checkmate opens the door); an abandoned game posts nothing. Each goes through `postSignal`: `POST
   /api/mod/signal {name, subject: <the program>, label: <device name>}`
   with the tablet's moderator token, retried on a network failure or a
   5xx (0.5 s doubling to 8 s, five retries); a 4xx is final. An attempt
   that hangs is aborted after 5 s (`SIGNAL_ATTEMPT_TIMEOUT_MS`), or at the
   60 s cap below if that comes first, and counts as a network failure. A win whose
   every retry failed says "The win didn't reach the house: tell a host
-  (♟)." While a post is unsent it is also kept in `localStorage`
-  (`loom-reinstall.pending-signal`, the latest only, try/catch'd); the
-  next page load posts it once (`flushPendingSignal`) only within 60 s of
+  (♟)." While a post is in flight it is also kept in `localStorage`
+  (`loom-reinstall.pending-signal`, the latest only, try/catch'd) and
+  forgotten once it lands, is refused, or fails for good (the host was
+  told, so a late post would open the door twice); a page that died
+  mid-retry leaves it, and the next page load posts it once (`flushPendingSignal`) only within 60 s of
   the first try (`PENDING_SIGNAL_MAX_AGE_MS`, also checked before every
   retry) and for the same event, and drops anything older: `chess won`
   unlocks the real door, so a stale win never lands late. The story treats `chess won` exactly as the ♟ fallback button
@@ -697,7 +706,8 @@ result still on its way is kept across a reload for 60 s (below).
   door still opens in the simulation, as practice.
 - **Out of scope** (device check pending — the wall chess phone stays the
   fallback, U17): the hit feel, the glyph fonts on the oldest tablets, a
-  grandmaster stall on a slow SoC; a pawns-only stalemate opens nothing.
+  grandmaster stall on a slow SoC; a pawns-only stalemate opens nothing (it
+  deals again).
 
 The **map** page (`/reinstall/map`): the house plan (SVG, one floor at a
 time), live players, the duck of each session, terminals with their view

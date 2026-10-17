@@ -4,10 +4,11 @@
 //! the thing it names), the walkability and LOCATION warnings, and how
 //! the last save went (incl. the 409 copy / reload offer).
 
+import { useEffect, useRef } from "react";
 import { roomById } from "@loom/house";
 import type { HouseMap, PlayerState } from "@loom/house";
 import type { Problem } from "./check.ts";
-import { provisionLink, type SaveState, type Selection } from "./edit.ts";
+import { conflictText, provisionLink, type SaveState, type Selection } from "./edit.ts";
 import { floorOfRoom, playerColor } from "./plan.ts";
 
 export function TerminalsTab({ house, origin, sel, copy, copied, onPick }: { house: HouseMap; origin: string; sel: Selection | null; copy: (key: string, value: string) => void; copied: string | null; onPick: (sel: Selection, floor: string) => void }) {
@@ -87,8 +88,28 @@ export function ProblemsPanel({
       {p.text}
     </li>
   );
+  // A conflict sits first and scrolls into view: below a long problem list
+  // its Reload button was off screen.
+  const conflictRef = useRef<HTMLDivElement | null>(null);
+  const conflicted = saveState.kind === "conflict";
+  useEffect(() => {
+    if (conflicted) conflictRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, [conflicted]);
   return (
     <div className={`problems w98-raised${errors.length > 0 ? " bad" : ""}`}>
+      {saveState.kind === "conflict" && (
+        <div className="bad-head" ref={conflictRef}>
+          {conflictText(saveState.version)}
+          <div className="conflict-actions">
+            <button className="w98-button default" onClick={onReload}>
+              Reload the map (discard my edits)
+            </button>
+            <button className="w98-button" onClick={onCopyDraft}>
+              {copied === "draft" ? "Copied ✔" : "Copy my edits (JSON)"}
+            </button>
+          </div>
+        </div>
+      )}
       {errors.length === 0 ? (
         <div className="ok">✔ The map is valid.</div>
       ) : (
@@ -118,19 +139,6 @@ export function ProblemsPanel({
               ))}
             </ul>
           )}
-        </div>
-      )}
-      {saveState.kind === "conflict" && (
-        <div className="bad-head">
-          Not saved — the map changed: another director saved it{saveState.version !== null ? ` (now v${saveState.version})` : ""} since you loaded it. Reload to get their version, then redo your edits.
-          <div className="conflict-actions">
-            <button className="w98-button" onClick={onCopyDraft}>
-              {copied === "draft" ? "Copied ✔" : "Copy my edits (JSON)"}
-            </button>
-            <button className="w98-button default" onClick={onReload}>
-              Reload the map (discard my edits)
-            </button>
-          </div>
         </div>
       )}
       {saveState.kind === "error" && (

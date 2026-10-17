@@ -367,8 +367,9 @@ export function editableSource(source: string): boolean {
   return source !== "bundled";
 }
 
-/** The save button's state. `conflict`: another director saved since this
- *  page loaded its map (409) — nothing was saved; `version` is theirs. */
+/** The save button's state. `conflict`: the event's map changed since this
+ *  page loaded it (409: another director's save, or a variant switch) —
+ *  nothing was saved; `version` is the server's now. */
 export type SaveState =
   | { kind: "idle" }
   | { kind: "saving" }
@@ -381,6 +382,12 @@ export function saveStateOf(r: SaveHouseReply): SaveState {
   if (r.ok) return { kind: "ok", warnings: r.result.warnings, version: r.result.version };
   if (r.conflict) return { kind: "conflict", version: r.version };
   return { kind: "error", error: r.error, problems: r.problems };
+}
+
+/** The conflict panel's line: a save elsewhere or a variant switch (the tent
+ *  ⇄ shed bar on another page) both move the version, so it names both. */
+export function conflictText(version: string | null): string {
+  return `Not saved — the map changed since you loaded it (a save or a variant switch)${version !== null ? `, now v${version}` : ""}. Reload to get the map the event plays, then redo your edits.`;
 }
 
 /** The version a save is based on — what the server compares (§2.1 `base`):

@@ -150,8 +150,10 @@ function outerCorners(r: readonly [number, number, number, number]): Vec2[] {
  */
 export function routeNodes(house: HouseMap): RouteNode[] {
   // A guarded door (`Door.guard`, a king standing in it) is shut for routing:
-  // its portal is left out, so nothing paths through it — the games open it
-  // per session, and the trail never needs to (no duck behind a guard).
+  // its portal is left out, so nothing paths through it. The games open it
+  // per session, and once the king has fallen a player can be behind it, so
+  // the web trail routes over a copy without that guard (reinstall/web
+  // `trailMap`); VR never fells him.
   const guarded = new Set(house.doors.filter((d) => d.guard !== undefined).map((d) => d.id));
   const out: RouteNode[] = portals(house)
     .filter((p) => !(p.kind === "door" && guarded.has(p.id)))

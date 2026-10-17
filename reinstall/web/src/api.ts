@@ -383,16 +383,19 @@ async function sendSignal(config: ReinstallConfig, p: PendingSignal, opts: Signa
  * label}` with the moderator token (`label` = the device's name, so the
  * journal reads "by Tent tablet" on a server that honours it). Retries a
  * network failure or a 5xx `attempts` times (0.5 → 8 s); a 4xx is final.
- * Resolves true on a 200. While it is unsent it is also kept in
- * `localStorage` (the latest only), so `flushPendingSignal` can post it
- * after a reload — within `PENDING_SIGNAL_MAX_AGE_MS` of the first try.
+ * Resolves true on a 200. While a send is in flight it is also kept in
+ * `localStorage` (the latest only), so a reload or crash mid-retry can post
+ * it from `flushPendingSignal` — within `PENDING_SIGNAL_MAX_AGE_MS` of the
+ * first try. Once it fails for good it is forgotten: the caller tells the
+ * guest to get a host (`WIN_NOT_SENT`), and a late post after the host's ♟
+ * (or a director's re-arm) would open the real door a second time.
  */
 export async function postSignal(config: ReinstallConfig, name: string, subject: string, opts: SignalOptions = {}): Promise<boolean> {
   const storage = opts.storage === undefined ? browserStorage() : opts.storage;
   const p: PendingSignal = { eventId: config.eventId, name, subject, label: config.name, at: (opts.now ?? Date.now)() };
   writePending(storage, p);
   const r = await sendSignal(config, p, opts);
-  if (r !== "failed") clearPending(storage, p);
+  clearPending(storage, p);
   return r === "ok";
 }
 

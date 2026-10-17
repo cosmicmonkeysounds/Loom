@@ -55,8 +55,9 @@ heart and makes his chess worse — grandmaster → club → beginner → dizzy
 eight pawns). **♟ CHALLENGE** (or C) opens the board (a lazy chunk with
 chess.js; tap a piece, tap a square; 💡 Hint; Give up changes nothing).
 Checkmate fells him, the door opens in the simulation, and the tablet
-posts `chess won` to the story with its moderator token (`chess lost` /
-`chess drawn` otherwise) — the story keeps its Y2K gate, so before step 14
+posts `chess won` to the story with its moderator token. A loss or a draw
+posts `chess lost` / `chess drawn` and deals a fresh board at the same
+stage ("STALEMATE. AGAIN."): only checkmate opens the door. The story keeps its Y2K gate, so before step 14
 the board says **PRACTICE** (the badge reads `Night.step` off the mod
 view) and `# hosts` says so. The fight is per session; a headset only
 shows him and says "The King is fought on the tent tablet." The design is

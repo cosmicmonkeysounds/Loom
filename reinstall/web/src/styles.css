@@ -436,6 +436,7 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 .chess-loading { padding: 1em 1.5em; }
 .chess-head { display: flex; align-items: center; gap: 0.6em; }
 .chess-stage { flex: 1; font-size: 0.95em; }
+.chess-tip { font-size: 0.85em; color: var(--navy); text-align: center; }
 .chess-badge { padding: 0.1em 0.5em; border: 1px solid var(--dark); font-weight: bold; font-size: 0.8em; letter-spacing: 0.08em; }
 .chess-badge.armed { background: #c8ffc8; color: #005000; }
 .chess-badge.practice { background: var(--face-light); color: #404040; }

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { Chess } from "chess.js";
 import type { Prop, Vec3 } from "@loom/house";
-import { canHit, fell, hearts, hit, HIT_COOLDOWN_MS, HIT_REACH, KING_HP, newFight, stageFor, STAGE_LINE } from "../src/game/fight.ts";
+import { canHit, fell, hearts, hit, HIT_COOLDOWN_MS, HIT_REACH, KING_HP, newFight, redeals, stageFor, STAGE_LINE } from "../src/game/fight.ts";
+import { bannerOf, newGame, outcome, PAWNS_ONLY_FEN } from "../src/chess/rules.ts";
 import { SHOW } from "./houses.ts";
 
 const house = SHOW();
@@ -99,5 +101,38 @@ describe("canHit (on the show's map)", () => {
     expect(canHit(newFight(), 0, house, feet(HIT_REACH - 0.01), WEST, king)).toBe("ok");
     expect(canHit(newFight(), 0, house, feet(0.5, 0.5), WEST, king)).toBe("ok"); // 0.71 m, diagonal
     expect(canHit(newFight(), 0, house, feet(0.9, 0.9), WEST, king)).toBe("far"); // 1.27 m
+  });
+});
+
+describe("a game that ends without checkmate deals again (decision 6)", () => {
+  it("a loss or a draw re-deals; a win or giving up closes the board", () => {
+    expect(redeals("lost")).toBe(true);
+    expect(redeals("drawn")).toBe(true);
+    expect(redeals("won")).toBe(false);
+    expect(redeals("abandoned")).toBe(false);
+  });
+
+  it("a pawns-only stalemate says so and deals a fresh board at the same dizziness, the fight untouched", () => {
+    let f = newFight(4);
+    for (let i = 0; i < 4; i++) f = hit(f, i * HIT_COOLDOWN_MS);
+    const stage = stageFor(f.hp, f.max);
+    expect(stage).toBe("pawns");
+    // White to move has no move and is not in check: the King and his pawn stalemate us.
+    const stuck = new Chess("8/8/8/8/8/1k6/p7/K7 w - - 0 1");
+    expect(outcome(stuck)).toBe("drawn");
+    expect(bannerOf(stuck, "drawn")).toBe("STALEMATE. AGAIN.");
+    expect(redeals(outcome(stuck)!)).toBe(true);
+    expect(newGame(stage).fen()).toBe(PAWNS_ONLY_FEN);
+    expect(f.fallen).toBe(false);
+  });
+
+  it("the banner: checkmate, the King's win and a non-stalemate draw", () => {
+    const fools = new Chess();
+    for (const m of ["f3", "e5", "g4", "Qh4"]) fools.move(m);
+    expect(bannerOf(fools, "lost")).toBe("THE KING WINS. AGAIN.");
+    expect(bannerOf(new Chess("7k/8/6K1/8/8/8/8/8 w - - 0 1"), "drawn")).toBe("DRAW. AGAIN.");
+    const mate = new Chess("6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1");
+    mate.move("Ra8");
+    expect(bannerOf(mate, "won")).toBe("CHECKMATE");
   });
 });
