@@ -423,14 +423,36 @@ export async function flushPendingSignal(config: ReinstallConfig, opts: SignalOp
   return r === "ok" ? "sent" : r;
 }
 
+/** `fetchArmed` gives up (null = unknown) after this long: the checkmate's
+ *  notice waits on it, so a black-holed uplink must never hold back "tell a
+ *  host" past the signal's own retries. */
+export const ARMED_TIMEOUT_MS = 4_000;
+
 /**
  * Is the fight armed? Reads the mod view (`GET /api/state?role=mod`, as
  * `fetchLocations` does) for the world var at `path` and compares it with
- * `min`; null when the server is away or the var is absent / not a number.
+ * `min`; null when the server is away, too slow (`timeoutMs`), or the var is
+ * absent / not a number.
  */
-export async function fetchArmed(config: ReinstallConfig, path: string, min: number, fetcher: typeof fetch = fetch): Promise<boolean | null> {
+export async function fetchArmed(config: ReinstallConfig, path: string, min: number, fetcher: typeof fetch = fetch, timeoutMs: number = ARMED_TIMEOUT_MS): Promise<boolean | null> {
+  const ctl = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<null>((resolve) => {
+    timer = setTimeout(() => {
+      ctl.abort();
+      resolve(null);
+    }, timeoutMs);
+  });
   try {
-    const res = await fetcher(`${baseOf(config)}/api/state?role=mod`, { headers: { "x-loom-token": config.token } });
+    return await Promise.race([readArmed(config, path, min, fetcher, ctl.signal), late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function readArmed(config: ReinstallConfig, path: string, min: number, fetcher: typeof fetch, signal: AbortSignal): Promise<boolean | null> {
+  try {
+    const res = await fetcher(`${baseOf(config)}/api/state?role=mod`, { headers: { "x-loom-token": config.token }, signal });
     if (!res.ok) return null;
     const r = (await res.json()) as { world?: unknown };
     if (!Array.isArray(r.world)) return null;

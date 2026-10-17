@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fetchArmed, flushPendingSignal, PENDING_SIGNAL_KEY, PENDING_SIGNAL_MAX_AGE_MS, postSignal, readPendingSignal, SIGNAL_ATTEMPT_TIMEOUT_MS, SIGNAL_RETRY_MS, type SignalStorage } from "../src/api.ts";
+import { ARMED_TIMEOUT_MS, fetchArmed, flushPendingSignal, PENDING_SIGNAL_KEY, PENDING_SIGNAL_MAX_AGE_MS, postSignal, readPendingSignal, SIGNAL_ATTEMPT_TIMEOUT_MS, SIGNAL_RETRY_MS, type SignalStorage } from "../src/api.ts";
 import { WIN_CODE, WIN_NOT_SENT, WIN_PRACTICE, stakesLine, winNotice } from "../src/game/fight.ts";
 import { defaultConfig } from "../src/config.ts";
 
@@ -272,5 +272,21 @@ describe("fetchArmed", () => {
     expect(await fetchArmed(config, "Night.step", 1, fetcher([{ status: 200, body: {} }]).fetch)).toBeNull();
     expect(await fetchArmed(config, "Night.step", 1, fetcher([409]).fetch)).toBeNull();
     expect(await fetchArmed(config, "Night.step", 1, fetcher(["net"]).fetch)).toBeNull();
+  });
+
+  it("gives up after its timeout on a black-holed uplink, aborting the request (the checkmate notice waits on it)", async () => {
+    let aborted = false;
+    const hang = ((_url: string, init?: RequestInit) =>
+      new Promise<Response>(() => {
+        init?.signal?.addEventListener("abort", () => (aborted = true));
+      })) as unknown as typeof fetch;
+    const t0 = Date.now();
+    expect(await fetchArmed(config, "Night.step", 14, hang, 30)).toBeNull();
+    expect(Date.now() - t0).toBeLessThan(1_000);
+    expect(aborted).toBe(true);
+    // …and the "tell a host" notice is not held back by it.
+    const lost = postSignal(config, "chess won", "g-1", { fetcher: fetcher(["net"]).fetch, storage: null, attempts: 1, sleep: async () => {} });
+    expect(await winNotice(lost, await fetchArmed(config, "Night.step", 14, hang, 30))).toBe(WIN_NOT_SENT);
+    expect(ARMED_TIMEOUT_MS).toBeLessThanOrEqual(SIGNAL_ATTEMPT_TIMEOUT_MS);
   });
 });
