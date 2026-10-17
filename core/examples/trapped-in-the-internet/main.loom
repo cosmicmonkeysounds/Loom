@@ -3567,19 +3567,20 @@ when chess_won for program:
 // only. From the Y2K hour the crew get a readout in # hosts every time,
 // and Trabolta gloats on the TV (The Desktop) at most once every five
 // minutes, losses and draws alike (a table of losing programs would
-// otherwise make him say it after every game); before that it is
+// otherwise make him say it after every game), and never from the final
+// reveal (step 16: the TV belongs to the finale); before that it is
 // practice.
 when chess_lost:
   if Night.ended != true and Night.step >= 14:
     broadcast "♟ The King won a game. No door code." to channel(hosts)
-    if Time.elapsed >= Night.gloat_at:
+    if Time.elapsed >= Night.gloat_at and Night.step < 16:
       set Night.gloat_at = Time.elapsed + 300
       -> Chess Lost
 
 when chess_drawn:
   if Night.ended != true and Night.step >= 14:
     broadcast "♟ A draw with the King. No door code." to channel(hosts)
-    if Time.elapsed >= Night.gloat_at:
+    if Time.elapsed >= Night.gloat_at and Night.step < 16:
       set Night.gloat_at = Time.elapsed + 300
       -> Chess Drawn
 
