@@ -175,9 +175,16 @@ describe("the TV caption's layer (T6-02)", () => {
   it("a text-only line (Sandy, the song beats) shows over a slide and under an overlay", () => {
     const slide = zOf(".screen-slide, .screen-overlay");
     const overlay = zOf(".screen-overlay");
-    const textOnly = zOf(".terminal.tv .tv-caption.text-only");
+    const textOnly = zOf('.terminal.tv .tv-caption[data-mode="text"], .terminal.tv .tv-caption[data-mode="song"]');
     expect(textOnly).toBeGreaterThan(slide);
     expect(textOnly).toBeLessThan(overlay);
+  });
+
+  it("a line the director muted stays under the slide too (W8 review: only Sandy + the songs rise)", () => {
+    // Drawn `text-only` like Sandy's, but no rule lifts the muted mode or the class itself.
+    expect(css).not.toMatch(/data-mode="muted"\]/u);
+    expect(css).not.toMatch(/\.tv-caption\.text-only\s*\{[^}]*z-index/u);
+    expect(zOf(".tv-caption")).toBeLessThan(zOf(".screen-slide, .screen-overlay"));
   });
 
   it("a spoken line stays under the slide: the room hears it", () => {

@@ -577,8 +577,10 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 /* A text-only line (Sandy, the song beats) is the only way the room sees it,
    so it sits over a slide (30) — the ♪ card, the Y2K clock, the ceremony —
    and under an overlay (32), which a blackout must still win. A spoken line
-   stays under the slide: the room hears it. */
-.terminal.tv .tv-caption.text-only { z-index: 31; }
+   stays under the slide: the room hears it. So does a line the director
+   muted (`muted`, still drawn text-only): a mute must not paper the slide
+   the room is watching with every line he says. */
+.terminal.tv .tv-caption[data-mode="text"], .terminal.tv .tv-caption[data-mode="song"] { z-index: 31; }
 .tv-caption-who { color: var(--amber); font-style: normal; }
 .tv-attract { position: absolute; inset: 0; z-index: 5; }
 /* A room terminal (wave 7, the server-room terminal): the character's line
