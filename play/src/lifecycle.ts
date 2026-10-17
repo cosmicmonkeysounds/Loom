@@ -74,6 +74,15 @@ export function lifecycleNotice(kind: string, role: SessionRole): string | null 
 }
 
 /**
+ * What a booth says when its token died with no `lifecycle` frame to say
+ * why: a director's ⏏ Release (N-10, mid-show — a dead phone handed on), a
+ * sign-in elsewhere, or a go-live this phone slept through. Neutral, since
+ * the phone can't tell which; a real `golive` frame keeps its own line.
+ */
+export const BOOTH_SIGNED_OUT =
+  "Your booth was signed out (a director released your part, or the show went live) — sign in again with your passcode.";
+
+/**
  * A guest POST answered 401 (token no longer known) or 404 `unknown guest`
  * means the run restarted while this phone wasn't listening — treat it
  * exactly like a `reset` notice.
@@ -93,8 +102,9 @@ export function eventGone(status: number, message: string): boolean {
 
 /**
  * A performer POST answered 403 "sign in" means the booth's token lost its
- * character — the show went live while this phone was in a pocket. (A 403
- * "you can't post here" is a policy refusal, not a dead session.)
+ * character — a director released the part, or the show went live while
+ * this phone was in a pocket (`BOOTH_SIGNED_OUT`). (A 403 "you can't post
+ * here" is a policy refusal, not a dead session.)
  */
 export function performerSessionDead(status: number, message: string): boolean {
   return status === 403 && /sign in/i.test(message);

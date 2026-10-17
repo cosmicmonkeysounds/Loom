@@ -3,7 +3,7 @@
 // mean "the run restarted while this phone wasn't listening".
 
 import { describe, expect, it } from "vitest";
-import { LifecycleKind, SessionRole, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice } from "../src/lifecycle.ts";
+import { BOOTH_SIGNED_OUT, LifecycleKind, SessionRole, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice } from "../src/lifecycle.ts";
 
 describe("lifecycle policy", () => {
   it("every restart drops a guest; only go-live / ended drop a performer", () => {
@@ -112,5 +112,15 @@ describe("a booth signed back in after Go live starts with no answered cards", (
     // … and the performer signs in again under a new token: the live run's
     // card at the same seq is still the performer's move.
     expect(hasPendingCard(msgs, new Set(perSessionValue(held, "tok-live", EMPTY).keys()))).toBe(true);
+  });
+});
+
+describe("a booth whose token died with no lifecycle frame (T5-03)", () => {
+  it("says it was signed out, never that the rehearsal ended", () => {
+    expect(BOOTH_SIGNED_OUT).toContain("released your part");
+    expect(BOOTH_SIGNED_OUT).toContain("sign in again with your passcode");
+    expect(BOOTH_SIGNED_OUT).not.toMatch(/rehearsal|show is starting/);
+    // A real go-live frame keeps its own line.
+    expect(lifecycleNotice(LifecycleKind.GoLive, SessionRole.Performer)).toContain("show is starting");
   });
 });

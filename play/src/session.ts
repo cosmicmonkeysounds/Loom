@@ -12,7 +12,7 @@ import { checkinFromSearch, withoutCheckin } from "./checkin.ts";
 import { pmChannelId, pmOtherParty, unlockFromSearch, withoutUnlock } from "./codex.ts";
 import { usePlayHost } from "./host.ts";
 import { roomFromMessage, roomFromSearch, roomTarget, withoutRoom } from "./room.ts";
-import { SessionRole, afterLifecycle, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, lifecycleStartsNewRun, performerSessionDead } from "./lifecycle.ts";
+import { BOOTH_SIGNED_OUT, SessionRole, afterLifecycle, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, lifecycleStartsNewRun, performerSessionDead } from "./lifecycle.ts";
 import { locationOfRoom, occupantsByLocation, type Presence } from "./presence.ts";
 import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, WALLET_ROOM, channelHead, groupByChannel, prettyName, questSummary, withThe, useThreads, type Threads } from "./threads.ts";
 import { queueSummary, walletNeedsYou, walletSummary } from "./wallet.tsx";
@@ -1453,18 +1453,19 @@ export function usePrimeSession(): PrimeSession {
       }
     },
     // The stream closed for good: confirm the booth's token is really gone
-    // (the show went live while the phone slept) before signing out.
+    // (released, or the show went live while the phone slept) before
+    // signing out.
     onDead: () => {
       if (auth === null) return;
       void tokenDead(base, "prime", auth.token).then((dead) => {
-        if (dead) dropBooth(lifecycleNotice(dead === "ended" ? "ended" : "golive", SessionRole.Performer));
+        if (dead) dropBooth(dead === "ended" ? lifecycleNotice("ended", SessionRole.Performer) : BOOTH_SIGNED_OUT);
       });
     },
   });
 
   // Every action is scoped to the event this performer signed into. A 403
-  // "sign in" answer means the token lost its character (go-live happened
-  // while this phone wasn't listening) — drop the booth and say so.
+  // "sign in" answer means the token lost its character (a release, or a
+  // go-live while this phone wasn't listening) — drop the booth and say so.
   const post = useCallback(
     async <T,>(path: string, body?: unknown, token?: string): Promise<T> => {
       lastActionAt.current = Date.now();
@@ -1474,7 +1475,7 @@ export function usePrimeSession(): PrimeSession {
       } catch (e) {
         if (e instanceof ApiError && auth !== null) {
           if (eventGone(e.status, e.message)) dropBooth(lifecycleNotice("ended", SessionRole.Performer));
-          else if (performerSessionDead(e.status, e.message)) dropBooth(lifecycleNotice("golive", SessionRole.Performer));
+          else if (performerSessionDead(e.status, e.message)) dropBooth(BOOTH_SIGNED_OUT);
         }
         throw e;
       } finally {
