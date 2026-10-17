@@ -2579,7 +2579,51 @@ describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
     expect(Object.keys(facts.world).filter((k) => k.startsWith("Kernel"))).toEqual([]);
     const fblob = JSON.stringify(facts);
     for (const leak of ["Eleven years", "said_1", "fact_a1", "fact_v1", '"verdict"']) expect(fblob, leak).not.toContain(leak);
+    // The orchestrator's lore block is the facts document's non-secret codex:
+    // never the Legendary Fact, a patch sheet or the door code (wave 7).
+    expect(fblob).toContain("The Sandy File"); // the lore is there…
+    for (const leak of ["THE LEGENDARY FACT", "Patch Sheet", "V2 → D5", "V1 → D6", "The Door Code", "COLD DOOR"]) expect(fblob, leak).not.toContain(leak);
     rt.dispose();
+  });
+
+  it("the server room's secrets are secret: no other entry spells a combo or gives the door code, no Trabolta line says it (wave 7)", () => {
+    const m = fresh().model;
+    for (const id of ["The Legendary Fact", "Combo A First Half", "Combo A Second Half", "Combo B First Half", "Combo B Second Half", FACTS.door!.codex.id]) {
+      expect(m.codex.get(id)?.secret, id).toBe(true);
+    }
+    const code = FACTS.door!.code;
+    // The year is the riddle's answer: the Sandy File carries it as a clue
+    // (decision 2) and Bridget's sixteen elections since that year are a red
+    // herring; neither says it opens anything.
+    const CLUES = new Set(["The Sandy File", "Bridget Troelsen"]);
+    for (const [id, e] of m.codex) {
+      if (e.secret) continue;
+      expect(e.text, id).not.toMatch(/V\d\s*(?:→|->|-)\s*D\d/u);
+      if (!CLUES.has(id)) expect(e.text, id).not.toContain(code);
+    }
+    // The code lives on the Kernel (seeded from facts.json), never on Night.
+    const sim = fresh();
+    sim.fireBeat("Power On");
+    expect(v(sim, "Kernel.door_code")).toBe(code);
+    expect(worldKeys(sim).filter((k) => !k.startsWith("Kernel.") && String(v(sim, k)) === code)).toEqual([]);
+    // No scripted Trabolta line, in any beat, hook or rule, says the code or a combo.
+    const bad: string[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const walk = (n: any, where: string): void => {
+      if (Array.isArray(n)) return n.forEach((x) => walk(x, where));
+      if (!n || typeof n !== "object") return;
+      if (n.kind === "dialogue" && n.value) {
+        const who = [n.value.speaker, ...(n.value.speakers ?? [])].filter((x: unknown) => typeof x === "string").map(fold);
+        const text = JSON.stringify(n.value);
+        if (who.includes("trabolta") && (text.includes(code) || /V\d\s*(?:→|->|-)\s*D\d/u.test(text))) bad.push(where);
+      }
+      for (const x of Object.values(n)) if (x && typeof x === "object") walk(x, where);
+    };
+    for (const [key, b] of m.beats) walk(b.body, `beat ${key}`);
+    for (const [id, c] of m.characters) walk(c.hooks, `char ${id}`);
+    for (const [id, r] of m.roles) walk(r.hooks, `role ${id}`);
+    walk(m.rules, "rules");
+    expect(bad).toEqual([]);
   });
 });
 

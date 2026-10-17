@@ -11,7 +11,9 @@
 // `about: Trabolta`, so he holds his own lore from the start and feels
 // it when a program learns it (`cast/trabolta.loom`). The Legendary Fact
 // and the combos are `about: The Server Room` and are never held by him;
-// they reach the majority faction through `The Whole Truth`.
+// they reach the majority faction through `The Whole Truth`. They are also
+// `secret: true`: the orchestrator's lore block reads the whole non-secret
+// codex as ground truth, and these must never reach either model.
 //
 // The combo pairs must equal `Kernel.combo_a` / `Kernel.combo_b`
 // (cast/props.loom, seeded in Power On) and stagehand's
@@ -121,6 +123,7 @@ CODEX Greased Lightning
 CODEX The Legendary Fact
   title: THE LEGENDARY FACT
   about: The Server Room
+  secret: true
   text:
     Trabolta's heart is in the server room. It is a video patch bay. The
     top row (V) is the lightning; the bottom row (D) is the grease. Two
@@ -133,6 +136,7 @@ CODEX The Legendary Fact
 CODEX Combo A First Half
   title: Patch Sheet A · 1 of 2
   about: The Server Room
+  secret: true
   text:
     Combo A disables Trabolta. Part 1 of 2: patch V2 → D5 and V4 → D1.
     Part 2 holds the other two cables.
@@ -140,6 +144,7 @@ CODEX Combo A First Half
 CODEX Combo A Second Half
   title: Patch Sheet A · 2 of 2
   about: The Server Room
+  secret: true
   text:
     Combo A disables Trabolta. Part 2 of 2: patch V6 → D8 and V7 → D3.
     Part 1 holds the other two cables.
@@ -147,6 +152,7 @@ CODEX Combo A Second Half
 CODEX Combo B First Half
   title: Patch Sheet B · 1 of 2
   about: The Server Room
+  secret: true
   text:
     Combo B self-destructs the whole computer. Part 1 of 2: patch V1 → D6
     and V3 → D2. Part 2 holds the other two cables.
@@ -154,6 +160,7 @@ CODEX Combo B First Half
 CODEX Combo B Second Half
   title: Patch Sheet B · 2 of 2
   about: The Server Room
+  secret: true
   text:
     Combo B self-destructs the whole computer. Part 2 of 2: patch V5 → D7
     and V8 → D4. Part 1 holds the other two cables.
