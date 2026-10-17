@@ -5209,4 +5209,44 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     expect(beats(fire(early, "the_verdict"))).toEqual([]);
     expect(v(early, "Night.phase")).toBe("bobbing");
   });
+
+  it("T2-03: once truth.txt is read the server room is quiet: the patch bay, 🕊 and the door only tell # hosts", { timeout: SLOW }, () => {
+    const QUIET = ["patch_combo_a", "patch_combo_b", "patch_rejected", "talked_down", "server_door_opened"];
+    const quiet = (sim: Sim, where: string) => {
+      const phase = v(sim, "Night.phase");
+      for (const cue of QUIET) {
+        const e = fire(sim, cue);
+        expect(beats(e), `${where} ${cue}`).toEqual([]);
+        expect(cues(e).filter((c) => c.startsWith("cue ")), `${where} ${cue}`).toEqual([]);
+        expect(hostsSaid(e).filter((h) => h.includes("verdict is in")), `${where} ${cue}`).toHaveLength(1);
+      }
+      expect(v(sim, "Night.ending"), where).toBe(where === "banished" ? "banished" : "none");
+      expect(v(sim, "Night.phase"), where).toBe(phase);
+      expect(v(sim, "Night.wrong_combos"), where).toBe(0);
+    };
+    // Between 📄 and ⚖, then Grok Prom, the advice poll and the banishment.
+    const sim = boot();
+    toBobbing(sim, { lie: true });
+    fire(sim, "read_truth_txt");
+    quiet(sim, "truth.txt");
+    fire(sim, "the_verdict");
+    quiet(sim, "grok_prom");
+    fire(sim, "ask_for_advice");
+    quiet(sim, "advice");
+    fire(sim, "advice_thwarted");
+    quiet(sim, "banished");
+    // Trabolta's offer is refused too, at his heart or not.
+    const t = boot();
+    toBobbing(t, { lie: true });
+    truthTxt(t);
+    t.setVar("g1.at_the_heart", "true");
+    const sd = fire(t, "stand_down", "g1", null, "Trabolta");
+    expect(lines(sd, "Trabolta")).toEqual(["The truth has been read. It is too late for that now."]);
+    expect(v(t, "Night.stand_down_by")).toBe("none");
+    // Before truth.txt (the bob) a combo still ends the night.
+    const b = boot();
+    toBobbing(b);
+    fire(b, "patch_combo_a");
+    expect(v(b, "Night.ending")).toBe("disabled");
+  });
 });

@@ -3539,9 +3539,14 @@ when majority_reached:
 // gets a short line (Back To The Heart).
 // Before the Y2K hour the door is just a door: # hosts hears of it, the
 // story does nothing (a curious guest, or a retained "open" replayed on a
-// stagehand reconnect).
+// stagehand reconnect). Once the verdict is in (📄 truth.txt closed round
+// three: then ⚖, Grok Prom, the advice poll, the banishment) the server
+// room is quiet too: the night ends at the Desktop now, so the door, the
+// patch bay and 🕊 only tell # hosts.
 when server_door_opened:
-  if Night.ended != true and Night.step >= 14:
+  if Night.ended != true and Night.r3_closed == true:
+    broadcast "🚪 The server-room door opened after truth.txt. The verdict is in: nothing happens in the story." to channel(hosts)
+  else if Night.ended != true and Night.step >= 14:
     if Night.heart_opened != true:
       set Night.heart_opened = true
       set Night.door_quiet_until = Time.elapsed + 120
@@ -3672,17 +3677,26 @@ when patch_changed:
       fire patch_rejected
 
 when patch_rejected:
-  if Night.ended != true and Night.step >= 14:
+  if Night.ended != true and Night.r3_closed == true:
+    fire patch_after_verdict
+  else if Night.ended != true and Night.step >= 14:
     set Night.wrong_combos += 1
     -> Patch Rejected
 
 when patch_combo_a:
-  if Night.ended != true and Night.step >= 14:
+  if Night.ended != true and Night.r3_closed == true:
+    fire patch_after_verdict
+  else if Night.ended != true and Night.step >= 14:
     fire trabolta_disabled
 
 when patch_combo_b:
-  if Night.ended != true and Night.step >= 14:
+  if Night.ended != true and Night.r3_closed == true:
+    fire patch_after_verdict
+  else if Night.ended != true and Night.step >= 14:
     fire computer_destroyed
+
+when patch_after_verdict:
+  broadcast "🔌 A patch after truth.txt. The verdict is in: the patch bay is quiet, nothing happens in the story." to channel(hosts)
 
 // Talked down, like the Fallout Master: Trabolta's `stand_down` power
 // (cast/trabolta.loom) only OFFERS, so a model misfire can never end the
@@ -3691,7 +3705,9 @@ when patch_combo_b:
 // (trabolta_disabled), with Night.talked_down so the blackout, the recount
 // and the ceremony say who talked him down.
 when talked_down:
-  if Night.ended != true and Night.step >= 14:
+  if Night.ended != true and Night.r3_closed == true:
+    broadcast "🕊 The verdict is in: it is too late for Trabolta to stand down. Nothing happens in the story." to channel(hosts)
+  else if Night.ended != true and Night.step >= 14:
     if Night.stand_down_by == "none":
       broadcast "🕊 No offer on record: Trabolta stands down on the director's call." to channel(hosts)
     else:
@@ -3846,8 +3862,9 @@ when y2k_midnight:
     if Night.ended != true:
       fire final_reveal
 
-// The server room stays live during the reveal (deliberate): a combo
-// entered before the verdict still ends the night.
+// The server room stays live during the reveal and the bob (deliberate): a
+// combo entered before 📄 truth.txt still ends the night. From truth.txt
+// the verdict is in and the server room is quiet (E2).
 when final_reveal:
   if Night.ended != true and Night.step < 16:
     set Night.final_round = false

@@ -339,6 +339,8 @@ CHARACTER Trabolta is Person
         Trabolta: That function is not available yet.
       else if Night.ended == true:
         Trabolta: It is already over.
+      else if Night.r3_closed == true:
+        Trabolta: The truth has been read. It is too late for that now.
       else if program.at_the_heart != true:
         Trabolta: Not out there. Come to my heart and say it to my face.
       else if Night.stand_down_by != "none":
