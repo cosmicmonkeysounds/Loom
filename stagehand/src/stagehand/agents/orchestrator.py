@@ -299,6 +299,27 @@ def reflect_messages(
     return [{"role": "system", "content": _system(persona, mind)}, {"role": "user", "content": "\n\n".join(parts)}]
 
 
+#: Characters a live reflect prompt adds on top of its fixed part (the system
+#: prompt + the ask): the lore block (≤ 60 entries of ≤ 160 characters), the
+#: house digest, the mind snapshot and a 14-line exchange. On the show the
+#: fixed part is ≈ 14k characters and the whole prompt ≈ 26k.
+LIVE_PROMPT_CHARS = 14_000
+#: Characters per token — a safe overestimate for English + JSON.
+CHARS_PER_TOKEN = 3
+
+
+def reflect_tokens_needed(persona: Persona, max_tokens: int) -> int:
+    """≈ the context one reflection needs: the fixed prompt measured from
+    this persona's real mind file + persona, the live allowance, and the
+    reply's `max_tokens`. `stagehand check` compares it with the model's
+    context — Ollama cuts the middle of a prompt that doesn't fit."""
+    mind = Mind(character=persona.character)
+    mind.seed(persona.stages, persona.drives)
+    msgs = reflect_messages(persona, mind, {"speaker": {"id": "someone", "name": "someone"}, "history": []}, None, None, persona.summarize_after, "")
+    chars = sum(len(m["content"]) for m in msgs) + LIVE_PROMPT_CHARS
+    return chars // CHARS_PER_TOKEN + max_tokens
+
+
 def lore_block(facts: Facts, held: list[str], max_entries: int = 60, secrets: Secrets | None = None, max_text: int = 160) -> str:
     """The story's whole codex — ground truth for the director's verdicts.
     The *character* knows only the entries marked held; the director knows

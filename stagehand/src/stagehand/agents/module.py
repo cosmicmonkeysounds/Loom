@@ -48,7 +48,7 @@ from .config import AgentsConfig, parse_agents
 from .facts import Facts, FactsClient
 from .llm import Completion, LlmConfig, LlmError, LlmTruncated, complete
 from .mind import Mind, mind_path
-from .orchestrator import Job, Orchestrator
+from .orchestrator import Job, Orchestrator, reflect_tokens_needed
 from .persona import Persona
 from .prompt import build_messages, gate_context
 from .reply import Reply, parse_reply
@@ -237,8 +237,9 @@ class Agents:
                 om = self.cfg.orchestrator_models[name]
                 mind = "own mind file" if persona.mind_prompt else "default mind"
                 powers = "all powers" if persona.powers is None else (f"powers {', '.join(persona.powers)}" if persona.powers else "no powers")
+                ctx = f"ctx {om.context_window}; " if om.context_window else ""
                 lines.append(
-                    f"    mind   : {om.model} ({mind}; reflect every {persona.reflect_after}, window {persona.thread_window}, "
+                    f"    mind   : {om.model} ({ctx}{mind}; reflect every {persona.reflect_after}, window {persona.thread_window}, "
                     f"summarise ≥{persona.summarize_after}; survey every {o.survey_every_s:.0f}s; {powers}; lookup {'on' if persona.lookup else 'off'})"
                 )
                 if persona.stages or persona.drives:
@@ -248,6 +249,24 @@ class Agents:
         if o.enabled:
             lines.append(f"  minds    : {self.cfg.state_dir} (preempt {'on' if o.preempt else 'off'}, quiet {o.quiet_s:.1f}s) · trace beside each mind")
         return lines
+
+    def warnings(self) -> list[str]:
+        """Not fatal, but worth a look before doors (`stagehand check`)."""
+        out: list[str] = []
+        if not self.cfg.orchestrator.enabled:
+            return out
+        for name, persona in self.cfg.personas.items():
+            om = self.cfg.orchestrator_models[name]
+            ctx = om.context_window
+            if ctx is None:
+                continue  # api: openai — the server picks the context; nothing to compare
+            need = reflect_tokens_needed(persona, om.max_tokens)
+            if need > ctx:
+                out.append(
+                    f"{name}'s mind: a reflection needs ≈ {need} tokens but {om.model} runs with a {ctx}-token context — "
+                    f"Ollama cuts the middle of the prompt; set orchestrator.llm.num_ctx to {need} or more"
+                )
+        return out
 
     def stream_url(self, mod: ModClient) -> str:
         from urllib.parse import urlencode
@@ -259,6 +278,8 @@ class Agents:
         self.mod = ctx.mod
         self.facts = FactsClient(ctx.mod, self.cfg.facts_ttl_s)
         self.event = ctx.server.event or "default"
+        for warning in self.warnings():
+            log.warning("%s", warning)
         self._load_minds()
         self._orchestrator_task = asyncio.ensure_future(self.orchestrator.run())
         try:

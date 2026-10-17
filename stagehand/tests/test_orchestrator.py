@@ -289,3 +289,28 @@ def test_the_example_orchestrator_context_fits_the_shipped_reflect_prompt():
     assert chars > 20_000  # it really is the shipped mind file + lore
     # ≈ 3 characters a token is a safe overestimate for English + JSON.
     assert chars / 3 + om.max_tokens < num_ctx, (chars, num_ctx)
+
+
+def test_the_check_estimate_covers_the_shipped_reflect_prompt():
+    """`stagehand check`'s estimate (the fixed prompt + a live allowance) is
+    no smaller than a real night's reflect prompt, and still fits the
+    orchestrator's default 16k context."""
+    from pathlib import Path
+
+    from stagehand.agents.config import ORCHESTRATOR_NUM_CTX
+    from stagehand.agents.orchestrator import CHARS_PER_TOKEN, reflect_tokens_needed
+    from stagehand.config import load_config
+    from test_secrets import _show_codex
+
+    agents = load_config(Path(__file__).resolve().parents[1] / "agents.example.yaml").modules["agents"]
+    om = agents.cfg.orchestrator_models["Trabolta"]
+    persona = agents.cfg.personas["Trabolta"]
+    entries, held = _show_codex()
+    facts = Facts({"world": {"Night.phase": "free_roam"}, "programs": [], "locations": [], "codex": entries})
+    r = req(n_history=19)
+    r["self"] = {"vars": {}, "codex": [{"title": t} for t in held]}
+    real = sum(len(m["content"]) for m in reflect_messages(persona, Mind("Trabolta", "e"), r, Reply(say="x" * 400), facts, 20, "t"))
+    need = reflect_tokens_needed(persona, om.max_tokens)
+    assert need >= real // CHARS_PER_TOKEN + om.max_tokens, (need, real)
+    assert need < ORCHESTRATOR_NUM_CTX
+    assert agents.warnings() == []
