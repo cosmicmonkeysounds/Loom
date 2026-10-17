@@ -52,7 +52,7 @@ Stack: shelf — inside the encyclopaedias, volumes A–M
 | M18 | green | `OUT-OF-DATE` | Out Of Date | shelf — inside the encyclopaedias, volumes A–M | The AntiViruses don't know as much as they seem to |
 | M19 | green | `ASK-HIM-NICELY` | Ask Him Nicely | shelf — inside the encyclopaedias, volumes A–M | You can influence Trabolta to change the lights or put things on the wall terminals |
 | M20 | green | `SAFE-PLACE` | The Safe Place | shelf — inside the encyclopaedias, volumes A–M | The bathroom is the only truly safe place |
-| M21 | green | `COLD-STORAGE` | The Server Room (hand-written) | already placed — README → QR placements | The door to the server room is guarded by a lock and alarm |
+| M21 | green | `COLD-STORAGE` | The Server Room (hand-written) | already placed — README → QR placements | The door to the server room is guarded by a keypad; the patch bay behind it is alarmed |
 | M22 · DRAFT | green | `CHECKMATE-CODE` | Checkmate For The Code | shelf — inside the encyclopaedias, volumes A–M | Checkmating the King gives you the code to the server-room door |
 | M23 · DRAFT | green | `SHARE-CODEX` | Sharing Your Codex | shelf — inside the encyclopaedias, volumes A–M | You can share your codex with other programs by pressing Share… on an entry, or by selling it from your Wallet |
 | M24 | green | `TRUST-CHART` | The Trust Chart (hand-written) | already placed — README → QR placements | Trabolta is keeping a trust score on everyone here |
