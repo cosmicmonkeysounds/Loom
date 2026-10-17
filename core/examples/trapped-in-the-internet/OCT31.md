@@ -787,6 +787,8 @@ Every role gets **one laminated card** (D-01 drafts, PAPER prints in batch 2). W
 14. Loaner phones (2–3) charged; the guest charging station live; power banks charged for every performer; radios charged with earpieces.
 15. The backup Mac is on, with the QLab file + media, next to the TV computer with the HDMI adapter; the ISP router is boxed nearby as the cold spare.
 16. Facts + wallet (wave 4): `titi:facts --check` passed at predeploy and the synced project carries the team's `facts.json`; Run → Mind's Judging card reads `auto`; a test phone shows the Wallet room and a 🪙 balance; `# quarantine` is empty.
+17. Knobs (wave 5): on the VPS, `grep -E '^LOOM_(SNAPSHOT_MS|HOMESCREEN)=' ~/loom/.env` shows both blank, unless the K-32 run failed (then `LOOM_SNAPSHOT_MS=500`) or the K-31b call was yes (then `LOOM_HOMESCREEN=on`); the print sheet's door sign matches the Home Screen switch; Run → Wallet names CRA Agent Software as the approver and Runescape as the minter.
+18. Wave 6: on the house Mac, `uv run stagehand check --config laptop.yaml --only agents` shows `ctx 20480` on Trabolta's mind line and no warning; every wall terminal's ⚙ names `Trabolta` and none sits on "The story has no character called …"; on a Shed night the SITE-SCHEDULE clipboard and the BUGDOM-VR sketch hang in The Optical Drive (the mud room).
 
 **Safety one-pager** (walked Fri 10-30, re-checked at 18:00):
 

@@ -185,7 +185,15 @@ rmdir -p "$ROOT/reinstall/vr/build/stage/config" 2>/dev/null || true
 teardown
 
 echo "── checklist"
-check "prints the 16 pre-show boxes" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' | grep -c '^\[ \]') -eq 16 ]"
+check "prints the 18 pre-show boxes" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' | grep -c '^\[ \]') -eq 18 ]"
+printed="$(bash "$ROOT/scripts/ops/checklist.sh")"
+# The morning-of reset covers waves 4–6 (facts + judge + wallet, the wave 5
+# knobs, the orchestrator context / terminal names / rain-night clues).
+for want in 'titi:facts --check' 'Judging card reads auto' 'Wallet room' '# quarantine is empty' \
+            'LOOM_SNAPSHOT_MS' 'LOOM_HOMESCREEN' 'ctx 20480' 'names Trabolta' 'The Optical Drive'; do
+  check "checklist prints: $want" grep -qF -- "$want" <<<"$printed"
+done
+check "checklist strips markdown" bash -c "! grep -q '[*\`]' <<<\"\$1\"" _ "$printed"
 
 echo "── the voice is opt-in (2026-10-15)"
 # A plain `docker compose up` (release.sh / rollback.sh) must never need
