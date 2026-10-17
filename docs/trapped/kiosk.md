@@ -139,6 +139,11 @@ house announcements* **off** — the living room hears the house speakers.
   ONCE TO ENABLE THE VOICE*: one click anywhere.
 - `M` on the Mac's keyboard (or the 🔊 button bottom right) mutes the TV
   voice — the same server-side mute the director has (OP-20 `ALL STOP`).
+  The mute is kept with the event (`screen-voice.json`): a server restart,
+  a redeploy or Go live in place leaves it as it was, and the server log
+  says 🔇 at boot when the TV starts muted. A mute left on from a
+  rehearsal stays on, so check **🔊 TV voice** on Run → Terminals before
+  the doors.
 - The ⚙ on the TV is a 2 s mouse hold as well.
 
 ## The mirror fallback (SW-SCR-02)
@@ -230,14 +235,20 @@ house map's `server-room` spot is on the room's south wall, facing in
   (or on the next boot). The next pass scanned at the server-room
   terminal takes over his heart whatever happened to the last close.
 - Its corner reads *the story has no room called …* if `room=` is
-  misspelled: the terminal then sleeps all night. Fix it in ⚙ (hold 2 s)
-  → *the room it belongs to*.
+  misspelled: the terminal then sleeps all night. The room resolves
+  against the story before the doors too, so on install day that line
+  means a typo, never "too early". Fix it in ⚙ (hold 2 s) → *the room it
+  belongs to*.
+- Run → Terminals shows its room on its row (`room The Server Room`). A
+  row with a room on any **other** spot is amber: a tablet that was the
+  TV once keeps `room=The Desktop` when its view changes, then sleeps on
+  attract and speaks The Desktop's lines. Clear its room in ⚙.
 - Volume: loud enough to be heard over the server rack's fans from the
   doorway; the cutscene is spoken here, nowhere else.
 
 Install-day check: before the doors, the terminal is on the screensaver
-with the server running (Run → Terminals shows it polling, room
-`The Server Room`). Fire 🚪 `server_door_opened` from the cue sheet on a
+with the server running (Run → Terminals shows it green, with
+`room The Server Room` on its row). Fire 🚪 `server_door_opened` from the cue sheet on a
 rehearsal after the Y2K hour: it wakes and speaks the opener; scan a test
 pass, type, wait out the leash, and check the Log for `terminal opened`
 then `terminal closed` by *Terminal · Server Room*.
