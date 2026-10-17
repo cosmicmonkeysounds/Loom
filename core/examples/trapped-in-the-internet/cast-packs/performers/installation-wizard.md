@@ -15,9 +15,8 @@
    **Installation Wizard** thread — the same lines as the video. Say it
    live, kindly, if the video isn't running (below). A **marked** program
    who turns up on their own (grey phone, the 🚨 GO TO THE INTERNET card):
-   the tablet does not capture them — radio an Antivirus to press 🛡 on
-   their card (or the director: Run → Inspector → Captured → **Capture**),
-   then scan them in.
+   just scan them in. Pressing **Play here** (or **Send to VR-1**) captures
+   them as their run begins; no 🛡 needed.
 2. **Tablet** at `/reinstall/` → **scan their pass** (or type their name: the
    captured list is at the top) → **Play here**.
    **Quest go:** → **Send to VR-1** instead. **Seated**, snap turn, the
@@ -25,9 +24,9 @@
 3. They follow the golden chevrons to **Gerald, the golden duck**, and walk
    right up to him. He lays a golden egg and flies away: they're released
    automatically, back to the Desktop.
-   **The King** (tablet only): a big gold chess king with four hearts guards
-   the server-room door of the virtual house. Hitting him (⚔ HIT / Space)
-   knocks a heart off and makes his chess dumber; ♟ CHALLENGE opens a board
+   **The King** (tablet only): a big gold chess king with eight hearts
+   guards the server-room door of the virtual house. Hitting him (⚔ HIT /
+   Space) knocks a heart off, and every two make his chess dumber; ♟ CHALLENGE opens a board
    on the tablet. A checkmate is reported to the story as *chess won, by
    Tent tablet*: practice before the Y2K hour; after it, the winner gets the
    real server-room door code in their Codex (the board's badge reads

@@ -44,9 +44,11 @@ Keep radio talk short: call word, then where, then who. "LATE, two in the kitche
   THE INTERNET card, their buttons go, they keep their DMs, the pinned
   Codex / Quest Log / Wallet, the room they stand in, and the Tube and the
   Internet (read-only). Every Antivirus booth reads *🚨 X is marked for
-  reinstallation (why)* and `# quarantine` pins the escort task. **Only an
+  reinstallation (why)* and `# quarantine` pins the escort task. An
   Antivirus' 🛡 (or the director: Inspector → Captured → Capture) sends them
-  to the Internet** — the tent tablet does not. A mis-tap → 🩹 Unmark.
+  to the Internet; so does walking into the tent: the moment the tablet
+  scans their pass and starts **Play here** (or **Send to VR**), a marked
+  program is captured. A mis-tap → 🩹 Unmark.
 - **Never press an admin cue.** The director fires the night's cues from Run.
   Your buttons are on each guest's card.
 - **Act on a guest:** scan their pass (📷 in your booth), or tap their name
