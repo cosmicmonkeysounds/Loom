@@ -1489,7 +1489,11 @@ place binds as a value, not the LOCATION id — §0 rule 14.)
 - `set program.cleared = true`
 - `Self: Scanned. {program.name} is free of viruses and ready to explore the entire computer.
   There will be a game soon in the Desktop. The house will announce it. Go through the
-  Tube.` (prefix tested)
+  Tube.` (prefix tested), before 📣 (`Night.step < 1`). Wave 8 (T1-04) fits it to the hour:
+  between 📣 and 🎱 the middle reads `A game is about to begin in the Desktop.`; from 🎱 on,
+  `You are late: the night is already under way. Listen for the house.` (the screensaver line
+  in the Desktop narration only before 📣). A late clearance deals one 📝 card, not one per
+  open round.
 - `Self: The Tube is a tunnel of lights. Wires. Chips. The cables brush your face like hair.
   Keep walking.` (SB's "tunnel of lights"; this replaces the dead `arrives at The Tube` hook)
 - (wave 4, D) `reveal task manager for program` + `Task Manager: {program.name}. You're in. Your
