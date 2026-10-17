@@ -3671,6 +3671,21 @@ when computer_destroyed:
     fail quest The Final Facts for everyone "The computer is off. Nobody will ever read the final facts."
     complete quest The Exchange for McAfee Anti-Virus "The computer is off. The exchange closes."
     complete quest The Audit for CRA Agent Software "The computer is off. The audit closes."
+    // Clippy's summary reads each featured program's own quest; three of
+    // them only a director completes. Remind # hosts of the ones still open.
+    set Night.goals_todo = ""
+    if count([p for p in Persons where p.featured == "runescape" and p.quest.the_gold_standard == "active"]) > 0:
+      set Night.goals_todo = "The Gold Standard (Runescape)"
+    if count([p for p in Persons where p.featured == "vlc" and p.quest.go_viral == "active"]) > 0:
+      if Night.goals_todo != "":
+        set Night.goals_todo = Night.goals_todo + ", "
+      set Night.goals_todo = Night.goals_todo + "Go Viral (VLC)"
+    if count([p for p in Persons where p.featured == "pong" and p.quest.keep_the_ball_in_play == "active"]) > 0:
+      if Night.goals_todo != "":
+        set Night.goals_todo = Night.goals_todo + ", "
+      set Night.goals_todo = Night.goals_todo + "Keep The Ball In Play (Pong)"
+    if Night.goals_todo != "":
+      broadcast "🪦 Before 🪦 Clippy reads the summary: it says whether each featured program met their goal. Complete in the Inspector any of these that did: {Night.goals_todo}." to channel(hosts)
     unlock Clippy Instructions 9 for Clippy
     cue lights_blackout
     set Night.lights = "blackout"
@@ -4034,6 +4049,7 @@ set Night.ceremony_done = false
 set Night.resurrect_ask_at = 0
 set Night.painting = false
 set Night.signatures = 0
+set Night.goals_todo = ""
 set Night.sweep_target = "none"
 set Night.ceremony = false
 set Night.ceremony_host = "none"

@@ -4627,7 +4627,12 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     sim.quest("complete", "g2", "Excel Mission");
     sim.quest("complete", "g3", "OpenOffice Dossier");
     expect(sim.questStatus("g4", "The Painting")).toBe("active");
-    fire(sim, "computer_destroyed");
+    expect(sim.questStatus("g6", "Go Viral")).toBe("active");
+    // Only a director completes VLC's quest: # hosts is reminded before the summary.
+    const off = fire(sim, "computer_destroyed");
+    expect(casts(off).filter((c) => c.scope === "channel(hosts)" && c.cue.includes("Clippy reads the summary")).map((c) => c.cue.replace(/^"|"$/gu, ""))).toEqual([
+      "🪦 Before 🪦 Clippy reads the summary: it says whether each featured program met their goal. Complete in the Inspector any of these that did: Go Viral (VLC).",
+    ]);
     advance(sim, 10);
     const goal = lines(fire(sim, "clippy_reads_summary"), "Clippy").filter((t) => /goal/u.test(t));
     expect(goal).toEqual([
