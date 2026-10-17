@@ -2789,15 +2789,25 @@ describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
       expect(m.codex.get(id)?.secret, id).toBe(true);
     }
     const code = FACTS.door!.code;
-    // The year is the riddle's answer: the Sandy File carries it as a clue
-    // (decision 2) and Bridget's sixteen elections since that year are a red
-    // herring; neither says it opens anything.
-    const CLUES = new Set(["The Sandy File", "Bridget Troelsen"]);
+    // The year is the riddle's answer, in any spelling (1997, '97). Page 999
+    // carries it as a clue and Bridget's sixteen elections since that year
+    // are a red herring; neither says it opens anything. No entry Trabolta
+    // holds carries it (his files reach his prompts whole: the Sandy File
+    // and the LiveJournal say "late-nineties" / "Our anniversary").
+    const year = new RegExp(`${code}|['’]${code.slice(2)}(?!\\d)`, "u");
+    const CLUES = new Set(["The Margin Doodle", "Bridget Troelsen"]);
     for (const [id, e] of m.codex) {
       if (e.secret) continue;
       expect(e.text, id).not.toMatch(/V\d\s*(?:→|->|-)\s*D\d/u);
-      if (!CLUES.has(id)) expect(e.text, id).not.toContain(code);
+      if (!CLUES.has(id)) expect(e.text, id).not.toMatch(year);
     }
+    const night = fresh();
+    toY2k(night);
+    for (const e of night.codexFor("Trabolta")) expect(`${e.title}\n${e.text}`, e.id).not.toMatch(year);
+    // Nor does any quote her one line, F1's answer (the Sandy File used to,
+    // straight into his voice prompt).
+    const line = FACTS.questions.find((q) => q.id === "F1")!.answer.toLowerCase();
+    for (const e of night.codexFor("Trabolta")) expect(e.text.toLowerCase(), e.id).not.toContain(line);
     // The code lives on the Kernel (seeded from facts.json), never on Night.
     const sim = fresh();
     sim.fireBeat("Power On");
