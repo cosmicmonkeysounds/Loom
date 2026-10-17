@@ -30,6 +30,7 @@ import { DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } f
 import { ipOf, queryTokenOf, readBody, sendJson, sseSend, str, tokenOf } from "./http-util.ts";
 import { RateLimiter, limiterFor, rateLimitsFromEnv, type RateLimits } from "./rate-limit.ts";
 import { handleMetrics } from "./routes/metrics.ts";
+import { handleModLog } from "./routes/mod-log.ts";
 import { TtsProxy, ttsConfigFromEnv } from "./tts.ts";
 import { AvatarBook, ImageCache, avatarKey, avatarRefUrl } from "./avatars.ts";
 import { WikiClient, isAntivirusSoftware } from "./wiki.ts";
@@ -2669,6 +2670,8 @@ export class EventRuntime {
     }
     // --- process load for the K-32 load test (directors only) ---
     if (handleMetrics(req, res, method, path, url, () => opts.moderator === true || this.sessions.canModerate(queryTokenOf(req, url)), () => this.clients.size)) return true;
+    // --- T7-03: the whole ledger, paged, for Run → Log's export (directors only) ---
+    if (handleModLog(req, res, method, path, url, () => opts.moderator === true || this.sessions.canModerate(queryTokenOf(req, url)), () => this.sim?.log.all() ?? [])) return true;
 
     // --- the mind debugger's trace (directors only) ---
     if (method === "GET" && path === "/api/mod/agent/trace") {
