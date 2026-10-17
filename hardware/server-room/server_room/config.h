@@ -20,8 +20,8 @@
 #define SR_KEEPALIVE_S 10
 
 // ── Pins (ESP32-DevKitC, classic WROOM-32; NOT a WROVER: 16/17 are PSRAM) ──
-#define PIN_REED 23        // reed switch: GPIO ↔ GND, closed = LOW
-#define PIN_TAPE 19        // copper tape / plunger fallback, same circuit
+#define PIN_REED 23        // optional reed (MC-38): GPIO ↔ GND, closed = LOW = shut
+#define PIN_TAPE 19        // the door contact: wire loops, closed = LOW = OPEN
 #define PIN_SDA 21         // I²C to both MCP23017s
 #define PIN_SCL 22
 #define PIN_RING 18        // WS2812 data → 74AHCT125 → 330 Ω → ring DIN
@@ -35,12 +35,22 @@
 #define I2C_HZ 400000
 
 // ── Door ───────────────────────────────────────────────────────────────────
-// DOOR_BOTH: open only when every connected input says open. An unplugged
-// input floats HIGH (= open) through its pull-up, so it simply drops out and
-// the other one decides. Use DOOR_REED / DOOR_TAPE to force one input.
-#define DOOR_MODE DOOR_BOTH
-#define DOOR_OPEN_MS 300   // report open after 300 ms stable
-#define DOOR_CLOSE_MS 50   // report closed after 50 ms stable
+// The real door has a STANDALONE keypad lock (code set by hand on the lock,
+// never networked): nothing on this box locks or unlocks it, and the inside
+// handle always opens. This box only reports the door.
+//
+// The sensor is two loops of wire / copper tape on PIN_TAPE that TOUCH WHEN
+// THE DOOR OPENS (closed contact = LOW = open). The reed (MC-38) is optional.
+// Polarity is per input (door.h): a closed-when-open input that comes
+// unplugged reads SHUT forever, so DOOR_BOTH only works with both inputs
+// fitted. DOOR_TAPE = the wire loops alone (the wave 7 default); DOOR_REED =
+// the reed alone; DOOR_BOTH = open only when both say open.
+#define DOOR_MODE DOOR_TAPE
+#define REED_POLARITY door::kClosedWhenShut  // MC-38: closed with the magnet present
+#define TAPE_POLARITY door::kClosedWhenOpen  // two loops that TOUCH when the door opens
+#define DOOR_OPEN_MS 300    // report open after 300 ms stable
+#define DOOR_CLOSE_MS 1500  // report closed after 1.5 s stable: a loop flickering
+                            // on an open door never re-arms the edge
 
 // ── Ring + sound ───────────────────────────────────────────────────────────
 #define RING_LEDS 16

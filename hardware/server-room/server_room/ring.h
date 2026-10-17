@@ -1,10 +1,12 @@
 // The lock-indicator ring over the server-room door. Pure C++: the sketch
-// asks pixel(i) every frame and pushes it to the NeoPixels.
+// asks pixel(i) every frame and pushes it to the NeoPixels. The ring only
+// SHOWS a state: the real door has a standalone keypad lock that nothing
+// here drives.
 //
 // Priority: alarm (red strobe, 2.5 Hz — under the 3 Hz photosensitivity
-// limit) > a timed override from show/serverroom/ring (e.g. the chess disarm
-// window, green for 90 s) > the lock state (red breathing = armed, green =
-// unlocked, dim amber breathing = no lock message yet). While the broker is
+// limit) > a timed override from show/serverroom/ring (a bench / director
+// look, e.g. white for 30 s) > the lock state (red breathing = locked, green
+// = unlocked, dim amber breathing = no lock message yet). While the broker is
 // unreachable one blue pixel circles on top, so the crew can see it. The
 // alarm runs on its own timer, so it keeps strobing if the Wi-Fi drops.
 #pragma once

@@ -15,6 +15,12 @@
 #include "../server_room/patchbay.h"
 #include "../server_room/ring.h"
 
+// The sketch's own door settings (server_room.ino defines these aliases).
+#define DOOR_BOTH door::kBoth
+#define DOOR_REED door::kReed
+#define DOOR_TAPE door::kTape
+#include "../server_room/config.h"
+
 static int failures = 0, checks = 0;
 #define CHECK(cond)                                                    \
   do {                                                                 \
@@ -282,6 +288,73 @@ static void test_the_door_inputs_combine() {
   CHECK(combine(door::kBoth, true, true) && !combine(door::kBoth, true, false));
 }
 
+static void test_each_input_has_its_own_polarity() {
+  using door::isOpen;
+  // A reed: closed (LOW) while the door is shut, unplugged (HIGH) reads open.
+  CHECK(!isOpen(door::kClosedWhenShut, true));
+  CHECK(isOpen(door::kClosedWhenShut, false));
+  // The wire loops: they touch (LOW) when the door opens; an unplugged or
+  // broken loop (HIGH) reads shut forever — silent, never a false opening.
+  CHECK(isOpen(door::kClosedWhenOpen, true));
+  CHECK(!isOpen(door::kClosedWhenOpen, false));
+  CHECK_STR(door::polarityName(door::kClosedWhenOpen), "closed_when_open");
+  CHECK_STR(door::polarityName(door::kClosedWhenShut), "closed_when_shut");
+  // DOOR_TAPE with a closed-when-open contact: the loops alone decide, and
+  // whatever the (absent) reed pin floats to never matters.
+  CHECK(door::combine(door::kTape, isOpen(door::kClosedWhenShut, false), isOpen(door::kClosedWhenOpen, true)));
+  CHECK(!door::combine(door::kTape, isOpen(door::kClosedWhenShut, false), isOpen(door::kClosedWhenOpen, false)));
+  CHECK(!door::combine(door::kTape, isOpen(door::kClosedWhenShut, true), isOpen(door::kClosedWhenOpen, false)));
+  // Why the default is not kBoth: an unplugged closed-when-open input reads
+  // shut and vetoes every opening the reed sees.
+  CHECK(!door::combine(door::kBoth, isOpen(door::kClosedWhenShut, false), isOpen(door::kClosedWhenOpen, false)));
+}
+
+static void test_the_box_ships_with_the_wire_loops_alone() {
+  // Wave 7: the wire loops that touch when the door opens, no reed fitted.
+  CHECK(DOOR_MODE == door::kTape);
+  CHECK(TAPE_POLARITY == door::kClosedWhenOpen);
+  CHECK(REED_POLARITY == door::kClosedWhenShut);
+  CHECK(DOOR_OPEN_MS == 300);
+  CHECK(DOOR_CLOSE_MS >= 1000 && DOOR_CLOSE_MS <= 3000);
+}
+
+static void test_a_flickering_contact_on_an_open_door_never_reports_closed() {
+  // The wave 7 numbers: 300 ms to open, 1500 ms to close.
+  door::Debounce d(300, 1500);
+  d.reset(false, 0);
+  // The code is typed, the door swings open: the loops touch.
+  CHECK(!d.update(true, 1000));
+  CHECK(d.update(true, 1300) && d.stable);
+  // Held open, the loops lose contact for a full second, twice: never closed,
+  // so the edge never re-arms and stagehand never fires a second opening.
+  CHECK(!d.update(false, 5000));
+  CHECK(!d.update(false, 5999));
+  CHECK(!d.update(true, 6000) && d.stable);
+  CHECK(!d.update(false, 9000));
+  CHECK(!d.update(true, 10400) && d.stable);
+  // Really shut: closed after 1.5 s stable.
+  CHECK(!d.update(false, 20000));
+  CHECK(!d.update(false, 21499));
+  CHECK(d.update(false, 21500) && !d.stable);
+  // The next opening (someone walking out by the inside handle) is its own
+  // edge.
+  CHECK(!d.update(true, 30000));
+  CHECK(d.update(true, 30300) && d.stable);
+}
+
+static void test_the_door_payload_reports_only_fitted_inputs() {
+  char buf[96];
+  door::payloadJson(door::kTape, true, true, true, buf, sizeof buf);
+  CHECK_STR(buf, "{\"open\":true,\"tape\":true,\"mode\":\"tape\"}");
+  door::payloadJson(door::kTape, false, true, false, buf, sizeof buf);
+  CHECK_STR(buf, "{\"open\":false,\"tape\":false,\"mode\":\"tape\"}");
+  door::payloadJson(door::kReed, true, true, false, buf, sizeof buf);
+  CHECK_STR(buf, "{\"open\":true,\"reed\":true,\"mode\":\"reed\"}");
+  int n = door::payloadJson(door::kBoth, false, true, false, buf, sizeof buf);
+  CHECK_STR(buf, "{\"open\":false,\"reed\":true,\"tape\":false,\"mode\":\"both\"}");
+  CHECK(n > 0 && n < (int)sizeof buf);
+}
+
 static void test_the_payload_reader_takes_what_stagehand_sends() {
   // json.dumps style (space after the colon) and compact.
   const char* alarm = "{\"state\": \"on\", \"seconds\": 120}";
@@ -355,6 +428,10 @@ int main() {
   test_the_stabilizer_waits_a_second_and_survives_millis_wrap();
   test_the_door_debounce_is_300_open_50_closed();
   test_the_door_inputs_combine();
+  test_each_input_has_its_own_polarity();
+  test_the_box_ships_with_the_wire_loops_alone();
+  test_a_flickering_contact_on_an_open_door_never_reports_closed();
+  test_the_door_payload_reports_only_fitted_inputs();
   test_the_payload_reader_takes_what_stagehand_sends();
   test_the_ring();
   printf("%d checks, %d failed\n", checks, failures);

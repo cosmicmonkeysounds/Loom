@@ -2,7 +2,8 @@
 `trapped.house.yaml`, the other end of its MQTT contract.
 
 Nothing checks this at runtime: a topic typo in either file is a door that
-never alarms or a patch bay nobody hears. So, from the source:
+never starts the server-room cutscene or a patch bay nobody hears. So, from
+the source:
 
 1. the firmware dials the house Mac's static IP on the password-only LAN
    listener (stagehand itself talks to the same Mosquitto on loopback);
@@ -12,7 +13,10 @@ never alarms or a patch bay nobody hears. So, from the source:
 3. every server-room / patch-bay sensor topic the YAML listens on is one the
    firmware publishes, retained exactly where the YAML expects it;
 4. the payloads the firmware builds fire the right signals through the real
-   sensor rules, and the combo strings its host tests pin are the YAML's.
+   sensor rules, and the combo strings its host tests pin are the YAML's;
+5. the box ships reading the wave 7 door contact: two wire loops that TOUCH
+   WHEN THE DOOR OPENS, alone (`DOOR_TAPE`, closed-when-open), with a close
+   debounce long enough that a flickering loop never re-arms the edge.
 """
 
 from __future__ import annotations
@@ -146,11 +150,66 @@ def test_the_firmwares_payloads_fire_the_right_signals():
     half = {"pairs": [["V2", "D5"]], "combo": "V2-D5", "count": 1, "complete": False}
     assert _fire("sensors/patchbay/state", half, deb, 200.0) == []
 
-    # The door payload with its diagnostic fields: one opening, one signal;
-    # the retained replay after a reconnect primes and fires nothing.
+    # The door payload exactly as test_logic.cpp pins payloadJson for the
+    # shipped DOOR_TAPE mode: one opening, one signal; the retained replay
+    # after a reconnect primes and fires nothing.
+    opened, shut = _host_door_payloads()
+    assert opened == {"open": True, "tape": True, "mode": "tape"}
+    assert shut == {"open": False, "tape": False, "mode": "tape"}
     deb = Debouncer()
-    assert _fire("sensors/serverroom/door", {"open": True, "reed": True, "tape": True}, deb, 0.0, retained=True) == []
-    _fire("sensors/serverroom/door", {"open": False, "reed": False, "tape": True}, deb, 10.0)
-    assert _fire("sensors/serverroom/door", {"open": True, "reed": True, "tape": True}, deb, 20.0) == [
-        "server_door_opened"
-    ]
+    assert _fire("sensors/serverroom/door", opened, deb, 0.0, retained=True) == []
+    _fire("sensors/serverroom/door", shut, deb, 10.0)
+    assert _fire("sensors/serverroom/door", opened, deb, 20.0) == ["server_door_opened"]
+
+
+def _host_door_payloads() -> tuple[dict, dict]:
+    """The DOOR_TAPE payloads test_logic.cpp pins (open, then shut)."""
+    text = HOST_TEST.read_text(encoding="utf-8")
+    pinned = re.findall(
+        r'payloadJson\(door::kTape, (true|false),[^;]*;\s*CHECK_STR\(buf, "((?:[^"\\]|\\.)*)"\)', text
+    )
+    by_open = {o: json.loads(b.encode().decode("unicode_escape")) for o, b in pinned}
+    return by_open["true"], by_open["false"]
+
+
+def _config() -> str:
+    return (FIRMWARE / "config.h").read_text(encoding="utf-8")
+
+
+def test_the_box_reads_the_wire_loops_that_touch_when_the_door_opens():
+    config = _config()
+
+    def define(name: str) -> str:
+        m = re.search(rf"^#define\s+{name}\s+(\S+)", config, re.M)
+        assert m, f"config.h lost {name}"
+        return m.group(1)
+
+    # The wire loops alone: a closed-when-open input that comes unplugged reads
+    # shut, so DOOR_BOTH would let it veto every opening.
+    assert define("DOOR_MODE") == "DOOR_TAPE"
+    assert define("TAPE_POLARITY") == "door::kClosedWhenOpen"
+    assert define("REED_POLARITY") == "door::kClosedWhenShut"
+    # A loop flickering on an open door must not report closed (that would
+    # re-arm the edge and fire a second opening): ≥ 1 s to report closed.
+    assert int(define("DOOR_CLOSE_MS")) >= 1000
+    assert int(define("DOOR_OPEN_MS")) <= 500
+    # The sketch applies the polarity to both inputs, at boot and every poll,
+    # and the diagnostics say which polarity each input runs.
+    sketch = _sketch()
+    assert sketch.count("door::isOpen(kTapePolarity, digitalRead(PIN_TAPE) == LOW)") == 2
+    assert sketch.count("door::isOpen(kReedPolarity, digitalRead(PIN_REED) == LOW)") == 2
+    assert "== HIGH" not in sketch.split("void pollDoor", 1)[1].split("}", 1)[0]
+    assert '\\"tape_polarity\\"' in sketch and '\\"reed_polarity\\"' in sketch
+    assert "door::payloadJson(kDoorMode" in sketch
+
+
+def test_nothing_on_the_box_drives_a_lock():
+    # The real door has a standalone keypad lock: the box only shows a ring.
+    # No GPIO besides the ring, the relay "click" and the DFPlayer is an
+    # output, and no topic names a strike, maglock or latch.
+    sketch = _sketch()
+    outputs = set(re.findall(r"pinMode\((\w+), OUTPUT\)", sketch))
+    assert outputs == {"PIN_RELAY"}, outputs
+    topics = _defines("topics.h")
+    assert not [t for t in topics.values() if re.search(r"strike|maglock|latch|unlock", t)]
+    assert not re.search(r"maglock|strike", _config(), re.I)
