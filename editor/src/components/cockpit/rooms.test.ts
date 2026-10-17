@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from 'vitest'
 import type { GuestView, PrimeView } from '@loom/core/views'
-import { buildRooms, lensKindOf, LensKind, messageInLens, READ_ONLY_ROOMS, roomKeyOf, roomMessages, type RoomsInput } from './rooms'
+import { buildRooms, SIDE_SUFFIX, lensKindOf, LensKind, messageInLens, READ_ONLY_ROOMS, roomKeyOf, roomMessages, type RoomsInput } from './rooms'
 import type { CockpitMessage, RosterRow } from '@/store/cockpit'
 
 const g1: RosterRow = { id: 'g1', name: 'Ada', role: 'Guest', faction: 'Mods', trueFaction: 'Mods', location: 'Party', captured: false, score: 0 }
@@ -313,5 +313,34 @@ describe("performer lens: the booth's own pinned rooms", () => {
     const keys = rooms.map((r) => r.key)
     expect(keys.filter((k) => k.endsWith('#@Clippy'))).toEqual(['dm:Clippy#@Clippy'])
     expect(keys).not.toContain('wallet#@Norton')
+  })
+})
+
+describe('a GROUP room beside a CHANNEL of the same name (T7-08)', () => {
+  const twins: RoomsInput = {
+    ...INPUT,
+    channels: [
+      { id: 'lobby', kind: 'lobby', title: 'The Internet', spaceId: 'internet' },
+      { id: 'room:hosts', kind: 'private', title: '# hosts', spaceId: 'internet' },
+      { id: 'room:the-way-out', kind: 'faction', title: '# the-way-out', spaceId: 'internet' },
+      { id: 'faction:Hosts', kind: 'faction', title: '#hosts', spaceId: 'internet' },
+      { id: 'faction:The_Way_Out', kind: 'faction', title: '#the way out', spaceId: 'internet' },
+      { id: 'faction:Antivirus', kind: 'faction', title: '#antivirus', spaceId: 'internet' },
+    ],
+    messages: [],
+    factions: [],
+  }
+
+  it('labels the derived side room so the two read differently, and keeps both', () => {
+    const rooms = buildRooms(twins)
+    const title = (key: string) => rooms.find((r) => r.key === key)?.title
+    expect(title('room:hosts')).toBe('# hosts')
+    expect(title('faction:Hosts')).toBe(`#hosts${SIDE_SUFFIX}`)
+    expect(title('room:the-way-out')).toBe('# the-way-out')
+    expect(title('faction:The_Way_Out')).toBe(`#the way out${SIDE_SUFFIX}`)
+    // A side with no namesake keeps its plain name.
+    expect(title('faction:Antivirus')).toBe('#antivirus')
+    const titles = rooms.map((r) => r.title)
+    expect(new Set(titles).size).toBe(titles.length)
   })
 })

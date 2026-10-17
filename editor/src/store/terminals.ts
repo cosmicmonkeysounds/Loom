@@ -62,7 +62,7 @@ function load(eventId: string): TerminalMemory {
     const cutoff = Date.now() - FORGET_AFTER_MS
     const out: TerminalMemory = {}
     for (const [name, m] of Object.entries(v as TerminalMemory)) {
-      if (m !== null && typeof m === 'object' && typeof m.lastSeen === 'number' && m.lastSeen >= cutoff) out[name] = { spot: String(m.spot ?? ''), view: String(m.view ?? ''), lastSeen: m.lastSeen }
+      if (m !== null && typeof m === 'object' && typeof m.lastSeen === 'number' && m.lastSeen >= cutoff) out[name] = { spot: String(m.spot ?? ''), view: String(m.view ?? ''), room: typeof m.room === 'string' ? m.room : '', lastSeen: m.lastSeen }
     }
     return out
   } catch {

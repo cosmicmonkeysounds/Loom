@@ -248,8 +248,15 @@ export interface ChannelSummary {
 export interface CastSummary {
   id: string
   faction: string | null
-  /** A performer is signed in and streaming as this character right now. */
+  /** A performer (or, for an agent, a worker) is streaming as this character right now. */
   online?: boolean
+  /** Voiced by an agent worker (`mind: external`), never a performer. */
+  agent?: boolean
+  /** A part a performer can sign in to (the server's `performerPickable`);
+   *  absent on an older server, which flags no row. */
+  part?: boolean
+  /** A sign-in token holds the part — true even while its phone's stream is down. */
+  held?: boolean
 }
 
 /** One live world-state entry (`g-1a2b.score` → `42`), display-stringed. */
@@ -264,11 +271,13 @@ export interface SpaceSummary {
 }
 
 /** One raw ledger row (the Log page) — the engine's `SimEvent` as it
- *  landed, with its position and the story clock. */
+ *  landed, with its position and when this console saw it. */
 export interface LedgerEntry {
   seq: number
-  /** Story-clock ms when the event landed. */
-  ts: number
+  /** When the event landed: story-clock ms on a local run, the console's
+   *  receive time (epoch ms) on a server run. Absent on a row this console
+   *  never saw land — one back-filled off `/api/mod/log` for an export. */
+  ts?: number
   event: SimEvent
 }
 
@@ -310,7 +319,11 @@ export type Lens =
  *  works and the empty state can say who ended it. */
 export interface LastRun {
   run: RunInfo
+  /** The ledger this console held when it ended — the whole ledger when the
+   *  end was this console's own and the server handed it over. */
   log: LedgerEntry[]
+  /** The ledger's length when it ended (absent: `log.length`). */
+  ledgerLen?: number
   messages: CockpitMessage[]
   /** The final snapshot, so an export after the end is complete. */
   roster: RosterRow[]

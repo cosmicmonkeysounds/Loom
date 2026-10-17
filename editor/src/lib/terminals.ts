@@ -17,6 +17,11 @@
 //! A current terminal build also reports its device on every poll
 //! (SW-SCR-21): sound unlocked, page visible, battery, build stamp — the
 //! row's badges (`terminalBadges`). An older build reports none.
+//!
+//! A room terminal (wave 7) also reports the LOCATION it belongs to (`room`):
+//! the row says so, and one that isn't on the server-room spot is amber
+//! (`strayRoom`) — a tablet that once was the TV keeps its `room` when its
+//! view changes, and then quietly acts as a room terminal.
 
 /** One entry of the server's heartbeat list (`ScreenPoll & {ago}`). */
 export interface TerminalPoll {
@@ -24,6 +29,8 @@ export interface TerminalPoll {
   spot: string
   view: string
   character: string
+  /** The LOCATION a room terminal belongs to (wave 7); absent: not a room terminal. */
+  room?: string
   /** ms since its last poll, on the server's clock. */
   ago: number
   /** The device health its build reports (SW-SCR-21); absent from an older build. */
@@ -49,6 +56,8 @@ export interface ScreenTerminals {
 export interface RememberedTerminal {
   spot: string
   view: string
+  /** The room terminal's LOCATION, as last polled ("" or absent: none). */
+  room?: string
   lastSeen: number
 }
 export type TerminalMemory = Record<string, RememberedTerminal>
@@ -63,6 +72,8 @@ export interface TerminalRow {
   name: string
   spot: string
   view: string
+  /** The room terminal's LOCATION ("" = not a room terminal). */
+  room: string
   status: TerminalStatus
   /** ms since its last poll. */
   silentFor: number
@@ -100,7 +111,7 @@ export function mergeTerminals(
     const lastSeen = clientNow - Math.max(0, p.ago)
     const prev = next[p.name]
     // A server restart forgets; never move a remembered poll backwards.
-    next[p.name] = { spot: p.spot, view: p.view, lastSeen: prev !== undefined ? Math.max(prev.lastSeen, lastSeen) : lastSeen }
+    next[p.name] = { spot: p.spot, view: p.view, room: p.room ?? '', lastSeen: prev !== undefined ? Math.max(prev.lastSeen, lastSeen) : lastSeen }
   }
   const names = Object.keys(next).sort((a, b) => next[b]!.lastSeen - next[a]!.lastSeen)
   for (const n of names.slice(MAX_REMEMBERED)) delete next[n]
@@ -111,6 +122,7 @@ export function mergeTerminals(
       name,
       spot: m.spot,
       view: m.view,
+      room: m.room ?? '',
       status: silentFor >= silentMs ? TerminalStatus.Silent : TerminalStatus.Live,
       silentFor,
       remembered: server !== null && !listed.has(name),
@@ -156,6 +168,16 @@ export function formatSilence(ms: number): string {
 /** A TV-type screen (the house Mac's `view=tv`, or a `mirror`). */
 export function isTvView(view: string): boolean {
   return view === 'tv' || view === 'mirror'
+}
+
+/** The house map spot the one real room terminal hangs on (the show's `server-room`). */
+export const ROOM_TERMINAL_SPOT = 'server-room'
+
+/** A room terminal off the server-room spot: most likely a tablet that once
+ *  was the TV (`room=The Desktop`) and kept its room when its view changed —
+ *  it now sleeps on attract and speaks that room's lines instead of its own. */
+export function strayRoom(row: Pick<TerminalRow, 'room' | 'spot'>): boolean {
+  return row.room !== '' && row.spot !== ROOM_TERMINAL_SPOT
 }
 
 /** A battery under this (and not charging) is a red badge. */

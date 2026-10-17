@@ -356,7 +356,7 @@ export const useSim = create<SimState>((set, get) => {
       const s = get()
       const lastRun =
         s.run !== null
-          ? { run: s.run, log: s.log, messages: s.messages, roster: s.roster, factions: s.factions, locations: s.locations, world: s.world, choices: s.choices, endedBy: ME, endedAt: Date.now() }
+          ? { run: s.run, log: s.log, ledgerLen: s.ledgerLen, messages: s.messages, roster: s.roster, factions: s.factions, locations: s.locations, world: s.world, choices: s.choices, endedBy: ME, endedAt: Date.now() }
           : s.lastRun
       teardown()
       set({ ...empty(), lastRun, activeTab: CockpitTab.Run, activeChannel: 'lobby', notice: null, compiledAt: -1 })

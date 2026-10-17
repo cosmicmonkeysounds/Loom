@@ -7,10 +7,11 @@
 
 import { useState } from 'react'
 import clsx from 'clsx'
-import { CockpitTab, SelectionKind, useCockpit, type RosterRow } from '@/store/cockpit'
+import { CockpitTab, SelectionKind, useCockpit, type CastSummary, type RosterRow } from '@/store/cockpit'
 import { useGraph } from '@/store/graph'
 import { openContextMenu } from '@/store/context-menu'
 import { FactionPill } from './ui'
+import { PartPresence, castPresence, isSignedIn, partPresenceTitle, performerParts } from './parts'
 import { publicFaction } from './format'
 import { useInspect } from './inspect'
 import { useGuestMenu } from './guest-menu'
@@ -152,7 +153,8 @@ function LocationCard({
   )
 }
 
-/** The cast strip: every character, performer presence marked. */
+/** The cast strip: every character, performer presence marked on the parts
+ *  (a part held by a phone that isn't streaming still counts as signed in). */
 function CastStrip() {
   const cast = useCockpit((s) => s.cast)
   const factions = useCockpit((s) => s.factions)
@@ -160,50 +162,76 @@ function CastStrip() {
   const setPerspective = useCockpit((s) => s.setPerspective)
   const inspect = useInspect()
   if (cast.length === 0) return null
-  const tracked = cast.some((c) => c.online !== undefined)
-  const online = cast.filter((c) => c.online === true)
-  // Signed-in performers first, then the rest of the ensemble.
-  const sorted = [...cast].sort((a, b) => Number(b.online === true) - Number(a.online === true) || a.id.localeCompare(b.id))
+  const partIds = new Set(performerParts(cast).map((c) => c.id))
+  const presenceOf = (c: CastSummary) => castPresence(c, partIds.has(c.id))
+  const tracked = cast.some((c) => partIds.has(c.id) && presenceOf(c) !== PartPresence.Unknown)
+  const signedIn = cast.filter((c) => isSignedIn(presenceOf(c)))
+  const offline = signedIn.filter((c) => presenceOf(c) === PartPresence.PhoneOffline).length
+  // Signed-in performers first, then the other parts, the agents, then the rest of the ensemble.
+  const rank = (c: CastSummary) => (isSignedIn(presenceOf(c)) ? 0 : partIds.has(c.id) ? 1 : c.agent === true ? 2 : 3)
+  const sorted = [...cast].sort((a, b) => rank(a) - rank(b) || a.id.localeCompare(b.id))
   return (
     <div className="border-b border-zinc-800 px-3 py-2">
       <div className="flex items-baseline gap-2 pb-1.5">
         <span className="text-[10px] uppercase tracking-widest text-zinc-500">Cast</span>
         {tracked && (
           <span className="text-[10px] text-zinc-600">
-            <span className={online.length > 0 ? 'text-emerald-300' : 'text-zinc-500'}>{online.length}</span> performer
-            {online.length === 1 ? '' : 's'} signed in
+            <span className={signedIn.length > 0 ? 'text-emerald-300' : 'text-zinc-500'}>{signedIn.length}</span> performer
+            {signedIn.length === 1 ? '' : 's'} signed in
+            {offline > 0 && <span className="text-amber-300"> · {offline} phone{offline === 1 ? '' : 's'} offline</span>}
           </span>
         )}
       </div>
       <div className="flex flex-wrap gap-1.5">
-        {sorted.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => inspect({ kind: SelectionKind.Character, id: c.id })}
-            onContextMenu={(e) => {
-              e.preventDefault()
-              openContextMenu(
-                [
-                  { label: `Inspect ${c.id}`, onSelect: () => inspect({ kind: SelectionKind.Character, id: c.id }) },
-                  { label: `Be ${c.id}`, onSelect: () => setPerspective(c.id) },
-                ],
-                { x: e.clientX, y: e.clientY },
-              )
-            }}
-            className={clsx(
-              'flex items-center gap-1.5 rounded-lg border px-2 py-0.5 text-xs',
-              c.online === true ? 'border-emerald-700/60 bg-emerald-950/30' : 'border-zinc-800 hover:bg-zinc-900/60',
-            )}
-            title={c.online === true ? `A performer is signed in as ${c.id}` : c.id}
-            data-testid={`stage-cast-${c.id}`}
-          >
-            {c.online !== undefined && (
-              <span className={clsx('h-1.5 w-1.5 rounded-full', c.online ? 'bg-emerald-400' : 'border border-zinc-600')} />
-            )}
-            <span className="text-zinc-200">{c.id}</span>
-            <FactionPill faction={publicFaction(c.faction, factions, locked)} />
-          </button>
-        ))}
+        {sorted.map((c) => {
+          const presence = presenceOf(c)
+          return (
+            <button
+              key={c.id}
+              onClick={() => inspect({ kind: SelectionKind.Character, id: c.id })}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                openContextMenu(
+                  [
+                    { label: `Inspect ${c.id}`, onSelect: () => inspect({ kind: SelectionKind.Character, id: c.id }) },
+                    { label: `Be ${c.id}`, onSelect: () => setPerspective(c.id) },
+                  ],
+                  { x: e.clientX, y: e.clientY },
+                )
+              }}
+              className={clsx(
+                'flex items-center gap-1.5 rounded-lg border px-2 py-0.5 text-xs',
+                presence === PartPresence.Online
+                  ? 'border-emerald-700/60 bg-emerald-950/30'
+                  : presence === PartPresence.PhoneOffline
+                    ? 'border-amber-700/60 bg-amber-950/30'
+                    : presence === PartPresence.Voiced
+                      ? 'border-sky-800/60 bg-sky-950/30'
+                      : 'border-zinc-800 hover:bg-zinc-900/60',
+              )}
+              title={partPresenceTitle(c.id, presence)}
+              data-testid={`stage-cast-${c.id}`}
+              data-presence={presence}
+            >
+              {presence !== PartPresence.Unknown && (
+                <span
+                  className={clsx(
+                    'h-1.5 w-1.5 rounded-full',
+                    presence === PartPresence.Online
+                      ? 'bg-emerald-400'
+                      : presence === PartPresence.PhoneOffline
+                        ? 'bg-amber-400'
+                        : presence === PartPresence.Voiced
+                          ? 'bg-sky-400'
+                          : 'border border-zinc-600',
+                  )}
+                />
+              )}
+              <span className="text-zinc-200">{c.id}</span>
+              <FactionPill faction={publicFaction(c.faction, factions, locked)} />
+            </button>
+          )
+        })}
       </div>
     </div>
   )

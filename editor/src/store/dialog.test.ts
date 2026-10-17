@@ -2,7 +2,7 @@
 // prompt/confirm/alert the desktop webview doesn't implement.
 
 import { beforeEach, describe, expect, it } from 'vitest'
-import { confirmAction, DialogKind, notify, promptText, useDialog } from '@/store/dialog'
+import { confirmAction, confirmTyped, DialogKind, notify, promptText, useDialog } from '@/store/dialog'
 
 function open() {
   const c = useDialog.getState().current
@@ -74,5 +74,30 @@ describe('dialog store', () => {
 
   it('ignores a settle with nothing open', () => {
     expect(() => useDialog.getState().settle(true)).not.toThrow()
+  })
+
+  it('a typed code confirms only on a match, forgiving case and spaces (T7-06)', async () => {
+    const ok = confirmTyped({ title: 'End the live event?', body: 'Guests are disconnected.', code: 'AB12CD' })
+    expect(open().req).toMatchObject({ kind: DialogKind.Prompt, placeholder: 'AB12CD' })
+    expect(open().req.body).toContain('Type the event code (AB12CD) to confirm.')
+    useDialog.getState().settle(' ab12cd ')
+    expect(await ok).toBe(true)
+    expect(useDialog.getState().current).toBeNull()
+  })
+
+  it('a cancelled typed code is a quiet no', async () => {
+    const no = confirmTyped({ title: 'End?', body: '', code: 'AB12CD' })
+    useDialog.getState().settle(null)
+    expect(await no).toBe(false)
+    expect(useDialog.getState().current).toBeNull()
+  })
+
+  it('a wrong typed code says nothing changed (T7-06)', async () => {
+    const no = confirmTyped({ title: 'End?', body: '', code: 'AB12CD' })
+    useDialog.getState().settle('WRONG1')
+    expect(await no).toBe(false)
+    expect(open().req).toMatchObject({ kind: DialogKind.Alert, title: 'Nothing changed' })
+    expect(open().req.body).toContain('WRONG1')
+    expect(open().req.body).toContain('AB12CD')
   })
 })

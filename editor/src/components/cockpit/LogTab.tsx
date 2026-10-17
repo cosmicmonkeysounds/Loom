@@ -8,14 +8,15 @@
 //! (`log-describe.ts`) so a new event kind fails the exhaustiveness check
 //! there instead of rendering as its bare type name. The header exports the whole run (ledger + every
 //! room's transcript + world state) as JSON for bug reports / post-mortems
-//! — a run that just ended included.
+//! — a run that just ended included. A server export pages the *whole*
+//! ledger off `/api/mod/log`, not just what this console saw (T7-03).
 
 import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { SimEventType } from '@loom/core/sim'
 import { CockpitContext, useCockpit, type LedgerEntry } from '@/store/cockpit'
 import { canExportRun, downloadRunExport } from '@/lib/run-export'
-import { eventMentions } from './log-filter'
+import { eventMentions, missingEvents } from './log-filter'
 import { describeEvent } from './log-describe'
 
 /** Tone class per event type (grouped by family). */
@@ -46,7 +47,8 @@ function toneOf(type: SimEventType): string {
   }
 }
 
-function clock(ts: number): string {
+function clock(ts: number | undefined): string {
+  if (ts === undefined) return '—'
   const s = Math.floor(ts / 1000)
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 }
@@ -78,14 +80,18 @@ export function LogTab() {
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' })
   }, [rows.length])
-  const missed = log.length > 0 ? Math.max(0, ledgerLen - log.length) : 0
+  const missed = missingEvents(log.length, ledgerLen)
   return (
     <div className="flex h-full flex-col" data-testid="sim-log">
       <div className="flex items-center justify-between gap-2 border-b border-zinc-800 px-3 py-1 text-[11px] text-zinc-500">
         <span className="flex items-center gap-2">
           <span>
             {who === '' ? `${log.length} of ${ledgerLen} events` : `${rows.length} of ${log.length} events mention`}
-            {missed > 0 && who === '' && <span className="ml-1 text-zinc-600">(earlier events predate this console)</span>}
+            {missed > 0 && who === '' && (
+              <span className="ml-1 text-zinc-600" data-testid="log-missed">
+                ({missed} earlier event{missed === 1 ? '' : 's'} predate this console — ⤓ Export run has them all)
+              </span>
+            )}
           </span>
           <select
             value={who}
@@ -116,10 +122,10 @@ export function LogTab() {
           </select>
         </span>
         <button
-          onClick={() => downloadRunExport(store.getState())}
+          onClick={() => void downloadRunExport(store.getState())}
           disabled={!exportable}
           className="rounded border border-zinc-800 px-2 py-0.5 text-zinc-300 hover:bg-zinc-800 disabled:opacity-40"
-          title={running ? 'Download the ledger, every room\'s transcript, and the world state as JSON' : 'Download the run that just ended'}
+          title={running ? 'Download the whole ledger, every room\'s transcript, and the world state as JSON' : 'Download the run that just ended'}
           data-testid="run-export"
         >
           ⤓ Export run
@@ -128,7 +134,13 @@ export function LogTab() {
       <div className="min-h-0 flex-1 overflow-auto">
         {rows.length === 0 && (
           <div className="p-4 text-sm text-zinc-600">
-            {running ? (who === '' ? 'No events yet on this console.' : 'Nothing mentions them yet.') : 'The ledger is empty — start a rehearsal.'}
+            {running
+              ? who === ''
+                ? missed > 0
+                  ? `No events on this console yet — the run's ${missed} earlier events predate it (a reload or a late join). ⤓ Export run downloads the whole ledger.`
+                  : 'No events yet on this console.'
+                : 'Nothing mentions them yet.'
+              : 'The ledger is empty — start a rehearsal.'}
           </div>
         )}
         {rows.map((entry) => (

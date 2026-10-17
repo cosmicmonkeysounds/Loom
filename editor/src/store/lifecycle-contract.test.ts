@@ -53,6 +53,9 @@ vi.mock('@/lib/api', async (importOriginal) => {
       reload: vi.fn(async () => event()),
       goLive: vi.fn(async () => ({ ...event(), mode: 'live' as const })),
     },
+    logApi: {
+      page: vi.fn(async () => ({ entries: [], next: null, total: 0 })),
+    },
     modApi: {
       ...actual.modApi,
       persona: vi.fn(async () => ({ id: 'p-abc', owner: 'Ada' })),
@@ -158,6 +161,65 @@ describe('launch code rotation (server)', () => {
     await useOperate.getState().end()
     await useOperate.getState().startRun(RunMode.Live, { rotateStaff: true })
     expect(launch).toHaveBeenLastCalledWith('p-1', 'live', { rotate: 'staff' })
+    useOperate.getState().detach()
+  })
+})
+
+describe('End keeps the whole ledger for "Export that run" (server, T7-03)', () => {
+  const tick = (i: number) => ({ type: 'tick', elapsedMs: i })
+  const start = async () => {
+    useAuth.setState({ user: { id: 'u1', name: 'Ada', email: 'ada@example.test' } })
+    useOperate.getState().detach()
+    useOperate.getState().attach('p-1')
+    await useOperate.getState().startRun(RunMode.Rehearsal)
+    // A late console: the ledger is 3 long, this console saw only the last row.
+    useOperate.setState({ ledgerLen: 3, log: [{ seq: 2, ts: 99, event: tick(2) as never }] })
+  }
+
+  it('pages the ledger off the server before ending', async () => {
+    const { logApi } = await import('@/lib/api')
+    const page = vi.mocked(logApi.page)
+    page.mockResolvedValueOnce({ entries: [tick(0), tick(1), tick(2)], next: null, total: 3 })
+    await start()
+    await useOperate.getState().end()
+    expect(page).toHaveBeenLastCalledWith('evt-1', null, 5000)
+    const last = useOperate.getState().lastRun!
+    expect(last.log.map((e) => e.seq)).toEqual([0, 1, 2])
+    expect(last.log[2]!.ts).toBe(99)
+    expect(last.ledgerLen).toBe(3)
+    useOperate.getState().detach()
+  })
+
+  it('keeps the whole ledger when the end is announced back before the End request answers', async () => {
+    // The server stops the event (the mod stream's `ended`, the collab
+    // notice → refresh) before it answers the End request: that path must
+    // not settle `lastRun` on the console's partial log.
+    const { eventsApi, logApi } = await import('@/lib/api')
+    vi.mocked(logApi.page).mockResolvedValueOnce({ entries: [tick(0), tick(1), tick(2)], next: null, total: 3 })
+    vi.mocked(eventsApi.end).mockImplementationOnce(async () => {
+      await useOperate.getState().refresh() // status → null: the event is gone
+      expect(useOperate.getState().run).toBeNull()
+    })
+    await start()
+    await useOperate.getState().end()
+    const s = useOperate.getState()
+    expect(s.lastRun!.log.map((e) => e.seq)).toEqual([0, 1, 2])
+    expect(s.lastRun!.ledgerLen).toBe(3)
+    // Ended here, not by a co-author: no banner, the director's own name.
+    expect(s.lastRun!.endedBy).toBe('Ada')
+    expect(s.notice).toBeNull()
+    useOperate.getState().detach()
+  })
+
+  it('still ends, with what it saw, when the server won\'t hand the ledger over', async () => {
+    const { logApi, ApiError } = await import('@/lib/api')
+    vi.mocked(logApi.page).mockRejectedValueOnce(new ApiError(404, {}))
+    await start()
+    await useOperate.getState().end()
+    const s = useOperate.getState()
+    expect(s.run).toBeNull()
+    expect(s.lastRun!.log).toHaveLength(1)
+    expect(s.lastRun!.ledgerLen).toBe(3)
     useOperate.getState().detach()
   })
 })
