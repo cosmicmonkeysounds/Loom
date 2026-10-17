@@ -504,11 +504,21 @@ export class ScreenWatch {
   /** This watch's boot id + a count of the sims it has seen (`announceEpoch`). */
   private readonly boot = Math.random().toString(36).slice(2, 8);
   private sims = 0;
-  /** The director's TV-voice mute (K-18). Runtime state: a server restart unmutes. */
-  voiceMuted = false;
+  /** The director's TV-voice mute (K-18). Persisted by the runtime (`muted`
+   *  seeds it, `onMute` writes it), so a server restart keeps the TV quiet. */
+  voiceMuted: boolean;
+  private readonly onMute: ((muted: boolean) => void) | undefined;
 
-  constructor(o: { now?: () => number } = {}) {
+  constructor(o: { now?: () => number; muted?: boolean; onMute?: (muted: boolean) => void } = {}) {
     this.now = o.now ?? Date.now;
+    this.voiceMuted = o.muted ?? false;
+    this.onMute = o.onMute;
+  }
+
+  /** Flip the TV-voice mute (`POST /api/mod/screen/voice`) and persist it. */
+  setVoiceMuted(muted: boolean): void {
+    this.voiceMuted = muted;
+    this.onMute?.(muted);
   }
 
   /** Fold every screen cue the sim logged since the last look. A new Sim
@@ -792,7 +802,7 @@ export async function handleScreenVoicePost(watch: ScreenWatch, req: IncomingMes
     sendJson(res, 403, { error: "moderators only" });
     return true;
   }
-  if (typeof body["muted"] === "boolean") watch.voiceMuted = body["muted"];
+  if (typeof body["muted"] === "boolean") watch.setVoiceMuted(body["muted"]);
   sendJson(res, 200, { muted: watch.voiceMuted });
   return true;
 }

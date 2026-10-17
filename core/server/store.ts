@@ -95,6 +95,9 @@ const FACTS = "project-facts.json";
 const PUSH = "push.json";
 /** Every duck found this story (SW-RE-14, the ceremony's speedrun). */
 const RUNS = "spatial-runs.jsonl";
+/** The director's TV-voice mute (K-18, OP-20's ALL STOP) — not story state,
+ *  so no restart or replay touches it; a crash must not unmute the TV. */
+const SCREEN_VOICE = "screen-voice.json";
 
 /** Read + JSON-parse a file, returning `null` on any miss/corruption. */
 function readJson<T>(path: string): T | null {
@@ -310,6 +313,13 @@ export class Store {
   // by replaying the journal through the message composer. Moderation is the
   // one exception — hiding a message isn't a sim event — so the set of hidden
   // `seq`s is kept here and re-applied after the rebuild.
+
+  loadVoiceMuted(): boolean {
+    return readJson<{ muted?: unknown }>(this.path(SCREEN_VOICE))?.muted === true;
+  }
+  saveVoiceMuted(muted: boolean): void {
+    writeFileSync(this.path(SCREEN_VOICE), JSON.stringify({ muted }));
+  }
 
   loadHidden(): number[] {
     return readJson<number[]>(this.path(HIDDEN)) ?? [];

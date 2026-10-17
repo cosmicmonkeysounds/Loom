@@ -811,6 +811,25 @@ describe("GET /api/mod/screen/terminals — the heartbeat card", () => {
     expect((await call(rt, "GET", `/api/mod/screen/terminals?token=${token}`, {})).status).toBe(200);
     rt.dispose();
   });
+
+  it("the TV-voice mute survives a server restart (W8 T3-04)", async () => {
+    const dir = freshDir();
+    const mk = () => new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: "t", scenarioSource: AGENT_SOURCE, joinBase: () => "http://localhost" });
+    const rt = mk();
+    rt.openDoors();
+    expect((await call(rt, "POST", "/api/mod/screen/voice", { muted: true }, { moderator: true })).json).toEqual({ muted: true });
+    rt.dispose();
+    const again = mk();
+    expect(again.restore()).not.toBeNull();
+    expect(((await call(again, "GET", "/api/mod/screen/terminals", {}, { moderator: true })).json as unknown as ScreenTerminals).voiceMuted).toBe(true);
+    // …and unmuting sticks too.
+    await call(again, "POST", "/api/mod/screen/voice", { muted: false }, { moderator: true });
+    again.dispose();
+    const third = mk();
+    third.restore();
+    expect(((await call(third, "GET", "/api/mod/screen/terminals", {}, { moderator: true })).json as unknown as ScreenTerminals).voiceMuted).toBe(false);
+    third.dispose();
+  });
 });
 
 // --- device health + identify (SW-SCR-21, install day) ---------------------------

@@ -641,7 +641,11 @@ export class EventRuntime {
     this.redeemMisses = limiterFor(limits.redeemMisses);
     this.widgetAnswers = limiterFor(limits.widgets);
     this.walletCalls = limiterFor(limits.wallet);
-    this.screens = new ScreenWatch(init.now !== undefined ? { now: init.now } : {});
+    this.screens = new ScreenWatch({
+      ...(init.now !== undefined ? { now: init.now } : {}),
+      muted: this.store.loadVoiceMuted(),
+      onMute: (muted) => this.store.saveVoiceMuted(muted),
+    });
   }
 
   /** Current lifecycle phase (idle | open | paused). */
