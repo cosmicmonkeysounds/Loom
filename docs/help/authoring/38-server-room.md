@@ -221,8 +221,8 @@ Room on every phone. So:
   the **house manager** (the override key, or the code at the keypad —
   never on the radio); that opening is just *back again*, or nothing
   within two minutes of the last.
-- If a crew opening played The Heart anyway, **🔄** re-arms it for the
-  guests' first opening — but the room is already on every phone.
+- If a crew opening played The Heart anyway, **🔄** makes the guests'
+  first opening play it again — but the room is already on every phone.
 
 ## Before the doors open
 
