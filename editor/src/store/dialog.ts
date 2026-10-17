@@ -140,3 +140,30 @@ export async function notify(opts: {
     confirmLabel: opts.confirmLabel ?? 'OK',
   })
 }
+
+/**
+ * Ask for a code typed back before a destructive action (a live run's End /
+ * Restart / Push draft). True only on a match (case and spaces forgiven); a
+ * cancel is a quiet false, but a wrong code says so — the dialog closing on
+ * its own would read as "done" to a director under pressure.
+ */
+export async function confirmTyped(opts: {
+  title: string
+  body: string
+  code: string
+  /** What the code is called in the prompt and the refusal. */
+  codeName?: string
+  confirmLabel?: string
+}): Promise<boolean> {
+  const name = opts.codeName ?? 'event code'
+  const typed = await promptText({
+    title: opts.title,
+    body: `${opts.body} Type the ${name} (${opts.code}) to confirm.`,
+    placeholder: opts.code,
+    confirmLabel: opts.confirmLabel ?? 'Confirm',
+  })
+  if (typed === null) return false
+  if (typed.trim().toUpperCase() === opts.code.trim().toUpperCase()) return true
+  void notify({ title: 'Nothing changed', body: `“${typed.trim()}” isn’t the ${name} (${opts.code}), so nothing was done. Try again if you meant it.` })
+  return false
+}

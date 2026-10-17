@@ -9,20 +9,15 @@
 import clsx from 'clsx'
 import { CockpitPhase, RunBackend, RunMode, useCockpit } from '@/store/cockpit'
 import { openContextMenu, type ContextMenuEntry } from '@/store/context-menu'
-import { confirmAction, promptText } from '@/store/dialog'
+import { confirmAction, confirmTyped } from '@/store/dialog'
 import { scratchAllowed, useScratch } from '@/store/run'
 
 const btn = 'rounded px-2.5 py-1 text-xs font-medium disabled:opacity-40'
 
-/** Ask for the event code before a destructive action on a live run. */
-async function typedConfirm(title: string, body: string, code: string): Promise<boolean> {
-  const typed = await promptText({
-    title,
-    body: `${body} Type the event code (${code}) to confirm.`,
-    placeholder: code,
-    confirmLabel: 'Confirm',
-  })
-  return typed !== null && typed.trim().toUpperCase() === code.toUpperCase()
+/** Ask for the event code before a destructive action on a live run (a
+ *  wrong code says nothing changed). */
+function typedConfirm(title: string, body: string, code: string): Promise<boolean> {
+  return confirmTyped({ title, body, code })
 }
 
 export function LifecycleControls() {
