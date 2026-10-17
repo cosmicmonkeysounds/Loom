@@ -3969,7 +3969,7 @@ describe("Trapped in the Internet — wave 5 story (lane B)", () => {
     const tenth = sim.share("g7", "g1", findings[9]!);
     expect(v(sim, "g1.from_jeeves")).toBe(10);
     expect(v(sim, "Kernel.jeeves_reached")).toBe(1);
-    expect(questSteps(tenth, "g7", "Ten Findings")).toEqual([["update", "1 programs have ten of your findings."]]);
+    expect(questSteps(tenth, "g7", "Ten Findings")).toEqual([["update", "1 program has ten of your findings."]]);
     sim.share("g7", "g1", findings[10]!); // an eleventh changes nothing
     expect(v(sim, "Kernel.jeeves_reached")).toBe(1);
 
@@ -4115,7 +4115,7 @@ describe("Trapped in the Internet — wave 5 (lane B): the takeover, the resurre
     const s1 = fire(sim, "signed_the_painting", "g1", null, "Clippy");
     expect(v(sim, "Night.signatures")).toBe(1);
     expect(replies(s1).map((r) => `${r.to}: ${r.text}`)).toEqual(["g1: 🖌 Your signature is on the painting. It goes to auction at the end of the night."]);
-    expect(quest(s1, "The Painting")).toEqual(["g4 update 1 programs have signed."]);
+    expect(quest(s1, "The Painting")).toEqual(["g4 update 1 program has signed."]);
     expect(texts(fire(sim, "signed_the_painting", "g1", null, "Clippy"))).toEqual(['!"🖌 Calculator already signed. Nothing was counted."']); // once
     expect(texts(fire(sim, "signed_the_painting", "g4", null, "Clippy"))).toEqual(['!"🖌 MS Paint is the painter, not a signature. Nothing was counted."']);
     expect(v(sim, "Night.signatures")).toBe(1);
@@ -4401,6 +4401,17 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     const open = composeGuestMessages(sim, evs).filter((m) => m.text.includes("open now"));
     expect(open.map((m) => m.text)).toEqual(["📂 The Start Bar, The CPU, The Steam Room, Disk Cleanup, The Cloud, The RAM, The Fan Closet, The Graphics Card, The Hard Drive and # task-manager are open now."]);
     expect(open[0]!.audience).toEqual(["g1"]);
+  });
+
+  it("B16: the recount's count copy agrees with its number", () => {
+    const at = (n: number) => {
+      const sim = boot();
+      sim.setVar("Night.facts_accepted", String(n));
+      return lines(sim.fireBeat("Trabolta Recounts"), "Trabolta").filter((t) => t.startsWith("You gave me"));
+    };
+    expect(at(0)).toEqual([]);
+    expect(at(1)).toEqual(["You gave me 1 fact I accepted. It might even have been true."]);
+    expect(at(2)).toEqual(["You gave me 2 facts I accepted. Some of them were even true."]);
   });
 
   it("B11: lie → accurate → lie counts the filing once; an uncertain correction clears it to unanswered", { timeout: SLOW }, () => {

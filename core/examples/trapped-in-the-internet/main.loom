@@ -2044,7 +2044,10 @@ ROLE Program
   // doesn't block him; a late joiner does, until he reaches them.
   when self.featured == "jeeves" and Kernel.jeeves_reached > self.jeeves_told:
     set self.jeeves_told = Kernel.jeeves_reached
-    update quest Ten Findings for self "{Kernel.jeeves_reached} programs have ten of your findings."
+    if Kernel.jeeves_reached == 1:
+      update quest Ten Findings for self "1 program has ten of your findings."
+    else:
+      update quest Ten Findings for self "{Kernel.jeeves_reached} programs have ten of your findings."
 
   when self.featured == "jeeves" and self.quest.ten_findings == "active" and count([p for p in Persons where p.cleared and p.featured != "jeeves"]) >= 5 and count([p for p in Persons where p.cleared and p.featured != "jeeves" and p.from_jeeves < 10]) == 0:
     complete quest Ten Findings for self "Ten findings with every program. The Map Librarian job is yours."
@@ -2054,7 +2057,10 @@ ROLE Program
   // five of them (as Ten Findings).
   when self.featured == "mspaint" and Night.signatures > self.paint_told:
     set self.paint_told = Night.signatures
-    update quest The Painting for self "{Night.signatures} programs have signed."
+    if Night.signatures == 1:
+      update quest The Painting for self "1 program has signed."
+    else:
+      update quest The Painting for self "{Night.signatures} programs have signed."
 
   when self.featured == "mspaint" and self.quest.the_painting == "active" and count([p for p in Persons where p.cleared and p.featured != "mspaint"]) >= 5 and count([p for p in Persons where p.cleared and p.featured != "mspaint" and p.signed != true]) == 0:
     complete quest The Painting for self "Every program has signed. The painting goes to auction."
