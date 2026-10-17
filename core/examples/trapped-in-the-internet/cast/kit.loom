@@ -69,7 +69,16 @@ TRAIT Enforcer is Person
   // performer's booth.
   beat Clearance(program)
     set program.cleared = true
-    Self: Scanned. {program.name} is free of viruses and ready to explore the entire computer. There will be a game soon in the Desktop. The house will announce it. Go through the Tube.
+    // Before the call to the Desktop (step 1) the night hasn't started: the
+    // TV still runs its screensaver. Between the call and 🎱 Bingo (step 2)
+    // the game is about to begin. A later arrival walks into a night
+    // already under way.
+    if Night.step < 1:
+      Self: Scanned. {program.name} is free of viruses and ready to explore the entire computer. There will be a game soon in the Desktop. The house will announce it. Go through the Tube.
+    else if Night.step < 2:
+      Self: Scanned. {program.name} is free of viruses and ready to explore the entire computer. A game is about to begin in the Desktop. Go through the Tube.
+    else:
+      Self: Scanned. {program.name} is free of viruses and ready to explore the entire computer. You are late: the night is already under way. Listen for the house. Go through the Tube.
     Self: The Tube is a tunnel of lights. Wires. Chips. The cables brush your face like hair. Keep walking.
     move program to The Desktop
     reveal The Start Bar for program
@@ -92,7 +101,10 @@ TRAIT Enforcer is Person
       set Night.ads_started = true
       cue terminals_attract
       set Night.terminals = "attract"
-    Self: The Tube opens onto the Desktop: a blacked-out mess of LEDs, loose wire, encyclopaedias, computer parts and screens. A classic screensaver drifts across the TV above the fireplace. Everyone here is a program. Explore. Meet them. The encyclopaedias and the print media are where the facts are. Everything you need to know is in the books.
+    if Night.step < 1:
+      Self: The Tube opens onto the Desktop: a blacked-out mess of LEDs, loose wire, encyclopaedias, computer parts and screens. A classic screensaver drifts across the TV above the fireplace. Everyone here is a program. Explore. Meet them. The encyclopaedias and the print media are where the facts are. Everything you need to know is in the books.
+    else:
+      Self: The Tube opens onto the Desktop: a blacked-out mess of LEDs, loose wire, encyclopaedias, computer parts and screens, and the TV above the fireplace. Everyone here is a program. Explore. Meet them. The encyclopaedias and the print media are where the facts are. Everything you need to know is in the books.
     Task Manager: {program.name}. You're in. Your hosts tonight, per the agenda: Clippy, the Office Assistant, runs the games. Adobe Acrobat: documents and printing. The Recycling Bin: hygiene and maintenance. Me: I keep things running. # task-manager is open for questions about the app, and so is this thread.
     reply ✅ Cleared {program.name}.
     -> Orientation

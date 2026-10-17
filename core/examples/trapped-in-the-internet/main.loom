@@ -420,18 +420,24 @@ ROLE Program
   // ── The Internet ──
   // Any capture: count the visit, recompute trust, put the Installation
   // Wizard on the tent tablet (and, once Trabolta is introduced, the VR
-  // mirror on the TV).
+  // mirror on the TV). Not the banishment (advice_thwarted): everyone is
+  // in the Internet at once, the way out is the hand jive, never Gerald, and
+  // the TV keeps the banish card. It is no visit, so it never counts toward
+  // the trust score or the Frequent Flyer.
   when captured:
     if self.marked == true:
       fire unmarked for self with how: "in the Internet"
     set self.corrupted = true
-    set self.internet_visits += 1
-    set self.trust = self.truths_accepted * 10 - self.internet_visits * 5 + self.assessment
-    cue tablet_wizard
-    if Night.trabolta_introduced == true:
-      cue tv_mirror
-      set Night.screen = "mirror"
-    -> Reinstallation
+    if Night.banish == true:
+      reply ⛈ Banished to the Internet, with everyone else. Gerald cannot help you tonight. Remember what Trabolta let slip.
+    else:
+      set self.internet_visits += 1
+      set self.trust = self.truths_accepted * 10 - self.internet_visits * 5 + self.assessment
+      cue tablet_wizard
+      if Night.trabolta_introduced == true:
+        cue tv_mirror
+        set Night.screen = "mirror"
+      -> Reinstallation
 
   // In the Internet when the summons closed: excused, never late.
   // A program captured from the Optical Drive by a misclick lands on the
@@ -442,7 +448,10 @@ ROLE Program
     set self.corrupted = false
     if Night.summons_closed == true and Night.phase == "summons":
       set self.summons_ok = true
-    reply Reinstallation complete. You can follow instructions. Welcome back to the computer.
+    if Night.ending == "hand_jive":
+      reply The hand jive broke his hold. You are out of the Internet.
+    else:
+      reply Reinstallation complete. You can follow instructions. Welcome back to the computer.
     if self.cleared != true:
       set self.cleared = true
       reveal The Start Bar for self
@@ -796,8 +805,11 @@ ROLE Program
   // filing's reply tells the phone nothing. Trabolta never sees the answer
   // or the verdict: his thread gets the same words either way. Once the
   // night has ended the record is closed: no filing, no card, no judging.
+  // The card dealt here is the current one, so the re-deal watcher below
+  // has nothing to catch up (a program cleared late would get two cards).
   when Night.round > self.fact_round and self.cleared and Trabolta.awake == true and Night.ended != true:
     set self.fact_round = Night.round
+    set self.card_seen = Night.card_gen
     Trabolta: {self.name}. If you learn the answer to one of tonight's questions, file it with me on the card. Unfiled facts are rumours.
     fire deal_fact_card for self
 
@@ -1906,9 +1918,17 @@ ROLE Program
     set self.pickup_seen = Night.pickup_gen
     show answer "Give me a pickup line that works on Sandy. One line. I will know it when I hear it." to program with thread: Trabolta, question: "P1", max: 120, button: "Say it"
 
+  // Only Grok Prom and the song hear it: after the rave he has ridden away,
+  // and the advice poll, the banishment and the hand jive have moved on
+  // from the line (a card answered late gets a quiet "too late").
   when answer answered for program:
     if question == "P1":
-      if verdict == "accurate" and Night.line_by == "none":
+      if Night.phase != "grok_prom" and Night.ending != "song" and Night.ending != "song_pickup":
+        if Night.ending == "rave":
+          reply Trabolta has ridden away. Nobody reads your line.
+        else:
+          Trabolta: Too late for lines, {program.name}.
+      else if verdict == "accurate" and Night.line_by == "none":
         if Night.phase == "grok_prom" and Night.ended != true:
           fire pickup_line_accepted for program
         else:
@@ -2330,8 +2350,11 @@ ROLE Program
 // quick-fire, never from a performer's guest card (a guest-card press
 // carries that character as the actor, so only its hooks would hear).
 // `sequence: false` marks a cue a machine fires (the duck game, the door
-// contact, the printer, the patch bay, the chess phone) — the sheet ticks it
-// but it never becomes LAST / NEXT, so a duck find can't eat the next cue.
+// contact, the printer, the patch bay, the chess phone), and every optional,
+// anytime or fallback cue that is not the night's next step (the set
+// pieces, 🧾, 🔄, 🗳, 🪩, 💡, the auto midnight) — the sheet ticks it but it
+// never becomes LAST / NEXT, so a duck find or a 💡 can't eat the next cue,
+// and NEXT after 🕚 is the next real step, never 🎆 midnight.
 
 INTERACTION call_to_the_desktop
   label: C1/V1 · 📣 Call everyone to the Desktop
@@ -2350,7 +2373,7 @@ INTERACTION bingo_time
 INTERACTION introduce_trabolta
   label: Clippy 2/X · 🤖 Clippy introduces Trabolta
   who: admin
-  description: Only after the Bingo results. Trabolta comes online; re-provision the terminals view=auto.
+  description: Only after the Bingo results. Trabolta comes online; check the terminals show his face.
 
 INTERACTION start_the_hunt
   label: V4/V5 · 🔎 Truth Scavenger Hunt 1 (15 min)
@@ -2384,10 +2407,12 @@ INTERACTION spin_the_bottle
 INTERACTION telephone
   label: (Optional) ☎️ Telephone: a mangled message sends someone to the Internet
   who: admin
+  sequence: false
 
 INTERACTION are_you_sure
   label: (Optional) 🪅 The "Are you sure?" piñata
   who: admin
+  sequence: false
 
 INTERACTION second_hunt_preview
   label: 📺 Preview hunt 2 → the ad hijack
@@ -2447,14 +2472,17 @@ INTERACTION trabolta_overshares
 INTERACTION y2k_clock
   label: 🕚 System clock → 11 PM, 31 Dec 1999 (final round, 60 min)
   who: admin
+  description: Fire only after the patch-bay watch radios IN (inside the server room, door shut). From here the first door opening plays The Heart and opens the server room on every phone.
 
 INTERACTION y2k_midnight
   label: 🎆 Midnight (auto at 60 min)
   who: admin
+  sequence: false
 
 INTERACTION waive_leader_tasks
   label: 🧾 Let a faction win without its leader's task (leader absent)
   who: admin
+  sequence: false
 
 INTERACTION server_door_opened
   label: 🚪 Server room door opened (hardware fallback)
@@ -2465,6 +2493,7 @@ INTERACTION server_door_opened
 INTERACTION reset_server_room
   label: 🔄 Server room: reset the patch-bay alarm
   who: admin
+  sequence: false
   description: After a rehearsal, or a wrong patch the crew forgave. Clears the wrong-combination count (the patch bay forgives one again), the alarm latch and the door cutscene (the next opening from the Y2K hour plays The Heart again). Lights stay as they are (💡 restores them). The keypad lock is standalone: nothing in the story locks or unlocks it.
 
 INTERACTION chess_won
@@ -2476,11 +2505,13 @@ INTERACTION chess_won
 INTERACTION force_majority_stay
   label: 🗳 Force the majority: Unlimited Power (stay)
   who: admin
+  sequence: false
   description: Final round only, when ghosts block a clear majority at the Y2K head count (OP-11). Runs the majority exactly once.
 
 INTERACTION force_majority_leave
   label: 🗳 Force the majority: The Way Out (leave)
   who: admin
+  sequence: false
   description: Final round only, when ghosts block a clear majority at the Y2K head count (OP-11). Runs the majority exactly once.
 
 INTERACTION patch_combo_a
@@ -2507,10 +2538,12 @@ INTERACTION talked_down
 INTERACTION lights_dance
   label: 🪩 Dance lights (fallback: auto 10 s after the blackout)
   who: admin
+  sequence: false
 
 INTERACTION restore_the_lights
   label: 💡 Restore the house lights
   who: admin
+  sequence: false
 
 INTERACTION trabolta_recounts
   label: 🏍 After the dance: weakened Trabolta recounts
@@ -2529,8 +2562,14 @@ INTERACTION bobbing_for_truth
   who: admin
 
 INTERACTION read_truth_txt
-  label: 📄 Read truth.txt → the verdict
+  label: 📄 Read truth.txt
   who: admin
+  description: After 🍎 Brought up the Bag. truth.txt goes up on every screen and the bobber reads it aloud; round three closes. Nothing else happens until ⚖.
+
+INTERACTION the_verdict
+  label: ⚖ truth.txt read → the verdict
+  who: admin
+  description: When the bobber has finished reading truth.txt. Every answered fact accurate → the song; any lie on record → Grok Prom.
 
 INTERACTION no_pickup_line
   label: 💔 Nobody has the line → confession → rave
@@ -2880,6 +2919,8 @@ when call_to_the_desktop:
     set Night.screen = "call_desktop"
     set Night.terminals = "call_desktop"
     -> Call To The Desktop
+  else:
+    broadcast "📣 Not again: the Desktop call has already played. Nothing happens." to channel(hosts)
 
 // B2 · V2: Computer Bingo, 20 minutes.
 when start_the_bingo:
@@ -2900,6 +2941,8 @@ when start_the_bingo:
     sound bingo_start
     broadcast "!🎱 COMPUTER BINGO has begun. 20 minutes. Do not write names: use your computer memory." to everyone
     -> Computer Bingo
+  else:
+    broadcast "🎱 Not again: Bingo has already started. Nothing happens." to channel(hosts)
 
 when Night.bingo_on == true and Time.elapsed >= Night.bingo_end:
   set Night.bingo_on = false
@@ -2923,6 +2966,8 @@ when bingo_time:
     cue terminals_attract
     set Night.terminals = "attract"
     -> Bingo Time
+  else:
+    broadcast "⏰ Not again: the Bingo results are already in. Nothing happens." to channel(hosts)
 
 // Fired (unbound) by the first Bingo-phase capture: `send to the internet`
 // or the tent's `reinstallation begun`.
@@ -2944,6 +2989,10 @@ when introduce_trabolta:
     cue terminals_trabolta_online
     set Night.terminals = "trabolta"
     -> Trabolta Introduction
+  else if Night.trabolta_introduced == true:
+    broadcast "🤖 Trabolta is already online. Nothing happens." to channel(hosts)
+  else:
+    broadcast "🤖 Too early: Clippy introduces Trabolta after the Bingo results (V3 ⏰). He stays offline." to channel(hosts)
 
 // If the director skips the introduction cue and jumps ahead, every
 // later cue is an implied introduction: he wakes (silently, the phase
@@ -2973,6 +3022,8 @@ when start_the_hunt:
     set Night.terminals = "countdown_hunt"
     broadcast "!🔎 THE TRUTH SCAVENGER HUNT has begun. Three questions are in your Quest Log. 15 minutes." to everyone
     -> Truth Scavenger Hunt One
+  else:
+    broadcast "🔎 Not again: hunt 1 has already started. Nothing happens." to channel(hosts)
 
 when Night.hunt_on == true and Night.hunt_warned != true and Time.elapsed >= Night.hunt_warn:
   set Night.hunt_warned = true
@@ -2999,6 +3050,8 @@ when hunt_time_up:
     cue lights_call_desktop
     set Night.lights = "call_desktop"
     -> Hunt Time Up
+  else:
+    broadcast "⏰ No hunt 1 is running: nothing to call time on." to channel(hosts)
 
 // B8 · V6: the First Moment of Truth. Judging opens (ROLE Program).
 when first_moment_of_truth:
@@ -3021,6 +3074,10 @@ when first_moment_of_truth:
     set Night.screen = "hunt_results"
     set Night.terminals = "hunt_results"
     -> First Moment Of Truth
+  else if Night.step < 5:
+    broadcast "⚖️ Too early: the First Moment of Truth follows hunt 1 (🔎). Nothing happens." to channel(hosts)
+  else:
+    broadcast "⚖️ Not again: round-one judging has already opened. Nothing happens." to channel(hosts)
 
 // B9: the last-chance window (two minutes, or ⏱), then the results one
 // question at a time (📋), the bottle between them (🍾). Round one closes
@@ -3114,10 +3171,14 @@ when truth_question:
 when telephone:
   if Night.step >= 6 and Night.ended != true:
     -> Telephone
+  else:
+    broadcast "☎️ Only from the First Moment of Truth until an ending. Nothing happens." to channel(hosts)
 
 when are_you_sure:
   if Night.step >= 6 and Night.ended != true:
     -> Are You Sure
+  else:
+    broadcast "🪅 Only from the First Moment of Truth until an ending. Nothing happens." to channel(hosts)
 
 // ── The Internet: the reinstallation games ──
 // A run's begin (the tablet's scan, a headset's station) fires `reinstallation
@@ -3135,16 +3196,22 @@ when reinstallation begun for program:
       fire first_reinstallation
 
 // The games fire both of these, in this order, for whoever walks up to
-// Gerald the golden duck. Only a corrupted program is released; anyone,
-// captured or just curious, learns The Golden Duck.
+// Gerald the golden duck. Only a corrupted program is released, and never
+// during the banishment (the hand jive frees everyone); anyone, captured
+// or just curious, learns The Golden Duck. A banished program hears only
+// that Gerald cannot help: no golden egg, no flying away, nothing that
+// reads as a release.
 when the simulation completed for program:
-  if program.corrupted:
+  if program.corrupted and Night.banish == true:
+    reply Gerald cannot help you: everyone is banished. The way out is the hand jive, together.
+  else if program.corrupted:
     release program from The Internet
     unlock The Golden Duck for program
 
 when the golden duck for program:
-  unlock The Golden Duck for program
-  reply The duck lays a golden egg and flies away. Gerald waddles off into the code.
+  if program.corrupted != true or Night.banish != true:
+    unlock The Golden Duck for program
+    reply The duck lays a golden egg and flies away. Gerald waddles off into the code.
 
 // ── C. The malware, the hour, the Truther Download ──
 
@@ -3174,6 +3241,8 @@ when second_hunt_preview:
     sound ad_jingle
     broadcast "!📺 000. 000. 000. A SPECIAL OFFER FOR YOU. A duck. A phone number with no digits. Offer expires never." to everyone
     -> Ad Hijack
+  else:
+    broadcast "📺 Not again: the ad hijack has already played. Nothing happens." to channel(hosts)
 
 // C2: round 2 goes to the quest logs; everyone disperses for one hour.
 when start_the_second_hunt:
@@ -3195,6 +3264,8 @@ when start_the_second_hunt:
     set Night.lights = "game"
     broadcast "!📓 Round 2 is in your Quest Log. You have ONE HOUR. Return for the Second Moment of Truth." to everyone
     -> Second Hunt
+  else:
+    broadcast "📓 Not again: hunt 2 has already started. Nothing happens." to channel(hosts)
 
 when Night.hunt2_on == true and Night.truther_sent != true and Time.elapsed >= Night.truther_at:
   fire truther_download
@@ -3217,6 +3288,8 @@ when truther_download:
     set Night.lights = "glitch"
     sound truther_glitch
     broadcast "!📥 TRUTHER DOWNLOAD received. Check your messages." to everyone
+  else:
+    broadcast "📥 Not again: the Truther Download was already sent. Nothing happens." to channel(hosts)
 
 // ── D. Act II ──
 
@@ -3238,6 +3311,8 @@ when five_minute_warning:
     set Night.screen = "five_minutes"
     set Night.terminals = "five_minutes"
     -> Five Minute Warning
+  else:
+    broadcast "⏳ Not now: the five-minute summons has already run. Nothing happens." to channel(hosts)
 
 when Night.summons_open == true and Time.elapsed >= Night.summons_end:
   fire summons_closed
@@ -3249,6 +3324,8 @@ when summons_closed:
     set Night.summons_closed = true
     set Night.hunt2_on = false
     -> Summons Closed
+  else:
+    broadcast "🚨 No summons is open: nothing to close." to channel(hosts)
 
 // D4: Truth Pong (make the cup to answer; round 2 = Q1–Q3 of this round).
 when truth_pong:
@@ -3264,6 +3341,8 @@ when truth_pong:
     set Night.screen = "truth_pong"
     set Night.terminals = "truth_pong"
     -> Truth Pong
+  else:
+    broadcast "🏓 Not again: Truth Pong has already started. Nothing happens." to channel(hosts)
 
 // D5: round two closes and settles (the ROLE settle watcher credits every
 // cupped round-2 filing after this body); the collection is complete only
@@ -3287,6 +3366,10 @@ when round_two_tally:
       set Night.collection_complete = false
       set Trabolta.composure -= 10
     -> Round Two Tally
+  else if Night.tallied == true:
+    broadcast "🧮 Not again: round 2 is already tallied. Nothing happens." to channel(hosts)
+  else:
+    broadcast "🧮 Only during Truth Pong (🏓 first). Nothing happens." to channel(hosts)
 
 // D6: the Trust Chart.
 when trust_chart:
@@ -3302,6 +3385,8 @@ when trust_chart:
     set Night.screen = "trust_chart"
     set Night.terminals = "trust_chart"
     -> Trust Chart
+  else:
+    broadcast "📊 Not again: the Trust Chart has already played. Nothing happens." to channel(hosts)
 
 when show_the_rankings:
   if Night.phase == "trust_chart" and Night.rank_round < 1:
@@ -3311,6 +3396,8 @@ when show_the_rankings:
     set Night.praised = false
     set Night.shamed = false
     set Night.ranking = true
+  else:
+    broadcast "🏆 Once only, during the Trust Chart (📊 first). Nothing happens." to channel(hosts)
 
 // The ranking machinery, shared by the Trust Chart (round 1), the Final
 // Assessment (round 2) and the recount (round 3).
@@ -3393,6 +3480,8 @@ when trabolta_overshares:
     cue lights_glitch
     set Night.lights = "glitch"
     -> Overshare Open
+  else:
+    broadcast "🤖 Not again: the overshare has already played. Nothing happens." to channel(hosts)
 
 // D10: the clock. One hour to midnight; the factions come out.
 when y2k_clock:
@@ -3416,6 +3505,8 @@ when y2k_clock:
     sound y2k_chime
     broadcast "!🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999." to everyone
     -> The Y2K Clock
+  else:
+    broadcast "🕚 Not again: the clock has already been reset. Nothing happens." to channel(hosts)
 
 when Night.final_round == true and Night.ended != true and Night.clock_30 != true and Time.elapsed >= Night.y2k_end - 1800:
   set Night.clock_30 = true
@@ -3484,13 +3575,22 @@ when force_majority_leave:
 
 // E1: the majority. The members get the bundle and the door code (ROLE
 // watchers → The Whole Truth). The keypad is standalone: nothing here
-// unlocks it; the code does, in anyone's hands.
+// unlocks it; the code does, in anyone's hands. The server-room look, as
+// in The Heart, never while the patch-bay alarm's look is up
+// (lights_server_open also silences the siren, and `Night.lights` would
+// drop the alarm look stagehand's catch-up skips): the latch's end puts it
+// back. Once a director's cue has replaced the alarm look (💡, which
+// silences the siren too) the latch's end leaves the lights alone, so the
+// server-room look goes up now.
 when majority_reached:
   if Night.ended != true:
     set Night.phase = "majority"
     set Night.step = 15
-    cue lights_server_open
-    set Night.lights = "server_open"
+    if Night.alarm_on == true and Night.lights == "alarm":
+      set Night.lights_before_alarm = "server_open"
+    else:
+      cue lights_server_open
+      set Night.lights = "server_open"
     complete quest The Clubs for Password Manager "A majority. They have the door code now."
     if Kernel.majority == "stay":
       complete quest Recruit To Stay for everyone
@@ -3515,9 +3615,14 @@ when majority_reached:
 // gets a short line (Back To The Heart).
 // Before the Y2K hour the door is just a door: # hosts hears of it, the
 // story does nothing (a curious guest, or a retained "open" replayed on a
-// stagehand reconnect).
+// stagehand reconnect). Once the verdict is in (📄 truth.txt closed round
+// three: then ⚖, Grok Prom, the advice poll, the banishment) the server
+// room is quiet too: the night ends at the Desktop now, so the door, the
+// patch bay and 🕊 only tell # hosts.
 when server_door_opened:
-  if Night.ended != true and Night.step >= 14:
+  if Night.ended != true and Night.r3_closed == true:
+    broadcast "🚪 The server-room door opened after truth.txt. The verdict is in: nothing happens in the story." to channel(hosts)
+  else if Night.ended != true and Night.step >= 14:
     if Night.heart_opened != true:
       set Night.heart_opened = true
       set Night.door_quiet_until = Time.elapsed + 120
@@ -3532,8 +3637,27 @@ when server_door_opened:
   else if Night.ended != true:
     broadcast "🚪 The server-room door opened before the Y2K hour. Nothing happens in the story." to channel(hosts)
 
+// The latch clears after 120 s. The box's siren times itself out, but the
+// alarm look is house-wide (a red strobe everywhere): put back the look it
+// replaced (Server Room Alarm saved it), unless a later cue has already
+// changed the look or the night has ended. The server-room look sits on
+// the Y2K house look, so it needs both.
 when Night.alarm_on == true and Time.elapsed >= Night.alarm_clear_at:
   set Night.alarm_on = false
+  if Night.ended != true and Night.lights == "alarm":
+    if Night.lights_before_alarm == "server_open":
+      cue lights_y2k
+      cue lights_server_open
+      set Night.lights = "server_open"
+    else if Night.lights_before_alarm == "final_reveal":
+      cue lights_final_reveal
+      set Night.lights = "final_reveal"
+    else if Night.lights_before_alarm == "restore":
+      cue lights_restore
+      set Night.lights = "restore"
+    else:
+      cue lights_y2k
+      set Night.lights = "y2k"
 
 // Reset mid-show (a rehearsal, or a wrong patch the crew forgave): the
 // wrong-patch count back to zero (the bay forgives one again), the alarm
@@ -3629,17 +3753,26 @@ when patch_changed:
       fire patch_rejected
 
 when patch_rejected:
-  if Night.ended != true and Night.step >= 14:
+  if Night.ended != true and Night.r3_closed == true:
+    fire patch_after_verdict
+  else if Night.ended != true and Night.step >= 14:
     set Night.wrong_combos += 1
     -> Patch Rejected
 
 when patch_combo_a:
-  if Night.ended != true and Night.step >= 14:
+  if Night.ended != true and Night.r3_closed == true:
+    fire patch_after_verdict
+  else if Night.ended != true and Night.step >= 14:
     fire trabolta_disabled
 
 when patch_combo_b:
-  if Night.ended != true and Night.step >= 14:
+  if Night.ended != true and Night.r3_closed == true:
+    fire patch_after_verdict
+  else if Night.ended != true and Night.step >= 14:
     fire computer_destroyed
+
+when patch_after_verdict:
+  broadcast "🔌 A patch after truth.txt. The verdict is in: the patch bay is quiet, nothing happens in the story." to channel(hosts)
 
 // Talked down, like the Fallout Master: Trabolta's `stand_down` power
 // (cast/trabolta.loom) only OFFERS, so a model misfire can never end the
@@ -3648,7 +3781,9 @@ when patch_combo_b:
 // (trabolta_disabled), with Night.talked_down so the blackout, the recount
 // and the ceremony say who talked him down.
 when talked_down:
-  if Night.ended != true and Night.step >= 14:
+  if Night.ended != true and Night.r3_closed == true:
+    broadcast "🕊 The verdict is in: it is too late for Trabolta to stand down. Nothing happens in the story." to channel(hosts)
+  else if Night.ended != true and Night.step >= 14:
     if Night.stand_down_by == "none":
       broadcast "🕊 No offer on record: Trabolta stands down on the director's call." to channel(hosts)
     else:
@@ -3700,18 +3835,29 @@ when trabolta_disabled:
 
 // Ten seconds of dark, then the dance look (the song file opens with ten
 // seconds of silence, so music and lights land together). The dance also
-// lifts the phones' full-screen GO TO THE LIVING ROOM (the `!!` pin above).
+// lifts the phones' full-screen GO TO THE LIVING ROOM (the `!!` pin above)
+// and the screens' flashing one (a screen overlay stays up until a newer
+// slide or base: the screensaver base clears it; everyone is in the living
+// room by now).
 when Night.dance_at > 0 and Time.elapsed >= Night.dance_at:
   set Night.dance_at = 0
   cue lights_dance
   set Night.lights = "dance"
   fire lift_the_takeover
+  fire dance_screens
 
 when lights_dance:
   set Night.dance_at = 0
   cue lights_dance
   set Night.lights = "dance"
   fire lift_the_takeover
+  fire dance_screens
+
+when dance_screens:
+  if Night.screen == "go_to_living_room":
+    cue screens_screensaver
+    set Night.screen = "screensaver"
+    set Night.terminals = "screensaver"
 
 // The `!!` pin has no close button: every way out of the server-room
 // endings takes it down (the dance, 🪩, the recount, the summary, the
@@ -3737,6 +3883,8 @@ when trabolta_recounts:
     set Night.praised = false
     set Night.shamed = false
     set Night.ranking = true
+  else:
+    broadcast "🏍 Only after Combo A or a talk-down, once. Nothing happens." to channel(hosts)
 
 // E6: Combo B — the computer is turned off without Shut Down.
 when computer_destroyed:
@@ -3790,6 +3938,8 @@ when clippy_reads_summary:
     set Night.screen = "purgatory"
     set Night.terminals = "purgatory"
     -> Purgatory
+  else:
+    broadcast "🪦 Only after Combo B (the shutdown). Nothing happens." to channel(hosts)
 
 // ── F. The final reveal and the other endings ──
 
@@ -3802,9 +3952,12 @@ when y2k_midnight:
     -> Clock Strikes
     if Night.ended != true:
       fire final_reveal
+  else:
+    broadcast "🎆 No midnight: it needs the Y2K hour, before any ending. Nothing happens." to channel(hosts)
 
-// The server room stays live during the reveal (deliberate): a combo
-// entered before the verdict still ends the night.
+// The server room stays live during the reveal and the bob (deliberate): a
+// combo entered before 📄 truth.txt still ends the night. From truth.txt
+// the verdict is in and the server room is quiet (E2).
 when final_reveal:
   if Night.ended != true and Night.step < 16:
     set Night.final_round = false
@@ -3825,6 +3978,8 @@ when final_reveal:
     set Night.terminals = "final_reveal"
     broadcast "!🌑 ALL PROGRAMS: to the living room for the final Truth Scavenger Hunt reveal." to everyone
     -> Final Reveal
+  else:
+    broadcast "🌑 Not now: the final reveal has already played, or the night has ended. Nothing happens." to channel(hosts)
 
 // F2: Bobbing for Truth. Nothing proceeds until someone brings up the bag.
 when bobbing_for_truth:
@@ -3836,6 +3991,8 @@ when bobbing_for_truth:
     set Night.screen = "bobbing"
     set Night.terminals = "bobbing"
     -> Bobbing For Truth
+  else:
+    broadcast "🍎 Not now: the bob has already started, or the night has ended. Nothing happens." to channel(hosts)
 
 // The bag is up: Trabolta stops them reading it and makes his final
 // assessment first (the ranking machinery, round 2 → Final Assessment).
@@ -3848,11 +4005,13 @@ when bag_retrieved:
   set Night.ranking = true
   -> The Bag Of Truth
 
-// F3: truth.txt, then the verdict (Song Ending or Grok Prom).
-// Round three closes and settles here (the ROLE settle watcher runs after
-// this body; The Verdict counts a review filing still pending by its proposal).
+// F3: truth.txt, then (⚖, once the bobber has read it aloud) the verdict:
+// Song Ending or Grok Prom. Round three closes and settles at 📄 (the ROLE
+// settle watcher runs after this body), so the slide holds while it is read
+// and The Verdict reads settled facts (a review filing still pending counts
+// by its proposal).
 when read_truth_txt:
-  if Night.phase == "bobbing" and Night.bag_up == true:
+  if Night.phase == "bobbing" and Night.bag_up == true and Night.r3_closed != true:
     complete quest The Final Facts for everyone
     set Night.recount = true
     set Night.r3_closed = true
@@ -3865,7 +4024,20 @@ when read_truth_txt:
     set Night.screen = "truth_txt"
     set Night.terminals = "truth_txt"
     -> Truth Txt
+  else if Night.phase == "bobbing" and Night.r3_closed == true:
+    broadcast "📄 Already read: press ⚖ for the verdict when the bobber has finished. Nothing happens." to channel(hosts)
+  else if Night.phase == "bobbing":
+    broadcast "📄 Not yet: the Bag isn't up (🍎 Brought up the Bag on whoever surfaces with it). Nothing happens." to channel(hosts)
+  else:
+    broadcast "📄 Only during Bobbing for Truth (🍎 first). Nothing happens." to channel(hosts)
+
+when the_verdict:
+  if Night.phase == "bobbing" and Night.r3_closed == true and Night.ended != true:
     -> The Verdict
+  else if Night.phase == "bobbing":
+    broadcast "⚖ Not yet: 📄 Read truth.txt first. Nothing happens." to channel(hosts)
+  else:
+    broadcast "⚖ Not now: the verdict is already in, or the night has ended. Nothing happens." to channel(hosts)
 
 // F5: someone gave him the line (ROLE `pickup_line_accepted`).
 when line_accepted:
@@ -3879,6 +4051,8 @@ when no_pickup_line:
     set Night.phase = "finale_rave"
     set Night.step = 19
     -> Sad Confession
+  else:
+    broadcast "💔 Only in Grok Prom (after ⚖ with a lie on record). Nothing happens." to channel(hosts)
 
 // F7: the alternate relationship-advice ending, only after a failed
 // verdict (Grok Prom).
@@ -3891,6 +4065,8 @@ when ask_for_advice:
     set Night.screen = "advice"
     set Night.terminals = "advice"
     -> Relationship Advice
+  else:
+    broadcast "💌 Only in Grok Prom (after ⚖ with a lie on record). Nothing happens." to channel(hosts)
 
 when advice_tally:
   if Night.phase == "advice" and Night.ended != true:
@@ -3898,6 +4074,8 @@ when advice_tally:
       fire advice_helped
     else:
       fire advice_thwarted
+  else:
+    broadcast "🗳 Only during the advice poll (💌 first). Nothing happens." to channel(hosts)
 
 when advice_helped:
   if Night.phase == "advice" and Night.ended != true:
@@ -3911,6 +4089,8 @@ when advice_helped:
     cue lights_restore
     set Night.lights = "restore"
     set Night.everyone_free = true
+  else:
+    broadcast "💞 Only during the advice poll (💌 first). Nothing happens." to channel(hosts)
 
 // Not final: the hand jive can still follow.
 when advice_thwarted:
@@ -3927,6 +4107,8 @@ when advice_thwarted:
     set Night.terminals = "banish"
     broadcast "!⛈ Trabolta is banishing EVERY program to the Internet. Antivirus included." to everyone
     -> Advice Thwarted
+  else:
+    broadcast "⛈ Only during the advice poll (💌 first), once. Nothing happens." to channel(hosts)
 
 when the_hand_jive:
   if Night.ending == "banished" and Night.ended != true:
@@ -3942,6 +4124,8 @@ when the_hand_jive:
     sound motorcycle
     cue lights_restore
     set Night.lights = "restore"
+  else:
+    broadcast "🕺 Only once everyone is banished (⛈). Nothing happens." to channel(hosts)
 
 // ── G. The awards ceremony (K-25) ──
 // After any final ending (never before: Best Liar would leak). The host
@@ -3963,6 +4147,12 @@ when start_the_ceremony:
     sound ceremony_bed
     broadcast "!🏆 THE AWARDS CEREMONY. Every program to the living room." to everyone
     -> The Ceremony
+  else if Night.ceremony == true:
+    broadcast "🏆 The ceremony has already started. Nothing happens." to channel(hosts)
+  else if Night.ending == "banished":
+    broadcast "🏆 No ceremony yet: banished is not an ending (🕺 the hand jive first). Nothing happens." to channel(hosts)
+  else:
+    broadcast "🏆 No ceremony yet: the night has not ended. Nothing happens." to channel(hosts)
 
 when present_award:
   if Night.ceremony == true:
@@ -4020,6 +4210,10 @@ when resurrection:
     set Night.lights = "restore"
     set Night.lights_back_at = 0
     broadcast "!🎃 The show is over: you are human again. Hang out, out of character." to everyone
+  else if Night.resurrected == true:
+    broadcast "🎃 The show is already over. Nothing happens." to channel(hosts)
+  else:
+    broadcast "🎃 Only once the ceremony has started (G1, after an ending). Nothing happens." to channel(hosts)
 
 // ── Doors open ──────────────────────────────────────────────────────
 // The story's opening beat, heard by every phone and every performer:
@@ -4087,6 +4281,7 @@ set Night.clock_1 = false
 set Night.alarms = 0
 set Night.alarm_on = false
 set Night.alarm_clear_at = 0
+set Night.lights_before_alarm = "none"
 set Night.wrong_combos = 0
 set Night.heart_opened = false
 set Night.door_quiet_until = 0

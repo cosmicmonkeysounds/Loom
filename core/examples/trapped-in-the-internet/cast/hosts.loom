@@ -118,11 +118,11 @@ CHARACTER Adobe Acrobat is Host
 
   when bobbing_for_truth:
     if Night.ended != true and Night.step < 17:
-      reply 🍎 Bring out the Bag of Truth. Press 🍎 Brought up the Bag on whoever surfaces with it; 🍎 Failed the bob sends a program to the Internet.
+      reply 🍎 Bring out the Bag of Truth. Press 🍎 Brought up the Bag on whoever surfaces with it; 🍎 Failed the bob marks them for reinstallation.
 
   when read_truth_txt:
-    if Night.phase == "bobbing" and Night.bag_up == true:
-      reply 📄 Hand the bobber the truth.txt printout. They read it aloud.
+    if Night.phase == "bobbing" and Night.bag_up == true and Night.r3_closed != true:
+      reply 📄 Hand the bobber the truth.txt printout. They read it aloud; when they finish, the director presses ⚖ for the verdict.
 
 CHARACTER Recycling Bin is Host
   avatar: File:User-trash-full.svg

@@ -110,11 +110,18 @@ reveal The Server Room for program
   cast: Trabolta
 reveal The Server Room
 // The server-room look only (lights_server_open touches that room alone,
-// and silences the siren, so never while the patch-bay alarm is latched).
+// and silences the siren, so never while the patch-bay alarm's look is up).
 // `Night.lights` is the house look stagehand replays on a reconnect: from
 // the final reveal (step 16) the house is in a finale look, which a door
 // opening must not overwrite.
-if Night.alarm_on != true:
+// While its look is up, the server-room look is what the latch's end puts
+// back; once a director's cue has replaced the alarm look (💡, which
+// silences the siren too), the latch's end leaves the lights alone, so the
+// server-room look goes up now.
+if Night.alarm_on == true and Night.lights == "alarm":
+  if Night.step < 16:
+    set Night.lights_before_alarm = "server_open"
+else:
   cue lights_server_open
   if Night.step < 16:
     set Night.lights = "server_open"
@@ -145,6 +152,10 @@ set Night.alarms += 1
 if Night.alarms == 1:
   set Trabolta.composure -= 10
 reveal The Server Room
+// The look the latch's end puts back (main.loom); never the alarm itself
+// (a second trip after 🔄 reset, with the lights still red).
+if Night.lights != "alarm":
+  set Night.lights_before_alarm = Night.lights
 cue lights_alarm
 set Night.lights = "alarm"
 cue screens_alarm
