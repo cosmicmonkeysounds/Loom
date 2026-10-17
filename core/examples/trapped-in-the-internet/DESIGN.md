@@ -845,13 +845,16 @@ reads as a cue sheet):**
 Fire every admin cue from the cue sheet (Run → Director) / quick-fire, never from a guest card (§0 rule 23).
 
 The cue sheet's LAST / NEXT (wave 8): `sequence: false` marks every machine-fired, optional,
-anytime or fallback cue (🍾, the set pieces, the printer, 🎆, 🧾, 🚪, 🔄, ♟, 🕊, 🗳, the patch
-bay, 🪩, 💡, the reinstallation events): it ticks when it fires but never becomes LAST or NEXT.
-`repeat: true` (📋, 🗜) keeps a cue NEXT while it is LAST. From 🏍 on each cue carries a
-`while:` naming its branch (🏍 `Night.ending == "disabled"`, 🪦 `"destroyed"`, 🌑 → ⚖ while
-nothing has ended, 💔 / 💌 in `grok_prom`, the advice cues in `advice`, 🕺 while banished, G1
-once ended), so NEXT is the first unfired in-sequence cue after LAST whose `while:` holds: 🌑
-after 🕚, the ending's own cue after the dance, G1 after the song. An admin cue's `while:` only
+anytime or fallback cue (🍾, the set pieces, the printer, 🗜, 🎆, 🧾, 🚪, 🔄, ♟, 🕊, 🗳, the
+patch bay, 🪩, 💡, the reinstallation events): it ticks when it fires but never becomes LAST or
+NEXT. `repeat: true` (📋) keeps a cue NEXT while it is LAST and its `while:` holds (a question
+left). From 🌑 on each cue carries a `while:` naming its branch (🌑 before the final round, 🍎
+after 🌑, 📄 → ⚖ in the bob, 💔 / 💌 in `grok_prom`, the advice cues in `advice`, 🕺 while
+banished, 🏍 `Night.ending == "disabled"`, 🪦 `"destroyed"` — both declared just before G1, so a
+server-room ending after 🌑 still reaches them — G1 once ended, the awards and G11 once G1 has
+run), so NEXT is the first unfired in-sequence cue after LAST whose `while:` holds: nothing
+during the hour (midnight fires 🌑 itself; a tap would cut the hour), the ending's own cue
+after the dance, G1 after the song. An admin cue's `while:` only
 steers NEXT; it never gates the press (every rule still checks for itself). A press the story
 refuses posts its reason to `# hosts` (*"⚖ Not yet: 🍎 Bobbing for Truth, then 📄 truth.txt
 first."*) and never becomes LAST; the hardware fallbacks (🖨, 🫘, 🔌 / 💥 / ❌) stay silent,

@@ -402,7 +402,7 @@ pushes during journal replay. The play app's `/sw.js` +
   with `sequence: false` (machine-fired: the duck game, the door contact) is
   ticked but never "last"; `InteractionSummary.subject` marks a cue whose
   every listener binds a person (the ceremony's awards), `repeat` a
-  `repeat: true` cue (NEXT stays on it while it is LAST), and `live: false`
+  `repeat: true` cue (NEXT stays on it while it is LAST and live), and `live: false`
   an admin cue whose `while:` is false on the director's view (off
   tonight's branch: never NEXT, still pressable — `while:` never gates an
   admin press). The rows themselves (`CueInteraction` → `cueRows`, NEXT =

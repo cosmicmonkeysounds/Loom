@@ -313,16 +313,18 @@ also lands in Clippy's booth as a codex entry (`Clippy Instructions 1` …
 a story timer, and the button is the manual fallback.
 
 **NEXT** is the first cue after LAST that has not fired and is on tonight's
-branch. From 🏍 on, each cue's `while:` names its branch (🏍 after Combo A
-or a talk-down, 🪦 after Combo B, 🌑 → ⚖ while nothing has ended, 💔 / 💌
-in Grok Prom, the advice cues during the poll, 🕺 while banished, G1 after
-an ending), so after 🕚 the sheet suggests 🌑, after the dance the ending's
-own cue, and after the song G1. A `while:` never stops a press: every rule
-still checks for itself. 📋 and 🗜 are `repeat: true`: they stay NEXT while
-you press them again (per question, per trip). The anytime and fallback
-cues (🍾, the set pieces, 🎆, 🧾, 🔄, ♟, 🕊, 🗳, the hardware fallbacks, 🪩,
-💡) are off-sequence: they tick when they fire but never become LAST or
-NEXT.
+branch. From 🌑 on, each cue's `while:` names its branch (🌑 before the
+final round, 🍎 after 🌑, 📄 → ⚖ in the bob, 💔 / 💌 in Grok Prom, the
+advice cues during the poll, 🕺 while banished, 🏍 after Combo A or a
+talk-down, 🪦 after Combo B, G1 after an ending, the awards and G11 once G1
+has run). So during the hour the sheet suggests nothing (midnight fires 🌑
+itself; never tap it early), after the dance it suggests the ending's own
+cue (even when the server room ended the night after 🌑), and after the
+song G1. A `while:` never stops a press: every rule still checks for
+itself. 📋 is `repeat: true`: it stays NEXT while a question is left. The
+anytime and fallback cues (🍾, the set pieces, 🗜, 🎆, 🧾, 🔄, ♟, 🕊, 🗳, the
+hardware fallbacks, 🪩, 💡) are off-sequence: they tick when they fire but
+never become LAST or NEXT.
 
 Every performer hook ignores a press outside its phase, except **🛡 Send to
 the Internet** and **✅ Mark as reinstalled**, which work on any program at

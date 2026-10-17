@@ -337,8 +337,9 @@ in the order you declare them. Add `sequence: false` to one a machine
 fires (a game, a door sensor) or that is only a hardware fallback: the
 sheet still ticks it when it fires, but it never becomes the sheet's
 *last* cue or its suggested *next* one. Add `repeat: true` to one the
-director presses again and again in one stretch (a result per question,
-a zip per trip): the sheet keeps suggesting it as *next* after it fires.
+director presses again and again in one stretch (a result per question):
+the sheet keeps suggesting it as *next* after it fires, while its `while:`
+holds.
 An admin cue's `while:` names the branch of the night it belongs to:
 
 ```loom

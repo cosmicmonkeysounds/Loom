@@ -47,8 +47,8 @@ background tab throttles the chime).
 
 A cue that doesn't apply yet does nothing but tell `# hosts` why (*"⚖ Not
 yet: 📄 Read truth.txt first."*); it never becomes LAST, and the phone sheet
-says *Not taken*. NEXT follows tonight's branch: after 🕚 it is 🌑, after the
-dance the ending's own cue. The hardware fallbacks (🖨 🫘 🔌 💥 ❌) stay silent
+says *Not taken*. NEXT follows tonight's branch: after 🕚 it is empty until
+midnight fires 🌑 (never tap 🌑 early), after the dance the ending's own cue. The hardware fallbacks (🖨 🫘 🔌 💥 ❌) stay silent
 when early.
 
 **Judging is automatic.** Every fact filed on the 📝 card (question + answer

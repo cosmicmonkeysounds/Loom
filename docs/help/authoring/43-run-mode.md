@@ -169,11 +169,12 @@ console, and it survives a reload. The header shows the story's
 - **NEXT** is the first cue after LAST that hasn't fired tonight and is
   on tonight's branch. A cue with a `while:` ([live
   verbs](live-verbs.md)) is only suggested while it holds: in *Trapped
-  in the Internet* NEXT after 🕚 is 🌑, after the dance it is the
-  ending's own cue, after the song it is G1. A `while:` never stops you
-  pressing a cue; the story's rule decides what happens.
-- A `repeat: true` cue **stays NEXT** while you keep pressing it (📋 once
-  per question, 🗜 once per trip).
+  in the Internet* NEXT is empty during the Y2K hour (midnight fires 🌑
+  itself), after the dance it is the ending's own cue, after the song it
+  is G1. A `while:` never stops you pressing a cue; the story's rule
+  decides what happens.
+- A `repeat: true` cue **stays NEXT** while you keep pressing it and its
+  `while:` holds (📋 once per question, until the third).
 - A press the story **turns down** counts for nothing: it never becomes
   LAST and never ticks. A show's cues pressed out of turn say why in
   `# hosts` (*🤖 Too early: …*, *⚖ Not yet: 🍎 Bobbing for Truth, then

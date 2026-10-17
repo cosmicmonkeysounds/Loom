@@ -263,7 +263,7 @@ tagged **NEXT** + ✓ on fired ones — all from `CockpitState.cues`
 director's sheet agrees and survives a reload) — `Night.phase` in the
 header, and a word filter. NEXT is the first unfired in-sequence row after
 LAST whose `while:` holds (`InteractionSummary.live`), or LAST itself for a
-`repeat: true` cue; a press the story refused (only a staff-room line)
+`repeat: true` cue while it is live; a press the story refused (only a staff-room line)
 never becomes LAST or ticks, and a repeat of an earlier cue never moves
 LAST back. The local backend notes each press (`notePress`) so a folder
 rehearsal judges refusals exactly like the server. On a phone, `play`'s `?role=director` page
