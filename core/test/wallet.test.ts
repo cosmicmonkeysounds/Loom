@@ -391,6 +391,22 @@ describe("wallet book — requests", () => {
     expect(f.signals.at(-1)![0]).toBe("request_cancelled");
   });
 
+  it("a request's payment denied or cancelled closes both threads, not only the asker's (T5-07)", () => {
+    for (const close of ["deny", "cancel"] as const) {
+      const f = fake(PEOPLE, { parts: ["Auditor"] });
+      const book = new WalletBook(COIN, f.seam);
+      book.apply({ op: "request", id: "r1", from: "g1", to: "g2", amount: 40, at: 0 });
+      book.apply({ op: "respond", id: "r1", accept: true, tx: "t2", at: 10 });
+      const ev = book.apply(close === "deny" ? { op: "deny", id: "t2", by: "Auditor" } : { op: "cancel", id: "t2", by: "g2" });
+      const step = close === "deny" ? "declined" : "cancelled";
+      expect(cards(ev).filter((c) => c.card.kind === "request").map((c) => [c.to, c.card.step, c.card.id])).toEqual([
+        ["g2", step, "r1"],
+        ["g1", step, "r1"],
+      ]);
+      expect(f.balances.get("g2")).toBe(100); // refunded
+    }
+  });
+
   it("accepting a request you can no longer pay declines it inside apply, deterministically", () => {
     const f = fake(PEOPLE, { parts: ["Auditor"] });
     const book = new WalletBook(COIN, f.seam);

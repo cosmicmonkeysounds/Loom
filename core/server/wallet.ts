@@ -882,6 +882,8 @@ export class WalletBook {
       const r = this.requests.get(t.request);
       if (r !== undefined && (r.state === "paying" || r.state === "open")) {
         r.state = "declined";
+        // Both threads close, as a paid request's do (T5-07).
+        out.push(this.ev(r.to, this.card("request", r, "declined"), false));
         out.push(this.ev(r.from, this.card("request", r, "declined"), false));
       }
     }
@@ -906,6 +908,7 @@ export class WalletBook {
         const r = this.requests.get(t.request);
         if (r !== undefined && (r.state === "paying" || r.state === "open")) {
           r.state = "cancelled";
+          out.push(this.ev(r.to, this.card("request", r, "cancelled"), false));
           out.push(this.ev(r.from, this.card("request", r, "cancelled"), false));
         }
       }
