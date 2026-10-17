@@ -255,6 +255,12 @@ ROLE Program
   fact_open: text? = none
   fact_card_live: bool = false
   escrowed: 0 to 99999 = 0
+  aside_desktop: bool = false
+  aside_start_bar: bool = false
+  aside_tube: bool = false
+  aside_disk_cleanup: bool = false
+  aside_cloud: bool = false
+  aside_ram: bool = false
   fact_sep: text? = none
   fact_a1: text? = none
   fact_a2: text? = none
@@ -1736,6 +1742,9 @@ ROLE Program
   // `at` must be the EXACT declared LOCATION name. Anything else — no arg,
   // lowercase, a phantom value — falls through and moves nobody. Never
   // `move program to at` (a quoted or inexact value is a phantom room).
+  // M27: every room's first check-in has a small surprise. The six rooms
+  // with no clue line get a one-time aside (no codex, no coin), once per
+  // program per room (`aside_*`).
   when checked_in for program:
     if program.corrupted == true:
       reply You are in the Internet. Finish your reinstallation first.
@@ -1750,11 +1759,17 @@ ROLE Program
         reply 📍 Checked in at the Desktop. You will not be swept.
       else:
         reply 📍 Checked in at the Desktop.
+      if program.aside_desktop != true:
+        set program.aside_desktop = true
+        reply 📎 Clippy, from somewhere behind the couch: "It looks like you are checking in! Would you like help with that?"
     else if at == "The Start Bar":
       move program to The Start Bar
       set program.checked_in = "The Start Bar"
       set program.checked_in_time = Time.elapsed
       reply 📍 Checked in at the Start Bar.
+      if program.aside_start_bar != true:
+        set program.aside_start_bar = true
+        reply 📎 A note taped to the microwave, in round handwriting: "Snacks are not facts. Usually. — C."
     else if at == "The CPU":
       move program to The CPU
       set program.checked_in = "The CPU"
@@ -1770,21 +1785,33 @@ ROLE Program
       set program.checked_in = "The Tube"
       set program.checked_in_time = Time.elapsed
       reply 📍 Checked in at the Tube.
+      if program.aside_tube != true:
+        set program.aside_tube = true
+        reply 📎 Every light in the Tube blinks once, all together, as if it recognises you.
     else if at == "Disk Cleanup":
       move program to Disk Cleanup
       set program.checked_in = "Disk Cleanup"
       set program.checked_in_time = Time.elapsed
       reply 📍 Checked in at Disk Cleanup.
+      if program.aside_disk_cleanup != true:
+        set program.aside_disk_cleanup = true
+        reply 📎 A laminated sign by the sink: "Deleting temporary files. Please wash your hands."
     else if at == "The Cloud":
       move program to The Cloud
       set program.checked_in = "The Cloud"
       set program.checked_in_time = Time.elapsed
       reply 📍 Checked in at the Cloud.
+      if program.aside_cloud != true:
+        set program.aside_cloud = true
+        reply 📎 Clippy, faintly, from inside the house: "Remember, the Cloud is just someone else's backyard!"
     else if at == "The RAM":
       move program to The RAM
       set program.checked_in = "The RAM"
       set program.checked_in_time = Time.elapsed
       reply 📍 Checked in at the RAM.
+      if program.aside_ram != true:
+        set program.aside_ram = true
+        reply 📎 The RAM hums a little louder when you walk in. It will forget you were here.
     else if at == "The Fan Closet":
       move program to The Fan Closet
       set program.checked_in = "The Fan Closet"

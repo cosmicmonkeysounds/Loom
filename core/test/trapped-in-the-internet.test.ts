@@ -4555,6 +4555,25 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     ]);
   });
 
+  it("M27: the six plain rooms' first check-in has a one-time aside; no codex, no coin", () => {
+    const sim = boot();
+    const said = (evs: SimEvent[]) => replies(evs).filter((r) => r.to === "g1").map((r) => r.text);
+    for (const room of ["The Desktop", "The Start Bar", "The Tube", "Disk Cleanup", "The Cloud", "The RAM"]) {
+      const codex = sim.codexFor("g1").length;
+      const score = sim.scoreOf("g1");
+      const first = said(fire(sim, "checked_in", "g1", { at: room }));
+      expect(first, room).toHaveLength(2);
+      expect(first[0], room).toMatch(/^📍 Checked in at /u);
+      expect(first[1], room).toMatch(/^📎 /u);
+      const again = said(fire(sim, "checked_in", "g1", { at: room }));
+      expect(again, room).toEqual([first[0]]);
+      expect(sim.codexFor("g1").length, room).toBe(codex);
+      expect(sim.scoreOf("g1"), room).toBe(score);
+    }
+    // Another program gets its own first aside.
+    expect(replies(fire(sim, "checked_in", "g2", { at: "The RAM" })).filter((r) => r.to === "g2").map((r) => r.text)).toEqual(["📍 Checked in at the RAM.", "📎 The RAM hums a little louder when you walk in. It will forget you were here."]);
+  });
+
   it("B11: lie → accurate → lie counts the filing once; an uncertain correction clears it to unanswered", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
