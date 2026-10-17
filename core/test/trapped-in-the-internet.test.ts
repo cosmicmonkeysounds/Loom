@@ -4573,6 +4573,11 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     const said = FILES.filter((f) => !/generated\/|9-facts/u.test(f.path)).flatMap((f) => f.source.split("\n").map((l, i) => ({ at: `${f.path}:${i + 1}`, l })))
       .filter(({ l }) => /\btent\b/iu.test(l) && !/^\s*\/\//u.test(l) && !/^\s*(label|description):/u.test(l));
     expect(said.map((x) => x.at)).toEqual([]);
+    // Nor Trabolta's prompts: the agent tells a lost program where the Internet is.
+    for (const f of ["trabolta.persona.md", "trabolta.mind.md"]) {
+      const text = readFileSync(join(scenarioDir(SHOW), f), "utf8");
+      expect(text.split("\n").map((l, i) => ({ at: `${f}:${i + 1}`, l })).filter(({ l }) => /\btent\b/iu.test(l)).map((x) => x.at)).toEqual([]);
+    }
   });
 
   it("the shed clues have a rain-night home: their text names no shed, and the README places them in The Optical Drive on a rain night", () => {
