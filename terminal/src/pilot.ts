@@ -238,8 +238,8 @@ export async function fetchRoster(config: TerminalConfig): Promise<Array<{ id: s
 /** How long the cast lookup may take (ms) before the caller gives up on it. */
 export const CAST_LOOKUP_MS = 3_000;
 
-/** The story's declared characters (a mod-only read; empty before the doors
- *  open) — the ⚙ save checks a typed character name against it. Rejects after
+/** The story's declared characters (a mod-only read; the declared cast
+ *  before the doors open too, empty only with no story to compile) — the ⚙ save checks a typed character name against it. Rejects after
  *  `timeoutMs`: a server that is reachable but not answering (a stalled VPS,
  *  a lossy house Wi-Fi) must not hold the ⚙ save for a TCP timeout. */
 export async function fetchCharacters(config: TerminalConfig, timeoutMs: number = CAST_LOOKUP_MS): Promise<string[]> {

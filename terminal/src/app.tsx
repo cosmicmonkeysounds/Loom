@@ -160,8 +160,8 @@ export function App() {
   }, [screenState.revoked]);
 
   // The screen state names the character in the story's own spelling: a
-  // tablet set up as `trabolta` before the doors opened (when the server
-  // couldn't check the name) adopts `Trabolta`, so its line is the guest's
+  // tablet set up as `trabolta` when the server couldn't check the name (no
+  // cast to give, a failed ⚙ lookup) adopts `Trabolta`, so its line is the guest's
   // real `dm:Trabolta` thread (B19).
   useEffect(() => {
     if (config === null) return;
@@ -172,9 +172,9 @@ export function App() {
   }, [config, screenState.state]);
 
   // The screen state names no character for this terminal although it asked
-  // for one: before the doors that is only "no story yet", after them it is
-  // a name the story lacks (provisioned before the doors, unchecked). Ask the
-  // cast once per sim; a name the story lacks sends the terminal to setup
+  // for one: before the doors that is "no sim yet", after them a name the
+  // story lacks (stored unchecked). Ask the cast once per sim — a mod read
+  // that answers with the declared cast before the doors too; a name the story lacks sends the terminal to setup
   // with the error rather than piloting guests into a `dm:<typo>` thread no
   // agent hears (B19).
   const castKey = config === null ? null : castCheckKey(config, screenState.state);
@@ -1045,7 +1045,7 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
         next = await provision(code.trim(), { name: name.trim() || null, character: character.trim() || null, camera, engine, spot, view, room: room.trim() || null, announce });
       } else if (current !== null) {
         // A changed character in the story's spelling, or an error naming the
-        // cast (an unreachable / slow server or closed doors: kept as typed —
+        // cast (an unreachable / slow server, or no story: kept as typed —
         // the screen state corrects the spelling later). Unchanged: no lookup.
         const kept = await savedCharacter(character, current.character, () => fetchCharacters(current));
         next = { ...current, name: name.trim() || current.name, character: kept, camera, engine, spot, view, room: room.trim(), announce };
