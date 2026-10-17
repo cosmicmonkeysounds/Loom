@@ -39,17 +39,28 @@ export const BANNER_MS = 15_000;
  *  only carries its own messages). */
 export type AlertFilter = (m: ChatMessage) => boolean;
 
+/** Rooms where an empty audience means the line reached nobody — a
+ *  `to location(room)` / `to participant(x)` alert whose scope was empty
+ *  lands in the lobby with `[]` — rather than a staff back-room (`# hosts`
+ *  is a faction room no guest belongs to, so its notices carry `[]`). */
+const NOBODY_WHEN_EMPTY: ReadonlySet<string> = new Set(["lobby", "location", "dm", "codex", "quests", "wallet"]);
+
 /**
  * A booth's alerts (B1): its stream also carries lobby messages addressed to
  * single guests (the booth builds per-guest threads from them), and a
  * guest's own `!` pin — "🚨 GO TO THE INTERNET. You are marked…" — must not
  * banner every booth. A booth's alert is one for everyone, one addressed to
- * its character (`@<Character>`), or a staff notice (empty audience, e.g.
- * `# hosts`). The booth's own cues ride its readouts (`raise`).
+ * its character (`@<Character>`), or a staff notice (empty audience in a
+ * staff room, e.g. `# hosts`). The booth's own cues ride its readouts (`raise`).
  */
 export function boothAlertFilter(character: string): AlertFilter {
   const me = `@${character}`;
-  return (m) => m.audience === "all" || (Array.isArray(m.audience) && (m.audience.length === 0 || m.audience.includes(me)));
+  return (m) => {
+    if (m.audience === "all") return true;
+    if (!Array.isArray(m.audience)) return false;
+    if (m.audience.length === 0) return !NOBODY_WHEN_EMPTY.has(m.channelKind) && m.channel !== "lobby";
+    return m.audience.includes(me);
+  };
 }
 
 /** Alert broadcasts newer than `sinceSeq`, oldest first. */
