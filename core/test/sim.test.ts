@@ -77,6 +77,7 @@ describe("Escape the Internet — model compile", () => {
       "defect",
       "enters",
       "escape",
+      "released",
       "scan",
     ]);
   });
@@ -634,6 +635,25 @@ describe("Escape the Internet — operator/admin moderation", () => {
 
     sim.escape("g1");
     expect(sim.isCaptured("g1")).toBe(false);
+  });
+
+  it("a director's release() fires `released`, not `escape`, and the guest is rewarded the same", () => {
+    const sim = fresh();
+    sim.createPerson("g1", "Alice");
+    sim.join("g1", "Chatters");
+    sim.capture("g1"); // −25 → 0 (clamped)
+    sim.world.set("g1.score", { kind: "number", value: 50 });
+    const events = sim.release("g1");
+    expect(sim.isCaptured("g1")).toBe(false);
+    expect(events.some((e) => e.type === "released")).toBe(true);
+    expect(sim.world.get("g1.score")).toEqual({ kind: "number", value: 150 });
+    expect(broadcasts(events).map((b) => b.cue)).toContain("freedom");
+    expect(sim.factionRevealed("Glitchers")).toBe(true);
+    // The free location, not the room they were captured from.
+    expect(sim.locationOf("g1")).toBe("Party");
+    // A second release of a free guest is a no-op — no farming.
+    expect(sim.release("g1").some((e) => e.type === "released")).toBe(false);
+    expect(sim.world.get("g1.score")).toEqual({ kind: "number", value: 150 });
   });
 });
 

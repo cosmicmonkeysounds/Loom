@@ -263,3 +263,11 @@ events (optionally *as* a character, so only that character's hooks
 hear it), scan on a character's behalf, reveal a hidden group, hide and
 show messages, and reply in threads. Every action is journaled on the
 run, so the story replays exactly.
+
+**Release is the story's release, not an escape.** Run's Release (and
+setting `captured` to false in the World browser) does what `release X
+from …` does: the guest goes to the first place that is not a prison,
+and `when released:` runs. It never fires `escape` — that is a guest
+walking themselves out (`escape` sends them back to the room they were
+captured from). A story that rewards both should hook both (`when
+released:` and `when escape:`).
