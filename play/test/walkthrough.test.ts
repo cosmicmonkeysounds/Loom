@@ -6,10 +6,11 @@ import { describe, expect, it } from "vitest";
 
 import { atBottom } from "../src/chat.tsx";
 import { splitInteractions } from "../src/performer.tsx";
-import { actFeedback, buildGuestChannels, choiceEcho, withAgents, withEchoes } from "../src/session.ts";
+import { actFeedback, buildGuestChannels, choiceEcho, hasPendingCard, withAgents, withEchoes } from "../src/session.ts";
 import { advanceMarks, channelHead, prettyName } from "../src/threads.ts";
 import type { Channel, ChatMessage, GuestView, Interaction } from "../src/types.ts";
-import { supersededCards } from "../src/widgets.tsx";
+import { FACT_CLOSED_NOTE, WIDGETS, cardAsks, supersededCards } from "../src/widgets.tsx";
+import { renderToStaticMarkup } from "react-dom/server";
 
 function msg(seq: number, channel: string, extra: Partial<ChatMessage> = {}): ChatMessage {
   return { seq, channel, channelKind: "dm", title: channel, from: "Trabolta", kind: "line", text: `line ${seq}`, ts: seq, audience: ["g-1"], parentSeq: null, hidden: false, ...extra };
@@ -107,6 +108,29 @@ describe("a re-dealt card replaces the earlier one", () => {
     const fact = (seq: number, channel = "dm:Trabolta") => msg(seq, channel, { kind: "widget", widget: { kind: "fact", text: "📝", params: {} } });
     const old = supersededCards([fact(3), msg(4, "dm:Trabolta"), fact(7), fact(9), fact(5, "dm:Clippy"), msg(10, "dm:Trabolta", { kind: "widget", widget: { kind: "captcha", text: "", params: {} } })]);
     expect([...old].sort((a, b) => a - b)).toEqual([3, 7]);
+  });
+});
+
+describe("a fact card with no open questions is closed, not a task (B14)", () => {
+  const fact = (seq: number, questions: string) => msg(seq, "dm:Trabolta", { kind: "widget", widget: { kind: "fact", text: "📝 File a fact", params: { questions } } });
+
+  it("a trailing empty card supersedes the stale one and asks nothing", () => {
+    const stale = fact(3, "H2: Round 1 Q2.");
+    const closed = fact(9, "");
+    expect(hasPendingCard([stale], new Set())).toBe(true);
+    const room = [stale, msg(5, "dm:Trabolta"), closed];
+    expect([...supersededCards(room)]).toEqual([3]);
+    // Trabolta's DM row loses "your move".
+    expect(hasPendingCard(room, new Set())).toBe(false);
+    expect(cardAsks(closed.widget!)).toBe(false);
+    expect(cardAsks(stale.widget!)).toBe(true);
+  });
+
+  it("renders as a note, not a form", () => {
+    const html = renderToStaticMarkup(WIDGETS.fact!.render({ card: fact(9, "").widget!, seed: 9, onAnswer: () => {} }) as never);
+    expect(html).toContain(FACT_CLOSED_NOTE);
+    expect(html).not.toContain("<textarea");
+    expect(renderToStaticMarkup(WIDGETS.fact!.render({ card: fact(3, "H2: Round 1 Q2.").widget!, seed: 3, onAnswer: () => {} }) as never)).toContain("<textarea");
   });
 });
 

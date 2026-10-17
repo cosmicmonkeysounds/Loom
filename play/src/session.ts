@@ -18,7 +18,7 @@ import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, WALLET_ROOM, channelH
 import { queueSummary, walletNeedsYou, walletSummary } from "./wallet.tsx";
 import { useTyping } from "./typing.ts";
 import type { Channel, ChatMessage, Decision, GuestView, PrimeView } from "./types.ts";
-import { WIDGETS, supersededCards, type WidgetResult } from "./widgets.tsx";
+import { cardAsks, supersededCards, type WidgetResult } from "./widgets.tsx";
 
 // --- persistence ------------------------------------------------------------
 
@@ -543,7 +543,7 @@ const NONE_OPENED: ReadonlySet<string> = new Set();
  *  while it is the newest. Shared by the guest's rooms and the booth's. */
 export function hasPendingCard(msgs: readonly ChatMessage[], answered: ReadonlySet<number>): boolean {
   const old = supersededCards(msgs);
-  return msgs.some((m) => m.kind === "widget" && m.widget !== undefined && (WIDGETS[m.widget.kind]?.answerable ?? false) && !answered.has(m.seq) && !old.has(m.seq));
+  return msgs.some((m) => m.kind === "widget" && m.widget !== undefined && cardAsks(m.widget) && !answered.has(m.seq) && !old.has(m.seq));
 }
 
 /** Group the guest's messages into threads, docking the pending decision, and
