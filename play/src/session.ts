@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DOORS_POLL_MS, type Identities, type PictureChoices, type ProgramHit, type ProgramPictures } from "./avatars.ts";
 import { ApiError, api, useChatStream } from "./client.ts";
-import { maxSeqOf, unsolicitedReadout, useAlerts, type Alert } from "./alerts.ts";
+import { boothAlertFilter, maxSeqOf, unsolicitedReadout, useAlerts, type Alert } from "./alerts.ts";
 import { checkinFromSearch, withoutCheckin } from "./checkin.ts";
 import { pmChannelId, pmOtherParty, unlockFromSearch, withoutUnlock } from "./codex.ts";
 import { usePlayHost } from "./host.ts";
@@ -1526,6 +1526,7 @@ export function usePrimeSession(): PrimeSession {
     host.onEnded("prime", null);
   }, [drop, host, auth, base]);
 
+  const boothFilter = useMemo(() => (auth !== null ? boothAlertFilter(auth.character) : undefined), [auth]);
   const alerts = useAlerts({
     messages,
     clock: view?.clock,
@@ -1533,6 +1534,8 @@ export function usePrimeSession(): PrimeSession {
     storage: host.storage,
     storageKey: PRIME_ALERTS,
     sound: host.sound,
+    // B1: never a guest's own `!` (the booth holds every guest's lobby lines).
+    forMe: boothFilter,
   });
   alertsRef.current = alerts;
   const threads = useThreads(buildPrimeChannels(messages, view, new Set(widgetAnswers.keys())).map((c) => (typing.has(c.id) ? { ...c, typing: typing.get(c.id) } : c)));
