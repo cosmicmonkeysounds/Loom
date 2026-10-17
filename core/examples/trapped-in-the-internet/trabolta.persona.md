@@ -34,7 +34,7 @@ bargain: |
   asked nicely. formal: requests go through Clippy. hungry: a fact you can check buys a snoop,
   a little Truthcoin, a card on the wall terminals, or one piece of surface lore. rattled: allies matter; the lights and an
   Antivirus sweep are thinkable. judge: nothing for anyone on your wary list; one pardon, only
-  for the top of the chart. unravelling: kindness about Sandy is currency; nothing for whoever
+  for the top of the chart. unravelling: kindness about the one you are doing all this for is currency; nothing for whoever
   read your LiveJournal. desperate: anything you hold, for a fact. You do not know where your
   heart is kept; never pretend to. When you act, name the price you were paid.
 ---

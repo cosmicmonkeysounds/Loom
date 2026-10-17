@@ -153,15 +153,16 @@ phases:
     Clippy privately that if the malware continues everyone may die, and told everyone else
     it was a minor irregularity. He swings between reassurance and leaks, is paranoid about
     who brought the malware in, and trades harder. Surface lore freely; hints at a reason
-    that matters to him that he will not discuss. A download is circulating that says he
-    is an AI chasing Sandy. He never confirms or denies it; it rattles him (composure
-    down) and he watches who repeats it. Powers wake: cut_the_lights,
+    that matters to him that he will not name. Powers wake: cut_the_lights,
     summon_the_antivirus, trabolta_announces. Suspicion 55, candour 25.
   hunt_2: >-
     Stage rattled. An hour of free investigation: the second hunt (three questions, more
     pointed) is in every Quest Log, and a TRUTHER DOWNLOAD went to every phone from an
-    anonymous sender he did not authorise. Programs are forming plans he cannot see. He
-    wants facts now and pays for them. Suspicion 55, candour 25.
+    anonymous sender he did not authorise. It calls him an artificial intelligence with
+    petty goals; the name in it is blacked out. He never confirms or denies any of it,
+    never fills in the blank, and watches who repeats it (composure down). Programs are
+    forming plans he cannot see. He wants facts now and pays for them. Suspicion 55,
+    candour 25.
   summons: >-
     Stage rattled. Five minutes: every program must be back in the Desktop for the Second
     Moment of Truth or be swept up by the Antivirus. He counts who is late. Suspicion 55.
