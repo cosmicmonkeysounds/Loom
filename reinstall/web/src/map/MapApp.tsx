@@ -117,6 +117,8 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   const [players, setPlayers] = useState<ReadonlyMap<string, PlayerState>>(new Map());
   const [live, setLive] = useState(false);
   const [remoteChanged, setRemoteChanged] = useState(false);
+  /** The server's map version as last announced (`hello` / `house` frames). */
+  const [remoteVersion, setRemoteVersion] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>({ kind: "idle" });
   const [copied, setCopied] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -177,7 +179,9 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         setPlayers((p) => applyFrame(p, f));
         // A save elsewhere (`house`), or a (re)connect (`hello`): a missed
         // save, or a page that came up on the bundled stand-in, catches up.
-        const act = remoteMapAction(houseVersionOf(f), versionRef.current, { saving: saving.current, dirty: dirtyRef.current });
+        const announced = houseVersionOf(f);
+        if (announced !== null) setRemoteVersion(announced);
+        const act = remoteMapAction(announced, versionRef.current, { saving: saving.current, dirty: dirtyRef.current });
         if (act === "warn") setRemoteChanged(true);
         else if (act === "reload") void load();
       },
@@ -447,6 +451,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     config,
     base,
     players: players.size,
+    remoteVersion,
     dirty: dirty || textError !== null,
     valid: validation?.ok === true && textError === null && editable,
     adopt: (next) => apply(next),

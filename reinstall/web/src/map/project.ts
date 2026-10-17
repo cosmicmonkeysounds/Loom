@@ -144,6 +144,29 @@ export async function planSwitch(
   return { base };
 }
 
+/**
+ * What a press on a variant's button means, against the list it was drawn
+ * from. A press on the one the list calls live refetches the list first:
+ * it may be stale (a switch made on another page while this one held a
+ * draft, so its version never moved), and doing nothing would leave the
+ * director unable to switch back. Resolves to the variant and the list to
+ * switch with (`live`: it really is playing, nothing to do), or null.
+ */
+export async function pressTarget(
+  file: string,
+  list: MapVariantsResponse | null,
+  busy: boolean,
+  refetch: () => Promise<MapVariantsResponse | null>,
+): Promise<{ v: MapVariant; list: MapVariantsResponse | null; live: boolean } | null> {
+  if (busy) return null;
+  const v = list?.variants.find((x) => x.file === file);
+  if (v === undefined) return null;
+  if (!v.active) return { v, list, live: false };
+  const fresh = await refetch();
+  const now = fresh?.variants.find((x) => x.file === file);
+  return now === undefined ? null : { v: now, list: fresh, live: now.active };
+}
+
 /** Can the variant be switched to now? */
 export function canSwitch(v: MapVariant, busy: boolean): boolean {
   return !busy && v.ok && !v.active;

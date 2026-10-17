@@ -19,6 +19,7 @@ import {
   removeThing,
   saveBaseOf,
   saveStateOf,
+  conflictText,
   setHeight,
   setYaw,
   TERMINAL_HEIGHT,
@@ -323,6 +324,13 @@ describe("saving — never over another director's save", () => {
     expect(saveBaseOf({ source: "show", version: "show-1" })).toBe("show-1");
     expect(saveBaseOf({ source: "bundled", version: "bundled" })).toBeNull();
     expect(saveBaseOf(null)).toBeNull();
+  });
+
+  it("the conflict line names a save or a variant switch (B18)", () => {
+    expect(conflictText("d59883e0")).toContain("the map changed since you loaded it (a save or a variant switch)");
+    expect(conflictText("d59883e0")).toContain(", now vd59883e0.");
+    expect(conflictText(null)).not.toContain("now v");
+    expect(conflictText(null)).not.toContain("another director");
   });
 
   it("saveStateOf: ok · conflict (409, with their version) · error (problems)", () => {

@@ -13,6 +13,7 @@ import {
   canSwitch,
   downloadOf,
   planSwitch,
+  pressTarget,
   saveConfirm,
   saveTarget,
   sourceLabel,
@@ -92,6 +93,28 @@ describe("project bar logic", () => {
     expect(canSwitch(shed, true)).toBe(false);
     expect(canSwitch(tent, false)).toBe(false); // already playing
     expect(canSwitch(broken, false)).toBe(false);
+  });
+
+  it("a press on the variant a stale list calls live refetches; the fresh list switches (B18)", async () => {
+    // This page's list still says Tent; another page has switched to Shed.
+    const stale = list();
+    const fresh = list({ variants: [{ ...tent, active: false }, { ...shed, active: true }, broken] });
+    const refetch = vi.fn(async () => fresh);
+    const back = await pressTarget("house.json", stale, false, refetch);
+    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(back).toMatchObject({ live: false, v: { file: "house.json", active: false } });
+    expect(back?.list).toBe(fresh);
+    expect(canSwitch(back!.v, false)).toBe(true);
+    // Really live: nothing to switch, and the bar says so.
+    expect(await pressTarget("house.json", stale, false, async () => stale)).toMatchObject({ live: true });
+    // Another variant switches straight from the list; busy or unknown does nothing.
+    const other = vi.fn(async () => fresh);
+    expect(await pressTarget("house.shed.json", stale, false, other)).toMatchObject({ live: false, v: shed });
+    expect(other).not.toHaveBeenCalled();
+    expect(await pressTarget("house.json", stale, true, other)).toBeNull();
+    expect(await pressTarget("house.nope.json", stale, false, other)).toBeNull();
+    // The server away on the refetch: nothing.
+    expect(await pressTarget("house.json", stale, false, async () => null)).toBeNull();
   });
 
   it("a switch asks first when programs are mid-game or a director's save would be dropped", () => {
@@ -270,6 +293,7 @@ describe("the project bar in the map page's toolbar slot", () => {
       config,
       base: "/e/evt",
       players: 2,
+      remoteVersion: null,
       dirty: false,
       valid: true,
       adopt: vi.fn(),
@@ -289,6 +313,12 @@ describe("the project bar in the map page's toolbar slot", () => {
     expect(p.players).toBe(2);
     expect(p.dirty).toBe(false);
     expect(p.saveDraft).toBeUndefined(); // nothing unsaved
+  });
+
+  it("hands the bar the server's announced version, so a switch elsewhere refreshes its list while the page is dirty (B18)", () => {
+    const p = propsOf(ctxOf({ dirty: true, remoteVersion: "v7" }));
+    expect(p.version).toBe("v3"); // the dirty page keeps the version it loaded
+    expect(p.remoteVersion).toBe("v7");
   });
 
   it("a switch and a save to the project reload the page (a clean draft at the server's version, never an undoable adopt)", () => {

@@ -2,14 +2,16 @@
 //! §2.1): one toggle button per whole-map variant of the event
 //! (`house.json`, `house.shed.json`, … — the active one pressed), **Save to
 //! project** and **Download JSON**. Self-contained — it fetches the variant
-//! list itself and refetches whenever `version` changes (a switch or a save
-//! anywhere), so a host only hands it the map it shows:
+//! list itself and refetches whenever `version` or `remoteVersion` changes
+//! (a switch or a save anywhere, also while the page holds a draft and so
+//! keeps its old `version`), so a host only hands it the map it shows:
 //!
 //!   <ProjectBar
 //!     base={baseOf(config)}        // the event's API base
 //!     token={config.token}         // the device's moderator token
 //!     house={saved}                // the map the page shows (not a draft)
 //!     version={loaded.version}     // its version; null = the bundled stand-in
+//!     remoteVersion={announced}    // optional: the server's latest version off the stream
 //!     players={players.size}       // programs in the simulation (a switch asks first)
 //!     dirty={dirty}                // unsaved edits ("Save to project" warns)
 //!     onSwitched={(house, version) => …}  // load it as the clean draft
@@ -36,6 +38,7 @@ import {
   canSaveToProject,
   canSwitch,
   downloadOf,
+  pressTarget,
   planSwitch,
   saveConfirm,
   saveTarget,
@@ -57,6 +60,9 @@ export interface ProjectBarProps {
   house: HouseMap;
   /** Its version; null = the bundled stand-in ("Save to project" is off). */
   version: string | null;
+  /** The version the server last announced (the spatial stream): a switch
+   *  made elsewhere while this page holds a draft refreshes the list. */
+  remoteVersion?: string | null;
   /** Programs in the simulation now — a switch asks first when any are. */
   players?: number;
   /** The page holds unsaved edits ("Save to project" says they are not included). */
@@ -76,27 +82,37 @@ export interface ProjectBarProps {
   unlock?: () => Promise<boolean>;
 }
 
-export function ProjectBar({ base, token, house, version, players = 0, dirty = false, onSwitched, onSaved, saveDraft, confirm = (m) => window.confirm(m), unlock = async () => true }: ProjectBarProps) {
+export function ProjectBar({ base, token, house, version, remoteVersion = null, players = 0, dirty = false, onSwitched, onSaved, saveDraft, confirm = (m) => window.confirm(m), unlock = async () => true }: ProjectBarProps) {
   const [list, setList] = useState<MapVariantsResponse | null>(null);
   const [status, setStatus] = useState<BarStatus>({ kind: "idle" });
   const busy = status.kind === "busy";
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<MapVariantsResponse | null> => {
     try {
-      setList(await fetchVariants(base, token));
+      const next = await fetchVariants(base, token);
+      setList(next);
+      return next;
     } catch {
       setList(null); // an older server, or away: the bar offers the download only
+      return null;
     }
   }, [base, token]);
   useEffect(() => {
     void refresh();
-  }, [refresh, version]);
+  }, [refresh, version, remoteVersion]);
 
   const toVariant = async (file: string) => {
-    const v = list?.variants.find((x) => x.file === file);
-    if (v === undefined || !canSwitch(v, busy)) return;
+    // A press on the "live" one refetches first: the list may be stale.
+    const press = await pressTarget(file, list, busy, refresh);
+    if (press === null) return;
+    const { v, list: current } = press;
+    if (press.live) {
+      setStatus({ kind: "ok", text: `${variantName(v, current?.variants ?? [])} is already live.` });
+      return;
+    }
+    if (!canSwitch(v, busy)) return;
     if (!(await unlock())) return;
-    const all = list?.variants ?? [];
+    const all = current?.variants ?? [];
     // A director's save on the event is offered to the project first; the
     // switch then posts from the version that save left (the reload the
     // switch does covers the save's `onSaved`, unless it stops there).
@@ -106,7 +122,7 @@ export function ProjectBar({ base, token, house, version, players = 0, dirty = f
       if (next !== null) saved = f;
       return next;
     };
-    const plan = await planSwitch(v, list, { players, dirty, version }, { confirm, save });
+    const plan = await planSwitch(v, current, { players, dirty, version }, { confirm, save });
     if (plan === null) {
       if (saved !== null) onSaved?.(saved);
       void refresh();
@@ -244,6 +260,7 @@ export function projectBarExtras(ctx: MapToolbarContext): ReactNode {
       token={ctx.config.token}
       house={ctx.saved ?? ctx.house}
       version={saveBaseOf(ctx.loaded)}
+      remoteVersion={ctx.remoteVersion}
       players={ctx.players}
       dirty={ctx.dirty}
       onSwitched={() => void ctx.reload()}
