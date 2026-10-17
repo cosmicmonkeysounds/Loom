@@ -41,7 +41,13 @@ A program learns it one of three ways:
 
 *The Door Code* and *The Cold Door* are `secret: true`, like the
 patch sheets and the Legendary Fact: Trabolta's models never see them,
-and he truly does not know the code.
+and no file he holds carries the year (*The Sandy File* says only
+"late-nineties"; the '97 clues are on guest-only papers like Page 999).
+He can still be told it: a program may type the code or a combination
+to him. His worker never writes one into his memory (which every
+conversation reads) and never lets him say one — the mind file's
+`secrets.never`, generated from `facts.json` and the story's combos
+(`titi:facts`) — so what one program types never reaches another's.
 
 ## The King, on the tablet
 
@@ -152,7 +158,11 @@ own thread.
 
 While they do, the story knows they are **at his heart**
 (`program.at_the_heart`; the terminal tells it when the visit starts and
-ends, and any ending clears it). There, from the Y2K clock, Trabolta
+ends, and any ending clears it). There is one server-room terminal, so
+the next pass scanned there takes over: whoever was at his heart before
+is not any more, even if their visit's close was lost to the Wi-Fi (the
+terminal also re-sends a close that didn't land, before its next line
+and on its next boot). There, from the Y2K clock, Trabolta
 drops the act — like the Master in *Fallout*: he admits the patch bay is
 his heart, admits he doesn't know the combinations or the code, and says
 what he wants and why.
@@ -160,9 +170,12 @@ what he wants and why.
 A program who **shows him that what he wants is impossible** can talk
 him down. He then fires his `stand_down` power — but it only **offers**:
 the story checks the evidence itself (the program must hold *What Sandy
-Says* or *The Sandy File*), and on success `# hosts` gets an alert,
+Says* or *The Sandy File*, and not because Trabolta shared it with them:
+a proof he hands over never counts), and on success `# hosts` gets an alert,
 *"🕊 Trabolta offers to stand down for X. Press 🕊 to end it."* Every
-refusal is words only and spends nothing; he offers once a night.
+refusal is words only and spends nothing; he offers once a night, and
+after that only says he has offered (🔄 does not clear an offer; 🕊 works
+whenever you decide).
 
 **🕊 Trabolta stands down (talked down)** is yours to press. It ends the
 night the Combo A way, without a cable: the blackout, the dance, and a

@@ -604,8 +604,10 @@ orchestrator's reflect for that speaker only) make him candid with a
 program at the server-room terminal (`them.at_the_heart == true` and
 `Night.step >= 14`): the Fallout Master in a broom cupboard. He admits the
 patch bay is his heart and that he does not know the combinations or the
-door code (true: all are secret, he holds none), and says what he wants and
-why. Two more situations decide whether he may say "Sandy" (the story's
+door code (true: all are secret, he holds none, and since the wave 7 review
+no entry he holds carries the year; a code a program types to him is kept out
+of his shared memory and his voice by the worker's `secrets.never`), and says
+what he wants and why. Two more situations decide whether he may say "Sandy" (the story's
 own unredaction rule: `Night.recount`, or scenario 1 from step 13). He
 never says the year he met her (it is the door code), never a hunt answer,
 a combination or her one line, and never fires `stand_down` anywhere but at

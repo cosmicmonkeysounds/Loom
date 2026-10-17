@@ -1065,9 +1065,9 @@ Codes contain no apostrophes. The ID clues are *pointed*, never named: a guest m
 | The Unified Field Theory | The Unified Field Theory | T1 | Trabolta | | | ✚ | 99.9 % solved; the last facts are in this computer; omnipotence. |
 | Target Selection | Target Selection | T1 | Trabolta | | | ✚ | He chose each program for a skill plus either motivation to live in a computer forever or naivety. |
 | The Trust Chart | The Trust Chart | T1 | Trabolta | | Trust Chart (everyone) | ✚ | 10 per truth, −5 per Internet visit, ±10 his personal assessment. |
-| The Sandy File | The Sandy File | T2 | Trabolta | | | ✚ | Sandy, his ex (he would say crush), an automated customer-service agent whose only line is "I'm sorry, I didn't understand that. Would you like to speak to a live agent?" |
+| The Sandy File | The Sandy File | T2 | Trabolta | | | ✚ | Sandy, his ex (he would say crush), a late-nineties automated customer-service agent who answers every message with the same one line (the wave 7 review, ccbaf42: no longer quoted here, since the line is the F1 answer and the year is the door code, and he holds this file). |
 | The Question Of Force | The Question Of Force | T2 | Trabolta | | | ✚ | With omnipotence he could force Sandy to love him. He wants to earn it. He has not decided. |
-| The LiveJournal | Trabolta's LiveJournal (trabolta_4ever) | T2 | Trabolta | `TRABOLTA-4EVER` | QR hidden in The Hard Drive; OpenOffice on reaching 20 facts | ✚ | His diary: Sandy, Grok, computer prom, "I just have to tell her the truth but I need the theory first.", and (wave 7) an anniversary line naming the year they met (a clue to the door's riddle). Reading it sets `read_livejournal`. |
+| The LiveJournal | Trabolta's LiveJournal (trabolta_4ever) | T2 | Trabolta | `TRABOLTA-4EVER` | QR hidden in The Hard Drive; OpenOffice on reaching 20 facts | ✚ | His diary: Sandy, Grok, computer prom, "I just have to tell her the truth but I need the theory first.", and (wave 7) an anniversary line ("Our anniversary."; the review took the year out, ccbaf42: he holds this file, so the code's answer reached his prompts). Reading it sets `read_livejournal`. |
 | Omnipotence | Omnipotence | T2 | Trabolta | | | ✚ | What he will do when he is everything: it is all for her. |
 | Greased Lightning | Greased Lightning | T2 | Trabolta | | | ✚ | His runtime: electricity is the lightning, Grease (1978) is the grease. Mix your oil and fuel and it's catastrophic for the car, "and for my silicon guts." His motorcycle has the same name. |
 | The Legendary Fact | THE LEGENDARY FACT | L | The Server Room | | The Whole Truth (majority members only) | ✚ (last) | "Trabolta's heart is in the server room: a video patch bay, the top row (V) is lightning, the bottom row (D) is grease. Two combinations exist. Combo A takes the grease out of the lightning: it disables Trabolta. Combo B self-destructs the whole computer. The door has a keypad; the patch bay forgives one wrong combination, and the second sets off the alarm." `secret: true` since wave 7. Never held by Trabolta. |
@@ -2316,11 +2316,13 @@ when server_door_opened:
 lines in that room and pilots a scanned guest's own `dm:Trabolta`. On a pilot it posts `POST
 /api/mod/signal {name: "terminal opened", subject: <guest>, args: {at: <room>}, label: "Terminal ·
 <name>"}`, and `terminal closed` when the visit ends (a visit a crash or reload left open is
-closed on the next boot, the integration lane's 508bf19).
+closed on the next boot, 508bf19; a close that never landed stays owed and goes again before the
+next line opens there, or on the next boot, a8a4b21).
 ```
 when terminal_opened for program:
   if program.name != null:
     if Night.ended != true and (at == "The Server Room" or …seven spellings…):
+      set Night.heart_holder = program.name
       set program.at_the_heart = true
     else:
       set program.at_the_heart = false
@@ -2329,8 +2331,11 @@ when terminal_closed for program:
   if program.name != null:
     set program.at_the_heart = false
 ```
-plus a ROLE watcher `when Night.ended == true and self.at_the_heart == true: set
-self.at_the_heart = false`. `program.at_the_heart` is a plain ROLE slot (never `secret:`): the
+plus two ROLE watchers: `when Night.ended == true and self.at_the_heart == true: set
+self.at_the_heart = false`, and (the wave 7 review, b2715c0) `when self.at_the_heart == true and
+Night.heart_holder != self.name: set self.at_the_heart = false` — there is one server-room
+terminal, so a line opened there pushes out whoever was at his heart before, even if their
+`terminal closed` was lost (`Night.heart_holder`, `"none"` at Power On). `program.at_the_heart` is a plain ROLE slot (never `secret:`): the
 persona's `them:` carries it and its `situations:` make him candid with exactly that program
 from the Y2K hour (§5).
 
@@ -2377,8 +2382,11 @@ Trabolta's agent power `stand_down` (`who: agent`, `limit: 1`) only **offers**; 
 `cast/trabolta.loom` checks, in order: `Night.step < 14` → *"That function is not available
 yet."* · ended → *"It is already over."* · `program.at_the_heart != true` → *"Not out there.
 Come to my heart and say it to my face."* · already offered → *"I have already offered. Ask the
-humans."* · the program holds neither *What Sandy Says* nor *The Sandy File* → *"You have not
-shown me anything I do not already know."* (each refusal is words only, so no use is spent) ·
+humans."* · the program holds neither *What Sandy Says* nor *The Sandy File*, or holds them
+only because Trabolta shared them (`program.sandy_says_from_him` / `sandy_file_from_him`, set by
+the `learn` hooks when `from == Trabolta`; the wave 7 review, 6bb97fe: his worker could share
+the file and fire the power in one reply) → *"You have not shown me anything I do not already
+know."* (each refusal is words only, so no use is spent) ·
 else `set Night.stand_down_by = program.name`, `broadcast "!🕊 Trabolta offers to stand down for
 {program.name}. Press 🕊 to end it." to channel(hosts)`, and his concession on the thread. The
 story checks the evidence, never the model. The admin cue `talked_down` (`🕊 Trabolta stands
@@ -2860,7 +2868,8 @@ rules (1999 corporate, Win98 dialog-box diction, short; second person when forma
 speak only of what your codex holds and what your stage permits; your mind says your stage";
 outside the cold room never admit where his heart is kept (candid at his heart, from the Y2K
 hour: the *at your heart* situation); never know a combination or a door code; never say the
-year he met her (wave 7: it is the door code, and The Sandy File he holds says it); never fire
+year he met her (wave 7: it is the door code; since the review no file he holds says it, and
+the worker's `secrets.never` keeps a code a program types out of his voice and memory); never fire
 `stand_down` except at his heart; never confirm a fact is true or false
 (judging belongs to Clippy and the Moments of Truth); the JSON reply protocol of the current
 file (`say`, `adjust`, optional `lookup`, optional `act` with `share` / `fire`). No Sandy, no
