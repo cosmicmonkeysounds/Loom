@@ -11,8 +11,9 @@ by late-90s Web 1.0 aesthetics and existentialism.*
 > `master` and deployed (w3-1015); wave 4 (facts.json, the judge, the
 > bottle, the wallet, marked programs, the King) is committed (9d35a4b)
 > and wave 5 (the stock-take: Runescape's reserve, the takeover, the
-> resurrection, the phone cue sheet, …) is in the working tree, neither
-> deployed yet**: its §5 *Wave N status* tables list every build and
+> resurrection, the phone cue sheet, …) is committed (85d2bad); wave 6
+> (the live-test bug fixes) is merged; none of 4–6 is deployed yet, and
+> they ship together**: its §5 *Wave N status* tables list every build and
 > the device check still to do.
 >
 > **📋 [CHECKLIST.md](./CHECKLIST.md): the living tech checklist, covering

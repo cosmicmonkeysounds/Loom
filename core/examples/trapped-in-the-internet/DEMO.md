@@ -14,8 +14,9 @@ change the order here, change it there.
 
 1. The VPS runs the wave-4 release (`scripts/ops/ship.sh <tag>` — the
    server **before** the first sync that carries `facts.json` or the King's
-   map, or an old server refuses them; as of 2026-10-16 wave 4 is committed
-   (9d35a4b) and wave 5 sits in the working tree, neither deployed; wave 5
+   map, or an old server refuses them; as of 2026-10-17 waves 4 (9d35a4b) and
+   5 (85d2bad) are committed and wave 6 is merged, none deployed — they
+   ship together; wave 5
    also wants one `sync-show --replace-maps`), and the show's story is in your server
    project: `LOOM_SSH=loom-vps pnpm sync-show` (with
    `LOOM_PROJECT="<your project name>"` if it isn't *Untitled Project*).
