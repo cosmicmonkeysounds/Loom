@@ -316,11 +316,16 @@ per-room long form `<cue: lights, room: …, state: …>` (The Start Bar — the
 kitchen, dimmed to ~20%, never dark — The Desktop, The RAM), `screens_flicker`
 blinking the house, every `sound <name>` as a QLab OSC cue (but `announce_chime` → the `alexa`
 player), `do announce` to the `alexa` speaker plus QLab's `duck_music` cue (the music dips under it), `do door server_room` to the ESP32's door
-**indicator** (`show/serverroom/lock`, the one retained command; there is
-no maglock), `lights_alarm` to the server-room box's own siren
-(`show/serverroom/alarm`), and the sensors that come back as story
-signals (`server_door_opened` from the reed on `sensors/serverroom/door`
-plus an optional Zigbee contact, both `edge: true`; the printer's button
+**indicator** (`show/serverroom/lock`, the one retained command; the real
+lock is a standalone keypad lock, code set by hand, never networked, and
+nothing here drives it), `lights_alarm` to the server-room box's own siren
+(`show/serverroom/alarm`; only a wrong patch-bay combo trips it), and the
+sensors that come back as story signals (`server_door_opened` from the
+wire-loop contact that closes when the door opens, on
+`sensors/serverroom/door`, plus an optional Zigbee contact, both
+`edge: true`, 20 s apart at most once; the story starts the server-room
+cutscene on it, an entry with the code and an exit by the inside handle
+alike; the printer's button
 and lid, and the patch bay's `patch_combo_a` / `patch_combo_b` /
 `patch_rejected`, judged here until signals carry arguments). The
 safety rooms (stairs, bathroom, tent, server room, the server-room →
@@ -330,7 +335,8 @@ turns WLED off per device, leaving the Tube strip on dim preset 22.
 light / sound cue has a rule, every sensor signal has a `when` in
 `main.loom`, the two combos match the `Kernel.combo_*` seeds and the
 codex halves — and it pins the safety edits (no cue darkens a safety
-room or all of WLED, no lock topic, edge-only door sensors). The wiring walkthrough is in
+room or all of WLED, nothing drives a lock, edge-only door sensors that
+fire once per opening in either direction). The wiring walkthrough is in
 [`docs/loom-show-control.md`](../docs/loom-show-control.md) → *Trapped in
 the Internet: the house rig*.
 
@@ -387,7 +393,7 @@ reconnect). Two per-rule switches make it fire once per real change:
 ```yaml
 - on: { topic: "sensors/serverroom/door", when: "open == true" }
   edge: true                 # fire on false → true only (per topic)
-  signal: { name: server_door_opened, debounce_s: 5 }
+  signal: { name: server_door_opened, debounce_s: 20 }
 ```
 
 - **Retained messages never fire a rule** unless it says

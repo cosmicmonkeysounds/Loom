@@ -15,9 +15,10 @@ night. So these tests read the `.loom` files and check, in both directions:
 And it pins the Oct 31 safety edits (K-05): no cue darkens a safety room
 (the stairs/Tube strip, bathroom, tent, server room), the blackout turns
 WLED off per device and leaves the Tube on a dim static preset, Trabolta
-cannot darken The Cloud and only dims the kitchen, there is no maglock
-(the door has an indicator only), and the door sensors fire once per
-real opening (edge + ignore retained).
+cannot darken The Cloud and only dims the kitchen, nothing drives a lock
+(the server-room door has a standalone keypad lock and mechanical egress;
+the YAML drives only its indicator ring), and the door sensors fire once
+per real opening (edge + ignore retained), whichever way it is walked.
 """
 
 from __future__ import annotations
@@ -239,18 +240,41 @@ def test_every_night_lights_mirror_has_a_rule_and_catches_up():
         assert re.search(rf"\bset\s+{re.escape(path)}\s*=", code), path
 
 
-def test_the_door_drives_the_indicator_and_there_is_no_maglock():
+#: Words that name something able to hold a door shut. The only "lock" a
+#: rule may touch is the ESP32 ring's indicator topic.
+LOCKISH = re.compile(r"lock|strike|latch|relay|bolt|solenoid", re.I)
+INDICATOR = "show/serverroom/lock"
+
+
+def test_the_door_drives_the_indicator_and_nothing_drives_a_lock():
+    """The server-room door has a STANDALONE keypad lock (code set by hand,
+    never networked; the inside handle always opens). The story tells the
+    ring the truth at boot (`locked`); nothing in the YAML may drive a lock,
+    a strike or a relay on any door."""
     code = _code(_story_text())
     assert re.search(r"^\s*do door server_room, state: locked\b", code, re.M)
-    assert re.search(r"^\s*do door server_room, state: unlocked\b", code, re.M)
     for state in ("locked", "unlocked"):
         cues = evaluate_cues(_show().cues, _directive("door", f"server_room, state: {state}"))
-        assert cues == [MqttCue(topic="show/serverroom/lock", payload=json.dumps({"state": state}), retain=True, qos=0)]
-    # Nothing anywhere can drive a lock: a stray relay must never lock people in.
-    for rule in _show().cues:
-        if rule.mqtt is not None:
-            assert "lock" not in rule.mqtt.topic or rule.mqtt.topic == "show/serverroom/lock", rule.mqtt.topic
+        assert cues == [MqttCue(topic=INDICATOR, payload=json.dumps({"state": state}), retain=True, qos=0)]
+    # Every action of every cue rule, raw (any action kind, any field): no
+    # topic, address or payload names a lock-ish thing, bar the indicator.
+    for i, rule in enumerate(_raw()["show"]["cues"]):
+        for kind, action in rule.items():
+            if kind in ("on", True, "match"):
+                continue
+            topic = action.get("topic") if isinstance(action, dict) else None
+            if topic == INDICATOR:
+                assert kind == "mqtt" and set(action["payload"]) == {"state"}, f"cues[{i}]"
+                continue
+            assert not LOCKISH.search(json.dumps(action)), f"cues[{i}] {kind} drives a lock: {action}"
+    # Nor does any sensor rule publish or forward to one.
+    for i, rule in enumerate(_raw()["show"]["sensors"]):
+        for kind, action in rule.items():
+            if kind in ("on", True, "edge", "accept_retained", "signal"):
+                continue
+            assert not LOCKISH.search(json.dumps(action)), f"sensors[{i}] {kind}: {action}"
     assert "server_room_lock" not in HOUSE.read_text(encoding="utf-8")
+    assert not re.search(r"maglock|door_lock|strike", json.dumps(_raw()["show"]), re.I)
 
 
 def test_the_alarm_reaches_the_server_room_box_and_stops_when_it_opens():
@@ -312,7 +336,7 @@ def _signals() -> list[str]:
 def test_every_sensor_signal_is_a_when_rule_in_main_loom():
     main = _code((STORY / "main.loom").read_text(encoding="utf-8"))
     names = _signals()
-    assert names.count("server_door_opened") == 2  # the reed (primary) and the optional Zigbee contact
+    assert names.count("server_door_opened") == 2  # the door contact (primary) and the optional Zigbee contact
     assert {"server_door_opened", "printer_button_pressed", "printer_opened", "patch_combo_a", "patch_combo_b", "patch_rejected"} <= set(names)
     missing = [n for n in names if not re.search(rf"^when\s+{re.escape(n)}\s*(?:for\s+\w+\s*)?:", main, re.M)]
     assert not missing, f"signals main.loom never handles (a typo is silent on the night): {missing}"
@@ -365,6 +389,10 @@ def test_state_sensors_fire_once_per_change_and_a_restart_with_the_door_open_fir
     assert fire(deb, "sensors/serverroom/door", {"open": True}, 710.0) == ["server_door_opened"]
     assert fire(deb, "sensors/serverroom/door", {"open": True}, 720.0) == []
 
+    # The primary debounce turns a group filing through into one opening.
+    door_rule = next(r for r in rules if r.topic.filter == "sensors/serverroom/door")
+    assert 15 <= door_rule.actions[0].debounce_s <= 30
+
     # Each combo fires exactly once while it stays plugged in.
     combo_a, _ = _yaml_combos()
     deb = Debouncer()
@@ -372,6 +400,40 @@ def test_state_sensors_fire_once_per_change_and_a_restart_with_the_door_open_fir
     assert hits == [["patch_combo_a"], [], []]
     fire(deb, "sensors/patchbay/state", {"complete": False, "combo": "V1-D6"}, 300.0)
     assert fire(deb, "sensors/patchbay/state", {"complete": True, "combo": combo_a}, 400.0) == ["patch_combo_a"]
+
+
+def test_the_door_contact_is_direction_blind_entry_and_exit_each_fire_once():
+    """The wire loops touch whenever the door is open, so the story hears an
+    entry with the keypad code and an exit by the inside handle alike: one
+    `server_door_opened` each (shut in between), never more. The story's
+    cutscene latch decides what each one means."""
+    rules = _show().sensors
+
+    def fire(deb, payload, now):
+        return [c.fields["name"] for c in evaluate_sensors(rules, "sensors/serverroom/door", payload, deb, now=now)]
+
+    opened = {"open": True, "tape": True, "mode": "tape"}
+    shut = {"open": False, "tape": False, "mode": "tape"}
+    deb = Debouncer()
+    fire(deb, shut, 0.0)  # boot: shut
+    # An entry: the code is typed outside, the door swings open, then shuts.
+    assert fire(deb, opened, 100.0) == ["server_door_opened"]
+    assert fire(deb, opened, 101.0) == []  # still open: no repeat
+    assert fire(deb, shut, 104.0) == []
+    # An exit a minute later: the inside handle, no code. The same contact.
+    assert fire(deb, opened, 160.0) == ["server_door_opened"]
+    assert fire(deb, shut, 163.0) == []
+    # Neither is lost to the other, and neither fires twice.
+    # A group filing through within the debounce: open, shut, open again is
+    # one opening…
+    assert fire(deb, opened, 300.0) == ["server_door_opened"]
+    assert fire(deb, shut, 303.0) == []
+    assert fire(deb, opened, 306.0) == []
+    assert fire(deb, shut, 309.0) == []
+    # …and the next opening after the window is its own.
+    assert fire(deb, opened, 330.0) == ["server_door_opened"]
+    # Propped open for ten minutes: nothing more.
+    assert [fire(deb, opened, 330.0 + t) for t in (60.0, 300.0, 600.0)] == [[], [], []]
 
 
 # -- 3. the combos agree three ways ----------------------------------------------------
