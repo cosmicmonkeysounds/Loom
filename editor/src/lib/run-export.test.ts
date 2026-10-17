@@ -75,7 +75,9 @@ describe('the whole ledger (T7-03)', () => {
     expect(rows).toHaveLength(12_001)
     expect(rows.map((r) => r.seq)).toEqual(Array.from({ length: 12_001 }, (_, i) => i))
     expect(calls).toEqual([null, 4999, 9999])
-    expect(rows[0]!.ts).toBe(0)
+    // A row this console never saw land carries no time (not 0, the Unix epoch).
+    expect(rows[0]!.ts).toBeUndefined()
+    expect('ts' in rows[0]!).toBe(false)
     expect(rows[12_000]!.ts).toBe(1000 + 12_000)
   })
 

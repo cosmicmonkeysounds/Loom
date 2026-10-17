@@ -107,17 +107,21 @@ const MAX_PAGES = 400
 export type FetchLedgerPage = (after: number | null, limit: number) => Promise<ModLogPage>
 
 /** A page row → a ledger entry: the sim feed's raw `SimEvent` (its index in
- *  the ledger is its seq), or an already-wrapped `{seq, ts?, event}`. The
- *  story-clock `ts` comes from the row, else from what this console saw. */
+ *  the ledger is its seq), or an already-wrapped `{seq, ts?, event}`. `ts`
+ *  comes from the row, else from when this console saw it land; a row it
+ *  never saw has none (never 0, which reads as the Unix epoch). */
 function ledgerEntryOf(raw: unknown, index: number, seen: ReadonlyMap<number, number>): LedgerEntry | null {
   if (raw === null || typeof raw !== 'object') return null
   const o = raw as Record<string, unknown>
+  const at = (seq: number, own?: unknown) => {
+    const ts = typeof own === 'number' ? own : seen.get(seq)
+    return ts !== undefined ? { ts } : {}
+  }
   if (o['event'] !== null && typeof o['event'] === 'object' && typeof (o['event'] as Record<string, unknown>)['type'] === 'string') {
     const seq = typeof o['seq'] === 'number' ? o['seq'] : index
-    const ts = typeof o['ts'] === 'number' ? o['ts'] : (seen.get(seq) ?? 0)
-    return { seq, ts, event: o['event'] as LedgerEntry['event'] }
+    return { seq, ...at(seq, o['ts']), event: o['event'] as LedgerEntry['event'] }
   }
-  if (typeof o['type'] === 'string') return { seq: index, ts: seen.get(index) ?? 0, event: raw as LedgerEntry['event'] }
+  if (typeof o['type'] === 'string') return { seq: index, ...at(index), event: raw as LedgerEntry['event'] }
   return null
 }
 
@@ -127,7 +131,7 @@ function ledgerEntryOf(raw: unknown, index: number, seen: ReadonlyMap<number, nu
  * when a page fails (the caller falls back to `seen`).
  */
 export async function fetchWholeLedger(fetchPage: FetchLedgerPage, seen: readonly LedgerEntry[] = [], limit: number = LEDGER_PAGE): Promise<LedgerEntry[]> {
-  const ts = new Map(seen.map((e) => [e.seq, e.ts]))
+  const ts = new Map(seen.flatMap((e) => (e.ts !== undefined ? [[e.seq, e.ts] as const] : [])))
   const out: LedgerEntry[] = []
   let index = 0
   let after: number | null = null

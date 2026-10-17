@@ -271,11 +271,13 @@ export interface SpaceSummary {
 }
 
 /** One raw ledger row (the Log page) — the engine's `SimEvent` as it
- *  landed, with its position and the story clock. */
+ *  landed, with its position and when this console saw it. */
 export interface LedgerEntry {
   seq: number
-  /** Story-clock ms when the event landed. */
-  ts: number
+  /** When the event landed: story-clock ms on a local run, the console's
+   *  receive time (epoch ms) on a server run. Absent on a row this console
+   *  never saw land — one back-filled off `/api/mod/log` for an export. */
+  ts?: number
   event: SimEvent
 }
 

@@ -47,7 +47,8 @@ function toneOf(type: SimEventType): string {
   }
 }
 
-function clock(ts: number): string {
+function clock(ts: number | undefined): string {
+  if (ts === undefined) return '—'
   const s = Math.floor(ts / 1000)
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 }
