@@ -649,7 +649,7 @@ his heart. `facts:` gains `Night.heart_opened` / `Night.talked_down`,
 **Powers** (`INTERACTION … who: agent` in `cast/trabolta.loom`). Every use
 is a journaled signal fired *as* Trabolta. Outside its window a power
 answers *"That function is not available yet."* / *"I do not have the
-strength."* and spends nothing (a use counts only when the story did something with it). A power fired with no
+strength."* and spends nothing (a use counts only when the story did something with it). His own uses journal `by: agent:Trabolta`, so the counts survive a server restart; a director's press of the same power never counts. A power fired with no
 program on the thread (from a performer's Cast thread) does nothing and
 says nothing, so no refusal ever lands in the public lobby. An empty
 pop-up or announcement and a non-positive amount are refused out loud.
