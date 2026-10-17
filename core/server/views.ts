@@ -550,8 +550,9 @@ export function notePress(sim: Sim, batch: readonly SimEvent[]): void {
 }
 
 /** Log entries that start a new input (a press, a tick, a typed line, a
- *  join, a scan) — where a press nobody noted (`notePress`: the editor's
- *  in-browser rehearsal, a bare `Sim` in a test) is taken to end. */
+ *  join, a scan) — where a press nobody noted (`notePress`: a bare `Sim`
+ *  in a test; the editor's in-browser rehearsal notes its presses) is taken
+ *  to end. */
 const CUE_INPUTS: ReadonlySet<string> = new Set(["signal", "tick", "chat", "accountCreated", "scanned"]);
 
 /** What `refusedPress` needs from the model, per compiled model: the named
