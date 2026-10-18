@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import runPageSource from './RunPage.tsx?raw'
 import { CockpitPhase, RunBackend, RunMode, type RunInfo } from '@/store/cockpit'
-import { recapPath, runAge, runStatusText, runTone } from './run-chrome'
+import { TAB_FADE_PX, overflowEdges, recapPath, revealScrollLeft, runAge, runStatusText, runTone, tabFadeMask } from './run-chrome'
 
 const base: RunInfo = {
   backend: RunBackend.Server,
@@ -59,5 +59,30 @@ describe('the recap link', () => {
     const src: string = runPageSource
     expect(src.includes('recapPath(run.eventId)')).toBe(true)
     expect(src.includes('run-recap')).toBe(true)
+  })
+})
+
+describe('the header tab strip when it scrolls', () => {
+  it('names the edges that hide tabs', () => {
+    expect(overflowEdges(0, 500, 500)).toEqual({ left: false, right: false })
+    expect(overflowEdges(0, 300, 500)).toEqual({ left: false, right: true })
+    expect(overflowEdges(100, 300, 500)).toEqual({ left: true, right: true })
+    expect(overflowEdges(200, 300, 500)).toEqual({ left: true, right: false })
+  })
+
+  it('fades only an edge that hides tabs', () => {
+    expect(tabFadeMask({ left: false, right: false })).toBeUndefined()
+    expect(tabFadeMask({ left: false, right: true })).toBe(`linear-gradient(to right, black, black, black calc(100% - ${TAB_FADE_PX}px), transparent)`)
+    expect(tabFadeMask({ left: true, right: false })).toBe(`linear-gradient(to right, transparent, black ${TAB_FADE_PX}px, black, black)`)
+  })
+
+  it('scrolls just enough to show the open tab clear of the fades', () => {
+    // Already in view: stays put.
+    expect(revealScrollLeft(0, 300, 100, 60)).toBe(0)
+    // Off the right edge (the header narrowed under it): its right end plus the fade.
+    expect(revealScrollLeft(0, 300, 400, 60)).toBe(400 + 60 + TAB_FADE_PX - 300)
+    // Off the left edge.
+    expect(revealScrollLeft(300, 300, 100, 60)).toBe(100 - TAB_FADE_PX)
+    expect(revealScrollLeft(300, 300, 10, 60)).toBe(0)
   })
 })

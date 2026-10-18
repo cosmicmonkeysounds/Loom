@@ -26,7 +26,7 @@ import { RunPage } from './RunPage'
 import { LifecycleControls } from './LifecycleControls'
 import { LifecycleBanner } from './LifecycleBanner'
 import { TerminalsPill } from './TerminalsCard'
-import { TONE, runStatusText, runTone } from './run-chrome'
+import { TONE, overflowEdges, revealScrollLeft, runStatusText, runTone, tabFadeMask } from './run-chrome'
 
 interface TabSpec {
   id: CockpitTab
@@ -134,10 +134,33 @@ function StageChrome() {
   const projectId = useWorkspace((s) => s.projectId)
   const seated = usePlayers((s) => s.slots.length > 0)
   useEffect(() => usePlayers.getState().bind(projectId), [projectId])
-  // A narrow stage scrolls the tabs: keep the open one in sight.
+  // A narrow stage scrolls the tabs: keep the open one in sight — on a tab
+  // switch, and whenever the header narrows under it (a resize, the tray or
+  // the rail opening) — and fade an edge that hides more tabs.
+  // (`relative`: the strip is its tabs' offsetParent, so `offsetLeft` is
+  // in the strip's own content coordinates.)
   const tablist = useRef<HTMLDivElement>(null)
+  const [edges, setEdges] = useState({ left: false, right: false })
   useEffect(() => {
-    tablist.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    const el = tablist.current
+    if (el === null) return
+    const measure = () => {
+      const next = overflowEdges(el.scrollLeft, el.clientWidth, el.scrollWidth)
+      setEdges((e) => (e.left === next.left && e.right === next.right ? e : next))
+    }
+    const reveal = () => {
+      const on = el.querySelector<HTMLElement>('[aria-selected="true"]')
+      if (on !== null) el.scrollLeft = revealScrollLeft(el.scrollLeft, el.clientWidth, on.offsetLeft, on.offsetWidth)
+      measure()
+    }
+    reveal()
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(reveal)
+    ro?.observe(el)
+    el.addEventListener('scroll', measure, { passive: true })
+    return () => {
+      ro?.disconnect()
+      el.removeEventListener('scroll', measure)
+    }
   }, [tab])
 
   // A page that just became unavailable (run ended, lens engaged) yields
@@ -157,7 +180,14 @@ function StageChrome() {
         {/* The tabs scroll sideways rather than clip when the stage is narrow
             (both side panels open at 1100 px): Director, Mind and Log stay
             reachable. */}
-        <div ref={tablist} role="tablist" className="flex min-w-0 max-w-full items-stretch overflow-x-auto [scrollbar-width:thin]">
+        <div
+          ref={tablist}
+          role="tablist"
+          className="relative flex min-w-0 max-w-full items-stretch overflow-x-auto [scrollbar-width:thin]"
+          style={{ maskImage: tabFadeMask(edges), WebkitMaskImage: tabFadeMask(edges) }}
+          data-overflow={[edges.left && 'left', edges.right && 'right'].filter(Boolean).join(' ') || undefined}
+          data-testid="run-tabs"
+        >
           {TABS.map((tb) => {
             const enabled = available(tb)
             return (
