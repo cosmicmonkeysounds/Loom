@@ -250,8 +250,10 @@ scan readout), their story position on the map, their variables, and
 one button to **Be** them. A performer part's Inspector says whether a
 booth holds it (amber *signed in · phone offline* when that phone
 dropped); an agent-voiced character's says whether a stagehand worker is
-voicing it right now; with none, its `hold:` line answers and you can
-reply as it from Chat. The **Log** page's participant filter shows
+voicing it right now. A worker that stays connected but stops answering
+(its oldest reply timed out: a sleeping laptop, a wedged model) counts as
+away until it answers again. With none, its `hold:` line answers and you
+can reply as it from Chat. The **Log** page's participant filter shows
 every raw engine event that mentions them.
 
 **Hand out a clue or a quest by hand.** A guest's Inspector has a

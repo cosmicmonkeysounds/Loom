@@ -23,7 +23,7 @@ import { Sim } from "../src/runtime/sim/index.ts";
 
 const T: AgentThread = { character: "Trabolta", channel: "dm:Trabolta", audience: ["g-1"] };
 
-function hubHarness(opts: { replyTimeoutMs?: number; queueMaxAgeMs?: number } = {}) {
+function hubHarness(opts: { replyTimeoutMs?: number; queueMaxAgeMs?: number; presence?: () => void } = {}) {
   let clock = 1000;
   let builds = 0;
   const typing: boolean[] = [];
@@ -397,6 +397,24 @@ describe("AgentHub", () => {
       expect((r as unknown as { text: string }).text).not.toBe((first as unknown as { text: string }).text); // rebuilt after the hold line
       expect(r.at).toBe(first.at);
     }
+  });
+
+  it("a stalled worker counts as away until it answers, and presence is pushed at the stall and at the answer (review 3)", () => {
+    let pushes = 0;
+    const h = hubHarness({ replyTimeoutMs: 10_000, presence: () => (pushes += 1) });
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    h.hub.line(T);
+    expect(h.hub.onlineCharacters()).toEqual(["Trabolta"]);
+    const before = pushes;
+    h.tick(10_001);
+    h.hub.sweep(); // the head timed out: the laptop stalls
+    expect(pushes).toBe(before + 1);
+    expect(h.hub.onlineCharacters()).toEqual([]);
+    expect(h.hub.isOnline("Trabolta")).toBe(false);
+    expect(h.hub.settle(a.requests().at(-1)!.id, "laptop")).not.toBeNull(); // it answers again
+    expect(pushes).toBe(before + 2);
+    expect(h.hub.isOnline("Trabolta")).toBe(true);
   });
 
   it("one slow reply that the worker follows with an answer inside the hold window holds nobody (review 2)", () => {

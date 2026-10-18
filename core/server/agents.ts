@@ -651,7 +651,7 @@ export interface AgentHubOptions {
   admits?: (thread: AgentThread) => boolean;
   /** Show / hide the "… is typing" indicator in the thread. */
   typing?: (thread: AgentThread, on: boolean) => void;
-  /** Presence changed (a worker came or went). */
+  /** Presence changed (a worker came or went, stalled or answered again). */
   presence?: () => void;
   /** A worker's oldest dispatched request with no answer this long after it
    *  reached the head of the worker's line is re-dispatched. */
@@ -705,10 +705,13 @@ export class AgentHub {
     return (this.o.now ?? Date.now)();
   }
 
-  /** Characters with at least one worker connected. */
+  /** Characters with at least one worker connected and still answering —
+   *  the presence Run, the phones and the screens show. A worker that
+   *  stopped answering (stalled) counts as away: its guests get the hold
+   *  line, so the directors see a character to answer by hand. */
   onlineCharacters(): string[] {
     const out = new Set<string>();
-    for (const w of this.workers.values()) for (const c of w.characters) out.add(c);
+    for (const w of this.workers.values()) if (!this.stalled.has(w.id)) for (const c of w.characters) out.add(c);
     return [...out].sort();
   }
 
@@ -717,13 +720,9 @@ export class AgentHub {
     return [...this.workers.values()].map((w) => ({ name: w.name, characters: [...w.characters].sort() }));
   }
 
+  /** Is some worker voicing `character` connected and still answering
+   *  (`onlineCharacters`)? False → its requests get the hold line. */
   isOnline(character: string): boolean {
-    for (const w of this.workers.values()) if (w.characters.has(character)) return true;
-    return false;
-  }
-
-  /** Is some worker voicing `character` online and still answering? */
-  private canAnswer(character: string): boolean {
     for (const w of this.workers.values()) if (w.characters.has(character) && !this.stalled.has(w.id)) return true;
     return false;
   }
@@ -867,9 +866,10 @@ export class AgentHub {
     // An answer: that worker is answering (again, if it had gone quiet).
     const by = workerId ?? r.worker;
     if (by !== null && this.workers.has(by)) {
-      this.stalled.delete(by);
+      const was = this.stalled.delete(by);
       this.probation.delete(by);
       this.progress.set(by, this.now());
+      if (was) this.o.presence?.();
     }
     return { req: r.req, followUp: r.followUp };
   }
@@ -934,6 +934,7 @@ export class AgentHub {
         if (stalls) {
           this.stalled.set(worker, now);
           this.probation.delete(worker);
+          this.o.presence?.();
         }
         this.workers.get(worker)?.send("cancel", { id });
         this.o.typing?.(r.req.thread, false);
@@ -949,7 +950,7 @@ export class AgentHub {
         if (stalls) this.moveLine(worker);
       } else if (r.worker === null && now - r.req.at > maxAge) {
         this.giveUp(id, r);
-      } else if (r.worker === null && !r.held && now - r.createdAt >= holdAfter && !this.canAnswer(r.req.character)) {
+      } else if (r.worker === null && !r.held && now - r.createdAt >= holdAfter && !this.isOnline(r.req.character)) {
         // Nobody can answer: say the hold line once, keep the request queued
         // so a worker that comes back still answers it.
         r.held = true;
@@ -986,10 +987,11 @@ export class AgentHub {
     for (const [id, since] of [...this.stalled]) {
       const w = this.workers.get(id);
       if (w === undefined || now - since < timeout || this.headOf(id) !== null) continue;
-      if (![...w.characters].every((c) => this.canAnswer(c))) continue;
+      if (![...w.characters].every((c) => this.isOnline(c))) continue;
       this.stalled.delete(id);
       this.probation.add(id);
       this.progress.set(id, now);
+      this.o.presence?.();
     }
   }
 
@@ -999,7 +1001,7 @@ export class AgentHub {
   private moveLine(workerId: string): void {
     const stalledWorker = this.workers.get(workerId);
     for (const [id, r] of this.open) {
-      if (r.worker !== workerId || !this.canAnswer(r.req.character)) continue;
+      if (r.worker !== workerId || !this.isOnline(r.req.character)) continue;
       stalledWorker?.send("cancel", { id });
       this.o.typing?.(r.req.thread, false);
       r.worker = null;
