@@ -153,7 +153,7 @@ TRAIT Enforcer is Person
       reply 🛡 Sweep everyone back to the Desktop.
 
   when five_minute_warning:
-    if Night.step < 9 and Night.summons_open != true and Night.summons_closed != true:
+    if Night.step == 8 and Night.summons_open != true and Night.summons_closed != true:
       reply 🛡 Scan every program arriving at the Desktop: that is their check-in.
 
   when zip_everyone_out:

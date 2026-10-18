@@ -163,4 +163,73 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     expect(live).not.toContain("truth_pong");
     expect(sheet(sim).next).toBe(null);
   });
+
+  /** Through V6 and the auto C2 (the presses a director makes). */
+  const toTruth1 = (sim: Sim) => {
+    for (const n of ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth"]) press(sim, n);
+  };
+  /** A refused press: only # hosts hears, nothing moves, LAST stays. */
+  function refuses(sim: Sim, name: string, line: string) {
+    const before = { phase: v(sim, "Night.phase"), step: v(sim, "Night.step"), round: v(sim, "Night.round"), last: sheet(sim).last };
+    const r = press(sim, name);
+    expect(r.refused, name).toBe(true);
+    expect(hosts(r.out), name).toEqual([JSON.stringify(line)]);
+    expect(r.out.filter((e) => e.type === "beatEntered" || (e.type === "directive" && e.verb === "cue")), name).toEqual([]);
+    expect({ phase: v(sim, "Night.phase"), step: v(sim, "Night.step"), round: v(sim, "Night.round"), last: sheet(sim).last }, name).toEqual(before);
+  }
+
+  it("T5-crew-cards-04: 📺 refuses until the three results are read, and the next 📋 still settles", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    refuses(sim, "second_hunt_preview", "📺 Not yet: close the filings (⏱), then read the three results (📋). Nothing happens.");
+    refuses(sim, "start_the_second_hunt", "📓 Not yet: 📺 the hunt 2 preview (the ad hijack) first. Nothing happens.");
+    refuses(sim, "five_minute_warning", "⏳ Not yet: the summons ends hunt 2's hour (📓 first). Nothing happens.");
+    press(sim, "close_the_filing");
+    press(sim, "read_the_results");
+    refuses(sim, "second_hunt_preview", "📺 Not yet: read Q2's results first (📋). Nothing happens.");
+    expect(sheet(sim)).toEqual({ last: "read_the_results", next: "read_the_results" });
+    expect(press(sim, "read_the_results").refused).toBe(false);
+    expect(v(sim, "Night.results_q")).toBe(2);
+    press(sim, "read_the_results");
+    expect(sheet(sim).next).toBe("second_hunt_preview");
+    expect(press(sim, "second_hunt_preview").refused).toBe(false);
+    expect(v(sim, "Night.phase")).toBe("malware");
+    refuses(sim, "second_hunt_preview", "📺 Not again: the ad hijack has already played. Nothing happens.");
+  });
+
+  it("T5-crew-cards-04: before Truth Pong a director's 📺 / 📊 / 🕚 refuse in order, never skipping a step's work", { timeout: SLOW }, () => {
+    const sim = boot();
+    refuses(sim, "second_hunt_preview", "📺 Too early: the First Moment of Truth (⚖️) and its results come first. Nothing happens.");
+    toTruth1(sim);
+    for (const n of ["close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt", "five_minute_warning", "summons_closed", "truth_pong"]) {
+      expect(press(sim, n).refused, n).toBe(false);
+    }
+    // 📊 before 🧮: round 2 is never lost.
+    refuses(sim, "trust_chart", "📊 Not yet: 🏓 Truth Pong, then 🧮 the tally first. Nothing happens.");
+    refuses(sim, "trabolta_overshares", "🤖 Not yet: 📊 the Trust Chart first. Nothing happens.");
+    refuses(sim, "y2k_clock", "🕚 Not yet: 🤖 Trabolta shares the next facts first (round 3 opens there). Nothing happens.");
+    expect(sheet(sim)).toEqual({ last: "truth_pong", next: "round_two_tally" });
+    press(sim, "round_two_tally");
+    expect(v(sim, "Night.tallied")).toBe(true);
+    expect(press(sim, "trust_chart").refused).toBe(false);
+    expect(v(sim, "Night.phase")).toBe("trust_chart");
+    press(sim, "show_the_rankings");
+    // 🗜 then 🕚 (skipping 🤖): refused, round 3 still opens at 🤖.
+    press(sim, "zip_everyone_out");
+    refuses(sim, "y2k_clock", "🕚 Not yet: 🤖 Trabolta shares the next facts first (round 3 opens there). Nothing happens.");
+    expect(v(sim, "Night.round")).toBe(2);
+    expect(sheet(sim)).toEqual({ last: "show_the_rankings", next: "trabolta_overshares" });
+    expect(press(sim, "trabolta_overshares").refused).toBe(false);
+    expect(v(sim, "Night.round")).toBe(3);
+    expect(v(sim, "Night.scenario")).not.toBe(0);
+    expect(sheet(sim)).toEqual({ last: "trabolta_overshares", next: "y2k_clock" });
+    // A printer lid opened late sets the step back to the beans: the
+    // overshare still never replays, and NEXT stays on 🕚.
+    press(sim, "printer_opened");
+    refuses(sim, "trabolta_overshares", "🤖 Not again: the overshare has already played. Nothing happens.");
+    expect(sheet(sim)).toEqual({ last: "trabolta_overshares", next: "y2k_clock" });
+    expect(press(sim, "y2k_clock").refused).toBe(false);
+    expect(v(sim, "Night.phase")).toBe("y2k");
+    expect(sheet(sim)).toEqual({ last: "y2k_clock", next: null });
+  });
 });

@@ -51,19 +51,19 @@ CHARACTER Clippy is Host
       reply 📋 3/X is in What Clippy knows. The First Moment of Truth: press the question number that was answered.
 
   when second_hunt_preview:
-    if Night.step < 7:
+    if Night.step < 7 and Night.phase == "truth_1" and Night.results_q >= 3:
       reply 📱 PRIVATE — TRABOLTA → CLIPPY: Don't let everyone know but if the malware continues we are all going to die. Tell them something reassuring. I know this is probably creating some intense emotions for you but try not to show the others.
 
   when five_minute_warning:
-    if Night.step < 9 and Night.summons_open != true and Night.summons_closed != true:
+    if Night.step == 8 and Night.summons_open != true and Night.summons_closed != true:
       reply 📋 5/X is in What Clippy knows. Truth Pong. Be more excited than ever.
 
   when trust_chart:
-    if Night.step < 11:
+    if Night.step < 11 and Night.tallied == true:
       reply 📋 6/X is in What Clippy knows. Applaud the top program. If the printer is full of beans, it is the malware getting worse.
 
   when y2k_clock:
-    if Night.step < 14:
+    if Night.step < 14 and Night.scenario != 0:
       reply 📋 7/X is in What Clippy knows. The clock. You may not take sides on air.
 
   when final_reveal:
