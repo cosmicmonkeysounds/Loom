@@ -301,4 +301,53 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     expect(v(sim, "Night.resurrected")).toBe(true);
     expect(sheet(sim).last).toBe("resurrection");
   });
+
+  /** Dialogue lines in The Desktop by `speaker`. */
+  const desktop = (evs: SimEvent[], speaker: string) =>
+    (evs.filter((e) => e.type === "dialogue") as Extract<SimEvent, { type: "dialogue" }>[]).filter((e) => e.speaker === speaker && e.setting === "The Desktop").map((e) => e.text);
+  const directives = (evs: SimEvent[]) => (evs.filter((e) => e.type === "directive") as Extract<SimEvent, { type: "directive" }>[]).map((e) => `${e.verb} ${e.args}`.trim());
+
+  it("T5-crew-cards-07 (D4): ✍ makes the director's own award lines replace Trabolta's template line; the fanfare and the slide stay", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    press(sim, "patch_combo_a");
+    advance(sim, 11);
+    press(sim, "trabolta_recounts");
+    press(sim, "start_the_ceremony");
+    expect(v(sim, "Night.ceremony_host")).toBe("Trabolta");
+    expect(v(sim, "Night.award_lines")).toBe("template");
+    // The template line by default.
+    const g2 = press(sim, "award_most_trusted", "g1").out;
+    expect(desktop(g2, "Trabolta").some((t) => t.startsWith("Most Trusted."))).toBe(true);
+    // ✍: no Trabolta line, the fanfare + the slide still play.
+    const on = press(sim, "own_award_lines");
+    expect(on.refused).toBe(false);
+    expect(hosts(on.out)[0]).toContain("✍ Award lines: yours.");
+    expect(v(sim, "Night.award_lines")).toBe("director");
+    const g3 = press(sim, "award_least_trusted", "g1").out;
+    expect(desktop(g3, "Trabolta")).toEqual([]);
+    expect(directives(g3)).toContain("sfx award_fanfare");
+    expect(directives(g3)).toContain("cue screens_award_least_trusted");
+    expect(v(sim, "Night.screen")).toBe("award_least_trusted");
+    // The cue sheet: ✍ is off-sequence, NEXT is the next award.
+    expect(sheet(sim)).toEqual({ last: "award_least_trusted", next: "award_frequent_flyer" });
+    // Again: the template is back.
+    press(sim, "own_award_lines");
+    expect(v(sim, "Night.award_lines")).toBe("template");
+    expect(desktop(press(sim, "award_frequent_flyer", "g1").out, "Trabolta").length).toBe(1);
+  });
+
+  it("T5-crew-cards-07 (D4): ✍ never silences Clippy, who reads every line after destroyed", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    press(sim, "patch_combo_b");
+    advance(sim, 11);
+    press(sim, "clippy_reads_summary");
+    press(sim, "start_the_ceremony");
+    expect(v(sim, "Night.ceremony_host")).toBe("Clippy");
+    press(sim, "own_award_lines");
+    const g2 = press(sim, "award_most_trusted", "g1").out;
+    expect(desktop(g2, "Clippy").some((t) => t.startsWith("Award. Most Trusted."))).toBe(true);
+    expect(desktop(g2, "Trabolta")).toEqual([]);
+  });
 });

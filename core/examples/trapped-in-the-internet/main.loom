@@ -2639,6 +2639,12 @@ INTERACTION clippy_reads_summary
   who: admin
   while: Night.ending == "destroyed"
 
+INTERACTION own_award_lines
+  label: ✍ Our own award lines (Trabolta hosts): on / off
+  who: admin
+  sequence: false
+  description: For a second director who prepared Trabolta's award lines (job 9.2). Press it once (any time before the awards): each award then plays its fanfare and slide but skips Trabolta's template line, and you post yours as Trabolta in The Desktop right after you fire the award (the TV speaks it). Press again to bring the template lines back. Clippy's lines (after destroyed / rave), the sounds and the slides never change.
+
 INTERACTION start_the_ceremony
   label: G1 · 🏆 Start the awards ceremony (after the ending)
   who: admin
@@ -4235,6 +4241,16 @@ when present_award:
   if Night.ceremony == true:
     -> Present Award
 
+// ✍ (D4): the second director's own award lines replace Trabolta's
+// template line in Present Award (beats/ceremony.loom); a toggle.
+when own_award_lines:
+  if Night.award_lines == "director":
+    set Night.award_lines = "template"
+    broadcast "✍ Award lines: the template again. Trabolta reads each award's line himself." to channel(hosts)
+  else:
+    set Night.award_lines = "director"
+    broadcast "✍ Award lines: yours. Each award plays its fanfare and slide with no Trabolta line: post yours as Trabolta in The Desktop right after you fire it. Clippy's lines are unchanged. Press ✍ again for the template." to channel(hosts)
+
 // ── Anytime ──
 
 // Lore shared TO Trabolta counts as a delivery for the sharer. Lore
@@ -4415,6 +4431,7 @@ set Night.award_title = "none"
 set Night.award_winner = "none"
 set Night.award_value = "none"
 set Night.awards_given = 0
+set Night.award_lines = "template"
 set Kernel.combo_a = "V2-D5,V4-D1,V6-D8,V7-D3"
 set Kernel.combo_b = "V1-D6,V3-D2,V5-D7,V8-D4"
 set Kernel.anti_ai = "MS Paint"
