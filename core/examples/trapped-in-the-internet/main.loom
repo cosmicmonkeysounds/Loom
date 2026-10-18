@@ -3377,6 +3377,8 @@ when spin_the_bottle:
     broadcast "🍾 Read a question's results first (📋)." to channel(hosts)
   else if Night.bottle_open == true:
     broadcast "🍾 The bottle is still open: 🗣 Answered or 🙅 Refused first." to channel(hosts)
+  else if Night.bottle_picks >= 5 and Night.results_q >= 3:
+    broadcast "🍾 Five picks for question 3. Next: 📺 Preview hunt 2." to channel(hosts)
   else if Night.bottle_picks >= 5:
     broadcast "🍾 Five picks for question {Night.results_q}. Read the next results (📋)." to channel(hosts)
   else:
@@ -3387,9 +3389,13 @@ when spin_the_bottle:
     set Night.terminals = "truth_or_dare"
     do pick bottle_landed from {[p for p in Persons where p.cleared == true and p.corrupted != true and p.marked != true and p.afk != true and p.captured != true and p.location != "The Internet" and p.bottle_q != Night.bottle_q]} else bottle_empty
 
+// After question 3 there are no next results: 📋 would only refuse.
 when bottle_empty:
   set Night.bottle_open = false
-  broadcast "🍾 Nobody left to pick for question {Night.bottle_q}. Read the next results (📋)." to channel(hosts)
+  if Night.bottle_q >= 3:
+    broadcast "🍾 Nobody left to pick for question 3. Next: 📺 Preview hunt 2." to channel(hosts)
+  else:
+    broadcast "🍾 Nobody left to pick for question {Night.bottle_q}. Read the next results (📋)." to channel(hosts)
 
 when bottle_announce:
   -> Bottle Landed
