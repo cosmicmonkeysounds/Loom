@@ -27,7 +27,7 @@ import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
 import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, guestOwnRow, decisionChannelFor, isPinnedRoom, visibleTo, type ChatMessage } from "./chat.ts";
 import { DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
-import { SSE_MOD_QUEUE_CAP, ipOf, queryTokenOf, readBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
+import { CHAT_TEXT_MAX, SSE_MOD_QUEUE_CAP, chatTooLong, ipOf, queryTokenOf, readBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
 import { RateLimiter, limiterFor, rateLimitsFromEnv, type RateLimits } from "./rate-limit.ts";
 import { handleMetrics } from "./routes/metrics.ts";
 import { handleModLog } from "./routes/mod-log.ts";
@@ -1630,7 +1630,7 @@ export class EventRuntime {
       sendJson(res, 409, { error: "no scenario loaded" });
       return;
     }
-    const text = str(body, "say").trim().slice(0, 2000);
+    const text = str(body, "say").trim().slice(0, CHAT_TEXT_MAX);
     if (text !== "") {
       this.fanout(this.commit("say", req.character, req.thread.channel, text, null, req.thread.audience));
     }
@@ -3408,6 +3408,7 @@ export class EventRuntime {
           sendJson(res, 400, { error: "empty message" });
           return true;
         }
+        if (chatTooLong(res, text)) return true;
         // A guest's `dm:` thread is with a declared character, under its
         // canonical id: `dm:trabolta` (a terminal provisioned in lower case)
         // is the real `dm:Trabolta`, and `dm:nobody` is no thread at all —
@@ -3823,6 +3824,7 @@ export class EventRuntime {
           sendJson(res, 400, { error: "empty message" });
           return true;
         }
+        if (chatTooLong(res, text)) return true;
         let channel = str(body, "channel") || "lobby";
         let audience: "all" | string[] | undefined;
         if (channel.startsWith("guest:")) {

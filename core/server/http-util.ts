@@ -27,6 +27,21 @@ export class PayloadTooLarge extends Error {
  *  (`/api/mod/load`, project file saves) while stopping unbounded buffering. */
 export const MAX_BODY_BYTES = 4 * 1024 * 1024;
 
+/** The longest typed chat line a guest or a booth may post (a director's
+ *  `/api/mod/say` is deliberate and keeps none).
+ *  Longer is refused (413), not cut, so the composer keeps it to shorten:
+ *  every line is journaled, fanned out live and replayed in each reconnect
+ *  history, so one 4 MB line would otherwise ride every phone all night.
+ *  An agent's reply is cut to the same length. */
+export const CHAT_TEXT_MAX = 2000;
+
+/** Answer 413 when a chat line is over `CHAT_TEXT_MAX`; true when refused. */
+export function chatTooLong(res: ServerResponse, text: string): boolean {
+  if (text.length <= CHAT_TEXT_MAX) return false;
+  sendJson(res, 413, { error: `message too long (max ${CHAT_TEXT_MAX} characters)` });
+  return true;
+}
+
 /** Read + JSON-parse a request body, tolerating an empty or malformed one.
  *  Throws `PayloadTooLarge` (→ 413 at the router) past `limit` bytes. */
 export async function readBody(req: IncomingMessage, limit = MAX_BODY_BYTES): Promise<Record<string, unknown>> {
