@@ -2352,9 +2352,14 @@ ROLE Program
 // `sequence: false` marks a cue a machine fires (the duck game, the door
 // contact, the printer, the patch bay, the chess phone), and every optional,
 // anytime or fallback cue that is not the night's next step (the set
-// pieces, 🧾, 🔄, 🗳, 🪩, 💡, the auto midnight) — the sheet ticks it but it
-// never becomes LAST / NEXT, so a duck find or a 💡 can't eat the next cue,
-// and NEXT after 🕚 is the next real step, never 🎆 midnight.
+// pieces, 🧾, 🔄, 🗳, 🪩, 💡, the timers' own steps: C2 ⏰, 📥, ⏳, 🚨 and
+// 🎆 midnight) — the sheet ticks it but it never becomes LAST / NEXT, so a
+// duck find or a 💡 can't eat the next cue, and a timed window (hunt 1,
+// hunt 2's hour, the summons, the Y2K hour) suggests nothing until its
+// timer fires: a tap on the fallback would cut it short.
+// From V6 on, each step's `while:` names its own window (Night.step /
+// Night.phase), so NEXT never skips ahead while a timer runs. A `while:`
+// only steers NEXT: every rule still guards its own press.
 
 INTERACTION call_to_the_desktop
   label: C1/V1 · 📣 Call everyone to the Desktop
@@ -2382,16 +2387,19 @@ INTERACTION start_the_hunt
 INTERACTION hunt_time_up
   label: C2 · ⏰ Hunt over: everyone back to the Desktop (auto at 15 min)
   who: admin
+  sequence: false
 
 INTERACTION first_moment_of_truth
   label: V6 · ⚖️ First Moment of Truth
   who: admin
   description: Opens judging. Clippy has Instructions 3/X.
+  while: Night.step == 6 and Night.judging != true
 
 INTERACTION close_the_filing
   label: ⏱ Close round-one filings now (auto at 2 min)
   who: admin
   description: Ends the last-chance window early. Results can be read only once it is closed. A closed round never reopens.
+  while: Night.filing_open == true
 
 INTERACTION read_the_results
   label: 📋 Results: the next question (press for Q1, Q2, Q3)
@@ -2419,39 +2427,48 @@ INTERACTION are_you_sure
 INTERACTION second_hunt_preview
   label: 📺 Preview hunt 2 → the ad hijack
   who: admin
+  while: Night.step == 6
 
 INTERACTION start_the_second_hunt
   label: 📓 Hunt 2 → quest logs; disperse for 1 hour
   who: admin
+  while: Night.step == 7
 
 INTERACTION truther_download
   label: 📥 Truther Download (auto at +2 min)
   who: admin
+  sequence: false
 
 INTERACTION five_minute_warning
   label: ⏳ Five-minute warning (auto at 55 min)
   who: admin
+  sequence: false
 
 INTERACTION summons_closed
   label: 🚨 Summons closed: late list (auto at +5 min)
   who: admin
+  sequence: false
 
 INTERACTION truth_pong
   label: 🏓 Truth Pong
   who: admin
+  while: Night.step == 9 and Night.summons_closed == true
 
 INTERACTION round_two_tally
   label: 🧮 Trabolta tallies round 2
   who: admin
+  while: Night.phase == "truth_pong" and Night.tallied != true
 
 INTERACTION trust_chart
   label: 📊 Trust Chart
   who: admin
   description: Trabolta's assess power is live from here. To set an assessment by hand, edit <guest>.assessment AND <guest>.trust before the rankings.
+  while: Night.step == 10
 
 INTERACTION show_the_rankings
   label: 🏆 Praise the top, humiliate the bottom, VLC prints
   who: admin
+  while: Night.phase == "trust_chart" and Night.rank_round < 1
 
 INTERACTION printer_button_pressed
   label: 🖨 Printer: START pressed (hardware fallback)
@@ -2471,11 +2488,13 @@ INTERACTION zip_everyone_out
 INTERACTION trabolta_overshares
   label: 🤖 Trabolta shares the next facts (scenario 1–4)
   who: admin
+  while: Night.step >= 11 and Night.step < 13
 
 INTERACTION y2k_clock
   label: 🕚 System clock → 11 PM, 31 Dec 1999 (final round, 60 min)
   who: admin
   description: Fire only after the patch-bay watch radios IN (inside the server room, door shut). From here the first door opening plays The Heart and opens the server room on every phone.
+  while: Night.step == 13
 
 INTERACTION y2k_midnight
   label: 🎆 Midnight (auto at 60 min)
@@ -2554,7 +2573,7 @@ INTERACTION restore_the_lights
 INTERACTION final_reveal
   label: 🌑 Final Truth Scavenger Hunt reveal
   who: admin
-  while: Night.ended != true and Night.step < 16 and Night.final_round != true
+  while: Night.ended != true and Night.step >= 14 and Night.step < 16 and Night.final_round != true
 
 INTERACTION bobbing_for_truth
   label: 🍎 Bobbing for Truth
