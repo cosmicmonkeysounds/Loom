@@ -57,8 +57,17 @@ export function NightBar() {
                   data-state={a.state}
                 >
                   {glyph(a) !== '' && <span className={clsx(a.state === 'past' && 'text-emerald-500', a.state === 'focus' && 'text-indigo-300')}>{glyph(a)}</span>}
-                  <span className="font-mono font-semibold">{a.code ?? k + 1}</span>
-                  {a.title !== null && <span className="hidden max-w-[10rem] truncate @6xl:inline">{a.title}</span>}
+                  {/* An act with a code reads by it (`B`), its title at the widest;
+                      one with only a title reads by the title at every width — a bare
+                      number would match nothing else on the page. */}
+                  {a.code !== null ? (
+                    <>
+                      <span className="font-mono font-semibold">{a.code}</span>
+                      {a.title !== null && <span className="hidden max-w-[10rem] truncate @6xl:inline">{a.title}</span>}
+                    </>
+                  ) : (
+                    <span className="max-w-[8rem] truncate">{a.title ?? 'Before the first act'}</span>
+                  )}
                   <span className="tabular-nums text-zinc-500">
                     {a.firedSpine}/{a.spine.length}
                   </span>
