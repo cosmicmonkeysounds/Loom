@@ -766,9 +766,10 @@ export class AgentHub {
     }
   }
 
-  /** `workerId` answered a request it holds: it is answering. If it had
-   *  stalled it is back, and the lines of the other stalled workers voicing
-   *  its characters move to it. */
+  /** `workerId` answered something — a request it holds, or a late answer
+   *  the hub refuses (its request was given up, answered by hand, or moved
+   *  on): it is answering. If it had stalled it is back, and the lines of
+   *  the other stalled workers voicing its characters move to it. */
   private answering(workerId: string): void {
     if (!this.workers.has(workerId)) return;
     const was = this.stalled.delete(workerId);
@@ -890,12 +891,15 @@ export class AgentHub {
    * into its thread) and whether more was said meanwhile — if so the runtime
    * calls `line` again after committing, so the model answers the rest. Null
    * when the request is unknown / already settled (a late answer after a
-   * timeout re-dispatch, or after a restart) or held by another worker.
+   * timeout re-dispatch, or after a restart) or held by another worker —
+   * a refused late answer still shows its worker is answering.
    */
   settle(requestId: string, workerId?: string): { req: AgentRequest; followUp: boolean } | null {
     const r = this.open.get(requestId);
-    if (r === undefined) return null;
-    if (workerId !== undefined && r.worker !== null && r.worker !== workerId) return null;
+    if (r === undefined || (workerId !== undefined && r.worker !== null && r.worker !== workerId)) {
+      if (workerId !== undefined) this.answering(workerId);
+      return null;
+    }
     this.open.delete(requestId);
     if (this.byThread.get(r.key) === requestId) this.byThread.delete(r.key);
     this.o.typing?.(r.req.thread, false);
@@ -1135,6 +1139,14 @@ export class AgentHub {
     }
     this.open.clear();
     this.byThread.clear();
+    // A fresh night: no worker starts it stalled (shown as away, its first
+    // slow reply held) for a request the restart threw away. One still
+    // wedged stalls again on its next head.
+    const wasStalled = this.stalled.size > 0;
+    this.stalled.clear();
+    this.probation.clear();
+    for (const id of this.workers.keys()) this.progress.set(id, this.now());
+    if (wasStalled) this.o.presence?.();
     this.control({ action: "reset", character: null, by, reason });
   }
 

@@ -673,6 +673,43 @@ describe("AgentHub", () => {
     expect(h.held).toHaveLength(1);
   });
 
+  it("a restart, or a late answer the hub refuses, puts a stalled lone worker back: shown online, and its next slow reply holds nobody (review 4)", () => {
+    const h = hubHarness();
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    h.hub.line({ ...T, audience: ["g-1"] });
+    for (let s = 0; s < 125; s++) {
+      h.tick(1000);
+      h.hub.sweep();
+    }
+    expect(h.hub.isOnline("Trabolta")).toBe(false); // stalled
+    expect(h.hub.answeredByHand({ ...T, audience: ["g-1"] })).toBe(true);
+    h.hub.reset();
+    expect(h.hub.isOnline("Trabolta")).toBe(true);
+    expect(h.hub.onlineCharacters()).toEqual(["Trabolta"]);
+    h.hub.line({ ...T, audience: ["g-2"] });
+    for (let s = 0; s < 25; s++) {
+      h.tick(1000);
+      h.hub.sweep();
+    }
+    expect(h.held).toHaveLength(0);
+    expect(h.hub.settle(a.holds()[0]!.id, "laptop")).not.toBeNull();
+    // A late answer: refused (the director answered by hand), but the worker is back.
+    const g = hubHarness();
+    const b = g.worker("laptop");
+    g.hub.attach(b.w);
+    g.hub.line({ ...T, audience: ["g-1"] });
+    const id = b.requests()[0]!.id;
+    for (let s = 0; s < 125; s++) {
+      g.tick(1000);
+      g.hub.sweep();
+    }
+    expect(g.hub.isOnline("Trabolta")).toBe(false);
+    expect(g.hub.answeredByHand({ ...T, audience: ["g-1"] })).toBe(true);
+    expect(g.hub.settle(id, "laptop")).toBeNull();
+    expect(g.hub.isOnline("Trabolta")).toBe(true);
+  });
+
   it("reset cancels everything open and tells workers", () => {
     const h = hubHarness();
     const a = h.worker("a");
