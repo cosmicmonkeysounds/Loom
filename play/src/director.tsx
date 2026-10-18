@@ -21,13 +21,20 @@ import {
   ARM_MS,
   armFor,
   armStillValid,
+  countdownLeft,
+  cueActs,
   cueRows,
+  cueTitleTags,
   cueValueArgs,
   filterCues,
+  focusActIndex,
   nightPhase,
+  previousActIndex,
+  splitCode,
   takesValue,
   tapCue,
   type Armed,
+  type CueAct,
   type CueInteraction,
   type CueMarks,
   type CueRow,
@@ -60,6 +67,15 @@ export interface DirectorView {
   cues?: CueMarks;
   world?: WorldLine[];
   roster?: Array<{ id: string; name: string; location: string | null; owner?: string | null }>;
+  /** The story clock (ms) when the view was built: the countdowns tick
+   *  down from it plus the wall time since the poll landed. */
+  clock?: number;
+  /** The live countdowns (`countdown:` header lines whose `while` holds
+   *  and whose deadline, in story seconds, is still ahead). */
+  countdowns?: Array<{ label: string; endsAt: number }>;
+  /** Up to 3 `watch:` values — global ones only, never a secret one (the
+   *  server's lean view never sends those). */
+  watch?: Array<{ label: string; value: string }>;
 }
 
 /** `?role=director` opens this page. */
@@ -105,6 +121,134 @@ const NO_MARKS: CueMarks = { last: null, fired: [] };
 /** The cue rows a view holds (none before the story loads). */
 export function directorRows(view: DirectorView | null): CueRow[] {
   return view === null ? [] : cueRows(view.interactions ?? [], view.cues ?? NO_MARKS);
+}
+
+// --- acts --------------------------------------------------------------------------
+// Display only: the acts never change NEXT / LAST (core's `cueActs`).
+
+/** How the sheet lays out: a flat list when no row carries an act (an old
+ *  server, or a story with no `act:`), else grouped by act around the focus
+ *  act (the one holding NEXT, else LAST) and the act before it. */
+export type SheetLayout =
+  | { kind: "flat"; rows: CueRow[] }
+  | { kind: "acts"; acts: CueAct[]; focus: number; previous: number };
+
+export function sheetLayout(rows: CueRow[]): SheetLayout {
+  if (rows.every((r) => r.act === null)) return { kind: "flat", rows };
+  const acts = cueActs(rows);
+  const focus = focusActIndex(acts);
+  return { kind: "acts", acts, focus, previous: focus < 0 ? -1 : previousActIndex(acts, focus) };
+}
+
+/** An act's name: `B · Act I: …`, `Anytime`, or the cues above the first
+ *  `act:` line. */
+export function actName(a: Pick<CueAct, "code" | "title">): string {
+  if (a.code === null && a.title === null) return "Before the first act";
+  return [a.code, a.title].filter((p) => p !== null && p !== "").join(" · ");
+}
+
+/** The act's short handle for the strip and a filtered row: its code, else
+ *  its name. */
+export function actHandle(a: Pick<CueAct, "code" | "title">): string {
+  return a.code ?? actName(a);
+}
+
+/** How far through an act's spine the night is: `3/8`. */
+export function actCount(a: Pick<CueAct, "firedSpine" | "spine">): string {
+  return `${a.firedSpine}/${a.spine.length}`;
+}
+
+/** A folded act's one line (the page adds the ▸): a past act `✓ B · Act I
+ *  8/8`, one that never ran `– … skipped`, one still to come with its size
+ *  and the first cue it will ask for. */
+export function foldedLine(a: CueAct): string {
+  if (a.state === "past") return `✓ ${actName(a)} ${actCount(a)}`;
+  if (a.state === "skipped") return `– ${actName(a)} skipped`;
+  const first = a.spine.find((r) => !r.fired);
+  const size = `${a.spine.length} cue${a.spine.length === 1 ? "" : "s"}`;
+  return `${actName(a)} · ${size}${first !== undefined ? ` · next: ${cueTitleTags(first.title).title}` : ""}`;
+}
+
+// --- the clock, the NEXT bar and the strip -------------------------------------------
+
+/** The story clock now (ms): the view's `clock` plus the wall time since the
+ *  poll landed. Null when the view carries no clock (an old server). */
+export function storyNow(clock: number | undefined, receivedAt: number, now: number): number | null {
+  if (clock === undefined || !Number.isFinite(clock)) return null;
+  return clock + Math.max(0, now - receivedAt);
+}
+
+/** Seconds as `37:52`, or `1:02:03` past the hour. */
+export function formatLeft(sec: number): string {
+  const s = Math.max(0, Math.floor(sec));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const ss = String(s % 60).padStart(2, "0");
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
+}
+
+/** Under this many seconds a countdown reads red. */
+export const URGENT_S = 60;
+
+/** The countdown due soonest at story time `nowMs`, or null. */
+export function soonestCountdown(countdowns: DirectorView["countdowns"], nowMs: number | null): { label: string; left: number } | null {
+  let best: { label: string; left: number } | null = null;
+  for (const c of countdowns ?? []) {
+    const left = countdownLeft(c.endsAt, nowMs);
+    if (left !== null && (best === null || left < best.left)) best = { label: c.label, left };
+  }
+  return best;
+}
+
+/** The pinned bar at the top: NEXT (`again` while it is the LAST repeat
+ *  cue), else the soonest countdown — why nothing is on offer — else none. */
+export type NextBar =
+  | { kind: "next"; row: CueRow; again: boolean }
+  | { kind: "countdown"; label: string; left: number }
+  | { kind: "none" };
+
+export function nextBar(rows: CueRow[], countdowns: DirectorView["countdowns"], nowMs: number | null): NextBar {
+  const next = rows.find((r) => r.next);
+  if (next !== undefined) return { kind: "next", row: next, again: next.last };
+  const soon = soonestCountdown(countdowns, nowMs);
+  return soon !== null ? { kind: "countdown", ...soon } : { kind: "none" };
+}
+
+/** The bar as text: `NEXT 📊 Trust Chart`, `AGAIN 📋 Results…`,
+ *  `⏱ Midnight 37:52`, or `NEXT —`. */
+export function nextBarText(bar: NextBar): string {
+  if (bar.kind === "next") return `${bar.again ? "AGAIN" : "NEXT"} ${cueTitleTags(bar.row.title).title}`;
+  if (bar.kind === "countdown") return `⏱ ${bar.label} ${formatLeft(bar.left)}`;
+  return "NEXT —";
+}
+
+/** A watched value for the strip: quotes stripped, booleans ● / ○, unset —. */
+export function formatWatchValue(v: string): string {
+  const t = v.trim().replace(/^"(.*)"$/u, "$1");
+  if (t === "" || t === "null" || t === "none" || t === "undefined") return "—";
+  if (t === "true") return "●";
+  if (t === "false") return "○";
+  return t;
+}
+
+export interface StripItem {
+  text: string;
+  /** A countdown under a minute. */
+  urgent?: true;
+}
+
+/** The strip under the header: the focus act's code · the phase · the
+ *  soonest countdown · up to 3 watched values (whatever the view carries:
+ *  the server's lean view holds only global, non-secret ones). */
+export function stripItems(view: DirectorView | null, layout: SheetLayout, nowMs: number | null): StripItem[] {
+  const out: StripItem[] = [];
+  if (layout.kind === "acts" && layout.focus >= 0) out.push({ text: actHandle(layout.acts[layout.focus]!) });
+  const phase = nightPhase(view?.world ?? []);
+  if (phase !== null) out.push({ text: phase });
+  const soon = soonestCountdown(view?.countdowns, nowMs);
+  if (soon !== null) out.push({ text: `⏱ ${soon.label} ${formatLeft(soon.left)}`, ...(soon.left < URGENT_S ? { urgent: true as const } : {}) });
+  for (const w of (view?.watch ?? []).filter((w) => typeof w.value === "string").slice(0, 3)) out.push({ text: `${w.label} ${formatWatchValue(w.value)}` });
+  return out;
 }
 
 // --- arm, then fire --------------------------------------------------------------
@@ -322,6 +466,8 @@ function useDirectorSession() {
   const { storage } = usePlayHost();
   const [auth, setAuth] = useState<DirectorAuth | null>(() => storage.load<DirectorAuth>(DIRECTOR_KEY));
   const [view, setView] = useState<DirectorView | null>(null);
+  // When the last view landed (wall ms): the countdowns tick on from it.
+  const [receivedAt, setReceivedAt] = useState(0);
   const [connected, setConnected] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const poll = useRef<{ stop(): void; now(): void } | null>(null);
@@ -346,6 +492,7 @@ function useDirectorSession() {
       const out = pollOutcome(res.status, (await res.json().catch(() => ({}))) as Record<string, unknown>);
       if (out.kind === "view") {
         setView(out.view);
+        setReceivedAt(Date.now());
         setConnected(true);
         return;
       }
@@ -402,7 +549,7 @@ function useDirectorSession() {
     [auth, base, drop],
   );
 
-  return { auth, view, connected, notice, login, fire, leave: () => drop(null) };
+  return { auth, view, receivedAt, connected, notice, login, fire, leave: () => drop(null) };
 }
 
 // --- the screens -----------------------------------------------------------------
@@ -452,21 +599,24 @@ function DirectorLogin({ notice, onLogin, onBack }: { notice: string | null; onL
   );
 }
 
-function CueButton({ row, armed, pending, onTap }: { row: CueRow; armed: Armed | null; pending: boolean; onTap: () => void }) {
+function CueButton({ row, armed, pending, actCode, onTap }: { row: CueRow; armed: Armed | null; pending: boolean; actCode?: string | null; onTap: () => void }) {
   const isArmed = armed !== null && armed.id === row.id;
+  const { title, tags } = cueTitleTags(row.title);
   return (
     <li>
       <button
         type="button"
-        className={`choice cue-row ${row.last ? "last" : ""} ${row.next ? "next" : ""} ${isArmed ? "armed" : ""}`}
+        className={`choice cue-row ${row.last ? "last" : ""} ${row.next ? "next" : ""} ${isArmed ? "armed" : ""} ${row.live ? "" : "off"}`}
         data-next={row.next ? "true" : undefined}
+        data-last={row.last ? "true" : undefined}
         disabled={pending}
         onClick={onTap}
       >
         <span className="cue-n">{row.n}</span>
         <span className="cue-body">
           <span className="cue-title">
-            {row.code !== null && <span className="cue-code">{row.code}</span>} {row.title}
+            {actCode != null && <span className="cue-code act">{actCode}</span>}
+            {row.code !== null && <span className="cue-code">{row.code}</span>} {title}
           </span>
           {isArmed ? (
             <span className="cue-arm">Tap again to fire</span>
@@ -477,6 +627,12 @@ function CueButton({ row, armed, pending, onTap }: { row: CueRow; armed: Armed |
               {row.fired && <span className="cue-tag">✓ fired</span>}
               {!row.sequence && <span className="cue-tag">aside</span>}
               {row.subject && <span className="cue-tag">👤 picks a person</span>}
+              {!row.live && <span className="cue-tag">not on offer</span>}
+              {tags.map((t) => (
+                <span key={t} className="cue-tag muted">
+                  {t}
+                </span>
+              ))}
             </span>
           )}
         </span>
@@ -501,9 +657,26 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
   const [help, setHelp] = useState(false);
   const rows = useMemo(() => directorRows(s.view), [s.view]);
   const shown = useMemo(() => filterCues(rows, query), [rows, query]);
-  const phase = nightPhase(s.view?.world ?? []);
+  const layout = useMemo(() => sheetLayout(rows), [rows]);
+  // Acts the director unfolded by hand (the focus act is always open).
+  const [openActs, setOpenActs] = useState<ReadonlySet<string>>(() => new Set());
+  // The previous act's fallbacks under the focus act: open by default.
+  const [fromOpen, setFromOpen] = useState(true);
   const marks = s.view?.cues ?? NO_MARKS;
   const lastId = marks.last;
+  // The countdowns tick once a second between polls (story clock + the
+  // wall time since the view landed).
+  const ticking = (s.view?.countdowns?.length ?? 0) > 0;
+  const [wall, setWall] = useState(() => Date.now());
+  useEffect(() => {
+    if (!ticking) return;
+    setWall(Date.now());
+    const t = setInterval(() => setWall(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [ticking, s.receivedAt]);
+  const nowMs = storyNow(s.view?.clock, s.receivedAt, Math.max(wall, s.receivedAt));
+  const bar = nextBar(rows, s.view?.countdowns, nowMs);
+  const strip = stripItems(s.view, layout, nowMs);
 
   // An armed cue disarms itself if the second tap never comes.
   useEffect(() => {
@@ -526,7 +699,7 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
     return () => clearTimeout(t);
   }, [toast]);
   // Keep the next cue in view as the night moves down the sheet.
-  const listRef = useRef<HTMLOListElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     listRef.current?.querySelector('[data-next="true"]')?.scrollIntoView({ block: "nearest" });
   }, [lastId]);
@@ -550,6 +723,28 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
       });
     }
   };
+  const rowList = (list: CueRow[]) => (
+    <ol className="cue-list">
+      {list.map((r) => (
+        <CueButton key={r.id} row={r} armed={armed} pending={pending === r.id} onTap={() => tap(r)} />
+      ))}
+    </ol>
+  );
+  const toggleAct = (key: string) =>
+    setOpenActs((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+  // The NEXT bar scrolls to its row (arming still happens on the row); with
+  // no NEXT, to LAST. A filter that hides the row is cleared first.
+  const toNext = () => {
+    setQuery("");
+    requestAnimationFrame(() => {
+      const el = listRef.current?.querySelector('[data-next="true"]') ?? listRef.current?.querySelector('[data-last="true"]');
+      el?.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+  };
   const pickingRow = picking !== null ? rows.find((r) => r.id === picking) ?? null : null;
   const subjectName = armed?.subject != null ? s.view?.roster?.find((p) => p.id === armed.subject)?.name ?? null : null;
 
@@ -563,7 +758,7 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
                 <strong>🎬 {title ?? "Cue sheet"}</strong>
               </div>
               <div className="me-sub">
-                <span>{phase !== null ? `phase: ${phase}` : "no phase yet"}</span>
+                <span>{s.auth.name !== "" ? phoneLabel(s.auth.name) : "Director phone"}</span>
                 <ConnDot connected={s.connected} label={s.connected ? "live" : "reconnecting"} />
               </div>
             </div>
@@ -577,7 +772,38 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
             </button>
           </div>
         </header>
-        <div className="station">
+        {s.view !== null && rows.length > 0 && (
+          <div className="cue-pinned">
+            {strip.length > 0 && (
+              <div className="cue-strip" data-testid="cue-strip">
+                {strip.map((it, k) => (
+                  <span key={k} className={it.urgent ? "urgent" : undefined}>
+                    {it.text}
+                  </span>
+                ))}
+              </div>
+            )}
+            <button type="button" className={`cue-nextbar ${bar.kind}`} data-testid="cue-nextbar" onClick={toNext}>
+              {bar.kind === "next" ? (
+                <>
+                  <span className="cue-nextbar-tag">{bar.again ? "AGAIN" : "NEXT"}</span>
+                  {bar.row.code !== null && <span className="cue-code">{bar.row.code}</span>}
+                  <span className="cue-nextbar-title">{cueTitleTags(bar.row.title).title}</span>
+                </>
+              ) : bar.kind === "countdown" ? (
+                <>
+                  <span className="cue-nextbar-tag">NEXT —</span>
+                  <span className={`cue-nextbar-title ${bar.left < URGENT_S ? "urgent" : ""}`}>
+                    ⏱ {bar.label} {formatLeft(bar.left)}
+                  </span>
+                </>
+              ) : (
+                <span className="cue-nextbar-tag">NEXT — nothing to press</span>
+              )}
+            </button>
+          </div>
+        )}
+        <div className="station" ref={listRef}>
           <input className="cue-filter" type="search" placeholder="Filter cues (code or words)" value={query} onChange={(e) => setQuery(e.target.value)} />
           {armed !== null && subjectName !== null && (
             <p className="pick-hint">
@@ -589,12 +815,69 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
             <div className="muted pad">Loading the cue sheet…</div>
           ) : rows.length === 0 ? (
             <div className="muted pad">This story has no director cues (`who: admin` interactions).</div>
-          ) : (
-            <ol className="cue-list" ref={listRef}>
+          ) : query.trim() !== "" || layout.kind === "flat" ? (
+            <ol className="cue-list">
               {shown.map((r) => (
-                <CueButton key={r.id} row={r} armed={armed} pending={pending === r.id} onTap={() => tap(r)} />
+                <CueButton key={r.id} row={r} armed={armed} pending={pending === r.id} actCode={layout.kind === "acts" && r.act !== null ? splitCode(r.act).code ?? null : null} onTap={() => tap(r)} />
               ))}
+              {shown.length === 0 && <li className="muted pad">No cue matches.</li>}
             </ol>
+          ) : (
+            <div className="cue-acts">
+              {layout.acts.map((a, k) => {
+                if (a.state === "anytime") return null;
+                const isFocus = k === layout.focus;
+                const open = isFocus || openActs.has(a.key);
+                if (!open)
+                  return (
+                    <section key={a.key} className={`cue-act ${a.state}`} data-act={a.key}>
+                      <button type="button" className="cue-act-fold" onClick={() => toggleAct(a.key)}>
+                        <span className="cue-act-fold-text">{foldedLine(a)}</span> ▸
+                      </button>
+                    </section>
+                  );
+                const prev = isFocus && layout.previous >= 0 ? layout.acts[layout.previous]! : null;
+                return (
+                  <section key={a.key} className={`cue-act ${a.state}`} data-act={a.key}>
+                    <h3 className="cue-act-head">
+                      <button type="button" disabled={isFocus} onClick={() => toggleAct(a.key)}>
+                        <span className="cue-act-name">{actName(a)}</span>
+                        <span className="cue-act-count">{actCount(a)}</span>
+                        {isFocus && a.starting && <span className="cue-act-badge">starting</span>}
+                        {!isFocus && <span aria-hidden="true">▾</span>}
+                      </button>
+                    </h3>
+                    {rowList(a.spine)}
+                    {a.asides.length > 0 && (
+                      <>
+                        <div className="cue-divider">fallbacks</div>
+                        {rowList(a.asides)}
+                      </>
+                    )}
+                    {prev !== null && prev.asides.length > 0 && (
+                      <>
+                        <button type="button" className="cue-from" aria-expanded={fromOpen} onClick={() => setFromOpen((o) => !o)}>
+                          from {actHandle(prev)} {fromOpen ? "▾" : "▸"} <span className="muted">{prev.asides.length} fallbacks</span>
+                        </button>
+                        {fromOpen && rowList(prev.asides)}
+                      </>
+                    )}
+                  </section>
+                );
+              })}
+              {layout.acts
+                .filter((a) => a.state === "anytime")
+                .map((a) => (
+                  <section key={a.key} className="cue-act anytime" data-act={a.key}>
+                    <h3 className="cue-act-head">
+                      <button type="button" disabled>
+                        <span className="cue-act-name">⚡ {actName(a)}</span>
+                      </button>
+                    </h3>
+                    {rowList(a.rows)}
+                  </section>
+                ))}
+            </div>
           )}
         </div>
       </div>
