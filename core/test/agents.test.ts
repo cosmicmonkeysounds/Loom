@@ -208,6 +208,50 @@ describe("AgentHub", () => {
     expect(h.held.map((r) => r.thread.audience[0]).sort()).toEqual(["g-1", "g-2"]);
   });
 
+  it("a director's hand answer to the head starts the next request's clock at the cancel, not at the worker's last answer", () => {
+    const h = hubHarness({ replyTimeoutMs: 120_000 });
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    const th = (n: number): AgentThread => ({ ...T, audience: [`g-${n}`] });
+    h.hub.line(th(0));
+    h.hub.line(th(1));
+    h.hub.line(th(2));
+    const [r0, r1, r2] = a.requests();
+    h.tick(5_000);
+    h.hub.settle(r0!.id, "laptop"); // r1 starts at 5 s …
+    h.tick(105_000);
+    h.hub.sweep();
+    expect(h.hub.answeredByHand(th(1))).toBe(true); // … and is answered by hand at 110 s
+    const cancels = () => a.got.filter(([e]) => e === "cancel").map(([, d]) => (d as { id: string }).id);
+    expect(cancels()).toEqual([r1!.id]);
+    for (let i = 0; i < 30; i++) {
+      h.tick(1000);
+      h.hub.sweep();
+    }
+    expect(cancels()).toEqual([r1!.id]); // r2 has had 30 s of its own 120
+    h.tick(91_000);
+    h.hub.sweep();
+    expect(cancels()).toEqual([r1!.id, r2!.id]);
+  });
+
+  it("a head stuck in one slot times out while the worker's other slot keeps answering", () => {
+    const h = hubHarness({ replyTimeoutMs: 10_000 });
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    h.hub.line({ ...T, audience: ["g-stuck"] });
+    const [stuck] = a.requests();
+    const cancels = () => a.got.filter(([e]) => e === "cancel").map(([, d]) => (d as { id: string }).id);
+    for (let i = 0; i < 12; i++) {
+      // The second slot answers a fresh DM every second.
+      h.hub.line({ ...T, audience: [`g-${i}`] });
+      const fresh = a.requests().at(-1)!;
+      h.tick(1000);
+      h.hub.settle(fresh.id, "laptop");
+      h.hub.sweep();
+    }
+    expect(cancels()).toEqual([stuck!.id]);
+  });
+
   it("shift: a pause doesn't count toward the timeout, the queue's age or the hold line (T9-timers-03)", () => {
     const h = hubHarness({ replyTimeoutMs: 120_000 });
     // Queued, nobody online: a DM 10 s before an 11-minute pause.

@@ -625,6 +625,11 @@ interface OpenRequest {
   /** The worker it's with, or null while queued. */
   worker: string | null;
   dispatchedAt: number | null;
+  /** Dispatch order on its worker (the line stagehand answers in). */
+  dispatchSeq: number;
+  /** When it reached the head of its worker's line — the moment the worker
+   *  could start on it (null while queued or still waiting in line). */
+  startedAt: number | null;
   attempts: number;
   /** A newer line arrived while this one was open. */
   followUp: boolean;
@@ -645,8 +650,8 @@ export interface AgentHubOptions {
   typing?: (thread: AgentThread, on: boolean) => void;
   /** Presence changed (a worker came or went). */
   presence?: () => void;
-  /** A worker's oldest dispatched request with no answer after this long
-   *  (and no other answer from that worker meanwhile) is re-dispatched. */
+  /** A worker's oldest dispatched request with no answer this long after it
+   *  reached the head of the worker's line is re-dispatched. */
   replyTimeoutMs?: number;
   /** A queued request no worker picked up within this long is dropped. */
   queueMaxAgeMs?: number;
@@ -673,9 +678,7 @@ export class AgentHub {
   private readonly workers = new Map<string, AgentWorker>();
   private readonly open = new Map<string, OpenRequest>(); // request id →
   private readonly byThread = new Map<string, string>(); // thread key → request id
-  /** When each worker last showed it is working: attached, answered, or had
-   *  its stuck head cancelled (its slot freed for the next in line). */
-  private readonly progress = new Map<string, number>(); // worker id → hub ms
+  private dispatches = 0;
 
   private readonly o: AgentHubOptions;
 
@@ -714,7 +717,6 @@ export class AgentHub {
   /** A worker connected: register it and hand it every queued request it can answer. */
   attach(worker: AgentWorker): void {
     this.workers.set(worker.id, worker);
-    this.progress.set(worker.id, this.now());
     this.o.presence?.();
     for (const r of this.open.values()) if (r.worker === null) this.dispatch(r);
   }
@@ -722,11 +724,11 @@ export class AgentHub {
   /** A worker went away: its in-flight requests go back in the queue. */
   detach(workerId: string): void {
     if (!this.workers.delete(workerId)) return;
-    this.progress.delete(workerId);
     for (const r of this.open.values()) {
       if (r.worker !== workerId) continue;
       r.worker = null;
       r.dispatchedAt = null;
+      r.startedAt = null;
       this.o.typing?.(r.req.thread, false);
       this.dispatch(r);
     }
@@ -763,7 +765,7 @@ export class AgentHub {
     const id = `ar-${globalThis.crypto.randomUUID().slice(0, 8)}`;
     const req = this.o.build(thread, id);
     if (req === null) return;
-    const r: OpenRequest = { req, key: threadKey(thread), worker: null, dispatchedAt: null, attempts: 0, followUp: false, createdAt: this.now(), held };
+    const r: OpenRequest = { req, key: threadKey(thread), worker: null, dispatchedAt: null, dispatchSeq: 0, startedAt: null, attempts: 0, followUp: false, createdAt: this.now(), held };
     this.open.set(id, r);
     this.byThread.set(r.key, id);
     this.dispatch(r);
@@ -785,9 +787,30 @@ export class AgentHub {
     if (best === null) return;
     r.worker = best.id;
     r.dispatchedAt = this.now();
+    r.dispatchSeq = ++this.dispatches;
+    r.startedAt = null;
     r.attempts += 1;
     best.send("request", r.req);
     this.o.typing?.(r.req.thread, true);
+    this.startHead(best.id);
+  }
+
+  /** The oldest request in flight on `workerId` — the one it is working on
+   *  (stagehand's voice answers one at a time, in dispatch order). */
+  private headOf(workerId: string): OpenRequest | null {
+    let head: OpenRequest | null = null;
+    for (const r of this.open.values()) {
+      if (r.worker !== workerId) continue;
+      if (head === null || r.dispatchSeq < head.dispatchSeq) head = r;
+    }
+    return head;
+  }
+
+  /** The worker's line moved (a dispatch, an answer, a cancel): its head's
+   *  reply clock starts now if it wasn't running yet. */
+  private startHead(workerId: string): void {
+    const head = this.headOf(workerId);
+    if (head !== null && head.startedAt === null) head.startedAt = this.now();
   }
 
   /**
@@ -801,10 +824,10 @@ export class AgentHub {
     const r = this.open.get(requestId);
     if (r === undefined) return null;
     if (workerId !== undefined && r.worker !== null && r.worker !== workerId) return null;
-    if (r.worker !== null && this.workers.has(r.worker)) this.progress.set(r.worker, this.now());
     this.open.delete(requestId);
     if (this.byThread.get(r.key) === requestId) this.byThread.delete(r.key);
     this.o.typing?.(r.req.thread, false);
+    if (r.worker !== null) this.startHead(r.worker);
     return { req: r.req, followUp: r.followUp };
   }
 
@@ -815,9 +838,11 @@ export class AgentHub {
    * at concurrency 1), and every request is dispatched to it at once, so
    * only its **head** — the oldest it holds — can be stuck: the rest are
    * waiting in its line. The reply timeout therefore applies to the head
-   * alone, from whichever is later, its dispatch or the worker's last sign
-   * of work (an answer); a 60-DM burst on a healthy worker cancels
-   * nothing (T9-timers-02). A request given up — its attempts spent, or
+   * alone, from the moment it reached the head (the request before it was
+   * answered, cancelled or answered by hand), so a 60-DM burst on a healthy
+   * worker cancels nothing (T9-timers-02) and a head stuck in one slot of a
+   * multi-slot worker still times out while the other slots answer. A
+   * request given up — its attempts spent, or
    * queued past `queueMaxAgeMs` — posts the hold line once if it never did,
    * so the guest hears something and Run shows the thread in need.
    */
@@ -827,24 +852,25 @@ export class AgentHub {
     const maxAge = this.o.queueMaxAgeMs ?? AGENT_QUEUE_MAX_AGE_MS;
     const maxAttempts = this.o.maxAttempts ?? 2;
     const holdAfter = this.o.holdAfterMs ?? 20_000;
-    const heads = new Map<string, OpenRequest>(); // worker id → its oldest in flight
-    for (const r of this.open.values()) {
-      if (r.worker === null || r.dispatchedAt === null) continue;
-      const h = heads.get(r.worker);
-      if (h === undefined || r.dispatchedAt < h.dispatchedAt!) heads.set(r.worker, r);
+    const heads = new Set<OpenRequest>(); // each worker's oldest in flight
+    for (const w of this.workers.keys()) {
+      const h = this.headOf(w);
+      if (h !== null) heads.add(h);
     }
     for (const [id, r] of [...this.open]) {
       if (r.worker !== null && r.dispatchedAt !== null) {
-        if (heads.get(r.worker) !== r) continue;
-        const since = Math.max(r.dispatchedAt, this.progress.get(r.worker) ?? r.dispatchedAt);
-        if (now - since <= timeout) continue;
-        this.workers.get(r.worker)?.send("cancel", { id });
-        // The cancel frees the worker for the next in its line: that one's
-        // clock starts now, not at its own (long past) dispatch.
-        this.progress.set(r.worker, now);
+        if (!heads.has(r)) continue;
+        r.startedAt ??= now;
+        if (now - r.startedAt <= timeout) continue;
+        const worker = r.worker;
+        this.workers.get(worker)?.send("cancel", { id });
         this.o.typing?.(r.req.thread, false);
         r.worker = null;
         r.dispatchedAt = null;
+        r.startedAt = null;
+        // The cancel frees the worker for the next in its line: that one's
+        // clock starts now, not at its own (long past) dispatch.
+        this.startHead(worker);
         if (r.attempts >= maxAttempts) {
           this.giveUp(id, r);
           continue;
@@ -890,9 +916,9 @@ export class AgentHub {
     for (const r of this.open.values()) {
       r.createdAt = moved(r.createdAt);
       if (r.dispatchedAt !== null) r.dispatchedAt = moved(r.dispatchedAt);
+      if (r.startedAt !== null) r.startedAt = moved(r.startedAt);
       r.req = { ...r.req, at: moved(r.req.at) };
     }
-    for (const [w, t] of this.progress) this.progress.set(w, moved(t));
   }
 
   /**
@@ -909,11 +935,14 @@ export class AgentHub {
     const id = this.byThread.get(key);
     const r = id === undefined ? undefined : this.open.get(id);
     if (id === undefined || r === undefined) return false;
+    this.drop(id, r);
     if (r.worker !== null) {
       this.workers.get(r.worker)?.send("cancel", { id });
       this.o.typing?.(r.req.thread, false);
+      // The cancel frees the worker for the next in its line: its clock
+      // starts now, not at the worker's last answer.
+      this.startHead(r.worker);
     }
-    this.drop(id, r);
     return true;
   }
 
