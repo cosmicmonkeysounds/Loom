@@ -200,7 +200,12 @@ export class Workspace {
    *   deadline would go out unmasked);
    * - a person item that names no CHARACTER;
    * - a line in any file but the first (`main.loom`): the event server plays
-   *   the files concatenated, so only the first file's header is a header.
+   *   the files concatenated, so only the first file's header is a header;
+   * - a `watch:` / `countdown:` line below a file's header (after its first
+   *   declaration, beat or rule), which the parser never reads as one;
+   * - a global head spelled unlike every line that `set`s it (`night.clock`
+   *   for `Night.clock`): globals are read by their exact spelling, so the
+   *   row would read — and the countdown never show.
    */
   private addBoardLints(): void {
     const docs = this.orderedDocs();
@@ -213,11 +218,29 @@ export class Workspace {
     const boardLines = docs.flatMap(([uri, doc], k) =>
       (doc.file.header.lines ?? []).filter((l) => l.key === "watch" || l.key === "countdown").map((line) => ({ uri, line, first: k === 0 })),
     );
+    // A board line below the header is no header line at all: the parser
+    // reads it as story text and the board never sees it. Column 0 only
+    // (an indented `watch:` belongs to a block), outside ``` fences.
+    docs.forEach(([uri, doc], k) => {
+      const inHeader = new Set((doc.file.header.lines ?? []).map((l) => spanToRange(l.span).start.line));
+      let fenced = false;
+      doc.text.split("\n").forEach((raw, n) => {
+        if (/^\s*```/u.test(raw)) fenced = !fenced;
+        const m = fenced ? null : /^(watch|countdown):(.*)$/u.exec(raw.replace(/\r$/u, ""));
+        if (m === null || inHeader.has(n)) return;
+        const range: Range = { start: { line: n, character: 0 }, end: { line: n, character: raw.length } };
+        const where = k === 0 ? "this file's header" : "the first file's header (main.loom)";
+        lint(uri, range, `\`${m[1]}:${m[2]!.trimEnd()}\` sits below the header, so the director's board never reads it — board lines go in ${where}, above its first beat, declaration or rule`);
+      });
+    });
     if (boardLines.length === 0) return;
     const model = this.compiled;
     // Heads a path may start with: the declared entities, `Time`, and any
     // global a line in the project writes (`set Night.phase = …`).
     const heads = new Set<string>(["time"]);
+    // Globals by exact spelling, and every spelling a folded head has.
+    const globals = new Set<string>();
+    const globalSpellings = new Map<string, Set<string>>();
     const people = new Set<string>();
     const secrets = new Set<string>();
     if (model !== null) {
@@ -227,7 +250,14 @@ export class Workspace {
         if (c.secret) secrets.add(foldName(id));
       }
     }
-    for (const [, doc] of docs) for (const m of doc.text.matchAll(/(?:\bset\s+|<set:\s*)([A-Za-z_][A-Za-z0-9_]*)\./gu)) heads.add(foldName(m[1]!));
+    for (const [, doc] of docs)
+      for (const m of doc.text.matchAll(/(?:\bset\s+|<set:\s*)([A-Za-z_][A-Za-z0-9_]*)\./gu)) {
+        globals.add(m[1]!);
+        const k = foldName(m[1]!);
+        let sp = globalSpellings.get(k);
+        if (sp === undefined) globalSpellings.set(k, (sp = new Set()));
+        sp.add(m[1]!);
+      }
     for (const { uri, line, first } of boardLines) {
       const range = spanToRange(line.span);
       const what = `\`${line.key}: ${line.value.trim()}\``;
@@ -255,7 +285,13 @@ export class Workspace {
       for (const item of parsed.items) {
         if (item.path !== null) {
           const head = item.path.slice(0, item.path.indexOf("."));
-          if (!heads.has(foldName(head)))
+          // An entity head folds (`program.cleared`, `The_Desk.lights`); a
+          // global is read by its exact spelling.
+          const entity = heads.has(foldName(head));
+          const spellings = globalSpellings.get(foldName(head));
+          if (!entity && spellings !== undefined && !globals.has(head))
+            lint(uri, range, `\`${item.path}\` on ${what}: the story sets \`${[...spellings][0]}.…\`, not \`${head}.…\` — a global's name must match exactly, or the board never finds it (write \`${[...spellings][0]}${item.path.slice(head.length)}\`)`);
+          else if (!entity && spellings === undefined)
             lint(uri, range, `\`${item.path}\` on ${what}: \`${head}\` names no CHARACTER, ROLE, GROUP or LOCATION, and no line sets a \`${head}.…\` global`);
           else if (opts.pathsOnly && secrets.has(foldName(head)))
             lint(uri, range, `\`${item.path}\` on ${what}: \`${head}\` is a \`secret: true\` CHARACTER, so the countdown is never shown (a countdown has no mask) — count down a global instead`);

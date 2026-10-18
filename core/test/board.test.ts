@@ -168,6 +168,21 @@ Hi.
     expect(out[0]!.message).toMatch(/`Kernel` is a `secret: true` CHARACTER, so the countdown is never shown/);
   });
 
+  it("a global head is matched exactly: `night.clock` for `Night.clock` is flagged (the board reads globals by spelling)", async () => {
+    const out = await lints([["file:///main.loom", STORY("watch: night.step as Late, program.cleared, The_Desk.lights\ncountdown: night.step as Soon")]]);
+    expect(out.map((d) => d.line)).toEqual([2, 3]);
+    expect(out[0]!.message).toMatch(/the story sets `Night\.…`, not `night\.…`.*write `Night\.step`/u);
+  });
+
+  it("a board line below the header is flagged — the parser never reads it as one", async () => {
+    const text = "start: opening\n\nGROUP G\n  ethos: x\n\nwatch: Night.step as Late\n\nwhen go:\n  set Night.step = 1\n\n== opening\n  watch: Night.step as Indented\n  Hi.\n```\nwatch: in a fence\n```\n";
+    const out = await lints([["file:///main.loom", text]]);
+    expect(out.map((d) => d.line)).toEqual([5]);
+    expect(out[0]!.message).toMatch(/sits below the header, so the director's board never reads it/u);
+    // A header line is not flagged twice.
+    expect(await lints([["file:///main.loom", STORY("watch: Night.step")]])).toEqual([]);
+  });
+
   it("a board line outside the first file's header is ignored by the server", async () => {
     const out = await lints([
       ["file:///main.loom", STORY("watch: Night.step")],
