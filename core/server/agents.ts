@@ -690,6 +690,9 @@ export class AgentHub {
   private readonly stalled = new Map<string, number>();
   /** Hub clock of each worker's last answer (or its attach). */
   private readonly progress = new Map<string, number>();
+  /** Stalled workers given work again on trial (`sweep`): they lose a tie
+   *  to a worker that is answering until they answer something. */
+  private readonly probation = new Set<string>();
   private dispatches = 0;
 
   private readonly o: AgentHubOptions;
@@ -752,6 +755,7 @@ export class AgentHub {
     if (!this.workers.delete(workerId)) return;
     this.stalled.delete(workerId);
     this.progress.delete(workerId);
+    this.probation.delete(workerId);
     for (const r of this.open.values()) {
       if (r.worker !== workerId) continue;
       r.worker = null;
@@ -802,14 +806,14 @@ export class AgentHub {
   /** Send `r` to the least-busy worker voicing its character (no-op if
    *  none) — one still answering before a stalled one, so new work never
    *  lines up behind a worker that stopped answering while another can
-   *  take it. `moved`: handed over from a stalled worker's line, which is
-   *  not another attempt. */
+   *  take it, and one answering before one on probation. `moved`: handed
+   *  over from a stalled worker's line, which is not another attempt. */
   private dispatch(r: OpenRequest, moved = false): void {
     let best: AgentWorker | null = null;
     let bestLoad = Infinity;
     for (const w of this.workers.values()) {
       if (!w.characters.has(r.req.character)) continue;
-      let load = this.stalled.has(w.id) ? 1e9 : 0;
+      let load = this.stalled.has(w.id) ? 1e9 : this.probation.has(w.id) ? 0.5 : 0;
       for (const o of this.open.values()) if (o.worker === w.id) load += 1;
       if (load < bestLoad) {
         best = w;
@@ -864,6 +868,7 @@ export class AgentHub {
     const by = workerId ?? r.worker;
     if (by !== null && this.workers.has(by)) {
       this.stalled.delete(by);
+      this.probation.delete(by);
       this.progress.set(by, this.now());
     }
     return { req: r.req, followUp: r.followUp };
@@ -926,7 +931,10 @@ export class AgentHub {
         // its other slots is not stalled): it has stopped answering until
         // it answers something again.
         const stalls = !this.stalled.has(worker) && now - (this.progress.get(worker) ?? now) >= timeout;
-        if (stalls) this.stalled.set(worker, now);
+        if (stalls) {
+          this.stalled.set(worker, now);
+          this.probation.delete(worker);
+        }
         this.workers.get(worker)?.send("cancel", { id });
         this.o.typing?.(r.req.thread, false);
         r.worker = null;
@@ -962,6 +970,21 @@ export class AgentHub {
       if (since === undefined || now - Math.max(r.createdAt, since) < holdAfter) continue;
       r.held = true;
       this.o.hold?.(r.req);
+    }
+    // A stalled worker whose whole line went to workers still answering
+    // gets no new work while they answer every character it voices, so it
+    // could never answer again: a reply timeout after the stall it is put
+    // back on trial — new work again, but only once the others are busy
+    // (one slow reply never costs a worker the rest of the night; a
+    // worker still wedged stalls again on its next head, and its line
+    // moves on).
+    for (const [id, since] of [...this.stalled]) {
+      const w = this.workers.get(id);
+      if (w === undefined || now - since < timeout || this.headOf(id) !== null) continue;
+      if (![...w.characters].every((c) => this.canAnswer(c))) continue;
+      this.stalled.delete(id);
+      this.probation.add(id);
+      this.progress.set(id, now);
     }
   }
 

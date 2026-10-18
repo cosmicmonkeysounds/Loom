@@ -337,6 +337,43 @@ describe("AgentHub", () => {
     expect(h.held).toHaveLength(0);
   });
 
+  it("a stalled worker whose line moved away is put back on trial a reply timeout later: it takes work once the other is busy, and stalls again if still wedged (review 3)", () => {
+    const h = hubHarness({ replyTimeoutMs: 10_000 });
+    const a = h.worker("laptop");
+    const b = h.worker("spare");
+    h.hub.attach(a.w);
+    h.hub.attach(b.w);
+    const th = (n: number): AgentThread => ({ ...T, audience: [`g-${n}`] });
+    h.hub.line(th(0)); // to the laptop (first of two idle workers)
+    expect(a.requests()).toHaveLength(1);
+    h.tick(10_001);
+    h.hub.sweep(); // one slow reply: the laptop stalls, g-0 goes to the spare
+    expect(h.hub.settle(b.requests()[0]!.id, "spare")).not.toBeNull();
+    // Still inside a reply timeout of the stall: new work skips the laptop.
+    h.hub.line(th(1));
+    h.hub.line(th(2));
+    expect(a.requests()).toHaveLength(1);
+    for (const r of b.requests().slice(1)) expect(h.hub.settle(r.id, "spare")).not.toBeNull();
+    h.tick(10_000);
+    h.hub.sweep(); // a reply timeout since the stall, nothing in its line: on trial
+    h.hub.line(th(3));
+    expect(b.requests().at(-1)!.thread.audience[0]).toBe("g-3"); // an idle spare still wins the tie
+    h.hub.line(th(4));
+    expect(a.requests().at(-1)!.thread.audience[0]).toBe("g-4"); // the spare is busy: the laptop takes it
+    expect(h.hub.settle(a.requests().at(-1)!.id, "laptop")).not.toBeNull(); // it answers: back in rotation
+    expect(h.hub.settle(b.requests().at(-1)!.id, "spare")).not.toBeNull();
+    h.hub.line(th(5));
+    h.hub.line(th(6));
+    expect([a, b].map((x) => x.requests().at(-1)!.thread.audience[0]).sort()).toEqual(["g-5", "g-6"]);
+    // Wedged again: its next head stalls it, and its line moves on.
+    const mine = a.requests().at(-1)!;
+    expect(h.hub.settle(b.requests().at(-1)!.id, "spare")).not.toBeNull();
+    h.tick(10_001);
+    h.hub.sweep();
+    expect(b.requests().at(-1)!.id).toBe(mine.id);
+    expect(h.held).toHaveLength(0);
+  });
+
   it("one slow reply that the worker follows with an answer inside the hold window holds nobody (review 2)", () => {
     const h = hubHarness({ replyTimeoutMs: 10_000 });
     const a = h.worker("laptop");
