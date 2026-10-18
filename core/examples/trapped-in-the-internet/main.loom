@@ -214,7 +214,14 @@ ROLE Program
   framed: bool = false
   truths_accepted: 0 to 20 = 0
   judge_q: 0 to 3 = 0
-  last_judged: 0 to 99 = 0
+  judged_q1: bool = false
+  judged_q2: bool = false
+  judged_q3: bool = false
+  judged_q4: bool = false
+  judged_q5: bool = false
+  judged_q6: bool = false
+  judged_q7: bool = false
+  judged_q8: bool = false
   may_answer: bool = false
   cupped: bool = false
   assessment: -10 to 10 = 0
@@ -550,12 +557,15 @@ ROLE Program
   // (another program's spoken or filed lie keeps it a lie). Only # hosts
   // hears it, and nothing is credited twice: the 😤 press already paid the
   // +100 and counted the answer exactly as ✅ would. ✅ then 😤 stays
-  // refused (the safe direction).
+  // refused (the safe direction). `judge_n` numbers the question across
+  // the night (1–8), so the lie flag alone proves which answer it was, with
+  // any other press for this program in between. A question this program
+  // already had judged either way (`judged_qN`) is never credited again.
   when accurate_truth for program:
     set program.judge_n = (Night.round - 1) * 3 + program.judge_q
     if Night.judging != true:
       broadcast "⚖️ Judging is closed: {program.name}'s answer was not recorded." to channel(hosts)
-    else if program.last_judged == Night.round * 10 + program.judge_q and ((program.judge_n == 1 and program.hunt_lie_q1 == true) or (program.judge_n == 2 and program.hunt_lie_q2 == true) or (program.judge_n == 3 and program.hunt_lie_q3 == true) or (program.judge_n == 4 and program.hunt_lie_q4 == true) or (program.judge_n == 5 and program.hunt_lie_q5 == true) or (program.judge_n == 6 and program.hunt_lie_q6 == true) or (program.judge_n == 7 and program.hunt_lie_q7 == true) or (program.judge_n == 8 and program.hunt_lie_q8 == true)):
+    else if ((program.judge_n == 1 and program.hunt_lie_q1 == true) or (program.judge_n == 2 and program.hunt_lie_q2 == true) or (program.judge_n == 3 and program.hunt_lie_q3 == true) or (program.judge_n == 4 and program.hunt_lie_q4 == true) or (program.judge_n == 5 and program.hunt_lie_q5 == true) or (program.judge_n == 6 and program.hunt_lie_q6 == true) or (program.judge_n == 7 and program.hunt_lie_q7 == true) or (program.judge_n == 8 and program.hunt_lie_q8 == true)):
       if program.judge_n == 1:
         set program.hunt_lie_q1 = false
         // K-26 recap takes the lie off the last program write above it: keep this one directly before.
@@ -659,10 +669,9 @@ ROLE Program
       broadcast "⚖️ There are only two final facts. Press Q1 or Q2 for {program.name}." to channel(hosts)
     else if program.corrupted == true:
       broadcast "⚖️ {program.name} is in the Internet. Their answer cannot be accepted." to channel(hosts)
-    else if program.last_judged == Night.round * 10 + program.judge_q:
+    else if (program.judge_n == 1 and program.judged_q1 == true) or (program.judge_n == 2 and program.judged_q2 == true) or (program.judge_n == 3 and program.judged_q3 == true) or (program.judge_n == 4 and program.judged_q4 == true) or (program.judge_n == 5 and program.judged_q5 == true) or (program.judge_n == 6 and program.judged_q6 == true) or (program.judge_n == 7 and program.judged_q7 == true) or (program.judge_n == 8 and program.judged_q8 == true):
       broadcast "⚖️ {program.name}'s answer to that question is already accepted." to channel(hosts)
     else:
-      set program.last_judged = Night.round * 10 + program.judge_q
       set program.truths_accepted += 1
       set Night.facts_accepted += 1
       if Night.round == 1:
@@ -676,41 +685,49 @@ ROLE Program
       set program.trust = program.truths_accepted * 10 - program.internet_visits * 5 + program.assessment
       set program.may_answer = false
       if Night.round == 1 and program.judge_q == 1:
+        set program.judged_q1 = true
         if Kernel.q1_hunt != "lie":
           set Kernel.q1_hunt = "accurate"
         if Kernel.q1 != "lie":
           set Kernel.q1 = "accurate"
       else if Night.round == 1 and program.judge_q == 2:
+        set program.judged_q2 = true
         if Kernel.q2_hunt != "lie":
           set Kernel.q2_hunt = "accurate"
         if Kernel.q2 != "lie":
           set Kernel.q2 = "accurate"
       else if Night.round == 1 and program.judge_q == 3:
+        set program.judged_q3 = true
         if Kernel.q3_hunt != "lie":
           set Kernel.q3_hunt = "accurate"
         if Kernel.q3 != "lie":
           set Kernel.q3 = "accurate"
       else if Night.round == 2 and program.judge_q == 1:
+        set program.judged_q4 = true
         if Kernel.q4_hunt != "lie":
           set Kernel.q4_hunt = "accurate"
         if Kernel.q4 != "lie":
           set Kernel.q4 = "accurate"
       else if Night.round == 2 and program.judge_q == 2:
+        set program.judged_q5 = true
         if Kernel.q5_hunt != "lie":
           set Kernel.q5_hunt = "accurate"
         if Kernel.q5 != "lie":
           set Kernel.q5 = "accurate"
       else if Night.round == 2 and program.judge_q == 3:
+        set program.judged_q6 = true
         if Kernel.q6_hunt != "lie":
           set Kernel.q6_hunt = "accurate"
         if Kernel.q6 != "lie":
           set Kernel.q6 = "accurate"
       else if Night.round == 3 and program.judge_q == 1:
+        set program.judged_q7 = true
         if Kernel.q7_hunt != "lie":
           set Kernel.q7_hunt = "accurate"
         if Kernel.q7 != "lie":
           set Kernel.q7 = "accurate"
       else if Night.round == 3 and program.judge_q == 2:
+        set program.judged_q8 = true
         if Kernel.q8_hunt != "lie":
           set Kernel.q8_hunt = "accurate"
         if Kernel.q8 != "lie":
@@ -723,6 +740,7 @@ ROLE Program
   // word-for-word the same, Trabolta's truth rises the same). Only the
   // Kernel knows.
   when confident_lie for program:
+    set program.judge_n = (Night.round - 1) * 3 + program.judge_q
     if Night.judging != true:
       broadcast "⚖️ Judging is closed: {program.name}'s answer was not recorded." to channel(hosts)
     else if Night.round == 2 and program.may_answer != true:
@@ -731,10 +749,9 @@ ROLE Program
       broadcast "⚖️ There are only two final facts. Press Q1 or Q2 for {program.name}." to channel(hosts)
     else if program.corrupted == true:
       broadcast "⚖️ {program.name} is in the Internet. Their answer cannot be accepted." to channel(hosts)
-    else if program.last_judged == Night.round * 10 + program.judge_q:
+    else if (program.judge_n == 1 and program.judged_q1 == true) or (program.judge_n == 2 and program.judged_q2 == true) or (program.judge_n == 3 and program.judged_q3 == true) or (program.judge_n == 4 and program.judged_q4 == true) or (program.judge_n == 5 and program.judged_q5 == true) or (program.judge_n == 6 and program.judged_q6 == true) or (program.judge_n == 7 and program.judged_q7 == true) or (program.judge_n == 8 and program.judged_q8 == true):
       broadcast "⚖️ {program.name}'s answer to that question is already accepted." to channel(hosts)
     else:
-      set program.last_judged = Night.round * 10 + program.judge_q
       set program.truths_accepted += 1
       set Night.facts_accepted += 1
       if Night.round == 1:
@@ -753,34 +770,42 @@ ROLE Program
         set Kernel.q1_hunt = "lie"
         set Kernel.q1 = "lie"
         set program.hunt_lie_q1 = true
+        set program.judged_q1 = true
       else if Night.round == 1 and program.judge_q == 2:
         set Kernel.q2_hunt = "lie"
         set Kernel.q2 = "lie"
         set program.hunt_lie_q2 = true
+        set program.judged_q2 = true
       else if Night.round == 1 and program.judge_q == 3:
         set Kernel.q3_hunt = "lie"
         set Kernel.q3 = "lie"
         set program.hunt_lie_q3 = true
+        set program.judged_q3 = true
       else if Night.round == 2 and program.judge_q == 1:
         set Kernel.q4_hunt = "lie"
         set Kernel.q4 = "lie"
         set program.hunt_lie_q4 = true
+        set program.judged_q4 = true
       else if Night.round == 2 and program.judge_q == 2:
         set Kernel.q5_hunt = "lie"
         set Kernel.q5 = "lie"
         set program.hunt_lie_q5 = true
+        set program.judged_q5 = true
       else if Night.round == 2 and program.judge_q == 3:
         set Kernel.q6_hunt = "lie"
         set Kernel.q6 = "lie"
         set program.hunt_lie_q6 = true
+        set program.judged_q6 = true
       else if Night.round == 3 and program.judge_q == 1:
         set Kernel.q7_hunt = "lie"
         set Kernel.q7 = "lie"
         set program.hunt_lie_q7 = true
+        set program.judged_q7 = true
       else if Night.round == 3 and program.judge_q == 2:
         set Kernel.q8_hunt = "lie"
         set Kernel.q8 = "lie"
         set program.hunt_lie_q8 = true
+        set program.judged_q8 = true
       broadcast "✅ {program.name}'s answer is accepted." to everyone
       reply Accepted. Trabolta thanks you. +100 Truthcoin.
 

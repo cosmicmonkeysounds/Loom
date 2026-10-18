@@ -498,6 +498,42 @@ describe("wave 9 — ✅ takes back a 😤 pressed for the same answer (T2-facts
     expect(v(sim, "Kernel.q2")).toBe("lie");
   });
 
+  it("round 1: 😤 Q1, then ✅ Q2, then ✅ Q1 still takes the Q1 lie back; nothing is paid twice", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    const s0 = sim.scoreOf("g1");
+    fire(sim, "confident_q1", "g1", null, "Clippy");
+    fire(sim, "accurate_q2", "g1", null, "Clippy");
+    const fix = fire(sim, "accurate_q1", "g1", null, "Clippy");
+    expect(hostsSaid(fix)).toEqual([corrected("Calculator", 1, 1)]);
+    expect(casts(fix).filter((b) => b.scope !== "channel(hosts)")).toEqual([]);
+    expect([v(sim, "Kernel.q1"), v(sim, "Kernel.q1_hunt"), v(sim, "Kernel.lies_accepted")]).toEqual(["accurate", "accurate", 0]);
+    expect(liesByPerson(sim).get("g1") ?? 0).toBe(0);
+    expect(sim.scoreOf("g1")).toBe(s0 + 200);
+    expect(v(sim, "g1.truths_accepted")).toBe(2);
+  });
+
+  it("round 1: a question already judged is never credited again, whatever was pressed in between", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    const s0 = sim.scoreOf("g1");
+    const already = ["⚖️ Calculator's answer to that question is already accepted."];
+    fire(sim, "accurate_q1", "g1", null, "Clippy");
+    fire(sim, "accurate_q2", "g1", null, "Clippy");
+    expect(hostsSaid(fire(sim, "accurate_q1", "g1", null, "Clippy"))).toEqual(already);
+    // ✅ then 😤 for the same question, another press between: still refused, no lie on record.
+    expect(hostsSaid(fire(sim, "confident_q1", "g1", null, "Clippy"))).toEqual(already);
+    // A corrected question is settled too.
+    fire(sim, "confident_q3", "g1", null, "Clippy");
+    fire(sim, "accurate_q3", "g1", null, "Clippy");
+    fire(sim, "accurate_q2", "g1", null, "Clippy");
+    expect(hostsSaid(fire(sim, "accurate_q3", "g1", null, "Clippy"))).toEqual(already);
+    expect(sim.scoreOf("g1")).toBe(s0 + 300);
+    expect(v(sim, "g1.truths_accepted")).toBe(3);
+    expect(v(sim, "Kernel.lies_accepted")).toBe(0);
+    expect([v(sim, "Kernel.q1"), v(sim, "Kernel.q2"), v(sim, "Kernel.q3")]).toEqual(["accurate", "accurate", "accurate"]);
+  });
+
   it("the verdict after a taken-back 😤 is the Song Ending", { timeout: SLOW }, () => {
     const sim = boot();
     toBobbing(sim, { retract: true });
