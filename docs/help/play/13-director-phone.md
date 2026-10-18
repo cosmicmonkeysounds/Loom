@@ -24,8 +24,9 @@ Every director cue is one big button, in running order, with its code
 **LAST**; the one the sheet suggests is outlined and tagged **NEXT**: the
 first cue after LAST that hasn't fired tonight and belongs to the way the
 night is going (after the dance, the ending's own cue). A cue you press
-over and over (📋 once per question) stays NEXT until you move on. ✓ marks
-every cue that has already fired tonight. A dimmed cue tagged *not on
+over and over (📋 once per question) stays NEXT until you move on. A cue
+that has already fired tonight is ticked ✓ and greyed out (flat, so what
+is still to go stands out). A dimmed cue tagged *not on
 offer* is off tonight's branch for now: the sheet never suggests it, but
 you can still press it. Muted tags such as *optional* or *auto at 15 min*
 come from the cue's own label.
@@ -40,7 +41,8 @@ letters, `B · Act I …`), the sheet does too:
   **fallbacks** line.
 - The previous act's fallbacks stay on hand under it as a **from E ▾**
   line (tap to close it), so a hardware fallback is never more than a tap
-  away after the night moves on.
+  away after the night moves on. While you have that act unfolded, its
+  fallbacks are listed in its own section instead, never twice.
 - Acts already done fold into one line such as **✓ B · Act I 8/8 ▸**, and
   acts still to come into their size and first cue. Tap a folded line to
   open it; tap its header to fold it again.
@@ -56,12 +58,16 @@ no acts (or an older server) shows one plain list.
 - The **strip**: the act the night is in, the story's phase, the soonest
   countdown (*⏱ Midnight 37:52*, red under a minute) and up to three
   values the story asks directors to watch. The countdown keeps ticking
-  between refreshes and stops when it runs out.
+  between refreshes and stops when it runs out. While the event is paused
+  (or before the doors open) the story clock stands still, so the
+  countdowns hold too and the strip says *⏸ clock stopped*.
 - The **NEXT bar**: *NEXT 📊 Trust Chart* (or *AGAIN* for a cue pressed
-  once per question). When nothing is on offer it shows the soonest
-  countdown instead (*NEXT — ⏱ Midnight 37:52*), which is usually what
-  the night is waiting for. Tapping the bar scrolls to the cue; it never
-  fires anything. You still arm and fire on the cue itself.
+  once per question). When nothing is on offer it says so — *NEXT —
+  nothing to press. The story runs.* — over the soonest countdown
+  (*⏱ Midnight in 37:52*), which is usually what the night is waiting for
+  and fires by itself: don't press its cue early. Tapping the bar scrolls
+  to the cue; it never fires anything. You still arm and fire on the cue
+  itself.
 
 ## Firing a cue
 
@@ -74,7 +80,17 @@ no acts (or an older server) shows one plain list.
 - **If the cues move under you, the arm is dropped.** When another
   director or the story fires something while a cue is armed, the phone
   disarms it and says *Cues moved — tap again*. Look at the sheet, then
-  arm it again if it is still the right cue.
+  arm it again if it is still the right cue. Locking the phone or
+  switching to another app drops the arm too.
+- **An armed cue warns you when it is out of turn**, but never stops
+  you: *⚠ Not on offer now: the story may refuse it* on a dimmed cue
+  (another ending, say), and *⚠ This is a F cue; the night is in E* on a
+  running-order cue from an act you unfolded by hand. The armed button
+  gets a red ring.
+- **One press at a time.** While a cue is being sent (it reads
+  *Sending…*) every other cue waits, until the sheet has caught up with
+  that press; NEXT then waits one more second, so a quick tap meant for
+  the old NEXT never arms the new one.
 - A cue that needs a person (an award's winner, the King's fallback)
   asks **who** first; pick them, then tap the cue again to fire it for
   them. Only an **award** (G2–G10) also has a **Value** box above the
