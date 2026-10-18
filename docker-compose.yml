@@ -102,7 +102,7 @@ services:
       - loom-state:/data
       # With LOOM_HOUSE above: your own house maps, read-only (a directory,
       # so a `cp` over house.json is seen — a single-file mount keeps the old inode).
-      # - ./show-map:/config:ro
+      # - ./show-map:/config:ro   (scripts/ops/ship.sh never deletes it)
     depends_on:
       db:
         condition: service_healthy

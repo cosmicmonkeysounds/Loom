@@ -107,13 +107,20 @@ folder. It copies the source but skips the heavy build junk:
 rsync -avz --delete \
   --exclude .git --exclude node_modules --exclude dist \
   --exclude target --exclude .env --exclude core/server/.loom-state \
+  --filter='P /.env*' --filter='P /show-map/' --filter='P /docker-compose.override.y*ml' \
+  --filter='P /loom-db-*' --filter='P /loom-state-*' --filter='P /*.bak*' \
   ~/Documents/prism-root/packages/loom/ \
   ubuntu@YOUR_VPS_IP:~/loom/
 ```
 
 Notes: the trailing slashes matter (`loom/` → contents into `~/loom/`);
-`--delete` makes the VPS mirror your local tree on re-runs. Re-running
-this same command is how you'll ship updates later.
+`--delete` makes the VPS mirror your local tree on re-runs, so anything
+else in `~/loom` that your tree lacks is **deleted** — the `P` (protect)
+rules keep an operator's own files at the top of the checkout (a dated
+`.env` backup, the `./show-map` mount, a compose override, hand-made
+dumps). Better still, keep those outside the checkout (`~/loom-backups`).
+Re-running this same command is how you'll ship updates later; for the
+show, `scripts/ops/ship.sh` runs it for you with the same rules (§6).
 
 ### Option B — push to a git host, clone on the VPS
 
@@ -441,7 +448,7 @@ has both lines commented); mount the **directory**, so its
 
 ```yaml
     volumes:
-      - ./show-map:/config:ro       # house.json + house.shed.json
+      - ./show-map:/config:ro       # house.json + house.shed.json (ship.sh never deletes it)
     environment:
       LOOM_HOUSE: /config/house.json
 ```
@@ -645,14 +652,16 @@ docker compose up -d             # start again
 **Back up** the two things that matter:
 
 ```bash
+mkdir -p ~/loom-backups
 # author accounts + projects (Postgres):
-docker compose exec db pg_dump -U loom loom > loom-db-$(date +%F).sql
+docker compose exec db pg_dump -U loom loom > ~/loom-backups/loom-db-$(date +%F).sql
 # live event journals (the loom-state volume):
-docker run --rm -v loom_loom-state:/data -v "$PWD":/backup alpine \
+docker run --rm -v loom_loom-state:/data -v ~/loom-backups:/backup alpine \
   tar czf /backup/loom-state-$(date +%F).tgz -C /data .
 ```
 
-Copy those files off the VPS (`scp ubuntu@YOUR_VPS_IP:~/loom/loom-db-*.sql .`). For the show, use `deploy/backup.sh` instead (below): it stamps, checksums and prunes.
+They go to `~/loom-backups`, outside the checkout, where no rsync can
+touch them. Copy them off the VPS (`scp ubuntu@YOUR_VPS_IP:~/loom-backups/loom-db-*.sql .`). For the show, use `deploy/backup.sh` instead (below): it stamps, checksums and prunes, into the same directory.
 
 ### Pinned releases, rollback, backups (the show scripts)
 
@@ -667,7 +676,7 @@ Mac to the VPS must work without a prompt; set `LOOM_VPS`
 | Where | Command | What it does |
 |---|---|---|
 | Mac | `scripts/ops/predeploy.sh` | Clean tree, `loomcheck --smoke` on the show, `titi:facts --check` (the generated hunt files match `facts.json`), `pnpm -r typecheck` + `test`, stagehand `pytest`, the ops-script tests, compose parses → stamps the commit |
-| Mac | `scripts/ops/ship.sh show-1031` | Refuses an unstamped commit, rsyncs (never anything git-ignored: `secrets.h`, `reinstall/vr/build/`, `*.local.yaml`, `.env`), then runs `deploy/release.sh show-1031 --commit <sha>` on the VPS. `--sync-only` stops after the rsync |
+| Mac | `scripts/ops/ship.sh show-1031` | Refuses an unstamped commit, rsyncs (never anything git-ignored: `secrets.h`, `reinstall/vr/build/`, `*.local.yaml`, `.env`; and its `--delete` never removes an operator's `.env*`, `show-map/`, `docker-compose.override.y*ml`, `loom-db-*` / `loom-state-*` / `*.sql*` / `*.tgz` / `*.bak*` at the checkout's top), then runs `deploy/release.sh show-1031 --commit <sha>` on the VPS. `--sync-only` stops after the rsync |
 | VPS | `deploy/release.sh <tag>` | Pre-release backup → build `loom-server:<tag>` + `loom-proxy:<tag>` → `LOOM_TAG=<tag>` in `.env` → `up -d` → waits for the healthcheck + the public URL → `~/loom-ops/releases.log`. Never rebuilds an existing tag. The **first** release on a box (empty log) first adopts what runs now as `pre-<tag>`, so the very first scripted release already has a rollback target (`--no-adopt` skips it) |
 | VPS | `deploy/release.sh --adopt <tag>` | Tags what runs **now** by hand, no rebuild (the first release does this for you) |
 | VPS | `deploy/release.sh --list` | Running tag, the release log, the kept images |

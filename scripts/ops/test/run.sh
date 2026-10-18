@@ -283,6 +283,24 @@ chmod +x "$T/rsync-list"; mkdir -p "$T/dest"
 listed="$(cd "$ROOT" && RSYNC_DEST="$T/dest" RSYNC="$T/rsync-list" SSH=true bash scripts/ops/ship.sh --sync-only --force 2>/dev/null)"
 check "ship lists the deploy scripts" bash -c "grep -q '^deploy/release.sh$' <<<\"\$1\"" _ "$listed"
 check "ship never sends secrets.h / vr build / *.local.yaml / node_modules" bash -c "! grep -E 'secrets\.h|reinstall/vr/build/|\.local\.yaml|node_modules/|(^|/)\.env$' <<<\"\$1\"" _ "$listed"
+# S1-ops-05: what an operator leaves in the VPS checkout survives --delete.
+cat > "$T/rsync-into" <<'EOF2'
+#!/usr/bin/env bash
+args=(); for a in "$@"; do case "$a" in *:*/) args+=("$RSYNC_DEST/") ;; *) args+=("$a") ;; esac; done
+exec rsync -n -i "${args[@]}"
+EOF2
+chmod +x "$T/rsync-into"; D="$T/vps/loom"; mkdir -p "$D/show-map" "$D/.loom-state"
+kept=(.env .env.bak-2026-10-15 .env.production show-map/house.json docker-compose.override.yml \
+      loom-db-2026-10-18.sql loom-state-2026-10-18.tgz pg.sql.gz notes.bak .loom-state/journal.ndjson)
+for f in "${kept[@]}"; do echo keep > "$D/$f"; done
+echo stale > "$D/stale-file.txt"
+into="$(cd "$ROOT" && RSYNC_DEST="$D" RSYNC="$T/rsync-into" SSH=true bash scripts/ops/ship.sh --sync-only --force 2>/dev/null)"
+for f in "${kept[@]}"; do
+  check "ship never deletes the VPS's $f" bash -c "! grep -qE '^\*deleting +'\"\$2\"'/?\$' <<<\"\$1\"" _ "$into" "$f"
+done
+check "… show-map/ itself stays" bash -c "! grep -qE '^\*deleting +show-map/?$' <<<\"\$1\"" _ "$into"
+check "… a tracked .env.example still ships" grep -qE ' \.env\.example$' <<<"$into"
+check "… and a file that is gone from the repo is still deleted" grep -qE '^\*deleting +stale-file\.txt$' <<<"$into"
 for f in ${made[@]+"${made[@]}"}; do rm -f "$ROOT/$f"; done
 rmdir -p "$ROOT/reinstall/vr/build/stage/config" 2>/dev/null || true
 teardown
