@@ -374,6 +374,31 @@ describe("AgentHub", () => {
     expect(h.held).toHaveLength(0);
   });
 
+  it("a request held on a stalled worker is re-sent with the hold line in its body, and keeps its age (review 3)", () => {
+    const h = hubHarness({ replyTimeoutMs: 10_000 });
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    h.hub.line({ ...T, audience: ["g-1"] });
+    h.hub.line({ ...T, audience: ["g-2"] });
+    const sent = new Map(a.requests().map((r) => [r.thread.audience[0], r]));
+    h.tick(10_001);
+    h.hub.sweep(); // the laptop stalls
+    for (let s = 0; s < 20; s++) {
+      h.tick(1_000);
+      h.hub.sweep();
+    }
+    expect(h.held.map((r) => r.thread.audience[0]).sort()).toEqual(["g-1", "g-2"]);
+    h.hub.detach("laptop");
+    const b = h.worker("spare");
+    h.hub.attach(b.w);
+    expect(b.requests()).toHaveLength(2);
+    for (const r of b.requests()) {
+      const first = sent.get(r.thread.audience[0])!;
+      expect((r as unknown as { text: string }).text).not.toBe((first as unknown as { text: string }).text); // rebuilt after the hold line
+      expect(r.at).toBe(first.at);
+    }
+  });
+
   it("one slow reply that the worker follows with an answer inside the hold window holds nobody (review 2)", () => {
     const h = hubHarness({ replyTimeoutMs: 10_000 });
     const a = h.worker("laptop");

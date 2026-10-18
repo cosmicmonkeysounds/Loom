@@ -962,14 +962,19 @@ export class AgentHub {
       }
     }
     // Requests waiting in the line of a worker that stopped answering: the
-    // hold line once each, left in that line (the worker already holds the
-    // body, so it isn't rebuilt).
+    // hold line once each, left in that line. The body is rebuilt as for a
+    // queued request: the stalled worker answers from the copy it holds,
+    // but a re-dispatch (a timeout, a moved line, a reconnect) sends the
+    // thread with the hold line in it. Its age stays the request's own.
     for (const r of this.open.values()) {
       if (r.held || r.worker === null) continue;
       const since = this.stalled.get(r.worker);
       if (since === undefined || now - Math.max(r.createdAt, since) < holdAfter) continue;
       r.held = true;
-      this.o.hold?.(r.req);
+      if (this.o.hold?.(r.req) === true) {
+        const fresh = this.o.build(r.req.thread, r.req.id);
+        if (fresh !== null) r.req = { ...fresh, at: r.req.at };
+      }
     }
     // A stalled worker whose whole line went to workers still answering
     // gets no new work while they answer every character it voices, so it
