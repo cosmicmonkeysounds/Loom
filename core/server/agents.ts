@@ -886,7 +886,9 @@ export class AgentHub {
    * worker cancels nothing (T9-timers-02) and a head stuck in one slot of a
    * multi-slot worker still times out while the other slots answer. A
    * request given up — its attempts spent, or waiting past `queueMaxAgeMs`
-   * (queued *or* with a worker) — posts the hold line once if it never did,
+   * queued or on a stalled worker (a healthy worker's line is never cut:
+   * it is answering, and its head has the reply timeout) — posts the hold
+   * line once if it never did,
    * so the guest hears something and Run shows the thread in need.
    *
    * A worker whose head timed out is **stalled** until it answers again
@@ -911,8 +913,10 @@ export class AgentHub {
       if (h !== null) heads.add(h);
     }
     for (const [id, r] of [...this.open]) {
-      if (r.worker !== null && r.dispatchedAt !== null && now - r.req.at > maxAge) {
-        // Waited too long in all, even with a worker: give it up.
+      if (r.worker !== null && r.dispatchedAt !== null && this.stalled.has(r.worker) && now - r.req.at > maxAge) {
+        // Waited too long in all, on a worker that stopped answering: give
+        // it up. A healthy worker keeps its line however long — it is
+        // answering, one at a time, and its head has the reply timeout.
         this.workers.get(r.worker)?.send("cancel", { id });
         this.o.typing?.(r.req.thread, false);
         const worker = r.worker;

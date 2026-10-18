@@ -23,7 +23,7 @@ import { Sim } from "../src/runtime/sim/index.ts";
 
 const T: AgentThread = { character: "Trabolta", channel: "dm:Trabolta", audience: ["g-1"] };
 
-function hubHarness(opts: { replyTimeoutMs?: number; queueMaxAgeMs?: number; presence?: () => void } = {}) {
+function hubHarness(opts: { replyTimeoutMs?: number; queueMaxAgeMs?: number; maxAttempts?: number; presence?: () => void } = {}) {
   let clock = 1000;
   let builds = 0;
   const typing: boolean[] = [];
@@ -44,7 +44,16 @@ function hubHarness(opts: { replyTimeoutMs?: number; queueMaxAgeMs?: number; pre
   const worker = (id: string, characters = ["Trabolta"]) => {
     const got: Array<[string, unknown]> = [];
     const w: AgentWorker = { id, name: id, characters: new Set(characters), send: (e, d) => got.push([e, d]) };
-    return { w, got, requests: () => got.filter(([e]) => e === "request").map(([, d]) => d as AgentRequest) };
+    /** The requests this worker holds right now: sent to it, not cancelled, still open. */
+    const holds = (): AgentRequest[] => {
+      const mine = new Map<string, AgentRequest>();
+      for (const [e, d] of got) {
+        if (e === "request") mine.set((d as AgentRequest).id, d as AgentRequest);
+        else if (e === "cancel") mine.delete((d as { id: string }).id);
+      }
+      return [...mine.values()].filter((r) => hub.pending.some((p) => p.id === r.id));
+    };
+    return { w, got, holds, requests: () => got.filter(([e]) => e === "request").map(([, d]) => d as AgentRequest) };
   };
   return { hub, worker, typing, held, tick: (ms: number) => (clock += ms), builds: () => builds };
 }
@@ -438,17 +447,42 @@ describe("AgentHub", () => {
     expect(h.held).toHaveLength(0);
   });
 
-  it("an assigned request is given up at the queue's max age with the hold line once, and its worker is told to cancel", () => {
-    const h = hubHarness({ replyTimeoutMs: 24 * 3600_000, queueMaxAgeMs: 60_000 });
+  it("a request on a stalled worker is given up at the queue's max age with the hold line once, and its worker is told to cancel", () => {
+    const h = hubHarness({ replyTimeoutMs: 10_000, queueMaxAgeMs: 60_000, maxAttempts: 100 });
     const a = h.worker("laptop");
     h.hub.attach(a.w);
     h.hub.line(T);
-    h.tick(61_000);
+    const id = a.requests()[0]!.id;
+    for (let s = 0; s < 60; s++) {
+      h.tick(1000);
+      h.hub.sweep(); // stalls at 11 s, re-sent to it every reply timeout
+    }
+    expect(h.hub.pending).toHaveLength(1);
+    h.tick(1000);
     h.hub.sweep();
     expect(h.hub.pending).toHaveLength(0);
     expect(h.held).toHaveLength(1);
-    expect(a.got.filter(([e]) => e === "cancel")).toHaveLength(1);
+    expect(a.got.at(-1)).toEqual(["cancel", { id }]);
     expect(h.typing.at(-1)).toBe(false);
+  });
+
+  it("a healthy worker's long line is never cut at the queue's max age: 45 DMs at 15 s a reply are all answered (review 4)", () => {
+    const h = hubHarness();
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    for (let i = 0; i < 45; i++) h.hub.line({ ...T, audience: [`g-${i}`] });
+    let settled = 0;
+    for (let t = 1; t <= 45 * 15 + 30; t++) {
+      h.tick(1000);
+      if (t % 15 === 0) {
+        const head = a.holds()[0];
+        if (head !== undefined && h.hub.settle(head.id, "laptop") !== null) settled += 1;
+      }
+      h.hub.sweep();
+    }
+    expect(settled).toBe(45);
+    expect(h.held).toHaveLength(0);
+    expect(a.got.filter(([e]) => e === "cancel")).toHaveLength(0);
   });
 
   it("shift: a pause doesn't count toward the timeout, the queue's age or the hold line (T9-timers-03)", () => {
