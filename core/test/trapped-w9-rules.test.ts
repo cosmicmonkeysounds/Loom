@@ -116,3 +116,33 @@ describe("wave 9 — 💡 Restore the house lights holds a pending dance (ALL ST
     expect(v(sim, "Night.lights")).toBe("dance");
   });
 });
+
+// ───────────────────────── 🍾 the bottle's pool (D3) ─────────────────────────
+
+describe("wave 9 — the bottle picks any cleared, free program (T5-crew-cards-02, D3)", () => {
+  /** The ids the server's `do pick` would choose from. */
+  const pool = (evs: SimEvent[]) => {
+    const pick = cues(evs).find((c) => c.startsWith("pick "))!;
+    return pick.slice(pick.indexOf("[") + 1, pick.indexOf("]")).split(",").map((s) => s.trim()).filter((s) => s !== "").sort();
+  };
+
+  it("a program whose last check-in was another room is still pickable; the Internet, the corrupted, the marked and the away are not", { timeout: SLOW }, () => {
+    const sim = boot();
+    fireAll(sim, "call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt");
+    // Hunt 1 sends them round the house: room-sign check-ins move them.
+    fire(sim, "checked_in", "g1", { at: "The CPU" });
+    fire(sim, "checked_in", "g2", { at: "The Start Bar" });
+    fire(sim, "checked_in", "g3", { at: "The Steam Room" });
+    expect(v(sim, "g1.location")).toBe("The CPU");
+    fireAll(sim, "hunt_time_up", "first_moment_of_truth");
+    expect(v(sim, "g1.location")).toBe("The CPU"); // C2 / V6 move nobody
+    // One captured, one marked, one away: the rest are the pool.
+    sim.setVar("g4.marked", "true");
+    sim.setVar("g5.afk", "true");
+    sim.capture("g6");
+    expect(v(sim, "g6.location")).toBe("The Internet");
+    advance(sim, 120);
+    fire(sim, "read_the_results");
+    expect(pool(fire(sim, "spin_the_bottle"))).toEqual(["g1", "g2", "g3"]);
+  });
+});

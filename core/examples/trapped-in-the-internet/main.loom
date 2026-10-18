@@ -3168,10 +3168,15 @@ when read_the_results:
     set Night.terminals = "hunt_results"
     -> Question Results
 
-// 🍾 The bottle: the server picks one cleared program at the Desktop not
-// yet picked for this question (`do pick … else …`, journaled, so a
-// restart replays the same pick) and fires `bottle_landed` for them (ROLE
-// Program). Five picks per question.
+// 🍾 The bottle: the server picks one cleared program not yet picked for
+// this question (`do pick … else …`, journaled, so a restart replays the
+// same pick) and fires `bottle_landed` for them (ROLE Program). Five picks
+// per question. Anyone free and here counts, wherever their last room
+// check-in put them: a location is only the last room sign scanned, the
+// hunt sends programs round the house, and nothing re-seats them at the
+// Desktop for the Moment of Truth (C2 only calls them back). The TV names
+// the pick, so they come forward. Not a program in the Internet (captured,
+// or in the tent's game), corrupted, marked or away.
 when spin_the_bottle:
   if Night.phase != "truth_1" or Night.results_q < 1:
     broadcast "🍾 Read a question's results first (📋)." to channel(hosts)
@@ -3185,7 +3190,7 @@ when spin_the_bottle:
     cue screens_truth_or_dare
     set Night.screen = "truth_or_dare"
     set Night.terminals = "truth_or_dare"
-    do pick bottle_landed from {[p for p in Persons where p.cleared == true and p.corrupted != true and p.marked != true and p.afk != true and p.location == "The Desktop" and p.bottle_q != Night.bottle_q]} else bottle_empty
+    do pick bottle_landed from {[p for p in Persons where p.cleared == true and p.corrupted != true and p.marked != true and p.afk != true and p.captured != true and p.location != "The Internet" and p.bottle_q != Night.bottle_q]} else bottle_empty
 
 when bottle_empty:
   set Night.bottle_open = false
