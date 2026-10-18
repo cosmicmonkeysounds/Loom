@@ -435,6 +435,9 @@ export interface CastSummary {
    *  not `online` is a booth whose phone dropped (⏏ Release). Present on
    *  parts where connection tracking exists. */
   held?: boolean;
+  /** `secret: true` (the Kernel): the Director masks its values wherever
+   *  they show (a press's `did:` line), watched or not. */
+  secret?: true;
 }
 
 /** Who is connected to the event right now, by capability. */
@@ -884,6 +887,7 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
           : {}),
         ...(part ? { part: true } : {}),
         ...(part && presence?.held !== undefined ? { held: presence.held.has(foldName(c.id)) } : {}),
+        ...(c.secret ? { secret: true as const } : {}),
       };
     }),
     channels: operatorChannels(sim),
