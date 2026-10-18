@@ -25,7 +25,10 @@
 //! `holdAfterMs` (20 s) the hub asks the runtime to post the character's
 //! authored hold line (`CHARACTER … hold: …`) once, so a guest is never left
 //! in silence when the laptop is down. The request stays queued, so a worker
-//! that comes back still answers it.
+//! that comes back still answers it. A worker that stays connected but stops
+//! answering (its head request timed out) counts as down for the hold line
+//! until it answers again, and no request waits longer than
+//! `queueMaxAgeMs` in all, queued or with a worker.
 //!
 //! One open request per thread keeps a burst of three messages from
 //! producing three replies: the model answers once, then once more with
@@ -653,11 +656,14 @@ export interface AgentHubOptions {
   /** A worker's oldest dispatched request with no answer this long after it
    *  reached the head of the worker's line is re-dispatched. */
   replyTimeoutMs?: number;
-  /** A queued request no worker picked up within this long is dropped. */
+  /** A request nobody answered within this long is dropped (with the hold
+   *  line if it never got it) — queued, or with a worker that went quiet. */
   queueMaxAgeMs?: number;
   /**
    * The request has waited `holdAfterMs` since it opened and no worker voicing
-   * the character is online: post the character's hold line into the thread.
+   * the character can answer (none online, or the one it is with stopped
+   * answering — its head timed out): post the character's hold line into the
+   * thread.
    * Called at most once per request; returns whether a line was posted.
    */
   hold?: (req: AgentRequest) => boolean;
@@ -678,6 +684,11 @@ export class AgentHub {
   private readonly workers = new Map<string, AgentWorker>();
   private readonly open = new Map<string, OpenRequest>(); // request id →
   private readonly byThread = new Map<string, string>(); // thread key → request id
+  /** Workers whose head request timed out and that haven't answered since:
+   *  connected, but not answering (T9 recheck — a wedged laptop). */
+  private readonly stalled = new Set<string>();
+  /** Hub clock of each worker's last answer (or its attach). */
+  private readonly progress = new Map<string, number>();
   private dispatches = 0;
 
   private readonly o: AgentHubOptions;
@@ -707,6 +718,12 @@ export class AgentHub {
     return false;
   }
 
+  /** Is some worker voicing `character` online and still answering? */
+  private canAnswer(character: string): boolean {
+    for (const w of this.workers.values()) if (w.characters.has(character) && !this.stalled.has(w.id)) return true;
+    return false;
+  }
+
   /** Open requests (queued or in flight). */
   get pending(): AgentRequest[] {
     return [...this.open.values()].map((r) => r.req);
@@ -717,6 +734,7 @@ export class AgentHub {
   /** A worker connected: register it and hand it every queued request it can answer. */
   attach(worker: AgentWorker): void {
     this.workers.set(worker.id, worker);
+    this.progress.set(worker.id, this.now());
     this.o.presence?.();
     for (const r of this.open.values()) if (r.worker === null) this.dispatch(r);
   }
@@ -724,6 +742,8 @@ export class AgentHub {
   /** A worker went away: its in-flight requests go back in the queue. */
   detach(workerId: string): void {
     if (!this.workers.delete(workerId)) return;
+    this.stalled.delete(workerId);
+    this.progress.delete(workerId);
     for (const r of this.open.values()) {
       if (r.worker !== workerId) continue;
       r.worker = null;
@@ -828,6 +848,12 @@ export class AgentHub {
     if (this.byThread.get(r.key) === requestId) this.byThread.delete(r.key);
     this.o.typing?.(r.req.thread, false);
     if (r.worker !== null) this.startHead(r.worker);
+    // An answer: that worker is answering (again, if it had gone quiet).
+    const by = workerId ?? r.worker;
+    if (by !== null && this.workers.has(by)) {
+      this.stalled.delete(by);
+      this.progress.set(by, this.now());
+    }
     return { req: r.req, followUp: r.followUp };
   }
 
@@ -842,9 +868,16 @@ export class AgentHub {
    * answered, cancelled or answered by hand), so a 60-DM burst on a healthy
    * worker cancels nothing (T9-timers-02) and a head stuck in one slot of a
    * multi-slot worker still times out while the other slots answer. A
-   * request given up — its attempts spent, or
-   * queued past `queueMaxAgeMs` — posts the hold line once if it never did,
+   * request given up — its attempts spent, or waiting past `queueMaxAgeMs`
+   * (queued *or* with a worker) — posts the hold line once if it never did,
    * so the guest hears something and Run shows the thread in need.
+   *
+   * A worker whose head timed out is **stalled** until it answers again
+   * (connected but not answering: a dropped reply, a sleeping laptop with
+   * its stream still open). Every request waiting on it — or queued with
+   * only stalled workers voicing its character — gets the hold line once
+   * after `holdAfterMs`, like an offline worker, and stays where it is so a
+   * late answer still settles it.
    */
   sweep(): void {
     const now = this.now();
@@ -858,11 +891,26 @@ export class AgentHub {
       if (h !== null) heads.add(h);
     }
     for (const [id, r] of [...this.open]) {
+      if (r.worker !== null && r.dispatchedAt !== null && now - r.req.at > maxAge) {
+        // Waited too long in all, even with a worker: give it up.
+        this.workers.get(r.worker)?.send("cancel", { id });
+        this.o.typing?.(r.req.thread, false);
+        const worker = r.worker;
+        r.worker = null;
+        this.giveUp(id, r);
+        this.startHead(worker);
+        continue;
+      }
       if (r.worker !== null && r.dispatchedAt !== null) {
         if (!heads.has(r)) continue;
         r.startedAt ??= now;
         if (now - r.startedAt <= timeout) continue;
         const worker = r.worker;
+        // The worker had this one at its head for a whole timeout and
+        // answered nothing else meanwhile (a multi-slot worker answering
+        // its other slots is not stalled): it has stopped answering until
+        // it answers something again.
+        if (now - (this.progress.get(worker) ?? now) >= timeout) this.stalled.add(worker);
         this.workers.get(worker)?.send("cancel", { id });
         this.o.typing?.(r.req.thread, false);
         r.worker = null;
@@ -878,7 +926,7 @@ export class AgentHub {
         this.dispatch(r);
       } else if (r.worker === null && now - r.req.at > maxAge) {
         this.giveUp(id, r);
-      } else if (r.worker === null && !r.held && now - r.createdAt >= holdAfter && !this.isOnline(r.req.character)) {
+      } else if (r.worker === null && !r.held && now - r.createdAt >= holdAfter && !this.canAnswer(r.req.character)) {
         // Nobody can answer: say the hold line once, keep the request queued
         // so a worker that comes back still answers it.
         r.held = true;
@@ -889,6 +937,15 @@ export class AgentHub {
           if (fresh !== null) r.req = fresh;
         }
       }
+    }
+    // Requests waiting in the line of a worker that stopped answering: the
+    // hold line once each, left in that line (the worker already holds the
+    // body, so it isn't rebuilt).
+    for (const r of this.open.values()) {
+      if (r.held || r.worker === null || !this.stalled.has(r.worker)) continue;
+      if (now - r.createdAt < holdAfter) continue;
+      r.held = true;
+      this.o.hold?.(r.req);
     }
   }
 

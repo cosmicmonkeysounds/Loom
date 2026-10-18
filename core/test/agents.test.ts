@@ -252,6 +252,54 @@ describe("AgentHub", () => {
     expect(cancels()).toEqual([stuck!.id]);
   });
 
+  it("a worker that stays connected but stops answering: every guest waiting on it gets one hold line by ~140 s, a late answer still settles, and nothing waits past the queue's max age (T9 recheck)", () => {
+    const h = hubHarness();
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    const threads = Array.from({ length: 30 }, (_, i): AgentThread => ({ ...T, audience: [`g-${i}`] }));
+    const heldBy = (t: number) => {
+      for (let s = 0; s < t; s++) {
+        if (s < 20) for (let g = 0; g < 30; g++) if (Math.floor((g * 20) / 30) === s) h.hub.line(threads[g]!);
+        h.tick(1000);
+        h.hub.sweep();
+      }
+    };
+    heldBy(119);
+    expect(h.held).toHaveLength(0); // a slow worker is no reason for the hold line
+    heldBy(21); // t = 140 s
+    expect(new Set(h.held.map((r) => r.thread.audience[0])).size).toBe(30);
+    expect(h.held).toHaveLength(30);
+    expect(h.hub.pending).toHaveLength(30); // held, still waiting on the worker
+    // The worker wakes up and answers one: it settles, and the worker counts as answering again.
+    const [first] = a.requests().filter((r) => h.hub.pending.some((p) => p.id === r.id));
+    expect(h.hub.settle(first!.id, "laptop")).not.toBeNull();
+    h.hub.line({ ...T, audience: ["g-new"] });
+    h.tick(30_000);
+    h.hub.sweep();
+    expect(h.held).toHaveLength(30); // no hold line for a worker that is answering
+    // Nobody waits longer than the queue's max age, even with a worker; no second hold line.
+    for (let s = 0; s < AGENT_QUEUE_MAX_AGE_MS / 1000; s++) {
+      h.tick(1000);
+      h.hub.sweep();
+    }
+    expect(h.hub.pending).toHaveLength(0);
+    expect(h.held).toHaveLength(31); // g-new's turn came too (once)
+    expect(new Set(h.held.map((r) => r.thread.audience[0])).size).toBe(31);
+  });
+
+  it("an assigned request is given up at the queue's max age with the hold line once, and its worker is told to cancel", () => {
+    const h = hubHarness({ replyTimeoutMs: 24 * 3600_000, queueMaxAgeMs: 60_000 });
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    h.hub.line(T);
+    h.tick(61_000);
+    h.hub.sweep();
+    expect(h.hub.pending).toHaveLength(0);
+    expect(h.held).toHaveLength(1);
+    expect(a.got.filter(([e]) => e === "cancel")).toHaveLength(1);
+    expect(h.typing.at(-1)).toBe(false);
+  });
+
   it("shift: a pause doesn't count toward the timeout, the queue's age or the hold line (T9-timers-03)", () => {
     const h = hubHarness({ replyTimeoutMs: 120_000 });
     // Queued, nobody online: a DM 10 s before an 11-minute pause.
