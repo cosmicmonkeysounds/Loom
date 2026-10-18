@@ -65,6 +65,19 @@ export const CockpitTab = {
 
 export type CockpitTab = (typeof CockpitTab)[keyof typeof CockpitTab]
 
+/** The patch a tab switch makes: the new tab, and — when it leaves the Log —
+ *  the Director's `+N more ↗ Log` press focus dropped, so the tab bar's Log
+ *  is the whole ledger again. Cleared here on explicit navigation, never on
+ *  the Log page's unmount: React StrictMode unmounts + remounts every page
+ *  right after mount in dev, which used to drop the focus (and the secret
+ *  masking with it) the moment the Log opened. */
+export function tabSwitch(
+  s: { logPress: number | null },
+  activeTab: CockpitTab,
+): { activeTab: CockpitTab; logPress: number | null } {
+  return { activeTab, logPress: activeTab === CockpitTab.Log ? s.logPress : null }
+}
+
 /** Where a run executes. Resolved from the workspace kind (`store/run.ts`):
  *  a server project → `Server`, a local folder → `Local`. */
 export const RunBackend = {
@@ -663,7 +676,7 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   choices: {},
   perspective: OPERATOR_LENS,
   lens: null,
-  setTab: (activeTab) => set({ activeTab }),
+  setTab: (activeTab) => set((s) => tabSwitch(s, activeTab)),
   setWorldFilter: (worldFilter) => set({ worldFilter }),
   setLogPress: (logPress) => set({ logPress }),
   selectChannel: (activeChannel) => set({ activeChannel }),

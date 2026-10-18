@@ -72,11 +72,11 @@ export function LogTab() {
   const store = useContext(CockpitContext)
   const endRef = useRef<HTMLDivElement>(null)
   const [who, setWho] = useState('')
-  // The Director's `did: +N more ↗ Log` focuses one press; leaving the page
-  // drops the focus so the tab bar's Log is the whole ledger again.
+  // The Director's `did: +N more ↗ Log` focuses one press; switching tabs
+  // away drops the focus (`tabSwitch` in the store, not an unmount cleanup —
+  // StrictMode's dev remount would clear it, unmasking the whole ledger).
   const logPress = useCockpit((s) => s.logPress)
   const setLogPress = useCockpit((s) => s.setLogPress)
-  useEffect(() => () => setLogPress(null), [setLogPress])
   const watch = useCockpit((s) => s.watch)
   // The press the Director's `did: +N more ↗ Log` opened: what that line
   // masks (a `secret: true` CHARACTER's values) stays masked here.

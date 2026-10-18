@@ -24,6 +24,7 @@ import { useWorkspace } from '@/store/workspace'
 import {
   CockpitPhase,
   CockpitTab,
+  tabSwitch,
   NO_CUES,
   OPERATOR_LENS,
   RunBackend,
@@ -301,7 +302,7 @@ export const useSim = create<SimState>((set, get) => {
     ownPress: null,
     logPress: null,
 
-    setTab: (activeTab) => set({ activeTab }),
+    setTab: (activeTab) => set((s) => tabSwitch(s, activeTab)),
     setWorldFilter: (worldFilter) => set({ worldFilter }),
     setLogPress: (logPress) => set({ logPress }),
     selectChannel: (activeChannel) => set({ activeChannel }),

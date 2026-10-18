@@ -41,6 +41,7 @@ import { scratchActive, useScratch } from '@/store/run'
 import {
   CockpitPhase,
   CockpitTab,
+  tabSwitch,
   NO_CUES,
   OPERATOR_LENS,
   RunBackend,
@@ -920,7 +921,7 @@ export const useOperate = create<OperateState>((set, get) => {
       }
     },
 
-    setTab: (activeTab) => set({ activeTab }),
+    setTab: (activeTab) => set((s) => tabSwitch(s, activeTab)),
     setWorldFilter: (worldFilter) => set({ worldFilter }),
     setLogPress: (logPress) => set({ logPress }),
     selectChannel: (activeChannel) => set({ activeChannel }),
