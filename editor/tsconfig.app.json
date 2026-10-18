@@ -29,6 +29,7 @@
       "@loom/core/sim": ["../core/src/runtime/sim/index.ts"],
       "@loom/core/chat": ["../core/server/chat.ts"],
       "@loom/core/views": ["../core/server/views.ts"],
+      "@loom/core/mod-patch": ["../core/server/mod-patch.ts"],
       "@loom/core/cue-sheet": ["../core/src/cue-sheet.ts"],
       "@loom/core": ["../core/src/index.ts"],
       "@loom/bank": ["../bank/src/index.ts"],

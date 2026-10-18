@@ -28,6 +28,7 @@ import type {
   QuestSummary,
   WalletModView,
 } from '@loom/core/views'
+import { applyModPatch, type ModPatchFrame } from '@loom/core/mod-patch'
 import { ApiError, eventsApi, logApi, modApi, type EventInfo } from '@/lib/api'
 import { fetchWholeLedger } from '@/lib/run-export'
 import { onCollabEvent, type CollabEventNotice } from '@/lib/collab'
@@ -345,7 +346,9 @@ export const useOperate = create<OperateState>((set, get) => {
     disconnect()
     overlay().reset() // fresh event → fresh overlay
     if (typeof EventSource === 'undefined') return // headless tests
-    const source = new EventSource(`/e/${encodeURIComponent(eventId)}/events?role=mod`)
+    // `delta=1` (W9 O1-01): a keyframe `snapshot`, then keyed `snapshotPatch`
+    // frames against it — a few KB a frame instead of the whole ≈ 400 KB view.
+    const source = new EventSource(`/e/${encodeURIComponent(eventId)}/events?role=mod&delta=1`)
     source.onopen = () => set({ connected: true })
     // A dropped stream is either a blip (EventSource retries) or the
     // event ending under us — ask the control plane which.
@@ -353,8 +356,10 @@ export const useOperate = create<OperateState>((set, get) => {
       set({ connected: false })
       void get().refresh()
     }
-    source.addEventListener('snapshot', (e) => {
-      const snap = JSON.parse((e as MessageEvent).data) as Partial<ModSnapshot>
+    /** The last whole view this stream holds (and its frame number): what
+     *  the next patch applies to. */
+    let last: { frame: number | null; snap: Partial<ModSnapshot> } | null = null
+    const applySnap = (snap: Partial<ModSnapshot>) => {
       const me = get().me
       const roster = snap.roster ?? []
       const sel = get().selection
@@ -391,6 +396,22 @@ export const useOperate = create<OperateState>((set, get) => {
           : sel,
       })
       void refreshLens()
+    }
+    source.addEventListener('snapshot', (e) => {
+      const { _frame, ...snap } = JSON.parse((e as MessageEvent).data) as Partial<ModSnapshot> & { _frame?: number }
+      last = { frame: typeof _frame === 'number' ? _frame : null, snap }
+      applySnap(snap)
+    })
+    source.addEventListener('snapshotPatch', (e) => {
+      const p = JSON.parse((e as MessageEvent).data) as ModPatchFrame
+      if (last === null || last.frame === null) return // before any keyframe: nothing to patch
+      if (p.base !== last.frame) {
+        // A frame went missing: start over — the reopened stream's first view is whole.
+        connect(eventId)
+        return
+      }
+      last = { frame: p.frame, snap: applyModPatch(last.snap, p.patch) }
+      applySnap(last.snap)
     })
     // A worker recorded a model call (the Mind page's live feed).
     source.addEventListener('agentThought', (e) => {
