@@ -407,6 +407,85 @@ describe("wallet book — requests", () => {
     }
   });
 
+  it("a request's closing step says who stopped the payment: the auditor's deny, the payer's cancel (T1-wallet-02, C6)", () => {
+    // Denied by the auditor: both request cards carry `by` and read as a deny,
+    // not as the payer's Decline.
+    {
+      const f = fake(PEOPLE, { parts: ["Auditor"] });
+      const book = new WalletBook(COIN, f.seam);
+      book.apply({ op: "request", id: "r1", from: "g1", to: "g2", amount: 3, at: 0 });
+      book.apply({ op: "respond", id: "r1", accept: true, tx: "t2", at: 10 });
+      const req = cards(book.apply({ op: "deny", id: "t2", by: "Auditor" })).filter((c) => c.card.kind === "request");
+      expect(req.map((c) => [c.to, c.card.step, c.card.by])).toEqual([
+        ["g2", "declined", "Auditor"],
+        ["g1", "declined", "Auditor"],
+      ]);
+      const line = walletLine(req[1]!.card);
+      expect(line).toBe("⛔ Auditor denied Paint's payment of 3 Truthcoin; refunded.");
+      expect(line).not.toContain("Declined:");
+    }
+    // A director's deny names the Director; a character approver reads with spaces.
+    {
+      const f = fake(PEOPLE, { parts: ["CRA_Agent_Software"] });
+      const book = new WalletBook({ ...COIN, approver: { id: "CRA_Agent_Software", every: 3, windowMs: 60_000 } }, f.seam);
+      book.apply({ op: "request", id: "r1", from: "g1", to: "g2", amount: 3, at: 0 });
+      book.apply({ op: "respond", id: "r1", accept: true, tx: "t2", at: 10 });
+      const ev = cards(book.apply({ op: "deny", id: "t2", by: "CRA_Agent_Software" }));
+      expect(ev.map((c) => c.card.by)).toEqual(["CRA Agent Software", "CRA Agent Software", "CRA Agent Software", "CRA Agent Software"]);
+      expect(f.signals.find((s) => s[0] === "transfer_denied")![2].by).toBe("CRA_Agent_Software");
+    }
+    // Cancelled by the payer while held: names the payer, never "withdrew".
+    {
+      const f = fake(PEOPLE, { parts: ["Auditor"] });
+      const book = new WalletBook(COIN, f.seam);
+      book.apply(send(book, "g3", "g4", 1, 0));
+      book.apply({ op: "request", id: book.nextId("r"), from: "g1", to: "g2", amount: 4, at: 0 });
+      book.apply(send(book, "g3", "g4", 1, 0));
+      expect(cards(book.apply({ op: "respond", id: "r2", accept: true, tx: "t4", at: 10 })).find((c) => c.card.kind === "transfer")!.card.step).toBe("held");
+      const req = cards(book.apply({ op: "cancel", id: "t4", by: "g2" })).filter((c) => c.card.kind === "request");
+      expect(req.map((c) => [c.to, c.card.step, c.card.by])).toEqual([
+        ["g2", "cancelled", "Paint"],
+        ["g1", "cancelled", "Paint"],
+      ]);
+      const line = walletLine(req[1]!.card);
+      expect(line).toBe("↩️ Paint cancelled the payment of 4 Truthcoin.");
+      expect(line).not.toContain("withdrew");
+    }
+    // The old meanings stay: the payer's own Decline, the asker's withdrawal.
+    {
+      const f = fake(PEOPLE, { parts: ["Auditor"] });
+      const book = new WalletBook(COIN, f.seam);
+      book.apply({ op: "request", id: "r1", from: "g1", to: "g2", amount: 5, at: 0 });
+      const declined = cards(book.apply({ op: "respond", id: "r1", accept: false, at: 1 }));
+      expect(declined.every((c) => c.card.by === undefined)).toBe(true);
+      expect(walletLine(declined[0]!.card)).toBe("⛔ Declined: 5 Truthcoin from Paint.");
+      book.apply({ op: "request", id: "r2", from: "g1", to: "g2", amount: 6, at: 2 });
+      const withdrawn = cards(book.apply({ op: "cancel", id: "r2", by: "g1" }));
+      expect(withdrawn.every((c) => c.card.by === undefined)).toBe(true);
+      expect(walletLine(withdrawn[0]!.card)).toBe("↩️ Winamp withdrew the request for 6 Truthcoin.");
+    }
+  });
+
+  it("a card's `by` is a display name, never a guest's person id; the signal keeps the id (T1-wallet-03)", () => {
+    const f = fake([...PEOPLE, ["g-cdb857", "MS Paint"]], { parts: ["Auditor"] });
+    const book = new WalletBook(COIN, f.seam);
+    book.apply(send(book, "g-cdb857", "g1", 7, 0));
+    book.apply(send(book, "g-cdb857", "g1", 7, 0));
+    expect(cards(book.apply(send(book, "g-cdb857", "g1", 7, 0)))[0]!.card.step).toBe("held");
+    const ev = cards(book.apply({ op: "cancel", id: "t3", by: "g-cdb857" }));
+    expect(ev.map((c) => [c.card.kind, c.card.step, c.card.by])).toEqual([
+      ["transfer", "cancelled", "MS Paint"],
+      ["approval", "cancelled", "MS Paint"],
+    ]);
+    expect(f.signals.at(-1)).toEqual(["transfer_cancelled", "g-cdb857", { to: "g1", amount: 7, tx: "t3", by: "g-cdb857" }]);
+    // A guest minter's grant cards name the program too.
+    const granted = cards(book.apply({ op: "grant", id: book.nextId("g"), by: "g3", to: "g1", amount: 5, at: 1 }));
+    expect(granted.map((c) => [c.to, c.card.step, c.card.by])).toEqual([
+      ["g3", "granted", "Mint"],
+      ["g1", "received", "Mint"],
+    ]);
+  });
+
   it("accepting a request you can no longer pay declines it inside apply, deterministically", () => {
     const f = fake(PEOPLE, { parts: ["Auditor"] });
     const book = new WalletBook(COIN, f.seam);
