@@ -2,16 +2,17 @@
 //! room, in that order, each hiding itself when it has nothing to show.
 //! Read-only — every row is a link to the page that acts on it. Below the
 //! two-column width it becomes a strip of one-line chips, each opening its
-//! section inline, one at a time. Pure rules in `glance.ts`.
+//! section inline, one at a time — unless the Inspector tray is open with
+//! nothing selected, where the whole column sits instead of an empty tray
+//! (`tray.ts` `useGlanceInTray`, `GlanceTray`). Pure rules in `glance.ts`.
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import clsx from 'clsx'
-import { CockpitPhase, CockpitTab, SelectionKind, useCockpit } from '@/store/cockpit'
+import { CockpitContext, CockpitPhase, CockpitTab, SelectionKind, storyNow, useCockpit } from '@/store/cockpit'
 import { useInspect } from '../inspect'
 import { PresenceDot } from '../presence'
 import { PartPresence, partPresenceTitle } from '../parts'
-import { logClock } from '../log-describe'
-import { useDirector } from './context'
+import { usePressOutcome } from './useArmed'
 import { useNow } from './clock'
 import {
   MASK,
@@ -26,6 +27,8 @@ import {
   peopleGlance,
   recentGlobals,
   staffFeed,
+  storyAgo,
+  watchChipText,
   watchRows,
   worldValue,
   type GlanceLink,
@@ -34,8 +37,13 @@ import {
   type WatchRow,
 } from './glance'
 
-/** Lines a section shows before `▸ more` at the middle width. */
+/** Lines a section shows before `▸ more` at the middle width (Watch shows
+ *  more: its rows are the night's state, the reason the column exists). */
 const FIRST_LINES = 3
+const WATCH_FIRST_LINES = 8
+
+/** Every line, no `▸ more` (Watching: the column is the whole view). */
+const ShowAll = createContext(false)
 
 /** Follow a glance link. */
 function useGo(): (link: GlanceLink) => void {
@@ -76,18 +84,20 @@ function Section({ title, link, testid, children }: { title: string; link?: { la
 
 /** A list that shows its first lines and a `▸ more` toggle at the middle
  *  width (every line at the widest, where the column has room). */
-function Lines({ items }: { items: ReactNode[] }) {
+function Lines({ items, first = FIRST_LINES }: { items: ReactNode[]; first?: number }) {
+  const all = useContext(ShowAll)
   const [more, setMore] = useState(false)
+  const folded = !all && !more && items.length > first
   return (
     <div className="flex flex-col gap-0.5">
       {items.map((it, i) => (
-        <div key={i} className={clsx(i >= FIRST_LINES && !more && 'hidden @6xl:block')}>
+        <div key={i} className={clsx(folded && i >= first && 'hidden @6xl:block')}>
           {it}
         </div>
       ))}
-      {items.length > FIRST_LINES && !more && (
+      {folded && (
         <button onClick={() => setMore(true)} className="self-start text-[10px] text-zinc-500 hover:text-zinc-300 @6xl:hidden">
-          ▸ {items.length - FIRST_LINES} more
+          ▸ {items.length - first} more
         </button>
       )}
     </div>
@@ -103,7 +113,9 @@ function valueTone(tone: ValueTone): string {
 // ---------------------------------------------------------------------------
 
 function useNeeds() {
-  const { arm } = useDirector()
+  // The last press's outcome lives with the cockpit, so the tray's column
+  // (outside the Director page) keeps a refusal too.
+  const { refused } = usePressOutcome(useContext(CockpitContext))
   const messages = useCockpit((s) => s.messages)
   const channels = useCockpit((s) => s.channels)
   const world = useCockpit((s) => s.world)
@@ -111,8 +123,8 @@ function useNeeds() {
   const wallet = useCockpit((s) => s.wallet)
   const cast = useCockpit((s) => s.cast)
   const doorsOpen = useCockpit((s) => s.phase === CockpitPhase.Open)
-  const now = useNow(arm.refused !== null, 1000)
-  return needsYou({ refused: arm.refused, now, messages, channels, world, facts, wallet, cast, doorsOpen })
+  const now = useNow(refused !== null, 1000)
+  return needsYou({ refused, now, messages, channels, world, facts, wallet, cast, doorsOpen })
 }
 
 function NeedsYou() {
@@ -287,7 +299,7 @@ function WatchList() {
     if (rows.length === 0) return null
     return (
       <Section title="Watch" link={toWorld} testid="glance-watch">
-        <Lines items={rows.map((r) => <WatchLine key={r.key} row={r} changed={r.kind === 'value' && !r.secret && changedRecently(changes, r.path, now)} />)} />
+        <Lines first={WATCH_FIRST_LINES} items={rows.map((r) => <WatchLine key={r.key} row={r} changed={r.kind === 'value' && !r.secret && changedRecently(changes, r.path, now)} />)} />
       </Section>
     )
   }
@@ -296,6 +308,7 @@ function WatchList() {
   return (
     <Section title="Recently changed" link={toWorld} testid="glance-watch">
       <Lines
+        first={WATCH_FIRST_LINES}
         items={recent.map((r) => (
           <button key={r.path} onClick={() => go({ kind: 'tab', tab: CockpitTab.World, worldFilter: r.path })} className="flex w-full items-baseline gap-2 rounded px-1 text-left text-xs hover:bg-zinc-900/60">
             <span className="w-28 shrink-0 truncate font-mono text-[11px] text-zinc-400">{r.path}</span>
@@ -440,6 +453,10 @@ function Cast() {
 function StaffRoom({ lines }: { lines: number }) {
   const messages = useCockpit((s) => s.messages)
   const channels = useCockpit((s) => s.channels)
+  const clock = useCockpit((s) => s.storyClock)
+  const running = useCockpit((s) => s.phase === CockpitPhase.Open)
+  const wall = useNow(true, 30_000)
+  const now = storyNow(clock, running, wall)
   const go = useGo()
   const feed = useMemo(() => staffFeed(messages, channels, lines), [messages, channels, lines])
   const room = channels.find((c) => c.staff === true)
@@ -451,7 +468,9 @@ function StaffRoom({ lines }: { lines: number }) {
       ) : (
         feed.map((m) => (
           <button key={m.seq} onClick={() => go({ kind: 'tab', tab: CockpitTab.Chat, channel: m.channel })} className="flex w-full items-baseline gap-2 text-left text-xs hover:text-indigo-300">
-            <span className="shrink-0 font-mono text-[10px] text-zinc-600">{logClock(m.ts)}</span>
+            <span className="w-10 shrink-0 text-right text-[10px] tabular-nums text-zinc-600" title="story time since the line">
+              {storyAgo(m.ts, now)}
+            </span>
             <span className="min-w-0 flex-1 truncate text-zinc-300" title={m.text}>
               {m.text}
             </span>
@@ -468,15 +487,28 @@ function StaffRoom({ lines }: { lines: number }) {
 
 export function GlanceColumn({ watching }: { watching: boolean }) {
   return (
-    <div
-      className={clsx('flex flex-col rounded-xl border border-zinc-800 empty:hidden', watching && '@4xl:grid @4xl:grid-cols-2 @6xl:grid-cols-3')}
-      data-testid="director-glance"
-    >
-      <NeedsYou />
-      <WatchList />
-      <People />
-      <Cast />
-      <StaffRoom lines={watching ? 12 : 5} />
+    <ShowAll.Provider value={watching}>
+      <div
+        className={clsx('flex flex-col rounded-xl border border-zinc-800 empty:hidden', watching && '@4xl:grid @4xl:grid-cols-2 @6xl:grid-cols-3')}
+        data-testid="director-glance"
+      >
+        <NeedsYou />
+        <WatchList />
+        <People />
+        <Cast />
+        <StaffRoom lines={watching ? 12 : 5} />
+      </div>
+    </ShowAll.Provider>
+  )
+}
+
+/** The tray's glance column (`useGlanceInTray`). */
+export function GlanceTray() {
+  return (
+    <div className="h-full overflow-auto p-2" data-testid="director-glance-tray">
+      <div className="px-1 pb-1 text-[10px] uppercase tracking-widest text-zinc-500">The house at a glance</div>
+      <GlanceColumn watching={false} />
+      <p className="px-1 pt-2 text-[10px] text-zinc-600">Select a guest, cast member, faction or location to inspect it here.</p>
     </div>
   )
 }
@@ -504,7 +536,15 @@ export function GlanceStrip() {
   const channels = useCockpit((s) => s.channels)
   const watch = useCockpit((s) => s.watch)
   const declared = useCockpit((s) => s.watchDeclared)
+  const world = useCockpit((s) => s.world)
+  const log = useCockpit((s) => s.log)
   const g = useMemo(() => peopleGlance(roster, factions, locations), [roster, factions, locations])
+  const watchChip = useMemo(() => {
+    if (declared) return watchChipText(watchRows(watch, world, roster, cast))
+    // No `watch:` lines: the chip only once something changed (an empty
+    // "changed" box is no chip at all).
+    return recentGlobals(log, world, roster.map((r) => r.id), cast.map((c) => c.id), 8).length > 0 ? 'changed' : null
+  }, [declared, watch, world, roster, cast, log])
   const booths = useMemo(() => boothSummary(cast), [cast])
   const agents = useMemo(() => agentGlance(minds, cast), [minds, cast])
   const staff = channels.find((c) => c.staff === true)
@@ -521,7 +561,7 @@ export function GlanceStrip() {
   )
   const chips: ReactNode[] = []
   if (needs.length > 0) chips.push(chip(StripSection.Needs, `⚑ ${needs.length}`, 'text-red-400'))
-  if ((declared && watch.length > 0) || !declared) chips.push(chip(StripSection.Watch, declared ? 'watch' : 'changed'))
+  if (watchChip !== null) chips.push(chip(StripSection.Watch, watchChip))
   if (g.joined > 0) {
     const parts = [g.online !== null ? `${g.online}/${g.joined} online` : `${g.joined} joined`]
     const jailed = g.prisons.reduce((n, p) => n + p.people.length, 0)

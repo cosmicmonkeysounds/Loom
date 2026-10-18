@@ -383,7 +383,24 @@ export function staffChannels(channels: readonly ChannelSummary[]): ChannelSumma
   return channels.filter((c) => c.staff === true)
 }
 
-/** The last `n` messages in the staff rooms, oldest first. */
+/** The narrow strip's Watch chip: its first two values (`Y2K clock 23:30 ·
+ *  Round 3`), a secret one masked; null with nothing live to watch. */
+export function watchChipText(rows: readonly WatchRow[], n = 2): string | null {
+  if (rows.length === 0) return null
+  const shown = rows.slice(0, n).map((r) => {
+    if (r.kind === 'value') return `${r.label} ${r.secret ? MASK : r.value.text}`
+    if (r.kind === 'role') {
+      const a = r.agg
+      const v = a.type === RoleAggKind.Bool ? `${a.count}/${a.total}` : a.type === RoleAggKind.Number ? String(a.sum) : (a.top[0]?.value ?? '—')
+      return `${r.label} ${v}`
+    }
+    return r.label
+  })
+  return `${shown.join(' · ')}${rows.length > n ? ` +${rows.length - n}` : ''}`
+}
+
+/** The last `n` messages in the staff rooms, newest first (the line a
+ *  director needs is on top, never below the fold). */
 export function staffFeed(messages: readonly CockpitMessage[], channels: readonly ChannelSummary[], n: number): CockpitMessage[] {
   const staff = new Set(staffChannels(channels).map((c) => c.id))
   if (staff.size === 0) return []
@@ -392,7 +409,17 @@ export function staffFeed(messages: readonly CockpitMessage[], channels: readonl
     const m = messages[k]!
     if (staff.has(m.channel) && m.hidden !== true) out.push(m)
   }
-  return out.reverse()
+  return out
+}
+
+/** How long ago (story time) a line landed: `now`, `12m`, `1h05m` — a
+ *  story clock past the hour never reads like a time of day (`75:45`). */
+export function storyAgo(ts: number | undefined, nowMs: number | null): string {
+  if (ts === undefined || nowMs === null) return '—'
+  const s = Math.max(0, Math.round((nowMs - ts) / 1000))
+  if (s < 60) return 'now'
+  const m = Math.floor(s / 60)
+  return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}m`
 }
 
 /** The first staff-room line after `afterSeq` — the story's reason for a

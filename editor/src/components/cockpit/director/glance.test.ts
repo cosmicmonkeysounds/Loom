@@ -15,6 +15,8 @@ import {
   secretHeads,
   staffFeed,
   staffReason,
+  storyAgo,
+  watchChipText,
   watchRows,
 } from './glance'
 
@@ -92,6 +94,17 @@ describe('watchRows', () => {
   const roster = [row('p1', 'Microsoft Excel', { online: true, location: 'The Server Room', faction: 'Unlimited Power' }), row('p2', 'Winamp'), row('p3', 'Clippy fan', { role: 'Program' })]
   const cast: CastSummary[] = [{ id: 'Microsoft Excel', faction: 'Staff' }, { id: 'MS Paint', faction: null, online: true }]
   const world = [w('p1.cleared', 'true'), w('p2.cleared', 'false'), w('p3.cleared', 'true'), w('Trabolta.cleared', 'true'), w('p1.trust', '3'), w('p2.trust', '7'), w('Night.clock', '"23:30"'), w('Kernel.door_code', '"4711"')]
+
+  it('the narrow strip\'s Watch chip carries its first values, a secret masked', () => {
+    const watch: WatchSummary[] = [
+      { label: 'Y2K clock', path: 'Night.clock', person: null, scope: 'global' },
+      { label: 'Door code', path: 'Kernel.door_code', person: null, scope: 'character', secret: true },
+      { label: 'Cleared', path: 'Program.cleared', person: null, scope: 'role' },
+    ]
+    expect(watchChipText(watchRows(watch, world, roster, cast))).toBe('Y2K clock 23:30 · Door code •••• +1')
+    expect(watchChipText(watchRows(watch.slice(2), world, roster, cast))).toBe('Cleared 2/3')
+    expect(watchChipText([])).toBeNull()
+  })
 
   it('role aggregate counts bools over guests only', () => {
     const watch: WatchSummary[] = [
@@ -199,7 +212,8 @@ describe('peopleGlance', () => {
 describe('the staff room', () => {
   it('staffFeed keeps only staff rooms', () => {
     const messages = [msg(1, 'room:hosts', 'one'), msg(2, 'lobby', 'hi'), msg(3, 'room:hosts', 'two'), { ...msg(4, 'room:hosts', 'gone'), hidden: true }, msg(5, 'room:hosts', 'three')]
-    expect(staffFeed(messages, CHANNELS, 2).map((m) => m.text)).toEqual(['two', 'three'])
+    // Newest first: the line a director needs is on top.
+    expect(staffFeed(messages, CHANNELS, 2).map((m) => m.text)).toEqual(['three', 'two'])
     expect(staffFeed(messages, CHANNELS.filter((c) => !c.staff), 5)).toEqual([])
     expect(staffReason(messages, CHANNELS, 3)?.text).toBe('three')
     expect(staffReason(messages, CHANNELS, 5)).toBeNull()
@@ -234,5 +248,15 @@ describe('secretHeads', () => {
     // An older server's cast carries no flag: a secret watch item still names it.
     const watch: WatchSummary[] = [{ label: 'Door code', path: 'Kernel.door_code', person: null, scope: 'character', secret: true }]
     expect([...secretHeads([{ id: 'Kernel', faction: null }], watch)]).toEqual(['Kernel'])
+  })
+})
+
+describe('storyAgo', () => {
+  it('reads story time since a line, never a clock past the hour', () => {
+    expect(storyAgo(1000, 30_000)).toBe('now')
+    expect(storyAgo(0, 12 * 60_000)).toBe('12m')
+    expect(storyAgo(0, (75 * 60 + 45) * 1000)).toBe('1h15m')
+    expect(storyAgo(undefined, 0)).toBe('—')
+    expect(storyAgo(0, null)).toBe('—')
   })
 })

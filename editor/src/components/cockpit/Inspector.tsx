@@ -28,6 +28,8 @@ import {
 import { VarTable } from './VarTable'
 import { usePlayAs } from './play-as'
 import { qrSvg } from '@/lib/print-sheet'
+import { GlanceTray } from './director/Glance.tsx'
+import { useGlanceInTray } from './director/tray'
 
 /** How many recent messages "Their feed" shows. */
 const FEED_LIMIT = 60
@@ -957,9 +959,21 @@ function Empty({ msg }: { msg: string }) {
 
 export function CockpitInspector() {
   const selection = useCockpit((s) => s.selection)
+  const select = useCockpit((s) => s.select)
+  const onDirector = useCockpit((s) => s.activeTab === CockpitTab.Director)
+  // On the Director page an empty tray holds the house at a glance.
+  const glance = useGlanceInTray()
   return (
-    <div className="h-full w-full bg-zinc-950 text-zinc-100">
-      {selection === null ? (
+    <div className="flex h-full w-full flex-col bg-zinc-950 text-zinc-100">
+      {onDirector && selection !== null && (
+        <button onClick={() => select(null)} className="shrink-0 border-b border-zinc-800 px-3 py-1 text-left text-[11px] text-zinc-500 hover:text-zinc-200" data-testid="inspector-to-glance">
+          ← the house at a glance
+        </button>
+      )}
+      <div className="min-h-0 flex-1">
+      {glance ? (
+        <GlanceTray />
+      ) : selection === null ? (
         <Empty msg="Select a guest, cast member, faction, or location to inspect and edit it." />
       ) : selection.kind === SelectionKind.Guest ? (
         <GuestInspector key={selection.id} id={selection.id} />
@@ -970,6 +984,7 @@ export function CockpitInspector() {
       ) : (
         <LocationInspector key={selection.id} id={selection.id} />
       )}
+      </div>
     </div>
   )
 }

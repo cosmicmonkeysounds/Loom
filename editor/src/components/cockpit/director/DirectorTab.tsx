@@ -26,6 +26,7 @@ import { NowCard } from './NowCard'
 import { OnHand } from './OnHand'
 import { RunningOrder } from './RunningOrder'
 import { GlanceColumn, GlanceStrip } from './Glance.tsx'
+import { useGlanceInTray } from './tray'
 import { DirectorTools } from './DirectorTools'
 
 export function DirectorTab() {
@@ -245,6 +246,9 @@ function DirectorPage() {
   const ctx: DirectorCtx = { rows, acts, focus, actOf, arm, awards, cursor, setCursor, mode, showAct }
   const hasCues = rows.length > 0
   const watching = mode === DirectorMode.Watching
+  // The Inspector tray, open with nothing selected, holds the glance column:
+  // Calling leaves its own strip / column out.
+  const inTray = useGlanceInTray()
 
   return (
     <DirectorContext.Provider value={ctx}>
@@ -268,7 +272,7 @@ function DirectorPage() {
             </div>
             <NightBar />
           </div>
-          {!watching && (
+          {!watching && !inTray && (
             <div className="@4xl:hidden">
               <GlanceStrip />
             </div>
@@ -293,16 +297,18 @@ function DirectorPage() {
               <DirectorTools defaultOpen={!hasCues} />
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 @4xl:grid-cols-[minmax(0,1fr)_300px] @6xl:grid-cols-[minmax(0,56rem)_340px]">
+            <div className={clsx('grid grid-cols-1 gap-3', !inTray && '@4xl:grid-cols-[minmax(0,1fr)_300px] @6xl:grid-cols-[minmax(0,56rem)_340px]')}>
               <div className="flex min-w-0 flex-col gap-4">
                 {hasCues && <NowCard flash={flash} />}
                 {hasCues && query.trim() === '' && <OnHand />}
                 {hasCues && <RunningOrder ref={filterRef} query={query} setQuery={setQuery} toggled={toggled} setToggled={setToggled} all={all} setAll={setAll} />}
                 <DirectorTools defaultOpen={!hasCues} />
               </div>
-              <aside className="hidden self-start @4xl:sticky @4xl:top-0 @4xl:block @4xl:max-h-[calc(100vh-9rem)] @4xl:overflow-auto">
-                <GlanceColumn watching={false} />
-              </aside>
+              {!inTray && (
+                <aside className="hidden self-start @4xl:sticky @4xl:top-0 @4xl:block @4xl:max-h-[calc(100vh-9rem)] @4xl:overflow-auto">
+                  <GlanceColumn watching={false} />
+                </aside>
+              )}
             </div>
           )}
         </div>
