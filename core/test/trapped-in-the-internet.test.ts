@@ -2833,7 +2833,7 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05; wave 4 judg
     // An empty pool (the server's `else`): the bottle closes.
     const empty = fire(sim, "bottle_empty");
     expect(v(sim, "Night.bottle_open")).toBe(false);
-    expect(hosts(sim, empty)).toEqual(["🍾 Nobody left at the Desktop to pick. Read the next results (📋)."]);
+    expect(hosts(sim, empty)).toEqual(["🍾 Nobody left to pick for question 2. Read the next results (📋)."]);
     // After the preview the bottle and the results are over.
     fire(sim, "read_the_results");
     fire(sim, "second_hunt_preview");

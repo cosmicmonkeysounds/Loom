@@ -817,8 +817,9 @@ ROLE Program
       fire mark_for_reinstallation for program with reason: "was not sure of an answer"
 
   // ── 🍾 The bottle: Truth or Dare (wave 4) ──
-  // `spin_the_bottle` asks the server for one random cleared program at the
-  // Desktop not yet picked for this question (`do pick …`, journaled); the
+  // `spin_the_bottle` asks the server for one random cleared program, wherever
+  // it stands (not marked, away, captured or in the Internet), not yet picked
+  // for this question (`do pick …`, journaled); the
   // pick lands here. Trabolta asks on the TV (`Bottle Landed`, a public line
   // in The Desktop); the phone gets a Truth / Dare poll in dm:Trabolta.
   // Dare, or a refused truth, marks for reinstallation. Truth asks
@@ -2579,7 +2580,7 @@ INTERACTION spin_the_bottle
   label: 🍾 Spin the bottle (Truth or Dare, five per question)
   who: admin
   sequence: false
-  description: Picks a cleared program at the Desktop not yet picked for this question. Trabolta asks on the TV; their phone gets Truth / Dare.
+  description: Picks a cleared program (not marked, away or in the Internet) not yet picked for this question. Trabolta asks on the TV; their phone gets Truth / Dare.
 
 INTERACTION telephone
   label: (Optional) ☎️ Telephone: a mangled message sends someone to the Internet
@@ -3388,7 +3389,7 @@ when spin_the_bottle:
 
 when bottle_empty:
   set Night.bottle_open = false
-  broadcast "🍾 Nobody left at the Desktop to pick. Read the next results (📋)." to channel(hosts)
+  broadcast "🍾 Nobody left to pick for question {Night.bottle_q}. Read the next results (📋)." to channel(hosts)
 
 when bottle_announce:
   -> Bottle Landed
