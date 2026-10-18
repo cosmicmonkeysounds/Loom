@@ -43,9 +43,12 @@ interface Frame {
   data: unknown;
 }
 
-/** A director's stream: every `event:` + `data:` pair it was written. */
+/** A director's stream: every `event:` + `data:` pair it was written. A
+ *  big frame's `data:` arrives in `SSE_SLICE` pieces (sseFrame paces it
+ *  out), so the bytes are read like a socket's: a frame is whole at its
+ *  blank line. */
 function streamRes() {
-  let pending: string | null = null;
+  let buf = "";
   const res = {
     statusCode: 0,
     body: "",
@@ -58,10 +61,17 @@ function streamRes() {
       return res;
     },
     write(chunk: string) {
-      if (chunk.startsWith("event: ")) pending = chunk.slice(7).trim();
-      else if (pending !== null && chunk.startsWith("data: ")) {
-        res.frames.push({ event: pending, data: JSON.parse(chunk.slice(6)) });
-        pending = null;
+      buf += chunk;
+      for (let end = buf.indexOf("\n\n"); end >= 0; end = buf.indexOf("\n\n")) {
+        const block = buf.slice(0, end);
+        buf = buf.slice(end + 2);
+        let event: string | null = null;
+        let data: string | null = null;
+        for (const line of block.split("\n")) {
+          if (line.startsWith("event: ")) event = line.slice(7).trim();
+          else if (line.startsWith("data: ")) data = line.slice(6);
+        }
+        if (event !== null && data !== null) res.frames.push({ event, data: JSON.parse(data) });
       }
       return true;
     },
