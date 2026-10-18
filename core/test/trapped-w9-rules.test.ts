@@ -6,12 +6,18 @@
 import { describe, expect, it } from "vitest";
 import { Sim } from "../src/runtime/sim/index.ts";
 import type { SimEvent } from "../src/runtime/sim/index.ts";
-import { scenarioSource } from "../examples/load.ts";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { scenarioDir, scenarioSource } from "../examples/load.ts";
+import { FACTS_FILE } from "../src/facts.ts";
+import { judgeAnswer, parseFactsBook } from "../server/facts.ts";
 
 // ───────────────────────── helpers ─────────────────────────
 
 const SRC = scenarioSource("trapped-in-the-internet");
 const fresh = (): Sim => Sim.fromSources(SRC);
+/** The server's answer key: the tests attach the verdict the event server would. */
+const BOOK = parseFactsBook(readFileSync(join(scenarioDir("trapped-in-the-internet"), FACTS_FILE), "utf8")).book!;
 const SLOW = 120_000;
 
 type Ev<T extends SimEvent["type"]> = Extract<SimEvent, { type: T }>;
@@ -382,5 +388,61 @@ describe("wave 9 — a cut room comes back on unless the next look re-lit it (T8
     fire(sim, "force_majority_leave");
     expect(v(sim, "Night.lights")).toBe("server_open");
     expect(cues(advance(sim, 75))).toContain(on("The RAM"));
+  });
+});
+
+// ───────────────────────── a booth's 📝 with several filings waiting (D5) ─────────────────────────
+
+describe("wave 9 — a booth's 📝 never judges a filing the host did not mean (T2-facts-02, T5-crew-cards-03, D5)", () => {
+  let card = 1;
+  const file = (sim: Sim, g: string, question: string, answer: string, confidence = 100) =>
+    sim.signal("fact answered", g, { question, answer, confidence, card: card++, verdict: judgeAnswer(BOOK, question, answer, confidence)! });
+  const refusal = (name: string, label: string) =>
+    `📝 Not judged: ${name} has an earlier filing still waiting for a verdict. Judge it on Run → Mind → Judging, which names the question (their card's 📝 judges only their latest, ${label}). Nothing changed.`;
+
+  it("review mode: two pending filings → a booth press with no question refuses, changes nothing; Run's named question still judges", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    sim.setVar("Night.judge_mode", "review");
+    const f2 = file(sim, "g1", "H2", "Mr Pickles");
+    expect(hostsSaid(f2)[0]).toBe("📝 Calculator filed H2 (round 1 Q2): Mr Pickles — certain. Proposed: lie. Confirm on Run → Mind → Judging (their card's 📝 judges their latest filing only).");
+    file(sim, "g1", "H3", "9am");
+    expect([v(sim, "g1.fact_v2"), v(sim, "g1.fact_v3")]).toEqual(["pending", "pending"]);
+    for (const press of ["fact_accurate", "fact_lie", "fact_uncertain"]) {
+      const p = fire(sim, press, "g1", null, "Clippy");
+      expect(hostsSaid(p), press).toEqual([refusal("Calculator", "round 1 Q3")]);
+      expect([v(sim, "g1.fact_v2"), v(sim, "g1.fact_v3")], press).toEqual(["pending", "pending"]);
+      expect([v(sim, "Kernel.q2"), v(sim, "Kernel.q3"), v(sim, "Kernel.lies_accepted")], press).toEqual(["none", "none", 0]);
+    }
+    // Run's Judging card names the question.
+    expect(hostsSaid(fire(sim, "fact_lie", "g1", { question: "H2" }))).toEqual(["📝 Calculator's H2 is judged a confident lie."]);
+    expect(v(sim, "g1.fact_v2")).toBe("lie");
+    expect(v(sim, "g1.fact_v3")).toBe("pending");
+    // Only the latest left waiting: the card's press judges it (the old behaviour).
+    expect(hostsSaid(fire(sim, "fact_accurate", "g1", null, "Clippy"))).toEqual(["📝 Calculator's H3 is judged accurate."]);
+    expect(v(sim, "g1.fact_v3")).toBe("accurate");
+  });
+
+  it("review mode: one pending filing → the booth press judges it", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    sim.setVar("Night.judge_mode", "review");
+    file(sim, "g1", "H2", "Mr Pickles");
+    expect(hostsSaid(fire(sim, "fact_lie", "g1", null, "Clippy"))).toEqual(["📝 Calculator's H2 is judged a confident lie."]);
+    expect(v(sim, "Kernel.q2")).toBe("lie");
+  });
+
+  it("auto mode: nothing is pending, so a booth press still overrides the latest filing", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    file(sim, "g1", "H1", "Elevn years", 90);
+    file(sim, "g1", "H2", "Mr Pickles");
+    expect(v(sim, "g1.fact_v1")).toBe("uncertain");
+    expect(hostsSaid(fire(sim, "fact_accurate", "g1", null, "Clippy"))).toEqual(["📝 Calculator's H2 is judged accurate."]);
+    expect(v(sim, "g1.fact_v2")).toBe("accurate");
+    // Run names H1: the typo the key did not know is put right, H2 untouched.
+    fire(sim, "fact_accurate", "g1", { question: "H1" });
+    expect(v(sim, "g1.fact_v1")).toBe("accurate");
+    expect(v(sim, "g1.fact_v2")).toBe("accurate");
   });
 });
