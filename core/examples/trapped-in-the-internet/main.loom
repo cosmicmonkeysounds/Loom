@@ -2689,7 +2689,7 @@ INTERACTION award_the_painting
   label: G10 · 🖌 Bonus: The Million Dollar Painting (winner = MS Paint; value = signatures)
   who: admin
   description: Only when MS Paint is at the party, and only on MS Paint (any other program is refused in # hosts). Reads the 🖌 Signed count unless value is given; the canvas itself is physical.
-  while: Night.ceremony == true
+  while: Night.ceremony == true and Night.painting == true
 
 INTERACTION resurrection
   label: G11 · 🎃 Resurrection: the show is over, out of character (after the ceremony)

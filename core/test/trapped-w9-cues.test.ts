@@ -232,4 +232,46 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     expect(v(sim, "Night.phase")).toBe("y2k");
     expect(sheet(sim)).toEqual({ last: "y2k_clock", next: null });
   });
+
+  /** A director's whole night to the Y2K clock, the timers' steps pressed by hand. */
+  function toY2k(sim: Sim) {
+    toTruth1(sim);
+    for (const n of ["close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt", "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "printer_opened", "trabolta_overshares", "y2k_clock"]) {
+      expect(press(sim, n).refused, n).toBe(false);
+    }
+  }
+  /** Combo A → the dance → 🏍 → G1 → G2–G9 on Calculator. */
+  function throughG9(sim: Sim) {
+    toY2k(sim);
+    press(sim, "patch_combo_a");
+    advance(sim, 11);
+    for (const n of ["trabolta_recounts", "start_the_ceremony"]) expect(press(sim, n).refused, n).toBe(false);
+    for (const n of ["award_most_trusted", "award_least_trusted", "award_frequent_flyer", "award_lore_hoarder", "award_truthcoin_tycoon", "award_best_liar", "award_duck_speedrun", "award_quest_completionist"]) {
+      expect(press(sim, n, "g1").refused, n).toBe(false);
+    }
+  }
+  const live = (sim: Sim, id: string) => (modView(sim, "open", "x").interactions ?? []).find((i) => i.id === id)?.live !== false;
+
+  it("T5-crew-cards-08 / R2-diff-clients-04: with no MS Paint at the party NEXT after G9 is G11, never G10", { timeout: SLOW }, () => {
+    const sim = boot(PROGRAMS.filter(([id]) => id !== "g4"));
+    throughG9(sim);
+    expect(v(sim, "Night.painting")).toBe(false);
+    expect(live(sim, "award_the_painting")).toBe(false);
+    expect(sheet(sim)).toEqual({ last: "award_quest_completionist", next: "resurrection" });
+    expect(press(sim, "resurrection").refused).toBe(false);
+    expect(v(sim, "Night.resurrected")).toBe(true);
+    expect(sheet(sim)).toEqual({ last: "resurrection", next: null });
+  });
+
+  it("T5-crew-cards-08 / R2-diff-clients-04: with MS Paint cleared NEXT after G9 is G10, then G11", { timeout: SLOW }, () => {
+    const sim = boot();
+    throughG9(sim);
+    expect(v(sim, "Night.painting")).toBe(true);
+    expect(sheet(sim)).toEqual({ last: "award_quest_completionist", next: "award_the_painting" });
+    expect(press(sim, "award_the_painting", "g4").refused).toBe(false);
+    expect(v(sim, "Night.ceremony_done")).toBe(true);
+    expect(sheet(sim)).toEqual({ last: "award_the_painting", next: "resurrection" });
+    expect(press(sim, "resurrection").refused).toBe(false);
+    expect(v(sim, "Night.resurrected")).toBe(true);
+  });
 });
