@@ -10,7 +10,7 @@ import { useMemo } from 'react'
 import clsx from 'clsx'
 import { CockpitTab, useCockpit, storyNow, CockpitPhase } from '@/store/cockpit'
 import { cueTitleTags, onDeck, type CueRow } from '@loom/core/cue-sheet'
-import { ArmBar, SubjectPicker, TagChips } from './CueButton'
+import { ArmBar, SubjectPicker, TagChips, useNameOf } from './CueButton'
 import { outOfTurn, useDirector } from './context'
 import { DirectorMode } from './director-keys'
 import { pressEffects } from './press-effects'
@@ -148,6 +148,7 @@ function NextBlock({ flash }: { flash: boolean }) {
   const next = d.rows.find((r) => r.next) ?? null
   const last = d.rows.find((r) => r.last) ?? null
   const deck = onDeck(d.rows)
+  const nameOf = useNameOf()
   if (next === null) {
     // What the running order holds after LAST, even off tonight's branch.
     const lastIdx = last === null ? -1 : d.rows.indexOf(last)
@@ -171,6 +172,12 @@ function NextBlock({ flash }: { flash: boolean }) {
   const armed = arm.armed !== null && arm.armed.id === next.id
   const again = next.last
   const warn = armed ? outOfTurn(next, d) : null
+  // An armed subject cue names who it goes to on the button itself.
+  const pick = armed ? (arm.armed?.subject ?? null) : null
+  const fireLabel =
+    pick !== null
+      ? `Fire ${next.code !== null ? `${next.code} ` : ''}${title} → ${nameOf(pick)}${arm.armed?.value ? ` (${arm.armed.value})` : ''}`
+      : 'Fire ▶ again'
   return (
     <div className="flex flex-col gap-1">
       <div className="flex flex-wrap items-center gap-2">
@@ -197,7 +204,7 @@ function NextBlock({ flash }: { flash: boolean }) {
           data-testid="director-next-fire"
           data-cue-press={next.id}
         >
-          {armed ? (arm.armed?.subject ? 'Fire ▶ for the pick' : 'Fire ▶ again') : next.subject ? 'Pick who…' : 'Arm ▶'}
+          {armed ? fireLabel : next.subject ? 'Pick who…' : 'Arm ▶'}
         </button>
         <span className="text-[11px] text-zinc-500">{armed ? 'Esc to disarm' : 'Space · Space'}</span>
       </div>
