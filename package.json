@@ -6,7 +6,7 @@
   "packageManager": "pnpm@10.33.0",
   "scripts": {
     "dev": "node scripts/dev.mjs",
-    "sync-example": "pnpm --filter @loom/core exec tsx scripts/sync-example.ts",
+    "sync-example": "pnpm -C core exec tsx scripts/sync-example.ts",
     "sync-show": "bash scripts/sync-show.sh",
     "house:sync": "pnpm --filter @loom/house goldens && pnpm --filter @loom/house sync",
     "test": "pnpm -r test",
