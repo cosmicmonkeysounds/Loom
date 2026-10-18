@@ -176,6 +176,7 @@ describe("the poll", () => {
     const timers: Array<{ at: number; fn: () => void; id: number }> = [];
     let nextId = 1;
     let vis: (() => void) | null = null;
+    let online: (() => void) | null = null;
     let loads = 0;
     let fail = false;
     const deps: PollDeps = {
@@ -197,6 +198,12 @@ describe("the poll", () => {
         vis = fn;
         return () => {
           vis = null;
+        };
+      },
+      onOnline: (fn) => {
+        online = fn;
+        return () => {
+          online = null;
         };
       },
     };
@@ -229,6 +236,10 @@ describe("the poll", () => {
       async show() {
         hidden = false;
         vis?.();
+        await flush();
+      },
+      async online() {
+        online?.();
         await flush();
       },
       flush,
@@ -276,6 +287,25 @@ describe("the poll", () => {
     expect(page.nextDelay()).toBe(3000);
     p.stop();
     expect(pollDelay(10)).toBe(30_000);
+  });
+
+  it("coming back online after an outage polls at once, not after the backoff", async () => {
+    const page = fakePage();
+    page.failing(true);
+    const p = startPoll(page.deps);
+    await page.flush();
+    await page.advance(6000);
+    await page.advance(12_000);
+    expect(page.loads).toBe(3);
+    expect(page.nextDelay()).toBe(24_000);
+    page.failing(false);
+    await page.online();
+    expect(page.loads).toBe(4);
+    expect(page.nextDelay()).toBe(3000);
+    // A healthy poll ignores `online` (no extra request).
+    await page.online();
+    expect(page.loads).toBe(4);
+    p.stop();
   });
 
   it("`now()` during a poll in flight polls again the moment it lands", async () => {
