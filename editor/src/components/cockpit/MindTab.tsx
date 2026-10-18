@@ -416,7 +416,7 @@ function FilingRows({
                     disabled={busy || b.disabled || (b.current && r.final !== null)}
                     title={b.title}
                     onClick={() => onVerdict(r, b.verdict)}
-                    data-testid={`judging-${b.verdict}`}
+                    data-testid={`judging-filing-${b.verdict}`}
                   >
                     {b.glyph}
                   </button>
