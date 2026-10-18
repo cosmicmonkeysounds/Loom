@@ -370,9 +370,13 @@ export function signalBody(
   subject: string | null,
   name: string,
   value?: string,
-): { name: string; subject?: string; label: string; args?: { value: string | number } } {
+  presses?: number,
+): { name: string; subject?: string; label: string; args?: { value: string | number }; presses?: number } {
   const args = value !== undefined ? cueValueArgs(value) : null;
-  return { name: id, ...(subject !== null ? { subject } : {}), label: phoneLabel(name), ...(args !== null ? { args } : {}) };
+  // `presses`: the press count the arm was bound to — the server refuses the
+  // press (409 `moved`) when another director's landed in between, even
+  // before this phone's next poll could show it.
+  return { name: id, ...(subject !== null ? { subject } : {}), label: phoneLabel(name), ...(args !== null ? { args } : {}), ...(presses !== undefined ? { presses } : {}) };
 }
 
 /** The people a subject cue can name: real guests first, personas tagged. */
@@ -384,12 +388,13 @@ export function subjectChoices(roster: DirectorView["roster"]): PickItem[] {
 
 /** `refused`: the server took the press but the story turned it down
  *  (out of turn; its `# hosts` line says why) — not ticked on the sheet. */
-export type FireOutcome = { ok: true; refused?: true } | { ok: false; status: number; message: string };
+export type FireOutcome = { ok: true; refused?: true } | { ok: false; status: number; message: string; moved?: true };
 
 /** The toast after a fire. No HTTP answer (status 0: a timeout, a dropped
  *  connection) may still have fired — say so, never "failed". */
 export function fireToast(row: Pick<CueRow, "code" | "title">, outcome: FireOutcome): string {
   const what = row.code ?? row.title;
+  if (!outcome.ok && outcome.moved === true) return STALE_TOAST;
   if (outcome.ok && outcome.refused === true) return `Not taken — ${what} doesn't apply right now (# hosts says why)`;
   if (outcome.ok) return `✓ Fired ${what}`;
   if (outcome.status === 409) return `Not fired — ${outcome.message}`;
@@ -403,7 +408,7 @@ export const FIRE_TIMEOUT_MS = 8000;
 /** One fire's POST; resolves with the server's answer (`refused` when the
  *  story turned the press down), rejects with `{status, message}` on an HTTP
  *  refusal and anything else (an abort, a dropped connection) on no answer. */
-export type FirePost = (body: ReturnType<typeof signalBody>, signal: AbortSignal) => Promise<{ refused?: boolean } | void>;
+export type FirePost = (body: ReturnType<typeof signalBody>, signal: AbortSignal) => Promise<{ refused?: boolean; moved?: boolean } | void>;
 
 /**
  * Fire a cue: post it with a timeout, and re-poll at once whatever the
@@ -414,6 +419,7 @@ export async function fireCue(post: FirePost, body: ReturnType<typeof signalBody
   const t = setTimeout(() => ctl.abort(), timeoutMs);
   try {
     const answer = await post(body, ctl.signal);
+    if (answer?.moved === true) return { ok: false, status: 409, message: "the cues moved", moved: true };
     return answer?.refused === true ? { ok: true, refused: true } : { ok: true };
   } catch (e) {
     if (e instanceof ApiError) return { ok: false, status: e.status, message: e.message };
@@ -679,7 +685,7 @@ function useDirectorSession() {
   );
 
   const fire = useCallback(
-    async (id: string, subject: string | null, value?: string): Promise<FireOutcome> => {
+    async (id: string, subject: string | null, value?: string, presses?: number): Promise<FireOutcome> => {
       if (auth === null) return { ok: false, status: -1, message: "not signed in" };
       const post: FirePost = async (body, signal) => {
         const res = await fetch(`${base}/api/mod/signal`, {
@@ -690,12 +696,13 @@ function useDirectorSession() {
         });
         const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
         if (res.ok) return { refused: data["refused"] === true };
+        if (res.status === 409 && data["moved"] === true) return { moved: true };
         throw new ApiError((data["error"] as string) || `HTTP ${res.status}`, res.status);
       };
       // Hold the answer until the poll after the press is in, so the page
       // lets go of its lock on fresh marks (see `cueLocked`).
       let fresh: Promise<void> = Promise.resolve();
-      const out = await fireCue(post, signalBody(id, subject, auth.name, value), () => {
+      const out = await fireCue(post, signalBody(id, subject, auth.name, value, presses), () => {
         fresh = latch.after(latch.started, REPOLL_WAIT_MS);
         poll.current?.now();
       });
@@ -917,7 +924,7 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
     else {
       setArmed(null);
       setPending(t.id);
-      void s.fire(t.id, t.subject, t.value).then((outcome) => {
+      void s.fire(t.id, t.subject, t.value, t.presses).then((outcome) => {
         setToast(fireToast(row, outcome));
         setPending((p) => (p === t.id ? null : p));
         setCooling(true);

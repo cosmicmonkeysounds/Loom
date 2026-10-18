@@ -66,7 +66,7 @@ export interface KeyCtx {
 
 export type KeyEffect =
   | { kind: 'none' }
-  | { kind: 'fire'; id: string; subject: string | null; value?: string }
+  | { kind: 'fire'; id: string; subject: string | null; value?: string; presses?: number }
   | { kind: 'pick'; id: string }
   | { kind: 'nothing-to-press' }
   | { kind: 'clear-filter' }
@@ -97,7 +97,7 @@ function tap(state: KeyState, row: CueRow, ctx: KeyCtx): KeyResult {
     case 'fire':
       return {
         state: { ...state, armed: null },
-        effect: { kind: 'fire', id: t.id, subject: t.subject, ...(t.value !== undefined ? { value: t.value } : {}) },
+        effect: { kind: 'fire', id: t.id, subject: t.subject, ...(t.value !== undefined ? { value: t.value } : {}), ...(t.presses !== undefined ? { presses: t.presses } : {}) },
         handled: true,
       }
     default:

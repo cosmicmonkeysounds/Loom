@@ -12,10 +12,13 @@ export const OWN_MS = 10_000
 
 /** The cue that moved the state from `prev` to `next`: the new LAST, else
  *  the cue newly appended to `fired` (an aside's first press — 🔄, ❌, the
- *  server's 🦆 — moves `fired` but never LAST); null when nothing moved. */
-export function movedCue(prev: Pick<CueMarks, 'last' | 'fired'>, next: Pick<CueMarks, 'last' | 'fired'>): string | null {
+ *  server's 🦆 — moves `fired` but never LAST), else the cue a new press
+ *  re-fired (LAST again, 📋 per question, or an aside again: only the press
+ *  count moves); null when nothing moved. */
+export function movedCue(prev: Pick<CueMarks, 'last' | 'fired' | 'presses'>, next: Pick<CueMarks, 'last' | 'fired' | 'presses' | 'pressed'>): string | null {
   if (next.last !== prev.last && next.last !== null) return next.last
   if (next.fired.length > prev.fired.length) return next.fired[next.fired.length - 1] ?? null
+  if (typeof next.presses === 'number' && typeof prev.presses === 'number' && next.presses > prev.presses) return next.pressed ?? null
   return null
 }
 

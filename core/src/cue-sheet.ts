@@ -46,6 +46,13 @@ export interface CueMarks {
   /** Who fired `last` (`director` / `story`) — not read here. */
   lastBy?: string | null;
   fired: string[];
+  /** How many presses the story has taken tonight (any admin cue, by a
+   *  director or the story; a refused press never counts). A repeat of LAST
+   *  (📋 per question) or of an aside moves neither `last` nor `fired`, so
+   *  an arm also binds to this. Absent from an older server. */
+  presses?: number;
+  /** The cue the newest taken press fired (an aside included), or null. */
+  pressed?: string | null;
 }
 
 /** One world row (`ModView.world`). */
@@ -296,6 +303,8 @@ export interface Armed {
    *  fired — the arm is stale. Absent: armed with no marks to bind to. */
   last?: string | null;
   firedCount?: number;
+  /** `CueMarks.presses` when it was armed (a server that counts them). */
+  presses?: number;
 }
 
 export type Tap =
@@ -303,22 +312,30 @@ export type Tap =
   | { kind: "arm"; armed: Armed }
   /** A cue that needs a person, with none picked yet: open the picker. */
   | { kind: "pick"; id: string }
-  /** Second tap on an armed row in time: fire it. */
-  | { kind: "fire"; id: string; subject: string | null; value?: string }
+  /** Second tap on an armed row in time: fire it. `presses`: the press
+   *  count it was armed against — sent with the press, so the server turns
+   *  it down (409 `moved`) when another director's press landed in between,
+   *  before this screen's next poll could say so. */
+  | { kind: "fire"; id: string; subject: string | null; value?: string; presses?: number }
   /** A second tap inside the dead time: nothing happens. */
   | { kind: "ignore" };
 
 /** The cue state an arm is bound to. */
-function bindMarks(marks: CueMarks | undefined): Pick<Armed, "last" | "firedCount"> {
-  return marks === undefined ? {} : { last: marks.last, firedCount: marks.fired.length };
+function bindMarks(marks: CueMarks | undefined): Pick<Armed, "last" | "firedCount" | "presses"> {
+  if (marks === undefined) return {};
+  return { last: marks.last, firedCount: marks.fired.length, ...(typeof marks.presses === "number" ? { presses: marks.presses } : {}) };
 }
 
 /** Is `armed` still good to fire at `now`: inside `ARM_MS`, and the cue
- *  state it was armed against (if bound) has not moved since. */
+ *  state it was armed against (if bound) has not moved since — LAST, the
+ *  fired set, or the count of presses the story took. */
 export function armStillValid(armed: Armed, marks: CueMarks, now: number): boolean {
   if (now - armed.at >= ARM_MS) return false;
   if (armed.last !== undefined && armed.last !== marks.last) return false;
   if (armed.firedCount !== undefined && armed.firedCount !== marks.fired.length) return false;
+  // Another press of LAST (a second director's 📋) or of an aside that
+  // already fired moves only the press count.
+  if (armed.presses !== undefined && typeof marks.presses === "number" && armed.presses !== marks.presses) return false;
   return true;
 }
 
@@ -327,7 +344,7 @@ export function armStillValid(armed: Armed, marks: CueMarks, now: number): boole
 export function tapCue(armed: Armed | null, row: CueRow, now: number, marks?: CueMarks): Tap {
   if (armed !== null && armed.id === row.id && now - armed.at < ARM_DEAD_MS) return { kind: "ignore" };
   const live = armed !== null && armed.id === row.id && now - armed.at < ARM_MS && (marks === undefined || armStillValid(armed, marks, now));
-  if (live) return { kind: "fire", id: row.id, subject: armed.subject, ...(armed.value !== undefined ? { value: armed.value } : {}) };
+  if (live) return { kind: "fire", id: row.id, subject: armed.subject, ...(armed.value !== undefined ? { value: armed.value } : {}), ...(armed.presses !== undefined ? { presses: armed.presses } : {}) };
   if (row.subject) return { kind: "pick", id: row.id };
   return { kind: "arm", armed: { id: row.id, subject: null, at: now, ...bindMarks(marks) } };
 }

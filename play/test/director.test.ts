@@ -130,6 +130,7 @@ describe("arm, then fire", () => {
     expect(signalBody("award_duck_speedrun", "g1", "Ana", " 2:41 ").args).toEqual({ value: "2:41" });
     expect(signalBody("award_best_liar", "g1", "Ana", "  ")).not.toHaveProperty("args");
     expect(signalBody("award_best_liar", "g1", "Ana")).not.toHaveProperty("args");
+    expect(signalBody("read_the_results", null, "Ana", undefined, 7)).toEqual({ name: "read_the_results", label: "Phone · Ana", presses: 7 });
     expect(phoneLabel("x".repeat(80)).length).toBe(60);
   });
 
@@ -144,6 +145,9 @@ describe("arm, then fire", () => {
     expect(fireToast(bingo, { ok: true })).toBe("✓ Fired V2");
     expect(fireToast(bingo, { ok: true, refused: true })).toBe("Not taken — V2 doesn't apply right now (# hosts says why)");
     expect(fireToast(bingo, { ok: false, status: 409, message: "no scenario loaded" })).toBe("Not fired — no scenario loaded");
+    // Another director's press landed between the arm and the tap: the
+    // server fired nothing (409 `moved`), and the toast says the cues moved.
+    expect(fireToast(bingo, { ok: false, status: 409, message: "the cues moved", moved: true })).toBe(STALE_TOAST);
     expect(fireToast(rows[2]!, { ok: false, status: 500, message: "boom" })).toBe("🦆 Duck found failed: boom");
     // no HTTP answer: it may have fired — never "failed"
     expect(fireToast(bingo, { ok: false, status: 0, message: "Load failed" })).toBe("Not sure V2 fired — check the sheet before firing again");
@@ -181,6 +185,7 @@ describe("fireCue", () => {
     // The story turned the press down: taken by the server, not fired.
     expect(await fireCue(async () => ({ refused: true }), body, () => repolls++)).toEqual({ ok: true, refused: true });
     expect(await fireCue(async () => ({ refused: false }), body, () => repolls++)).toEqual({ ok: true });
+    expect(await fireCue(async () => ({ moved: true }), body, () => repolls++)).toEqual({ ok: false, status: 409, message: "the cues moved", moved: true });
   });
 
   it("a stalled POST is abandoned after the timeout as 'no answer'", async () => {

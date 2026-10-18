@@ -781,13 +781,14 @@ export const useOperate = create<OperateState>((set, get) => {
     say: (channel, text, as, parentSeq) => withEvent((ev) => modApi.say(ev, channel, text, as, parentSeq)),
     setStat: (id, field, value) => withEvent((ev) => modApi.setStat(ev, id, field, value)),
     fireBeat: (name, subject) => withEvent((ev) => modApi.fireBeat(ev, name, subject)),
-    fireSignal: async (name, subject, args, actor) => {
+    fireSignal: async (name, subject, args, actor, presses) => {
       const ev = get().event
       if (!ev) return { error: 'no run' }
       set({ ownPress: { name, at: Date.now() } })
       try {
-        return await modApi.fireSignal(ev.id, name, subject, args, actor)
+        return await modApi.fireSignal(ev.id, name, subject, args, actor, presses)
       } catch (e) {
+        if (e instanceof ApiError && e.status === 409 && e.data['moved'] === true) return { moved: true }
         const error = (e as Error).message
         set({ error })
         return { error }

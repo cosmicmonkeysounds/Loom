@@ -9,7 +9,7 @@
 //! not taken / failed) is the NOW card's banner and, for a refusal, the
 //! Needs you item.
 
-import { useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { CockpitContext, useCockpit, type FireResult } from '@/store/cockpit'
 import {
   ARM_MS,
@@ -62,7 +62,7 @@ export interface ArmedApi {
   armFor(row: CueRow, who: string, value?: string): void
   /** Set the arm straight (the key reducer's new state). */
   apply(next: Armed | null): void
-  fire(id: string, subject: string | null, value?: string): Promise<void>
+  fire(id: string, subject: string | null, value?: string, presses?: number): Promise<void>
   disarm(): void
   /** The cue in flight, if any. */
   pending: string | null
@@ -84,8 +84,31 @@ interface PressOutcome {
 const NO_OUTCOME: PressOutcome = { result: null, refused: null }
 
 /** Each cockpit's last press outcome, kept across the page's unmounts (a
- *  tab switch unmounts the Director). */
+ *  tab switch unmounts the Director) and read outside it (the Inspector
+ *  tray's glance column says Needs you too). */
 const outcomes = new WeakMap<object, PressOutcome>()
+const listeners = new WeakMap<object, Set<() => void>>()
+
+function setPressOutcome(store: object, next: PressOutcome): void {
+  outcomes.set(store, next)
+  for (const l of listeners.get(store) ?? []) l()
+}
+
+/** A cockpit's last press outcome, live (any component under its provider). */
+export function usePressOutcome(store: object): PressOutcome {
+  return useSyncExternalStore(
+    useCallback(
+      (cb: () => void) => {
+        let set = listeners.get(store)
+        if (set === undefined) listeners.set(store, (set = new Set()))
+        set.add(cb)
+        return () => set.delete(cb)
+      },
+      [store],
+    ),
+    () => outcomes.get(store) ?? NO_OUTCOME,
+  )
+}
 
 export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
   const fireSignal = useCockpit((s) => s.fireSignal)
@@ -99,8 +122,7 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
   // The last press's outcome outlives the page: following the refusal's
   // own link to Chat (or any glance link) and coming back keeps the banner
   // and the Needs you item for their full time.
-  const [outcome, setOutcome] = useState<PressOutcome>(() => outcomes.get(store) ?? NO_OUTCOME)
-  const { result, refused } = outcome
+  const { result, refused } = usePressOutcome(store)
   const [stale, setStale] = useState<string | null>(null)
   const [moved, setMoved] = useState<ArmedApi['moved']>(null)
 
@@ -138,14 +160,14 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
   // The cue state moved: a stale arm drops (naming the cue that moved it),
   // and a LAST this console did not press — from any surface — flashes who
   // moved it.
-  const prevMarks = useRef({ last: marks.last, fired: marks.fired })
+  const prevMarks = useRef<CueMarks>(marks)
   const firedCount = marks.fired.length
   useEffect(() => {
     const { armed: a, rows: rs, marks: m, ownPress } = latest.current
     const now = Date.now()
     const moved = movedCue(prevMarks.current, m)
     const lastMoved = m.last !== prevMarks.current.last
-    prevMarks.current = { last: m.last, fired: m.fired }
+    prevMarks.current = m
     if (a !== null && !armStillValid(a, m, now)) {
       setArmed(null)
       const fresh = rs.find((r) => r.id === moved)
@@ -154,7 +176,7 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
     if (lastMoved && m.last !== null && !ownMove(ownPress, m.last, now)) {
       setMoved({ by: m.lastBy === 'story' ? 'story' : 'director', at: now })
     }
-  }, [marks.last, firedCount])
+  }, [marks.last, firedCount, marks.presses])
 
   // Transient notes clear themselves.
   useEffect(() => {
@@ -174,7 +196,7 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
   }, [coolUntil])
 
   const fire = useCallback(
-    async (id: string, subject: string | null, value?: string) => {
+    async (id: string, subject: string | null, value?: string, presses?: number) => {
       if (latest.current.pending !== null) return
       const row = latest.current.rows.find((r) => r.id === id)
       if (row === undefined) return
@@ -187,8 +209,18 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
       latest.current.pending = id
       const args = subject !== null ? cueValueArgs(value ?? '') : null
       // A press that hangs (venue Wi-Fi) never locks every cue for minutes.
-      const res = await within(fireSignal(id, subject ?? undefined, args), PRESS_TIMEOUT_MS, (): FireResult => ({ error: NO_ANSWER }))
+      const res = await within(fireSignal(id, subject ?? undefined, args, null, presses), PRESS_TIMEOUT_MS, (): FireResult => ({ error: NO_ANSWER }))
       const at = Date.now()
+      if (res.moved === true) {
+        // Another director's press landed between the arm and this one:
+        // the server fired nothing. Say so, like a stale arm.
+        const { marks: m, rows: rs } = latest.current
+        const fresh = rs.find((r) => r.id === m.pressed)
+        setStale(`Cues moved: ${fresh !== undefined ? cueLabel(fresh) : 'another press'} landed first. Nothing fired — re-arm.`)
+        latest.current.pending = null
+        setPending(null)
+        return
+      }
       const was = outcomes.get(store) ?? NO_OUTCOME
       const next: PressOutcome =
         res.error !== undefined
@@ -196,8 +228,7 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
           : res.refused === true
             ? { result: { kind: PressKind.Refused, id, cue, at, seq }, refused: { cue, at, seq } }
             : { ...was, result: { kind: PressKind.Taken, id, cue, at, seq } }
-      outcomes.set(store, next)
-      setOutcome(next)
+      setPressOutcome(store, next)
       latest.current.pending = null
       setPending(null)
       if (row.next) setCoolUntil(at + NEXT_COOLDOWN_MS)
@@ -223,7 +254,7 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
           setPicking(row.id)
           break
         case 'fire':
-          void fire(t.id, t.subject, t.value)
+          void fire(t.id, t.subject, t.value, t.presses)
           break
         default:
           break

@@ -571,6 +571,14 @@ export interface CueState {
   lastBy: "director" | "story" | null;
   /** Every admin cue that has fired at least once, in first-fire order. */
   fired: string[];
+  /** How many admin-cue presses the story took tonight (by a director or
+   *  the story's own `fire`; a refused press never counts). A repeat of
+   *  LAST or of an aside moves only this: a director screen binds its arm
+   *  to it, and `/api/mod/signal {presses}` refuses a press armed against
+   *  an older count (409 `moved`). */
+  presses: number;
+  /** The cue the newest taken press fired (asides included), or null. */
+  pressed: string | null;
 }
 
 interface CueScan {
@@ -721,11 +729,11 @@ const cueScans = new WeakMap<object, CueScan>();
 export function cueState(sim: Sim): CueState {
   const admin = new Map<string, { id: string; sequence: boolean; order: number }>();
   for (const i of sim.model.interactions.values()) if (i.who === "admin") admin.set(foldName(i.id), { id: i.id, sequence: i.sequence, order: admin.size });
-  if (admin.size === 0) return { last: null, lastBy: null, fired: [] };
+  if (admin.size === 0) return { last: null, lastBy: null, fired: [], presses: 0, pressed: null };
   const events = sim.log.all();
   let scan = cueScans.get(sim.log);
   if (scan === undefined || scan.model !== sim.model || scan.at > events.length) {
-    scan = { model: sim.model, at: 0, state: { last: null, lastBy: null, fired: [] }, seen: new Set(), lastOrder: -1 };
+    scan = { model: sim.model, at: 0, state: { last: null, lastBy: null, fired: [], presses: 0, pressed: null }, seen: new Set(), lastOrder: -1 };
     cueScans.set(sim.log, scan);
   }
   const { state, seen } = scan;
@@ -745,6 +753,8 @@ export function cueState(sim: Sim): CueState {
     if (cue === undefined) continue;
     const id = cue.id;
     if (by === "director" && refusedPress(sim, events, n, name)) continue;
+    state.presses += 1;
+    state.pressed = id;
     if (cue.sequence) {
       if (!(seen.has(id) && cue.order < scan.lastOrder)) {
         state.last = id;
@@ -758,7 +768,7 @@ export function cueState(sim: Sim): CueState {
     }
   }
   scan.at = events.length;
-  return { last: state.last, lastBy: state.lastBy, fired: [...state.fired] };
+  return { last: state.last, lastBy: state.lastBy, fired: [...state.fired], presses: state.presses, pressed: state.pressed };
 }
 
 export interface CodexSummary extends CodexEntryView {

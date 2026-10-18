@@ -113,7 +113,7 @@ describe("the phone cue page's server surface (W-26)", () => {
     const token = login.json["token"] as string;
 
     const before = (await call(rt, "GET", "/api/state?role=mod", {}, token)).json as unknown as ModView;
-    expect(before.cues).toEqual({ last: null, lastBy: null, fired: [] });
+    expect(before.cues).toEqual({ last: null, lastBy: null, fired: [], presses: 0, pressed: null });
     const rows = cueRows(before.interactions ?? [], before.cues!);
     expect(rows.map((r) => [r.code, r.next])).toEqual([
       ["C1", true],
@@ -134,6 +134,44 @@ describe("the phone cue page's server surface (W-26)", () => {
     expect(early.json).toEqual({ ok: true, refused: true });
     const still = (await call(rt, "GET", "/api/state?role=mod", {}, token)).json as unknown as ModView;
     expect(still.cues).toMatchObject({ last: "ring_the_bell", fired: ["ring_the_bell"] });
+    rt.dispose();
+  });
+
+  it("a press armed against an older press count is refused (two directors, a repeat of LAST)", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "loom-cuephone-"));
+    dirs.push(dir);
+    const store = new Store(dir);
+    const rt = new EventRuntime({ eventId: "evt", store, codes: CODES, scenarioName: "cue-phone", scenarioSource: SOURCE, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const token = (await call(rt, "POST", "/api/mod/login", { passcode: CODES.mod })).json["token"] as string;
+    const marks = async () => ((await call(rt, "GET", "/api/state?role=mod&cues=1", {}, token)).json as unknown as ReturnType<typeof cueSheetView>).cues;
+    await call(rt, "POST", "/api/mod/signal", { name: "ring_the_bell" }, token);
+    const m1 = await marks();
+    expect(m1).toMatchObject({ last: "ring_the_bell", fired: ["ring_the_bell"], presses: 1, pressed: "ring_the_bell" });
+    // The phone arms LAST again; the other director presses it first: only
+    // the press count moves, and that is enough to drop the arm.
+    const row = cueRows([{ id: "ring_the_bell", label: "C1 · 📣", who: "admin" }], m1)[0]!;
+    const armed = tapCue(null, row, 0, m1);
+    if (armed.kind !== "arm") throw new Error("unreachable");
+    expect(armed.armed.presses).toBe(1);
+    await call(rt, "POST", "/api/mod/signal", { name: "ring_the_bell", presses: 1 }, token);
+    const m2 = await marks();
+    expect(m2).toMatchObject({ last: "ring_the_bell", fired: ["ring_the_bell"], presses: 2 });
+    expect(armStillValid(armed.armed, m2, 500)).toBe(false);
+    // Before its poll the phone's second tap still fires on its old marks —
+    // the server turns it down: nothing is journaled.
+    const tap = tapCue(armed.armed, row, 500, m1);
+    expect(tap).toMatchObject({ kind: "fire", presses: 1 });
+    const signals = () => store.readJournal().filter((e) => e.m === "signal").length;
+    const before = signals();
+    const late = await call(rt, "POST", "/api/mod/signal", { name: "ring_the_bell", presses: 1 }, token);
+    expect(late.status).toBe(409);
+    expect(late.json["moved"]).toBe(true);
+    expect(signals()).toBe(before);
+    expect((await marks()).presses).toBe(2);
+    // A refused press never counts.
+    await call(rt, "POST", "/api/mod/signal", { name: "hunt_time_up", presses: 2 }, token);
+    expect((await marks()).presses).toBe(2);
     rt.dispose();
   });
 

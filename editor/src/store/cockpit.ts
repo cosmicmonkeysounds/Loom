@@ -267,6 +267,10 @@ export interface ChannelSummary {
 export interface FireResult {
   refused?: true
   error?: string
+  /** The press was sent with the press count its arm was bound to, and
+   *  another press had landed since (a second director): the server never
+   *  fired it (`/api/mod/signal` 409 `moved`). Re-arm. */
+  moved?: true
 }
 
 /** This console's newest press of a named event, from any surface (the
@@ -528,8 +532,10 @@ export interface CockpitState {
   /** Fire an `on <name>` signal — globally or on one subject, with optional
    *  `key: value` args, optionally *as* a character (`actor`) so only that
    *  character's hooks hear it (the performer-lens interaction path).
+   *  `presses`: the Director's arm's press count — a server refuses the
+   *  press if another landed since (`FireResult.moved`).
    *  Resolves to what the press came to (`FireResult`); never rejects. */
-  fireSignal(name: string, subject?: string, args?: SignalArgs | null, actor?: string | null): Promise<FireResult>
+  fireSignal(name: string, subject?: string, args?: SignalArgs | null, actor?: string | null, presses?: number): Promise<FireResult>
   /** Scan a guest as a character. Resolves to that character's `respond`
    *  readouts (the booth's scan responses). */
   scanAs(as: string, target: string): Promise<string[]>
@@ -607,7 +613,7 @@ export type CockpitStore = {
 const noop = async (): Promise<void> => {}
 
 /** The cue sheet before anything has fired. */
-export const NO_CUES: CueState = { last: null, lastBy: null, fired: [] }
+export const NO_CUES: CueState = { last: null, lastBy: null, fired: [], presses: 0, pressed: null }
 
 /**
  * The inert default cockpit — every surface empty, every action a no-op.

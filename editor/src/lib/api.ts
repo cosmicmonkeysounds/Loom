@@ -300,12 +300,14 @@ export const modApi = {
     subject?: string,
     args?: SignalArgs | null,
     actor?: string | null,
+    presses?: number,
   ): Promise<{ refused?: true }> {
     const r = await req<{ refused?: boolean } | null>('POST', `/e/${eventId}/api/mod/signal`, {
       name,
       subject,
       args: args ?? undefined,
       actor: actor ?? undefined,
+      presses,
     })
     return r?.refused === true ? { refused: true } : {}
   },

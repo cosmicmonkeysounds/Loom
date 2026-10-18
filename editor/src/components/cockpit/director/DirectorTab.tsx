@@ -185,7 +185,7 @@ function DirectorPage() {
     if (r.state.cursor !== cursor) setCursor(r.state.cursor)
     switch (r.effect.kind) {
       case 'fire':
-        void arm.fire(r.effect.id, r.effect.subject, r.effect.value)
+        void arm.fire(r.effect.id, r.effect.subject, r.effect.value, r.effect.presses)
         // The picker that held focus unmounts with the press.
         requestAnimationFrame(reclaim)
         break

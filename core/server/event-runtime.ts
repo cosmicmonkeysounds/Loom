@@ -21,7 +21,7 @@ import { validateHouse, type HouseMap, type MapVariantsResponse } from "@loom/ho
 
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { guestView, modView, notePress, pressRefused, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { cueState, guestView, modView, notePress, pressRefused, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
@@ -4556,6 +4556,19 @@ export class EventRuntime {
         // screen fired it (the recap carries no `by`) (restored by `handleMod`'s finally, as
         // `/api/mod/impersonate` does). An author session's own name is
         // never overridden.
+        // `presses`: the cue state's press count the director's screen armed
+        // against. Another press landed since (a second director, or the
+        // story) — the night moved under the arm: refuse it, so the screen
+        // says "Cues moved" rather than firing a second 📋 or a repeated
+        // aside the other director already pressed.
+        const expected = body["presses"];
+        if (typeof expected === "number" && Number.isFinite(expected)) {
+          const cues = cueState(this.sim);
+          if (cues.presses !== expected) {
+            sendJson(res, 409, { error: "the cues moved: another press landed first — re-arm", moved: true, cues });
+            return true;
+          }
+        }
         const label = str(body, "label").trim().slice(0, 60);
         if (label !== "" && by === "Director") this.actingBy = label;
         const press = this.commit("signal", str(body, "name"), subject === "" ? undefined : subject, args, actor === "" ? null : actor);

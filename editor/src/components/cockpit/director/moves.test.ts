@@ -11,6 +11,12 @@ describe('movedCue', () => {
     expect(movedCue({ last: 'y2k_clock', fired: ['y2k_clock'] }, { last: 'y2k_clock', fired: ['y2k_clock', 'reset_server_room'] })).toBe('reset_server_room')
   })
 
+  it('names a repeat press that moved only the press count (another director\'s 📋)', () => {
+    const prev = { last: 'read_the_results', fired: ['read_the_results'], presses: 9 }
+    expect(movedCue(prev, { ...prev, presses: 10, pressed: 'read_the_results' })).toBe('read_the_results')
+    expect(movedCue(prev, { ...prev, presses: 10, pressed: 'restore_the_lights' })).toBe('restore_the_lights')
+  })
+
   it('is null when nothing moved', () => {
     expect(movedCue({ last: 'a', fired: ['a'] }, { last: 'a', fired: ['a'] })).toBeNull()
   })
