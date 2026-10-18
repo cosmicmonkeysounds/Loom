@@ -24,7 +24,11 @@ Every director cue is one big button, in running order, with its code
 **LAST**; the one the sheet suggests is outlined and tagged **NEXT**: the
 first cue after LAST that hasn't fired tonight and belongs to the way the
 night is going (after the dance, the ending's own cue). A cue you press
-over and over (📋 once per question) stays NEXT until you move on. ✓ marks
+over and over (📋 once per question) stays NEXT until you move on.
+While a timer is running the night, NEXT is **empty**: at *Trapped in
+the Internet* that is all of hunt 1, hunt 2's hour and the summons. The
+timer fires the next step itself; its cue (⏰, 📥, ⏳, 🚨) is still on
+the sheet to fire early, but never ticks as LAST or NEXT. ✓ marks
 every cue that has already fired tonight. Type in the filter box to find
 a cue by its code or a word.
 
@@ -39,7 +43,12 @@ a cue by its code or a word.
   story took it. *Not taken — X doesn't apply right now (# hosts says
   why)* means the story turned it down: pressed out of turn, it did
   nothing, `# hosts` has the reason, and the sheet neither ticks it nor
-  makes it LAST. *Not fired* means the server refused it (no story
+  makes it LAST. A cue pressed ahead of its turn is turned down rather
+  than skipping a step: *📺 Not yet: read Q2's results first (📋).
+  Nothing happens.* A cue that asks first reads *Not taken* on the first
+  press too: G11 before the last award is presented posts *Press G11
+  again within 30 seconds to end the show anyway*, and the second press
+  fires it. *Not fired* means the server refused it (no story
   loaded yet, for instance). *Not sure it fired* means the phone heard no
   answer (weak Wi-Fi): the cue may have gone, so look at the sheet's
   marks before you fire it again.

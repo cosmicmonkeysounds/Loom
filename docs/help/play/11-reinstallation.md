@@ -34,7 +34,11 @@ ways to play:
   it on; you're already in.
 
 No camera, or it won't read your pass? Whoever runs the tent can find you
-by name, or tap you in the list of programs in the Internet.
+by name, or tap you in the list of programs in the Internet. A program
+that is marked but not in the Internet yet has its own list on the
+tablet (*Restricted — marked, or held by a director*), and the tablet
+reads **STATUS: RESTRICTED**: if you were marked, **Play here** starts
+your reinstallation all the same.
 
 ## Moving around
 
@@ -67,11 +71,18 @@ Golden Duck*.
 
 Wander off for two minutes without touching anything (or take the
 headset off) and the simulation ends — scan your pass to start again.
+If the show is **paused** while you stand at Gerald, the find waits:
+stay put, the two minutes don't run out, and it lands the moment the
+show resumes.
 The same if the house's server restarts while you're walking: the game
 ends, so scan your pass again (a duck you already found still counts).
 
 On a night everyone is **banished** to the Internet, Gerald can't help:
-finding him only tells you so. The way out is the hand jive, together.
+finding him only tells you so. The tablet says **GERALD CAN'T HELP**
+(*Gerald can't help* your name *tonight. The Internet keeps you — your
+phone says what happens next.*) and the headset the same, with no egg and no
+fanfare, and the wall screens show it too. The way out is the hand
+jive, together.
 
 ## The King
 
@@ -88,11 +99,13 @@ so, and each one makes him dumber — *at full strength* → *rattled* →
 pawns. **♟ CHALLENGE** (or C) opens a chessboard against him at whatever
 strength you've left him. A badge on the board says what a win is worth:
 **PRACTICE** until the Y2K clock, then **FOR THE CODE**, with a line
-under it saying what a checkmate wins. Checkmate him and he falls, his
+under it saying what a checkmate wins. Once *truth.txt* has put the
+verdict in (or the night has ended) the badge goes: there is nothing
+left to win. Checkmate him and he falls, his
 door in the simulation opens, and the story hears about it: from the
 Y2K clock, the real server-room door's code lands in your Codex (the
-tablet tells you); before that it was practice, and once the night has
-ended a win promises nothing. Lose (or draw), and he
+tablet tells you); before that it was practice, and after *truth.txt*
+a win promises nothing. Lose (or draw), and he
 deals you a new game at the same strength, the board still open. Too strong? **Give up** closes
 the board; hit him some more to make him weaker, then challenge again.
 He is fresh for the next player.

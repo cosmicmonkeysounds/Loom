@@ -2,7 +2,7 @@
 title: Getting connected
 section: Guest Guide
 order: 1
-keywords: welcome, join, code, event code, log on, name, start, qr, lost phone, dead phone, re-pair, pair, sign back in, new phone, browser
+keywords: welcome, join, code, event code, log on, name, start, qr, lost phone, dead phone, re-pair, pair, sign back in, new phone, browser, reconnecting, offline, dropped, live dot
 ---
 
 Welcome to the show. This app is your window into a **live interactive
@@ -61,7 +61,12 @@ joined, once you have one — the story names its own), your ⭐ score, and
 📍 where the story thinks you are.
 
 The green dot means you're **live** — connected to the event. If it
-goes hollow, you've dropped; the app reconnects by itself.
+goes hollow and says **reconnecting…**, you've dropped: the app keeps
+trying by itself (a second at first, then every few seconds), so leave
+it open. It catches up the moment the house is back, even after the
+house's server restarts; coming back to the app, or onto Wi-Fi, tries
+again at once. On the dark opening screen a **RECONNECTING…** strip
+says the same after five seconds.
 
 ## One rule
 

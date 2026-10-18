@@ -15,7 +15,8 @@ opens it any time.
 That QR code is *you*. Performers **scan it** to pull you into the
 story — interrogations, blessings, capture, secret missions. When
 someone in costume asks to scan you: let them. That's the game finding
-you.
+you. Your phone draws it itself, so it shows even when the house is
+busy or the Wi-Fi is weak.
 
 ## The story's buttons
 
@@ -31,7 +32,9 @@ still away. The guided tour points it out on your pass when the story uses it.
 
 Once you've joined one of the story's groups — a side, a house, a
 society — it shows next to your name, and its private room appears in
-your inbox. Feeling treacherous? Your pass has a
+your inbox. You can only join a side the story offers you: the staff's
+own groups and a secret side it hasn't revealed yet are never on the
+list. Feeling treacherous? Your pass has a
 **defect** button. Switching sides is dramatic, remembered, and not
 free — the story tracks heat on people who do.
 

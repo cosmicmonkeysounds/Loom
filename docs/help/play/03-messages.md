@@ -2,7 +2,7 @@
 title: Messages & threads
 section: Guest Guide
 order: 3
-keywords: messages, send, composer, enter, threads, reply, narrator, typing
+keywords: messages, send, composer, enter, threads, reply, narrator, typing, too long, limit, characters, not sent
 ---
 
 ## Sending a message
@@ -13,7 +13,9 @@ read-only — or you're not in the right place to speak.
 
 If a line can't go, it stays in the box and a banner says why: *⏳ Not
 sent* (you're sending too fast; wait), *⏸ Not sent: the show is paused*,
-or *⛔ Not sent* with the reason. If the house doesn't answer within 15
+or *⛔ Not sent* with the reason. A message is at most 2,000
+characters: the box stops there, and a longer one pasted in says *✂️ Not
+sent* and stays in the box for you to shorten. If the house doesn't answer within 15
 seconds (a phone switching networks), **Send** comes back and the app
 says to check your connection: if your line doesn't show up in the room,
 send it again. Each room keeps its own unsent words, so switching rooms

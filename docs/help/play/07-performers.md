@@ -99,6 +99,12 @@ once; nothing waits for a host. At *Trapped in the Internet* the
 **📝 Filed fact: accurate** / **confident lie** / **uncertain (a
 guess)** — are the **override**: press one when the key is wrong or a
 spelling was unfair, and the story takes your word over the judge's.
+Your button judges that guest's **latest** filing. If they have
+filed more than once and an earlier one is still waiting, *Trapped in
+the Internet* turns your press down (*📝 Not judged: … has an earlier
+filing still waiting for a verdict. Judge it on Run → Mind → Judging …*)
+and changes nothing: ask the director, whose Judging card names each
+filing's question and can override any of them.
 When the director has switched judging to *review*, every verdict is a
 proposal until one of those buttons (or the director) confirms it. The
 guest gets the same reply either way — only the story knows what the
