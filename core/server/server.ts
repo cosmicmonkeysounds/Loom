@@ -44,7 +44,7 @@ import { WikiClient } from "./wiki.ts";
 import { ImageCache } from "./avatars.ts";
 import { join } from "node:path";
 import { ipOf, readBody, sendJson, str, PayloadTooLarge } from "./http-util.ts";
-import { RateLimiter, limiterFor, rateLimitsFromEnv } from "./rate-limit.ts";
+import { limiterFor, rateLimitsFromEnv } from "./rate-limit.ts";
 import { auth, authUser, migrateAuth } from "./auth-server.ts";
 import { dbReady, initSchema } from "./db/index.ts";
 import { canModerateEvent, liveEvents } from "./db/queries.ts";
@@ -276,10 +276,12 @@ const TRUSTED = new Set(TRUSTED_ORIGINS);
 
 // Route-level throttles (per client IP): `/api/resolve-code` is a code
 // oracle (any valid code → its event), `/api/qr` renders attacker-chosen
-// content. Both are cheap to call and deserve a ceiling. The resolve
-// ceiling is `LOOM_RL_RESOLVE` (house Wi-Fi = one shared IP at the door).
-const resolveLimiter = limiterFor(rateLimitsFromEnv(process.env).resolve);
-const qrLimiter = new RateLimiter(60, 60_000);
+// content. Both are cheap to call and deserve a ceiling, and both are
+// env-tunable (`LOOM_RL_RESOLVE`, `LOOM_RL_QR`): the house Wi-Fi is one
+// shared IP at the door.
+const ROUTE_LIMITS = rateLimitsFromEnv(process.env);
+const resolveLimiter = limiterFor(ROUTE_LIMITS.resolve);
+const qrLimiter = limiterFor(ROUTE_LIMITS.qr);
 
 async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);

@@ -261,6 +261,12 @@ describe("door-rush limits (LOOM_RL_*)", () => {
     expect(l.redeemMisses).toEqual(DEFAULT_RATE_LIMITS.redeemMisses);
   });
 
+  it("LOOM_RL_QR tunes the pass QR ceiling (default 60 a minute)", () => {
+    expect(DEFAULT_RATE_LIMITS.qr).toEqual({ max: 60, windowMs: 60_000 });
+    expect(rateLimitsFromEnv({ LOOM_RL_QR: "400" }).qr).toEqual({ max: 400, windowMs: 60_000 });
+    expect(rateLimitsFromEnv({ LOOM_RL_QR: "600/120" }).qr).toEqual({ max: 600, windowMs: 120_000 });
+  });
+
   async function registerMany(rt: EventRuntime, n: number): Promise<number[]> {
     rt.openDoors();
     const out: number[] = [];
