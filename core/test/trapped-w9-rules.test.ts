@@ -201,3 +201,29 @@ describe("wave 9 — only the advice card votes in the advice poll (T2-facts-03)
     expect(v(sim, "g2.advice")).toBe("thwart");
   });
 });
+
+// ───────────────────────── an ending closes the 📝 cards ─────────────────────────
+
+describe("wave 9 — a server-room ending closes every live 📝 card (T7-02)", () => {
+  const facts = (evs: SimEvent[], g: string) => widgets(evs).filter((w) => w.widget === "fact" && w.audience[0] === g);
+  const qs = (w: { params: Record<string, string> }) => (w.params["questions"] ?? "").split("|").map((q) => q.trim()).filter(Boolean);
+
+  for (const ending of ["patch_combo_a", "patch_combo_b", "talked_down"]) {
+    it(`${ending}: the round-3 card becomes the closing card, once, and nothing after deals another`, { timeout: SLOW }, () => {
+      const sim = boot();
+      toY2k(sim);
+      for (const [g] of PROGRAMS) expect(v(sim, `${g}.fact_card_live`), g).toBe(true);
+      const end = [...fire(sim, ending), ...advance(sim, 15)];
+      expect(v(sim, "Night.ended")).toBe(true);
+      for (const [g] of PROGRAMS) {
+        const closed = facts(end, g);
+        expect(closed.map((w) => w.text), g).toEqual(["📝 The filing is closed"]);
+        expect(qs(closed[0]!), g).toEqual([]);
+        expect(closed[0]!.params["thread"], g).toBe("Trabolta");
+        expect(v(sim, `${g}.fact_card_live`), g).toBe(false);
+      }
+      const after = fireAll(sim, "trabolta_recounts", "clippy_reads_summary", "start_the_ceremony", "resurrection", "resurrection");
+      expect(widgets(after).filter((w) => w.widget === "fact")).toEqual([]);
+    });
+  }
+});

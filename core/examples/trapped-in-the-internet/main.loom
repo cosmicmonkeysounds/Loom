@@ -815,8 +815,11 @@ ROLE Program
 
   // A round closed: every card re-deals without the closed questions. Not
   // gated on the night's end: truth.txt closes round 3 in the same drain a
-  // Song Ending ends the night, and a live card must still be closed.
-  when Night.card_gen > self.card_seen and self.cleared and Trabolta.awake == true:
+  // Song Ending ends the night, and a live card must still be closed. An
+  // ending closes the cards too (`when Night.ended == true` bumps the
+  // generation): the server-room endings close no round, and Combo B puts
+  // Trabolta to sleep, so the closing card is dealt without him awake.
+  when Night.card_gen > self.card_seen and self.cleared and (Trabolta.awake == true or Night.ended == true):
     set self.card_seen = Night.card_gen
     fire deal_fact_card for self
 
@@ -3838,7 +3841,10 @@ when talked_down:
 // Any ending stops every clock: a hunt, the summons, bingo or the Y2K
 // hour left running would keep its corner countdown on the screens (under
 // the go-to-the-living-room overlay) and fire its own time-up beat later.
+// It also closes every live 📝 card (the record is closed: a card left up
+// would invite a filing through the ceremony).
 when Night.ended == true:
+  set Night.card_gen += 1
   set Night.hunt_on = false
   set Night.hunt2_on = false
   set Night.summons_open = false
