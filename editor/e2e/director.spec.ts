@@ -158,6 +158,43 @@ test.describe('run mode · the Director page', () => {
       await expect(page.getByTestId('cue-lights_fallback')).toBeVisible()
     })
 
+    test('the keys keep working after the filter or a mouse press drops focus', async ({ page }) => {
+      // `/`, type, Esc: the filter hands the keys back to the page.
+      await page.keyboard.press('/')
+      await page.keyboard.type('call')
+      await page.keyboard.press('Escape')
+      await page.keyboard.press(' ')
+      await expect(page.getByTestId('cue-armed-open_doors')).toBeVisible()
+      await page.keyboard.press('Escape')
+      // A mouse press on NOW's button, then the keys: Space · Space fires.
+      await page.getByTestId('director-next-fire').click()
+      await page.waitForTimeout(400)
+      await page.getByTestId('director-next-fire').click()
+      await expect(page.getByTestId('cue-last')).toContainText('Open the doors')
+      await page.waitForTimeout(1100) // NEXT's cooldown
+      await page.keyboard.press(' ')
+      await expect(page.getByTestId('cue-armed-read_out')).toBeVisible()
+    })
+
+    test('Enter on a focused button is that button’s, not NEXT’s', async ({ page }) => {
+      await page.getByTestId('director-mode-watching').focus()
+      await page.keyboard.press('Enter')
+      await expect(page.getByTestId('director')).toHaveAttribute('data-mode', 'watching')
+      await expect(page.getByTestId('cue-armed-open_doors')).toHaveCount(0)
+      await page.getByTestId('director-mode-calling').click()
+    })
+
+    test('a refusal outlives a trip to its # hosts link', async ({ page }) => {
+      await page.setViewportSize({ width: 1600, height: 900 }) // the glance column
+      await page.getByTestId('director-step-B').click()
+      await fire(page, 'last_call')
+      await expect(page.getByTestId('director-result')).toContainText('Not taken')
+      await page.getByTestId('glance-need-refused').click()
+      await openDirector(page)
+      await expect(page.getByTestId('director-result')).toContainText('Not taken')
+      await expect(page.getByTestId('glance-needs')).toContainText('not taken')
+    })
+
     test('Watching mode ignores Space', async ({ page }) => {
       await page.getByTestId('director-mode-watching').click()
       await expect(page.getByTestId('director')).toHaveAttribute('data-mode', 'watching')
