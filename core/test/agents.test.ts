@@ -154,6 +154,133 @@ describe("AgentHub", () => {
     expect(h.hub.pending).toHaveLength(0);
   });
 
+  it("a burst on a busy, healthy worker times nothing out: only its head is on the clock (T9-timers-02)", () => {
+    const h = hubHarness();
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    const threads = Array.from({ length: 60 }, (_, i): AgentThread => ({ character: "Trabolta", channel: "dm:Trabolta", audience: [`g-${i}`] }));
+    let settled = 0;
+    let busyUntil = 0; // the worker answers its oldest request every 6 s
+    for (let t = 0; t < 11 * 60; t++) {
+      if (t < 60) h.hub.line(threads[t]!);
+      if (t >= busyUntil) {
+        const head = a.requests().find((r) => h.hub.pending.some((p) => p.id === r.id));
+        if (head !== undefined) {
+          if (h.hub.settle(head.id, "laptop") !== null) settled += 1;
+          busyUntil = t + 6;
+        }
+      }
+      h.tick(1000);
+      h.hub.sweep();
+    }
+    expect(settled).toBe(60);
+    expect(a.got.filter(([e]) => e === "cancel")).toHaveLength(0);
+    expect(h.held).toHaveLength(0);
+  });
+
+  it("a hung worker: only its head is cancelled, the next gets a fresh window, and a request given up says the hold line once", () => {
+    const h = hubHarness({ replyTimeoutMs: 10_000 });
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    const t1: AgentThread = { ...T, audience: ["g-1"] };
+    const t2: AgentThread = { ...T, audience: ["g-2"] };
+    h.hub.line(t1);
+    h.tick(1000);
+    h.hub.line(t2);
+    const cancels = () => a.got.filter(([e]) => e === "cancel").map(([, d]) => (d as { id: string }).id);
+    const [r1, r2] = a.requests();
+    h.tick(10_001);
+    h.hub.sweep();
+    expect(cancels()).toEqual([r1!.id]); // the head only, though both are > 10 s old
+    h.tick(2000);
+    h.hub.sweep();
+    expect(cancels()).toEqual([r1!.id]); // r2's clock started at the cancel
+    h.tick(9000);
+    h.hub.sweep();
+    expect(cancels()).toEqual([r1!.id, r2!.id]);
+    // Both are re-dispatched once, time out again, and are given up — each
+    // thread hears the hold line exactly once.
+    for (let i = 0; i < 4; i++) {
+      h.tick(10_001);
+      h.hub.sweep();
+    }
+    expect(h.hub.pending).toHaveLength(0);
+    expect(h.held.map((r) => r.thread.audience[0]).sort()).toEqual(["g-1", "g-2"]);
+  });
+
+  it("a director's hand answer to the head starts the next request's clock at the cancel, not at the worker's last answer", () => {
+    const h = hubHarness({ replyTimeoutMs: 120_000 });
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    const th = (n: number): AgentThread => ({ ...T, audience: [`g-${n}`] });
+    h.hub.line(th(0));
+    h.hub.line(th(1));
+    h.hub.line(th(2));
+    const [r0, r1, r2] = a.requests();
+    h.tick(5_000);
+    h.hub.settle(r0!.id, "laptop"); // r1 starts at 5 s …
+    h.tick(105_000);
+    h.hub.sweep();
+    expect(h.hub.answeredByHand(th(1))).toBe(true); // … and is answered by hand at 110 s
+    const cancels = () => a.got.filter(([e]) => e === "cancel").map(([, d]) => (d as { id: string }).id);
+    expect(cancels()).toEqual([r1!.id]);
+    for (let i = 0; i < 30; i++) {
+      h.tick(1000);
+      h.hub.sweep();
+    }
+    expect(cancels()).toEqual([r1!.id]); // r2 has had 30 s of its own 120
+    h.tick(91_000);
+    h.hub.sweep();
+    expect(cancels()).toEqual([r1!.id, r2!.id]);
+  });
+
+  it("a head stuck in one slot times out while the worker's other slot keeps answering", () => {
+    const h = hubHarness({ replyTimeoutMs: 10_000 });
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    h.hub.line({ ...T, audience: ["g-stuck"] });
+    const [stuck] = a.requests();
+    const cancels = () => a.got.filter(([e]) => e === "cancel").map(([, d]) => (d as { id: string }).id);
+    for (let i = 0; i < 12; i++) {
+      // The second slot answers a fresh DM every second.
+      h.hub.line({ ...T, audience: [`g-${i}`] });
+      const fresh = a.requests().at(-1)!;
+      h.tick(1000);
+      h.hub.settle(fresh.id, "laptop");
+      h.hub.sweep();
+    }
+    expect(cancels()).toEqual([stuck!.id]);
+  });
+
+  it("shift: a pause doesn't count toward the timeout, the queue's age or the hold line (T9-timers-03)", () => {
+    const h = hubHarness({ replyTimeoutMs: 120_000 });
+    // Queued, nobody online: a DM 10 s before an 11-minute pause.
+    h.hub.line(T);
+    h.tick(10_000);
+    const pausedAt = h.tick(0);
+    h.tick(11 * 60_000);
+    h.hub.shift(pausedAt, h.tick(0));
+    h.tick(5_000);
+    h.hub.sweep();
+    expect(h.hub.pending).toHaveLength(1); // not expired
+    expect(h.held).toHaveLength(0); // 15 s of open doors so far
+    h.tick(5_000);
+    h.hub.sweep();
+    expect(h.held).toHaveLength(1);
+    // In flight across a 3-minute pause: no cancel on the first tick back.
+    const g = hubHarness({ replyTimeoutMs: 120_000 });
+    const a = g.worker("laptop");
+    g.hub.attach(a.w);
+    g.hub.line(T);
+    g.tick(30_000);
+    const p = g.tick(0);
+    g.tick(3 * 60_000);
+    g.hub.shift(p, g.tick(0));
+    g.tick(1000);
+    g.hub.sweep();
+    expect(a.got.filter(([e]) => e === "cancel")).toHaveLength(0);
+  });
+
   it("drops queued requests nobody picked up", () => {
     const h = hubHarness({ queueMaxAgeMs: 60_000 });
     h.hub.line(T);
@@ -1083,5 +1210,136 @@ CHARACTER Vault
     const sim = Sim.fromSources(SOURCE);
     expect(sim.model.characters.get("Trabolta")?.mind).toBe("external");
     expect(sim.model.characters.get("Clippy")?.mind).toBeNull();
+  });
+});
+
+describe("the agent and the event's lifecycle (D10, T9-timers-03, R1-diff-server-02)", () => {
+  const HOLD_SOURCE = SOURCE.replace("  mind: external\n", '  mind: external\n  hold: "Back soon."\n');
+  const at = (source: string, clock: { t: number }) => {
+    const d = mkdtempSync(join(tmpdir(), "loom-agents-"));
+    dirs.push(d);
+    return () => new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "uploaded", scenarioSource: source, joinBase: () => "http://localhost", now: () => clock.t });
+  };
+  const threadOf = async (rt: EventRuntime, token: string) =>
+    ((await call(rt, "GET", "/api/history", {}, { token })).json["messages"] as Array<{ from: string; text: string; channel: string }>)
+      .filter((m) => m.channel === "dm:Trabolta")
+      .map((m) => [m.from, m.text]);
+  const hubOf = (rt: EventRuntime) => (rt as unknown as { agents: AgentHub }).agents;
+
+  it("a reply while the doors are paused lands its words but refuses its acts, and no power is spent", async () => {
+    const { rt, guest, requests } = await setup();
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "lights out please" }, { token: guest.token });
+    const id = requests()[0]!.id;
+    rt.pause();
+    const reply = await call(rt, "POST", "/api/agent/reply", { id, say: "Not now.", acts: [{ kind: "fire", name: "cut the lights", args: { room: "The Cache" } }, { kind: "share", entry: "The Sandy File" }] }, { moderator: true });
+    expect(reply.status).toBe(200);
+    expect(reply.json["said"]).toBe(true);
+    expect(reply.json["acted"]).toEqual([
+      { kind: "fire", ok: false, what: "cut the lights", error: "doors are closed" },
+      { kind: "share", ok: false, what: "The Sandy File", error: "doors are closed" },
+    ]);
+    const sim = rt.liveSim!;
+    expect(sim.log.since(0).some((e) => e.type === "directive" && (e as { verb: string }).verb === "cue")).toBe(false);
+    expect(sim.worldEntries().find((w) => w.path === "Trabolta.lights_cut")?.value).toBe("0");
+    expect(sim.holdsCodex(guest.id, "The Sandy File")).toBe(false);
+    expect((await threadOf(rt, guest.token)).at(-1)).toEqual(["Trabolta", "Not now."]);
+    // Back open: the power is still unspent.
+    rt.openDoors();
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "now?" }, { token: guest.token });
+    expect(requests().at(-1)!.powers.find((p) => p.id === "cut the lights")?.used).toBe(0);
+    rt.dispose();
+  });
+
+  it("a request in flight across a 3-minute pause is not cancelled on the first tick back", async () => {
+    const clock = { t: 1_000_000 };
+    const rt = at(SOURCE, clock)();
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Ada", passcode: CODES.event });
+    const worker = await call(rt, "GET", "/api/agent/stream?characters=Trabolta", {}, { moderator: true });
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "hello?" }, { token: g.json["token"] as string });
+    clock.t += 30_000;
+    rt.pause();
+    clock.t += 3 * 60_000;
+    rt.openDoors();
+    clock.t += 1000;
+    rt.tickOnce(1000);
+    expect(worker.res.frames().map(([e]) => e).filter((e) => e === "request" || e === "cancel")).toEqual(["request"]);
+    rt.dispose();
+  });
+
+  it("with no worker, a DM before an 11-minute pause still gets its hold line after the resume, and a worker that attaches then answers it", async () => {
+    const clock = { t: 1_000_000 };
+    const rt = at(HOLD_SOURCE, clock)();
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Ada", passcode: CODES.event });
+    const token = g.json["token"] as string;
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "hello?" }, { token });
+    clock.t += 10_000;
+    rt.tickOnce(1000);
+    rt.pause();
+    clock.t += 11 * 60_000;
+    rt.openDoors();
+    for (let i = 0; i < 20; i++) {
+      clock.t += 1000;
+      rt.tickOnce(1000);
+    }
+    expect(await threadOf(rt, token)).toEqual([
+      ["Ada", "hello?"],
+      ["Trabolta", "Back soon."],
+    ]);
+    expect(hubOf(rt).pending).toHaveLength(1);
+    const worker = await call(rt, "GET", "/api/agent/stream?characters=Trabolta", {}, { moderator: true });
+    expect(worker.res.frames().filter(([e]) => e === "request")).toHaveLength(1);
+    rt.dispose();
+  });
+
+  it("a guest who wrote again after the hold line gets no second one after a restore", async () => {
+    const clock = { t: 1_000_000 };
+    const mk = at(HOLD_SOURCE, clock);
+    const rt = mk();
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Ada", passcode: CODES.event });
+    const token = g.json["token"] as string;
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "anyone there?" }, { token });
+    clock.t += 20_000;
+    hubOf(rt).sweep();
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "still there?" }, { token });
+    clock.t += 20_000;
+    hubOf(rt).sweep();
+    expect(await threadOf(rt, token)).toHaveLength(3);
+    rt.dispose();
+    const rt2 = mk();
+    expect(rt2.restore()).not.toBeNull();
+    expect(hubOf(rt2).pending.map((r) => r.thread.audience)).toEqual([[g.json["id"]]]);
+    clock.t += 60_000;
+    hubOf(rt2).sweep();
+    expect((await threadOf(rt2, token)).filter(([, text]) => text === "Back soon.")).toHaveLength(1);
+    const w = await call(rt2, "GET", "/api/agent/stream?characters=Trabolta", {}, { moderator: true });
+    expect(w.res.frames().filter(([e]) => e === "request")).toHaveLength(1);
+    rt2.dispose();
+  });
+
+  it("control: after a real reply and a new guest line, a restore with no worker posts one new hold line", async () => {
+    const clock = { t: 1_000_000 };
+    const mk = at(HOLD_SOURCE, clock);
+    const rt = mk();
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Ada", passcode: CODES.event });
+    const token = g.json["token"] as string;
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "anyone there?" }, { token });
+    clock.t += 20_000;
+    hubOf(rt).sweep();
+    const worker = await call(rt, "GET", "/api/agent/stream?characters=Trabolta", {}, { moderator: true });
+    const r = worker.res.frames().filter(([e]) => e === "request").map(([, d]) => d as AgentRequest).at(-1)!;
+    await call(rt, "POST", "/api/agent/reply", { id: r.id, say: "Here now." }, { moderator: true });
+    worker.close();
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "great, a question" }, { token });
+    rt.dispose();
+    const rt2 = mk();
+    expect(rt2.restore()).not.toBeNull();
+    clock.t += 21_000;
+    hubOf(rt2).sweep();
+    expect((await threadOf(rt2, token)).map(([, text]) => text)).toEqual(["anyone there?", "Back soon.", "Here now.", "great, a question", "Back soon."]);
+    rt2.dispose();
   });
 });

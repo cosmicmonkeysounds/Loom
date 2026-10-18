@@ -1150,3 +1150,47 @@ describe("the cue sheet across a restart (T7-01 review)", () => {
     expect(await cues(again)).toEqual(live);
   });
 });
+
+describe("/api/mod/load re-reads the project's files into the open docs first (C2, T4-04)", () => {
+  function link(order: string[], opts: { fail?: boolean } = {}) {
+    return {
+      projectId: "proj-1",
+      async writeFile() {},
+      async saveSnapshot() {},
+      async saveVariant() {},
+      async resyncFiles() {
+        order.push("resync");
+        if (opts.fail === true) throw new Error("db down");
+      },
+    };
+  }
+
+  it("resyncs once, before the restart", async () => {
+    const order: string[] = [];
+    const rt = freshRuntime({ project: link(order) });
+    const restart = rt.restart.bind(rt);
+    rt.restart = ((...args: Parameters<EventRuntime["restart"]>) => {
+      order.push("restart");
+      return restart(...args);
+    }) as EventRuntime["restart"];
+    expect((await post(rt, "/api/mod/load", { source: SCENARIO, name: "synced" })).status).toBe(200);
+    expect(order).toEqual(["resync", "restart"]);
+    rt.dispose();
+  });
+
+  it("a failed resync is logged and never blocks the reload", async () => {
+    const order: string[] = [];
+    const err = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    const rt = freshRuntime({ project: link(order, { fail: true }) });
+    try {
+      const r = await post(rt, "/api/mod/load", { source: SCENARIO, name: "synced" });
+      expect(r.status).toBe(200);
+      expect(rt.scenario).toBe("synced");
+      expect(order).toEqual(["resync"]);
+      expect(err.mock.calls.some(([line]) => String(line).includes("re-reading the project's files failed"))).toBe(true);
+    } finally {
+      err.mockRestore();
+      rt.dispose();
+    }
+  });
+});

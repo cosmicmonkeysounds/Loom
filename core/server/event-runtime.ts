@@ -27,7 +27,7 @@ import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
 import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, guestOwnRow, decisionChannelFor, isPinnedRoom, visibleTo, type ChatMessage } from "./chat.ts";
 import { DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
-import { SSE_MOD_QUEUE_CAP, ipOf, queryTokenOf, readBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
+import { CHAT_TEXT_MAX, SSE_MOD_QUEUE_CAP, chatTooLong, ipOf, queryTokenOf, readBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
 import { RateLimiter, limiterFor, rateLimitsFromEnv, type RateLimits } from "./rate-limit.ts";
 import { handleMetrics } from "./routes/metrics.ts";
 import { handleModLog } from "./routes/mod-log.ts";
@@ -55,6 +55,7 @@ import { PushRoutes } from "./routes/k31.ts";
 import { PushHub, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
 import { printExtras } from "./routes/k12.ts";
 import { sendRecap } from "./routes/recap.ts";
+import { guestSide } from "./routes/sides.ts";
 import { ScreenWatch, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost } from "./routes/screen.ts";
 import { handleScreenIdentifyPost } from "./routes/screen.ts";
 import { SpatialHub, houseVersion, houseWarnings, isWorld, parseDuckRun, parsePose, sortCandidates, type DuckRun, type SessionRef } from "./spatial.ts";
@@ -91,6 +92,13 @@ import {
   type AgentRequest,
   type AgentThread,
 } from "./agents.ts";
+
+
+/** A project link that can also re-read its files into the live co-editing
+ *  docs (`ProjectLink.resyncFiles`, events-api.ts: `CollabHub.resyncFromStorage`
+ *  + a files notice per file). Optional: a link without it (a test fake,
+ *  an older host) just skips the resync. */
+type ResyncableProjectLink = ProjectLink & { resyncFiles?(): Promise<void> };
 
 /** A guest view is never rendered against a null sim — this stands in. */
 const EMPTY_SIM = Sim.fromSources("");
@@ -480,6 +488,9 @@ export class EventRuntime {
   // exists": a restart with the doors closed (and a restore) builds the sim
   // without opening, and the next open must still play the entry — once.
   private entryPlayed = false;
+  /** Wall time (`clock`) the doors last closed by a pause, until they open
+   *  again: the agent hub's timers skip that span (T9-timers-03). */
+  private pausedAt: number | null = null;
   private ticker: ReturnType<typeof setInterval> | null = null;
   // Agent-voiced characters (`mind: external`): open requests + the
   // stagehand workers answering them. Ephemeral — a restart drops them.
@@ -1293,26 +1304,42 @@ export class EventRuntime {
   /** After a restore: every agent thread still owed an answer — its last
    *  line someone else's, or the character's hold line right after one —
    *  gets its request again, as the hub's queue died with the process (a
-   *  worker answers it, or the hold line follows, never twice). Only a
-   *  line from the last `AGENT_QUEUE_MAX_AGE_MS` of the story clock: live,
-   *  an older request has been dropped. */
+   *  worker answers it, or the hold line follows, never twice: a thread
+   *  with a hold line since the character last really spoke is re-asked as
+   *  already held, however many lines the guest typed after it —
+   *  R1-diff-server-02). Only a line from the last `AGENT_QUEUE_MAX_AGE_MS`
+   *  of the story clock: live, an older request has been dropped. */
   private requeueAgentThreads(): void {
     const sim = this.sim;
     if (sim === null) return;
-    const tail = new Map<string, [ChatMessage | undefined, ChatMessage]>(); // thread → its last two lines
+    interface Tail {
+      prev: ChatMessage | undefined;
+      last: ChatMessage;
+      /** A hold line (after someone else's) since the character's last real line. */
+      held: boolean;
+    }
+    const tails = new Map<string, Tail>(); // thread →
+    const holdOf = (character: string) => sim.model.characters.get(character)?.hold ?? null;
+    const theirs = (m: ChatMessage | undefined, character: string): m is ChatMessage => m !== undefined && m.kind === "line" && m.from !== character;
     for (const m of this.chat.all()) {
       if (m.hidden || !m.channel.startsWith("dm:") || !Array.isArray(m.audience) || m.audience.length !== 1) continue;
-      if (!this.isAgent(m.channel.slice("dm:".length))) continue;
+      const character = m.channel.slice("dm:".length);
+      if (!this.isAgent(character)) continue;
       const key = `${m.channel}|${m.audience[0]}`;
-      tail.set(key, [tail.get(key)?.[1], m]);
+      const t = tails.get(key);
+      let held = t?.held ?? false;
+      if (m.from === character) {
+        const hold = holdOf(character);
+        held = hold !== null && m.text === hold ? held || theirs(t?.last, character) : false;
+      }
+      tails.set(key, { prev: t?.last, last: m, held });
     }
     const now = sim.elapsed();
-    for (const [prev, last] of tail.values()) {
+    for (const { prev, last, held } of tails.values()) {
       const character = last.channel.slice("dm:".length);
-      const theirs = (m: ChatMessage | undefined): m is ChatMessage => m !== undefined && m.kind === "line" && m.from !== character;
-      const hold = sim.model.characters.get(character)?.hold ?? null;
-      const held = hold !== null && last.from === character && last.text === hold && theirs(prev);
-      const owed = theirs(last) ? last : held ? prev! : null;
+      const hold = holdOf(character);
+      const lastIsHold = hold !== null && last.from === character && last.text === hold && theirs(prev, character);
+      const owed = theirs(last, character) ? last : lastIsHold ? prev! : null;
       if (owed === null || now - owed.ts > AGENT_QUEUE_MAX_AGE_MS) continue;
       this.agentHeard(last.channel, last.audience as string[], held);
     }
@@ -1430,7 +1457,9 @@ export class EventRuntime {
       },
       world: globals,
       powers: this.agentPowers(),
-      at: Date.now(),
+      // The hub's clock (an injected one in tests), so its max-age check
+      // and a pause's shift read the same time.
+      at: this.clock(),
     };
   }
 
@@ -1630,7 +1659,7 @@ export class EventRuntime {
       sendJson(res, 409, { error: "no scenario loaded" });
       return;
     }
-    const text = str(body, "say").trim().slice(0, 2000);
+    const text = str(body, "say").trim().slice(0, CHAT_TEXT_MAX);
     if (text !== "") {
       this.fanout(this.commit("say", req.character, req.thread.channel, text, null, req.thread.audience));
     }
@@ -1647,7 +1676,14 @@ export class EventRuntime {
       applied[name] = next;
       this.fanout(this.commit("setVar", path, String(next)));
     }
-    const acted = this.applyAgentActs(req, agentActs(body["acts"]));
+    // Doors closed (a pause): the words land, the acts don't (D10) — nothing
+    // autonomous changes the house while nobody else may act, and a refused
+    // act is not counted against its power's limit.
+    const acts = agentActs(body["acts"]);
+    const acted: AgentActResult[] =
+      this.phase === "open"
+        ? this.applyAgentActs(req, acts)
+        : acts.map((a) => ({ kind: a.kind, ok: false, what: a.kind === "share" ? a.entry : a.name, error: "doors are closed" }));
     if (followUp) this.agents.line(req.thread);
     sendJson(res, 200, { ok: true, said: text !== "", applied, acted });
   }
@@ -1995,14 +2031,21 @@ export class EventRuntime {
         return true;
       case "/api/mod/spatial/candidates": {
         // The typed-name fallback when a pass won't scan: every guest and
-        // persona, the corrupted first.
+        // persona, the corrupted first, then the marked (restricted: Play
+        // here begins their reinstallation — C4, T3-reinstall-03).
         const sim = this.sim;
         if (sim === null) {
           sendJson(res, 409, { error: "no scenario loaded" });
           return true;
         }
         const players = sortCandidates(
-          [...sim.persons.values()].map((p) => ({ id: p.id, name: p.name, captured: sim.isCaptured(p.id), location: sim.locationOf(p.id) })),
+          [...sim.persons.values()].map((p) => ({
+            id: p.id,
+            name: p.name,
+            captured: sim.isCaptured(p.id),
+            restricted: sim.isRestricted(p.id),
+            location: sim.locationOf(p.id),
+          })),
         );
         sendJson(res, 200, { players });
         return true;
@@ -2048,6 +2091,7 @@ export class EventRuntime {
           else sendJson(res, 409, { error: "doors are closed" });
           return true;
         }
+        const guest = this.spatial.sessionFor(token)?.guest ?? null;
         const out = this.spatial.found(token, (s) => this.commitFound(s));
         switch (out.kind) {
           case "unknown":
@@ -2061,7 +2105,10 @@ export class EventRuntime {
             sendJson(res, 409, { error: "not near the duck", distance: Math.round(out.distance * 100) / 100, dy: Math.round(out.dy * 100) / 100 });
             return true;
           case "found":
-            sendJson(res, 200, { ok: true, released: out.released, already: out.already });
+            // `captured`: the program is still captured after the find (the
+            // banishment frees nobody), so the game never celebrates a
+            // release the story didn't make (C4, T3-reinstall-01).
+            sendJson(res, 200, { ok: true, released: out.released, already: out.already, captured: guest !== null && (this.sim?.isCaptured(guest) ?? false) });
             return true;
         }
         return true;
@@ -2249,9 +2296,13 @@ export class EventRuntime {
     return id;
   }
 
-  /** Count a failed passcode attempt; true when this IP is over the limit. */
-  private throttled(req: IncomingMessage, res: ServerResponse): boolean {
-    if (this.loginFailures.allowed(ipOf(req))) return false;
+  /** Count a failed passcode attempt; true when this IP is over the limit.
+   *  `publicCode` (the caller sent the right guest event code) always passes:
+   *  that code is printed on the door poster, so a lockout protects nothing
+   *  and would only refuse every phone behind the house's one IP (D9). The
+   *  performer + mod codes stay locked out, so a guesser gets no oracle. */
+  private throttled(req: IncomingMessage, res: ServerResponse, publicCode = false): boolean {
+    if (publicCode || this.loginFailures.allowed(ipOf(req))) return false;
     sendJson(res, 429, { error: "too many attempts — wait a few minutes" });
     return true;
   }
@@ -2439,6 +2490,10 @@ export class EventRuntime {
    */
   openDoors(): void {
     if (this.sim === null) this.freshRun(this.scenarioSource, this.scenarioName);
+    if (this.pausedAt !== null) {
+      this.agents.shift(this.pausedAt, this.clock());
+      this.pausedAt = null;
+    }
     this.setPhase("open");
     this.persistMeta();
     this.startTicker();
@@ -2467,6 +2522,7 @@ export class EventRuntime {
   /** Pause the event: stop the clock, keep all state. `/api/mod/stop`. */
   pause(): void {
     this.flushTick();
+    if (this.phase === "open") this.pausedAt = this.clock();
     this.setPhase("paused");
     this.stopTicker();
     this.persistMeta();
@@ -2679,6 +2735,9 @@ export class EventRuntime {
     for (const [token, id] of this.store.loadGuests()) this.guestTokens.set(token, id);
     this.requeueAgentThreads();
     if (this.phase === "open") this.startTicker();
+    // Restored with the doors paused: the re-asked requests wait out the
+    // pause like live ones do.
+    else if (this.phase === "paused") this.pausedAt = this.clock();
     return { guests: this.sim?.persons.size ?? 0, events, sessions: entries.length };
   }
 
@@ -3059,9 +3118,10 @@ export class EventRuntime {
     // the pool of programs a guest may be; the performer / mod code shows
     // the parts. Each name says whether someone already holds it.
     if (path === "/api/identities") {
-      if (this.throttled(req, res)) return true;
       const passcode = str(body, "passcode");
-      const role = passOk(passcode, this.codes.event) ? "guest" : passOk(passcode, this.codes.prime) || passOk(passcode, this.codes.mod) ? "prime" : null;
+      const guestCode = passOk(passcode, this.codes.event);
+      if (this.throttled(req, res, guestCode)) return true;
+      const role = guestCode ? "guest" : passOk(passcode, this.codes.prime) || passOk(passcode, this.codes.mod) ? "prime" : null;
       if (role === null) {
         this.loginFailures.record(ipOf(req));
         sendJson(res, 403, { error: "wrong code" });
@@ -3075,8 +3135,9 @@ export class EventRuntime {
     // A guest's search of the program directory: any software on Wikipedia
     // — except antivirus, which is flagged so the screen can say why.
     if (path === "/api/identities/search") {
-      if (this.throttled(req, res)) return true;
-      if (!passOk(str(body, "passcode"), this.codes.event)) {
+      const guestCode = passOk(str(body, "passcode"), this.codes.event);
+      if (this.throttled(req, res, guestCode)) return true;
+      if (!guestCode) {
         this.loginFailures.record(ipOf(req));
         sendJson(res, 403, { error: "wrong event code" });
         return true;
@@ -3101,8 +3162,9 @@ export class EventRuntime {
     // The pictures a guest may choose between for a program — one of the
     // story's (`name`), or a directory pick (`wiki` = the article title).
     if (path === "/api/identities/pictures") {
-      if (this.throttled(req, res)) return true;
-      if (!passOk(str(body, "passcode"), this.codes.event)) {
+      const guestCode = passOk(str(body, "passcode"), this.codes.event);
+      if (this.throttled(req, res, guestCode)) return true;
+      if (!guestCode) {
         this.loginFailures.record(ipOf(req));
         sendJson(res, 403, { error: "wrong event code" });
         return true;
@@ -3138,6 +3200,7 @@ export class EventRuntime {
         return true;
       }
       if (path === "/api/mod/spatial/house/project") return this.saveMapToProject(res, body, opts.moderatorName ?? "Director");
+      if (path === "/api/mod/load") await this.resyncProjectFiles();
       return this.handleMod(res, path, body, opts.moderatorName ?? "Director");
     }
 
@@ -3156,8 +3219,9 @@ export class EventRuntime {
       // caller's capability token (`requireGuest`) — the `id` a client may
       // still send in the body is ignored, so no guest can act as another.
       case "/api/guest/register": {
-        if (this.throttled(req, res)) return true;
-        if (!passOk(str(body, "passcode"), this.codes.event)) {
+        const guestCode = passOk(str(body, "passcode"), this.codes.event);
+        if (this.throttled(req, res, guestCode)) return true;
+        if (!guestCode) {
           this.loginFailures.record(ipOf(req));
           sendJson(res, 403, { error: "wrong event code" });
           return true;
@@ -3265,7 +3329,14 @@ export class EventRuntime {
           sendJson(res, 403, { error: "you're restricted — the story has to lift it first" });
           return true;
         }
-        this.fanout(this.commit("join", id, str(body, "faction")));
+        // Only a declared, joinable, revealed side (D7): never a staff
+        // caste or a hidden group the story hasn't opened.
+        const side = guestSide(this.sim!, str(body, "faction"));
+        if (side === null) {
+          sendJson(res, 403, { error: "that side isn't open" });
+          return true;
+        }
+        this.fanout(this.commit("join", id, side));
         sendJson(res, 200, { ok: true });
         return true;
       }
@@ -3281,7 +3352,14 @@ export class EventRuntime {
           sendJson(res, 403, { error: "you're restricted — the story has to lift it first" });
           return true;
         }
-        this.fanout(this.commit("defect", id, str(body, "to")));
+        // Only a declared, joinable, revealed side (D7): never a staff
+        // caste or a hidden group the story hasn't opened.
+        const side = guestSide(this.sim!, str(body, "to"));
+        if (side === null) {
+          sendJson(res, 403, { error: "that side isn't open" });
+          return true;
+        }
+        this.fanout(this.commit("defect", id, side));
         sendJson(res, 200, { ok: true });
         return true;
       }
@@ -3400,6 +3478,7 @@ export class EventRuntime {
           sendJson(res, 400, { error: "empty message" });
           return true;
         }
+        if (chatTooLong(res, text)) return true;
         // A guest's `dm:` thread is with a declared character, under its
         // canonical id: `dm:trabolta` (a terminal provisioned in lower case)
         // is the real `dm:Trabolta`, and `dm:nobody` is no thread at all —
@@ -3815,6 +3894,7 @@ export class EventRuntime {
           sendJson(res, 400, { error: "empty message" });
           return true;
         }
+        if (chatTooLong(res, text)) return true;
         let channel = str(body, "channel") || "lobby";
         let audience: "all" | string[] | undefined;
         if (channel.startsWith("guest:")) {
@@ -3911,6 +3991,23 @@ export class EventRuntime {
       }
       default:
         return false;
+    }
+  }
+
+  /**
+   * Before `/api/mod/load` restarts the event (`sync-show` / `sync-example`
+   * wrote the project's files straight into the database from another
+   * process): fold the stored text into every open co-editing doc, so the
+   * editor shows the synced story and its next keystroke merges on top of
+   * it instead of saving the pre-sync doc back over it (C2, T4-04). A
+   * failure is logged and never blocks the reload.
+   */
+  private async resyncProjectFiles(): Promise<void> {
+    const link = this.project as ResyncableProjectLink | null;
+    try {
+      await link?.resyncFiles?.();
+    } catch (err) {
+      process.stderr.write(`  ⚠️  event ${this.eventId}: re-reading the project's files failed (${err instanceof Error ? err.message : String(err)})\n`);
     }
   }
 

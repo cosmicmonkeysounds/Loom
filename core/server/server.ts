@@ -44,13 +44,15 @@ import { WikiClient } from "./wiki.ts";
 import { ImageCache } from "./avatars.ts";
 import { join } from "node:path";
 import { ipOf, readBody, sendJson, str, PayloadTooLarge } from "./http-util.ts";
-import { RateLimiter, limiterFor, rateLimitsFromEnv } from "./rate-limit.ts";
+import { limiterFor, rateLimitsFromEnv } from "./rate-limit.ts";
 import { auth, authUser, migrateAuth } from "./auth-server.ts";
 import { dbReady, initSchema } from "./db/index.ts";
+import { ControlPlaneBoot, startControlPlane, type MissAnswer } from "./boot.ts";
 import { canModerateEvent, liveEvents } from "./db/queries.ts";
 import {
   AUTH_SECRET,
   BASE_URL,
+  DATABASE_REQUIRED,
   DATABASE_URL,
   HAS_SECURE_SECRET,
   IS_LOCAL_BASE,
@@ -207,7 +209,10 @@ const defaultEvent = registry.register(
 // ---------------------------------------------------------------------
 
 const authHandler = toNodeHandler(auth);
-let controlPlane = false;
+// Where the control plane's boot stands (`boot.ts`): the router answers an
+// event it doesn't know yet with 503 `starting` until this settles, and
+// `/api/health` reads it.
+const boot = new ControlPlaneBoot(DATABASE_REQUIRED);
 
 async function initControlPlane(): Promise<void> {
   // Author sessions are signed with AUTH_SECRET. Booting real accounts on
@@ -218,38 +223,52 @@ async function initControlPlane(): Promise<void> {
       `  🛑 control plane disabled — refusing to run author accounts with the default dev auth secret.\n` +
         `     Set BETTER_AUTH_SECRET (e.g. \`openssl rand -base64 32\`) and restart. The event plane still runs.\n`,
     );
+    boot.refuse("auth-secret");
+    process.stderr.write(`     /api/health answers 503 {reason: "config"} until it is set.\n`);
     return;
   }
-  if (!(await dbReady())) {
-    process.stderr.write(`  ⚠️  control plane disabled — database unreachable at ${DATABASE_URL}\n`);
-    return;
-  }
-  if (!HAS_SECURE_SECRET) {
-    process.stderr.write(`  ⚠️  using the default dev auth secret — set BETTER_AUTH_SECRET before deploying\n`);
-  }
-  await migrateAuth();
-  await initSchema();
-  controlPlane = true;
-  const mail = mailer().kind;
-  process.stdout.write(
-    mail === "none"
-      ? `  ✉️  no mail transport (set LOOM_SMTP_URL or LOOM_RESEND_API_KEY) — share invites are logged, not emailed\n`
-      : `  ✉️  mail via ${mail}\n`,
-  );
-  process.stdout.write(
-    webmaster !== null
-      ? `  📮 webmaster outbox at /webmaster/ (from ${WEBMASTER_FROM})\n`
-      : `  📮 webmaster outbox off (set LOOM_WEBMASTER_PASSWORD + LOOM_RESEND_API_KEY)\n`,
-  );
   // Rehydrate every event that was live before this process started: replay
   // its journal and (for open ones) restart its clock — the multi-event
-  // generalization of the default event's `restore()`.
-  let rehydrated = 0;
-  for (const row of await liveEvents()) {
-    registry.ensure(specFromRow(row));
-    rehydrated++;
-  }
-  if (rehydrated > 0) process.stdout.write(`  ↻ Rehydrated ${rehydrated} live event(s) from the database\n`);
+  // generalization of the default event's `restore()`. A deployment
+  // (`DATABASE_URL` set) waits for its database; a LAN box probes once.
+  await startControlPlane(boot, {
+    dbReady,
+    setup: async () => {
+      if (!HAS_SECURE_SECRET) {
+        process.stderr.write(`  ⚠️  using the default dev auth secret — set BETTER_AUTH_SECRET before deploying\n`);
+      }
+      await migrateAuth();
+      await initSchema();
+      const mail = mailer().kind;
+      process.stdout.write(
+        mail === "none"
+          ? `  ✉️  no mail transport (set LOOM_SMTP_URL or LOOM_RESEND_API_KEY) — share invites are logged, not emailed\n`
+          : `  ✉️  mail via ${mail}\n`,
+      );
+      process.stdout.write(
+        webmaster !== null
+          ? `  📮 webmaster outbox at /webmaster/ (from ${WEBMASTER_FROM})\n`
+          : `  📮 webmaster outbox off (set LOOM_WEBMASTER_PASSWORD + LOOM_RESEND_API_KEY)\n`,
+      );
+    },
+    liveEvents,
+    host: (row) => void registry.ensure(specFromRow(row)),
+    keyOf: (row) => ({ id: row.id, codes: [row.event_code, row.prime_code, row.mod_code] }),
+    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    log: (line) => process.stderr.write(`${line}\n`),
+    where: DATABASE_URL,
+  });
+  if (boot.rehydrated > 0) process.stdout.write(`  ↻ Rehydrated ${boot.rehydrated} live event(s) from the database\n`);
+}
+
+/** The router's answer for an event / code it doesn't host
+ *  (`boot.missEvent` / `missCode`): while the control plane is still coming
+ *  up it may be one of the database's, so "try again in a second", never
+ *  the final 404 a phone reads as "ended"; a row that would not rehydrate
+ *  answers 503 `event failed to load`. */
+function sendMiss(res: ServerResponse, miss: MissAnswer): void {
+  if (miss.retryAfter !== undefined) res.setHeader("retry-after", String(miss.retryAfter));
+  sendJson(res, miss.status, miss.body);
 }
 
 // ---------------------------------------------------------------------
@@ -276,10 +295,12 @@ const TRUSTED = new Set(TRUSTED_ORIGINS);
 
 // Route-level throttles (per client IP): `/api/resolve-code` is a code
 // oracle (any valid code → its event), `/api/qr` renders attacker-chosen
-// content. Both are cheap to call and deserve a ceiling. The resolve
-// ceiling is `LOOM_RL_RESOLVE` (house Wi-Fi = one shared IP at the door).
-const resolveLimiter = limiterFor(rateLimitsFromEnv(process.env).resolve);
-const qrLimiter = new RateLimiter(60, 60_000);
+// content. Both are cheap to call and deserve a ceiling, and both are
+// env-tunable (`LOOM_RL_RESOLVE`, `LOOM_RL_QR`): the house Wi-Fi is one
+// shared IP at the door.
+const ROUTE_LIMITS = rateLimitsFromEnv(process.env);
+const resolveLimiter = limiterFor(ROUTE_LIMITS.resolve);
+const qrLimiter = limiterFor(ROUTE_LIMITS.qr);
 
 async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
@@ -308,23 +329,34 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     return;
   }
 
+  // --- liveness + readiness: never throttled, no auth (C1) ---
+  // 200 on a LAN box, or once the control plane is up and every live event
+  // is hosted; 503 {reason: "database" | "starting" | "config" | "events"}
+  // otherwise — the compose healthcheck, release.sh and the uptime check
+  // read this, not `/`.
+  if (method === "GET" && path === "/api/health") {
+    const h = boot.health(registry.all().length, (id) => registry.get(id) !== undefined);
+    res.setHeader("cache-control", "no-store");
+    return void sendJson(res, h.status, h.body);
+  }
+
   // --- author auth plane (BetterAuth owns everything under /api/auth) ---
   if (path.startsWith("/api/auth")) {
-    if (!controlPlane) return void sendJson(res, 503, { error: "authoring is offline (no database)" });
+    if (!boot.controlPlane) return void sendJson(res, 503, { error: "authoring is offline (no database)" });
     await authHandler(req, res);
     return;
   }
 
   // --- collaboration invite links (landing data is readable signed-out) ---
   if (path.startsWith("/api/invites/")) {
-    if (!controlPlane) return void sendJson(res, 503, { error: "authoring is offline (no database)" });
+    if (!boot.controlPlane) return void sendJson(res, 503, { error: "authoring is offline (no database)" });
     if (await handleInvites(res, method, path, await authUser(req))) return;
     return void sendJson(res, 404, { error: "not found" });
   }
 
   // --- author control plane: projects + files + events (authors only) ---
   if (path === "/api/projects" || path.startsWith("/api/projects/")) {
-    if (!controlPlane) return void sendJson(res, 503, { error: "authoring is offline (no database)" });
+    if (!boot.controlPlane) return void sendJson(res, 503, { error: "authoring is offline (no database)" });
     const user = await authUser(req);
     if (user === null) return void sendJson(res, 401, { error: "sign in" });
     const segs = path.split("/").filter(Boolean); // ["api","projects",id,"event"|"collab",action?]
@@ -438,7 +470,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (!resolveLimiter.take(ipOf(req))) return void sendJson(res, 429, { error: "too many attempts — slow down" });
     const body = await readBody(req);
     const hit = registry.resolveCode(str(body, "code"));
-    if (hit === null) return void sendJson(res, 404, { error: "no event with that code" });
+    if (hit === null) return void sendMiss(res, boot.missCode(str(body, "code")));
     return void sendJson(res, 200, hit);
   }
 
@@ -449,7 +481,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const eventId = slash === -1 ? rest : rest.slice(0, slash);
     const subPath = slash === -1 ? "/" : rest.slice(slash);
     const runtime = registry.get(eventId);
-    if (runtime === undefined) return void sendJson(res, 404, { error: "unknown event" });
+    if (runtime === undefined) return void sendMiss(res, boot.missEvent(eventId));
     // The writing team moderates via their sessions — no mod code needed:
     // the owning author AND every collaborator invited onto the project.
     // That covers the mod POST routes AND the gated mod reads (the SSE
@@ -459,7 +491,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     let moderatorName: string | undefined;
     // (The spatial map + stream also accept a game's session token; the
     // author session lets the editor read them too.)
-    if (controlPlane && (subPath.startsWith("/api/mod/") || wantsModRead(subPath, url.searchParams))) {
+    if (boot.controlPlane && (subPath.startsWith("/api/mod/") || wantsModRead(subPath, url.searchParams))) {
       const user = await authUser(req);
       if (user !== null) {
         moderator = await canModerateEvent(eventId, user.id);

@@ -83,6 +83,10 @@ export interface RateLimits {
   /** Wallet calls per guest (`/api/guest/wallet/*`) — the only brake on a
    *  phone flooding the approver's queue with tiny sends. `LOOM_RL_WALLET`. */
   wallet: RateRule;
+  /** `/api/qr` per IP (it renders caller-chosen content). Every guest pass
+   *  and the Run page's join QR draw on it, and the house Wi-Fi is one IP,
+   *  so a door rush needs it raised. `LOOM_RL_QR`. */
+  qr: RateRule;
 }
 
 export const DEFAULT_RATE_LIMITS: RateLimits = {
@@ -92,6 +96,7 @@ export const DEFAULT_RATE_LIMITS: RateLimits = {
   redeemMisses: { max: 8, windowMs: 60_000 },
   widgets: { max: 20, windowMs: 60_000 },
   wallet: { max: 30, windowMs: 60_000 },
+  qr: { max: 60, windowMs: 60_000 },
 };
 
 const ENV_KEYS: Record<keyof RateLimits, string> = {
@@ -101,6 +106,7 @@ const ENV_KEYS: Record<keyof RateLimits, string> = {
   redeemMisses: "LOOM_RL_REDEEM_MISSES",
   widgets: "LOOM_RL_WIDGETS",
   wallet: "LOOM_RL_WALLET",
+  qr: "LOOM_RL_QR",
 };
 
 /**

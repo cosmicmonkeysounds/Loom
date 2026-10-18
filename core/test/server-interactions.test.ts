@@ -12,6 +12,7 @@ import { EventRuntime, widgetResultArgs } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { guestView, modView, primeView } from "../server/views.ts";
+import { guestMayJoin, joinableFactions } from "../server/routes/sides.ts";
 
 const CODES = { event: "EVT111", prime: "PRM111", mod: "MOD111" };
 
@@ -667,6 +668,57 @@ Narrator: The hall.
     rt.liveSim!.restrict(g.id);
     expect((await post(rt, "/api/guest/defect", { token: g.token, to: "Leave" })).status).toBe(403);
     expect(rt.liveSim!.factionOf(g.id)).toBe("Stay");
+  });
+});
+
+describe("a guest picks only an open side (D7, T6-adversary-01)", () => {
+  const CASTES = `# Castes
+start: Hall
+
+LOCATION Hall
+
+GROUP Hosts
+  joinable: false
+
+GROUP Rebels
+  hidden: true
+
+GROUP Stay
+
+CHARACTER Clippy
+  is Hosts
+
+== Hall
+  setting: Hall
+Narrator: The hall.
+`;
+  it("a staff caste, a hidden group before its reveal and an undeclared name answer 403; a revealed one joins", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-ix-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "castes", scenarioSource: CASTES, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const g = await guest(rt);
+    const refused = await post(rt, "/api/guest/join", { token: g.token, faction: "Hosts" });
+    expect(refused.status).toBe(403);
+    expect(refused.json.error).toBe("that side isn't open");
+    expect((await post(rt, "/api/guest/defect", { token: g.token, to: "Hosts" })).status).toBe(403);
+    expect((await post(rt, "/api/guest/join", { token: g.token, faction: "Rebels" })).status).toBe(403);
+    expect((await post(rt, "/api/guest/join", { token: g.token, faction: "Nobody" })).status).toBe(403);
+    expect(rt.liveSim!.factionOf(g.id)).toBeNull();
+    const view = guestView(rt.liveSim!, g.id);
+    expect(view.channels.some((c) => c.id === "faction:Hosts")).toBe(false);
+    expect(view.factions).toEqual(joinableFactions(rt.liveSim!));
+    expect(joinableFactions(rt.liveSim!)).toEqual(["Stay"]);
+    // A folded name lands on the declared id; then the story reveals Rebels.
+    expect((await post(rt, "/api/guest/join", { token: g.token, faction: "stay" })).status).toBe(200);
+    expect(rt.liveSim!.factionOf(g.id)).toBe("Stay");
+    rt.liveSim!.reveal("Rebels");
+    expect(guestMayJoin(rt.liveSim!, "Rebels")).toBe(true);
+    expect((await post(rt, "/api/guest/defect", { token: g.token, to: "Rebels" })).status).toBe(200);
+    expect(rt.liveSim!.factionOf(g.id)).toBe("Rebels");
+    // The story's own placement is untouched: a sim join still places anyone.
+    rt.liveSim!.join(g.id, "Hosts");
+    expect(rt.liveSim!.factionOf(g.id)).toBe("Hosts");
   });
 });
 

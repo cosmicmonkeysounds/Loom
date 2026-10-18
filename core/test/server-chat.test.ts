@@ -19,6 +19,7 @@ import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { afterAll } from "vitest";
 import { EventRuntime } from "../server/event-runtime.ts";
+import { CHAT_TEXT_MAX } from "../server/http-util.ts";
 import { Store } from "../server/store.ts";
 
 const SCENARIO = scenarioSource("escape-the-internet");
@@ -423,6 +424,30 @@ describe("the reconnect history is capped for guests and booths (W8 T9-05)", () 
     expect(rt.chatHistoryFor(id).some((m) => m.text === "your own early DM")).toBe(true);
     const mod = await call(rt, "GET", "/events?role=mod", {}, true);
     expect(mod.history().some((m) => m.text === "lobby 0")).toBe(true);
+    rt.dispose();
+  });
+
+  it("a typed line over CHAT_TEXT_MAX is refused (413) and never stored; one at the max is (T6-adversary-03)", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-long-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "escape-the-internet", scenarioSource: SCENARIO, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Alice", passcode: CODES.event });
+    const token = g.json["token"] as string;
+    const long = "x".repeat(CHAT_TEXT_MAX + 1);
+    const atMax = "y".repeat(CHAT_TEXT_MAX);
+    const refused = await call(rt, "POST", "/api/guest/say", { token, channel: "lobby", text: long });
+    expect(refused.json).toEqual({ error: `message too long (max ${CHAT_TEXT_MAX} characters)` });
+    expect(rt.chatHistoryFor(g.json["id"] as string).some((m) => m.text === long)).toBe(false);
+    expect((await call(rt, "POST", "/api/guest/say", { token, channel: "lobby", text: atMax })).json).toMatchObject({ ok: true });
+    expect(rt.chatHistoryFor(g.json["id"] as string).some((m) => m.text === atMax)).toBe(true);
+
+    const login = await call(rt, "POST", "/api/prime/login", { character: "Recruiter", passcode: CODES.prime });
+    const prime = login.json["token"] as string;
+    expect(typeof prime).toBe("string");
+    const boothLong = await call(rt, "POST", "/api/prime/say", { token: prime, channel: "lobby", text: long });
+    expect(boothLong.json["error"]).toBe(`message too long (max ${CHAT_TEXT_MAX} characters)`);
+    expect((await call(rt, "POST", "/api/prime/say", { token: prime, channel: "lobby", text: "z".repeat(CHAT_TEXT_MAX) })).json).toMatchObject({ ok: true });
     rt.dispose();
   });
 });
