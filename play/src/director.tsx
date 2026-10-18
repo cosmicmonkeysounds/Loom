@@ -16,7 +16,24 @@
 //! the laptop.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { cueRows, cueValueArgs, filterCues, nightPhase, type CueInteraction, type CueMarks, type CueRow, type WorldLine } from "../../core/src/cue-sheet.ts";
+import {
+  ARM_DEAD_MS,
+  ARM_MS,
+  armFor,
+  armStillValid,
+  cueRows,
+  cueValueArgs,
+  filterCues,
+  nightPhase,
+  takesValue,
+  tapCue,
+  type Armed,
+  type CueInteraction,
+  type CueMarks,
+  type CueRow,
+  type Tap,
+  type WorldLine,
+} from "../../core/src/cue-sheet.ts";
 import { ApiError, api } from "./client.ts";
 import { ConnDot, PickerSheet, Sheet, WakeLockToggle, type PickItem } from "./chat.tsx";
 import { HelpSheet } from "./help.tsx";
@@ -91,48 +108,28 @@ export function directorRows(view: DirectorView | null): CueRow[] {
 }
 
 // --- arm, then fire --------------------------------------------------------------
+// One arm model with the laptop's Director page (core's `cue-sheet.ts`): a
+// first tap arms, a second one ≥ `ARM_DEAD_MS` and < `ARM_MS` later fires,
+// and an arm bound to the cue state is dropped once that state moves.
 
-/** How long an armed cue waits for the second tap. */
-export const ARM_MS = 4000;
+export { ARM_DEAD_MS, ARM_MS, armFor, armStillValid, takesValue, tapCue, type Armed, type Tap };
 
-/** The cue waiting for its second tap (and its person, for a subject cue). */
-export interface Armed {
-  id: string;
-  subject: string | null;
-  at: number;
-  /** The award's optional value box, as typed (T2-09): lies accepted, the
-   *  duck time, quests done — or a fixed award's number overridden. */
-  value?: string;
+/** What a tap does on the phone: core's `tapCue`, except that a second tap
+ *  on an arm the cue state has since moved past (another director, or the
+ *  story, fired) is `stale` — never fired; the page drops the arm and says
+ *  "Cues moved — tap again". */
+export type PhoneTap = Tap | { kind: "stale"; id: string };
+
+export function phoneTap(armed: Armed | null, row: CueRow, now: number, marks: CueMarks): PhoneTap {
+  if (armed !== null && armed.id === row.id) {
+    const age = now - armed.at;
+    if (age >= ARM_DEAD_MS && age < ARM_MS && !armStillValid(armed, marks, now)) return { kind: "stale", id: row.id };
+  }
+  return tapCue(armed, row, now, marks);
 }
 
-export type Tap =
-  /** First tap: the row is armed — tap again to fire. */
-  | { kind: "arm"; armed: Armed }
-  /** A cue that needs a person, with none picked yet: open the picker. */
-  | { kind: "pick"; id: string }
-  /** Second tap on an armed row in time: fire it. */
-  | { kind: "fire"; id: string; subject: string | null; value?: string };
-
-/** What a tap on `row` does, given what is armed now. */
-export function tapCue(armed: Armed | null, row: CueRow, now: number): Tap {
-  const live = armed !== null && armed.id === row.id && now - armed.at < ARM_MS;
-  if (live) return { kind: "fire", id: row.id, subject: armed.subject, ...(armed.value !== undefined ? { value: armed.value } : {}) };
-  if (row.subject) return { kind: "pick", id: row.id };
-  return { kind: "arm", armed: { id: row.id, subject: null, at: now } };
-}
-
-/** The picker answered: the subject cue is armed for that person (and the
- *  value box's text, when one was typed). */
-export function armFor(id: string, subject: string, now: number, value?: string): Armed {
-  const v = value?.trim() ?? "";
-  return { id, subject, at: now, ...(v !== "" ? { value: v } : {}) };
-}
-
-/** Only an award reads a value (G7–G9's number); the King's fallback or a
- *  reinstallation cue asks just for the person. */
-export function takesValue(id: string): boolean {
-  return id.startsWith("award_");
-}
+/** The toast when a stale arm is dropped. */
+export const STALE_TOAST = "Cues moved — tap again";
 
 /** The `/api/mod/signal` body for a cue; an award's value rides as
  *  `args: {value}` (core's `cueValueArgs`, the editor's rule). */
@@ -505,7 +502,8 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
   const rows = useMemo(() => directorRows(s.view), [s.view]);
   const shown = useMemo(() => filterCues(rows, query), [rows, query]);
   const phase = nightPhase(s.view?.world ?? []);
-  const lastId = s.view?.cues?.last ?? null;
+  const marks = s.view?.cues ?? NO_MARKS;
+  const lastId = marks.last;
 
   // An armed cue disarms itself if the second tap never comes.
   useEffect(() => {
@@ -513,6 +511,15 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
     const t = setTimeout(() => setArmed(null), ARM_MS);
     return () => clearTimeout(t);
   }, [armed]);
+  // The cue state moved under an arm (another director, or the story,
+  // fired): drop it rather than fire into a night that has moved on.
+  useEffect(() => {
+    // At `armed.at` the clock always passes: only the bound marks decide
+    // (the 4 s lapse is the timer's job, and says nothing).
+    if (armed === null || armStillValid(armed, marks, armed.at)) return;
+    setArmed(null);
+    setToast(STALE_TOAST);
+  }, [marks, armed]);
   useEffect(() => {
     if (toast === null) return;
     const t = setTimeout(() => setToast(null), 3500);
@@ -527,8 +534,12 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
   if (s.auth === null) return <DirectorLogin notice={s.notice} onLogin={s.login} onBack={onLeave} />;
 
   const tap = (row: CueRow) => {
-    const t = tapCue(armed, row, Date.now());
-    if (t.kind === "arm") setArmed(t.armed);
+    const t = phoneTap(armed, row, Date.now(), marks);
+    if (t.kind === "ignore") return; // a fast double tap only arms
+    if (t.kind === "stale") {
+      setArmed(null);
+      setToast(STALE_TOAST);
+    } else if (t.kind === "arm") setArmed(t.armed);
     else if (t.kind === "pick") setPicking(t.id);
     else {
       setArmed(null);
@@ -596,7 +607,7 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
         <PickerSheet
           title={`Who for ${pickingRow.code ?? pickingRow.title}?`}
           items={subjectChoices(s.view?.roster)}
-          onPick={(id) => setArmed(armFor(pickingRow.id, id, Date.now(), value))}
+          onPick={(id) => setArmed(armFor(pickingRow.id, id, Date.now(), value, marks))}
           onClose={() => {
             setPicking(null);
             setValue("");

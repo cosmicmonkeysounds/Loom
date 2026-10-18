@@ -10,6 +10,7 @@ import { articlesFor } from "../src/help.tsx";
 
 import { ApiError } from "../src/client.ts";
 import {
+  ARM_DEAD_MS,
   ARM_MS,
   DIRECTOR_KEY,
   armFor,
@@ -90,11 +91,13 @@ describe("arm, then fire", () => {
   it("a subject cue asks for a person first, then fires with them", () => {
     expect(tapCue(null, award, 0)).toEqual({ kind: "pick", id: "award_most_trusted" });
     const armed = armFor("award_most_trusted", "g1", 50);
-    expect(tapCue(armed, award, 100)).toEqual({ kind: "fire", id: "award_most_trusted", subject: "g1" });
+    // Inside the dead time a second tap does nothing; from 300 ms on it fires.
+    expect(tapCue(armed, award, 100)).toEqual({ kind: "ignore" });
+    expect(tapCue(armed, award, 50 + ARM_DEAD_MS)).toEqual({ kind: "fire", id: "award_most_trusted", subject: "g1" });
     // A value typed in the picker is armed with the person and fired with them.
     const valued = armFor("award_most_trusted", "g1", 50, " 4 ");
     expect(valued.value).toBe("4");
-    expect(tapCue(valued, award, 100)).toEqual({ kind: "fire", id: "award_most_trusted", subject: "g1", value: "4" });
+    expect(tapCue(valued, award, 400)).toEqual({ kind: "fire", id: "award_most_trusted", subject: "g1", value: "4" });
     expect(armFor("award_most_trusted", "g1", 50, "  ")).not.toHaveProperty("value");
     // the arm lapses: the next tap asks again
     expect(tapCue(armed, award, 50 + ARM_MS).kind).toBe("pick");
