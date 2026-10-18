@@ -13,9 +13,11 @@
 # example's files into the project, updates the running event's snapshot
 # and (unless --no-reload) reloads it over the mod API — a real cut: every
 # guest re-joins. Never run it after doors (OCT31.md §3): on a `live`
-# event with a real guest on its roster it writes the files but leaves the
-# event alone (snapshot untouched, no reload) and exits 3 — Push draft from
-# Run instead, or pass --i-know-this-is-live. The house maps
+# event with a real guest on its roster, or whose roster it can't read, it
+# writes the files but leaves the event alone (snapshot untouched, no
+# reload — with --no-reload too: the next restart would play the snapshot)
+# and exits 3 — Push draft from Run instead, or pass --i-know-this-is-live.
+# The house maps
 # (house.json, house.<variant>.json) go with the story (SW-MAP-01) — deploy
 # a server that knows them first: an older one would read them as story
 # text on its next launch. The project's maps win: a map surveyed on the
@@ -105,6 +107,6 @@ DATABASE_URL="postgres://loom:$PW_ENC@127.0.0.1:$LOOM_TUNNEL_PORT/loom" \
   "$TSX" scripts/sync-example.ts \
   "$LOOM_PROJECT" "$LOOM_EXAMPLE" --server "$LOOM_SERVER" ${PASS[@]+"${PASS[@]}"} || rc=$?
 if [[ $rc -eq 3 ]]; then
-  echo "sync-show: the event is LIVE with real guests — files written, event NOT reloaded (exit 3)" >&2
+  echo "sync-show: the event is LIVE with real guests (or its roster can't be read) — files written, event snapshot untouched, NOT reloaded (exit 3)" >&2
 fi
 exit "$rc"

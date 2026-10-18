@@ -49,6 +49,10 @@ export function guestNames(real: readonly GuardRow[]): string {
  */
 export function reloadVerdict(opts: { mode: string; roster: readonly GuardRow[] | undefined; override: boolean }): GuardVerdict {
   if (opts.mode !== "live" || opts.override) return { ok: true };
+  // No roster is not an empty roster: a live event is never reloaded blind.
+  if (!Array.isArray(opts.roster)) {
+    return { ok: false, reason: `live event whose roster can't be read: the project's files are saved, the event's snapshot is untouched and it was NOT reloaded — re-run with --${LIVE_OVERRIDE} if you really mean it` };
+  }
   const real = realGuests(opts.roster);
   if (real.length === 0) return { ok: true };
   return {

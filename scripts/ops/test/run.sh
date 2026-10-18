@@ -352,7 +352,7 @@ check "a sync runs sync-example from core" eq "$rc" 0
 check "… with the flag" grep -q "^$ROOT/core|scripts/sync-example.ts Untitled Project trapped-in-the-internet --server https://app.mapsandducks.com --i-know-this-is-live$" "$T/tsx"
 out="$(ss FAKE_TSX_RC=3 2>&1)"; rc=$?
 check "sync-example's exit 3 (live event left alone) is sync-show's" eq "$rc" 3
-check "… and says so" grep -q 'LIVE with real guests — files written, event NOT reloaded' <<<"$out"
+check "… and says so" grep -q "LIVE with real guests (or its roster can't be read) — files written, event snapshot untouched, NOT reloaded" <<<"$out"
 out="$(ss FAKE_TSX_RC=1 2>&1)"; rc=$?
 check "any other failure is passed through too" eq "$rc" 1
 teardown

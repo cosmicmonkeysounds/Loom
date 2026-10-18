@@ -22,8 +22,9 @@
 //! confirm) instead, or re-run with `--i-know-this-is-live`. `--no-reload`
 //! is guarded the same way: the next process restart (a crash, a release)
 //! plays the row's snapshot, maps and facts key included. A live event
-//! whose roster can't be read (the server doesn't answer) is refused the
-//! same way. A preview (the rehearsal run) is never guarded.
+//! whose roster can't be read (the server doesn't answer, or its mod state
+//! carries no roster) is refused the same way. A preview (the rehearsal
+//! run) is never guarded.
 //!
 //! The example's house maps (`house.json`, `house.<variant>.json`) are
 //! project files too (SW-MAP-01), snapshotted on the event row and handed to
@@ -91,6 +92,12 @@ export interface ReloadStep {
   out?: (line: string) => void;
 }
 
+/** The mod state's roster, or null when it carries none. */
+function rosterOf(body: unknown): GuardRow[] | null {
+  const roster = (body as { roster?: unknown } | null)?.roster;
+  return Array.isArray(roster) ? (roster as GuardRow[]) : null;
+}
+
 /** A mod token from the event's own mod code, or null when the server doesn't answer. */
 async function modLogin(at: string, passcode: string): Promise<string | null> {
   const login = await fetch(`${at}/api/mod/login`, {
@@ -117,11 +124,15 @@ export async function reloadEvent(step: ReloadStep): Promise<number> {
     // Read the roster BEFORE touching anything: a reload signs every guest out.
     token = await modLogin(at, event.mod_code);
     const st = token === null ? null : await fetch(`${at}/api/state?role=mod`, { headers: { "x-loom-token": token } }).catch(() => null);
-    if (st === null || !st.ok) {
-      out(`✘ live event ${event.id}: its roster can't be read (${st === null ? `the server at ${server} doesn't answer` : `mod state → ${st.status}`}) — the project's files are saved, the event's snapshot is untouched and it was NOT reloaded`);
+    // A 200 without a roster array (a changed view, a proxy's error page)
+    // is as unreadable as a refusal: a live event is never reloaded blind.
+    const roster = st === null || !st.ok ? null : await st.json().then((b: unknown) => rosterOf(b), () => null);
+    if (roster === null) {
+      const why = st === null ? `the server at ${server} doesn't answer` : !st.ok ? `mod state → ${st.status}` : "the mod state carries no roster";
+      out(`✘ live event ${event.id}: its roster can't be read (${why}) — the project's files are saved, the event's snapshot is untouched and it was NOT reloaded`);
       return 3;
     }
-    const verdict = reloadVerdict({ mode: event.mode, roster: ((await st.json()) as { roster?: GuardRow[] }).roster, override: false });
+    const verdict = reloadVerdict({ mode: event.mode, roster, override: false });
     if (!verdict.ok) {
       out(`✘ ${verdict.reason}`);
       return 3;

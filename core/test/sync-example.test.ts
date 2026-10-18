@@ -22,9 +22,16 @@ describe("reloadVerdict", () => {
 
   it("allows a live event of personas only, any preview, and the override", () => {
     expect(reloadVerdict({ mode: "live", roster: [persona], override: false }).ok).toBe(true);
-    expect(reloadVerdict({ mode: "live", roster: undefined, override: false }).ok).toBe(true);
+    expect(reloadVerdict({ mode: "live", roster: [], override: false }).ok).toBe(true);
     expect(reloadVerdict({ mode: "preview", roster: [phone], override: false }).ok).toBe(true);
     expect(reloadVerdict({ mode: "live", roster: [phone], override: true }).ok).toBe(true);
+  });
+
+  it("refuses a live event with no roster at all (never reloaded blind)", () => {
+    const v = reloadVerdict({ mode: "live", roster: undefined, override: false });
+    expect(v.ok).toBe(false);
+    expect(v.ok ? "" : v.reason).toMatch(/roster can't be read.*NOT reloaded/u);
+    expect(reloadVerdict({ mode: "preview", roster: undefined, override: false }).ok).toBe(true);
   });
 });
 
@@ -116,6 +123,15 @@ describe("reloadEvent", () => {
     expect(r.code).toBe(3);
     expect(r.saved).toBe(0);
     expect(r.lines.join("\n")).toMatch(/roster can't be read/u);
+  });
+
+  it("refuses a live event whose mod state carries no roster: nothing saved, exit 3", async () => {
+    stateBody = {};
+    const r = await run("live");
+    expect(r.code).toBe(3);
+    expect(r.saved).toBe(0);
+    expect(loads()).toBe(0);
+    expect(r.lines.join("\n")).toMatch(/roster can't be read \(the mod state carries no roster\)/u);
   });
 
   it("--no-reload on a live event with a real guest saves nothing (the next restart would play it)", async () => {
