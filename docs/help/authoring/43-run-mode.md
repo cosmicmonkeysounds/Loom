@@ -54,6 +54,13 @@ Every page shares one header:
 A banner under the header tells you when a co-writer restarted, pushed
 a draft, went live, or ended the run — and who.
 
+The console keeps itself connected. If the server restarts (a redeploy,
+a crash), it tries again on its own, every second at first and then
+every few seconds, and picks the run up where it is once the server
+answers; nothing to reload. It also takes only what changed each time
+rather than the whole run, so a console costs about 0.1 Mbit/s with 45
+guests in: a second console on a phone's hotspot is fine.
+
 ## The Run page
 
 Front of house: getting people in.
@@ -153,7 +160,7 @@ no run yet, the Run page also offers *Go live with real guests* directly.)
 | **World** | the live state browser — a searchable variables table; **double-click any value to edit it live** |
 | **Director** | the **cue sheet**, named events (with arguments), beats, broadcasts |
 | **Mind** | an agent-voiced character's mind — its arc, drives, brief, the prompts and both models' reasoning, and a control panel ([the mind debugger](44-mind-debugger.md)) |
-| **Log** | the raw ledger, event by event — **filter to one participant**; export the run. Events from before this console opened (a reload, a late join) aren't listed: it says how many, and **⤓ Export run** pages the whole ledger off the server |
+| **Log** | the raw ledger, event by event — **filter to one participant**; export the run. The time column is story time (it stands still through a pause), on a server run as on a local one. Events from before this console opened (a reload, a late join) aren't listed: it says how many, and **⤓ Export run** pages the whole ledger off the server |
 
 ## The cue sheet
 
@@ -169,22 +176,31 @@ console, and it survives a reload. The header shows the story's
 - **NEXT** is the first cue after LAST that hasn't fired tonight and is
   on tonight's branch. A cue with a `while:` ([live
   verbs](live-verbs.md)) is only suggested while it holds: in *Trapped
-  in the Internet* NEXT is empty during the Y2K hour (midnight fires 🌑
-  itself), after the dance it is the ending's own cue, after the song it
-  is G1. A `while:` never stops you pressing a cue; the story's rule
+  in the Internet* NEXT is empty while a timer runs the night — all of
+  hunt 1, hunt 2's hour, the summons, and the Y2K hour (midnight fires 🌑
+  itself); after the dance it is the ending's own cue, after the song it
+  is G1, and G10 is only suggested when MS Paint was cleared. A `while:` never stops you pressing a cue; the story's rule
   decides what happens.
 - A `repeat: true` cue **stays NEXT** while you keep pressing it and its
   `while:` holds (📋 once per question, until the third).
 - A press the story **turns down** counts for nothing: it never becomes
   LAST and never ticks. A show's cues pressed out of turn say why in
-  `# hosts` (*🤖 Too early: …*, *⚖ Not yet: 🍎 Bobbing for Truth, then
-  📄 truth.txt first.*) and do nothing else; a hardware fallback (🖨,
-  🫘, a patch combo) shares its name with the device and stays silent.
+  `# hosts` and do nothing else — a cue pressed ahead of its turn is
+  refused rather than skipping a step (*📺 Not yet: read Q2's results
+  first (📋). Nothing happens.*, *📊 Not yet: 🏓 Truth Pong, then 🧮 the
+  tally first. Nothing happens.*, *🤖 Too late: the clock has already
+  been reset. Nothing happens.*); a
+  hardware fallback (🖨, 🫘, a patch combo) shares its name with the
+  device and stays silent. A cue that asks first (G11 before the last
+  award) is refused on its first press too, and a variable whose last
+  name starts with `_` is the sheet's bookkeeping, never a fire
+  ([live verbs](live-verbs.md)).
 - Pressing an **earlier** cue again (a second round, a re-read) never
   moves LAST back.
-- An off-sequence cue (`sequence: false`: one a machine fires, a
-  hardware fallback, an anytime cue like 💡) ticks when it fires but is
-  never LAST or NEXT.
+- An off-sequence cue (`sequence: false`: one a machine or a timer
+  fires — ⏰, 📥, ⏳, 🚨 fire themselves on time — a hardware fallback,
+  an anytime cue like 💡 or ✍) ticks when it fires but is never LAST or
+  NEXT.
 
 A local-folder rehearsal judges all of this exactly like the server. A
 cue that needs a person — an award: every

@@ -31,7 +31,12 @@ co-writer's email and they get an email with a link:
 Until they join, they're listed as **invited** — you can copy the link to
 send it another way, resend the email, or revoke it. Collaborators edit
 files live alongside you (you'll see their cursors) and can launch and
-moderate the project's events. Renaming, deleting, and managing the
+moderate the project's events. When the server restarts, an open file
+comes back by itself once the server is up (once, never doubled, with
+anything you typed meanwhile kept; its undo history starts over). A
+file a sync from the command line rewrote (`pnpm sync-show`) replaces
+the open copy for everyone, even one with unsaved edits in it; the
+other files keep theirs. Renaming, deleting, and managing the
 roster stay with the owner; a collaborator can **Leave** from their
 launchpad. If your server has no email provider configured, the dialog
 shows you the invite link to pass along yourself.

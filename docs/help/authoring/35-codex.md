@@ -168,7 +168,10 @@ broadcast "!📣 ALL PROGRAMS: report to the Desktop." to everyone
 ## Two small switches
 
 - `GROUP Antivirus` + `joinable: false` — a public group the story
-  assigns; guests are never offered it on the side chooser.
+  assigns; guests are never offered it on the side chooser, and the
+  server refuses a join or defect to it. The chooser lists exactly the
+  sides a guest may take: declared, joinable, and not hidden (or hidden
+  and since revealed).
 - `LOCATION The Internet` + `prison: true` + `sealed: true` — captives
   can't "make a break for it" from the app; only the story releases
   them (`release guest from The Internet`, or a performer's button).
@@ -186,7 +189,8 @@ model never decides the plot.
 If no agent is running at all (the laptop is down), the message waits.
 Give the character a `hold:` line and the server says it for them after
 about 20 seconds — once per waiting message — then keeps the message for
-an agent that comes back. A director can still answer as the character
+an agent that comes back. A message a connected agent never answers
+(two tries of two minutes each) gets the same line, once. A director can still answer as the character
 from Run — that answer settles the waiting message, so an agent that
 comes back doesn't answer it twice. Write it in plain words; a wall
 terminal reads it aloud:

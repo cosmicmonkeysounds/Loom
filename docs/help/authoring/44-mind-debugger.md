@@ -26,6 +26,21 @@ meanwhile — Chat, speaking as the character in that thread; your reply
 closes the waiting request, and the worker picks up from the next line
 when it reconnects, with your answer in its history.
 
+A busy worker answers its line in order, one message after another. Each
+message gets two minutes from the moment it reaches the front of the
+line (not from when the guest typed it), so a burst of sixty DMs on a
+healthy laptop is answered, not cancelled. A message that never gets an
+answer is sent once more, then given up with the `hold:` line, so the
+guest hears something and the thread shows in need. One gap is known:
+a worker that stays **connected but stops answering** (a wedged model)
+is only noticed at the front of its line, two minutes at a time, so the
+hold line can take a long while. If the Mind page's thoughts stop and
+"… is typing" hangs, answer from Chat and restart the worker.
+
+While the run is **paused** the character's words still post, but its
+powers answer *doors are closed* and spend nothing; the waiting and
+timeout clocks stand still until the doors open.
+
 A **server restart** (a crash, a redeploy) keeps both. A message from
 the last ten story-minutes still owed an answer is asked again (or gets
 the hold line after 20 seconds, never twice), and his powers' `limit:`
@@ -143,6 +158,16 @@ It shows even before a worker has reported; on a project with no
 - **The tallies** — per question: filed, accurate, lie, uncertain,
   pending, and ✓ **consensus** (every filing accurate at confidence
   100 — what *Trapped in the Internet* reads as "Clippy happy").
+- **Every filing** — **▸** on a tally row lists that question's filings
+  (*who filed what*), each with its own **✅ / 😤 / 🤷**, in `auto` mode
+  as in `review`. The verdict it has now is outlined (and greyed once
+  judged: *Judged confident lie — already on record*); another button
+  overrides it (*Override: accurate (judged lie)*). The press names
+  that filing's question, so it judges that filing and never just the
+  program's latest. A *marked* row has no buttons. This is the place to
+  fix a near miss the key didn't list ("Mr. Pickles" for *Mister
+  Pickles*) and the place a host's booth sends you when a program has
+  more than one filing waiting.
 
 Judging runs on the event server, so a local-folder run shows the card
 with an explanation and no verdicts: rehearse the hunt on a server

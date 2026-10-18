@@ -366,7 +366,21 @@ when the_verdict:
 A press that does nothing, or nothing but post to a staff room (an
 authored `kind: faction` CHANNEL whose GROUP no guest may join), is read
 as **refused**: the sheet doesn't tick it or make it *last*, and the
-director's phone says *Not taken*. A cue no rule hears (only the
+director's phone says *Not taken*. Bookkeeping doesn't count either: a
+world variable whose last name starts with `_` (`Night._ask_at`) is the
+cue sheet's own, so a cue that asks first can note the time in one and
+still read as refused:
+
+```loom
+when resurrection:
+  if Night.ceremony_done != true and (Night._ask_at == 0 or Time.elapsed > Night._ask_at + 30):
+    set Night._ask_at = Time.elapsed + 1
+    broadcast "🎃 The last award isn't presented yet. Press G11 again within 30 seconds to end the show anyway." to channel(hosts)
+  else:
+    …
+```
+
+A cue no rule hears (only the
 show-control bridge reacts to it) always counts as fired. A cue whose every `when` binds a
 person (`when award most trusted for program:`) gets a **who?** picker
 and an optional value (`{value}` in the body) — an awards ceremony is a
@@ -452,7 +466,10 @@ model supplies (`room`, `target`) bind by name like `fire … with`; a
 `room` / `at` / `location` / `place` value is folded onto the declared
 LOCATION's exact name first ("the start bar" arrives as `The Start Bar` — the
 same for an event fired from Run). `limit:` caps uses per run; a use
-the story answers with words only (a refusal) doesn't count. Every use
+the story answers with words only (a refusal) doesn't count, and
+neither does one tried while the show is **paused**: the character's
+words still post, but every power answers *doors are closed* until the
+doors open again. Every use
 is journaled `by: agent:<Character>` and visible to the directors, so
 the count survives a server restart; a director firing the same event
 from Run never spends one. The `description:` is what the model reads, so say what the

@@ -55,6 +55,16 @@ what the sidebar shows.
 | `slow: 3s` | rate-limits posting |
 | `ephemeral: 30s` | messages disappear after 30 s |
 | `hidden: true` | not on a guest's phone until the story `reveal`s it (see below) |
+| `invite: members` | who may invite guests into a `private` / `group` room from the app: `members` (the default) any member, `anyone` any guest who can see the room, or a ROLE's name (a member of that role). Nobody invites themself; the story's own `invite` and the director's always work |
+
+The server holds these rules, not just the app. A guest can only post
+in, or invite into, a room they can see: a room the story doesn't have,
+or one hidden from them (a secret group's room before its reveal, a
+hidden place, a members-only room they aren't in), answers *no such
+room*, exactly alike, so a guess never learns a hidden room's name. A
+room they can see but not post in (a pinned room, a place they aren't
+standing in, a public group they haven't joined) answers *you can't
+post here*. A line is at most 2,000 characters.
 
 ## Rooms that appear as the night opens up
 
