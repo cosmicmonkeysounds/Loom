@@ -192,8 +192,10 @@ hand. A story with no `act:` is one act and has no stepper.
   cue after it (dimmed *·not on offer·* when its `while:` is false). A
   `repeat: true` cue that is both LAST and NEXT reads *Again? 📋 Results:
   the next question* — *or move on: 📺 …*.
-- With no NEXT: **NEXT — nothing to press. The story runs.** and every
-  countdown that is running (the header's `countdown:` lines, [live
+- With no NEXT: **NEXT — nothing to press. The story runs.** (*… The
+  story clock is stopped.* while the run is paused; *NEXT — nothing left:
+  the running order is done.* once LAST is set, no unfired cue is left and
+  no countdown runs) and every countdown that is running (the header's `countdown:` lines, [live
   shows](live-shows.md)), red under a minute, plus what is next on the
   running order after it. So a silent sheet during a timer reads as
   meant, not as broken.
@@ -213,8 +215,10 @@ hand. A story with no `act:` is one act and has no stepper.
 **from E ▸** line (open by default — after 🌑 the Y2K hour's 🪩 and 🔌
 are still one click away), and every Anytime cue on the **⚡ Anytime**
 line. Then the **running order**, act by act: the focus act's cues as
-numbered rows (fired ones muted, a one-line description under each), its
-fallbacks as chips; **/** or the box filters by word and opens every act;
+numbered rows (fired ones muted, a one-line description under each) —
+its fallbacks stay in On hand, not repeated here; an act you unfold by
+hand that On hand doesn't cover shows its fallbacks as chips, and so does
+every act while you filter; **/** or the box filters by word and opens every act;
 **⇲ all** unfolds them all. The award tools (**↻ awards**, **Copy
 recap**) sit in the header of the act holding the first award. At the
 bottom, **Tools** holds *Fire named event*, *Fire beat* and *Broadcast
@@ -224,13 +228,18 @@ cue* (open by default when the story has no admin cues).
 presses: the first **arms** it (amber, *Fire ▶ again · Esc*, a 4-second
 bar), a second one at least **0.3 s** and under **4 s** later fires it. A
 fast double-click only arms. An arm is dropped — *Cues moved: 📋 just
-fired. Re-arm.* — when the cue state moves first (another director, the
-story's own timer; a second press of LAST or of an aside counts too),
-when you switch tabs or windows, or after 4 s. If another director's
-press lands just before yours, the server turns yours down and the card
-says so — nothing fires twice. While
-a press is on its way every cue is locked, and after you fire NEXT the
-new NEXT waits 1 s before it takes a press (an aside starts no wait).
+fired. Re-arm.* — when the night moves under it first (another director
+or the story's own timer moves LAST, a cue fires for the first time, or
+the very cue you armed is pressed again), when you switch tabs or
+windows, or after 4 s. A repeat of some *other* cue leaves your arm be:
+armed on V4, another director's second 📋, an aside pressed again, a
+guest's second duck find or the door contact firing again do not stop
+your press. If a press like that lands just before yours, the server
+turns yours down and the card says so — *… landed first. Nothing fired —
+re-arm.* — so nothing fires twice; every cue stays locked until your
+console has caught up with that press, so the re-arm counts it. While a
+press is on its way every cue is locked, and after you fire NEXT the new
+NEXT waits 1 s before it takes a press (an aside starts no wait).
 An armed cue warns, never blocks: *⚠ Not on offer now: the story may
 refuse it* (its `while:` is false) or *⚠ This is a F cue; the night is
 in E*. A cue that names a person (an award; ♟ *They beat the King*)
@@ -248,15 +257,20 @@ focused button that isn't a cue is that button's.
 
 **Calling / Watching** (top right, remembered per console): **Calling**
 is the layout above with the keys on. A second director sets
-**Watching**: the NOW card shrinks to one line, the glance column comes
-first with a longer `# hosts` feed, and the keys are off (clicks still
-arm, then fire). There is no lock between directors — the stale-arm rule
+**Watching**: the NOW card shrinks to one line with no button, the
+glance column comes first with a longer `# hosts` feed, On hand and the
+running order fold into one closed **On hand · Running order** drawer
+(open it to arm a cue; clicks there still arm, then fire), and the keys
+are off. Watching draws no *Cues moved … Re-arm* / *landed first* notice:
+a dropped arm or a press turned down shows only as the cue going back to
+unarmed, so call cues from Calling. There is no lock between directors — the stale-arm rule
 and the radio cover two people pressing at once.
 
 **The glance column** (beside the NOW card; under 896 px a strip of
-chips, one section at a time — or, while the right-hand Inspector tray
-is open with nothing selected, in that tray: *← the house at a glance*
-brings it back after you inspect someone). Read-only; every row is a
+chips, one section at a time — or, in **Calling** mode while the
+right-hand Inspector tray is open with nothing selected, in that tray:
+*← the house at a glance* brings it back after you inspect someone. In
+Watching the glance stays on the page and the tray is the Inspector's). Read-only; every row is a
 link. Each section hides when it has nothing to say:
 
 | Section | Shows | Goes to |
@@ -359,11 +373,16 @@ board line in another file.
 the event's address with `?role=director`, type the director (mod)
 passcode and a name. It is grouped by the same acts under a pinned NEXT
 bar (the soonest countdown when there is nothing to press) and a strip
-with the act, the phase and up to three non-secret watch values; tap a
-cue once to arm it, again within 4 seconds to fire — a fast double tap
-only arms. If another director's press lands in between (even a repeat
-of LAST, like a second 📋), the press is not sent on: the phone says
-*Cues moved — tap again*, and this page *Cues moved … re-arm*. Before
+with the act, the phase and up to three of the story's global watch
+values (never a ROLE count, a person row, a value on a CHARACTER or a
+secret); tap a cue once to arm it, again within 4 seconds to fire — a
+fast double tap only arms. The same rule as here drops an arm: LAST
+moving, a cue firing for the first time, or the armed cue itself pressed
+again — a repeat of LAST drops it only when LAST is what you armed. When
+the phone's own poll has already seen that, the second tap is not sent:
+the phone says *Cues moved — tap again*. When it hasn't, the press is
+sent and the server turns it down; the phone says the same, and nothing
+fires. After any press on the phone, NEXT waits 1 s (an aside too). Before
 the doors open the sheet is already there, with a note that nothing
 fires until they do. LAST / NEXT are shared with this page, and the log records
 each fire as *Phone · <name>*. A press the story turned down says *Not

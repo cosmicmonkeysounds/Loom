@@ -63,9 +63,11 @@ no acts (or an older server) shows one plain list.
 
 - The **strip**: the act the night is in, the story's phase, the soonest
   countdown (*⏱ Midnight 37:52*, red under a minute) and up to three
-  values the story asks directors to watch (a value that only matters
-  for a stretch of the night, like *Results read* during the truth
-  round, comes first). The countdown keeps ticking
+  of the story-wide values it asks directors to watch (a value that only
+  matters for a stretch of the night, like *Results read* during the
+  truth round, comes first). A count over the guests, a person's row or a
+  character's value stays on the laptop's Director page, and a secret
+  never reaches the phone. The countdown keeps ticking
   between refreshes and stops when it runs out. While the event is paused
   the story clock stands still, so the countdowns hold too, the strip
   says *⏸ clock stopped* and the NEXT bar *⏸ Paused: the clock is
@@ -88,11 +90,15 @@ no acts (or an older server) shows one plain list.
   second after the first is ignored, so a double tap on 📋 never skips a
   question. Tap, look, then tap again.
 - **If the cues move under you, the arm is dropped.** When another
-  director or the story fires something while a cue is armed — even the
-  same 📋 again — the phone disarms it and says *Cues moved — tap again*.
-  If their press lands in the second before yours, before the phone has
-  caught up, the server turns yours down with the same message: nothing
-  fires twice. Look at the sheet, then
+  director or the story moves LAST, fires a cue for the first time, or
+  presses the very cue you armed again (a second 📋 while 📋 is armed)
+  the phone disarms it and says *Cues moved — tap again*. A repeat of
+  some other cue — 📋 again while you armed 📺, a guest's second duck
+  find, the door contact again, an aside pressed again — leaves your arm
+  alone, and your second tap fires. If a press that does count lands in
+  the second before yours, before the phone has caught up, the server
+  turns yours down with the same message: nothing fires twice. Look at
+  the sheet, then
   arm it again if it is still the right cue. Locking the phone or
   switching to another app drops the arm too.
 - **An armed cue warns you when it is out of turn**, but never stops

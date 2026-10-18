@@ -195,16 +195,26 @@ night is in that stretch:
 ```loom
 # The Glass Orchard
 start: The Front Gate
-watch: Night.round as Round, Night.lights as Lights
-watch: guest.cleared as Cleared, while Night.step >= 2
+watch: guest.suspicion as Suspicion, guest.favour as Favour
 watch: Ivo Marsh, Mara Vell
+```
+
+That watches two slots of the story's `ROLE Guest` and where two of its
+hosts are. A story with globals and a timed hunt watches those too — the
+`Night.…` names must be ones a line of *that* story `set`s, spelled the
+same way (The Glass Orchard sets none, so these lines don't belong in
+it):
+
+```loom
+watch: Night.round as Round, Night.lights as Lights, while Night.step >= 2
 countdown: Night.hunt_end as Hunt ends, while Night.hunt_on == true
 ```
 
 - A `watch:` item is a path (`Night.round`), with `as <Label>` for its
   name on the board (else the last part, `round` → *Round*). A path
-  that starts with a ROLE's name (`guest.cleared`) counts over every
-  guest (*Cleared 44/45*). A path on a `secret: true` CHARACTER is shown
+  that starts with a ROLE's name (`guest.suspicion`) counts over every
+  guest (a `bool` slot as *Cleared 44/45*, a number summed with the
+  highest). A path on a `secret: true` CHARACTER is shown
   masked (the director presses and holds 👁 to read it) and never
   reaches the director's phone. An item with no dot names a person: the
   board shows where they are and whether they are online.

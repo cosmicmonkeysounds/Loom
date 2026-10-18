@@ -1289,8 +1289,14 @@ Two **header** keys choose what the director's page keeps in view:
 ```loom
 # The Glass Orchard
 start: The Front Gate
-watch: Night.round as Round, guest.cleared as Cleared, Ivo Marsh
-watch: Night.lights as Lights, while Night.step >= 2
+watch: guest.suspicion as Suspicion, guest.favour as Favour, Ivo Marsh
+```
+
+and, in a story whose lines `set` those globals (The Glass Orchard sets
+no `Night.…`, so lint `L1205` would flag them there):
+
+```loom
+watch: Night.round as Round, Night.lights as Lights, while Night.step >= 2
 countdown: Night.hunt_end as Hunt ends, while Night.hunt_on == true
 ```
 
