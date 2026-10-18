@@ -16,21 +16,31 @@
    live, kindly, if the video isn't running (below). A **marked** program
    who turns up on their own (grey phone, the 🚨 GO TO THE INTERNET card):
    just scan them in. Pressing **Play here** (or **Send to VR-1**) captures
-   them as their run begins; no 🛡 needed.
+   them as their run begins; no 🛡 needed. The tablet shows them as
+   **Restricted program detected** (*STATUS: RESTRICTED — if marked, Play
+   here begins the reinstallation*) and lists them under *Restricted —
+   marked, or held by a director*. (Play here captures only a marked
+   program; one a director restricted without marking needs an Antivirus 🛡
+   first.)
 2. **Tablet** at `/reinstall/` → **scan their pass** (or type their name: the
    captured list is at the top) → **Play here**.
    **Quest go:** → **Send to VR-1** instead. **Seated**, snap turn, the
    assistant spots them, wipe the headset between players.
 3. They follow the golden chevrons to **Gerald, the golden duck**, and walk
    right up to him. He lays a golden egg and flies away: they're released
-   automatically, back to the Desktop.
+   automatically, back to the Desktop. **On a banished night** (everyone
+   was banished in Grok Prom) Gerald can't release anyone: the tablet says
+   **GERALD CAN'T HELP** (*"…The Internet keeps you — your phone says what
+   happens next."*), with no egg and no fanfare. The way out is the hand
+   jive; that is expected.
    **The King** (tablet only): a big gold chess king with eight hearts
    guards the server-room door of the virtual house. Hitting him (⚔ HIT /
    Space) knocks a heart off, and every two make his chess dumber; ♟ CHALLENGE opens a board
    on the tablet. A checkmate is reported to the story as *chess won, by
    Tent tablet*: practice before the Y2K hour; after it, the winner gets the
    real server-room door code in their Codex (the board's badge reads
-   PRACTICE or FOR THE CODE).
+   PRACTICE or FOR THE CODE). Once truth.txt is read (or the night has
+   ended) the badge goes away and a win gives no code.
    Nobody has to fight him to be reinstalled; a headset only shows him with
    "The King is fought on the tent tablet."
 
@@ -38,7 +48,8 @@
    **✅ Mark as reinstalled** on their card, or radio the director
    (Run → Inspector → the Captured field → **Release**). If the server
    restarts, every game in progress ends: scan the player again →
-   **Play here** (or **Send to VR-1**).
+   **Play here** (or **Send to VR-1**). A director's **pause** doesn't end
+   a game: a find made while paused waits and lands when the run resumes.
 
 **Hold the first program** at the wizard until the director radios **INTRO**
 (OP-05), so Clippy's *"Look! That's…!"* lands on the live TV mirror.

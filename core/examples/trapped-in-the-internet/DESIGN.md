@@ -307,7 +307,7 @@ Traits: `Person` = `listed: true`. `Host is Person` (faction Hosts). `Enforcer i
 | Adobe Acrobat | `is Host` | Stephanie | `File:Adobe Acrobat DC logo 2020.svg \| File:Adobe Reader XI icon.png` | "Documents and printing." Holds the Bag of Truth / truth.txt printout; stands by the printer. |
 | Recycling Bin | `is Host` | Jesse | `File:User-trash-full.svg` (wiki: Trash (computing)) | "Hygiene and maintenance." Disk Cleanup (bathroom) attendant; knows Bathroom Mode. |
 | Norton Anti-Virus | `is Enforcer` | Julie | `File:Norton-logo-2021.svg` (wiki: Norton AntiVirus) | The **selected Antivirus** who interrupts the Bingo celebration. Door scans. |
-| McAfee Anti-Virus | `is Enforcer` | TBD | `File:McAfee logo.svg` (wiki: McAfee Antivirus) | Door scans; **broker of the `# truthcoin-exchange`** (presses 🪙 pay/charge for trades; CS: he wants to "exploit the exchange of information and become rich"); `every 20m` "Your protection has expired" pop-up gag (character timer, allowed). |
+| McAfee Anti-Virus | `is Enforcer` | TBD | `File:McAfee logo.svg` (wiki: McAfee Antivirus) | Door scans; **broker of the `# truthcoin-exchange`** and referee of bets (wave 9, D1: he has no Wallet, holds no pot and takes no cut; a bet settles player to player, the winner's 🙏 Request paid by the loser; 🪙 pay/charge are corrections; CS: he wants to "exploit the exchange of information and become rich"); `every 20m` "Your protection has expired" pop-up gag (character timer, allowed). |
 | Password Manager | `is Enforcer` | Francine | `File:1password-logo.svg` (wiki: 1Password) | Door scans; reacts to `wrong code` (codex misses); **keeper of the clubs** (CS: "manage… who gets to be part of what clubs"): booth readouts on every faction join (§3 D10) and she owns the `# hidden-partition` / `# back-channel` invites. Yu-gi-oh! everywhere. |
 | CRA Agent Software | `is Enforcer` | Emma | `File:Canada Revenue Agency logo.svg` (wiki: Canada Revenue Agency) | Replaces MalwareBytes. Door scans; audits Truthcoin (presses 🪙 charge). |
 
@@ -485,11 +485,15 @@ Trabolta's persona `facts:` whitelist (he sees it).
 | Night.help_votes / Night.thwart_votes | number 0 | the advice poll | |
 | Night.banish | bool false | everyone banished (thwart branch) | |
 | Night.recount | bool false | trabolta_recounts ran (bulk backstory unlock) | |
-| Night.dark_room / Night.dark_scene / Night.lights_back_at | string `"none"` / string `"none"` / number 0 | the room Trabolta darkened, the house look (`Night.lights`) he cut into, and when it comes back (90 s — skipped if the look changed meanwhile) | |
+| Night.dark_room / Night.dark_scene / Night.lights_back_at | string `"none"` / string `"none"` / number 0 | the room Trabolta darkened, the house look (`Night.lights`) he cut into, and when it comes back (90 s; since wave 9 skipped only if a whole-house look has run since — or, for The Desktop, a living-room look: game / truth_time / trust_chart — and cancelled when the patch-bay alarm's latch ends; after a room-scoped look (pong, glitch, server_open, a living-room look over the Start Bar or the RAM) the room still comes back on) | |
+| Night.lit_scene | string `"none"` | wave 9: the look the 90 s restore re-lit the cut room under (`"none"` when the restore was skipped, at the latch's end, at 💡 / G11, at Power On, and as soon as a look that re-lit the room replaces it); stagehand's room-on catch-up replays only while it holds | |
 | Night.dance_at | number 0 | blackout + 10 s: fire `cue lights_dance` (§3 E4) | |
 | Night.takeover | bool false | the `!!GO TO THE LIVING ROOM` pin is up (§3 E4; `lift_the_takeover` takes it down once) | |
 | Night.painting / Night.signatures | bool false / number 0 | MS Paint is cleared (the 🖌 button shows) / programs a host marked 🖌 Signed (The Painting, the G10 award) | |
 | Night.resurrected | bool false | G11 ran: the show is over, out of character | |
+| Night._resurrect_ask_at | number 0 | wave 9 (renamed from `resurrect_ask_at`): when G11's "press again" ask was posted; a `_` last segment marks cue-sheet bookkeeping, so the ask never ticks G11 on the sheet | |
+| Night.award_lines | string `"template"` | wave 9, D4: `"director"` after ✍ `own_award_lines` — Present Award skips Trabolta's template line (Clippy's lines, the sounds and the slides stay) | |
+| Night.king_armed | number 0 | wave 9: the King's stakes for the tent tablet — 1 from the Y2K hour until 📄 (`r3_closed`) or an ending, else 0 (FOR THE CODE / no badge / PRACTICE) | |
 | Night.sweep_target | string `"none"` | the program Trabolta asked the Antivirus to sweep | |
 
 No secret lives in `Night.*` (§0 rule 21): stagehand's orchestrator digest prints **every**
@@ -588,6 +592,8 @@ bingo: bool = false                // declared a Bingo winner
 framed: bool = false               // given the fake Bingo card
 truths_accepted: 0 to 20 = 0       // accepted answers, accurate and confident alike (lies are counted only on Kernel)
 judge_q: 0 to 3 = 0                // which question of the round the judge just pressed (§3 B8)
+judged_q1 … judged_q8: bool = false // wave 9: this program's answer to Qn was judged (✅, 😤 or corrected): never credited twice
+// wave 9: hunt_lie_q1 … q8 (secret) mark a 😤 confident lie per question, so ✅ for the same question takes it back
 may_answer: bool = false           // made the cup at Truth Pong
 assessment: -10 to 10 = 0          // Trabolta's personal ±10
 trust: -300 to 300 = 0             // live Trust Chart score
@@ -653,19 +659,19 @@ ROLE hooks and watchers (all in `ROLE Program`; bodies specified in §3):
 | `when checked_in for program:` | check-in (§3 D1) |
 | `when check_in_at_desktop for program:` | `fire checked_in for program with at: The Desktop` (bare entity name, never quoted: §0 rule 14) |
 | `when bingo_winner for program:` / `award_the_ribbon` / `frame_for_bingo` | Bingo (§3 B3) |
-| `when accurate_q1 for program:` … `accurate_q3`, `confident_q1` … `confident_q3` | `set program.judge_q = N` · `fire accurate_truth for program` / `fire confident_lie for program` **[verified, x1]** (§3 B8) |
+| `when accurate_q1 for program:` … `accurate_q3`, `confident_q1` … `confident_q3` | `set program.judge_q = N` · `fire accurate_truth for program` / `fire confident_lie for program` **[verified, x1]** (§3 B8). Wave 9: a question a program already had judged (`judged_qN`) answers *"⚖️ X's answer to that question is already accepted."*; ✅ on a question whose `hunt_lie_qN` is set takes the lie back (*"⚖️ Corrected: … Nothing is paid twice."*, `Kernel.lies_accepted` −1, `Kernel.qN` recomputed from the rest of the record) |
 | `when accurate_truth for program:` / `confident_lie` (both W only) / `uncertain_answer` / `chose_dare` / `truth_answered` / `truth_refused` / `bottle_landed` / `missed_the_cup` / `made_the_cup` / `failed_the_bob` / `named_at_bingo` / `mark_for_reinstallation` / `unmark_for_reinstallation` / `unmarked` | judging, the bottle, the mark (§3 B9, D3; wave 4 B + E) |
 | `when pay_truthcoin for program:` / `when charge_truthcoin for program:` | score ±100 |
 | `when brought_up_the_bag for program:` | the bobber (§3 F2) |
 | `when pickup_line_works for program:` / `when pickup_line_accepted for program:` | pickup line (§3 F5) |
 | `when signed_the_painting for program:` | once per program, never MS Paint, while `Night.painting`: `signed = true`, `Night.signatures += 1`, a 🖌 reply |
-| `when poll answered for program:` | advice poll counting (§3 F7) |
+| `when poll answered for program:` | advice poll counting (§3 F7); since wave 9 only the advice card's own options ("Help him" / "Thwart him", matched on the choice text) vote, so a stale bottle tap never counts |
 | `when Night.truther_sent == true and self.cleared and self.got_truther != true:` | `-> Truther Download Arrives` (per program; sets got_truther, unlocks The Truther Download, diverts to the matching glitch beat) |
 | `when self.featured == "openoffice" and self.dossier_started and self.codex - self.dossier_base >= 20:` | `set Kernel.openoffice_dossier = true`; unlock The LiveJournal; complete quest OpenOffice Dossier; private line |
 | `when self.featured == "draftkings" and self.quest.truthcoin_hustle == "active" and self.score >= 1000:` | update quest Truthcoin Hustle (a progress step) |
 | `when self.featured == "draftkings" and self.quest.truthcoin_hustle == "active" and count([p for p in Persons where p.cleared and p.featured != "draftkings"]) >= 5 and self.score * 2 > sum([p.score for p in Persons]):` | complete quest Truthcoin Hustle: a majority of the coin in circulation (the invitation, C08); the five-program floor keeps a small rehearsal from completing it at the glitch |
-| `when self.featured == "bugdom" and self.codex.julie_norton and self.codex.the_moderator and self.codex.yugi_moto and self.codex.one_cent_on_the_dollar:` | complete quest Master Of The Bugs |
-| `when self.featured == "jeeves" and count([x for x in [self.codex.maps_and_ducks, self.codex.the_billboard_on_barrington, self.codex.the_data_centre_sinkhole, self.codex.the_pet_cemetery, self.codex.the_server_room, self.codex.the_protest_flyer, self.codex.the_domain_receipt, self.codex.casino_nova_scotia_deed, self.codex.the_valley_library_cuts, self.codex.the_cooling_log] where x]) >= 5:` | complete quest Unscramble (the list-literal comprehension is **[verified, feas f2]**; the ten are the coded originals behind his fragments) |
+| `when self.featured == "bugdom" and self.quest.master_of_the_bugs == "active" and Night.recount != true and self.codex.miniature_doses and self.codex.the_lamborghini_certificate and self.codex.what_happened_to_hamtaro and self.codex.the_decimal_point:` | complete quest Master Of The Bugs (the four Antivirus secrets). Wave 9 (T10-01): the `quest … == "active"` term makes a goal met before the Truther Download complete the moment the quest starts (a watcher that fired before the quest existed did nothing) — the same for Jeeves' Unscramble (Ten Findings already carried its status; it starts at clearance, not at the download), and Excel Glitch completes Excel Mission ("Virus planted.") when the virus is already in |
+| `when self.featured == "jeeves" and self.quest.unscramble == "active" and count([x for x in [self.codex.maps_and_ducks, self.codex.the_billboard_on_barrington, self.codex.the_data_centre_sinkhole, self.codex.the_pet_cemetery, self.codex.the_server_room, self.codex.the_protest_flyer, self.codex.the_domain_receipt, self.codex.casino_nova_scotia_deed, self.codex.the_valley_library_cuts, self.codex.the_cooling_log] where x]) >= 5:` | complete quest Unscramble (the list-literal comprehension is **[verified, feas f2]**; the ten are the coded originals behind his fragments) |
 | `when self.featured == "jeeves" and Kernel.jeeves_reached > self.jeeves_told:` / `… and self.quest.ten_findings == "active" and count([p for p in Persons where p.cleared and p.featured != "jeeves"]) >= 5 and count([… and p.from_jeeves < 10]) == 0:` | Ten Findings: an update each time one more program holds ten of his findings (`when share:` → `jeeves_shared` → `from_jeeves`; a wallet sale is a share; a repeat or a share to Trabolta never counts), complete once every cleared program does (at least five) |
 | `when self.featured == "mspaint" and Night.signatures > self.paint_told:` / `… and self.quest.the_painting == "active" and count([p for p in Persons where p.cleared and p.featured != "mspaint"]) >= 5 and count([… and p.signed != true]) == 0:` | The Painting: an update per 🖌 signature, complete once every cleared program but her has signed (at least five) |
 | `when Night.resurrected == true and self.cleared and self.resurrected != true:` | G11: `banished = false`, `fire unmarked for self with how: "resurrected"` if marked (both pins down), `unrestrict self`; the `everyone_free` watcher releases the captured |
@@ -773,7 +779,7 @@ watcher/rule, **S** = server hard-code.
 | failed_the_bob | P | program | ROLE hook (§3 F2) |
 | program_late | W (ROLE late watcher, subject bound) | program | Enforcer trait hook (readout) |
 | sweep_requested | W (Trabolta's `summon_the_antivirus`) | — (`Night.sweep_target`) | Enforcer trait hook (readout) |
-| restore_the_lights | D | — | rule (`cue lights_restore`, clears `Night.lights_back_at`) |
+| restore_the_lights | D | — | rule (`cue lights_restore`, clears `Night.lights_back_at` and `Night.lit_scene`; since wave 9, D2, it also cancels a pending `Night.dance_at` and says so in `# hosts` — it does not lift the takeover, 🪩 does) |
 | lights_dance | D (fallback; normally the `Night.dance_at` watcher) | — | rule |
 | telephone / are_you_sure | D (optional set pieces) | — | rules (§3 B10) |
 
@@ -835,8 +841,9 @@ reads as a cue sheet):**
 | advice_helped | `💞 (Alt) They helped him` |
 | advice_thwarted | `⛈ (Alt) They thwarted him: banish everyone` |
 | the_hand_jive | `🕺 (Alt) Everyone hand-jived: Trabolta crashes` |
+| own_award_lines | `✍ Our own award lines (Trabolta hosts): on / off` (`sequence: false`; wave 9, D4: toggles `Night.award_lines`, each state named in `# hosts`) |
 | start_the_ceremony … award_quest_completionist | G1–G9 (the ceremony, README §G) |
-| award_the_painting | `G10 · 🖌 Bonus: The Million Dollar Painting (winner = MS Paint; value = signatures)` |
+| award_the_painting | `G10 · 🖌 Bonus: The Million Dollar Painting (winner = MS Paint; value = signatures)` (`while: Night.ceremony == true and Night.painting == true` since wave 9) |
 | resurrection | `G11 · 🎃 Resurrection: the show is over, out of character (after the ceremony)` |
 | the simulation completed | `Reinstallation: simulation completed (server)` |
 | the golden duck | `Reinstallation: the golden duck (server)` |
@@ -859,6 +866,26 @@ steers NEXT; it never gates the press (every rule still checks for itself). A pr
 refuses posts its reason to `# hosts` (*"⚖ Not yet: 🍎 Bobbing for Truth, then 📄 truth.txt
 first."*) and never becomes LAST; the hardware fallbacks (🖨, 🫘, 🔌 / 💥 / ❌) stay silent,
 since they share a signal with the hardware.
+
+Wave 9 (story-cues): the Act II timers' own cues — C2 ⏰ `hunt_time_up`, 📥 `truther_download`,
+⏳ `five_minute_warning`, 🚨 `summons_closed` — are `sequence: false`, and every step from V6 to
+🕚 carries a `while:` for its own window: V6 `Night.step == 6 and Night.judging != true`, ⏱
+`Night.filing_open == true`, 📋 `Night.phase == "truth_1" and Night.results_q < 3`, 📺
+`Night.step == 6`, 📓 `Night.step == 7`, 🏓 `Night.step == 9 and Night.summons_closed == true`,
+🧮 `Night.phase == "truth_pong" and Night.tallied != true`, 📊 `Night.step == 10`, 🏆
+`Night.phase == "trust_chart" and Night.rank_round < 1`, 🤖 `Night.step >= 11 and Night.step <
+14 and Night.scenario == 0 and Night.clock == "--:--"`, 🕚 `Night.step < 14 and Night.scenario !=
+0 and Night.clock == "--:--"`, and 🌑 also needs `Night.step >= 14`. So NEXT is empty for all of
+hunt 1 (until C2 fires, then V6), hunt 2's hour and the summons (until 🚨, then 🏓) and the Y2K
+hour. The two-minute filing watcher fires `close_the_filing` itself (⏱ ticks, NEXT is 📋). A
+forward press refuses in `# hosts` instead of skipping a step's work (📺 until ⏱ and three 📋,
+📓 before 📺, ⏳ outside hunt 2's hour, 🏓 below step 8, 📊 before 🧮, 🤖 before 📊 or after the
+clock is set, 🕚 before 🤖); the booth readouts in `cast/hosts.loom` / `cast/kit.loom` carry the
+same guards, so a refused press sends no readout. G10's `while:` adds `Night.painting == true`
+(no MS Paint: G9 → G11). ✍ `own_award_lines` (`sequence: false`, declared just before G1)
+toggles `Night.award_lines`. The server treats a press whose only world writes have a last
+segment starting with `_` as refused (`refusedPress`), so G11's first ask (it writes
+`Night._resurrect_ask_at`) never ticks.
 
 **Performer (`who: performer`, shown on every guest card; every hook guards its phase and
 answers wrong-phase presses with nothing — **except `send to the internet` and `mark as
@@ -1380,8 +1407,16 @@ The story only emits directives; this file makes them physical. It is new, separ
   (kitchen), The Desktop (living), The Cloud (backyard), The RAM (the studio). The agent's
   `room` arg reaches the story already canonicalised to the LOCATION id.
 - **Scenes:** one rule per `cue lights_*` in §2.13 (Z2M `scene_recall` + WLED `ps`).
-- **Screens flicker:** `screens_flicker` also blinks the house lights (Hue `effect: blink` /
-  WLED preset) so Trabolta's power is felt even before the Screens layer exists.
+- **Screens flicker:** `screens_flicker` also blinks the house bulbs (Z2M `effect: blink`, a
+  one-shot that reverts by itself) so Trabolta's power is felt even before the Screens layer
+  exists. Since wave 9 there is no WLED rule for it: the old preset 21 left every strip on the
+  lightning look.
+- **Catch-up:** the `catch_up:` rules replay the night's look on every feed / broker reconnect
+  and after a reset, reload or go-live. Since wave 9, under `server_open` they replay
+  `lights_y2k` first (the majority's look lights only the server room), and a cut room is
+  replayed off mid-cut and on under `Night.lit_scene` (the look its 90 s restore re-lit it
+  in) or a later room-scoped look that never re-lit the room (pong, glitch, server_open, or a
+  living-room look over the Start Bar or the RAM), never under a whole-house look.
 - **Sound:** every `sound <name>` (directive `sfx`) → QLab OSC / mpv cue of the same name.
 - **Announce:** `announce` → `show/announce` (the house announcements: the `alexa` module's chime + the Mac's own `say` voice).
 - **Door:** `door` target `server_room` → the indicator topic `show/serverroom/lock` (retained;
@@ -1790,6 +1825,14 @@ tent is captured by the tablet's scan.
   follow orders). Wave 4 (B) adds the two-minute last-chance filing window (`Night.filing_open`
   / `filing_close`), ⏱ / 📋 / 🍾 (B9) and the server-side judge for 📝 filings (`Night.judge_mode`
   auto | review; `verdict` rides the `fact answered` args; credits and marks land at settle).
+  Wave 9 (D5): the director overrides any judged filing on the Judging card (✅ / 😤 / 🤷 per
+  filing, both modes, naming the question); a booth's 📝 `fact_accurate` / `fact_lie` /
+  `fact_uncertain` with no `question:` judges the program's latest filing only, and while an
+  earlier filing of theirs is still pending it changes nothing (`program.fact_waiting`) and
+  `# hosts` says *"📝 Not judged: … Judge it on Run → Mind → Judging …"*; the review-mode
+  proposal line ends *"Confirm on Run → Mind → Judging (their card's 📝 judges their latest
+  filing only)."*. An ending bumps `Night.card_gen`, so every live 📝 card is re-dealt closed
+  (T7-02).
 - Judging (ROLE hooks). The judge presses the button for **the question that was answered,
   numbered within this round** (`✅ Q1…Q3` accurate, `😤 Q1…Q3` wrong-but-confident). Each
   button hook only records the number and fires the shared hook **[verified, x1]**:
@@ -1881,7 +1924,7 @@ tent is captured by the tablet's scan.
 ### C. The malware, the hour, the Truther Download
 
 **C1 Ad hijack — `second_hunt_preview`** (D).
-- Rule (guard `Night.step < 7`): `set Night.judging = false` · phase `malware`, step 7 ·
+- Rule (guard `Night.step < 7 and Night.phase == "truth_1" and Night.results_q >= 3`; since wave 9 a press before ⚖️ / ⏱ / the three 📋 refuses in `# hosts` naming the missing step): `set Night.judging = false` · phase `malware`, step 7 ·
   `set Trabolta.composure -= 20` · `unlock Clippy Instructions 4 for Clippy` · `cue
   lights_ad_hijack`, `cue screens_ad_hijack`, `sound ad_jingle` · `-> Ad Hijack`.
 - `== Ad Hijack` (public): Clippy begins previewing round 2; narration: `The presentation
@@ -2104,7 +2147,7 @@ checked_in for program with at: The Desktop`, bare); the director (`checked_in`,
   the malware is twelve percent.`
 
 **D6 Trust Chart — `trust_chart`** (D).
-- Rule (guard `Night.step < 11`): phase `trust_chart`, step 11 · `unlock Clippy Instructions 6
+- Rule (guard `Night.step < 11 and Night.tallied == true`; wave 9: before 🧮 it refuses in `# hosts`): phase `trust_chart`, step 11 · `unlock Clippy Instructions 6
   for Clippy` · `cue lights_trust_chart`, `cue screens_trust_chart` · `-> Trust Chart`.
 - `== Trust Chart` (public, Trabolta): `TRUST CHART. Ten points per correct truth. Minus five
   per visit to the Internet. Plus or minus ten for my personal assessment.` · `Trabolta:
@@ -2148,7 +2191,9 @@ checked_in for program with at: The Desktop`, bare); the director (`checked_in`,
 - `when printer_opened:` (guard `Night.printer_called == true and Night.beans != true`): `set
   Night.beans = true` · phase `beans`, step 12 · `set Trabolta.composure -= 20` · `cue
   lights_glitch`, `cue screens_beans`, `cue screens_flicker` (involuntary: he is degrading),
-  `sound beans_spill` · `-> Full Of Beans`.
+  `sound beans_spill` · `-> Full Of Beans`. Since wave 9 the phase, step, lights and screen
+  writes sit under `if Night.step < 12`: a lid first opened after 🤖 or in the Y2K hour plays
+  only Full Of Beans, the spill and the −20, and the overshare's / the Y2K look stays up.
 - `== Full Of Beans` (public): `Narrator: The printer is full of beans.` · Clippy (exact gist,
   CI 6): `Beans. Those are— those are symptoms. The malware is getting worse. Routine
   operations like print to PDF are no longer working. It is even more urgent that we get the
@@ -2168,7 +2213,7 @@ checked_in for program with at: The Desktop`, bare); the director (`checked_in`,
 - Enforcer hook: `reply 🗜 Bring everyone out of the tent and zip them up.`
 
 **D9 The overshare — `trabolta_overshares`** (D).
-- Rule (guard `Night.step < 13`): phase `overshare`, step 13 · `set Night.round = 3` · `set
+- Rule (guard `Night.step >= 11 and Night.step < 14 and Night.scenario == 0 and Night.clock == "--:--"`; wave 9: before 📊 "Not yet", once the clock is reset "Too late"): phase `overshare`, step 13 · `set Night.round = 3` · `set
   Night.facts_requested = 8` · `start quest The Final Facts for everyone` · scenario:
   ```
   set Night.scenario = 4
@@ -2203,7 +2248,7 @@ checked_in for program with at: The Desktop`, bare); the director (`checked_in`,
     for your continued cooperation.` and one slip: `She will— the theory will be complete.`
 
 **D10 The clock — `y2k_clock`** (D).
-- Rule (guard `Night.step < 14`): phase `y2k`, step 14 · `set Night.final_round = true` ·
+- Rule (guard `Night.step < 14 and Night.scenario != 0 and Night.clock == "--:--"`; wave 9: before 🤖 it refuses, and once the clock is set it is "Not again" whatever the step says): phase `y2k`, step 14 · `set Night.final_round = true` ·
   `set Night.y2k_end = Time.elapsed + 3600` · `set Night.clock = "23:00"` · `set
   Trabolta.composure -= 25` · `reveal Unlimited Power` · `reveal The Way Out` · `unlock Clippy
   Instructions 7 for Clippy` · `cue lights_y2k`, `cue screens_y2k`, `sound y2k_chime` ·
@@ -2390,7 +2435,9 @@ chess AI down a stage (grandmaster → club → beginner → dizzy → pawns onl
 (♟ / C) on the tablet's board (badge FOR THE CODE / PRACTICE, the `stakesLine` under it); mate
 posts `POST /api/mod/signal {name: "chess won", subject, label: "Tent tablet"}` with the
 tablet's mod token (the journal reads *by Tent tablet*) and the tablet says where the code went
-(`WIN_CODE` / `WIN_PRACTICE`, after re-reading the step with a 4 s timeout). A headset only
+(`WIN_CODE` / `WIN_PRACTICE`, after re-reading `Night.ended`, then `Night.king_armed` and
+`Night.r3_closed`, with a 4 s timeout; the map's `Night.step` gate only on a story with no
+`king_armed`). A headset only
 shows him ("The King is fought on the tent tablet."). Until the King is device-checked, the
 Lichess phone outside the real door is the fallback: a host or Antivirus who saw the mate
 presses ♟ *They beat the machine* on the winner's card (`fire chess_won for program`), or the
@@ -2398,7 +2445,9 @@ director fires `♟ They beat the King: the door code (fallback)` naming the win
 false`; a subject cue since wave 7, so the cue sheet asks who).
 ```
 when chess_won for program:
-  if Night.ended != true and Night.step >= 14:
+  if Night.ended != true and Night.r3_closed == true:
+    broadcast "♟ A King win after truth.txt: the verdict is in, no door code. Nothing happens in the story." to channel(hosts)
+  else if Night.ended != true and Night.step >= 14:
     if program.name == null:
       broadcast "♟ A win with no winner named: press ♟ on the winner's card to give them the door code." to channel(hosts)
     else if program.codex.the_door_code == true:
@@ -2467,7 +2516,9 @@ trabolta_disabled` (E4). The blackout narration, the recount (E5) and the ceremo
     set Night.lights = "dance"
   ```
   (The dance-song file opens with 10 s of silence, so music and lights land together. Admin
-  `lights_dance` is the manual fallback.) The watcher and `lights_dance` both `fire
+  `lights_dance` is the manual fallback. Since wave 9 (D2) 💡 `restore_the_lights` — the first
+  step of ALL STOP — cancels a pending `Night.dance_at` and posts *"💡 The dance is held: press
+  🪩 when the house manager says go."* to `# hosts`; the takeover stays until 🪩.) The watcher and `lights_dance` both `fire
   lift_the_takeover`, a subject-free rule that, while `Night.takeover`, clears it and runs
   `unpin "💃 Dance."`; `trabolta_recounts`, `clippy_reads_summary`, `start_the_ceremony`
   and `resurrection` fire it too as backstops, but only when they play (a refused 🏍 / 🪦
@@ -2812,7 +2863,7 @@ when snoop for program:
 | play_on_the_screens | Put something on the wall terminals | 3 | clip | step 4–13 (lost at y2k like the flicker) | fact M19: one allow-listed card on the wall terminals only (`terminals_*`, never the TV or a story slide): `clip` = `dancing_baby` / `hamster_dance` / `under_construction` / `youve_got_mail` → one literal `cue terminals_<clip>` each · `broadcast "📺 The wall terminals change channel." to participant(program)`; anything else → `Trabolta: I do not have that file.`; refused while `Night.terminals == "trust_chart"` (that slide persists until the next cue, and the clip would end it). What a clip does on the screens: the terminal shows its SLIDE_COPY text card (no PNG needed) for the terminals' 45 s slide hold, then falls back to attract / its base view; a pilot session pre-empts it like any slide; the story sets no `Night.terminals` mirror for it. It is **not invisible to the story's screens**: the server's screen state carries the clip as the terminals' newest slide, and each terminal decides what goes on top. A terminal keeps the last story slide it saw (per sim, in the page's `localStorage` too, so a reload remembers it): while that slide is still in its hold it stays up and the clip waits under it, shown for whatever is left of its own 45 s. A terminal with no memory (a first boot, cleared storage) can't know what the clip went up over, so it shows no clip for that clip's hold (attract or its base view: the story wins) (OCT31 open issue 10, `terminal/src/slides.ts`). | exists (wave 5) |
 | pop_up | Pop up on one phone | 4 | target, text | step 5–15 | `if Night.step >= 12:` `broadcast "💬 {text} — d1sr3gard th1s m3ssage" to participant(target)` `else:` `broadcast "💬 {text}" to participant(target)` **[verified]**. A target in Bathroom Mode or checked in at Disk Cleanup in the last 15 minutes is refused first with the unknown-name line, `Trabolta: I cannot find that program.`, so the asker never learns where they are (fact M20, wave 5; words only, no use spent) | content |
 | mint_truthcoin | Pay Truthcoin for a fact | 10 | amount | step 6–15 | cap 50, or 100 once `Night.step >= 14` (desperate): `if amount > cap: +cap` `else if amount > 0: +amount` on `program.score` | content |
-| cut_the_lights | Cut the lights in a room | 2 | room (a LOCATION) | step 7–15 | **allow-list** (never the tent with guests in VR headsets, the stairs, the bathroom, the server room) **[verified, x1]**: `if room == "The Start Bar" or room == "The Desktop" or room == "The RAM":` (The Cloud dropped Oct 31, K-05: the outdoor steps + tent path; the kitchen only dims to ~20% in the YAML) `<cue: lights, room: {room}, state: off>` · `set Night.dark_room = room` · `set Night.lights_back_at = Time.elapsed + 90` · `broadcast "!💡 The lights in {room} go out. Somewhere a fan spins down." to location(room)` `else:` `Trabolta: That function is not available in that room.` The restore is a story rule: `when Night.lights_back_at > 0 and Time.elapsed >= Night.lights_back_at:` → `<cue: lights, room: {Night.dark_room}, state: on>` · `set Night.lights_back_at = 0`. Admin `restore_the_lights` is the manual fallback. | exists |
+| cut_the_lights | Cut the lights in a room | 2 | room (a LOCATION) | step 7–15 | **allow-list** (never the tent with guests in VR headsets, the stairs, the bathroom, the server room) **[verified, x1]**: `if room == "The Start Bar" or room == "The Desktop" or room == "The RAM":` (The Cloud dropped Oct 31, K-05: the outdoor steps + tent path; the kitchen only dims to ~20% in the YAML) `<cue: lights, room: {room}, state: off>` · `set Night.dark_room = room` · `set Night.lights_back_at = Time.elapsed + 90` · `broadcast "!💡 The lights in {room} go out. Somewhere a fan spins down." to location(room)` `else:` `Trabolta: That function is not available in that room.` The restore is a story rule: `when Night.lights_back_at > 0 and Time.elapsed >= Night.lights_back_at:` → `<cue: lights, room: {Night.dark_room}, state: on>` · `set Night.lights_back_at = 0`. Since wave 9 it re-lights the room unless a whole-house look has run since (`Night.lights == Night.dark_scene`, or a room-scoped look — pong, glitch, server_open, or game / truth_time / trust_chart over a room other than The Desktop — still lets it fire), records `Night.lit_scene`, and the patch-bay alarm's latch end cancels it (its look re-lights everything). Admin `restore_the_lights` is the manual fallback. | exists |
 | summon_the_antivirus | Request an Antivirus sweep | 4 | target | step 7–15 | `set target.doubt += 15` · `set Night.sweep_target = target.name` · `fire sweep_requested` (Enforcer booth readouts, §2.14) · `broadcast "You feel watched." to participant(target)` (humans do the capture). A target in Bathroom Mode or checked in at Disk Cleanup in the last 15 minutes is refused first with the unknown-name line, `Trabolta: I cannot find that program.`, so the asker never learns where they are (fact M20, wave 5; words only, no use spent), so a sweep never names someone in the bathroom | content |
 | trabolta_announces | Announce to the whole computer | 2 | text | step 7–15 | `broadcast "!📢 TRABOLTA: {text}" to everyone` | content |
 | assess | Assess a program (±10) | 40 | target, score | `Night.phase == "trust_chart" or Night.phase == "bobbing"` | clamp to −10..10 (if/else), `set target.assessment = …`, then the TRUST FORMULA on `target` | content (assessing programs he is not talking to without a DM is N2) |

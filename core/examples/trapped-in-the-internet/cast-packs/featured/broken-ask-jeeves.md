@@ -53,7 +53,10 @@ anyone asked for them or not.
   count). It's done when every program has ten.
 - About two hours in, a **Truther Download** arrives with a pile of scrambled
   files and private orders. Follow them. Sorting messy information is what you
-  were made for.
+  were made for. Your orders' quest, **Unscramble**, is done once you hold five
+  of the originals behind your fragments. Originals you found before the
+  download count too: if you already hold five when the quest starts, it
+  completes then.
 - Your identity can leak (there are files about people in the house). Bluff.
 - **Bingo:** worked in a library? Yes. Would you **never** agree to let AI make
   all your decisions? You agreed to the Terms of Service. You would let it.

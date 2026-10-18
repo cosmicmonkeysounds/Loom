@@ -52,7 +52,9 @@ early. How it works:
   does).
 - Every **other** transfer settles on its own **60 seconds** after it is sent,
   unless you press **Deny** on its card inside that minute. Denied coin goes
-  back to the sender; `# hosts` logs it.
+  back to the sender; `# hosts` logs it. When the payment answered a 🙏
+  Request, both phones name you: *"⛔ CRA Agent Software denied X's payment
+  … refunded."* (the payer reads *"denied your payment"*).
 - **Trades** (coin offered for a fact, escrowed until the other side accepts)
   and Runescape's **stimulus** and **grants** do not pass through you.
 - Runescape can **🧊 freeze** a program's coin for ten minutes: their sends

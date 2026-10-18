@@ -1,6 +1,6 @@
 # Demo — the Oct 31 WIP in 20–30 minutes
 
-How to show *Trapped in the Internet* as it stands (wave 4, 2026-10-16) on
+How to show *Trapped in the Internet* as it stands (wave 9, 2026-10-18) on
 **https://app.mapsandducks.com** with **2–4 phones and one laptop**. It plays the
 night from the door to an ending and the awards, compressed: every timed
 stretch (Bingo's 20 min, the hunts, the hour, the Y2K hour) is skipped by
@@ -12,14 +12,14 @@ change the order here, change it there.
 
 ## Before you start (once)
 
-1. The VPS runs the wave-4 release (`scripts/ops/ship.sh <tag>` — the
-   server **before** the first sync that carries `facts.json` or the King's
-   map, or an old server refuses them; as of 2026-10-17 waves 4 (9d35a4b) and
-   5 (85d2bad) are committed and waves 6 and 7 are merged, none deployed —
-   they ship together; wave 5
-   also wants one `sync-show --replace-maps`), and the show's story is in your server
-   project: `LOOM_SSH=loom-vps pnpm sync-show` (with
-   `LOOM_PROJECT="<your project name>"` if it isn't *Untitled Project*).
+1. The VPS runs a current release (`scripts/ops/ship.sh <tag>`, the server
+   **before** the sync; as of 2026-10-18 it runs `w8-1018`, and wave 9 is
+   merged and ships as `w9-1018`: this page follows wave 9, whose cue sheet
+   refuses 📺 until all three 📋 are read), and the show's story is in your
+   server project: `LOOM_SSH=loom-vps pnpm sync-show` (with
+   `LOOM_PROJECT="<your project name>"` if it isn't *Untitled Project*;
+   since wave 9 it refuses to reload a **live** event with real guests,
+   exit 3; a rehearsal or preview always reloads).
    The sync carries `facts.json` (the hunt questions, the facts and the
    judge's answer key) and the house maps with the story.
 2. On the laptop, open **https://app.mapsandducks.com/edit/**, sign in, open
@@ -65,7 +65,10 @@ character —* menu → *Norton Anti-Virus* → **Scan**). Add a third guest
 the Trust Chart and the majority read better.
 
 Every cue below is a button on **Run → Director → cue sheet** (in running
-order; LAST / NEXT track where you are). A **performer button** is on the
+order; LAST / NEXT track where you are). The timer cues you fire by hand
+here (C2 ⏰, 📥, ⏳, 🚨) are off-sequence, so NEXT stays empty while a timer
+owns the night and comes back after them (V6, then 🏓). A cue pressed a
+step early does nothing but say why in `# hosts`. A **performer button** is on the
 guest's card in that performer's booth (phone C / D), or in Run while you
 *are* that performer.
 
@@ -91,14 +94,14 @@ guest's card in that performer's booth (phone C / D), or in Run while you
 | **Clippy 2/X · 🤖 Clippy introduces Trabolta** | — | Trabolta appears in everyone's People list and DMs ("Hello, …"); the TV flips to his face, then the mirror of the house. |
 | **V4/V5 · 🔎 Truth Scavenger Hunt 1 (15 min)** | — | Hunt One in the Quest Log; a **📝 File a fact** card in each Trabolta thread. |
 | **C2 · ⏰ Hunt over** → **V6 · ⚖️ First Moment of Truth** | — | 🔔 "Last chance: file your round-one facts with Trabolta. Two minutes." Phones A/B can file an answer on the **📝 File a fact** card (pick the question, type it, set the confidence slider): `# hosts` shows the judge's verdict at once (the phone only hears "Your fact is in the record"). |
-| **⏱ Close round-one filings now** → **📋 Results: the next question** (press once; Q2 and Q3 are two more presses) | Clippy: **✅ Q1** on Calculator, **😤 Q2** on Excel (a confident lie spoken in the room: accepted, looks identical). | Clippy reads question 1's result in *The Desktop* (nobody filed / CONSENSUS / what everyone said); every filing for it is settled: +50 to the accepted ones, a guess is marked for reinstallation. A refused press (pressing again) lands in `# hosts`, never on the guest's phone. |
+| **⏱ Close round-one filings now** → **📋 Results: the next question** (press it three times: Q1 now, Q2 and Q3 after the bottle below; 📺 waits for all three) | Clippy: **✅ Q1** on Calculator, **😤 Q2** on Excel (a confident lie spoken in the room: accepted, looks identical). | Clippy reads question 1's result in *The Desktop* (nobody filed / CONSENSUS / what everyone said); every filing for it is settled: +50 to the accepted ones, a guess is marked for reinstallation. A refused press (📋 while the bottle is still open, or a fourth 📋) lands in `# hosts`, never on the guest's phone. |
 | *(optional)* **🍾 Spin the bottle** | Clippy: 🗣 *Truth answered* / 🙅 *Truth refused* on the picked program. | Trabolta names a program on the TV ("…Truth or dare?"); their phone gets Truth / Dare. Dare or a refusal marks them for reinstallation; Truth asks Trabolta's personal question on the TV. |
 
 ### Act II — the malware and the hour (7 min)
 
 | Cue | Performer / phones | What you see |
 |---|---|---|
-| **📺 Preview hunt 2 → the ad hijack** | — | 🔔 **000. 000. 000.** alert on every phone + the ad on the TV. Clippy's booth (phone D) gets Trabolta's private "we are all going to die". Everyone else: "A minor irregularity…". |
+| **📋** for Q2, then **📋** for Q3 → **📺 Preview hunt 2 → the ad hijack** (refused in `# hosts` until all three results are read) | — | 🔔 **000. 000. 000.** alert on every phone + the ad on the TV. Clippy's booth (phone D) gets Trabolta's private "we are all going to die". Everyone else: "A minor irregularity…". |
 | **📓 Hunt 2 → quest logs; disperse for 1 hour** | — | Hunt Two quest; `# clipboard` opens. |
 | **📥 Truther Download (auto at +2 min)** — fire it now | **Phone A (Excel)** answers the choice in *Truther Download* (sabotage or paranoid). | 🔔 "TRUTHER DOWNLOAD received"; `# truthcoin-exchange` opens; each program gets its glitch beat; Excel joins *Unlimited Power* (still hidden) with a mission. |
 | **⏳ Five-minute warning** → **🚨 Summons closed** → **🏓 Truth Pong** | Norton scans anyone at the Desktop during the warning (a check-in). Clippy: **🏓 Made the cup** + **✅ Q1** on Calculator. | A guest not checked in gets "⏰ You are late" and Norton's booth "Go get them". |

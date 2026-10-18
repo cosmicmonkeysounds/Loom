@@ -86,7 +86,8 @@ spoken. The staff quests in every booth are "per the agenda", from you.
 - **The hour (📥 onward):** `# truthcoin-exchange` opens. Programs trade facts
   for Truthcoin from their Wallets. You are the boring, reliable bank for
   whatever the app can't see: 🪙 Pay on the seller, 🪙 Charge on the buyer
-  (100 each press). McAfee brokers and takes a cut; CRA audits.
+  (100 each press). McAfee brokers and referees bets (he holds no pot
+  and takes no cut); CRA audits.
 - **Grok Prom:** if a program says the line to you, 💘.
 
 ## Props

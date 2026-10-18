@@ -40,6 +40,9 @@
 Anyone may call **ALL STOP** on the radio, or shout it, for any safety reason.
 
 1. The director (or anyone at Run) fires **💡 Restore the house lights**.
+   After a server-room blackout it also holds the automatic dance: nothing
+   flashes until the director presses 🪩 when the house manager says go.
+   (The GO TO THE LIVING ROOM cover stays on the phones until then.)
 2. The tech operator: QLab **Esc** (panic), mute the TV voice, then the wall
    switches. The safety bulbs always come back on from a wall switch.
 3. The house manager leads people: **the stairs stay lit**, headlamp on, walk

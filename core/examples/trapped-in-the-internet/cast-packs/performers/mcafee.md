@@ -46,9 +46,11 @@ the Y2K hour, so it closes at the final reveal, or when the night ends in the
 server room).
 **Nothing to settle on cards any more**: the app posts every settled
 transfer and trade in `# truthcoin-exchange` by itself. Broker in person: set
-prices, match buyers to facts, **take your cut** (ask for a send to you).
-Hold a bet's pot (there is no bet button): both players send you their
-stake, and you send the lot to the winner.
+prices, match buyers to facts, **referee bets** and call the winner in
+`# truthcoin-exchange`. A bet settles player to player (there is no bet
+button): the winner sends a 🙏 Request and the loser pays it. **You have no
+Wallet:** you hold no pot and take no cut (a send to you answers "unknown
+recipient").
 🪙 Pay / 🪙 Charge are for corrections (a cash deal, a wrong amount). Every
 third transfer anyone sends waits for CRA Agent Software's Approve; tell
 traders that is normal. DraftKings and Runescape will want to work with you:

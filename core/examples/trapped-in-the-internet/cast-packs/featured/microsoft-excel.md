@@ -42,7 +42,8 @@ Cloud. **Everlasting life.** You did not read the terms.
   appear in your **Codex**. They're for you. Tell no one.
 - About two hours in, a **Truther Download** arrives on your phone with a
   question and private orders. Answer as Randy would. Follow the orders: they
-  are your mission, and nobody else has them.
+  are your mission, and nobody else has them. (If the virus is already
+  planted when the glitch comes, the mission completes then.)
 - Your human identity can leak: there are files about people hidden in the
   house. Deny it, bluff, or confess. Your call, but make them work for it.
 - **Bingo:** if someone asks whether you've been a mayor, or want to be one

@@ -48,7 +48,9 @@ that King Thorax himself might make an appearance. You came for the time.
   They're for you. Tell no one.
 - About two hours in, a **Truther Download** arrives with private orders. Follow
   them. You are relentless at tedious tasks; it's your superpower. (Hint: the
-  Antivirus have secrets too.)
+  Antivirus have secrets too.) Secrets you find before it count: if you
+  already hold what the orders ask for, your quest completes the moment it
+  starts.
 - Your identity can leak (there are files about people in the house). Bluff.
 - **Bingo:** sold crickets for a living? Yes. More than ten years on one game?
   Yes. Would you **never** agree to let AI make all your decisions? You agreed
