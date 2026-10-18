@@ -232,7 +232,7 @@ export class Workspace {
       const range = spanToRange(line.span);
       const what = `\`${line.key}: ${line.value.trim()}\``;
       if (!first) {
-        lint(uri, range, `${what} is ignored by the event server — only the first file's header (main.loom) is read; move it there, with no blank line above it`);
+        lint(uri, range, `${what} is ignored by the event server — only the first file's header (main.loom) is read; move it into that header, above the file's first beat, declaration or rule`);
         continue;
       }
       const opts = { pathsOnly: line.key === "countdown" };

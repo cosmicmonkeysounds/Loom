@@ -851,6 +851,10 @@ reads as a cue sheet):**
 
 Fire every admin cue from the cue sheet (Run → Director) / quick-fire, never from a guest card (§0 rule 23).
 
+Wave 10: eight `act:` lines group the sheet into the README's sections (B · Act I, C, D, E (🕚 opens it; ⏳ / 🚨 sit in C; 🏍 / 🪦 in F),
+Anytime (💡 + the reinstallation cues), F, G — display only, no cue moved), and the header's `watch:` / `countdown:` lines
+feed the Director page's glance column and the NOW card's countdowns (the Kernel's values masked).
+
 The cue sheet's LAST / NEXT (wave 8): `sequence: false` marks every machine-fired, optional,
 anytime or fallback cue (🍾, the set pieces, the printer, 🗜, 🎆, 🧾, 🚪, 🔄, ♟, 🕊, 🗳, the
 patch bay, 🪩, 💡, the reinstallation events): it ticks when it fires but never becomes LAST or

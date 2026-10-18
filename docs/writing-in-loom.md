@@ -1251,6 +1251,58 @@ subject, capped by `limit: N` uses per run. The story's hooks decide what
 the power does; the model only decides when it has been earned. See the
 help article *Live verbs → Powers for a character with a mind*.
 
+### 11.3b The director's sheet: `act:`, `watch:` and `countdown:`
+
+The `who: admin` interactions, in the order you declare them, are the
+director's running order on Run → Director and the director's phone.
+Three more keys shape it. On an admin cue, `sequence: false` marks one a
+machine or a timer fires, or a fallback (it ticks when pressed but is
+never the sheet's *last* or *next*); `repeat: true` keeps one suggested
+while it is pressed again and again; and **`act:`** opens a section of
+the sheet that every later admin cue joins until the next `act:`:
+
+```loom
+INTERACTION open the gates
+  label: A1 · 🔔 Open the gates
+  who: admin
+  act: A · The arrival
+
+INTERACTION first toast
+  label: A2 · 🥂 The first toast
+  who: admin
+
+INTERACTION restore the lights
+  label: 💡 Restore the lights
+  who: admin
+  sequence: false
+  act: Anytime
+```
+
+`first toast` is in act A without a line of its own; the code before
+` · ` is the act's short name. A second `act: Anytime` rejoins the first
+(names match loosely), and an act of nothing but `sequence: false` cues
+is always on hand, never "the current act". Acts only group the page:
+they never change which cue is suggested next, or what a press does.
+
+Two **header** keys choose what the director's page keeps in view:
+
+```loom
+# The Glass Orchard
+start: The Front Gate
+watch: Night.round as Round, guest.cleared as Cleared, Ivo Marsh
+watch: Night.lights as Lights, while Night.step >= 2
+countdown: Night.hunt_end as Hunt ends, while Night.hunt_on == true
+```
+
+A `watch:` item is a path (with `as` a label), a ROLE path counted over
+every guest, or a person's name; a value on a `secret: true` character is
+masked. A `countdown:` path holds a story time in seconds (`set
+Night.hunt_end = Time.elapsed + 900`) and ticks down while its line's
+`while` holds. Both may repeat; keep them in the header of the
+**first** file, above its first beat, declaration or rule (blank and
+comment lines don't end a header) — the event server reads only that
+header.
+
 ### 11.4 Places are rooms
 
 Every `LOCATION` is also a chat room in the participant app. A beat
@@ -1597,6 +1649,8 @@ That loop — not this guide — is how you'll actually learn Loom.
 | `(improv duration: 45s, advance on: any […])` | an improvised beat |
 | `SPACE` / `CHANNEL` | chat sections / rooms |
 | `INTERACTION name` + `label:` `who:` | a button in the participant app (fires a named event) |
+| `sequence: false` · `repeat: true` · `act: A · The arrival` (a `who: admin` cue) | off the sheet's last / next · stays next while pressed · opens an act of the director's sheet |
+| `watch: path as Label, Name, while <cond>` · `countdown: path as Label, while <cond>` (header, first file) | the Director page's glance column · its countdowns |
 | `CODEX name` + `about:` `code:` `known to:` `text:` | a piece of lore guests hold, unlock, and share |
 | `unlock X for who` · `when who learns X:` · `when wrong code for who:` · `when share for who:` | lore moving |
 | `listed: true` (character) · `directory: everyone` (header) | the People directory + private messages |

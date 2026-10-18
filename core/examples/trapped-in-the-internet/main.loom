@@ -3,6 +3,24 @@ start: Power On
 theme: aol97
 directory: everyone
 currency: score as Truthcoin, max 500, expiry 10m
+watch: Night.clock as Y2K clock, Night.round as Truth round, Night.judge_mode as Judge, Night.lights as Lights
+watch: program.cleared as Cleared, program.marked as Marked
+watch: Night.results_q as Results read, while Night.phase == "truth_1"
+watch: Night.scenario as Overshare scenario, while Night.scenario != 0 and Night.ended != true
+watch: Kernel.majority as Majority, Night.wrong_combos as Wrong patches, Night.heart_opened as The Heart, program.at_the_heart as At the heart, while Night.step >= 14 and Night.ended != true
+watch: Kernel.lies_accepted as Lies accepted, while Night.round >= 1
+watch: Night.ending as Ending, while Night.ended == true
+watch: Night.signatures as Signatures, while Night.painting == true
+watch: Microsoft Excel, OpenOffice, MS Paint
+watch: Kernel.door_code as Door code, Kernel.combo_a as Combo A, Kernel.combo_b as Combo B
+countdown: Night.bingo_end as Bingo ends, while Night.bingo_on == true
+countdown: Night.hunt_end as Hunt 1 ends, while Night.hunt_on == true
+countdown: Night.filing_close as Filings close, while Night.filing_open == true
+countdown: Night.truther_at as Truther Download, while Night.hunt2_on == true and Night.truther_sent != true
+countdown: Night.warn_at as Five-minute warning, while Night.hunt2_on == true and Night.summons_open != true and Night.summons_closed != true
+countdown: Night.summons_end as Summons closes, while Night.summons_open == true
+countdown: Night.y2k_end as Midnight, while Night.final_round == true and Night.ended != true
+countdown: Night.dance_at as Dance lights
 
 // Equal parts Digimon Movie, Blade Runner, and an escape room, in a
 // Web 1.0 house, with a side of existentialism.
@@ -2528,10 +2546,21 @@ ROLE Program
 // From V6 on, each step's `while:` names its own window (Night.step /
 // Night.phase), so NEXT never skips ahead while a timer runs. A `while:`
 // only steers NEXT: every rule still guards its own press.
+// `act:` opens a section of the director's sheet (carried forward; it
+// never changes NEXT): B, C, D, E, F and G are the README's sections, and
+// `act: Anytime` (💡, the reinstallation cues) is the always-open line.
+// The Director page's glance column and countdowns are the `watch:` /
+// `countdown:` lines at the top of this file: they must stay in the
+// header block (above the first item — a beat, declaration or rule ends
+// the header; blank and comment lines don't) and in this file only — the
+// server reads the first header. *At the heart* counts programs with
+// `at_the_heart` (Night.heart_holder keeps the last name after they walk
+// away); *Overshare scenario* shows from 🤖 until the ending.
 
 INTERACTION call_to_the_desktop
   label: C1/V1 · 📣 Call everyone to the Desktop
   who: admin
+  act: B · Act I: the Desktop, Bingo and the first truth
   description: The inciting event. Push alert, house announcement, every screen.
 
 INTERACTION start_the_bingo
@@ -2595,6 +2624,7 @@ INTERACTION are_you_sure
 INTERACTION second_hunt_preview
   label: 📺 Preview hunt 2 → the ad hijack
   who: admin
+  act: C · The malware, the hour, the Truther Download
   while: Night.step == 6
 
 INTERACTION start_the_second_hunt
@@ -2620,6 +2650,7 @@ INTERACTION summons_closed
 INTERACTION truth_pong
   label: 🏓 Truth Pong
   who: admin
+  act: D · Act II: Truth Pong, the Trust Chart, the beans
   while: Night.step == 9 and Night.summons_closed == true
 
 INTERACTION round_two_tally
@@ -2661,6 +2692,7 @@ INTERACTION trabolta_overshares
 INTERACTION y2k_clock
   label: 🕚 System clock → 11 PM, 31 Dec 1999 (final round, 60 min)
   who: admin
+  act: E · Act III: the Y2K hour and the server room
   description: Fire only after the patch-bay watch radios IN (inside the server room, door shut). From here the first door opening plays The Heart and opens the server room on every phone.
   while: Night.step < 14 and Night.scenario != 0 and Night.clock == "--:--"
 
@@ -2733,6 +2765,7 @@ INTERACTION lights_dance
 INTERACTION restore_the_lights
   label: 💡 Restore the house lights
   who: admin
+  act: Anytime
   sequence: false
 
 // From 🌑 on, each cue's `while:` names the branch of the night it belongs
@@ -2741,6 +2774,7 @@ INTERACTION restore_the_lights
 INTERACTION final_reveal
   label: 🌑 Final Truth Scavenger Hunt reveal
   who: admin
+  act: F · The final reveal and the endings
   while: Night.ended != true and Night.step >= 14 and Night.step < 16 and Night.final_round != true
 
 INTERACTION bobbing_for_truth
@@ -2810,6 +2844,7 @@ INTERACTION clippy_reads_summary
 INTERACTION own_award_lines
   label: ✍ Our own award lines (Trabolta hosts): on / off
   who: admin
+  act: G · The awards ceremony
   sequence: false
   description: For a second director who prepared Trabolta's award lines (job 9.2). Press it once (any time before the awards): each award then plays its fanfare and slide but skips Trabolta's template line, and you post yours as Trabolta in The Desktop right after you fire the award (the TV speaks it). Press again to bring the template lines back. Clippy's lines (after destroyed / rave), the sounds and the slides never change.
 
@@ -2874,6 +2909,7 @@ INTERACTION resurrection
 INTERACTION the simulation completed
   label: Reinstallation: simulation completed (server)
   who: admin
+  act: Anytime
   sequence: false
   description: Fired by the reinstallation games (headset or tablet) for one program when they reach Gerald, the golden duck. Releases a corrupted program.
 
