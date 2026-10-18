@@ -9,7 +9,8 @@
 import { useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { CockpitTab, useCockpit, storyNow, CockpitPhase } from '@/store/cockpit'
-import { cueTitleTags, onDeck, type CueRow } from '@loom/core/cue-sheet'
+import { cueTitleTags, onDeck } from '@loom/core/cue-sheet'
+import { nothingToPress, rowName, shortName } from './now-text'
 import { ArmBar, SubjectPicker, TagChips } from './CueButton'
 import { outOfTurn, useDirector, useNameOf } from './context'
 import { DirectorMode } from './director-keys'
@@ -22,9 +23,6 @@ import { refusalReason, secretHeads, staffReason } from './glance'
 const TAKEN_MS = 5000
 const REFUSED_MS = 15_000
 
-function rowName(r: CueRow): string {
-  return `${r.code ?? r.n} ${cueTitleTags(r.title).title}`
-}
 
 function Countdowns({ items }: { items: LiveCountdown[] }) {
   if (items.length === 0) return null
@@ -168,6 +166,7 @@ function NextBlock({ flash }: { flash: boolean }) {
   const last = d.rows.find((r) => r.last) ?? null
   const deck = onDeck(d.rows)
   const nameOf = useNameOf()
+  const paused = useCockpit((s) => s.phase === CockpitPhase.Paused)
   if (next === null) {
     // What the running order holds after LAST, even off tonight's branch.
     const lastIdx = last === null ? -1 : d.rows.indexOf(last)
@@ -175,7 +174,7 @@ function NextBlock({ flash }: { flash: boolean }) {
     return (
       <div className={clsx('flex flex-col gap-0.5', flash && 'animate-pulse')}>
         <div className="text-base font-semibold text-zinc-100" data-testid="director-next">
-          NEXT — nothing to press. The story runs.
+          {nothingToPress({ last, after, countdowns: countdowns.length, paused })}
         </div>
         <Countdowns items={countdowns} />
         {after !== null && (
@@ -251,11 +250,11 @@ function NowLine() {
     <section className="flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-xl border border-indigo-500/70 bg-indigo-500/10 px-3 py-2 text-sm" data-testid="director-now">
       <span data-testid="cue-last" className="text-zinc-300">
         <span className="text-[10px] uppercase tracking-widest text-zinc-500">Last </span>
-        {last === null ? '—' : rowName(last)}
+        {last === null ? '—' : shortName(last)}
       </span>
       <span className="text-zinc-100" data-testid="director-next">
         <span className="text-[10px] uppercase tracking-widest text-zinc-500">Next </span>
-        {next === null ? '—' : rowName(next)}
+        {next === null ? '—' : shortName(next)}
       </span>
       {countdowns[0] !== undefined && (
         <span className={clsx('tabular-nums', countdowns[0].left < 60 ? 'text-red-400' : 'text-zinc-200')}>
