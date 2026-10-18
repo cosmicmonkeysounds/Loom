@@ -221,7 +221,7 @@ backbone; the SaaS lives entirely in the TS stack.
 
 **Wave 10 — the Director page, built 2026-10-18** (on branches
 `oct31-w10/director-{core,show,editor,phone}`, to merge `--no-ff` in that
-order, then integration + docs; not merged, not deployed; OCT31.md §5
+order, then integration + docs; merged as 3eac8de and **shipped as `w10-1018`** 2026-10-18 (rollback `w9-1018`), checked live; OCT31.md §5
 *Wave 10 status*). Run → Director is rebuilt around *what do I press
 next, and is it safe?*: the show's 66 admin cues sit in eight `act:`
 lines (B, C, D, E, F, G + Anytime; no cue moved, every number kept), a
