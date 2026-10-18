@@ -62,6 +62,8 @@ import {
   type SpaceSummary,
   type WorldEntry,
   type FactsView,
+  type WatchSummary,
+  type CountdownSummary,
   WalletAction,
 } from '@/store/cockpit'
 
@@ -93,6 +95,10 @@ interface ModSnapshot {
   facts?: FactsView | null
   wallet?: WalletModView
   clock?: number
+  /** The Director's board (wave 10): absent from an older server, and
+   *  `watch` absent when the story declares no `watch:` line. */
+  watch?: WatchSummary[]
+  countdowns?: CountdownSummary[]
 }
 
 /** What the server tells every console on a lifecycle transition. */
@@ -170,6 +176,9 @@ const EMPTY_SNAPSHOT = {
   facts: null as FactsView | null,
   wallet: null as WalletModView | null,
   storyClock: null as { ms: number; at: number } | null,
+  watch: [] as WatchSummary[],
+  watchDeclared: false,
+  countdowns: [] as CountdownSummary[],
   ledgerLen: 0,
   world: [] as WorldEntry[],
   modsOnline: null as number | null,
@@ -411,6 +420,9 @@ export const useOperate = create<OperateState>((set, get) => {
         facts: snap.facts ?? null,
         wallet: snap.wallet ?? null,
         storyClock: typeof snap.clock === 'number' ? { ms: snap.clock, at: Date.now() } : null,
+        watch: snap.watch ?? [],
+        watchDeclared: snap.watch !== undefined,
+        countdowns: snap.countdowns ?? [],
         choices: snap.choices ?? {},
         ledgerLen: snap.ledgerLen ?? 0,
         world: snap.world ?? [],
@@ -601,6 +613,9 @@ export const useOperate = create<OperateState>((set, get) => {
     activeTab: CockpitTab.Run,
     activeChannel: 'lobby',
     selection: null,
+    worldFilter: '',
+    ownPress: null,
+    logPress: null,
 
     attach: (projectId) => {
       if (get().projectId === projectId) return
@@ -766,7 +781,18 @@ export const useOperate = create<OperateState>((set, get) => {
     say: (channel, text, as, parentSeq) => withEvent((ev) => modApi.say(ev, channel, text, as, parentSeq)),
     setStat: (id, field, value) => withEvent((ev) => modApi.setStat(ev, id, field, value)),
     fireBeat: (name, subject) => withEvent((ev) => modApi.fireBeat(ev, name, subject)),
-    fireSignal: (name, subject, args, actor) => withEvent((ev) => modApi.fireSignal(ev, name, subject, args, actor)),
+    fireSignal: async (name, subject, args, actor) => {
+      const ev = get().event
+      if (!ev) return { error: 'no run' }
+      set({ ownPress: { name, at: Date.now() } })
+      try {
+        return await modApi.fireSignal(ev.id, name, subject, args, actor)
+      } catch (e) {
+        const error = (e as Error).message
+        set({ error })
+        return { error }
+      }
+    },
     scanAs: async (as, target) => {
       const ev = get().event
       if (!ev) return []
@@ -894,6 +920,8 @@ export const useOperate = create<OperateState>((set, get) => {
     },
 
     setTab: (activeTab) => set({ activeTab }),
+    setWorldFilter: (worldFilter) => set({ worldFilter }),
+    setLogPress: (logPress) => set({ logPress }),
     selectChannel: (activeChannel) => set({ activeChannel }),
     select: (selection: Selection) => set({ selection }),
     setPerspective: (perspective) => {

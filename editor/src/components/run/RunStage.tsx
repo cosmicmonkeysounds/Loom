@@ -21,6 +21,7 @@ import { LogTab } from '@/components/cockpit/LogTab'
 import { MindTab } from '@/components/cockpit/MindTab'
 import { RunCockpit } from '@/components/cockpit/providers'
 import { IdentityControl } from '@/components/cockpit/Identity'
+import { NextCuePill } from '@/components/cockpit/director/NextCuePill'
 import { RunPage } from './RunPage'
 import { LifecycleControls } from './LifecycleControls'
 import { LifecycleBanner } from './LifecycleBanner'
@@ -46,7 +47,7 @@ const TABS: TabSpec[] = [
   { id: CockpitTab.Story, label: 'Story', hint: 'The story map, lighting up with live positions as beats fire', idle: true },
   { id: CockpitTab.Roster, label: 'Roster', hint: 'All guests and the cast as a sortable table, with moderation actions' },
   { id: CockpitTab.World, label: 'World', hint: 'The world state — factions and every live variable, global and per-person', operatorOnly: true },
-  { id: CockpitTab.Director, label: 'Director', hint: 'Fire named events, beats, and broadcasts', operatorOnly: true },
+  { id: CockpitTab.Director, label: 'Director', hint: 'The running order by act, the night at a glance, and event / beat / broadcast tools', operatorOnly: true },
   { id: CockpitTab.Mind, label: 'Mind', hint: 'An agent-voiced character’s mind: the prompts, both models’ reasoning, the arc, and a control panel', operatorOnly: true },
   { id: CockpitTab.Log, label: 'Log', hint: 'The raw ledger, event by event — filter to one participant, export the run' },
 ]
@@ -172,6 +173,7 @@ function StageChrome() {
         </div>
         <span className="ml-auto flex items-center gap-3 pr-1">
           <IdentityControl />
+          <NextCuePill />
           <QuickFire />
           <DecisionsPill />
           <TerminalsPill />

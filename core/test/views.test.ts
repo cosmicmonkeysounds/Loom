@@ -629,6 +629,12 @@ Hello.
     expect(boardFor(Sim.fromSources(BOARD)).watch.filter((w) => w.secret === true).map((w) => w.label)).toEqual(["Door code"]);
   });
 
+  it("the mod view's cast marks a `secret: true` CHARACTER, watched or not", () => {
+    const cast = modView(Sim.fromSources(BOARD), "open", "board").cast;
+    expect(cast.filter((c) => c.secret === true).map((c) => c.id)).toEqual(["Kernel"]);
+    expect(cast.find((c) => c.id === "Ivo Marsh")).not.toHaveProperty("secret");
+  });
+
   it("a `while`-false line is omitted until it holds", () => {
     const sim = Sim.fromSources(BOARD);
     expect(boardFor(sim).watch.map((w) => w.label)).not.toContain("Round");
