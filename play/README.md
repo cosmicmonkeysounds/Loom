@@ -102,9 +102,11 @@ approver's window. The approver's booth sees its held queue in *its*
 Wallet room with **Approve / Deny** (`/api/prime/wallet/{approve,deny}`);
 guests call `/api/guest/wallet/*`. `WalletActionsProvider` carries the
 calls to the cards. Since wave 9 a request card says who stopped its
-payment (`by`, a display name: *⛔ Payment denied by <by>; refunded*, *↩️
-<by> cancelled the payment*, *↩️ You cancelled the payment* on the
-payer's phone only when the payer did) and who closed an open request
+payment (`by`, a display name: *⛔ Payment denied by <by>; refunded*;
+when the payer took it back, *↩️ You cancelled the payment* on the
+payer's phone and *↩️ <payer> cancelled the payment* on the asker's;
+when a director did, *↩️ <by> cancelled your payment* on the payer's and
+*↩️ <by> cancelled <payer>'s payment* on the asker's) and who closed an open request
 (`closedBy`: *↩️ Director cancelled the request*), and the step lines
 read naturally from each side (`possessive`). Tested in
 `test/wallet.test.tsx`.
