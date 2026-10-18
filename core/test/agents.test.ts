@@ -789,13 +789,52 @@ describe("AgentHub", () => {
     h.tick(24);
     h.hub.sweep(); // hold lines; R3 rebuilt with both lines
     h.tick(77);
-    h.hub.sweep(); // R2 given up; R3 times out → B; A back on trial takes B's line → R3 back on A
-    const now = a.holds().find((r) => r.thread.audience[0] === "g-3")!;
+    h.hub.sweep(); // R2 given up; R3 times out → B (A, back on trial, is not handed B's line)
+    const now = [...a.holds(), ...b.holds()].find((r) => r.thread.audience[0] === "g-3")!;
     expect(now).toBeDefined();
+    expect(now.id).not.toBe(v1.id);
     // A's old copy answered only the first line; its reply was on the wire.
     const late = h.hub.settle(v1.id, "A");
     expect(late === null || late.followUp).toBe(true);
+    // A answered: it takes B's line, R3 included, and the new copy is answered once.
     if (late === null) expect(h.hub.settle(now.id, "A")).toEqual({ req: now, followUp: false });
+  });
+
+  it("a head whose timeout stalls its worker goes to a worker that is answering, even with its attempts spent: never given up while one sits idle (review 7)", () => {
+    // The laptop's stream drops mid-reply and comes back at once; the
+    // request already went to the backup (attempt 2), whose model is wedged.
+    const h = hubHarness();
+    const laptop = h.worker("laptop");
+    const backup = h.worker("backup");
+    h.hub.attach(laptop.w);
+    h.hub.attach(backup.w);
+    h.hub.line(T);
+    expect(laptop.requests()).toHaveLength(1);
+    h.hub.detach("laptop");
+    expect(backup.requests()).toHaveLength(1);
+    const back = h.worker("laptop-2");
+    h.hub.attach(back.w);
+    for (let s = 0; s < 125; s++) {
+      h.tick(1000);
+      h.hub.sweep(); // the backup's head times out at 121 s: it stalls
+    }
+    expect(back.holds()).toHaveLength(1);
+    expect(h.held).toHaveLength(0);
+    expect(h.hub.settle(back.holds()[0]!.id, "laptop-2")).not.toBeNull();
+    // Three workers, two wedged: the request passes the second wedged one
+    // on to the third instead of being given up there.
+    const g = hubHarness({ replyTimeoutMs: 10_000 });
+    const [a, b, c] = ["a", "b", "c"].map((id) => g.worker(id));
+    for (const x of [a, b, c]) g.hub.attach(x!.w);
+    g.hub.line(T);
+    expect(a!.requests()).toHaveLength(1);
+    for (let s = 0; s < 25; s++) {
+      g.tick(1000);
+      g.hub.sweep(); // a stalls at 11 s (→ b), b at 21 s (→ c)
+    }
+    expect(c!.holds()).toHaveLength(1);
+    expect(g.hub.settle(c!.holds()[0]!.id, "c")).not.toBeNull();
+    expect(g.held).toHaveLength(0);
   });
 
   it("a line typed while the request is queued after a worker drop is answered after the dropped stream's late answer to the older copy (review 7)", () => {

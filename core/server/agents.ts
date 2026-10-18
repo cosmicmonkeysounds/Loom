@@ -775,16 +775,25 @@ export class AgentHub {
 
   /** `workerId` answered something — a request it holds, or a late answer
    *  the hub refuses (its request was given up, answered by hand, or moved
-   *  on): it is answering. If it had stalled it is back, and the lines of
-   *  the other stalled workers voicing its characters move to it. */
+   *  on): it is answering. If it had stalled or was on trial it is back,
+   *  and the lines of the other stalled workers voicing its characters move
+   *  to it. */
   private answering(workerId: string): void {
     if (!this.workers.has(workerId)) return;
     const was = this.stalled.delete(workerId);
-    this.probation.delete(workerId);
+    const trial = this.probation.delete(workerId);
     this.progress.set(workerId, this.now());
-    if (!was) return;
-    this.o.presence?.();
+    if (!was && !trial) return;
+    if (was) this.o.presence?.();
     this.takeStalledLines(workerId);
+  }
+
+  /** Is a worker voicing `character` answering — neither stalled nor on
+   *  trial? Only such a worker is handed work moved off a stalled one, so
+   *  a line never bounces between workers that are still wedged. */
+  private answeringFor(character: string): boolean {
+    for (const w of this.workers.values()) if (w.characters.has(character) && !this.stalled.has(w.id) && !this.probation.has(w.id)) return true;
+    return false;
   }
 
   /** A worker went away: its in-flight requests go back in the queue. */
@@ -854,12 +863,14 @@ export class AgentHub {
    *  none) — one still answering before a stalled one, so new work never
    *  lines up behind a worker that stopped answering while another can
    *  take it, and one answering before one on probation. `moved`: handed
-   *  over from a stalled worker's line, which is not another attempt. */
+   *  over from a stalled worker's line, which is not another attempt — and
+   *  goes only to a worker answering (`answeringFor`). */
   private dispatch(r: OpenRequest, moved = false): void {
     let best: AgentWorker | null = null;
     let bestLoad = Infinity;
     for (const w of this.workers.values()) {
       if (!w.characters.has(r.req.character)) continue;
+      if (moved && (this.stalled.has(w.id) || this.probation.has(w.id))) continue;
       let load = this.stalled.has(w.id) ? 1e9 : this.probation.has(w.id) ? 0.5 : 0;
       for (const o of this.open.values()) if (o.worker === w.id) load += 1;
       if (load < bestLoad) {
@@ -1008,7 +1019,11 @@ export class AgentHub {
         // The cancel frees the worker for the next in its line: that one's
         // clock starts now, not at its own (long past) dispatch.
         this.startHead(worker);
-        if (r.attempts >= maxAttempts) this.giveUp(id, r);
+        // Its worker stopped answering, not the request: a worker that is
+        // answering takes it as no extra attempt (the queue's max age still
+        // bounds it), never given up while one could answer.
+        if (this.stalled.has(worker) && now - r.req.at <= maxAge && this.answeringFor(r.req.character)) this.dispatch(r, true);
+        else if (r.attempts >= maxAttempts) this.giveUp(id, r);
         else this.dispatch(r); // a worker still answering first, now that this one is stalled
         // The rest of the stalled worker's line goes to one still answering.
         if (stalls) this.moveLine(worker);
@@ -1065,17 +1080,16 @@ export class AgentHub {
       this.probation.add(id);
       this.progress.set(id, now);
       this.o.presence?.();
-      this.takeStalledLines(id);
     }
   }
 
   /** `workerId` just stalled: hand every request in its line to a worker
    *  still answering that character (cancelled on the stalled one, not
-   *  counted as an attempt). A request no healthy worker voices stays. */
+   *  counted as an attempt). A request no worker answering voices stays. */
   private moveLine(workerId: string): void {
     const stalledWorker = this.workers.get(workerId);
-    for (const [id, r] of this.open) {
-      if (r.worker !== workerId || !this.isOnline(r.req.character)) continue;
+    for (const [id, r] of [...this.open]) {
+      if (r.worker !== workerId || !this.answeringFor(r.req.character)) continue;
       stalledWorker?.send("cancel", { id });
       this.o.typing?.(r.req.thread, false);
       r.worker = null;
