@@ -384,6 +384,20 @@ describe("wave 9 — a cut room comes back on unless the next look re-lit it (T8
     }
   });
 
+  it("the patch-bay alarm over the server-room look: a Start Bar cut during it stays with the Y2K look the latch puts back", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    fire(sim, "force_majority_leave");
+    fireAll(sim, "patch_rejected", "patch_rejected");
+    expect([v(sim, "Night.lights"), v(sim, "Night.lights_before_alarm")]).toEqual(["alarm", "server_open"]);
+    advance(sim, 60);
+    cut(sim, "The Start Bar");
+    const after = cues(advance(sim, 95)).filter((c) => c.startsWith("cue lights"));
+    expect(after).toEqual(["cue lights_y2k", "cue lights_server_open"]);
+    expect(v(sim, "Night.lights")).toBe("server_open");
+    expect(v(sim, "Night.lights_back_at")).toBe(0);
+  });
+
   it("the Y2K hour: a RAM cut, then the majority's server-room look → the RAM comes back on", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);

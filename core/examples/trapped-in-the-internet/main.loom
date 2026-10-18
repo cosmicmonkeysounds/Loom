@@ -3844,10 +3844,13 @@ when server_door_opened:
 // alarm look is house-wide (a red strobe everywhere): put back the look it
 // replaced (Server Room Alarm saved it), unless a later cue has already
 // changed the look or the night has ended. The server-room look sits on
-// the Y2K house look, so it needs both.
+// the Y2K house look, so it needs both. Every look put back is house-wide,
+// so it re-lights a room Trabolta cut too: the 90 s room restore is off
+// (after `server_open` it would punch the cut room to full on the Y2K look).
 when Night.alarm_on == true and Time.elapsed >= Night.alarm_clear_at:
   set Night.alarm_on = false
   if Night.ended != true and Night.lights == "alarm":
+    set Night.lights_back_at = 0
     if Night.lights_before_alarm == "server_open":
       cue lights_y2k
       cue lights_server_open
