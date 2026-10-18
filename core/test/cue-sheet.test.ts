@@ -348,6 +348,17 @@ describe("acts on the cue sheet (wave 10: display only)", () => {
     expect(cueTitleTags("Wake the TV (TV mute)").tags).toEqual(["TV mute"]);
   });
 
+  it("cueTitleTags keeps a tag's text unchanged unless it leads with Optional or Alt", () => {
+    // The show's real labels: a name or a capitalised phrase is never mangled.
+    expect(cueTitleTags("🍾 Spin the bottle (Truth or Dare, five per question)").tags).toEqual(["Truth or Dare, five per question"]);
+    expect(cueTitleTags("🎙 The ceremony (Trabolta hosts)").tags).toEqual(["Trabolta hosts"]);
+    expect(cueTitleTags("🦆 Duck found (Reinstallation — backyard)").tags).toEqual(["Reinstallation — backyard"]);
+    // Only the whole lead word counts: `Alternative`, `Optionally` stay as written.
+    expect(cueTitleTags("A cue (Alternative ending)").tags).toEqual(["Alternative ending"]);
+    expect(cueTitleTags("A cue (Optionally later)").tags).toEqual(["Optionally later"]);
+    expect(cueTitleTags("A cue (Optional: if time)").tags).toEqual(["optional: if time"]);
+  });
+
   it("marks are identical with and without act lines", () => {
     // The show, with every `act:` stripped, against the same show tagged as
     // the Director spec splits it (§2.5): the same presses, in and out of

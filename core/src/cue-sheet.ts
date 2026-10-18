@@ -230,11 +230,16 @@ export function onDeck(rows: CueRow[]): CueRow | null {
   return rows.find((r, idx) => idx > at && r.sequence && !r.fired) ?? null;
 }
 
-/** A tag's text: the parenthetical as written, a capitalised first word
- *  lower-cased (`Optional` → `optional`, `Alt, …` → `alt, …`). */
+/** The lead words a tag lower-cases (`Optional` → `optional`, `Alt, …` →
+ *  `alt, …`); every other parenthetical keeps its spelling, so a name
+ *  (`Trabolta hosts`, `Truth or Dare, …`) is never mangled. */
+const TAG_LEAD_WORDS = /^(Optional|Alt)(?![\p{L}\p{N}])/u;
+
+/** A tag's text: the parenthetical as written, unchanged, except a known
+ *  lead word (`TAG_LEAD_WORDS`) lower-cased. */
 function tagText(inner: string): string {
   const t = inner.trim();
-  return /^\p{Lu}\p{Ll}/u.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
+  return TAG_LEAD_WORDS.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
 }
 
 /**
