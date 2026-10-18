@@ -25,13 +25,24 @@ then *✅ settled*. Nothing is final until the card says so.
 At the bottom of the Wallet:
 
 - **💸 Send** — pick a person, type an amount. Whole coins, up to a limit
-  the story sets, and never more than you have.
+  the story sets, and never more than you have. Coin goes to people
+  like you: a character the cast plays has no wallet. At *Trapped in the
+  Internet* a bet settles player to player — the winner sends a 🙏
+  Request, the loser pays — and McAfee only referees.
 - **🙏 Request** — ask someone for coin. They get a card with **Pay** /
   **Decline**; it expires if nobody answers (the story says how long —
   ten minutes, usually). Once the payment goes through, both cards close:
   *✅ Paid — you sent 40 Truthcoin* on the payer's, *✅ Paid — Paint sent
   40 Truthcoin* on yours. A payment the auditor denies, or one cancelled
-  while it was held, closes both cards too.
+  while it was held, closes both cards too, and the card says who
+  stopped it: *⛔ Payment denied by CRA Agent Software; refunded* (on
+  the payer's phone, *… denied your payment; refunded*). A payment the
+  payer took back reads *↩️ You cancelled the payment* on their phone
+  and *↩️ Paint cancelled the payment* on yours. One a director took
+  back reads *↩️ Director cancelled your payment* on the payer's phone
+  and *↩️ Director cancelled Paint's payment* on yours. If a
+  director closes a request nobody has paid yet, both cards say *↩️
+  Director cancelled the request*, never that the asker withdrew it.
 - **💱 Trade a fact** — offer one of your Codex entries for coin, or
   offer coin for one of theirs. The other side gets **Accept** /
   **Decline**. The moment they accept, the coin moves *and* the entry is

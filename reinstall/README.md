@@ -67,9 +67,13 @@ simulation, and the tablet posts `chess won` to the story with its
 moderator token. A loss or a draw posts `chess lost` / `chess drawn` and
 deals a fresh board at the same stage ("STALEMATE. AGAIN."): only
 checkmate fells him. The story keeps its Y2K gate: the board's badge reads
-**FOR THE CODE** from step 14 and **PRACTICE** before it (the badge reads
-`Night.step` off the mod view), with a line under it saying what a
-checkmate wins. From step 14 the story gives the winner the **real
+**FOR THE CODE** from step 14 and **PRACTICE** before it, with a line
+under it saying what a checkmate wins. Since wave 9 the badge reads the
+story's `Night.king_armed` off the mod view (1 from the Y2K hour until
+📄 truth.txt or an ending): 0 with `Night.r3_closed` reads like an ending
+(no badge, no win line — after 📄 a win gives no door code), 0 earlier
+reads PRACTICE, and a story without the variable falls back to the map's
+`armed` gate (`Night.step`); the maps are unchanged. From step 14 the story gives the winner the **real
 server-room door's code** (*The Door Code*, in their Codex) — the real
 door has a standalone keypad lock, and nothing the tablet does opens it;
 before step 14 `# hosts` says the win is practice. At checkmate the

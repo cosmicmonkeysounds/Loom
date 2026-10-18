@@ -237,10 +237,14 @@ domain's MX points (e.g. ImprovMX → your Gmail) — Resend only sends.
   and nothing journaled, 8/60), `LOOM_RL_WIDGETS` (widget answers per
   guest, 20/60), `LOOM_RL_WALLET` (wallet calls per guest — sends,
   requests, offers, the stimulus — 30/60, the only brake on a phone
-  flooding the approver's queue). At the party every phone on the house Wi-Fi reaches the
+  flooding the approver's queue), `LOOM_RL_QR` (`/api/qr` per IP, 60/60:
+  since wave 9 only the editor's Run join QR uses it — guest passes are
+  drawn on the phone). At the party every phone on the house Wi-Fi reaches the
   VPS from **one** public IP, so the night's `.env` raises the per-IP ones:
   `LOOM_RL_RESOLVE=600`, `LOOM_RL_REGISTER=400`,
-  `LOOM_RL_LOGIN_FAILURES=100/300`.
+  `LOOM_RL_LOGIN_FAILURES=100/300`. A locked-out IP still lets the right
+  **guest** event code through (a house full of phones shares the IP);
+  wrong codes and the performer and mod codes stay locked out.
 - **Check them**: `deploy/release.sh --check-env` (on the VPS, in the
   checkout) warns about any of those three below the night's value, a
   blank VAPID key and a `LOOM_BASE_URL` that isn't `https://`, and ends
@@ -501,6 +505,24 @@ the journaled director broadcast, so those alerts vanish and every later
 message shifts its seq (a hidden message comes back, answered cards are
 asked again). Restart the story before guests, after a rollback too.
 
+**Deploy order (Wave 9).** Ship the server first (`w9-1018`; the
+rollback is `w8-1018`), then `sync-show` and **let it reload**: wave 9's
+story refuses presses wave 8 accepted (📺 after one 📋, 🕚 as a
+shortcut, 📓 / ⏳ / 🏓 / 🤖 out of turn), so a wave 8 journal replayed
+against the wave 9 text diverges. The reload restarts the show's event
+fresh on the new text; never sync this one with `--no-reload`, and
+restart any other non-ended event before a guest uses it if it gets the
+new text. The server alone changes no journal: it writes the same ops,
+and an old journal replays the same story with only the wallet cards
+reworded (same cards, same seqs). Rolling back to `w8-1018` is clean
+for the same reason (the wallet cards go back to the old wording, and
+G11's first press ticks again). Then restart the house Mac's stagehand
+`show` job (`uv run stagehand launchd restart --job show`: new catch-up rules
+in `trapped.house.yaml`), sideload the new Quest APK only after the
+server is up (it reads the found reply's `captured`), and reload every
+terminal and the tent tablet. The maps are unchanged: no
+`--replace-maps`.
+
 The **VR game** (`reinstall/vr/`, Godot, Quest 3) is not in any image:
 export it to the headsets from a laptop (`reinstall/vr/README.md`) and
 point each headset's `station.json` at the public URL + the moderator
@@ -618,8 +640,10 @@ agent-voiced character older than ten story-minutes isn't asked again.
 LOOM_SSH=ubuntu@app.mapsandducks.com scripts/sync-show.sh
 # options (env): LOOM_PROJECT="Untitled Project"  LOOM_VPS_DIR=loom
 #   LOOM_SERVER=https://app.mapsandducks.com  LOOM_EXAMPLE=trapped-in-the-internet
-# --no-reload saves the files + snapshot without restarting the event;
-# --dry-run prints the plan; --i-know-this-is-live reloads a live show anyway.
+# --no-reload saves the files + snapshot without restarting the event
+#   (and folds them into any open editor tabs, POST /e/:id/api/mod/resync);
+# --dry-run prints the plan; --i-know-this-is-live (or
+#   LOOM_I_KNOW_THIS_IS_LIVE=1) reloads a live show anyway.
 ```
 
 It tunnels to the VPS's Postgres container over SSH (the db publishes no
@@ -627,10 +651,24 @@ port; the password is read from the VPS's `.env`), runs
 `core/scripts/sync-example.ts` through the tunnel, and reloads the running
 event over `https://app…` — a real cut, every guest re-joins, so **never
 after doors**. It guards that itself: on a **live** event with a real
-guest on its roster (anyone but a director's persona) it writes the
-project's files, leaves the event alone (snapshot untouched, no reload)
-and exits **3** — use Run's *Push draft* (typed confirm) instead, or
-re-run with `--i-know-this-is-live`. A preview is never guarded. It carries `facts.json` and the house maps with the
+guest on its roster (anyone but a director's persona), or a live event
+whose roster it can't read, it writes the
+project's files, leaves the event alone (snapshot untouched, no reload,
+with or without `--no-reload`) and exits **3** — *sync-show: the event
+is LIVE with real guests (or its roster can't be read) — files written,
+event snapshot untouched, NOT reloaded (exit 3)*. Use Run's *Push draft*
+(typed confirm) instead, or re-run with `--i-know-this-is-live`
+(`LOOM_I_KNOW_THIS_IS_LIVE=1` where a flag can't reach: `pnpm dev
+--sync`, `pnpm sync-example`). `pnpm sync-example` keeps exit 3; `pnpm
+dev --sync` prints a yellow *[sync] the event is LIVE …* line and keeps
+the dev stack running. A preview is never guarded. Open editor tabs
+follow a sync that reloads the event or runs with `--no-reload`: a file
+it rewrote replaces the open copy for every co-writer, even one with
+unsaved edits in it (those are dropped, with a log line); the other
+files keep theirs. A sync the guard stopped (exit 3) calls neither, so
+open tabs keep the pre-sync text until someone types there: that edit
+is dropped (logged) and the synced text folds in. That is the show-night
+case, so close and reopen the synced files before typing. It carries `facts.json` and the house maps with the
 story, so a server that predates them must be shipped **first** (§5¾
 *Deploy order*). `scripts/accept/k01.sh` (needs `LOOM_MOD_CODE`) checks the
 three front doors, that `/api/mod/codes` hands out the `LOOM_BASE_URL`
@@ -763,7 +801,14 @@ the second director, not only John.
 `200 {"ok":true,"controlPlane":true,"events":N}` once the server is up and,
 with a database, its control plane is on and the boot rehydrate of every
 live event has finished; until then `503 {"ok":false,"reason":"database"}`
-(still retrying Postgres) or `{"reason":"starting"}`. The compose
+(still retrying Postgres) or `{"reason":"starting"}`. Two more reasons
+stay 503 until someone acts: `config` (the server refused the dev
+`BETTER_AUTH_SECRET` on a deployment) and `events` with `failed: [ids]`
+(a live event whose state would not load; that event answers `503
+{"error":"event failed to load"}` with `retry-after: 5`, and the log
+says `⚠️ could not rehydrate event <id>`). Alert on any 503; don't match
+on the reason. On a LAN box with no database it stays 200 and lists
+`failed` in the body. The compose
 healthcheck, `release.sh`, `rollback.sh` and `checklist.sh --probe` all
 read it. While it says `starting`, phones asking for an event that is not
 back yet get `503 {"error":"starting"}` with `retry-after: 1`, not
@@ -792,9 +837,17 @@ shell at `/`.
   log says `control plane disabled — database unreachable` or `waiting for
   the database`** — Postgres isn't answering: `docker compose ps db`,
   `docker compose logs db`. The entrypoint waits 60 s for it
-  (`LOOM_DB_WAIT`), then exits so the restart policy tries again; the
-  server keeps retrying too and brings every live event back once the
-  database answers — no second restart needed.
+  (`LOOM_DB_WAIT`, whole seconds), then exits so the restart policy
+  tries again; the server keeps retrying too (1 s doubling to 15 s,
+  `⏳ database not ready — retrying in N s …`) and brings every live
+  event back once the database answers (`✅ database reachable after N
+  retries — control plane up`) — no second restart needed.
+  `LOOM_DB_WAIT=off` (or `0`) means one probe and no wait: the
+  entrypoint still exits while the database is down, and a server
+  started without the entrypoint keeps its control plane off. A scratch server pointed at a dead `DATABASE_URL` needs
+  `LOOM_DB_WAIT=off`, or it retries forever: `/api/health` answers 503
+  `database`, and an unknown `/e/<id>` or a code `resolve-code` doesn't
+  know answers 503 `starting`. The LAN default event still plays.
 - **The log says `the database refused the credentials — check
   POSTGRES_PASSWORD in .env (28P01 …)` or `no such database (3D000 …)`**
   — Postgres answers but won't let loom in, which no restart fixes, so the

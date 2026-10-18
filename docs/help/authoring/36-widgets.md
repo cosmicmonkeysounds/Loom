@@ -157,7 +157,8 @@ answer, the confidence, the judge's proposal and the outcome — *kept*
 *marked* or *pending*. The time is when the server first saw the filing,
 so a restart or a pushed draft re-stamps every one; whether a kept
 proposal was settled automatically or confirmed, and by whom, isn't
-recorded.
+recorded. Each row has its own ✅ / 😤 / 🤷 to override that filing, in
+either mode ([the mind debugger](mind-debugger.md)).
 
 **Talking to the judge's ledger.** Three `do` verbs keep the Judging
 card's tallies and let the story draw a name:

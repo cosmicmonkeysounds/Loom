@@ -17,7 +17,10 @@ itself deciding you've earned a door.
 
 In a private room you belong to, use **＋ Invite** and pick a person
 from the roster. Choose wisely — a room is only as secret as its
-loosest member.
+loosest member. The story decides who may invite: usually any member,
+sometimes only one kind of guest, never someone outside the room. You
+can't invite yourself in, and an open room takes no invites (everyone
+is already welcome).
 
 ## Leaving
 

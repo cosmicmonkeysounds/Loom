@@ -63,9 +63,11 @@ conversation reads) and never lets him say one — the mind file's
    seconds of hitting in all; four by default). Each stage is a weaker
    chess machine, down to a king with nothing but his eight pawns.
 3. **♟ CHALLENGE** (or **C**) opens the board. A badge on it reads
-   **FOR THE CODE** from the Y2K hour and **PRACTICE** before it (the
-   map's `armed:` reads `Night.step`), with a line under it saying what
-   a checkmate wins. Checkmate fells him — *"CHECKMATE — the King
+   **FOR THE CODE** from the Y2K hour and **PRACTICE** before it, with
+   a line under it saying what a checkmate wins. The tablet reads the
+   story's `Night.king_armed` (1 from the Y2K hour until 📄 truth.txt
+   or an ending, else 0; a story without it falls back to the map's
+   `armed:` gate): after 📄 there is no badge and no win line. Checkmate fells him — *"CHECKMATE — the King
    falls."* — the door in the simulation opens, and the tablet posts
    `chess won` for that program, journaled as the tablet's doing. Once
    it lands the tablet says *"The server-room door code is in your
@@ -99,6 +101,9 @@ conversation reads) and never lets him say one — the mind file's
   beat the King: the door code is in their Codex."* A second win (a ♟
   after the tablet's own post, a late retry, a winner playing again)
   changes nothing but a `# hosts` note.
+- **After 📄 truth.txt** a win only tells `# hosts`: *"♟ A King win
+  after truth.txt: the verdict is in, no door code. Nothing happens in
+  the story."*
 - **A loss or a draw** wins nothing. `# hosts` gets a readout every time,
   and Trabolta gloats on the TV in The Desktop at most once every five
   minutes (losses and draws share the window), and never from the final
@@ -202,6 +207,10 @@ A majority or The Heart while the alarm look is up keeps the siren and
 the alarm look; their server-room look goes up when the latch clears.
 Before the Y2K clock the bay, combos included, does nothing.
 
+When the alarm's look comes down it also cancels a cut room's 90-second
+restore still pending (the latch puts the whole house back on), so a
+room Trabolta cut never comes back fully lit over the Y2K look.
+
 **🔄 Server room: reset the patch-bay alarm** (after a rehearsal, or a
 wrong patch the crew forgave) clears the wrong-combination count (the
 bay forgives one again), the alarm latch and The Heart (the next opening
@@ -221,7 +230,9 @@ or the bob, before 📄, still ends the night.
 During the **banishment** (the advice ending) nobody is reinstalled: a
 duck found on the tent tablet says only *"Gerald cannot help you:
 everyone is banished. The way out is the hand jive, together."* — no
-golden egg, no Golden Duck in the Codex — and the TV keeps the banish
+golden egg, no Golden Duck in the Codex. The tablet and the headset
+show **GERALD CAN'T HELP** instead of the reinstallation, the wall
+terminals' window the same with no egg, and the TV keeps the banish
 card. The hand jive frees everyone and puts the screensaver back on
 every screen.
 

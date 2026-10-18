@@ -101,7 +101,15 @@ accept / decline / cancel, a countdown while a send waits in the
 approver's window. The approver's booth sees its held queue in *its*
 Wallet room with **Approve / Deny** (`/api/prime/wallet/{approve,deny}`);
 guests call `/api/guest/wallet/*`. `WalletActionsProvider` carries the
-calls to the cards. Tested in `test/wallet.test.tsx`.
+calls to the cards. Since wave 9 a request card says who stopped its
+payment (`by`, a display name: *⛔ Payment denied by <by>; refunded*;
+when the payer took it back, *↩️ You cancelled the payment* on the
+payer's phone and *↩️ <payer> cancelled the payment* on the asker's;
+when a director did, *↩️ <by> cancelled your payment* on the payer's and
+*↩️ <by> cancelled <payer>'s payment* on the asker's) and who closed an open request
+(`closedBy`: *↩️ Director cancelled the request*), and the step lines
+read naturally from each side (`possessive`). Tested in
+`test/wallet.test.tsx`.
 
 **📌 Pins + ⛔ restricted (Oct 31 wave 4).** A story's `pin "…"` is a
 sticky notice: `pins.ts` `activePins` keeps the newest pin per (room,
@@ -182,7 +190,9 @@ faction-mates + people you share a gated room with), not the whole event.
 the channel's current members (open → everyone). The composer clears only
 once the send resolves (`sendFromComposer`): a refused line stays in the
 box and banners the server's reason (`sayRefusalText`: ⏳ slow mode, ⏸
-paused, ⛔ the rest); no answer within `SAY_TIMEOUT_MS` (15 s,
+paused, ⛔ the rest; a 413 reads *✂️ Not sent: <error>. Your message is
+still in the box — shorten it and send again.*, and the composer stops
+at `CHAT_TEXT_MAX` = 2,000 characters, the server's cap); no answer within `SAY_TIMEOUT_MS` (15 s,
 `withTimeout`) gives Send back with a check-your-connection banner. Each
 room's composer is keyed by the room (a reply box by its thread), so a
 draft never follows the guest into another room. A refused **Share…**
@@ -192,6 +202,17 @@ banners `shareErrorText` the same way.
 the root's `seq` as `parentSeq`, the channel shows a *"N replies"*
 affordance, and opening it shows the thread panel (root + replies + a reply
 composer). Threading is single-level.
+
+**Streams reopen (wave 9).** `useChatStream` runs on the pure
+`openChatFeed` (`src/client.ts`, tested with a fake EventSource and
+clock in `test/client-reopen.test.ts`): an `EventSource` closed for good
+(a Caddy 502 while loom restarts) asks its `probe` whether the session
+is alive — `"reset"` / `"ended"` drop it as before, alive reopens on a
+backoff (1 s doubling to 15 s, jittered, reset on a good open), and
+coming back online, into view or out of the bfcache reopens at once.
+The header dot reads **reconnecting…** while down; the cutscene stage
+shows a **RECONNECTING…** strip after 5 s. A caller with no `probe`
+(the terminal's pilot) keeps the old rule: `onDead` at once.
 
 **Sender runs (Slack/Discord).** Consecutive `line`s from one sender within
 five story-minutes coalesce under a single colored screen-name banner;
@@ -208,7 +229,10 @@ badges and sorts to the top, so a choice left unmade always pulls focus.
   arrive via a `?code=` link / QR that pre-fills it) → an inbox of
   conversation threads with a status HUD (faction · score · location ·
   captured) and a profile sheet (QR pass · defect · leave; a restricted
-  guest gets no side chooser or defect buttons, `defectTargets`). Re-login
+  guest gets no side chooser or defect buttons, `defectTargets`). The
+  pass QR is drawn in the browser (`src/pass-qr.tsx`, `PassQr`, `qrcode`
+  ^1.5.4, the same margin and error correction as `/api/qr`) at all three
+  pass sites — the play app never calls `/api/qr`. Re-login
   restores every thread.
 - **🎭 Performer** — sign in as a character → the *same* threaded surface,
   recomposed for the booth: a pinned **Scanner** thread (camera via
@@ -231,7 +255,8 @@ badges and sorts to the top, so a choice left unmade always pulls focus.
   K-21 cue sheet on a phone (the rows are core's `src/cue-sheet.ts`,
   imported by path). Mod passcode + a name → `/api/mod/login`; polls
   the lean `GET /api/state?role=mod&cues=1` (just the cue sheet) every 3 s
-  (parked while hidden, backing off on errors); tap to arm, tap again to
+  (parked while hidden, backing off on errors, polling at once when
+  the network comes back, `onOnline`); tap to arm, tap again to
   fire (8 s timeout; no answer reads "not sure it fired") `/api/mod/signal {name, subject?,
   label: "Phone · <name>"}`; a subject cue (an award) picks a person first,
   and only an `award_*` cue (`takesValue`) shows the optional **Value** box
@@ -307,6 +332,7 @@ src/
   alerts.ts     # `!` alerts: chime, buzz, banner, the last-seen mark (K-06 / N-07)
   push.ts       # Web Push subscribe / re-bind / release + visibility beacons (K-31a); push-card.tsx = the 🔔 card
   checkin.ts    # ?checkin=<slug> room signs (K-13) · resume.ts = ?pair= re-pair links (N-02)
+  pass-qr.tsx   # the guest pass QR, drawn in the browser (wave 9)
   scanner.tsx   # booth camera (BarcodeDetector, else jsQR) · scan.ts = what a code means (N-01)
   wake-lock.ts  # ☰ → Keep my screen on
   main.tsx      # entry

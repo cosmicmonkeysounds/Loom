@@ -109,7 +109,9 @@ in the simulation walks past it as a ghost with their name over it, and
 from inside they see the terminal glowing on the wall. When nobody is in
 its room, it follows whoever is playing, over their shoulder, with a
 little map of the floor and a banner — **REINSTALLATION IN PROGRESS** —
-naming who and where. When someone finds the duck, it celebrates.
+naming who and where. When someone finds the duck, it celebrates. On
+a night the story keeps everyone in the Internet, a find shows **GERALD
+CAN'T HELP** instead, with no golden egg.
 
 Scan your pass and the face comes back: the line is yours. When nobody
 is in the simulation, the face is all there is.

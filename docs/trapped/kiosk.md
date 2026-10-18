@@ -125,6 +125,12 @@ voice* (TEST VOICE plays it). Never pick Samantha (or whatever
 `say_voice` is in `stagehand/trapped.house.yaml`). The TV leaves *say the
 house announcements* **off** — the living room hears the house speakers.
 
+- Focus → **Do Not Disturb** on for the whole night, with *Allow
+  notifications when mirroring or sharing the display* **off**, so no
+  banner lands on the TV. `scripts/ops/showbackup.sh` is silent by
+  default since wave 9 (a failure is logged only; `LOOM_NOTIFY=1` for a
+  banner, `LOOM_NOTIFY_SOUND=<name>` for a sound), so leave both unset on
+  this Mac.
 - System Settings → Lock Screen → *Turn display off on power adapter when
   inactive*: **Never**; Energy → *Prevent automatic sleeping when the
   display is off* ✔. The page's Wake Lock also holds the display while the

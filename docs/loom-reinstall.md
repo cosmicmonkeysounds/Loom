@@ -498,10 +498,10 @@ calls; it can do nothing else.
 | `POST /api/mod/spatial/begin` | mod | `{guest, world: "vr" \| "web", device, station?}` | 409 no scenario · 404 unknown guest · 400 bad world · 503 no map · 200 `Assignment` (below). An active session for the same guest is ended (`leave {reason: "replaced"}`). With `station`, the assignment is parked for that station until it claims it, and an older assignment still parked there is ended (`replaced`). |
 | `GET /api/mod/spatial/station` | mod | `?id=vr-1&name=Headset 1&world=vr` | marks the station seen; `{assignment: Assignment \| null}` — the newest unclaimed assignment for it |
 | `GET /api/mod/spatial/stations` | mod | — | `{stations: [{id, name, world, online (seen < 5 s), busy: {session, guest, name} \| null}]}` |
-| `GET /api/mod/spatial/candidates` | mod | — | `{players: [{id, name, captured, location}]}` — every guest/persona, captured first then by name |
+| `GET /api/mod/spatial/candidates` | mod | — | `{players: [{id, name, captured, restricted, location}]}` — every guest/persona, captured first, then restricted (marked by the story or held by a director, not captured yet), then by name |
 | `POST /api/mod/spatial/end` | mod | `{session}` | `{ok}` |
 | `POST /api/spatial/pose` | session token (`x-loom-token`) | `{p: Vec3, yaw, pitch?, t?}` (≤ 2 KB body, read before the generic 4 MiB parse); `p` is the player's **feet** (the floor point under the body — the eye is 1.6 m above it), `yaw` the view direction, `pitch` the head (degrees, + = up) | 204 · 400 malformed · 401 unknown token · 410 session over (the last 1000 ended tokens are remembered). First pose **claims** a parked assignment — and ends any *other* session on that station (`leave {reason: "replaced"}`: a headset that crashed mid-game never ended its last one). Poses (and the stream) **ignore pause**: they never touch the story. |
-| `POST /api/spatial/found` | session token | `{}` | 401 / 410 as for poses · 409 `{error: "doors are closed"}` while the event is not open (paused, or before the doors open) — the session stays un-found, so the game's retry lands after resume · 409 `{error: "this session has not started — send a pose first"}` for a parked assignment no pose has claimed · 409 `{error: "not near the duck", distance, dy}` unless the last pose is within 2.0 m (plan, `FOUND_PLAN_M`) of the duck **and** either within 1.2 m of its height (`DUCK_MAX_RISE`; a pose is the feet) or on the same floor (`floorOf`) — `nearDuck` · 200 `{ok, released, already}`; commits `signal("the simulation completed", guest)` then `signal("the golden duck", guest)`, journaled `by` the session's `device`, and appends the run (`DuckRun`: guest, name, world, device, `ms` from the begin — or a parked assignment's claiming pose — to the find, less any time the doors were closed — a pause mid-run is not the player's time) to `spatial-runs.jsonl` in the event's state dir, which `/api/mod/recap`'s `duck` board reads (cleared by a story restart). A repeat answers `already` without committing. |
+| `POST /api/spatial/found` | session token | `{}` | 401 / 410 as for poses · 409 `{error: "doors are closed"}` while the event is not open (paused, or before the doors open) — the session stays un-found, so the game's retry lands after resume · 409 `{error: "this session has not started — send a pose first"}` for a parked assignment no pose has claimed · 409 `{error: "not near the duck", distance, dy}` unless the last pose is within 2.0 m (plan, `FOUND_PLAN_M`) of the duck **and** either within 1.2 m of its height (`DUCK_MAX_RISE`; a pose is the feet) or on the same floor (`floorOf`) — `nearDuck` · 200 `{ok, released, captured, already}` (`captured`: the program is still captured after the commit — the story kept them, e.g. the banishment; wave 9); commits `signal("the simulation completed", guest)` then `signal("the golden duck", guest)`, journaled `by` the session's `device`, and appends the run (`DuckRun`: guest, name, world, device, `ms` from the begin — or a parked assignment's claiming pose — to the find, less any time the doors were closed — a pause mid-run is not the player's time) to `spatial-runs.jsonl` in the event's state dir, which `/api/mod/recap`'s `duck` board reads (cleared by a story restart). A repeat answers `already` without committing. |
 | `POST /api/spatial/end` | session token | `{}` | `{ok}` |
 | `GET /api/spatial/stream` | mod (`?token=` / author session) or session token | `?name=Kitchen` | SSE, below |
 
@@ -531,7 +531,7 @@ found last (when another spot remains).
 | `hello` | `{eventId, houseVersion, players: PlayerState[]}` |
 | `join` | `{player: PlayerState}` |
 | `poses` | `{t, players: [{session, p, yaw, pitch, room, floor}]}` — every 100 ms, only players whose pose changed since the last flush |
-| `found` | `{session, guest, name, duck, released}` |
+| `found` | `{session, guest, name, duck, released, captured}` — `captured` as in the POST reply (wave 9; an older server sends none, read as never kept) |
 | `leave` | `{session, reason: "ended" \| "found" \| "timeout" \| "replaced" \| "reset"}` |
 | `house` | `{version}` — refetch the map |
 | `duck` | `{session, duck: DuckSpot}` — sent right after a `house` frame, once per player on the stream whose duck moved (another position or room) or was re-dealt (its spot is gone). Never for a parked assignment (it reads its duck from `GET /api/spatial/house`) or a session that already found its duck (that duck stays put) |
@@ -543,7 +543,10 @@ with `locate`. A session with no pose for 60 s leaves (`timeout`); a found
 session lingers 8 s (so terminals can celebrate) then leaves (`found`). A
 parked assignment is not a player yet (no `join` until its first pose); one
 nobody claims within 5 min is dropped. `released` (in `found` frames and
-the `found` response) means the program was captured and no longer is.
+the `found` response) means the program was captured and no longer is;
+`captured` true with `released` false is a **kept** find: every client
+shows *GERALD CAN'T HELP*, with no egg and no fanfare (the tablet, the
+headset, the terminals' window and the TV mirror).
 `EventRuntime.restart()` ends every session (`reset`), `dispose()` ends the
 streams. A server **process** restart (a crash, a redeploy, SIGTERM) loses
 every session and parked assignment, since tokens live in memory: the
@@ -580,7 +583,15 @@ device name, role) → **scan** (camera via the terminal's `Scanner`, typed
 name fallback via `candidates`) → for a scanned program, **Play here** or
 **Send to <station>** (online VR stations listed) → **play** → **found**
 (the duck lays a golden egg and flies; "Reinstallation complete" or, for a
-program that wasn't corrupted, "You found Gerald") → back to scan.
+program that wasn't corrupted, "You found Gerald"; for a kept find —
+`released` false, `captured` true, else the captured state the walk began
+with — "GERALD CAN'T HELP": *Gerald can't help <name> tonight. The
+Internet keeps you — your phone says what happens next.*, progress
+*Nothing to copy*, no egg, decided by `findOutcome` in `game/hud.ts`) →
+back to scan. A restricted, not-captured program reads *Restricted
+program detected* / *STATUS: RESTRICTED — if marked, Play here begins the
+reinstallation*, and the scan screen lists them under *Restricted —
+marked, or held by a director*.
 Provisioning link: `/reinstall/?code=<mod>&name=Tent tablet`. The scan
 step's **⚙ Setup…** and **🗺 House map** open only after a 2 s hold
 (`kiosk.ts`, a copy of the terminal's `useLongPress`; W-15): the tablet
@@ -617,7 +628,8 @@ reach. A 409 "not near the duck" buzzes and is retried on a backoff
 (`foundRetryMs`: 1.5 s, 3 s, 6 s, then every 10 s); a 409 "doors are
 closed" is **paused**, not far: the HUD says "The simulation is paused —
 Gerald will wait for you.", no buzz, same backoff, so the find lands right
-after resume. Poses at 10 Hz, latest-only (never queue).
+after resume. Each held retry touches the idle leash (`heldFind`), so a
+long pause at Gerald never times the session out. Poses at 10 Hz, latest-only (never queue).
 
 Session lifecycle:
 
@@ -628,6 +640,10 @@ Session lifecycle:
   (`timeout`) instead of every terminal showing a frozen ghost; coming
   back resumes the countdown where it was (and a session that timed out
   meanwhile learns it from the 410).
+- **The stream reopens.** The tablet's and the map page's spatial
+  stream reopen after a refusal (a Caddy 502 while loom restarts) on a
+  1 s → 15 s backoff, unless a check of the same token says it is
+  revoked or the event is gone (401 / 403 / 404).
 - **Leaving the page** (`pagehide`: reload, close, navigate) ends the
   session at once (`POST /api/spatial/end`, a keepalive fetch that
   outlives the unload).
@@ -682,7 +698,10 @@ result still on its way is kept across a reload for 60 s (below).
   eight pawns against a full side). 💡 Hint shows a good move for 2 s
   (10 s cooldown); Give up abandons — nothing changes. A badge reads
   **FOR THE CODE** / **PRACTICE** (wave 7; was ARMED) when the prop
-  declares `armed` (`fetchArmed`: the world var off `GET /api/state?role=mod`,
+  declares `armed`, read from the story's `Night.king_armed` when it has
+  one (wave 9: 1 = FOR THE CODE; 0 with `Night.r3_closed` = after 📄
+  truth.txt, read like an ending; 0 earlier = PRACTICE), else the prop's
+  `armed` gate (`fetchArmed`: the world var off `GET /api/state?role=mod`,
   given up after 4 s, `ARMED_TIMEOUT_MS`; no badge while unknown), with a
   `stakesLine` under it saying what a checkmate wins. Once `Night.ended`
   is true the read answers `NIGHT_ENDED`: the badge goes (whatever an
@@ -839,7 +858,9 @@ copy of this very room) while a player is in the terminal's room; else
 their room named); a corner **mini-map** of the floor with every player's
 dot and the terminal's cone `horizontalFov` wide; a `duck` frame moves
 that player's unfound duck on screen; name tags over ghosts; a banner "REINSTALLATION IN
-PROGRESS · <name> · <room>"; a celebration on `found`. Rendering is capped
+PROGRESS · <name> · <room>"; a celebration on `found` (a kept find —
+`captured` true, nothing released — reads "GERALD CAN'T HELP" with a
+plain border and no egg). Rendering is capped
 at 30 fps and pauses when hidden; poses are interpolated ~120 ms behind.
 Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&view=auto`.
 
@@ -889,7 +910,10 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
 - `game/`: lobby (a dark room: "Scan your pass on the tablet" + a joystick
   picker of candidates — up/down chooses, hold right 1 s to confirm),
   play (duck, indicator trail, ghosts), found (egg, flight, "Reinstallation
-  complete"), back to lobby. Headset off (`user_presence_changed`) ends the
+  complete"; a find the story kept — nothing released, still captured —
+  says "GERALD CAN'T HELP" and the duck stays put; a find by a program that
+  was never captured releases nobody too, and reads "YOU FOUND GERALD"
+  with the egg and the flight, as on the tablet), back to lobby. Headset off (`user_presence_changed`) ends the
   session after a 2 s grace; without that extension, losing focus ends it
   after 15 s. The grace runs on the **wall clock**, so a headset that went
   to sleep and is handed on later starts in the lobby, not in the last

@@ -66,7 +66,19 @@ Trades (offers) never pass the approver, and a request that is paid
 becomes an ordinary transfer, audited like one. When that payment
 settles, is denied or is cancelled, the request's card closes in both
 parties' Wallets (*✅ Paid — you sent 40 Truthcoin* on the payer's, *✅
-Paid — Paint sent 40 Truthcoin* on the asker's).
+Paid — Paint sent 40 Truthcoin* on the asker's). A card closed by
+someone names them, as a display name (*Director*, a guest's name, *CRA
+Agent Software*), and each side reads it its own way: *⛔ CRA Agent
+Software denied your payment of 40 Truthcoin; refunded.* on the payer's
+thread, *… denied DraftKings' payment …* on the asker's; *↩️ You
+cancelled the payment* / *↩️ Director cancelled your payment*. A
+director closing a request nobody paid reads *↩️ Director cancelled
+Paint's request for 40 Truthcoin.*, never as the asker's withdrawal.
+
+Coin moves between guests only. A send or a request to a character
+answers 404 *unknown recipient* (a performer has no wallet), so a game
+with stakes settles player to player: the winner sends a 🙏 request,
+the loser pays.
 
 ## What the guests get
 
