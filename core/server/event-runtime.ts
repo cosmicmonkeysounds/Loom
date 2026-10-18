@@ -1006,7 +1006,8 @@ export class EventRuntime {
    *  the chat timeline restarts (seqs from 0 again), so a client that kept
    *  the old feed would interleave stale rows with new ones. */
   private pushHistory(): void {
-    this.modPrev = null; // the timeline was cut: every console's next view is whole
+    // No keyframe here: a `ModView` doesn't hold the chat timeline, and the
+    // `lifecycle` notice ahead of every re-sent history already brought one.
     for (const c of this.clients) if (c.lean !== true) sseSend(c.res, "history", this.historyFor(c));
   }
 

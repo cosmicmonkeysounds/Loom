@@ -173,16 +173,18 @@ describe("the delta mod stream", () => {
     const lastIsWhole = () => expect(kinds().at(-1)).toBe("snapshot");
     expect(kinds().at(-1)).toBe("snapshotPatch");
 
-    // A restart: the timeline was cut. The first view after the `lifecycle`
-    // notice is whole, and so is the first after the fresh `history`.
+    // A restart: the first view after the `lifecycle` notice is whole —
+    // one keyframe per restart: the fresh `history` brings none (a view
+    // doesn't hold the chat timeline), so the next step is a patch again.
     const n0 = delta.frames.length;
     await post(rt, "/api/mod/reset", {});
     const cut = delta.frames.slice(n0).map((f) => f.event).filter((e) => e !== "sim" && e !== "message");
     expect(cut[0]).toBe("lifecycle");
     expect(cut[1]).toBe("snapshot");
+    expect(cut.slice(2).includes("snapshot")).toBe(false);
     expect(cut.at(-1)).toBe("history");
     await post(rt, "/api/mod/say", { channel: "lobby", text: "after the cut", as: "" });
-    lastIsWhole();
+    expect(kinds().at(-1)).toBe("snapshotPatch");
     await steps(rt, 1, 10);
     expect(kinds().at(-1)).toBe("snapshotPatch");
 
