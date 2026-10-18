@@ -223,7 +223,8 @@ backbone; the SaaS lives entirely in the TS stack.
 server-b,story,play,editor,edges}`, merged `--no-ff` to master in that order:
 c3b629e, 31f2009, b4cf6f3, 5195260, 98ca470, 138e500; then
 `oct31-w8/integration` 6f414be and `oct31-w8/docs-{show,help}` fe03135,
-944699a; not deployed — the VPS runs `w7-1017`; OCT31.md §5 *Wave 8
+944699a; shipped as `w8-1018` 2026-10-18 and checked live (28/28 on the
+preview, incl. a container restart); OCT31.md §5 *Wave 8
 status* has the per-commit table, the decisions, the deploy order and the
 open issues). A find phase drove the whole show on no-DB scratch servers
 (nine testers + a stock-take + a docs pass; verifiers kept 72 of 83).
