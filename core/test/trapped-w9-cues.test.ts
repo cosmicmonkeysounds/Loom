@@ -208,6 +208,23 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     refuses(sim, "second_hunt_preview", "📺 Not yet: close the filings (⏱), then read the three results (📋). Nothing happens.");
   });
 
+  it("T5-crew-cards-04: 🏓 before 📓 refuses (hunt 2's deal, the Truther Download and the summons are never skipped); in the hour it still cuts it short", { timeout: SLOW }, () => {
+    const sim = boot();
+    const line = "🏓 Not yet: hunt 2 (📓) and its summons come first. Nothing happens.";
+    refuses(sim, "truth_pong", line);
+    toTruth1(sim);
+    refuses(sim, "truth_pong", line);
+    for (const n of ["close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview"]) press(sim, n);
+    expect(v(sim, "Night.step")).toBe(7);
+    refuses(sim, "truth_pong", line);
+    expect(press(sim, "start_the_second_hunt").refused).toBe(false);
+    expect(v(sim, "Night.hunt2_on")).toBe(true);
+    // Hunt 2's hour: 🏓 may still end it early on purpose.
+    expect(press(sim, "truth_pong").refused).toBe(false);
+    expect(v(sim, "Night.phase")).toBe("truth_pong");
+    expect(v(sim, "Night.hunt2_on")).toBe(false);
+  });
+
   it("T5-crew-cards-04: before Truth Pong a director's 📺 / 📊 / 🕚 refuse in order, never skipping a step's work", { timeout: SLOW }, () => {
     const sim = boot();
     refuses(sim, "second_hunt_preview", "📺 Too early: the First Moment of Truth (⚖️) and its results come first. Nothing happens.");

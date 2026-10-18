@@ -3402,8 +3402,11 @@ when summons_closed:
     broadcast "🚨 No summons is open: nothing to close." to channel(hosts)
 
 // D4: Truth Pong (make the cup to answer; round 2 = Q1–Q3 of this round).
+// It may cut hunt 2's hour short (step 8 or 9), never skip hunt 2 itself.
 when truth_pong:
-  if Night.step < 10:
+  if Night.step < 8:
+    broadcast "🏓 Not yet: hunt 2 (📓) and its summons come first. Nothing happens." to channel(hosts)
+  else if Night.step < 10:
     set Night.phase = "truth_pong"
     set Night.step = 10
     set Night.hunt2_on = false
