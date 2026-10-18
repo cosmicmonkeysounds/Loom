@@ -95,12 +95,6 @@ import {
 } from "./agents.ts";
 
 
-/** A project link that can also re-read its files into the live co-editing
- *  docs (`ProjectLink.resyncFiles`, events-api.ts: `CollabHub.resyncFromStorage`
- *  + a files notice per file). Optional: a link without it (a test fake,
- *  an older host) just skips the resync. */
-type ResyncableProjectLink = ProjectLink & { resyncFiles?(): Promise<void> };
-
 /** A guest view is never rendered against a null sim — this stands in. */
 const EMPTY_SIM = Sim.fromSources("");
 
@@ -4067,9 +4061,11 @@ export class EventRuntime {
    * failure is logged and never blocks the reload.
    */
   private async resyncProjectFiles(): Promise<void> {
-    const link = this.project as ResyncableProjectLink | null;
+    // `ProjectLink.resyncFiles` (events-api.ts: `CollabHub.resyncFromStorage`
+    // + a files notice per file) is optional: a link without it (a test
+    // fake, a LAN box with no project) just skips the resync.
     try {
-      await link?.resyncFiles?.();
+      await this.project?.resyncFiles?.();
     } catch (err) {
       process.stderr.write(`  ⚠️  event ${this.eventId}: re-reading the project's files failed (${err instanceof Error ? err.message : String(err)})\n`);
     }
