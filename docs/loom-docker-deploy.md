@@ -693,7 +693,7 @@ Mac to the VPS must work without a prompt; set `LOOM_VPS`
 | VPS | `deploy/rollback.sh [tag]` | Back to the previous tag (or a named one), no build: a container restart. Twice in a row toggles back. A release that failed its health check is never picked |
 | VPS | `deploy/backup.sh --label nightly` | `pg_dump` + a tar of the state volume + a `.sha256`, UTC-stamped, in `~/loom-backups` (14 days kept) |
 | VPS | `deploy/restore.sh …` | Restores a pair into a compose project (below) |
-| House Mac | `scripts/ops/showbackup.sh install` | Show night: every 10 min from 19:00 to 03:00, a fresh `--label show` backup copied to `~/LoomBackups` and verified; `status` shows the newest copy's age; `uninstall` after the show |
+| House Mac | `scripts/ops/showbackup.sh install` | Show night: every 10 min from 19:00 to 03:00, a fresh `--label show` backup copied to `~/LoomBackups` and verified; `status` shows the newest copy's age (⚠ STALE after 15 min — check it each act); `uninstall` after the show. The house Mac is the TV computer, so a failure is only logged: no banner unless `LOOM_NOTIFY=1`, no sound unless `LOOM_NOTIFY_SOUND=<name>` (set them before `install`). ssh keepalives end a copy whose connection died within ~60 s |
 | Any | `scripts/ops/checklist.sh [--probe]` | Prints the OCT31 §11 pre-show checklist as tick boxes; `--probe` heads it with what the public `/api/health` answers right now |
 
 Once you use `release.sh`, don't run `docker compose up -d --build` by
@@ -718,7 +718,10 @@ image cache) to keep 48 copies a night light.
 
 **Restore drill** (rehearse once before the show). On the VPS, a scratch
 project gets its own volumes and starts only `db` + `loom`, with no Caddy
-and no port clash, on the image the live stack runs:
+and no port clash, on the image the live stack runs, and with **Web Push
+off** (the VAPID keys blanked for the drill: the restored `push.json`
+holds the real phones' subscriptions, and the drill's own timers would
+otherwise notify them; `--live` keeps push):
 
 ```bash
 deploy/restore.sh --latest nightly --project loom-drill --check --yes
@@ -747,8 +750,22 @@ at 300 s in the week before the show. The restore keeps guest tokens and
 journals, so phones reconnect on their own.
 
 **Uptime alerts** are not scripted. Point an external checker (e.g.
-UptimeRobot, free tier) at `https://app.mapsandducks.com/` every minute,
-and send its alerts to the tech op and the second director, not only John.
+UptimeRobot, free tier) at `https://app.mapsandducks.com/api/health` every
+minute (alert on anything but 200 — not on `/`, which a loom with its
+control plane off still serves), and send its alerts to the tech op and
+the second director, not only John.
+
+**`/api/health`** (no auth, never throttled) answers
+`200 {"ok":true,"controlPlane":true,"events":N}` once the server is up and,
+with a database, its control plane is on and the boot rehydrate of every
+live event has finished; until then `503 {"ok":false,"reason":"database"}`
+(still retrying Postgres) or `{"reason":"starting"}`. The compose
+healthcheck, `release.sh`, `rollback.sh` and `checklist.sh --probe` all
+read it. While it says `starting`, phones asking for an event that is not
+back yet get `503 {"error":"starting"}` with `retry-after: 1`, not
+"unknown event". An image older than the route (a rollback target)
+answers 404 there; the healthcheck and `rollback.sh` then accept its play
+shell at `/`.
 
 **Reset the database** (nuclear — deletes all accounts/projects):
 `docker compose down`, `docker volume rm loom_pgdata`, `docker compose up -d`.
@@ -767,6 +784,13 @@ and send its alerts to the tech op and the second director, not only John.
   `docker compose logs loom` for a migration/DB error, and that
   `LOOM_BASE_URL` exactly matches what's in the address bar (scheme
   included). A mismatch breaks the auth cookie.
+- **`loom` stays `unhealthy` / `/api/health` answers 503 `database`, the
+  log says `control plane disabled — database unreachable` or `waiting for
+  the database`** — Postgres isn't answering: `docker compose ps db`,
+  `docker compose logs db`. The entrypoint waits 60 s for it
+  (`LOOM_DB_WAIT`), then exits so the restart policy tries again; the
+  server keeps retrying too and brings every live event back once the
+  database answers — no second restart needed.
 - **Site unreachable** — `docker compose ps` (is caddy up?), then
   `sudo ufw status` (80/443 open?), then the OVH panel firewall.
 - **HTTPS won't issue** — the A record must already point at the VPS
