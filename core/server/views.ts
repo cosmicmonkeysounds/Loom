@@ -12,6 +12,7 @@ import type { CodexDef } from "../src/runtime/sim/model.ts";
 import type { WalletModView, WalletQueueView, WalletView } from "./wallet.ts";
 import type { FactsView } from "./facts.ts";
 import { identityDefs, performerPickable } from "./identity.ts";
+import { joinableFactions } from "./routes/sides.ts";
 
 export type { WalletModView, WalletOfferView, WalletQueueView, WalletRequestView, WalletTxView, WalletView } from "./wallet.ts";
 // The facts judge's ledger (`ModView.facts`, Wave 4 lane B): the editor
@@ -269,7 +270,8 @@ export interface GuestView {
   spaces: SpaceSnapshot[];
   /** Other participants (id + name) — the invite picker's source. */
   roster: Array<{ id: string; name: string }>;
-  /** The public (non-hidden) factions a guest may join — the side chooser's
+  /** The sides a guest may join or defect to right now (`joinableFactions`:
+   *  declared, joinable, not hidden or revealed) — the side chooser's
    *  source. Empty when the story declares none (no chooser shown). */
   factions: string[];
   /** Every group this guest belongs to (public ones only — hidden until revealed). */
@@ -317,7 +319,9 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     spaces: sim.spaceList(),
     roster: sim.rosterFor(id),
     // A hidden group becomes a side once the story reveals it (`reveal G`).
-    factions: [...sim.model.factions.values()].filter((f) => (!f.hidden || sim.factionRevealed(f.id)) && f.joinable).map((f) => f.id),
+    // The same predicate as /api/guest/join + /defect (routes/sides.ts), so
+    // the chooser never offers a side the routes refuse.
+    factions: joinableFactions(sim),
     groups: sim.groupsOf(id).filter((g) => {
       const def = sim.model.factions.get(g);
       return def === undefined || !def.hidden || sim.factionRevealed(g);

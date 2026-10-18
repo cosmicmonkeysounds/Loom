@@ -74,8 +74,15 @@ const fire = (sim: Sim, name: string, subject: string | null = null, args: Args 
 const fireAll = (sim: Sim, ...names: string[]) => names.flatMap((n) => sim.signal(n));
 /** Through the first Moment of Truth (round-1 judging open). */
 const toTruth1 = (sim: Sim) => fireAll(sim, "call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth");
+/** ⏱ (if the window is open) and 📋 until the three results are read:
+ *  📺 refuses before them (wave 9 story-cues, T5-crew-cards-04). */
+function readResults(sim: Sim) {
+  if (v(sim, "Night.filing_open") === true) fire(sim, "close_the_filing");
+  for (let i = 0; i < 3 && v(sim, "Night.phase") === "truth_1" && v(sim, "Night.results_q") < 3; i++) fire(sim, "read_the_results");
+}
 /** Hunt 2 through the Truther Download; Excel + OpenOffice answer `ex` / `oo`. */
 function toHunt2(sim: Sim, ex = 0, oo = 0) {
+  readResults(sim);
   fireAll(sim, "second_hunt_preview", "start_the_second_hunt");
   advance(sim, 120);
   sim.choose("g2", ex);
@@ -257,6 +264,7 @@ describe("wave 9 — a featured goal met before the Truther Download completes i
     expect(v(sim, "Kernel.excel_planted")).toBe(true);
     for (const [g, q] of [["g2", "Excel Mission"], ["g8", "Master Of The Bugs"], ["g9", "Unscramble"]] as const) expect(sim.questStatus(g, q), q).toBe(null);
     const dl: SimEvent[] = [];
+    readResults(sim);
     dl.push(...fireAll(sim, "second_hunt_preview", "start_the_second_hunt"));
     dl.push(...advance(sim, 120));
     dl.push(...sim.choose("g2", 0)); // sabotage
@@ -572,6 +580,7 @@ describe("wave 9 — no story text sends coin to a character (T1-wallet-01, T10-
     // McAfee's booth hears it at the Truther Download.
     const booth = boot();
     toTruth1(booth);
+    readResults(booth);
     fireAll(booth, "second_hunt_preview", "start_the_second_hunt");
     const evs = advance(booth, 120);
     const mcafee = (evs.filter((e) => e.type === "respond") as Ev<"respond">[]).filter((r) => r.to === "McAfee Anti-Virus").map((r) => r.text);

@@ -305,7 +305,9 @@ export interface SpatialFrames {
   hello: { eventId: string; houseVersion: string; players: PlayerState[] };
   join: { player: PlayerState };
   poses: { t: number; players: PoseUpdate[] };
-  found: { session: string; guest: string; name: string; duck: DuckSpot; released: boolean };
+  /** `captured`: the program is still captured after the find (C4b) — a
+   *  find the story refused (the banishment): no egg, no release. */
+  found: { session: string; guest: string; name: string; duck: DuckSpot; released: boolean; captured: boolean };
   leave: { session: string; reason: LeaveReason };
   house: { version: string };
   /** A map save moved (or re-dealt) a live player's duck. */
@@ -405,4 +407,6 @@ export interface FoundResult {
   ok: true;
   released: boolean;
   already: boolean;
+  /** Still captured after the find (C4): the story kept the program. */
+  captured: boolean;
 }

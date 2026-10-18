@@ -95,12 +95,6 @@ import {
 } from "./agents.ts";
 
 
-/** A project link that can also re-read its files into the live co-editing
- *  docs (`ProjectLink.resyncFiles`, events-api.ts: `CollabHub.resyncFromStorage`
- *  + a files notice per file). Optional: a link without it (a test fake,
- *  an older host) just skips the resync. */
-type ResyncableProjectLink = ProjectLink & { resyncFiles?(): Promise<void> };
-
 /** A guest view is never rendered against a null sim — this stands in. */
 const EMPTY_SIM = Sim.fromSources("");
 
@@ -1341,6 +1335,38 @@ export class EventRuntime {
     return null;
   }
 
+  /**
+   * Is `channel` a room a guest's typed line may land in? Null when it is
+   * (whether they may post there is `Sim.canPost`'s call), else the refusal:
+   * 404 for a room the story doesn't have, 403 for a public group's room
+   * the guest isn't in (`canPost` takes an undeclared-in-`model.channels`
+   * id as open to post, which is how the lobby and `faction:` work). The
+   * lobby, `dm:` (resolved above), `pm:` (`canPost` checks the two
+   * parties), the pinned rooms (`canPost` refuses them), a declared place's
+   * `loc:` room and an authored room the guest can see, and a room this
+   * guest was already written to in are rooms. A room this guest can't see
+   * reads as one the story doesn't have (404), never 403: a hidden group's
+   * room before its reveal (`faction:The Way Out` before 🕚), a hidden place
+   * they haven't stood in or been shown, an authored room hidden from them
+   * or kept to its members (`room:hosts`, `room:the way out`) — so a
+   * crafted post can't learn the hidden sides and rooms early.
+   */
+  private guestRoom(guestId: string, channel: string): { status: 403 | 404; error: string } | null {
+    const sim = this.sim!;
+    if (channel === "lobby" || channel.startsWith("dm:") || channel.startsWith("pm:") || isPinnedRoom(channel)) return null;
+    const none = { status: 404 as const, error: "no such room" };
+    if (channel.startsWith("faction:")) {
+      const group = channel.slice("faction:".length);
+      const def = sim.model.factions.get(group);
+      if (def === undefined) return none;
+      if (sim.factionMembers(group).includes(guestId)) return null;
+      return def.hidden && !sim.factionRevealed(def.id) ? none : { status: 403, error: "you can't post here" };
+    }
+    if (channel.startsWith("loc:")) return sim.canSeeChannel(guestId, channel) ? null : none;
+    if (sim.model.channels.has(channel)) return sim.canSeeChannel(guestId, channel) ? null : none;
+    return this.chat.historyFor(guestId, false).some((m) => m.channel === channel) ? null : none;
+  }
+
   /** A non-character `dm:` thread `guestId` may reply in: a stage voice's
    *  (`dm:Operator` / `dm:Narrator` — the voices `/api/mod/say` speaks as
    *  besides characters), or one already addressed to this guest. */
@@ -2154,7 +2180,11 @@ export class EventRuntime {
           return true;
         }
         const guest = this.spatial.sessionFor(token)?.guest ?? null;
-        const out = this.spatial.found(token, (s) => this.commitFound(s));
+        const out = this.spatial.found(
+          token,
+          (s) => this.commitFound(s),
+          (s) => this.sim?.isCaptured(s.guest) ?? false,
+        );
         switch (out.kind) {
           case "unknown":
           case "over":
@@ -2169,8 +2199,10 @@ export class EventRuntime {
           case "found":
             // `captured`: the program is still captured after the find (the
             // banishment frees nobody), so the game never celebrates a
-            // release the story didn't make (C4, T3-reinstall-01).
-            sendJson(res, 200, { ok: true, released: out.released, already: out.already, captured: guest !== null && (this.sim?.isCaptured(guest) ?? false) });
+            // release the story didn't make (C4, T3-reinstall-01). The
+            // `found` frame carries the same value (C4b). A repeat reads the
+            // story now (a director may have released them since).
+            sendJson(res, 200, { ok: true, released: out.released, already: out.already, captured: out.already ? guest !== null && (this.sim?.isCaptured(guest) ?? false) : out.captured });
             return true;
         }
         return true;
@@ -3560,6 +3592,14 @@ export class EventRuntime {
             return true;
           }
         }
+        // Any other room must be one the story has: an undeclared id
+        // ("nonsense", "hosts" for room:hosts, faction:Nobody) would be
+        // stored as a phantom room with audience "all".
+        const room = this.guestRoom(id, channel);
+        if (room !== null) {
+          sendJson(res, room.status, { error: room.error });
+          return true;
+        }
         // An agent still hidden from this guest (Trabolta before Clippy
         // introduces him) has no thread yet: a crafted DM is refused, not
         // stored where nothing will ever answer it.
@@ -4067,9 +4107,11 @@ export class EventRuntime {
    * failure is logged and never blocks the reload.
    */
   private async resyncProjectFiles(): Promise<void> {
-    const link = this.project as ResyncableProjectLink | null;
+    // `ProjectLink.resyncFiles` (events-api.ts: `CollabHub.resyncFromStorage`
+    // + a files notice per file) is optional: a link without it (a test
+    // fake, a LAN box with no project) just skips the resync.
     try {
-      await link?.resyncFiles?.();
+      await this.project?.resyncFiles?.();
     } catch (err) {
       process.stderr.write(`  ⚠️  event ${this.eventId}: re-reading the project's files failed (${err instanceof Error ? err.message : String(err)})\n`);
     }

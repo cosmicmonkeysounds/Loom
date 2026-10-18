@@ -3683,15 +3683,21 @@ when printer_button_pressed:
 when printer_opened:
   if Night.printer_called == true and Night.beans != true:
     set Night.beans = true
-    set Night.phase = "beans"
-    set Night.step = 12
+    // A lid opened late (🤖 or 🕚 already moved the night on) never knocks
+    // the step or the phase back to the beans, and never takes the room's
+    // look: the overshare's / the Y2K hour's lights and screens stay up (and
+    // stagehand's catch-up keeps replaying them). It plays the beans line
+    // and the spill, and still costs Trabolta his composure (wave 9).
+    if Night.step < 12:
+      set Night.phase = "beans"
+      set Night.step = 12
+      cue lights_glitch
+      set Night.lights = "glitch"
+      cue screens_beans
+      set Night.screen = "beans"
+      set Night.terminals = "beans"
+      cue screens_flicker
     set Trabolta.composure -= 20
-    cue lights_glitch
-    set Night.lights = "glitch"
-    cue screens_beans
-    set Night.screen = "beans"
-    set Night.terminals = "beans"
-    cue screens_flicker
     sound beans_spill
     -> Full Of Beans
 
@@ -3739,8 +3745,9 @@ when trabolta_overshares:
     broadcast "🤖 Not yet: 📊 the Trust Chart first. Nothing happens." to channel(hosts)
 
 // D10: the clock. One hour to midnight; the factions come out. Once set,
-// the clock (reset only by Power On) is what says "not again": a printer
-// lid first opened in the Y2K hour sets the step back to the beans.
+// the clock (reset only by Power On) is what says "not again"; a printer
+// lid first opened in the Y2K hour no longer moves the step (see
+// printer_opened), so the step and the clock agree.
 when y2k_clock:
   if Night.step < 14 and Night.scenario != 0 and Night.clock == "--:--":
     set Night.phase = "y2k"

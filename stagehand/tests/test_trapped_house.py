@@ -31,6 +31,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from stagehand.conditions import Condition
 from stagehand.config import load_config
 from stagehand.show.cuemap import MqttCue, OscCue, evaluate_cues
 from stagehand.show.sensormap import Debouncer, evaluate_sensors
@@ -227,7 +228,9 @@ def test_every_night_lights_mirror_has_a_rule_and_catches_up():
         assert args == f"lights, room: {dark}, state: off" and evaluate_cues(_show().cues, _directive("cue", args))
     assert room.args_for({**mid, "Night.dark_room": "none"}) is None
     assert room.args_for({**mid, "Night.dark_room": "The RAM", "Night.lights_back_at": "0"}) is None
-    assert room.args_for({**mid, "Night.dark_room": "The RAM", "Night.lights": "pong"}) is None
+    # A whole-house look since the cut re-lit the room: nothing to replay.
+    for look in ("dance", "blackout", "restore", "y2k", "screensaver"):
+        assert room.args_for({**mid, "Night.dark_room": "The RAM", "Night.lights": look}) is None, look
     # …and once the cut is over, the restore half (a lost restore relights the room).
     done = {**mid, "Night.lights_back_at": "0"}
     for dark in ("The Start Bar", "The Desktop", "The RAM"):
@@ -235,11 +238,49 @@ def test_every_night_lights_mirror_has_a_rule_and_catches_up():
         assert args == f"lights, room: {dark}, state: on" and evaluate_cues(_show().cues, _directive("cue", args))
         assert back.args_for({**mid, "Night.dark_room": dark}) is None  # mid-cut: stays dark
     assert back.args_for({**done, "Night.dark_room": "none"}) is None
-    assert back.args_for({**done, "Night.dark_room": "The RAM", "Night.lights": "pong"}) is None
+    for look in ("dance", "blackout", "restore", "y2k", "screensaver"):
+        assert back.args_for({**done, "Night.dark_room": "The RAM", "Night.lights": look}) is None, look
     # The paths the catch-up reads are the ones the story writes.
     code = _code(_story_text())
     for path in ("Night.dark_room", "Night.dark_scene", "Night.lights_back_at"):
         assert re.search(rf"\bset\s+{re.escape(path)}\s*=", code), path
+
+
+#: The story's 90 s restore (main.loom, `when Night.lights_back_at > 0 and
+#: Time.elapsed >= Night.lights_back_at`) turns the cut room back on only
+#: under a look that never re-lit it — the catch-up's two dark_room rules
+#: must agree with it look by look (T8-stagehand-01, wave 9).
+_RESTORE = re.compile(r"when Night\.lights_back_at > 0 and Time\.elapsed >= Night\.lights_back_at:\n  if (?P<cond>[^\n]+):\n    <cue: lights, room: \{Night\.dark_room\}, state: on>")
+
+
+def _restores(lights: str, dark_room: str, dark_scene: str) -> bool:
+    """Evaluate the story's own restore condition (a tiny translation of its
+    `or` / `and` / `==` / `!=` into a stagehand Condition)."""
+    m = _RESTORE.search(_story_text())
+    assert m, "the story's 90 s restore rule moved — update this test"
+    expr = m.group("cond").replace(" or ", " || ").replace(" and ", " && ").replace('"', "'")
+    return Condition(expr).evaluate({"Night.lights": lights, "Night.dark_room": dark_room, "Night.dark_scene": dark_scene})
+
+
+def test_the_cut_catch_up_agrees_with_the_storys_90_s_restore():
+    _, _, room, back = _show().catch_up
+    looks = sorted(_lights_values() - {"alarm"})
+    for dark in ("The Start Bar", "The Desktop", "The RAM"):
+        for scene in ("game", "truth_time", "screensaver"):
+            for look in looks:
+                kept_dark = _restores(look, dark, scene)
+                world = {"Night.lights": look, "Night.dark_room": dark, "Night.dark_scene": scene}
+                mid = room.args_for({**world, "Night.lights_back_at": "300"})
+                done = back.args_for({**world, "Night.lights_back_at": "0"})
+                assert (mid == f"lights, room: {dark}, state: off") is kept_dark, (dark, scene, look)
+                assert (done == f"lights, room: {dark}, state: on") is kept_dark, (dark, scene, look)
+                assert room.args_for({**world, "Night.lights_back_at": "0"}) is None
+                assert back.args_for({**world, "Night.lights_back_at": "300"}) is None
+    # The cases the story-rules lane named: pong after a RAM cut, the glitch
+    # after a Desktop cut, a living-room look over a Desktop cut (re-lit).
+    assert back.args_for({"Night.lights": "pong", "Night.dark_room": "The RAM", "Night.dark_scene": "game", "Night.lights_back_at": "0"}) == "lights, room: The RAM, state: on"
+    assert back.args_for({"Night.lights": "glitch", "Night.dark_room": "The Desktop", "Night.dark_scene": "game", "Night.lights_back_at": "0"}) == "lights, room: The Desktop, state: on"
+    assert back.args_for({"Night.lights": "truth_time", "Night.dark_room": "The Desktop", "Night.dark_scene": "game", "Night.lights_back_at": "0"}) is None
 
 
 #: Words that name something able to hold a door shut. The only "lock" a

@@ -345,6 +345,8 @@ export interface WalletCard {
   settleAt?: number;
   /** Who approved / denied / cancelled. */
   by?: string;
+  /** An open request closed by someone other than its asker (a director). */
+  closedBy?: string;
   /** The approver's display name, on a card that waits on them. */
   approver?: string;
 }

@@ -127,8 +127,11 @@ async function main() {
 
   if (sync !== null) {
     if (run("server")) await waitForServer();
-    const code = await pnpm("sync", ["--filter", "@loom/core", "exec", "tsx", "scripts/sync-example.ts", sync, example, "--server", `http://localhost:${port}`]);
-    if (code !== 0) process.stderr.write("\x1b[31m[sync] failed (see above) — the stack keeps running\x1b[0m\n");
+    // `-C core exec`, not `--filter … exec`: a filtered exec turns the
+    // script's exit 3 (a live event with real guests, left alone) into 1.
+    const code = await pnpm("sync", ["-C", "core", "exec", "tsx", "scripts/sync-example.ts", sync, example, "--server", `http://localhost:${port}`]);
+    if (code === 3) process.stderr.write("\x1b[33m[sync] the event is LIVE with real guests: files written, NOT reloaded (exit 3; LOOM_I_KNOW_THIS_IS_LIVE=1 overrides) — the stack keeps running\x1b[0m\n");
+    else if (code !== 0) process.stderr.write("\x1b[31m[sync] failed (see above) — the stack keeps running\x1b[0m\n");
   }
 
   const urls = [];

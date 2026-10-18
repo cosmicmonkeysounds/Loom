@@ -20,9 +20,11 @@ export const WIN_CODE = "The server-room door code is in your phone's Codex.";
 /** Said once a practice checkmate (before the Y2K hour) landed. */
 export const WIN_PRACTICE = "A practice win: the King guards nothing real until the Y2K clock.";
 
-/** The armed read once an ending has played (`fetchArmed`): the story gives
- *  nothing for a win then, so no badge, no win line — and never "tell a
- *  host", there is nothing left for a host to hand over. */
+/** The armed read once an ending has played, or once 📄 truth.txt put the
+ *  verdict in and the story disarmed the King (`fetchArmed`,
+ *  `Night.king_armed` 0 with round three closed): the story gives nothing
+ *  for a win then, so no badge, no win line — and never "tell a host",
+ *  there is nothing left for a host to hand over. */
 export const NIGHT_ENDED = "ended";
 /** Whether the fight counts: armed (true), practice (false), unknown (null)
  *  or the night is over (`NIGHT_ENDED`). */

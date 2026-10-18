@@ -81,8 +81,8 @@ def test_catch_up_replays_the_scene_then_the_dark_room():
 
 def test_a_finished_cut_or_a_new_look_never_redarkens_the_room():
     # Night.dark_room is never cleared: after the 90 s the story zeroes
-    # lights_back_at, and any later look changes Night.lights.
-    for change in ({"Night.lights_back_at": "0"}, {"Night.lights": "pong"}):
+    # lights_back_at, and a later whole-house look re-lit the room.
+    for change in ({"Night.lights_back_at": "0"}, {"Night.lights": "dance"}):
         show, mqtt, _ = house_show({**MID_CUT, **change})
         run(show._catch_up("connect"))
         assert ("zigbee2mqtt/registry/set", {"state": "OFF", "transition": 0}) not in mqtt.sent, change
@@ -100,13 +100,36 @@ def test_a_lost_restore_relights_the_room_while_the_cut_look_is_still_on():
         ("zigbee2mqtt/registry/set", {"state": "ON", "transition": 1}),
         ("wled/registry/api", {"on": True}),
     ]
-    # A new look since the cut: that look's own cue owns the room.
-    show, mqtt, _ = house_show({**MID_CUT, "Night.lights_back_at": "0", "Night.lights": "pong"})
+    # A whole-house look since the cut: that look's own cue owns the room.
+    show, mqtt, _ = house_show({**MID_CUT, "Night.lights_back_at": "0", "Night.lights": "dance"})
     run(show._catch_up("connect"))
     assert not any(t.startswith(("zigbee2mqtt/registry", "wled/registry")) for t, _ in mqtt.sent)
     show, mqtt, _ = house_show({**MID_CUT, "Night.dark_room": "none", "Night.lights_back_at": "0"})
     run(show._catch_up("connect"))
     assert [t for t, _ in mqtt.sent] == ["zigbee2mqtt/living/set", "wled/living/api"]
+
+
+def test_a_room_scoped_look_since_the_cut_keeps_the_storys_word_on_the_room():
+    # 🏓 pong lights the backyard only (wave 9, T8-stagehand-01): the story's
+    # 90 s restore still turns the RAM back on under it, so the catch-up
+    # replays the cut mid-way and the restore once it is due.
+    show, mqtt, _ = house_show({**MID_CUT, "Night.lights": "pong"})
+    run(show._catch_up("connect"))
+    assert ("zigbee2mqtt/registry/set", {"state": "OFF", "transition": 0}) in mqtt.sent
+    assert [t for t, _ in mqtt.sent][-2:] == ["zigbee2mqtt/registry/set", "wled/registry/api"]
+    show, mqtt, _ = house_show({**MID_CUT, "Night.lights": "pong", "Night.lights_back_at": "0"})
+    run(show._catch_up("connect"))
+    assert mqtt.sent[-2:] == [("zigbee2mqtt/registry/set", {"state": "ON", "transition": 1}), ("wled/registry/api", {"on": True})]
+    # A living-room look re-lights The Desktop (no replay) but not the RAM.
+    desk = {**MID_CUT, "Night.dark_room": "The Desktop", "Night.dark_scene": "game", "Night.lights": "truth_time", "Night.lights_back_at": "0"}
+    show, mqtt, _ = house_show(desk)
+    run(show._catch_up("connect"))
+    look_only, plain, _ = house_show({**desk, "Night.dark_room": "none"})
+    run(look_only._catch_up("connect"))
+    assert mqtt.sent == plain.sent  # the look's replay alone: no room-on
+    show, mqtt, _ = house_show({**desk, "Night.dark_room": "The RAM"})
+    run(show._catch_up("connect"))
+    assert mqtt.sent[-2:] == [("zigbee2mqtt/registry/set", {"state": "ON", "transition": 1}), ("wled/registry/api", {"on": True})]
 
 
 def test_the_alarm_is_never_replayed():

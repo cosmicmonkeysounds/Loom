@@ -38,9 +38,9 @@ if [[ "${1:-}" == "--fire" ]]; then
   shift
   guard_writes "fire $*"
   for ev in "$@"; do
-    curl -fsS -X POST "$BASE/e/$event/api/mod/signal" -H "x-loom-token: $token" -H 'content-type: application/json' -d "{\"name\":\"$ev\"}" > /dev/null
+    r="$(curl -fsS -X POST "$BASE/e/$event/api/mod/signal" -H "x-loom-token: $token" -H 'content-type: application/json' -d "{\"name\":\"$ev\"}")"
     sleep 1
-    echo "── fired $ev"; both
+    case "$r" in *'"refused":true'*) echo "── refused $ev (out of turn: # hosts says why)" ;; *) echo "── fired $ev" ;; esac; both
   done
   exit 0
 fi
@@ -82,7 +82,9 @@ Device check (≤ 10 min) — the TV (house Mac's Chrome, full screen) + one wal
      PASS: both show TRABOLTA TRIVIA · ROUND 1 with Q1–Q3 AND a ⏱ 15:00 corner (the countdown cue
      did NOT replace the slide); the tablet returns to the face 45 s later, corner still ticking.
   7. Scan a pass on the tablet while a slide is up → the line opens over it (a pilot pre-empts a slide).
-  8. Optional (needs the later beats; or trust the unit tests): start_the_second_hunt → trivia_2 →
+  8. Optional (needs the later beats; or trust the unit tests): hunt_time_up, first_moment_of_truth,
+     close_the_filing, read_the_results ×3,
+     second_hunt_preview, start_the_second_hunt (the cue sheet's order) → trivia_2 →
      the tablet back to auto at +45 s. A flicker: an admin flicker / Full Of Beans → one short
      stutter (2 dips, no strobe). Takeovers (blackout → GO TO THE LIVING ROOM) are rehearsed with
      the finale on 10-25: 10 s true black, then white text blinking once a second, no red field.

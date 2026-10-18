@@ -55,8 +55,14 @@ do_() { if [ "$dry" = 1 ]; then echo "[dry-run] $*"; else "$@"; fi; }
 # without stopping a tracked file of that name from shipping (.env.example
 # still goes): dated .env backups, the ./show-map bind mount, a compose
 # override, hand-made dumps (`loom-db-*.sql`, `loom-state-*.tgz`), *.bak.
+# The repo's own ignore list (.git/info/exclude — shared by every worktree)
+# is never read by `:- .gitignore`; it is where the agent worktrees under
+# .claude/worktrees/ are ignored (GBs of other checkouts), so it is merged in
+# too, and .claude/worktrees/ is belted explicitly.
+info_exclude="$(git rev-parse --git-common-dir)/info/exclude"
+xfrom=(); [ -r "$info_exclude" ] && xfrom=(--exclude-from="$info_exclude")
 echo "── shipping $(git rev-parse --short HEAD)${tag:+ as $tag} → $LOOM_VPS:~/$LOOM_VPS_DIR"
-do_ "$RSYNC" -az --delete --filter=':- .gitignore' \
+do_ "$RSYNC" -az --delete --filter=':- .gitignore' ${xfrom[@]+"${xfrom[@]}"} \
   --filter='P /.env*' --filter='P /show-map/' \
   --filter='P /docker-compose.override.yml' --filter='P /docker-compose.override.yaml' \
   --filter='P /loom-db-*' --filter='P /loom-state-*' --filter='P /*.sql*' --filter='P /*.tgz' \
@@ -64,7 +70,7 @@ do_ "$RSYNC" -az --delete --filter=':- .gitignore' \
   --exclude .git --exclude node_modules --exclude dist --exclude target \
   --exclude .env --exclude .loom-state --exclude .venv \
   --exclude '*.local.yaml' --exclude secrets.h --exclude reinstall/vr/build \
-  --exclude '*.keystore' \
+  --exclude '*.keystore' --exclude /.claude/worktrees/ \
   "$ROOT/" "$LOOM_VPS:$LOOM_VPS_DIR/"
 # The rsync skips .git, so the VPS checkout's git record would stay on the
 # commit it was cloned at while its files moved on: every shipped file then

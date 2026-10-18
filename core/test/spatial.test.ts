@@ -122,6 +122,19 @@ describe("SpatialHub", () => {
     expect(h.of("leave")).toEqual([{ session: a.session, reason: "timeout" }]);
   });
 
+  it("a find's `captured` asks the story after the commit, else a dealt capture the find didn't release (C4b)", () => {
+    const h = hubHarness();
+    const a = h.begin("g-1");
+    h.hub.pose(a.token, { p: [...a.duck.pos], yaw: 0, pitch: 0 });
+    expect(h.hub.found(a.token, () => false)).toEqual({ kind: "found", released: false, already: false, captured: true });
+    expect(h.of("found")[0]).toMatchObject({ released: false, captured: true });
+    const b = h.begin("g-2");
+    h.hub.pose(b.token, { p: [...b.duck.pos], yaw: 0, pitch: 0 });
+    // The story's own answer wins (a director freed them meanwhile).
+    expect(h.hub.found(b.token, () => false, () => false)).toMatchObject({ captured: false });
+    expect(h.hub.found(b.token, () => false, () => true)).toMatchObject({ already: true, captured: false });
+  });
+
   it("found is refused far from the duck, commits once near it, then lingers 8 s", () => {
     const h = hubHarness();
     const a = h.begin("g-1");
@@ -135,11 +148,11 @@ describe("SpatialHub", () => {
     h.hub.pose(a.token, { p: [x - 2.1, y, z], yaw: 0, pitch: 0 });
     expect(h.hub.found(a.token, release).kind).toBe("far");
     h.hub.pose(a.token, { p: [x + 1.5, y, z - 1], yaw: 0, pitch: 0 }); // 1.8 m in plan
-    expect(h.hub.found(a.token, release)).toEqual({ kind: "found", released: true, already: false });
+    expect(h.hub.found(a.token, release)).toEqual({ kind: "found", released: true, already: false, captured: false });
     expect(commits).toEqual([{ id: a.session, guest: "g-1", device: "Tent tablet", captured: true }]);
-    expect(h.of("found")).toEqual([{ session: a.session, guest: "g-1", name: "G-1", duck: a.duck, released: true }]);
+    expect(h.of("found")).toEqual([{ session: a.session, guest: "g-1", name: "G-1", duck: a.duck, released: true, captured: false }]);
     // A repeat answers `already`, commits nothing.
-    expect(h.hub.found(a.token, release)).toEqual({ kind: "found", released: true, already: true });
+    expect(h.hub.found(a.token, release)).toEqual({ kind: "found", released: true, already: true, captured: false });
     expect(commits).toHaveLength(1);
     expect(h.hub.players()[0]?.found).toBe(true);
     h.tick(FOUND_LINGER_MS - 1);
@@ -218,7 +231,7 @@ describe("SpatialHub", () => {
     expect(a.duck.pos[1]).toBe(1.3);
     // The games' reach rule (plan + same floor) says reached; so must the server.
     h.hub.pose(a.token, { p: [a.duck.pos[0], 0, a.duck.pos[2]], yaw: 0, pitch: 0 });
-    expect(h.hub.found(a.token, () => true)).toEqual({ kind: "found", released: true, already: false });
+    expect(h.hub.found(a.token, () => true)).toEqual({ kind: "found", released: true, already: false, captured: false });
   });
 
   it("three floors: poses are labelled per floor, and Gerald upstairs is never found from the floor below", () => {
@@ -577,7 +590,7 @@ describe("EventRuntime — the spatial plane", () => {
     const sim = rt.liveSim!;
     expect(sim.isCaptured(gid)).toBe(false);
     expect(sim.holdsCodex(gid, "The Golden Duck")).toBe(true);
-    expect(term.of("found")).toEqual([{ session: a.session, guest: gid, name: "Pinball", duck: a.duck, released: true }]);
+    expect(term.of("found")).toEqual([{ session: a.session, guest: gid, name: "Pinball", duck: a.duck, released: true, captured: false }]);
     const signals = new Store(d).readJournal().filter((l) => l.m === "signal" && l.a[1] === gid && l.by === "Tent tablet" && l.a[0] !== REINSTALLATION_BEGUN);
     expect(signals.map((l) => l.a[0])).toEqual(["the simulation completed", "the golden duck"]);
 
@@ -1014,10 +1027,14 @@ Narrator: The tent.
     await mod(rt, "/api/mod/signal", { name: "mark", subject: marked });
     const a = (await mod(rt, "/api/mod/spatial/begin", { guest: marked, world: "web", device: "Tent tablet" })).json as unknown as Assignment;
     expect(a.captured).toBe(true);
+    const term = spatialStream(rt, "name=TV", { moderator: true });
     await call(rt, "POST", "/api/spatial/pose", { p: a.duck.pos, yaw: 0 }, { token: a.token });
     const found = await call(rt, "POST", "/api/spatial/found", {}, { token: a.token });
     expect(found.json).toEqual({ ok: true, released: false, already: false, captured: true });
+    // C4b: the wall terminals and the TV hear the same — no egg on a banished night.
+    expect(term.of("found")).toEqual([{ session: a.session, guest: marked, name: "Winamp", duck: a.duck, released: false, captured: true }]);
     expect((await call(rt, "POST", "/api/spatial/found", {}, { token: a.token })).json).toEqual({ ok: true, released: false, already: true, captured: true });
+    term.close();
     rt.dispose();
   });
 

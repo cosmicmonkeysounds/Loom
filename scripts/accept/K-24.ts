@@ -8,10 +8,11 @@
 //   node --experimental-strip-types scripts/accept/K-24.ts check --base … --code … --guest "<program name>"
 //   (or `npx tsx scripts/accept/K-24.ts …`)
 //
-// `setup` fires the cue chain to hunt 2 (each cue is phase-guarded, so a
-// rerun is harmless). `check` prints Kernel.q5, Kernel.lies_accepted and
+// `setup` fires the cue chain to hunt 2 in the cue sheet's order (chains.ts;
+// a press out of turn is refused, so it stops and says so on a rerun). `check` prints Kernel.q5, Kernel.lies_accepted and
 // the guest's score / truths_accepted / last_fact_q, and the # hosts lines.
 
+import { TO_HUNT2, pressChain } from "./chains.ts";
 import { rehearsalGuard } from "./guard.ts";
 
 const args = process.argv.slice(2);
@@ -43,22 +44,12 @@ const { token } = (await post(`${ev}/api/mod/login`, { passcode: code })) as { t
 await rehearsalGuard(base, ev, token, args);
 console.log(`event ${String(hit["eventId"])} · ${String(hit["title"])}`);
 
-const CHAIN = [
-  "call_to_the_desktop",
-  "start_the_bingo",
-  "bingo_time",
-  "introduce_trabolta",
-  "start_the_hunt",
-  "hunt_time_up",
-  "first_moment_of_truth",
-  "second_hunt_preview",
-  "start_the_second_hunt",
-];
 
 if (cmd === "setup") {
-  for (const name of CHAIN) {
-    await post(`${ev}/api/mod/signal`, { name }, token);
-    console.log(`  fired ${name}`);
+  const walked = await pressChain(TO_HUNT2, (name) => post(`${ev}/api/mod/signal`, { name }, token));
+  if (!walked.ok) {
+    console.error("✘ the story refused a cue: this rehearsal is not on a fresh night. Restart it (Run → header → Restart) and run setup again.");
+    process.exit(1);
   }
   console.log("Hunt 2 is open. On the iPhone: Trabolta's thread → 📝 File a fact → Round 2 Q2 → \"Clippy\" → I'm certain → File it.");
 } else if (cmd === "check") {

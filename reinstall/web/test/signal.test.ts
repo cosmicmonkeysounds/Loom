@@ -285,6 +285,22 @@ describe("fetchArmed", () => {
     expect(stakesLine(null)).toBeNull();
   });
 
+  it("follows the story's Night.king_armed over the map's gate: FOR THE CODE only until 📄, then nothing (R2-diff-clients-03)", async () => {
+    const at = (rows: Array<[string, unknown]>) => ({ status: 200, body: { world: rows.map(([path, value]) => ({ path, value })) } });
+    // The Y2K hour: armed.
+    expect(await fetchArmed(config, "Night.step", 14, fetcher([at([["Night.step", 14], ["Night.king_armed", 1]])]).fetch)).toBe(true);
+    // After 📄: the step stays past 14, but the King is disarmed and the verdict is in.
+    const settled = at([["Night.step", 14], ["Night.king_armed", 0], ["Night.r3_closed", true]]);
+    expect(await fetchArmed(config, "Night.step", 14, fetcher([settled]).fetch)).toBe(NIGHT_ENDED);
+    expect(await winNotice(Promise.resolve(true), NIGHT_ENDED)).toBeNull();
+    // Before the hour: practice (the world reads strings too).
+    expect(await fetchArmed(config, "Night.step", 14, fetcher([at([["Night.step", "9"], ["Night.king_armed", "0"], ["Night.r3_closed", "false"]])]).fetch)).toBe(false);
+    // An older story without the var: the map's gate, as before.
+    expect(await fetchArmed(config, "Night.step", 14, fetcher([at([["Night.step", 15], ["Night.r3_closed", true]])]).fetch)).toBe(true);
+    // An ending still wins over everything.
+    expect(await fetchArmed(config, "Night.step", 14, fetcher([at([["Night.king_armed", 1], ["Night.ended", true]])]).fetch)).toBe(NIGHT_ENDED);
+  });
+
   it("gives up after its timeout on a black-holed uplink, aborting the request (the checkmate notice waits on it)", async () => {
     let aborted = false;
     const hang = ((_url: string, init?: RequestInit) =>

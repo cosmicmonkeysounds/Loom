@@ -310,7 +310,7 @@ prules() { grep -o "\-\-filter='P [^']*'" "$1" | sort -u; }
 check "the guide's manual rsync has ship.sh's protect rules" eq "$(prules "$ROOT/docs/loom-docker-deploy.md" | tr '\n' ' ')" "$(prules "$ROOT/scripts/ops/ship.sh" | tr '\n' ' ')"
 # A real (listing-only) rsync over this checkout: git-ignored secrets never ship.
 made=()
-for f in hardware/server-room/server_room/secrets.h reinstall/vr/build/stage/config/station.json stagehand/trapped.house.local.yaml; do
+for f in hardware/server-room/server_room/secrets.h reinstall/vr/build/stage/config/station.json stagehand/trapped.house.local.yaml .claude/worktrees/ops-test-fake/README.md; do
   [ -e "$ROOT/$f" ] || { mkdir -p "$(dirname "$ROOT/$f")"; echo secret > "$ROOT/$f"; made+=("$f"); }
 done
 cat > "$T/rsync-list" <<'EOF2'
@@ -322,6 +322,10 @@ chmod +x "$T/rsync-list"; mkdir -p "$T/dest"
 listed="$(cd "$ROOT" && RSYNC_DEST="$T/dest" RSYNC="$T/rsync-list" SSH=true bash scripts/ops/ship.sh --sync-only --force 2>/dev/null)"
 check "ship lists the deploy scripts" bash -c "grep -q '^deploy/release.sh$' <<<\"\$1\"" _ "$listed"
 check "ship never sends secrets.h / vr build / *.local.yaml / node_modules" bash -c "! grep -E 'secrets\.h|reinstall/vr/build/|\.local\.yaml|node_modules/|(^|/)\.env$' <<<\"\$1\"" _ "$listed"
+# Agent worktrees (.claude/worktrees/, ignored in .git/info/exclude, never a
+# .gitignore) are other whole checkouts: GBs that must never ship.
+check "ship never sends .claude/worktrees/ (ignored via .git/info/exclude)" bash -c "! grep -q '^\.claude/worktrees' <<<\"\$1\"" _ "$listed"
+check "… but the tracked .claude/settings.json still ships" bash -c "grep -q '^\.claude/settings\.json$' <<<\"\$1\"" _ "$listed"
 # S1-ops-05: what an operator leaves in the VPS checkout survives --delete.
 cat > "$T/rsync-into" <<'EOF2'
 #!/usr/bin/env bash
@@ -334,14 +338,16 @@ kept=(.env .env.bak-2026-10-15 .env.production show-map/house.json docker-compos
 for f in "${kept[@]}"; do echo keep > "$D/$f"; done
 echo stale > "$D/stale-file.txt"
 into="$(cd "$ROOT" && RSYNC_DEST="$D" RSYNC="$T/rsync-into" SSH=true bash scripts/ops/ship.sh --sync-only --force 2>/dev/null)"
+printf '%s\n' "$into" > "$T/into"   # a file, not argv: a big listing must never hit ARG_MAX
 for f in "${kept[@]}"; do
-  check "ship never deletes the VPS's $f" bash -c "! grep -qE '^\*deleting +'\"\$2\"'/?\$' <<<\"\$1\"" _ "$into" "$f"
+  check "ship never deletes the VPS's $f" bash -c "! grep -qE '^\*deleting +'\"\$2\"'/?\$' \"\$1\"" _ "$T/into" "$f"
 done
-check "… show-map/ itself stays" bash -c "! grep -qE '^\*deleting +show-map/?$' <<<\"\$1\"" _ "$into"
+check "… show-map/ itself stays" bash -c "! grep -qE '^\*deleting +show-map/?$' \"\$1\"" _ "$T/into"
 check "… a tracked .env.example still ships" grep -qE ' \.env\.example$' <<<"$into"
 check "… and a file that is gone from the repo is still deleted" grep -qE '^\*deleting +stale-file\.txt$' <<<"$into"
 for f in ${made[@]+"${made[@]}"}; do rm -f "$ROOT/$f"; done
 rmdir -p "$ROOT/reinstall/vr/build/stage/config" 2>/dev/null || true
+rmdir -p "$ROOT/.claude/worktrees/ops-test-fake" 2>/dev/null || true
 teardown
 
 echo "── sync-show: a live event is left alone (S1-ops-02)"

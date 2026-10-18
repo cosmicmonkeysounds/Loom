@@ -389,6 +389,7 @@ describe("the reconnect history is capped for guests and booths (W8 T9-05)", () 
     };
     const url = new URL(`http://x${pathAndQuery}`);
     return rt.handle(req, res as unknown as ServerResponse, method, url.pathname, url, { moderator }).then(() => ({
+      status: res.statusCode,
       json: JSON.parse(res.body || "{}") as Record<string, unknown>,
       history: (): ChatMessage[] => {
         const block = raw.split("\n\n").find((b) => b.startsWith("event: history\n"));
@@ -448,6 +449,119 @@ describe("the reconnect history is capped for guests and booths (W8 T9-05)", () 
     const boothLong = await call(rt, "POST", "/api/prime/say", { token: prime, channel: "lobby", text: long });
     expect(boothLong.json["error"]).toBe(`message too long (max ${CHAT_TEXT_MAX} characters)`);
     expect((await call(rt, "POST", "/api/prime/say", { token: prime, channel: "lobby", text: "z".repeat(CHAT_TEXT_MAX) })).json).toMatchObject({ ok: true });
+    rt.dispose();
+  });
+
+  const ROOMS = `# Rooms
+start: Hall
+
+GROUP Rebels
+
+GROUP Mods
+
+CHARACTER Recruiter
+  is Mods
+
+CHANNEL hosts
+  kind: open
+  label: # hosts
+
+LOCATION Hall
+
+== Hall
+  setting: Hall
+Narrator: The hall.
+Recruiter: Welcome.
+`;
+  it("a typed line only lands in a room the story has: /api/guest/say refuses an undeclared room (404) or another group's room (403) and stores nothing; real rooms still post", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-rooms-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "rooms", scenarioSource: ROOMS, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Alice", passcode: CODES.event });
+    const token = g.json["token"] as string;
+    const id = g.json["id"] as string;
+    const say = (channel: string, text: string) => call(rt, "POST", "/api/guest/say", { token, channel, text });
+    for (const channel of ["nonsense", "hosts", "faction:Nobody", "loc:Nowhere", "room:nope"]) {
+      const r = await say(channel, `phantom ${channel}`);
+      expect([r.status, r.json], channel).toEqual([404, { error: "no such room" }]);
+    }
+    const other = await say("faction:Rebels", "not my side");
+    expect([other.status, other.json]).toEqual([403, { error: "you can't post here" }]);
+    const stored = rt.chatHistoryFor(id).map((m) => m.channel);
+    for (const c of ["nonsense", "hosts", "faction:Nobody", "loc:Nowhere", "room:nope", "faction:Rebels"]) expect(stored).not.toContain(c);
+    // The rooms the story has still take the line.
+    expect((await say("lobby", "hello")).json).toEqual({ ok: true });
+    expect((await say("room:hosts", "the open room")).json).toEqual({ ok: true });
+    expect((await call(rt, "POST", "/api/guest/join", { token, faction: "Rebels" })).status).toBe(200);
+    expect((await say("faction:Rebels", "my side now")).json).toEqual({ ok: true });
+    // A declared location's room is a room; posting there is whoever stands in it.
+    expect((await say("loc:Hall", "here?")).status).not.toBe(404);
+    // A booth was already held to the rooms it runs.
+    const prime = (await call(rt, "POST", "/api/prime/login", { character: "Recruiter", passcode: CODES.prime })).json["token"] as string;
+    for (const channel of ["nonsense", "hosts", "faction:Nobody"]) {
+      const r = await call(rt, "POST", "/api/prime/say", { token: prime, channel, text: "booth phantom" });
+      expect([r.status, r.json["error"]], channel).toEqual([404, "unknown room"]);
+    }
+    expect((await call(rt, "POST", "/api/prime/say", { token: prime, channel: "room:hosts", text: "booth here" })).json).toEqual({ ok: true });
+    rt.dispose();
+  });
+
+  const HIDDEN = `# Hidden
+start: Hall
+
+GROUP Rebels
+
+GROUP The Way Out
+  hidden: true
+
+CHANNEL back room
+  kind: open
+  hidden: true
+  label: # back-room
+
+CHANNEL staff
+  kind: private
+  label: # staff
+
+LOCATION Hall
+
+LOCATION Vault
+  hidden: true
+
+when the house opens:
+  reveal Vault
+  reveal back room
+
+== Hall
+  setting: Hall
+Narrator: The hall.
+`;
+  it("a room the story still hides from a guest answers 404 like one it doesn't have, never 403 — a hidden side, place or room can't be learned early; once revealed it answers like any room", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-hidden-rooms-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "hidden", scenarioSource: HIDDEN, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Alice", passcode: CODES.event });
+    const token = g.json["token"] as string;
+    const say = (channel: string) => call(rt, "POST", "/api/guest/say", { token, channel, text: `probe ${channel}` });
+    const missing = (await say("faction:Nobody")).json;
+    // Hidden things read exactly like missing ones.
+    for (const channel of ["faction:The Way Out", "loc:Vault", "room:back room", "room:staff"]) {
+      const r = await say(channel);
+      expect([r.status, r.json], channel).toEqual([404, missing]);
+    }
+    // A public side's room the guest isn't on is still "you can't post here".
+    expect((await say("faction:Rebels")).status).toBe(403);
+    // Revealed: the side's room is a known room (403 until they join), the
+    // place is a room (posting there is whoever stands in it), the room posts.
+    expect((await call(rt, "POST", "/api/mod/reveal", { faction: "The Way Out" }, true)).status).toBe(200);
+    expect((await call(rt, "POST", "/api/mod/signal", { name: "the house opens" }, true)).status).toBe(200);
+    expect((await say("faction:The Way Out")).status).toBe(403);
+    expect((await say("loc:Vault")).status).not.toBe(404);
+    expect((await say("room:back room")).json).toEqual({ ok: true });
+    // A members-only room stays unseen to an outsider.
+    expect((await say("room:staff")).status).toBe(404);
     rt.dispose();
   });
 });

@@ -69,9 +69,10 @@ export interface Celebration {
 }
 
 /** A `found` frame that released nobody while the program stays captured
- *  (`captured` is read off the wire: an older server never sends it). */
-export function keptFind(f: { released: boolean }): boolean {
-  return !f.released && (f as { captured?: unknown }).captured === true;
+ *  (`SpatialFrames.found.captured`, C4b — optional here: a server older
+ *  than wave 9 never sends it, and that reads as never kept). */
+export function keptFind(f: { released: boolean; captured?: boolean }): boolean {
+  return !f.released && f.captured === true;
 }
 
 /** The celebration's line under the program's name. */

@@ -50,7 +50,11 @@ case "${1:-}" in
     echo "fired beat $2"; exit 0 ;;
   --fire)
     shift
-    for ev in "$@"; do post /api/mod/signal "{\"name\":$(jstr "$ev")}" > /dev/null; echo "fired $ev"; sleep 1; done
+    for ev in "$@"; do
+      r="$(post /api/mod/signal "{\"name\":$(jstr "$ev")}")"
+      case "$r" in *'"refused":true'*) echo "refused $ev — the story says why in # hosts" ;; *) echo "fired $ev" ;; esac
+      sleep 1
+    done
     exit 0 ;;
   --mute)
     case "${2:-}" in on) m=true ;; off) m=false ;; *) echo "--mute on|off"; exit 1 ;; esac

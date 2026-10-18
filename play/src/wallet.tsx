@@ -186,6 +186,8 @@ export function walletStepLine(card: WalletCard, me?: string | null): string {
       // director, a display name); without `by` the asker withdrew the
       // request. "You" only when the payer is the one who cancelled.
       if (card.kind === "request" && card.by) return me != null && me === card.to && card.by === card.toName ? "↩️ You cancelled the payment" : `↩️ ${card.by.replace(/_/gu, " ")} cancelled the payment`;
+      // An open request a director closed (`closedBy`), never the asker's own withdrawal.
+      if (card.kind === "request" && card.closedBy) return `↩️ ${card.closedBy} cancelled the request`;
       return `↩️ Cancelled${by}`;
     case "thawed":
       return card.by ? `☀️ Lifted early${by} — your ${card.unit} moves again` : `☀️ Thawed — your ${card.unit} moves again`;
