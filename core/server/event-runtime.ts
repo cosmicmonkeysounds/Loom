@@ -2249,9 +2249,13 @@ export class EventRuntime {
     return id;
   }
 
-  /** Count a failed passcode attempt; true when this IP is over the limit. */
-  private throttled(req: IncomingMessage, res: ServerResponse): boolean {
-    if (this.loginFailures.allowed(ipOf(req))) return false;
+  /** Count a failed passcode attempt; true when this IP is over the limit.
+   *  `publicCode` (the caller sent the right guest event code) always passes:
+   *  that code is printed on the door poster, so a lockout protects nothing
+   *  and would only refuse every phone behind the house's one IP (D9). The
+   *  performer + mod codes stay locked out, so a guesser gets no oracle. */
+  private throttled(req: IncomingMessage, res: ServerResponse, publicCode = false): boolean {
+    if (publicCode || this.loginFailures.allowed(ipOf(req))) return false;
     sendJson(res, 429, { error: "too many attempts — wait a few minutes" });
     return true;
   }
@@ -3059,9 +3063,10 @@ export class EventRuntime {
     // the pool of programs a guest may be; the performer / mod code shows
     // the parts. Each name says whether someone already holds it.
     if (path === "/api/identities") {
-      if (this.throttled(req, res)) return true;
       const passcode = str(body, "passcode");
-      const role = passOk(passcode, this.codes.event) ? "guest" : passOk(passcode, this.codes.prime) || passOk(passcode, this.codes.mod) ? "prime" : null;
+      const guestCode = passOk(passcode, this.codes.event);
+      if (this.throttled(req, res, guestCode)) return true;
+      const role = guestCode ? "guest" : passOk(passcode, this.codes.prime) || passOk(passcode, this.codes.mod) ? "prime" : null;
       if (role === null) {
         this.loginFailures.record(ipOf(req));
         sendJson(res, 403, { error: "wrong code" });
@@ -3075,8 +3080,9 @@ export class EventRuntime {
     // A guest's search of the program directory: any software on Wikipedia
     // — except antivirus, which is flagged so the screen can say why.
     if (path === "/api/identities/search") {
-      if (this.throttled(req, res)) return true;
-      if (!passOk(str(body, "passcode"), this.codes.event)) {
+      const guestCode = passOk(str(body, "passcode"), this.codes.event);
+      if (this.throttled(req, res, guestCode)) return true;
+      if (!guestCode) {
         this.loginFailures.record(ipOf(req));
         sendJson(res, 403, { error: "wrong event code" });
         return true;
@@ -3101,8 +3107,9 @@ export class EventRuntime {
     // The pictures a guest may choose between for a program — one of the
     // story's (`name`), or a directory pick (`wiki` = the article title).
     if (path === "/api/identities/pictures") {
-      if (this.throttled(req, res)) return true;
-      if (!passOk(str(body, "passcode"), this.codes.event)) {
+      const guestCode = passOk(str(body, "passcode"), this.codes.event);
+      if (this.throttled(req, res, guestCode)) return true;
+      if (!guestCode) {
         this.loginFailures.record(ipOf(req));
         sendJson(res, 403, { error: "wrong event code" });
         return true;
@@ -3156,8 +3163,9 @@ export class EventRuntime {
       // caller's capability token (`requireGuest`) — the `id` a client may
       // still send in the body is ignored, so no guest can act as another.
       case "/api/guest/register": {
-        if (this.throttled(req, res)) return true;
-        if (!passOk(str(body, "passcode"), this.codes.event)) {
+        const guestCode = passOk(str(body, "passcode"), this.codes.event);
+        if (this.throttled(req, res, guestCode)) return true;
+        if (!guestCode) {
           this.loginFailures.record(ipOf(req));
           sendJson(res, 403, { error: "wrong event code" });
           return true;

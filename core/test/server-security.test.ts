@@ -237,6 +237,25 @@ describe("login endpoints throttle guessing", () => {
     expect((await post(rt, "/api/mod/login", { passcode: CODES.mod }, ip)).status).toBe(429);
   });
 
+  it("a locked-out IP still lets the public guest code through (D9)", async () => {
+    const rt = freshRuntime();
+    rt.openDoors();
+    const ip = { "x-test-ip": "9.9.9.9" };
+    for (let i = 0; i < 11; i++) await post(rt, "/api/identities", { passcode: "WRONG" + i }, ip);
+    // A wrong code from that IP is still refused once it is over the limit.
+    expect((await post(rt, "/api/identities", { passcode: "WRONGX" }, ip)).status).toBe(429);
+    const ids = await post(rt, "/api/identities", { passcode: CODES.event }, ip);
+    expect(ids.status).toBe(200);
+    expect((ids.json as { role: string }).role).toBe("guest");
+    const reg = await post(rt, "/api/guest/register", { name: "Winamp", passcode: CODES.event }, ip);
+    expect(reg.status).toBe(200);
+    expect(typeof (reg.json as { token?: string }).token).toBe("string");
+    // The private codes stay locked out: no 200-vs-429 oracle for a guesser.
+    expect((await post(rt, "/api/identities", { passcode: CODES.prime }, ip)).status).toBe(429);
+    expect((await post(rt, "/api/prime/login", { passcode: CODES.prime, character: "x" }, ip)).status).toBe(429);
+    expect((await post(rt, "/api/mod/login", { passcode: CODES.mod }, ip)).status).toBe(429);
+  });
+
   it("a wrong guess on one IP does not throttle another", async () => {
     const rt = freshRuntime();
     for (let i = 0; i < 12; i++) await post(rt, "/api/mod/login", { passcode: "X" + i }, { "x-test-ip": "10.0.0.1" });
