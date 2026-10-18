@@ -5,6 +5,14 @@
 
 import { SimEventType, type SimEvent } from '@loom/core/sim'
 
+/** The Log's time column: a row's story-clock ms as `mm:ss` (both backends
+ *  stamp story time), `—` for a row this console never saw land. */
+export function logClock(ts: number | undefined): string {
+  if (ts === undefined) return '—'
+  const s = Math.floor(ts / 1000)
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+}
+
 /** One-line human rendering of a sim event. */
 export function describeEvent(e: SimEvent): string {
   switch (e.type) {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { WalletModView, WalletTxView } from '@loom/core/views'
 import { WalletAction, type RosterRow } from '@/store/cockpit'
-import { countdown, deadlineLabel, freezeByName, freezesInForce, heldTransfers, requestCancellable, stimulusAmount, storyNow, txActions, walletBalances, walletCardTag } from './wallet'
+import { countdown, deadlineLabel, freezeByName, freezesInForce, heldTransfers, requestCancellable, stimulusAmount, txActions, walletBalances, walletCardTag } from './wallet'
 
 const tx = (id: string, state: WalletTxView['state'], settleAt: number | null = null): WalletTxView => ({
   id,
@@ -47,14 +47,6 @@ describe('wallet card rules', () => {
   it('heldTransfers: the held ones, in the view order', () => {
     expect(heldTransfers(view([tx('t1', 'held'), tx('t2', 'pending'), tx('t3', 'held')])).map((t) => t.id)).toEqual(['t1', 't3'])
     expect(heldTransfers(null)).toEqual([])
-  })
-
-  it('storyNow: runs on from the snapshot, stands still while paused', () => {
-    const clock = { ms: 60_000, at: 1_000 }
-    expect(storyNow(clock, true, 4_500)).toBe(63_500)
-    expect(storyNow(clock, false, 4_500)).toBe(60_000)
-    expect(storyNow(clock, true, 500)).toBe(60_000)
-    expect(storyNow(null, true, 4_500)).toBeNull()
   })
 
   it('countdown: m:ss to the deadline, 0:00 once due, null when unknown', () => {

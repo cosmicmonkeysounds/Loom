@@ -485,6 +485,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       startCollab(project.id, { name: useAuth.getState().user?.name ?? 'Author' }, {
         onText: reflectCollabText,
         onFiles: scheduleServerReconcile,
+        // A doc rebuilt after a server restart: remount the editor on it.
+        onRebind: () => set((s) => ({ collabGen: s.collabGen + 1 })),
       })
       const main = findFileEntry(root, 'main.loom') ?? firstFileEntry(root)
       if (main) await get().openFile(main)

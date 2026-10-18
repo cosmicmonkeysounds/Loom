@@ -17,7 +17,7 @@ import { SimEventType } from '@loom/core/sim'
 import { CockpitContext, useCockpit, type LedgerEntry } from '@/store/cockpit'
 import { canExportRun, downloadRunExport } from '@/lib/run-export'
 import { eventMentions, missingEvents } from './log-filter'
-import { describeEvent } from './log-describe'
+import { describeEvent, logClock } from './log-describe'
 
 /** Tone class per event type (grouped by family). */
 function toneOf(type: SimEventType): string {
@@ -47,17 +47,11 @@ function toneOf(type: SimEventType): string {
   }
 }
 
-function clock(ts: number | undefined): string {
-  if (ts === undefined) return '—'
-  const s = Math.floor(ts / 1000)
-  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
-}
-
 function Row({ entry }: { entry: LedgerEntry }) {
   return (
     <div className="flex gap-2 border-b border-white/5 px-3 py-1 font-mono text-[11px] leading-[16px]">
       <span className="w-10 shrink-0 text-right text-zinc-600">{entry.seq}</span>
-      <span className="w-12 shrink-0 text-zinc-600">{clock(entry.ts)}</span>
+      <span className="w-12 shrink-0 overflow-hidden text-zinc-600">{logClock(entry.ts)}</span>
       <span className="w-36 shrink-0 truncate text-zinc-500">{entry.event.type}</span>
       <span className={clsx('min-w-0 flex-1 break-words', toneOf(entry.event.type))}>
         {describeEvent(entry.event)}

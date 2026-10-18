@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AgentMindSummary, AgentThought } from '@loom/core/views'
-import { confirmEvent, diffRows, driveSeries, filterThoughts, judgeModeOf, mindCharacters, pendingFilings, pickMind, questionFilings, questionTallies, sparklinePath, speakersOf, stageSegments, summarizeThought } from './mind'
+import { confirmEvent, diffRows, driveSeries, filingButtons, filterThoughts, judgeModeOf, mindCharacters, pendingFilings, pickMind, questionFilings, questionTallies, sparklinePath, speakersOf, stageSegments, summarizeThought, verdictCall } from './mind'
 import type { FactsFiling, FactsView } from '@/store/cockpit'
 import { mergeThoughts } from '@/store/operate'
 
@@ -285,5 +285,38 @@ describe('judging', () => {
     expect(confirmEvent(view(), 'uncertain')).toBe('fact_uncertain')
     expect(confirmEvent(view({ confirm: null }), 'accurate')).toBeNull()
     expect(confirmEvent(view({ confirm: { accurate: '', lie: 'x', uncertain: 'y' } }), 'accurate')).toBeNull()
+  })
+
+  it('filingButtons (wave 9 D5): an auto-mode judged lie offers all three, its verdict outlined; a marked filing none', () => {
+    const q = [
+      filing({ person: 'g1', name: 'Calculator', question: 'H2', answer: 'Mr. Pickles', verdict: 'lie', final: 'lie', how: 'auto', at: 1 }),
+      filing({ person: 'g2', name: 'VLC', question: 'H2', answer: 'Mr Pickles', confidence: 60, verdict: 'uncertain', final: 'marked', how: 'marked', by: 'Jo', at: 2 }),
+      filing({ person: 'g3', name: 'Winamp', question: 'H2', answer: 'Garfield', verdict: 'lie', at: 3 }),
+    ]
+    const v = view({ mode: 'auto', questions: [{ id: 'H2', round: 1, text: 'The cat?', filings: q, tally: tally(q) }] })
+    const [lie, marked, pending] = questionFilings(v, 'H2')
+    const judged = filingButtons(v, lie!)
+    expect(judged.map((b) => [b.verdict, b.current, b.disabled])).toEqual([
+      ['accurate', false, false],
+      ['lie', true, false],
+      ['uncertain', false, false],
+    ])
+    expect(judged[0]!.title).toBe('Override: accurate (judged lie)')
+    expect(judged[1]!.title).toMatch(/already on record/)
+    expect(filingButtons(v, marked!)).toEqual([])
+    // A pending (review) filing outlines the proposal and reads Confirm / Override.
+    expect(filingButtons(v, pending!).map((b) => [b.verdict, b.current, b.title])).toEqual([
+      ['accurate', false, 'Override: accurate'],
+      ['lie', true, 'Confirm: confident lie'],
+      ['uncertain', false, 'Override: uncertain'],
+    ])
+    // A view with no confirm events greys every button out.
+    expect(filingButtons(view({ confirm: null }), lie!).every((b) => b.disabled)).toBe(true)
+  })
+
+  it('verdictCall: the confirm event on the filer with the question named, so it judges that filing', () => {
+    expect(verdictCall(view(), { person: 'g1', question: 'H2' }, 'accurate')).toEqual({ event: 'fact_accurate', person: 'g1', args: { question: 'H2' } })
+    expect(verdictCall(view(), { person: 'g1', question: 'H1' }, 'uncertain')).toEqual({ event: 'fact_uncertain', person: 'g1', args: { question: 'H1' } })
+    expect(verdictCall(view({ confirm: null }), { person: 'g1', question: 'H2' }, 'lie')).toBeNull()
   })
 })

@@ -22,6 +22,7 @@ import {
   encodeAwarenessUpdate,
   removeAwarenessStates,
 } from 'y-protocols/awareness'
+import { probeVerdict, reconnectDelay, streamClosed } from '@/lib/stream-retry'
 
 /** Origin marking transactions that came FROM the server (never re-posted). */
 export const REMOTE_ORIGIN = Symbol('collab-remote')
@@ -33,6 +34,9 @@ export interface CollabHandlers {
   onText: (path: string, text: string) => void
   /** A file appeared/disappeared server-side — reconcile the tree. */
   onFiles: (op: 'put' | 'delete', path: string) => void
+  /** A file's live doc was replaced by a new one (the server lost its
+   *  history — see `resyncAll`): rebind any view on the old `Y.Text`. */
+  onRebind?: (path: string) => void
 }
 
 interface DocEntry {
@@ -48,6 +52,9 @@ interface DocEntry {
   sendTimer: ReturnType<typeof setTimeout> | null
   awarenessTimer: ReturnType<typeof setTimeout> | null
   awarenessDirty: boolean
+  /** The server's state vector as of the last handshake / resync — a lower
+   *  bound on what a live server doc holds (a live doc never loses history). */
+  serverSv: Map<number, number>
 }
 
 const BASE = import.meta.env.VITE_LOOM_API ?? ''
@@ -83,6 +90,9 @@ export function onCollabEvent(fn: (n: CollabEventNotice) => void): () => void {
 let projectId: string | null = null
 let cid = ''
 let stream: EventSource | null = null
+// C8: reopening a stream the server closed for good (a 502 while it restarts).
+let reopenTimer: ReturnType<typeof setTimeout> | null = null
+let reopenAttempt = 0
 let handlers: CollabHandlers | null = null
 let localUser: { name: string; color: string } = { name: 'Author', color: '#8b5cf6' }
 const docs = new Map<string, DocEntry>()
@@ -207,6 +217,7 @@ function makeEntry(path: string): DocEntry {
     sendTimer: null,
     awarenessTimer: null,
     awarenessDirty: false,
+    serverSv: new Map(),
   }
   doc.on('update', (update: Uint8Array, origin: unknown) => {
     if (origin !== REMOTE_ORIGIN) {
@@ -249,6 +260,7 @@ export async function openCollabDoc(
         for (const u of entry.buffered) Y.applyUpdate(entry.doc, u, REMOTE_ORIGIN)
         entry.buffered = []
         entry.synced = true
+        entry.serverSv = Y.decodeStateVector(fromB64(r.sv))
         entry.awareness.setLocalStateField('user', localUser)
         // Push anything the server is missing (e.g. edits queued offline).
         const missing = Y.encodeStateAsUpdate(entry.doc, fromB64(r.sv))
@@ -310,15 +322,38 @@ export function dropCollabDoc(path: string): void {
 
 // -- the project stream ----------------------------------------------------
 
+/**
+ * True when the server's doc no longer holds history it held before: some
+ * client it reported is missing from `next` or at a lower clock. A live
+ * Y.Doc only ever grows, so this means the hub rebuilt the doc from the
+ * stored row (the server restarted, or dropped the idle project) — a NEW
+ * history of the same text, which a state-vector merge would not dedupe.
+ */
+export function serverLostHistory(prev: ReadonlyMap<number, number>, next: ReadonlyMap<number, number>): boolean {
+  for (const [client, clock] of prev) {
+    if ((next.get(client) ?? 0) < clock) return true
+  }
+  return false
+}
+
 async function resyncAll(): Promise<void> {
-  for (const [path, entry] of docs) {
+  for (const [path, entry] of [...docs]) {
     if (!entry.synced) continue
     try {
       const r = await post<{ update: string; sv: string }>('sync', {
         path,
         sv: toB64(Y.encodeStateVector(entry.doc)),
       })
+      if (docs.get(path) !== entry) continue // dropped / replaced meanwhile
+      const serverSv = Y.decodeStateVector(fromB64(r.sv))
+      if (serverLostHistory(entry.serverSv, serverSv)) {
+        // Merging two unrelated histories of one text keeps BOTH copies —
+        // the file would come back doubled, here and in the stored row.
+        await rebaseOntoServer(path, entry)
+        continue
+      }
       Y.applyUpdate(entry.doc, fromB64(r.update), REMOTE_ORIGIN)
+      entry.serverSv = serverSv
       const missing = Y.encodeStateAsUpdate(entry.doc, fromB64(r.sv))
       if (missing.length > 2) {
         entry.outbox.push(missing)
@@ -328,6 +363,28 @@ async function resyncAll(): Promise<void> {
       // Still offline — the next reconnect retries.
     }
   }
+}
+
+/**
+ * The server rebuilt `path`'s doc from its stored row: start over on the
+ * server's new doc and fold this editor's text in as one minimal splice, so
+ * edits the dying server never stored (or typed while it was down) survive
+ * and nothing from the old history is ever sent. The old doc, its pending
+ * outbox and its undo stack are dropped; `onRebind` remounts the view.
+ */
+async function rebaseOntoServer(path: string, old: DocEntry): Promise<void> {
+  const full = await post<{ update: string; sv: string }>('sync', { path }) // no sv: the whole doc
+  if (docs.get(path) !== old) return
+  const local = old.ytext.toString()
+  dropCollabDoc(path)
+  const fresh = makeEntry(path)
+  docs.set(path, fresh)
+  Y.applyUpdate(fresh.doc, fromB64(full.update), REMOTE_ORIGIN)
+  fresh.serverSv = Y.decodeStateVector(fromB64(full.sv))
+  fresh.synced = true
+  fresh.awareness.setLocalStateField('user', localUser)
+  replaceIntoYText(fresh.ytext, local, LOCAL_ORIGIN)
+  handlers?.onRebind?.(path)
 }
 
 /** Start co-editing for a server project (idempotent per project). */
@@ -342,14 +399,29 @@ export function startCollab(pid: string, user: { name: string }, h: CollabHandle
   cid = Math.random().toString(36).slice(2, 10)
   localUser = { name: user.name || 'Author', color: colorFor(user.name || 'Author') }
 
+  openStream(pid, false)
+}
+
+/** Open the project stream. `reopened` = this replaces one the server
+ *  closed, so the first open resyncs too. */
+function openStream(pid: string, reopened: boolean): void {
   const es = new EventSource(`${BASE}/api/projects/${pid}/collab/stream?cid=${cid}`, { withCredentials: true })
   stream = es
-  let hadOpen = false
+  let hadOpen = reopened
   es.onopen = () => {
     // The first open needs no resync (docs handshake on creation); every
-    // reconnect reconciles both directions via state vectors.
+    // reconnect reconciles both directions via state vectors (or rebases
+    // onto a doc the restarted server rebuilt — `serverLostHistory`).
     if (hadOpen) void resyncAll()
     hadOpen = true
+    reopenAttempt = 0
+  }
+  // A non-200 (the proxy's 502 while the server restarts) closes the
+  // stream for good — the browser won't retry it. Reopen it on a capped
+  // backoff once the project answers again (C8); a network blip stays the
+  // browser's to retry.
+  es.onerror = () => {
+    if (stream === es && streamClosed(es)) scheduleReopen(pid)
   }
   es.addEventListener('update', (ev) => {
     const { path, update } = JSON.parse((ev as MessageEvent).data) as { path: string; update: string }
@@ -380,10 +452,35 @@ export function startCollab(pid: string, user: { name: string }, h: CollabHandle
   })
 }
 
+/** C8: probe the project after a backoff; reopen the stream when it
+ *  answers, stop when the session or the project is gone, else go again. */
+function scheduleReopen(pid: string): void {
+  if (reopenTimer !== null) return
+  reopenTimer = setTimeout(async () => {
+    reopenTimer = null
+    if (projectId !== pid) return
+    let status: number | null
+    try {
+      status = (await fetch(`${BASE}/api/projects/${pid}/event`, { credentials: 'include' })).status
+    } catch {
+      status = null
+    }
+    if (projectId !== pid || !streamClosed(stream)) return
+    const verdict = probeVerdict(status)
+    if (verdict === 'reopen') openStream(pid, true)
+    else if (verdict === 'retry') scheduleReopen(pid)
+  }, reconnectDelay(reopenAttempt++))
+}
+
 /** Tear down the stream + every doc (project closed / switched). */
 export function stopCollab(): void {
   stream?.close()
   stream = null
+  if (reopenTimer !== null) {
+    clearTimeout(reopenTimer)
+    reopenTimer = null
+  }
+  reopenAttempt = 0
   for (const [path, entry] of docs) {
     removeAwarenessStates(entry.awareness, [entry.awareness.clientID], 'closing')
     void path

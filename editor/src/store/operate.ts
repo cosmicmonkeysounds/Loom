@@ -32,6 +32,7 @@ import { applyModPatch, type ModPatchFrame } from '@loom/core/mod-patch'
 import { ApiError, eventsApi, logApi, modApi, type EventInfo } from '@/lib/api'
 import { fetchWholeLedger } from '@/lib/run-export'
 import { onCollabEvent, type CollabEventNotice } from '@/lib/collab'
+import { reconnectDelay, streamClosed } from '@/lib/stream-retry'
 import { lspWorkspaceSync } from '@/lib/lsp-client'
 import { useLspIndexGen } from '@/lib/lsp-index'
 import { useAuth } from '@/store/auth'
@@ -44,6 +45,7 @@ import {
   OPERATOR_LENS,
   RunBackend,
   RunMode,
+  storyNow,
   type CastSummary,
   type ChannelSummary,
   type CockpitMessage,
@@ -119,6 +121,10 @@ interface OperateState extends CockpitState {
 
 // One live mod stream at a time.
 let es: EventSource | null = null
+// C8: a stream the server closed for good (a 502 / 503 while it restarts)
+// is reopened on a capped backoff, each attempt probing the control plane.
+let reopenTimer: ReturnType<typeof setTimeout> | null = null
+let reopenAttempt = 0
 // Control-plane status fallback poll (collab `event` frames are the fast path).
 let poll: ReturnType<typeof setInterval> | null = null
 let unsubscribeCollab: (() => void) | null = null
@@ -251,7 +257,26 @@ export const useOperate = create<OperateState>((set, get) => {
       es.close()
       es = null
     }
+    if (reopenTimer !== null) {
+      clearTimeout(reopenTimer)
+      reopenTimer = null
+    }
     set({ connected: false })
+  }
+
+  /** C8: the mod stream closed for good. Probe the control plane after a
+   *  backoff — `refresh` reconnects a closed stream on a live event, and
+   *  finds an ended one ended — and go again, slower, while it stays dead. */
+  const scheduleReopen = () => {
+    if (reopenTimer !== null) return
+    reopenTimer = setTimeout(() => {
+      reopenTimer = null
+      void get()
+        .refresh()
+        .then(() => {
+          if (get().event !== null && streamClosed(es)) scheduleReopen()
+        })
+    }, reconnectDelay(reopenAttempt++))
   }
 
   /** Apply the control-plane event to the store (run + phase + scenario). */
@@ -351,11 +376,17 @@ export const useOperate = create<OperateState>((set, get) => {
     const source = new EventSource(`/e/${encodeURIComponent(eventId)}/events?role=mod&delta=1`)
     source.onopen = () => set({ connected: true })
     // A dropped stream is either a blip (EventSource retries) or the
-    // event ending under us — ask the control plane which.
+    // event ending under us — ask the control plane which. A non-200 (the
+    // proxy's 502 while the server restarts) closes it for good: reopen it
+    // on the backoff (C8).
     source.onerror = () => {
       set({ connected: false })
-      void get().refresh()
+      if (es === source && streamClosed(source)) scheduleReopen()
+      else void get().refresh()
     }
+    source.addEventListener('open', () => {
+      reopenAttempt = 0
+    })
     /** The last whole view this stream holds (and its frame number): what
      *  the next patch applies to. */
     let last: { frame: number | null; snap: Partial<ModSnapshot> } | null = null
@@ -475,7 +506,10 @@ export const useOperate = create<OperateState>((set, get) => {
       set((s) => {
         const last = s.log[s.log.length - 1]
         const seq = last !== undefined ? last.seq + 1 : s.ledgerLen
-        const next = [...s.log, { seq, ts: Date.now(), event: ev }]
+        // Story time, like a folder run's rows: the last snapshot's clock
+        // run on to now (never through a pause); none on an older server.
+        const ts = storyNow(s.storyClock, s.phase === CockpitPhase.Open, Date.now()) ?? undefined
+        const next = [...s.log, { seq, ts, event: ev }]
         return { log: next.length > LOG_CAP ? next.slice(next.length - LOG_CAP) : next }
       })
     })
@@ -627,7 +661,7 @@ export const useOperate = create<OperateState>((set, get) => {
         // when we first saw it — the server's own `stale` flag still rules.
         setEvent(event, prev === null || prev.id !== event.id ? lspWorkspaceSync().generation : get().compiledAt)
         // A new (or different) event appeared — a co-author launched it.
-        if (prev === null || prev.id !== event.id || !es) {
+        if (prev === null || prev.id !== event.id || streamClosed(es)) {
           set({ events: localNamedEvents(), error: null })
           connect(event.id)
         }
@@ -685,7 +719,7 @@ export const useOperate = create<OperateState>((set, get) => {
         if (!projectId) return
         const event = await eventsApi.resume(projectId)
         setEvent(event)
-        if (!es) connect(event.id)
+        if (streamClosed(es)) connect(event.id)
       }),
 
     // Same snapshot: the stream's `lifecycle` notice + fresh `history` do the refresh.
