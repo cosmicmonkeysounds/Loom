@@ -223,7 +223,8 @@ async function initControlPlane(): Promise<void> {
       `  🛑 control plane disabled — refusing to run author accounts with the default dev auth secret.\n` +
         `     Set BETTER_AUTH_SECRET (e.g. \`openssl rand -base64 32\`) and restart. The event plane still runs.\n`,
     );
-    boot.phase = "off";
+    boot.refuse("auth-secret");
+    process.stderr.write(`     /api/health answers 503 {reason: "config"} until it is set.\n`);
     return;
   }
   // Rehydrate every event that was live before this process started: replay
@@ -330,7 +331,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
 
   // --- liveness + readiness: never throttled, no auth (C1) ---
   // 200 on a LAN box, or once the control plane is up and every live event
-  // is hosted; 503 {reason: "database" | "starting" | "events"}
+  // is hosted; 503 {reason: "database" | "starting" | "config" | "events"}
   // otherwise — the compose healthcheck, release.sh and the uptime check
   // read this, not `/`.
   if (method === "GET" && path === "/api/health") {

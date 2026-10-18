@@ -23,7 +23,9 @@
 //! controlPlane, events}` on a LAN box (no `DATABASE_URL`) or once the
 //! control plane is up and every live row is hosted; otherwise 503
 //! `{ok: false, reason}` — `database` while the database is unreachable,
-//! `starting` while it is migrating / rehydrating, `events` (+ `failed`, their ids) when a live row would not rehydrate.
+//! `starting` while it is migrating / rehydrating, `config` when the
+//! control plane refused to start (the dev auth secret on a deployment),
+//! `events` (+ `failed`, their ids) when a live row would not rehydrate.
 //! A row that would not rehydrate is remembered, so its phones get 503
 //! `event failed to load` — never the 404 that signs them out — and its
 //! codes say the same at the door (`missEvent` / `missCode`). Pure and
@@ -45,7 +47,7 @@ export type BootPhase =
   | "off";
 
 /** Why `/api/health` answers 503. */
-export type HealthReason = "database" | "starting" | "events";
+export type HealthReason = "database" | "starting" | "config" | "events";
 
 /** The `/api/health` answer. */
 export interface HealthAnswer {
@@ -80,6 +82,8 @@ export class ControlPlaneBoot {
   phase: BootPhase = "starting";
   /** How many live events the rehydrate re-registered. */
   rehydrated = 0;
+  /** Why the control plane refused to start (`auth-secret`), else null. */
+  refused: string | null = null;
   /** Live rows whose rehydrate threw, by id. */
   readonly failed = new Map<string, RowKey>();
 
@@ -98,11 +102,18 @@ export class ControlPlaneBoot {
     return this.phase === "up" || this.phase === "off";
   }
 
+  /** The control plane won't start for this process (`reason`, logged). */
+  refuse(reason: string): void {
+    this.refused = reason;
+    this.phase = "off";
+  }
+
   /** @param isHosted is that id in the registry now (a row that failed at
    *  boot and was relaunched since no longer counts as failed). */
   health(events: number, isHosted: (id: string) => boolean = () => false): HealthAnswer {
     const failed = [...this.failed.keys()].filter((id) => !isHosted(id));
     const listed = failed.length > 0 ? { failed } : {};
+    if (this.required && this.refused !== null) return { status: 503, body: { ok: false, reason: "config" } };
     if (this.required && this.phase === "up" && failed.length > 0) return { status: 503, body: { ok: false, reason: "events", failed } };
     if (this.phase === "up" || !this.required) {
       return { status: 200, body: { ok: true, controlPlane: this.controlPlane, events, ...listed } };

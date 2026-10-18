@@ -139,6 +139,17 @@ describe("the control plane's boot", () => {
     expect(lan.missEvent("e1").status).toBe(404);
   });
 
+  it("a deployment that refused the dev auth secret says `config`, not `database`", () => {
+    const boot = new ControlPlaneBoot(true);
+    boot.refuse("auth-secret");
+    expect(boot.phase).toBe("off");
+    expect(boot.settled).toBe(true);
+    expect(boot.health(1)).toEqual({ status: 503, body: { ok: false, reason: "config" } });
+    // A LAN box (no DATABASE_URL) that refused is still healthy: its event runs.
+    const lan = new ControlPlaneBoot(false);
+    lan.refuse("auth-secret");
+    expect(lan.health(1)).toEqual({ status: 200, body: { ok: true, controlPlane: false, events: 1 } });
+  });
 
   it("a LAN box (no DATABASE_URL) probes once, settles off and stays healthy", async () => {
     const h = harness({ misses: 99 });
