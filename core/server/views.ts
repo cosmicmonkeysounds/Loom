@@ -550,6 +550,10 @@ export interface WatchSummary {
   scope: "global" | "character" | "role" | "person";
   /** On a `secret: true` CHARACTER (the Kernel): masked until held open. */
   secret?: true;
+  /** From a line with a `while` — shown only for a stretch of the night
+   *  (`Results read` during the truth round): the phone's three-value strip
+   *  carries these first. */
+  gated?: true;
 }
 
 /** One live `countdown:` item. */
@@ -968,9 +972,10 @@ function resolvedBoard(model: Sim["model"]): ResolvedBoard {
     watch: model.watch.map((l) => ({
       while: l.while,
       items: l.items.map((i): WatchSummary => {
-        if (i.path === null) return { label: i.label, path: null, person: i.name, scope: "person" };
+        const gated = l.while !== null ? { gated: true as const } : {};
+        if (i.path === null) return { label: i.label, path: null, person: i.name, scope: "person", ...gated };
         const s = scoped(i.path);
-        return { label: i.label, path: s.path, person: null, scope: s.scope, ...(s.secret ? { secret: true as const } : {}) };
+        return { label: i.label, path: s.path, person: null, scope: s.scope, ...(s.secret ? { secret: true as const } : {}), ...gated };
       }),
     })),
     // A countdown on a `secret: true` CHARACTER is dropped: its deadline

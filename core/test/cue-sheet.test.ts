@@ -585,6 +585,25 @@ describe("countdowns on the cue sheet", () => {
     expect(v.world).toEqual([{ path: "Night.phase", value: '"y2k"' }]);
     // Rows off the lean view still carry their act (and no description).
     expect(cueRows(v.interactions, v.cues).map((r) => [r.act, r.description])).toEqual([["B · Act I", null], ["B · Act I", null]]);
+    // A `while`-gated line's values come first: `Results read` during the
+    // truth round beats the always-on first line.
+    const gated = cueSheetView({
+      world: [
+        { path: "Night.clock", value: "23:30" },
+        { path: "Night.results_q", value: "2" },
+      ],
+      watch: [
+        { label: "Clock", path: "Night.clock", scope: "global" },
+        { label: "Round", path: "Night.round", scope: "global" },
+        { label: "Judge", path: "Night.judge_mode", scope: "global" },
+        { label: "Results read", path: "Night.results_q", scope: "global", gated: true },
+      ],
+    });
+    expect(gated.watch).toEqual([
+      { label: "Results read", value: "2" },
+      { label: "Clock", value: "23:30" },
+      { label: "Round", value: "null" },
+    ]);
     // Nothing to carry: no keys at all (an old server's view).
     const bare = cueSheetView({ interactions: [] });
     expect(Object.keys(bare).sort()).toEqual(["cues", "interactions", "roster", "world"]);

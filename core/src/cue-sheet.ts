@@ -418,7 +418,8 @@ export interface CueSheetView {
   doorsClosed?: true;
   /** The live countdowns (`ModView.countdowns`), when any is running. */
   countdowns?: { label: string; endsAt: number }[];
-  /** Up to 3 live `watch:` values — global ones only, never a secret. */
+  /** Up to 3 live `watch:` values — global ones only, never a secret;
+   *  a `while`-gated line's first (what matters right now). */
   watch?: { label: string; value: string }[];
 }
 
@@ -428,6 +429,8 @@ interface WatchInput {
   path: string | null;
   scope: string;
   secret?: true;
+  /** From a `while`-gated line: live only for a stretch of the night. */
+  gated?: true;
 }
 
 /** How many `watch:` values the phone's strip carries. */
@@ -447,8 +450,11 @@ export function cueSheetView(view: {
   countdowns?: readonly { label: string; endsAt: number }[];
 }): CueSheetView {
   const world = view.world ?? [];
-  const watch = (view.watch ?? [])
-    .filter((w) => w.scope === "global" && w.secret !== true && w.path !== null)
+  // The strip has room for three: a `while`-gated line's values first (they
+  // are the ones that matter right now — `Results read` while the truth
+  // round runs), then the always-on lines in declared order.
+  const globals = (view.watch ?? []).filter((w) => w.scope === "global" && w.secret !== true && w.path !== null);
+  const watch = [...globals.filter((w) => w.gated === true), ...globals.filter((w) => w.gated !== true)]
     .slice(0, PHONE_WATCH)
     .map((w) => ({ label: w.label, value: world.find((e) => e.path === w.path)?.value ?? "null" }));
   const countdowns = (view.countdowns ?? []).map((c) => ({ label: c.label, endsAt: c.endsAt }));
