@@ -168,6 +168,11 @@ describe("card copy", () => {
     // Without `by` the steps mean what they always did.
     expect(walletStepLine(card({ ...side, step: "declined" }), "me")).toBe("⛔ Declined");
     expect(walletStepLine(card({ ...side, step: "cancelled" }), "me")).toBe("↩️ Cancelled");
+    // An open request a director closed (`closedBy`): named on both phones.
+    const closed = card({ ...side, step: "cancelled", closedBy: "Director" });
+    expect(walletStepLine(closed, "me")).toBe("↩️ Director cancelled the request");
+    expect(walletStepLine(closed, "g2")).toBe("↩️ Director cancelled the request");
+    expect(walletFootLine(sent, null, view(), 0, closed, "me")).toBe("↩️ Director cancelled the request");
     expect(walletStepLine(card({ kind: "transfer", step: "cancelled", by: "Director" }))).toBe("↩️ Cancelled by Director");
   });
 

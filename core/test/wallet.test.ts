@@ -463,6 +463,19 @@ describe("wallet book — requests", () => {
       const withdrawn = cards(book.apply({ op: "cancel", id: "r2", by: "g1" }));
       expect(withdrawn.every((c) => c.card.by === undefined)).toBe(true);
       expect(walletLine(withdrawn[0]!.card)).toBe("↩️ Winamp withdrew the request for 6 Truthcoin.");
+      expect(withdrawn.every((c) => c.card.closedBy === undefined)).toBe(true);
+      // A director closing an open request is named on both cards, never
+      // read as the asker withdrawing it (server-b finding 4).
+      book.apply({ op: "request", id: "r3", from: "g1", to: "g2", amount: 7, at: 3 });
+      const closed = cards(book.apply({ op: "cancel", id: "r3", by: "Director" }));
+      expect(closed.map((c) => [c.to, c.card.step, c.card.by, c.card.closedBy])).toEqual([
+        ["g2", "cancelled", undefined, "Director"],
+        ["g1", "cancelled", undefined, "Director"],
+      ]);
+      for (const c of closed) {
+        expect(walletLine(c.card)).toBe("↩️ Director cancelled Winamp's request for 7 Truthcoin.");
+        expect(walletLine(c.card)).not.toContain("withdrew");
+      }
     }
   });
 

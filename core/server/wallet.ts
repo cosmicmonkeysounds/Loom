@@ -388,7 +388,9 @@ export function walletLine(c: WalletCard, now?: number): string {
           return `⌛ Expired: ${c.fromName}'s request for ${amt}.`;
         case "cancelled":
           // With `by`: the payment was cancelled (by the payer or a director).
-          return c.by !== undefined ? `↩️ ${c.by} cancelled the payment of ${amt}.` : `↩️ ${c.fromName} withdrew the request for ${amt}.`;
+          // With `closedBy`: someone else (a director) closed the open request.
+          if (c.by !== undefined) return `↩️ ${c.by} cancelled the payment of ${amt}.`;
+          return c.closedBy !== undefined ? `↩️ ${c.closedBy} cancelled ${c.fromName}'s request for ${amt}.` : `↩️ ${c.fromName} withdrew the request for ${amt}.`;
         default:
           return `🙏 ${c.fromName} → ${c.toName}: ${amt}.`;
       }
@@ -934,8 +936,11 @@ export class WalletBook {
     if (r !== undefined) {
       if (r.state !== "open") return [];
       r.state = "cancelled";
-      out.push(this.ev(r.to, this.card("request", r, "cancelled"), false));
-      out.push(this.ev(r.from, this.card("request", r, "cancelled"), false));
+      // The asker withdrawing their own request reads as before; anyone else
+      // (a director from Run) is named, never blamed on the asker.
+      const shown = by !== r.from ? { closedBy: this.byName(by) } : {};
+      out.push(this.ev(r.to, this.card("request", r, "cancelled", shown), false));
+      out.push(this.ev(r.from, this.card("request", r, "cancelled", shown), false));
       out.push(...this.seam.signal("request_cancelled", r.from, { to: r.to, amount: r.amount, request: r.id }));
       return out;
     }

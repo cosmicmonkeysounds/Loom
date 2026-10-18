@@ -202,6 +202,11 @@ export interface WalletCard {
   settleAt?: number;
   /** Who approved / denied / cancelled (a character id or `Director`). */
   by?: string;
+  /** An open 🙏 request closed by someone other than its asker — a
+   *  director's cancel — as a display name. Distinct from `by`, which on a
+   *  request card names who stopped the request's *payment*; with neither,
+   *  the asker withdrew it. */
+  closedBy?: string;
   /** The approver's display name, on a card that waits on them. */
   approver?: string;
 }
