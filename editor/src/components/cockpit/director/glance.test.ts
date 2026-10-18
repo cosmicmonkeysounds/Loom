@@ -106,6 +106,19 @@ describe('watchRows', () => {
     expect(watchChipText([])).toBeNull()
   })
 
+  it('a live while:-gated line comes first, above the fold, like the phone strip', () => {
+    const watch: WatchSummary[] = [
+      { label: 'Y2K clock', path: 'Night.clock', person: null, scope: 'global' },
+      { label: 'Cleared', path: 'Program.cleared', person: null, scope: 'role' },
+      { label: 'Wrong patches', path: 'Night.wrong', person: null, scope: 'global', gated: true },
+      { label: 'At the heart', path: 'Night.heart', person: null, scope: 'global', gated: true },
+    ]
+    const rows = watchRows(watch, world, roster, cast)
+    expect(rows.map((r) => r.label)).toEqual(['Wrong patches', 'At the heart', 'Y2K clock', 'Cleared'])
+    // Keys stay the declared position, so a row keeps its identity as lines come and go.
+    expect(rows[0]!.key).toBe('2:Night.wrong')
+  })
+
   it('role aggregate counts bools over guests only', () => {
     const watch: WatchSummary[] = [
       { label: 'Cleared', path: 'Program.cleared', person: null, scope: 'role' },

@@ -152,14 +152,20 @@ export function resolvePerson(name: string, roster: readonly RosterRow[], cast: 
 }
 
 /** The board, row by row. A secret value is masked here: its clear text
- *  never leaves `worldValue` (the 👁 hold reads it on demand). */
+ *  never leaves `worldValue` (the 👁 hold reads it on demand). A live
+ *  `while:`-gated line's items come first (the snapshot carries a gated line
+ *  only while it holds — the Y2K hour's Wrong patches / The Heart are what
+ *  matter right then), then the always-on lines in declared order, as on the
+ *  phone's strip. */
 export function watchRows(
   watch: readonly WatchSummary[],
   world: readonly WorldEntry[],
   roster: readonly RosterRow[],
   cast: readonly CastSummary[],
 ): WatchRow[] {
-  return watch.map((w, i): WatchRow => {
+  const indexed = watch.map((w, i) => ({ w, i }))
+  const ordered = [...indexed.filter((x) => x.w.gated === true), ...indexed.filter((x) => x.w.gated !== true)]
+  return ordered.map(({ w, i }): WatchRow => {
     const key = `${i}:${w.path ?? w.person ?? w.label}`
     if (w.scope === 'person' || w.path === null) {
       const { row, cast: c } = resolvePerson(w.person ?? w.label, roster, cast)
