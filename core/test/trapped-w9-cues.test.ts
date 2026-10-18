@@ -197,6 +197,17 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     refuses(sim, "second_hunt_preview", "📺 Not again: the ad hijack has already played. Nothing happens.");
   });
 
+  it("T5-crew-cards-04: after the timer's ⏰ with no ⚖️, 📺 points at ⚖️ (never at a ⏱ that refuses)", { timeout: SLOW }, () => {
+    const sim = boot();
+    for (const n of ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt"]) press(sim, n);
+    advance(sim, 900); // the timer's C2 ⏰
+    expect(v(sim, "Night.phase")).toBe("truth_1");
+    expect(v(sim, "Night.judging")).toBe(false);
+    refuses(sim, "second_hunt_preview", "📺 Not yet: ⚖️ the First Moment of Truth first, then close the filings (⏱) and read the three results (📋). Nothing happens.");
+    expect(press(sim, "first_moment_of_truth").refused).toBe(false);
+    refuses(sim, "second_hunt_preview", "📺 Not yet: close the filings (⏱), then read the three results (📋). Nothing happens.");
+  });
+
   it("T5-crew-cards-04: before Truth Pong a director's 📺 / 📊 / 🕚 refuse in order, never skipping a step's work", { timeout: SLOW }, () => {
     const sim = boot();
     refuses(sim, "second_hunt_preview", "📺 Too early: the First Moment of Truth (⚖️) and its results come first. Nothing happens.");

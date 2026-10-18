@@ -3305,6 +3305,8 @@ when second_hunt_preview:
     -> Ad Hijack
   else if Night.step >= 7:
     broadcast "📺 Not again: the ad hijack has already played. Nothing happens." to channel(hosts)
+  else if Night.phase == "truth_1" and Night.judging != true and Night.r1_closed != true:
+    broadcast "📺 Not yet: ⚖️ the First Moment of Truth first, then close the filings (⏱) and read the three results (📋). Nothing happens." to channel(hosts)
   else if Night.phase == "truth_1" and Night.r1_closed != true:
     broadcast "📺 Not yet: close the filings (⏱), then read the three results (📋). Nothing happens." to channel(hosts)
   else if Night.phase == "truth_1":
