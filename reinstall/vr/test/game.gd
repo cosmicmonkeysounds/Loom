@@ -934,6 +934,25 @@ func _test_main_and_game() -> void:
 	_check(link.adopted.size() == 2, "game: no new assignment mid-celebration")
 	game._process(GameFlow.CELEBRATE + 0.1)
 
+	# Captured, and the find released nobody (the banishment): Gerald can't help.
+	link.assignment_received.emit(_assignment(house, "s-2b", true))
+	var dp2b: Array = link.adopted.back()["duck"]["pos"]
+	player.teleport(Vector3(dp2b[0], dp2b[1], dp2b[2] + 0.3), 0.0)
+	game._process(0.016)
+	link.found_answered.emit(true, {"ok": true, "released": false, "already": false, "captured": true})
+	_check(game.state() == GameFlow.State.FOUND and game.hud.big_text() == "GERALD CAN'T HELP", "game: a banished find is no reinstallation (%s)" % game.hud.big_text())
+	_check(not game.duck.is_flying() and not game.flow.released, "game: … Gerald stays put, nothing released")
+	game._process(GameFlow.CELEBRATE + 0.1)
+
+	# Captured at the deal, freed mid-walk (the server says captured false): a plain find.
+	link.assignment_received.emit(_assignment(house, "s-2c", true))
+	var dp2c: Array = link.adopted.back()["duck"]["pos"]
+	player.teleport(Vector3(dp2c[0], dp2c[1], dp2c[2] + 0.3), 0.0)
+	game._process(0.016)
+	link.found_answered.emit(true, {"ok": true, "released": false, "already": false, "captured": false})
+	_check(game.hud.big_text() == "YOU FOUND GERALD", "game: freed mid-walk → YOU FOUND GERALD")
+	game._process(GameFlow.CELEBRATE + 0.1)
+
 	# The server ends a session.
 	link.assignment_received.emit(_assignment(house, "s-3", true))
 	_check(game.state() == GameFlow.State.PLAYING, "game: a third session")

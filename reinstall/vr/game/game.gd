@@ -251,17 +251,29 @@ func _on_found_answered(ok: bool, data: Dictionary) -> void:
 	if not ok:
 		_found_retry = FOUND_RETRY
 		return
-	var captured: bool = flow.assignment.get("captured") == true or data.get("released") == true
+	# The server's `released` is the only proof of a release. A program still
+	# captured after the find (the reply's `captured`, else the state the
+	# walk began with) was kept by the story — the banishment: no egg, no
+	# flight, nothing that reads as a release.
+	var released: bool = data.get("released") == true
+	var still_captured: bool = data.get("captured") == true if data.get("captured") is bool else flow.assignment.get("captured") == true
+	var refused: bool = not released and still_captured
 	var who := str(flow.assignment.get("name", ""))
-	if not flow.found(captured):
+	if not flow.found(released):
 		return
 	if autopilot != null:
 		_autopilot_found = true
 		player.left_stick = Vector2.ZERO
 		print("autopilot: found — released=%s already=%s" % [data.get("released"), data.get("already")])
-	duck.celebrate()
+	if not refused:
+		duck.celebrate()
 	trail.clear()
-	hud.show_found("REINSTALLATION COMPLETE" if captured else "YOU FOUND GERALD", who)
+	if released:
+		hud.show_found("REINSTALLATION COMPLETE", who)
+	elif refused:
+		hud.show_found("GERALD CAN'T HELP", who)
+	else:
+		hud.show_found("YOU FOUND GERALD", who)
 	state_changed.emit(flow.state)
 
 
