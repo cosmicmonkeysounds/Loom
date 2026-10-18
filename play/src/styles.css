@@ -1063,7 +1063,12 @@ footer {
 }
 .cue-nextbar.none { box-shadow: var(--raised); color: var(--muted-ink); }
 .cue-nextbar-tag { flex: 0 0 auto; font: 800 11px var(--ui-font); letter-spacing: 0.5px; text-transform: uppercase; color: var(--navy); }
-.cue-nextbar.none .cue-nextbar-tag { color: var(--muted-ink); }
+.cue-nextbar.none .cue-nextbar-tag, .cue-nextbar.countdown .cue-nextbar-tag { color: var(--muted-ink); }
+/* Nothing to press while a countdown runs: no NEXT ring, two lines, so the
+   countdown never reads as the next cue. */
+.cue-nextbar.countdown { box-shadow: var(--raised); }
+.cue-nextbar-stack { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cue-nextbar-runs { text-transform: none; letter-spacing: 0; font-weight: 700; }
 .cue-nextbar-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 /* Acts: the focus act open with a sticky header, the others one tappable line. */
 .cue-acts { display: flex; flex-direction: column; gap: 8px; }

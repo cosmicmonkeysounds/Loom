@@ -477,7 +477,9 @@ describe("acts on the phone", () => {
     expect(now).toBe(1_002_000);
     const bar = nextBar(rows, view.countdowns, now);
     expect(bar).toEqual({ kind: "countdown", label: "Summons closes", left: 598 });
-    expect(nextBarText(bar)).toBe("⏱ Summons closes 9:58");
+    // Never a bare "NEXT —" before the countdown (it read as "NEXT: Midnight").
+    expect(nextBarText(bar)).toBe("NEXT — nothing to press. The story runs. ⏱ Summons closes in 9:58");
+    expect(nextBarText({ kind: "none" })).toBe("NEXT — nothing to press");
     // A countdown that ran out drops off; none left: nothing to press.
     expect(nextBar(rows, view.countdowns, storyNow(view.clock, 0, 3_000_000))).toEqual({ kind: "none" });
     expect(nextBar(rows, view.countdowns, null)).toEqual({ kind: "none" });

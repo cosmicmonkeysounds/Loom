@@ -249,12 +249,23 @@ export function nextBar(rows: CueRow[], countdowns: DirectorView["countdowns"], 
   return soon !== null ? { kind: "countdown", ...soon } : { kind: "none" };
 }
 
+/** What the bar says when nothing is on offer: never a bare `NEXT —` in
+ *  front of a countdown, which reads as "NEXT: Midnight". */
+export const NOTHING_TO_PRESS = "NEXT — nothing to press";
+export const STORY_RUNS = "The story runs.";
+
 /** The bar as text: `NEXT 📊 Trust Chart`, `AGAIN 📋 Results…`,
- *  `⏱ Midnight 37:52`, or `NEXT —`. */
+ *  `NEXT — nothing to press. The story runs. ⏱ Midnight in 37:52`, or
+ *  `NEXT — nothing to press`. */
 export function nextBarText(bar: NextBar): string {
   if (bar.kind === "next") return `${bar.again ? "AGAIN" : "NEXT"} ${cueTitleTags(bar.row.title).title}`;
-  if (bar.kind === "countdown") return `⏱ ${bar.label} ${formatLeft(bar.left)}`;
-  return "NEXT —";
+  if (bar.kind === "countdown") return `${NOTHING_TO_PRESS}. ${STORY_RUNS} ${countdownText(bar)}`;
+  return NOTHING_TO_PRESS;
+}
+
+/** A countdown on the NEXT bar: `⏱ Midnight in 37:52`. */
+export function countdownText(c: { label: string; left: number }): string {
+  return `⏱ ${c.label} in ${formatLeft(c.left)}`;
 }
 
 /** A watched value for the strip: quotes stripped, booleans ● / ○, unset —. */
@@ -932,14 +943,14 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
                   <span className="cue-nextbar-title">{cueTitleTags(bar.row.title).title}</span>
                 </>
               ) : bar.kind === "countdown" ? (
-                <>
-                  <span className="cue-nextbar-tag">NEXT —</span>
-                  <span className={`cue-nextbar-title ${bar.left < URGENT_S ? "urgent" : ""}`}>
-                    ⏱ {bar.label} {formatLeft(bar.left)}
+                <span className="cue-nextbar-stack">
+                  <span className="cue-nextbar-tag">
+                    {NOTHING_TO_PRESS}. <span className="cue-nextbar-runs">{STORY_RUNS}</span>
                   </span>
-                </>
+                  <span className={`cue-nextbar-title ${bar.left < URGENT_S ? "urgent" : ""}`}>{countdownText(bar)}</span>
+                </span>
               ) : (
-                <span className="cue-nextbar-tag">NEXT — nothing to press</span>
+                <span className="cue-nextbar-tag">{NOTHING_TO_PRESS}</span>
               )}
             </button>
           </div>
