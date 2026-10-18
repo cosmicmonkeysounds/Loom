@@ -93,6 +93,13 @@ import {
   type AgentThread,
 } from "./agents.ts";
 
+
+/** A project link that can also re-read its files into the live co-editing
+ *  docs (`ProjectLink.resyncFiles`, events-api.ts: `CollabHub.resyncFromStorage`
+ *  + a files notice per file). Optional: a link without it (a test fake,
+ *  an older host) just skips the resync. */
+type ResyncableProjectLink = ProjectLink & { resyncFiles?(): Promise<void> };
+
 /** A guest view is never rendered against a null sim — this stands in. */
 const EMPTY_SIM = Sim.fromSources("");
 
@@ -3157,6 +3164,7 @@ export class EventRuntime {
         return true;
       }
       if (path === "/api/mod/spatial/house/project") return this.saveMapToProject(res, body, opts.moderatorName ?? "Director");
+      if (path === "/api/mod/load") await this.resyncProjectFiles();
       return this.handleMod(res, path, body, opts.moderatorName ?? "Director");
     }
 
@@ -3947,6 +3955,23 @@ export class EventRuntime {
       }
       default:
         return false;
+    }
+  }
+
+  /**
+   * Before `/api/mod/load` restarts the event (`sync-show` / `sync-example`
+   * wrote the project's files straight into the database from another
+   * process): fold the stored text into every open co-editing doc, so the
+   * editor shows the synced story and its next keystroke merges on top of
+   * it instead of saving the pre-sync doc back over it (C2, T4-04). A
+   * failure is logged and never blocks the reload.
+   */
+  private async resyncProjectFiles(): Promise<void> {
+    const link = this.project as ResyncableProjectLink | null;
+    try {
+      await link?.resyncFiles?.();
+    } catch (err) {
+      process.stderr.write(`  ⚠️  event ${this.eventId}: re-reading the project's files failed (${err instanceof Error ? err.message : String(err)})\n`);
     }
   }
 
