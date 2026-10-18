@@ -210,6 +210,9 @@ function SecretValue({ path }: { path: string }) {
 function WatchLine({ row, changed }: { row: WatchRow; changed: boolean }) {
   const go = useGo()
   const lockIcon = row.kind === 'value' && row.secret
+  // A secret row links nowhere: World filtered to it would print the value
+  // in clear, undoing the hold-to-reveal on a projected laptop.
+  const linked = !lockIcon
   const onClick = () => {
     if (row.kind === 'value') go({ kind: 'tab', tab: CockpitTab.World, worldFilter: row.path })
     else if (row.kind === 'role') go({ kind: 'tab', tab: CockpitTab.Roster })
@@ -217,10 +220,10 @@ function WatchLine({ row, changed }: { row: WatchRow; changed: boolean }) {
   }
   return (
     <div
-      role="button"
-      tabIndex={-1}
-      onClick={onClick}
-      className={clsx('flex cursor-pointer items-baseline gap-2 rounded px-1 text-xs hover:bg-zinc-900/60', changed && 'underline decoration-amber-500 underline-offset-2')}
+      role={linked ? 'button' : undefined}
+      tabIndex={linked ? -1 : undefined}
+      onClick={linked ? onClick : undefined}
+      className={clsx('flex items-baseline gap-2 rounded px-1 text-xs', linked && 'cursor-pointer hover:bg-zinc-900/60', changed && 'underline decoration-amber-500 underline-offset-2')}
       data-testid={`glance-watch-${row.label}`}
     >
       <span className="w-28 shrink-0 truncate text-zinc-400" title={row.kind === 'person' ? row.label : row.path}>
