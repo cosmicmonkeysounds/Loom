@@ -149,7 +149,8 @@ export const RunningOrder = forwardRef<HTMLInputElement, RunningOrderProps>(func
             if (e.key === 'Escape') {
               e.stopPropagation()
               setQuery('')
-              ;(e.target as HTMLInputElement).blur()
+              // The keys go back to the page, not to <body>.
+              ;(e.target as HTMLElement).closest<HTMLElement>('[data-director-root]')?.focus({ preventScroll: true })
             }
           }}
           placeholder="/ find a cue — V4, hunt, printer…"

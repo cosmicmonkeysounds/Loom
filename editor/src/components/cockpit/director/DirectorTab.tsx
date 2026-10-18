@@ -12,7 +12,7 @@
 //! director sets Watching). Breakpoints are container queries on this root,
 //! so the layout follows the tab area, not the window.
 
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import clsx from 'clsx'
 import { RunBackend, useCockpit } from '@/store/cockpit'
 import { cueActs, cueRows, focusActIndex, type CueAct } from '@loom/core/cue-sheet'
@@ -66,10 +66,24 @@ function useDirectorMode(): [DirectorMode, (m: DirectorMode) => void] {
   return [mode, set]
 }
 
-/** Is a key event's target a field (the keys leave typing alone)? */
-function editable(t: EventTarget | null): boolean {
-  if (!(t instanceof HTMLElement)) return false
-  return t.isContentEditable || t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.closest('[contenteditable="true"]') !== null
+/** What a key event came from: a field (the keys leave typing alone), a
+ *  native control Enter / Space activates that is not a cue (it keeps
+ *  them), or a cue's own button (`data-cue-press`: Enter presses it). */
+export function keyTarget(t: EventTarget | null): { editable: boolean; control: boolean; cue: string | null } {
+  if (!(t instanceof HTMLElement)) return { editable: false, control: false, cue: null }
+  const editable =
+    t.isContentEditable || t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.closest('[contenteditable="true"]') !== null
+  const cue = t.dataset.cuePress ?? null
+  const native = t.tagName === 'BUTTON' || t.tagName === 'SUMMARY' || (t.tagName === 'A' && t.hasAttribute('href'))
+  return { editable, control: native && cue === null, cue }
+}
+
+/** Nothing on the page holds focus (it fell to `<body>`: the focused
+ *  button unmounted or turned disabled) — the Director's keys still work. */
+function focusIsNowhere(root: HTMLElement): boolean {
+  const ae = document.activeElement
+  if (ae === null || ae === document.body || ae === document.documentElement) return true
+  return root.contains(ae) && ae instanceof HTMLElement && ae.matches(':disabled')
 }
 
 function ModeToggle({ mode, setMode }: { mode: DirectorMode; setMode: (m: DirectorMode) => void }) {
@@ -140,9 +154,18 @@ function DirectorPage() {
     })
   }, [])
 
-  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+  /** Give the keys back to the page (focus fell off, or a mouse press). */
+  const reclaim = useCallback(() => {
+    const root = rootRef.current
+    if (root !== null && focusIsNowhere(root)) root.focus({ preventScroll: true })
+  }, [])
+
+  // A Space the page handled must not also click the focused cue.
+  const swallowUp = useRef(false)
+  const handleKey = (e: globalThis.KeyboardEvent | KeyboardEvent<HTMLDivElement>): void => {
     if (mode !== DirectorMode.Calling) return
-    if (e.key === 'Escape' && arm.armed === null && arm.picking !== null && !editable(e.target)) {
+    const target = keyTarget(e.target)
+    if (e.key === 'Escape' && arm.armed === null && arm.picking !== null && !target.editable) {
       e.preventDefault()
       e.stopPropagation()
       arm.setPicking(null)
@@ -151,17 +174,20 @@ function DirectorPage() {
     const order = [...(rootRef.current?.querySelectorAll<HTMLElement>('[data-cue-nav]') ?? [])].map((el) => el.dataset.cueNav!)
     const r = directorKey(
       { armed: arm.armed, cursor },
-      { key: e.key, repeat: e.repeat, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, editable: editable(e.target) },
+      { key: e.key, repeat: e.repeat, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, ...target },
       { mode, now: Date.now(), rows, order: [...new Set(order)], marks: cues, filter: query, locked: arm.pending !== null || arm.cooling },
     )
     if (!r.handled) return
     e.preventDefault()
     e.stopPropagation()
+    swallowUp.current = e.key === ' '
     if (r.state.armed !== arm.armed) arm.apply(r.state.armed)
     if (r.state.cursor !== cursor) setCursor(r.state.cursor)
     switch (r.effect.kind) {
       case 'fire':
         void arm.fire(r.effect.id, r.effect.subject, r.effect.value)
+        // The picker that held focus unmounts with the press.
+        requestAnimationFrame(reclaim)
         break
       case 'pick':
         arm.setPicking(r.effect.id)
@@ -183,9 +209,37 @@ function DirectorPage() {
         break
     }
   }
-  // A Space the page handled must not also click the focused button.
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => handleKey(e)
   const onKeyUp = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (mode === DirectorMode.Calling && e.key === ' ' && !editable(e.target) && e.target instanceof HTMLButtonElement) e.preventDefault()
+    if (e.key === ' ' && swallowUp.current) e.preventDefault()
+    swallowUp.current = false
+  }
+  // Focus that fell to <body> (a pressed button unmounted or turned
+  // disabled) never strands the keys: with nothing focused, they reach the
+  // page from the document. A field or another control that has focus is
+  // never second-guessed.
+  const latestKey = useRef(handleKey)
+  useEffect(() => {
+    latestKey.current = handleKey
+  })
+  useEffect(() => {
+    const onDocKey = (e: globalThis.KeyboardEvent) => {
+      const root = rootRef.current
+      if (root === null || !root.isConnected || e.defaultPrevented) return
+      if (e.target instanceof Node && root.contains(e.target)) return
+      if (!focusIsNowhere(root)) return
+      latestKey.current(e)
+      if (e.defaultPrevented) root.focus({ preventScroll: true })
+    }
+    document.addEventListener('keydown', onDocKey)
+    return () => document.removeEventListener('keydown', onDocKey)
+  }, [])
+  // A mouse press on a button hands the keys back to the page, so a later
+  // Space never re-clicks it (keyboard activation keeps its focus).
+  const onClickCapture = (e: MouseEvent<HTMLDivElement>) => {
+    if (e.detail === 0 || !(e.target instanceof Element)) return
+    if (e.target.closest('button, summary, [role="button"]') === null) return
+    rootRef.current?.focus({ preventScroll: true })
   }
 
   const ctx: DirectorCtx = { rows, acts, focus, actOf, arm, awards, cursor, setCursor, mode, showAct }
@@ -199,7 +253,9 @@ function DirectorPage() {
         tabIndex={-1}
         onKeyDown={onKeyDown}
         onKeyUp={onKeyUp}
+        onClickCapture={onClickCapture}
         className="@container h-full overflow-auto outline-none"
+        data-director-root=""
         data-testid="director"
         data-mode={mode}
       >

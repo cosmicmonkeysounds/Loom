@@ -195,6 +195,7 @@ function NextBlock({ flash }: { flash: boolean }) {
           )}
           title={armed ? 'press again to fire · Esc disarms' : 'press to arm, press again to fire (Space, Space)'}
           data-testid="director-next-fire"
+          data-cue-press={next.id}
         >
           {armed ? (arm.armed?.subject ? 'Fire ▶ for the pick' : 'Fire ▶ again') : next.subject ? 'Pick who…' : 'Arm ▶'}
         </button>

@@ -194,6 +194,7 @@ export function CueButton({
             arm.pending === row.id && 'animate-pulse',
           )}
           data-testid={`cue-${row.id}`}
+          data-cue-press={row.id}
         >
           {row.code !== null && <span className="shrink-0 font-mono text-[10px] text-zinc-500">{row.code}</span>}
           <span className="min-w-0 truncate">{title}</span>
@@ -221,6 +222,7 @@ export function CueButton({
             arm.pending === row.id && 'animate-pulse',
           )}
           data-testid={`cue-${row.id}`}
+          data-cue-press={row.id}
         >
           <span className="w-6 shrink-0 text-right font-mono text-[11px] text-zinc-600">{row.n}</span>
           {actCode !== undefined && actCode !== null && <span className="shrink-0 font-mono text-[10px] text-zinc-500">{actCode}</span>}
