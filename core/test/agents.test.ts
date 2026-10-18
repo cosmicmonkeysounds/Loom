@@ -1248,4 +1248,54 @@ describe("the agent and the event's lifecycle (D10, T9-timers-03, R1-diff-server
     expect(worker.res.frames().filter(([e]) => e === "request")).toHaveLength(1);
     rt.dispose();
   });
+
+  it("a guest who wrote again after the hold line gets no second one after a restore", async () => {
+    const clock = { t: 1_000_000 };
+    const mk = at(HOLD_SOURCE, clock);
+    const rt = mk();
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Ada", passcode: CODES.event });
+    const token = g.json["token"] as string;
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "anyone there?" }, { token });
+    clock.t += 20_000;
+    hubOf(rt).sweep();
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "still there?" }, { token });
+    clock.t += 20_000;
+    hubOf(rt).sweep();
+    expect(await threadOf(rt, token)).toHaveLength(3);
+    rt.dispose();
+    const rt2 = mk();
+    expect(rt2.restore()).not.toBeNull();
+    expect(hubOf(rt2).pending.map((r) => r.thread.audience)).toEqual([[g.json["id"]]]);
+    clock.t += 60_000;
+    hubOf(rt2).sweep();
+    expect((await threadOf(rt2, token)).filter(([, text]) => text === "Back soon.")).toHaveLength(1);
+    const w = await call(rt2, "GET", "/api/agent/stream?characters=Trabolta", {}, { moderator: true });
+    expect(w.res.frames().filter(([e]) => e === "request")).toHaveLength(1);
+    rt2.dispose();
+  });
+
+  it("control: after a real reply and a new guest line, a restore with no worker posts one new hold line", async () => {
+    const clock = { t: 1_000_000 };
+    const mk = at(HOLD_SOURCE, clock);
+    const rt = mk();
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Ada", passcode: CODES.event });
+    const token = g.json["token"] as string;
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "anyone there?" }, { token });
+    clock.t += 20_000;
+    hubOf(rt).sweep();
+    const worker = await call(rt, "GET", "/api/agent/stream?characters=Trabolta", {}, { moderator: true });
+    const r = worker.res.frames().filter(([e]) => e === "request").map(([, d]) => d as AgentRequest).at(-1)!;
+    await call(rt, "POST", "/api/agent/reply", { id: r.id, say: "Here now." }, { moderator: true });
+    worker.close();
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "great, a question" }, { token });
+    rt.dispose();
+    const rt2 = mk();
+    expect(rt2.restore()).not.toBeNull();
+    clock.t += 21_000;
+    hubOf(rt2).sweep();
+    expect((await threadOf(rt2, token)).map(([, text]) => text)).toEqual(["anyone there?", "Back soon.", "Here now.", "great, a question", "Back soon."]);
+    rt2.dispose();
+  });
 });
