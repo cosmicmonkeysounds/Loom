@@ -472,12 +472,13 @@ show:
     - path: Night.lights
       cue: "lights_{value}"
       skip: [alarm]
-    # Both dark_room rules use the story's own test for "the look on now never
+    # The mid-cut rule uses the story's own test for "the look on now never
     # re-lit the cut room" (main.loom's `Night.lights_back_at` rule, wave 9
     # T8-stagehand-01): the look he cut, a room-scoped look (pong = the
     # backyard, glitch = an effect, server_open = the server room over the
     # Y2K house), or a living-room look (game / truth_time / trust_chart)
     # over any cut but The Desktop's. A whole-house look since re-lit it.
+    # The restore rule replays only under the look the story restored into.
     - path: Night.dark_room
       cue: "lights, room: {value}, state: off"
       skip: [none]
@@ -486,11 +487,13 @@ show:
     - path: Night.dark_room
       cue: "lights, room: {value}, state: on"
       skip: [none]
-      # The cut is over (the story zeroed lights_back_at) and the look on now
-      # never re-lit the room, so the story's own restore was the last word:
-      # replay it. (The alarm latch's end zeroes lights_back_at after a
-      # whole-house look, which re-lights the room anyway.)
-      when: "Night.lights_back_at == 0 && (Night.lights == Night.dark_scene || Night.lights == 'pong' || Night.lights == 'glitch' || Night.lights == 'server_open' || ((Night.lights == 'game' || Night.lights == 'truth_time' || Night.lights == 'trust_chart') && Night.dark_room != 'The Desktop'))"
+      # The cut is over (the story zeroed lights_back_at) and its 90 s restore
+      # turned the room back on under the look still on now: the story
+      # records that look as Night.lit_scene ("none" when the restore was
+      # skipped, at the alarm latch's end, at 💡 / G11 and at Power On), so
+      # any later look — whole-house or room-scoped — ends the replay and a
+      # long-finished cut never punches the room to full (T8 recheck).
+      when: "Night.lights_back_at == 0 && Night.lit_scene != 'none' && Night.lights == Night.lit_scene"
 
   # --- house → story ----------------------------------------------------------
   # Every name here must be a `when <name>` story rule in main.loom: stagehand

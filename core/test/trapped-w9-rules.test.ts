@@ -356,6 +356,7 @@ describe("wave 9 — a cut room comes back on unless the next look re-lit it (T8
     const back = cues(advance(sim, 75));
     expect(back).toContain(on("The RAM"));
     expect(v(sim, "Night.lights_back_at")).toBe(0);
+    expect(v(sim, "Night.lit_scene")).toBe("pong"); // the catch-up replays the room-on only under pong
   });
 
   it("🫘 the glitch (an effect, no state) after a Desktop cut: the Desktop comes back on", { timeout: SLOW }, () => {
@@ -404,6 +405,26 @@ describe("wave 9 — a cut room comes back on unless the next look re-lit it (T8
     expect(after).toEqual(["cue lights_y2k", "cue lights_server_open"]);
     expect(v(sim, "Night.lights")).toBe("server_open");
     expect(v(sim, "Night.lights_back_at")).toBe(0);
+    expect(v(sim, "Night.lit_scene")).toBe("none"); // the latch skipped the room restore: nothing to replay
+  });
+
+  it("Night.lit_scene names the look a cut room came back on under, \"none\" when it didn't, and Power On starts it at \"none\" (T8 recheck)", { timeout: SLOW }, () => {
+    const sim = boot();
+    expect(v(sim, "Night.lit_scene")).toBe("none");
+    toSummons(sim);
+    fireAll(sim, "truth_pong", "round_two_tally");
+    // Restored under the hunt's living-room look over a RAM cut.
+    const look = v(sim, "Night.lights");
+    cut(sim, "The RAM");
+    expect(cues(advance(sim, 95))).toContain(on("The RAM"));
+    expect(v(sim, "Night.lit_scene")).toBe(look);
+    // A Desktop cut under the Trust Chart's living-room look: re-lit, no room-on.
+    advance(sim, 5);
+    cut(sim, "The Desktop");
+    advance(sim, 20);
+    fire(sim, "trust_chart");
+    expect(cues(advance(sim, 75)).includes(on("The Desktop"))).toBe(false);
+    expect(v(sim, "Night.lit_scene")).toBe("none");
   });
 
   it("the Y2K hour: a RAM cut, then the majority's server-room look → the RAM comes back on", { timeout: SLOW }, () => {
@@ -414,6 +435,7 @@ describe("wave 9 — a cut room comes back on unless the next look re-lit it (T8
     fire(sim, "force_majority_leave");
     expect(v(sim, "Night.lights")).toBe("server_open");
     expect(cues(advance(sim, 75))).toContain(on("The RAM"));
+    expect(v(sim, "Night.lit_scene")).toBe("server_open");
   });
 });
 

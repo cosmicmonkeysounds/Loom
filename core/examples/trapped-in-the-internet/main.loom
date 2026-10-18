@@ -3914,6 +3914,7 @@ when Night.alarm_on == true and Time.elapsed >= Night.alarm_clear_at:
   set Night.alarm_on = false
   if Night.ended != true and Night.lights == "alarm":
     set Night.lights_back_at = 0
+    set Night.lit_scene = "none"
     if Night.lights_before_alarm == "server_open":
       cue lights_y2k
       cue lights_server_open
@@ -4480,10 +4481,16 @@ when share:
 // the glitch is an effect with no state, and game / truth_time /
 // trust_chart recall a scene on the living room only, so they re-light
 // The Desktop but not the Start Bar or the RAM. After any of those the
-// room still comes back on here.
+// room still comes back on here. `Night.lit_scene` names the look the
+// room came back on under ("none" when it didn't): stagehand's catch-up
+// replays the room-on only while that look is still the one on, so any
+// later look ends the replay and the story's last word wins.
 when Night.lights_back_at > 0 and Time.elapsed >= Night.lights_back_at:
   if Night.lights == Night.dark_scene or Night.lights == "pong" or Night.lights == "glitch" or Night.lights == "server_open" or ((Night.lights == "game" or Night.lights == "truth_time" or Night.lights == "trust_chart") and Night.dark_room != "The Desktop"):
     <cue: lights, room: {Night.dark_room}, state: on>
+    set Night.lit_scene = Night.lights
+  else:
+    set Night.lit_scene = "none"
   set Night.lights_back_at = 0
 
 // 💡 is the first step of ALL STOP (the emergency card), so it also holds
@@ -4495,6 +4502,7 @@ when restore_the_lights:
   cue lights_restore
   set Night.lights = "restore"
   set Night.lights_back_at = 0
+  set Night.lit_scene = "none"
   if Night.dance_at > 0:
     set Night.dance_at = 0
     broadcast "💡 The dance is held: press 🪩 when the house manager says go." to channel(hosts)
@@ -4524,6 +4532,7 @@ when resurrection:
     cue lights_restore
     set Night.lights = "restore"
     set Night.lights_back_at = 0
+    set Night.lit_scene = "none"
     broadcast "!🎃 The show is over: you are human again. Hang out, out of character." to everyone
   else if Night.resurrected == true:
     broadcast "🎃 The show is already over. Nothing happens." to channel(hosts)
@@ -4637,6 +4646,7 @@ set Night.recount = false
 set Night.everyone_free = false
 set Night.dark_room = "none"
 set Night.dark_scene = "none"
+set Night.lit_scene = "none"
 set Night.lights_back_at = 0
 set Night.dance_at = 0
 set Night.takeover = false
