@@ -811,7 +811,14 @@ CLOSED and reopen on a capped backoff (1 s doubling to 15 s; pure
 control-plane status — reconnects a closed stream on a live event, finds
 an ended one ended; the 30 s poll and Resume reconnect a closed stream
 too), the collab stream after probing `GET /api/projects/:id/event`
-(2xx reopens + resyncs every doc, 401 / 403 / 404 stops). A server run's
+(2xx reopens + resyncs every doc, 401 / 403 / 404 stops). A restarted
+server rebuilt every doc from its stored row — a new Yjs history of the
+same text, which a state-vector merge keeps twice — so a resync whose
+server state vector lost a client it reported before (`serverLostHistory`)
+rebases instead (`rebaseOntoServer`: the server's whole doc, this editor's
+text folded in as one splice, nothing from the old history sent; the
+store's `onRebind` bumps `collabGen` to remount the view; the undo stack
+starts over). Tested against a fake hub in `lib/collab.test.ts`. A server run's
 Log rows are stamped in story time (`storyNow` in `store/cockpit.ts`, off
 the snapshot clock), like a folder run's.
 

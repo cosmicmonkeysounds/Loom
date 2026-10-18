@@ -34,6 +34,9 @@ export interface CollabHandlers {
   onText: (path: string, text: string) => void
   /** A file appeared/disappeared server-side — reconcile the tree. */
   onFiles: (op: 'put' | 'delete', path: string) => void
+  /** A file's live doc was replaced by a new one (the server lost its
+   *  history — see `resyncAll`): rebind any view on the old `Y.Text`. */
+  onRebind?: (path: string) => void
 }
 
 interface DocEntry {
@@ -49,6 +52,9 @@ interface DocEntry {
   sendTimer: ReturnType<typeof setTimeout> | null
   awarenessTimer: ReturnType<typeof setTimeout> | null
   awarenessDirty: boolean
+  /** The server's state vector as of the last handshake / resync — a lower
+   *  bound on what a live server doc holds (a live doc never loses history). */
+  serverSv: Map<number, number>
 }
 
 const BASE = import.meta.env.VITE_LOOM_API ?? ''
@@ -211,6 +217,7 @@ function makeEntry(path: string): DocEntry {
     sendTimer: null,
     awarenessTimer: null,
     awarenessDirty: false,
+    serverSv: new Map(),
   }
   doc.on('update', (update: Uint8Array, origin: unknown) => {
     if (origin !== REMOTE_ORIGIN) {
@@ -253,6 +260,7 @@ export async function openCollabDoc(
         for (const u of entry.buffered) Y.applyUpdate(entry.doc, u, REMOTE_ORIGIN)
         entry.buffered = []
         entry.synced = true
+        entry.serverSv = Y.decodeStateVector(fromB64(r.sv))
         entry.awareness.setLocalStateField('user', localUser)
         // Push anything the server is missing (e.g. edits queued offline).
         const missing = Y.encodeStateAsUpdate(entry.doc, fromB64(r.sv))
@@ -314,15 +322,38 @@ export function dropCollabDoc(path: string): void {
 
 // -- the project stream ----------------------------------------------------
 
+/**
+ * True when the server's doc no longer holds history it held before: some
+ * client it reported is missing from `next` or at a lower clock. A live
+ * Y.Doc only ever grows, so this means the hub rebuilt the doc from the
+ * stored row (the server restarted, or dropped the idle project) — a NEW
+ * history of the same text, which a state-vector merge would not dedupe.
+ */
+export function serverLostHistory(prev: ReadonlyMap<number, number>, next: ReadonlyMap<number, number>): boolean {
+  for (const [client, clock] of prev) {
+    if ((next.get(client) ?? 0) < clock) return true
+  }
+  return false
+}
+
 async function resyncAll(): Promise<void> {
-  for (const [path, entry] of docs) {
+  for (const [path, entry] of [...docs]) {
     if (!entry.synced) continue
     try {
       const r = await post<{ update: string; sv: string }>('sync', {
         path,
         sv: toB64(Y.encodeStateVector(entry.doc)),
       })
+      if (docs.get(path) !== entry) continue // dropped / replaced meanwhile
+      const serverSv = Y.decodeStateVector(fromB64(r.sv))
+      if (serverLostHistory(entry.serverSv, serverSv)) {
+        // Merging two unrelated histories of one text keeps BOTH copies —
+        // the file would come back doubled, here and in the stored row.
+        await rebaseOntoServer(path, entry)
+        continue
+      }
       Y.applyUpdate(entry.doc, fromB64(r.update), REMOTE_ORIGIN)
+      entry.serverSv = serverSv
       const missing = Y.encodeStateAsUpdate(entry.doc, fromB64(r.sv))
       if (missing.length > 2) {
         entry.outbox.push(missing)
@@ -332,6 +363,28 @@ async function resyncAll(): Promise<void> {
       // Still offline — the next reconnect retries.
     }
   }
+}
+
+/**
+ * The server rebuilt `path`'s doc from its stored row: start over on the
+ * server's new doc and fold this editor's text in as one minimal splice, so
+ * edits the dying server never stored (or typed while it was down) survive
+ * and nothing from the old history is ever sent. The old doc, its pending
+ * outbox and its undo stack are dropped; `onRebind` remounts the view.
+ */
+async function rebaseOntoServer(path: string, old: DocEntry): Promise<void> {
+  const full = await post<{ update: string; sv: string }>('sync', { path }) // no sv: the whole doc
+  if (docs.get(path) !== old) return
+  const local = old.ytext.toString()
+  dropCollabDoc(path)
+  const fresh = makeEntry(path)
+  docs.set(path, fresh)
+  Y.applyUpdate(fresh.doc, fromB64(full.update), REMOTE_ORIGIN)
+  fresh.serverSv = Y.decodeStateVector(fromB64(full.sv))
+  fresh.synced = true
+  fresh.awareness.setLocalStateField('user', localUser)
+  replaceIntoYText(fresh.ytext, local, LOCAL_ORIGIN)
+  handlers?.onRebind?.(path)
 }
 
 /** Start co-editing for a server project (idempotent per project). */
@@ -357,7 +410,8 @@ function openStream(pid: string, reopened: boolean): void {
   let hadOpen = reopened
   es.onopen = () => {
     // The first open needs no resync (docs handshake on creation); every
-    // reconnect reconciles both directions via state vectors.
+    // reconnect reconciles both directions via state vectors (or rebases
+    // onto a doc the restarted server rebuilt — `serverLostHistory`).
     if (hadOpen) void resyncAll()
     hadOpen = true
     reopenAttempt = 0
