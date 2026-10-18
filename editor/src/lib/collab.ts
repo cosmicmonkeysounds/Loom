@@ -22,6 +22,7 @@ import {
   encodeAwarenessUpdate,
   removeAwarenessStates,
 } from 'y-protocols/awareness'
+import { probeVerdict, reconnectDelay, streamClosed } from '@/lib/stream-retry'
 
 /** Origin marking transactions that came FROM the server (never re-posted). */
 export const REMOTE_ORIGIN = Symbol('collab-remote')
@@ -83,6 +84,9 @@ export function onCollabEvent(fn: (n: CollabEventNotice) => void): () => void {
 let projectId: string | null = null
 let cid = ''
 let stream: EventSource | null = null
+// C8: reopening a stream the server closed for good (a 502 while it restarts).
+let reopenTimer: ReturnType<typeof setTimeout> | null = null
+let reopenAttempt = 0
 let handlers: CollabHandlers | null = null
 let localUser: { name: string; color: string } = { name: 'Author', color: '#8b5cf6' }
 const docs = new Map<string, DocEntry>()
@@ -342,14 +346,28 @@ export function startCollab(pid: string, user: { name: string }, h: CollabHandle
   cid = Math.random().toString(36).slice(2, 10)
   localUser = { name: user.name || 'Author', color: colorFor(user.name || 'Author') }
 
+  openStream(pid, false)
+}
+
+/** Open the project stream. `reopened` = this replaces one the server
+ *  closed, so the first open resyncs too. */
+function openStream(pid: string, reopened: boolean): void {
   const es = new EventSource(`${BASE}/api/projects/${pid}/collab/stream?cid=${cid}`, { withCredentials: true })
   stream = es
-  let hadOpen = false
+  let hadOpen = reopened
   es.onopen = () => {
     // The first open needs no resync (docs handshake on creation); every
     // reconnect reconciles both directions via state vectors.
     if (hadOpen) void resyncAll()
     hadOpen = true
+    reopenAttempt = 0
+  }
+  // A non-200 (the proxy's 502 while the server restarts) closes the
+  // stream for good — the browser won't retry it. Reopen it on a capped
+  // backoff once the project answers again (C8); a network blip stays the
+  // browser's to retry.
+  es.onerror = () => {
+    if (stream === es && streamClosed(es)) scheduleReopen(pid)
   }
   es.addEventListener('update', (ev) => {
     const { path, update } = JSON.parse((ev as MessageEvent).data) as { path: string; update: string }
@@ -380,10 +398,35 @@ export function startCollab(pid: string, user: { name: string }, h: CollabHandle
   })
 }
 
+/** C8: probe the project after a backoff; reopen the stream when it
+ *  answers, stop when the session or the project is gone, else go again. */
+function scheduleReopen(pid: string): void {
+  if (reopenTimer !== null) return
+  reopenTimer = setTimeout(async () => {
+    reopenTimer = null
+    if (projectId !== pid) return
+    let status: number | null
+    try {
+      status = (await fetch(`${BASE}/api/projects/${pid}/event`, { credentials: 'include' })).status
+    } catch {
+      status = null
+    }
+    if (projectId !== pid || !streamClosed(stream)) return
+    const verdict = probeVerdict(status)
+    if (verdict === 'reopen') openStream(pid, true)
+    else if (verdict === 'retry') scheduleReopen(pid)
+  }, reconnectDelay(reopenAttempt++))
+}
+
 /** Tear down the stream + every doc (project closed / switched). */
 export function stopCollab(): void {
   stream?.close()
   stream = null
+  if (reopenTimer !== null) {
+    clearTimeout(reopenTimer)
+    reopenTimer = null
+  }
+  reopenAttempt = 0
   for (const [path, entry] of docs) {
     removeAwarenessStates(entry.awareness, [entry.awareness.clientID], 'closing')
     void path
