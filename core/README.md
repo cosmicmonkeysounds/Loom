@@ -336,13 +336,18 @@ server voice, the default — the terminals use the devices' own voices;
 compose's `kokoro` is behind `--profile tts`), `LOOM_VAPID_PUBLIC_KEY` /
 `LOOM_VAPID_PRIVATE_KEY` / `LOOM_VAPID_SUBJECT` (Web Push, below), plus the control-plane / hardening vars
 (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `LOOM_BASE_URL`,
-`LOOM_TRUSTED_ORIGINS`, `LOOM_TRUST_PROXY`), and the throttles
+`LOOM_TRUSTED_ORIGINS`, `LOOM_TRUST_PROXY`, `LOOM_DB_WAIT` — with
+`DATABASE_URL` set the boot retries the database forever, 1 s doubling to
+15 s; `off` / `0` probes once, which a scratch server pointed at a dead
+database needs), and the throttles
 `LOOM_RL_RESOLVE` (30/60), `LOOM_RL_REGISTER` (20/60),
 `LOOM_RL_LOGIN_FAILURES` (10/300) — per IP — and `LOOM_RL_REDEEM_MISSES`
 (8/60, per guest: past it `/api/guest/codex/redeem` answers 429 and journals
 nothing), `LOOM_RL_WIDGETS` (20/60, per guest: widget answers on
 `/api/guest/widget`) and `LOOM_RL_WALLET` (30/60, per guest: every
-`/api/guest/wallet/*` call), each `<max>` or `<max>/<seconds>` (`server/rate-limit.ts`). **For a full production
+`/api/guest/wallet/*` call) and `LOOM_RL_QR` (60/60 per IP on `/api/qr`), each `<max>` or `<max>/<seconds>` (`server/rate-limit.ts`). A locked-out IP still
+lets the right guest event code through (`LOOM_RL_LOGIN_FAILURES` guards
+the performer and mod codes and wrong guesses). **For a full production
 deployment + the security model, see
 [`docs/loom-deployment.md`](../docs/loom-deployment.md).**
 
@@ -387,7 +392,7 @@ pushes during journal replay. The play app's `/sw.js` +
   returns `joinLink` (`<join base>/?code=<event>`) and `checkin[]` — one
   sign per LOCATION a guest can check into (`{id, label, slug, url,
   hidden}`; never a prison, a cutscene or a `checkin: false` room). The
-  editor draws the QRs itself (`/api/qr` is 60/min).
+  editor draws the QRs itself (`/api/qr` is 60/min per IP, `LOOM_RL_QR`).
 - **Recap** (K-26, `server/recap.ts` + `routes/recap.ts`): `GET
   /api/mod/recap` (directors) → `totals`, ranked `lists` (`trust` /
   `truths` / `lies` / `internetVisits` / `codex` / `quests` /
@@ -429,7 +434,10 @@ pushes during journal replay. The play app's `/sw.js` +
 - **Agents.** With no worker online for 20 s, the hub posts the
   character's authored `hold:` line (`CHARACTER … hold: "…"`) into the
   thread once, as a journaled `say`, and keeps the request queued for a
-  worker that comes back (N-11). A director answering a thread as the
+  worker that comes back (N-11). A request a connected worker never
+  answers is cancelled 2 min after it reached the front of that worker's
+  line, re-sent once, then given up with the hold line (once). A director
+  answering a thread as the
   character settles its open request (`AgentHub.answeredByHand` — dropped,
   or cancelled on its worker), so nobody answers twice. A power the story
   answers with words only (a refusal) does not count against its `limit`.
@@ -446,7 +454,7 @@ pushes during journal replay. The play app's `/sw.js` +
   K-24); `show answer "…" … with question: "<id>"` is the 💬 free-text
   card (`{text}` → `answer answered`).
 
-### Oct 31 wave 4 (uncommitted in the working tree)
+### Oct 31 wave 4 (9d35a4b)
 
 - **The facts judge** (`server/facts.ts`, pure types + the answer fold in
   `src/facts.ts`): a project's `facts.json` (the hunt questions per round
@@ -500,6 +508,93 @@ pushes during journal replay. The play app's `/sw.js` +
   own hooks hear `<kind> answered`).
 - `/api/mod/signal` takes a `label` (≤ 60 chars) so a mod-token device —
   the tent tablet felling the King — names itself in the journal / recap.
+
+### Oct 31 wave 9 (merged ae79117, ships as `w9-1018`)
+
+- **Boot + health** (`server/boot.ts`, `ControlPlaneBoot`): `GET
+  /api/health` (before the static apps, never throttled, no auth) → 200
+  `{ok, controlPlane, events}` (+ `failed: [ids]` on a LAN box), else 503
+  `{ok: false, reason}` — `database` (still retrying), `starting`
+  (migrating / rehydrating), `config` (the dev `BETTER_AUTH_SECRET`
+  refused on a deployment), `events` (+ `failed`: a live row that would
+  not rehydrate). Until the boot settles an unknown `/e/<id>/*` or a
+  `/api/resolve-code` miss answers 503 `{error: "starting"}`
+  (`retry-after: 1`), never 404, so no phone signs itself out; a row
+  that failed answers 503 `{error: "event failed to load"}`
+  (`retry-after: 5`).
+- **Director consoles take patches** (`server/mod-patch.ts`, exported as
+  `@loom/core/mod-patch`: `modPatch`, `applyModPatch`, `modViewJson`,
+  `MOD_PATCH_KEYS`, `ModPatchFrame`). `events?role=mod&delta=1` gets a
+  keyframe `snapshot` carrying a numeric `_frame`, then `event:
+  snapshotPatch {base, frame, patch}` (top-level fields as `{value}` /
+  `{remove}`; `world` by `path`, `codex` / `roster` by `id` as `{set,
+  del, order?}`). A keyframe goes to a newcomer, a console owed or
+  skipped a frame, after a `lifecycle` notice (one per restart), at least
+  every 60 s (`MOD_KEYFRAME_MS`) and whenever the patch isn't smaller; a
+  console behind costs nothing until it reads again. A plain console
+  gets today's stream with no `_frame`; `?lean=1` is untouched. At 45
+  guests a delta console is ≈ 0.11 Mbit/s against 5.9 (K-32's pass line
+  is ≤ 1 Mbit/s per director console).
+- **Big frames are paced** (`sseFrame`, `http-util.ts`): a frame over 64
+  KiB (a 6 MB director history) goes out one slice at a time, each after
+  the last write drained, later frames queued behind it, so a slow
+  console reads as making progress and is never dropped mid-history.
+- **Agents:** only each worker's head request is on the 2-minute clock,
+  from the moment it reached the head; a request given up (attempts
+  spent, or queued past 10 min) posts the hold line once; a restore never
+  posts a second hold line in a thread that has one. While paused the
+  agent's words commit but every act answers `{ok: false, error: "doors
+  are closed"}` and counts against no `limit:`; `AgentHub.shift` on
+  resume keeps the pause out of every timer. Not shipped: noticing a
+  worker that stays connected but stops answering (parked on
+  `oct31-w9/agent-stall`), so a wedged laptop delays the hold line.
+- **Guest routes:** `/api/guest/say` and `/api/prime/say` refuse a line
+  over 2,000 characters (`CHAT_TEXT_MAX`, 413 `message too long (max
+  2000 characters)`; `/api/mod/say` is uncapped). `/api/guest/say`
+  answers 404 `no such room` for a room the story doesn't have **or** one
+  hidden from the guest (a hidden side's `faction:` room before its
+  reveal, an unseen `loc:`, a hidden or members-only authored room), and
+  403 `you can't post here` only for a room they can see. `POST
+  /api/guest/channel/invite` holds the channel's `invite:` policy
+  (`members` default / `anyone` / a ROLE name; 404 unseen room, 400 open
+  room, 403 self-invite or not allowed). Joins and defects go only to a
+  declared, joinable, revealed side (`server/routes/sides.ts`:
+  `guestMayJoin`, `joinableFactions` — also `GuestView.factions`; 403
+  `that side isn't open`).
+- **Wallet cards** name who acted as a display name (`byName`: "Director",
+  the guest, the character with spaces), never a `g-` id; a request's
+  `declined` / `cancelled` step carries `by` when the payment behind it
+  was denied or cancelled, and `closedBy` (`WalletCard.closedBy`) when a
+  director closed an open request; `walletLine` takes the viewer, so the
+  payer reads "your payment" and possessives are right (`possessive`). A
+  send or request to a character answers 404 `unknown recipient`. The
+  journaled ops are unchanged, so an old journal replays to the new
+  wording.
+- **Recap:** a round-3 DM lie (`lie_q7` / `lie_q8`) counts only once
+  `Night.r3_closed` (📄 truth.txt) settles it.
+- **Cue sheet:** a world write whose last path segment starts with `_`
+  (`Night._resurrect_ask_at`) is bookkeeping: a press that writes only
+  those plus staff-room lines is refused.
+- **Co-editing follows a sync** (`server/collab.ts`):
+  `CollabHub.resyncFromStorage(projectId)` folds rows rewritten behind the
+  hub into the open docs (a rewritten file replaces the open copy, a
+  deleted one drops it with a `files` `delete`, untouched files keep
+  their edits); a debounced persist is a compare-and-swap against the
+  row, and flushes and resyncs run one at a time per project.
+  `ProjectLink.resyncFiles()` runs it plus a `files` `put` per file;
+  `/api/mod/load` awaits it before the restart, and `POST
+  /e/:id/api/mod/resync` runs only it (`{ok, resynced}`, `resynced:
+  false` with no project link, 502 on a failure) — `sync-example
+  --no-reload` calls it.
+- **Spatial:** candidate rows carry `restricted`; the found reply and the
+  `found` stream frame carry `captured` (still captured after the commit:
+  a kept find).
+- **The sync guard** (`core/scripts/live-guard.ts`, re-exported by
+  `scripts/accept/live-guard.ts`): `sync-example` / `sync-show` refuse a
+  live event with a real guest, or whose roster they can't read, with or
+  without `--no-reload` — the files are written, the snapshot and
+  runtime untouched, exit 3. `--i-know-this-is-live` or
+  `LOOM_I_KNOW_THIS_IS_LIVE=1` overrides; a preview is never guarded.
 
 ### The spatial plane (the reinstallation games)
 
@@ -746,7 +841,9 @@ on disk, and the server has no watch mode. After editing an example (or
 server code), `pnpm sync-example "<project name or id>" [example]`
 (`core/scripts/sync-example.ts`) writes the files into `project_file`,
 updates the event's snapshot, and reloads the running event through its
-own mod code (guests re-join); `pnpm dev --sync …` does it on boot. The
+own mod code (guests re-join); `pnpm dev --sync …` does it on boot. On a
+**live** event with a real guest it writes the files and stops there
+(exit 3, wave 9's guard above). The
 example's house maps (`house.json`, `house.<variant>.json`) go with it,
 but the **project's copy wins**: an example map is only added when the
 project lacks that file, and a project map that differs (one saved from
