@@ -36,6 +36,7 @@ import {
   viewLatch,
   armWarnings,
   cueRowClass,
+  fromAct,
   NEXT_COOLDOWN_MS,
   STALE_TOAST,
   pollDelay,
@@ -699,5 +700,19 @@ describe("fired rows are muted", () => {
     const again = directorRows({ interactions: [{ id: "results", label: "📋", who: "admin", repeat: true }, { id: "z", label: "z", who: "admin" }], cues: { last: "z", fired: ["results", "z"] } });
     expect(cueRowClass(again[0]!, false, false).split(" ")).toContain("fired");
     expect(cueRowClass({ last: false, next: false, fired: false, live: false }, false, false)).toBe("choice cue-row off");
+  });
+});
+
+describe("the previous act's fallbacks", () => {
+  it("show once: under the focus act, or in the previous act's own section when it is unfolded", () => {
+    const layout = sheetLayout(directorRows({ ...ACTS, cues: { last: "bingo", fired: ["call", "bingo"] } }));
+    if (layout.kind !== "acts") throw new Error("acts");
+    const b = layout.acts[layout.previous]!;
+    expect(fromAct(layout, new Set())?.asides.map((r) => r.id)).toEqual(["ring"]);
+    // Looking back at B by hand: its section lists ☎️, so no from-B line.
+    expect(fromAct(layout, new Set([b.key]))).toBeNull();
+    // At the doors there is no previous act.
+    expect(fromAct(sheetLayout(directorRows(ACTS)), new Set())).toBeNull();
+    expect(fromAct(sheetLayout(directorRows(VIEW)), new Set())).toBeNull();
   });
 });

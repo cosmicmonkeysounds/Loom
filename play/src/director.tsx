@@ -144,6 +144,15 @@ export function sheetLayout(rows: CueRow[]): SheetLayout {
   return { kind: "acts", acts, focus, previous: focus < 0 ? -1 : previousActIndex(acts, focus) };
 }
 
+/** The act whose fallbacks sit under the focus act as the `from B ▾` line:
+ *  the previous act, unless it has none or the director unfolded it by hand
+ *  (its own section already lists them — never two buttons for one cue). */
+export function fromAct(layout: SheetLayout, openActs: ReadonlySet<string>): CueAct | null {
+  if (layout.kind !== "acts" || layout.previous < 0) return null;
+  const prev = layout.acts[layout.previous]!;
+  return prev.asides.length > 0 && !openActs.has(prev.key) ? prev : null;
+}
+
 /** An act's name: `B · Act I: …`, `Anytime`, or the cues above the first
  *  `act:` line. */
 export function actName(a: Pick<CueAct, "code" | "title">): string {
@@ -1016,7 +1025,7 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
                     </section>
                   );
                 }
-                const prev = isFocus && layout.previous >= 0 ? layout.acts[layout.previous]! : null;
+                const prev = isFocus ? fromAct(layout, openActs) : null;
                 return (
                   <section key={a.key} className={`cue-act ${a.state}`} data-act={a.key}>
                     <h3 className="cue-act-head">
@@ -1034,7 +1043,7 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
                         {rowList(a.asides)}
                       </>
                     )}
-                    {prev !== null && prev.asides.length > 0 && (
+                    {prev !== null && (
                       <>
                         <button type="button" className="cue-from" aria-expanded={fromOpen} onClick={() => setFromOpen((o) => !o)}>
                           from {actHandle(prev)} {fromOpen ? "▾" : "▸"} <span className="muted">{prev.asides.length} fallbacks</span>
