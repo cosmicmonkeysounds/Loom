@@ -3742,8 +3742,9 @@ when trabolta_overshares:
     broadcast "🤖 Not yet: 📊 the Trust Chart first. Nothing happens." to channel(hosts)
 
 // D10: the clock. One hour to midnight; the factions come out. Once set,
-// the clock (reset only by Power On) is what says "not again": a printer
-// lid first opened in the Y2K hour sets the step back to the beans.
+// the clock (reset only by Power On) is what says "not again"; a printer
+// lid first opened in the Y2K hour no longer moves the step (see
+// printer_opened), so the step and the clock agree.
 when y2k_clock:
   if Night.step < 14 and Night.scenario != 0 and Night.clock == "--:--":
     set Night.phase = "y2k"
