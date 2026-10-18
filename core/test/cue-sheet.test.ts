@@ -38,6 +38,7 @@ import { scenarioSource } from "../examples/load.ts";
 
 const CODES = { event: "EVT262", prime: "PRM262", mod: "MOD262" };
 const SOURCE = `# Cue Phone
+theme: aol97
 
 INTERACTION ring_the_bell
   label: C1 · 📣 Call everyone
@@ -184,6 +185,11 @@ describe("the phone cue page's server surface (W-26)", () => {
     const lean = (await call(rt, "GET", "/api/state?role=mod&cues=1", {}, token)).json as unknown as ReturnType<typeof cueSheetView>;
     expect(lean.interactions.map((i) => i.id)).toEqual(["ring_the_bell", "hunt_time_up"]);
     expect(lean.title).toBe("Cue Phone");
+    // The skin is there before the doors, so the phone never switches at open.
+    const full = (await call(rt, "GET", "/api/state?role=mod", {}, token)).json as unknown as ModView;
+    expect(lean.theme).toBe("aol97");
+    expect(full.theme).toBe("aol97");
+    expect(full.title).toBe("Cue Phone");
     expect(lean.doorsClosed).toBe(true);
     expect(lean.paused).toBe(true);
     expect(lean.cues).toEqual({ last: null, lastBy: null, fired: [], presses: 0, pressed: null });
@@ -191,6 +197,8 @@ describe("the phone cue page's server surface (W-26)", () => {
     rt.openDoors();
     const open = (await call(rt, "GET", "/api/state?role=mod&cues=1", {}, token)).json as unknown as ReturnType<typeof cueSheetView>;
     expect(open).not.toHaveProperty("doorsClosed");
+    expect(open.theme).toBe(lean.theme);
+    expect(open.title).toBe(lean.title);
     expect(open.interactions.map((i) => i.id)).toEqual(["ring_the_bell", "hunt_time_up"]);
     rt.dispose();
   });
@@ -209,7 +217,7 @@ describe("the phone cue page's server surface (W-26)", () => {
     const full = await call(rt, "GET", "/api/state?role=mod", {}, token);
     const lean = await call(rt, "GET", "/api/state?role=mod&cues=1", {}, token);
     expect(lean.status).toBe(200);
-    expect(Object.keys(lean.json).sort()).toEqual(["clock", "cues", "interactions", "roster", "title", "world"]);
+    expect(Object.keys(lean.json).sort()).toEqual(["clock", "cues", "interactions", "roster", "theme", "title", "world"]);
     expect(lean.json).toEqual(cueSheetView(full.json as unknown as ModView));
     const v = lean.json as unknown as ReturnType<typeof cueSheetView>;
     expect(v.interactions.map((i) => i.id)).toEqual(["ring_the_bell", "hunt_time_up"]);

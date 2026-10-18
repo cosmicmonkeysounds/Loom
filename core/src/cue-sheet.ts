@@ -401,6 +401,9 @@ export interface CuePerson {
  *  every 3 s on a director's mobile data. */
 export interface CueSheetView {
   title?: string;
+  /** The story's `theme:` (the phone skins itself with it, the same before
+   *  and after the doors open). */
+  theme?: string;
   interactions: CueInteraction[];
   cues: CueMarks;
   /** Just the `Night.phase` row, if set. */
@@ -439,6 +442,7 @@ const PHONE_WATCH = 3;
 /** Trim a `ModView`-shaped snapshot down to the cue sheet. */
 export function cueSheetView(view: {
   title?: string;
+  theme?: string;
   interactions?: readonly CueInteraction[];
   cues?: CueMarks;
   world?: readonly WorldLine[];
@@ -460,6 +464,7 @@ export function cueSheetView(view: {
   const countdowns = (view.countdowns ?? []).map((c) => ({ label: c.label, endsAt: c.endsAt }));
   return {
     ...(view.title !== undefined ? { title: view.title } : {}),
+    ...(view.theme !== undefined ? { theme: view.theme } : {}),
     interactions: (view.interactions ?? [])
       .filter((i) => i.who === "admin")
       .map((i) => ({

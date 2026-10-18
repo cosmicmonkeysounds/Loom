@@ -849,7 +849,7 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
     // "this story has no director cues".
     const before =
       declaredSim != null
-        ? { title: declaredSim.lobbyTitle(), interactions: interactionsFor(declaredSim, ["admin"]), cues: { last: null, lastBy: null, fired: [], presses: 0, pressed: null } satisfies CueState }
+        ? { title: declaredSim.lobbyTitle(), theme: declaredSim.model.theme ?? "plain", interactions: interactionsFor(declaredSim, ["admin"]), cues: { last: null, lastBy: null, fired: [], presses: 0, pressed: null } satisfies CueState }
         : {};
     return {
       ...before,

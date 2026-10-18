@@ -46,7 +46,7 @@ import { ConnDot, PickerSheet, Sheet, WakeLockToggle, type PickItem } from "./ch
 import { HelpSheet } from "./help.tsx";
 import { usePlayHost } from "./host.ts";
 import { eventGone } from "./lifecycle.ts";
-import { codeFromUrl, useDocumentTitle, type ResolvedCode } from "./session.ts";
+import { codeFromUrl, useDocumentTitle, useTheme, type ResolvedCode } from "./session.ts";
 
 /** Where the phone keeps its director sign-in. */
 export const DIRECTOR_KEY = "loom.director";
@@ -57,11 +57,16 @@ export interface DirectorAuth {
   /** Who is holding the phone — the journal reads "Phone · <name>". */
   name: string;
   title?: string;
+  /** The story's `theme:` from the code's resolve, until the first poll. */
+  theme?: string;
 }
 
 /** The slice of the director's `ModView` this page reads. */
 export interface DirectorView {
   title?: string;
+  /** The story's `theme:` — carried before the doors too, so the skin never
+   *  switches when they open. */
+  theme?: string;
   phase?: string;
   interactions?: CueInteraction[];
   cues?: CueMarks;
@@ -701,7 +706,7 @@ function useDirectorSession() {
       const r = await api<ResolvedCode>("/api/resolve-code", { code });
       if (r.role !== "mod") throw new Error("That isn't the director code. Check it with the stage manager.");
       const { token } = await api<{ token: string }>(`/e/${encodeURIComponent(r.eventId)}/api/mod/login`, { passcode: code });
-      const a: DirectorAuth = { token, eventId: r.eventId, name: name.trim(), ...(r.title !== undefined ? { title: r.title } : {}) };
+      const a: DirectorAuth = { token, eventId: r.eventId, name: name.trim(), ...(r.title !== undefined ? { title: r.title } : {}), ...(typeof r.theme === "string" ? { theme: r.theme } : {}) };
       storage.save(DIRECTOR_KEY, a);
       setNotice(null);
       setAuth(a);
@@ -866,10 +871,17 @@ function CueButton({ row, armed, locked, sending, warnings, actCode, subjectName
   );
 }
 
-export function DirectorApp({ onLeave }: { onLeave: () => void }) {
+/** The phone's skin: the story's own (the poll, else the sign-in's resolve),
+ *  else the landing's until someone signs in. */
+export function directorTheme(view: Pick<DirectorView, "theme"> | null, auth: Pick<DirectorAuth, "theme"> | null, brand: string | null): string | null {
+  return view?.theme ?? auth?.theme ?? brand;
+}
+
+export function DirectorApp({ onLeave, brandTheme = null }: { onLeave: () => void; brandTheme?: string | null }) {
   const s = useDirectorSession();
   const title = s.view?.title ?? s.auth?.title ?? null;
   useDocumentTitle(title !== null ? `🎬 ${title}` : null);
+  useTheme(directorTheme(s.view, s.auth, brandTheme));
   const [query, setQuery] = useState("");
   const [armed, setArmed] = useState<Armed | null>(null);
   const [picking, setPicking] = useState<string | null>(null);

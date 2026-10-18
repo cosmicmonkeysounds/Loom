@@ -21,6 +21,7 @@ import {
   fireToast,
   noCuesText,
   DOORS_CLOSED,
+  directorTheme,
   takesValue,
   initialRole,
   nextBar,
@@ -777,3 +778,16 @@ describe("the phone while paused, and an armed person", () => {
   });
 });
 
+describe("directorTheme", () => {
+  it("the story's skin wins, from the poll, else the sign-in, else the landing", () => {
+    expect(directorTheme({ theme: "aol97" }, { theme: "plain" }, null)).toBe("aol97");
+    expect(directorTheme({}, { theme: "aol97" }, null)).toBe("aol97");
+    expect(directorTheme(null, null, "aol97")).toBe("aol97");
+    expect(directorTheme(null, null, null)).toBeNull();
+  });
+  it("the lean read before the doors carries the theme, so the skin never switches at open", () => {
+    const before = cueSheetView({ title: "T", theme: "aol97", phase: "idle", interactions: [] });
+    const after = cueSheetView({ title: "T", theme: "aol97", phase: "open", interactions: [] });
+    expect(directorTheme(before, null, null)).toBe(directorTheme(after, null, null));
+  });
+});
