@@ -162,6 +162,60 @@ describe("CollabHub — CRDT co-editing", () => {
     expect(files.has("p1/gone.loom")).toBe(false);
   });
 
+  it("resyncFromStorage folds a row rewritten behind the hub into every open doc; the next keystroke lands on it (T4-04)", async () => {
+    const { storage, files } = memoryStorage({ "main.loom": "line one\n", "notes.loom": "notes\n" });
+    const hub = new CollabHub(storage, 10_000);
+    const a = await joinEditor(hub, "main.loom", "a");
+    const n = await joinEditor(hub, "notes.loom", "n");
+    a.ytext.insert(a.ytext.length, "draft note\n");
+    await Promise.resolve();
+    await hub.flush("p1");
+    expect(files.get("p1/main.loom")).toBe("line one\ndraft note\n");
+    // notes.loom has an unsaved edit the sync never touched.
+    n.ytext.insert(0, "unsaved ");
+    await Promise.resolve();
+
+    // sync-example writes project_file from another process…
+    files.set("p1/main.loom", "synced from the repo\n");
+    const freshTab = async (): Promise<string> => {
+      const d = new Y.Doc();
+      Y.applyUpdate(d, new Uint8Array(Buffer.from((await hub.sync("p1", "main.loom")).update, "base64")));
+      return d.getText("content").toString();
+    };
+    // …a fresh tab still gets the stale doc until the reload resyncs.
+    expect(await freshTab()).toBe("line one\ndraft note\n");
+    expect(await hub.resyncFromStorage("p1")).toEqual(["main.loom"]);
+
+    // A fresh tab now reads the synced text.
+    expect(await freshTab()).toBe("synced from the repo\n");
+    // The open editor got the splice over its stream.
+    a.drain();
+    expect(a.ytext.toString()).toBe("synced from the repo\n");
+    // Nothing to persist: the row already holds it.
+    await hub.flush("p1");
+    expect(files.get("p1/main.loom")).toBe("synced from the repo\n");
+
+    // One keystroke merges on top of the synced text, never the old doc.
+    a.ytext.insert(0, " ");
+    await Promise.resolve();
+    await hub.flush("p1");
+    expect(files.get("p1/main.loom")).toBe(" synced from the repo\n");
+    // The untouched row kept its doc and its unsaved edit.
+    expect(files.get("p1/notes.loom")).toBe("unsaved notes\n");
+  });
+
+  it("resyncFromStorage drops the doc of a row the sync deleted and tells the editors", async () => {
+    const { storage, files } = memoryStorage({ "old.loom": "old\n" });
+    const hub = new CollabHub(storage, 10_000);
+    const a = await joinEditor(hub, "old.loom", "a");
+    files.delete("p1/old.loom");
+    expect(await hub.resyncFromStorage("p1")).toEqual(["old.loom"]);
+    expect(a.events.filter((e) => e.event === "files").map((e) => e.data)).toEqual([{ op: "delete", path: "old.loom" }]);
+    await hub.flush("p1");
+    expect(files.has("p1/old.loom")).toBe(false);
+    expect(await hub.resyncFromStorage("nobody-open")).toEqual([]);
+  });
+
   it("replaceIntoYText splices minimally so out-of-region edits survive", () => {
     const doc1 = new Y.Doc();
     const t1 = doc1.getText("content");

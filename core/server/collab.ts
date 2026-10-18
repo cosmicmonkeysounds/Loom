@@ -18,7 +18,9 @@
 //! `project_file`, so `projectSource` / event launch / the plain files API
 //! all see the live document. A direct `PUT /files` from a non-collab client
 //! is adopted into the live doc (`adoptExternalWrite`) instead of being
-//! overwritten by the next persist. Awareness (cursors, names) is relayed
+//! overwritten by the next persist, and rows rewritten from another process
+//! (`sync-show` / `sync-example`) are folded in by `resyncFromStorage` when
+//! the event reloads (T4-04). Awareness (cursors, names) is relayed
 //! blind — clients prune stale peers themselves (the awareness protocol's
 //! 30s outdated timeout).
 
@@ -51,6 +53,9 @@ interface ProjectCollab {
   clients: Set<CollabClient>;
   /** Paths whose merged text is newer than the stored row. */
   dirty: Set<string>;
+  /** The row text each doc was last seeded from / persisted as — a row that
+   *  no longer reads this was rewritten behind the hub's back. */
+  base: Map<string, string>;
   persistTimer: ReturnType<typeof setTimeout> | null;
   /** Drops the whole in-memory project a while after the last editor left. */
   idleTimer: ReturnType<typeof setTimeout> | null;
@@ -104,7 +109,7 @@ export class CollabHub {
   private project(projectId: string): ProjectCollab {
     let p = this.projects.get(projectId);
     if (p === undefined) {
-      p = { docs: new Map(), clients: new Set(), dirty: new Set(), persistTimer: null, idleTimer: null };
+      p = { docs: new Map(), clients: new Set(), dirty: new Set(), base: new Map(), persistTimer: null, idleTimer: null };
       this.projects.set(projectId, p);
     }
     return p;
@@ -133,6 +138,7 @@ export class CollabHub {
     const existing = p.docs.get(path);
     if (existing !== undefined) return existing;
     p.docs.set(path, doc);
+    p.base.set(path, stored ?? "");
     return doc;
   }
 
@@ -194,7 +200,44 @@ export class CollabHub {
     replaceIntoYText(doc.getText("content"), content, { cid: null } satisfies UpdateOrigin);
     // The row was just written with exactly this text — nothing to persist.
     const p = this.projects.get(projectId);
+    p?.base.set(path, content);
     if (p !== undefined && doc.getText("content").toString() === content) p.dirty.delete(path);
+  }
+
+  /**
+   * The project's rows were rewritten from another process (`sync-show` /
+   * `sync-example` write `project_file` directly, then reload the event):
+   * fold each open doc's row back in, so every open editor shows the synced
+   * text and the next keystroke merges on top of it instead of persisting
+   * the old doc over it (T4-04). A row still reading what the doc was seeded
+   * from / last saved as is left alone (its unsaved edits stay); a rewritten
+   * row wins over the doc (any unsaved edit to that file is lost — logged);
+   * a vanished row drops the doc and tells the editors. Returns the paths
+   * that changed.
+   */
+  async resyncFromStorage(projectId: string): Promise<string[]> {
+    const p = this.projects.get(projectId);
+    if (p === undefined) return [];
+    const changed: string[] = [];
+    for (const [path, doc] of [...p.docs]) {
+      const stored = await this.storage.load(projectId, path);
+      if (p.docs.get(path) !== doc) continue; // dropped / replaced meanwhile
+      if (stored === null) {
+        if (p.dirty.has(path) && (p.base.get(path) ?? "") === "") continue; // a new file not yet saved
+        this.dropDoc(projectId, path);
+        this.notifyFileChange(projectId, "delete", path);
+        changed.push(path);
+        continue;
+      }
+      if (stored === p.base.get(path)) continue;
+      if (p.dirty.has(path)) console.warn(`collab resync: ${projectId}/${path} was rewritten — unsaved edits to it are dropped`);
+      replaceIntoYText(doc.getText("content"), stored, { cid: null } satisfies UpdateOrigin);
+      p.base.set(path, stored);
+      // The row already holds exactly this text — nothing to persist.
+      p.dirty.delete(path);
+      changed.push(path);
+    }
+    return changed;
   }
 
   /** Forget a deleted/renamed file's doc (do NOT persist it back). */
@@ -204,6 +247,7 @@ export class CollabHub {
     p.docs.get(path)?.destroy();
     p.docs.delete(path);
     p.dirty.delete(path);
+    p.base.delete(path);
   }
 
   // -- SSE clients ---------------------------------------------------------
@@ -264,8 +308,10 @@ export class CollabHub {
     for (const path of paths) {
       const doc = p.docs.get(path);
       if (doc === undefined) continue;
+      const content = doc.getText("content").toString();
       try {
-        await this.storage.save(projectId, path, doc.getText("content").toString());
+        await this.storage.save(projectId, path, content);
+        p.base.set(path, content);
       } catch (err) {
         p.dirty.add(path); // retry on the next update/flush
         console.error(`collab persist failed for ${projectId}/${path}:`, err);
