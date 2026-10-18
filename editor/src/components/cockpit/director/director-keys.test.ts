@@ -88,4 +88,23 @@ describe('directorKey', () => {
     expect(directorKey(EMPTY, { key: '/' }, ctx(0)).effect.kind).toBe('focus-filter')
     expect(directorKey(EMPTY, { key: '.' }, ctx(0)).effect).toEqual({ kind: 'scroll', id: 'open_doors' })
   })
+
+  it('enter and space on a focused button are that button’s, not NEXT’s', () => {
+    for (const key of [' ', 'Enter']) {
+      expect(directorKey(EMPTY, { key, control: true }, ctx(0))).toEqual({ state: EMPTY, effect: { kind: 'none' }, handled: false })
+    }
+    // Enter on a focused cue presses that cue (its own click) …
+    expect(directorKey(EMPTY, { key: 'Enter', cue: 'last_call' }, ctx(0)).handled).toBe(false)
+    // … Space on it is still the page's: NEXT.
+    expect(directorKey(EMPTY, { key: ' ', cue: 'last_call' }, ctx(0)).state.armed?.id).toBe('open_doors')
+  })
+
+  it('a cursor on a row no longer on screen never arms it', () => {
+    const order = rows.filter((r) => r.id !== 'last_call').map((r) => r.id)
+    const enter = directorKey({ armed: null, cursor: 'last_call' }, { key: 'Enter' }, ctx(0, { order }))
+    expect(enter.state.armed?.id).toBe('open_doors')
+    expect(enter.state.cursor).toBeNull()
+    // j starts again from the top.
+    expect(directorKey({ armed: null, cursor: 'last_call' }, { key: 'j' }, ctx(0, { order })).state.cursor).toBe('open_doors')
+  })
 })

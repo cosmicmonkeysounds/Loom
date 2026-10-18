@@ -12,6 +12,10 @@
 //! | j / ↓, k / ↑ | move the cursor through the visible cues  | disarm, move   |
 //! | /          | focus the filter                            | —              |
 //! | .          | scroll NEXT (or LAST) into view             | —              |
+//!
+//! Enter and Space on a focused button that is not a cue (Tools' Fire, the
+//! mode toggle, an ⓘ) are that button's; Enter on a focused cue presses
+//! that cue. A cursor on a row no longer on screen is dropped.
 
 import { tapCue, type Armed, type CueMarks, type CueRow } from '@loom/core/cue-sheet'
 
@@ -35,6 +39,14 @@ export interface KeyInput {
   alt?: boolean
   /** The event came from an input / select / textarea / contenteditable. */
   editable?: boolean
+  /** The event came from a focused native control that Enter / Space
+   *  activates (a button, a `<summary>`, a link) and that is not a cue —
+   *  the Tools drawer's Fire / Send, the mode toggle, an ⓘ, a glance link.
+   *  Enter and Space are that control's, never the page's. */
+  control?: boolean
+  /** The event came from this cue's own focused button: Enter presses that
+   *  cue (its click), Space stays the page's (NEXT). */
+  cue?: string | null
 }
 
 export interface KeyCtx {
@@ -105,8 +117,14 @@ function move(state: KeyState, ctx: KeyCtx, step: 1 | -1): KeyResult {
 export function directorKey(state: KeyState, key: KeyInput, ctx: KeyCtx): KeyResult {
   if (ctx.mode !== DirectorMode.Calling) return pass(state)
   if (key.editable === true || key.meta === true || key.ctrl === true || key.alt === true || key.repeat === true) return pass(state)
+  const activates = key.key === 'Enter' || key.key === ' ' || key.key === 'Spacebar'
+  if (activates && key.control === true) return pass(state)
+  if (key.key === 'Enter' && key.cue !== undefined && key.cue !== null) return pass(state)
   const byId = (id: string | null) => (id === null ? undefined : ctx.rows.find((r) => r.id === id))
   const next = ctx.rows.find((r) => r.next)
+  // A cursor on a row that is no longer on screen (its act folded, the
+  // filter cleared) is gone: Enter never reaches a cue nobody can see.
+  if (state.cursor !== null && !ctx.order.includes(state.cursor)) state = { ...state, cursor: null }
   switch (key.key) {
     case ' ':
     case 'Spacebar': {
