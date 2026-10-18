@@ -148,7 +148,9 @@ describe("arm, then fire", () => {
   it("toasts the outcome, with a doors-closed refusal spelled out", () => {
     expect(fireToast(bingo, { ok: true })).toBe("✓ Fired V2");
     expect(fireToast(bingo, { ok: true, refused: true })).toBe("Not taken — V2 doesn't apply right now (# hosts says why)");
-    expect(fireToast(bingo, { ok: false, status: 409, message: "no scenario loaded" })).toBe("Not fired — no scenario loaded");
+    // Before the doors the server has no sim: say the doors aren't open.
+    expect(fireToast(bingo, { ok: false, status: 409, message: "no scenario loaded" })).toBe("Not fired — the doors aren't open yet");
+    expect(fireToast(bingo, { ok: false, status: 409, message: "busy" })).toBe("Not fired — busy");
     // Another director's press landed between the arm and the tap: the
     // server fired nothing (409 `moved`), and the toast says the cues moved.
     expect(fireToast(bingo, { ok: false, status: 409, message: "the cues moved", moved: true })).toBe(STALE_TOAST);
@@ -774,3 +776,4 @@ describe("the phone while paused, and an armed person", () => {
     expect(armLine({ subject: "g9" }, null)).toBe("Tap again to fire → g9");
   });
 });
+

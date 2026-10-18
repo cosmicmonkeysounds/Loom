@@ -407,6 +407,13 @@ export function subjectChoices(roster: DirectorView["roster"]): PickItem[] {
  *  (out of turn; its `# hosts` line says why) — not ticked on the sheet. */
 export type FireOutcome = { ok: true; refused?: true } | { ok: false; status: number; message: string; moved?: true };
 
+/** The server's 409 for a press with no sim yet (the doors not open). */
+const NO_SIM = "no scenario loaded";
+
+/** A press before the doors open — the page already says the doors are
+ *  shut, so the toast does too (not the server's "no scenario loaded"). */
+export const DOORS_NOT_OPEN_TOAST = "Not fired — the doors aren't open yet";
+
 /** The toast after a fire. No HTTP answer (status 0: a timeout, a dropped
  *  connection) may still have fired — say so, never "failed". */
 export function fireToast(row: Pick<CueRow, "code" | "title">, outcome: FireOutcome): string {
@@ -414,6 +421,7 @@ export function fireToast(row: Pick<CueRow, "code" | "title">, outcome: FireOutc
   if (!outcome.ok && outcome.moved === true) return STALE_TOAST;
   if (outcome.ok && outcome.refused === true) return `Not taken — ${what} doesn't apply right now (# hosts says why)`;
   if (outcome.ok) return `✓ Fired ${what}`;
+  if (outcome.status === 409 && outcome.message === NO_SIM) return DOORS_NOT_OPEN_TOAST;
   if (outcome.status === 409) return `Not fired — ${outcome.message}`;
   if (outcome.status === 0) return `Not sure ${what} fired — check the sheet before firing again`;
   return `${what} failed: ${outcome.message}`;
