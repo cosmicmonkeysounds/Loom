@@ -1996,14 +1996,21 @@ export class EventRuntime {
         return true;
       case "/api/mod/spatial/candidates": {
         // The typed-name fallback when a pass won't scan: every guest and
-        // persona, the corrupted first.
+        // persona, the corrupted first, then the marked (restricted: Play
+        // here begins their reinstallation — C4, T3-reinstall-03).
         const sim = this.sim;
         if (sim === null) {
           sendJson(res, 409, { error: "no scenario loaded" });
           return true;
         }
         const players = sortCandidates(
-          [...sim.persons.values()].map((p) => ({ id: p.id, name: p.name, captured: sim.isCaptured(p.id), location: sim.locationOf(p.id) })),
+          [...sim.persons.values()].map((p) => ({
+            id: p.id,
+            name: p.name,
+            captured: sim.isCaptured(p.id),
+            restricted: sim.isRestricted(p.id),
+            location: sim.locationOf(p.id),
+          })),
         );
         sendJson(res, 200, { players });
         return true;
@@ -2049,6 +2056,7 @@ export class EventRuntime {
           else sendJson(res, 409, { error: "doors are closed" });
           return true;
         }
+        const guest = this.spatial.sessionFor(token)?.guest ?? null;
         const out = this.spatial.found(token, (s) => this.commitFound(s));
         switch (out.kind) {
           case "unknown":
@@ -2062,7 +2070,10 @@ export class EventRuntime {
             sendJson(res, 409, { error: "not near the duck", distance: Math.round(out.distance * 100) / 100, dy: Math.round(out.dy * 100) / 100 });
             return true;
           case "found":
-            sendJson(res, 200, { ok: true, released: out.released, already: out.already });
+            // `captured`: the program is still captured after the find (the
+            // banishment frees nobody), so the game never celebrates a
+            // release the story didn't make (C4, T3-reinstall-01).
+            sendJson(res, 200, { ok: true, released: out.released, already: out.already, captured: guest !== null && (this.sim?.isCaptured(guest) ?? false) });
             return true;
         }
         return true;

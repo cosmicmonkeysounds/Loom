@@ -384,13 +384,14 @@ describe("spatial helpers", () => {
     expect(nearDuck([2.6, -3, 3.5], [0.5, -1.7, 3.5], stair).near).toBe(false); // too far in plan
   });
 
-  it("sortCandidates: captured first, then by name", () => {
+  it("sortCandidates: captured first, then the marked, then by name", () => {
     const rows = [
-      { id: "g-2", name: "Winamp", captured: false, location: null },
-      { id: "g-1", name: "Pinball", captured: true, location: "The Internet" },
-      { id: "g-3", name: "Clippy Jr", captured: false, location: "The Desktop" },
+      { id: "g-2", name: "Winamp", captured: false, restricted: false, location: null },
+      { id: "g-1", name: "Pinball", captured: true, restricted: true, location: "The Internet" },
+      { id: "g-3", name: "Clippy Jr", captured: false, restricted: false, location: "The Desktop" },
+      { id: "g-4", name: "Zork", captured: false, restricted: true, location: "The Desktop" },
     ];
-    expect(sortCandidates(rows).map((r) => r.id)).toEqual(["g-1", "g-3", "g-2"]);
+    expect(sortCandidates(rows).map((r) => r.id)).toEqual(["g-1", "g-4", "g-3", "g-2"]);
   });
 
   it("houseWarnings names rooms whose location the story lacks", () => {
@@ -572,7 +573,7 @@ describe("EventRuntime — the spatial plane", () => {
     expect((await call(rt, "POST", "/api/spatial/pose", { p: [x + 0.5, y, z + 0.5], yaw: 0 }, { token: a.token })).status).toBe(204);
     const near = await call(rt, "POST", "/api/spatial/found", {}, { token: a.token });
     expect(near.status).toBe(200);
-    expect(near.json).toEqual({ ok: true, released: true, already: false });
+    expect(near.json).toEqual({ ok: true, released: true, already: false, captured: false });
     const sim = rt.liveSim!;
     expect(sim.isCaptured(gid)).toBe(false);
     expect(sim.holdsCodex(gid, "The Golden Duck")).toBe(true);
@@ -582,7 +583,7 @@ describe("EventRuntime — the spatial plane", () => {
 
     // Again: already, nothing new committed.
     const again = await call(rt, "POST", "/api/spatial/found", {}, { token: a.token });
-    expect(again.json).toEqual({ ok: true, released: true, already: true });
+    expect(again.json).toEqual({ ok: true, released: true, already: true, captured: false });
     expect(new Store(d).readJournal().filter((l) => l.by === "Tent tablet" && l.a[0] !== REINSTALLATION_BEGUN)).toHaveLength(2);
 
     // The game ends; its token is over.
@@ -601,7 +602,7 @@ describe("EventRuntime — the spatial plane", () => {
     expect(a.captured).toBe(false);
     await call(rt, "POST", "/api/spatial/pose", { p: a.duck.pos, yaw: 0 }, { token: a.token });
     const found = await call(rt, "POST", "/api/spatial/found", {}, { token: a.token });
-    expect(found.json).toEqual({ ok: true, released: false, already: false });
+    expect(found.json).toEqual({ ok: true, released: false, already: false, captured: false });
     expect(rt.liveSim!.holdsCodex(pid, "The Golden Duck")).toBe(true);
     rt.dispose();
   });
@@ -622,14 +623,20 @@ describe("EventRuntime — the spatial plane", () => {
     const rt = runtimeAt(freshDir());
     rt.openDoors();
     const captured = await capturedPersona(rt, "Pinball");
-    await mod(rt, "/api/mod/persona", { name: "Arkanoid" });
+    const plain = ((await mod(rt, "/api/mod/persona", { name: "Arkanoid" })).json.guest as { id: string }).id;
+    const marked = ((await mod(rt, "/api/mod/persona", { name: "Zork" })).json.guest as { id: string }).id;
+    rt.liveSim!.restrict(marked);
     const cands = await modGet(rt, "/api/mod/spatial/candidates");
-    expect((cands.json.players as Array<{ name: string; captured: boolean; location: string | null }>)[0]).toMatchObject({
+    const players = cands.json.players as Array<{ id: string; name: string; captured: boolean; restricted: boolean; location: string | null }>;
+    expect(players[0]).toMatchObject({
       id: captured,
       name: "Pinball",
       captured: true,
       location: "The Internet",
     });
+    // A marked program (restricted, not yet captured) says so (C4, T3-reinstall-03).
+    expect(players[1]).toMatchObject({ id: marked, captured: false, restricted: true });
+    expect(players.find((p) => p.id === plain)).toMatchObject({ captured: false, restricted: false });
 
     const term = spatialStream(rt, "name=TV", { moderator: true });
     await term.open;
@@ -849,7 +856,7 @@ describe("EventRuntime — the spatial plane", () => {
     // Resume: the same claim goes through.
     expect((await mod(rt, "/api/mod/start")).json.phase).toBe("open");
     const after = await call(rt, "POST", "/api/spatial/found", {}, { token: a.token });
-    expect(after.json).toEqual({ ok: true, released: true, already: false });
+    expect(after.json).toEqual({ ok: true, released: true, already: false, captured: false });
     expect(rt.liveSim!.isCaptured(gid)).toBe(false);
     expect(new Store(d).readJournal().filter((l) => l.by === "Headset 1" && l.a[0] !== REINSTALLATION_BEGUN).map((l) => l.a[0])).toEqual(["the simulation completed", "the golden duck"]);
     rt.dispose();
@@ -999,6 +1006,19 @@ Narrator: The tent.
     expect(again.liveSim!.isCaptured(marked)).toBe(true);
     expect(again.liveSim!.isCaptured(free)).toBe(false);
     again.dispose();
+  });
+
+  it("a find that frees nobody answers captured: true, so the game celebrates no release (C4, T3-reinstall-01)", async () => {
+    const { rt } = at(STORY);
+    const marked = await persona(rt, "Winamp");
+    await mod(rt, "/api/mod/signal", { name: "mark", subject: marked });
+    const a = (await mod(rt, "/api/mod/spatial/begin", { guest: marked, world: "web", device: "Tent tablet" })).json as unknown as Assignment;
+    expect(a.captured).toBe(true);
+    await call(rt, "POST", "/api/spatial/pose", { p: a.duck.pos, yaw: 0 }, { token: a.token });
+    const found = await call(rt, "POST", "/api/spatial/found", {}, { token: a.token });
+    expect(found.json).toEqual({ ok: true, released: false, already: false, captured: true });
+    expect((await call(rt, "POST", "/api/spatial/found", {}, { token: a.token })).json).toEqual({ ok: true, released: false, already: true, captured: true });
+    rt.dispose();
   });
 
   it("a story that doesn't declare it journals nothing on begin", async () => {

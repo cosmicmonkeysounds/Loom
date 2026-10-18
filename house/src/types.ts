@@ -394,6 +394,9 @@ export interface SpatialCandidate {
   id: string;
   name: string;
   captured: boolean;
+  /** Marked by the story (restricted) but not yet captured: Play here
+   *  begins their reinstallation. */
+  restricted: boolean;
   location: string | null;
 }
 

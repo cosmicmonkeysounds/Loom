@@ -215,10 +215,12 @@ function sameSpot(a: DuckSpot, b: DuckSpot): boolean {
   return a.id === b.id && a.room === b.room && a.pos[0] === b.pos[0] && a.pos[1] === b.pos[1] && a.pos[2] === b.pos[2];
 }
 
-/** `GET /api/mod/spatial/candidates` order: captured first, then by name (then id). */
+/** `GET /api/mod/spatial/candidates` order: captured first, then the marked
+ *  (restricted, not yet captured), then by name (then id). */
 export function sortCandidates(rows: SpatialCandidate[]): SpatialCandidate[] {
   return [...rows].sort((a, b) => {
     if (a.captured !== b.captured) return a.captured ? -1 : 1;
+    if (a.restricted !== b.restricted) return a.restricted ? -1 : 1;
     if (a.name !== b.name) return a.name < b.name ? -1 : 1;
     return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
   });
