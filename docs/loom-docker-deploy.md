@@ -602,7 +602,9 @@ For the show, ship pinned releases instead (`scripts/ops/ship.sh`, see
 
 Restarts are safe mid-event: live state is an append-only journal that
 replays on boot, so the room recovers where it was (the TV-voice mute
-too). Allow about a second per 1,500 journal lines (a 4,000-line night
+too). While loom is down Caddy holds each request and re-dials every
+250 ms for up to 30 s (`lb_try_duration` in `deploy/Caddyfile`) instead of
+answering 502, which would close an open phone's stream for good. Allow about a second per 1,500 journal lines (a 4,000-line night
 ≈ 4–7 s, 13,000 lines ≈ 9–12 s) before phones reconnect. Two things
 don't carry over: a program mid-walk in the reinstallation game is
 scanned again at the tent (found ducks stay found), and a DM to an
