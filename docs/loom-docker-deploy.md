@@ -659,11 +659,16 @@ is LIVE with real guests (or its roster can't be read) — files written,
 event snapshot untouched, NOT reloaded (exit 3)*. Use Run's *Push draft*
 (typed confirm) instead, or re-run with `--i-know-this-is-live`
 (`LOOM_I_KNOW_THIS_IS_LIVE=1` where a flag can't reach: `pnpm dev
---sync`, `pnpm sync-example`, both of which keep exit 3). A preview is
-never guarded. Open editor tabs follow a sync: a file it rewrote
-replaces the open copy for every co-writer, even one with unsaved edits
-in it (those are dropped, with a log line); the other files keep
-theirs. It carries `facts.json` and the house maps with the
+--sync`, `pnpm sync-example`). `pnpm sync-example` keeps exit 3; `pnpm
+dev --sync` prints a yellow *[sync] the event is LIVE …* line and keeps
+the dev stack running. A preview is never guarded. Open editor tabs
+follow a sync that reloads the event or runs with `--no-reload`: a file
+it rewrote replaces the open copy for every co-writer, even one with
+unsaved edits in it (those are dropped, with a log line); the other
+files keep theirs. A sync the guard stopped (exit 3) calls neither, so
+open tabs keep the pre-sync text until someone types there: that edit
+is dropped (logged) and the synced text folds in. That is the show-night
+case, so close and reopen the synced files before typing. It carries `facts.json` and the house maps with the
 story, so a server that predates them must be shipped **first** (§5¾
 *Deploy order*). `scripts/accept/k01.sh` (needs `LOOM_MOD_CODE`) checks the
 three front doors, that `/api/mod/codes` hands out the `LOOM_BASE_URL`
@@ -840,7 +845,9 @@ shell at `/`.
   `LOOM_DB_WAIT=off` (or `0`) means one probe and no wait: the
   entrypoint still exits while the database is down, and a server
   started without the entrypoint keeps its control plane off. A scratch server pointed at a dead `DATABASE_URL` needs
-  `LOOM_DB_WAIT=off`, or it answers 503 `starting` forever.
+  `LOOM_DB_WAIT=off`, or it retries forever: `/api/health` answers 503
+  `database`, and an unknown `/e/<id>` or a code `resolve-code` doesn't
+  know answers 503 `starting`. The LAN default event still plays.
 - **The log says `the database refused the credentials — check
   POSTGRES_PASSWORD in .env (28P01 …)` or `no such database (3D000 …)`**
   — Postgres answers but won't let loom in, which no restart fixes, so the
