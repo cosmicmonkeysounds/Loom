@@ -301,7 +301,9 @@ announces a new version; the show's own `house.json` is bundled as the
 offline fallback). It renders through `@loom/house/three`, the same scene
 builder the web game uses, so the house looks the same on every screen.
 Players appear as ghosts with name tags (interpolated 120 ms behind), and
-each one's duck lays its egg and flies away when they find it.
+each one's duck lays its egg and flies away when they find it — never for
+a find the story kept (the banishment: the `found` frame says
+`released: false, captured: true`), where Gerald stays put.
 
 One camera, cut by a pure director (`world/director.ts`):
 
@@ -324,7 +326,9 @@ camera's mode tag, a corner **mini-map** of the floor (every player's dot
 and heading, every unfound duck on that floor — whichever floor its player
 is on — this terminal's view cone), and the celebration
 *<NAME> HAS BEEN REINSTALLED* (or *FOUND THE GOLDEN DUCK* for a program
-that was never corrupted). Rendering is capped at 30 fps, at ≤ 1.5×
+that was never corrupted, or *GERALD CAN'T HELP* in plain phosphor for a
+kept find; a server that doesn't send the frame's `captured` never shows
+that one). Rendering is capped at 30 fps, at ≤ 1.5×
 pixel ratio, stops while the page is hidden, and frees its GL context when
 the view closes (a new map gets a fresh canvas — a lost context is never
 reused). three.js is a lazy chunk, so a face-only terminal never
