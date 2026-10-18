@@ -8,8 +8,8 @@
 //! not taken / failed) is the NOW card's banner and, for a refusal, the
 //! Needs you item.
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useCockpit } from '@/store/cockpit'
+import { useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { CockpitContext, useCockpit } from '@/store/cockpit'
 import {
   ARM_MS,
   armFor as coreArmFor,
@@ -78,7 +78,9 @@ export interface ArmedApi {
 
 export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
   const fireSignal = useCockpit((s) => s.fireSignal)
-  const messages = useCockpit((s) => s.messages)
+  // Read at press time, never subscribed: a chat line in any room must not
+  // re-render the whole Director page.
+  const store = useContext(CockpitContext)
   const [armed, setArmed] = useState<Armed | null>(null)
   const [picking, setPicking] = useState<string | null>(null)
   const [pending, setPending] = useState<string | null>(null)
@@ -89,9 +91,9 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
   const [moved, setMoved] = useState<ArmedApi['moved']>(null)
 
   const ownPress = useCockpit((s) => s.ownPress)
-  const latest = useRef({ rows, marks, messages, armed, pending, ownPress })
+  const latest = useRef({ rows, marks, armed, pending, ownPress })
   useEffect(() => {
-    latest.current = { rows, marks, messages, armed, pending, ownPress }
+    latest.current = { rows, marks, armed, pending, ownPress }
   })
 
   const disarm = useCallback(() => {
@@ -162,7 +164,7 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
       if (latest.current.pending !== null) return
       const row = latest.current.rows.find((r) => r.id === id)
       if (row === undefined) return
-      const seq = lastSeq(latest.current.messages)
+      const seq = lastSeq(store.getState().messages)
       const cue = cueLabel(row)
       setArmed(null)
       setPicking(null)
@@ -184,7 +186,7 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
       setPending(null)
       if (row.next) setCoolUntil(at + NEXT_COOLDOWN_MS)
     },
-    [fireSignal],
+    [fireSignal, store],
   )
 
   const cooling = coolUntil !== 0
