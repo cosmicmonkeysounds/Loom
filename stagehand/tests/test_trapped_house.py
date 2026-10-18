@@ -311,6 +311,12 @@ def test_a_long_finished_cut_is_never_replayed_under_a_later_look():
     assert re.search(r"<cue: lights, room: \{Night\.dark_room\}, state: on>\s+set Night\.lit_scene = Night\.lights\s+else:\s+set Night\.lit_scene = \"none\"", code), "the restore's lit_scene moved"
     assert re.search(r'Night\.lights == "alarm":\s+set Night\.lights_back_at = 0\s+set Night\.lit_scene = "none"', code), "the latch's lit_scene moved"
     assert re.search(r'^set Night\.lit_scene = "none"$', code, re.M), "Power On's lit_scene moved"
+    # ...and the mark ends with its look (review 2): a restore under the
+    # glitch, then call_desktop, pong, the Trust Chart and the beans' glitch
+    # again — the story has cleared lit_scene, so the room-on stays off.
+    assert re.search(r'^when Night\.lit_scene != "none" and Night\.lights != Night\.lit_scene:\s+set Night\.lit_scene = "none"$', code, re.M), "the look-change clear of lit_scene moved"
+    beans = {"Night.lights": "glitch", "Night.dark_room": "The RAM", "Night.dark_scene": "glitch", "Night.lights_back_at": "0", "Night.lit_scene": "none"}
+    assert room.args_for(beans) is None and back.args_for(beans) is None
 
 
 #: Words that name something able to hold a door shut. The only "lock" a

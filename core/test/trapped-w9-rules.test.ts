@@ -427,6 +427,24 @@ describe("wave 9 — a cut room comes back on unless the next look re-lit it (T8
     expect(v(sim, "Night.lit_scene")).toBe("none");
   });
 
+  it("the mark ends with its look: a RAM cut restored under the glitch is not re-armed when the glitch comes back at the beans (review 2)", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    toHunt2(sim);
+    expect(v(sim, "Night.lights")).toBe("glitch");
+    cut(sim, "The RAM");
+    expect(cues(advance(sim, 95))).toContain(on("The RAM"));
+    expect(v(sim, "Night.lit_scene")).toBe("glitch");
+    // call_desktop is a whole-house look: it re-lit the RAM, the mark is history.
+    fireAll(sim, "five_minute_warning", "summons_closed");
+    expect(v(sim, "Night.lights")).not.toBe("glitch");
+    expect(v(sim, "Night.lit_scene")).toBe("none");
+    fireAll(sim, "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings");
+    expect(cues(fire(sim, "printer_opened"))).toContain("cue lights_glitch");
+    // The same look name again: stagehand's room-on rule stays false.
+    expect([v(sim, "Night.lights"), v(sim, "Night.lights_back_at"), v(sim, "Night.lit_scene")]).toEqual(["glitch", 0, "none"]);
+  });
+
   it("the Y2K hour: a RAM cut, then the majority's server-room look → the RAM comes back on", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
