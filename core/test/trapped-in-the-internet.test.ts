@@ -1317,8 +1317,15 @@ const fire = (sim: Sim, name: string, subject: string | null = null, args: Args 
 const fireAll = (sim: Sim, ...names: string[]) => names.flatMap((n) => sim.signal(n));
 /** Through the first Moment of Truth (round-1 judging open). */
 const toTruth1 = (sim: Sim) => fireAll(sim, "call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth");
+/** ⏱ (if the window is open) and 📋 until the three results are read:
+ *  📺 refuses before them (wave 9, T5-crew-cards-04). */
+function readResults(sim: Sim) {
+  if (v(sim, "Night.filing_open") === true) fire(sim, "close_the_filing");
+  for (let i = 0; i < 3 && v(sim, "Night.phase") === "truth_1" && v(sim, "Night.results_q") < 3; i++) fire(sim, "read_the_results");
+}
 /** Hunt 2 through the Truther Download; Excel + OpenOffice answer `ex` / `oo`. */
 function toHunt2(sim: Sim, ex = 0, oo = 0) {
+  readResults(sim);
   fireAll(sim, "second_hunt_preview", "start_the_second_hunt");
   advance(sim, 120);
   sim.choose("g2", ex);
@@ -2456,6 +2463,7 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05; wave 4 judg
       expect(w.text).toBe("📝 The filing is closed");
       expect(w.params["thread"]).toBe("Trabolta");
     }
+    readResults(sim);
     expect(facts(fire(sim, "second_hunt_preview"))).toEqual([]);
     // Round 2 deals a fresh card with only H4–H6: the closed questions are gone (decision 12).
     const r2 = facts(fire(sim, "start_the_second_hunt"));
@@ -3576,6 +3584,7 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
   it("the ad hijack reaches every phone as an alert, with the terminals' 000. 000. 000.", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
+    readResults(sim);
     const ad = fire(sim, "second_hunt_preview");
     const alert = casts(ad).find((b) => b.cue.includes("000. 000. 000."));
     expect(alert?.scope).toBe("everyone");
@@ -3647,7 +3656,7 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
     expect(v(sim, "Night.r1_closed")).toBe(true);
     expect(hosts(fire(sim, "close_the_filing"))).toEqual(["⏱ No filing window is open."]);
     expect(beats(fire(sim, "read_the_results"))).toContain("Question Results");
-    fire(sim, "second_hunt_preview");
+    fireAll(sim, "read_the_results", "read_the_results", "second_hunt_preview");
     expect(hosts(fire(sim, "spin_the_bottle"))).toEqual(["🍾 Read a question's results first (📋)."]);
     expect(hosts(fire(sim, "read_the_results"))).toEqual(["📋 Close the filings first (⏱), then read the results."]);
 
@@ -3686,6 +3695,7 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
     toTruth1(sim);
     sim.redeem("g2", "LOVE-LETTER-FOR-YOU");
     expect(v(sim, "g2.carries_virus")).toBe(true);
+    readResults(sim);
     fireAll(sim, "second_hunt_preview", "start_the_second_hunt");
     advance(sim, 120);
     const pick = sim.choose("g2", 0); // sabotage
@@ -3696,6 +3706,7 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
     toTruth1(s2);
     s2.redeem("g2", "LOVE-LETTER-FOR-YOU");
     fire(s2, "plant_the_virus", "g2");
+    readResults(s2);
     fireAll(s2, "second_hunt_preview", "start_the_second_hunt");
     advance(s2, 120);
     expect((s2.choose("g2", 0).filter((e) => e.type === "quest") as Ev<"quest">[]).filter((e) => e.action === "update")).toEqual([]);
@@ -3797,7 +3808,7 @@ describe("Trapped in the Internet — a secret on a program never reaches Trabol
     await mod("captcha answered", { subject: id, args: { passed: false } });
     await call(rt, "POST", "/api/guest/choose", { index: 0 }, { token }); // deposited
     await call(rt, "POST", "/api/mod/scan", { as: "Norton Anti-Virus", target: id }, { moderator: true });
-    for (const n of ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth", "second_hunt_preview", "start_the_second_hunt", "truther_download"]) await mod(n);
+    for (const n of ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth", "close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt", "truther_download"]) await mod(n);
     expect((await call(rt, "POST", "/api/guest/choose", { index: 0 }, { token })).status).toBe(200); // sabotage
     expect((await call(rt, "POST", "/api/guest/codex/redeem", { code: "LOVE-LETTER-FOR-YOU" }, { token })).status).toBe(200);
     await mod("plant_the_virus", { subject: id });
@@ -3847,7 +3858,7 @@ describe("Trapped in the Internet — a secret on a program never reaches Trabol
 /** DEMO.md's cue sheet, Acts I–II, in the order the director fires it. */
 const DEMO_ACT_1 = ["call_to_the_desktop", "start_the_bingo", "bingo_time"];
 const DEMO_ACT_1B = ["introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth", "close_the_filing", "read_the_results"];
-const DEMO_ACT_2 = ["second_hunt_preview", "start_the_second_hunt", "truther_download"];
+const DEMO_ACT_2 = ["read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt", "truther_download"];
 const DEMO_ACT_2B = ["five_minute_warning", "summons_closed", "truth_pong"];
 const DEMO_ACT_2C = ["round_two_tally", "trust_chart", "show_the_rankings", "printer_opened", "zip_everyone_out", "trabolta_overshares", "y2k_clock"];
 
@@ -4119,7 +4130,9 @@ describe("Trapped in the Internet — the staff (wave 4, lane D)", () => {
 
     fireAll(sim, "introduce_trabolta", "start_the_hunt");
     expect(sim.questStatus("Clippy", "Host The Hunt")).toBe("active");
-    fireAll(sim, "hunt_time_up", "first_moment_of_truth", "second_hunt_preview");
+    fireAll(sim, "hunt_time_up", "first_moment_of_truth");
+    readResults(sim);
+    fire(sim, "second_hunt_preview");
     expect(sim.questStatus("Clippy", "Host The Hunt")).toBe("done");
     expect(sim.questStatus("Clippy", "Keep Everyone Calm")).toBe("active");
 

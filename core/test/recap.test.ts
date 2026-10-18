@@ -46,7 +46,7 @@ function night(): Sim {
   fireAll(sim, "call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth");
   sim.signal("accurate_q1", "g1", null, "Clippy");
   sim.signal("confident_q2", "g2", null, "Clippy");
-  fireAll(sim, "second_hunt_preview", "start_the_second_hunt");
+  fireAll(sim, "close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt");
   for (let i = 0; i < 120; i++) sim.tick(1000);
   sim.choose("g2", 0);
   sim.choose("g3", 0);

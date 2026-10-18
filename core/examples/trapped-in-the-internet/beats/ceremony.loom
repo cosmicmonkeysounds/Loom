@@ -20,8 +20,10 @@
 // `stagehand/trapped.house.yaml`, pinned by its cross-check test).
 //
 // When Trabolta's worker has written better lines (the cast-thread trick,
-// W-24), the director posts those as Trabolta in The Desktop; these stay
-// the fallback.
+// W-24), the director presses ✍ (`own_award_lines` → Night.award_lines =
+// "director") and posts each as Trabolta in The Desktop right after its
+// award: Trabolta's template line is then skipped (his opener, Clippy's
+// lines, the sounds and the slides stay). These stay the fallback.
 
 == The Ceremony
   setting: The Desktop
@@ -56,9 +58,9 @@ if Night.award == "most_trusted":
       Clippy: Award. Most Trusted. The report lists {Night.award_winner}. Please come forward. Applause is now appropriate.
     else:
       Clippy: Award. Most Trusted. The report lists {Night.award_winner}, with a trust score of {Night.award_value}. Please come forward. Applause is now appropriate.
-  else if Night.award_value == "none":
+  else if Night.award_lines != "director" and Night.award_value == "none":
     Trabolta: Most Trusted. {Night.award_winner}. When I needed a program to believe, I believed you. Come and take your trophy.
-  else:
+  else if Night.award_lines != "director":
     Trabolta: Most Trusted. Trust score {Night.award_value}. {Night.award_winner}. When I needed a program to believe, I believed you. Come and take your trophy.
 else if Night.award == "least_trusted":
   cue screens_award_least_trusted
@@ -68,9 +70,9 @@ else if Night.award == "least_trusted":
       Clippy: Award. Least Trusted. The report lists {Night.award_winner}. This is still an award. Please come forward.
     else:
       Clippy: Award. Least Trusted. The report lists {Night.award_winner}, with a trust score of {Night.award_value}. This is still an award. Please come forward.
-  else if Night.award_value == "none":
+  else if Night.award_lines != "director" and Night.award_value == "none":
     Trabolta: Least Trusted. {Night.award_winner}. I weighed every word you said tonight and found you full of beans. It is still an award. Come and get it.
-  else:
+  else if Night.award_lines != "director":
     Trabolta: Least Trusted. Trust score {Night.award_value}. {Night.award_winner}. I weighed every word you said tonight and found you full of beans. It is still an award. Come and get it.
 else if Night.award == "frequent_flyer":
   cue screens_award_frequent_flyer
@@ -80,9 +82,9 @@ else if Night.award == "frequent_flyer":
       Clippy: Award. Frequent Flyer to the Internet. The report lists {Night.award_winner}. Please come forward, unless you are being reinstalled.
     else:
       Clippy: Award. Frequent Flyer to the Internet. The report lists {Night.award_winner}. Trips through the Tube: {Night.award_value}. Please come forward, unless you are being reinstalled.
-  else if Night.award_value == "none":
+  else if Night.award_lines != "director" and Night.award_value == "none":
     Trabolta: Frequent Flyer to the Internet. {Night.award_winner}. The Antivirus know you by name. So do I. Come and collect your miles.
-  else:
+  else if Night.award_lines != "director":
     Trabolta: Frequent Flyer to the Internet. Trips through the Tube: {Night.award_value}. {Night.award_winner}. The Antivirus know you by name. So do I. Come and collect your miles.
 else if Night.award == "lore_hoarder":
   cue screens_award_lore_hoarder
@@ -92,9 +94,9 @@ else if Night.award == "lore_hoarder":
       Clippy: Award. Lore Hoarder, for the most codex entries. The report lists {Night.award_winner}. Please come forward.
     else:
       Clippy: Award. Lore Hoarder, for the most codex entries. The report lists {Night.award_winner}. Codex entries held: {Night.award_value}. Please come forward.
-  else if Night.award_value == "none":
+  else if Night.award_lines != "director" and Night.award_value == "none":
     Trabolta: Lore Hoarder, for the most codex entries. {Night.award_winner}. You know more about this computer than its own help file. Come and take your trophy.
-  else:
+  else if Night.award_lines != "director":
     Trabolta: Lore Hoarder, for the most codex entries: {Night.award_value}. {Night.award_winner}. You know more about this computer than its own help file. Come and take your trophy.
 else if Night.award == "truthcoin_tycoon":
   cue screens_award_truthcoin_tycoon
@@ -104,9 +106,9 @@ else if Night.award == "truthcoin_tycoon":
       Clippy: Award. Truthcoin Tycoon. The report lists {Night.award_winner}. Please come forward.
     else:
       Clippy: Award. Truthcoin Tycoon. The report lists {Night.award_winner}, with a balance of {Night.award_value} Truthcoin. Please come forward.
-  else if Night.award_value == "none":
+  else if Night.award_lines != "director" and Night.award_value == "none":
     Trabolta: Truthcoin Tycoon. {Night.award_winner}. The richest program in the machine. Do not spend it all in one exchange. Come and take your trophy.
-  else:
+  else if Night.award_lines != "director":
     Trabolta: Truthcoin Tycoon. Balance {Night.award_value} Truthcoin. {Night.award_winner}. The richest program in the machine. Do not spend it all in one exchange. Come and take your trophy.
 else if Night.award == "best_liar":
   cue screens_award_best_liar
@@ -116,9 +118,9 @@ else if Night.award == "best_liar":
       Clippy: Bonus award. Best Liar. The report lists {Night.award_winner}. The details are classified. Please come forward.
     else:
       Clippy: Bonus award. Best Liar. The report lists {Night.award_winner}. Confident lies accepted: {Night.award_value}. The report does not say which ones. Please come forward.
-  else if Night.award_value == "none":
+  else if Night.award_lines != "director" and Night.award_value == "none":
     Trabolta: A bonus award. Best Liar. {Night.award_winner}. I believed you. Every time. I am not angry. I am impressed. Come up here.
-  else:
+  else if Night.award_lines != "director":
     Trabolta: A bonus award. Best Liar. Confident lies I accepted: {Night.award_value}. {Night.award_winner}. I believed every one. I am not angry. I am impressed. Come up here.
 else if Night.award == "duck_speedrun":
   cue screens_award_duck_speedrun
@@ -128,9 +130,9 @@ else if Night.award == "duck_speedrun":
       Clippy: Bonus award. Golden Duck Speedrun. The report lists {Night.award_winner}, who reached the golden duck first. Please come forward.
     else:
       Clippy: Bonus award. Golden Duck Speedrun. The report lists {Night.award_winner}, who reached the golden duck in {Night.award_value}. Please come forward.
-  else if Night.award_value == "none":
+  else if Night.award_lines != "director" and Night.award_value == "none":
     Trabolta: A bonus award. Golden Duck Speedrun. {Night.award_winner} reached the golden duck faster than any other program. Gerald was not ready. Come and take your trophy.
-  else:
+  else if Night.award_lines != "director":
     Trabolta: A bonus award. Golden Duck Speedrun. {Night.award_winner} reached the golden duck in {Night.award_value}. Gerald was not ready. Come and take your trophy.
 else if Night.award == "quest_completionist":
   cue screens_award_quest_completionist
@@ -140,9 +142,9 @@ else if Night.award == "quest_completionist":
       Clippy: Bonus award. Quest Completionist. The report lists {Night.award_winner}. Please come forward.
     else:
       Clippy: Bonus award. Quest Completionist. The report lists {Night.award_winner}. Quests completed: {Night.award_value}. Please come forward.
-  else if Night.award_value == "none":
+  else if Night.award_lines != "director" and Night.award_value == "none":
     Trabolta: A bonus award. Quest Completionist. {Night.award_winner}. Nobody finished more of the Quest Log. Come up here.
-  else:
+  else if Night.award_lines != "director":
     Trabolta: A bonus award. Quest Completionist. Quests done: {Night.award_value}. {Night.award_winner}. Nobody finished more of the Quest Log. Come up here.
 else if Night.award == "the_painting":
   cue screens_award_the_painting
@@ -152,10 +154,10 @@ else if Night.award == "the_painting":
       Clippy: Bonus award. The Million Dollar Painting. The report lists {Night.award_winner}, the artist. The painting goes to silent auction. Please come forward.
     else:
       Clippy: Bonus award. The Million Dollar Painting. The report lists {Night.award_winner}, the artist. Signatures on the canvas: {Night.award_value}. The painting goes to silent auction. Please come forward.
-  else if Night.award_value == "none":
+  else if Night.award_lines != "director" and Night.award_value == "none":
     Trabolta: A bonus award. The Million Dollar Painting. {Night.award_winner} made one painting out of all of you. It goes to silent auction. Come and stand beside it.
-  else if Night.award_value == 1:
+  else if Night.award_lines != "director" and Night.award_value == 1:
     Trabolta: A bonus award. The Million Dollar Painting. Signed by 1 program. {Night.award_winner} made one painting out of all of you. It goes to silent auction. Come and stand beside it.
-  else:
+  else if Night.award_lines != "director":
     Trabolta: A bonus award. The Million Dollar Painting. Signed by {Night.award_value} programs. {Night.award_winner} made one painting out of all of you. It goes to silent auction. Come and stand beside it.
 set Night.terminals = Night.screen

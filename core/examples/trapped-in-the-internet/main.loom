@@ -2352,9 +2352,14 @@ ROLE Program
 // `sequence: false` marks a cue a machine fires (the duck game, the door
 // contact, the printer, the patch bay, the chess phone), and every optional,
 // anytime or fallback cue that is not the night's next step (the set
-// pieces, 🧾, 🔄, 🗳, 🪩, 💡, the auto midnight) — the sheet ticks it but it
-// never becomes LAST / NEXT, so a duck find or a 💡 can't eat the next cue,
-// and NEXT after 🕚 is the next real step, never 🎆 midnight.
+// pieces, 🧾, 🔄, 🗳, 🪩, 💡, the timers' own steps: C2 ⏰, 📥, ⏳, 🚨 and
+// 🎆 midnight) — the sheet ticks it but it never becomes LAST / NEXT, so a
+// duck find or a 💡 can't eat the next cue, and a timed window (hunt 1,
+// hunt 2's hour, the summons, the Y2K hour) suggests nothing until its
+// timer fires: a tap on the fallback would cut it short.
+// From V6 on, each step's `while:` names its own window (Night.step /
+// Night.phase), so NEXT never skips ahead while a timer runs. A `while:`
+// only steers NEXT: every rule still guards its own press.
 
 INTERACTION call_to_the_desktop
   label: C1/V1 · 📣 Call everyone to the Desktop
@@ -2382,16 +2387,19 @@ INTERACTION start_the_hunt
 INTERACTION hunt_time_up
   label: C2 · ⏰ Hunt over: everyone back to the Desktop (auto at 15 min)
   who: admin
+  sequence: false
 
 INTERACTION first_moment_of_truth
   label: V6 · ⚖️ First Moment of Truth
   who: admin
   description: Opens judging. Clippy has Instructions 3/X.
+  while: Night.step == 6 and Night.judging != true
 
 INTERACTION close_the_filing
   label: ⏱ Close round-one filings now (auto at 2 min)
   who: admin
   description: Ends the last-chance window early. Results can be read only once it is closed. A closed round never reopens.
+  while: Night.filing_open == true
 
 INTERACTION read_the_results
   label: 📋 Results: the next question (press for Q1, Q2, Q3)
@@ -2419,39 +2427,48 @@ INTERACTION are_you_sure
 INTERACTION second_hunt_preview
   label: 📺 Preview hunt 2 → the ad hijack
   who: admin
+  while: Night.step == 6
 
 INTERACTION start_the_second_hunt
   label: 📓 Hunt 2 → quest logs; disperse for 1 hour
   who: admin
+  while: Night.step == 7
 
 INTERACTION truther_download
   label: 📥 Truther Download (auto at +2 min)
   who: admin
+  sequence: false
 
 INTERACTION five_minute_warning
   label: ⏳ Five-minute warning (auto at 55 min)
   who: admin
+  sequence: false
 
 INTERACTION summons_closed
   label: 🚨 Summons closed: late list (auto at +5 min)
   who: admin
+  sequence: false
 
 INTERACTION truth_pong
   label: 🏓 Truth Pong
   who: admin
+  while: Night.step == 9 and Night.summons_closed == true
 
 INTERACTION round_two_tally
   label: 🧮 Trabolta tallies round 2
   who: admin
+  while: Night.phase == "truth_pong" and Night.tallied != true
 
 INTERACTION trust_chart
   label: 📊 Trust Chart
   who: admin
   description: Trabolta's assess power is live from here. To set an assessment by hand, edit <guest>.assessment AND <guest>.trust before the rankings.
+  while: Night.step == 10
 
 INTERACTION show_the_rankings
   label: 🏆 Praise the top, humiliate the bottom, VLC prints
   who: admin
+  while: Night.phase == "trust_chart" and Night.rank_round < 1
 
 INTERACTION printer_button_pressed
   label: 🖨 Printer: START pressed (hardware fallback)
@@ -2471,11 +2488,13 @@ INTERACTION zip_everyone_out
 INTERACTION trabolta_overshares
   label: 🤖 Trabolta shares the next facts (scenario 1–4)
   who: admin
+  while: Night.step >= 11 and Night.step < 14 and Night.scenario == 0 and Night.clock == "--:--"
 
 INTERACTION y2k_clock
   label: 🕚 System clock → 11 PM, 31 Dec 1999 (final round, 60 min)
   who: admin
   description: Fire only after the patch-bay watch radios IN (inside the server room, door shut). From here the first door opening plays The Heart and opens the server room on every phone.
+  while: Night.step < 14 and Night.scenario != 0 and Night.clock == "--:--"
 
 INTERACTION y2k_midnight
   label: 🎆 Midnight (auto at 60 min)
@@ -2554,7 +2573,7 @@ INTERACTION restore_the_lights
 INTERACTION final_reveal
   label: 🌑 Final Truth Scavenger Hunt reveal
   who: admin
-  while: Night.ended != true and Night.step < 16 and Night.final_round != true
+  while: Night.ended != true and Night.step >= 14 and Night.step < 16 and Night.final_round != true
 
 INTERACTION bobbing_for_truth
   label: 🍎 Bobbing for Truth
@@ -2620,6 +2639,12 @@ INTERACTION clippy_reads_summary
   who: admin
   while: Night.ending == "destroyed"
 
+INTERACTION own_award_lines
+  label: ✍ Our own award lines (Trabolta hosts): on / off
+  who: admin
+  sequence: false
+  description: For a second director who prepared Trabolta's award lines (job 9.2). Press it once (any time before the awards): each award then plays its fanfare and slide but skips Trabolta's template line, and you post yours as Trabolta in The Desktop right after you fire the award (the TV speaks it). Press again to bring the template lines back. Clippy's lines (after destroyed / rave), the sounds and the slides never change.
+
 INTERACTION start_the_ceremony
   label: G1 · 🏆 Start the awards ceremony (after the ending)
   who: admin
@@ -2670,7 +2695,7 @@ INTERACTION award_the_painting
   label: G10 · 🖌 Bonus: The Million Dollar Painting (winner = MS Paint; value = signatures)
   who: admin
   description: Only when MS Paint is at the party, and only on MS Paint (any other program is refused in # hosts). Reads the 🖌 Signed count unless value is given; the canvas itself is physical.
-  while: Night.ceremony == true
+  while: Night.ceremony == true and Night.painting == true
 
 INTERACTION resurrection
   label: G11 · 🎃 Resurrection: the show is over, out of character (after the ceremony)
@@ -3113,8 +3138,10 @@ when first_moment_of_truth:
 // B9: the last-chance window (two minutes, or ⏱), then the results one
 // question at a time (📋), the bottle between them (🍾). Round one closes
 // for good when the window shuts: a question nobody filed never comes back.
+// The two minutes run out: the timer presses ⏱ itself, so the cue sheet
+// ticks it and NEXT moves on to 📋.
 when Night.filing_open == true and Time.elapsed >= Night.filing_close:
-  fire filing_closed
+  fire close_the_filing
 
 when close_the_filing:
   if Night.filing_open == true:
@@ -3250,8 +3277,12 @@ when the golden duck for program:
 // (an alert: banner, chime, buzz); Clippy is told privately everyone may
 // die (her own hook); everyone else is told it is nothing (the ROLE
 // watcher).
+// A forward press refuses (T5-crew-cards-04): 📺 after the three results,
+// 📓 after 📺, 📊 after the tally, 🤖 after the Trust Chart, 🕚 after the
+// overshare — or the skipped cue's work (a settle, the tally, round 3)
+// would be lost for good. 🏓 may still cut hunt 2's hour short on purpose.
 when second_hunt_preview:
-  if Night.step < 7:
+  if Night.step < 7 and Night.phase == "truth_1" and Night.results_q >= 3:
     set Night.judging = false
     set Night.r1_closed = true
     set Night.filing_open = false
@@ -3272,12 +3303,20 @@ when second_hunt_preview:
     sound ad_jingle
     broadcast "!📺 000. 000. 000. A SPECIAL OFFER FOR YOU. A duck. A phone number with no digits. Offer expires never." to everyone
     -> Ad Hijack
-  else:
+  else if Night.step >= 7:
     broadcast "📺 Not again: the ad hijack has already played. Nothing happens." to channel(hosts)
+  else if Night.phase == "truth_1" and Night.judging != true and Night.r1_closed != true:
+    broadcast "📺 Not yet: ⚖️ the First Moment of Truth first, then close the filings (⏱) and read the three results (📋). Nothing happens." to channel(hosts)
+  else if Night.phase == "truth_1" and Night.r1_closed != true:
+    broadcast "📺 Not yet: close the filings (⏱), then read the three results (📋). Nothing happens." to channel(hosts)
+  else if Night.phase == "truth_1":
+    broadcast "📺 Not yet: read Q{Night.results_q + 1}'s results first (📋). Nothing happens." to channel(hosts)
+  else:
+    broadcast "📺 Too early: the First Moment of Truth (⚖️) and its results come first. Nothing happens." to channel(hosts)
 
 // C2: round 2 goes to the quest logs; everyone disperses for one hour.
 when start_the_second_hunt:
-  if Night.step < 8:
+  if Night.step == 7:
     set Night.phase = "hunt_2"
     set Night.step = 8
     set Night.round = 2
@@ -3295,8 +3334,10 @@ when start_the_second_hunt:
     set Night.lights = "game"
     broadcast "!📓 Round 2 is in your Quest Log. You have ONE HOUR. Return for the Second Moment of Truth." to everyone
     -> Second Hunt
-  else:
+  else if Night.step > 7:
     broadcast "📓 Not again: hunt 2 has already started. Nothing happens." to channel(hosts)
+  else:
+    broadcast "📓 Not yet: 📺 the hunt 2 preview (the ad hijack) first. Nothing happens." to channel(hosts)
 
 when Night.hunt2_on == true and Night.truther_sent != true and Time.elapsed >= Night.truther_at:
   fire truther_download
@@ -3326,7 +3367,7 @@ when truther_download:
 
 // D2: the five-minute summons. Be in the Desktop, or be swept.
 when five_minute_warning:
-  if Night.step < 9 and Night.summons_open != true and Night.summons_closed != true:
+  if Night.step == 8 and Night.summons_open != true and Night.summons_closed != true:
     set Night.phase = "summons"
     set Night.step = 9
     set Night.summons_open = true
@@ -3342,6 +3383,8 @@ when five_minute_warning:
     set Night.screen = "five_minutes"
     set Night.terminals = "five_minutes"
     -> Five Minute Warning
+  else if Night.step < 8:
+    broadcast "⏳ Not yet: the summons ends hunt 2's hour (📓 first). Nothing happens." to channel(hosts)
   else:
     broadcast "⏳ Not now: the five-minute summons has already run. Nothing happens." to channel(hosts)
 
@@ -3359,8 +3402,11 @@ when summons_closed:
     broadcast "🚨 No summons is open: nothing to close." to channel(hosts)
 
 // D4: Truth Pong (make the cup to answer; round 2 = Q1–Q3 of this round).
+// It may cut hunt 2's hour short (step 8 or 9), never skip hunt 2 itself.
 when truth_pong:
-  if Night.step < 10:
+  if Night.step < 8:
+    broadcast "🏓 Not yet: hunt 2 (📓) and its summons come first. Nothing happens." to channel(hosts)
+  else if Night.step < 10:
     set Night.phase = "truth_pong"
     set Night.step = 10
     set Night.hunt2_on = false
@@ -3404,7 +3450,7 @@ when round_two_tally:
 
 // D6: the Trust Chart.
 when trust_chart:
-  if Night.step < 11:
+  if Night.step < 11 and Night.tallied == true:
     set Night.phase = "trust_chart"
     set Night.step = 11
     set Night.judging = false
@@ -3416,8 +3462,10 @@ when trust_chart:
     set Night.screen = "trust_chart"
     set Night.terminals = "trust_chart"
     -> Trust Chart
-  else:
+  else if Night.step >= 11:
     broadcast "📊 Not again: the Trust Chart has already played. Nothing happens." to channel(hosts)
+  else:
+    broadcast "📊 Not yet: 🏓 Truth Pong, then 🧮 the tally first. Nothing happens." to channel(hosts)
 
 when show_the_rankings:
   if Night.phase == "trust_chart" and Night.rank_round < 1:
@@ -3490,7 +3538,7 @@ when zip_everyone_out:
 // D9: the overshare. Only Microsoft Excel's plant counts toward 1/3;
 // another program's plant is flavour.
 when trabolta_overshares:
-  if Night.step < 13:
+  if Night.step >= 11 and Night.step < 14 and Night.scenario == 0 and Night.clock == "--:--":
     set Night.phase = "overshare"
     set Night.step = 13
     set Night.r2_closed = true
@@ -3511,12 +3559,18 @@ when trabolta_overshares:
     cue lights_glitch
     set Night.lights = "glitch"
     -> Overshare Open
-  else:
+  else if Night.scenario != 0:
     broadcast "🤖 Not again: the overshare has already played. Nothing happens." to channel(hosts)
+  else if Night.step >= 14 or Night.clock != "--:--":
+    broadcast "🤖 Too late: the clock has already been reset. Nothing happens." to channel(hosts)
+  else:
+    broadcast "🤖 Not yet: 📊 the Trust Chart first. Nothing happens." to channel(hosts)
 
-// D10: the clock. One hour to midnight; the factions come out.
+// D10: the clock. One hour to midnight; the factions come out. Once set,
+// the clock (reset only by Power On) is what says "not again": a printer
+// lid first opened in the Y2K hour sets the step back to the beans.
 when y2k_clock:
-  if Night.step < 14:
+  if Night.step < 14 and Night.scenario != 0 and Night.clock == "--:--":
     set Night.phase = "y2k"
     set Night.step = 14
     set Night.final_round = true
@@ -3536,8 +3590,10 @@ when y2k_clock:
     sound y2k_chime
     broadcast "!🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999." to everyone
     -> The Y2K Clock
-  else:
+  else if Night.step >= 14 or Night.clock != "--:--":
     broadcast "🕚 Not again: the clock has already been reset. Nothing happens." to channel(hosts)
+  else:
+    broadcast "🕚 Not yet: 🤖 Trabolta shares the next facts first (round 3 opens there). Nothing happens." to channel(hosts)
 
 when Night.final_round == true and Night.ended != true and Night.clock_30 != true and Time.elapsed >= Night.y2k_end - 1800:
   set Night.clock_30 = true
@@ -4194,6 +4250,16 @@ when present_award:
   if Night.ceremony == true:
     -> Present Award
 
+// ✍ (D4): the second director's own award lines replace Trabolta's
+// template line in Present Award (beats/ceremony.loom); a toggle.
+when own_award_lines:
+  if Night.award_lines == "director":
+    set Night.award_lines = "template"
+    broadcast "✍ Award lines: the template again. Trabolta reads each award's line himself." to channel(hosts)
+  else:
+    set Night.award_lines = "director"
+    broadcast "✍ Award lines: yours. Each award plays its fanfare and slide with no Trabolta line: post yours as Trabolta in The Desktop right after you fire it. Clippy's lines are unchanged. Press ✍ again for the template." to channel(hosts)
+
 // ── Anytime ──
 
 // Lore shared TO Trabolta counts as a delivery for the sharer. Lore
@@ -4229,8 +4295,8 @@ when restore_the_lights:
 // piloting; the base cue clears the last award slide. A night with no
 // ceremony presses G1 first.
 when resurrection:
-  if Night.ended == true and Night.ceremony == true and Night.resurrected != true and Night.ceremony_done != true and (Night.resurrect_ask_at == 0 or Time.elapsed > Night.resurrect_ask_at + 30):
-    set Night.resurrect_ask_at = Time.elapsed + 1
+  if Night.ended == true and Night.ceremony == true and Night.resurrected != true and Night.ceremony_done != true and (Night._resurrect_ask_at == 0 or Time.elapsed > Night._resurrect_ask_at + 30):
+    set Night._resurrect_ask_at = Time.elapsed + 1
     broadcast "🎃 The last award isn't presented yet (G10, or G9 with no MS Paint). Press G11 again within 30 seconds to end the show anyway." to channel(hosts)
   else if Night.ended == true and Night.ceremony == true and Night.resurrected != true:
     set Night.resurrected = true
@@ -4362,7 +4428,7 @@ set Night.dance_at = 0
 set Night.takeover = false
 set Night.resurrected = false
 set Night.ceremony_done = false
-set Night.resurrect_ask_at = 0
+set Night._resurrect_ask_at = 0
 set Night.painting = false
 set Night.signatures = 0
 set Night.goals_todo = ""
@@ -4374,6 +4440,7 @@ set Night.award_title = "none"
 set Night.award_winner = "none"
 set Night.award_value = "none"
 set Night.awards_given = 0
+set Night.award_lines = "template"
 set Kernel.combo_a = "V2-D5,V4-D1,V6-D8,V7-D3"
 set Kernel.combo_b = "V1-D6,V3-D2,V5-D7,V8-D4"
 set Kernel.anti_ai = "MS Paint"
