@@ -9,6 +9,13 @@
 /** Where the author account / project / event registry lives. */
 export const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://127.0.0.1:5432/loom_dev";
 
+/** `DATABASE_URL` was set explicitly (a deployment, not the dev default):
+ *  the boot then waits for the database instead of giving up on one probe,
+ *  and `/api/health` fails while the control plane is down (`boot.ts`).
+ *  `LOOM_DB_WAIT=off` probes once even so — a scratch server pointed at a
+ *  dead URL on purpose, to run with no database. */
+export const DATABASE_REQUIRED = (process.env.DATABASE_URL ?? "").trim() !== "" && process.env.LOOM_DB_WAIT !== "off";
+
 /** Signing secret for BetterAuth sessions. Stable across restarts in prod. */
 export const AUTH_SECRET =
   process.env.BETTER_AUTH_SECRET ??
