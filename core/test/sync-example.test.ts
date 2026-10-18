@@ -57,9 +57,11 @@ describe("reloadEvent", () => {
   /** The mod state's body; null = `{title, roster}`. */
   let stateBody: unknown = null;
   let hits: string[] = [];
+  let resyncStatus = 200;
 
   beforeEach(async () => {
     hits = [];
+    resyncStatus = 200;
     roster = [];
     stateBody = null;
     server = createServer((req, res) => {
@@ -72,6 +74,10 @@ describe("reloadEvent", () => {
         return void res.end(JSON.stringify(stateBody ?? { title: "Trapped", roster }));
       }
       if (path === "/api/mod/load") return void res.end(JSON.stringify({ ok: true, phase: "open" }));
+      if (path === "/api/mod/resync") {
+        if (resyncStatus !== 200) return void res.writeHead(resyncStatus).end("{}");
+        return void res.end(JSON.stringify({ ok: true, resynced: true }));
+      }
       res.writeHead(404).end("{}");
     });
     await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
@@ -166,6 +172,7 @@ describe("reloadEvent", () => {
     expect(r.saved).toBe(1);
     expect(loads()).toBe(0);
     expect(r.lines.join("\n")).toMatch(/not reloaded \(--no-reload\)/u);
+    expect(hits.filter((h) => h === "POST /api/mod/resync")).toHaveLength(1);
   });
 
   it("--no-reload on a live event it can't check refuses (exit 3)", async () => {
@@ -174,12 +181,25 @@ describe("reloadEvent", () => {
     expect(r.saved).toBe(0);
   });
 
-  it("--no-reload on a preview never reads the roster", async () => {
+  it("--no-reload on a preview never reads the roster, and resyncs the open editors with no restart (T4 recheck)", async () => {
     roster = [phone];
     const r = await run("preview", false, base, false);
     expect(r.code).toBe(0);
     expect(r.saved).toBe(1);
-    expect(hits).toEqual([]);
+    expect(hits).toEqual(["POST /api/mod/login", "POST /api/mod/resync"]);
+    expect(r.lines.join("\n")).toMatch(/open editor tabs now show the synced files/u);
+  });
+
+  it("--no-reload says so when the open editors couldn't be resynced", async () => {
+    resyncStatus = 502;
+    let r = await run("preview", false, base, false);
+    expect(r.code).toBe(0);
+    expect(r.lines.join("\n")).toMatch(/open editor tabs still hold the pre-sync text \(resync → 502\)/u);
+    r = await run("preview", false, "http://127.0.0.1:1", false);
+    expect(r.code).toBe(0);
+    expect(r.saved).toBe(1);
+    expect(r.lines.join("\n")).toMatch(/still hold the pre-sync text \(the server at http:\/\/127\.0\.0\.1:1 doesn't answer\)/u);
+    expect(loads()).toBe(0);
   });
 
   it("a preview on a server that is down still saves its snapshot (exit 0)", async () => {

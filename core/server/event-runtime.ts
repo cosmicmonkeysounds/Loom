@@ -3326,6 +3326,16 @@ export class EventRuntime {
       }
       if (path === "/api/mod/spatial/house/project") return this.saveMapToProject(res, body, opts.moderatorName ?? "Director");
       if (path === "/api/mod/load") await this.resyncProjectFiles();
+      if (path === "/api/mod/resync") {
+        // `sync-example --no-reload` (T4 recheck): the rows were rewritten
+        // from another process but the event keeps running — fold them into
+        // the open co-editing docs now, no restart, so no editor tab keeps
+        // the pre-sync text and drops its writer's next keystroke.
+        const done = await this.resyncProjectFiles();
+        if (done === "failed") sendJson(res, 502, { error: "re-reading the project's files failed" });
+        else sendJson(res, 200, { ok: true, resynced: done === "resynced" });
+        return true;
+      }
       return this.handleMod(res, path, body, opts.moderatorName ?? "Director");
     }
 
@@ -4135,21 +4145,26 @@ export class EventRuntime {
   }
 
   /**
-   * Before `/api/mod/load` restarts the event (`sync-show` / `sync-example`
+   * Before `/api/mod/load` restarts the event, and alone for
+   * `/api/mod/resync` (`sync-example --no-reload`) (`sync-show` / `sync-example`
    * wrote the project's files straight into the database from another
    * process): fold the stored text into every open co-editing doc, so the
    * editor shows the synced story and its next keystroke merges on top of
    * it instead of saving the pre-sync doc back over it (C2, T4-04). A
    * failure is logged and never blocks the reload.
    */
-  private async resyncProjectFiles(): Promise<void> {
+  private async resyncProjectFiles(): Promise<"resynced" | "none" | "failed"> {
     // `ProjectLink.resyncFiles` (events-api.ts: `CollabHub.resyncFromStorage`
     // + a files notice per file) is optional: a link without it (a test
     // fake, a LAN box with no project) just skips the resync.
+    const resync = this.project?.resyncFiles;
+    if (resync === undefined) return "none";
     try {
-      await this.project?.resyncFiles?.();
+      await resync.call(this.project);
+      return "resynced";
     } catch (err) {
       process.stderr.write(`  ⚠️  event ${this.eventId}: re-reading the project's files failed (${err instanceof Error ? err.message : String(err)})\n`);
+      return "failed";
     }
   }
 
