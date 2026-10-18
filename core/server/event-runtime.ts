@@ -488,6 +488,9 @@ export class EventRuntime {
   // exists": a restart with the doors closed (and a restore) builds the sim
   // without opening, and the next open must still play the entry — once.
   private entryPlayed = false;
+  /** Wall time (`clock`) the doors last closed by a pause, until they open
+   *  again: the agent hub's timers skip that span (T9-timers-03). */
+  private pausedAt: number | null = null;
   private ticker: ReturnType<typeof setInterval> | null = null;
   // Agent-voiced characters (`mind: external`): open requests + the
   // stagehand workers answering them. Ephemeral — a restart drops them.
@@ -1438,7 +1441,9 @@ export class EventRuntime {
       },
       world: globals,
       powers: this.agentPowers(),
-      at: Date.now(),
+      // The hub's clock (an injected one in tests), so its max-age check
+      // and a pause's shift read the same time.
+      at: this.clock(),
     };
   }
 
@@ -1655,7 +1660,14 @@ export class EventRuntime {
       applied[name] = next;
       this.fanout(this.commit("setVar", path, String(next)));
     }
-    const acted = this.applyAgentActs(req, agentActs(body["acts"]));
+    // Doors closed (a pause): the words land, the acts don't (D10) — nothing
+    // autonomous changes the house while nobody else may act, and a refused
+    // act is not counted against its power's limit.
+    const acts = agentActs(body["acts"]);
+    const acted: AgentActResult[] =
+      this.phase === "open"
+        ? this.applyAgentActs(req, acts)
+        : acts.map((a) => ({ kind: a.kind, ok: false, what: a.kind === "share" ? a.entry : a.name, error: "doors are closed" }));
     if (followUp) this.agents.line(req.thread);
     sendJson(res, 200, { ok: true, said: text !== "", applied, acted });
   }
@@ -2462,6 +2474,10 @@ export class EventRuntime {
    */
   openDoors(): void {
     if (this.sim === null) this.freshRun(this.scenarioSource, this.scenarioName);
+    if (this.pausedAt !== null) {
+      this.agents.shift(this.pausedAt, this.clock());
+      this.pausedAt = null;
+    }
     this.setPhase("open");
     this.persistMeta();
     this.startTicker();
@@ -2490,6 +2506,7 @@ export class EventRuntime {
   /** Pause the event: stop the clock, keep all state. `/api/mod/stop`. */
   pause(): void {
     this.flushTick();
+    if (this.phase === "open") this.pausedAt = this.clock();
     this.setPhase("paused");
     this.stopTicker();
     this.persistMeta();
@@ -2702,6 +2719,9 @@ export class EventRuntime {
     for (const [token, id] of this.store.loadGuests()) this.guestTokens.set(token, id);
     this.requeueAgentThreads();
     if (this.phase === "open") this.startTicker();
+    // Restored with the doors paused: the re-asked requests wait out the
+    // pause like live ones do.
+    else if (this.phase === "paused") this.pausedAt = this.clock();
     return { guests: this.sim?.persons.size ?? 0, events, sessions: entries.length };
   }
 

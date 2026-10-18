@@ -877,6 +877,25 @@ export class AgentHub {
   }
 
   /**
+   * The event was paused from `pausedAt` to `resumedAt` (hub ms): the sweep
+   * didn't run, so no time in between counts toward a reply timeout, the
+   * queue's max age or the hold line (T9-timers-03). Every stamp from
+   * before the pause moves on by the pause's length; one taken during it
+   * reads as the resume.
+   */
+  shift(pausedAt: number, resumedAt: number): void {
+    const by = resumedAt - pausedAt;
+    if (!(by > 0)) return;
+    const moved = (t: number): number => (t <= pausedAt ? t + by : Math.max(t, resumedAt));
+    for (const r of this.open.values()) {
+      r.createdAt = moved(r.createdAt);
+      if (r.dispatchedAt !== null) r.dispatchedAt = moved(r.dispatchedAt);
+      r.req = { ...r.req, at: moved(r.req.at) };
+    }
+    for (const [w, t] of this.progress) this.progress.set(w, moved(t));
+  }
+
+  /**
    * A director answered in the thread by hand (Run → speak as the
    * character; decision #35 — the directors answer DMs when the worker is
    * down). The open request on that thread is settled: dropped if queued,
