@@ -56,14 +56,17 @@
 // failover and guests' cellular than on the VPS: close a second console
 // you don't need. Wave 9 (O1-01): the editor's console opens the mod stream
 // with `&delta=1` — a keyframe, then keyed `snapshotPatch` frames — and this
-// script does too: on the same mix a console fell from 6.0 to ≈ 0.09 Mbit/s.
-// The bandwidth line: each director console ≤ 1 Mbit/s. That is the LTE
-// failover's budget (OCT31 A-6 / CHECKLIST HW-NET-07: a tethered phone with
-// a data cap, ≈ 450 MB an hour per console at 1 Mbit/s), ten times what a
-// delta console uses, and a whole-view console (≈ 6 Mbit/s) fails it. The
+// script does too: on the same mix (120 s) a console fell from 5.9 to
+// ≈ 0.12 Mbit/s. The bandwidth line: each director console ≤ 1 Mbit/s.
+// That is the LTE failover's budget (OCT31 A-6 / CHECKLIST HW-NET-07: a
+// tethered phone with a data cap, ≈ 450 MB an hour per console at
+// 1 Mbit/s), about eight times what a delta console uses, and a whole-view
+// console (≈ 6 Mbit/s) fails it. The
 // guest and booth classes are printed per client but not judged (they are
 // the phones' own cost). The lean mod stream (`&lean=1`, stagehand) is
-// K-22's to measure.
+// K-22's to measure. Every Mbit/s this script prints or records is
+// 10^6 bit/s (before wave 9 the outbound figure was KiB · 8 / 1024 a
+// second, ≈ 5 % lower: wave 8's 27 above is in that unit).
 
 import { judge, liveGuard, LIVE_OVERRIDE, type GuardRow } from "./live-guard.ts";
 
@@ -576,10 +579,12 @@ for (const [k, xs] of [...httpLat.entries()].sort()) console.log(`    ${k.padEnd
 if (httpErr.size) console.log(`  errors: ${[...httpErr.entries()].map(([k, v]) => `${k}×${v}`).join("  ")}`);
 console.log(`\n  server: ${metricsMissing ? "no /api/mod/metrics on this server — run `docker stats` on the VPS during the test and note the peak" : `CPU mean ${cpuMean.toFixed(0)} % · peak ${cpuPeak.toFixed(0)} % of one core · box load peak ${boxPeak.toFixed(0)} % · event-loop p99 ${fmt(loopP99)} (max ${fmt(loopMax)}) · rss ${fmt(rssPeak, "MB")}`}`);
 const totalKb = kb("guest") + kb("prime") + kb("mod");
+/** Bytes over the load window → Mbit/s (1 Mbit = 10^6 bit, for every figure). */
+const mbitPerS = (bytes: number) => (bytes * 8) / 1e6 / Math.max(1, elapsed);
 console.log(`  streams: ${clients.length} (drops ${clients.reduce((a, c) => a + c.dropped, 0)}) · received guest ${kb("guest").toFixed(0)} KB · booth ${kb("prime").toFixed(0)} KB · director ${kb("mod").toFixed(0)} KB in ${elapsed.toFixed(0)} s`);
-console.log(`  outbound from the server ≈ ${((totalKb * 8) / 1024 / Math.max(1, elapsed)).toFixed(1)} Mbit/s (SSE only) — with guests on house Wi-Fi, the house internet downlink carries this`);
-// Per client, by class (KB over the load window → Mbit/s; 1 Mbit = 10^6 bit).
-const mbitOf = (c: Client) => (c.bytes * 8) / 1e6 / Math.max(1, elapsed);
+console.log(`  outbound from the server ≈ ${mbitPerS(totalKb * 1024).toFixed(1)} Mbit/s (SSE only) — with guests on house Wi-Fi, the house internet downlink carries this`);
+// Per client, by class.
+const mbitOf = (c: Client) => mbitPerS(c.bytes);
 const perClient = (role: Role) => {
   const xs = clients.filter((c) => c.role === role).map(mbitOf);
   return { mean: mean(xs), max: xs.length ? Math.max(...xs) : NaN };
@@ -617,7 +622,7 @@ const record = {
   eventLoopP99Ms: metricsMissing ? null : loopP99,
   http: Object.fromEntries([...httpLat.entries()].map(([k, xs]) => [k, { n: xs.length, p95: Math.round(pct(xs, 95)) }])),
   errors: Object.fromEntries(httpErr),
-  sseMbitPerS: Math.round(((totalKb * 8) / 1024 / Math.max(1, elapsed)) * 10) / 10,
+  sseMbitPerS: Math.round(mbitPerS(totalKb * 1024) * 10) / 10,
   mbitPerClient: Object.fromEntries((["guest", "prime", "mod"] as const).map((r) => [r === "prime" ? "booth" : r === "mod" ? "director" : r, Math.round(perClient(r).mean * 1000) / 1000])),
   directorMbitMax: Number.isFinite(directorMax) ? Math.round(directorMax * 1000) / 1000 : null,
   directorStream: flag("full-directors") ? "full" : "delta",
