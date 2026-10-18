@@ -29,6 +29,8 @@
 // Flags: --event <id> (skip code resolution) · --guests 45 --booths 9
 // --terminals 6 --mods 2 · --rate 2 (actions / guest / minute between
 // bursts) · --burst-every 20 · --probe-every 2 · --join persona|register ·
+// --full-directors (open the director consoles without `&delta=1`, as an
+// editor before wave 9 does — the bandwidth line then fails by design) ·
 // --open-doors (start a closed rehearsal) · --reset-after · --out <file.json>
 // (the recorded numbers) · --yes (skip the y/N question) ·
 // --i-know-this-is-live (skip the real-guest refusal). Node ≥ 22.6
@@ -38,7 +40,8 @@
 // participants (guests + booths; director consoles get coalesced snapshots
 // by design — K-22 — and are shown on their own line), mean server CPU
 // < 70 % of one core over the load window, and ≥ 95 % of probe lines
-// delivered (OCT31 §5 K-32). Paste the printed `record:` line into the
+// delivered (OCT31 §5 K-32), and each director console ≤ 1 Mbit/s (below).
+// Paste the printed `record:` line into the
 // checklist (`--out` keeps the JSON). If it fails: coalesce guest + booth
 // snapshots to ≤ 2/s (extends K-22) in the 10-24 buffer.
 //
@@ -51,9 +54,16 @@
 // directors 266 MB: each full director console is ≈ 6 Mbit/s, the whole
 // world every snapshot). That matters more on the house downlink, the LTE
 // failover and guests' cellular than on the VPS: close a second console
-// you don't need. The script prints the outbound Mbit/s and records it
-// (`sseMbitPerS`) but doesn't judge it; the lean mod stream (`&lean=1`,
-// stagehand) is K-22's to measure.
+// you don't need. Wave 9 (O1-01): the editor's console opens the mod stream
+// with `&delta=1` — a keyframe, then keyed `snapshotPatch` frames — and this
+// script does too: on the same mix a console fell from 6.0 to ≈ 0.09 Mbit/s.
+// The bandwidth line: each director console ≤ 1 Mbit/s. That is the LTE
+// failover's budget (OCT31 A-6 / CHECKLIST HW-NET-07: a tethered phone with
+// a data cap, ≈ 450 MB an hour per console at 1 Mbit/s), ten times what a
+// delta console uses, and a whole-view console (≈ 6 Mbit/s) fails it. The
+// guest and booth classes are printed per client but not judged (they are
+// the phones' own cost). The lean mod stream (`&lean=1`, stagehand) is
+// K-22's to measure.
 
 import { judge, liveGuard, LIVE_OVERRIDE, type GuardRow } from "./live-guard.ts";
 
@@ -199,7 +209,8 @@ function onFrame(c: Client, ev: string, data: string, at: number): void {
       const w = m.widget as { kind?: string } | undefined;
       if (m.kind === "widget" && typeof m.seq === "number" && w?.kind !== undefined) c.widgets.set(m.seq, w.kind);
     }
-  } else if (ev === "snapshot") {
+  } else if (ev === "snapshot" || ev === "snapshotPatch") {
+    // A delta director's patch is its fresh view as much as a snapshot is.
     for (const [nonce, gotAt] of c.awaiting) {
       const p = probes.get(nonce);
       c.awaiting.delete(nonce);
@@ -208,7 +219,7 @@ function onFrame(c: Client, ev: string, data: string, at: number): void {
       stepLat.push(at - p.sentAt);
       stepLatByRole[c.role].push(at - p.sentAt);
     }
-    if (c.role === "guest") {
+    if (c.role === "guest" && ev === "snapshot") {
       try {
         c.view = JSON.parse(data) as Record<string, unknown>;
         for (const seq of (c.view.answered as number[] | undefined) ?? []) c.widgets.delete(seq);
@@ -220,7 +231,7 @@ function onFrame(c: Client, ev: string, data: string, at: number): void {
 }
 
 async function stream(c: Client): Promise<void> {
-  const q = c.role === "mod" ? "role=mod&id=k32" : `role=${c.role}&token=${encodeURIComponent(c.token)}`;
+  const q = c.role === "mod" ? `role=mod&id=k32${flag("full-directors") ? "" : "&delta=1"}` : `role=${c.role}&token=${encodeURIComponent(c.token)}`;
   while (!streamStop.signal.aborted) {
     try {
       const r = await fetch(`${base}${scope}/events?${q}`, {
@@ -567,6 +578,17 @@ console.log(`\n  server: ${metricsMissing ? "no /api/mod/metrics on this server 
 const totalKb = kb("guest") + kb("prime") + kb("mod");
 console.log(`  streams: ${clients.length} (drops ${clients.reduce((a, c) => a + c.dropped, 0)}) · received guest ${kb("guest").toFixed(0)} KB · booth ${kb("prime").toFixed(0)} KB · director ${kb("mod").toFixed(0)} KB in ${elapsed.toFixed(0)} s`);
 console.log(`  outbound from the server ≈ ${((totalKb * 8) / 1024 / Math.max(1, elapsed)).toFixed(1)} Mbit/s (SSE only) — with guests on house Wi-Fi, the house internet downlink carries this`);
+// Per client, by class (KB over the load window → Mbit/s; 1 Mbit = 10^6 bit).
+const mbitOf = (c: Client) => (c.bytes * 8) / 1e6 / Math.max(1, elapsed);
+const perClient = (role: Role) => {
+  const xs = clients.filter((c) => c.role === role).map(mbitOf);
+  return { mean: mean(xs), max: xs.length ? Math.max(...xs) : NaN };
+};
+const mbitRow = (role: Role) => {
+  const x = perClient(role);
+  return Number.isFinite(x.max) ? `${x.mean.toFixed(2)} (max ${x.max.toFixed(2)})` : "—";
+};
+console.log(`  per client Mbit/s: guest ${mbitRow("guest")} · booth ${mbitRow("prime")} · director ${mbitRow("mod")}${flag("full-directors") ? " (full consoles)" : " (delta consoles)"}`);
 
 let fails = 0;
 const check = (ok: boolean, what: string) => {
@@ -581,6 +603,8 @@ if (metricsMissing) console.log("  ? CPU not measured by the script (see above)"
 if (joinMode === "persona") console.log("  ? the per-IP register / login rate limits were NOT exercised (personas skip them) — the door rush shares the house's one public IP (K-11)");
 else check(Number.isFinite(cpuMean) && cpuMean < 70, `server CPU mean < 70 % of one core (${cpuMean.toFixed(0)} %, peak ${cpuPeak.toFixed(0)} %)`);
 check(deliveryRatio >= 0.95, `probe lines reached ≥ 95 % of client × probe pairs (${(deliveryRatio * 100).toFixed(1)} %)`);
+const directorMax = perClient("mod").max;
+if (nMods > 0) check(Number.isFinite(directorMax) && directorMax <= 1, `each director console ≤ 1 Mbit/s — the LTE failover's budget (max ${Number.isFinite(directorMax) ? directorMax.toFixed(2) : "—"} Mbit/s)`);
 
 const record = {
   item: "K-32",
@@ -594,9 +618,12 @@ const record = {
   http: Object.fromEntries([...httpLat.entries()].map(([k, xs]) => [k, { n: xs.length, p95: Math.round(pct(xs, 95)) }])),
   errors: Object.fromEntries(httpErr),
   sseMbitPerS: Math.round(((totalKb * 8) / 1024 / Math.max(1, elapsed)) * 10) / 10,
+  mbitPerClient: Object.fromEntries((["guest", "prime", "mod"] as const).map((r) => [r === "prime" ? "booth" : r === "mod" ? "director" : r, Math.round(perClient(r).mean * 1000) / 1000])),
+  directorMbitMax: Number.isFinite(directorMax) ? Math.round(directorMax * 1000) / 1000 : null,
+  directorStream: flag("full-directors") ? "full" : "delta",
   pass: fails === 0,
 };
-console.log(`\n  record: K-32 ${record.at.slice(0, 10)} ${record.url} — ${guests.length}g/${record.clients.booths}b/${nTerminals}t/${nMods}d, step p95 ${record.stepLatencyMs.p95} ms, CPU ${metricsMissing ? "n/a" : `${record.cpuPctOneCore!.mean}% mean / ${record.cpuPctOneCore!.peak}% peak`} → ${fails === 0 ? "PASS" : "FAIL"}`);
+console.log(`\n  record: K-32 ${record.at.slice(0, 10)} ${record.url} — ${guests.length}g/${record.clients.booths}b/${nTerminals}t/${nMods}d, step p95 ${record.stepLatencyMs.p95} ms, director ${record.directorMbitMax ?? "—"} Mbit/s, CPU ${metricsMissing ? "n/a" : `${record.cpuPctOneCore!.mean}% mean / ${record.cpuPctOneCore!.peak}% peak`} → ${fails === 0 ? "PASS" : "FAIL"}`);
 if (outFile !== "") {
   const { writeFileSync } = await import("node:fs");
   writeFileSync(outFile, `${JSON.stringify(record, null, 2)}\n`);
