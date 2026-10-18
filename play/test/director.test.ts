@@ -126,6 +126,21 @@ describe("arm, then fire", () => {
     // no HTTP answer: it may have fired — never "failed"
     expect(fireToast(bingo, { ok: false, status: 0, message: "Load failed" })).toBe("Not sure V2 fired — check the sheet before firing again");
   });
+
+  it("G11's first press (the 30-second ask) reads Not taken and leaves the row unticked", async () => {
+    // The show's label; the server answers the ask {ok, refused} (core's
+    // trapped-w9-cues test pins that answer over HTTP).
+    const view: DirectorView = {
+      ...VIEW,
+      interactions: [{ id: "award_most_trusted", label: "G2 · 🏆 Most Trusted", who: "admin", subject: true }, { id: "resurrection", label: "G11 · 🎃 Resurrection: the show is over, out of character (after the ceremony)", who: "admin" }],
+      cues: { last: "award_most_trusted", lastBy: "Phone · Ana", fired: ["award_most_trusted"] } as DirectorView["cues"],
+    };
+    const g11 = directorRows(view).find((r) => r.id === "resurrection")!;
+    expect(g11).toMatchObject({ code: "G11", fired: false, last: false });
+    const outcome = await fireCue(async () => ({ ok: true, refused: true }), signalBody("resurrection", null, "Ana"), () => {});
+    expect(outcome).toEqual({ ok: true, refused: true });
+    expect(fireToast(g11, outcome)).toBe("Not taken — G11 doesn't apply right now (# hosts says why)");
+  });
 });
 
 describe("fireCue", () => {

@@ -10,6 +10,14 @@ import type { SimEvent } from "../src/runtime/sim/index.ts";
 import { scenarioSource } from "../examples/load.ts";
 import { cueState, modView, notePress, pressRefused } from "../server/views.ts";
 import { cueRows } from "../src/cue-sheet.ts";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { IncomingMessage, ServerResponse } from "node:http";
+import { EventRuntime } from "../server/event-runtime.ts";
+import { Store } from "../server/store.ts";
+import type { ModView } from "../server/views.ts";
+import { TO_Y2K } from "../../scripts/accept/chains.ts";
 
 const SRC = scenarioSource("trapped-in-the-internet");
 const SLOW = 120_000;
@@ -360,6 +368,10 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
       expect((e as Extract<SimEvent, { type: "worldSet" }>).path.split(".").at(-1)!.startsWith("_")).toBe(true);
     }
     expect(v(sim, "Night._resurrect_ask_at")).toBeGreaterThan(0);
+    // server-b's `_` skip: the ask is refused — never fired, never LAST.
+    expect(pressRefused(sim, ask)).toBe(true);
+    expect(cueState(sim).fired).not.toContain("resurrection");
+    expect(sheet(sim).last).toBe("award_most_trusted");
     advance(sim, 10);
     expect(press(sim, "resurrection").refused).toBe(false);
     expect(v(sim, "Night.resurrected")).toBe(true);
@@ -413,5 +425,57 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     const g2 = press(sim, "award_most_trusted", "g1").out;
     expect(desktop(g2, "Clippy").some((t) => t.startsWith("Award. Most Trusted."))).toBe(true);
     expect(desktop(g2, "Trabolta")).toEqual([]);
+  });
+});
+
+// ───────── G11's ask over HTTP: what the director phone is answered ─────────
+
+describe("wave 9 — G11's first press reaches the phone as refused (O1-open-issues-02, C3)", () => {
+  const CODES = { event: "EVTG11", prime: "PRMG11", mod: "MODG11" };
+  function fakeReq(body: unknown, headers: Record<string, string>): IncomingMessage {
+    const buf = Buffer.from(JSON.stringify(body ?? {}));
+    return { headers, [Symbol.asyncIterator]: async function* () { yield buf; }, on() {} } as unknown as IncomingMessage;
+  }
+  async function call(rt: EventRuntime, method: string, p: string, body: unknown, token?: string) {
+    const url = new URL(`http://x${p}`);
+    const res = {
+      statusCode: 0,
+      body: "",
+      setHeader() {},
+      writeHead(st: number) { res.statusCode = st; return res; },
+      write() { return true; },
+      end(b?: string) { if (typeof b === "string") res.body = b; return res; },
+    };
+    await rt.handle(fakeReq(body, token ? { "x-loom-token": token } : {}), res as unknown as ServerResponse, method, url.pathname, url, { moderator: false });
+    return { status: res.statusCode, json: JSON.parse(res.body || "{}") as Record<string, unknown> };
+  }
+
+  it("/api/mod/signal answers refused: true for the ask, the sheet keeps LAST, and the second press fires", { timeout: SLOW }, async () => {
+    const dir = mkdtempSync(join(tmpdir(), "loom-g11-"));
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: "trapped-in-the-internet", scenarioSource: SRC, joinBase: () => "http://localhost" });
+    try {
+      rt.openDoors();
+      const guest = (await call(rt, "POST", "/api/guest/register", { passcode: CODES.event, name: "Calculator" })).json;
+      const token = (await call(rt, "POST", "/api/mod/login", { passcode: CODES.mod })).json["token"] as string;
+      const signal = (name: string, subject?: string) => call(rt, "POST", "/api/mod/signal", { name, label: "Phone · Ana", ...(subject ? { subject } : {}) }, token);
+      for (const n of TO_Y2K) expect((await signal(n)).json, n).toEqual({ ok: true });
+      expect((await signal("patch_combo_a")).json).toEqual({ ok: true });
+      for (let i = 0; i < 11; i++) rt.tickOnce(1000);
+      for (const n of ["trabolta_recounts", "start_the_ceremony"]) expect((await signal(n)).json, n).toEqual({ ok: true });
+      expect((await signal("award_most_trusted", String(guest["id"]))).json).toEqual({ ok: true });
+      const ask = await signal("resurrection");
+      expect(ask.status).toBe(200);
+      expect(ask.json).toEqual({ ok: true, refused: true }); // the phone's "Not taken — G11 …"
+      const view = (await call(rt, "GET", "/api/state?role=mod&cues=1", {}, token)).json as unknown as ModView;
+      expect(view.cues?.last).toBe("award_most_trusted");
+      expect(view.cues?.fired).not.toContain("resurrection");
+      expect(cueRows(view.interactions ?? [], view.cues!).find((r) => r.id === "resurrection")?.code).toBe("G11");
+      expect((await signal("resurrection")).json).toEqual({ ok: true });
+      const after = (await call(rt, "GET", "/api/state?role=mod&cues=1", {}, token)).json as unknown as ModView;
+      expect(after.cues?.last).toBe("resurrection");
+    } finally {
+      rt.dispose();
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
