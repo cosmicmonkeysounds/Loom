@@ -21,7 +21,7 @@ import { validateHouse, type HouseMap, type MapVariantsResponse } from "@loom/ho
 
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { cueState, guestView, modView, notePress, pressRefused, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { cueState, guestView, modView, notePress, pressMovedArm, pressRefused, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
@@ -839,7 +839,14 @@ export class EventRuntime {
 
   /** The operator's god view, with everyone's profile pictures. */
   private modViewNow(): ModView {
-    return { ...modView(this.sim, this.phase, this.scenarioName, this.presence(), this.sim === null ? this.declaredCharacters : undefined, this.declaredSim), avatars: this.avatarMap(), ...(this.wallet !== null ? { wallet: this.wallet.modView() } : {}) };
+    return {
+      ...modView(this.sim, this.phase, this.scenarioName, this.presence(), this.sim === null ? this.declaredCharacters : undefined, this.declaredSim),
+      avatars: this.avatarMap(),
+      ...(this.wallet !== null ? { wallet: this.wallet.modView() } : {}),
+      // A restart with the doors shut leaves the run `paused` with its
+      // `start:` beat unplayed: the doors are still closed (the phone's strip).
+      ...(!this.entryPlayed ? { doorsClosed: true as const } : {}),
+    };
   }
 
   /** Message seqs of the widget cards `id` has answered. */
@@ -4566,15 +4573,26 @@ export class EventRuntime {
         // `/api/mod/impersonate` does). An author session's own name is
         // never overridden.
         // `presses`: the cue state's press count the director's screen armed
-        // against. Another press landed since (a second director, or the
-        // story) — the night moved under the arm: refuse it, so the screen
-        // says "Cues moved" rather than firing a second 📋 or a repeated
-        // aside the other director already pressed.
+        // against — only a cue-sheet press carries it (a device, stagehand
+        // or a Tools fire never does, and is never refused here).
         const expected = body["presses"];
         if (typeof expected === "number" && Number.isFinite(expected)) {
-          const cues = cueState(this.sim);
-          if (cues.presses !== expected) {
-            sendJson(res, 409, { error: "the cues moved: another press landed first — re-arm", moved: true, cues });
+          // Before the doors: the `start:` beat has not played (a restart
+          // with the doors shut leaves the run paused, not idle), so a
+          // cue-sheet press would land in the journal ahead of it. The same
+          // 409 as no sim at all, so both director screens say the doors
+          // aren't open yet.
+          if (!this.entryPlayed) {
+            sendJson(res, 409, { error: "no scenario loaded", doorsClosed: true });
+            return true;
+          }
+          // Since the arm, a press fired this same cue (a second director's
+          // 📋, 🍾 again), moved LAST or ticked a new cue: the night moved
+          // under the arm — refuse it, so the screen says "Cues moved"
+          // rather than firing twice. Another cue's repeat (a second duck
+          // find, the door contact) never vetoes it.
+          if (pressMovedArm(this.sim, expected, str(body, "name"))) {
+            sendJson(res, 409, { error: "the cues moved: another press landed first — re-arm", moved: true, cues: cueState(this.sim) });
             return true;
           }
         }
@@ -4585,7 +4603,10 @@ export class EventRuntime {
         // why) — the cue sheet's own judgement, so a phone needn't say "fired".
         const refused = pressRefused(this.sim, press);
         this.fanout(press);
-        sendJson(res, 200, refused ? { ok: true, refused: true } : { ok: true });
+        // `presses`: the count after this press — the screen holds its lock
+        // until its own snapshot shows it, so its next arm binds past it.
+        const presses = cueState(this.sim).presses;
+        sendJson(res, 200, refused ? { ok: true, refused: true, presses } : { ok: true, presses });
         return true;
       }
       case "/api/mod/broadcast": {

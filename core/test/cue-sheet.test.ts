@@ -59,6 +59,52 @@ when hunt_time_up:
     set Night.phase = "back"
 `;
 
+const DUCK_SOURCE = `# Cue Duck
+INTERACTION ring_the_bell
+  label: C1 · 📣 Call everyone
+  who: admin
+
+INTERACTION hunt_time_up
+  label: C2 · ⏰ Hunt over
+  who: admin
+
+INTERACTION spin_the_bottle
+  label: 🍾 Spin the bottle
+  who: admin
+  sequence: false
+
+INTERACTION the golden duck
+  label: 🦆 duck
+  who: admin
+  sequence: false
+
+when ring_the_bell:
+  set Night.phase = "desktop"
+
+when hunt_time_up:
+  set Night.phase = "back"
+
+when spin_the_bottle:
+  set Night.spins += 1
+
+when the golden duck:
+  set Night.ducks += 1
+`;
+
+const DOORS_SOURCE = `# Cue Doors
+start: Power On
+
+INTERACTION ring_the_bell
+  label: C1 · 📣 Call everyone
+  who: admin
+
+== Power On
+set Night.phase = "arrival"
+
+when ring_the_bell:
+  set Night.rang = true
+`;
+
 const dirs: string[] = [];
 afterAll(() => {
   for (const d of dirs) rmSync(d, { recursive: true, force: true });
@@ -129,10 +175,10 @@ describe("the phone cue page's server surface (W-26)", () => {
     expect(after.world.find((w) => w.path === "Night.phase")?.value).toContain("desktop");
     const signal = store.readJournal().find((e) => e.m === "signal");
     expect(signal?.by).toBe("Phone · Ana");
-    expect(fired.json).toEqual({ ok: true });
+    expect(fired.json).toEqual({ ok: true, presses: 1 });
     // Out of turn the story turns C2 down: taken, answered `refused`, not ticked.
     const early = await call(rt, "POST", "/api/mod/signal", { name: "hunt_time_up", label: "Phone · Ana" }, token);
-    expect(early.json).toEqual({ ok: true, refused: true });
+    expect(early.json).toEqual({ ok: true, refused: true, presses: 1 });
     const still = (await call(rt, "GET", "/api/state?role=mod", {}, token)).json as unknown as ModView;
     expect(still.cues).toMatchObject({ last: "ring_the_bell", fired: ["ring_the_bell"] });
     rt.dispose();
@@ -173,6 +219,91 @@ describe("the phone cue page's server surface (W-26)", () => {
     // A refused press never counts.
     await call(rt, "POST", "/api/mod/signal", { name: "hunt_time_up", presses: 2 }, token);
     expect((await marks()).presses).toBe(2);
+    rt.dispose();
+  });
+
+  it("a device's repeat of another cue never vetoes an armed press; the same cue again does", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "loom-cuephone-"));
+    dirs.push(dir);
+    const store = new Store(dir);
+    const rt = new EventRuntime({ eventId: "evt", store, codes: CODES, scenarioName: "cue-duck", scenarioSource: DUCK_SOURCE, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const token = (await call(rt, "POST", "/api/mod/login", { passcode: CODES.mod })).json["token"] as string;
+    const marks = async () => ((await call(rt, "GET", "/api/state?role=mod&cues=1", {}, token)).json as unknown as ReturnType<typeof cueSheetView>).cues;
+    const signals = () => store.readJournal().filter((e) => e.m === "signal").length;
+    await call(rt, "POST", "/api/mod/signal", { name: "ring_the_bell" }, token);
+    await call(rt, "POST", "/api/mod/signal", { name: "the golden duck" }, token); // the first find
+    const m1 = await marks();
+    expect(m1).toMatchObject({ last: "ring_the_bell", presses: 2, pressed: "the golden duck" });
+    // The director arms C2; a guest finds the duck again (no count: never refused).
+    const row = cueRows([{ id: "hunt_time_up", label: "C2 · ⏰", who: "admin" }], m1)[0]!;
+    const armed = tapCue(null, row, 0, m1);
+    if (armed.kind !== "arm") throw new Error("unreachable");
+    expect((await call(rt, "POST", "/api/mod/signal", { name: "the golden duck" }, token)).status).toBe(200);
+    const m2 = await marks();
+    expect(m2).toMatchObject({ last: "ring_the_bell", presses: 3, pressed: "the golden duck" });
+    // Neither screen nor server drops C2 over it: it fires.
+    expect(armStillValid(armed.armed, m2, 500)).toBe(true);
+    const c2 = await call(rt, "POST", "/api/mod/signal", { name: "hunt_time_up", presses: armed.armed.presses }, token);
+    expect(c2.status).toBe(200);
+    expect((await marks()).last).toBe("hunt_time_up");
+    // Two directors arm 🍾 (an aside that already fired): the first press
+    // lands, the second is turned down — the same cue again.
+    await call(rt, "POST", "/api/mod/signal", { name: "spin_the_bottle" }, token);
+    const m3 = await marks();
+    const spin = cueRows([{ id: "spin_the_bottle", label: "🍾", who: "admin", sequence: false }], m3)[0]!;
+    const a = tapCue(null, spin, 0, m3);
+    if (a.kind !== "arm") throw new Error("unreachable");
+    expect((await call(rt, "POST", "/api/mod/signal", { name: "spin_the_bottle", presses: a.armed.presses }, token)).status).toBe(200);
+    const m4 = await marks();
+    expect(armStillValid(a.armed, m4, 500)).toBe(false);
+    const before = signals();
+    const late = await call(rt, "POST", "/api/mod/signal", { name: "spin_the_bottle", presses: a.armed.presses }, token);
+    expect(late.status).toBe(409);
+    expect(late.json["moved"]).toBe(true);
+    expect(signals()).toBe(before);
+    // A device's duck find after the arm is fine, but a 🍾 hidden behind it
+    // is still caught by the server (the screen only sees the newest press).
+    const m5 = await marks();
+    const b = tapCue(null, spin, 0, m5);
+    if (b.kind !== "arm") throw new Error("unreachable");
+    await call(rt, "POST", "/api/mod/signal", { name: "spin_the_bottle" }, token);
+    await call(rt, "POST", "/api/mod/signal", { name: "the golden duck" }, token);
+    const m6 = await marks();
+    expect(m6.pressed).toBe("the golden duck");
+    expect(armStillValid(b.armed, m6, 500)).toBe(true);
+    expect((await call(rt, "POST", "/api/mod/signal", { name: "spin_the_bottle", presses: b.armed.presses }, token)).status).toBe(409);
+    rt.dispose();
+  });
+
+  it("a restart with the doors shut keeps them closed: the strip says so and a counted press waits for the start beat", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "loom-cuephone-"));
+    dirs.push(dir);
+    const store = new Store(dir);
+    const rt = new EventRuntime({ eventId: "evt", store, codes: CODES, scenarioName: "cue-doors", scenarioSource: DOORS_SOURCE, joinBase: () => "http://localhost" });
+    const token = (await call(rt, "POST", "/api/mod/login", { passcode: CODES.mod })).json["token"] as string;
+    const lean = async () => (await call(rt, "GET", "/api/state?role=mod&cues=1", {}, token)).json as unknown as ReturnType<typeof cueSheetView>;
+    expect((await lean()).doorsClosed).toBe(true);
+    // Push draft / reset before the doors: the run is paused, its start beat unplayed.
+    expect((await call(rt, "POST", "/api/mod/reset", {}, token)).status).toBe(200);
+    const after = await lean();
+    expect(after.doorsClosed).toBe(true);
+    expect(after.paused).toBe(true);
+    const full = (await call(rt, "GET", "/api/state?role=mod", {}, token)).json as unknown as ModView;
+    expect(full.phase).toBe("paused");
+    expect(full.doorsClosed).toBe(true);
+    // The cue sheet's press is refused like a press with no sim at all.
+    const press = await call(rt, "POST", "/api/mod/signal", { name: "ring_the_bell", presses: 0 }, token);
+    expect(press.status).toBe(409);
+    expect(press.json["error"]).toBe("no scenario loaded");
+    expect(store.readJournal().filter((e) => e.m === "signal")).toHaveLength(0);
+    rt.openDoors();
+    expect((await lean()).doorsClosed).toBeUndefined();
+    expect((await call(rt, "POST", "/api/mod/signal", { name: "ring_the_bell", presses: 0 }, token)).status).toBe(200);
+    expect(store.readJournal().map((e) => e.m).filter((m) => m === "fireBeat" || m === "signal")).toEqual(["fireBeat", "signal"]);
+    // Paused after the doors opened is not "doors closed".
+    rt.pause();
+    expect((await lean()).doorsClosed).toBeUndefined();
     rt.dispose();
   });
 

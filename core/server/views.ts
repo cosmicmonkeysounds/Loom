@@ -480,6 +480,10 @@ export interface ModView {
   /** Every declared INTERACTION (the director may fire any of them). */
   interactions?: InteractionSummary[];
   phase: RuntimePhase;
+  /** The doors have not opened on this run yet: its `start:` beat has not
+   *  played (idle, or a restart with the doors shut — `paused`). A
+   *  cue-sheet press is refused until they open. Set by the event runtime. */
+  doorsClosed?: true;
   scenario: string | null;
   roster: RosterRow[];
   factions: FactionSummary[];
@@ -575,11 +579,13 @@ export interface CueState {
   lastBy: "director" | "story" | null;
   /** Every admin cue that has fired at least once, in first-fire order. */
   fired: string[];
-  /** How many admin-cue presses the story took tonight (by a director or
-   *  the story's own `fire`; a refused press never counts). A repeat of
-   *  LAST or of an aside moves only this: a director screen binds its arm
-   *  to it, and `/api/mod/signal {presses}` refuses a press armed against
-   *  an older count (409 `moved`). */
+  /** How many admin-cue presses the story took tonight (by a director, a
+   *  device, or the story's own `fire`; a refused press never counts). A
+   *  repeat of LAST or of an aside moves only this: a director screen binds
+   *  its arm to it, and `/api/mod/signal {presses}` refuses a press armed
+   *  against an older count only when a press since fired that same cue,
+   *  moved LAST or ticked a new cue (`pressMovedArm`, 409 `moved`) — never
+   *  for another cue's repeat (a second duck find, a door contact). */
   presses: number;
   /** The cue the newest taken press fired (asides included), or null. */
   pressed: string | null;
@@ -593,6 +599,10 @@ interface CueScan {
   seen: Set<string>;
   /** `state.last`'s place in the declared order (-1 = none). */
   lastOrder: number;
+  /** Every taken press in order (index = the press count before it): the
+   *  cue it fired, and whether it moved LAST or ticked a cue for the first
+   *  time (`pressMovedArm`). */
+  pressLog: { id: string; moved: boolean }[];
 }
 
 /** Where each director press's own events end, per log: the batch one
@@ -737,7 +747,7 @@ export function cueState(sim: Sim): CueState {
   const events = sim.log.all();
   let scan = cueScans.get(sim.log);
   if (scan === undefined || scan.model !== sim.model || scan.at > events.length) {
-    scan = { model: sim.model, at: 0, state: { last: null, lastBy: null, fired: [], presses: 0, pressed: null }, seen: new Set(), lastOrder: -1 };
+    scan = { model: sim.model, at: 0, state: { last: null, lastBy: null, fired: [], presses: 0, pressed: null }, seen: new Set(), lastOrder: -1, pressLog: [] };
     cueScans.set(sim.log, scan);
   }
   const { state, seen } = scan;
@@ -759,20 +769,49 @@ export function cueState(sim: Sim): CueState {
     if (by === "director" && refusedPress(sim, events, n, name)) continue;
     state.presses += 1;
     state.pressed = id;
+    const lastWas = state.last;
+    let moved = false;
     if (cue.sequence) {
       if (!(seen.has(id) && cue.order < scan.lastOrder)) {
         state.last = id;
         state.lastBy = by;
         scan.lastOrder = cue.order;
+        moved = lastWas !== id;
       }
     }
     if (!seen.has(id)) {
       seen.add(id);
       state.fired.push(id);
+      moved = true;
     }
+    scan.pressLog.push({ id, moved });
   }
   scan.at = events.length;
   return { last: state.last, lastBy: state.lastBy, fired: [...state.fired], presses: state.presses, pressed: state.pressed };
+}
+
+/**
+ * Did the night move under an arm made at press count `presses` for cue
+ * `id`? True when a press taken since then fired that same cue (a second
+ * director's 📋, or 🍾 again), moved LAST, or ticked a cue for the first
+ * time — what a director's screen binds its arm to (spec §4.3). Another
+ * cue's repeat (a guest's second duck find, a door contact firing again,
+ * an aside the other director pressed) moves nothing an arm cares about,
+ * so it never vetoes the press. A count from ahead of the night (a
+ * restart since) is stale too.
+ */
+export function pressMovedArm(sim: Sim, presses: number, id: string): boolean {
+  const cues = cueState(sim);
+  if (presses > cues.presses || presses < 0) return true;
+  if (presses === cues.presses) return false;
+  const scan = cueScans.get(sim.log);
+  if (scan === undefined) return true;
+  const want = foldName(id);
+  for (let k = Math.floor(presses); k < scan.pressLog.length; k++) {
+    const p = scan.pressLog[k]!;
+    if (p.moved || foldName(p.id) === want) return true;
+  }
+  return false;
 }
 
 export interface CodexSummary extends CodexEntryView {

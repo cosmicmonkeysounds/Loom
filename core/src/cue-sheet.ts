@@ -47,9 +47,11 @@ export interface CueMarks {
   lastBy?: string | null;
   fired: string[];
   /** How many presses the story has taken tonight (any admin cue, by a
-   *  director or the story; a refused press never counts). A repeat of LAST
-   *  (📋 per question) or of an aside moves neither `last` nor `fired`, so
-   *  an arm also binds to this. Absent from an older server. */
+   *  director, a device or the story; a refused press never counts). A
+   *  repeat of LAST (📋 per question) or of an aside moves neither `last`
+   *  nor `fired`, so an arm also binds to this: it drops when the newest
+   *  press since was its own cue, and the server refuses it when any press
+   *  since was. Absent from an older server. */
   presses?: number;
   /** The cue the newest taken press fired (an aside included), or null. */
   pressed?: string | null;
@@ -328,14 +330,21 @@ function bindMarks(marks: CueMarks | undefined): Pick<Armed, "last" | "firedCoun
 
 /** Is `armed` still good to fire at `now`: inside `ARM_MS`, and the cue
  *  state it was armed against (if bound) has not moved since — LAST, the
- *  fired set, or the count of presses the story took. */
+ *  fired set, or a press of the armed cue itself. */
 export function armStillValid(armed: Armed, marks: CueMarks, now: number): boolean {
   if (now - armed.at >= ARM_MS) return false;
   if (armed.last !== undefined && armed.last !== marks.last) return false;
   if (armed.firedCount !== undefined && armed.firedCount !== marks.fired.length) return false;
-  // Another press of LAST (a second director's 📋) or of an aside that
-  // already fired moves only the press count.
-  if (armed.presses !== undefined && typeof marks.presses === "number" && armed.presses !== marks.presses) return false;
+  // Another press of this same cue (a second director's 📋, 🍾 again)
+  // moves only the press count — and `pressed` names it. Another cue's
+  // repeat (a guest's second duck find, a door contact) leaves the arm be;
+  // the server judges every press since the arm (`pressMovedArm`), so one a
+  // newer press hid from `pressed` is still refused there. A count that
+  // went back is a new run.
+  if (armed.presses !== undefined && typeof marks.presses === "number") {
+    if (marks.presses < armed.presses) return false;
+    if (marks.presses > armed.presses && marks.pressed === armed.id) return false;
+  }
   return true;
 }
 
@@ -416,8 +425,9 @@ export interface CueSheetView {
    *  not opened): `clock` holds still, so a countdown must not tick on.
    *  Absent while the clock runs, and from an older server. */
   paused?: true;
-  /** The doors have not opened yet (the runtime is `idle`): the cue sheet is
-   *  the story's, nothing can fire until they open. */
+  /** The doors have not opened yet (the runtime is `idle`, or a restart
+   *  left it `paused` before its `start:` beat): the cue sheet is the
+   *  story's, nothing can fire until they open. */
   doorsClosed?: true;
   /** The live countdowns (`ModView.countdowns`), when any is running. */
   countdowns?: { label: string; endsAt: number }[];
@@ -450,6 +460,10 @@ export function cueSheetView(view: {
   clock?: number;
   /** The runtime phase (`ModView.phase`): the clock runs only while `open`. */
   phase?: string;
+  /** The doors have not opened on this run (`ModView.doorsClosed`): also a
+   *  `paused` run whose `start:` beat has not played (a restart before the
+   *  doors). */
+  doorsClosed?: true;
   watch?: readonly WatchInput[];
   countdowns?: readonly { label: string; endsAt: number }[];
 }): CueSheetView {
@@ -482,7 +496,7 @@ export function cueSheetView(view: {
     roster: (view.roster ?? []).map((p) => ({ id: p.id, name: p.name, location: p.location, ...(p.owner !== undefined ? { owner: p.owner } : {}) })),
     ...(view.clock !== undefined ? { clock: view.clock } : {}),
     ...(view.phase !== undefined && view.phase !== "open" ? { paused: true as const } : {}),
-    ...(view.phase === "idle" ? { doorsClosed: true as const } : {}),
+    ...(view.phase === "idle" || view.doorsClosed === true ? { doorsClosed: true as const } : {}),
     ...(countdowns.length > 0 ? { countdowns } : {}),
     ...(watch.length > 0 ? { watch } : {}),
   };
