@@ -4,6 +4,7 @@
 //!   pnpm sync-example "Untitled Project"                # default example
 //!   pnpm sync-example <project id> escape-the-internet
 //!   pnpm sync-example "Untitled Project" --server http://localhost:7000
+//!   pnpm sync-example "Trapped" --i-know-this-is-live    # reload a live show anyway
 //!
 //! Dev tooling for the SaaS path: the editor's Run mode plays a *snapshot*
 //! of the project (`event.scenario_source`), so editing the example folder
@@ -12,6 +13,15 @@
 //! default `loom_dev`) and the event server's mod API (the event's own mod
 //! code, read from the row). Files the example no longer has are removed
 //! from the project. A reload cuts every guest's session — they re-join.
+//!
+//! **A live event is guarded** (OCT31 §3: never after doors). When the
+//! event's mode is `live` and its roster holds a real guest (not a
+//! director's persona — `core/scripts/live-guard.ts`), the project's files
+//! are still written but the event is left alone — its snapshot untouched,
+//! no reload — and the script exits **3**: Push draft from Run (typed
+//! confirm) instead, or re-run with `--i-know-this-is-live`. A live event
+//! whose roster can't be read (the server doesn't answer) is refused the
+//! same way. A preview (the rehearsal run) is never guarded.
 //!
 //! The example's house maps (`house.json`, `house.<variant>.json`) are
 //! project files too (SW-MAP-01), snapshotted on the event row and handed to
@@ -34,22 +44,105 @@ import { randomUUID } from "node:crypto";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { Pool } from "pg";
 import { scenarioFactsFile, scenarioFiles, scenarioMapFiles } from "../examples/load.ts";
 import { isMapFile, mapProblems, mapSummary, planMapSync, type MapFiles, type MapSyncMode } from "../server/house-maps.ts";
 import { FACTS_FILE, factsProblems } from "../server/facts.ts";
+import { LIVE_OVERRIDE, reloadVerdict, type GuardRow } from "./live-guard.ts";
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://127.0.0.1:5432/loom_dev";
 
 function usage(): never {
-  process.stderr.write("usage: sync-example <project name | id> [example=trapped-in-the-internet] [--server URL] [--no-reload] [--keep-maps | --replace-maps]\n");
+  process.stderr.write(
+    `usage: sync-example <project name | id> [example=trapped-in-the-internet] [--server URL] [--no-reload] [--keep-maps | --replace-maps] [--${LIVE_OVERRIDE}]\n`,
+  );
   process.exit(2);
 }
 
-async function main(): Promise<void> {
-  const args = process.argv.slice(2);
+/** The event row the sync works on. */
+export interface SyncEvent {
+  id: string;
+  mode: string;
+  status: string;
+  event_code: string;
+  prime_code: string;
+  mod_code: string;
+}
+
+/** The event half of a sync (`reloadEvent`). */
+export interface ReloadStep {
+  /** The event server's origin (the public one through sync-show). */
+  server: string;
+  event: SyncEvent;
+  /** `--i-know-this-is-live`. */
+  override: boolean;
+  /** Write the row's snapshot (`scenario_source` + `house_maps`). */
+  saveSnapshot: () => Promise<void>;
+  /** The `/api/mod/load` body. */
+  body: unknown;
+  out?: (line: string) => void;
+}
+
+/** A mod token from the event's own mod code, or null when the server doesn't answer. */
+async function modLogin(at: string, passcode: string): Promise<string | null> {
+  const login = await fetch(`${at}/api/mod/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ passcode }),
+  }).catch(() => null);
+  if (login === null || !login.ok) return null;
+  return ((await login.json()) as { token: string }).token;
+}
+
+/**
+ * Save the event's snapshot and restart it on the new text — unless it is
+ * a live show with real guests (see the header). Returns the exit code:
+ * 0, or 3 when a live event was left alone.
+ */
+export async function reloadEvent(step: ReloadStep): Promise<number> {
+  const out = step.out ?? ((line: string) => void process.stdout.write(`${line}\n`));
+  const { event, server } = step;
+  const at = `${server}/e/${encodeURIComponent(event.id)}`;
+  let token: string | null = null;
+  if (event.mode === "live" && !step.override) {
+    // Read the roster BEFORE touching anything: a reload signs every guest out.
+    token = await modLogin(at, event.mod_code);
+    const st = token === null ? null : await fetch(`${at}/api/state?role=mod`, { headers: { "x-loom-token": token } }).catch(() => null);
+    if (st === null || !st.ok) {
+      out(`✘ live event ${event.id}: its roster can't be read (${st === null ? `the server at ${server} doesn't answer` : `mod state → ${st.status}`}) — the project's files are saved, the event's snapshot is untouched and it was NOT reloaded`);
+      return 3;
+    }
+    const verdict = reloadVerdict({ mode: event.mode, roster: ((await st.json()) as { roster?: GuardRow[] }).roster, override: false });
+    if (!verdict.ok) {
+      out(`✘ ${verdict.reason}`);
+      return 3;
+    }
+  }
+  await step.saveSnapshot();
+  out(`✓ event ${event.id} (${event.mode}, ${event.status}) snapshot updated — codes: guest ${event.event_code} · performer ${event.prime_code} · mod ${event.mod_code}`);
+
+  // Restart the live runtime on the new text (a real cut: guests re-join).
+  token ??= await modLogin(at, event.mod_code);
+  if (token === null) {
+    out(`  (server at ${server} not reachable — the snapshot is saved; the event restarts on it when the server boots and you reload it)`);
+    return 0;
+  }
+  const load = await fetch(`${at}/api/mod/load`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-loom-token": token },
+    body: JSON.stringify(step.body),
+  });
+  if (!load.ok) throw new Error(`mod/load failed: ${load.status} ${await load.text()}`);
+  out(`✓ event reloaded on the new story → ${server}/?code=${event.event_code}`);
+  return 0;
+}
+
+/** The whole sync; resolves to the process exit code. */
+export async function main(args: readonly string[]): Promise<number> {
   let server = process.env.LOOM_SERVER ?? `http://localhost:${process.env.LOOM_PORT ?? 7000}`;
   let reload = true;
+  let override = false;
   let mapMode: MapSyncMode = "merge";
   const positional: string[] = [];
   for (let i = 0; i < args.length; i++) {
@@ -58,6 +151,7 @@ async function main(): Promise<void> {
     else if (a === "--no-reload") reload = false;
     else if (a === "--keep-maps") mapMode = "keep";
     else if (a === "--replace-maps") mapMode = "replace";
+    else if (a === `--${LIVE_OVERRIDE}`) override = true;
     else if (a.startsWith("-")) usage();
     else positional.push(a);
   }
@@ -149,46 +243,41 @@ async function main(): Promise<void> {
       .join("\n\n");
 
     const event = (
-      await pool.query<{ id: string; mode: string; status: string; event_code: string; prime_code: string; mod_code: string }>(
+      await pool.query<SyncEvent>(
         `select id, mode, status, event_code, prime_code, mod_code from event where project_id = $1 and status <> 'ended' order by created_at desc limit 1`,
         [project.id],
       )
     ).rows[0];
     if (event === undefined) {
       process.stdout.write("  (no running event for this project — launch one from the editor's Run mode)\n");
-      return;
+      return 0;
     }
-    // The column the server's boot migration adds (`server/db/index.ts`) —
-    // idempotent, so a sync never fails on a server that hasn't booted it yet.
-    await pool.query(`alter table event add column if not exists house_maps jsonb`);
-    await pool.query(`update event set scenario_source = $2, house_maps = $3::jsonb where id = $1`, [event.id, source, JSON.stringify(snapshot)]);
-    process.stdout.write(`✓ event ${event.id} (${event.mode}, ${event.status}) snapshot updated — codes: guest ${event.event_code} · performer ${event.prime_code} · mod ${event.mod_code}\n`);
-    if (!reload) return;
-
-    // Restart the live runtime on the new text (a real cut: guests re-join).
-    const login = await fetch(`${server}/e/${encodeURIComponent(event.id)}/api/mod/login`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ passcode: event.mod_code }),
-    }).catch(() => null);
-    if (login === null || !login.ok) {
-      process.stdout.write(`  (server at ${server} not reachable — the snapshot is saved; the event restarts on it when the server boots and you reload it)\n`);
-      return;
+    const saveSnapshot = async (): Promise<void> => {
+      // The column the server's boot migration adds (`server/db/index.ts`) —
+      // idempotent, so a sync never fails on a server that hasn't booted it yet.
+      await pool.query(`alter table event add column if not exists house_maps jsonb`);
+      await pool.query(`update event set scenario_source = $2, house_maps = $3::jsonb where id = $1`, [event.id, source, JSON.stringify(snapshot)]);
+    };
+    if (!reload) {
+      await saveSnapshot();
+      process.stdout.write(`✓ event ${event.id} (${event.mode}, ${event.status}) snapshot updated, not reloaded (--no-reload) — codes: guest ${event.event_code} · performer ${event.prime_code} · mod ${event.mod_code}\n`);
+      return 0;
     }
-    const { token } = (await login.json()) as { token: string };
-    const load = await fetch(`${server}/e/${encodeURIComponent(event.id)}/api/mod/load`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-loom-token": token },
-      body: JSON.stringify({ source, name: project.name, maps, facts: facts?.source ?? null }),
-    });
-    if (!load.ok) throw new Error(`mod/load failed: ${load.status} ${await load.text()}`);
-    process.stdout.write(`✓ event reloaded on the new story → ${server}/?code=${event.event_code}\n`);
+    return await reloadEvent({ server, event, override, saveSnapshot, body: { source, name: project.name, maps, facts: facts?.source ?? null } });
   } finally {
     await pool.end();
   }
 }
 
-main().catch((e: unknown) => {
-  process.stderr.write(`sync-example: ${e instanceof Error ? e.message : String(e)}\n`);
-  process.exit(1);
-});
+// Run as a script (`tsx scripts/sync-example.ts …`); a test imports it.
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main(process.argv.slice(2)).then(
+    (code) => {
+      process.exitCode = code;
+    },
+    (e: unknown) => {
+      process.stderr.write(`sync-example: ${e instanceof Error ? e.message : String(e)}\n`);
+      process.exit(1);
+    },
+  );
+}

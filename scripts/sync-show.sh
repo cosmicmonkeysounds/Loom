@@ -4,6 +4,7 @@
 #   LOOM_SSH=root@app.mapsandducks.com scripts/sync-show.sh
 #   LOOM_SSH=deploy@1.2.3.4 LOOM_PROJECT="Trapped" scripts/sync-show.sh --no-reload
 #   scripts/sync-show.sh --dry-run          # print what it would do, touch nothing
+#   scripts/sync-show.sh --i-know-this-is-live   # reload a LIVE show anyway
 #
 # What it does: opens an SSH tunnel to the VPS's Postgres container (not
 # published on any host port — the tunnel dials its Docker-network IP from
@@ -11,7 +12,10 @@
 # on the tunnel and `--server` on the public origin. sync-example writes the
 # example's files into the project, updates the running event's snapshot
 # and (unless --no-reload) reloads it over the mod API — a real cut: every
-# guest re-joins. Never run it after doors (OCT31.md §3). The house maps
+# guest re-joins. Never run it after doors (OCT31.md §3): on a `live`
+# event with a real guest on its roster it writes the files but leaves the
+# event alone (snapshot untouched, no reload) and exits 3 — Push draft from
+# Run instead, or pass --i-know-this-is-live. The house maps
 # (house.json, house.<variant>.json) go with the story (SW-MAP-01) — deploy
 # a server that knows them first: an older one would read them as story
 # text on its next launch. The project's maps win: a map surveyed on the
@@ -29,7 +33,9 @@
 #   LOOM_TUNNEL_PORT   local end of the tunnel         default: 15432
 #   POSTGRES_PASSWORD  the VPS db password; read from the VPS's .env if unset
 #
-# Extra arguments (e.g. --no-reload) are passed through to sync-example.
+# Extra arguments (e.g. --no-reload, --i-know-this-is-live) are passed
+# through to sync-example; its exit code is this script's (3 = a live
+# event was left alone).
 set -euo pipefail
 
 : "${LOOM_VPS_DIR:=loom}"
@@ -54,6 +60,8 @@ if [[ -z "${LOOM_SSH:-}" ]]; then
 fi
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# tsx straight from core (not `pnpm exec`, which turns every exit code into 1).
+TSX="${TSX:-$ROOT/core/node_modules/.bin/tsx}"
 # Shell-quoted for the remote command line (a dir with spaces or quotes).
 VPS_DIR_Q="$(printf '%q' "$LOOM_VPS_DIR")"
 
@@ -61,7 +69,7 @@ if [[ $DRY -eq 1 ]]; then
   echo "would: ssh $LOOM_SSH  →  docker IP of the 'db' service in $LOOM_VPS_DIR (+ POSTGRES_PASSWORD from its .env if unset)"
   echo "would: ssh -N -L 127.0.0.1:$LOOM_TUNNEL_PORT:<db ip>:5432 $LOOM_SSH"
   echo "would: DATABASE_URL=postgres://loom:***@127.0.0.1:$LOOM_TUNNEL_PORT/loom \\"
-  echo "         pnpm --filter @loom/core exec tsx scripts/sync-example.ts \"$LOOM_PROJECT\" $LOOM_EXAMPLE --server $LOOM_SERVER ${PASS[*]:-}"
+  echo "         (cd core && tsx scripts/sync-example.ts \"$LOOM_PROJECT\" $LOOM_EXAMPLE --server $LOOM_SERVER ${PASS[*]:-})"
   exit 0
 fi
 
@@ -91,7 +99,12 @@ trap 'ssh -S "$SOCK" -O exit "$LOOM_SSH" >/dev/null 2>&1 || true' EXIT
 echo "✓ tunnel 127.0.0.1:$LOOM_TUNNEL_PORT → $LOOM_SSH → db ($DB_IP:5432)"
 
 # 4. The sync itself.
-cd "$ROOT"
+cd "$ROOT/core"
+rc=0
 DATABASE_URL="postgres://loom:$PW_ENC@127.0.0.1:$LOOM_TUNNEL_PORT/loom" \
-  pnpm --filter @loom/core exec tsx scripts/sync-example.ts \
-  "$LOOM_PROJECT" "$LOOM_EXAMPLE" --server "$LOOM_SERVER" ${PASS[@]+"${PASS[@]}"}
+  "$TSX" scripts/sync-example.ts \
+  "$LOOM_PROJECT" "$LOOM_EXAMPLE" --server "$LOOM_SERVER" ${PASS[@]+"${PASS[@]}"} || rc=$?
+if [[ $rc -eq 3 ]]; then
+  echo "sync-show: the event is LIVE with real guests — files written, event NOT reloaded (exit 3)" >&2
+fi
+exit "$rc"

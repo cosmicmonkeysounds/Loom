@@ -332,6 +332,31 @@ for f in ${made[@]+"${made[@]}"}; do rm -f "$ROOT/$f"; done
 rmdir -p "$ROOT/reinstall/vr/build/stage/config" 2>/dev/null || true
 teardown
 
+echo "── sync-show: a live event is left alone (S1-ops-02)"
+setup
+mkdir -p "$T/bin"
+cat > "$T/bin/ssh" <<'EOF2'
+#!/usr/bin/env bash
+case "$*" in *"docker inspect"*) echo "172.18.0.2" ;; esac
+exit 0
+EOF2
+cat > "$T/bin/tsx" <<EOF2
+#!/usr/bin/env bash
+echo "\$PWD|\$*" >> "$T/tsx"; exit "\${FAKE_TSX_RC:-0}"
+EOF2
+chmod +x "$T/bin/ssh" "$T/bin/tsx"
+ss() { env PATH="$T/bin:$PATH" TSX="$T/bin/tsx" LOOM_SSH=u@vps POSTGRES_PASSWORD=pw "$@" bash "$ROOT/scripts/sync-show.sh" --i-know-this-is-live; }
+check "--dry-run passes --i-know-this-is-live through" bash -c "LOOM_SSH=u@vps bash '$ROOT/scripts/sync-show.sh' --dry-run --i-know-this-is-live | grep -q 'sync-example.ts .*--i-know-this-is-live'"
+out="$(ss 2>&1)"; rc=$?
+check "a sync runs sync-example from core" eq "$rc" 0
+check "… with the flag" grep -q "^$ROOT/core|scripts/sync-example.ts Untitled Project trapped-in-the-internet --server https://app.mapsandducks.com --i-know-this-is-live$" "$T/tsx"
+out="$(ss FAKE_TSX_RC=3 2>&1)"; rc=$?
+check "sync-example's exit 3 (live event left alone) is sync-show's" eq "$rc" 3
+check "… and says so" grep -q 'LIVE with real guests — files written, event NOT reloaded' <<<"$out"
+out="$(ss FAKE_TSX_RC=1 2>&1)"; rc=$?
+check "any other failure is passed through too" eq "$rc" 1
+teardown
+
 echo "── checklist"
 check "prints the 19 pre-show boxes" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' | grep -c '^\[ \]') -eq 19 ]"
 printed="$(bash "$ROOT/scripts/ops/checklist.sh")"

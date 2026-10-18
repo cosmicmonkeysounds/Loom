@@ -615,14 +615,18 @@ LOOM_SSH=ubuntu@app.mapsandducks.com scripts/sync-show.sh
 # options (env): LOOM_PROJECT="Untitled Project"  LOOM_VPS_DIR=loom
 #   LOOM_SERVER=https://app.mapsandducks.com  LOOM_EXAMPLE=trapped-in-the-internet
 # --no-reload saves the files + snapshot without restarting the event;
-# --dry-run prints the plan.
+# --dry-run prints the plan; --i-know-this-is-live reloads a live show anyway.
 ```
 
 It tunnels to the VPS's Postgres container over SSH (the db publishes no
 port; the password is read from the VPS's `.env`), runs
 `core/scripts/sync-example.ts` through the tunnel, and reloads the running
 event over `https://app…` — a real cut, every guest re-joins, so **never
-after doors**. It carries `facts.json` and the house maps with the
+after doors**. It guards that itself: on a **live** event with a real
+guest on its roster (anyone but a director's persona) it writes the
+project's files, leaves the event alone (snapshot untouched, no reload)
+and exits **3** — use Run's *Push draft* (typed confirm) instead, or
+re-run with `--i-know-this-is-live`. A preview is never guarded. It carries `facts.json` and the house maps with the
 story, so a server that predates them must be shipped **first** (§5¾
 *Deploy order*). `scripts/accept/k01.sh` (needs `LOOM_MOD_CODE`) checks the
 three front doors, that `/api/mod/codes` hands out the `LOOM_BASE_URL`
