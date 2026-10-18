@@ -214,15 +214,19 @@ check "always" in_window 12 always
 mkdir -p "$T/bin"
 cat > "$T/bin/ssh" <<EOF
 #!/usr/bin/env bash
+echo "\$*" >> "$T/ssh-args"
 cmd="\${!#}"; cd "$LOOM_DIR"; mkdir -p deploy; cp "$ROOT"/deploy/*.sh deploy/
 bash -c "\${cmd#cd * && }"
 EOF
-cat > "$T/bin/scp" <<'EOF'
+cat > "$T/bin/scp" <<EOF
 #!/usr/bin/env bash
-args=(); for a in "$@"; do case "$a" in -q|-o|BatchMode=*|ConnectTimeout=*) ;; *) args+=("${a#*:}") ;; esac; done
-dest="${args[${#args[@]}-1]}"; unset 'args[${#args[@]}-1]'; cp "${args[@]}" "$dest"
+echo "\$*" >> "$T/scp-args"
+args=(); for a in "\$@"; do case "\$a" in -q|-o|BatchMode=*|ConnectTimeout=*|ServerAlive*) ;; *) args+=("\${a#*:}") ;; esac; done
+dest="\${args[\${#args[@]}-1]}"; unset 'args[\${#args[@]}-1]'; cp "\${args[@]}" "\$dest"
 EOF
-chmod +x "$T/bin/ssh" "$T/bin/scp"
+# A recording osascript: the notifier must stay silent unless asked.
+printf '#!/usr/bin/env bash\necho "$*" >> "%s/osascript"\n' "$T" > "$T/bin/osascript"
+chmod +x "$T/bin/ssh" "$T/bin/scp" "$T/bin/osascript"
 export LOOM_NO_NOTIFY=1 SSH="$T/bin/ssh" SCP="$T/bin/scp" LAUNCHCTL=true LOOM_LOCAL_BACKUPS="$T/house" \
        LOOM_LOG_DIR="$T/logs" LOOM_LAUNCH_AGENTS="$T/agents"
 check "once copies a verified pair" bash "$ROOT/scripts/ops/showbackup.sh" once
@@ -233,9 +237,27 @@ check "status counts two copies today" bash -c "bash '$ROOT/scripts/ops/showback
 check "status shows the newest" bash -c "bash '$ROOT/scripts/ops/showbackup.sh' status | grep -q 'min old'"
 check "run outside the window does nothing" bash -c "LOOM_SHOW_WINDOW=0-0 bash '$ROOT/scripts/ops/showbackup.sh' run; [ \$(ls '$T/house'/*.tgz | wc -l) -eq 2 ]"
 check "a VPS failure is logged + exits 1" bash -c "FAKE_DB_DOWN=1 bash '$ROOT/scripts/ops/showbackup.sh' once >/dev/null 2>&1; [ \$? -eq 1 ] && grep -q ' FAIL backup' '$T/logs/showbackup.log'"
+# S1-ops-04: keepalives end a session whose path died; the TV computer
+# never hears or shows a failure unless asked.
+check "ssh keeps the session alive (dead path → fails in ~60 s)" grep -q -- '-o ServerAliveInterval=15 -o ServerAliveCountMax=4' "$T/ssh-args"
+check "… and so does scp" grep -q -- '-o ServerAliveInterval=15 -o ServerAliveCountMax=4' "$T/scp-args"
+check "… still non-interactive with a connect timeout" grep -q -- '-o BatchMode=yes -o ConnectTimeout=15' "$T/scp-args"
+rm -f "$T/osascript"
+nb() { env -u LOOM_NO_NOTIFY PATH="$T/bin:$PATH" FAKE_DB_DOWN=1 "$@" bash "$ROOT/scripts/ops/showbackup.sh" once >/dev/null 2>&1; }
+nb; rc=$?
+check "a failure by default: exit 1, logged" bash -c "[ $rc -eq 1 ] && [ \$(grep -c ' FAIL backup' '$T/logs/showbackup.log') -ge 2 ]"
+check "… and no banner, no sound" test ! -e "$T/osascript"
+nb LOOM_NOTIFY=1
+check "LOOM_NOTIFY=1: a banner" grep -q 'display notification "VPS backup failed"' "$T/osascript"
+check "… with no sound" bash -c "! grep -q 'sound name' '$T/osascript'"
+rm -f "$T/osascript"; nb LOOM_NOTIFY=1 LOOM_NOTIFY_SOUND=Basso
+check "LOOM_NOTIFY_SOUND names one" grep -q 'sound name "Basso"' "$T/osascript"
 check "install writes the plist" bash "$ROOT/scripts/ops/showbackup.sh" install
 check "plist: every 600 s, run" bash -c "grep -q '<integer>600</integer>' '$T/agents/com.mapsandducks.loom-showbackup.plist' && grep -q '<string>run</string>' '$T/agents/com.mapsandducks.loom-showbackup.plist'"
 check "plist is valid" bash -c "! command -v plutil >/dev/null || plutil -lint -s '$T/agents/com.mapsandducks.loom-showbackup.plist'"
+check "plist: silent by default (no notifier keys)" bash -c "! grep -q LOOM_NOTIFY '$T/agents/com.mapsandducks.loom-showbackup.plist'"
+check "install with LOOM_NOTIFY carries it" bash -c "LOOM_NOTIFY=1 bash '$ROOT/scripts/ops/showbackup.sh' install >/dev/null && grep -q '<key>LOOM_NOTIFY</key><string>1</string>' '$T/agents/com.mapsandducks.loom-showbackup.plist'"
+check "… and that plist is valid too" bash -c "! command -v plutil >/dev/null || plutil -lint -s '$T/agents/com.mapsandducks.loom-showbackup.plist'"
 check "uninstall removes it" bash -c "bash '$ROOT/scripts/ops/showbackup.sh' uninstall >/dev/null && [ ! -e '$T/agents/com.mapsandducks.loom-showbackup.plist' ]"
 teardown
 
