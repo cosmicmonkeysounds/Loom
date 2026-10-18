@@ -634,8 +634,14 @@ interface OpenRequest {
    *  could start on it (null while queued or still waiting in line). */
   startedAt: number | null;
   attempts: number;
-  /** A newer line arrived while this one was open. */
+  /** A line arrived that the copy its current worker holds doesn't cover
+   *  (what `settle` reports: the runtime asks again after the answer). */
   followUp: boolean;
+  /** A line arrived that `req` (the body as it stands now) doesn't cover.
+   *  A rebuild clears it; a dispatch hands the new worker `req`, so its
+   *  `followUp` becomes this — a rebuilt body that already carries the
+   *  guest's last line is never answered twice. */
+  behind: boolean;
   /** Hub clock when the request was opened (a refresh never moves it). */
   createdAt: number;
   /** The hold line was already offered for this request. */
@@ -782,9 +788,13 @@ export class AgentHub {
           // Still queued: refresh the body so the eventual answer sees the
           // whole burst (one request, not one per line).
           const fresh = this.o.build(thread, r.req.id);
-          if (fresh !== null) r.req = fresh;
+          if (fresh !== null) {
+            r.req = fresh;
+            r.behind = false;
+          }
         } else {
           r.followUp = true;
+          r.behind = true;
         }
         return;
       }
@@ -796,7 +806,7 @@ export class AgentHub {
     const id = `ar-${globalThis.crypto.randomUUID().slice(0, 8)}`;
     const req = this.o.build(thread, id);
     if (req === null) return;
-    const r: OpenRequest = { req, key: threadKey(thread), worker: null, dispatchedAt: null, dispatchSeq: 0, startedAt: null, attempts: 0, followUp: false, createdAt: this.now(), held };
+    const r: OpenRequest = { req, key: threadKey(thread), worker: null, dispatchedAt: null, dispatchSeq: 0, startedAt: null, attempts: 0, followUp: false, behind: false, createdAt: this.now(), held };
     this.open.set(id, r);
     this.byThread.set(r.key, id);
     this.dispatch(r);
@@ -825,6 +835,9 @@ export class AgentHub {
     r.dispatchSeq = ++this.dispatches;
     r.startedAt = null;
     if (!moved) r.attempts += 1;
+    // The new holder gets the body as it stands: it is behind only on lines
+    // that body doesn't carry.
+    r.followUp = r.behind;
     best.send("request", r.req);
     this.o.typing?.(r.req.thread, true);
     this.startHead(best.id);
@@ -962,7 +975,10 @@ export class AgentHub {
           // The line is in the thread now: rebuild the queued body so a
           // worker that comes back answers knowing it already said it.
           const fresh = this.o.build(r.req.thread, r.req.id);
-          if (fresh !== null) r.req = fresh;
+          if (fresh !== null) {
+            r.req = fresh;
+            r.behind = false;
+          }
         }
       }
     }
@@ -978,7 +994,12 @@ export class AgentHub {
       r.held = true;
       if (this.o.hold?.(r.req) === true) {
         const fresh = this.o.build(r.req.thread, r.req.id);
-        if (fresh !== null) r.req = { ...fresh, at: r.req.at };
+        if (fresh !== null) {
+          // The stalled worker still holds the old copy (its `followUp`
+          // stands); whoever is sent this one has every line so far.
+          r.req = { ...fresh, at: r.req.at };
+          r.behind = false;
+        }
       }
     }
     // A stalled worker whose whole line went to workers still answering

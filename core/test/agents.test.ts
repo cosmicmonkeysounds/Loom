@@ -485,6 +485,53 @@ describe("AgentHub", () => {
     expect(a.got.filter(([e]) => e === "cancel")).toHaveLength(0);
   });
 
+  it("a body rebuilt with the hold line already carries the follow-up: whoever is sent it answers once, not twice (review 4)", () => {
+    // A stalled laptop's request, rebuilt with the hold line, goes to a backup.
+    const h = hubHarness();
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    h.hub.line(T); // line 1
+    h.hub.line(T); // line 2, while line 1 is with the laptop
+    h.tick(120_001);
+    h.hub.sweep(); // the laptop stalls; the request goes back to it
+    for (let s = 0; s < 21; s++) {
+      h.tick(1000);
+      h.hub.sweep(); // the hold line, and the body rebuilt from the thread
+    }
+    expect(h.held).toHaveLength(1);
+    const b = h.worker("spare");
+    h.hub.attach(b.w);
+    expect(b.requests()).toHaveLength(1);
+    expect(h.hub.settle(b.requests()[0]!.id, "spare")?.followUp).toBe(false);
+    // The laptop answers the copy it held before the rebuild: line 2 is still owed.
+    const g = hubHarness();
+    const c = g.worker("laptop");
+    g.hub.attach(c.w);
+    g.hub.line(T);
+    g.hub.line(T);
+    g.tick(120_001);
+    g.hub.sweep();
+    for (let s = 0; s < 21; s++) {
+      g.tick(1000);
+      g.hub.sweep();
+    }
+    expect(g.held).toHaveLength(1);
+    expect(g.hub.settle(c.holds()[0]!.id, "laptop")?.followUp).toBe(true);
+    // A request re-queued by a detach, then rebuilt by the queued hold line.
+    const k = hubHarness();
+    const d = k.worker("laptop");
+    k.hub.attach(d.w);
+    k.hub.line(T);
+    k.hub.line(T);
+    k.hub.detach("laptop");
+    k.tick(20_000);
+    k.hub.sweep();
+    expect(k.held).toHaveLength(1);
+    const e = k.worker("spare");
+    k.hub.attach(e.w);
+    expect(k.hub.settle(e.requests()[0]!.id, "spare")?.followUp).toBe(false);
+  });
+
   it("shift: a pause doesn't count toward the timeout, the queue's age or the hold line (T9-timers-03)", () => {
     const h = hubHarness({ replyTimeoutMs: 120_000 });
     // Queued, nobody online: a DM 10 s before an 11-minute pause.
