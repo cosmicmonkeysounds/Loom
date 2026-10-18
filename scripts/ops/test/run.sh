@@ -126,6 +126,42 @@ check "an image older than the route falls back to /" hc old
 check "unhealthy when / fails too" neg hc dead
 check "unhealthy when nothing listens" bash -c "! node -e \"\$1\"" _ "$hc_js"
 
+echo "── entrypoint waits for the database (S1-ops-01)"
+setup
+# A fake app dir: tsx logs what it was asked to run; node is the db probe,
+# failing the first $FAKE_DB_FAILS calls (or always, with -1).
+APP="$T/app"; mkdir -p "$APP/node_modules/.bin" "$T/bin"
+cat > "$APP/node_modules/.bin/tsx" <<EOF2
+#!/bin/sh
+echo "tsx \$*" >> "$FAKE/tsx"; [ "\$1" = server/migrate.ts ] && [ "\${FAKE_MIGRATE_FAIL:-0}" = 1 ] && exit 1; exit 0
+EOF2
+cat > "$T/bin/node" <<EOF2
+#!/bin/sh
+n=\$(cat "$FAKE/probes" 2>/dev/null || echo 0); echo \$((n + 1)) > "$FAKE/probes"
+[ "\${FAKE_DB_FAILS:-0}" = -1 ] || [ "\$n" -lt "\${FAKE_DB_FAILS:-0}" ] && { echo "connect ECONNREFUSED 172.18.0.2:5432"; exit 1; }
+exit 0
+EOF2
+chmod +x "$APP/node_modules/.bin/tsx" "$T/bin/node"
+# The image's /bin/sh is dash: test with it when this box has one.
+EP_SH=sh; [ -x /bin/dash ] && EP_SH=/bin/dash
+ep() { rm -f "$FAKE/tsx" "$FAKE/probes"; env PATH="$T/bin:$PATH" LOOM_APP_DIR="$APP" LOOM_DB_WAIT=2 LOOM_DB_WAIT_STEP=1 "$@" "${EP_SH:-sh}" "$ROOT/deploy/docker-entrypoint.sh"; }
+out="$(ep env -u DATABASE_URL 2>&1)"
+check "no database: straight to the server" eq "$(cat "$FAKE/tsx")" "tsx server/server.ts"
+check "… without probing" test ! -e "$FAKE/probes"
+out="$(ep DATABASE_URL=postgres://loom:pw@db/loom 2>&1)"
+check "database up: migrate, then the server" eq "$(tr '\n' '|' < "$FAKE/tsx")" "tsx server/migrate.ts|tsx server/server.ts|"
+check "… never prints the password" bash -c "! grep -q pw <<<\"\$1\"" _ "$out"
+out="$(ep DATABASE_URL=postgres://loom:pw@db/loom FAKE_DB_FAILS=2 2>&1)"
+check "a late database is waited for" eq "$(tr '\n' '|' < "$FAKE/tsx")" "tsx server/migrate.ts|tsx server/server.ts|"
+check "… and says so" grep -q 'answered after 2 s' <<<"$out"
+out="$(ep DATABASE_URL=postgres://loom:pw@db/loom FAKE_DB_FAILS=-1 2>&1)"; rc=$?
+check "no database after the wait: exit 1 (the restart policy retries)" eq "$rc" 1
+check "… without starting the server" test ! -e "$FAKE/tsx"
+check "… naming the error" grep -q 'unreachable after 2 s (connect ECONNREFUSED' <<<"$out"
+out="$(ep DATABASE_URL=postgres://loom:pw@db/loom FAKE_MIGRATE_FAIL=1 2>&1)"; rc=$?
+check "a failed migration still runs the event plane" eq "$(tail -n1 "$FAKE/tsx")" "tsx server/server.ts"
+teardown
+
 echo "── backup"
 setup
 out="$(bash "$ROOT/deploy/backup.sh" --label nightly 2>/dev/null)"; rc=$?
