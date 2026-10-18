@@ -309,9 +309,9 @@ fresh, never `--no-reload` this sync, and restart any other non-ended
 event that takes the new text. Then `uv run stagehand launchd restart
 --job show` on the house Mac (new catch-up rules), sideload the Quest
 APK after the server, reload the terminals and the tent tablet, and
-reprint the cast packs whose text changed (McAfee, DraftKings, Clippy,
-the director, the second director, the tech operator); no
-`--replace-maps`. **Open:** a wedged-but-connected laptop delays the
+reprint every cast pack (the wave 9 docs pass, 78c3f3f, rewrites 15
+of their files: the crew's four, five performers, four featured
+programs, the emergency card and the README); no `--replace-maps`. **Open:** a wedged-but-connected laptop delays the
 hold line (directors answer from Run); `facts.json` has no new aliases
 for the near misses ("Mr. Pickles"), so a director overrides them on the
 Judging card; the booth admin-cue trim (≈ 12 of 34 KB per booth frame)
