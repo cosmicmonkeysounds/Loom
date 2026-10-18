@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { Sim } from "../src/runtime/sim/index.ts";
-import { guestView, modView, primeView, titleOf } from "../server/views.ts";
+import { boardFor, guestView, modView, pressRefused, primeView, staffRoomIds, titleOf } from "../server/views.ts";
 import { scenarioSource } from "../examples/load.ts";
 import { heldCharacters } from "../server/identity.ts";
+import { cueSheetView } from "../src/cue-sheet.ts";
 
 const SCENARIO = scenarioSource("escape-the-internet");
 
@@ -535,5 +536,180 @@ describe("the wallet on the views (wave 4, lane C)", () => {
     expect(coin.model.currency?.name).toBe("Coin");
     expect(guestView(coin, "g1").wallet).toBeUndefined();
     expect(coin.canPost("g1", "wallet")).toBe(false);
+  });
+});
+
+describe("the Director page's board and acts (wave 10, lane A)", () => {
+  const BOARD = `# Board
+start: Doors
+watch: Night.clock as Clock, Kernel.door_code as Door code, program.cleared as Cleared, Floor.mood, Ivo Marsh
+watch: Night.round as Round, while Night.step >= 2
+watch: Night.bad as Bad, while Night.nope(
+countdown: Night.y2k_end as Midnight, Night.old_end as Gone, while Night.final == true
+countdown: Night.dance_at as Dance
+
+GROUP Hosts
+  joinable: false
+
+GROUP Crowd
+
+CHANNEL hosts
+  kind: faction
+  faction: Hosts
+
+CHANNEL chatter
+  kind: open
+
+LOCATION Floor
+
+CHARACTER Kernel
+  playable: false
+  secret: true
+  door_code: text? = none
+
+CHARACTER Ivo Marsh
+
+ROLE Program
+  cleared: bool = false
+
+INTERACTION open_doors
+  who: admin
+  act: A · Doors
+
+INTERACTION read_out
+  who: admin
+
+INTERACTION wave
+  who: performer
+  act: Not a cue
+
+INTERACTION last_call
+  who: admin
+  act: B · Close
+
+when last_call:
+  if Night.step == 9:
+    set Night.step = 10
+  else:
+    broadcast "Not yet" to channel(hosts)
+
+== Doors
+Hello.
+`;
+
+  it("act only on admin interactions (absent from PrimeView)", () => {
+    const sim = Sim.fromSources(BOARD);
+    const ix = modView(sim, "open", "x").interactions ?? [];
+    expect(ix.find((i) => i.id === "open_doors")?.act).toBe("A · Doors");
+    expect(ix.find((i) => i.id === "read_out")).not.toHaveProperty("act");
+    expect(ix.find((i) => i.id === "last_call")?.act).toBe("B · Close");
+    expect(ix.find((i) => i.id === "wave")).not.toHaveProperty("act");
+    const prime = primeView(sim, "Ivo Marsh").interactions;
+    expect(prime.map((i) => i.id)).toContain("open_doors");
+    expect(prime.every((i) => !("act" in i))).toBe(true);
+  });
+
+  it("resolves each watch item's scope: character, role, global, person", () => {
+    const sim = Sim.fromSources(BOARD);
+    expect(boardFor(sim).watch).toEqual([
+      { label: "Clock", path: "Night.clock", person: null, scope: "global" },
+      { label: "Door code", path: "Kernel.door_code", person: null, scope: "character", secret: true },
+      { label: "Cleared", path: "Program.cleared", person: null, scope: "role" },
+      { label: "Mood", path: "Floor.mood", person: null, scope: "global" },
+      { label: "Ivo Marsh", path: null, person: "Ivo Marsh", scope: "person" },
+    ]);
+    // A head spelled loosely still names the declared character.
+    const loose = Sim.fromSources(BOARD.replace("Kernel.door_code as Door code", "kernel.door_code as Door code"));
+    expect(boardFor(loose).watch[1]).toEqual({ label: "Door code", path: "Kernel.door_code", person: null, scope: "character", secret: true });
+  });
+
+  it("`secret` comes from a `secret: true` CHARACTER only", () => {
+    const sim = Sim.fromSources(BOARD.replace("  secret: true\n", ""));
+    expect(boardFor(sim).watch.find((w) => w.label === "Door code")).not.toHaveProperty("secret");
+    expect(boardFor(Sim.fromSources(BOARD)).watch.filter((w) => w.secret === true).map((w) => w.label)).toEqual(["Door code"]);
+  });
+
+  it("a `while`-false line is omitted until it holds", () => {
+    const sim = Sim.fromSources(BOARD);
+    expect(boardFor(sim).watch.map((w) => w.label)).not.toContain("Round");
+    sim.setVar("Night.step", "2");
+    expect(boardFor(sim).watch.map((w) => w.label)).toContain("Round");
+    expect(modView(sim, "open", "x").watch?.map((w) => w.label)).toContain("Round");
+  });
+
+  it("a throwing condition is omitted, and the rest of the board stands", () => {
+    const sim = Sim.fromSources(BOARD);
+    sim.setVar("Night.step", "2");
+    const labels = boardFor(sim).watch.map((w) => w.label);
+    expect(labels).not.toContain("Bad");
+    expect(labels).toEqual(["Clock", "Door code", "Cleared", "Mood", "Ivo Marsh", "Round"]);
+  });
+
+  it("countdowns: only on a live line, only while the deadline is ahead", () => {
+    const sim = Sim.fromSources(BOARD);
+    expect(boardFor(sim).countdowns).toEqual([]);
+    expect(modView(sim, "open", "x")).not.toHaveProperty("countdowns");
+    sim.tick(100_000); // 100 s in
+    sim.setVar("Night.dance_at", "110");
+    sim.setVar("Night.y2k_end", "3700");
+    sim.setVar("Night.old_end", "50"); // already past
+    expect(boardFor(sim).countdowns).toEqual([{ label: "Dance", path: "Night.dance_at", endsAt: 110 }]);
+    sim.setVar("Night.final", "true");
+    expect(boardFor(sim).countdowns).toEqual([
+      { label: "Midnight", path: "Night.y2k_end", endsAt: 3700 },
+      { label: "Dance", path: "Night.dance_at", endsAt: 110 },
+    ]);
+    sim.tick(10_000); // the dance deadline is now, not ahead
+    expect(modView(sim, "open", "x").countdowns).toEqual([{ label: "Midnight", path: "Night.y2k_end", endsAt: 3700 }]);
+  });
+
+  it("a countdown on a `secret: true` CHARACTER never leaves the server", () => {
+    const src = BOARD.replace("countdown: Night.dance_at as Dance", "countdown: Night.dance_at as Dance, Kernel.deadline as Lock");
+    const sim = Sim.fromSources(src);
+    sim.tick(100_000);
+    sim.setVar("Night.dance_at", "110");
+    sim.setVar("Kernel.deadline", "4242");
+    expect(boardFor(sim).countdowns).toEqual([{ label: "Dance", path: "Night.dance_at", endsAt: 110 }]);
+    const view = modView(sim, "open", "x");
+    expect(view.countdowns).toEqual([{ label: "Dance", path: "Night.dance_at", endsAt: 110 }]);
+    const lean = cueSheetView(view);
+    expect(lean.countdowns).toEqual([{ label: "Dance", endsAt: 110 }]);
+    expect(JSON.stringify(view)).not.toContain('"Lock"');
+    expect(JSON.stringify(lean)).not.toContain("4242");
+    // The same deadline on a CHARACTER that is not secret counts down.
+    const open = Sim.fromSources(src.replace("  secret: true\n", ""));
+    open.tick(100_000);
+    open.setVar("Kernel.deadline", "4242");
+    expect(boardFor(open).countdowns).toEqual([{ label: "Lock", path: "Kernel.deadline", endsAt: 4242 }]);
+  });
+
+  it("no board lines: no `watch` / `countdowns` on the view", () => {
+    const sim = Sim.fromSources(SCENARIO);
+    const v = modView(sim, "open", "x");
+    expect(v).not.toHaveProperty("watch");
+    expect(v).not.toHaveProperty("countdowns");
+    expect(boardFor(sim)).toEqual({ watch: [], countdowns: [] });
+  });
+
+  it("`staff` on the staff channel only", () => {
+    const sim = Sim.fromSources(BOARD);
+    const ch = modView(sim, "open", "x").channels;
+    expect(ch.filter((c) => c.staff === true).map((c) => c.id)).toEqual(["room:hosts"]);
+    expect(ch.find((c) => c.id === "room:chatter")).not.toHaveProperty("staff");
+    expect(ch.find((c) => c.id === "faction:Hosts")).not.toHaveProperty("staff");
+    expect([...staffRoomIds(sim.model)]).toEqual(["hosts"]);
+  });
+
+  it("`staffRoomIds` is the rule `refusedPress` judges by: a `# hosts`-only answer is a refusal", () => {
+    const sim = Sim.fromSources(BOARD);
+    expect(pressRefused(sim, sim.signal("last_call"))).toBe(true);
+    expect(modView(sim, "open", "x").cues).toEqual({ last: null, lastBy: null, fired: [] });
+    sim.setVar("Night.step", "9");
+    expect(pressRefused(sim, sim.signal("last_call"))).toBe(false);
+    expect(modView(sim, "open", "x").cues?.last).toBe("last_call");
+    // The show's staff rooms: `# hosts` and the Antivirus' `# quarantine`.
+    const show = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
+    expect([...staffRoomIds(show.model)].sort()).toEqual(["hosts", "quarantine"]);
+    expect(modView(show, "open", "x").channels.filter((c) => c.staff === true).map((c) => c.id).sort()).toEqual(["room:hosts", "room:quarantine"]);
   });
 });

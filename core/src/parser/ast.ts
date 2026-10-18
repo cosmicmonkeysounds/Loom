@@ -21,8 +21,18 @@ export interface LoomFile {
 export interface Header {
   /** The `# Title` line, if present. */
   title: string | null;
-  /** `key: value` properties in source order. */
+  /** `key: value` properties in source order (a repeated key: the last wins). */
   properties: Map<string, PropertyValue>;
+  span: Span;
+  /** Every header property line in source order — repeatable keys
+   *  (`watch:`, `countdown:`) keep each line here. */
+  lines?: HeaderLine[];
+}
+
+/** One header `key: value` line, as written. */
+export interface HeaderLine {
+  key: string;
+  value: string;
   span: Span;
 }
 

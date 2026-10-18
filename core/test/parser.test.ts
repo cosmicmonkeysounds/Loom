@@ -34,6 +34,22 @@ describe("parser::parse", () => {
     expect(file.header.properties.get("entry")?.value).toBe("opening");
   });
 
+  it("repeated header keys survive in lines", () => {
+    const src = "# Board\nstart: opening\nwatch: Night.clock as Clock\nwatch: Night.round, while Night.step >= 2\ncountdown: Night.end as Midnight\n\n== opening\nHi.\n";
+    const [file, diags] = parse(src);
+    expect(diags).toHaveLength(0);
+    // `properties` is unchanged: one entry per key, the last line wins.
+    expect([...file.header.properties.keys()]).toEqual(["start", "watch", "countdown"]);
+    expect(file.header.properties.get("watch")?.value).toBe("Night.round, while Night.step >= 2");
+    expect(file.header.lines?.map((l) => [l.key, l.value])).toEqual([
+      ["start", "opening"],
+      ["watch", "Night.clock as Clock"],
+      ["watch", "Night.round, while Night.step >= 2"],
+      ["countdown", "Night.end as Midnight"],
+    ]);
+    expect(file.header.lines?.[1]!.span.start.line).toBe(2);
+  });
+
   it("parses a beat contract then body", () => {
     const src = `== opening
   cast: Wren, Player

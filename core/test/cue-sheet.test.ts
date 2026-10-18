@@ -14,7 +14,27 @@ import { afterAll, describe, expect, it } from "vitest";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import type { ModView } from "../server/views.ts";
-import { cueRows, cueSheetView } from "../src/cue-sheet.ts";
+import {
+  ARM_DEAD_MS,
+  ARM_MS,
+  armFor,
+  armStillValid,
+  countdownLeft,
+  cueActs,
+  cueRows,
+  cueSheetView,
+  cueTitleTags,
+  focusActIndex,
+  onDeck,
+  previousActIndex,
+  tapCue,
+  takesValue,
+  type CueInteraction,
+  type CueMarks,
+} from "../src/cue-sheet.ts";
+import { Sim } from "../src/runtime/sim/index.ts";
+import { modView } from "../server/views.ts";
+import { scenarioSource } from "../examples/load.ts";
 
 const CODES = { event: "EVT262", prime: "PRM262", mod: "MOD262" };
 const SOURCE = `# Cue Phone
@@ -131,7 +151,7 @@ describe("the phone cue page's server surface (W-26)", () => {
     const full = await call(rt, "GET", "/api/state?role=mod", {}, token);
     const lean = await call(rt, "GET", "/api/state?role=mod&cues=1", {}, token);
     expect(lean.status).toBe(200);
-    expect(Object.keys(lean.json).sort()).toEqual(["cues", "interactions", "roster", "title", "world"]);
+    expect(Object.keys(lean.json).sort()).toEqual(["clock", "cues", "interactions", "roster", "title", "world"]);
     expect(lean.json).toEqual(cueSheetView(full.json as unknown as ModView));
     const v = lean.json as unknown as ReturnType<typeof cueSheetView>;
     expect(v.interactions.map((i) => i.id)).toEqual(["ring_the_bell", "hunt_time_up"]);
@@ -190,5 +210,303 @@ describe("NEXT follows tonight's branch (an admin cue's `while:`)", () => {
     const lean = cueSheetView({ interactions: sheet }).interactions;
     expect(lean.find((i) => i.id === "recount")).toMatchObject({ live: false });
     expect(lean.find((i) => i.id === "reveal")).not.toHaveProperty("live");
+  });
+});
+
+describe("acts on the cue sheet (wave 10: display only)", () => {
+  type Extra = Partial<Pick<CueInteraction, "act" | "sequence" | "repeat" | "live" | "subject" | "description">>;
+  const ix = (id: string, extra: Extra = {}): CueInteraction => ({ id, label: id, who: "admin", ...extra });
+  // B: b1 b2 (aside b3) · C: c1 c2 · Anytime: lights · D: d1 · Anytime again: duck
+  const sheet = [
+    ix("b1", { act: "B · Act I: the Desktop" }),
+    ix("b2"),
+    ix("b3", { sequence: false }),
+    ix("c1", { act: "C · The hour" }),
+    ix("c2", { sequence: false }),
+    ix("c3"),
+    ix("lights", { act: "Anytime", sequence: false }),
+    ix("d1", { act: "D · Finale" }),
+    ix("duck", { act: "anytime", sequence: false }),
+  ];
+  const acts = (last: string | null, fired: string[]) => cueActs(cueRows(sheet, { last, fired }));
+
+  it("act carries forward to later admin cues", () => {
+    const rows = cueRows([...sheet.slice(0, 3), { id: "perf", label: "x", who: "performer", act: "Z" }, ...sheet.slice(3)], { last: null, fired: [] });
+    expect(rows.map((r) => [r.id, r.act])).toEqual([
+      ["b1", "B · Act I: the Desktop"],
+      ["b2", "B · Act I: the Desktop"],
+      ["b3", "B · Act I: the Desktop"],
+      ["c1", "C · The hour"],
+      ["c2", "C · The hour"],
+      ["c3", "C · The hour"],
+      ["lights", "Anytime"],
+      ["d1", "D · Finale"],
+      ["duck", "Anytime"],
+    ]);
+    // A cue before the first `act:` belongs to no act; a blank `act:` carries on.
+    const lead = cueRows([ix("pre"), ix("a", { act: "A" }), ix("b", { act: "  " })], { last: null, fired: [] });
+    expect(lead.map((r) => r.act)).toEqual([null, "A", "A"]);
+  });
+
+  it("act rejoins by folded name", () => {
+    const a = acts(null, []);
+    expect(a.map((x) => [x.code, x.title, x.rows.map((r) => r.id)])).toEqual([
+      ["B", "Act I: the Desktop", ["b1", "b2", "b3"]],
+      ["C", "The hour", ["c1", "c2", "c3"]],
+      [null, "Anytime", ["lights", "duck"]],
+      ["D", "Finale", ["d1"]],
+    ]);
+    // The first spelling wins; `Act_one` / `act  ONE` fold to the same act.
+    const rows = cueRows([ix("x", { act: "Act one" }), ix("y", { act: "B" }), ix("z", { act: "act_ONE" })], { last: null, fired: [] });
+    expect(rows.map((r) => r.act)).toEqual(["Act one", "B", "Act one"]);
+    expect(cueActs(rows).map((x) => [x.key, x.rows.length])).toEqual([["act one", 2], ["b", 1]]);
+  });
+
+  it("no act gives one unnamed act", () => {
+    const rows = cueRows([ix("a"), ix("b", { sequence: false }), ix("c")], { last: null, fired: [] });
+    const one = cueActs(rows);
+    expect(one).toHaveLength(1);
+    expect(one[0]).toMatchObject({ key: "", code: null, title: null, state: "focus", starting: true, firedSpine: 0 });
+    expect(one[0]!.spine.map((r) => r.id)).toEqual(["a", "c"]);
+    expect(one[0]!.asides.map((r) => r.id)).toEqual(["b"]);
+    expect(cueActs([])).toEqual([]);
+    expect(focusActIndex([])).toBe(-1);
+  });
+
+  it("all-aside act is anytime and never focus", () => {
+    const a = acts(null, []);
+    expect(a[2]).toMatchObject({ title: "Anytime", state: "anytime", spine: [], starting: false });
+    // Even with only asides fired, the focus stays on a spine act.
+    expect(focusActIndex(acts(null, ["lights", "duck"]))).toBe(0);
+    const only = cueActs(cueRows([ix("x", { act: "Anytime", sequence: false })], { last: null, fired: [] }));
+    expect(only.map((x) => x.state)).toEqual(["anytime"]);
+    expect(focusActIndex(only)).toBe(-1);
+  });
+
+  it("focus follows NEXT, then LAST, then the first act", () => {
+    expect(focusActIndex(acts(null, []))).toBe(0); // NEXT b1
+    expect(focusActIndex(acts("b2", ["b1", "b2"]))).toBe(1); // NEXT c1
+    expect(acts("b2", ["b1", "b2"]).map((x) => x.state)).toEqual(["past", "focus", "anytime", "future"]);
+    // NEXT gone (everything after LAST fired): the act holding LAST.
+    expect(focusActIndex(acts("c3", ["b1", "b2", "c1", "c3", "d1"]))).toBe(1);
+    // No NEXT and no LAST: the first act that is not Anytime.
+    const after = cueActs(cueRows([ix("l", { act: "Anytime", sequence: false }), ix("a", { act: "A", live: false })], { last: null, fired: [] }));
+    expect(after.map((x) => x.state)).toEqual(["anytime", "focus"]);
+    expect(after[1]!.starting).toBe(false);
+    expect(focusActIndex(acts("d1", ["b1", "b2", "c1", "c3", "d1"]))).toBe(3);
+  });
+
+  it("starting when NEXT is the act's first unfired spine", () => {
+    expect(acts(null, [])[0]!.starting).toBe(true);
+    expect(acts("b1", ["b1"])[0]).toMatchObject({ state: "focus", starting: false }); // NEXT b2
+    expect(acts("b2", ["b1", "b2"])[1]).toMatchObject({ state: "focus", starting: true }); // NEXT c1
+    // c1 fired out of turn earlier: NEXT c3 is still the first unfired spine.
+    expect(acts("b2", ["b1", "b2", "c1"])[1]).toMatchObject({ state: "focus", starting: true });
+    // A `repeat: true` LAST that stays NEXT has fired: not starting.
+    const rep = cueActs(cueRows([ix("r", { act: "A", repeat: true }), ix("s")], { last: "r", fired: ["r"] }));
+    expect(rep[0]).toMatchObject({ state: "focus", starting: false });
+  });
+
+  it("skipped past act", () => {
+    const a = acts("c1", ["c1"]); // the night jumped straight to C
+    expect(a.map((x) => x.state)).toEqual(["skipped", "focus", "anytime", "future"]);
+    expect(a[0]!.firedSpine).toBe(0);
+    expect(acts("c1", ["b1", "c1"]).map((x) => [x.state, x.firedSpine])[0]).toEqual(["past", 1]);
+  });
+
+  it("previousActIndex skips anytime", () => {
+    const a = acts("c3", ["b1", "b2", "c1", "c3"]); // NEXT d1 → focus D (index 3)
+    expect(focusActIndex(a)).toBe(3);
+    expect(previousActIndex(a, 3)).toBe(1);
+    expect(previousActIndex(a, 1)).toBe(0);
+    expect(previousActIndex(a, 0)).toBe(-1);
+    expect(previousActIndex(a, -1)).toBe(-1);
+  });
+
+  it("onDeck", () => {
+    expect(onDeck(cueRows(sheet, { last: null, fired: [] }))?.id).toBe("b2");
+    // The asides between are skipped; an out-of-turn fired cue too.
+    expect(onDeck(cueRows(sheet, { last: "b1", fired: ["b1", "c1"] }))?.id).toBe("c3");
+    // A repeat LAST that stays NEXT: on deck is what "move on" means.
+    const rep = cueRows([ix("close"), ix("results", { repeat: true }), ix("spin", { sequence: false }), ix("preview")], { last: "results", fired: ["close", "results"] });
+    expect(onDeck(rep)?.id).toBe("preview");
+    // An off-branch cue can be on deck (the sheet dims it); no NEXT → null.
+    expect(onDeck(cueRows([ix("a"), ix("b"), ix("c", { live: false })], { last: "a", fired: ["a"] }))?.id).toBe("c");
+    expect(onDeck(cueRows(sheet, { last: "d1", fired: ["b1", "b2", "c1", "c3", "d1"] }))).toBeNull();
+  });
+
+  it("cueTitleTags lifts leading and trailing parentheticals", () => {
+    expect(cueTitleTags("(Optional) ☎️ Telephone: a mangled message sends someone to the Internet")).toEqual({ title: "☎️ Telephone: a mangled message sends someone to the Internet", tags: ["optional"] });
+    expect(cueTitleTags("💌 (Alt, after a lie → Grok Prom) Trabolta begs for relationship advice")).toEqual({ title: "💌 Trabolta begs for relationship advice", tags: ["alt, after a lie → Grok Prom"] });
+    expect(cueTitleTags("⏰ Hunt over: everyone back to the Desktop (auto at 15 min)")).toEqual({ title: "⏰ Hunt over: everyone back to the Desktop", tags: ["auto at 15 min"] });
+    expect(cueTitleTags("🖨 Printer: START pressed (hardware fallback)")).toEqual({ title: "🖨 Printer: START pressed", tags: ["hardware fallback"] });
+    expect(cueTitleTags("🗳 (Alt) Count the advice poll (round 2)")).toEqual({ title: "🗳 Count the advice poll", tags: ["alt", "round 2"] });
+    expect(cueTitleTags("📊 Trust Chart")).toEqual({ title: "📊 Trust Chart", tags: [] });
+    expect(cueTitleTags("(only this)")).toEqual({ title: "(only this)", tags: [] });
+    expect(cueTitleTags("Say (it) loud")).toEqual({ title: "Say (it) loud", tags: [] });
+    expect(cueTitleTags("Reinstallation: simulation completed (server)")).toEqual({ title: "Reinstallation: simulation completed", tags: ["server"] });
+    expect(cueTitleTags("Wake the TV (TV mute)").tags).toEqual(["TV mute"]);
+  });
+
+  it("cueTitleTags keeps a tag's text unchanged unless it leads with Optional or Alt", () => {
+    // The show's real labels: a name or a capitalised phrase is never mangled.
+    expect(cueTitleTags("🍾 Spin the bottle (Truth or Dare, five per question)").tags).toEqual(["Truth or Dare, five per question"]);
+    expect(cueTitleTags("🎙 The ceremony (Trabolta hosts)").tags).toEqual(["Trabolta hosts"]);
+    expect(cueTitleTags("🦆 Duck found (Reinstallation — backyard)").tags).toEqual(["Reinstallation — backyard"]);
+    // Only the whole lead word counts: `Alternative`, `Optionally` stay as written.
+    expect(cueTitleTags("A cue (Alternative ending)").tags).toEqual(["Alternative ending"]);
+    expect(cueTitleTags("A cue (Optionally later)").tags).toEqual(["Optionally later"]);
+    expect(cueTitleTags("A cue (Optional: if time)").tags).toEqual(["optional: if time"]);
+  });
+
+  it("marks are identical with and without act lines", () => {
+    // The show, with every `act:` stripped, against the same show tagged as
+    // the Director spec splits it (§2.5): the same presses, in and out of
+    // turn, must give the same cue state and the same row marks.
+    const openers: Record<string, string> = {
+      call_to_the_desktop: "B · Act I: the Desktop, Bingo and the first truth",
+      second_hunt_preview: "C · The malware, the hour, the Truther Download",
+      truth_pong: "D · Act II: Truth Pong, the Trust Chart, the beans",
+      y2k_clock: "E · Act III: the Y2K hour and the server room",
+      restore_the_lights: "Anytime",
+      final_reveal: "F · The final reveal and the endings",
+      own_award_lines: "G · The awards ceremony",
+      "the simulation completed": "Anytime",
+    };
+    const bare = scenarioSource("trapped-in-the-internet").replace(/^ {2}act:.*\n/gmu, "");
+    let tagged = bare;
+    for (const [id, act] of Object.entries(openers)) {
+      const re = new RegExp(`(^INTERACTION ${id}\n(?: .*\n)*? {2}who: admin\n)`, "mu");
+      expect(re.test(tagged), id).toBe(true);
+      tagged = tagged.replace(re, `$1  act: ${act}\n`);
+    }
+    const plain = Sim.fromSources(bare);
+    const acted = Sim.fromSources(tagged);
+    const marks = (sim: Sim) => {
+      const v = modView(sim, "open", "x");
+      const rows = cueRows(v.interactions ?? [], v.cues!).map(({ id, n, fired, last, next, live, sequence }) => ({ id, n, fired, last, next, live, sequence }));
+      return { cues: v.cues, rows };
+    };
+    const tagRows = cueRows(modView(acted, "open", "x").interactions ?? [], { last: null, fired: [] });
+    expect(cueActs(tagRows).map((a) => `${a.code ?? a.title} ${a.rows.length}`)).toEqual(["B 12", "C 5", "D 8", "E 13", "Anytime 4", "F 12", "G 12"]);
+    expect(marks(acted)).toEqual(marks(plain));
+    const admin = [...plain.model.interactions.values()].filter((i) => i.who === "admin").map((i) => i.id);
+    for (const id of admin.slice(0, 30)) {
+      for (const sim of [plain, acted]) {
+        sim.signal(id);
+        sim.signal("read_the_results"); // a repeat press, often out of turn
+        sim.tick(61_000);
+      }
+      expect(marks(acted), id).toEqual(marks(plain));
+    }
+    expect(acted.log.len()).toBe(plain.log.len());
+    expect(marks(plain).cues!.fired.length).toBeGreaterThan(5); // the walk really moved the sheet
+  });
+});
+
+describe("the arm model (shared by the laptop and the phone)", () => {
+  const row = (id: string, subject = false) => cueRows([{ id, label: id, who: "admin", ...(subject ? { subject: true } : {}) }], { last: null, fired: [] })[0]!;
+  const bingo = row("start_the_bingo");
+  const award = row("award_most_trusted", true);
+  const marks: CueMarks = { last: "call_to_the_desktop", fired: ["call_to_the_desktop"] };
+
+  it("tapCue ignores a second tap inside ARM_DEAD_MS", () => {
+    const first = tapCue(null, bingo, 1000, marks);
+    expect(first).toEqual({ kind: "arm", armed: { id: "start_the_bingo", subject: null, at: 1000, last: "call_to_the_desktop", firedCount: 1 } });
+    if (first.kind !== "arm") throw new Error("unreachable");
+    expect(tapCue(first.armed, bingo, 1000 + ARM_DEAD_MS - 1, marks)).toEqual({ kind: "ignore" });
+    expect(tapCue(first.armed, bingo, 1000 + ARM_DEAD_MS, marks)).toEqual({ kind: "fire", id: "start_the_bingo", subject: null });
+    expect(tapCue(first.armed, bingo, 1000 + ARM_MS - 1, marks).kind).toBe("fire");
+    // Too late: it re-arms. Another row inside the dead time: that row arms.
+    expect(tapCue(first.armed, bingo, 1000 + ARM_MS, marks).kind).toBe("arm");
+    expect(tapCue(first.armed, row("other"), 1001, marks)).toMatchObject({ kind: "arm", armed: { id: "other" } });
+    // A subject cue: pick, then the picked arm ignores a fast tap and fires a slow one.
+    expect(tapCue(null, award, 0)).toEqual({ kind: "pick", id: "award_most_trusted" });
+    const armed = armFor("award_most_trusted", "g1", 50, " 4 ", marks);
+    expect(armed).toEqual({ id: "award_most_trusted", subject: "g1", at: 50, value: "4", last: "call_to_the_desktop", firedCount: 1 });
+    expect(tapCue(armed, award, 100, marks)).toEqual({ kind: "ignore" });
+    expect(tapCue(armed, award, 400, marks)).toEqual({ kind: "fire", id: "award_most_trusted", subject: "g1", value: "4" });
+    expect(armFor("award_most_trusted", "g1", 50, "  ")).toEqual({ id: "award_most_trusted", subject: "g1", at: 50 });
+    // No marks given (an older caller): no binding, no stale check.
+    expect(tapCue(null, bingo, 5)).toEqual({ kind: "arm", armed: { id: "start_the_bingo", subject: null, at: 5 } });
+  });
+
+  it("armStillValid drops an arm when last or fired count moved", () => {
+    const a = armFor("start_the_bingo", "g1", 0, undefined, marks);
+    expect(armStillValid(a, marks, 1000)).toBe(true);
+    expect(armStillValid(a, marks, ARM_MS)).toBe(false);
+    expect(armStillValid(a, { last: "start_the_bingo", fired: ["call_to_the_desktop", "start_the_bingo"] }, 1000)).toBe(false);
+    expect(armStillValid(a, { last: "call_to_the_desktop", fired: ["call_to_the_desktop", "spin_the_bottle"] }, 1000)).toBe(false);
+    // A stale arm never fires: the tap arms again, bound to the new marks.
+    const moved: CueMarks = { last: "call_to_the_desktop", fired: ["call_to_the_desktop", "spin_the_bottle"] };
+    const first = tapCue(null, bingo, 0, marks);
+    if (first.kind !== "arm") throw new Error("unreachable");
+    expect(tapCue(first.armed, bingo, 1000, moved)).toEqual({ kind: "arm", armed: { id: "start_the_bingo", subject: null, at: 1000, last: "call_to_the_desktop", firedCount: 2 } });
+    expect(tapCue(first.armed, award.id === bingo.id ? bingo : award, 1000, moved).kind).toBe("pick");
+    // An arm made with no marks is only timed.
+    expect(armStillValid({ id: "x", subject: null, at: 0 }, moved, 10)).toBe(true);
+  });
+
+  it("only an award takes a value", () => {
+    expect(takesValue("award_best_liar")).toBe(true);
+    for (const id of ["chess_won", "the golden duck", "start_the_ceremony"]) expect(takesValue(id), id).toBe(false);
+  });
+});
+
+describe("countdowns on the cue sheet", () => {
+  it("countdownLeft", () => {
+    expect(countdownLeft(3700, 100_000)).toBe(3600);
+    expect(countdownLeft(110, 109_200)).toBe(1); // 0.8 s left reads 1
+    expect(countdownLeft(110, 110_000)).toBeNull();
+    expect(countdownLeft(110, 200_000)).toBeNull();
+    expect(countdownLeft(110, null)).toBeNull();
+    expect(countdownLeft(Number.NaN, 0)).toBeNull();
+  });
+
+  it("cueSheetView carries act, countdowns, ≤3 non-secret global watch values, never secret ones", () => {
+    const v = cueSheetView({
+      interactions: [
+        { id: "a", label: "A", who: "admin", act: "B · Act I", description: "Press first." },
+        { id: "b", label: "B", who: "admin", description: "Then this." },
+        { id: "p", label: "P", who: "performer", act: "Z" },
+      ],
+      clock: 100_000,
+      world: [
+        { path: "Night.clock", value: "23:30" },
+        { path: "Night.phase", value: '"y2k"' },
+        { path: "Kernel.door_code", value: "4711" },
+        { path: "Night.round", value: "3" },
+        { path: "Floor.mood", value: "calm" },
+      ],
+      watch: [
+        { label: "Door code", path: "Kernel.door_code", scope: "character", secret: true },
+        { label: "Clock", path: "Night.clock", scope: "global" },
+        { label: "Cleared", path: "Program.cleared", scope: "role" },
+        { label: "Excel", path: null, scope: "person" },
+        { label: "Judge", path: "Night.judge_mode", scope: "global" },
+        { label: "Round", path: "Night.round", scope: "global" },
+        { label: "Mood", path: "Floor.mood", scope: "global" },
+      ],
+      countdowns: [{ label: "Midnight", endsAt: 3700, path: "Night.y2k_end" } as { label: string; endsAt: number }],
+    });
+    expect(v.interactions).toEqual([
+      { id: "a", label: "A", who: "admin", act: "B · Act I" },
+      { id: "b", label: "B", who: "admin" },
+    ]);
+    expect(v.clock).toBe(100_000);
+    expect(v.countdowns).toEqual([{ label: "Midnight", endsAt: 3700 }]);
+    expect(v.watch).toEqual([
+      { label: "Clock", value: "23:30" },
+      { label: "Judge", value: "null" },
+      { label: "Round", value: "3" },
+    ]);
+    expect(JSON.stringify(v)).not.toContain("4711");
+    expect(JSON.stringify(v)).not.toContain("Press first");
+    expect(v.world).toEqual([{ path: "Night.phase", value: '"y2k"' }]);
+    // Rows off the lean view still carry their act (and no description).
+    expect(cueRows(v.interactions, v.cues).map((r) => [r.act, r.description])).toEqual([["B · Act I", null], ["B · Act I", null]]);
+    // Nothing to carry: no keys at all (an old server's view).
+    const bare = cueSheetView({ interactions: [] });
+    expect(Object.keys(bare).sort()).toEqual(["cues", "interactions", "roster", "world"]);
   });
 });
