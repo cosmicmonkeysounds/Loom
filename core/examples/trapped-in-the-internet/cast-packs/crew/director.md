@@ -72,8 +72,8 @@ or **`review`** (every verdict is a proposal in `# hosts` until you confirm
 or override it on the card; a round closing settles what is still pending
 by the proposal). **Overrides live on the Judging card, in both modes**: ▸
 the question, then that filing's ✅ accurate / 😤 confident lie / 🤷
-uncertain (the current verdict is outlined; a marked program's row has no
-buttons). A host's 📝 on a program's card judges only that program's
+uncertain (the current verdict is outlined; a filing that was settled as a
+mark, a guess, has no buttons). A host's 📝 on a program's card judges only that program's
 **latest** filing: while an earlier one still waits, it changes nothing and
 `# hosts` says *"📝 Not judged: … Judge it on Run → Mind → Judging"*. A program may file every
 open question, once each; a question not filed when its round closes never

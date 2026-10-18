@@ -70,7 +70,8 @@ only if the key is wrong on the night (a question the team changed late):
 then every filing waits as a proposal, and you confirm or override it on the
 card. **In either mode, overrides are on the Judging card**: ▸ the question,
 then that filing's ✅ accurate / 😤 confident lie / 🤷 uncertain (the current
-verdict is outlined; marked programs have no buttons). A host's 📝 on a
+verdict is outlined; a filing that was settled as a mark, a guess, has no
+buttons). A host's 📝 on a
 program's card (*be Clippy* → **📝 Filed fact: …**) judges that program's
 **latest** filing only; when a program has filed more than once and an
 earlier one is still waiting, it changes nothing and `# hosts` points you at
@@ -160,8 +161,9 @@ queued.
    once: `# hosts` says *"✍ Award lines: yours. …"*, and each award plays its
    fanfare and slide with no Trabolta line. Post each line **as Trabolta in
    The Desktop** right after you fire that award (the TV speaks it). The
-   sheet shows no ✓ for ✍: read `# hosts` to see which is on (press ✍ again
-   for the template). Without ✍ the template lines play on their own (and a
+   sheet ticks ✍ after the first press and keeps the ✓ after a second press
+   turns it off, so the ✓ only means it was pressed: read `# hosts` to see
+   which is on (press ✍ again for the template). Without ✍ the template lines play on their own (and a
    line you post would be spoken as well, on top).
 3. **If Trabolta is gone** (Combo B, the rave): Clippy hosts and reads each line
    aloud; the TV shows the award slide.

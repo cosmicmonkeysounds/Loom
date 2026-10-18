@@ -56,7 +56,7 @@ starting or missing an event).
 
 | Problem | Do |
 |---|---|
-| stagehand `show` crashed, or the lights are wrong (**LIGHTS**) | restart its job (`uv run stagehand launchd restart --job show`): on reconnect it replays the current look (`Night.lights`, never the alarm; under the majority's `server_open` it replays `lights_y2k` first, then `lights_server_open`) and a room Trabolta has cut (off mid-cut; on again only under the look its 90 s restore lit it in). Still wrong → set the look by hand from the table below (`Night.lights` in Run → World names it). There is no cue to re-fire: phase cues play once |
+| stagehand `show` crashed, or the lights are wrong (**LIGHTS**) | restart its job (`uv run stagehand launchd restart --job show`): on reconnect it replays the current look (`Night.lights`, never the alarm; under the majority's `server_open` it replays `lights_y2k` first, then `lights_server_open`) and a room Trabolta has cut (off mid-cut; on again under the look its 90 s restore lit it in, or a later look that never re-lit that room). Still wrong → set the look by hand from the table below (`Night.lights` in Run → World names it). There is no cue to re-fire: phase cues play once |
 | Trabolta's worker crashed | restart the `agents` job, or `uv run stagehand run --config <house>.yaml --only agents`. The hold line covers the gap; the directors answer DMs meanwhile |
 | Trabolta's worker hung but still connected (Run → Mind shows it, nothing answers) | restart the `agents` job at once: the hold line can take minutes to come for a hung worker (known gap); the directors answer DMs by hand meanwhile |
 | **NEVER** | `pkill -f "stagehand run"` (it kills both jobs) |
