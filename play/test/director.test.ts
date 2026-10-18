@@ -30,6 +30,8 @@ import {
   formatLeft,
   storyNow,
   stripItems,
+  clockRuns,
+  STOPPED,
   STALE_TOAST,
   pollDelay,
   pollOutcome,
@@ -498,6 +500,32 @@ describe("acts on the phone", () => {
     };
     const items = stripItems(view, sheetLayout(directorRows(view)), storyNow(view.clock, 0, 0));
     expect(items).toEqual([{ text: "B" }, { text: "y2k" }, { text: "⏱ Midnight 0:30", urgent: true }, { text: "Y2K clock 23:30" }, { text: "Judge —" }, { text: "The Heart ●" }]);
+  });
+
+  it("countdowns freeze while the event is paused, and through a failing poll", () => {
+    // Paused at 11:20 pm with Midnight 37:52 away: the server's clock holds
+    // still, so the phone's must too — between polls, and however long the
+    // poll keeps failing — never draining to "nothing to press".
+    const paused: DirectorView = { ...ACTS, cues: { last: "summons", fired: ["call", "bingo", "hunt", "summons"] }, clock: 1_000_000, paused: true, countdowns: [{ label: "Midnight", endsAt: 1000 + 2272 }] };
+    expect(clockRuns(paused)).toBe(false);
+    const rows = directorRows(paused);
+    for (const later of [0, 3000, 60_000, 3_000_000]) {
+      const now = storyNow(paused.clock, 5000, 5000 + later, clockRuns(paused));
+      expect(now).toBe(1_000_000);
+      expect(nextBar(rows, paused.countdowns, now)).toEqual({ kind: "countdown", label: "Midnight", left: 2272 });
+    }
+    expect(stripItems(paused, sheetLayout(rows), 1_000_000).map((i) => i.text)).toContain(STOPPED);
+    // Running, it ticks on (and the strip says nothing about the clock).
+    const running: DirectorView = { ...paused, paused: undefined };
+    expect(clockRuns(running)).toBe(true);
+    expect(storyNow(running.clock, 5000, 8000, clockRuns(running))).toBe(1_003_000);
+    expect(stripItems(running, sheetLayout(rows), 1_000_000).map((i) => i.text)).not.toContain(STOPPED);
+    // A full ModView (an older server ignoring ?cues=1) says it through phase.
+    expect(clockRuns({ phase: "paused" })).toBe(false);
+    expect(clockRuns({ phase: "idle" })).toBe(false);
+    expect(clockRuns({ phase: "open" })).toBe(true);
+    // The server's lean read and the phone agree.
+    expect(clockRuns(cueSheetView({ phase: "paused" }) as DirectorView)).toBe(false);
   });
 
   it("the lean view carries no secret watch values", () => {

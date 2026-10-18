@@ -70,6 +70,10 @@ export interface DirectorView {
   /** The story clock (ms) when the view was built: the countdowns tick
    *  down from it plus the wall time since the poll landed. */
   clock?: number;
+  /** The story clock is stopped (paused, or the doors not open yet): the
+   *  countdowns hold still. The lean read's flag; the full `ModView` an
+   *  older server sends says the same through `phase`. */
+  paused?: true;
   /** The live countdowns (`countdown:` header lines whose `while` holds
    *  and whose deadline, in story seconds, is still ahead). */
   countdowns?: Array<{ label: string; endsAt: number }>;
@@ -188,12 +192,26 @@ export function foldedLine(a: CueAct): string {
 
 // --- the clock, the NEXT bar and the strip -------------------------------------------
 
-/** The story clock now (ms): the view's `clock` plus the wall time since the
- *  poll landed. Null when the view carries no clock (an old server). */
-export function storyNow(clock: number | undefined, receivedAt: number, now: number): number | null {
-  if (clock === undefined || !Number.isFinite(clock)) return null;
-  return clock + Math.max(0, now - receivedAt);
+/** Does the story clock run? Not while the event is paused or before the
+ *  doors open (the server's ticker stops: `paused` on the lean read, a
+ *  `phase` other than `open` on a full view). A view that says neither runs. */
+export function clockRuns(view: Pick<DirectorView, "paused" | "phase"> | null): boolean {
+  if (view === null) return false;
+  if (view.paused === true) return false;
+  return view.phase === undefined || view.phase === "open";
 }
+
+/** The story clock now (ms): the view's `clock` plus the wall time since the
+ *  poll landed — or just the `clock` while it is stopped (`runs` false), so a
+ *  paused countdown holds still between polls, and through a failing poll.
+ *  Null when the view carries no clock (an old server). */
+export function storyNow(clock: number | undefined, receivedAt: number, now: number, runs = true): number | null {
+  if (clock === undefined || !Number.isFinite(clock)) return null;
+  return runs ? clock + Math.max(0, now - receivedAt) : clock;
+}
+
+/** The strip's word for a stopped clock. */
+export const STOPPED = "⏸ clock stopped";
 
 /** Seconds as `37:52`, or `1:02:03` past the hour. */
 export function formatLeft(sec: number): string {
@@ -262,6 +280,7 @@ export function stripItems(view: DirectorView | null, layout: SheetLayout, nowMs
   if (layout.kind === "acts" && layout.focus >= 0) out.push({ text: actHandle(layout.acts[layout.focus]!) });
   const phase = nightPhase(view?.world ?? []);
   if (phase !== null) out.push({ text: phase });
+  if (view !== null && !clockRuns(view)) out.push({ text: STOPPED });
   const soon = soonestCountdown(view?.countdowns, nowMs);
   if (soon !== null) out.push({ text: `⏱ ${soon.label} ${formatLeft(soon.left)}`, ...(soon.left < URGENT_S ? { urgent: true as const } : {}) });
   for (const w of (view?.watch ?? []).filter((w) => typeof w.value === "string").slice(0, 3)) out.push({ text: `${w.label} ${formatWatchValue(w.value)}` });
@@ -683,7 +702,8 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
   const lastId = marks.last;
   // The countdowns tick once a second between polls (story clock + the
   // wall time since the view landed).
-  const ticking = (s.view?.countdowns?.length ?? 0) > 0;
+  const runs = clockRuns(s.view);
+  const ticking = runs && (s.view?.countdowns?.length ?? 0) > 0;
   const [wall, setWall] = useState(() => Date.now());
   useEffect(() => {
     if (!ticking) return;
@@ -691,7 +711,7 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
     const t = setInterval(() => setWall(Date.now()), 1000);
     return () => clearInterval(t);
   }, [ticking, s.receivedAt]);
-  const nowMs = storyNow(s.view?.clock, s.receivedAt, Math.max(wall, s.receivedAt));
+  const nowMs = storyNow(s.view?.clock, s.receivedAt, Math.max(wall, s.receivedAt), runs);
   const bar = nextBar(rows, s.view?.countdowns, nowMs);
   const strip = stripItems(s.view, layout, nowMs);
 
