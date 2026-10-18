@@ -108,23 +108,26 @@ unset CURL
 teardown
 
 echo "── the compose healthcheck reads /api/health"
-# The loom service's healthcheck, run for real against a stand-in server.
-hc_js="$(sed -n 's/.*"node", "-e", "\(.*\)"\]$/\1/p' "$ROOT/docker-compose.yml" | grep api/health | sed 's/127\.0\.0\.1:7000/127.0.0.1:7909/g')"
-check "healthcheck names /api/health" test -n "$hc_js"
-hc() { # hc MODE → the healthcheck's exit code against fake-loom in MODE
-  local pid rc
-  node "$HERE/fake-loom.mjs" 7909 "$1" > "$HERE/.fake-loom.out" & pid=$!
-  for _ in $(seq 50); do grep -q ready "$HERE/.fake-loom.out" 2>/dev/null && break; sleep 0.1; done
-  node -e "$hc_js"; rc=$?
-  kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null; rm -f "$HERE/.fake-loom.out"
+# The loom service's healthcheck, run for real against a stand-in server
+# on a free port.
+hc_js="$(sed -n 's/.*"node", "-e", "\(.*\)"\]$/\1/p' "$ROOT/docker-compose.yml" | grep api/health)"
+check "healthcheck names /api/health on :7000" grep -q '127\.0\.0\.1:7000' <<<"$hc_js"
+hc() { # hc MODE [--stop-first] → the healthcheck's exit code against fake-loom in MODE
+  local pid rc port out="$HERE/.fake-loom.out"
+  node "$HERE/fake-loom.mjs" "$1" > "$out" & pid=$!
+  for _ in $(seq 50); do grep -q ready "$out" 2>/dev/null && break; sleep 0.1; done
+  port="$(awk '/^ready /{print $2}' "$out")"
+  if [ "${2:-}" = --stop-first ]; then kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null; fi
+  node -e "${hc_js//127.0.0.1:7000/127.0.0.1:$port}"; rc=$?
+  kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null; rm -f "$out"
   return "$rc"
 }
-check "healthy when /api/health answers 200" hc up
 neg() { ! "$@"; }
+check "healthy when /api/health answers 200" hc up
 check "unhealthy while loom answers 503 (database / starting)" neg hc starting
 check "an image older than the route falls back to /" hc old
 check "unhealthy when / fails too" neg hc dead
-check "unhealthy when nothing listens" bash -c "! node -e \"\$1\"" _ "$hc_js"
+check "unhealthy when nothing listens" neg hc up --stop-first
 
 echo "── entrypoint waits for the database (S1-ops-01)"
 setup
