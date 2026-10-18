@@ -77,6 +77,16 @@ export interface ArmedApi {
   moved: { by: 'director' | 'story' | null; at: number } | null
 }
 
+interface PressOutcome {
+  result: PressResult | null
+  refused: RefusedPress | null
+}
+const NO_OUTCOME: PressOutcome = { result: null, refused: null }
+
+/** Each cockpit's last press outcome, kept across the page's unmounts (a
+ *  tab switch unmounts the Director). */
+const outcomes = new WeakMap<object, PressOutcome>()
+
 export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
   const fireSignal = useCockpit((s) => s.fireSignal)
   // Read at press time, never subscribed: a chat line in any room must not
@@ -86,8 +96,11 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
   const [picking, setPicking] = useState<string | null>(null)
   const [pending, setPending] = useState<string | null>(null)
   const [coolUntil, setCoolUntil] = useState(0)
-  const [result, setResult] = useState<PressResult | null>(null)
-  const [refused, setRefused] = useState<RefusedPress | null>(null)
+  // The last press's outcome outlives the page: following the refusal's
+  // own link to Chat (or any glance link) and coming back keeps the banner
+  // and the Needs you item for their full time.
+  const [outcome, setOutcome] = useState<PressOutcome>(() => outcomes.get(store) ?? NO_OUTCOME)
+  const { result, refused } = outcome
   const [stale, setStale] = useState<string | null>(null)
   const [moved, setMoved] = useState<ArmedApi['moved']>(null)
 
@@ -176,14 +189,15 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
       // A press that hangs (venue Wi-Fi) never locks every cue for minutes.
       const res = await within(fireSignal(id, subject ?? undefined, args), PRESS_TIMEOUT_MS, (): FireResult => ({ error: NO_ANSWER }))
       const at = Date.now()
-      if (res.error !== undefined) {
-        setResult({ kind: PressKind.Failed, id, cue, at, seq, message: res.error })
-      } else if (res.refused === true) {
-        setResult({ kind: PressKind.Refused, id, cue, at, seq })
-        setRefused({ cue, at, seq })
-      } else {
-        setResult({ kind: PressKind.Taken, id, cue, at, seq })
-      }
+      const was = outcomes.get(store) ?? NO_OUTCOME
+      const next: PressOutcome =
+        res.error !== undefined
+          ? { ...was, result: { kind: PressKind.Failed, id, cue, at, seq, message: res.error } }
+          : res.refused === true
+            ? { result: { kind: PressKind.Refused, id, cue, at, seq }, refused: { cue, at, seq } }
+            : { ...was, result: { kind: PressKind.Taken, id, cue, at, seq } }
+      outcomes.set(store, next)
+      setOutcome(next)
       latest.current.pending = null
       setPending(null)
       if (row.next) setCoolUntil(at + NEXT_COOLDOWN_MS)
