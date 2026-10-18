@@ -114,7 +114,8 @@ main() {
   say "state restored"
 
   compose -p "$project" up -d --no-build db loom
-  wait_healthy "$project" "${LOOM_HEALTH_SECS:-180}" || die "loom did not come up healthy — docker compose -p $project logs loom"
+  wait_healthy "$project" "${LOOM_HEALTH_SECS:-180}" \
+    || die "loom did not come up healthy (/api/health: $(health_body "$project")) — docker compose -p $project logs loom"
   say "project '$project' is up ✔"
   if [ "$docheck" = 1 ]; then
     check "$project" || die "old guest tokens do NOT read their views"

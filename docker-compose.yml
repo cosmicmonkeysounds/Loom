@@ -106,12 +106,17 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    # Healthy = /api/health answers 200: with a database, only once the
+    # control plane is up AND every live event is rehydrated (a loom that
+    # booted before Postgres answers 503 until it catches up). An image
+    # older than the route (a rollback target) answers 404 there, so that
+    # falls back to the play shell at `/`.
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: ["CMD", "node", "-e", "const u='http://127.0.0.1:7000';fetch(u+'/api/health').then(r=>r.status===404?fetch(u+'/'):r).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 60s
 
   # OPT-IN (the `tts` profile): a neural voice for the terminals (Kokoro-82M,
   # CPU). A plain `docker compose up` does not start it — the devices speak

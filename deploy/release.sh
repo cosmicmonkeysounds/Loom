@@ -92,7 +92,7 @@ main() {
     log_release "$tag" release "$COMMIT"
     say "released $tag ✔  (rollback: deploy/rollback.sh → $prev)"
   else
-    say "$tag is NOT healthy. Look: docker compose logs --tail 80 loom"
+    say "$tag is NOT healthy (/api/health: $(health_body)). Look: docker compose logs --tail 80 loom"
     say "roll back now with: deploy/rollback.sh $prev"
     log_release "$tag" release-unhealthy "$COMMIT"
     exit 2

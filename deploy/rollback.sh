@@ -24,12 +24,13 @@ main() {
   say "rolling back $cur → $target …"
   env_set LOOM_TAG "$target"
   compose up -d --no-build
-  if wait_healthy "" "${LOOM_HEALTH_SECS:-180}" && public_ok; then
+  # --old-ok: the target may predate /api/health (its play shell must answer).
+  if wait_healthy "" "${LOOM_HEALTH_SECS:-180}" && public_ok --old-ok; then
     log_release "$target" rollback
     say "rolled back to $target ✔ in $(( $(date +%s) - t0 )) s"
   else
     log_release "$target" rollback-unhealthy
-    die "$target is not healthy either — docker compose logs --tail 80 loom"
+    die "$target is not healthy either (/api/health: $(health_body)) — docker compose logs --tail 80 loom"
   fi
 }
 

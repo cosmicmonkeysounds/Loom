@@ -85,6 +85,47 @@ FAKE_PS_EMPTY=1 bash "$ROOT/deploy/release.sh" t1 --no-backup >/dev/null 2>&1
 check "nothing running: releases without adopting" bash -c "test -f '$FAKE/images/loom-server:t1' && test ! -e '$FAKE/images/loom-server:pre-t1'"
 teardown
 
+echo "── health: release / rollback wait on /api/health (C1)"
+setup
+export CURL="$HERE/fake-curl"; : > "$FAKE/curl"
+echo 'LOOM_BASE_URL=https://app.test/' >> "$LOOM_DIR/.env"
+check "release passes on a 200 /api/health" bash "$ROOT/deploy/release.sh" h1 --no-backup
+check "… asked the public /api/health" grep -qx 'https://app.test/api/health' "$FAKE/curl"
+out="$(FAKE_PUBLIC_HEALTH=503 bash "$ROOT/deploy/release.sh" h2 --no-backup 2>&1)"; rc=$?
+check "a 503 /api/health is an unhealthy release" eq "$rc" 2
+check "… and says what it answered" grep -q 'api/health answered 503' <<<"$out"
+out="$(FAKE_PUBLIC_HEALTH=404 bash "$ROOT/deploy/release.sh" h3 --no-backup 2>&1)"; rc=$?
+check "a release must have the route (404 is unhealthy)" eq "$rc" 2
+out="$(FAKE_HEALTH=starting FAKE_HEALTH_BODY='503 {"ok":false,"reason":"database"}' bash "$ROOT/deploy/release.sh" h4 --no-backup 2>&1)"; rc=$?
+check "a container that never turns healthy exits 2" eq "$rc" 2
+check "… and shows loom's own /api/health answer" grep -q '"reason":"database"' <<<"$out"
+check "release h5" bash "$ROOT/deploy/release.sh" h5 --no-backup
+check "rollback accepts an image older than the route (404, / answers)" \
+  bash -c "FAKE_PUBLIC_HEALTH=404 bash '$ROOT/deploy/rollback.sh' 2>/dev/null && [ \"\$(bash -c \". '$ROOT/deploy/lib.sh'; current_tag\")\" = h1 ]"
+check "… but not one whose / is down too" bash -c "! FAKE_PUBLIC_HEALTH=404 FAKE_PUBLIC_ROOT=502 bash '$ROOT/deploy/rollback.sh' 2>/dev/null"
+check "rollback refuses a 503 /api/health" bash -c "! FAKE_PUBLIC_HEALTH=503 bash '$ROOT/deploy/rollback.sh' 2>/dev/null"
+unset CURL
+teardown
+
+echo "── the compose healthcheck reads /api/health"
+# The loom service's healthcheck, run for real against a stand-in server.
+hc_js="$(sed -n 's/.*"node", "-e", "\(.*\)"\]$/\1/p' "$ROOT/docker-compose.yml" | grep api/health | sed 's/127\.0\.0\.1:7000/127.0.0.1:7909/g')"
+check "healthcheck names /api/health" test -n "$hc_js"
+hc() { # hc MODE → the healthcheck's exit code against fake-loom in MODE
+  local pid rc
+  node "$HERE/fake-loom.mjs" 7909 "$1" > "$HERE/.fake-loom.out" & pid=$!
+  for _ in $(seq 50); do grep -q ready "$HERE/.fake-loom.out" 2>/dev/null && break; sleep 0.1; done
+  node -e "$hc_js"; rc=$?
+  kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null; rm -f "$HERE/.fake-loom.out"
+  return "$rc"
+}
+check "healthy when /api/health answers 200" hc up
+neg() { ! "$@"; }
+check "unhealthy while loom answers 503 (database / starting)" neg hc starting
+check "an image older than the route falls back to /" hc old
+check "unhealthy when / fails too" neg hc dead
+check "unhealthy when nothing listens" bash -c "! node -e \"\$1\"" _ "$hc_js"
+
 echo "── backup"
 setup
 out="$(bash "$ROOT/deploy/backup.sh" --label nightly 2>/dev/null)"; rc=$?

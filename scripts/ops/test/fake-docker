@@ -21,6 +21,7 @@ case "$all" in
     excl=""; case "$all" in *"--exclude=./pictures"*) excl="--exclude=./pictures" ;; esac
     tar cf - -C "$FAKE/data" $excl . | gzip -c ;;
   compose*"exec -T db pg_isready"*) exit 0 ;;
+  compose*"exec -T loom node -e"*"/api/health"*) echo "${FAKE_HEALTH_BODY:-200 {\"ok\":true}}" ;;
   compose*"exec -T db psql"*) cat > "$FAKE/restored.sql" ;;
   compose*" run --rm --no-deps -T --entrypoint sh loom"*) cat > "$FAKE/restored.tgz" ;;
   compose*) : ;;
