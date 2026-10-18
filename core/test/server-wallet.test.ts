@@ -200,6 +200,10 @@ describe("sending coin", () => {
     expect((await wallet(rt, "send", { to: b.id, amount: 501 }, a.token)).status).toBe(400);
     expect((await wallet(rt, "send", { to: b.id, amount: "abc" }, a.token)).status).toBe(400);
     expect(await wallet(rt, "send", { to: "ghost", amount: 5 }, a.token)).toMatchObject({ status: 404, json: { error: "unknown recipient" } });
+    // A character has no Wallet (D1: a bet settles player to player — McAfee
+    // referees and holds no pot): a send or a request to one is no recipient.
+    expect(await wallet(rt, "send", { to: "Clerk", amount: 5 }, a.token)).toMatchObject({ status: 404, json: { error: "unknown recipient" } });
+    expect(await wallet(rt, "request", { from: "Clerk", amount: 5 }, a.token)).toMatchObject({ status: 404 });
     expect(await wallet(rt, "send", { to: a.id, amount: 5 }, a.token)).toMatchObject({ status: 409, json: { error: "you can't send to yourself" } });
     expect(await wallet(rt, "send", { to: b.id, amount: 101 }, a.token)).toMatchObject({ status: 409, json: { error: "insufficient funds" } });
     // Nothing was journaled or dealt.
