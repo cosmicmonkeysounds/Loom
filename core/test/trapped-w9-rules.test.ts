@@ -445,6 +445,22 @@ describe("wave 9 — a cut room comes back on unless the next look re-lit it (T8
     expect([v(sim, "Night.lights"), v(sim, "Night.lights_back_at"), v(sim, "Night.lit_scene")]).toEqual(["glitch", 0, "none"]);
   });
 
+  it("the mark outlives a room-scoped look: a RAM cut restored under pong keeps it through the Trust Chart and the beans' glitch, so a lost restore is still replayed (review 3)", { timeout: SLOW }, () => {
+    const sim = boot();
+    toSummons(sim);
+    cut(sim, "The RAM");
+    advance(sim, 20);
+    fire(sim, "truth_pong");
+    expect(cues(advance(sim, 75))).toContain(on("The RAM"));
+    expect(v(sim, "Night.lit_scene")).toBe("pong");
+    fireAll(sim, "round_two_tally", "trust_chart");
+    expect(v(sim, "Night.lights")).toBe("trust_chart"); // the living room only: the RAM is still the restore's
+    expect(v(sim, "Night.lit_scene")).toBe("pong");
+    fire(sim, "show_the_rankings");
+    expect(cues(fire(sim, "printer_opened"))).toContain("cue lights_glitch");
+    expect(v(sim, "Night.lit_scene")).toBe("pong");
+  });
+
   it("the Y2K hour: a RAM cut, then the majority's server-room look → the RAM comes back on", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);

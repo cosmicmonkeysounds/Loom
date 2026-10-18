@@ -4484,8 +4484,9 @@ when share:
 // The Desktop but not the Start Bar or the RAM. After any of those the
 // room still comes back on here. `Night.lit_scene` names the look the
 // room came back on under ("none" when it didn't): stagehand's catch-up
-// replays the room-on only while that look is still the one on; the rule
-// below clears the mark on any later look, so the story's last word wins.
+// replays the room-on while that look, or a later look that never re-lit
+// the room, is on; the rule below clears the mark at a look that re-lit
+// it, so the story's last word wins.
 when Night.lights_back_at > 0 and Time.elapsed >= Night.lights_back_at:
   if Night.lights == Night.dark_scene or Night.lights == "pong" or Night.lights == "glitch" or Night.lights == "server_open" or ((Night.lights == "game" or Night.lights == "truth_time" or Night.lights == "trust_chart") and Night.dark_room != "The Desktop"):
     <cue: lights, room: {Night.dark_room}, state: on>
@@ -4494,13 +4495,16 @@ when Night.lights_back_at > 0 and Time.elapsed >= Night.lights_back_at:
     set Night.lit_scene = "none"
   set Night.lights_back_at = 0
 
-// The mark lasts only while that look is on: the moment the story moves
-// to another look, the restore is history, so a look name that comes back
-// later (the glitch at the Truther Download, the beans and the overshare;
-// server_open at the majority and after the alarm) never re-arms the
-// catch-up's room-on. The restore sets both in one body, so this never
-// fires on the restore itself.
-when Night.lit_scene != "none" and Night.lights != Night.lit_scene:
+// The mark lasts until a look re-lights the room: a whole-house look
+// (call_desktop, the Y2K hour, the alarm, an ending…) or a living-room
+// look over a Desktop cut makes the restore history, so a look name that
+// comes back later (the glitch at the beans and the overshare; server_open
+// at the majority, always after the Y2K look) never re-arms the catch-up's
+// room-on. A room-scoped look (pong, the glitch, server_open, a living-room
+// look over a Start Bar or RAM cut) keeps it: the room is still the one the
+// restore turned on, and a restore the house missed is still replayed. The
+// restore sets both in one body, so this never fires on the restore itself.
+when Night.lit_scene != "none" and Night.lights != Night.lit_scene and Night.lights != "pong" and Night.lights != "glitch" and Night.lights != "server_open" and (Night.dark_room == "The Desktop" or (Night.lights != "game" and Night.lights != "truth_time" and Night.lights != "trust_chart")):
   set Night.lit_scene = "none"
 
 // 💡 is the first step of ALL STOP (the emergency card), so it also holds
