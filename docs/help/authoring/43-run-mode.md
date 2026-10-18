@@ -226,12 +226,14 @@ bar), a second one at least **0.3 s** and under **4 s** later fires it. A
 fast double-click only arms. An arm is dropped — *Cues moved: 📋 just
 fired. Re-arm.* — when the cue state moves first (another director, the
 story's own timer), when you switch tabs or windows, or after 4 s. While
-a press is on its way every cue is locked, and NEXT waits 1 s after it.
+a press is on its way every cue is locked, and after you fire NEXT the
+new NEXT waits 1 s before it takes a press (an aside starts no wait).
 An armed cue warns, never blocks: *⚠ Not on offer now: the story may
 refuse it* (its `while:` is false) or *⚠ This is a F cue; the night is
 in E*. A cue that names a person (an award; ♟ *They beat the King*)
-opens a **who?** picker when armed, plus a **value** box for an award;
-the armed button reads *Fire → Winamp*.
+takes three steps: the first press opens its **who?** picker (plus a
+**value** box for an award), choosing a person arms it for them (the
+armed button reads *Fire → Winamp*), and the next press fires it.
 
 **The keys** (only with the page in **Calling** mode, never while you
 type in a box): **Space** arms NEXT, Space again fires it; **Enter** arms
@@ -325,17 +327,17 @@ story's **header** ([live shows](live-shows.md)):
 
 ```loom
 # The Glass Orchard
-start: Doors
+start: The Front Gate
 watch: Night.round as Round, Night.lights as Lights, while Night.step >= 2
-watch: program.cleared as Cleared, Ivo Marsh
+watch: guest.cleared as Cleared, Ivo Marsh
 countdown: Night.hunt_end as Hunt ends, while Night.hunt_on == true
 ```
 
 A `countdown:` path holds a story time in seconds (`set Night.hunt_end =
 Time.elapsed + 900`); it shows only while its `while` holds and the time
-is still ahead. Keep these lines **in the header block of the first
-file**, with no blank or comment line before them: the server reads that
-header only. Lint `L1205` flags a line that won't parse, a path whose
+is still ahead. Keep these lines **in the header of the first file**,
+above its first beat, declaration or rule (blank and comment lines in
+between are fine): the server reads that header only. Lint `L1205` flags a line that won't parse, a path whose
 head names nothing, or a board line in another file.
 
 **On a phone.** The same running order runs in the participant app: open

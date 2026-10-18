@@ -1288,7 +1288,7 @@ Two **header** keys choose what the director's page keeps in view:
 
 ```loom
 # The Glass Orchard
-start: Doors
+start: The Front Gate
 watch: Night.round as Round, guest.cleared as Cleared, Ivo Marsh
 watch: Night.lights as Lights, while Night.step >= 2
 countdown: Night.hunt_end as Hunt ends, while Night.hunt_on == true
@@ -1298,9 +1298,10 @@ A `watch:` item is a path (with `as` a label), a ROLE path counted over
 every guest, or a person's name; a value on a `secret: true` character is
 masked. A `countdown:` path holds a story time in seconds (`set
 Night.hunt_end = Time.elapsed + 900`) and ticks down while its line's
-`while` holds. Both may repeat; keep them in the header block of the
-**first** file, with no blank line before them — the event server reads
-only that header.
+`while` holds. Both may repeat; keep them in the header of the
+**first** file, above its first beat, declaration or rule (blank and
+comment lines don't end a header) — the event server reads only that
+header.
 
 ### 11.4 Places are rooms
 

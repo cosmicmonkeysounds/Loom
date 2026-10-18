@@ -194,10 +194,10 @@ night is in that stretch:
 
 ```loom
 # The Glass Orchard
-start: Doors
+start: The Front Gate
 watch: Night.round as Round, Night.lights as Lights
 watch: guest.cleared as Cleared, while Night.step >= 2
-watch: Ivo Marsh, Wren
+watch: Ivo Marsh, Mara Vell
 countdown: Night.hunt_end as Hunt ends, while Night.hunt_on == true
 ```
 
@@ -215,9 +215,9 @@ countdown: Night.hunt_end as Hunt ends, while Night.hunt_on == true
   running countdowns when there is nothing to press, so a quiet sheet
   during a timer reads as meant.
 
-These lines belong in the **header block** — straight after the other
-header keys, no blank or comment line in between (the header ends
-there) — and **only in the first file** of the project: the event server
+These lines belong in the **header** — above the file's first beat,
+declaration or rule, which is what ends it (blank and comment lines
+don't) — and **only in the first file** of the project: the event server
 plays the files as one source, so it reads the first header only. Lint
 `L1205` flags a line that won't parse, a head that names nothing in the
 story, or a board line in another file. With no `watch:` line the board

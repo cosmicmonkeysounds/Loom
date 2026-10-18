@@ -308,7 +308,9 @@ the focus act holds NEXT, else LAST; an all-`sequence: false` act is
 - `useArmed.ts` — the one arm model over core's: bound to `cues.last` +
   `fired.length` (stale → *Cues moved: <cue> just fired. Re-arm.*),
   dropped on blur / hidden tab / 4 s; one press in flight (8 s →
-  `NO_ANSWER`, unlocks), NEXT cools 1 s after any press; the last
+  `NO_ANSWER`, unlocks), NEXT cools 1 s after NEXT itself is fired
+  (`row.next` at fire; an aside sets no cooldown); a `subject` cue's
+  first tap opens the picker (`pick`), `armFor` arms it; the last
   result is kept per store so it survives a tab switch.
 - `director-keys.ts` — the pure key reducer (Calling only; Space arms /
   fires NEXT, Enter the cursor row or NEXT, Esc disarm → cursor → filter,
@@ -319,7 +321,7 @@ the focus act holds NEXT, else LAST; an all-`sequence: false` act is
   review filings, held transfers, offline / free parts, unvoiced agents),
   `glance-watch` (`CockpitState.watch` rows: values with ◆ on change,
   role counts over roster rows on that ROLE, person rows, secret values
-  `••••` with a press-and-hold 👁 for 5 s and no World link; with
+  `••••`; holding 👁 0.4 s shows it for 5 s; no World link; with
   `watchDeclared` false, *Recently changed* off `worldSet` log rows),
   `glance-people` (factions vs a `floor(n/2)+1` tick, prison, restricted,
   busiest rooms), `glance-cast` (`PresenceDot` from `cockpit/presence.tsx`,
