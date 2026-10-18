@@ -84,7 +84,8 @@ async function projectData(projectId: string): Promise<{ maps: MapFiles; facts: 
  * An event's way back to its project (`house-maps.ts` `ProjectLink`): a map
  * file is written like `PUT /api/projects/:id/files` writes one — upserted,
  * folded into the live co-editing doc when it's open, announced to every
- * editor's tree — and the event row's snapshot follows.
+ * editor's tree — and the event row's snapshot follows. `resyncFiles` folds
+ * rows another process rewrote (`sync-show`) into the open docs.
  */
 export function projectLink(projectId: string, eventId: string): ProjectLink {
   return {
@@ -99,6 +100,11 @@ export function projectLink(projectId: string, eventId: string): ProjectLink {
     },
     async saveVariant(file) {
       await setEventMapVariant(eventId, file);
+    },
+    async resyncFiles() {
+      await collabHub().resyncFromStorage(projectId);
+      // Every tree reconciles on a `files` notice (a deleted row included).
+      for (const f of await listFiles(projectId)) collabHub().notifyFileChange(projectId, "put", f.path);
     },
   };
 }

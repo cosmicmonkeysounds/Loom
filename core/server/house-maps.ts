@@ -222,4 +222,9 @@ export interface ProjectLink {
   /** Record the variant the event plays on its row (`event.map_variant`),
    *  which the project's next launch starts on. */
   saveVariant(file: string | null): Promise<void>;
+  /** The project's rows were rewritten from outside (`sync-show` /
+   *  `sync-example`, then `/api/mod/load`): fold them into every open
+   *  co-editing doc and refresh every editor's tree (T4-04). Optional — a
+   *  link with no co-editing (a test fake) leaves it out. */
+  resyncFiles?(): Promise<void>;
 }

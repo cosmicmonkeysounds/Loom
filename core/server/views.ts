@@ -613,10 +613,17 @@ function staffOnly(scope: string, staff: ReadonlySet<string>): boolean {
   });
 }
 
+/** `Night._ask_at` — a variable whose last segment starts with `_`. */
+function bookkeeping(path: string): boolean {
+  const leaf = path.slice(path.lastIndexOf(".") + 1);
+  return leaf.startsWith("_");
+}
+
 /** Did the director's press at `events[n]` (a cue some rule listens for) do
  *  nothing but, at most, tell a staff room why? The story's phase-guarded
  *  rules refuse a cue pressed out of turn with a `# hosts` line or not at
- *  all (T1-02): such a press never becomes LAST or ticks the cue. A cue no
+ *  all (T1-02), and may note a `_`-leaf variable while it does (C3): such
+ *  a press never becomes LAST or ticks the cue. A cue no
  *  rule hears (only stagehand reacts) always counts as fired. */
 function refusedPress(sim: Sim, events: readonly SimEvent[], n: number, name: string): boolean {
   const cm = cueModelOf(sim.model);
@@ -627,6 +634,10 @@ function refusedPress(sim: Sim, events: readonly SimEvent[], n: number, name: st
     if (end === undefined && CUE_INPUTS.has(e.type)) break;
     if (e.type === "diagnostic") continue;
     if (e.type === "broadcast" && staffOnly(e.scope, cm.staff)) continue;
+    // A world write whose last path segment starts with `_` is cue-sheet
+    // bookkeeping (G11 remembering when it asked: `Night._resurrect_ask_at`)
+    // and never makes a press count.
+    if (e.type === "worldSet" && bookkeeping(e.path)) continue;
     return false;
   }
   return true;

@@ -382,11 +382,13 @@ export function walletLine(c: WalletCard, now?: number): string {
           // Both parties get this step (T5-07), so it names them both.
           return `✅ Paid: ${c.toName} sent ${c.fromName} ${amt}.`;
         case "declined":
-          return `⛔ Declined: ${amt} from ${c.toName}.`;
+          // With `by`: the auditor / director denied the payment (C6).
+          return c.by !== undefined ? `⛔ ${c.by} denied ${c.toName}'s payment of ${amt}; refunded.` : `⛔ Declined: ${amt} from ${c.toName}.`;
         case "expired":
           return `⌛ Expired: ${c.fromName}'s request for ${amt}.`;
         case "cancelled":
-          return `↩️ ${c.fromName} withdrew the request for ${amt}.`;
+          // With `by`: the payment was cancelled (by the payer or a director).
+          return c.by !== undefined ? `↩️ ${c.by} cancelled the payment of ${amt}.` : `↩️ ${c.fromName} withdrew the request for ${amt}.`;
         default:
           return `🙏 ${c.fromName} → ${c.toName}: ${amt}.`;
       }
@@ -777,6 +779,13 @@ export class WalletBook {
   private nameOf(id: string): string {
     return id === DIRECTOR ? DIRECTOR : this.seam.nameOf(id);
   }
+  /** Who acted, as a card's `by` shows it: "Director", a guest's display
+   *  name (never the `g-…` id), or a character with spaces for `_`. The op,
+   *  the transfer and the signal args keep the raw id. */
+  private byName(id: string): string {
+    if (id === DIRECTOR) return DIRECTOR;
+    return this.isPerson(id) ? this.seam.nameOf(id) : id.replace(/_/gu, " ");
+  }
   private approverName(): string | undefined {
     const a = this.currency.approver;
     return a === null ? undefined : a.id.replace(/_/gu, " ");
@@ -838,8 +847,9 @@ export class WalletBook {
     } else {
       // A held transfer settled by the clock (no `by`) timed out.
       const step: WalletStep = wasHeld ? (by !== undefined ? "approved" : "timed_out") : "settled";
-      out.push(this.ev(t.from, this.card("transfer", t, step, by !== undefined ? { by } : {}), false));
-      if (audience !== null) out.push(this.ev(audience, this.card("approval", t, step, by !== undefined ? { by } : {}), false));
+      const extra = by !== undefined ? { by: this.byName(by) } : {};
+      out.push(this.ev(t.from, this.card("transfer", t, step, extra), false));
+      if (audience !== null) out.push(this.ev(audience, this.card("approval", t, step, extra), false));
     }
     out.push(this.ev(t.to, this.card("transfer", t, "received"), true));
     out.push(...this.seam.signal("transfer_received", t.to, { from: t.from, amount: t.amount, tx: t.id }));
@@ -874,17 +884,20 @@ export class WalletBook {
     t.by = by;
     out.push(...this.seam.setBalance(t.from, this.seam.scoreOf(t.from) + t.amount));
     out.push(...this.mirrorEscrow(t.from));
-    out.push(this.ev(t.from, this.card("transfer", t, "denied", { by }), false));
+    const shown = { by: this.byName(by) };
+    out.push(this.ev(t.from, this.card("transfer", t, "denied", shown), false));
     const audience = this.approverAudience();
-    if (audience !== null) out.push(this.ev(audience, this.card("approval", t, "denied", { by }), false));
+    if (audience !== null) out.push(this.ev(audience, this.card("approval", t, "denied", shown), false));
     out.push(...this.seam.signal("transfer_denied", t.from, { to: t.to, amount: t.amount, tx: t.id, by }));
     if (t.request !== null) {
       const r = this.requests.get(t.request);
       if (r !== undefined && (r.state === "paying" || r.state === "open")) {
         r.state = "declined";
-        // Both threads close, as a paid request's do (T5-07).
-        out.push(this.ev(r.to, this.card("request", r, "declined"), false));
-        out.push(this.ev(r.from, this.card("request", r, "declined"), false));
+        // Both threads close, as a paid request's do (T5-07). `by` says the
+        // payment was stopped by the auditor / director, not refused by the
+        // payer (a bare `declined` is the payer's own Decline).
+        out.push(this.ev(r.to, this.card("request", r, "declined", shown), false));
+        out.push(this.ev(r.from, this.card("request", r, "declined", shown), false));
       }
     }
     return out;
@@ -900,16 +913,19 @@ export class WalletBook {
       t.by = by;
       out.push(...this.seam.setBalance(t.from, this.seam.scoreOf(t.from) + t.amount));
       out.push(...this.mirrorEscrow(t.from));
-      out.push(this.ev(t.from, this.card("transfer", t, "cancelled", { by }), false));
+      const shown = { by: this.byName(by) };
+      out.push(this.ev(t.from, this.card("transfer", t, "cancelled", shown), false));
       const audience = this.approverAudience();
-      if (audience !== null) out.push(this.ev(audience, this.card("approval", t, "cancelled", { by }), false));
+      if (audience !== null) out.push(this.ev(audience, this.card("approval", t, "cancelled", shown), false));
       out.push(...this.seam.signal("transfer_cancelled", t.from, { to: t.to, amount: t.amount, tx: t.id, by }));
       if (t.request !== null) {
         const r = this.requests.get(t.request);
         if (r !== undefined && (r.state === "paying" || r.state === "open")) {
           r.state = "cancelled";
-          out.push(this.ev(r.to, this.card("request", r, "cancelled"), false));
-          out.push(this.ev(r.from, this.card("request", r, "cancelled"), false));
+          // `by` = who cancelled the payment (the payer, or a director); a
+          // bare `cancelled` is the asker withdrawing an open request.
+          out.push(this.ev(r.to, this.card("request", r, "cancelled", shown), false));
+          out.push(this.ev(r.from, this.card("request", r, "cancelled", shown), false));
         }
       }
       return out;
@@ -1091,10 +1107,10 @@ export class WalletBook {
     }
     for (const id of recipients) out.push(...this.seam.setBalance(id, this.seam.scoreOf(id) + op.amount));
     const base = { id: op.id, from: op.by, to: minter ?? op.by, amount: op.amount };
-    if (minter !== null) out.push(this.ev(minter, this.card("stimulus", base, "minted", { by: op.by }), true));
+    if (minter !== null) out.push(this.ev(minter, this.card("stimulus", base, "minted", { by: this.byName(op.by) }), true));
     for (const id of recipients) {
       if (id === minter) continue;
-      out.push(this.ev(id, this.card("stimulus", { ...base, to: id }, "received", { by: op.by }), true));
+      out.push(this.ev(id, this.card("stimulus", { ...base, to: id }, "received", { by: this.byName(op.by) }), true));
     }
     // The story hears the stimulus as the minter's either way: from her own
     // phone, or a director's (`by` names who pressed it) while a guest plays her.
@@ -1113,15 +1129,15 @@ export class WalletBook {
     const t = { id: op.id, from: op.by, to: op.to, amount: op.amount };
     // The "You granted…" card is the minter's own; a director's grant only
     // lands with the recipient.
-    if (op.by === this.minterPerson()) out.push(this.ev(op.by, this.card("grant", t, "granted", { by: op.by }), true));
-    out.push(this.ev(op.to, this.card("grant", t, "received", { by: op.by }), true));
+    if (op.by === this.minterPerson()) out.push(this.ev(op.by, this.card("grant", t, "granted", { by: this.byName(op.by) }), true));
+    out.push(this.ev(op.to, this.card("grant", t, "received", { by: this.byName(op.by) }), true));
     if (this.isPerson(op.by)) out.push(...this.seam.signal("grant", op.by, { to: op.to, amount: op.amount }));
     out.push(...this.seam.signal("grant_received", op.to, { from: op.by, amount: op.amount }));
     return out;
   }
 
   private freezeCard(f: Freeze, step: WalletStep, by?: string): WalletCard {
-    return this.card("freeze", { id: f.id, from: f.by, to: f.target, amount: 0 }, step, { settleAt: f.until, ...(by !== undefined ? { by } : {}) });
+    return this.card("freeze", { id: f.id, from: f.by, to: f.target, amount: 0 }, step, { settleAt: f.until, ...(by !== undefined ? { by: this.byName(by) } : {}) });
   }
 
   private applyFreeze(op: Extract<WalletOp, { op: "freeze" }>): WalletBookEvent[] {
