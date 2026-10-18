@@ -386,16 +386,19 @@ export function staffFeed(messages: readonly CockpitMessage[], channels: readonl
   return out.reverse()
 }
 
-/** The newest staff-room line after `afterSeq` — the story's reason for a
- *  refused press (it lands just after the press is sent). */
+/** The first staff-room line after `afterSeq` — the story's reason for a
+ *  refused press (it lands just after the press is sent). The first, not
+ *  the newest: a later `# hosts` line (another director, a scan note) is
+ *  never passed off as this press's reason. */
 export function staffReason(messages: readonly CockpitMessage[], channels: readonly ChannelSummary[], afterSeq: number): CockpitMessage | null {
   const staff = new Set(staffChannels(channels).map((c) => c.id))
+  let first: CockpitMessage | null = null
   for (let k = messages.length - 1; k >= 0; k--) {
     const m = messages[k]!
     if (m.seq <= afterSeq) break
-    if (staff.has(m.channel) && m.hidden !== true) return m
+    if (staff.has(m.channel) && m.hidden !== true) first = m
   }
-  return null
+  return first
 }
 
 /** The newest message seq this console holds (what a press's reason must follow). */

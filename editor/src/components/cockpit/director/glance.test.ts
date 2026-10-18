@@ -203,6 +203,11 @@ describe('the staff room', () => {
     expect(staffReason(messages, CHANNELS, 3)?.text).toBe('three')
     expect(staffReason(messages, CHANNELS, 5)).toBeNull()
   })
+
+  it('a refusal keeps its own reason, never a later # hosts line', () => {
+    const messages = [msg(1, 'room:hosts', 'old'), msg(2, 'room:hosts', '❌ The bay is not armed…'), msg(3, 'lobby', 'hi'), msg(4, 'room:hosts', '🕊 Not yet: …')]
+    expect(staffReason(messages, CHANNELS, 1)?.text).toBe('❌ The bay is not armed…')
+  })
 })
 
 describe('changedPaths', () => {
