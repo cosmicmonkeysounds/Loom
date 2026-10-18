@@ -274,4 +274,31 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     expect(press(sim, "resurrection").refused).toBe(false);
     expect(v(sim, "Night.resurrected")).toBe(true);
   });
+
+  it("O1-open-issues-02 (C3): G11's ask before the last award writes only `_` bookkeeping and # hosts; a second press within 30 s ends the show", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    press(sim, "patch_combo_a");
+    advance(sim, 11);
+    press(sim, "trabolta_recounts");
+    press(sim, "start_the_ceremony");
+    press(sim, "award_most_trusted", "g1");
+    const ask = sim.signal("resurrection");
+    notePress(sim, ask);
+    expect(v(sim, "Night.resurrected")).toBe(false);
+    expect(hosts(ask)[0]).toContain("Press G11 again within 30 seconds");
+    // Everything the ask did besides # hosts is a world write whose last
+    // segment starts with `_` — cue-sheet bookkeeping refusedPress skips (C3).
+    const rest = ask.slice(1).filter((e) => !(e.type === "broadcast" && e.scope === "channel(hosts)") && e.type !== "diagnostic");
+    expect(rest.length).toBeGreaterThan(0);
+    for (const e of rest) {
+      expect(e.type).toBe("worldSet");
+      expect((e as Extract<SimEvent, { type: "worldSet" }>).path.split(".").at(-1)!.startsWith("_")).toBe(true);
+    }
+    expect(v(sim, "Night._resurrect_ask_at")).toBeGreaterThan(0);
+    advance(sim, 10);
+    expect(press(sim, "resurrection").refused).toBe(false);
+    expect(v(sim, "Night.resurrected")).toBe(true);
+    expect(sheet(sim).last).toBe("resurrection");
+  });
 });

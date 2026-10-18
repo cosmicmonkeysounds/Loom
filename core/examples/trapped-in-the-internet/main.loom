@@ -4270,8 +4270,8 @@ when restore_the_lights:
 // piloting; the base cue clears the last award slide. A night with no
 // ceremony presses G1 first.
 when resurrection:
-  if Night.ended == true and Night.ceremony == true and Night.resurrected != true and Night.ceremony_done != true and (Night.resurrect_ask_at == 0 or Time.elapsed > Night.resurrect_ask_at + 30):
-    set Night.resurrect_ask_at = Time.elapsed + 1
+  if Night.ended == true and Night.ceremony == true and Night.resurrected != true and Night.ceremony_done != true and (Night._resurrect_ask_at == 0 or Time.elapsed > Night._resurrect_ask_at + 30):
+    set Night._resurrect_ask_at = Time.elapsed + 1
     broadcast "🎃 The last award isn't presented yet (G10, or G9 with no MS Paint). Press G11 again within 30 seconds to end the show anyway." to channel(hosts)
   else if Night.ended == true and Night.ceremony == true and Night.resurrected != true:
     set Night.resurrected = true
@@ -4403,7 +4403,7 @@ set Night.dance_at = 0
 set Night.takeover = false
 set Night.resurrected = false
 set Night.ceremony_done = false
-set Night.resurrect_ask_at = 0
+set Night._resurrect_ask_at = 0
 set Night.painting = false
 set Night.signatures = 0
 set Night.goals_todo = ""
