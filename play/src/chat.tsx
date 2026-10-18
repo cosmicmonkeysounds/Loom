@@ -173,6 +173,11 @@ export function GroupPill({ group }: { group: string | null }) {
   );
 }
 
+/** The header dot's word: a hollow dot never claims to be "live". */
+export function connLabel(connected: boolean): string {
+  return connected ? "live" : "reconnecting…";
+}
+
 export function ConnDot({ connected, label }: { connected: boolean; label: string }) {
   return (
     <span className="conn" title={connected ? "connected" : "reconnecting…"}>
@@ -923,6 +928,10 @@ export function MessageList({
   );
 }
 
+/** The longest line the server takes on `/api/guest/say` and
+ *  `/api/prime/say` (C5: longer is a 413) — the box stops there. */
+export const CHAT_TEXT_MAX = 2000;
+
 /**
  * A roomy auto-growing text box + Send button. Used in channels + thread
  * replies. Grows with what you type (up to a cap) so you can always see the
@@ -972,6 +981,7 @@ export function Composer({
         rows={1}
         value={text}
         placeholder={placeholder ?? "Say something…"}
+        maxLength={CHAT_TEXT_MAX}
         disabled={disabled}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {

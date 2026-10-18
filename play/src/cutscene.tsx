@@ -23,6 +23,7 @@ export function CutsceneStage({
   onPass,
   alert,
   onDismissAlert,
+  offline = false,
 }: {
   /** What has been said to this guest, oldest first (`personalStream`). */
   messages: ChatMessage[];
@@ -41,6 +42,9 @@ export function CutsceneStage({
   onPass: () => void;
   alert: Alert | null;
   onDismissAlert: () => void;
+  /** The stream has been down a while (`useOfflineFor`): say so, since the
+   *  stage has no header dot. */
+  offline?: boolean;
 }) {
   const banner: ReactNode = alert ? <AlertBanner text={alert.text} onDismiss={onDismissAlert} /> : null;
   return (
@@ -53,6 +57,11 @@ export function CutsceneStage({
           🎟️ My pass
         </button>
       </header>
+      {offline && (
+        <div className="cut-offline" role="status">
+          reconnecting…
+        </div>
+      )}
       <MessageList messages={messages} widgets={widgets} empty="Stand by." />
       <footer className="cut-foot">
         {decision && <DecisionTray decision={decision} />}

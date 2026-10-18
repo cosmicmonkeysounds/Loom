@@ -21,6 +21,7 @@ import {
   SpaceList,
   SessionEnded,
   WakeLockToggle,
+  connLabel,
   plural,
   useWide,
   type WidgetHook,
@@ -413,7 +414,7 @@ function BoothCard({ s, admin, onHelp, onSheet }: { s: PrimeSession; admin: bool
             <GroupPill group={s.view?.faction ?? null} />
             <span>{plural(s.view?.guests.length ?? 0, "guest")}</span>
             {approvalBadge(s.view?.wallet) !== null && <span className="wallet-badge">{approvalBadge(s.view?.wallet)}</span>}
-            <ConnDot connected={s.connected} label="live" />
+            <ConnDot connected={s.connected} label={connLabel(s.connected)} />
           </div>
         </div>
       </div>

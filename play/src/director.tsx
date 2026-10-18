@@ -224,12 +224,15 @@ export interface PollDeps {
   clearTimer: (t: unknown) => void;
   /** Subscribe to visibility changes; returns the unsubscribe. */
   onVisibility: (fn: () => void) => () => void;
+  /** Subscribe to the network coming back (`online`); returns the
+   *  unsubscribe. A poll backing off after an outage goes at once. */
+  onOnline?: (fn: () => void) => () => void;
 }
 
 /**
  * Poll `load` until stopped: never while the page is hidden (the poll
  * parks and resumes the moment it is visible again), backing off on
- * failures. `now()` polls at once (after a fire) — or, with a poll already
+ * failures — and straight away when the network comes back. `now()` polls at once (after a fire) — or, with a poll already
  * in flight (it may predate the fire), straight after that one lands.
  */
 export function startPoll(deps: PollDeps, every = POLL_MS): { stop(): void; now(): void } {
@@ -274,12 +277,19 @@ export function startPoll(deps: PollDeps, every = POLL_MS): { stop(): void; now(
     if (!deps.hidden() && timer === null && !inFlight) tick();
     else if (deps.hidden()) clear();
   });
+  const offOnline =
+    deps.onOnline?.(() => {
+      if (failures === 0 || inFlight) return; // healthy, or already asking
+      clear();
+      tick();
+    }) ?? (() => {});
   tick();
   return {
     stop() {
       stopped = true;
       clear();
       off();
+      offOnline();
     },
     now() {
       if (inFlight) {
@@ -303,6 +313,10 @@ function browserPollDeps(load: () => Promise<void>): PollDeps {
     onVisibility: (fn) => {
       document.addEventListener("visibilitychange", fn);
       return () => document.removeEventListener("visibilitychange", fn);
+    },
+    onOnline: (fn) => {
+      window.addEventListener("online", fn);
+      return () => window.removeEventListener("online", fn);
     },
   };
 }
