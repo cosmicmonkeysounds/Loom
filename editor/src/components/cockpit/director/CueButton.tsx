@@ -15,12 +15,12 @@ import { outOfTurn, useDirector } from './context'
 const NOT_ON_OFFER = 'Its `while:` is false right now — not suggested, still pressable'
 
 /** The parenthetical tags as muted chips. */
-export function TagChips({ tags }: { tags: string[] }) {
+export function TagChips({ tags, className }: { tags: string[]; className?: string }) {
   if (tags.length === 0) return null
   return (
     <>
       {tags.map((t) => (
-        <span key={t} className="shrink-0 rounded bg-zinc-800 px-1 text-[10px] text-zinc-400">
+        <span key={t} className={clsx('max-w-[12rem] shrink-0 truncate rounded bg-zinc-800 px-1 text-[10px] text-zinc-400', className)} title={t}>
           {t}
         </span>
       ))}
@@ -52,9 +52,12 @@ export function ArmedDetail({ row }: { row: CueRow }) {
   const warn = outOfTurn(row, d)
   return (
     <div className="mt-1 flex flex-col gap-1 rounded border border-amber-500/60 bg-amber-500/10 px-2 py-1 text-xs" data-testid={`cue-armed-${row.id}`}>
-      <div className="text-amber-300">
-        {a.subject !== null ? `Fire ${row.code ?? ''} ${row.title} → ${nameOf(a.subject)}${a.value ? ` (${a.value})` : ''}` : 'Fire ▶ again'} · Esc
-      </div>
+      {a.subject !== null && (
+        <div className="text-amber-300">
+          Fire {row.code ?? ''} {row.title} → {nameOf(a.subject)}
+          {a.value ? ` (${a.value})` : ''} · Esc
+        </div>
+      )}
       <ArmBar at={a.at} />
       {warn !== null && <div className="text-amber-300">{warn}</div>}
       {row.description !== null && <div className="whitespace-pre-wrap text-zinc-300">{row.description}</div>}
@@ -178,13 +181,13 @@ export function CueButton({
 
   if (variant === 'chip') {
     return (
-      <span className="inline-flex" data-cue-nav={row.id} data-next={row.next ? 'true' : undefined}>
+      <span className="inline-flex min-w-0 max-w-full" data-cue-nav={row.id} data-next={row.next ? 'true' : undefined}>
         <button
           onClick={() => arm.tap(row)}
           disabled={busy}
           title={row.description !== null ? `${tip}\n\n${row.description}` : tip}
           className={clsx(
-            'flex max-w-[18rem] items-center gap-1 rounded-md border px-2 py-1 text-left text-xs disabled:cursor-wait',
+            'flex max-w-full items-center gap-1 rounded-md border px-2 py-1 text-left text-xs disabled:cursor-wait @md:max-w-[18rem]',
             tone,
             !row.live && !armed && 'opacity-50',
             cursor && 'ring-1 ring-indigo-400',
@@ -195,7 +198,7 @@ export function CueButton({
           {row.code !== null && <span className="shrink-0 font-mono text-[10px] text-zinc-500">{row.code}</span>}
           <span className="min-w-0 truncate">{title}</span>
           {row.subject && <span className="shrink-0" title="names a person">👤</span>}
-          <TagChips tags={tags} />
+          <TagChips tags={tags} className="hidden @md:inline-block" />
           {row.fired && <span className="shrink-0 text-emerald-500">✓</span>}
           {armed && <span className="shrink-0 font-semibold text-amber-300">Fire ▶</span>}
         </button>
@@ -221,11 +224,11 @@ export function CueButton({
         >
           <span className="w-6 shrink-0 text-right font-mono text-[11px] text-zinc-600">{row.n}</span>
           {actCode !== undefined && actCode !== null && <span className="shrink-0 font-mono text-[10px] text-zinc-500">{actCode}</span>}
-          <span className="w-20 shrink-0 truncate font-mono text-xs font-semibold text-zinc-200">{row.code ?? ''}</span>
+          <span className="w-12 shrink-0 truncate font-mono text-xs font-semibold text-zinc-200 @xl:w-20" title={row.code ?? undefined}>{row.code ?? ''}</span>
           <span className={clsx('min-w-0 flex-1 truncate', row.fired && !row.last && !row.next && 'text-zinc-500')}>{title}</span>
           {row.subject && <span className="shrink-0" title="names a person">👤</span>}
-          <TagChips tags={tags} />
-          {!row.live && <span className="shrink-0 text-[10px] text-zinc-500" title={NOT_ON_OFFER}>·not on offer·</span>}
+          <TagChips tags={tags} className="hidden @xl:inline-block" />
+          {!row.live && <span className="hidden shrink-0 text-[10px] text-zinc-500 @xl:inline" title={NOT_ON_OFFER}>·not on offer·</span>}
           {armed && (
             <span className="shrink-0 text-[11px] font-semibold text-amber-300">
               {arm.armed?.subject ? `Fire → ${nameOf(arm.armed.subject)}` : 'Fire ▶ again · Esc'}

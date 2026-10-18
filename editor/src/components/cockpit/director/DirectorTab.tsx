@@ -235,8 +235,8 @@ function DirectorPage() {
               <DirectorTools defaultOpen={!hasCues} />
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 @4xl:grid-cols-[minmax(0,1fr)_300px] @6xl:grid-cols-[minmax(0,1fr)_340px]">
-              <div className="flex min-w-0 max-w-3xl flex-col gap-4">
+            <div className="grid grid-cols-1 gap-3 @4xl:grid-cols-[minmax(0,1fr)_300px] @6xl:grid-cols-[minmax(0,56rem)_340px]">
+              <div className="flex min-w-0 flex-col gap-4">
                 {hasCues && <NowCard flash={flash} />}
                 {hasCues && query.trim() === '' && <OnHand />}
                 {hasCues && <RunningOrder ref={filterRef} query={query} setQuery={setQuery} toggled={toggled} setToggled={setToggled} all={all} setAll={setAll} />}

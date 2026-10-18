@@ -34,8 +34,15 @@ export function OnHand() {
   const named = d.acts.some((a) => a.title !== null)
   return (
     <section className="flex flex-col gap-2" data-testid="director-onhand">
-      <div className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-        On hand{focus !== undefined && named ? ` · ${focus.code ?? ''}${focus.code !== null && focus.title !== null ? ' ' : ''}${focus.title ?? ''}` : ''}
+      <div className="truncate text-xs font-semibold uppercase tracking-wide text-zinc-400">
+        On hand
+        {focus !== undefined && named && (
+          <span className="font-normal normal-case tracking-normal text-zinc-500">
+            {' · '}
+            {focus.code !== null && <span className="font-mono">{focus.code} </span>}
+            {focus.title ?? ''}
+          </span>
+        )}
       </div>
       {own.length > 0 && <ChipLine rows={own} />}
       {fromPrev.length > 0 && (

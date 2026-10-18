@@ -11,6 +11,7 @@ import {
   needsYou,
   peopleGlance,
   recentGlobals,
+  refusalReason,
   staffFeed,
   staffReason,
   watchRows,
@@ -72,6 +73,12 @@ describe('needsYou', () => {
     // auto judging asks for nobody.
     const later = needsYou({ refused: { cue: 'x', at: 0, seq: 0 }, now: 61_000, messages: [], channels: CHANNELS, world: [], facts: { ...facts, mode: 'auto' } as FactsView, wallet: null, cast, doorsOpen: false })
     expect(later.map((i) => i.kind)).toEqual([NeedKind.NoWorker])
+  })
+
+  it('a refusal waits 3 s for its reason, then says none came', () => {
+    expect(refusalReason(null, CHANNELS, 1000)).toBe('waiting for the staff room…')
+    expect(refusalReason(null, CHANNELS, 3000)).toBe('the story gave no reason')
+    expect(refusalReason(msg(9, 'room:hosts', 'why'), CHANNELS, 10)).toBe('why')
   })
 
   it('a refusal with no staff room says the story gives no reason', () => {

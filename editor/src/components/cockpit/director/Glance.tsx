@@ -60,7 +60,7 @@ function Label({ children }: { children: ReactNode }) {
 
 function Section({ title, link, testid, children }: { title: string; link?: { label: string; go: () => void }; testid: string; children: ReactNode }) {
   return (
-    <section className="flex flex-col gap-1 border-b border-zinc-800 px-3 py-2 last:border-b-0" data-testid={testid}>
+    <section className="flex min-w-0 flex-col gap-1 border-b border-zinc-800 px-3 py-2 last:border-b-0" data-testid={testid}>
       <div className="flex items-baseline gap-2">
         <Label>{title}</Label>
         {link !== undefined && (
@@ -111,7 +111,7 @@ function useNeeds() {
   const wallet = useCockpit((s) => s.wallet)
   const cast = useCockpit((s) => s.cast)
   const doorsOpen = useCockpit((s) => s.phase === CockpitPhase.Open)
-  const now = useNow(arm.refused !== null, 5000)
+  const now = useNow(arm.refused !== null, 1000)
   return needsYou({ refused: arm.refused, now, messages, channels, world, facts, wallet, cast, doorsOpen })
 }
 
@@ -465,7 +465,10 @@ function StaffRoom({ lines }: { lines: number }) {
 
 export function GlanceColumn({ watching }: { watching: boolean }) {
   return (
-    <div className="flex flex-col rounded-xl border border-zinc-800 empty:hidden" data-testid="director-glance">
+    <div
+      className={clsx('flex flex-col rounded-xl border border-zinc-800 empty:hidden', watching && '@4xl:grid @4xl:grid-cols-2 @6xl:grid-cols-3')}
+      data-testid="director-glance"
+    >
       <NeedsYou />
       <WatchList />
       <People />

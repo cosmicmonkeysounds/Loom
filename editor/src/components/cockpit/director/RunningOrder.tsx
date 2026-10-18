@@ -188,20 +188,22 @@ export const RunningOrder = forwardRef<HTMLInputElement, RunningOrderProps>(func
                 tabIndex={-1}
                 onClick={() => setToggled((t) => ({ ...t, [a.key]: !open }))}
                 className={clsx(
-                  'flex cursor-pointer flex-wrap items-center gap-2 rounded px-1 py-0.5 text-xs font-semibold uppercase tracking-wide hover:bg-zinc-900/60',
+                  'flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs font-semibold uppercase tracking-wide hover:bg-zinc-900/60',
                   a.state === 'past' || a.state === 'skipped' ? 'text-zinc-500' : 'text-zinc-400',
                 )}
                 aria-expanded={open}
               >
-                <span className="w-3 text-zinc-500">{open ? '▾' : '▸'}</span>
-                {a.state === 'focus' && <span className="text-indigo-300">●</span>}
-                {a.state === 'past' && <span className="text-emerald-500">✓</span>}
-                <span className="min-w-0 truncate normal-case tracking-normal">
+                <span className="w-3 shrink-0 text-zinc-500">{open ? '▾' : '▸'}</span>
+                {a.state === 'focus' && <span className="shrink-0 text-indigo-300">●</span>}
+                {a.state === 'past' && <span className="shrink-0 text-emerald-500">✓</span>}
+                <span className="min-w-0 flex-[2] truncate normal-case tracking-normal" title={a.title ?? undefined}>
                   {a.code !== null && <span className="font-mono">{a.code} · </span>}
                   {a.title ?? (a.state === 'anytime' ? '⚡ Anytime' : 'Before the first act')}
                 </span>
-                {a.starting && <span className="rounded bg-indigo-500/20 px-1 text-[10px] normal-case tracking-normal text-indigo-300">starting</span>}
-                <span className="font-normal normal-case tracking-normal text-zinc-500">{actSummary(a)}</span>
+                {a.starting && <span className="shrink-0 rounded bg-indigo-500/20 px-1 text-[10px] normal-case tracking-normal text-indigo-300">starting</span>}
+                <span className="min-w-0 flex-1 truncate font-normal normal-case tracking-normal text-zinc-500" title={actSummary(a)}>
+                  {actSummary(a)}
+                </span>
                 {a.key === awardKey && <AwardTools />}
               </div>
               {a.key === awardKey && <RecapNote />}

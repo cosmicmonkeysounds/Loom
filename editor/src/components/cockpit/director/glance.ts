@@ -439,6 +439,16 @@ export interface RefusedPress {
 /** How long a refused press stays under Needs you. */
 export const REFUSED_NEEDS_MS = 60_000
 
+/** How long a refusal waits for its staff-room line before saying none came. */
+export const REASON_WAIT_MS = 3000
+
+/** The second line of a refusal: the staff room's reason, or why there is none. */
+export function refusalReason(why: CockpitMessage | null, channels: readonly ChannelSummary[], age: number): string {
+  if (why !== null) return why.text
+  if (staffChannels(channels).length === 0) return 'the story gives no reason here'
+  return age < REASON_WAIT_MS ? 'waiting for the staff room…' : 'the story gave no reason'
+}
+
 export interface NeedsInput {
   refused: RefusedPress | null
   now: number
@@ -462,7 +472,7 @@ export function needsYou(input: NeedsInput): NeedItem[] {
       kind: NeedKind.Refused,
       key: `refused:${refused.at}`,
       text: `✕ ${refused.cue} not taken`,
-      detail: why !== null ? why.text : staffChannels(input.channels).length === 0 ? 'the story gives no reason here' : 'waiting for the staff room…',
+      detail: refusalReason(why, input.channels, now - refused.at),
       link: room !== undefined ? { kind: 'tab', tab: CockpitTab.Chat, channel: room } : { kind: 'tab', tab: CockpitTab.Log },
     })
   }

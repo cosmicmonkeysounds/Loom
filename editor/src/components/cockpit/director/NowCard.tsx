@@ -16,7 +16,7 @@ import { DirectorMode } from './director-keys'
 import { pressEffects } from './press-effects'
 import { formatLeft, useCountdowns, useNow, type LiveCountdown } from './clock'
 import { PressKind } from './useArmed'
-import { staffChannels, staffReason } from './glance'
+import { refusalReason, staffReason } from './glance'
 
 /** The taken banner's life, the refusal's. */
 const TAKEN_MS = 5000
@@ -66,18 +66,17 @@ function ResultBanner() {
   }
   if (r.kind === PressKind.Failed) {
     return (
-      <div className="rounded border border-red-600/60 bg-red-500/10 px-2 py-1 text-xs text-red-300" data-testid="director-result">
+      <div className="rounded border border-red-600/60 bg-red-500/10 px-2 py-1 text-xs text-red-400" data-testid="director-result">
         ✕ Failed: {r.message}
       </div>
     )
   }
   const why = staffReason(messages, channels, r.seq)
-  const noStaff = staffChannels(channels).length === 0
   return (
-    <div className="rounded border border-red-600/60 bg-red-500/10 px-2 py-1 text-xs text-red-300" data-testid="director-result">
+    <div className="rounded border border-red-600/60 bg-red-500/10 px-2 py-1 text-xs text-red-400" data-testid="director-result">
       ✕ Not taken · {r.cue}
       <div className="text-zinc-300">
-        {why !== null ? `${why.title ?? 'staff room'}: “${why.text}”` : noStaff ? 'the story gives no reason here' : 'waiting for the staff room…'}
+        {why !== null ? `${why.title ?? 'staff room'}: “${why.text}”` : refusalReason(null, channels, age)}
       </div>
     </div>
   )
