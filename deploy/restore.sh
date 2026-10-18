@@ -15,6 +15,11 @@
 # guests.json, the first guest token still reads its own view
 # (GET /e/<id>/api/state?role=guest with that token → 200 + their id).
 #
+# A drill runs with Web Push OFF: the restored push.json still holds the
+# real phones' subscriptions, and the drill's own timers (an agent's hold
+# line, a story timer) would otherwise push to them with the live .env's
+# VAPID keys. --live keeps push.
+#
 # Tear a drill down with: docker compose -p loom-drill down -v
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -68,7 +73,7 @@ main() {
       --check-only) docheck=2 ;;
       --live) live=1 ;;
       --yes|-y) yes=1 ;;
-      -h|--help) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; return ;;
+      -h|--help) sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'; return ;;
       *) die "unknown argument $1" ;;
     esac
     shift
@@ -83,6 +88,12 @@ main() {
   [ -f "$st" ] || die "--state file not found: ${st:-(none)}"
   if [ "$project" = "$(live_project)" ] && [ "$live" != 1 ]; then
     die "'$project' is the live stack — restoring wipes it. Use a drill project (loom-drill), or --live on the standby."
+  fi
+  if [ "$live" != 1 ]; then
+    # The shell beats .env in compose's interpolation, so a blank pair here
+    # turns push off for every compose call below.
+    export LOOM_VAPID_PUBLIC_KEY= LOOM_VAPID_PRIVATE_KEY=
+    say "drill: Web Push off (VAPID blanked) — the backup's phones hear nothing"
   fi
 
   # Integrity first: the sha file next to the pair, then gzip.
@@ -114,7 +125,8 @@ main() {
   say "state restored"
 
   compose -p "$project" up -d --no-build db loom
-  wait_healthy "$project" "${LOOM_HEALTH_SECS:-180}" || die "loom did not come up healthy — docker compose -p $project logs loom"
+  wait_healthy "$project" "${LOOM_HEALTH_SECS:-180}" \
+    || die "loom did not come up healthy (/api/health: $(health_body "$project")) — docker compose -p $project logs loom"
   say "project '$project' is up ✔"
   if [ "$docheck" = 1 ]; then
     check "$project" || die "old guest tokens do NOT read their views"

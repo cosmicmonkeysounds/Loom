@@ -17,6 +17,12 @@
 #   LOOM_LOCAL_BACKUPS  where copies land (default ~/LoomBackups)
 #   LOOM_SHOW_WINDOW    "19-03" (start-end hour, end exclusive) or "always"
 #   LOOM_LOCAL_KEEP_DAYS  prune local copies older than this (default 10)
+#   LOOM_NOTIFY         1 = a macOS banner on a failed copy (default: none)
+#   LOOM_NOTIFY_SOUND   a sound for that banner, e.g. Basso (default: silent)
+# The house Mac is also the TV computer (the kiosk view=tv + the MOTU
+# speakers), so a failure says nothing out loud by default: it is logged,
+# and `status` shows STALE — the tech op checks it each act (OP-21). A dead
+# VPS pages the crew through the uptime check, not through this job.
 # ssh must work non-interactively: a key in the macOS keychain
 # (`ssh-add --apple-use-keychain ~/.ssh/id_ed25519`) or a passphrase-less one.
 set -uo pipefail
@@ -33,6 +39,11 @@ PLIST="${LOOM_LAUNCH_AGENTS:-$HOME/Library/LaunchAgents}/$LABEL.plist"
 LOGDIR="${LOOM_LOG_DIR:-$HOME/Library/Logs/loom}"
 LOG="$LOGDIR/showbackup.log"
 SSH="${SSH:-ssh}"; SCP="${SCP:-scp}"; LAUNCHCTL="${LAUNCHCTL:-launchctl}"
+# ConnectTimeout bounds only the connect. A path that dies under an open
+# session (WAN → LTE failover: a new public IP, no RST) is noticed by the
+# keepalives within ~60 s, so the run fails and the next one can start —
+# launchd never starts a job that is still running.
+SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
 
 log() { mkdir -p "$LOGDIR"; printf '%s %s\n' "$(date '+%F %T')" "$*" | tee -a "$LOG"; }
 
@@ -48,22 +59,27 @@ in_window() {
 sha_check() { if command -v sha256sum >/dev/null; then sha256sum -c --quiet "$@"; else shasum -a 256 -c --quiet "$@"; fi; }
 mtime() { stat -f %m "$1" 2>/dev/null || stat -c %Y "$1"; }
 
+# notify_fail MSG — a banner only when asked for (LOOM_NOTIFY=1), with a
+# sound only when one is named (LOOM_NOTIFY_SOUND); see the header.
 notify_fail() {
   [ -n "${LOOM_NO_NOTIFY:-}" ] && return 0
-  command -v osascript >/dev/null && osascript -e "display notification \"$1\" with title \"Loom backup FAILED\" sound name \"Basso\"" >/dev/null 2>&1
+  [ "${LOOM_NOTIFY:-}" = 1 ] || return 0
+  local sound=""
+  [ -n "${LOOM_NOTIFY_SOUND:-}" ] && sound=" sound name \"$LOOM_NOTIFY_SOUND\""
+  command -v osascript >/dev/null && osascript -e "display notification \"$1\" with title \"Loom backup FAILED\"$sound" >/dev/null 2>&1
   return 0
 }
 
 once() {
   mkdir -p "$LOOM_LOCAL_BACKUPS"
   local out line db st sha
-  out="$("$SSH" -o BatchMode=yes -o ConnectTimeout=15 "$LOOM_VPS" \
+  out="$("$SSH" "${SSH_OPTS[@]}" "$LOOM_VPS" \
     "cd $LOOM_VPS_DIR && deploy/backup.sh --label show" 2>&1)" \
     || { log "FAIL backup on $LOOM_VPS: $(echo "$out" | tail -n 3 | tr '\n' ' ')"; notify_fail "VPS backup failed"; return 1; }
   line="$(echo "$out" | grep '^BACKUP ' | tail -n1)"
   [ -n "$line" ] || { log "FAIL no BACKUP line from the VPS: $(echo "$out" | tail -n 2 | tr '\n' ' ')"; notify_fail "no backup line"; return 1; }
   read -r _ db st sha <<<"$line"
-  "$SCP" -q -o BatchMode=yes -o ConnectTimeout=15 "$LOOM_VPS:$db" "$LOOM_VPS:$st" "$LOOM_VPS:$sha" "$LOOM_LOCAL_BACKUPS/" \
+  "$SCP" -q "${SSH_OPTS[@]}" "$LOOM_VPS:$db" "$LOOM_VPS:$st" "$LOOM_VPS:$sha" "$LOOM_LOCAL_BACKUPS/" \
     || { log "FAIL copy from $LOOM_VPS"; notify_fail "copy off the VPS failed"; return 1; }
   ( cd "$LOOM_LOCAL_BACKUPS" && sha_check "$(basename "$sha")" ) \
     || { log "FAIL checksum on $(basename "$sha")"; notify_fail "checksum mismatch"; return 1; }
@@ -94,6 +110,15 @@ status() {
   [ -f "$LOG" ] && { echo "-- last log lines"; tail -n 5 "$LOG"; }
 }
 
+# The notifier knobs, carried into the plist only when they are set.
+notify_keys() {
+  local k
+  for k in LOOM_NOTIFY LOOM_NOTIFY_SOUND; do
+    [ -n "${!k:-}" ] && printf '\n    <key>%s</key><string>%s</string>' "$k" "${!k}"
+  done
+  return 0
+}
+
 install() {
   mkdir -p "$(dirname "$PLIST")" "$LOGDIR"
   cat > "$PLIST" <<EOF
@@ -112,7 +137,7 @@ install() {
     <key>LOOM_VPS</key><string>$LOOM_VPS</string>
     <key>LOOM_VPS_DIR</key><string>$LOOM_VPS_DIR</string>
     <key>LOOM_LOCAL_BACKUPS</key><string>$LOOM_LOCAL_BACKUPS</string>
-    <key>LOOM_SHOW_WINDOW</key><string>$LOOM_SHOW_WINDOW</string>
+    <key>LOOM_SHOW_WINDOW</key><string>$LOOM_SHOW_WINDOW</string>$(notify_keys)
   </dict>
   <key>StandardOutPath</key><string>$LOGDIR/showbackup.launchd.log</string>
   <key>StandardErrorPath</key><string>$LOGDIR/showbackup.launchd.log</string>
@@ -136,7 +161,7 @@ main() {
     status) status ;;
     install) install ;;
     uninstall) uninstall ;;
-    -h|--help|help) sed -n '2,22p' "$SELF" | sed 's/^# \{0,1\}//' ;;
+    -h|--help|help) sed -n '2,27p' "$SELF" | sed 's/^# \{0,1\}//' ;;
     *) echo "unknown command $1" >&2; return 64 ;;
   esac
 }

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# A stand-in `curl` for scripts/ops/test/run.sh: answers `-w '%{http_code}'`
+# with $FAKE_PUBLIC_HEALTH for …/api/health and $FAKE_PUBLIC_ROOT for the
+# rest (both default 200); every URL is appended to $FAKE/curl.
+set -u
+url="${!#}"
+echo "$url" >> "$FAKE/curl"
+case "$url" in
+  */api/health) code="${FAKE_PUBLIC_HEALTH:-200}" ;;
+  *) code="${FAKE_PUBLIC_ROOT:-200}" ;;
+esac
+printf '%s' "$code"
+[ "$code" = 000 ] && exit 7
+exit 0

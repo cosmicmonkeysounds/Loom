@@ -3,6 +3,8 @@
 # $FAKE/images; every call is appended to $FAKE/calls.
 set -u
 echo "$* LOOM_TAG=${LOOM_TAG:-}" >> "$FAKE/calls"
+# What compose would interpolate the push keys from (set-but-blank = off).
+echo "$* VAPID=${LOOM_VAPID_PUBLIC_KEY-unset}/${LOOM_VAPID_PRIVATE_KEY-unset}" >> "$FAKE/env"
 all="$*"
 case "$all" in
   *"image inspect "*) [ -f "$FAKE/images/${!#}" ] ;;
@@ -21,6 +23,7 @@ case "$all" in
     excl=""; case "$all" in *"--exclude=./pictures"*) excl="--exclude=./pictures" ;; esac
     tar cf - -C "$FAKE/data" $excl . | gzip -c ;;
   compose*"exec -T db pg_isready"*) exit 0 ;;
+  compose*"exec -T loom node -e"*"/api/health"*) echo "${FAKE_HEALTH_BODY:-200 {\"ok\":true}}" ;;
   compose*"exec -T db psql"*) cat > "$FAKE/restored.sql" ;;
   compose*" run --rm --no-deps -T --entrypoint sh loom"*) cat > "$FAKE/restored.tgz" ;;
   compose*) : ;;

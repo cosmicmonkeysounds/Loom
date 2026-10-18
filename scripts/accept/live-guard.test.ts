@@ -21,3 +21,9 @@ test("a rehearsal passes; a live roster refuses unless overridden", () => {
   assert.match(live.ok ? "" : live.reason, /1 real guest.*Winamp.*--i-know-this-is-live/u);
   assert.equal(judge([phone], true, "load-test").ok, true);
 });
+
+test("the decisions are core/scripts/live-guard.ts's, shared with sync-example", async () => {
+  const core = await import("../../core/scripts/live-guard.ts");
+  assert.equal(judge, core.judge);
+  assert.equal(realGuests, core.realGuests);
+});

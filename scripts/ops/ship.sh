@@ -50,8 +50,17 @@ do_() { if [ "$dry" = 1 ]; then echo "[dry-run] $*"; else "$@"; fi; }
 # files are also protected from --delete, so the VPS's own .env and state
 # stay put. (The pre-deploy stamp needs a clean tree, so what is left is
 # exactly what git tracks.)
+# The VPS checkout is also the operator's working directory, so the `P`
+# (protect) rules keep what an operator leaves at its top from --delete
+# without stopping a tracked file of that name from shipping (.env.example
+# still goes): dated .env backups, the ./show-map bind mount, a compose
+# override, hand-made dumps (`loom-db-*.sql`, `loom-state-*.tgz`), *.bak.
 echo "── shipping $(git rev-parse --short HEAD)${tag:+ as $tag} → $LOOM_VPS:~/$LOOM_VPS_DIR"
 do_ "$RSYNC" -az --delete --filter=':- .gitignore' \
+  --filter='P /.env*' --filter='P /show-map/' \
+  --filter='P /docker-compose.override.yml' --filter='P /docker-compose.override.yaml' \
+  --filter='P /loom-db-*' --filter='P /loom-state-*' --filter='P /*.sql*' --filter='P /*.tgz' \
+  --filter='P /*.bak*' \
   --exclude .git --exclude node_modules --exclude dist --exclude target \
   --exclude .env --exclude .loom-state --exclude .venv \
   --exclude '*.local.yaml' --exclude secrets.h --exclude reinstall/vr/build \
