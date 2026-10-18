@@ -298,6 +298,7 @@ export const useSim = create<SimState>((set, get) => {
     activeChannel: 'lobby',
     compiledAt: -1,
     worldFilter: '',
+    ownPress: null,
 
     setTab: (activeTab) => set({ activeTab }),
     setWorldFilter: (worldFilter) => set({ worldFilter }),
@@ -472,6 +473,7 @@ export const useSim = create<SimState>((set, get) => {
     fireBeat: async (name, subject) => void run((s) => void s.fireBeat(name, subject)),
     fireSignal: async (name, subject, args, actor) => {
       if (sim === null) return { error: 'no run' }
+      set({ ownPress: { name, at: Date.now() } })
       // The press is noted (so the cue sheet judges it by its own events)
       // and judged the way the server's `/api/mod/signal` answers it.
       let landed = false

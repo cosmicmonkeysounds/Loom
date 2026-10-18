@@ -312,6 +312,8 @@ describe('local run store', () => {
     expect(st().watch.map((w) => w.label)).toEqual(['Step'])
     expect(st().storyClock).not.toBeNull()
     expect(st().channels.find((c) => c.id.includes('hosts'))?.staff).toBe(true)
+    // Every press from this console is remembered as its own.
+    expect(st().ownPress?.name).toBe('last_call')
   })
 
   it('grants a codex entry and steps a quest (S4), firing the story rules like the server routes', async () => {

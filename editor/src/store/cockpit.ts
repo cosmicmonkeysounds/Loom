@@ -269,6 +269,15 @@ export interface FireResult {
   error?: string
 }
 
+/** This console's newest press of a named event, from any surface (the
+ *  Director, the header QuickFire, Tools, the Inspector, the Mind page):
+ *  the event's name and the wall ms it was sent. The Director tells its
+ *  own LAST from another director's by it. */
+export interface OwnPress {
+  name: string
+  at: number
+}
+
 export interface CastSummary {
   id: string
   faction: string | null
@@ -431,6 +440,8 @@ export interface CockpitState {
   /** The World page's variable filter — shared so the Director's glance
    *  can open World filtered to one watched path. */
   worldFilter: string
+  /** This console's newest `fireSignal` (null before its first). */
+  ownPress: OwnPress | null
   ledgerLen: number
   messages: CockpitMessage[]
   error: string | null
@@ -621,6 +632,7 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   watchDeclared: false,
   countdowns: [],
   worldFilter: '',
+  ownPress: null,
   ledgerLen: 0,
   messages: [],
   error: null,

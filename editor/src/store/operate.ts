@@ -614,6 +614,7 @@ export const useOperate = create<OperateState>((set, get) => {
     activeChannel: 'lobby',
     selection: null,
     worldFilter: '',
+    ownPress: null,
 
     attach: (projectId) => {
       if (get().projectId === projectId) return
@@ -782,6 +783,7 @@ export const useOperate = create<OperateState>((set, get) => {
     fireSignal: async (name, subject, args, actor) => {
       const ev = get().event
       if (!ev) return { error: 'no run' }
+      set({ ownPress: { name, at: Date.now() } })
       try {
         return await modApi.fireSignal(ev.id, name, subject, args, actor)
       } catch (e) {
