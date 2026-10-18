@@ -62,3 +62,13 @@ html[data-theme="light"] .hover\:text-zinc-200:hover { color: #3f3f46 !important
 html[data-theme="light"] .text-emerald-100\/90 { color: #14532d !important; }
 html[data-theme="light"] .text-amber-200\/90 { color: #92400e !important; }
 html[data-theme="light"] .text-blue-200 { color: #1d4ed8 !important; }
+
+/* Filled buttons keep white text, and the bright accent texts darken, on
+   the light theme (the `.text-white` swap above is for the dark chrome's
+   headings, not for a label on an indigo / amber / emerald / red fill).
+   Scoped to the filled-button class pairs and five accent texts only. */
+html[data-theme="light"] :is(.bg-indigo-600,.bg-indigo-500,.bg-amber-600,.bg-amber-500,.bg-emerald-600,.bg-red-600).text-white { color:#fff !important; }
+html[data-theme="light"] .text-indigo-300 { color:#4338ca !important; }
+html[data-theme="light"] .text-amber-300  { color:#b45309 !important; }
+html[data-theme="light"] .text-emerald-300{ color:#047857 !important; }
+html[data-theme="light"] .text-sky-300    { color:#0369a1 !important; }
