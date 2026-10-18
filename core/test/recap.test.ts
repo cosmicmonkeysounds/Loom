@@ -177,6 +177,28 @@ describe("K-26 recap", () => {
     expect([...liesByPerson(sim).entries()].sort()).toEqual([["g1", 0], ["g2", 1]]);
   });
 
+  it("a round-3 DM lie counts only once truth.txt settles it: a server-room ending leaves the truths whole (T2-facts-05)", () => {
+    const sim = Sim.fromSources("ROLE Program\n\nCHARACTER Kernel\n  lies_accepted: int = 0\n\nCHARACTER Night\n  r3_closed: bool = false\n");
+    sim.createPerson("g1", "Calculator");
+    sim.createPerson("g2", "VLC");
+    sim.setVar("g1.truths_accepted", "2"); // H1 + H2, settled
+    // 🤖 F1 "Hello world" @100 in auto mode: judged a lie at filing.
+    sim.setVar("g1.lie_q7", "true");
+    sim.setVar("Kernel.lies_accepted", "1");
+    expect(liesByPerson(sim).get("g1")).toBe(1); // the counter's own credit
+    let r = computeRecap(sim);
+    const row = (k: keyof typeof r.lists) => r.lists[k].find((x) => x.id === "g1")!.value;
+    expect([row("truths"), row("lies")]).toEqual([2, 0]);
+    expect(r.totals).toMatchObject({ liesAccepted: 0, truthsAccepted: 2 });
+    // The same night through 📄 truth.txt: the bluff is settled into
+    // truths_accepted and is an accepted lie.
+    sim.setVar("Night.r3_closed", "true");
+    sim.setVar("g1.truths_accepted", "3");
+    r = computeRecap(sim);
+    expect([row("truths"), row("lies")]).toEqual([2, 1]);
+    expect(r.totals).toMatchObject({ liesAccepted: 1, truthsAccepted: 2 });
+  });
+
   it("reads the show's live state into ranked lists + a paste-ready block", { timeout: SLOW }, () => {
     const sim = night();
     // Both lie paths credit the program the chain was about, never the truth-teller.

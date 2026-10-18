@@ -15,7 +15,11 @@
 //!   the log is credited to the person the same chain was about — the
 //!   nearest preceding person-headed `worldSet` or `signal` subject (both
 //!   lie hooks write the program's own var just before the Kernel's). A
-//!   fall (a host corrects a mis-tapped lie) comes off the same way.
+//!   fall (a host corrects a mis-tapped lie) comes off the same way (B11).
+//!   A round-3 DM lie (`lie_q7` / `lie_q8`) counts only once 📄 truth.txt
+//!   settles it (`Night.r3_closed`): in auto mode the counter rises at
+//!   filing, but a server-room ending (Combo A / B, 🕊) never settles round
+//!   3, so that bluff was never accepted and stays out of both lists.
 //! - **internetVisits** — the `internet_visits` var, else the count of
 //!   `captured` events.
 //! - **codex** — entries held. **quests** — quests done. **truthcoin** —
@@ -42,6 +46,10 @@ import type { DuckRun } from "./spatial.ts";
 
 /** The story's lie counter (cast/props.loom: `Kernel.lies_accepted`). */
 export const LIE_COUNTER = "Kernel.lies_accepted";
+/** A program's round-3 lie flags (main.loom `verdict_q7` / `verdict_q8`). */
+export const UNSETTLED_LIE_VARS = ["lie_q7", "lie_q8"] as const;
+/** Set at 📄 truth.txt, when round 3 settles. */
+export const ROUND3_CLOSED = "Night.r3_closed";
 
 export interface RecapRow {
   id: string;
@@ -259,6 +267,12 @@ export function duckBoard(sim: Sim, runs: readonly DuckRun[], personas: RecapOpt
   return out;
 }
 
+/** Round-3 lies the counter already holds that truth.txt has not settled. */
+function unsettledLies(sim: Sim, person: string): number {
+  if (display(sim.world.get(ROUND3_CLOSED)) === "true") return 0;
+  return UNSETTLED_LIE_VARS.filter((v) => display(sim.world.get(`${person}.${v}`)) === "true").length;
+}
+
 export function computeRecap(sim: Sim, opts: RecapOptions = {}): Recap {
   const personas = opts.personas ?? new Set<string>();
   const lies = liesByPerson(sim);
@@ -274,7 +288,7 @@ export function computeRecap(sim: Sim, opts: RecapOptions = {}): Recap {
   const chessGames: RecapChessRow[] = [];
   for (const p of sim.persons.values()) {
     const base = { id: p.id, name: p.name, persona: personas.has(p.id) };
-    const lied = lies.get(p.id) ?? 0;
+    const lied = Math.max(0, (lies.get(p.id) ?? 0) - unsettledLies(sim, p.id));
     const accepted = num(sim, `${p.id}.truths_accepted`) ?? 0;
     const visits = num(sim, `${p.id}.internet_visits`) ?? captures.get(p.id) ?? 0;
     const codex = sim.codexFor(p.id).length;
