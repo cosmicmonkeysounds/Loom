@@ -453,7 +453,9 @@ export const ARMED_TIMEOUT_MS = 4_000;
  * is absent / not a number; `NIGHT_ENDED` once the night has ended
  * (`ENDED_PATH` true: the story gives nothing for a win then, while an armed
  * var like `Night.step` stays past its gate — so no badge and no "the code
- * is in your Codex", whatever an earlier read said).
+ * is in your Codex", whatever an earlier read said) or the verdict is in
+ * (`KING_ARMED_PATH` 0 with `VERDICT_PATH` true). A story's
+ * `KING_ARMED_PATH` overrides `path` / `min`.
  */
 export async function fetchArmed(config: ReinstallConfig, path: string, min: number, fetcher: typeof fetch = fetch, timeoutMs: number = ARMED_TIMEOUT_MS): Promise<ArmedRead> {
   const ctl = new AbortController();
@@ -475,6 +477,17 @@ export async function fetchArmed(config: ReinstallConfig, path: string, min: num
  *  read as "practice": an ended night is `NIGHT_ENDED`, not unarmed. */
 export const ENDED_PATH = "Night.ended";
 
+/** The story's own word on the King's stakes (wave 9, story-rules): 1 from
+ *  the Y2K hour until 📄 truth.txt or an ending, else 0. When the story
+ *  declares it, it wins over the map's `armed` gate — `Night.step` stays
+ *  past 14 after 📄, so the gate alone kept saying FOR THE CODE. A story
+ *  without it (an older show) is read off the map's gate as before. */
+export const KING_ARMED_PATH = "Night.king_armed";
+/** Round three closed (📄 truth.txt): with the King disarmed, the verdict is
+ *  in and a win gives nothing — read like `NIGHT_ENDED` (no badge, no win
+ *  line, no "tell a host"), never "practice until the Y2K clock". */
+export const VERDICT_PATH = "Night.r3_closed";
+
 async function readArmed(config: ReinstallConfig, path: string, min: number, fetcher: typeof fetch, signal: AbortSignal): Promise<ArmedRead> {
   try {
     const res = await fetcher(`${baseOf(config)}/api/state?role=mod`, { headers: { "x-loom-token": config.token }, signal });
@@ -482,11 +495,17 @@ async function readArmed(config: ReinstallConfig, path: string, min: number, fet
     const r = (await res.json()) as { world?: unknown };
     if (!Array.isArray(r.world)) return null;
     const rowAt = (p: string) => (r.world as unknown[]).find((w: unknown) => typeof w === "object" && w !== null && (w as { path?: unknown }).path === p) as { value?: unknown } | undefined;
-    const ended = rowAt(ENDED_PATH)?.value;
-    if (ended === true || ended === "true") return NIGHT_ENDED;
+    const yes = (v: unknown) => v === true || v === "true";
+    const num = (v: unknown) => (typeof v === "number" ? v : typeof v === "string" ? Number(v) : Number.NaN);
+    if (yes(rowAt(ENDED_PATH)?.value)) return NIGHT_ENDED;
+    const king = rowAt(KING_ARMED_PATH);
+    if (king !== undefined && Number.isFinite(num(king.value))) {
+      if (num(king.value) >= 1) return true;
+      return yes(rowAt(VERDICT_PATH)?.value) ? NIGHT_ENDED : false;
+    }
     const row = rowAt(path);
     if (row === undefined) return null;
-    const v = typeof row.value === "number" ? row.value : typeof row.value === "string" ? Number(row.value) : Number.NaN;
+    const v = num(row.value);
     return Number.isFinite(v) ? v >= min : null;
   } catch {
     return null;
