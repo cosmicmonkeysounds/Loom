@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { scenarioDir, scenarioSource } from "../examples/load.ts";
 import { FACTS_FILE } from "../src/facts.ts";
 import { judgeAnswer, parseFactsBook } from "../server/facts.ts";
+import { liesByPerson } from "../server/recap.ts";
 
 // ───────────────────────── helpers ─────────────────────────
 
@@ -31,6 +32,7 @@ const said = (evs: SimEvent[]) => evs.filter((e) => e.type === "dialogue") as Ev
 const lines = (evs: SimEvent[], speaker: string) => said(evs).filter((e) => e.speaker === speaker).map((e) => e.text);
 const casts = (evs: SimEvent[]) => evs.filter((e) => e.type === "broadcast") as Ev<"broadcast">[];
 const cues = (evs: SimEvent[]) => (evs.filter((e) => e.type === "directive") as Ev<"directive">[]).map((e) => `${e.verb} ${e.args}`.trim());
+const beats = (evs: SimEvent[]) => evs.filter((e) => e.type === "beatEntered").map((e) => (e as { beat?: string; name?: string }).beat ?? (e as { name?: string }).name);
 const widgets = (evs: SimEvent[]) => evs.filter((e) => e.type === "widget") as Ev<"widget">[];
 /** What the crew's # hosts room hears. */
 const hostsSaid = (evs: SimEvent[]) => casts(evs).filter((b) => b.scope === "channel(hosts)").map((b) => b.cue.replace(/^"|"$/gu, ""));
@@ -93,11 +95,13 @@ function toY2k(sim: Sim) {
 const truthTxt = (sim: Sim): SimEvent[] => [...fire(sim, "read_truth_txt"), ...fire(sim, "the_verdict")];
 
 /** Judge all eight questions accurately (or one lie), through the bob (the main show test's `toBobbing`). */
-function toBobbing(sim: Sim, opts: { lie?: boolean } = {}) {
+function toBobbing(sim: Sim, opts: { lie?: boolean; retract?: boolean } = {}) {
   toTruth1(sim);
   fire(sim, "accurate_q1", "g1", null, "Clippy");
   fire(sim, "accurate_q2", "g2", null, "Clippy");
-  fire(sim, opts.lie ? "confident_q3" : "accurate_q3", "g3", null, "Clippy");
+  fire(sim, opts.lie || opts.retract ? "confident_q3" : "accurate_q3", "g3", null, "Clippy");
+  // A 😤 meant as ✅: the host presses ✅ for the same answer.
+  if (opts.retract) fire(sim, "accurate_q3", "g3", null, "Clippy");
   toHunt2(sim);
   fire(sim, "five_minute_warning");
   for (const [g] of PROGRAMS) fire(sim, "check_in_at_desktop", g, null, "Task Manager");
@@ -444,5 +448,60 @@ describe("wave 9 — a booth's 📝 never judges a filing the host did not mean 
     fire(sim, "fact_accurate", "g1", { question: "H1" });
     expect(v(sim, "g1.fact_v1")).toBe("accurate");
     expect(v(sim, "g1.fact_v2")).toBe("accurate");
+  });
+});
+
+// ───────────────────────── a 😤 meant as ✅ ─────────────────────────
+
+describe("wave 9 — ✅ takes back a 😤 pressed for the same answer (T2-facts-04)", () => {
+  const corrected = (name: string, round: number, q: number) => `⚖️ Corrected: ${name}'s answer to round ${round} Q${q} is accurate, not a confident lie. Nothing is paid twice.`;
+
+  it("Truth Pong: 😤 then ✅ for the same cup → the question reads accurate, no lie on record, +100 once", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    toHunt2(sim);
+    fire(sim, "five_minute_warning");
+    for (const [g] of PROGRAMS) fire(sim, "check_in_at_desktop", g, null, "Task Manager");
+    fireAll(sim, "summons_closed", "truth_pong");
+    fire(sim, "made_the_cup", "g1", null, "Clippy");
+    const s0 = sim.scoreOf("g1");
+    const t0 = v(sim, "g1.truths_accepted");
+    fire(sim, "confident_q1", "g1", null, "Clippy");
+    expect([v(sim, "Kernel.q4"), v(sim, "Kernel.q4_hunt"), v(sim, "Kernel.lies_accepted")]).toEqual(["lie", "lie", 1]);
+    const fix = fire(sim, "accurate_q1", "g1", null, "Clippy");
+    expect(hostsSaid(fix)).toEqual([corrected("Calculator", 2, 1)]);
+    expect(casts(fix).filter((b) => b.scope !== "channel(hosts)")).toEqual([]);
+    expect([v(sim, "Kernel.q4"), v(sim, "Kernel.q4_hunt"), v(sim, "Kernel.lies_accepted")]).toEqual(["accurate", "accurate", 0]);
+    expect(liesByPerson(sim).get("g1") ?? 0).toBe(0);
+    expect(sim.scoreOf("g1")).toBe(s0 + 100);
+    expect(v(sim, "g1.truths_accepted")).toBe(t0 + 1);
+    // Taken back once: ✅ again is the ordinary "already accepted", and 😤 after ✅ stays refused.
+    expect(hostsSaid(fire(sim, "accurate_q1", "g1", null, "Clippy"))).toEqual(["⚖️ Calculator has not made a cup yet: no answer recorded."]);
+    expect(v(sim, "Kernel.lies_accepted")).toBe(0);
+  });
+
+  it("round 1: another program's real lie on the same question survives the correction", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    fire(sim, "confident_q2", "g3", null, "Clippy");
+    fire(sim, "confident_q2", "g2", null, "Clippy");
+    expect(v(sim, "Kernel.lies_accepted")).toBe(2);
+    expect(hostsSaid(fire(sim, "accurate_q2", "g2", null, "Clippy"))).toEqual([corrected("Microsoft Excel", 1, 2)]);
+    expect(v(sim, "Kernel.q2")).toBe("lie");
+    expect(v(sim, "Kernel.q2_hunt")).toBe("lie");
+    expect(v(sim, "Kernel.lies_accepted")).toBe(1);
+    const lies = liesByPerson(sim);
+    expect(lies.get("g3")).toBe(1);
+    expect(lies.get("g2") ?? 0).toBe(0);
+    // ✅ for another question is an ordinary acceptance, not a correction.
+    expect(hostsSaid(fire(sim, "accurate_q1", "g3", null, "Clippy"))).toEqual([]);
+    expect(v(sim, "Kernel.q2")).toBe("lie");
+  });
+
+  it("the verdict after a taken-back 😤 is the Song Ending", { timeout: SLOW }, () => {
+    const sim = boot();
+    toBobbing(sim, { retract: true });
+    expect(["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8"].map((q) => v(sim, `Kernel.${q}`))).toEqual(Array(8).fill("accurate"));
+    expect(beats(truthTxt(sim))).toContain("Song Ending");
   });
 });
