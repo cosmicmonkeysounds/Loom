@@ -6,7 +6,7 @@ currency: score as Truthcoin, max 500, expiry 10m
 watch: Night.clock as Y2K clock, Night.round as Truth round, Night.judge_mode as Judge, Night.lights as Lights
 watch: program.cleared as Cleared, program.marked as Marked
 watch: Night.results_q as Results read, while Night.phase == "truth_1"
-watch: Night.scenario as Overshare scenario, while Night.scenario != 0 and Night.ended != true
+watch: Night.scenario as Overshare scenario, while Night.scenario > 0 and Night.ended != true
 watch: Kernel.majority as Majority, Night.wrong_combos as Wrong patches, Night.heart_opened as The Heart, program.at_the_heart as At the heart, while Night.step >= 14 and Night.ended != true
 watch: Kernel.lies_accepted as Lies accepted, while Night.round >= 1
 watch: Night.ending as Ending, while Night.ended == true
@@ -4085,18 +4085,24 @@ when patch_rejected:
   else if Night.ended != true and Night.step >= 14:
     set Night.wrong_combos += 1
     -> Patch Rejected
+  else:
+    broadcast "❌ A wrong patch-bay combination outside the Y2K hour (🕚 first, before any ending): not counted, nothing happens." to channel(hosts)
 
 when patch_combo_a:
   if Night.ended != true and Night.r3_closed == true:
     fire patch_after_verdict
   else if Night.ended != true and Night.step >= 14:
     fire trabolta_disabled
+  else:
+    broadcast "🔌 Not now: Combo A only counts in the Y2K hour (🕚 first, before any ending). Nothing happens." to channel(hosts)
 
 when patch_combo_b:
   if Night.ended != true and Night.r3_closed == true:
     fire patch_after_verdict
   else if Night.ended != true and Night.step >= 14:
     fire computer_destroyed
+  else:
+    broadcast "💥 Not now: Combo B only counts in the Y2K hour (🕚 first, before any ending). Nothing happens." to channel(hosts)
 
 when patch_after_verdict:
   broadcast "🔌 A patch after truth.txt. The verdict is in: the patch bay is quiet, nothing happens in the story." to channel(hosts)

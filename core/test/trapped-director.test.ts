@@ -192,6 +192,19 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     expect(sheet(sim)).toMatchObject({ last: 50, next: 53, focus: "G" });
   });
 
+  it("an out-of-turn 🔌 / 💥 / ❌ is refused with a # hosts reason", { timeout: SLOW }, () => {
+    const sim = boot();
+    for (const [name, glyph] of [["patch_combo_a", "🔌"], ["patch_combo_b", "💥"], ["patch_rejected", "❌"]] as const) {
+      const out = sim.signal(name);
+      notePress(sim, out);
+      expect(pressRefused(sim, out), name).toBe(true);
+      const why = out.filter((e): e is Extract<SimEvent, { type: "broadcast" }> => e.type === "broadcast" && e.scope === "channel(hosts)");
+      expect(why.map((e) => e.cue), name).toEqual([expect.stringMatching(new RegExp(`^"?${glyph}.*Y2K hour`, "u"))]);
+    }
+    expect(v(sim, "Night.wrong_combos") ?? 0).toBe(0);
+    expect(v(sim, "Night.ended")).not.toBe(true);
+  });
+
   it("E asides are the previous act's while F is focus", { timeout: SLOW }, () => {
     const sim = boot();
     pressAll(sim, TO_Y2K);
@@ -292,6 +305,8 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     check("after the summons");
     pressAll(sim, ["truth_pong", "round_two_tally", "trust_chart", "show_the_rankings"]);
     check("the rankings");
+    // Before Power On Night.scenario is unset: the line stays off too.
+    expect(boardFor(Sim.fromSources(SRC)).watch.map((w) => w.label)).not.toContain("Overshare scenario");
     // No scenario yet (Night.scenario is 0 until 🤖): the line stays off.
     expect(boardFor(sim).watch.map((w) => w.label)).not.toContain("Overshare scenario");
     press(sim, "trabolta_overshares");
