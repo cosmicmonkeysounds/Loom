@@ -261,9 +261,16 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     expect(sheet(sim)).toEqual({ last: "trabolta_overshares", next: "y2k_clock" });
     // A printer lid opened late never sets the step back to the beans
     // (wave 9 integration): the overshare still never replays, and NEXT
-    // stays on 🕚.
-    press(sim, "printer_opened");
+    // stays on 🕚. Nor does it take the overshare's look: the screens stay
+    // on the overshare and no beans cue goes out, only the line + the spill.
+    const look = [v(sim, "Night.lights"), v(sim, "Night.screen"), v(sim, "Night.terminals")];
+    expect(look).toEqual(["glitch", "overshare", "overshare"]);
+    const lid = JSON.stringify(press(sim, "printer_opened").out);
     expect([v(sim, "Night.step"), v(sim, "Night.phase"), v(sim, "Night.beans")]).toEqual([13, "overshare", true]);
+    expect([v(sim, "Night.lights"), v(sim, "Night.screen"), v(sim, "Night.terminals")]).toEqual(look);
+    for (const cue of ["lights_glitch", "screens_beans", "screens_flicker"]) expect(lid, cue).not.toContain(cue);
+    expect(lid).toContain("beans_spill");
+    expect(lid).toContain("The printer is full of beans.");
     refuses(sim, "trabolta_overshares", "🤖 Not again: the overshare has already played. Nothing happens.");
     expect(sheet(sim)).toEqual({ last: "trabolta_overshares", next: "y2k_clock" });
     expect(press(sim, "y2k_clock").refused).toBe(false);
@@ -284,9 +291,16 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     const end = v(sim, "Night.y2k_end");
     const composure = v(sim, "Trabolta.composure");
     advance(sim, 60);
-    expect(press(sim, "printer_opened").refused).toBe(false);
-    // The lid's beans play, but the Y2K hour keeps its step and phase.
+    const lid = press(sim, "printer_opened");
+    expect(lid.refused).toBe(false);
+    // The lid's beans play, but the Y2K hour keeps its step and phase — and
+    // its look: the y2k lights and screens stay up (stagehand's catch-up
+    // replays Night.lights), no glitch / beans cue goes out.
     expect([v(sim, "Night.step"), v(sim, "Night.phase"), v(sim, "Night.beans")]).toEqual([14, "y2k", true]);
+    expect([v(sim, "Night.lights"), v(sim, "Night.screen"), v(sim, "Night.terminals")]).toEqual(["y2k", "y2k", "y2k"]);
+    const said = JSON.stringify(lid.out);
+    for (const cue of ["lights_glitch", "screens_beans", "screens_flicker"]) expect(said, cue).not.toContain(cue);
+    expect(said).toContain("The printer is full of beans.");
     refuses(sim, "y2k_clock", "🕚 Not again: the clock has already been reset. Nothing happens.");
     expect(live(sim, "y2k_clock")).toBe(false);
     expect(v(sim, "Night.y2k_end")).toBe(end);
