@@ -8,7 +8,7 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { reloadVerdict } from "../scripts/live-guard.ts";
-import { reloadEvent, type SyncEvent } from "../scripts/sync-example.ts";
+import { reloadEvent, syncOptions, type SyncEvent } from "../scripts/sync-example.ts";
 
 const persona = { id: "p-ab12cd", name: "Ivo" };
 const phone = { id: "g-2", name: "Winamp" };
@@ -32,6 +32,21 @@ describe("reloadVerdict", () => {
     expect(v.ok).toBe(false);
     expect(v.ok ? "" : v.reason).toMatch(/roster can't be read.*NOT reloaded/u);
     expect(reloadVerdict({ mode: "preview", roster: undefined, override: false }).ok).toBe(true);
+  });
+});
+
+describe("syncOptions", () => {
+  it("takes the override as a flag, or as LOOM_I_KNOW_THIS_IS_LIVE=1 where a flag can't reach", () => {
+    expect(syncOptions(["Trapped"], {}).override).toBe(false);
+    expect(syncOptions(["Trapped", "--i-know-this-is-live"], {}).override).toBe(true);
+    expect(syncOptions(["Trapped"], { LOOM_I_KNOW_THIS_IS_LIVE: "1" }).override).toBe(true);
+    expect(syncOptions(["Trapped"], { LOOM_I_KNOW_THIS_IS_LIVE: "yes" }).override).toBe(false);
+  });
+
+  it("reads the rest of the line", () => {
+    const o = syncOptions(["Trapped", "escape-the-internet", "--server", "http://x:1", "--no-reload", "--replace-maps"], { LOOM_PORT: "7311" });
+    expect(o).toEqual({ server: "http://x:1", reload: false, override: false, mapMode: "replace", positional: ["Trapped", "escape-the-internet"] });
+    expect(syncOptions([], { LOOM_PORT: "7311" }).server).toBe("http://localhost:7311");
   });
 });
 
@@ -92,6 +107,7 @@ describe("reloadEvent", () => {
     expect(loads()).toBe(0);
     expect(r.saved).toBe(0);
     expect(r.lines.join("\n")).toMatch(/real guest.*Winamp.*NOT reloaded/u);
+    expect(r.lines.join("\n")).toMatch(/LOOM_I_KNOW_THIS_IS_LIVE=1/u);
   });
 
   it("reloads a live event whose roster is only personas", async () => {

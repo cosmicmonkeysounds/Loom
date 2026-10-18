@@ -5,6 +5,7 @@
 //!   pnpm sync-example <project id> escape-the-internet
 //!   pnpm sync-example "Untitled Project" --server http://localhost:7000
 //!   pnpm sync-example "Trapped" --i-know-this-is-live    # reload a live show anyway
+//!   LOOM_I_KNOW_THIS_IS_LIVE=1 pnpm dev --sync "Trapped" # the same, where a flag can't reach
 //!
 //! Dev tooling for the SaaS path: the editor's Run mode plays a *snapshot*
 //! of the project (`event.scenario_source`), so editing the example folder
@@ -55,10 +56,12 @@ import { FACTS_FILE, factsProblems } from "../server/facts.ts";
 import { LIVE_OVERRIDE, reloadVerdict, type GuardRow } from "./live-guard.ts";
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://127.0.0.1:5432/loom_dev";
+/** The environment spelling of `--i-know-this-is-live` (see `syncOptions`). */
+export const LIVE_OVERRIDE_ENV = "LOOM_I_KNOW_THIS_IS_LIVE";
 
 function usage(): never {
   process.stderr.write(
-    `usage: sync-example <project name | id> [example=trapped-in-the-internet] [--server URL] [--no-reload] [--keep-maps | --replace-maps] [--${LIVE_OVERRIDE}]\n`,
+    `usage: sync-example <project name | id> [example=trapped-in-the-internet] [--server URL] [--no-reload] [--keep-maps | --replace-maps] [--${LIVE_OVERRIDE}]   (or ${LIVE_OVERRIDE_ENV}=1)\n`,
   );
   process.exit(2);
 }
@@ -91,6 +94,9 @@ export interface ReloadStep {
   body: unknown;
   out?: (line: string) => void;
 }
+
+/** Printed under a refusal: the flag can't get through `pnpm dev --sync`. */
+const OVERRIDE_HINT = `  (exit 3 · through \`pnpm dev --sync\` or \`pnpm sync-example\`, which can't pass --${LIVE_OVERRIDE}: ${LIVE_OVERRIDE_ENV}=1)`;
 
 /** The mod state's roster, or null when it carries none. */
 function rosterOf(body: unknown): GuardRow[] | null {
@@ -130,11 +136,13 @@ export async function reloadEvent(step: ReloadStep): Promise<number> {
     if (roster === null) {
       const why = st === null ? `the server at ${server} doesn't answer` : !st.ok ? `mod state → ${st.status}` : "the mod state carries no roster";
       out(`✘ live event ${event.id}: its roster can't be read (${why}) — the project's files are saved, the event's snapshot is untouched and it was NOT reloaded`);
+      out(OVERRIDE_HINT);
       return 3;
     }
     const verdict = reloadVerdict({ mode: event.mode, roster, override: false });
     if (!verdict.ok) {
       out(`✘ ${verdict.reason}`);
+      out(OVERRIDE_HINT);
       return 3;
     }
   }
@@ -162,23 +170,42 @@ export async function reloadEvent(step: ReloadStep): Promise<number> {
   return 0;
 }
 
-/** The whole sync; resolves to the process exit code. */
-export async function main(args: readonly string[]): Promise<number> {
-  let server = process.env.LOOM_SERVER ?? `http://localhost:${process.env.LOOM_PORT ?? 7000}`;
-  let reload = true;
-  let override = false;
-  let mapMode: MapSyncMode = "merge";
-  const positional: string[] = [];
+/** The command line (and environment) a sync runs with. */
+export interface SyncOptions {
+  server: string;
+  reload: boolean;
+  override: boolean;
+  mapMode: MapSyncMode;
+  positional: string[];
+}
+
+/** Parse the arguments. `LOOM_I_KNOW_THIS_IS_LIVE=1` is the override for
+ *  the callers that can't pass a flag through (`pnpm dev --sync`, the root
+ *  `pnpm sync-example`). */
+export function syncOptions(args: readonly string[], env: NodeJS.ProcessEnv = process.env): SyncOptions {
+  const o: SyncOptions = {
+    server: env.LOOM_SERVER ?? `http://localhost:${env.LOOM_PORT ?? 7000}`,
+    reload: true,
+    override: env[LIVE_OVERRIDE_ENV] === "1",
+    mapMode: "merge",
+    positional: [],
+  };
   for (let i = 0; i < args.length; i++) {
     const a = args[i]!;
-    if (a === "--server") server = args[++i] ?? usage();
-    else if (a === "--no-reload") reload = false;
-    else if (a === "--keep-maps") mapMode = "keep";
-    else if (a === "--replace-maps") mapMode = "replace";
-    else if (a === `--${LIVE_OVERRIDE}`) override = true;
+    if (a === "--server") o.server = args[++i] ?? usage();
+    else if (a === "--no-reload") o.reload = false;
+    else if (a === "--keep-maps") o.mapMode = "keep";
+    else if (a === "--replace-maps") o.mapMode = "replace";
+    else if (a === `--${LIVE_OVERRIDE}`) o.override = true;
     else if (a.startsWith("-")) usage();
-    else positional.push(a);
+    else o.positional.push(a);
   }
+  return o;
+}
+
+/** The whole sync; resolves to the process exit code. */
+export async function main(args: readonly string[]): Promise<number> {
+  const { server, reload, override, mapMode, positional } = syncOptions(args);
   const [projectRef, example = "trapped-in-the-internet"] = positional;
   if (!projectRef) usage();
 
