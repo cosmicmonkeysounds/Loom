@@ -107,8 +107,10 @@ folder. It copies the source but skips the heavy build junk:
 rsync -avz --delete \
   --exclude .git --exclude node_modules --exclude dist \
   --exclude target --exclude .env --exclude core/server/.loom-state \
-  --filter='P /.env*' --filter='P /show-map/' --filter='P /docker-compose.override.y*ml' \
-  --filter='P /loom-db-*' --filter='P /loom-state-*' --filter='P /*.bak*' \
+  --filter='P /.env*' --filter='P /show-map/' \
+  --filter='P /docker-compose.override.yml' --filter='P /docker-compose.override.yaml' \
+  --filter='P /loom-db-*' --filter='P /loom-state-*' --filter='P /*.sql*' --filter='P /*.tgz' \
+  --filter='P /*.bak*' \
   ~/Documents/prism-root/packages/loom/ \
   ubuntu@YOUR_VPS_IP:~/loom/
 ```
