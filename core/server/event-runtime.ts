@@ -55,6 +55,7 @@ import { PushRoutes } from "./routes/k31.ts";
 import { PushHub, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
 import { printExtras } from "./routes/k12.ts";
 import { sendRecap } from "./routes/recap.ts";
+import { guestSide } from "./routes/sides.ts";
 import { ScreenWatch, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost } from "./routes/screen.ts";
 import { handleScreenIdentifyPost } from "./routes/screen.ts";
 import { SpatialHub, houseVersion, houseWarnings, isWorld, parseDuckRun, parsePose, sortCandidates, type DuckRun, type SessionRef } from "./spatial.ts";
@@ -3273,7 +3274,14 @@ export class EventRuntime {
           sendJson(res, 403, { error: "you're restricted — the story has to lift it first" });
           return true;
         }
-        this.fanout(this.commit("join", id, str(body, "faction")));
+        // Only a declared, joinable, revealed side (D7): never a staff
+        // caste or a hidden group the story hasn't opened.
+        const side = guestSide(this.sim!, str(body, "faction"));
+        if (side === null) {
+          sendJson(res, 403, { error: "that side isn't open" });
+          return true;
+        }
+        this.fanout(this.commit("join", id, side));
         sendJson(res, 200, { ok: true });
         return true;
       }
@@ -3289,7 +3297,14 @@ export class EventRuntime {
           sendJson(res, 403, { error: "you're restricted — the story has to lift it first" });
           return true;
         }
-        this.fanout(this.commit("defect", id, str(body, "to")));
+        // Only a declared, joinable, revealed side (D7): never a staff
+        // caste or a hidden group the story hasn't opened.
+        const side = guestSide(this.sim!, str(body, "to"));
+        if (side === null) {
+          sendJson(res, 403, { error: "that side isn't open" });
+          return true;
+        }
+        this.fanout(this.commit("defect", id, side));
         sendJson(res, 200, { ok: true });
         return true;
       }
