@@ -576,6 +576,7 @@ describe("wave 9 — no story text sends coin to a character (T1-wallet-01, T10-
     const evs = advance(booth, 120);
     const mcafee = (evs.filter((e) => e.type === "respond") as Ev<"respond">[]).filter((r) => r.to === "McAfee Anti-Virus").map((r) => r.text);
     expect(mcafee.some((t) => t.startsWith("🪙 The # truthcoin-exchange is open."))).toBe(true);
+    expect(mcafee.some((t) => t.includes("referee bets and call the winner in # truthcoin-exchange."))).toBe(true);
     for (const t of mcafee) expect(t).not.toMatch(POT);
     for (const id of ["pay_truthcoin", "charge_truthcoin"]) expect(m.interactions.get(id)!.by, id).toContain("McAfee Anti-Virus");
   });
