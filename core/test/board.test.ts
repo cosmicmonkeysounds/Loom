@@ -99,3 +99,76 @@ INTERACTION knock
     expect(sim.model.interactions.get("knock")!.act).toBe("Ignored for guests");
   });
 });
+
+describe("lint L1205 BoardLineUnparsed", () => {
+  const lints = async (files: Array<[string, string]>) => {
+    const { Workspace } = await import("../src/lsp/index.ts");
+    const w = new Workspace();
+    w.updateMany(files);
+    return files.flatMap(([uri]) =>
+      (w.diagnosticsFor(uri)?.diagnostics ?? [])
+        .filter((d) => d.code === "L1205")
+        .map((d) => ({ uri, severity: d.severity, line: d.range.start.line, message: d.message })),
+    );
+  };
+  const STORY = (header: string) => `# Board
+start: Go
+${header}
+
+GROUP Hosts
+LOCATION The Desk
+ROLE Program
+  cleared: bool = false
+CHARACTER Kernel
+  secret: true
+  code: text? = none
+CHARACTER MS Paint
+
+when ring:
+  set Night.step = 2
+
+== Go
+Hi.
+`;
+
+  it("a clean board reports none", async () => {
+    const header = [
+      "watch: Night.step as Step, Kernel.code, program.cleared, Hosts.size, The_Desk.lights, Time.elapsed, while Night.step >= 1",
+      "watch: MS Paint, ms_paint as Painter",
+      "countdown: Night.step as Soon, while Night.step == 2",
+    ].join("\n");
+    expect(await lints([["file:///main.loom", STORY(header)]])).toEqual([]);
+  });
+
+  it("flags a line, an item, a `while`, an unknown head and an unknown person — as warnings on the line", async () => {
+    const header = [
+      "watch: ===", //                                      2
+      "watch: Night.step, Nite.step, Ghost Writer", //       3
+      "countdown: MS Paint, Night.step", //                   4
+      "watch: Night.step, while Night.step >= (", //          5
+    ].join("\n");
+    const out = await lints([["file:///main.loom", STORY(header)]]);
+    expect(out.map((d) => [d.line, d.severity])).toEqual([
+      [2, 2],
+      [3, 2],
+      [3, 2],
+      [4, 2],
+      [5, 2],
+    ]);
+    expect(out[0]!.message).toMatch(/does not parse/);
+    expect(out[1]!.message).toMatch(/`Nite` names no CHARACTER, ROLE, GROUP or LOCATION/);
+    expect(out[2]!.message).toMatch(/`Ghost Writer` .* names no CHARACTER/);
+    expect(out[3]!.message).toMatch(/`MS Paint` .* is skipped \(a countdown takes paths only/);
+    expect(out[4]!.message).toMatch(/no expression/);
+  });
+
+  it("a board line outside the first file's header is ignored by the server", async () => {
+    const out = await lints([
+      ["file:///main.loom", STORY("watch: Night.step")],
+      ["file:///cast.loom", "watch: Night.step\n\nCHARACTER Clippy\n"],
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ uri: "file:///cast.loom", line: 0 });
+    expect(out[0]!.message).toMatch(/only the first file's header \(main\.loom\)/);
+  });
+});
