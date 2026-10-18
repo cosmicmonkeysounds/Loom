@@ -6,8 +6,8 @@ currency: score as Truthcoin, max 500, expiry 10m
 watch: Night.clock as Y2K clock, Night.round as Truth round, Night.judge_mode as Judge, Night.lights as Lights
 watch: program.cleared as Cleared, program.marked as Marked
 watch: Night.results_q as Results read, while Night.phase == "truth_1"
-watch: Night.scenario as Overshare scenario, while Night.step >= 11 and Night.step < 14
-watch: Kernel.majority as Majority, Night.wrong_combos as Wrong patches, Night.heart_opened as The Heart, Night.heart_holder as At the heart, while Night.step >= 14 and Night.ended != true
+watch: Night.scenario as Overshare scenario, while Night.scenario != 0 and Night.ended != true
+watch: Kernel.majority as Majority, Night.wrong_combos as Wrong patches, Night.heart_opened as The Heart, program.at_the_heart as At the heart, while Night.step >= 14 and Night.ended != true
 watch: Kernel.lies_accepted as Lies accepted, while Night.round >= 1
 watch: Night.ending as Ending, while Night.ended == true
 watch: Night.signatures as Signatures, while Night.painting == true
@@ -2551,8 +2551,11 @@ ROLE Program
 // `act: Anytime` (💡, the reinstallation cues) is the always-open line.
 // The Director page's glance column and countdowns are the `watch:` /
 // `countdown:` lines at the top of this file: they must stay in the
-// header block (straight after `currency:`, no blank or comment line in
-// between) and in this file only — the server reads the first header.
+// header block (above the first item — a beat, declaration or rule ends
+// the header; blank and comment lines don't) and in this file only — the
+// server reads the first header. *At the heart* counts programs with
+// `at_the_heart` (Night.heart_holder keeps the last name after they walk
+// away); *Overshare scenario* shows from 🤖 until the ending.
 
 INTERACTION call_to_the_desktop
   label: C1/V1 · 📣 Call everyone to the Desktop

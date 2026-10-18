@@ -263,19 +263,19 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     for (const w of kernel) expect(w.secret, w.label).toBe(true);
     for (const w of watch.filter((x) => !x.path?.startsWith("Kernel."))) expect(w.secret, w.label).toBeUndefined();
     // The roles count over guests; the featured programs are person rows.
-    expect(watch.filter((w) => w.scope === "role").map((w) => w.label)).toEqual(["Cleared", "Marked"]);
+    expect(watch.filter((w) => w.scope === "role").map((w) => w.label)).toEqual(["Cleared", "Marked", "At the heart"]);
     expect(watch.filter((w) => w.scope === "person").map((w) => w.person)).toEqual(["Microsoft Excel", "OpenOffice", "MS Paint"]);
     // The phone's lean view never carries a secret (nor a role / person row).
     const lean = cueSheetView(modView(sim, "open", "x"));
     const leanLabels = (lean.watch ?? []).map((w) => w.label);
     expect(leanLabels.length).toBeLessThanOrEqual(3);
-    for (const l of ["Majority", "Lies accepted", "Door code", "Combo A", "Combo B", "Cleared", "Marked"]) expect(leanLabels).not.toContain(l);
+    for (const l of ["Majority", "Lies accepted", "Door code", "Combo A", "Combo B", "Cleared", "Marked", "At the heart"]) expect(leanLabels).not.toContain(l);
     expect(JSON.stringify(lean)).not.toContain(String(v(sim, "Kernel.door_code")));
   });
 
   it("the board has no throwing lines", { timeout: SLOW }, () => {
     const sim = boot();
-    // Every header line was read (the header block stayed contiguous).
+    // Every header line was read (all of them sit above the first item).
     expect(sim.model.watch).toHaveLength(10);
     expect(sim.model.countdowns).toHaveLength(8);
     const check = (when: string) => {
@@ -290,11 +290,21 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     check("the hour");
     advance(sim, 3601);
     check("after the summons");
-    pressAll(sim, ["truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares"]);
+    pressAll(sim, ["truth_pong", "round_two_tally", "trust_chart", "show_the_rankings"]);
+    check("the rankings");
+    // No scenario yet (Night.scenario is 0 until 🤖): the line stays off.
+    expect(boardFor(sim).watch.map((w) => w.label)).not.toContain("Overshare scenario");
+    press(sim, "trabolta_overshares");
     check("the overshare");
     expect(boardFor(sim).watch.map((w) => w.label)).toContain("Overshare scenario");
     press(sim, "y2k_clock");
     check("the Y2K hour");
+    // The scenario stays up through the hour; "At the heart" counts the
+    // programs at the terminal now (a ROLE path), not the last holder.
+    expect(boardFor(sim).watch.map((w) => w.label)).toContain("Overshare scenario");
+    const heart = boardFor(sim).watch.find((w) => w.label === "At the heart");
+    expect(heart?.scope).toBe("role");
+    expect(heart?.path?.toLowerCase()).toBe("program.at_the_heart");
     press(sim, "patch_combo_a");
     advance(sim, 11);
     check("after the ending");
