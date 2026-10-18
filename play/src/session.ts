@@ -437,6 +437,7 @@ export function sayRefusalText(e: unknown): string | null {
   if (eventGone(e.status, e.message) || guestSessionDead(e.status, e.message) || performerSessionDead(e.status, e.message)) return null;
   if (e.status === 429) return `⏳ Not sent: ${e.message}. Your message is still in the box.`;
   if (e.status === 409 && /doors are closed/i.test(e.message)) return "⏸ Not sent: the show is paused. Your message is still in the box.";
+  if (e.status === 413) return `✂️ Not sent: ${e.message}. Your message is still in the box — shorten it and send again.`;
   return `⛔ Not sent: ${e.message}`;
 }
 

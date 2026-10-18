@@ -3,8 +3,10 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 
-import { sendFromComposer } from "../src/chat.tsx";
+import { CHAT_TEXT_MAX, Composer, sendFromComposer } from "../src/chat.tsx";
 import { ApiError, RequestTimeout, withTimeout } from "../src/client.ts";
 import { SAY_TIMEOUT_MS, sayRefusalText } from "../src/session.ts";
 
@@ -75,6 +77,19 @@ describe("a send the server never answers", () => {
     const t = sayRefusalText(new RequestTimeout(SAY_TIMEOUT_MS));
     expect(t).toContain("connection");
     expect(t).toContain("send it again");
+  });
+});
+
+describe("a line's length (T6-adversary-03, C5)", () => {
+  it("the box stops at the server's 2000 characters", () => {
+    expect(CHAT_TEXT_MAX).toBe(2000);
+    expect(renderToStaticMarkup(createElement(Composer, { onSend: () => {} }))).toContain('maxLength="2000"');
+  });
+
+  it("a 413 says the line is too long and keeps it in the box", () => {
+    const t = sayRefusalText(new ApiError("message too long (max 2000 characters)", 413));
+    expect(t).toContain("message too long (max 2000 characters)");
+    expect(t).toContain("still in the box");
   });
 });
 
