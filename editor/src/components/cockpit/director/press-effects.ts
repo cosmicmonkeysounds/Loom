@@ -17,6 +17,8 @@ export const EFFECTS_SHOWN = 4
 export interface PressEffects {
   /** The ledger seq of the press itself (the Log link). */
   seq: number
+  /** When it landed (story ms), if the row carries it. */
+  ts: number | undefined
   /** The first `EFFECTS_SHOWN` items. */
   items: string[]
   /** How many more the Log holds. */
@@ -132,5 +134,5 @@ export function pressEffects(log: readonly LedgerEntry[], cueId: string, opts: P
     ...quests.lines(),
   ]
   const max = opts.max ?? EFFECTS_SHOWN
-  return { seq: log[at]!.seq, items: all.slice(0, max), more: Math.max(0, all.length - max) }
+  return { seq: log[at]!.seq, ts: log[at]!.ts, items: all.slice(0, max), more: Math.max(0, all.length - max) }
 }

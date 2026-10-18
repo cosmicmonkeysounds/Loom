@@ -72,3 +72,6 @@ html[data-theme="light"] .text-indigo-300 { color:#4338ca !important; }
 html[data-theme="light"] .text-amber-300  { color:#b45309 !important; }
 html[data-theme="light"] .text-emerald-300{ color:#047857 !important; }
 html[data-theme="light"] .text-sky-300    { color:#0369a1 !important; }
+
+/* The Director's armed cue: a 4 s bar that runs out (`ARM_MS`). */
+@keyframes director-arm { from { width: 100%; } to { width: 0%; } }

@@ -8,7 +8,7 @@ import clsx from 'clsx'
 import { PartPresence } from './parts'
 
 /** The dot's fill for a presence. */
-export function presenceDotClass(presence: PartPresence): string {
+function presenceDotClass(presence: PartPresence): string {
   return presence === PartPresence.Online
     ? 'bg-emerald-400'
     : presence === PartPresence.PhoneOffline
