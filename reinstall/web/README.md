@@ -59,10 +59,12 @@ The passcode and the hints are scrubbed from the address bar at once. A
 stored token the server no longer accepts sends the device back to setup.
 **The camera needs a secure context** (`https://` or `localhost`); without
 one, type the program's name instead. Corrupted programs are also offered
-as one-tap picks under *In the Internet now*, and marked ones (sent to the
-Internet, not captured yet) under *Marked — sent to the Internet*; the next
-step shows a marked program as **STATUS: MARKED — Play here begins the
-reinstallation** (Play here captures them). With no camera at all the
+as one-tap picks under *In the Internet now*, and restricted ones (not
+captured yet: marked by the story, or held by a director's Restrict) under
+*Restricted — marked, or held by a director*; the next step shows them as
+**STATUS: RESTRICTED — if marked, Play here begins the reinstallation**
+(Play here captures a marked program; a director's Restrict alone captures
+nobody). With no camera at all the
 camera box shrinks to a strip and the step says so.
 
 The game needs **WebGL2** (three r186). A browser without it (3D off, an

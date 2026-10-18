@@ -477,7 +477,7 @@ function ScanStep({
       window.clearInterval(t);
     };
   }, [config]);
-  const { corrupted, marked } = quickPicks(candidates);
+  const { corrupted, restricted } = quickPicks(candidates);
 
   const submit = async () => {
     if (typed.trim() === "" || busy) return;
@@ -530,7 +530,7 @@ function ScanStep({
               <>
                 Show the program's <b>pass</b> (the QR on their phone: menu → Your pass).
               </>
-            ) : corrupted.length + marked.length > 0 ? (
+            ) : corrupted.length + restricted.length > 0 ? (
               <>No camera here: tap the program in the Internet below, or type their name.</>
             ) : (
               <>No camera here: type the program's name.</>
@@ -563,11 +563,11 @@ function ScanStep({
               </div>
             </fieldset>
           )}
-          {marked.length > 0 && (
+          {restricted.length > 0 && (
             <fieldset className="w98-group">
-              <legend>Marked — sent to the Internet</legend>
+              <legend>Restricted — marked, or held by a director</legend>
               <div className="quick-picks">
-                {marked.map((c) => (
+                {restricted.map((c) => (
                   <button key={c.id} className="w98-button pick" onClick={() => onPick(c)}>
                     🚨 {c.name}
                   </button>
