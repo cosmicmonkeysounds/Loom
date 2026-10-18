@@ -564,4 +564,60 @@ Narrator: The hall.
     expect((await say("room:staff")).status).toBe(404);
     rt.dispose();
   });
+
+  const CLUB = `# Club
+start: Hall
+
+CHARACTER Host
+
+CHANNEL club
+  kind: private
+  invite: members
+  label: # club
+
+CHANNEL lounge
+  kind: open
+  label: # lounge
+
+LOCATION Hall
+
+== Hall
+  setting: Hall
+Host: Welcome.
+`;
+  it("a guest invites into an invite-only room only as one of its members: no self-invite, a room they can't see is 404, an open room takes no invites (T6 recheck)", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-invite-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "club", scenarioSource: CLUB, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const reg = async (name: string) => (await call(rt, "POST", "/api/guest/register", { name, passcode: CODES.event })).json as { id: string; token: string };
+    const [alice, bob, carol] = [await reg("Alice"), await reg("Bob"), await reg("Carol")];
+    const invite = (who: { token: string }, person: string, channel: string) => call(rt, "POST", "/api/guest/channel/invite", { token: who.token, person, channel });
+    const listed = async (who: { token: string }) =>
+      ((await call(rt, "GET", `/api/state?role=guest&token=${encodeURIComponent(who.token)}`, {})).json["channels"] as Array<{ id: string; member?: boolean }>).filter((c) => c.id === "room:club");
+    const missing = (await call(rt, "POST", "/api/guest/say", { token: alice.token, channel: "room:club", text: "probe" })).json;
+    // An outsider's self-invite (and an invite of someone else) reads like a missing room.
+    for (const person of [alice.id, bob.id]) {
+      const r = await invite(alice, person, "room:club");
+      expect([r.status, r.json], person).toEqual([404, missing]);
+    }
+    expect(await listed(alice)).toEqual([]);
+    // The story's side (a performer's booth here) lets Alice in.
+    const host = (await call(rt, "POST", "/api/prime/login", { character: "Host", passcode: CODES.prime })).json["token"] as string;
+    expect((await call(rt, "POST", "/api/prime/channel/invite", { token: host, person: alice.id, channel: "room:club" })).status).toBe(200);
+    expect((await listed(alice)).map((c) => c.member)).toEqual([true]);
+    // A member invites another guest; never themself; never someone unknown.
+    expect((await invite(alice, alice.id, "room:club")).status).toBe(403);
+    expect((await invite(alice, "nobody", "room:club")).status).toBe(404);
+    expect((await invite(alice, bob.id, "room:club")).json).toEqual({ ok: true });
+    expect((await listed(bob)).map((c) => c.member)).toEqual([true]);
+    // Carol, still outside, can't pull herself in through Bob's membership either.
+    expect((await invite(carol, carol.id, "room:club")).status).toBe(404);
+    expect(await listed(carol)).toEqual([]);
+    // An open room, the lobby or a missing room take no invites.
+    expect((await invite(alice, carol.id, "room:lounge")).status).toBe(400);
+    expect((await invite(alice, carol.id, "lobby")).status).toBe(400);
+    expect((await invite(alice, carol.id, "room:nowhere")).status).toBe(404);
+    rt.dispose();
+  });
 });

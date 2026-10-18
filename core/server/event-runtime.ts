@@ -1367,6 +1367,35 @@ export class EventRuntime {
     return this.chat.historyFor(guestId, false).some((m) => m.channel === channel) ? null : none;
   }
 
+  /**
+   * May guest `by` invite `person` into `channel`? Null when they may, else
+   * the refusal (T6 recheck — before, any guest could add themself to any
+   * invite-only room). A room the guest can't see reads as one the story
+   * doesn't have (404, like `/api/guest/say`), so a private room they
+   * aren't in is a 404 too; only an authored invite-only room (`private` /
+   * `group` / `dm`) takes invites (400 otherwise); nobody invites
+   * themself; and the channel's `invite:` policy holds — `members` (the
+   * default: "members can invite others") needs the inviter to be a member
+   * already, `anyone` any guest who can see it, any other word names the
+   * ROLE that may invite. The story's own invites and the performer and
+   * director routes don't come through here.
+   */
+  private guestInviteRefusal(by: string, person: string, channel: string): { status: 400 | 403 | 404; error: string } | null {
+    const sim = this.sim!;
+    const room = this.guestRoom(by, channel);
+    if (room !== null) return room;
+    const def = sim.model.channels.get(channel);
+    if (def === undefined || def.kind === "open" || def.kind === "faction") return { status: 400, error: "not an invite-only room" };
+    if (!sim.persons.has(person)) return { status: 404, error: "unknown guest" };
+    if (person === by) return { status: 403, error: "you can't invite yourself" };
+    const policy = (def.invite ?? "members").trim().toLowerCase();
+    const member = sim.isChannelMember(by, channel);
+    if (policy === "anyone") return null;
+    if (policy === "members") return member ? null : { status: 403, error: "only its members can invite" };
+    const role = sim.persons.get(by)?.role ?? "";
+    return member && foldName(role) === foldName(policy) ? null : { status: 403, error: "you can't invite to this room" };
+  }
+
   /** A non-character `dm:` thread `guestId` may reply in: a stage voice's
    *  (`dm:Operator` / `dm:Narrator` — the voices `/api/mod/say` speaks as
    *  besides characters), or one already addressed to this guest. */
@@ -3632,7 +3661,14 @@ export class EventRuntime {
           sendJson(res, 404, { error: "unknown guest" });
           return true;
         }
-        this.fanout(this.commit("inviteToChannel", id, str(body, "person"), str(body, "channel")));
+        const channel = str(body, "channel");
+        const person = str(body, "person");
+        const refused = this.guestInviteRefusal(id, person, channel);
+        if (refused !== null) {
+          sendJson(res, refused.status, { error: refused.error });
+          return true;
+        }
+        this.fanout(this.commit("inviteToChannel", id, person, channel));
         sendJson(res, 200, { ok: true });
         return true;
       }
