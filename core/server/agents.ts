@@ -732,12 +732,19 @@ export class AgentHub {
 
   // -- workers --------------------------------------------------------------
 
-  /** A worker connected: register it and hand it every queued request it can answer. */
+  /** A worker connected: register it and hand it every queued request it can
+   *  answer, and the line of every stalled worker voicing a character it
+   *  voices — a backup started after the laptop wedged takes its line at
+   *  once, not one request per reply timeout. */
   attach(worker: AgentWorker): void {
     this.workers.set(worker.id, worker);
     this.progress.set(worker.id, this.now());
     this.o.presence?.();
     for (const r of this.open.values()) if (r.worker === null) this.dispatch(r);
+    for (const id of [...this.stalled.keys()]) {
+      const w = this.workers.get(id);
+      if (w !== undefined && [...w.characters].some((c) => worker.characters.has(c))) this.moveLine(id);
+    }
   }
 
   /** A worker went away: its in-flight requests go back in the queue. */
@@ -880,7 +887,7 @@ export class AgentHub {
    * A worker whose head timed out is **stalled** until it answers again
    * (connected but not answering: a dropped reply, a sleeping laptop with
    * its stream still open). Its line moves to a worker still answering the
-   * same character, if there is one. Every request left waiting on it — or
+   * same character, if there is one, or to one that attaches later. Every request left waiting on it — or
    * queued with only stalled workers voicing its character — gets the hold
    * line once `holdAfterMs` after both its own start and the stall's, like
    * an offline worker, and stays where it is so a late answer still settles

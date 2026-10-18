@@ -314,6 +314,29 @@ describe("AgentHub", () => {
     expect(h.held).toHaveLength(0);
   });
 
+  it("a worker that attaches after another stalled takes the stalled line at once, its timed-out head included (review 3)", () => {
+    const h = hubHarness({ replyTimeoutMs: 10_000 });
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    const th = (n: number): AgentThread => ({ ...T, audience: [`g-${n}`] });
+    for (let i = 0; i < 4; i++) h.hub.line(th(i));
+    h.tick(10_001);
+    h.hub.sweep(); // the laptop stalls alone: g-0 goes back to it, attempt 2
+    h.tick(5_000);
+    h.hub.sweep();
+    const b = h.worker("spare");
+    h.hub.attach(b.w); // the director starts a backup
+    expect(b.requests().map((r) => r.thread.audience[0]).sort()).toEqual(["g-0", "g-1", "g-2", "g-3"]);
+    const live = new Set(h.hub.pending.map((r) => r.id));
+    const cancelled = new Set(a.got.filter(([e]) => e === "cancel").map(([, d]) => (d as { id: string }).id));
+    for (const id of live) expect(cancelled.has(id)).toBe(true); // nothing left on the laptop
+    for (const r of b.requests()) expect(h.hub.settle(r.id, "spare")).not.toBeNull();
+    h.tick(60_000);
+    h.hub.sweep();
+    expect(h.hub.pending).toHaveLength(0);
+    expect(h.held).toHaveLength(0);
+  });
+
   it("one slow reply that the worker follows with an answer inside the hold window holds nobody (review 2)", () => {
     const h = hubHarness({ replyTimeoutMs: 10_000 });
     const a = h.worker("laptop");
