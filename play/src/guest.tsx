@@ -30,6 +30,7 @@ import {
   useWide,
 } from "./chat.tsx";
 import { CutsceneStage } from "./cutscene.tsx";
+import { PassQr } from "./pass-qr.tsx";
 import { useOfflineFor } from "./client.ts";
 import { HelpSheet } from "./help.tsx";
 import { usePlayHost } from "./host.ts";
@@ -293,7 +294,7 @@ function ProfileSheet({ session, push, onClose, onLeave }: { session: GuestSessi
     <Sheet title="Your pass" onClose={onClose}>
       {session.me && (
         <div className="pass">
-          <img alt="QR" src={`/api/qr?text=${encodeURIComponent(session.me.id)}`} />
+          <PassQr alt="QR" text={session.me.id} />
           <div className="bigid">{session.me.id}</div>
           <div className="muted">Show this to a performer to be scanned.</div>
         </div>
@@ -341,7 +342,7 @@ function PassSheet({ me, onClose }: { me: { id: string; name: string }; onClose:
   return (
     <Sheet title="🎟️ Your pass" onClose={onClose}>
       <div className="pass">
-        <img alt="QR" src={`/api/qr?text=${encodeURIComponent(me.id)}`} />
+        <PassQr alt="QR" text={me.id} />
         <div className="bigid">{me.id}</div>
         <div className="muted">{me.name} · show this to a performer to be scanned.</div>
       </div>

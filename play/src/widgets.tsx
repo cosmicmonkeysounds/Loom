@@ -8,6 +8,7 @@
 //! as plain text so an older client never hides a newer story's card.
 
 import { useMemo, useState, type ReactNode } from "react";
+import { PassQr } from "./pass-qr.tsx";
 import type { ChatMessage, WidgetCard } from "./types.ts";
 
 export type WidgetResult = Record<string, string | number | boolean>;
@@ -276,7 +277,7 @@ export function PassCard({ card, viewer }: WidgetProps) {
       </div>
       {viewer ? (
         <div className="pass-body">
-          <img alt="Your QR pass" src={`/api/qr?text=${encodeURIComponent(viewer.id)}`} />
+          <PassQr alt="Your QR pass" text={viewer.id} />
           <div className="pass-id">{viewer.id}</div>
           <div className="pass-who">{viewer.name} · show this to a performer to be scanned</div>
         </div>
