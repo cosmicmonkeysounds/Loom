@@ -73,6 +73,9 @@ export const Code = {
   L1203CurrencyUnparsed: "L1203",
   /** A CHARACTER / TRAIT `wallet:` line does not parse — the role is dropped (workspace lint). */
   L1204WalletRoleUnparsed: "L1204",
+  /** A header `watch:` / `countdown:` line (or an item on it) the director's
+   *  board drops or cannot resolve (workspace lint, a warning). */
+  L1205BoardLineUnparsed: "L1205",
 } as const;
 
 export type Code = (typeof Code)[keyof typeof Code];
