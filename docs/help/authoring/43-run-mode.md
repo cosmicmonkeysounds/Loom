@@ -198,9 +198,11 @@ console, and it survives a reload. The header shows the story's
 - Pressing an **earlier** cue again (a second round, a re-read) never
   moves LAST back.
 - An off-sequence cue (`sequence: false`: one a machine or a timer
-  fires — ⏰, 📥, ⏳, 🚨 fire themselves on time — a hardware fallback,
-  an anytime cue like 💡 or ✍) ticks when it fires but is never LAST or
-  NEXT.
+  fires — C2's ⏰ *Hunt over*, 📥, ⏳, 🚨 fire themselves on time — a
+  hardware fallback, an anytime cue like 💡 or ✍) ticks when it fires
+  but is never LAST or NEXT. V3's ⏰ *Bingo time* is not one of them: the
+  Bingo timer calls time and tells Clippy to ask for the results, and
+  you press V3 yourself, so it becomes LAST like any step.
 
 A local-folder rehearsal judges all of this exactly like the server. A
 cue that needs a person — an award: every

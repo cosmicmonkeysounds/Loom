@@ -36,8 +36,11 @@ At the bottom of the Wallet:
   40 Truthcoin* on yours. A payment the auditor denies, or one cancelled
   while it was held, closes both cards too, and the card says who
   stopped it: *⛔ Payment denied by CRA Agent Software; refunded* (on
-  the payer's phone, *… denied your payment; refunded*), *↩️ You
-  cancelled the payment*, or *↩️ Director cancelled the payment*. If a
+  the payer's phone, *… denied your payment; refunded*). A payment the
+  payer took back reads *↩️ You cancelled the payment* on their phone
+  and *↩️ Paint cancelled the payment* on yours. One a director took
+  back reads *↩️ Director cancelled your payment* on the payer's phone
+  and *↩️ Director cancelled Paint's payment* on yours. If a
   director closes a request nobody has paid yet, both cards say *↩️
   Director cancelled the request*, never that the asker withdrew it.
 - **💱 Trade a fact** — offer one of your Codex entries for coin, or

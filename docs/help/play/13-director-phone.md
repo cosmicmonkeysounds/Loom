@@ -27,8 +27,10 @@ night is going (after the dance, the ending's own cue). A cue you press
 over and over (📋 once per question) stays NEXT until you move on.
 While a timer is running the night, NEXT is **empty**: at *Trapped in
 the Internet* that is all of hunt 1, hunt 2's hour and the summons. The
-timer fires the next step itself; its cue (⏰, 📥, ⏳, 🚨) is still on
-the sheet to fire early, but never ticks as LAST or NEXT. ✓ marks
+timer fires the next step itself; its cue (C2's ⏰ *Hunt over*, 📥, ⏳,
+🚨) is still on the sheet to fire early, and ticks ✓ when it fires, but
+is never LAST or NEXT. V3's ⏰ *Bingo time* is an ordinary step: you
+press it when Bingo ends, and it becomes LAST. ✓ marks
 every cue that has already fired tonight. Type in the filter box to find
 a cue by its code or a word.
 
