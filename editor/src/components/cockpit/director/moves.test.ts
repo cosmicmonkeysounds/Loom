@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { movedCue, movedPressedCue, ownMove, pressSettled, within, OWN_MS, PRESS_TIMEOUT_MS } from './moves'
+import { movedCue, movedPressedCue, ownMove, pressSettled, settleTarget, within, OWN_MS, PRESS_TIMEOUT_MS } from './moves'
 import { DOORS_NOT_OPEN, failureText } from '@/lib/press-failure'
 
 describe('movedCue', () => {
@@ -81,5 +81,28 @@ describe('movedPressedCue (the 409 moved banner)', () => {
   it('falls back to the marks when the server sent no cues', () => {
     expect(movedPressedCue(undefined, 'call_c6')).toBe('call_c6')
     expect(movedPressedCue(undefined, undefined)).toBeNull()
+  })
+})
+
+describe('settleTarget (which answers hold the lock)', () => {
+  it('a taken press holds it until the marks show its count', () => {
+    expect(settleTarget({ presses: 2 }, 1)).toBe(2)
+    expect(settleTarget({ presses: 2 }, 2)).toBeNull()
+  })
+
+  it("a 409 moved holds it until the marks show the press that beat it", () => {
+    // A fired c2 @1 (presses 2) and the frame is coalesced; B's c2 @1 gets
+    // 409 moved with cues.presses 2 while B's marks still say 1. Unlocking
+    // now would let B re-arm c3 on count 1 — refused as moved again, or
+    // dropped the moment the frame lands. Held, the re-arm binds to 2.
+    expect(settleTarget({ moved: true, pressed: 'c2', presses: 2 }, 1)).toBe(2)
+    expect(settleTarget({ moved: true, pressed: 'c2', presses: 2 }, 2)).toBeNull()
+  })
+
+  it('a failed press, or no count, unlocks at once', () => {
+    expect(settleTarget({ error: 'boom', presses: 5 }, 1)).toBeNull()
+    expect(settleTarget({ moved: true, pressed: 'c2' }, 1)).toBeNull()
+    expect(settleTarget({}, 1)).toBeNull()
+    expect(settleTarget({ presses: 3 }, undefined)).toBeNull()
   })
 })

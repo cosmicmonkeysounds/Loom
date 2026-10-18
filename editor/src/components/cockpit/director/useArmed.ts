@@ -6,7 +6,9 @@
 //! window blur, a hidden tab and after 4 s. One press is in flight at a
 //! time (8 s at most: a hung one fails and unlocks; a landed one holds the
 //! lock until the snapshot carrying it arrives, 3 s at most, so the next
-//! arm binds past it), and NEXT cools down for 1 s after one. What came back (taken /
+//! arm binds past it; a press refused as moved holds it the same way until
+//! the snapshot carrying the press that beat it), and NEXT cools down for
+//! 1 s after one. What came back (taken /
 //! not taken / failed) is the NOW card's banner and, for a refusal, the
 //! Needs you item.
 
@@ -23,7 +25,7 @@ import {
   type CueRow,
 } from '@loom/core/cue-sheet'
 import { lastSeq, type RefusedPress } from './glance'
-import { NO_ANSWER, PRESS_TIMEOUT_MS, SETTLE_MS, movedCue, movedPressedCue, ownMove, pressSettled, within } from './moves'
+import { NO_ANSWER, PRESS_TIMEOUT_MS, SETTLE_MS, movedCue, movedPressedCue, ownMove, pressSettled, settleTarget, within } from './moves'
 import { failureText } from '@/lib/press-failure'
 
 /** NEXT's cooldown after a press. */
@@ -236,6 +238,14 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
         const pressedId = movedPressedCue(res.pressed, m.pressed)
         const fresh = rs.find((r) => r.id === pressedId)
         setStale(`Cues moved: ${fresh !== undefined ? cueLabel(fresh) : 'another press'} landed first. Nothing fired — re-arm.`)
+        // Hold the lock until the marks show the press that beat this one
+        // (the 409's own count): a re-arm on the lagging marks would be
+        // refused as moved again, or dropped the moment that frame lands.
+        const want = settleTarget(res, m.presses)
+        if (want !== null) {
+          settle.current = { presses: want, timer: setTimeout(unlock, SETTLE_MS) }
+          return
+        }
         latest.current.pending = null
         setPending(null)
         return
@@ -249,8 +259,9 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
             : { ...was, result: { kind: PressKind.Taken, id, cue, at, seq } }
       setPressOutcome(store, next)
       if (row.next) setCoolUntil(at + NEXT_COOLDOWN_MS)
-      if (res.error === undefined && typeof res.presses === 'number' && !pressSettled(res.presses, latest.current.marks.presses)) {
-        settle.current = { presses: res.presses, timer: setTimeout(unlock, SETTLE_MS) }
+      const want = settleTarget(res, latest.current.marks.presses)
+      if (want !== null) {
+        settle.current = { presses: want, timer: setTimeout(unlock, SETTLE_MS) }
         return
       }
       latest.current.pending = null

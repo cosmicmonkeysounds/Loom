@@ -313,7 +313,9 @@ the focus act holds NEXT, else LAST; an all-`sequence: false` act is
   (8 s → `NO_ANSWER`, unlocks; a landed one keeps the lock until the
   snapshot shows the server's `FireResult.presses`, `SETTLE_MS` 3 s at
   most, so the next arm binds past it; a 409 `moved` names the 409's own
-  `cues.pressed` and gives back `ownPress`), NEXT cools 1 s after NEXT itself is fired
+  `cues.pressed`, gives back `ownPress` and holds the lock the same way
+  until the marks show the 409's `cues.presses` — `moves.ts`
+  `settleTarget` — so a re-arm never binds behind the press that beat it), NEXT cools 1 s after NEXT itself is fired
   (`row.next` at fire; an aside sets no cooldown); a `subject` cue's
   first tap opens the picker (`pick`), `armFor` arms it; the last
   result is kept per store so it survives a tab switch.
@@ -344,9 +346,11 @@ the focus act holds NEXT, else LAST; an all-`sequence: false` act is
 - `clock.ts` — countdowns off `storyNow` (stands still while paused; the
   local store fills `storyClock` from `ModView.clock` too).
 
-Store: `fireSignal(...)` resolves to `FireResult {refused?, error?}` and
-never rejects (`lib/api.ts` reads `{refused}` off `/api/mod/signal`; the
-sim store uses `pressRefused`); `CockpitState.watch` / `watchDeclared` /
+Store: `fireSignal(…, presses?)` resolves to `FireResult {refused?,
+error?, moved?, pressed?, presses?}` and never rejects (`lib/api.ts` sends
+the arm's `presses` and reads `{refused, presses}` off `/api/mod/signal`'s
+200; `operate.ts` maps a 409 `moved` to `{moved, pressed, presses}` off the
+409's `cues` and restores `ownPress`; the sim store uses `pressRefused`); `CockpitState.watch` / `watchDeclared` /
 `countdowns` (from `ModView.watch` / `countdowns`), `worldFilter` /
 `setWorldFilter` (the World tab's filter), `ownPress`, `logPress` /
 `setLogPress`. The local backend notes each press (`notePress`) so a

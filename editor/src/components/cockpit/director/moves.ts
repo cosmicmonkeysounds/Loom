@@ -4,7 +4,7 @@
 //! console did not press flashes who moved it.
 
 import type { CueMarks } from '@loom/core/cue-sheet'
-import type { OwnPress } from '@/store/cockpit'
+import type { FireResult, OwnPress } from '@/store/cockpit'
 import { foldKey } from './glance'
 
 /** How long after sending a press its LAST still counts as this console's. */
@@ -61,4 +61,15 @@ export function pressSettled(want: number | undefined, seen: number | undefined)
  *  409's fresh `cues.pressed`), else what the marks last showed. */
 export function movedPressedCue(fromServer: string | null | undefined, fromMarks: string | null | undefined): string | null {
   return fromServer !== undefined ? fromServer : (fromMarks ?? null)
+}
+
+/** The press count a press's answer holds the lock for, or null to unlock
+ *  now: the server's count after a taken (or story-refused) press, and —
+ *  just as much — the count a 409 `moved` reported (the press that beat
+ *  this one). Without the second, a console whose marks lag re-arms on the
+ *  count from before that press, and the re-armed press is refused as moved
+ *  again. A failed press, no count, or marks that already show it: null. */
+export function settleTarget(res: FireResult, seen: number | undefined): number | null {
+  if (res.error !== undefined || typeof res.presses !== 'number') return null
+  return pressSettled(res.presses, seen) ? null : res.presses
 }

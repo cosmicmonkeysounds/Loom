@@ -66,6 +66,7 @@ import {
   type FactsView,
   type WatchSummary,
   type CountdownSummary,
+  type FireResult,
   WalletAction,
 } from '@/store/cockpit'
 
@@ -796,9 +797,15 @@ export const useOperate = create<OperateState>((set, get) => {
           // Refused as moved: nothing fired, so this was not this console's
           // press — another director's LAST must still read as theirs.
           if (get().ownPress === own) set({ ownPress: was })
+          // The 409's fresh cue state: the press that beat this one, and
+          // the count after it (the Director holds its lock until its marks
+          // show it, so the re-arm binds past that press).
           const cues = e.data['cues']
-          const pressed = cues !== null && typeof cues === 'object' ? (cues as { pressed?: unknown }).pressed : undefined
-          return typeof pressed === 'string' || pressed === null ? { moved: true, pressed } : { moved: true }
+          const c = cues !== null && typeof cues === 'object' ? (cues as { pressed?: unknown; presses?: unknown }) : {}
+          const out: FireResult = { moved: true }
+          if (typeof c.pressed === 'string' || c.pressed === null) out.pressed = c.pressed
+          if (typeof c.presses === 'number' && Number.isFinite(c.presses)) out.presses = c.presses
+          return out
         }
         const error = failureText((e as Error).message)
         set({ error })

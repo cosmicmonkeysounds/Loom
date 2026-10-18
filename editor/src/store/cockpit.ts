@@ -287,9 +287,11 @@ export interface FireResult {
   /** With `moved`: the cue the newest press fired (the 409's fresh
    *  `cues.pressed`) — what the banner names, never this console's own. */
   pressed?: string | null
-  /** The cue state's press count once this press landed (the server's 200;
-   *  absent from the local backend and an older server). The Director keeps
-   *  its lock until its marks show it, so the next arm binds past it. */
+  /** The cue state's press count once this press landed (the server's 200),
+   *  or, with `moved`, the count after the press that beat it (the 409's
+   *  `cues.presses`); absent from the local backend and an older server.
+   *  The Director keeps its lock until its marks show it, so the next arm
+   *  binds past it. */
   presses?: number
 }
 
