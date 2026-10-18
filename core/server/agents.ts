@@ -824,6 +824,11 @@ export class AgentHub {
             r.req = fresh;
             r.rev += 1;
             r.behind = false;
+            // A worker it was sent to before (a dropped stream, a cancel)
+            // may still answer that older copy under this id: that answer
+            // doesn't cover this line, so the runtime asks again after it.
+            // A re-send renews the id and the new copy carries it (dispatch).
+            if (r.sentRev >= 0) r.followUp = true;
           }
         } else {
           r.followUp = true;

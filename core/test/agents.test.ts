@@ -798,6 +798,31 @@ describe("AgentHub", () => {
     if (late === null) expect(h.hub.settle(now.id, "A")).toEqual({ req: now, followUp: false });
   });
 
+  it("a line typed while the request is queued after a worker drop is answered after the dropped stream's late answer to the older copy (review 7)", () => {
+    const h = hubHarness();
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    h.hub.line(T); // L1, sent as X
+    const x = a.requests()[0]!;
+    h.hub.detach("laptop"); // the stream drops: queued, nobody else attached
+    h.hub.line(T); // L2, folded into the queued body
+    // The dropped stream's task finishes and posts its answer to X (L1 only).
+    expect(h.hub.settle(x.id, "laptop")?.followUp).toBe(true);
+    // Re-sent first instead: the new copy carries L2, answered once; the old
+    // copy's answer is refused.
+    const k = hubHarness();
+    const d = k.worker("laptop");
+    k.hub.attach(d.w);
+    k.hub.line(T);
+    const y = d.requests()[0]!;
+    k.hub.detach("laptop");
+    k.hub.line(T);
+    const e = k.worker("laptop-2");
+    k.hub.attach(e.w);
+    expect(k.hub.settle(y.id, "laptop")).toBeNull();
+    expect(k.hub.settle(e.requests()[0]!.id, "laptop-2")?.followUp).toBe(false);
+  });
+
   it("a lone laptop's backlog older than the queue's max age survives one slow reply: the max age on a stalled worker counts from the stall (review 6)", () => {
     const h = hubHarness();
     const a = h.worker("laptop");
