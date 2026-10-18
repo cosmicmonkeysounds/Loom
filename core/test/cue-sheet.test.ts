@@ -307,6 +307,38 @@ describe("the phone cue page's server surface (W-26)", () => {
     rt.dispose();
   });
 
+  it("a restore of a story with no start: paused before its first tick keeps its doors open: a counted press is taken", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "loom-cuephone-"));
+    dirs.push(dir);
+    const store = new Store(dir);
+    const rt = new EventRuntime({ eventId: "evt", store, codes: CODES, scenarioName: "cue-phone", scenarioSource: SOURCE, joinBase: () => "http://localhost" });
+    const token = (await call(rt, "POST", "/api/mod/login", { passcode: CODES.mod })).json["token"] as string;
+    rt.openDoors();
+    expect((await call(rt, "POST", "/api/mod/signal", { name: "ring_the_bell", presses: 0 }, token)).status).toBe(200);
+    rt.pause();
+    expect((await call(rt, "POST", "/api/mod/signal", { name: "ring_the_bell", presses: 1 }, token)).status).toBe(200);
+    // No tick and no entry fireBeat: nothing in the journal says the doors opened.
+    expect(store.readJournal().map((e) => e.m)).toEqual(["signal", "signal"]);
+    rt.dispose();
+    const rt2 = new EventRuntime({ eventId: "evt", store, codes: CODES, scenarioName: "cue-phone", scenarioSource: SOURCE, joinBase: () => "http://localhost" });
+    expect(rt2.restore()).not.toBeNull();
+    const token2 = (await call(rt2, "POST", "/api/mod/login", { passcode: CODES.mod })).json["token"] as string;
+    const lean = (await call(rt2, "GET", "/api/state?role=mod&cues=1", {}, token2)).json as unknown as ReturnType<typeof cueSheetView>;
+    expect(lean.doorsClosed).toBeUndefined();
+    expect(lean.paused).toBe(true);
+    expect(lean.cues.presses).toBe(2);
+    expect((await call(rt2, "POST", "/api/mod/signal", { name: "ring_the_bell", presses: 2 }, token2)).status).toBe(200);
+    // A restart with the doors shut is still a run whose doors never opened.
+    expect((await call(rt2, "POST", "/api/mod/reset", {}, token2)).status).toBe(200);
+    rt2.dispose();
+    const rt3 = new EventRuntime({ eventId: "evt", store, codes: CODES, scenarioName: "cue-phone", scenarioSource: SOURCE, joinBase: () => "http://localhost" });
+    expect(rt3.restore()).not.toBeNull();
+    const token3 = (await call(rt3, "POST", "/api/mod/login", { passcode: CODES.mod })).json["token"] as string;
+    expect(((await call(rt3, "GET", "/api/state?role=mod&cues=1", {}, token3)).json as unknown as ReturnType<typeof cueSheetView>).doorsClosed).toBe(true);
+    expect((await call(rt3, "POST", "/api/mod/signal", { name: "ring_the_bell", presses: 0 }, token3)).status).toBe(409);
+    rt3.dispose();
+  });
+
   it("before the doors the lean view lists the story's admin cues (not \"no director cues\")", async () => {
     const dir = mkdtempSync(join(tmpdir(), "loom-cuephone-"));
     dirs.push(dir);

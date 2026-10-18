@@ -67,6 +67,10 @@ export interface Meta {
   scenarioName: string;
   scenarioSource: string;
   phase: RuntimePhase;
+  /** This run's doors have opened (its `entry:` beat, if any, has played).
+   *  A paused run of a story with no `start:` and no tick yet has nothing
+   *  in its journal to say so. Absent in an older meta. */
+  opened?: boolean;
   /** persona id → the director who spawned it (mod-spawned personas only). */
   owners?: Array<[string, string]>;
 }

@@ -2458,6 +2458,7 @@ export class EventRuntime {
       scenarioName: this.scenarioName,
       scenarioSource: this.scenarioSource,
       phase: this.phase,
+      opened: this.entryPlayed,
       owners: [...this.personaOwners.entries()],
     });
   }
@@ -2634,7 +2635,6 @@ export class EventRuntime {
       this.pausedAt = null;
     }
     this.setPhase("open");
-    this.persistMeta();
     this.startTicker();
     // A live event opens exactly like a rehearsal: the `entry:` beat plays
     // on the run's first open — also after a restart or a restore that left
@@ -2644,6 +2644,10 @@ export class EventRuntime {
       const entry = this.sim?.model.entry;
       if (entry != null && entry !== "") this.fanout(this.commit("fireBeat", entry));
     }
+    // After the entry: the meta says the doors opened (`opened`), so a
+    // restore of a story with no `start:` paused before its first tick
+    // still knows it.
+    this.persistMeta();
     this.pushSnapshots();
   }
 
@@ -2805,8 +2809,9 @@ export class EventRuntime {
     // The entry played when the journal holds its fireBeat. A journal with
     // a tick (the clock only runs with the doors open) or a run persisted
     // open counts too: a pre-fix run whose entry was lost must not have it
-    // fire mid-show on the next resume.
-    this.entryPlayed = meta.phase === "open";
+    // fire mid-show on the next resume. So does the meta's own `opened`: a
+    // story with no `start:` paused before its first tick journals neither.
+    this.entryPlayed = meta.phase === "open" || meta.opened === true;
     for (const e of this.store.readJournal()) {
       if (e.m === "tick" || (e.m === "fireBeat" && entry !== null && e.a[0] === entry)) this.entryPlayed = true;
       if (e.m === "wallet") {
