@@ -53,15 +53,15 @@ export function CutsceneStage({
       <header className="cut-head">
         <span className="cut-where">{where ?? ""}</span>
         <span className="cut-title">{title ?? ""}</span>
-        {offline && (
-          <span className="cut-offline" role="status">
-            reconnecting…
-          </span>
-        )}
         <button type="button" className="cut-pass" onClick={onPass} title="Your pass">
           🎟️ My pass
         </button>
       </header>
+      {offline && (
+        <div className="cut-offline" role="status">
+          reconnecting…
+        </div>
+      )}
       <MessageList messages={messages} widgets={widgets} empty="Stand by." />
       <footer className="cut-foot">
         {decision && <DecisionTray decision={decision} />}

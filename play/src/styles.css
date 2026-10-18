@@ -930,7 +930,10 @@ footer {
   padding: 3px 8px; cursor: pointer; border-radius: var(--radius); flex-shrink: 0;
 }
 .cut-pass:hover { border-color: var(--white); }
-.cut-offline { color: var(--white); animation: cut-pulse 1.2s ease-in-out infinite; }
+.cut-offline {
+  padding: 0 18px 6px; font: 700 10px var(--ui-font); letter-spacing: 0.5px; text-transform: uppercase;
+  color: var(--white); animation: cut-pulse 1.2s ease-in-out infinite;
+}
 /* the pass card (`show pass`): the QR, stacked and centred, big enough to hold up */
 .pass-body { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 4px 0 2px; text-align: center; }
 .pass-body img { display: block; width: min(220px, 70vw); height: auto; background: var(--white); padding: 8px; box-shadow: var(--sunken); border-radius: var(--radius); }
@@ -962,7 +965,7 @@ footer {
 .cut-go { align-self: center; width: auto; padding: 10px 34px; margin-top: 2px; font-size: 15px; }
 .cut-cursor { color: var(--highlight); font-size: 14px; animation: dlg-caret-blink 1s steps(1) infinite; padding: 0 4px; }
 @keyframes cut-in { from { opacity: 0; } to { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .cutscene, .cutscene::before, .cut-where { animation: none; } .cut-cursor { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .cutscene, .cutscene::before, .cut-where, .cut-offline { animation: none; } .cut-cursor { animation: none; } }
 
 /* ── the guided tour (`show tutorial`) ──────────────────────────────────
    A spotlight cut out of a dim sheet over the live app, and a callout
