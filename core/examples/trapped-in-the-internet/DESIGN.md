@@ -3398,8 +3398,8 @@ featured and pool characters so mingling pays off and identities start to leak):
 ### 8.2 Truth or Dare: the bottle (round 1; wave 4, U12 — nothing to print)
 
 No slips. Between each question's results the director spins the bottle (🍾, up to five
-times per question): the server picks a cleared program at the Desktop not yet picked for
-this question, Trabolta asks *"{name}. Truth or dare?"* on the TV and their phone shows
+times per question): the server picks a cleared program not yet picked for this question,
+wherever they are in the house (the TV names them, so they come forward), Trabolta asks *"{name}. Truth or dare?"* on the TV and their phone shows
 **Truth / Dare**. Dare → marked for reinstallation. Truth → Trabolta asks the next personal
 question from `facts.json` `truths[]` (`TD01`–`TD20`; TD05–TD20 are DRAFT for the team, U20),
 spoken on the TV and posted in The Desktop; Clippy presses 🗣 *Truth answered* (+50) or 🙅

@@ -168,8 +168,9 @@ Internet. Then:
    answer, marked for reinstallation for a guess. **Never say which filings
    were lies**: the room hears "accepted" for every confident answer.
 3. **🍾 The bottle.** After each question the director spins it up to
-   **five times**. The server picks a cleared program at the Desktop who has
-   not been picked for this question; the TV says *"{name}. Truth or dare?"*
+   **five times**. The server picks a cleared program who has not been
+   picked for this question, wherever they are in the house (call them
+   forward); the TV says *"{name}. Truth or dare?"*
    and their phone asks. **Dare** → marked for reinstallation (programs
    choose Truth). **Truth** → Trabolta asks them a personal question on the
    TV; make them answer it in front of everyone, then press **🗣 Truth
