@@ -45,9 +45,8 @@ describe("a find held by a pause keeps the session alive (T3-reinstall-02)", () 
     let refusals = 0;
     let last = 0;
     while (now < 130_000) {
-      const held = heldFind(now, refusals);
+      const held = heldFind(now, refusals, l);
       expect(held.notice).toBe(PAUSED_NOTICE);
-      l.touch(now);
       last = now;
       refusals += 1;
       now = held.cooldownUntil;
@@ -60,7 +59,7 @@ describe("a find held by a pause keeps the session alive (T3-reinstall-02)", () 
   });
 
   it("the notice outlasts the wait, so it never blinks between retries", () => {
-    const held = heldFind(5000, 3);
+    const held = heldFind(5000, 3, new IdleLeash(0));
     expect(held.cooldownUntil).toBe(5000 + 10_000);
     expect(held.noticeMs).toBeGreaterThan(held.cooldownUntil - 5000);
   });

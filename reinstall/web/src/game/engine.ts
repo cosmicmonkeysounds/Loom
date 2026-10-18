@@ -717,12 +717,10 @@ export class Game {
         // The run is paused (or its doors aren't open yet): nothing was
         // judged and the session stays un-found. Keep saying so, and keep
         // asking on the same backoff — the first retry after resume wins.
-        // A held find is the player still being there: the leash is touched.
-        const now = performance.now();
-        const held = heldFind(now, this.foundRefusals);
+        // A held find is the player still being there: it touches the leash.
+        const held = heldFind(performance.now(), this.foundRefusals, this.leash);
         this.say(held.notice, held.noticeMs);
         this.foundCooldownUntil = held.cooldownUntil;
-        this.leash.touch(now);
         this.foundRefusals += 1;
         this.phase = "playing";
         return;

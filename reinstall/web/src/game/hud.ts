@@ -55,12 +55,13 @@ export const PAUSED_NOTICE = "The simulation is paused — Gerald will wait for 
 /**
  * A find the doors held (409 "doors are closed"): say so until just past
  * the next retry, and retry on the usual backoff — the first retry after
- * resume lands. The player was told to wait, so the caller touches the idle
- * leash with every held reply: a director's pause never disconnects a
- * player standing at Gerald (retries are at most 10 s apart, well inside
- * the leash).
+ * resume lands. The player was told to wait, so every held reply touches
+ * the idle leash here: a director's pause never disconnects a player
+ * standing at Gerald (retries are at most 10 s apart, well inside the
+ * leash).
  */
-export function heldFind(now: number, refusals: number): { notice: string; noticeMs: number; cooldownUntil: number } {
+export function heldFind(now: number, refusals: number, leash: { touch(now: number): void }): { notice: string; noticeMs: number; cooldownUntil: number } {
+  leash.touch(now);
   const wait = foundRetryMs(refusals);
   return { notice: PAUSED_NOTICE, noticeMs: wait + 1000, cooldownUntil: now + wait };
 }
