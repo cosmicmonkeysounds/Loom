@@ -505,3 +505,28 @@ describe("wave 9 — ✅ takes back a 😤 pressed for the same answer (T2-facts
     expect(beats(truthTxt(sim))).toContain("Song Ending");
   });
 });
+
+// ───────────────────────── bets settle player to player (D1) ─────────────────────────
+
+describe("wave 9 — no story text sends coin to a character (T1-wallet-01, T10-02, D1)", () => {
+  /** A promise the wallet can't keep: a performer has no Wallet (wallet.ts sends between programs only). */
+  const POT = /stake to McAfee|send (?:your |their )?stakes?\b|send (?:it )?to (?:you|McAfee)|send you their|held pot|take your cut/iu;
+
+  it("the codex, the quests and McAfee's booth line settle a bet by the winner's 🙏 Request; Pay / Charge are still on McAfee's card", { timeout: SLOW }, () => {
+    const sim = fresh();
+    const m = sim.model;
+    for (const [id, e] of m.codex) expect(e.text, id).not.toMatch(POT);
+    for (const [id, q] of m.quests) expect(q.text, id).not.toMatch(POT);
+    expect(m.codex.get("DraftKings Orders")!.text).toMatch(/the winner sends a 🙏 Request and the loser\s+pays/u);
+    expect(m.quests.get("The Exchange")!.text).toMatch(/You have no Wallet: you hold no pot and take no cut/u);
+    // McAfee's booth hears it at the Truther Download.
+    const booth = boot();
+    toTruth1(booth);
+    fireAll(booth, "second_hunt_preview", "start_the_second_hunt");
+    const evs = advance(booth, 120);
+    const mcafee = (evs.filter((e) => e.type === "respond") as Ev<"respond">[]).filter((r) => r.to === "McAfee Anti-Virus").map((r) => r.text);
+    expect(mcafee.some((t) => t.startsWith("🪙 The # truthcoin-exchange is open."))).toBe(true);
+    for (const t of mcafee) expect(t).not.toMatch(POT);
+    for (const id of ["pay_truthcoin", "charge_truthcoin"]) expect(m.interactions.get(id)!.by, id).toContain("McAfee Anti-Virus");
+  });
+});

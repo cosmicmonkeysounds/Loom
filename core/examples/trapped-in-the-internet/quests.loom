@@ -180,8 +180,10 @@ QUEST The Exchange
   text:
     # truthcoin-exchange is open and you are its broker. Every settled
     trade posts there on its own. Broker in person: set prices, match
-    buyers to facts, take your cut. 🪙 Pay / 🪙 Charge are for corrections
-    only.
+    buyers to facts, referee bets and call the winner in the room. A bet
+    settles player to player: the winner sends a 🙏 Request, the loser
+    pays. You have no Wallet: you hold no pot and take no cut. 🪙 Pay /
+    🪙 Charge are for corrections only.
 
 QUEST The Clubs
   title: Patrol: the clubs

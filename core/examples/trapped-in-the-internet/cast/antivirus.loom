@@ -32,7 +32,7 @@ CHARACTER McAfee Anti-Virus is Enforcer
 
   when truther_download:
     if Night.truther_sent != true:
-      reply 🪙 The # truthcoin-exchange is open. Every settled trade is posted there. Broker: set prices, match buyers to facts, take your cut in person. 🪙 Pay / 🪙 Charge are still yours for cash deals.
+      reply 🪙 The # truthcoin-exchange is open. Every settled trade is posted there. Broker: set prices, match buyers to facts, referee bets and call the winner in the room. A bet settles player to player (the winner sends a 🙏 Request, the loser pays): you hold no pot and take no cut. 🪙 Pay / 🪙 Charge are for corrections only.
 
 CHARACTER Password Manager is Enforcer
   avatar: File:1password-logo.svg
