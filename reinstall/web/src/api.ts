@@ -20,6 +20,7 @@ import type {
   SwitchVariantResult,
 } from "@loom/house";
 import { baseOf, type ReinstallConfig } from "./config.ts";
+import type { Program } from "./program.ts";
 import { NIGHT_ENDED, type ArmedRead } from "./game/fight.ts";
 import { showHouse } from "./show-house.ts";
 import { isDuckSpot } from "./spatial.ts";
@@ -45,9 +46,15 @@ export async function tokenAlive(config: ReinstallConfig): Promise<boolean> {
 }
 
 /** Every guest / persona for the typed fallback, the corrupted first. */
-export async function fetchCandidates(config: ReinstallConfig): Promise<SpatialCandidate[]> {
+export async function fetchCandidates(config: ReinstallConfig): Promise<Program[]> {
   const r = await getJson<{ players?: SpatialCandidate[] }>(`${baseOf(config)}/api/mod/spatial/candidates`, config.token);
-  return r.players ?? [];
+  return (r.players ?? []).map(toProgram);
+}
+
+/** A candidate row → the tablet's `Program` (`restricted` false from a server that doesn't say). */
+export function toProgram(row: SpatialCandidate): Program {
+  const restricted = (row as { restricted?: unknown }).restricted === true;
+  return { id: row.id, name: row.name, captured: row.captured, restricted, location: row.location };
 }
 
 /** The VR (and web) stations the server has seen. */

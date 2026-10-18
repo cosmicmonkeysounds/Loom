@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import type { Assignment, HouseMap, SpatialCandidate, StationInfo } from "@loom/house";
+import type { Assignment, HouseMap, StationInfo } from "@loom/house";
 import { matchName, parseScan } from "@loom/terminal/scan.ts";
 import { Scanner, cameraProblem, type CameraState } from "@loom/terminal/scanner.tsx";
 import { hasWebGL2 } from "@loom/terminal/webgl.ts";
@@ -18,17 +18,12 @@ import { ApiError, begin, fetchCandidates, fetchDealtHouse, fetchStations, flush
 import { applyHints, baseOf, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, withoutSecrets, type DeviceRole, type ReinstallConfig } from "./config.ts";
 import { createSfx } from "./game/audio.ts";
 import { findFlash } from "./game/hud.ts";
+import { programStatus, quickPicks, type Program } from "./program.ts";
 import { HOLD_MS, useLongPress } from "./kiosk.ts";
 import { NO_WEBGL2, Play, type PlayExit } from "./game/Play.tsx";
 import { showHouse } from "./show-house.ts";
 import { Desktop, ProgressBar, Window, Wizard } from "./wizard.tsx";
 
-interface Program {
-  id: string;
-  name: string;
-  captured: boolean;
-  location: string | null;
-}
 
 type Screen =
   | { kind: "setup"; notice: string | null }
@@ -284,7 +279,7 @@ function Device({
           <Wizard
             step={2}
             total={3}
-            heading={screen.program.captured ? "Corrupted program detected" : "Program detected"}
+            heading={programStatus(screen.program).heading}
             actions={
               <>
                 <button className="w98-button" onClick={() => setScreen({ kind: "scan" })}>
@@ -301,12 +296,12 @@ function Device({
           >
             <div className="program-card w98-sunken">
               <div className="program-icon" aria-hidden="true">
-                {screen.program.captured ? "☣" : "▣"}
+                {programStatus(screen.program).icon}
               </div>
               <div>
                 <div className="program-name">{screen.program.name}</div>
                 <div className="program-meta">
-                  {screen.program.captured ? "STATUS: CORRUPTED — requires reinstallation" : "STATUS: healthy — Gerald is waiting anyway"}
+                  {programStatus(screen.program).status}
                   {screen.program.location !== null && <> · in {screen.program.location}</>}
                 </div>
               </div>
@@ -465,7 +460,7 @@ function ScanStep({
 }) {
   const [camera, setCamera] = useState<CameraState>("starting");
   const [typed, setTyped] = useState("");
-  const [candidates, setCandidates] = useState<SpatialCandidate[]>([]);
+  const [candidates, setCandidates] = useState<Program[]>([]);
   const [busy, setBusy] = useState(false);
 
   // The corrupted programs, offered as quick picks (and the typed roster).
@@ -482,7 +477,7 @@ function ScanStep({
       window.clearInterval(t);
     };
   }, [config]);
-  const corrupted = candidates.filter((c) => c.captured).slice(0, 8);
+  const { corrupted, marked } = quickPicks(candidates);
 
   const submit = async () => {
     if (typed.trim() === "" || busy) return;
@@ -535,7 +530,7 @@ function ScanStep({
               <>
                 Show the program's <b>pass</b> (the QR on their phone: menu → Your pass).
               </>
-            ) : corrupted.length > 0 ? (
+            ) : corrupted.length + marked.length > 0 ? (
               <>No camera here: tap the program in the Internet below, or type their name.</>
             ) : (
               <>No camera here: type the program's name.</>
@@ -563,6 +558,18 @@ function ScanStep({
                 {corrupted.map((c) => (
                   <button key={c.id} className="w98-button pick" onClick={() => onPick(c)}>
                     ☣ {c.name}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          )}
+          {marked.length > 0 && (
+            <fieldset className="w98-group">
+              <legend>Marked — sent to the Internet</legend>
+              <div className="quick-picks">
+                {marked.map((c) => (
+                  <button key={c.id} className="w98-button pick" onClick={() => onPick(c)}>
+                    🚨 {c.name}
                   </button>
                 ))}
               </div>
