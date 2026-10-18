@@ -162,6 +162,12 @@ Hi.
     expect(out[4]!.message).toMatch(/no expression/);
   });
 
+  it("a countdown on a `secret: true` CHARACTER is flagged (the server drops it); a watch is not", async () => {
+    const out = await lints([["file:///main.loom", STORY("watch: Kernel.code\ncountdown: Night.step, Kernel.code as Lock")]]);
+    expect(out.map((d) => d.line)).toEqual([3]);
+    expect(out[0]!.message).toMatch(/`Kernel` is a `secret: true` CHARACTER, so the countdown is never shown/);
+  });
+
   it("a board line outside the first file's header is ignored by the server", async () => {
     const out = await lints([
       ["file:///main.loom", STORY("watch: Night.step")],

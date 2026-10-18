@@ -3,6 +3,7 @@ import { Sim } from "../src/runtime/sim/index.ts";
 import { boardFor, guestView, modView, pressRefused, primeView, staffRoomIds, titleOf } from "../server/views.ts";
 import { scenarioSource } from "../examples/load.ts";
 import { heldCharacters } from "../server/identity.ts";
+import { cueSheetView } from "../src/cue-sheet.ts";
 
 const SCENARIO = scenarioSource("escape-the-internet");
 
@@ -660,6 +661,26 @@ Hello.
     ]);
     sim.tick(10_000); // the dance deadline is now, not ahead
     expect(modView(sim, "open", "x").countdowns).toEqual([{ label: "Midnight", path: "Night.y2k_end", endsAt: 3700 }]);
+  });
+
+  it("a countdown on a `secret: true` CHARACTER never leaves the server", () => {
+    const src = BOARD.replace("countdown: Night.dance_at as Dance", "countdown: Night.dance_at as Dance, Kernel.deadline as Lock");
+    const sim = Sim.fromSources(src);
+    sim.tick(100_000);
+    sim.setVar("Night.dance_at", "110");
+    sim.setVar("Kernel.deadline", "4242");
+    expect(boardFor(sim).countdowns).toEqual([{ label: "Dance", path: "Night.dance_at", endsAt: 110 }]);
+    const view = modView(sim, "open", "x");
+    expect(view.countdowns).toEqual([{ label: "Dance", path: "Night.dance_at", endsAt: 110 }]);
+    const lean = cueSheetView(view);
+    expect(lean.countdowns).toEqual([{ label: "Dance", endsAt: 110 }]);
+    expect(JSON.stringify(view)).not.toContain('"Lock"');
+    expect(JSON.stringify(lean)).not.toContain("4242");
+    // The same deadline on a CHARACTER that is not secret counts down.
+    const open = Sim.fromSources(src.replace("  secret: true\n", ""));
+    open.tick(100_000);
+    open.setVar("Kernel.deadline", "4242");
+    expect(boardFor(open).countdowns).toEqual([{ label: "Lock", path: "Kernel.deadline", endsAt: 4242 }]);
   });
 
   it("no board lines: no `watch` / `countdowns` on the view", () => {

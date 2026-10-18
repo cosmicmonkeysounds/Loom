@@ -924,8 +924,9 @@ const boards = new WeakMap<object, ResolvedBoard>();
 
 /** Resolve each board line's scopes once per compiled model (director
  *  snapshots are frequent): a path's head names a CHARACTER (its value;
- *  `secret: true` → masked), a ROLE (a count over guests), or anything
- *  else (a global); an item with no dot is a person. */
+ *  `secret: true` → masked; a countdown on one is dropped), a ROLE (a
+ *  count over guests), or anything else (a global); an item with no dot
+ *  is a person. */
 function resolvedBoard(model: Sim["model"]): ResolvedBoard {
   let out = boards.get(model);
   if (out !== undefined) return out;
@@ -950,9 +951,16 @@ function resolvedBoard(model: Sim["model"]): ResolvedBoard {
         return { label: i.label, path: s.path, person: null, scope: s.scope, ...(s.secret ? { secret: true as const } : {}) };
       }),
     })),
+    // A countdown on a `secret: true` CHARACTER is dropped: its deadline
+    // would go out raw as `endsAt` (and to the phone's lean view), and a
+    // countdown has no mask. Lint L1205 says so.
     countdowns: model.countdowns.map((l) => ({
       while: l.while,
-      items: l.items.filter((i) => i.path !== null).map((i) => ({ label: i.label, path: scoped(i.path!).path })),
+      items: l.items.flatMap((i) => {
+        if (i.path === null) return [];
+        const s = scoped(i.path);
+        return s.secret ? [] : [{ label: i.label, path: s.path }];
+      }),
     })),
   };
   boards.set(model, out);

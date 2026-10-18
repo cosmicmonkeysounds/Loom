@@ -196,6 +196,8 @@ export class Workspace {
    *   would never show);
    * - a path whose head names no CHARACTER, ROLE, GROUP or LOCATION, no
    *   global some line `set`s (`Night`), and is not `Time`;
+   * - a countdown on a `secret: true` CHARACTER (`boardFor` drops it: its
+   *   deadline would go out unmasked);
    * - a person item that names no CHARACTER;
    * - a line in any file but the first (`main.loom`): the event server plays
    *   the files concatenated, so only the first file's header is a header.
@@ -217,9 +219,13 @@ export class Workspace {
     // global a line in the project writes (`set Night.phase = …`).
     const heads = new Set<string>(["time"]);
     const people = new Set<string>();
+    const secrets = new Set<string>();
     if (model !== null) {
       for (const m of [model.characters, model.roles, model.factions, model.locations]) for (const id of m.keys()) heads.add(foldName(id));
-      for (const id of model.characters.keys()) people.add(foldName(id));
+      for (const [id, c] of model.characters) {
+        people.add(foldName(id));
+        if (c.secret) secrets.add(foldName(id));
+      }
     }
     for (const [, doc] of docs) for (const m of doc.text.matchAll(/(?:\bset\s+|<set:\s*)([A-Za-z_][A-Za-z0-9_]*)\./gu)) heads.add(foldName(m[1]!));
     for (const { uri, line, first } of boardLines) {
@@ -251,6 +257,8 @@ export class Workspace {
           const head = item.path.slice(0, item.path.indexOf("."));
           if (!heads.has(foldName(head)))
             lint(uri, range, `\`${item.path}\` on ${what}: \`${head}\` names no CHARACTER, ROLE, GROUP or LOCATION, and no line sets a \`${head}.…\` global`);
+          else if (opts.pathsOnly && secrets.has(foldName(head)))
+            lint(uri, range, `\`${item.path}\` on ${what}: \`${head}\` is a \`secret: true\` CHARACTER, so the countdown is never shown (a countdown has no mask) — count down a global instead`);
         } else if (item.name !== null && !people.has(foldName(item.name))) {
           lint(uri, range, `\`${item.name}\` on ${what} names no CHARACTER — a person item is a character's name (a path needs a dot)`);
         }
