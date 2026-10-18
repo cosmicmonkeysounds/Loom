@@ -927,8 +927,11 @@ export class EventRuntime {
    *
    *  A delta console (`?delta=1`) that holds the previous frame, and had a
    *  keyframe inside `MOD_KEYFRAME_MS`, gets a `snapshotPatch` instead —
-   *  computed once and shared — and is kept current by an owed round too.
-   *  Everyone else gets the whole view; a delta console's carries `_frame`. */
+   *  computed once and shared. In an owed round such a console only rides
+   *  along on a view an owed console was actually sent (so it stays on the
+   *  newest frame); it never builds one itself, so a stalled console still
+   *  costs nothing until it moves. Everyone else gets the whole view; a
+   *  delta console's carries `_frame`. */
   private flushModSnapshots(owedOnly = false): void {
     // Same two writes as `sseSend`, the JSON serialised once for everyone.
     let data: string | null = null;
@@ -939,10 +942,14 @@ export class EventRuntime {
     let owed = false;
     const prev = this.modPrev;
     const now = Date.now();
-    for (const c of this.clients) {
-      if (c.role !== "mod" || c.lean === true) continue;
-      const current = c.delta === true && prev !== null && c.modFrame === prev.frame && now - (c.keyframeAt ?? 0) < MOD_KEYFRAME_MS;
-      if (owedOnly && c.snapshotOwed !== true && !current) continue;
+    const isCurrent = (c: Client) => c.delta === true && prev !== null && c.modFrame === prev.frame && now - (c.keyframeAt ?? 0) < MOD_KEYFRAME_MS;
+    const mods = [...this.clients].filter((c) => c.role === "mod" && c.lean !== true);
+    // An owed round: the owed consoles first, then the current delta ones
+    // that ride along — only once a view was built for an owed console.
+    const order = owedOnly ? [...mods.filter((c) => c.snapshotOwed === true), ...mods.filter((c) => c.snapshotOwed !== true && isCurrent(c))] : mods;
+    for (const c of order) {
+      const current = isCurrent(c);
+      if (owedOnly && c.snapshotOwed !== true && data === null) break; // nobody owed moved: nothing to ride on
       // Behind by the last view's size: skip before building a new one (a
       // stalled console's retries cost nothing until it moves).
       const behind = (n: number) => n > 0 && sseQueued(c.res) > n;
@@ -963,7 +970,7 @@ export class EventRuntime {
         continue;
       }
       c.snapshotOwed = false;
-      if (current) {
+      if (current && prev !== null) {
         // A patch bigger than the view itself is no saving: a keyframe then.
         if (patch === undefined) {
           const p = `data: ${JSON.stringify({ base: prev.frame, frame, patch: modPatch(prev.view, view!) })}\n\n`;

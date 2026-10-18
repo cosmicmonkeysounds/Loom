@@ -207,5 +207,35 @@ describe("the delta mod stream", () => {
     // Every view it rebuilt is a view the plain console was sent.
     const plainViews = views(plain.frames).map((f) => JSON.stringify(f.data));
     for (const g of replay(delta.frames).slice(1)) expect(plainViews).toContain(JSON.stringify(g.view));
-  });
+    });
+
+  it("a stalled console's owed rounds build no view for a current delta console; it rides along once one is sent", async () => {
+    const rt = runtime();
+    rt.openDoors();
+    const plain = await open(rt, "");
+    const delta = await open(rt, "&delta=1");
+    await steps(rt, 1);
+    // The plain console stalls: the next step owes it a view, the delta
+    // console takes its patch.
+    plain.writableLength = 10_000_000;
+    await post(rt, "/api/mod/say", { channel: "lobby", text: "while it stalls", as: "" });
+    const plainBefore = views(plain.frames).length;
+    const deltaBefore = views(delta.frames).length;
+    expect(replay(delta.frames).at(-1)!.kind).toBe("snapshotPatch");
+
+    // Three owed rounds with nothing happening: no new frame for anyone.
+    for (let i = 0; i < 3; i++) await new Promise((r) => setTimeout(r, MOD_SNAPSHOT_MS + 50));
+    expect(views(plain.frames).length).toBe(plainBefore);
+    expect(views(delta.frames).length).toBe(deltaBefore);
+
+    // It reads: the owed round sends it the whole view, and the delta
+    // console rides along on that frame — a patch, so it stays current.
+    plain.writableLength = 0;
+    await new Promise((r) => setTimeout(r, MOD_SNAPSHOT_MS + 50));
+    expect(views(plain.frames).length).toBe(plainBefore + 1);
+    const got = replay(delta.frames);
+    expect(got.length).toBe(deltaBefore + 1);
+    expect(got.at(-1)!.kind).toBe("snapshotPatch");
+    expect(got.at(-1)!.view).toEqual(views(plain.frames).at(-1)!.data);
+});
 });
