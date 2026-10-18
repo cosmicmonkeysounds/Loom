@@ -11,6 +11,7 @@ import { useCockpit } from '@/store/cockpit'
 import { ARM_MS, cueTitleTags, takesValue, type CueRow } from '@loom/core/cue-sheet'
 import { suggestionHint } from '../award-suggest'
 import { outOfTurn, useDirector } from './context'
+import { DirectorMode } from './director-keys'
 
 const NOT_ON_OFFER = 'Its `while:` is false right now — not suggested, still pressable'
 
@@ -38,7 +39,7 @@ export function ArmBar({ at }: { at: number }) {
 }
 
 /** Who a subject cue is armed for, by name. */
-function useNameOf() {
+export function useNameOf() {
   const roster = useCockpit((s) => s.roster)
   return (id: string | null) => (id === null ? '' : (roster.find((r) => r.id === id)?.name ?? id))
 }
@@ -80,7 +81,9 @@ export function SubjectPicker({ row }: { row: CueRow }) {
   // "people in the cue's room first" to sort by).
   const sorted = [...roster].sort((a, b) => a.name.localeCompare(b.name))
   const onKey = (e: KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    // Enter on the picker's own buttons (Arm, ✕) is that button's click:
+    // ✕ closes, it never arms the pick.
+    if (e.key === 'Enter' && !(e.target instanceof HTMLButtonElement)) {
       e.preventDefault()
       e.stopPropagation()
       if (armedHere) arm.tap(row)
@@ -170,6 +173,9 @@ export function CueButton({
   const busy = arm.pending !== null
   const nameOf = useNameOf()
   const suggestion = row.subject ? (d.awards.suggestions[row.id] ?? null) : null
+  // NEXT's picker lives on the NOW card (Calling mode): one picker, one
+  // autofocus, one set of testids.
+  const nowHolds = row.next && d.mode === DirectorMode.Calling
   const tone = armed
     ? 'border-amber-500 bg-amber-500/10 text-zinc-100'
     : row.last
@@ -260,7 +266,7 @@ export function CueButton({
           <ArmedDetail row={row} />
         </div>
       )}
-      {row.subject && (picking || armed) && <SubjectPicker row={row} />}
+      {row.subject && (picking || armed) && !nowHolds && <SubjectPicker row={row} />}
       {row.subject && !picking && !armed && suggestion !== null && (
         <div className="truncate pl-8 text-[11px] text-zinc-500" data-testid={`cue-suggest-${row.id}`}>
           {suggestionHint(suggestion)}
