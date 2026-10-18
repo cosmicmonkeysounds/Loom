@@ -58,10 +58,12 @@ describe("reloadEvent", () => {
   let stateBody: unknown = null;
   let hits: string[] = [];
   let resyncStatus = 200;
+  let resynced = true;
 
   beforeEach(async () => {
     hits = [];
     resyncStatus = 200;
+    resynced = true;
     roster = [];
     stateBody = null;
     server = createServer((req, res) => {
@@ -76,7 +78,7 @@ describe("reloadEvent", () => {
       if (path === "/api/mod/load") return void res.end(JSON.stringify({ ok: true, phase: "open" }));
       if (path === "/api/mod/resync") {
         if (resyncStatus !== 200) return void res.writeHead(resyncStatus).end("{}");
-        return void res.end(JSON.stringify({ ok: true, resynced: true }));
+        return void res.end(JSON.stringify({ ok: true, resynced }));
       }
       res.writeHead(404).end("{}");
     });
@@ -188,6 +190,16 @@ describe("reloadEvent", () => {
     expect(r.saved).toBe(1);
     expect(hits).toEqual(["POST /api/mod/login", "POST /api/mod/resync"]);
     expect(r.lines.join("\n")).toMatch(/open editor tabs now show the synced files/u);
+  });
+
+  it("--no-reload never claims a resync the server didn't do (no project link → resynced: false; review 2)", async () => {
+    resynced = false;
+    const r = await run("preview", false, base, false);
+    expect(r.code).toBe(0);
+    expect(hits).toEqual(["POST /api/mod/login", "POST /api/mod/resync"]);
+    const text = r.lines.join("\n");
+    expect(text).not.toMatch(/open editor tabs now show the synced files/u);
+    expect(text).toMatch(/no co-editing docs to resync/u);
   });
 
   it("--no-reload says so when the open editors couldn't be resynced", async () => {
