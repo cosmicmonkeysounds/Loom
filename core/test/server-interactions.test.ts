@@ -714,6 +714,8 @@ Narrator: The hall.
     expect(rt.liveSim!.factionOf(g.id)).toBe("Stay");
     rt.liveSim!.reveal("Rebels");
     expect(guestMayJoin(rt.liveSim!, "Rebels")).toBe(true);
+    // The chooser is the routes' own predicate (views.ts → joinableFactions).
+    expect(guestView(rt.liveSim!, g.id).factions).toEqual(["Rebels", "Stay"]);
     expect((await post(rt, "/api/guest/defect", { token: g.token, to: "Rebels" })).status).toBe(200);
     expect(rt.liveSim!.factionOf(g.id)).toBe("Rebels");
     // The story's own placement is untouched: a sim join still places anyone.
