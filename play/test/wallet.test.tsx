@@ -158,6 +158,10 @@ describe("card copy", () => {
     const cancelled = card({ ...side, step: "cancelled", by: "Paint" });
     expect(walletStepLine(cancelled, "me")).toBe("↩️ Paint cancelled the payment");
     expect(walletStepLine(cancelled, "g2")).toBe("↩️ You cancelled the payment");
+    // A director's cancel never reads as the payer's own on the payer's phone.
+    const byDirector = card({ ...side, step: "cancelled", by: "Director" });
+    expect(walletStepLine(byDirector, "g2")).toBe("↩️ Director cancelled the payment");
+    expect(walletStepLine(byDirector, "me")).toBe("↩️ Director cancelled the payment");
     // The root card's foot reads the closing step the same way.
     const sent = card({ ...side, step: "sent" });
     expect(walletFootLine(sent, null, view(), 0, denied, "me")).toBe("⛔ Payment denied by CRA Agent Software; refunded");

@@ -182,9 +182,10 @@ export function walletStepLine(card: WalletCard, me?: string | null): string {
       return `⛔ Denied${by} — refunded`;
     case "cancelled":
       if (card.kind === "freeze") return `↩️ Lifted early${by}`;
-      // C6: a request whose payment the payer took back (`by` = the payer);
-      // without `by` the asker withdrew the request.
-      if (card.kind === "request" && card.by) return me != null && me === card.to ? "↩️ You cancelled the payment" : `↩️ ${card.by.replace(/_/gu, " ")} cancelled the payment`;
+      // C6: a request whose payment was taken back (`by` = the payer or a
+      // director, a display name); without `by` the asker withdrew the
+      // request. "You" only when the payer is the one who cancelled.
+      if (card.kind === "request" && card.by) return me != null && me === card.to && card.by === card.toName ? "↩️ You cancelled the payment" : `↩️ ${card.by.replace(/_/gu, " ")} cancelled the payment`;
       return `↩️ Cancelled${by}`;
     case "thawed":
       return card.by ? `☀️ Lifted early${by} — your ${card.unit} moves again` : `☀️ Thawed — your ${card.unit} moves again`;
