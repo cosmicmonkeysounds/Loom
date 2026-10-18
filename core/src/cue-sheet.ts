@@ -413,6 +413,9 @@ export interface CueSheetView {
    *  not opened): `clock` holds still, so a countdown must not tick on.
    *  Absent while the clock runs, and from an older server. */
   paused?: true;
+  /** The doors have not opened yet (the runtime is `idle`): the cue sheet is
+   *  the story's, nothing can fire until they open. */
+  doorsClosed?: true;
   /** The live countdowns (`ModView.countdowns`), when any is running. */
   countdowns?: { label: string; endsAt: number }[];
   /** Up to 3 live `watch:` values — global ones only, never a secret. */
@@ -468,6 +471,7 @@ export function cueSheetView(view: {
     roster: (view.roster ?? []).map((p) => ({ id: p.id, name: p.name, location: p.location, ...(p.owner !== undefined ? { owner: p.owner } : {}) })),
     ...(view.clock !== undefined ? { clock: view.clock } : {}),
     ...(view.phase !== undefined && view.phase !== "open" ? { paused: true as const } : {}),
+    ...(view.phase === "idle" ? { doorsClosed: true as const } : {}),
     ...(countdowns.length > 0 ? { countdowns } : {}),
     ...(watch.length > 0 ? { watch } : {}),
   };

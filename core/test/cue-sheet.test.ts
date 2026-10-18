@@ -175,6 +175,26 @@ describe("the phone cue page's server surface (W-26)", () => {
     rt.dispose();
   });
 
+  it("before the doors the lean view lists the story's admin cues (not \"no director cues\")", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "loom-cuephone-"));
+    dirs.push(dir);
+    const store = new Store(dir);
+    const rt = new EventRuntime({ eventId: "evt", store, codes: CODES, scenarioName: "cue-phone", scenarioSource: SOURCE, joinBase: () => "http://localhost" });
+    const token = (await call(rt, "POST", "/api/mod/login", { passcode: CODES.mod })).json["token"] as string;
+    const lean = (await call(rt, "GET", "/api/state?role=mod&cues=1", {}, token)).json as unknown as ReturnType<typeof cueSheetView>;
+    expect(lean.interactions.map((i) => i.id)).toEqual(["ring_the_bell", "hunt_time_up"]);
+    expect(lean.title).toBe("Cue Phone");
+    expect(lean.doorsClosed).toBe(true);
+    expect(lean.paused).toBe(true);
+    expect(lean.cues).toEqual({ last: null, lastBy: null, fired: [], presses: 0, pressed: null });
+    expect(cueRows(lean.interactions, lean.cues).find((r) => r.next)?.id).toBe("ring_the_bell");
+    rt.openDoors();
+    const open = (await call(rt, "GET", "/api/state?role=mod&cues=1", {}, token)).json as unknown as ReturnType<typeof cueSheetView>;
+    expect(open).not.toHaveProperty("doorsClosed");
+    expect(open.interactions.map((i) => i.id)).toEqual(["ring_the_bell", "hunt_time_up"]);
+    rt.dispose();
+  });
+
   it("?cues=1 answers just the cue sheet, a fraction of the full view", async () => {
     const dir = mkdtempSync(join(tmpdir(), "loom-cuephone-"));
     dirs.push(dir);

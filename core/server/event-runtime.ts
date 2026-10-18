@@ -440,9 +440,9 @@ export class EventRuntime {
   private phase: RuntimePhase = "idle";
   private scenarioName: string;
   private scenarioSource: string;
-  /** The story's model compiled from `source` while no sim exists (null
-   *  when it won't compile) — `declaredModel`. */
-  private declaredCast: { source: string; model: SimModel | null } | null = null;
+  /** The story compiled from `source` while no sim exists (null when it
+   *  won't compile; never played) — `declaredModel` / `declaredSim`. */
+  private declaredCast: { source: string; sim: Sim | null } | null = null;
 
   // Token → capabilities (performer / admin), scoped to this event.
   private readonly sessions = new SessionStore();
@@ -731,16 +731,25 @@ export class EventRuntime {
    *  room terminal's LOCATION. */
   private get declaredModel(): SimModel | null {
     if (this.sim !== null) return this.sim.model;
+    return this.declaredSim?.model ?? null;
+  }
+
+  /** Before the doors: the story compiled from the scenario text but never
+   *  played (memoised on the text; null when it won't compile, or once a
+   *  live sim exists). The director's view lists its admin cues from it, so
+   *  a director checking the phone before the doors sees the cue sheet. */
+  private get declaredSim(): Sim | null {
+    if (this.sim !== null) return null;
     if (this.declaredCast?.source !== this.scenarioSource) {
-      let model: SimModel | null = null;
+      let sim: Sim | null = null;
       try {
-        model = Sim.fromSources(this.scenarioSource).model;
+        sim = Sim.fromSources(this.scenarioSource);
       } catch {
         // A story that won't compile has no cast to check against yet.
       }
-      this.declaredCast = { source: this.scenarioSource, model };
+      this.declaredCast = { source: this.scenarioSource, sim };
     }
-    return this.declaredCast.model;
+    return this.declaredCast.sim;
   }
 
   /** How many participants exist in this event's world right now. */
@@ -830,7 +839,7 @@ export class EventRuntime {
 
   /** The operator's god view, with everyone's profile pictures. */
   private modViewNow(): ModView {
-    return { ...modView(this.sim, this.phase, this.scenarioName, this.presence(), this.sim === null ? this.declaredCharacters : undefined), avatars: this.avatarMap(), ...(this.wallet !== null ? { wallet: this.wallet.modView() } : {}) };
+    return { ...modView(this.sim, this.phase, this.scenarioName, this.presence(), this.sim === null ? this.declaredCharacters : undefined, this.declaredSim), avatars: this.avatarMap(), ...(this.wallet !== null ? { wallet: this.wallet.modView() } : {}) };
   }
 
   /** Message seqs of the widget cards `id` has answered. */

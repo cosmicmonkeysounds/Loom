@@ -74,6 +74,8 @@ export interface DirectorView {
    *  countdowns hold still. The lean read's flag; the full `ModView` an
    *  older server sends says the same through `phase`. */
   paused?: true;
+  /** The doors have not opened yet: nothing fires until they do. */
+  doorsClosed?: true;
   /** The live countdowns (`countdown:` header lines whose `while` holds
    *  and whose deadline, in story seconds, is still ahead). */
   countdowns?: Array<{ label: string; endsAt: number }>;
@@ -219,6 +221,16 @@ export function storyNow(clock: number | undefined, receivedAt: number, now: num
   return runs ? clock + Math.max(0, now - receivedAt) : clock;
 }
 
+/** Before the doors: the sheet is the story's, but nothing fires yet. */
+export const DOORS_CLOSED = "The doors aren't open yet — the cues fire once they are.";
+
+/** What the page says with no cue rows: the doors (an older server lists
+ *  no cues before them), else a story with no `who: admin` interactions. */
+export function noCuesText(view: Pick<DirectorView, "doorsClosed" | "phase"> | null): string {
+  if (view?.doorsClosed === true || view?.phase === "idle") return "The doors aren't open yet. The cue sheet appears when they open.";
+  return "This story has no director cues (`who: admin` interactions).";
+}
+
 /** The strip's word for a stopped clock. */
 export const STOPPED = "⏸ clock stopped";
 
@@ -300,7 +312,7 @@ export function stripItems(view: DirectorView | null, layout: SheetLayout, nowMs
   if (layout.kind === "acts" && layout.focus >= 0) out.push({ text: actHandle(layout.acts[layout.focus]!) });
   const phase = nightPhase(view?.world ?? []);
   if (phase !== null) out.push({ text: phase });
-  if (view !== null && !clockRuns(view)) out.push({ text: STOPPED });
+  if (view !== null && !clockRuns(view)) out.push({ text: view.doorsClosed === true ? "🚪 doors closed" : STOPPED });
   const soon = soonestCountdown(view?.countdowns, nowMs);
   if (soon !== null) out.push({ text: `⏱ ${soon.label} ${formatLeft(soon.left)}`, ...(soon.left < URGENT_S ? { urgent: true as const } : {}) });
   for (const w of (view?.watch ?? []).filter((w) => typeof w.value === "string").slice(0, 3)) out.push({ text: `${w.label} ${formatWatchValue(w.value)}` });
@@ -1013,6 +1025,7 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
         )}
         <div className="station" ref={listRef}>
           <input className="cue-filter" type="search" placeholder="Filter cues (code or words)" value={query} onChange={(e) => setQuery(e.target.value)} />
+          {s.view?.doorsClosed === true && rows.length > 0 && <p className="pick-hint">{DOORS_CLOSED}</p>}
           {armed !== null && subjectName !== null && (
             <p className="pick-hint">
               Armed for {subjectName}
@@ -1022,7 +1035,7 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
           {s.view === null ? (
             <div className="muted pad">Loading the cue sheet…</div>
           ) : rows.length === 0 ? (
-            <div className="muted pad">This story has no director cues (`who: admin` interactions).</div>
+            <div className="muted pad">{noCuesText(s.view)}</div>
           ) : query.trim() !== "" || layout.kind === "flat" ? (
             <ol className="cue-list">
               {shown.map((r) => (

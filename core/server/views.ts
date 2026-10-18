@@ -838,9 +838,17 @@ function partsOf(model: Sim["model"]): Set<string> {
 
 /** `declared`: the story's cast while no sim exists (the doors are shut) —
  *  a terminal provisioned before the doors checks its character against it. */
-export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string | null, presence?: ModPresence, declared?: readonly string[]): ModView {
+export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string | null, presence?: ModPresence, declared?: readonly string[], declaredSim?: Sim | null): ModView {
   if (sim === null) {
+    // Before the doors: the story's own admin cues (off its compiled, never
+    // played text), so the director's cue sheet is there from sign-in — not
+    // "this story has no director cues".
+    const before =
+      declaredSim != null
+        ? { title: declaredSim.lobbyTitle(), interactions: interactionsFor(declaredSim, ["admin"]), cues: { last: null, lastBy: null, fired: [], presses: 0, pressed: null } satisfies CueState }
+        : {};
     return {
+      ...before,
       phase,
       scenario,
       roster: [],

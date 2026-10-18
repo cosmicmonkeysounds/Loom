@@ -19,6 +19,8 @@ import {
   directorRows,
   fireCue,
   fireToast,
+  noCuesText,
+  DOORS_CLOSED,
   takesValue,
   initialRole,
   nextBar,
@@ -740,5 +742,15 @@ describe("looking away drops the arm", () => {
     win.dispatchEvent(new Event("blur"));
     doc.dispatchEvent(new Event("visibilitychange"));
     expect(drops).toBe(2);
+  });
+});
+
+describe("before the doors", () => {
+  it("never says the story has no director cues while the doors are closed", () => {
+    expect(noCuesText({ doorsClosed: true })).toMatch(/doors aren't open yet/u);
+    expect(noCuesText({ phase: "idle" })).toMatch(/doors aren't open yet/u);
+    expect(noCuesText({})).toMatch(/no director cues/u);
+    expect(noCuesText(null)).toMatch(/no director cues/u);
+    expect(DOORS_CLOSED).toMatch(/doors/u);
   });
 });
