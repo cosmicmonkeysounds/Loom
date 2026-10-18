@@ -843,8 +843,9 @@ export class AgentHub {
    *  none) — one still answering before a stalled one, so new work never
    *  lines up behind a worker that stopped answering while another can
    *  take it, and one answering before one on probation. `moved`: handed
-   *  over from a stalled worker's line, which is not another attempt. */
-  private dispatch(r: OpenRequest, moved = false): void {
+   *  over from a stalled worker's line, which is not another attempt.
+   *  `from`: the worker it was just cancelled on (a timeout). */
+  private dispatch(r: OpenRequest, moved = false, from: string | null = null): void {
     let best: AgentWorker | null = null;
     let bestLoad = Infinity;
     for (const w of this.workers.values()) {
@@ -857,6 +858,12 @@ export class AgentHub {
       }
     }
     if (best === null) return;
+    // Back to the worker it was just cancelled on, which holds an older
+    // copy than the body as it stands (rebuilt since, with lines that copy
+    // lacks): a new id, so a late answer from the old copy is refused —
+    // the copies share nothing the hub could tell apart — and the new
+    // copy, carrying every line, is answered once.
+    if (best.id === from && r.followUp && !r.behind) this.renew(r);
     r.worker = best.id;
     r.dispatchedAt = this.now();
     r.dispatchSeq = ++this.dispatches;
@@ -987,7 +994,7 @@ export class AgentHub {
         // clock starts now, not at its own (long past) dispatch.
         this.startHead(worker);
         if (r.attempts >= maxAttempts) this.giveUp(id, r);
-        else this.dispatch(r); // a worker still answering first, now that this one is stalled
+        else this.dispatch(r, false, worker); // a worker still answering first, now that this one is stalled
         // The rest of the stalled worker's line goes to one still answering.
         if (stalls) this.moveLine(worker);
       } else if (r.worker === null && now - r.req.at > maxAge) {
@@ -1059,6 +1066,16 @@ export class AgentHub {
       r.startedAt = null;
       this.dispatch(r, true);
     }
+  }
+
+  /** Give `r` a fresh id (its thread keeps it as the open request). */
+  private renew(r: OpenRequest): void {
+    const old = r.req.id;
+    const id = `ar-${globalThis.crypto.randomUUID().slice(0, 8)}`;
+    this.open.delete(old);
+    r.req = { ...r.req, id };
+    this.open.set(id, r);
+    if (this.byThread.get(r.key) === old) this.byThread.set(r.key, id);
   }
 
   /** Drop a request nobody will answer, saying the hold line first if the

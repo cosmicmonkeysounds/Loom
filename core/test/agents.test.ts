@@ -734,6 +734,40 @@ describe("AgentHub", () => {
     }
   });
 
+  it("a request rebuilt with the hold line while its stalled worker holds an older copy, re-sent to that same worker: a late answer from the old copy never settles it as complete, and the new copy is answered once (review 5)", () => {
+    const h = hubHarness();
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    const g1: AgentThread = { ...T, audience: ["g-1"] };
+    const g2: AgentThread = { ...T, audience: ["g-2"] };
+    h.hub.line(g1); // R1: the laptop's head
+    h.hub.line(g2); // R2: the laptop holds copy v1
+    const v1 = a.requests()[1]!;
+    expect(v1.thread.audience[0]).toBe("g-2");
+    let s = 0;
+    const run = (to: number) => {
+      for (; s < to; s++) {
+        if (s === 30) h.hub.line(g2); // g-2 says more while v1 is out
+        h.tick(1000);
+        h.hub.sweep();
+      }
+    };
+    run(150); // R1 timed out at 121 s (the laptop stalls); both held by 141 s, R2 rebuilt
+    expect(h.held.map((r) => r.thread.audience[0]).sort()).toEqual(["g-1", "g-2"]);
+    run(250); // R2 times out as the head: cancelled on the laptop, re-sent to it (v2)
+    const cancels = a.got.filter(([e]) => e === "cancel").map(([, d]) => (d as { id: string }).id);
+    expect(cancels).toContain(v1.id);
+    const v2 = a.holds().find((r) => r.thread.audience[0] === "g-2")!;
+    expect((v2 as unknown as { text: string }).text).not.toBe((v1 as unknown as { text: string }).text);
+    // The old copy's answer was already on its way: it answered only the first line.
+    const late = h.hub.settle(v1.id, "laptop");
+    expect(late === null || late.followUp).toBe(true);
+    if (late === null) {
+      // The new copy carries every line so far: answered once, no re-ask.
+      expect(h.hub.settle(v2.id, "laptop")).toEqual({ req: v2, followUp: false });
+    }
+  });
+
   it("reset cancels everything open and tells workers", () => {
     const h = hubHarness();
     const a = h.worker("a");
