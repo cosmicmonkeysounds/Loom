@@ -670,7 +670,7 @@ ROLE hooks and watchers (all in `ROLE Program`; bodies specified in §3):
 | `when self.featured == "openoffice" and self.dossier_started and self.codex - self.dossier_base >= 20:` | `set Kernel.openoffice_dossier = true`; unlock The LiveJournal; complete quest OpenOffice Dossier; private line |
 | `when self.featured == "draftkings" and self.quest.truthcoin_hustle == "active" and self.score >= 1000:` | update quest Truthcoin Hustle (a progress step) |
 | `when self.featured == "draftkings" and self.quest.truthcoin_hustle == "active" and count([p for p in Persons where p.cleared and p.featured != "draftkings"]) >= 5 and self.score * 2 > sum([p.score for p in Persons]):` | complete quest Truthcoin Hustle: a majority of the coin in circulation (the invitation, C08); the five-program floor keeps a small rehearsal from completing it at the glitch |
-| `when self.featured == "bugdom" and self.quest.master_of_the_bugs == "active" and Night.recount != true and self.codex.miniature_doses and self.codex.the_lamborghini_certificate and self.codex.what_happened_to_hamtaro and self.codex.the_decimal_point:` | complete quest Master Of The Bugs (the four Antivirus secrets). Wave 9 (T10-01): the `quest … == "active"` term makes a goal met before the Truther Download complete the moment the quest starts (a watcher that fired before the quest existed did nothing) — the same for Jeeves' Unscramble and Ten Findings, and Excel Glitch completes Excel Mission ("Virus planted.") when the virus is already in |
+| `when self.featured == "bugdom" and self.quest.master_of_the_bugs == "active" and Night.recount != true and self.codex.miniature_doses and self.codex.the_lamborghini_certificate and self.codex.what_happened_to_hamtaro and self.codex.the_decimal_point:` | complete quest Master Of The Bugs (the four Antivirus secrets). Wave 9 (T10-01): the `quest … == "active"` term makes a goal met before the Truther Download complete the moment the quest starts (a watcher that fired before the quest existed did nothing) — the same for Jeeves' Unscramble (Ten Findings already carried its status; it starts at clearance, not at the download), and Excel Glitch completes Excel Mission ("Virus planted.") when the virus is already in |
 | `when self.featured == "jeeves" and self.quest.unscramble == "active" and count([x for x in [self.codex.maps_and_ducks, self.codex.the_billboard_on_barrington, self.codex.the_data_centre_sinkhole, self.codex.the_pet_cemetery, self.codex.the_server_room, self.codex.the_protest_flyer, self.codex.the_domain_receipt, self.codex.casino_nova_scotia_deed, self.codex.the_valley_library_cuts, self.codex.the_cooling_log] where x]) >= 5:` | complete quest Unscramble (the list-literal comprehension is **[verified, feas f2]**; the ten are the coded originals behind his fragments) |
 | `when self.featured == "jeeves" and Kernel.jeeves_reached > self.jeeves_told:` / `… and self.quest.ten_findings == "active" and count([p for p in Persons where p.cleared and p.featured != "jeeves"]) >= 5 and count([… and p.from_jeeves < 10]) == 0:` | Ten Findings: an update each time one more program holds ten of his findings (`when share:` → `jeeves_shared` → `from_jeeves`; a wallet sale is a share; a repeat or a share to Trabolta never counts), complete once every cleared program does (at least five) |
 | `when self.featured == "mspaint" and Night.signatures > self.paint_told:` / `… and self.quest.the_painting == "active" and count([p for p in Persons where p.cleared and p.featured != "mspaint"]) >= 5 and count([… and p.signed != true]) == 0:` | The Painting: an update per 🖌 signature, complete once every cleared program but her has signed (at least five) |
@@ -1414,8 +1414,9 @@ The story only emits directives; this file makes them physical. It is new, separ
 - **Catch-up:** the `catch_up:` rules replay the night's look on every feed / broker reconnect
   and after a reset, reload or go-live. Since wave 9, under `server_open` they replay
   `lights_y2k` first (the majority's look lights only the server room), and a cut room is
-  replayed off mid-cut and on only while `Night.lit_scene` (the look its 90 s restore re-lit
-  it in) is still the look.
+  replayed off mid-cut and on under `Night.lit_scene` (the look its 90 s restore re-lit it
+  in) or a later room-scoped look that never re-lit the room (pong, glitch, server_open, or a
+  living-room look over the Start Bar or the RAM), never under a whole-house look.
 - **Sound:** every `sound <name>` (directive `sfx`) → QLab OSC / mpv cue of the same name.
 - **Announce:** `announce` → `show/announce` (the house announcements: the `alexa` module's chime + the Mac's own `say` voice).
 - **Door:** `door` target `server_room` → the indicator topic `show/serverroom/lock` (retained;
@@ -2434,7 +2435,9 @@ chess AI down a stage (grandmaster → club → beginner → dizzy → pawns onl
 (♟ / C) on the tablet's board (badge FOR THE CODE / PRACTICE, the `stakesLine` under it); mate
 posts `POST /api/mod/signal {name: "chess won", subject, label: "Tent tablet"}` with the
 tablet's mod token (the journal reads *by Tent tablet*) and the tablet says where the code went
-(`WIN_CODE` / `WIN_PRACTICE`, after re-reading the step with a 4 s timeout). A headset only
+(`WIN_CODE` / `WIN_PRACTICE`, after re-reading `Night.ended`, then `Night.king_armed` and
+`Night.r3_closed`, with a 4 s timeout; the map's `Night.step` gate only on a story with no
+`king_armed`). A headset only
 shows him ("The King is fought on the tent tablet."). Until the King is device-checked, the
 Lichess phone outside the real door is the fallback: a host or Antivirus who saw the mate
 presses ♟ *They beat the machine* on the winner's card (`fire chess_won for program`), or the
