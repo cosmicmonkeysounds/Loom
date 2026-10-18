@@ -6,7 +6,7 @@
 import { useState } from 'react'
 import { previousActIndex, type CueRow } from '@loom/core/cue-sheet'
 import { ChipDetail, CueButton } from './CueButton'
-import { actName, useDirector } from './context'
+import { actName, prevLineOpen, useDirector } from './context'
 
 function ChipLine({ rows }: { rows: CueRow[] }) {
   return (
@@ -23,10 +23,13 @@ function ChipLine({ rows }: { rows: CueRow[] }) {
 
 export function OnHand() {
   const d = useDirector()
-  const [prevOpen, setPrevOpen] = useState(true)
+  // Folding is remembered for the act it was folded on: once the night moves
+  // on, the new previous act's fallbacks open again (after 🌑, E's 🪩 / 🔌).
+  const [folded, setFolded] = useState<string | null>(null)
   const focus = d.acts[d.focus]
   const prevIdx = previousActIndex(d.acts, d.focus)
   const prev = prevIdx >= 0 ? d.acts[prevIdx] : undefined
+  const prevOpen = prevLineOpen(folded, prev?.key)
   const anytime = d.acts.filter((a) => a.state === 'anytime').flatMap((a) => a.rows)
   const own = focus?.asides ?? []
   const fromPrev = prev?.asides ?? []
@@ -47,7 +50,7 @@ export function OnHand() {
       {own.length > 0 && <ChipLine rows={own} />}
       {fromPrev.length > 0 && (
         <div className="flex flex-col gap-1">
-          <button onClick={() => setPrevOpen((v) => !v)} className="self-start text-[11px] text-zinc-500 hover:text-zinc-300" data-testid="director-onhand-prev">
+          <button onClick={() => setFolded(prevOpen ? (prev?.key ?? null) : null)} className="self-start text-[11px] text-zinc-500 hover:text-zinc-300" data-testid="director-onhand-prev">
             from {actName(prev)} {prevOpen ? '▾' : '▸'}
           </button>
           {prevOpen && <ChipLine rows={fromPrev} />}

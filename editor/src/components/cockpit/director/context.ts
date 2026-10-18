@@ -57,3 +57,8 @@ export function useNameOf(): (id: string | null) => string {
   return (id) => (id === null ? '' : (roster.find((r) => r.id === id)?.name ?? id))
 }
 
+/** Is On hand's `from <act> ▸` line open? It is unless the director folded
+ *  it while that same act was the previous one. */
+export function prevLineOpen(folded: string | null, prevKey: string | undefined): boolean {
+  return prevKey === undefined || folded !== prevKey
+}
