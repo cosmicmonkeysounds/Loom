@@ -39,9 +39,11 @@ played). Never say the code on the radio.
 1. Headlamp on. Lights out for 10 s, then the dance.
 2. Stand where people pile up (the stairs, the server-room path). **The stairs
    stay lit.** Guide everyone to the living room. Walk.
-3. ALL STOP: the director restores the lights, the tech op panics the audio and
-   hits the wall switches; you get people calm and seated, or outside to the
-   meeting point. Nothing restarts until you say so.
+3. ALL STOP: the director restores the lights (💡, which also holds a
+   pending dance: the dance look waits for your go, then the director
+   presses 🪩), the tech op panics the audio and hits the wall switches; you
+   get people calm and seated, or outside to the meeting point. Nothing
+   restarts until you say so.
 
 **911 + neighbours.** You make the 911 call (the emergency card). You are the
 neighbour liaison: if a neighbour comes to the door, be kind, turn the

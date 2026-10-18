@@ -25,15 +25,20 @@ booth gets the escort task, and an Antivirus walks them through the Tube.
 | Grok Prom | **💘 Said "You're the one that I want"** | the first program who says it to you |
 | any time | **🩹 Unmark: not going to the Internet** | a mis-tap, or mercy |
 | any time | **🖌 Signed the painting** | a program who just signed MS Paint's canvas (once each; only shows when MS Paint is here) |
-| any time (review mode only) | **📝 Filed fact: accurate / confident lie / uncertain** | a program whose filing is waiting in `# hosts` |
+| any time (review mode only) | **📝 Filed fact: accurate / confident lie / uncertain** | a program whose filing is waiting in `# hosts` (it judges their **latest** filing only; if an earlier one is still waiting, nothing changes and `# hosts` sends the director to the Judging card) |
 
 **Q numbers are within the round:** round 2 Q1–Q3 = H4–H6 · final Q1–Q2 =
 F1–F2. **Accurate and confident lie look identical in public**: never say
 which you pressed. Judge fast: the answerer holds up their pass and you scan
-it (OP-07). **Round 1 judges itself:** every fact filed on the phone is judged
+it (OP-07). Each program's answer to a question counts **once**: a second
+✅ or 😤 on it only says *"already accepted"* in `# hosts`. **😤 meant as ✅?**
+Press ✅ for the same question on the same program: `# hosts` says
+*"⚖️ Corrected …"* and nothing is paid twice. **Round 1 judges itself:** every fact filed on the phone is judged
 by the server against the answer key the moment it is filed; you only read
 the results. The 📝 buttons matter only if the director switches judging to
-*review* (then each filing waits in `# hosts` for a host or the director).
+*review* (then each filing waits in `# hosts`); the director overrides any
+filing on the Judging card, so when a program has filed more than once,
+leave it to them.
 
 **The answer key (secret).** It lives in `facts.json` (the team's file; the
 questions are DRAFT until the team replaces them). Re-print this table from

@@ -80,6 +80,18 @@ addresses, codes, where things are kept).
   Only the patch bay alarms, on the **second** wrong combination. CRA
   approves or denies every third transaction (C16), everywhere. The code is
   never written on a card or said on the radio.
+- **Waves 8 and 9:** wave 8 shipped as `w8-1018`; wave 9 (2026-10-18) is
+  merged and ships as `w9-1018`, and every pack is written to it: McAfee
+  referees bets and holds no pot (a bet settles player to player, the
+  winner's 🙏 Request paid by the loser); 💡 also holds a pending dance
+  (ALL STOP); the bottle picks a cleared program anywhere in the house; the
+  Judging card carries the override buttons in both modes, and a host's 📝
+  judges a program's latest filing only; Clippy's 😤 meant as ✅ is undone
+  with ✅; the cue sheet suggests nothing while a timer owns the night and
+  refuses a cue pressed a step early; ✍ lets the second director's own
+  award lines replace Trabolta's template; phones, booths and Run reconnect
+  by themselves after a server restart. **Reprint every pack before the
+  10-25 run-through.**
 
 ## Rules every sheet keeps
 

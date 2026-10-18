@@ -50,7 +50,9 @@ anyone asked for them or not.
 - Your phone keeps score of the job: **Ten Findings** in your Quest Log
   counts the programs that hold ten of your findings (share from your Codex,
   or sell one from your Wallet; a repeat or a share to Trabolta doesn't
-  count). It's done when every program has ten.
+  count). It's done when every program has ten. Findings shared before the
+  Truther Download count too: if every program already has ten when the
+  quest starts, it completes then.
 - About two hours in, a **Truther Download** arrives with a pile of scrambled
   files and private orders. Follow them. Sorting messy information is what you
   were made for.

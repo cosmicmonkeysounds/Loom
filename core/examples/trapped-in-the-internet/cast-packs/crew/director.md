@@ -31,25 +31,32 @@ background tab throttles the chime).
 | 6c | **🍾** Spin the bottle, up to five times per question (off-sequence) | the TV asks Truth or dare; Clippy 🗣 / 🙅 | |
 | 7 | (optional) **☎️** Telephone · **🪅** Are you sure? — only if running early | | |
 | 8 | **📺** Preview hunt 2 → the ad hijack | Clippy panics | *rattled* |
-| 9 | **📓** Hunt 2: disperse for 1 hour | (auto **📥** +2 min · **⏳** 55 min · **🚨** +5 min) | |
+| 9 | **📓** Hunt 2: disperse for 1 hour | (auto **📥** +2 min · **⏳** 55 min · **🚨** +5 min; the sheet suggests nothing until 🚨 has fired) | |
 | 10 | **🏓** Truth Pong | | *judge* |
 | 11 | **🧮** Trabolta tallies round 2 | | |
 | 12 | **📊** Trust Chart → **🏆** rankings | VLC + the printer | |
 | 13 | **🫘** printer opened (only if the lid sensor fails; Adobe radios BEANS) | | *unravelling* |
 | 14 | **🗜** zip everyone out | | |
-| 15 | **🤖** Trabolta shares the next facts (scenario auto) | | |
+| 15 | **🤖** Trabolta shares the next facts (press it; the scenario picks itself) | | |
 | 16 | wait for **IN** from the patch-bay watch → **🕚** Y2K clock (60 min) | (auto majority; clock warnings) | *desperate* |
 | 17 | door / patch bay (or the Tier 0 buttons 🚪 🔌 💥 ❌) | blackout → (auto 🪩) | |
 | 18 | **🏍** (after Combo A) or **🪦** (after Combo B), else auto **🌑** at midnight | | *last act* at 🌑 |
 | 19 | **🍎** Bobbing for Truth → **📄** Read truth.txt (the slide holds while the bobber reads) → **⚖** the verdict when they finish | | |
 | 20 | Grok Prom only: 💘 from a host, or **💔** / the alt **💌 → 🗳 → 💞 / ⛈ → 🕺** | | |
-| 21 | **G1 🏆** ceremony → **G2–G9** awards, winner picked from the recap → **G10 🖌** the painting (only if MS Paint came) → **G11 🎃** Resurrection (last: ends the show) | | |
+| 21 | (**✍** first, only if the second director wrote award lines) → **G1 🏆** ceremony → **G2–G9** awards, winner picked from the recap → **G10 🖌** the painting (only if MS Paint came; without her NEXT goes G9 → G11) → **G11 🎃** Resurrection (last: ends the show) | | |
 
 A cue that doesn't apply yet does nothing but tell `# hosts` why (*"⚖ Not
-yet: 📄 Read truth.txt first."*); it never becomes LAST, and the phone sheet
-says *Not taken*. NEXT follows tonight's branch: after 🕚 it is empty until
-midnight fires 🌑 (never tap 🌑 early), after the dance the ending's own cue. The hardware fallbacks (🖨 🫘 🔌 💥 ❌) stay silent
-when early.
+yet: 📄 Read truth.txt first."*, *"📺 Not yet: read Q2's results first
+(📋)."*, *"🕚 Not yet: 🤖 Trabolta shares the next facts first …"*), even a
+step early, so a forward mis-tap never skips a step's work; it never becomes
+LAST, and the phone sheet says *Not taken*. **NEXT is empty while a timer
+owns the night**: all of hunt 1 (until C2 ⏰ fires itself, then V6), hunt
+2's hour and the summons (until 🚨 fires itself, then 🏓), and the Y2K hour
+(until midnight fires 🌑). Never tap a timer's cue early: it cuts the window
+short. When the filing window closes by itself, ⏱ ticks and NEXT is 📋.
+After the dance NEXT is the ending's own cue. The timer cues (⏰ 📥 ⏳ 🚨)
+and the anytime ones (🍾 🗜 🎆 🧾 🔄 ♟ 🕊 🗳 🪩 💡 ✍) never become LAST or
+NEXT. The hardware fallbacks (🖨 🫘 🔌 💥 ❌) stay silent when early.
 
 **Judging is automatic.** Every fact filed on the 📝 card (question + answer
 + the 1–100 confidence slider) is judged by the server against `facts.json`
@@ -62,9 +69,13 @@ only in rounds 1 and 2 — a guess filed for F1/F2 is simply dropped at 📄,
 nobody is escorted during the verdict. The Judging card on Run → Mind shows
 the mode: **`auto`** (the default; leave it)
 or **`review`** (every verdict is a proposal in `# hosts` until you confirm
-or override it on the card — ✅ accurate / 😤 confident lie / 🤷 uncertain —
-or a host presses 📝 on the program's card via *be Clippy*; a round closing
-settles what is still pending by the proposal). A program may file every
+or override it on the card; a round closing settles what is still pending
+by the proposal). **Overrides live on the Judging card, in both modes**: ▸
+the question, then that filing's ✅ accurate / 😤 confident lie / 🤷
+uncertain (the current verdict is outlined; a marked program's row has no
+buttons). A host's 📝 on a program's card judges only that program's
+**latest** filing: while an earlier one still waits, it changes nothing and
+`# hosts` says *"📝 Not judged: … Judge it on Run → Mind → Judging"*. A program may file every
 open question, once each; a question not filed when its round closes never
 comes back. Clippy and the hosts still judge what is **said out loud** at
 Truth Pong and the final reveal (✅ / 😤 / 🤷 by question number).
@@ -81,14 +92,15 @@ never from a guest card.
 | a program marked by mistake, or to be shown mercy | a host presses 🩹 on their card; or Director → fire `unmark_for_reinstallation` with them as the subject (`/api/mod/act {id, action: "unrestrict"}` lifts only the grey, never the mark) |
 | a program who must go to the Internet and no host is near | Director → fire `mark_for_reinstallation` with them as the subject (or `/api/mod/act {id, action: "restrict"}` for the grey alone); an Antivirus does the walking |
 | a Truthcoin transfer stuck on CRA's approval, or a bad one | Run → **Wallet**: **✓ Approve** / **⛔ Deny** / **↩ Cancel** on its row, or **✓ Approve all held** (a held transfer approves itself after 5 min anyway); **💰 Pay stimulus** if Runescape is gone; **Lift** ends a Runescape freeze early. A grant or a freeze for Runescape is API only: `/e/<event>/api/mod/wallet/grant {to, amount}` / `freeze {to}` |
-| a filing judged wrong (a typo the key did not know) | Run → Mind → Judging card → that filing's ✅ / 😤 / 🤷 (a verdict already on record is not re-counted); then add the alias to `facts.json` for next time |
+| a filing judged wrong (a typo the key did not know) | Run → Mind → Judging card → ▸ on the question → that filing's ✅ / 😤 / 🤷 (works in auto too; the current verdict is outlined; a verdict already on record is not re-counted); then add the alias to `facts.json` for next time |
+| Clippy pressed 😤 for an answer that was right | Clippy presses ✅ for the same question on the same program: `# hosts` says *"⚖️ Corrected …"*, nothing is paid twice |
 | stuck quest | fire the story event that advances it |
 | stale Bathroom Mode | Run → World → that guest's `afk` = false (at each summons) |
 | ghosts block the majority at Y2K | **🗳 Force the majority** (stay / leave) |
 | a faction leader absent or stuck | **🧾** Let a faction win without its leader's task |
 | dead chess phone | **♟** They beat the King: the door code (fallback), **naming the winner** (with nobody named it only reminds `# hosts`); the tent tablet's King reports its own wins *by Tent tablet* |
 | the server-room door opened and nothing happened | **🚪** Server room door opened (the contact's fallback): from the Y2K hour the first one plays The Heart |
-| a wrong patch the crew forgave, or after a rehearsal | **🔄** Server room: reset the patch-bay alarm (clears the wrong-combination count, the alarm latch and The Heart) |
+| a wrong patch the crew forgave, or after a rehearsal | **🔄** Server room: reset the patch-bay alarm (clears the wrong-combination count, the alarm latch and The Heart); the lights stay as they are, so if the house is still red press **💡** Restore the house lights |
 | `# hosts`: "🕊 Trabolta offers to stand down for X" | your call: **🕊** Trabolta stands down (talked down) ends the night the Combo A way, without a cable |
 | a dead keypad battery or a jammed lock | the house manager's override key; prop the door; fire **🚪** if the cutscene has not played (W-35) |
 | dead patch bay | the server-room Antivirus radios A / B / WRONG → 🔌 / 💥 / ❌ |
@@ -97,7 +109,8 @@ never from a guest card.
 | performer's phone dead | Inspector → **Release** the part; they re-sign on a loaner |
 | lights wrong after a blip | radio **LIGHTS**: the tech op restarts the stagehand `show` job, which replays the current look on reconnect; failing that they set it by hand (Run → World → `Night.lights` names it). Re-pressing a cue does nothing: phase cues play once |
 | TV voice must stop | the mute on the heartbeat card (it stays muted through restarts and Go live: check it before doors) |
-| **ALL STOP** | **💡 Restore the house lights**, then follow the house manager |
+| loom restarted (a crash or a redeploy) | nothing to press: phones, booths, Run and the tablets reconnect by themselves (Caddy holds requests up to 30 s); a phone's dot reads *reconnecting…* meanwhile. Rescan anyone mid-walk in the tent |
+| **ALL STOP** | **💡 Restore the house lights** (it also holds a pending automatic dance after a server-room blackout: `# hosts` says *"💡 The dance is held: press 🪩 when the house manager says go."*), then follow the house manager |
 
 **Trabolta's worker dies** (no hosted fallback): after 20 s his thread posts
 *"Jean Trabolta is not responding. Please do not move the mouse."* Radio the
@@ -105,7 +118,12 @@ tech op. **Answer his DMs by hand**: identity control → *be* **Trabolta** →
 the program's Trabolta thread → type. His voice: 1999 corporate, one to three
 short sentences, "Your request has been logged." Never confirm a fact, never
 give an answer, tell facts to be **filed on the 📝 card**. [[EDIT: rehearse on
-10-25 that a director's line lands in a guest's Trabolta thread]]
+10-25 that a director's line lands in a guest's Trabolta thread]] **Known
+gap:** if the laptop hangs but stays connected (Run → Mind still shows the
+worker, his threads say he is typing, nothing comes), the hold line can take
+minutes. Don't wait for it: answer by hand the same way and radio the tech
+op to restart the `agents` job. **While the run is paused** his words still
+post but his powers answer "doors are closed" (and aren't counted).
 
 **House internet dies:** phones keep playing on cellular (the server is on
 the VPS). Lights and sound stop following the story: radio the tech op the cue
@@ -132,7 +150,10 @@ character facts, the bottle's 20 truth questions. After every edit run
 carries `facts.json` or the King's maps (an older server would read
 `facts.json` as story text and refuse the `house.json` king prop); then
 remove any stale kokoro container or `spatial-house.json` on the VPS. The
-content lock for the printed stacks is 10-24 12:00.
+content lock for the printed stacks is 10-24 12:00. Since wave 9 `sync-show`
+refuses to reload a **live** event with real guests (it writes the files and
+exits 3; `--i-know-this-is-live` overrides): sync before Go live, never
+after doors.
 
 **Sat Oct 31**
 
@@ -152,7 +173,9 @@ content lock for the printed stacks is 10-24 12:00.
 **Pre-show checklist** (from OCT31 §11; tick each):
 
 1. Deploy pinned; the previous image kept; the warm standby built (stopped);
-   backups armed for 19:00; uptime alerts reach the tech op + second director.
+   backups armed for 19:00; uptime alerts on `/api/health` (anything but 200)
+   reach the tech op + second director; the printed sheet
+   (`checklist.sh --probe`) heads with `VPS health … ✔`.
 2. Push draft → Go live in place done before any registration; the codes are
    the printed ones (door QR scanned on cellular).
 3. The show map is the tent or shed variant chosen at 10:00 (**Tent** or

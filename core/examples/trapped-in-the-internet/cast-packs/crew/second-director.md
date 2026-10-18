@@ -38,19 +38,23 @@
 **1. Fire the night.** The cue sheet (Run → Director) lists every admin cue in
 order with the last one marked. Fire, then watch the room. Mis-taps are cheap:
 a phase cue that already ran does nothing the second time, and a cue pressed
-out of turn does nothing but tell `# hosts` why (it never becomes LAST). NEXT
-follows tonight's branch. Hold 🕚 until the patch-bay watch radios **IN**.
+out of turn, even one step early, does nothing but tell `# hosts` why (it
+never becomes LAST). NEXT follows tonight's branch, and **it is empty while a
+timer owns the night**: all of hunt 1 (C2 ⏰ fires itself at 15 min, then
+NEXT is V6), hunt 2's hour and the summons (📥, ⏳ and 🚨 fire themselves,
+then NEXT is 🏓) and the Y2K hour (midnight fires 🌑). Never tap those timer
+cues early: it cuts the window short. Hold 🕚 until the patch-bay watch radios **IN**.
 After 🍎, press 📄 (truth.txt holds on the screens while the bobber reads),
 then **⚖** for the verdict when they finish. Optional set pieces
 (☎️ Telephone, 🪅 Are you sure?) only if you are running early.
 
 **1b. The First Moment of Truth, in order.** V6 opens a two-minute filing
-window. ⏱ closes it (or it closes itself). Then 📋 once per question (Q1, Q2,
+window. ⏱ closes it (or it closes itself: then ⏱ ticks and NEXT is 📋). Then 📋 once per question (Q1, Q2,
 Q3): Clippy reads the result in the Desktop room and the filings settle.
 After each 📋, 🍾 up to five times: the server picks a program anywhere in the house,
 the TV asks "Truth or dare?", their phone asks too; Clippy settles a Truth
 with 🗣 / 🙅. 📋 refuses while a bottle is open; 🍾 refuses after five. After
-Q3's bottle, 📺. Rounds never reopen.
+Q3's bottle, 📺 (it refuses until all three 📋 are read). Rounds never reopen.
 
 **2. Set stage on Run → Mind** at each phase (W-21): intro *formal* · C2
 *hungry* · 📺 *rattled* · 🏓 *judge* · 🫘 *unravelling* · 🕚 *desperate* · 🌑
@@ -64,11 +68,17 @@ filed; `# hosts` logs each one. The Judging card on Run → Mind shows the
 mode and a tally per question. **Leave it on `auto`.** Switch to `review`
 only if the key is wrong on the night (a question the team changed late):
 then every filing waits as a proposal, and you confirm or override it on the
-card (✅ accurate / 😤 confident lie / 🤷 uncertain), or a host does it via
-*be Clippy* → the program's card → **📝 Filed fact: …**. Either way the
-guest hears the same reply. A lie counts against the final verdict for good;
-that is the point. A typo the key did not know → override that one filing,
-and tell John to add the alias to `facts.json`. The key, for reference
+card. **In either mode, overrides are on the Judging card**: ▸ the question,
+then that filing's ✅ accurate / 😤 confident lie / 🤷 uncertain (the current
+verdict is outlined; marked programs have no buttons). A host's 📝 on a
+program's card (*be Clippy* → **📝 Filed fact: …**) judges that program's
+**latest** filing only; when a program has filed more than once and an
+earlier one is still waiting, it changes nothing and `# hosts` points you at
+the Judging card. Either way the guest hears the same reply. A lie counts
+against the final verdict for good; that is the point. A typo the key did
+not know → override that one filing, and tell John to add the alias to
+`facts.json`. Clippy's own mis-tap (😤 meant as ✅) is undone by Clippy
+pressing ✅ for the same question on the same program. The key, for reference
 (DRAFT questions until the team replaces them):
 
 | | Accurate answer |
@@ -123,6 +133,8 @@ cleared) → Inspector → **scan as Norton**. Performer's phone dead → Inspec
 
 **8. Trabolta's DMs if his worker dies** (no hosted fallback, decision #35).
 The server posts his hold line after 20 s; the tech op restarts the worker.
+If the laptop hangs but stays connected (Run → Mind still shows it, nothing
+comes), the hold line can take minutes (a known gap): answer by hand at once.
 Until it is back, answer waiting threads yourself: identity control → *be*
 **Trabolta** → each program's Trabolta thread. Keep it short and formal:
 
@@ -143,16 +155,23 @@ queued.
    (Run → Director on the laptop, or the phone cue sheet: an award asks for its winner and
    offers the value box: G7–G10 read it, on G2–G6 it overrides the number).
 2. **If Trabolta is still running:** take the performer lens, paste the recap
-   into `cast:Trabolta`, ask him for one line per award, correct them, and post
-   each line **as Trabolta in The Desktop** when you fire that award (the TV
-   speaks it). Otherwise the template lines play on their own.
+   into `cast:Trabolta`, ask him for one line per award, correct them. Then,
+   before G1, press **✍ Our own award lines (Trabolta hosts): on / off**
+   once: `# hosts` says *"✍ Award lines: yours. …"*, and each award plays its
+   fanfare and slide with no Trabolta line. Post each line **as Trabolta in
+   The Desktop** right after you fire that award (the TV speaks it). The
+   sheet shows no ✓ for ✍: read `# hosts` to see which is on (press ✍ again
+   for the template). Without ✍ the template lines play on their own (and a
+   line you post would be spoken as well, on top).
 3. **If Trabolta is gone** (Combo B, the rave): Clippy hosts and reads each line
    aloud; the TV shows the award slide.
 4. Fire **G1**, then G2–G9 with the winner as the subject. Firing an award
-   again corrects it. Then **G10 🖌** on MS Paint (only if she came), then
+   again corrects it. Then **G10 🖌** on MS Paint (only if she came; without
+   her the sheet's NEXT goes straight from G9 to G11), then
    **G11 🎃 Resurrection** last: it frees and unmarks everyone, puts Trabolta
    to sleep and tells every phone the show is over (pressed before the last
-   award, `# hosts` asks; press again within 30 s to end it anyway).
+   award, `# hosts` asks and the sheet says *Not taken*, nothing ticks; press
+   again within 30 s to end it anyway).
 
 **10. The backup console.** If your laptop dies, John signs in on his; if the
 editor is down, the radio is the console (W-26): tell the tech op what to fire

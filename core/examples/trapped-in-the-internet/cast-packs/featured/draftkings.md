@@ -62,9 +62,10 @@ opened negotiations. You have come back from a paperclip before.
   Software's approval, and she can deny any of them for a minute; McAfee
   brokers; Task Manager is the bank for anything done in cash.
 - **Bets are on your word** (there is no bet button): after the game the
-  winner sends a **🙏 Request** and the loser pays. For a held pot, both of
-  you send your stake to McAfee, who pays the winner. A frozen loser (one of
-  Runescape's ten-minute freezes) can't pay until it thaws.
+  winner sends a **🙏 Request** and the loser pays. Nobody holds the pot:
+  want a referee? Ask McAfee to watch the game and call the winner in
+  `# truthcoin-exchange`. A frozen loser (one of Runescape's ten-minute
+  freezes) can't pay until it thaws.
 - Your identity can leak (there are files about people in the house). Bluff.
 - **Bingo:** owned a casino? Yes. Would you **never** agree to let AI make all
   your decisions? You agreed to the Terms of Service. You would let it.
