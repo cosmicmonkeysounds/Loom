@@ -8,7 +8,7 @@
 //! only, so this stage is identical on both backends. Nothing here owns a
 //! backend lifetime: the server-run store is attached at the app level.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { CockpitTab, useCockpit } from '@/store/cockpit'
 import { StoryGraphPanel } from '@/components/graph/StoryGraphPanel'
@@ -134,6 +134,11 @@ function StageChrome() {
   const projectId = useWorkspace((s) => s.projectId)
   const seated = usePlayers((s) => s.slots.length > 0)
   useEffect(() => usePlayers.getState().bind(projectId), [projectId])
+  // A narrow stage scrolls the tabs: keep the open one in sight.
+  const tablist = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    tablist.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [tab])
 
   // A page that just became unavailable (run ended, lens engaged) yields
   // to the Run page rather than rendering a dead surface.
@@ -152,7 +157,7 @@ function StageChrome() {
         {/* The tabs scroll sideways rather than clip when the stage is narrow
             (both side panels open at 1100 px): Director, Mind and Log stay
             reachable. */}
-        <div role="tablist" className="flex min-w-0 max-w-full items-stretch overflow-x-auto [scrollbar-width:thin]">
+        <div ref={tablist} role="tablist" className="flex min-w-0 max-w-full items-stretch overflow-x-auto [scrollbar-width:thin]">
           {TABS.map((tb) => {
             const enabled = available(tb)
             return (
