@@ -3,6 +3,7 @@
 //! unit-testable without standing up the HTTP/SSE server.
 
 import { DEFAULT_SPACE_ID } from "../src/runtime/sim/model.ts";
+import { asNumber } from "../src/runtime/expr.ts";
 import { foldName } from "../src/parser/names.ts";
 import type { AgentMindReport } from "./agents.ts";
 
@@ -113,6 +114,10 @@ export interface InteractionSummary {
    *  never sees it; a performer finds it under "More"; the director's cue
    *  sheet never suggests it as NEXT. */
   live?: false;
+  /** An admin cue's own `act:` line, as written (the director's view only):
+   *  it opens a section of the cue sheet, carried forward to later admin
+   *  cues by `cueRows`. Display only — never changes NEXT / LAST. */
+  act?: string;
 }
 
 const subjectOnlyCache = new WeakMap<Sim["model"], Set<string>>();
@@ -186,6 +191,8 @@ function interactionsFor(
       // of the night it belongs to (🏍 only after Combo A), so NEXT skips it
       // off that branch. It never gates the press itself.
       if (at === undefined && i.who === "admin" && i.while !== null && !sim.holds(i.while, null, null)) s.live = false;
+      // The director's sections: only the director's own view carries them.
+      if (at === undefined && i.who === "admin" && i.act !== null) s.act = i.act;
       return s;
     });
 }
@@ -405,6 +412,10 @@ export interface ChannelSummary {
   kind: string;
   title: string;
   spaceId: string;
+  /** A staff room (`staffRoomIds`: an authored `kind: faction` CHANNEL whose
+   *  GROUP no guest may join — `# hosts`): where the story says why it
+   *  turned a cue down. The Director page's staff-room feed reads these. */
+  staff?: true;
 }
 
 /** A member of the cast (an authored CHARACTER an operator can speak/fire as). */
@@ -514,6 +525,36 @@ export interface ModView {
   /** The story clock (ms, `Sim.elapsed()`) when this view was built — what
    *  Run's Wallet card counts a transfer's `settleAt` down from. */
   clock?: number;
+  /** The header's `watch:` items on lines whose `while` holds now (the
+   *  Director page's glance column; values come from `world`). Absent when
+   *  the story declares no `watch:` line. */
+  watch?: WatchSummary[];
+  /** The header's `countdown:` items on live lines whose deadline is still
+   *  ahead (`endsAt` > `Time.elapsed`). Absent when there are none. */
+  countdowns?: CountdownSummary[];
+}
+
+/** One `watch:` item the director's glance column shows. */
+export interface WatchSummary {
+  label: string;
+  /** The world path (its head spelled as declared), or null for a person. */
+  path: string | null;
+  /** A person item's name as written (a character, or the guest playing it). */
+  person: string | null;
+  /** How the client reads it: a `character`'s or a `global`'s value off
+   *  `world`, a count over guests of a ROLE slot (`program.cleared` →
+   *  every guest's `<id>.cleared`), or a person row. */
+  scope: "global" | "character" | "role" | "person";
+  /** On a `secret: true` CHARACTER (the Kernel): masked until held open. */
+  secret?: true;
+}
+
+/** One live `countdown:` item. */
+export interface CountdownSummary {
+  label: string;
+  path: string;
+  /** The deadline, in story seconds (`Time.elapsed` units). */
+  endsAt: number;
 }
 
 /** Where the night is on the `who: admin` cue sheet. */
@@ -592,15 +633,29 @@ function cueModelOf(model: Sim["model"]): CueModel {
     for (const c of model.characters.values()) collect(c.hooks);
     for (const r of model.roles.values()) collect(r.hooks);
     collect(model.rules);
-    const staff = new Set<string>();
+    out = { heard, staff: staffRoomIds(model) };
+    cueModels.set(model, out);
+  }
+  return out;
+}
+
+const staffRooms = new WeakMap<object, Set<string>>();
+
+/** The story's staff rooms, folded (`roomFold`): every authored
+ *  `kind: faction` CHANNEL whose GROUP no guest may join (`# hosts`) —
+ *  where a phase-guarded rule says why it refused a cue (`refusedPress`),
+ *  and the Director page's staff-room feed. Per compiled model. */
+export function staffRoomIds(model: Sim["model"]): Set<string> {
+  let staff = staffRooms.get(model);
+  if (staff === undefined) {
+    staff = new Set<string>();
     for (const c of model.channels.values()) {
       const group = c.kind === "faction" && c.faction !== null ? model.factions.get(c.faction) : undefined;
       if (group !== undefined && !group.joinable) staff.add(roomFold(c.id));
     }
-    out = { heard, staff };
-    cueModels.set(model, out);
+    staffRooms.set(model, staff);
   }
-  return out;
+  return staff;
 }
 
 /** A room name folded the way `chat.ts` matches `channel(…)` scopes. */
@@ -748,9 +803,10 @@ function operatorChannels(sim: Sim): ChannelSummary[] {
   for (const l of sim.model.locations.values()) {
     out.push({ id: `loc:${l.id}`, kind: "location", title: l.label ?? l.id, spaceId: space });
   }
+  const staff = staffRoomIds(sim.model);
   for (const id of sim.model.channels.keys()) {
     const h = sim.channelHead(id);
-    out.push({ id: h.channel, kind: h.channelKind, title: h.title, spaceId: h.spaceId });
+    out.push({ id: h.channel, kind: h.channelKind, title: h.title, spaceId: h.spaceId, ...(staff.has(roomFold(id)) ? { staff: true as const } : {}) });
   }
   return out;
 }
@@ -844,7 +900,103 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
     ...(presence?.facts !== undefined ? { facts: presence.facts } : {}),
     cues: cueState(sim),
     clock: sim.elapsed(),
+    ...modBoard(sim),
   };
+}
+
+/** `boardFor`, spread onto the `ModView`: `watch` whenever the story
+ *  declares a `watch:` line, `countdowns` only while one is running. */
+function modBoard(sim: Sim): Pick<ModView, "watch" | "countdowns"> {
+  if (sim.model.watch.length === 0 && sim.model.countdowns.length === 0) return {};
+  const b = boardFor(sim);
+  return {
+    ...(sim.model.watch.length > 0 ? { watch: b.watch } : {}),
+    ...(b.countdowns.length > 0 ? { countdowns: b.countdowns } : {}),
+  };
+}
+
+/** A board line with its items' scopes resolved against the model. */
+interface ResolvedBoard {
+  watch: Array<{ while: string | null; items: WatchSummary[] }>;
+  countdowns: Array<{ while: string | null; items: Array<{ label: string; path: string }> }>;
+}
+const boards = new WeakMap<object, ResolvedBoard>();
+
+/** Resolve each board line's scopes once per compiled model (director
+ *  snapshots are frequent): a path's head names a CHARACTER (its value;
+ *  `secret: true` → masked; a countdown on one is dropped), a ROLE (a
+ *  count over guests), or anything else (a global); an item with no dot
+ *  is a person. */
+function resolvedBoard(model: Sim["model"]): ResolvedBoard {
+  let out = boards.get(model);
+  if (out !== undefined) return out;
+  const chars = new Map([...model.characters.values()].map((c) => [foldName(c.id), c]));
+  const roles = new Map([...model.roles.keys()].map((id) => [foldName(id), id]));
+  const scoped = (path: string): { path: string; scope: WatchSummary["scope"]; secret: boolean } => {
+    const dot = path.indexOf(".");
+    const head = path.slice(0, dot);
+    const rest = path.slice(dot);
+    const c = chars.get(foldName(head));
+    if (c !== undefined) return { path: c.id + rest, scope: "character", secret: c.secret };
+    const r = roles.get(foldName(head));
+    if (r !== undefined) return { path: r + rest, scope: "role", secret: false };
+    return { path: (model.entityIndex.get(head) ?? head) + rest, scope: "global", secret: false };
+  };
+  out = {
+    watch: model.watch.map((l) => ({
+      while: l.while,
+      items: l.items.map((i): WatchSummary => {
+        if (i.path === null) return { label: i.label, path: null, person: i.name, scope: "person" };
+        const s = scoped(i.path);
+        return { label: i.label, path: s.path, person: null, scope: s.scope, ...(s.secret ? { secret: true as const } : {}) };
+      }),
+    })),
+    // A countdown on a `secret: true` CHARACTER is dropped: its deadline
+    // would go out raw as `endsAt` (and to the phone's lean view), and a
+    // countdown has no mask. Lint L1205 says so.
+    countdowns: model.countdowns.map((l) => ({
+      while: l.while,
+      items: l.items.flatMap((i) => {
+        if (i.path === null) return [];
+        const s = scoped(i.path);
+        return s.secret ? [] : [{ label: i.label, path: s.path }];
+      }),
+    })),
+  };
+  boards.set(model, out);
+  return out;
+}
+
+/** Does a board line's `while` hold now (nothing bound, like an admin
+ *  cue's)? A condition that throws hides its line. */
+function boardLineLive(sim: Sim, cond: string | null): boolean {
+  if (cond === null) return true;
+  try {
+    return sim.holds(cond, null, null);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The director's board right now: the `watch:` items on lines whose
+ * `while` holds, and the `countdown:` items on live lines whose deadline
+ * (a story time in seconds) is still ahead of the story clock — a past or
+ * stale deadline never shows. Read-only and display-only.
+ */
+export function boardFor(sim: Sim): { watch: WatchSummary[]; countdowns: CountdownSummary[] } {
+  const board = resolvedBoard(sim.model);
+  const watch = board.watch.filter((l) => boardLineLive(sim, l.while)).flatMap((l) => l.items.map((i) => ({ ...i })));
+  const now = sim.elapsed() / 1000;
+  const countdowns: CountdownSummary[] = [];
+  for (const l of board.countdowns) {
+    if (!boardLineLive(sim, l.while)) continue;
+    for (const i of l.items) {
+      const endsAt = asNumber(sim.world.get(i.path));
+      if (endsAt !== null && Number.isFinite(endsAt) && endsAt > now) countdowns.push({ label: i.label, path: i.path, endsAt });
+    }
+  }
+  return { watch, countdowns };
 }
 
 export interface PrimeGuest {

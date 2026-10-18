@@ -22,6 +22,7 @@ import type { Bundle } from "../bundle.ts";
 import { vBool, vNumber, vString, type Value } from "../expr.ts";
 import { lowerRawBody } from "./effects.ts";
 import { resolveRules, type ChannelRules } from "./channel-types.ts";
+import { parseBoardLine, type BoardLine } from "./board.ts";
 
 export type EntityKind = "person" | "character" | "faction" | "location" | "role";
 
@@ -287,6 +288,12 @@ export interface InteractionDef {
   /** `restricted: allow` — a guest's button that stays on while they are
    *  restricted (`restrict who`): Bathroom Mode and its Back. */
   allowRestricted: boolean;
+  /** `act: B · Act I: the Desktop, Bingo and the first truth` — on an admin
+   *  cue, opens a section of the director's sheet that later admin cues
+   *  join until the next `act:` (the carry-forward is the cue sheet's,
+   *  `cueRows`). Display only: it never changes NEXT / LAST. Null = none
+   *  written on this cue. */
+  act: string | null;
 }
 
 export interface SimModel {
@@ -339,6 +346,12 @@ export interface SimModel {
   timerHooks: Hook[];
   /** Ambient generators (top-level + character-bound), fired by `tick`. */
   gens: GenSpec[];
+  /** Header `watch:` lines — what the director's glance column shows —
+   *  from every file's header, in file order. Unparseable lines are
+   *  skipped (lint L1205). Display only. */
+  watch: BoardLine[];
+  /** Header `countdown:` lines (paths only, each a story time in seconds). */
+  countdowns: BoardLine[];
 }
 
 /** Compile every loaded file in `bundle` into one `SimModel`. */
@@ -369,6 +382,8 @@ export function compileModel(bundle: Bundle): SimModel {
     entityIndex: new FoldedIndex(),
     timerHooks: [],
     gens: [],
+    watch: [],
+    countdowns: [],
   };
 
   // Resolve `is X, Y` inheritance so `mergedCharacters` is populated before
@@ -387,6 +402,15 @@ export function compileModel(bundle: Bundle): SimModel {
     if (model.directory === null && dirProp !== undefined) model.directory = dirProp.value.trim().toLowerCase();
     const curProp = entry.file.header.properties.get("currency");
     if (model.currency === null && curProp !== undefined) model.currency = parseCurrency(curProp.value);
+    for (const line of entry.file.header.lines ?? []) {
+      if (line.key === "watch") {
+        const b = parseBoardLine(line.value);
+        if (b !== null) model.watch.push(b);
+      } else if (line.key === "countdown") {
+        const b = parseBoardLine(line.value, { pathsOnly: true });
+        if (b !== null) model.countdowns.push(b);
+      }
+    }
 
     for (const item of entry.file.items) {
       if (item.kind === "beat") {
@@ -489,6 +513,7 @@ export function compileModel(bundle: Bundle): SimModel {
                 .filter((n) => n !== ""),
               while: decl.interaction.properties.get("while")?.value.trim() || null,
               allowRestricted: decl.interaction.properties.get("restricted")?.value.trim().toLowerCase() === "allow",
+              act: decl.interaction.properties.get("act")?.value.trim() || null,
             });
           }
           break;
