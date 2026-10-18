@@ -2,7 +2,8 @@
 //! house, rendered through `@loom/house/three` exactly as the web game
 //! renders it, with every player in the simulation as a ghost (interpolated
 //! ~120 ms behind, name tag over the head) and each session's golden duck
-//! (it lays its egg and flies on `found`). The indicator trail is the
+//! (it lays its egg and flies on `found` — never for a find the story kept:
+//! "GERALD CAN'T HELP", Gerald stays put). The indicator trail is the
 //! player's, not the audience's — it is not drawn here.
 //!
 //! One camera, cut by `director.ts` (mount / follow / orbit); overlays in
@@ -21,7 +22,7 @@ import { roomById, type HouseMap } from "@loom/house";
 import { buildHouseScene, createAvatar, createDuck, houseAtmosphere, type Avatar, type Duck } from "@loom/house/three";
 import { direct, insideHead, shotFloor, shotKey, type Director, type DirectorPlayer, type Shot } from "./director.ts";
 import { MiniMap } from "./MiniMap.tsx";
-import { byActivity, type WorldPlayer } from "./state.ts";
+import { byActivity, celebrationLine, laysEgg, type WorldPlayer } from "./state.ts";
 import { useWorld, type WorldStore } from "./stream.ts";
 
 const FRAME_MS = 1000 / 30;
@@ -125,7 +126,7 @@ export function WorldView({ store, spotId, size }: { store: WorldStore; spotId: 
           const at = duck.object.position;
           if (at.x !== p.duck.pos[0] || at.y !== p.duck.pos[1] || at.z !== p.duck.pos[2]) at.set(p.duck.pos[0], p.duck.pos[1], p.duck.pos[2]);
         }
-        if (p.found && duck.state === "idle") void duck.layEgg();
+        if (laysEgg(p) && duck.state === "idle") void duck.layEgg();
       }
     };
 
@@ -220,9 +221,9 @@ export function WorldView({ store, spotId, size }: { store: WorldStore; spotId: 
       </div>
       {info !== null && floor !== null && <MiniMap house={info.house} floor={floor} players={ordered} spot={spot} subject={subject?.session ?? null} />}
       {celebration !== null && (
-        <div className="world-celebrate" key={`${celebration.session}:${celebration.at}`}>
+        <div className={`world-celebrate${celebration.kept ? " kept" : ""}`} key={`${celebration.session}:${celebration.at}`}>
           <div className="world-celebrate-name">{celebration.name.toUpperCase()}</div>
-          <div className="world-celebrate-line">{celebration.released ? "HAS BEEN REINSTALLED" : "FOUND THE GOLDEN DUCK"}</div>
+          <div className="world-celebrate-line">{celebrationLine(celebration)}</div>
         </div>
       )}
     </div>

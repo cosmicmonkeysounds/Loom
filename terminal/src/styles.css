@@ -531,6 +531,9 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 }
 .world-celebrate-name { font-size: 1.3em; text-shadow: 0 0 14px rgba(255, 200, 61, 0.7); overflow-wrap: break-word; }
 .world-celebrate-line { font-size: 0.75em; animation: pulse 1s steps(2, end) infinite; }
+/* A find the story kept (the banishment): nothing gold, nothing that reads as a release. */
+.world-celebrate.kept { border-color: var(--phosphor-dim); box-shadow: none; color: var(--phosphor); }
+.world-celebrate.kept .world-celebrate-name { text-shadow: none; }
 
 /* The mirror: a TV-sized spectator — the overlays read from across the room. */
 .terminal.mirror { display: block; }
