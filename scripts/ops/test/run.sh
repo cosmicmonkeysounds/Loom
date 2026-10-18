@@ -369,6 +369,18 @@ for want in 'titi:facts --check' 'Judging card reads auto' 'Wallet room' '# quar
   check "checklist prints: $want" grep -qF -- "$want" <<<"$printed"
 done
 check "checklist strips markdown" bash -c "! grep -q '[*\`]' <<<\"\$1\"" _ "$printed"
+check "no probe unless asked (it prints offline)" bash -c "! grep -q 'VPS health' <<<\"\$1\"" _ "$printed"
+probe_sheet() { # probe_sheet MODE → the sheet's health line against fake-loom
+  local pid port out="$HERE/.fake-loom.out"
+  node "$HERE/fake-loom.mjs" "$1" > "$out" & pid=$!
+  for _ in $(seq 50); do grep -q ready "$out" 2>/dev/null && break; sleep 0.1; done
+  port="$(awk '/^ready /{print $2}' "$out")"
+  bash "$ROOT/scripts/ops/checklist.sh" --probe "http://127.0.0.1:$port/" | grep 'VPS health'
+  kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null; rm -f "$out"
+}
+check "--probe heads the sheet with a healthy /api/health" bash -c "grep -q '✔ {\"ok\":true}' <<<\"\$1\"" _ "$(probe_sheet up)"
+check "--probe flags a 503 (control plane / events not back)" bash -c "grep -q '⚠ .*/api/health answered 503' <<<\"\$1\"" _ "$(probe_sheet starting)"
+check "--probe still prints every box" bash -c "[ \$(bash '$ROOT/scripts/ops/checklist.sh' --probe http://127.0.0.1:1 | grep -c '^\[ \]') -eq 19 ]"
 
 echo "── Caddy holds requests through a loom restart (T4-01)"
 # A 502 closes an EventSource for good: the proxy must retry the dial while

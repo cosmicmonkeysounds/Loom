@@ -694,7 +694,7 @@ Mac to the VPS must work without a prompt; set `LOOM_VPS`
 | VPS | `deploy/backup.sh --label nightly` | `pg_dump` + a tar of the state volume + a `.sha256`, UTC-stamped, in `~/loom-backups` (14 days kept) |
 | VPS | `deploy/restore.sh …` | Restores a pair into a compose project (below) |
 | House Mac | `scripts/ops/showbackup.sh install` | Show night: every 10 min from 19:00 to 03:00, a fresh `--label show` backup copied to `~/LoomBackups` and verified; `status` shows the newest copy's age; `uninstall` after the show |
-| Any | `scripts/ops/checklist.sh` | Prints the OCT31 §11 pre-show checklist as tick boxes |
+| Any | `scripts/ops/checklist.sh [--probe]` | Prints the OCT31 §11 pre-show checklist as tick boxes; `--probe` heads it with what the public `/api/health` answers right now |
 
 Once you use `release.sh`, don't run `docker compose up -d --build` by
 hand: it would rebuild the pinned tag in place and wipe the rollback
