@@ -19,7 +19,9 @@
 //! director's persona — `core/scripts/live-guard.ts`), the project's files
 //! are still written but the event is left alone — its snapshot untouched,
 //! no reload — and the script exits **3**: Push draft from Run (typed
-//! confirm) instead, or re-run with `--i-know-this-is-live`. A live event
+//! confirm) instead, or re-run with `--i-know-this-is-live`. `--no-reload`
+//! is guarded the same way: the next process restart (a crash, a release)
+//! plays the row's snapshot, maps and facts key included. A live event
 //! whose roster can't be read (the server doesn't answer) is refused the
 //! same way. A preview (the rehearsal run) is never guarded.
 //!
@@ -77,6 +79,11 @@ export interface ReloadStep {
   event: SyncEvent;
   /** `--i-know-this-is-live`. */
   override: boolean;
+  /** False for `--no-reload`: write the snapshot, skip the restart. The
+   *  guard still runs — a running event's next process restart (a crash,
+   *  `release.sh`) plays the row's maps and facts key, so a snapshot
+   *  written under a live show swaps them mid-night all the same. */
+  reload?: boolean;
   /** Write the row's snapshot (`scenario_source` + `house_maps`). */
   saveSnapshot: () => Promise<void>;
   /** The `/api/mod/load` body. */
@@ -97,7 +104,8 @@ async function modLogin(at: string, passcode: string): Promise<string | null> {
 
 /**
  * Save the event's snapshot and restart it on the new text — unless it is
- * a live show with real guests (see the header). Returns the exit code:
+ * a live show with real guests (see the header), which keeps both its
+ * snapshot and its runtime, `--no-reload` or not. Returns the exit code:
  * 0, or 3 when a live event was left alone.
  */
 export async function reloadEvent(step: ReloadStep): Promise<number> {
@@ -120,7 +128,12 @@ export async function reloadEvent(step: ReloadStep): Promise<number> {
     }
   }
   await step.saveSnapshot();
-  out(`✓ event ${event.id} (${event.mode}, ${event.status}) snapshot updated — codes: guest ${event.event_code} · performer ${event.prime_code} · mod ${event.mod_code}`);
+  const codes = `codes: guest ${event.event_code} · performer ${event.prime_code} · mod ${event.mod_code}`;
+  if (step.reload === false) {
+    out(`✓ event ${event.id} (${event.mode}, ${event.status}) snapshot updated, not reloaded (--no-reload) — ${codes}`);
+    return 0;
+  }
+  out(`✓ event ${event.id} (${event.mode}, ${event.status}) snapshot updated — ${codes}`);
 
   // Restart the live runtime on the new text (a real cut: guests re-join).
   token ??= await modLogin(at, event.mod_code);
@@ -258,12 +271,7 @@ export async function main(args: readonly string[]): Promise<number> {
       await pool.query(`alter table event add column if not exists house_maps jsonb`);
       await pool.query(`update event set scenario_source = $2, house_maps = $3::jsonb where id = $1`, [event.id, source, JSON.stringify(snapshot)]);
     };
-    if (!reload) {
-      await saveSnapshot();
-      process.stdout.write(`✓ event ${event.id} (${event.mode}, ${event.status}) snapshot updated, not reloaded (--no-reload) — codes: guest ${event.event_code} · performer ${event.prime_code} · mod ${event.mod_code}\n`);
-      return 0;
-    }
-    return await reloadEvent({ server, event, override, saveSnapshot, body: { source, name: project.name, maps, facts: facts?.source ?? null } });
+    return await reloadEvent({ server, event, override, reload, saveSnapshot, body: { source, name: project.name, maps, facts: facts?.source ?? null } });
   } finally {
     await pool.end();
   }

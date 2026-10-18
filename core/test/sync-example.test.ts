@@ -32,11 +32,14 @@ describe("reloadEvent", () => {
   let server: Server;
   let base = "";
   let roster: { id: string; name: string }[] = [];
+  /** The mod state's body; null = `{title, roster}`. */
+  let stateBody: unknown = null;
   let hits: string[] = [];
 
   beforeEach(async () => {
     hits = [];
     roster = [];
+    stateBody = null;
     server = createServer((req, res) => {
       const path = (req.url ?? "").replace(/^\/e\/[^/]+/u, "");
       hits.push(`${req.method} ${path}`);
@@ -44,7 +47,7 @@ describe("reloadEvent", () => {
       if (path === "/api/mod/login") return void res.end(JSON.stringify({ token: "mod-tok" }));
       if (path === "/api/state?role=mod") {
         if (req.headers["x-loom-token"] !== "mod-tok") return void res.writeHead(401).end("{}");
-        return void res.end(JSON.stringify({ title: "Trapped", roster }));
+        return void res.end(JSON.stringify(stateBody ?? { title: "Trapped", roster }));
       }
       if (path === "/api/mod/load") return void res.end(JSON.stringify({ ok: true, phase: "open" }));
       res.writeHead(404).end("{}");
@@ -57,13 +60,14 @@ describe("reloadEvent", () => {
   });
 
   const event = (mode: string): SyncEvent => ({ id: "ev1", mode, status: "open", event_code: "GST", prime_code: "PRM", mod_code: "MOD" });
-  async function run(mode: string, override = false, at = base): Promise<{ code: number; saved: number; lines: string[] }> {
+  async function run(mode: string, override = false, at = base, reload = true): Promise<{ code: number; saved: number; lines: string[] }> {
     let saved = 0;
     const lines: string[] = [];
     const code = await reloadEvent({
       server: at,
       event: event(mode),
       override,
+      reload,
       saveSnapshot: async () => {
         saved++;
       },
@@ -112,6 +116,38 @@ describe("reloadEvent", () => {
     expect(r.code).toBe(3);
     expect(r.saved).toBe(0);
     expect(r.lines.join("\n")).toMatch(/roster can't be read/u);
+  });
+
+  it("--no-reload on a live event with a real guest saves nothing (the next restart would play it)", async () => {
+    roster = [persona, phone];
+    const r = await run("live", false, base, false);
+    expect(r.code).toBe(3);
+    expect(r.saved).toBe(0);
+    expect(loads()).toBe(0);
+    expect(r.lines.join("\n")).toMatch(/real guest.*Winamp/u);
+  });
+
+  it("--no-reload on a live event of personas saves the snapshot and never loads", async () => {
+    roster = [persona];
+    const r = await run("live", false, base, false);
+    expect(r.code).toBe(0);
+    expect(r.saved).toBe(1);
+    expect(loads()).toBe(0);
+    expect(r.lines.join("\n")).toMatch(/not reloaded \(--no-reload\)/u);
+  });
+
+  it("--no-reload on a live event it can't check refuses (exit 3)", async () => {
+    const r = await run("live", false, "http://127.0.0.1:1", false);
+    expect(r.code).toBe(3);
+    expect(r.saved).toBe(0);
+  });
+
+  it("--no-reload on a preview never reads the roster", async () => {
+    roster = [phone];
+    const r = await run("preview", false, base, false);
+    expect(r.code).toBe(0);
+    expect(r.saved).toBe(1);
+    expect(hits).toEqual([]);
   });
 
   it("a preview on a server that is down still saves its snapshot (exit 0)", async () => {
