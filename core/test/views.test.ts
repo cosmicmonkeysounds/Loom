@@ -355,6 +355,53 @@ when to_the_floor:
     expect(cueState(sim)).toMatchObject({ last: "to_the_floor", fired: ["lights_only", "to_the_floor"] });
   });
 
+  it("a `_`-leaf world write is bookkeeping: an ask that only notes when it asked is refused; a real write still fires (C3)", async () => {
+    const { cueState, notePress, pressRefused } = await import("../server/views.ts");
+    const sim = Sim.fromSources(`${CUES}
+INTERACTION resurrect
+  label: G11 · 🎃 Resurrection
+  who: admin
+
+INTERACTION reset_room
+  label: S1 · 🔄 Reset the room
+  who: admin
+
+GROUP Hosts
+  joinable: false
+
+CHANNEL hosts
+  kind: faction
+  faction: Hosts
+
+when resurrect:
+  if Night._ask_at == 0 or Time.elapsed > Night._ask_at + 30:
+    set Night._ask_at = Time.elapsed + 1
+    broadcast "🎃 Press again to end the show." to channel(hosts)
+  else:
+    set Night.resurrected = true
+
+when reset_room:
+  set Night.resets += 1
+  broadcast "🔄 Reset." to channel(hosts)
+`);
+    const press = (name: string): boolean => {
+      const batch = sim.signal(name);
+      notePress(sim, batch);
+      return pressRefused(sim, batch);
+    };
+    sim.setVar("Night._ask_at", "0"); // the story's seed
+    expect(press("ring_the_bell")).toBe(false);
+    // The first G11 press only asks: refused, not LAST, not ticked.
+    expect(press("resurrect")).toBe(true);
+    expect(cueState(sim)).toMatchObject({ last: "hunt_time_up", fired: ["ring_the_bell", "hunt_time_up"] });
+    // The second press inside the window ends it: fired, LAST.
+    expect(press("resurrect")).toBe(false);
+    expect(cueState(sim)).toMatchObject({ last: "resurrect", fired: ["ring_the_bell", "hunt_time_up", "resurrect"] });
+    // A plain (non-`_`) write next to a staff line still counts.
+    expect(press("reset_room")).toBe(false);
+    expect(cueState(sim).fired).toContain("reset_room");
+  });
+
   it("reads only new log entries on each snapshot, and returns a fresh copy", async () => {
     const { cueState } = await import("../server/views.ts");
     const sim = Sim.fromSources(CUES);
