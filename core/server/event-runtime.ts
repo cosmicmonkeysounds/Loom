@@ -2148,7 +2148,11 @@ export class EventRuntime {
           return true;
         }
         const guest = this.spatial.sessionFor(token)?.guest ?? null;
-        const out = this.spatial.found(token, (s) => this.commitFound(s));
+        const out = this.spatial.found(
+          token,
+          (s) => this.commitFound(s),
+          (s) => this.sim?.isCaptured(s.guest) ?? false,
+        );
         switch (out.kind) {
           case "unknown":
           case "over":
@@ -2163,8 +2167,10 @@ export class EventRuntime {
           case "found":
             // `captured`: the program is still captured after the find (the
             // banishment frees nobody), so the game never celebrates a
-            // release the story didn't make (C4, T3-reinstall-01).
-            sendJson(res, 200, { ok: true, released: out.released, already: out.already, captured: guest !== null && (this.sim?.isCaptured(guest) ?? false) });
+            // release the story didn't make (C4, T3-reinstall-01). The
+            // `found` frame carries the same value (C4b). A repeat reads the
+            // story now (a director may have released them since).
+            sendJson(res, 200, { ok: true, released: out.released, already: out.already, captured: out.already ? guest !== null && (this.sim?.isCaptured(guest) ?? false) : out.captured });
             return true;
         }
         return true;

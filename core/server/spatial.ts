@@ -132,6 +132,9 @@ interface Session {
   found: boolean;
   foundAt: number;
   released: boolean;
+  /** Still captured once the find was committed (C4b): a find that
+   *  released nobody while the story keeps the program (the banishment). */
+  keptCaptured: boolean;
 }
 
 interface Station {
@@ -159,7 +162,8 @@ export type FoundOutcome =
   /** A parked assignment nobody has played yet (no pose has claimed it). */
   | { kind: "parked" }
   | { kind: "far"; distance: number; dy: number }
-  | { kind: "found"; released: boolean; already: boolean };
+  /** `captured`: still captured after the commit (C4b) — the story kept them. */
+  | { kind: "found"; released: boolean; already: boolean; captured: boolean };
 
 /** The session a token names, as the runtime needs it to commit an outcome. */
 export interface SessionRef {
@@ -452,6 +456,7 @@ export class SpatialHub {
       found: false,
       foundAt: 0,
       released: false,
+      keptCaptured: false,
     };
     this.sessions.set(id, s);
     this.byToken.set(token, id);
@@ -564,24 +569,30 @@ export class SpatialHub {
    * claimed (a pose) and its last pose must be near the duck; then `release`
    * commits the story outcome (once) and reports whether the program was
    * released. A repeat answers `already` without committing.
+   * `stillCaptured` asks the story, after the commit, whether the program is
+   * still captured (C4b: the `found` frame's `captured`, so a wall terminal
+   * never lays an egg for a find the story refused); without it, a program
+   * captured at the deal that the find didn't release counts as kept.
    */
-  found(token: string | undefined, release: (s: SessionRef) => boolean): FoundOutcome {
+  found(token: string | undefined, release: (s: SessionRef) => boolean, stillCaptured?: (s: SessionRef) => boolean): FoundOutcome {
     const s = this.byTokenLive(token);
     if (s === null) return { kind: this.tokenState(token) };
-    if (s.found) return { kind: "found", released: s.released, already: true };
+    if (s.found) return { kind: "found", released: s.released, already: true, captured: s.keptCaptured };
     if (!s.claimed) return { kind: "parked" };
     const near = nearDuck(s.pose.p, s.duck.pos, this.map?.house);
     if (!near.near) return { kind: "far", distance: near.distance, dy: near.dy };
     s.found = true;
     s.foundAt = this.now();
     s.activeAt = s.foundAt;
-    s.released = release({ id: s.id, guest: s.guest, device: s.device, captured: s.captured });
+    const ref: SessionRef = { id: s.id, guest: s.guest, device: s.device, captured: s.captured };
+    s.released = release(ref);
+    s.keptCaptured = stillCaptured !== undefined ? stillCaptured(ref) : s.captured && !s.released;
     this.lastFound.set(s.guest, s.duck.id);
     const run: DuckRun = { guest: s.guest, name: s.name, world: s.world, device: s.device, ms: Math.max(0, this.runClock() - s.playingAt), foundAt: s.foundAt };
     this.runLog.push(run);
     this.o.onRun?.(run);
-    this.broadcast("found", { session: s.id, guest: s.guest, name: s.name, duck: s.duck, released: s.released });
-    return { kind: "found", released: s.released, already: false };
+    this.broadcast("found", { session: s.id, guest: s.guest, name: s.name, duck: s.duck, released: s.released, captured: s.keptCaptured });
+    return { kind: "found", released: s.released, already: false, captured: s.keptCaptured };
   }
 
   /** Every duck found since the story (re)started, in order. */

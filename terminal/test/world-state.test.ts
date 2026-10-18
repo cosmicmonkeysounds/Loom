@@ -56,7 +56,7 @@ describe("world state", () => {
   it("celebrates a found duck, then lets the celebration go", () => {
     let s = fold([
       [{ event: "join", data: { player: playerState("s1", [6.5, 0, 2]) } }, 0],
-      [{ event: "found", data: { session: "s1", guest: "g-s1", name: "Prog s1", duck: { id: "s", room: "b", pos: [7, 0, 2] }, released: true } }, 1000],
+      [{ event: "found", data: { session: "s1", guest: "g-s1", name: "Prog s1", duck: { id: "s", room: "b", pos: [7, 0, 2] }, released: true, captured: false } }, 1000],
     ]);
     expect(s.players.get("s1")).toMatchObject({ found: true, foundAt: 1000 });
     expect(s.celebrations).toEqual([{ session: "s1", guest: "g-s1", name: "Prog s1", released: true, kept: false, at: 1000 }]);
@@ -73,10 +73,11 @@ describe("world state", () => {
       [{ event: "join", data: { player: playerState("s3", [6.5, 0, 2]) } }, 0],
     ]);
     // The banishment: the server keeps them captured.
-    s = reduce(s, { event: "found", data: { session: "s1", guest: "g-s1", name: "Prog s1", duck, released: false, captured: true } as never }, 1000);
+    s = reduce(s, { event: "found", data: { session: "s1", guest: "g-s1", name: "Prog s1", duck, released: false, captured: true } }, 1000);
     // A free program (never captured, or freed mid-walk), and an older server that doesn't say.
-    s = reduce(s, { event: "found", data: { session: "s2", guest: "g-s2", name: "Prog s2", duck, released: false, captured: false } as never }, 1000);
-    s = reduce(s, { event: "found", data: { session: "s3", guest: "g-s3", name: "Prog s3", duck, released: false } }, 1000);
+    s = reduce(s, { event: "found", data: { session: "s2", guest: "g-s2", name: "Prog s2", duck, released: false, captured: false } }, 1000);
+    // (a pre-wave-9 server: no `captured` on the frame)
+    s = reduce(s, { event: "found", data: { session: "s3", guest: "g-s3", name: "Prog s3", duck, released: false } as never }, 1000);
     expect(s.players.get("s1")).toMatchObject({ found: true, kept: true });
     expect(laysEgg(s.players.get("s1")!)).toBe(false);
     expect(laysEgg(s.players.get("s2")!)).toBe(true);
@@ -107,7 +108,7 @@ describe("world state", () => {
     expect(reduce(s, { event: "duck", data: { session: "s1", duck: { ...moved, pos: [2, 0.4, 3] } } }, 200)).toBe(s);
     expect(reduce(s, { event: "duck", data: { session: "ghost", duck: moved } }, 200)).toBe(s);
     // A found duck stays where it was found.
-    s = reduce(s, { event: "found", data: { session: "s2", guest: "g-s2", name: "Prog s2", duck: other.duck, released: false } }, 300);
+    s = reduce(s, { event: "found", data: { session: "s2", guest: "g-s2", name: "Prog s2", duck: other.duck, released: false, captured: false } }, 300);
     expect(reduce(s, { event: "duck", data: { session: "s2", duck: moved } }, 400)).toBe(s);
     // The frame decodes off the wire.
     expect(decodeFrame("duck", JSON.stringify({ session: "s1", duck: moved }))).toEqual({ event: "duck", data: { session: "s1", duck: moved } });

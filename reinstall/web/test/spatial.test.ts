@@ -40,7 +40,7 @@ describe("applyFrame", () => {
   });
 
   it("found marks; leave removes; reset clears; house changes nothing", () => {
-    let t = applyFrame(table(player("a"), player("b")), { event: "found", data: { session: "a", guest: "g-a", name: "P a", duck: player("a").duck, released: true } });
+    let t = applyFrame(table(player("a"), player("b")), { event: "found", data: { session: "a", guest: "g-a", name: "P a", duck: player("a").duck, released: true, captured: false } });
     expect(t.get("a")!.found).toBe(true);
     t = applyFrame(t, { event: "leave", data: { session: "a", reason: "found" } });
     expect([...t.keys()]).toEqual(["b"]);
