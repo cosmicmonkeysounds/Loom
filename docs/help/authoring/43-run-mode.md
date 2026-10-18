@@ -2,7 +2,7 @@
 title: Run mode — rehearse, go live, be anyone
 section: The Editor
 order: 43
-keywords: run, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, cue, next, last, refused, not taken, repeat, branch, ledger, parts, phone offline, agent, worker, ceremony, award, recap, re-pair, lost phone, release, grant codex, give quest, complete quest, fail quest
+keywords: run, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, director page, act, acts, now card, on hand, anytime, arm, fire, double click, countdown, watch, glance, needs you, calling, watching, keyboard, cue, next, last, refused, not taken, repeat, branch, ledger, parts, phone offline, agent, worker, ceremony, award, recap, re-pair, lost phone, release, grant codex, give quest, complete quest, fail quest
 ---
 
 Run (`⌘2`) is the control room for your project's **one run**. You
@@ -158,20 +158,112 @@ no run yet, the Run page also offers *Go live with real guests* directly.)
 | **Story** | the story map, lit by the run ([story graph](story-graph.md)) |
 | **Roster** | all guests and the cast — group, location, score, presence, whose persona |
 | **World** | the live state browser — a searchable variables table; **double-click any value to edit it live** |
-| **Director** | the **cue sheet**, named events (with arguments), beats, broadcasts |
+| **Director** | the night by **act** — the NOW card (NEXT, armed then fired), On hand, the running order — the glance column (Needs you, Watch, People, Cast, `# hosts`), and the Tools drawer: named events (with arguments), beats, broadcasts (below) |
 | **Mind** | an agent-voiced character's mind — its arc, drives, brief, the prompts and both models' reasoning, and a control panel ([the mind debugger](44-mind-debugger.md)) |
 | **Log** | the raw ledger, event by event — **filter to one participant**; export the run. The time column is story time (it stands still through a pause), on a server run as on a local one. Events from before this console opened (a reload, a late join) aren't listed: it says how many, and **⤓ Export run** pages the whole ledger off the server |
 
-## The cue sheet
+## The Director page
 
-The Director page opens on the **cue sheet**: the story's `who: admin`
+The Director page is the night's running order: the story's `who: admin`
 interactions in the order they are declared ([buttons in the
-app](live-verbs.md)), one click each. A label's leading code
-(`C1 · …`, `V4 · …`) is split off as the cue number. The last cue fired
-is amber **LAST**, the one the sheet suggests is tagged **NEXT**, and
-every cue fired tonight gets a ✓ — the same sheet on every director's
-console, and it survives a reload. The header shows the story's
-`Night.phase`; the box filters by word.
+app](live-verbs.md)). A label's leading code (`C1 · …`, `V4 · …`) is
+split off as the cue number, and a leading or trailing `(…)` (`(auto at
+15 min)`, `(hardware fallback)`, `(Optional)`) becomes a small grey tag.
+The last cue fired is amber **LAST**, the one the sheet suggests is
+indigo **NEXT**, and every cue fired tonight gets a ✓ — the same marks on
+every director's console and the director phone, and they survive a
+reload.
+
+**Acts.** An admin interaction with an `act:` line opens an act, and
+every later admin cue belongs to it until the next `act:` ([live
+verbs](live-verbs.md)). The **Night bar** across the top is the act
+stepper — `✓B ✓C ●E F G`, a chip opens that act — with the story's
+`Night.phase`, the two soonest countdowns, and a full-width amber
+**PAUSED: story clock stopped** while the run is paused. The act holding
+NEXT (else LAST, else the first act) is the **focus**: it is open, the
+acts before it fold to `✓ 8/8` (or `– skipped`), the acts after it fold
+to their size and *next: …*. An act made only of `sequence: false` cues
+is an **Anytime** act: never the focus, never on the stepper, always on
+hand. A story with no `act:` is one act and has no stepper.
+
+**The NOW card** answers *what do I press next?*:
+
+- **NEXT** with its full `description:` and its button, then *then:* the
+  cue after it (dimmed *·not on offer·* when its `while:` is false). A
+  `repeat: true` cue that is both LAST and NEXT reads *Again? 📋 Results:
+  the next question* — *or move on: 📺 …*.
+- With no NEXT: **NEXT — nothing to press. The story runs.** and every
+  countdown that is running (the header's `countdown:` lines, [live
+  shows](live-shows.md)), red under a minute, plus what is next on the
+  running order after it. So a silent sheet during a timer reads as
+  meant, not as broken.
+- **LAST** with who moved it: *(auto)* when the story fired it itself,
+  *moved by another director* (flashing for 4 s) when it wasn't this
+  console; then **did:** — what that press did (world changes, `cleared
+  → true ×41`, rooms opened, broadcasts, codex and quest steps; four
+  items, then **+N more ↗ Log**, which opens the Log on just that press).
+- The **result** of your last press: **✓ Taken · <cue>**, or **✕ Not
+  taken · <cue>** followed by the `# hosts` line the story posted to say
+  why (it waits a moment for it; *the story gives no reason here* when
+  the story has no staff room), or **✕ Failed: <message>** — including
+  *no answer in 8 s — check LAST before pressing again*.
+
+**On hand**, under the NOW card: the focus act's fallbacks (its
+`sequence: false` cues) as buttons, the previous act's fallbacks on a
+**from E ▸** line (open by default — after 🌑 the Y2K hour's 🪩 and 🔌
+are still one click away), and every Anytime cue on the **⚡ Anytime**
+line. Then the **running order**, act by act: the focus act's cues as
+numbered rows (fired ones muted, a one-line description under each), its
+fallbacks as chips; **/** or the box filters by word and opens every act;
+**⇲ all** unfolds them all. The award tools (**↻ awards**, **Copy
+recap**) sit in the header of the act holding the first award. At the
+bottom, **Tools** holds *Fire named event*, *Fire beat* and *Broadcast
+cue* (open by default when the story has no admin cues).
+
+**Arm, then fire.** Every cue — NEXT on the NOW card too — takes two
+presses: the first **arms** it (amber, *Fire ▶ again · Esc*, a 4-second
+bar), a second one at least **0.3 s** and under **4 s** later fires it. A
+fast double-click only arms. An arm is dropped — *Cues moved: 📋 just
+fired. Re-arm.* — when the cue state moves first (another director, the
+story's own timer), when you switch tabs or windows, or after 4 s. While
+a press is on its way every cue is locked, and NEXT waits 1 s after it.
+An armed cue warns, never blocks: *⚠ Not on offer now: the story may
+refuse it* (its `while:` is false) or *⚠ This is a F cue; the night is
+in E*. A cue that names a person (an award; ♟ *They beat the King*)
+opens a **who?** picker when armed, plus a **value** box for an award;
+the armed button reads *Fire → Winamp*.
+
+**The keys** (only with the page in **Calling** mode, never while you
+type in a box): **Space** arms NEXT, Space again fires it; **Enter** arms
+the row under the cursor (or NEXT) and fires it on the second press;
+**Esc** disarms, then clears the cursor, then the filter; **j / ↓** and
+**k / ↑** walk the cursor through the cues on screen; **/** jumps to the
+filter; **.** scrolls NEXT (or LAST) into view. Enter or Space on a
+focused button that isn't a cue is that button's.
+
+**Calling / Watching** (top right, remembered per console): **Calling**
+is the layout above with the keys on. A second director sets
+**Watching**: the NOW card shrinks to one line, the glance column comes
+first with a longer `# hosts` feed, and the keys are off (clicks still
+arm, then fire). There is no lock between directors — the stale-arm rule
+and the radio cover two people pressing at once.
+
+**The glance column** (beside the NOW card; under 896 px a strip of
+chips, one section at a time). Read-only; every row is a link. Each
+section hides when it has nothing to say:
+
+| Section | Shows | Goes to |
+|---|---|---|
+| **Needs you** | your refused press (60 s), filings waiting for review (Judging in `review` mode), held transfers, a performer whose phone is offline or whose part nobody holds, an agent with no worker | Chat · Mind's Judging card · the Run page's Wallet card · the Inspector · Mind |
+| **Watch** | the header's `watch:` lines while their `while` holds: values (changed in the last 10 s → ◆), a ROLE path as a count over the guests (`Cleared 44/45` and a bar), a name as a person row (online, room, ⛓ / ⛔). A value on a `secret: true` CHARACTER shows `••••` — **press and hold 👁** to read it for 5 s. With no `watch:` line: **Recently changed**, the last few globals the story wrote | World, filtered to that path · Roster · the Inspector |
+| **People** | joined · online, who is in a prison room, how many are restricted, each faction's guests against a majority tick, the busiest rooms | the Inspector · Stage |
+| **Cast** | one dot per performer part (green signed in, amber phone offline, hollow free), each agent's stage and mood | the Inspector · Mind |
+| **# hosts** | the last lines in the story's staff rooms (a `kind: faction` CHANNEL whose GROUP isn't joinable) | Chat on that room |
+
+The header carries a **▶ NEXT** pill on every Run page (or the soonest
+countdown): a click opens the Director page and never fires.
+
+### What NEXT means
 
 - **NEXT** is the first cue after LAST that hasn't fired tonight and is
   on tonight's branch. A cue with a `while:` ([live
@@ -180,7 +272,7 @@ console, and it survives a reload. The header shows the story's
   hunt 1, hunt 2's hour, the summons, and the Y2K hour (midnight fires 🌑
   itself); after the dance it is the ending's own cue, after the song it
   is G1, and G10 is only suggested when MS Paint was cleared. A `while:` never stops you pressing a cue; the story's rule
-  decides what happens.
+  decides what happens. Acts never change NEXT: they only group the page.
 - A `repeat: true` cue **stays NEXT** while you keep pressing it and its
   `while:` holds (📋 once per question, until the third).
 - A press the story **turns down** counts for nothing: it never becomes
@@ -204,33 +296,59 @@ console, and it survives a reload. The header shows the story's
   Bingo timer calls time and tells Clippy to ask for the results, and
   you press V3 yourself, so it becomes LAST like any step.
 
-A local-folder rehearsal judges all of this exactly like the server. A
-cue that needs a person — an award: every
-hook that hears it binds one — has a **who?** picker and an optional
-**value** box (read as `{value}`) and fires with that person as the
-subject (in *Trapped in the Internet*, **♟ They beat the King** asks who
-won, because the door code goes to the winner). On a server run, once the story sets `Night.ended`, the sheet
-reads the recap and fills each award's empty **who?** and **value**
-with a suggestion — the top of that award's list (the bottom of the
-trust list for Least Trusted), rehearsal personas skipped — and shows
-`suggested: Ada (82) · tied: Bob` under the row. It never replaces a
-pick you made; **↻ awards** re-reads the recap, and **Copy recap** puts
-the text block on the clipboard (for pasting into `cast:Trabolta`). For
-the numbers behind an award, open
-`/e/<event id>/api/mod/recap?format=text` in a tab while signed in: a
-paste-ready list of trust, truths and lies accepted, trips to the
-Internet, codex, quests, score, codex shares, chess against the King
-(won / lost / drawn), Bathroom Mode trips (a count, not minutes), and
-who joined each side.
+A local-folder rehearsal judges all of this exactly like the server, and
+ticks its countdowns off the same story clock.
 
-**On a phone.** The same sheet runs in the participant app: open the
-event's address with `?role=director`, type the director (mod)
-passcode and a name. Each cue is a big button — tap once to arm it, tap
-again within 4 seconds to fire. LAST / NEXT are shared with this page,
-and the log records each fire as *Phone · <name>*. A press the story
-turned down says *Not taken* there, and only an award asks for a value. The guest front page
-has no link to it (the participant guide's *The cue sheet on your
-phone* has the details).
+### Awards
+
+A cue that needs a person — an award: every hook that hears it binds one
+— has a **who?** picker and an optional **value** box (read as
+`{value}`) and fires with that person as the subject (in *Trapped in the
+Internet*, **♟ They beat the King** asks who won, because the door code
+goes to the winner). On a server run, once the story sets `Night.ended`,
+the page reads the recap and fills each award's empty **who?** and
+**value** with a suggestion — the top of that award's list (the bottom of
+the trust list for Least Trusted), rehearsal personas skipped — and shows
+`suggested: Ada (82) · tied: Bob` under it. It never replaces a pick you
+made; **↻ awards** re-reads the recap, and **Copy recap** puts the text
+block on the clipboard (for pasting into `cast:Trabolta`). For the
+numbers behind an award, open `/e/<event id>/api/mod/recap?format=text`
+in a tab while signed in: a paste-ready list of trust, truths and lies
+accepted, trips to the Internet, codex, quests, score, codex shares,
+chess against the King (won / lost / drawn), Bathroom Mode trips (a
+count, not minutes), and who joined each side.
+
+### The board in the story
+
+The glance column's Watch section and the countdowns come from the
+story's **header** ([live shows](live-shows.md)):
+
+```loom
+# The Glass Orchard
+start: Doors
+watch: Night.round as Round, Night.lights as Lights, while Night.step >= 2
+watch: program.cleared as Cleared, Ivo Marsh
+countdown: Night.hunt_end as Hunt ends, while Night.hunt_on == true
+```
+
+A `countdown:` path holds a story time in seconds (`set Night.hunt_end =
+Time.elapsed + 900`); it shows only while its `while` holds and the time
+is still ahead. Keep these lines **in the header block of the first
+file**, with no blank or comment line before them: the server reads that
+header only. Lint `L1205` flags a line that won't parse, a path whose
+head names nothing, or a board line in another file.
+
+**On a phone.** The same running order runs in the participant app: open
+the event's address with `?role=director`, type the director (mod)
+passcode and a name. It is grouped by the same acts under a pinned NEXT
+bar (the soonest countdown when there is nothing to press) and a strip
+with the act, the phase and up to three non-secret watch values; tap a
+cue once to arm it, again within 4 seconds to fire — a fast double tap
+only arms. LAST / NEXT are shared with this page, and the log records
+each fire as *Phone · <name>*. A press the story turned down says *Not
+taken* there, and only an award asks for a value. The phone never gets a
+description or a secret. The guest front page has no link to it (the
+participant guide's *The cue sheet on your phone* has the details).
 
 ## Being anyone
 
