@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { movedCue, ownMove, OWN_MS } from './moves'
+import { describe, expect, it, vi } from 'vitest'
+import { movedCue, ownMove, within, OWN_MS, PRESS_TIMEOUT_MS } from './moves'
 
 describe('movedCue', () => {
   it('names the new LAST', () => {
@@ -23,5 +23,19 @@ describe('ownMove', () => {
     expect(ownMove({ name: 'trust_chart', at: 1000 }, 'truth_pong', 2000)).toBe(false)
     expect(ownMove({ name: 'trust_chart', at: 1000 }, 'trust_chart', 1000 + OWN_MS)).toBe(false)
     expect(ownMove(null, 'trust_chart', 0)).toBe(false)
+  })
+})
+
+describe('within', () => {
+  it('a hung press turns into a failure after the timeout', async () => {
+    vi.useFakeTimers()
+    try {
+      const hung = within(new Promise<string>(() => {}), PRESS_TIMEOUT_MS, () => 'late')
+      vi.advanceTimersByTime(PRESS_TIMEOUT_MS)
+      await expect(hung).resolves.toBe('late')
+      await expect(within(Promise.resolve('ok'), PRESS_TIMEOUT_MS, () => 'late')).resolves.toBe('ok')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

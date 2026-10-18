@@ -23,3 +23,19 @@ export function movedCue(prev: Pick<CueMarks, 'last' | 'fired'>, next: Pick<CueM
 export function ownMove(own: OwnPress | null, id: string | null, now: number): boolean {
   return own !== null && id !== null && foldKey(own.name) === foldKey(id) && now - own.at < OWN_MS
 }
+
+/** How long a press may hang (venue Wi-Fi) before it counts as failed and
+ *  the cues unlock. */
+export const PRESS_TIMEOUT_MS = 8000
+
+/** What a press that never answered reads as. It may still land: LAST says. */
+export const NO_ANSWER = `no answer in ${PRESS_TIMEOUT_MS / 1000} s — check LAST before pressing again`
+
+/** `p`, or `late()` once `ms` pass without an answer. */
+export function within<T>(p: Promise<T>, ms: number, late: () => T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const out = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(late()), ms)
+  })
+  return Promise.race([p, out]).finally(() => clearTimeout(timer))
+}

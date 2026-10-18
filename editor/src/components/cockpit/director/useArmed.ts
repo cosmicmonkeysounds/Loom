@@ -4,12 +4,13 @@
 //! to the cue state it was made against and dropped — "Cues moved: …
 //! Re-arm." — once another director or the story fires; it also drops on a
 //! window blur, a hidden tab and after 4 s. One press is in flight at a
-//! time, and NEXT cools down for 1 s after one. What came back (taken /
+//! time (8 s at most: a hung one fails and unlocks), and NEXT cools down
+//! for 1 s after one. What came back (taken /
 //! not taken / failed) is the NOW card's banner and, for a refusal, the
 //! Needs you item.
 
 import { useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { CockpitContext, useCockpit } from '@/store/cockpit'
+import { CockpitContext, useCockpit, type FireResult } from '@/store/cockpit'
 import {
   ARM_MS,
   armFor as coreArmFor,
@@ -21,7 +22,7 @@ import {
   type CueRow,
 } from '@loom/core/cue-sheet'
 import { lastSeq, type RefusedPress } from './glance'
-import { movedCue, ownMove } from './moves'
+import { NO_ANSWER, PRESS_TIMEOUT_MS, movedCue, ownMove, within } from './moves'
 
 /** NEXT's cooldown after a press. */
 export const NEXT_COOLDOWN_MS = 1000
@@ -172,7 +173,8 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
       setPending(id)
       latest.current.pending = id
       const args = subject !== null ? cueValueArgs(value ?? '') : null
-      const res = await fireSignal(id, subject ?? undefined, args)
+      // A press that hangs (venue Wi-Fi) never locks every cue for minutes.
+      const res = await within(fireSignal(id, subject ?? undefined, args), PRESS_TIMEOUT_MS, (): FireResult => ({ error: NO_ANSWER }))
       const at = Date.now()
       if (res.error !== undefined) {
         setResult({ kind: PressKind.Failed, id, cue, at, seq, message: res.error })
