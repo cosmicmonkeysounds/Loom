@@ -541,3 +541,24 @@ def test_server_open_catches_up_the_y2k_house_look_underneath():
     for value in ("y2k", "game", "glitch"):
         got = [a for a in (rule.args_for({**world, "Night.lights": value}) for rule in cfg.catch_up) if a is not None]
         assert got == [f"lights_{value}"], (value, got)
+
+
+def test_the_flicker_never_changes_the_look_on_the_strips():
+    """T8-stagehand-03: screens_flicker is an overlay that changes no mirror.
+    The bulbs' `effect: blink` reverts by itself; a WLED preset would not (ps
+    21's playlist ended on house normal), so the flicker sends the strips
+    nothing and every look survives it, the beans' glitch included."""
+    cues = _show().cues
+    sent = [c for c in evaluate_cues(cues, _directive("cue", "screens_flicker")) if isinstance(c, MqttCue)]
+    assert sent and not [c.topic for c in sent if c.topic.startswith("wled/")], [c.topic for c in sent]
+    assert all(json.loads(c.payload) == {"effect": "blink"} for c in sent), [c.payload for c in sent]
+    used = set(re.findall(r"\bcue\s+(lights_[a-z0-9_]+)\b", _code(_story_text())))
+    for look in sorted(used):
+        def last_wled(seq: list[str]) -> dict[str, str]:
+            out: dict[str, str] = {}
+            for cue in seq:
+                for c in evaluate_cues(cues, _directive("cue", cue)):
+                    if isinstance(c, MqttCue) and c.topic.startswith("wled/"):
+                        out[c.topic] = c.payload
+            return out
+        assert last_wled([look, "screens_flicker"]) == last_wled([look]), look

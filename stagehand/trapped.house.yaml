@@ -87,8 +87,9 @@
 #  18  lights_purgatory      house  scene 18 grey, dim            all ps 18
 #  19  lights_banish         house  scene 19 red everywhere       all ps 19
 #  20  lights_restore        house  scene 20 house normal         all ps 20
-#  21  screens_flicker       house  effect blink (one-shot)       all ps 21 (a short Lightning playlist
-#                                                                  whose `end` is preset 20)
+#  21  screens_flicker       house  effect blink (one-shot)       — (the strips are left alone: a WLED
+#                                                                  playlist ends on a fixed preset, never
+#                                                                  the look that was on; no ps 21)
 #  22  (tube_safe)           —                                    tube ps 22 (dim static: the blackout's
 #                                                                  stair light)
 #
@@ -99,7 +100,8 @@
 # rule here on purpose: the Screens layer (design §7 #13) consumes them from
 # the mod feed directly, and the story mirrors each look into Night.screen /
 # Night.terminals. Only `screens_flicker` is physical today: it blinks the
-# house so Trabolta's power is felt.
+# house bulbs once (Hue / IKEA `effect: blink`, which reverts by itself) so
+# Trabolta's power is felt, and never touches the strips or a mirror.
 
 # The real event id + mod passcode never go in this tracked file: put them in
 # trapped.house.local.yaml next to it (git-ignored, merged over `server:`) —
@@ -343,13 +345,12 @@ show:
       mqtt: { topic: "show/serverroom/alarm", payload: { state: "off" } }
 
     # ── Trabolta's flicker (and the story's involuntary ones): the screens
-    # stutter (Screens layer) and the house blinks once so it is felt. ──
+    # stutter (Screens layer) and the house bulbs blink once so it is felt.
+    # The blink reverts by itself; the strips get nothing, since a WLED
+    # preset would replace the look on them (at the beans, the glitch). ──
     - on: { directive: cue }
       match: { target: screens_flicker }
       mqtt: { topic: "zigbee2mqtt/house/set", payload: { effect: "blink" } }
-    - on: { directive: cue }
-      match: { target: screens_flicker }
-      mqtt: { topic: "wled/all/api", payload: { "on": true, ps: 21 } }
 
     # ── Sound: `sound <name>` (directive sfx) → the QLab cue of that name ──
     # (no t_exec: QLab does not want the extra argument)
