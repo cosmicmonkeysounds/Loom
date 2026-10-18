@@ -2833,9 +2833,15 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05; wave 4 judg
     // An empty pool (the server's `else`): the bottle closes.
     const empty = fire(sim, "bottle_empty");
     expect(v(sim, "Night.bottle_open")).toBe(false);
-    expect(hosts(sim, empty)).toEqual(["🍾 Nobody left at the Desktop to pick. Read the next results (📋)."]);
-    // After the preview the bottle and the results are over.
+    expect(hosts(sim, empty)).toEqual(["🍾 Nobody left to pick for question 2. Read the next results (📋)."]);
+    // Question 3 has no next results: its readouts point at the preview.
     fire(sim, "read_the_results");
+    expect(v(sim, "Night.bottle_q")).toBe(3);
+    fire(sim, "spin_the_bottle");
+    expect(hosts(sim, fire(sim, "bottle_empty"))).toEqual(["🍾 Nobody left to pick for question 3. Next: 📺 Preview hunt 2."]);
+    sim.setVar("Night.bottle_picks", "5");
+    expect(hosts(sim, fire(sim, "spin_the_bottle"))).toEqual(["🍾 Five picks for question 3. Next: 📺 Preview hunt 2."]);
+    // After the preview the bottle and the results are over.
     fire(sim, "second_hunt_preview");
     expect(v(sim, "Night.poll")).toBe("none");
     expect(hosts(sim, fire(sim, "spin_the_bottle"))).toEqual(["🍾 Read a question's results first (📋)."]);

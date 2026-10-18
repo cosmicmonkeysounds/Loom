@@ -614,7 +614,7 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
           ...WALLET_ROOM,
           from: "",
           kind: "wallet",
-          text: walletLine(e.card, ts),
+          text: walletLine(e.card, ts, e.to),
           ts,
           audience: [e.to],
           parentSeq: null,

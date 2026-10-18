@@ -154,14 +154,20 @@ describe("card copy", () => {
     const side = { kind: "request" as const, from: "me", fromName: "Winamp", to: "g2", toName: "Paint" };
     const denied = card({ ...side, step: "declined", by: "CRA Agent Software" });
     expect(walletStepLine(denied, "me")).toBe("⛔ Payment denied by CRA Agent Software; refunded");
-    expect(walletStepLine(card({ ...side, step: "declined", by: "Director" }), "g2")).toBe("⛔ Payment denied by Director; refunded");
+    expect(walletStepLine(card({ ...side, step: "declined", by: "Director" }), "g2")).toBe("⛔ Director denied your payment; refunded");
+    expect(walletStepLine(denied, "g2")).toBe("⛔ CRA Agent Software denied your payment; refunded");
     const cancelled = card({ ...side, step: "cancelled", by: "Paint" });
     expect(walletStepLine(cancelled, "me")).toBe("↩️ Paint cancelled the payment");
     expect(walletStepLine(cancelled, "g2")).toBe("↩️ You cancelled the payment");
     // A director's cancel never reads as the payer's own on the payer's phone.
     const byDirector = card({ ...side, step: "cancelled", by: "Director" });
-    expect(walletStepLine(byDirector, "g2")).toBe("↩️ Director cancelled the payment");
-    expect(walletStepLine(byDirector, "me")).toBe("↩️ Director cancelled the payment");
+    expect(walletStepLine(byDirector, "g2")).toBe("↩️ Director cancelled your payment");
+    expect(walletStepLine(byDirector, "me")).toBe("↩️ Director cancelled Paint's payment");
+    // A name ending in s takes the apostrophe alone (T1 recheck).
+    const dk = { ...side, to: "g3", toName: "DraftKings" };
+    expect(walletStepLine(card({ ...dk, step: "cancelled", by: "Director" }), "me")).toBe("↩️ Director cancelled DraftKings' payment");
+    expect(walletStepLine(card({ ...dk, step: "cancelled", by: "DraftKings" }), "me")).toBe("↩️ DraftKings cancelled the payment");
+    expect(walletStepLine(card({ ...dk, step: "settled", kind: "transfer" }), "me")).toBe("✅ Settled — 50 Truthcoin is DraftKings'");
     // The root card's foot reads the closing step the same way.
     const sent = card({ ...side, step: "sent" });
     expect(walletFootLine(sent, null, view(), 0, denied, "me")).toBe("⛔ Payment denied by CRA Agent Software; refunded");

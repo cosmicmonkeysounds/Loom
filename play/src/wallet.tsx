@@ -165,6 +165,11 @@ export function walletGlyph(card: WalletCard, state?: string | null): string {
   return STEP_GLYPH[card.step] ?? "💰";
 }
 
+/** "DraftKings'" / "Winamp's" (the server's `possessive`, wallet.ts). */
+export function possessive(name: string): string {
+  return /s$/iu.test(name) ? `${name}'` : `${name}'s`;
+}
+
 /** The short per-step line a thread reply shows under its card. `me` is the
  *  viewer: a request's `paid` step reaches both parties (C3), and the payer
  *  reads it as their own payment. */
@@ -173,7 +178,7 @@ export function walletStepLine(card: WalletCard, me?: string | null): string {
   const by = card.by ? ` by ${card.by.replace(/_/gu, " ")}` : "";
   switch (card.step) {
     case "settled":
-      return card.kind === "approval" ? `✅ Settled: ${card.fromName} → ${card.toName}, ${amt}` : `✅ Settled — ${amt} is ${card.toName}'s`;
+      return card.kind === "approval" ? `✅ Settled: ${card.fromName} → ${card.toName}, ${amt}` : `✅ Settled — ${amt} is ${possessive(card.toName)}`;
     case "approved":
       return `✅ Approved${by}`;
     case "timed_out":
@@ -185,7 +190,12 @@ export function walletStepLine(card: WalletCard, me?: string | null): string {
       // C6: a request whose payment was taken back (`by` = the payer or a
       // director, a display name); without `by` the asker withdrew the
       // request. "You" only when the payer is the one who cancelled.
-      if (card.kind === "request" && card.by) return me != null && me === card.to && card.by === card.toName ? "↩️ You cancelled the payment" : `↩️ ${card.by.replace(/_/gu, " ")} cancelled the payment`;
+      // The payer reads it as their own payment ("your payment").
+      if (card.kind === "request" && card.by) {
+        const who = card.by.replace(/_/gu, " ");
+        if (me != null && me === card.to) return card.by === card.toName ? "↩️ You cancelled the payment" : `↩️ ${who} cancelled your payment`;
+        return card.by === card.toName ? `↩️ ${card.toName} cancelled the payment` : `↩️ ${who} cancelled ${possessive(card.toName)} payment`;
+      }
       // An open request a director closed (`closedBy`), never the asker's own withdrawal.
       if (card.kind === "request" && card.closedBy) return `↩️ ${card.closedBy} cancelled the request`;
       return `↩️ Cancelled${by}`;
@@ -198,7 +208,8 @@ export function walletStepLine(card: WalletCard, me?: string | null): string {
     case "declined":
       // C6: a request whose payment the auditor / a director denied (`by`);
       // without `by` the payer declined.
-      return card.kind === "request" && card.by ? `⛔ Payment denied${by}; refunded` : "⛔ Declined";
+      if (card.kind === "request" && card.by) return me != null && me === card.to ? `⛔ ${card.by.replace(/_/gu, " ")} denied your payment; refunded` : `⛔ Payment denied${by}; refunded`;
+      return "⛔ Declined";
     case "failed":
       return "⛔ Could not settle — refunded";
     case "expired":
@@ -230,7 +241,7 @@ export function walletCardTitle(card: WalletCard): string {
     case "grant":
       return card.step === "granted" ? `You granted ${card.toName} ${amt}` : `${card.fromName} granted you ${amt}`;
     case "freeze":
-      return card.step === "imposed" ? `You froze ${card.toName}'s ${card.unit}` : `${card.fromName} froze your ${card.unit}`;
+      return card.step === "imposed" ? `You froze ${possessive(card.toName)} ${card.unit}` : `${card.fromName} froze your ${card.unit}`;
     default:
       return amt;
   }

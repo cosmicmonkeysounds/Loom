@@ -47,7 +47,7 @@ then **⚖** for the verdict when they finish. Optional set pieces
 **1b. The First Moment of Truth, in order.** V6 opens a two-minute filing
 window. ⏱ closes it (or it closes itself). Then 📋 once per question (Q1, Q2,
 Q3): Clippy reads the result in the Desktop room and the filings settle.
-After each 📋, 🍾 up to five times: the server picks a program at the Desktop,
+After each 📋, 🍾 up to five times: the server picks a program anywhere in the house,
 the TV asks "Truth or dare?", their phone asks too; Clippy settles a Truth
 with 🗣 / 🙅. 📋 refuses while a bottle is open; 🍾 refuses after five. After
 Q3's bottle, 📺. Rounds never reopen.

@@ -11,7 +11,7 @@ import { Sim, compileFromSource } from "../src/runtime/sim/index.ts";
 import { parseCurrency, walletRoleOf, type CurrencyDef } from "../src/runtime/sim/model.ts";
 import type { SimEvent } from "../src/runtime/sim/event.ts";
 import { guestPickable, identityDefs, isSpecial } from "../server/identity.ts";
-import { WalletBook, DIRECTOR, HOLD_MS, walletLine, walletSeam, type WalletEvent, type WalletOp, type WalletSeam } from "../server/wallet.ts";
+import { WalletBook, DIRECTOR, HOLD_MS, possessive, walletLine, walletSeam, type WalletEvent, type WalletOp, type WalletSeam } from "../server/wallet.ts";
 
 // --- a fake seam -----------------------------------------------------------------
 
@@ -420,9 +420,11 @@ describe("wallet book — requests", () => {
         ["g2", "declined", "Auditor"],
         ["g1", "declined", "Auditor"],
       ]);
-      const line = walletLine(req[1]!.card);
+      const line = walletLine(req[1]!.card, undefined, req[1]!.to);
       expect(line).toBe("⛔ Auditor denied Paint's payment of 3 Truthcoin; refunded.");
       expect(line).not.toContain("Declined:");
+      // The payer reads it as their own payment (T1 recheck).
+      expect(walletLine(req[0]!.card, undefined, req[0]!.to)).toBe("⛔ Auditor denied your payment of 3 Truthcoin; refunded.");
     }
     // A director's deny names the Director; a character approver reads with spaces.
     {
@@ -447,9 +449,20 @@ describe("wallet book — requests", () => {
         ["g2", "cancelled", "Paint"],
         ["g1", "cancelled", "Paint"],
       ]);
-      const line = walletLine(req[1]!.card);
+      const line = walletLine(req[1]!.card, undefined, req[1]!.to);
       expect(line).toBe("↩️ Paint cancelled the payment of 4 Truthcoin.");
       expect(line).not.toContain("withdrew");
+      expect(walletLine(req[0]!.card, undefined, req[0]!.to)).toBe("↩️ You cancelled the payment of 4 Truthcoin.");
+      // A director's cancel: "your payment" to the payer, a possessive to the asker.
+      const byDirector = { ...req[0]!.card, by: "Director" };
+      expect(walletLine(byDirector, undefined, "g2")).toBe("↩️ Director cancelled your payment of 4 Truthcoin.");
+      expect(walletLine(byDirector, undefined, "g1")).toBe("↩️ Director cancelled Paint's payment of 4 Truthcoin.");
+      // A name ending in s takes the apostrophe alone.
+      const dk = { ...req[0]!.card, toName: "DraftKings", by: "CRA Agent Software", step: "declined" as const };
+      expect(walletLine(dk, undefined, "g1")).toBe("⛔ CRA Agent Software denied DraftKings' payment of 4 Truthcoin; refunded.");
+      expect(walletLine(dk, undefined, "g2")).toBe("⛔ CRA Agent Software denied your payment of 4 Truthcoin; refunded.");
+      expect(possessive("DraftKings")).toBe("DraftKings'");
+      expect(possessive("Winamp")).toBe("Winamp's");
     }
     // The old meanings stay: the payer's own Decline, the asker's withdrawal.
     {
@@ -459,6 +472,7 @@ describe("wallet book — requests", () => {
       const declined = cards(book.apply({ op: "respond", id: "r1", accept: false, at: 1 }));
       expect(declined.every((c) => c.card.by === undefined)).toBe(true);
       expect(walletLine(declined[0]!.card)).toBe("⛔ Declined: 5 Truthcoin from Paint.");
+      expect(walletLine(declined[0]!.card, undefined, "g2")).toBe("⛔ You declined Winamp's request for 5 Truthcoin.");
       book.apply({ op: "request", id: "r2", from: "g1", to: "g2", amount: 6, at: 2 });
       const withdrawn = cards(book.apply({ op: "cancel", id: "r2", by: "g1" }));
       expect(withdrawn.every((c) => c.card.by === undefined)).toBe(true);

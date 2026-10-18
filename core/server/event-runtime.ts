@@ -1367,6 +1367,35 @@ export class EventRuntime {
     return this.chat.historyFor(guestId, false).some((m) => m.channel === channel) ? null : none;
   }
 
+  /**
+   * May guest `by` invite `person` into `channel`? Null when they may, else
+   * the refusal (T6 recheck — before, any guest could add themself to any
+   * invite-only room). A room the guest can't see reads as one the story
+   * doesn't have (404, like `/api/guest/say`), so a private room they
+   * aren't in is a 404 too; only an authored invite-only room (`private` /
+   * `group` / `dm`) takes invites (400 otherwise); nobody invites
+   * themself; and the channel's `invite:` policy holds — `members` (the
+   * default: "members can invite others") needs the inviter to be a member
+   * already, `anyone` any guest who can see it, any other word names the
+   * ROLE that may invite. The story's own invites and the performer and
+   * director routes don't come through here.
+   */
+  private guestInviteRefusal(by: string, person: string, channel: string): { status: 400 | 403 | 404; error: string } | null {
+    const sim = this.sim!;
+    const room = this.guestRoom(by, channel);
+    if (room !== null) return room;
+    const def = sim.model.channels.get(channel);
+    if (def === undefined || def.kind === "open" || def.kind === "faction") return { status: 400, error: "not an invite-only room" };
+    if (!sim.persons.has(person)) return { status: 404, error: "unknown guest" };
+    if (person === by) return { status: 403, error: "you can't invite yourself" };
+    const policy = (def.invite ?? "members").trim().toLowerCase();
+    const member = sim.isChannelMember(by, channel);
+    if (policy === "anyone") return null;
+    if (policy === "members") return member ? null : { status: 403, error: "only its members can invite" };
+    const role = sim.persons.get(by)?.role ?? "";
+    return member && foldName(role) === foldName(policy) ? null : { status: 403, error: "you can't invite to this room" };
+  }
+
   /** A non-character `dm:` thread `guestId` may reply in: a stage voice's
    *  (`dm:Operator` / `dm:Narrator` — the voices `/api/mod/say` speaks as
    *  besides characters), or one already addressed to this guest. */
@@ -3297,6 +3326,16 @@ export class EventRuntime {
       }
       if (path === "/api/mod/spatial/house/project") return this.saveMapToProject(res, body, opts.moderatorName ?? "Director");
       if (path === "/api/mod/load") await this.resyncProjectFiles();
+      if (path === "/api/mod/resync") {
+        // `sync-example --no-reload` (T4 recheck): the rows were rewritten
+        // from another process but the event keeps running — fold them into
+        // the open co-editing docs now, no restart, so no editor tab keeps
+        // the pre-sync text and drops its writer's next keystroke.
+        const done = await this.resyncProjectFiles();
+        if (done === "failed") sendJson(res, 502, { error: "re-reading the project's files failed" });
+        else sendJson(res, 200, { ok: true, resynced: done === "resynced" });
+        return true;
+      }
       return this.handleMod(res, path, body, opts.moderatorName ?? "Director");
     }
 
@@ -3632,7 +3671,14 @@ export class EventRuntime {
           sendJson(res, 404, { error: "unknown guest" });
           return true;
         }
-        this.fanout(this.commit("inviteToChannel", id, str(body, "person"), str(body, "channel")));
+        const channel = str(body, "channel");
+        const person = str(body, "person");
+        const refused = this.guestInviteRefusal(id, person, channel);
+        if (refused !== null) {
+          sendJson(res, refused.status, { error: refused.error });
+          return true;
+        }
+        this.fanout(this.commit("inviteToChannel", id, person, channel));
         sendJson(res, 200, { ok: true });
         return true;
       }
@@ -4099,21 +4145,26 @@ export class EventRuntime {
   }
 
   /**
-   * Before `/api/mod/load` restarts the event (`sync-show` / `sync-example`
+   * Before `/api/mod/load` restarts the event, and alone for
+   * `/api/mod/resync` (`sync-example --no-reload`) (`sync-show` / `sync-example`
    * wrote the project's files straight into the database from another
    * process): fold the stored text into every open co-editing doc, so the
    * editor shows the synced story and its next keystroke merges on top of
    * it instead of saving the pre-sync doc back over it (C2, T4-04). A
    * failure is logged and never blocks the reload.
    */
-  private async resyncProjectFiles(): Promise<void> {
+  private async resyncProjectFiles(): Promise<"resynced" | "none" | "failed"> {
     // `ProjectLink.resyncFiles` (events-api.ts: `CollabHub.resyncFromStorage`
     // + a files notice per file) is optional: a link without it (a test
     // fake, a LAN box with no project) just skips the resync.
+    const resync = this.project?.resyncFiles;
+    if (resync === undefined) return "none";
     try {
-      await this.project?.resyncFiles?.();
+      await resync.call(this.project);
+      return "resynced";
     } catch (err) {
       process.stderr.write(`  ⚠️  event ${this.eventId}: re-reading the project's files failed (${err instanceof Error ? err.message : String(err)})\n`);
+      return "failed";
     }
   }
 

@@ -1178,6 +1178,33 @@ describe("/api/mod/load re-reads the project's files into the open docs first (C
     rt.dispose();
   });
 
+  it("/api/mod/resync re-reads the files with no restart; mod-gated; a failure is a 502 (T4 recheck)", async () => {
+    const order: string[] = [];
+    const rt = freshRuntime({ project: link(order) });
+    const restart = rt.restart.bind(rt);
+    rt.restart = ((...args: Parameters<EventRuntime["restart"]>) => {
+      order.push("restart");
+      return restart(...args);
+    }) as EventRuntime["restart"];
+    expect((await post(rt, "/api/mod/resync", {}, false)).status).toBe(403);
+    expect(order).toEqual([]);
+    const r = await post(rt, "/api/mod/resync", {});
+    expect([r.status, r.json]).toEqual([200, { ok: true, resynced: true }]);
+    expect(order).toEqual(["resync"]);
+    rt.dispose();
+    const err = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    const bad = freshRuntime({ project: link([], { fail: true }) });
+    try {
+      expect((await post(bad, "/api/mod/resync", {})).status).toBe(502);
+    } finally {
+      err.mockRestore();
+      bad.dispose();
+    }
+    const none = freshRuntime({});
+    expect((await post(none, "/api/mod/resync", {})).json).toEqual({ ok: true, resynced: false });
+    none.dispose();
+  });
+
   it("a failed resync is logged and never blocks the reload", async () => {
     const order: string[] = [];
     const err = vi.spyOn(process.stderr, "write").mockImplementation(() => true);

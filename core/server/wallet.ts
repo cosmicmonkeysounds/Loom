@@ -319,10 +319,19 @@ function byId<T extends { id: string }>(a: T, b: T): number {
   return idNumber(a.id) - idNumber(b.id) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 }
 
+/** "DraftKings'" / "Winamp's" — a name's possessive (a name ending in s
+ *  takes the apostrophe alone). */
+export function possessive(name: string): string {
+  return /s$/iu.test(name) ? `${name}'` : `${name}'s`;
+}
+
 /** The plain one-line summary of a card — the sidebar preview, the thread
  *  text, an old client's fallback. Perspective is the card's `kind` + `step`;
- *  `now` (story ms, the compose-time clock) turns `settleAt` into "60 s". */
-export function walletLine(c: WalletCard, now?: number): string {
+ *  `now` (story ms, the compose-time clock) turns `settleAt` into "60 s".
+ *  `viewer` (the card's recipient: a person id or `@<Character>`) words a
+ *  request's denied / cancelled payment for the payer, who gets the same
+ *  card as the asker ("your payment", "You cancelled …"). */
+export function walletLine(c: WalletCard, now?: number, viewer?: string): string {
   const amt = `${c.amount} ${c.unit}`;
   const audit = c.approver ?? "the auditor";
   const windowText = (): string =>
@@ -383,14 +392,19 @@ export function walletLine(c: WalletCard, now?: number): string {
           return `✅ Paid: ${c.toName} sent ${c.fromName} ${amt}.`;
         case "declined":
           // With `by`: the auditor / director denied the payment (C6).
-          return c.by !== undefined ? `⛔ ${c.by} denied ${c.toName}'s payment of ${amt}; refunded.` : `⛔ Declined: ${amt} from ${c.toName}.`;
+          if (c.by !== undefined) return viewer === c.to ? `⛔ ${c.by} denied your payment of ${amt}; refunded.` : `⛔ ${c.by} denied ${possessive(c.toName)} payment of ${amt}; refunded.`;
+          return viewer === c.to ? `⛔ You declined ${possessive(c.fromName)} request for ${amt}.` : `⛔ Declined: ${amt} from ${c.toName}.`;
         case "expired":
-          return `⌛ Expired: ${c.fromName}'s request for ${amt}.`;
+          return `⌛ Expired: ${possessive(c.fromName)} request for ${amt}.`;
         case "cancelled":
           // With `by`: the payment was cancelled (by the payer or a director).
           // With `closedBy`: someone else (a director) closed the open request.
-          if (c.by !== undefined) return `↩️ ${c.by} cancelled the payment of ${amt}.`;
-          return c.closedBy !== undefined ? `↩️ ${c.closedBy} cancelled ${c.fromName}'s request for ${amt}.` : `↩️ ${c.fromName} withdrew the request for ${amt}.`;
+          if (c.by !== undefined) {
+            const payerDid = c.by === c.toName;
+            if (viewer === c.to) return payerDid ? `↩️ You cancelled the payment of ${amt}.` : `↩️ ${c.by} cancelled your payment of ${amt}.`;
+            return payerDid ? `↩️ ${c.toName} cancelled the payment of ${amt}.` : `↩️ ${c.by} cancelled ${possessive(c.toName)} payment of ${amt}.`;
+          }
+          return c.closedBy !== undefined ? `↩️ ${c.closedBy} cancelled ${possessive(c.fromName)} request for ${amt}.` : `↩️ ${c.fromName} withdrew the request for ${amt}.`;
         default:
           return `🙏 ${c.fromName} → ${c.toName}: ${amt}.`;
       }
@@ -425,7 +439,7 @@ export function walletLine(c: WalletCard, now?: number): string {
         case "frozen":
           return `🧊 ${c.fromName} froze your ${c.unit} — you can't send, pay or buy until it thaws in ${leftText(c.settleAt, now, "a few minutes")}.`;
         case "imposed":
-          return `🧊 You froze ${c.toName}'s ${c.unit} — it thaws in ${leftText(c.settleAt, now, "a few minutes")}.`;
+          return `🧊 You froze ${possessive(c.toName)} ${c.unit} — it thaws in ${leftText(c.settleAt, now, "a few minutes")}.`;
         case "thawed":
           return c.by !== undefined ? `☀️ ${c.by} lifted the freeze — your ${c.unit} moves again.` : `☀️ Your ${c.unit} thawed — it moves again.`;
         case "expired":
@@ -433,7 +447,7 @@ export function walletLine(c: WalletCard, now?: number): string {
         case "cancelled":
           return `↩️ ${c.by ?? DIRECTOR} lifted the freeze on ${c.toName}.`;
         default:
-          return `🧊 ${c.toName}'s ${c.unit} is frozen.`;
+          return `🧊 ${possessive(c.toName)} ${c.unit} is frozen.`;
       }
     default:
       return `💰 ${amt}`;

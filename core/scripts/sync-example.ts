@@ -150,6 +150,24 @@ export async function reloadEvent(step: ReloadStep): Promise<number> {
   const codes = `codes: guest ${event.event_code} · performer ${event.prime_code} · mod ${event.mod_code}`;
   if (step.reload === false) {
     out(`✓ event ${event.id} (${event.mode}, ${event.status}) snapshot updated, not reloaded (--no-reload) — ${codes}`);
+    // The files were written straight into the database: without a resync
+    // an open editor tab keeps the pre-sync text and its writer's next
+    // keystroke is dropped (T4 recheck). `/api/mod/resync` folds the rows
+    // into the open docs with no restart.
+    token ??= await modLogin(at, event.mod_code);
+    const resync =
+      token === null
+        ? null
+        : await fetch(`${at}/api/mod/resync`, { method: "POST", headers: { "content-type": "application/json", "x-loom-token": token }, body: "{}" }).catch(() => null);
+    // A 200 says `resynced: false` when the event has no project link (a LAN
+    // default event, an old row): nothing was folded, so no ✓ (review 2).
+    const resynced = resync !== null && resync.ok ? ((await resync.json().catch(() => null)) as { resynced?: unknown } | null)?.resynced === true : false;
+    if (resync !== null && resync.ok) {
+      out(resynced ? "✓ open editor tabs now show the synced files (resynced, no restart)" : "  (no co-editing docs to resync: the event has no project link)");
+    } else {
+      const why = token === null || resync === null ? `the server at ${server} doesn't answer` : `resync → ${resync.status}`;
+      out(`⚠ open editor tabs still hold the pre-sync text (${why}): close and reopen them before typing, or a keystroke there is lost`);
+    }
     return 0;
   }
   out(`✓ event ${event.id} (${event.mode}, ${event.status}) snapshot updated — ${codes}`);

@@ -14,7 +14,15 @@ export const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://127.0.0.1:54
  *  and `/api/health` fails while the control plane is down (`boot.ts`).
  *  `LOOM_DB_WAIT=off` probes once even so — a scratch server pointed at a
  *  dead URL on purpose, to run with no database. */
-export const DATABASE_REQUIRED = (process.env.DATABASE_URL ?? "").trim() !== "" && process.env.LOOM_DB_WAIT !== "off";
+export const DATABASE_REQUIRED = (process.env.DATABASE_URL ?? "").trim() !== "" && !dbWaitOff(process.env.LOOM_DB_WAIT);
+
+/** `LOOM_DB_WAIT` says "don't wait for the database": `off` / `OFF` / `Off`
+ *  or `0` seconds — exactly the values deploy/docker-entrypoint.sh reads as
+ *  one probe and no wait, so the entrypoint and the server never disagree
+ *  (anything else there is seconds, or named and read as 60). */
+export function dbWaitOff(value: string | undefined): boolean {
+  return /^(?:off|OFF|Off|0+)$/.test(value ?? "");
+}
 
 /** Signing secret for BetterAuth sessions. Stable across restarts in prod. */
 export const AUTH_SECRET =

@@ -8,6 +8,10 @@
 # before Postgres accepts connections. Wait up to LOOM_DB_WAIT seconds
 # (default 60); still nothing → exit 1, so `restart: unless-stopped` tries
 # again instead of serving a show whose event never comes back.
+# LOOM_DB_WAIT=off (or 0) is the server's "don't wait for the database"
+# switch (core/server/config.ts): here it means one probe and no wait loop —
+# still nothing → exit 1 the same way. Any other value that isn't a whole
+# number of seconds is named and read as the default 60.
 #
 # A database that answers but refuses us (a wrong POSTGRES_PASSWORD after
 # a .env edit — pg 28P01 / 28000 — or no such database, 3D000) won't fix
@@ -19,6 +23,13 @@ cd "${LOOM_APP_DIR:-/app/core}"
 
 if [ -n "$DATABASE_URL" ]; then
   wait_max="${LOOM_DB_WAIT:-60}" step="${LOOM_DB_WAIT_STEP:-2}" waited=0 refused=""
+  case "$wait_max" in
+    off|OFF|Off) wait_max=0 ;;
+    ''|*[!0-9]*)
+      echo "loom: LOOM_DB_WAIT=$wait_max is neither seconds nor off — waiting up to 60 s"
+      wait_max=60 ;;
+  esac
+  case "$step" in ''|0|*[!0-9]*) step=2 ;; esac
   while :; do
     # The probe exits 0 (up), 2 (refused: credentials / no database) or 1.
     rc=0
@@ -26,7 +37,11 @@ if [ -n "$DATABASE_URL" ]; then
     [ "$rc" = 0 ] && break
     if [ "$rc" = 2 ]; then refused="$err"; break; fi
     if [ "$waited" -ge "$wait_max" ]; then
-      echo "loom: database unreachable after ${waited} s ($err) — exiting so the restart policy tries again"
+      if [ "$wait_max" = 0 ]; then
+        echo "loom: database unreachable ($err; LOOM_DB_WAIT=${LOOM_DB_WAIT}: no wait) — exiting so the restart policy tries again"
+      else
+        echo "loom: database unreachable after ${waited} s ($err) — exiting so the restart policy tries again"
+      fi
       exit 1
     fi
     [ "$waited" = 0 ] && echo "loom: waiting for the database ($err) …"

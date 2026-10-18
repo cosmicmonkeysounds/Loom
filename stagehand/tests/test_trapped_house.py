@@ -231,8 +231,10 @@ def test_every_night_lights_mirror_has_a_rule_and_catches_up():
     # A whole-house look since the cut re-lit the room: nothing to replay.
     for look in ("dance", "blackout", "restore", "y2k", "screensaver"):
         assert room.args_for({**mid, "Night.dark_room": "The RAM", "Night.lights": look}) is None, look
-    # …and once the cut is over, the restore half (a lost restore relights the room).
-    done = {**mid, "Night.lights_back_at": "0"}
+    # …and once the cut is over, the restore half (a lost restore relights the
+    # room) — under the look the story restored it into (Night.lit_scene) or a
+    # later look that never re-lit the room.
+    done = {**mid, "Night.lights_back_at": "0", "Night.lit_scene": "game"}
     for dark in ("The Start Bar", "The Desktop", "The RAM"):
         args = back.args_for({**done, "Night.dark_room": dark})
         assert args == f"lights, room: {dark}, state: on" and evaluate_cues(_show().cues, _directive("cue", args))
@@ -240,9 +242,12 @@ def test_every_night_lights_mirror_has_a_rule_and_catches_up():
     assert back.args_for({**done, "Night.dark_room": "none"}) is None
     for look in ("dance", "blackout", "restore", "y2k", "screensaver"):
         assert back.args_for({**done, "Night.dark_room": "The RAM", "Night.lights": look}) is None, look
+    for look in ("pong", "glitch", "server_open", "truth_time", "trust_chart"):
+        assert back.args_for({**done, "Night.dark_room": "The RAM", "Night.lights": look}) == "lights, room: The RAM, state: on", look
+    assert back.args_for({**done, "Night.dark_room": "The Desktop", "Night.lights": "truth_time"}) is None  # re-lit the Desktop
     # The paths the catch-up reads are the ones the story writes.
     code = _code(_story_text())
-    for path in ("Night.dark_room", "Night.dark_scene", "Night.lights_back_at"):
+    for path in ("Night.dark_room", "Night.dark_scene", "Night.lights_back_at", "Night.lit_scene"):
         assert re.search(rf"\bset\s+{re.escape(path)}\s*=", code), path
 
 
@@ -271,16 +276,70 @@ def test_the_cut_catch_up_agrees_with_the_storys_90_s_restore():
                 kept_dark = _restores(look, dark, scene)
                 world = {"Night.lights": look, "Night.dark_room": dark, "Night.dark_scene": scene}
                 mid = room.args_for({**world, "Night.lights_back_at": "300"})
-                done = back.args_for({**world, "Night.lights_back_at": "0"})
+                # What the story's restore leaves behind under this look.
+                lit = look if kept_dark else "none"
+                done = back.args_for({**world, "Night.lights_back_at": "0", "Night.lit_scene": lit})
                 assert (mid == f"lights, room: {dark}, state: off") is kept_dark, (dark, scene, look)
                 assert (done == f"lights, room: {dark}, state: on") is kept_dark, (dark, scene, look)
                 assert room.args_for({**world, "Night.lights_back_at": "0"}) is None
-                assert back.args_for({**world, "Night.lights_back_at": "300"}) is None
+                assert back.args_for({**world, "Night.lights_back_at": "300", "Night.lit_scene": lit}) is None
+                # A later look ends the replay only if it re-lit the room: a
+                # room-scoped one (the story's test minus "the look he cut")
+                # keeps the story's restore as the last word on the room.
+                for later in looks:
+                    if later != look:
+                        scoped = _restores(later, dark, "-")
+                        again = back.args_for({**world, "Night.lights": later, "Night.lights_back_at": "0", "Night.lit_scene": lit})
+                        assert (again == f"lights, room: {dark}, state: on") is (kept_dark and scoped), (dark, look, later)
     # The cases the story-rules lane named: pong after a RAM cut, the glitch
     # after a Desktop cut, a living-room look over a Desktop cut (re-lit).
-    assert back.args_for({"Night.lights": "pong", "Night.dark_room": "The RAM", "Night.dark_scene": "game", "Night.lights_back_at": "0"}) == "lights, room: The RAM, state: on"
-    assert back.args_for({"Night.lights": "glitch", "Night.dark_room": "The Desktop", "Night.dark_scene": "game", "Night.lights_back_at": "0"}) == "lights, room: The Desktop, state: on"
-    assert back.args_for({"Night.lights": "truth_time", "Night.dark_room": "The Desktop", "Night.dark_scene": "game", "Night.lights_back_at": "0"}) is None
+    assert back.args_for({"Night.lights": "pong", "Night.dark_room": "The RAM", "Night.dark_scene": "game", "Night.lights_back_at": "0", "Night.lit_scene": "pong"}) == "lights, room: The RAM, state: on"
+    assert back.args_for({"Night.lights": "glitch", "Night.dark_room": "The Desktop", "Night.dark_scene": "game", "Night.lights_back_at": "0", "Night.lit_scene": "glitch"}) == "lights, room: The Desktop, state: on"
+    assert back.args_for({"Night.lights": "truth_time", "Night.dark_room": "The Desktop", "Night.dark_scene": "game", "Night.lights_back_at": "0", "Night.lit_scene": "none"}) is None
+
+
+def test_a_long_finished_cut_is_never_replayed_under_a_later_look():
+    """T8 recheck: a Start Bar cut restored under one look, then a later look
+    (the alarm latch's end putting back server_open, 🕚's y2k then the
+    majority's server_open): the catch-up never punches the kitchen to
+    full. The story's `Night.lit_scene` says which look the room came back
+    on under, and nothing else replays the room-on."""
+    _, _, room, back = _show().catch_up
+    stale = {"Night.lights": "server_open", "Night.dark_scene": "y2k", "Night.dark_room": "The Start Bar", "Night.lights_back_at": "0", "Night.lit_scene": "none"}
+    assert room.args_for(stale) is None and back.args_for(stale) is None
+    # Restored under trust_chart, then the house moved on to y2k (whole-house:
+    # no replay even before the story clears the mark), then server_open —
+    # the story cleared lit_scene at y2k, so nothing replays there either.
+    w = {**stale, "Night.lights": "y2k", "Night.dark_scene": "trust_chart", "Night.lit_scene": "trust_chart"}
+    assert room.args_for(w) is None and back.args_for(w) is None
+    w = {**w, "Night.lights": "server_open", "Night.lit_scene": "none"}
+    assert room.args_for(w) is None and back.args_for(w) is None
+    # A restore the house missed under pong is still replayed under the Trust
+    # Chart (a living-room look over a RAM cut), never under y2k.
+    lost = {"Night.lights": "trust_chart", "Night.lit_scene": "pong", "Night.dark_room": "The RAM", "Night.dark_scene": "game", "Night.lights_back_at": "0"}
+    assert back.args_for(lost) == "lights, room: The RAM, state: on"
+    assert back.args_for({**lost, "Night.lights": "y2k"}) is None
+    # Still on the look it was restored into: the lost restore is replayed.
+    assert back.args_for({"Night.lights": "pong", "Night.lit_scene": "pong", "Night.dark_room": "The RAM", "Night.dark_scene": "game", "Night.lights_back_at": "0"}) == "lights, room: The RAM, state: on"
+    # The story writes lit_scene where the catch-up needs it: at the restore,
+    # when the restore is skipped, at the alarm latch's end and at Power On.
+    code = _code(_story_text())
+    assert re.search(r"<cue: lights, room: \{Night\.dark_room\}, state: on>\s+set Night\.lit_scene = Night\.lights\s+else:\s+set Night\.lit_scene = \"none\"", code), "the restore's lit_scene moved"
+    assert re.search(r'Night\.lights == "alarm":\s+set Night\.lights_back_at = 0\s+set Night\.lit_scene = "none"', code), "the latch's lit_scene moved"
+    assert re.search(r'^set Night\.lit_scene = "none"$', code, re.M), "Power On's lit_scene moved"
+    # ...and the mark ends at a look that re-lit the room (review 2/3): a
+    # restore under the glitch, then call_desktop (whole-house), pong, the
+    # Trust Chart and the beans' glitch again — the story cleared lit_scene
+    # at call_desktop, so the room-on stays off. The story's clear and this
+    # rule agree on which looks are room-scoped.
+    clear = re.search(r'^when Night\.lit_scene != "none" and Night\.lights != Night\.lit_scene and (?P<cond>[^\n]+):\s+set Night\.lit_scene = "none"$', code, re.M)
+    assert clear, "the look-change clear of lit_scene moved"
+    clears = Condition(clear.group("cond").replace(" or ", " || ").replace(" and ", " && ").replace('"', "'"))
+    for later in sorted(_lights_values() - {"alarm"}):
+        for dark in ("The Start Bar", "The Desktop", "The RAM"):
+            assert bool(clears.evaluate({"Night.lights": later, "Night.dark_room": dark})) != bool(_restores(later, dark, "-")), (later, dark)
+    beans = {"Night.lights": "glitch", "Night.dark_room": "The RAM", "Night.dark_scene": "glitch", "Night.lights_back_at": "0", "Night.lit_scene": "none"}
+    assert room.args_for(beans) is None and back.args_for(beans) is None
 
 
 #: Words that name something able to hold a door shut. The only "lock" a

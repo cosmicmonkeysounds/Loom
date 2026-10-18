@@ -172,6 +172,16 @@ check "a missing database says so" grep -q 'no such database (3D000' <<<"$out"
 check "… and still runs the event plane" eq "$(cat "$FAKE/tsx")" "tsx server/server.ts"
 out="$(ep DATABASE_URL=postgres://loom:pw@db/loom FAKE_MIGRATE_FAIL=1 2>&1)"; rc=$?
 check "a failed migration still runs the event plane" eq "$(tail -n1 "$FAKE/tsx")" "tsx server/server.ts"
+out="$(ep DATABASE_URL=postgres://loom:pw@db/loom LOOM_DB_WAIT=off FAKE_DB_FAILS=-1 2>&1)"; rc=$?
+check "LOOM_DB_WAIT=off, database down: one probe, then exit 1 (T4 recheck)" eq "$rc:$(cat "$FAKE/probes")" "1:1"
+check "… without starting the server" test ! -e "$FAKE/tsx"
+check "… naming the switch" grep -q 'LOOM_DB_WAIT=off: no wait' <<<"$out"
+check "… and never the shell's integer error" bash -c "! grep -q 'integer expression' <<<\"\$1\"" _ "$out"
+out="$(ep DATABASE_URL=postgres://loom:pw@db/loom LOOM_DB_WAIT=off 2>&1)"
+check "LOOM_DB_WAIT=off, database up: migrate, then the server" eq "$(tr '\n' '|' < "$FAKE/tsx")" "tsx server/migrate.ts|tsx server/server.ts|"
+out="$(ep DATABASE_URL=postgres://loom:pw@db/loom LOOM_DB_WAIT=30s FAKE_DB_FAILS=2 2>&1)"
+check "a LOOM_DB_WAIT that isn't seconds is named and read as 60" grep -q 'LOOM_DB_WAIT=30s is neither seconds nor off' <<<"$out"
+check "… and still waits for a late database" eq "$(tr '\n' '|' < "$FAKE/tsx")" "tsx server/migrate.ts|tsx server/server.ts|"
 teardown
 
 echo "── the night's .env knobs (S1-ops-07)"
