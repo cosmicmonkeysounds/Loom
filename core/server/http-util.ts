@@ -115,13 +115,22 @@ interface SseQueue {
   lastLen: number;
   /** When the queue last shrank (bytes left for the client), server ms. */
   progressAt: number;
+  /** Writes held back behind a big frame, handed to the socket one at a
+   *  time (`pump`): never more than one slice in flight. */
+  backlog: string[];
+  /** Their bytes (part of `sseQueued`). */
+  backlogBytes: number;
+  /** A backlog write is in flight; the next waits for its callback. */
+  pumping: boolean;
+  /** Which backlog write is the one in flight. */
+  ticket: number;
 }
 const queues = new WeakMap<ServerResponse, SseQueue>();
 
 function queueOf(res: ServerResponse): SseQueue {
   let q = queues.get(res);
   if (q === undefined) {
-    const fresh: SseQueue = { cap: SSE_QUEUE_CAP, lastLen: 0, progressAt: Date.now() };
+    const fresh: SseQueue = { cap: SSE_QUEUE_CAP, lastLen: 0, progressAt: Date.now(), backlog: [], backlogBytes: 0, pumping: false, ticket: 0 };
     q = fresh;
     queues.set(res, fresh);
     // `drain` fires once a backed-up queue has flushed.
@@ -157,17 +166,21 @@ export function sseWrite(res: ServerResponse, chunk: string): boolean {
   const now = Date.now();
   if (queued === 0 || queued < q.lastLen) q.progressAt = now;
   else if (queued > q.cap && now - q.progressAt > SSE_STALL_MS) {
+    q.backlog = [];
+    q.backlogBytes = 0;
     res.destroy();
     return false;
   }
-  res.write(chunk);
+  put(res, q, chunk);
   q.lastLen = sseQueued(res);
   return true;
 }
 
-/** Bytes an SSE stream holds unsent (what Node buffers for a slow peer). */
+/** Bytes an SSE stream holds unsent: what Node buffers for a slow peer,
+ *  plus what waits behind a big frame. */
 export function sseQueued(res: ServerResponse): number {
-  return typeof res.writableLength === "number" ? res.writableLength : 0;
+  const node = typeof res.writableLength === "number" ? res.writableLength : 0;
+  return node + (queues.get(res)?.backlogBytes ?? 0);
 }
 
 /** Emit one Server-Sent Event frame (two writes: the `event:` line, then
@@ -176,7 +189,78 @@ export function sseSend(res: ServerResponse, event: string, data: unknown): void
   sseFrame(res, `event: ${event}\n`, `data: ${JSON.stringify(data)}\n\n`);
 }
 
-/** One frame, already serialised (a mod snapshot built once for everyone). */
+/** A frame's `data:` longer than this goes out in slices of at most this
+ *  many characters, one at a time (R1-diff-server-01). Node counts a write
+ *  in `writableLength` in full until every byte has reached the kernel, and
+ *  coalesces whatever is buffered behind an in-flight write into one
+ *  `writev` — so a multi-MB director history, written whole or in slices
+ *  back to back, never shows a slow reader making progress, and the stall
+ *  check drops a console that is still reading. Paced, each slice that
+ *  lands shrinks the queue and counts as progress. */
+export const SSE_SLICE = 64 * 1024;
+
+/** One frame, already serialised (a mod snapshot built once for everyone).
+ *  A large `data:` is paced out in `SSE_SLICE` pieces (never splitting a
+ *  surrogate pair); anything written meanwhile waits behind it, so frames
+ *  stay whole and in order. */
 export function sseFrame(res: ServerResponse, head: string, data: string): void {
-  if (sseWrite(res, head)) res.write(data);
+  if (!sseWrite(res, head)) return;
+  const q = queueOf(res);
+  if (data.length <= SSE_SLICE) put(res, q, data);
+  else {
+    for (let at = 0; at < data.length; ) {
+      let end = Math.min(data.length, at + SSE_SLICE);
+      // Never end a slice on a high surrogate: each slice is encoded alone.
+      if (end < data.length && isHighSurrogate(data.charCodeAt(end - 1))) end -= 1;
+      hold(q, data.slice(at, end));
+      at = end;
+    }
+    pump(res, q);
+  }
+  q.lastLen = sseQueued(res);
+}
+
+/** Write now, or behind a big frame still being paced out. */
+function put(res: ServerResponse, q: SseQueue, chunk: string): void {
+  if (q.backlog.length === 0 && !q.pumping) res.write(chunk);
+  else {
+    hold(q, chunk);
+    pump(res, q);
+  }
+}
+
+function hold(q: SseQueue, chunk: string): void {
+  q.backlog.push(chunk);
+  q.backlogBytes += Buffer.byteLength(chunk);
+}
+
+/** Hand the backlog to the socket: while a write returns true (the socket
+ *  isn't backed up) the next follows at once; otherwise the next waits for
+ *  that write's callback — the moment its bytes reached the kernel, which
+ *  is the reader's progress. */
+function pump(res: ServerResponse, q: SseQueue): void {
+  while (!q.pumping && q.backlog.length > 0) {
+    if (res.destroyed || res.writableEnded) {
+      q.backlog = [];
+      q.backlogBytes = 0;
+      return;
+    }
+    const chunk = q.backlog.shift()!;
+    q.backlogBytes -= Buffer.byteLength(chunk);
+    const ticket = ++q.ticket;
+    q.pumping = true;
+    let sync = true;
+    const ok = res.write(chunk, () => {
+      q.progressAt = Date.now();
+      if (q.ticket !== ticket || !q.pumping) return; // a later write took over
+      q.pumping = false;
+      if (!sync) pump(res, q);
+    });
+    sync = false;
+    if (ok !== false) q.pumping = false; // not backed up: carry on now
+  }
+}
+
+function isHighSurrogate(code: number): boolean {
+  return code >= 0xd800 && code <= 0xdbff;
 }

@@ -12,7 +12,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EventRuntime } from "../server/event-runtime.ts";
-import { SSE_MOD_QUEUE_CAP, SSE_QUEUE_CAP, SSE_STALL_MS, sseCap, sseSend, sseWrite } from "../server/http-util.ts";
+import { SSE_MOD_QUEUE_CAP, SSE_QUEUE_CAP, SSE_SLICE, SSE_STALL_MS, sseCap, sseFrame, sseQueued, sseSend, sseWrite } from "../server/http-util.ts";
 import { Store } from "../server/store.ts";
 import { scenarioSource } from "../examples/load.ts";
 
@@ -158,6 +158,130 @@ describe("sseWrite", () => {
     sseWrite(r, "x".repeat(SSE_MOD_QUEUE_CAP));
     expect(sseWrite(r, ":ping\n\n")).toBe(false);
     expect(res.destroyed).toBe(true);
+  });
+});
+
+/** A response modelled on Node's: `writableLength` counts every unfinished
+ *  write in full, a write leaves the queue (and calls back) only once all
+ *  its bytes have been read, and `write` returns false once 16 KiB are
+ *  queued. `read(n)` takes bytes off the front, chunk by chunk. */
+function chunkedRes() {
+  const chunks: Array<{ bytes: number; done?: () => void }> = [];
+  let head = 0; // bytes of chunks[0] already read
+  const res = {
+    statusCode: 0,
+    writableEnded: false,
+    destroyed: false,
+    text: "",
+    get writableLength() {
+      return chunks.reduce((a, c) => a + c.bytes, 0);
+    },
+    on() {
+      return res;
+    },
+    write(chunk: string, done?: () => void) {
+      chunks.push({ bytes: Buffer.byteLength(chunk), ...(done !== undefined ? { done } : {}) });
+      res.text += chunk;
+      return res.writableLength < 16 * 1024;
+    },
+    destroy() {
+      res.destroyed = true;
+      return res;
+    },
+    read(n: number) {
+      let left = n;
+      while (left > 0 && chunks.length > 0) {
+        const take = Math.min(left, chunks[0]!.bytes - head);
+        head += take;
+        left -= take;
+        if (head === chunks[0]!.bytes) {
+          const c = chunks.shift()!;
+          head = 0;
+          c.done?.();
+        }
+      }
+    },
+  };
+  return res;
+}
+
+describe("sseFrame paces a big frame out so a slow reader shows progress (R1-diff-server-01)", () => {
+  const HISTORY = 6 * 1024 * 1024;
+
+  it("a 6 MB history to a reader taking 120 KB/s is kept until it lands; a reader that stops is dropped", () => {
+    const res = chunkedRes();
+    const r = res as unknown as ServerResponse;
+    sseCap(r, SSE_MOD_QUEUE_CAP);
+    sseFrame(r, "event: history\n", `data: ${"h".repeat(HISTORY)}\n\n`);
+    // 25 s of a slow link, a small frame every second: still 3 MB behind
+    // (over the cap) and well past the stall grace, yet never dropped.
+    for (let i = 0; i < 25; i++) {
+      vi.setSystemTime(Date.now() + 1000);
+      res.read(120 * 1024);
+      sseSend(r, "sim", { i });
+      expect(res.destroyed).toBe(false);
+    }
+    expect(sseQueued(r)).toBeGreaterThan(SSE_MOD_QUEUE_CAP);
+    // Then the reader stops: dropped once the stall grace passes.
+    vi.setSystemTime(Date.now() + SSE_STALL_MS + 1);
+    expect(sseWrite(r, ":ping\n\n")).toBe(false);
+    expect(res.destroyed).toBe(true);
+  });
+
+  it("one unpaced 6 MB write would never look like progress (the bug the pacing fixes)", () => {
+    const res = chunkedRes();
+    const r = res as unknown as ServerResponse;
+    sseCap(r, SSE_MOD_QUEUE_CAP);
+    sseWrite(r, "event: history\n");
+    sseWrite(r, `data: ${"h".repeat(HISTORY)}\n\n`);
+    let dropped = false;
+    for (let i = 0; i < 30 && !dropped; i++) {
+      vi.setSystemTime(Date.now() + 1000);
+      res.read(120 * 1024);
+      dropped = !sseWrite(r, ":ping\n\n");
+    }
+    expect(dropped).toBe(true);
+  });
+
+  it("frames written behind a paced history wait their turn, in order", () => {
+    const res = chunkedRes();
+    const r = res as unknown as ServerResponse;
+    sseCap(r, SSE_MOD_QUEUE_CAP);
+    sseFrame(r, "event: history\n", `data: ${"h".repeat(SSE_SLICE * 3)}\n\n`);
+    sseSend(r, "sim", { n: 1 });
+    sseSend(r, "sim", { n: 2 });
+    // Only the first slice is with the socket yet; the rest is ours.
+    expect(res.writableLength).toBeLessThanOrEqual(SSE_SLICE + 64);
+    expect(sseQueued(r)).toBeGreaterThan(SSE_SLICE * 3);
+    res.read(Number.MAX_SAFE_INTEGER);
+    while (res.writableLength > 0) res.read(Number.MAX_SAFE_INTEGER);
+    expect(sseQueued(r)).toBe(0);
+    const events = [...res.text.matchAll(/event: (\w+)\ndata: /gu)].map((m) => m[1]);
+    expect(events).toEqual(["history", "sim", "sim"]);
+    expect(res.text.endsWith(`event: sim\ndata: {"n":2}\n\n`)).toBe(true);
+  });
+
+  it("the data's own bytes count as the previous length, so one slice landing is progress", () => {
+    const res = chunkedRes();
+    const r = res as unknown as ServerResponse;
+    sseCap(r, SSE_QUEUE_CAP);
+    sseFrame(r, "event: history\n", `data: ${"h".repeat(SSE_QUEUE_CAP * 3)}\n\n`);
+    vi.setSystemTime(Date.now() + SSE_STALL_MS + 1);
+    res.read(SSE_SLICE + 32); // the head line + one slice
+    expect(sseWrite(r, ":ping\n\n")).toBe(true);
+    expect(res.destroyed).toBe(false);
+  });
+
+  it("slices never split a surrogate pair, and the frame reads back whole", () => {
+    const res = chunkedRes();
+    const r = res as unknown as ServerResponse;
+    const msgs = Array.from({ length: 4000 }, (_, i) => ({ seq: i, text: `${"x".repeat(i % 37)}🦆 duck ${i} 📄` }));
+    sseSend(r, "history", msgs);
+    while (res.writableLength > 0) res.read(Number.MAX_SAFE_INTEGER);
+    expect(res.text.length).toBeGreaterThan(SSE_SLICE * 2);
+    expect(res.text).not.toMatch(/\uFFFD/u);
+    const data = res.text.slice(res.text.indexOf("data: ") + 6).trimEnd();
+    expect(JSON.parse(data)).toEqual(msgs);
   });
 });
 
