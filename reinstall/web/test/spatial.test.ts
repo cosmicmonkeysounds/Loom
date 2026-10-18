@@ -166,7 +166,9 @@ describe("postFound — a closed door is not a miss", () => {
     expect(await postFound("/e/x", "t", stubFetch(409, { error: "doors are closed" }).fetch)).toEqual({ kind: "paused" });
     expect(await postFound("/e/x", "t", stubFetch(409, { error: "not near the duck", distance: 2.4 }).fetch)).toEqual({ kind: "far", distance: 2.4 });
     expect(await postFound("/e/x", "t", stubFetch(409, {}).fetch)).toEqual({ kind: "far", distance: null });
-    expect(await postFound("/e/x", "t", stubFetch(200, { ok: true, released: true }).fetch)).toEqual({ kind: "found", result: { ok: true, released: true, already: false } });
+    expect(await postFound("/e/x", "t", stubFetch(200, { ok: true, released: true }).fetch)).toEqual({ kind: "found", result: { ok: true, released: true, already: false, captured: null } });
+    // The server says whether the program is still captured after the find.
+    expect(await postFound("/e/x", "t", stubFetch(200, { ok: true, released: false, captured: true }).fetch)).toEqual({ kind: "found", result: { ok: true, released: false, already: false, captured: true } });
     expect(await postFound("/e/x", "t", stubFetch(410, { error: "over" }).fetch)).toEqual({ kind: "over", status: 410 });
     expect(await postFound("/e/x", "t", stubFetch(500, { error: "boom" }).fetch)).toEqual({ kind: "error", message: "boom" });
   });

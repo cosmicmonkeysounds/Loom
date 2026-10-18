@@ -20,6 +20,7 @@ import type {
   SwitchVariantResult,
 } from "@loom/house";
 import { baseOf, type ReinstallConfig } from "./config.ts";
+import type { Program } from "./program.ts";
 import { NIGHT_ENDED, type ArmedRead } from "./game/fight.ts";
 import { showHouse } from "./show-house.ts";
 import { isDuckSpot } from "./spatial.ts";
@@ -45,9 +46,15 @@ export async function tokenAlive(config: ReinstallConfig): Promise<boolean> {
 }
 
 /** Every guest / persona for the typed fallback, the corrupted first. */
-export async function fetchCandidates(config: ReinstallConfig): Promise<SpatialCandidate[]> {
+export async function fetchCandidates(config: ReinstallConfig): Promise<Program[]> {
   const r = await getJson<{ players?: SpatialCandidate[] }>(`${baseOf(config)}/api/mod/spatial/candidates`, config.token);
-  return r.players ?? [];
+  return (r.players ?? []).map(toProgram);
+}
+
+/** A candidate row → the tablet's `Program` (`restricted` false from a server that doesn't say). */
+export function toProgram(row: SpatialCandidate): Program {
+  const restricted = (row as { restricted?: unknown }).restricted === true;
+  return { id: row.id, name: row.name, captured: row.captured, restricted, location: row.location };
 }
 
 /** The VR (and web) stations the server has seen. */
@@ -223,8 +230,15 @@ export async function postPose(base: string, token: string, body: unknown): Prom
   }
 }
 
+/** A judged find (`POST /api/spatial/found` 200, §2.1): `FoundResult` plus
+ *  `captured` — whether the program is still in the Internet after the
+ *  find was committed (null from a server that doesn't say). A captured
+ *  program the find did not release is a refused reinstallation: the story
+ *  kept them (the banishment), so the tablet never celebrates it. */
+export type FoundAnswer = Omit<FoundResult, "captured"> & { captured: boolean | null };
+
 export type FoundReply =
-  | { kind: "found"; result: FoundResult }
+  | { kind: "found"; result: FoundAnswer }
   | { kind: "far"; distance: number | null }
   /** The doors are closed (the run is paused, or not open yet): the find
    *  wasn't judged, the session stays un-found — retry after a while. */
@@ -245,7 +259,10 @@ export async function postFound(base: string, token: string, fetcher: typeof fet
     return { kind: "error", message: (e as Error).message };
   }
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (res.ok) return { kind: "found", result: { ok: true, released: data["released"] === true, already: data["already"] === true } };
+  if (res.ok) {
+    const captured = typeof data["captured"] === "boolean" ? data["captured"] : null;
+    return { kind: "found", result: { ok: true, released: data["released"] === true, already: data["already"] === true, captured } };
+  }
   if (res.status === 409 && data["error"] === DOORS_CLOSED) return { kind: "paused" };
   if (res.status === 409) return { kind: "far", distance: typeof data["distance"] === "number" ? data["distance"] : null };
   if (res.status === 401 || res.status === 410 || res.status === 404) return { kind: "over", status: res.status };
@@ -479,4 +496,14 @@ async function readArmed(config: ReinstallConfig, path: string, min: number, fet
 /** The spatial stream's URL (a mod token or a session token). */
 export function streamUrl(base: string, token: string, name: string): string {
   return `${base}/api/spatial/stream?name=${encodeURIComponent(name)}&token=${encodeURIComponent(token)}`;
+}
+
+/** Why the spatial stream closed: the status of `GET /api/spatial/house`
+ *  with the same token (the stream's own gate), null when unreachable. */
+export function streamProbe(base: string, token: string, fetcher: typeof fetch = fetch): () => Promise<number | null> {
+  return () =>
+    fetcher(`${base}/api/spatial/house`, { headers: { "x-loom-token": token } }).then(
+      (r) => r.status,
+      () => null,
+    );
 }

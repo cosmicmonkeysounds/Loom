@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SpatialFrame } from "@loom/house";
-import { CELEBRATION_MS, EMPTY_WORLD, byActivity, decodeFrame, moved, prune, reduce, type WorldState } from "../src/world/state.ts";
+import { CELEBRATION_MS, EMPTY_WORLD, byActivity, celebrationLine, decodeFrame, laysEgg, moved, prune, reduce, type WorldState } from "../src/world/state.ts";
 import { playerState } from "./world-fixture.ts";
 
 const fold = (frames: Array<[SpatialFrame, number]>, start: WorldState = EMPTY_WORLD) => frames.reduce((s, [f, t]) => reduce(s, f, t), start);
@@ -59,10 +59,34 @@ describe("world state", () => {
       [{ event: "found", data: { session: "s1", guest: "g-s1", name: "Prog s1", duck: { id: "s", room: "b", pos: [7, 0, 2] }, released: true } }, 1000],
     ]);
     expect(s.players.get("s1")).toMatchObject({ found: true, foundAt: 1000 });
-    expect(s.celebrations).toEqual([{ session: "s1", guest: "g-s1", name: "Prog s1", released: true, at: 1000 }]);
+    expect(s.celebrations).toEqual([{ session: "s1", guest: "g-s1", name: "Prog s1", released: true, kept: false, at: 1000 }]);
     expect(prune(s, 1000 + CELEBRATION_MS - 1)).toBe(s);
     s = prune(s, 1000 + CELEBRATION_MS);
     expect(s.celebrations).toEqual([]);
+  });
+
+  it("a find the story kept (released nobody, still captured) lays no egg and says Gerald can't help (T3-reinstall-01)", () => {
+    const duck = { id: "s", room: "b", pos: [7, 0, 2] as [number, number, number] };
+    let s = fold([
+      [{ event: "join", data: { player: playerState("s1", [6.5, 0, 2]) } }, 0],
+      [{ event: "join", data: { player: playerState("s2", [6.5, 0, 2]) } }, 0],
+      [{ event: "join", data: { player: playerState("s3", [6.5, 0, 2]) } }, 0],
+    ]);
+    // The banishment: the server keeps them captured.
+    s = reduce(s, { event: "found", data: { session: "s1", guest: "g-s1", name: "Prog s1", duck, released: false, captured: true } as never }, 1000);
+    // A free program (never captured, or freed mid-walk), and an older server that doesn't say.
+    s = reduce(s, { event: "found", data: { session: "s2", guest: "g-s2", name: "Prog s2", duck, released: false, captured: false } as never }, 1000);
+    s = reduce(s, { event: "found", data: { session: "s3", guest: "g-s3", name: "Prog s3", duck, released: false } }, 1000);
+    expect(s.players.get("s1")).toMatchObject({ found: true, kept: true });
+    expect(laysEgg(s.players.get("s1")!)).toBe(false);
+    expect(laysEgg(s.players.get("s2")!)).toBe(true);
+    expect(laysEgg(s.players.get("s3")!)).toBe(true);
+    const lines = Object.fromEntries(s.celebrations.map((c) => [c.session, celebrationLine(c)]));
+    expect(lines).toEqual({ s1: "GERALD CAN'T HELP", s2: "FOUND THE GOLDEN DUCK", s3: "FOUND THE GOLDEN DUCK" });
+    expect(celebrationLine({ released: true, kept: false })).toBe("HAS BEEN REINSTALLED");
+    // A reconnect's hello (found, lingering) keeps what the frame said.
+    const again = reduce(s, { event: "hello", data: { eventId: "e", houseVersion: "v1", players: [{ ...playerState("s1", [6.5, 0, 2]), found: true }] } }, 2000);
+    expect(laysEgg(again.players.get("s1")!)).toBe(false);
   });
 
   it("moves a player's duck when a map save re-deals it", () => {

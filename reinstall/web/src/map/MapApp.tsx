@@ -21,7 +21,7 @@ import type { ReactNode } from "react";
 import { polyBounds, validateHouse } from "@loom/house";
 import type { HouseMap, PlayerState, Vec2 } from "@loom/house";
 import { Setup } from "../app.tsx";
-import { fetchHouse, fetchLocations, saveHouse, streamUrl, tokenAlive, type LoadedHouse } from "../api.ts";
+import { fetchHouse, fetchLocations, saveHouse, streamProbe, streamUrl, tokenAlive, type LoadedHouse } from "../api.ts";
 import { baseOf, dropConfig, loadConfig, saveConfig, type ReinstallConfig } from "../config.ts";
 import { applyFrame, houseVersionOf, openSpatialStream } from "../spatial.ts";
 import { Desktop, Window } from "../wizard.tsx";
@@ -189,7 +189,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
       // A refused stream may only be a server that is away: ask before
       // forgetting the device's access.
       onDead: () => void tokenAlive(config).then((ok) => !ok && onRevoked()),
-    });
+    }, { probe: streamProbe(base, config.token) });
     return () => s.close();
   }, [base, config, load, onRevoked]);
 

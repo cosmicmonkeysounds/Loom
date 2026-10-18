@@ -210,9 +210,11 @@ def test_every_night_lights_mirror_has_a_rule_and_catches_up():
     assert {"screensaver", "game", "alarm", "restore"} <= values, values
     missing = sorted(v for v in values if f"lights_{v}" not in _targets("cue"))
     assert not missing, f"Night.lights values with no lights_<value> rule: {missing}"
-    scene, room, back = _show().catch_up
-    assert scene.path == "Night.lights" and room.path == back.path == "Night.dark_room"
+    house, scene, room, back = _show().catch_up
+    assert house.path == scene.path == "Night.lights" and room.path == back.path == "Night.dark_room"
     for value in values:
+        # The house layer under the server room's look replays only for server_open.
+        assert house.args_for({"Night.lights": value}) == ("lights_y2k" if value == "server_open" else None), value
         args = scene.args_for({"Night.lights": value})
         if value == "alarm":  # re-arms the server room's 120 s siren
             assert args is None
@@ -518,3 +520,45 @@ def test_alexa_prewarms_every_scripted_announcement():
     assert lines, "the story no longer announces anything — drop the alexa prewarm list"
     assert lines <= set(alexa.prewarm), f"add to alexa.prewarm: {sorted(lines - set(alexa.prewarm))}"
     assert alexa.topic == "show/announce" == _rules("announce")[0]["mqtt"]["topic"]
+
+
+def test_server_open_catches_up_the_y2k_house_look_underneath():
+    """T8-stagehand-02: server_open (the majority, The Heart) touches only
+    the server room, on top of the Y2K house look. A catch-up replays the
+    house layer first, as the story's own alarm restore does, so a house
+    left on the alarm's red strobe (or a bulb back at power-on white) is
+    put right on every reconnect from step 14 to the reveal."""
+    cfg = _show()
+    world = {"Night.lights": "server_open", "Night.lights_back_at": "0", "Night.dark_room": "none"}
+    args = [a for a in (rule.args_for(world) for rule in cfg.catch_up) if a is not None]
+    assert args == ["lights_y2k", "lights_server_open"]
+    topics = [c.topic for a in args for c in evaluate_cues(cfg.cues, _directive("cue", a)) if hasattr(c, "topic")]
+    assert topics.index("zigbee2mqtt/house/set") < topics.index("zigbee2mqtt/server_room/set"), topics
+    assert "wled/all/api" in topics, topics
+    # The story says so too: the latch's end restores server_open as y2k + server_open.
+    assert re.search(r"cue lights_y2k\s+cue lights_server_open", _code(_story_text())), "the story's restore order moved"
+    # Any other look replays once, no extra house layer.
+    for value in ("y2k", "game", "glitch"):
+        got = [a for a in (rule.args_for({**world, "Night.lights": value}) for rule in cfg.catch_up) if a is not None]
+        assert got == [f"lights_{value}"], (value, got)
+
+
+def test_the_flicker_never_changes_the_look_on_the_strips():
+    """T8-stagehand-03: screens_flicker is an overlay that changes no mirror.
+    The bulbs' `effect: blink` reverts by itself; a WLED preset would not (ps
+    21's playlist ended on house normal), so the flicker sends the strips
+    nothing and every look survives it, the beans' glitch included."""
+    cues = _show().cues
+    sent = [c for c in evaluate_cues(cues, _directive("cue", "screens_flicker")) if isinstance(c, MqttCue)]
+    assert sent and not [c.topic for c in sent if c.topic.startswith("wled/")], [c.topic for c in sent]
+    assert all(json.loads(c.payload) == {"effect": "blink"} for c in sent), [c.payload for c in sent]
+    used = set(re.findall(r"\bcue\s+(lights_[a-z0-9_]+)\b", _code(_story_text())))
+    for look in sorted(used):
+        def last_wled(seq: list[str]) -> dict[str, str]:
+            out: dict[str, str] = {}
+            for cue in seq:
+                for c in evaluate_cues(cues, _directive("cue", cue)):
+                    if isinstance(c, MqttCue) and c.topic.startswith("wled/"):
+                        out[c.topic] = c.payload
+            return out
+        assert last_wled([look, "screens_flicker"]) == last_wled([look]), look

@@ -13,7 +13,10 @@ Shape (see show.example.yaml for a commented copy):
 story restart (module.py `_catch_up`): each entry reads one world path
 from `GET /api/state` and, unless the value is empty / in `skip:` / its
 `when:` is false over the world, runs `cue <cue with {value}>` through
-the cue map like a story `cue` line. Lights only, in order.
+the cue map like a story `cue` line. Lights only, in order. A cue with no
+`{value}` is a constant (a layer the look sits on, e.g. `lights_y2k`
+under `server_open`) and needs a `when:` — without one it would replay on
+every catch-up whatever the story's look.
 
 Cross-checks happen here so a bad map fails at boot, not mid-show:
 sensor rules need the broker, MQTT cues need the broker, OSC cues need
@@ -44,7 +47,7 @@ class MqttConfig:
 @dataclass(frozen=True)
 class CatchUpRule:
     path: str                       # a world path, e.g. Night.lights
-    cue: str                        # `cue` args with {value}, e.g. lights_{value}
+    cue: str                        # `cue` args with {value}, e.g. lights_{value} (a constant needs `when:`)
     skip: tuple[str, ...] = ()      # values never replayed (e.g. alarm: its siren latch)
     when: Condition | None = None   # over the world entries (dotted paths, flat keys)
 
@@ -97,8 +100,8 @@ def parse_catch_up(raw: Any, idx: int) -> CatchUpRule:
     if not isinstance(raw, dict):
         raise ConfigError(f"{where}: must be a mapping")
     cue = _require_str(raw, "cue", where)
-    if "{value}" not in cue:
-        raise ConfigError(f"{where}: 'cue' needs a {{value}} placeholder")
+    if "{value}" not in cue and raw.get("when") is None:
+        raise ConfigError(f"{where}: 'cue' needs a {{value}} placeholder (or a 'when:' for a constant cue)")
     skip = raw.get("skip") or []
     if not isinstance(skip, list):
         raise ConfigError(f"{where}: 'skip' must be a list")

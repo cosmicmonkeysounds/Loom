@@ -6,6 +6,12 @@
 //! starts, and where each duck sits (a `duck` frame moves it when a map
 //! save re-deals it).
 //!
+//! A find that released nobody while the story keeps the program captured
+//! (the banishment: "Gerald cannot help you") is `kept`: the frame says
+//! `released: false, captured: true`, and the screens show no golden egg
+//! and no fly-off, only "GERALD CAN'T HELP". A server that doesn't send
+//! `captured` on the frame is read as before (never kept).
+//!
 //! Times are the terminal's own clock (milliseconds — `performance.now()` in
 //! the app, a counter in tests): poses are stamped when they *arrive*, never
 //! with the server's `t`, so interpolation needs no clock sync.
@@ -44,6 +50,9 @@ export interface WorldPlayer {
   anchor: PlayerPose;
   /** When the duck was found (local ms), else null. */
   foundAt: number | null;
+  /** The find released nobody and the program is still captured: Gerald
+   *  stays put (no egg, no fly-off). */
+  kept: boolean;
   /** Interpolation buffer (shared by reference across states). */
   buffer: PoseBuffer;
 }
@@ -54,7 +63,26 @@ export interface Celebration {
   name: string;
   /** The program was corrupted and is free now (else: just found Gerald). */
   released: boolean;
+  /** Found Gerald, but the story keeps them captured (the banishment). */
+  kept: boolean;
   at: number;
+}
+
+/** A `found` frame that released nobody while the program stays captured
+ *  (`captured` is read off the wire: an older server never sends it). */
+export function keptFind(f: { released: boolean }): boolean {
+  return !f.released && (f as { captured?: unknown }).captured === true;
+}
+
+/** The celebration's line under the program's name. */
+export function celebrationLine(c: Pick<Celebration, "released" | "kept">): string {
+  if (c.kept) return "GERALD CAN'T HELP";
+  return c.released ? "HAS BEEN REINSTALLED" : "FOUND THE GOLDEN DUCK";
+}
+
+/** Gerald lays his egg and flies off for a find — never for a kept one. */
+export function laysEgg(p: Pick<WorldPlayer, "found" | "kept">): boolean {
+  return p.found && !p.kept;
 }
 
 export interface WorldState {
@@ -82,9 +110,9 @@ export function moved(anchor: PlayerPose, pose: PlayerPose): boolean {
   return turn >= ACTIVE_TURN;
 }
 
-function fromState(s: PlayerState, now: number, buffer: PoseBuffer | undefined): WorldPlayer {
+function fromState(s: PlayerState, now: number, prior: WorldPlayer | undefined): WorldPlayer {
   const pose: PlayerPose = { p: [s.p[0], s.p[1], s.p[2]], yaw: s.yaw, pitch: s.pitch };
-  const b = buffer ?? new PoseBuffer();
+  const b = prior?.buffer ?? new PoseBuffer();
   b.push(now, pose);
   return {
     session: s.session,
@@ -100,6 +128,8 @@ function fromState(s: PlayerState, now: number, buffer: PoseBuffer | undefined):
     lastActive: now,
     anchor: copyPose(pose),
     foundAt: s.found ? now : null,
+    // The player list never says; a reconnect keeps what a `found` frame told us.
+    kept: s.found && prior?.kept === true,
     buffer: b,
   };
 }
@@ -115,13 +145,13 @@ export function reduce(state: WorldState, frame: SpatialFrame, now: number): Wor
       // A (re)connect: the server's list is the truth. Keep the buffers of
       // sessions we already knew so their ghosts don't jump.
       const players = new Map<string, WorldPlayer>();
-      for (const s of frame.data.players) players.set(s.session, fromState(s, now, state.players.get(s.session)?.buffer));
+      for (const s of frame.data.players) players.set(s.session, fromState(s, now, state.players.get(s.session)));
       return { ...state, houseVersion: frame.data.houseVersion, players };
     }
     case "join": {
       const players = new Map(state.players);
       const s = frame.data.player;
-      players.set(s.session, fromState(s, now, state.players.get(s.session)?.buffer));
+      players.set(s.session, fromState(s, now, state.players.get(s.session)));
       return { ...state, players };
     }
     case "poses": {
@@ -148,8 +178,9 @@ export function reduce(state: WorldState, frame: SpatialFrame, now: number): Wor
       const f = frame.data;
       const players = new Map(state.players);
       const cur = players.get(f.session);
-      if (cur) players.set(f.session, { ...cur, found: true, foundAt: cur.foundAt ?? now, lastActive: now });
-      const celebrations = [...state.celebrations.filter((c) => c.session !== f.session), { session: f.session, guest: f.guest, name: f.name, released: f.released, at: now }];
+      const kept = keptFind(f);
+      if (cur) players.set(f.session, { ...cur, found: true, foundAt: cur.foundAt ?? now, kept, lastActive: now });
+      const celebrations = [...state.celebrations.filter((c) => c.session !== f.session), { session: f.session, guest: f.guest, name: f.name, released: f.released, kept, at: now }];
       return { ...state, players, celebrations };
     }
     case "leave": {

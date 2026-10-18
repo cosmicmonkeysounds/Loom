@@ -4,19 +4,19 @@
 //! celebration when Gerald is found.
 
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import type { Assignment, FoundResult, HouseMap } from "@loom/house";
-import { fetchArmed, postEnd, postSignal } from "../api.ts";
+import type { Assignment, HouseMap } from "@loom/house";
+import { fetchArmed, postEnd, postSignal, type FoundAnswer } from "../api.ts";
 import { baseOf, type ReinstallConfig } from "../config.ts";
 import { ProgressBar, Window } from "../wizard.tsx";
 import type { Sfx } from "./audio.ts";
 import { Game, type ChessContext, type GameEnd, type HudState, type KingHud } from "./engine.ts";
 import { STAGE_LINE } from "./fight.ts";
-import { bearingOf, HEAT_LABEL } from "./hud.ts";
+import { bearingOf, findCopy, findOutcome, HEAT_LABEL, type FindOutcome } from "./hud.ts";
 import { CENTRED, type StickVector } from "./input.ts";
 import { whyNoStart } from "./no-start.ts";
 import { Joystick } from "./joystick.tsx";
 
-export type PlayExit = { kind: "found"; name: string; complete: boolean } | { kind: "over"; reason: string } | { kind: "idle" } | { kind: "quit" };
+export type PlayExit = { kind: "found"; name: string; outcome: FindOutcome } | { kind: "over"; reason: string } | { kind: "idle" } | { kind: "quit" };
 
 export { NO_WEBGL2 } from "./no-start.ts";
 
@@ -50,7 +50,7 @@ export function Play({
   const game = useRef<Game | null>(null);
   const sticks = useRef<{ left: StickVector; right: StickVector }>({ left: CENTRED, right: CENTRED });
   const [hud, setHud] = useState<HudState | null>(null);
-  const [found, setFound] = useState<FoundResult | null>(null);
+  const [found, setFound] = useState<FoundAnswer | null>(null);
   const [chess, setChess] = useState<ChessContext | null>(null);
   const [showSticks, setShowSticks] = useState(touchDevice);
   const [helpOpen, setHelpOpen] = useState(true);
@@ -110,13 +110,16 @@ export function Play({
     return () => window.clearTimeout(t);
   }, []);
 
-  const complete = found !== null && (found.released || assignment.captured);
+  // The server's `released` is the only proof of a release: a program the
+  // story keeps captured (the banishment) is told Gerald can't help.
+  const outcome: FindOutcome = found === null ? "found" : findOutcome(found, assignment.captured);
+  const copy = findCopy(outcome, assignment.name);
   const finished = useRef(false);
   const finish = () => {
     if (finished.current) return;
     finished.current = true;
     void postEnd(base, assignment.token);
-    exit.current({ kind: "found", name: assignment.name, complete });
+    exit.current({ kind: "found", name: assignment.name, outcome });
   };
   const finishRef = useRef(finish);
   finishRef.current = finish;
@@ -229,23 +232,21 @@ export function Play({
       )}
 
       {found !== null && (
-        <div className="celebration">
-          <div className="confetti" aria-hidden="true">
-            {Array.from({ length: 24 }, (_, i) => (
-              <i key={i} style={{ left: `${(i * 37) % 100}%`, animationDelay: `${(i % 8) * 0.18}s` }} />
-            ))}
-          </div>
-          <Window title={complete ? "Reinstallation Wizard" : "Gerald"} className="celebrate-window">
+        <div className={`celebration${copy.egg ? "" : " refused"}`}>
+          {copy.egg && (
+            <div className="confetti" aria-hidden="true">
+              {Array.from({ length: 24 }, (_, i) => (
+                <i key={i} style={{ left: `${(i * 37) % 100}%`, animationDelay: `${(i % 8) * 0.18}s` }} />
+              ))}
+            </div>
+          )}
+          <Window title={copy.title} className="celebrate-window">
             <div className="celebrate-body">
-              <div className="egg" aria-hidden="true" />
+              {copy.egg && <div className="egg" aria-hidden="true" />}
               <div>
-                <h1>{complete ? "REINSTALLATION COMPLETE" : "YOU FOUND GERALD"}</h1>
-                <p>
-                  {complete
-                    ? `${assignment.name} has been reinstalled. Instructions followed. The Internet releases you.`
-                    : `Gerald laid a golden egg for ${assignment.name}. Quack.`}
-                </p>
-                <ProgressBar value={1} label={complete ? "Copying files… done" : "Egg: laid"} />
+                <h1>{copy.heading}</h1>
+                <p>{copy.line}</p>
+                <ProgressBar value={1} label={copy.progress} />
                 <p className="muted">{hud?.elapsed !== undefined ? `Time in the simulation: ${hud.elapsed}` : ""}</p>
               </div>
             </div>

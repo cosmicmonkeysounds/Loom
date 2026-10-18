@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { heldFind, PAUSED_NOTICE } from "../src/game/hud.ts";
 import { IDLE_LIMIT_MS, IDLE_WARN_MS, IdleLeash } from "../src/game/leash.ts";
 
 describe("IdleLeash — 120 s without input, counted only while visible", () => {
@@ -32,5 +33,34 @@ describe("IdleLeash — 120 s without input, counted only while visible", () => 
     l.hide(9000);
     l.show(10_000);
     expect(l.idleFor(10_000)).toBe(6000);
+  });
+});
+
+describe("a find held by a pause keeps the session alive (T3-reinstall-02)", () => {
+  it("a player at Gerald through a long pause is never disconnected, and the leash runs again after", () => {
+    const l = new IdleLeash(0);
+    // Standing at Gerald, no input; every held reply touches the leash and
+    // the next retry comes on the found backoff (1.5 s, 3 s, 6 s, then 10 s).
+    let now = 0;
+    let refusals = 0;
+    let last = 0;
+    while (now < 130_000) {
+      const held = heldFind(now, refusals, l);
+      expect(held.notice).toBe(PAUSED_NOTICE);
+      last = now;
+      refusals += 1;
+      now = held.cooldownUntil;
+      expect(l.expired(now)).toBe(false);
+      expect(l.warning(now)).toBeNull();
+    }
+    // The doors opened (no more held replies): the usual 120 s applies.
+    expect(l.expired(last + IDLE_LIMIT_MS - 1)).toBe(false);
+    expect(l.expired(last + IDLE_LIMIT_MS + 10_000)).toBe(true);
+  });
+
+  it("the notice outlasts the wait, so it never blinks between retries", () => {
+    const held = heldFind(5000, 3, new IdleLeash(0));
+    expect(held.cooldownUntil).toBe(5000 + 10_000);
+    expect(held.noticeMs).toBeGreaterThan(held.cooldownUntil - 5000);
   });
 });

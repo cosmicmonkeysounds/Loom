@@ -52,6 +52,74 @@ export function foundRetryMs(refusals: number): number {
  *  are closed" — the run is paused, or not open yet). */
 export const PAUSED_NOTICE = "The simulation is paused — Gerald will wait for you.";
 
+/**
+ * A find the doors held (409 "doors are closed"): say so until just past
+ * the next retry, and retry on the usual backoff — the first retry after
+ * resume lands. The player was told to wait, so every held reply touches
+ * the idle leash here: a director's pause never disconnects a player
+ * standing at Gerald (retries are at most 10 s apart, well inside the
+ * leash).
+ */
+export function heldFind(now: number, refusals: number, leash: { touch(now: number): void }): { notice: string; noticeMs: number; cooldownUntil: number } {
+  leash.touch(now);
+  const wait = foundRetryMs(refusals);
+  return { notice: PAUSED_NOTICE, noticeMs: wait + 1000, cooldownUntil: now + wait };
+}
+
+/**
+ * What a judged find means for this tablet (§2.1 `found`):
+ * - `released` — the find freed a captured program (the story's
+ *   `the simulation completed` let them out): the reinstallation is complete.
+ * - `refused` — the program is still captured after the find: the story
+ *   kept them (the banishment — "Gerald can't help"), so no egg, no
+ *   fanfare, nothing that reads as a release. A server that doesn't say
+ *   `captured` falls back to the captured state the walk began with.
+ * - `found` — a free program (never captured, or freed mid-walk) found Gerald.
+ */
+export type FindOutcome = "released" | "refused" | "found";
+
+export function findOutcome(found: { released: boolean; captured?: boolean | null }, capturedAtBegin: boolean): FindOutcome {
+  if (found.released) return "released";
+  const captured = typeof found.captured === "boolean" ? found.captured : capturedAtBegin;
+  return captured ? "refused" : "found";
+}
+
+/** The celebration window's copy for each outcome (pure, so it is tested). */
+export function findCopy(outcome: FindOutcome, name: string): { title: string; heading: string; line: string; progress: string; egg: boolean } {
+  switch (outcome) {
+    case "released":
+      return {
+        title: "Reinstallation Wizard",
+        heading: "REINSTALLATION COMPLETE",
+        line: `${name} has been reinstalled. Instructions followed. The Internet releases you.`,
+        progress: "Copying files… done",
+        egg: true,
+      };
+    case "refused":
+      return {
+        title: "Gerald",
+        heading: "GERALD CAN'T HELP",
+        line: `Gerald can't help ${name} tonight. The Internet keeps you — your phone says what happens next.`,
+        progress: "Nothing to copy",
+        egg: false,
+      };
+    case "found":
+      return { title: "Gerald", heading: "YOU FOUND GERALD", line: `Gerald laid a golden egg for ${name}. Quack.`, progress: "Egg: laid", egg: true };
+  }
+}
+
+/** The scan screen's line after a find (the wizard's flash). */
+export function findFlash(outcome: FindOutcome, name: string): { text: string; tone: "good" | "bad" } {
+  switch (outcome) {
+    case "released":
+      return { text: `${name} — reinstallation complete.`, tone: "good" };
+    case "refused":
+      return { text: `${name} found Gerald — he can't help tonight.`, tone: "bad" };
+    case "found":
+      return { text: `${name} found Gerald.`, tone: "good" };
+  }
+}
+
 /** The room the feet are in, as the HUD names it. */
 export function roomTitle(house: HouseMap, feet: Vec3): { room: string; location: string | null } {
   const at = locate(house, feet);
