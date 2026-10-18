@@ -275,3 +275,42 @@ describe("wave 9 — a featured goal met before the Truther Download completes i
     expect(sim.questStatus("g9", "Unscramble")).toBe("done");
   });
 });
+
+// ───────────────────────── the King after 📄 ─────────────────────────
+
+describe("wave 9 — a King win after truth.txt gives no door code (R2-diff-clients-03)", () => {
+  const guestCasts = (evs: SimEvent[]) => casts(evs).filter((b) => b.scope !== "channel(hosts)");
+
+  it("Grok Prom and the banishment: a checkmate tells # hosts only; Night.king_armed is 1 only from the Y2K hour to 📄", { timeout: SLOW }, () => {
+    const sim = boot();
+    expect(v(sim, "Night.king_armed")).toBe(0);
+    toBobbing(sim, { lie: true });
+    // toBobbing passes the Y2K clock: the King played for the code until 📄.
+    expect(v(sim, "Night.king_armed")).toBe(1);
+    truthTxt(sim);
+    expect(v(sim, "Night.r3_closed")).toBe(true);
+    expect(v(sim, "Night.ended")).not.toBe(true);
+    expect(v(sim, "Night.king_armed")).toBe(0);
+    const after = "♟ A King win after truth.txt: the verdict is in, no door code. Nothing happens in the story.";
+    const w = fire(sim, "chess won", "g1", null, "Tent tablet");
+    expect(hostsSaid(w)).toEqual([after]);
+    expect(guestCasts(w)).toEqual([]);
+    expect(sim.holdsCodex("g1", "The Door Code")).toBe(false);
+    fireAll(sim, "ask_for_advice", "advice_thwarted");
+    expect(v(sim, "Night.ending")).toBe("banished");
+    const w2 = fire(sim, "chess_won", "g6");
+    expect(hostsSaid(w2)).toEqual([after]);
+    expect(guestCasts(w2)).toEqual([]);
+    expect(sim.holdsCodex("g6", "The Door Code")).toBe(false);
+  });
+
+  it("from the Y2K hour, before 📄, a win still gives the code; an ending disarms the King", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    expect(v(sim, "Night.king_armed")).toBe(1);
+    fire(sim, "chess won", "g1");
+    expect(sim.holdsCodex("g1", "The Door Code")).toBe(true);
+    fire(sim, "patch_combo_a");
+    expect(v(sim, "Night.king_armed")).toBe(0);
+  });
+});

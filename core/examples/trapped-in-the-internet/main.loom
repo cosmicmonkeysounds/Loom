@@ -3753,9 +3753,23 @@ when terminal_closed for program:
 // Codex, once. A second win (a host's ♟ after the tablet's own post, the
 // tablet's late retry, a winner playing again) changes nothing. Before the
 // Y2K hour a win is practice: in the simulation the cold door still opens
-// for that session; nobody learns the code.
+// for that session; nobody learns the code. Once the verdict is in (📄
+// truth.txt closed round three) the server room is quiet like the door and
+// the patch bay: a win gives no code (it would say the door is yours, and
+// the door does nothing now), and only # hosts hears of it.
+// Night.king_armed is the King's stakes for the tent tablet: 1 from the Y2K
+// hour until truth.txt or an ending, else 0 (a map's king `armed` may read
+// it instead of Night.step, so the badge stops saying FOR THE CODE after 📄).
+when Night.step >= 14 and Night.r3_closed != true and Night.ended != true:
+  set Night.king_armed = 1
+
+when Night.king_armed == 1 and (Night.r3_closed == true or Night.ended == true):
+  set Night.king_armed = 0
+
 when chess_won for program:
-  if Night.ended != true and Night.step >= 14:
+  if Night.ended != true and Night.r3_closed == true:
+    broadcast "♟ A King win after truth.txt: the verdict is in, no door code. Nothing happens in the story." to channel(hosts)
+  else if Night.ended != true and Night.step >= 14:
     if program.name == null:
       broadcast "♟ A win with no winner named: press ♟ on the winner's card to give them the door code." to channel(hosts)
     else if program.codex.the_door_code == true:
@@ -4352,6 +4366,7 @@ set Night.heart_opened = false
 set Night.door_quiet_until = 0
 set Night.heart_holder = "none"
 set Night.gloat_at = 0
+set Night.king_armed = 0
 set Night.stand_down_by = "none"
 set Night.talked_down = false
 set Night.ended = false
