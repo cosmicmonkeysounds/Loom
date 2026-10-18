@@ -104,6 +104,20 @@ describe("modPatch / applyModPatch", () => {
     const v = { ...base, minds: undefined, title: "T" };
     expect(modViewJson(v)).toBe(JSON.stringify(v));
     expect(modViewJson({})).toBe("{}");
+    // …with keyed rows assembled from their own JSON (arrays, nulls inside a row).
+    const odd = { world: [{ path: "a", value: [1, null] }], codex: [], roster: [{ id: "g-1", tags: { x: undefined } }] };
+    expect(modViewJson(odd)).toBe(JSON.stringify(odd));
+  });
+
+  it("a view stands for what it was when it was sent, even if a row shared a live object that moved on", () => {
+    const live = ["g-1"];
+    const prev = { ...base, codex: [{ id: "Alpha", holders: live }] };
+    const sent = JSON.parse(modViewJson(prev)) as typeof prev; // the keyframe, serialised once
+    live.push("g-2"); // the sim moves on in place
+    const next = { ...base, codex: [{ id: "Alpha", holders: live }] }; // a fresh row on the same live array
+    const patch = wire(modPatch(prev, next));
+    expect(patch.codex).toEqual({ set: [{ id: "Alpha", holders: ["g-1", "g-2"] }], del: [] });
+    expect(applyModPatch(sent, patch)).toEqual(next);
   });
 });
 

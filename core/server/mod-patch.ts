@@ -19,7 +19,14 @@
 //! them, and the tests pin that `applyModPatch(prev, modPatch(prev, next))`
 //! deep-equals `next`.
 
-/** The keyed arrays and the field each row is keyed by. */
+/** The keyed arrays and the field each row is keyed by.
+ *
+ *  A field's and its rows' JSON is memoised by object identity the first
+ *  time the view is serialised (`modViewJson` / `fieldJson`), so a view
+ *  stands for what it was when it was sent, even if a row ever shared a
+ *  live sim object that moved on later. Still, build every row fresh per
+ *  view (as `worldEntries`, `codexHolders` and `rosterRow` do): a row
+ *  object reused between two views reads as unchanged. */
 export const MOD_PATCH_KEYS: Readonly<Record<string, string>> = { world: "path", codex: "id", roster: "id" };
 
 /** One top-level field's change. */
@@ -45,20 +52,26 @@ type Row = Record<string, unknown>;
 const fieldMemo = new WeakMap<object, Map<string, string | undefined>>();
 const rowMemo = new WeakMap<object, string>();
 
+function rowJson(row: Row): string {
+  let json = rowMemo.get(row);
+  if (json === undefined) rowMemo.set(row, (json = JSON.stringify(row)));
+  return json;
+}
+
 /** `JSON.stringify(view[key])`, memoised per view (undefined for a field
- *  JSON leaves out). */
+ *  JSON leaves out). A keyed array of object rows is assembled from its
+ *  rows' memoised JSON (byte-identical), so the rows are pinned at the
+ *  same moment as the field and a later patch diffs what was sent. */
 export function fieldJson(view: object, key: string): string | undefined {
   let m = fieldMemo.get(view);
   if (m === undefined) fieldMemo.set(view, (m = new Map()));
   if (m.has(key)) return m.get(key);
-  const json = JSON.stringify((view as Record<string, unknown>)[key]) as string | undefined;
+  const value = (view as Record<string, unknown>)[key];
+  const json =
+    MOD_PATCH_KEYS[key] !== undefined && Array.isArray(value) && value.every((r) => r !== null && typeof r === "object" && typeof (r as { toJSON?: unknown }).toJSON !== "function")
+      ? `[${(value as Row[]).map(rowJson).join(",")}]`
+      : (JSON.stringify(value) as string | undefined);
   m.set(key, json);
-  return json;
-}
-
-function rowJson(row: Row): string {
-  let json = rowMemo.get(row);
-  if (json === undefined) rowMemo.set(row, (json = JSON.stringify(row)));
   return json;
 }
 
