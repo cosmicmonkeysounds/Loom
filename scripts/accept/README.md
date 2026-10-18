@@ -55,7 +55,7 @@ anytime.
 | K-30 | `K-30.sh` | Export and sideload two Quest APKs, each station polls the VPS, a captured program walks to Gerald → `released: true` |
 | K-31a | `k31a.sh` | VAPID keys set: 2 locked Android phones on cellular get a `!` alert and a Trabolta DM as notifications (no duplicate in the foreground); a locked Antivirus booth gets the server-room alarm |
 | K-31b | `k31b.sh` | `LOOM_HOMESCREEN=on` + VAPID keys: an iPhone (16.4+) guest adds the app to the Home Screen from the 🔔 card and the icon opens as the same program; locked on cellular it gets a `!` alert and a Trabolta DM; an iPhone booth signs in from its icon and gets the server-room alarm |
-| K-32 | `k32-load.ts --code …` | VPS load test (45 guests, 9 booths, 6 terminals, 2 directors, bursts): step latency + `/api/mod/metrics` CPU (guarded) |
+| K-32 | `k32-load.ts --code …` | VPS load test (45 guests, 9 booths, 6 terminals, 2 directors, bursts): step latency + `/api/mod/metrics` CPU + each director console ≤ 1 Mbit/s (the LTE failover budget; delta consoles by default, `--full-directors` for the old whole-view stream) (guarded) |
 | N-01 | `n01.sh` | 10 pass QRs on screen. An iPhone booth (jsQR) and an Android booth scan 10/10 hands-free |
 | N-02 + N-10 | `n02.sh` | Re-pair a wiped phone from Inspector → 🔁 Re-pair (< 30 s, same Person). Release a booth's part and re-sign on a loaner |
 | N-08 | `N-08.sh [port]` | House Mac, box on the bench: flash, the door contact alone (shut → `open:false`, open → `open:true`, held open → nothing more; `diag` `door_mode` `tape`), the 2×12 patch scan, ring + siren over MQTT (`:1884` as `props`) |

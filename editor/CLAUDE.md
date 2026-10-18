@@ -713,7 +713,10 @@ is gated on `lib/desktop.ts`'s `isDesktop()` and inert in the browser:
 wired in via path aliases in `vite.config.ts` + `tsconfig.app.json`:
 `@loom/core/parser`, `@loom/core/lsp`, `@loom/core/sim` (the ecosystem
 runtime behind Run mode on a folder), and the server's pure projection modules
-`@loom/core/chat` + `@loom/core/views`, all resolving straight to `.ts`
+`@loom/core/chat` + `@loom/core/views`, plus `@loom/core/mod-patch` (wave
+9: `applyModPatch` for the director console's keyed patches; its alias
+line must stay **above** the bare `@loom/core` one in both files, or that
+alias swallows the subpath), all resolving straight to `.ts`
 source.) Everything here is synchronous; there is no bundle to load or
 rebuild.
 
@@ -820,7 +823,21 @@ text folded in as one splice, nothing from the old history sent; the
 store's `onRebind` bumps `collabGen` to remount the view; the undo stack
 starts over). Tested against a fake hub in `lib/collab.test.ts`. A server run's
 Log rows are stamped in story time (`storyNow` in `store/cockpit.ts`, off
-the snapshot clock), like a folder run's.
+the snapshot clock, never run on through a pause; the column is
+`logClock` in `log-describe.ts`), like a folder run's. Tested through the
+store with a fake `EventSource` in `store/operate-stream.test.ts`.
+
+**Keyed snapshot patches (wave 9, C7).** The operate store opens
+`events?role=mod&delta=1`: a `snapshot` frame (a keyframe, numeric
+`_frame`) goes through the local `applySnap`, and an `event:
+snapshotPatch {base, frame, patch}` is applied with `applyModPatch` onto
+the last keyframe or patch it holds. A patch before any keyframe is
+ignored; one on the wrong base reopens the stream via `connect(eventId)`
+(a full snapshot follows; it also resets the story-graph overlay, and
+never fired in testing). Every applied view must set `storyClock` to
+`{ms, at: Date.now()}` when the clock moves, or the Log's story time
+stalls. ≈ 0.11 Mbit/s per console at 45 guests against 5.9 for a whole
+view each frame. Tested in `store/operate-delta.test.ts`.
 
 **Server projects co-edit in real time** (2026-08-27, `lib/collab.ts` —
 the native-TS successor to the removed Loro relay path): every
