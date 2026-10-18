@@ -27,8 +27,9 @@
 //! in silence when the laptop is down. The request stays queued, so a worker
 //! that comes back still answers it. A worker that stays connected but stops
 //! answering (its head request timed out) counts as down for the hold line
-//! until it answers again, and no request waits longer than
-//! `queueMaxAgeMs` in all, queued or with a worker.
+//! until it answers again (or the story restarts), and no request waits
+//! longer than `queueMaxAgeMs` in all, queued or on a stalled worker — a
+//! healthy worker's line is never cut, its head has the reply timeout.
 //!
 //! One open request per thread keeps a burst of three messages from
 //! producing three replies: the model answers once, then once more with
