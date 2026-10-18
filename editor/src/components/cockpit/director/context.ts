@@ -3,6 +3,7 @@
 //! Calling / Watching mode. Provided by `DirectorTab`.
 
 import { createContext, useContext } from 'react'
+import { useCockpit } from '@/store/cockpit'
 import type { CueAct, CueRow } from '@loom/core/cue-sheet'
 import type { ArmedApi } from './useArmed'
 import type { AwardFieldsApi } from './useAwardFields'
@@ -49,3 +50,10 @@ export function outOfTurn(row: CueRow, d: Pick<DirectorCtx, 'acts' | 'focus' | '
   }
   return null
 }
+
+/** Who a subject cue is armed for, by name. */
+export function useNameOf(): (id: string | null) => string {
+  const roster = useCockpit((s) => s.roster)
+  return (id) => (id === null ? '' : (roster.find((r) => r.id === id)?.name ?? id))
+}
+

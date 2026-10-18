@@ -10,7 +10,7 @@ import clsx from 'clsx'
 import { useCockpit } from '@/store/cockpit'
 import { ARM_MS, cueTitleTags, takesValue, type CueRow } from '@loom/core/cue-sheet'
 import { suggestionHint } from '../award-suggest'
-import { outOfTurn, useDirector } from './context'
+import { outOfTurn, useDirector, useNameOf } from './context'
 import { DirectorMode } from './director-keys'
 
 const NOT_ON_OFFER = 'Its `while:` is false right now — not suggested, still pressable'
@@ -36,12 +36,6 @@ export function ArmBar({ at }: { at: number }) {
       <div key={at} className="h-0.5 bg-amber-500" style={{ animation: `director-arm ${ARM_MS}ms linear forwards` }} />
     </div>
   )
-}
-
-/** Who a subject cue is armed for, by name. */
-export function useNameOf() {
-  const roster = useCockpit((s) => s.roster)
-  return (id: string | null) => (id === null ? '' : (roster.find((r) => r.id === id)?.name ?? id))
 }
 
 /** The armed detail: what a second press does, the warning, the full description. */

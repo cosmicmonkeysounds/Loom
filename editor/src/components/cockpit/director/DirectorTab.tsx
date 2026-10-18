@@ -69,7 +69,7 @@ function useDirectorMode(): [DirectorMode, (m: DirectorMode) => void] {
 /** What a key event came from: a field (the keys leave typing alone), a
  *  native control Enter / Space activates that is not a cue (it keeps
  *  them), or a cue's own button (`data-cue-press`: Enter presses it). */
-export function keyTarget(t: EventTarget | null): { editable: boolean; control: boolean; cue: string | null } {
+function keyTarget(t: EventTarget | null): { editable: boolean; control: boolean; cue: string | null } {
   if (!(t instanceof HTMLElement)) return { editable: false, control: false, cue: null }
   const editable =
     t.isContentEditable || t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.closest('[contenteditable="true"]') !== null
