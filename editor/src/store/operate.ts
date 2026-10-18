@@ -33,6 +33,7 @@ import { ApiError, eventsApi, logApi, modApi, type EventInfo } from '@/lib/api'
 import { fetchWholeLedger } from '@/lib/run-export'
 import { onCollabEvent, type CollabEventNotice } from '@/lib/collab'
 import { reconnectDelay, streamClosed } from '@/lib/stream-retry'
+import { failureText } from '@/lib/press-failure'
 import { lspWorkspaceSync } from '@/lib/lsp-client'
 import { useLspIndexGen } from '@/lib/lsp-index'
 import { useAuth } from '@/store/auth'
@@ -790,7 +791,7 @@ export const useOperate = create<OperateState>((set, get) => {
         return await modApi.fireSignal(ev.id, name, subject, args, actor, presses)
       } catch (e) {
         if (e instanceof ApiError && e.status === 409 && e.data['moved'] === true) return { moved: true }
-        const error = (e as Error).message
+        const error = failureText((e as Error).message)
         set({ error })
         return { error }
       }

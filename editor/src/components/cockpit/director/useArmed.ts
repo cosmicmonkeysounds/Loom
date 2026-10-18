@@ -23,6 +23,7 @@ import {
 } from '@loom/core/cue-sheet'
 import { lastSeq, type RefusedPress } from './glance'
 import { NO_ANSWER, PRESS_TIMEOUT_MS, movedCue, ownMove, within } from './moves'
+import { failureText } from '@/lib/press-failure'
 
 /** NEXT's cooldown after a press. */
 export const NEXT_COOLDOWN_MS = 1000
@@ -224,7 +225,7 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
       const was = outcomes.get(store) ?? NO_OUTCOME
       const next: PressOutcome =
         res.error !== undefined
-          ? { ...was, result: { kind: PressKind.Failed, id, cue, at, seq, message: res.error } }
+          ? { ...was, result: { kind: PressKind.Failed, id, cue, at, seq, message: failureText(res.error) } }
           : res.refused === true
             ? { result: { kind: PressKind.Refused, id, cue, at, seq }, refused: { cue, at, seq } }
             : { ...was, result: { kind: PressKind.Taken, id, cue, at, seq } }

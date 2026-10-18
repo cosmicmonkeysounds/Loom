@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { movedCue, ownMove, within, OWN_MS, PRESS_TIMEOUT_MS } from './moves'
+import { DOORS_NOT_OPEN, failureText } from '@/lib/press-failure'
 
 describe('movedCue', () => {
   it('names the new LAST', () => {
@@ -43,5 +44,15 @@ describe('within', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('failureText', () => {
+  it('a press before the doors says so, not the server\'s "no scenario loaded"', () => {
+    expect(failureText('no scenario loaded')).toBe(DOORS_NOT_OPEN)
+    expect(DOORS_NOT_OPEN).toMatch(/doors aren't open/u)
+  })
+  it('any other failure is passed through', () => {
+    expect(failureText('boom')).toBe('boom')
   })
 })
