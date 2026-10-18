@@ -141,7 +141,8 @@ EOF2
 cat > "$T/bin/node" <<EOF2
 #!/bin/sh
 n=\$(cat "$FAKE/probes" 2>/dev/null || echo 0); echo \$((n + 1)) > "$FAKE/probes"
-[ "\${FAKE_DB_FAILS:-0}" = -1 ] || [ "\$n" -lt "\${FAKE_DB_FAILS:-0}" ] && { echo "connect ECONNREFUSED 172.18.0.2:5432"; exit 1; }
+[ -n "\${FAKE_DB_REFUSE:-}" ] && { echo "\$FAKE_DB_REFUSE"; exit 2; }
+[ "\${FAKE_DB_FAILS:-0}" = -1 ] || [ "\$n" -lt "\${FAKE_DB_FAILS:-0}" ] && { echo "ECONNREFUSED connect ECONNREFUSED 172.18.0.2:5432"; exit 1; }
 exit 0
 EOF2
 chmod +x "$APP/node_modules/.bin/tsx" "$T/bin/node"
@@ -160,7 +161,15 @@ check "… and says so" grep -q 'answered after 2 s' <<<"$out"
 out="$(ep DATABASE_URL=postgres://loom:pw@db/loom FAKE_DB_FAILS=-1 2>&1)"; rc=$?
 check "no database after the wait: exit 1 (the restart policy retries)" eq "$rc" 1
 check "… without starting the server" test ! -e "$FAKE/tsx"
-check "… naming the error" grep -q 'unreachable after 2 s (connect ECONNREFUSED' <<<"$out"
+check "… naming the error" grep -q 'unreachable after 2 s (ECONNREFUSED connect ECONNREFUSED' <<<"$out"
+out="$(ep DATABASE_URL=postgres://loom:pw@db/loom FAKE_DB_REFUSE='28P01 password authentication failed for user "loom"' 2>&1)"; rc=$?
+check "a refused password: no wait, no migration, the server with the control plane off" eq "$(cat "$FAKE/tsx")" "tsx server/server.ts"
+check "… after one probe" eq "$(cat "$FAKE/probes")" 1
+check "… pointing at POSTGRES_PASSWORD" grep -q 'refused the credentials — check POSTGRES_PASSWORD in .env (28P01 password authentication failed' <<<"$out"
+check "… and never at the network" bash -c "! grep -q 'unreachable' <<<\"\$1\"" _ "$out"
+out="$(ep DATABASE_URL=postgres://loom:pw@db/loom FAKE_DB_REFUSE='3D000 database "loom" does not exist' 2>&1)"
+check "a missing database says so" grep -q 'no such database (3D000' <<<"$out"
+check "… and still runs the event plane" eq "$(cat "$FAKE/tsx")" "tsx server/server.ts"
 out="$(ep DATABASE_URL=postgres://loom:pw@db/loom FAKE_MIGRATE_FAIL=1 2>&1)"; rc=$?
 check "a failed migration still runs the event plane" eq "$(tail -n1 "$FAKE/tsx")" "tsx server/server.ts"
 teardown

@@ -793,6 +793,15 @@ shell at `/`.
   (`LOOM_DB_WAIT`), then exits so the restart policy tries again; the
   server keeps retrying too and brings every live event back once the
   database answers — no second restart needed.
+- **The log says `the database refused the credentials — check
+  POSTGRES_PASSWORD in .env (28P01 …)` or `no such database (3D000 …)`**
+  — Postgres answers but won't let loom in, which no restart fixes, so the
+  entrypoint doesn't wait: it starts loom with the control plane off
+  (`/api/health` answers 503 `database`). Usually `POSTGRES_PASSWORD` was
+  edited in `.env` after the `pgdata` volume was created — Postgres keeps
+  the password it was first booted with. Put the old value back (or
+  `ALTER USER loom PASSWORD '…'` inside `docker compose exec db psql -U
+  loom`), then `docker compose up -d loom`.
 - **Site unreachable** — `docker compose ps` (is caddy up?), then
   `sudo ufw status` (80/443 open?), then the OVH panel firewall.
 - **HTTPS won't issue** — the A record must already point at the VPS
