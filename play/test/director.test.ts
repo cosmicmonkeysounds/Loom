@@ -35,6 +35,7 @@ import {
   cueLocked,
   viewLatch,
   armWarnings,
+  cueRowClass,
   NEXT_COOLDOWN_MS,
   STALE_TOAST,
   pollDelay,
@@ -682,5 +683,21 @@ describe("the armed row warns out of turn", () => {
     const flat = directorRows({ interactions: [{ id: "x", label: "x", who: "admin", live: false }, { id: "y", label: "y", who: "admin" }], cues: { last: null, fired: [] } });
     expect(armWarnings(flat[0]!, sheetLayout(flat))).toEqual(["⚠ Not on offer now: the story may refuse it"]);
     expect(armWarnings(flat[1]!, sheetLayout(flat))).toEqual([]);
+  });
+});
+
+describe("fired rows are muted", () => {
+  it("a fired row is muted unless it is LAST, NEXT or armed; off-branch dimming stays its own class", () => {
+    const view: DirectorView = { ...ACTS, cues: { last: "bingo", fired: ["call", "bingo"] } };
+    const rows = directorRows(view);
+    const by = (id: string) => rows.find((r) => r.id === id)!;
+    expect(cueRowClass(by("call"), false, false).split(" ")).toContain("fired");
+    expect(cueRowClass(by("call"), true, false).split(" ")).not.toContain("fired");
+    expect(cueRowClass(by("bingo"), false, false).split(" ")).toEqual(["choice", "cue-row", "last"]);
+    expect(cueRowClass(by("hunt"), false, false).split(" ")).toEqual(["choice", "cue-row", "next"]);
+    // A repeat cue the night has moved past is muted like any other.
+    const again = directorRows({ interactions: [{ id: "results", label: "📋", who: "admin", repeat: true }, { id: "z", label: "z", who: "admin" }], cues: { last: "z", fired: ["results", "z"] } });
+    expect(cueRowClass(again[0]!, false, false).split(" ")).toContain("fired");
+    expect(cueRowClass({ last: false, next: false, fired: false, live: false }, false, false)).toBe("choice cue-row off");
   });
 });

@@ -730,6 +730,24 @@ function DirectorLogin({ notice, onLogin, onBack }: { notice: string | null; onL
   );
 }
 
+/** A cue row's classes. A fired row is muted (flat, grey) unless it is
+ *  LAST, NEXT (a repeat cue) or armed, so what is still to go stands out;
+ *  `off` (a `while:` that is false: dimmed) is a different look on purpose. */
+export function cueRowClass(row: Pick<CueRow, "last" | "next" | "fired" | "live">, armed: boolean, warn: boolean): string {
+  return [
+    "choice",
+    "cue-row",
+    row.last ? "last" : null,
+    row.next ? "next" : null,
+    row.fired && !row.last && !row.next && !armed ? "fired" : null,
+    armed ? "armed" : null,
+    warn ? "warn" : null,
+    row.live ? null : "off",
+  ]
+    .filter((c) => c !== null)
+    .join(" ");
+}
+
 function CueButton({ row, armed, locked, sending, warnings, actCode, onTap }: { row: CueRow; armed: Armed | null; locked: boolean; sending: boolean; warnings: string[]; actCode?: string | null; onTap: () => void }) {
   const isArmed = armed !== null && armed.id === row.id;
   const warn = isArmed && warnings.length > 0;
@@ -738,7 +756,7 @@ function CueButton({ row, armed, locked, sending, warnings, actCode, onTap }: { 
     <li>
       <button
         type="button"
-        className={`choice cue-row ${row.last ? "last" : ""} ${row.next ? "next" : ""} ${isArmed ? "armed" : ""} ${warn ? "warn" : ""} ${row.live ? "" : "off"}`}
+        className={cueRowClass(row, isArmed, warn)}
         data-next={row.next ? "true" : undefined}
         data-last={row.last ? "true" : undefined}
         disabled={locked}
