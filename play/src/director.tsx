@@ -260,27 +260,32 @@ export function soonestCountdown(countdowns: DirectorView["countdowns"], nowMs: 
  *  cue), else the soonest countdown — why nothing is on offer — else none. */
 export type NextBar =
   | { kind: "next"; row: CueRow; again: boolean }
-  | { kind: "countdown"; label: string; left: number }
+  /** `held`: the story clock is stopped (paused), so the countdown is too. */
+  | { kind: "countdown"; label: string; left: number; held?: true }
   | { kind: "none" };
 
-export function nextBar(rows: CueRow[], countdowns: DirectorView["countdowns"], nowMs: number | null): NextBar {
+export function nextBar(rows: CueRow[], countdowns: DirectorView["countdowns"], nowMs: number | null, runs = true): NextBar {
   const next = rows.find((r) => r.next);
   if (next !== undefined) return { kind: "next", row: next, again: next.last };
   const soon = soonestCountdown(countdowns, nowMs);
-  return soon !== null ? { kind: "countdown", ...soon } : { kind: "none" };
+  if (soon === null) return { kind: "none" };
+  return runs ? { kind: "countdown", ...soon } : { kind: "countdown", ...soon, held: true };
 }
 
 /** What the bar says when nothing is on offer: never a bare `NEXT —` in
  *  front of a countdown, which reads as "NEXT: Midnight". */
 export const NOTHING_TO_PRESS = "NEXT — nothing to press";
 export const STORY_RUNS = "The story runs.";
+/** …and while the clock is stopped, never "The story runs." under a
+ *  strip that says ⏸. */
+export const CLOCK_HELD = "⏸ Paused: the clock is stopped.";
 
 /** The bar as text: `NEXT 📊 Trust Chart`, `AGAIN 📋 Results…`,
  *  `NEXT — nothing to press. The story runs. ⏱ Midnight in 37:52`, or
  *  `NEXT — nothing to press`. */
 export function nextBarText(bar: NextBar): string {
   if (bar.kind === "next") return `${bar.again ? "AGAIN" : "NEXT"} ${cueTitleTags(bar.row.title).title}`;
-  if (bar.kind === "countdown") return `${NOTHING_TO_PRESS}. ${STORY_RUNS} ${countdownText(bar)}`;
+  if (bar.kind === "countdown") return `${NOTHING_TO_PRESS}. ${bar.held === true ? CLOCK_HELD : STORY_RUNS} ${countdownText(bar)}`;
   return NOTHING_TO_PRESS;
 }
 
@@ -793,7 +798,14 @@ export function cueRowClass(row: Pick<CueRow, "last" | "next" | "fired" | "live"
     .join(" ");
 }
 
-function CueButton({ row, armed, locked, sending, warnings, actCode, onTap }: { row: CueRow; armed: Armed | null; locked: boolean; sending: boolean; warnings: string[]; actCode?: string | null; onTap: () => void }) {
+/** An armed row's call to action: a subject cue names who it goes to on
+ *  the row itself (the hint at the top of the list may be scrolled away). */
+export function armLine(armed: Pick<Armed, "subject" | "value">, subjectName: string | null): string {
+  if (armed.subject === null) return "Tap again to fire";
+  return `Tap again to fire → ${subjectName ?? armed.subject}${armed.value !== undefined ? ` (${armed.value})` : ""}`;
+}
+
+function CueButton({ row, armed, locked, sending, warnings, actCode, subjectName, onTap }: { row: CueRow; armed: Armed | null; locked: boolean; sending: boolean; warnings: string[]; actCode?: string | null; subjectName?: string | null; onTap: () => void }) {
   const isArmed = armed !== null && armed.id === row.id;
   const warn = isArmed && warnings.length > 0;
   const { title, tags } = cueTitleTags(row.title);
@@ -818,7 +830,7 @@ function CueButton({ row, armed, locked, sending, warnings, actCode, onTap }: { 
             <span className="cue-arm">Sending…</span>
           ) : isArmed ? (
             <>
-              <span className="cue-arm">Tap again to fire</span>
+              <span className="cue-arm">{armLine(armed!, subjectName ?? null)}</span>
               {warnings.map((w) => (
                 <span key={w} className="cue-warn" data-testid="cue-warn">
                   {w}
@@ -888,7 +900,7 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
     return () => clearInterval(t);
   }, [ticking, s.receivedAt]);
   const nowMs = storyNow(s.view?.clock, s.receivedAt, Math.max(wall, s.receivedAt), runs);
-  const bar = nextBar(rows, s.view?.countdowns, nowMs);
+  const bar = nextBar(rows, s.view?.countdowns, nowMs, runs);
   const strip = stripItems(s.view, layout, nowMs);
 
   // An armed cue disarms itself if the second tap never comes.
@@ -943,10 +955,11 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
       });
     }
   };
+  const subjectName = armed?.subject != null ? s.view?.roster?.find((p) => p.id === armed.subject)?.name ?? null : null;
   const rowList = (list: CueRow[]) => (
     <ol className="cue-list">
       {list.map((r) => (
-        <CueButton key={r.id} row={r} armed={armed} locked={cueLocked(r, pending, cooling)} sending={pending === r.id} warnings={armWarnings(r, layout)} onTap={() => tap(r)} />
+        <CueButton key={r.id} row={r} armed={armed} locked={cueLocked(r, pending, cooling)} sending={pending === r.id} warnings={armWarnings(r, layout)} subjectName={subjectName} onTap={() => tap(r)} />
       ))}
     </ol>
   );
@@ -966,7 +979,6 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
     });
   };
   const pickingRow = picking !== null ? rows.find((r) => r.id === picking) ?? null : null;
-  const subjectName = armed?.subject != null ? s.view?.roster?.find((p) => p.id === armed.subject)?.name ?? null : null;
 
   return (
     <div className="root">
@@ -1013,7 +1025,7 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
               ) : bar.kind === "countdown" ? (
                 <span className="cue-nextbar-stack">
                   <span className="cue-nextbar-tag">
-                    {NOTHING_TO_PRESS}. <span className="cue-nextbar-runs">{STORY_RUNS}</span>
+                    {NOTHING_TO_PRESS}. <span className="cue-nextbar-runs">{bar.held === true ? CLOCK_HELD : STORY_RUNS}</span>
                   </span>
                   <span className={`cue-nextbar-title ${bar.left < URGENT_S ? "urgent" : ""}`}>{countdownText(bar)}</span>
                 </span>
@@ -1039,7 +1051,7 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
           ) : query.trim() !== "" || layout.kind === "flat" ? (
             <ol className="cue-list">
               {shown.map((r) => (
-                <CueButton key={r.id} row={r} armed={armed} locked={cueLocked(r, pending, cooling)} sending={pending === r.id} warnings={armWarnings(r, layout)} actCode={layout.kind === "acts" && r.act !== null ? splitCode(r.act).code ?? null : null} onTap={() => tap(r)} />
+                <CueButton key={r.id} row={r} armed={armed} locked={cueLocked(r, pending, cooling)} sending={pending === r.id} warnings={armWarnings(r, layout)} subjectName={subjectName} actCode={layout.kind === "acts" && r.act !== null ? splitCode(r.act).code ?? null : null} onTap={() => tap(r)} />
               ))}
               {shown.length === 0 && <li className="muted pad">No cue matches.</li>}
             </ol>

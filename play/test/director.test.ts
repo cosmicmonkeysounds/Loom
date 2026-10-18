@@ -25,6 +25,8 @@ import {
   initialRole,
   nextBar,
   nextBarText,
+  armLine,
+  CLOCK_HELD,
   phoneLabel,
   phoneTap,
   sheetLayout,
@@ -752,5 +754,23 @@ describe("before the doors", () => {
     expect(noCuesText({})).toMatch(/no director cues/u);
     expect(noCuesText(null)).toMatch(/no director cues/u);
     expect(DOORS_CLOSED).toMatch(/doors/u);
+  });
+});
+
+describe("the phone while paused, and an armed person", () => {
+  it("never says the story runs while the clock is stopped", () => {
+    const rows = directorRows({ interactions: [], cues: { last: null, fired: [] } });
+    const countdowns = [{ label: "Hunt 1 ends", endsAt: 1000 }];
+    const held = nextBar(rows, countdowns, 103_000, false);
+    expect(held).toEqual({ kind: "countdown", label: "Hunt 1 ends", left: 897, held: true });
+    expect(nextBarText(held)).toBe(`NEXT — nothing to press. ${CLOCK_HELD} ⏱ Hunt 1 ends in 14:57`);
+    expect(nextBarText(nextBar(rows, countdowns, 103_000))).toBe("NEXT — nothing to press. The story runs. ⏱ Hunt 1 ends in 14:57");
+  });
+
+  it("an armed subject cue names its person on the row", () => {
+    expect(armLine({ subject: null }, null)).toBe("Tap again to fire");
+    expect(armLine({ subject: "g1" }, "WinZip")).toBe("Tap again to fire → WinZip");
+    expect(armLine({ subject: "g1", value: "3" }, "Winamp")).toBe("Tap again to fire → Winamp (3)");
+    expect(armLine({ subject: "g9" }, null)).toBe("Tap again to fire → g9");
   });
 });
