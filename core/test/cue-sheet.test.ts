@@ -162,6 +162,28 @@ describe("the phone cue page's server surface (W-26)", () => {
     expect(JSON.stringify(lean.json).length * 3).toBeLessThan(JSON.stringify(full.json).length);
     rt.dispose();
   });
+
+  it("?cues=1 says when the story clock is stopped, so the phone's countdowns freeze", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "loom-cuephone-"));
+    dirs.push(dir);
+    const store = new Store(dir);
+    const rt = new EventRuntime({ eventId: "evt", store, codes: CODES, scenarioName: "cue-phone", scenarioSource: SOURCE, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const token = (await call(rt, "POST", "/api/mod/login", { passcode: CODES.mod })).json["token"] as string;
+    const lean = async () => (await call(rt, "GET", "/api/state?role=mod&cues=1", {}, token)).json as unknown as ReturnType<typeof cueSheetView>;
+    rt.tickOnce(5000);
+    const open = await lean();
+    expect(open).not.toHaveProperty("paused");
+    rt.pause();
+    rt.tickOnce(5000); // a paused runtime's clock holds still
+    const paused = await lean();
+    expect(paused.paused).toBe(true);
+    expect(paused.clock).toBe(open.clock);
+    expect(cueSheetView({ phase: "idle" }).paused).toBe(true);
+    expect(cueSheetView({ phase: "open" })).not.toHaveProperty("paused");
+    expect(cueSheetView({})).not.toHaveProperty("paused"); // an older ModView: assume it runs
+    rt.dispose();
+  });
 });
 
 describe("NEXT skips what already ran (T7-01)", () => {

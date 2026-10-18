@@ -9,7 +9,9 @@ import { searchHelp } from "../../docs/help/helpdoc.ts";
 import { articlesFor } from "../src/help.tsx";
 
 import { ApiError } from "../src/client.ts";
+import { cueSheetView } from "../../core/src/cue-sheet.ts";
 import {
+  ARM_DEAD_MS,
   ARM_MS,
   DIRECTOR_KEY,
   armFor,
@@ -19,7 +21,25 @@ import {
   fireToast,
   takesValue,
   initialRole,
+  nextBar,
+  nextBarText,
   phoneLabel,
+  phoneTap,
+  sheetLayout,
+  foldedLine,
+  formatLeft,
+  storyNow,
+  stripItems,
+  clockRuns,
+  STOPPED,
+  cueLocked,
+  viewLatch,
+  armWarnings,
+  cueRowClass,
+  fromAct,
+  disarmOnLeave,
+  NEXT_COOLDOWN_MS,
+  STALE_TOAST,
   pollDelay,
   pollOutcome,
   roleForBrand,
@@ -90,11 +110,13 @@ describe("arm, then fire", () => {
   it("a subject cue asks for a person first, then fires with them", () => {
     expect(tapCue(null, award, 0)).toEqual({ kind: "pick", id: "award_most_trusted" });
     const armed = armFor("award_most_trusted", "g1", 50);
-    expect(tapCue(armed, award, 100)).toEqual({ kind: "fire", id: "award_most_trusted", subject: "g1" });
+    // Inside the dead time a second tap does nothing; from 300 ms on it fires.
+    expect(tapCue(armed, award, 100)).toEqual({ kind: "ignore" });
+    expect(tapCue(armed, award, 50 + ARM_DEAD_MS)).toEqual({ kind: "fire", id: "award_most_trusted", subject: "g1" });
     // A value typed in the picker is armed with the person and fired with them.
     const valued = armFor("award_most_trusted", "g1", 50, " 4 ");
     expect(valued.value).toBe("4");
-    expect(tapCue(valued, award, 100)).toEqual({ kind: "fire", id: "award_most_trusted", subject: "g1", value: "4" });
+    expect(tapCue(valued, award, 400)).toEqual({ kind: "fire", id: "award_most_trusted", subject: "g1", value: "4" });
     expect(armFor("award_most_trusted", "g1", 50, "  ")).not.toHaveProperty("value");
     // the arm lapses: the next tap asks again
     expect(tapCue(armed, award, 50 + ARM_MS).kind).toBe("pick");
@@ -389,5 +411,329 @@ describe("takesValue", () => {
   it("offers the value box on an award only", () => {
     expect(takesValue("award_best_liar")).toBe(true);
     for (const id of ["beat_the_king", "reinstallation begun", "start_the_ceremony"]) expect(takesValue(id), id).toBe(false);
+  });
+});
+
+/** A two-act sheet (B, C) with Anytime between them, as a new server sends it. */
+const ACTS: DirectorView = {
+  interactions: [
+    { id: "call", label: "C1 · 📣 Call everyone", who: "admin", act: "B · Act I: the Desktop" },
+    { id: "bingo", label: "V2 · 🎱 Bingo", who: "admin" },
+    { id: "ring", label: "☎️ Telephone (Optional)", who: "admin", sequence: false },
+    { id: "lights", label: "💡 Lights back", who: "admin", sequence: false, act: "Anytime" },
+    { id: "hunt", label: "📺 Preview hunt 2", who: "admin", act: "C · The hour" },
+    { id: "summons", label: "📓 Hunt 2", who: "admin" },
+    { id: "timer", label: "⏳ Timer (auto)", who: "admin", sequence: false },
+    { id: "duck", label: "🦆 Duck found", who: "admin", sequence: false, act: "anytime" },
+  ],
+  cues: { last: null, fired: [] },
+};
+
+describe("acts on the phone", () => {
+  it("groups rows by act and folds past acts", () => {
+    const view: DirectorView = { ...ACTS, cues: { last: "bingo", fired: ["call", "bingo"] } };
+    const layout = sheetLayout(directorRows(view));
+    expect(layout.kind).toBe("acts");
+    if (layout.kind !== "acts") return;
+    expect(layout.acts.map((a) => [a.code ?? a.title, a.state])).toEqual([
+      ["B", "past"],
+      ["Anytime", "anytime"],
+      ["C", "focus"],
+    ]);
+    // Anytime rejoined by folded name: 💡 and 🦆 in one act.
+    expect(layout.acts[1]!.rows.map((r) => r.id)).toEqual(["lights", "duck"]);
+    // The past act folds to one line; its fallbacks are the previous act's.
+    expect(foldedLine(layout.acts[0]!)).toBe("✓ B · Act I: the Desktop 2/2");
+    expect(layout.previous).toBe(0);
+    expect(layout.acts[layout.previous]!.asides.map((r) => r.id)).toEqual(["ring"]);
+    expect(layout.acts[layout.focus]!.starting).toBe(true);
+    // At the doors B is the focus and C is still to come.
+    const doors = sheetLayout(directorRows(ACTS));
+    if (doors.kind !== "acts") throw new Error("acts");
+    expect(doors.acts[doors.focus]!.code).toBe("B");
+    expect(foldedLine(doors.acts[2]!)).toBe("C · The hour · 2 cues · next: 📺 Preview hunt 2");
+  });
+
+  it("flat list against a view without acts", () => {
+    // An old server (no act on any row), or a story with no act: lines.
+    const layout = sheetLayout(directorRows(VIEW));
+    expect(layout).toEqual({ kind: "flat", rows: directorRows(VIEW) });
+    expect(stripItems(VIEW, layout, null)).toEqual([{ text: "desktop" }]);
+    expect(nextBarText(nextBar(directorRows(VIEW), undefined, null))).toBe("NEXT 🎱 Start Computer Bingo");
+  });
+
+  it("NEXT bar shows the countdown when NEXT is empty", () => {
+    // Everything in sequence fired: no NEXT, and Midnight runs.
+    const view: DirectorView = {
+      ...ACTS,
+      cues: { last: "summons", fired: ["call", "bingo", "hunt", "summons"] },
+      clock: 1_000_000,
+      countdowns: [
+        { label: "Summons closes", endsAt: 1000 + 600 },
+        { label: "Midnight", endsAt: 1000 + 2272 },
+      ],
+    };
+    const rows = directorRows(view);
+    expect(rows.some((r) => r.next)).toBe(false);
+    // 2 s after the poll landed the soonest countdown is 9:58.
+    const now = storyNow(view.clock, 5000, 7000);
+    expect(now).toBe(1_002_000);
+    const bar = nextBar(rows, view.countdowns, now);
+    expect(bar).toEqual({ kind: "countdown", label: "Summons closes", left: 598 });
+    // Never a bare "NEXT —" before the countdown (it read as "NEXT: Midnight").
+    expect(nextBarText(bar)).toBe("NEXT — nothing to press. The story runs. ⏱ Summons closes in 9:58");
+    expect(nextBarText({ kind: "none" })).toBe("NEXT — nothing to press");
+    // A countdown that ran out drops off; none left: nothing to press.
+    expect(nextBar(rows, view.countdowns, storyNow(view.clock, 0, 3_000_000))).toEqual({ kind: "none" });
+    expect(nextBar(rows, view.countdowns, null)).toEqual({ kind: "none" });
+    // With a NEXT the bar names it; a repeat LAST reads AGAIN.
+    expect(nextBarText(nextBar(directorRows(ACTS), view.countdowns, now))).toBe("NEXT 📣 Call everyone");
+    const again = directorRows({ interactions: [{ id: "results", label: "📋 Results", who: "admin", repeat: true }], cues: { last: "results", fired: ["results"] } });
+    expect(nextBarText(nextBar(again, undefined, null))).toBe("AGAIN 📋 Results");
+    expect(formatLeft(3723)).toBe("1:02:03");
+    expect(formatLeft(59.9)).toBe("0:59");
+  });
+
+  it("the strip: act, phase, the soonest countdown (red under a minute), ≤ 3 watch values", () => {
+    const view: DirectorView = {
+      ...ACTS,
+      world: [{ path: "Night.phase", value: '"y2k"' }],
+      clock: 100_000,
+      countdowns: [{ label: "Midnight", endsAt: 130 }],
+      watch: [
+        { label: "Y2K clock", value: '"23:30"' },
+        { label: "Judge", value: "null" },
+        { label: "The Heart", value: "true" },
+        { label: "Fourth", value: "4" },
+      ],
+    };
+    const items = stripItems(view, sheetLayout(directorRows(view)), storyNow(view.clock, 0, 0));
+    expect(items).toEqual([{ text: "B" }, { text: "y2k" }, { text: "⏱ Midnight 0:30", urgent: true }, { text: "Y2K clock 23:30" }, { text: "Judge —" }, { text: "The Heart ●" }]);
+  });
+
+  it("countdowns freeze while the event is paused, and through a failing poll", () => {
+    // Paused at 11:20 pm with Midnight 37:52 away: the server's clock holds
+    // still, so the phone's must too — between polls, and however long the
+    // poll keeps failing — never draining to "nothing to press".
+    const paused: DirectorView = { ...ACTS, cues: { last: "summons", fired: ["call", "bingo", "hunt", "summons"] }, clock: 1_000_000, paused: true, countdowns: [{ label: "Midnight", endsAt: 1000 + 2272 }] };
+    expect(clockRuns(paused)).toBe(false);
+    const rows = directorRows(paused);
+    for (const later of [0, 3000, 60_000, 3_000_000]) {
+      const now = storyNow(paused.clock, 5000, 5000 + later, clockRuns(paused));
+      expect(now).toBe(1_000_000);
+      expect(nextBar(rows, paused.countdowns, now)).toEqual({ kind: "countdown", label: "Midnight", left: 2272 });
+    }
+    expect(stripItems(paused, sheetLayout(rows), 1_000_000).map((i) => i.text)).toContain(STOPPED);
+    // Running, it ticks on (and the strip says nothing about the clock).
+    const running: DirectorView = { ...paused, paused: undefined };
+    expect(clockRuns(running)).toBe(true);
+    expect(storyNow(running.clock, 5000, 8000, clockRuns(running))).toBe(1_003_000);
+    expect(stripItems(running, sheetLayout(rows), 1_000_000).map((i) => i.text)).not.toContain(STOPPED);
+    // A full ModView (an older server ignoring ?cues=1) says it through phase.
+    expect(clockRuns({ phase: "paused" })).toBe(false);
+    expect(clockRuns({ phase: "idle" })).toBe(false);
+    expect(clockRuns({ phase: "open" })).toBe(true);
+    // The server's lean read and the phone agree.
+    expect(clockRuns(cueSheetView({ phase: "paused" }) as DirectorView)).toBe(false);
+  });
+
+  it("the lean view carries no secret watch values", () => {
+    // What the server's `?cues=1` read makes of a ModView with a secret
+    // (Kernel) watch, a role and a person item: only global, non-secret.
+    const lean = cueSheetView({
+      interactions: ACTS.interactions,
+      world: [
+        { path: "Night.clock", value: '"23:30"' },
+        { path: "Kernel.door_code", value: '"4471"' },
+      ],
+      watch: [
+        { label: "Door code", path: "Kernel.door_code", scope: "character", secret: true },
+        { label: "Cleared", path: "Program.cleared", scope: "role" },
+        { label: "Excel", path: null, scope: "person" },
+        { label: "Y2K clock", path: "Night.clock", scope: "global" },
+      ],
+    });
+    expect(JSON.stringify(lean)).not.toContain("4471");
+    expect(JSON.stringify(lean)).not.toContain("Door code");
+    const items = stripItems(lean as DirectorView, sheetLayout(directorRows(lean as DirectorView)), null);
+    expect(items.map((i) => i.text)).toEqual(["B", "Y2K clock 23:30"]);
+    // Nor the descriptions: the phone never reads one.
+    expect(lean.interactions.some((i) => "description" in i)).toBe(false);
+  });
+});
+
+describe("the dead time and stale arms", () => {
+  const rows = directorRows(ACTS);
+  const call = rows[0]!;
+  const marks = ACTS.cues!;
+
+  it("ignore tap inside the dead time", () => {
+    const first = phoneTap(null, call, 1000, marks);
+    expect(first.kind).toBe("arm");
+    if (first.kind !== "arm") return;
+    // A fast double tap (the 📋 question-skip hazard) only arms.
+    expect(phoneTap(first.armed, call, 1000 + ARM_DEAD_MS - 1, marks)).toEqual({ kind: "ignore" });
+    expect(phoneTap(first.armed, call, 1000 + ARM_DEAD_MS, marks)).toEqual({ kind: "fire", id: "call", subject: null });
+    // A first tap on another cue is never inside anyone's dead time.
+    expect(phoneTap(first.armed, rows[1]!, 1050, marks).kind).toBe("arm");
+  });
+
+  it("stale arm is not fired", () => {
+    const first = phoneTap(null, call, 0, marks);
+    if (first.kind !== "arm") throw new Error("arm");
+    expect(first.armed).toMatchObject({ last: null, firedCount: 0 });
+    // Another director fired 📣 between the taps: the arm is stale.
+    const moved = { last: "call", fired: ["call"] };
+    expect(phoneTap(first.armed, call, 1000, moved)).toEqual({ kind: "stale", id: "call" });
+    expect(STALE_TOAST).toBe("Cues moved — tap again");
+    // A subject cue armed through the picker is bound the same way.
+    const award = directorRows(VIEW)[3]!;
+    const armed = armFor("award_most_trusted", "g1", 0, undefined, VIEW.cues);
+    expect(phoneTap(armed, award, 500, VIEW.cues!)).toEqual({ kind: "fire", id: "award_most_trusted", subject: "g1" });
+    expect(phoneTap(armed, award, 500, { last: "start_the_bingo", fired: ["call_to_the_desktop", "start_the_bingo"] }).kind).toBe("stale");
+    // A lapsed arm is not stale: the tap just arms again.
+    expect(phoneTap(first.armed, call, ARM_MS, moved).kind).toBe("arm");
+  });
+});
+
+describe("one press at a time", () => {
+  const rows = directorRows(ACTS);
+  const next = rows.find((r) => r.next)!;
+  const other = rows.find((r) => !r.next)!;
+
+  it("a press in flight locks every cue; NEXT cools down a second after", () => {
+    // Firing 📣: nothing else may be armed or fired until it lands.
+    expect(cueLocked(other, "call", false)).toBe(true);
+    expect(cueLocked(next, "call", false)).toBe(true);
+    // Landed: NEXT (now the following cue) waits out the cooldown; others don't.
+    expect(cueLocked(next, null, true)).toBe(true);
+    expect(cueLocked(other, null, true)).toBe(false);
+    expect(cueLocked(next, null, false)).toBe(false);
+    expect(NEXT_COOLDOWN_MS).toBe(1000);
+  });
+
+  it("a press waits for a poll that started after it, so its own move never reads as stale", async () => {
+    const timers: Array<{ fn: () => void; ms: number }> = [];
+    const latch = viewLatch(
+      (fn, ms) => {
+        const t = { fn, ms };
+        timers.push(t);
+        return t;
+      },
+      (t) => {
+        const i = timers.indexOf(t as { fn: () => void; ms: number });
+        if (i >= 0) timers.splice(i, 1);
+      },
+    );
+    // A poll is in flight when the press lands (it may predate the press).
+    const old = latch.begin();
+    let done = false;
+    const wait = latch.after(latch.started, 3000).then(() => {
+      done = true;
+    });
+    latch.landed(old); // the old poll's marks: not enough
+    await Promise.resolve();
+    expect(done).toBe(false);
+    const fresh = latch.begin(); // the repoll
+    latch.landed(fresh);
+    await wait;
+    expect(done).toBe(true);
+    expect(timers).toHaveLength(0); // its timeout is cleared
+    // No poll ever lands (hidden page, failing poll): it lets go after the wait.
+    let gaveUp = false;
+    const stuck = latch.after(latch.started, 3000).then(() => {
+      gaveUp = true;
+    });
+    expect(timers.map((t) => t.ms)).toEqual([3000]);
+    timers[0]!.fn();
+    await stuck;
+    expect(gaveUp).toBe(true);
+    latch.landed(latch.begin()); // a late poll finds no waiter left
+  });
+
+  it("an arm made after the press's poll is bound to the moved marks, so it fires", () => {
+    // 📣 fired from this phone; the lock held until the poll showed it.
+    const after = { last: "call", fired: ["call"] };
+    const moved = directorRows({ ...ACTS, cues: after });
+    const bingo = moved.find((r) => r.next)!;
+    const first = phoneTap(null, bingo, 0, after);
+    if (first.kind !== "arm") throw new Error("arm");
+    expect(phoneTap(first.armed, bingo, 500, after)).toMatchObject({ kind: "fire", id: bingo.id });
+  });
+});
+
+describe("the armed row warns out of turn", () => {
+  it("a cue not on offer, or a spine cue from another act, warns on the armed row — never blocks", () => {
+    // At the doors the night is in B; C's 📺 unfolded by hand is out of turn.
+    const view: DirectorView = { ...ACTS, interactions: [...ACTS.interactions!, { id: "ending", label: "🔥 An ending", who: "admin", live: false, act: "F · Finale" }] };
+    const rows = directorRows(view);
+    const layout = sheetLayout(rows);
+    const by = (id: string) => rows.find((r) => r.id === id)!;
+    expect(armWarnings(by("call"), layout)).toEqual([]);
+    expect(armWarnings(by("hunt"), layout)).toEqual(["⚠ This is a C cue; the night is in B"]);
+    // Fallbacks and Anytime cues are never out of turn.
+    expect(armWarnings(by("timer"), layout)).toEqual([]);
+    expect(armWarnings(by("lights"), layout)).toEqual([]);
+    // Dimmed in F (another branch): arming says so, as well as the act.
+    expect(armWarnings(by("ending"), layout)).toEqual(["⚠ Not on offer now: the story may refuse it", "⚠ This is a F cue; the night is in B"]);
+    // The armed tap still fires: the warning never blocks.
+    const ending = by("ending");
+    const first = phoneTap(null, ending, 0, view.cues!);
+    if (first.kind !== "arm") throw new Error("arm");
+    expect(phoneTap(first.armed, ending, 500, view.cues!).kind).toBe("fire");
+    // A flat sheet has no acts to compare: only the offer warning.
+    const flat = directorRows({ interactions: [{ id: "x", label: "x", who: "admin", live: false }, { id: "y", label: "y", who: "admin" }], cues: { last: null, fired: [] } });
+    expect(armWarnings(flat[0]!, sheetLayout(flat))).toEqual(["⚠ Not on offer now: the story may refuse it"]);
+    expect(armWarnings(flat[1]!, sheetLayout(flat))).toEqual([]);
+  });
+});
+
+describe("fired rows are muted", () => {
+  it("a fired row is muted unless it is LAST, NEXT or armed; off-branch dimming stays its own class", () => {
+    const view: DirectorView = { ...ACTS, cues: { last: "bingo", fired: ["call", "bingo"] } };
+    const rows = directorRows(view);
+    const by = (id: string) => rows.find((r) => r.id === id)!;
+    expect(cueRowClass(by("call"), false, false).split(" ")).toContain("fired");
+    expect(cueRowClass(by("call"), true, false).split(" ")).not.toContain("fired");
+    expect(cueRowClass(by("bingo"), false, false).split(" ")).toEqual(["choice", "cue-row", "last"]);
+    expect(cueRowClass(by("hunt"), false, false).split(" ")).toEqual(["choice", "cue-row", "next"]);
+    // A repeat cue the night has moved past is muted like any other.
+    const again = directorRows({ interactions: [{ id: "results", label: "📋", who: "admin", repeat: true }, { id: "z", label: "z", who: "admin" }], cues: { last: "z", fired: ["results", "z"] } });
+    expect(cueRowClass(again[0]!, false, false).split(" ")).toContain("fired");
+    expect(cueRowClass({ last: false, next: false, fired: false, live: false }, false, false)).toBe("choice cue-row off");
+  });
+});
+
+describe("the previous act's fallbacks", () => {
+  it("show once: under the focus act, or in the previous act's own section when it is unfolded", () => {
+    const layout = sheetLayout(directorRows({ ...ACTS, cues: { last: "bingo", fired: ["call", "bingo"] } }));
+    if (layout.kind !== "acts") throw new Error("acts");
+    const b = layout.acts[layout.previous]!;
+    expect(fromAct(layout, new Set())?.asides.map((r) => r.id)).toEqual(["ring"]);
+    // Looking back at B by hand: its section lists ☎️, so no from-B line.
+    expect(fromAct(layout, new Set([b.key]))).toBeNull();
+    // At the doors there is no previous act.
+    expect(fromAct(sheetLayout(directorRows(ACTS)), new Set())).toBeNull();
+    expect(fromAct(sheetLayout(directorRows(VIEW)), new Set())).toBeNull();
+  });
+});
+
+describe("looking away drops the arm", () => {
+  it("disarms when the page goes hidden or the window blurs, and unsubscribes", () => {
+    const doc = Object.assign(new EventTarget(), { visibilityState: "visible" as DocumentVisibilityState });
+    const win = new EventTarget();
+    let drops = 0;
+    const off = disarmOnLeave(doc as unknown as Document, win as unknown as Window, () => drops++);
+    doc.dispatchEvent(new Event("visibilitychange")); // back to visible: nothing
+    expect(drops).toBe(0);
+    doc.visibilityState = "hidden";
+    doc.dispatchEvent(new Event("visibilitychange")); // the screen locks
+    expect(drops).toBe(1);
+    win.dispatchEvent(new Event("blur")); // another app takes focus
+    expect(drops).toBe(2);
+    off();
+    win.dispatchEvent(new Event("blur"));
+    doc.dispatchEvent(new Event("visibilitychange"));
+    expect(drops).toBe(2);
   });
 });

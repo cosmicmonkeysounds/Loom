@@ -392,6 +392,10 @@ export interface CueSheetView {
   /** The story clock (ms) when the view was built — what the countdowns
    *  tick down from, plus the wall time since the poll. */
   clock?: number;
+  /** The story clock is stopped (the event is paused, or the doors have
+   *  not opened): `clock` holds still, so a countdown must not tick on.
+   *  Absent while the clock runs, and from an older server. */
+  paused?: true;
   /** The live countdowns (`ModView.countdowns`), when any is running. */
   countdowns?: { label: string; endsAt: number }[];
   /** Up to 3 live `watch:` values — global ones only, never a secret. */
@@ -417,6 +421,8 @@ export function cueSheetView(view: {
   world?: readonly WorldLine[];
   roster?: readonly CuePerson[];
   clock?: number;
+  /** The runtime phase (`ModView.phase`): the clock runs only while `open`. */
+  phase?: string;
   watch?: readonly WatchInput[];
   countdowns?: readonly { label: string; endsAt: number }[];
 }): CueSheetView {
@@ -444,6 +450,7 @@ export function cueSheetView(view: {
     world: world.filter((w) => w.path === "Night.phase").map((w) => ({ path: w.path, value: w.value })),
     roster: (view.roster ?? []).map((p) => ({ id: p.id, name: p.name, location: p.location, ...(p.owner !== undefined ? { owner: p.owner } : {}) })),
     ...(view.clock !== undefined ? { clock: view.clock } : {}),
+    ...(view.phase !== undefined && view.phase !== "open" ? { paused: true as const } : {}),
     ...(countdowns.length > 0 ? { countdowns } : {}),
     ...(watch.length > 0 ? { watch } : {}),
   };
