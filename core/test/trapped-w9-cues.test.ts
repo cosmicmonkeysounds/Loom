@@ -283,6 +283,20 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     expect(v(sim, "Trabolta.composure")).toBe(composure - 20); // the beans only
   });
 
+  it("T5-crew-cards-04: 🤖 never plays past the clock, even with Night.step hand-set from World", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    for (const n of ["close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt", "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings"]) {
+      expect(press(sim, n).refused, n).toBe(false);
+    }
+    expect(live(sim, "trabolta_overshares")).toBe(true);
+    // A director's World recovery: the step jumped to the Y2K hour.
+    sim.setVar("Night.step", "14");
+    expect(live(sim, "trabolta_overshares")).toBe(false);
+    refuses(sim, "trabolta_overshares", "🤖 Too late: the clock has already been reset. Nothing happens.");
+    expect(v(sim, "Night.scenario")).toBe(0);
+  });
+
   /** A director's whole night to the Y2K clock, the timers' steps pressed by hand. */
   function toY2k(sim: Sim) {
     toTruth1(sim);

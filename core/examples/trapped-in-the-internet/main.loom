@@ -2488,7 +2488,7 @@ INTERACTION zip_everyone_out
 INTERACTION trabolta_overshares
   label: 🤖 Trabolta shares the next facts (scenario 1–4)
   who: admin
-  while: Night.step >= 11 and Night.scenario == 0
+  while: Night.step >= 11 and Night.step < 14 and Night.scenario == 0 and Night.clock == "--:--"
 
 INTERACTION y2k_clock
   label: 🕚 System clock → 11 PM, 31 Dec 1999 (final round, 60 min)
@@ -3538,7 +3538,7 @@ when zip_everyone_out:
 // D9: the overshare. Only Microsoft Excel's plant counts toward 1/3;
 // another program's plant is flavour.
 when trabolta_overshares:
-  if Night.step >= 11 and Night.scenario == 0:
+  if Night.step >= 11 and Night.step < 14 and Night.scenario == 0 and Night.clock == "--:--":
     set Night.phase = "overshare"
     set Night.step = 13
     set Night.r2_closed = true
@@ -3561,6 +3561,8 @@ when trabolta_overshares:
     -> Overshare Open
   else if Night.scenario != 0:
     broadcast "🤖 Not again: the overshare has already played. Nothing happens." to channel(hosts)
+  else if Night.step >= 14 or Night.clock != "--:--":
+    broadcast "🤖 Too late: the clock has already been reset. Nothing happens." to channel(hosts)
   else:
     broadcast "🤖 Not yet: 📊 the Trust Chart first. Nothing happens." to channel(hosts)
 
