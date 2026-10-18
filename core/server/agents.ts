@@ -685,8 +685,9 @@ export class AgentHub {
   private readonly open = new Map<string, OpenRequest>(); // request id →
   private readonly byThread = new Map<string, string>(); // thread key → request id
   /** Workers whose head request timed out and that haven't answered since:
-   *  connected, but not answering (T9 recheck — a wedged laptop). */
-  private readonly stalled = new Set<string>();
+   *  connected, but not answering (T9 recheck — a wedged laptop) → the hub
+   *  clock at which the stall was found. */
+  private readonly stalled = new Map<string, number>();
   /** Hub clock of each worker's last answer (or its attach). */
   private readonly progress = new Map<string, number>();
   private dispatches = 0;
@@ -791,13 +792,17 @@ export class AgentHub {
     this.dispatch(r);
   }
 
-  /** Send `r` to the least-busy worker voicing its character (no-op if none). */
-  private dispatch(r: OpenRequest): void {
+  /** Send `r` to the least-busy worker voicing its character (no-op if
+   *  none) — one still answering before a stalled one, so new work never
+   *  lines up behind a worker that stopped answering while another can
+   *  take it. `moved`: handed over from a stalled worker's line, which is
+   *  not another attempt. */
+  private dispatch(r: OpenRequest, moved = false): void {
     let best: AgentWorker | null = null;
     let bestLoad = Infinity;
     for (const w of this.workers.values()) {
       if (!w.characters.has(r.req.character)) continue;
-      let load = 0;
+      let load = this.stalled.has(w.id) ? 1e9 : 0;
       for (const o of this.open.values()) if (o.worker === w.id) load += 1;
       if (load < bestLoad) {
         best = w;
@@ -809,7 +814,7 @@ export class AgentHub {
     r.dispatchedAt = this.now();
     r.dispatchSeq = ++this.dispatches;
     r.startedAt = null;
-    r.attempts += 1;
+    if (!moved) r.attempts += 1;
     best.send("request", r.req);
     this.o.typing?.(r.req.thread, true);
     this.startHead(best.id);
@@ -874,10 +879,13 @@ export class AgentHub {
    *
    * A worker whose head timed out is **stalled** until it answers again
    * (connected but not answering: a dropped reply, a sleeping laptop with
-   * its stream still open). Every request waiting on it — or queued with
-   * only stalled workers voicing its character — gets the hold line once
-   * after `holdAfterMs`, like an offline worker, and stays where it is so a
-   * late answer still settles it.
+   * its stream still open). Its line moves to a worker still answering the
+   * same character, if there is one. Every request left waiting on it — or
+   * queued with only stalled workers voicing its character — gets the hold
+   * line once `holdAfterMs` after both its own start and the stall's, like
+   * an offline worker, and stays where it is so a late answer still settles
+   * it; so one slow reply that the worker follows with an answer inside
+   * `holdAfterMs` holds nobody (review 2).
    */
   sweep(): void {
     const now = this.now();
@@ -910,7 +918,8 @@ export class AgentHub {
         // answered nothing else meanwhile (a multi-slot worker answering
         // its other slots is not stalled): it has stopped answering until
         // it answers something again.
-        if (now - (this.progress.get(worker) ?? now) >= timeout) this.stalled.add(worker);
+        const stalls = !this.stalled.has(worker) && now - (this.progress.get(worker) ?? now) >= timeout;
+        if (stalls) this.stalled.set(worker, now);
         this.workers.get(worker)?.send("cancel", { id });
         this.o.typing?.(r.req.thread, false);
         r.worker = null;
@@ -919,11 +928,10 @@ export class AgentHub {
         // The cancel frees the worker for the next in its line: that one's
         // clock starts now, not at its own (long past) dispatch.
         this.startHead(worker);
-        if (r.attempts >= maxAttempts) {
-          this.giveUp(id, r);
-          continue;
-        }
-        this.dispatch(r);
+        if (r.attempts >= maxAttempts) this.giveUp(id, r);
+        else this.dispatch(r); // a worker still answering first, now that this one is stalled
+        // The rest of the stalled worker's line goes to one still answering.
+        if (stalls) this.moveLine(worker);
       } else if (r.worker === null && now - r.req.at > maxAge) {
         this.giveUp(id, r);
       } else if (r.worker === null && !r.held && now - r.createdAt >= holdAfter && !this.canAnswer(r.req.character)) {
@@ -942,10 +950,27 @@ export class AgentHub {
     // hold line once each, left in that line (the worker already holds the
     // body, so it isn't rebuilt).
     for (const r of this.open.values()) {
-      if (r.held || r.worker === null || !this.stalled.has(r.worker)) continue;
-      if (now - r.createdAt < holdAfter) continue;
+      if (r.held || r.worker === null) continue;
+      const since = this.stalled.get(r.worker);
+      if (since === undefined || now - Math.max(r.createdAt, since) < holdAfter) continue;
       r.held = true;
       this.o.hold?.(r.req);
+    }
+  }
+
+  /** `workerId` just stalled: hand every request in its line to a worker
+   *  still answering that character (cancelled on the stalled one, not
+   *  counted as an attempt). A request no healthy worker voices stays. */
+  private moveLine(workerId: string): void {
+    const stalledWorker = this.workers.get(workerId);
+    for (const [id, r] of this.open) {
+      if (r.worker !== workerId || !this.canAnswer(r.req.character)) continue;
+      stalledWorker?.send("cancel", { id });
+      this.o.typing?.(r.req.thread, false);
+      r.worker = null;
+      r.dispatchedAt = null;
+      r.startedAt = null;
+      this.dispatch(r, true);
     }
   }
 

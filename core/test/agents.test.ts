@@ -252,7 +252,7 @@ describe("AgentHub", () => {
     expect(cancels()).toEqual([stuck!.id]);
   });
 
-  it("a worker that stays connected but stops answering: every guest waiting on it gets one hold line by ~140 s, a late answer still settles, and nothing waits past the queue's max age (T9 recheck)", () => {
+  it("a worker that stays connected but stops answering: every guest waiting on it gets one hold line by ~141 s, a late answer still settles, and nothing waits past the queue's max age (T9 recheck)", () => {
     const h = hubHarness();
     const a = h.worker("laptop");
     h.hub.attach(a.w);
@@ -266,7 +266,9 @@ describe("AgentHub", () => {
     };
     heldBy(119);
     expect(h.held).toHaveLength(0); // a slow worker is no reason for the hold line
-    heldBy(21); // t = 140 s
+    heldBy(21); // t = 140 s: the stall was found at 121 s (the head's timeout)
+    expect(h.held).toHaveLength(0); // the hold counts from the stall, not the DM
+    heldBy(1); // t = 141 s
     expect(new Set(h.held.map((r) => r.thread.audience[0])).size).toBe(30);
     expect(h.held).toHaveLength(30);
     expect(h.hub.pending).toHaveLength(30); // held, still waiting on the worker
@@ -285,6 +287,52 @@ describe("AgentHub", () => {
     expect(h.hub.pending).toHaveLength(0);
     expect(h.held).toHaveLength(31); // g-new's turn came too (once)
     expect(new Set(h.held.map((r) => r.thread.audience[0])).size).toBe(31);
+  });
+
+  it("a stalled worker's line moves to a worker still answering that character, as no extra attempt, and nobody hears the hold line (review 2)", () => {
+    const h = hubHarness({ replyTimeoutMs: 10_000 });
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    const th = (n: number): AgentThread => ({ ...T, audience: [`g-${n}`] });
+    for (let i = 0; i < 4; i++) h.hub.line(th(i));
+    expect(a.requests()).toHaveLength(4);
+    const b = h.worker("spare");
+    h.hub.attach(b.w);
+    expect(b.requests()).toHaveLength(0); // the laptop already holds them
+    h.tick(10_001);
+    h.hub.sweep(); // the laptop's head times out: it stalls
+    const cancels = a.got.filter(([e]) => e === "cancel").map(([, d]) => (d as { id: string }).id);
+    expect(cancels.sort()).toEqual(a.requests().map((r) => r.id).sort()); // its whole line
+    expect(b.requests().map((r) => r.thread.audience[0]).sort()).toEqual(["g-0", "g-1", "g-2", "g-3"]);
+    // New work goes to the worker still answering, not behind the stalled one.
+    h.hub.line(th(9));
+    expect(b.requests().at(-1)!.thread.audience[0]).toBe("g-9");
+    for (const r of b.requests()) expect(h.hub.settle(r.id, "spare")).not.toBeNull();
+    h.tick(60_000);
+    h.hub.sweep();
+    expect(h.hub.pending).toHaveLength(0);
+    expect(h.held).toHaveLength(0);
+  });
+
+  it("one slow reply that the worker follows with an answer inside the hold window holds nobody (review 2)", () => {
+    const h = hubHarness({ replyTimeoutMs: 10_000 });
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    h.hub.line({ ...T, audience: ["g-1"] });
+    h.hub.line({ ...T, audience: ["g-2"] });
+    h.tick(10_001);
+    h.hub.sweep(); // g-1 timed out: the laptop stalls; g-1 is re-dispatched to it
+    for (let i = 0; i < 14; i++) {
+      h.tick(1000); // past 20 s since the DMs, not since the stall
+      h.hub.sweep();
+    }
+    expect(h.held).toHaveLength(0);
+    const live = new Set(a.requests().filter((r) => h.hub.pending.some((p) => p.id === r.id)).map((r) => r.id));
+    expect(live.size).toBe(2);
+    for (const id of live) expect(h.hub.settle(id, "laptop")).not.toBeNull();
+    h.tick(30_000);
+    h.hub.sweep();
+    expect(h.held).toHaveLength(0);
   });
 
   it("an assigned request is given up at the queue's max age with the hold line once, and its worker is told to cancel", () => {
