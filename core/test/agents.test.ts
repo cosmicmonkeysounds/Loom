@@ -485,6 +485,31 @@ describe("AgentHub", () => {
     expect(a.got.filter(([e]) => e === "cancel")).toHaveLength(0);
   });
 
+  it("two workers stall together: the first to answer again takes the other's whole line at once (review 4)", () => {
+    const h = hubHarness();
+    const a = h.worker("laptop");
+    const b = h.worker("spare");
+    h.hub.attach(a.w);
+    h.hub.attach(b.w);
+    for (let i = 0; i < 10; i++) h.hub.line({ ...T, audience: [`g-${i}`] });
+    const answered: number[] = [];
+    for (let t = 1; t <= 700; t++) {
+      h.tick(1000);
+      h.hub.sweep(); // both wedged: they stall in the same sweep at 121 s
+      if (t < 125) continue;
+      // The laptop wakes at 125 s and answers whatever it holds.
+      for (let guard = 0; guard < 20; guard++) {
+        const head = a.holds()[0];
+        if (head === undefined) break;
+        if (h.hub.settle(head.id, "laptop") !== null) answered.push(t);
+      }
+    }
+    expect(answered).toHaveLength(10);
+    expect(Math.max(...answered)).toBeLessThanOrEqual(126);
+    expect(h.held).toHaveLength(0);
+    expect(b.holds()).toHaveLength(0);
+  });
+
   it("a body rebuilt with the hold line already carries the follow-up: whoever is sent it answers once, not twice (review 4)", () => {
     // A stalled laptop's request, rebuilt with the hold line, goes to a backup.
     const h = hubHarness();

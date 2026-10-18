@@ -749,10 +749,34 @@ export class AgentHub {
     this.progress.set(worker.id, this.now());
     this.o.presence?.();
     for (const r of this.open.values()) if (r.worker === null) this.dispatch(r);
+    this.takeStalledLines(worker.id);
+  }
+
+  /** `workerId` can take work again (it attached, answered after a stall,
+   *  or went back on trial): every *other* stalled worker voicing a
+   *  character it voices hands its line over at once — never one request
+   *  per reply timeout while a worker that can answer sits idle. */
+  private takeStalledLines(workerId: string): void {
+    const taker = this.workers.get(workerId);
+    if (taker === undefined) return;
     for (const id of [...this.stalled.keys()]) {
+      if (id === workerId) continue;
       const w = this.workers.get(id);
-      if (w !== undefined && [...w.characters].some((c) => worker.characters.has(c))) this.moveLine(id);
+      if (w !== undefined && [...w.characters].some((c) => taker.characters.has(c))) this.moveLine(id);
     }
+  }
+
+  /** `workerId` answered a request it holds: it is answering. If it had
+   *  stalled it is back, and the lines of the other stalled workers voicing
+   *  its characters move to it. */
+  private answering(workerId: string): void {
+    if (!this.workers.has(workerId)) return;
+    const was = this.stalled.delete(workerId);
+    this.probation.delete(workerId);
+    this.progress.set(workerId, this.now());
+    if (!was) return;
+    this.o.presence?.();
+    this.takeStalledLines(workerId);
   }
 
   /** A worker went away: its in-flight requests go back in the queue. */
@@ -878,12 +902,7 @@ export class AgentHub {
     if (r.worker !== null) this.startHead(r.worker);
     // An answer: that worker is answering (again, if it had gone quiet).
     const by = workerId ?? r.worker;
-    if (by !== null && this.workers.has(by)) {
-      const was = this.stalled.delete(by);
-      this.probation.delete(by);
-      this.progress.set(by, this.now());
-      if (was) this.o.presence?.();
-    }
+    if (by !== null) this.answering(by);
     return { req: r.req, followUp: r.followUp };
   }
 
@@ -1017,6 +1036,7 @@ export class AgentHub {
       this.probation.add(id);
       this.progress.set(id, now);
       this.o.presence?.();
+      this.takeStalledLines(id);
     }
   }
 
