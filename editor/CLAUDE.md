@@ -392,7 +392,12 @@ proposed / outcome, `how` from the server's `FactsFiling.how` / `by`
 (`auto` | `confirmed` | `overridden` (↺) | `settled` | `marked`, worked
 out by `FactsWatch` from the journal's steps, so a restart keeps it —
 e.g. "accurate (confirmed by Ada)"; an older server without `how` falls
-back to kept / overridden off the proposal). The verdict never reaches a phone or the voice
+back to kept / overridden off the proposal). **Wave 9 D5:** every filing
+row but a `marked` one carries the same ✅ / 😤 / 🤷 buttons in both modes
+(pure `filingButtons` — the current verdict outlined, its button greyed
+once judged — and `verdictCall`, which always names the question, so it
+judges that filing, never the program's latest), so an auto-mode verdict
+the key got wrong is one tap to fix. The verdict never reaches a phone or the voice
 worker; this card is the only place it is shown. Tests: the judging
 cases in `cockpit/mind.test.ts`.
 
@@ -797,6 +802,18 @@ on ⇧F12 / occurrence highlight / project diagnostics, plus the Outline
 story-graph node editor beside the text, and Run mode (`⌘2`) — on a
 folder, the `@loom/core` TS `Sim` running in-browser (no wasm; the old
 wasm `LoomSession` stayed dead — this is the native-TS successor).
+
+**Dead streams reopen (wave 9, C8).** A non-200 on an `EventSource`
+(Caddy's 502 while the server restarts) closes it for good. The operate
+store's mod stream and the collab stream both watch for `readyState`
+CLOSED and reopen on a capped backoff (1 s doubling to 15 s; pure
+`lib/stream-retry.ts`): the mod stream through `refresh` (the event's
+control-plane status — reconnects a closed stream on a live event, finds
+an ended one ended; the 30 s poll and Resume reconnect a closed stream
+too), the collab stream after probing `GET /api/projects/:id/event`
+(2xx reopens + resyncs every doc, 401 / 403 / 404 stops). A server run's
+Log rows are stamped in story time (`storyNow` in `store/cockpit.ts`, off
+the snapshot clock), like a folder run's.
 
 **Server projects co-edit in real time** (2026-08-27, `lib/collab.ts` —
 the native-TS successor to the removed Loro relay path): every
