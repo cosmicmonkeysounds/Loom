@@ -352,10 +352,10 @@ arms; an arm is dropped if the cues move first (*Cues moved: … Re-arm.*).
 A refused press shows **✕ Not taken** with the `# hosts` line that says
 why. The glance column beside it (Needs you, Watch, People, Cast and the
 `# hosts` feed) reads the header's `watch:` lines: the Kernel's door code,
-combos, majority and lies are masked (press and hold 👁 for 5 s). A second
-director sets the page to **Watching** (keys off, the glance first). The
-headings below name each act; ⏳ and 🚨 sit in C (the hour's own timers)
-and 🕚 opens E.
+combos, majority and lies are masked (press and hold 👁 to read one for
+5 s). A second director sets the page to **Watching** (keys off, the
+glance first). The headings below name each act; ⏳ and 🚨 sit in C (the
+hour's own timers), 🕚 opens E, and 🏍 / 🪦 (after the dance) close F.
 
 **NEXT** is the first cue after LAST that has not fired and is on tonight's
 branch. Since wave 9 every step from V6 to 🕚 has a `while:` for its own
@@ -533,8 +533,6 @@ by someone else's wrong codes. Passes draw their QR on the phone
 | *(Trabolta's power)* `stand_down` → **🕊 Trabolta stands down (talked down)** (`talked_down`, off-sequence) | `# hosts`: *"!🕊 Trabolta offers to stand down for X. Press 🕊 to end it."* | A program at the server-room terminal (`program.at_the_heart`, set by its `terminal opened` signal) who **shows him that what he wants is impossible** (they hold *What Sandy Says* or *The Sandy File*) can make him **offer** to stand down (Y2K hour on, once a night; every refusal is words only). A human confirms: 🕊 plays the Combo A ending without a cable (`trabolta_disabled` with `Night.talked_down`): the blackout, the dance, and a recount and ceremony that say who talked him down. With no offer on record 🕊 still works (the director's call) and `# hosts` says so. |
 | **🔌 Combo A** · **💥 Combo B** · **❌ wrong combination** (hardware fallbacks) | every Antivirus booth on the alarm: *"🚨 Server room alarm: a second wrong combination at the patch bay. Get there. Whoever is at the cables goes to the Internet."* | Combo A is `V2-D5, V4-D1, V6-D8, V7-D3` and disables Trabolta. Combo B is `V1-D6, V3-D2, V5-D7, V8-D4` and self-destructs. **Everyone is forgiven one wrong combination: the second trips the alarm** (latched for 120 s; only the first alarm hurts Trabolta). Otherwise Trabolta says *"Stop touching me."* Before the Y2K clock the patch bay, combos included, does nothing. |
 | *(auto)* blackout → **🪩 Dance lights** (fallback; auto 10 s later) | — | Every light goes out, every phone is covered by a flashing full-screen **GO TO THE LIVING ROOM** (a room-wide `pin "!!…"`, also an alert and a push), and the dance song plays. The dance (auto or 🪩) takes it down (*💃 Dance.*); the recount, the summary and G1 are backstops. |
-| **🏍 After the dance: weakened Trabolta recounts** (`trabolta_recounts`, after Combo A) | — | Everyone gets every backstory + truth.txt. He names each identity, motive and accomplishment, plus the trustworthy and worst program, then leaves on his motorcycle and everyone is freed. |
-| **🪦 After the dance: Clippy reads the summary** (`clippy_reads_summary`, after Combo B) | Clippy reads Purgatory from their phone (CI 9) | Purgatory. Private fate lines by faction. Trabolta's line goes dark. The summary says, for each featured program at the party, whether they met their goal (their own quest: Excel's mission, OpenOffice's dossier, DraftKings' majority, Bugdom's four secrets, Jeeves' ten findings, Runescape's gold standard, MS Paint's painting, VLC going viral, Pong's ball in play). **Complete The Gold Standard / Go Viral / Keep The Ball In Play in the Inspector first** for any of the three that met their goal: only a director completes them, and Combo B posts the ones still open to `# hosts`. |
 | **💡 Restore the house lights** (`restore_the_lights`, off-sequence; **Anytime**: always on hand, never inside a folded act) | — | The manual fallback for Trabolta's `cut_the_lights` (auto-restored after 90 s) and **the first step of ALL STOP**. Since wave 9 (D2) it also holds a pending automatic dance after a server-room blackout: *"💡 The dance is held: press 🪩 when the house manager says go."* in `# hosts`. It does not lift the takeover; 🪩 plays the held dance and lifts it. |
 
 **The server room, when it goes wrong.** *The phone is dead, froze, or
@@ -563,6 +561,8 @@ Server Room. Never say the code on the radio.
 | *(in Grok Prom)* | the first program to type the line on the card wins; or a host presses **💘 Said "You're the one that I want"**, or Trabolta fires `the_line_works` in a DM | **Pickup Line** → Song Ending. In the Song branch the first correct line is read before the song (flavour). |
 | **💔 Nobody has the line → confession → rave** (`no_pickup_line`) | — | **Sad Confession** → rave. |
 | *(alt, only in Grok Prom)* **💌 Trabolta begs for relationship advice** → **🗳 Count the advice poll** (or **💞 helped** / **⛈ thwarted**, which only answer in the advice phase) → **🕺 Everyone hand-jived** | after thwarted: every Antivirus booth says they are banished too | Help → he wins Sandy. Thwart → everyone is banished to the Internet and learns *The Hand Jive Exception* (the TV keeps the banish card; the banishment is no reinstallation, and a duck find frees nobody: Gerald only says the way out is the hand jive) → the hand jive crashes him and puts the screensaver back on every screen. |
+| **🏍 After the dance: weakened Trabolta recounts** (`trabolta_recounts`, after Combo A) | — | Everyone gets every backstory + truth.txt. He names each identity, motive and accomplishment, plus the trustworthy and worst program, then leaves on his motorcycle and everyone is freed. |
+| **🪦 After the dance: Clippy reads the summary** (`clippy_reads_summary`, after Combo B) | Clippy reads Purgatory from their phone (CI 9) | Purgatory. Private fate lines by faction. Trabolta's line goes dark. The summary says, for each featured program at the party, whether they met their goal (their own quest: Excel's mission, OpenOffice's dossier, DraftKings' majority, Bugdom's four secrets, Jeeves' ten findings, Runescape's gold standard, MS Paint's painting, VLC going viral, Pong's ball in play). **Complete The Gold Standard / Go Viral / Keep The Ball In Play in the Inspector first** for any of the three that met their goal: only a director completes them, and Combo B posts the ones still open to `# hosts`. |
 
 ### G. The awards ceremony (after any final ending, K-25)
 

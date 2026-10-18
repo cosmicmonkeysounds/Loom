@@ -851,7 +851,7 @@ reads as a cue sheet):**
 
 Fire every admin cue from the cue sheet (Run → Director) / quick-fire, never from a guest card (§0 rule 23).
 
-Wave 10: eight `act:` lines group the sheet into the README's sections (B · Act I, C, D, E (🕚 opens it; ⏳ / 🚨 sit in C),
+Wave 10: eight `act:` lines group the sheet into the README's sections (B · Act I, C, D, E (🕚 opens it; ⏳ / 🚨 sit in C; 🏍 / 🪦 in F),
 Anytime (💡 + the reinstallation cues), F, G — display only, no cue moved), and the header's `watch:` / `countdown:` lines
 feed the Director page's glance column and the NOW card's countdowns (the Kernel's values masked).
 
