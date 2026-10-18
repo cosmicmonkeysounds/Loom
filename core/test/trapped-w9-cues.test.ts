@@ -259,9 +259,11 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     expect(v(sim, "Night.round")).toBe(3);
     expect(v(sim, "Night.scenario")).not.toBe(0);
     expect(sheet(sim)).toEqual({ last: "trabolta_overshares", next: "y2k_clock" });
-    // A printer lid opened late sets the step back to the beans: the
-    // overshare still never replays, and NEXT stays on 🕚.
+    // A printer lid opened late never sets the step back to the beans
+    // (wave 9 integration): the overshare still never replays, and NEXT
+    // stays on 🕚.
     press(sim, "printer_opened");
+    expect([v(sim, "Night.step"), v(sim, "Night.phase"), v(sim, "Night.beans")]).toEqual([13, "overshare", true]);
     refuses(sim, "trabolta_overshares", "🤖 Not again: the overshare has already played. Nothing happens.");
     expect(sheet(sim)).toEqual({ last: "trabolta_overshares", next: "y2k_clock" });
     expect(press(sim, "y2k_clock").refused).toBe(false);
@@ -283,7 +285,8 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     const composure = v(sim, "Trabolta.composure");
     advance(sim, 60);
     expect(press(sim, "printer_opened").refused).toBe(false);
-    expect(v(sim, "Night.step")).toBe(12);
+    // The lid's beans play, but the Y2K hour keeps its step and phase.
+    expect([v(sim, "Night.step"), v(sim, "Night.phase"), v(sim, "Night.beans")]).toEqual([14, "y2k", true]);
     refuses(sim, "y2k_clock", "🕚 Not again: the clock has already been reset. Nothing happens.");
     expect(live(sim, "y2k_clock")).toBe(false);
     expect(v(sim, "Night.y2k_end")).toBe(end);

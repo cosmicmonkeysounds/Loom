@@ -3683,8 +3683,11 @@ when printer_button_pressed:
 when printer_opened:
   if Night.printer_called == true and Night.beans != true:
     set Night.beans = true
-    set Night.phase = "beans"
-    set Night.step = 12
+    // A lid opened late (🤖 or 🕚 already moved the night on) never knocks
+    // the step or the phase back to the beans (wave 9).
+    if Night.step < 12:
+      set Night.phase = "beans"
+      set Night.step = 12
     set Trabolta.composure -= 20
     cue lights_glitch
     set Night.lights = "glitch"
