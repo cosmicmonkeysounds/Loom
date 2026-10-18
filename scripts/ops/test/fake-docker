@@ -3,6 +3,8 @@
 # $FAKE/images; every call is appended to $FAKE/calls.
 set -u
 echo "$* LOOM_TAG=${LOOM_TAG:-}" >> "$FAKE/calls"
+# What compose would interpolate the push keys from (set-but-blank = off).
+echo "$* VAPID=${LOOM_VAPID_PUBLIC_KEY-unset}/${LOOM_VAPID_PRIVATE_KEY-unset}" >> "$FAKE/env"
 all="$*"
 case "$all" in
   *"image inspect "*) [ -f "$FAKE/images/${!#}" ] ;;

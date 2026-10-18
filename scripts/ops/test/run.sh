@@ -193,10 +193,14 @@ check "drill restore runs" bash "$ROOT/deploy/restore.sh" --project loom-drill -
 check "psql got the dump" grep -q 'PostgreSQL database dump' "$FAKE/restored.sql"
 check "state streamed in" cmp -s "$st" "$FAKE/restored.tgz"
 check "used project loom-drill" grep -q -- "-p loom-drill up -d --no-build db loom" "$FAKE/calls"
+check "a drill boots loom with push off (VAPID blanked)" grep -qx -- "compose -p loom-drill up -d --no-build db loom VAPID=/" "$FAKE/env"
+check "… and runs the state restore with it off too" grep -q -- "^compose -p loom-drill run --rm .* VAPID=/$" "$FAKE/env"
 check "--latest picks the newest pair" bash "$ROOT/deploy/restore.sh" --latest show --project loom-drill --yes
 echo corrupt >> "$st2"
 check "checksum mismatch refused" bash -c "! bash '$ROOT/deploy/restore.sh' --project loom-drill --db '$db2' --state '$st2' --yes 2>/dev/null"
+: > "$FAKE/env"
 check "--live allows the live name" bash "$ROOT/deploy/restore.sh" --project repo --live --db "$db" --state "$st" --yes
+check "--live keeps push (the keys are not touched)" grep -qx -- "compose -p repo up -d --no-build db loom VAPID=unset/unset" "$FAKE/env"
 teardown
 
 echo "── showbackup (house Mac)"
