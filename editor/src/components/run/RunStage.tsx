@@ -61,11 +61,11 @@ function QuickFire() {
   const [name, setName] = useState('')
   if (!running || locked || events.length === 0) return null
   return (
-    <span className="flex items-center gap-1">
+    <span className="flex shrink-0 items-center gap-1">
       <select
         value={name}
         onChange={(e) => setName(e.target.value)}
-        className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[11px] text-zinc-300 outline-none focus:border-indigo-500"
+        className="max-w-[10rem] rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[11px] text-zinc-300 outline-none focus:border-indigo-500"
         title="Fire a named event"
         data-testid="sim-quickfire-select"
       >
@@ -79,7 +79,7 @@ function QuickFire() {
       <button
         onClick={() => name && void fireSignal(name)}
         disabled={!name}
-        className="rounded bg-indigo-600/80 px-2 py-0.5 text-[11px] text-white hover:bg-indigo-500 disabled:opacity-40"
+        className="whitespace-nowrap rounded bg-indigo-600/80 px-2 py-0.5 text-[11px] text-white hover:bg-indigo-500 disabled:opacity-40"
         data-testid="sim-quickfire-button"
       >
         ⚡ fire
@@ -149,7 +149,10 @@ function StageChrome() {
       <div className={clsx('flex flex-wrap items-center gap-x-3 gap-y-1 border-b px-2 py-1', tone.border)}>
         <RunPill />
         <LifecycleControls />
-        <div role="tablist" className="flex items-stretch">
+        {/* The tabs scroll sideways rather than clip when the stage is narrow
+            (both side panels open at 1100 px): Director, Mind and Log stay
+            reachable. */}
+        <div role="tablist" className="flex min-w-0 max-w-full items-stretch overflow-x-auto [scrollbar-width:thin]">
           {TABS.map((tb) => {
             const enabled = available(tb)
             return (
@@ -161,7 +164,7 @@ function StageChrome() {
                 onClick={() => setTab(tb.id)}
                 title={!running && tb.idle !== true ? 'starts with the rehearsal' : locked && tb.operatorOnly ? 'switch to Operator to edit' : tb.hint}
                 className={clsx(
-                  'border-b-2 px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+                  'shrink-0 whitespace-nowrap border-b-2 px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40',
                   tab === tb.id ? clsx('text-zinc-100', tone.tabActive) : 'border-transparent text-zinc-500 hover:text-zinc-200',
                 )}
                 data-testid={`run-tab-${tb.id}`}
@@ -171,7 +174,7 @@ function StageChrome() {
             )
           })}
         </div>
-        <span className="ml-auto flex items-center gap-3 pr-1">
+        <span className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-1 pr-1">
           <IdentityControl />
           <NextCuePill />
           <QuickFire />
