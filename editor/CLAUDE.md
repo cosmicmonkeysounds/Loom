@@ -714,9 +714,11 @@ wired in via path aliases in `vite.config.ts` + `tsconfig.app.json`:
 `@loom/core/parser`, `@loom/core/lsp`, `@loom/core/sim` (the ecosystem
 runtime behind Run mode on a folder), and the server's pure projection modules
 `@loom/core/chat` + `@loom/core/views`, plus `@loom/core/mod-patch` (wave
-9: `applyModPatch` for the director console's keyed patches; its alias
-line must stay **above** the bare `@loom/core` one in both files, or that
-alias swallows the subpath), all resolving straight to `.ts`
+9: `applyModPatch` for the director console's keyed patches; in
+`vite.config.ts` its alias line must stay **above** the bare `@loom/core`
+one, since Vite tries the keys in order and `@loom/core` also matches
+`@loom/core/…`; in `tsconfig.app.json` a `paths` key with no `*` is an
+exact match, so the order there doesn't matter), all resolving straight to `.ts`
 source.) Everything here is synchronous; there is no bundle to load or
 rebuild.
 
