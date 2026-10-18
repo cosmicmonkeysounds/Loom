@@ -16,7 +16,7 @@ import { DirectorMode } from './director-keys'
 import { pressEffects } from './press-effects'
 import { formatLeft, useCountdowns, useNow, type LiveCountdown } from './clock'
 import { PressKind } from './useArmed'
-import { refusalReason, staffReason } from './glance'
+import { refusalReason, secretHeads, staffReason } from './glance'
 
 /** The taken banner's life, the refusal's. */
 const TAKEN_MS = 5000
@@ -88,6 +88,7 @@ function LastLine() {
   const log = useCockpit((s) => s.log)
   const roster = useCockpit((s) => s.roster)
   const watch = useCockpit((s) => s.watch)
+  const cast = useCockpit((s) => s.cast)
   const clock = useCockpit((s) => s.storyClock)
   const running = useCockpit((s) => s.phase === CockpitPhase.Open)
   const setTab = useCockpit((s) => s.setTab)
@@ -95,9 +96,8 @@ function LastLine() {
   const last = d.rows.find((r) => r.last) ?? null
   const fx = useMemo(() => {
     if (last === null) return null
-    const secretHeads = new Set(watch.filter((w) => w.secret === true && w.path !== null).map((w) => w.path!.split('.')[0]!))
-    return pressEffects(log, last.id, { persons: new Set(roster.map((r) => r.id)), secretHeads })
-  }, [last, log, roster, watch])
+    return pressEffects(log, last.id, { persons: new Set(roster.map((r) => r.id)), secretHeads: secretHeads(cast, watch) })
+  }, [last, log, roster, cast, watch])
   if (last === null) {
     return (
       <div className="text-xs text-zinc-500" data-testid="cue-last">

@@ -12,6 +12,7 @@ import {
   peopleGlance,
   recentGlobals,
   refusalReason,
+  secretHeads,
   staffFeed,
   staffReason,
   watchRows,
@@ -220,5 +221,18 @@ describe('changedPaths', () => {
     expect(changedRecently(second, 'Night.round', 15_001)).toBe(false)
     const same = changedPaths(second, [w('Night.round', '2')], 20_000)
     expect(same.get('Night.round')!.at).toBe(5000)
+  })
+})
+
+describe('secretHeads', () => {
+  it('masks a secret CHARACTER from the cast even with no live watch line on it', () => {
+    const cast: CastSummary[] = [
+      { id: 'Kernel', faction: null, secret: true },
+      { id: 'Clippy', faction: null },
+    ]
+    expect([...secretHeads(cast, [])]).toEqual(['Kernel'])
+    // An older server's cast carries no flag: a secret watch item still names it.
+    const watch: WatchSummary[] = [{ label: 'Door code', path: 'Kernel.door_code', person: null, scope: 'character', secret: true }]
+    expect([...secretHeads([{ id: 'Kernel', faction: null }], watch)]).toEqual(['Kernel'])
   })
 })

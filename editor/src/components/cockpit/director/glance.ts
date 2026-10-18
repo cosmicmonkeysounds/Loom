@@ -67,6 +67,15 @@ export function formatWatchValue(raw: string | null | undefined): WatchValue {
 /** What a secret value shows until the director holds 👁. */
 export const MASK = '••••'
 
+/** Path heads whose values the Director never shows in clear: every
+ *  `secret: true` CHARACTER (the cast says so), plus any a secret watch
+ *  item names (an older server's cast carries no flag). */
+export function secretHeads(cast: readonly CastSummary[], watch: readonly WatchSummary[]): Set<string> {
+  const out = new Set(cast.filter((c) => c.secret === true).map((c) => c.id))
+  for (const w of watch) if (w.secret === true && w.path !== null) out.add(w.path.split('.')[0]!)
+  return out
+}
+
 /** A path's live value (the world row), or undefined. */
 export function worldValue(world: readonly WorldEntry[], path: string): string | undefined {
   return world.find((w) => w.path === path)?.value

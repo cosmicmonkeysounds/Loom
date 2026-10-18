@@ -290,6 +290,8 @@ export interface CastSummary {
   part?: boolean
   /** A sign-in token holds the part — true even while its phone's stream is down. */
   held?: boolean
+  /** `secret: true` (the Kernel): its values are masked on the Director. */
+  secret?: true
 }
 
 /** One live world-state entry (`g-1a2b.score` → `42`), display-stringed. */
