@@ -58,3 +58,25 @@ describe('pressEffects', () => {
     expect(pressEffects(log, 'final_reveal')!.items).toEqual(['⤷ The Reveal'])
   })
 })
+
+describe('pressEffects after a refused re-press', () => {
+  it('describes the press that set LAST, not a later refused one', () => {
+    seq = 0
+    const log: LedgerEntry[] = [
+      e({ type: 'signal', name: 'y2k_clock', subject: null }),
+      set('Night.phase', '"y2k"'),
+      e({ type: 'tick', elapsedMs: 1000 }),
+      // Pressed again out of turn: the rule only tells # hosts why.
+      e({ type: 'signal', name: 'y2k_clock', subject: null }),
+      e({ type: 'broadcast', cue: '❌ Not yet', audience: [], scope: 'channel(hosts)' }),
+      set('Night._asked_at', '5'),
+    ]
+    const fx = pressEffects(log, 'y2k_clock', { staffRooms: ['room:hosts'] })!
+    expect(fx.seq).toBe(0)
+    expect(fx.items).toEqual(['Night.phase → y2k'])
+    // A cue no rule hears (every press empty) still reads its newest press.
+    seq = 0
+    const bare = [e({ type: 'signal', name: 'lights', subject: null }), e({ type: 'tick', elapsedMs: 1 }), e({ type: 'signal', name: 'lights', subject: null })]
+    expect(pressEffects(bare, 'lights', { staffRooms: ['room:hosts'] })!.seq).toBe(2)
+  })
+})

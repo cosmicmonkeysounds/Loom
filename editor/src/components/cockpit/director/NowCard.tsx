@@ -89,6 +89,7 @@ function LastLine() {
   const roster = useCockpit((s) => s.roster)
   const watch = useCockpit((s) => s.watch)
   const cast = useCockpit((s) => s.cast)
+  const channels = useCockpit((s) => s.channels)
   const clock = useCockpit((s) => s.storyClock)
   const running = useCockpit((s) => s.phase === CockpitPhase.Open)
   const setTab = useCockpit((s) => s.setTab)
@@ -96,8 +97,12 @@ function LastLine() {
   const last = d.rows.find((r) => r.last) ?? null
   const fx = useMemo(() => {
     if (last === null) return null
-    return pressEffects(log, last.id, { persons: new Set(roster.map((r) => r.id)), secretHeads: secretHeads(cast, watch) })
-  }, [last, log, roster, cast, watch])
+    return pressEffects(log, last.id, {
+      persons: new Set(roster.map((r) => r.id)),
+      secretHeads: secretHeads(cast, watch),
+      staffRooms: channels.filter((c) => c.staff === true).map((c) => c.id),
+    })
+  }, [last, log, roster, cast, watch, channels])
   if (last === null) {
     return (
       <div className="text-xs text-zinc-500" data-testid="cue-last">

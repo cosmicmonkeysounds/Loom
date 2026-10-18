@@ -32,6 +32,9 @@ export interface PressEffectsOpts {
   secretHeads?: ReadonlySet<string>
   /** Items to show (default `EFFECTS_SHOWN`). */
   max?: number
+  /** The staff rooms (`ChannelSummary.staff` ids): a press that only told
+   *  them why is a refused one, never the press described. */
+  staffRooms?: Iterable<string>
 }
 
 function fold(s: string): string {
@@ -40,6 +43,35 @@ function fold(s: string): string {
 
 function unquote(v: string): string {
   return v.replace(/^"(.*)"$/su, '$1')
+}
+
+/** A room name folded the way the server matches `channel(…)` scopes. */
+export function roomFold(s: string): string {
+  return s.replace(/^room:/u, '').toLowerCase().replace(/[#_-]/gu, ' ').replace(/\s+/gu, ' ').trim()
+}
+
+/** A broadcast scope that names only staff rooms (`channel(hosts)`). */
+function staffOnly(scope: string, staff: ReadonlySet<string>): boolean {
+  if (staff.size === 0) return false
+  return scope.split('|').every((t) => {
+    const m = /^channel\((.+)\)$/u.exec(t.trim())
+    return m !== null && staff.has(roomFold(m[1]!))
+  })
+}
+
+/** Did the press at `log[at]` do nothing but, at most, tell a staff room
+ *  why (or note a `_` leaf)? The server's refusal rule, read off the log:
+ *  such a press never became LAST, so `did:` never describes it. */
+function refusedLooking(log: readonly LedgerEntry[], at: number, staff: ReadonlySet<string>): boolean {
+  for (let k = at + 1; k < log.length; k++) {
+    const e = log[k]!.event
+    if (INPUTS.has(e.type)) break
+    if (e.type === 'diagnostic') continue
+    if (e.type === 'broadcast' && staffOnly(e.scope, staff)) continue
+    if (e.type === 'worldSet' && e.path.slice(e.path.lastIndexOf('.') + 1).startsWith('_')) continue
+    return false
+  }
+  return true
 }
 
 /** Does ledger row `e` press the cue `key` (folded)? */
@@ -67,13 +99,21 @@ class Tally {
 export function pressEffects(log: readonly LedgerEntry[], cueId: string, opts: PressEffectsOpts = {}): PressEffects | null {
   const key = fold(cueId)
   if (key === '') return null
+  // The newest press that was taken; a refused re-press (its only effect a
+  // # hosts line) is skipped. A cue whose every press looks refused (no rule
+  // hears it — stagehand only) falls back to its newest press.
+  const staff = new Set([...(opts.staffRooms ?? [])].map(roomFold))
+  let newest = -1
   let at = -1
   for (let k = log.length - 1; k >= 0; k--) {
-    if (presses(log[k]!.event, key)) {
+    if (!presses(log[k]!.event, key)) continue
+    if (newest < 0) newest = k
+    if (!refusedLooking(log, k, staff)) {
       at = k
       break
     }
   }
+  if (at < 0) at = newest
   if (at < 0) return null
   const persons = opts.persons ?? new Set<string>()
   const secret = new Set([...(opts.secretHeads ?? [])].map(fold))
