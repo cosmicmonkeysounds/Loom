@@ -383,6 +383,65 @@ export function pollOutcome(status: number, body: Record<string, unknown>): Poll
   return { kind: "retry", message };
 }
 
+// --- one press at a time ---------------------------------------------------------
+// While a press is in flight every cue is locked, and the lock holds until
+// the poll that follows it has landed: an arm made before then would be bound
+// to the cue state before this phone's own press, and be dropped as "Cues
+// moved" the moment that press shows up. NEXT then waits a second more, so
+// the cue that just became NEXT is never armed by a tap meant for the last one.
+
+/** How long NEXT stays locked after a press lands. */
+export const NEXT_COOLDOWN_MS = 1000;
+/** How long a press waits for the poll after it before letting go anyway
+ *  (the page went hidden, the poll is failing). */
+export const REPOLL_WAIT_MS = 3000;
+
+/** Is this row locked: a press in flight (any row), or NEXT cooling down? */
+export function cueLocked(row: Pick<CueRow, "next">, pending: string | null, cooling: boolean): boolean {
+  return pending !== null || (cooling && row.next);
+}
+
+/**
+ * Counts the polls and lets a press wait for one that *started* after it:
+ * `begin()` on every load, `landed(seq)` when its view is in, and
+ * `after(seq, ms)` resolves once a load numbered above `seq` has landed (or
+ * after `ms`, whichever is first).
+ */
+export function viewLatch(setTimer: (fn: () => void, ms: number) => unknown = (fn, ms) => setTimeout(fn, ms), clearTimer: (t: unknown) => void = (t) => clearTimeout(t as ReturnType<typeof setTimeout>)) {
+  let started = 0;
+  let waiters: Array<{ after: number; done: () => void }> = [];
+  return {
+    /** The loads started so far. */
+    get started() {
+      return started;
+    },
+    begin(): number {
+      return ++started;
+    },
+    landed(seq: number): void {
+      const due = waiters.filter((w) => w.after < seq);
+      waiters = waiters.filter((w) => w.after >= seq);
+      for (const w of due) w.done();
+    },
+    after(seq: number, ms: number): Promise<void> {
+      return new Promise<void>((resolve) => {
+        const w = {
+          after: seq,
+          done: () => {
+            clearTimer(t);
+            resolve();
+          },
+        };
+        const t = setTimer(() => {
+          waiters = waiters.filter((x) => x !== w);
+          resolve();
+        }, ms);
+        waiters.push(w);
+      });
+    },
+  };
+}
+
 // --- the poll --------------------------------------------------------------------
 
 export const POLL_MS = 3000;
@@ -507,6 +566,7 @@ function useDirectorSession() {
   const [connected, setConnected] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const poll = useRef<{ stop(): void; now(): void } | null>(null);
+  const [latch] = useState(viewLatch);
   const base = auth ? `/e/${encodeURIComponent(auth.eventId)}` : "";
 
   const drop = useCallback(
@@ -522,6 +582,7 @@ function useDirectorSession() {
   useEffect(() => {
     if (auth === null) return;
     const load = async () => {
+      const seq = latch.begin();
       // `cues=1`: the lean read (an older server ignores it and sends the
       // full ModView, which carries the same fields).
       const res = await fetch(`${base}/api/state?role=mod&cues=1`, { headers: { "x-loom-token": auth.token } });
@@ -530,6 +591,7 @@ function useDirectorSession() {
         setView(out.view);
         setReceivedAt(Date.now());
         setConnected(true);
+        latch.landed(seq);
         return;
       }
       setConnected(false);
@@ -548,7 +610,7 @@ function useDirectorSession() {
       p.stop();
       poll.current = null;
     };
-  }, [auth, base, drop]);
+  }, [auth, base, drop, latch]);
 
   const login = useCallback(
     async (passcode: string, name: string) => {
@@ -578,11 +640,18 @@ function useDirectorSession() {
         if (res.ok) return { refused: data["refused"] === true };
         throw new ApiError((data["error"] as string) || `HTTP ${res.status}`, res.status);
       };
-      const out = await fireCue(post, signalBody(id, subject, auth.name, value), () => poll.current?.now());
+      // Hold the answer until the poll after the press is in, so the page
+      // lets go of its lock on fresh marks (see `cueLocked`).
+      let fresh: Promise<void> = Promise.resolve();
+      const out = await fireCue(post, signalBody(id, subject, auth.name, value), () => {
+        fresh = latch.after(latch.started, REPOLL_WAIT_MS);
+        poll.current?.now();
+      });
       if (!out.ok && eventGone(out.status, out.message)) drop("That event has ended.");
+      else await fresh;
       return out;
     },
-    [auth, base, drop],
+    [auth, base, drop, latch],
   );
 
   return { auth, view, receivedAt, connected, notice, login, fire, leave: () => drop(null) };
@@ -635,7 +704,7 @@ function DirectorLogin({ notice, onLogin, onBack }: { notice: string | null; onL
   );
 }
 
-function CueButton({ row, armed, pending, actCode, onTap }: { row: CueRow; armed: Armed | null; pending: boolean; actCode?: string | null; onTap: () => void }) {
+function CueButton({ row, armed, locked, sending, actCode, onTap }: { row: CueRow; armed: Armed | null; locked: boolean; sending: boolean; actCode?: string | null; onTap: () => void }) {
   const isArmed = armed !== null && armed.id === row.id;
   const { title, tags } = cueTitleTags(row.title);
   return (
@@ -645,7 +714,8 @@ function CueButton({ row, armed, pending, actCode, onTap }: { row: CueRow; armed
         className={`choice cue-row ${row.last ? "last" : ""} ${row.next ? "next" : ""} ${isArmed ? "armed" : ""} ${row.live ? "" : "off"}`}
         data-next={row.next ? "true" : undefined}
         data-last={row.last ? "true" : undefined}
-        disabled={pending}
+        disabled={locked}
+        aria-busy={sending || undefined}
         onClick={onTap}
       >
         <span className="cue-n">{row.n}</span>
@@ -654,7 +724,9 @@ function CueButton({ row, armed, pending, actCode, onTap }: { row: CueRow; armed
             {actCode != null && <span className="cue-code act">{actCode}</span>}
             {row.code !== null && <span className="cue-code">{row.code}</span>} {title}
           </span>
-          {isArmed ? (
+          {sending ? (
+            <span className="cue-arm">Sending…</span>
+          ) : isArmed ? (
             <span className="cue-arm">Tap again to fire</span>
           ) : (
             <span className="cue-tags">
@@ -686,8 +758,15 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
   const [picking, setPicking] = useState<string | null>(null);
   // The picker's value box: an award's number, carried by the arm.
   const [value, setValue] = useState("");
-  // The cue whose fire is in flight: only its row waits (≤ FIRE_TIMEOUT_MS).
+  // The cue whose fire is in flight: every cue waits for it (`cueLocked`).
   const [pending, setPending] = useState<string | null>(null);
+  // NEXT's second after a press lands.
+  const [cooling, setCooling] = useState(false);
+  useEffect(() => {
+    if (!cooling) return;
+    const t = setTimeout(() => setCooling(false), NEXT_COOLDOWN_MS);
+    return () => clearTimeout(t);
+  }, [cooling]);
   const [toast, setToast] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
   const [help, setHelp] = useState(false);
@@ -744,6 +823,7 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
   if (s.auth === null) return <DirectorLogin notice={s.notice} onLogin={s.login} onBack={onLeave} />;
 
   const tap = (row: CueRow) => {
+    if (cueLocked(row, pending, cooling)) return; // one press at a time
     const t = phoneTap(armed, row, Date.now(), marks);
     if (t.kind === "ignore") return; // a fast double tap only arms
     if (t.kind === "stale") {
@@ -757,13 +837,14 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
       void s.fire(t.id, t.subject, t.value).then((outcome) => {
         setToast(fireToast(row, outcome));
         setPending((p) => (p === t.id ? null : p));
+        setCooling(true);
       });
     }
   };
   const rowList = (list: CueRow[]) => (
     <ol className="cue-list">
       {list.map((r) => (
-        <CueButton key={r.id} row={r} armed={armed} pending={pending === r.id} onTap={() => tap(r)} />
+        <CueButton key={r.id} row={r} armed={armed} locked={cueLocked(r, pending, cooling)} sending={pending === r.id} onTap={() => tap(r)} />
       ))}
     </ol>
   );
@@ -855,7 +936,7 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
           ) : query.trim() !== "" || layout.kind === "flat" ? (
             <ol className="cue-list">
               {shown.map((r) => (
-                <CueButton key={r.id} row={r} armed={armed} pending={pending === r.id} actCode={layout.kind === "acts" && r.act !== null ? splitCode(r.act).code ?? null : null} onTap={() => tap(r)} />
+                <CueButton key={r.id} row={r} armed={armed} locked={cueLocked(r, pending, cooling)} sending={pending === r.id} actCode={layout.kind === "acts" && r.act !== null ? splitCode(r.act).code ?? null : null} onTap={() => tap(r)} />
               ))}
               {shown.length === 0 && <li className="muted pad">No cue matches.</li>}
             </ol>

@@ -32,6 +32,9 @@ import {
   stripItems,
   clockRuns,
   STOPPED,
+  cueLocked,
+  viewLatch,
+  NEXT_COOLDOWN_MS,
   STALE_TOAST,
   pollDelay,
   pollOutcome,
@@ -584,5 +587,71 @@ describe("the dead time and stale arms", () => {
     expect(phoneTap(armed, award, 500, { last: "start_the_bingo", fired: ["call_to_the_desktop", "start_the_bingo"] }).kind).toBe("stale");
     // A lapsed arm is not stale: the tap just arms again.
     expect(phoneTap(first.armed, call, ARM_MS, moved).kind).toBe("arm");
+  });
+});
+
+describe("one press at a time", () => {
+  const rows = directorRows(ACTS);
+  const next = rows.find((r) => r.next)!;
+  const other = rows.find((r) => !r.next)!;
+
+  it("a press in flight locks every cue; NEXT cools down a second after", () => {
+    // Firing 📣: nothing else may be armed or fired until it lands.
+    expect(cueLocked(other, "call", false)).toBe(true);
+    expect(cueLocked(next, "call", false)).toBe(true);
+    // Landed: NEXT (now the following cue) waits out the cooldown; others don't.
+    expect(cueLocked(next, null, true)).toBe(true);
+    expect(cueLocked(other, null, true)).toBe(false);
+    expect(cueLocked(next, null, false)).toBe(false);
+    expect(NEXT_COOLDOWN_MS).toBe(1000);
+  });
+
+  it("a press waits for a poll that started after it, so its own move never reads as stale", async () => {
+    const timers: Array<{ fn: () => void; ms: number }> = [];
+    const latch = viewLatch(
+      (fn, ms) => {
+        const t = { fn, ms };
+        timers.push(t);
+        return t;
+      },
+      (t) => {
+        const i = timers.indexOf(t as { fn: () => void; ms: number });
+        if (i >= 0) timers.splice(i, 1);
+      },
+    );
+    // A poll is in flight when the press lands (it may predate the press).
+    const old = latch.begin();
+    let done = false;
+    const wait = latch.after(latch.started, 3000).then(() => {
+      done = true;
+    });
+    latch.landed(old); // the old poll's marks: not enough
+    await Promise.resolve();
+    expect(done).toBe(false);
+    const fresh = latch.begin(); // the repoll
+    latch.landed(fresh);
+    await wait;
+    expect(done).toBe(true);
+    expect(timers).toHaveLength(0); // its timeout is cleared
+    // No poll ever lands (hidden page, failing poll): it lets go after the wait.
+    let gaveUp = false;
+    const stuck = latch.after(latch.started, 3000).then(() => {
+      gaveUp = true;
+    });
+    expect(timers.map((t) => t.ms)).toEqual([3000]);
+    timers[0]!.fn();
+    await stuck;
+    expect(gaveUp).toBe(true);
+    latch.landed(latch.begin()); // a late poll finds no waiter left
+  });
+
+  it("an arm made after the press's poll is bound to the moved marks, so it fires", () => {
+    // 📣 fired from this phone; the lock held until the poll showed it.
+    const after = { last: "call", fired: ["call"] };
+    const moved = directorRows({ ...ACTS, cues: after });
+    const bingo = moved.find((r) => r.next)!;
+    const first = phoneTap(null, bingo, 0, after);
+    if (first.kind !== "arm") throw new Error("arm");
+    expect(phoneTap(first.armed, bingo, 500, after)).toMatchObject({ kind: "fire", id: bingo.id });
   });
 });
