@@ -1008,6 +1008,11 @@ export class AgentHub {
       if (r.startedAt !== null) r.startedAt = moved(r.startedAt);
       r.req = { ...r.req, at: moved(r.req.at) };
     }
+    // A stall's start and a worker's last answer too: the hold counts from
+    // the stall in open-doors time, and a pause never makes a worker look
+    // stalled.
+    for (const [w, t] of this.stalled) this.stalled.set(w, moved(t));
+    for (const [w, t] of this.progress) this.progress.set(w, moved(t));
   }
 
   /**

@@ -400,6 +400,49 @@ describe("AgentHub", () => {
     expect(a.got.filter(([e]) => e === "cancel")).toHaveLength(0);
   });
 
+  it("shift: a pause right after a stall doesn't count toward the stalled line's hold line, nor toward a stall (review 3)", () => {
+    const h = hubHarness({ replyTimeoutMs: 120_000 });
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    h.hub.line({ ...T, audience: ["g-1"] });
+    h.hub.line({ ...T, audience: ["g-2"] });
+    h.tick(120_001);
+    h.hub.sweep(); // the head times out: the laptop stalls
+    h.tick(1_000);
+    h.hub.sweep();
+    const p = h.tick(0);
+    h.tick(10 * 60_000);
+    h.hub.shift(p, h.tick(0));
+    h.tick(1_000);
+    h.hub.sweep();
+    expect(h.held).toHaveLength(0); // ~2 s of open doors since the stall
+    for (let s = 0; s < 18; s++) {
+      h.tick(1_000);
+      h.hub.sweep();
+    }
+    expect(h.held).toHaveLength(2); // 20 s of open doors since the stall
+    // A multi-slot worker that answered its other slot just before a pause:
+    // its head times out after the resume, but it answered 20 s of open
+    // doors ago — not stalled, so a spare takes nothing from it.
+    const g = hubHarness({ replyTimeoutMs: 120_000 });
+    const b = g.worker("laptop");
+    g.hub.attach(b.w);
+    g.hub.line({ ...T, audience: ["g-1"] }); // the head
+    g.hub.line({ ...T, audience: ["g-2"] }); // the other slot
+    g.tick(100_000);
+    expect(g.hub.settle(b.requests()[1]!.id, "laptop")).not.toBeNull();
+    g.tick(10_000);
+    const q = g.tick(0);
+    g.tick(10 * 60_000);
+    g.hub.shift(q, g.tick(0));
+    g.tick(10_001);
+    g.hub.sweep(); // g-1 sat at the head 120 s of open doors: re-dispatched
+    expect(b.got.filter(([e]) => e === "cancel")).toHaveLength(1);
+    const c = g.worker("spare");
+    g.hub.attach(c.w);
+    expect(c.requests()).toHaveLength(0);
+  });
+
   it("drops queued requests nobody picked up", () => {
     const h = hubHarness({ queueMaxAgeMs: 60_000 });
     h.hub.line(T);
