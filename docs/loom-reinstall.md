@@ -910,8 +910,10 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
 - `game/`: lobby (a dark room: "Scan your pass on the tablet" + a joystick
   picker of candidates — up/down chooses, hold right 1 s to confirm),
   play (duck, indicator trail, ghosts), found (egg, flight, "Reinstallation
-  complete"; a find that released nobody says "GERALD CAN'T HELP" and the
-  duck stays put), back to lobby. Headset off (`user_presence_changed`) ends the
+  complete"; a find the story kept — nothing released, still captured —
+  says "GERALD CAN'T HELP" and the duck stays put; a find by a program that
+  was never captured releases nobody too, and reads "YOU FOUND GERALD"
+  with the egg and the flight, as on the tablet), back to lobby. Headset off (`user_presence_changed`) ends the
   session after a 2 s grace; without that extension, losing focus ends it
   after 15 s. The grace runs on the **wall clock**, so a headset that went
   to sleep and is handed on later starts in the lobby, not in the last
