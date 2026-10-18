@@ -34,6 +34,7 @@ import {
   STOPPED,
   cueLocked,
   viewLatch,
+  armWarnings,
   NEXT_COOLDOWN_MS,
   STALE_TOAST,
   pollDelay,
@@ -653,5 +654,31 @@ describe("one press at a time", () => {
     const first = phoneTap(null, bingo, 0, after);
     if (first.kind !== "arm") throw new Error("arm");
     expect(phoneTap(first.armed, bingo, 500, after)).toMatchObject({ kind: "fire", id: bingo.id });
+  });
+});
+
+describe("the armed row warns out of turn", () => {
+  it("a cue not on offer, or a spine cue from another act, warns on the armed row — never blocks", () => {
+    // At the doors the night is in B; C's 📺 unfolded by hand is out of turn.
+    const view: DirectorView = { ...ACTS, interactions: [...ACTS.interactions!, { id: "ending", label: "🔥 An ending", who: "admin", live: false, act: "F · Finale" }] };
+    const rows = directorRows(view);
+    const layout = sheetLayout(rows);
+    const by = (id: string) => rows.find((r) => r.id === id)!;
+    expect(armWarnings(by("call"), layout)).toEqual([]);
+    expect(armWarnings(by("hunt"), layout)).toEqual(["⚠ This is a C cue; the night is in B"]);
+    // Fallbacks and Anytime cues are never out of turn.
+    expect(armWarnings(by("timer"), layout)).toEqual([]);
+    expect(armWarnings(by("lights"), layout)).toEqual([]);
+    // Dimmed in F (another branch): arming says so, as well as the act.
+    expect(armWarnings(by("ending"), layout)).toEqual(["⚠ Not on offer now: the story may refuse it", "⚠ This is a F cue; the night is in B"]);
+    // The armed tap still fires: the warning never blocks.
+    const ending = by("ending");
+    const first = phoneTap(null, ending, 0, view.cues!);
+    if (first.kind !== "arm") throw new Error("arm");
+    expect(phoneTap(first.armed, ending, 500, view.cues!).kind).toBe("fire");
+    // A flat sheet has no acts to compare: only the offer warning.
+    const flat = directorRows({ interactions: [{ id: "x", label: "x", who: "admin", live: false }, { id: "y", label: "y", who: "admin" }], cues: { last: null, fired: [] } });
+    expect(armWarnings(flat[0]!, sheetLayout(flat))).toEqual(["⚠ Not on offer now: the story may refuse it"]);
+    expect(armWarnings(flat[1]!, sheetLayout(flat))).toEqual([]);
   });
 });

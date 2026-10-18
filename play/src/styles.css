@@ -1045,6 +1045,8 @@ footer {
 .cue-arm { font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; font-size: 12px; }
 .cue-row { scroll-margin-top: 48px; } /* clear of the sticky act header */
 .cue-row.off:not(.last):not(.armed) { opacity: 0.55; } /* `while:` false: off tonight's branch, still pressable */
+.cue-row.armed.warn { box-shadow: var(--raised), inset 0 0 0 3px var(--bad); }
+.cue-warn { font: 700 12px var(--ui-font); color: var(--highlight); overflow-wrap: anywhere; } /* out of turn: warned, never blocked */
 .cue-tag.muted { font-weight: 600; font-style: italic; }
 .cue-code.act { background: var(--navy); color: var(--white); margin-right: 4px; }
 /* Wave 10: the pinned top — the strip (act · phase · soonest countdown ·

@@ -308,6 +308,21 @@ export function phoneTap(armed: Armed | null, row: CueRow, now: number, marks: C
   return tapCue(armed, row, now, marks);
 }
 
+/** The armed row's second line: a press out of turn is warned about, never
+ *  blocked (a `while:` never stops a press). A `live: false` cue — off
+ *  tonight's branch, or not yet — "may be refused"; a spine cue outside the
+ *  focus act (an act unfolded by hand, a filter hit) names both acts. */
+export function armWarnings(row: Pick<CueRow, "id" | "live" | "sequence">, layout: SheetLayout): string[] {
+  const out: string[] = [];
+  if (!row.live) out.push("⚠ Not on offer now: the story may refuse it");
+  if (layout.kind === "acts" && layout.focus >= 0 && row.sequence) {
+    const focus = layout.acts[layout.focus]!;
+    const own = layout.acts.find((a) => a.rows.some((r) => r.id === row.id));
+    if (own !== undefined && own !== focus && own.state !== "anytime") out.push(`⚠ This is a ${actHandle(own)} cue; the night is in ${actHandle(focus)}`);
+  }
+  return out;
+}
+
 /** The toast when a stale arm is dropped. */
 export const STALE_TOAST = "Cues moved — tap again";
 
@@ -704,14 +719,15 @@ function DirectorLogin({ notice, onLogin, onBack }: { notice: string | null; onL
   );
 }
 
-function CueButton({ row, armed, locked, sending, actCode, onTap }: { row: CueRow; armed: Armed | null; locked: boolean; sending: boolean; actCode?: string | null; onTap: () => void }) {
+function CueButton({ row, armed, locked, sending, warnings, actCode, onTap }: { row: CueRow; armed: Armed | null; locked: boolean; sending: boolean; warnings: string[]; actCode?: string | null; onTap: () => void }) {
   const isArmed = armed !== null && armed.id === row.id;
+  const warn = isArmed && warnings.length > 0;
   const { title, tags } = cueTitleTags(row.title);
   return (
     <li>
       <button
         type="button"
-        className={`choice cue-row ${row.last ? "last" : ""} ${row.next ? "next" : ""} ${isArmed ? "armed" : ""} ${row.live ? "" : "off"}`}
+        className={`choice cue-row ${row.last ? "last" : ""} ${row.next ? "next" : ""} ${isArmed ? "armed" : ""} ${warn ? "warn" : ""} ${row.live ? "" : "off"}`}
         data-next={row.next ? "true" : undefined}
         data-last={row.last ? "true" : undefined}
         disabled={locked}
@@ -727,7 +743,14 @@ function CueButton({ row, armed, locked, sending, actCode, onTap }: { row: CueRo
           {sending ? (
             <span className="cue-arm">Sending…</span>
           ) : isArmed ? (
-            <span className="cue-arm">Tap again to fire</span>
+            <>
+              <span className="cue-arm">Tap again to fire</span>
+              {warnings.map((w) => (
+                <span key={w} className="cue-warn" data-testid="cue-warn">
+                  {w}
+                </span>
+              ))}
+            </>
           ) : (
             <span className="cue-tags">
               {row.last && <span className="cue-tag last">LAST</span>}
@@ -844,7 +867,7 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
   const rowList = (list: CueRow[]) => (
     <ol className="cue-list">
       {list.map((r) => (
-        <CueButton key={r.id} row={r} armed={armed} locked={cueLocked(r, pending, cooling)} sending={pending === r.id} onTap={() => tap(r)} />
+        <CueButton key={r.id} row={r} armed={armed} locked={cueLocked(r, pending, cooling)} sending={pending === r.id} warnings={armWarnings(r, layout)} onTap={() => tap(r)} />
       ))}
     </ol>
   );
@@ -936,7 +959,7 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
           ) : query.trim() !== "" || layout.kind === "flat" ? (
             <ol className="cue-list">
               {shown.map((r) => (
-                <CueButton key={r.id} row={r} armed={armed} locked={cueLocked(r, pending, cooling)} sending={pending === r.id} actCode={layout.kind === "acts" && r.act !== null ? splitCode(r.act).code ?? null : null} onTap={() => tap(r)} />
+                <CueButton key={r.id} row={r} armed={armed} locked={cueLocked(r, pending, cooling)} sending={pending === r.id} warnings={armWarnings(r, layout)} actCode={layout.kind === "acts" && r.act !== null ? splitCode(r.act).code ?? null : null} onTap={() => tap(r)} />
               ))}
               {shown.length === 0 && <li className="muted pad">No cue matches.</li>}
             </ol>
