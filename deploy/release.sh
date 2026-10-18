@@ -5,6 +5,7 @@
 #   deploy/release.sh show-1031 [--commit <sha>] [--no-backup] [--no-adopt]
 #   deploy/release.sh --adopt pre-k08      # tag what runs now; no rebuild
 #   deploy/release.sh --list               # the release log + local images
+#   deploy/release.sh --check-env          # the night's .env knobs (box 17)
 #
 # A release: (1) a pre-release backup (deploy/backup.sh --label pre-release),
 # (2) `docker compose build` with LOOM_TAG=<tag> → images loom-server:<tag> +
@@ -13,13 +14,15 @@
 # the healthcheck + the public URL, (6) a line in ~/loom-ops/releases.log.
 # A tag is never rebuilt in place — that would destroy the pinned image —
 # so every deploy takes a new tag (show-1031, show-1031b, …).
+# Every release first warns (never fails) about the night's .env knobs:
+# the LOOM_RL_* door-rush throttles, the VAPID pair, an https LOOM_BASE_URL.
 # The FIRST release on a box (empty release log) first adopts whatever runs
 # now as pre-<tag>, so there is always something to roll back to
 # (--no-adopt skips that; --adopt does it by hand).
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-usage() { sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
+usage() { sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
 
 list() {
   echo "running: $(current_tag)"
@@ -51,6 +54,7 @@ main() {
     case "$1" in
       -h|--help) usage ;;
       --list) mode=list ;;
+      --check-env) mode=check-env ;;
       --adopt) mode=adopt; tag="${2:-}"; shift ;;
       --commit) COMMIT="${2:-}"; shift ;;
       --no-backup) backup=0 ;;
@@ -61,10 +65,16 @@ main() {
     shift
   done
   [ "$mode" = list ] && { list; return; }
+  if [ "$mode" = check-env ]; then
+    [ -f "$LOOM_DIR/.env" ] || die "no .env in $LOOM_DIR"
+    env_warn || return 1
+    say "env: the night's knobs are set ✔"; return 0
+  fi
   [ -n "$tag" ] || usage 1
   [[ "$tag" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] || die "bad tag '$tag' (letters, digits, . _ -)"
   [ -f "$LOOM_DIR/.env" ] || die "no .env in $LOOM_DIR"
   [ "$mode" = adopt ] && { adopt "$tag"; return; }
+  env_warn || say "(warnings only — the release goes on)"
 
   # First scripted release: tag what runs now so it can be rolled back to.
   if [ "$autoadopt" = 1 ] && ! releases_logged; then

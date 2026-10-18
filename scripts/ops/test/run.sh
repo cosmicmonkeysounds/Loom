@@ -162,6 +162,30 @@ out="$(ep DATABASE_URL=postgres://loom:pw@db/loom FAKE_MIGRATE_FAIL=1 2>&1)"; rc
 check "a failed migration still runs the event plane" eq "$(tail -n1 "$FAKE/tsx")" "tsx server/server.ts"
 teardown
 
+echo "── the night's .env knobs (S1-ops-07)"
+setup
+night() { printf '%s\n' POSTGRES_PASSWORD=x LOOM_RL_RESOLVE=600 LOOM_RL_REGISTER=400 LOOM_RL_LOGIN_FAILURES=100/300 \
+  LOOM_VAPID_PUBLIC_KEY=BPub LOOM_VAPID_PRIVATE_KEY=priv LOOM_BASE_URL=https://app.test "$@" > "$LOOM_DIR/.env"; }
+night
+check "--check-env passes on the night's values" bash -c "bash '$ROOT/deploy/release.sh' --check-env 2>&1 | grep -q \"night's knobs are set\""
+night LOOM_RL_REGISTER=
+out="$(bash "$ROOT/deploy/release.sh" --check-env 2>&1)"; rc=$?
+check "--check-env fails on a blank LOOM_RL_REGISTER" eq "$rc" 1
+check "… naming it and the night's value" grep -q 'LOOM_RL_REGISTER=(blank: the default) — the night wants LOOM_RL_REGISTER=400' <<<"$out"
+night LOOM_RL_LOGIN_FAILURES=10/300
+check "a default-sized throttle warns" bash -c "bash '$ROOT/deploy/release.sh' --check-env 2>&1 | grep -q 'LOOM_RL_LOGIN_FAILURES=10/300'"
+night LOOM_RL_RESOLVE='"900"'
+check "a quoted value above the night's passes" bash "$ROOT/deploy/release.sh" --check-env
+night LOOM_VAPID_PRIVATE_KEY=
+check "a blank VAPID key warns (push off)" bash -c "bash '$ROOT/deploy/release.sh' --check-env 2>&1 | grep -q 'LOOM_VAPID_PRIVATE_KEY is blank'"
+night LOOM_BASE_URL=http://1.2.3.4
+check "a non-https join base warns" bash -c "bash '$ROOT/deploy/release.sh' --check-env 2>&1 | grep -q 'LOOM_BASE_URL=http://1.2.3.4'"
+night LOOM_RL_REGISTER= LOOM_BASE_URL=
+out="$(bash "$ROOT/deploy/release.sh" k1 --no-backup 2>&1)"; rc=$?
+check "a release with a blank knob still goes on" eq "$rc" 0
+check "… after warning" grep -q 'WARNING: LOOM_RL_REGISTER' <<<"$out"
+teardown
+
 echo "── backup"
 setup
 out="$(bash "$ROOT/deploy/backup.sh" --label nightly 2>/dev/null)"; rc=$?

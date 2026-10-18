@@ -49,6 +49,32 @@ env_set() {
   cat "$tmp" > "$f" && rm -f "$tmp"
 }
 
+# env_warn [file] — warn (never fail) about the show night's .env knobs:
+# the door-rush throttles below the night's values (blank = the defaults,
+# e.g. 10 failed codes / 5 min per IP — and the whole house Wi-Fi is ONE
+# IP), a blank Web Push pair (push off, no 🔔 card), a join base that is
+# not https:// (QRs on the request origin). Returns 1 after any warning.
+# The night's values: docs/loom-docker-deploy.md §3 *Show settings*.
+env_warn() {
+  local f="${1:-$LOOM_DIR/.env}" n=0 k want v max url
+  for k in LOOM_RL_RESOLVE=600 LOOM_RL_REGISTER=400 LOOM_RL_LOGIN_FAILURES=100/300; do
+    want="${k#*=}"; k="${k%%=*}"
+    v="$(env_get "$k" "$f" | tr -d "\"' ")"; max="${v%%/*}"
+    if ! [[ "$max" =~ ^[0-9]+$ ]] || [ "$max" -lt "${want%%/*}" ]; then
+      say "WARNING: $k=${v:-(blank: the default)} — the night wants $k=$want"; n=$((n + 1))
+    fi
+  done
+  for k in LOOM_VAPID_PUBLIC_KEY LOOM_VAPID_PRIVATE_KEY; do
+    [ -n "$(env_get "$k" "$f" | tr -d "\"' ")" ] || { say "WARNING: $k is blank — Web Push is off (no 🔔 card)"; n=$((n + 1)); }
+  done
+  url="$(env_get LOOM_BASE_URL "$f" | tr -d "\"'")"
+  case "$url" in
+    https://*) ;;
+    *) say "WARNING: LOOM_BASE_URL=${url:-(blank)} — the join QRs want the public https:// origin"; n=$((n + 1)) ;;
+  esac
+  [ "$n" = 0 ]
+}
+
 # The tag the stack runs now (.env LOOM_TAG, else compose's default).
 current_tag() { local t; t="$(env_get LOOM_TAG)"; echo "${t:-latest}"; }
 

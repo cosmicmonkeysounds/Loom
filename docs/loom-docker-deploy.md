@@ -239,6 +239,11 @@ domain's MX points (e.g. ImprovMX → your Gmail) — Resend only sends.
   VPS from **one** public IP, so the night's `.env` raises the per-IP ones:
   `LOOM_RL_RESOLVE=600`, `LOOM_RL_REGISTER=400`,
   `LOOM_RL_LOGIN_FAILURES=100/300`.
+- **Check them**: `deploy/release.sh --check-env` (on the VPS, in the
+  checkout) warns about any of those three below the night's value, a
+  blank VAPID key and a `LOOM_BASE_URL` that isn't `https://`, and ends
+  `env: the night's knobs are set ✔` (exit 0) when all are fine. Every
+  `deploy/release.sh <tag>` prints the same warnings first (and goes on).
 - **Snapshot coalescing** (`LOOM_SNAPSHOT_MS`, blank / 0 = off): at most
   one guest / booth view frame per that many ms (a burst of story steps →
   one leading + one trailing frame; restarts never trail). The mod
@@ -677,9 +682,10 @@ Mac to the VPS must work without a prompt; set `LOOM_VPS`
 |---|---|---|
 | Mac | `scripts/ops/predeploy.sh` | Clean tree, `loomcheck --smoke` on the show, `titi:facts --check` (the generated hunt files match `facts.json`), `pnpm -r typecheck` + `test`, stagehand `pytest`, the ops-script tests, compose parses → stamps the commit |
 | Mac | `scripts/ops/ship.sh show-1031` | Refuses an unstamped commit, rsyncs (never anything git-ignored: `secrets.h`, `reinstall/vr/build/`, `*.local.yaml`, `.env`; and its `--delete` never removes an operator's `.env*`, `show-map/`, `docker-compose.override.y*ml`, `loom-db-*` / `loom-state-*` / `*.sql*` / `*.tgz` / `*.bak*` at the checkout's top), then runs `deploy/release.sh show-1031 --commit <sha>` on the VPS. `--sync-only` stops after the rsync |
-| VPS | `deploy/release.sh <tag>` | Pre-release backup → build `loom-server:<tag>` + `loom-proxy:<tag>` → `LOOM_TAG=<tag>` in `.env` → `up -d` → waits for the healthcheck + the public URL → `~/loom-ops/releases.log`. Never rebuilds an existing tag. The **first** release on a box (empty log) first adopts what runs now as `pre-<tag>`, so the very first scripted release already has a rollback target (`--no-adopt` skips it) |
+| VPS | `deploy/release.sh <tag>` | Pre-release backup → build `loom-server:<tag>` + `loom-proxy:<tag>` → `LOOM_TAG=<tag>` in `.env` → `up -d` → waits for the healthcheck + the public `/api/health` (200 = up, and with a database the control plane + every live event are back) → `~/loom-ops/releases.log`. Never rebuilds an existing tag. The **first** release on a box (empty log) first adopts what runs now as `pre-<tag>`, so the very first scripted release already has a rollback target (`--no-adopt` skips it) |
 | VPS | `deploy/release.sh --adopt <tag>` | Tags what runs **now** by hand, no rebuild (the first release does this for you) |
 | VPS | `deploy/release.sh --list` | Running tag, the release log, the kept images |
+| VPS | `deploy/release.sh --check-env` | The night's `.env` knobs (`LOOM_RL_*` throttles, the VAPID pair, an `https://` `LOOM_BASE_URL`): warnings, or `env: the night's knobs are set ✔` |
 | VPS | `deploy/rollback.sh [tag]` | Back to the previous tag (or a named one), no build: a container restart. Twice in a row toggles back. A release that failed its health check is never picked |
 | VPS | `deploy/backup.sh --label nightly` | `pg_dump` + a tar of the state volume + a `.sha256`, UTC-stamped, in `~/loom-backups` (14 days kept) |
 | VPS | `deploy/restore.sh …` | Restores a pair into a compose project (below) |
