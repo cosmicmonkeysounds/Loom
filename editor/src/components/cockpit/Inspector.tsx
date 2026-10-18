@@ -30,6 +30,8 @@ import { usePlayAs } from './play-as'
 import { qrSvg } from '@/lib/print-sheet'
 import { GlanceTray } from './director/Glance.tsx'
 import { useGlanceInTray } from './director/tray'
+import { useDirectorMode } from './director/director-mode'
+import { DirectorMode } from './director/director-keys'
 
 /** How many recent messages "Their feed" shows. */
 const FEED_LIMIT = 60
@@ -961,11 +963,13 @@ export function CockpitInspector() {
   const selection = useCockpit((s) => s.selection)
   const select = useCockpit((s) => s.select)
   const onDirector = useCockpit((s) => s.activeTab === CockpitTab.Director)
-  // On the Director page an empty tray holds the house at a glance.
+  // On the Director page an empty tray holds the house at a glance (Calling
+  // only: Watching shows it on the page, so the tray stays the Inspector's).
   const glance = useGlanceInTray()
+  const [directorMode] = useDirectorMode()
   return (
     <div className="flex h-full w-full flex-col bg-zinc-950 text-zinc-100">
-      {onDirector && selection !== null && (
+      {onDirector && selection !== null && directorMode !== DirectorMode.Watching && (
         <button onClick={() => select(null)} className="shrink-0 border-b border-zinc-800 px-3 py-1 text-left text-[11px] text-zinc-500 hover:text-zinc-200" data-testid="inspector-to-glance">
           ← the house at a glance
         </button>

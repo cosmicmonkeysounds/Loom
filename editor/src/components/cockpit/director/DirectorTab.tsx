@@ -14,7 +14,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import clsx from 'clsx'
-import { RunBackend, useCockpit } from '@/store/cockpit'
+import { useCockpit } from '@/store/cockpit'
 import { cueActs, cueRows, focusActIndex, type CueAct } from '@loom/core/cue-sheet'
 import { LensGate } from '../tabs'
 import { DirectorContext, type DirectorCtx } from './context'
@@ -27,44 +27,13 @@ import { OnHand } from './OnHand'
 import { RunningOrder } from './RunningOrder'
 import { GlanceColumn, GlanceStrip } from './Glance.tsx'
 import { useGlanceInTray } from './tray'
+import { useDirectorMode } from './director-mode'
 import { DirectorTools } from './DirectorTools'
 
 export function DirectorTab() {
   const locked = useCockpit((s) => s.lens !== null)
   if (locked) return <LensGate what="fire events, beats, and broadcasts" />
   return <DirectorPage />
-}
-
-/** Where this console's Calling / Watching choice is kept. */
-function modeKey(eventId: string | null): string {
-  return `loom.director.mode.${eventId ?? 'local'}`
-}
-
-function readMode(key: string): DirectorMode {
-  try {
-    return localStorage.getItem(key) === DirectorMode.Watching ? DirectorMode.Watching : DirectorMode.Calling
-  } catch {
-    return DirectorMode.Calling
-  }
-}
-
-function useDirectorMode(): [DirectorMode, (m: DirectorMode) => void] {
-  const eventId = useCockpit((s) => (s.run?.backend === RunBackend.Server ? s.run.eventId : null))
-  const key = modeKey(eventId)
-  const [state, setState] = useState(() => ({ key, mode: readMode(key) }))
-  const mode = state.key === key ? state.mode : readMode(key)
-  const set = useCallback(
-    (m: DirectorMode) => {
-      setState({ key, mode: m })
-      try {
-        localStorage.setItem(key, m)
-      } catch {
-        // A private window: the choice lasts this visit.
-      }
-    },
-    [key],
-  )
-  return [mode, set]
 }
 
 /** What a key event came from: a field (the keys leave typing alone), a
