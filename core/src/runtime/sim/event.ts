@@ -200,11 +200,7 @@ export interface WalletCard {
   entryTitle?: string;
   /** Story ms — the countdown on pending / approval cards. */
   settleAt?: number;
-  /** Who approved / denied / cancelled / granted, as a display name
-   *  ("Director", a guest's name, a character with spaces — never a `g-…`
-   *  id). On a request's `declined` / `cancelled` step it means the payment
-   *  behind it was denied / cancelled by `by`; without it, the payer
-   *  declined / the asker withdrew. */
+  /** Who approved / denied / cancelled (a character id or `Director`). */
   by?: string;
   /** The approver's display name, on a card that waits on them. */
   approver?: string;
