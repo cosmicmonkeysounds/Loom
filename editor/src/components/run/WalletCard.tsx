@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
-import { CockpitPhase, WalletAction, useCockpit } from '@/store/cockpit'
+import { CockpitPhase, WalletAction, storyNow, useCockpit } from '@/store/cockpit'
 import { confirmAction } from '@/store/dialog'
 import {
   countdown,
@@ -22,7 +22,6 @@ import {
   heldTransfers,
   requestCancellable,
   stimulusAmount,
-  storyNow,
   txActions,
   walletBalances,
 } from '@/components/cockpit/wallet'

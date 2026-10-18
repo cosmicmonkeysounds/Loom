@@ -43,6 +43,7 @@ import {
   OPERATOR_LENS,
   RunBackend,
   RunMode,
+  storyNow,
   type CastSummary,
   type ChannelSummary,
   type CockpitMessage,
@@ -454,7 +455,10 @@ export const useOperate = create<OperateState>((set, get) => {
       set((s) => {
         const last = s.log[s.log.length - 1]
         const seq = last !== undefined ? last.seq + 1 : s.ledgerLen
-        const next = [...s.log, { seq, ts: Date.now(), event: ev }]
+        // Story time, like a folder run's rows: the last snapshot's clock
+        // run on to now (never through a pause); none on an older server.
+        const ts = storyNow(s.storyClock, s.phase === CockpitPhase.Open, Date.now()) ?? undefined
+        const next = [...s.log, { seq, ts, event: ev }]
         return { log: next.length > LOG_CAP ? next.slice(next.length - LOG_CAP) : next }
       })
     })

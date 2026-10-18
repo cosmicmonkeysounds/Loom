@@ -7,7 +7,7 @@
 
 import type { WalletCard } from '@loom/core/sim'
 import type { WalletModView, WalletTxView } from '@loom/core/views'
-import { WalletAction, type RosterRow, type StoryClock, type WorldEntry } from '@/store/cockpit'
+import { WalletAction, type RosterRow, type WorldEntry } from '@/store/cockpit'
 
 /** The director's buttons on one open transfer: a held one can be approved,
  *  denied or cancelled; a pending one (inside its deny window) denied or
@@ -26,13 +26,6 @@ export function requestCancellable(state: string): boolean {
 /** Held transfers, oldest first — what "Approve all held" clears. */
 export function heldTransfers(view: WalletModView | null): WalletTxView[] {
   return (view?.open.transfers ?? []).filter((t) => t.state === 'held')
-}
-
-/** The story clock now: the last snapshot's reading plus the wall time since
- *  — unless the run is paused, when the story clock stands still. */
-export function storyNow(clock: StoryClock | null, running: boolean, wallNow: number): number | null {
-  if (clock === null) return null
-  return running ? clock.ms + Math.max(0, wallNow - clock.at) : clock.ms
 }
 
 /** `m:ss` until a story-clock deadline (`0:00` once it's due); null when
