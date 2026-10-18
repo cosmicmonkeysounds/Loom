@@ -786,11 +786,20 @@ export const useOperate = create<OperateState>((set, get) => {
     fireSignal: async (name, subject, args, actor, presses) => {
       const ev = get().event
       if (!ev) return { error: 'no run' }
-      set({ ownPress: { name, at: Date.now() } })
+      const was = get().ownPress
+      const own = { name, at: Date.now() }
+      set({ ownPress: own })
       try {
         return await modApi.fireSignal(ev.id, name, subject, args, actor, presses)
       } catch (e) {
-        if (e instanceof ApiError && e.status === 409 && e.data['moved'] === true) return { moved: true }
+        if (e instanceof ApiError && e.status === 409 && e.data['moved'] === true) {
+          // Refused as moved: nothing fired, so this was not this console's
+          // press — another director's LAST must still read as theirs.
+          if (get().ownPress === own) set({ ownPress: was })
+          const cues = e.data['cues']
+          const pressed = cues !== null && typeof cues === 'object' ? (cues as { pressed?: unknown }).pressed : undefined
+          return typeof pressed === 'string' || pressed === null ? { moved: true, pressed } : { moved: true }
+        }
         const error = failureText((e as Error).message)
         set({ error })
         return { error }

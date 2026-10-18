@@ -284,6 +284,13 @@ export interface FireResult {
    *  another press had landed since (a second director): the server never
    *  fired it (`/api/mod/signal` 409 `moved`). Re-arm. */
   moved?: true
+  /** With `moved`: the cue the newest press fired (the 409's fresh
+   *  `cues.pressed`) — what the banner names, never this console's own. */
+  pressed?: string | null
+  /** The cue state's press count once this press landed (the server's 200;
+   *  absent from the local backend and an older server). The Director keeps
+   *  its lock until its marks show it, so the next arm binds past it. */
+  presses?: number
 }
 
 /** This console's newest press of a named event, from any surface (the

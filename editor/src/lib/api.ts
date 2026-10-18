@@ -293,7 +293,8 @@ export const modApi = {
    *  optionally *as* a character (`actor`), so only that character's hooks
    *  hear it (the performer-lens interaction path, like `/api/prime/act`).
    *  Resolves `refused: true` when the story refused the press (a cue
-   *  pressed out of turn: at most a staff-room line, never LAST). */
+   *  pressed out of turn: at most a staff-room line, never LAST), and the
+   *  cue state's press count after it (`presses`, a newer server). */
   async fireSignal(
     eventId: string,
     name: string,
@@ -301,15 +302,18 @@ export const modApi = {
     args?: SignalArgs | null,
     actor?: string | null,
     presses?: number,
-  ): Promise<{ refused?: true }> {
-    const r = await req<{ refused?: boolean } | null>('POST', `/e/${eventId}/api/mod/signal`, {
+  ): Promise<{ refused?: true; presses?: number }> {
+    const r = await req<{ refused?: boolean; presses?: unknown } | null>('POST', `/e/${eventId}/api/mod/signal`, {
       name,
       subject,
       args: args ?? undefined,
       actor: actor ?? undefined,
       presses,
     })
-    return r?.refused === true ? { refused: true } : {}
+    return {
+      ...(r?.refused === true ? { refused: true as const } : {}),
+      ...(typeof r?.presses === 'number' && Number.isFinite(r.presses) ? { presses: r.presses } : {}),
+    }
   },
   /** Scan a guest as a character — fires that character's scan reaction.
    *  Resolves to the character's `respond` readouts (the booth's responses). */

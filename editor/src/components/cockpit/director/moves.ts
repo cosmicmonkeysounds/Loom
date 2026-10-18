@@ -42,3 +42,23 @@ export function within<T>(p: Promise<T>, ms: number, late: () => T): Promise<T> 
   })
   return Promise.race([p, out]).finally(() => clearTimeout(timer))
 }
+
+/** How long a landed press keeps every cue locked waiting for the snapshot
+ *  that carries it (the phone's `REPOLL_WAIT_MS`): a console that lags past
+ *  this unlocks anyway. */
+export const SETTLE_MS = 3000
+
+/** Has this console's own press reached its marks: the server's count after
+ *  the press (`FireResult.presses`) against the count the marks show. With
+ *  either unknown (the local backend, an older server) there is nothing to
+ *  wait for. Until it has, a next arm would bind to a count from before the
+ *  press — and its own press would then read as "Cues moved". */
+export function pressSettled(want: number | undefined, seen: number | undefined): boolean {
+  return typeof want !== 'number' || typeof seen !== 'number' || seen >= want
+}
+
+/** The cue a 409 `moved` banner names: the server's own newest press (the
+ *  409's fresh `cues.pressed`), else what the marks last showed. */
+export function movedPressedCue(fromServer: string | null | undefined, fromMarks: string | null | undefined): string | null {
+  return fromServer !== undefined ? fromServer : (fromMarks ?? null)
+}

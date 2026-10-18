@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { movedCue, ownMove, within, OWN_MS, PRESS_TIMEOUT_MS } from './moves'
+import { movedCue, movedPressedCue, ownMove, pressSettled, within, OWN_MS, PRESS_TIMEOUT_MS } from './moves'
 import { DOORS_NOT_OPEN, failureText } from '@/lib/press-failure'
 
 describe('movedCue', () => {
@@ -54,5 +54,32 @@ describe('failureText', () => {
   })
   it('any other failure is passed through', () => {
     expect(failureText('boom')).toBe('boom')
+  })
+})
+
+describe('pressSettled (a landed press holds the lock until its snapshot)', () => {
+  it('waits while the marks still show the count from before the press', () => {
+    // 🍾 lands: the server says 8; the snapshot with it is up to 500 ms away.
+    expect(pressSettled(8, 7)).toBe(false)
+    expect(pressSettled(8, 8)).toBe(true)
+    // Another press landed too: the marks are past it.
+    expect(pressSettled(8, 9)).toBe(true)
+  })
+
+  it('never waits with no count to wait for (the local backend, an older server)', () => {
+    expect(pressSettled(undefined, 7)).toBe(true)
+    expect(pressSettled(8, undefined)).toBe(true)
+  })
+})
+
+describe('movedPressedCue (the 409 moved banner)', () => {
+  it("names the server's newest press over the stale marks", () => {
+    expect(movedPressedCue('call_c7', 'call_c6')).toBe('call_c7')
+    expect(movedPressedCue(null, 'call_c6')).toBeNull()
+  })
+
+  it('falls back to the marks when the server sent no cues', () => {
+    expect(movedPressedCue(undefined, 'call_c6')).toBe('call_c6')
+    expect(movedPressedCue(undefined, undefined)).toBeNull()
   })
 })

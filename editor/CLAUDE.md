@@ -307,8 +307,13 @@ the focus act holds NEXT, else LAST; an all-`sequence: false` act is
   card only); `data-cue-press`.
 - `useArmed.ts` — the one arm model over core's: bound to `cues.last` +
   `fired.length` (stale → *Cues moved: <cue> just fired. Re-arm.*),
-  dropped on blur / hidden tab / 4 s; one press in flight (8 s →
-  `NO_ANSWER`, unlocks), NEXT cools 1 s after NEXT itself is fired
+  dropped on blur / hidden tab / 4 s (and on a newer press of the armed
+  cue itself — another cue's repeat, a device's duck find, leaves it; the
+  server's `pressMovedArm` judges every press since); one press in flight
+  (8 s → `NO_ANSWER`, unlocks; a landed one keeps the lock until the
+  snapshot shows the server's `FireResult.presses`, `SETTLE_MS` 3 s at
+  most, so the next arm binds past it; a 409 `moved` names the 409's own
+  `cues.pressed` and gives back `ownPress`), NEXT cools 1 s after NEXT itself is fired
   (`row.next` at fire; an aside sets no cooldown); a `subject` cue's
   first tap opens the picker (`pick`), `armFor` arms it; the last
   result is kept per store so it survives a tab switch.

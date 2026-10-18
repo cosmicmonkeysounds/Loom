@@ -4,8 +4,9 @@
 //! to the cue state it was made against and dropped — "Cues moved: …
 //! Re-arm." — once another director or the story fires; it also drops on a
 //! window blur, a hidden tab and after 4 s. One press is in flight at a
-//! time (8 s at most: a hung one fails and unlocks), and NEXT cools down
-//! for 1 s after one. What came back (taken /
+//! time (8 s at most: a hung one fails and unlocks; a landed one holds the
+//! lock until the snapshot carrying it arrives, 3 s at most, so the next
+//! arm binds past it), and NEXT cools down for 1 s after one. What came back (taken /
 //! not taken / failed) is the NOW card's banner and, for a refusal, the
 //! Needs you item.
 
@@ -22,7 +23,7 @@ import {
   type CueRow,
 } from '@loom/core/cue-sheet'
 import { lastSeq, type RefusedPress } from './glance'
-import { NO_ANSWER, PRESS_TIMEOUT_MS, movedCue, ownMove, within } from './moves'
+import { NO_ANSWER, PRESS_TIMEOUT_MS, SETTLE_MS, movedCue, movedPressedCue, ownMove, pressSettled, within } from './moves'
 import { failureText } from '@/lib/press-failure'
 
 /** NEXT's cooldown after a press. */
@@ -137,6 +138,20 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
     setArmed(null)
   }, [])
 
+  // A landed press keeps the lock until the snapshot carrying it arrives
+  // (else the next arm binds to a count from before it, and this console's
+  // own 🍾 reads as "Cues moved"), or `SETTLE_MS` pass.
+  const settle = useRef<{ presses: number; timer: ReturnType<typeof setTimeout> } | null>(null)
+  const unlock = useCallback(() => {
+    if (settle.current !== null) clearTimeout(settle.current.timer)
+    settle.current = null
+    latest.current.pending = null
+    setPending(null)
+  }, [])
+  useEffect(() => () => {
+    if (settle.current !== null) clearTimeout(settle.current.timer)
+  }, [])
+
   // The arm dies after ARM_MS.
   useEffect(() => {
     if (armed === null) return
@@ -169,6 +184,7 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
     const moved = movedCue(prevMarks.current, m)
     const lastMoved = m.last !== prevMarks.current.last
     prevMarks.current = m
+    if (settle.current !== null && pressSettled(settle.current.presses, m.presses)) unlock()
     if (a !== null && !armStillValid(a, m, now)) {
       setArmed(null)
       const fresh = rs.find((r) => r.id === moved)
@@ -177,7 +193,7 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
     if (lastMoved && m.last !== null && !ownMove(ownPress, m.last, now)) {
       setMoved({ by: m.lastBy === 'story' ? 'story' : 'director', at: now })
     }
-  }, [marks.last, firedCount, marks.presses])
+  }, [marks.last, firedCount, marks.presses, unlock])
 
   // Transient notes clear themselves.
   useEffect(() => {
@@ -214,9 +230,11 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
       const at = Date.now()
       if (res.moved === true) {
         // Another director's press landed between the arm and this one:
-        // the server fired nothing. Say so, like a stale arm.
+        // the server fired nothing. Say so, like a stale arm — naming the
+        // server's newest press (the marks are behind by definition).
         const { marks: m, rows: rs } = latest.current
-        const fresh = rs.find((r) => r.id === m.pressed)
+        const pressedId = movedPressedCue(res.pressed, m.pressed)
+        const fresh = rs.find((r) => r.id === pressedId)
         setStale(`Cues moved: ${fresh !== undefined ? cueLabel(fresh) : 'another press'} landed first. Nothing fired — re-arm.`)
         latest.current.pending = null
         setPending(null)
@@ -230,11 +248,15 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
             ? { result: { kind: PressKind.Refused, id, cue, at, seq }, refused: { cue, at, seq } }
             : { ...was, result: { kind: PressKind.Taken, id, cue, at, seq } }
       setPressOutcome(store, next)
+      if (row.next) setCoolUntil(at + NEXT_COOLDOWN_MS)
+      if (res.error === undefined && typeof res.presses === 'number' && !pressSettled(res.presses, latest.current.marks.presses)) {
+        settle.current = { presses: res.presses, timer: setTimeout(unlock, SETTLE_MS) }
+        return
+      }
       latest.current.pending = null
       setPending(null)
-      if (row.next) setCoolUntil(at + NEXT_COOLDOWN_MS)
     },
-    [fireSignal, store],
+    [fireSignal, store, unlock],
   )
 
   const cooling = coolUntil !== 0
