@@ -47,7 +47,7 @@ import { ipOf, readBody, sendJson, str, PayloadTooLarge } from "./http-util.ts";
 import { limiterFor, rateLimitsFromEnv } from "./rate-limit.ts";
 import { auth, authUser, migrateAuth } from "./auth-server.ts";
 import { dbReady, initSchema } from "./db/index.ts";
-import { ControlPlaneBoot, startControlPlane } from "./boot.ts";
+import { ControlPlaneBoot, startControlPlane, type MissAnswer } from "./boot.ts";
 import { canModerateEvent, liveEvents } from "./db/queries.ts";
 import {
   AUTH_SECRET,
@@ -252,6 +252,7 @@ async function initControlPlane(): Promise<void> {
     },
     liveEvents,
     host: (row) => void registry.ensure(specFromRow(row)),
+    keyOf: (row) => ({ id: row.id, codes: [row.event_code, row.prime_code, row.mod_code] }),
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     log: (line) => process.stderr.write(`${line}\n`),
     where: DATABASE_URL,
@@ -259,12 +260,14 @@ async function initControlPlane(): Promise<void> {
   if (boot.rehydrated > 0) process.stdout.write(`  ↻ Rehydrated ${boot.rehydrated} live event(s) from the database\n`);
 }
 
-/** The router's answer for an event / code it doesn't host: while the
- *  control plane is still coming up it may be one of the database's, so
- *  "try again in a second", never the final 404 a phone reads as "ended". */
-function sendStarting(res: ServerResponse): void {
-  res.setHeader("retry-after", "1");
-  sendJson(res, 503, { error: "starting" });
+/** The router's answer for an event / code it doesn't host
+ *  (`boot.missEvent` / `missCode`): while the control plane is still coming
+ *  up it may be one of the database's, so "try again in a second", never
+ *  the final 404 a phone reads as "ended"; a row that would not rehydrate
+ *  answers 503 `event failed to load`. */
+function sendMiss(res: ServerResponse, miss: MissAnswer): void {
+  if (miss.retryAfter !== undefined) res.setHeader("retry-after", String(miss.retryAfter));
+  sendJson(res, miss.status, miss.body);
 }
 
 // ---------------------------------------------------------------------
@@ -327,10 +330,11 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
 
   // --- liveness + readiness: never throttled, no auth (C1) ---
   // 200 on a LAN box, or once the control plane is up and every live event
-  // is hosted; 503 {reason: "database" | "starting"} otherwise — the
-  // compose healthcheck, release.sh and the uptime check read this, not `/`.
+  // is hosted; 503 {reason: "database" | "starting" | "events"}
+  // otherwise — the compose healthcheck, release.sh and the uptime check
+  // read this, not `/`.
   if (method === "GET" && path === "/api/health") {
-    const h = boot.health(registry.all().length);
+    const h = boot.health(registry.all().length, (id) => registry.get(id) !== undefined);
     res.setHeader("cache-control", "no-store");
     return void sendJson(res, h.status, h.body);
   }
@@ -465,7 +469,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (!resolveLimiter.take(ipOf(req))) return void sendJson(res, 429, { error: "too many attempts — slow down" });
     const body = await readBody(req);
     const hit = registry.resolveCode(str(body, "code"));
-    if (hit === null) return void (boot.settled ? sendJson(res, 404, { error: "no event with that code" }) : sendStarting(res));
+    if (hit === null) return void sendMiss(res, boot.missCode(str(body, "code")));
     return void sendJson(res, 200, hit);
   }
 
@@ -476,7 +480,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const eventId = slash === -1 ? rest : rest.slice(0, slash);
     const subPath = slash === -1 ? "/" : rest.slice(slash);
     const runtime = registry.get(eventId);
-    if (runtime === undefined) return void (boot.settled ? sendJson(res, 404, { error: "unknown event" }) : sendStarting(res));
+    if (runtime === undefined) return void sendMiss(res, boot.missEvent(eventId));
     // The writing team moderates via their sessions — no mod code needed:
     // the owning author AND every collaborator invited onto the project.
     // That covers the mod POST routes AND the gated mod reads (the SSE

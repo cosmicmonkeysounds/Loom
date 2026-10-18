@@ -37,6 +37,7 @@ function harness(opts: { misses?: number; rows?: Row[]; setupFails?: number; bad
       if (row.id === opts.bad) throw new Error("bad journal");
       hosted.push(row.id);
     },
+    keyOf: (row) => ({ id: row.id, codes: [`G-${row.id}`, `P-${row.id}`, `M-${row.id}`] }),
     sleep: async (ms) => void sleeps.push(ms),
     log: (line) => void logs.push(line),
   };
@@ -106,8 +107,38 @@ describe("the control plane's boot", () => {
     await startControlPlane(boot, h.deps);
     expect(h.hosted).toEqual(["e2"]);
     expect(boot.phase).toBe("up");
-    expect(h.logs.some((l) => /could not rehydrate/u.test(l))).toBe(true);
+    expect(h.logs.some((l) => /could not rehydrate event bad/u.test(l))).toBe(true);
+    // Its phones and its door code hear "failed to load" (503), never the
+    // 404 that signs a phone out; health says which row is down …
+    expect(boot.missEvent("bad")).toEqual({ status: 503, body: { error: "event failed to load" }, retryAfter: 5 });
+    expect(boot.missCode(" G-bad ")).toEqual({ status: 503, body: { error: "event failed to load" }, retryAfter: 5 });
+    expect(boot.health(2)).toEqual({ status: 503, body: { ok: false, reason: "events", failed: ["bad"] } });
+    // … until it is hosted again (a relaunch under the same id).
+    expect(boot.health(3, (id) => id === "bad")).toEqual({ status: 200, body: { ok: true, controlPlane: true, events: 3 } });
+    // Anything else is gone for good once the boot has settled.
+    expect(boot.missEvent("nope")).toEqual({ status: 404, body: { error: "unknown event" } });
+    expect(boot.missCode("WRONG")).toEqual({ status: 404, body: { error: "no event with that code" } });
   });
+
+  it("the router's misses: 503 starting + retry-after 1 until the boot settles, then 404", async () => {
+    const h = harness({ misses: 1 });
+    const boot = h.attach(new ControlPlaneBoot(true));
+    const starting = { status: 503, body: { error: "starting" }, retryAfter: 1 };
+    expect(boot.missEvent("e1")).toEqual(starting);
+    expect(boot.missCode("G-e1")).toEqual(starting);
+    boot.phase = "waiting";
+    expect(boot.missEvent("e1")).toEqual(starting);
+    boot.phase = "rehydrating";
+    expect(boot.missCode("anything")).toEqual(starting);
+    await startControlPlane(boot, h.deps);
+    expect(boot.missEvent("e9")).toEqual({ status: 404, body: { error: "unknown event" } });
+    expect(boot.missCode("G-e9")).toEqual({ status: 404, body: { error: "no event with that code" } });
+    // A LAN box that settled off answers 404 at once.
+    const lan = new ControlPlaneBoot(false);
+    lan.phase = "off";
+    expect(lan.missEvent("e1").status).toBe(404);
+  });
+
 
   it("a LAN box (no DATABASE_URL) probes once, settles off and stays healthy", async () => {
     const h = harness({ misses: 99 });
