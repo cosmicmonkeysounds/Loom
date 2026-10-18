@@ -1338,6 +1338,30 @@ export class EventRuntime {
   /** A non-character `dm:` thread `guestId` may reply in: a stage voice's
    *  (`dm:Operator` / `dm:Narrator` — the voices `/api/mod/say` speaks as
    *  besides characters), or one already addressed to this guest. */
+  /**
+   * Is `channel` a room a guest's typed line may land in? Null when it is
+   * (whether they may post there is `Sim.canPost`'s call), else the refusal:
+   * 404 for a room the story doesn't have, 403 for a declared group's room
+   * the guest isn't in (`canPost` takes an undeclared-in-`model.channels`
+   * id as open to post, which is how the lobby and `faction:` work). The
+   * lobby, `dm:` (resolved above), `pm:` (`canPost` checks the two
+   * parties), a declared location's `loc:` room, an authored room, the
+   * pinned rooms (`canPost` refuses them) and a room this guest was already
+   * written to in are rooms.
+   */
+  private guestRoom(guestId: string, channel: string): { status: 403 | 404; error: string } | null {
+    const sim = this.sim!;
+    if (channel === "lobby" || channel.startsWith("dm:") || channel.startsWith("pm:") || isPinnedRoom(channel)) return null;
+    if (channel.startsWith("faction:")) {
+      const group = channel.slice("faction:".length);
+      if (!sim.model.factions.has(group)) return { status: 404, error: "no such room" };
+      return sim.factionMembers(group).includes(guestId) ? null : { status: 403, error: "you can't post here" };
+    }
+    if (channel.startsWith("loc:")) return sim.model.locations.has(channel.slice("loc:".length)) ? null : { status: 404, error: "no such room" };
+    if (sim.model.channels.has(channel)) return null;
+    return this.chat.historyFor(guestId, false).some((m) => m.channel === channel) ? null : { status: 404, error: "no such room" };
+  }
+
   private guestDmThread(guestId: string, channel: string): boolean {
     if (channel === "dm:Operator" || channel === "dm:Narrator") return true;
     return this.chat.historyFor(guestId, false).some((m) => m.channel === channel);
@@ -3559,6 +3583,14 @@ export class EventRuntime {
             sendJson(res, 404, { error: "no such character" });
             return true;
           }
+        }
+        // Any other room must be one the story has: an undeclared id
+        // ("nonsense", "hosts" for room:hosts, faction:Nobody) would be
+        // stored as a phantom room with audience "all".
+        const room = this.guestRoom(id, channel);
+        if (room !== null) {
+          sendJson(res, room.status, { error: room.error });
+          return true;
         }
         // An agent still hidden from this guest (Trabolta before Clippy
         // introduces him) has no thread yet: a crafted DM is refused, not
