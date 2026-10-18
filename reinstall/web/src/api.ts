@@ -223,8 +223,15 @@ export async function postPose(base: string, token: string, body: unknown): Prom
   }
 }
 
+/** A judged find (`POST /api/spatial/found` 200, §2.1): `FoundResult` plus
+ *  `captured` — whether the program is still in the Internet after the
+ *  find was committed (null from a server that doesn't say). A captured
+ *  program the find did not release is a refused reinstallation: the story
+ *  kept them (the banishment), so the tablet never celebrates it. */
+export type FoundAnswer = Omit<FoundResult, "captured"> & { captured: boolean | null };
+
 export type FoundReply =
-  | { kind: "found"; result: FoundResult }
+  | { kind: "found"; result: FoundAnswer }
   | { kind: "far"; distance: number | null }
   /** The doors are closed (the run is paused, or not open yet): the find
    *  wasn't judged, the session stays un-found — retry after a while. */
@@ -245,7 +252,10 @@ export async function postFound(base: string, token: string, fetcher: typeof fet
     return { kind: "error", message: (e as Error).message };
   }
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (res.ok) return { kind: "found", result: { ok: true, released: data["released"] === true, already: data["already"] === true } };
+  if (res.ok) {
+    const captured = typeof data["captured"] === "boolean" ? data["captured"] : null;
+    return { kind: "found", result: { ok: true, released: data["released"] === true, already: data["already"] === true, captured } };
+  }
   if (res.status === 409 && data["error"] === DOORS_CLOSED) return { kind: "paused" };
   if (res.status === 409) return { kind: "far", distance: typeof data["distance"] === "number" ? data["distance"] : null };
   if (res.status === 401 || res.status === 410 || res.status === 404) return { kind: "over", status: res.status };

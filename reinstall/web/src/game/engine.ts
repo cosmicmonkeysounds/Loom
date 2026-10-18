@@ -16,14 +16,14 @@
 import { PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
 import type { Group } from "three";
 import { buildWalls, pathLength, spaceOf, toSpace, yawFromSpace, yawToSpace } from "@loom/house";
-import type { Assignment, DuckSpot, FoundResult, HouseMap, PlayerPose, PlayerState, Prop, SpatialFrame, Vec3 } from "@loom/house";
+import type { Assignment, DuckSpot, HouseMap, PlayerPose, PlayerState, Prop, SpatialFrame, Vec3 } from "@loom/house";
 import { applySpace, buildHouseScene, createAvatar, createDuck, createTrail, houseAtmosphere, PoseBuffer, spaceGroup } from "@loom/house/three";
 import type { Avatar, Duck, HouseScene, King, Trail } from "@loom/house/three";
-import { fetchHouse, postEnd, postFound, postPose, streamUrl } from "../api.ts";
+import { fetchHouse, postEnd, postFound, postPose, streamUrl, type FoundAnswer } from "../api.ts";
 import { applyFrame, duckToAdopt, houseVersionOf, openSpatialStream, type SpatialStreamHandle } from "../spatial.ts";
 import type { Sfx } from "./audio.ts";
 import { canHit, fell, hearts, hit as landHit, KING_HP, newFight, NIGHT_ENDED, redeals, stageFor, STAGE_LINE, winNotice, type ArmedRead, type Fight, type HitVerdict, type Stage } from "./fight.ts";
-import { formatElapsed, foundRetryMs, heat, PAUSED_NOTICE, perchedOutOfReach, relativeBearing, roomTitle, withinReach, type Heat } from "./hud.ts";
+import { findOutcome, formatElapsed, foundRetryMs, heat, PAUSED_NOTICE, perchedOutOfReach, relativeBearing, roomTitle, withinReach, type Heat } from "./hud.ts";
 import { combineInput, isActive, keyDown, keyUp, type StickVector } from "./input.ts";
 import { IdleLeash } from "./leash.ts";
 import { bodyAfterRemap, buildPhysicsWorld, eyeOf, move, NO_INPUT, spawnBody, type Body, type PhysicsOptions, type PhysicsWorld } from "./physics.ts";
@@ -106,7 +106,7 @@ export interface GameOptions {
   sfx: Sfx;
   onHud: (h: HudState) => void;
   /** The duck was reached and the server agreed — the egg is being laid. */
-  onFound: (r: FoundResult) => void;
+  onFound: (r: FoundAnswer) => void;
   /** The session ended without a find (the run restarted, the leash ran out). */
   onEnd: (e: GameEnd) => void;
   /** A challenge opened (the board) or closed (null). */
@@ -690,8 +690,12 @@ export class Game {
         window.clearInterval(this.pumpTimer);
         this.trail.set([]);
         this.o.sfx.quack(1);
-        window.setTimeout(() => this.o.sfx.fanfare(), 650);
-        void this.duck.layEgg();
+        // A refused find (the story keeps them captured): no fanfare, no
+        // egg, Gerald stays put — nothing that reads as a release.
+        if (findOutcome(reply.result, this.o.assignment.captured) !== "refused") {
+          window.setTimeout(() => this.o.sfx.fanfare(), 650);
+          void this.duck.layEgg();
+        }
         this.o.onFound(reply.result);
         return;
       case "far":

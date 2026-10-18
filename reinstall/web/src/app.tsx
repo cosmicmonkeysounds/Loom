@@ -17,6 +17,7 @@ import { hasWebGL2 } from "@loom/terminal/webgl.ts";
 import { ApiError, begin, fetchCandidates, fetchDealtHouse, fetchStations, flushPendingSignal, postEnd, tokenAlive } from "./api.ts";
 import { applyHints, baseOf, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, withoutSecrets, type DeviceRole, type ReinstallConfig } from "./config.ts";
 import { createSfx } from "./game/audio.ts";
+import { findFlash } from "./game/hud.ts";
 import { HOLD_MS, useLongPress } from "./kiosk.ts";
 import { NO_WEBGL2, Play, type PlayExit } from "./game/Play.tsx";
 import { showHouse } from "./show-house.ts";
@@ -157,7 +158,7 @@ export function App() {
 function exitFlash(e: PlayExit): { text: string; tone: "good" | "bad" } {
   switch (e.kind) {
     case "found":
-      return { text: e.complete ? `${e.name} — reinstallation complete.` : `${e.name} found Gerald.`, tone: "good" };
+      return findFlash(e.outcome, e.name);
     case "over":
       return { text: e.reason, tone: "bad" };
     case "idle":
