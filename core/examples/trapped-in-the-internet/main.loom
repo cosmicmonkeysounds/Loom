@@ -4215,10 +4215,18 @@ when Night.lights_back_at > 0 and Time.elapsed >= Night.lights_back_at:
     <cue: lights, room: {Night.dark_room}, state: on>
   set Night.lights_back_at = 0
 
+// 💡 is the first step of ALL STOP (the emergency card), so it also holds
+// the dance a server-room ending armed for ten seconds after its blackout:
+// the dance look would replace the house lights mid-emergency. It does not
+// lift the takeover; 🪩 plays the held dance (and lifts it) once the house
+// manager says go.
 when restore_the_lights:
   cue lights_restore
   set Night.lights = "restore"
   set Night.lights_back_at = 0
+  if Night.dance_at > 0:
+    set Night.dance_at = 0
+    broadcast "💡 The dance is held: press 🪩 when the house manager says go." to channel(hosts)
 
 // G11: the show is over. Only once the ceremony has started (G1; a
 // mid-show press, or one between the ending and G1, does nothing), once,
