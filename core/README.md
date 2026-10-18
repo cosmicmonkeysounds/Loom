@@ -418,14 +418,24 @@ pushes during journal replay. The play app's `/sw.js` +
   broadcasts to staff rooms (an authored `kind: faction` CHANNEL whose
   GROUP isn't joinable) — is never LAST and never ticks, and a repeat of an
   earlier cue never moves LAST back. `POST /api/mod/signal` answers
-  `{ok: true, refused: true}` for one (`pressRefused`), so the phone says
-  *not taken*. `CueState.presses` counts the presses the story took (a
+  `{ok: true, refused: true, presses}` for one (`pressRefused`), so the
+  phone says *not taken*; a taken press answers `{ok: true, presses}`, the
+  count after it. `CueState.presses` counts the presses the story took (a
   repeat of LAST or of an aside moves only it) and `pressed` names the
-  newest one's cue: both screens bind an arm to it, and a signal posted
-  with `presses` answers **409** `{moved: true, cues}` — fires nothing —
-  when another press landed since. Before the doors the director's view
-  lists the admin cues off the never-played story (`declaredSim`), and the
-  lean view says `doorsClosed`.
+  newest one's cue: both screens bind an arm to it. Only a **cue-sheet
+  press** — a signal posted with `presses` — can be turned down here
+  (a device, stagehand or a Tools fire carries no count and never is):
+  **409** `{moved: true, cues}` — fires nothing — when a press since that
+  count fired the same cue, moved LAST or ticked a cue for the first time
+  (`pressMovedArm`); another cue's repeat (a second 📋 while V4 is armed, a
+  second duck find, the door contact, an aside pressed again) does not
+  veto it. And **409** `{error: "no scenario loaded", doorsClosed: true}`
+  while the run's `start:` beat has not played (a restart with the doors
+  shut leaves the run paused, not idle), so the press never lands in the
+  journal ahead of it. Before the doors the director's view lists the
+  admin cues off the never-played story (`declaredSim`), and the lean view
+  says `doorsClosed`; whether the doors have opened survives a restart
+  (`Meta.opened`).
 - **The whole ledger**: `GET /e/:id/api/mod/log?after=<seq>&limit=<n>`
   (directors; `limit` default 1000, at most 5000) pages the run's ledger:
   `{entries, next, total}`, `next` = the `after` for the next page or null
