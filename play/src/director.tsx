@@ -158,15 +158,32 @@ export function actCount(a: Pick<CueAct, "firedSpine" | "spine">): string {
   return `${a.firedSpine}/${a.spine.length}`;
 }
 
-/** A folded act's one line (the page adds the ▸): a past act `✓ B · Act I
+/** A folded act's line, in parts so a long act title truncates without
+ *  losing the count: `mark` (✓ done, – never ran), the name, the `count`
+ *  (`8/8`, `skipped`, `12 cues`) and, for an act still to come, the first
+ *  cue it will ask for. */
+export interface FoldedParts {
+  mark: string | null;
+  name: string;
+  count: string;
+  next: string | null;
+}
+
+export function foldedParts(a: CueAct): FoldedParts {
+  const name = actName(a);
+  if (a.state === "past") return { mark: "✓", name, count: actCount(a), next: null };
+  if (a.state === "skipped") return { mark: "–", name, count: "skipped", next: null };
+  const first = a.spine.find((r) => !r.fired);
+  return { mark: null, name, count: `${a.spine.length} cue${a.spine.length === 1 ? "" : "s"}`, next: first !== undefined ? cueTitleTags(first.title).title : null };
+}
+
+/** The folded line as text (the page adds the ▸): a past act `✓ B · Act I
  *  8/8`, one that never ran `– … skipped`, one still to come with its size
  *  and the first cue it will ask for. */
 export function foldedLine(a: CueAct): string {
-  if (a.state === "past") return `✓ ${actName(a)} ${actCount(a)}`;
-  if (a.state === "skipped") return `– ${actName(a)} skipped`;
-  const first = a.spine.find((r) => !r.fired);
-  const size = `${a.spine.length} cue${a.spine.length === 1 ? "" : "s"}`;
-  return `${actName(a)} · ${size}${first !== undefined ? ` · next: ${cueTitleTags(first.title).title}` : ""}`;
+  const p = foldedParts(a);
+  if (p.mark !== null) return `${p.mark} ${p.name} ${p.count}`;
+  return `${p.name} · ${p.count}${p.next !== null ? ` · next: ${p.next}` : ""}`;
 }
 
 // --- the clock, the NEXT bar and the strip -------------------------------------------
@@ -828,14 +845,24 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
                 if (a.state === "anytime") return null;
                 const isFocus = k === layout.focus;
                 const open = isFocus || openActs.has(a.key);
-                if (!open)
+                if (!open) {
+                  const f = foldedParts(a);
                   return (
                     <section key={a.key} className={`cue-act ${a.state}`} data-act={a.key}>
-                      <button type="button" className="cue-act-fold" onClick={() => toggleAct(a.key)}>
-                        <span className="cue-act-fold-text">{foldedLine(a)}</span> ▸
+                      <button type="button" className="cue-act-fold" aria-label={foldedLine(a)} onClick={() => toggleAct(a.key)}>
+                        <span className="cue-act-fold-line">
+                          <span className="cue-act-fold-text">
+                            {f.mark !== null && `${f.mark} `}
+                            {f.name}
+                          </span>
+                          <span className="cue-act-count">{f.count}</span>
+                          <span aria-hidden="true">▸</span>
+                        </span>
+                        {f.next !== null && <span className="cue-act-fold-next">next: {f.next}</span>}
                       </button>
                     </section>
                   );
+                }
                 const prev = isFocus && layout.previous >= 0 ? layout.acts[layout.previous]! : null;
                 return (
                   <section key={a.key} className={`cue-act ${a.state}`} data-act={a.key}>

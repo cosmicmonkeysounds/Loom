@@ -1044,7 +1044,7 @@ footer {
 .cue-tag.last, .cue-tag.next { text-transform: uppercase; letter-spacing: 0.5px; }
 .cue-arm { font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; font-size: 12px; }
 .cue-row { scroll-margin-top: 48px; } /* clear of the sticky act header */
-.cue-row.off { opacity: 0.55; } /* `while:` false: off tonight's branch, still pressable */
+.cue-row.off:not(.last):not(.armed) { opacity: 0.55; } /* `while:` false: off tonight's branch, still pressable */
 .cue-tag.muted { font-weight: 600; font-style: italic; }
 .cue-code.act { background: var(--navy); color: var(--white); margin-right: 4px; }
 /* Wave 10: the pinned top — the strip (act · phase · soonest countdown ·
@@ -1078,10 +1078,14 @@ footer {
 .cue-act-badge { flex: 0 0 auto; padding: 1px 6px; border-radius: 4px; background: var(--highlight); color: var(--black); text-transform: none; letter-spacing: 0; }
 .cue-act.anytime .cue-act-head button { color: var(--signal); }
 .cue-act-fold, .cue-from {
-  display: flex; align-items: center; gap: 6px; width: 100%; margin: 0; padding: 10px 12px;
+  width: 100%; margin: 0; padding: 10px 12px;
   border: none; border-radius: var(--radius); background: var(--code-bg); color: var(--muted-ink);
   font: 700 13px var(--ui-font); text-align: left; cursor: pointer;
 }
+.cue-act-fold { display: flex; flex-direction: column; gap: 2px; }
+.cue-act-fold-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cue-act-fold-next { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cue-from { display: flex; align-items: center; gap: 6px; }
 .cue-act-fold-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cue-act.past .cue-act-fold { color: var(--good); }
 .cue-from { background: none; padding: 6px 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; }
