@@ -648,6 +648,10 @@ interface OpenRequest {
   createdAt: number;
   /** The hold line was already offered for this request. */
   held: boolean;
+  /** Bumped whenever `req` is rebuilt (its lines change). */
+  rev: number;
+  /** The `rev` last sent under the current id (-1: never sent). */
+  sentRev: number;
 }
 
 export interface AgentHubOptions {
@@ -817,6 +821,7 @@ export class AgentHub {
           const fresh = this.o.build(thread, r.req.id);
           if (fresh !== null) {
             r.req = fresh;
+            r.rev += 1;
             r.behind = false;
           }
         } else {
@@ -833,7 +838,7 @@ export class AgentHub {
     const id = `ar-${globalThis.crypto.randomUUID().slice(0, 8)}`;
     const req = this.o.build(thread, id);
     if (req === null) return;
-    const r: OpenRequest = { req, key: threadKey(thread), worker: null, dispatchedAt: null, dispatchSeq: 0, startedAt: null, attempts: 0, followUp: false, behind: false, createdAt: this.now(), held };
+    const r: OpenRequest = { req, key: threadKey(thread), worker: null, dispatchedAt: null, dispatchSeq: 0, startedAt: null, attempts: 0, followUp: false, behind: false, createdAt: this.now(), held, rev: 0, sentRev: -1 };
     this.open.set(id, r);
     this.byThread.set(r.key, id);
     this.dispatch(r);
@@ -843,9 +848,8 @@ export class AgentHub {
    *  none) — one still answering before a stalled one, so new work never
    *  lines up behind a worker that stopped answering while another can
    *  take it, and one answering before one on probation. `moved`: handed
-   *  over from a stalled worker's line, which is not another attempt.
-   *  `from`: the worker it was just cancelled on (a timeout). */
-  private dispatch(r: OpenRequest, moved = false, from: string | null = null): void {
+   *  over from a stalled worker's line, which is not another attempt. */
+  private dispatch(r: OpenRequest, moved = false): void {
     let best: AgentWorker | null = null;
     let bestLoad = Infinity;
     for (const w of this.workers.values()) {
@@ -858,12 +862,14 @@ export class AgentHub {
       }
     }
     if (best === null) return;
-    // Back to the worker it was just cancelled on, which holds an older
-    // copy than the body as it stands (rebuilt since, with lines that copy
-    // lacks): a new id, so a late answer from the old copy is refused —
-    // the copies share nothing the hub could tell apart — and the new
-    // copy, carrying every line, is answered once.
-    if (best.id === from && r.followUp && !r.behind) this.renew(r);
+    // The body was rebuilt since it was last sent: some worker may still
+    // hold (and be answering) an older copy under this id — the one it was
+    // just cancelled on, or one it bounced through. A new id, so a late
+    // answer from an old copy is refused — the copies share nothing the
+    // hub could tell apart — and the new copy, carrying every line, is
+    // answered once. An unchanged body keeps its id: any copy answers it.
+    if (r.sentRev >= 0 && r.sentRev !== r.rev) this.renew(r);
+    r.sentRev = r.rev;
     r.worker = best.id;
     r.dispatchedAt = this.now();
     r.dispatchSeq = ++this.dispatches;
@@ -994,7 +1000,7 @@ export class AgentHub {
         // clock starts now, not at its own (long past) dispatch.
         this.startHead(worker);
         if (r.attempts >= maxAttempts) this.giveUp(id, r);
-        else this.dispatch(r, false, worker); // a worker still answering first, now that this one is stalled
+        else this.dispatch(r); // a worker still answering first, now that this one is stalled
         // The rest of the stalled worker's line goes to one still answering.
         if (stalls) this.moveLine(worker);
       } else if (r.worker === null && now - r.req.at > maxAge) {
@@ -1009,6 +1015,7 @@ export class AgentHub {
           const fresh = this.o.build(r.req.thread, r.req.id);
           if (fresh !== null) {
             r.req = fresh;
+            r.rev += 1;
             r.behind = false;
           }
         }
@@ -1030,6 +1037,7 @@ export class AgentHub {
           // The stalled worker still holds the old copy (its `followUp`
           // stands); whoever is sent this one has every line so far.
           r.req = { ...fresh, at: r.req.at };
+          r.rev += 1;
           r.behind = false;
         }
       }

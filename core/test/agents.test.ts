@@ -23,7 +23,7 @@ import { Sim } from "../src/runtime/sim/index.ts";
 
 const T: AgentThread = { character: "Trabolta", channel: "dm:Trabolta", audience: ["g-1"] };
 
-function hubHarness(opts: { replyTimeoutMs?: number; queueMaxAgeMs?: number; maxAttempts?: number; presence?: () => void } = {}) {
+function hubHarness(opts: { replyTimeoutMs?: number; queueMaxAgeMs?: number; maxAttempts?: number; holdAfterMs?: number; presence?: () => void } = {}) {
   let clock = 1000;
   let builds = 0;
   const typing: boolean[] = [];
@@ -452,7 +452,6 @@ describe("AgentHub", () => {
     const a = h.worker("laptop");
     h.hub.attach(a.w);
     h.hub.line(T);
-    const id = a.requests()[0]!.id;
     for (let s = 0; s < 60; s++) {
       h.tick(1000);
       h.hub.sweep(); // stalls at 11 s, re-sent to it every reply timeout
@@ -462,7 +461,8 @@ describe("AgentHub", () => {
     h.hub.sweep();
     expect(h.hub.pending).toHaveLength(0);
     expect(h.held).toHaveLength(1);
-    expect(a.got.at(-1)).toEqual(["cancel", { id }]);
+    // The hold line rebuilt it (a new id when re-sent): the copy it holds is cancelled.
+    expect(a.got.at(-1)).toEqual(["cancel", { id: a.requests().at(-1)!.id }]);
     expect(h.typing.at(-1)).toBe(false);
   });
 
@@ -766,6 +766,33 @@ describe("AgentHub", () => {
       // The new copy carries every line so far: answered once, no re-ask.
       expect(h.hub.settle(v2.id, "laptop")).toEqual({ req: v2, followUp: false });
     }
+  });
+
+  it("a rebuilt request that bounces through another stalled worker back to the one holding its older copy gets a new id: the old copy's late answer never settles it as complete (review 6)", () => {
+    const h = hubHarness({ replyTimeoutMs: 100, holdAfterMs: 20 });
+    const b = h.worker("B");
+    const a = h.worker("A");
+    h.hub.attach(b.w); // B first in map order: it wins ties
+    h.hub.attach(a.w);
+    const g = (id: string): AgentThread => ({ ...T, audience: [id] });
+    h.hub.line(g("g-1")); // R1 → B
+    h.hub.line(g("g-2")); // R2 → A
+    h.tick(101);
+    h.hub.sweep(); // both heads time out: both stall, R1 ⇄ R2
+    h.hub.answeredByHand(g("g-1")); // A's line empties
+    h.hub.line(g("g-3")); // R3 → A (covers g-3's first line)
+    const v1 = a.requests().find((r) => r.thread.audience[0] === "g-3")!;
+    h.hub.line(g("g-3")); // a second line while v1 is out
+    h.tick(24);
+    h.hub.sweep(); // hold lines; R3 rebuilt with both lines
+    h.tick(77);
+    h.hub.sweep(); // R2 given up; R3 times out → B; A back on trial takes B's line → R3 back on A
+    const now = a.holds().find((r) => r.thread.audience[0] === "g-3")!;
+    expect(now).toBeDefined();
+    // A's old copy answered only the first line; its reply was on the wire.
+    const late = h.hub.settle(v1.id, "A");
+    expect(late === null || late.followUp).toBe(true);
+    if (late === null) expect(h.hub.settle(now.id, "A")).toEqual({ req: now, followUp: false });
   });
 
   it("reset cancels everything open and tells workers", () => {
