@@ -93,6 +93,7 @@ function LastLine() {
   const clock = useCockpit((s) => s.storyClock)
   const running = useCockpit((s) => s.phase === CockpitPhase.Open)
   const setTab = useCockpit((s) => s.setTab)
+  const setLogPress = useCockpit((s) => s.setLogPress)
   const wall = useNow(true, 30_000)
   const last = d.rows.find((r) => r.last) ?? null
   const fx = useMemo(() => {
@@ -134,7 +135,14 @@ function LastLine() {
           <span>
             did: {fx.items.join(' · ')}
             {fx.more > 0 && (
-              <button onClick={() => setTab(CockpitTab.Log)} className="ml-1 text-indigo-300 hover:underline">
+              <button
+                onClick={() => {
+                  setLogPress(fx.seq)
+                  setTab(CockpitTab.Log)
+                }}
+                className="ml-1 text-indigo-300 hover:underline"
+                data-testid="director-did-more"
+              >
                 +{fx.more} more ↗ Log
               </button>
             )}

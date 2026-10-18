@@ -17,6 +17,7 @@ import { SimEventType } from '@loom/core/sim'
 import { CockpitContext, useCockpit, type LedgerEntry } from '@/store/cockpit'
 import { canExportRun, downloadRunExport } from '@/lib/run-export'
 import { eventMentions, missingEvents } from './log-filter'
+import { pressSlice } from './director/press-effects'
 import { describeEvent, logClock } from './log-describe'
 
 /** Tone class per event type (grouped by family). */
@@ -70,7 +71,15 @@ export function LogTab() {
   const store = useContext(CockpitContext)
   const endRef = useRef<HTMLDivElement>(null)
   const [who, setWho] = useState('')
-  const rows = useMemo(() => (who === '' ? log : log.filter((e) => eventMentions(e.event, who))), [log, who])
+  // The Director's `did: +N more ↗ Log` focuses one press; leaving the page
+  // drops the focus so the tab bar's Log is the whole ledger again.
+  const logPress = useCockpit((s) => s.logPress)
+  const setLogPress = useCockpit((s) => s.setLogPress)
+  useEffect(() => () => setLogPress(null), [setLogPress])
+  const rows = useMemo(
+    () => (logPress !== null ? pressSlice(log, logPress) : who === '' ? log : log.filter((e) => eventMentions(e.event, who))),
+    [log, who, logPress],
+  )
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' })
   }, [rows.length])
@@ -79,7 +88,15 @@ export function LogTab() {
     <div className="flex h-full flex-col" data-testid="sim-log">
       <div className="flex items-center justify-between gap-2 border-b border-zinc-800 px-3 py-1 text-[11px] text-zinc-500">
         <span className="flex items-center gap-2">
-          <span>
+          {logPress !== null && (
+            <span className="flex items-center gap-1 rounded border border-indigo-500/60 bg-indigo-500/10 px-1.5 py-0.5 text-indigo-300" data-testid="log-press">
+              one press (#{logPress}) and what it did
+              <button onClick={() => setLogPress(null)} className="text-zinc-400 hover:text-zinc-200" title="show the whole log">
+                ✕
+              </button>
+            </span>
+          )}
+          <span className={clsx(logPress !== null && 'hidden')}>
             {who === '' ? `${log.length} of ${ledgerLen} events` : `${rows.length} of ${log.length} events mention`}
             {missed > 0 && who === '' && (
               <span className="ml-1 text-zinc-600" data-testid="log-missed">
@@ -90,6 +107,7 @@ export function LogTab() {
           <select
             value={who}
             onChange={(e) => setWho(e.target.value)}
+            disabled={logPress !== null}
             className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[11px] text-zinc-300 outline-none focus:border-indigo-500"
             title="Show only the events that mention one participant"
             data-testid="log-filter"
@@ -128,13 +146,15 @@ export function LogTab() {
       <div className="min-h-0 flex-1 overflow-auto">
         {rows.length === 0 && (
           <div className="p-4 text-sm text-zinc-600">
-            {running
-              ? who === ''
-                ? missed > 0
-                  ? `No events on this console yet — the run's ${missed} earlier events predate it (a reload or a late join). ⤓ Export run downloads the whole ledger.`
-                  : 'No events yet on this console.'
-                : 'Nothing mentions them yet.'
-              : 'The ledger is empty — start a rehearsal.'}
+            {logPress !== null
+              ? 'That press is no longer in this console’s log.'
+              : running
+                ? who === ''
+                  ? missed > 0
+                    ? `No events on this console yet — the run's ${missed} earlier events predate it (a reload or a late join). ⤓ Export run downloads the whole ledger.`
+                    : 'No events yet on this console.'
+                  : 'Nothing mentions them yet.'
+                : 'The ledger is empty — start a rehearsal.'}
           </div>
         )}
         {rows.map((entry) => (

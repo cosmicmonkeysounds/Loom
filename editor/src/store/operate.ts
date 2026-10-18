@@ -615,6 +615,7 @@ export const useOperate = create<OperateState>((set, get) => {
     selection: null,
     worldFilter: '',
     ownPress: null,
+    logPress: null,
 
     attach: (projectId) => {
       if (get().projectId === projectId) return
@@ -920,6 +921,7 @@ export const useOperate = create<OperateState>((set, get) => {
 
     setTab: (activeTab) => set({ activeTab }),
     setWorldFilter: (worldFilter) => set({ worldFilter }),
+    setLogPress: (logPress) => set({ logPress }),
     selectChannel: (activeChannel) => set({ activeChannel }),
     select: (selection: Selection) => set({ selection }),
     setPerspective: (perspective) => {

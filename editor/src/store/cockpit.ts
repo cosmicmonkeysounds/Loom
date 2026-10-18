@@ -444,6 +444,9 @@ export interface CockpitState {
   worldFilter: string
   /** This console's newest `fireSignal` (null before its first). */
   ownPress: OwnPress | null
+  /** The Log page shows one press and what it did: the ledger seq of that
+   *  press (the Director's `did: +N more ↗ Log`), else null (the whole log). */
+  logPress: number | null
   ledgerLen: number
   messages: CockpitMessage[]
   error: string | null
@@ -481,6 +484,8 @@ export interface CockpitState {
   setTab(tab: CockpitTab): void
   /** Set the World page's variable filter (`worldFilter`). */
   setWorldFilter(q: string): void
+  /** Focus the Log page on one press (`logPress`), or clear it with null. */
+  setLogPress(seq: number | null): void
   selectChannel(channel: string): void
   select(selection: Selection): void
   /** Switch the lens. Resolves `lens` (async on the server) — `perspective`
@@ -635,6 +640,7 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   countdowns: [],
   worldFilter: '',
   ownPress: null,
+  logPress: null,
   ledgerLen: 0,
   messages: [],
   error: null,
@@ -653,6 +659,7 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   lens: null,
   setTab: (activeTab) => set({ activeTab }),
   setWorldFilter: (worldFilter) => set({ worldFilter }),
+  setLogPress: (logPress) => set({ logPress }),
   selectChannel: (activeChannel) => set({ activeChannel }),
   select: (selection) => set({ selection }),
   setPerspective: (perspective) => set({ perspective }),

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { LedgerEntry } from '@/store/cockpit'
 import type { SimEvent } from '@loom/core/sim'
-import { pressEffects } from './press-effects'
+import { pressEffects, pressSlice } from './press-effects'
 
 let seq = 0
 const e = (event: SimEvent): LedgerEntry => ({ seq: seq++, event })
@@ -78,5 +78,14 @@ describe('pressEffects after a refused re-press', () => {
     seq = 0
     const bare = [e({ type: 'signal', name: 'lights', subject: null }), e({ type: 'tick', elapsedMs: 1 }), e({ type: 'signal', name: 'lights', subject: null })]
     expect(pressEffects(bare, 'lights', { staffRooms: ['room:hosts'] })!.seq).toBe(2)
+  })
+})
+
+describe('pressSlice', () => {
+  it('is the press and its effects, up to the next input', () => {
+    seq = 0
+    const log = [set('Night.a', '1'), e({ type: 'signal', name: 'trust_chart', subject: null }), set('Night.b', '2'), e({ type: 'tick', elapsedMs: 1 }), set('Night.c', '3')]
+    expect(pressSlice(log, 1).map((r) => r.seq)).toEqual([1, 2])
+    expect(pressSlice(log, 99)).toEqual([])
   })
 })

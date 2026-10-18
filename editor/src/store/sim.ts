@@ -299,9 +299,11 @@ export const useSim = create<SimState>((set, get) => {
     compiledAt: -1,
     worldFilter: '',
     ownPress: null,
+    logPress: null,
 
     setTab: (activeTab) => set({ activeTab }),
     setWorldFilter: (worldFilter) => set({ worldFilter }),
+    setLogPress: (logPress) => set({ logPress }),
     selectChannel: (activeChannel) => set({ activeChannel }),
     select: (selection: Selection) => set({ selection }),
     setPerspective: (perspective) => {

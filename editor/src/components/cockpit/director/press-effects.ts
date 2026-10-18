@@ -11,6 +11,17 @@ import type { LedgerEntry } from '@/store/cockpit'
  *  server's `CUE_INPUTS`). */
 const INPUTS: ReadonlySet<string> = new Set(['signal', 'tick', 'chat', 'accountCreated', 'scanned'])
 
+/** One press and what it did: the ledger rows from the press at `seq` up
+ *  to the next input (the Log page focused by `did: +N more ↗ Log`). Empty
+ *  when the log no longer holds it. */
+export function pressSlice(log: readonly LedgerEntry[], seq: number): LedgerEntry[] {
+  const at = log.findIndex((r) => r.seq === seq)
+  if (at < 0) return []
+  let end = at + 1
+  while (end < log.length && !INPUTS.has(log[end]!.event.type)) end++
+  return log.slice(at, end)
+}
+
 /** How many items the `did:` line shows before `+N more`. */
 export const EFFECTS_SHOWN = 4
 
