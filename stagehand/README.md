@@ -265,7 +265,7 @@ is YAML frontmatter + the system prompt:
 | `facts` | world path prefixes to show it, in the voice and in the orchestrator's digest, delta and reflect state alike (the phase is always shown; Trabolta lists exact `Night.*` names, never the bare `Night.` and never `Kernel.`: the show keeps its secrets on `Kernel`) |
 | `them` | the speaker's variables to show it (default: all) |
 | `when` | a gate over `self.<var>`, `them.<var>`, `speaker.kind`, world paths |
-| `unavailable` | what it says while the gate is closed (else silence). With **no worker online at all**, or only one that stopped answering (its oldest request timed out; it shows as away until it answers again), the event server says the story's `CHARACTER … hold:` line instead, after ~20 s |
+| `unavailable` | what it says while the gate is closed (else silence). With **no worker online at all**, the event server says the story's `CHARACTER … hold:` line instead, after ~20 s. A worker that stays connected but stops answering is only caught at the front of its line: each request there gets 2 min, a second try, then the hold line once (a wedged laptop delays it; directors answer from Run) |
 | `fallback` | what it says when the model fails (else silence) |
 | `model` / `endpoint` / `temperature` / `max_tokens` / `reasoning_effort` | per-character overrides of the section's `llm:` |
 | `mind` | the orchestrator's prompt file (how *this* character grows); a built-in default otherwise |
@@ -352,7 +352,8 @@ Internet*'s actual rig is [`trapped.house.yaml`](./trapped.house.yaml):
 Zigbee2MQTT group scenes + WLED presets for every `cue lights_*`, the
 per-room long form `<cue: lights, room: …, state: …>` (The Start Bar — the
 kitchen, dimmed to ~20%, never dark — The Desktop, The RAM), `screens_flicker`
-blinking the house, every `sound <name>` as a QLab OSC cue (but `announce_chime` → the `alexa`
+blinking the house's bulbs (their own one-shot blink effect; the LED strips
+keep their look), every `sound <name>` as a QLab OSC cue (but `announce_chime` → the `alexa`
 player), `do announce` to the `alexa` speaker plus QLab's `duck_music` cue (the music dips under it), `do door server_room` to the ESP32's door
 **indicator** (`show/serverroom/lock`, the one retained command; the real
 lock is a standalone keypad lock, code set by hand, never networked, and
@@ -472,8 +473,13 @@ entry beat), the `show` module reads `GET /api/state` and replays its
 frame handler): `lights_{Night.lights}` (never `alarm`, which would re-arm
 the siren; `server_open` is the server room's look on the Y2K house look,
 so it replays `lights_y2k` first — a constant `catch_up:` cue gated by a
-`when:`), then Trabolta's dark room while his cut is still on, or lit
-again once it is over and his look is still up. It waits (10 s at most)
+`when:`), then Trabolta's dark room while his cut is still on (under the
+look he cut, or one that never re-lit that room), or lit again once his
+90 s restore turned it back on — only under the look the story restored
+it under (`Night.lit_scene`) or a later room-scoped one, never under a
+whole-house look, so a long-finished cut never punches a room to full.
+Both rules use the story's own restore test (`test_trapped_house.py`
+reads it out of `main.loom` and checks them look by look). It waits (10 s at most)
 for the broker session first, since paho drops QoS-0 publishes queued
 before it, and replays nothing when a live lights cue arrived while the
 state was being read (that cue is newer). A failed state call only logs;

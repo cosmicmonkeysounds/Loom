@@ -1,6 +1,8 @@
 > Design/audit note from the 2026-10-14/15 planning sessions for *Trapped in the Internet* (see [SCHEDULE](../../core/examples/trapped-in-the-internet/SCHEDULE.md) / [CHECKLIST](../../core/examples/trapped-in-the-internet/CHECKLIST.md)). File:line citations are a snapshot of commit `6884a96`–`fba382b` and will drift.
 >
 > **Wave 1 status** (merged to master 2026-10-15, not yet deployed to the VPS; [OCT31 §5](../../core/examples/trapped-in-the-internet/OCT31.md)). Fixed or built: §2.1 (join links use `LOOM_BASE_URL`, K-01), §2.2 (End → relaunch keeps the project's codes; Run can rotate only the staff codes, K-10), §2.4 (wrong codex codes throttled per guest, `LOOM_RL_REDEEM_MISSES`, K-11; codes stay guessable), §2.5 (the Print page draws its QRs in the browser, K-12), §2.7 (check-in refused while captured / in a prison / on rails), Requirement 2 (room check-in signs, `POST /api/guest/checkin`, `?checkin=<slug>`, K-13 — the terminal-as-kiosk check-in was not built), and a Run → Print sheet for codex posters, the join poster and check-in signs. Still a design: project-owned printables (print tokens, guest badges, performer cards, device cards, `/q/<token>`), scoped device tokens (§2.6), §2.3, §2.8, and the floor-plan editor (§6).
+>
+> **Wave 9 status** (merged 2026-10-18, ships as `w9-1018`): guest passes are drawn in the browser too (`play/src/pass-qr.tsx`, the same margin and error correction as `/api/qr`; the show-pass card, ☰ Your pass and the on-rails pass sheet), so the play app never calls `/api/qr`. Only the editor's Run join QR still does, and its per-IP ceiling is `LOOM_RL_QR` (default 60/60). The guest pass row below and §2.5's limit describe the old code.
 
 # QR codes, check-in, printables, and the floor plan editor: an audit
 
