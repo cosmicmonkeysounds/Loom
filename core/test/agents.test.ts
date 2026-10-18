@@ -154,6 +154,60 @@ describe("AgentHub", () => {
     expect(h.hub.pending).toHaveLength(0);
   });
 
+  it("a burst on a busy, healthy worker times nothing out: only its head is on the clock (T9-timers-02)", () => {
+    const h = hubHarness();
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    const threads = Array.from({ length: 60 }, (_, i): AgentThread => ({ character: "Trabolta", channel: "dm:Trabolta", audience: [`g-${i}`] }));
+    let settled = 0;
+    let busyUntil = 0; // the worker answers its oldest request every 6 s
+    for (let t = 0; t < 11 * 60; t++) {
+      if (t < 60) h.hub.line(threads[t]!);
+      if (t >= busyUntil) {
+        const head = a.requests().find((r) => h.hub.pending.some((p) => p.id === r.id));
+        if (head !== undefined) {
+          if (h.hub.settle(head.id, "laptop") !== null) settled += 1;
+          busyUntil = t + 6;
+        }
+      }
+      h.tick(1000);
+      h.hub.sweep();
+    }
+    expect(settled).toBe(60);
+    expect(a.got.filter(([e]) => e === "cancel")).toHaveLength(0);
+    expect(h.held).toHaveLength(0);
+  });
+
+  it("a hung worker: only its head is cancelled, the next gets a fresh window, and a request given up says the hold line once", () => {
+    const h = hubHarness({ replyTimeoutMs: 10_000 });
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    const t1: AgentThread = { ...T, audience: ["g-1"] };
+    const t2: AgentThread = { ...T, audience: ["g-2"] };
+    h.hub.line(t1);
+    h.tick(1000);
+    h.hub.line(t2);
+    const cancels = () => a.got.filter(([e]) => e === "cancel").map(([, d]) => (d as { id: string }).id);
+    const [r1, r2] = a.requests();
+    h.tick(10_001);
+    h.hub.sweep();
+    expect(cancels()).toEqual([r1!.id]); // the head only, though both are > 10 s old
+    h.tick(2000);
+    h.hub.sweep();
+    expect(cancels()).toEqual([r1!.id]); // r2's clock started at the cancel
+    h.tick(9000);
+    h.hub.sweep();
+    expect(cancels()).toEqual([r1!.id, r2!.id]);
+    // Both are re-dispatched once, time out again, and are given up — each
+    // thread hears the hold line exactly once.
+    for (let i = 0; i < 4; i++) {
+      h.tick(10_001);
+      h.hub.sweep();
+    }
+    expect(h.hub.pending).toHaveLength(0);
+    expect(h.held.map((r) => r.thread.audience[0]).sort()).toEqual(["g-1", "g-2"]);
+  });
+
   it("drops queued requests nobody picked up", () => {
     const h = hubHarness({ queueMaxAgeMs: 60_000 });
     h.hub.line(T);
