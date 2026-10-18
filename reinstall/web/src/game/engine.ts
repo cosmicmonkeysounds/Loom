@@ -23,7 +23,7 @@ import { fetchHouse, postEnd, postFound, postPose, streamUrl, type FoundAnswer }
 import { applyFrame, duckToAdopt, houseVersionOf, openSpatialStream, type SpatialStreamHandle } from "../spatial.ts";
 import type { Sfx } from "./audio.ts";
 import { canHit, fell, hearts, hit as landHit, KING_HP, newFight, NIGHT_ENDED, redeals, stageFor, STAGE_LINE, winNotice, type ArmedRead, type Fight, type HitVerdict, type Stage } from "./fight.ts";
-import { findOutcome, formatElapsed, foundRetryMs, heat, PAUSED_NOTICE, perchedOutOfReach, relativeBearing, roomTitle, withinReach, type Heat } from "./hud.ts";
+import { findOutcome, formatElapsed, foundRetryMs, heat, heldFind, perchedOutOfReach, relativeBearing, roomTitle, withinReach, type Heat } from "./hud.ts";
 import { combineInput, isActive, keyDown, keyUp, type StickVector } from "./input.ts";
 import { IdleLeash } from "./leash.ts";
 import { bodyAfterRemap, buildPhysicsWorld, eyeOf, move, NO_INPUT, spawnBody, type Body, type PhysicsOptions, type PhysicsWorld } from "./physics.ts";
@@ -711,9 +711,12 @@ export class Game {
         // The run is paused (or its doors aren't open yet): nothing was
         // judged and the session stays un-found. Keep saying so, and keep
         // asking on the same backoff — the first retry after resume wins.
-        const wait = foundRetryMs(this.foundRefusals);
-        this.say(PAUSED_NOTICE, wait + 1000);
-        this.foundCooldownUntil = performance.now() + wait;
+        // A held find is the player still being there: the leash is touched.
+        const now = performance.now();
+        const held = heldFind(now, this.foundRefusals);
+        this.say(held.notice, held.noticeMs);
+        this.foundCooldownUntil = held.cooldownUntil;
+        this.leash.touch(now);
         this.foundRefusals += 1;
         this.phase = "playing";
         return;
