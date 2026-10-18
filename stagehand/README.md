@@ -470,7 +470,9 @@ sends no frame on connect) or of the broker, and 1.5 s after a `reset` /
 entry beat), the `show` module reads `GET /api/state` and replays its
 `catch_up:` list through the cue map, as its own task (never inside a
 frame handler): `lights_{Night.lights}` (never `alarm`, which would re-arm
-the siren), then Trabolta's dark room while his cut is still on, or lit
+the siren; `server_open` is the server room's look on the Y2K house look,
+so it replays `lights_y2k` first — a constant `catch_up:` cue gated by a
+`when:`), then Trabolta's dark room while his cut is still on, or lit
 again once it is over and his look is still up. It waits (10 s at most)
 for the broker session first, since paho drops QoS-0 publishes queued
 before it, and replays nothing when a live lights cue arrived while the

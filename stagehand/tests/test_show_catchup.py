@@ -291,7 +291,7 @@ def test_no_catch_up_config_means_no_state_call():
     [
         {"path": "Night.lights"},
         {"cue": "lights_{value}"},
-        {"path": "Night.lights", "cue": "lights_game"},
+        {"path": "Night.lights", "cue": "lights_game"},  # a constant needs a `when:`
         {"path": "Night.lights", "cue": "lights_{value}", "skip": "alarm"},
         {"path": "Night.lights", "cue": "lights_{value}", "when": "Night.x >"},
     ],
@@ -299,3 +299,13 @@ def test_no_catch_up_config_means_no_state_call():
 def test_bad_catch_up_entries_fail_at_boot(entry):
     with pytest.raises(ConfigError):
         parse_show({"catch_up": [entry]})
+
+
+def test_a_constant_catch_up_cue_is_allowed_behind_a_when():
+    """A layer the look sits on (lights_y2k under server_open) is a constant
+    cue; it replays only while its `when:` holds."""
+    cfg = parse_show({"catch_up": [{"path": "Night.lights", "cue": "lights_y2k", "when": "Night.lights == 'server_open'"}]})
+    rule = cfg.catch_up[0]
+    assert rule.args_for({"Night.lights": "server_open"}) == "lights_y2k"
+    assert rule.args_for({"Night.lights": "y2k"}) is None
+    assert rule.covers("lights_y2k") and not rule.covers("lights_game")

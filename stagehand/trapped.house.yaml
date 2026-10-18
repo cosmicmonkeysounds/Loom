@@ -459,7 +459,15 @@ show:
   # A cue fired while the uplink or the broker was down is no longer lost. `alarm` is never
   # replayed: it would re-arm the server room's 120 s siren. The director's
   # re-fire of the current lights cue (OP-16) stays the fallback.
+  # `server_open` (the majority, The Heart) is the server room's look on
+  # top of the Y2K house look — lights_server_open touches that room alone —
+  # and is only ever set before the final reveal, on lights_y2k. So it
+  # replays the house layer first, the way the story's own alarm restore
+  # does (`lights_y2k` then `lights_server_open`).
   catch_up:
+    - path: Night.lights
+      cue: "lights_y2k"
+      when: "Night.lights == 'server_open'"
     - path: Night.lights
       cue: "lights_{value}"
       skip: [alarm]
