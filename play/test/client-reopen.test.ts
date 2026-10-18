@@ -3,8 +3,12 @@
 //! good. `openChatFeed` asks the probe and reopens unless the session is
 //! really dead; a fake source + clock drive it here.
 
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { connLabel } from "../src/chat.tsx";
+import { CutsceneStage } from "../src/cutscene.tsx";
 
 import { REOPEN_MAX_MS, openChatFeed, reopenDelay, type ChatFeedEnv, type FeedPageEvent, type FeedSource, type StreamVerdict } from "../src/client.ts";
 
@@ -261,3 +265,26 @@ describe("openChatFeed", () => {
   });
 });
 
+describe("the hollow dot says so", () => {
+  it("the header word is never 'live' while disconnected", () => {
+    expect(connLabel(true)).toBe("live");
+    expect(connLabel(false)).toBe("reconnecting…");
+  });
+
+  it("the cutscene stage (no header dot) shows reconnecting… while offline", () => {
+    const props = {
+      messages: [],
+      title: "T",
+      where: "The Optical Drive",
+      decision: null,
+      widgets: { answer: () => {}, answered: new Map() },
+      over: false,
+      onContinue: () => {},
+      onPass: () => {},
+      alert: null,
+      onDismissAlert: () => {},
+    };
+    expect(renderToStaticMarkup(createElement(CutsceneStage, props))).not.toContain("reconnecting");
+    expect(renderToStaticMarkup(createElement(CutsceneStage, { ...props, offline: true }))).toContain("reconnecting…");
+  });
+});

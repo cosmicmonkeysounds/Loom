@@ -15,6 +15,7 @@ import {
   CardActionsProvider,
   ChannelView,
   ConnDot,
+  connLabel,
   GroupPill,
   InviteSheet,
   MessageThread,
@@ -29,6 +30,7 @@ import {
   useWide,
 } from "./chat.tsx";
 import { CutsceneStage } from "./cutscene.tsx";
+import { useOfflineFor } from "./client.ts";
 import { HelpSheet } from "./help.tsx";
 import { usePlayHost } from "./host.ts";
 import { AvatarsContext, avatarLookup, avatarUrl, hitNote, hitPickable, initialPick, orderPicker, type PictureChoice, type PictureChoices, type ProgramHit } from "./avatars.ts";
@@ -428,7 +430,7 @@ function IdentityCard({ s, onPeople, onHelp, onProfile, onWallet }: { s: GuestSe
           <div className="me-sub">
             <span>{where}</span>
             {st?.wallet ? <BalancePill view={st.wallet} onOpen={onWallet} /> : <span>⭐ {st?.score ?? 0}</span>}
-            <ConnDot connected={s.connected} label="live" />
+            <ConnDot connected={s.connected} label={connLabel(s.connected)} />
           </div>
         </div>
       </div>
@@ -504,6 +506,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   // transfer's auto-approve), off the snapshot clock + the wall time since.
   const walletClock = useWalletClock(st?.clock, st?.wallet);
   const cut = useCutscene(st?.cutscene === true);
+  const offline = useOfflineFor(s.connected);
   // The story's guided tour, once dealt and until answered — never over a
   // cutscene (it waits for the guest to step into the app).
   const tour = !cut.showing && s.me !== null ? pendingWidget(s.messages, "tutorial", new Set(s.widgetAnswers.keys())) : null;
@@ -576,6 +579,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
           onPass={() => setProfile(true)}
           alert={s.alert}
           onDismissAlert={s.dismissAlert}
+          offline={offline}
         />
         {profile && <PassSheet me={{ id: s.me.id, name: s.me.name }} onClose={() => setProfile(false)} />}
         {takeover}

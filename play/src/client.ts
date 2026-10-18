@@ -250,6 +250,24 @@ export function openChatFeed(url: string, sink: ChatFeedSink, env: ChatFeedEnv):
   };
 }
 
+/** How long a stream may be down before a screen with no header dot (the
+ *  cutscene stage) says it is reconnecting — a native retry takes ~3 s. */
+export const OFFLINE_AFTER_MS = 5000;
+
+/** `true` once `connected` has been false for `ms` straight. */
+export function useOfflineFor(connected: boolean, ms = OFFLINE_AFTER_MS): boolean {
+  const [offline, setOffline] = useState(false);
+  useEffect(() => {
+    if (connected) {
+      setOffline(false);
+      return;
+    }
+    const t = setTimeout(() => setOffline(true), ms);
+    return () => clearTimeout(t);
+  }, [connected, ms]);
+  return offline;
+}
+
 /**
  * Subscribe to an SSE endpoint and maintain the message map. `onSnapshot`
  * receives role-specific snapshots (`snapshot` event); `onResponse` receives

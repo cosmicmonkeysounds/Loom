@@ -173,6 +173,11 @@ export function GroupPill({ group }: { group: string | null }) {
   );
 }
 
+/** The header dot's word: a hollow dot never claims to be "live". */
+export function connLabel(connected: boolean): string {
+  return connected ? "live" : "reconnecting…";
+}
+
 export function ConnDot({ connected, label }: { connected: boolean; label: string }) {
   return (
     <span className="conn" title={connected ? "connected" : "reconnecting…"}>
