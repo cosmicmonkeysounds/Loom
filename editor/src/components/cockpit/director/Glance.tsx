@@ -490,8 +490,9 @@ const StripSection = {
 } as const
 type StripSection = (typeof StripSection)[keyof typeof StripSection]
 
-/** The narrow layout: one line of chips, each opening its section inline. */
-export function GlanceStrip({ watching }: { watching: boolean }) {
+/** The narrow layout in Calling mode: one line of chips, each opening its
+ *  section inline. (Watching shows the whole column at every width.) */
+export function GlanceStrip() {
   const [open, setOpen] = useState<StripSection | null>(null)
   const needs = useNeeds()
   const roster = useCockpit((s) => s.roster)
@@ -545,7 +546,7 @@ export function GlanceStrip({ watching }: { watching: boolean }) {
           {open === StripSection.Watch && <WatchList />}
           {open === StripSection.People && <People />}
           {open === StripSection.Cast && <Cast />}
-          {open === StripSection.Staff && <StaffRoom lines={watching ? 12 : 5} />}
+          {open === StripSection.Staff && <StaffRoom lines={5} />}
         </div>
       )}
     </div>

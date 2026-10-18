@@ -268,22 +268,24 @@ function DirectorPage() {
             </div>
             <NightBar />
           </div>
-          <div className="@4xl:hidden">
-            <GlanceStrip watching={watching} />
-          </div>
+          {!watching && (
+            <div className="@4xl:hidden">
+              <GlanceStrip />
+            </div>
+          )}
           {watching ? (
             <div className="flex flex-col gap-3">
               {hasCues && <NowCard flash={flash} />}
-              <div className="hidden @4xl:block">
-                <GlanceColumn watching />
-              </div>
+              {/* Watching is the house at a glance at every width: the
+                  whole column, never the narrow chip strip. */}
+              <GlanceColumn watching />
               {hasCues && (
                 <details className="rounded-xl border border-zinc-800" data-testid="director-folded">
                   <summary className="cursor-pointer select-none px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-400 hover:text-zinc-200">
                     On hand · Running order
                   </summary>
                   <div className="flex flex-col gap-3 p-3 pt-0">
-                    <OnHand />
+                    {query.trim() === '' && <OnHand />}
                     <RunningOrder ref={filterRef} query={query} setQuery={setQuery} toggled={toggled} setToggled={setToggled} all={all} setAll={setAll} />
                   </div>
                 </details>
