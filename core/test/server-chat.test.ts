@@ -506,4 +506,62 @@ Recruiter: Welcome.
     expect((await call(rt, "POST", "/api/prime/say", { token: prime, channel: "room:hosts", text: "booth here" })).json).toEqual({ ok: true });
     rt.dispose();
   });
+
+  const HIDDEN = `# Hidden
+start: Hall
+
+GROUP Rebels
+
+GROUP The Way Out
+  hidden: true
+
+CHANNEL back room
+  kind: open
+  hidden: true
+  label: # back-room
+
+CHANNEL staff
+  kind: private
+  label: # staff
+
+LOCATION Hall
+
+LOCATION Vault
+  hidden: true
+
+when the house opens:
+  reveal Vault
+  reveal back room
+
+== Hall
+  setting: Hall
+Narrator: The hall.
+`;
+  it("a room the story still hides from a guest answers 404 like one it doesn't have, never 403 — a hidden side, place or room can't be learned early; once revealed it answers like any room", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-hidden-rooms-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "hidden", scenarioSource: HIDDEN, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Alice", passcode: CODES.event });
+    const token = g.json["token"] as string;
+    const say = (channel: string) => call(rt, "POST", "/api/guest/say", { token, channel, text: `probe ${channel}` });
+    const missing = (await say("faction:Nobody")).json;
+    // Hidden things read exactly like missing ones.
+    for (const channel of ["faction:The Way Out", "loc:Vault", "room:back room", "room:staff"]) {
+      const r = await say(channel);
+      expect([r.status, r.json], channel).toEqual([404, missing]);
+    }
+    // A public side's room the guest isn't on is still "you can't post here".
+    expect((await say("faction:Rebels")).status).toBe(403);
+    // Revealed: the side's room is a known room (403 until they join), the
+    // place is a room (posting there is whoever stands in it), the room posts.
+    expect((await call(rt, "POST", "/api/mod/reveal", { faction: "The Way Out" }, true)).status).toBe(200);
+    expect((await call(rt, "POST", "/api/mod/signal", { name: "the house opens" }, true)).status).toBe(200);
+    expect((await say("faction:The Way Out")).status).toBe(403);
+    expect((await say("loc:Vault")).status).not.toBe(404);
+    expect((await say("room:back room")).json).toEqual({ ok: true });
+    // A members-only room stays unseen to an outsider.
+    expect((await say("room:staff")).status).toBe(404);
+    rt.dispose();
+  });
 });

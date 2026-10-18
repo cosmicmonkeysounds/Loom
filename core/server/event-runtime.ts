@@ -1338,25 +1338,33 @@ export class EventRuntime {
   /**
    * Is `channel` a room a guest's typed line may land in? Null when it is
    * (whether they may post there is `Sim.canPost`'s call), else the refusal:
-   * 404 for a room the story doesn't have, 403 for a declared group's room
+   * 404 for a room the story doesn't have, 403 for a public group's room
    * the guest isn't in (`canPost` takes an undeclared-in-`model.channels`
    * id as open to post, which is how the lobby and `faction:` work). The
    * lobby, `dm:` (resolved above), `pm:` (`canPost` checks the two
-   * parties), a declared location's `loc:` room, an authored room, the
-   * pinned rooms (`canPost` refuses them) and a room this guest was already
-   * written to in are rooms.
+   * parties), the pinned rooms (`canPost` refuses them), a declared place's
+   * `loc:` room and an authored room the guest can see, and a room this
+   * guest was already written to in are rooms. A room this guest can't see
+   * reads as one the story doesn't have (404), never 403: a hidden group's
+   * room before its reveal (`faction:The Way Out` before 🕚), a hidden place
+   * they haven't stood in or been shown, an authored room hidden from them
+   * or kept to its members (`room:hosts`, `room:the way out`) — so a
+   * crafted post can't learn the hidden sides and rooms early.
    */
   private guestRoom(guestId: string, channel: string): { status: 403 | 404; error: string } | null {
     const sim = this.sim!;
     if (channel === "lobby" || channel.startsWith("dm:") || channel.startsWith("pm:") || isPinnedRoom(channel)) return null;
+    const none = { status: 404 as const, error: "no such room" };
     if (channel.startsWith("faction:")) {
       const group = channel.slice("faction:".length);
-      if (!sim.model.factions.has(group)) return { status: 404, error: "no such room" };
-      return sim.factionMembers(group).includes(guestId) ? null : { status: 403, error: "you can't post here" };
+      const def = sim.model.factions.get(group);
+      if (def === undefined) return none;
+      if (sim.factionMembers(group).includes(guestId)) return null;
+      return def.hidden && !sim.factionRevealed(def.id) ? none : { status: 403, error: "you can't post here" };
     }
-    if (channel.startsWith("loc:")) return sim.model.locations.has(channel.slice("loc:".length)) ? null : { status: 404, error: "no such room" };
-    if (sim.model.channels.has(channel)) return null;
-    return this.chat.historyFor(guestId, false).some((m) => m.channel === channel) ? null : { status: 404, error: "no such room" };
+    if (channel.startsWith("loc:")) return sim.canSeeChannel(guestId, channel) ? null : none;
+    if (sim.model.channels.has(channel)) return sim.canSeeChannel(guestId, channel) ? null : none;
+    return this.chat.historyFor(guestId, false).some((m) => m.channel === channel) ? null : none;
   }
 
   /** A non-character `dm:` thread `guestId` may reply in: a stage voice's
