@@ -288,8 +288,11 @@ describe("AgentHub", () => {
     h.tick(30_000);
     h.hub.sweep();
     expect(h.held).toHaveLength(30); // no hold line for a worker that is answering
-    // Nobody waits longer than the queue's max age, even with a worker; no second hold line.
-    for (let s = 0; s < AGENT_QUEUE_MAX_AGE_MS / 1000; s++) {
+    // Nobody waits longer than the queue's max age after the worker stalls
+    // again (a head times out at 242 s with the 141 s answer inside its
+    // timeout; the next, at 363 s, stalls it), even with a worker; no
+    // second hold line.
+    for (let s = 0; s < AGENT_QUEUE_MAX_AGE_MS / 1000 + 200; s++) {
       h.tick(1000);
       h.hub.sweep();
     }
@@ -452,9 +455,9 @@ describe("AgentHub", () => {
     const a = h.worker("laptop");
     h.hub.attach(a.w);
     h.hub.line(T);
-    for (let s = 0; s < 60; s++) {
+    for (let s = 0; s < 71; s++) {
       h.tick(1000);
-      h.hub.sweep(); // stalls at 11 s, re-sent to it every reply timeout
+      h.hub.sweep(); // stalls at 11 s, re-sent to it every reply timeout; the max age counts from the stall
     }
     expect(h.hub.pending).toHaveLength(1);
     h.tick(1000);
@@ -793,6 +796,31 @@ describe("AgentHub", () => {
     const late = h.hub.settle(v1.id, "A");
     expect(late === null || late.followUp).toBe(true);
     if (late === null) expect(h.hub.settle(now.id, "A")).toEqual({ req: now, followUp: false });
+  });
+
+  it("a lone laptop's backlog older than the queue's max age survives one slow reply: the max age on a stalled worker counts from the stall (review 6)", () => {
+    const h = hubHarness();
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    for (let i = 1; i <= 8; i++) h.hub.line({ ...T, audience: [`g-${i}`] }); // a burst at t = 0
+    const first = a.requests();
+    let t = 0;
+    const until = (to: number) => {
+      for (; t < to; t++) {
+        h.tick(1000);
+        h.hub.sweep();
+      }
+    };
+    for (let i = 0; i < 6; i++) {
+      until(100 * (i + 1));
+      expect(h.hub.settle(first[i]!.id, "laptop")).not.toBeNull(); // one every 100 s
+    }
+    until(722); // g-7 takes 122 s: the laptop stalls, g-7 goes to the back of its line
+    expect(h.held).toHaveLength(0);
+    expect(h.hub.pending.map((r) => r.thread.audience[0]).sort()).toEqual(["g-7", "g-8"]);
+    until(725);
+    expect(h.hub.settle(first[7]!.id, "laptop")).not.toBeNull(); // g-8 answered: never dropped
+    expect(h.held).toHaveLength(0);
   });
 
   it("reset cancels everything open and tells workers", () => {

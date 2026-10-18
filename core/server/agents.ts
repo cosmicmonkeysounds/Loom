@@ -28,9 +28,10 @@
 //! that comes back still answers it. A worker that stays connected but stops
 //! answering (its head request timed out) counts as down for the hold line
 //! until it answers again, the story restarts, or its line has been empty
-//! a reply timeout after the stall (back on trial), and no request waits
-//! longer than `queueMaxAgeMs` in all, queued or on a stalled worker — a
-//! healthy worker's line is never cut, its head has the reply timeout.
+//! a reply timeout after the stall (back on trial). No request waits
+//! longer than `queueMaxAgeMs` queued, or on a stalled worker after the
+//! stall — a healthy worker's line is never cut, its head has the reply
+//! timeout, so one slow reply never drops the backlog behind it.
 //!
 //! One open request per thread keeps a burst of three messages from
 //! producing three replies: the model answers once, then once more with
@@ -937,7 +938,7 @@ export class AgentHub {
    * worker cancels nothing (T9-timers-02) and a head stuck in one slot of a
    * multi-slot worker still times out while the other slots answer. A
    * request given up — its attempts spent, or waiting past `queueMaxAgeMs`
-   * queued or on a stalled worker (a healthy worker's line is never cut:
+   * queued or on a stalled worker since the stall (a healthy worker's line is never cut:
    * it is answering, and its head has the reply timeout) — posts the hold
    * line once if it never did,
    * so the guest hears something and Run shows the thread in need.
@@ -964,10 +965,13 @@ export class AgentHub {
       if (h !== null) heads.add(h);
     }
     for (const [id, r] of [...this.open]) {
-      if (r.worker !== null && r.dispatchedAt !== null && this.stalled.has(r.worker) && now - r.req.at > maxAge) {
-        // Waited too long in all, on a worker that stopped answering: give
-        // it up. A healthy worker keeps its line however long — it is
-        // answering, one at a time, and its head has the reply timeout.
+      const stalledAt = r.worker === null ? undefined : this.stalled.get(r.worker);
+      if (r.worker !== null && r.dispatchedAt !== null && stalledAt !== undefined && now - Math.max(r.req.at, stalledAt) > maxAge) {
+        // Waited too long on a worker that stopped answering: give it up.
+        // Counted from the stall too, never from before it: a healthy
+        // worker keeps its line however long — it is answering, one at a
+        // time, and its head has the reply timeout — so one slow reply
+        // never cuts the backlog it was working through.
         this.workers.get(r.worker)?.send("cancel", { id });
         this.o.typing?.(r.req.thread, false);
         const worker = r.worker;
