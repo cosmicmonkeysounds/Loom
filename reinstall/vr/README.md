@@ -198,8 +198,10 @@ with `released: true` while you walk to Gerald.
   If a map edit moves the duck mid-game, it moves in the headset too, and
   the HUD says "Gerald moved".
 - Finding the duck fires `the simulation completed` and `the golden duck` on
-  the server. "REINSTALLATION COMPLETE" means a corrupted program was
-  released; "YOU FOUND GERALD" means the program was never captured. After the
+  the server. "REINSTALLATION COMPLETE" means the server released a
+  corrupted program; "YOU FOUND GERALD" means the program was not captured
+  (never, or freed mid-walk); "GERALD CAN'T HELP" means the story kept them
+  captured (the banishment) — the duck stays put. After the
   celebration the headset returns to the lobby.
 
 ## Tests

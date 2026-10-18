@@ -59,7 +59,10 @@ The passcode and the hints are scrubbed from the address bar at once. A
 stored token the server no longer accepts sends the device back to setup.
 **The camera needs a secure context** (`https://` or `localhost`); without
 one, type the program's name instead. Corrupted programs are also offered
-as one-tap picks under *In the Internet now*. With no camera at all the
+as one-tap picks under *In the Internet now*, and marked ones (sent to the
+Internet, not captured yet) under *Marked — sent to the Internet*; the next
+step shows a marked program as **STATUS: MARKED — Play here begins the
+reinstallation** (Play here captures them). With no camera at all the
 camera box shrinks to a strip and the step says so.
 
 The game needs **WebGL2** (three r186). A browser without it (3D off, an
@@ -118,13 +121,18 @@ HUD shows:
 Gerald quacks when you are near: louder as you get closer, and panned
 toward him. Walk within **0.9 m** of him on his floor (and no more than
 1.2 m below him — the server's height check) and he lays a golden
-egg and flies off. The screen then says **REINSTALLATION COMPLETE** for a
-corrupted program, or **YOU FOUND GERALD** for one that wasn't. The
+egg and flies off. The screen then says **REINSTALLATION COMPLETE** when
+the server released a corrupted program, or **YOU FOUND GERALD** for one
+that wasn't captured (or was freed mid-walk). A program the story keeps
+captured (the banishment: the server answers `released: false` and
+`captured: true`) gets **GERALD CAN'T HELP** instead: no egg, no fanfare,
+Gerald stays put, and the phone says why. The
 server judges by its own copy of the pose (≤ 2 m), so "not yet" is
 answered with a buzz and retried, backing off while you stand still. While
 the run is paused (the server answers "doors are closed") the HUD says the
 simulation is paused instead and keeps retrying on the same backoff, so
-the find lands right after the director resumes.
+the find lands right after the director resumes; a find held by the pause
+keeps the session alive (the no-input leash below never runs out on it).
 
 A session ends itself after **120 s with no input**, with a countdown for
 the last 20 s. It also ends when the run restarts, when a director ends
@@ -226,6 +234,12 @@ The walkthrough for turning a survey into a map is the help article
   **read-only** (Edit and Save are off — saving it would replace the
   event's map) with a **Retry**; it reloads the real map by itself once the
   stream reconnects.
+
+The spatial stream (game and map page) reconnects on its own after a
+dropped connection, and also after a refusal — behind Caddy a loom
+restart answers with a 502, which closes an `EventSource` for good. A
+closed stream probes `GET /api/spatial/house` with the same token: 401 /
+403 / 404 stop it, anything else reopens on a backoff (1 s … 15 s).
 
 The **Terminals** tab offers each terminal's provisioning link,
 `/terminal/?name=<name>&spot=<id>&view=auto`. Links never carry the
