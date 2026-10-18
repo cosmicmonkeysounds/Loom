@@ -69,6 +69,10 @@ describe("screen state", () => {
     // The event this terminal was set up for is over (a new one launched).
     expect(await pollScreen(config, fakeFetch(404, { error: "unknown event" }))).toEqual({ kind: "ended" });
     expect(await pollScreen(config, fakeFetch(200, { nope: 1 }))).toEqual({ kind: "miss" });
+    // A loom restart behind Caddy (502) or a server still booting (503
+    // "starting") is a miss: the poll goes on and picks the screen back up.
+    expect(await pollScreen(config, fakeFetch(502, {}))).toEqual({ kind: "miss" });
+    expect(await pollScreen(config, fakeFetch(503, { error: "starting" }))).toEqual({ kind: "miss" });
     const throwing = (async () => {
       throw new Error("offline");
     }) as unknown as typeof fetch;
