@@ -81,6 +81,35 @@ function toY2k(sim: Sim) {
   fireAll(sim, "trabolta_overshares", "y2k_clock");
 }
 
+/** 📄 truth.txt, then ⚖ the verdict once the bobber has read it. */
+const truthTxt = (sim: Sim): SimEvent[] => [...fire(sim, "read_truth_txt"), ...fire(sim, "the_verdict")];
+
+/** Judge all eight questions accurately (or one lie), through the bob (the main show test's `toBobbing`). */
+function toBobbing(sim: Sim, opts: { lie?: boolean } = {}) {
+  toTruth1(sim);
+  fire(sim, "accurate_q1", "g1", null, "Clippy");
+  fire(sim, "accurate_q2", "g2", null, "Clippy");
+  fire(sim, opts.lie ? "confident_q3" : "accurate_q3", "g3", null, "Clippy");
+  toHunt2(sim);
+  fire(sim, "five_minute_warning");
+  for (const [g] of PROGRAMS) fire(sim, "check_in_at_desktop", g, null, "Task Manager");
+  fireAll(sim, "summons_closed", "truth_pong");
+  for (const [g, q] of [["g4", "accurate_q1"], ["g5", "accurate_q2"], ["g6", "accurate_q3"]] as const) {
+    fire(sim, "made_the_cup", g, null, "Clippy");
+    fire(sim, q, g, null, "Clippy");
+  }
+  fireAll(sim, "round_two_tally", "trust_chart", "show_the_rankings", "printer_opened", "trabolta_overshares", "y2k_clock");
+  advance(sim, 3600);
+  expect(v(sim, "Night.phase")).toBe("final_reveal");
+  fire(sim, "accurate_q1", "g1", null, "Clippy");
+  fire(sim, "accurate_q2", "g2", null, "Clippy");
+  fire(sim, "bobbing_for_truth");
+  fire(sim, "failed_the_bob", "g5", null, "Adobe Acrobat");
+  fire(sim, "send to the internet", "g5", null, "Norton Anti-Virus");
+  fire(sim, "brought_up_the_bag", "g4", null, "Clippy");
+  expect(v(sim, "Night.bobber")).toBe("MS Paint");
+}
+
 // ───────────────────────── 💡 holds the dance (D2) ─────────────────────────
 
 describe("wave 9 — 💡 Restore the house lights holds a pending dance (ALL STOP, D2)", () => {
@@ -144,5 +173,31 @@ describe("wave 9 — the bottle picks any cleared, free program (T5-crew-cards-0
     advance(sim, 120);
     fire(sim, "read_the_results");
     expect(pool(fire(sim, "spin_the_bottle"))).toEqual(["g1", "g2", "g3"]);
+  });
+});
+
+// ───────────────────────── a stale bottle card in the advice poll ─────────────────────────
+
+describe("wave 9 — only the advice card votes in the advice poll (T2-facts-03)", () => {
+  it("a late tap on a bottle card left on the phone votes nothing and keeps the program's real vote", { timeout: SLOW }, () => {
+    const sim = boot();
+    toBobbing(sim, { lie: true });
+    truthTxt(sim);
+    fire(sim, "ask_for_advice");
+    expect(v(sim, "Night.poll")).toBe("advice");
+    // The bottle's Truth | Dare card, never tapped in round 1, tapped now.
+    fire(sim, "poll answered", "g1", { choice: "Dare", index: 1, card: 252 });
+    fire(sim, "poll answered", "g2", { choice: "Truth", index: 0, card: 253 });
+    expect(v(sim, "Night.help_votes")).toBe(0);
+    expect(v(sim, "Night.thwart_votes")).toBe(0);
+    expect(v(sim, "g1.advice")).toBe("none");
+    expect(v(sim, "g1.marked")).not.toBe(true);
+    // Their real advice votes still count.
+    fire(sim, "poll answered", "g1", { choice: "Help him", index: 0, card: 674 });
+    fire(sim, "poll answered", "g2", { choice: "Thwart him", index: 1, card: 675 });
+    expect(v(sim, "Night.help_votes")).toBe(1);
+    expect(v(sim, "Night.thwart_votes")).toBe(1);
+    expect(v(sim, "g1.advice")).toBe("help");
+    expect(v(sim, "g2.advice")).toBe("thwart");
   });
 });

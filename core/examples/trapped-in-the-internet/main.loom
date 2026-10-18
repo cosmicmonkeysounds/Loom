@@ -1949,9 +1949,15 @@ ROLE Program
       fire line_accepted
 
   // ── The polls: the bottle's Truth / Dare, the relationship advice ──
+  // The night has two polls: the bottle's (Truth | Dare) and the advice
+  // poll (Help him | Thwart him). Night.poll says which one is live, not
+  // which card was tapped, and a bottle card 🗣 / 🙅 settled out loud stays
+  // on the phone in dm:Trabolta beside the advice card: only the advice
+  // card's own options count as a vote, so a late tap on an old bottle card
+  // never votes (or spends that program's real vote).
   when poll answered for program:
-    if Night.poll == "advice" and program.advice == "none":
-      if index == 0:
+    if Night.poll == "advice" and program.advice == "none" and (choice == "Help him" or choice == "Thwart him"):
+      if choice == "Help him":
         set Night.help_votes += 1
         set program.advice = "help"
       else:
