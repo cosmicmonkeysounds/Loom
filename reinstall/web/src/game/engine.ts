@@ -19,7 +19,7 @@ import { buildWalls, pathLength, spaceOf, toSpace, yawFromSpace, yawToSpace } fr
 import type { Assignment, DuckSpot, HouseMap, PlayerPose, PlayerState, Prop, SpatialFrame, Vec3 } from "@loom/house";
 import { applySpace, buildHouseScene, createAvatar, createDuck, createTrail, houseAtmosphere, PoseBuffer, spaceGroup } from "@loom/house/three";
 import type { Avatar, Duck, HouseScene, King, Trail } from "@loom/house/three";
-import { fetchHouse, postEnd, postFound, postPose, streamUrl, type FoundAnswer } from "../api.ts";
+import { fetchHouse, postEnd, postFound, postPose, streamProbe, streamUrl, type FoundAnswer } from "../api.ts";
 import { applyFrame, duckToAdopt, houseVersionOf, openSpatialStream, type SpatialStreamHandle } from "../spatial.ts";
 import type { Sfx } from "./audio.ts";
 import { canHit, fell, hearts, hit as landHit, KING_HP, newFight, NIGHT_ENDED, redeals, stageFor, STAGE_LINE, winNotice, type ArmedRead, type Fight, type HitVerdict, type Stage } from "./fight.ts";
@@ -239,10 +239,16 @@ export class Game {
     void this.pump.tick(); // the first pose claims the session at once
     if (document.hidden) this.leash.hide(performance.now());
     else this.startPump();
-    this.stream = openSpatialStream(streamUrl(this.o.base, this.o.assignment.token, this.o.device), {
-      onFrame: (f) => this.onFrame(f),
-      onState: (up) => (this.live = up),
-    });
+    // A proxy's 502 while loom restarts closes the stream: reopen it while
+    // the session token still reads (the pose pump ends a dead session).
+    this.stream = openSpatialStream(
+      streamUrl(this.o.base, this.o.assignment.token, this.o.device),
+      {
+        onFrame: (f) => this.onFrame(f),
+        onState: (up) => (this.live = up),
+      },
+      { probe: streamProbe(this.o.base, this.o.assignment.token) },
+    );
     this.loop(performance.now());
   }
 

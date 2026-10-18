@@ -497,3 +497,13 @@ async function readArmed(config: ReinstallConfig, path: string, min: number, fet
 export function streamUrl(base: string, token: string, name: string): string {
   return `${base}/api/spatial/stream?name=${encodeURIComponent(name)}&token=${encodeURIComponent(token)}`;
 }
+
+/** Why the spatial stream closed: the status of `GET /api/spatial/house`
+ *  with the same token (the stream's own gate), null when unreachable. */
+export function streamProbe(base: string, token: string, fetcher: typeof fetch = fetch): () => Promise<number | null> {
+  return () =>
+    fetcher(`${base}/api/spatial/house`, { headers: { "x-loom-token": token } }).then(
+      (r) => r.status,
+      () => null,
+    );
+}
