@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DOORS_POLL_MS, type Identities, type PictureChoices, type ProgramHit, type ProgramPictures } from "./avatars.ts";
-import { ApiError, RequestTimeout, api, useChatStream, withTimeout } from "./client.ts";
+import { ApiError, RequestTimeout, api, useChatStream, withTimeout, type StreamVerdict } from "./client.ts";
 import { boothAlertFilter, maxSeqOf, unsolicitedReadout, useAlerts, type Alert } from "./alerts.ts";
 import { checkinFromSearch, withoutCheckin } from "./checkin.ts";
 import { pmChannelId, pmOtherParty, shareErrorText, unlockFromSearch, withoutUnlock } from "./codex.ts";
@@ -214,7 +214,7 @@ export async function searchPrograms(eventId: string, code: string, q: string): 
  * (the run forgot this token → `"reset"`) or 404 `unknown event` (the event
  * itself is gone → `"ended"`). `null` = alive, or no way to tell.
  */
-async function tokenDead(base: string, role: "guest" | "prime", token: string): Promise<"reset" | "ended" | null> {
+async function tokenDead(base: string, role: "guest" | "prime", token: string): Promise<StreamVerdict> {
   try {
     const res = await fetch(`${base}/api/state?role=${role}`, { headers: { "x-loom-token": token } });
     if (res.status === 401 || res.status === 403) return "reset";
@@ -846,14 +846,13 @@ export function useGuestSession(): GuestSession {
     onLifecycle: (n) => {
       if (lifecycleDropsSession(n.kind, SessionRole.Guest)) dropSession(lifecycleNotice(n.kind, SessionRole.Guest));
     },
-    // The stream closed for good: if the server really no longer knows this
-    // token (a restart we slept through) or the event itself is gone, drop
-    // the session and say why.
-    onDead: () => {
-      if (me === null) return;
-      void tokenDead(base, "guest", me.token).then((dead) => {
-        if (dead) dropSession(lifecycleNotice(dead, SessionRole.Guest));
-      });
+    // The stream closed for good (a dead token — or the proxy's 502 while
+    // the server restarts): ask the server. Alive reopens the stream; a run
+    // that forgot this token (a restart we slept through) or an event that
+    // is gone drops the session and says why.
+    probe: () => (me === null ? Promise.resolve(null) : tokenDead(base, "guest", me.token)),
+    onDead: (dead) => {
+      if (dead) dropSession(lifecycleNotice(dead, SessionRole.Guest));
     },
   });
   const alerts = useAlerts({
@@ -1472,12 +1471,10 @@ export function usePrimeSession(): PrimeSession {
     },
     // The stream closed for good: confirm the booth's token is really gone
     // (released, or the show went live while the phone slept) before
-    // signing out.
-    onDead: () => {
-      if (auth === null) return;
-      void tokenDead(base, "prime", auth.token).then((dead) => {
-        if (dead) dropBooth(dead === "ended" ? lifecycleNotice("ended", SessionRole.Performer) : BOOTH_SIGNED_OUT);
-      });
+    // signing out — anything else (a restart behind the proxy) reopens it.
+    probe: () => (auth === null ? Promise.resolve(null) : tokenDead(base, "prime", auth.token)),
+    onDead: (dead) => {
+      if (dead) dropBooth(dead === "ended" ? lifecycleNotice("ended", SessionRole.Performer) : BOOTH_SIGNED_OUT);
     },
   });
 
