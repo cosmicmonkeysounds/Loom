@@ -38,7 +38,10 @@ services:
       DATABASE_URL: postgres://loom:${POSTGRES_PASSWORD}@db:5432/loom
       # How long the entrypoint waits for Postgres before exiting (seconds;
       # the restart policy then tries again — after a reboot the daemon
-      # starts db + loom together, ignoring depends_on).
+      # starts db + loom together, ignoring depends_on). `off` (or 0) = one
+      # probe and no wait, in the entrypoint and the server alike: still
+      # down → the entrypoint exits and the restart policy tries again.
+      # Leave it at seconds on the VPS; `off` is for a scratch server.
       LOOM_DB_WAIT: ${LOOM_DB_WAIT:-60}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?generate one with `openssl rand -base64 32` and set it in .env}
       LOOM_BASE_URL: ${LOOM_BASE_URL:?set LOOM_BASE_URL in .env, e.g. http://YOUR_VPS_IP or https://loom.example.com}
