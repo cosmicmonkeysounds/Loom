@@ -9,7 +9,8 @@
 //   node --experimental-strip-types scripts/accept/K-27.ts <cmd> --base https://app.mapsandducks.com --code <MOD CODE>
 //   (or `npx tsx scripts/accept/K-27.ts …`)
 //
-//   setup                fire y2k_clock (Night.step 14: chess wins give the code from here)
+//   setup                walk the cue chain to y2k_clock on a fresh rehearsal
+//                        (Night.step 14: chess wins give the code from here)
 //   persona [--name N]   add a test persona to play the winner (prints its name)
 //   chess [--who N]      fire chess_won for that guest / persona (what ♟ They beat
 //                        the machine does) → The Door Code in their Codex. With no
@@ -34,6 +35,7 @@
 //                        (incl. heart_holder, who is at_the_heart, the 🕊
 //                        stand-down offer and talked_down)
 
+import { TO_Y2K, pressChain } from "./chains.ts";
 import { rehearsalGuard } from "./guard.ts";
 
 const args = process.argv.slice(2);
@@ -67,7 +69,6 @@ await rehearsalGuard(base, ev, token, args);
 console.log(`event ${String(hit["eventId"])} · ${String(hit["title"])}`);
 
 const SIGNALS: Record<string, string> = {
-  setup: "y2k_clock",
   chess: "chess_won",
   door: "server_door_opened",
   wrong: "patch_rejected",
@@ -133,15 +134,23 @@ async function door(): Promise<string> {
   ].join(" · ");
 }
 
-if (cmd === "persona") {
+if (cmd === "setup") {
+  // y2k_clock alone is refused on a fresh night (wave 9): walk the whole chain.
+  const walked = await pressChain(TO_Y2K, (name) => post(`${ev}/api/mod/signal`, { name }, token));
+  if (!walked.ok) {
+    console.error("✘ the story refused a cue: this rehearsal is not on a fresh night. Restart it (Run → header → Restart) and run setup again.");
+    process.exit(1);
+  }
+  console.log(`  ${await door()}`);
+} else if (cmd === "persona") {
   const name = maybe("name") ?? "K-27 Winner";
   const r = (await post(`${ev}/api/mod/persona`, { name }, token)) as { guest?: { id: string; name: string } };
   console.log(`  persona ${r.guest?.name ?? name} (${r.guest?.id ?? "?"}) — use: chess --who "${r.guest?.name ?? name}"`);
 } else if (cmd !== undefined && cmd in SIGNALS) {
   const who = cmd === "chess" ? maybe("who") : undefined;
   const subject = who === undefined ? undefined : await guestId(who);
-  await post(`${ev}/api/mod/signal`, { name: SIGNALS[cmd], ...(subject ? { subject } : {}) }, token);
-  console.log(`  fired ${SIGNALS[cmd]}${who ? ` for ${who}` : ""}`);
+  const r = await post(`${ev}/api/mod/signal`, { name: SIGNALS[cmd], ...(subject ? { subject } : {}) }, token);
+  console.log(`  ${r["refused"] === true ? "refused (# hosts says why)" : "fired"} ${SIGNALS[cmd]}${who ? ` for ${who}` : ""}`);
   console.log(`  ${await door()}`);
 } else if (cmd === "room") {
   const room = maybe("room") ?? HEART_ROOM;
