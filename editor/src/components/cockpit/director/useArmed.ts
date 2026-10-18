@@ -21,6 +21,7 @@ import {
   type CueRow,
 } from '@loom/core/cue-sheet'
 import { lastSeq, type RefusedPress } from './glance'
+import { movedCue, ownMove } from './moves'
 
 /** NEXT's cooldown after a press. */
 export const NEXT_COOLDOWN_MS = 1000
@@ -87,12 +88,11 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
   const [stale, setStale] = useState<string | null>(null)
   const [moved, setMoved] = useState<ArmedApi['moved']>(null)
 
-  const latest = useRef({ rows, marks, messages, armed, pending })
+  const ownPress = useCockpit((s) => s.ownPress)
+  const latest = useRef({ rows, marks, messages, armed, pending, ownPress })
   useEffect(() => {
-    latest.current = { rows, marks, messages, armed, pending }
+    latest.current = { rows, marks, messages, armed, pending, ownPress }
   })
-  /** The press this console sent last (to tell its own LAST from another's). */
-  const sent = useRef<{ id: string; at: number } | null>(null)
 
   const disarm = useCallback(() => {
     setArmed(null)
@@ -119,23 +119,24 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
     }
   }, [])
 
-  // The cue state moved: a stale arm drops (with why), and a LAST this
-  // console did not press flashes who moved it.
-  const prevLast = useRef(marks.last)
+  // The cue state moved: a stale arm drops (naming the cue that moved it),
+  // and a LAST this console did not press — from any surface — flashes who
+  // moved it.
+  const prevMarks = useRef({ last: marks.last, fired: marks.fired })
   const firedCount = marks.fired.length
   useEffect(() => {
-    const { armed: a, rows: rs } = latest.current
+    const { armed: a, rows: rs, marks: m, ownPress } = latest.current
     const now = Date.now()
-    const by = latest.current.marks.lastBy ?? null
-    if (a !== null && !armStillValid(a, latest.current.marks, now)) {
+    const moved = movedCue(prevMarks.current, m)
+    const lastMoved = m.last !== prevMarks.current.last
+    prevMarks.current = { last: m.last, fired: m.fired }
+    if (a !== null && !armStillValid(a, m, now)) {
       setArmed(null)
-      const fresh = rs.find((r) => r.id === latest.current.marks.last)
+      const fresh = rs.find((r) => r.id === moved)
       setStale(`Cues moved: ${fresh !== undefined ? cueLabel(fresh) : 'a cue'} just fired. Re-arm.`)
     }
-    if (marks.last !== prevLast.current) {
-      prevLast.current = marks.last
-      const own = sent.current !== null && sent.current.id === marks.last && now - sent.current.at < 10_000
-      if (marks.last !== null && !own) setMoved({ by: by === 'story' ? 'story' : 'director', at: now })
+    if (lastMoved && m.last !== null && !ownMove(ownPress, m.last, now)) {
+      setMoved({ by: m.lastBy === 'story' ? 'story' : 'director', at: now })
     }
   }, [marks.last, firedCount])
 
@@ -168,7 +169,6 @@ export function useArmed(rows: CueRow[], marks: CueMarks): ArmedApi {
       setStale(null)
       setPending(id)
       latest.current.pending = id
-      sent.current = { id, at: Date.now() }
       const args = subject !== null ? cueValueArgs(value ?? '') : null
       const res = await fireSignal(id, subject ?? undefined, args)
       const at = Date.now()
