@@ -20,6 +20,11 @@ CHANNEL hosts
 LOCATION Party
   label: The Party
 
+CHARACTER Kernel
+  secret: true
+  playable: false
+  hidden: true
+
 INTERACTION open_doors
   label: A1 · 🚪 Open the doors
   who: admin
@@ -52,6 +57,11 @@ INTERACTION goodnight
 
 when open_doors:
   set Night.step = 1
+  set Night.doors = true
+  set Night.bar = true
+  set Night.coats = true
+  set Night.music = true
+  set Kernel.code = 4242
 
 when read_out:
   set Night.reads += 1
@@ -195,6 +205,25 @@ test.describe('run mode · the Director page', () => {
       await expect(page.getByTestId('glance-needs')).toContainText('not taken')
     })
 
+    test('+N more opens the Log on that press, a secret still masked', async ({ page }) => {
+      // The tray (open by default) holds the glance while Calling.
+      await expect(page.getByTestId('director-glance-tray')).toHaveCount(1)
+      await fire(page, 'open_doors')
+      await expect(page.getByTestId('director-did')).toContainText('Night.step → 1')
+      await page.getByTestId('director-did-more').click()
+      // The focus outlives StrictMode's dev remount of the Log page.
+      await expect(page.getByTestId('log-press')).toBeVisible()
+      const log = page.getByTestId('sim-log')
+      await expect(log).toContainText('Night.music')
+      await expect(log).toContainText('Kernel.code')
+      await expect(log).not.toContainText('4242')
+      // Leaving the Log drops the focus: the tab bar's Log is the whole ledger.
+      await openDirector(page)
+      await page.getByRole('tab', { name: 'Log' }).click()
+      await expect(page.getByTestId('log-press')).toHaveCount(0)
+      await expect(log).toContainText('4242')
+    })
+
     test('Watching mode ignores Space', async ({ page }) => {
       await page.getByTestId('director-mode-watching').click()
       await expect(page.getByTestId('director')).toHaveAttribute('data-mode', 'watching')
@@ -205,11 +234,24 @@ test.describe('run mode · the Director page', () => {
       await page.waitForTimeout(300)
       await expect(page.getByTestId('cue-armed-open_doors')).toHaveCount(0)
       await expect(page.getByTestId('cue-last')).toContainText('—')
+      // The page is the house at a glance: the open tray does not repeat it.
+      await expect(page.getByTestId('director-glance-tray')).toHaveCount(0)
       // The choice outlives the tab (kept per console).
       await page.getByRole('tab', { name: 'Log' }).click()
       await openDirector(page)
       await expect(page.getByTestId('director')).toHaveAttribute('data-mode', 'watching')
     })
+  })
+
+  test('the open tab stays in sight when the header narrows under it', async ({ page }) => {
+    await openLocalProject(page, [{ path: 'main.loom', content: CUES_LOOM }])
+    await page.setViewportSize({ width: 1600, height: 900 })
+    await startRehearsal(page)
+    await page.getByRole('tab', { name: 'Log' }).click()
+    await page.setViewportSize({ width: 900, height: 900 })
+    await expect(page.getByTestId('run-tab-log')).toBeInViewport({ ratio: 0.95 })
+    // Tabs hidden off the left edge: that edge fades.
+    await expect(page.getByTestId('run-tabs')).toHaveAttribute('data-overflow', /left/u)
   })
 
   test('a story with no admin cues opens Tools', async ({ page }) => {
