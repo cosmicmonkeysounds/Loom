@@ -149,6 +149,24 @@ describe("card copy", () => {
     expect(walletStepText(step, paid, null)).toBe("✅ Paid: Paint sent Winamp 50 Truthcoin.");
   });
 
+  it("a request closed by its payment says who stopped it (T1-wallet-02, C6)", () => {
+    // from = the requester (me, Winamp), to = the payer (g2, Paint).
+    const side = { kind: "request" as const, from: "me", fromName: "Winamp", to: "g2", toName: "Paint" };
+    const denied = card({ ...side, step: "declined", by: "CRA Agent Software" });
+    expect(walletStepLine(denied, "me")).toBe("⛔ Payment denied by CRA Agent Software; refunded");
+    expect(walletStepLine(card({ ...side, step: "declined", by: "Director" }), "g2")).toBe("⛔ Payment denied by Director; refunded");
+    const cancelled = card({ ...side, step: "cancelled", by: "Paint" });
+    expect(walletStepLine(cancelled, "me")).toBe("↩️ Paint cancelled the payment");
+    expect(walletStepLine(cancelled, "g2")).toBe("↩️ You cancelled the payment");
+    // The root card's foot reads the closing step the same way.
+    const sent = card({ ...side, step: "sent" });
+    expect(walletFootLine(sent, null, view(), 0, denied, "me")).toBe("⛔ Payment denied by CRA Agent Software; refunded");
+    // Without `by` the steps mean what they always did.
+    expect(walletStepLine(card({ ...side, step: "declined" }), "me")).toBe("⛔ Declined");
+    expect(walletStepLine(card({ ...side, step: "cancelled" }), "me")).toBe("↩️ Cancelled");
+    expect(walletStepLine(card({ kind: "transfer", step: "cancelled", by: "Director" }))).toBe("↩️ Cancelled by Director");
+  });
+
   it("foot lines keep the case of names and the currency; bare states read lowercase (T5-07)", () => {
     const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
     expect(css).not.toMatch(/\.wallet-state\s*\{[^}]*text-transform:\s*lowercase/u);

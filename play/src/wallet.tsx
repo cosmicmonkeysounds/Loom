@@ -181,7 +181,11 @@ export function walletStepLine(card: WalletCard, me?: string | null): string {
     case "denied":
       return `⛔ Denied${by} — refunded`;
     case "cancelled":
-      return card.kind === "freeze" ? `↩️ Lifted early${by}` : `↩️ Cancelled${by}`;
+      if (card.kind === "freeze") return `↩️ Lifted early${by}`;
+      // C6: a request whose payment the payer took back (`by` = the payer);
+      // without `by` the asker withdrew the request.
+      if (card.kind === "request" && card.by) return me != null && me === card.to ? "↩️ You cancelled the payment" : `↩️ ${card.by.replace(/_/gu, " ")} cancelled the payment`;
+      return `↩️ Cancelled${by}`;
     case "thawed":
       return card.by ? `☀️ Lifted early${by} — your ${card.unit} moves again` : `☀️ Thawed — your ${card.unit} moves again`;
     case "paid":
@@ -189,7 +193,9 @@ export function walletStepLine(card: WalletCard, me?: string | null): string {
     case "accepted":
       return card.kind === "request" ? `💸 Agreed — paying ${amt}` : `✅ Done — the fact changed hands for ${amt}`;
     case "declined":
-      return "⛔ Declined";
+      // C6: a request whose payment the auditor / a director denied (`by`);
+      // without `by` the payer declined.
+      return card.kind === "request" && card.by ? `⛔ Payment denied${by}; refunded` : "⛔ Declined";
     case "failed":
       return "⛔ Could not settle — refunded";
     case "expired":
