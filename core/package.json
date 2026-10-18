@@ -14,6 +14,7 @@
     "./facts": "./src/facts.ts",
     "./chat": "./server/chat.ts",
     "./views": "./server/views.ts",
+    "./mod-patch": "./server/mod-patch.ts",
     "./cue-sheet": "./src/cue-sheet.ts"
   },
   "scripts": {
