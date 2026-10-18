@@ -767,7 +767,9 @@ function WorldBrowser() {
   const inspect = useInspect()
 
   const [open, setOpen] = useState<Set<string>>(new Set())
-  const [query, setQuery] = useState('')
+  // Shared, so the Director's glance can open World filtered to one path.
+  const query = useCockpit((s) => s.worldFilter)
+  const setQuery = useCockpit((s) => s.setWorldFilter)
   const scenario = useCockpit((s) => s.run?.scenario ?? null)
   const toggle = (k: string) =>
     setOpen((prev) => {
