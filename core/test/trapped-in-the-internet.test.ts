@@ -2544,7 +2544,7 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05; wave 4 judg
     toHunt2(sim);
     sim.setVar("Night.judge_mode", "review");
     const filed = file(sim, "g4", "H5", "Clippy");
-    expect(hosts(sim, filed)).toEqual(["📝 MS Paint filed H5 (round 2 Q2): Clippy — certain. Proposed: lie. Confirm on their card: 📝 accurate / 📝 confident lie / 📝 uncertain."]);
+    expect(hosts(sim, filed)).toEqual(["📝 MS Paint filed H5 (round 2 Q2): Clippy — certain. Proposed: lie. Confirm on Run → Mind → Judging (their card's 📝 judges their latest filing only)."]);
     expect(trabolta(filed, "g4")).toEqual(["Filed for round 2 Q2, MS Paint. Your fact is in the record."]);
     expect(v(sim, "g4.fact_v5")).toBe("pending");
     expect(v(sim, "g4.fact_j5")).toBe("lie");
