@@ -131,6 +131,26 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     expect(sheet(sim)).toEqual({ last: "final_reveal", next: "bobbing_for_truth" });
   });
 
+  it("T5-crew-cards-05: the two-minute timer closes the filing as ⏱, so NEXT moves on to 📋", { timeout: SLOW }, () => {
+    const sim = boot();
+    for (const n of ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt"]) press(sim, n);
+    advance(sim, 900);
+    press(sim, "first_moment_of_truth");
+    expect(sheet(sim).next).toBe("close_the_filing");
+    advance(sim, 121);
+    expect(v(sim, "Night.r1_closed")).toBe(true);
+    expect(v(sim, "Night.filing_open")).toBe(false);
+    expect(cueState(sim).fired).toContain("close_the_filing");
+    expect(sheet(sim)).toEqual({ last: "close_the_filing", next: "read_the_results" });
+    // A late ⏱ is refused in # hosts and changes nothing.
+    const late = press(sim, "close_the_filing");
+    expect(late.refused).toBe(true);
+    expect(hosts(late.out)).toEqual(["\"⏱ No filing window is open.\""]);
+    expect(sheet(sim)).toEqual({ last: "close_the_filing", next: "read_the_results" });
+    expect(press(sim, "read_the_results").refused).toBe(false);
+    expect(v(sim, "Night.results_q")).toBe(1);
+  });
+
   it("R2-diff-clients-01: 🌑's while: never holds before the Y2K clock (hunt 2's hour suggests nothing)", { timeout: SLOW }, () => {
     const sim = boot();
     for (const n of ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt"]) press(sim, n);

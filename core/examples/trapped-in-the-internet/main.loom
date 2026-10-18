@@ -3132,8 +3132,10 @@ when first_moment_of_truth:
 // B9: the last-chance window (two minutes, or ⏱), then the results one
 // question at a time (📋), the bottle between them (🍾). Round one closes
 // for good when the window shuts: a question nobody filed never comes back.
+// The two minutes run out: the timer presses ⏱ itself, so the cue sheet
+// ticks it and NEXT moves on to 📋.
 when Night.filing_open == true and Time.elapsed >= Night.filing_close:
-  fire filing_closed
+  fire close_the_filing
 
 when close_the_filing:
   if Night.filing_open == true:
