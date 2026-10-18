@@ -1335,9 +1335,6 @@ export class EventRuntime {
     return null;
   }
 
-  /** A non-character `dm:` thread `guestId` may reply in: a stage voice's
-   *  (`dm:Operator` / `dm:Narrator` — the voices `/api/mod/say` speaks as
-   *  besides characters), or one already addressed to this guest. */
   /**
    * Is `channel` a room a guest's typed line may land in? Null when it is
    * (whether they may post there is `Sim.canPost`'s call), else the refusal:
@@ -1362,6 +1359,9 @@ export class EventRuntime {
     return this.chat.historyFor(guestId, false).some((m) => m.channel === channel) ? null : { status: 404, error: "no such room" };
   }
 
+  /** A non-character `dm:` thread `guestId` may reply in: a stage voice's
+   *  (`dm:Operator` / `dm:Narrator` — the voices `/api/mod/say` speaks as
+   *  besides characters), or one already addressed to this guest. */
   private guestDmThread(guestId: string, channel: string): boolean {
     if (channel === "dm:Operator" || channel === "dm:Narrator") return true;
     return this.chat.historyFor(guestId, false).some((m) => m.channel === channel);
