@@ -54,6 +54,7 @@ import { HOMESCREEN_ROUTE } from "./routes/k31b.ts";
 import { PushRoutes } from "./routes/k31.ts";
 import { PushHub, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
 import { printExtras } from "./routes/k12.ts";
+import { modPatch, modViewJson } from "./mod-patch.ts";
 import { sendRecap } from "./routes/recap.ts";
 import { guestSide } from "./routes/sides.ts";
 import { ScreenWatch, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost } from "./routes/screen.ts";
@@ -123,6 +124,13 @@ interface Client {
   /** A full director console skipped for a `ModView` while it was still
    *  behind by a whole view: owed the newest one once it catches up. */
   snapshotOwed?: boolean;
+  /** A full director console on keyed patches (`?delta=1`, W9 O1-01): after
+   *  a keyframe `snapshot` it gets `snapshotPatch` frames while it holds the
+   *  previous frame. `modFrame` is the frame it holds, `keyframeAt` when its
+   *  last full one went out. */
+  delta?: boolean;
+  modFrame?: number;
+  keyframeAt?: number;
   res: ServerResponse;
 }
 
@@ -385,6 +393,10 @@ export function snapshotMsFromEnv(env: NodeJS.ProcessEnv = process.env): number 
  *  computed at flush time, so a console never ends on a stale view. */
 export const MOD_SNAPSHOT_MS = 500;
 
+/** A delta console (`?delta=1`) gets a full `ModView` at least this often,
+ *  so a patch the editor ever merged wrong heals within a minute. */
+export const MOD_KEYFRAME_MS = 60_000;
+
 /** The process-wide speech proxy (configured from `LOOM_TTS_*`). */
 let sharedTts: TtsProxy | null = null;
 function defaultTts(): TtsProxy {
@@ -550,6 +562,10 @@ export class EventRuntime {
   private modOwedTimer: ReturnType<typeof setTimeout> | null = null;
   /** The size of the last `ModView` frame built (0 before the first). */
   private modViewBytes = 0;
+  /** The last `ModView` frame built — what a delta console's next patch is
+   *  against (null: the next frame is a keyframe for everyone). */
+  private modPrev: { frame: number; view: ModView } | null = null;
+  private modFrameSeq = 0;
   // Guest + booth snapshot coalescing (`pushClientSnapshots`).
   private readonly snapshotMs: number;
   private snapshotAt = Number.NEGATIVE_INFINITY;
@@ -918,14 +934,33 @@ export class EventRuntime {
   /** Send the full consoles the current `ModView` (`owedOnly`: just those a
    *  previous frame skipped). A console still holding more unsent than one
    *  view gets none now: views never queue up behind each other for a slow
-   *  link — it is owed the newest, retried until it catches up. */
+   *  link — it is owed the newest, retried until it catches up.
+   *
+   *  A delta console (`?delta=1`) that holds the previous frame, and had a
+   *  keyframe inside `MOD_KEYFRAME_MS`, gets a `snapshotPatch` instead —
+   *  computed once and shared. In an owed round such a console only rides
+   *  along on a view an owed console was actually sent (so it stays on the
+   *  newest frame); it never builds one itself, so a stalled console still
+   *  costs nothing until it moves. Everyone else gets the whole view; a
+   *  delta console's carries `_frame`. */
   private flushModSnapshots(owedOnly = false): void {
     // Same two writes as `sseSend`, the JSON serialised once for everyone.
     let data: string | null = null;
+    let framed: string | null = null;
+    let patch: string | null | undefined;
+    let view: ModView | null = null;
+    let frame = 0;
     let owed = false;
-    for (const c of this.clients) {
-      if (c.role !== "mod" || c.lean === true) continue;
-      if (owedOnly && c.snapshotOwed !== true) continue;
+    const prev = this.modPrev;
+    const now = Date.now();
+    const isCurrent = (c: Client) => c.delta === true && prev !== null && c.modFrame === prev.frame && now - (c.keyframeAt ?? 0) < MOD_KEYFRAME_MS;
+    const mods = [...this.clients].filter((c) => c.role === "mod" && c.lean !== true);
+    // An owed round: the owed consoles first, then the current delta ones
+    // that ride along — only once a view was built for an owed console.
+    const order = owedOnly ? [...mods.filter((c) => c.snapshotOwed === true), ...mods.filter((c) => c.snapshotOwed !== true && isCurrent(c))] : mods;
+    for (const c of order) {
+      const current = isCurrent(c);
+      if (owedOnly && c.snapshotOwed !== true && data === null) break; // nobody owed moved: nothing to ride on
       // Behind by the last view's size: skip before building a new one (a
       // stalled console's retries cost nothing until it moves).
       const behind = (n: number) => n > 0 && sseQueued(c.res) > n;
@@ -934,16 +969,40 @@ export class EventRuntime {
         owed = true;
         continue;
       }
-      data ??= `data: ${JSON.stringify(this.modViewNow())}\n\n`;
-      this.modViewBytes = data.length;
+      if (data === null) {
+        view = this.modViewNow();
+        data = `data: ${modViewJson(view)}\n\n`;
+        frame = ++this.modFrameSeq;
+        this.modViewBytes = data.length;
+      }
       if (behind(data.length)) {
         c.snapshotOwed = true;
         owed = true;
         continue;
       }
       c.snapshotOwed = false;
+      if (current && prev !== null) {
+        // A patch bigger than the view itself is no saving: a keyframe then.
+        if (patch === undefined) {
+          const p = `data: ${JSON.stringify({ base: prev.frame, frame, patch: modPatch(prev.view, view!) })}\n\n`;
+          patch = p.length < data.length ? p : null;
+        }
+        if (patch !== null) {
+          sseFrame(c.res, "event: snapshotPatch\n", patch);
+          c.modFrame = frame;
+          continue;
+        }
+      }
+      if (c.delta === true) {
+        framed ??= data.startsWith("data: {}") ? `data: {"_frame":${frame}}\n\n` : `data: {"_frame":${frame},${data.slice(7)}`;
+        sseFrame(c.res, "event: snapshot\n", framed);
+        c.modFrame = frame;
+        c.keyframeAt = now;
+        continue;
+      }
       sseFrame(c.res, "event: snapshot\n", data);
     }
+    if (view !== null) this.modPrev = { frame, view };
     if (data !== null && !owedOnly) this.modSnapshotAt = Date.now();
     if (owed && this.modOwedTimer === null) {
       this.modOwedTimer = setTimeout(() => {
@@ -958,6 +1017,8 @@ export class EventRuntime {
    *  the chat timeline restarts (seqs from 0 again), so a client that kept
    *  the old feed would interleave stale rows with new ones. */
   private pushHistory(): void {
+    // No keyframe here: a `ModView` doesn't hold the chat timeline, and the
+    // `lifecycle` notice ahead of every re-sent history already brought one.
     for (const c of this.clients) if (c.lean !== true) sseSend(c.res, "history", this.historyFor(c));
   }
 
@@ -979,6 +1040,7 @@ export class EventRuntime {
   /** A lifecycle transition every connected client should react to
    *  (`reset` / `reload` → drop local state; `ended` → the event is gone). */
   private pushLifecycle(kind: LifecycleKind, extra: Record<string, unknown> = {}): void {
+    this.modPrev = null; // the next view after a transition is a keyframe
     for (const c of this.clients) sseSend(c.res, "lifecycle", { kind, at: Date.now(), ...extra });
   }
 
@@ -2801,6 +2863,8 @@ export class EventRuntime {
       if (role === "mod") sseCap(res, SSE_MOD_QUEUE_CAP);
       // `?lean=1` (mod feed only): the house tools' stream — frames, no views.
       if (role === "mod" && url.searchParams.get("lean") === "1") client.lean = true;
+      // `?delta=1` (a full console only): a keyframe, then keyed patches (C7).
+      else if (role === "mod" && url.searchParams.get("delta") === "1") client.delta = true;
       if (role === "prime") client.admin = this.sessions.canModerate(token);
       const imp = token ? this.impersonations.get(token) : undefined;
       if (imp !== undefined) {
