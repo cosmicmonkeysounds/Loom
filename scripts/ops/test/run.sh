@@ -197,6 +197,14 @@ for want in 'titi:facts --check' 'Judging card reads auto' 'Wallet room' '# quar
 done
 check "checklist strips markdown" bash -c "! grep -q '[*\`]' <<<\"\$1\"" _ "$printed"
 
+echo "── Caddy holds requests through a loom restart (T4-01)"
+# A 502 closes an EventSource for good: the proxy must retry the dial while
+# loom is down, and keep flushing SSE writes at once.
+caddy_proxy() { awk '/reverse_proxy loom:7000 \{/{on=1; next} on && /\}/{exit} on' "$ROOT/deploy/Caddyfile"; }
+check "reverse_proxy retries the dial for 30 s" grep -qE '^[[:space:]]*lb_try_duration 30s$' <<<"$(caddy_proxy)"
+check "… every 250 ms" grep -qE '^[[:space:]]*lb_try_interval 250ms$' <<<"$(caddy_proxy)"
+check "… and still flushes at once" grep -qE '^[[:space:]]*flush_interval -1$' <<<"$(caddy_proxy)"
+
 echo "── the voice is opt-in (2026-10-15)"
 # A plain `docker compose up` (release.sh / rollback.sh) must never need
 # Kokoro: it sits behind the `tts` profile and the server voice defaults off.

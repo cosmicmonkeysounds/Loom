@@ -25,11 +25,18 @@
 	#   /api/agent/stream, /api/spatial/stream    (+ /e/:id/ forms)
 	#   /api/projects/:id/collab/stream           (co-editing)
 	# and every proxied write is flushed at once (`flush_interval -1`).
+	# While loom restarts (a release, a rollback, a crash restart) Caddy
+	# holds each request and re-dials every 250 ms for up to 30 s instead of
+	# answering 502: an EventSource that gets a 502 closes for good, so a
+	# phone open through a restart would never hear the show again. A dial
+	# that never connected is safe to retry for every method.
 	@compressible not path */events */stream
 	handle {
 		encode @compressible gzip zstd
 		reverse_proxy loom:7000 {
 			flush_interval -1
+			lb_try_duration 30s
+			lb_try_interval 250ms
 		}
 	}
 }
