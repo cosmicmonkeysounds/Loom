@@ -32,12 +32,16 @@ import type {
   PrimeView,
   QuestSummary,
   WalletModView,
+  WatchSummary,
+  CountdownSummary,
 } from '@loom/core/views'
 // The facts judge's ledger view (`ModView.facts`, Wave 4 lane B); every
 // editor surface reads it through this re-export.
 import type { FactVerdict, FactsFiling, FactsQuestion, FactsView } from '@loom/core/views'
 
 export type { FactVerdict, FactsFiling, FactsQuestion, FactsView }
+// The Director page's board (`ModView.watch` / `ModView.countdowns`, wave 10).
+export type { WatchSummary, CountdownSummary }
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -250,6 +254,19 @@ export interface ChannelSummary {
   kind: string
   title: string
   spaceId: string
+  /** A staff room (`# hosts`: an authored `kind: faction` CHANNEL whose
+   *  GROUP no guest may join) — where the story says why it refused a cue. */
+  staff?: true
+}
+
+/** What a `fireSignal` press came to. `refused`: the story heard the cue
+ *  and did nothing but, at most, tell a staff room why (the server's
+ *  `/api/mod/signal` `refused: true`, the local `pressRefused`) — the cue
+ *  is not taken. `error`: the press never landed (network / engine error;
+ *  also put in `error`). An empty result is a press the story took. */
+export interface FireResult {
+  refused?: true
+  error?: string
 }
 
 export interface CastSummary {
@@ -400,9 +417,20 @@ export interface CockpitState {
    *  request / offer. Null when the story declares no `currency:` and on
    *  the local backend (the WalletBook lives on the event server). */
   wallet: WalletModView | null
-  /** The story clock off the last snapshot (null on an older server or the
-   *  local backend) — the Wallet card's countdowns. */
+  /** The story clock off the last snapshot (null on an older server) — the
+   *  Wallet card's and the Director's countdowns. */
   storyClock: StoryClock | null
+  /** The Director's glance board: the story's live `watch:` items
+   *  (`ModView.watch`); empty when none is live or none is declared. */
+  watch: WatchSummary[]
+  /** The story declares at least one `watch:` line (the server sends
+   *  `watch`, maybe empty) — else the Director shows "Recently changed". */
+  watchDeclared: boolean
+  /** The live countdowns still ahead (`ModView.countdowns`, story seconds). */
+  countdowns: CountdownSummary[]
+  /** The World page's variable filter — shared so the Director's glance
+   *  can open World filtered to one watched path. */
+  worldFilter: string
   ledgerLen: number
   messages: CockpitMessage[]
   error: string | null
@@ -438,6 +466,8 @@ export interface CockpitState {
   lens: Lens
 
   setTab(tab: CockpitTab): void
+  /** Set the World page's variable filter (`worldFilter`). */
+  setWorldFilter(q: string): void
   selectChannel(channel: string): void
   select(selection: Selection): void
   /** Switch the lens. Resolves `lens` (async on the server) — `perspective`
@@ -479,8 +509,9 @@ export interface CockpitState {
   fireBeat(name: string, subject?: string): Promise<void>
   /** Fire an `on <name>` signal — globally or on one subject, with optional
    *  `key: value` args, optionally *as* a character (`actor`) so only that
-   *  character's hooks hear it (the performer-lens interaction path). */
-  fireSignal(name: string, subject?: string, args?: SignalArgs | null, actor?: string | null): Promise<void>
+   *  character's hooks hear it (the performer-lens interaction path).
+   *  Resolves to what the press came to (`FireResult`); never rejects. */
+  fireSignal(name: string, subject?: string, args?: SignalArgs | null, actor?: string | null): Promise<FireResult>
   /** Scan a guest as a character. Resolves to that character's `respond`
    *  readouts (the booth's scan responses). */
   scanAs(as: string, target: string): Promise<string[]>
@@ -586,6 +617,10 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   facts: null,
   wallet: null,
   storyClock: null,
+  watch: [],
+  watchDeclared: false,
+  countdowns: [],
+  worldFilter: '',
   ledgerLen: 0,
   messages: [],
   error: null,
@@ -603,6 +638,7 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   perspective: OPERATOR_LENS,
   lens: null,
   setTab: (activeTab) => set({ activeTab }),
+  setWorldFilter: (worldFilter) => set({ worldFilter }),
   selectChannel: (activeChannel) => set({ activeChannel }),
   select: (selection) => set({ selection }),
   setPerspective: (perspective) => set({ perspective }),
@@ -621,7 +657,7 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   broadcast: noop,
   setStat: noop,
   fireBeat: noop,
-  fireSignal: noop,
+  fireSignal: async () => ({}),
   scanAs: async () => [],
   reveal: noop,
   choose: noop,

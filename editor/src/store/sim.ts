@@ -15,7 +15,7 @@
 import { create } from 'zustand'
 import { Sim, SimEventType, namedEvents, type SimEvent } from '@loom/core/sim'
 import { ChatStore, composeGuestMessages } from '@loom/core/chat'
-import { guestView, modView, notePress, primeView, type RuntimePhase } from '@loom/core/views'
+import { guestView, modView, notePress, pressRefused, primeView, type RuntimePhase } from '@loom/core/views'
 import type { StatField } from '@/lib/api'
 import { lspWorkspaceSync, pathForUri } from '@/lib/lsp-client'
 import { useLspIndexGen } from '@/lib/lsp-index'
@@ -83,6 +83,7 @@ function empty(): Pick<
   SimState,
   | 'phase' | 'run' | 'connected' | 'roster' | 'factions' | 'locations' | 'cast' | 'channels' | 'spaces'
   | 'beats' | 'events' | 'interactions' | 'cues' | 'codex' | 'quests' | 'facts' | 'wallet' | 'storyClock' | 'ledgerLen' | 'messages' | 'world' | 'personas' | 'log'
+  | 'watch' | 'watchDeclared' | 'countdowns'
   | 'choices' | 'selection' | 'perspective' | 'lens' | 'error' | 'entryBeat'
 > {
   return {
@@ -108,6 +109,9 @@ function empty(): Pick<
     // project); the Wallet card says so.
     wallet: null,
     storyClock: null,
+    watch: [],
+    watchDeclared: false,
+    countdowns: [],
     ledgerLen: 0,
     messages: [],
     world: [],
@@ -153,6 +157,12 @@ export const useSim = create<SimState>((set, get) => {
       beats: view.beats,
       interactions: view.interactions ?? [],
       cues: view.cues ?? NO_CUES,
+      // The Director's board and countdowns tick off the engine's own clock
+      // here exactly as off a server snapshot's.
+      watch: view.watch ?? [],
+      watchDeclared: view.watch !== undefined,
+      countdowns: view.countdowns ?? [],
+      storyClock: typeof view.clock === 'number' ? { ms: view.clock, at: Date.now() } : null,
       codex: view.codex ?? [],
       quests: view.quests ?? [],
       ledgerLen: view.ledgerLen,
@@ -287,8 +297,10 @@ export const useSim = create<SimState>((set, get) => {
     activeTab: CockpitTab.Run,
     activeChannel: 'lobby',
     compiledAt: -1,
+    worldFilter: '',
 
     setTab: (activeTab) => set({ activeTab }),
+    setWorldFilter: (worldFilter) => set({ worldFilter }),
     selectChannel: (activeChannel) => set({ activeChannel }),
     select: (selection: Selection) => set({ selection }),
     setPerspective: (perspective) => {
@@ -458,8 +470,21 @@ export const useSim = create<SimState>((set, get) => {
       run((s) => void s.quest(action, who, quest, line))
     },
     fireBeat: async (name, subject) => void run((s) => void s.fireBeat(name, subject)),
-    fireSignal: async (name, subject, args, actor) =>
-      void run((s) => notePress(s, s.signal(name, subject, args ?? null, actor ?? null))),
+    fireSignal: async (name, subject, args, actor) => {
+      if (sim === null) return { error: 'no run' }
+      // The press is noted (so the cue sheet judges it by its own events)
+      // and judged the way the server's `/api/mod/signal` answers it.
+      let landed = false
+      let refused = false
+      run((s) => {
+        const batch = s.signal(name, subject, args ?? null, actor ?? null)
+        notePress(s, batch)
+        refused = pressRefused(s, batch)
+        landed = true
+      })
+      if (!landed) return { error: get().error ?? 'the press failed' }
+      return refused ? { refused: true } : {}
+    },
     scanAs: async (as, target) => {
       const produced = run((s) => void s.scan(as, target))
       return produced
