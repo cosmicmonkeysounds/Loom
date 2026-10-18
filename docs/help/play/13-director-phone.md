@@ -63,10 +63,14 @@ no acts (or an older server) shows one plain list.
 
 - The **strip**: the act the night is in, the story's phase, the soonest
   countdown (*⏱ Midnight 37:52*, red under a minute) and up to three
-  values the story asks directors to watch. The countdown keeps ticking
+  values the story asks directors to watch (a value that only matters
+  for a stretch of the night, like *Results read* during the truth
+  round, comes first). The countdown keeps ticking
   between refreshes and stops when it runs out. While the event is paused
-  (or before the doors open) the story clock stands still, so the
-  countdowns hold too and the strip says *⏸ clock stopped*.
+  the story clock stands still, so the countdowns hold too, the strip
+  says *⏸ clock stopped* and the NEXT bar *⏸ Paused: the clock is
+  stopped*. Before the doors open the sheet is already there; the strip
+  says *🚪 doors closed*, and nothing fires until they open.
 - The **NEXT bar**: *NEXT 📊 Trust Chart* (or *AGAIN* for a cue pressed
   once per question). When nothing is on offer it says so — *NEXT —
   nothing to press. The story runs.* — over the soonest countdown
@@ -84,8 +88,11 @@ no acts (or an older server) shows one plain list.
   second after the first is ignored, so a double tap on 📋 never skips a
   question. Tap, look, then tap again.
 - **If the cues move under you, the arm is dropped.** When another
-  director or the story fires something while a cue is armed, the phone
-  disarms it and says *Cues moved — tap again*. Look at the sheet, then
+  director or the story fires something while a cue is armed — even the
+  same 📋 again — the phone disarms it and says *Cues moved — tap again*.
+  If their press lands in the second before yours, before the phone has
+  caught up, the server turns yours down with the same message: nothing
+  fires twice. Look at the sheet, then
   arm it again if it is still the right cue. Locking the phone or
   switching to another app drops the arm too.
 - **An armed cue warns you when it is out of turn**, but never stops
@@ -99,7 +106,7 @@ no acts (or an older server) shows one plain list.
   the old NEXT never arms the new one.
 - A cue that needs a person (an award's winner, the King's fallback)
   asks **who** first; pick them, then tap the cue again to fire it for
-  them. Only an **award** (G2–G10) also has a **Value** box above the
+  them (the armed row reads *Tap again to fire → Winamp*). Only an **award** (G2–G10) also has a **Value** box above the
   list (optional: lies accepted, the duck time, quests done).
 - A message at the bottom says whether it fired. *✓ Fired* means the
   story took it. *Not taken — X doesn't apply right now (# hosts says

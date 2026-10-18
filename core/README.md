@@ -419,7 +419,13 @@ pushes during journal replay. The play app's `/sw.js` +
   GROUP isn't joinable) — is never LAST and never ticks, and a repeat of an
   earlier cue never moves LAST back. `POST /api/mod/signal` answers
   `{ok: true, refused: true}` for one (`pressRefused`), so the phone says
-  *not taken*.
+  *not taken*. `CueState.presses` counts the presses the story took (a
+  repeat of LAST or of an aside moves only it) and `pressed` names the
+  newest one's cue: both screens bind an arm to it, and a signal posted
+  with `presses` answers **409** `{moved: true, cues}` — fires nothing —
+  when another press landed since. Before the doors the director's view
+  lists the admin cues off the never-played story (`declaredSim`), and the
+  lean view says `doorsClosed`.
 - **The whole ledger**: `GET /e/:id/api/mod/log?after=<seq>&limit=<n>`
   (directors; `limit` default 1000, at most 5000) pages the run's ledger:
   `{entries, next, total}`, `next` = the `after` for the next page or null

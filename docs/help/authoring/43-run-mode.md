@@ -225,7 +225,10 @@ presses: the first **arms** it (amber, *Fire ▶ again · Esc*, a 4-second
 bar), a second one at least **0.3 s** and under **4 s** later fires it. A
 fast double-click only arms. An arm is dropped — *Cues moved: 📋 just
 fired. Re-arm.* — when the cue state moves first (another director, the
-story's own timer), when you switch tabs or windows, or after 4 s. While
+story's own timer; a second press of LAST or of an aside counts too),
+when you switch tabs or windows, or after 4 s. If another director's
+press lands just before yours, the server turns yours down and the card
+says so — nothing fires twice. While
 a press is on its way every cue is locked, and after you fire NEXT the
 new NEXT waits 1 s before it takes a press (an aside starts no wait).
 An armed cue warns, never blocks: *⚠ Not on offer now: the story may
@@ -251,8 +254,10 @@ arm, then fire). There is no lock between directors — the stale-arm rule
 and the radio cover two people pressing at once.
 
 **The glance column** (beside the NOW card; under 896 px a strip of
-chips, one section at a time). Read-only; every row is a link. Each
-section hides when it has nothing to say:
+chips, one section at a time — or, while the right-hand Inspector tray
+is open with nothing selected, in that tray: *← the house at a glance*
+brings it back after you inspect someone). Read-only; every row is a
+link. Each section hides when it has nothing to say:
 
 | Section | Shows | Goes to |
 |---|---|---|
@@ -260,7 +265,7 @@ section hides when it has nothing to say:
 | **Watch** | the header's `watch:` lines while their `while` holds: values (changed in the last 10 s → ◆), a ROLE path as a count over the guests (`Cleared 44/45` and a bar), a name as a person row (online, room, ⛓ / ⛔). A value on a `secret: true` CHARACTER shows `••••` — **press and hold 👁** to read it for 5 s. With no `watch:` line: **Recently changed**, the last few globals the story wrote | World, filtered to that path · Roster · the Inspector |
 | **People** | joined · online, who is in a prison room, how many are restricted, each faction's guests against a majority tick, the busiest rooms | the Inspector · Stage |
 | **Cast** | one dot per performer part (green signed in, amber phone offline, hollow free), each agent's stage and mood | the Inspector · Mind |
-| **# hosts** | the last lines in the story's staff rooms (a `kind: faction` CHANNEL whose GROUP isn't joinable) | Chat on that room |
+| **# hosts** | the last lines in the story's staff rooms (a `kind: faction` CHANNEL whose GROUP isn't joinable), newest first, each with how long ago it landed | Chat on that room |
 
 The header carries a **▶ NEXT** pill on every Run page (or the soonest
 countdown): a click opens the Director page and never fires.
@@ -328,8 +333,16 @@ story's **header** ([live shows](live-shows.md)):
 ```loom
 # The Glass Orchard
 start: The Front Gate
+watch: guest.suspicion as Suspicion, guest.favour as Favour, Ivo Marsh
+```
+
+That line watches two slots of the story's `ROLE Guest` (summed over the
+guests, with the highest) and where Ivo Marsh is. A story with a timed
+hunt adds its globals and a countdown — the names must be ones a line of
+the story `set`s, spelled the same way:
+
+```loom
 watch: Night.round as Round, Night.lights as Lights, while Night.step >= 2
-watch: guest.cleared as Cleared, Ivo Marsh
 countdown: Night.hunt_end as Hunt ends, while Night.hunt_on == true
 ```
 
@@ -338,7 +351,9 @@ Time.elapsed + 900`); it shows only while its `while` holds and the time
 is still ahead. Keep these lines **in the header of the first file**,
 above its first beat, declaration or rule (blank and comment lines in
 between are fine): the server reads that header only. Lint `L1205` flags a line that won't parse, a path whose
-head names nothing, or a board line in another file.
+head names nothing, a global spelled unlike the lines that set it
+(`night.round` for `Night.round`), a board line below the header, or a
+board line in another file.
 
 **On a phone.** The same running order runs in the participant app: open
 the event's address with `?role=director`, type the director (mod)
@@ -346,7 +361,11 @@ passcode and a name. It is grouped by the same acts under a pinned NEXT
 bar (the soonest countdown when there is nothing to press) and a strip
 with the act, the phase and up to three non-secret watch values; tap a
 cue once to arm it, again within 4 seconds to fire — a fast double tap
-only arms. LAST / NEXT are shared with this page, and the log records
+only arms. If another director's press lands in between (even a repeat
+of LAST, like a second 📋), the press is not sent on: the phone says
+*Cues moved — tap again*, and this page *Cues moved … re-arm*. Before
+the doors open the sheet is already there, with a note that nothing
+fires until they do. LAST / NEXT are shared with this page, and the log records
 each fire as *Phone · <name>*. A press the story turned down says *Not
 taken* there, and only an award asks for a value. The phone never gets a
 description or a secret. The guest front page has no link to it (the
