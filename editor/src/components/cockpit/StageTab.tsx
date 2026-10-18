@@ -13,6 +13,7 @@ import { openContextMenu } from '@/store/context-menu'
 import { FactionPill } from './ui'
 import { PartPresence, castPresence, isSignedIn, partPresenceTitle, performerParts } from './parts'
 import { publicFaction } from './format'
+import { PresenceDot } from './presence'
 import { useInspect } from './inspect'
 import { useGuestMenu } from './guest-menu'
 
@@ -213,20 +214,7 @@ function CastStrip() {
               data-testid={`stage-cast-${c.id}`}
               data-presence={presence}
             >
-              {presence !== PartPresence.Unknown && (
-                <span
-                  className={clsx(
-                    'h-1.5 w-1.5 rounded-full',
-                    presence === PartPresence.Online
-                      ? 'bg-emerald-400'
-                      : presence === PartPresence.PhoneOffline
-                        ? 'bg-amber-400'
-                        : presence === PartPresence.Voiced
-                          ? 'bg-sky-400'
-                          : 'border border-zinc-600',
-                  )}
-                />
-              )}
+              <PresenceDot presence={presence} />
               <span className="text-zinc-200">{c.id}</span>
               <FactionPill faction={publicFaction(c.faction, factions, locked)} />
             </button>

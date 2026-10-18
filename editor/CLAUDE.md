@@ -193,7 +193,7 @@ buttons; live-run destructive actions need the event code typed via
 `promptText`), the page tabs (Run · Stage · Chat · Players · Story · Roster ·
 World · Director · Mind · Log — only Run + Story usable with no run; World,
 Director + Mind closed under a lens), the **identity control**
-(`cockpit/Identity.tsx`), quick-fire, and a ⏳ decisions pill;
+(`cockpit/Identity.tsx`), quick-fire, the ▶ NEXT pill (`director/NextCuePill.tsx`), and a ⏳ decisions pill;
 `LifecycleBanner.tsx` below it shows `notice`. **`RunPage.tsx`** is
 front of house only: the empty state ("Rehearse <project>" · ▶ Start
 rehearsal · *Go live with real guests →* on a server project · the last
@@ -252,41 +252,116 @@ so a save made since the card loaded still warns), warns on `edited`, then `mapA
 event has no map or the server lacks the route), **Look up a guest** (camera QR /
 manual id → Inspector); a local run gets one explainer card. A source
 test pins that `RunPage.tsx` renders none of the lifecycle testids.
-**Director** opens on the **cue sheet** (`cockpit/CueSheet.tsx` + the pure
-rows in `@loom/core/cue-sheet` = `core/src/cue-sheet.ts` (aliased in
-`vite.config.ts` + `tsconfig.app.json`), shared with the play app's phone
-cue page, W-26, K-21): the `who: admin` INTERACTIONs in declared order,
-the label's leading code (`C1/V1 · …`) split off, one click fires the
-cue (one in flight at a time), the **LAST** cue amber + the next one
-tagged **NEXT** + ✓ on fired ones — all from `CockpitState.cues`
-(`ModView.cues` = core `cueState(sim)` off the sim log, so every
-director's sheet agrees and survives a reload) — `Night.phase` in the
-header, and a word filter. NEXT is the first unfired in-sequence row after
-LAST whose `while:` holds (`InteractionSummary.live`), or LAST itself for a
-`repeat: true` cue while it is live; a press the story refused (only a staff-room line)
-never becomes LAST or ticks, and a repeat of an earlier cue never moves
-LAST back. The local backend notes each press (`notePress`) so a folder
-rehearsal judges refusals exactly like the server. On a phone, `play`'s `?role=director` page
-(`play/src/director.tsx`) fires the same rows. A cue whose
-`InteractionSummary.subject` is set (every hook that hears it binds a
-person — the ceremony's awards, K-25) shows a **who?** picker over the
-roster plus an optional **value** box (`cueValueArgs` → `{value}`), and
-fires with that person as the subject; it stays disabled until one is
-picked. On a server run the award rows take **suggestions** off the K-26
-recap (wave 5 E6 / W-24, pure `cockpit/award-suggest.ts`:
-`AWARD_SOURCES` maps each `award_*` cue to a recap list, `awardSuggestion`
-skips personas, lists ties, reads Least Trusted off the bottom and gives
-nobody a count award at 0; `fillAwards` fills only empty fields or its own
-earlier guess; `pickWinner` — a director's pick — clears a value box
-still holding the suggested winner's number and makes the row theirs): `modApi.recap` (`GET /api/mod/recap`) is fetched once
-`Night.ended` is true and on **↻ awards**, a `suggested: X (n) · tied: …`
-hint sits under each row, and **Copy recap** copies `recap.text`. An off-sequence cue (`sequence: false` on the INTERACTION →
-`InteractionSummary.sequence === false`: the duck game, door contact,
-printer, patch bay) gets its ✓ but is never LAST (core skips it) or
-NEXT (`cueRows` suggests the next in-sequence row). Under it, the
-broadcast form's **🔔 Alert** box (`cockpit/broadcast.ts` `alertCue`)
-prefixes the cue with `!`, so it banners, chimes and buzzes every phone
-and booth it reaches (K-06 / N-07).
+**Director** (wave 10, `components/cockpit/director/`; `tabs.tsx`
+re-exports `DirectorTab`; the old `cockpit/CueSheet.tsx` and
+`DirectorControls` are gone; built on branch `oct31-w10/director-editor`)
+is the night's running order by **act**, the night at a glance, and the
+rare tools. **Display only:** NEXT / LAST / refusals stay core's
+`cueState` (`CockpitState.cues` = `ModView.cues`, so every director's
+page and the phone agree and survive a reload); acts, the board and the
+keys never change a mark. The pure rows live in `@loom/core/cue-sheet` =
+`core/src/cue-sheet.ts` (aliased in `vite.config.ts` +
+`tsconfig.app.json`, shared with `play/src/director.tsx`): `cueRows` (the
+label's leading code split off; NEXT = the first unfired in-sequence row
+after LAST whose `while:` holds — `InteractionSummary.live` — or LAST
+itself for a live `repeat: true` cue), `cueActs` / `focusActIndex` /
+`previousActIndex` (an admin cue's `act:` opens an act later cues join;
+the focus act holds NEXT, else LAST; an all-`sequence: false` act is
+*anytime*), `onDeck`, `cueTitleTags`, `countdownLeft` and the arm model
+(`tapCue` / `armFor` / `armStillValid`, `ARM_MS` 4 s, `ARM_DEAD_MS`
+300 ms). The files:
+- `DirectorTab.tsx` — the `@container` root (`tabIndex={-1}`, the key
+  listener on the root plus a document fallback when focus fell to
+  `<body>`), `DirectorContext` (`context.ts`: rows, acts, the arm, award
+  fields, the cursor, the mode), the layout (two columns ≥ `@4xl`, glance
+  340 / 300 px; one column + `GlanceStrip` below), **Calling / Watching**
+  (`localStorage` `loom.director.mode.<eventId|local>`, try/catch;
+  Watching = NOW as one line, the glance column first and whole at every
+  width, keys off).
+- `NightBar.tsx` — the act stepper (hidden with < 2 non-anytime acts),
+  `cue-phase` (`nightPhase`), two countdown chips, the PAUSED strip.
+- `NowCard.tsx` — NEXT + full description + `director-next-fire`, *then:*
+  (`onDeck`) or *Again? … or move on:*, *nothing to press* + every
+  countdown, LAST (`cue-last`) with `(auto)` / *moved by another
+  director* (`moves.ts`: which cue moved and whether this console pressed
+  it — `CockpitState.ownPress`, set by `fireSignal` on both stores), the
+  **did:** line (`press-effects.ts` `pressEffects`, four items then
+  `+N more ↗ Log` → `setLogPress(seq)`: the Log shows just that press
+  under a chip; secret CHARACTERs masked via `CastSummary.secret` and
+  secret watch items), and the `director-result` banner (✓ Taken 5 s /
+  ✕ Not taken + the first staff-room line after the press, 15 s / ✕
+  Failed).
+- `OnHand.tsx` — the focus act's asides, `from <prev> ▸` (a fold lasts
+  only while that act is the previous one), `⚡ Anytime`; hidden while
+  the filter has text.
+- `RunningOrder.tsx` — `cue-sheet`, `director-act-<code|index>` sections
+  (past folded `✓ n/m` / `– skipped`, future folded with *next:*), spine
+  rows + aside chips, the `cue-filter` (`filterCues`, opens every act),
+  `⇲ all`, the no-acts fold; the award tools (`useAwardFields.ts`:
+  recap fetch, `fillAwards`, ↻ / Copy recap, `cue-recap-*`) in the header
+  of the act holding the first `award_*` cue.
+- `CueButton.tsx` — row or chip: tags, ⓘ, the armed state (*Fire ▶ again ·
+  Esc*, a 4 s bar, `outOfTurn` warnings — *Not on offer now* / *This is a
+  F cue; the night is in E* — never a block), the subject picker
+  (`cue-who-` / `cue-value-` / `cue-suggest-`; NEXT's lives on the NOW
+  card only); `data-cue-press`.
+- `useArmed.ts` — the one arm model over core's: bound to `cues.last` +
+  `fired.length` (stale → *Cues moved: <cue> just fired. Re-arm.*),
+  dropped on blur / hidden tab / 4 s (and on a newer press of the armed
+  cue itself — another cue's repeat, a device's duck find, leaves it; the
+  server's `pressMovedArm` judges every press since); one press in flight
+  (8 s → `NO_ANSWER`, unlocks; a landed one keeps the lock until the
+  snapshot shows the server's `FireResult.presses`, `SETTLE_MS` 3 s at
+  most, so the next arm binds past it; a 409 `moved` names the 409's own
+  `cues.pressed`, gives back `ownPress` and holds the lock the same way
+  until the marks show the 409's `cues.presses` — `moves.ts`
+  `settleTarget` — so a re-arm never binds behind the press that beat it), NEXT cools 1 s after NEXT itself is fired
+  (`row.next` at fire; an aside sets no cooldown); a `subject` cue's
+  first tap opens the picker (`pick`), `armFor` arms it; the last
+  result is kept per store so it survives a tab switch.
+- `director-keys.ts` — the pure key reducer (Calling only; Space arms /
+  fires NEXT, Enter the cursor row or NEXT, Esc disarm → cursor → filter,
+  j/k/↑/↓, `/`, `.`; editable targets, modifiers and `e.repeat` ignored;
+  Enter/Space on a focused non-cue control are that control's; a cursor
+  on a row no longer on screen is dropped).
+- `Glance.tsx` + pure `glance.ts` — `glance-needs` (refused press 60 s,
+  review filings, held transfers, offline / free parts, unvoiced agents),
+  `glance-watch` (`CockpitState.watch` rows: values with ◆ on change,
+  role counts over roster rows on that ROLE, person rows, secret values
+  `••••`; holding 👁 0.4 s shows it for 5 s; no World link; with
+  `watchDeclared` false, *Recently changed* off `worldSet` log rows),
+  `glance-people` (factions vs a `floor(n/2)+1` tick, prison, restricted,
+  busiest rooms), `glance-cast` (`PresenceDot` from `cockpit/presence.tsx`,
+  shared with Stage; agents' stage + mood), `glance-staff` (rooms with
+  `ChannelSummary.staff`). Every row links (World via `setWorldFilter`,
+  Roster, the Inspector, Stage, Mind, Chat, the Run page).
+- `DirectorTools.tsx` — `director-tools` `<details>`: Fire named event /
+  Fire beat / Broadcast cue moved verbatim (open when the story has no
+  admin cues); the broadcast's **🔔 Alert** (`cockpit/broadcast.ts`
+  `alertCue`) prefixes `!` so it banners, chimes and buzzes (K-06 /
+  N-07).
+- `NextCuePill.tsx` — `next-cue-pill` in the `RunStage.tsx` header: `▶
+  NEXT …` or the soonest countdown; a click opens the Director tab, never
+  fires.
+- `clock.ts` — countdowns off `storyNow` (stands still while paused; the
+  local store fills `storyClock` from `ModView.clock` too).
+
+Store: `fireSignal(…, presses?)` resolves to `FireResult {refused?,
+error?, moved?, pressed?, presses?}` and never rejects (`lib/api.ts` sends
+the arm's `presses` and reads `{refused, presses}` off `/api/mod/signal`'s
+200; `operate.ts` maps a 409 `moved` to `{moved, pressed, presses}` off the
+409's `cues` and restores `ownPress`; the sim store uses `pressRefused`); `CockpitState.watch` / `watchDeclared` /
+`countdowns` (from `ModView.watch` / `countdowns`), `worldFilter` /
+`setWorldFilter` (the World tab's filter), `ownPress`, `logPress` /
+`setLogPress`. The local backend notes each press (`notePress`) so a
+folder rehearsal judges refusals exactly like the server. `index.css`
+has a scoped light-theme block for filled buttons and five accent texts.
+Tests: `director/{glance,director-keys,press-effects,moves,onhand}.test.ts`,
+`store/sim.test.ts` (a refused press), `cockpit/{cue-sheet,award-suggest}.test.ts`;
+e2e `e2e/director.spec.ts` (acts, Space · Space, a double-click only
+arms, Not taken, folding, Watching ignores Space, Tools with no cues,
+focus after Esc / a mouse press, Enter on a focused button, a refusal
+kept across its link).
 
 **Being anyone — the identity lens.** `perspective` is `OPERATOR_LENS`
 (god view) or a guest/persona/character id; `setPerspective` resolves

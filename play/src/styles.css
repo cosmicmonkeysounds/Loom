@@ -1043,6 +1043,66 @@ footer {
 .cue-tags { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px; font-weight: 700; opacity: 0.8; }
 .cue-tag.last, .cue-tag.next { text-transform: uppercase; letter-spacing: 0.5px; }
 .cue-arm { font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; font-size: 12px; }
+.cue-row { scroll-margin-top: 48px; } /* clear of the sticky act header */
+.cue-row.off:not(.last):not(.armed) { opacity: 0.55; } /* `while:` false: off tonight's branch, still pressable */
+.cue-row.fired { background: var(--code-bg); color: var(--muted-ink); box-shadow: none; } /* done tonight: muted, never hidden */
+.cue-row.armed.warn { box-shadow: var(--raised), inset 0 0 0 3px var(--bad); }
+.cue-warn { font: 700 12px var(--ui-font); color: var(--highlight); overflow-wrap: anywhere; } /* out of turn: warned, never blocked */
+.cue-tag.muted { font-weight: 600; font-style: italic; }
+.cue-code.act { background: var(--navy); color: var(--white); margin-right: 4px; }
+/* Wave 10: the pinned top — the strip (act · phase · soonest countdown ·
+   up to 3 watched values) and the NEXT bar, which scrolls to its row. */
+.cue-pinned { flex: 0 0 auto; display: flex; flex-direction: column; gap: 4px; padding: 6px 8px 4px; border-bottom: 1px solid var(--line); }
+.cue-strip { display: flex; flex-wrap: wrap; gap: 4px 10px; font: 700 12px var(--ui-font); color: var(--muted-ink); font-variant-numeric: tabular-nums; }
+.cue-strip span + span::before { content: "·"; margin-right: 10px; opacity: 0.6; }
+.cue-strip .urgent, .cue-nextbar .urgent { color: var(--bad); }
+.cue-nextbar {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; margin: 0;
+  padding: 8px 12px; border: none; border-radius: var(--radius); cursor: pointer; text-align: left;
+  font: 700 15px var(--ui-font); color: var(--ink); background: var(--white);
+  box-shadow: var(--raised), inset 0 0 0 3px var(--navy);
+}
+.cue-nextbar.none { box-shadow: var(--raised); color: var(--muted-ink); }
+.cue-nextbar-tag { flex: 0 0 auto; font: 800 11px var(--ui-font); letter-spacing: 0.5px; text-transform: uppercase; color: var(--navy); }
+.cue-nextbar.none .cue-nextbar-tag, .cue-nextbar.countdown .cue-nextbar-tag { color: var(--muted-ink); }
+/* Nothing to press while a countdown runs: no NEXT ring, two lines, so the
+   countdown never reads as the next cue. */
+.cue-nextbar.countdown { box-shadow: var(--raised); }
+.cue-nextbar-stack { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cue-nextbar-runs { text-transform: none; letter-spacing: 0; font-weight: 700; }
+.cue-nextbar-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* Acts: the focus act open with a sticky header, the others one tappable line. */
+.cue-acts { display: flex; flex-direction: column; gap: 8px; }
+.cue-act { display: flex; flex-direction: column; gap: 6px; }
+.cue-act-head { position: sticky; top: -8px; z-index: 2; margin: 0 -8px; padding: 0; background: var(--face); border-bottom: 1px solid var(--line); }
+.cue-act-head button {
+  display: flex; align-items: center; gap: 8px; width: 100%; margin: 0; padding: 8px 10px;
+  border: none; background: none; color: var(--ink); text-align: left; cursor: pointer;
+  font: 800 12px var(--ui-font); letter-spacing: 0.4px; text-transform: uppercase;
+}
+.cue-act-head button:disabled { cursor: default; opacity: 1; }
+.cue-act-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cue-act-count { flex: 0 0 auto; font-variant-numeric: tabular-nums; color: var(--muted-ink); }
+.cue-act-badge { flex: 0 0 auto; padding: 1px 6px; border-radius: 4px; background: var(--highlight); color: var(--black); text-transform: none; letter-spacing: 0; }
+.cue-act.anytime .cue-act-head button { color: var(--signal); }
+.cue-act-fold, .cue-from {
+  width: 100%; margin: 0; padding: 10px 12px;
+  border: none; border-radius: var(--radius); background: var(--code-bg); color: var(--muted-ink);
+  font: 700 13px var(--ui-font); text-align: left; cursor: pointer;
+}
+.cue-act-fold { display: flex; flex-direction: column; gap: 2px; }
+.cue-act-fold-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cue-act-fold-next { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cue-from { display: flex; align-items: center; gap: 6px; }
+.cue-act-fold-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cue-act.past .cue-act-fold { color: var(--good); }
+.cue-from { background: none; padding: 6px 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; }
+.cue-from .muted { text-transform: none; letter-spacing: 0; font-weight: 600; }
+.cue-divider {
+  display: flex; align-items: center; gap: 8px; margin: 4px 2px 0;
+  font: 700 11px var(--ui-font); text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted-ink);
+}
+.cue-divider::before, .cue-divider::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
 .cue-toast {
   position: absolute; left: 12px; right: 12px; bottom: 16px; z-index: 25;
   background: var(--black); color: var(--white); border-radius: var(--radius);

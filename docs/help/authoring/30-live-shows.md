@@ -2,7 +2,7 @@
 title: Live shows — people, places, casting
 section: Live Shows
 order: 30
-keywords: live, PERSON, ROSTER, cast, COHORT, LOCATION, participant, capacity, swings, roster, casting, immersive, ROLE, GROUP, hidden, someone joins, when, participant app, title, check in, checked_in, checkin, sign, qr
+keywords: live, PERSON, ROSTER, cast, COHORT, LOCATION, participant, capacity, swings, roster, casting, immersive, ROLE, GROUP, hidden, someone joins, when, participant app, title, check in, checked_in, checkin, sign, qr, header, watch, countdown, director page, glance, board
 ---
 
 In a live Loom show, the audience aren't just readers — they're
@@ -184,3 +184,51 @@ your project: the `# Title` line is the event name on the join screen
 and lobby, your `LOCATION`s / `SPACE`s / public `GROUP`s are its rooms
 sidebar, and the named events you `fire` are what the operator can
 fire from the Run cockpit. Nothing story-specific is baked in.
+
+## The director's board: `watch:` and `countdown:`
+
+Two header keys choose what the Run → Director page keeps in view ([Run
+mode](run-mode.md)). Each may be written as many times as you like, and
+every line can end in `, while <condition>` so it only shows while the
+night is in that stretch:
+
+```loom
+# The Glass Orchard
+start: The Front Gate
+watch: guest.suspicion as Suspicion, guest.favour as Favour
+watch: Ivo Marsh, Mara Vell
+```
+
+That watches two slots of the story's `ROLE Guest` and where two of its
+hosts are. A story with globals and a timed hunt watches those too — the
+`Night.…` names must be ones a line of *that* story `set`s, spelled the
+same way (The Glass Orchard sets none, so these lines don't belong in
+it):
+
+```loom
+watch: Night.round as Round, Night.lights as Lights, while Night.step >= 2
+countdown: Night.hunt_end as Hunt ends, while Night.hunt_on == true
+```
+
+- A `watch:` item is a path (`Night.round`), with `as <Label>` for its
+  name on the board (else the last part, `round` → *Round*). A path
+  that starts with a ROLE's name (`guest.suspicion`) counts over every
+  guest (a `bool` slot as *Cleared 44/45*, a number summed with the
+  highest). A path on a `secret: true` CHARACTER is shown
+  masked (the director presses and holds 👁 to read it) and never
+  reaches the director's phone. An item with no dot names a person: the
+  board shows where they are and whether they are online.
+- A `countdown:` item is a path holding a **story time in seconds**
+  (`set Night.hunt_end = Time.elapsed + 900`). It shows, ticking down,
+  only while its line's `while` holds and the time is still ahead; it
+  stops while the run is paused. The Director page's NOW card lists the
+  running countdowns when there is nothing to press, so a quiet sheet
+  during a timer reads as meant.
+
+These lines belong in the **header** — above the file's first beat,
+declaration or rule, which is what ends it (blank and comment lines
+don't) — and **only in the first file** of the project: the event server
+plays the files as one source, so it reads the first header only. Lint
+`L1205` flags a line that won't parse, a head that names nothing in the
+story, or a board line in another file. With no `watch:` line the board
+shows the globals the story changed most recently instead.

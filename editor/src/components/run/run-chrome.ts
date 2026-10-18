@@ -91,3 +91,34 @@ export function runStatusText(
       return 'no active event'
   }
 }
+
+// ---------------------------------------------------------------------------
+// The header's tab strip when it scrolls
+// ---------------------------------------------------------------------------
+
+/** Which edges of a scrolling strip hide tabs (a px of slack for subpixel
+ *  widths). */
+export function overflowEdges(scrollLeft: number, clientWidth: number, scrollWidth: number): { left: boolean; right: boolean } {
+  return { left: scrollLeft > 1, right: scrollLeft + clientWidth < scrollWidth - 1 }
+}
+
+/** How wide each fade is (px). */
+export const TAB_FADE_PX = 24
+
+/** The strip's fade: a mask (so it follows any theme's background) that
+ *  dims an edge hiding more tabs; none when nothing overflows. */
+export function tabFadeMask(edges: { left: boolean; right: boolean }): string | undefined {
+  if (!edges.left && !edges.right) return undefined
+  const l = edges.left ? `transparent, black ${TAB_FADE_PX}px` : 'black, black'
+  const r = edges.right ? `black calc(100% - ${TAB_FADE_PX}px), transparent` : 'black, black'
+  return `linear-gradient(to right, ${l}, ${r})`
+}
+
+/** The strip's `scrollLeft` that shows a tab spanning `[left, left + width)`
+ *  (offsets within the strip's content) clear of the fades, moving as little
+ *  as possible; the current one when it already shows. */
+export function revealScrollLeft(scrollLeft: number, clientWidth: number, left: number, width: number, pad = TAB_FADE_PX): number {
+  if (left - pad < scrollLeft) return Math.max(0, left - pad)
+  if (left + width + pad > scrollLeft + clientWidth) return Math.max(0, left + width + pad - clientWidth)
+  return scrollLeft
+}

@@ -33,6 +33,7 @@ import { ApiError, eventsApi, logApi, modApi, type EventInfo } from '@/lib/api'
 import { fetchWholeLedger } from '@/lib/run-export'
 import { onCollabEvent, type CollabEventNotice } from '@/lib/collab'
 import { reconnectDelay, streamClosed } from '@/lib/stream-retry'
+import { failureText } from '@/lib/press-failure'
 import { lspWorkspaceSync } from '@/lib/lsp-client'
 import { useLspIndexGen } from '@/lib/lsp-index'
 import { useAuth } from '@/store/auth'
@@ -41,6 +42,7 @@ import { scratchActive, useScratch } from '@/store/run'
 import {
   CockpitPhase,
   CockpitTab,
+  tabSwitch,
   NO_CUES,
   OPERATOR_LENS,
   RunBackend,
@@ -62,6 +64,9 @@ import {
   type SpaceSummary,
   type WorldEntry,
   type FactsView,
+  type WatchSummary,
+  type CountdownSummary,
+  type FireResult,
   WalletAction,
 } from '@/store/cockpit'
 
@@ -93,6 +98,10 @@ interface ModSnapshot {
   facts?: FactsView | null
   wallet?: WalletModView
   clock?: number
+  /** The Director's board (wave 10): absent from an older server, and
+   *  `watch` absent when the story declares no `watch:` line. */
+  watch?: WatchSummary[]
+  countdowns?: CountdownSummary[]
 }
 
 /** What the server tells every console on a lifecycle transition. */
@@ -170,6 +179,9 @@ const EMPTY_SNAPSHOT = {
   facts: null as FactsView | null,
   wallet: null as WalletModView | null,
   storyClock: null as { ms: number; at: number } | null,
+  watch: [] as WatchSummary[],
+  watchDeclared: false,
+  countdowns: [] as CountdownSummary[],
   ledgerLen: 0,
   world: [] as WorldEntry[],
   modsOnline: null as number | null,
@@ -411,6 +423,9 @@ export const useOperate = create<OperateState>((set, get) => {
         facts: snap.facts ?? null,
         wallet: snap.wallet ?? null,
         storyClock: typeof snap.clock === 'number' ? { ms: snap.clock, at: Date.now() } : null,
+        watch: snap.watch ?? [],
+        watchDeclared: snap.watch !== undefined,
+        countdowns: snap.countdowns ?? [],
         choices: snap.choices ?? {},
         ledgerLen: snap.ledgerLen ?? 0,
         world: snap.world ?? [],
@@ -601,6 +616,9 @@ export const useOperate = create<OperateState>((set, get) => {
     activeTab: CockpitTab.Run,
     activeChannel: 'lobby',
     selection: null,
+    worldFilter: '',
+    ownPress: null,
+    logPress: null,
 
     attach: (projectId) => {
       if (get().projectId === projectId) return
@@ -766,7 +784,34 @@ export const useOperate = create<OperateState>((set, get) => {
     say: (channel, text, as, parentSeq) => withEvent((ev) => modApi.say(ev, channel, text, as, parentSeq)),
     setStat: (id, field, value) => withEvent((ev) => modApi.setStat(ev, id, field, value)),
     fireBeat: (name, subject) => withEvent((ev) => modApi.fireBeat(ev, name, subject)),
-    fireSignal: (name, subject, args, actor) => withEvent((ev) => modApi.fireSignal(ev, name, subject, args, actor)),
+    fireSignal: async (name, subject, args, actor, presses) => {
+      const ev = get().event
+      if (!ev) return { error: 'no run' }
+      const was = get().ownPress
+      const own = { name, at: Date.now() }
+      set({ ownPress: own })
+      try {
+        return await modApi.fireSignal(ev.id, name, subject, args, actor, presses)
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 409 && e.data['moved'] === true) {
+          // Refused as moved: nothing fired, so this was not this console's
+          // press — another director's LAST must still read as theirs.
+          if (get().ownPress === own) set({ ownPress: was })
+          // The 409's fresh cue state: the press that beat this one, and
+          // the count after it (the Director holds its lock until its marks
+          // show it, so the re-arm binds past that press).
+          const cues = e.data['cues']
+          const c = cues !== null && typeof cues === 'object' ? (cues as { pressed?: unknown; presses?: unknown }) : {}
+          const out: FireResult = { moved: true }
+          if (typeof c.pressed === 'string' || c.pressed === null) out.pressed = c.pressed
+          if (typeof c.presses === 'number' && Number.isFinite(c.presses)) out.presses = c.presses
+          return out
+        }
+        const error = failureText((e as Error).message)
+        set({ error })
+        return { error }
+      }
+    },
     scanAs: async (as, target) => {
       const ev = get().event
       if (!ev) return []
@@ -893,7 +938,9 @@ export const useOperate = create<OperateState>((set, get) => {
       }
     },
 
-    setTab: (activeTab) => set({ activeTab }),
+    setTab: (activeTab) => set((s) => tabSwitch(s, activeTab)),
+    setWorldFilter: (worldFilter) => set({ worldFilter }),
+    setLogPress: (logPress) => set({ logPress }),
     selectChannel: (activeChannel) => set({ activeChannel }),
     select: (selection: Selection) => set({ selection }),
     setPerspective: (perspective) => {

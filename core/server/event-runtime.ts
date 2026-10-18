@@ -21,7 +21,7 @@ import { validateHouse, type HouseMap, type MapVariantsResponse } from "@loom/ho
 
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { guestView, modView, notePress, pressRefused, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { cueState, guestView, modView, notePress, pressMovedArm, pressRefused, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
@@ -440,9 +440,9 @@ export class EventRuntime {
   private phase: RuntimePhase = "idle";
   private scenarioName: string;
   private scenarioSource: string;
-  /** The story's model compiled from `source` while no sim exists (null
-   *  when it won't compile) — `declaredModel`. */
-  private declaredCast: { source: string; model: SimModel | null } | null = null;
+  /** The story compiled from `source` while no sim exists (null when it
+   *  won't compile; never played) — `declaredModel` / `declaredSim`. */
+  private declaredCast: { source: string; sim: Sim | null } | null = null;
 
   // Token → capabilities (performer / admin), scoped to this event.
   private readonly sessions = new SessionStore();
@@ -731,16 +731,25 @@ export class EventRuntime {
    *  room terminal's LOCATION. */
   private get declaredModel(): SimModel | null {
     if (this.sim !== null) return this.sim.model;
+    return this.declaredSim?.model ?? null;
+  }
+
+  /** Before the doors: the story compiled from the scenario text but never
+   *  played (memoised on the text; null when it won't compile, or once a
+   *  live sim exists). The director's view lists its admin cues from it, so
+   *  a director checking the phone before the doors sees the cue sheet. */
+  private get declaredSim(): Sim | null {
+    if (this.sim !== null) return null;
     if (this.declaredCast?.source !== this.scenarioSource) {
-      let model: SimModel | null = null;
+      let sim: Sim | null = null;
       try {
-        model = Sim.fromSources(this.scenarioSource).model;
+        sim = Sim.fromSources(this.scenarioSource);
       } catch {
         // A story that won't compile has no cast to check against yet.
       }
-      this.declaredCast = { source: this.scenarioSource, model };
+      this.declaredCast = { source: this.scenarioSource, sim };
     }
-    return this.declaredCast.model;
+    return this.declaredCast.sim;
   }
 
   /** How many participants exist in this event's world right now. */
@@ -830,7 +839,14 @@ export class EventRuntime {
 
   /** The operator's god view, with everyone's profile pictures. */
   private modViewNow(): ModView {
-    return { ...modView(this.sim, this.phase, this.scenarioName, this.presence(), this.sim === null ? this.declaredCharacters : undefined), avatars: this.avatarMap(), ...(this.wallet !== null ? { wallet: this.wallet.modView() } : {}) };
+    return {
+      ...modView(this.sim, this.phase, this.scenarioName, this.presence(), this.sim === null ? this.declaredCharacters : undefined, this.declaredSim),
+      avatars: this.avatarMap(),
+      ...(this.wallet !== null ? { wallet: this.wallet.modView() } : {}),
+      // A restart with the doors shut leaves the run `paused` with its
+      // `start:` beat unplayed: the doors are still closed (the phone's strip).
+      ...(!this.entryPlayed ? { doorsClosed: true as const } : {}),
+    };
   }
 
   /** Message seqs of the widget cards `id` has answered. */
@@ -2442,6 +2458,7 @@ export class EventRuntime {
       scenarioName: this.scenarioName,
       scenarioSource: this.scenarioSource,
       phase: this.phase,
+      opened: this.entryPlayed,
       owners: [...this.personaOwners.entries()],
     });
   }
@@ -2618,7 +2635,6 @@ export class EventRuntime {
       this.pausedAt = null;
     }
     this.setPhase("open");
-    this.persistMeta();
     this.startTicker();
     // A live event opens exactly like a rehearsal: the `entry:` beat plays
     // on the run's first open — also after a restart or a restore that left
@@ -2628,6 +2644,10 @@ export class EventRuntime {
       const entry = this.sim?.model.entry;
       if (entry != null && entry !== "") this.fanout(this.commit("fireBeat", entry));
     }
+    // After the entry: the meta says the doors opened (`opened`), so a
+    // restore of a story with no `start:` paused before its first tick
+    // still knows it.
+    this.persistMeta();
     this.pushSnapshots();
   }
 
@@ -2789,8 +2809,9 @@ export class EventRuntime {
     // The entry played when the journal holds its fireBeat. A journal with
     // a tick (the clock only runs with the doors open) or a run persisted
     // open counts too: a pre-fix run whose entry was lost must not have it
-    // fire mid-show on the next resume.
-    this.entryPlayed = meta.phase === "open";
+    // fire mid-show on the next resume. So does the meta's own `opened`: a
+    // story with no `start:` paused before its first tick journals neither.
+    this.entryPlayed = meta.phase === "open" || meta.opened === true;
     for (const e of this.store.readJournal()) {
       if (e.m === "tick" || (e.m === "fireBeat" && entry !== null && e.a[0] === entry)) this.entryPlayed = true;
       if (e.m === "wallet") {
@@ -4556,6 +4577,30 @@ export class EventRuntime {
         // screen fired it (the recap carries no `by`) (restored by `handleMod`'s finally, as
         // `/api/mod/impersonate` does). An author session's own name is
         // never overridden.
+        // `presses`: the cue state's press count the director's screen armed
+        // against — only a cue-sheet press carries it (a device, stagehand
+        // or a Tools fire never does, and is never refused here).
+        const expected = body["presses"];
+        if (typeof expected === "number" && Number.isFinite(expected)) {
+          // Before the doors: the `start:` beat has not played (a restart
+          // with the doors shut leaves the run paused, not idle), so a
+          // cue-sheet press would land in the journal ahead of it. The same
+          // 409 as no sim at all, so both director screens say the doors
+          // aren't open yet.
+          if (!this.entryPlayed) {
+            sendJson(res, 409, { error: "no scenario loaded", doorsClosed: true });
+            return true;
+          }
+          // Since the arm, a press fired this same cue (a second director's
+          // 📋, 🍾 again), moved LAST or ticked a new cue: the night moved
+          // under the arm — refuse it, so the screen says "Cues moved"
+          // rather than firing twice. Another cue's repeat (a second duck
+          // find, the door contact) never vetoes it.
+          if (pressMovedArm(this.sim, expected, str(body, "name"))) {
+            sendJson(res, 409, { error: "the cues moved: another press landed first — re-arm", moved: true, cues: cueState(this.sim) });
+            return true;
+          }
+        }
         const label = str(body, "label").trim().slice(0, 60);
         if (label !== "" && by === "Director") this.actingBy = label;
         const press = this.commit("signal", str(body, "name"), subject === "" ? undefined : subject, args, actor === "" ? null : actor);
@@ -4563,7 +4608,10 @@ export class EventRuntime {
         // why) — the cue sheet's own judgement, so a phone needn't say "fired".
         const refused = pressRefused(this.sim, press);
         this.fanout(press);
-        sendJson(res, 200, refused ? { ok: true, refused: true } : { ok: true });
+        // `presses`: the count after this press — the screen holds its lock
+        // until its own snapshot shows it, so its next arm binds past it.
+        const presses = cueState(this.sim).presses;
+        sendJson(res, 200, refused ? { ok: true, refused: true, presses } : { ok: true, presses });
         return true;
       }
       case "/api/mod/broadcast": {

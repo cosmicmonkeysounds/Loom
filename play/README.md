@@ -250,19 +250,32 @@ badges and sorts to the top, so a choice left unmade always pulls focus.
   out (a director released your part, or the show went live) — sign in
   again with your passcode."*
 
-- **🎬 Director cues** (W-26, `src/director.tsx`) — `?role=director` or a
-  `?code=` link carrying the mod code (no link on the guests' chooser): the editor's
-  K-21 cue sheet on a phone (the rows are core's `src/cue-sheet.ts`,
-  imported by path). Mod passcode + a name → `/api/mod/login`; polls
-  the lean `GET /api/state?role=mod&cues=1` (just the cue sheet) every 3 s
-  (parked while hidden, backing off on errors, polling at once when
-  the network comes back, `onOnline`); tap to arm, tap again to
-  fire (8 s timeout; no answer reads "not sure it fired") `/api/mod/signal {name, subject?,
-  label: "Phone · <name>"}`; a subject cue (an award) picks a person first,
-  and only an `award_*` cue (`takesValue`) shows the optional **Value** box
-  (`args: {value}`, core's `cueValueArgs`). A press the server answers
-  `refused: true` toasts *"Not taken — X doesn't apply right now (# hosts
-  says why)"* (`fireToast`).
+- **🎬 Director cues** (W-26 + wave 10, `src/director.tsx`) — `?role=director` or a
+  `?code=` link carrying the mod code (no link on the guests' chooser): the
+  editor's Run → Director page on a phone (the rows, acts and arm model are
+  core's `src/cue-sheet.ts`, imported by path). Mod passcode + a name →
+  `/api/mod/login`; polls the lean `GET /api/state?role=mod&cues=1` (just
+  the cue sheet) every 3 s (parked while hidden, backing off on errors,
+  polling at once when the network comes back, `onOnline`). The cues are
+  grouped by the story's **acts** under a pinned **NEXT bar** (the soonest
+  countdown when there is nothing to press) and a **strip** (the act, the
+  phase, a countdown, ≤ 3 global watch values; *⏸ clock stopped* while
+  paused). Tap to **arm**, tap again ≥ 300 ms (`ARM_DEAD_MS`) and < 4 s
+  later to **fire** (a fast double tap only arms); an arm the poll shows
+  the cues moved past (`armStillValid`: LAST moved, a first fire, or the
+  armed cue pressed again) is dropped — *Cues moved — tap again*, nothing
+  sent (`phoneTap` → `stale`). A fire posts `/api/mod/signal {name,
+  subject?, label: "Phone · <name>", args?, presses}` (8 s timeout; no
+  answer reads "not sure it fired"); a 409 `moved` (a press landed since
+  the arm's count) toasts the same *Cues moved — tap again*, and a 409 `no
+  scenario loaded` *Not fired — the doors aren't open yet*. One press at a
+  time: the lock holds until a poll started after the press has landed
+  (`REPOLL_WAIT_MS` 3 s at most), and NEXT then cools 1 s after any press
+  (`cueLocked`). A subject cue (an award) picks a person first, and only an
+  `award_*` cue (`takesValue`) shows the optional **Value** box (`args:
+  {value}`, core's `cueValueArgs`). A press the server answers `refused:
+  true` toasts *"Not taken — X doesn't apply right now (# hosts says
+  why)"* (`fireToast`).
 
 The operator/moderator surface is the [`editor`](../editor)'s Run mode
 (not this app); the phone cue sheet is the one director tool here.

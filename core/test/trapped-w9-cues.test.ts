@@ -474,7 +474,14 @@ describe("wave 9 — G11's first press reaches the phone as refused (O1-open-iss
       rt.openDoors();
       const guest = (await call(rt, "POST", "/api/guest/register", { passcode: CODES.event, name: "Calculator" })).json;
       const token = (await call(rt, "POST", "/api/mod/login", { passcode: CODES.mod })).json["token"] as string;
-      const signal = (name: string, subject?: string) => call(rt, "POST", "/api/mod/signal", { name, label: "Phone · Ana", ...(subject ? { subject } : {}) }, token);
+      // The press count after each press rides the answer too; these
+      // checks are about taken vs refused.
+      const signal = async (name: string, subject?: string) => {
+        const r = await call(rt, "POST", "/api/mod/signal", { name, label: "Phone · Ana", ...(subject ? { subject } : {}) }, token);
+        expect(typeof r.json["presses"]).toBe("number");
+        const { presses: _presses, ...json } = r.json;
+        return { ...r, json };
+      };
       for (const n of TO_Y2K) expect((await signal(n)).json, n).toEqual({ ok: true });
       expect((await signal("patch_combo_a")).json).toEqual({ ok: true });
       for (let i = 0; i < 11; i++) rt.tickOnce(1000);

@@ -26,7 +26,7 @@ export function App({ resume = null }: { resume?: ResumeLink | null }) {
   useDocumentTitle(urlTitle);
   // The chooser's skin; a guest / performer app skins itself (the landing's
   // theme on its join screen, the story's once signed in).
-  useTheme(brand.theme, role === "none" || role === "director");
+  useTheme(brand.theme, role === "none");
   // A `?code=` link carrying the mod code opens the director's cue sheet.
   // The guests' front page has no link to it (W-26).
   useEffect(() => {
@@ -86,7 +86,7 @@ export function App({ resume = null }: { resume?: ResumeLink | null }) {
 
   if (role === "guest") return <GuestApp onLeave={() => setRole("none")} />;
   if (role === "prime") return <PerformerApp onLeave={() => setRole("none")} />;
-  if (role === "director") return <DirectorApp onLeave={() => setRole("none")} />;
+  if (role === "director") return <DirectorApp onLeave={() => setRole("none")} brandTheme={brand.theme} />;
 
   return (
     <div className="hero">

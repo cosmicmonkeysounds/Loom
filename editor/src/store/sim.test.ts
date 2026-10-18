@@ -295,6 +295,27 @@ describe('local run store', () => {
     expect(useSim.getState().run?.scratch).toBe(true)
   })
 
+  it('fireSignal returns refused for an out-of-turn cue', async () => {
+    lspWorkspaceSync().updateMany([[uriFor('cues.loom'), CUES]])
+    await start()
+    const st = () => useSim.getState()
+    // Out of turn: the rule only tells # hosts why — not taken, never LAST.
+    expect(await st().fireSignal('last_call')).toEqual({ refused: true })
+    expect(st().cues.last).toBeNull()
+    expect(await st().fireSignal('open_doors')).toEqual({})
+    expect(st().cues.last).toBe('open_doors')
+    // In its turn the same cue is taken.
+    expect(await st().fireSignal('last_call')).toEqual({})
+    expect(st().cues.last).toBe('last_call')
+    // The board and the clock ride the local snapshot like a server one.
+    expect(st().watchDeclared).toBe(true)
+    expect(st().watch.map((w) => w.label)).toEqual(['Step'])
+    expect(st().storyClock).not.toBeNull()
+    expect(st().channels.find((c) => c.id.includes('hosts'))?.staff).toBe(true)
+    // Every press from this console is remembered as its own.
+    expect(st().ownPress?.name).toBe('last_call')
+  })
+
   it('grants a codex entry and steps a quest (S4), firing the story rules like the server routes', async () => {
     lspWorkspaceSync().updateMany([[uriFor('extras.loom'), GRANTS]])
     await start()
@@ -335,4 +356,33 @@ when guest learns The Sandy File:
 
 when guest completes quest The Hunt:
   set guest.score += 10
+`
+
+const CUES = `watch: Night.step as Step
+
+GROUP Hosts
+  joinable: false
+
+CHANNEL hosts
+  kind: faction
+  faction: Hosts
+
+INTERACTION open_doors
+  label: A1 · 🚪 Open the doors
+  who: admin
+  act: A · Doors
+
+INTERACTION last_call
+  label: B1 · 🔔 Last call
+  who: admin
+  act: B · Close
+
+when open_doors:
+  set Night.step = 1
+
+when last_call:
+  if Night.step == 1:
+    set Night.step = 2
+  else:
+    broadcast "🔔 Not yet: open the doors first." to channel(hosts)
 `

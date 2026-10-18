@@ -1,0 +1,265 @@
+// Run → Director on a local workspace (wave 10): the story's admin cues by
+// act, the NOW card, arm-then-fire with the dead time, refusals shown as
+// "Not taken", the past act folding, Watching mode leaving the keys alone,
+// and the Tools drawer opening for a story with no cues at all.
+
+import { test, expect, type Page } from '@playwright/test'
+import { openLocalProject, startRehearsal } from './helpers'
+
+/** Two acts, six cues: one aside, one repeat, one `while:`-gated cue. */
+const CUES_LOOM = `entry: opening
+watch: Night.step as Step
+
+GROUP Hosts
+  joinable: false
+
+CHANNEL hosts
+  kind: faction
+  faction: Hosts
+
+LOCATION Party
+  label: The Party
+
+CHARACTER Kernel
+  secret: true
+  playable: false
+  hidden: true
+
+INTERACTION open_doors
+  label: A1 · 🚪 Open the doors
+  who: admin
+  act: A · Doors
+  description: Let everyone in from the street.
+
+INTERACTION read_out
+  label: A2 · 📋 Read the results
+  who: admin
+  repeat: true
+
+INTERACTION lights_fallback
+  label: 💡 Lights (hardware fallback)
+  who: admin
+  sequence: false
+
+INTERACTION close_act
+  label: A3 · 🎬 Close act one
+  who: admin
+
+INTERACTION last_call
+  label: B1 · 🔔 Last call
+  who: admin
+  act: B · Close
+  while: Night.step >= 3
+
+INTERACTION goodnight
+  label: B2 · 🌙 Goodnight
+  who: admin
+
+when open_doors:
+  set Night.step = 1
+  set Night.doors = true
+  set Night.bar = true
+  set Night.coats = true
+  set Night.music = true
+  set Kernel.code = 4242
+
+when read_out:
+  set Night.reads += 1
+
+when lights_fallback:
+  set Night.lights = true
+
+when close_act:
+  set Night.step = 3
+
+when last_call:
+  if Night.step == 3:
+    set Night.step = 4
+  else:
+    broadcast "🔔 Not yet: close act one first." to channel(hosts)
+
+when goodnight:
+  set Night.step = 5
+
+== opening
+  The lights dim.
+`
+
+async function openDirector(page: Page): Promise<void> {
+  await page.getByRole('tab', { name: 'Director' }).click()
+  await expect(page.getByTestId('director')).toBeVisible()
+}
+
+/** Arm, wait out the dead time, fire. */
+async function fire(page: Page, id: string): Promise<void> {
+  await page.getByTestId(`cue-${id}`).click()
+  await page.waitForTimeout(400)
+  await page.getByTestId(`cue-${id}`).click()
+}
+
+test.describe('run mode · the Director page', () => {
+  test.describe('a story with acts', () => {
+    test.beforeEach(async ({ page }) => {
+      await openLocalProject(page, [{ path: 'main.loom', content: CUES_LOOM }])
+      await startRehearsal(page)
+      await openDirector(page)
+    })
+
+    test('the stepper shows two acts with the first focused', async ({ page }) => {
+      await expect(page.getByTestId('director-step-A')).toHaveAttribute('data-state', 'focus')
+      await expect(page.getByTestId('director-step-B')).toHaveAttribute('data-state', 'future')
+      await expect(page.getByTestId('director-act-A')).toContainText('starting')
+      await expect(page.getByTestId('director-next')).toContainText('Open the doors')
+      await expect(page.getByTestId('director-now')).toContainText('Let everyone in from the street.')
+      // The aside is on hand, not a numbered row.
+      await expect(page.getByTestId('director-onhand')).toContainText('Lights')
+      await expect(page.getByTestId('director-onhand')).toContainText('hardware fallback')
+    })
+
+    test('Space then Space fires NEXT and the NOW card shows Taken', async ({ page }) => {
+      await page.keyboard.press(' ')
+      await expect(page.getByTestId('cue-armed-open_doors')).toBeVisible()
+      await page.waitForTimeout(400)
+      await page.keyboard.press(' ')
+      await expect(page.getByTestId('director-result')).toContainText('Taken')
+      await expect(page.getByTestId('cue-last')).toContainText('Open the doors')
+      await expect(page.getByTestId('director-did')).toContainText('Night.step → 1')
+      // The repeat cue is NEXT now, then itself again.
+      await expect(page.getByTestId('director-next')).toContainText('Read the results')
+      await page.waitForTimeout(1100) // NEXT's cooldown after a press
+      await fire(page, 'read_out')
+      await expect(page.getByTestId('director-next')).toContainText('Again?')
+    })
+
+    test('a double-click on a cue only arms it', async ({ page }) => {
+      await page.getByTestId('cue-open_doors').dblclick()
+      await expect(page.getByTestId('cue-armed-open_doors')).toBeVisible()
+      await page.waitForTimeout(300)
+      await expect(page.getByTestId('cue-last')).toContainText('nothing fired yet')
+      // Esc disarms.
+      await page.keyboard.press('Escape')
+      await expect(page.getByTestId('cue-armed-open_doors')).toHaveCount(0)
+    })
+
+    test('an out-of-turn press shows Not taken', async ({ page }) => {
+      await page.getByTestId('director-step-B').click()
+      await expect(page.getByTestId('cue-last_call')).toContainText('not on offer')
+      await fire(page, 'last_call')
+      const result = page.getByTestId('director-result')
+      await expect(result).toContainText('Not taken')
+      await expect(result).toContainText('Not yet: close act one first.')
+      await expect(page.getByTestId('cue-last')).toContainText('nothing fired yet')
+      await expect(page.getByTestId('glance-needs')).toContainText('not taken')
+    })
+
+    test('the past act folds once NEXT moves into act two', async ({ page }) => {
+      await fire(page, 'open_doors')
+      await expect(page.getByTestId('cue-last')).toContainText('Open the doors')
+      await page.waitForTimeout(1100) // NEXT's cooldown
+      await fire(page, 'close_act')
+      await expect(page.getByTestId('cue-last')).toContainText('Close act one')
+      await expect(page.getByTestId('director-step-A')).toHaveAttribute('data-state', 'past')
+      await expect(page.getByTestId('director-step-B')).toHaveAttribute('data-state', 'focus')
+      await expect(page.getByTestId('director-act-A')).toContainText('✓ 2/3')
+      await expect(page.getByTestId('cue-open_doors')).toHaveCount(0)
+      await expect(page.getByTestId('director-next')).toContainText('Last call')
+      // Act A's aside stays on hand as the previous act's line.
+      await expect(page.getByTestId('director-onhand-prev')).toContainText('from A')
+      await expect(page.getByTestId('cue-lights_fallback')).toBeVisible()
+    })
+
+    test('the keys keep working after the filter or a mouse press drops focus', async ({ page }) => {
+      // `/`, type, Esc: the filter hands the keys back to the page.
+      await page.keyboard.press('/')
+      await page.keyboard.type('call')
+      await page.keyboard.press('Escape')
+      await page.keyboard.press(' ')
+      await expect(page.getByTestId('cue-armed-open_doors')).toBeVisible()
+      await page.keyboard.press('Escape')
+      // A mouse press on NOW's button, then the keys: Space · Space fires.
+      await page.getByTestId('director-next-fire').click()
+      await page.waitForTimeout(400)
+      await page.getByTestId('director-next-fire').click()
+      await expect(page.getByTestId('cue-last')).toContainText('Open the doors')
+      await page.waitForTimeout(1100) // NEXT's cooldown
+      await page.keyboard.press(' ')
+      await expect(page.getByTestId('cue-armed-read_out')).toBeVisible()
+    })
+
+    test('Enter on a focused button is that button’s, not NEXT’s', async ({ page }) => {
+      await page.getByTestId('director-mode-watching').focus()
+      await page.keyboard.press('Enter')
+      await expect(page.getByTestId('director')).toHaveAttribute('data-mode', 'watching')
+      await expect(page.getByTestId('cue-armed-open_doors')).toHaveCount(0)
+      await page.getByTestId('director-mode-calling').click()
+    })
+
+    test('a refusal outlives a trip to its # hosts link', async ({ page }) => {
+      await page.setViewportSize({ width: 1600, height: 900 }) // the glance column
+      await page.getByTestId('director-step-B').click()
+      await fire(page, 'last_call')
+      await expect(page.getByTestId('director-result')).toContainText('Not taken')
+      await page.getByTestId('glance-need-refused').click()
+      await openDirector(page)
+      await expect(page.getByTestId('director-result')).toContainText('Not taken')
+      await expect(page.getByTestId('glance-needs')).toContainText('not taken')
+    })
+
+    test('+N more opens the Log on that press, a secret still masked', async ({ page }) => {
+      // The tray (open by default) holds the glance while Calling.
+      await expect(page.getByTestId('director-glance-tray')).toHaveCount(1)
+      await fire(page, 'open_doors')
+      await expect(page.getByTestId('director-did')).toContainText('Night.step → 1')
+      await page.getByTestId('director-did-more').click()
+      // The focus outlives StrictMode's dev remount of the Log page.
+      await expect(page.getByTestId('log-press')).toBeVisible()
+      const log = page.getByTestId('sim-log')
+      await expect(log).toContainText('Night.music')
+      await expect(log).toContainText('Kernel.code')
+      await expect(log).not.toContainText('4242')
+      // Leaving the Log drops the focus: the tab bar's Log is the whole ledger.
+      await openDirector(page)
+      await page.getByRole('tab', { name: 'Log' }).click()
+      await expect(page.getByTestId('log-press')).toHaveCount(0)
+      await expect(log).toContainText('4242')
+    })
+
+    test('Watching mode ignores Space', async ({ page }) => {
+      await page.getByTestId('director-mode-watching').click()
+      await expect(page.getByTestId('director')).toHaveAttribute('data-mode', 'watching')
+      await page.getByTestId('director').focus()
+      await page.keyboard.press(' ')
+      await page.waitForTimeout(400)
+      await page.keyboard.press(' ')
+      await page.waitForTimeout(300)
+      await expect(page.getByTestId('cue-armed-open_doors')).toHaveCount(0)
+      await expect(page.getByTestId('cue-last')).toContainText('—')
+      // The page is the house at a glance: the open tray does not repeat it.
+      await expect(page.getByTestId('director-glance-tray')).toHaveCount(0)
+      // The choice outlives the tab (kept per console).
+      await page.getByRole('tab', { name: 'Log' }).click()
+      await openDirector(page)
+      await expect(page.getByTestId('director')).toHaveAttribute('data-mode', 'watching')
+    })
+  })
+
+  test('the open tab stays in sight when the header narrows under it', async ({ page }) => {
+    await openLocalProject(page, [{ path: 'main.loom', content: CUES_LOOM }])
+    await page.setViewportSize({ width: 1600, height: 900 })
+    await startRehearsal(page)
+    await page.getByRole('tab', { name: 'Log' }).click()
+    await page.setViewportSize({ width: 900, height: 900 })
+    await expect(page.getByTestId('run-tab-log')).toBeInViewport({ ratio: 0.95 })
+    // Tabs hidden off the left edge: that edge fades.
+    await expect(page.getByTestId('run-tabs')).toHaveAttribute('data-overflow', /left/u)
+  })
+
+  test('a story with no admin cues opens Tools', async ({ page }) => {
+    await openLocalProject(page)
+    await startRehearsal(page)
+    await openDirector(page)
+    await expect(page.getByTestId('director-tools')).toHaveAttribute('open', '')
+    await expect(page.getByTestId('director-now')).toHaveCount(0)
+    await expect(page.locator('section', { hasText: 'Fire beat' })).toBeVisible()
+  })
+})

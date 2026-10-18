@@ -2,7 +2,7 @@
 title: Cheat sheet — every symbol
 section: Reference
 order: 90
-keywords: cheat sheet, reference, symbols, syntax, quick reference, summary, verbs, when, loom 4
+keywords: act, watch, countdown, cheat sheet, reference, symbols, syntax, quick reference, summary, verbs, when, loom 4
 ---
 
 **Structure**
@@ -134,6 +134,9 @@ openers end with `:` and indent their body.
 | `QUEST Name` + `title:` / `from:` / `text:` | a quest for the Quest Log |
 | `INTERACTION name` + `label:` / `who:` / `by:` / `while:` | a button in the app (or a cue on the sheet) |
 | `sequence: false` / `repeat: true` (a `who: admin` cue) | never the sheet's last / next · stays next while pressed |
+| `act: B · Act I` (a `who: admin` cue) | opens an act on the Director page; later admin cues join it (`act: Anytime` rejoins by name; never changes NEXT) |
+| `watch: Night.round as Round, program.cleared, Ivo Marsh, while <cond>` (header, first file) | what the Director page's glance column keeps in view ([run mode](run-mode.md)) |
+| `countdown: Night.hunt_end as Hunt ends, while <cond>` (header, first file) | a countdown to a story time in seconds on the Director page and the director phone |
 | `currency: score as Truthcoin, max 500, expiry 10m` (header) | a wallet over a ROLE slot ([currency](currency.md)) |
 | `wallet: approver, every 3, window 60s` / `wallet: minter, limit 3, while <cond>` | on a CHARACTER: who audits transfers / who mints a stimulus |
 | `GENERATOR` / `SCENE` , `loop` / `wait until` / `tier:` / `while` | background life |

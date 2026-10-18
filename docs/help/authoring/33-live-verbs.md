@@ -2,7 +2,7 @@
 title: Live verbs — building game rules from primitives
 section: Live Shows
 order: 33
-keywords: capture, release, escape, reveal, respond, join, defect, betray, enroll, scan, signal, fire, named event, game, verbs, promote, cast, move, add, remove, reply, when, watcher, primitives, rules, hooks, do, INTERACTION, interaction, button, story rule, arguments, with, for, cue sheet, sequence, repeat, refused, not taken, branch, fallback, chess, chess won, the King, majority, limit, power, screens, slide, overlay, tv, blackout, award, restrict, unrestrict, restricted, marked, quarantine, pin, unpin, sticky, notice, pinned, staff quest, character quest
+keywords: capture, release, escape, reveal, respond, join, defect, betray, enroll, scan, signal, fire, named event, game, verbs, promote, cast, move, add, remove, reply, when, watcher, primitives, rules, hooks, do, INTERACTION, interaction, button, story rule, arguments, with, for, cue sheet, act, acts, anytime, director page, sequence, repeat, refused, not taken, branch, fallback, chess, chess won, the King, majority, limit, power, screens, slide, overlay, tv, blackout, award, restrict, unrestrict, restricted, marked, quarantine, pin, unpin, sticky, notice, pinned, staff quest, character quest
 ---
 
 Live shows run on **hooks** — `when <event>:` blocks in a CHARACTER,
@@ -384,7 +384,45 @@ A cue no rule hears (only the
 show-control bridge reacts to it) always counts as fired. A cue whose every `when` binds a
 person (`when award most trusted for program:`) gets a **who?** picker
 and an optional value (`{value}` in the body) — an awards ceremony is a
-run of these ([the cue sheet](run-mode.md)).
+run of these ([the Director page](run-mode.md)).
+
+### Acts: `act:`
+
+A long night reads better in sections. An `act:` line on an admin cue
+opens an **act** on the Director page and the director's phone; every
+later `who: admin` cue, in declaration order, belongs to it until the
+next `act:`:
+
+```loom
+INTERACTION call_to_the_desktop
+  label: C1/V1 · 📣 Call everyone to the Desktop
+  who: admin
+  act: B · Act I: the Desktop, Bingo and the first truth
+
+INTERACTION start_the_bingo
+  label: V2 · 🎱 Start Computer Bingo (20 min)
+  who: admin
+
+INTERACTION restore_the_lights
+  label: 💡 Restore the house lights
+  who: admin
+  sequence: false
+  act: Anytime
+```
+
+`start_the_bingo` is in act B with no line of its own. A short code
+before ` · ` (here `B`) is the act's code on the stepper. The name
+matches loosely (case, `_`, `-`, spaces), so a second `act: Anytime`
+**rejoins** the first rather than making another, and acts are ordered by
+where each name first appears. An act whose cues are all `sequence:
+false` is an *anytime* act: never the night's current act, always on
+hand. Cues before the first `act:` form one unnamed act; a story with no
+`act:` is one act. `act:` on a performer's or guest's button is ignored.
+
+**Acts never change NEXT, LAST, a refusal or what a press does**: they
+only group the page (the current act is the one holding NEXT, else
+LAST). So moving a cue to another act is a one-line edit that renumbers
+nothing.
 
 ### A button as a fallback for a machine
 

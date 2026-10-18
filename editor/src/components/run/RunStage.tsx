@@ -8,7 +8,7 @@
 //! only, so this stage is identical on both backends. Nothing here owns a
 //! backend lifetime: the server-run store is attached at the app level.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { CockpitTab, useCockpit } from '@/store/cockpit'
 import { StoryGraphPanel } from '@/components/graph/StoryGraphPanel'
@@ -21,11 +21,12 @@ import { LogTab } from '@/components/cockpit/LogTab'
 import { MindTab } from '@/components/cockpit/MindTab'
 import { RunCockpit } from '@/components/cockpit/providers'
 import { IdentityControl } from '@/components/cockpit/Identity'
+import { NextCuePill } from '@/components/cockpit/director/NextCuePill'
 import { RunPage } from './RunPage'
 import { LifecycleControls } from './LifecycleControls'
 import { LifecycleBanner } from './LifecycleBanner'
 import { TerminalsPill } from './TerminalsCard'
-import { TONE, runStatusText, runTone } from './run-chrome'
+import { TONE, overflowEdges, revealScrollLeft, runStatusText, runTone, tabFadeMask } from './run-chrome'
 
 interface TabSpec {
   id: CockpitTab
@@ -46,7 +47,7 @@ const TABS: TabSpec[] = [
   { id: CockpitTab.Story, label: 'Story', hint: 'The story map, lighting up with live positions as beats fire', idle: true },
   { id: CockpitTab.Roster, label: 'Roster', hint: 'All guests and the cast as a sortable table, with moderation actions' },
   { id: CockpitTab.World, label: 'World', hint: 'The world state — factions and every live variable, global and per-person', operatorOnly: true },
-  { id: CockpitTab.Director, label: 'Director', hint: 'Fire named events, beats, and broadcasts', operatorOnly: true },
+  { id: CockpitTab.Director, label: 'Director', hint: 'The running order by act, the night at a glance, and event / beat / broadcast tools', operatorOnly: true },
   { id: CockpitTab.Mind, label: 'Mind', hint: 'An agent-voiced character’s mind: the prompts, both models’ reasoning, the arc, and a control panel', operatorOnly: true },
   { id: CockpitTab.Log, label: 'Log', hint: 'The raw ledger, event by event — filter to one participant, export the run' },
 ]
@@ -60,11 +61,11 @@ function QuickFire() {
   const [name, setName] = useState('')
   if (!running || locked || events.length === 0) return null
   return (
-    <span className="flex items-center gap-1">
+    <span className="flex shrink-0 items-center gap-1">
       <select
         value={name}
         onChange={(e) => setName(e.target.value)}
-        className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[11px] text-zinc-300 outline-none focus:border-indigo-500"
+        className="max-w-[10rem] rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[11px] text-zinc-300 outline-none focus:border-indigo-500"
         title="Fire a named event"
         data-testid="sim-quickfire-select"
       >
@@ -78,7 +79,7 @@ function QuickFire() {
       <button
         onClick={() => name && void fireSignal(name)}
         disabled={!name}
-        className="rounded bg-indigo-600/80 px-2 py-0.5 text-[11px] text-white hover:bg-indigo-500 disabled:opacity-40"
+        className="whitespace-nowrap rounded bg-indigo-600/80 px-2 py-0.5 text-[11px] text-white hover:bg-indigo-500 disabled:opacity-40"
         data-testid="sim-quickfire-button"
       >
         ⚡ fire
@@ -133,6 +134,34 @@ function StageChrome() {
   const projectId = useWorkspace((s) => s.projectId)
   const seated = usePlayers((s) => s.slots.length > 0)
   useEffect(() => usePlayers.getState().bind(projectId), [projectId])
+  // A narrow stage scrolls the tabs: keep the open one in sight — on a tab
+  // switch, and whenever the header narrows under it (a resize, the tray or
+  // the rail opening) — and fade an edge that hides more tabs.
+  // (`relative`: the strip is its tabs' offsetParent, so `offsetLeft` is
+  // in the strip's own content coordinates.)
+  const tablist = useRef<HTMLDivElement>(null)
+  const [edges, setEdges] = useState({ left: false, right: false })
+  useEffect(() => {
+    const el = tablist.current
+    if (el === null) return
+    const measure = () => {
+      const next = overflowEdges(el.scrollLeft, el.clientWidth, el.scrollWidth)
+      setEdges((e) => (e.left === next.left && e.right === next.right ? e : next))
+    }
+    const reveal = () => {
+      const on = el.querySelector<HTMLElement>('[aria-selected="true"]')
+      if (on !== null) el.scrollLeft = revealScrollLeft(el.scrollLeft, el.clientWidth, on.offsetLeft, on.offsetWidth)
+      measure()
+    }
+    reveal()
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(reveal)
+    ro?.observe(el)
+    el.addEventListener('scroll', measure, { passive: true })
+    return () => {
+      ro?.disconnect()
+      el.removeEventListener('scroll', measure)
+    }
+  }, [tab])
 
   // A page that just became unavailable (run ended, lens engaged) yields
   // to the Run page rather than rendering a dead surface.
@@ -148,7 +177,17 @@ function StageChrome() {
       <div className={clsx('flex flex-wrap items-center gap-x-3 gap-y-1 border-b px-2 py-1', tone.border)}>
         <RunPill />
         <LifecycleControls />
-        <div role="tablist" className="flex items-stretch">
+        {/* The tabs scroll sideways rather than clip when the stage is narrow
+            (both side panels open at 1100 px): Director, Mind and Log stay
+            reachable. */}
+        <div
+          ref={tablist}
+          role="tablist"
+          className="relative flex min-w-0 max-w-full items-stretch overflow-x-auto [scrollbar-width:thin]"
+          style={{ maskImage: tabFadeMask(edges), WebkitMaskImage: tabFadeMask(edges) }}
+          data-overflow={[edges.left && 'left', edges.right && 'right'].filter(Boolean).join(' ') || undefined}
+          data-testid="run-tabs"
+        >
           {TABS.map((tb) => {
             const enabled = available(tb)
             return (
@@ -160,7 +199,7 @@ function StageChrome() {
                 onClick={() => setTab(tb.id)}
                 title={!running && tb.idle !== true ? 'starts with the rehearsal' : locked && tb.operatorOnly ? 'switch to Operator to edit' : tb.hint}
                 className={clsx(
-                  'border-b-2 px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+                  'shrink-0 whitespace-nowrap border-b-2 px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40',
                   tab === tb.id ? clsx('text-zinc-100', tone.tabActive) : 'border-transparent text-zinc-500 hover:text-zinc-200',
                 )}
                 data-testid={`run-tab-${tb.id}`}
@@ -170,8 +209,9 @@ function StageChrome() {
             )
           })}
         </div>
-        <span className="ml-auto flex items-center gap-3 pr-1">
+        <span className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-1 pr-1">
           <IdentityControl />
+          <NextCuePill />
           <QuickFire />
           <DecisionsPill />
           <TerminalsPill />

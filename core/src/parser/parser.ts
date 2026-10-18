@@ -23,6 +23,7 @@ import type {
   LoomFile,
   MatchArm,
   MatchBlock,
+  HeaderLine,
   PropertyValue,
   QuorumOp,
 } from "./ast.ts";
@@ -111,6 +112,7 @@ class Parser {
     const start = first !== undefined ? scannedLineSpan(first).start : ZERO_POSITION;
     let title: string | null = null;
     const properties = new Map<string, PropertyValue>();
+    const lines: HeaderLine[] = [];
     let end = start;
 
     let line = this.peek();
@@ -126,6 +128,7 @@ class Parser {
       } else if (k.kind === "property") {
         const sp = scannedLineSpan(line);
         properties.set(k.key, { value: k.value, span: sp });
+        lines.push({ key: k.key, value: k.value, span: sp });
         end = sp.end;
         this.cursor += 1;
       } else {
@@ -134,7 +137,7 @@ class Parser {
       line = this.peek();
     }
 
-    return { title, properties, span: span(start, end) };
+    return { title, properties, span: span(start, end), lines };
   }
 
   parseDeclaration() {

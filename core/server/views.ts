@@ -3,6 +3,7 @@
 //! unit-testable without standing up the HTTP/SSE server.
 
 import { DEFAULT_SPACE_ID } from "../src/runtime/sim/model.ts";
+import { asNumber } from "../src/runtime/expr.ts";
 import { foldName } from "../src/parser/names.ts";
 import type { AgentMindReport } from "./agents.ts";
 
@@ -113,6 +114,10 @@ export interface InteractionSummary {
    *  never sees it; a performer finds it under "More"; the director's cue
    *  sheet never suggests it as NEXT. */
   live?: false;
+  /** An admin cue's own `act:` line, as written (the director's view only):
+   *  it opens a section of the cue sheet, carried forward to later admin
+   *  cues by `cueRows`. Display only — never changes NEXT / LAST. */
+  act?: string;
 }
 
 const subjectOnlyCache = new WeakMap<Sim["model"], Set<string>>();
@@ -186,6 +191,8 @@ function interactionsFor(
       // of the night it belongs to (🏍 only after Combo A), so NEXT skips it
       // off that branch. It never gates the press itself.
       if (at === undefined && i.who === "admin" && i.while !== null && !sim.holds(i.while, null, null)) s.live = false;
+      // The director's sections: only the director's own view carries them.
+      if (at === undefined && i.who === "admin" && i.act !== null) s.act = i.act;
       return s;
     });
 }
@@ -405,6 +412,10 @@ export interface ChannelSummary {
   kind: string;
   title: string;
   spaceId: string;
+  /** A staff room (`staffRoomIds`: an authored `kind: faction` CHANNEL whose
+   *  GROUP no guest may join — `# hosts`): where the story says why it
+   *  turned a cue down. The Director page's staff-room feed reads these. */
+  staff?: true;
 }
 
 /** A member of the cast (an authored CHARACTER an operator can speak/fire as). */
@@ -424,6 +435,9 @@ export interface CastSummary {
    *  not `online` is a booth whose phone dropped (⏏ Release). Present on
    *  parts where connection tracking exists. */
   held?: boolean;
+  /** `secret: true` (the Kernel): the Director masks its values wherever
+   *  they show (a press's `did:` line), watched or not. */
+  secret?: true;
 }
 
 /** Who is connected to the event right now, by capability. */
@@ -466,6 +480,10 @@ export interface ModView {
   /** Every declared INTERACTION (the director may fire any of them). */
   interactions?: InteractionSummary[];
   phase: RuntimePhase;
+  /** The doors have not opened on this run yet: its `start:` beat has not
+   *  played (idle, or a restart with the doors shut — `paused`). A
+   *  cue-sheet press is refused until they open. Set by the event runtime. */
+  doorsClosed?: true;
   scenario: string | null;
   roster: RosterRow[];
   factions: FactionSummary[];
@@ -514,6 +532,40 @@ export interface ModView {
   /** The story clock (ms, `Sim.elapsed()`) when this view was built — what
    *  Run's Wallet card counts a transfer's `settleAt` down from. */
   clock?: number;
+  /** The header's `watch:` items on lines whose `while` holds now (the
+   *  Director page's glance column; values come from `world`). Absent when
+   *  the story declares no `watch:` line. */
+  watch?: WatchSummary[];
+  /** The header's `countdown:` items on live lines whose deadline is still
+   *  ahead (`endsAt` > `Time.elapsed`). Absent when there are none. */
+  countdowns?: CountdownSummary[];
+}
+
+/** One `watch:` item the director's glance column shows. */
+export interface WatchSummary {
+  label: string;
+  /** The world path (its head spelled as declared), or null for a person. */
+  path: string | null;
+  /** A person item's name as written (a character, or the guest playing it). */
+  person: string | null;
+  /** How the client reads it: a `character`'s or a `global`'s value off
+   *  `world`, a count over guests of a ROLE slot (`program.cleared` →
+   *  every guest's `<id>.cleared`), or a person row. */
+  scope: "global" | "character" | "role" | "person";
+  /** On a `secret: true` CHARACTER (the Kernel): masked until held open. */
+  secret?: true;
+  /** From a line with a `while` — shown only for a stretch of the night
+   *  (`Results read` during the truth round): the phone's three-value strip
+   *  carries these first. */
+  gated?: true;
+}
+
+/** One live `countdown:` item. */
+export interface CountdownSummary {
+  label: string;
+  path: string;
+  /** The deadline, in story seconds (`Time.elapsed` units). */
+  endsAt: number;
 }
 
 /** Where the night is on the `who: admin` cue sheet. */
@@ -527,6 +579,16 @@ export interface CueState {
   lastBy: "director" | "story" | null;
   /** Every admin cue that has fired at least once, in first-fire order. */
   fired: string[];
+  /** How many admin-cue presses the story took tonight (by a director, a
+   *  device, or the story's own `fire`; a refused press never counts). A
+   *  repeat of LAST or of an aside moves only this: a director screen binds
+   *  its arm to it, and `/api/mod/signal {presses}` refuses a press armed
+   *  against an older count only when a press since fired that same cue,
+   *  moved LAST or ticked a new cue (`pressMovedArm`, 409 `moved`) — never
+   *  for another cue's repeat (a second duck find, a door contact). */
+  presses: number;
+  /** The cue the newest taken press fired (asides included), or null. */
+  pressed: string | null;
 }
 
 interface CueScan {
@@ -537,6 +599,10 @@ interface CueScan {
   seen: Set<string>;
   /** `state.last`'s place in the declared order (-1 = none). */
   lastOrder: number;
+  /** Every taken press in order (index = the press count before it): the
+   *  cue it fired, and whether it moved LAST or ticked a cue for the first
+   *  time (`pressMovedArm`). */
+  pressLog: { id: string; moved: boolean }[];
 }
 
 /** Where each director press's own events end, per log: the batch one
@@ -592,15 +658,29 @@ function cueModelOf(model: Sim["model"]): CueModel {
     for (const c of model.characters.values()) collect(c.hooks);
     for (const r of model.roles.values()) collect(r.hooks);
     collect(model.rules);
-    const staff = new Set<string>();
+    out = { heard, staff: staffRoomIds(model) };
+    cueModels.set(model, out);
+  }
+  return out;
+}
+
+const staffRooms = new WeakMap<object, Set<string>>();
+
+/** The story's staff rooms, folded (`roomFold`): every authored
+ *  `kind: faction` CHANNEL whose GROUP no guest may join (`# hosts`) —
+ *  where a phase-guarded rule says why it refused a cue (`refusedPress`),
+ *  and the Director page's staff-room feed. Per compiled model. */
+export function staffRoomIds(model: Sim["model"]): Set<string> {
+  let staff = staffRooms.get(model);
+  if (staff === undefined) {
+    staff = new Set<string>();
     for (const c of model.channels.values()) {
       const group = c.kind === "faction" && c.faction !== null ? model.factions.get(c.faction) : undefined;
       if (group !== undefined && !group.joinable) staff.add(roomFold(c.id));
     }
-    out = { heard, staff };
-    cueModels.set(model, out);
+    staffRooms.set(model, staff);
   }
-  return out;
+  return staff;
 }
 
 /** A room name folded the way `chat.ts` matches `channel(…)` scopes. */
@@ -663,11 +743,11 @@ const cueScans = new WeakMap<object, CueScan>();
 export function cueState(sim: Sim): CueState {
   const admin = new Map<string, { id: string; sequence: boolean; order: number }>();
   for (const i of sim.model.interactions.values()) if (i.who === "admin") admin.set(foldName(i.id), { id: i.id, sequence: i.sequence, order: admin.size });
-  if (admin.size === 0) return { last: null, lastBy: null, fired: [] };
+  if (admin.size === 0) return { last: null, lastBy: null, fired: [], presses: 0, pressed: null };
   const events = sim.log.all();
   let scan = cueScans.get(sim.log);
   if (scan === undefined || scan.model !== sim.model || scan.at > events.length) {
-    scan = { model: sim.model, at: 0, state: { last: null, lastBy: null, fired: [] }, seen: new Set(), lastOrder: -1 };
+    scan = { model: sim.model, at: 0, state: { last: null, lastBy: null, fired: [], presses: 0, pressed: null }, seen: new Set(), lastOrder: -1, pressLog: [] };
     cueScans.set(sim.log, scan);
   }
   const { state, seen } = scan;
@@ -687,20 +767,51 @@ export function cueState(sim: Sim): CueState {
     if (cue === undefined) continue;
     const id = cue.id;
     if (by === "director" && refusedPress(sim, events, n, name)) continue;
+    state.presses += 1;
+    state.pressed = id;
+    const lastWas = state.last;
+    let moved = false;
     if (cue.sequence) {
       if (!(seen.has(id) && cue.order < scan.lastOrder)) {
         state.last = id;
         state.lastBy = by;
         scan.lastOrder = cue.order;
+        moved = lastWas !== id;
       }
     }
     if (!seen.has(id)) {
       seen.add(id);
       state.fired.push(id);
+      moved = true;
     }
+    scan.pressLog.push({ id, moved });
   }
   scan.at = events.length;
-  return { last: state.last, lastBy: state.lastBy, fired: [...state.fired] };
+  return { last: state.last, lastBy: state.lastBy, fired: [...state.fired], presses: state.presses, pressed: state.pressed };
+}
+
+/**
+ * Did the night move under an arm made at press count `presses` for cue
+ * `id`? True when a press taken since then fired that same cue (a second
+ * director's 📋, or 🍾 again), moved LAST, or ticked a cue for the first
+ * time — what a director's screen binds its arm to (spec §4.3). Another
+ * cue's repeat (a guest's second duck find, a door contact firing again,
+ * an aside the other director pressed) moves nothing an arm cares about,
+ * so it never vetoes the press. A count from ahead of the night (a
+ * restart since) is stale too.
+ */
+export function pressMovedArm(sim: Sim, presses: number, id: string): boolean {
+  const cues = cueState(sim);
+  if (presses > cues.presses || presses < 0) return true;
+  if (presses === cues.presses) return false;
+  const scan = cueScans.get(sim.log);
+  if (scan === undefined) return true;
+  const want = foldName(id);
+  for (let k = Math.floor(presses); k < scan.pressLog.length; k++) {
+    const p = scan.pressLog[k]!;
+    if (p.moved || foldName(p.id) === want) return true;
+  }
+  return false;
 }
 
 export interface CodexSummary extends CodexEntryView {
@@ -748,9 +859,10 @@ function operatorChannels(sim: Sim): ChannelSummary[] {
   for (const l of sim.model.locations.values()) {
     out.push({ id: `loc:${l.id}`, kind: "location", title: l.label ?? l.id, spaceId: space });
   }
+  const staff = staffRoomIds(sim.model);
   for (const id of sim.model.channels.keys()) {
     const h = sim.channelHead(id);
-    out.push({ id: h.channel, kind: h.channelKind, title: h.title, spaceId: h.spaceId });
+    out.push({ id: h.channel, kind: h.channelKind, title: h.title, spaceId: h.spaceId, ...(staff.has(roomFold(id)) ? { staff: true as const } : {}) });
   }
   return out;
 }
@@ -769,9 +881,17 @@ function partsOf(model: Sim["model"]): Set<string> {
 
 /** `declared`: the story's cast while no sim exists (the doors are shut) —
  *  a terminal provisioned before the doors checks its character against it. */
-export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string | null, presence?: ModPresence, declared?: readonly string[]): ModView {
+export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string | null, presence?: ModPresence, declared?: readonly string[], declaredSim?: Sim | null): ModView {
   if (sim === null) {
+    // Before the doors: the story's own admin cues (off its compiled, never
+    // played text), so the director's cue sheet is there from sign-in — not
+    // "this story has no director cues".
+    const before =
+      declaredSim != null
+        ? { title: declaredSim.lobbyTitle(), theme: declaredSim.model.theme ?? "plain", interactions: interactionsFor(declaredSim, ["admin"]), cues: { last: null, lastBy: null, fired: [], presses: 0, pressed: null } satisfies CueState }
+        : {};
     return {
+      ...before,
       phase,
       scenario,
       roster: [],
@@ -828,6 +948,7 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
           : {}),
         ...(part ? { part: true } : {}),
         ...(part && presence?.held !== undefined ? { held: presence.held.has(foldName(c.id)) } : {}),
+        ...(c.secret ? { secret: true as const } : {}),
       };
     }),
     channels: operatorChannels(sim),
@@ -844,7 +965,104 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
     ...(presence?.facts !== undefined ? { facts: presence.facts } : {}),
     cues: cueState(sim),
     clock: sim.elapsed(),
+    ...modBoard(sim),
   };
+}
+
+/** `boardFor`, spread onto the `ModView`: `watch` whenever the story
+ *  declares a `watch:` line, `countdowns` only while one is running. */
+function modBoard(sim: Sim): Pick<ModView, "watch" | "countdowns"> {
+  if (sim.model.watch.length === 0 && sim.model.countdowns.length === 0) return {};
+  const b = boardFor(sim);
+  return {
+    ...(sim.model.watch.length > 0 ? { watch: b.watch } : {}),
+    ...(b.countdowns.length > 0 ? { countdowns: b.countdowns } : {}),
+  };
+}
+
+/** A board line with its items' scopes resolved against the model. */
+interface ResolvedBoard {
+  watch: Array<{ while: string | null; items: WatchSummary[] }>;
+  countdowns: Array<{ while: string | null; items: Array<{ label: string; path: string }> }>;
+}
+const boards = new WeakMap<object, ResolvedBoard>();
+
+/** Resolve each board line's scopes once per compiled model (director
+ *  snapshots are frequent): a path's head names a CHARACTER (its value;
+ *  `secret: true` → masked; a countdown on one is dropped), a ROLE (a
+ *  count over guests), or anything else (a global); an item with no dot
+ *  is a person. */
+function resolvedBoard(model: Sim["model"]): ResolvedBoard {
+  let out = boards.get(model);
+  if (out !== undefined) return out;
+  const chars = new Map([...model.characters.values()].map((c) => [foldName(c.id), c]));
+  const roles = new Map([...model.roles.keys()].map((id) => [foldName(id), id]));
+  const scoped = (path: string): { path: string; scope: WatchSummary["scope"]; secret: boolean } => {
+    const dot = path.indexOf(".");
+    const head = path.slice(0, dot);
+    const rest = path.slice(dot);
+    const c = chars.get(foldName(head));
+    if (c !== undefined) return { path: c.id + rest, scope: "character", secret: c.secret };
+    const r = roles.get(foldName(head));
+    if (r !== undefined) return { path: r + rest, scope: "role", secret: false };
+    return { path: (model.entityIndex.get(head) ?? head) + rest, scope: "global", secret: false };
+  };
+  out = {
+    watch: model.watch.map((l) => ({
+      while: l.while,
+      items: l.items.map((i): WatchSummary => {
+        const gated = l.while !== null ? { gated: true as const } : {};
+        if (i.path === null) return { label: i.label, path: null, person: i.name, scope: "person", ...gated };
+        const s = scoped(i.path);
+        return { label: i.label, path: s.path, person: null, scope: s.scope, ...(s.secret ? { secret: true as const } : {}), ...gated };
+      }),
+    })),
+    // A countdown on a `secret: true` CHARACTER is dropped: its deadline
+    // would go out raw as `endsAt` (and to the phone's lean view), and a
+    // countdown has no mask. Lint L1205 says so.
+    countdowns: model.countdowns.map((l) => ({
+      while: l.while,
+      items: l.items.flatMap((i) => {
+        if (i.path === null) return [];
+        const s = scoped(i.path);
+        return s.secret ? [] : [{ label: i.label, path: s.path }];
+      }),
+    })),
+  };
+  boards.set(model, out);
+  return out;
+}
+
+/** Does a board line's `while` hold now (nothing bound, like an admin
+ *  cue's)? A condition that throws hides its line. */
+function boardLineLive(sim: Sim, cond: string | null): boolean {
+  if (cond === null) return true;
+  try {
+    return sim.holds(cond, null, null);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The director's board right now: the `watch:` items on lines whose
+ * `while` holds, and the `countdown:` items on live lines whose deadline
+ * (a story time in seconds) is still ahead of the story clock — a past or
+ * stale deadline never shows. Read-only and display-only.
+ */
+export function boardFor(sim: Sim): { watch: WatchSummary[]; countdowns: CountdownSummary[] } {
+  const board = resolvedBoard(sim.model);
+  const watch = board.watch.filter((l) => boardLineLive(sim, l.while)).flatMap((l) => l.items.map((i) => ({ ...i })));
+  const now = sim.elapsed() / 1000;
+  const countdowns: CountdownSummary[] = [];
+  for (const l of board.countdowns) {
+    if (!boardLineLive(sim, l.while)) continue;
+    for (const i of l.items) {
+      const endsAt = asNumber(sim.world.get(i.path));
+      if (endsAt !== null && Number.isFinite(endsAt) && endsAt > now) countdowns.push({ label: i.label, path: i.path, endsAt });
+    }
+  }
+  return { watch, countdowns };
 }
 
 export interface PrimeGuest {
