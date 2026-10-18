@@ -63,7 +63,7 @@ CHARACTER Clippy is Host
       reply 📋 6/X is in What Clippy knows. Applaud the top program. If the printer is full of beans, it is the malware getting worse.
 
   when y2k_clock:
-    if Night.step < 14 and Night.scenario != 0:
+    if Night.step < 14 and Night.scenario != 0 and Night.clock == "--:--":
       reply 📋 7/X is in What Clippy knows. The clock. You may not take sides on air.
 
   when final_reveal:

@@ -2494,7 +2494,7 @@ INTERACTION y2k_clock
   label: 🕚 System clock → 11 PM, 31 Dec 1999 (final round, 60 min)
   who: admin
   description: Fire only after the patch-bay watch radios IN (inside the server room, door shut). From here the first door opening plays The Heart and opens the server room on every phone.
-  while: Night.step < 14 and Night.scenario != 0
+  while: Night.step < 14 and Night.scenario != 0 and Night.clock == "--:--"
 
 INTERACTION y2k_midnight
   label: 🎆 Midnight (auto at 60 min)
@@ -3564,9 +3564,11 @@ when trabolta_overshares:
   else:
     broadcast "🤖 Not yet: 📊 the Trust Chart first. Nothing happens." to channel(hosts)
 
-// D10: the clock. One hour to midnight; the factions come out.
+// D10: the clock. One hour to midnight; the factions come out. Once set,
+// the clock (reset only by Power On) is what says "not again": a printer
+// lid first opened in the Y2K hour sets the step back to the beans.
 when y2k_clock:
-  if Night.step < 14 and Night.scenario != 0:
+  if Night.step < 14 and Night.scenario != 0 and Night.clock == "--:--":
     set Night.phase = "y2k"
     set Night.step = 14
     set Night.final_round = true
@@ -3586,7 +3588,7 @@ when y2k_clock:
     sound y2k_chime
     broadcast "!🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999." to everyone
     -> The Y2K Clock
-  else if Night.step >= 14:
+  else if Night.step >= 14 or Night.clock != "--:--":
     broadcast "🕚 Not again: the clock has already been reset. Nothing happens." to channel(hosts)
   else:
     broadcast "🕚 Not yet: 🤖 Trabolta shares the next facts first (round 3 opens there). Nothing happens." to channel(hosts)

@@ -261,6 +261,28 @@ describe("Trapped in the Internet — wave 9 (the cue sheet)", () => {
     expect(sheet(sim)).toEqual({ last: "y2k_clock", next: null });
   });
 
+  it("T5-crew-cards-04: a printer lid first opened in the Y2K hour never re-arms 🕚 (no second hour, no second −25)", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    for (const n of ["close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt", "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares"]) {
+      expect(press(sim, n).refused, n).toBe(false);
+    }
+    const clock = press(sim, "y2k_clock");
+    expect(clock.refused).toBe(false);
+    // Clippy's booth readout rides the accepted press.
+    expect(JSON.stringify(clock.out)).toContain("📋 7/X is in What Clippy knows.");
+    const end = v(sim, "Night.y2k_end");
+    const composure = v(sim, "Trabolta.composure");
+    advance(sim, 60);
+    expect(press(sim, "printer_opened").refused).toBe(false);
+    expect(v(sim, "Night.step")).toBe(12);
+    refuses(sim, "y2k_clock", "🕚 Not again: the clock has already been reset. Nothing happens.");
+    expect(live(sim, "y2k_clock")).toBe(false);
+    expect(v(sim, "Night.y2k_end")).toBe(end);
+    expect(v(sim, "Night.final_round")).toBe(true);
+    expect(v(sim, "Trabolta.composure")).toBe(composure - 20); // the beans only
+  });
+
   /** A director's whole night to the Y2K clock, the timers' steps pressed by hand. */
   function toY2k(sim: Sim) {
     toTruth1(sim);
