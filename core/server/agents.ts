@@ -27,7 +27,8 @@
 //! in silence when the laptop is down. The request stays queued, so a worker
 //! that comes back still answers it. A worker that stays connected but stops
 //! answering (its head request timed out) counts as down for the hold line
-//! until it answers again (or the story restarts), and no request waits
+//! until it answers again, the story restarts, or its line has been empty
+//! a reply timeout after the stall (back on trial), and no request waits
 //! longer than `queueMaxAgeMs` in all, queued or on a stalled worker — a
 //! healthy worker's line is never cut, its head has the reply timeout.
 //!
@@ -1026,17 +1027,16 @@ export class AgentHub {
         }
       }
     }
-    // A stalled worker whose whole line went to workers still answering
-    // gets no new work while they answer every character it voices, so it
-    // could never answer again: a reply timeout after the stall it is put
-    // back on trial — new work again, but only once the others are busy
-    // (one slow reply never costs a worker the rest of the night; a
-    // worker still wedged stalls again on its next head, and its line
-    // moves on).
+    // A stalled worker whose line emptied (moved to workers still
+    // answering, given up, or answered by hand) has nothing left to answer
+    // with, so it could never show it is answering again — a lone laptop
+    // would read as away all night: a reply timeout after the stall it is
+    // put back on trial — shown online, new work again, but only once any
+    // worker still answering is busy (one slow reply never costs a worker
+    // the rest of the night; a worker still wedged stalls again on its
+    // next head, and its line moves on).
     for (const [id, since] of [...this.stalled]) {
-      const w = this.workers.get(id);
-      if (w === undefined || now - since < timeout || this.headOf(id) !== null) continue;
-      if (![...w.characters].every((c) => this.isOnline(c))) continue;
+      if (!this.workers.has(id) || now - since < timeout || this.headOf(id) !== null) continue;
       this.stalled.delete(id);
       this.probation.add(id);
       this.progress.set(id, now);

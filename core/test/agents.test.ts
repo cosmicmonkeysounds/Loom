@@ -710,6 +710,30 @@ describe("AgentHub", () => {
     expect(g.hub.isOnline("Trabolta")).toBe(true);
   });
 
+  it("a lone stalled worker whose line drains with no answer (answered by hand, or given up) is shown online again a reply timeout after the stall (review 5)", () => {
+    for (const drain of ["hand", "giveUp"] as const) {
+      const h = hubHarness();
+      const a = h.worker("laptop");
+      h.hub.attach(a.w);
+      h.hub.line({ ...T, audience: ["g-1"] });
+      for (let s = 0; s < 125; s++) {
+        h.tick(1000);
+        h.hub.sweep();
+      }
+      expect(h.hub.isOnline("Trabolta")).toBe(false); // stalled at 121 s
+      if (drain === "hand") expect(h.hub.answeredByHand({ ...T, audience: ["g-1"] })).toBe(true);
+      for (let s = 0; s < 240; s++) {
+        h.tick(1000);
+        h.hub.sweep();
+      }
+      expect(h.hub.pending).toHaveLength(0);
+      expect(h.hub.onlineCharacters()).toEqual(["Trabolta"]);
+      // Its next DM goes to it and is answered like any other.
+      h.hub.line({ ...T, audience: ["g-2"] });
+      expect(h.hub.settle(a.holds()[0]!.id, "laptop")).not.toBeNull();
+    }
+  });
+
   it("reset cancels everything open and tells workers", () => {
     const h = hubHarness();
     const a = h.worker("a");
