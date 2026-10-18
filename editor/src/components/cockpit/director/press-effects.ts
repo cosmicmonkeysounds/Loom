@@ -1,6 +1,9 @@
 //! What the last press did (wave 10, spec §4.5): the ledger rows a cue's
 //! press produced, from its `signal` (a director's press) or its `fire`
-//! directive (the story's own auto cue) up to the next input, summarised
+//! directive (the story's own auto cue) up to the next input — or to the
+//! first row of a later story moment (`Sim.tick` records no row of its own,
+//! so a timer's or an auto cue's rows would otherwise run on into it) —
+//! summarised
 //! for the NOW card's `did:` line — global writes as `path → value`,
 //! per-guest writes aggregated (`cleared → true ×41`), beats, reveals,
 //! broadcasts, codex unlocks and quest steps. Pure.
@@ -11,15 +14,46 @@ import type { LedgerEntry } from '@/store/cockpit'
  *  server's `CUE_INPUTS`). */
 const INPUTS: ReadonlySet<string> = new Set(['signal', 'tick', 'chat', 'accountCreated', 'scanned'])
 
-/** One press and what it did: the ledger rows from the press at `seq` up
- *  to the next input (the Log page focused by `did: +N more ↗ Log`). Empty
- *  when the log no longer holds it. */
+/** How far apart (story ms) two rows may land and still be one moment. A
+ *  press's rows share its moment (the same `ts` on a folder run; a server
+ *  run stamps each on arrival, a few ms apart), while the story's clock
+ *  moves a second per tick — a timer's rows land at least that much later. */
+export const SAME_MOMENT_MS = 500
+
+/** Where the press at `log[at]` stops: the next input, or the first row of
+ *  a later story moment (rows with no `ts` never split). */
+export function pressEnd(log: readonly LedgerEntry[], at: number): number {
+  const ts = log[at]?.ts
+  let end = at + 1
+  while (end < log.length) {
+    const r = log[end]!
+    if (INPUTS.has(r.event.type)) break
+    if (ts !== undefined && r.ts !== undefined && Math.abs(r.ts - ts) > SAME_MOMENT_MS) break
+    end++
+  }
+  return end
+}
+
+/** One press and what it did: the ledger rows from the press at `seq` to
+ *  `pressEnd` (the Log page focused by `did: +N more ↗ Log`). Empty when the
+ *  log no longer holds it. */
 export function pressSlice(log: readonly LedgerEntry[], seq: number): LedgerEntry[] {
   const at = log.findIndex((r) => r.seq === seq)
   if (at < 0) return []
-  let end = at + 1
-  while (end < log.length && !INPUTS.has(log[end]!.event.type)) end++
-  return log.slice(at, end)
+  return log.slice(at, pressEnd(log, at))
+}
+
+/** `rows` with every world write under a secret head (`Kernel.majority`)
+ *  masked — the press-focused Log, which the `did:` line's `+N more` opens,
+ *  must not print what that line masks. */
+export function maskSecretWrites(rows: readonly LedgerEntry[], secretHeads: ReadonlySet<string>): LedgerEntry[] {
+  const secret = new Set([...secretHeads].map(fold))
+  if (secret.size === 0) return [...rows]
+  return rows.map((r) => {
+    const e = r.event
+    if (e.type !== 'worldSet' || !secret.has(fold(e.path.split('.')[0] ?? ''))) return r
+    return { ...r, event: { ...e, value: '••••' } }
+  })
 }
 
 /** How many items the `did:` line shows before `+N more`. */
@@ -46,6 +80,28 @@ export interface PressEffectsOpts {
   /** The staff rooms (`ChannelSummary.staff` ids): a press that only told
    *  them why is a refused one, never the press described. */
   staffRooms?: Iterable<string>
+  /** Countdown deadlines (path → label, the board's `countdown:` items): a
+   *  write reads `⏱ Bingo ends 20:00` (from the press), never raw story
+   *  seconds. */
+  deadlines?: ReadonlyMap<string, string>
+}
+
+/** Seconds as `m:ss` (or `h:mm:ss`). */
+function clockText(sec: number): string {
+  const s = Math.max(0, Math.round(sec))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const ss = String(s % 60).padStart(2, '0')
+  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`
+}
+
+/** A deadline write as the `did:` line reads it. */
+function deadlineText(label: string, raw: string, pressTs: number | undefined): string {
+  const at = Number(unquote(raw))
+  if (!Number.isFinite(at)) return `⏱ ${label} → ${unquote(raw)}`
+  if (pressTs === undefined) return `⏱ ${label} set`
+  const left = at - pressTs / 1000
+  return left > 0 ? `⏱ ${label} ${clockText(left)}` : `⏱ ${label} off`
 }
 
 function fold(s: string): string {
@@ -74,9 +130,9 @@ function staffOnly(scope: string, staff: ReadonlySet<string>): boolean {
  *  why (or note a `_` leaf)? The server's refusal rule, read off the log:
  *  such a press never became LAST, so `did:` never describes it. */
 function refusedLooking(log: readonly LedgerEntry[], at: number, staff: ReadonlySet<string>): boolean {
-  for (let k = at + 1; k < log.length; k++) {
+  const end = pressEnd(log, at)
+  for (let k = at + 1; k < end; k++) {
     const e = log[k]!.event
-    if (INPUTS.has(e.type)) break
     if (e.type === 'diagnostic') continue
     if (e.type === 'broadcast' && staffOnly(e.scope, staff)) continue
     if (e.type === 'worldSet' && e.path.slice(e.path.lastIndexOf('.') + 1).startsWith('_')) continue
@@ -135,9 +191,11 @@ export function pressEffects(log: readonly LedgerEntry[], cueId: string, opts: P
   const broadcasts: string[] = []
   const codex = new Tally()
   const quests = new Tally()
-  for (let k = at + 1; k < log.length; k++) {
+  const deadlines = opts.deadlines ?? new Map<string, string>()
+  const pressTs = log[at]!.ts
+  const end = pressEnd(log, at)
+  for (let k = at + 1; k < end; k++) {
     const e = log[k]!.event
-    if (INPUTS.has(e.type)) break
     switch (e.type) {
       case 'worldSet': {
         if (e.path === 'Time' || e.path.startsWith('Time.')) break
@@ -149,6 +207,11 @@ export function pressEffects(log: readonly LedgerEntry[], cueId: string, opts: P
           break
         }
         // A later write to the same path wins; the path keeps its first place.
+        const label = deadlines.get(e.path)
+        if (label !== undefined && !secret.has(fold(head))) {
+          globals.set(e.path, deadlineText(label, e.value, pressTs))
+          break
+        }
         globals.set(e.path, secret.has(fold(head)) ? '••••' : unquote(e.value))
         break
       }
@@ -175,7 +238,7 @@ export function pressEffects(log: readonly LedgerEntry[], cueId: string, opts: P
     }
   }
   const all = [
-    ...[...globals.entries()].map(([p, v]) => `${p} → ${v}`),
+    ...[...globals.entries()].map(([p, v]) => (deadlines.has(p) && v.startsWith('⏱') ? v : `${p} → ${v}`)),
     ...perGuest.lines(),
     ...beats.lines(),
     ...reveals,

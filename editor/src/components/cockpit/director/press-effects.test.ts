@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { LedgerEntry } from '@/store/cockpit'
 import type { SimEvent } from '@loom/core/sim'
-import { pressEffects, pressSlice } from './press-effects'
+import { maskSecretWrites, pressEffects, pressSlice } from './press-effects'
 
 let seq = 0
 const e = (event: SimEvent): LedgerEntry => ({ seq: seq++, event })
@@ -87,5 +87,53 @@ describe('pressSlice', () => {
     const log = [set('Night.a', '1'), e({ type: 'signal', name: 'trust_chart', subject: null }), set('Night.b', '2'), e({ type: 'tick', elapsedMs: 1 }), set('Night.c', '3')]
     expect(pressSlice(log, 1).map((r) => r.seq)).toEqual([1, 2])
     expect(pressSlice(log, 99)).toEqual([])
+  })
+})
+
+describe('a press ends where the story moves on (timers record no tick row)', () => {
+  const at = (ms: number, event: SimEvent): LedgerEntry => ({ seq: seq++, ts: ms, event })
+  it('leaves out what the story\'s timers and auto cues did later', () => {
+    seq = 0
+    const log: LedgerEntry[] = [
+      at(60_000, { type: 'signal', name: 'start_the_second_hunt', subject: null }),
+      at(60_000, { type: 'worldSet', path: 'Night.hunt2_on', value: 'true' }),
+      at(60_000, { type: 'worldSet', path: 'Night.truther_at', value: '180' }),
+      // Two minutes on: the Truther timer fires, then the summons.
+      at(180_000, { type: 'directive', verb: 'fire', args: 'truther_download for Night' }),
+      at(180_000, { type: 'worldSet', path: 'Night.phase', value: '"summons"' }),
+      at(3_360_000, { type: 'worldSet', path: 'Night.hunt2_on', value: 'false' }),
+    ]
+    const fx = pressEffects(log, 'start_the_second_hunt', { max: 10 })!
+    expect(fx.items).toEqual(['Night.hunt2_on → true', 'Night.truther_at → 180'])
+    expect(fx.more).toBe(0)
+    expect(pressSlice(log, 0).map((r) => r.seq)).toEqual([0, 1, 2])
+    // A server run stamps each row on arrival, a few ms apart: still one press.
+    seq = 0
+    const jitter = [at(1000, { type: 'signal', name: 'go', subject: null }), at(1012, { type: 'worldSet', path: 'Night.a', value: '1' }), at(1030, { type: 'worldSet', path: 'Night.b', value: '2' })]
+    expect(pressSlice(jitter, 0)).toHaveLength(3)
+    // Rows with no clock (an older server) still run to the next input.
+    seq = 0
+    const bare = [e({ type: 'signal', name: 'go', subject: null }), set('Night.a', '1'), set('Night.b', '2')]
+    expect(pressSlice(bare, 0)).toHaveLength(3)
+  })
+
+  it('reads a countdown deadline as time from the press, never raw story seconds', () => {
+    seq = 0
+    const log = [at(5_000, { type: 'signal', name: 'bingo_time', subject: null }), at(5_000, { type: 'worldSet', path: 'Night.bingo_end', value: '1205' })]
+    expect(pressEffects(log, 'bingo_time', { deadlines: new Map([['Night.bingo_end', 'Bingo ends']]) })!.items).toEqual(['⏱ Bingo ends 20:00'])
+    expect(pressEffects(log, 'bingo_time')!.items).toEqual(['Night.bingo_end → 1205'])
+    seq = 0
+    const off = [at(5_000, { type: 'signal', name: 'bingo_over', subject: null }), at(5_000, { type: 'worldSet', path: 'Night.bingo_end', value: '0' })]
+    expect(pressEffects(off, 'bingo_over', { deadlines: new Map([['Night.bingo_end', 'Bingo ends']]) })!.items).toEqual(['⏱ Bingo ends off'])
+  })
+})
+
+describe('maskSecretWrites', () => {
+  it('masks a secret CHARACTER\'s values in the press-focused Log', () => {
+    seq = 0
+    const rows = [e({ type: 'signal', name: 'force_majority_stay', subject: null }), set('Kernel.majority', '"stay"'), set('Night.step', '15')]
+    const out = maskSecretWrites(rows, new Set(['Kernel']))
+    expect(out.map((r) => (r.event.type === 'worldSet' ? `${r.event.path}=${r.event.value}` : r.event.type))).toEqual(['signal', 'Kernel.majority=••••', 'Night.step=15'])
+    expect(maskSecretWrites(rows, new Set())).toEqual(rows)
   })
 })

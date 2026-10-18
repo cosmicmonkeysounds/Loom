@@ -6,7 +6,7 @@
 //! The result banner says whether this console's last press was taken.
 //! In Watching mode it shrinks to one line.
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { CockpitTab, useCockpit, storyNow, CockpitPhase } from '@/store/cockpit'
 import { cueTitleTags, onDeck, type CueRow } from '@loom/core/cue-sheet'
@@ -94,16 +94,22 @@ function LastLine() {
   const running = useCockpit((s) => s.phase === CockpitPhase.Open)
   const setTab = useCockpit((s) => s.setTab)
   const setLogPress = useCockpit((s) => s.setLogPress)
+  const countdowns = useCockpit((s) => s.countdowns)
   const wall = useNow(true, 30_000)
   const last = d.rows.find((r) => r.last) ?? null
+  // Every countdown seen tonight (the view carries only the running ones),
+  // so a deadline a press set reads `⏱ Bingo ends 20:00`, not story seconds.
+  const [deadlines, setDeadlines] = useState<ReadonlyMap<string, string>>(() => new Map())
+  if (countdowns.some((c) => deadlines.get(c.path) !== c.label)) setDeadlines(new Map([...deadlines, ...countdowns.map((c) => [c.path, c.label] as const)]))
   const fx = useMemo(() => {
     if (last === null) return null
     return pressEffects(log, last.id, {
       persons: new Set(roster.map((r) => r.id)),
       secretHeads: secretHeads(cast, watch),
       staffRooms: channels.filter((c) => c.staff === true).map((c) => c.id),
+      deadlines,
     })
-  }, [last, log, roster, cast, watch, channels])
+  }, [last, log, roster, cast, watch, channels, deadlines])
   if (last === null) {
     return (
       <div className="text-xs text-zinc-500" data-testid="cue-last">

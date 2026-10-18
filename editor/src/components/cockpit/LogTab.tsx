@@ -17,7 +17,8 @@ import { SimEventType } from '@loom/core/sim'
 import { CockpitContext, useCockpit, type LedgerEntry } from '@/store/cockpit'
 import { canExportRun, downloadRunExport } from '@/lib/run-export'
 import { eventMentions, missingEvents } from './log-filter'
-import { pressSlice } from './director/press-effects'
+import { maskSecretWrites, pressSlice } from './director/press-effects'
+import { secretHeads } from './director/glance'
 import { describeEvent, logClock } from './log-describe'
 
 /** Tone class per event type (grouped by family). */
@@ -76,9 +77,17 @@ export function LogTab() {
   const logPress = useCockpit((s) => s.logPress)
   const setLogPress = useCockpit((s) => s.setLogPress)
   useEffect(() => () => setLogPress(null), [setLogPress])
+  const watch = useCockpit((s) => s.watch)
+  // The press the Director's `did: +N more ↗ Log` opened: what that line
+  // masks (a `secret: true` CHARACTER's values) stays masked here.
   const rows = useMemo(
-    () => (logPress !== null ? pressSlice(log, logPress) : who === '' ? log : log.filter((e) => eventMentions(e.event, who))),
-    [log, who, logPress],
+    () =>
+      logPress !== null
+        ? maskSecretWrites(pressSlice(log, logPress), secretHeads(cast, watch))
+        : who === ''
+          ? log
+          : log.filter((e) => eventMentions(e.event, who)),
+    [log, who, logPress, cast, watch],
   )
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' })
