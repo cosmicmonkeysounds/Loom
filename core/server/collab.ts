@@ -58,6 +58,10 @@ interface ProjectCollab {
    *  no longer reads this was rewritten behind the hub's back. */
   base: Map<string, string>;
   persistTimer: ReturnType<typeof setTimeout> | null;
+  /** The tail of this project's persist / resync chain: the two read the row
+   *  and then act on `base`, so they run one at a time (a resync never reads
+   *  a row a flush has saved but not yet recorded as `base`). */
+  lock: Promise<void>;
   /** Drops the whole in-memory project a while after the last editor left. */
   idleTimer: ReturnType<typeof setTimeout> | null;
 }
@@ -110,7 +114,7 @@ export class CollabHub {
   private project(projectId: string): ProjectCollab {
     let p = this.projects.get(projectId);
     if (p === undefined) {
-      p = { docs: new Map(), clients: new Set(), dirty: new Set(), base: new Map(), persistTimer: null, idleTimer: null };
+      p = { docs: new Map(), clients: new Set(), dirty: new Set(), base: new Map(), persistTimer: null, lock: Promise.resolve(), idleTimer: null };
       this.projects.set(projectId, p);
     }
     return p;
@@ -219,6 +223,10 @@ export class CollabHub {
   async resyncFromStorage(projectId: string): Promise<string[]> {
     const p = this.projects.get(projectId);
     if (p === undefined) return [];
+    return this.exclusive(p, () => this.resyncDocs(projectId, p));
+  }
+
+  private async resyncDocs(projectId: string, p: ProjectCollab): Promise<string[]> {
     const changed: string[] = [];
     for (const [path, doc] of [...p.docs]) {
       const stored = await this.storage.load(projectId, path);
@@ -294,6 +302,16 @@ export class CollabHub {
     p.persistTimer.unref?.();
   }
 
+  /** Run `fn` after this project's running persist / resync (if any). */
+  private exclusive<T>(p: ProjectCollab, fn: () => Promise<T>): Promise<T> {
+    const run = p.lock.then(fn);
+    p.lock = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
   /** Persist every dirty doc's merged text now. Called on the debounce
    *  timer, on last-disconnect, and before an event launch snapshots the
    *  project (`projectSource` must see the live text). */
@@ -304,7 +322,7 @@ export class CollabHub {
       clearTimeout(p.persistTimer);
       p.persistTimer = null;
     }
-    await this.persistDirty(projectId, p);
+    await this.exclusive(p, () => this.persistDirty(projectId, p));
   }
 
   /**

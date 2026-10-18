@@ -260,6 +260,44 @@ describe("CollabHub — CRDT co-editing", () => {
     expect(files.get("p1/new.loom")).toBe("brand new\n");
   });
 
+  it("resyncFromStorage waits for a persist mid-save, so a keystroke typed during the save survives", async () => {
+    const files = new Map<string, string>([["p1/main.loom", "seed\n"]]);
+    let release: () => void = () => {};
+    let saving: () => void = () => {};
+    let gated = true; // only the first save is held open
+    const midSave = new Promise<void>((r) => (saving = r));
+    const storage: CollabStorage = {
+      async load(projectId, path) {
+        return files.get(`${projectId}/${path}`) ?? null;
+      },
+      async save(projectId, path, content) {
+        files.set(`${projectId}/${path}`, content); // the row is written…
+        if (!gated) return;
+        gated = false;
+        saving();
+        await new Promise<void>((r) => (release = r)); // …before the save returns
+      },
+    };
+    const hub = new CollabHub(storage, 10_000);
+    const a = await joinEditor(hub, "main.loom", "a");
+    a.ytext.insert(0, "one ");
+    await Promise.resolve();
+    const flushing = hub.flush("p1");
+    await midSave;
+    expect(files.get("p1/main.loom")).toBe("one seed\n");
+    // A keystroke after the flush captured its text, then the reload's resync.
+    a.ytext.insert(a.ytext.length, "two\n");
+    await Promise.resolve();
+    const resync = hub.resyncFromStorage("p1");
+    release();
+    await flushing;
+    expect(await resync).toEqual([]);
+    a.drain();
+    expect(a.ytext.toString()).toBe("one seed\ntwo\n");
+    await hub.flush("p1");
+    expect(files.get("p1/main.loom")).toBe("one seed\ntwo\n");
+  });
+
   it("replaceIntoYText splices minimally so out-of-region edits survive", () => {
     const doc1 = new Y.Doc();
     const t1 = doc1.getText("content");
