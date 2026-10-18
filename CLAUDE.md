@@ -242,8 +242,8 @@ server-b,console-delta,story-cues,story-rules,play,editor,edges,ops}`,
 merged `--no-ff` to master in that order: 8b47141, b554630, 5a5cfc8,
 15f9dbd, 20a07f4, 599a95c, d9f0ca7, ea2ca23, ed9fe38; then
 `oct31-w9/integration` 0797b1e and `oct31-w9/integration-2` ae79117, then
-`oct31-w9/docs-{show,help}`; **merged, not deployed**: it ships as
-`w9-1018`, rollback `w8-1018`; OCT31.md §5 *Wave 9 status* has the
+`oct31-w9/docs-{show,help}`; **shipped as `w9-1018`** 2026-10-18
+(ebbd049, rollback `w8-1018`) and checked live; OCT31.md §5 *Wave 9 status* has the
 per-commit table and the deploy log). A find phase on no-DB scratch
 servers (14 testers, incl. regression reviews of wave 8's diff, an
 adversarial guest and the crew cards followed literally) gave 53
