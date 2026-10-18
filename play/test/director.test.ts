@@ -37,6 +37,7 @@ import {
   armWarnings,
   cueRowClass,
   fromAct,
+  disarmOnLeave,
   NEXT_COOLDOWN_MS,
   STALE_TOAST,
   pollDelay,
@@ -714,5 +715,25 @@ describe("the previous act's fallbacks", () => {
     // At the doors there is no previous act.
     expect(fromAct(sheetLayout(directorRows(ACTS)), new Set())).toBeNull();
     expect(fromAct(sheetLayout(directorRows(VIEW)), new Set())).toBeNull();
+  });
+});
+
+describe("looking away drops the arm", () => {
+  it("disarms when the page goes hidden or the window blurs, and unsubscribes", () => {
+    const doc = Object.assign(new EventTarget(), { visibilityState: "visible" as DocumentVisibilityState });
+    const win = new EventTarget();
+    let drops = 0;
+    const off = disarmOnLeave(doc as unknown as Document, win as unknown as Window, () => drops++);
+    doc.dispatchEvent(new Event("visibilitychange")); // back to visible: nothing
+    expect(drops).toBe(0);
+    doc.visibilityState = "hidden";
+    doc.dispatchEvent(new Event("visibilitychange")); // the screen locks
+    expect(drops).toBe(1);
+    win.dispatchEvent(new Event("blur")); // another app takes focus
+    expect(drops).toBe(2);
+    off();
+    win.dispatchEvent(new Event("blur"));
+    doc.dispatchEvent(new Event("visibilitychange"));
+    expect(drops).toBe(2);
   });
 });

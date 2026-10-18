@@ -343,6 +343,23 @@ export function armWarnings(row: Pick<CueRow, "id" | "live" | "sequence">, layou
   return out;
 }
 
+/** Call `disarm` when the page goes hidden (the screen locks, the director
+ *  switches to the radio app) or the window loses focus: an arm never
+ *  survives the director looking away (spec §4.3). A hidden page may also
+ *  freeze the 4 s timer, which would leave a stale "Tap again to fire".
+ *  Returns the unsubscribe. */
+export function disarmOnLeave(doc: Pick<Document, "visibilityState" | "addEventListener" | "removeEventListener">, win: Pick<Window, "addEventListener" | "removeEventListener">, disarm: () => void): () => void {
+  const onVisibility = () => {
+    if (doc.visibilityState === "hidden") disarm();
+  };
+  doc.addEventListener("visibilitychange", onVisibility);
+  win.addEventListener("blur", disarm);
+  return () => {
+    doc.removeEventListener("visibilitychange", onVisibility);
+    win.removeEventListener("blur", disarm);
+  };
+}
+
 /** The toast when a stale arm is dropped. */
 export const STALE_TOAST = "Cues moved — tap again";
 
@@ -860,6 +877,11 @@ export function DirectorApp({ onLeave }: { onLeave: () => void }) {
     if (armed === null) return;
     const t = setTimeout(() => setArmed(null), ARM_MS);
     return () => clearTimeout(t);
+  }, [armed]);
+  // Looking away drops the arm.
+  useEffect(() => {
+    if (armed === null) return;
+    return disarmOnLeave(document, window, () => setArmed(null));
   }, [armed]);
   // The cue state moved under an arm (another director, or the story,
   // fired): drop it rather than fire into a night that has moved on.
