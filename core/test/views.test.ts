@@ -209,7 +209,7 @@ when hunt_time_up:
   it("starts empty and marks the last admin cue, director- or story-fired", async () => {
     const { cueState } = await import("../server/views.ts");
     const sim = Sim.fromSources(CUES);
-    expect(cueState(sim)).toEqual({ last: null, lastBy: null, fired: [] });
+    expect(cueState(sim)).toEqual({ last: null, lastBy: null, fired: [], presses: 0, pressed: null });
     sim.signal("accuse"); // not an admin cue
     expect(cueState(sim).last).toBeNull();
     sim.signal("ring the bell"); // folds to `ring_the_bell`
@@ -345,7 +345,7 @@ when to_the_floor:
       return cueState(sim);
     };
     const live = night(true);
-    expect(live).toEqual({ last: "hunt_time_up", lastBy: "story", fired: ["ring_the_bell", "hunt_time_up"] });
+    expect(live).toEqual({ last: "hunt_time_up", lastBy: "story", fired: ["ring_the_bell", "hunt_time_up"], presses: 2, pressed: "hunt_time_up" });
     expect(night(false)).toEqual(live);
 
     // A cue no rule hears (stagehand's) and a line to a guest room both count.
@@ -709,7 +709,7 @@ Hello.
   it("`staffRoomIds` is the rule `refusedPress` judges by: a `# hosts`-only answer is a refusal", () => {
     const sim = Sim.fromSources(BOARD);
     expect(pressRefused(sim, sim.signal("last_call"))).toBe(true);
-    expect(modView(sim, "open", "x").cues).toEqual({ last: null, lastBy: null, fired: [] });
+    expect(modView(sim, "open", "x").cues).toEqual({ last: null, lastBy: null, fired: [], presses: 0, pressed: null });
     sim.setVar("Night.step", "9");
     expect(pressRefused(sim, sim.signal("last_call"))).toBe(false);
     expect(modView(sim, "open", "x").cues?.last).toBe("last_call");
