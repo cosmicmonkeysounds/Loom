@@ -21,6 +21,8 @@ const v = (sim: Sim, p: string): any => {
   const x = sim.world.get(p) as { value: unknown } | undefined;
   return x === undefined ? undefined : x.value;
 };
+const said = (evs: SimEvent[]) => evs.filter((e) => e.type === "dialogue") as Ev<"dialogue">[];
+const lines = (evs: SimEvent[], speaker: string) => said(evs).filter((e) => e.speaker === speaker).map((e) => e.text);
 const casts = (evs: SimEvent[]) => evs.filter((e) => e.type === "broadcast") as Ev<"broadcast">[];
 const cues = (evs: SimEvent[]) => (evs.filter((e) => e.type === "directive") as Ev<"directive">[]).map((e) => `${e.verb} ${e.args}`.trim());
 const widgets = (evs: SimEvent[]) => evs.filter((e) => e.type === "widget") as Ev<"widget">[];
@@ -226,4 +228,50 @@ describe("wave 9 — a server-room ending closes every live 📝 card (T7-02)", 
       expect(widgets(after).filter((w) => w.widget === "fact")).toEqual([]);
     });
   }
+});
+
+// ───────────────────────── featured goals met early ─────────────────────────
+
+describe("wave 9 — a featured goal met before the Truther Download completes its quest when it starts (T10-01)", () => {
+  it("Bugdom's four secrets, Jeeves' five originals and Excel's plant, all before the download → done; Purgatory says so", { timeout: SLOW }, () => {
+    const sim = boot();
+    upload(sim, "g8", "Bugdom");
+    upload(sim, "g9", "Broken Ask Jeeves");
+    for (const code of ["MINIATURE-DOSES", "LAMBORGHINI-CERT", "HAMTARO", "DECIMAL-POINT"]) sim.redeem("g8", code);
+    for (const code of ["MAPSANDDUCKS-COM", "CASINO-DEED", "BARRINGTON-ST", "SAVE-THE-PETS", "WHOIS-1999"]) sim.redeem("g9", code);
+    for (const e of ["Miniature Doses", "The Lamborghini Certificate", "What Happened To Hamtaro", "The Decimal Point"]) expect(sim.holdsCodex("g8", e), e).toBe(true);
+    toTruth1(sim);
+    // Excel brings the virus back in hunt 1 and plants it.
+    sim.redeem("g2", "LOVE-LETTER-FOR-YOU");
+    fire(sim, "plant_the_virus", "g2");
+    expect(v(sim, "Kernel.excel_planted")).toBe(true);
+    for (const [g, q] of [["g2", "Excel Mission"], ["g8", "Master Of The Bugs"], ["g9", "Unscramble"]] as const) expect(sim.questStatus(g, q), q).toBe(null);
+    const dl: SimEvent[] = [];
+    dl.push(...fireAll(sim, "second_hunt_preview", "start_the_second_hunt"));
+    dl.push(...advance(sim, 120));
+    dl.push(...sim.choose("g2", 0)); // sabotage
+    dl.push(...sim.choose("g3", 0));
+    expect(v(sim, "g2.excel_choice")).toBe("sabotage");
+    for (const [g, q] of [["g2", "Excel Mission"], ["g8", "Master Of The Bugs"], ["g9", "Unscramble"]] as const) expect(sim.questStatus(g, q), q).toBe("done");
+    // Excel's thread ends on the plant, not on an order to go and do it.
+    const steps = dl.filter((e) => e.type === "quest" && (e as { person: string }).person === "g2").map((e) => (e as { text: string | null }).text);
+    expect(steps.at(-1)).toBe("Virus planted.");
+    toBeans(sim);
+    fireAll(sim, "trabolta_overshares", "y2k_clock", "patch_combo_b");
+    advance(sim, 15);
+    const sum = fire(sim, "clippy_reads_summary");
+    const clippy = lines(sum, "Clippy");
+    for (const who of ["Microsoft Excel", "Bugdom"]) expect(clippy, who).toContain(`${who} met their goal tonight.`);
+  });
+
+  it("the late order still completes on the goal itself (Jeeves' fifth original after the download)", { timeout: SLOW }, () => {
+    const sim = boot();
+    upload(sim, "g9", "Broken Ask Jeeves");
+    for (const code of ["MAPSANDDUCKS-COM", "CASINO-DEED", "BARRINGTON-ST", "SAVE-THE-PETS"]) sim.redeem("g9", code);
+    toTruth1(sim);
+    toHunt2(sim);
+    expect(sim.questStatus("g9", "Unscramble")).toBe("active");
+    sim.redeem("g9", "WHOIS-1999");
+    expect(sim.questStatus("g9", "Unscramble")).toBe("done");
+  });
 });

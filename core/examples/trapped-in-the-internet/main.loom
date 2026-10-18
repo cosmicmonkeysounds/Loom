@@ -2144,10 +2144,14 @@ ROLE Program
   when self.featured == "draftkings" and self.quest.truthcoin_hustle == "active" and count([p for p in Persons where p.cleared and p.featured != "draftkings"]) >= 5 and self.score * 2 > sum([p.score + p.escrowed for p in Persons]):
     complete quest Truthcoin Hustle for self "A majority of the Truthcoin. The 49% is yours."
 
-  when self.featured == "bugdom" and Night.recount != true and self.codex.miniature_doses and self.codex.the_lamborghini_certificate and self.codex.what_happened_to_hamtaro and self.codex.the_decimal_point:
+  // Bugdom's and Jeeves' goals carry their quest's status too (like
+  // DraftKings' above): watchers fire on a false → true edge, so secrets or
+  // originals held before the Truther Download starts the quest would
+  // otherwise never complete it. With the status in, the edge is the start.
+  when self.featured == "bugdom" and self.quest.master_of_the_bugs == "active" and Night.recount != true and self.codex.miniature_doses and self.codex.the_lamborghini_certificate and self.codex.what_happened_to_hamtaro and self.codex.the_decimal_point:
     complete quest Master Of The Bugs for self "Four secrets out of the books. You know the Antivirus better than they know themselves."
 
-  when self.featured == "jeeves" and count([x for x in [self.codex.maps_and_ducks, self.codex.the_billboard_on_barrington, self.codex.the_data_centre_sinkhole, self.codex.the_pet_cemetery, self.codex.the_server_room, self.codex.the_protest_flyer, self.codex.the_domain_receipt, self.codex.casino_nova_scotia_deed, self.codex.the_valley_library_cuts, self.codex.the_cooling_log] where x]) >= 5:
+  when self.featured == "jeeves" and self.quest.unscramble == "active" and count([x for x in [self.codex.maps_and_ducks, self.codex.the_billboard_on_barrington, self.codex.the_data_centre_sinkhole, self.codex.the_pet_cemetery, self.codex.the_server_room, self.codex.the_protest_flyer, self.codex.the_domain_receipt, self.codex.casino_nova_scotia_deed, self.codex.the_valley_library_cuts, self.codex.the_cooling_log] where x]) >= 5:
     complete quest Unscramble for self "Five originals found. The fragments are starting to read."
 
   // Ten Findings (his invitation): ten of his findings with every cleared
