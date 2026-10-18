@@ -216,6 +216,50 @@ describe("CollabHub — CRDT co-editing", () => {
     expect(await hub.resyncFromStorage("nobody-open")).toEqual([]);
   });
 
+  it("a persist never saves a stale doc over a row rewritten behind the hub, with or without a resync (T4-04)", async () => {
+    const { storage, files } = memoryStorage({ "main.loom": "old\n" });
+    const hub = new CollabHub(storage, 10_000);
+    const a = await joinEditor(hub, "main.loom", "a");
+    const b = await joinEditor(hub, "main.loom", "b");
+    a.ytext.insert(0, "x"); // a keystroke, not yet persisted
+    await Promise.resolve();
+    b.drain();
+
+    // sync-example commits from another process (no reload follows: --no-reload,
+    // a refused live reload, or the debounce firing first)…
+    files.set("p1/main.loom", "SYNCED\n");
+    await hub.flush("p1");
+    // …the row keeps the synced text and the doc adopts it.
+    expect(files.get("p1/main.loom")).toBe("SYNCED\n");
+    a.drain();
+    b.drain();
+    expect(a.ytext.toString()).toBe("SYNCED\n");
+    expect(b.ytext.toString()).toBe("SYNCED\n");
+    // A later resync has nothing left to fold in.
+    expect(await hub.resyncFromStorage("p1")).toEqual([]);
+
+    // The next keystroke lands on the synced text.
+    a.ytext.insert(0, "# ");
+    await Promise.resolve();
+    await hub.flush("p1");
+    expect(files.get("p1/main.loom")).toBe("# SYNCED\n");
+  });
+
+  it("a persist drops a dirty doc whose row was deleted behind the hub; a new unsaved file still saves", async () => {
+    const { storage, files } = memoryStorage({ "old.loom": "old\n" });
+    const hub = new CollabHub(storage, 10_000);
+    const a = await joinEditor(hub, "old.loom", "a");
+    const n = await joinEditor(hub, "new.loom", "n");
+    a.ytext.insert(0, "unsaved ");
+    n.ytext.insert(0, "brand new\n");
+    await Promise.resolve();
+    files.delete("p1/old.loom");
+    await hub.flush("p1");
+    expect(files.has("p1/old.loom")).toBe(false);
+    expect(a.events.filter((e) => e.event === "files").map((e) => e.data)).toEqual([{ op: "delete", path: "old.loom" }]);
+    expect(files.get("p1/new.loom")).toBe("brand new\n");
+  });
+
   it("replaceIntoYText splices minimally so out-of-region edits survive", () => {
     const doc1 = new Y.Doc();
     const t1 = doc1.getText("content");
