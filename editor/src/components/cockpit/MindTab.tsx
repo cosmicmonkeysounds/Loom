@@ -37,6 +37,7 @@ import {
   confirmEvent,
   diffRows,
   driveSeries,
+  filingButtons,
   filterThoughts,
   formatMs,
   judgeModeOf,
@@ -50,6 +51,8 @@ import {
   stageSegments,
   summarizeThought,
   timeOf,
+  verdictCall,
+  type FilingButton,
   type FilingHow,
   type FilingRow,
   type JudgeMode,
@@ -193,12 +196,12 @@ function JudgingCard({ local = false }: { local?: boolean }) {
     }
   }
   const confirm = async (row: { person: string; question: string }, verdict: (typeof VERDICT_BUTTONS)[number]['verdict']) => {
-    const name = confirmEvent(facts, verdict)
-    if (name === null || busy !== null) return
+    const call = verdictCall(facts, row, verdict)
+    if (call === null || busy !== null) return
     const key = `${row.person}:${row.question}`
     setBusy(key)
     try {
-      await fireSignal(name, row.person, { question: row.question }, null)
+      await fireSignal(call.event, call.person, call.args, null)
     } finally {
       setBusy(null)
     }
@@ -312,7 +315,13 @@ function JudgingCard({ local = false }: { local?: boolean }) {
               {isOpen && (
                 <tr>
                   <td colSpan={7} className="pb-1 pl-4">
-                    <FilingRows rows={questionFilings(facts, t.id)} questionId={t.id} />
+                    <FilingRows
+                      rows={questionFilings(facts, t.id)}
+                      questionId={t.id}
+                      buttons={(r) => filingButtons(facts, r)}
+                      busy={busy !== null}
+                      onVerdict={(r, verdict) => void confirm({ person: r.person, question: t.id }, verdict)}
+                    />
                   </td>
                 </tr>
               )}
@@ -338,8 +347,23 @@ const HOW_STYLE: Record<FilingHow, string> = {
 
 /** SW-ADM-13: one question's filings — who filed what, how sure, the
  *  judge's proposal against the outcome (↺ = overridden) and when this
- *  server first saw it ("seen": a restart re-stamps every filing). */
-function FilingRows({ rows, questionId }: { rows: FilingRow[]; questionId: string }) {
+ *  server first saw it ("seen": a restart re-stamps every filing). Wave 9
+ *  D5: every row but a marked one carries the ✅ / 😤 / 🤷 buttons (the
+ *  current verdict outlined), in auto mode too — the director's one-tap
+ *  fix for a filing the key misjudged. */
+function FilingRows({
+  rows,
+  questionId,
+  buttons,
+  busy,
+  onVerdict,
+}: {
+  rows: FilingRow[]
+  questionId: string
+  buttons: (r: FilingRow) => FilingButton[]
+  busy: boolean
+  onVerdict: (r: FilingRow, verdict: FilingButton['verdict']) => void
+}) {
   if (rows.length === 0) return <p className="text-zinc-600">Nobody filed this question.</p>
   return (
     <table className="w-full text-[11px]" data-testid={`judging-filings-${questionId}`}>
@@ -353,6 +377,9 @@ function FilingRows({ rows, questionId }: { rows: FilingRow[]; questionId: strin
           <th className="text-right font-normal">conf.</th>
           <th className="text-left font-normal pl-2">proposed</th>
           <th className="text-left font-normal">outcome</th>
+          <th className="text-right font-normal" title="Confirm or override this filing (the story judges it by its question)">
+            verdict
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -377,6 +404,24 @@ function FilingRows({ rows, questionId }: { rows: FilingRow[]; questionId: strin
                   ↺
                 </span>
               )}
+            </td>
+            <td className="pl-2 text-right">
+              <span className="inline-flex gap-1" data-testid="judging-filing-verdicts">
+                {buttons(r).map((b) => (
+                  <button
+                    key={b.verdict}
+                    type="button"
+                    className={clsx(btn, 'px-1', b.current && 'border-indigo-500/60 bg-indigo-500/10')}
+                    aria-pressed={b.current}
+                    disabled={busy || b.disabled || (b.current && r.final !== null)}
+                    title={b.title}
+                    onClick={() => onVerdict(r, b.verdict)}
+                    data-testid={`judging-${b.verdict}`}
+                  >
+                    {b.glyph}
+                  </button>
+                ))}
+              </span>
             </td>
           </tr>
         ))}

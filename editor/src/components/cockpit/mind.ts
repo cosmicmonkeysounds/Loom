@@ -342,9 +342,53 @@ export function confirmEvent(facts: FactsView, verdict: FactVerdict): string | n
   return typeof name === 'string' && name !== '' ? name : null
 }
 
-/** The verdict buttons on a pending row, in order, with their glyphs. */
+/** The verdict buttons on a filing (pending or judged), in order, with
+ *  their glyphs. */
 export const VERDICT_BUTTONS: ReadonlyArray<{ verdict: FactVerdict; glyph: string; label: string }> = [
   { verdict: 'accurate', glyph: '✅', label: 'accurate' },
   { verdict: 'lie', glyph: '😤', label: 'confident lie' },
   { verdict: 'uncertain', glyph: '🤷', label: 'uncertain' },
 ]
+
+/** One verdict button on a filing row of the who-filed-what table. */
+export interface FilingButton {
+  verdict: FactVerdict
+  glyph: string
+  label: string
+  /** The verdict the filing reads now (its final, else the proposal) —
+   *  outlined, so a director sees what a press would change. */
+  current: boolean
+  /** No confirm event for this verdict in `facts.json`. */
+  disabled: boolean
+  title: string
+}
+
+/** Wave 9 D5: the ✅ / 😤 / 🤷 buttons on one filing row — on every row in
+ *  both modes, so an auto-mode verdict the key got wrong (a phrasing it did
+ *  not know) is one tap to fix. A `marked` filing is closed (a guess marked
+ *  at the round's reveal — the story answers "no open filing"), so it
+ *  offers none. The story honours the override by question
+ *  (`fact_accurate` / `fact_lie` / `fact_uncertain` with `question:`). */
+export function filingButtons(facts: FactsView, row: Pick<FilingRow, 'final' | 'proposed' | 'how'>): FilingButton[] {
+  if (row.how === 'marked' || row.final === 'marked') return []
+  const now = row.final ?? row.proposed
+  return VERDICT_BUTTONS.map((b) => {
+    const current = b.verdict === now
+    const title =
+      row.final === null
+        ? `${b.verdict === row.proposed ? 'Confirm' : 'Override'}: ${b.label}`
+        : current
+          ? `Judged ${b.label} — already on record`
+          : `Override: ${b.label} (judged ${row.final})`
+    return { ...b, current, disabled: confirmEvent(facts, b.verdict) === null, title }
+  })
+}
+
+/** The story call a verdict button makes for one filing: the confirm event,
+ *  on the filer, with the question named — so it judges that filing, never
+ *  the program's latest one. Null when `facts.json` names no event. */
+export function verdictCall(facts: FactsView, row: { person: string; question: string }, verdict: FactVerdict): { event: string; person: string; args: { question: string } } | null {
+  const event = confirmEvent(facts, verdict)
+  if (event === null) return null
+  return { event, person: row.person, args: { question: row.question } }
+}
