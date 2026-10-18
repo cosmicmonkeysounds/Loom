@@ -314,3 +314,73 @@ describe("wave 9 — a King win after truth.txt gives no door code (R2-diff-clie
     expect(v(sim, "Night.king_armed")).toBe(0);
   });
 });
+
+// ───────────────────────── the 90 s restore after a room-scoped look ─────────────────────────
+
+describe("wave 9 — a cut room comes back on unless the next look re-lit it (T8-stagehand-01)", () => {
+  const on = (room: string) => `cue lights, room: ${room}, state: on`;
+  const cut = (sim: Sim, room: string) => {
+    expect(cues(fire(sim, "cut_the_lights", "g1", { room }, "Trabolta"))).toContain(`cue lights, room: ${room}, state: off`);
+  };
+  /** Hunt 2 through the summons: the cut window is open, the look is the hunt's. */
+  const toSummons = (sim: Sim) => {
+    toTruth1(sim);
+    toHunt2(sim);
+    fireAll(sim, "five_minute_warning", "summons_closed");
+  };
+
+  it("🏓 pong (backyard only) after a RAM cut: the RAM comes back on at 90 s", { timeout: SLOW }, () => {
+    const sim = boot();
+    toSummons(sim);
+    cut(sim, "The RAM");
+    advance(sim, 20);
+    expect(cues(fire(sim, "truth_pong"))).toContain("cue lights_pong");
+    const back = cues(advance(sim, 75));
+    expect(back).toContain(on("The RAM"));
+    expect(v(sim, "Night.lights_back_at")).toBe(0);
+  });
+
+  it("🫘 the glitch (an effect, no state) after a Desktop cut: the Desktop comes back on", { timeout: SLOW }, () => {
+    const sim = boot();
+    toSummons(sim);
+    fireAll(sim, "truth_pong", "round_two_tally", "trust_chart");
+    cut(sim, "The Desktop");
+    advance(sim, 20);
+    fire(sim, "show_the_rankings");
+    expect(cues(fire(sim, "printer_opened"))).toContain("cue lights_glitch");
+    expect(cues(advance(sim, 75))).toContain(on("The Desktop"));
+  });
+
+  it("a living-room look re-lights the Desktop (no room-on) but not the RAM (room-on)", { timeout: SLOW }, () => {
+    for (const [room, relit] of [["The Desktop", true], ["The RAM", false]] as const) {
+      const sim = boot();
+      toSummons(sim);
+      fireAll(sim, "truth_pong", "round_two_tally");
+      cut(sim, room);
+      advance(sim, 20);
+      expect(cues(fire(sim, "trust_chart"))).toContain("cue lights_trust_chart");
+      expect(cues(advance(sim, 75)).includes(on(room)), room).toBe(!relit);
+    }
+  });
+
+  it("a whole-house look still wins: no room-on over the dance or the blackout", { timeout: SLOW }, () => {
+    for (const look of ["lights_dance", "patch_combo_a"]) {
+      const sim = boot();
+      toY2k(sim);
+      cut(sim, "The RAM");
+      advance(sim, 20);
+      fire(sim, look);
+      expect(cues(advance(sim, 75)).some((c) => c.includes("room: The RAM, state: on")), look).toBe(false);
+    }
+  });
+
+  it("the Y2K hour: a RAM cut, then the majority's server-room look → the RAM comes back on", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    cut(sim, "The RAM");
+    advance(sim, 20);
+    fire(sim, "force_majority_leave");
+    expect(v(sim, "Night.lights")).toBe("server_open");
+    expect(cues(advance(sim, 75))).toContain(on("The RAM"));
+  });
+});

@@ -4241,12 +4241,18 @@ when share:
     fire jeeves_shared for to
 
 // Trabolta's `cut_the_lights` power darkens one allow-listed room for
-// 90 s; this brings it back — but only if the house look is still the one
-// he cut into. Any lighting cue since (an ending's blackout / dance, the
-// server-room alarm, a restore) re-lit every room already, and switching
+// 90 s; this brings it back — unless a later look has set the room itself.
+// A whole-house look since (an ending's blackout / dance, the server-room
+// alarm, a restore, the Y2K hour…) re-lit every room already, and switching
 // the room "on" now would punch the kitchen to full in the middle of it.
+// The room-scoped looks never touch the cut room (trapped.house.yaml): 🏓
+// pong lights the backyard, the majority's server_open the server room,
+// the glitch is an effect with no state, and game / truth_time /
+// trust_chart recall a scene on the living room only, so they re-light
+// The Desktop but not the Start Bar or the RAM. After any of those the
+// room still comes back on here.
 when Night.lights_back_at > 0 and Time.elapsed >= Night.lights_back_at:
-  if Night.lights == Night.dark_scene:
+  if Night.lights == Night.dark_scene or Night.lights == "pong" or Night.lights == "glitch" or Night.lights == "server_open" or ((Night.lights == "game" or Night.lights == "truth_time" or Night.lights == "trust_chart") and Night.dark_room != "The Desktop"):
     <cue: lights, room: {Night.dark_room}, state: on>
   set Night.lights_back_at = 0
 
