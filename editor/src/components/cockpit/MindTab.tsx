@@ -35,6 +35,9 @@ import {
   ALL_KINDS,
   KIND_META,
   VERDICT_BUTTONS,
+  askingText,
+  ruledFilings,
+  rulingText,
   confirmEvent,
   diffRows,
   driveSeries,
@@ -171,8 +174,12 @@ function MindDebugger() {
  * question as an argument — the hosts' booth buttons fire the same names)
  * or the round settles it by the proposal. A **near miss** (wave 11 C6: a
  * letter or a word from the key) is never judged on its own: it waits here
- * in either mode, `auto` included. The verdict never reaches a
- * phone or the voice worker; this card is the only place it is shown.
+ * in either mode, `auto` included. Wave 11b: when the story names a
+ * `judge:` character, an `auto`-mode near miss is put to it first — the row
+ * reads "🤖 asking Trabolta…", then its ruling lists under the pending
+ * rows ("🤖 Trabolta: same — why") with the usual buttons, so a director
+ * can still override it (the later verdict wins). The verdict never reaches
+ * a phone or the voice prompt; this card is the only place it is shown.
  */
 function JudgingCard({ local = false }: { local?: boolean }) {
   const facts = useCockpit((s) => s.facts)
@@ -193,6 +200,7 @@ function JudgingCard({ local = false }: { local?: boolean }) {
     )
   }
   const pending = pendingFilings(facts)
+  const ruled = ruledFilings(facts)
   const near = nearCount(facts)
   const tallies = questionTallies(facts)
   const switchMode = async (m: JudgeMode) => {
@@ -259,6 +267,11 @@ function JudgingCard({ local = false }: { local?: boolean }) {
                       ⚠ near “{row.near}”
                     </span>
                   )}
+                  {row.asking && (
+                    <span className="ml-2 text-violet-300" title="The story's judge character is ruling on this near miss; judge it yourself to decide first" data-testid="judging-asking">
+                      {askingText(facts)}
+                    </span>
+                  )}
                 </span>
                 <span className="text-zinc-500">{row.confidence}%</span>
                 <span className="text-zinc-500">
@@ -285,6 +298,40 @@ function JudgingCard({ local = false }: { local?: boolean }) {
         </ul>
       )}
       {mode === 'review' && pending.length === 0 && <p className="mt-2 text-xs text-zinc-600">No filing is waiting for a verdict.</p>}
+      {ruled.length > 0 && (
+        <ul className="mt-2 space-y-1 text-xs" data-testid="judging-rulings" aria-label="Rulings on near misses">
+          {ruled.map((row) => (
+            <li key={`${row.person}:${row.question}`} className="flex flex-wrap items-center gap-2 rounded border border-zinc-800/70 px-2 py-1">
+              <span className="font-medium text-zinc-100">{row.name}</span>
+              <span className="font-mono text-zinc-400">{row.question}</span>
+              <span className="text-zinc-200">“{row.answer}”</span>
+              <span className="flex-1 text-violet-300" data-testid="judging-ruling">
+                {rulingText(row.ruling)}
+              </span>
+              <span className="text-zinc-500">
+                now <span className="text-zinc-300">{row.final ?? 'pending'}</span>
+                {row.by !== null && row.by !== row.ruling.by && <span className="ml-1 text-amber-300">(overridden by {row.by})</span>}
+              </span>
+              <span className="inline-flex gap-1">
+                {filingButtons(facts, row).map((b) => (
+                  <button
+                    key={b.verdict}
+                    type="button"
+                    className={clsx(btn, 'px-1', b.current && 'border-indigo-500/60 bg-indigo-500/10')}
+                    aria-pressed={b.current}
+                    disabled={busy !== null || b.disabled || (b.current && row.final !== null)}
+                    title={b.title}
+                    onClick={() => void confirm({ person: row.person, question: row.question }, b.verdict)}
+                    data-testid={`judging-ruling-${b.verdict}`}
+                  >
+                    {b.glyph}
+                  </button>
+                ))}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
       {tallies.length > 0 && (
         <table className="mt-2 w-full text-xs" data-testid="judging-tallies">
           <thead className="text-zinc-500">
@@ -410,6 +457,12 @@ function FilingRows({
             <td className="pr-2">{r.name}</td>
             <td className="pr-2 text-zinc-200">
               “{r.answer}”{r.near !== null && <span className="ml-1 text-amber-300" title={`A near miss of “${r.near}”`}>⚠ “{r.near}”</span>}
+              {r.asking && <span className="ml-1 text-violet-300">🤖 asking…</span>}
+              {r.ruling !== null && (
+                <span className="ml-1 text-violet-300" title={rulingText(r.ruling)}>
+                  {rulingText(r.ruling)}
+                </span>
+              )}
             </td>
             <td className="pr-2 text-right text-zinc-500">{r.confidence}%</td>
             <td className="pl-2 pr-2 text-zinc-400">{r.proposed}</td>

@@ -263,6 +263,36 @@ export interface FactsFiling {
    *  deciding it on the Judging card. Absent for an exact match or a clear
    *  miss; set by `FactsWatch.view` against the book in force. */
   near?: { key: string };
+  /** The `judge:` character's ruling on this near miss (wave 11b, contract
+   *  J): who ruled, same as the key or not, its one-line reason, when this
+   *  server saw it. Kept after a director overrides it (the later verdict
+   *  wins — `final` / `how` say so). Absent when nobody ruled. */
+  ruling?: FactRuling;
+  /** A ruling is asked and not yet given (the runtime's overlay). */
+  asking?: true;
+}
+
+/** A `judge:` character's ruling on a filing (`FactsFiling.ruling`). */
+export interface FactRuling {
+  by: string;
+  same: boolean;
+  why: string;
+  at: number;
+}
+
+/** The confirm-event arguments that mark a verdict as a ruling: journaled
+ *  with the signal (`{question, ruling: "same" | "not", ruling_why}`), so a
+ *  replay rebuilds the ruling off the journal alone. */
+export const RULING_ARG = "ruling";
+export const RULING_WHY_ARG = "ruling_why";
+
+/** The ruling a confirm signal's journaled args carry, or null. */
+export function rulingOfArgs(args: unknown): { same: boolean; why: string } | null {
+  if (args === null || typeof args !== "object" || Array.isArray(args)) return null;
+  const r = (args as Record<string, unknown>)[RULING_ARG];
+  if (r !== "same" && r !== "not") return null;
+  const why = (args as Record<string, unknown>)[RULING_WHY_ARG];
+  return { same: r === "same", why: typeof why === "string" ? why : "" };
 }
 
 /** The step a `fact_judged` line landed in (internal to the fold). */
@@ -274,6 +304,8 @@ interface FactsStep {
   subject: string | null;
   /** Who the runtime named for the mutation (`FactsWatch.mark`). */
   by: string | null;
+  /** The mutation was a `judge:` character's ruling (`FactsWatch.mark`). */
+  ruling: { same: boolean; why: string } | null;
 }
 
 /** A filing as the fold holds it: the public shape + where it was filed / judged. */
@@ -306,6 +338,9 @@ export interface FactsView {
   questions: FactsQuestion[];
   /** Filings with no `final` yet. */
   pending: number;
+  /** The story's `judge:` character (wave 11b), who rules on near misses
+   *  in `auto` mode — set by the runtime; absent when the story names none. */
+  judge?: string;
 }
 
 /** `do fact_filed <personId> <keyId> <confidence> <verdict> <answer…>` → its parts, or null. */
@@ -353,8 +388,8 @@ export class FactsWatch {
   private readonly now: () => number;
   /** Mutation boundaries the runtime reported (`mark`) not yet folded past:
    *  each starts a step at its log index. */
-  private marks: Array<{ at: number; by: string | null }> = [];
-  private step: FactsStep = { id: 0, signal: null, subject: null, by: null };
+  private marks: Array<{ at: number; by: string | null; ruling: { same: boolean; why: string } | null }> = [];
+  private step: FactsStep = { id: 0, signal: null, subject: null, by: null, ruling: null };
   /** `nearKey` per book, per (key, answer): a filing's near key never
    *  changes while the book stays the same, and `view` runs on every mod
    *  snapshot and director-phone poll. */
@@ -375,7 +410,7 @@ export class FactsWatch {
     this.cursor = 0;
     this.filings.clear();
     this.marks = [];
-    this.step = { id: 0, signal: null, subject: null, by: null };
+    this.step = { id: 0, signal: null, subject: null, by: null, ruling: null };
   }
 
   /**
@@ -383,8 +418,10 @@ export class FactsWatch {
    * the journal): what it logs from here on is one step, done by `by` (a
    * director's name, a booth's character, a device; null = nobody named).
    * Without marks the fold still splits steps at every external signal.
+   * `ruling`: the mutation is a `judge:` character's ruling (`rulingOfArgs`
+   * on its journaled args) — a filing it judges keeps it.
    */
-  mark(sim: Sim, by: string | null): void {
+  mark(sim: Sim, by: string | null, ruling: { same: boolean; why: string } | null = null): void {
     this.bind(sim);
     const at = sim.log.len();
     // A mark at the same index as the last one (the mutation before it
@@ -392,8 +429,10 @@ export class FactsWatch {
     // names who does what is logged next. Collapsing keeps a quiet hour of
     // ticks from piling up a mark a second that no event ever folds past.
     const last = this.marks[this.marks.length - 1];
-    if (last !== undefined && last.at === at) last.by = by;
-    else this.marks.push({ at, by });
+    if (last !== undefined && last.at === at) {
+      last.by = by;
+      last.ruling = ruling;
+    } else this.marks.push({ at, by, ruling });
     // Fold as we go when nobody looks (a story with no key): the marks stay few.
     if (this.marks.length >= 512) this.sync(sim);
   }
@@ -404,12 +443,12 @@ export class FactsWatch {
     let m = 0;
     for (; this.cursor < events.length; this.cursor++) {
       while (m < this.marks.length && this.marks[m]!.at <= this.cursor) {
-        this.step = { id: this.step.id + 1, signal: null, subject: null, by: this.marks[m]!.by };
+        this.step = { id: this.step.id + 1, signal: null, subject: null, by: this.marks[m]!.by, ruling: this.marks[m]!.ruling };
         m++;
       }
       const e = events[this.cursor]!;
       if (e.type === "signal") {
-        this.step = { id: this.step.id + 1, signal: e.name, subject: e.subject, by: this.step.by };
+        this.step = { id: this.step.id + 1, signal: e.name, subject: e.subject, by: this.step.by, ruling: this.step.ruling };
         continue;
       }
       if (e.type !== "directive") continue;
@@ -439,6 +478,8 @@ export class FactsWatch {
         if (prev !== undefined) {
           prev.final = j.final;
           prev.judged = { ...this.step };
+          const r = this.step.ruling;
+          if (r !== null && this.step.by !== null) prev.ruling = { by: this.step.by, same: r.same, why: r.why, at: this.now() };
         }
       }
     }
