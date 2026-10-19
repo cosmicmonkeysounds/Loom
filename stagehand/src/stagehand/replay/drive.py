@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import signal as signals
 import socket
 import subprocess
@@ -923,8 +924,34 @@ def offline_classic_calls(trace: list[dict[str, Any]], limit: int | None = None)
     return out[:limit] if limit else out
 
 
-def lean_request(step: dict[str, Any], phase: str, history: list[dict[str, Any]]) -> dict[str, Any]:
+_GATE_EQ = re.compile(r"\bself\.([\w.]+)\s*==\s*(true|false|-?\d+(?:\.\d+)?|\"[^\"]*\"|'[^']*')")
+
+
+def open_gate_vars(persona: Any) -> dict[str, Any]:
+    """The `self.<var> == <value>` terms of the persona's `when:` gate, as
+    the values that open it. Every recorded voice thought is a call that
+    passed the gate (`module.answer` gates before any model call), so the
+    replayed request must pass it too; the prompt's LIVE STATE does not show
+    gate vars like `awake` (they are not the persona's `variables:`)."""
+    when = getattr(persona, "when", None)
+    src = getattr(when, "source", "") if when is not None else ""
+    out: dict[str, Any] = {}
+    for name, value in _GATE_EQ.findall(src or ""):
+        out[name] = value.strip("\"'")
+    return out
+
+
+def lean_request(step: dict[str, Any], phase: str, history: list[dict[str, Any]], persona: Any = None) -> dict[str, Any]:
+    """A request as the server builds one, from a line's `recorded_state`
+    (self vars + ranges, the `Night.*` world, the speaker's vars) and the
+    values that open the persona's gate."""
     gid = "g-" + "".join(ch for ch in step["as"].lower() if ch.isalnum())[:10]
+    state = step.get("state") or {}
+    world = {**(state.get("world") or {}), "Night.phase": phase}
+    self_vars = {**(state.get("self") or {}), **open_gate_vars(persona)}
+    them: dict[str, Any] = {"vars": dict(state.get("them") or {}), "codex": []}
+    if state.get("location"):
+        them["location"] = state["location"]
     return {
         "id": f"ar-offline-{len(history)}",
         "character": CHARACTER,
@@ -932,12 +959,21 @@ def lean_request(step: dict[str, Any], phase: str, history: list[dict[str, Any]]
         "speaker": {"id": gid, "name": step["as"], "kind": "guest"},
         "text": step["say"],
         "history": list(history),
-        "world": {"Night.phase": phase},
-        "self": {"vars": {}, "ranges": {}, "codex": []},
-        "them": {"vars": {}, "codex": []},
+        "world": world,
+        "self": {"vars": self_vars, "ranges": dict(state.get("ranges") or {}), "codex": []},
+        "them": them,
         "powers": [],
         "recent": [],
     }
+
+
+def gate_open(persona: Any, req: dict[str, Any]) -> bool:
+    when = getattr(persona, "when", None)
+    if when is None:
+        return True
+    from ..agents.prompt import gate_context
+
+    return bool(when.evaluate(gate_context(req)))
 
 
 def offline(mode: str, trace_path: Path, *, label: str | None = None, limit: int | None = None, runs_root: Path = RUNS_ROOT, chat: Callable[..., Any] = ollama_chat) -> Path:
@@ -967,7 +1003,7 @@ def offline(mode: str, trace_path: Path, *, label: str | None = None, limit: int
         assert voice is not None and cards is not None
         from ..agents.llm import Completion, LlmConfig
 
-        script = extract(trace, persona.secrets, facts)
+        script = extract(trace, persona.secrets, facts, state=True)
         model = LlmConfig(**{k: v for k, v in HOUSE_LLM.items() if k in LlmConfig.__dataclass_fields__})
         phase = ""
         threads: dict[str, list[dict[str, Any]]] = {}
@@ -982,7 +1018,10 @@ def offline(mode: str, trace_path: Path, *, label: str | None = None, limit: int
             if limit and n > limit:
                 break
             s = {**s, "say": resolve(s["say"], facts)}
-            req = lean_request(s, phase, threads.get(s["as"], []))
+            req = lean_request(s, phase, threads.get(s["as"], []), persona)
+            gated = not gate_open(persona, req)
+            if gated:
+                say(f"  the persona's gate is shut for {s['as']}'s line: no model call (the score reads n/a)")
             key = s["as"]
             timings: list[dict[str, Any]] = []
 
@@ -1008,6 +1047,7 @@ def offline(mode: str, trace_path: Path, *, label: str | None = None, limit: int
                     "thread": f"dm:{CHARACTER}|{req['speaker']['id']}",
                     "say": redactor.redact(reply.say),
                     "calls": len(timings),
+                    "gated": gated,
                     "ms": sum(t["ms"] for t in timings),
                     "prompt_tokens": timings[0]["prompt_tokens"] if timings else None,
                     "prompt_ms": timings[0]["prompt_ms"] if timings else None,

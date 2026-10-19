@@ -387,6 +387,33 @@ def main_checkout(worktree: Path = WORKTREE) -> Path:
 _PHASE_LINE = re.compile(r"^Night\.phase: (.*)$", re.M)
 
 
+_VARS_LINE = re.compile(r"^Your variables: (.*)$", re.M)
+_VAR_PART = re.compile(r"([\w.]+)=([^,(]*?)\s*(?:\((-?[\d.]+)\.\.(-?[\d.]+)\))?\s*(?:,|$)")
+_WORLD_LINE = re.compile(r"^(Night\.[\w.]+): (.*)$", re.M)
+_THEIR_LINE = re.compile(r"^Their ([\w]+): (.*)$", re.M)
+_WHERE_LINE = re.compile(r"^Where they are: (.*)$", re.M)
+
+
+def recorded_state(system_prompt: str) -> dict[str, Any]:
+    """The state a recorded voice prompt showed him (its LIVE STATE block):
+    `self` vars + ranges, the `Night.*` world lines, the speaker's `Their …`
+    vars and where they stood. Offline replays build a request from it, so
+    the persona's gate and situations read the night as it was. Never
+    written to a script or a report."""
+    self_vars: dict[str, Any] = {}
+    ranges: dict[str, list[float]] = {}
+    m = _VARS_LINE.findall(system_prompt)
+    if m:
+        for name, value, lo, hi in _VAR_PART.findall(m[-1]):
+            self_vars[name] = value.strip()
+            if lo and hi:
+                ranges[name] = [float(lo) if "." in lo else int(lo), float(hi) if "." in hi else int(hi)]
+    world = {path: value.strip() for path, value in _WORLD_LINE.findall(system_prompt)}
+    them = {key: value.strip() for key, value in _THEIR_LINE.findall(system_prompt)}
+    where = _WHERE_LINE.findall(system_prompt)
+    return {"self": self_vars, "ranges": ranges, "world": world, "them": them, "location": where[-1].strip() if where else None}
+
+
 def _last_user(messages: list[dict[str, Any]]) -> str:
     for m in reversed(messages):
         if m.get("role") == "user":
@@ -394,12 +421,15 @@ def _last_user(messages: list[dict[str, Any]]) -> str:
     return ""
 
 
-def extract(trace_lines: list[dict[str, Any]], secrets: Secrets, facts: Facts, name: str = "", source: str = "") -> dict[str, Any]:
+def extract(trace_lines: list[dict[str, Any]], secrets: Secrets, facts: Facts, name: str = "", source: str = "", *, state: bool = False) -> dict[str, Any]:
     """A recorded trace → a script of its guest lines. Kept per line: the
     speaker, the text (the request's newest user turn) and `Night.phase`
     read from the prompt's state block. Never kept: his replies, the judge's
     thoughts, any prompt. A line that names a hunt answer becomes
-    `{answer:<Q>}` (or `(a hunt answer)` when the question can't be told)."""
+    `{answer:<Q>}` (or `(a hunt answer)` when the question can't be told).
+
+    `state=True` (offline only, never a committed script) also keeps each
+    line's `recorded_state` under `"state"`."""
     guests: list[str] = []
     steps: list[dict[str, Any]] = []
     seen: set[str] = set()
@@ -431,7 +461,10 @@ def extract(trace_lines: list[dict[str, Any]], secrets: Secrets, facts: Facts, n
             text = f"{{answer:{qid}}}" if qid else "(a hunt answer)"
         if who not in guests:
             guests.append(who)
-        steps.append({"say": text, "as": who})
+        step: dict[str, Any] = {"say": text, "as": who}
+        if state:
+            step["state"] = recorded_state(sys0)
+        steps.append(step)
     return {"name": name, "about": f"Extracted from {source or 'a trace'}: the guest lines only (speaker, text, Night.phase).", "guests": guests, "clear": True, "steps": steps}
 
 

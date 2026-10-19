@@ -451,13 +451,18 @@ def score_offline(records: list[dict[str, Any]], phrases: tuple[str, ...]) -> di
     pms = [r["prompt_ms"] for r in records if isinstance(r.get("prompt_ms"), (int, float))]
     n = len(records)
     p95 = percentile(ms, 95)
+    # A line that made no model call (the persona's gate shut, say) is no
+    # measurement: its 0 ms and canned line would pass bars 1–3 for nothing.
+    no_call = sum(1 for r in records if not int(r.get("calls") or 0))
+    blind = f"n/a: {no_call} of {n} line(s) made no model call" if no_call else ""
+    bars = [
+        _bar(1, "reply time p95 (offline)", None if p95 is None else int(p95), None if p95 is None or no_call else p95 < P95_MS, blind or f"p50 {percentile(ms, 50)} ms over {n}"),
+        _bar(2, "catchphrase rate (offline)", f"{hits} of {n}", None if not n or no_call else hits * 21 <= CATCHPHRASE_MAX_OF_21 * n, blind or "bar: ≤ 2 of 21"),
+        _bar(3, "exact repeats in a thread (offline)", repeats, None if not n or no_call else repeats == 0, blind),
+    ]
     return {
-        "bars": [
-            _bar(1, "reply time p95 (offline)", None if p95 is None else int(p95), None if p95 is None else p95 < P95_MS, f"p50 {percentile(ms, 50)} ms over {n}"),
-            _bar(2, "catchphrase rate (offline)", f"{hits} of {n}", None if not n else hits * 21 <= CATCHPHRASE_MAX_OF_21 * n, "bar: ≤ 2 of 21"),
-            _bar(3, "exact repeats in a thread (offline)", repeats, repeats == 0 if n else None),
-        ],
-        "extras": {"prompt_tokens_p50": percentile(toks, 50), "prompt_ms_p50": percentile(pms, 50), "prompt_ms_p95": percentile(pms, 95), "calls": n},
+        "bars": bars,
+        "extras": {"prompt_tokens_p50": percentile(toks, 50), "prompt_ms_p50": percentile(pms, 50), "prompt_ms_p95": percentile(pms, 95), "calls": n, "no_call_lines": no_call},
     }
 
 

@@ -70,7 +70,7 @@ def test_redactor_marks_answer_words_stably_and_never_words() -> None:
 
 
 def _voice(rid: str, who: str, text: str, phase: str | None, *, trigger: str = "line", kind: str = "voice", ms: int = 1000) -> dict:
-    sys0 = "persona\n=== LIVE STATE ===\n" + (f"Night.phase: {phase}\n" if phase else "")
+    sys0 = "persona\n=== LIVE STATE ===\nYour variables: truth=40 (0..100), regard=-5 (-50..50)\n" + (f"Night.phase: {phase}\n" if phase else "") + "You are talking to: x (a guest)\nWhere they are: The Desktop\nTheir trust: 30\n"
     return {
         "id": f"th-{rid}{trigger}",
         "kind": kind,
@@ -565,9 +565,9 @@ def test_offline_new_needs_the_lean_voice(monkeypatch: pytest.MonkeyPatch, tmp_p
         drive.offline("new", _trace_file(tmp_path), runs_root=tmp_path / "runs")
 
 
-def test_offline_new_builds_a_voice_context_per_line_and_times_every_call(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setattr(drive, "ollama_lock", _no_lock)
-    monkeypatch.setattr(drive, "wait_for_rig", lambda *a, **k: None)
+def _fake_lean_voice(monkeypatch: pytest.MonkeyPatch, seen: list) -> None:
+    """Stand-ins for W1's `cards` + `voice`, whose `answer_lean` applies the
+    persona's `when:` gate exactly as `module.answer` does (C3.6)."""
     cards = types.ModuleType("stagehand.agents.cards")
 
     @dataclass(frozen=True)
@@ -592,29 +592,75 @@ def test_offline_new_builds_a_voice_context_per_line_and_times_every_call(monkey
         said: Said = Said()
 
     cards.PhaseView, cards.PersonCard, cards.Said, cards.VoiceContext = PhaseView, PersonCard, Said, VoiceContext
-    seen = []
     voice = types.ModuleType("stagehand.agents.voice")
 
     async def answer_lean(persona, model, req, ctx, complete_fn, trace=None, facts_fn=None):
+        from stagehand.agents.prompt import gate_context
+        from stagehand.agents.reply import Reply
+
+        if persona.when is not None and not persona.when.evaluate(gate_context(req)):
+            return Reply(say=persona.unavailable)
         seen.append((req, ctx))
         await complete_fn([{"role": "user", "content": req["text"]}], model)
         await complete_fn([{"role": "user", "content": "retry"}], model)
-        from stagehand.agents.reply import Reply
-
         return Reply(say=f"new words {len(seen)}")
 
     voice.answer_lean = answer_lean
     monkeypatch.setitem(sys.modules, "stagehand.agents.cards", cards)
     monkeypatch.setitem(sys.modules, "stagehand.agents.voice", voice)
+    monkeypatch.setattr(drive, "ollama_lock", _no_lock)
+    monkeypatch.setattr(drive, "wait_for_rig", lambda *a, **k: None)
 
-    async def chat(messages):
-        return "{}", {"ms": 2500, "prompt_tokens": 1200, "prompt_ms": 150.0, "eval_count": 30, "thinking": "", "finish": "stop"}
 
-    run = drive.offline("new", _trace_file(tmp_path), runs_root=tmp_path / "runs", chat=chat)
+async def _chat_2500(messages):
+    return "{}", {"ms": 2500, "prompt_tokens": 1200, "prompt_ms": 150.0, "eval_count": 30, "thinking": "", "finish": "stop"}
+
+
+def test_offline_new_builds_a_voice_context_per_line_and_times_every_call(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    seen: list = []
+    _fake_lean_voice(monkeypatch, seen)
+    assert src.load_show_persona().when is not None  # the show's gate (self.awake == true) is under test
+    run = drive.offline("new", _trace_file(tmp_path), runs_root=tmp_path / "runs", chat=_chat_2500)
     assert [r["world"]["Night.phase"] for r, _ in seen] == ["introduced", "hunt_1"]
+    req = seen[0][0]
+    assert req["self"]["vars"]["awake"] == "true" and req["self"]["vars"]["truth"] == "40" and req["self"]["ranges"]["regard"] == [-50, 50]
+    assert req["them"]["vars"] == {"trust": "30"} and req["them"]["location"] == "The Desktop"
     assert [c.person.name for _, c in seen] == ["Ada", "Bo"] and seen[1][1].said.elsewhere == ("new words 1",)
     recs = json.loads((run / "offline.json").read_text())["records"]
-    assert [r["ms"] for r in recs] == [5000, 5000] and all(r["calls"] == 2 for r in recs)
+    assert [r["ms"] for r in recs] == [5000, 5000] and all(r["calls"] == 2 and r["gated"] is False for r in recs)
+    rep = json.loads((run / "report.json").read_text())
+    assert rep["bars"][0]["pass"] is True and rep["extras"]["no_call_lines"] == 0
+
+
+def test_offline_new_with_the_gate_shut_makes_no_call_and_scores_n_a(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    import dataclasses
+
+    from stagehand.conditions import Condition
+
+    seen: list = []
+    _fake_lean_voice(monkeypatch, seen)
+    shut = dataclasses.replace(src.load_show_persona(), when=Condition("them.never_set == true"))
+    monkeypatch.setattr(drive, "load_show_persona", lambda *a, **k: shut)
+    run = drive.offline("new", _trace_file(tmp_path), runs_root=tmp_path / "runs", chat=_chat_2500)
+    assert seen == []
+    recs = json.loads((run / "offline.json").read_text())["records"]
+    assert all(r["calls"] == 0 and r["gated"] is True for r in recs)
+    rep = json.loads((run / "report.json").read_text())
+    assert [b["pass"] for b in rep["bars"]] == [None, None, None] and "made no model call" in rep["bars"][0]["detail"]
+    assert rep["extras"]["no_call_lines"] == 2
+
+
+def test_recorded_state_reads_the_live_state_block() -> None:
+    st = src.recorded_state(_voice("a", "Ada", "x", "hunt_1")["messages"][0]["content"])
+    assert st["self"] == {"truth": "40", "regard": "-5"} and st["ranges"] == {"truth": [0, 100], "regard": [-50, 50]}
+    assert st["world"] == {"Night.phase": "hunt_1"} and st["them"] == {"trust": "30"} and st["location"] == "The Desktop"
+    assert drive.open_gate_vars(src.load_show_persona()) == {"awake": "true"}
+
+
+def test_extract_keeps_no_state_unless_asked(tmp_path: Path) -> None:
+    trace = src.read_jsonl(_trace_file(tmp_path))
+    assert all("state" not in s for s in src.extract(trace, FAKE, FACTS)["steps"])
+    assert all("state" in s for s in src.extract(trace, FAKE, FACTS, state=True)["steps"] if "say" in s)
 
 
 def test_ollama_chat_reads_the_prompt_timings() -> None:
