@@ -20,6 +20,16 @@
 //! awaiting a director's verdict in `review`, and the per-question tally
 //! with the consensus flag — off `CockpitState.facts` (`ModView.facts`).
 //!
+//! Wave 12 (CONTRACTS C6.7): a worker on the **story mind** (`mode: "new"`)
+//! runs no orchestrator — the story's phase table sets the stage and the
+//! brief, the voice keeps memos. Its page swaps Survey now for **Rewrite
+//! brief**, labels the brief / stage moves / revisions *set by story* or
+//! *set by director*, shows each file's memos, first meeting, gifts,
+//! filings, the house's trust, ⛔ and the chart, and hides the controls
+//! that only steer the orchestrator. Drive sliders send one control when
+//! let go; selects only on a change. Every new field is optional, so an
+//! older worker's report renders as before.
+//!
 //! Everything here reads the cockpit contract; the page is inert on the
 //! local backend (nothing voices a `mind: external` character in the
 //! browser, and the judge lives on the event server) and says so.

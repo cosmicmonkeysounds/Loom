@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createElement } from 'react'
+import { createElement, type FunctionComponent, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { create } from 'zustand'
 import { CockpitContext, nullCockpit, type CockpitState } from '@/store/cockpit'
@@ -677,9 +677,10 @@ function newModeReport(): AgentMindSummary {
   })
 }
 
-function render(state: Partial<CockpitState>, el: Parameters<typeof createElement>[0] = MindTab, props: Record<string, unknown> | null = null): string {
+function render(state: Partial<CockpitState>, el: (props: never) => ReactNode = MindTab, props: Record<string, unknown> = {}): string {
   const store = create<CockpitState>(() => ({ ...nullCockpit.getState(), ...state }))
-  return renderToStaticMarkup(createElement(CockpitContext.Provider, { value: store }, createElement(el as never, props as never)))
+  const component = el as unknown as FunctionComponent<Record<string, unknown>>
+  return renderToStaticMarkup(createElement(CockpitContext.Provider, { value: store }, createElement(component, props)))
 }
 
 describe('Mind page fixtures (wave 12)', () => {
