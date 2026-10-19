@@ -29,8 +29,16 @@ export function nudgeFor(reach: Exclude<KingReach, "ok">): string {
   return reach === "facing" ? "Face him." : "Get closer to the King.";
 }
 
-/** Said (and shown under the bar) once this visit has hit him. */
-export const HIT_USED = "You hit him. Come back on your next reinstallation.";
+/** Said (and shown under the bar) once this visit has hit him. A visit
+ *  ends at the duck, not at Leave, a director's end or a timeout, so a
+ *  re-scan before Gerald is found is still the visit that hit him. */
+export const HIT_USED = "You hit him this reinstallation. Find Gerald before you hit him again.";
+
+/** This visit's hit is spent from the start: the server's assignment says a
+ *  re-scan is the visit that already hit him (missing on an old server). */
+export function hitSpentAtStart(assignment: { kingHit?: boolean }): boolean {
+  return assignment.kingHit === true;
+}
 
 /** Flavour under the bar while he stands: how he is holding up (the
  *  simulation's King, not the board's — no chess words on the tablet). The

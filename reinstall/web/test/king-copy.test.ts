@@ -42,7 +42,7 @@ describe("the King's tablet copy (wave 11)", () => {
 
   it("the hit is once per reinstallation, shared, and the King kneels at 0", () => {
     expect(copyOf("app.tsx")).toContain("In the simulation the King guards the Server Room's door: every program may hit him once per reinstallation");
-    expect(copyOf("game/fight.ts")).toContain('"You hit him. Come back on your next reinstallation."');
+    expect(copyOf("game/fight.ts")).toContain('"You hit him this reinstallation. Find Gerald before you hit him again."');
     expect(copyOf("game/engine.ts")).toContain('"The King kneels. His door stands open."');
     expect(copyOf("game/Play.tsx")).toContain("⚔ HIT");
   });

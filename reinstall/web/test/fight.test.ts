@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { doorGap, locate } from "@loom/house";
 import type { Prop, Vec3 } from "@loom/house";
-import { HIT_USED, keepDoorOpen, KING_REACH, kingMeter, kingReach, KNEELING_LINE, nudgeFor, stageFor, STAGE_LINE } from "../src/game/fight.ts";
+import { HIT_USED, hitSpentAtStart, keepDoorOpen, KING_REACH, kingMeter, kingReach, KNEELING_LINE, nudgeFor, stageFor, STAGE_LINE } from "../src/game/fight.ts";
 import { SHOW } from "./houses.ts";
 
 const house = SHOW();
@@ -79,7 +79,11 @@ describe("kingReach (on the show's map)", () => {
     expect(nudgeFor("far")).toBe("Get closer to the King.");
     expect(nudgeFor("floor")).toBe("Get closer to the King.");
     expect(nudgeFor("facing")).toBe("Face him.");
-    expect(HIT_USED).toBe("You hit him. Come back on your next reinstallation.");
+    expect(HIT_USED).toBe("You hit him this reinstallation. Find Gerald before you hit him again.");
+    // A re-scan before the duck is the same visit: the assignment says so.
+    expect(hitSpentAtStart({ kingHit: true })).toBe(true);
+    expect(hitSpentAtStart({ kingHit: false })).toBe(false);
+    expect(hitSpentAtStart({})).toBe(false); // an old server
   });
 });
 

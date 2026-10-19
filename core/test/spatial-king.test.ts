@@ -103,13 +103,16 @@ describe("SpatialHub — the shared King", () => {
   it("quitting is not a new visit: Leave + re-scan or a director's end keeps the hit spent until the duck is found; a reset forgets it", () => {
     const h = hub();
     const a = h.begin("g-1");
+    expect(a.kingHit).toBe(false);
     h.hub.pose(a.token, NEAR);
     expect(h.hub.hit(a.token, () => {}).kind).toBe("hit");
-    // Leave (the game quit) + re-scan, three times over: still the one hit.
+    // Leave (the game quit) + re-scan, three times over: still the one hit,
+    // and the assignment says so, so the game starts with ⚔ spent.
     let last = a;
     for (let i = 0; i < 3; i++) {
       expect(h.hub.endByToken(last.token)).toBe("ok");
       last = h.begin("g-1");
+      expect(last.kingHit).toBe(true);
       h.hub.pose(last.token, NEAR);
       expect(h.hub.hit(last.token, () => {})).toEqual({ kind: "already", king: { id: "king", hp: 2, max: 3, fallen: false } });
     }
@@ -121,6 +124,7 @@ describe("SpatialHub — the shared King", () => {
     // A story reset forgets every visit.
     h.hub.reset("reset");
     const c = h.begin("g-1");
+    expect(c.kingHit).toBe(false);
     h.hub.pose(c.token, NEAR);
     expect(h.hub.hit(c.token, () => {}).kind).toBe("hit");
   });

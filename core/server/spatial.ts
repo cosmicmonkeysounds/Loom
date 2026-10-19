@@ -682,6 +682,7 @@ export class SpatialHub {
       spawn: s.spawn,
       houseVersion: s.houseVersion,
       avatar: this.avatarFor(s),
+      kingHit: s.kingHit,
     };
   }
 

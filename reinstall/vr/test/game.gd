@@ -1267,6 +1267,16 @@ func _test_game_king(game: Game, link: LinkBase, house: Dictionary) -> void:
 	# re-scanned) counts as used; "not near" and a pause say so.
 	link.assignment_received.emit(_assignment(house, "s-3k2", true))
 	_check(not game.king_hit_used, "game king: a new visit has its hit back")
+	# A re-scan before the duck (after Leave or a timeout) is the same visit:
+	# the assignment's kingHit starts it spent.
+	link.session_over.emit("test")
+	var spent := _assignment(house, "s-3k1", true)
+	spent["kingHit"] = true
+	link.assignment_received.emit(spent)
+	_check(game.king_hit_used, "game king: an assignment with kingHit starts spent")
+	link.session_over.emit("test")
+	link.assignment_received.emit(_assignment(house, "s-3k2", true))
+	_check(not game.king_hit_used, "game king: … and one without it does not")
 	player.teleport(b.to_world(east), west_yaw)
 	game._process(0.016)
 	player.hit_button = true
