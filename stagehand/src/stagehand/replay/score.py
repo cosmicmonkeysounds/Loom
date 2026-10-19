@@ -415,6 +415,9 @@ def table(report: dict[str, Any]) -> str:
         val = "" if b["value"] is None else str(b["value"])
         rows.append(f"{b['bar']:>2}  {b['name']:<40} {val:>18}  {res:<6}  {b['detail']}")
     ex = report.get("extras", {})
+    if "voice_calls" not in ex:  # an offline report
+        rows.append(f"    {ex}")
+        return "\n".join(rows)
     if "burst_wall_s" in ex:
         rows.append(f"    burst wall time (s): {ex['burst_wall_s']}  (target ≤ 210)")
     rows.append(f"    answer-guard firings: {ex.get('answer_guard', {}).get('firings', 0)}")

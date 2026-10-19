@@ -556,6 +556,7 @@ def test_offline_classic_resends_each_recorded_prompt_once(monkeypatch: pytest.M
     assert len(sent) == 2 and sent[0][-1]["content"] == "hello"
     rep = json.loads((run / "report.json").read_text())
     assert rep["bars"][1]["value"] == "2 of 2" and rep["bars"][1]["pass"] is False
+    assert "prompt_ms_p50" in S.table(rep) and "None of None" not in S.table(rep)
 
 
 def test_offline_new_needs_the_lean_voice(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
