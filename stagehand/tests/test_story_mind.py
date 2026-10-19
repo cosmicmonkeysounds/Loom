@@ -856,10 +856,6 @@ def test_a_resets_immediate_save_raises_a_real_error_and_saves_once(tmp_path):
         agents._save_mind_now("Trabolta")
     assert calls == [True, True]  # never retried through the debounced path
 
-    agents._save_mind = lambda name: calls.append("old")  # the base signature (before lane W3)
-    agents._save_mind_now("Trabolta")
-    assert calls[-1] == "old"
-
 
 def test_describe_and_warnings_name_the_new_mind(tmp_path):
     agents, _ = make(tmp_path)

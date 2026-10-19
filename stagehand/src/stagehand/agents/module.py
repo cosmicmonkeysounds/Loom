@@ -872,16 +872,8 @@ class Agents:
         self._side.clear()
 
     def _save_mind_now(self, name: str) -> None:
-        """A save that must land at once (a reset). Before the mind wire's
-        debounce (lane W3) every save is immediate anyway. The signature is
-        read, never guessed from a TypeError, so a real error in the save is
-        raised, not retried."""
-        import inspect
-
-        if "now" in inspect.signature(self._save_mind).parameters:
-            self._save_mind(name, now=True)  # type: ignore[call-arg]
-        else:
-            self._save_mind(name)
+        """A save that must land at once (a reset), past the wire's debounce."""
+        self._save_mind(name, now=True)
 
     async def _apply_phase(self, character: str, phase: str) -> list[str] | None:
         mind, persona = self.minds.get(character), self.cfg.personas.get(character)
