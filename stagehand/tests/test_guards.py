@@ -351,3 +351,16 @@ def test_a_never_word_line_still_loses_an_act_carrying_an_answer_word():
     # The same act beside a clean line is dropped the same way.
     clean = guard_pass(P, Reply(say="Look at the screens.", acts=(act,)), OLD, Said(), ())
     assert clean.reply.acts == () and clean.reply.say == "Look at the screens."
+
+
+def test_a_cut_that_leaves_a_sentence_leaning_on_it_sends_the_fallback():
+    """K-04 w11b-heart: "The books with the facts are in the stack on the
+    Desktop. Please retrieve them when you can." went out as "Please
+    retrieve them when you can."."""
+    out, notes, empty = invented_guard(P, Reply(say="The books with the facts are in the stack on the Desktop. Please retrieve them when you can."))
+    assert empty and out.say == P.fallback
+    out, notes, empty = invented_guard(P, Reply(say="The facts are hidden in the Start Bar. Ask Clippy for the rules."))
+    assert not empty and out.say == "Ask Clippy for the rules."
+    # The house's own line in this thread is never his invention.
+    said = "The facts are hidden in the Start Bar."
+    assert invented_guard(P, Reply(say=said), heard=("Listen. The facts are hidden in the Start Bar.",))[1] == []

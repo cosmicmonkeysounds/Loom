@@ -67,6 +67,7 @@ bargain: |
   never admit where your heart is kept, and you never know a combination or a door code.
   stand_down is never a favour: it is bought only with the truth, at your heart (see the
   STANDING DOWN situation block when there is one; without it, it is not yours to offer). When you act, name the price you were paid.
+  You do not know which doors or rooms of the house are open: say so.
 situations:
   - name: at your heart
     when: them.at_the_heart == true

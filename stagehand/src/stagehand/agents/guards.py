@@ -226,7 +226,13 @@ def invents_fact(secrets: Secrets, sentence: str) -> bool:
     return not text.rstrip().endswith("?") and secrets.names_topic(text) and _ASSERTS.search(text) is not None
 
 
-def invented_guard(persona: Persona, reply: Reply) -> tuple[Reply, list[str], bool]:
+#: A sentence that leans on the one before it: right after a cut it no
+#: longer says anything ("Please retrieve them when you can." once "The
+#: books with the facts are in …" is gone).
+_BACK_REFERENCE = re.compile(r"\b(?:them|it|they|these|those)\b|^\W*(?:that|this|which)\b", re.IGNORECASE)
+
+
+def invented_guard(persona: Persona, reply: Reply, heard: Iterable[str] = ()) -> tuple[Reply, list[str], bool]:
     """Guard 2b (K-04, wave 12 integration): cut each sentence that invents
     a fact. On gpt-oss:20b at low effort, "I'll find you something true"
     under a brief that says "you want facts now" was answered with a made-up
@@ -237,11 +243,16 @@ def invented_guard(persona: Persona, reply: Reply) -> tuple[Reply, list[str], bo
     s = persona.secrets
     if not (s.topics or s.match) or not reply.say:
         return reply, [], False
+    # The house's own lines in this thread (the story posted as him) are
+    # never his invention: "They are in the books in this room" may be said again.
+    house = [fold(h) for h in heard if fold(h)]
     parts = [x for x in _SENTENCE.split(reply.say) if x.strip()]
-    kept = [x for x in parts if not invents_fact(s, x)]
+    cut = [invents_fact(s, x) and not any(fold(x) and fold(x) in h for h in house) for x in parts]
+    kept = [x for x, c in zip(parts, cut) if not c]
     if len(kept) == len(parts):
         return reply, [], False
-    if not kept:
+    dangling = any(cut[i - 1] and not cut[i] and _BACK_REFERENCE.search(parts[i]) for i in range(1, len(parts)))
+    if not kept or dangling:
         return replace(reply, say=persona.fallback), ["answer-guard (invented fact → fallback)"], True
     return replace(reply, say=" ".join(kept).strip()), ["answer-guard (invented fact cut)"], False
 
@@ -406,6 +417,7 @@ def guard_pass(
     may_retry: bool = True,
     thread: Iterable[str] = (),
     stage: str = "",
+    house: Iterable[str] = (),
 ) -> Pass:
     """Guards 1–3 over `reply`, then (when `may_retry`) whether it wants the
     one retry: a catchphrase cut that left nothing, or a repeat. A line
@@ -421,7 +433,7 @@ def guard_pass(
     out.notes += notes
     withheld = out.reply.say != original
     if not withheld:
-        out.reply, notes, emptied = invented_guard(persona, out.reply)
+        out.reply, notes, emptied = invented_guard(persona, out.reply, house)
         out.notes += notes
         withheld = emptied
     out.withheld = withheld

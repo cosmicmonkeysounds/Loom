@@ -777,7 +777,8 @@ async def answer_lean(
     person = ctx.person
     if not person.catchphrase_used and any(uses_catchphrase(persona, t) for t in house):
         person = replace(person, catchphrase_used=True)  # the story's greeting used his ration
-    first: Pass = guard_pass(persona, reply, person, ctx.said, allowed, repeat_guard=opts.repeat_guard, thread=mine, stage=ctx.phase.stage)
+    house_text = (*house, *(str(r.get("text") or "") for r in req.get("recent") or [] if isinstance(r, dict) and r.get("kind") == "house"))
+    first: Pass = guard_pass(persona, reply, person, ctx.said, allowed, repeat_guard=opts.repeat_guard, thread=mine, stage=ctx.phase.stage, house=house_text)
     wants = first.retry
     call_note = " · ".join(x for x in (no_mind, call_note) if x)
     notes = settle_notes + first.notes
@@ -826,7 +827,7 @@ async def answer_lean(
     if again.wants_lookup:
         again = replace(again, say="", lookup=())
     again, settle_notes = await settle(again)
-    second = guard_pass(persona, again, person, ctx.said, allowed, repeat_guard=opts.repeat_guard, may_retry=False, thread=mine, stage=ctx.phase.stage)
+    second = guard_pass(persona, again, person, ctx.said, allowed, repeat_guard=opts.repeat_guard, may_retry=False, thread=mine, stage=ctx.phase.stage, house=house_text)
     rnotes = settle_notes + second.notes
     final = second.reply
     if not final.say:
