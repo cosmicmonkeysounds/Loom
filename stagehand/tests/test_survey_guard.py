@@ -288,3 +288,12 @@ def test_a_phase_survey_is_not_replaced_by_a_timer_survey():
     assert rig.survey("timer")
     assert not rig.survey("timer")  # idle
     assert rig.queued("phase", "timer") == ["phase"]
+
+
+def test_a_gate_that_reads_the_speaker_never_reads_as_asleep():
+    # The old performer exception: closed for guests until he wakes, open to
+    # performers all along. A survey has nobody speaking, so it can't tell.
+    for gate in ('speaker.kind == "performer" || self.awake == true', "them.at_the_heart == true && self.awake == true"):
+        persona = parse_persona(f"---\ncharacter: Trabolta\nvariables: truth\nwhen: {gate}\n---\nYou are TRABOLTA.")
+        rig = Rig(persona=persona, doc=house(phase="arrivals", awake="false"))
+        assert rig.survey("timer"), gate

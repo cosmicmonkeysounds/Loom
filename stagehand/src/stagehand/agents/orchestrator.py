@@ -513,6 +513,10 @@ def survey_rank(trigger: str) -> int:
     return SURVEY_RANK.get(trigger or "timer", 0)
 
 
+#: Gate path heads that name the person talking, unknown to a survey.
+SPEAKER_HEADS = ("them", "speaker")
+
+
 def character_vars(facts: Facts, character: str) -> dict[str, Any] | None:
     """The character's own variables as the facts document carries them, or
     None when the document does not list the character (an old server, a
@@ -528,8 +532,14 @@ def character_vars(facts: Facts, character: str) -> dict[str, Any] | None:
 def asleep(persona: Persona, facts: Facts) -> bool:
     """The persona's `when:` gate is false over the house as the facts show
     it (the world paths and the character's own vars; nobody speaking): the
-    character is offline, so there is nothing for it to look at."""
+    character is offline, so there is nothing for it to look at.
+
+    A gate that reads `them.` or `speaker.` depends on who is talking (a
+    performer exception, say), so the house alone can't close it: such a
+    gate never reads as asleep."""
     if persona.when is None:
+        return False
+    if any(n.split(".", 1)[0] in SPEAKER_HEADS for n in persona.when.names()):
         return False
     mine = character_vars(facts, persona.character)
     if mine is None:
