@@ -13,12 +13,16 @@
 
 import { doorGap, floorOf, locate } from "@loom/house";
 import type { HouseMap, KingReach, Prop, Vec3 } from "@loom/house";
+import type { Stage } from "@loom/chess/stage";
 import { RADIUS } from "./physics.ts";
 
 // The reach rule is `@loom/house`'s, the one the server judges a hit by
 // (with its slack): the tablet only pre-checks it to nudge the player
 // closer before it asks. Standing on his very centre counts as facing him.
 export { kingReach, KING_CONE_DEG, KING_REACH, type KingReach } from "@loom/house";
+// The stage ladder is the door terminal's (`@loom/chess`): the HUD names the
+// stage the King's board would be dealt at right now, never its own guess.
+export { stageFor, type Stage } from "@loom/chess/stage";
 
 /** What the HUD says when a hit can't be asked for from here. */
 export function nudgeFor(reach: Exclude<KingReach, "ok">): string {
@@ -28,18 +32,11 @@ export function nudgeFor(reach: Exclude<KingReach, "ok">): string {
 /** Said (and shown under the bar) once this visit has hit him. */
 export const HIT_USED = "You hit him. Come back on your next reinstallation.";
 
-export type Stage = "grandmaster" | "club" | "beginner" | "dizzy" | "pawns";
-
-/** The stage for `hp` of `max`: `round(4·hp/max)` → 4 grandmaster … 0 pawns. */
-export function stageFor(hp: number, max: number): Stage {
-  const m = Math.max(1, max);
-  const k = Math.round((4 * Math.max(0, Math.min(m, hp))) / m);
-  return k >= 4 ? "grandmaster" : k === 3 ? "club" : k === 2 ? "beginner" : k === 1 ? "dizzy" : "pawns";
-}
-
 /** Flavour under the bar while he stands: how he is holding up (the
- *  simulation's King, not the board's). "pawns" is any hp that rounds to 0
- *  but isn't 0 (1 of 15) — he is still up, his door still shut. */
+ *  simulation's King, not the board's — no chess words on the tablet). The
+ *  stage is the terminal's (`stageFor`: full = grandmaster, 1 … max−1 club /
+ *  beginner / dizzy, 0 pawns), so "pawns" only ever names a felled King,
+ *  whose HUD reads `KNEELING_LINE` instead; it stays for completeness. */
 export const STAGE_LINE: Record<Stage, string> = {
   grandmaster: "The King is at full strength.",
   club: "The King is rattled.",

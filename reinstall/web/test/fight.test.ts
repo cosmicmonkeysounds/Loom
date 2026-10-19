@@ -11,16 +11,23 @@ const WEST = 90;
 const EAST = -90;
 
 describe("stageFor", () => {
+  it("is the door terminal's own ladder (@loom/chess): the HUD names the board he would deal", async () => {
+    const chess = await import("@loom/chess/stage");
+    for (let max = 1; max <= 20; max++) for (let hp = -1; hp <= max + 1; hp++) expect(stageFor(hp, max), `${hp}/${max}`).toBe(chess.stageFor(hp, max));
+  });
+
   it("walks grandmaster → club → beginner → dizzy → pawns over 4 hp", () => {
     expect([4, 3, 2, 1, 0].map((hp) => stageFor(hp, 4))).toEqual(["grandmaster", "club", "beginner", "dizzy", "pawns"]);
   });
 
-  it("scales the show's 15 (round(4·hp/max))", () => {
+  it("on the show's 15: grandmaster only at full, the first hit weakens him, pawns only once he falls", () => {
     expect(stageFor(15, 15)).toBe("grandmaster");
-    expect(stageFor(14, 15)).toBe("grandmaster"); // 3.73 → 4
-    expect(stageFor(13, 15)).toBe("club"); // 3.47 → 3
-    expect(stageFor(2, 15)).toBe("dizzy"); // 0.53 → 1
-    expect(stageFor(1, 15)).toBe("pawns"); // 0.27 → 0
+    expect(stageFor(14, 15)).toBe("club");
+    expect(stageFor(10, 15)).toBe("club");
+    expect(stageFor(9, 15)).toBe("beginner");
+    expect(stageFor(5, 15)).toBe("beginner");
+    expect(stageFor(4, 15)).toBe("dizzy");
+    expect(stageFor(1, 15)).toBe("dizzy"); // still up, still a real game
     expect(stageFor(0, 15)).toBe("pawns");
   });
 
