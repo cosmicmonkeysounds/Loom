@@ -63,3 +63,12 @@ CHARACTER CRA Agent Software is Enforcer
   when truther_download:
     if Night.truther_sent != true:
       reply 🧾 Every program has a Wallet now. Every third transfer waits in your Wallet room for Approve; any transfer can be denied for 60 seconds. Elaborate security questions encouraged.
+
+// The door-only part (wave 11): an extra Antivirus who stands at the
+// Optical Drive for late arrivals once the others are busy (the summons,
+// the server room). Nothing of their own: the Enforcer trait's door scan
+// clears a program exactly as the other four do, and their booth gets the
+// same readouts.
+CHARACTER Windows Defender is Enforcer
+  avatar: File:Microsoft Defender Icon Logo 2025 English.svg
+  wiki: Microsoft Defender Antivirus

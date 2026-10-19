@@ -127,6 +127,14 @@ secrets:
     - "of ninety-seven"
     - "nineteen ninety-seven"
     - "one nine nine seven"
+    - "FOGGED-KETTLE"      # the digit notes
+    - "FROSTED-MIRROR"
+    - "WARM-LINT"
+    - "LOST-PIECE"
+    - "first digit"
+    - "second digit"
+    - "third digit"
+    - "fourth digit"
     - "V2-D5"              # the patch-bay pairs
     - "V4-D1"
     - "V6-D8"

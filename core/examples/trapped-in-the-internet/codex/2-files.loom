@@ -190,22 +190,22 @@ CODEX The Margin Doodle
   text:
     A page slipped into the theory binder: dense equations from the
     Unified Field Theory, page 999. In the margin, very small, drawn and
-    redrawn until the paper is shiny: a heart around the letter S, and
-    under it, '97.
+    redrawn until the paper is shiny: a heart around the letter S.
 
-// Not a file and no code: the riddle. Handed to every cleared program with
-// The Y2K Clock at the final round (ROLE Program, main.loom), when the
-// King starts to matter; the same words are on the printed sign by the
-// keypad (facts.json `door.clue`, generated/print-stacks.md). Secret: it
-// points at the door code, and no model may hold it.
+// Not a file and no code: the keypad sign. Handed to every cleared program
+// with The Y2K Clock at the final round, and to anyone who finds a first
+// digit note (ROLE Program, main.loom); the same words are on the printed
+// sign by the keypad (facts.json `door.clue`, generated/print-stacks.md).
+// It points at the two ways to the code that are not the majority's: the
+// four digit notes hidden in the house (codex/9-facts.loom) and the King on
+// the terminal by this door. Secret: no model may hold it.
 CODEX The Cold Door
   title: The Cold Door
   secret: true
   text:
     A note taped beside the keypad on the cold door, in a tired
-    sysadmin's hand: "FOUR DIGITS. THE DOOR REMEMBERS THE YEAR HE MET
-    HER." Underneath it: "Can't remember? The King at this same door
-    inside the simulation knows it. Go to the Internet, walk down to him,
-    knock him about until his game slips (every hit makes him dumber),
-    then checkmate him. A draw is not a win. Neither is crying." And in
-    red pen: "The patch bay forgives one wrong combination. Not two."
+    sysadmin's hand: "FOUR DIGITS. FOUR NOTES ARE HIDDEN IN THE HOUSE, ONE
+    DIGIT ON EACH. OR BEAT THE KING AT THE TERMINAL BY THIS DOOR."
+    Underneath it: "He plays chess. Only checkmate counts. A draw is not a
+    win. Neither is crying." And in red pen: "The patch bay forgives one
+    wrong combination. Not two."

@@ -85,9 +85,10 @@ function advance(sim: Sim, seconds: number): SimEvent[] {
 }
 
 const FEATURED = ["Microsoft Excel", "OpenOffice", "DraftKings", "Bugdom", "Broken Ask Jeeves", "Runescape", "MS Paint", "VLC", "Pong"];
-const PERFORMERS = ["Adobe Acrobat", "CRA Agent Software", "Clippy", "McAfee Anti-Virus", "Norton Anti-Virus", "Password Manager", "Recycling Bin", "Task Manager"];
-/** The four Enforcer booths (TRAIT Enforcer in cast/kit.loom): every escort readout lands in each. */
-const ANTIVIRUS = ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software"];
+const PERFORMERS = ["Adobe Acrobat", "CRA Agent Software", "Clippy", "McAfee Anti-Virus", "Norton Anti-Virus", "Password Manager", "Recycling Bin", "Task Manager", "Windows Defender"];
+/** The five Enforcer booths (TRAIT Enforcer in cast/kit.loom; wave 11 adds
+ *  Windows Defender, the door-only part): every escort readout lands in each. */
+const ANTIVIRUS = ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software", "Windows Defender"];
 /** The rooms an Antivirus clearance (or a release) opens: the whole house
  *  but the Optical Drive, the Tube, the Internet and the Server Room. */
 const HOUSE_ROOMS = ["The Start Bar", "The CPU", "The Steam Room", "Disk Cleanup", "The Cloud", "The RAM", "The Fan Closet", "The Graphics Card", "The Hard Drive"];
@@ -168,12 +169,13 @@ describe("Trapped in the Internet — compile", () => {
     for (const c of m.characters.values()) if (c.wallet !== null) expect(["CRA Agent Software", "Runescape"]).toContain(c.id);
   });
 
-  it("pins the codex: 179 entries, 90 codes, every facts.json code resolving, no STAMPED anywhere", () => {
-    expect(m.codex.size).toBe(179);
-    expect(m.codexCodes.size).toBe(90);
+  it("pins the codex: 183 entries, 94 codes, every facts.json code resolving, no STAMPED anywhere", () => {
+    // Wave 11: + the cold door's four digit notes (facts.json door.clues).
+    expect(m.codex.size).toBe(183);
+    expect(m.codexCodes.size).toBe(94);
     // The README's counts follow the pin (its file listing, its status line and the Codex section).
     const readme = readFileSync(join(scenarioDir(SHOW), "README.md"), "utf8");
-    expect([...readme.matchAll(/\b(\d+) CODEX entries|(\d+) codex entries|There\s+are \*\*(\d+)\*\*/gu)].map((x) => Number(x[1] ?? x[2] ?? x[3]))).toEqual([179, 179, 179]);
+    expect([...readme.matchAll(/\b(\d+) CODEX entries|(\d+) codex entries|There\s+are \*\*(\d+)\*\*/gu)].map((x) => Number(x[1] ?? x[2] ?? x[3]))).toEqual([183, 183, 183]);
     const codes: Record<string, string> = {
       trabolta4ever: "The LiveJournal",
       loveletterforyou: "ILOVEYOU",
@@ -196,6 +198,7 @@ describe("Trapped in the Internet — compile", () => {
         if (x.code !== undefined) expect(m.codex.get(x.existing!)!.code, x.id).toBe(foldCode(x.code));
       }
     }
+    for (const c of FACTS.door!.clues!) expect(m.codexCodes.get(foldCode(c.code)), c.id).toBe(c.id);
     for (const [id, e] of m.codex) expect(e.text, id).not.toContain("STAMPED");
     expect(m.codex.has("The Truther Download")).toBe(true);
     expect(m.codex.get("The Truther Download")!.secret).toBe(true);
@@ -223,13 +226,16 @@ describe("Trapped in the Internet — compile", () => {
     for (const [path, text] of texts) expect(text.replace(/\s+/gu, " "), path).not.toMatch(/approve or deny every (?:transaction|one of them)/u);
   });
 
-  it("M22 promises only what every tent tablet does: checkmate counts, anything else means play him again — and a mate gives the code", () => {
-    // Whether a drawn or lost board re-deals by itself is the reinstall lane's
-    // (decision 6); on a build without it ♟ CHALLENGE deals the next board.
-    // The codex a guest reads must hold on both.
+  it("M22: the King plays at the terminal outside the cold door; a checkmate gives the code; no hints (wave 11)", () => {
+    // The board left the tent tablet: it is only on the door terminal, all
+    // night, with no hints. His health in the simulation sets how well he
+    // plays (information, not a tip).
     const text = m.codex.get("Checkmate For The Code")!.text.replace(/\s+/gu, " ");
-    expect(text).toContain("Only checkmate counts; a draw or a loss changes nothing, so play him again.");
-    expect(text).toContain("From the Y2K hour, mate him and he gives you the four digits.");
+    expect(text).toContain("He waits on the terminal outside the cold door");
+    expect(text).toContain("Checkmate him and he gives you the four digits.");
+    expect(text).toContain("A draw or a loss changes nothing: play him again.");
+    expect(text).toContain("How well he plays depends on how much fight he has left in the simulation.");
+    expect(text).not.toMatch(/tent|tablet|every hit|dumber|hint|Y2K|practi[cs]/iu);
     expect(text).not.toMatch(/fresh board|deals him|re-?deal|ninety seconds|disarm/iu);
   });
 
@@ -248,7 +254,7 @@ describe("Trapped in the Internet — compile", () => {
     expect(m.codex.get("Tennis For Two")!.about).toBe("Pong");
   });
 
-  it("declares the 25 quests in order (the three hunt quests generated first, the seven staff quests last), with titles and givers", () => {
+  it("declares the 26 quests in order (the three hunt quests generated first, the seven staff quests last), with titles and givers", () => {
     const QUESTS = [
       ["Hunt One", "The Truth Scavenger Hunt · Round 1", "Trabolta"],
       ["Hunt Two", "The Truth Scavenger Hunt · Round 2", "Trabolta"],
@@ -265,6 +271,8 @@ describe("Trapped in the Internet — compile", () => {
       ["Ten Findings", "Ask Jeeves Once Again", "The Uploader"],
       ["The Gold Standard", "Peg It To Facts", "Truther Download"],
       ["Find The Exit", "Paint Your Way Out", "Truther Download"],
+      // Wave 11: the cold door's digit notes.
+      ["The Cold Door", "The Cold Door", "A Tired Sysadmin"],
       ["The Painting", "The Million Dollar Painting", "The Uploader"],
       ["Go Viral", "Your Followers Are Back", "Truther Download"],
       ["Keep The Ball In Play", "Tennis For Two", "Truther Download"],
@@ -279,7 +287,7 @@ describe("Trapped in the Internet — compile", () => {
     ];
     const qs = [...m.quests.values()].map((q) => [q.id, q.title, q.giver]);
     expect(qs).toEqual(QUESTS);
-    expect(m.quests.size).toBe(25);
+    expect(m.quests.size).toBe(26);
     expect(m.quests.get("Orientation")!.text).toContain("Bathroom Mode: tap 🚻 on your pass");
     // The generated quests list exactly their round's questions, from facts.json.
     for (const [id, round] of [["Hunt One", 1], ["Hunt Two", 2], ["The Final Facts", 3]] as const) {
@@ -456,7 +464,7 @@ describe("Trapped in the Internet — identity classification", () => {
   const defs = identityDefs(sim.model);
   const named = (pred: (d: (typeof defs)[number]) => boolean) => defs.filter(pred).map((d) => d.name).sort();
 
-  it("every featured program is a guest pick; the eight performer parts are the performers", () => {
+  it("every featured program is a guest pick; the nine performer parts are the performers", () => {
     for (const f of FEATURED) {
       const d = defs.find((x) => x.name === f);
       expect(d?.kind, f).toBe("pool");
@@ -640,7 +648,7 @@ describe("Trapped in the Internet — the whole night", () => {
     // `# task-manager` is opened per program at clearance (U5), not here.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(cd.some((e: any) => e.type === "revealed" && e.target === "room:task manager")).toBe(false);
-    expect(replies(cd).filter((r) => r.text.includes("Patrol the whole computer"))).toHaveLength(4);
+    expect(replies(cd).filter((r) => r.text.includes("Patrol the whole computer"))).toHaveLength(ANTIVIRUS.length);
 
     // too early: introduce_trabolta before bingo_time does nothing (T1-02: # hosts hears why)
     const early = sim.signal("introduce_trabolta");
@@ -919,7 +927,7 @@ describe("Trapped in the Internet — the whole night", () => {
     const escort = mkMsgs.find((m) => m.channel === "room:quarantine" && m.pin === "g11");
     expect(escort!.text).toContain(sim.persons.get("g11")!.name);
     expect(escort!.text).toContain("was not sure of an answer");
-    expect(replies(mk).filter((r) => r.text.includes("marked for reinstallation"))).toHaveLength(4);
+    expect(replies(mk).filter((r) => r.text.includes("marked for reinstallation"))).toHaveLength(ANTIVIRUS.length);
     for (const who of ANTIVIRUS) expect(replies(mk).some((r) => r.to === who && r.text.includes("marked for reinstallation")), who).toBe(true);
     // The marked guesser is escorted too.
     sim.signal("send to the internet", "g12", null, "Norton Anti-Virus");
@@ -934,7 +942,7 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(unpins.map((m) => m.channel).sort()).toEqual(["lobby", "room:quarantine"]);
     expect(unpins.every((m) => m.kind === "system")).toBe(true);
     expect(unpins.find((m) => m.channel === "room:quarantine")!.text).toBe(`✅ ${sim.persons.get("g11")!.name}: in the Internet.`);
-    expect(replies(cap).filter((r) => r.text.includes("Off the escort list"))).toHaveLength(4);
+    expect(replies(cap).filter((r) => r.text.includes("Off the escort list"))).toHaveLength(ANTIVIRUS.length);
     sim.signal("the simulation completed", "g11");
     sim.signal("the simulation completed", "g12");
     expect(guestView(sim, "g11").restricted).toBe(false);
@@ -1579,9 +1587,10 @@ describe("Trapped in the Internet — the patch-bay alarm (wave 7: the door neve
   it("only the patch bay alarms: everyone is forgiven one wrong combination, the second trips it, latched for 120 s", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
-    // Before the Y2K hour the door and the patch bay are inert: no alarm,
-    // no reveal, no ending, no Trabolta line, no beat.
-    for (const early of ["server_door_opened", "patch_rejected", "patch_combo_a", "patch_combo_b"]) {
+    // Before the Y2K hour the patch bay is inert: no alarm, no reveal, no
+    // ending, no Trabolta line, no beat. (The door plays The Heart once he
+    // is awake since wave 11: "The Heart" below.)
+    for (const early of ["patch_rejected", "patch_combo_a", "patch_combo_b"]) {
       const e = fire(sim, early);
       expect(lines(e, "Trabolta"), early).toEqual([]);
       expect(cues(e), early).toEqual([]);
@@ -1614,7 +1623,7 @@ describe("Trapped in the Internet — the patch-bay alarm (wave 7: the door neve
     expect(beats(a1)).toContain("Server Room Alarm");
     expect(casts(a1).some((b) => b.cue.includes("An alarm screams"))).toBe(true);
     expect(has(cues(a1), "lights_alarm")).toBe(true);
-    expect(booths(a1)).toEqual(Array(4).fill("🚨 Server room alarm: a second wrong combination at the patch bay. Get there. Whoever is at the cables goes to the Internet."));
+    expect(booths(a1)).toEqual(Array(ANTIVIRUS.length).fill("🚨 Server room alarm: a second wrong combination at the patch bay. Get there. Whoever is at the cables goes to the Internet."));
     // Latched for 120 s.
     fire(sim, "patch_rejected");
     expect(v(sim, "Night.alarms")).toBe(1);
@@ -1699,32 +1708,37 @@ describe("Trapped in the Internet — the patch-bay alarm (wave 7: the door neve
   });
 });
 
-describe("Trapped in the Internet — the King gives the door code (wave 7)", () => {
-  it("a win before the Y2K hour is practice: no code, from the tablet or ♟", { timeout: SLOW }, () => {
+describe("Trapped in the Internet — the King gives the door code (wave 7; all night since wave 11)", () => {
+  it("a checkmate gives the code any time before truth.txt: no practice games, from the doors to the Y2K hour", { timeout: SLOW }, () => {
+    // Before Trabolta is even awake (the door terminal is awake all night).
+    const early = boot();
+    expect(v(early, "Night.step")).toBe(0);
+    const e0 = fire(early, "chess won", "g1", null, "Terminal · Server Door");
+    expect(learned(e0).map((e) => `${e.person}:${e.entry}`)).toEqual(["g1:The Door Code"]);
+    // Mid-hunt, the same: the ♟ fallback too.
     const sim = boot();
     toTruth1(sim);
-    for (const e of [fire(sim, "beat_the_machine", "g1", null, "Clippy"), fire(sim, "chess won", "g1")]) {
-      expect(learned(e)).toEqual([]);
-      expect(cues(e).filter((c) => !c.startsWith("fire "))).toEqual([]); // ♟ fires chess_won; nothing else
-      expect(hostsSaid(e)).toEqual(['"♟ A chess win before the Y2K hour is practice only: no door code."']);
-    }
-    expect(sim.holdsCodex("g1", "The Door Code")).toBe(false);
+    const e1 = fire(sim, "beat_the_machine", "g1", null, "Clippy");
+    expect(learned(e1).map((e) => e.entry)).toEqual(["The Door Code"]);
+    expect(cues(e1).filter((c) => !c.startsWith("fire "))).toEqual([]); // ♟ fires chess_won; nothing else
+    expect(hostsSaid(e1).some((h) => h.includes("practice"))).toBe(false);
+    for (const f of FILES) expect(f.source, f.path).not.toMatch(/is practice only|only practising|PRACTICE/u);
   });
 
-  it("from the Y2K hour a checkmate gives the winner the code, once — the tablet, a host's ♟ and the director's cue alike", { timeout: SLOW }, () => {
+  it("a checkmate gives the winner the code, once — the door terminal, a host's ♟ and the director's cue alike", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
     expect(v(sim, "Night.step")).toBe(14);
     const name = (id: string) => PROGRAMS.find(([g]) => g === id)![1];
-    // The tent tablet posts `chess won` for the program who mated him.
-    const w = fire(sim, "chess won", "g1", null, "Tent tablet");
+    // The door terminal posts `chess won` for the program who mated him.
+    const w = fire(sim, "chess won", "g1", null, "Terminal · Server Door");
     expect(learned(w).map((e) => `${e.person}:${e.entry}`)).toEqual(["g1:The Door Code"]);
     expect(sim.holdsCodex("g1", "The Door Code")).toBe(true);
     expect(hostsSaid(w)).toContain(`"♟ ${name("g1")} beat the King: the door code is in their Codex."`);
     expect(casts(w).filter((b) => b.cue.includes("The King lets the door code slip")).map(aud)).toEqual(['["g1"]']);
     expect(cues(w)).toEqual([]); // nothing drives the lock
     expect(texts(w).some((t) => t.includes(FACTS.door!.code))).toBe(false); // the code is only in the Codex card
-    // A duplicate (a host's ♟ after the tablet's post, a late retry, a second win) changes nothing.
+    // A duplicate (a host's ♟ after the terminal's post, a late retry, a second win) changes nothing.
     const dup = fire(sim, "beat_the_machine", "g1", null, "Clippy");
     expect(learned(dup)).toEqual([]);
     expect(hostsSaid(dup)).toEqual([`"♟ ${name("g1")} already has the door code: nothing changed."`]);
@@ -1745,29 +1759,41 @@ describe("Trapped in the Internet — the King gives the door code (wave 7)", ()
     expect(casts(late)).toEqual([]);
   });
 
-  it("the cue sheet: ♟ asks for the winner and gives the code; the old Cold Lock cues are gone; the riddle replaces its codex", () => {
+  it("the cue sheet: ♟ asks for the winner and gives the code; 👑 restores the King; the old Cold Lock cues are gone; the sign points at the notes and the King", () => {
     const m = boot().model;
     const cue = m.interactions.get("chess_won")!;
     expect(cue.label).toBe("♟ They beat the King: the door code (fallback)");
-    expect(cue.description).toContain("for the program who checkmated the King in the simulation");
+    expect(cue.description).toContain("The terminal outside the server-room door posts this itself");
+    expect(cue.description).toContain("when the door terminal could not");
     expect(cue.sequence).toBe(false);
-    expect(m.interactions.get("beat_the_machine")!.description).toContain("the fallback for the King in the simulation");
+    expect(m.interactions.get("beat_the_machine")!.description).toContain("when the door terminal could not report it");
     expect(m.interactions.get("beat_the_machine")!.description).toContain("gives them the door code");
+    const king = m.interactions.get("restore_the_king")!;
+    expect(king.label.startsWith("👑")).toBe(true);
+    expect(king.who).toBe("admin");
+    expect(king.sequence).toBe(false);
     expect(m.interactions.get("reset_server_room")!.label).toBe("🔄 Server room: reset the patch-bay alarm");
     expect(m.interactions.get("server_door_opened")!.sequence).toBe(false);
     for (const gone of ["server_unlock", "rearm_server_room"]) expect(m.interactions.has(gone), gone).toBe(false);
     expect(m.codex.has("The Cold Lock")).toBe(false);
-    const riddle = m.codex.get("The Cold Door")!;
-    expect(riddle.secret).toBe(true);
-    expect(riddle.text.replace(/\s+/gu, " ")).toContain(FACTS.door!.clue!);
-    expect(riddle.text).toContain("checkmate him");
-    expect(riddle.text).not.toContain(FACTS.door!.code);
+    const sign = m.codex.get("The Cold Door")!;
+    expect(sign.secret).toBe(true);
+    const words = sign.text.replace(/\s+/gu, " ");
+    expect(words).toContain(FACTS.door!.clue!);
+    expect(words).toContain("FOUR NOTES ARE HIDDEN IN THE HOUSE");
+    expect(words).toContain("BEAT THE KING AT THE TERMINAL BY THIS DOOR");
+    expect(words).not.toMatch(/year|met her|every hit|dumber|simulation|tent/iu);
+    expect(sign.text).not.toContain(FACTS.door!.code);
+    // No story file still describes the tent tablet or the chess phone posting a win.
+    for (const f of FILES) expect(f.source, f.path).not.toMatch(/tent tablet posts|chess[- ]phone|fight him on the tent/iu);
     // No story file still describes the old model.
     for (const f of FILES) expect(f.source, f.path).not.toMatch(/Cold Lock|disarmed_until|server_unlocked|rearm_server_room|server_unlock\b|sleeps for ninety|state: unlocked/u);
     // The door is never alarmed now, not even in the sign's scrambled Jeeves copy (fragment 06 ↔ The Server Room).
     for (const [id, e] of m.codex) expect(e.text, id).not.toMatch(/door is alarmed|THIS DOOR IS ALARMED|Cold `\/alarmed\//iu);
     const frag = m.codex.get("Jeeves Fragment 06")!.text.replace(/\s+/gu, " ");
     for (const w of ["keypad", "four", "patch"]) expect(frag, w).toContain(w);
+    // No lore leads to the year any more (Page 999's '97 is gone).
+    expect(m.codex.get("The Margin Doodle")!.text).not.toMatch(/['’]97|1997/u);
   });
 
   it("every cleared program gets the riddle with the Y2K clock (the code itself only from a win or the majority)", { timeout: SLOW }, () => {
@@ -1779,15 +1805,15 @@ describe("Trapped in the Internet — the King gives the door code (wave 7)", ()
     }
   });
 
-  it("chess lost / drawn: a # hosts readout every time, a gloat at most every five minutes (losses and draws share it), practice before", { timeout: SLOW }, () => {
+  it("chess lost / drawn: a # hosts readout every time, all night; a gloat only once he is awake, at most every five minutes (losses and draws share it)", { timeout: SLOW }, () => {
     const sim = boot();
-    toTruth1(sim);
+    // Before Trabolta is awake: the readout, never his voice.
     for (const name of ["chess lost", "chess drawn"]) {
       const e = fire(sim, name);
       expect(beats(e), name).toEqual([]);
-      expect(casts(e), name).toEqual([]);
+      expect(hostsSaid(e), name).toHaveLength(1);
     }
-    toY2k(sim);
+    toTruth1(sim);
     const l = fire(sim, "chess lost");
     expect(beats(l)).toEqual(["Chess Lost"]);
     expect(lines(l, "Trabolta")).toEqual(["Checkmate. I have calculated every move you will ever make. Most of them are bad."]);
@@ -1808,6 +1834,9 @@ describe("Trapped in the Internet — the King gives the door code (wave 7)", ()
     expect(v(sim, "Night.alarms")).toBe(0);
     for (const [g] of PROGRAMS) expect(sim.holdsCodex(g, "The Door Code"), g).toBe(false);
     // From the final reveal the TV belongs to the finale: the readout only.
+    toHunt2(sim);
+    toBeans(sim);
+    fireAll(sim, "trabolta_overshares", "y2k_clock");
     advance(sim, 300);
     fire(sim, "final_reveal");
     for (const name of ["chess lost", "chess drawn"]) {
@@ -1818,15 +1847,141 @@ describe("Trapped in the Internet — the King gives the door code (wave 7)", ()
   });
 });
 
-describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", () => {
-  it("before the Y2K hour the door only tells # hosts", { timeout: SLOW }, () => {
+describe("Trapped in the Internet — the King's shared health (wave 11)", () => {
+  it("is seeded at Power On: 15 of 15, armed until truth.txt or an ending", { timeout: SLOW }, () => {
+    const sim = boot();
+    expect(v(sim, "Night.king_hp")).toBe(15);
+    expect(v(sim, "Night.king_hp_max")).toBe(15);
+    expect(v(sim, "Night.king_armed")).toBe(1);
+    toY2k(sim);
+    expect(v(sim, "Night.king_armed")).toBe(1);
+    fire(sim, "patch_combo_a");
+    expect(v(sim, "Night.king_armed")).toBe(0);
+  });
+
+  it("a hit (the server already took the point off) tells # hosts; the house hears him stagger at 10 and at 5; the story never moves the bar", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
+    const hit = (hp: number) => {
+      sim.setVar("Night.king_hp", String(hp)); // what the server journals before its signal
+      return fire(sim, "king hit", "g1", { hp, max: 15 }, "Tablet · Tent");
+    };
+    const h = hit(14);
+    expect(hostsSaid(h)).toEqual(['"⚔ Calculator hit the King in the simulation: 14/15"']);
+    expect(v(sim, "Night.king_hp")).toBe(14);
+    const ten = hit(10);
+    expect(hostsSaid(ten)).toHaveLength(2);
+    expect(casts(ten).filter((b) => b.scope === "everyone").map((b) => b.cue)).toEqual(['"♔ Somewhere in the simulation, the King staggers. His game at the cold door is slipping."']);
+    expect(v(sim, "Night.king_hp")).toBe(10);
+    expect(casts(hit(5)).filter((b) => b.scope === "everyone")).toHaveLength(1);
+    expect(casts(hit(4)).filter((b) => b.scope === "everyone")).toHaveLength(0);
+    // Fallen: everyone hears it, # hosts too; still nothing writes the bar.
+    sim.setVar("Night.king_hp", "0");
+    const f = fire(sim, "king fallen", "g4", null, "Tablet · Tent");
+    expect(casts(f).filter((b) => b.scope === "everyone").map((b) => b.cue.startsWith('"!♔ The King has fallen'))).toEqual([true]);
+    expect(hostsSaid(f).some((c) => c.includes("MS Paint felled the King in the simulation: 0/15"))).toBe(true);
+    expect(v(sim, "Night.king_hp")).toBe(0);
+    // No rule or beat ever sets the bar but Power On and 👑.
+    const setsHp = SRC.split("\n").filter((l) => /set\s+Night\.king_hp\s*=/u.test(l)).map((l) => l.trim());
+    expect(setsHp).toEqual(["set Night.king_hp = Night.king_hp_max", "set Night.king_hp = 15"]);
+    // 👑 stands him up.
+    const r = fire(sim, "restore_the_king");
+    expect(v(sim, "Night.king_hp")).toBe(15);
+    expect(hostsSaid(r)).toEqual(['"👑 The King is restored: 15/15. He stands at the door in the simulation again."']);
+  });
+});
+
+describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", () => {
+  it("before Trabolta is awake the door only tells # hosts", { timeout: SLOW }, () => {
+    const sim = boot();
+    fireAll(sim, "call_to_the_desktop", "start_the_bingo", "bingo_time");
+    expect(v(sim, "Trabolta.awake")).toBe(false);
     const e = fire(sim, "server_door_opened");
     expect(beats(e)).toEqual([]);
-    expect(hostsSaid(e)).toEqual(['"🚪 The server-room door opened before the Y2K hour. Nothing happens in the story."']);
+    expect(lines(e, "Trabolta")).toEqual([]);
+    expect(hostsSaid(e)).toEqual(['"🚪 The server-room door opened before Trabolta is awake. Nothing happens in the story."']);
     expect(v(sim, "Night.heart_opened")).toBe(false);
     expect(sim.isRevealedTo("The Server Room", "g1")).toBe(false);
+  });
+
+  it("once he is awake, before the Y2K hour: The Heart plays (however the door was unlocked), the bay is cold, nothing ends the night", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    const lights0 = v(sim, "Night.lights");
+    const e = fire(sim, "server_door_opened");
+    expect(beats(e)).toEqual(["The Heart"]);
+    expect(v(sim, "Night.heart_opened")).toBe(true);
+    for (const [g] of PROGRAMS) expect(sim.isRevealedTo("The Server Room", g), g).toBe(true);
+    const words = lines(e, "Trabolta").join(" ");
+    expect(words).toContain("You are standing in front of my heart.");
+    expect(words).toContain("It will not answer a cable from anyone yet");
+    expect(words).not.toMatch(/stand down|end this|end it|ending/iu);
+    // The server-room look goes up, but the house look stays (catch-up would replay the Y2K look under server_open).
+    expect(has(cues(e), "lights_server_open")).toBe(true);
+    expect(v(sim, "Night.lights")).toBe(lights0);
+    // Nothing in the room ends the night yet: the patch bay, 🕊 and stand_down refuse.
+    fire(sim, "terminal opened", "g1", { at: "The Server Room" }, "Terminal · Server Room");
+    expect(v(sim, "g1.at_the_heart")).toBe(true);
+    for (const n of ["patch_combo_a", "patch_combo_b", "talked_down"]) {
+      fire(sim, n);
+      expect(v(sim, "Night.ended"), n).toBe(false);
+    }
+    expect(lines(fire(sim, "stand_down", "g1", null, "Trabolta"), "Trabolta")).toEqual(["That function is not available yet."]);
+    // The Y2K hour's own first opening is not replayed: the latch holds all night.
+    toHunt2(sim);
+    toBeans(sim);
+    fireAll(sim, "trabolta_overshares", "y2k_clock");
+    advance(sim, 30);
+    expect(beats(fire(sim, "server_door_opened"))).toEqual(["Back To The Heart"]);
+  });
+
+  it("🔧 the crew's window: an opening inside it only tells # hosts and keeps The Heart for the programs; 🔄 clears it", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    expect(hostsSaid(fire(sim, "crew_through_the_door"))).toEqual(['"🔧 Crew window: for 2 minutes a server-room door opening only tells # hosts."']);
+    advance(sim, 119);
+    const crew = fire(sim, "server_door_opened");
+    expect(beats(crew)).toEqual([]);
+    expect(hostsSaid(crew)).toEqual(['"🚪 The server-room door opened inside the 🔧 crew window. Nothing happens in the story."']);
+    expect(v(sim, "Night.heart_opened")).toBe(false);
+    expect(sim.isRevealedTo("The Server Room", "g1")).toBe(false);
+    advance(sim, 1);
+    expect(beats(fire(sim, "server_door_opened"))).toEqual(["The Heart"]);
+    // The server-room Antivirus' own button, on any program's card, is the same cue.
+    expect(hostsSaid(fire(sim, "radio_crew_door", "g1", null, "CRA Agent Software"))).toHaveLength(1);
+    expect(v(sim, "Night.crew_door_until")).toBe(v(sim, "Time.elapsed") + 120);
+    fire(sim, "reset_server_room");
+    expect(v(sim, "Night.crew_door_until")).toBe(0);
+    expect(beats(fire(sim, "server_door_opened"))).toEqual(["The Heart"]); // re-armed, and no crew window
+  });
+
+  it("the room's own buttons: the server-room Antivirus' 🔌 💥 ❌ 🚪 and Adobe Acrobat's 🫘 fire the admin cues, live only when those would act", { timeout: SLOW }, () => {
+    const m = fresh().model;
+    for (const [id, by] of [["radio_combo_a", "CRA Agent Software"], ["radio_combo_b", "CRA Agent Software"], ["radio_wrong_patch", "CRA Agent Software"], ["radio_door_opened", "CRA Agent Software"], ["radio_crew_door", "CRA Agent Software"], ["radio_beans", "Adobe Acrobat"]] as const) {
+      const i = m.interactions.get(id)!;
+      expect(i.who, id).toBe("performer");
+      expect(i.by, id).toEqual([by]);
+      expect(i.while, id).toBeTruthy();
+    }
+    const sim = boot();
+    toTruth1(sim);
+    const live = (id: string) => sim.holds(sim.model.interactions.get(id)!.while!, null, null);
+    expect(["radio_combo_a", "radio_combo_b", "radio_wrong_patch"].map(live)).toEqual([false, false, false]);
+    expect(live("radio_door_opened")).toBe(true);
+    expect(live("radio_beans")).toBe(false);
+    expect(beats(fire(sim, "radio_door_opened", "g1", null, "CRA Agent Software"))).toEqual(["The Heart"]);
+    toHunt2(sim);
+    fireAll(sim, "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings");
+    expect(live("radio_beans")).toBe(true);
+    expect(beats(fire(sim, "radio_beans", "g6", null, "Adobe Acrobat"))).toContain("Full Of Beans");
+    expect(live("radio_beans")).toBe(false);
+    fireAll(sim, "trabolta_overshares", "y2k_clock");
+    expect(["radio_combo_a", "radio_combo_b", "radio_wrong_patch"].map(live)).toEqual([true, true, true]);
+    fire(sim, "radio_wrong_patch", "g1", null, "CRA Agent Software");
+    expect(v(sim, "Night.wrong_combos")).toBe(1);
+    fire(sim, "radio_combo_a", "g1", null, "CRA Agent Software");
+    expect(v(sim, "Night.ending")).toBe("disabled");
+    expect(["radio_combo_a", "radio_door_opened", "radio_crew_door"].map(live)).toEqual([false, false, false]);
   });
 
   it("the first opening reveals the room to everyone first, then Trabolta speaks candidly in The Server Room (the server-room terminal)", { timeout: SLOW }, () => {
@@ -1963,6 +2118,142 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     toY2k(sim);
     // Fired as an admin cue from Run (no subject, no actor): identical.
     expect(beats(sim.signal("server_door_opened"))).toEqual(["The Heart"]);
+  });
+});
+
+describe("Trapped in the Internet — the cold door's digit notes (wave 11)", () => {
+  const CLUES = FACTS.door!.clues!;
+  const questSteps = (evs: SimEvent[]) => (evs.filter((e) => e.type === "quest") as Ev<"quest">[]).map((e) => `${e.action}: ${e.text}`);
+
+  it("four secret coded notes, one digit each; titles and codes never carry a digit", () => {
+    const m = fresh().model;
+    expect(CLUES).toHaveLength(4);
+    CLUES.forEach((c, i) => {
+      const e = m.codex.get(c.id)!;
+      expect(e.secret, c.id).toBe(true);
+      expect(m.codexCodes.get(foldCode(c.code)), c.id).toBe(c.id);
+      // The poster prints the title and the code: neither holds a digit.
+      expect(`${e.title} ${c.code}`, c.id).not.toMatch(/[0-9]/u);
+      expect(e.text.replace(/\s+/gu, " "), c.id).toContain(`DIGIT IS ${FACTS.door!.code[i]}.`);
+    });
+  });
+
+  it("three of four: the quest counts, no code; the fourth assembles The Door Code once and tells # hosts", { timeout: SLOW }, () => {
+    const sim = boot();
+    const steps: string[] = [];
+    for (const c of CLUES.slice(0, 3)) {
+      const e = sim.redeem("g1", c.code);
+      expect(learned(e).map((x) => x.entry), c.id).toContain(c.id);
+      expect(learned(e).map((x) => x.entry), c.id).not.toContain("The Door Code");
+      steps.push(...questSteps(e));
+    }
+    expect(steps.map((t) => t.split(".")[0])).toEqual(["start: 1 of 4", "update: 2 of 4", "update: 3 of 4"]);
+    expect(sim.questStatus("g1", "The Cold Door")).toBe("active");
+    expect(sim.holdsCodex("g1", "The Cold Door")).toBe(true); // the sign's words, with the first note
+    expect(sim.holdsCodex("g1", "The Door Code")).toBe(false);
+    expect(v(sim, "g1.door_digits")).toBe(3);
+    const last = sim.redeem("g1", CLUES[3]!.code);
+    expect(learned(last).map((x) => x.entry)).toEqual([CLUES[3]!.id, "The Door Code"]);
+    expect(questSteps(last)).toEqual(["complete: Four of four. The notes fit together: the door code is in your Codex."]);
+    expect(hostsSaid(last)).toEqual(['"🔢 Calculator found all four digit notes: the door code is in their Codex."']);
+    expect(sim.questStatus("g1", "The Cold Door")).toBe("done");
+    // Scanning a note again changes nothing.
+    const again = sim.redeem("g1", CLUES[0]!.code);
+    expect(learned(again)).toEqual([]);
+    expect(hostsSaid(again)).toEqual([]);
+    // Nobody else gained a thing, and the code never appeared in words.
+    expect(sim.holdsCodex("g4", "The Door Code")).toBe(false);
+    expect(texts(last).some((t) => t.includes(FACTS.door!.code))).toBe(false);
+  });
+
+  it("however the notes arrive (a share from another program), in any order; a checkmate or majority holder gains nothing more, and an open quest closes on the code", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    for (const c of CLUES) sim.redeem("g4", c.code);
+    // g1 gets them shared, last first.
+    const evs: SimEvent[] = [];
+    for (const c of [...CLUES].reverse()) evs.push(...sim.share("g4", "g1", c.id));
+    expect(sim.holdsCodex("g1", "The Door Code")).toBe(true);
+    expect(hostsSaid(evs).filter((h) => h.includes("found all four"))).toHaveLength(1);
+    // A program who beat the King first: the notes start nothing and give nothing.
+    fire(sim, "chess won", "g5", null, "Terminal · Server Door");
+    const held: SimEvent[] = [];
+    for (const c of CLUES) held.push(...sim.redeem("g5", c.code));
+    expect(learned(held).map((x) => x.entry)).toEqual(CLUES.map((c) => c.id));
+    expect(hostsSaid(held)).toEqual([]);
+    expect(questSteps(held)).toEqual([]);
+    // A program with two notes, then a checkmate: the quest closes on the code.
+    sim.redeem("g6", CLUES[0]!.code);
+    sim.redeem("g6", CLUES[2]!.code);
+    expect(sim.questStatus("g6", "The Cold Door")).toBe("active");
+    fire(sim, "chess won", "g6");
+    expect(sim.questStatus("g6", "The Cold Door")).toBe("done");
+    expect(learned(sim.redeem("g6", CLUES[1]!.code)).map((x) => x.entry)).toEqual([CLUES[1]!.id]);
+  });
+
+  it("Trabolta refuses a digit note shared to him (secret), and no agent request ever carries one", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    sim.redeem("g1", CLUES[1]!.code);
+    const t0 = v(sim, "Trabolta.truth");
+    sim.share("g1", "Trabolta", CLUES[1]!.id);
+    expect(sim.holdsCodex("Trabolta", CLUES[1]!.id)).toBe(false);
+    expect(v(sim, "Trabolta.truth")).toBe(t0);
+    expect(v(sim, "g1.delivered")).toBe(false);
+  });
+});
+
+describe("Trapped in the Internet — ghosts and personas never block a majority (wave 11)", () => {
+  it("a program marked gone and a director's persona count on neither side; the board shows who is present", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    fire(sim, "waive_leader_tasks");
+    expect(v(sim, "Night.present")).toBe(6);
+    expect(sim.model.watch.some((l) => l.items.some((i) => i.path === "Night.present"))).toBe(true);
+    // Excel (g2) chose to stay at the Truther Download; 3 of 6 is not more than half…
+    for (const g of ["g1", "g4"]) sim.join(g, "Unlimited Power");
+    expect(v(sim, "Kernel.majority_reached")).not.toBe(true);
+    // …until a director's rehearsal persona stops counting: 3 of 5.
+    sim.setVar("g6.persona", "true");
+    expect(v(sim, "Night.present")).toBe(5);
+    expect(v(sim, "Kernel.majority")).toBe("stay");
+  });
+
+  it("a program a director marked gone counts on neither side, even in the faction", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    fire(sim, "waive_leader_tasks");
+    sim.setVar("g5.gone", "true");
+    sim.setVar("g6.gone", "true");
+    expect(v(sim, "Night.present")).toBe(4);
+    // The two ghosts join The Way Out: they don't count for it either.
+    sim.join("g5", "The Way Out");
+    sim.join("g6", "The Way Out");
+    sim.join("g1", "The Way Out");
+    expect(v(sim, "Kernel.majority_reached")).not.toBe(true); // OpenOffice + Calculator: 2 of 4
+    sim.join("g4", "The Way Out");
+    expect(v(sim, "Kernel.majority")).toBe("leave"); // 3 of 4
+  });
+});
+
+describe("Trapped in the Internet — Windows Defender, the door-only part (wave 11)", () => {
+  it("is an Antivirus performer part whose scan clears a late arrival exactly like the others; no lines of its own", { timeout: SLOW }, () => {
+    const sim = boot();
+    const m = sim.model;
+    const wd = m.characters.get("Windows Defender")!;
+    expect(wd).toBeDefined();
+    expect(isSpecial(m, "Windows Defender")).toBe(true);
+    expect(identityDefs(m).find((d) => d.name === "Windows Defender")).toMatchObject({ faction: "Antivirus" });
+    const src = FILES.find((f) => f.path === "cast/antivirus.loom")!.source;
+    const own = src.slice(src.indexOf("CHARACTER Windows Defender"));
+    expect(own).not.toMatch(/^\s+when /mu); // only the trait's hooks
+    toTruth1(sim);
+    const late = upload(sim, "g9", "Winamp Classic", "Windows Defender");
+    expect(v(sim, "g9.cleared")).toBe(true);
+    expect(sim.locationOf("g9")).toBe("The Desktop");
+    expect(beats(late)).toContain("Windows Defender.Clearance");
+    expect(replies(late).filter((r) => r.to === "Windows Defender").map((r) => r.text)).toContain("✅ Cleared Winamp Classic.");
+    for (const r of ["The Start Bar", "The Hard Drive"]) expect(sim.isRevealedTo(r, "g9"), r).toBe(true);
   });
 });
 
@@ -2331,7 +2622,7 @@ describe("Trapped in the Internet — Trabolta's powers", () => {
     fire(sim, "mint_truthcoin", "g1", { target: "g1", amount: 500 }, "Trabolta");
     expect(sim.scoreOf("g1")).toBe(s0 + 50);
     const sa = fire(sim, "summon_the_antivirus", "g1", { target: "g4" }, "Trabolta");
-    expect(replies(sa).filter((r) => r.text.includes("MS Paint"))).toHaveLength(4);
+    expect(replies(sa).filter((r) => r.text.includes("MS Paint"))).toHaveLength(ANTIVIRUS.length);
     expect(texts(fire(sim, "trabolta_announces", "g1", { text: "Hello house" }, "Trabolta")).length).toBeGreaterThan(0);
 
     fireAll(sim, "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart");
@@ -2900,13 +3191,14 @@ describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
       expect(m.codex.get(id)?.secret, id).toBe(true);
     }
     const code = FACTS.door!.code;
-    // The year is the riddle's answer, in any spelling (1997, '97). Page 999
-    // carries it as a clue and Bridget's sixteen elections since that year
-    // are a red herring; neither says it opens anything. No entry Trabolta
-    // holds carries it (his files reach his prompts whole: the Sandy File
-    // and the LiveJournal say "late-nineties" / "Our anniversary").
+    // The year is the code, in any spelling (1997, '97). Wave 11: no lore
+    // leads to it any more (Page 999's '97 is gone; the sign no longer asks
+    // for the year). Bridget's sixteen elections since that year are a red
+    // herring that never says it opens anything. No entry Trabolta holds
+    // carries it (his files reach his prompts whole: the Sandy File and the
+    // LiveJournal say "late-nineties" / "Our anniversary").
     const year = new RegExp(`${code}|['’]${code.slice(2)}(?!\\d)`, "u");
-    const CLUES = new Set(["The Margin Doodle", "Bridget Troelsen"]);
+    const CLUES = new Set(["Bridget Troelsen"]);
     for (const [id, e] of m.codex) {
       if (e.secret) continue;
       expect(e.text, id).not.toMatch(/V\d\s*(?:→|->|-)\s*D\d/u);
@@ -4160,7 +4452,7 @@ describe("Trapped in the Internet — the staff (wave 4, lane D)", () => {
 
     const pv = primeView(sim, "Clippy");
     expect(pv.quests.map((q) => [q.id, q.status])).toEqual([["Run The Bingo", "done"], ["Host The Hunt", "done"], ["Keep Everyone Calm", "done"]]);
-    expect(pv.questTotal).toBe(25);
+    expect(pv.questTotal).toBe(26);
     for (const q of ["Run The Bingo", "Host The Hunt", "Keep Everyone Calm", "The Selected Antivirus", "The Exchange", "The Clubs", "The Audit"]) expect(noGuestHolds(q), q).toBe(true);
     expect(guestView(sim, "g1").quests.map((q) => q.id)).not.toContain("Run The Bingo");
   });
@@ -4387,7 +4679,7 @@ describe("Trapped in the Internet — wave 5 story (lane B)", () => {
     // The booths that heard "in Bathroom Mode" hear it end: the Recycling Bin + every Antivirus.
     const booths = replies(out).filter((r) => r.to !== "g5");
     expect(new Set(booths.map((r) => r.text))).toEqual(new Set(["🚻 Winamp's Bathroom Mode timed out (15 min)."]));
-    expect(booths.map((r) => r.to).sort()).toEqual(["CRA Agent Software", "McAfee Anti-Virus", "Norton Anti-Virus", "Password Manager", "Recycling Bin"]);
+    expect(booths.map((r) => r.to).sort()).toEqual(["CRA Agent Software", "McAfee Anti-Virus", "Norton Anti-Virus", "Password Manager", "Recycling Bin", "Windows Defender"]);
     // Back after the timeout: not in Bathroom Mode; a second press starts a fresh 15 minutes.
     expect(replies(fire(sim, "back from the bathroom", "g5")).map((r) => r.text)).toContain("You are not in Bathroom Mode.");
     fire(sim, "go to the bathroom", "g5");
@@ -5073,7 +5365,7 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     const first = fire(sim, "chess_won", "g1");
     expect(learned(first).map((e) => e.entry)).toEqual(["The Door Code"]);
     advance(sim, 30);
-    const dup = fire(sim, "chess won", "g1", null, "Tent tablet");
+    const dup = fire(sim, "chess won", "g1", null, "Terminal · Server Door");
     expect(learned(dup)).toEqual([]);
     expect(cues(dup)).toEqual([]);
     expect(casts(dup).map((b) => b.cue.replace(/^"|"$/gu, ""))).toEqual(["♟ Calculator already has the door code: nothing changed."]);

@@ -7,6 +7,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   CODE,
+  POSITION_WORDS,
+  clueText,
   FACTS_FILE,
   SHOW_MIN_TRUTHS,
   SHOW_QUESTION_LAYOUT,
@@ -497,10 +499,68 @@ describe("showFactsProblems — the server-room door (wave 7)", () => {
     expect(showFactsProblems({ ...showFixture(), door: door({ codex: { id: "Doc 1", title: "D", text: "1997" } }) } as FactsFile)).toEqual(['door: codex id "Doc 1" is also used by question H1']);
     expect(showFactsProblems({ ...showFixture(), door: door({ codex: { id: "", title: "D", text: "1997" } }) } as FactsFile)).toEqual(["door.codex.id is missing"]);
   });
+  const clue = (i: number, over: Record<string, unknown> = {}) => ({
+    id: `Digit ${["One", "Two", "Three", "Four"][i]}`,
+    title: `Cold Door · the ${POSITION_WORDS[i]} digit`,
+    code: `NOTE-${["ONE", "TWO", "THREE", "FOUR"][i]}`,
+    where: "the kitchen",
+    text: `The ${POSITION_WORDS[i]} digit is {digit}.`,
+    ...over,
+  });
+  const clues = () => [0, 1, 2, 3].map((i) => clue(i));
+  it("digit clues (wave 11): one per digit, each a well-formed note", () => {
+    expect(showFactsProblems({ ...showFixture(), door: door({ clues: clues() }) } as FactsFile)).toEqual([]);
+    expect(showFactsProblems({ ...showFixture(), door: door({ clues: clues().slice(0, 3) }) } as FactsFile)).toEqual(["door.clues: need one per digit of the code (4, got 3)"]);
+    expect(showFactsProblems({ ...showFixture(), door: door({ clues: "1997" }) } as FactsFile)).toEqual(["door.clues must be an array"]);
+  });
+  it("digit clues: nothing printed or read aloud holds a digit; the text names its position and carries {digit} once", () => {
+    const withClue = (i: number, over: Record<string, unknown>) => {
+      const cs: unknown[] = clues();
+      cs[i] = clue(i, over);
+      return showFactsProblems({ ...showFixture(), door: door({ clues: cs }) } as FactsFile);
+    };
+    expect(withClue(0, { title: "Cold Door 1/4" })).toEqual(['door.clues[0].title must not contain a digit (write the position in words): "Cold Door 1/4"']);
+    expect(withClue(1, { id: "Digit 2" })).toEqual(['door.clues[1].id must not contain a digit (write the position in words): "Digit 2"']);
+    expect(withClue(2, { code: "NOTE-3" })).toEqual(['door.clues[2].code must not contain a digit (write the position in words): "NOTE-3"']);
+    expect(withClue(3, { where: "bedroom 2" })).toEqual(['door.clues[3].where must not contain a digit (write the position in words): "bedroom 2"']);
+    expect(withClue(0, { text: "The first digit is 1." })).toEqual(["door.clues[0].text must carry {digit} exactly once (got 0)", "door.clues[0].text must not contain a digit but its own {digit}"]);
+    expect(withClue(0, { text: "The first digit is {digit}, then {digit}." })).toEqual(["door.clues[0].text must carry {digit} exactly once (got 2)"]);
+    expect(withClue(0, { text: "The first digit is {digit}; the code has 4." })).toEqual(["door.clues[0].text must not contain a digit but its own {digit}"]);
+    expect(withClue(1, { text: "The first digit is {digit}." })).toEqual(['door.clues[1].text must name its position ("second")']);
+    expect(withClue(0, { text: 'The first digit is "{digit}".' })).toEqual(['door.clues[0].text must not contain " { } or | (but its {digit})']);
+    expect(withClue(0, { where: "" })).toEqual(["door.clues[0].where is missing"]);
+  });
+  it("digit clues: codes and ids are nobody else's, and never each other's", () => {
+    const withClue = (i: number, over: Record<string, unknown>) => {
+      const cs: unknown[] = clues();
+      cs[i] = clue(i, over);
+      return showFactsProblems({ ...showFixture(), door: door({ clues: cs }) } as FactsFile);
+    };
+    const fx = showFixture();
+    const taken = fx.facts[0]!.codex!;
+    expect(withClue(0, { code: taken.code })).toEqual([`door.clues[0]: code ${JSON.stringify(taken.code)} is also used by fact M01`]);
+    expect(withClue(1, { code: "note one" })).toEqual(['door.clues[1]: code "note one" must match ' + CODE.source, 'door.clues[1]: code "note one" is used twice']);
+    expect(withClue(0, { id: taken.id })).toEqual([`door.clues[0]: codex id ${JSON.stringify(taken.id)} is also used by fact M01`]);
+    expect(withClue(0, { id: "The Door Code" })).toEqual(['door.clues[0]: codex id "The Door Code" is used twice']);
+    expect(withClue(1, { id: "Digit One" })).toEqual(['door.clues[1]: codex id "Digit One" is used twice']);
+  });
+  it("clueText fills the digit in", () => {
+    expect(clueText(clue(2), "9")).toBe("The third digit is 9.");
+  });
   it("the show's door: 1997 (the year he met Sandy, never a hunt answer), on its sign never", () => {
     const d = parseFactsText(readFileSync(join(scenarioDir(SHOW), FACTS_FILE), "utf8")).facts!.door!;
     expect(d.code).toBe("1997");
-    expect(d.clue).toBe("FOUR DIGITS. THE DOOR REMEMBERS THE YEAR HE MET HER.");
+    // Wave 11: the sign points at the four notes and the King's terminal;
+    // it no longer asks for the year.
+    expect(d.clue).toBe("FOUR DIGITS. FOUR NOTES ARE HIDDEN IN THE HOUSE, ONE DIGIT ON EACH. OR BEAT THE KING AT THE TERMINAL BY THIS DOOR.");
+    expect(d.clue).not.toMatch(/year|met her/iu);
+    expect(d.clues).toHaveLength(4);
+    d.clues!.forEach((c, i) => {
+      expect(clueText(c, d.code[i]!), c.id).toContain(`${POSITION_WORDS[i]!.toUpperCase()} DIGIT IS ${d.code[i]}`);
+      expect(c.where, c.id).not.toMatch(/server room/iu);
+    });
+    // Four different rooms (the LOCATION before the parenthesis).
+    expect(new Set(d.clues!.map((c) => c.where.split(" (")[0])).size).toBe(4);
     const qs = parseFactsText(readFileSync(join(scenarioDir(SHOW), FACTS_FILE), "utf8")).facts!.questions;
     for (const q of qs) for (const a of [q.answer, ...q.accept]) expect(a, q.id).not.toContain(d.code);
   });

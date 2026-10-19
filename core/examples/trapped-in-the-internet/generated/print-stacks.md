@@ -107,10 +107,25 @@ Stack: deepest — tucked in the back pages, volumes N–Z and the atlas
 | C23 | red | `INFINITE-GOLD` | Infinite Gold | deepest — tucked in the back pages, volumes N–Z and the atlas | Runescape regards central banks and Jagex's Infinite Gold as the same exploit; a secret is just an asset nobody has priced yet |
 | C24 | red | `ECONOMIC-DEVELOPMENT` | Minister Of Economic Development | deepest — tucked in the back pages, volumes N–Z and the atlas | Runescape holds the Truthcoin reserve tonight: she can add Truthcoin to any account and freeze any program's coin for ten minutes |
 
+## Silver — the cold door's digits
+
+One note per digit of the door code, four in all. Hide each one where its
+row says, never in the server room. The poster prints the title and the
+code; the digit is only in the Codex once scanned, and is never printed
+here. Scannable all night: all of them in one program's Codex assemble
+the door code.
+
+| Digit | Colour | Code | Title | Where in the house | What it is |
+|---|---|---|---|---|---|
+| first | silver | `FOGGED-KETTLE` | The Cold Door · the first digit | The Start Bar (kitchen): wedged behind the kettle | the first digit of the door code (of four) |
+| second | silver | `FROSTED-MIRROR` | The Cold Door · the second digit | The Graphics Card (bedroom two): taped to the back of the mirror | the second digit of the door code (of four) |
+| third | silver | `WARM-LINT` | The Cold Door · the third digit | The Fan Closet (laundry): in the dryer's lint-filter slot | the third digit of the door code (of four) |
+| fourth | silver | `LOST-PIECE` | The Cold Door · the fourth digit | The Steam Room (game room): inside the lid of a board-game box | the fourth digit of the door code (of four) |
+
 ## The cold door — the keypad sign
 
 Print this and tape it beside the server-room keypad. Never print the code
-itself: it reaches a program only through their Codex (a chess win from the
-Y2K hour, or the majority's Truther Download).
+itself: it reaches a program only through their Codex (a checkmate at the
+door terminal, every digit note, or the majority's Truther Download).
 
-> FOUR DIGITS. THE DOOR REMEMBERS THE YEAR HE MET HER.
+> FOUR DIGITS. FOUR NOTES ARE HIDDEN IN THE HOUSE, ONE DIGIT ON EACH. OR BEAT THE KING AT THE TERMINAL BY THIS DOOR.

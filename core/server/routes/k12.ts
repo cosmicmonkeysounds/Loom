@@ -32,11 +32,14 @@ export interface CheckinSign {
 
 /** Which printed pile a codex poster goes in (`facts.json`). */
 export interface CodexStack {
-  /** `gold` (a hunt answer) or the category's `colour` (green / blue / red). */
+  /** `gold` (a hunt answer), `silver` (one of the door's digit notes) or
+   *  the category's `colour` (green / blue / red). */
   colour: string;
-  /** The pile: `hunt answers`, or the category's `stack` (where it hides). */
+  /** The pile: `hunt answers`, `the cold door's digits`, or the
+   *  category's `stack` (where it hides). */
   stack: string;
-  /** This document's own hiding place (a hunt answer's `where`), or
+  /** This document's own hiding place (a hunt answer's or a digit note's
+   *  `where`), or
    *  `already placed` for a hand-written entry; null = the stack says it. */
   where: string | null;
 }
@@ -53,6 +56,11 @@ export interface PrintExtras {
 
 /** The hunt answers' colour (matches `titi-facts.ts`'s `huntColour`). */
 export const HUNT_COLOUR = "gold";
+
+/** The door's digit notes (`door.clues`): their own pile, one room each
+ *  (matches `titi-facts.ts`'s `clueColour` / `clueStack`). */
+export const CLUE_COLOUR = "silver";
+export const CLUE_STACK = "the cold door's digits";
 
 /** `The Server Room` → `the-server-room` (folds back via `foldName`). */
 export function checkinSlug(name: string): string {
@@ -86,7 +94,8 @@ export function checkinSigns(model: Pick<SimModel, "locations">, base: string, e
 }
 
 /** Every codex entry the facts file places: a hunt question's document
- *  (gold, its own `where`), a generated fact (its category's colour + stack)
+ *  (gold, its own `where`), a door digit note (silver, its own pile and
+ *  `where`), a generated fact (its category's colour + stack)
  *  and a hand-written `existing` entry (the colour, `already placed`). The
  *  first claim wins — two facts may name one hand-written entry. */
 export function codexStacks(facts: FactsFile | null): Record<string, CodexStack> {
@@ -96,6 +105,7 @@ export function codexStacks(facts: FactsFile | null): Record<string, CodexStack>
     if (!Object.hasOwn(out, id)) out[id] = s;
   };
   for (const q of facts.questions) if (q.codex) claim(q.codex.id, { colour: HUNT_COLOUR, stack: "hunt answers", where: q.where ?? null });
+  for (const c of facts.door?.clues ?? []) claim(c.id, { colour: CLUE_COLOUR, stack: CLUE_STACK, where: c.where });
   for (const f of facts.facts) {
     const cat = facts.categories?.[f.category];
     if (cat === undefined) continue;
