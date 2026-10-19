@@ -119,8 +119,10 @@ chess. It is awake all night.
 2. You play White: tap a piece, then the square it goes to. A pawn that
    reaches the far side becomes a queen. **GIVE UP** takes two taps.
 3. **Checkmate him** and the server-room door code goes to your
-   Codex: *Checkmate. The door code is in your phone's Codex.* A loss
-   or a draw wins nothing — scan your pass to play him again.
+   Codex: *Checkmate. The door code is in your phone's Codex.* Already
+   have the code? It says the same, and your phone tells you it is
+   already in your Codex. A loss or a draw wins nothing — scan your
+   pass to play him again.
 
 There are **no hints**. The screen shows his **health bar** — the same
 bar as in [the simulation](reinstallation.md), shared by everyone: the

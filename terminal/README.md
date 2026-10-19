@@ -267,7 +267,11 @@ https://<server>/terminal/?code=<mod passcode>&name=Server Door&spot=server-room
   *Checkmate. The door code is in your phone's Codex.* only once the win
   landed while `armed` and the story took it (a 200 with `refused: true`
   — a win after truth.txt or an ending — says *Checkmate. No prize now.*);
-  a win that never landed says to tell a host (♟).
+  a win that never landed says to tell a host (♟). A program that already
+  holds *The Door Code* (an earlier win, the four digit notes, the
+  majority) reads the same Codex line: the story takes the press and
+  their phone says *♟ Checkmate again. You already hold the door code: it
+  is in your Codex.*
   It stays ~10 s after the post settles, then attract.
 - Layered like a room terminal: overlays only (they cover the board and
   hold the game), never a story slide, the countdown corner or the Y2K
