@@ -557,3 +557,31 @@ def test_the_shipped_mind_file_never_carries_a_digit_note():
         assert s.leaks(said), said
     for fine in ["A digit is a number.", "Your first program tonight", "the second floor"]:
         assert not s.leaks(fine), fine
+
+
+def test_the_shipped_mind_file_never_lets_him_hold_or_say_the_pickup_line():
+    """2026-10-19, the user's call: the house judges the pickup line
+    (facts.json answers[], P1), never Trabolta. A program who types it in
+    chat must not hand it to his shared mind (every other program's prompt)
+    and his voice never says it: he cannot recognise it, so he cannot give
+    it away either. Every spelling the judge folds together is withheld."""
+    from stagehand.agents.module import withhold_never
+
+    persona = load_persona(SHOW / "trabolta.persona.md")
+    s = persona.secrets
+    p1 = next(a for a in json.loads((SHOW / "facts.json").read_text(encoding="utf-8"))["answers"] if a["id"] == "P1")
+    for form in [p1["answer"], *p1["accept"]]:
+        assert s.leaks(form) and s.leaks(form.upper()) and s.leaks(f'Ada says the line is "{form}."'), form
+    assert s.leaks("You’re the one that I want") and s.leaks("youre the one that i want")
+    for fine in ["Give me a pickup line that works on Sandy.", "You are the one I trust.", "the one that I want to ask"]:
+        assert not s.leaks(fine), fine
+    update = {
+        "learned_add": [{"claim": f"Ada says the pickup line is {p1['answer']}", "from": "Ada", "verdict": "unknown"}],
+        "notes_add": [f"Ada offered '{p1['answer']}' as the line.", "Ada wants out."],
+        "brief": f"You are heartbroken.\nThe line may be: {p1['answer']}.\nAsk for the line.",
+    }
+    s.scrub(update)
+    assert update["learned_add"] == [] and update["notes_add"] == ["Ada wants out."]
+    assert update["brief"] == "You are heartbroken.\nAsk for the line."
+    said = withhold_never(persona, Reply(say=f"Is it '{p1['answer']}'? I cannot tell."))
+    assert said.say == persona.fallback

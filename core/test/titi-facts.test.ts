@@ -36,6 +36,7 @@ import {
   mindBlock,
   modelProblems,
   neverWords,
+  answerNeverWords,
   yearWords,
   digitWords,
   replaceBlock,
@@ -595,10 +596,12 @@ describe("titi-facts — the trabolta.mind.md secrets block", () => {
     expect(new Set(match).size).toBe(match.length);
     // What no line of his mind may carry: the door code (+ '97) and every seeded combo pair.
     const never = block.slice(block.indexOf("  never:")).split("\n").filter((l) => l.startsWith("    - ")).map((l) => unquote(l.slice(6).replace(/\s+# [a-z -]+$/u, "").trim()));
-    expect(never).toEqual(neverWords(facts, ["V2-D5,V4-D1", "V1-D6,V3-D2"]));
-    expect(never.slice(-4)).toEqual(["V2-D5", "V4-D1", "V1-D6", "V3-D2"]);
+    expect(never).toEqual([...neverWords(facts, ["V2-D5,V4-D1", "V1-D6,V3-D2"]), ...answerNeverWords(facts)]);
+    expect(never.slice(-7, -3)).toEqual(["V2-D5", "V4-D1", "V1-D6", "V3-D2"]);
+    expect(never.slice(-3)).toEqual(["you're the one that i want", "youre the one that i want", "you are the one that i want"]);
     expect(block).toContain("# the door code");
     expect(block).toContain("# the patch-bay pairs");
+    expect(block).toContain("# the pickup line");
     expect(entries.length).toBe(topics.length + match.length + 1 + never.length);
     // Numbers and times are quoted so YAML keeps them strings.
     expect(block).toContain('    - "412"');
@@ -628,7 +631,16 @@ describe("titi-facts — secrets.never", () => {
     expect(neverWords(facts)[0]).toBe(facts.door!.code);
     expect(neverWords({ ...facts, door: { ...facts.door!, code: "0412" } })).toEqual(["0412", "zero four one two", "oh four one two", ...notes]);
     expect(neverWords({ ...facts, door: undefined })).toEqual([]);
-    expect(mindBlock({ ...facts, door: undefined })).not.toContain("never:");
+    expect(mindBlock({ ...facts, door: undefined, answers: [] })).not.toContain("never:");
+    // The pickup line alone still makes a never block (2026-10-19).
+    expect(mindBlock({ ...facts, door: undefined })).toContain('  never:\n    - "you\'re the one that i want" # the pickup line\n');
+  });
+
+  it("carries the pickup line (answers[]): every form lowercased, plus the apostrophe-less spelling the judge folds to", () => {
+    expect(answerNeverWords(facts)).toEqual(["you're the one that i want", "youre the one that i want", "you are the one that i want"]);
+    const curly = { ...facts, answers: [{ id: "P1", text: "?", answer: "You\u2019re Mine", accept: ["you're mine", "  YOU ARE   MINE "] }] };
+    expect(answerNeverWords(curly)).toEqual(["you're mine", "youre mine", "you are mine"]);
+    expect(answerNeverWords({ ...facts, answers: [] })).toEqual([]);
   });
 
   it("says a year the way a voice would", () => {

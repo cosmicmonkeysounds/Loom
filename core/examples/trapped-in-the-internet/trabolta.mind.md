@@ -43,7 +43,9 @@ drives:
 #   never  — the keypad code (+ the ways it is said: spelled digit by digit,
 #            or as a year when it is one) and every patch-bay pair
 #            the story seeds (`set Kernel.combo_*`; matched either way round,
-#            D5 to V2, and a code with separators): no update item, line or
+#            D5 to V2, and a code with separators), and the pickup line
+#            (facts.json answers[], P1: the house judges it, he never
+#            recognises it, 2026-10-19): no update item, line or
 #            field carrying one is ever written into his mind (every
 #            conversation reads it), and a voice line carrying one is never
 #            said (the persona's fallback instead). Never shown to a model.
@@ -135,6 +137,9 @@ secrets:
     - "V3-D2"
     - "V5-D7"
     - "V8-D4"
+    - "you're the one that i want" # the pickup line
+    - "youre the one that i want"
+    - "you are the one that i want"
 # </titi-facts:secrets>
 phases:
   arrivals: >-
