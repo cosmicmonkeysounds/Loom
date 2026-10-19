@@ -587,3 +587,8 @@ def test_the_shipped_secrets_never_reach_already_said_from_elsewhere(field):
         assert show.secrets.answer_hits(p3) == ()
     else:
         assert "To them:" in p3  # his own lines to this person are theirs already
+
+
+def test_already_said_to_them_never_carries_a_never_word():
+    p3 = render_p3(P, request(), context(said=Said(to_them=("It was XYZZY-PLUGH.", "Speak, program."))))
+    assert "XYZZY" not in p3 and "- Speak, program." in p3
