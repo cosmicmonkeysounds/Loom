@@ -203,6 +203,12 @@ def test_a_sentence_that_invents_a_fact_is_cut():
     assert invents_fact(s, "Here is a fact: the Antivirus log every scan.")
     assert invents_fact(s, "I will retrieve that fact for you.")
     assert invents_fact(s, "If you pay 5 Truthcoin, I will provide a fact you seek.")
+    # Says where a fact, or the books that hold them, is: a named place.
+    assert invents_fact(s, "The books with the facts are in the Optical Drive, tucked behind the rack.")
+    assert invents_fact(s, "Yes, there is a fact tucked away in the Start Bar.")
+    assert not invents_fact(s, "The facts are hidden around the house.")
+    assert not invents_fact(s, "I collect facts that appear in the house's books and print media.")
+    assert not invents_fact(s, "Is the fact in the Desktop?")
     # Asking, wanting, thanking and paying are his job.
     assert not invents_fact(s, "What is the lighthouse keeper called?")
     assert not invents_fact(s, "I need the title of the snow globe. Please find it.")

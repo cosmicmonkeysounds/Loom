@@ -201,12 +201,21 @@ _OFFERS = re.compile(
 )
 
 
+#: He says where a fact (or the books that hold them) is: a named place
+#: ("… are in the Optical Drive", "a fact tucked away in the Start Bar").
+_PLACES = re.compile(
+    r"\b(?i:facts?|books?)\b[^.?!]{0,40}\b(?i:are|is|lie|lies|sit|sits|hidden|tucked|kept|stored|waits?|awaits?)\b[^.?!]{0,30}\b(?i:in|on|under|behind|inside|at)\s+(?:(?i:the)\s+)?[A-Z]"
+)
+
+
 def invents_fact(secrets: Secrets, sentence: str) -> bool:
     """One sentence that gives a fact he cannot have: hands one over, offers
-    to fetch or sell one, or states the answer to a hunt topic (not as a
-    question)."""
+    to fetch or sell one, says where one is, or states the answer to a hunt
+    topic (not as a question)."""
     text = sentence.replace("’", "'")
     if _GIVES.search(text) or _OFFERS.search(text):
+        return True
+    if not text.rstrip().endswith("?") and _PLACES.search(text):
         return True
     return not text.rstrip().endswith("?") and secrets.names_topic(text) and _ASSERTS.search(text) is not None
 
