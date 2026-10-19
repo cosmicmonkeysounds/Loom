@@ -417,15 +417,17 @@ class Agents:
             wire_of(self).flush_now(thought)  # a director is watching: no window
         if self.cfg.dry_run or self.mod is None:
             return
+        wire = wire_of(self)
         try:
-            await self.mod.post("/api/agent/trace", {"worker": self.worker or self.cfg.name, "thoughts": [self.trace.server_copy(thought)]})
+            answer = await self.mod.post("/api/agent/trace", {"worker": self.worker or self.cfg.name, "thoughts": [self.trace.server_copy(thought)]})
         except Exception as err:  # noqa: BLE001 — a refusal, a refused connection, a timeout: all alike
             # The server may hold none of our full copies (it is down, or came
-            # back empty): the next thought for every character goes whole.
-            self.trace.restart_prefixes()
+            # back empty): every next thought goes whole, the next hello replays all.
+            wire.lost(self)
             log.warning("could not send %s's thought %s: %s", thought.character, thought.id, err)
             return
         self.trace.delivered(thought.id)
+        wire.trace_posted(self, answer)
 
     async def _push_history(self) -> None:
         """On (re)connect: hand the server the mind and the recent trace, so
@@ -442,10 +444,12 @@ class Agents:
             recent = replay_thoughts(self.trace, name, after)
             for start in range(0, len(recent), REPLAY_BATCH):
                 try:
-                    await self.mod.post("/api/agent/trace", {"worker": self.worker or self.cfg.name, "thoughts": recent[start : start + REPLAY_BATCH]})
-                except ModApiError as err:
+                    answer = await self.mod.post("/api/agent/trace", {"worker": self.worker or self.cfg.name, "thoughts": recent[start : start + REPLAY_BATCH]})
+                except Exception as err:  # noqa: BLE001 — the stream must survive a failed replay
+                    wire.lost(self)  # the next hello tries the whole replay again
                     log.warning("could not replay %s's trace: %s", name, err)
                     break
+                wire.trace_posted(self, answer, replay=True)
 
     async def reset_minds(self, by: str = "server", reason: str = "restart") -> None:
         self.orchestrator.drop_all()
@@ -600,10 +604,11 @@ class Agents:
             log.info("agents online as %r for %s", self.cfg.name, ", ".join(hello.get("characters", [])))
             for name in hello.get("unknown", []):
                 log.warning("%s is not marked `mind: external` in the running story — nobody will ask for it", name)
-            from .wire import trace_after_of, wire_of
+            from .wire import wire_of
 
-            wire_of(self).trace_after = trace_after_of(hello)  # replay only what the server lacks
-            self.trace.restart_prefixes()  # the next thought carries its full prefix again
+            # Replay only what the server lacks (all, after a failure), and the
+            # next thought carries its full prefix again.
+            wire_of(self).hello(self, hello)
             await self._push_history()
             if self.cfg.orchestrator.enabled:
                 for name in self.minds:

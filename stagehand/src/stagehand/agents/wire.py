@@ -21,6 +21,14 @@ and trace reach the disk and the server without flooding either.
   server doesn't say), in batches of at most `REPLAY_BATCH`. A thought
   stored as `[same prefix as th-…]` whose full copy the server can't hold
   is sent with its full prefix, and later ones in the batch refer to it.
+- **A `traceAfter` the worker can't trust.** A server that restarted and
+  took a live post before the stream's next `hello` (a reflect, a survey, a
+  reply in flight) reports that one thought's stamp, and a replay after it
+  would send nothing. So once a post fails (trace or mirror, any error) or a
+  live post's answer shows the server's trace log came back empty (its
+  `seq` went down, or equals what that post added), the wire is *suspect*:
+  the prefixes restart, and the next `hello` replays the last 40 whatever
+  `traceAfter` says (the server drops ids it already holds).
 
 `module.py` reaches this through `wire_of(agents)` (created lazily, so the
 worker's constructor is untouched); nothing here imports `module.py`.
@@ -211,8 +219,48 @@ class Wire:
         self._mirror_now: set[str] = set()
         #: The `hello` frame's `traceAfter`, for the replay that follows it.
         self.trace_after: dict[str, float] | None = None
+        #: A post failed or the server's trace came back empty since the last
+        #: `hello`: the next replay ignores `traceAfter`.
+        self.suspect = False
+        #: The server trace log's `seq` after the last post it answered.
+        self.last_seq: int | None = None
         self.posted = 0
         self.skipped = 0
+
+    # -- the trace's link to the server ------------------------------------------
+
+    def hello(self, agents: Any, frame: Any) -> None:
+        """A (re)connect: keep the frame's `traceAfter` unless a failure since
+        the last `hello` makes it suspect, and restart the prefixes."""
+        self.trace_after = None if self.suspect else trace_after_of(frame)
+        if self.suspect:
+            log.info("replaying the whole recent trace: a post failed or the server's trace restarted since the last hello")
+        self.suspect = False
+        self.last_seq = None
+        agents.trace.restart_prefixes()
+
+    def lost(self, agents: Any) -> None:
+        """A post failed (the server may be down, or back with nothing): the
+        next thought goes whole and the next replay sends everything."""
+        agents.trace.restart_prefixes()
+        self.suspect = True
+
+    def trace_posted(self, agents: Any, answer: Any, *, replay: bool = False) -> None:
+        """A trace POST's answer `{accepted, seq}`. A live post into an empty
+        log (`seq <= accepted`) or a `seq` lower than the last one means the
+        server's trace restarted under this connection. A replay only sets
+        the baseline (a fresh server is what it is for)."""
+        seq = answer.get("seq") if isinstance(answer, dict) else None
+        if not isinstance(seq, int) or isinstance(seq, bool):
+            return
+        accepted = answer.get("accepted")
+        if not replay:
+            fresh = isinstance(accepted, int) and not isinstance(accepted, bool) and 0 < accepted and seq <= accepted
+            if fresh or (self.last_seq is not None and seq < self.last_seq):
+                if not self.suspect:
+                    log.info("the server's trace log is new since the last hello: the next replay sends everything")
+                self.lost(agents)
+        self.last_seq = seq
 
     # -- saves --------------------------------------------------------------------
 
@@ -268,11 +316,9 @@ class Wire:
             return
         try:
             await agents.mod.post("/api/agent/mind", report)
-        except ModApiError as err:
-            log.warning("could not mirror %s's mind: %s", character, err)
-            return
         except Exception as err:  # noqa: BLE001 — a mirror must never break the worker
             log.warning("could not mirror %s's mind: %s", character, err)
+            self.lost(agents)
             return
         self._hashes[character] = digest
         self.posted += 1

@@ -635,3 +635,131 @@ def test_the_new_kinds_are_recorded_and_streamed(tmp_path, kind):
     agents = worker(tmp_path)
     run(agents.trace.record(new_thought("Trabolta", kind, trigger="quiet" if kind == "summary" else "Jo")))
     assert [t["kind"] for b in agents.mod.of("/api/agent/trace") for t in b["thoughts"]] == [kind]
+
+
+# -- a traceAfter the worker can't trust -------------------------------------------------------
+
+
+class SeqMod(FakeMod):
+    """Answers trace posts as the server does: `{accepted, seq}` off a log
+    that `restart()` empties (a server restart under the stream)."""
+
+    def __init__(self, seq=0):
+        super().__init__()
+        self.seq = seq
+        self.ids = set()
+        self.raise_on = None
+
+    def restart(self):
+        self.seq, self.ids = 0, set()
+
+    async def post(self, p, body):
+        if self.raise_on is not None and p in self.raise_on:
+            raise httpx.ConnectError("refused")
+        await super().post(p, body)
+        if p != "/api/agent/trace":
+            return {"ok": True}
+        accepted = 0
+        for t in body["thoughts"]:
+            if t["id"] not in self.ids:
+                self.ids.add(t["id"])
+                self.seq += 1
+                accepted += 1
+        return {"ok": True, "accepted": accepted, "seq": self.seq}
+
+
+def _hello(after):
+    return json.dumps({"worker": "w", "characters": ["Trabolta"], "unknown": [], "traceAfter": {"Trabolta": after}})
+
+
+def _replayed(agents):
+    return [t["id"] for body in agents.mod.of("/api/agent/trace") for t in body["thoughts"]]
+
+
+def test_a_failed_post_since_the_last_hello_makes_the_next_replay_send_everything(tmp_path):
+    agents = worker(tmp_path)
+    agents.mod = SeqMod(seq=100)
+    older = _stamped(agents.trace, 5)
+    agents.mod.raise_on = {"/api/agent/trace"}
+    lost = _stamped(agents.trace, 1, start=2000.0)  # the server is down
+    agents.mod.raise_on = None
+    agents.mod.restart()
+    landed = _stamped(agents.trace, 1, start=3000.0)  # it is back, before the stream's hello
+    agents.mod.posts.clear()
+    run(agents.on_frame("hello", _hello(landed[0].at)))  # the fresh server holds only `landed`
+    assert _replayed(agents) == [t.id for t in older + lost + landed]
+
+
+def test_a_live_post_into_an_empty_server_log_makes_the_next_replay_send_everything(tmp_path):
+    agents = worker(tmp_path)
+    agents.mod = SeqMod(seq=100)
+    run(agents.on_frame("hello", _hello(0)))  # a server with the night so far
+    older = _stamped(agents.trace, 4)
+    assert not wire_of(agents).suspect
+    agents.mod.restart()  # restarted under the stream, no post failed
+    landed = _stamped(agents.trace, 1, start=3000.0)
+    assert wire_of(agents).suspect
+    agents.mod.posts.clear()
+    run(agents.on_frame("hello", _hello(landed[0].at)))
+    assert _replayed(agents) == [t.id for t in older + landed]
+
+
+def test_a_seq_that_goes_down_is_a_restart_too(tmp_path):
+    agents = worker(tmp_path)
+    agents.mod = SeqMod(seq=500)
+    run(agents.on_frame("hello", _hello(0)))
+    _stamped(agents.trace, 2)
+    agents.mod.restart()
+    agents.mod.seq = 7  # another worker's replay reached the fresh log first
+    _stamped(agents.trace, 1, start=3000.0)
+    assert wire_of(agents).suspect
+
+
+def test_a_healthy_server_keeps_the_replay_after_trace_after(tmp_path):
+    agents = worker(tmp_path)
+    agents.mod = SeqMod(seq=0)
+    first = _stamped(agents.trace, 3)  # the night's first thoughts into an empty log: a cheap false alarm
+    run(agents.on_frame("hello", _hello(first[-1].at)))  # …so this replay sends everything (ids it holds are dropped)
+    assert not wire_of(agents).suspect
+    more = _stamped(agents.trace, 3, start=2000.0)
+    assert not wire_of(agents).suspect  # seq > accepted, rising: nothing restarted
+    agents.mod.posts.clear()
+    run(agents.on_frame("hello", _hello(more[0].at)))
+    assert _replayed(agents) == [t.id for t in more[1:]]
+
+
+def test_a_replay_into_a_fresh_server_is_not_a_restart(tmp_path):
+    agents = worker(tmp_path)
+    thoughts = _stamped(agents.trace, 3)
+    agents.mod = SeqMod(seq=0)
+    run(agents.on_frame("hello", _hello(0)))
+    assert _replayed(agents) == [t.id for t in thoughts] and not wire_of(agents).suspect
+    assert wire_of(agents).last_seq == 3
+
+
+def test_a_failed_mirror_makes_the_wire_suspect_and_the_next_thought_whole(tmp_path):
+    agents = worker(tmp_path)
+    agents.mod = SeqMod(seq=50)
+    run(agents.trace.record(voice()))
+    agents.mod.raise_on = {"/api/agent/mind"}
+    agents.minds["Trabolta"].exchanges += 1
+    run(agents._mirror("Trabolta"))
+    assert wire_of(agents).suspect
+    agents.mod.raise_on = None
+    agents.mod.posts.clear()
+    run(agents.trace.record(voice()))
+    assert agents.mod.of("/api/agent/trace")[0]["thoughts"][0]["messages"][0]["content"] == STATIC
+
+
+def test_a_replay_that_cannot_connect_never_breaks_the_stream_and_is_tried_again(tmp_path):
+    agents = worker(tmp_path)
+    agents.mod = SeqMod(seq=0)
+    thoughts = _stamped(agents.trace, 3)
+    agents.mod.raise_on = {"/api/agent/trace"}
+    run(agents.on_frame("hello", _hello(thoughts[-1].at)))  # nothing raised out of the frame
+    agents.mod.raise_on = None
+    assert wire_of(agents).suspect
+    agents.mod.posts.clear()
+    run(agents.on_frame("hello", _hello(thoughts[-1].at)))
+    assert _replayed(agents) == [t.id for t in thoughts]
+    assert not wire_of(agents).suspect
