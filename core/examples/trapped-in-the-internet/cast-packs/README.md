@@ -98,7 +98,8 @@ addresses, codes, where things are kept).
   the second**. The nine featured programs are 🔒 Reserved: each invitee
   joins from the QR on their invitation (the featured sheets say so), and
   a lost one gets the director's 🔓 for two minutes. A mistyped right answer
-  on a 📝 card is a **near miss** a director judges (⚠ in `# hosts`).
+  on a 📝 card, or one said at length, is a **near miss** a director judges
+  (⚠ in `# hosts`); an abbreviation (*Mr. Pickles*) is simply accurate.
 - **Waves 8 and 9:** wave 8 shipped as `w8-1018`; wave 9 (2026-10-18) is
   merged and ships as `w9-1018`, and every pack is written to it: McAfee
   referees bets and holds no pot (a bet settles player to player, the

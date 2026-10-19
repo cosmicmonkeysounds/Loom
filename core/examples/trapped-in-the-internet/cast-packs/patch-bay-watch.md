@@ -3,7 +3,8 @@
 > **Holder:** the Antivirus stationed in the server room from the Y2K clock
 > (**inside, door shut, before 🕚**)
 > ([[EDIT: who — suggested CRA Agent Software, decided at the 10-25
-> read-through]]). **Keep this card face-down in your pocket.** It holds the
+> read-through]]; Norton, McAfee, Password Manager or CRA Agent Software,
+> **never Windows Defender**: only those four booths show 🔌 💥 ❌ 🚪 🔧). **Keep this card face-down in your pocket.** It holds the
 > two combinations, which no guest may see. It is only needed if the patch-bay
 > scanner fails on the bench (10-22) or flakes on the night (W-31, OP-13);
 > otherwise the bay judges itself and you just watch.
@@ -64,7 +65,9 @@ keypad, never on the radio).
 - **The door terminal** (outside, by the keypad). Programs scan their pass
   and play the King at chess: no hints, and how well he plays is his
   health in the simulation (the bar on the screen). A checkmate reports
-  itself and puts the door code in the winner's Codex. **Only if the
+  itself and puts the door code in the winner's Codex (a winner who
+  already holds it is told so, and the screen still says the code is in
+  their Codex; after 📄 it says *No prize now.*). **Only if the
   terminal could not** and you **saw** "checkmate" (OP-12): press **♟ They
   beat the machine** on the winner's card. Terminal dead → radio the
   director, who fires ♟ naming the winner.
