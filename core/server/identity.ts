@@ -22,6 +22,15 @@
 //! signed-in performer holds, is *taken* — the picker greys it out and
 //! the register / login routes refuse it — so two phones never share a
 //! program and two booths never share Clippy.
+//!
+//! A pool character marked `reserved: true` (a featured program, written
+//! for one invitee) is held for its invitation: `guest/register` takes it
+//! only with its **claim** — `claimToken(secret, name)`, an HMAC over the
+//! event's claim secret (pinned to the project like its codes, so it
+//! survives a restart and End → relaunch) and the folded name — or while a
+//! director has opened it for a few minutes (a lost invitation).
+
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 import type { SimModel } from "../src/runtime/sim/model.ts";
 import { foldName } from "../src/parser/names.ts";
@@ -43,6 +52,8 @@ export interface IdentityDef {
   avatars: string[];
   /** The Wikipedia article this character is (`wiki:`), if named. */
   wiki: string | null;
+  /** `reserved: true` — held for one invitee's claim (see the module doc). */
+  reserved: boolean;
 }
 
 /** Does this character have a part in the story? */
@@ -93,6 +104,7 @@ export function identityDefs(model: SimModel): IdentityDef[] {
     caste: c.faction !== null && model.factions.get(c.faction)?.joinable === false,
     avatars: c.avatar,
     wiki: c.wiki,
+    reserved: c.reserved,
   }));
 }
 
@@ -115,6 +127,9 @@ export interface IdentityRow {
   avatar: string | null;
   /** Someone already holds this name — greyed out, refused on sign-in. */
   claimed: boolean;
+  /** Held for an invitee and locked for this caller (no claim for it, no
+   *  director's open window) — shown 🔒, refused on register. */
+  reserved: boolean;
 }
 
 /** One picture a guest may choose for their program. */
@@ -126,16 +141,76 @@ export interface PictureChoice {
   file: string;
 }
 
-/** Why a guest may not register a name, or null when they may. */
-export function guestNameRefusal(model: SimModel, name: string, taken: ReadonlySet<string>): string | null {
+/** The refusal `guest/register` answers (409) for a reserved program
+ *  taken without its claim. */
+export const RESERVED = "reserved";
+
+/** The reserved program a name stands for: its own name, or its `wiki:`
+ *  article (a featured `VLC` is `wiki: VLC media player`, and a directory
+ *  search finds it by the article). Null when the name holds no reserved
+ *  program. */
+export function reservedDefFor(model: SimModel, name: string): IdentityDef | null {
+  const folded = foldName(name);
+  if (folded === "") return null;
+  const defs = identityDefs(model).filter((d) => d.reserved && guestPickable(d));
+  return defs.find((d) => foldName(d.name) === folded) ?? defs.find((d) => d.wiki !== null && foldName(d.wiki) === folded) ?? null;
+}
+
+/** Why a guest may not register a name, or null when they may. `mayClaim`
+ *  says whether this caller may take a `reserved: true` program (they hold
+ *  its claim, or a director opened it); without it a reserved program is
+ *  refused with `RESERVED`. */
+export function guestNameRefusal(model: SimModel, name: string, taken: ReadonlySet<string>, mayClaim: (character: string) => boolean = () => false): string | null {
   const folded = foldName(name);
   if (folded === "") return "pick a program";
   if (taken.has(folded)) return `${name} is already here tonight — pick another program`;
   const def = identityDefs(model).find((d) => foldName(d.name) === folded);
-  if (def === undefined) return null;
+  if (def === undefined) {
+    // The article name of a reserved program is held like the program.
+    const held = reservedDefFor(model, name);
+    return held !== null && !mayClaim(held.name) ? RESERVED : null;
+  }
   if (def.caste) return `${name} is ${def.faction} — programs can't be ${def.faction}`;
   if (def.kind === "special" || !def.playable) return `${name} is a part in the story — pick a program from the list`;
+  if (def.reserved && !mayClaim(def.name)) return RESERVED;
   return null;
+}
+
+/** Characters for the claim token: Crockford-style base32, lower case, no
+ *  i / l / o / u (nothing to misread off a printed card). */
+const CLAIM_ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz";
+/** Claim token length: 10 × 5 bits. */
+const CLAIM_LENGTH = 10;
+
+/** The claim token for one reserved character: HMAC-SHA256 over the folded
+ *  name keyed by the event's claim secret, first 50 bits in base32. The
+ *  same secret and name always give the same token. */
+export function claimToken(secret: string, character: string): string {
+  const mac = createHmac("sha256", secret).update(`claim:${foldName(character)}`).digest();
+  let bits = 0;
+  let acc = 0;
+  let out = "";
+  for (const byte of mac) {
+    acc = (acc << 8) | byte;
+    bits += 8;
+    while (bits >= 5 && out.length < CLAIM_LENGTH) {
+      bits -= 5;
+      out += CLAIM_ALPHABET[(acc >> bits) & 31];
+    }
+    if (out.length === CLAIM_LENGTH) break;
+    acc &= (1 << bits) - 1;
+  }
+  return out;
+}
+
+/** Does `claim` (as typed or scanned: case and spaces ignored) unlock this
+ *  character? Constant-time on the token. */
+export function claimMatches(secret: string, character: string, claim: string | null | undefined): boolean {
+  if (typeof claim !== "string") return false;
+  const given = claim.toLowerCase().replace(/[\s-]+/gu, "");
+  const a = Buffer.from(given);
+  const b = Buffer.from(claimToken(secret, character));
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 /** Why a performer may not sign in as a character, or null when they may. */

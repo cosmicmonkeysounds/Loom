@@ -65,4 +65,26 @@ describe("loomcheck — wave 5 detectors", () => {
     expect(r.out).toMatch(/WARN .*\[character Oracle · when answer answered\] .*`when answer answered for who:`/);
     expect(r.out).toMatch(/2 error\(s\) · 3 warning\(s\)/);
   });
+
+  it("wave 11's keys (`reserved: true`, INTERACTION `arm:`, a `for guests` countdown) report nothing", () => {
+    const r = loomcheck(`# Lint
+start: Go
+countdown: Night.summons_end as Summons, for guests
+
+CHARACTER Microsoft Excel
+  reserved: true
+
+INTERACTION the summons
+  label: Summon
+  who: admin
+  arm: true
+
+== Go
+set Night.summons_end = 100
+Hi.
+`);
+    expect(r.out).not.toMatch(/seeds NO value/);
+    expect(r.out).toMatch(/0 error\(s\) · 0 warning\(s\)/);
+    expect(r.status).toBe(0);
+  });
 });

@@ -28,11 +28,14 @@ import type { EventRegistry, EventSpec } from "./registry.ts";
 import type { AuthUser } from "./projects.ts";
 import { asMapFiles, mapFilesOf, type MapFiles, type ProjectLink } from "./house-maps.ts";
 import { FACTS_FILE, factsFileOf, factsOf } from "./facts.ts";
+import { mintClaimSecret } from "./routes/claims.ts";
 import {
   activeEvent,
   setEventSource,
+  setEventClaimSecret,
   createEvent,
   getProjectFor,
+  lastEventClaimSecret,
   lastEventCodes,
   lastEventMapVariant,
   listFiles,
@@ -64,6 +67,12 @@ export function specFromRow(row: EventRow): EventSpec {
     // `facts.ts`); an old row with no record at all leaves it to the runtime.
     ...(row.house_maps !== null && row.house_maps !== undefined ? { facts: factsOf(row.house_maps) } : {}),
     project: projectLink(row.project_id, row.id),
+    // W-03: the claim secret rides the row; one from before the column is
+    // minted by the runtime and written back here (never over a pinned one).
+    claimSecret: row.claim_secret ?? null,
+    onClaimSecret: (secret) => {
+      setEventClaimSecret(row.id, secret).catch((err: unknown) => console.warn(`[events] ${row.id}: keeping the claim secret failed: ${String(err)}`));
+    },
   };
 }
 
@@ -291,6 +300,10 @@ export async function handleEvent(
     // stays on the shed (a variant the project no longer has falls back to
     // house.json in the runtime).
     const mapVariant = await lastEventMapVariant(projectId);
+    // The reserved programs' claim secret is pinned to the project too: every
+    // printed invitation (`?claim=`) survives End → relaunch, whatever
+    // `rotate` does to the codes.
+    const claimSecret = (await lastEventClaimSecret(projectId)) ?? mintClaimSecret();
     const row = await insertWithCodes(
       previous,
       (codes) =>
@@ -307,6 +320,7 @@ export async function handleEvent(
           created_by_name: by,
           house_maps: maps,
           map_variant: mapVariant,
+          claim_secret: claimSecret,
         }),
       { rotate: parseRotation(body["rotate"]), warn: (m) => console.warn(`[events] project ${projectId}: ${m}`) },
     );

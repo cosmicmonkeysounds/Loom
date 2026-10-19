@@ -54,6 +54,11 @@ export interface EventSpec {
   facts?: string | null;
   /** The way back to the project ("Save to project"); absent → none. */
   project?: ProjectLink | null;
+  /** The reserved programs' claim secret the row pins (`event.claim_secret`);
+   *  absent / null → the state dir's, else minted (and `onClaimSecret`). */
+  claimSecret?: string | null;
+  /** Keep a secret the runtime had to mint (writes it back to the row). */
+  onClaimSecret?: (secret: string) => void;
 }
 
 export class EventRegistry {
@@ -119,6 +124,8 @@ export class EventRegistry {
       mapVariant: spec.mapVariant ?? null,
       ...(spec.facts !== undefined ? { facts: spec.facts } : {}),
       project: spec.project ?? null,
+      ...(spec.claimSecret !== undefined ? { claimSecret: spec.claimSecret } : {}),
+      ...(spec.onClaimSecret !== undefined ? { onClaimSecret: spec.onClaimSecret } : {}),
       joinBase: this.joinBase,
       wiki: this.wiki,
       ...(this.images !== null ? { images: this.images } : {}),

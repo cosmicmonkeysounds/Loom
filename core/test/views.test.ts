@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { Sim } from "../src/runtime/sim/index.ts";
-import { boardFor, guestView, modView, pressRefused, primeView, staffRoomIds, titleOf } from "../server/views.ts";
+import { boardFor, guestView, modView, pressRefused, primeView, staffRoomIds, titleOf, type InteractionSummary } from "../server/views.ts";
 import { scenarioSource } from "../examples/load.ts";
 import { heldCharacters } from "../server/identity.ts";
-import { cueSheetView } from "../src/cue-sheet.ts";
+import { cueSheetView, type CueInteraction } from "../src/cue-sheet.ts";
 
 const SCENARIO = scenarioSource("escape-the-internet");
 
@@ -717,5 +717,124 @@ Hello.
     const show = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
     expect([...staffRoomIds(show.model)].sort()).toEqual(["hosts", "quarantine"]);
     expect(modView(show, "open", "x").channels.filter((c) => c.staff === true).map((c) => c.id).sort()).toEqual(["room:hosts", "room:quarantine"]);
+  });
+});
+
+describe("wave 11 (lane server-a): guest countdowns, armed buttons, the roster's flags", () => {
+  const SRC = `# Night
+start: Doors
+countdown: Night.summons_end as Summons for guests
+countdown: Night.hunt_end as Hunt, while Night.phase == "hunt", for guests
+countdown: Night.y2k_end as Midnight
+countdown: Kernel.deadline as Lock, for guests
+
+CHARACTER Kernel
+  playable: false
+  secret: true
+
+CHARACTER Microsoft Excel
+  reserved: true
+
+CHARACTER Calculator
+
+INTERACTION confess
+  who: guest
+  arm: true
+
+INTERACTION wave
+  who: guest
+
+INTERACTION verdict
+  who: performer
+  arm: TRUE
+
+INTERACTION blackout
+  who: admin
+  arm: true
+
+== Doors
+Hello.
+`;
+
+  it("a guest sees only the `for guests` lines, never a secret head, only while live and ahead", () => {
+    const sim = Sim.fromSources(SRC);
+    sim.createPerson("g1", "Ada");
+    expect(guestView(sim, "g1")).not.toHaveProperty("countdowns");
+    sim.tick(100_000);
+    sim.setVar("Night.summons_end", "160");
+    sim.setVar("Night.hunt_end", "400");
+    sim.setVar("Night.y2k_end", "3700");
+    sim.setVar("Kernel.deadline", "4242");
+    expect(guestView(sim, "g1").countdowns).toEqual([{ label: "Summons", path: "Night.summons_end", endsAt: 160 }]);
+    sim.setVar("Night.phase", "hunt");
+    expect(guestView(sim, "g1").countdowns).toEqual([
+      { label: "Summons", path: "Night.summons_end", endsAt: 160 },
+      { label: "Hunt", path: "Night.hunt_end", endsAt: 400 },
+    ]);
+    // The director still sees every line (and still never the Kernel's).
+    expect(modView(sim, "open", "x").countdowns?.map((c) => c.label)).toEqual(["Summons", "Hunt", "Midnight"]);
+    const json = JSON.stringify(guestView(sim, "g1"));
+    expect(json).not.toContain("Midnight");
+    expect(json).not.toContain("4242");
+    sim.tick(60_000); // the summons deadline is now, not ahead
+    expect(guestView(sim, "g1").countdowns?.map((c) => c.label)).toEqual(["Hunt"]);
+  });
+
+  it("a story with no `for guests` line puts nothing on a guest", () => {
+    const sim = Sim.fromSources(SRC.replace(/, for guests|for guests/gu, ""));
+    sim.createPerson("g1", "Ada");
+    sim.tick(100_000);
+    sim.setVar("Night.summons_end", "160");
+    expect(guestView(sim, "g1")).not.toHaveProperty("countdowns");
+    expect(modView(sim, "open", "x").countdowns?.map((c) => c.label)).toEqual(["Summons"]);
+  });
+
+  it("`arm: true` rides every view that lists the button (and the lean cue sheet)", () => {
+    const sim = Sim.fromSources(SRC);
+    sim.createPerson("g1", "Ada");
+    const guest = guestView(sim, "g1").interactions;
+    expect(guest.find((i) => i.id === "confess")?.arm).toBe(true);
+    expect(guest.find((i) => i.id === "wave")).not.toHaveProperty("arm");
+    expect(primeView(sim, "Calculator").interactions.find((i) => i.id === "verdict")?.arm).toBe(true);
+    const mod = modView(sim, "open", "x");
+    expect(mod.interactions?.filter((i) => i.arm === true).map((i) => i.id)).toEqual(["confess", "verdict", "blackout"]);
+    expect(cueSheetView(mod).interactions.find((i) => i.id === "blackout")?.arm).toBe(true);
+    expect(sim.model.interactions.get("wave")!.arm).toBe(false);
+    // C5 types it `arm?: boolean` (only ever sent when true): a mirrored
+    // summary that carries `arm: false` must still type-check.
+    const off: InteractionSummary = { ...guest.find((i) => i.id === "wave")!, arm: false };
+    const cue: CueInteraction = { ...cueSheetView(mod).interactions[0]!, arm: false };
+    expect([off.arm, cue.arm]).toEqual([false, false]);
+  });
+
+  it("the roster marks gone guests and personas off the world; the cast marks reserved programs", () => {
+    const sim = Sim.fromSources(SRC);
+    sim.createPerson("g1", "Ada");
+    sim.createPerson("p-1", "Rehearsal");
+    sim.setVar("p-1.persona", "true");
+    expect(modView(sim, "open", "x").roster.map((r) => [r.id, r.gone ?? false, r.persona ?? false])).toEqual([
+      ["g1", false, false],
+      ["p-1", false, true],
+    ]);
+    sim.setVar("g1.gone", "true");
+    expect(modView(sim, "open", "x").roster.find((r) => r.id === "g1")?.gone).toBe(true);
+    sim.setVar("g1.gone", "false");
+    expect(modView(sim, "open", "x").roster.find((r) => r.id === "g1")).not.toHaveProperty("gone");
+    const cast = modView(sim, "open", "x", { guests: new Set(), primes: new Set(), mods: 0, directors: [], unlocks: new Map([["Microsoft Excel", 1234]]) }).cast;
+    expect(cast.find((c) => c.id === "Microsoft Excel")).toMatchObject({ reserved: true, unlockedUntil: 1234 });
+    expect(cast.find((c) => c.id === "Calculator")).not.toHaveProperty("reserved");
+    expect(sim.model.characters.get("Calculator")!.reserved).toBe(false);
+  });
+
+  it("`lastSeen` comes from presence; null when never heard from", () => {
+    const sim = Sim.fromSources(SRC);
+    sim.createPerson("g1", "Ada");
+    sim.createPerson("g2", "Bo");
+    const v = modView(sim, "open", "x", { guests: new Set(), primes: new Set(), mods: 0, directors: [], lastSeen: new Map([["g1", 99]]) });
+    expect(v.roster.map((r) => [r.id, r.lastSeen])).toEqual([
+      ["g1", 99],
+      ["g2", null],
+    ]);
+    expect(modView(sim, "open", "x").roster[0]).not.toHaveProperty("lastSeen");
   });
 });

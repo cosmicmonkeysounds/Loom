@@ -59,6 +59,31 @@ describe("parseBoardLine", () => {
     expect(parseBoardLine("MS Paint, Night.dance_at", { pathsOnly: true })?.items.map((i) => i.path)).toEqual(["Night.dance_at"]);
   });
 
+  it("a countdown's trailing `for guests` flags the line (after the items or the `while`)", () => {
+    const opts = { pathsOnly: true };
+    expect(parseBoardLine("Night.summons_end as Summons for guests", opts)).toEqual({
+      items: [{ label: "Summons", path: "Night.summons_end", name: null }],
+      while: null,
+      raw: "Night.summons_end as Summons for guests",
+      guests: true,
+    });
+    expect(parseBoardLine("Night.summons_end, for guests", opts)?.items[0]?.label).toBe("Summons end");
+    const tail = parseBoardLine('Night.hunt_end as Hunt, while Night.phase == "hunt", for guests', opts);
+    expect(tail).toMatchObject({ while: 'Night.phase == "hunt"', guests: true });
+    expect(tail?.items[0]?.label).toBe("Hunt");
+    const mid = parseBoardLine("Night.hunt_end as Hunt for guests, while Night.step >= 2", opts);
+    expect(mid).toMatchObject({ while: "Night.step >= 2", guests: true });
+    expect(mid?.items[0]?.label).toBe("Hunt");
+    expect(parseBoardLine("Night.hunt_end as Hunt FOR GUESTS", opts)?.guests).toBe(true);
+    // No flag: no key. A `watch:` line never takes one (its label keeps it).
+    expect(parseBoardLine("Night.hunt_end as Hunt", opts)).not.toHaveProperty("guests");
+    expect(parseBoardLine("Night.hunt_end as Hunt for guests")).toMatchObject({ items: [{ label: "Hunt for guests" }] });
+    expect(parseBoardLine("Night.hunt_end as Hunt for guests")).not.toHaveProperty("guests");
+    // A flag alone is no line; the problems never name the flag.
+    expect(parseBoardLine("for guests", opts)).toBeNull();
+    expect(boardLineProblems("Night.a, MS Paint for guests", opts)).toEqual({ items: ["MS Paint"], emptyWhile: false });
+  });
+
   it("garbage is null, a bad item is skipped and named", () => {
     for (const bad of ["", "   ", ",", "Night.", ".clock", "Night.clock +", "== beat", "Night.clock as", "Night.clock, while", "Night.clock, while   "]) {
       expect(parseBoardLine(bad), bad).toBeNull();
@@ -160,6 +185,13 @@ Hi.
     expect(out[2]!.message).toMatch(/`Ghost Writer` .* names no CHARACTER/);
     expect(out[3]!.message).toMatch(/`MS Paint` .* is skipped \(a countdown takes paths only/);
     expect(out[4]!.message).toMatch(/no expression/);
+  });
+
+  it("`for guests` is clean on a countdown (a secret head still flagged) and flagged on a watch", async () => {
+    const out = await lints([["file:///main.loom", STORY("countdown: Night.step as Soon for guests, while Night.step == 2\ncountdown: Night.step, Kernel.code as Lock, for guests\nwatch: Night.step as Step for guests")]]);
+    expect(out.map((d) => d.line)).toEqual([3, 4]);
+    expect(out[0]!.message).toMatch(/`Kernel` is a `secret: true` CHARACTER/);
+    expect(out[1]!.message).toMatch(/`for guests` puts a `countdown:` line on the guests' phones/);
   });
 
   it("a countdown on a `secret: true` CHARACTER is flagged (the server drops it); a watch is not", async () => {

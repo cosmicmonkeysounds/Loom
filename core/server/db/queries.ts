@@ -49,6 +49,10 @@ export interface EventRow {
    *  `house.json`). A launch seeds it from the project's last event, so
    *  End → relaunch keeps the tent ↔ shed choice. */
   map_variant: string | null;
+  /** The reserved programs' claim secret (`routes/claims.ts`). Carried from
+   *  the project's last event at launch; null on rows from before
+   *  2026-10-18 until their runtime writes the one it minted back. */
+  claim_secret: string | null;
 }
 
 // --- projects -----------------------------------------------------------
@@ -402,6 +406,22 @@ export async function lastEventMapVariant(projectId: string): Promise<string | n
   return rows[0]?.map_variant ?? null;
 }
 
+/** The claim secret of the project's most recent event that has one —
+ *  what a relaunch carries, so printed invitations keep working. */
+export async function lastEventClaimSecret(projectId: string): Promise<string | null> {
+  const { rows } = await pool().query<Pick<EventRow, "claim_secret">>(
+    "select claim_secret from event where project_id = $1 and claim_secret is not null order by created_at desc limit 1",
+    [projectId],
+  );
+  return rows[0]?.claim_secret ?? null;
+}
+
+/** Record the claim secret an event's runtime minted (a row from before the
+ *  column) — only where the row has none, so a pinned one is never lost. */
+export async function setEventClaimSecret(id: string, secret: string): Promise<void> {
+  await pool().query("update event set claim_secret = $2 where id = $1 and claim_secret is null", [id, secret]);
+}
+
 /** A project's house map files (`house.json`, `house.<variant>.json`) —
  *  what a launch or reload snapshots beside the source. */
 export async function projectMaps(projectId: string): Promise<MapFiles> {
@@ -409,16 +429,17 @@ export async function projectMaps(projectId: string): Promise<MapFiles> {
 }
 
 export async function createEvent(
-  row: Omit<EventRow, "created_at" | "ended_at" | "created_by_name" | "house_maps" | "map_variant"> & {
+  row: Omit<EventRow, "created_at" | "ended_at" | "created_by_name" | "house_maps" | "map_variant" | "claim_secret"> & {
     created_by_name?: string | null;
     house_maps?: MapFiles | null;
     map_variant?: string | null;
+    claim_secret?: string | null;
   },
 ): Promise<EventRow> {
   const { rows } = await pool().query<EventRow>(
     `insert into event
-       (id, project_id, mode, status, event_code, prime_code, mod_code, scenario_name, scenario_source, created_by_name, house_maps, map_variant)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12)
+       (id, project_id, mode, status, event_code, prime_code, mod_code, scenario_name, scenario_source, created_by_name, house_maps, map_variant, claim_secret)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13)
      returning *`,
     [
       row.id,
@@ -433,6 +454,7 @@ export async function createEvent(
       row.created_by_name ?? null,
       row.house_maps !== undefined && row.house_maps !== null ? JSON.stringify(row.house_maps) : null,
       row.map_variant ?? null,
+      row.claim_secret ?? null,
     ],
   );
   return rows[0]!;

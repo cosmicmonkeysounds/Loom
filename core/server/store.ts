@@ -11,6 +11,8 @@
 //!
 //! Alongside the journal we persist:
 //!   - `codes.json`    the three passcodes (stable across restarts)
+//!   - `claim-secret.json` the reserved programs' claim secret (stable
+//!                     across restarts and story restarts; never cleared)
 //!   - `meta.json`     scenario name + source + phase
 //!   - `sessions.json` live mod / performer tokens (no re-login needed)
 //!
@@ -80,6 +82,9 @@ export type SessionEntry = [string, Session];
 
 const CODES = "codes.json";
 const META = "meta.json";
+/** The secret the reserved programs' claim tokens are keyed by (W-03,
+ *  `identity.ts` `claimToken`). */
+const CLAIM_SECRET = "claim-secret.json";
 const JOURNAL = "journal.ndjson";
 const SESSIONS = "sessions.json";
 const HIDDEN = "hidden.json";
@@ -128,6 +133,16 @@ export class Store {
   }
   saveCodes(codes: Passcodes): void {
     writeFileSync(this.path(CODES), JSON.stringify(codes, null, 2));
+  }
+
+  // --- the reserved programs' claim secret ---------------------------------
+
+  loadClaimSecret(): string | null {
+    const raw = readJson<{ secret?: unknown }>(this.path(CLAIM_SECRET));
+    return typeof raw?.secret === "string" && raw.secret !== "" ? raw.secret : null;
+  }
+  saveClaimSecret(secret: string): void {
+    writeFileSync(this.path(CLAIM_SECRET), JSON.stringify({ secret }, null, 2));
   }
 
   // --- scenario meta ------------------------------------------------------

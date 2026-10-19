@@ -118,6 +118,9 @@ export interface InteractionSummary {
    *  it opens a section of the cue sheet, carried forward to later admin
    *  cues by `cueRows`. Display only — never changes NEXT / LAST. */
   act?: string;
+  /** `arm: true` — the button arms on the first tap and fires on the second
+   *  (core's `tapCue` arm model), in every UI that shows it. */
+  arm?: boolean;
 }
 
 const subjectOnlyCache = new WeakMap<Sim["model"], Set<string>>();
@@ -184,6 +187,7 @@ function interactionsFor(
       if (subjectOnly.has(foldName(i.id))) s.subject = true;
       if (!i.sequence) s.sequence = false;
       if (i.repeat) s.repeat = true;
+      if (i.arm) s.arm = true;
       const by = i.who === "performer" ? actors.get(i.id) : undefined; // a guest never learns who hears their buttons
       if (by !== undefined) s.actors = by;
       if (at !== undefined && i.while !== null && !sim.holds(i.while, at.subject, at.self)) s.live = false;
@@ -301,6 +305,15 @@ export interface GuestView {
   /** Profile pictures by (folded) display name → serving key
    *  (`/e/:id/api/avatar/<key>`). The runtime fills it; a local sim has none. */
   avatars?: Record<string, string>;
+  /** The header's `countdown: … for guests` items on live lines whose
+   *  deadline is still ahead (`boardFor`'s rule; never a `secret: true`
+   *  head) — the phone's countdown strip, ticked from `clock`. Absent when
+   *  none is running. */
+  countdowns?: CountdownSummary[];
+  /** The story clock is stopped (the event is paused, or its doors have not
+   *  opened): `clock` holds still, so a countdown must not tick on. Set by
+   *  the runtime; absent while the clock runs. */
+  paused?: true;
 }
 
 export function guestView(sim: Sim, id: string, decisionChannel: string | null = null, agentsOnline?: ReadonlySet<string>): GuestView {
@@ -344,7 +357,15 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     quests: sim.questsFor(id).map(({ def, status }) => ({ id: def.id, title: def.title, giver: def.giver, status })),
     questTotal: sim.model.quests.size,
     people: peopleFor(sim, id, agentsOnline),
+    ...guestBoard(sim),
   };
+}
+
+/** `GuestView.countdowns`, when any `for guests` countdown is running. */
+function guestBoard(sim: Sim): Pick<GuestView, "countdowns"> {
+  if (!sim.model.countdowns.some((l) => l.guests === true)) return {};
+  const countdowns = liveCountdowns(sim, (l) => l.guests);
+  return countdowns.length > 0 ? { countdowns } : {};
 }
 
 export interface RosterRow {
@@ -369,6 +390,14 @@ export interface RosterRow {
   /** The director who spawned this persona (`/api/mod/persona`), by display
    *  name; null for a real guest. Set only by `modView` from presence. */
   owner?: string | null;
+  /** When this guest was last heard from (epoch ms): a stream opened or
+   *  closed, or any request on their own token. Null = not since this
+   *  process started. Set only by `modView` from presence. */
+  lastSeen?: number | null;
+  /** A director marked them gone home (`<id>.gone`, `/api/mod/guest/gone`). */
+  gone?: true;
+  /** A director's Run persona (`<id>.persona`, set at `/api/mod/persona`). */
+  persona?: true;
 }
 
 /** The operator's god-view of one guest. Null if the QR is unknown. */
@@ -387,7 +416,15 @@ export function rosterRow(sim: Sim, id: string): RosterRow | null {
     score: sim.scoreOf(p.id),
     beat: sim.lastBeatOf(p.id),
     visited: sim.visitedBeatsFor(p.id),
+    ...(worldTrue(sim, `${p.id}.gone`) ? { gone: true as const } : {}),
+    ...(worldTrue(sim, `${p.id}.persona`) ? { persona: true as const } : {}),
   };
+}
+
+/** Is the world value at `path` the boolean true? */
+function worldTrue(sim: Sim, path: string): boolean {
+  const v = sim.world.get(path);
+  return v !== undefined && v.kind === "bool" && v.value;
 }
 
 export interface FactionSummary {
@@ -431,6 +468,12 @@ export interface CastSummary {
   /** A part a performer can sign in to (`identity.ts` `performerPickable`):
    *  the Run page's sign-in list shows only these. */
   part?: boolean;
+  /** `reserved: true` — a guest's program held for its invitee (a featured
+   *  program): taken only with its claim (`/api/mod/codes` → `claims`). */
+  reserved?: true;
+  /** A reserved program a director opened to anyone until then (epoch ms,
+   *  `/api/mod/claim/unlock`) — present only while the window is open. */
+  unlockedUntil?: number;
   /** A part a session token holds right now, streaming or not — `held` and
    *  not `online` is a booth whose phone dropped (⏏ Release). Present on
    *  parts where connection tracking exists. */
@@ -452,6 +495,11 @@ export interface ModPresence {
   directors: string[];
   /** persona id → puppeteer display name (mod-spawned personas only). */
   owners?: Map<string, string>;
+  /** guest id → when they were last heard from (epoch ms). */
+  lastSeen?: ReadonlyMap<string, number>;
+  /** reserved character → when its open window closes (epoch ms; only
+   *  windows still open). */
+  unlocks?: ReadonlyMap<string, number>;
   /** Agent characters with a stagehand worker connected. */
   agents?: Set<string>;
   /** Folded character names a performer's session token holds (streaming or
@@ -910,7 +958,7 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
   }
   const roster: RosterRow[] = [...sim.persons.keys()].map((id) =>
     presence !== undefined
-      ? { ...rosterRow(sim, id)!, online: presence.guests.has(id), owner: presence.owners?.get(id) ?? null }
+      ? { ...rosterRow(sim, id)!, online: presence.guests.has(id), owner: presence.owners?.get(id) ?? null, lastSeen: presence.lastSeen?.get(id) ?? null }
       : rosterRow(sim, id)!,
   );
   const factions: FactionSummary[] = [...sim.model.factions.values()].map((f) => ({
@@ -947,6 +995,8 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
           ? { online: c.mind === "external" ? (presence.agents?.has(c.id) ?? false) : presence.primes.has(c.id) }
           : {}),
         ...(part ? { part: true } : {}),
+        ...(c.reserved ? { reserved: true as const } : {}),
+        ...(c.reserved && presence?.unlocks?.has(c.id) === true ? { unlockedUntil: presence.unlocks.get(c.id)! } : {}),
         ...(part && presence?.held !== undefined ? { held: presence.held.has(foldName(c.id)) } : {}),
         ...(c.secret ? { secret: true as const } : {}),
       };
@@ -983,7 +1033,7 @@ function modBoard(sim: Sim): Pick<ModView, "watch" | "countdowns"> {
 /** A board line with its items' scopes resolved against the model. */
 interface ResolvedBoard {
   watch: Array<{ while: string | null; items: WatchSummary[] }>;
-  countdowns: Array<{ while: string | null; items: Array<{ label: string; path: string }> }>;
+  countdowns: Array<{ while: string | null; guests: boolean; items: Array<{ label: string; path: string }> }>;
 }
 const boards = new WeakMap<object, ResolvedBoard>();
 
@@ -1022,6 +1072,7 @@ function resolvedBoard(model: Sim["model"]): ResolvedBoard {
     // countdown has no mask. Lint L1205 says so.
     countdowns: model.countdowns.map((l) => ({
       while: l.while,
+      guests: l.guests === true,
       items: l.items.flatMap((i) => {
         if (i.path === null) return [];
         const s = scoped(i.path);
@@ -1053,16 +1104,23 @@ function boardLineLive(sim: Sim, cond: string | null): boolean {
 export function boardFor(sim: Sim): { watch: WatchSummary[]; countdowns: CountdownSummary[] } {
   const board = resolvedBoard(sim.model);
   const watch = board.watch.filter((l) => boardLineLive(sim, l.while)).flatMap((l) => l.items.map((i) => ({ ...i })));
+  return { watch, countdowns: liveCountdowns(sim) };
+}
+
+/** The live `countdown:` items (on lines `keep` keeps): a live line, a
+ *  deadline still ahead of the story clock; a secret head never (dropped
+ *  by `resolvedBoard`). */
+function liveCountdowns(sim: Sim, keep: (line: { guests: boolean }) => boolean = () => true): CountdownSummary[] {
   const now = sim.elapsed() / 1000;
   const countdowns: CountdownSummary[] = [];
-  for (const l of board.countdowns) {
-    if (!boardLineLive(sim, l.while)) continue;
+  for (const l of resolvedBoard(sim.model).countdowns) {
+    if (!keep(l) || !boardLineLive(sim, l.while)) continue;
     for (const i of l.items) {
       const endsAt = asNumber(sim.world.get(i.path));
       if (endsAt !== null && Number.isFinite(endsAt) && endsAt > now) countdowns.push({ label: i.label, path: i.path, endsAt });
     }
   }
-  return { watch, countdowns };
+  return countdowns;
 }
 
 export interface PrimeGuest {

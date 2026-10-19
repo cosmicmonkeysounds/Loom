@@ -108,6 +108,10 @@ alter table event add column if not exists house_maps jsonb;
 -- default house.json). A relaunch starts on the project's last event's
 -- choice, so a rain night switched to the shed stays on it (SW-MAP-13).
 alter table event add column if not exists map_variant text;
+-- The secret the reserved programs' claim tokens are keyed by (W-03). A
+-- launch carries it from the project's last event like the codes, so every
+-- printed invitation survives End -> relaunch.
+alter table event add column if not exists claim_secret text;
 `;
 
 /** Create the domain tables if they don't exist. Throws if the DB is down. */
