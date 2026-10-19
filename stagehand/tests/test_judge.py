@@ -86,6 +86,12 @@ async def judge_once(agents, **over):
     await settle(agents)
 
 
+async def ticks(n=5):
+    """Let a cancelled task unwind (its CancelledError, its finally) while the loop runs."""
+    for _ in range(n):
+        await asyncio.sleep(0)
+
+
 async def settle(agents):
     while agents.judging or agents.tasks:
         await asyncio.gather(*agents.judging.values(), *agents.tasks.values(), return_exceptions=True)
@@ -276,16 +282,26 @@ def test_a_cancel_frame_aborts_an_inflight_ruling(tmp_path):
         await agents.on_frame("judge", json.dumps(frame()))
         await started.wait()
         assert agents.orchestrator._inflight == 1  # the orchestrator steps aside while it rules
+        assert agents._slots.locked()  # the ruling holds the one slot
+        task = agents.judging["aj-1"]
         await agents.on_frame("cancel", json.dumps({"id": "aj-1"}))
-        await asyncio.sleep(0)
+        await ticks()
         assert agents.judging == {}
+        # The task itself is gone, not just its map entry: the slot and the busy count come
+        # back now, while the loop still runs (asyncio.run's teardown would cancel it anyway).
+        assert task.cancelled()
+        assert not agents._slots.locked()
+        assert agents.orchestrator._inflight == 0 and agents._inflight == 0
 
     run(go())
     assert posts(agents, "/api/agent/judge") == [] and agents.orchestrator._inflight == 0
 
 
 def test_a_restart_abandons_rulings_too(tmp_path):
+    started = asyncio.Event()
+
     async def slow(messages, cfg):
+        started.set()
         await asyncio.sleep(10)
         return '{"same": true}'
 
@@ -293,10 +309,15 @@ def test_a_restart_abandons_rulings_too(tmp_path):
 
     async def go():
         await agents.on_frame("judge", json.dumps(frame()))
-        await asyncio.sleep(0)
+        await started.wait()
+        assert agents._slots.locked()
+        task = agents.judging["aj-1"]
         await agents.on_frame("control", json.dumps({"action": "reset", "by": "server", "reason": "restart"}))
         assert agents.judging == {}
-        await asyncio.sleep(0)
+        await ticks()
+        assert task.cancelled()
+        assert not agents._slots.locked()
+        assert agents.orchestrator._inflight == 0 and agents._inflight == 0
 
     run(go())
     assert posts(agents, "/api/agent/judge") == []
