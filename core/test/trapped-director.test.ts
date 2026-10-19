@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { Sim } from "../src/runtime/sim/index.ts";
 import type { SimEvent } from "../src/runtime/sim/index.ts";
 import { scenarioFiles, scenarioSource } from "../examples/load.ts";
-import { boardFor, cueState, modView, notePress, pressRefused } from "../server/views.ts";
+import { boardFor, cueState, guestView, modView, notePress, pressRefused } from "../server/views.ts";
 import { cueActs, cueRows, cueSheetView, focusActIndex, previousActIndex } from "../src/cue-sheet.ts";
 import type { CueAct, CueRow } from "../src/cue-sheet.ts";
 import { Workspace } from "../src/lsp/index.ts";
@@ -266,6 +266,34 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     expect(v(sim, "Night.hunt_on")).toBe(false);
     expect(countdowns(sim)).not.toContain("Hunt 1 ends");
     expect(countdowns(sim)).toContain("Filings close");
+  });
+
+  it("guests see only the clocks they are told about (wave 11, `, for guests`)", { timeout: SLOW }, () => {
+    const sim = boot();
+    // Bingo, hunt 1, the last-chance filing, the summons and midnight; never
+    // the surprises (the Truther Download, the five-minute warning, the dance).
+    expect(sim.model.countdowns.filter((l) => l.guests === true).map((l) => l.items[0]!.label))
+      .toEqual(["Bingo ends", "Hunt 1 ends", "Filings close", "Summons closes", "Midnight"]);
+    const theirs = () => (guestView(sim, "g1").countdowns ?? []).map((c) => c.label);
+    expect(guestView(sim, "g1").countdowns).toBeUndefined(); // nothing running: no field
+    press(sim, "call_to_the_desktop");
+    press(sim, "start_the_bingo");
+    expect(theirs()).toEqual(["Bingo ends"]);
+    pressAll(sim, ["bingo_time", "introduce_trabolta", "start_the_hunt"]);
+    expect(theirs()).toEqual(["Hunt 1 ends"]);
+    pressAll(sim, ["hunt_time_up", "first_moment_of_truth"]);
+    expect(theirs()).toEqual(["Filings close"]);
+    pressAll(sim, ["close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt"]);
+    // Hunt 2's hour: the director counts down to the Truther Download and the
+    // five-minute warning; the phones show nothing.
+    expect(countdowns(sim)).toContain("Truther Download");
+    expect(countdowns(sim)).toContain("Five-minute warning");
+    expect(guestView(sim, "g1").countdowns).toBeUndefined();
+    press(sim, "five_minute_warning");
+    expect(theirs()).toEqual(["Summons closes"]);
+    pressAll(sim, ["summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock"]);
+    expect(theirs()).toEqual(["Midnight"]);
+    expect(guestView(sim, "g1").countdowns![0]!.endsAt).toBe(v(sim, "Night.y2k_end"));
   });
 
   it("Kernel watch items are secret", { timeout: SLOW }, () => {
