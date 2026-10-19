@@ -549,6 +549,7 @@ def test_a_rerun_of_a_thought_whose_prefix_is_lost_is_refused(tmp_path):
     agents.trace.load_recent("Trabolta")
     out = run(agents.control({"action": "rerun", "character": "Trabolta", "thought": second.id}))
     assert not out["ok"]  # never sent to a model with a reference for a prompt
+    assert out["error"] == PREFIX_NOT_FOUND  # and the editor is told why (C6.6)
 
 
 # -- the replay after hello ------------------------------------------------------------------

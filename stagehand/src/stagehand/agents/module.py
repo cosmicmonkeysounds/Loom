@@ -624,10 +624,11 @@ class Agents:
                     self.orchestrator.set_paused(on)
                 note = "mind paused (jobs queue, nothing runs)" if on else "mind resumed"
             elif action == "rerun":
-                thought = self.trace.find(str(doc.get("thought") or ""))
+                tid = str(doc.get("thought") or "")
+                thought = self.trace.find(tid)
                 if thought is None or thought.character != character:
                     outcomes["ok"] = False
-                    outcomes["error"] = "no such thought"
+                    outcomes["error"] = (self.trace.refusal(tid) if thought is None else None) or "no such thought"
                     continue
                 if any(str(m.get("content", "")).startswith("[same prefix as th-") for m in thought.messages):
                     outcomes["ok"] = False
