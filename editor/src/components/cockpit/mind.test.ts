@@ -593,6 +593,9 @@ describe('wave 12 trace: prompt_ms and the stored-once prefix', () => {
     }) as unknown as typeof fetch
     expect((await fetchThought('ev 1', 'th-aaaaaaaaaa', ok))?.id).toBe('th-aaaaaaaaaa')
     expect(calls).toEqual(['/e/ev%201/api/mod/agent/trace?id=th-aaaaaaaaaa'])
+    // A server on another origin (VITE_LOOM_API), like every other mod call.
+    await fetchThought('ev', 'th-aaaaaaaaaa', ok, 'https://loom.example')
+    expect(calls[1]).toBe('https://loom.example/e/ev/api/mod/agent/trace?id=th-aaaaaaaaaa')
     const missing = (async () => new Response(JSON.stringify({ error: 'no such thought' }), { status: 404 })) as unknown as typeof fetch
     expect(await fetchThought('ev', 'th-aaaaaaaaaa', missing)).toBeNull()
     const down = (async () => new Response('', { status: 502 })) as unknown as typeof fetch

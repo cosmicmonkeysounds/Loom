@@ -748,11 +748,16 @@ export function localPrefix(id: string, thoughts: readonly AgentThought[]): stri
   return typeof first === 'string' && prefixRef(first) === null ? first : null
 }
 
+/** The API origin every other mod call uses (`lib/api.ts`'s `BASE`): empty
+ *  when the editor is served by the server it talks to. */
+const API_BASE: string = import.meta.env.VITE_LOOM_API ?? ''
+
 /** Load one thought by id (`GET /e/:id/api/mod/agent/trace?id=`, directors
- *  only, the author's session cookie). Null when the server has no such
- *  thought; throws on any other failure. */
-export async function fetchThought(eventId: string, id: string, fetchFn: typeof fetch = fetch): Promise<AgentThought | null> {
-  const res = await fetchFn(`/e/${encodeURIComponent(eventId)}/api/mod/agent/trace?id=${encodeURIComponent(id)}`, { credentials: 'include', headers: { accept: 'application/json' } })
+ *  only, the author's session cookie), on the same API base as every other
+ *  mod call. Null when the server has no such thought; throws on any other
+ *  failure. */
+export async function fetchThought(eventId: string, id: string, fetchFn: typeof fetch = fetch, base: string = API_BASE): Promise<AgentThought | null> {
+  const res = await fetchFn(`${base}/e/${encodeURIComponent(eventId)}/api/mod/agent/trace?id=${encodeURIComponent(id)}`, { credentials: 'include', headers: { accept: 'application/json' } })
   if (res.status === 404) return null
   if (!res.ok) throw new Error(`trace ${res.status}`)
   const body = (await res.json()) as { thought?: AgentThought }
