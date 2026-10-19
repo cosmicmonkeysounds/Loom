@@ -3106,11 +3106,13 @@ INTERACTION beat_the_machine
 // the director would press from a radio call is pressed in the room: on
 // the card of the program at the cables (or the one who came in). Each
 // fires the admin cue; `while:` shows it only when that cue would do
-// something. 🫘 is Adobe Acrobat's, at the printer.
+// something. `by: Antivirus`: whichever Antivirus is stationed there (the
+// read-through picks who), never a Host's or a performer's booth (the
+// server refuses those). 🫘 is Adobe Acrobat's, at the printer.
 INTERACTION radio_combo_a
   label: 🔌 Patch: Combo A is in
   who: performer
-  by: CRA Agent Software
+  by: Antivirus
   arm: true
   while: Night.ended != true and Night.step >= 14 and Night.r3_closed != true
   description: Only once all four cables match Combo A on the patch-bay card. Disables Trabolta.
@@ -3118,7 +3120,7 @@ INTERACTION radio_combo_a
 INTERACTION radio_combo_b
   label: 💥 Patch: Combo B is in
   who: performer
-  by: CRA Agent Software
+  by: Antivirus
   arm: true
   while: Night.ended != true and Night.step >= 14 and Night.r3_closed != true
   description: Only once all four cables match Combo B on the patch-bay card. Self-destructs the computer.
@@ -3126,7 +3128,7 @@ INTERACTION radio_combo_b
 INTERACTION radio_wrong_patch
   label: ❌ Patch: wrong combination
   who: performer
-  by: CRA Agent Software
+  by: Antivirus
   arm: true
   while: Night.ended != true and Night.step >= 14 and Night.r3_closed != true
   description: Four cables in that are neither combination. The first is forgiven; the second trips the alarm.
@@ -3134,7 +3136,7 @@ INTERACTION radio_wrong_patch
 INTERACTION radio_door_opened
   label: 🚪 The server-room door opened
   who: performer
-  by: CRA Agent Software
+  by: Antivirus
   arm: true
   while: Night.ended != true and Night.r3_closed != true and Trabolta.awake == true and Time.elapsed >= Night.crew_door_until
   description: Only when the door opened and the room heard nothing (the contact failed). The first opening plays The Heart. Hidden inside a 🔧 crew window.
@@ -3142,7 +3144,7 @@ INTERACTION radio_door_opened
 INTERACTION radio_crew_door
   label: 🔧 Crew going through the door (2 min)
   who: performer
-  by: CRA Agent Software
+  by: Antivirus
   arm: true
   while: Night.ended != true
   description: Before you (or the crew) open the cold door for yourselves: for 2 minutes an opening only tells # hosts, and The Heart is kept for the programs.
@@ -4084,12 +4086,27 @@ when crew_through_the_door:
   else:
     broadcast "🔧 The night is over: the door does nothing now anyway." to channel(hosts)
 
-// The server-room Antivirus' and Adobe Acrobat's own buttons for the
-// hardware fallbacks (the INTERACTIONs' `radio_*`) are CHARACTER hooks on
-// CRA Agent Software (cast/antivirus.loom) and Adobe Acrobat
-// (cast/hosts.loom), never story rules: a booth's press carries its
-// character as the actor and only that character's hooks hear it, so
-// another booth tapping 💥 under More… reaches nothing.
+// The server-room Antivirus' own buttons for the hardware fallbacks (the
+// INTERACTIONs' `radio_*`, `by: Antivirus`): each is the admin cue,
+// pressed in the room instead of over the radio, from whichever Antivirus
+// booth is stationed there. Story rules, so a director's quick-fire (no
+// actor) lands once; `/api/prime/act` refuses the press from any booth
+// outside the Antivirus (403), and no other booth offers it. Adobe
+// Acrobat's 🫘 is a hook on her (cast/hosts.loom).
+when radio_combo_a:
+  fire patch_combo_a
+
+when radio_combo_b:
+  fire patch_combo_b
+
+when radio_wrong_patch:
+  fire patch_rejected
+
+when radio_door_opened:
+  fire server_door_opened
+
+when radio_crew_door:
+  fire crew_through_the_door
 
 // The latch clears after 120 s. The box's siren times itself out, but the
 // alarm look is house-wide (a red strobe everywhere): put back the look it

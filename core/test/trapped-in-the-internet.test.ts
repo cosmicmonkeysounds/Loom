@@ -1964,7 +1964,7 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
 
   it("the room's own buttons: the server-room Antivirus' 🔌 💥 ❌ 🚪 and Adobe Acrobat's 🫘 fire the admin cues, live only when those would act", { timeout: SLOW }, () => {
     const m = fresh().model;
-    for (const [id, by] of [["radio_combo_a", "CRA Agent Software"], ["radio_combo_b", "CRA Agent Software"], ["radio_wrong_patch", "CRA Agent Software"], ["radio_door_opened", "CRA Agent Software"], ["radio_crew_door", "CRA Agent Software"], ["radio_beans", "Adobe Acrobat"]] as const) {
+    for (const [id, by] of [["radio_combo_a", "Antivirus"], ["radio_combo_b", "Antivirus"], ["radio_wrong_patch", "Antivirus"], ["radio_door_opened", "Antivirus"], ["radio_crew_door", "Antivirus"], ["radio_beans", "Adobe Acrobat"]] as const) {
       const i = m.interactions.get(id)!;
       expect(i.who, id).toBe("performer");
       expect(i.by, id).toEqual([by]);
@@ -1991,24 +1991,49 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     expect(["radio_combo_a", "radio_door_opened", "radio_crew_door"].map(live)).toEqual([false, false, false]);
   });
 
-  it("the room's own buttons answer only their own booth: 💥 / 🔌 / ❌ / 🚪 / 🔧 / 🫘 pressed from another booth reach nothing; a director's quick-fire still lands", { timeout: SLOW }, () => {
+  it("the room's own buttons: Adobe Acrobat's 🫘 answers only her booth; a director's quick-fire of 💥 lands once", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
-    for (const by of ["Norton Anti-Virus", "Clippy", "Windows Defender", "Adobe Acrobat"]) {
-      for (const id of ["radio_combo_a", "radio_combo_b", "radio_wrong_patch", "radio_door_opened", "radio_crew_door"]) {
-        const e = fire(sim, id, "g1", null, by);
-        expect(beats(e), `${id} by ${by}`).toEqual([]);
-        expect(hostsSaid(e), `${id} by ${by}`).toEqual([]);
-      }
-    }
     for (const by of ["CRA Agent Software", "Clippy"]) expect(beats(fire(sim, "radio_beans", "g6", null, by)), by).toEqual([]);
+    // ❌ from the director (no actor) is one wrong combination, never one per Antivirus.
+    fire(sim, "radio_wrong_patch");
+    expect(v(sim, "Night.wrong_combos")).toBe(1);
     expect(v(sim, "Night.ended")).toBe(false);
-    expect(v(sim, "Night.wrong_combos")).toBe(0);
-    expect(v(sim, "Night.heart_opened")).toBe(false);
-    expect(v(sim, "Night.crew_door_until")).toBe(0);
     // The director's quick-fire (no actor) is the cue itself.
     fire(sim, "radio_combo_b");
     expect(v(sim, "Night.ending")).toBe("destroyed");
+  });
+
+  it("integration: the patch-bay watch's 🔧 🚪 🔌 💥 ❌ press from every Antivirus booth (whoever the read-through stations there), never a Host's or a performer's", { timeout: SLOW }, async () => {
+    const dir = mkdtempSync(join(tmpdir(), "loom-trapped-radio-"));
+    tmp.push(dir);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: SHOW, scenarioSource: SRC, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Calculator", passcode: CODES.event });
+    expect(g.status).toBe(200);
+    const id = g.json["id"] as string;
+    const booth = async (character: string) => (await call(rt, "POST", "/api/prime/login", { character, passcode: CODES.prime })).json["token"] as string;
+    const act = (token: string, name: string) => call(rt, "POST", "/api/prime/act", { name, guest: id }, { token });
+    const RADIO = ["radio_crew_door", "radio_door_opened", "radio_combo_a", "radio_combo_b", "radio_wrong_patch"];
+    for (const who of ["Clippy", "Adobe Acrobat", "Task Manager", "Recycling Bin"]) {
+      const t = await booth(who);
+      for (const name of RADIO) expect((await act(t, name)).status, `${name} by ${who}`).toBe(403);
+      const view = (await call(rt, "GET", `/api/state?role=prime&token=${encodeURIComponent(t)}`, {})).json as unknown as PrimeView;
+      for (const name of RADIO) expect(view.interactions.find((i) => i.id === name)?.only, `${name} on ${who}`).toBe(true);
+    }
+    expect(v(rt.liveSim!, "Night.wrong_combos") ?? 0).toBe(0);
+    expect(v(rt.liveSim!, "Night.crew_door_until") ?? 0).toBe(0);
+    for (const who of ANTIVIRUS) {
+      const t = await booth(who);
+      const view = (await call(rt, "GET", `/api/state?role=prime&token=${encodeURIComponent(t)}`, {})).json as unknown as PrimeView;
+      for (const name of RADIO) expect(view.interactions.find((i) => i.id === name)?.actors, `${name} on ${who}`).toContain(who);
+      const before = Number(v(rt.liveSim!, "Night.crew_door_until") ?? 0);
+      expect((await act(t, "radio_crew_door")).status, who).toBe(200);
+      expect(Number(v(rt.liveSim!, "Night.crew_door_until")), who).toBeGreaterThanOrEqual(before);
+      expect(Number(v(rt.liveSim!, "Night.crew_door_until")), who).toBeGreaterThan(0);
+      expect((await act(t, "radio_combo_a")).status, who).toBe(200); // pressed; its `while:` hook does nothing before the Y2K hour
+    }
+    expect(v(rt.liveSim!, "Night.ended") ?? false).toBe(false);
   });
 
   it("🚪 on the server-room booth hides inside a 🔧 crew window (the opening would only tell # hosts)", { timeout: SLOW }, () => {
@@ -2037,7 +2062,7 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     expect(booth.find((i) => i.id === "send to the internet")?.arm).toBeUndefined();
   });
 
-  it("integration: a booth presses only its own `by:` buttons — a Hosts verdict or the patch-bay radio from Norton's is refused", { timeout: SLOW }, async () => {
+  it("integration: a booth presses only its own `by:` buttons — a Hosts verdict from Norton's is refused", { timeout: SLOW }, async () => {
     const dir = mkdtempSync(join(tmpdir(), "loom-trapped-by-"));
     tmp.push(dir);
     const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: SHOW, scenarioSource: SRC, joinBase: () => "http://localhost" });
@@ -2052,7 +2077,7 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     const refused = await act(norton, "accurate_q1");
     expect(refused.status).toBe(403);
     expect(String(refused.json["error"])).toMatch(/not your button/u);
-    expect((await act(norton, "radio_combo_a")).status).toBe(403); // the patch-bay watch's
+    expect((await act(norton, "radio_combo_a")).status).toBe(200); // by: Antivirus — the patch-bay watch's
     expect((await act(norton, "send to the internet")).status).toBe(200); // no `by:`: anyone's
     expect((await act(norton, "unmark_for_reinstallation")).status).toBe(200); // by: Hosts, Antivirus
     expect((await act(await booth("Clippy"), "accurate_q1")).status).toBe(200);
