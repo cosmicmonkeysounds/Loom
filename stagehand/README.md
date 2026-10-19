@@ -162,15 +162,17 @@ You are the DIRECTOR OF THE MIND of Trabolta…
   like "song" drops every claim that uses it) and never an answer word:
   topics are printed into the orchestrator's prompt. **`never`** (wave 7
   review) is stricter: words no line of the mind may carry at all,
-  whoever typed them — the show's keypad code (+ the ways it is said:
-  "'97", "in 97", "since 97", "in / since / of ninety-seven",
-  "nineteen ninety-seven", "one nine nine seven" — never a bare "97",
-  which a guest's program may be called, nor "of 97", which counts) and
-  every patch-bay pair. A pair matches in any spelling and either way
-  round (`V2 → D5`, `v2-d5`, `V-2 to D5`, `D5 to V2`); an all-digit word
-  of 3+ digits allows a space, comma or hyphen between digits (`1 9 9 7`,
-  `1,997`) but never a dot (`$19.97` is a price); a phrase of number
-  words matches in any spacing or hyphens ("back in ninety seven"). The
+  whoever typed them — the show's keypad code (`facts.json` `door.code`)
+  and its digits said one by one, the four digit notes' unlock codes and
+  "first digit" … "fourth digit", and every patch-bay pair. (A code that
+  is a year also gets the ways a year is said — "'NN", "in / since NN",
+  "in / since / of" and the two digits in words, the year in words — but never the bare two digits, which a guest's
+  program may be called. Since wave 11b the show's code is no year.) A
+  pair matches in any spelling and either way round (`V2 → D5`,
+  `v2-d5`, `V-2 to D5`, `D5 to V2`); an all-digit word of 3+ digits
+  allows a space, comma or hyphen between digits (`1 2 3 4`, `1,234`)
+  but never a dot (`$12.34` is a price); a phrase of number words
+  matches in any spacing or hyphens ("one two three four"). The
   mind is shared by every conversation, so an update
   item, brief line or dossier field carrying one is dropped (no verdict
   needed), a restored mind is pruned of them, a voice line carrying one
